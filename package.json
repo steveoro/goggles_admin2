@@ -1,11 +1,28 @@
 {
   "name": "goggles_admin2",
+  "description": "Goggles Main app support modules",
+  "version": "0.1.0",
   "private": true,
-  "dependencies": {
-    "@rails/ujs": "^6.0.0",
-    "turbolinks": "^5.2.0",
-    "@rails/activestorage": "^6.0.0",
-    "@rails/actioncable": "^6.0.0"
+  "author": "steve.alloro@gmail.com",
+  "contributors": [],
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:steveoro/goggles_admin2.git"
   },
-  "version": "0.1.0"
+  "license": "LGPL-3.0",
+  "dependencies": {
+    "@rails/actioncable": "^6.0.0",
+    "@rails/activestorage": "^6.0.0",
+    "@rails/ujs": "^6.0.0",
+    "@rails/webpacker": "4.3.0",
+    "bootstrap": "4.6.0",
+    "jquery": "^3.6.0",
+    "popper.js": "^1.16.1",
+    "select2": "^4.1.0-rc.0",
+    "stimulus": "^2.0.0",
+    "turbolinks": "^5.2.0"
+  },
+  "devDependencies": {
+    "webpack-dev-server": "^3.11.2"
+  }
 }

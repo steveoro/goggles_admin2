@@ -1,0 +1,12 @@
+en:
+  home:
+    log_in: "Log in"
+    or: 'or'
+    sign_up: "Sign up"
+    log_out: "Log out"
+    account: 'Account'
+    please_wait: 'Wait...'
+    copyright_notice: "(c) 2013-2021, FASAR Software, S. Alloro, M. Ligabue"
+    title: 'Home'
+    current: '(current)'
+    commands: 'commands'

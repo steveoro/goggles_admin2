@@ -1,0 +1,29 @@
+!!!
+%html{ lang: I18n.locale }
+  %head
+    %meta{ content: 'text/html; charset=UTF-8', 'http-equiv' => 'Content-Type' }/
+    %meta{ name: 'viewport', content: 'width=device-width, initial-scale=1, shrink-to-fit=no' }/
+    %meta{ name: 'description', content: 'Master-Goggles administration' }/
+    %meta{ name: 'author', content: 'FASAR Software, Steve Alloro, 2012-2021' }/
+    %meta{ name: 'keywords', content: 'Master swimming results' }/
+    %title Goggles
+    = csrf_meta_tags
+    = csp_meta_tag
+    = stylesheet_link_tag('application', media: 'all', 'data-turbolinks-track': 'reload')
+    = stylesheet_pack_tag('application', media: 'all', 'data-turbolinks-track': 'reload')
+    = javascript_pack_tag('application', 'data-turbolinks-track': 'reload')
+
+  %body{ 'data-controller' => 'popover' }
+    %section#header
+      = render('goggles/main_navbar')
+
+    %section#notify
+      .wrapper-body
+        .spacer-left
+        .main-content
+          #flash-messages-container
+            = render(partial: 'goggles/flash_messages')
+        .spacer-right
+
+    %section#content
+      = yield

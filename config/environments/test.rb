@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # The test environment is used exclusively to run your application's
 # test suite. You never need to work with it otherwise. Remember that
 # your test database is "scratch space" for the test suite and is wiped
@@ -6,7 +8,8 @@
 Rails.application.configure do
   # Settings specified here will take precedence over those in config/application.rb.
 
-  config.cache_classes = false
+  config.cache_classes = true
+  config.autoloader = :classic # [Steve A.] Needed for Spring + RSpec + Zeitwerk in Rails 6.0
   config.action_view.cache_template_loading = true
 
   # Do not eager load code on boot. This avoids loading your whole application
@@ -40,10 +43,28 @@ Rails.application.configure do
   # The :test delivery method accumulates sent emails in the
   # ActionMailer::Base.deliveries array.
   config.action_mailer.delivery_method = :test
+  # Allow usage of "have_enqueued_job.on_queue(...)" during tests:
+  config.active_job.queue_adapter = :test
+  # Action Mailer default URL, required by Devise:
+  config.action_mailer.default_url_options = { host: 'localhost', port: 3000 }
 
   # Print deprecation notices to the stderr.
   config.active_support.deprecation = :stderr
 
   # Raises error for missing translations.
   # config.action_view.raise_on_missing_translations = true
+
+  # ============================================================================
+  # Bullet gem specific configuration:
+  # ============================================================================
+  # (see https://github.com/flyerhzm/bullet)
+  config.after_initialize do
+    Bullet.enable = true
+    Bullet.bullet_logger = true
+    Bullet.raise = true # raise an error if n+1 query occurs
+    # Bullet.stacktrace_includes = ['goggles_db']
+
+    # Detect eager-loaded associations which are not used
+    Bullet.unused_eager_loading_enable = false
+  end
 end

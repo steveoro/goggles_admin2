@@ -1,0 +1,129 @@
+it:
+  activerecord:
+    models:
+      goggles_db/badge: Tesserino
+      goggles_db/meeting_session: Sessione
+      goggles_db/meeting: Meeting
+      goggles_db/swimming_pool: Piscina
+      goggles_db/swimmer: Nuotatore
+      goggles_db/team: Squadra
+      goggles_db/user: Utente
+    attributes:
+      goggles_db/badge:
+        entry_time_type: "Tipo tempi di iscrizione"
+      goggles_db/meeting:
+        description: Nome
+        entry_deadline: Termine iscrizioni
+        warm_up_pool: Vasca riscaldamento
+        allows_under25: Ammessi under-25
+        reference_phone: Tel. riferimento
+        reference_e_mail: e-mail riferimento
+        reference_name: Nome referente
+        manifest: Locandina/invito
+        startlist: Start-list
+        results_acquired: Risultati acquisiti
+        max_individual_events: Max gare/atleta
+        configuration_file: File di config.
+        code: Codice
+        edition: Edizione
+        header_date: Data manifestazione
+        header_year: Anno manifestazione
+        max_individual_events_per_session: "Max gare/atleta x sess."
+        off_season: Fuori stagione
+        confirmed: Confermato
+        cancelled: Annullato
+        tweeted: Tweet fatto
+        posted: Postato su social-media
+        autofilled: Auto-filled
+        pb_acquired: Pers.Best acquisiti
+        read_only: Sola lettura
+        meeting_fee: Costo inscrizione base
+        event_fee: Costo singolo evento
+        relay_fee: Costo singola staffetta
+      goggles_db/swimmer:
+        last_name: "Cognome"
+        first_name: "Nome"
+        complete_name: "Nome completo"
+        year_of_birth: "Anno di nascita"
+        nickname: "Nickname"
+        gender_type: "Sesso"
+        associated_user_id: "Utente associato"
+      goggles_db/swimming_pool:
+        nick_name: "Nome in codice"
+        pool_type: Tipo
+        lanes_number: "N. corsie"
+        address: Indirizzo
+        phone_number: "Tel."
+        fax_number: "Fax"
+        e_mail: "e-mail"
+        contact_name: "Nome contatto"
+        multiple_pools: "Più vasche?"
+        garden: "Giardino/distesa?"
+        bar: "Bar?"
+        restaurant: "Ristorante?"
+        gym: "Palestra?"
+        child_area: "Area bimbi?"
+        locker_cabinet_type: Tipo armadietto
+        shower_type: Tipo docce
+        hair_dryer_type: Tipo asciugacapelli
+      goggles_db/team:
+        name: Nome
+        address: Indirizzo
+        phone_mobile: Cellulare
+        phone_number: Telefono
+        e_mail: "e-mail"
+        fax_number: FAX
+        contact_name: Contatto
+        home_page_url: Home page
+      goggles_db/user:
+        created_on: Creato il
+        updated_on: Ultima modifica
+        email: E-mail
+        name: Nome utente
+        hashed_pwd: Password codificata
+        password: Password
+        current_password: Password corrente
+        password_confirmation: Conferma password
+        description: "Descrizione / nome completo"
+        first_name: "Nome"
+        last_name: "Cognome"
+        year_of_birth: "Anno di nascita"
+    errors:
+      messages:
+        record_invalid: "Il record non ha superato i controlli di validazione."
+      models:
+        goggles_db/badge:
+          attributes:
+            entry_time_type:
+              required: "è richiesto"
+        goggles_db/user:
+          attributes:
+            email:
+              blank: "non può essere vuota"
+              taken: "è già stata scelta"
+              too_short: "è troppo corta"
+              already_exists: "esiste già"
+            name:
+              blank: "non puo' essere vuoto"
+              taken: "è già stato scelto"
+              too_short: "è troppo corto"
+              already_exists: "esiste già"
+            password:
+              blank: "non puo' essere vuota"
+              too_short: "è troppo corta"
+            password_confirmation:
+              confirmation: "deve essere uguale alla password scelta"
+              blank: "non puo' essere vuota"
+              too_short: "è troppo corta"
+            current_password:
+              blank: "non puo' essere vuota"
+              too_short: "è troppo corta"
+              invalid: "non è valida"
+        goggles_db/user_workshop:
+          attributes:
+            code:
+              blank: "non può essere vuoto"
+            edition_type:
+              blank: "non può essere vuoto"
+            timing_type:
+              blank: "non può essere vuoto"

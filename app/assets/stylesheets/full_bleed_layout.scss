@@ -1,0 +1,46 @@
+/*
+    == 3-column flex layout ==
+
+Side columns disappear depending on media query.
+
+Structure:
+
+    .wrapper
+      .wrapper-body
+        .spacer-left
+        .main-content
+        .spacer-right
+
+*/
+.wrapper {
+  display: flex;
+  flex-direction: column;
+}
+
+.wrapper-body {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: row;
+}
+
+.spacer-left {
+  width: 20%;
+}
+
+.main-content {
+  flex-grow: 1;
+}
+
+.spacer-right {
+  width: 20%; // (includes sidebar)
+}
+
+/* Style overrides: make the side columns disappear */
+@media only screen and (max-width: 414px) {
+  .spacer-left {
+    width: 0%;
+  }
+  .spacer-right {
+    width: 0%;
+  }
+}

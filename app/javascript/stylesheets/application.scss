@@ -1,0 +1,12 @@
+// NOTE: [Steve, 20210202] Styles written here will be included
+//       inside the application pack compiled by Webpacker.
+//       (See app/javascript/packs/application.js)
+@import "~bootstrap/scss/bootstrap";
+
+// Fonts & Styles
+@import 'custom_fonts';
+@import 'custom_styles';
+
+// View Component styles:
+@import 'rotating_switch_component';
+@import 'slider_switch_component';

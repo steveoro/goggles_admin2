@@ -1,0 +1,12 @@
+it:
+  home:
+    log_in: 'Entra'
+    or: 'oppure'
+    sign_up: 'Registrati'
+    log_out: "Esci"
+    account: 'Account'
+    please_wait: 'Attendi...'
+    copyright_notice: "(c) 2013-2021, FASAR Software, S. Alloro, M. Ligabue"
+    title: 'Principale'
+    current: '(attuale)'
+    commands: 'comandi'

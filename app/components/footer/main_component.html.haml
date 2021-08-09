@@ -1,0 +1,9 @@
+%footer.bg-light.text-muted.text-center
+  .row-fluid
+    = link_to(unicode_locale_flag(other_locale_code), home_index_path(locale: other_locale_code),
+              id: 'href-locale-switch')
+    &nbsp;|&nbsp;
+    %small
+      = t('home.copyright_notice')
+      %br/
+      Goggles v. #{Version::FULL}

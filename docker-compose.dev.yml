@@ -1,0 +1,57 @@
+version: '3.7'
+
+services:
+  goggles-db:
+    image: mariadb:latest
+    container_name: goggles-db.dev
+    env_file:
+      - .env
+    ports:
+      - '33060:3306'
+    restart: always
+    volumes:
+      - "~/Projects/goggles_deploy/db.prod:/var/lib/mysql"
+
+  api:
+    image: "steveoro/goggles-api:dev-${TAG}"
+    depends_on:
+      - goggles-db
+    container_name: goggles-api.dev
+    env_file:
+      - .env
+    ports:
+      - '8081:8081'
+    restart: always
+    volumes:
+      - "~/Projects/goggles_deploy/db.prod:/var/lib/mysql"
+      - "~/Projects/goggles_deploy/backups:/app/db/dump"
+      - "~/Projects/goggles_deploy/log.prod/api:/app/log"
+      - "~/Projects/goggles_deploy/master-api.key:/app/config/master.key"
+
+  admin2:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    image: "steveoro/goggles-admin2:dev-${TAG}"
+    depends_on:
+      - goggles-db
+      - api
+    container_name: goggles-admin2.dev
+    env_file:
+      - .env
+    ports:
+      - '8080:8080'
+    restart: always
+    volumes:
+      - "~/Projects/goggles_deploy/db.prod:/var/lib/mysql"
+      - "~/Projects/goggles_deploy/backups:/app/db/dump"
+      - "~/Projects/goggles_deploy/log.prod:/app/log"
+      - "~/Projects/goggles_deploy/master-main.key:/app/config/master.key"
+
+networks:
+  default:
+    name: dev
+
+volumes:
+  gem_cache:
+  node_modules:
