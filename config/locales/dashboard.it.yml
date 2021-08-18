@@ -1,0 +1,4 @@
+it:
+  dashboard:
+    n_total_rows: "%{tot} righe totali"
+    confirm_row_delete: "Siamo sicuri di voler eliminare questa riga?\r\n(%{label})"

@@ -9,6 +9,11 @@ import 'bootstrap'
 import 'select2'
 import 'select2/dist/css/select2.css'
 
+import Chart from 'chart.js/auto'
+window.Chart = Chart
+// import { Chart, registerables } from 'chart.js';
+// Chart.register(...registerables);
+
 // import '../controllers/index' // stimulus_setup
 // import './components'
 

@@ -7,13 +7,27 @@ require 'version'
 # Common parent controller
 class ApplicationController < ActionController::Base
   protect_from_forgery with: :exception
-  before_action :app_settings_row, :set_locale, :detect_device_variant
+  before_action :app_settings_row, :set_locale, :detect_device_variant,
+                :check_jwt_session, :authenticate_user!
 
   protected
 
   # Memoize base app settings
   def app_settings_row
     @app_settings_row ||= GogglesDb::AppParameter.versioning_row
+  end
+
+  # Checks JWT validity and forces a new sign-in otherwise.
+  def check_jwt_session
+    redirect_to new_user_session_path && return unless GogglesDb::GrantChecker.admin?(current_user)
+
+    # JWT expired? Force a new log-in to get a fresh one:
+    decoded_jwt = GogglesDb::JWTManager.decode(current_user.jwt, Rails.application.credentials.api_static_key)
+    return unless decoded_jwt.nil?
+
+    logger.debug('* JWT expired: forcing new sign-in...')
+    sign_out(current_user)
+    redirect_to new_user_session_path && return
   end
   #-- -------------------------------------------------------------------------
   #++

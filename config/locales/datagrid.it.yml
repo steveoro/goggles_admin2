@@ -1,0 +1,10 @@
+it:
+  datagrid:
+    table:
+      order:
+        asc: "<i class='fa fa fa-arrow-up'></i>"
+        desc: "<i class='fa fa fa-arrow-down'></i>"
+    form:
+      search: "Cerca"
+      reset: "Reset"
+    no_results: "Nessun risultato"

@@ -1,0 +1,24 @@
+%meta
+.wrapper-body
+  .spacer-left
+
+  .main-content{ data: { controller: 'chart-api',
+      'chart-api-days-value' => @day_hash.keys.to_json,
+      'chart-api-uses-value' => @day_hash.values.map { |e| e.y_values.sum }.to_json,
+      'chart-api-bubbles-value' => @url_hash.values.map(&:to_json_bubble_chart_data).to_json } }
+    %h1.text-center Stats dashboard
+    %canvas#api-chart{ data: { 'chart-api-target' => 'chart' } }
+
+    .text-center
+      %span.badge.badge-info
+        = t('dashboard.n_total_rows', tot: @api_uses.count)
+
+    %section.my-4#data-grid
+      = datagrid_form_for(@grid, method: :get, url: stats_path)
+      = datagrid_table(@grid, html: { class: 'table table-hover table-sm' })
+      = paginate(Kaminari.paginate_array(@grid.assets, total_count: @api_uses.count).page(params[:page]).per(10))
+
+    %section.text-center.fixed-bottom#footer
+      &nbsp;
+
+  .spacer-right

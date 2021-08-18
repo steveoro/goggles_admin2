@@ -31,6 +31,7 @@ gem 'turbolinks', '~> 5'
 # Reduces boot times through caching; required in config/boot.rb
 gem 'bootsnap', '>= 1.4.2', require: false
 gem 'browser' # detect request.variant type depending on request.user_agent
+gem 'datagrid'
 gem 'devise'
 gem 'devise-i18n'
 # Inherited data factories from DB engine, published also on production/staging
@@ -103,6 +104,7 @@ group :test do
   gem 'simplecov', '= 0.13.0', require: false
   # Easy installation and use of web drivers to run system tests with browsers
   gem 'webdrivers'
+  gem 'webmock'
 end
 
 # Windows does not include zoneinfo files, so bundle the tzinfo-data gem

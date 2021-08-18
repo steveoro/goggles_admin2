@@ -25,15 +25,16 @@
                                                      href: '#', role: 'button' }
           = t('home.commands')
         .dropdown-menu{ 'aria-labelledby' => 'navbar-dropdown' }
-          %a.dropdown-item{ href: '#' } TODO 1
+          %a.dropdown-item{ href: '#' } Settings (TODO 1)
           .dropdown-divider
-          %a.dropdown-item{ href: '#' } TODO 2
-          %a.dropdown-item{ href: '#' } TODO 3
+          %a.dropdown-item{ href: '#' } Stats (TODO 3)
+          %a.dropdown-item{ href: '#' } Import Queues (TODO 2)
+          %a.dropdown-item{ href: '#' } Users (TODO 4)
       %li.nav-item
         %a.nav-link.disabled{ 'aria-disabled' => 'true', href: '#', tabindex: '-1' } &nbsp;
       .dropdown-divider
       %li.nav-item
-        = link_to('TODO', '#', class: 'nav-link')
+        = link_to('Shortcut TODO', '#', class: 'nav-link')
       - if user_signed_in?
         %li.nav-item= link_to(t('home.log_out'), destroy_user_session_path,
                               method: :delete, class: 'nav-link')

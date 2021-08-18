@@ -4,5 +4,5 @@
 #
 # Common parent helper
 module ApplicationHelper
-  # (unused for the moment)
+  # (unused at the moment)
 end

@@ -1,0 +1,21 @@
+%p
+  %button.btn.btn-primary.btn-sm{ 'aria-controls' => 'filter-panel', 'aria-expanded' => 'false',
+                                  'data-target' => '#filter-panel', 'data-toggle' => 'collapse',
+                                  type: 'button' }
+    %i.fa.fa-filter
+  %button.btn.btn-danger.btn-sm
+    Delete selected (TODO)
+.collapse#filter-panel
+  .card.card-body
+    = form_for(grid, options) do |f|
+      - grid.filters.each do |filter|
+        .datagrid-filter.filter.form-group.row
+          = f.datagrid_label(filter, class: 'col-sm-2 col-form-label')
+          .col-sm-10
+            = f.datagrid_filter(filter, class: 'form-control')
+      .datagrid-actions.form-group.row
+        = f.submit(I18n.t('datagrid.form.search').html_safe, class: 'ml-3 datagrid-submit btn btn-sm btn-secondary')
+        - empty_parameter = Rails.version >= '4.1.0' && Rails.version <= '4.1.2' ? nil : {}
+        &nbsp;
+        = link_to(I18n.t('datagrid.form.reset').html_safe, url_for(grid.to_param => empty_parameter),
+                  class: 'datagrid-reset btn btn-sm btn-outline-secondary')

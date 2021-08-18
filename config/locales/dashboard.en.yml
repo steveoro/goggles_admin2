@@ -1,0 +1,4 @@
+en:
+  dashboard:
+    n_total_rows: "%{tot} total rows"
+    confirm_row_delete: "Are you sure you want to delete this row? (%{label})"

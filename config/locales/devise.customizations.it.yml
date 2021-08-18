@@ -1,5 +1,9 @@
 it:
   devise:
+    api_login:
+      errors:
+        not_an_admin: "Le tue credenziali non hanno permessi da Admin"
+        unauthorized: "Errore di autenticazione"
     customizations:
       we_wont_share_emails_with_noone: "Non condivideremo con nessuno il tuo indirizzo email"
       send_request_button: 'Invia'

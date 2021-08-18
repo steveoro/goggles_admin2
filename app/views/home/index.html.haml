@@ -2,10 +2,73 @@
   .spacer-left
 
   .main-content
-    .row-fluid.m-5
-      TO-DO
-    .row-fluid
-      %p &nbsp;
+    .col.pt-5.mt-3
+      .row.mb-3
+        .offset-lg-0.col-lg-4.offset-md-1.col-md-5.offset-sm-0.col-sm-6.py-2
+          %a.btn.card.text-white.bg-info.h-100{ href: stats_path }
+            .card-body.bg-info
+              .rotate
+                %i.fa.fa-line-chart.fa-4x
+              %h6.text-uppercase Stats
+              %h1.display-4= @api_uses.count
+
+        .offset-lg-0.col-lg-4.offset-md-1.col-md-5.offset-sm-0.col-sm-6.py-2
+          %a.btn.card.text-white.bg-danger.h-100{ href: '#' }
+            .card-body.bg-danger
+              .rotate
+                %i.fa.fa-list.fa-4x
+              %h6.text-uppercase Import queues
+              %h1.display-4= @iqs_list.count
+
+        .offset-lg-0.col-lg-4.offset-md-1.col-md-5.offset-sm-0.col-sm-6.py-2
+          %a.btn.card.bg-success.text-white.h-100{ href: '#' }
+            .card-body.bg-success
+              .rotate
+                %i.fa.fa-user.fa-4x
+              %h6.text-uppercase Users
+              %h1.display-4= @user_list.count
+
+        .col-12.py-2.mb-4
+          .card.text-dark.bg-light-blue.h-100
+            .card-body
+              .rotate
+                %i.fa.fa-cogs.fa-4x
+              %h6.text-uppercase Manage Entities
+              .row.mb-3
+                .offset-lg-0.col-lg-4.offset-md-1.col-md-5.offset-sm-0.col-sm-6.py-2
+                  %a.btn.btn-lg.btn-outline-primary.disabled.my-1{ href: '#' }
+                    Badges
+                  %a.btn.btn-lg.btn-outline-primary.my-1{ href: '#' }
+                    Team managers
+                  %a.btn.btn-lg.btn-outline-primary.disabled.my-1{ href: '#' }
+                    Reservations
+                .offset-lg-0.col-lg-4.offset-md-1.col-md-5.offset-sm-0.col-sm-6.py-2
+                  %a.btn.btn-lg.btn-outline-primary.disabled.my-1{ href: '#' }
+                    Standard & Base Timings
+                  %a.btn.btn-lg.btn-outline-primary.disabled.my-1{ href: '#' }
+                    Seasons
+                  %a.btn.btn-lg.btn-outline-primary.disabled.my-1{ href: '#' }
+                    Categories
+                  %a.btn.btn-lg.btn-outline-primary.disabled.my-1{ href: '#' }
+                    Meetings
+                  %a.btn.btn-lg.btn-outline-primary.disabled.my-1{ href: '#' }
+                    Workshops
+                .offset-lg-0.col-lg-4.offset-md-1.col-md-5.offset-sm-0.col-sm-6.py-2
+                  %a.btn.btn-lg.btn-outline-primary.disabled.my-1{ href: '#' }
+                    Swimmers
+                  %a.btn.btn-lg.btn-outline-primary.disabled.my-1{ href: '#' }
+                    Ind. results (MIR)
+                  %a.btn.btn-lg.btn-outline-primary.disabled.my-1{ href: '#' }
+                    User results (UR)
+                  %a.btn.btn-lg.btn-outline-primary.disabled.my-1{ href: '#' }
+                    Relay results (MRR)
+                .offset-lg-0.col-lg-4.offset-md-1.col-md-5.offset-sm-0.col-sm-6.py-2
+                  %a.btn.btn-lg.btn-outline-primary.disabled.my-1{ href: '#' }
+                    Laps
+                  %a.btn.btn-lg.btn-outline-primary.disabled.my-1{ href: '#' }
+                    User Laps
+                  %a.btn.btn-lg.btn-outline-primary.disabled.my-1{ href: '#' }
+                    Relay Laps (& Swimmers)
 
     %section.fixed-bottom#footer
       = render(Footer::MainComponent.new)
