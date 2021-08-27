@@ -1,2 +1,19 @@
-%h1 Users#index
-%p Find me in app/views/users/index.html.haml
+%meta
+.wrapper-body
+  .spacer-left
+
+  .main-content
+    = render(DashboardTitleComponent.new(title: t('dashboard.users.title'), row_count: @domain.count))
+
+    %section.my-4#data-grid
+      = render(Grid::ToolbarComponent.new(asset_row: GogglesDb::User.new,
+               controller_name: controller_name))
+      = datagrid_form_for(@grid, method: :get, url: stats_path)
+      = datagrid_table(@grid, html: { class: 'table table-hover table-sm' })
+      = paginate(Kaminari.paginate_array(@grid.assets, total_count: @grid.unscoped.count).page(params[:page]).per(10))
+      = render(Grid::EditModalComponent.new(controller_name: controller_name))
+
+    %section.text-center.fixed-bottom#footer
+      &nbsp;
+
+  .spacer-right

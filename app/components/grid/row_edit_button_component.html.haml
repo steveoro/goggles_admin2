@@ -1,0 +1,9 @@
+= link_to('#grid-edit-modal', class: 'btn btn-sm btn-outline-success', role: 'button',
+          data: { controller: 'grid-edit', 'grid-edit-modal-id-value' => 'grid-edit-modal',
+          'grid-edit-payload-value' => @asset_row.attributes.to_json, toggle: 'modal',
+          'grid-edit-modal-edit-title-value' => I18n.t('datagrid.edit_modal.edit_title'),
+          'grid-edit-modal-create-title-value' => I18n.t('datagrid.edit_modal.create_title'),
+          'grid-edit-url-value' => url_for(only_path: true, controller: @controller_name,
+                                           action: :update, id: @asset_row.id),
+          action: 'click->grid-edit#handleEdit' }) do
+  %i.fa.fa-pencil-square-o

@@ -9,31 +9,31 @@
             .card-body.bg-info
               .rotate
                 %i.fa.fa-line-chart.fa-4x
-              %h6.text-uppercase Stats
-              %h1.display-4= @api_uses.count
+              %h6.text-uppercase API
+              %h1.display-4= @api_uses_count
 
         .offset-lg-0.col-lg-4.offset-md-1.col-md-5.offset-sm-0.col-sm-6.py-2
-          %a.btn.card.text-white.bg-danger.h-100{ href: '#' }
+          %a.btn.card.text-white.bg-danger.h-100{ href: import_queues_path }
             .card-body.bg-danger
               .rotate
                 %i.fa.fa-list.fa-4x
               %h6.text-uppercase Import queues
-              %h1.display-4= @iqs_list.count
+              %h1.display-4= @iqs_count
 
         .offset-lg-0.col-lg-4.offset-md-1.col-md-5.offset-sm-0.col-sm-6.py-2
-          %a.btn.card.bg-success.text-white.h-100{ href: '#' }
+          %a.btn.card.bg-success.text-white.h-100{ href: users_path }
             .card-body.bg-success
               .rotate
                 %i.fa.fa-user.fa-4x
               %h6.text-uppercase Users
-              %h1.display-4= @user_list.count
+              %h1.display-4= @users_count
 
         .col-12.py-2.mb-4
           .card.text-dark.bg-light-blue.h-100
             .card-body
               .rotate
                 %i.fa.fa-cogs.fa-4x
-              %h6.text-uppercase Manage Entities
+              %h6.text-uppercase= t('dashboard.manage_entities')
               .row.mb-3
                 .offset-lg-0.col-lg-4.offset-md-1.col-md-5.offset-sm-0.col-sm-6.py-2
                   %a.btn.btn-lg.btn-outline-primary.disabled.my-1{ href: '#' }

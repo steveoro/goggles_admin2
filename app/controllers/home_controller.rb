@@ -12,7 +12,7 @@ class HomeController < ApplicationController
     # (no-op)
 
     # Simulate API response while UI is still in design phase:
-    @user_list = JSON.parse(GogglesDb::User.all.to_a.to_json)
+    @users_count = GogglesDb::User.count
     # @user_list = APIProxy.call(method: :get, url: 'users', jwt: current_user.jwt)
 
     # user_list: array of JSONified User instances (no subdetails), like this:
@@ -36,10 +36,10 @@ class HomeController < ApplicationController
     # "provider"=>nil,
     # "uid"=>nil}
 
-    @iqs_list = JSON.parse(GogglesDb::ImportQueue.all.to_a.to_json)
+    @iqs_count = GogglesDb::ImportQueue.count
     # @user_list = APIProxy.call(method: :get, url: 'users', jwt: current_user.jwt)
 
-    @api_uses = JSON.parse(GogglesDb::APIDailyUse.all.to_a.to_json)
+    @api_uses_count = GogglesDb::APIDailyUse.count
     # @user_list = APIProxy.call(method: :get, url: 'users', jwt: current_user.jwt)
 
     # Setting groups:
@@ -47,8 +47,5 @@ class HomeController < ApplicationController
     # => GogglesDb::AppParameter.config.settings(<GROUP_SYM>).values
     # :prefs on current_user
     # => current_user.settings(:prefs).values
-
-    # Import Queues:
-    #
   end
 end

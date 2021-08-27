@@ -1,3 +1,15 @@
 %tr{ class: grid.respond_to?(:row_class) ? grid.row_class(asset).to_s : '' }
   - grid.html_columns(*options[:columns]).each do |column|
-    %td{ class: datagrid_column_classes(grid, column).to_s }= datagrid_value(grid, column, asset)
+    - if column.name == :actions
+      %td
+        = render(Grid::RowToolbarComponent.new(asset_row: asset, controller_name: controller_name,
+                                               edit: column.options[:edit],
+                                               destroy: column.options[:destroy],
+                                               label_method: column.options[:label_method]))
+    - else
+      - css_classes = datagrid_column_classes(grid, column).to_s
+      - if column.options[:align].present? && column.options[:align] == :center
+        - css_classes << ' text-center'
+      - if column.options[:align].present? && column.options[:align] == :right
+        - css_classes << ' text-right'
+      %td{ class: css_classes }= datagrid_value(grid, column, asset)

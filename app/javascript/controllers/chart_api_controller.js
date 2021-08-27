@@ -51,8 +51,7 @@ export default class extends Controller {
   }
 
   /**
-   * Sets up the Select2 widget used for the lookup-combo box to which this
-   * controller instance connects.
+   * Setup invoked each time the controller instance connects.
    */
   connect() {
     if (this.hasChartTarget && this.hasDaysValue && this.hasUsesValue) {

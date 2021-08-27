@@ -6,17 +6,19 @@
       'chart-api-days-value' => @day_hash.keys.to_json,
       'chart-api-uses-value' => @day_hash.values.map { |e| e.y_values.sum }.to_json,
       'chart-api-bubbles-value' => @url_hash.values.map(&:to_json_bubble_chart_data).to_json } }
-    %h1.text-center Stats dashboard
+    = render(DashboardTitleComponent.new(title: t('dashboard.stats.title'), row_count: @domain.count))
+
     %canvas#api-chart{ data: { 'chart-api-target' => 'chart' } }
 
-    .text-center
-      %span.badge.badge-info
-        = t('dashboard.n_total_rows', tot: @api_uses.count)
-
     %section.my-4#data-grid
+      / Toolbar defaults: create: true, destroy: true, csv: true
+      = render(Grid::ToolbarComponent.new(asset_row: GogglesDb::APIDailyUse.new,
+               controller_name: controller_name))
       = datagrid_form_for(@grid, method: :get, url: stats_path)
       = datagrid_table(@grid, html: { class: 'table table-hover table-sm' })
-      = paginate(Kaminari.paginate_array(@grid.assets, total_count: @api_uses.count).page(params[:page]).per(10))
+      = paginate(Kaminari.paginate_array(@grid.assets, total_count: @grid.unscoped.count).page(params[:page]).per(10))
+      / Edit Modal (show/update/create)
+      = render(Grid::EditModalComponent.new(controller_name: controller_name))
 
     %section.text-center.fixed-bottom#footer
       &nbsp;

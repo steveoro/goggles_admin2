@@ -1,0 +1,15 @@
+.row.btn-toolbar.d-flex.justify-content-left.ml-0.mb-2
+  .btn-group.mx-1.my-0
+    = render(Grid::FilterShowButtonComponent.new)
+  .btn-group.mx-1.my-0
+    = render(Grid::SelectionToggleButtonComponent.new)
+  - if @create
+    .btn-group.mx-1.my-0
+      = render(Grid::CreateNewButtonComponent.new(asset_row: @asset_row,
+              controller_name: @controller_name))
+  - if @destroy
+    .btn-group.mx-1.my-0
+      = render(Grid::DeleteSelectionButtonComponent.new(controller_name: @controller_name))
+  - if @csv
+    .btn-group.mx-1.my-0
+      = render(Grid::CsvExportButtonComponent.new(controller_name: @controller_name))

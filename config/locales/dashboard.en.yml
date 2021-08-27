@@ -1,4 +1,17 @@
 en:
   dashboard:
+    title: "Dashboard"
+    manage_entities: "Manage entities"
+    toggle_selection: "Invert selected rows"
     n_total_rows: "%{tot} total rows"
     confirm_row_delete: "Are you sure you want to delete this row? (%{label})"
+    grid_commands:
+      delete_selected:
+        button: "Delete selected <i class='fa fa fa-trash-o'></i>"
+        confirmation: "Are you sure you want to delete all selected rows?"
+    import_queues:
+      title: "Import Queues"
+    stats:
+      title: "API stats"
+    users:
+      title: "Users"

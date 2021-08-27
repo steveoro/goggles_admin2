@@ -1,4 +1,17 @@
 it:
   dashboard:
+    title: "Pannello di controllo"
+    manage_entities: "Gestisci entità"
+    toggle_selection: "Inverti righe selezionate"
     n_total_rows: "%{tot} righe totali"
     confirm_row_delete: "Siamo sicuri di voler eliminare questa riga?\r\n(%{label})"
+    grid_commands:
+      delete_selected:
+        button: "Elimina selezione <i class='fa fa fa-trash-o'></i>"
+        confirmation: "Sicuri di voler eliminare tutte le righe selezionate?"
+    import_queues:
+      title: "Import Queues"
+    stats:
+      title: "API stats"
+    users:
+      title: "Utenti"

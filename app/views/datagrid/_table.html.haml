@@ -7,6 +7,6 @@
         = datagrid_rows(grid, assets, **options)
       - else
         %tr
-          %td.noresults{ colspan: '100%' }= I18n.t('datagrid.no_results').html_safe
+          %td.text-center.py-4.noresults{ colspan: '100%' }= I18n.t('datagrid.no_results').html_safe
 - else
-  = I18n.t('datagrid.table.no_columns').html_safe
+  .text-center.py-4= I18n.t('datagrid.table.no_columns').html_safe

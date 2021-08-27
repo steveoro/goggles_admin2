@@ -8,3 +8,13 @@ it:
       search: "Cerca"
       reset: "Reset"
     no_results: "Nessun risultato"
+    csv_export:
+      btn_tooltip: "Scarica tutti i dati come file CSV"
+    edit_modal:
+      edit_title: "Modifica riga"
+      create_title: "Crea nuova riga"
+      close_btn: "Chiudi"
+      save_btn: "Salva"
+      save_changes_msg: "Confermi di voler salvare i cambiamenti?"
+      edit_ok: "I cambiamenti sono stati salvati con successo."
+      edit_failed: "Il salvataggio è fallito: %{error}"

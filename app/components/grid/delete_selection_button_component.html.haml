@@ -1,0 +1,10 @@
+= form_tag(url_for(only_path: true, controller: @controller_name, action: :destroy),
+           id: 'frm-delete-selection', method: :delete,
+           data: { controller: 'grid-selection',
+           'grid-selection-confirm' => t('dashboard.grid_commands.delete_selected.confirmation'),
+           'grid-selection-target' => 'form' }) do
+  = hidden_field_tag(:ids, nil, data: { 'grid-selection-target' => 'payload' })
+  %button.btn.btn-outline-danger.btn-sm#btn-delete-selection{ type: 'submit', method: :delete,
+      'aria-label' => 'Delete selection', data: { 'grid-selection-target' => 'btnAction',
+      action: 'click->grid-selection#handlePost' } }
+    = I18n.t('dashboard.grid_commands.delete_selected.button').html_safe

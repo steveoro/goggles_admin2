@@ -1,15 +1,15 @@
+# frozen_string_literal: true
+
+# = StatsGrid
+#
+# DataGrid used to manage GogglesDb::APIDailyUse rows.
+#
 class StatsGrid < BaseGrid
-  @@data_domain = []
-
-  scope do
-    @@data_domain
-  end
-
   filter(:id, :integer)
   filter(:route, :string)
   filter(:day, :date, range: true, input_options: {
-    maxlength: 10, placeholder: 'YYYY-MM-DD'
-  })
+           maxlength: 10, placeholder: 'YYYY-MM-DD'
+         })
 
   # Customizes row background color
   def row_class(row)
@@ -25,17 +25,10 @@ class StatsGrid < BaseGrid
     end
   end
 
-  sortable_column(:id)
-  sortable_column(:route)
-  date_column(:day)
-  # TODO: try to  make the date column actually sortable
-  sortable_column(:count)
-
-  column(:actions, html: true) do |record|
-    content_tag(:div, class: 'text-center') do
-      button_to('X', stats_delete_path(record.id), id: "frm-delete-row-#{record.id}", method: :delete,
-                class: 'btn btn-sm btn-outline-danger',
-                data: { confirm: t('dashboard.confirm_row_delete', label: record.route) })
-    end
-  end
+  selection_column
+  column(:id, align: :right)
+  column(:route)
+  column(:day, align: :center)
+  column(:count, align: :right)
+  actions_column(edit: true, destroy: true, label_method: 'route')
 end
