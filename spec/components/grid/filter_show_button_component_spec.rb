@@ -3,13 +3,11 @@
 require 'rails_helper'
 
 RSpec.describe Grid::FilterShowButtonComponent, type: :component do
-  pending "add some examples to (or delete) #{__FILE__}"
+  subject { render_inline(described_class.new) }
 
-  # it "renders something useful" do
-  #   expect(
-  #     render_inline(described_class.new(attr: "value")) { "Hello, components!" }.css("p").to_html
-  #   ).to include(
-  #     "Hello, components!"
-  #   )
-  # end
+  it 'renders the button with the collapse toggle parameter for the filters section' do
+    expect(subject.css('button.btn')).to be_present
+    expect(subject.css('button.btn').attr('data-target').value).to eq('#filter-panel')
+    expect(subject.css('button.btn').attr('data-toggle').value).to eq('collapse')
+  end
 end

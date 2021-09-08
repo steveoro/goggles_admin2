@@ -3,14 +3,19 @@
   .spacer-left
 
   .main-content
-    = render(DashboardTitleComponent.new(title: t('dashboard.users.title'), row_count: @domain.count))
+    = render(DashboardTitleComponent.new(title: t('dashboard.users.title'), row_count: @domain_count))
 
     %section.my-4#data-grid
-      = render(Grid::ToolbarComponent.new(asset_row: GogglesDb::User.new,
-               controller_name: controller_name))
-      = datagrid_form_for(@grid, method: :get, url: stats_path)
+      = render(Grid::ToolbarComponent.new(asset_row: GogglesDb::User.new, create: false,
+               controller_name: controller_name, request_params: @grid_filter_params))
+      = datagrid_form_for(@grid, method: :get,
+                          url: url_for(controller: controller_name, action: :index, params: @index_params))
+      = paginate(Kaminari.paginate_array(@grid.assets,
+                 total_count: @domain_count).page(@domain_page).per(@domain_per_page))
       = datagrid_table(@grid, html: { class: 'table table-hover table-sm' })
-      = paginate(Kaminari.paginate_array(@grid.assets, total_count: @grid.unscoped.count).page(params[:page]).per(10))
+      = paginate(Kaminari.paginate_array(@grid.assets,
+                 total_count: @domain_count).page(@domain_page).per(@domain_per_page))
+
       = render(Grid::EditModalComponent.new(controller_name: controller_name))
 
     %section.text-center.fixed-bottom#footer

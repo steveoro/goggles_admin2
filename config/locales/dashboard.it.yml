@@ -9,6 +9,9 @@ it:
       delete_selected:
         button: "Elimina selezione <i class='fa fa fa-trash-o'></i>"
         confirmation: "Sicuri di voler eliminare tutte le righe selezionate?"
+      delete_ok: "%{tot} righe eliminate (ID: %{ids})"
+      delete_error: "Alcune righe hanno generato errori durante la cancellazione: %{ids}"
+      no_op_msg: "Nessuna selezione!"
     import_queues:
       title: "Import Queues"
     stats:

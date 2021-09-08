@@ -31,8 +31,8 @@ import Chart from 'chart.js/auto'
  *                      type: 'bubble',
  *                      label: "route_label",
  *                      data: [
- *                        { x: days_label1, y: api_use_counter1, r: api_use_counter1 },
- *                        { x: days_label2, y: api_use_counter2, r: api_use_counter2 },
+ *                        { x: days_label1, y: api_use_counter1, r: api_use_counter1 / k },
+ *                        { x: days_label2, y: api_use_counter2, r: api_use_counter2 / k },
  *                        // [...]
  *                      ]
  *                    }, { ... }

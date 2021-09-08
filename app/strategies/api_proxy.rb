@@ -4,9 +4,9 @@ require 'singleton'
 
 # = API Proxy
 #
-#   - file vers.: 0.3.25
+#   - file vers.: 0.3.29
 #   - author....: Steve A.
-#   - build.....: 20210814
+#   - build.....: 20210908
 #
 #   Helper wrapper for various API calls.
 #
@@ -27,14 +27,19 @@ class APIProxy
   #
   def self.call(method:, url:, payload: nil, jwt: nil, params: nil)
     api_base_url = GogglesDb::AppParameter.config.settings(:framework_urls).api
-    headers = { params: params }
-    headers.merge!('Authorization' => "Bearer #{jwt}") if jwt.present?
+    hdrs = params.present? ? { params: params.to_h } : {}
+    hdrs.merge!('Authorization' => "Bearer #{jwt}") if jwt.present?
+    # DEBUG
+    # Rails.logger.debug("\r\n-- APIProxy, headers:")
+    # Rails.logger.debug(hdrs.inspect)
+    # Rails.logger.debug("\r\n-- APIProxy, payload:")
+    # Rails.logger.debug(payload.inspect)
 
     RestClient::Request.execute(
       method: method,
       url: "#{api_base_url}/api/v3/#{url}",
-      payload: payload,
-      headers: headers
+      payload: payload.to_h,
+      headers: hdrs
     )
   rescue RestClient::ExceptionWithResponse => e
     e.response

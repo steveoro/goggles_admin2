@@ -1,22 +1,66 @@
 {
   "ignored_warnings": [
     {
-      "warning_type": "Cross-Site Scripting",
-      "warning_code": 106,
-      "fingerprint": "c8adc1c0caf2c9251d1d8de588fb949070212d0eed5e1580aee88bab2287b772",
-      "check_name": "SanitizeMethods",
-      "message": "loofah gem 2.10.0 is vulnerable (CVE-2018-8048). Upgrade to 2.2.1",
-      "file": "Gemfile.lock",
-      "line": 356,
-      "link": "https://github.com/flavorjones/loofah/issues/144",
-      "code": null,
+      "warning_type": "Mass Assignment",
+      "warning_code": 70,
+      "fingerprint": "a9e3c715a49449942cebc293e7072512b3616a442ad24cf299306f57aa8c80ef",
+      "check_name": "MassAssignment",
+      "message": "Specify exact keys allowed for mass assignment instead of using `permit!` which allows any keys",
+      "file": "app/controllers/stats_controller.rb",
+      "line": 146,
+      "link": "https://brakemanscanner.org/docs/warning_types/mass_assignment/",
+      "code": "params.fetch(:stats_grid, {}).permit!",
       "render_path": null,
-      "location": null,
+      "location": {
+        "type": "method",
+        "class": "StatsController",
+        "method": "grid_filter_params"
+      },
+      "user_input": null,
+      "confidence": "Medium",
+      "note": ""
+    },
+    {
+      "warning_type": "Mass Assignment",
+      "warning_code": 70,
+      "fingerprint": "aa11ab05513f2176afdff6b59d3fdcfbeeb8f9ff5de0957479c73b571099ea7b",
+      "check_name": "MassAssignment",
+      "message": "Specify exact keys allowed for mass assignment instead of using `permit!` which allows any keys",
+      "file": "app/controllers/import_queues_controller.rb",
+      "line": 125,
+      "link": "https://brakemanscanner.org/docs/warning_types/mass_assignment/",
+      "code": "params.fetch(:import_queues_grid, {}).permit!",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "ImportQueuesController",
+        "method": "grid_filter_params"
+      },
+      "user_input": null,
+      "confidence": "Medium",
+      "note": "needed for grid filtering, which can be scalar or range of values"
+    },
+    {
+      "warning_type": "Mass Assignment",
+      "warning_code": 70,
+      "fingerprint": "c1eaa704d7d2edf9a513aff5d34bf36b243d31fc1cf2ccbb20564607b4569947",
+      "check_name": "MassAssignment",
+      "message": "Specify exact keys allowed for mass assignment instead of using `permit!` which allows any keys",
+      "file": "app/controllers/users_controller.rb",
+      "line": 125,
+      "link": "https://brakemanscanner.org/docs/warning_types/mass_assignment/",
+      "code": "params.fetch(:users_grid, {}).permit!",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "UsersController",
+        "method": "grid_filter_params"
+      },
       "user_input": null,
       "confidence": "Medium",
       "note": ""
     }
   ],
-  "updated": "2021-06-14 19:37:37 +0200",
-  "brakeman_version": "5.0.0"
+  "updated": "2021-08-30 16:24:55 +0200",
+  "brakeman_version": "5.1.1"
 }

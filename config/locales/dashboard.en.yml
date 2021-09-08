@@ -9,6 +9,9 @@ en:
       delete_selected:
         button: "Delete selected <i class='fa fa fa-trash-o'></i>"
         confirmation: "Are you sure you want to delete all selected rows?"
+      delete_ok: "%{tot} row(s) deleted (ID: %{ids})"
+      delete_error: "Some rows raised errors during deletion: %{ids}"
+      no_op_msg: "No selection!"
     import_queues:
       title: "Import Queues"
     stats:

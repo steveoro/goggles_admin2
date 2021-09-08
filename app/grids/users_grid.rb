@@ -5,6 +5,14 @@
 # DataGrid used to manage GogglesDb::User rows.
 #
 class UsersGrid < BaseGrid
+  # Returns the scope for the grid. (#assets is the filtered version of it)
+  scope { data_domain }
+
+  # Unscoped data_domain read accessor
+  def unscoped
+    data_domain
+  end
+
   filter(:id, :integer)
   filter(:name, :string)
   filter(:swimmer_id, :integer)

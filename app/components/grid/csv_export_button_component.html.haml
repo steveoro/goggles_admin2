@@ -1,5 +1,4 @@
-= link_to(url_for(only_path: true, controller: @controller_name, action: :index, format: 'csv',
-          "#{@controller_name}_grid": params["#{@controller_name}_grid"]),
+= link_to(url_for(url_to_params),
           data: { toggle: 'tooltip', title: I18n.t('datagrid.csv_export.btn_tooltip') },
           class: 'btn btn-sm btn-outline-primary', role: 'button') do
   %span

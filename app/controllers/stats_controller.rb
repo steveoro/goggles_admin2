@@ -13,45 +13,30 @@ class StatsController < ApplicationController
   # - <tt>@day_hash</tt>: overall daily uses for all routes (group keys used to draw chart)
   # - <tt>@url_hash</tt>: daily uses for each route, a different line for each key (group keys used to draw chart)
   #
+  # rubocop:disable Metrics/AbcSize
   def index
-    # logger.debug("\r\n*** PARAMS:")
+    # DEBUG
+    # logger.debug("\r\n*** /index PARAMS:")
     # logger.debug(grid_filter_params.inspect)
-    domain_attributes = JSON.parse(GogglesDb::APIDailyUse.all.to_a.to_json)
-    # @user_list = APIProxy.call(method: :get, url: 'api_daily_use', jwt: current_user.jwt)
+    result = APIProxy.call(
+      method: :get, url: 'api_daily_uses', jwt: current_user.jwt,
+      params: { page: index_params[:page], per_page: index_params[:per_page] }
+    )
+    @domain_count = result.headers[:total].to_i
+    @domain_page = result.headers[:page].to_i
+    @domain_per_page = result.headers[:per_page].to_i
+    json_domain = JSON.parse(result.body)
 
-    # Prepare a list of records for better handling:
-    @domain = domain_attributes.map { |attrs| GogglesDb::APIDailyUse.new(attrs) }
-    day_keys = @domain.map { |row| row.day.to_s }.uniq
-    url_keys = @domain.map(&:route).uniq
-
-    # Day & URL hash init: empty overall counters for each key date / URL
-    @day_hash = {}
-    @url_hash = {}
-    day_keys.each { |day| @day_hash[day] = DataPoint.new(uid: day) }
-    url_keys.each { |url| @url_hash[url] = DataPoint.new(uid: url) }
-
-    # Group by:
-    # - @day_hash => each unique day: collect counters (Y) & associated routes (unused)
-    #             => each key will become an X point in the overall line chart
-    #
-    # - @url_hash => each unique route: collect date (X) & counter (Y)
-    #             => each key will become a different line, using the above axes
-    @domain.each do |row|
-      @day_hash[row.day.to_s].x_values << row.route
-      @day_hash[row.day.to_s].y_values << row.count
-
-      @url_hash[row.route].x_values << row.day.to_s
-      @url_hash[row.route].y_values << row.count
-    end
+    # Setup grid domain (and chart's):
+    @domain = json_domain.map { |attrs| GogglesDb::APIDailyUse.new(attrs) }
+    prepare_chart_domain(@domain)
 
     # Setup datagrid:
-    StatsGrid.class_variable_set(:@@data_domain, @domain)
+    StatsGrid.data_domain = @domain
 
     respond_to do |format|
       format.html do
-        @grid = StatsGrid.new(grid_filter_params) do |scope|
-          Kaminari.paginate_array(scope, total_count: @domain.count).page(params[:page]).per(10)
-        end
+        @grid = StatsGrid.new(grid_filter_params)
       end
 
       format.csv do
@@ -65,51 +50,35 @@ class StatsController < ApplicationController
       end
     end
   end
+  # rubocop:enable Metrics/AbcSize
+  #-- -------------------------------------------------------------------------
+  #++
 
-  # POST /stats/update/:id
+  # PUT /stats/update/:id
   # Updates a single GogglesDb::APIDailyUse row.
   #
   # All instance attributes are accepted, minus lock_version & the timestamps, which are
   # handled automatically.
   #
   # == Route param:
-  # - id: instance row to be updated
+  # - <tt>id</tt>: ID of the instance row to be updated
   #
   def update
-    logger.debug("\r\n*** update PARAMS:")
-    logger.debug(edit_params.inspect)
-
-    # TODO
-    # result = APIProxy.call(method: :put, url: 'api_daily_use', jwt: current_user.jwt, params: edit_params)
-    # (Actual result will be JSON)
-    result = GogglesDb::APIDailyUse.update(
-      edit_params['id'],
-      edit_params.reject { |key, _v| key == 'id' }
+    # DEBUG
+    # logger.debug("\r\n*** /update PARAMS:")
+    # logger.debug(edit_params(GogglesDb::APIDailyUse).inspect)
+    result = APIProxy.call(
+      method: :put,
+      url: "api_daily_use/#{edit_params(GogglesDb::APIDailyUse)['id']}",
+      jwt: current_user.jwt,
+      payload: edit_params(GogglesDb::APIDailyUse)
     )
 
-    if result.valid?
+    if result.body == 'true'
       flash[:info] = I18n.t('datagrid.edit_modal.edit_ok')
     else
-      flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: 'Validation error!')
+      flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: result)
     end
-    redirect_to stats_path
-  end
-
-  # POST /stats/create
-  # Creates a new GogglesDb::APIDailyUse row.
-  #
-  # All instance attributes are accepted, minus lock_version & the timestamps, which are
-  # handled automatically.
-  #
-  def create
-    logger.debug("\r\n*** create PARAMS:")
-    logger.debug(edit_params.inspect)
-    flash[:info] = 'WORK IN PROGRESS!'
-    # TODO
-    # 1. check parameters: id => single delete; ids: comma sep. list of deletions
-    # 2. make api call to delete the row
-    # 3. check result & set flash + redirect
-    # result = APIProxy.call(method: :post, url: 'api_daily_use', jwt: current_user.jwt, params: params['id'])
     redirect_to stats_path
   end
 
@@ -117,50 +86,45 @@ class StatsController < ApplicationController
   # Removes GogglesDb::APIDailyUse rows. Accepts single (:id) or multiple (:ids) IDs for the deletion.
   #
   # == Params:
-  # - id: to be used for single row deletion
-  # - ids: to be used for multiple rows deletion
+  # - <tt>id</tt>: to be used for single row deletion
+  # - <tt>ids</tt>: to be used for multiple rows deletion
   #
+  # rubocop:disable Metrics/AbcSize
   def destroy
-    # TODO
-    # 1. check parameters: id => single delete; ids: comma sep. list of deletions
-    # 2. make api call to delete the row
-    # 3. check result & set flash + redirect
-    if delete_params[:id].present?
-      flash[:info] = "Deleted row: #{delete_params[:id]}"
-      # TODO
-      # result = APIProxy.call(method: :delete, url: 'api_daily_use', jwt: current_user.jwt, params: params['id'])
-      # (Actual result will be JSON)
-    end
+    # DEBUG
+    # logger.debug("\r\n*** /destroy PARAMS:")
+    # logger.debug(delete_params.inspect)
+    row_ids = delete_params[:ids].present? ? delete_params[:ids].split(',') : []
+    row_ids << delete_params[:id] if delete_params[:id].present?
 
-    if delete_params[:ids].present?
-      row_ids = delete_params[:ids].split(',')
-      flash[:info] = "Deleted rows: #{row_ids.inspect}"
-      # result = APIProxy.call(method: :delete, url: 'api_daily_use', jwt: current_user.jwt, params: params['id'])
-      # (Actual result will be JSON)
+    error_ids = delete_rows!(GogglesDb::APIDailyUse, row_ids)
+
+    if row_ids.present? && error_ids.empty?
+      flash[:info] = I18n.t('dashboard.grid_commands.delete_ok', tot: row_ids.count, ids: row_ids.to_s)
+    elsif error_ids.present?
+      flash[:error] = I18n.t('dashboard.grid_commands.delete_error', ids: error_ids.to_s)
+    else
+      flash[:info] = I18n.t('dashboard.grid_commands.no_op_msg')
     end
     redirect_to stats_path
   end
+  # rubocop:enable Metrics/AbcSize
+  #-- -------------------------------------------------------------------------
+  #++
 
   protected
 
-  # Default whitelist for datagrid parameters
+  # Default whitelist for datagrid filtering parameters
+  # (NOTE: memoizazion is needed because the member variable is used in the view.)
   def grid_filter_params
-    params.fetch(:stats_grid, {}).permit!
+    @grid_filter_params = params.fetch(:stats_grid, {}).permit!
   end
 
-  # Parameters strong-checking for grid row create/update
-  def edit_params
-    params.permit(
-      GogglesDb::APIDailyUse.new
-                            .attributes.keys
-                            .reject { |key| %w[lock_version created_at updated_at].include?(key) } +
-                            [:authenticity_token]
-    )
-  end
-
-  # Parameters strong-checking for grid row(s) delete
-  def delete_params
-    params.permit(:id, :ids, :_method, :authenticity_token)
+  # Strong parameters checking for /index
+  # (NOTE: memoizazion is needed because the member variable is used in the view.)
+  def index_params
+    @index_params = params.permit(:page, :per_page, :stats_grid)
+                          .merge(params.fetch(:stats_grid, {}).permit!)
   end
 
   #
@@ -179,7 +143,7 @@ class StatsController < ApplicationController
     # Helper to render the values as 3 point coordinates in Chart.js-compliant mode
     def to_json_bubble_chart_data
       coords = []
-      x_values.each_with_index { |x, idx| coords << { 'x' => x, 'y' => y_values[idx], 'r' => y_values[idx] } }
+      x_values.each_with_index { |x, idx| coords << { 'x' => x, 'y' => y_values[idx], 'r' => y_values[idx] / 10.0 } }
       {
         'type' => 'bubble',
         'label' => uid,
@@ -187,4 +151,43 @@ class StatsController < ApplicationController
       }
     end
   end
+
+  private
+
+  # Set the internal  data groupings used to plot the API usage chart.
+  #
+  # == Assigns:
+  # - <tt>domain</tt>: Array of model instances.
+  #
+  # == Returns / Assigns the following:
+  # - <tt>@day_hash</tt>: overall daily uses for all routes (group keys used to draw chart)
+  # - <tt>@url_hash</tt>: daily uses for each route, a different line for each key (group keys used to draw chart)
+  #
+  # rubocop:disable Metrics/AbcSize
+  def prepare_chart_domain(domain)
+    # Prepare a list of records for better handling:
+    day_keys = domain.map { |row| row.day.to_s }.uniq
+    url_keys = domain.map(&:route).uniq
+
+    # Day & URL hash init: empty overall counters for each key date / URL
+    @day_hash = {}
+    @url_hash = {}
+    day_keys.each { |day| @day_hash[day] = DataPoint.new(uid: day) }
+    url_keys.each { |url| @url_hash[url] = DataPoint.new(uid: url) }
+
+    # Group by:
+    # - @day_hash => each unique day: collect counters (Y) & associated routes (unused)
+    #             => each key will become an X point in the overall line chart
+    #
+    # - @url_hash => each unique route: collect date (X) & counter (Y)
+    #             => each key will become a different line, using the above axes
+    domain.each do |row|
+      @day_hash[row.day.to_s].x_values << row.route
+      @day_hash[row.day.to_s].y_values << row.count
+
+      @url_hash[row.route].x_values << row.day.to_s
+      @url_hash[row.route].y_values << row.count
+    end
+  end
+  # rubocop:enable Metrics/AbcSize
 end

@@ -3,13 +3,14 @@
 require 'rails_helper'
 
 RSpec.describe Grid::SelectionToggleButtonComponent, type: :component do
-  pending "add some examples to (or delete) #{__FILE__}"
+  subject { render_inline(described_class.new) }
 
-  # it "renders something useful" do
-  #   expect(
-  #     render_inline(described_class.new(attr: "value")) { "Hello, components!" }.css("p").to_html
-  #   ).to include(
-  #     "Hello, components!"
-  #   )
-  # end
+  it 'renders the button with the script to toggle the selection of grid rows' do
+    expect(subject.css('button.btn')).to be_present
+    expect(subject.css('button.btn').attr('onclick').value).to be_present
+  end
+  it 'includes a tooltip for the button' do
+    expect(subject.css('button.btn').attr('data-toggle').value).to eq('tooltip')
+    expect(subject.css('button.btn').attr('data-title').value).to be_present
+  end
 end

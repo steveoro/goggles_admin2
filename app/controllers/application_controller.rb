@@ -32,6 +32,62 @@ class ApplicationController < ActionController::Base
   #-- -------------------------------------------------------------------------
   #++
 
+  # Deletes the specified list of rows, returning the list or row IDs that raised errors,
+  # or an empty array if everything went fine.
+  #
+  # == Params:
+  # - <tt>model_class</tt>: the actual model class (sibling of ActiveRecord::Base) related to the API endpoint for the deletion
+  #                         (i.e. GogglesDb::User => 'DELETE /user/:id')
+  # - <tt>row_ids</tt>: array of row IDs to be deleted
+  #
+  # == Returns:
+  # - an array of row IDs that raised errors, or an empty list otherwise.
+  # - will skip the whole deletion unless <tt>model_class</tt> responds to <tt>#table_name</tt>.
+  #
+  def delete_rows!(model_class, row_ids)
+    error_ids = []
+    endpoint_name = "#{model_class.table_name.singularize}"
+    return row_ids unless model_class.respond_to?(:table_name)
+
+    row_ids.each do |row_id|
+      result = APIProxy.call(
+        method: :delete,
+        url: "#{endpoint_name}/#{row_id}",
+        jwt: current_user.jwt
+      )
+
+      if result.code != 200 || result.body != 'true'
+        logger.error("\r\n*** ERROR: API 'DELETE /#{endpoint_name}/#{row_id}'")
+        logger.error(result.inspect)
+        error_ids << row_id
+      end
+    end
+    error_ids
+  end
+
+  # Parameters strong-checking for grid row(s) delete
+  def delete_params
+    params.permit(:id, :ids, :_method, :authenticity_token)
+  end
+  #-- -------------------------------------------------------------------------
+  #++
+
+  # Generalized parameters strong-checking for grid row create/update.
+  #
+  # == Params:
+  # - <tt>model_class</tt>: the actual model class (sibling of ActiveRecord::Base) source of the attributes
+  #                         for the PUT/POST API action
+  def edit_params(model_class)
+    params.permit(
+      model_class.new
+                 .attributes.keys
+                 .reject { |key| %w[lock_version created_at updated_at].include?(key) } +
+                 %i[_method authenticity_token]
+    )
+  end
+  #-- -------------------------------------------------------------------------
+  #++
+
   private
 
   # Sets the current application locale given the :locale request parameter or

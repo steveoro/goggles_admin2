@@ -5,6 +5,14 @@
 # DataGrid used to manage GogglesDb::ImportQueue rows.
 #
 class ImportQueuesGrid < BaseGrid
+  # Returns the scope for the grid. (#assets is the filtered version of it)
+  scope { data_domain }
+
+  # Unscoped data_domain read accessor
+  def unscoped
+    data_domain
+  end
+
   decorate { |row| GogglesDb::ImportQueueDecorator.new(row) }
 
   filter(:id, :integer)

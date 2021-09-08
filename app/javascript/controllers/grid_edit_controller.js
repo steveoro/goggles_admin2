@@ -34,7 +34,18 @@ import { Controller } from 'stimulus'
  * - handleEdit => fill the target modal form and display it.
  *
  * == Assumptions:
- * (to be def.)
+ * - #frm-modal-edit
+ *   => DOM ID of the internal Form target of the "Grid Edit modal".
+ *
+ * - #frm-modal-edit-appendable
+ *   => DOM ID of the container for the dynamic form fields;
+ *   the input fields (& labels) will be generated according to the attributes in the payload.
+ *
+ * - #btn-submit-save
+ *   => Submit button for saving the edits made using the internal Form.
+ *
+ * - #grid-edit-modal-title
+ *   => actual DOM ID of the localized title for the modal window.
  *
  * @author Steve A.
  */
@@ -64,25 +75,34 @@ export default class extends Controller {
    */
   handleEdit(event) {
     // DEBUG
-    console.log('handleEdit() action')
+    // console.log('handleEdit() action')
     event.preventDefault()
 
     if (this.hasModalIdValue && this.hasUrlValue && this.hasPayloadValue) {
       // DEBUG
-      console.log('urlValue:')
-      console.log(this.urlValue)
+      // console.log('urlValue:')
+      // console.log(this.urlValue)
 
-      // Fix default modal title: edit (ID set) |=> create (ID null)
+      // Fix defaults for modal: (title, hidden _method & submit button method)
       if (this.payloadValue['id'] == null) {
         $('#grid-edit-modal-title').text(this.modalCreateTitleValue)
+        $("#frm-modal-edit input[name='_method']").val('post')
+        $('#btn-submit-save').attr('method', 'post')
       }
       else {
         $('#grid-edit-modal-title').text(this.modalEditTitleValue)
+        $("#frm-modal-edit input[name='_method']").val('patch')
+        $('#btn-submit-save').attr('method', 'put')
       }
       // Fix default form target:
       $('#frm-modal-edit').prop('action', this.urlValue)
       // Clear previous contents
       $('#frm-modal-edit-appendable').html('')
+
+      // Make sure Turbolinks doesn't mess with the actual CSRF token of the form partial:
+      if ($("#frm-modal-edit input[name='authenticity_token']").val() != $("meta[name='csrf-token']").prop('content')) {
+        $("#frm-modal-edit input[name='authenticity_token']").val($("meta[name='csrf-token']").prop('content'))
+      }
 
       Object.entries(this.payloadValue)
         .forEach(

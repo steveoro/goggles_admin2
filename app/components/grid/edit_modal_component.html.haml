@@ -3,7 +3,7 @@
   .modal-dialog.modal-dialog-centered{ role: 'document' }
     / The action URL will be overridden on a row-by-row basis; the following is a placeholder:
     = form_tag(url_for(only_path: true, controller: @controller_name, action: :update, id: 0),
-               id: 'frm-modal-edit', method: :post) do
+               id: 'frm-modal-edit', method: :patch) do
       .modal-content
         .modal-header
           %h5.modal-title#grid-edit-modal-title
@@ -17,7 +17,7 @@
           %button.btn.btn-sm.btn-outline-secondary{ 'aria-label' => I18n.t('datagrid.edit_modal.close_btn'),
                                                     'data-dismiss' => 'modal', type: 'button' }
             = I18n.t('datagrid.edit_modal.close_btn')
-          %button.btn.btn-sm.btn-outline-danger#btn-submit-save{ type: 'submit', method: :post,
+          %button.btn.btn-sm.btn-outline-danger#btn-submit-save{ type: 'submit', method: :put,
                 'aria-label' => I18n.t('datagrid.edit_modal.save_btn'),
                 data: { confirm: I18n.t('datagrid.edit_modal.save_changes_msg') } }
             = I18n.t('datagrid.edit_modal.save_btn')

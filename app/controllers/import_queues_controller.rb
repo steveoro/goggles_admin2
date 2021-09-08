@@ -12,20 +12,24 @@ class ImportQueuesController < ApplicationController
   # - <tt>@grid</tt>: the customized Datagrid instance
   #
   def index
-    # logger.debug("\r\n*** PARAMS:")
-    # logger.debug(grid_filter_params.inspect)
-    domain_attributes = JSON.parse(GogglesDb::ImportQueue.all.to_a.to_json)
-    # @user_list = APIProxy.call(method: :get, url: 'import_queue', jwt: current_user.jwt)
-    @domain = domain_attributes.map { |attrs| GogglesDb::ImportQueue.new(attrs) }
+    result = APIProxy.call(
+      method: :get, url: 'import_queues', jwt: current_user.jwt,
+      params: { page: index_params[:page], per_page: index_params[:per_page] }
+    )
+    @domain_count = result.headers[:total].to_i
+    @domain_page = result.headers[:page].to_i
+    @domain_per_page = result.headers[:per_page].to_i
+    json_domain = JSON.parse(result.body)
+
+    # Setup grid domain (and chart's):
+    @domain = json_domain.map { |attrs| GogglesDb::ImportQueue.new(attrs) }
 
     # Setup datagrid:
-    ImportQueuesGrid.class_variable_set(:@@data_domain, @domain)
+    ImportQueuesGrid.data_domain = @domain
 
     respond_to do |format|
       format.html do
-        @grid = ImportQueuesGrid.new(grid_filter_params) do |scope|
-          Kaminari.paginate_array(scope, total_count: @domain.count).page(params[:page]).per(10)
-        end
+        @grid = ImportQueuesGrid.new(grid_filter_params)
       end
 
       format.csv do
@@ -39,32 +43,33 @@ class ImportQueuesController < ApplicationController
       end
     end
   end
+  #-- -------------------------------------------------------------------------
+  #++
 
-  # POST /import_queues/update/:id
+  # PUT /import_queues/update/:id
   # Updates a single GogglesDb::ImportQueue row.
   #
   # All instance attributes are accepted, minus lock_version & the timestamps, which are
   # handled automatically.
   #
   # == Route param:
-  # - id: instance row to be updated
+  # - <tt>id</tt>: ID of the instance row to be updated
   #
   def update
-    logger.debug("\r\n*** update PARAMS:")
-    logger.debug(edit_params.inspect)
-
-    # TODO
-    # result = APIProxy.call(method: :put, url: 'import_queue', jwt: current_user.jwt, params: edit_params)
-    # (Actual result will be JSON)
-    result = GogglesDb::ImportQueue.update(
-      edit_params['id'],
-      edit_params.reject { |key, _v| key == 'id' }
+    # DEBUG
+    # logger.debug("\r\n*** update PARAMS:")
+    # logger.debug(edit_params(GogglesDb::ImportQueue).inspect)
+    result = APIProxy.call(
+      method: :put,
+      url: "import_queue/#{edit_params(GogglesDb::ImportQueue)['id']}",
+      jwt: current_user.jwt,
+      payload: edit_params(GogglesDb::ImportQueue)
     )
 
-    if result.valid?
+    if result.body == 'true'
       flash[:info] = I18n.t('datagrid.edit_modal.edit_ok')
     else
-      flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: 'Validation error!')
+      flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: result)
     end
     redirect_to import_queues_path
   end
@@ -76,18 +81,21 @@ class ImportQueuesController < ApplicationController
   # handled automatically.
   #
   def create
-    logger.debug("\r\n*** create PARAMS:")
-    logger.debug(edit_params.inspect)
-    # TODO
-    # result = APIProxy.call(method: :post, url: 'import_queue', jwt: current_user.jwt, params: params['id'])
-    result = GogglesDb::ImportQueue.create(
-      edit_params.reject { |key, _v| %w[id authenticity_token].include?(key) }
+    # DEBUG
+    # logger.debug("\r\n*** create PARAMS:")
+    # logger.debug(edit_params(GogglesDb::ImportQueue).inspect)
+    result = APIProxy.call(
+      method: :post,
+      url: 'import_queue',
+      jwt: current_user.jwt,
+      payload: edit_params(GogglesDb::ImportQueue)
     )
+    json = result.code == 200 && result.body.present? ? JSON.parse(result.body) : {}
 
-    if result.valid?
-      flash[:info] = I18n.t('datagrid.edit_modal.edit_ok')
+    if json.present? && json['msg'] == 'OK' && json['new'].key?('id')
+      flash[:info] = I18n.t('datagrid.edit_modal.create_ok', id: json['new']['id'])
     else
-      flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: 'Validation error!')
+      flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: result.code)
     end
     redirect_to import_queues_path
   end
@@ -96,49 +104,41 @@ class ImportQueuesController < ApplicationController
   # Removes GogglesDb::ImportQueue rows. Accepts single (:id) or multiple (:ids) IDs for the deletion.
   #
   # == Params:
-  # - id: to be used for single row deletion
-  # - ids: to be used for multiple rows deletion
+  # - <tt>id</tt>: single row ID, to be used for single row deletion
+  # - <tt>ids</tt>: array of row IDs, to be used for multiple rows deletion
   #
+  # rubocop:disable Metrics/AbcSize
   def destroy
-    # TODO
-    # 1. check parameters: id => single delete; ids: comma sep. list of deletions
-    # 2. make api call to delete the row
-    # 3. check result & set flash + redirect
-    if delete_params[:id].present?
-      flash[:info] = "Deleted row: #{delete_params[:id]}"
-      # TODO
-      # result = APIProxy.call(method: :delete, url: 'import_queue', jwt: current_user.jwt, params: params['id'])
-      # (Actual result will be JSON)
-    end
+    row_ids = delete_params[:ids].present? ? delete_params[:ids].split(',') : []
+    row_ids << delete_params[:id] if delete_params[:id].present?
 
-    if delete_params[:ids].present?
-      row_ids = delete_params[:ids].split(',')
-      flash[:info] = "Deleted rows: #{row_ids.inspect}"
-      # result = APIProxy.call(method: :delete, url: 'import_queue', jwt: current_user.jwt, params: params['id'])
-      # (Actual result will be JSON)
+    error_ids = delete_rows!(GogglesDb::ImportQueue, row_ids)
+
+    if row_ids.present? && error_ids.empty?
+      flash[:info] = I18n.t('dashboard.grid_commands.delete_ok', tot: row_ids.count, ids: row_ids.to_s)
+    elsif error_ids.present?
+      flash[:error] = I18n.t('dashboard.grid_commands.delete_error', ids: error_ids.to_s)
+    else
+      flash[:info] = I18n.t('dashboard.grid_commands.no_op_msg')
     end
     redirect_to import_queues_path
   end
+  # rubocop:enable Metrics/AbcSize
+  #-- -------------------------------------------------------------------------
+  #++
 
   protected
 
   # Default whitelist for datagrid parameters
+  # (NOTE: memoizazion is needed because the member variable is used in the view.)
   def grid_filter_params
-    params.fetch(:import_queues_grid, {}).permit!
+    @grid_filter_params = params.fetch(:import_queues_grid, {}).permit!
   end
 
-  # Parameters strong-checking for grid row create/update
-  def edit_params
-    params.permit(
-      GogglesDb::ImportQueue.new
-                            .attributes.keys
-                            .reject { |key| %w[lock_version created_at updated_at authenticity_token].include?(key) } +
-                            [:authenticity_token]
-    )
-  end
-
-  # Parameters strong-checking for grid row(s) delete
-  def delete_params
-    params.permit(:id, :ids, :_method, :authenticity_token)
+  # Strong parameters checking for /index
+  # (NOTE: memoizazion is needed because the member variable is used in the view.)
+  def index_params
+    @index_params = params.permit(:page, :per_page, :import_queues_grid)
+                          .merge(params.fetch(:import_queues_grid, {}).permit!)
   end
 end

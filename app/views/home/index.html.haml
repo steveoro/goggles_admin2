@@ -2,7 +2,12 @@
   .spacer-left
 
   .main-content
-    .col.pt-5.mt-3
+    .row-fluid.text-center
+      %h5
+        🖥 API Server: #{GogglesDb::AppParameter.config.settings(:framework_urls).api}
+        %a.btn.btn-sm.btn-outline-secondary{ href: settings_path }
+          %i.fa.fa-cog
+    .col
       .row.mb-3
         .offset-lg-0.col-lg-4.offset-md-1.col-md-5.offset-sm-0.col-sm-6.py-2
           %a.btn.card.text-white.bg-info.h-100{ href: stats_path }
@@ -36,11 +41,11 @@
               %h6.text-uppercase= t('dashboard.manage_entities')
               .row.mb-3
                 .offset-lg-0.col-lg-4.offset-md-1.col-md-5.offset-sm-0.col-sm-6.py-2
-                  %a.btn.btn-lg.btn-outline-primary.disabled.my-1{ href: '#' }
+                  %a.btn.btn-lg.btn-outline-primary.disabled.my-1{ href: badges_path }
                     Badges
-                  %a.btn.btn-lg.btn-outline-primary.my-1{ href: '#' }
+                  %a.btn.btn-lg.btn-outline-primary.my-1{ href: team_managers_path }
                     Team managers
-                  %a.btn.btn-lg.btn-outline-primary.disabled.my-1{ href: '#' }
+                  %a.btn.btn-lg.btn-outline-primary.disabled.my-1{ href: meeting_reservations_path }
                     Reservations
                 .offset-lg-0.col-lg-4.offset-md-1.col-md-5.offset-sm-0.col-sm-6.py-2
                   %a.btn.btn-lg.btn-outline-primary.disabled.my-1{ href: '#' }
@@ -49,9 +54,9 @@
                     Seasons
                   %a.btn.btn-lg.btn-outline-primary.disabled.my-1{ href: '#' }
                     Categories
-                  %a.btn.btn-lg.btn-outline-primary.disabled.my-1{ href: '#' }
+                  %a.btn.btn-lg.btn-outline-primary.disabled.my-1{ href: meetings_path }
                     Meetings
-                  %a.btn.btn-lg.btn-outline-primary.disabled.my-1{ href: '#' }
+                  %a.btn.btn-lg.btn-outline-primary.disabled.my-1{ href: user_workshops_path }
                     Workshops
                 .offset-lg-0.col-lg-4.offset-md-1.col-md-5.offset-sm-0.col-sm-6.py-2
                   %a.btn.btn-lg.btn-outline-primary.disabled.my-1{ href: '#' }

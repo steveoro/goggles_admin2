@@ -11,8 +11,9 @@ RSpec.describe ApplicationController, type: :request do
     context "when setting the locale parameter as '#{locale_sym}'," do
       describe 'GET /' do
         context 'for an unlogged user' do
+          before(:each) { get(root_path, params: { locale: locale_sym }) }
+
           it 'is a redirect to the login path' do
-            get(root_path, params: { locale: locale_sym })
             expect(response).to redirect_to(new_user_session_path)
           end
           it 'sets the I18n locale' do
@@ -23,13 +24,19 @@ RSpec.describe ApplicationController, type: :request do
         end
 
         context 'for a logged-in user' do
+          include AdminSignInHelpers
           before(:each) do
-            sign_in(fixture_user)
+            sign_in_admin(prepare_admin_user)
             get(root_path, params: { locale: locale_sym })
           end
 
           it 'returns http success' do
             expect(response).to have_http_status(:success)
+          end
+          it 'sets the I18n locale' do
+            expected_locale = locale_sym || :it
+            expected_locale = I18n.default_locale if locale_sym == :invalid
+            expect(I18n.locale).to eq(expected_locale)
           end
         end
       end

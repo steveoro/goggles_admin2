@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+# rubocop:disable Metrics/BlockLength
 Rails.application.routes.draw do
   devise_for :users, class_name: 'GogglesDb::User',
                      controllers: {
@@ -11,39 +12,33 @@ Rails.application.routes.draw do
   mount GogglesDb::Engine => '/'
 
   get 'home/index'
-  get 'meeting_reservations/index'
-  get 'badges/index'
-  get 'user_workshops/index'
-  get 'meetings/index'
-  get 'team_managers/index'
-  get 'settings/index'
-  # get 'users/index'
-  # get 'import_queues/index'
 
-  # Datagrid routes:
-  resources :stats do
-    get 'stats'
-  end
-  # (1 single modal dialog handles both update & create, using only POST)
-  post 'stats/update/:id', to: 'stats#update', as: 'stats_update'
-  post 'stats/create', to: 'stats#create', as: 'stats_create'
-  delete 'stats', to: 'stats#destroy', as: 'stats_destroy'
+  # Datagrid-actioned routes:
+  resources :badges, only: [:index, :create, :update]
+  delete 'badges', to: 'badges#destroy', as: 'badges_destroy'
 
-  resources :import_queues do
-    get 'import_queues'
-  end
-  post 'import_queues/update/:id', to: 'import_queues#update', as: 'import_queues_update'
-  post 'import_queues/create', to: 'import_queues#create', as: 'import_queues_create'
+  resources :import_queues, only: [:index, :create, :update]
   delete 'import_queues', to: 'import_queues#destroy', as: 'import_queues_destroy'
 
-  resources :users do
-    get 'users'
-  end
-  post 'users/update/:id', to: 'users#update', as: 'users_update'
-  post 'users/create', to: 'users#create', as: 'users_create'
-  delete 'users', to: 'users#destroy', as: 'users_destroy'
+  resources :meeting_reservations, only: [:index, :create, :update]
+  delete 'meeting_reservations', to: 'meeting_reservations#destroy', as: 'meeting_reservations_destroy'
 
-  resources :settings do
-    get 'settings'
-  end
+  resources :meetings, only: [:index, :create, :update]
+  delete 'meetings', to: 'meetings#destroy', as: 'meetings_destroy'
+
+  resources :settings, only: [:index, :create, :update]
+  delete 'settings', to: 'settings#destroy', as: 'settings_destroy'
+
+  resources :stats, only: [:index, :update]
+  delete 'stats', to: 'stats#destroy', as: 'stats_destroy'
+
+  resources :team_managers, only: [:index, :create, :update]
+  delete 'team_managers', to: 'team_managers#destroy', as: 'team_managers_destroy'
+
+  resources :user_workshops, only: [:index, :create, :update]
+  delete 'user_workshops', to: 'user_workshops#destroy', as: 'user_workshops_destroy'
+
+  resources :users, only: [:index, :update]
+  delete 'users', to: 'users#destroy', as: 'users_destroy'
 end
+# rubocop:enable Metrics/BlockLength

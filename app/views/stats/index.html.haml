@@ -6,18 +6,22 @@
       'chart-api-days-value' => @day_hash.keys.to_json,
       'chart-api-uses-value' => @day_hash.values.map { |e| e.y_values.sum }.to_json,
       'chart-api-bubbles-value' => @url_hash.values.map(&:to_json_bubble_chart_data).to_json } }
-    = render(DashboardTitleComponent.new(title: t('dashboard.stats.title'), row_count: @domain.count))
+    = render(DashboardTitleComponent.new(title: t('dashboard.stats.title'), row_count: @domain_count))
 
     %canvas#api-chart{ data: { 'chart-api-target' => 'chart' } }
 
     %section.my-4#data-grid
-      / Toolbar defaults: create: true, destroy: true, csv: true
-      = render(Grid::ToolbarComponent.new(asset_row: GogglesDb::APIDailyUse.new,
-               controller_name: controller_name))
-      = datagrid_form_for(@grid, method: :get, url: stats_path)
+      / (Toolbar defaults: all buttons shown)
+      = render(Grid::ToolbarComponent.new(asset_row: GogglesDb::APIDailyUse.new, create: false,
+               controller_name: controller_name, request_params: @grid_filter_params))
+      = datagrid_form_for(@grid, method: :get,
+                          url: url_for(controller: controller_name, action: :index, params: @index_params))
+      = paginate(Kaminari.paginate_array(@grid.assets,
+                 total_count: @domain_count).page(@domain_page).per(@domain_per_page))
       = datagrid_table(@grid, html: { class: 'table table-hover table-sm' })
-      = paginate(Kaminari.paginate_array(@grid.assets, total_count: @grid.unscoped.count).page(params[:page]).per(10))
-      / Edit Modal (show/update/create)
+      = paginate(Kaminari.paginate_array(@grid.assets,
+                 total_count: @domain_count).page(@domain_page).per(@domain_per_page))
+      / Edit Modal:
       = render(Grid::EditModalComponent.new(controller_name: controller_name))
 
     %section.text-center.fixed-bottom#footer

@@ -3,7 +3,7 @@
 #
 # = Grid components module
 #
-#   - version:  7.0.3.25
+#   - version:  7.0.3.27
 #   - author:   Steve A.
 #
 module Grid
@@ -19,14 +19,28 @@ module Grid
     #
     # == Params
     # - <tt>controller_name</tt>: Rails controller name bound to this action
-    def initialize(controller_name:)
+    def initialize(controller_name:, request_params:)
       super
       @controller_name = controller_name
+      @request_params = request_params
     end
 
     # Skips rendering unless the required parameters are set
     def render?
       @controller_name.present?
+    end
+
+    # Returns the correct url_to params Hash for the filtered /index action of the
+    # datagrid, using the CSV format, actioned by @controller_name.
+    def url_to_params
+      {
+        only_path: true,
+        controller: @controller_name,
+        action: :index,
+        format: 'csv'
+      }.merge(
+        "#{@controller_name}_grid" => @request_params&.fetch("#{@controller_name}_grid", nil)
+      )
     end
   end
 end

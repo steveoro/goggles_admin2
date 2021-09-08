@@ -25,7 +25,9 @@
                                                      href: '#', role: 'button' }
           = t('home.commands')
         .dropdown-menu{ 'aria-labelledby' => 'navbar-dropdown' }
-          %a.dropdown-item{ href: settings_path } Settings
+          %a.dropdown-item{ href: settings_path }
+            %i.fa.fa-cog
+            %span Settings
           .dropdown-divider
           %a.dropdown-item{ href: stats_path } API
           %a.dropdown-item{ href: import_queues_path } Import Queues
