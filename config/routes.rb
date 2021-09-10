@@ -26,7 +26,7 @@ Rails.application.routes.draw do
   resources :meetings, only: [:index, :create, :update]
   delete 'meetings', to: 'meetings#destroy', as: 'meetings_destroy'
 
-  resources :settings, only: [:index, :create, :update]
+  resources :settings, only: [:index, :update]
   delete 'settings', to: 'settings#destroy', as: 'settings_destroy'
 
   resources :stats, only: [:index, :update]

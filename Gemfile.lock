@@ -1,8 +1,8 @@
 GIT
   remote: https://github.com/steveoro/goggles_db
-  revision: 543598ea785ca2f08562744002c239a7bd5dca95
+  revision: 29c45fc28daea60815e5b2c04f361615f1a564f7
   specs:
-    goggles_db (0.3.27)
+    goggles_db (0.3.29)
       acts-as-taggable-on
       acts_as_votable
       carrierwave
@@ -24,7 +24,7 @@ GIT
       omniauth-facebook
       omniauth-rails_csrf_protection
       plus_codes
-      rails (>= 6.0.3.7, < 6.1.0)
+      rails (>= 6.0.4.1, < 6.1.0)
       simple_command
       tzinfo
 
@@ -223,7 +223,7 @@ GEM
     factory_bot_rails (6.2.0)
       factory_bot (~> 6.2.0)
       railties (>= 5.0.0)
-    faraday (1.7.0)
+    faraday (1.7.1)
       faraday-em_http (~> 1.0)
       faraday-em_synchrony (~> 1.0)
       faraday-excon (~> 1.1)
@@ -243,7 +243,7 @@ GEM
     faraday-patron (1.0.0)
     faraday-rack (1.0.0)
     ffaker (2.19.0)
-    ffi (1.15.3)
+    ffi (1.15.4)
     font-awesome-rails (4.7.0.7)
       railties (>= 3.2, < 7)
     formatador (0.3.0)
@@ -376,7 +376,7 @@ GEM
     nenv (0.3.0)
     netrc (0.11.0)
     nio4r (2.5.8)
-    nokogiri (1.12.3-x86_64-linux)
+    nokogiri (1.12.4-x86_64-linux)
       racc (~> 1.4)
     notiffany (0.1.3)
       nenv (~> 0.1)
@@ -645,7 +645,7 @@ DEPENDENCIES
   nokogiri
   pry
   puma (>= 5.3.1)
-  rails (>= 6.0.4, < 6.1.0)
+  rails (>= 6.0.4.1, < 6.1.0)
   rest-client
   rspec
   rspec-rails

@@ -20,11 +20,5 @@ class HomeController < ApplicationController
 
     result = APIProxy.call(method: :get, url: 'api_daily_uses', jwt: current_user.jwt)
     @api_uses_count = result.headers[:total]
-
-    # Setting groups:
-    # GogglesDb::AppParameter::SETTINGS_GROUPS
-    # => GogglesDb::AppParameter.config.settings(<GROUP_SYM>).values
-    # :prefs on current_user
-    # => current_user.settings(:prefs).values
   end
 end

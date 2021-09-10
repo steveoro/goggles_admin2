@@ -1,2 +1,20 @@
-%h1 Settings#index
-%p Find me in app/views/settings/index.html.haml
+%meta
+.wrapper-body
+  .spacer-left
+
+  .main-content
+    = render(DashboardTitleComponent.new(title: t('dashboard.settings.title'), row_count: @domain_count))
+
+    %section.my-4#data-grid
+      = render(Grid::ToolbarComponent.new(asset_row: Setting.new, create: false,
+               controller_name: controller_name, request_params: @grid_filter_params))
+      = datagrid_form_for(@grid, method: :get,
+                          url: url_for(controller: controller_name, action: :index, params: @grid_filter_params))
+      = datagrid_table(@grid, html: { class: 'table table-hover table-sm' })
+
+      = render(Grid::EditModalComponent.new(controller_name: controller_name))
+
+    %section.text-center.fixed-bottom#footer
+      &nbsp;
+
+  .spacer-right

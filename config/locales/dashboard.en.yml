@@ -14,6 +14,8 @@ en:
       no_op_msg: "No selection!"
     import_queues:
       title: "Import Queues"
+    settings:
+      title: "Settings"
     stats:
       title: "API stats"
     users:

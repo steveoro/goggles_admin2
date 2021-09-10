@@ -10,11 +10,11 @@
                controller_name: controller_name, request_params: @grid_filter_params))
       = datagrid_form_for(@grid, method: :get,
                           url: url_for(controller: controller_name, action: :index, params: @index_params))
-      = paginate(Kaminari.paginate_array(@grid.assets,
-                 total_count: @domain_count).page(@domain_page).per(@domain_per_page))
+      = render(PageLinksForArrayComponent.new(data: @grid.assets, total_count: @domain_count,
+               page: @domain_page, per_page: @domain_per_page))
       = datagrid_table(@grid, html: { class: 'table table-hover table-sm' })
-      = paginate(Kaminari.paginate_array(@grid.assets,
-                 total_count: @domain_count).page(@domain_page).per(@domain_per_page))
+      = render(PageLinksForArrayComponent.new(data: @grid.assets, total_count: @domain_count,
+               page: @domain_page, per_page: @domain_per_page))
 
       = render(Grid::EditModalComponent.new(controller_name: controller_name))
 
