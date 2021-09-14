@@ -83,7 +83,6 @@ class UsersController < ApplicationController
   # - <tt>id</tt>: to be used for single row deletion
   # - <tt>ids</tt>: to be used for multiple rows deletion
   #
-  # rubocop:disable Metrics/AbcSize
   def destroy
     row_ids = delete_params[:ids].present? ? delete_params[:ids].split(',') : []
     row_ids << delete_params[:id] if delete_params[:id].present?
@@ -99,7 +98,6 @@ class UsersController < ApplicationController
     end
     redirect_to users_path
   end
-  # rubocop:enable Metrics/AbcSize
   #-- -------------------------------------------------------------------------
   #++
 

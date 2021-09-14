@@ -1,0 +1,82 @@
+version: v1.0
+name: Docker build
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1804
+
+fail_fast:
+  stop:
+    when: 'true'
+auto_cancel:
+  running:
+    when: 'true'
+
+global_job_config:
+  # Connect secrets to all jobs in the pipeline:
+  # (actual values can be edited on Semaphore 2.0 org dashboard)
+  secrets:
+    - name: DockerHub-steveoro-login
+    - name: GogglesMain
+
+  # The following will precompile assets before the Docker build; the Docker build will ignore
+  # the credentials master key and it will be then required locally for each run on the result image.
+  prologue:
+    commands:
+      - checkout
+      - echo $DOCKERHUB_PASSWORD | docker login --username "$DOCKERHUB_USERNAME" --password-stdin
+      - echo $RAILS_MASTER_KEY > config/master.key
+      - mkdir -pv tmp
+      - gem i bundler
+      - cache restore bundle-3.30-$(checksum Gemfile.lock yarn.lock)
+      - sem-version ruby 2.7
+      - bundle config set path 'vendor/bundle'
+      - GIT_LFS_SKIP_SMUDGE=1 bundle install
+      - cp config/database.semaphore_2.yml config/database.yml
+      # The first pull will build the local cache for all the layers so that the build will act on the diff:
+      - 'docker pull $DOCKERHUB_USERNAME/goggles-main:latest || true'
+
+blocks:
+  # Skip if there's a tag
+  - name: Build latest image (staging)
+    skip:
+      when: "tag =~ '.*'"
+    task:
+      jobs:
+        - name: Docker latest
+          commands:
+            - RAILS_ENV=production bundle exec rails assets:precompile
+            - 'docker build -t $DOCKERHUB_USERNAME/goggles-main:latest --cache-from=$DOCKERHUB_USERNAME/goggles-main:latest -f Dockerfile.staging .'
+            - 'docker push $DOCKERHUB_USERNAME/goggles-main:latest'
+
+  # Run only if there's a tag
+  - name: Build versioned images
+    run:
+      when: "tag =~ '.*'"
+    task:
+      prologue:
+        commands:
+          - echo 'Current TAG $SEMAPHORE_GIT_TAG_NAME'
+      jobs:
+        - name: Docker dev
+          commands:
+            - 'docker build -t $DOCKERHUB_USERNAME/goggles-main:dev-$SEMAPHORE_GIT_TAG_NAME --cache-from=$DOCKERHUB_USERNAME/goggles-main:latest -f Dockerfile.dev .'
+            - 'docker push $DOCKERHUB_USERNAME/goggles-main:dev-$SEMAPHORE_GIT_TAG_NAME'
+
+        - name: Docker staging
+          commands:
+            - RAILS_ENV=staging bundle exec rails assets:precompile
+            - 'docker build -t $DOCKERHUB_USERNAME/goggles-main:staging-$SEMAPHORE_GIT_TAG_NAME --cache-from=$DOCKERHUB_USERNAME/goggles-main:latest -f Dockerfile.staging .'
+            - 'docker push $DOCKERHUB_USERNAME/goggles-main:staging-$SEMAPHORE_GIT_TAG_NAME'
+
+        - name: Docker prod
+          commands:
+            - RAILS_ENV=production bundle exec rails assets:precompile
+            - 'docker build -t $DOCKERHUB_USERNAME/goggles-main:prod-$SEMAPHORE_GIT_TAG_NAME --cache-from=$DOCKERHUB_USERNAME/goggles-main:latest -f Dockerfile.prod .'
+            - 'docker push $DOCKERHUB_USERNAME/goggles-main:prod-$SEMAPHORE_GIT_TAG_NAME'
+
+promotions:
+  - name: Deploy
+    pipeline_file: semaphore_deploy.yml
+    auto_promote:
+      when: result = 'passed'

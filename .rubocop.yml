@@ -1,3 +1,7 @@
+require:
+  - rubocop-rspec
+  - rubocop-rails
+
 inherit_from: .rubocop_todo.yml
 
 # The behavior of RuboCop can be controlled via the .rubocop.yml
@@ -32,6 +36,9 @@ Metrics/AbcSize:
   Exclude:
     - 'bin/bundle'
     - 'db/migrate/*'
+    - 'app/controllers/import_queues_controller.rb'
+    - 'app/controllers/settings_controller.rb'
+    - 'app/controllers/users_controller.rb'
 
 Metrics/BlockLength:
   Max: 40
