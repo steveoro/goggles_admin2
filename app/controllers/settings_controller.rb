@@ -12,6 +12,11 @@ class SettingsController < ApplicationController
   # - <tt>@grid</tt>: the customized Datagrid instance
   #
   def index
+    # Get the local API URL for reaching the remote server:
+    @connection_url = GogglesDb::AppParameter.config.settings(:framework_urls).value['api']
+    @connection_status = prepare_status_label
+
+    # Prepare remote domain:
     setting_groups = GogglesDb::AppParameter::SETTINGS_GROUPS + [:prefs]
     @domain = []
     @domain_count = @domain_page = @domain_per_page = 0
@@ -60,8 +65,8 @@ class SettingsController < ApplicationController
   #
   def update
     # DEBUG
-    logger.debug("\r\n*** update PARAMS:")
-    logger.debug(edit_params(Setting).inspect)
+    # logger.debug("\r\n*** update PARAMS:")
+    # logger.debug(edit_params(Setting).inspect)
     result = APIProxy.call(
       method: :put,
       url: "setting/#{edit_params(Setting)['group_key']}",
@@ -102,38 +107,50 @@ class SettingsController < ApplicationController
   #-- -------------------------------------------------------------------------
   #++
 
-  protected
-
+  # POST /settings/api_config
+  # Updates the current, local connection URL by writing the parameters to the local settings
+  # table.
   #
-  # Internal class used to represent a single Setting tuple
+  # (This allows us to connect to different servers while running the same Admin application.)
   #
-  class Setting
-    attr_accessor :group_key, :key, :value
+  # == Params:
+  # - <tt>connect_to</tt>: the full URI of the API server to which we need to connect.
+  #
+  def api_config
+    redirect_to root_path && return unless request.post?
 
-    # Creates a new Setting instance
-    def initialize(group_key:, key:, value:)
-      @group_key = group_key
-      @key = key
-      @value = value
+    connect_to = params.permit(:connect_to)['connect_to']
+    if connect_to.present?
+      cfg = GogglesDb::AppParameter.config
+      cfg.settings(:framework_urls).value['api'] = connect_to
+      if cfg.save
+        sign_out(current_user)
+      else
+        flash[:error] = I18n.t('dashboard.settings.connection.save_failed')
+      end
+    else
+      flash[:error] = I18n.t('dashboard.generic_param_miss_error')
     end
 
-    # Returns self as an Hash
-    def to_h
-      {
-        group_key: @group_key,
-        key: @key,
-        value: @value
-      }
-    end
-
-    alias attributes to_h # (new, old)
+    redirect_to(url_for(controller: controller_name, action: :index)) && return
   end
   #-- -------------------------------------------------------------------------
   #++
+
+  protected
 
   # Default whitelist for datagrid parameters
   # (NOTE: memoizazion is needed because the member variable is used in the view.)
   def grid_filter_params
     @grid_filter_params = params.fetch(:settings_grid, {}).permit!
+  end
+
+  private
+
+  # Returns a String label summarizing the currently connected API status.
+  def prepare_status_label
+    result = APIProxy.call(method: :get, url: 'status', jwt: current_user.jwt)
+    result_hash = result.body.present? ? JSON.parse(result.body) : {}
+    "API v. #{result_hash['version']} - #{result_hash['msg']}"
   end
 end

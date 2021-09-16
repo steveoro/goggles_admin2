@@ -5,6 +5,24 @@
   .main-content
     = render(DashboardTitleComponent.new(title: t('dashboard.settings.title'), row_count: @domain_count))
 
+    %section.my-4#curr-config
+      = form_tag(settings_api_config_path, id: 'frm-curr-config', method: :post) do
+        .container.bg-light-green.pt-3.shadow-box#curr-config-box
+          .row
+            .col-12
+              .form-group
+                = label_tag(:connect_to, t('dashboard.settings.connection.connect_to_label'))
+                = text_field_tag(:connect_to, @connection_url, required: true,
+                                  autofocus: true, class: 'form-control')
+          .row
+            .col-12.text-center
+              %i= @connection_status
+          .row
+            .col-12.mt-2.mb-3.text-right
+              = submit_tag(t('dashboard.settings.connection.save_btn'), id: 'btn-save-config',
+                           class: 'btn btn-sm btn-outline-danger', 'aria-label' => 'Save', type: 'submit',
+                           data: { confirm: t('dashboard.settings.connection.save_confirmation') })
+
     %section.my-4#data-grid
       = render(Grid::ToolbarComponent.new(asset_row: Setting.new, create: false,
                controller_name: controller_name, request_params: @grid_filter_params))

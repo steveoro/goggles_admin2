@@ -3,8 +3,9 @@
   .spacer-left
 
   .main-content{ data: { controller: 'chart-api',
+      'chart-api-calls-value' => @day_hash.values.map { |e| e.y_values.sum }.to_json,
       'chart-api-days-value' => @day_hash.keys.to_json,
-      'chart-api-uses-value' => @day_hash.values.map { |e| e.y_values.sum }.to_json,
+      'chart-api-users-value' => @users_hash.values.map(&:y_values).to_json,
       'chart-api-bubbles-value' => @url_hash.values.map(&:to_json_bubble_chart_data).to_json } }
     = render(DashboardTitleComponent.new(title: t('dashboard.stats.title'), row_count: @domain_count))
 

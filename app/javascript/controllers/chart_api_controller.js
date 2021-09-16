@@ -2,7 +2,7 @@ import { Controller } from 'stimulus'
 import Chart from 'chart.js/auto'
 
 /**
- * = Chart.js setup for API uses report - StimulusJS controller =
+ * = Chart.js setup for API calls report - StimulusJS controller =
  *
  * Simply sets the base configuration for the Chart.js-based chart report
  * using the StimulusJS configuration helpers.
@@ -13,12 +13,17 @@ import Chart from 'chart.js/auto'
  *
  *
  * == Values ==
- * (Put values directly on controller elements)
+ * (Put values directly on controller elements as JSON values that will be parsed by this controller)
+ *
  * @param {Array} 'data-chart-api-days-value' (required)
  *                 Array of string dates to be used as key labels for the x-axis
  *
- * @param {Array} 'data-chart-api-uses-value' (required)
- *                 Array of integer values (overall API daily uses) to be used for the y-axis
+ * @param {Array} 'data-chart-api-calls-value' (required)
+ *                 Array of integer values (overall "API daily uses") to be used for the y-axis
+ *
+ * @param {Array} 'data-chart-api-users-value' (required)
+ *                Array of integer values (overall users for non-API calls per day) for drawing an additional
+ *                line with its value as y-axis
  *
  * @param {Array} 'data-chart-api-bubbles-value' (optional)
  *                Object including an array of 3-point sub-object, used to define each specific
@@ -45,8 +50,9 @@ import Chart from 'chart.js/auto'
 export default class extends Controller {
   static targets = ['chart']
   static values = {
+    calls: Array,
     days: Array,
-    uses: Array,
+    users: Array,
     bubbles: Array
   }
 
@@ -54,7 +60,7 @@ export default class extends Controller {
    * Setup invoked each time the controller instance connects.
    */
   connect() {
-    if (this.hasChartTarget && this.hasDaysValue && this.hasUsesValue) {
+    if (this.hasChartTarget && this.hasDaysValue && this.hasCallsValue && this.hasUsersValue) {
       // DEBUG
       // console.log('Target & min values found. Setting up chart...')
 
@@ -65,9 +71,17 @@ export default class extends Controller {
           {
             type: 'line',
             label: 'API calls/day',
-            data: this.usesValue,
+            data: this.callsValue,
             fill: false,
             borderColor: 'rgb(75, 192, 192)',
+            tension: 0.1
+          },
+          {
+            type: 'line',
+            label: 'Users/day',
+            data: this.usersValue,
+            fill: true,
+            borderColor: 'rgb(128, 64, 64)',
             tension: 0.1
           }
         ].concat(this.bubblesValue)

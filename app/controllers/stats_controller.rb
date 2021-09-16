@@ -128,7 +128,11 @@ class StatsController < ApplicationController
   end
 
   #
-  # Internal class used to represent a point on a line chart
+  # Internal class used to represent a point on a line/bubble chart
+  #
+  # - x axis: x-series value
+  # - y axis: counter/total value
+  # - z/bubble radius: counter total divided by limiting constant (limit should be adjusted depending on avg users)
   #
   class DataPoint
     attr_accessor :uid, :x_values, :y_values
@@ -174,6 +178,18 @@ class StatsController < ApplicationController
     @url_hash = {}
     day_keys.each { |day| @day_hash[day] = DataPoint.new(uid: day) }
     url_keys.each { |url| @url_hash[url] = DataPoint.new(uid: url) }
+
+    # User REQ hash init:
+    @users_hash = {}
+    day_keys.each do |day|
+      req_rows = domain.select { |row| row.route =~ /REQ-/i && row.day.to_s == day }
+      @users_hash[day] = DataPoint.new(
+        uid: day,
+        x_values: req_rows.sum(&:count), # computes total requests for the day
+        y_values: req_rows.count # computes total number of different IP REQ for the day
+        # (In this case ^^, we'll use just a single value, not an array)
+      )
+    end
 
     # Group by:
     # - @day_hash => each unique day: collect counters (Y) & associated routes (unused)

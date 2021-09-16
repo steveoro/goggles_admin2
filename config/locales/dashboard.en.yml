@@ -5,6 +5,7 @@ en:
     toggle_selection: "Invert selected rows"
     n_total_rows: "%{tot} total rows"
     confirm_row_delete: "Are you sure you want to delete this row? (%{label})"
+    generic_param_miss_error: "Missing Parameter!"
     grid_commands:
       delete_selected:
         button: "Delete selected <i class='fa fa fa-trash-o'></i>"
@@ -16,6 +17,11 @@ en:
       title: "Import Queues"
     settings:
       title: "Settings"
+      connection:
+        connect_to_label: "🖥 You are connected with:"
+        save_btn: "Save"
+        save_confirmation: "Changing the connection URL will log you out of the current API server. Are you sure?"
+        save_failed: "Error during base config update. Check the logs."
     stats:
       title: "API stats"
     users:

@@ -80,52 +80,52 @@ blocks:
         - name: RSpec - components
           commands:
             - 'bundle exec rspec -t type:component'
-            - cache delete cc-component-goggles_main
+            - cache delete cc-component-goggles_admin2
             - ./cc-test-reporter format-coverage -t simplecov -o coverage/cc-component.json
-            - cache store cc-component-goggles_main coverage/cc-component.json
+            - cache store cc-component-goggles_admin2 coverage/cc-component.json
 
         - name: RSpec - decorators
           commands:
             - 'bundle exec rspec -t type:decorator'
-            - cache delete cc-decorator-goggles_main
+            - cache delete cc-decorator-goggles_admin2
             - ./cc-test-reporter format-coverage -t simplecov -o coverage/cc-decorator.json
-            - cache store cc-decorator-goggles_main coverage/cc-decorator.json
+            - cache store cc-decorator-goggles_admin2 coverage/cc-decorator.json
 
         - name: RSpec - jobs
           commands:
             - 'bundle exec rspec -t type:job'
-            - cache delete cc-job-goggles_main
+            - cache delete cc-job-goggles_admin2
             - ./cc-test-reporter format-coverage -t simplecov -o coverage/cc-job.json
-            - cache store cc-job-goggles_main coverage/cc-job.json
+            - cache store cc-job-goggles_admin2 coverage/cc-job.json
 
         - name: RSpec - mailers
           commands:
             - 'bundle exec rspec -t type:mailer'
-            - cache delete cc-mailer-goggles_main
+            - cache delete cc-mailer-goggles_admin2
             - ./cc-test-reporter format-coverage -t simplecov -o coverage/cc-mailer.json
-            - cache store cc-mailer-goggles_main coverage/cc-mailer.json
+            - cache store cc-mailer-goggles_admin2 coverage/cc-mailer.json
 
         - name: RSpec - requests
           commands:
             - 'bundle exec rspec -t type:request'
-            - cache delete cc-request-goggles_main
+            - cache delete cc-request-goggles_admin2
             - ./cc-test-reporter format-coverage -t simplecov -o coverage/cc-request.json
-            - cache store cc-request-goggles_main coverage/cc-request.json
+            - cache store cc-request-goggles_admin2 coverage/cc-request.json
 
         - name: RSpec - strategies & services
           commands:
             - 'bundle exec rspec -t type:strategy'
             - 'bundle exec rspec -t type:service'
-            - cache delete cc-strategy-goggles_main
+            - cache delete cc-strategy-goggles_admin2
             - ./cc-test-reporter format-coverage -t simplecov -o coverage/cc-strategy.json
-            - cache store cc-strategy-goggles_main coverage/cc-strategy.json
+            - cache store cc-strategy-goggles_admin2 coverage/cc-strategy.json
 
         - name: RSpec - views
           commands:
             - 'bundle exec rspec -t type:view'
-            - cache delete cc-view-goggles_main
+            - cache delete cc-view-goggles_admin2
             - ./cc-test-reporter format-coverage -t simplecov -o coverage/cc-view.json
-            - cache store cc-view-goggles_main coverage/cc-view.json
+            - cache store cc-view-goggles_admin2 coverage/cc-view.json
 
         # Not currently used:
         # - name: RSpec - commands

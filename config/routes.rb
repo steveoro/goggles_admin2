@@ -27,6 +27,7 @@ Rails.application.routes.draw do
   delete 'meetings', to: 'meetings#destroy', as: 'meetings_destroy'
 
   resources :settings, only: [:index, :update]
+  post 'settings/api_config', to: 'settings#api_config', as: 'settings_api_config'
   delete 'settings', to: 'settings#destroy', as: 'settings_destroy'
 
   resources :stats, only: [:index, :update]

@@ -14,7 +14,7 @@
             .card-body.bg-info
               .rotate
                 %i.fa.fa-line-chart.fa-4x
-              %h6.text-uppercase API
+              %h6.text-uppercase= t('dashboard.stats.title')
               %h1.display-4= @api_uses_count
 
         .offset-lg-0.col-lg-4.offset-md-1.col-md-5.offset-sm-0.col-sm-6.py-2
@@ -22,7 +22,7 @@
             .card-body.bg-danger
               .rotate
                 %i.fa.fa-list.fa-4x
-              %h6.text-uppercase Import queues
+              %h6.text-uppercase= t('dashboard.import_queues.title')
               %h1.display-4= @iqs_count
 
         .offset-lg-0.col-lg-4.offset-md-1.col-md-5.offset-sm-0.col-sm-6.py-2
@@ -30,7 +30,7 @@
             .card-body.bg-success
               .rotate
                 %i.fa.fa-user.fa-4x
-              %h6.text-uppercase Users
+              %h6.text-uppercase= t('dashboard.users.title')
               %h1.display-4= @users_count
 
         .col-12.py-2.mb-4

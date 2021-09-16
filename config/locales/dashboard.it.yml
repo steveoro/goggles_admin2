@@ -5,6 +5,7 @@ it:
     toggle_selection: "Inverti righe selezionate"
     n_total_rows: "%{tot} righe totali"
     confirm_row_delete: "Siamo sicuri di voler eliminare questa riga?\r\n(%{label})"
+    generic_param_miss_error: "Parametro mancante!"
     grid_commands:
       delete_selected:
         button: "Elimina selezione <i class='fa fa fa-trash-o'></i>"
@@ -16,6 +17,11 @@ it:
       title: "Import Queues"
     settings:
       title: "Impostazioni"
+      connection:
+        connect_to_label: "🖥 Sei connesso con:"
+        save_btn: "Salva"
+        save_confirmation: "Cambiare la URL di connessione ti disconnetterà dal server API conrrente. Continuo?"
+        save_failed: "Errore durante il salvataggio della configurazione di base. Controlla il log di sistema."
     stats:
       title: "API stats"
     users:
