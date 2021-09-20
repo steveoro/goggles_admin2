@@ -8,3 +8,12 @@ linters:
   IdNames:
     exclude:
       - 'app/views/devise/shared/_error_messages.html.haml'
+
+  RuboCop:
+    exclude:
+      - 'app/views/datagrid/_form.html.haml'
+      - 'app/views/datagrid/_order_for.html.haml'
+      - 'app/views/datagrid/_table.html.haml'
+      - 'app/views/kaminari/_gap.html.haml'
+      - 'app/components/grid/delete_selection_button_component.html.haml'
+      - 'app/components/combo_box/db_lookup_component.html.haml'

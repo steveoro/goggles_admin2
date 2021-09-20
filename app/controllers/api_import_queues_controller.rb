@@ -1,16 +1,17 @@
 # frozen_string_literal: true
 
-# = ImportQueuesController
+# = ImportQueues Controller
 #
 # Manage ImportQueues via API.
 #
-class ImportQueuesController < ApplicationController
+class APIImportQueuesController < ApplicationController
   # Show the ImportQueues dashboard.
   #
   # == Assigns:
   # - <tt>@domain</tt>: list of all instance rows
   # - <tt>@grid</tt>: the customized Datagrid instance
   #
+  # rubocop:disable Metrics/AbcSize
   def index
     result = APIProxy.call(
       method: :get, url: 'import_queues', jwt: current_user.jwt,
@@ -43,6 +44,7 @@ class ImportQueuesController < ApplicationController
       end
     end
   end
+  # rubocop:enable Metrics/AbcSize
   #-- -------------------------------------------------------------------------
   #++
 
@@ -71,7 +73,7 @@ class ImportQueuesController < ApplicationController
     else
       flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: result)
     end
-    redirect_to import_queues_path
+    redirect_to api_import_queues_path
   end
 
   # POST /import_queues/create
@@ -97,7 +99,7 @@ class ImportQueuesController < ApplicationController
     else
       flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: result.code)
     end
-    redirect_to import_queues_path
+    redirect_to api_import_queues_path
   end
 
   # DELETE /import_queues/destroy
@@ -107,6 +109,7 @@ class ImportQueuesController < ApplicationController
   # - <tt>id</tt>: single row ID, to be used for single row deletion
   # - <tt>ids</tt>: array of row IDs, to be used for multiple rows deletion
   #
+  # rubocop:disable Metrics/AbcSize
   def destroy
     row_ids = delete_params[:ids].present? ? delete_params[:ids].split(',') : []
     row_ids << delete_params[:id] if delete_params[:id].present?
@@ -120,8 +123,9 @@ class ImportQueuesController < ApplicationController
     else
       flash[:info] = I18n.t('dashboard.grid_commands.no_op_msg')
     end
-    redirect_to import_queues_path
+    redirect_to api_import_queues_path
   end
+  # rubocop:enable Metrics/AbcSize
   #-- -------------------------------------------------------------------------
   #++
 

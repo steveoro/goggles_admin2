@@ -1,16 +1,17 @@
 # frozen_string_literal: true
 
-# = UsersController
+# = Users Controller
 #
 # Manage User via API.
 #
-class UsersController < ApplicationController
+class APIUsersController < ApplicationController
   # Show the Users dashboard.
   #
   # == Assigns:
   # - <tt>@domain</tt>: list of all instance rows
   # - <tt>@grid</tt>: the customized Datagrid instance
   #
+  # rubocop:disable Metrics/AbcSize
   def index
     result = APIProxy.call(
       method: :get, url: 'users', jwt: current_user.jwt,
@@ -45,6 +46,7 @@ class UsersController < ApplicationController
       end
     end
   end
+  # rubocop:enable Metrics/AbcSize
   #-- -------------------------------------------------------------------------
   #++
 
@@ -73,7 +75,7 @@ class UsersController < ApplicationController
     else
       flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: result)
     end
-    redirect_to users_path
+    redirect_to api_users_path
   end
 
   # DELETE /users/destroy
@@ -83,6 +85,7 @@ class UsersController < ApplicationController
   # - <tt>id</tt>: to be used for single row deletion
   # - <tt>ids</tt>: to be used for multiple rows deletion
   #
+  # rubocop:disable Metrics/AbcSize
   def destroy
     row_ids = delete_params[:ids].present? ? delete_params[:ids].split(',') : []
     row_ids << delete_params[:id] if delete_params[:id].present?
@@ -96,8 +99,9 @@ class UsersController < ApplicationController
     else
       flash[:info] = I18n.t('dashboard.grid_commands.no_op_msg')
     end
-    redirect_to users_path
+    redirect_to api_users_path
   end
+  # rubocop:enable Metrics/AbcSize
   #-- -------------------------------------------------------------------------
   #++
 

@@ -6,6 +6,7 @@ it:
     n_total_rows: "%{tot} righe totali"
     confirm_row_delete: "Siamo sicuri di voler eliminare questa riga?\r\n(%{label})"
     generic_param_miss_error: "Parametro mancante!"
+    not_admin_error: "Solo gli Amministratori possono usare questa applicazione!"
     grid_commands:
       delete_selected:
         button: "Elimina selezione <i class='fa fa fa-trash-o'></i>"

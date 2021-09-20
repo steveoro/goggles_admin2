@@ -2,29 +2,29 @@
 
 require 'rails_helper'
 
-RSpec.describe 'ImportQueues', type: :request do
+RSpec.describe APIImportQueuesController, type: :request do
   describe 'GET /index' do
-    context 'for an unlogged user' do
+    context 'with an unlogged user' do
       it 'is a redirect to the login path' do
-        get(import_queues_path)
+        get(api_import_queues_path)
         expect(response).to redirect_to(new_user_session_path)
       end
     end
 
-    context 'for a logged-in user' do
+    context 'with a logged-in user' do
       include AdminSignInHelpers
       before(:each) do
         admin_user = prepare_admin_user
-        expect(admin_user).to be_a(GogglesDb::User).and be_valid
         sign_in_admin(admin_user)
         # API double:
-        allow(APIProxy).to receive(:call)
-          .with(method: :get, url: 'import_queues', jwt: admin_user.jwt)
-          .and_return(DummyResponse.new(body: GogglesDb::ImportQueue.all.to_json))
+        allow(APIProxy).to receive(:call).with(
+          method: :get, url: 'import_queues', jwt: admin_user.jwt,
+          params: { page: anything, per_page: anything }
+        ).and_return(DummyResponse.new(body: GogglesDb::ImportQueue.all.to_json))
       end
 
       it 'returns http success' do
-        get(import_queues_path)
+        get(api_import_queues_path)
         expect(response).to have_http_status(:success)
       end
     end
@@ -32,31 +32,34 @@ RSpec.describe 'ImportQueues', type: :request do
   #-- -------------------------------------------------------------------------
   #++
 
-  describe 'POST /update' do
+  describe 'PUT /update' do
     let(:fixture_row) { FactoryBot.create(:import_queue) }
-    let(:new_value) { 'FAKE UPDATE' }
+    let(:new_request_data) do
+      {
+        target_entity: 'Swimmer',
+        swimmer: { id: -1, complete_name: '(Never mind: this will not get processed)' }
+      }.to_json
+    end
 
-    context 'for an unlogged user' do
+    context 'with an unlogged user' do
       it 'is a redirect to the login path' do
-        post(import_queues_update_path(id: fixture_row.id), params: { route: new_value })
+        put(api_import_queue_path(fixture_row.id), params: { request_data: new_request_data })
         expect(response).to redirect_to(new_user_session_path)
       end
     end
 
-    context 'for a logged-in user' do
+    context 'with a logged-in user' do
       include AdminSignInHelpers
       before(:each) do
         admin_user = prepare_admin_user
-        expect(admin_user).to be_a(GogglesDb::User).and be_valid
         sign_in_admin(admin_user)
         # API double:
         allow(APIProxy).to receive(:call)
-          .with(method: :get, url: 'import_queue', jwt: admin_user.jwt, payload: '{ to_do: "" }')
-          .and_return(DummyResponse.new(body: GogglesDb::ImportQueue.all.to_json))
-        post(
-          import_queues_update_path(id: fixture_row.id),
-          params: { route: new_value }
-        )
+          .with(
+            method: :put, url: "import_queue/#{fixture_row.id}", jwt: admin_user.jwt,
+            payload: anything
+          ).and_return(DummyResponse.new(body: 'true'))
+        put(api_import_queue_path(fixture_row.id), params: { request_data: new_request_data })
       end
 
       it 'sets the flash success message' do
@@ -68,7 +71,7 @@ RSpec.describe 'ImportQueues', type: :request do
       end
 
       it 'redirects to /index' do
-        expect(response).to redirect_to(import_queues_path)
+        expect(response).to redirect_to(api_import_queues_path)
       end
     end
   end
@@ -76,20 +79,27 @@ RSpec.describe 'ImportQueues', type: :request do
   #++
 
   describe 'POST /create' do
-    let(:new_value) { 'IGNORED' }
+    let(:new_attributes) { FactoryBot.build(:import_queue).attributes }
 
-    context 'for an unlogged user' do
+    context 'with an unlogged user' do
       it 'is a redirect to the login path' do
-        post(import_queues_create_path, params: { route: new_value })
+        post(api_import_queues_path, params: new_attributes)
         expect(response).to redirect_to(new_user_session_path)
       end
     end
 
-    context 'for a logged-in user' do
+    context 'with a logged-in user' do
       include AdminSignInHelpers
       before(:each) do
-        sign_in_admin(prepare_admin_user)
-        post(import_queues_create_path, params: { route: new_value })
+        admin_user = prepare_admin_user
+        sign_in_admin(admin_user)
+        # API double:
+        allow(APIProxy).to receive(:call)
+          .with(
+            method: :post, url: 'import_queue', jwt: admin_user.jwt,
+            payload: anything
+          ).and_return(DummyResponse.new(body: { msg: 'OK', new: { id: -1 } }.to_json))
+        post(api_import_queues_path, params: new_attributes)
       end
 
       it 'sets the flash success message' do
@@ -102,7 +112,7 @@ RSpec.describe 'ImportQueues', type: :request do
       end
 
       it 'redirects to /index' do
-        expect(response).to redirect_to(import_queues_path)
+        expect(response).to redirect_to(api_import_queues_path)
       end
     end
   end
@@ -112,22 +122,28 @@ RSpec.describe 'ImportQueues', type: :request do
   describe 'DELETE /destroy' do
     let(:fixture_row) { FactoryBot.create(:import_queue) }
 
-    context 'for an unlogged user' do
+    context 'with an unlogged user' do
       it 'is a redirect to the login path' do
-        delete(import_queues_destroy(id: fixture_row.id))
+        delete(api_import_queues_destroy_path(id: fixture_row.id))
         expect(response).to redirect_to(new_user_session_path)
       end
     end
 
-    context 'for a logged-in user' do
+    context 'with a logged-in user' do
       include AdminSignInHelpers
       before(:each) do
-        sign_in_admin(prepare_admin_user)
-        delete(import_queues_destroy(id: fixture_row.id))
+        admin_user = prepare_admin_user
+        sign_in_admin(admin_user)
+        # API double:
+        allow(APIProxy).to receive(:call)
+          .with(
+            method: :delete, url: "import_queue/#{fixture_row.id}", jwt: admin_user.jwt
+          ).and_return(DummyResponse.new(body: 'true'))
+        delete(api_import_queues_destroy_path(id: fixture_row.id))
       end
 
       it 'sets the flash success message' do
-        expect(flash[:info]).to eq(I18n.t('dashboard.grid_commands.delete_ok', tot: 1, ids: [fixture_row.id].to_s))
+        expect(flash[:info]).to eq(I18n.t('dashboard.grid_commands.delete_ok', tot: 1, ids: [fixture_row.id.to_s]))
       end
 
       it 'does NOT set the flash error message' do
@@ -135,7 +151,7 @@ RSpec.describe 'ImportQueues', type: :request do
       end
 
       it 'redirects to /index' do
-        expect(response).to redirect_to(import_queues_path)
+        expect(response).to redirect_to(api_import_queues_path)
       end
     end
   end

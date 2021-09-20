@@ -24,7 +24,7 @@
                            data: { confirm: t('dashboard.settings.connection.save_confirmation') })
 
     %section.my-4#data-grid
-      = render(Grid::ToolbarComponent.new(asset_row: Setting.new, create: false,
+      = render(Grid::ToolbarComponent.new(asset_row: Setting.new, filter: false, create: false,
                controller_name: controller_name, request_params: @grid_filter_params))
       = datagrid_form_for(@grid, method: :get,
                           url: url_for(controller: controller_name, action: :index, params: @grid_filter_params))

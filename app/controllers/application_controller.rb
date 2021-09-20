@@ -19,7 +19,12 @@ class ApplicationController < ActionController::Base
 
   # Checks JWT validity and forces a new sign-in otherwise.
   def check_jwt_session
-    redirect_to new_user_session_path && return unless GogglesDb::GrantChecker.admin?(current_user)
+    unless GogglesDb::GrantChecker.admin?(current_user)
+      logger.debug('* Not an Admin!')
+      sign_out(current_user)
+      flash[:error] = I18n.t('dashboard.not_admin_error')
+      redirect_to new_user_session_path && return
+    end
 
     # JWT expired? Force a new log-in to get a fresh one:
     decoded_jwt = GogglesDb::JWTManager.decode(current_user.jwt, Rails.application.credentials.api_static_key)

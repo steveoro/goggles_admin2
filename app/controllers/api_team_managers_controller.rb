@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
-# = TeamManagersController
+# = TeamManagers Controller
 #
 # Manage Team Managers (GogglesDb::ManagedAffiliation) via API.
 #
-class TeamManagersController < ApplicationController
+class APITeamManagersController < ApplicationController
   def index; end
 end

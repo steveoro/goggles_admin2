@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe Grid::CreateNewButtonComponent, type: :component do
-  let(:fixture_controller_name) { 'users' }
+  let(:fixture_controller_name) { 'import_queues' }
 
   context 'when some of the required parameters are missing,' do
     subject { render_inline(described_class.new(asset_row: nil, controller_name: fixture_controller_name)).to_html }
@@ -11,7 +11,7 @@ RSpec.describe Grid::CreateNewButtonComponent, type: :component do
   end
 
   context 'with valid parameters,' do
-    let(:fixture_asset_row) { GogglesDb::User.new }
+    let(:fixture_asset_row) { GogglesDb::ImportQueue.new }
     subject do
       render_inline(
         described_class.new(

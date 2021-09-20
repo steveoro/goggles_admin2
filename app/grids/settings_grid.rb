@@ -13,8 +13,9 @@ class SettingsGrid < BaseGrid
     data_domain
   end
 
-  filter(:group_key, :string)
-  filter(:key, :string)
+  # [Steve A.] Doesn't work due to Setting being a custom class (not AR):
+  # filter(:group_key, :string)
+  # filter(:key, :string)
 
   # Customizes row background color
   def row_class(row)

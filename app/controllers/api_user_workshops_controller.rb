@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
-# = UserWorkshopsController
+# = UserWorkshops Controller
 #
 # Manage User Workshops via API.
 #
-class UserWorkshopsController < ApplicationController
+class APIUserWorkshopsController < ApplicationController
   def index; end
 end

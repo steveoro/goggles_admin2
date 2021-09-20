@@ -167,7 +167,7 @@ class StatsController < ApplicationController
   # - <tt>@day_hash</tt>: overall daily uses for all routes (group keys used to draw chart)
   # - <tt>@url_hash</tt>: daily uses for each route, a different line for each key (group keys used to draw chart)
   #
-  # rubocop:disable Metrics/AbcSize
+  # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
   def prepare_chart_domain(domain)
     # Prepare a list of records for better handling:
     day_keys = domain.map { |row| row.day.to_s }.uniq
@@ -191,12 +191,21 @@ class StatsController < ApplicationController
       )
     end
 
-    # Group by:
-    # - @day_hash => each unique day: collect counters (Y) & associated routes (unused)
-    #             => each key will become an X point in the overall line chart
-    #
-    # - @url_hash => each unique route: collect date (X) & counter (Y)
-    #             => each key will become a different line, using the above axes
+    group_chart_domain_for_day_and_url(domain)
+  end
+  # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+
+  # Updates the X & Y values for @day_hash & @url_hash by looping on the base domain of the chart
+  # while setting on the X-axis the individual values and on Y-axis their count.
+  #
+  # === Groups the domain by:
+  # - @day_hash => each unique day: collect counters (Y) & associated routes (unused)
+  #             => each key will become an X point in the overall line chart
+  #
+  # - @url_hash => each unique route: collect date (X) & counter (Y)
+  #             => each key will become a different line, using the above axes
+  #
+  def group_chart_domain_for_day_and_url(domain)
     domain.each do |row|
       @day_hash[row.day.to_s].x_values << row.route
       @day_hash[row.day.to_s].y_values << row.count
@@ -205,5 +214,4 @@ class StatsController < ApplicationController
       @url_hash[row.route].y_values << row.count
     end
   end
-  # rubocop:enable Metrics/AbcSize
 end

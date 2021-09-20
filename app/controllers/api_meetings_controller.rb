@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
-# = MeetingsController
+# = Meetings Controller
 #
 # Manage Meetings via API.
 #
-class MeetingsController < ApplicationController
+class APIMeetingsController < ApplicationController
   def index; end
 end

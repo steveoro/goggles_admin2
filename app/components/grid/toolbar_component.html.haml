@@ -1,6 +1,7 @@
 .row.btn-toolbar.d-flex.justify-content-left.ml-0.mb-2
   .btn-group.mx-1.my-0
-    = render(Grid::FilterShowButtonComponent.new)
+    - if @filter
+      = render(Grid::FilterShowButtonComponent.new)
   .btn-group.mx-1.my-0#sel-toggle-btn
     = render(Grid::SelectionToggleButtonComponent.new)
   - if @create

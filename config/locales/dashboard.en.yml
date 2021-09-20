@@ -6,6 +6,7 @@ en:
     n_total_rows: "%{tot} total rows"
     confirm_row_delete: "Are you sure you want to delete this row? (%{label})"
     generic_param_miss_error: "Missing Parameter!"
+    not_admin_error: "Only Admins can use this application!"
     grid_commands:
       delete_selected:
         button: "Delete selected <i class='fa fa fa-trash-o'></i>"

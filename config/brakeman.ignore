@@ -3,11 +3,131 @@
     {
       "warning_type": "Mass Assignment",
       "warning_code": 70,
+      "fingerprint": "32b2482a7e64286ec18136036c62811acadea48831432e8ea2c2d720a8785836",
+      "check_name": "MassAssignment",
+      "message": "Specify exact keys allowed for mass assignment instead of using `permit!` which allows any keys",
+      "file": "app/controllers/api_import_queues_controller.rb",
+      "line": 144,
+      "link": "https://brakemanscanner.org/docs/warning_types/mass_assignment/",
+      "code": "params.fetch(:import_queues_grid, {}).permit!",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "APIImportQueuesController",
+        "method": "index_params"
+      },
+      "user_input": null,
+      "confidence": "Medium",
+      "note": ""
+    },
+    {
+      "warning_type": "Mass Assignment",
+      "warning_code": 70,
+      "fingerprint": "693b1586702f47c63b7646f6c913e37d0bf6b9037ec910a7b2861c3b20b7d72a",
+      "check_name": "MassAssignment",
+      "message": "Specify exact keys allowed for mass assignment instead of using `permit!` which allows any keys",
+      "file": "app/controllers/api_import_queues_controller.rb",
+      "line": 137,
+      "link": "https://brakemanscanner.org/docs/warning_types/mass_assignment/",
+      "code": "params.fetch(:import_queues_grid, {}).permit!",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "APIImportQueuesController",
+        "method": "grid_filter_params"
+      },
+      "user_input": null,
+      "confidence": "Medium",
+      "note": ""
+    },
+    {
+      "warning_type": "Mass Assignment",
+      "warning_code": 70,
+      "fingerprint": "6cc7f68fa58f01a97a70c6b687c415bf4308741388a06e15e5252dad18082bf8",
+      "check_name": "MassAssignment",
+      "message": "Specify exact keys allowed for mass assignment instead of using `permit!` which allows any keys",
+      "file": "app/controllers/settings_controller.rb",
+      "line": 145,
+      "link": "https://brakemanscanner.org/docs/warning_types/mass_assignment/",
+      "code": "params.fetch(:settings_grid, {}).permit!",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "SettingsController",
+        "method": "grid_filter_params"
+      },
+      "user_input": null,
+      "confidence": "Medium",
+      "note": ""
+    },
+    {
+      "warning_type": "Mass Assignment",
+      "warning_code": 70,
+      "fingerprint": "7e68bc732298377a318383b346341a1521a3157726b7f930f4b67c2f597ac0f9",
+      "check_name": "MassAssignment",
+      "message": "Specify exact keys allowed for mass assignment instead of using `permit!` which allows any keys",
+      "file": "app/controllers/api_users_controller.rb",
+      "line": 120,
+      "link": "https://brakemanscanner.org/docs/warning_types/mass_assignment/",
+      "code": "params.fetch(:users_grid, {}).permit!",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "APIUsersController",
+        "method": "index_params"
+      },
+      "user_input": null,
+      "confidence": "Medium",
+      "note": ""
+    },
+    {
+      "warning_type": "Mass Assignment",
+      "warning_code": 70,
+      "fingerprint": "83eecb5a6af6efaf88c8a74027ba8132605803f6e020a889aac24e79c8b258cb",
+      "check_name": "MassAssignment",
+      "message": "Specify exact keys allowed for mass assignment instead of using `permit!` which allows any keys",
+      "file": "app/controllers/api_users_controller.rb",
+      "line": 113,
+      "link": "https://brakemanscanner.org/docs/warning_types/mass_assignment/",
+      "code": "params.fetch(:users_grid, {}).permit!",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "APIUsersController",
+        "method": "grid_filter_params"
+      },
+      "user_input": null,
+      "confidence": "Medium",
+      "note": ""
+    },
+    {
+      "warning_type": "Mass Assignment",
+      "warning_code": 70,
+      "fingerprint": "9bef85ddf16e08d823af8d52bebeb57130bc114d85b46ea4266da999abb7f962",
+      "check_name": "MassAssignment",
+      "message": "Specify exact keys allowed for mass assignment instead of using `permit!` which allows any keys",
+      "file": "app/controllers/stats_controller.rb",
+      "line": 127,
+      "link": "https://brakemanscanner.org/docs/warning_types/mass_assignment/",
+      "code": "params.fetch(:stats_grid, {}).permit!",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "StatsController",
+        "method": "index_params"
+      },
+      "user_input": null,
+      "confidence": "Medium",
+      "note": ""
+    },
+    {
+      "warning_type": "Mass Assignment",
+      "warning_code": 70,
       "fingerprint": "a9e3c715a49449942cebc293e7072512b3616a442ad24cf299306f57aa8c80ef",
       "check_name": "MassAssignment",
       "message": "Specify exact keys allowed for mass assignment instead of using `permit!` which allows any keys",
       "file": "app/controllers/stats_controller.rb",
-      "line": 146,
+      "line": 120,
       "link": "https://brakemanscanner.org/docs/warning_types/mass_assignment/",
       "code": "params.fetch(:stats_grid, {}).permit!",
       "render_path": null,
@@ -19,48 +139,8 @@
       "user_input": null,
       "confidence": "Medium",
       "note": ""
-    },
-    {
-      "warning_type": "Mass Assignment",
-      "warning_code": 70,
-      "fingerprint": "aa11ab05513f2176afdff6b59d3fdcfbeeb8f9ff5de0957479c73b571099ea7b",
-      "check_name": "MassAssignment",
-      "message": "Specify exact keys allowed for mass assignment instead of using `permit!` which allows any keys",
-      "file": "app/controllers/import_queues_controller.rb",
-      "line": 125,
-      "link": "https://brakemanscanner.org/docs/warning_types/mass_assignment/",
-      "code": "params.fetch(:import_queues_grid, {}).permit!",
-      "render_path": null,
-      "location": {
-        "type": "method",
-        "class": "ImportQueuesController",
-        "method": "grid_filter_params"
-      },
-      "user_input": null,
-      "confidence": "Medium",
-      "note": "needed for grid filtering, which can be scalar or range of values"
-    },
-    {
-      "warning_type": "Mass Assignment",
-      "warning_code": 70,
-      "fingerprint": "c1eaa704d7d2edf9a513aff5d34bf36b243d31fc1cf2ccbb20564607b4569947",
-      "check_name": "MassAssignment",
-      "message": "Specify exact keys allowed for mass assignment instead of using `permit!` which allows any keys",
-      "file": "app/controllers/users_controller.rb",
-      "line": 125,
-      "link": "https://brakemanscanner.org/docs/warning_types/mass_assignment/",
-      "code": "params.fetch(:users_grid, {}).permit!",
-      "render_path": null,
-      "location": {
-        "type": "method",
-        "class": "UsersController",
-        "method": "grid_filter_params"
-      },
-      "user_input": null,
-      "confidence": "Medium",
-      "note": ""
     }
   ],
-  "updated": "2021-08-30 16:24:55 +0200",
+  "updated": "2021-09-20 20:59:24 +0200",
   "brakeman_version": "5.1.1"
 }

@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
-# = BadgesController
+# = Badges Controller
 #
 # Manage Badges via API.
 #
-class BadgesController < ApplicationController
+class APIBadgesController < ApplicationController
   def index; end
 end

@@ -3,7 +3,7 @@
 #
 # = Grid components module
 #
-#   - version:  7.0.3.27
+#   - version:  7.0.3.32
 #   - author:   Steve A.
 #
 module Grid
@@ -30,6 +30,9 @@ module Grid
     # - <tt>:request_params</tt>:
     #   Request <tt>:params</tt> used for Datagrid filtering
     #
+    # - <tt>:filter</tt>:
+    #   <tt>true</tt> to show the filter popup button (default: true)
+    #
     # - <tt>:create</tt>:
     #   <tt>true</tt> to show the create new button (default: true)
     #
@@ -43,6 +46,7 @@ module Grid
       @asset_row = options[:asset_row]
       @controller_name = options[:controller_name]
       @request_params = options[:request_params]
+      @filter = options[:filter].nil? ? true : options[:filter]
       @create = options[:create].nil? ? true : options[:create]
       @destroy = options[:destroy].nil? ? true : options[:destroy]
       @csv = options[:csv].nil? ? true : options[:csv]

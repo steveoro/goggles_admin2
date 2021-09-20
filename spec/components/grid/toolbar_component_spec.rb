@@ -3,14 +3,14 @@
 require 'rails_helper'
 
 RSpec.describe Grid::ToolbarComponent, type: :component do
-  let(:fixture_controller_name) { 'users' }
+  let(:fixture_controller_name) { 'import_queues' }
 
   context 'when some of the required parameters are missing,' do
     subject { render_inline(described_class.new(asset_row: nil, controller_name: fixture_controller_name)).to_html }
     it_behaves_like('any subject that renders nothing')
   end
 
-  let(:fixture_asset_row) { GogglesDb::User.all.to_a.sample }
+  let(:fixture_asset_row) { FactoryBot.create(:import_queue) }
 
   context 'with valid parameters and default options,' do
     let(:expected_delete_link_id) { "frm-delete-row-#{fixture_asset_row.id}" }
