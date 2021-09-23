@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe Grid::RowToolbarComponent, type: :component do
-  let(:fixture_controller_name) { 'users' }
+  let(:fixture_controller_name) { 'api_users' }
 
   context 'when some of the required parameters are missing,' do
     subject { render_inline(described_class.new(asset_row: nil, controller_name: fixture_controller_name)).to_html }

@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe Grid::CreateNewButtonComponent, type: :component do
-  let(:fixture_controller_name) { 'import_queues' }
+  let(:fixture_controller_name) { 'api_import_queues' }
 
   context 'when some of the required parameters are missing,' do
     subject { render_inline(described_class.new(asset_row: nil, controller_name: fixture_controller_name)).to_html }

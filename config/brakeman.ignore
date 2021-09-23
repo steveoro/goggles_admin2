@@ -3,6 +3,26 @@
     {
       "warning_type": "Mass Assignment",
       "warning_code": 70,
+      "fingerprint": "21fcbc78f5b3b021382eecd9c2383f9fe6b36a097584f8ff6008cd07873fc1b3",
+      "check_name": "MassAssignment",
+      "message": "Specify exact keys allowed for mass assignment instead of using `permit!` which allows any keys",
+      "file": "app/controllers/api_team_managers_controller.rb",
+      "line": 137,
+      "link": "https://brakemanscanner.org/docs/warning_types/mass_assignment/",
+      "code": "params.fetch(:team_managers_grid, {}).permit!",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "APITeamManagersController",
+        "method": "grid_filter_params"
+      },
+      "user_input": null,
+      "confidence": "Medium",
+      "note": ""
+    },
+    {
+      "warning_type": "Mass Assignment",
+      "warning_code": 70,
       "fingerprint": "32b2482a7e64286ec18136036c62811acadea48831432e8ea2c2d720a8785836",
       "check_name": "MassAssignment",
       "message": "Specify exact keys allowed for mass assignment instead of using `permit!` which allows any keys",
@@ -47,7 +67,7 @@
       "check_name": "MassAssignment",
       "message": "Specify exact keys allowed for mass assignment instead of using `permit!` which allows any keys",
       "file": "app/controllers/settings_controller.rb",
-      "line": 145,
+      "line": 166,
       "link": "https://brakemanscanner.org/docs/warning_types/mass_assignment/",
       "code": "params.fetch(:settings_grid, {}).permit!",
       "render_path": null,
@@ -67,7 +87,7 @@
       "check_name": "MassAssignment",
       "message": "Specify exact keys allowed for mass assignment instead of using `permit!` which allows any keys",
       "file": "app/controllers/api_users_controller.rb",
-      "line": 120,
+      "line": 122,
       "link": "https://brakemanscanner.org/docs/warning_types/mass_assignment/",
       "code": "params.fetch(:users_grid, {}).permit!",
       "render_path": null,
@@ -87,7 +107,7 @@
       "check_name": "MassAssignment",
       "message": "Specify exact keys allowed for mass assignment instead of using `permit!` which allows any keys",
       "file": "app/controllers/api_users_controller.rb",
-      "line": 113,
+      "line": 115,
       "link": "https://brakemanscanner.org/docs/warning_types/mass_assignment/",
       "code": "params.fetch(:users_grid, {}).permit!",
       "render_path": null,
@@ -139,8 +159,28 @@
       "user_input": null,
       "confidence": "Medium",
       "note": ""
+    },
+    {
+      "warning_type": "Mass Assignment",
+      "warning_code": 70,
+      "fingerprint": "cf2ce6665bbe0397f2153f93d2c2063553cd9ed1653cde235b70063e32bbbdfc",
+      "check_name": "MassAssignment",
+      "message": "Specify exact keys allowed for mass assignment instead of using `permit!` which allows any keys",
+      "file": "app/controllers/api_team_managers_controller.rb",
+      "line": 144,
+      "link": "https://brakemanscanner.org/docs/warning_types/mass_assignment/",
+      "code": "params.fetch(:team_managers_grid, {}).permit!",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "APITeamManagersController",
+        "method": "index_params"
+      },
+      "user_input": null,
+      "confidence": "Medium",
+      "note": ""
     }
   ],
-  "updated": "2021-09-20 20:59:24 +0200",
+  "updated": "2021-09-21 18:50:33 +0200",
   "brakeman_version": "5.1.1"
 }

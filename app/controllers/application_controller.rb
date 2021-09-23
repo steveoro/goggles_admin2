@@ -41,19 +41,15 @@ class ApplicationController < ActionController::Base
   # or an empty array if everything went fine.
   #
   # == Params:
-  # - <tt>model_class</tt>: the actual model class (sibling of ActiveRecord::Base) related to the API endpoint for the deletion
-  #                         (i.e. GogglesDb::User => 'DELETE /user/:id')
+  # - <tt>endpoint_name</tt>: the actual API endpoint for the deletion
+  #                           (i.e. GogglesDb::User => 'DELETE /user/:id')
   # - <tt>row_ids</tt>: array of row IDs to be deleted
   #
   # == Returns:
   # - an array of row IDs that raised errors, or an empty list otherwise.
-  # - will skip the whole deletion unless <tt>model_class</tt> responds to <tt>#table_name</tt>.
   #
-  def delete_rows!(model_class, row_ids)
+  def delete_rows!(endpoint_name, row_ids)
     error_ids = []
-    endpoint_name = "#{model_class.table_name.singularize}"
-    return row_ids unless model_class.respond_to?(:table_name)
-
     row_ids.each do |row_id|
       result = APIProxy.call(
         method: :delete,

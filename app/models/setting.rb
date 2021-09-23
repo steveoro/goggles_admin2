@@ -5,6 +5,8 @@
 # Internal class used to represent a single Setting tuple
 #
 class Setting
+  SPLIT_ID_CHAR = '§'
+
   attr_accessor :group_key, :key, :value
 
   # Creates a new Setting instance
@@ -26,7 +28,7 @@ class Setting
 
   # Pseudo-id (String) used to uniquely associate instance <=> rows inside the Datagrid
   def id
-    "#{@group_key}-#{@key}"
+    "#{@group_key}#{SPLIT_ID_CHAR}#{@key}"
   end
 
   alias attributes to_h # (new, old)

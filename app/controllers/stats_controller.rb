@@ -97,7 +97,7 @@ class StatsController < ApplicationController
     row_ids = delete_params[:ids].present? ? delete_params[:ids].split(',') : []
     row_ids << delete_params[:id] if delete_params[:id].present?
 
-    error_ids = delete_rows!(GogglesDb::APIDailyUse, row_ids)
+    error_ids = delete_rows!('api_daily_use', row_ids)
 
     if row_ids.present? && error_ids.empty?
       flash[:info] = I18n.t('dashboard.grid_commands.delete_ok', tot: row_ids.count, ids: row_ids.to_s)

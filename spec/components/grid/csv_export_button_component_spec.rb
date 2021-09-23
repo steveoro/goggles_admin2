@@ -9,7 +9,7 @@ RSpec.describe Grid::CsvExportButtonComponent, type: :component do
   end
 
   context 'with valid parameters,' do
-    let(:fixture_controller_name) { 'users' }
+    let(:fixture_controller_name) { 'api_users' }
     subject do
       render_inline(
         described_class.new(

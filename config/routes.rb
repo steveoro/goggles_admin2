@@ -14,32 +14,32 @@ Rails.application.routes.draw do
   get 'home/index'
 
   # Datagrid-actioned routes: (use prefix to avoid clashing w/ Engine resource routes)
-  resources :api_badges, only: [:index, :create, :update]
+  resources :api_badges, only: %i[index create update]
   delete 'api_badges', to: 'api_badges#destroy', as: 'api_badges_destroy'
 
-  resources :api_import_queues, only: [:index, :create, :update]
+  resources :api_import_queues, only: %i[index create update]
   delete 'api_import_queues', to: 'api_import_queues#destroy', as: 'api_import_queues_destroy'
 
-  resources :api_meeting_reservations, only: [:index, :create, :update]
+  resources :api_meeting_reservations, only: %i[index create update]
   delete 'api_meeting_reservations', to: 'api_meeting_reservations#destroy', as: 'api_meeting_reservations_destroy'
 
-  resources :api_meetings, only: [:index, :create, :update]
+  resources :api_meetings, only: %i[index create update]
   delete 'api_meetings', to: 'api_meetings#destroy', as: 'api_meetings_destroy'
 
-  resources :api_team_managers, only: [:index, :create, :update]
+  resources :api_team_managers, only: %i[index create update]
   delete 'api_team_managers', to: 'api_team_managers#destroy', as: 'api_team_managers_destroy'
 
-  resources :api_user_workshops, only: [:index, :create, :update]
+  resources :api_user_workshops, only: %i[index create update]
   delete 'api_user_workshops', to: 'api_user_workshops#destroy', as: 'api_user_workshops_destroy'
 
-  resources :api_users, only: [:index, :update]
+  resources :api_users, only: %i[index update]
   delete 'api_users', to: 'api_users#destroy', as: 'api_users_destroy'
 
-  resources :settings, only: [:index, :update]
+  resources :settings, only: %i[index update]
   post 'settings/api_config', to: 'settings#api_config', as: 'settings_api_config'
   delete 'settings', to: 'settings#destroy', as: 'settings_destroy'
 
-  resources :stats, only: [:index, :update]
+  resources :stats, only: %i[index update]
   delete 'stats', to: 'stats#destroy', as: 'stats_destroy'
 end
 # rubocop:enable Metrics/BlockLength

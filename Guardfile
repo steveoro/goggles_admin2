@@ -103,10 +103,11 @@ guard :rspec, rspec_options do
 
   # In case a controller changes, run a corresponding spec for each one of these cases:
   watch(rails.controllers) do |m|
+    puts "'#{m[1]}' modified..."
     [
-      rspec.spec.call("routing/#{m[1]}"),
-      rspec.spec.call("requests/#{m[1]}"),
-      rspec.spec.call("acceptance/#{m[1]}")
+      rspec.spec.call("routing/#{m[1]}*"),
+      rspec.spec.call("requests/#{m[1]}*_spec"),
+      rspec.spec.call("acceptance/#{m[1]}*")
     ]
   end
 

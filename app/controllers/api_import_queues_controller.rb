@@ -48,7 +48,7 @@ class APIImportQueuesController < ApplicationController
   #-- -------------------------------------------------------------------------
   #++
 
-  # PUT /import_queues/update/:id
+  # PUT /api_import_queues/update/:id
   # Updates a single GogglesDb::ImportQueue row.
   #
   # All instance attributes are accepted, minus lock_version & the timestamps, which are
@@ -76,7 +76,7 @@ class APIImportQueuesController < ApplicationController
     redirect_to api_import_queues_path
   end
 
-  # POST /import_queues/create
+  # POST /api_import_queues/create
   # Creates a new GogglesDb::ImportQueue row.
   #
   # All instance attributes are accepted, minus lock_version & the timestamps, which are
@@ -102,7 +102,7 @@ class APIImportQueuesController < ApplicationController
     redirect_to api_import_queues_path
   end
 
-  # DELETE /import_queues/destroy
+  # DELETE /api_import_queues/destroy
   # Removes GogglesDb::ImportQueue rows. Accepts single (:id) or multiple (:ids) IDs for the deletion.
   #
   # == Params:
@@ -114,7 +114,7 @@ class APIImportQueuesController < ApplicationController
     row_ids = delete_params[:ids].present? ? delete_params[:ids].split(',') : []
     row_ids << delete_params[:id] if delete_params[:id].present?
 
-    error_ids = delete_rows!(GogglesDb::ImportQueue, row_ids)
+    error_ids = delete_rows!('import_queue', row_ids)
 
     if row_ids.present? && error_ids.empty?
       flash[:info] = I18n.t('dashboard.grid_commands.delete_ok', tot: row_ids.count, ids: row_ids.to_s)

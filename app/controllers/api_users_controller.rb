@@ -50,7 +50,7 @@ class APIUsersController < ApplicationController
   #-- -------------------------------------------------------------------------
   #++
 
-  # PUT /users/update/:id
+  # PUT /api_users/update/:id
   # Updates a single GogglesDb::User row.
   #
   # All instance attributes are accepted, minus lock_version & the timestamps, which are
@@ -78,7 +78,7 @@ class APIUsersController < ApplicationController
     redirect_to api_users_path
   end
 
-  # DELETE /users/destroy
+  # DELETE /api_users/destroy
   # Removes GogglesDb::User rows. Accepts single (:id) or multiple (:ids) IDs for the deletion.
   #
   # == Params:
@@ -89,8 +89,10 @@ class APIUsersController < ApplicationController
   def destroy
     row_ids = delete_params[:ids].present? ? delete_params[:ids].split(',') : []
     row_ids << delete_params[:id] if delete_params[:id].present?
+    row_ids.reject! { |id| id.to_i < 4 }
 
-    error_ids = delete_rows!(GogglesDb::User, row_ids)
+    # Also, ignore required IDs (< 4):
+    error_ids = delete_rows!('user', row_ids)
 
     if row_ids.present? && error_ids.empty?
       flash[:info] = I18n.t('dashboard.grid_commands.delete_ok', tot: row_ids.count, ids: row_ids.to_s)

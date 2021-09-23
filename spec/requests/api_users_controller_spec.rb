@@ -83,29 +83,51 @@ RSpec.describe APIUsersController, type: :request do
       end
     end
 
-    context 'with a logged-in user' do
+    context 'with a logged-in user,' do
       include AdminSignInHelpers
-      before(:each) do
-        admin_user = prepare_admin_user
-        sign_in_admin(admin_user)
-        # API double:
-        allow(APIProxy).to receive(:call)
-          .with(
-            method: :delete, url: "user/#{fixture_row.id}", jwt: admin_user.jwt
-          ).and_return(DummyResponse.new(body: 'true'))
-        delete(api_users_destroy_path(id: fixture_row.id))
+      context 'when destroying a single row,' do
+        before(:each) do
+          admin_user = prepare_admin_user
+          sign_in_admin(admin_user)
+          # API double:
+          allow(APIProxy).to receive(:call)
+            .with(
+              method: :delete, url: "user/#{fixture_row.id}", jwt: admin_user.jwt
+            ).and_return(DummyResponse.new(body: 'true'))
+          delete(api_users_destroy_path(id: fixture_row.id))
+        end
+
+        it 'sets the flash success message' do
+          expect(flash[:info]).to eq(I18n.t('dashboard.grid_commands.delete_ok', tot: 1, ids: [fixture_row.id.to_s]))
+        end
+
+        it 'does NOT set the flash error message' do
+          expect(flash[:error]).to be nil
+        end
+
+        it 'redirects to /index' do
+          expect(response).to redirect_to(api_users_path)
+        end
       end
 
-      it 'sets the flash success message' do
-        expect(flash[:info]).to eq(I18n.t('dashboard.grid_commands.delete_ok', tot: 1, ids: [fixture_row.id.to_s]))
-      end
+      context 'when trying to destroy a required ID user (default admins),' do
+        before(:each) do
+          admin_user = prepare_admin_user
+          sign_in_admin(admin_user)
+          delete(api_users_destroy_path(id: [1, 2, 3].sample))
+        end
 
-      it 'does NOT set the flash error message' do
-        expect(flash[:error]).to be nil
-      end
+        it 'sets the flash no-ops message' do
+          expect(flash[:info]).to eq(I18n.t('dashboard.grid_commands.no_op_msg'))
+        end
 
-      it 'redirects to /index' do
-        expect(response).to redirect_to(api_users_path)
+        it 'does NOT set the flash error message' do
+          expect(flash[:error]).to be nil
+        end
+
+        it 'redirects to /index' do
+          expect(response).to redirect_to(api_users_path)
+        end
       end
     end
   end

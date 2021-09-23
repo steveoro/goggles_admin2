@@ -32,7 +32,7 @@ module Version
   PATCH = '32'
 
   # Current build version.
-  BUILD = '20210920'
+  BUILD = '20210923'
 
   # Full versioning for the current release.
   FULL = "#{MAJOR}.#{MINOR}.#{PATCH} (#{CORE}-#{BUILD})"

@@ -34,7 +34,7 @@ class BaseGrid
   def self.date_column(name, *args)
     column(name, *args) do |model|
       format(block_given? ? yield : model.send(name)) do |date|
-        date.strftime('%Y-%m-%d')
+        content_tag(:small, date.strftime('%Y-%m-%d'))
       end
     end
   end

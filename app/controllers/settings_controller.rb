@@ -61,7 +61,11 @@ class SettingsController < ApplicationController
   # Supported attributes: <tt>group_key</tt>, <tt>key</tt> & <tt>value</tt>.
   #
   # == Route param:
-  # - <tt>group_key</tt>: the Group ID for the settings key that has to be updated
+  # - <tt>ID</tt>: the composed Setting Group+Key ID for identifying uniquely the Setting that has to be updated
+  #
+  # == Params:
+  # - <tt>group_key</tt>: Setting group ID
+  # - <tt>key</tt>: Setting key ID
   #
   def update
     # DEBUG
@@ -89,11 +93,27 @@ class SettingsController < ApplicationController
   # - <tt>id</tt>: single row ID, to be used for single row deletion
   # - <tt>ids</tt>: array of row IDs, to be used for multiple rows deletion
   #
+  # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
   def destroy
     row_ids = delete_params[:ids].present? ? delete_params[:ids].split(',') : []
     row_ids << delete_params[:id] if delete_params[:id].present?
 
-    error_ids = delete_rows!(Setting, row_ids)
+    error_ids = []
+    row_ids.each do |row_id|
+      group_id, key_id = row_id.split(Setting::SPLIT_ID_CHAR)
+      result = APIProxy.call(
+        method: :delete,
+        url: "setting/#{group_id}",
+        jwt: current_user.jwt,
+        payload: { key: key_id }
+      )
+
+      next unless result.code != 200 || result.body != 'true'
+
+      logger.error("\r\n*** ERROR: API 'DELETE /#{endpoint_name}/#{row_id}'")
+      logger.error(result.inspect)
+      error_ids << row_id
+    end
 
     if row_ids.present? && error_ids.empty?
       flash[:info] = I18n.t('dashboard.grid_commands.delete_ok', tot: row_ids.count, ids: row_ids.to_s)
@@ -104,6 +124,7 @@ class SettingsController < ApplicationController
     end
     redirect_to settings_path
   end
+  # rubocop:enable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
   #-- -------------------------------------------------------------------------
   #++
 
