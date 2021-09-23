@@ -15,5 +15,6 @@ linters:
       - 'app/views/datagrid/_order_for.html.haml'
       - 'app/views/datagrid/_table.html.haml'
       - 'app/views/kaminari/_gap.html.haml'
-      - 'app/components/grid/delete_selection_button_component.html.haml'
       - 'app/components/combo_box/db_lookup_component.html.haml'
+      - 'app/components/grid/delete_selection_button_component.html.haml'
+      - 'app/components/grid/edit_modal_component.html.haml'

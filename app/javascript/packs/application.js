@@ -9,13 +9,12 @@ import 'bootstrap'
 import 'select2'
 import 'select2/dist/css/select2.css'
 
+import '../controllers/index'
+
 import Chart from 'chart.js/auto'
 window.Chart = Chart
 // import { Chart, registerables } from 'chart.js';
 // Chart.register(...registerables);
-
-// import '../controllers/index' // stimulus_setup
-// import './components'
 
 // Styles:
 import '../stylesheets/application'
@@ -39,5 +38,3 @@ require("channels")
 //
 // const images = require.context('../images', true)
 // const imagePath = (name) => images(name, true)
-
-import "controllers"

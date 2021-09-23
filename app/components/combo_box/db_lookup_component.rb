@@ -3,12 +3,14 @@
 #
 # = ComboBox components module
 #
-#   - version:  7.02
+#   - version:  7.0.3.32
 #   - author:   Steve A.
 #
 module ComboBox
   #
   # = ComboBox::DbLookupComponent
+  #
+  # --> CUSTOMIZED version for Admin2 <--
   #
   # Creates a Select2-based combo-box, with AJAX retrieval of the datasource,
   # using the StimulusJS LookupController.
@@ -45,6 +47,8 @@ module ComboBox
     # - values: nil               => pre-existing options for select (which may include default selection)
     #                                (either use +options_for_select+ or +options_from_collection_for_select+)
     #
+    # - jwt: nil                  => required session JWT for API auth. (not needed when using static values)
+    #
     # - use_2_api: false          => toggles secondary API call to retrieve more entity details
     #
     # - free_text: false          => allows/disables free text as input
@@ -63,6 +67,7 @@ module ComboBox
       @api_url2 = "#{base_api_url}/api/v3" if options[:use_2_api] # Toggle secondary call by setting the shared base URL
       @label = label
       @base_name = base_name
+      @jwt = options[:jwt] || nil
       @free_text = options[:free_text] || false
       @required = options[:required] || false
       @query_column = options[:query_column] || 'name'

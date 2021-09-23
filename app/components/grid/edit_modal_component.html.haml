@@ -1,6 +1,6 @@
 .modal.fade#grid-edit-modal{ 'aria-hidden' => 'true', role: 'dialog', tabindex: '-1',
                              'aria-labelledby' => 'grid-edit-modal-title' }
-  .modal-dialog.modal-dialog-centered{ role: 'document' }
+  .modal-dialog.modal-lg{ role: 'document' }
     / The action URL will be overridden on a row-by-row basis; the following is a placeholder:
     = form_tag(url_for(only_path: true, controller: @controller_name, action: :update, id: 0),
                id: 'frm-modal-edit', method: :patch) do
@@ -11,7 +11,26 @@
           %button.close{ 'aria-label' => I18n.t('datagrid.edit_modal.close_btn'), 'data-dismiss' => 'modal' }
             %span{ 'aria-hidden' => 'true' } &times;
         .modal-body#modal-body
-          .container
+          - @attribute_names.each do |attr_name|
+            - read_only = %w[id created_at updated_at lock_version].include?(attr_name)
+            - field_class = read_only ? 'form-control-plaintext' : 'form-control'
+            .form-group.row
+              = content_tag(:small, class: 'col-sm-3') do
+                = label_tag(attr_name, attr_name, class: 'col-form-label')
+              .col-sm-9
+                - base_name = attr_name.split('_id').first
+                -# TODO: use bootstrap-autocomplete
+                -# - if %w[user_id team_id team_affiliation_id season_id].include?(attr_name)
+                -#   = render(ComboBox::DbLookupComponent.new(base_name.pluralize, base_name, base_name,
+                -#           jwt: @jwt, required: true, free_text: true))
+                -# - elsif attr_name == 'swimmer_id'
+                -#   = render(ComboBox::DbSwimmerComponent.new(base_name, base_name, jwt: @jwt, free_text: true))
+                -# - elsif attr_name == 'swimming_pool_id'
+                -#   = render(ComboBox::DbSwimmingPoolComponent.new(base_name, base_name, jwt: @jwt,
+                -#           use_2_api: true, free_text: true))
+                -# - else
+                = text_field_tag(attr_name, nil, disabled: read_only, class: field_class)
+
             #frm-modal-edit-appendable
         .modal-footer
           %button.btn.btn-sm.btn-outline-secondary{ 'aria-label' => I18n.t('datagrid.edit_modal.close_btn'),

@@ -25,6 +25,8 @@ it:
         save_failed: "Errore durante il salvataggio della configurazione di base. Controlla il log di sistema."
     stats:
       title: "API stats"
+    team_affiliation:
+      title: "Team Affiliations"
     team_managers:
       title: "Team Managers"
     users:

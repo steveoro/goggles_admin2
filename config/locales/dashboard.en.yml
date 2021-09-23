@@ -25,6 +25,8 @@ en:
         save_failed: "Error during base config update. Check the logs."
     stats:
       title: "API stats"
+    team_affiliation:
+      title: "Team Affiliations"
     team_managers:
       title: "Team Managers"
     users:

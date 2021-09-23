@@ -107,20 +107,7 @@ export default class extends Controller {
       Object.entries(this.payloadValue)
         .forEach(
           ([key, value]) => {
-            // Dynamic partial for each line of attributes in the modal:
-            if (key != 'lock_version') {
-              var readOnly = (key == 'id' || key == 'created_at' || key == 'updated_at')
-              var fieldClass = readOnly ? 'form-control-plaintext' : 'form-control'
-              const html = `<div class="form-group row">
-                <label class="col-sm-3 col-form-label" for="${key}">${key}</label>
-                <div class="col-sm-9">
-                  <input type="text" name="${key}" id="${key}" value="${value == null ? '' : value}"
-                         ${readOnly ? 'disabled ' : ''}class="${fieldClass}">
-                </div>
-              </div>`
-
-              $('#frm-modal-edit-appendable').append(html)
-            }
+            $(`#${key}`).val(value)
           }
         )
       return true

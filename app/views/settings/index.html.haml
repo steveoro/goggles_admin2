@@ -30,7 +30,8 @@
                           url: url_for(controller: controller_name, action: :index, params: @grid_filter_params))
       = datagrid_table(@grid, html: { class: 'table table-hover table-sm' })
 
-      = render(Grid::EditModalComponent.new(controller_name: controller_name))
+      = render(Grid::EditModalComponent.new(controller_name: controller_name,
+               attribute_names: Setting.new.attributes.keys, jwt: current_user.jwt))
 
     %section.text-center.fixed-bottom#footer
       &nbsp;

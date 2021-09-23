@@ -3,7 +3,8 @@
       'lookup-field-base-name-value' => @base_name,
       'lookup-free-text-value' => @free_text,
       'lookup-query-column-value' => @query_column,
-      'lookup-api-url2-value' => @api_url2 } }
+      'lookup-api-url2-value' => @api_url2,
+      'lookup-jwt-value' => @jwt } }
   .form-group
     .field
       = hidden_field_tag("#{@base_name}_id", @default_row&.id)

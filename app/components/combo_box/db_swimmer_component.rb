@@ -3,12 +3,14 @@
 #
 # = ComboBox components module
 #
-#   - version:  7.03
+#   - version:  7.0.3.32
 #   - author:   Steve A.
 #
 module ComboBox
   #
   # = ComboBox::DbSwimmerComponent
+  #
+  # --> CUSTOMIZED version for Admin2 <--
   #
   # Creates a Select2-based combo-box, with AJAX retrieval of the datasource,
   # using the StimulusJS LookupController.
@@ -38,6 +40,8 @@ module ComboBox
     #
     # == Supported options & defaults:
     # - default_row: nil          => pre-selected Swimmer for the input box
+    #
+    # - jwt: nil                  => required session JWT for API auth. (not needed when using static values)
     #
     # - use_2_api: false          => toggles secondary API call to retrieve more entity details
     #

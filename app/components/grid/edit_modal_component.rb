@@ -3,7 +3,7 @@
 #
 # = Grid components module
 #
-#   - version:  7.0.3.25
+#   - version:  7.0.3.32
 #   - author:   Steve A.
 #
 module Grid
@@ -25,14 +25,18 @@ module Grid
     #
     # == Params
     # - <tt>controller_name</tt>: Rails controller name linked to this modal form
-    def initialize(controller_name:)
+    # - <tt>attribute_names</tt>: Array of base model attributes keys
+    # - <tt>jwt</tt>: required session JWT for API auth. (can be left to nil when using static values)
+    def initialize(controller_name:, attribute_names:, jwt: nil)
       super
       @controller_name = controller_name
+      @attribute_names = attribute_names
+      @jwt = jwt
     end
 
     # Skips rendering unless the required parameters are set
     def render?
-      @controller_name.present?
+      @controller_name.present? && @attribute_names.present?
     end
   end
 end

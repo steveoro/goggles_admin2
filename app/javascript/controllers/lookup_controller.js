@@ -6,6 +6,9 @@ require('select2')
 /**
  * = StimulusJS generic Lookup controller =
  *
+ * ==> CUSTOMIZED version for Admin2 <==
+ * (doesn't need a local /api_session call to retrieve the JWT because of localhost usage)
+ *
  * Prepares and manages a generic lookup combo-box for input selection.
  * Works with both remote sources and static arrays of options.
  *
@@ -60,6 +63,9 @@ require('select2')
  *                 - DOM ID = "<BASE_NAME>_<any other data-field>" => stores any additional data field stored into the selected option
  *                 (The additional data fields will be defined & accessed dynamically.)
  *
+ * @param {String} 'data-lookup-jwt-value'
+ *                 current_user.jwt (assumes 'current_user' is currently logged-in and valid)
+ *
  * == Assumptions:
  * @assert the widget can use '.select2' CSS to customize width
  * @assert 'data-lookup-target' must be a parent node the actual '.select2' widget
@@ -87,7 +93,8 @@ export default class extends Controller {
     queryColumn: String,
     boundQuery: String,
     freeText: Boolean,
-    fieldBaseName: String
+    fieldBaseName: String,
+    jwt: String
   }
 
   /**
@@ -95,44 +102,29 @@ export default class extends Controller {
    * controller instance connects.
    */
   connect () {
+    // DEBUG
+    // console.log('lookup_controller: connect')
     if (this.hasFieldTarget) {
       // DEBUG
-      // console.log('Target found.')
+      console.log('lookup_controller: target found.')
       this.refreshWidgetSetup()
     }
   }
 
   /**
-   * Performs a programmatic refresh of the JWT if needed, followed by a reset of
-   * the Select2 setups.
-   * Otherwise it just sets up the Select2 widget for static data handling.
+   * Sets up the Select2 widget either for dynamic data retrieval using the set JWT value
+   * or for static data handling otherwise.
    */
   refreshWidgetSetup () {
-    if (this.hasApiUrlValue) {
-      this.fetchJWT()
-        .then((jwt) => this.initSelect2Widget(this.fieldTarget, jwt))
+    // DEBUG
+    console.log('refreshWidgetSetup()')
+    if (this.hasApiUrlValue && this.hasJwtValue) {
+      // DEBUG
+      console.log('refreshWidgetSetup(): JWT found.')
+      this.initSelect2Widget(this.fieldTarget, this.jwtValue)
     } else {
       this.initSelect2Widget(this.fieldTarget, null)
     }
-  }
-
-  /**
-   * Retrieves the Promise for a new valid JWT.
-   *
-   * @returns the 'fetch' Promise that resolves to the new JWT string value
-   */
-  async fetchJWT () {
-    // DEBUG
-    // console.log('Fetching JWT...')
-    return fetch('/api_sessions/jwt.json', {
-      method: 'POST',
-      headers: {
-        'X-CSRF-Token': $('meta[name=csrf-token]').attr('content'),
-        'Content-type': 'application/json;charset=UTF-8'
-      }
-    }).then(resp => { return resp.json() })
-      .then(json => { return json.jwt })
-      .catch(error => console.error('fetchJWT error:', error))
   }
 
   /**
@@ -688,6 +680,8 @@ export default class extends Controller {
    * @param {String} jwt    a yet-to-be-resolved JWT for the current API sessions
    */
   initSelect2Widget (target, jwt) {
+    // DEBUG
+    console.log(`initSelect2Widget(): jwt = '${jwt}'`)
     const currJWT = jwt
     $(target).select2({
       placeholder: this.placeholderValue,

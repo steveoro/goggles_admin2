@@ -3,12 +3,14 @@
 #
 # = ComboBox components module
 #
-#   - version:  7.03
+#   - version:  7.0.3.32
 #   - author:   Steve A.
 #
 module ComboBox
   #
   # = ComboBox::DbCityComponent
+  #
+  # --> CUSTOMIZED version for Admin2 <--
   #
   # Creates a Select2-based combo-box, with AJAX retrieval of the datasource,
   # using the StimulusJS LookupController to handle GogglesDb::City extra data fields
@@ -26,6 +28,7 @@ module ComboBox
     # To work properly, this assumes a single DbCityComponent per form.
     #
     # == Supported options & defaults:
+    # - jwt: nil          => required session JWT for API auth. (not needed when using static values)
     # - default_row: nil  => pre-selected GogglesDb::City instance
     # - free_text: false  => allows/disables free text as input
     # - required: false   => sets the HTML5 'required' attribute for the select field
@@ -33,6 +36,7 @@ module ComboBox
     def initialize(options = {})
       super
       @api_endpoint = 'cities'
+      @jwt = options[:jwt] || nil
       @free_text = options[:free_text] || false
       @required = options[:required] || false
       @default_row = options[:default_row] if options[:default_row].instance_of?(GogglesDb::City)

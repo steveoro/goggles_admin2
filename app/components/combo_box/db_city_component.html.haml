@@ -1,6 +1,6 @@
 = render(ComboBox::DbLookupComponent.new(@api_endpoint, t('swimming_pools.city'), 'city',
          required: @required, free_text: @free_text, bound_query_param: 'country_code',
-         values: value_options))
+         jwt: @jwt, values: value_options))
 .col-auto
   .form-group
     .field
