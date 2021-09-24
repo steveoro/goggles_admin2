@@ -18,8 +18,8 @@
               = content_tag(:small, class: 'col-sm-3') do
                 = label_tag(attr_name, attr_name, class: 'col-form-label')
               .col-sm-9
-                - base_name = attr_name.split('_id').first
                 -# TODO: use bootstrap-autocomplete
+                -# - base_name = attr_name.to_s.split('_id').first
                 -# - if %w[user_id team_id team_affiliation_id season_id].include?(attr_name)
                 -#   = render(ComboBox::DbLookupComponent.new(base_name.pluralize, base_name, base_name,
                 -#           jwt: @jwt, required: true, free_text: true))

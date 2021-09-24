@@ -1,9 +1,10 @@
 # Goggles Admin2
 
 [![Build Status](https://steveoro.semaphoreci.com/badges/goggles_admin2/branches/main.svg?style=shields)](https://steveoro.semaphoreci.com/projects/goggles_admin2)
-[![CodeClimate Maintainability]()]()
-[![CodeClimate Test Coverage]()]()
-[![CodeCov]()]()
+
+[![CodeClimate Maintainability](https://api.codeclimate.com/v1/badges/bee50721c31ebb202064/maintainability)](https://codeclimate.com/github/steveoro/goggles_admin2/maintainability)
+[![CodeClimate Test Coverage](https://api.codeclimate.com/v1/badges/bee50721c31ebb202064/test_coverage)](https://codeclimate.com/github/steveoro/goggles_admin2/test_coverage)
+[![CodeCov](https://codecov.io/gh/steveoro/goggles_admin2/branch/main/graph/badge.svg?token=JT5MIDU5PU)](https://codecov.io/gh/steveoro/goggles_admin2)
 
 
 Administration client UI app for version 7 and onward.
@@ -132,7 +133,7 @@ See the [Wiki page about the build pipeline](https://github.com/steveoro/goggles
 ## License
 The application is available as open source under the terms of the [LGPL-3.0 License](https://opensource.org/licenses/LGPL-3.0).
 
-[![FOSSA Status]()]()
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fsteveoro%2Fgoggles_admin2.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Fsteveoro%2Fgoggles_admin2?ref=badge_large)
 
 
 ## Supporting

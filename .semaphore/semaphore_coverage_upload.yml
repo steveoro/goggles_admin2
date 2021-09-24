@@ -16,7 +16,7 @@ global_job_config:
   # Connect secrets to all jobs in the pipeline:
   # (actual values can be edited on Semaphore 2.0 org dashboard)
   secrets:
-    - name: GogglesMain
+    - name: GogglesAdmin2
 
   # Execute at the start of every job in the pipeline:
   prologue:
