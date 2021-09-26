@@ -44,7 +44,7 @@ blocks:
             - GIT_LFS_SKIP_SMUDGE=1 bundle install
             # Use this to log the actual bundle destination path for Semaphore 2.0 (currently uses Rbenv):
             # - bundle info rake --path
-            - yarn
+            - yarn install --check-files
             # The cache will be updated with the new content just once for all blocks in the pipeline:
             - cache store bundle-3.30-$(checksum Gemfile.lock yarn.lock) vendor/bundle
 
