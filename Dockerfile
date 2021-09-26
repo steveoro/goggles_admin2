@@ -76,4 +76,4 @@ ENV TAG=${TAG:-latest}
 RUN echo "Version: $TAG"
 LABEL AUTHOR=steve.alloro@gmail.com VERSION=$TAG
 
-ENTRYPOINT ["./entrypoints/docker.dev.sh"]
+ENTRYPOINT ["./entrypoints/docker.sh"]

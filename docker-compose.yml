@@ -31,12 +31,12 @@ services:
   admin2:
     build:
       context: .
-      dockerfile: Dockerfile.dev
-    image: "steveoro/goggles-admin2:dev-${TAG}"
+      dockerfile: Dockerfile
+    image: "steveoro/goggles-admin2:${TAG}"
     depends_on:
       - goggles-db
       - api
-    container_name: goggles-admin2.dev
+    container_name: goggles-admin2
     env_file:
       - .env
     ports:
@@ -50,7 +50,7 @@ services:
 
 networks:
   default:
-    name: dev
+    name: prod
 
 volumes:
   gem_cache:

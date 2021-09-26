@@ -38,15 +38,15 @@ global_job_config:
 
 blocks:
   # Skip if there's a tag
-  - name: Build latest image (staging)
+  - name: Build latest image (development)
     skip:
       when: "tag =~ '.*'"
     task:
       jobs:
         - name: Docker latest
           commands:
-            - RAILS_ENV=production bundle exec rails assets:precompile
-            - 'docker build -t $DOCKERHUB_USERNAME/goggles-admin2:latest --cache-from=$DOCKERHUB_USERNAME/goggles-admin2:latest -f Dockerfile.staging .'
+            - RAILS_ENV=development bundle exec rails assets:precompile
+            - 'docker build -t $DOCKERHUB_USERNAME/goggles-admin2:latest --cache-from=$DOCKERHUB_USERNAME/goggles-admin2:latest -f Dockerfile .'
             - 'docker push $DOCKERHUB_USERNAME/goggles-admin2:latest'
 
   # Run only if there's a tag
@@ -58,20 +58,8 @@ blocks:
         commands:
           - echo 'Current TAG $SEMAPHORE_GIT_TAG_NAME'
       jobs:
+        # (Admin2 doesn't need dedicated staging or prod images)
         - name: Docker tagged image
           commands:
-            - 'docker build -t $DOCKERHUB_USERNAME/goggles-admin2:dev-$SEMAPHORE_GIT_TAG_NAME --cache-from=$DOCKERHUB_USERNAME/goggles-admin2:latest -f Dockerfile.dev .'
-            - 'docker push $DOCKERHUB_USERNAME/goggles-admin2:dev-$SEMAPHORE_GIT_TAG_NAME'
-
-        # (Admin2 doesn't need dedicated staging or prod images)
-        # - name: Docker staging
-        #   commands:
-        #     - RAILS_ENV=staging bundle exec rails assets:precompile
-        #     - 'docker build -t $DOCKERHUB_USERNAME/goggles-admin2:staging-$SEMAPHORE_GIT_TAG_NAME --cache-from=$DOCKERHUB_USERNAME/goggles-admin2:latest -f Dockerfile.staging .'
-        #     - 'docker push $DOCKERHUB_USERNAME/goggles-admin2:staging-$SEMAPHORE_GIT_TAG_NAME'
-
-        # - name: Docker prod
-        #   commands:
-        #     - RAILS_ENV=production bundle exec rails assets:precompile
-        #     - 'docker build -t $DOCKERHUB_USERNAME/goggles-admin2:prod-$SEMAPHORE_GIT_TAG_NAME --cache-from=$DOCKERHUB_USERNAME/goggles-admin2:latest -f Dockerfile.prod .'
-        #     - 'docker push $DOCKERHUB_USERNAME/goggles-admin2:prod-$SEMAPHORE_GIT_TAG_NAME'
+            - 'docker build -t $DOCKERHUB_USERNAME/goggles-admin2:$SEMAPHORE_GIT_TAG_NAME --cache-from=$DOCKERHUB_USERNAME/goggles-admin2:latest -f Dockerfile .'
+            - 'docker push $DOCKERHUB_USERNAME/goggles-admin2:$SEMAPHORE_GIT_TAG_NAME'
