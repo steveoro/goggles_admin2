@@ -3,7 +3,7 @@
 #
 # = Grid components module
 #
-#   - version:  7.0.3.32
+#   - version:  7.0.3.33
 #   - author:   Steve A.
 #
 module Grid
@@ -25,18 +25,26 @@ module Grid
     #
     # == Params
     # - <tt>controller_name</tt>: Rails controller name linked to this modal form
-    # - <tt>attribute_names</tt>: Array of base model attributes keys
+    #
+    # - <tt>asset_row</tt>:
+    #  valid ActiveRecord Model instance to which this component will be linked to (*required*)
+    #
     # - <tt>jwt</tt>: required session JWT for API auth. (can be left to nil when using static values)
-    def initialize(controller_name:, attribute_names:, jwt: nil)
+    def initialize(controller_name:, asset_row:, api_url: nil, jwt: nil)
       super
       @controller_name = controller_name
-      @attribute_names = attribute_names
+      @asset_row = asset_row
       @jwt = jwt
     end
 
     # Skips rendering unless the required parameters are set
     def render?
-      @controller_name.present? && @attribute_names.present?
+      @controller_name.present? && @asset_row.present?
+    end
+
+    # Returns the base API URL for all endpoints
+    def base_api_url
+      "#{GogglesDb::AppParameter.config.settings(:framework_urls).api}/api/v3"
     end
   end
 end

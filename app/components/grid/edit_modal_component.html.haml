@@ -11,27 +11,73 @@
           %button.close{ 'aria-label' => I18n.t('datagrid.edit_modal.close_btn'), 'data-dismiss' => 'modal' }
             %span{ 'aria-hidden' => 'true' } &times;
         .modal-body#modal-body
-          - @attribute_names.each do |attr_name|
+          - @asset_row.attributes.each_key do |attr_name|
             - read_only = %w[id created_at updated_at lock_version].include?(attr_name)
             - field_class = read_only ? 'form-control-plaintext' : 'form-control'
             .form-group.row
               = content_tag(:small, class: 'col-sm-3') do
                 = label_tag(attr_name, attr_name, class: 'col-form-label')
-              .col-sm-9
-                -# TODO: use bootstrap-autocomplete
-                -# - base_name = attr_name.to_s.split('_id').first
-                -# - if %w[user_id team_id team_affiliation_id season_id].include?(attr_name)
-                -#   = render(ComboBox::DbLookupComponent.new(base_name.pluralize, base_name, base_name,
-                -#           jwt: @jwt, required: true, free_text: true))
-                -# - elsif attr_name == 'swimmer_id'
-                -#   = render(ComboBox::DbSwimmerComponent.new(base_name, base_name, jwt: @jwt, free_text: true))
-                -# - elsif attr_name == 'swimming_pool_id'
-                -#   = render(ComboBox::DbSwimmingPoolComponent.new(base_name, base_name, jwt: @jwt,
-                -#           use_2_api: true, free_text: true))
-                -# - else
-                = text_field_tag(attr_name, nil, disabled: read_only, class: field_class)
 
-            #frm-modal-edit-appendable
+              - if !@asset_row.class.respond_to?(:column_for_attribute)
+                .col-sm-9
+                  = text_field_tag(attr_name, nil, disabled: read_only, class: field_class)
+
+              - elsif @asset_row.class.column_for_attribute(attr_name).type == :datetime
+                .col-sm-9
+                  = datetime_field_tag(attr_name, nil, disabled: read_only, class: field_class)
+              - elsif @asset_row.class.column_for_attribute(attr_name).type == :date
+                .col-sm-9
+                  = date_field_tag(attr_name, nil, disabled: read_only, class: field_class)
+              - elsif @asset_row.class.column_for_attribute(attr_name).type == :boolean
+                .col-sm-9
+                  = check_box_tag(attr_name, nil, disabled: read_only, class: field_class)
+
+              - elsif attr_name == 'user_id'
+                .col-sm-9.form-group{ data: { controller: 'autocomplete',
+                  'autocomplete-base-api-url-value' => base_api_url,
+                  'autocomplete-search-name-value' => 'users',
+                  'autocomplete-base-name-value' => 'user',
+                  'autocomplete-query-column-value' => 'name',
+                  'autocomplete-desc-column-value' => 'email',
+                  'autocomplete-desc2-column-value' => 'description',
+                  'autocomplete-jwt-value' => @jwt } }
+                  .row
+                    .col-3
+                      = text_field_tag(attr_name, nil, class: 'form-control',
+                                       data: { 'autocomplete-target' => 'field' })
+                    .col-9
+                      = text_field_tag('user', nil, class: 'form-control',
+                                       placeholder: I18n.t('dashboard.search_field', field: 'user'),
+                                       data: { 'autocomplete-target' => 'search' })
+                  .row-fluid
+                    %small
+                      %i.form-text.text-muted#user-desc{ data: { 'autocomplete-target' => 'desc' } }
+
+              - elsif %w[team_affiliation_id].include?(attr_name)
+                - base_name = attr_name.to_s.split('_id').first
+                .col-sm-9.form-group{ data: { controller: 'autocomplete',
+                  'autocomplete-base-api-url-value' => base_api_url,
+                  'autocomplete-search-name-value' => base_name.pluralize,
+                  'autocomplete-base-name-value' => base_name,
+                  'autocomplete-query-column-value' => 'name',
+                  'autocomplete-desc-column-value' => 'season_id',
+                  'autocomplete-desc2-column-value' => 'team_id',
+                  'autocomplete-jwt-value' => @jwt } }
+                  .row
+                    .col-3
+                      = text_field_tag(attr_name, nil, class: 'form-control',
+                                       data: { 'autocomplete-target' => 'field' })
+                    .col-9
+                      = text_field_tag(base_name, nil, class: 'form-control',
+                                       placeholder: I18n.t('dashboard.search_field', field: base_name),
+                                       data: { 'autocomplete-target' => 'search' })
+                  .row-fluid
+                    %small
+                      %i.form-text.text-muted{ id: "#{base_name}-desc", data: { 'autocomplete-target' => 'desc' } }
+              - else
+                .col-sm-9
+                  = text_field_tag(attr_name, nil, disabled: read_only, class: field_class)
+
         .modal-footer
           %button.btn.btn-sm.btn-outline-secondary{ 'aria-label' => I18n.t('datagrid.edit_modal.close_btn'),
                                                     'data-dismiss' => 'modal', type: 'button' }

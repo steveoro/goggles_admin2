@@ -4,9 +4,8 @@
 
   .main-content
     = render(DashboardTitleComponent.new(title: t('dashboard.team_managers.title'), row_count: @domain_count))
-
     = render(Grid::EditModalComponent.new(controller_name: controller_name,
-              attribute_names: GogglesDb::ManagedAffiliation.new.attributes.keys, jwt: current_user.jwt))
+             asset_row: GogglesDb::ManagedAffiliation.new, jwt: current_user.jwt))
 
     %section.my-4#data-grid
       = render(Grid::ToolbarComponent.new(asset_row: GogglesDb::ManagedAffiliation.new,

@@ -82,7 +82,7 @@ class ApplicationController < ActionController::Base
     params.permit(
       model_class.new
                  .attributes.keys
-                 .reject { |key| %w[lock_version created_at updated_at].include?(key) } +
+                 .reject { |key| %w[lock_version].include?(key) } +
                  %i[_method authenticity_token]
     )
   end

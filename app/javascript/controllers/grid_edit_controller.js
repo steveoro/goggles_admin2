@@ -96,18 +96,18 @@ export default class extends Controller {
       }
       // Fix default form target:
       $('#frm-modal-edit').prop('action', this.urlValue)
-      // Clear previous contents
-      $('#frm-modal-edit-appendable').html('')
 
       // Make sure Turbolinks doesn't mess with the actual CSRF token of the form partial:
       if ($("#frm-modal-edit input[name='authenticity_token']").val() != $("meta[name='csrf-token']").prop('content')) {
         $("#frm-modal-edit input[name='authenticity_token']").val($("meta[name='csrf-token']").prop('content'))
       }
 
+      // DEBUG
+      // console.log(this.payloadValue)
       Object.entries(this.payloadValue)
         .forEach(
           ([key, value]) => {
-            $(`#${key}`).val(value)
+            $(`#${key}`).val(value).trigger('change')
           }
         )
       return true

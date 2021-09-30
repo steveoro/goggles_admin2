@@ -4,6 +4,8 @@
 
   .main-content
     = render(DashboardTitleComponent.new(title: t('dashboard.users.title'), row_count: @domain_count))
+    = render(Grid::EditModalComponent.new(controller_name: controller_name,
+             asset_row: GogglesDb::User.new, jwt: current_user.jwt))
 
     %section.my-4#data-grid
       = render(Grid::ToolbarComponent.new(asset_row: GogglesDb::User.new, create: false,
@@ -15,9 +17,6 @@
       = datagrid_table(@grid, html: { class: 'table table-hover table-sm' })
       = render(PageLinksForArrayComponent.new(data: @grid.assets, total_count: @domain_count,
                page: @domain_page, per_page: @domain_per_page))
-
-      = render(Grid::EditModalComponent.new(controller_name: controller_name,
-               attribute_names: GogglesDb::User.new.attributes.keys, jwt: current_user.jwt))
 
     %section.text-center.fixed-bottom#footer
       &nbsp;
