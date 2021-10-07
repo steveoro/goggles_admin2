@@ -24,22 +24,24 @@ require('easy-autocomplete')
  * @param {String} 'data-autocomplete-base-api-url-value'
  *                 base API URL for data request (w/o endpoint or params)
  *
- * @param {String} 'data-autocomplete-search-name-value'
+ * @param {String} 'data-autocomplete-detail-endpoint-value'
+ *                 API endpoint name used to retrieve additional or initial Entity details;
+ *                 this can be left unset if the additional detail retrieval API call doesn't need to be done,
+ *                 as it is the case with lookup entities, which only have a code and no stored description.
+ *                 (i.e.: model 'SwimmingPool' => detail API: 'swimming_pool' => resulting endpoint: '<baseApiUrlValue>/swimming_pool/<ID>')
+ *
+ * @param {String} 'data-autocomplete-search-endpoint-value'
  *                 API endpoint name for the actual autocomplete search
  *                 (i.e.: model 'User' => search API: 'users' => resulting endpoint: '<baseApiUrlValue>/users?<SEARCH_QUERY>')
  *
- * @param {String} 'data-autocomplete-base-name-value'
- *                 API endpoint name used to retrieve additional or initial Entity details
- *                 ((i.e.: model 'User' => detail API: 'user' => resulting endpoint: '<baseApiUrlValue>/user/<ID>')
- *
- * @param {String} 'data-autocomplete-query-column-value'
+ * @param {String} 'data-autocomplete-search-column-value'
  *                 query field name used in the API search call; defaults to 'name'
  *
- * @param {String} 'data-autocomplete-desc-column-value'
+ * @param {String} 'data-autocomplete-label-column-value'
  *                 field name used to retrieve additional label/description for the results; defaults to 'description';
  *                 this is also used to compose the label description stored into 'descTarget'.
  *
- * @param {String} 'data-autocomplete-desc2-column-value'
+ * @param {String} 'data-autocomplete-label2-column-value'
  *                 secondary field name used as additional description (#2) appended to the above;
  *                 (totally optional, skipped when not set)
  *
@@ -55,11 +57,9 @@ export default class extends Controller {
   static targets = ['field', 'search', 'desc']
   static values = {
     baseApiUrl: String,
-    searchName: String,
-    baseName: String,
-    queryColumn: String,
-    descColumn: String,
-    desc2Column: String,
+    detailEndpoint: String,
+    searchEndpoint: String, searchColumn: String,
+    labelColumn: String, label2Column: String,
     jwt: String
   }
 
@@ -89,13 +89,11 @@ export default class extends Controller {
    *          an empty string otherwise.
    */
   computeLabelDescription(context, entityRow) {
-    // DEBUG
-    // console.log('computeLabelDescription()')
     if (entityRow) {
-      const descColumnName = context.descColumnValue || 'description'
-      const desc2ColumnName = context.desc2ColumnValue || false
-      var additionalDesc = desc2ColumnName ? ` (${desc2ColumnName}: ${entityRow[desc2ColumnName]})` : ''
-      return `${descColumnName}: ${entityRow[descColumnName]}${additionalDesc}`
+      const labelColumnName = context.labelColumnValue || 'description'
+      const label2ColumnName = context.label2ColumnValue || false
+      var additionalDesc = label2ColumnName ? ` (${label2ColumnName}: ${entityRow[label2ColumnName]})` : ''
+      return `${labelColumnName}: ${entityRow[labelColumnName]}${additionalDesc}`
     }
     else {
       return ''
@@ -108,15 +106,13 @@ export default class extends Controller {
    * @param {Object} entityRow the object storing the row details
    */
   updateFieldAndDesc(entityRow) {
-    // DEBUG
-    // console.log('updateDescriptionLabel()')
     if (this.hasFieldTarget) {
       var descValue = this.computeLabelDescription(this, entityRow)
       // DEBUG
       // console.log(`computed description = "${descValue}"`)
       $(this.fieldTarget).val(entityRow.id)
       if (this.hasDescTarget) {
-        $(this.descTarget).html(`<b>${entityRow[this.queryColumnValue]}</b> - ${descValue}`);
+        $(this.descTarget).html(`<b>${entityRow[this.searchColumnValue || 'name']}</b> - ${descValue}`);
       }
     }
   }
@@ -124,20 +120,20 @@ export default class extends Controller {
   /**
    * Retrieves the specified entity details as an Object and updates 2 target nodes (value and description).
    *
-   * @param {String} entityName the entity/endpoint name (snake-case)
+   * @param {String} detailEndpointName the entity detail endpoint name
    * @param {String} entityId the desired row ID
    * @returns the 'fetch' Promise that resolves to the an object mapping all entity row details
    */
-  fetchAndUpdateDetails(entityName, entityId) {
+  fetchAndUpdateDetails(detailEndpointName, entityId) {
     // DEBUG
-    // console.log(`fetchAndUpdateDetails(${entityName}, ${entityId})`)
+    // console.log(`fetchAndUpdateDetails(${detailEndpointName}, ${entityId})`)
 
     if (this.hasBaseApiUrlValue && this.hasJwtValue && entityId) {
       $.ajax({
         method: 'GET',
         dataType: 'json',
         headers: { 'Authorization': `Bearer ${this.jwtValue}` },
-        url: `${this.baseApiUrlValue}/${entityName}/${entityId}`,
+        url: `${this.baseApiUrlValue}/${detailEndpointName}/${entityId}`,
         error: (_xhr, _textStatus, errorThrown) => {
           if (errorThrown === 'Unauthorized') {
             // Force user sign-in & local JWT refresh on JWT expiration:
@@ -169,7 +165,7 @@ export default class extends Controller {
       // Search => field + desc update
       $(this.searchTarget).easyAutocomplete({
         url: (queryText) => {
-          return `${this.baseApiUrlValue}/${this.searchNameValue}?${this.queryColumnValue}=${queryText}`;
+          return `${this.baseApiUrlValue}/${this.searchEndpointValue}?${this.searchColumnValue}=${queryText}`;
         },
 
         ajaxSettings: {
@@ -187,7 +183,7 @@ export default class extends Controller {
             }
           }
         },
-        getValue: this.queryColumnValue,
+        getValue: this.searchColumnValue || 'name',
         template: {
           type: 'custom',
           method: (value, entityRow) => {
@@ -213,7 +209,11 @@ export default class extends Controller {
       $(this.fieldTarget).on('change', (_eventObject) => {
         // DEBUG
         // console.log('refreshWidgetSetup(): before fetchAndUpdateDetails')
-        this.fetchAndUpdateDetails(this.baseNameValue, $(this.fieldTarget).val())
+
+        // Skip detail retrieval if detail endpoint is not set:
+        if (this.hasDetailEndpointValue) {
+          this.fetchAndUpdateDetails(this.detailEndpointValue, $(this.fieldTarget).val())
+        }
       })
     }
   }

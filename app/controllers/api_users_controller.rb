@@ -5,6 +5,7 @@
 # Manage User via API.
 #
 class APIUsersController < ApplicationController
+  # GET /api_users
   # Show the Users dashboard.
   #
   # == Assigns:
@@ -50,7 +51,7 @@ class APIUsersController < ApplicationController
   #-- -------------------------------------------------------------------------
   #++
 
-  # PUT /api_users/update/:id
+  # PUT /api_user/:id
   # Updates a single GogglesDb::User row.
   #
   # All instance attributes are accepted, minus lock_version & the timestamps, which are
@@ -78,7 +79,7 @@ class APIUsersController < ApplicationController
     redirect_to api_users_path
   end
 
-  # DELETE /api_users/destroy
+  # DELETE /api_users
   # Removes GogglesDb::User rows. Accepts single (:id) or multiple (:ids) IDs for the deletion.
   #
   # == Params:

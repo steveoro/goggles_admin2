@@ -5,6 +5,7 @@
 # Manage ImportQueues via API.
 #
 class APIImportQueuesController < ApplicationController
+  # GET /api_import_queues
   # Show the ImportQueues dashboard.
   #
   # == Assigns:
@@ -48,7 +49,7 @@ class APIImportQueuesController < ApplicationController
   #-- -------------------------------------------------------------------------
   #++
 
-  # PUT /api_import_queues/update/:id
+  # PUT /api_import_queue/:id
   # Updates a single GogglesDb::ImportQueue row.
   #
   # All instance attributes are accepted, minus lock_version & the timestamps, which are
@@ -76,7 +77,7 @@ class APIImportQueuesController < ApplicationController
     redirect_to api_import_queues_path
   end
 
-  # POST /api_import_queues/create
+  # POST /api_import_queues
   # Creates a new GogglesDb::ImportQueue row.
   #
   # All instance attributes are accepted, minus lock_version & the timestamps, which are
@@ -102,7 +103,7 @@ class APIImportQueuesController < ApplicationController
     redirect_to api_import_queues_path
   end
 
-  # DELETE /api_import_queues/destroy
+  # DELETE /api_import_queues
   # Removes GogglesDb::ImportQueue rows. Accepts single (:id) or multiple (:ids) IDs for the deletion.
   #
   # == Params:

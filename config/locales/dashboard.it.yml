@@ -15,8 +15,12 @@ it:
       delete_ok: "%{tot} righe eliminate (ID: %{ids})"
       delete_error: "Alcune righe hanno generato errori durante la cancellazione: %{ids}"
       no_op_msg: "Nessuna selezione!"
+    badges:
+      title: "Cartellini (Badges)"
+    categories:
+      title: "Categorie (CategoryType)"
     import_queues:
-      title: "Import Queues"
+      title: "Code importazioni (Import Queues)"
     settings:
       title: "Impostazioni"
       connection:
@@ -24,11 +28,19 @@ it:
         save_btn: "Salva"
         save_confirmation: "Cambiare la URL di connessione ti disconnetterà dal server API conrrente. Continuo?"
         save_failed: "Errore durante il salvataggio della configurazione di base. Controlla il log di sistema."
+    seasons:
+      title: "Stagioni (Seasons)"
     stats:
       title: "API stats"
-    team_affiliation:
-      title: "Team Affiliations"
+    swimmers:
+      title: "Nuotatori (Swimmers)"
+    swimming_pools:
+      title: "Piscine (Swimming Pools)"
+    team_affiliations:
+      title: "Affiliazioni Team (Team Affiliations)"
     team_managers:
-      title: "Team Managers"
+      title: "Team Managers (Managed Affiliations)"
+    teams:
+      title: "Squadre (Teams)"
     users:
       title: "Utenti"

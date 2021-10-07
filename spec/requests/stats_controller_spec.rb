@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe 'Stats', type: :request do
-  describe 'GET /index' do
+  describe 'GET stats (index)' do
     context 'with an unlogged user' do
       it 'is a redirect to the login path' do
         get(stats_path)
@@ -32,7 +32,7 @@ RSpec.describe 'Stats', type: :request do
   #-- -------------------------------------------------------------------------
   #++
 
-  describe 'PUT /update' do
+  describe 'PUT stats (update)' do
     let(:fixture_row) { FactoryBot.create(:api_daily_use) }
     let(:new_value) { "REQ-#{FFaker::Lorem.word}/#{FFaker::Lorem.word}" }
 
@@ -73,7 +73,7 @@ RSpec.describe 'Stats', type: :request do
   #-- -------------------------------------------------------------------------
   #++
 
-  describe 'DELETE /destroy' do
+  describe 'DELETE stats (destroy)' do
     let(:fixture_row) { FactoryBot.create(:api_daily_use) }
 
     context 'with an unlogged user' do

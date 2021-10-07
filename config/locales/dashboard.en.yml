@@ -15,6 +15,10 @@ en:
       delete_ok: "%{tot} row(s) deleted (ID: %{ids})"
       delete_error: "Some rows raised errors during deletion: %{ids}"
       no_op_msg: "No selection!"
+    badges:
+      title: "Badges"
+    categories:
+      title: "Category Types"
     import_queues:
       title: "Import Queues"
     settings:
@@ -24,11 +28,19 @@ en:
         save_btn: "Save"
         save_confirmation: "Changing the connection URL will log you out of the current API server. Are you sure?"
         save_failed: "Error during base config update. Check the logs."
+    seasons:
+      title: "Seasons"
     stats:
       title: "API stats"
+    swimmers:
+      title: "Swimmers"
+    swimming_pools:
+      title: "Swimming Pools"
     team_affiliation:
       title: "Team Affiliations"
     team_managers:
-      title: "Team Managers"
+      title: "Team Managers (Managed Affiliations)"
+    teams:
+      title: "Teams"
     users:
       title: "Users"

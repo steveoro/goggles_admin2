@@ -65,6 +65,9 @@ Metrics/PerceivedComplexity:
   Exclude:
     - 'bin/bundle'
 
+RSpec/MultipleMemoizedHelpers:
+  Max: 10
+
 Style/ClassAndModuleChildren:
   Exclude:
   - 'api/**/*'

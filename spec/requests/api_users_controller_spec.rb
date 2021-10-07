@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe APIUsersController, type: :request do
-  describe 'GET /index' do
+  describe 'GET api_users (index)' do
     context 'with an unlogged user' do
       it 'is a redirect to the login path' do
         get(api_users_path)
@@ -32,7 +32,7 @@ RSpec.describe APIUsersController, type: :request do
   #-- -------------------------------------------------------------------------
   #++
 
-  describe 'PUT /update' do
+  describe 'PUT api_user (update)' do
     let(:fixture_row) { FactoryBot.create(:user) }
     let(:new_value) { "#{FFaker::Name.first_name} #{FFaker::Name.last_name}" }
 
@@ -73,7 +73,7 @@ RSpec.describe APIUsersController, type: :request do
   #-- -------------------------------------------------------------------------
   #++
 
-  describe 'DELETE /destroy' do
+  describe 'DELETE api_users (destroy)' do
     let(:fixture_row) { FactoryBot.create(:user) }
 
     context 'with an unlogged user' do

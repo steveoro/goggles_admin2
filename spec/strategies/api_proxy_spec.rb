@@ -36,7 +36,7 @@ RSpec.describe APIProxy, type: :strategy do
         it 'has a valid JSON body, returning the array of user details' do
           result_hash = JSON.parse(subject.body)
           expect(result_hash).to be_present
-          expect(result_hash.count).to eq(GogglesDb::User.count)
+          expect(result_hash.count).to eq(50) # hard-coded limit set in support/webmocks.rb
         end
       end
     end

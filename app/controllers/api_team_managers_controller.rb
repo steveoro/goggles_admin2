@@ -5,6 +5,7 @@
 # Manage Team Managers (GogglesDb::ManagedAffiliation) via API.
 #
 class APITeamManagersController < ApplicationController
+  # GET /api_team_managers
   # Show the ManagedAffiliations dashboard.
   #
   # == Assigns:
@@ -39,7 +40,7 @@ class APITeamManagersController < ApplicationController
           @grid.to_csv,
           type: 'text/csv',
           disposition: 'inline',
-          filename: "grid-iq-#{DateTime.now.strftime('%Y%m%d.%H%M%S')}.csv"
+          filename: "grid-team_managers-#{DateTime.now.strftime('%Y%m%d.%H%M%S')}.csv"
         )
       end
     end
@@ -48,7 +49,7 @@ class APITeamManagersController < ApplicationController
   #-- -------------------------------------------------------------------------
   #++
 
-  # PUT /api_team_manager/update/:id
+  # PUT /api_team_manager/:id
   # Updates a single GogglesDb::ManagedAffiliation row.
   #
   # All instance attributes are accepted, minus lock_version & the timestamps, which are
@@ -76,7 +77,7 @@ class APITeamManagersController < ApplicationController
     redirect_to api_team_managers_path
   end
 
-  # POST /api_team_manager/create
+  # POST /api_team_managers
   # Creates a new GogglesDb::ManagedAffiliation row.
   #
   # All instance attributes are accepted, minus lock_version & the timestamps, which are
@@ -102,7 +103,7 @@ class APITeamManagersController < ApplicationController
     redirect_to api_team_managers_path
   end
 
-  # DELETE /api_team_managers/destroy
+  # DELETE /api_team_managers
   # Removes GogglesDb::ManagedAffiliation rows. Accepts single (:id) or multiple (:ids) IDs for the deletion.
   #
   # == Params:

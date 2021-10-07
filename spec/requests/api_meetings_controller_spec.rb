@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe APIMeetingsController, type: :request do
-  describe 'GET /index' do
+  describe 'GET api_meetings (index)' do
     context 'with an unlogged user' do
       it 'is a redirect to the login path' do
         get(api_meetings_path)

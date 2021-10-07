@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe APIImportQueuesController, type: :request do
-  describe 'GET /index' do
+  describe 'GET api_import_queues (index)' do
     context 'with an unlogged user' do
       it 'is a redirect to the login path' do
         get(api_import_queues_path)
@@ -32,7 +32,7 @@ RSpec.describe APIImportQueuesController, type: :request do
   #-- -------------------------------------------------------------------------
   #++
 
-  describe 'PUT /update' do
+  describe 'PUT api_import_queue (update)' do
     let(:fixture_row) { FactoryBot.create(:import_queue) }
     let(:new_request_data) do
       {
@@ -78,7 +78,7 @@ RSpec.describe APIImportQueuesController, type: :request do
   #-- -------------------------------------------------------------------------
   #++
 
-  describe 'POST /create' do
+  describe 'POST api_import_queues (create)' do
     let(:new_attributes) { FactoryBot.build(:import_queue).attributes }
 
     context 'with an unlogged user' do
@@ -119,7 +119,7 @@ RSpec.describe APIImportQueuesController, type: :request do
   #-- -------------------------------------------------------------------------
   #++
 
-  describe 'DELETE /destroy' do
+  describe 'DELETE api_import_queues (destroy)' do
     let(:fixture_row) { FactoryBot.create(:import_queue) }
 
     context 'with an unlogged user' do

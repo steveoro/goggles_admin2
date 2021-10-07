@@ -5,6 +5,7 @@
 # Manage Stats via API.
 #
 class StatsController < ApplicationController
+  # GET /stats
   # Show the API daily uses dashboard.
   #
   # == Assigns:
@@ -54,7 +55,7 @@ class StatsController < ApplicationController
   #-- -------------------------------------------------------------------------
   #++
 
-  # PUT /stats/update/:id
+  # PUT /stats/:id
   # Updates a single GogglesDb::APIDailyUse row.
   #
   # All instance attributes are accepted, minus lock_version & the timestamps, which are
@@ -82,7 +83,7 @@ class StatsController < ApplicationController
     redirect_to stats_path
   end
 
-  # DELETE /stats/destroy
+  # DELETE /stats
   # Removes GogglesDb::APIDailyUse rows. Accepts single (:id) or multiple (:ids) IDs for the deletion.
   #
   # == Params:

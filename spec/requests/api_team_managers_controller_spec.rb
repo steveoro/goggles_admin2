@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe APITeamManagersController, type: :request do
-  describe 'GET /index' do
+  describe 'GET api_team_managers (index)' do
     context 'with an unlogged user' do
       it 'is a redirect to the login path' do
         get(api_team_managers_path)
@@ -32,7 +32,7 @@ RSpec.describe APITeamManagersController, type: :request do
   #-- -------------------------------------------------------------------------
   #++
 
-  describe 'PUT /update' do
+  describe 'PUT api_team_manager (update)' do
     let(:fixture_row) { FactoryBot.create(:managed_affiliation) }
     let(:new_value) { GogglesDb::TeamAffiliation.first(200).sample.id }
 
@@ -73,7 +73,7 @@ RSpec.describe APITeamManagersController, type: :request do
   #-- -------------------------------------------------------------------------
   #++
 
-  describe 'POST /create' do
+  describe 'POST api_team_managers (create)' do
     let(:new_attributes) { FactoryBot.build(:managed_affiliation).attributes }
 
     context 'with an unlogged user' do
@@ -113,7 +113,7 @@ RSpec.describe APITeamManagersController, type: :request do
   #-- -------------------------------------------------------------------------
   #++
 
-  describe 'DELETE /destroy' do
+  describe 'DELETE api_team_managers (destroy)' do
     let(:fixture_row) { FactoryBot.create(:managed_affiliation) }
 
     context 'with an unlogged user' do

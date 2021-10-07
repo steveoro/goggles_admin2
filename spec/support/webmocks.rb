@@ -36,7 +36,7 @@ RSpec.configure do |config|
            )
 
     WebMock.stub_request(:get, %r{/api/v3/users}i)
-           .to_return(status: 200, body: GogglesDb::User.all.to_a.to_json)
+           .to_return(status: 200, body: GogglesDb::User.first(50).to_a.to_json)
 
     WebMock.stub_request(:put, %r{/api/v3/user/\d}i)
            .to_return(status: 200, body: 'true')

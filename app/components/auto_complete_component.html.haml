@@ -1,0 +1,20 @@
+- entity_name = @detail_endpoint || @base_name
+.form-group{ data: { controller: 'autocomplete',
+  'autocomplete-base-api-url-value' => @base_api_url,
+  'autocomplete-detail-endpoint-value' => @detail_endpoint,
+  'autocomplete-search-endpoint-value' => @search_endpoint,
+  'autocomplete-search-column-value' => @search_column,
+  'autocomplete-label-column-value' => @label_column,
+  'autocomplete-label2-column-value' => @label2_column,
+  'autocomplete-jwt-value' => @jwt } }
+  .row
+    .col-3
+      = text_field_tag("#{entity_name}_id", nil, class: 'form-control',
+                       data: { 'autocomplete-target' => 'field' })
+    .col-9
+      = text_field_tag(entity_name, nil, class: 'form-control',
+                       placeholder: I18n.t('dashboard.search_field', field: entity_name),
+                       data: { 'autocomplete-target' => 'search' })
+  .row-fluid
+    %small
+      %i.form-text.text-muted{ id: "#{entity_name}-desc", data: { 'autocomplete-target' => 'desc' } }

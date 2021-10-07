@@ -41,19 +41,19 @@
               %h6.text-uppercase= t('dashboard.manage_entities')
               .row.mb-3
                 .offset-lg-0.col-lg-4.offset-md-1.col-md-5.offset-sm-0.col-sm-6.py-2
-                  %a.btn.btn-lg.btn-outline-primary.my-1{ href: '#' }
-                    Teams
-                  %a.btn.btn-lg.btn-outline-primary.my-1{ href: '#' }
-                    Team affiliations
+                  %a.btn.btn-lg.btn-outline-primary.my-1{ href: api_teams_path }
+                    = t('dashboard.teams.title')
+                  %a.btn.btn-lg.btn-outline-primary.my-1{ href: api_team_affiliations_path }
+                    = t('dashboard.team_affiliations.title')
                   %a.btn.btn-lg.btn-outline-primary.my-1{ href: api_team_managers_path }
-                    Team managers
+                    = t('dashboard.team_managers.title')
                   %a.btn.btn-lg.btn-outline-primary.disabled.my-1{ href: api_meeting_reservations_path }
                     Reservations
                 .offset-lg-0.col-lg-4.offset-md-1.col-md-5.offset-sm-0.col-sm-6.py-2
-                  %a.btn.btn-lg.btn-outline-primary.disabled.my-1{ href: '#' }
-                    Seasons
-                  %a.btn.btn-lg.btn-outline-primary.disabled.my-1{ href: '#' }
-                    Categories
+                  %a.btn.btn-lg.btn-outline-primary.my-1{ href: api_seasons_path }
+                    = t('dashboard.seasons.title')
+                  %a.btn.btn-lg.btn-outline-primary.my-1{ href: api_categories_path }
+                    = t('dashboard.categories.title')
                   %a.btn.btn-lg.btn-outline-primary.disabled.my-1{ href: api_meetings_path }
                     Meetings
                   %a.btn.btn-lg.btn-outline-primary.disabled.my-1{ href: api_user_workshops_path }
@@ -63,12 +63,12 @@
                   %a.btn.btn-lg.btn-outline-primary.disabled.my-1{ href: '#' }
                     FIN Calendars
                 .offset-lg-0.col-lg-4.offset-md-1.col-md-5.offset-sm-0.col-sm-6.py-2
-                  %a.btn.btn-lg.btn-outline-primary.disabled.my-1{ href: '#' }
-                    Swimming pools
-                  %a.btn.btn-lg.btn-outline-primary.disabled.my-1{ href: '#' }
-                    Swimmers
-                  %a.btn.btn-lg.btn-outline-primary.disabled.my-1{ href: api_badges_path }
-                    Badges
+                  %a.btn.btn-lg.btn-outline-primary.my-1{ href: api_swimmers_path }
+                    = t('dashboard.swimmers.title')
+                  %a.btn.btn-lg.btn-outline-primary.my-1{ href: api_badges_path }
+                    = t('dashboard.badges.title')
+                  %a.btn.btn-lg.btn-outline-primary.my-1{ href: api_swimming_pools_path }
+                    = t('dashboard.swimming_pools.title')
                   %a.btn.btn-lg.btn-outline-primary.disabled.my-1{ href: '#' }
                     Ind. results (MIR)
                   %a.btn.btn-lg.btn-outline-primary.disabled.my-1{ href: '#' }

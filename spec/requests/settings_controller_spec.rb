@@ -4,7 +4,7 @@ require 'rails_helper'
 require 'version'
 
 RSpec.describe SettingsController, type: :request do
-  describe 'GET /index' do
+  describe 'GET settings (index)' do
     context 'with an unlogged user' do
       it 'is a redirect to the login path' do
         get(settings_path)
@@ -48,7 +48,7 @@ RSpec.describe SettingsController, type: :request do
   #-- -------------------------------------------------------------------------
   #++
 
-  describe 'PUT /update' do
+  describe 'PUT setting (update)' do
     let(:fixture_group_key) { :app }
     let(:new_key) { FFaker::Lorem.word }
     let(:new_value) { FFaker::Lorem.sentence }
@@ -91,7 +91,7 @@ RSpec.describe SettingsController, type: :request do
   #-- -------------------------------------------------------------------------
   #++
 
-  describe 'DELETE /destroy' do
+  describe 'DELETE settings (destroy)' do
     let(:fixture_group_key) { :app }
     let(:new_key) { FFaker::Lorem.word }
     let(:new_value) { FFaker::Lorem.sentence }
@@ -135,7 +135,7 @@ RSpec.describe SettingsController, type: :request do
   #-- -------------------------------------------------------------------------
   #++
 
-  describe 'POST /api_config' do
+  describe 'POST settings/api_config' do
     let(:new_value) { 'https://dont-care-whats-here.org/' }
 
     context 'with an unlogged user' do

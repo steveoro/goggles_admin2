@@ -17,6 +17,9 @@ Rails.application.routes.draw do
   resources :api_badges, only: %i[index create update]
   delete 'api_badges', to: 'api_badges#destroy', as: 'api_badges_destroy'
 
+  resources :api_categories, only: %i[index create update]
+  delete 'api_categories', to: 'api_categories#destroy', as: 'api_categories_destroy'
+
   resources :api_import_queues, only: %i[index create update]
   delete 'api_import_queues', to: 'api_import_queues#destroy', as: 'api_import_queues_destroy'
 
@@ -26,8 +29,19 @@ Rails.application.routes.draw do
   resources :api_meetings, only: %i[index create update]
   delete 'api_meetings', to: 'api_meetings#destroy', as: 'api_meetings_destroy'
 
+  resources :api_seasons, only: %i[index create update] # TODO: add support for create in API
+
+  resources :api_swimmers, only: %i[index create update]
+
+  resources :api_swimming_pools, only: %i[index create update]
+
+  resources :api_team_affiliations, only: %i[index create update]
+  delete 'api_team_affiliations', to: 'api_team_affiliations#destroy', as: 'api_team_affiliations_destroy'
+
   resources :api_team_managers, only: %i[index create update]
   delete 'api_team_managers', to: 'api_team_managers#destroy', as: 'api_team_managers_destroy'
+
+  resources :api_teams, only: %i[index create update]
 
   resources :api_user_workshops, only: %i[index create update]
   delete 'api_user_workshops', to: 'api_user_workshops#destroy', as: 'api_user_workshops_destroy'

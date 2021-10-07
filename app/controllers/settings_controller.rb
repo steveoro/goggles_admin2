@@ -5,6 +5,7 @@
 # Manage Settings via API.
 #
 class SettingsController < ApplicationController
+  # GET /settings
   # Show the Settings dashboard.
   #
   # == Assigns:
@@ -55,7 +56,7 @@ class SettingsController < ApplicationController
   #-- -------------------------------------------------------------------------
   #++
 
-  # PUT /settings/update/:id
+  # PUT /setting/:id
   # Updates a single Setting row.
   #
   # Supported attributes: <tt>group_key</tt>, <tt>key</tt> & <tt>value</tt>.
@@ -86,7 +87,7 @@ class SettingsController < ApplicationController
     redirect_to settings_path
   end
 
-  # DELETE /settings/destroy
+  # DELETE /settings
   # Removes settings rows. Accepts single (:id) or multiple (:ids) IDs for the deletion.
   #
   # == Params:
