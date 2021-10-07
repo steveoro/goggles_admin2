@@ -18,10 +18,15 @@ class APITeamsController < ApplicationController
       method: :get, url: 'teams', jwt: current_user.jwt,
       params: { name: index_params[:name], page: index_params[:page], per_page: index_params[:per_page] }
     )
+    json_domain = JSON.parse(result.body)
+    unless result.code == 200
+      flash[:error] = I18n.t('dashboard.api_proxy_error', error_code: result.code, error_msg: json_domain['error'])
+      redirect_to(root_path) && return
+    end
+
     @domain_count = result.headers[:total].to_i
     @domain_page = result.headers[:page].to_i
     @domain_per_page = result.headers[:per_page].to_i
-    json_domain = JSON.parse(result.body)
 
     # Setup grid domain (and chart's):
     @domain = json_domain.map { |attrs| GogglesDb::Team.new(attrs) }

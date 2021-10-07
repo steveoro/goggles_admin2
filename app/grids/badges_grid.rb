@@ -14,6 +14,9 @@ class BadgesGrid < BaseGrid
   end
 
   filter(:id, :integer)
+  filter(:swimmer_id, :integer)
+  filter(:team_id, :integer)
+  filter(:season_id, :integer)
   filter(:off_gogglecup, :boolean)
   filter(:fees_due, :boolean)
   filter(:badge_due, :boolean)
@@ -31,10 +34,10 @@ class BadgesGrid < BaseGrid
   column(:entry_time_type_id, align: :right)
   column(:final_rank, align: :right)
 
-  column(:off_gogglecup, align: :center, mandatory: true)
-  column(:fees_due, align: :center, mandatory: true)
-  column(:badge_due, align: :center, mandatory: true)
-  column(:relays_due, align: :center, mandatory: true)
+  boolean_column(:off_gogglecup, align: :center, mandatory: true)
+  boolean_column(:fees_due, align: :center, mandatory: true)
+  boolean_column(:badge_due, align: :center, mandatory: true)
+  boolean_column(:relays_due, align: :center, mandatory: true)
 
   actions_column(edit: true, destroy: true, mandatory: true)
 end

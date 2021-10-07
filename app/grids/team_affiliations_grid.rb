@@ -14,12 +14,14 @@ class TeamAffiliationsGrid < BaseGrid
   end
 
   filter(:id, :integer)
+  filter(:season_id, :integer)
   filter(:name, :string, header: 'Name (~)') do |value, scope|
     scope.select do |row|
-      (row.name =~ /#{value}/i) || (row.address =~ /#{value}/i) ||
-        (row.nick_name =~ /#{value}/i)
+      (row.name =~ /#{value}/i) || (row.team.name =~ /#{value}/i) ||
+        (row.team.editable_name =~ /#{value}/i)
     end
   end
+  filter(:compute_gogglecup, :boolean)
 
   selection_column(mandatory: true)
   column(:id, align: :right, mandatory: true)

@@ -21,6 +21,7 @@ class SwimmersGrid < BaseGrid
     end
   end
   filter(:year_of_birth, :integer)
+  filter(:year_guessed, :boolean)
 
   selection_column(mandatory: true)
   column(:id, align: :right, mandatory: true)

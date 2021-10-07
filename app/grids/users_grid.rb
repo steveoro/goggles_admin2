@@ -14,7 +14,15 @@ class UsersGrid < BaseGrid
   end
 
   filter(:id, :integer)
-  filter(:name, :string)
+  filter(:name, :string, header: 'Name (~)') do |value, scope|
+    scope.select { |row| row.name =~ /#{value}/i }
+  end
+  filter(:description, :string, header: 'Description (~)') do |value, scope|
+    scope.select { |row| row.description =~ /#{value}/i }
+  end
+  filter(:email, :string, header: 'E-mail (~)') do |value, scope|
+    scope.select { |row| row.email =~ /#{value}/i }
+  end
   filter(:swimmer_id, :integer)
   filter(:created_at, :date, range: true, input_options: {
            maxlength: 10, placeholder: 'YYYY-MM-DD'

@@ -25,6 +25,20 @@ class BaseGrid
   #-- -------------------------------------------------------------------------
   #++
 
+  # Boolean column formatter helper
+  #
+  # == Params:
+  # - <tt>name</tt>: column name
+  # - <tt>args</tt>: options hash (blocks are supported)
+  #
+  def self.boolean_column(name, *args)
+    column(name, *args) do |model|
+      format(block_given? ? yield : model.send(name)) do |value|
+        value ? '✔' : '-'
+      end
+    end
+  end
+
   # Date column formatter helper
   #
   # == Params:

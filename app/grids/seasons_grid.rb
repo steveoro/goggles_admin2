@@ -15,15 +15,16 @@ class SeasonsGrid < BaseGrid
 
   filter(:id, :integer)
   filter(:description)
+  filter(:header_year)
   filter(:begin_date, :date)
   filter(:end_date, :date)
-  filter(:header_year)
 
   selection_column(mandatory: true)
   column(:id, align: :right, mandatory: true)
   column(:description)
   column(:begin_date)
   column(:end_date)
+  column(:season_type_name, align: :right, html: true, mandatory: true) { |asset| asset.season_type.short_name }
   column(:season_type_id, align: :right, mandatory: true)
 
   column(:header_year)

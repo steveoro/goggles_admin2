@@ -30,7 +30,7 @@
                   = date_field_tag(attr_name, nil, disabled: read_only, class: field_class)
               - elsif @asset_row.class.column_for_attribute(attr_name).type == :boolean
                 .col-sm-9
-                  = check_box_tag(attr_name, nil, disabled: read_only, class: field_class)
+                  = render(Switch::SliderComponent.new(field_name: attr_name, option_classes: 'round'))
 
               - elsif attr_name.ends_with?('_id')
                 .col-sm-9= render(AutoCompleteComponent.new(base_api_url: base_api_url,

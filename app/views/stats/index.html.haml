@@ -3,10 +3,10 @@
   .spacer-left
 
   .main-content{ data: { controller: 'chart-api',
-      'chart-api-calls-value' => @day_hash.values.map { |e| e.y_values.sum }.to_json,
-      'chart-api-days-value' => @day_hash.keys.to_json,
-      'chart-api-users-value' => @users_hash.values.map(&:y_values).to_json,
-      'chart-api-bubbles-value' => @url_hash.values.map(&:to_json_bubble_chart_data).to_json } }
+      'chart-api-calls-value' => @day_hash&.values&.map { |e| e.y_values.sum }.to_json,
+      'chart-api-days-value' => @day_hash&.keys&.to_json,
+      'chart-api-users-value' => @users_hash&.values&.map(&:y_values)&.to_json,
+      'chart-api-bubbles-value' => @url_hash&.values&.map(&:to_json_bubble_chart_data).to_json } }
     = render(DashboardTitleComponent.new(title: t('dashboard.stats.title'), row_count: @domain_count))
     = render(Grid::EditModalComponent.new(controller_name: controller_name,
              asset_row: GogglesDb::APIDailyUse.new, jwt: current_user.jwt))
@@ -19,10 +19,10 @@
                controller_name: controller_name, request_params: @grid_filter_params))
       = datagrid_form_for(@grid, method: :get,
                           url: url_for(controller: controller_name, action: :index, params: @index_params))
-      = render(PageLinksForArrayComponent.new(data: @grid.assets, total_count: @domain_count,
+      = render(PageLinksForArrayComponent.new(data: @grid&.assets, total_count: @domain_count,
                page: @domain_page, per_page: @domain_per_page))
       = datagrid_table(@grid, html: { class: 'table table-hover table-sm' })
-      = render(PageLinksForArrayComponent.new(data: @grid.assets, total_count: @domain_count,
+      = render(PageLinksForArrayComponent.new(data: @grid&.assets, total_count: @domain_count,
                page: @domain_page, per_page: @domain_per_page))
 
     %section.text-center.fixed-bottom#footer

@@ -14,7 +14,9 @@ class StatsGrid < BaseGrid
   end
 
   filter(:id, :integer)
-  filter(:route, :string)
+  filter(:route, :string, header: 'Route (~)') do |value, scope|
+    scope.select { |row| (row.route =~ /#{value}/i) }
+  end
   filter(:day, :date, range: true, input_options: {
            maxlength: 10, placeholder: 'YYYY-MM-DD'
          })

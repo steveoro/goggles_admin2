@@ -1,5 +1,9 @@
 it:
   datagrid:
+    filters:
+      xboolean:
+        "yes": "✅"
+        "no": "❌"
     table:
       order:
         asc: "<i class='fa fa fa-arrow-up'></i>"

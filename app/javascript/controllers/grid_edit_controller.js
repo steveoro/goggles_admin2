@@ -107,7 +107,25 @@ export default class extends Controller {
       Object.entries(this.payloadValue)
         .forEach(
           ([key, value]) => {
-            $(`#${key}`).val(value).trigger('change')
+            // Checkbox field found?
+            if ($(`#${key}-chk`).prop('type') == 'checkbox') {
+              // Hidden field also available? Add a toggle/change event handler:
+              if ($(`#${key}`).prop('type') == 'hidden') {
+                $(`#${key}-chk`)
+                  .on('change', (event) => {
+                    const currState = $(event.target).prop('checked')
+                    const newValue = (currState == true) || (currState == 'true') ? '1' : '0'
+                    $(`#${key}`).val(newValue).trigger('change')
+                    $(`#${key}-chk`).val(newValue)
+                  })
+              }
+              // Setup initial hidden field & checkbox value
+              const initialValue = (value == true) || (value == 'true')
+              $(`#${key}-chk`).prop('checked', initialValue).trigger('change')
+            }
+            else {
+              $(`#${key}`).val(value).trigger('change')
+            }
           }
         )
       return true

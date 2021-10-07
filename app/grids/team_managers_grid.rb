@@ -13,7 +13,13 @@ class TeamManagersGrid < BaseGrid
     data_domain
   end
 
-  filter(:manager, :integer)
+  filter(:team_affiliation_id, :integer)
+  filter(:manager_name, :string, header: 'Manager name (~)') do |value, scope|
+    scope.select { |row| row.manager.name =~ /#{value}/i }
+  end
+  filter(:team_name, :string, header: 'Team name (~)') do |value, scope|
+    scope.select { |row| (row.team.name =~ /#{value}/i) || (row.team.editable_name =~ /#{value}/i) }
+  end
 
   selection_column
   column(:id, align: :right)

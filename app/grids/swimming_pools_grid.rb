@@ -16,8 +16,12 @@ class SwimmingPoolsGrid < BaseGrid
   filter(:id, :integer)
   filter(:name, :string, header: 'Name (~)') do |value, scope|
     scope.select do |row|
-      (row.name =~ /#{value}/i) || (row.address =~ /#{value}/i) ||
-        (row.nick_name =~ /#{value}/i)
+      (row.name =~ /#{value}/i) || (row.nick_name =~ /#{value}/i)
+    end
+  end
+  filter(:address, :string, header: 'Address (~)') do |value, scope|
+    scope.select do |row|
+      row.address =~ /#{value}/i
     end
   end
 

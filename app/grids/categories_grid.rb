@@ -14,7 +14,9 @@ class CategoriesGrid < BaseGrid
   end
 
   filter(:id, :integer)
+  filter(:season_id, :integer)
   filter(:code)
+  filter(:relay, :boolean)
   filter(:out_of_race, :boolean)
   filter(:undivided, :boolean)
 
