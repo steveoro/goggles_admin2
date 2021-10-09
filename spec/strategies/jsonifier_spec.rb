@@ -40,7 +40,7 @@ RSpec.describe Jsonifier, type: :strategy do
       it 'includes all attributes values from the original asset row with the DateTime converted to strings' do
         json = JSON.parse(result)
         fixture_asset_row.attributes.each do |attr_name, attr_value|
-          if attr_value.present? && fixture_asset_row.class.column_for_attribute(attr_name).type == :datetime
+          if attr_value.present? && %i[date datetime].include?(fixture_asset_row.class.column_for_attribute(attr_name).type)
             expect(DateTime.parse(json[attr_name])).to eq(attr_value)
           else
             expect(json[attr_name]).to eq(attr_value)

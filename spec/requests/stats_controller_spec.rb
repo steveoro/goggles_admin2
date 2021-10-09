@@ -19,7 +19,10 @@ RSpec.describe 'Stats', type: :request do
         # API double:
         allow(APIProxy).to receive(:call).with(
           method: :get, url: 'api_daily_uses', jwt: admin_user.jwt,
-          params: { page: anything, per_page: anything }
+          params: {
+            route: anything, day: anything,
+            page: anything, per_page: anything
+          }
         ).and_return(DummyResponse.new(body: GogglesDb::APIDailyUse.first(50).to_json))
       end
 

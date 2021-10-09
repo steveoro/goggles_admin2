@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe Grid::EditModalComponent, type: :component do
+  let(:fixture_controller_name) { 'api_users' }
+
   context 'when some of the required parameters are missing,' do
     subject do
       render_inline(
@@ -13,7 +15,6 @@ RSpec.describe Grid::EditModalComponent, type: :component do
   end
 
   context 'with valid parameters,' do
-    let(:fixture_controller_name) { 'api_users' }
     let(:fixture_asset_row) { GogglesDb::User.new }
     subject do
       render_inline(

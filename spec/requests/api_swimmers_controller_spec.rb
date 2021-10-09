@@ -19,7 +19,11 @@ RSpec.describe APISwimmersController, type: :request do
         # API double:
         allow(APIProxy).to receive(:call).with(
           method: :get, url: 'swimmers', jwt: admin_user.jwt,
-          params: { page: anything, per_page: anything }
+          params: {
+            name: anything, year_of_birth: anything,
+            year_guessed: anything,
+            page: anything, per_page: anything
+          }
         ).and_return(DummyResponse.new(body: GogglesDb::Swimmer.first(25).to_json))
       end
 

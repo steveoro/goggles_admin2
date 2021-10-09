@@ -19,7 +19,11 @@ RSpec.describe APIUsersController, type: :request do
         # API double:
         allow(APIProxy).to receive(:call).with(
           method: :get, url: 'users', jwt: admin_user.jwt,
-          params: { page: anything, per_page: anything }
+          params: {
+            name: anything, description: anything,
+            email: anything,
+            page: anything, per_page: anything
+          }
         ).and_return(DummyResponse.new(body: GogglesDb::User.all.to_json))
       end
 

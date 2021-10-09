@@ -19,7 +19,12 @@ RSpec.describe APICategoriesController, type: :request do
         # API double:
         allow(APIProxy).to receive(:call).with(
           method: :get, url: 'category_types', jwt: admin_user.jwt,
-          params: { page: anything, per_page: anything }
+          params: {
+            season_id: anything, code: anything,
+            relay: anything, out_of_race: anything,
+            undivided: anything,
+            page: anything, per_page: anything
+          }
         ).and_return(DummyResponse.new(body: GogglesDb::CategoryType.first(25).to_json))
       end
 

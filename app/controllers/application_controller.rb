@@ -80,11 +80,11 @@ class ApplicationController < ActionController::Base
   #                         for the PUT/POST API action
   def edit_params(model_class)
     params.permit(
-            model_class.new
-                       .attributes.keys
-                       .reject { |key| %w[lock_version].include?(key) } +
-                       %i[_method authenticity_token]
-          )
+      model_class.new
+                 .attributes.keys
+                 .reject { |key| %w[lock_version].include?(key) } +
+                 %i[_method authenticity_token]
+    )
   end
   #-- -------------------------------------------------------------------------
   #++

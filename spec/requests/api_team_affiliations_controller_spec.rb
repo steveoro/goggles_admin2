@@ -19,7 +19,11 @@ RSpec.describe APITeamAffiliationsController, type: :request do
         # API double:
         allow(APIProxy).to receive(:call).with(
           method: :get, url: 'team_affiliations', jwt: admin_user.jwt,
-          params: { page: anything, per_page: anything }
+          params: {
+            season_id: anything, name: anything,
+            compute_gogglecup: anything,
+            page: anything, per_page: anything
+          }
         ).and_return(DummyResponse.new(body: GogglesDb::TeamAffiliation.first(25).to_json))
       end
 

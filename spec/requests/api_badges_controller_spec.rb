@@ -19,7 +19,11 @@ RSpec.describe APIBadgesController, type: :request do
         # API double:
         allow(APIProxy).to receive(:call).with(
           method: :get, url: 'badges', jwt: admin_user.jwt,
-          params: { page: anything, per_page: anything }
+          params: {
+            swimmer_id: anything, team_id: anything,
+            season_id: anything,
+            page: anything, per_page: anything
+          }
         ).and_return(DummyResponse.new(body: GogglesDb::Badge.first(25).to_json))
       end
 
