@@ -1,9 +1,23 @@
 import { Controller } from 'stimulus'
+import JSONEditor from 'jsoneditor'
+import 'jsoneditor/dist/jsoneditor.css'
+import 'jsoneditor/dist/img/jsoneditor-icons.svg'
 
 /**
  * = grid-edit - StimulusJS controller =
  *
  * Wrapper for JS methods used for single row edit in DataGrids.
+ *
+ * This will create a new controller instance for each configured "edit" button of the grid.
+ *
+ * Each button will yield a customized payload, which can be an empty attribute hash (Object) in the case
+ * of a new record, or a hash with the values of a specific row record in case of actual edits.
+ *
+ * Some specific widgets are supported, depending on input type or specific DOM Ids used:
+ * - `${attribute_key}-chk` - checkbox
+ * - `#json-editor-${attribute_key}` - JSON editor
+ *
+ * Assumes also that a EditModalComponent is present in the DOM.
  *
  * == Targets ==
  * (none so far)
@@ -47,6 +61,9 @@ import { Controller } from 'stimulus'
  * - #grid-edit-modal-title
  *   => actual DOM ID of the localized title for the modal window.
  *
+ * == Dependencies:
+ * - jsoneditor: https://github.com/josdejong/jsoneditor
+ *
  * @author Steve A.
  */
 export default class extends Controller {
@@ -58,20 +75,27 @@ export default class extends Controller {
     payload: Object
   }
 
+
+  // DEBUG
+  /**
+   * Controller constructor.
+   * Prepares also the JSONEditor instances for the dynamic form fields.
+   */
+  // initialize () {
+  //   console.log('initialize()')
+  // }
+
   // DEBUG
   /**
    * Setup invoked each time the controller instance connects.
    */
-  // connect() {
+  // connect () {
   //   console.log('connect()')
-  //   if (this.hasModalIdValue && this.hasUrlValue && this.hasPayloadValue) {
-  //     console.log('All values found.')
-  //   }
   // }
 
   /**
-   * Calls Submit on the associated form, updating the list of selected row IDs
-   * as hidden payload.
+   * Prepares all the input fields on the unique modal form, setting eventually any special checkbox or
+   * JSONEditor fields found, so that the form can have a proper payload on POST.
    */
   handleEdit(event) {
     // DEBUG
@@ -104,10 +128,12 @@ export default class extends Controller {
 
       // DEBUG
       // console.log(this.payloadValue)
+
       Object.entries(this.payloadValue)
         .forEach(
           ([key, value]) => {
-            // Checkbox field found?
+            // ** Checkbox fields: **
+            // (use specific & unique DOM input fields, inside modal form)
             if ($(`#${key}-chk`).prop('type') == 'checkbox') {
               // Hidden field also available? Add a toggle/change event handler:
               if ($(`#${key}`).prop('type') == 'hidden') {
@@ -123,6 +149,43 @@ export default class extends Controller {
               const initialValue = (value == true) || (value == 'true')
               $(`#${key}-chk`).prop('checked', initialValue).trigger('change')
             }
+
+            // ** JSONEditor fields: **
+            // (use specific & unique DOM containers, inside modal form)
+            else if (document.querySelector(`#json-editor-${key}`)) {
+              var container = document.querySelector(`#json-editor-${key}`)
+              // Editor already created? Initialize its contents (from the row payload):
+              if (container.jsoneditor) {
+                // DEBUG
+                // console.log(`JSON editor found for "${key}", setting field value...`)
+                container.jsoneditor.set(JSON.parse(value))
+              }
+              else {
+                // DEBUG
+                // console.log(`Creating JSON editor instance for "${key}"...`)
+                container.jsoneditor = new JSONEditor(
+                  container,
+                  {
+                    mode: 'tree',
+                    modes: ['code', 'tree'],
+                    onChangeText: (jsonText) => {
+                      // DEBUG
+                      // console.log(`JSON editor for "${key}" changed...`)
+                      // Update both the row payload & the form's actual hidden field value:
+                      this.payloadValue[key] = jsonText
+                      $(`#${key}`).val(jsonText).trigger('change')
+                    },
+                    onError: (err) => {
+                      console.error(err)
+                    }
+                  },
+                  JSON.parse(value)
+                )
+              }
+            }
+
+            // ** "Standard" input fields: **
+            // (any other input field using attribute "key" as DOM Id)
             else {
               $(`#${key}`).val(value).trigger('change')
             }

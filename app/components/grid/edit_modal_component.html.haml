@@ -18,7 +18,11 @@
               = content_tag(:small, class: 'col-sm-3') do
                 = label_tag(attr_name, attr_name, class: 'col-form-label')
 
-              - if !@asset_row.class.respond_to?(:column_for_attribute)
+              - if %w[request_data solved_data].include?(attr_name) # Special case: use JSON editor
+                = hidden_field_tag(attr_name, nil)
+                .col-sm-12{ id: "json-editor-#{attr_name}" }
+
+              - elsif !@asset_row.class.respond_to?(:column_for_attribute)
                 .col-sm-9
                   = text_field_tag(attr_name, nil, disabled: read_only, class: field_class)
 

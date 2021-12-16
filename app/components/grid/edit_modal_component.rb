@@ -3,7 +3,7 @@
 #
 # = Grid components module
 #
-#   - version:  7.0.3.33
+#   - version:  7.0.3.39
 #   - author:   Steve A.
 #
 module Grid
@@ -13,10 +13,17 @@ module Grid
   # Renders an hidden empty modal form, linked to a specific controller name.
   #
   # The title and the attributes displayed in the form can be easily set by
-  # binding the show buttons for the form to a 'grid-edit' Stimulus JS controller instance.
+  # binding the show/edit/create buttons for the form to a 'grid-edit' Stimulus JS controller instance.
   #
-  # The resulting action for the form POST has the following "placeholder":
+  # In this way, the form will act as a shared container for the actions invoked by the buttons, and each
+  # button will be associated to its own Stimulus controller instance, with a dedicated payload depending
+  # on the setup of the button.
+  #
+  # The resulting action for the form POST created by this component has the following "placeholder":
   # <tt>url_for(only_path: true, controller: @controller_name, action: :update, id: 0)</tt>
+  #
+  # The row ID must remain zero for new records, and will be replaced by the actual ID of the record by
+  # the setup of the buttons using the 'grid-edit' controller.
   #
   # (@see app/javascript/controllers/grid_edit_controller.js)
   #
