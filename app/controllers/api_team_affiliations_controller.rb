@@ -39,12 +39,11 @@ class APITeamAffiliationsController < ApplicationController
     TeamAffiliationsGrid.data_domain = @domain
 
     respond_to do |format|
-      format.html do
-        @grid = TeamAffiliationsGrid.new(grid_filter_params)
-      end
+      @grid = TeamAffiliationsGrid.new(grid_filter_params)
+
+      format.html { @grid }
 
       format.csv do
-        @grid = TeamAffiliationsGrid.new(grid_filter_params)
         send_data(
           @grid.to_csv,
           type: 'text/csv',
@@ -83,7 +82,7 @@ class APITeamAffiliationsController < ApplicationController
     else
       flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: result)
     end
-    redirect_to api_team_affiliations_path
+    redirect_to api_team_affiliations_path(page: index_params[:page], per_page: index_params[:per_page])
   end
 
   # POST /api_team_affiliations
@@ -93,23 +92,20 @@ class APITeamAffiliationsController < ApplicationController
   # handled automatically.
   #
   def create
-    # DEBUG
-    # logger.debug("\r\n*** create PARAMS:")
-    # logger.debug(edit_params(GogglesDb::TeamAffiliation).inspect)
     result = APIProxy.call(
       method: :post,
       url: 'team_affiliation',
       jwt: current_user.jwt,
-      payload: edit_params(GogglesDb::TeamAffiliation)
+      payload: create_params(GogglesDb::TeamAffiliation)
     )
-    json = result.code == 200 && result.body.present? ? JSON.parse(result.body) : {}
+    json = parse_json_result_from_create(result)
 
     if json.present? && json['msg'] == 'OK' && json['new'].key?('id')
       flash[:info] = I18n.t('datagrid.edit_modal.create_ok', id: json['new']['id'])
     else
       flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: result.code)
     end
-    redirect_to api_team_affiliations_path
+    redirect_to api_team_affiliations_path(page: index_params[:page], per_page: index_params[:per_page])
   end
 
   # DELETE /api_team_affiliations
@@ -133,7 +129,7 @@ class APITeamAffiliationsController < ApplicationController
     else
       flash[:info] = I18n.t('dashboard.grid_commands.no_op_msg')
     end
-    redirect_to api_team_affiliations_path
+    redirect_to api_team_affiliations_path(page: index_params[:page], per_page: index_params[:per_page])
   end
   # rubocop:enable Metrics/AbcSize
   #-- -------------------------------------------------------------------------

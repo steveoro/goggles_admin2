@@ -22,6 +22,11 @@ en:
       title: "Category Types"
     import_queues:
       title: "Import Queues"
+    meeting_reservations:
+      title: "Meeting Reservations"
+      expand:
+        tooltip: "Go to the Reservations details page (events and relays)"
+        title: "Events and relays reservations"
     settings:
       title: "Settings"
       connection:

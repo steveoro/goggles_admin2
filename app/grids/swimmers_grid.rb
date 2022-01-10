@@ -36,7 +36,7 @@ class SwimmersGrid < BaseGrid
   column(:associated_user_id, align: :right)
   column(:gender_type_id, align: :right)
   column(:complete_name, mandatory: true)
-  column(:year_guessed, align: :center, mandatory: true)
+  boolean_column(:year_guessed, align: :center, mandatory: true, order: false)
 
   actions_column(edit: true, destroy: false, mandatory: true)
 end

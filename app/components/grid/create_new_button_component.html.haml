@@ -1,8 +1,9 @@
-= link_to('#grid-edit-modal', class: 'btn btn-sm btn-outline-success', role: 'button',
-          data: { controller: 'grid-edit', 'grid-edit-modal-id-value' => 'grid-edit-modal',
+= link_to("##{@base_modal_id}-modal", class: 'btn btn-sm btn-outline-success', role: 'button',
+          data: { controller: 'grid-edit', 'grid-edit-base-modal-id-value' => @base_modal_id,
           'grid-edit-payload-value' => Jsonifier.call(@asset_row), toggle: 'modal',
           'grid-edit-url-value' => url_for(only_path: true, controller: @controller_name, action: :create),
           'grid-edit-modal-edit-title-value' => I18n.t('datagrid.edit_modal.edit_title'),
           'grid-edit-modal-create-title-value' => I18n.t('datagrid.edit_modal.create_title'),
           action: 'click->grid-edit#handleEdit' }) do
+  = @btn_label
   %i.fa.fa-plus

@@ -1,58 +1,68 @@
-.modal.fade#grid-edit-modal{ 'aria-hidden' => 'true', role: 'dialog', tabindex: '-1',
-                             'aria-labelledby' => 'grid-edit-modal-title' }
+.modal.fade{ id: "#{@base_dom_id}-modal", 'aria-hidden' => 'true', role: 'dialog', tabindex: '-1',
+             'aria-labelledby' => 'modal title' }
   .modal-dialog.modal-lg{ role: 'document' }
     / The action URL will be overridden on a row-by-row basis; the following is a placeholder:
     = form_tag(url_for(only_path: true, controller: @controller_name, action: :update, id: 0),
-               id: 'frm-modal-edit', method: :patch) do
+               id: "frm-#{@base_dom_id}", method: :patch) do
+      / '_model' can be used to discriminate between subdetails only when more than 1 grid is shown on page
+      = hidden_field_tag('_model', @asset_row.class.name)
+      = hidden_field_tag('page', params[:page]) if params && params[:page]
+      = hidden_field_tag('per_page', params[:per_page]) if params && params[:per_page]
       .modal-content
         .modal-header
-          %h5.modal-title#grid-edit-modal-title
+          %h5.modal-title{ id: "#{@base_dom_id}-modal-title" }
             = I18n.t('datagrid.edit_modal.edit_title')
           %button.close{ 'aria-label' => I18n.t('datagrid.edit_modal.close_btn'), 'data-dismiss' => 'modal' }
             %span{ 'aria-hidden' => 'true' } &times;
-        .modal-body#modal-body
+        .modal-body{ id: "#{@base_dom_id}-modal-body" }
           - @asset_row.attributes.each_key do |attr_name|
             - read_only = %w[id created_at updated_at lock_version].include?(attr_name)
             - field_class = read_only ? 'form-control-plaintext' : 'form-control'
             .form-group.row
               = content_tag(:small, class: 'col-sm-3') do
-                = label_tag(attr_name, attr_name, class: 'col-form-label')
+                = label_tag(namespaced_attr_name(attr_name), attr_name, class: 'col-form-label')
 
               - if %w[request_data solved_data].include?(attr_name) # Special case: use JSON editor
-                = hidden_field_tag(attr_name, nil)
+                = hidden_field_tag(namespaced_attr_name(attr_name), nil)
                 .col-sm-12{ id: "json-editor-#{attr_name}" }
 
               - elsif !@asset_row.class.respond_to?(:column_for_attribute)
                 .col-sm-9
-                  = text_field_tag(attr_name, nil, disabled: read_only, class: field_class)
+                  = text_field_tag(namespaced_attr_name(attr_name), nil, disabled: read_only, class: field_class)
 
               - elsif @asset_row.class.column_for_attribute(attr_name).type == :datetime
                 .col-sm-9
-                  = datetime_field_tag(attr_name, nil, disabled: read_only, class: field_class)
+                  = datetime_field_tag(namespaced_attr_name(attr_name), nil, disabled: read_only, class: field_class)
               - elsif @asset_row.class.column_for_attribute(attr_name).type == :date
                 .col-sm-9
-                  = date_field_tag(attr_name, nil, disabled: read_only, class: field_class)
+                  = date_field_tag(namespaced_attr_name(attr_name), nil, disabled: read_only, class: field_class)
               - elsif @asset_row.class.column_for_attribute(attr_name).type == :boolean
                 .col-sm-9
-                  = render(Switch::SliderComponent.new(field_name: attr_name, option_classes: 'round'))
-
+                  = render(Switch::SliderComponent.new(field_name: namespaced_attr_name(attr_name),
+                                                       option_classes: 'round'))
               - elsif attr_name.ends_with?('_id')
-                .col-sm-9= render(AutoCompleteComponent.new(base_api_url: base_api_url,
-                                  detail_endpoint: detail_endpoint_name(attr_name),
+                .col-sm-9= render(AutoCompleteComponent.new(base_dom_id: @base_dom_id,
+                                  base_api_url: base_api_url, detail_endpoint: detail_endpoint_name(attr_name),
                                   base_name: base_entity_name(attr_name),
                                   search_endpoint: search_endpoint_name(attr_name),
                                   search_column: search_column_name(attr_name),
+                                  search2_column: search2_column_name(attr_name),
+                                  search2_dom_id: search2_dom_id(attr_name),
                                   label_column: label_column_name(attr_name),
                                   label2_column: label2_column_name(attr_name), jwt: @jwt))
               - else
                 .col-sm-9
-                  = text_field_tag(attr_name, nil, disabled: read_only, class: field_class)
+                  /
+                    Setting 'id' to 'disabled: true' will prevent the POST of "expanded details" from
+                    being sent correctly (with a namespaced ID)
+                  = text_field_tag(namespaced_attr_name(attr_name), nil, disabled: read_only && attr_name != 'id',
+                                   class: field_class)
 
         .modal-footer
           %button.btn.btn-sm.btn-outline-secondary{ 'aria-label' => I18n.t('datagrid.edit_modal.close_btn'),
                                                     'data-dismiss' => 'modal', type: 'button' }
             = I18n.t('datagrid.edit_modal.close_btn')
-          %button.btn.btn-sm.btn-outline-danger#btn-submit-save{ type: 'submit', method: :put,
+          %button.btn.btn-sm.btn-outline-danger{ id: "btn-#{@base_dom_id}-submit-save", type: 'submit', method: :put,
                 'aria-label' => I18n.t('datagrid.edit_modal.save_btn'),
                 data: { confirm: I18n.t('datagrid.edit_modal.save_changes_msg') } }
             = I18n.t('datagrid.edit_modal.save_btn')

@@ -1,7 +1,7 @@
 - if @field_name.present?
   = hidden_field_tag(@field_name, 0)
 %label.switch
-  - field_basename = @field_name || @target_id
+  - field_basename = base_field_id || @target_id
   %input{ id: "#{field_basename}-chk", name: field_basename, type: 'checkbox' }
   %span.slider.collapsed{ id: "toggle-#{field_basename}",
     'data-toggle' => 'collapse', href: "##{@target_id}",

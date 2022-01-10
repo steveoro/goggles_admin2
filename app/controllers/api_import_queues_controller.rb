@@ -35,12 +35,11 @@ class APIImportQueuesController < ApplicationController
     ImportQueuesGrid.data_domain = @domain
 
     respond_to do |format|
-      format.html do
-        @grid = ImportQueuesGrid.new(grid_filter_params)
-      end
+      @grid = ImportQueuesGrid.new(grid_filter_params)
+
+      format.html { @grid }
 
       format.csv do
-        @grid = ImportQueuesGrid.new(grid_filter_params)
         send_data(
           @grid.to_csv,
           type: 'text/csv',
@@ -64,9 +63,6 @@ class APIImportQueuesController < ApplicationController
   # - <tt>id</tt>: ID of the instance row to be updated
   #
   def update
-    # DEBUG
-    # logger.debug("\r\n*** update PARAMS:")
-    # logger.debug(edit_params(GogglesDb::ImportQueue).inspect)
     result = APIProxy.call(
       method: :put,
       url: "import_queue/#{edit_params(GogglesDb::ImportQueue)['id']}",
@@ -77,9 +73,9 @@ class APIImportQueuesController < ApplicationController
     if result.body == 'true'
       flash[:info] = I18n.t('datagrid.edit_modal.edit_ok')
     else
-      flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: result)
+      flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: result.presence || result.code)
     end
-    redirect_to api_import_queues_path
+    redirect_to api_import_queues_path(page: index_params[:page], per_page: index_params[:per_page])
   end
 
   # POST /api_import_queues
@@ -89,23 +85,20 @@ class APIImportQueuesController < ApplicationController
   # handled automatically.
   #
   def create
-    # DEBUG
-    # logger.debug("\r\n*** create PARAMS:")
-    # logger.debug(edit_params(GogglesDb::ImportQueue).inspect)
     result = APIProxy.call(
       method: :post,
       url: 'import_queue',
       jwt: current_user.jwt,
-      payload: edit_params(GogglesDb::ImportQueue)
+      payload: create_params(GogglesDb::ImportQueue)
     )
-    json = result.code == 200 && result.body.present? ? JSON.parse(result.body) : {}
+    json = parse_json_result_from_create(result)
 
     if json.present? && json['msg'] == 'OK' && json['new'].key?('id')
       flash[:info] = I18n.t('datagrid.edit_modal.create_ok', id: json['new']['id'])
     else
       flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: result.code)
     end
-    redirect_to api_import_queues_path
+    redirect_to api_import_queues_path(page: index_params[:page], per_page: index_params[:per_page])
   end
 
   # DELETE /api_import_queues
@@ -129,7 +122,7 @@ class APIImportQueuesController < ApplicationController
     else
       flash[:info] = I18n.t('dashboard.grid_commands.no_op_msg')
     end
-    redirect_to api_import_queues_path
+    redirect_to api_import_queues_path(page: index_params[:page], per_page: index_params[:per_page])
   end
   # rubocop:enable Metrics/AbcSize
   #-- -------------------------------------------------------------------------

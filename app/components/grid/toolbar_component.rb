@@ -3,7 +3,7 @@
 #
 # = Grid components module
 #
-#   - version:  7.0.3.32
+#   - version:  7.0.3.40
 #   - author:   Steve A.
 #
 module Grid
@@ -30,6 +30,9 @@ module Grid
     # - <tt>:request_params</tt>:
     #   Request <tt>:params</tt> used for Datagrid filtering
     #
+    # - <tt>:select</tt>:
+    #   <tt>true</tt> to show the 'invert selection' button (default: true)
+    #
     # - <tt>:filter</tt>:
     #   <tt>true</tt> to show the filter popup button (default: true)
     #
@@ -41,20 +44,29 @@ module Grid
     #
     # - <tt>:csv</tt>:
     #   <tt>true</tt> to show the CSV export button (default: true)
-    def initialize(options = {})
+    def initialize(options = { select: true, filter: true, create: true, destroy: true, csv: true })
       super
       @asset_row = options[:asset_row]
       @controller_name = options[:controller_name]
       @request_params = options[:request_params]
-      @filter = options[:filter].nil? ? true : options[:filter]
-      @create = options[:create].nil? ? true : options[:create]
-      @destroy = options[:destroy].nil? ? true : options[:destroy]
-      @csv = options[:csv].nil? ? true : options[:csv]
+      @select = set_boolean_option_with_default(options, :select)
+      @filter = set_boolean_option_with_default(options, :filter)
+      @create = set_boolean_option_with_default(options, :create)
+      @destroy = set_boolean_option_with_default(options, :destroy)
+      @csv = set_boolean_option_with_default(options, :csv)
     end
 
     # Skips rendering unless the required parameters are set
     def render?
       @asset_row.present? && @controller_name.present?
+    end
+
+    private
+
+    # Compares the options[key] with a boolean true value if present and returns a
+    # boolean result or the default value if the key wasn't found.
+    def set_boolean_option_with_default(options, key, default_value: true)
+      options.key?(key) ? [true, 'true'].include?(options[key]) : default_value
     end
   end
 end

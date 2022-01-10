@@ -38,12 +38,11 @@ class SettingsController < ApplicationController
     SettingsGrid.data_domain = @domain
 
     respond_to do |format|
-      format.html do
-        @grid = SettingsGrid.new(grid_filter_params)
-      end
+      @grid = SettingsGrid.new(grid_filter_params)
+
+      format.html { @grid }
 
       format.csv do
-        @grid = SettingsGrid.new(grid_filter_params)
         send_data(
           @grid.to_csv,
           type: 'text/csv',
@@ -69,9 +68,6 @@ class SettingsController < ApplicationController
   # - <tt>key</tt>: Setting key ID
   #
   def update
-    # DEBUG
-    # logger.debug("\r\n*** update PARAMS:")
-    # logger.debug(edit_params(Setting).inspect)
     result = APIProxy.call(
       method: :put,
       url: "setting/#{edit_params(Setting)['group_key']}",
@@ -84,7 +80,7 @@ class SettingsController < ApplicationController
     else
       flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: result)
     end
-    redirect_to settings_path
+    redirect_to settings_path(page: index_params[:page], per_page: index_params[:per_page])
   end
 
   # DELETE /settings
@@ -123,7 +119,7 @@ class SettingsController < ApplicationController
     else
       flash[:info] = I18n.t('dashboard.grid_commands.no_op_msg')
     end
-    redirect_to settings_path
+    redirect_to settings_path(page: index_params[:page], per_page: index_params[:per_page])
   end
   # rubocop:enable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
   #-- -------------------------------------------------------------------------
@@ -165,6 +161,11 @@ class SettingsController < ApplicationController
   # (NOTE: memoizazion is needed because the member variable is used in the view.)
   def grid_filter_params
     @grid_filter_params = params.fetch(:settings_grid, {}).permit!
+  end
+
+  # Strong parameters checking for /index
+  def index_params
+    params.permit(:page, :per_page, :settings_grid)
   end
 
   private

@@ -19,7 +19,7 @@ RSpec.describe APITeamManagersController, type: :request do
         # API double:
         allow(APIProxy).to receive(:call).with(
           method: :get, url: 'team_managers', jwt: admin_user.jwt,
-          params: { page: anything, per_page: anything }
+          params: { team_affiliation_id: anything, page: anything, per_page: anything }
         ).and_return(DummyResponse.new(body: GogglesDb::ManagedAffiliation.all.to_json))
       end
 

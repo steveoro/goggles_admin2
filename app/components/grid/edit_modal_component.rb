@@ -3,7 +3,7 @@
 #
 # = Grid components module
 #
-#   - version:  7.0.3.39
+#   - version:  7.0.3.40
 #   - author:   Steve A.
 #
 module Grid
@@ -27,6 +27,7 @@ module Grid
   #
   # (@see app/javascript/controllers/grid_edit_controller.js)
   #
+  # rubocop:disable Metrics/ClassLength
   class EditModalComponent < ViewComponent::Base
     # Creates a new ViewComponent
     #
@@ -34,33 +35,47 @@ module Grid
     # - <tt>controller_name</tt>: Rails controller name linked to this modal form
     #
     # - <tt>asset_row</tt>:
-    #  valid ActiveRecord Model instance to which this component will be linked to (*required*)
+    #  valid ActiveRecord Model instance to which this component will be linked to (*required*).
     #
-    # - <tt>jwt</tt>: required session JWT for API auth. (can be left to nil when using static values)
-    def initialize(controller_name:, asset_row:, api_url: nil, jwt: nil)
+    # - <tt>jwt</tt>: required session JWT for API auth (can be left to nil when using static values).
+    #
+    # - <tt>base_dom_id</tt>: defines the base string name for the DOM ID used by the modal container,
+    #   its input form (<tt>"frm-<BASE_MODAL_DOM_ID>"</tt>), its title label (<tt>"<BASE_MODAL_DOM_ID>-modal-title"</tt>)
+    #   and its own POST button (<tt>"btn-<BASE_MODAL_DOM_ID>-submit-save"</tt>); defaults to "grid-edit".
+    #
+    def initialize(controller_name:, asset_row:, api_url: nil, jwt: nil, base_dom_id: 'grid-edit')
       super
       @controller_name = controller_name
       @asset_row = asset_row
       @jwt = jwt
+      @base_dom_id = base_dom_id
     end
 
     # Skips rendering unless the required parameters are set
     def render?
-      @controller_name.present? && @asset_row.present?
+      @controller_name.present? && @asset_row.present? && @base_dom_id.present?
     end
     #-- -----------------------------------------------------------------------
     #++
 
     protected
 
-    # *************************************************************
-    # TODO: REFACTOR ALL THE FOLLOWING INTO goggles_db / decorators
-    # *************************************************************
-
     # Returns the base API URL for all endpoints
     def base_api_url
       "#{GogglesDb::AppParameter.config.settings(:framework_urls).api}/api/v3"
     end
+
+    # Returns the correct <tt>attribute_name</tt> namespaced using <tt>@base_dom_id</tt>
+    # whenever the <tt>@base_dom_id</tt> is not the default value and is not empty.
+    def namespaced_attr_name(attribute_name)
+      return attribute_name if @base_dom_id == 'grid-edit' || @base_dom_id.blank?
+
+      "#{@base_dom_id}[#{attribute_name}]"
+    end
+
+    # *************************************************************
+    # TODO: REFACTOR ALL THE FOLLOWING INTO goggles_db / decorators
+    # *************************************************************
 
     # Assuming the <tt>attribute_name</tt> is an association name ending with "_id", this
     # returns the base entity name ('user_id' => 'user').
@@ -123,15 +138,47 @@ module Grid
       return 'long_label' if lookup_entity?(attribute_name)
 
       case attribute_name
+      when 'badge_id'
+        'short_label'
       when 'category_type_id', 'season_type_id'
         'code'
-      when 'season_id'
+      when 'meeting_id'
         'description'
+      when 'season_id'
+        'header_year'
       when 'swimmer_id'
         'complete_name'
       else
         'name'
       end
+    end
+
+    # Same as <tt>search_column_name()</tt> but affecting the secondary filtering column for the
+    # 'list' endpoint returned by <tt>search_endpoint_name</tt> (if a secondary filtering parameter can be defined).
+    # This secondary filtering column acts as an additional "skimmering" parameter for the standard 'list' endpoint.
+    # Defaults to +nil+.
+    #
+    # Typical example: 'category_type_id' additionally filtered by 'season_id'.
+    #
+    def search2_column_name(attribute_name)
+      return nil unless attribute_name.ends_with?('_id')
+
+      case attribute_name
+      when 'badge_id', 'category_type_id', 'meeting_id', 'team_affiliation_id'
+        'season_id'
+      end
+    end
+
+    # Returns the node DOM ID that should hold the runtime value for the secondary filtering column.
+    # Defaults to +nil+.
+    #
+    # Typical example: 'category_type_id' => 'season_id' (unless the hidden input is namespaced).
+    #
+    def search2_dom_id(attribute_name)
+      search2_column = search2_column_name(attribute_name)
+      return nil if search2_column.blank?
+
+      namespaced_attr_name(search2_column)
     end
 
     # With the same premise as <tt>base_entity_name()</tt>, this returns the column name used for
@@ -142,12 +189,16 @@ module Grid
       return 'label' if lookup_entity?(attribute_name)
 
       case attribute_name
+      when 'badge_id'
+        'team_affiliation_id'
       when 'category_type_id', 'season_type_id'
         'short_name'
       when 'city_id'
         'area'
+      when 'meeting_id'
+        'code'
       when 'season_id'
-        'header_year'
+        'description'
       when 'swimmer_id'
         'year_of_birth'
       when 'swimming_pool_id'
@@ -159,7 +210,7 @@ module Grid
       when 'user_id', 'associated_user_id'
         'email'
       else
-        'description'
+        'short_label'
       end
     end
     # rubocop:enable Metrics/CyclomaticComplexity
@@ -172,10 +223,14 @@ module Grid
       return 'code' if lookup_entity?(attribute_name)
 
       case attribute_name
+      when 'badge_id'
+        nil
       when 'category_type_id', 'team_affiliation_id'
         'season_id'
       when 'city_id'
         'country'
+      when 'meeting_id'
+        'header_year'
       when 'season_id'
         'begin_date'
       when 'season_type_id'
@@ -185,13 +240,16 @@ module Grid
       when 'swimming_pool_id'
         'pool_type_id'
       when 'team_id'
-        'name_variations'
-      else
+        'editable_name'
+      when 'user_id'
         'description'
+      else
+        'short_label'
       end
     end
     # rubocop:enable Metrics/CyclomaticComplexity
     #-- -----------------------------------------------------------------------
     #++
   end
+  # rubocop:enable Metrics/ClassLength
 end

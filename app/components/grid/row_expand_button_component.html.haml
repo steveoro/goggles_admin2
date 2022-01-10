@@ -1,0 +1,5 @@
+= link_to({ controller: @controller_name, action: :expand, params: { id: @asset_row.id } },
+            { id: "btn-expand-row-#{@asset_row.id}", method: :get,
+            class: 'btn btn-sm btn-outline-info mb-1', role: 'button',
+            data: { toggle: 'tooltip', title: I18n.t('dashboard.meeting_reservations.expand.tooltip') } }) do
+  %i.fa.fa-plus-square-o

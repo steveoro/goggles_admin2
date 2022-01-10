@@ -19,17 +19,64 @@ RSpec.describe Grid::ToolbarComponent, type: :component do
         described_class.new(asset_row: fixture_asset_row, controller_name: fixture_controller_name)
       )
     end
-    it 'renders the selection toggle button' do
-      expect(subject.css('#sel-toggle-btn')).to be_present
+    {
+      'filter-show-btn' => true,
+      'sel-toggle-btn' => true,
+      'new-btn' => true,
+      'delete-btn' => true,
+      'csv-btn' => true
+    }.each do |dom_id, expected_presence|
+      it "#{expected_presence ? 'renders' : 'does not render'} the '#{dom_id}' toggle button" do
+        expect(subject.css("##{dom_id}").present?).to be expected_presence
+      end
     end
-    it 'renders the create new button' do
-      expect(subject.css('#new-btn')).to be_present
+  end
+
+  context 'with valid parameters + disabling the show filters button,' do
+    let(:expected_delete_link_id) { "frm-delete-row-#{fixture_asset_row.id}" }
+    subject do
+      render_inline(
+        described_class.new(
+          asset_row: fixture_asset_row,
+          controller_name: fixture_controller_name,
+          filter: false
+        )
+      )
     end
-    it 'renders the delete selection button' do
-      expect(subject.css('#delete-btn')).to be_present
+    {
+      'filter-show-btn' => false,
+      'sel-toggle-btn' => true,
+      'new-btn' => true,
+      'delete-btn' => true,
+      'csv-btn' => true
+    }.each do |dom_id, expected_presence|
+      it "#{expected_presence ? 'renders' : 'does not render'} the '#{dom_id}' toggle button" do
+        expect(subject.css("##{dom_id}").present?).to be expected_presence
+      end
     end
-    it 'renders the CSV export button' do
-      expect(subject.css('#csv-btn')).to be_present
+  end
+
+  context 'with valid parameters + disabling the select new button,' do
+    let(:expected_delete_link_id) { "frm-delete-row-#{fixture_asset_row.id}" }
+    subject do
+      render_inline(
+        described_class.new(
+          asset_row: fixture_asset_row,
+          controller_name: fixture_controller_name,
+          select: false
+        )
+      )
+    end
+    {
+      'filter-show-btn' => true,
+      'sel-toggle-btn' => false,
+      'new-btn' => true,
+      'delete-btn' => true,
+      'csv-btn' => true
+    }.each do |dom_id, expected_presence|
+      it "#{expected_presence ? 'renders' : 'does not render'} the '#{dom_id}' toggle button" do
+        expect(subject.css("##{dom_id}").present?).to be expected_presence
+      end
     end
   end
 
@@ -44,17 +91,16 @@ RSpec.describe Grid::ToolbarComponent, type: :component do
         )
       )
     end
-    it 'renders the selection toggle button' do
-      expect(subject.css('#sel-toggle-btn')).to be_present
-    end
-    it 'does not render the create new button' do
-      expect(subject.css('#new-btn')).not_to be_present
-    end
-    it 'renders the delete selection button' do
-      expect(subject.css('#delete-btn')).to be_present
-    end
-    it 'renders the CSV export button' do
-      expect(subject.css('#csv-btn')).to be_present
+    {
+      'filter-show-btn' => true,
+      'sel-toggle-btn' => true,
+      'new-btn' => false,
+      'delete-btn' => true,
+      'csv-btn' => true
+    }.each do |dom_id, expected_presence|
+      it "#{expected_presence ? 'renders' : 'does not render'} the '#{dom_id}' toggle button" do
+        expect(subject.css("##{dom_id}").present?).to be expected_presence
+      end
     end
   end
 
@@ -69,17 +115,16 @@ RSpec.describe Grid::ToolbarComponent, type: :component do
         )
       )
     end
-    it 'renders the selection toggle button' do
-      expect(subject.css('#sel-toggle-btn')).to be_present
-    end
-    it 'renders the create new button' do
-      expect(subject.css('#new-btn')).to be_present
-    end
-    it 'does not render the delete selection button' do
-      expect(subject.css('#delete-btn')).not_to be_present
-    end
-    it 'renders the CSV export button' do
-      expect(subject.css('#csv-btn')).to be_present
+    {
+      'filter-show-btn' => true,
+      'sel-toggle-btn' => true,
+      'new-btn' => true,
+      'delete-btn' => false,
+      'csv-btn' => true
+    }.each do |dom_id, expected_presence|
+      it "#{expected_presence ? 'renders' : 'does not render'} the '#{dom_id}' toggle button" do
+        expect(subject.css("##{dom_id}").present?).to be expected_presence
+      end
     end
   end
 
@@ -94,17 +139,16 @@ RSpec.describe Grid::ToolbarComponent, type: :component do
         )
       )
     end
-    it 'renders the selection toggle button' do
-      expect(subject.css('#sel-toggle-btn')).to be_present
-    end
-    it 'renders the create new button' do
-      expect(subject.css('#new-btn')).to be_present
-    end
-    it 'renders the delete selection button' do
-      expect(subject.css('#delete-btn')).to be_present
-    end
-    it 'does not render the CSV export button' do
-      expect(subject.css('#csv-btn')).not_to be_present
+    {
+      'filter-show-btn' => true,
+      'sel-toggle-btn' => true,
+      'new-btn' => true,
+      'delete-btn' => true,
+      'csv-btn' => false
+    }.each do |dom_id, expected_presence|
+      it "#{expected_presence ? 'renders' : 'does not render'} the '#{dom_id}' toggle button" do
+        expect(subject.css("##{dom_id}").present?).to be expected_presence
+      end
     end
   end
 end

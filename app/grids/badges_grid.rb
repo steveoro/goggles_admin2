@@ -34,10 +34,10 @@ class BadgesGrid < BaseGrid
   column(:entry_time_type_id, align: :right)
   column(:final_rank, align: :right)
 
-  boolean_column(:off_gogglecup, align: :center, mandatory: true)
-  boolean_column(:fees_due, align: :center, mandatory: true)
-  boolean_column(:badge_due, align: :center, mandatory: true)
-  boolean_column(:relays_due, align: :center, mandatory: true)
+  boolean_column(:off_gogglecup, align: :center, mandatory: true, order: false)
+  boolean_column(:fees_due, align: :center, mandatory: true, order: false)
+  boolean_column(:badge_due, align: :center, mandatory: true, order: false)
+  boolean_column(:relays_due, align: :center, mandatory: true, order: false)
 
   actions_column(edit: true, destroy: true, mandatory: true)
 end

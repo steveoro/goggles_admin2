@@ -38,14 +38,11 @@ class APIUsersController < ApplicationController
     UsersGrid.data_domain = @domain
 
     respond_to do |format|
-      format.html do
-        @grid = UsersGrid.new(grid_filter_params) do |scope|
-          Kaminari.paginate_array(scope).page(params[:page]).per(10)
-        end
-      end
+      @grid = UsersGrid.new(grid_filter_params)
+
+      format.html { @grid }
 
       format.csv do
-        @grid = UsersGrid.new(grid_filter_params)
         send_data(
           @grid.to_csv,
           type: 'text/csv',
@@ -69,9 +66,6 @@ class APIUsersController < ApplicationController
   # - <tt>id</tt>: ID of the instance row to be updated
   #
   def update
-    # DEBUG
-    # logger.debug("\r\n*** update PARAMS:")
-    # logger.debug(edit_params(GogglesDb::User).inspect)
     result = APIProxy.call(
       method: :put,
       url: "user/#{edit_params(GogglesDb::User)['id']}",
@@ -84,7 +78,7 @@ class APIUsersController < ApplicationController
     else
       flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: result)
     end
-    redirect_to api_users_path
+    redirect_to api_users_path(page: index_params[:page], per_page: index_params[:per_page])
   end
 
   # DELETE /api_users
@@ -110,7 +104,7 @@ class APIUsersController < ApplicationController
     else
       flash[:info] = I18n.t('dashboard.grid_commands.no_op_msg')
     end
-    redirect_to api_users_path
+    redirect_to api_users_path(page: index_params[:page], per_page: index_params[:per_page])
   end
   # rubocop:enable Metrics/AbcSize
   #-- -------------------------------------------------------------------------

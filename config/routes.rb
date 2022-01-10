@@ -24,6 +24,7 @@ Rails.application.routes.draw do
   delete 'api_import_queues', to: 'api_import_queues#destroy', as: 'api_import_queues_destroy'
 
   resources :api_meeting_reservations, only: %i[index create update]
+  get 'api_meeting_reservations/expand', to: 'api_meeting_reservations#expand', as: 'api_meeting_reservations_expand'
   delete 'api_meeting_reservations', to: 'api_meeting_reservations#destroy', as: 'api_meeting_reservations_destroy'
 
   resources :api_meetings, only: %i[index create update]

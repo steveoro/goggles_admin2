@@ -1,18 +1,21 @@
 - entity_name = @detail_endpoint || @base_name
 .form-group{ data: { controller: 'autocomplete',
+  'autocomplete-base-dom-id-value' => @base_dom_id,
   'autocomplete-base-api-url-value' => @base_api_url,
   'autocomplete-detail-endpoint-value' => @detail_endpoint,
   'autocomplete-search-endpoint-value' => @search_endpoint,
   'autocomplete-search-column-value' => @search_column,
+  'autocomplete-search2-column-value' => @search2_column,
+  'autocomplete-search2-dom-id-value' => @search2_dom_id,
   'autocomplete-label-column-value' => @label_column,
   'autocomplete-label2-column-value' => @label2_column,
   'autocomplete-jwt-value' => @jwt } }
   .row
     .col-3
-      = text_field_tag("#{entity_name}_id", nil, class: 'form-control',
+      = text_field_tag(namespaced_attr_name("#{entity_name}_id"), nil, class: 'form-control',
                        data: { 'autocomplete-target' => 'field' })
     .col-9
-      = text_field_tag(entity_name, nil, class: 'form-control',
+      = text_field_tag(namespaced_attr_name(entity_name), nil, class: 'form-control',
                        placeholder: I18n.t('dashboard.search_field', field: entity_name),
                        data: { 'autocomplete-target' => 'search' })
   .row-fluid

@@ -1,0 +1,49 @@
+%meta
+.wrapper-body
+  .spacer-left
+
+  .main-content
+    = render(DashboardTitleComponent.new(title: t('dashboard.meeting_reservations.expand.title'),
+                                         row_count: @event_domain&.size.to_i + @relay_domain&.size.to_i))
+
+    .container.bg-light-blue.py-3.shadow-box
+      %h5.text-center= @swimmer_name
+      %h6
+        - url_params = { meeting_reservations_grid: { meeting_id: @master_attributes[:meeting_id] } }
+        = link_to(api_meeting_reservations_path(url_params)) do
+          %i.fa.fa-arrow-left
+          = @meeting_name
+      %h6= @team_name
+
+    = render(Grid::EditModalComponent.new(controller_name: controller_name,
+             asset_row: GogglesDb::MeetingEventReservation.new,
+             jwt: current_user.jwt, base_dom_id: 'events'))
+    = render(Grid::EditModalComponent.new(controller_name: controller_name,
+             asset_row: GogglesDb::MeetingRelayReservation.new,
+             jwt: current_user.jwt, base_dom_id: 'relays'))
+
+    %section.my-4#data-grid
+      /
+        Direct subdetail row creation currently unsupported by the API:
+        (example commented-out but left here for future reference)
+        .row.btn-toolbar.d-flex.justify-content-left.ml-0.mb-2
+          .btn-group.mx-1.my-0#new-event-btn
+            - asset_row = GogglesDb::MeetingEventReservation.new(@master_attributes)
+            = render(Grid::CreateNewButtonComponent.new(asset_row: asset_row,
+                     controller_name: controller_name, base_modal_id: 'events'))
+      = datagrid_table(@event_grid, html: { class: 'table table-hover table-sm' })
+
+      /
+        Direct subdetail row creation currently unsupported by the API:
+        (example commented-out but left here for future reference)
+        .row.btn-toolbar.d-flex.justify-content-left.ml-0.mb-2
+          .btn-group.mx-1.my-0#new-relay-btn
+            - asset_row = GogglesDb::MeetingRelayReservation.new(@master_attributes)
+            = render(Grid::CreateNewButtonComponent.new(asset_row: asset_row, controller_name: controller_name,
+                    base_modal_id: 'relays'))
+      = datagrid_table(@relay_grid, html: { class: 'table table-hover table-sm' })
+
+    %section.text-center.fixed-bottom#footer
+      &nbsp;
+
+  .spacer-right

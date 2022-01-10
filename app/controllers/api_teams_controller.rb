@@ -28,19 +28,18 @@ class APITeamsController < ApplicationController
     @domain_page = result.headers[:page].to_i
     @domain_per_page = result.headers[:per_page].to_i
 
-    # Setup grid domain (and chart's):
+    # Setup grid domain:
     @domain = json_domain.map { |attrs| GogglesDb::Team.new(attrs) }
 
     # Setup datagrid:
     TeamsGrid.data_domain = @domain
 
     respond_to do |format|
-      format.html do
-        @grid = TeamsGrid.new(grid_filter_params)
-      end
+      @grid = TeamsGrid.new(grid_filter_params)
+
+      format.html { @grid }
 
       format.csv do
-        @grid = TeamsGrid.new(grid_filter_params)
         send_data(
           @grid.to_csv,
           type: 'text/csv',
@@ -64,9 +63,6 @@ class APITeamsController < ApplicationController
   # - <tt>id</tt>: ID of the instance row to be updated
   #
   def update
-    # DEBUG
-    # logger.debug("\r\n*** update PARAMS:")
-    # logger.debug(edit_params(GogglesDb::Team).inspect)
     result = APIProxy.call(
       method: :put,
       url: "team/#{edit_params(GogglesDb::Team)['id']}",
@@ -79,7 +75,7 @@ class APITeamsController < ApplicationController
     else
       flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: result)
     end
-    redirect_to api_teams_path
+    redirect_to api_teams_path(page: index_params[:page], per_page: index_params[:per_page])
   end
 
   # POST /api_teams
@@ -89,23 +85,20 @@ class APITeamsController < ApplicationController
   # handled automatically.
   #
   def create
-    # DEBUG
-    # logger.debug("\r\n*** create PARAMS:")
-    # logger.debug(edit_params(GogglesDb::Team).inspect)
     result = APIProxy.call(
       method: :post,
       url: 'team',
       jwt: current_user.jwt,
-      payload: edit_params(GogglesDb::Team)
+      payload: create_params(GogglesDb::Team)
     )
-    json = result.code == 200 && result.body.present? ? JSON.parse(result.body) : {}
+    json = parse_json_result_from_create(result)
 
     if json.present? && json['msg'] == 'OK' && json['new'].key?('id')
       flash[:info] = I18n.t('datagrid.edit_modal.create_ok', id: json['new']['id'])
     else
       flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: result.code)
     end
-    redirect_to api_teams_path
+    redirect_to api_teams_path(page: index_params[:page], per_page: index_params[:per_page])
   end
   #-- -------------------------------------------------------------------------
   #++

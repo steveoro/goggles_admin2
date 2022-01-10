@@ -14,9 +14,30 @@ RSpec.describe Grid::EditModalComponent, type: :component do
     it_behaves_like('any subject that renders nothing')
   end
 
-  context 'with valid parameters,' do
-    let(:fixture_asset_row) { GogglesDb::User.new }
-    subject do
+  # ASSERT/REQUIRES:
+  # - result: the rendered component as a Nokogiri::HTML::DocumentFragment
+  shared_examples_for('an edit modal with a proper namespace setup') do |namespace_base|
+    it 'renders the modal dialog in hidden state' do
+      expect(result.css("##{namespace_base}-modal.modal.fade")).to be_present
+      expect(result.css("##{namespace_base}-modal.modal.fade.show")).not_to be_present
+    end
+    it 'includes the edit form inside the modal dialog' do
+      expect(result.css("##{namespace_base}-modal #frm-#{namespace_base}")).to be_present
+    end
+    it 'includes a title' do
+      expect(result.css("#frm-#{namespace_base} .modal-title##{namespace_base}-modal-title")).to be_present
+    end
+    it 'includes a body' do
+      expect(result.css("#frm-#{namespace_base} .modal-body##{namespace_base}-modal-body")).to be_present
+    end
+    it 'renders the submit button' do
+      expect(result.css("#btn-#{namespace_base}-submit-save")).to be_present
+    end
+  end
+
+  context 'with valid default parameters,' do
+    let(:fixture_asset_row) { GogglesDb::ImportQueue.new }
+    subject(:result) do
       render_inline(
         described_class.new(
           controller_name: fixture_controller_name,
@@ -26,32 +47,36 @@ RSpec.describe Grid::EditModalComponent, type: :component do
       )
     end
 
-    it 'renders the modal dialog in hidden state' do
-      expect(subject.css('#grid-edit-modal.modal.fade')).to be_present
-      expect(subject.css('#grid-edit-modal.modal.fade.show')).not_to be_present
-    end
-
-    it 'includes the edit form inside the modal dialog' do
-      expect(subject.css('#grid-edit-modal #frm-modal-edit')).to be_present
-    end
-
-    it 'includes a title' do
-      expect(subject.css('#frm-modal-edit .modal-title#grid-edit-modal-title')).to be_present
-    end
-
-    it 'includes a body' do
-      expect(subject.css('#frm-modal-edit .modal-body#modal-body')).to be_present
-    end
+    it_behaves_like('an edit modal with a proper namespace setup', 'grid-edit')
 
     it 'includes an input box for each "non-associative" attribute in the model' do
       fixture_asset_row.attributes.each_key do |attr_name|
         # Skip association names because the rendered subject won't sub-render the nested component:
-        expect(subject.css("##{attr_name}")).to be_present unless attr_name.ends_with?('_id')
+        expect(result.css("##{attr_name}")).to be_present unless attr_name.ends_with?('_id')
       end
     end
+  end
 
-    it 'renders the submit button' do
-      expect(subject.css('#btn-submit-save')).to be_present
+  context 'when overriding the base modal ID,' do
+    let(:fixture_asset_row) { GogglesDb::ImportQueue.new }
+    subject(:result) do
+      render_inline(
+        described_class.new(
+          asset_row: fixture_asset_row,
+          controller_name: fixture_controller_name,
+          jwt: nil,
+          base_dom_id: 'subdetail'
+        )
+      )
+    end
+
+    it_behaves_like('an edit modal with a proper namespace setup', 'subdetail')
+
+    it 'includes a namespaced input box for each "non-associative" attribute in the model' do
+      fixture_asset_row.attributes.each_key do |attr_name|
+        # Skip association names because the rendered subject won't sub-render the nested component:
+        expect(result.css("#subdetail_#{attr_name}")).to be_present unless attr_name.ends_with?('_id')
+      end
     end
   end
 end

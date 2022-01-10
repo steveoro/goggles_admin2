@@ -22,13 +22,16 @@ RSpec.describe APIBadgesController, type: :request do
           params: {
             swimmer_id: anything, team_id: anything,
             season_id: anything,
+            fees_due: anything,
+            badge_due: anything,
+            relays_due: anything,
             page: anything, per_page: anything
           }
         ).and_return(DummyResponse.new(body: GogglesDb::Badge.first(25).to_json))
+        get(api_badges_path)
       end
 
       it 'returns http success' do
-        get(api_badges_path)
         expect(response).to have_http_status(:success)
       end
     end

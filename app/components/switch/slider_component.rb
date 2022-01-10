@@ -7,7 +7,7 @@ module Switch
   #
   # = Switch::SliderComponent
   #
-  #   - version:  7-0.3.33
+  #   - version:  7-0.3.40
   #   - author:   Steve A.
   #
   # Generic boolean switch that can acts as a collapse toggle or as a form boolean switch,
@@ -16,6 +16,7 @@ module Switch
   # === Supports:
   # - rounded/squared borders: use +'round'+ for rounded (default: squared)
   # - green/red background: use +'red'+ to override green default
+  # - namespaced fields inside forms (i.e.: input name: 'namespace[field_name]' => form ID 'namespace_field_name')
   #
   # === Usage as a collapse toggle:
   # Use <tt>target_id</tt> with default options.
@@ -48,6 +49,14 @@ module Switch
     # Skips rendering unless the required parameters are set
     def render?
       @target_id.present? || @field_name.present?
+    end
+
+    protected
+
+    # Returns the base DOM ID for the hidden field changing any form-only namespaces to snake_case
+    # (i.e. "base_namespace[field_name]" => "base_namespace_field_name").
+    def base_field_id
+      @base_field_id ||= @field_name.gsub('[', '_').gsub(']', '')
     end
   end
 end

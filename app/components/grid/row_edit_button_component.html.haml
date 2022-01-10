@@ -1,5 +1,5 @@
-= link_to('#grid-edit-modal', class: 'btn btn-sm btn-outline-success', role: 'button',
-          data: { controller: 'grid-edit', 'grid-edit-modal-id-value' => 'grid-edit-modal',
+= link_to("##{@base_modal_id}-modal", class: 'btn btn-sm btn-outline-success mb-1', role: 'button',
+          data: { controller: 'grid-edit', 'grid-edit-base-modal-id-value' => @base_modal_id,
           'grid-edit-payload-value' => Jsonifier.call(@asset_row), toggle: 'modal',
           'grid-edit-modal-edit-title-value' => I18n.t('datagrid.edit_modal.edit_title'),
           'grid-edit-modal-create-title-value' => I18n.t('datagrid.edit_modal.create_title'),

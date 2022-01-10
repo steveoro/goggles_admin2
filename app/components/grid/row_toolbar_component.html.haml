@@ -1,8 +1,12 @@
 .row.btn-toolbar.d-flex.justify-content-center
   - if @edit
-    .btn-group.mx-1.my-0#row-edit-btn
-      = render(Grid::RowEditButtonComponent.new(asset_row: @asset_row, controller_name: @controller_name))
+    .btn-group.mx-1.my-0.row-edit-btn
+      = render(Grid::RowEditButtonComponent.new(asset_row: @asset_row, controller_name: @controller_name,
+                                                base_modal_id: @base_modal_id))
+  - if @expand
+    .btn-group.mx-1.my-0
+      = render(Grid::RowExpandButtonComponent.new(asset_row: @asset_row, controller_name: @controller_name))
   - if @destroy
-    .btn-group.mx-1.my-0#row-delete-btn
+    .btn-group.mx-1.my-0
       = render(Grid::RowDeleteButtonComponent.new(asset_row: @asset_row, controller_name: @controller_name,
                                                   label_method: @label_method))

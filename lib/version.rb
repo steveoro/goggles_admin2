@@ -29,10 +29,10 @@ module Version
   MINOR = '3'
 
   # Patch version.
-  PATCH = '39'
+  PATCH = '40'
 
   # Current build version.
-  BUILD = '20211216'
+  BUILD = '20220110'
 
   # Full versioning for the current release.
   FULL = "#{MAJOR}.#{MINOR}.#{PATCH} (#{CORE}-#{BUILD})"

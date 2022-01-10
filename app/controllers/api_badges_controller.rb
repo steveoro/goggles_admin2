@@ -19,6 +19,9 @@ class APIBadgesController < ApplicationController
       params: {
         swimmer_id: index_params[:swimmer_id], team_id: index_params[:team_id],
         season_id: index_params[:season_id],
+        fees_due: index_params[:fees_due],
+        badge_due: index_params[:badge_due],
+        relays_due: index_params[:relays_due],
         page: index_params[:page], per_page: index_params[:per_page]
       }
     )
@@ -39,12 +42,11 @@ class APIBadgesController < ApplicationController
     BadgesGrid.data_domain = @domain
 
     respond_to do |format|
-      format.html do
-        @grid = BadgesGrid.new(grid_filter_params)
-      end
+      @grid = BadgesGrid.new(grid_filter_params)
+
+      format.html { @grid }
 
       format.csv do
-        @grid = BadgesGrid.new(grid_filter_params)
         send_data(
           @grid.to_csv,
           type: 'text/csv',
@@ -68,9 +70,6 @@ class APIBadgesController < ApplicationController
   # - <tt>id</tt>: ID of the instance row to be updated
   #
   def update
-    # DEBUG
-    # logger.debug("\r\n*** update PARAMS:")
-    # logger.debug(edit_params(GogglesDb::Badge).inspect)
     result = APIProxy.call(
       method: :put,
       url: "badge/#{edit_params(GogglesDb::Badge)['id']}",
@@ -83,7 +82,7 @@ class APIBadgesController < ApplicationController
     else
       flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: result)
     end
-    redirect_to api_badges_path
+    redirect_to api_badges_path(page: index_params[:page], per_page: index_params[:per_page])
   end
 
   # POST /api_badges
@@ -93,23 +92,20 @@ class APIBadgesController < ApplicationController
   # handled automatically.
   #
   def create
-    # DEBUG
-    # logger.debug("\r\n*** create PARAMS:")
-    # logger.debug(edit_params(GogglesDb::Badge).inspect)
     result = APIProxy.call(
       method: :post,
       url: 'badge',
       jwt: current_user.jwt,
-      payload: edit_params(GogglesDb::Badge)
+      payload: create_params(GogglesDb::Badge)
     )
-    json = result.code == 200 && result.body.present? ? JSON.parse(result.body) : {}
+    json = parse_json_result_from_create(result)
 
     if json.present? && json['msg'] == 'OK' && json['new'].key?('id')
       flash[:info] = I18n.t('datagrid.edit_modal.create_ok', id: json['new']['id'])
     else
       flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: result.code)
     end
-    redirect_to api_badges_path
+    redirect_to api_badges_path(page: index_params[:page], per_page: index_params[:per_page])
   end
 
   # DELETE /api_badges
@@ -133,7 +129,7 @@ class APIBadgesController < ApplicationController
     else
       flash[:info] = I18n.t('dashboard.grid_commands.no_op_msg')
     end
-    redirect_to api_badges_path
+    redirect_to api_badges_path(page: index_params[:page], per_page: index_params[:per_page])
   end
   # rubocop:enable Metrics/AbcSize
   #-- -------------------------------------------------------------------------

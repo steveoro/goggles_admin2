@@ -19,6 +19,11 @@ class SwimmingPoolsGrid < BaseGrid
       (row.name =~ /#{value}/i) || (row.nick_name =~ /#{value}/i)
     end
   end
+  filter(:city, :string, header: 'City (~)') do |value, scope|
+    scope.select do |row|
+      row.city.name =~ /#{value}/i
+    end
+  end
   filter(:address, :string, header: 'Address (~)') do |value, scope|
     scope.select do |row|
       row.address =~ /#{value}/i
@@ -31,8 +36,10 @@ class SwimmingPoolsGrid < BaseGrid
   column(:name, mandatory: true)
   column(:nick_name, mandatory: true)
 
-  column(:pool_type_id, align: :right, mandatory: true)
-  column(:city_id, align: :right, mandatory: true)
+  column(:pool_type_id, align: :right)
+  column(:pool_type, html: true, align: :right, mandatory: true) { |asset| asset.pool_type.code }
+  column(:city_id, align: :right)
+  column(:city, html: true, align: :right, mandatory: true) { |asset| asset.city.name }
   column(:address)
   column(:zip)
 

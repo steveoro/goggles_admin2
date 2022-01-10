@@ -18,7 +18,8 @@ class APISwimmersController < ApplicationController
       method: :get, url: 'swimmers', jwt: current_user.jwt,
       params: {
         name: index_params[:name], year_of_birth: index_params[:year_of_birth],
-        year_guessed: index_params[:year_guessed],
+        # FIXME: current version of the API wrongly defines year_guessed as an integer!
+        year_guessed: index_params[:year_guessed] == 'true' ? 1 : 0,
         page: index_params[:page], per_page: index_params[:per_page]
       }
     )
@@ -39,12 +40,11 @@ class APISwimmersController < ApplicationController
     SwimmersGrid.data_domain = @domain
 
     respond_to do |format|
-      format.html do
-        @grid = SwimmersGrid.new(grid_filter_params)
-      end
+      @grid = SwimmersGrid.new(grid_filter_params)
+
+      format.html { @grid }
 
       format.csv do
-        @grid = SwimmersGrid.new(grid_filter_params)
         send_data(
           @grid.to_csv,
           type: 'text/csv',
@@ -68,9 +68,6 @@ class APISwimmersController < ApplicationController
   # - <tt>id</tt>: ID of the instance row to be updated
   #
   def update
-    # DEBUG
-    # logger.debug("\r\n*** update PARAMS:")
-    # logger.debug(edit_params(GogglesDb::Swimmer).inspect)
     result = APIProxy.call(
       method: :put,
       url: "swimmer/#{edit_params(GogglesDb::Swimmer)['id']}",
@@ -83,7 +80,7 @@ class APISwimmersController < ApplicationController
     else
       flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: result)
     end
-    redirect_to api_swimmers_path
+    redirect_to api_swimmers_path(page: index_params[:page], per_page: index_params[:per_page])
   end
 
   # POST /api_swimmers
@@ -93,23 +90,20 @@ class APISwimmersController < ApplicationController
   # handled automatically.
   #
   def create
-    # DEBUG
-    # logger.debug("\r\n*** create PARAMS:")
-    # logger.debug(edit_params(GogglesDb::Swimmer).inspect)
     result = APIProxy.call(
       method: :post,
       url: 'swimmer',
       jwt: current_user.jwt,
-      payload: edit_params(GogglesDb::Swimmer)
+      payload: create_params(GogglesDb::Swimmer)
     )
-    json = result.code == 200 && result.body.present? ? JSON.parse(result.body) : {}
+    json = parse_json_result_from_create(result)
 
     if json.present? && json['msg'] == 'OK' && json['new'].key?('id')
       flash[:info] = I18n.t('datagrid.edit_modal.create_ok', id: json['new']['id'])
     else
       flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: result.code)
     end
-    redirect_to api_swimmers_path
+    redirect_to api_swimmers_path(page: index_params[:page], per_page: index_params[:per_page])
   end
   #-- -------------------------------------------------------------------------
   #++

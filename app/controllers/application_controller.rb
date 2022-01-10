@@ -73,18 +73,70 @@ class ApplicationController < ActionController::Base
   #-- -------------------------------------------------------------------------
   #++
 
-  # Generalized parameters strong-checking for grid row create/update.
+  # Returns the sub-hash of namespaced params according to the specified <tt>namespace</tt>
+  # (using <tt>require()</tt>), or the params Hash itself when no namespace is given.
+  #
+  # == Params:
+  # - <tt>namespace</tt>: the 'require' namespace to be used for filtering the parameters
+  def namespaced_params(namespace)
+    return params if namespace.nil?
+
+    params.require(namespace)
+  end
+
+  # Generalized parameters strong-checking for grid row update.
   #
   # == Params:
   # - <tt>model_class</tt>: the actual model class (sibling of ActiveRecord::Base) source of the attributes
   #                         for the PUT/POST API action
-  def edit_params(model_class)
-    params.permit(
+  def edit_params(model_class, namespace = nil)
+    namespaced_params(namespace).permit(
       model_class.new
                  .attributes.keys
                  .reject { |key| %w[lock_version].include?(key) } +
-                 %i[_method authenticity_token]
+                 %w[_method authenticity_token]
     )
+  end
+
+  # Generalized parameters strong-checking for grid row create.
+  #
+  # == Params:
+  # - <tt>model_class</tt>: the actual model class (sibling of ActiveRecord::Base) source of the attributes
+  #                         for the PUT/POST API action
+  def create_params(model_class, namespace = nil)
+    namespaced_params(namespace).permit(
+      model_class.new
+                 .attributes.keys
+                 .reject { |key| %w[lock_version].include?(key) }
+    )
+  end
+  #-- -------------------------------------------------------------------------
+  #++
+
+  # Whitelisted datagrid model attributes (and values) for a domain collection
+  # used as base data for a grid.
+  #
+  # == Params:
+  # - <tt>model_class</tt>: the model class to be used for the whitelist
+  # - <tt>attrs</tt>: the attribute hash that has to be filtered of unsupported columns
+  #
+  # == Returns:
+  # The filtered attribute hash
+  #
+  def datagrid_model_attributes_for(model_class, attrs)
+    model_class.new.attributes.keys.reject { |key| %w[lock_version].include?(key) }
+    attrs.select { |key, _value| model_class.new.attributes.keys.include?(key) }
+  end
+  #-- -------------------------------------------------------------------------
+  #++
+
+  # Checks the <tt>result.code</tt> and returns the <tt>result.body</tt> assuming it's a valid JSON string.
+  # Returns an empty Hash otherwise.
+  def parse_json_result_from_create(result)
+    return {} unless result.respond_to?(:code) && result.respond_to?(:body) &&
+                     result.code >= 200 && result.code < 300 && result.body.present?
+
+    JSON.parse(result.body)
   end
   #-- -------------------------------------------------------------------------
   #++

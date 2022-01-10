@@ -1,6 +1,7 @@
-= link_to({ controller: @controller_name, action: :destroy, params: { id: @asset_row.id } },
+= link_to({ controller: @controller_name, action: :destroy, params: { id: @asset_row.id,
+            page: params[:page], per_page: params[:per_page] } },
             { id: "frm-delete-row-#{@asset_row.id}", method: :delete,
-            class: 'btn btn-sm btn-outline-danger',
+            class: 'btn btn-sm btn-outline-danger mb-1',
             data: { confirm: t('dashboard.confirm_row_delete',
             label: @asset_row.send(@label_method || 'id')) } }) do
   %i.fa.fa-trash-o

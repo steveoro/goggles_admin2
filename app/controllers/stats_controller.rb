@@ -16,9 +16,6 @@ class StatsController < ApplicationController
   #
   # rubocop:disable Metrics/AbcSize
   def index
-    # DEBUG
-    # logger.debug("\r\n*** /index PARAMS:")
-    # logger.debug(grid_filter_params.inspect)
     result = APIProxy.call(
       method: :get, url: 'api_daily_uses', jwt: current_user.jwt,
       params: {
@@ -44,12 +41,11 @@ class StatsController < ApplicationController
     StatsGrid.data_domain = @domain
 
     respond_to do |format|
-      format.html do
-        @grid = StatsGrid.new(grid_filter_params)
-      end
+      @grid = StatsGrid.new(grid_filter_params)
+
+      format.html { @grid }
 
       format.csv do
-        @grid = StatsGrid.new(grid_filter_params)
         send_data(
           @grid.to_csv,
           type: 'text/csv',
@@ -73,9 +69,6 @@ class StatsController < ApplicationController
   # - <tt>id</tt>: ID of the instance row to be updated
   #
   def update
-    # DEBUG
-    # logger.debug("\r\n*** /update PARAMS:")
-    # logger.debug(edit_params(GogglesDb::APIDailyUse).inspect)
     result = APIProxy.call(
       method: :put,
       url: "api_daily_use/#{edit_params(GogglesDb::APIDailyUse)['id']}",
@@ -88,7 +81,7 @@ class StatsController < ApplicationController
     else
       flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: result)
     end
-    redirect_to stats_path
+    redirect_to stats_path(page: index_params[:page], per_page: index_params[:per_page])
   end
 
   # DELETE /stats
@@ -100,9 +93,6 @@ class StatsController < ApplicationController
   #
   # rubocop:disable Metrics/AbcSize
   def destroy
-    # DEBUG
-    # logger.debug("\r\n*** /destroy PARAMS:")
-    # logger.debug(delete_params.inspect)
     row_ids = delete_params[:ids].present? ? delete_params[:ids].split(',') : []
     row_ids << delete_params[:id] if delete_params[:id].present?
 
@@ -115,7 +105,7 @@ class StatsController < ApplicationController
     else
       flash[:info] = I18n.t('dashboard.grid_commands.no_op_msg')
     end
-    redirect_to stats_path
+    redirect_to stats_path(page: index_params[:page], per_page: index_params[:per_page])
   end
   # rubocop:enable Metrics/AbcSize
   #-- -------------------------------------------------------------------------

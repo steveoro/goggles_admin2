@@ -17,8 +17,8 @@ class TeamAffiliationsGrid < BaseGrid
   filter(:season_id, :integer)
   filter(:name, :string, header: 'Name (~)') do |value, scope|
     scope.select do |row|
-      (row.name =~ /#{value}/i) || (row.team.name =~ /#{value}/i) ||
-        (row.team.editable_name =~ /#{value}/i)
+      (row.name =~ /#{value}/i) || (row.team&.name =~ /#{value}/i) ||
+        (row.team&.editable_name =~ /#{value}/i)
     end
   end
   filter(:compute_gogglecup, :boolean)
@@ -28,7 +28,7 @@ class TeamAffiliationsGrid < BaseGrid
 
   column(:name, mandatory: true)
   column(:number)
-  column(:compute_gogglecup, align: :right)
+  boolean_column(:compute_gogglecup, align: :center, mandatory: true, order: false)
   column(:team_id, align: :right, mandatory: true)
   column(:season_id, align: :right, mandatory: true)
   column(:autofilled, align: :right)

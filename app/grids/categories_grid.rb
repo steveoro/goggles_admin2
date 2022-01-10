@@ -29,10 +29,10 @@ class CategoriesGrid < BaseGrid
   column(:group_name, mandatory: true)
   column(:age_begin)
   column(:age_end)
-  column(:relay, align: :center)
   column(:season_id, align: :right, mandatory: true)
-  column(:out_of_race, align: :center)
-  column(:undivided, align: :center)
+  boolean_column(:relay, align: :center, mandatory: true, order: false)
+  boolean_column(:out_of_race, align: :center, mandatory: true, order: false)
+  boolean_column(:undivided, align: :center)
 
   actions_column(edit: true, destroy: true, mandatory: true)
 end

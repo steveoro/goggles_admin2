@@ -86,13 +86,26 @@ class BaseGrid
   # Renders a mini action toolbar for the current record row.
   #
   # == Params:
-  # - <tt>destroy</tt>      => true/false to toggle display of the 'delete row' action button
-  # - <tt>edit</tt>         => true/false to toggle display of the 'edit row' action button
-  # - <tt>label_method</tt> => method to call on the current row to get a displayable label
-  # - <tt>mandatory</tt>    => always show column (@see https://github.com/bogdan/datagrid/wiki/Columns#columns-visibility)
+  # - <tt>destroy</tt>
+  #   => [true]/false to toggle display of the 'delete row' action button (default: true)
   #
-  def self.actions_column(edit:, destroy:, label_method: nil, mandatory: false)
+  # - <tt>edit</tt>
+  #   => [true]/false to toggle display of the 'edit row' action button (default: true);
+  #      set this to a string to use a custom DOM ID for the modal dialog
+  #
+  # - <tt>expand</tt>
+  #   => true/[false] to toggle display of the 'expand row' action button (default: false)
+  #      (Usually a link to a "GET <ENTITY_NAME/<ID>"-type request that will open in a new page)
+  #
+  # - <tt>label_method</tt>
+  #   => method to call on the current row to get a displayable label
+  #
+  # - <tt>mandatory</tt>
+  #   => true/[false] to always show column
+  #      (@see https://github.com/bogdan/datagrid/wiki/Columns#columns-visibility)
+  #
+  def self.actions_column(edit:, destroy:, expand: false, label_method: nil, mandatory: false)
     column(:actions, html: true, order: false, edit: edit, destroy: destroy,
-                     label_method: label_method, mandatory: mandatory)
+                     expand: expand, label_method: label_method, mandatory: mandatory)
   end
 end

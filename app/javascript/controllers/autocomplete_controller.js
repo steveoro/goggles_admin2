@@ -21,6 +21,13 @@ require('easy-autocomplete')
  *
  * == Values ==
  * (Put values directly on controller elements)
+ * @param {String} 'data-autocomplete-base-dom-id-value'
+ *                 defines the base string name for the DOM ID used by the modal container,
+ *                 its input form (<tt>"frm-<BASE_MODAL_DOM_ID>"</tt>),
+ *                 its title label (<tt>"<BASE_MODAL_DOM_ID>-modal-title"</tt>)
+ *                 and its submit button (<tt>"btn-<BASE_MODAL_DOM_ID>-submit-save"</tt>);
+ *                 default: "grid-edit"
+ *
  * @param {String} 'data-autocomplete-base-api-url-value'
  *                 base API URL for data request (w/o endpoint or params)
  *
@@ -36,6 +43,15 @@ require('easy-autocomplete')
  *
  * @param {String} 'data-autocomplete-search-column-value'
  *                 query field name used in the API search call; defaults to 'name'
+ *
+ * @param {String} 'data-autocomplete-search2-column-value'
+ *                 secondary filter/query field name used in the API search call;
+ *                 this affects only the list filtering for the search endpoint (can be used to better refine the rows found);
+ *                 defaults to null
+ *
+ * @param {String} 'data-autocomplete-search2-dom-id-value'
+ *                 DOM ID for the secondary search field value; the referred node should contain the secondary filter/query value,
+ *                 if the search2 column is defined (defaults to null).
  *
  * @param {String} 'data-autocomplete-label-column-value'
  *                 field name used to retrieve additional label/description for the results; defaults to 'description';
@@ -56,9 +72,11 @@ require('easy-autocomplete')
 export default class extends Controller {
   static targets = ['field', 'search', 'desc']
   static values = {
+    baseDomId: String,
     baseApiUrl: String,
     detailEndpoint: String,
     searchEndpoint: String, searchColumn: String,
+    search2Column: String, search2DomId: String,
     labelColumn: String, label2Column: String,
     jwt: String
   }
@@ -106,6 +124,8 @@ export default class extends Controller {
    * @param {Object} entityRow the object storing the row details
    */
   updateFieldAndDesc(entityRow) {
+    // DEBUG
+    // console.log('updateFieldAndDesc(): entityRow:', entityRow)
     if (this.hasFieldTarget) {
       var descValue = this.computeLabelDescription(this, entityRow)
       // DEBUG
@@ -114,6 +134,10 @@ export default class extends Controller {
       if (this.hasDescTarget) {
         $(this.descTarget).html(`<b>${entityRow[this.searchColumnValue || 'name']}</b> - ${descValue}`);
       }
+    }
+    else {
+      // DEBUG
+      console.log('updateFieldAndDesc: no fieldTarget found.')
     }
   }
 
@@ -149,6 +173,10 @@ export default class extends Controller {
         }
       })
     }
+    // DEBUG
+    // else {
+    //   console.warn('fetchAndUpdateDetails: missing baseApiUrlValue or jwtValue or entityId')
+    // }
   }
   // ---------------------------------------------------------------------------
 
@@ -161,11 +189,22 @@ export default class extends Controller {
     if (this.hasBaseApiUrlValue && this.hasJwtValue) {
       const jwt = this.jwtValue
       const computeDesc = this.computeLabelDescription
+      const searchTargetDomId = `#${this.searchTarget.id}`
+      const fieldTargetDomId = `#${this.fieldTarget.id}`
+      // DEBUG
+      // console.log("searchTargetDomId:", searchTargetDomId)
+      // console.log("fieldTargetDomId:", fieldTargetDomId)
 
       // Search => field + desc update
-      $(this.searchTarget).easyAutocomplete({
+      $(searchTargetDomId).easyAutocomplete({
         url: (queryText) => {
-          return `${this.baseApiUrlValue}/${this.searchEndpointValue}?${this.searchColumnValue}=${queryText}`;
+          const baseQueryURI = `${this.baseApiUrlValue}/${this.searchEndpointValue}?${this.searchColumnValue}=${queryText}`
+          const search2DomID = `#${this.search2DomIdValue}`
+          // Fetch using a secondary filtering query (if present):
+          if (this.hasSearch2ColumnValue && this.hasSearch2DomIdValue && $(search2DomID).val().length > 0) {
+            return `${baseQueryURI}&${this.search2ColumnValue}=${$(search2DomID).val()}`
+          }
+          return baseQueryURI
         },
 
         ajaxSettings: {
@@ -195,10 +234,15 @@ export default class extends Controller {
           match: { enabled: true },
           maxNumberOfElements: 8,
           onSelectItemEvent: () => {
-            this.updateFieldAndDesc($(this.searchTarget).getSelectedItemData())
-            $(this.searchTarget).val('') // Reset search box when done
+            // DEBUG
+            // console.log("onSelectItemEvent: activeElement ID:", document.activeElement.id)
+            // DEBUG
+            // console.log("onSelectItemEvent: searchTargetDomId:", searchTargetDomId)
+            this.updateFieldAndDesc($(searchTargetDomId).getSelectedItemData())
+            $(searchTargetDomId).val('') // Reset search box when done
           },
           onHideListEvent: () => {
+            // (no-op)
           }
         },
 
@@ -206,13 +250,17 @@ export default class extends Controller {
       });
 
       // Field => search + desc update
-      $(this.fieldTarget).on('change', (_eventObject) => {
+      $(fieldTargetDomId).on('change', (_eventObject) => {
         // DEBUG
         // console.log('refreshWidgetSetup(): before fetchAndUpdateDetails')
 
         // Skip detail retrieval if detail endpoint is not set:
         if (this.hasDetailEndpointValue) {
-          this.fetchAndUpdateDetails(this.detailEndpointValue, $(this.fieldTarget).val())
+          this.fetchAndUpdateDetails(this.detailEndpointValue, $(fieldTargetDomId).val())
+        }
+        else {
+          // DEBUG
+          // console.log('refreshWidgetSetup(): no detailEndpointValue')
         }
       })
     }

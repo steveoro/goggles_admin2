@@ -2,6 +2,7 @@
 
 _Please, add the latest build info on top of the list; use Version::MAJOR only after gold release; keep semantic versioning in line with framework's_
 
+- **0.3.40** [Steve A.] meeting reservations management; support for namespaced-grids & 'expanded details' (currently only for meeting reservations); added secondary filtering parameter to autocomplete lookups -- i.e.: filtering autocomplete results for 'badges' by currently selected 'season_id' value or 'team affiliations' by the same 'season_id', similar to what's been done with DBLookup secondary filtering but using a single API call with an additional filtering parameter (configurable)
 - **0.3.39** [Steve A.] re-sync with the base Engine; added JSONEditor for import_queues
 - **0.3.33** [Steve A.] dashboard for badges, categories, seasons, swimmers, swimming_pools, team_affiliations & teams
 - **0.3.32** [Steve A.] rudimentary dashboard for team managers, settings, users & stats

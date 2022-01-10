@@ -32,7 +32,9 @@ class UsersGrid < BaseGrid
   column(:id, align: :right, mandatory: true)
   column(:name, mandatory: true)
   column(:description, mandatory: true)
-  column(:swimmer_id, align: :right, mandatory: true)
+  # 'swimmer_id' can be nil, need to convert the value:
+  column(:swimmer_id, align: :right, mandatory: true,
+                      order: proc { |scope| scope.sort { |a, b| a.swimmer_id.to_i <=> b.swimmer_id.to_i } })
   column(:email, mandatory: true)
 
   column(:last_name)

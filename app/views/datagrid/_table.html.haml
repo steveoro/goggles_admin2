@@ -3,7 +3,7 @@
     %thead
       = datagrid_header(grid, options)
     %tbody
-      - if assets.any?
+      - if assets&.any?
         = datagrid_rows(grid, assets, **options)
       - else
         %tr

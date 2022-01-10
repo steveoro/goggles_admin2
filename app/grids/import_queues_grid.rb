@@ -30,7 +30,7 @@ class ImportQueuesGrid < BaseGrid
   column(:process_runs, align: :right, mandatory: true)
   column(:request_data)
   column(:solved_data)
-  column(:done, align: :center, mandatory: true)
+  boolean_column(:done, align: :center, mandatory: true, order: false)
   column(:uid)
   column(:bindings_left_count, header: 'Bindings left', align: :right, mandatory: true)
   column(:bindings_left_list)

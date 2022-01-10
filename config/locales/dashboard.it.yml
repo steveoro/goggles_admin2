@@ -19,9 +19,14 @@ it:
     badges:
       title: "Cartellini (Badges)"
     categories:
-      title: "Categorie (CategoryType)"
+      title: "Categorie (CategoryTypes)"
     import_queues:
-      title: "Code importazioni (Import Queues)"
+      title: "Code importazioni (ImportQueues)"
+    meeting_reservations:
+      title: "Prenotazioni Meeting (MeetingReservations)"
+      expand:
+        tooltip: "Vai all'elenco dettagli (eventi e staffette)"
+        title: "Prenotazioni eventi e staffette"
     settings:
       title: "Impostazioni"
       connection:
