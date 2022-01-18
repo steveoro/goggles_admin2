@@ -549,6 +549,8 @@ GEM
       activesupport (>= 5.2)
       sprockets (>= 3.0.0)
     ssrf_filter (1.0.7)
+    stimulus-rails (1.0.2)
+      railties (>= 6.0.0)
     sync (0.5.0)
     sys-uname (1.2.2)
       ffi (~> 1.1)
@@ -660,6 +662,7 @@ DEPENDENCIES
   spring-commands-rspec
   spring-commands-rubocop
   spring-watcher-listen
+  stimulus-rails
   turbolinks (~> 5)
   view_component
   web-console (>= 3.3.0)

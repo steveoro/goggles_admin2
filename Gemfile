@@ -47,6 +47,7 @@ gem 'nokogiri' # (used explicitly for view specs)
 # Use Rack CORS for handling Cross-Origin Resource Sharing (CORS), making cross-origin AJAX possible
 # gem 'rack-cors'
 gem 'rest-client'
+gem 'stimulus-rails'
 gem 'view_component', require: 'view_component/engine'
 
 group :development do
