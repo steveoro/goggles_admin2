@@ -3,7 +3,7 @@
 #
 # = ComboBox components module
 #
-#   - version:  7.0.3.32
+#   - version:  7.3.40
 #   - author:   Steve A.
 #
 module ComboBox
