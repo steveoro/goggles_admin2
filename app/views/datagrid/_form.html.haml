@@ -3,11 +3,11 @@
     = form_for(grid, options) do |f|
       - grid.filters.each do |filter|
         .datagrid-filter.filter.form-group.row
-          = f.datagrid_label(filter, class: 'col-sm-2 col-form-label')
-          .col-sm-10
+          = f.datagrid_label(filter, class: 'col-sm-3 col-form-label')
+          .col-sm-9
             = f.datagrid_filter(filter, class: 'form-control')
-      .datagrid-actions.form-group.row
-        = f.submit(I18n.t('datagrid.form.search').html_safe, class: 'ml-3 datagrid-submit btn btn-sm btn-secondary')
+      .datagrid-actions.form-group.row.d-flex.justify-content-center
+        = f.submit(I18n.t('datagrid.form.search').html_safe, class: 'datagrid-submit btn btn-sm btn-secondary')
         - empty_parameter = Rails.version >= '4.1.0' && Rails.version <= '4.1.2' ? nil : {}
         &nbsp;
         = link_to(I18n.t('datagrid.form.reset').html_safe, url_for(grid.to_param => empty_parameter),
