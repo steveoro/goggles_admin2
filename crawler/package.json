@@ -1,0 +1,22 @@
+{
+  "name": "crawler",
+  "version": "1.0.0",
+  "private": true,
+  "description": "server that Crawls the web in search of Swimming Meetings manifests and download the published results",
+  "main": "index.js",
+  "scripts": {
+    "test": "test"
+  },
+  "keywords": [
+    "master",
+    "swimming",
+    "results",
+    "crawler"
+  ],
+  "author": "'Steve A.' <steve.alloro@gmail.com>",
+  "contributors": [],
+  "license": "LGPL-3.0",
+  "dependencies": {
+    "express": "^4.17.3"
+  }
+}

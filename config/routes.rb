@@ -27,10 +27,10 @@ Rails.application.routes.draw do
   get 'api_meeting_reservations/expand', to: 'api_meeting_reservations#expand', as: 'api_meeting_reservations_expand'
   delete 'api_meeting_reservations', to: 'api_meeting_reservations#destroy', as: 'api_meeting_reservations_destroy'
 
-  resources :api_meetings, only: %i[index create update]
-  delete 'api_meetings', to: 'api_meetings#destroy', as: 'api_meetings_destroy'
+  resources :api_meetings, only: %i[index update]
+  post 'api_meetings/clone', to: 'api_meetings#clone', as: 'api_meetings_clone'
 
-  resources :api_seasons, only: %i[index create update] # TODO: add support for create in API
+  resources :api_seasons, only: %i[index create update]
 
   resources :api_swimmers, only: %i[index create update]
 

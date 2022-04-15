@@ -1,0 +1,7 @@
+= link_to({ controller: @controller_name, action: 'clone', params: { id: @asset_row.id,
+            page: params[:page], per_page: params[:per_page] } },
+            { id: "frm-clone-row-#{@asset_row.id}", method: :post,
+            class: 'btn btn-sm btn-outline-success mb-1',
+            data: { confirm: t('dashboard.confirm_row_clone',
+            label: @asset_row.send(@label_method || 'id')) } }) do
+  %i.fa.fa-clone

@@ -12,6 +12,7 @@ RSpec.describe Grid::RowToolbarComponent, type: :component do
   end
 
   let(:fixture_asset_row) { GogglesDb::User.all.to_a.sample }
+  let(:expected_clone_link_id) { "frm-clone-row-#{fixture_asset_row.id}" }
   let(:expected_delete_link_id) { "frm-delete-row-#{fixture_asset_row.id}" }
   let(:expected_expand_link_id) { "btn-expand-row-#{fixture_asset_row.id}" }
 
@@ -35,6 +36,9 @@ RSpec.describe Grid::RowToolbarComponent, type: :component do
     it 'renders the row delete button with the proper bindings' do
       expect(subject.css("a##{expected_delete_link_id}")).to be_present
       expect(subject.css("a##{expected_delete_link_id}").attr('href')).to be_present
+    end
+    it 'does not render the row clone button' do
+      expect(subject.css("##{expected_clone_link_id}")).not_to be_present
     end
     it 'does not render the row expand button' do
       expect(subject.css("##{expected_expand_link_id}")).not_to be_present
@@ -74,6 +78,33 @@ RSpec.describe Grid::RowToolbarComponent, type: :component do
     end
     it 'renders the row edit button' do
       expect(subject.css('.row-edit-btn a')).to be_present
+    end
+    it 'does not render the row expand button' do
+      expect(subject.css("##{expected_expand_link_id}")).not_to be_present
+    end
+    it 'does not render the row delete button' do
+      expect(subject.css("a##{expected_delete_link_id}")).not_to be_present
+    end
+  end
+
+  context 'with valid parameters + enabling the row clone button,' do
+    subject do
+      render_inline(
+        described_class.new(
+          asset_row: fixture_asset_row,
+          controller_name: 'api_meetings', # (Currently this is the only controller that supports cloning)
+          clone: true,
+          destroy: false
+        )
+      )
+    end
+    it 'renders the row edit button' do
+      expect(subject.css('.row-edit-btn a').attr('href')).to be_present
+      expect(subject.css('.row-edit-btn a').attr('href').value).to eq('#grid-edit-modal')
+    end
+    it 'renders the row clone button' do
+      expect(subject.css("a##{expected_clone_link_id}")).to be_present
+      expect(subject.css("a##{expected_clone_link_id}").attr('href')).to be_present
     end
     it 'does not render the row expand button' do
       expect(subject.css("##{expected_expand_link_id}")).not_to be_present

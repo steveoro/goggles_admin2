@@ -123,6 +123,26 @@
     {
       "warning_type": "Mass Assignment",
       "warning_code": 70,
+      "fingerprint": "65fd3f77354c3ac8cb5e9a8c34714f2476923240f3d33c8781dc68c770f25353",
+      "check_name": "MassAssignment",
+      "message": "Specify exact keys allowed for mass assignment instead of using `permit!` which allows any keys",
+      "file": "app/controllers/api_meetings_controller.rb",
+      "line": 141,
+      "link": "https://brakemanscanner.org/docs/warning_types/mass_assignment/",
+      "code": "params.fetch(:meetings_grid, {}).permit!",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "APIMeetingsController",
+        "method": "grid_filter_params"
+      },
+      "user_input": null,
+      "confidence": "Medium",
+      "note": ""
+    },
+    {
+      "warning_type": "Mass Assignment",
+      "warning_code": 70,
       "fingerprint": "677d06695e03a7b1b83f6f89c22a38365be952c1be8f79cee013e33fcac08268",
       "check_name": "MassAssignment",
       "message": "Specify exact keys allowed for mass assignment instead of using `permit!` which allows any keys",
@@ -443,6 +463,26 @@
     {
       "warning_type": "Mass Assignment",
       "warning_code": 70,
+      "fingerprint": "d69b2bdc2ba2657bff2da526596143e282ea68dddbbbfa04e0c0140bb41ed8a4",
+      "check_name": "MassAssignment",
+      "message": "Specify exact keys allowed for mass assignment instead of using `permit!` which allows any keys",
+      "file": "app/controllers/api_meetings_controller.rb",
+      "line": 148,
+      "link": "https://brakemanscanner.org/docs/warning_types/mass_assignment/",
+      "code": "params.fetch(:meetings_grid, {}).permit!",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "APIMeetingsController",
+        "method": "index_params"
+      },
+      "user_input": null,
+      "confidence": "Medium",
+      "note": ""
+    },
+    {
+      "warning_type": "Mass Assignment",
+      "warning_code": 70,
       "fingerprint": "dc53d13f0a03dd11922567ef20fa0cdee2406dc6c1adee1cd36350bbd6553905",
       "check_name": "MassAssignment",
       "message": "Specify exact keys allowed for mass assignment instead of using `permit!` which allows any keys",
@@ -541,6 +581,6 @@
       "note": ""
     }
   ],
-  "updated": "2022-01-10 13:31:19 +0100",
+  "updated": "2022-04-12 12:21:17 +0200",
   "brakeman_version": "5.1.1"
 }

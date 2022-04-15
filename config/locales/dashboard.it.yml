@@ -5,6 +5,7 @@ it:
     toggle_selection: "Inverti righe selezionate"
     n_total_rows: "%{tot} righe totali"
     confirm_row_delete: "Siamo sicuri di voler eliminare questa riga?\r\n(%{label})"
+    confirm_row_clone: "Sicuri di voler CLONARE questa riga?\r\n(%{label})"
     api_proxy_error: "Chiamata API fallita: errore %{error_code}, msg: '%{error_msg}'"
     generic_param_miss_error: "Parametro mancante!"
     not_admin_error: "Solo gli Amministratori possono usare questa applicazione!"
@@ -22,6 +23,8 @@ it:
       title: "Categorie (CategoryTypes)"
     import_queues:
       title: "Code importazioni (ImportQueues)"
+    meetings:
+      title: "Meeting"
     meeting_reservations:
       title: "Prenotazioni Meeting (MeetingReservations)"
       expand:

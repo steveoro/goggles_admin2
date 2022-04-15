@@ -41,7 +41,7 @@ RSpec.describe APIBadgesController, type: :request do
 
   describe 'PUT api_badge (update)' do
     let(:fixture_row) { FactoryBot.create(:badge) }
-    let(:new_value) { GogglesDb::Swimmer.first(100).sample.id }
+    let(:new_value) { GogglesDb::Swimmer.pluck(:id).first(200).sample }
 
     context 'with an unlogged user' do
       it 'is a redirect to the login path' do

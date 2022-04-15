@@ -34,7 +34,7 @@ RSpec.describe APITeamManagersController, type: :request do
 
   describe 'PUT api_team_manager (update)' do
     let(:fixture_row) { FactoryBot.create(:managed_affiliation) }
-    let(:new_value) { GogglesDb::TeamAffiliation.first(200).sample.id }
+    let(:new_value) { GogglesDb::TeamAffiliation.pluck(:id).first(200).sample }
 
     context 'with an unlogged user' do
       it 'is a redirect to the login path' do

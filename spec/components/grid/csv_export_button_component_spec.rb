@@ -10,7 +10,7 @@ RSpec.describe Grid::CsvExportButtonComponent, type: :component do
 
   context 'with valid parameters,' do
     let(:fixture_controller_name) { 'api_users' }
-    subject do
+    subject(:component) do
       render_inline(
         described_class.new(
           controller_name: fixture_controller_name,
@@ -20,14 +20,14 @@ RSpec.describe Grid::CsvExportButtonComponent, type: :component do
     end
 
     it "renders the link to the 'csv' index action" do
-      expect(subject.css('a').attr('href')).to be_present
-      expect(subject.css('a').attr('href').value).to eq("/#{fixture_controller_name}.csv")
+      expect(component.css('a').attr('href')).to be_present
+      expect(component.css('a').attr('href').value).to eq("/#{fixture_controller_name}.csv")
     end
     it 'includes a tooltip help' do
-      expect(subject.css('a').attr('data-toggle')).to be_present
-      expect(subject.css('a').attr('data-toggle').value).to eq('tooltip')
-      expect(subject.css('a').attr('data-title')).to be_present
-      expect(subject.css('a').attr('data-title').value).to eq(I18n.t('datagrid.csv_export.btn_tooltip'))
+      expect(component.css('a').attr('data-toggle')).to be_present
+      expect(component.css('a').attr('data-toggle').value).to eq('tooltip')
+      expect(component.css('a').attr('data-title')).to be_present
+      expect(component.css('a').attr('data-title').value).to eq(I18n.t('datagrid.csv_export.btn_tooltip'))
     end
   end
 end
