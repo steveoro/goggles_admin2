@@ -1,11 +1,12 @@
 {
   "name": "crawler",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
   "description": "server that Crawls the web in search of Swimming Meetings manifests and download the published results",
   "main": "index.js",
   "scripts": {
-    "test": "test"
+    "start": "NODE_ENV=development node server/index.js",
+    "test": "NODE_ENV=development mocha --exit tests/*.js"
   },
   "keywords": [
     "master",
@@ -17,6 +18,20 @@
   "contributors": [],
   "license": "LGPL-3.0",
   "dependencies": {
-    "express": "^4.17.3"
+    "body-parser": "^1.20.0",
+    "cheerio": "^1.0.0-rc.10",
+    "csv-parser": "^3.0.0",
+    "dotenv": "^16.0.0",
+    "dotenv-expand": "^8.0.3",
+    "express": "^4.17.3",
+    "fs": "^0.0.1-security",
+    "get-stream": "^6.0.1",
+    "helmet": "^5.0.2",
+    "jquery": "^3.6.0",
+    "mysql2": "^2.3.3",
+    "node-fetch": "^2.6.1",
+    "puppeteer": "^13.5.2",
+    "util": "^0.12.4",
+    "ws": "^8.5.0"
   }
 }

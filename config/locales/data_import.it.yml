@@ -1,0 +1,28 @@
+it:
+  data_import:
+    config:
+      default_calendar_url: 'URL calendario'
+    calendar:
+      crawler_status_page_title: 'Crawler'
+      choose_season_label: 'Scegli stagione'
+      calendar_files_page_title: 'File calendario'
+      result_files_page_title: 'File risultati'
+      btn_run_crawler: '📥 CRAWL URL Calendario'
+      btn_run_crawler_confirm: 'Eseguo il crawler per recuperare le ultime informazioni sui meeting trovati alla URL qui sopra?'
+      btn_clear_log: 'Azzera Log'
+      btn_clear_log_confirm: 'Azzero il log?'
+      season_search_label: 'Season / cerca x label / URL calendario / layout:'
+    file:
+      btn_delete_tooltip: 'Elimina file'
+      confirm_delete: 'Sicuri di voler cancellare questo file?'
+      btn_rename_tooltip: 'Rinomina file'
+      btn_edit_tooltip: 'Modifica file'
+      btn_download_tooltip: 'Scarica file'
+      btn_process_csv_tooltip: 'Elabora questo file calendario, scaricando i risultati disponibili'
+      btn_process_json_tooltip: 'Elabora questo file risultati, creando una transazione di importazione dati per la revisione in seguito'
+    errors:
+      invalid_request: 'Richiesta non valida'
+      invalid_file_content: 'Contenuto del file non valido rispetto alla sua estensione'
+      missing_url_or_season_id: 'Devi specificare un URL calendario e un ID stagione'
+      crawler_unreachable: 'Crawler server non raggiungibile'
+      crawler_connecting: 'In connessione...'

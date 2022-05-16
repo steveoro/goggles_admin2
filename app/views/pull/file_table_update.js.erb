@@ -1,0 +1,17 @@
+$('#file-actions-modal').modal('hide');
+document.querySelector('#flash-messages-container').innerHTML = "<%=
+  escape_javascript(
+    render(partial: 'goggles/flash_messages')
+  )
+%>";
+
+document.querySelector('#file-list').innerHTML = "<%=
+  escape_javascript(
+    render(
+      partial: 'file_table',
+      locals: {
+        files: @files
+      }
+    )
+  )
+%>";

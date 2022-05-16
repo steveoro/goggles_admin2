@@ -13,6 +13,21 @@ Rails.application.routes.draw do
 
   get 'home/index'
 
+  get 'pull/index'
+  get 'pull/calendar_files'
+  get 'pull/result_files'
+
+  post 'pull/run_calendar_crawler', to: 'pull#run_calendar_crawler', as: 'run_calendar_crawler'
+  get 'pull/edit_name'
+  get 'pull/edit_file'
+  put 'pull/file_rename'
+  put 'pull/file_edit'
+  delete 'pull/file_delete'
+  post 'pull/process_calendar_file', to: 'pull#process_calendar_file', as: 'process_calendar_file'
+
+  get 'data_fix/index'
+  get 'push/index'
+
   # Datagrid-actioned routes: (use prefix to avoid clashing w/ Engine resource routes)
   resources :api_badges, only: %i[index create update]
   delete 'api_badges', to: 'api_badges#destroy', as: 'api_badges_destroy'

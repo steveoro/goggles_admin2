@@ -1,0 +1,10 @@
+.wrapper-body
+  .main-content
+    %section.my-2#status-box
+      = render(partial: 'crawler_status_box')
+
+    %section.my-2#crawler-tabs
+      = render(partial: 'crawler_tabs', locals: { active_tab: 'results' })
+
+    %section#file-list
+      = render(partial: 'file_table', locals: { files: @files })

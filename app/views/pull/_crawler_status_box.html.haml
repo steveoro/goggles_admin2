@@ -1,0 +1,21 @@
+.container.bg-light-green.pt-2.shadow-box#crawler-status-box
+  .row-fluid.text-center
+    %h5
+      🕷 Crawler Server
+  .row
+    .col-12
+      %em
+        localhost:7000
+      %i.fa.fa-spin.fa-question-circle-o#crawler-status-icon
+      &nbsp;
+      %b
+        %small.text-secondary#crawler-status= t('data_import.errors.crawler_connecting')
+  .row
+    .col-12.pb-2
+      %small#crawler-detail
+        = t('data_import.errors.crawler_connecting')
+  .row-fluid.pb-2.d-none#crawler-progress-row
+    .progress
+      .progress-bar#crawler-progress{ role: 'progressbar', 'aria-valuenow': '0',
+                                      'aria-valuemin': '0', 'aria-valuemax': '100',
+                                      style: 'width: 0%' } 20%

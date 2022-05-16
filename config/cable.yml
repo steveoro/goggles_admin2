@@ -5,6 +5,8 @@ test:
   adapter: test
 
 production:
-  adapter: redis
-  url: <%= ENV.fetch("REDIS_URL") { "redis://localhost:6379/1" } %>
-  channel_prefix: goggles_admin2_production
+  # [Steve A.] This must be run only on localhost, so no Redis instance is needed:
+  adapter: async
+  channel_prefix: admin2_production
+  # adapter: redis
+  # url: <%= ENV.fetch("REDIS_URL") { "redis://localhost:6379/1" } %>

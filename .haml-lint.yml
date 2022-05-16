@@ -9,6 +9,10 @@ linters:
     exclude:
       - 'app/views/devise/shared/_error_messages.html.haml'
 
+  InlineStyles:
+    exclude:
+      - 'app/views/pull/_crawler_status_box.html.haml'
+
   RuboCop:
     exclude:
       - 'app/views/datagrid/_form.html.haml'

@@ -2,86 +2,10 @@
   .spacer-left
 
   .main-content
-    .row-fluid.text-center
-      %h5
-        🖥 API Server: #{GogglesDb::AppParameter.config.settings(:framework_urls).api}
-        %a.btn.btn-sm.btn-outline-secondary{ href: settings_path }
-          %i.fa.fa-cog
-    .col
-      .row.mb-3
-        .offset-lg-0.col-lg-4.offset-md-1.col-md-5.offset-sm-0.col-sm-6.py-2
-          %a.btn.card.text-white.bg-info.h-100{ href: stats_path }
-            .card-body.bg-info
-              .rotate
-                %i.fa.fa-line-chart.fa-4x
-              %h6.text-uppercase= t('dashboard.stats.title')
-              %h1.display-4= @api_uses_count
-
-        .offset-lg-0.col-lg-4.offset-md-1.col-md-5.offset-sm-0.col-sm-6.py-2
-          %a.btn.card.text-white.bg-danger.h-100{ href: api_import_queues_path }
-            .card-body.bg-danger
-              .rotate
-                %i.fa.fa-list.fa-4x
-              %h6.text-uppercase= t('dashboard.import_queues.title')
-              %h1.display-4= @iqs_count
-
-        .offset-lg-0.col-lg-4.offset-md-1.col-md-5.offset-sm-0.col-sm-6.py-2
-          %a.btn.card.bg-success.text-white.h-100{ href: api_users_path }
-            .card-body.bg-success
-              .rotate
-                %i.fa.fa-user.fa-4x
-              %h6.text-uppercase= t('dashboard.users.title')
-              %h1.display-4= @users_count
-
-        .col-12.py-2.mb-4
-          .card.text-dark.bg-light-blue.h-100
-            .card-body
-              .rotate
-                %i.fa.fa-cogs.fa-4x
-              %h6.text-uppercase= t('dashboard.manage_entities')
-              .row.mb-3
-                .offset-lg-0.col-lg-4.offset-md-1.col-md-5.offset-sm-0.col-sm-6.py-2
-                  %a.btn.btn-lg.btn-outline-primary.my-1{ href: api_teams_path }
-                    = t('dashboard.teams.title')
-                  %a.btn.btn-lg.btn-outline-primary.my-1{ href: api_team_affiliations_path }
-                    = t('dashboard.team_affiliations.title')
-                  %a.btn.btn-lg.btn-outline-primary.my-1{ href: api_team_managers_path }
-                    = t('dashboard.team_managers.title')
-                  %a.btn.btn-lg.btn-outline-primary.my-1{ href: api_meeting_reservations_path }
-                    = t('dashboard.meeting_reservations.title')
-                .offset-lg-0.col-lg-4.offset-md-1.col-md-5.offset-sm-0.col-sm-6.py-2
-                  %a.btn.btn-lg.btn-outline-primary.my-1{ href: api_seasons_path }
-                    = t('dashboard.seasons.title')
-                  %a.btn.btn-lg.btn-outline-primary.my-1{ href: api_categories_path }
-                    = t('dashboard.categories.title')
-                  %a.btn.btn-lg.btn-outline-primary.my-1{ href: api_meetings_path }
-                    Meetings
-                  %a.btn.btn-lg.btn-outline-primary.my-1{ href: api_user_workshops_path }
-                    Workshops
-                  %a.btn.btn-lg.btn-outline-primary.disabled.my-1{ href: '#' }
-                    Base & Standard Timings
-                  %a.btn.btn-lg.btn-outline-primary.disabled.my-1{ href: '#' }
-                    FIN Calendars
-                .offset-lg-0.col-lg-4.offset-md-1.col-md-5.offset-sm-0.col-sm-6.py-2
-                  %a.btn.btn-lg.btn-outline-primary.my-1{ href: api_swimmers_path }
-                    = t('dashboard.swimmers.title')
-                  %a.btn.btn-lg.btn-outline-primary.my-1{ href: api_badges_path }
-                    = t('dashboard.badges.title')
-                  %a.btn.btn-lg.btn-outline-primary.my-1{ href: api_swimming_pools_path }
-                    = t('dashboard.swimming_pools.title')
-                  %a.btn.btn-lg.btn-outline-primary.disabled.my-1{ href: '#' }
-                    Ind. results (MIR)
-                  %a.btn.btn-lg.btn-outline-primary.disabled.my-1{ href: '#' }
-                    User results (UR)
-                  %a.btn.btn-lg.btn-outline-primary.disabled.my-1{ href: '#' }
-                    Relay results (MRR)
-                .offset-lg-0.col-lg-4.offset-md-1.col-md-5.offset-sm-0.col-sm-6.py-2
-                  %a.btn.btn-lg.btn-outline-primary.disabled.my-1{ href: '#' }
-                    Laps
-                  %a.btn.btn-lg.btn-outline-primary.disabled.my-1{ href: '#' }
-                    User Laps
-                  %a.btn.btn-lg.btn-outline-primary.disabled.my-1{ href: '#' }
-                    Relay Laps (& Swimmers)
+    = render(partial: 'top_header', locals: { api_uses_count: @api_uses_count,
+             iqs_count: @iqs_count, users_count: @users_count })
+    = render(partial: 'data_import')
+    = render(partial: 'manage_entities')
 
     %section.fixed-bottom#footer
       = render(Footer::MainComponent.new)

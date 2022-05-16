@@ -39,6 +39,7 @@ Metrics/AbcSize:
     - 'app/controllers/import_queues_controller.rb'
     - 'app/controllers/settings_controller.rb'
     - 'app/controllers/users_controller.rb'
+    - 'app/controllers/pull_controller.rb'
 
 Metrics/BlockLength:
   Max: 40
@@ -50,6 +51,8 @@ Metrics/BlockLength:
 
 Metrics/ClassLength:
   Max: 120
+  Exclude:
+    - 'app/controllers/pull_controller.rb'
 
 Metrics/CyclomaticComplexity:
   Max: 8

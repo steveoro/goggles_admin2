@@ -3,4 +3,5 @@
 
 import { createConsumer } from '@rails/actioncable'
 
-export default createConsumer()
+// Must match same values of 'crawler/.env':
+export default createConsumer('http://localhost:7000/cable')

@@ -7,61 +7,116 @@ require('easy-autocomplete')
 /**
  * = Easy-Autocomplete StimulusJS controller =
  *
- * @see http://www.easyautocomplete.com/
+ * ==> NOT CURRENTLY USED by Goggles Main (Admin2-specific) <==
+ *
+ * Allows to update values in up to 3 target fields, searched using a search field,
+ * while updating also another external description field upon selection.
+ *
+ * Supports both in-line & remote data providers for the search.
+ * If the remote search is enabled (by setting the base API URL value), a second optional
+ * API call can be configured to retrieve all the detail fields using the currently selected entity ID.
+ *
+ * This controller assumes the search target field needs to be configured using the
+ * Easy-Autocomplete library (which is a jQuery plugin).
+ *
+ * For library documentation:
+ * - @see http://www.easyautocomplete.com/
+ *
+ * For our in-house Select2-based approach:
+ * - @see 'app/javascript/controllers/lookup_controller.js' (both in Main & Admin2)
  *
  * == Targets ==
  * @param {String} 'data-autocomplete-target': 'field'
- *                 target field for the result value of the search; typically, a form field storing an ID value.
+ *                 target field for the result value of the search; typically, a form field storing an ID value:
+ *
+ *                 => targetField.val( searched & chosen row['id'] )
+ *
+ * @param {String} 'data-autocomplete-target': 'field2' (optional)
+ *                 secondary target field for the result value of the search; as above, a form field storing an ID value.
+ *                 Totally optional: skipped when not set (default: null).
+ *                 Used as above for a secondary field that gets updated upon selection:
+ *
+ *                 => targetField2.val( searched & chosen row[target2Column value] )
+ *
+ * @param {String} 'data-autocomplete-target': 'field3' (optional)
+ *                 tertiary target field for the result value of the search.
+ *                 Totally optional: skipped when not set (default: null).
+ *                 Used as above for a tertiary field that gets updated upon selection:
+ *
+ *                 => targetField3.val( searched & chosen row[target3Column value] )
  *
  * @param {String} 'data-autocomplete-target': 'search'
- *                 target for the search field, where the user can enter the query text.
+ *                 target for the easy-autocomplete search field, where the user can enter the query text.
  *
  * @param {String} 'data-autocomplete-target': 'desc'
- *                 target for a static description, updated after each list item selection.
+ *                 target for a static description and an additional optional description (label2),
+ *                 updated after each list item selection.
+ *
+ *                 => targetDesc.val( searched & chosen row[labelColumnValue (+ label2ColumnValue)] )
  *
  * == Values ==
  * (Put values directly on controller elements)
- * @param {String} 'data-autocomplete-base-dom-id-value'
- *                 defines the base string name for the DOM ID used by the modal container,
- *                 its input form (<tt>"frm-<BASE_MODAL_DOM_ID>"</tt>),
- *                 its title label (<tt>"<BASE_MODAL_DOM_ID>-modal-title"</tt>)
- *                 and its submit button (<tt>"btn-<BASE_MODAL_DOM_ID>-submit-save"</tt>);
- *                 default: "grid-edit"
+ * @param {String} 'data-autocomplete-base-api-url-value' (optional, not needed for inline data)
+ *                 base API URL for data request (w/o endpoint or params).
+ *                 Set this to null to disable *all* API requests and use the supplied data array of Objects as base domain
+ *                 for the autocomplete search.
+ *                 (Optional & skipped when not set -- but, when not set, requires the 'data-autocomplete-data-value'
+ *                 attribute containing the Array of Objects that define the.)
  *
- * @param {String} 'data-autocomplete-base-api-url-value'
- *                 base API URL for data request (w/o endpoint or params)
- *
- * @param {String} 'data-autocomplete-detail-endpoint-value'
+ * @param {String} 'data-autocomplete-detail-endpoint-value' (optional)
  *                 API endpoint name used to retrieve additional or initial Entity details;
- *                 this can be left unset if the additional detail retrieval API call doesn't need to be done,
- *                 as it is the case with lookup entities, which only have a code and no stored description.
- *                 (i.e.: model 'SwimmingPool' => detail API: 'swimming_pool' => resulting endpoint: '<baseApiUrlValue>/swimming_pool/<ID>')
+ *                 Default: null.
+ *                 Set this only if an additional AJAX API call is needed for detail retrieval.
+ *                 For instance, in the case of Lookup Entities (which only have a code and no stored description),
+ *                 no additional detail query is possible. For any other case, the detail endpoint should be set if needed.
+ *                 (I.e.: model 'SwimmingPool' => detail API: 'swimming_pool' => resulting endpoint: '<baseApiUrlValue>/swimming_pool/<ID>')
  *
- * @param {String} 'data-autocomplete-search-endpoint-value'
+ * @param {String} 'data-autocomplete-search-endpoint-value' (optional, not needed for inline data)
  *                 API endpoint name for the actual autocomplete search
  *                 (i.e.: model 'User' => search API: 'users' => resulting endpoint: '<baseApiUrlValue>/users?<SEARCH_QUERY>')
  *
- * @param {String} 'data-autocomplete-search-column-value'
+ * @param {String} 'data-autocomplete-search-column-value' (optional, default: 'name')
  *                 query field name used in the API search call; defaults to 'name'
  *
- * @param {String} 'data-autocomplete-search2-column-value'
+ * @param {String} 'data-autocomplete-search2-column-value' (optional)
  *                 secondary filter/query field name used in the API search call;
  *                 this affects only the list filtering for the search endpoint (can be used to better refine the rows found);
  *                 defaults to null
  *
- * @param {String} 'data-autocomplete-search2-dom-id-value'
+ * @param {String} 'data-autocomplete-search2-dom-id-value' (optional)
  *                 DOM ID for the secondary search field value; the referred node should contain the secondary filter/query value,
  *                 if the search2 column is defined (defaults to null).
  *
- * @param {String} 'data-autocomplete-label-column-value'
- *                 field name used to retrieve additional label/description for the results; defaults to 'description';
+ * @param {String} 'data-autocomplete-label-column-value' (optional, default: 'description')
+ *                 field name used to retrieve additional label/description for the results;
  *                 this is also used to compose the label description stored into 'descTarget'.
  *
- * @param {String} 'data-autocomplete-label2-column-value'
- *                 secondary field name used as additional description (#2) appended to the above;
+ * @param {String} 'data-autocomplete-label2-column-value' (optional)
+ *                 additional field name used as description (#2) appended to the above;
  *                 (totally optional, skipped when not set)
  *
- * @param {String} 'data-autocomplete-jwt-value'
+ * @param {String} 'data-autocomplete-target2-column-value' (optional)
+ *                 column or property name used as to set the value of the secondary target field;
+ *                 (totally optional, skipped when not set)
+ *
+ * @param {String} 'data-autocomplete-target3-column-value' (optional)
+ *                 column or property name used as to set the value of the tertiary target field;
+ *                 (totally optional, skipped when not set)
+ *
+ * @param {Array} 'data-autocomplete-payload-value' (optional)
+ *                 Array of objects specifying the inline data payload for the search domain.
+ *
+ *                 Each item in the payload Array shall at least respond to:
+ *                 - <tt>'id'</tt> => unique identifier for the row;
+ *                 - <tt>searchColumn.value</tt> as property name => main search property;
+ *                 - <tt>labelColumn.value</tt> as property name => main label or description for the item.
+ *
+ *                 Optionally (if used in the setup):
+ *                 - <tt>label2_column</tt> as property name => additional label for the item;
+ *                 - <tt>target2Column.value</tt> as property name => field updating the secondary target;
+ *                 - <tt>target3Column.value</tt> as property name => field updating the tertiary target;
+ *
+ * @param {String} 'data-autocomplete-jwt-value' (optional, not needed for inline data)
  *                 current_user.jwt (assumes 'current_user' is currently logged-in and valid)
  *
  * == Actions:
@@ -70,14 +125,20 @@ require('easy-autocomplete')
  * @author Steve A.
  */
 export default class extends Controller {
-  static targets = ['field', 'search', 'desc']
+  static targets = ['field', 'field2', 'field3', 'search', 'desc']
   static values = {
     baseDomId: String,
     baseApiUrl: String,
     detailEndpoint: String,
-    searchEndpoint: String, searchColumn: String,
-    search2Column: String, search2DomId: String,
-    labelColumn: String, label2Column: String,
+    searchEndpoint: String,
+    searchColumn: String,
+    search2Column: String,
+    search2DomId: String,
+    labelColumn: String,
+    label2Column: String,
+    target2Column: String,
+    target3Column: String,
+    payload: Array,
     jwt: String
   }
 
@@ -92,7 +153,24 @@ export default class extends Controller {
     if (this.hasFieldTarget && this.hasSearchTarget) {
       // DEBUG
       // console.log('autocomplete_controller: targets found.')
-      this.refreshWidgetSetup()
+
+      if (this.hasPayloadValue) {
+        this.widgetSetupWithInlineData()
+      } else if (this.hasBaseApiUrlValue && this.hasJwtValue) {
+        this.widgetSetupWithRemoteData()
+      }
+
+      // Field details => search + desc update
+      const fieldTargetDomId = `#${this.fieldTarget.id}`
+      $(fieldTargetDomId).on('change', (_eventObject) => {
+        // Skip detail retrieval if detail endpoint is not set:
+        if (this.hasDetailEndpointValue) {
+          this.fetchAndUpdateDetails(this.detailEndpointValue, $(fieldTargetDomId).val())
+        } else {
+          // DEBUG
+          // console.log('widgetSetup(): no detailEndpointValue')
+        }
+      })
     }
   }
   // ---------------------------------------------------------------------------
@@ -106,38 +184,43 @@ export default class extends Controller {
    * @returns the computed label description using the specified entity row details when present;
    *          an empty string otherwise.
    */
-  computeLabelDescription(context, entityRow) {
+  computeLabelDescription (context, entityRow) {
     if (entityRow) {
       const labelColumnName = context.labelColumnValue || 'description'
       const label2ColumnName = context.label2ColumnValue || false
-      var additionalDesc = label2ColumnName ? ` (${label2ColumnName}: ${entityRow[label2ColumnName]})` : ''
+      const additionalDesc = label2ColumnName ? ` (${label2ColumnName}: ${entityRow[label2ColumnName]})` : ''
       return `${labelColumnName}: ${entityRow[labelColumnName]}${additionalDesc}`
-    }
-    else {
+    } else {
       return ''
     }
   }
 
   /**
-   * Updates fieldTarget & descTarget using the specified entity row details.
+   * Updates fieldTarget(s) (1 + 2 & 3, when defined) & descTarget using the specified entity
+   * row details.
    *
    * @param {Object} entityRow the object storing the row details
    */
-  updateFieldAndDesc(entityRow) {
+  updateFieldAndDesc (entityRow) {
     // DEBUG
     // console.log('updateFieldAndDesc(): entityRow:', entityRow)
     if (this.hasFieldTarget) {
-      var descValue = this.computeLabelDescription(this, entityRow)
+      const descValue = this.computeLabelDescription(this, entityRow)
       // DEBUG
       // console.log(`computed description = "${descValue}"`)
       $(this.fieldTarget).val(entityRow.id)
       if (this.hasDescTarget) {
-        $(this.descTarget).html(`<b>${entityRow[this.searchColumnValue || 'name']}</b> - ${descValue}`);
+        $(this.descTarget).html(`<b>${entityRow[this.searchColumnValue || 'name']}</b> - ${descValue}`)
       }
-    }
-    else {
+      if (this.hasField2Target) {
+        $(this.field2Target).val(entityRow[this.target2ColumnValue])
+      }
+      if (this.hasField3Target) {
+        $(this.field3Target).val(entityRow[this.target3ColumnValue])
+      }
+    } else {
       // DEBUG
-      console.log('updateFieldAndDesc: no fieldTarget found.')
+      console.log('updateFieldAndDesc: no main fieldTarget found.')
     }
   }
 
@@ -148,7 +231,7 @@ export default class extends Controller {
    * @param {String} entityId the desired row ID
    * @returns the 'fetch' Promise that resolves to the an object mapping all entity row details
    */
-  fetchAndUpdateDetails(detailEndpointName, entityId) {
+  fetchAndUpdateDetails (detailEndpointName, entityId) {
     // DEBUG
     // console.log(`fetchAndUpdateDetails(${detailEndpointName}, ${entityId})`)
 
@@ -156,7 +239,7 @@ export default class extends Controller {
       $.ajax({
         method: 'GET',
         dataType: 'json',
-        headers: { 'Authorization': `Bearer ${this.jwtValue}` },
+        headers: { Authorization: `Bearer ${this.jwtValue}` },
         url: `${this.baseApiUrlValue}/${detailEndpointName}/${entityId}`,
         error: (_xhr, _textStatus, errorThrown) => {
           if (errorThrown === 'Unauthorized') {
@@ -181,89 +264,108 @@ export default class extends Controller {
   // ---------------------------------------------------------------------------
 
   /**
+   * Sets up the autocomplete widget for inline data domain search.
+   */
+  widgetSetupWithInlineData () {
+    // DEBUG
+    // console.log('autocomplete: widgetSetupWithInlineData()')
+    const computeDesc = this.computeLabelDescription
+    const searchTargetDomId = `#${this.searchTarget.id}`
+    // DEBUG
+    // console.log("searchTargetDomId:", searchTargetDomId)
+
+    $(searchTargetDomId).easyAutocomplete({
+      data: this.payloadValue,
+      getValue: this.searchColumnValue || 'name',
+      template: {
+        type: 'custom',
+        method: (value, entityRow) => {
+          const descValue = computeDesc(this, entityRow)
+          return `${value} - <small class="text-muted">${descValue}</small>`
+        }
+      },
+      list: {
+        match: { enabled: true },
+        maxNumberOfElements: 8,
+        onSelectItemEvent: () => {
+          // DEBUG
+          // console.log("onSelectItemEvent: activeElement ID:", document.activeElement.id)
+          // DEBUG
+          // console.log("onSelectItemEvent: searchTargetDomId:", searchTargetDomId)
+          this.updateFieldAndDesc($(searchTargetDomId).getSelectedItemData())
+          $(searchTargetDomId).val('') // Reset search box when done
+        },
+        onHideListEvent: () => {
+          // (no-op)
+        }
+      },
+      theme: 'round'
+    })
+  }
+  // ---------------------------------------------------------------------------
+
+  /**
    * Sets up the autocomplete widget for dynamic data retrieval using the set JWT value.
    */
-  refreshWidgetSetup() {
+  widgetSetupWithRemoteData () {
     // DEBUG
-    // console.log('autocomplete: refreshWidgetSetup()')
-    if (this.hasBaseApiUrlValue && this.hasJwtValue) {
-      const jwt = this.jwtValue
-      const computeDesc = this.computeLabelDescription
-      const searchTargetDomId = `#${this.searchTarget.id}`
-      const fieldTargetDomId = `#${this.fieldTarget.id}`
-      // DEBUG
-      // console.log("searchTargetDomId:", searchTargetDomId)
-      // console.log("fieldTargetDomId:", fieldTargetDomId)
+    // console.log('autocomplete: widgetSetupWithRemoteData()')
+    const jwt = this.jwtValue
+    const computeDesc = this.computeLabelDescription
+    const searchTargetDomId = `#${this.searchTarget.id}`
+    // DEBUG
+    // console.log("searchTargetDomId:", searchTargetDomId)
 
-      // Search => field + desc update
-      $(searchTargetDomId).easyAutocomplete({
-        url: (queryText) => {
-          const baseQueryURI = `${this.baseApiUrlValue}/${this.searchEndpointValue}?${this.searchColumnValue}=${queryText}`
-          const search2DomID = `#${this.search2DomIdValue}`
-          // Fetch using a secondary filtering query (if present):
-          if (this.hasSearch2ColumnValue && this.hasSearch2DomIdValue && $(search2DomID).val().length > 0) {
-            return `${baseQueryURI}&${this.search2ColumnValue}=${$(search2DomID).val()}`
-          }
-          return baseQueryURI
-        },
-
-        ajaxSettings: {
-          dataType: 'json',
-          method: 'GET',
-          delay: 250,
-          headers: { 'Authorization': `Bearer ${jwt}` },
-          // Handle JWT expiration:
-          error: (_xhr, _textStatus, errorThrown) => {
-            if (errorThrown === 'Unauthorized') {
-              // Force user sign-in & local JWT refresh on JWT expiration:
-              document.location.reload()
-            } else if (errorThrown !== 'abort') {
-              console.error(errorThrown)
-            }
-          }
-        },
-        getValue: this.searchColumnValue || 'name',
-        template: {
-          type: 'custom',
-          method: (value, entityRow) => {
-            var descValue = computeDesc(this, entityRow)
-            return `${value} - <small class="text-muted">${descValue}</small>`
-          }
-        },
-        list: {
-          match: { enabled: true },
-          maxNumberOfElements: 8,
-          onSelectItemEvent: () => {
-            // DEBUG
-            // console.log("onSelectItemEvent: activeElement ID:", document.activeElement.id)
-            // DEBUG
-            // console.log("onSelectItemEvent: searchTargetDomId:", searchTargetDomId)
-            this.updateFieldAndDesc($(searchTargetDomId).getSelectedItemData())
-            $(searchTargetDomId).val('') // Reset search box when done
-          },
-          onHideListEvent: () => {
-            // (no-op)
-          }
-        },
-
-        theme: "round"
-      });
-
-      // Field => search + desc update
-      $(fieldTargetDomId).on('change', (_eventObject) => {
-        // DEBUG
-        // console.log('refreshWidgetSetup(): before fetchAndUpdateDetails')
-
-        // Skip detail retrieval if detail endpoint is not set:
-        if (this.hasDetailEndpointValue) {
-          this.fetchAndUpdateDetails(this.detailEndpointValue, $(fieldTargetDomId).val())
+    $(searchTargetDomId).easyAutocomplete({
+      url: (queryText) => {
+        const baseQueryURI = `${this.baseApiUrlValue}/${this.searchEndpointValue}?${this.searchColumnValue}=${queryText}`
+        const search2DomID = `#${this.search2DomIdValue}`
+        // Fetch using a secondary filtering query (if present):
+        if (this.hasSearch2ColumnValue && this.hasSearch2DomIdValue && $(search2DomID).val().length > 0) {
+          return `${baseQueryURI}&${this.search2ColumnValue}=${$(search2DomID).val()}`
         }
-        else {
+        return baseQueryURI
+      },
+      ajaxSettings: {
+        dataType: 'json',
+        method: 'GET',
+        delay: 250,
+        headers: { Authorization: `Bearer ${jwt}` },
+        // Handle JWT expiration:
+        error: (_xhr, _textStatus, errorThrown) => {
+          if (errorThrown === 'Unauthorized') {
+            // Force user sign-in & local JWT refresh on JWT expiration:
+            document.location.reload()
+          } else if (errorThrown !== 'abort') {
+            console.error(errorThrown)
+          }
+        }
+      },
+      getValue: this.searchColumnValue || 'name',
+      template: {
+        type: 'custom',
+        method: (value, entityRow) => {
+          const descValue = computeDesc(this, entityRow)
+          return `${value} - <small class="text-muted">${descValue}</small>`
+        }
+      },
+      list: {
+        match: { enabled: true },
+        maxNumberOfElements: 8,
+        onSelectItemEvent: () => {
           // DEBUG
-          // console.log('refreshWidgetSetup(): no detailEndpointValue')
+          // console.log("onSelectItemEvent: activeElement ID:", document.activeElement.id)
+          // DEBUG
+          // console.log("onSelectItemEvent: searchTargetDomId:", searchTargetDomId)
+          this.updateFieldAndDesc($(searchTargetDomId).getSelectedItemData())
+          $(searchTargetDomId).val('') // Reset search box when done
+        },
+        onHideListEvent: () => {
+          // (no-op)
         }
-      })
-    }
+      },
+      theme: 'round'
+    })
   }
   // ---------------------------------------------------------------------------
 }

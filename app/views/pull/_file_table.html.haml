@@ -1,0 +1,40 @@
+.row-fluid
+  .container
+    %table.table.table-striped.table-hover.table-sm
+      %thead
+        %tr.bg-light-blue
+          %th.text-center{ scope: 'col', colspan: 2 }
+            %i Files (#{files&.size})
+          %th.text-center{ scope: 'col' }
+            &nbsp;
+      %tbody
+        - files&.each do |full_pathname|
+          %tr
+            %td
+              = File.dirname(full_pathname).split('crawler/').last
+            %td
+              = File.basename(full_pathname)
+            %td.text-center
+              = link_to(pull_file_delete_path(file_path: full_pathname), method: :delete, remote: true,
+                        class: 'btn btn-sm btn-outline-danger mb-1',
+                        data: { toggle: 'tooltip', title: t('data_import.file.btn_delete_tooltip'),
+                        confirm: t('data_import.file.confirm_delete') }) do
+                %i.fa.fa-trash-o
+              &nbsp;
+              = link_to(pull_edit_name_path(file_path: full_pathname), remote: true,
+                        class: 'btn btn-sm btn-outline-primary mb-1', data: { toggle: 'tooltip',
+                        title: t('data_import.file.btn_rename_tooltip') }) do
+                %i.fa.fa-text-width
+              &nbsp;
+              = link_to(pull_edit_file_path(file_path: full_pathname), remote: true,
+                        class: 'btn btn-sm btn-outline-success mb-1', data: { toggle: 'tooltip',
+                        title: t('data_import.file.btn_edit_tooltip') }) do
+                %i.fa.fa-pencil-square-o
+              - if File.extname(full_pathname) == '.csv'
+                &nbsp;
+                = link_to(process_calendar_file_path(file_path: full_pathname), method: :post,
+                          class: 'btn btn-sm btn-outline-warning mb-1', data: { toggle: 'tooltip',
+                          title: t('data_import.file.btn_process_csv_tooltip') }) do
+                  %i.fa.fa-bolt
+
+#file-modal
