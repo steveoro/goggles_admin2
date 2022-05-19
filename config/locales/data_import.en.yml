@@ -19,7 +19,7 @@ en:
       btn_edit_tooltip: 'Edit file'
       btn_download_tooltip: 'Download file'
       btn_process_csv_tooltip: 'Process this calendar file, downloading the available results'
-      btn_process_json_tooltip: 'Process this result file, creating a data import transaction for later review'
+      btn_process_json_tooltip: 'Process this result file, preparing a batch data import transaction'
     errors:
       invalid_request: 'Invalid request'
       invalid_file_content: 'Invalid file contents for the given file extension'

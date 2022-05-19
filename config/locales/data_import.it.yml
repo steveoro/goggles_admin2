@@ -19,7 +19,7 @@ it:
       btn_edit_tooltip: 'Modifica file'
       btn_download_tooltip: 'Scarica file'
       btn_process_csv_tooltip: 'Elabora questo file calendario, scaricando i risultati disponibili'
-      btn_process_json_tooltip: 'Elabora questo file risultati, creando una transazione di importazione dati per la revisione in seguito'
+      btn_process_json_tooltip: "Elabora questo file risultati, preparandolo per l'importazione dati"
     errors:
       invalid_request: 'Richiesta non valida'
       invalid_file_content: 'Contenuto del file non valido rispetto alla sua estensione'

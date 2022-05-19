@@ -7,15 +7,15 @@
         %h6.text-uppercase
           Data-import
         .row.mb-3
-          .offset-lg-0.col-lg-4.offset-md-1.col-md-5.offset-sm-0.col-sm-6.py-2
+          .col.py-2
             %a.btn.btn-lg.btn-outline-primary.my-1{ href: pull_index_path }
               %i.fa.fa-download
               PULL data (crawler)
-          .offset-lg-0.col-lg-4.offset-md-1.col-md-5.offset-sm-0.col-sm-6.py-2
-            %a.btn.btn-lg.btn-outline-primary.my-1{ href: data_fix_index_path }
-              %i.fa.fa-edit
-              PREPARE & REVIEW
-          .offset-lg-0.col-lg-4.offset-md-1.col-md-5.offset-sm-0.col-sm-6.py-2
+          -# .offset-lg-0.col-lg-4.offset-md-1.col-md-5.offset-sm-0.col-sm-6.py-2
+          -#   %a.btn.btn-lg.btn-outline-primary.my-1{ href: data_fix_index_path }
+          -#     %i.fa.fa-edit
+          -#     PREPARE & REVIEW
+          .col.py-2
             %a.btn.btn-lg.btn-outline-primary.my-1{ href: push_index_path }
               %i.fa.fa-upload
               PUSH data (Import)

@@ -1,17 +1,30 @@
 .row-fluid
   .container
+    - if curr_dir.present? && dirnames.present?
+      = form_tag(update_result_files_path, id: 'frm-dir-filter', method: :put, remote: true) do
+        .row
+          .col
+            .form-group
+              = select_tag('curr_dir', options_for_select(dirnames, curr_dir), class: 'form-control')
+          .col-2
+            .form-group
+              = submit_tag('↩', id: 'btn-apply-dir-filter', class: 'btn btn-sm btn-primary pt-1 mt-1',
+                           'aria-label' => 'select current directory', type: 'submit')
+
     %table.table.table-striped.table-hover.table-sm
       %thead
         %tr.bg-light-blue
-          %th.text-center{ scope: 'col', colspan: 2 }
-            %i Files (#{files&.size})
+          %th.text-center{ scope: 'col' }
+            %i Bytes
+          %th.text-center{ scope: 'col' }
+            %i Filenames (#{files&.size})
           %th.text-center{ scope: 'col' }
             &nbsp;
       %tbody
         - files&.each do |full_pathname|
           %tr
-            %td
-              = File.dirname(full_pathname).split('crawler/').last
+            %td.text-right
+              = File.size(full_pathname)
             %td
               = File.basename(full_pathname)
             %td.text-center
@@ -30,11 +43,18 @@
                         class: 'btn btn-sm btn-outline-success mb-1', data: { toggle: 'tooltip',
                         title: t('data_import.file.btn_edit_tooltip') }) do
                 %i.fa.fa-pencil-square-o
-              - if File.extname(full_pathname) == '.csv'
+              - case File.extname(full_pathname)
+              - when '.csv'
                 &nbsp;
                 = link_to(process_calendar_file_path(file_path: full_pathname), method: :post,
                           class: 'btn btn-sm btn-outline-warning mb-1', data: { toggle: 'tooltip',
                           title: t('data_import.file.btn_process_csv_tooltip') }) do
                   %i.fa.fa-bolt
+              - when '.json'
+                &nbsp;
+                = link_to(prepare_result_file_path(file_path: full_pathname), method: :post,
+                          class: 'btn btn-sm btn-outline-warning mb-1', data: { toggle: 'tooltip',
+                          title: t('data_import.file.btn_process_json_tooltip') }) do
+                  %i.fa.fa-cogs
 
 #file-modal

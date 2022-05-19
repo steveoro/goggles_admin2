@@ -251,7 +251,7 @@ async function readCSVData(filePath) {
         dates: parseDaysDate(row.date, row.year),
         year: row.year,
         places: row.place ? row.place.split('; ') : [],
-        cancelled: row.isCancelled == 'true'
+        cancelled: row.isCancelled == 'true' || row.isCancelled == 'canc'
       }
     }
 
@@ -287,7 +287,7 @@ function writeCSVData(destPathname, arr) {
         places = item.places.join('; '),
         meetingUrl = item.url,
         year = item.year
-    csvText = csvText.concat(`${startURL},${isoDates},${cancelled},${name},${places},${meetingUrl},${year}\r\n`)
+    csvText = csvText.concat(`"${startURL}","${isoDates}",${cancelled},"${name}","${places}","${meetingUrl}",${year}\r\n`)
   })
 
   Fs.writeFile(destPathname, csvText, 'utf8', (err) => {

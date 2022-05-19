@@ -135,10 +135,10 @@ class CalendarCrawler {
           else if (node.className == 'calendario') {
             const dates = node.querySelector('.calendario_all p.data') ? node.querySelector('.calendario_all p.data').innerText : '---' // == '---' when cancelled
             const isCancelled = (dates == '---') || (node.querySelector('.calendario_all p.risultati a') && node.querySelector('.calendario_all p.risultati').innerText.includes('Annull'))
-            const name = node.querySelector('.calendario_all p.titolo') ? node.querySelector('.calendario_all p.titolo').innerText : null
+            const name = node.querySelector('.calendario_all p.titolo') ? node.querySelector('.calendario_all p.titolo').innerText.trim() : null
             const manifestURL = node.querySelector('.calendario_all p.titolo a') ? node.querySelector('.calendario_all p.titolo a').href : null
             const meetingUrl = node.querySelector('.calendario_all p.risultati a') ? node.querySelector('.calendario_all p.risultati a').href : null
-            const place = node.querySelector('.calendario_all p.luogo') ? node.querySelector('.calendario_all p.luogo').innerText : null
+            const place = node.querySelector('.calendario_all p.luogo') ? node.querySelector('.calendario_all p.luogo').innerText.trim() : null
             const composedDate = isCancelled ? null : `${dates}/${monthNumber}`
 
             // Add the extracted calendar row to the list:
@@ -326,6 +326,14 @@ class CalendarCrawler {
 
   /**
    * Serializes the specified calendar contents to a CSV file.
+   *
+   * The difference between this method and the more generic CrawlUtil.writeCSVData() is that the
+   * latter expects the dates to be in ISO format, while this method simply stores
+   * the data as it is extracted (date formatting varies depending on the crawled layout type).
+   *
+   * This is perfect for first-time data extraction, as most of the data will be normalized during
+   * consumption and eventually re-saved by CrawlUtil.writeCSVData() only after being "normalized".
+   *
    * @param {Object} calendarObject - the calendar object holding the layout type and the rows
    */
   saveOutputFile(calendarObject) {
@@ -337,7 +345,7 @@ class CalendarCrawler {
 
     var csvContents = "startURL,date,isCancelled,name,place,meetingUrl,year\r\n"
     calendarObject.rows.forEach(row => {
-      csvContents += `${row.startURL},${row.date},${row.isCancelled},${row.name},${row.place},${row.meetingUrl},${row.year}\r\n`
+      csvContents += `"${row.startURL}","${row.date}",${row.isCancelled},"${row.name}","${row.place}","${row.meetingUrl}",${row.year}\r\n`
     })
 
     Fs.writeFile(this.outputCalendarPathname, csvContents, 'utf8', function (err) {

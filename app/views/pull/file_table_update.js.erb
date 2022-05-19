@@ -9,9 +9,7 @@ document.querySelector('#file-list').innerHTML = "<%=
   escape_javascript(
     render(
       partial: 'file_table',
-      locals: {
-        files: @files
-      }
+      locals: { dirnames: @dirnames, curr_dir: @curr_dir, files: @files }
     )
   )
 %>";

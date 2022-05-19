@@ -20,25 +20,6 @@
             - else
               = hidden_field_tag('file_path', file_path)
               = text_area_tag('new_content', file_content, class: 'form-control', rows: 15)
-              -# EXTREMELY CONVOLUTED: REMOVE ME
-              -# %hr/
-              -# - if parsed_csv
-              -#   %table.table.table-striped.table-hover.table-sm
-              -#     %thead
-              -#       %tr.bg-light-blue
-              -#         - parsed_csv.first.each do |header|
-              -#           %th.text-center{ scope: 'col' }= header
-              -#     %tbody
-              -#       - parsed_csv[1..].each_with_index do |row, r_idx|
-              -#         %tr
-              -#           - row.each_with_index do |cell, c_idx|
-              -#             %td
-              -#               = text_field_tag("row[#{r_idx}][#{c_idx}]", cell, class: 'form-control-sm')
-              -# - elsif parsed_json
-              -#   -# TODO: add JSON editor here **************************************
-              -#   = text_area_tag('new_content', parsed_json, class: 'form-control', rows: 15)
-              -# - else
-              -#   = text_area_tag('new_content', file_content, class: 'form-control', rows: 15)
 
         .modal-footer
           %button.btn.btn-sm.btn-outline-secondary{ 'aria-label' => I18n.t('datagrid.edit_modal.close_btn'),

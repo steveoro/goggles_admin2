@@ -16,6 +16,7 @@ Rails.application.routes.draw do
   get 'pull/index'
   get 'pull/calendar_files'
   get 'pull/result_files'
+  put 'pull/result_files', to: 'pull#result_files', as: 'update_result_files'
 
   post 'pull/run_calendar_crawler', to: 'pull#run_calendar_crawler', as: 'run_calendar_crawler'
   get 'pull/edit_name'
@@ -25,7 +26,7 @@ Rails.application.routes.draw do
   delete 'pull/file_delete'
   post 'pull/process_calendar_file', to: 'pull#process_calendar_file', as: 'process_calendar_file'
 
-  get 'data_fix/index'
+  post 'data_fix/prepare_result_file', to: 'data_fix#prepare_result_file', as: 'prepare_result_file'
   get 'push/index'
 
   # Datagrid-actioned routes: (use prefix to avoid clashing w/ Engine resource routes)

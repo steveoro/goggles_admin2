@@ -29,14 +29,33 @@ class PullController < ApplicationController
   #
   def calendar_files
     @dirnames = Dir.glob(Rails.root.join('crawler/data/calendar.new/*'))
-    @files = Dir.glob(Rails.root.join('crawler/data/calendar.new/**/*.csv'))
+                   .map { |name| name.split('crawler/').last }
+                   .sort
+    @curr_dir = nil # (Show all calendar files at once)
+    @files = Dir.glob(Rails.root.join('crawler/data/calendar.new/**/*.csv')).sort
   end
 
   # [GET] List JSON meeting result files (and allow individual actions on them).
+  # [XHR PUT] Update just the list of result files (used after current directory selection)
   #
   def result_files
     @dirnames = Dir.glob(Rails.root.join('crawler/data/results.new/*'))
-    @files = Dir.glob(Rails.root.join('crawler/data/results.new/**/*.json'))
+                   .map { |name| name.split('crawler/').last }
+                   .sort
+
+    if request.xhr? && request.put? && file_params[:curr_dir].present?
+      @curr_dir = file_params[:curr_dir]
+      @files = Dir.glob(Rails.root.join('crawler', @curr_dir, '**', '*.*')).sort
+      render('file_table_update') && return
+
+    elsif request.put?
+      flash[:warning] = I18n.t('data_import.errors.invalid_request')
+      redirect_to(pull_index_path) && return
+    end
+
+    # Paginate result files as they may be too many to be shown:
+    @curr_dir = @dirnames.last
+    @files = Dir.glob(Rails.root.join('crawler', @curr_dir, '**/*.json')).sort
   end
   #-- -------------------------------------------------------------------------
   #++
@@ -93,7 +112,7 @@ class PullController < ApplicationController
     # In case we'd prefer to pass just the new base filename (no path):
     # File.rename(file_params[:file_path], File.join(File.dirname(file_params[:file_path]), file_params[:new_name]))
     File.rename(file_params[:file_path], file_params[:new_name])
-    @files = Dir.glob(Rails.root.join(File.dirname(file_params[:file_path]), '**', '*.*'))
+    prepare_file_and_dir_list
     render('file_table_update')
   end
 
@@ -132,7 +151,7 @@ class PullController < ApplicationController
     File.open(file_params[:file_path], 'w') do |file|
       file.write(file_params[:new_content])
     end
-    @files = Dir.glob(Rails.root.join(File.dirname(file_params[:file_path]), '**', '*.*'))
+    prepare_file_and_dir_list
     render('file_table_update')
   end
 
@@ -150,7 +169,7 @@ class PullController < ApplicationController
     end
 
     File.delete(file_params[:file_path])
-    @files = Dir.glob(Rails.root.join(File.dirname(file_params[:file_path]), '**', '*.*'))
+    prepare_file_and_dir_list
     render('file_table_update')
   end
 
@@ -204,7 +223,18 @@ class PullController < ApplicationController
 
   # Strong parameters checking for file-related actions.
   def file_params
-    params.permit(:file_path, :new_name, :new_content)
+    params.permit(:file_path, :curr_dir, :new_name, :new_content)
+  end
+
+  # Prepares the current dir, the dir list and the file list members given the
+  # current file_params.
+  def prepare_file_and_dir_list
+    @curr_dir = File.dirname(file_params[:file_path]).split('crawler/').last
+    @dirnames = Dir.glob(Rails.root.join('crawler', @curr_dir, '*'))
+                   .map { |name| name.split('crawler/').last }
+                   .sort
+    @files = Dir.glob(Rails.root.join('crawler', @curr_dir, '**', '*.*')).sort
+    @curr_dir = nil if File.extname(file_params[:file_path]) == '.csv' # Do not filter calendar files
   end
 
   # Prepares the <tt>@season_list</tt> member variable for the view, as an Array of Hash objects
@@ -228,7 +258,7 @@ class PullController < ApplicationController
       else
         year1 = season.begin_date.year
         year2 = season.end_date.year
-        page_layout = if (year1 < 2018)
+        page_layout = if year1 < 2018
                         1 # older seasons layout: row-wide month separator
                       else
                         2 # 2018+ layout (!= current season): season header and dates w/ months & yea
