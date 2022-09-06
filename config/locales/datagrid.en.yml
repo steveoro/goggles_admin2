@@ -15,7 +15,7 @@ en:
     csv_export:
       btn_tooltip: "Download all data rows from the current page as a single CSV file"
     edit_modal:
-      edit_title: "Edit row"
+      edit_title: "Edit"
       create_title: "Create new row"
       close_btn: "Close"
       save_btn: "Save"
@@ -23,3 +23,20 @@ en:
       edit_ok: "Changes have been successfully saved."
       edit_failed: "Save action failed: %{error}"
       create_ok: "New row created! (ID: %{id})"
+    clone_form:
+      clone_title: "Clone"
+      clone_tooltip: "Clone ALL rows from a season to another one"
+      clone_button: "Clone"
+      source_season: "From Season ID"
+      target_season: "To Season ID"
+      confirm_msg: "Are you sure you want to clone ALL rows from the source season to the target one?"
+      clone_ok: "Row cloning successful!"
+      clone_failed: "Something went wrong: %{error}"
+    clear_stats:
+      clear_title: "Clear"
+      clear_tooltip: "Erase ALL rows older than a specified date"
+      clear_button: "Erase"
+      older_than_day: "Older than this date"
+      confirm_msg: "Are you sure you want to erase ALL stats rows older than the specified date?"
+      clear_ok: "Row deletion successful!"
+      clear_failed: "Something went wrong: error code %{error}, check the log file"

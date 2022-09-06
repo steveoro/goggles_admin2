@@ -1,0 +1,40 @@
+= form_for(meeting, url: data_fix_update_path(meeting, model: 'meeting'), method: :patch) do |f|
+  = hidden_field_tag('file_path', file_path)
+  .container
+    .form-group.row
+      .field.col-8.mt-1
+        = f.label(:description, 'description')
+        = f.text_field(:description, required: true, class: 'form-control',
+                        placeholder: 'Meeting description')
+      .field.col-auto.mt-1
+        = f.label(:code, 'code')
+        = f.text_field(:code, required: true, class: 'form-control', placeholder: 'Meeting code')
+    .form-group.row
+      .field.col-auto.mt-1
+        = f.label(:season_id, 'season_id')
+        = f.number_field(:season_id, required: true, class: 'form-control', placeholder: 'Season ID')
+      .field.col-auto.mt-1
+        = f.label(:header_year, 'header_year')
+        = f.text_field(:header_year, required: true, class: 'form-control', placeholder: 'YYYY/YYYY+1')
+      .field.col-auto.mt-1
+        = f.label(:header_date, 'header_date')
+        - if meeting.header_date.blank?
+          %span
+            %i.fa.fa-exclamation.text-danger
+        = f.date_field(:header_date, required: true, class: 'form-control')
+    .form-group.row
+      .field.col-auto.mt-1
+        = f.label(:edition, 'edition')
+        = f.number_field(:edition, required: true, class: 'form-control', placeholder: 'edition number')
+      .field.col-auto.mt-1
+        = f.label(:edition, 'edition_type')
+        = f.collection_select(:edition_type_id, GogglesDb::EditionType.all, :id, :long_label,
+                              { prompt: true }, { required: true, class: 'custom-select' })
+      .field.col-auto.mt-1
+        = f.label(:edition, 'timing_type')
+        = f.collection_select(:timing_type_id, GogglesDb::TimingType.all, :id, :long_label,
+                              { prompt: true }, { required: true, class: 'custom-select' })
+    .form-group
+      = f.submit(t('data_import.generic_save_btn'), id: 'btn-save-meeting', class: 'btn btn-primary',
+                    'aria-label': 'Save', type: 'submit',
+                    data: { confirm: t('data_import.btn_save_confirm') })

@@ -23,21 +23,13 @@ class APICategoriesController < ApplicationController
         page: index_params[:page], per_page: index_params[:per_page]
       }
     )
-    json_domain = JSON.parse(result.body)
+    parsed_response = JSON.parse(result.body)
     unless result.code == 200
-      flash[:error] = I18n.t('dashboard.api_proxy_error', error_code: result.code, error_msg: json_domain['error'])
+      flash[:error] = I18n.t('dashboard.api_proxy_error', error_code: result.code, error_msg: parsed_response['error'])
       redirect_to(root_path) && return
     end
 
-    @domain_count = result.headers[:total].to_i
-    @domain_page = result.headers[:page].to_i
-    @domain_per_page = result.headers[:per_page].to_i
-
-    # Setup grid domain (and chart's):
-    @domain = json_domain.map { |attrs| GogglesDb::CategoryType.new(attrs) }
-
-    # Setup datagrid:
-    CategoriesGrid.data_domain = @domain
+    set_grid_domain_for(CategoriesGrid, GogglesDb::CategoryType, result.headers, parsed_response)
 
     respond_to do |format|
       @grid = CategoriesGrid.new(grid_filter_params)
@@ -133,6 +125,35 @@ class APICategoriesController < ApplicationController
   #-- -------------------------------------------------------------------------
   #++
 
+  # POST /api_categories/clone
+  # Clones a bunch of GogglesDb::CategoryType rows, from a season to another.
+  #
+  # == Params:
+  # - <tt>from_season</tt>, source season_id (must be already existing)
+  # - <tt>to_season</tt>, target season_id (must be already existing)
+  #
+  # Note that the API endpoint may signal errors in case of invalid Seasons, but won't check
+  # for duplicate rows.
+  #
+  def clone
+    result = APIProxy.call(
+      method: :post,
+      url: 'category_types/clone',
+      jwt: current_user.jwt,
+      payload: clone_params
+    )
+    json = parse_json_result_from_create(result)
+
+    if json.present? && json['msg'] == 'OK' && json['new'].key?('id')
+      flash[:info] = I18n.t('datagrid.clone_form.clone_ok', id: json['new']['id'])
+    else
+      flash[:error] = I18n.t('datagrid.clone_form.clone_failed', error: result.code)
+    end
+    redirect_to api_categories_path(page: index_params[:page], per_page: index_params[:per_page])
+  end
+  #-- -------------------------------------------------------------------------
+  #++
+
   protected
 
   # Default whitelist for datagrid parameters
@@ -146,5 +167,10 @@ class APICategoriesController < ApplicationController
   def index_params
     @index_params = params.permit(:page, :per_page, :categories_grid)
                           .merge(params.fetch(:categories_grid, {}).permit!)
+  end
+
+  # Strong parameters checking for /clone
+  def clone_params
+    params.permit(:from_season, :to_season)
   end
 end

@@ -18,24 +18,19 @@ class APITeamManagersController < ApplicationController
       method: :get, url: 'team_managers', jwt: current_user.jwt,
       params: {
         team_affiliation_id: index_params[:team_affiliation_id],
+        manager_name: index_params[:manager_name],
+        team_name: index_params[:team_name],
+        season_description: index_params[:season_description],
         page: index_params[:page], per_page: index_params[:per_page]
       }
     )
-    json_domain = JSON.parse(result.body)
+    parsed_response = JSON.parse(result.body)
     unless result.code == 200
-      flash[:error] = I18n.t('dashboard.api_proxy_error', error_code: result.code, error_msg: json_domain['error'])
+      flash[:error] = I18n.t('dashboard.api_proxy_error', error_code: result.code, error_msg: parsed_response['error'])
       redirect_to(root_path) && return
     end
 
-    @domain_count = result.headers[:total].to_i
-    @domain_page = result.headers[:page].to_i
-    @domain_per_page = result.headers[:per_page].to_i
-
-    # Setup grid domain (and chart's):
-    @domain = json_domain.map { |attrs| GogglesDb::ManagedAffiliation.new(attrs) }
-
-    # Setup datagrid:
-    TeamManagersGrid.data_domain = @domain
+    set_grid_domain_for(TeamManagersGrid, GogglesDb::ManagedAffiliation, result.headers, parsed_response)
 
     respond_to do |format|
       @grid = TeamManagersGrid.new(grid_filter_params)

@@ -2989,8 +2989,8 @@ duplexify@^3.4.2, duplexify@^3.6.0:
 
 easy-autocomplete@^1.3.5:
   version "1.3.5"
-  resolved "https://registry.npmjs.org/easy-autocomplete/-/easy-autocomplete-1.3.5.tgz"
-  integrity sha1-Ki0t9pnxPdxIZhyTdblDes8aCpw=
+  resolved "https://registry.yarnpkg.com/easy-autocomplete/-/easy-autocomplete-1.3.5.tgz#2a2d2df699f13ddc48661c9375b9437acf1a0a9c"
+  integrity sha512-eW36G+VCXkoN6csTwN4+10t+fe9G+bm7kY0T0rLsoeTOM27+uu6rcO506rIXC+xZDviCXpBhsWacCirxJ//+dg==
   dependencies:
     jquery "*"
 

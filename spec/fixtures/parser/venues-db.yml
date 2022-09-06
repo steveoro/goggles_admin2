@@ -1,0 +1,945 @@
+---
+- albengacomunale25:
+    :pool: Comunale
+    :city: Albenga
+    :len: '25'
+- andriacomunale25:
+    :pool: Comunale
+    :city: Andria
+    :len: '25'
+- arezzochimera25:
+    :pool: Chimera
+    :city: Arezzo
+    :len: '25'
+- arezzocomunale:
+    :pool: Comunale
+    :city: Arezzo
+    :len: '25'
+- argentacomunale:
+    :pool: Comunale
+    :city: Argenta
+    :len: '25'
+- avellinocentrosportivoavellino25:
+    :pool: Centro sportivo Avellino
+    :city: Avellino
+    :len: '25'
+- avezzanopinguinonuoto25:
+    :pool: Pinguino Nuoto
+    :city: Avezzano
+    :len: '25'
+- baristadionuoto25:
+    :pool: Stadio Nuoto
+    :city: Bari
+    :len: '25'
+- baritinto50:
+    :pool: Tinto
+    :city: Bari
+    :len: '50'
+- barracentroester25:
+    :pool: Centro Ester
+    :city: Barra
+    :len: '25'
+- barrafritzdennerlein25:
+    :pool: Fritz Dennerlein
+    :city: Barra
+    :len: '25'
+- bastianp258:
+    :pool: "?"
+    :city: Bastia
+    :len: '25'
+- bastiaumbracomunale25:
+    :pool: comunale
+    :city: Bastia
+    :len: '25'
+- battipagliacsbalna25:
+    :pool: Centro Sportivo BALN A
+    :city: Battipaglia
+    :len: '25'
+- bellunobelluno25:
+    :pool: Belluno
+    :city: Belluno
+    :len: '25'
+- bergamocsitalcementi25:
+    :pool: Centro Sportivo Italcementi
+    :city: Bergamo
+    :len: '25'
+- bergamocsitalcementi50:
+    :pool: Centro Sportivo Italcementi
+    :city: Bergamo
+    :len: '50'
+- bibbianocalypso:
+    :pool: Calypso
+    :city: Bibbiano
+    :len: '25'
+- bitontocomunale25:
+    :pool: Comunale
+    :city: Bitonto
+    :len: '25'
+- bolognafanciullo:
+    :pool: Villaggio del fanciullo
+    :city: Bologna
+    :len: '25'
+- bolognasanlazzaro:
+    :pool: Comunale
+    :city: San Lazzaro di Savena
+    :len: '25'
+- bolognaspiraglio:
+    :pool: Spiraglio
+    :city: Bologna
+    :len: '25'
+- bolognastadio:
+    :pool: C.Longo (Stadio)
+    :city: Bologna
+    :len: '25'
+- bolognastadiocomunalecarmenlongo50:
+    :pool: Stadio Comunale Carmen Longo
+    :city: Bologna
+    :len: '50'
+- bolzanoalbertpircher25:
+    :pool: Albert Pircher
+    :city: Bolzano
+    :len: '25'
+- bresciabrescialamarmora25:
+    :pool: Brescia Lamarmora
+    :city: Brescia
+    :len: '25'
+- bresciacomunaleolimpica50:
+    :pool: Comunale Olimpica
+    :city: Brescia
+    :len: '50'
+- buonconventocomunale25:
+    :pool: comunale
+    :city: Buonconvento
+    :len: '25'
+- bustogarolfocomunale25:
+    :pool: Comunale
+    :city: Busto Garolfo
+    :len: '25'
+- cagliaricomunaleterramaini25:
+    :pool: Comunale Terramaini
+    :city: Cagliari
+    :len: '25'
+- cagliaricomunaleterramaini50:
+    :pool: Comunale Terramaini
+    :city: Cagliari
+    :len: '50'
+- cagliarinp256:
+    :pool: "?"
+    :city: Cagliari
+    :len: '25'
+- caldierodelleterme50:
+    :pool: delle TERME
+    :city: Calderano
+    :len: '50'
+- calenzanocalenzanocomunale25:
+    :pool: Calenzano comunale
+    :city: Calenzano
+    :len: '25'
+- calimeracalimera25:
+    :pool: Calimera
+    :city: Calimera
+    :len: '25'
+- caltanisettacomunale258:
+    :pool: Comunale
+    :city: Caltanisetta
+    :len: '25'
+- caltanissettacomunale25:
+    :pool: Comunale
+    :city: Caltanissetta
+    :len: '25'
+- campodipietracspuntocom25:
+    :pool: centro sportivo Punto Com
+    :city: Campodipietra
+    :len: '25'
+- campodipietranp258:
+    :pool: "?"
+    :city: Campodipietra
+    :len: '25'
+- canosadipugliaaquarius25:
+    :pool: Aquarius
+    :city: Canosa di Puglia
+    :len: '25'
+- canosanp255:
+    :pool: "?"
+    :city: Canosa di Puglia
+    :len: '25'
+- cantucomunale25:
+    :pool: Comunale
+    :city: Cantù
+    :len: '25'
+- carpicomunale:
+    :pool: Comunale
+    :city: Carpi
+    :len: '25'
+- casalemonferratocomunale25:
+    :pool: Comunale
+    :city: Casale Monferrato
+    :len: '25'
+- casaranocseuroitalia50:
+    :pool: Centro Sportivo EuroItalia
+    :city: Casarano
+    :len: '50'
+- casertastadiodelnuoto508:
+    :pool: Stadio del nuoto
+    :city: Caserta
+    :len: '50'
+- castellanagrottecomunale25:
+    :pool: Comunale
+    :city: Castellana Grotte
+    :len: '25'
+- castelloimpiantinatatoribelvedere50:
+    :pool: Impianti Natatori Belvedere
+    :city: Città di Castello
+    :len: '50'
+- castelnovoonda:
+    :pool: Onda della Pietra
+    :city: Castelnovo ne' Monti
+    :len: '25'
+- cataniacomunalepiscineolimpioniche50:
+    :pool: Comunale Piscine Olimpioniche
+    :city: Catania
+    :len: '50'
+- catanialaplaia50:
+    :pool: La plaia
+    :city: Catania
+    :len: '50'
+- cataniaplaia50:
+    :pool: Plaia
+    :city: Catania
+    :len: '50'
+- catanzaroprovinciale25:
+    :pool: provinciale
+    :city: Catanzaro
+    :len: '25'
+- cavadeitirrenicomunale25:
+    :pool: Comunale
+    :city: Cava dei Tirreni
+    :len: '25'
+- centocomunale:
+    :pool: Comunale
+    :city: Cento
+    :len: '25'
+- certaldofiammetta25:
+    :pool: Fiammetta
+    :city: Certaldo
+    :len: '25'
+- chiavaricomunale25:
+    :pool: Comunale
+    :city: Chiavari
+    :len: '25'
+- civitanovamarchecomunale25:
+    :pool: comunale
+    :city: Civitanova Marche Alta
+    :len: '25'
+- civitavecchiastadionuotomarcogalli25:
+    :pool: Stadio Nuoto Marco Galli
+    :city: Civitavecchia
+    :len: '25'
+- civitavecchiastadionuotomarcogalli50:
+    :pool: stadio Nuoto Marco Galli
+    :city: Civitavecchia
+    :len: '50'
+- collevaldelsacomunale25:
+    :pool: Comunale
+    :city: Colle di Val d'Elsa
+    :len: '25'
+- comoolimpica50:
+    :pool: Olimpica
+    :city: Como
+    :len: '50'
+- conversanoaironclubtraversa25:
+    :pool: Airon Club Traversa
+    :city: Conversano
+    :len: '25'
+- coratonp258:
+    :pool: Nicotel Sport & Wellness
+    :city: Corato
+    :len: '25'
+- correggiocomunale:
+    :pool: Comunale
+    :city: Correggio
+    :len: '25'
+- cosenzacomunale25:
+    :pool: Comunale
+    :city: Cosenza
+    :len: '25'
+- cosenzacomunale50:
+    :pool: Comunale
+    :city: Cosenza
+    :len: '50'
+- cremonacanottieribaldesio50:
+    :pool: Canottieri Baldesio
+    :city: Cremona
+    :len: '50'
+- cremonacomunale25:
+    :pool: Comunale
+    :city: Cremona
+    :len: '25'
+- cuneostadionuoto50:
+    :pool: Stadio Nuoto
+    :city: Cuneo
+    :len: '50'
+- desenzanodelgardacsnatatoriogsignori25:
+    :pool: centro sportivo natatorio G. Signori
+    :city: Desenzano del Garda
+    :len: '25'
+- ederacomunalepalazzettosportemiliozoli50:
+    :pool: comunale palazzetto sport Emilio Zoli
+    :city: Pontedera
+    :len: '50'
+- eindhovenvandenhoogenband:
+    :pool: Pieter Van den Hoogenband
+    :city: Eindhoven
+    :len: '50'
+- fabrianocomunale25:
+    :pool: Comunale
+    :city: Fabriano
+    :len: '25'
+- fanocomunale25:
+    :pool: Comunale
+    :city: Fano
+    :len: '25'
+- ferraracomunale:
+    :pool: Comunale
+    :city: Ferrara
+    :len: '25'
+- fidenzacomunale:
+    :pool: Comunale
+    :city: Fidenza
+    :len: '25'
+- firenzecomunalerenatodani25:
+    :pool: Comunale Renato Dani
+    :city: Firenze
+    :len: '25'
+- firenzenannini50:
+    :pool: Nannini
+    :city: Firenze
+    :len: '50'
+- firenzepaolocostoli50:
+    :pool: Paolo Costoli
+    :city: Firenze
+    :len: '50'
+- follonicacomunale25:
+    :pool: Comunale
+    :city: Follonica
+    :len: '25'
+- forlicomunale625:
+    :pool: Comunale
+    :city: Forlì
+    :len: '25'
+- forlicomunale825:
+    :pool: Comunale
+    :city: Forlì
+    :len: '25'
+- fornovocomunale:
+    :pool: Comunale
+    :city: Fornovo di Taro
+    :len: '25'
+- gallarategallarate50:
+    :pool: Gallarate
+    :city: Gallarate
+    :len: '50'
+- genovaalbaro50:
+    :pool: Albaro
+    :city: Genova
+    :len: '50'
+- genovacomunalesciorba50:
+    :pool: Comunale Sciorba
+    :city: Genova
+    :len: '50'
+- genovacrocera:
+    :pool: Crocera
+    :city: Genova
+    :len: '25'
+- genovalimpiantopolisportivolagofigoi25:
+    :pool: l'impianto polisportivo Lago Figoi
+    :city: Genova
+    :len: '25'
+- genovasciorba25:
+    :pool: Sciorba
+    :city: Genova
+    :len: '25'
+- gioiadelcollecomunale25:
+    :pool: Comunale
+    :city: Gioia del Colle
+    :len: '25'
+- giuglianoolimpic25:
+    :pool: Olimpic
+    :city: Giugliano in Campania
+    :len: '25'
+- gorgonzolaseveninfinity25:
+    :pool: Seven Infinity
+    :city: Gorgonzola
+    :len: '25'
+- gualdotadinocomunale25:
+    :pool: Comunale
+    :city: Gualdo Tadino
+    :len: '25'
+- gussagolegocce:
+    :pool: Le gocce
+    :city: Gussago
+    :len: '25'
+- imolacomunale:
+    :pool: Comunale
+    :city: Imola
+    :len: '25'
+- innsbrucknp256:
+    :pool: "?"
+    :city: Innsbruck
+    :len: '25'
+- kazanaquaticspalace50:
+    :pool: Aquatics Palace
+    :city: Kazan
+    :len: '50'
+- komodorubiera:
+    :pool: Komodo
+    :city: Rubiera
+    :len: '25'
+- lameziatermecomunale25:
+    :pool: Comunale
+    :city: Lamézia
+    :len: '25'
+- laquilacomunale25:
+    :pool: comunale
+    :city: L'Aquila
+    :len: '25'
+- laquilacoperta25mt6corsie25:
+    :pool: coperta 25 mt 6 corsie
+    :city: L'Aquila
+    :len: '25'
+- laspeziacomunale:
+    :pool: Comunale
+    :city: La Spezia
+    :len: '25'
+- lecconp256:
+    :pool: "?"
+    :city: Lecco
+    :len: '25'
+- legnagocomunale:
+    :pool: Comunale
+    :city: Legnago
+    :len: '25'
+- legnanocomunalefvilla25:
+    :pool: Comunale F.Villa
+    :city: Legnano
+    :len: '25'
+- lignanosabbiadoroolimpicavillaggiogetur50:
+    :pool: olimpica Villaggio Ge Tur
+    :city: Lignano Sabbiadoro
+    :len: '50'
+- lignanosabbiadoroolimpicavsbellaitalia25:
+    :pool: olimpica Villaggio sportivo BELLAITALIA
+    :city: Lignano Sabbiadoro
+    :len: '25'
+- livornolabastia25:
+    :pool: La Bastia
+    :city: Livorno
+    :len: '25'
+- livornoolimpicasimeonecamalich50:
+    :pool: Olimpica SIMEONE CAMALICH
+    :city: Livorno
+    :len: '50'
+- lodifaustinasportingclub25:
+    :pool: Faustina Sporting Club
+    :city: Lodi
+    :len: '25'
+- lodifaustinasportingclub50:
+    :pool: Faustina Sporting Club
+    :city: Lodi
+    :len: '50'
+- lodifaustinasportvillage25:
+    :pool: Faustina sporting club
+    :city: Lodi
+    :len: '25'
+- londonaquatic50:
+    :pool: Aquatics centre
+    :city: London
+    :len: '50'
+- lovadinadispresianolovadina25:
+    :pool: Lovadina
+    :city: Spresiano
+    :len: '25'
+- luccaitiefermi25:
+    :pool: ITI E. Fermi
+    :city: Lucca
+    :len: '25'
+- lumezzanecomunale25:
+    :pool: Comunale
+    :city: LUMEZZANE
+    :len: '25'
+- macentronatatorioaquanienethesportclub25:
+    :pool: centro natatorio AQUANIENE The Sport Club
+    :city: Roma
+    :len: '25'
+- mantovaeugeniodugoni25:
+    :pool: Eugenio Dugoni
+    :city: Mantova
+    :len: '25'
+- mantovascoperta:
+    :pool: Scoperta
+    :city: Mantova
+    :len: '50'
+- massalubrenseatlantis25:
+    :pool: Atlantis
+    :city: Massalubrense
+    :len: '25'
+- massarosacomunale25:
+    :pool: Comunale
+    :city: Massarosa
+    :len: '25'
+- messinalapiscinacappuccini50:
+    :pool: la Piscina Cappuccini
+    :city: Messina
+    :len: '50'
+- milanodsamuele25:
+    :pool: D.Samuele
+    :city: Milano
+    :len: '25'
+- milanosamuele50:
+    :pool: Samuele
+    :city: Milano
+    :len: '50'
+- mirandolacomunale:
+    :pool: Comunale
+    :city: Mirandola
+    :len: '25'
+- modenadogali:
+    :pool: Dogali
+    :city: Modena
+    :len: '50'
+- modenapergolesi:
+    :pool: Pergolesi
+    :city: Modena
+    :len: '25'
+- modenavvff:
+    :pool: Vigili del fuoco
+    :city: Modena
+    :len: '25'
+- modugnocomunale25:
+    :pool: Comunale
+    :city: Modugno
+    :len: '25'
+- modugnonp258:
+    :pool: "?"
+    :city: Modugno
+    :len: '25'
+- molfettacomunale25:
+    :pool: Comunale
+    :city: Molfetta
+    :len: '25'
+- molinellacomunale:
+    :pool: Comunale
+    :city: Molinella
+    :len: '25'
+- monastierrosabluvillage50:
+    :pool: ROSA BLU VILLAGE
+    :city: Monastier di Treviso
+    :len: '50'
+- montrealdrapeau508:
+    :pool: Jean Drapeau Park
+    :city: Montreal
+    :len: '50'
+- mugnanocomunale25:
+    :pool: Comunale
+    :city: Mugnano
+    :len: '25'
+- napolifelicescandone50:
+    :pool: Felice Scandone
+    :city: Napoli
+    :len: '50'
+- napolifscandone25:
+    :pool: F Scandone
+    :city: Napoli
+    :len: '25'
+- nibionnocentronatatoriowetlife25:
+    :pool: centro natatorio Wet Life
+    :city: NIBIONNO
+    :len: '25'
+- nociwellnessclub25:
+    :pool: WELLNESS CLUB
+    :city: Noci
+    :len: '25'
+- novaracomunale25:
+    :pool: Comunale
+    :city: Novara
+    :len: '25'
+- novaranovara25:
+    :pool: Novara
+    :city: Novara
+    :len: '25'
+- novellaracomunale:
+    :pool: Comunale
+    :city: Novellara
+    :len: '25'
+- olbiageovillagecentronuoto25:
+    :pool: GEOVILLAGE CENTRO NUOTO
+    :city: Olbia
+    :len: '25'
+- osimocomunale25:
+    :pool: Comunale
+    :city: Osimo
+    :len: '25'
+- ostiacomunale:
+    :pool: Ostia
+    :city: Ostia
+    :len: '50'
+- ostiacopertapolonatatorio25:
+    :pool: coperta Polo Natatorio
+    :city: Ostia
+    :len: '25'
+- padovacomunale50:
+    :pool: comunale
+    :city: Padova
+    :len: '50'
+- padovacsplebiscitopadova25:
+    :pool: Centro Sportivo Plebiscito Padova
+    :city: Padova
+    :len: '25'
+- paganidiversdrive25:
+    :pool: Diver's Drive
+    :city: Pagani
+    :len: '25'
+- palermocomunale50:
+    :pool: comunale
+    :city: Palermo
+    :len: '50'
+- palermohydra625:
+    :pool: Hydra
+    :city: Palermo
+    :len: '25'
+- palermopolisportiva25:
+    :pool: Polisportiva
+    :city: Palermo
+    :len: '25'
+- parmacomunalegonesti25:
+    :pool: Comunale G. Onesti
+    :city: Parma
+    :len: '25'
+- paternogiovannipaoloii25:
+    :pool: Giovanni Paolo II
+    :city: Paterno
+    :len: '25'
+- paviacomunale25:
+    :pool: Comunale
+    :city: Pavia
+    :len: '25'
+- pesaroobertiparcopace50:
+    :pool: O. Berti Parco Pace
+    :city: Pesaro
+    :len: '50'
+- pescaralenaiadi25:
+    :pool: Le Naiadi
+    :city: Pescara
+    :len: '25'
+- pescaranp258:
+    :pool: "?"
+    :city: Pescara
+    :len: '25'
+- piacenzacanottierivittorinodafeltre50:
+    :pool: Canottieri Vittorino da Feltre
+    :city: Piacenza
+    :len: '50'
+- piacenzacomunaleraffalda25:
+    :pool: Comunale RAFFALDA
+    :city: Piacenza
+    :len: '25'
+- pietrelcinaaquacenter25:
+    :pool: Aquacenter
+    :city: Pietrelcina
+    :len: '25'
+- pinarellacomunale:
+    :pool: Comunale
+    :city: Pinarella
+    :len: '25'
+- poggibonsicomunale25:
+    :pool: comunale
+    :city: Poggibonsi
+    :len: '25'
+- pomeziaromansportcity25:
+    :pool: ROMAN Sport City
+    :city: Pomezia
+    :len: '25'
+- porticicsportici25:
+    :pool: Centro Sportivo Portici
+    :city: Portici
+    :len: '25'
+- potenzacomunale25:
+    :pool: Comunale
+    :city: Potenza
+    :len: '25'
+- potenzanewwaterpark625:
+    :pool: New Water Park Venosa
+    :city: Potenza
+    :len: '25'
+- pozzuolicomunale25:
+    :pool: Comunale
+    :city: Pozzuoli
+    :len: '25'
+- pratocomunale50:
+    :pool: Comunale
+    :city: Prato
+    :len: '50'
+- priologargallosc25:
+    :pool: Sport Center
+    :city: Priolo Gargallo
+    :len: '25'
+- putignanonadir25:
+    :pool: Nadir
+    :city: Putignano
+    :len: '25'
+- putignanonp256:
+    :pool: "?"
+    :city: Putignano
+    :len: '25'
+- rapallocomunale25:
+    :pool: Comunale
+    :city: Rapallo
+    :len: '25'
+- ravennaggambi50:
+    :pool: G. Gambi
+    :city: Ravenna
+    :len: '50'
+- reggiocomunale25:
+    :pool: S.Ferretti
+    :city: Reggio nell Emilia
+    :len: '25'
+- reggiocomunale50:
+    :pool: O.Ferrari
+    :city: Reggio nell Emilia
+    :len: '50'
+- riccionestadionuoto25:
+    :pool: Stadio Nuoto
+    :city: Riccione
+    :len: '25'
+- riccionestadionuoto50:
+    :pool: Stadio Nuoto
+    :city: Riccione
+    :len: '50'
+- romacopertaforumromasportcenter25:
+    :pool: coperta Circolo Forum Roma Sport Center
+    :city: Roma
+    :len: '25'
+- romacsbabel25:
+    :pool: Centro Sportivo BABEL
+    :city: Roma
+    :len: '25'
+- romacszero950:
+    :pool: centro sportivo Zero9
+    :city: Roma
+    :len: '50'
+- romahappyvillage50:
+    :pool: Happy Village
+    :city: Roma
+    :len: '50'
+- romaolgiata258:
+    :pool: Olgiata 20.12 Sport Club
+    :city: Roma
+    :len: '25'
+- romapietralata50:
+    :pool: Pietralata
+    :city: Roma
+    :len: '50'
+- roveretonp256:
+    :pool: "?"
+    :city: Rovereto
+    :len: '25'
+- rovigonuovopolonatatorio25:
+    :pool: Nuovo Polo Natatorio
+    :city: Rovigo
+    :len: '25'
+- sagatadimilitellopalasportmangano25:
+    :pool: Palasport Mangano
+    :city: Sant'Agata di Militello
+    :len: '25'
+- saintvincentcomunale:
+    :pool: Comunale
+    :city: Saint-Vincent
+    :len: '25'
+- sandonadelpiavecomunale25:
+    :pool: Comunale
+    :city: San Donà di Piave
+    :len: '25'
+- sanmarinomultieventisportdomus50:
+    :pool: Multieventi Sport Domus
+    :city: San Marino
+    :len: '50'
+- sansalvocomunale25:
+    :pool: Comunale
+    :city: San Salvo
+    :len: '25'
+- santurbanoacquambiente25:
+    :pool: Acquambiente
+    :city: Sant'Urbano
+    :len: '25'
+- saronnocomunale25:
+    :pool: comunale
+    :city: Saronno
+    :len: '25'
+- sassuoloondablu25:
+    :pool: Onda Blu
+    :city: Sassuolo
+    :len: '25'
+- scanzanojonicovillaggiotorrefaro50:
+    :pool: Villaggio Torre Faro
+    :city: Scanzano
+    :len: '50'
+- sdonadipiavenp256:
+    :pool: "?"
+    :city: San Donà di Piave
+    :len: '25'
+- sedidiverseotrewellnessclubnoci25:
+    :pool: Otrè Wellness Club Noci
+    :city: Sedi diverse
+    :len: '25'
+- segidioallavibratacomunale25:
+    :pool: Comunale
+    :city: Sant'Egidio alla Vibrata
+    :len: '25'
+- senigalliacomunalesaline25:
+    :pool: Comunale Saline
+    :city: Senigallia
+    :len: '25'
+- seregnocomunale25:
+    :pool: Comunale
+    :city: Seregno
+    :len: '25'
+- silviuniversosportclub825:
+    :pool: Universo Sport Club
+    :city: Silvi
+    :len: '25'
+- siracusapaolocaldarella50:
+    :pool: Paolo Caldarella
+    :city: Siracusa
+    :len: '50'
+- sondriocomunale25:
+    :pool: comunale
+    :city: Sondrio
+    :len: '25'
+- soricomunale25:
+    :pool: Comunale
+    :city: Sori
+    :len: '25'
+- spoletocomunale50:
+    :pool: Comunale
+    :city: Spoleto
+    :len: '50'
+- stanfordcomunale:
+    :pool: Comunale
+    :city: Stanford
+    :len: '50'
+- stoccolmacomunale:
+    :pool: Comunale
+    :city: Stockholm
+    :len: '50'
+- strianocopertafalcosportvillage25:
+    :pool: coperta Falco Sport Village
+    :city: Striano
+    :len: '25'
+- taorminacomunale25:
+    :pool: Comunale
+    :city: Taormina
+    :len: '25'
+- tarantomeridiana25:
+    :pool: Meridiana
+    :city: Taranto
+    :len: '25'
+- tatoriocittadellauniversitariasportiva50:
+    :pool: natatorio Cittadella Universitaria Sportiva
+    :city: Gussago
+    :len: '50'
+- ternistadio825:
+    :pool: Impianti Natatori Piscine dello Stadio
+    :city: Terni
+    :len: '25'
+- torinocopertapalazzonuoto50:
+    :pool: coperta Palazzo Nuoto
+    :city: Torino
+    :len: '50'
+- torinopalazzonuoto25:
+    :pool: Palazzo Nuoto
+    :city: Torino
+    :len: '25'
+- tortonadellepiane25:
+    :pool: Dellepiane
+    :city: Tortona
+    :len: '25'
+- trabiahoteltorreartale50:
+    :pool: Hotel Torre Artale
+    :city: Trabia
+    :len: '50'
+- travagliatocomunalepalablu25:
+    :pool: Comunale Palablù
+    :city: Travagliato
+    :len: '25'
+- trentocentrosportivotrentonord25:
+    :pool: Centro Sportivo Trento Nord
+    :city: Trento
+    :len: '25'
+- trentocsmanazzon50:
+    :pool: Centro Sportivo Manazzon
+    :city: Trento
+    :len: '50'
+- trentomadonnabianca25:
+    :pool: Madonna Bianca
+    :city: Trento
+    :len: '25'
+- trevisocentronatatoriocomunale50:
+    :pool: Centro Natatorio Comunale
+    :city: Treviso
+    :len: '50'
+- triestecomunale:
+    :pool: Comunale
+    :city: Trieste
+    :len: '50'
+- triestepolonatatoriobrunobianchi25:
+    :pool: Polo natatorio Bruno Bianchi
+    :city: Trieste
+    :len: '25'
+- umbertidedeimpiantinatatoricomunali25:
+    :pool: deImpianti Natatori Comunali
+    :city: Umbertide
+    :len: '25'
+- varedolido:
+    :pool: Lido Azzurro
+    :city: Varedo
+    :len: '50'
+- verolanuovacomunale25:
+    :pool: Comunale
+    :city: Verolanuova
+    :len: '25'
+- veronacentrofederale25:
+    :pool: Centro Federale
+    :city: Verona
+    :len: '25'
+- veronamontebianco825:
+    :pool: Piscine Montebianco
+    :city: Verona
+    :len: '25'
+- viareggiocomunale25:
+    :pool: Comunale
+    :city: Viareggio
+    :len: '25'
+- vibovalentiacomunale25:
+    :pool: Comunale
+    :city: Marina di Vibo Valentia
+    :len: '25'
+- vicenzacomunale25:
+    :pool: comunale
+    :city: Vicenza
+    :len: '25'
+- vicenzacomunale50:
+    :pool: Comunale
+    :city: Vicenza
+    :len: '50'
+- vicenzacoperta25mt10corsie33:
+    :pool: coperta 25 mt 10 corsie
+    :city: Vicenza
+    :len: '33'
+- vimercatecomunale25:
+    :pool: Comunale
+    :city: Vimercate
+    :len: '25'
+- viterbocomunale25:
+    :pool: comunale
+    :city: Viterbo
+    :len: '25'

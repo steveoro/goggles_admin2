@@ -17,29 +17,23 @@ class APIBadgesController < ApplicationController
     result = APIProxy.call(
       method: :get, url: 'badges', jwt: current_user.jwt,
       params: {
-        swimmer_id: index_params[:swimmer_id], team_id: index_params[:team_id],
+        team_id: index_params[:team_id], team_affiliation_id: index_params[:team_affiliation_id],
         season_id: index_params[:season_id],
+        swimmer_id: index_params[:swimmer_id],
+        off_gogglecup: index_params[:off_gogglecup],
         fees_due: index_params[:fees_due],
         badge_due: index_params[:badge_due],
         relays_due: index_params[:relays_due],
         page: index_params[:page], per_page: index_params[:per_page]
       }
     )
-    json_domain = JSON.parse(result.body)
+    parsed_response = JSON.parse(result.body)
     unless result.code == 200
-      flash[:error] = I18n.t('dashboard.api_proxy_error', error_code: result.code, error_msg: json_domain['error'])
+      flash[:error] = I18n.t('dashboard.api_proxy_error', error_code: result.code, error_msg: parsed_response['error'])
       redirect_to(root_path) && return
     end
 
-    @domain_count = result.headers[:total].to_i
-    @domain_page = result.headers[:page].to_i
-    @domain_per_page = result.headers[:per_page].to_i
-
-    # Setup grid domain (and chart's):
-    @domain = json_domain.map { |attrs| GogglesDb::Badge.new(attrs) }
-
-    # Setup datagrid:
-    BadgesGrid.data_domain = @domain
+    set_grid_domain_for(BadgesGrid, GogglesDb::Badge, result.headers, parsed_response)
 
     respond_to do |format|
       @grid = BadgesGrid.new(grid_filter_params)

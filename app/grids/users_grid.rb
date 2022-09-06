@@ -8,25 +8,11 @@ class UsersGrid < BaseGrid
   # Returns the scope for the grid. (#assets is the filtered version of it)
   scope { data_domain }
 
-  # Unscoped data_domain read accessor
-  def unscoped
-    data_domain
-  end
-
-  filter(:id, :integer)
-  filter(:name, :string, header: 'Name (~)') do |value, scope|
-    scope.select { |row| row.name =~ /#{value}/i }
-  end
-  filter(:description, :string, header: 'Description (~)') do |value, scope|
-    scope.select { |row| row.description =~ /#{value}/i }
-  end
-  filter(:email, :string, header: 'E-mail (~)') do |value, scope|
-    scope.select { |row| row.email =~ /#{value}/i }
-  end
-  filter(:swimmer_id, :integer)
-  filter(:created_at, :date, range: true, input_options: {
-           maxlength: 10, placeholder: 'YYYY-MM-DD'
-         })
+  # NOTE: no point in re-filtering scopes already filtered by the API here,
+  #       so we return the whole scope (otherwise local filtering would be applied).
+  filter(:name, :string) { |_value, scope| scope }
+  filter(:description, :string) { |_value, scope| scope }
+  filter(:email, :string) { |_value, scope| scope }
 
   selection_column(mandatory: true)
   column(:id, align: :right, mandatory: true)
@@ -36,7 +22,6 @@ class UsersGrid < BaseGrid
   column(:swimmer_id, align: :right, mandatory: true,
                       order: proc { |scope| scope.sort { |a, b| a.swimmer_id.to_i <=> b.swimmer_id.to_i } })
   column(:email, mandatory: true)
-
   column(:last_name)
   column(:first_name)
   column(:year_of_birth)

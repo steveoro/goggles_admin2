@@ -1,5 +1,7 @@
 en:
   data_import:
+    generic_save_btn: "💾 Save edits"
+    btn_save_confirm: 'Save the edits?'
     config:
       default_calendar_url: 'Calendar URL'
     calendar:
@@ -20,6 +22,14 @@ en:
       btn_download_tooltip: 'Download file'
       btn_process_csv_tooltip: 'Process this calendar file, downloading the available results'
       btn_process_json_tooltip: 'Process this result file, preparing a batch data import transaction'
+      btn_reparse_json_tooltip: 'Forced re-parse of this result file using the available source data in it'
+      btn_process_sql_tooltip: 'Upload this data-import batch file to the remote server'
+      confirm_push: 'Are you sure you want to PUSH this file to the remote server?'
+    push:
+      msg_prepare_batch_ok: 'SQL batch file successfully created.'
+      msg_send_batch_ok: "SQL batch file successfully sent and moved to the 'results.done' folder."
+      new_results_tab_name: "New"
+      sent_results_tab_name: "Sent"
     errors:
       invalid_request: 'Invalid request'
       invalid_file_content: 'Invalid file contents for the given file extension'

@@ -23,11 +23,11 @@
             %a.btn.btn-lg.btn-outline-primary.my-1{ href: api_meetings_path }
               Meetings
             %a.btn.btn-lg.btn-outline-primary.my-1{ href: api_user_workshops_path }
-              Workshops
-            %a.btn.btn-lg.btn-outline-primary.disabled.my-1{ href: '#' }
-              Base & Standard Timings
-            %a.btn.btn-lg.btn-outline-primary.disabled.my-1{ href: '#' }
-              FIN Calendars
+              = t('dashboard.user_workshops.title')
+            %a.btn.btn-lg.btn-outline-primary.my-1{ href: api_standard_timings_path }
+              = t('dashboard.standard_timings.title')
+            %a.btn.btn-lg.btn-outline-primary.my-1{ href: api_calendars_path }
+              = t('dashboard.calendars.title')
           .offset-lg-0.col-lg-4.offset-md-1.col-md-5.offset-sm-0.col-sm-6.py-2
             %a.btn.btn-lg.btn-outline-primary.my-1{ href: api_swimmers_path }
               = t('dashboard.swimmers.title')

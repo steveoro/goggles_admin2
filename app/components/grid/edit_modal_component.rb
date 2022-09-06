@@ -85,6 +85,8 @@ module Grid
 
       if attribute_name == 'associated_user_id'
         'user'
+      elsif attribute_name == 'home_team_id'
+        'team'
       else
         attribute_name.to_s.split('_id').first
       end
@@ -98,6 +100,8 @@ module Grid
 
       if attribute_name == 'associated_user_id'
         'user'
+      elsif attribute_name == 'home_team_id'
+        'team'
       elsif lookup_entity?(attribute_name)
         # (lookup entities do not have a detail endpoint)
         nil
@@ -113,6 +117,8 @@ module Grid
 
       if attribute_name == 'associated_user_id'
         'users'
+      elsif attribute_name == 'home_team_id'
+        'teams'
       elsif lookup_entity?(attribute_name)
         "lookup/#{attribute_name.to_s.split('_id').first}".pluralize
       else

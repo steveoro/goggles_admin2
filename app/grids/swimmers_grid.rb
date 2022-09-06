@@ -8,20 +8,15 @@ class SwimmersGrid < BaseGrid
   # Returns the scope for the grid. (#assets is the filtered version of it)
   scope { data_domain }
 
-  # Unscoped data_domain read accessor
-  def unscoped
-    data_domain
-  end
-
-  filter(:id, :integer)
-  filter(:name, :string, header: 'Name (~)') do |value, scope|
-    scope.select do |row|
-      (row.complete_name =~ /#{value}/i) || (row.last_name =~ /#{value}/i) ||
-        (row.last_name =~ /#{value}/i)
-    end
-  end
+  # NOTE: no point in re-filtering scopes already filtered by the API here,
+  #       so we return the whole scope (otherwise local filtering would be applied).
+  filter(:name, :string, header: 'Name (~)') { |_value, scope| scope }
   filter(:year_of_birth, :integer)
   filter(:year_guessed, :boolean)
+  filter(:gender_type_id,
+         :enum, header: 'GenderType',
+         select: proc { GogglesDb::GenderType.all.map {|c| [c.code, c.id] }}
+        ) { |_value, scope| scope }
 
   selection_column(mandatory: true)
   column(:id, align: :right, mandatory: true)
@@ -34,7 +29,7 @@ class SwimmersGrid < BaseGrid
   column(:e_mail)
   column(:nickname)
   column(:associated_user_id, align: :right)
-  column(:gender_type_id, align: :right)
+  column(:gender_type_id, align: :right, mandatory: true)
   column(:complete_name, mandatory: true)
   boolean_column(:year_guessed, align: :center, mandatory: true, order: false)
 

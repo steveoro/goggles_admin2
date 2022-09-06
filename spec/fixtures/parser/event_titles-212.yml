@@ -1,0 +1,235 @@
+---
+- 100 Dorso - M25
+- 100 Dorso - M30
+- 100 Dorso - M35
+- 100 Dorso - M40
+- 100 Dorso - M45
+- 100 Dorso - M50
+- 100 Dorso - M55
+- 100 Dorso - M60
+- 100 Dorso - M65
+- 100 Dorso - M70
+- 100 Dorso - M75
+- 100 Dorso - M80
+- 100 Dorso - M85
+- 100 Dorso - M90
+- 100 Farfalla - M25
+- 100 Farfalla - M30
+- 100 Farfalla - M35
+- 100 Farfalla - M40
+- 100 Farfalla - M45
+- 100 Farfalla - M50
+- 100 Farfalla - M55
+- 100 Farfalla - M60
+- 100 Farfalla - M65
+- 100 Farfalla - M70
+- 100 Farfalla - M75
+- 100 Misti - M25
+- 100 Misti - M30
+- 100 Misti - M35
+- 100 Misti - M40
+- 100 Misti - M45
+- 100 Misti - M50
+- 100 Misti - M55
+- 100 Misti - M60
+- 100 Misti - M65
+- 100 Misti - M70
+- 100 Misti - M75
+- 100 Misti - M80
+- 100 Misti - M85
+- 100 Rana - M25
+- 100 Rana - M30
+- 100 Rana - M35
+- 100 Rana - M40
+- 100 Rana - M45
+- 100 Rana - M50
+- 100 Rana - M55
+- 100 Rana - M60
+- 100 Rana - M65
+- 100 Rana - M70
+- 100 Rana - M75
+- 100 Rana - M80
+- 100 Rana - M85
+- 100 Rana - M90
+- 100 Stile Libero - M25
+- 100 Stile Libero - M30
+- 100 Stile Libero - M35
+- 100 Stile Libero - M40
+- 100 Stile Libero - M45
+- 100 Stile Libero - M50
+- 100 Stile Libero - M55
+- 100 Stile Libero - M60
+- 100 Stile Libero - M65
+- 100 Stile Libero - M70
+- 100 Stile Libero - M75
+- 100 Stile Libero - M80
+- 100 Stile Libero - M85
+- 1500 Stile Libero - M25
+- 1500 Stile Libero - M30
+- 1500 Stile Libero - M35
+- 1500 Stile Libero - M40
+- 1500 Stile Libero - M45
+- 1500 Stile Libero - M50
+- 1500 Stile Libero - M55
+- 1500 Stile Libero - M60
+- 1500 Stile Libero - M65
+- 1500 Stile Libero - M70
+- 1500 Stile Libero - M75
+- 1500 Stile Libero - M80
+- 1500 Stile Libero - M85
+- 200 Dorso - M25
+- 200 Dorso - M30
+- 200 Dorso - M35
+- 200 Dorso - M40
+- 200 Dorso - M45
+- 200 Dorso - M50
+- 200 Dorso - M55
+- 200 Dorso - M60
+- 200 Dorso - M65
+- 200 Dorso - M70
+- 200 Dorso - M75
+- 200 Dorso - M80
+- 200 Dorso - M85
+- 200 Dorso - M90
+- 200 Farfalla - M25
+- 200 Farfalla - M30
+- 200 Farfalla - M35
+- 200 Farfalla - M40
+- 200 Farfalla - M45
+- 200 Farfalla - M50
+- 200 Farfalla - M55
+- 200 Farfalla - M60
+- 200 Farfalla - M65
+- 200 Farfalla - M70
+- 200 Farfalla - M75
+- 200 Misti - M25
+- 200 Misti - M30
+- 200 Misti - M35
+- 200 Misti - M40
+- 200 Misti - M45
+- 200 Misti - M50
+- 200 Misti - M55
+- 200 Misti - M60
+- 200 Misti - M65
+- 200 Misti - M70
+- 200 Misti - M75
+- 200 Misti - M80
+- 200 Rana - M25
+- 200 Rana - M30
+- 200 Rana - M35
+- 200 Rana - M40
+- 200 Rana - M45
+- 200 Rana - M50
+- 200 Rana - M55
+- 200 Rana - M60
+- 200 Rana - M65
+- 200 Rana - M70
+- 200 Rana - M75
+- 200 Rana - M80
+- 200 Rana - M85
+- 200 Stile Libero - M25
+- 200 Stile Libero - M30
+- 200 Stile Libero - M35
+- 200 Stile Libero - M40
+- 200 Stile Libero - M45
+- 200 Stile Libero - M50
+- 200 Stile Libero - M55
+- 200 Stile Libero - M60
+- 200 Stile Libero - M65
+- 200 Stile Libero - M70
+- 200 Stile Libero - M75
+- 200 Stile Libero - M80
+- 200 Stile Libero - M85
+- 400 Misti - M25
+- 400 Misti - M30
+- 400 Misti - M35
+- 400 Misti - M40
+- 400 Misti - M45
+- 400 Misti - M50
+- 400 Misti - M55
+- 400 Misti - M60
+- 400 Misti - M65
+- 400 Misti - M70
+- 400 Misti - M75
+- 400 Misti - M80
+- 400 Stile Libero - M25
+- 400 Stile Libero - M30
+- 400 Stile Libero - M35
+- 400 Stile Libero - M40
+- 400 Stile Libero - M45
+- 400 Stile Libero - M50
+- 400 Stile Libero - M55
+- 400 Stile Libero - M60
+- 400 Stile Libero - M65
+- 400 Stile Libero - M70
+- 400 Stile Libero - M75
+- 400 Stile Libero - M80
+- 400 Stile Libero - M85
+- 50 Dorso - M25
+- 50 Dorso - M30
+- 50 Dorso - M35
+- 50 Dorso - M40
+- 50 Dorso - M45
+- 50 Dorso - M50
+- 50 Dorso - M55
+- 50 Dorso - M60
+- 50 Dorso - M65
+- 50 Dorso - M70
+- 50 Dorso - M75
+- 50 Dorso - M80
+- 50 Dorso - M85
+- 50 Dorso - M90
+- 50 Farfalla - M25
+- 50 Farfalla - M30
+- 50 Farfalla - M35
+- 50 Farfalla - M40
+- 50 Farfalla - M45
+- 50 Farfalla - M50
+- 50 Farfalla - M55
+- 50 Farfalla - M60
+- 50 Farfalla - M65
+- 50 Farfalla - M70
+- 50 Farfalla - M75
+- 50 Farfalla - M80
+- 50 Farfalla - M85
+- 50 Rana - M25
+- 50 Rana - M30
+- 50 Rana - M35
+- 50 Rana - M40
+- 50 Rana - M45
+- 50 Rana - M50
+- 50 Rana - M55
+- 50 Rana - M60
+- 50 Rana - M65
+- 50 Rana - M70
+- 50 Rana - M75
+- 50 Rana - M80
+- 50 Rana - M85
+- 50 Rana - M90
+- 50 Stile Libero - M25
+- 50 Stile Libero - M30
+- 50 Stile Libero - M35
+- 50 Stile Libero - M40
+- 50 Stile Libero - M45
+- 50 Stile Libero - M50
+- 50 Stile Libero - M55
+- 50 Stile Libero - M60
+- 50 Stile Libero - M65
+- 50 Stile Libero - M70
+- 50 Stile Libero - M75
+- 50 Stile Libero - M80
+- 50 Stile Libero - M85
+- 50 Stile Libero - M90
+- 800 Stile Libero - M25
+- 800 Stile Libero - M30
+- 800 Stile Libero - M35
+- 800 Stile Libero - M40
+- 800 Stile Libero - M45
+- 800 Stile Libero - M50
+- 800 Stile Libero - M55
+- 800 Stile Libero - M60
+- 800 Stile Libero - M65
+- 800 Stile Libero - M70
+- 800 Stile Libero - M75
+- 800 Stile Libero - M80
+- 800 Stile Libero - M85

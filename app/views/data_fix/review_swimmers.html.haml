@@ -1,0 +1,43 @@
+.wrapper-body
+  .main-content
+    %section.my-2#title-box
+      = render(partial: 'data_fix_header', locals: { file_path: @file_path })
+    %section.my-2#review-swimmers-tabs
+      = render(partial: 'data_fix_tabs', locals: { active_tab: 'swimmers', file_path: @file_path })
+
+    %section.my-2#review-swimmers
+      .container-fluid
+        .row-fluid
+          - @swimmers_hash.keys.sort.each_with_index do |swimmer_key, index|
+            :ruby
+              swimmer_entity = @swimmers_hash[swimmer_key]
+              swimmer = swimmer_entity.row
+            %div{ id: "swimmer-card-#{index}" }
+              - difference_detected = (swimmer_key.downcase != swimmer.complete_name.downcase)
+              .card.my-2{ class: difference_detected ? 'border border-danger' : '' }
+                %div{ id: "swimmer-header-#{index}", class: swimmer.id.present? ? 'bg-light' : 'bg-light-yellow' }
+                  .row
+                    .col-3
+                      %h5.mb-0
+                        %button.btn.btn-link.m-1{ id: "edit-swimmer-#{index}",
+                                                  data: { target: "#swimmer-panel-#{index}",
+                                                  toggle: 'collapse', 'aria-expanded' => 'false',
+                                                  'aria-controls' => 'edit-swimmer' } }
+                          = swimmer_key
+                    .col-3.mt-2
+                      %i.form-text.text-muted.bg-light-grey
+                        %pre
+                          🔑 "#{swimmer_key}"
+                    .col.mt-2
+                      = "=> #{swimmer.complete_name}"
+                      - if swimmer.id.present?
+                        ID: #{swimmer.id}
+                        = swimmer.valid? ? '✅' : '🔵'
+                      - else
+                        🆕
+                .collapse{ id: "swimmer-panel-#{index}", 'aria-labelledby' => "swimmer-header-#{index}",
+                           'data-parent' => "#swimmer-card-#{index}" }
+                  .card-body.border-bottom.border-secondary
+                    = render(partial: 'swimmer_form', locals: { swimmer: swimmer,
+                             swimmer_matches: swimmer_entity.matches, index: index, swimmer_key: swimmer_key,
+                             api_url: @api_url, file_path: @file_path })

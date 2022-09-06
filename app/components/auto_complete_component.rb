@@ -3,11 +3,16 @@
 #
 # = Auto-complete (DB-lookup) component
 #
-#   - version:  7-0.3.52
+#   - version:  7-0.3.54
 #   - author:   Steve A.
 #
-# Allows a search query on a DB-lookup entity by any field in order to retrieve its ID and a descriptive label,
-# together with other two additional & optional fields.
+# Allows a search query on any lookup entity by any field in order to retrieve its ID plus its associated
+# details in order to compose and display a full descriptive label and, possibly,
+# update also up to other 3 optional target fields.
+#
+# Uses the Stimulus 'autocomplete_controller.js'.
+# As per controller definition, the 4th optional target field can be set only via its DOM ID,
+# while the other 3 (including the main target field) just need a specific data target to be set.
 #
 # Supports both in-line & remote data providers for the search.
 #
@@ -25,13 +30,13 @@ class AutoCompleteComponent < ViewComponent::Base
   # Creates a new ViewComponent
   #
   # == Options
-  # - <tt>base_dom_id</tt>: defines the base string name for the DOM ID used by the modal container,
-  #   its input form (<tt>"frm-<BASE_MODAL_DOM_ID>"</tt>), its title label (<tt>"<BASE_MODAL_DOM_ID>-modal-title"</tt>)
-  #   and its own POST button (<tt>"btn-<BASE_MODAL_DOM_ID>-submit-save"</tt>); defaults to "grid-edit".
+  # - <tt>base_dom_id</tt>: base target *namespace*; defaults to "grid-edit" (default name disables the namespace for the POST field).
+  #   When put inside modal dialog, this should be equal to the base string name used for the DOM ID
+  #   used by the modal container; see option <tt>:base_dom_id</tt> of <tt>EditModalComponent</tt>.
   #
   # - <tt>:base_api_url</tt>:
   #  base API URL for data request (w/o endpoint or params)
-  #  (*required*)
+  #  (*required* only when no payload is given)
   #
   # - <tt>:detail_endpoint</tt>:
   #   API endpoint name used to retrieve additional or initial Entity details;
@@ -69,16 +74,42 @@ class AutoCompleteComponent < ViewComponent::Base
   #   Totally optional: skipped when not set (default: null).
   #
   # - <tt>:target2_column</tt>:
-  #   column or property name used as to set the value of the secondary target field;
+  #   column or property name used to set the value of the secondary target field;
   #   (totally optional, skipped when not set)
+  #
+  # - <tt>:target2_class</tt>:
+  #   CSS container class override; default: "offset-lg-1 col-lg-5 col-md-10 col-sm-10 my-1"
+  #   (good for a pretty large field)
   #
   # - <tt>:target3_field</tt>:
   #   tertiary target field name;
-  #   Managed as above & totally optional: skipped when not set (default: null).
+  #   Totally optional: skipped when *both* this and the DOM ID option below are not set
+  #   (default: null). This option has precedence over the DOM ID option below.
+  #
+  # - <tt>:target3_dom_id</tt>:
+  #   DOM ID for the 3rd optional target field; skipped when *both* this and the option above are not set (default: null).
+  #   The 3rd target field can either be set by its field name (option <tt>:target3_field</tt> above)
+  #   or by its DOM ID in case it is rendered outside the parent container node of the component.
   #
   # - <tt>:target3_column</tt>:
-  #   column or property name used as to set the value of the tertiary target field;
+  #   column or property name used to set the value of the tertiary target field;
   #   As above, totally optional: skipped when not set (default: null).
+  #
+  # - <tt>:target3_class</tt>:
+  #   CSS container class override; default: "col-lg-1 col-md-2 col-sm-2 my-1"
+  #   (good for a very small field)
+  #
+  # - <tt>:target4_dom_id</tt>:
+  #   DOM ID for the 4th optional target field; managed as above & totally optional: skipped when not set (default: null).
+  #   This 4th target is referred *only* by its DOM ID instead of its name because it's assumed to be
+  #   always placed (and rendered) outside of the current parent node (thus, accessible only via its ID).
+  #
+  # - <tt>:target4_column</tt>:
+  #   column or property name used to set the value of the 4th target field;
+  #   As above, totally optional: skipped when not set (default: null).
+  #
+  # - <tt>:default_value</tt>:
+  #   actual default value for the target field (typically '<base_name>_id'); defaults to +nil+
   #
   # - <tt>:payload</tt>:
   #   Array of objects specifying the inline data payload for the search domain.
@@ -101,6 +132,7 @@ class AutoCompleteComponent < ViewComponent::Base
     @base_api_url = options[:base_api_url]
     @detail_endpoint = options[:detail_endpoint]
     @base_name = options[:base_name]
+    @default_value = options[:default_value] # goes into "<base_name>_id" as default
 
     @search_endpoint = options[:search_endpoint]
     @search_column = options[:search_column]
@@ -109,10 +141,17 @@ class AutoCompleteComponent < ViewComponent::Base
     @label_column = options[:label_column]
     @label2_column = options[:label2_column]
 
-    @target2_column = options[:target2_column]
-    @target3_column = options[:target3_column]
     @target2_field = options[:target2_field]
+    @target2_column = options[:target2_column]
+    @target2_class = options[:target2_class] || "offset-lg-1 col-lg-5 col-md-10 col-sm-10 my-1"
     @target3_field = options[:target3_field]
+    @target3_dom_id = options[:target3_dom_id]
+    @target3_column = options[:target3_column]
+    @target3_class = options[:target3_class] || "col-lg-1 col-md-2 col-sm-2 my-1"
+
+    # The following is assumed to be external to the parent node, so no data attribute references are possible:
+    @target4_dom_id = options[:target4_dom_id]
+    @target4_column = options[:target4_column]
 
     @payload = options[:payload].present? ? options[:payload].to_json : nil
     @jwt = options[:jwt]

@@ -9,7 +9,7 @@ require('easy-autocomplete')
  *
  * ==> NOT CURRENTLY USED by Goggles Main (Admin2-specific) <==
  *
- * Allows to update values in up to 3 target fields, searched using a search field,
+ * Allows to update values in up to 3 "+1" target fields, searched using a search field,
  * while updating also another external description field upon selection.
  *
  * Supports both in-line & remote data providers for the search.
@@ -18,6 +18,15 @@ require('easy-autocomplete')
  *
  * This controller assumes the search target field needs to be configured using the
  * Easy-Autocomplete library (which is a jQuery plugin).
+ *
+ * The 3rd additional update target can be set and referenced by either a proper target binding
+ * or even just its DOM ID string (when it's present on the page but outside the scope of the parent
+ * node of this controller).
+ *
+ * The 4th additional update target is assumed to be *only* "external" to the parent DOM node
+ * referencing this controller: the only supported way to bind the target is to set
+ * its DOM ID as a parameter, similarly to what can be done for the search target(s) or
+ * the 3rd update field target explained above.
  *
  * For library documentation:
  * - @see http://www.easyautocomplete.com/
@@ -98,10 +107,26 @@ require('easy-autocomplete')
  * @param {String} 'data-autocomplete-target2-column-value' (optional)
  *                 column or property name used as to set the value of the secondary target field;
  *                 (totally optional, skipped when not set)
- *
+  *
+ * @param {String} 'data-autocomplete-target3-dom-id-value' (optional)
+ *                 DOM ID for the 4th optional update target field value; the referred DOM node is assumed to store
+ *                 the update target column value (defaults to null).
+ *                 Typically used only for binding together 2 different auto-complete components as in the case
+ *                 of a SwimmingPool associated to a City (both should be searchable & storable).
+*
  * @param {String} 'data-autocomplete-target3-column-value' (optional)
  *                 column or property name used as to set the value of the tertiary target field;
  *                 (totally optional, skipped when not set)
+ *
+ * @param {String} 'data-autocomplete-target4-dom-id-value' (optional)
+ *                 DOM ID for the 4th optional update target field value; the referred DOM node is assumed to store
+ *                 the update target column value (defaults to null).
+ *                 Typically used only for binding together 2 different auto-complete components as in the case
+ *                 of a SwimmingPool associated to a City (both should be searchable & storable).
+ *
+ * @param {String} 'data-autocomplete-target4-column-value' (optional)
+ *                 field name used to get the value to update the optional 4th update target; defaults to null.
+ *                 In the example of a SwimmingPool bound to a City, this would be (SwimmingPool's) 'city_id'.
  *
  * @param {Array} 'data-autocomplete-payload-value' (optional)
  *                 Array of objects specifying the inline data payload for the search domain.
@@ -130,14 +155,12 @@ export default class extends Controller {
     baseDomId: String,
     baseApiUrl: String,
     detailEndpoint: String,
-    searchEndpoint: String,
-    searchColumn: String,
-    search2Column: String,
-    search2DomId: String,
-    labelColumn: String,
-    label2Column: String,
+    searchEndpoint: String, searchColumn: String,
+    search2DomId: String, search2Column: String,
+    labelColumn: String, label2Column: String,
     target2Column: String,
-    target3Column: String,
+    target3DomId: String, target3Column: String,
+    target4DomId: String, target4Column: String,
     payload: Array,
     jwt: String
   }
@@ -155,23 +178,55 @@ export default class extends Controller {
       // console.log('autocomplete_controller: targets found.')
 
       if (this.hasPayloadValue) {
+        // DEBUG
+        // console.log('autocomplete_controller => widgetSetupWithInlineData()')
         this.widgetSetupWithInlineData()
       } else if (this.hasBaseApiUrlValue && this.hasJwtValue) {
         this.widgetSetupWithRemoteData()
       }
 
-      // Field details => search + desc update
-      const fieldTargetDomId = `#${this.fieldTarget.id}`
-      $(fieldTargetDomId).on('change', (_eventObject) => {
-        // Skip detail retrieval if detail endpoint is not set:
-        if (this.hasDetailEndpointValue) {
-          this.fetchAndUpdateDetails(this.detailEndpointValue, $(fieldTargetDomId).val())
-        } else {
-          // DEBUG
-          // console.log('widgetSetup(): no detailEndpointValue')
-        }
+      $(`#${this.fieldTarget.id}`).on('change', (_eventObject) => {
+        this.processUpdate()
       })
+
+      // Use any available default data in the main target & update the desc:
+      this.processUpdate()
     }
+  }
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Performs the update of all the target fields, depending on the kind of detail
+   * method (either by API or by payload).
+   *
+   * Field details => search + desc update
+   */
+  processUpdate() {
+    const fieldTargetDomId = `#${this.fieldTarget.id}`,
+          searchTargetDomId = `#${this.searchTarget.id}`
+
+    // Skip updates when no API detail endpoint or static payload are set:
+    if (this.hasDetailEndpointValue) {
+      this.fetchAndUpdateDetails(this.detailEndpointValue, $(fieldTargetDomId).val())
+    }
+    else if (this.hasPayloadValue) {
+      // DEBUG
+      // console.log('onchange(), with payload', payLoad)
+      var targetValue = $(fieldTargetDomId).val()
+      var row = this.payloadValue.find(element => element['id'] == targetValue)
+      // (The hard-coded 'id' above is because that's a constant column for all data sources)
+
+      // Manually update for the searchTarget if the ID (fieldTarget) is manually changed:
+      if (row) {
+        // Update description below search target & reset search box when done
+        this.updateFieldAndDesc(row)
+        $(searchTargetDomId).val('') // clear the search box
+      }
+    }
+    // DEBUG
+    // else {
+    //   console.log('widgetSetup(): no detailEndpointValue or payloadValue')
+    // }
   }
   // ---------------------------------------------------------------------------
 
@@ -196,15 +251,16 @@ export default class extends Controller {
   }
 
   /**
-   * Updates fieldTarget(s) (1 + 2 & 3, when defined) & descTarget using the specified entity
-   * row details.
+   * Updates fieldTarget(s) (1 + 2 || 3 || 4, when defined) & descTarget
+   * using the specified entity row details.
+   * The controller must have at least the default target associated for the update to start.
    *
    * @param {Object} entityRow the object storing the row details
    */
   updateFieldAndDesc (entityRow) {
     // DEBUG
     // console.log('updateFieldAndDesc(): entityRow:', entityRow)
-    if (this.hasFieldTarget) {
+    if (this.hasFieldTarget && entityRow) {
       const descValue = this.computeLabelDescription(this, entityRow)
       // DEBUG
       // console.log(`computed description = "${descValue}"`)
@@ -212,15 +268,35 @@ export default class extends Controller {
       if (this.hasDescTarget) {
         $(this.descTarget).html(`<b>${entityRow[this.searchColumnValue || 'name']}</b> - ${descValue}`)
       }
+      // Overwrite also the optional secondary filtering field (when set) with the new details:
+      if (this.hasSearch2ColumnValue && this.hasSearch2DomIdValue) {
+        $(`#${this.search2DomIdValue}`).val(entityRow[this.search2ColumnValue])
+      }
+
       if (this.hasField2Target) {
         $(this.field2Target).val(entityRow[this.target2ColumnValue])
       }
       if (this.hasField3Target) {
         $(this.field3Target).val(entityRow[this.target3ColumnValue])
       }
+      // Target3 alternative binding using just its DOM ID, when provided:
+      if (this.hasTarget4DomIdValue && (this.target3DomIdValue.length > 0)) {
+        // DEBUG
+        // console.log('updateFieldAndDesc: external target3 found.')
+        $(`#${this.target3DomIdValue}`).val(entityRow[this.target3ColumnValue])
+        $(`#${this.target3DomIdValue}`).trigger('change')
+      }
+      // Target4 is considered to be only external to the parent node, so we access it
+      // using its DOM ID instead of a controller reference:
+      if (this.hasTarget4DomIdValue && (this.target4DomIdValue.length > 0) && this.hasTarget4ColumnValue) {
+      // DEBUG
+      // console.log('updateFieldAndDesc: external target4 found.')
+        $(`#${this.target4DomIdValue}`).val(entityRow[this.target4ColumnValue])
+        $(`#${this.target4DomIdValue}`).trigger('change')
+      }
     } else {
       // DEBUG
-      console.log('updateFieldAndDesc: no main fieldTarget found.')
+      // console.log('updateFieldAndDesc: no main fieldTarget found or result entityRow null.')
     }
   }
 
@@ -271,12 +347,14 @@ export default class extends Controller {
     // console.log('autocomplete: widgetSetupWithInlineData()')
     const computeDesc = this.computeLabelDescription
     const searchTargetDomId = `#${this.searchTarget.id}`
+    const searchColumn = this.searchColumnValue
     // DEBUG
     // console.log("searchTargetDomId:", searchTargetDomId)
+    // console.log("searchColumn:", searchColumn)
 
     $(searchTargetDomId).easyAutocomplete({
       data: this.payloadValue,
-      getValue: this.searchColumnValue || 'name',
+      getValue: searchColumn || 'name',
       template: {
         type: 'custom',
         method: (value, entityRow) => {
@@ -289,9 +367,9 @@ export default class extends Controller {
         maxNumberOfElements: 8,
         onSelectItemEvent: () => {
           // DEBUG
-          // console.log("onSelectItemEvent: activeElement ID:", document.activeElement.id)
+          console.log("onSelectItemEvent: activeElement ID:", document.activeElement.id)
           // DEBUG
-          // console.log("onSelectItemEvent: searchTargetDomId:", searchTargetDomId)
+          console.log("onSelectItemEvent: searchTargetDomId:", searchTargetDomId)
           this.updateFieldAndDesc($(searchTargetDomId).getSelectedItemData())
           $(searchTargetDomId).val('') // Reset search box when done
         },
@@ -313,6 +391,7 @@ export default class extends Controller {
     const jwt = this.jwtValue
     const computeDesc = this.computeLabelDescription
     const searchTargetDomId = `#${this.searchTarget.id}`
+    const searchColumnValue = this.searchColumnValue
     // DEBUG
     // console.log("searchTargetDomId:", searchTargetDomId)
 
@@ -341,7 +420,13 @@ export default class extends Controller {
           }
         }
       },
-      getValue: this.searchColumnValue || 'name',
+      getValue: searchColumnValue || 'name',
+      // (element) => {
+      //   // DEBUG
+      //   console.log("getValue(element)")
+      //   console.log("element => ", element[searchColumnValue || 'name'])
+      //   return element[searchColumnValue || 'name']
+      // },
       template: {
         type: 'custom',
         method: (value, entityRow) => {
@@ -351,7 +436,11 @@ export default class extends Controller {
       },
       list: {
         match: { enabled: true },
-        maxNumberOfElements: 8,
+        maxNumberOfElements: 10,
+        // onLoadEvent: () => {
+        //   // DEBUG
+        //   // console.log("onLoadEvent", this)
+        // },
         onSelectItemEvent: () => {
           // DEBUG
           // console.log("onSelectItemEvent: activeElement ID:", document.activeElement.id)

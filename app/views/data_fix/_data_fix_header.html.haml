@@ -1,0 +1,10 @@
+.row
+  .col-1.text-center.mt-2
+    = link_to(pull_result_files_path, method: :get,
+              data: { toggle: 'tooltip', title: 'Go back to result file list' }) do
+      %i.btn.btn-sm.btn-primary.fa.fa-chevron-circle-left
+  .col
+    .container.bg-light-blue.py-2.shadow-box#file-name-box
+      .row-fluid.text-center
+        %h5
+          = file_path.split('data/').last

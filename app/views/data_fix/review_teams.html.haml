@@ -1,0 +1,41 @@
+.wrapper-body
+  .main-content
+    %section.my-2#title-box
+      = render(partial: 'data_fix_header', locals: { file_path: @file_path })
+    %section.my-2#review-teams-tabs
+      = render(partial: 'data_fix_tabs', locals: { active_tab: 'teams', file_path: @file_path })
+
+    %section.my-2#review-teams
+      .container-fluid
+        .row-fluid
+          - @teams_hash.keys.sort.each_with_index do |team_key, index|
+            :ruby
+              team_entity = @teams_hash[team_key]
+              team = team_entity.row
+            %div{ id: "team-card-#{index}" }
+              - difference_detected = (team_key.downcase != team.name.downcase)
+              .card.my-2{ class: difference_detected ? 'border border-danger' : '' }
+                %div{ id: "team-header-#{index}", class: team.id.present? ? 'bg-light' : 'bg-light-yellow' }
+                  .row
+                    .col-3
+                      %h5.mb-0
+                        %button.btn.btn-link.m-1{ id: "edit-team-#{index}", data: { target: "#team-panel-#{index}",
+                                                  toggle: 'collapse', 'aria-expanded' => 'false',
+                                                  'aria-controls' => 'edit-team' } }
+                          = team_key
+                    .col-3.mt-2
+                      %i.form-text.text-muted.bg-light-grey
+                        %pre
+                          🔑 "#{team_key}"
+                    .col.mt-2
+                      = "=> #{team.editable_name}"
+                      - if team.id.present?
+                        ID: #{team.id}
+                        = team.valid? ? '✅' : '🔵'
+                      - else
+                        🆕
+                .collapse{ id: "team-panel-#{index}", 'aria-labelledby' => "team-header-#{index}",
+                           'data-parent' => "#team-card-#{index}" }
+                  .card-body.border-bottom.border-secondary
+                    = render(partial: 'team_form', locals: { team: team, team_matches: team_entity.matches,
+                             index: index, team_key: team_key, api_url: @api_url, file_path: @file_path })

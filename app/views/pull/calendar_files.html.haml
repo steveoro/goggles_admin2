@@ -7,4 +7,5 @@
       = render(partial: 'crawler_tabs', locals: { active_tab: 'calendar' })
 
     %section#file-list
-      = render(partial: 'file_table', locals: { dirnames: @dirnames, curr_dir: @curr_dir, files: @files })
+      = render(partial: 'file_list/file_table', locals: { dirnames: @dirnames, curr_dir: @curr_dir,
+               files: @files })

@@ -27,7 +27,8 @@ class APIProxy
   #
   def self.call(method:, url:, payload: nil, jwt: nil, params: nil)
     api_base_url = GogglesDb::AppParameter.config.settings(:framework_urls).api
-    hdrs = params.present? ? { params: params.to_h } : {}
+    whitelisted = params.respond_to?(:permit!) ? params.permit!.to_h : params&.to_h
+    hdrs = whitelisted.present? ? { params: whitelisted } : {}
     hdrs.merge!('Authorization' => "Bearer #{jwt}") if jwt.present?
     # DEBUG
     # Rails.logger.debug("\r\n-- APIProxy, headers:")

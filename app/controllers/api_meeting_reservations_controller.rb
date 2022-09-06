@@ -18,27 +18,21 @@ class APIMeetingReservationsController < ApplicationController
       method: :get, url: 'meeting_reservations', jwt: current_user.jwt,
       params: {
         meeting_id: index_params[:meeting_id],
-        swimmer_id: index_params[:swimmer_id], team_id: index_params[:team_id],
+        team_id: index_params[:team_id],
+        swimmer_id: index_params[:swimmer_id],
+        badge_id: index_params[:badge_id],
         not_coming: index_params[:not_coming],
         confirmed: index_params[:confirmed],
         page: index_params[:page], per_page: index_params[:per_page]
       }
     )
-    json_domain = JSON.parse(result.body)
+    parsed_response = JSON.parse(result.body)
     unless result.code == 200
-      flash[:error] = I18n.t('dashboard.api_proxy_error', error_code: result.code, error_msg: json_domain['error'])
+      flash[:error] = I18n.t('dashboard.api_proxy_error', error_code: result.code, error_msg: parsed_response['error'])
       redirect_to(root_path) && return
     end
 
-    @domain_count = result.headers[:total].to_i
-    @domain_page = result.headers[:page].to_i
-    @domain_per_page = result.headers[:per_page].to_i
-
-    # Setup grid domain (and chart's):
-    @domain = json_domain.map { |attrs| GogglesDb::MeetingReservation.new(attrs) }
-
-    # Setup datagrid:
-    MeetingReservationsGrid.data_domain = @domain
+    set_grid_domain_for(MeetingReservationsGrid, GogglesDb::MeetingReservation, result.headers, parsed_response)
 
     respond_to do |format|
       @grid = MeetingReservationsGrid.new(grid_filter_params)

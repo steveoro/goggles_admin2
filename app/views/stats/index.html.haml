@@ -19,6 +19,31 @@
                controller_name: controller_name, request_params: @grid_filter_params))
       = datagrid_form_for(@grid, method: :get,
                           url: url_for(controller: controller_name, action: :index, params: @index_params))
+
+      -# Clear:
+      .m-1
+        %a.btn.btn-sm.btn-danger#clear-expand{ 'aria-controls' => 'clear-stats-panel', 'aria-expanded' => 'false',
+                                                href: '#clear-stats-panel', 'data-toggle' => 'collapse',
+                                                role: 'button' }
+          %i.fa.fa-times
+      .collapse.m-1#clear-stats-panel
+        .card
+          .card-header= t('datagrid.clear_stats.clear_tooltip')
+          .card-body
+            = form_tag(stats_clear_path, method: :post) do
+              .container
+                .row
+                  .col-auto
+                    .form-group
+                      .field
+                        = label_tag('older_than_day', t('datagrid.clear_stats.older_than_day'))
+                        = date_field_tag('older_than_day', nil,
+                                         required: true, autofocus: true, class: 'form-control')
+                .form-group
+                  = submit_tag(t('datagrid.clear_stats.clear_button'), id: 'btn-clear', class: 'btn btn-danger',
+                                 'aria-label': 'Clear', type: 'submit',
+                                 data: { confirm: t('datagrid.clear_stats.confirm_msg') })
+
       = render(PageLinksForArrayComponent.new(data: @grid&.assets, total_count: @domain_count,
                page: @domain_page, per_page: @domain_per_page))
       = datagrid_table(@grid, html: { class: 'table table-hover table-sm' })

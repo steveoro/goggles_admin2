@@ -1,0 +1,38 @@
+:ruby
+  subkey_for_dom_id = team_key.gsub(/[\s`'^?&%$!"<>:;,*]/, '_')
+  src_dom = "#team_#{subkey_for_dom_id}_id"
+  target_dom = "#team_#{subkey_for_dom_id}_team_id"
+  onchange_event = "$('#{target_dom}').val($('#{src_dom}').val()); $('#{target_dom}').trigger('change')"
+
+= form_for(team, url: data_fix_update_path(team, model: 'team'), method: :patch) do |f|
+  = hidden_field_tag('key', team_key)
+  = hidden_field_tag('file_path', file_path)
+  .container
+    .form-group
+      .field
+        = label_tag("team[#{team_key}][id]", 'fuzzy matches')
+        = select_tag("team[#{team_key}][id]", options_from_collection_for_select(team_matches || [], 'id',
+                     'display_label', team.id), include_blank: true, class: 'form-control', onchange: onchange_event)
+    .row-fluid
+      = render(AutoCompleteComponent.new(base_dom_id: "team[#{team_key}]",
+              base_api_url: api_url,
+              detail_endpoint: 'team', base_name: 'team', label_column: 'editable_name',
+              default_value: team.id,
+              search_endpoint: 'teams', search_column: 'name',
+              target2_field: 'editable_name', target2_column: 'editable_name',
+              target4_dom_id: "team_#{subkey_for_dom_id}_city_id", target4_column: 'city_id',
+              jwt: current_user.jwt))
+      .my-1
+        = render(AutoCompleteComponent.new(base_dom_id: "team[#{team_key}]",
+                base_api_url: api_url,
+                default_value: team.city_id,
+                detail_endpoint: 'city', base_name: 'city', label_column: 'area',
+                search_endpoint: 'cities', search_column: 'name',
+                target2_field: 'area', target2_column: 'area',
+                target3_field: 'country_code', target3_column: 'country_code',
+                jwt: current_user.jwt))
+
+    .form-group
+      = f.submit(t('data_import.generic_save_btn'), id: 'btn-save-session', class: 'btn btn-primary',
+                 'aria-label': 'Save', type: 'submit',
+                 data: { confirm: t('data_import.btn_save_confirm') })

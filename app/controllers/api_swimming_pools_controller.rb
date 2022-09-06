@@ -18,24 +18,17 @@ class APISwimmingPoolsController < ApplicationController
       method: :get, url: 'swimming_pools', jwt: current_user.jwt,
       params: {
         name: index_params[:name], address: index_params[:address],
+        pool_type_id: index_params[:pool_type_id], city_id: index_params[:city_id],
         page: index_params[:page], per_page: index_params[:per_page]
       }
     )
-    json_domain = JSON.parse(result.body)
+    parsed_response = JSON.parse(result.body)
     unless result.code == 200
-      flash[:error] = I18n.t('dashboard.api_proxy_error', error_code: result.code, error_msg: json_domain['error'])
+      flash[:error] = I18n.t('dashboard.api_proxy_error', error_code: result.code, error_msg: parsed_response['error'])
       redirect_to(root_path) && return
     end
 
-    @domain_count = result.headers[:total].to_i
-    @domain_page = result.headers[:page].to_i
-    @domain_per_page = result.headers[:per_page].to_i
-
-    # Setup grid domain (and chart's):
-    @domain = json_domain.map { |attrs| GogglesDb::SwimmingPool.new(attrs) }
-
-    # Setup datagrid:
-    SwimmingPoolsGrid.data_domain = @domain
+    set_grid_domain_for(SwimmingPoolsGrid, GogglesDb::SwimmingPool, result.headers, parsed_response)
 
     respond_to do |format|
       @grid = SwimmingPoolsGrid.new(grid_filter_params)

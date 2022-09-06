@@ -1,0 +1,46 @@
+:ruby
+  heat_type_opts = options_from_collection_for_select(GogglesDb::HeatType.all, 'id', 'long_label',
+                                                      event&.heat_type_id)
+  idx = -1
+  meeting_session_opts = options_for_select(
+    meeting_sessions.map { |ms| [ms.description, idx += 1] },
+    selected: meeting_session_idx
+  )
+
+= form_for(event, url: data_fix_update_path(event, model: 'meeting_event'), method: :patch) do |f|
+  = hidden_field_tag('key', event_key)
+  = hidden_field_tag('file_path', file_path)
+  .container
+    .row
+      .col-auto
+        .form-group
+          .field
+            = label_tag("meeting_session[#{event_key}][key]", 'meeting_session')
+            = select_tag("meeting_session[#{event_key}][key]", meeting_session_opts, class: 'form-control')
+
+      .col-auto
+        .form-group
+          .field
+            = label_tag("meeting_event[#{event_key}][event_order]", 'order')
+            = number_field_tag("meeting_event[#{event_key}][event_order]", event&.event_order, min: 0,
+                              required: true, autofocus: true, class: 'form-control')
+      .col-auto
+        .form-group
+          .field
+            = label_tag("meeting_event[#{event_key}][begin_time]", 'begin_time')
+            = time_field_tag("meeting_event[#{event_key}][begin_time]", event&.begin_time&.strftime('%H:%M'),
+                             min: '07:30', step: '00:15', autofocus: true, class: 'form-control')
+    .row
+      .col-auto
+        = render(AutoCompleteComponent.new(base_dom_id: "meeting_event[#{event_key}]",
+                 payload: event_types_payload, base_name: 'event_type',
+                 search_column: 'label_column', label_column: 'long_label',
+                 default_value: event.event_type_id))
+
+      .col-auto.mt-1.mb-2
+        = select_tag("meeting_event[#{event_key}][heat_type_id]", heat_type_opts, class: 'form-control')
+
+    .form-group
+      = f.submit(t('data_import.generic_save_btn'), id: 'btn-save-session', class: 'btn btn-primary',
+                 'aria-label': 'Save', type: 'submit',
+                 data: { confirm: t('data_import.btn_save_confirm') })

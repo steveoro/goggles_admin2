@@ -17,26 +17,19 @@ class APISeasonsController < ApplicationController
     result = APIProxy.call(
       method: :get, url: 'seasons', jwt: current_user.jwt,
       params: {
-        header_year: index_params[:header_year],
         begin_date: index_params[:begin_date], end_date: index_params[:end_date],
+        header_year: index_params[:header_year],
+        season_type_id: index_params[:season_type_id],
         page: index_params[:page], per_page: index_params[:per_page]
       }
     )
-    json_domain = JSON.parse(result.body)
+    parsed_response = JSON.parse(result.body)
     unless result.code == 200
-      flash[:error] = I18n.t('dashboard.api_proxy_error', error_code: result.code, error_msg: json_domain['error'])
+      flash[:error] = I18n.t('dashboard.api_proxy_error', error_code: result.code, error_msg: parsed_response['error'])
       redirect_to(root_path) && return
     end
 
-    @domain_count = result.headers[:total].to_i
-    @domain_page = result.headers[:page].to_i
-    @domain_per_page = result.headers[:per_page].to_i
-
-    # Setup grid domain (and chart's):
-    @domain = json_domain.map { |attrs| GogglesDb::Season.new(attrs) }
-
-    # Setup datagrid:
-    SeasonsGrid.data_domain = @domain
+    set_grid_domain_for(SeasonsGrid, GogglesDb::Season, result.headers, parsed_response)
 
     respond_to do |format|
       @grid = SeasonsGrid.new(grid_filter_params)

@@ -19,6 +19,8 @@ it:
       no_op_msg: "Nessuna selezione!"
     badges:
       title: "Cartellini (Badges)"
+    calendars:
+      title: "Calendari"
     categories:
       title: "Categorie (CategoryTypes)"
     import_queues:
@@ -39,6 +41,8 @@ it:
         save_failed: "Errore durante il salvataggio della configurazione di base. Controlla il log di sistema."
     seasons:
       title: "Stagioni (Seasons)"
+    standard_timings:
+      title: "Tempi standard (base)"
     stats:
       title: "API stats"
     swimmers:
@@ -51,5 +55,7 @@ it:
       title: "Team Managers (Managed Affiliations)"
     teams:
       title: "Squadre (Teams)"
+    user_workshops:
+      title: "Collegiali (Workshops)"
     users:
       title: "Utenti"

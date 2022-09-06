@@ -1,5 +1,5 @@
 - entity_name = @detail_endpoint || @base_name
-.form-group{ data: { controller: 'autocomplete',
+.row{ data: { controller: 'autocomplete',
   'autocomplete-base-api-url-value' => @base_api_url,
   'autocomplete-detail-endpoint-value' => @detail_endpoint,
   'autocomplete-search-endpoint-value' => @search_endpoint,
@@ -10,24 +10,26 @@
   'autocomplete-label2-column-value' => @label2_column,
   'autocomplete-target2-column-value' => @target2_column,
   'autocomplete-target3-column-value' => @target3_column,
+  'autocomplete-target3-dom-id-value' => @target3_dom_id,
+  'autocomplete-target4-dom-id-value' => @target4_dom_id,
+  'autocomplete-target4-column-value' => @target4_column,
   'autocomplete-payload-value' => @payload,
   'autocomplete-jwt-value' => @jwt } }
-  .row
-    .col-lg-2.col-md-3.col-sm-3.my-1
-      = text_field_tag(namespaced_attr_name("#{entity_name}_id"), nil, class: 'form-control',
-                       data: { 'autocomplete-target' => 'field' })
-    .col-lg-3.col-md-9.col-sm-9.my-1
-      = text_field_tag(namespaced_attr_name(entity_name), nil, class: 'form-control',
-                       placeholder: I18n.t('dashboard.search_field', field: entity_name),
-                       data: { 'autocomplete-target' => 'search' })
-    - if @target2_field
-      .col-lg-5.col-md-9.col-sm-9.my-1
-        = text_field_tag(namespaced_attr_name(@target2_field), nil, class: 'form-control',
-                        data: { 'autocomplete-target' => 'field2' })
-      - if @target3_field
-        .col-lg-2.col-md-3.col-sm-3.my-1
-          = text_field_tag(namespaced_attr_name(@target3_field), nil, class: 'form-control',
-                          data: { 'autocomplete-target' => 'field3' })
-  .row-fluid
+  .col-lg-2.col-md-3.col-sm-3.my-1
+    = text_field_tag(namespaced_attr_name("#{entity_name}_id"), @default_value, class: 'form-control',
+                      data: { 'autocomplete-target' => 'field' })
+  .col-lg-3.col-md-9.col-sm-9.my-1
+    = text_field_tag(namespaced_attr_name(entity_name), nil, class: 'form-control',
+                      placeholder: I18n.t('dashboard.search_field', field: entity_name),
+                      data: { 'autocomplete-target' => 'search' })
+  - if @target2_field
+    %div{ class: @target2_class }
+      = text_field_tag(namespaced_attr_name(@target2_field), nil, class: 'form-control',
+                      data: { 'autocomplete-target' => 'field2' })
+    - if @target3_field
+      %div{ class: @target3_class }
+        = text_field_tag(namespaced_attr_name(@target3_field), nil, class: 'form-control',
+                        data: { 'autocomplete-target' => 'field3' })
+  .col-12
     %small
       %i.form-text.text-muted{ id: "#{entity_name}-desc", data: { 'autocomplete-target' => 'desc' } }

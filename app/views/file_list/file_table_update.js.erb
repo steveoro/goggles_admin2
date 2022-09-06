@@ -8,7 +8,7 @@ document.querySelector('#flash-messages-container').innerHTML = "<%=
 document.querySelector('#file-list').innerHTML = "<%=
   escape_javascript(
     render(
-      partial: 'file_table',
+      partial: 'file_list/file_table',
       locals: { dirnames: @dirnames, curr_dir: @curr_dir, files: @files }
     )
   )

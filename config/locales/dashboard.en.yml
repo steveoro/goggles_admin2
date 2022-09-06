@@ -19,6 +19,8 @@ en:
       no_op_msg: "No selection!"
     badges:
       title: "Badges"
+    calendars:
+      title: "Calendars"
     categories:
       title: "Category Types"
     import_queues:
@@ -39,6 +41,8 @@ en:
         save_failed: "Error during base config update. Check the logs."
     seasons:
       title: "Seasons"
+    standard_timings:
+      title: "Standard (base) timings"
     stats:
       title: "API stats"
     swimmers:
@@ -51,5 +55,7 @@ en:
       title: "Team Managers (Managed Affiliations)"
     teams:
       title: "Teams"
+    user_workshops:
+      title: "User Workshops"
     users:
       title: "Users"

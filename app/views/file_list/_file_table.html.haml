@@ -1,7 +1,7 @@
 .row-fluid
   .container
     - if curr_dir.present? && dirnames.present?
-      = form_tag(update_result_files_path, id: 'frm-dir-filter', method: :put, remote: true) do
+      = form_tag(update_result_files_path(filter: @filter), id: 'frm-dir-filter', method: :put, remote: true) do
         .row
           .col
             .form-group
@@ -52,9 +52,22 @@
                   %i.fa.fa-bolt
               - when '.json'
                 &nbsp;
-                = link_to(prepare_result_file_path(file_path: full_pathname), method: :post,
+                = link_to(review_sessions_path(file_path: full_pathname), method: :get,
                           class: 'btn btn-sm btn-outline-warning mb-1', data: { toggle: 'tooltip',
                           title: t('data_import.file.btn_process_json_tooltip') }) do
                   %i.fa.fa-cogs
+              - when '.pdf'
+                &nbsp;
+                WIP
+              - when '.sql'
+                &nbsp;
+                = link_to(push_upload_path(file_path: full_pathname), method: :post,
+                          class: 'btn btn-sm btn-outline-warning mb-1', data: { toggle: 'tooltip',
+                          title: t('data_import.file.btn_process_sql_tooltip'),
+                          confirm: t('data_import.file.confirm_push') }) do
+                  %i.fa.fa-upload
+- if files && files.empty?
+  .row-fluid.my-4
+    .text-center.py-4.noresults= I18n.t('datagrid.no_results')
 
 #file-modal

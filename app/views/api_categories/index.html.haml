@@ -12,6 +12,37 @@
                controller_name: controller_name, destroy: true, request_params: @grid_filter_params))
       = datagrid_form_for(@grid, method: :get,
                           url: url_for(controller: controller_name, action: :index, params: @index_params))
+
+      -# Clone:
+      .m-1
+        %a.btn.btn-sm.btn-primary#clone-expand{ 'aria-controls' => 'clone-categories-panel', 'aria-expanded' => 'false',
+                                                href: '#clone-categories-panel', 'data-toggle' => 'collapse',
+                                                role: 'button' }
+          %i.fa.fa-clone
+      .collapse.m-1#clone-categories-panel
+        .card
+          .card-header= t('datagrid.clone_form.btn_tooltip')
+          .card-body
+            = form_tag(api_categories_clone_path, method: :post) do
+              .container
+                .row
+                  .col-auto
+                    .form-group
+                      .field
+                        = label_tag('from_season', t('datagrid.clone_form.source_season'))
+                        = number_field_tag('from_season', nil, min: 0,
+                                          required: true, autofocus: true, class: 'form-control')
+                  .col-auto
+                    .form-group
+                      .field
+                        = label_tag('to_season', t('datagrid.clone_form.target_season'))
+                        = number_field_tag('to_season', nil, min: 0,
+                                          required: true, autofocus: true, class: 'form-control')
+                .form-group
+                  = submit_tag(t('datagrid.clone_form.clone_button'), id: 'btn-clone', class: 'btn btn-primary',
+                            'aria-label': 'Clone', type: 'submit',
+                            data: { confirm: t('datagrid.clone_form.confirm_msg') })
+
       = render(PageLinksForArrayComponent.new(data: @grid&.assets, total_count: @domain_count,
                page: @domain_page, per_page: @domain_per_page))
       = datagrid_table(@grid, html: { class: 'table table-hover table-sm' })

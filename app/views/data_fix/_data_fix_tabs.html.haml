@@ -1,0 +1,66 @@
+.row-fluid.text-center.pb-3.my-2
+  %ul.nav.nav-tabs
+    %li.nav-item
+      - active = active_tab == 'sessions'
+      - if active
+        .nav-link.active
+          1: Meeting & Session
+          = link_to(review_sessions_path(reparse: true, file_path: file_path), method: :get,
+                    data: { toggle: 'tooltip',
+                    title: t('data_import.file.btn_reparse_json_tooltip') }) do
+            %i.btn.btn-sm.btn-outline-warning.fa.fa-refresh
+      - else
+        %a.nav-link{ href: review_sessions_path(file_path: file_path) }
+          1: Meeting & Session
+
+    %li.nav-item
+      - active = active_tab == 'teams'
+      - if active
+        .nav-link.active
+          2: Teams
+          = link_to(review_teams_path(reparse: true, file_path: file_path), method: :get,
+                    data: { toggle: 'tooltip',
+                    title: t('data_import.file.btn_reparse_json_tooltip') }) do
+            %i.btn.btn-sm.btn-outline-warning.fa.fa-refresh
+      - else
+        %a.nav-link{ href: review_teams_path(file_path: file_path) }
+          2: Teams
+
+    %li.nav-item
+      - active = active_tab == 'swimmers'
+      - if active
+        .nav-link.active
+          3: Swimmers
+          = link_to(review_swimmers_path(reparse: true, file_path: file_path), method: :get,
+                    data: { toggle: 'tooltip',
+                    title: t('data_import.file.btn_reparse_json_tooltip') }) do
+            %i.btn.btn-sm.btn-outline-warning.fa.fa-refresh
+      - else
+        %a.nav-link{ href: review_swimmers_path(file_path: file_path) }
+          3: Swimmers
+
+    %li.nav-item
+      - active = active_tab == 'events'
+      - if active
+        .nav-link.active
+          4: Events
+          = link_to(review_events_path(reparse: true, file_path: file_path), method: :get,
+                    data: { toggle: 'tooltip',
+                    title: t('data_import.file.btn_reparse_json_tooltip') }) do
+            %i.btn.btn-sm.btn-outline-warning.fa.fa-refresh
+      - else
+        %a.nav-link{ href: review_events_path(file_path: file_path) }
+          4: Events
+
+    %li.nav-item
+      - active = active_tab == 'results'
+      - if active
+        .nav-link.active
+          5: Results
+          = link_to(review_results_path(reparse: true, file_path: file_path), method: :get,
+                    data: { toggle: 'tooltip',
+                    title: t('data_import.file.btn_reparse_json_tooltip') }) do
+            %i.btn.btn-sm.btn-outline-warning.fa.fa-refresh
+      - else
+        %a.nav-link{ href: review_results_path(file_path: file_path) }
+          5: Results

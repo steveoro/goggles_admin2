@@ -1,5 +1,7 @@
 it:
   data_import:
+    generic_save_btn: "💾 Salva modifiche"
+    btn_save_confirm: 'Salvo le modifiche?'
     config:
       default_calendar_url: 'URL calendario'
     calendar:
@@ -20,6 +22,14 @@ it:
       btn_download_tooltip: 'Scarica file'
       btn_process_csv_tooltip: 'Elabora questo file calendario, scaricando i risultati disponibili'
       btn_process_json_tooltip: "Elabora questo file risultati, preparandolo per l'importazione dati"
+      btn_reparse_json_tooltip: "Riesegui la scasione forzata di questo file risultati usando i dati originali presenti"
+      btn_process_sql_tooltip: "Esegue l'upload di questo file di importazione dati sul server remoto"
+      confirm_push: "Sicuri di voler fare l'upload di questo file?"
+    push:
+      msg_prepare_batch_ok: 'File batch SQL preparato con successo.'
+      msg_send_batch_ok: "File batch inviato con successo e spostato nella directory 'results.done'."
+      new_results_tab_name: "Nuovi"
+      sent_results_tab_name: "Inviati"
     errors:
       invalid_request: 'Richiesta non valida'
       invalid_file_content: 'Contenuto del file non valido rispetto alla sua estensione'

@@ -141,6 +141,33 @@ class ApplicationController < ActionController::Base
   #-- -------------------------------------------------------------------------
   #++
 
+  # Prepares the grid domain and its counters using the already parsed response data and
+  # the target grid & model class.
+  #
+  # == Params:
+  # - <tt>grid_class</tt>, the target grid class
+  # - <tt>model_class</tt>, the target model class
+  # - <tt>api_response_headers</tt>, response#headers returned by the API call
+  # - <tt>parsed_response</tt>, the Hash wrapping the JSON response data from the API call
+  #
+  # == Setter for:
+  # - <tt>@domain_count</tt>, total row count for this domain
+  # - <tt>@domain_page</tt>, current page number in the domain
+  # - <tt>@domain_per_page</tt>, total rows per page
+  # - <tt>@domain</tt>, actual domain of model instances for the grid
+  #
+  def set_grid_domain_for(grid_class, model_class, api_response_headers, parsed_response)
+    @domain_count = api_response_headers[:total].to_i
+    @domain_page = api_response_headers[:page].to_i
+    @domain_per_page = api_response_headers[:per_page].to_i
+
+    # Setup grid domain converting the Hash into temp models for better handling:
+    @domain = parsed_response.map { |attrs| model_class.new(attrs) }
+
+    # Setup datagrid:
+    grid_class.data_domain = @domain
+  end
+
   private
 
   # Sets the current application locale given the :locale request parameter or
