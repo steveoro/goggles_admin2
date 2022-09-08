@@ -417,7 +417,7 @@ module Import
       end
 
       meeting_code = GogglesDb::Normalizers::CodedName.for_meeting(description, main_city_name)
-      edition_type_id, edition = Parser::MeetingEdition.from_l2_result(description)
+      edition, name_no_edition, edition_type_id = GogglesDb::Normalizers::CodedName.edition_split_from(description)
       new_row = GogglesDb::Meeting.new(
         season_id: @season.id,
         description: description,
@@ -425,7 +425,9 @@ module Import
         header_year: @season.header_year,
         edition_type_id: edition_type_id,
         edition: edition,
-        timing_type_id: GogglesDb::TimingType::AUTOMATIC_ID
+        autofilled: true,
+        timing_type_id: GogglesDb::TimingType::AUTOMATIC_ID,
+        notes: "\"#{name_no_edition}\", c/o: #{main_city_name}"
       )
       matches = [new_row] + GogglesDb::Meeting.where(season_id: @season.id)
                                               .where('meetings.code LIKE ?', "%#{meeting_code}%")
