@@ -4,9 +4,9 @@ module Import
   #
   # = MacroSolver
   #
-  #   - version:  7-0.3.53
+  #   - version:  7-0.4.06
   #   - author:   Steve A.
-  #   - build:    20220726
+  #   - build:    20220912
   #
   # Given a MacroSolver instance that stores the already-precessed contents of the result JSON data file,
   # this class commits the individual entities "solved", either by creating the missing rows
@@ -150,7 +150,7 @@ module Import
     # - #data['city'] Hash
     #
     def commit_cities
-      @data['city'].keys.compact.each do |entity_key|
+      @data['city']&.keys&.compact&.each do |entity_key|
         model_row = @solver.cached_instance_of('city', entity_key)
         # Override the Import::Entity with the actual row:
         @data['city'][entity_key] = commit_and_log(model_row)
@@ -172,7 +172,7 @@ module Import
     # - #data['swimming_pool'] Hash
     #
     def commit_pools
-      @data['swimming_pool'].keys.compact.each do |entity_key|
+      @data['swimming_pool']&.keys&.compact&.each do |entity_key|
         model_row = @solver.cached_instance_of('swimming_pool', entity_key)
         bindings_hash = @solver.cached_instance_of('swimming_pool', entity_key, 'bindings')
         # Make sure all bindings have a valid ID:
@@ -207,7 +207,7 @@ module Import
       meeting = @data['meeting']
       raise StandardError.new('Meeting not successfully committed yet!') unless meeting.is_a?(GogglesDb::Meeting) && meeting.valid?
 
-      @data['meeting_session'].compact.each_with_index do |_entity_hash, index|
+      @data['meeting_session']&.compact&.each_with_index do |_entity_hash, index|
         model_row = @solver.cached_instance_of('meeting_session', index)
         model_row.meeting_id = meeting.id
         bindings_hash = @solver.cached_instance_of('meeting_session', index, 'bindings')
@@ -243,7 +243,7 @@ module Import
     # - #data['team_affiliation'] Hash
     #
     def commit_teams_and_affiliations
-      @data['team'].keys.compact.each do |entity_key|
+      @data['team']&.keys&.compact&.each do |entity_key|
         model_row = @solver.cached_instance_of('team', entity_key)
         bindings_hash = @solver.cached_instance_of('team', entity_key, 'bindings')
         # Make sure all bindings have a valid ID:
@@ -278,7 +278,7 @@ module Import
     # - #data['badge'] Hash
     #
     def commit_swimmers_and_badges
-      @data['swimmer'].keys.compact.each do |entity_key|
+      @data['swimmer']&.keys&.compact&.each do |entity_key|
         model_row = @solver.cached_instance_of('swimmer', entity_key)
         bindings_hash = @solver.cached_instance_of('swimmer', entity_key, 'bindings')
         # Make sure all bindings have a valid ID:
@@ -302,7 +302,7 @@ module Import
 
     # Commits the changes for the 'meeting_event' entities of the solver.
     def commit_events
-      @data['meeting_event'].keys.compact.each do |entity_key|
+      @data['meeting_event']&.keys&.compact&.each do |entity_key|
         model_row = @solver.cached_instance_of('meeting_event', entity_key)
         bindings_hash = @solver.cached_instance_of('meeting_event', entity_key, 'bindings')
         # Make sure all bindings have a valid ID:
@@ -332,7 +332,7 @@ module Import
 
     # Commits the changes for the 'meeting_program' entities of the solver.
     def commit_programs
-      @data['meeting_program'].keys.compact.each do |entity_key|
+      @data['meeting_program']&.keys&.compact&.each do |entity_key|
         model_row = @solver.cached_instance_of('meeting_program', entity_key)
         bindings_hash = @solver.cached_instance_of('meeting_program', entity_key, 'bindings')
         # Make sure all bindings have a valid ID:
@@ -362,7 +362,7 @@ module Import
 
     # Commits the changes for the 'meeting_individual_result' entities of the solver.
     def commit_ind_results
-      @data['meeting_individual_result'].keys.compact.each do |entity_key|
+      @data['meeting_individual_result']&.keys&.compact&.each do |entity_key|
         model_row = @solver.cached_instance_of('meeting_individual_result', entity_key)
         bindings_hash = @solver.cached_instance_of('meeting_individual_result', entity_key, 'bindings')
         # Make sure all bindings have a valid ID:
@@ -485,7 +485,7 @@ module Import
     # - #data['team_affiliation'] Hash
     #
     def commit_affiliations
-      @data['team_affiliation'].keys.each do |entity_key|
+      @data['team_affiliation']&.keys&.each do |entity_key|
         model_row = @solver.cached_instance_of('team_affiliation', entity_key)
         bindings_hash = @solver.cached_instance_of('team_affiliation', entity_key, 'bindings')
         # Make sure all bindings have a valid ID:
@@ -517,7 +517,7 @@ module Import
     # - #data['badge'] Hash
     #
     def commit_badges
-      @data['badge'].keys.each do |entity_key|
+      @data['badge']&.keys&.each do |entity_key|
         model_row = @solver.cached_instance_of('badge', entity_key)
         bindings_hash = @solver.cached_instance_of('badge', entity_key, 'bindings')
         # Make sure all bindings have a valid ID:

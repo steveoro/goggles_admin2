@@ -57,7 +57,7 @@
                       %b Event tot.: #{mir_count}
 
         .row-fluid.my-3.text-center
-          = link_to(push_index_path(file_path: @file_path), method: :post,
+          = link_to(push_prepare_path(file_path: @file_path), method: :post,
                     class: 'btn btn-warning mb-1',
                     data: { toggle: 'tooltip', title: 'Ends the data-review phase and starts the commit phase',
                     confirm: 'Commit changes?' }) do

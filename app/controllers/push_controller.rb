@@ -31,7 +31,11 @@ class PushController < FileListController
   # Prepares and stores a single-transaction SQL batch file for an imported meeting with
   # all its results and bindings.
   #
-  # === Requires:
+  # === Params:
+  # - :file_path => path to the JSON data file storing the solved meeting with its details
+  #
+  # === Requires/Uses:
+  # See before actions for these:
   # - @file_path, containing the JSON data
   # - @data_hash, parsed data from @file_path
   # - @season, correct Season
@@ -66,7 +70,11 @@ class PushController < FileListController
   # Having 3 steps until "done" allows us a double results upload: 1° staging, 2° production.
   # (Currently, a manual configuration change is required in between.)
   #
+  # === Params:
+  # - :file_path => path to the SQL file storing the data-import transaction.
+  #
   # === Requires:
+  # See before actions for these:
   # - @file_path, containing the SQL batch file to be sent.
   #
   def upload
@@ -79,7 +87,10 @@ class PushController < FileListController
     result = JSON.parse(res.body)
 
     if result.respond_to?(:fetch) && result['new'].present? && result['new']['id'].to_i.positive?
-      # Move strategy: 'results.new/*' => 'results.sent/*' => 'results.done/*'
+      # Move strategy to allow testing data-import on localhost first:
+      # 1. 'results.new/*'
+      #    2. => 'results.sent/*'
+      #        3. => 'results.done/*'
       from_folder, to_folder = @file_path.include?('results.new') ? %w[results.new results.sent] :
                                                                     %w[results.sent results.done]
       dest_file = @file_path.gsub(from_folder, to_folder)
