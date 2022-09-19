@@ -4,9 +4,9 @@ module Import
   #
   # = MacroSolver
   #
-  #   - version:  7-0.3.53
+  #   - version:  7-0.4.08
   #   - author:   Steve A.
-  #   - build:    20220726
+  #   - build:    20220919
   #
   # Scans the already-parsed Meeting results JSON object (which stores a whole set of results)
   # and finds existing & corresponding entity rows or creates (locally) any missing associated
@@ -458,7 +458,7 @@ module Import
       cmd = GogglesDb::CmdFindIsoCity.call(country, city_name)
       new_row = if cmd.successful?
                   GogglesDb::City.new(
-                    name: cmd.result.accentcity,
+                    name: cmd.result.respond_to?(:accentcity) ? cmd.result.accentcity : cmd.result.name,
                     country_code: country.alpha2,
                     country: country.iso_short_name,
                     area: area_code,
