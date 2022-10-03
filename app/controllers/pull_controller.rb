@@ -152,8 +152,8 @@ class PullController < FileListController
     hdrs = get_params.present? ? { 'params' => get_params.to_h.stringify_keys! } : {}
     hdrs.merge!('Content-Type' => 'application/json')
     # DEBUG
-    Rails.logger.debug("\r\n-- call_crawler_api headers:")
-    Rails.logger.debug(hdrs.inspect)
+    logger.debug("\r\n-- call_crawler_api headers:")
+    logger.debug(hdrs.inspect)
     res = RestClient::Request.execute(
       method: :get,
       url: "#{CRAWLER_API_URL}#{cmd_endpoint}",
