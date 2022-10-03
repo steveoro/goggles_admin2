@@ -4,19 +4,19 @@ module Import
   #
   # = MacroSolver
   #
-  #   - version:  7-0.4.06
+  #   - version:  7-0.4.08
   #   - author:   Steve A.
-  #   - build:    20220912
+  #   - build:    20221003
   #
   # Given a MacroSolver instance that stores the already-precessed contents of the result JSON data file,
   # this class commits the individual entities "solved", either by creating the missing rows
   # or by updating any row existing and found with changes.
   #
-  # Each updated or created row will generate additional SQL statements, appended to the overall result
-  # SQL batch file. (@see SqlMaker)
+  # The solver's data will be progressively substituted with the updated or created model rows, logging
+  # the process in the meantime.
   #
-  # Typically, each individual entity-type will be wrapped into a single transaction, so that
-  # in case of errors only the failing entity type has to be fixed and, possibly, retried.
+  # Each updated or created row will generate SQL statements appended to the overall result
+  # SQL batch log file, with all the statements wrapped into a single transaction. (@see SqlMaker)
   #
   class MacroCommitter
     # Creates a new MacroCommitter instance.
@@ -27,7 +27,7 @@ module Import
     def initialize(solver:)
       raise(ArgumentError, 'Invalid Solver type') unless solver.is_a?(Import::MacroSolver)
 
-      solver.data['sections'] = nil # reduce memory footprint a bit
+      solver.data['sections'] = nil # This should reduce memory footprint at least a bit
       @solver = solver
       @season = solver.season
       @data = solver.data || {}
@@ -41,6 +41,49 @@ module Import
     # Returns Import::Solver#data, as specified with the constructor
     # (@see app/strategies/import/macro_solver.rb)
     def data; @data; end
+    #-- ------------------------------------------------------------------------
+    #++
+
+    # Compares an already serialized Model row (if it has a valid ID) with its
+    # corresponding (allegedly) existing DB row, returning the Hash of attributes
+    # that have changed or are different.
+    #
+    # Safe to call even for new model rows: it returns the "compacted" hash of attributes
+    # that can be used for an INSERT statement (skips timestamps and lock_version; row IDs
+    # are kept in the output hash so that it can be manually checked by reading subsequent
+    # rows in any resulting SQL file).
+    #
+    # An attribute of the model row will be considered as an appliable change if it
+    # is not blank and differs from the value stored in the database.
+    # (This method won't overwrite existing DB columns with nulls or blanks)
+    #
+    # == Params:
+    # - <tt>model_row</tt>: the row Model instance to be processed;
+    #
+    # - <tt>db_row</tt>: the existing DB-stored row corresponding to the Model row instance above;
+    #   (default: +nil+ => will try to use the model row ID)
+    #
+    # == Returns
+    # An Hash of changed attributes (column => value), selected from the given
+    # model row. If the model row doesn't have an ID, all its attributes will be returned.
+    #
+    # (In other words, the hash of attributes of <tt>model_row</tt> that can be
+    # used for an update of its corresponding database row.)
+    #
+    def self.difference_with_db(model_row, db_row = nil)
+      if model_row.id.blank?
+        return model_row.attributes.reject do |col, val|
+                 %w[lock_version created_at updated_at].include?(col) || val.nil?
+               end
+      end
+
+      db_row ||= model_row.class.find_by(id: model_row.id)
+      model_row.attributes.reject do |column, value|
+        value.blank? ||
+          value == db_row&.send(column) ||
+            %w[id lock_version created_at updated_at].include?(column)
+      end
+    end
     #-- ------------------------------------------------------------------------
     #++
 
@@ -82,7 +125,7 @@ module Import
     # inside the #data Hash as the value for 'meeting'.
     #
     # Updates:
-    # - #data['meeting'] row
+    # - #data['meeting'] row with the resulting model
     #
     def commit_meeting
       meeting = @solver.cached_instance_of('meeting', nil)
@@ -103,7 +146,7 @@ module Import
     # inside the #data Hash as the value for 'calendar'.
     #
     # Updates:
-    # - #data['calendar'] row
+    # - #data['calendar'] row with the resulting model
     #
     def check_and_commit_calendar
       meeting = @data['meeting']
@@ -111,7 +154,7 @@ module Import
 
       # (ASSERT: only 1 code per season)
       existing_row = GogglesDb::Calendar.for_season(@season).for_code(meeting.code).first
-      new_row = GogglesDb::Calendar.new(
+      model_row = GogglesDb::Calendar.new(
         id: existing_row&.id,
         meeting_id: meeting.id,
         meeting_code: meeting.code,
@@ -126,16 +169,7 @@ module Import
         organization_import_text: @data['organization']
       )
 
-      # Update possible?
-      if new_row.id.present? && difference_with_db(new_row, existing_row).present?
-        new_row.save!
-        @sql_log << SqlMaker.new(row: new_row).log_update
-      else
-        # Create missing:
-        new_row.save!
-        @sql_log << SqlMaker.new(row: new_row).log_insert
-      end
-      @data['calendar'] = new_row
+      @data['calendar'] = commit_and_log(model_row)
     end
     #-- ------------------------------------------------------------------------
     #++
@@ -147,10 +181,17 @@ module Import
     # to a serialized model row instead of an Import::Entity wrapper.
     #
     # Updates:
-    # - #data['city'] Hash
+    # - #data['city'] Hash, substituting each keyed value with the resulting model
     #
     def commit_cities
-      @data['city']&.keys&.compact&.each do |entity_key|
+      entity_keys = @data['city']&.keys&.compact
+      total = entity_keys&.count
+      idx = 0
+
+      entity_keys&.each do |entity_key|
+        idx += 1
+        ActionCable.server.broadcast("ImportStatusChannel", msg: "commit City '#{entity_key}'", progress: idx, total: total)
+
         model_row = @solver.cached_instance_of('city', entity_key)
         # Override the Import::Entity with the actual row:
         @data['city'][entity_key] = commit_and_log(model_row)
@@ -169,10 +210,17 @@ module Import
     # to a serialized model row instead of an Import::Entity wrapper.
     #
     # Updates:
-    # - #data['swimming_pool'] Hash
+    # - #data['swimming_pool'] Hash, substituting each keyed value with the resulting model
     #
     def commit_pools
-      @data['swimming_pool']&.keys&.compact&.each do |entity_key|
+      entity_keys = @data['swimming_pool']&.keys&.compact
+      total = entity_keys&.count
+      idx = 0
+
+      entity_keys&.each do |entity_key|
+        idx += 1
+        ActionCable.server.broadcast("ImportStatusChannel", msg: "commit Sw.Pool '#{entity_key}'", progress: idx, total: total)
+
         model_row = @solver.cached_instance_of('swimming_pool', entity_key)
         bindings_hash = @solver.cached_instance_of('swimming_pool', entity_key, 'bindings')
         # Make sure all bindings have a valid ID:
@@ -181,7 +229,8 @@ module Import
           update_method = "#{binding_model_name}_id="
           next unless model_row.respond_to?(update_method)
 
-          binding_row = commit_and_log(@solver.cached_instance_of(binding_model_name, binding_key))
+          # ASSUMES: binding row has already been committed & logged by previous calls => binding_row.id.positive?
+          binding_row = @solver.cached_instance_of(binding_model_name, binding_key)
           model_row.send(update_method, binding_row.id)
         end
         # Override the Import::Entity with the actual row:
@@ -207,7 +256,12 @@ module Import
       meeting = @data['meeting']
       raise StandardError.new('Meeting not successfully committed yet!') unless meeting.is_a?(GogglesDb::Meeting) && meeting.valid?
 
-      @data['meeting_session']&.compact&.each_with_index do |_entity_hash, index|
+      entity_keys = @data['meeting_session']&.compact
+      total = entity_keys&.count
+
+      entity_keys&.each_with_index do |_entity_hash, index|
+        ActionCable.server.broadcast("ImportStatusChannel", msg: "commit M.Session '#{index + 1}'", progress: index + 1, total: total)
+
         model_row = @solver.cached_instance_of('meeting_session', index)
         model_row.meeting_id = meeting.id
         bindings_hash = @solver.cached_instance_of('meeting_session', index, 'bindings')
@@ -219,7 +273,8 @@ module Import
           update_method = "#{binding_model_name}_id="
           next unless model_row.respond_to?(update_method)
 
-          binding_row = commit_and_log(@solver.cached_instance_of(binding_model_name, binding_key))
+          # ASSUMES: binding row has already been committed & logged by previous calls => binding_row.id.positive?
+          binding_row = @solver.cached_instance_of(binding_model_name, binding_key)
           model_row.send(update_method, binding_row.id)
         end
         # Override the Import::Entity with the actual row:
@@ -243,7 +298,16 @@ module Import
     # - #data['team_affiliation'] Hash
     #
     def commit_teams_and_affiliations
-      @data['team']&.keys&.compact&.each do |entity_key|
+      entity_keys = @data['team']&.keys&.compact
+      total = entity_keys&.count
+      idx = 0
+      # Force progress clearing:
+      ActionCable.server.broadcast("ImportStatusChannel", msg: "commit Team '#{entity_key}'", progress: idx, total: total)
+
+      entity_keys&.each do |entity_key|
+        idx += 1
+        ActionCable.server.broadcast("ImportStatusChannel", msg: "commit Team '#{entity_key}'", progress: idx, total: total)
+
         model_row = @solver.cached_instance_of('team', entity_key)
         bindings_hash = @solver.cached_instance_of('team', entity_key, 'bindings')
         # Make sure all bindings have a valid ID:
@@ -253,9 +317,12 @@ module Import
           update_method = "#{binding_model_name}_id="
           next unless model_row.respond_to?(update_method)
 
-          binding_row = commit_and_log(@solver.cached_instance_of(binding_model_name, binding_key))
+          # ASSUMES: binding row has already been committed & logged by previous calls => binding_row.id.positive?
+          binding_row = @solver.cached_instance_of(binding_model_name, binding_key)
           model_row.send(update_method, binding_row.id)
         end
+        # Force required columns that may have been cleared out during edits:
+        model_row.name = model_row.editable_name unless model_row.name.present?
         # Override the Import::Entity with the actual row:
         @data['team'][entity_key] = commit_and_log(model_row)
       end
@@ -278,7 +345,16 @@ module Import
     # - #data['badge'] Hash
     #
     def commit_swimmers_and_badges
-      @data['swimmer']&.keys&.compact&.each do |entity_key|
+      entity_keys = @data['swimmer']&.keys&.compact
+      total = entity_keys&.count
+      idx = 0
+      # Force progress clearing:
+      ActionCable.server.broadcast("ImportStatusChannel", msg: "commit Swimmer '#{entity_key}'", progress: idx, total: total)
+
+      entity_keys&.each do |entity_key|
+        idx += 1
+        ActionCable.server.broadcast("ImportStatusChannel", msg: "commit Swimmer '#{entity_key}'", progress: idx, total: total)
+
         model_row = @solver.cached_instance_of('swimmer', entity_key)
         bindings_hash = @solver.cached_instance_of('swimmer', entity_key, 'bindings')
         # Make sure all bindings have a valid ID:
@@ -287,7 +363,8 @@ module Import
           update_method = "#{binding_model_name}_id="
           next unless model_row.respond_to?(update_method)
 
-          binding_row = commit_and_log(@solver.cached_instance_of(binding_model_name, binding_key))
+          # ASSUMES: binding row has already been committed & logged by previous calls => binding_row.id.positive?
+          binding_row = @solver.cached_instance_of(binding_model_name, binding_key)
           model_row.send(update_method, binding_row.id)
         end
         # Override the Import::Entity with the actual row:
@@ -302,7 +379,16 @@ module Import
 
     # Commits the changes for the 'meeting_event' entities of the solver.
     def commit_events
-      @data['meeting_event']&.keys&.compact&.each do |entity_key|
+      entity_keys = @data['meeting_event']&.keys&.compact
+      total = entity_keys&.count
+      idx = 0
+      # Force progress clearing:
+      ActionCable.server.broadcast("ImportStatusChannel", msg: "commit M.Event '#{entity_key}'", progress: idx, total: total)
+
+      entity_keys&.each do |entity_key|
+        idx += 1
+        ActionCable.server.broadcast("ImportStatusChannel", msg: "commit M.Event '#{entity_key}'", progress: idx, total: total)
+
         model_row = @solver.cached_instance_of('meeting_event', entity_key)
         bindings_hash = @solver.cached_instance_of('meeting_event', entity_key, 'bindings')
         # Make sure all bindings have a valid ID:
@@ -311,7 +397,8 @@ module Import
           update_method = "#{binding_model_name}_id="
           next unless model_row.respond_to?(update_method)
 
-          binding_row = commit_and_log(@solver.cached_instance_of(binding_model_name, binding_key))
+          # ASSUMES: binding row has already been committed & logged by previous calls => binding_row.id.positive?
+          binding_row = @solver.cached_instance_of(binding_model_name, binding_key)
           model_row.send(update_method, binding_row.id)
         end
         # Assume all validated bindings have been solved and re-seek for an existing row using an educated clause:
@@ -332,7 +419,16 @@ module Import
 
     # Commits the changes for the 'meeting_program' entities of the solver.
     def commit_programs
-      @data['meeting_program']&.keys&.compact&.each do |entity_key|
+      entity_keys = @data['meeting_program']&.keys&.compact
+      total = entity_keys&.count
+      idx = 0
+      # Force progress clearing:
+      ActionCable.server.broadcast("ImportStatusChannel", msg: "commit M.Prg. '#{entity_key}'", progress: idx, total: total)
+
+      entity_keys&.each do |entity_key|
+        idx += 1
+        ActionCable.server.broadcast("ImportStatusChannel", msg: "commit M.Prg. '#{entity_key}'", progress: idx, total: total)
+
         model_row = @solver.cached_instance_of('meeting_program', entity_key)
         bindings_hash = @solver.cached_instance_of('meeting_program', entity_key, 'bindings')
         # Make sure all bindings have a valid ID:
@@ -341,7 +437,8 @@ module Import
           update_method = "#{binding_model_name}_id="
           next unless model_row.respond_to?(update_method)
 
-          binding_row = commit_and_log(@solver.cached_instance_of(binding_model_name, binding_key))
+          # ASSUMES: binding row has already been committed & logged by previous calls => binding_row.id.positive?
+          binding_row = @solver.cached_instance_of(binding_model_name, binding_key)
           model_row.send(update_method, binding_row.id)
         end
         # Assume all validated bindings have been solved and re-seek for an existing row using an educated clause:
@@ -362,7 +459,16 @@ module Import
 
     # Commits the changes for the 'meeting_individual_result' entities of the solver.
     def commit_ind_results
-      @data['meeting_individual_result']&.keys&.compact&.each do |entity_key|
+      entity_keys = @data['meeting_individual_result']&.keys&.compact
+      total = entity_keys&.count
+      idx = 0
+      # Force progress clearing:
+      ActionCable.server.broadcast("ImportStatusChannel", msg: "commit MIR '#{entity_key}'", progress: idx, total: total)
+
+      entity_keys&.each do |entity_key|
+        idx += 1
+        ActionCable.server.broadcast("ImportStatusChannel", msg: "commit MIR '#{entity_key}'", progress: idx, total: total)
+
         model_row = @solver.cached_instance_of('meeting_individual_result', entity_key)
         bindings_hash = @solver.cached_instance_of('meeting_individual_result', entity_key, 'bindings')
         # Make sure all bindings have a valid ID:
@@ -371,7 +477,8 @@ module Import
           update_method = "#{binding_model_name}_id="
           next unless model_row.respond_to?(update_method)
 
-          binding_row = commit_and_log(@solver.cached_instance_of(binding_model_name, binding_key))
+          # ASSUMES: binding row has already been committed & logged by previous calls => binding_row.id.positive?
+          binding_row = @solver.cached_instance_of(binding_model_name, binding_key)
           model_row.send(update_method, binding_row.id)
         end
         # Assume all validated bindings have been solved and re-seek for an existing row using an educated clause:
@@ -387,6 +494,99 @@ module Import
 
       @data['meeting_individual_result']
     end
+    #-- ------------------------------------------------------------------------
+    #++
+
+    # Commits the changes for all the 'team_affiliation' entities of the solver.
+    #
+    # == Returns
+    # The Hash of processed team affiliations where all the keys are pointing
+    # to a serialized model row instead of an Import::Entity wrapper.
+    #
+    # Updates:
+    # - #data['team_affiliation'] Hash
+    #
+    def commit_affiliations
+      entity_keys = @data['team_affiliation']&.keys&.compact
+      total = entity_keys&.count
+      idx = 0
+      # Force progress clearing:
+      ActionCable.server.broadcast("ImportStatusChannel", msg: "commit T.Aff. '#{entity_key}'", progress: idx, total: total)
+
+      entity_keys&.each do |entity_key|
+        idx += 1
+        ActionCable.server.broadcast("ImportStatusChannel", msg: "commit T.Aff. '#{entity_key}'", progress: idx, total: total)
+
+        model_row = @solver.cached_instance_of('team_affiliation', entity_key)
+        bindings_hash = @solver.cached_instance_of('team_affiliation', entity_key, 'bindings')
+        # Make sure all bindings have a valid ID:
+        bindings_hash.each do |binding_model_name, binding_key|
+          # Update only the single-association bindings in the model_row:
+          update_method = "#{binding_model_name}_id="
+          next unless model_row.respond_to?(update_method)
+
+          # ASSUMES: binding row has already been committed & logged by previous calls => binding_row.id.positive?
+          binding_row = @solver.cached_instance_of(binding_model_name, binding_key)
+          model_row.send(update_method, binding_row.id)
+        end
+        # Assume all bindings have been solved and re-seek for an existing row using an educated where clause
+        # and giving precedence to what's been found as already existing:
+        model_row = GogglesDb::TeamAffiliation.where(team_id: model_row.team_id, season_id: @season.id).first || model_row
+        # Override the Import::Entity with the actual row:
+        @data['team_affiliation'][entity_key] = commit_and_log(model_row)
+      end
+
+      @data['team_affiliation']
+    end
+
+    # Commits the changes for all the 'badge' entities of the solver.
+    #
+    # == Returns
+    # The Hash of processed team badges where all the keys are pointing
+    # to a serialized model row instead of an Import::Entity wrapper.
+    #
+    # Updates:
+    # - #data['badge'] Hash
+    #
+    def commit_badges
+      entity_keys = @data['badge']&.keys&.compact
+      total = entity_keys&.count
+      idx = 0
+      # Force progress clearing:
+      ActionCable.server.broadcast("ImportStatusChannel", msg: "commit Badge '#{entity_key}'", progress: idx, total: total)
+
+      entity_keys&.each do |entity_key|
+        idx += 1
+        ActionCable.server.broadcast("ImportStatusChannel", msg: "commit Badge '#{entity_key}'", progress: idx, total: total)
+
+        model_row = @solver.cached_instance_of('badge', entity_key)
+        bindings_hash = @solver.cached_instance_of('badge', entity_key, 'bindings')
+        # Make sure all bindings have a valid ID:
+        bindings_hash.each do |binding_model_name, binding_key|
+          # Update only the single-association bindings in the model_row:
+          update_method = "#{binding_model_name}_id="
+          next unless model_row.respond_to?(update_method)
+
+          # ASSUMES: binding row has already been committed & logged by previous calls => binding_row.id.positive?
+          binding_row = @solver.cached_instance_of(binding_model_name, binding_key)
+          model_row.send(update_method, binding_row.id)
+        end
+        # Assume all validated bindings have been solved and re-seek for an existing row using an educated clause:
+        db_row = GogglesDb::Badge.where(swimmer_id: model_row.swimmer_id, team_id: model_row.team_id, season_id: @season.id).first
+        model_row.id = db_row.id if db_row
+        # Override the Import::Entity with the actual row:
+        @data['badge'][entity_key] = commit_and_log(model_row)
+      end
+
+      @data['badge']
+    end
+    #-- ------------------------------------------------------------------------
+    #++
+
+    # TODO: relay data, any?
+    # TODO: swimmers for relay data, any?
+    # TODO: lap data, any?
+    # TODO: scores data, any?
     #-- ------------------------------------------------------------------------
     #++
 
@@ -417,22 +617,23 @@ module Import
 
       # == UPDATE ==
       elsif model_row.id.present?
+        changes = self.class.difference_with_db(model_row)
+        return model_row unless changes.present?
+
         db_row = model_row.class.find_by(id: model_row.id)
         # Skip the update if the DB row is already marked as R-O:
         return db_row if db_row.respond_to?(:read_only?) && db_row.read_only?
 
-        changes = difference_with_db(model_row, db_row)
-        if changes.present? # apply the changes & save
-          changes.each { |column, value| db_row.send("#{column}=", value) }
-          db_row.save!
-          model_row = db_row
-          @sql_log << SqlMaker.new(row: model_row).log_update
-        end
+        # Apply the changes & save:
+        changes.each { |column, value| db_row.send("#{column}=", value) }
+        db_row.save!
+        model_row = db_row
+        @sql_log << SqlMaker.new(row: model_row).log_update
 
       elsif !model_row.valid?
         # DEBUG ----------------------------------------------------------------
-        ap model_row
-        binding.pry
+        # ap model_row
+        # binding.pry
         # ----------------------------------------------------------------------
         raise(StandardError.new("Invalid #{model_row.class} row!"))
       end
@@ -440,112 +641,5 @@ module Import
 
       model_row
     end
-
-    # Compares an already serialized Model row (having a valid ID) with its
-    # corresponding (allegedly) existing DB row, returning the Hash of attributes
-    # that have changed or are different.
-    #
-    # An attribute of the model row will be considered as an appliable change if it
-    # is not blank and different from the value stored in the database.
-    # (This method won't overwrite existing DB columns with nulls or blanks)
-    #
-    # == Params:
-    # - <tt>model_row</tt>: the row Model instance to be processed;
-    #
-    # - <tt>db_row</tt>: the existing DB-stored row corresponding to the Model row instance above;
-    #   this can be left +nil+ if the model row has a valid ID.
-    #
-    # == Returns
-    # An Hash of changed attributes (column => value), selected from the given
-    # model row. If the model row doesn't have an ID, all its attributes will be returned.
-    #
-    # (In other words, the hash of attributes of <tt>model_row</tt> that can be
-    # used for an update of its corresponding database row.)
-    #
-    def difference_with_db(model_row, db_row = nil)
-      return model_row.attributes if model_row.id.blank?
-
-      db_row ||= model_row.class.find_by(id: model_row.id)
-      model_row.attributes.reject do |column, value|
-        value.blank? ||
-          value == db_row&.send(column) ||
-            %w[lock_version created_at updated_at].include?(column)
-      end
-    end
-    #-- ------------------------------------------------------------------------
-    #++
-
-    # Commits the changes for all the 'team_affiliation' entities of the solver.
-    #
-    # == Returns
-    # The Hash of processed team affiliations where all the keys are pointing
-    # to a serialized model row instead of an Import::Entity wrapper.
-    #
-    # Updates:
-    # - #data['team_affiliation'] Hash
-    #
-    def commit_affiliations
-      @data['team_affiliation']&.keys&.each do |entity_key|
-        model_row = @solver.cached_instance_of('team_affiliation', entity_key)
-        bindings_hash = @solver.cached_instance_of('team_affiliation', entity_key, 'bindings')
-        # Make sure all bindings have a valid ID:
-        bindings_hash.each do |binding_model_name, binding_key|
-          # Update only the single-association bindings in the model_row:
-          update_method = "#{binding_model_name}_id="
-          next unless model_row.respond_to?(update_method)
-
-          binding_row = commit_and_log(@solver.cached_instance_of(binding_model_name, binding_key))
-          model_row.send(update_method, binding_row.id)
-        end
-        # Assume all bindings have been solved and re-seek for an existing row using an educated where clause
-        # and giving precedence to what's been found as already existing:
-        model_row = GogglesDb::TeamAffiliation.where(team_id: model_row.team_id, season_id: @season.id).first || model_row
-        # Override the Import::Entity with the actual row:
-        @data['team_affiliation'][entity_key] = commit_and_log(model_row)
-      end
-
-      @data['team_affiliation']
-    end
-
-    # Commits the changes for all the 'badge' entities of the solver.
-    #
-    # == Returns
-    # The Hash of processed team badges where all the keys are pointing
-    # to a serialized model row instead of an Import::Entity wrapper.
-    #
-    # Updates:
-    # - #data['badge'] Hash
-    #
-    def commit_badges
-      @data['badge']&.keys&.each do |entity_key|
-        model_row = @solver.cached_instance_of('badge', entity_key)
-        bindings_hash = @solver.cached_instance_of('badge', entity_key, 'bindings')
-        # Make sure all bindings have a valid ID:
-        bindings_hash.each do |binding_model_name, binding_key|
-          # Update only the single-association bindings in the model_row:
-          update_method = "#{binding_model_name}_id="
-          next unless model_row.respond_to?(update_method)
-
-          binding_row = commit_and_log(@solver.cached_instance_of(binding_model_name, binding_key))
-          model_row.send(update_method, binding_row.id)
-        end
-        # Assume all validated bindings have been solved and re-seek for an existing row using an educated clause:
-        db_row = GogglesDb::Badge.where(swimmer_id: model_row.swimmer_id, team_id: model_row.team_id, season_id: @season.id).first
-        model_row.id = db_row.id if db_row
-        # Override the Import::Entity with the actual row:
-        @data['badge'][entity_key] = commit_and_log(model_row)
-      end
-
-      @data['badge']
-    end
-    #-- ------------------------------------------------------------------------
-    #++
-
-    # TODO: relay data, any?
-    # TODO: swimmers for relay data, any?
-    # TODO: lap data, any?
-    # TODO: scores data, any?
-    #-- ------------------------------------------------------------------------
-    #++
   end
 end

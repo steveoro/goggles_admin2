@@ -7,7 +7,7 @@
 #
 class DataFixController < ApplicationController
   # Members @data_hash & @solver must be set for all actions (redirects if the JSON parsing fails)
-  before_action :set_file_path, :parse_file_contents, :prepare_solver
+  before_action :set_file_path, :parse_file_contents, :prepare_solver, except: :coded_name
 
   # [GET] /review_sessions - STEP 1: meeting + session
   #
@@ -44,6 +44,7 @@ class DataFixController < ApplicationController
       overwrite_file_path_with_json_from(@solver.data)
     end
     prepare_sessions_and_pools_from_data_hash
+    ActionCable.server.broadcast("ImportStatusChannel", msg: 'Review sessions: ready')
   end
 
   # [GET] /review_teams - STEP 2: teams
@@ -66,6 +67,7 @@ class DataFixController < ApplicationController
       overwrite_file_path_with_json_from(@solver.data)
     end
     @teams_hash = @solver.rebuild_cached_entities_for('team')
+    ActionCable.server.broadcast("ImportStatusChannel", msg: 'Review teams: ready')
   end
 
   # [GET] /review_swimmers - STEP 3: swimmers
@@ -88,6 +90,7 @@ class DataFixController < ApplicationController
       overwrite_file_path_with_json_from(@solver.data)
     end
     @swimmers_hash = @solver.rebuild_cached_entities_for('swimmer')
+    ActionCable.server.broadcast("ImportStatusChannel", msg: 'Review swimmers: ready')
   end
 
   # [GET] /review_events - STEP 4: events
@@ -106,6 +109,7 @@ class DataFixController < ApplicationController
   #
   def review_events
     prepare_for_review_events_and_results
+    ActionCable.server.broadcast("ImportStatusChannel", msg: 'Review events: ready')
   end
 
   # [GET] /review_results - STEP 5: results
@@ -128,13 +132,26 @@ class DataFixController < ApplicationController
     # Extract all Prgs & MIRs keys, giving up the rest (including bindings & matches) since we won't use them here:
     @prgs_keys = @data_hash['meeting_program']&.keys
     @mirs_keys = @data_hash['meeting_individual_result']&.keys
+    ActionCable.server.broadcast("ImportStatusChannel", msg: 'Review results: ready')
   end
   #-- -------------------------------------------------------------------------
   #++
 
   # [PATCH /data_fix/update]
-  # Updates the model fields storing the values directly into the JSON file then redirecting to the
+  # Updates the model fields storing the values directly into the JSON file and then redirects to the
   # page that issued the original request when possible.
+  #
+  # The specified model name dictates the main entity to be edited/created. Each main entity may have
+  # a variable list of bindings (sub-entities) that need to be taken into account.
+  #
+  # Usually, only the first-level entity bindings needs to be handled.
+  #
+  # However, currently this supports also the creation (or the update) for deeper bindings for:
+  #
+  # - SwimmingPool (as child of MeetingSession, inside a Meeting)
+  # - City (as child of SwimmingPool, inside a MeetingSession)
+  #
+  # Creation of new Cities from Team bindings is currently unsupported.
   #
   # == Params:
   # <tt>:model</tt> => the model name in snake case, singular
@@ -158,11 +175,15 @@ class DataFixController < ApplicationController
   #     },
   #     "city" => {          // (Supports 1 city per meeting session, always linked as swimming_pool.city_id)
   #       "0" => {
-  #         "city_id"=>"65", "city"=>"", "area"=>"Roma", "country_code"=>"IT"
+  #         "city_id"=>"65", "city"=>"", "area"=>"Roma", "country_code"=>"IT",
+  #         "key"=>"Roma"
   #       }
   #     },
   #     "model"=>"meeting_session", "controller"=>"data_fix", "action"=>"update"
   #   }
+  #
+  # In the above example, the 'key' attribute in the 'city' binding is the actual key used to retrieve
+  # the cached version of the City entity from the JSON data hash.
   #
   #
   # == Team: update request PARAMS format example
@@ -182,7 +203,14 @@ class DataFixController < ApplicationController
     entity_key = entity_key_for(model_name)
 
     # == Main entity update: ==
-    updated_attrs = edit_params[model_name]&.fetch(entity_key.to_s, nil) # (Request params multi-row index always a string)
+    updated_attrs = if model_name == 'meeting'
+                      edit_params[model_name] # (Meetings don't use the entity key because they are 1 for each file)
+                    else
+                      edit_params[model_name]&.fetch(entity_key.to_s, nil) # (Request params multi-row index always a string)
+                    end
+    # DEBUG ----------------------------------------------------------------
+    # binding.pry
+    # ----------------------------------------------------------------------
     if updated_attrs.present?
       # Reject any patch param attribute not belonging to the destination list of actual model attributes:
       actual_attrs = Import::MacroSolver.actual_attributes_for(updated_attrs, model_name)
@@ -190,18 +218,23 @@ class DataFixController < ApplicationController
       # (i.e.: 'team_id' => team['id'])
       actual_attrs['id'] = updated_attrs["#{model_name}_id"] if updated_attrs["#{model_name}_id"].present?
       # Allow clearing of ID using zero:
-      actual_attrs['id'] = nil if actual_attrs['id'].to_i.zero?
+      actual_attrs['id'] = nil if actual_attrs['id'] == 0 || actual_attrs['id'] == '0' # Avoid clearing if empty or present
 
       # Handle special cases:
       case model_name
       when 'team'
-        # Overwrite Team name & variations with either the team search field or the editable name:
-        actual_attrs['name'] = updated_attrs['team'] || updated_attrs['editable_name']
-        actual_attrs['name_variations'] = actual_attrs['name']
+        # Avoid empty Team names:
+        actual_attrs['name'] = updated_attrs['team'].present? ? updated_attrs['team'] : updated_attrs['editable_name'] unless actual_attrs['name'].present?
+        # Prepend variations unless already there:
+        actual_attrs['name_variations'] = "#{actual_attrs['name']};#{actual_attrs['name_variations']}" unless actual_attrs['name_variations'].include?(actual_attrs['name'])
+        actual_attrs['name_variations'] = "#{actual_attrs['editable_name']};#{actual_attrs['name_variations']}" unless actual_attrs['name_variations'].include?(actual_attrs['editable_name'])
       when 'swimmer'
         # Overwrite complete name when the lookup values change:
-        actual_attrs['complete_name'] = updated_attrs['swimmer'] || "#{updated_attrs['last_name']} #{updated_attrs['first_name']}"
+        actual_attrs['complete_name'] = updated_attrs['swimmer'].present? ? updated_attrs['swimmer'] : "#{updated_attrs['last_name']} #{updated_attrs['first_name']}"
       end
+      # DEBUG ----------------------------------------------------------------
+      # binding.pry
+      # ----------------------------------------------------------------------
 
       # === Update main entity attributes: ===
       # (index must be already set to the proper key type: nil for meetings, integer for sessions, string for others)
@@ -213,12 +246,20 @@ class DataFixController < ApplicationController
         @data_hash[model_name]&.fetch('row', nil)&.merge!(actual_attrs)
       end
     end
+
+    # == Bindings update: ==
+    deep_nested_bindings = @solver.cached_instance_of(model_name, entity_key, 'bindings')
+    # EXCEPTION: City is the only "complex" binding that could be sub-nested at depth > 1
+    deep_nested_bindings.merge!(
+      'city' => {
+        edit_params['city'][entity_key.to_s]['key'] => edit_params['city'][entity_key.to_s]
+      }
+    ) if edit_params['city'].present? && edit_params['city'][entity_key.to_s].present? && edit_params['city'][entity_key.to_s]['key'].present?
     # DEBUG ----------------------------------------------------------------
     # binding.pry
     # ----------------------------------------------------------------------
 
-    # == Bindings update: ==
-    @solver.cached_instance_of(model_name, entity_key, 'bindings').each do |binding_model_name, binding_key|
+    deep_nested_bindings.each do |binding_model_name, binding_key|
       updated_attrs = edit_params[binding_model_name]&.fetch(entity_key.to_s, nil)
       if updated_attrs.present?
         # DEBUG ----------------------------------------------------------------
@@ -252,25 +293,81 @@ class DataFixController < ApplicationController
           @data_hash[model_name]&.fetch('row', nil)&.compact!
           @data_hash[model_name]&.fetch('row', nil)&.merge!(main_attrs)
         end
+        # DEBUG ----------------------------------------------------------------
+        # binding.pry
+        # ----------------------------------------------------------------------
 
         # === Update binding entity attributes too: ===
         # i.e.: 'swimming_pool' => 0 => 'city_id' (apply to binding, i.e.: 'swimming_pool')
         # Always add the overwrite for the binding fuzzy result ID column with the manual lookup result ID:
         nested_attrs['id'] = updated_attrs["#{binding_model_name}_id"].to_i if updated_attrs["#{binding_model_name}_id"].present?
         # Allow clearing of ID using zero:
-        nested_attrs['id'] = nil if nested_attrs['id'].to_i.zero?
+        nested_attrs['id'] = nil if nested_attrs['id'] == 0 || nested_attrs['id'] == '0' # Avoid clearing if empty or present
+        # EXCEPTION: City is the only "complex" binding that could be sub-nested at depth > 1, returning a whole Hash (key + attributes)
+        binding_key = binding_key.keys.first if binding_key.is_a?(Hash)
         @data_hash[binding_model_name]&.fetch(binding_key, nil)&.fetch('row', nil)&.compact!
         @data_hash[binding_model_name]&.fetch(binding_key, nil)&.fetch('row', nil)&.merge!(nested_attrs)
       end
     end
+    # DEBUG ----------------------------------------------------------------
+    # binding.pry
+    # ----------------------------------------------------------------------
 
     # == Serialization on same file: ==
     overwrite_file_path_with_json_from(@data_hash)
+
+    # DEBUG ----------------------------------------------------------------
+    # binding.pry
+    # ----------------------------------------------------------------------
+    # Clean the referer URL from a possible reparse parameter:
+    request.headers['HTTP_REFERER'].gsub('&reparse=true', '')
+
     # Fall back to step 1 (sessions) in case the referrer is not available:
-    redirect_back(fallback_location: review_sessions_path(file_path: file_path_from_params))
+    redirect_back(fallback_location: review_sessions_path(file_path: file_path_from_params, reparse: false))
   end
   #-- -------------------------------------------------------------------------
   #++
+
+  # [GET /coded_name] (JSON only)
+  # Computes and returns just the coded name as JSON, given the parameters.
+  #
+  # == Params:
+  # <tt>:target</tt> => target for the coded name value; supports 'code' (Meeting) or
+  #                     'nick_name' (SwimmingPool)
+  #
+  # === Required options for Meeting's 'code' target:
+  # - 'description' & 'city_name'
+  #
+  # === Required options for SwimmingPool's 'nick_name' target:
+  # - 'name', 'city_name' & 'pool_type_code'
+  #
+  # == Returns:
+  # A JSON response having format:
+  #
+  #    { coded_name: <internal_coded_name> }
+  #
+  def coded_name
+    unless request.format.json? && %w[code nick_name].include?(coded_name_params[:target])
+      flash[:warning] = I18n.t('search_view.errors.invalid_request')
+      redirect_to root_path
+      return
+    end
+
+    result = if coded_name_params[:target] == 'nick_name'
+               GogglesDb::Normalizers::CodedName.for_pool(
+                 coded_name_params[:name],
+                 coded_name_params[:city_name],
+                 coded_name_params[:pool_type_code]
+               )
+             else
+               GogglesDb::Normalizers::CodedName.for_meeting(
+                 coded_name_params[:description],
+                 coded_name_params[:city_name]
+               )
+             end
+
+    render(json: { coded_name_params[:target] => result })
+  end
 
   private
 
@@ -283,6 +380,15 @@ class DataFixController < ApplicationController
       swimming_pool: {}, city: {}, meeting: {}, meeting_session: {}, meeting_event: {}, meeting_program: {},
       team: {}, swimmer: {}, badge: {},
       meeting_individual_result: {}, lap: {}, meeting_relay_result: {}, meeting_relay_swimmer: {}
+    )
+  end
+
+  # Strong parameters checking for coded name retrieval.
+  def coded_name_params
+    params.permit(
+      :action, :target,
+      :name, :city_name, :pool_type_code,
+      :description
     )
   end
 
@@ -349,24 +455,34 @@ class DataFixController < ApplicationController
   def prepare_solver
     detect_season_from_pathname(@file_path) # (sets @season)
     # FUTUREDEV: display progress in real time using another ActionCable channel? (or same?)
-    @solver = Import::MacroSolver.new(season_id: @season.id, data_hash: @data_hash, toggle_debug: true)
+    @solver = Import::MacroSolver.new(season_id: @season.id, data_hash: @data_hash, toggle_debug: false)
   end
 
   # Assuming @data_hash contains already "solved" data for meeting & sessions, this sets
   # the @meeting_sessions & @swimming_pools member arrays with the current data found in the
   # Hash, building the proper corresponding models for each one.
   def prepare_sessions_and_pools_from_data_hash
-    @meeting = @solver.cached_instance_of('meeting', nil)
     @solver.rebuild_cached_entities_for('city')
+    @meeting_entity = @solver.rebuild_cached_entities_for('meeting')
+    @meeting = @meeting_entity.row
 
     @meeting_sessions = []
     @swimming_pools = []
+    @cities = []
+    @city_keys = []
     # Don't consider nil results as part of the list:
     @solver.data['meeting_session'].compact.each_with_index do |_item, index|
       @meeting_sessions[index] = @solver.cached_instance_of('meeting_session', index)
       pool_key = @solver.cached_instance_of('meeting_session', index, 'bindings')&.fetch('swimming_pool', nil)
+      # Get the Pool as first-class citizen of the form (for update/create):
       if pool_key.present?
         @swimming_pools[index] = @solver.cached_instance_of('swimming_pool', pool_key)
+        # Get also the City as first-class citizen of the form:
+        city_key = @solver.cached_instance_of('swimming_pool', pool_key, 'bindings')&.fetch('city', nil)
+        if city_key.present?
+          @cities[index] = @solver.cached_instance_of('city', city_key)
+          @city_keys[index] = city_key
+        end
       end
     end
   end

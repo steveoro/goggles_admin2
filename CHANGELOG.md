@@ -2,7 +2,9 @@
 
 _Please, add the latest build info on top of the list; use Version::MAJOR only after gold release; keep semantic versioning in line with framework's_
 
-- **0.4.07** [Steve A.] resync w/ base engine;
+- **0.4.09** [Steve A.] resync w/ base engine: using proper download method for attachments in ImportQueue
+- **0.4.08** [Steve A.] improved & fixed data-import steps, now with onscreen progress modal
+- **0.4.07** [Steve A.] resync w/ base engine; added support for 8 additional "external" fields in AutoCompleteComponent (& related JS controller) so that we can auto-update up to 12 detail fields in 1 round
 - **0.4.06** [Steve A.] slightly improved API endpoints with more useful default ordering for most; data grids for workshops, calendars & standard timings; resync w/ base engine
 - **0.4.05** [Steve A.] support push batch SQL import data to dedicated API endpoint directly into ImportQueues as file attachments; re-sync w/ base Engine; push controller skeleton
 - **0.3.53** [Steve A.] bundle security fixes; pull, data-fix & push controllers preliminary versions w/ all related strategy classes

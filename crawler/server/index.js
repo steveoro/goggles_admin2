@@ -64,7 +64,7 @@ const httpServer = app.listen(process.env.CRAWLER_PORT, () => {
   console.log(`Listening on...: ${process.env.CRAWLER_HOST}:${process.env.CRAWLER_PORT}`)
   console.log(`Websocket on...: ${process.env.CRAWLER_PATH}`)
   console.log(`Resetting status file...`)
-  CrawlUtil.updateStatus('Backend started, crawler not yet running', 'OK, idle')
+  CrawlUtil.updateStatus('Backend started, crawler idle', 'OK, idle')
 })
 // ----------------------------------------------------------------------------
 

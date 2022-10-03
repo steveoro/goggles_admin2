@@ -2,8 +2,16 @@
            method: :patch) do |f|
   = hidden_field_tag('key', index)
   = hidden_field_tag('file_path', file_path)
-  .container
+  .container{ data: { controller: 'coded-name',
+              'coded-name-result-type-value' => 'nick_name',
+              'coded-name-jwt-value' => current_user.jwt } }
     .row
+      .col-auto
+        .form-group
+          .field
+            = label_tag('meeting_session[meeting_session_id]', 'M.Sess.ID')
+            = number_field_tag('meeting[meeting_session_id]', meeting_session&.id, class: 'form-control',
+                               placeholder: 'M.Sess.ID')
       .col-auto
         .form-group
           .field
@@ -33,42 +41,24 @@
             = label_tag("meeting_session[#{index}][day_part_type_id]", 'day_part_type')
             = select_tag("meeting_session[#{index}][day_part_type_id]", day_part_type_opts, class: 'form-control')
 
-    .row-fluid
-      .field
-        = f.label("swimming_pool[#{index}][swimming_pool_id]", 'swimming_pool')
-      -# TODO: REFACTOR into Import::OriginalTextLabel
-      .bg-light-grey
-        %small
-          %i.form-text.text-muted
-            %pre
-              - ordinal = index + 1
-              🔑 #{data_hash["venue#{ordinal}"]} (#{data_hash['poolLength']} m.)
-              &nbsp; / &nbsp;
-              = data_hash["address#{ordinal}"]
+    :ruby
+      # Compute initial (static) & dynamic search href location for change events:
+      search_engine = 'https://www.google.com/maps/search/'
+      initial_query = "?q=#{swimming_pool&.name}, #{swimming_pool&.address}".gsub(' ', '%20')
+      initial_maps_href = "#{search_engine}#{initial_query}"
+      name_part = "${$('#swimming_pool_#{index}_name').val()}"
+      addr_part = "${$('#swimming_pool_#{index}_address').val()}"
+      search_query = "?q=#{name_part}, #{addr_part}, ${$('#city_#{index}_name').val()}"
+      onchange_event = "document.querySelector('#maps-uri-search-#{index}').href = `#{search_engine}#{search_query}`;"
 
-    .row
-      .col-lg-10.col-md-9.col-sm-6.my-1
-        = render(AutoCompleteComponent.new(base_dom_id: "swimming_pool[#{index}]",
-                base_api_url: api_url,
-                default_value: meeting_session.swimming_pool_id || swimming_pool.id,
-                detail_endpoint: 'swimming_pool', base_name: 'swimming_pool', label_column: 'nick_name',
-                search_endpoint: 'swimming_pools', search_column: 'name',
-                target2_field: 'nick_name', target2_column: 'nick_name',
-                target3_dom_id: "swimming_pool_#{index}_pool_type_id", target3_column: 'pool_type_id',
-                target4_dom_id: "city_#{index}_city_id", target4_column: 'city_id',
-                jwt: current_user.jwt))
-      .offset-lg-0.offset-md-0.offset-sm-1.col-lg-2.col-md-3.col-sm-4.mt-2
-        = select_tag("swimming_pool[#{index}][pool_type_id]", pool_type_opts, class: 'form-control',
-                      data: { 'autocomplete-target' => 'field2' })
-      .col-12.my-1
-        = render(AutoCompleteComponent.new(base_dom_id: "city[#{index}]",
-                base_api_url: api_url,
-                default_value: swimming_pool.city_id,
-                detail_endpoint: 'city', base_name: 'city', label_column: 'area',
-                search_endpoint: 'cities', search_column: 'name',
-                target2_field: 'area', target2_column: 'area',
-                target3_field: 'country_code', target3_column: 'country_code',
-                jwt: current_user.jwt))
+    = render(partial: 'swimming_pool_form', locals: { meeting_session: meeting_session,
+              index: index, swimming_pool: swimming_pool, pool_type_opts: pool_type_opts,
+              initial_maps_href: initial_maps_href, onchange_event: onchange_event,
+              api_url: api_url, data_hash: data_hash })
+
+    = render(partial: 'pool_city_form', locals: { index: index, swimming_pool: swimming_pool,
+             city: city, city_key: city_key, onchange_event: onchange_event,
+             api_url: api_url, data_hash: data_hash })
 
     .form-group
       = f.submit(t('data_import.generic_save_btn'), id: 'btn-save-session', class: 'btn btn-primary',

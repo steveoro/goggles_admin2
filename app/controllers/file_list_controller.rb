@@ -14,14 +14,15 @@ class FileListController < ApplicationController
                    .map { |name| name.split('crawler/').last }
                    .sort
     @curr_dir = nil # (Show all calendar files at once)
-    @files = Dir.glob(Rails.root.join('crawler/data/calendar.new/**/*.csv')).sort
+    @filter = '*.csv'
+    @files = Dir.glob(Rails.root.join('crawler/data/calendar.new/**', @filter)).sort
   end
 
   # [GET] List JSON meeting result files (and allow individual actions on them).
   # [XHR PUT] Update just the list of result files (used after current directory selection)
   #
   # == Sets/Uses:
-  # - @filter => performs file filtering (default: '*.*')
+  # - @filter => performs file filtering (default: '*.json')
   # - @parent_folder => selects which parent folder (default: 'results.new')
   #
   # === Params:
@@ -29,7 +30,7 @@ class FileListController < ApplicationController
   # - :parent_folder => as above
   #
   def result_files
-    @filter ||= file_params[:filter] || '*.*' # default: no filtering
+    @filter ||= file_params[:filter] || '*.json'
     @parent_folder ||= file_params[:parent_folder] || 'results.new'
     @dirnames = Dir.glob(Rails.root.join("crawler/data/#{@parent_folder}/*"))
                    .map { |name| name.split('crawler/').last }
@@ -45,7 +46,7 @@ class FileListController < ApplicationController
       redirect_to(root_path) && return
     end
 
-    @curr_dir = @dirnames.last || "data/#{@parent_folder}/" # use default parent folder for empty dir lists
+    @curr_dir = @dirnames.first || "data/#{@parent_folder}/" # use default parent folder for empty dir lists
     @files = Dir.glob(Rails.root.join('crawler', @curr_dir, "**/#{@filter}")).sort
   end
   #-- -------------------------------------------------------------------------
@@ -150,13 +151,12 @@ class FileListController < ApplicationController
 
   # Prepares the current dir, the dir list and the file list members given the
   # current file_params.
-  def prepare_file_and_dir_list
+  def prepare_file_and_dir_list(filter = '*.*')
     @curr_dir = File.dirname(file_params[:file_path]).split('crawler/').last
-    @dirnames = Dir.glob(Rails.root.join('crawler', @curr_dir, '*'))
+    @dirnames = Dir.glob(Rails.root.join('crawler', @curr_dir, '../*'))
                    .map { |name| name.split('crawler/').last }
                    .sort
-    @files = Dir.glob(Rails.root.join('crawler', @curr_dir, '**', '*.*')).sort
+    @files = Dir.glob(Rails.root.join('crawler', @curr_dir, '**', filter)).sort
     @curr_dir = nil if File.extname(file_params[:file_path]) == '.csv' # Do not filter calendar files
   end
-
 end

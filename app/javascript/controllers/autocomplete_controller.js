@@ -23,10 +23,9 @@ require('easy-autocomplete')
  * or even just its DOM ID string (when it's present on the page but outside the scope of the parent
  * node of this controller).
  *
- * The 4th additional update target is assumed to be *only* "external" to the parent DOM node
- * referencing this controller: the only supported way to bind the target is to set
- * its DOM ID as a parameter, similarly to what can be done for the search target(s) or
- * the 3rd update field target explained above.
+ * Additional "external" targets (from "target4" to "target12") can be set using just a DOM ID and a
+ * corresponding column name for the target value, similarly to the way the search target(s) or the 3rd update field target
+ * can be also defined as explained above.
  *
  * For library documentation:
  * - @see http://www.easyautocomplete.com/
@@ -119,14 +118,17 @@ require('easy-autocomplete')
  *                 (totally optional, skipped when not set)
  *
  * @param {String} 'data-autocomplete-target4-dom-id-value' (optional)
- *                 DOM ID for the 4th optional update target field value; the referred DOM node is assumed to store
- *                 the update target column value (defaults to null).
+ *                 DOM ID for the 4th "external" update target field value;
+ *                 the referred DOM node is assumed to store the update target column value (defaults to null).
  *                 Typically used only for binding together 2 different auto-complete components as in the case
  *                 of a SwimmingPool associated to a City (both should be searchable & storable).
  *
  * @param {String} 'data-autocomplete-target4-column-value' (optional)
- *                 field name used to get the value to update the optional 4th update target; defaults to null.
+ *                 column name used to retrieve the target field value during auto-updates; defaults to null.
  *                 In the example of a SwimmingPool bound to a City, this would be (SwimmingPool's) 'city_id'.
+ *
+ * All target fields 4..12 work similarly: using a DOM ID plus a column name which points to
+ * the value from the detailed result of the selection from the drop-down field.
  *
  * @param {Array} 'data-autocomplete-payload-value' (optional)
  *                 Array of objects specifying the inline data payload for the search domain.
@@ -140,12 +142,20 @@ require('easy-autocomplete')
  *                 - <tt>label2_column</tt> as property name => additional label for the item;
  *                 - <tt>target2Column.value</tt> as property name => field updating the secondary target;
  *                 - <tt>target3Column.value</tt> as property name => field updating the tertiary target;
+ *                 (and so on, for all possible defined targets)
  *
  * @param {String} 'data-autocomplete-jwt-value' (optional, not needed for inline data)
  *                 current_user.jwt (assumes 'current_user' is currently logged-in and valid)
  *
  * == Actions:
- * (no actions, just setup)
+ * To force an update of all the linked fields:
+ *
+ * - Edit fields should bind to: (for example)
+ *    - 'change->autocomplete#processUpdate'
+ *
+ * - Any external "Search" button should bind to: (action: "<bind_string>")
+ *    - 'autocomplete#processUpdate' => refreshes all linked fields with the results from any
+ *                                      filled-in search criteria.
  *
  * @author Steve A.
  */
@@ -161,6 +171,14 @@ export default class extends Controller {
     target2Column: String,
     target3DomId: String, target3Column: String,
     target4DomId: String, target4Column: String,
+    target5DomId: String, target5Column: String,
+    target6DomId: String, target6Column: String,
+    target7DomId: String, target7Column: String,
+    target8DomId: String, target8Column: String,
+    target9DomId: String, target9Column: String,
+    target10DomId: String, target10Column: String,
+    target11DomId: String, target11Column: String,
+    target12DomId: String, target12Column: String,
     payload: Array,
     jwt: String
   }
@@ -189,8 +207,12 @@ export default class extends Controller {
         this.processUpdate()
       })
 
-      // Use any available default data in the main target & update the desc:
-      this.processUpdate()
+      // *** NOTE: ***
+      // Uncommenting the processUpdate() below will overwrite any default data that has been
+      // set into the form using the default values!
+      // If this is indeed a needed feature, add an another option flag to the setup
+
+      // this.processUpdate() // Use any available default data in the main target & update each linked field
     }
   }
   // ---------------------------------------------------------------------------
@@ -286,13 +308,44 @@ export default class extends Controller {
         $(`#${this.target3DomIdValue}`).val(entityRow[this.target3ColumnValue])
         $(`#${this.target3DomIdValue}`).trigger('change')
       }
-      // Target4 is considered to be only external to the parent node, so we access it
-      // using its DOM ID instead of a controller reference:
+      // "External" targets:
       if (this.hasTarget4DomIdValue && (this.target4DomIdValue.length > 0) && this.hasTarget4ColumnValue) {
-      // DEBUG
-      // console.log('updateFieldAndDesc: external target4 found.')
+        // DEBUG
+        // console.log('updateFieldAndDesc: external target4 found.')
         $(`#${this.target4DomIdValue}`).val(entityRow[this.target4ColumnValue])
         $(`#${this.target4DomIdValue}`).trigger('change')
+      }
+      if (this.hasTarget5DomIdValue && (this.target5DomIdValue.length > 0) && this.hasTarget5ColumnValue) {
+        $(`#${this.target5DomIdValue}`).val(entityRow[this.target5ColumnValue])
+        $(`#${this.target5DomIdValue}`).trigger('change')
+      }
+      if (this.hasTarget6DomIdValue && (this.target6DomIdValue.length > 0) && this.hasTarget6ColumnValue) {
+        $(`#${this.target6DomIdValue}`).val(entityRow[this.target6ColumnValue])
+        $(`#${this.target6DomIdValue}`).trigger('change')
+      }
+      if (this.hasTarget7DomIdValue && (this.target7DomIdValue.length > 0) && this.hasTarget7ColumnValue) {
+        $(`#${this.target7DomIdValue}`).val(entityRow[this.target7ColumnValue])
+        $(`#${this.target7DomIdValue}`).trigger('change')
+      }
+      if (this.hasTarget8DomIdValue && (this.target8DomIdValue.length > 0) && this.hasTarget8ColumnValue) {
+        $(`#${this.target8DomIdValue}`).val(entityRow[this.target8ColumnValue])
+        $(`#${this.target8DomIdValue}`).trigger('change')
+      }
+      if (this.hasTarget9DomIdValue && (this.target9DomIdValue.length > 0) && this.hasTarget9ColumnValue) {
+        $(`#${this.target9DomIdValue}`).val(entityRow[this.target9ColumnValue])
+        $(`#${this.target9DomIdValue}`).trigger('change')
+      }
+      if (this.hasTarget10DomIdValue && (this.target10DomIdValue.length > 0) && this.hasTarget10ColumnValue) {
+        $(`#${this.target10DomIdValue}`).val(entityRow[this.target10ColumnValue])
+        $(`#${this.target10DomIdValue}`).trigger('change')
+      }
+      if (this.hasTarget11DomIdValue && (this.target11DomIdValue.length > 0) && this.hasTarget11ColumnValue) {
+        $(`#${this.target11DomIdValue}`).val(entityRow[this.target11ColumnValue])
+        $(`#${this.target11DomIdValue}`).trigger('change')
+      }
+      if (this.hasTarget12DomIdValue && (this.target12DomIdValue.length > 0) && this.hasTarget12ColumnValue) {
+        $(`#${this.target12DomIdValue}`).val(entityRow[this.target12ColumnValue])
+        $(`#${this.target12DomIdValue}`).trigger('change')
       }
     } else {
       // DEBUG

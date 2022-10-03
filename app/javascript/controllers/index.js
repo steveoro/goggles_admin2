@@ -10,6 +10,9 @@ application.register("autocomplete", AutocompleteController)
 import ChartApiController from "./chart_api_controller.js"
 application.register("chart-api", ChartApiController)
 
+import CodedNameController from "./coded_name_controller.js"
+application.register("coded-name", CodedNameController)
+
 import GridEditController from "./grid_edit_controller.js"
 application.register("grid-edit", GridEditController)
 

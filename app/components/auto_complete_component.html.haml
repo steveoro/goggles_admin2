@@ -6,30 +6,47 @@
   'autocomplete-search-column-value' => @search_column,
   'autocomplete-search2-column-value' => @search2_column,
   'autocomplete-search2-dom-id-value' => @search2_dom_id,
-  'autocomplete-label-column-value' => @label_column,
-  'autocomplete-label2-column-value' => @label2_column,
+  'autocomplete-label-column-value' => @label_column, 'autocomplete-label2-column-value' => @label2_column,
   'autocomplete-target2-column-value' => @target2_column,
-  'autocomplete-target3-column-value' => @target3_column,
-  'autocomplete-target3-dom-id-value' => @target3_dom_id,
-  'autocomplete-target4-dom-id-value' => @target4_dom_id,
-  'autocomplete-target4-column-value' => @target4_column,
+  'autocomplete-target3-column-value' => @target3_column, 'autocomplete-target3-dom-id-value' => @target3_dom_id,
+  'autocomplete-target4-dom-id-value' => @target4_dom_id, 'autocomplete-target4-column-value' => @target4_column,
+  'autocomplete-target5-dom-id-value' => @target5_dom_id, 'autocomplete-target5-column-value' => @target5_column,
+  'autocomplete-target6-dom-id-value' => @target6_dom_id, 'autocomplete-target6-column-value' => @target6_column,
+  'autocomplete-target7-dom-id-value' => @target7_dom_id, 'autocomplete-target7-column-value' => @target7_column,
+  'autocomplete-target8-dom-id-value' => @target8_dom_id, 'autocomplete-target8-column-value' => @target8_column,
+  'autocomplete-target9-dom-id-value' => @target9_dom_id, 'autocomplete-target9-column-value' => @target9_column,
+  'autocomplete-target10-dom-id-value' => @target10_dom_id, 'autocomplete-target10-column-value' => @target10_column,
+  'autocomplete-target11-dom-id-value' => @target11_dom_id, 'autocomplete-target11-column-value' => @target11_column,
+  'autocomplete-target12-dom-id-value' => @target12_dom_id, 'autocomplete-target12-column-value' => @target12_column,
   'autocomplete-payload-value' => @payload,
   'autocomplete-jwt-value' => @jwt } }
-  .col-lg-2.col-md-3.col-sm-3.my-1
-    = text_field_tag(namespaced_attr_name("#{entity_name}_id"), @default_value, class: 'form-control',
-                      data: { 'autocomplete-target' => 'field' })
-  .col-lg-3.col-md-9.col-sm-9.my-1
+  .col-4.my-1
+    - if @show_top_labels
+      = label_tag(namespaced_attr_name("#{entity_name}_id"), 'id')
+    .input-group
+      = text_field_tag(namespaced_attr_name("#{entity_name}_id"), @default_value, class: 'form-control',
+                        data: { 'autocomplete-target' => 'field' })
+      .input-group-append
+        %i.fa.fa-search.btn.btn-sm.btn-outline-secondary.pt-2{ data: { action: 'click->autocomplete#processUpdate',
+          toggle: 'tooltip', title: I18n.t('dashboard.search_tooltip') } }
+  .col-auto.my-1
+    - if @show_top_labels
+      = label_tag(namespaced_attr_name(entity_name), I18n.t('dashboard.search_field', field: '...'))
     = text_field_tag(namespaced_attr_name(entity_name), nil, class: 'form-control',
-                      placeholder: I18n.t('dashboard.search_field', field: entity_name),
-                      data: { 'autocomplete-target' => 'search' })
+                     placeholder: I18n.t('dashboard.search_field', field: entity_name),
+                     data: { 'autocomplete-target' => 'search' })
   - if @target2_field
     %div{ class: @target2_class }
+      - if @show_top_labels
+        = label_tag(namespaced_attr_name(@target2_field), @target2_field)
       = text_field_tag(namespaced_attr_name(@target2_field), nil, class: 'form-control',
-                      data: { 'autocomplete-target' => 'field2' })
+                       data: { 'autocomplete-target' => 'field2' })
     - if @target3_field
       %div{ class: @target3_class }
+        - if @show_top_labels
+          = label_tag(namespaced_attr_name(@target3_field), @target3_field)
         = text_field_tag(namespaced_attr_name(@target3_field), nil, class: 'form-control',
-                        data: { 'autocomplete-target' => 'field3' })
+                         data: { 'autocomplete-target' => 'field3' })
   .col-12
     %small
       %i.form-text.text-muted{ id: "#{entity_name}-desc", data: { 'autocomplete-target' => 'desc' } }

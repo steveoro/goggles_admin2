@@ -4,7 +4,10 @@
       .card-body
         .rotate
           %i.fa.fa-cogs.fa-4x
-        %h6.text-uppercase= t('dashboard.manage_entities')
+        %h6.text-uppercase
+          = t('dashboard.manage_entities')
+          %sup
+            %i.fa.fa-question-circle{ data: { toggle: 'tooltip', title: t('dashboard.manage_entities_help') } }
         .row.mb-3
           .offset-lg-0.col-lg-4.offset-md-1.col-md-5.offset-sm-0.col-sm-6.py-2
             %a.btn.btn-lg.btn-outline-primary.my-1{ href: api_teams_path }

@@ -10,7 +10,8 @@
                     title: t('data_import.file.btn_reparse_json_tooltip') }) do
             %i.btn.btn-sm.btn-outline-warning.fa.fa-refresh
       - else
-        %a.nav-link{ href: review_sessions_path(file_path: file_path) }
+        %a.nav-link{ href: review_sessions_path(file_path: file_path),
+                     onclick: "$('#loading-indicator').removeClass('d-none');" }
           1: Meeting & Session
 
     %li.nav-item
@@ -23,7 +24,8 @@
                     title: t('data_import.file.btn_reparse_json_tooltip') }) do
             %i.btn.btn-sm.btn-outline-warning.fa.fa-refresh
       - else
-        %a.nav-link{ href: review_teams_path(file_path: file_path) }
+        %a.nav-link{ href: review_teams_path(file_path: file_path),
+                     onclick: "$('#loading-indicator').removeClass('d-none');" }
           2: Teams
 
     %li.nav-item
@@ -36,7 +38,8 @@
                     title: t('data_import.file.btn_reparse_json_tooltip') }) do
             %i.btn.btn-sm.btn-outline-warning.fa.fa-refresh
       - else
-        %a.nav-link{ href: review_swimmers_path(file_path: file_path) }
+        %a.nav-link{ href: review_swimmers_path(file_path: file_path),
+                     onclick: "$('#loading-indicator').removeClass('d-none');" }
           3: Swimmers
 
     %li.nav-item
@@ -49,7 +52,8 @@
                     title: t('data_import.file.btn_reparse_json_tooltip') }) do
             %i.btn.btn-sm.btn-outline-warning.fa.fa-refresh
       - else
-        %a.nav-link{ href: review_events_path(file_path: file_path) }
+        %a.nav-link{ href: review_events_path(file_path: file_path),
+                     onclick: "$('#loading-indicator').removeClass('d-none');" }
           4: Events
 
     %li.nav-item
@@ -62,5 +66,6 @@
                     title: t('data_import.file.btn_reparse_json_tooltip') }) do
             %i.btn.btn-sm.btn-outline-warning.fa.fa-refresh
       - else
-        %a.nav-link{ href: review_results_path(file_path: file_path) }
+        %a.nav-link{ href: review_results_path(file_path: file_path),
+                     onclick: "$('#loading-indicator').removeClass('d-none');" }
           5: Results

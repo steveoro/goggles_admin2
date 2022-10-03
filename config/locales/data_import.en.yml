@@ -25,6 +25,13 @@ en:
       btn_reparse_json_tooltip: 'Forced re-parse of this result file using the available source data in it'
       btn_process_sql_tooltip: 'Upload this data-import batch file to the remote server'
       confirm_push: 'Are you sure you want to PUSH this file to the remote server?'
+    data_fix:
+      btn_maps_search: 'Search'
+      btn_maps_search_tooltip: 'Search on Maps for the name & address to get the Plus code and/or the URI to be copied here'
+      btn_start_sql_batch: "Start SQL batch creation"
+      btn_start_sql_batch_tooltip: "Ends the data-review phase and starts the commit phase (commits on local DB only); the remote DB will need a manual 'push' to receive the changes."
+      btn_start_sql_batch_confirm: "Commit changes?"
+      btn_start_sql_batch_disable: "Processing..."
     push:
       msg_prepare_batch_ok: 'SQL batch file successfully created.'
       msg_send_batch_ok: "SQL batch file successfully sent and moved to the 'results.done' folder."

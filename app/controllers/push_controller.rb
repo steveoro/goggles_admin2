@@ -46,9 +46,11 @@ class PushController < FileListController
     @committer = Import::MacroCommitter.new(solver: @solver)
     @committer.commit_all
 
+    # Save the committed data to file (with actual IDs):
+    File.open(@file_path.gsub('.json', '.committed.json'), 'w+') { |f| f.write(@solver.data.to_json) }
+
     # Save the batch file:
-    batch_sql_path = @file_path.gsub('.json', '.sql')
-    File.open(batch_sql_path, 'w+') do |f|
+    File.open(@file_path.gsub('.json', '.sql'), 'w+') do |f|
       @committer.sql_log.each do |sql_statement|
         f.write(sql_statement)
         f.write("\r\n")

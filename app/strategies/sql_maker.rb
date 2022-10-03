@@ -2,9 +2,9 @@
 
 # = SqlMaker
 #
-#   - file vers.: 7-0.3.53
+#   - file vers.: 7-4.08
 #   - author....: Steve A.
-#   - build.....: 20220531
+#   - build.....: 20220929
 #
 # Creates a replayable SQL log of the called methods on record row specified
 # with the constructor.
@@ -79,6 +79,7 @@ class SqlMaker
               .keep_if { |col_name| klass.column_names.include?(col_name) }
               .each do |key, value|
       next if value.blank? || (!@force_id_on_insert && key == 'id')
+      next if %w[lock_version created_at updated_at].include?(key)
 
       columns << con.quote_column_name(key)
       values  << con.quote(value)
@@ -105,7 +106,7 @@ class SqlMaker
     @row.attributes
               .keep_if { |col_name| klass.column_names.include?(col_name) }
               .each do |key, value|
-      next if key == 'lock_version'
+      next if %w[id lock_version created_at].include?(key)
 
       sets << "#{con.quote_column_name(key)}=#{con.quote(value)}"
     end

@@ -1,3 +1,4 @@
+= render(partial: 'modal_progress')
 .wrapper-body
   .main-content
     %section.my-2#title-box
@@ -21,14 +22,23 @@
                       = @meeting.valid? ? '✅' : '🔵'
                     - else
                       🆕
+              .row-fluid.p-1
+                .bg-light-grey
+                  %small
+                    %i.text-muted
+                      %pre
+                        🔑 #{@data_hash['name']},&nbsp;
+                        #{@data_hash['dateDay1']} #{@data_hash['dateMonth1']} #{@data_hash['dateYear1']}
+                        &nbsp; ... &nbsp;
+                        #{@data_hash['dateDay2']} #{@data_hash['dateMonth2']} #{@data_hash['dateYear2']}
               .collapse#meeting-panel{ 'aria-labelledby' => 'meeting-header', 'data-parent' => '#meeting-card' }
                 .card-body.border-bottom.border-secondary
-                  = render(partial: 'meeting_form', locals: { meeting: @meeting, file_path: @file_path })
+                  = render(partial: 'meeting_form', locals: { meeting_entity: @meeting_entity, file_path: @file_path })
 
         .row-fluid.mt-4
-          - pool_type_opts = options_from_collection_for_select(GogglesDb::PoolType.all, 'id', 'long_label',
-                              cookies[:pool_type_id] || @swimming_pools[index]&.pool_type_id)
           - @meeting_sessions.each_with_index do |meeting_session, index|
+            - pool_type_opts = options_from_collection_for_select(GogglesDb::PoolType.all, 'id', 'long_label',
+                              @swimming_pools[index]&.pool_type_id || cookies[:pool_type_id])
             %div{ id: "meeting-session-card-#{index}",
                   class: meeting_session.id.present? ? 'bg-light' : 'bg-light-yellow' }
               .card.mt-2
@@ -51,4 +61,5 @@
                   .card-body.border-bottom.border-secondary
                     = render(partial: 'meeting_session_form', locals: { meeting_session: meeting_session,
                              index: index, swimming_pool: @swimming_pools[index], pool_type_opts: pool_type_opts,
+                             city: @cities[index], city_key: @city_keys[index],
                              api_url: @api_url, data_hash: @data_hash, file_path: @file_path })

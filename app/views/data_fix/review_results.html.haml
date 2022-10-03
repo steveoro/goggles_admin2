@@ -1,3 +1,4 @@
+= render(partial: 'modal_progress')
 .wrapper-body
   .main-content
     %section.my-2#title-box
@@ -59,8 +60,9 @@
         .row-fluid.my-3.text-center
           = link_to(push_prepare_path(file_path: @file_path), method: :post,
                     class: 'btn btn-warning mb-1',
-                    data: { toggle: 'tooltip', title: 'Ends the data-review phase and starts the commit phase',
-                    confirm: 'Commit changes?' }) do
+                    data: { toggle: 'tooltip', title: t('data_import.data_fix.btn_start_sql_batch_tooltip'),
+                    confirm: t('data_import.data_fix.btn_start_sql_batch_confirm'),
+                    disable_with: t('data_import.data_fix.btn_start_sql_batch_disable') }) do
             %span
               %i.fa.fa-bolt
-              Start SQL batch creation
+              = t('data_import.data_fix.btn_start_sql_batch')

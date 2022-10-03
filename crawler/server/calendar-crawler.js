@@ -69,13 +69,15 @@ class CalendarCrawler {
     */
   async processPage(baseURL, browser) {
     const page = await browser.newPage();
-    await page.setViewport({ width: 1024, height: 768 })
+    await page.setViewport({ width: 1200, height: 800 })
     await page.setUserAgent('Mozilla/5.0')
     page.on('load', () => { console.log('=> Page fully loaded.') });
     CrawlUtil.updateStatus(`Browsing to ${baseURL}...`)
-    await page.goto(baseURL, { waitUntil: 'load' })
+    await page.goto(baseURL, { waitUntil: 'load', timeout: 90 })
+
+    CrawlUtil.updateStatus('Detecting layout type...')
     const layoutType = await this.calendarLayoutDetector(page)
-    console.log(`Detected layout ${layoutType}: parsing accordingly...`)
+    CrawlUtil.updateStatus(`Detected layout ${layoutType}: parsing accordingly...`)
 
     var calendar = { layout: layoutType, rows: [] }
     if (layoutType == 1) {
@@ -96,18 +98,47 @@ class CalendarCrawler {
       // console.log(calendar.rows)
       // console.log("------------------------------------------------------------------------\r\n")
       this.saveOutputFile(calendar)
-      console.log("CSV file saved.")
     }
     else {
       if (calendar.layout > 0) {
-        console.log('Calendar parsing done, but result is empty.')
+        CrawlUtil.updateStatus('Calendar parsing done, but result is empty.')
       }
       else {
-        console.log('Unsupported calendar layout: cannot process.')
+        CrawlUtil.updateStatus('Unsupported calendar layout: cannot process.')
       }
     }
   }
   //---------------------------------------------------------------------------
+
+  /**
+   * Scroll to the end until no more content is being loaded.
+   * @param {Object} page - the Puppetter page object
+   */
+  async autoScrollToEnd(page) {
+    // Make the cookies dialog disappear:
+    await page.evaluate(() => {
+      if (document.querySelector('#CybotCookiebotDialogBodyButtonDecline')) {
+        document.querySelector('#CybotCookiebotDialogBodyButtonDecline').click()
+      }
+    })
+
+    let originalOffset = 0;
+    while (true) {
+      await page.evaluate('window.scrollBy(0, document.body.scrollHeight)');
+      await page.waitForTimeout(650);
+      let newOffset = await page.evaluate('window.pageYOffset');
+      if (originalOffset === newOffset) {
+        break;
+      }
+      originalOffset = newOffset;
+      CrawlUtil.updateStatus('Scrolling...')
+    }
+
+    // DEBUG:
+    // await page.screenshot({ path: './calendar.png', fullPage: true });
+  }
+  //---------------------------------------------------------------------------
+
 
   /**
    * Calendar page scanner for layout type 1 (pre-2018)
@@ -116,8 +147,12 @@ class CalendarCrawler {
    */
   async processCalendarLayout1(page) {
     await page.waitForSelector('.calendario-container')
+
+    CrawlUtil.updateStatus('Scrolling to the end of content...')
+    await this.autoScrollToEnd(page)
     // DEBUG
-    // console.log("processCalendarLayout1: before page.evaluate");
+    CrawlUtil.updateStatus('Processing layout 1...')
+
     return await page.evaluate(() => {
       const monthNames = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic']
       var monthName = null, monthNumber = 0, yearName = null
@@ -165,11 +200,16 @@ class CalendarCrawler {
    */
   async processCalendarLayout2(baseURL, page) {
     await page.waitForSelector('.nat_eve_list .nat_eve_container')
+
+    CrawlUtil.updateStatus('Scrolling to the end of content...')
+    await this.autoScrollToEnd(page)
+    // DEBUG
+    CrawlUtil.updateStatus('Processing layout 2...')
+
     const totRowCount = await page.$$eval('.nat_eve_list[data-id="lista"] > .nat_eve_container', (calCells) => { return calCells.length })
                                   .catch((err) => { console.log(err.toString()) })
-    console.log(`Found ${totRowCount} calendar rows`)
-    // DEBUG
-    // console.log("processCalendarLayout2: before page.evaluate");
+    CrawlUtil.updateStatus(`Found ${totRowCount} calendar rows`)
+
     return await page.evaluate((baseURL) => {
       const monthNames = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic']
       const regEx = /annull/gi
@@ -236,6 +276,9 @@ class CalendarCrawler {
    * @returns {Array} the list of calendar rows extracted from the page
    */
   async processCalendarLayout3(baseURL, page) {
+    // DEBUG
+    CrawlUtil.updateStatus('Processing layout 3...')
+
     const totRowCount = await page.$$eval('table.records.ris-style tr', (calRows) => { return calRows.length }).catch(() => { return 0 })
     console.log(`Found ${totRowCount} calendar rows`)
     console.log('Injecting scripts...')

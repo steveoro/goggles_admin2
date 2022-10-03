@@ -5,7 +5,10 @@
         .rotate
           %i.fa.fa-database.fa-4x
         %h6.text-uppercase
-          Data-import
+          %span
+            Data-import
+            %sup
+              %i.fa.fa-question-circle{ data: { toggle: 'tooltip', title: t('dashboard.data_import_helper') } }
         .row.mb-3
           .col.py-2
             %a.btn.btn-lg.btn-outline-primary.my-1{ href: pull_index_path }

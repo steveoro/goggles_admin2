@@ -1,4 +1,6 @@
 :ruby
+  # "Subkey" is the actual swimmer key (with spaces) translated to a node name to a node ID (with underscores)
+  # (it's needed to reference the DOM IDs from the AutoCompleteComponent)
   subkey_for_dom_id = swimmer_key.gsub(/[\s`'^?&%$!"<>:;,*]/, '_')
   src_dom = "#swimmer_#{subkey_for_dom_id}_id"
   target_dom = "#swimmer_#{subkey_for_dom_id}_swimmer_id"
@@ -17,23 +19,42 @@
                      'display_label', swimmer.id), include_blank: true, class: 'form-control', onchange: onchange_event)
     .row
       .col-auto
-        = render(AutoCompleteComponent.new(base_dom_id: "swimmer[#{swimmer_key}]",
-                base_api_url: api_url,
+        = render(AutoCompleteComponent.new(show_top_labels: true,
+                base_dom_id: "swimmer[#{swimmer_key}]", base_api_url: api_url,
                 default_value: swimmer.id,
                 detail_endpoint: 'swimmer', base_name: 'swimmer', label_column: 'complete_name',
                 search_endpoint: 'swimmers', search_column: 'complete_name',
                 search2_dom_id: "swimmer_#{subkey_for_dom_id}_year_of_birth", search2_column: 'year_of_birth',
-                target2_field: 'last_name', target2_column: 'last_name',
-                target2_class: 'offset-lg-1 col-lg-3 col-md-5 col-sm-6 my-1',
-                target3_field: 'first_name', target3_column: 'first_name',
-                target3_class: 'col-lg-3 col-md-5 col-sm-6 my-1',
-                target4_dom_id: "swimmer_#{subkey_for_dom_id}_gender_type_id", target4_column: 'gender_type_id',
+                target3_dom_id: "swimmer_#{subkey_for_dom_id}_gender_type_id", target3_column: 'gender_type_id',
+                target4_dom_id: "swimmer_#{subkey_for_dom_id}_last_name", target4_column: 'last_name',
+                target5_dom_id: "swimmer_#{subkey_for_dom_id}_first_name", target5_column: 'first_name',
+                target6_dom_id: "swimmer_#{subkey_for_dom_id}_complete_name", target6_column: 'complete_name',
                 jwt: current_user.jwt))
+      .col-lg-3.col-md-5.col-sm-6.my-1
+        .form-group
+          .field
+            = label_tag("swimmer[#{subkey_for_dom_id}][last_name]", 'last_name')
+            = text_field_tag("swimmer[#{swimmer_key}][last_name]", swimmer&.last_name,
+                              class: 'form-control', required: true, placeholder: 'last_name')
+      .col-lg-3.col-md-5.col-sm-6.my-1
+        .form-group
+          .field
+            = label_tag("swimmer[#{subkey_for_dom_id}][first_name]", 'first_name')
+            = text_field_tag("swimmer[#{swimmer_key}][first_name]", swimmer&.first_name,
+                              class: 'form-control', required: true, placeholder: 'first_name')
 
+      .col-lg-6.col-md-6.my-2
+        .form-group
+          .field
+            = label_tag("swimmer[#{subkey_for_dom_id}][complete_name]", 'complete_name')
+            = text_field_tag("swimmer[#{swimmer_key}][complete_name]", swimmer&.complete_name,
+                              class: 'form-control', required: true, placeholder: 'complete_name')
       .col-lg-2.col-md-3.col-sm-4.my-2
+        = label_tag("swimmer[#{subkey_for_dom_id}][year_of_birth]", 'year_of_birth')
         = number_field_tag("swimmer[#{swimmer_key}][year_of_birth]", swimmer&.year_of_birth, min: 1910,
                             max: Time.zone.today.year, required: true, autofocus: true, class: 'form-control')
       .col-lg-2.col-md-3.col-sm-4.my-2
+        = label_tag("swimmer[#{subkey_for_dom_id}][gender_type_id]", 'gender_type')
         = select_tag("swimmer[#{swimmer_key}][gender_type_id]", gender_type_opts, class: 'form-control')
 
     .form-group

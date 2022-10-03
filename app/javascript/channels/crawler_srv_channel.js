@@ -1,7 +1,8 @@
-import consumer from "./consumer"
+import consumer from "./node_consumer"
 
 $(document).on('turbolinks:load', () => {
-  // Subscribe to the channels only when the page is loaded & the URL matches the crawler server controller:
+  // Subscribe to the channels only when the page is loaded &
+  // the URL matches the crawler server controller:
   if (document.location.href.includes('/pull')) {
     consumer.subscriptions.create("CrawlerSrvChannel", {
       // Called when the subscription is ready for use on the server

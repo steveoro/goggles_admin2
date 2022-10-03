@@ -3,16 +3,21 @@
 #
 # = Auto-complete (DB-lookup) component
 #
-#   - version:  7-0.3.54
+#   - version:  7-0.4.07
 #   - author:   Steve A.
 #
 # Allows a search query on any lookup entity by any field in order to retrieve its ID plus its associated
 # details in order to compose and display a full descriptive label and, possibly,
-# update also up to other 3 optional target fields.
+# update also up to other 3 optional target fields rendered together with this
+# same component (if the options require them), plus 3 more "external" targets,
+# rendered indipendently from the component itself.
+# (If the external targets cannot be found, nothing will be updated on value change.)
 #
 # Uses the Stimulus 'autocomplete_controller.js'.
-# As per controller definition, the 4th optional target field can be set only via its DOM ID,
-# while the other 3 (including the main target field) just need a specific data target to be set.
+#
+# As per controller definition, all the additional "external" target fields can be set only via their DOM ID,
+# while the other "internal" 3 (including the main target field) just need a specific data target
+# to be set.
 #
 # Supports both in-line & remote data providers for the search.
 #
@@ -23,6 +28,7 @@
 # a descriptive label text that remains visibile after the search/lookup.
 #
 # Works even on Bootstrap modals (the Select2-based DBLookup custom component doesn't).
+#
 # When used inside a form, same-named fields can be isolated within a namespace just by setting
 # a custom value to the <tt>base_dom_id</tt> parameter.
 #
@@ -30,6 +36,10 @@ class AutoCompleteComponent < ViewComponent::Base
   # Creates a new ViewComponent
   #
   # == Options
+  # - <tt>:show_top_labels</tt>:
+  #   when +true+ the component will render an additional top row with a label
+  #   for each internal field set (default: +false+).
+  #
   # - <tt>base_dom_id</tt>: base target *namespace*; defaults to "grid-edit" (default name disables the namespace for the POST field).
   #   When put inside modal dialog, this should be equal to the base string name used for the DOM ID
   #   used by the modal container; see option <tt>:base_dom_id</tt> of <tt>EditModalComponent</tt>.
@@ -99,15 +109,6 @@ class AutoCompleteComponent < ViewComponent::Base
   #   CSS container class override; default: "col-lg-1 col-md-2 col-sm-2 my-1"
   #   (good for a very small field)
   #
-  # - <tt>:target4_dom_id</tt>:
-  #   DOM ID for the 4th optional target field; managed as above & totally optional: skipped when not set (default: null).
-  #   This 4th target is referred *only* by its DOM ID instead of its name because it's assumed to be
-  #   always placed (and rendered) outside of the current parent node (thus, accessible only via its ID).
-  #
-  # - <tt>:target4_column</tt>:
-  #   column or property name used to set the value of the 4th target field;
-  #   As above, totally optional: skipped when not set (default: null).
-  #
   # - <tt>:default_value</tt>:
   #   actual default value for the target field (typically '<base_name>_id'); defaults to +nil+
   #
@@ -126,8 +127,24 @@ class AutoCompleteComponent < ViewComponent::Base
   # - <tt>:jwt</tt>:
   #   current_user.jwt (assumes 'current_user' is currently logged-in and valid)
   #
+  # === Additional external targets (all optional):
+  #
+  #  All target fields 4..12 work similarly: using a DOM ID plus a column name which points to
+  #  the value from the detailed result of the selection from the drop-down field.
+  #
+  # - <tt>:target4_dom_id .. :target12_dom_id</tt>:
+  #   DOM ID for the Nth "external" target field;
+  #   managed as above & totally optional: skipped when not set (default: null).
+  #   The Nth "external" target is referred *only* by its DOM ID instead of its name because it's assumed to be
+  #   always placed (and rendered) outside of the current parent node (thus, accessible only via its ID).
+  #
+  # - <tt>:target4_column .. :target12_column</tt>:
+  #   column or property name used to set the value of the Nth "external" target field;
+  #   As above, totally optional: skipped when not set (default: null).
+  #
   def initialize(options = {})
     super
+    @show_top_labels = options[:show_top_labels] || false
     @base_dom_id = options[:base_dom_id] || 'grid-edit'
     @base_api_url = options[:base_api_url]
     @detail_endpoint = options[:detail_endpoint]
@@ -149,9 +166,25 @@ class AutoCompleteComponent < ViewComponent::Base
     @target3_column = options[:target3_column]
     @target3_class = options[:target3_class] || "col-lg-1 col-md-2 col-sm-2 my-1"
 
-    # The following is assumed to be external to the parent node, so no data attribute references are possible:
+    # External targets (no data attribute references are possible):
     @target4_dom_id = options[:target4_dom_id]
     @target4_column = options[:target4_column]
+    @target5_dom_id = options[:target5_dom_id]
+    @target5_column = options[:target5_column]
+    @target6_dom_id = options[:target6_dom_id]
+    @target6_column = options[:target6_column]
+    @target7_dom_id = options[:target7_dom_id]
+    @target7_column = options[:target7_column]
+    @target8_dom_id = options[:target8_dom_id]
+    @target8_column = options[:target8_column]
+    @target9_dom_id = options[:target9_dom_id]
+    @target9_column = options[:target9_column]
+    @target10_dom_id = options[:target10_dom_id]
+    @target10_column = options[:target10_column]
+    @target11_dom_id = options[:target11_dom_id]
+    @target11_column = options[:target11_column]
+    @target12_dom_id = options[:target12_dom_id]
+    @target12_column = options[:target12_column]
 
     @payload = options[:payload].present? ? options[:payload].to_json : nil
     @jwt = options[:jwt]

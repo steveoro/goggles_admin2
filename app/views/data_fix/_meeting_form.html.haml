@@ -1,14 +1,32 @@
-= form_for(meeting, url: data_fix_update_path(meeting, model: 'meeting'), method: :patch) do |f|
+:ruby
+  src_dom = '#meeting_search'
+  target_dom = '#meeting_meeting_id'
+  onchange_event = "$('#{target_dom}').val($('#{src_dom}').val()); $('#{target_dom}').trigger('change')"
+  meeting = meeting_entity.row
+
+= form_for(meeting, url: data_fix_update_path(meeting.attributes.merge(model: 'meeting')), method: :patch) do |f|
   = hidden_field_tag('file_path', file_path)
-  .container
+  .container{ data: { controller: 'coded-name',
+              'coded-name-result-type-value' => 'code',
+              'coded-name-jwt-value' => current_user.jwt } }
+    .form-group.row
+      .field.col-8.mt-1
+        = label_tag('meeting_search', 'fuzzy matches')
+        = select_tag('meeting_search', options_from_collection_for_select(meeting_entity.matches || [], 'id',
+                     'description', meeting.id), include_blank: true, class: 'form-control', onchange: onchange_event)
+      .field.col-auto.mt-1
+        = label_tag('meeting[meeting_id]', 'Meeting ID')
+        = number_field_tag('meeting[meeting_id]', meeting.id, class: 'form-control', placeholder: 'Meeting ID')
+
     .form-group.row
       .field.col-8.mt-1
         = f.label(:description, 'description')
         = f.text_field(:description, required: true, class: 'form-control',
-                        placeholder: 'Meeting description')
+                        placeholder: 'Meeting description', data: { 'coded-name-target' => 'desc' })
       .field.col-auto.mt-1
         = f.label(:code, 'code')
-        = f.text_field(:code, required: true, class: 'form-control', placeholder: 'Meeting code')
+        = f.text_field(:code, required: true, class: 'form-control', placeholder: 'Meeting code',
+                       data: { 'coded-name-target' => 'field' })
     .form-group.row
       .field.col-auto.mt-1
         = f.label(:season_id, 'season_id')
@@ -27,13 +45,20 @@
         = f.label(:edition, 'edition')
         = f.number_field(:edition, required: true, class: 'form-control', placeholder: 'edition number')
       .field.col-auto.mt-1
-        = f.label(:edition, 'edition_type')
+        = f.label(:edition_type, 'edition_type')
         = f.collection_select(:edition_type_id, GogglesDb::EditionType.all, :id, :long_label,
                               { prompt: true }, { required: true, class: 'custom-select' })
       .field.col-auto.mt-1
-        = f.label(:edition, 'timing_type')
+        = f.label(:timing_type, 'timing_type')
         = f.collection_select(:timing_type_id, GogglesDb::TimingType.all, :id, :long_label,
                               { prompt: true }, { required: true, class: 'custom-select' })
+      .col-auto.mt-1
+        .field.mt-1
+          = f.label(:cancelled, 'cancelled')
+          = f.check_box(:cancelled)
+        .field.mt-1
+          = f.label(:confirmed, 'confirmed')
+          = f.check_box(:confirmed, default: true)
     .form-group
       = f.submit(t('data_import.generic_save_btn'), id: 'btn-save-meeting', class: 'btn btn-primary',
                     'aria-label': 'Save', type: 'submit',

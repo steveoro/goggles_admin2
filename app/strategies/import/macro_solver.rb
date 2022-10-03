@@ -6,7 +6,7 @@ module Import
   #
   #   - version:  7-0.4.08
   #   - author:   Steve A.
-  #   - build:    20220919
+  #   - build:    20220927
   #
   # Scans the already-parsed Meeting results JSON object (which stores a whole set of results)
   # and finds existing & corresponding entity rows or creates (locally) any missing associated
@@ -242,8 +242,13 @@ module Import
       # Clear the lists:
       @data['team'] = {}
       @data['swimmer'] = {}
+      total = @data['sections'].count
+      idx = 0
 
       @data['sections'].each do |sect|
+        idx += 1
+        ActionCable.server.broadcast("ImportStatusChannel", msg: 'map_teams_and_swimmers', progress: idx, total: total)
+
         sect['rows'].each do |row|
           team_name = row['team']
           puts "\r\n\r\n*** TEAM '#{team_name}' ***" if @toggle_debug
@@ -294,6 +299,8 @@ module Import
       @data['meeting_event'] = {}
       @data['meeting_program'] = {}
       @data['meeting_individual_result'] = {}
+      total = @data['sections'].count
+      idx = 0
 
       meeting = cached_instance_of('meeting', nil)
       msession_idx = 0 # TODO: find a way to change session number (only in manifest?)
@@ -303,6 +310,9 @@ module Import
 
       # Map programs & events:
       programs = @data['sections'].each_with_index do |sect, sect_idx|
+        idx += 1
+        ActionCable.server.broadcast("ImportStatusChannel", msg: 'map_events_and_results', progress: idx, total: total)
+
         # (Example section 'title': "50 Stile Libero - M25")
         event_type, category_type = Parser::EventType.from_l2_result(sect['title'], @season)
         gender_type = select_gender_type(sect['fin_sesso'])
@@ -392,14 +402,15 @@ module Import
     #-- ------------------------------------------------------------------------
     #++
 
-    # Finds or prepares for creation a Meeting instance given its description.
+    # Finds or prepares for creation a Meeting instance (wrapped into an <tt>Import::Entity<tt>)
+    # given its description and its city name.
     #
     # == Params:
     # - <tt>description</tt> => Meeting description
     # - <tt>main_city_name</tt> => main city name of the Meeting
     #
     # == Returns:
-    # An Import::Entity wrapping the target row together with a list of all possible candidates,
+    # An <tt>Import::Entity<tt> wrapping the target row together with a list of all possible candidates,
     # when found.
     #
     # <tt>Import::Entity#matches<tt> is the array of possible row candidates sorted by
@@ -438,21 +449,28 @@ module Import
     # Finds or prepares for creation a City instance given its name included in a text address.
     #
     # == Params:
+    # - <tt>id</tt> => City ID, if already knew (shortcut a few queries)
     # - <tt>venue_address</tt> => a swimming_pool/venue address that includes the city name
     #
     # == Returns:
     # An Import::Entity wrapping the target row together with a list of all possible candidates,
     # when found. <tt>Import::Entity#matches<tt> is the array of possible row candidates, as above.
     #
-    def find_or_prepare_city(venue_address)
-      city_name, area_code, _remainder = Parser::CityName.tokenize_address(venue_address)
+    def find_or_prepare_city(id, venue_address)
+      # FINDER: -- City --
+      # 1. Existing:
+      existing_row = GogglesDb::City.find_by(id: id) if id.to_i.positive?
+      return Import::Entity.new(row: existing_row) if existing_row.present?
 
+      # 2. Smart search #1:
+      city_name, area_code, _remainder = Parser::CityName.tokenize_address(venue_address)
       cmd = GogglesDb::CmdFindDbEntity.call(GogglesDb::City, { name: city_name, toggle_debug: @toggle_debug == 2 })
       if cmd.successful?
         matches = cmd.matches.map(&:candidate) if cmd.matches.respond_to?(:map)
         return Import::Entity.new(row: cmd.result, matches: matches)
       end
 
+      # 3. Smart search #2 || New row:
       # Try to find a match using the internal ISOCity database first:
       country = ISO3166::Country.new('IT')
       cmd = GogglesDb::CmdFindIsoCity.call(country, city_name)
@@ -477,6 +495,7 @@ module Import
     # Finds or prepares for creation a SwimmingPool instance given the parameters.
     #
     # == Params:
+    # - <tt>id</tt> => swimming pool ID, if already knew (shortcut a few queries)
     # - <tt>pool_name</tt> => swimming pool name
     # - <tt>address</tt> => swimming pool address
     # - <tt>pool_length</tt> => swimming pool length in meters, as a string
@@ -492,26 +511,37 @@ module Import
     # - <tt>#matches<tt> => Array of possible or alternative row candidates, including the first/best;
     # - <tt>#bindings<tt> => Hash of associations needed especially when the association row is new.
     #
-    def find_or_prepare_pool(pool_name, address, pool_length, lanes_number = '8', phone_number = nil)
+    def find_or_prepare_pool(id, pool_name, address, pool_length, lanes_number = '8', phone_number = nil)
+      # Already existing & found?
+      existing_row = GogglesDb::SwimmingPool.find_by(id: id) if id.to_i.positive?
+
+      # FINDER: -- City --
+      city_key_name, area_code, remainder_address = Parser::CityName.tokenize_address(address)
+      city_entity = find_or_prepare_city(existing_row&.city_id, address)
+      # Always store in cache the sub-entity found:
+      # (this is currently the only place where we may cache the City entity found; 'team' doesn't do this - yet)
+      add_entity_with_key('city', city_key_name, city_entity) # if (cmd.successful? && cmd.result.city_id.to_i.zero?) || !cmd.successful?
+
+      # FINDER: -- Pool --
+      # 1. Existing:
+      bindings = { 'city' => city_key_name }
+      return Import::Entity.new(row: existing_row, bindings: bindings) if existing_row.present?
+
+      # 2. Smart search:
       pool_type = GogglesDb::PoolType.mt_25 # Default type
       pool_type = GogglesDb::PoolType.mt_50 if (pool_length =~ /50/i)
-      # Parse nick_name using pool name + address:
-      city_key_name, area_code, remainder_address = Parser::CityName.tokenize_address(address)
-      city_entity = find_or_prepare_city(address)
-      bindings = { 'city' => city_key_name }
-      best_city_name = city_entity.row&.name || city_key_name
-
       cmd = GogglesDb::CmdFindDbEntity.call(GogglesDb::SwimmingPool, { name: pool_name, pool_type_id: pool_type.id })
-      # Store the required bindings when the association isn't set or the search command fails (possible row creation):
-      add_entity_with_key('city', city_key_name, city_entity) if (cmd.successful? && cmd.result.city_id.to_i.zero?) || !cmd.successful?
-
       if cmd.successful?
-        # Set also the city_id to the found row, if the city row has ID and is not set on the found pool:
+        # Force-set the pool city_id to the one on the City entity found (only if the city row has indeed an ID and that's still
+        # unset on the pool just found:
         cmd.result.city_id = city_entity.row&.id if cmd.result.city_id.to_i.zero? && city_entity.row&.id.to_i.positive?
         matches = cmd.matches.map(&:candidate) if cmd.matches.respond_to?(:map)
         return Import::Entity.new(row: cmd.result, matches: matches, bindings: bindings)
       end
 
+      # 3. New row:
+      # Parse nick_name using pool name + address:
+      best_city_name = city_entity.row&.name || city_key_name
       nick_name = GogglesDb::Normalizers::CodedName.for_pool(pool_name, best_city_name, pool_type.code)
       new_row = GogglesDb::SwimmingPool.new(
         city_id: city_entity.row&.id,
@@ -549,24 +579,25 @@ module Import
     #
     def find_or_prepare_session(meeting:, date_day:, date_month:, date_year:, pool_name:, address:,
                                 session_order: 1, pool_length: '25', day_part_type: GogglesDb::DayPartType.morning)
+      # 1. Find existing:
       iso_date = Parser::SessionDate.from_l2_result(date_day, date_month, date_year)
       domain = GogglesDb::MeetingSession.where(
                                           meeting_id: meeting&.id, scheduled_date: iso_date,
                                           session_order: session_order
                                         )
-      pool_entity = find_or_prepare_pool(pool_name, address, pool_length)
+      pool_entity = find_or_prepare_pool(domain.first&.swimming_pool_id, pool_name, address, pool_length)
+      # Always store in cache the sub-entity found:
+      add_entity_with_key('swimming_pool', pool_name, pool_entity)
       bindings = { 'meeting' => meeting.description, 'swimming_pool' => pool_name }
 
-      # Store the required bindings when the association isn't set or the search command fails (possible row creation):
-      add_entity_with_key('swimming_pool', pool_name, pool_entity) if (domain.present? && domain.first.swimming_pool_id.to_i.zero?) || domain.empty?
-
-      if domain.present?
-        # Set also the association id in the found row, if the association row has ID and is not set on the found row:
+      # Force-set the association id in the main row found, only if the sub-entity has an ID and is not set on the main row:
+      if domain.present? # (then we're almost done)
         domain.first.swimming_pool_id = pool_entity.row&.id if domain.first.swimming_pool_id.to_i.zero? &&
                                                                pool_entity.row&.id.to_i.positive?
         return Import::Entity.new(row: domain.first, matches: domain.to_a, bindings: bindings)
       end
 
+      # 2. New row:
       new_row = GogglesDb::MeetingSession.new(
         meeting_id: meeting&.id,
         swimming_pool: pool_entity.row,
@@ -842,10 +873,14 @@ module Import
       return nil unless entity_present?(model_name, key_name_or_index)
 
       if model_name == 'meeting'
+        return {} if value_method == 'bindings' # Meetings don't have bindings
+
         cached_entity = @data&.fetch(model_name, nil)
-        return cached_entity if cached_entity.is_a?(GogglesDb::Meeting) # already a row model
-        return cached_entity.send(value_method) if cached_entity.respond_to?(value_method) # kinda Import::Entity
-        # No bindings or matches for meetings, so if it's an Hash, we return a new Model, as expected:
+        return cached_entity if cached_entity.is_a?(GogglesDb::Meeting) # already a row model => can't retrieve anything else
+        return cached_entity.send(value_method) if cached_entity.respond_to?(value_method) # kinda Import::Entity (must use send)
+        return cached_entity.fetch(value_method, []) if cached_entity.is_a?(Hash) && value_method != 'row' # i.e.: 'matches'
+
+        # For anything else, we return a new Model:
         return GogglesDb::Meeting.new(
           self.class.actual_attributes_for(cached_entity&.fetch(value_method, nil), 'meeting')
         )
@@ -881,8 +916,11 @@ module Import
     #
     def rebuild_cached_entities_for(model_name)
       if model_name == 'meeting'                  # plain Import::Entity(Meeting)
-        row_model = cached_instance_of(model_name, nil)
-        return Import::Entity.new(row: row_model) # Ignore matches and bindings
+        return @data['meeting'] if @data['meeting'].is_a?(Import::Entity)
+
+        # Convert all meeting matches from the fuzzy search into proper Model results:
+        row_model, row_matches, row_bindings = prepare_model_matches_and_bindings_for('meeting', @data['meeting']['matches'], nil)
+        return Import::Entity.new(row: row_model, matches: row_matches) # Ignore bindings
       end
 
       cached_data = @data&.fetch(model_name, nil)
@@ -890,7 +928,7 @@ module Import
         result = []
         # Rebuild the result structure:
         cached_data.each_with_index do |item, index|
-          row_model, row_matches, row_bindings = prepare_model_matches_and_bindings_for(model_name, item, index)
+          row_model, row_matches, row_bindings = prepare_model_matches_and_bindings_for('meeting_session', item, index)
           result[index] = Import::Entity.new(row: row_model, matches: row_matches, bindings: row_bindings)
         end
         # Overwrite existing with newly rebuilt:
@@ -906,8 +944,6 @@ module Import
 
       @data[model_name]
     end
-
-    private
 
     # Checks for the presence of a entity instance for a corresponding key inside a specific model_name "cache"
     # @data Hash.
@@ -941,7 +977,8 @@ module Import
       @data[model_name][key_name] = entity_value
     end
 
-    # Extracts or rebuilds the model, matches and bindings for a specific cached entity model, given its key.
+    # Extracts and somehow "normalizes"/rebuilds the model, matches and bindings for a specific cached entity model,
+    # given its key.
     #
     # == Example:
     #   > prepare_model_matches_and_bindings_for('team', team_hash, key_name_or_index)
@@ -951,6 +988,7 @@ module Import
     #                        (i.e.: 'meeting_session' for MeetingSession)
     #
     # - <tt>entity_or_hash</tt>: the cached Import::Entity for the specified (model, key) tuple.
+    #                            It can also be an already converted Array of AR Models (the actual search items list).
     #
     # - <tt>key_name_or_index</tt>: access key (or index, for MeetingSessions) for the cached entity row;
     #                               ignored if the model is 'meeting' (there's only 1)
@@ -975,40 +1013,13 @@ module Import
                         entity_or_hash.matches
                       elsif entity_or_hash.is_a?(Hash)
                         entity_or_hash.fetch('matches', nil)
+                      elsif entity_or_hash.is_a?(Array) # ASSUMES: it's already an Array of AR models
+                        entity_or_hash
                       else
                         nil
                       end
       row_matches = orig_matches&.map do |search_item|
-        search_model = if search_item.is_a?(Hash) && search_item.key?('table') && search_item['table'].key?('candidate')
-                         # Hash from already serialized Import::Entity search result (Hash['candidate'])
-                         self.class.model_class_for(model_name).new(
-                           self.class.actual_attributes_for(search_item['table']['candidate'], model_name)
-                         )
-
-                       elsif search_item.respond_to?(:candidate)
-                         # original OpenStruct result (unserialized yet)
-                         search_item.candidate
-
-                       elsif search_item.is_a?(Hash)
-                         # single Hash in Array (plain model already serialized):
-                         self.class.model_class_for(model_name).new(
-                           self.class.actual_attributes_for(search_item, model_name)
-                         )
-
-                       elsif search_item.is_a?(ActiveRecord::Base)
-                         # plain Model in Array (no fuzzy search):
-                         self.class.model_class_for(model_name).new(
-                           self.class.actual_attributes_for(search_item.attributes, model_name)
-                         )
-
-                       elsif search_item.is_a?(Import::Entity) && search_item.respond_to?(:row)
-                         # => ASSERT: UNEXPECTED OBJECT HERE (Import::Entity instance instead of Array[Hash] or [Hash])
-                         # => RAISE ERROR & INSPECT search_item, which should be either be one of the 2 above
-                         # raise "Unexpected Import::Entity after data_hash reconstruction! Possible data corruption!"
-                         search_item.row
-                       end
-        # Map the decorated search item, but only for certain models:
-        %w[team swimmer city].include?(model_name) ? search_model.decorate : search_model
+        convert_search_item_to_model_for(model_name, row_model, search_item)
       end
 
       row_bindings = if entity_or_hash.respond_to?(:bindings)
@@ -1021,7 +1032,76 @@ module Import
 
       [row_model, row_matches, row_bindings]
     end
+    #-- -----------------------------------------------------------------------
+    #++
+
+    # Converts miscellaneous types of <tt>search_item</tt>s to a simple ActiveRecord Model
+    # instance containing the same values as the original search item.
+    #
+    # === Reason:
+    # Given the various types of query/fuzzy search results, any <tt>search_item</tt> can be an
+    # Hash or any other resulting class from the finder strategies.
+    # These are in turn serialized to JSON, so most of the times we'll deal with Hash results but with
+    # varying columns and sub-hash structures, depeding at which stage this method is called.
+    # (NOTE TO SELF: this is just a quick attempt at cleaning up and smoothe old code which aged pretty quickly
+    #  due to unforeseen issues and surely needs a more profound refactoring in future)
+    #
+    # == Params:
+    # - <tt>model_name</tt>: the snail-case string name of the model, with the implied GogglesDb namespace.
+    #                        (i.e.: 'meeting_session' for MeetingSession)
+    #
+    # - <tt>row_model</tt>: "source" instance belonging to the above model
+    #
+    # - <tt>search_item</tt>: a matching search result, typically an Hash of attributes, to be converted
+    #                         into the destination <tt>model_name</tt>.
+    #                         It may also be an OpenStruct, an Import::Entity or a plain AR Model.
+    #
+    # == Returns:
+    # A <tt>model_name</tt> instance having a the <tt>search_item</tt> values as column attributes.
+    # May return the <tt>row_model</tt> only in peculiar cases.
+    # (As of this writing, only if the search item is a Cities::City that needs to be converted to a GogglesDb::City.)
+    #
+    def convert_search_item_to_model_for(model_name, row_model, search_item)
+      search_model = if search_item.is_a?(Hash) && search_item.key?('table') && search_item['table'].key?('candidate')
+                        # Hash from already serialized Import::Entity search result (Hash['candidate'])
+                        self.class.model_class_for(model_name).new(
+                          self.class.actual_attributes_for(search_item['table']['candidate'], model_name)
+                        )
+
+                      elsif search_item.respond_to?(:candidate)
+                        # original OpenStruct result (unserialized yet)
+                        search_item.candidate
+
+                      elsif search_item.is_a?(Hash)
+                        # single Hash in Array (plain model already serialized):
+                        self.class.model_class_for(model_name).new(
+                          self.class.actual_attributes_for(search_item, model_name)
+                        )
+
+                      elsif search_item.is_a?(ActiveRecord::Base)
+                        # plain Model in Array (no fuzzy search):
+                        self.class.model_class_for(model_name).new(
+                          self.class.actual_attributes_for(search_item.attributes, model_name)
+                        )
+
+                      elsif search_item.is_a?(Import::Entity) && search_item.respond_to?(:row)
+                        # => ASSERT: UNEXPECTED OBJECT HERE (Import::Entity instance instead of Array[Hash] or [Hash])
+                        # => RAISE ERROR & INSPECT search_item, which should be either be one of the 2 above
+                        # raise "Unexpected Import::Entity after data_hash reconstruction! Possible data corruption!"
+                        search_item.row
+
+                      elsif search_item.is_a?(Cities::City) && row_model.is_a?(GogglesDb::City)
+                      # No search alternatives, just a Cities::City returned from CmdFindIsoCity, so we may as well as return
+                      # the row_model here as single match:
+                      row_model
+                    end
+
+      # Return the decorated search model instance, but only for certain model names:
+      %w[team swimmer city].include?(model_name) ? search_model.decorate : search_model
+    end
+    #-- -----------------------------------------------------------------------
+    #++
   end
-  #-- ---------------------------------------------------------------------------
+  #-- -------------------------------------------------------------------------
   #++
 end
