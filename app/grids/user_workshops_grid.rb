@@ -23,7 +23,7 @@ class UserWorkshopsGrid < BaseGrid
   column(:header_date, mandatory: true, order: :header_date)
   column(
     :season_type_name, header: 'Season', align: :left, html: true, mandatory: true,
-    order: proc { |scope| scope.sort { |a, b| a.season_type.code <=> b.season_type.code } }
+                       order: proc { |scope| scope.sort { |a, b| a.season_type.code <=> b.season_type.code } }
   ) do |asset|
     "<small><i>#{asset.season_type.code}</i></small> - #{asset.season.id}".html_safe
   end
@@ -31,7 +31,7 @@ class UserWorkshopsGrid < BaseGrid
   boolean_column(:confirmed, align: :center, mandatory: true, order: false)
   column(
     :team_name, header: 'Team', html: true, mandatory: true,
-    order: proc { |scope| scope.sort { |a, b| a.team.name <=> b.team.name } }
+                order: proc { |scope| scope.sort { |a, b| a.team.name <=> b.team.name } }
   ) do |asset|
     "<small>#{asset.team.name}</small>".html_safe
   end

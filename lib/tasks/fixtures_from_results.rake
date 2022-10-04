@@ -25,11 +25,11 @@ namespace :fixtures do
     puts "\r\n*** Extract Fixture files from JSON result files ***"
 
     season_id = ENV.include?('season') ? ENV['season'].to_i : 212
-    puts("==> WARNING: unsupported season ID! Season 172 and prior are still WIP due to different layout.") unless [182, 192, 202, 212].include?(season_id)
+    puts('==> WARNING: unsupported season ID! Season 172 and prior are still WIP due to different layout.') unless [182, 192, 202, 212].include?(season_id)
 
     limit = ENV.include?('limit') ? ENV['limit'].to_i : -1
     files = Dir.glob(Rails.root.join("crawler/data/results.new/#{season_id}/*.json")).sort
-    puts "--> Found #{files.count} files#{ limit >= 0 ? ". Limit: #{limit}" : ''}. Processing..."
+    puts "--> Found #{files.count} files#{limit >= 0 ? ". Limit: #{limit}" : ''}. Processing..."
     puts "\r\n"
 
     descriptions = []
@@ -49,33 +49,33 @@ namespace :fixtures do
       $stdout.write("\033[1;33;37mp\033[0m")
       data = JSON.parse(json)
 
-      descriptions << data['name'] if data['name'].present? && !descriptions.include?(data['name'])
+      descriptions << data['name'] if data['name'].present? && descriptions.exclude?(data['name'])
       $stdout.write("\033[1;33;32m.\033[0m")
 
-      venues << data['venue1'] if data['venue1'].present? && !venues.include?(data['venue1'])
-      venues << data['venue2'] if data['venue2'].present? && !venues.include?(data['venue2'])
+      venues << data['venue1'] if data['venue1'].present? && venues.exclude?(data['venue1'])
+      venues << data['venue2'] if data['venue2'].present? && venues.exclude?(data['venue2'])
       $stdout.write("\033[1;33;32m.\033[0m")
 
-      addresses << data['address1'] if data['address1'].present? && !addresses.include?(data['address1'])
-      addresses << data['address2'] if data['address2'].present? && !addresses.include?(data['address2'])
+      addresses << data['address1'] if data['address1'].present? && addresses.exclude?(data['address1'])
+      addresses << data['address2'] if data['address2'].present? && addresses.exclude?(data['address2'])
       $stdout.write("\033[1;33;32m.\033[0m")
 
       organizations << data['organization'] if data['organization'].present? &&
-                                               !organizations.include?(data['organization'])
+                                               organizations.exclude?(data['organization'])
       $stdout.write("\033[1;33;32m.\033[0m")
 
       registrations << data['registration'] if data['registration'].present? &&
-                                               !registrations.include?(data['registration'])
+                                               registrations.exclude?(data['registration'])
       $stdout.write("\033[1;33;32m.\033[0m")
 
       # Sub-loop:
-      if data['sections'].present?
-        data['sections'].each do |section|
-          event_titles << section['title'] if section['title'].present?
-          if section['rows'].present?
-            swimmer_names << section['rows'].map { |row| row['name'] if row['name'].present? }.compact
-            team_names << section['rows'].map { |row| row['team'] if row['team'].present? }.compact
-          end
+      next if data['sections'].blank?
+
+      data['sections'].each do |section|
+        event_titles << section['title'] if section['title'].present?
+        if section['rows'].present?
+          swimmer_names << section['rows'].map { |row| row['name'].presence }.compact
+          team_names << section['rows'].map { |row| row['team'].presence }.compact
         end
       end
     end

@@ -160,11 +160,11 @@ class AutoCompleteComponent < ViewComponent::Base
 
     @target2_field = options[:target2_field]
     @target2_column = options[:target2_column]
-    @target2_class = options[:target2_class] || "offset-lg-1 col-lg-5 col-md-10 col-sm-10 my-1"
+    @target2_class = options[:target2_class] || 'offset-lg-1 col-lg-5 col-md-10 col-sm-10 my-1'
     @target3_field = options[:target3_field]
     @target3_dom_id = options[:target3_dom_id]
     @target3_column = options[:target3_column]
-    @target3_class = options[:target3_class] || "col-lg-1 col-md-2 col-sm-2 my-1"
+    @target3_class = options[:target3_class] || 'col-lg-1 col-md-2 col-sm-2 my-1'
 
     # External targets (no data attribute references are possible):
     @target4_dom_id = options[:target4_dom_id]

@@ -11,8 +11,7 @@ class SeasonsGrid < BaseGrid
 
   filter(:season_type_id,
          :enum, header: 'SeasonType',
-         select: proc { GogglesDb::SeasonType.all.map {|c| [c.code, c.id] }}
-        ) { |_value, scope| scope }
+                select: proc { GogglesDb::SeasonType.all.map { |c| [c.code, c.id] } }) { |_value, scope| scope }
   filter(:header_year)
   filter(:begin_date, :date)
   filter(:end_date, :date)
@@ -24,7 +23,7 @@ class SeasonsGrid < BaseGrid
   column(:season_type_id, align: :right, mandatory: true)
   column(
     :season_type_name, header: 'Name', html: true, mandatory: true,
-    order: proc { |scope| scope.sort { |a, b| a.season_type.short_name <=> b.season_type.short_name } }
+                       order: proc { |scope| scope.sort { |a, b| a.season_type.short_name <=> b.season_type.short_name } }
   ) do |asset|
     "<small><i>#{asset.season_type.short_name}</i></small>".html_safe
   end

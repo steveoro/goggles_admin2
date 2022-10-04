@@ -4,9 +4,9 @@ module Import
   #
   # = MacroSolver
   #
-  #   - version:  7-0.4.08
+  #   - version:  7-0.4.10
   #   - author:   Steve A.
-  #   - build:    20220927
+  #   - build:    20221004
   #
   # Scans the already-parsed Meeting results JSON object (which stores a whole set of results)
   # and finds existing & corresponding entity rows or creates (locally) any missing associated
@@ -34,7 +34,7 @@ module Import
     #
     def initialize(season_id:, data_hash:, toggle_debug: false)
       raise(ArgumentError, 'Invalid season_id') unless GogglesDb::Season.exists?(season_id)
-      raise(ArgumentError, 'Invalid or unknown data_hash type') unless data_hash.is_a?(Hash) && data_hash.has_key?('layoutType')
+      raise(ArgumentError, 'Invalid or unknown data_hash type') unless data_hash.is_a?(Hash) && data_hash.key?('layoutType')
 
       @season = GogglesDb::Season.find(season_id)
       @data = data_hash || {}
@@ -82,7 +82,7 @@ module Import
       return {} unless unfiltered_hash.respond_to?(:reject)
 
       valid_column_keys = model_attribute_names_for(model_name)
-      unfiltered_hash.reject { |key, _v| !valid_column_keys.include?(key) }
+      unfiltered_hash.select { |key, _v| valid_column_keys.include?(key) }
     end
     #-- -------------------------------------------------------------------------
     #++
@@ -105,7 +105,7 @@ module Import
     #++
 
     # Returns the GogglesDb::Season specified with the constructor.
-    def season; @season; end
+    attr_accessor :season
 
     # Returns the whole internal data hash, "as is".
     #
@@ -173,7 +173,7 @@ module Import
     # - 'meeting_relay_result' => *Hash*, Import::Entity rows; wraps the corresponding entity;
     #                             will reference: 'meeting_program' => by coded name);
     #
-    def data; @data; end
+    attr_accessor :data
     #-- ------------------------------------------------------------------------
     #++
 
@@ -206,22 +206,22 @@ module Import
       )
       session1.add_bindings!('meeting' => @data['name'])
       # Set the meeting official date to the one from the first session if the meeting is new:
-      @data['meeting'].row.header_date = session1.row.scheduled_date unless @data['meeting'].row.header_date.present?
+      @data['meeting'].row.header_date = session1.row.scheduled_date if @data['meeting'].row.header_date.blank?
 
       # Prepare a second session if additional dates are given:
       session2 = if @data['dateDay2'].present? && @data['dateMonth2'].present? && @data['dateYear2'].present?
-        find_or_prepare_session(
-          meeting: @data['meeting'].row,
-          date_day: @data['dateDay2'],
-          date_month: @data['dateMonth2'],
-          date_year: @data['dateYear2'],
-          pool_name: @data['venue2'].present? ? @data['venue2'] : @data['venue1'],
-          address: @data['address2'].present? ? @data['address2'] : @data['address1'],
-          session_order: 2,
-          pool_length: @data['poolLength']
-          # day_part_type_id: 1 (currently no data for this)
-        )
-      end
+                   find_or_prepare_session(
+                     meeting: @data['meeting'].row,
+                     date_day: @data['dateDay2'],
+                     date_month: @data['dateMonth2'],
+                     date_year: @data['dateYear2'],
+                     pool_name: @data['venue2'].presence || @data['venue1'],
+                     address: @data['address2'].presence || @data['address1'],
+                     session_order: 2,
+                     pool_length: @data['poolLength']
+                     # day_part_type_id: 1 (currently no data for this)
+                   )
+                 end
       session2&.add_bindings!('meeting' => @data['name'])
       # Return just an Array with all the defined sessions in it:
       @data['meeting_session'] = [session1, session2]
@@ -247,7 +247,7 @@ module Import
 
       @data['sections'].each do |sect|
         idx += 1
-        ActionCable.server.broadcast("ImportStatusChannel", msg: 'map_teams_and_swimmers', progress: idx, total: total)
+        ActionCable.server.broadcast('ImportStatusChannel', msg: 'map_teams_and_swimmers', progress: idx, total: total)
 
         sect['rows'].each do |row|
           team_name = row['team']
@@ -266,14 +266,13 @@ module Import
 
           swimmer_name = row['name']
           puts "\r\n=== SWIMMER '#{swimmer_name}' ===" if @toggle_debug
-          unless entity_present?('swimmer', swimmer_name)
-            puts "    ------> '#{swimmer_name}' (+)" if @toggle_debug
-            swimmer_entity = find_or_prepare_swimmer(swimmer_name, row['year'], row['sex'])
-            # Special disambiguation reference (in case of same-named swimmers with same age):
-            swimmer_entity.add_bindings!('team' => team_name)
-            # Store the required bindings at root level in the data_hash:
-            add_entity_with_key('swimmer', swimmer_name, swimmer_entity)
-          end
+          next if entity_present?('swimmer', swimmer_name)
+          puts "    ------> '#{swimmer_name}' (+)" if @toggle_debug
+          swimmer_entity = find_or_prepare_swimmer(swimmer_name, row['year'], row['sex'])
+          # Special disambiguation reference (in case of same-named swimmers with same age):
+          swimmer_entity.add_bindings!('team' => team_name)
+          # Store the required bindings at root level in the data_hash:
+          add_entity_with_key('swimmer', swimmer_name, swimmer_entity)
         end
       end
     end
@@ -311,7 +310,7 @@ module Import
       # Map programs & events:
       programs = @data['sections'].each_with_index do |sect, sect_idx|
         idx += 1
-        ActionCable.server.broadcast("ImportStatusChannel", msg: 'map_events_and_results', progress: idx, total: total)
+        ActionCable.server.broadcast('ImportStatusChannel', msg: 'map_events_and_results', progress: idx, total: total)
 
         # (Example section 'title': "50 Stile Libero - M25")
         event_type, category_type = Parser::EventType.from_l2_result(sect['title'], @season)
@@ -369,9 +368,9 @@ module Import
           # Find or prepare badge for the swimmer:
           unless entity_present?('badge', swimmer_name)
             badge_entity = find_or_prepare_badge(
-                            swimmer: swimmer, swimmer_key: swimmer_name, team: team, team_key: team_name,
-                            team_affiliation: team_affiliation, category_type: category_type
-                           )
+              swimmer: swimmer, swimmer_key: swimmer_name, team: team, team_key: team_name,
+              team_affiliation: team_affiliation, category_type: category_type
+                          )
             add_entity_with_key('badge', swimmer_name, badge_entity)
           end
           badge = cached_instance_of('badge', swimmer_name)
@@ -384,18 +383,17 @@ module Import
           # TODO/FUTUREDEV: add lap timings when present (currently: no data available)
 
           mir_key = "#{program_key}/#{swimmer_name}"
-          unless entity_present?('meeting_individual_result', mir_key)
-            score = Parser::Score.from_l2_result(row['score'])
-            timing = Parser::Timing.from_l2_result(row['timing'])
-            rank = row['pos'].to_i
-            mir_entity = find_or_prepare_mir(
-              meeting_program: meeting_program, mprogram_key: program_key,
-              swimmer: swimmer, swimmer_key: swimmer_name, team: team, team_key: team_name,
-              team_affiliation: team_affiliation, badge: badge,
-              rank: rank, timing: timing, score: score
-            )
-            add_entity_with_key('meeting_individual_result', mir_key, mir_entity)
-          end
+          next if entity_present?('meeting_individual_result', mir_key)
+          score = Parser::Score.from_l2_result(row['score'])
+          timing = Parser::Timing.from_l2_result(row['timing'])
+          rank = row['pos'].to_i
+          mir_entity = find_or_prepare_mir(
+            meeting_program: meeting_program, mprogram_key: program_key,
+            swimmer: swimmer, swimmer_key: swimmer_name, team: team, team_key: team_name,
+            team_affiliation: team_affiliation, badge: badge,
+            rank: rank, timing: timing, score: score
+          )
+          add_entity_with_key('meeting_individual_result', mir_key, mir_entity)
         end
       end
     end
@@ -487,7 +485,7 @@ module Import
                   # Use an educated guess:
                   GogglesDb::City.new(name: city_name, area: area_code, country_code: 'IT', country: 'Italia')
                 end
-      # Note: cmd.matches will report either the empty matches if no match was found, or the list of candidates otherwise.
+      # NOTE: cmd.matches will report either the empty matches if no match was found, or the list of candidates otherwise.
       matches = cmd.matches.map(&:candidate) if cmd.matches.respond_to?(:map)
       Import::Entity.new(row: new_row, matches: matches)
     end
@@ -520,7 +518,7 @@ module Import
       city_entity = find_or_prepare_city(existing_row&.city_id, address)
       # Always store in cache the sub-entity found:
       # (this is currently the only place where we may cache the City entity found; 'team' doesn't do this - yet)
-      add_entity_with_key('city', city_key_name, city_entity) # if (cmd.successful? && cmd.result.city_id.to_i.zero?) || !cmd.successful?
+      add_entity_with_key('city', city_key_name, city_entity)
 
       # FINDER: -- Pool --
       # 1. Existing:
@@ -529,7 +527,7 @@ module Import
 
       # 2. Smart search:
       pool_type = GogglesDb::PoolType.mt_25 # Default type
-      pool_type = GogglesDb::PoolType.mt_50 if (pool_length =~ /50/i)
+      pool_type = GogglesDb::PoolType.mt_50 if pool_length =~ /50/i
       cmd = GogglesDb::CmdFindDbEntity.call(GogglesDb::SwimmingPool, { name: pool_name, pool_type_id: pool_type.id })
       if cmd.successful?
         # Force-set the pool city_id to the one on the City entity found (only if the city row has indeed an ID and that's still
@@ -582,8 +580,8 @@ module Import
       # 1. Find existing:
       iso_date = Parser::SessionDate.from_l2_result(date_day, date_month, date_year)
       domain = GogglesDb::MeetingSession.where(
-                                          meeting_id: meeting&.id, scheduled_date: iso_date,
-                                          session_order: session_order
+        meeting_id: meeting&.id, scheduled_date: iso_date,
+        session_order: session_order
                                         )
       pool_entity = find_or_prepare_pool(domain.first&.swimming_pool_id, pool_name, address, pool_length)
       # Always store in cache the sub-entity found:
@@ -625,8 +623,8 @@ module Import
     def find_or_prepare_mevent(meeting_session:, session_index:, event_type:, event_order:, heat_type: GogglesDb::HeatType.finals)
       bindings = { 'meeting_session' => session_index }
       domain = GogglesDb::MeetingEvent.where(
-                                        meeting_session_id: meeting_session&.id, event_type_id: event_type.id,
-                                        event_order: event_order
+        meeting_session_id: meeting_session&.id, event_type_id: event_type.id,
+        event_order: event_order
                                       )
       return Import::Entity.new(row: domain.first, matches: domain.to_a, bindings: bindings) if domain.present?
 
@@ -653,8 +651,8 @@ module Import
     def find_or_prepare_mprogram(meeting_event:, event_key:, pool_type:, category_type:, gender_type:, event_order:)
       bindings = { 'meeting_event' => event_key }
       domain = GogglesDb::MeetingProgram.where(
-                                          meeting_event_id: meeting_event&.id, pool_type_id: pool_type.id,
-                                          category_type_id: category_type.id, gender_type_id: gender_type.id
+        meeting_event_id: meeting_event&.id, pool_type_id: pool_type.id,
+        category_type_id: category_type.id, gender_type_id: gender_type.id
                                         )
       return Import::Entity.new(row: domain.first, matches: domain.to_a, bindings: bindings) if domain.present?
 
@@ -709,8 +707,8 @@ module Import
     # == Returns:
     # A "direct" GogglesDb::GenderType instance (*not* an Import::Entity wrapper).
     def select_gender_type(sex_code)
-      return GogglesDb::GenderType.female if (sex_code =~ /f/i)
-      return GogglesDb::GenderType.male if (sex_code =~ /m/i)
+      return GogglesDb::GenderType.female if sex_code =~ /f/i
+      return GogglesDb::GenderType.male if sex_code =~ /m/i
 
       GogglesDb::GenderType.intermixed
     end
@@ -739,17 +737,26 @@ module Import
       end
 
       tokens = swimmer_name.split # ASSUMES: family name(s) first, given name(s) last
-      last_name, first_name = tokens.first, tokens.last if tokens.size == 2
-      last_name, first_name = tokens.first, tokens[1..2].join(' ') if tokens.size == 3 # ASSUMES: double name more common than double surname
-      last_name, first_name = tokens[0..1].join(' '), tokens[2..-1].join(' ') if tokens.size > 3
+      if tokens.size == 2
+        last_name = tokens.first
+        first_name = tokens.last
+      end
+      if tokens.size == 3
+        last_name = tokens.first
+        first_name = tokens[1..2].join(' ')
+      end # ASSUMES: double name more common than double surname
+      if tokens.size > 3
+        last_name = tokens[0..1].join(' ')
+        first_name = tokens[2..-1].join(' ')
+      end
       new_row = GogglesDb::Swimmer.new(
-          complete_name: swimmer_name,
-          first_name: first_name,
-          last_name: last_name,
-          year_of_birth: year_of_birth,
-          gender_type_id: gender_type.id,
-          year_guessed: year_of_birth.nil? || year_of_birth.zero?
-      )
+        complete_name: swimmer_name,
+        first_name: first_name,
+        last_name: last_name,
+        year_of_birth: year_of_birth,
+        gender_type_id: gender_type.id,
+        year_guessed: year_of_birth.to_i.zero?
+        )
       Import::Entity.new(row: new_row, matches: [new_row])
     end
 
@@ -820,8 +827,8 @@ module Import
         'team_affiliation' => team_key, 'team' => team_key
       }
       domain = GogglesDb::MeetingIndividualResult.where(
-                                                    meeting_program_id: meeting_program&.id,
-                                                    team_id: team&.id, swimmer_id: swimmer&.id
+        meeting_program_id: meeting_program&.id,
+        team_id: team&.id, swimmer_id: swimmer&.id
                                                   )
       return Import::Entity.new(row: domain.first, matches: domain.to_a, bindings: bindings) if domain.present?
 
@@ -873,29 +880,24 @@ module Import
       return nil unless entity_present?(model_name, key_name_or_index)
 
       if model_name == 'meeting'
-        return {} if value_method == 'bindings' # Meetings don't have bindings
+        return {} if value_method == 'bindings' # Meetings don't have bindings: we're done here
 
         cached_entity = @data&.fetch(model_name, nil)
-        return cached_entity if cached_entity.is_a?(GogglesDb::Meeting) # already a row model => can't retrieve anything else
-        return cached_entity.send(value_method) if cached_entity.respond_to?(value_method) # kinda Import::Entity (must use send)
-        return cached_entity.fetch(value_method, []) if cached_entity.is_a?(Hash) && value_method != 'row' # i.e.: 'matches'
-
-        # For anything else, we return a new Model:
-        return GogglesDb::Meeting.new(
-          self.class.actual_attributes_for(cached_entity&.fetch(value_method, nil), 'meeting')
-        )
+      else
+        cached_entity = @data&.fetch(model_name, nil)&.fetch(key_name_or_index, nil)
       end
 
-      cached_entity = @data&.fetch(model_name, nil)&.fetch(key_name_or_index, nil)
       return cached_entity if cached_entity.is_a?(ActiveRecord::Base) # already a row model
       return cached_entity.send(value_method) if cached_entity.respond_to?(value_method) # kinda Import::Entity
-      return nil unless cached_entity.respond_to?(value_method) || cached_entity.is_a?(Hash) # Hash but no good
-      return cached_entity[value_method] if value_method != 'row' # requested contents of the Hash (usually 'bindings' or 'matches', "as is")
+      return cached_entity.fetch(value_method, []) if cached_entity.is_a?(Hash) && value_method == 'matches'
+      return cached_entity.fetch(value_method, {}) if cached_entity.is_a?(Hash) && value_method == 'bindings'
 
       # At this point: cached_entity => Hash && requested 'row' => 'need to build a model from them:
-      self.class.model_class_for(model_name).new(
-        self.class.actual_attributes_for(cached_entity[value_method], model_name)
-      )
+      # For anything else, we return a new Model. 2 possibilities:
+      # 1. hash of attributes keys by 'row'
+      # 2. direct hash of attributes (from serialized model, no 'row' key)
+      attr_hash = cached_entity&.fetch(value_method, nil).presence || cached_entity
+      self.class.model_class_for(model_name).new(self.class.actual_attributes_for(attr_hash, model_name))
     end
 
     # Scans the cached entity Array or Hash given the specified root-level access key
@@ -915,7 +917,7 @@ module Import
     # +nil+ in case of errors.
     #
     def rebuild_cached_entities_for(model_name)
-      if model_name == 'meeting'                  # plain Import::Entity(Meeting)
+      if model_name == 'meeting' # plain Import::Entity(Meeting)
         return @data['meeting'] if @data['meeting'].is_a?(Import::Entity)
 
         # Convert all meeting matches from the fuzzy search into proper Model results:
@@ -924,7 +926,7 @@ module Import
       end
 
       cached_data = @data&.fetch(model_name, nil)
-      if model_name == 'meeting_session'         # ARRAY of Import::Entity(MeetingSession)
+      if model_name == 'meeting_session' # ARRAY of Import::Entity(MeetingSession)
         result = []
         # Rebuild the result structure:
         cached_data.each_with_index do |item, index|
@@ -933,7 +935,7 @@ module Import
         end
         # Overwrite existing with newly rebuilt:
         @data[model_name] = result.compact
-      else                                        # HASH of Import::Entity(<model_name>)
+      else # HASH of serialized Import::Entity(<model_name>)
         result = {}
         cached_data.each do |item_key, item|
           row_model, row_matches, row_bindings = prepare_model_matches_and_bindings_for(model_name, item, item_key)
@@ -1010,25 +1012,25 @@ module Import
       # Translate the original search result of Array of "matches" as a "plain" Array of model instances,
       # giving up the weights or the table/candidate structure in it (if present):
       orig_matches = if entity_or_hash.respond_to?(:matches)
-                        entity_or_hash.matches
-                      elsif entity_or_hash.is_a?(Hash)
+                       entity_or_hash.matches
+                     elsif entity_or_hash.is_a?(Hash)
                         entity_or_hash.fetch('matches', nil)
-                      elsif entity_or_hash.is_a?(Array) # ASSUMES: it's already an Array of AR models
+                     elsif entity_or_hash.is_a?(Array) # ASSUMES: it's already an Array of AR models
                         entity_or_hash
-                      else
+                     else
                         nil
-                      end
+                     end
       row_matches = orig_matches&.map do |search_item|
         convert_search_item_to_model_for(model_name, row_model, search_item)
       end
 
       row_bindings = if entity_or_hash.respond_to?(:bindings)
-                        entity_or_hash.bindings
-                      elsif entity_or_hash.is_a?(Hash)
+                       entity_or_hash.bindings
+                     elsif entity_or_hash.is_a?(Hash)
                         entity_or_hash.fetch('bindings', nil)
-                      else
+                     else
                         nil
-                      end
+                     end
 
       [row_model, row_matches, row_bindings]
     end
@@ -1064,37 +1066,44 @@ module Import
     def convert_search_item_to_model_for(model_name, row_model, search_item)
       search_model = if search_item.is_a?(Hash) && search_item.key?('table') && search_item['table'].key?('candidate')
                         # Hash from already serialized Import::Entity search result (Hash['candidate'])
-                        self.class.model_class_for(model_name).new(
-                          self.class.actual_attributes_for(search_item['table']['candidate'], model_name)
-                        )
+                       self.class.model_class_for(model_name).new(
+                         self.class.actual_attributes_for(search_item['table']['candidate'], model_name)
+                       )
 
-                      elsif search_item.respond_to?(:candidate)
+                     elsif search_item.respond_to?(:candidate)
                         # original OpenStruct result (unserialized yet)
                         search_item.candidate
 
-                      elsif search_item.is_a?(Hash)
+                     elsif search_item.is_a?(Hash) && search_item.fetch('data', nil).is_a?(Hash)
+                        # single Hash in Array, but serialized from a Cities::City:
+                        # (holds attributes under the 'data' subhash)
+                        self.class.model_class_for(model_name).new(
+                          self.class.actual_attributes_for(search_item['data'], model_name)
+                        )
+
+                     elsif search_item.is_a?(Hash)
                         # single Hash in Array (plain model already serialized):
                         self.class.model_class_for(model_name).new(
                           self.class.actual_attributes_for(search_item, model_name)
                         )
 
-                      elsif search_item.is_a?(ActiveRecord::Base)
+                     elsif search_item.is_a?(ActiveRecord::Base)
                         # plain Model in Array (no fuzzy search):
                         self.class.model_class_for(model_name).new(
                           self.class.actual_attributes_for(search_item.attributes, model_name)
                         )
 
-                      elsif search_item.is_a?(Import::Entity) && search_item.respond_to?(:row)
+                     elsif search_item.is_a?(Import::Entity) && search_item.respond_to?(:row)
                         # => ASSERT: UNEXPECTED OBJECT HERE (Import::Entity instance instead of Array[Hash] or [Hash])
                         # => RAISE ERROR & INSPECT search_item, which should be either be one of the 2 above
                         # raise "Unexpected Import::Entity after data_hash reconstruction! Possible data corruption!"
                         search_item.row
 
-                      elsif search_item.is_a?(Cities::City) && row_model.is_a?(GogglesDb::City)
+                     elsif search_item.is_a?(Cities::City) && row_model.is_a?(GogglesDb::City)
                       # No search alternatives, just a Cities::City returned from CmdFindIsoCity, so we may as well as return
                       # the row_model here as single match:
-                      row_model
-                    end
+                        row_model
+                     end
 
       # Return the decorated search model instance, but only for certain model names:
       %w[team swimmer city].include?(model_name) ? search_model.decorate : search_model

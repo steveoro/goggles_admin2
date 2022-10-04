@@ -14,8 +14,7 @@ class SwimmingPoolsGrid < BaseGrid
   filter(:address, :string, header: 'Address (~)') { |_value, scope| scope }
   filter(:pool_type_id,
          :enum, header: 'PoolType',
-         select: proc { GogglesDb::PoolType.all.map {|c| [c.code, c.id] }}
-        ) { |_value, scope| scope }
+                select: proc { GogglesDb::PoolType.all.map { |c| [c.code, c.id] } }) { |_value, scope| scope }
   filter(:city_id, :integer, header: 'City ID')
 
   selection_column(mandatory: true)

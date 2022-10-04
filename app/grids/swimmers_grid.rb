@@ -15,8 +15,7 @@ class SwimmersGrid < BaseGrid
   filter(:year_guessed, :boolean)
   filter(:gender_type_id,
          :enum, header: 'GenderType',
-         select: proc { GogglesDb::GenderType.all.map {|c| [c.code, c.id] }}
-        ) { |_value, scope| scope }
+                select: proc { GogglesDb::GenderType.all.map { |c| [c.code, c.id] } }) { |_value, scope| scope }
 
   selection_column(mandatory: true)
   column(:id, align: :right, mandatory: true)

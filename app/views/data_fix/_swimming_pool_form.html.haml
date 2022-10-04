@@ -13,7 +13,7 @@
   .col-lg-5.col-md-6
     = render(AutoCompleteComponent.new(show_top_labels: true,
             base_dom_id: "swimming_pool[#{index}]", base_api_url: api_url,
-            default_value: meeting_session.swimming_pool_id || swimming_pool.id,
+            default_value: meeting_session.swimming_pool_id || swimming_pool&.id,
             detail_endpoint: 'swimming_pool', base_name: 'swimming_pool', label_column: 'name',
             search_endpoint: 'swimming_pools', search_column: 'name',
             target3_dom_id: "swimming_pool_#{index}_name", target3_column: 'name',

@@ -20,7 +20,7 @@ class MeetingReservationsGrid < BaseGrid
   column(:meeting_id, align: :right, mandatory: true)
   column(
     :meeting_name, header: 'Meeting', html: true, mandatory: true,
-    order: proc { |scope| scope.sort { |a, b| a.meeting.decorate.short_label <=> b.meeting.decorate.short_label } }
+                   order: proc { |scope| scope.sort { |a, b| a.meeting.decorate.short_label <=> b.meeting.decorate.short_label } }
   ) do |asset|
     asset.meeting.decorate.short_label
   end
@@ -30,7 +30,7 @@ class MeetingReservationsGrid < BaseGrid
   column(:swimmer_id, align: :right)
   column(
     :swimmer_name, header: 'Swimmer', html: true, mandatory: true,
-    order: proc { |scope| scope.sort { |a, b| a.swimmer.complete_name <=> b.swimmer.complete_name } }
+                   order: proc { |scope| scope.sort { |a, b| a.swimmer.complete_name <=> b.swimmer.complete_name } }
   ) do |asset|
     asset.swimmer.complete_name
   end

@@ -117,12 +117,12 @@ class StatsController < ApplicationController
       jwt: current_user.jwt,
       payload: { day: day_param }
     )
-    if result.code != 200
+    if result.code == 200
+      flash[:info] = I18n.t('datagrid.clear_stats.clear_ok')
+    else
       logger.error("\r\n*** ERROR: 'CLEAR API stats(day: #{day_param}')")
       logger.error(result.inspect)
       flash[:error] = I18n.t('datagrid.clear_stats.clear_failed', error: result.code)
-    else
-      flash[:info] = I18n.t('datagrid.clear_stats.clear_ok')
     end
 
     redirect_to stats_path(page: index_params[:page], per_page: index_params[:per_page])

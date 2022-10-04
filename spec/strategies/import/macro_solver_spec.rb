@@ -4,7 +4,7 @@ require 'rails_helper'
 
 module Import
   RSpec.describe MacroSolver, type: :strategy do
-    # TODO mappers & solvers
+    # TODO: mappers & solvers
 
     describe '#find_or_prepare_city()' do
       context 'when looking for an existing GogglesDb::City' do

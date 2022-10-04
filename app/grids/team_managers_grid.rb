@@ -10,8 +10,8 @@ class TeamManagersGrid < BaseGrid
 
   filter(:team_affiliation_id, :integer, header: 'TA ID')
   filter(:manager_name, :string, header: 'Manager name (~)') { |_value, scope| scope }
-  filter(:team_name, :string, header: 'Team name (~)')  { |_value, scope| scope }
-  filter(:season_description, :string, header: 'Season desc. (~)')  { |_value, scope| scope }
+  filter(:team_name, :string, header: 'Team name (~)') { |_value, scope| scope }
+  filter(:season_description, :string, header: 'Season desc. (~)') { |_value, scope| scope }
 
   selection_column
   column(:id, align: :right)
@@ -20,7 +20,7 @@ class TeamManagersGrid < BaseGrid
   column(:team_affiliation_id, header: 'TA ID', align: :right)
   column(
     :team_name, html: true,
-    order: proc { |scope| scope.sort { |a, b| a.team&.name <=> b.team&.name } }
+                order: proc { |scope| scope.sort { |a, b| a.team&.name <=> b.team&.name } }
   ) do |asset|
     asset.team ? asset.team.name&.truncate(25) : '♻ NEW ♻'
   end

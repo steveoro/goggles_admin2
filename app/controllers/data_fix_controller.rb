@@ -44,7 +44,7 @@ class DataFixController < ApplicationController
       overwrite_file_path_with_json_from(@solver.data)
     end
     prepare_sessions_and_pools_from_data_hash
-    ActionCable.server.broadcast("ImportStatusChannel", msg: 'Review sessions: ready')
+    ActionCable.server.broadcast('ImportStatusChannel', msg: 'Review sessions: ready')
   end
 
   # [GET] /review_teams - STEP 2: teams
@@ -67,7 +67,7 @@ class DataFixController < ApplicationController
       overwrite_file_path_with_json_from(@solver.data)
     end
     @teams_hash = @solver.rebuild_cached_entities_for('team')
-    ActionCable.server.broadcast("ImportStatusChannel", msg: 'Review teams: ready')
+    ActionCable.server.broadcast('ImportStatusChannel', msg: 'Review teams: ready')
   end
 
   # [GET] /review_swimmers - STEP 3: swimmers
@@ -90,7 +90,7 @@ class DataFixController < ApplicationController
       overwrite_file_path_with_json_from(@solver.data)
     end
     @swimmers_hash = @solver.rebuild_cached_entities_for('swimmer')
-    ActionCable.server.broadcast("ImportStatusChannel", msg: 'Review swimmers: ready')
+    ActionCable.server.broadcast('ImportStatusChannel', msg: 'Review swimmers: ready')
   end
 
   # [GET] /review_events - STEP 4: events
@@ -109,7 +109,7 @@ class DataFixController < ApplicationController
   #
   def review_events
     prepare_for_review_events_and_results
-    ActionCable.server.broadcast("ImportStatusChannel", msg: 'Review events: ready')
+    ActionCable.server.broadcast('ImportStatusChannel', msg: 'Review events: ready')
   end
 
   # [GET] /review_results - STEP 5: results
@@ -132,7 +132,7 @@ class DataFixController < ApplicationController
     # Extract all Prgs & MIRs keys, giving up the rest (including bindings & matches) since we won't use them here:
     @prgs_keys = @data_hash['meeting_program']&.keys
     @mirs_keys = @data_hash['meeting_individual_result']&.keys
-    ActionCable.server.broadcast("ImportStatusChannel", msg: 'Review results: ready')
+    ActionCable.server.broadcast('ImportStatusChannel', msg: 'Review results: ready')
   end
   #-- -------------------------------------------------------------------------
   #++
@@ -200,13 +200,40 @@ class DataFixController < ApplicationController
   # }
   def update
     model_name = edit_params['model'].to_s
+
+    # == NOTE:
+    # The entity Key to used to retrieve it from the data hash should never change.
+    #
+    # Nevertheless, when the string key has special chars in it (like mostly team names),
+    # Rails form helpers may convert its field namespace using underscores when rendering
+    # DOM IDs.
+    #
+    # Notably, as of this writing, this doesn't work well for dots (e.g. as in key="S. Donato"),
+    # which will become a form field namespace in brackets ("team[S. Donato][id]")
+    # and a snail-cased name for IDs ("team_S._Donato_id"), which doesn't work at all
+    # with document.querySelector().
+    #
+    # So we pass both the converted form DOM IDs (to make event changes on the form always
+    # work) and the actual key for the entity inside the data hash.
+    #
+    # == Bottom line:
+    # - Whenever there's a 'edit_params', to retrieve the values we need the 'actual_form_key?
+    # - Whenever we access the @data_hash we need the real 'entity_key'.
+
     entity_key = entity_key_for(model_name)
+    actual_form_key = if edit_params['dom_valid_key'].present? && edit_params['dom_valid_key'] != entity_key
+      edit_params['dom_valid_key']
+    else
+      entity_key
+    end
 
     # == Main entity update: ==
     updated_attrs = if model_name == 'meeting'
-                      edit_params[model_name] # (Meetings don't use the entity key because they are 1 for each file)
+                      # (Meetings don't use the entity key because they are 1 for each file)
+                      edit_params[model_name]
                     else
-                      edit_params[model_name]&.fetch(entity_key.to_s, nil) # (Request params multi-row index always a string)
+                      # (Request params multi-row index always a string)
+                      edit_params[model_name]&.fetch(actual_form_key.to_s, nil)
                     end
     # DEBUG ----------------------------------------------------------------
     # binding.pry
@@ -218,19 +245,25 @@ class DataFixController < ApplicationController
       # (i.e.: 'team_id' => team['id'])
       actual_attrs['id'] = updated_attrs["#{model_name}_id"] if updated_attrs["#{model_name}_id"].present?
       # Allow clearing of ID using zero:
-      actual_attrs['id'] = nil if actual_attrs['id'] == 0 || actual_attrs['id'] == '0' # Avoid clearing if empty or present
+      actual_attrs['id'] = nil if (actual_attrs['id']).to_i.zero? # Avoid clearing if empty or present
 
       # Handle special cases:
       case model_name
       when 'team'
         # Avoid empty Team names:
-        actual_attrs['name'] = updated_attrs['team'].present? ? updated_attrs['team'] : updated_attrs['editable_name'] unless actual_attrs['name'].present?
+        actual_attrs['name'] = updated_attrs['team'].presence || updated_attrs['editable_name'] if actual_attrs['name'].blank?
         # Prepend variations unless already there:
-        actual_attrs['name_variations'] = "#{actual_attrs['name']};#{actual_attrs['name_variations']}" unless actual_attrs['name_variations'].include?(actual_attrs['name'])
-        actual_attrs['name_variations'] = "#{actual_attrs['editable_name']};#{actual_attrs['name_variations']}" unless actual_attrs['name_variations'].include?(actual_attrs['editable_name'])
+        unless actual_attrs['name_variations'].include?(actual_attrs['name'])
+          actual_attrs['name_variations'] =
+            "#{actual_attrs['name']};#{actual_attrs['name_variations']}"
+        end
+        unless actual_attrs['name_variations'].include?(actual_attrs['editable_name'])
+          actual_attrs['name_variations'] =
+            "#{actual_attrs['editable_name']};#{actual_attrs['name_variations']}"
+        end
       when 'swimmer'
         # Overwrite complete name when the lookup values change:
-        actual_attrs['complete_name'] = updated_attrs['swimmer'].present? ? updated_attrs['swimmer'] : "#{updated_attrs['last_name']} #{updated_attrs['first_name']}"
+        actual_attrs['complete_name'] = updated_attrs['swimmer'].presence || "#{updated_attrs['last_name']} #{updated_attrs['first_name']}"
       end
       # DEBUG ----------------------------------------------------------------
       # binding.pry
@@ -250,64 +283,67 @@ class DataFixController < ApplicationController
     # == Bindings update: ==
     deep_nested_bindings = @solver.cached_instance_of(model_name, entity_key, 'bindings')
     # EXCEPTION: City is the only "complex" binding that could be sub-nested at depth > 1
-    deep_nested_bindings.merge!(
-      'city' => {
-        edit_params['city'][entity_key.to_s]['key'] => edit_params['city'][entity_key.to_s]
-      }
-    ) if edit_params['city'].present? && edit_params['city'][entity_key.to_s].present? && edit_params['city'][entity_key.to_s]['key'].present?
+    if edit_params['city'].present? && edit_params['city'][actual_form_key.to_s].present? &&
+       edit_params['city'][actual_form_key.to_s]['key'].present?
+      deep_nested_bindings.merge!(
+        'city' => {
+          edit_params['city'][actual_form_key.to_s]['key'] => edit_params['city'][actual_form_key.to_s]
+        }
+      )
+    end
     # DEBUG ----------------------------------------------------------------
     # binding.pry
     # ----------------------------------------------------------------------
 
     deep_nested_bindings.each do |binding_model_name, binding_key|
-      updated_attrs = edit_params[binding_model_name]&.fetch(entity_key.to_s, nil)
-      if updated_attrs.present?
+      updated_attrs = edit_params[binding_model_name]&.fetch(actual_form_key.to_s, nil)
+      next if updated_attrs.blank?
+
+      # DEBUG ----------------------------------------------------------------
+      # binding.pry
+      # ----------------------------------------------------------------------
+      # Handle the special case in which we want to update the key/index of a binding in the main entity:
+      # (not the association column ID value itself -- currently this is implemented & supported only for
+      #  the meeting events form, given that both events & sessions will typically be new & ID-less each time)
+      if updated_attrs.key?('key') # (special/bespoke sub-association form field naming for binding keys)
         # DEBUG ----------------------------------------------------------------
         # binding.pry
         # ----------------------------------------------------------------------
-        # Handle the special case in which we want to update the key/index of a binding in the main entity:
-        # (not the association column ID value itself -- currently this is implemented & supported only for
-        #  the meeting events form, given that both events & sessions will typically be new & ID-less each time)
-        if updated_attrs.key?('key') # (special/bespoke sub-association form field naming for binding keys)
-          # DEBUG ----------------------------------------------------------------
-          # binding.pry
-          # ----------------------------------------------------------------------
-          @data_hash[model_name]&.fetch(entity_key, nil)&.fetch('bindings', nil)&.merge!(
-            # ASSERT: key is an index, not a string key
-            { binding_model_name => updated_attrs['key'].to_i }
-          )
-        end
-
-        # Use as association key for the binding in main entity its correct column name in main entity:
-        # (For ex.: 'swimming_pool' => { 'swimming_pool_id' => 1 } instead of "'swimming_pool'['id']")
-        main_attrs = Import::MacroSolver.actual_attributes_for(updated_attrs, model_name)
-        nested_attrs = Import::MacroSolver.actual_attributes_for(updated_attrs, binding_model_name)
-
-        # == Update association column in main entity: ==
-        if entity_key.present?
-          # i.e.: 'swimming_pool' => 0 => 'swimming_pool_id' (apply to main, i.e.: 'meeting_session')
-          @data_hash[model_name]&.fetch(entity_key, nil)&.fetch('row', nil)&.compact!
-          @data_hash[model_name]&.fetch(entity_key, nil)&.fetch('row', nil)&.merge!(main_attrs)
-        else
-          # Only 'meeting' doesn't have a key (the bindings, if any, must use it):
-          @data_hash[model_name]&.fetch('row', nil)&.compact!
-          @data_hash[model_name]&.fetch('row', nil)&.merge!(main_attrs)
-        end
-        # DEBUG ----------------------------------------------------------------
-        # binding.pry
-        # ----------------------------------------------------------------------
-
-        # === Update binding entity attributes too: ===
-        # i.e.: 'swimming_pool' => 0 => 'city_id' (apply to binding, i.e.: 'swimming_pool')
-        # Always add the overwrite for the binding fuzzy result ID column with the manual lookup result ID:
-        nested_attrs['id'] = updated_attrs["#{binding_model_name}_id"].to_i if updated_attrs["#{binding_model_name}_id"].present?
-        # Allow clearing of ID using zero:
-        nested_attrs['id'] = nil if nested_attrs['id'] == 0 || nested_attrs['id'] == '0' # Avoid clearing if empty or present
-        # EXCEPTION: City is the only "complex" binding that could be sub-nested at depth > 1, returning a whole Hash (key + attributes)
-        binding_key = binding_key.keys.first if binding_key.is_a?(Hash)
-        @data_hash[binding_model_name]&.fetch(binding_key, nil)&.fetch('row', nil)&.compact!
-        @data_hash[binding_model_name]&.fetch(binding_key, nil)&.fetch('row', nil)&.merge!(nested_attrs)
+        @data_hash[model_name]&.fetch(entity_key, nil)&.fetch('bindings', nil)&.merge!(
+          # ASSERT: key is an index, not a string key
+          { binding_model_name => updated_attrs['key'].to_i }
+        )
       end
+
+      # Use as association key for the binding in main entity its correct column name in main entity:
+      # (For ex.: 'swimming_pool' => { 'swimming_pool_id' => 1 } instead of "'swimming_pool'['id']")
+      main_attrs = Import::MacroSolver.actual_attributes_for(updated_attrs, model_name)
+      nested_attrs = Import::MacroSolver.actual_attributes_for(updated_attrs, binding_model_name)
+
+      # == Update association column in main entity: ==
+      if entity_key.present?
+        # i.e.: 'swimming_pool' => 0 => 'swimming_pool_id' (apply to main, i.e.: 'meeting_session')
+        @data_hash[model_name]&.fetch(entity_key, nil)&.fetch('row', nil)&.compact!
+        @data_hash[model_name]&.fetch(entity_key, nil)&.fetch('row', nil)&.merge!(main_attrs)
+      else
+        # Only 'meeting' doesn't have a key (the bindings, if any, must use it):
+        @data_hash[model_name]&.fetch('row', nil)&.compact!
+        @data_hash[model_name]&.fetch('row', nil)&.merge!(main_attrs)
+      end
+      # DEBUG ----------------------------------------------------------------
+      # binding.pry
+      # ----------------------------------------------------------------------
+
+      # === Update binding entity attributes too: ===
+      # i.e.: 'swimming_pool' => 0 => 'city_id' (apply to binding, i.e.: 'swimming_pool')
+      # Always add the overwrite for the binding fuzzy result ID column with the manual lookup result ID:
+      nested_attrs['id'] = updated_attrs["#{binding_model_name}_id"].to_i if updated_attrs["#{binding_model_name}_id"].present?
+      # Allow clearing of ID using zero:
+      nested_attrs['id'] = nil if (nested_attrs['id']).to_i.zero? # Avoid clearing if empty or present
+      # EXCEPTION: City is the only "complex" binding that could be sub-nested at depth > 1, returning a whole Hash (key + attributes)
+      binding_key = binding_key.keys.first if binding_key.is_a?(Hash)
+      @data_hash[binding_model_name]&.fetch(binding_key, nil)&.fetch('row', nil)&.compact!
+      @data_hash[binding_model_name]&.fetch(binding_key, nil)&.fetch('row', nil)&.merge!(nested_attrs)
     end
     # DEBUG ----------------------------------------------------------------
     # binding.pry
@@ -376,7 +412,7 @@ class DataFixController < ApplicationController
     # Allow any sub-hash indexed with the current model name specified as a parameter:
     # (typically: 'team' => { index => { <team attributes> } })
     params.permit(
-      :action, :reparse, :model, :key, :file_path,
+      :action, :reparse, :model, :key, :dom_valid_key, :file_path,
       swimming_pool: {}, city: {}, meeting: {}, meeting_session: {}, meeting_event: {}, meeting_program: {},
       team: {}, swimmer: {}, badge: {},
       meeting_individual_result: {}, lap: {}, meeting_relay_result: {}, meeting_relay_swimmer: {}
@@ -440,11 +476,11 @@ class DataFixController < ApplicationController
     end
   end
 
-  # Returns a valid Season assuming the specified +pathname+ contains the season ID as
+  # Returns a valid Season assuming current +@file_path+ contains the season ID as
   # last folder of the path (i.e.: "any/path/:season_id/any_file_name.ext")
   # Defaults to season ID 212 if no valid integer was found in the last folder of the path.
   # Sets @season with the specific Season retrieved.
-  def detect_season_from_pathname(pathname)
+  def detect_season_from_pathname
     season_id = File.dirname(@file_path).split('/').last.to_i
     season_id = 212 unless season_id.positive?
     @season = GogglesDb::Season.find(season_id)
@@ -453,7 +489,7 @@ class DataFixController < ApplicationController
   # Prepares the @solver instance, assuming @file_path & @data_hash have been set.
   # Sets @solver with current Solver instance.
   def prepare_solver
-    detect_season_from_pathname(@file_path) # (sets @season)
+    detect_season_from_pathname # (sets @season)
     # FUTUREDEV: display progress in real time using another ActionCable channel? (or same?)
     @solver = Import::MacroSolver.new(season_id: @season.id, data_hash: @data_hash, toggle_debug: false)
   end
@@ -475,14 +511,14 @@ class DataFixController < ApplicationController
       @meeting_sessions[index] = @solver.cached_instance_of('meeting_session', index)
       pool_key = @solver.cached_instance_of('meeting_session', index, 'bindings')&.fetch('swimming_pool', nil)
       # Get the Pool as first-class citizen of the form (for update/create):
-      if pool_key.present?
-        @swimming_pools[index] = @solver.cached_instance_of('swimming_pool', pool_key)
-        # Get also the City as first-class citizen of the form:
-        city_key = @solver.cached_instance_of('swimming_pool', pool_key, 'bindings')&.fetch('city', nil)
-        if city_key.present?
-          @cities[index] = @solver.cached_instance_of('city', city_key)
-          @city_keys[index] = city_key
-        end
+      next if pool_key.blank?
+
+      @swimming_pools[index] = @solver.cached_instance_of('swimming_pool', pool_key)
+      # Get also the City as first-class citizen of the form:
+      city_key = @solver.cached_instance_of('swimming_pool', pool_key, 'bindings')&.fetch('city', nil)
+      if city_key.present?
+        @cities[index] = @solver.cached_instance_of('city', city_key)
+        @city_keys[index] = city_key
       end
     end
   end
@@ -505,7 +541,7 @@ class DataFixController < ApplicationController
   # and then rewriting all contents of the specified Hash (as JSON) over the same <tt>@file_path</tt>.
   # Assumes <tt>data_hash</tt> responds to <tt>:to_json</tt>.
   def overwrite_file_path_with_json_from(data_hash)
-    File.delete(@file_path) if File.exists?(@file_path)
+    File.delete(@file_path) if File.exist?(@file_path)
     File.open(@file_path, 'w') { |f| f.write(data_hash.to_json) }
   end
   #-- -------------------------------------------------------------------------

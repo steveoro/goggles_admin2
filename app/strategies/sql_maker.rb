@@ -76,13 +76,16 @@ class SqlMaker
 
     # Reject all non-columns:
     @row.attributes
-              .keep_if { |col_name| klass.column_names.include?(col_name) }
-              .each do |key, value|
-      next if value.blank? || (!@force_id_on_insert && key == 'id')
-      next if %w[lock_version created_at updated_at].include?(key)
+        .keep_if { |col_name| klass.column_names.include?(col_name) }
+        .each do |key, value|
+      next if value.blank? || (!@force_id_on_insert && key == 'id') || (key == 'lock_version')
 
       columns << con.quote_column_name(key)
-      values  << con.quote(value)
+      values << if %w[created_at updated_at].include?(key)
+                  'NOW()'
+                else
+                  con.quote(value)
+                end
     end
 
     sql_text = "INSERT INTO #{con.quote_column_name(klass.table_name)} (#{columns.join(', ')})\r\n" \
@@ -104,16 +107,20 @@ class SqlMaker
 
     # Write always all the attributes, unless the column name is "skippable" (& reject all non-columns):
     @row.attributes
-              .keep_if { |col_name| klass.column_names.include?(col_name) }
-              .each do |key, value|
+        .keep_if { |col_name| klass.column_names.include?(col_name) }
+        .each do |key, value|
       next if %w[id lock_version created_at].include?(key)
 
-      sets << "#{con.quote_column_name(key)}=#{con.quote(value)}"
+      if key == 'updated_at'
+        sets << "#{con.quote_column_name(key)}=NOW()"
+      else
+        sets << "#{con.quote_column_name(key)}=#{con.quote(value)}"
+      end
     end
 
     sql_text = "UPDATE #{con.quote_column_name(klass.table_name)}\r\n" \
                "  SET #{sets.join(', ')}\r\n" \
-               "  WHERE (#{con.quote_column_name('id')}=#{@row.id});"
+               "  WHERE #{con.quote_column_name('id')}=#{@row.id};"
     @sql_log << sql_text
     sql_text
   end
@@ -140,9 +147,9 @@ class SqlMaker
       def execute(sql, name = nil)
         @captured_sql ||= []
         # DEBUG
-        puts "\r\n---- SQL ----"
-        puts sql
-        puts '-------------'
+        # puts "\r\n---- SQL ----"
+        # puts sql
+        # puts '-------------'
         # Intercept/log only the statement that we want and log it to the internal text:
         (@captured_sql << "#{sql};") if /^(delete)/i.match(sql)
         # Always execute the SQL statement afterwards:

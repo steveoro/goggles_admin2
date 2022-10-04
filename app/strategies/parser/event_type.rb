@@ -31,7 +31,7 @@ module Parser
     #
     def self.from_l2_result(section_title, season)
       raise(ArgumentError, 'Invalid season specified') unless season.is_a?(GogglesDb::Season) && season.valid?
-      raise(ArgumentError, "Invalid or empty title specified ('#{section_title}')") unless section_title.to_s.present?
+      raise(ArgumentError, "Invalid or empty title specified ('#{section_title}')") if section_title.to_s.blank?
 
       event_title, category_code = section_title.split(/\W+[-;]\W+/iu)
       # DEBUG

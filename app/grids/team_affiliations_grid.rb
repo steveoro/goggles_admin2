@@ -21,7 +21,7 @@ class TeamAffiliationsGrid < BaseGrid
   column(:team_id, align: :right, mandatory: true)
   column(
     :season_type_name, header: 'Season', align: :right, html: true, mandatory: true,
-    order: proc { |scope| scope.sort { |a, b| a.season_type.code <=> b.season_type.code } }
+                       order: proc { |scope| scope.sort { |a, b| a.season_type.code <=> b.season_type.code } }
   ) do |asset|
     "<small><i>#{asset.season_type.code}</i></small> - #{asset.season.id}".html_safe
   end

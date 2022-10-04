@@ -13,10 +13,10 @@
       .field.col-8.mt-1
         = label_tag('meeting_search', 'fuzzy matches')
         = select_tag('meeting_search', options_from_collection_for_select(meeting_entity.matches || [], 'id',
-                     'description', meeting.id), include_blank: true, class: 'form-control', onchange: onchange_event)
+                     'description', meeting&.id), include_blank: true, class: 'form-control', onchange: onchange_event)
       .field.col-auto.mt-1
         = label_tag('meeting[meeting_id]', 'Meeting ID')
-        = number_field_tag('meeting[meeting_id]', meeting.id, class: 'form-control', placeholder: 'Meeting ID')
+        = number_field_tag('meeting[meeting_id]', meeting&.id, class: 'form-control', placeholder: 'Meeting ID')
 
     .form-group.row
       .field.col-8.mt-1

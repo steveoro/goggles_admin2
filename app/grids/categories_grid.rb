@@ -25,7 +25,7 @@ class CategoriesGrid < BaseGrid
   column(:age_end)
   column(
     :season_type_name, header: 'Season', align: :right, html: true, mandatory: true,
-    order: proc { |scope| scope.sort { |a, b| a.season_type.short_name <=> b.season_type.short_name } }
+                       order: proc { |scope| scope.sort { |a, b| a.season_type.short_name <=> b.season_type.short_name } }
   ) do |asset|
     "<small><i>#{asset.season_type.code}</i></small> - #{asset.season.id}".html_safe
   end

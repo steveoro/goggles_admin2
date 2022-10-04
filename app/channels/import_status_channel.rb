@@ -13,7 +13,7 @@
 class ImportStatusChannel < ApplicationCable::Channel
   # Called when the consumer has successfully become a subscriber to this channel.
   def subscribed
-    stream_from("ImportStatusChannel")
+    stream_from('ImportStatusChannel')
   end
 
   def unsubscribed

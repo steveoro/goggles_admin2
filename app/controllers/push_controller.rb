@@ -46,10 +46,13 @@ class PushController < FileListController
     @committer = Import::MacroCommitter.new(solver: @solver)
     @committer.commit_all
 
-    # Save the committed data to file (with actual IDs):
-    File.open(@file_path.gsub('.json', '.committed.json'), 'w+') { |f| f.write(@solver.data.to_json) }
+    # Move the existing file to the 'done' folder:
+    done_pathname = @file_path.gsub('results.new', 'results.done')
+    File.rename(@file_path, done_pathname)
+    # Save also the committed data to another file (with actual IDs):
+    File.open(done_pathname.gsub('.json', '.committed.json'), 'w+') { |f| f.write(@solver.data.to_json) }
 
-    # Save the batch file:
+    # Save the batch file in the same 'results.new' directory:
     File.open(@file_path.gsub('.json', '.sql'), 'w+') do |f|
       @committer.sql_log.each do |sql_statement|
         f.write(sql_statement)
@@ -93,8 +96,11 @@ class PushController < FileListController
       # 1. 'results.new/*'
       #    2. => 'results.sent/*'
       #        3. => 'results.done/*'
-      from_folder, to_folder = @file_path.include?('results.new') ? %w[results.new results.sent] :
-                                                                    %w[results.sent results.done]
+      from_folder, to_folder = if @file_path.include?('results.new')
+                                 %w[results.new results.sent]
+                               else
+                                 %w[results.sent results.done]
+                               end
       dest_file = @file_path.gsub(from_folder, to_folder)
       FileUtils.mkdir_p(File.dirname(dest_file)) # Make sure the destination path is there
       File.rename(@file_path, dest_file)
@@ -141,11 +147,11 @@ class PushController < FileListController
     end
   end
 
-  # Returns a valid Season assuming the specified +pathname+ contains the season ID as
+  # Returns a valid Season assuming the current +@file_path+ contains the season ID as
   # last folder of the path (i.e.: "any/path/:season_id/any_file_name.ext")
   # Defaults to season ID 212 if no valid integer was found in the last folder of the path.
   # Sets @season with the specific Season retrieved.
-  def detect_season_from_pathname(pathname)
+  def detect_season_from_pathname
     season_id = File.dirname(@file_path).split('/').last.to_i
     season_id = 212 unless season_id.positive?
     @season = GogglesDb::Season.find(season_id)
@@ -154,7 +160,7 @@ class PushController < FileListController
   # Prepares the @solver instance, assuming @file_path & @data_hash have been set.
   # Sets @solver with current Solver instance.
   def prepare_solver
-    detect_season_from_pathname(@file_path) # (sets @season)
+    detect_season_from_pathname # (sets @season)
     # FUTUREDEV: display progress in real time using another ActionCable channel? (or same?)
     @solver = Import::MacroSolver.new(season_id: @season.id, data_hash: @data_hash, toggle_debug: true)
   end

@@ -83,9 +83,10 @@ module Grid
     def base_entity_name(attribute_name)
       return nil unless attribute_name.ends_with?('_id')
 
-      if attribute_name == 'associated_user_id'
+      case attribute_name
+      when 'associated_user_id'
         'user'
-      elsif attribute_name == 'home_team_id'
+      when 'home_team_id'
         'team'
       else
         attribute_name.to_s.split('_id').first

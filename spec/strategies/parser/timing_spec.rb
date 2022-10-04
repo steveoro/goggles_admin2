@@ -16,7 +16,7 @@ module Parser
               formatted_text = if minutes.positive?
                                  format("%<min>d'%<sec>d\"%<hun>02d", min: minutes, sec: seconds, hun: hundredths)
                                else
-                                 format("%<sec>d\"%<hun>02d", sec: seconds, hun: hundredths)
+                                 format('%<sec>d"%<hun>02d', sec: seconds, hun: hundredths)
                                end
               expected_value = ::Timing.new(minutes: minutes, seconds: seconds, hundredths: hundredths)
               result = described_class.from_l2_result(formatted_text)
@@ -29,12 +29,12 @@ module Parser
             end
           end
 
-          context "when parsing format #2a: {{d}d:}{d}d.{d}d," do
+          context 'when parsing format #2a: {{d}d:}{d}d.{d}d,' do
             it 'returns the corresponding Timing instance' do
               formatted_text = if minutes.positive?
-                                 format("%<min>d:%<sec>d.%<hun>02d", min: minutes, sec: seconds, hun: hundredths)
+                                 format('%<min>d:%<sec>d.%<hun>02d', min: minutes, sec: seconds, hun: hundredths)
                                else
-                                 format("%<sec>d.%<hun>02d", sec: seconds, hun: hundredths)
+                                 format('%<sec>d.%<hun>02d', sec: seconds, hun: hundredths)
                                end
               expected_value = ::Timing.new(minutes: minutes, seconds: seconds, hundredths: hundredths)
               result = described_class.from_l2_result(formatted_text)
@@ -47,12 +47,12 @@ module Parser
             end
           end
 
-          context "when parsing format #2b: {{d}d.}{d}d.{d}d," do
+          context 'when parsing format #2b: {{d}d.}{d}d.{d}d,' do
             it 'returns the corresponding Timing instance' do
               formatted_text = if minutes.positive?
-                                 format("%<min>d.%<sec>d.%<hun>02d", min: minutes, sec: seconds, hun: hundredths)
+                                 format('%<min>d.%<sec>d.%<hun>02d', min: minutes, sec: seconds, hun: hundredths)
                                else
-                                 format("%<sec>d.%<hun>02d", sec: seconds, hun: hundredths)
+                                 format('%<sec>d.%<hun>02d', sec: seconds, hun: hundredths)
                                end
               expected_value = ::Timing.new(minutes: minutes, seconds: seconds, hundredths: hundredths)
               result = described_class.from_l2_result(formatted_text)

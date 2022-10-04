@@ -18,7 +18,7 @@ class CalendarsGrid < BaseGrid
   column(:scheduled_date, mandatory: true)
   column(
     :season_type_name, header: 'Season', align: :left, html: true, mandatory: true,
-    order: proc { |scope| scope.sort { |a, b| a.season_type.code <=> b.season_type.code } }
+                       order: proc { |scope| scope.sort { |a, b| a.season_type.code <=> b.season_type.code } }
   ) do |asset|
     "<small><i>#{asset.season_type.code}</i></small> - #{asset.season.id}".html_safe
   end
