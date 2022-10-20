@@ -37,7 +37,7 @@ RSpec.describe SqlMaker, type: :strategy do
     end
 
     context 'when at least a statement has been logged' do
-      before { subject.log_update }
+      before(:each) { subject.log_update }
 
       it 'returns the logged SQL statement as a single string' do
         expect(subject.report).to be_a(String) && be_present && include('UPDATE `swimmers`')

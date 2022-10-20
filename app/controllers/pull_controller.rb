@@ -33,7 +33,7 @@ class PullController < FileListController
   # The layout type of the calendar is auto-detected by the crawler itself.
   #
   def run_calendar_crawler
-    unless crawler_params['start_url'].present? && crawler_params['season_id'].present?
+    unless crawler_params['sub_menu_type'].present? && crawler_params['season_id'].present?
       flash[:warning] = I18n.t('data_import.errors.missing_url_or_season_id')
       redirect_to(pull_index_path) && return
     end
@@ -42,7 +42,10 @@ class PullController < FileListController
       'pull_calendar',
       get_params: {
         season_id: crawler_params['season_id'],
-        start_url: crawler_params['start_url']
+        # New base URL for (FIN) calendars must be fixed, crawler will simulate menu clicking:
+        start_url: 'https://www.federnuoto.it/home/master.html',
+        sub_menu_type: crawler_params['sub_menu_type'],
+        year_text: crawler_params['year_text'],
       }
     )
     redirect_to(pull_index_path) && return
@@ -76,17 +79,6 @@ class PullController < FileListController
       }
     )
     redirect_to(pull_index_path) && return
-
-    # TODO: *******************************************************
-    # Separate:
-    # 3. to process results, scan local DB for calendar rows, after selecting the season
-    # 4. retrieve results using new ResultsCrawler & local crawler server API
-
-    # To process result files:
-    # 5. for each JSON file, create a new MACROTRANSACTION on localhost, logging the needed SQL (local DB must be in-sync w/ remote DB, same env)
-    # 6. make data import solver to act on specific localhost entities and log the outcome
-    # 7. for each solved data-import MACRO transaction, create a single batch SQL query for remote upload
-    # 8. upload the batch SQL using the existing Capistrano task
   end
   #-- -------------------------------------------------------------------------
   #++
@@ -95,7 +87,7 @@ class PullController < FileListController
 
   # Strong parameters checking for crawler API calls.
   def crawler_params
-    params.permit(:start_url, :season_id, :layout)
+    params.permit(:start_url, :season_id, :sub_menu_type, :year_text, :layout)
   end
 
   # Prepares the <tt>@season_list</tt> member variable for the view, as an Array of Hash objects
@@ -106,19 +98,23 @@ class PullController < FileListController
   # - <tt>current_season_id</tt>: the ID of the current Season
   #
   def prepare_season_list(seasons, current_season_id)
-    base_calendar_url = 'https://www.federnuoto.it/home/master/circuito-supermaster'
+    # New base URL is fixed! New site version disables direct links and needs to be browsed "on site"
+    # (old base URL: 'https://www.federnuoto.it/home/master/circuito-supermaster', with variable direct link)
+
     @season_list = seasons.map do |season|
+      year1 = season.begin_date.year
+      year2 = season.end_date.year
       if season.id == current_season_id
         {
           id: season.id,
           season_label: season.decorate.display_label,
           description: season.description,
           layout: 3, # current season layout:  table w/ links + row-wide year separator
-          calendar_url: "#{base_calendar_url}/riepilogo-eventi.html"
+          year_text: "#{year1}/#{year2}"
+          # Old param (subseeded by page version Oct 2022):
+          # calendar_url: "#{base_calendar_url}/riepilogo-eventi.html"
         }
       else
-        year1 = season.begin_date.year
-        year2 = season.end_date.year
         page_layout = if year1 < 2018
                         1 # older seasons layout: row-wide month separator
                       else
@@ -129,7 +125,9 @@ class PullController < FileListController
           season_label: season.decorate.display_label,
           description: season.description,
           layout: page_layout,
-          calendar_url: "#{base_calendar_url}/archivio-2012-2021/stagione-#{year1}-#{year2}.html"
+          year_text: "#{year1}/#{year2}"
+          # Old param (subseeded by page version Oct 2022):
+          # calendar_url: "#{base_calendar_url}/archivio-2012-2021/stagione-#{year1}-#{year2}.html"
         }
       end
     end

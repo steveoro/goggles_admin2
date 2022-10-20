@@ -33,7 +33,26 @@
                         #{@data_hash['dateDay2']} #{@data_hash['dateMonth2']} #{@data_hash['dateYear2']}
               .collapse#meeting-panel{ 'aria-labelledby' => 'meeting-header', 'data-parent' => '#meeting-card' }
                 .card-body.border-bottom.border-secondary
-                  = render(partial: 'meeting_form', locals: { meeting_entity: @meeting_entity, file_path: @file_path })
+                  = render(partial: 'meeting_form', locals: { api_url: @api_url, meeting_entity: @meeting_entity,
+                           file_path: @file_path })
+        .row-fluid.mt-4
+          - if @data_hash['manifestURL'].present? || @data_hash['resultsPdfURL'].present?
+            - if @data_hash['manifestURL'].present?
+              = link_to(@data_hash['manifestURL']) do
+                .btn.btn-sm.btn-outline-primary
+                  %i.fa.fa-download
+                  = t('data_import.data_fix.link_to_manifest_download')
+            - if @data_hash['resultsPdfURL'].present?
+              = link_to(@data_hash['resultsPdfURL']) do
+                .btn.btn-sm.btn-outline-primary
+                  %i.fa.fa-download
+                  = t('data_import.data_fix.link_to_results_pdf_download')
+          = link_to(review_sessions_path(reparse: 'sessions', file_path: @file_path), method: :get,
+                    data: { toggle: 'tooltip',
+                    title: t('data_import.data_fix.btn_reparse_session_tooltip') }) do
+            .btn.btn-sm.btn-warning
+              %i.fa.fa-refresh
+              = t('data_import.data_fix.btn_reparse_session_label')
 
         .row-fluid.mt-4
           - @meeting_sessions.each_with_index do |meeting_session, index|

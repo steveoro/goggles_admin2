@@ -26,12 +26,16 @@ it:
       btn_process_sql_tooltip: "Esegue l'upload di questo file di importazione dati sul server remoto"
       confirm_push: "Sicuri di voler fare l'upload di questo file?"
     data_fix:
+      link_to_manifest_download: "Scarica locandina"
+      link_to_results_pdf_download: "Scarica risultati su PDF"
       btn_maps_search: 'Cerca'
       btn_maps_search_tooltip: "Cerca su Maps il nome & indirizzo per ottenere il Plus code e/o l'URI da incollare qui"
       btn_start_sql_batch: "Start SQL batch creation"
       btn_start_sql_batch_tooltip: "Finisce la fase di data-review e comincia il 'commit' esclusivamente su DB locale (è poi possibile inviare il batch sul server di destinazione col 'push')"
       btn_start_sql_batch_confirm: "Eseguo il commit di tutti i cambiamenti?"
       btn_start_sql_batch_disable: "Elaborazione in corso..."
+      btn_reparse_session_label: "Riscasiona sessioni"
+      btn_reparse_session_tooltip: "Riesegui la scasione forzata di questo file risultati SOLO per le sessioni Meeting (utile se si cambia e salva l'ID del Meeting)"
     push:
       msg_prepare_batch_ok: 'File batch SQL preparato con successo.'
       msg_send_batch_ok: "File batch inviato con successo e spostato nella directory 'results.done'."

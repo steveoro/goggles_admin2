@@ -111,11 +111,11 @@ class SqlMaker
         .each do |key, value|
       next if %w[id lock_version created_at].include?(key)
 
-      if key == 'updated_at'
-        sets << "#{con.quote_column_name(key)}=NOW()"
-      else
-        sets << "#{con.quote_column_name(key)}=#{con.quote(value)}"
-      end
+      sets << if key == 'updated_at'
+                "#{con.quote_column_name(key)}=NOW()"
+              else
+                "#{con.quote_column_name(key)}=#{con.quote(value)}"
+              end
     end
 
     sql_text = "UPDATE #{con.quote_column_name(klass.table_name)}\r\n" \

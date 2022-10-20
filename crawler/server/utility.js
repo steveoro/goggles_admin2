@@ -10,7 +10,6 @@ const Csv = require('csv-parser')
 const GetStream = require('get-stream')
 
 // Shared configuration constants:
-const defaultStartURL = "https://www.federnuoto.it/home/master/circuito-supermaster/riepilogo-eventi.html";
 const calendarNewFolder = "data/calendar.new";
 const calendarDoneFolder = "data/calendar.done";
 const resultsNewFolder = "data/results.new";
@@ -355,7 +354,7 @@ const safeFindHTMLContent = (htmlElement, parentSelector, textSelector, searchTe
 //-----------------------------------------------------------------------------
 
 module.exports = {
-  defaultStartURL, calendarNewFolder, calendarDoneFolder,
+  calendarNewFolder, calendarDoneFolder,
   resultsNewFolder, resultsDoneFolder,
   statusFilename,
   fullTimeStamp, dateStamp, normalizeText,

@@ -32,6 +32,8 @@ en:
       btn_start_sql_batch_tooltip: "Ends the data-review phase and starts the commit phase (commits on local DB only); the remote DB will need a manual 'push' to receive the changes."
       btn_start_sql_batch_confirm: "Commit changes?"
       btn_start_sql_batch_disable: "Processing..."
+      btn_reparse_session_label: "Reparse sessions"
+      btn_reparse_session_tooltip: "Make a forced reparse of this result file but JUST for the Meeting sessions (useful if you change and save the Meeting ID)"
     push:
       msg_prepare_batch_ok: 'SQL batch file successfully created.'
       msg_send_batch_ok: "SQL batch file successfully sent and moved to the 'results.done' folder."

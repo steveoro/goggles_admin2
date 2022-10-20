@@ -402,8 +402,8 @@ export default class extends Controller {
     const searchTargetDomId = `#${this.searchTarget.id}`
     const searchColumn = this.searchColumnValue
     // DEBUG
-    // console.log("searchTargetDomId:", searchTargetDomId)
-    // console.log("searchColumn:", searchColumn)
+    console.log("searchTargetDomId:", searchTargetDomId)
+    console.log("searchColumn:", searchColumn)
 
     $(searchTargetDomId).easyAutocomplete({
       data: this.payloadValue,

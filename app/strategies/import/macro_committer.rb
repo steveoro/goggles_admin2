@@ -41,6 +41,7 @@ module Import
     # Returns Import::Solver#data, as specified with the constructor
     # (@see app/strategies/import/macro_solver.rb)
     attr_accessor :data
+
     #-- ------------------------------------------------------------------------
     #++
 
@@ -95,7 +96,7 @@ module Import
       @sql_log << "-- \"#{@data['name']}\""
       @sql_log << "-- #{@data['dateDay1']}/#{@data['dateMonth1']}/#{@data['dateYear1']}\r\n"
       # NOTE: uncommenting the following may yield nulls for created_at & updated_at if we don't provide values in the row
-      # @sql_log << "SET SQL_MODE = \"NO_AUTO_VALUE_ON_ZERO\";"
+      @sql_log << 'SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";'
       @sql_log << 'SET AUTOCOMMIT = 0;'
       @sql_log << 'START TRANSACTION;'
       @sql_log << "--\r\n"
@@ -591,8 +592,6 @@ module Import
     #-- ------------------------------------------------------------------------
     #++
 
-    private
-
     # Commits the changes for the specified model row.
     #
     # If <tt>model_row</tt> has already an ID, it will be checked for update changes;
@@ -601,8 +600,8 @@ module Import
     # A column will be considered to be changed if it qualifies for #difference_with_db.
     # Updates the internal <tt>@sql_log</tt> member.
     #
-    # A receiving database row that has the column 'read_only' set to +true+ will skip
-    # the updates.
+    # In order to automatize the most, rows having the read-only column set to true
+    # won't be skipped and will be updated as the others.
     #
     # == Params:
     # - <tt>model_row</tt>: the row Model instance to be processed
@@ -622,8 +621,9 @@ module Import
         return model_row if changes.blank?
 
         db_row = model_row.class.find_by(id: model_row.id)
-        # Skip the update if the DB row is already marked as R-O:
-        return db_row if db_row.respond_to?(:read_only?) && db_row.read_only?
+        # WARNING: DO NOT honor here the read_only? check commented-out below
+        # or the update will be skipped.
+        # > return db_row if db_row.respond_to?(:read_only?) && db_row.read_only?
 
         # Apply the changes & save:
         changes.each { |column, value| db_row.send("#{column}=", value) }
@@ -632,10 +632,6 @@ module Import
         @sql_log << SqlMaker.new(row: model_row).log_update
 
       elsif !model_row.valid?
-        # DEBUG ----------------------------------------------------------------
-        # ap model_row
-        # binding.pry
-        # ----------------------------------------------------------------------
         raise StandardError, "Invalid #{model_row.class} row!"
       end
       # (else: don't do anything)

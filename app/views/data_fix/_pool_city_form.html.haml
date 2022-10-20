@@ -1,9 +1,10 @@
 = hidden_field_tag("city[#{index}][key]", city_key) # special case for City, which is at nested depth 3
+- city_id = swimming_pool&.city_id || city&.id
 .row
   .col-lg-5.col-md-6
     = render(AutoCompleteComponent.new(show_top_labels: true,
             base_dom_id: "city[#{index}]", base_api_url: api_url,
-            default_value: swimming_pool&.city_id || city&.id,
+            default_value: city_id,
             detail_endpoint: 'city', base_name: 'city', label_column: 'area',
             search_endpoint: 'cities', search_column: 'name',
             target3_dom_id: "city_#{index}_name", target3_column: 'name',

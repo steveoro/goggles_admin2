@@ -14,9 +14,23 @@
         = label_tag('meeting_search', 'fuzzy matches')
         = select_tag('meeting_search', options_from_collection_for_select(meeting_entity.matches || [], 'id',
                      'description', meeting&.id), include_blank: true, class: 'form-control', onchange: onchange_event)
-      .field.col-auto.mt-1
-        = label_tag('meeting[meeting_id]', 'Meeting ID')
-        = number_field_tag('meeting[meeting_id]', meeting&.id, class: 'form-control', placeholder: 'Meeting ID')
+      .col-auto
+        = render(AutoCompleteComponent.new(show_top_labels: true,
+                base_dom_id: 'meeting', base_api_url: api_url,
+                default_value: meeting&.id,
+                detail_endpoint: 'meeting', base_name: 'meeting', label_column: 'description',
+                search_endpoint: 'meetings', search_column: 'description',
+                target3_dom_id: 'meeting_description', target3_column: 'description',
+                target4_dom_id: 'meeting_code', target4_column: 'code',
+                target5_dom_id: 'meeting_season_id', target5_column: 'season_id',
+                target6_dom_id: 'meeting_header_year', target6_column: 'header_year',
+                target7_dom_id: 'meeting_header_date', target7_column: 'header_date',
+                target8_dom_id: 'meeting_edition', target8_column: 'edition',
+                target9_dom_id: 'meeting_edition_type_id', target9_column: 'edition_type_id',
+                target10_dom_id: 'meeting_timing_type_id', target10_column: 'timing_type_id',
+                target11_dom_id: 'meeting_cancelled', target11_column: 'cancelled',
+                target12_dom_id: 'meeting_confirmed', target12_column: 'confirmed',
+                jwt: current_user.jwt))
 
     .form-group.row
       .field.col-8.mt-1

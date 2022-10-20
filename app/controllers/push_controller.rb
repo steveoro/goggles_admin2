@@ -46,14 +46,23 @@ class PushController < FileListController
     @committer = Import::MacroCommitter.new(solver: @solver)
     @committer.commit_all
 
-    # Move the existing file to the 'done' folder:
-    done_pathname = @file_path.gsub('results.new', 'results.done')
+    curr_dir = File.dirname(@file_path)
+    sent_dir = curr_dir.gsub('results.new', 'results.sent')
+    dest_file = File.basename(@file_path)
+    done_pathname = @file_path.gsub('results.new', 'results.done') # JSON backup copy (before IDs)
+
+    # Prepare a sequential counter prefix for the uploadable batch file:
+    sql_files_count = Dir.glob(Rails.root.join('crawler', curr_dir, '**', '*.sql')).count +
+                      Dir.glob(Rails.root.join('crawler', sent_dir, '**', '*.sql')).count
+    dest_file = "#{format('%03d', sql_files_count + 1)}-#{File.basename(dest_file.gsub('.json', '.sql'))}"
+
+    # Move last phase's JSON file (before IDs were set) into 'done' as a backup:
     File.rename(@file_path, done_pathname)
-    # Save also the committed data to another file (with actual IDs):
+    # Save also the committed data to another file (storing the resulting actual IDs):
     File.open(done_pathname.gsub('.json', '.committed.json'), 'w+') { |f| f.write(@solver.data.to_json) }
 
-    # Save the batch file in the same 'results.new' directory:
-    File.open(@file_path.gsub('.json', '.sql'), 'w+') do |f|
+    # Save the SQL batch file with the sequential prefix in the same 'results.new' directory:
+    File.open(File.join(curr_dir, dest_file), 'w+') do |f|
       @committer.sql_log.each do |sql_statement|
         f.write(sql_statement)
         f.write("\r\n")

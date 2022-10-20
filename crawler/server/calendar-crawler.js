@@ -16,7 +16,7 @@ const CrawlUtil = require('./utility') // Crawler utility functions
  * == CalendarCrawler class ==
  *
  * Sample usage:
- * > const crawler = new CalendarCrawler(seasonId, startURL);
+ * > const crawler = new CalendarCrawler(seasonId, startURL, ...);
  * > crawler.run();
  */
 class CalendarCrawler {
@@ -26,12 +26,15 @@ class CalendarCrawler {
    * The CalendarCrawler is able to detect the actual layout type from the contents of the crawled page.
    *
    * @param {Integer} seasonId - the season ID of the calendar to crawl; defaults to 212 (FIN 2021/2022)
-   *
-   * @param {String} startURL - starting URL for the crawler; defaults to `CrawlUtil.defaultStartURL`
+   * @param {String} startURL - starting URL for the crawler
+   * @param {String} subMenuText - text to be searched for inside the sub-menu node item (item to be selected)
+   * @param {String} yearText - text to be searched in the item list from the clicked sub-menu (typically from the archive section)
    */
-  constructor(seasonId = 212, startURL = CrawlUtil.defaultStartURL) {
+  constructor(seasonId = 212, startURL, subMenuText, yearText) {
     this.seasonId = seasonId
     this.startURL = startURL
+    this.subMenuText = subMenuText
+    this.yearText = yearText
     this.outputCalendarPathname = null
   }
   //---------------------------------------------------------------------------
@@ -50,7 +53,7 @@ class CalendarCrawler {
     layoutType = await page.$eval('.calendario-container', () => { return 1 }).catch(() => { return 0 })
     if (layoutType == 0) {
       // More recent layout, 1 cell for each meeting/event (2018+):
-      layoutType = await page.$eval('.nat_eve_list.risultati', () => { return 2 }).catch(() => { return 0 })
+      layoutType = await page.$eval('section#component .nat_eve_list.risultati .nat_eve', () => { return 2 }).catch(() => { return 0 })
     }
     if (layoutType == 0) {
       // Table layout ("Riepilogo" / different start URL, only for current season):
@@ -60,34 +63,116 @@ class CalendarCrawler {
   };
   //---------------------------------------------------------------------------
 
+  /*
+  // *** Notes about simulated "internal browsing" for FIN site / Calendar retrieval ***
+
+  // This is required because currently the site disables accessing direct links and the
+  // document.location[source] must come from the domain.
+
+  // 1. Start opening page at the base start URL ("https://www.federnuoto.it/home/master.html")
+  //    Each sub-page where the calendar is may be different. The ending result must be the page stored in the calendar
+  //    as base URL to retrieve the results.
+
+  // 2. Open side menu w/ links to access submenus & calendars:
+  document.querySelector(".module-menu_acc_interno ul.mixedmenu li.divider.deeper.parent span").click()
+
+  // 3. Click on an item of interest:
+  // 3.a) "Eventi" ("current events" using layout 2)
+  $('.module-menu_acc_interno ul.mixedmenu li.divider.deeper.parent ul.nav-child li a:contains("Eventi")')[0].click()
+
+  // 3.b) "Riepilogo eventi" ("current events" using layout 3 - table-like)
+  $('.module-menu_acc_interno ul.mixedmenu li.divider.deeper.parent ul.nav-child li a:contains("Riepilogo Eventi")')[0].click()
+
+  // 3.c) "Archivio 2012/2021" (old archive of result lists, each using layout 2)
+  // 3.c.1) for this one, open the sub menu:
+  $('.module-menu_acc_interno ul.mixedmenu li.divider.deeper.parent ul.nav-child li span:contains("Archivio 2012-")')[0].click()
+
+  // 3.c.2) select a season from the archive:
+  //        => CURRENTLY THE FOLLOWING EVENT WORKS EVEN IF THE ELEMENT IS NOT DISPLAYED <= (so, skip the above)
+  $('.module-menu_acc_interno ul.mixedmenu li.divider.deeper.parent ul.nav-child li span:contains("Archivio 2012-")')[0]
+
+  var item = $('.module-menu_acc_interno ul.mixedmenu li.divider.deeper.parent ul.nav-child li span:contains("Archivio 2012-")+ul').first().find('li:contains("2021/2022") a')[0]
+  item.click()
+  */
+
   /**
     * Asynch pageFunction for retrieving the FIN calendar from the list of current events
     * from the current season.
     * Supports 2018+ FIN website styling.
     * @param {String} baseURL - the browsed url (for serializing purposes)
+    * @param {String} subMenuText - text to be searched for inside the sub-menu node item (item to be selected)
+    * @param {String} yearText - text to be searched in the item list from the clicked sub-menu (typically from the archive section)
     * @param {Object} browser - a Puppeteer instance
     */
-  async processPage(baseURL, browser) {
-    const page = await browser.newPage();
+  async processPage(baseURL, subMenuText, yearText, browser) {
+    // Create a new incognito browser context:
+    const context = await browser.createIncognitoBrowserContext()
+    // Create a new page in a pristine context:
+    const page = await context.newPage()
     await page.setViewport({ width: 1200, height: 800 })
     await page.setUserAgent('Mozilla/5.0')
     page.on('load', () => { console.log('=> Page fully loaded.') });
-    CrawlUtil.updateStatus(`Browsing to ${baseURL}...`)
-    await page.goto(baseURL, { waitUntil: 'load', timeout: 90 })
+
+    CrawlUtil.updateStatus(`Browsing to ${baseURL} (${subMenuText}-> ${yearText})...`)
+    await page.goto(baseURL, { waitUntil: 'load' })
+
+    // Make the cookies dialog disappear:
+    await this.cookiesDialogDismiss(page)
+
+    CrawlUtil.updateStatus(`Waiting for side menu to become visible...`)
+    await page.waitForSelector('.module-menu_acc_interno ul.mixedmenu li.divider.deeper.parent').catch((err) => { console.log(err.toString()) })
+    // DEBUG
+    // await page.screenshot({ path: './screenshot-1.png' });
+    CrawlUtil.updateStatus(`Clicking on side menu...`)
+
+    // Click on the sub-menu item to reach the internal page with the calendar:
+    var resultsStartURL = ''
+    switch(subMenuText) {
+      case 'Eventi':
+        resultsStartURL = 'https://www.federnuoto.it/home/master/circuito-supermaster/eventi-circuito-supermaster.html'
+        await page.evaluate(() => {
+          var nodeArray = Array.from(document.querySelectorAll('.module-menu_acc_interno ul.mixedmenu li.divider.deeper.parent ul.nav-child li a'))
+          var item = nodeArray.filter(node => { console.log(node.innerHTML); return node.innerHTML.startsWith('Eventi') })[0]
+          item.click()
+        })
+        break;
+
+      case 'Riepilogo Eventi':
+        resultsStartURL = 'https://www.federnuoto.it/home/master/circuito-supermaster/riepilogo-eventi.html'
+        await page.evaluate(() => {
+          var nodeArray = Array.from(document.querySelectorAll('.module-menu_acc_interno ul.mixedmenu li.divider.deeper.parent ul.nav-child li a'))
+          var item = nodeArray.filter(node => { console.log(node.innerHTML); return node.innerHTML.startsWith('Riepilogo Eventi') })[0]
+          item.click()
+        })
+        break;
+
+      default: // "Archivio 2021-..."
+        resultsStartURL = `https://www.federnuoto.it/home/master/circuito-supermaster/archivio-2012-2022/stagione-${yearText.replace('/', '-')}.html`
+        console.log(`Using 'archived' calendar page type '${yearText}'`)
+        await page.evaluate((yearText) => {
+          var nodeArray = Array.from(document.querySelectorAll('.module-menu_acc_interno ul.mixedmenu li.divider.deeper.parent ul.nav-child li a'))
+          var item = nodeArray.filter(node => { console.log(node.innerHTML); return node.innerHTML.endsWith(`${yearText}`) })[0]
+          item.click()
+        }, yearText)
+    }
+
+    await page.waitForNetworkIdle({ idleTime: 2000 })
+    // DEBUG
+    await page.screenshot({ path: './screenshot-2.png' });
 
     CrawlUtil.updateStatus('Detecting layout type...')
     const layoutType = await this.calendarLayoutDetector(page)
-    CrawlUtil.updateStatus(`Detected layout ${layoutType}: parsing accordingly...`)
+    CrawlUtil.updateStatus(`Detected layout ${layoutType}`)
 
     var calendar = { layout: layoutType, rows: [] }
     if (layoutType == 1) {
       calendar.rows = await this.processCalendarLayout1(page)
     }
     else if (layoutType == 2) {
-      calendar.rows = await this.processCalendarLayout2(baseURL, page)
+      calendar.rows = await this.processCalendarLayout2(resultsStartURL, page)
     }
     else if (layoutType == 3) {
-      calendar.rows = await this.processCalendarLayout3(baseURL, page)
+      calendar.rows = await this.processCalendarLayout3(resultsStartURL, page)
     }
     // (ELSE: Unknown layout, skip processing)
 
@@ -111,17 +196,24 @@ class CalendarCrawler {
   //---------------------------------------------------------------------------
 
   /**
-   * Scroll to the end until no more content is being loaded.
+   * Dismisses the annoying cookies dialog due to GDPR.
    * @param {Object} page - the Puppetter page object
    */
-  async autoScrollToEnd(page) {
-    // Make the cookies dialog disappear:
+  async cookiesDialogDismiss(page) {
+    CrawlUtil.updateStatus(`Getting rid of the cookies dialog...`)
+    await page.waitForNetworkIdle({ idleTime: 1000 })
     await page.evaluate(() => {
       if (document.querySelector('#CybotCookiebotDialogBodyButtonDecline')) {
         document.querySelector('#CybotCookiebotDialogBodyButtonDecline').click()
       }
     })
+  }
 
+  /**
+   * Scroll to the end until no more content is being loaded.
+   * @param {Object} page - the Puppetter page object
+   */
+  async autoScrollToEnd(page) {
     let originalOffset = 0;
     while (true) {
       await page.evaluate('window.scrollBy(0, document.body.scrollHeight)');
@@ -345,7 +437,7 @@ class CalendarCrawler {
       .then(async browser => {
         console.log("\r\n*** Calendar Crawler ***\r\n")
         CrawlUtil.updateStatus(`Processing Season ${this.seasonId}, ${this.startURL}...`)
-        await this.processPage(this.startURL, browser)
+        await this.processPage(this.startURL, this.subMenuText, this.yearText, browser)
         await browser.close()
         CrawlUtil.updateStatus(`Done.`, 'OK, done, idle')
         return true

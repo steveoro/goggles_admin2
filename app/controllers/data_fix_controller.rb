@@ -39,7 +39,11 @@ class DataFixController < ApplicationController
     # Prepare the data review, solving the entities first if not already serialized
     # or when a reparse is requested:
     if @data_hash['meeting'].blank? || @data_hash['meeting_session'].blank? || edit_params['reparse'].present?
-      @solver.map_meeting_and_sessions
+      if edit_params['reparse'] == 'sessions'
+        @solver.map_sessions
+      else # (assume 'reparse whole section')
+        @solver.map_meeting_and_sessions
+      end
       # Serialize this step overwriting the same file:
       overwrite_file_path_with_json_from(@solver.data)
     end
@@ -222,10 +226,10 @@ class DataFixController < ApplicationController
 
     entity_key = entity_key_for(model_name)
     actual_form_key = if edit_params['dom_valid_key'].present? && edit_params['dom_valid_key'] != entity_key
-      edit_params['dom_valid_key']
-    else
-      entity_key
-    end
+                        edit_params['dom_valid_key']
+                      else
+                        entity_key
+                      end
 
     # == Main entity update: ==
     updated_attrs = if model_name == 'meeting'
@@ -243,10 +247,11 @@ class DataFixController < ApplicationController
       actual_attrs = Import::MacroSolver.actual_attributes_for(updated_attrs, model_name)
       # Always overwrite the fuzzy result ID column with the manual lookup result ID, which has a higher priority:
       # (i.e.: 'team_id' => team['id'])
-      actual_attrs['id'] = updated_attrs["#{model_name}_id"] if updated_attrs["#{model_name}_id"].present?
-      # Allow clearing of ID using zero:
-      actual_attrs['id'] = nil if (actual_attrs['id']).to_i.zero? # Avoid clearing if empty or present
-
+      actual_attrs['id'] = if updated_attrs["#{model_name}_id"].present?
+                             updated_attrs["#{model_name}_id"]
+                           elsif (actual_attrs['id']).to_i.zero? # Avoid clearing if empty or present
+                             actual_attrs['id'] = nil # Allow clearing of ID using zero
+                           end
       # Handle special cases:
       case model_name
       when 'team'
@@ -337,9 +342,12 @@ class DataFixController < ApplicationController
       # === Update binding entity attributes too: ===
       # i.e.: 'swimming_pool' => 0 => 'city_id' (apply to binding, i.e.: 'swimming_pool')
       # Always add the overwrite for the binding fuzzy result ID column with the manual lookup result ID:
-      nested_attrs['id'] = updated_attrs["#{binding_model_name}_id"].to_i if updated_attrs["#{binding_model_name}_id"].present?
-      # Allow clearing of ID using zero:
-      nested_attrs['id'] = nil if (nested_attrs['id']).to_i.zero? # Avoid clearing if empty or present
+      nested_attrs['id'] = if updated_attrs["#{binding_model_name}_id"].present?
+                             updated_attrs["#{binding_model_name}_id"].to_i
+                           elsif (nested_attrs['id']).to_i.zero? # Avoid clearing if empty or present
+                             nested_attrs['id'] = nil # Allow clearing of ID using zero
+                           end
+
       # EXCEPTION: City is the only "complex" binding that could be sub-nested at depth > 1, returning a whole Hash (key + attributes)
       binding_key = binding_key.keys.first if binding_key.is_a?(Hash)
       @data_hash[binding_model_name]&.fetch(binding_key, nil)&.fetch('row', nil)&.compact!
@@ -352,11 +360,11 @@ class DataFixController < ApplicationController
     # == Serialization on same file: ==
     overwrite_file_path_with_json_from(@data_hash)
 
+    # Clean the referer URL from a possible reparse parameter before redirecting back:
+    request.headers['HTTP_REFERER'].gsub!(/&reparse=(true|sessions)/i, '')
     # DEBUG ----------------------------------------------------------------
     # binding.pry
     # ----------------------------------------------------------------------
-    # Clean the referer URL from a possible reparse parameter:
-    request.headers['HTTP_REFERER'].gsub('&reparse=true', '')
 
     # Fall back to step 1 (sessions) in case the referrer is not available:
     redirect_back(fallback_location: review_sessions_path(file_path: file_path_from_params, reparse: false))

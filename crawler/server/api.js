@@ -19,9 +19,14 @@ const ResultsCrawler = require('./results-crawler.js');
 apiRouter.get("/pull_calendar", (req, res) => {
   // DEBUG
   console.log('GET /pull_calendar');
-  console.log('- season_id:', req.query.season_id)
-  console.log('- start_url:', req.query.start_url)
-  const calCrawler = new CalendarCrawler(req.query.season_id, req.query.start_url);
+  console.log('- season_id....:', req.query.season_id)
+  console.log('- start_url....:', req.query.start_url)
+  console.log('- sub_menu_type:', req.query.sub_menu_type)
+  console.log('- year_text....:', req.query.year_text)
+  const calCrawler = new CalendarCrawler(
+    req.query.season_id, req.query.start_url,
+    req.query.sub_menu_type, req.query.year_text
+  );
   calCrawler.run();
   res.send(CrawlUtil.readStatus());
 });

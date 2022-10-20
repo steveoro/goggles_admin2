@@ -9,11 +9,24 @@
           &nbsp; / &nbsp;
           = data_hash["address#{ordinal}"]
 
+:ruby
+  swimming_pool_id = meeting_session.swimming_pool_id || swimming_pool&.id
+  city_id = swimming_pool&.city_id || city&.id
+  src_dom = '#search_pool_id'
+  target_dom = "#swimming_pool_#{index}_swimming_pool_id"
+  onclick_event = "$('#{target_dom}').val($('#{src_dom}').val()); $('#{target_dom}').trigger('change')"
+
 .row
+  - if city_id.present?
+    - pool_collection = GogglesDb::SwimmingPool.where(city_id: city_id)
+    .field.col-8.mt-1
+      = label_tag('search_pool_id', 'Existing pools')
+      = select_tag('search_pool_id', options_from_collection_for_select(pool_collection, 'id', 'name',
+                   swimming_pool_id), include_blank: true, class: 'form-control', onclick: onclick_event)
   .col-lg-5.col-md-6
     = render(AutoCompleteComponent.new(show_top_labels: true,
             base_dom_id: "swimming_pool[#{index}]", base_api_url: api_url,
-            default_value: meeting_session.swimming_pool_id || swimming_pool&.id,
+            default_value: swimming_pool_id,
             detail_endpoint: 'swimming_pool', base_name: 'swimming_pool', label_column: 'name',
             search_endpoint: 'swimming_pools', search_column: 'name',
             target3_dom_id: "swimming_pool_#{index}_name", target3_column: 'name',

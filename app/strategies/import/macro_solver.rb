@@ -174,6 +174,7 @@ module Import
     #                             will reference: 'meeting_program' => by coded name);
     #
     attr_accessor :data
+
     #-- ------------------------------------------------------------------------
     #++
 
@@ -192,34 +193,68 @@ module Import
       main_city_name, _area_code, _remainder = Parser::CityName.tokenize_address(@data['address1'])
       # Store all the Import::Entity wrappers in the data hash:
       @data['meeting'] = find_or_prepare_meeting(@data['name'], main_city_name)
+      map_sessions
+    end
+
+    # Assuming <tt>@data['meeting'].row</tt> already contains a Meeting instance,
+    # this will recreate from scratch the array of meeting sessions bound to the
+    # current Meeting.
+    #
+    # == Resets & recomputes:
+    # - @data['meeting_session'] => array of new or existing MeetingSession instance (each one as an Import::Entity value object)
+    #
+    # == Returns
+    # The array of Import::Entity wrapping the resulting candidate MeetingSession rows.
+    def map_sessions
+      meeting = cached_instance_of('meeting', nil)
+      # Prioritize existing sessions over the one from the parsed data:
+      if meeting && meeting.id.present? && meeting.meeting_sessions.count.positive?
+        @data['meeting_session'] = meeting.meeting_sessions.map do |meeting_session|
+          session = find_or_prepare_session(
+            meeting: meeting,
+            session_order: meeting_session.session_order,
+            date_day: meeting_session.scheduled_date&.day,
+            date_month: Parser::SessionDate::MONTH_NAMES[meeting_session.scheduled_date&.month - 1],
+            date_year: meeting_session.scheduled_date&.year,
+            scheduled_date: meeting_session.scheduled_date,
+            pool_name: meeting_session.swimming_pool&.name,
+            address: meeting_session.swimming_pool&.address,
+            pool_length: meeting_session.swimming_pool&.pool_type&.code,
+            day_part_type: meeting_session.day_part_type
+          )
+          session.add_bindings!('meeting' => @data['name'])
+          session
+        end
+        return @data['meeting_session']
+      end
 
       session1 = find_or_prepare_session(
-        meeting: @data['meeting'].row,
+        meeting: meeting,
+        session_order: 1,
         date_day: @data['dateDay1'],
         date_month: @data['dateMonth1'],
         date_year: @data['dateYear1'],
         pool_name: @data['venue1'],
         address: @data['address1'],
-        session_order: 1,
         pool_length: @data['poolLength']
-        # day_part_type_id: 1 (currently no data for this)
+        # day_part_type: GogglesDb::DayPartType.afternoon (currently no data for this)
       )
       session1.add_bindings!('meeting' => @data['name'])
       # Set the meeting official date to the one from the first session if the meeting is new:
-      @data['meeting'].row.header_date = session1.row.scheduled_date if @data['meeting'].row.header_date.blank?
+      @data['meeting'].row.header_date = session1.row.scheduled_date if meeting.header_date.blank?
 
       # Prepare a second session if additional dates are given:
       session2 = if @data['dateDay2'].present? && @data['dateMonth2'].present? && @data['dateYear2'].present?
                    find_or_prepare_session(
-                     meeting: @data['meeting'].row,
+                     meeting: meeting,
+                     session_order: 2,
                      date_day: @data['dateDay2'],
                      date_month: @data['dateMonth2'],
                      date_year: @data['dateYear2'],
                      pool_name: @data['venue2'].presence || @data['venue1'],
                      address: @data['address2'].presence || @data['address1'],
-                     session_order: 2,
                      pool_length: @data['poolLength']
-                     # day_part_type_id: 1 (currently no data for this)
+                     # day_part_type: GogglesDb::DayPartType.morning (currently no data for this)
                    )
                  end
       session2&.add_bindings!('meeting' => @data['name'])
@@ -251,10 +286,10 @@ module Import
 
         sect['rows'].each do |row|
           team_name = row['team']
-          puts "\r\n\r\n*** TEAM '#{team_name}' ***" if @toggle_debug
+          logger.debug("\r\n\r\n*** TEAM '#{team_name}' ***") if @toggle_debug
           # Add only if not already present in hash:
           unless entity_present?('team', team_name)
-            puts "    ---> '#{team_name}' (+)" if @toggle_debug
+            logger.debug("    ---> '#{team_name}' (+)") if @toggle_debug
             team_entity = find_or_prepare_team(team_name)
             team_affiliation_entity = find_or_prepare_affiliation(team_entity.row, team_name, @season)
             # Convenience reference for this meeting:
@@ -265,9 +300,10 @@ module Import
           end
 
           swimmer_name = row['name']
-          puts "\r\n=== SWIMMER '#{swimmer_name}' ===" if @toggle_debug
+          logger.debug("\r\n=== SWIMMER '#{swimmer_name}' ===") if @toggle_debug
           next if entity_present?('swimmer', swimmer_name)
-          puts "    ------> '#{swimmer_name}' (+)" if @toggle_debug
+
+          logger.debug("    ------> '#{swimmer_name}' (+)") if @toggle_debug
           swimmer_entity = find_or_prepare_swimmer(swimmer_name, row['year'], row['sex'])
           # Special disambiguation reference (in case of same-named swimmers with same age):
           swimmer_entity.add_bindings!('team' => team_name)
@@ -319,15 +355,15 @@ module Import
         program_key = "#{event_key}-#{category_type.code}-#{gender_type.code}"
 
         # == MeetingEvent: find/create unless key is present (stores just the first unique key found):
-        puts "\r\n\r\n*** EVENT '#{event_key}' ***" if @toggle_debug
+        logger.debug("\r\n\r\n*** EVENT '#{event_key}' ***") if @toggle_debug
         unless entity_present?('meeting_event', event_key)
           event_order += 1
-          puts "    ---> '#{event_key}' n.#{event_order} (+)" if @toggle_debug
+          logger.debug("    ---> '#{event_key}' n.#{event_order} (+)") if @toggle_debug
           # DEBUG: ******************************************************************
           binding.pry if meeting_session.nil? || event_type.nil? || gender_type.nil?
           # DEBUG: ******************************************************************
           mevent_entity = find_or_prepare_mevent(
-            meeting_session: meeting_session, session_index: msession_idx,
+            meeting: meeting, meeting_session: meeting_session, session_index: msession_idx,
             event_type: event_type, event_order: event_order
           )
           add_entity_with_key('meeting_event', event_key, mevent_entity)
@@ -370,7 +406,7 @@ module Import
             badge_entity = find_or_prepare_badge(
               swimmer: swimmer, swimmer_key: swimmer_name, team: team, team_key: team_name,
               team_affiliation: team_affiliation, category_type: category_type
-                          )
+            )
             add_entity_with_key('badge', swimmer_name, badge_entity)
           end
           badge = cached_instance_of('badge', swimmer_name)
@@ -384,6 +420,7 @@ module Import
 
           mir_key = "#{program_key}/#{swimmer_name}"
           next if entity_present?('meeting_individual_result', mir_key)
+
           score = Parser::Score.from_l2_result(row['score'])
           timing = Parser::Timing.from_l2_result(row['timing'])
           rank = row['pos'].to_i
@@ -558,14 +595,23 @@ module Import
     #
     # == Params:
     # - <tt>:meeting</tt> => the current Meeting instance (single, best candidate found)
+    # - <tt>:session_order</tt> => default: 1
+    #
     # - <tt>:date_day</tt> => text date day
     # - <tt>:date_month</tt> => text date month (allegedly, in Italian; could be abbreviated)
     # - <tt>:date_year</tt> => text date year
+    #
+    # - <tt>:scheduled_date</tt> => scheduled_date, if already available; has priority over the 3-field date format
+    #
     # - <tt>:pool_name</tt> => full name of the swimming pool
     # - <tt>:address</tt> => full text address of the swimming pool (must include city name)
-    # - <tt>:session_order</tt> => default: 1
     # - <tt>:pool_length</tt> => default '25'
+    #
     # - <tt>:day_part_type_id</tt> => defaults to GogglesDb::DayPartType::MORNING_ID
+    #
+    # If the Meeting instance has a valid ID and has existing associated MeetingSession rows to it,
+    # these will take precendence over the rest of the specified parameters, provided their session_order
+    # is properly set (uses the Meeting#id & the session_order to discriminate them).
     #
     # == Returns:
     # An Import::Entity wrapping the target row together with a list of all possible candidates, when found.
@@ -576,13 +622,11 @@ module Import
     # - <tt>#bindings<tt> => Hash of keys pointing to the correct association rows stored at root level in the #data hash member.
     #
     def find_or_prepare_session(meeting:, date_day:, date_month:, date_year:, pool_name:, address:,
-                                session_order: 1, pool_length: '25', day_part_type: GogglesDb::DayPartType.morning)
+                                scheduled_date: nil, session_order: 1, pool_length: '25',
+                                day_part_type: GogglesDb::DayPartType.morning)
       # 1. Find existing:
-      iso_date = Parser::SessionDate.from_l2_result(date_day, date_month, date_year)
-      domain = GogglesDb::MeetingSession.where(
-        meeting_id: meeting&.id, scheduled_date: iso_date,
-        session_order: session_order
-                                        )
+      iso_date = scheduled_date || Parser::SessionDate.from_l2_result(date_day, date_month, date_year)
+      domain = GogglesDb::MeetingSession.where(meeting_id: meeting&.id, session_order: session_order)
       pool_entity = find_or_prepare_pool(domain.first&.swimming_pool_id, pool_name, address, pool_length)
       # Always store in cache the sub-entity found:
       add_entity_with_key('swimming_pool', pool_name, pool_entity)
@@ -611,28 +655,47 @@ module Import
     # Finds or prepares for creation a MeetingEvent instance given all the following parameters.
     #
     # == Params:
+    # - <tt>:meeting</tt> => the parent Meeting instance (single, best candidate found or created)
     # - <tt>:meeting_session</tt> => the parent MeetingSession instance (single, best candidate found or created)
     # - <tt>:session_index</tt> => ordinal index (key) for the MeetingSession entity array stored at root level in the data Hash member
     # - <tt>:event_type</tt> => associated EventType
     # - <tt>:event_order</tt> => overall order of this event
     # - <tt>:heat_type</tt> => defaults to GogglesDb::HeatType.finals
     #
+    # The Meeting instance is used to find and prioritize any existing MeetingEvent owned by the same Meeting
+    # for the associated unique event type. If any such event is found on localhost, it's considered to be
+    # the actual row to be updated.
+    #
     # == Returns:
     # An Import::Entity wrapping the target row together with a list of all possible candidates, when found.
     #
-    def find_or_prepare_mevent(meeting_session:, session_index:, event_type:, event_order:, heat_type: GogglesDb::HeatType.finals)
-      bindings = { 'meeting_session' => session_index }
-      domain = GogglesDb::MeetingEvent.where(
-        meeting_session_id: meeting_session&.id, event_type_id: event_type.id,
-        event_order: event_order
-                                      )
-      return Import::Entity.new(row: domain.first, matches: domain.to_a, bindings: bindings) if domain.present?
+    def find_or_prepare_mevent(meeting:, meeting_session:, session_index:, event_type:, event_order:, heat_type: GogglesDb::HeatType.finals)
+      # Prioritize any existing meeting events:
+      if meeting.present? && meeting.id.present? &&
+         GogglesDb::MeetingEvent.includes(:meeting).where('meetings.id': meeting.id, event_type_id: event_type.id).exists?
+        existing_mev = GogglesDb::MeetingEvent.includes(:meeting)
+                                              .where('meetings.id': meeting.id, event_type_id: event_type.id)
+                                              .first
+        # Find & assign the proper msession index in case the one being processed as parameter isn't the original one
+        # in the existing row (we need to find a corresponding key/index inside the array of sessions):
+        proper_msession_id = existing_mev.meeting_session_id
+        proper_msession_idx = 0
+        (0 ... @data['meeting_session'].count).each do |msession_idx|
+          meeting_session = cached_instance_of('meeting_session', msession_idx)
+          proper_msession_idx = msession_idx
+          break if meeting_session&.id == proper_msession_id
+        end
+        return Import::Entity.new(
+          row: existing_mev, matches: [existing_mev],
+          bindings: { 'meeting_session' => proper_msession_idx }
+        )
+      end
 
       new_row = GogglesDb::MeetingEvent.new(
         meeting_session_id: meeting_session&.id, event_type_id: event_type.id,
         event_order: event_order, heat_type_id: heat_type.id
       )
-      Import::Entity.new(row: new_row, matches: [new_row], bindings: bindings)
+      Import::Entity.new(row: new_row, matches: [new_row], bindings: { 'meeting_session' => session_index })
     end
 
     # Finds or prepares for creation a MeetingProgram instance given all the following parameters.
@@ -653,7 +716,7 @@ module Import
       domain = GogglesDb::MeetingProgram.where(
         meeting_event_id: meeting_event&.id, pool_type_id: pool_type.id,
         category_type_id: category_type.id, gender_type_id: gender_type.id
-                                        )
+      )
       return Import::Entity.new(row: domain.first, matches: domain.to_a, bindings: bindings) if domain.present?
 
       new_row = GogglesDb::MeetingProgram.new(
@@ -744,7 +807,7 @@ module Import
       if tokens.size == 3
         last_name = tokens.first
         first_name = tokens[1..2].join(' ')
-      end # ASSUMES: double name more common than double surname
+      end
       if tokens.size > 3
         last_name = tokens[0..1].join(' ')
         first_name = tokens[2..-1].join(' ')
@@ -756,7 +819,7 @@ module Import
         year_of_birth: year_of_birth,
         gender_type_id: gender_type.id,
         year_guessed: year_of_birth.to_i.zero?
-        )
+      )
       Import::Entity.new(row: new_row, matches: [new_row])
     end
 
@@ -829,7 +892,7 @@ module Import
       domain = GogglesDb::MeetingIndividualResult.where(
         meeting_program_id: meeting_program&.id,
         team_id: team&.id, swimmer_id: swimmer&.id
-                                                  )
+      )
       return Import::Entity.new(row: domain.first, matches: domain.to_a, bindings: bindings) if domain.present?
 
       new_row = GogglesDb::MeetingIndividualResult.new(
@@ -1014,11 +1077,9 @@ module Import
       orig_matches = if entity_or_hash.respond_to?(:matches)
                        entity_or_hash.matches
                      elsif entity_or_hash.is_a?(Hash)
-                        entity_or_hash.fetch('matches', nil)
+                       entity_or_hash.fetch('matches', nil)
                      elsif entity_or_hash.is_a?(Array) # ASSUMES: it's already an Array of AR models
-                        entity_or_hash
-                     else
-                        nil
+                       entity_or_hash
                      end
       row_matches = orig_matches&.map do |search_item|
         convert_search_item_to_model_for(model_name, row_model, search_item)
@@ -1027,9 +1088,7 @@ module Import
       row_bindings = if entity_or_hash.respond_to?(:bindings)
                        entity_or_hash.bindings
                      elsif entity_or_hash.is_a?(Hash)
-                        entity_or_hash.fetch('bindings', nil)
-                     else
-                        nil
+                       entity_or_hash.fetch('bindings', nil)
                      end
 
       [row_model, row_matches, row_bindings]
@@ -1065,44 +1124,44 @@ module Import
     #
     def convert_search_item_to_model_for(model_name, row_model, search_item)
       search_model = if search_item.is_a?(Hash) && search_item.key?('table') && search_item['table'].key?('candidate')
-                        # Hash from already serialized Import::Entity search result (Hash['candidate'])
+                       # Hash from already serialized Import::Entity search result (Hash['candidate'])
                        self.class.model_class_for(model_name).new(
                          self.class.actual_attributes_for(search_item['table']['candidate'], model_name)
                        )
 
                      elsif search_item.respond_to?(:candidate)
-                        # original OpenStruct result (unserialized yet)
-                        search_item.candidate
+                       # original OpenStruct result (unserialized yet)
+                       search_item.candidate
 
                      elsif search_item.is_a?(Hash) && search_item.fetch('data', nil).is_a?(Hash)
-                        # single Hash in Array, but serialized from a Cities::City:
-                        # (holds attributes under the 'data' subhash)
-                        self.class.model_class_for(model_name).new(
-                          self.class.actual_attributes_for(search_item['data'], model_name)
-                        )
+                       # single Hash in Array, but serialized from a Cities::City:
+                       # (holds attributes under the 'data' subhash)
+                       self.class.model_class_for(model_name).new(
+                         self.class.actual_attributes_for(search_item['data'], model_name)
+                       )
 
                      elsif search_item.is_a?(Hash)
-                        # single Hash in Array (plain model already serialized):
-                        self.class.model_class_for(model_name).new(
-                          self.class.actual_attributes_for(search_item, model_name)
-                        )
+                       # single Hash in Array (plain model already serialized):
+                       self.class.model_class_for(model_name).new(
+                         self.class.actual_attributes_for(search_item, model_name)
+                       )
 
                      elsif search_item.is_a?(ActiveRecord::Base)
-                        # plain Model in Array (no fuzzy search):
-                        self.class.model_class_for(model_name).new(
-                          self.class.actual_attributes_for(search_item.attributes, model_name)
-                        )
+                       # plain Model in Array (no fuzzy search):
+                       self.class.model_class_for(model_name).new(
+                         self.class.actual_attributes_for(search_item.attributes, model_name)
+                       )
 
                      elsif search_item.is_a?(Import::Entity) && search_item.respond_to?(:row)
-                        # => ASSERT: UNEXPECTED OBJECT HERE (Import::Entity instance instead of Array[Hash] or [Hash])
-                        # => RAISE ERROR & INSPECT search_item, which should be either be one of the 2 above
-                        # raise "Unexpected Import::Entity after data_hash reconstruction! Possible data corruption!"
-                        search_item.row
+                       # => ASSERT: UNEXPECTED OBJECT HERE (Import::Entity instance instead of Array[Hash] or [Hash])
+                       # => RAISE ERROR & INSPECT search_item, which should be either be one of the 2 above
+                       # raise "Unexpected Import::Entity after data_hash reconstruction! Possible data corruption!"
+                       search_item.row
 
                      elsif search_item.is_a?(Cities::City) && row_model.is_a?(GogglesDb::City)
-                      # No search alternatives, just a Cities::City returned from CmdFindIsoCity, so we may as well as return
-                      # the row_model here as single match:
-                        row_model
+                       # No search alternatives, just a Cities::City returned from CmdFindIsoCity, so we may as well as return
+                       # the row_model here as single match:
+                       row_model
                      end
 
       # Return the decorated search model instance, but only for certain model names:

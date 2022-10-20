@@ -10,15 +10,19 @@
       .container.pt-3.shadow-box#curr-config-box
         = form_tag(run_calendar_crawler_path, id: 'frm-calendar-crawler', method: :post) do
           .row
-            .col
+            .col-auto
+              = render(AutoCompleteComponent.new(show_top_labels: true, base_name: 'season',
+                        search_column: 'season_label',
+                        target2_field: 'year_text', target2_column: 'year_text', target2_class: 'col-auto my-1',
+                        target3_field: 'layout', target3_column: 'layout',
+                        label_column: 'description',
+                        payload: @season_list))
+            .col-auto
               .form-group
-                = label_tag(:start_url, t('data_import.calendar.season_search_label'))
-                = render(AutoCompleteComponent.new(base_name: 'season',
-                         search_column: 'season_label',
-                         target2_field: 'start_url', target2_column: 'calendar_url',
-                         target3_field: 'layout', target3_column: 'layout',
-                         label_column: 'description',
-                         payload: @season_list))
+                .field
+                  = label_tag('sub_menu_type', 'Sub-menu item')
+                  = select_tag('sub_menu_type', options_for_select(['Eventi', 'Riepilogo Eventi', 'Archivio 2012-']),
+                               class: 'form-control')
           .row
             .col-6.mt-2.mb-3.text-left
               = submit_tag(t('data_import.calendar.btn_run_crawler'), id: 'btn-run-calendar-crawler',
