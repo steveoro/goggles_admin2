@@ -92,30 +92,18 @@ class PushController < FileListController
   # - @file_path, containing the SQL batch file to be sent.
   #
   def upload
-    res = APIProxy.call(
-      method: :post,
-      url: 'import_queue/batch_sql',
-      jwt: current_user.jwt,
-      payload: { data_file: File.open(@file_path) }
-    )
-    result = JSON.parse(res.body)
-
-    if result.respond_to?(:fetch) && result['new'].present? && result['new']['id'].to_i.positive?
-      # Move strategy to allow testing data-import on localhost first:
-      # 1. 'results.new/*'
-      #    2. => 'results.sent/*'
-      #        3. => 'results.done/*'
-      from_folder, to_folder = if @file_path.include?('results.new')
-                                 %w[results.new results.sent]
-                               else
-                                 %w[results.sent results.done]
-                               end
-      dest_file = @file_path.gsub(from_folder, to_folder)
-      FileUtils.mkdir_p(File.dirname(dest_file)) # Make sure the destination path is there
-      File.rename(@file_path, dest_file)
-      flash[:info] = I18n.t('data_import.push.msg_send_batch_ok')
+    # Handle file globs:
+    if @file_path.ends_with?('*.sql')
+      Dir.glob(Rails.root.join('crawler', @file_path)).sort.each do |file_path|
+        push_file_and_move(file_path)
+        if flash[:error].present?
+          flash[:error] = "#{flash[:error]} - file: '#{file_path}'"
+          break
+        end
+      end
+      flash[:info] = I18n.t('data_import.push.all_sql_files_ok') unless flash[:error].present?
     else
-      flash[:error] = result['msg']
+      push_file_and_move(@file_path)
     end
 
     redirect_to(push_index_path)
@@ -172,6 +160,47 @@ class PushController < FileListController
     detect_season_from_pathname # (sets @season)
     # FUTUREDEV: display progress in real time using another ActionCable channel? (or same?)
     @solver = Import::MacroSolver.new(season_id: @season.id, data_hash: @data_hash, toggle_debug: true)
+  end
+  #-- -------------------------------------------------------------------------
+  #++
+
+  # Assuming it's a single, valid SQL batch file, using the dedicated API endpoint,
+  # this uploads <tt>file_path</tt> to the currently set remote API server.
+  #
+  # If successful, the file will be moved to the destination folder according to
+  # our "double-step" (first staging, then production) archival strategy:
+  #
+  # 1. if in '.new', move it to '.sent', so that we can re-push it to another server;
+  # 2. if in '.sent', move it to '.done' so that we know we're done.
+  #
+  # In case of error, flash[:error] will be non-blank.
+  def push_file_and_move(file_path)
+    logger.info("\r\n---> Pushing '#{file_path}'...")
+    res = APIProxy.call(
+      method: :post,
+      url: 'import_queue/batch_sql',
+      jwt: current_user.jwt,
+      payload: { data_file: File.open(file_path) }
+    )
+    result = JSON.parse(res.body)
+
+    if result.respond_to?(:fetch) && result['new'].present? && result['new']['id'].to_i.positive?
+      # Move strategy to allow testing data-import on localhost first:
+      # 1. 'results.new/*'
+      #    2. => 'results.sent/*'
+      #        3. => 'results.done/*'
+      from_folder, to_folder = if file_path.include?('results.new')
+                                 %w[results.new results.sent]
+                               else
+                                 %w[results.sent results.done]
+                               end
+      dest_file = file_path.gsub(from_folder, to_folder)
+      FileUtils.mkdir_p(File.dirname(dest_file)) # Make sure the destination path is there
+      File.rename(file_path, dest_file)
+      flash[:info] = I18n.t('data_import.push.msg_send_batch_ok')
+    else
+      flash[:error] = result['msg']
+    end
   end
   #-- -------------------------------------------------------------------------
   #++

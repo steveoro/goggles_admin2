@@ -94,12 +94,7 @@ module Import
       map_meeting_and_sessions
       map_teams_and_swimmers
       map_events_and_results
-      # TODO: meeting scores & rankings for each team
-      # TODO: save resulting object to a file
-
-      # Example:
-      # @sql_log << SqlMaker.new(new_row).log_insert
-      # new_row
+      # TODO/FUTUREDEV: meeting scores & rankings for each team (currently: no data available)
     end
     #-- ------------------------------------------------------------------------
     #++

@@ -4,9 +4,9 @@ module Import
   #
   # = MacroSolver
   #
-  #   - version:  7-0.4.10
+  #   - version:  7-0.4.20
   #   - author:   Steve A.
-  #   - build:    20221004
+  #   - build:    20221025
   #
   # Given a MacroSolver instance that stores the already-precessed contents of the result JSON data file,
   # this class commits the individual entities "solved", either by creating the missing rows
@@ -168,7 +168,8 @@ module Import
         month: @data['dateMonth1'],
         results_link: @data['meetingURL'],
         manifest_link: @data['manifestURL'],
-        organization_import_text: @data['organization']
+        organization_import_text: @data['organization'],
+        cancelled: meeting.cancelled
       )
 
       @data['calendar'] = commit_and_log(model_row)
@@ -215,7 +216,23 @@ module Import
     # - #data['swimming_pool'] Hash, substituting each keyed value with the resulting model
     #
     def commit_pools
-      entity_keys = @data['swimming_pool']&.keys&.compact
+      # Limit pools only to the ones *actually* being used in the bindings & skip and possible initial
+      # wrong match with a totally different string key.
+      # This happens especially when the meeting is edited from a new one to an existing one, which has
+      # a different pre-existing pool (that won't necessarily use the same string key).
+      # The old, wrong match is left inside the allocated entities, even if the sessions don't bound
+      # to that anymore. (This should be fixed in future versions.)
+      # With this filtering, we'll avoid trying to commit duplicated pools due to code names already existing
+      # or other integrity violations.
+      total_sessions = @data['meeting_session']&.compact&.count
+      actual_bound_keys = []
+      (0 ... total_sessions).each do |index|
+        parent_bindings_hash = @solver.cached_instance_of('meeting_session', 0, 'bindings')
+        used_key = parent_bindings_hash&.fetch('swimming_pool', nil)
+        actual_bound_keys << used_key if used_key.present? && !actual_bound_keys.include?(used_key)
+      end
+
+      entity_keys = @data['swimming_pool']&.keys&.compact.keep_if { |key| actual_bound_keys.include?(key) }
       total = entity_keys&.count
       idx = 0
 

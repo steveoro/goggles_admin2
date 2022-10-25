@@ -35,10 +35,14 @@ en:
       btn_reparse_session_label: "Reparse sessions"
       btn_reparse_session_tooltip: "Make a forced reparse of this result file but JUST for the Meeting sessions (useful if you change and save the Meeting ID)"
     push:
-      msg_prepare_batch_ok: 'SQL batch file successfully created.'
-      msg_send_batch_ok: "SQL batch file successfully sent and moved to the 'results.done' folder."
+      msg_prepare_batch_ok: 'SQL batch file created.'
+      msg_send_batch_ok: "SQL batch file successfully sent."
       new_results_tab_name: "New"
       sent_results_tab_name: "Sent"
+      btn_all_sql_files: "ALL files"
+      btn_all_sql_files_tooltip: "Uploads to the remote server ALL SQL batch files from the list below"
+      btn_all_sql_files_confirm: "Are you sure you want to upload ALL SQL batch files?"
+      all_sql_files_ok: "All SQL batch files have been successfully sent."
     errors:
       invalid_request: 'Invalid request'
       invalid_file_content: 'Invalid file contents for the given file extension'

@@ -16,7 +16,6 @@
               event = event_entity.row
               event_checker = Regexp.new(event_key, Regexp::IGNORECASE)
               prg_keys_filtered = @prgs_keys&.select { |prg_key| event_checker.match?(prg_key) }
-              prg_codes = prg_keys_filtered&.map { |key| key.split("#{event_key}-").last }
 
             %div{ id: "event-card-#{index}" }
               .card.my-2
@@ -42,12 +41,22 @@
                       'data-parent' => "#event-card-#{index}" }
                   .card-body.border-bottom.border-secondary
                     .row
-                      - prg_codes.each do |prg_code|
+                      - prg_keys_filtered.each do |prg_key|
                         :ruby
+                          prg_entity = @prgs_hash[prg_key]
+                          prg = prg_entity.row
+                          prg_code = prg_key.split("#{event_key}-").last
                           prg_checker = Regexp.new(prg_code, Regexp::IGNORECASE)
                           mir_sub_count = @mirs_keys&.select { |mir_key| prg_checker.match?(mir_key) }&.count
                         .col-auto.m-1
                           = prg_code
+                          - if prg.id.present?
+                            = prg.valid? ? '✅' : '🔵'
+                            %br/
+                            %small
+                              ID: #{prg.id}
+                          - else
+                            🆕
                           %br/
                           %small
                             %pre

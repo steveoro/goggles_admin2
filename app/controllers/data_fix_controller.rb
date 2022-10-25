@@ -249,7 +249,7 @@ class DataFixController < ApplicationController
       # (i.e.: 'team_id' => team['id'])
       actual_attrs['id'] = if updated_attrs["#{model_name}_id"].present?
                              updated_attrs["#{model_name}_id"]
-                           elsif (actual_attrs['id']).to_i.zero? # Avoid clearing if empty or present
+                           elsif (actual_attrs['id']).to_i.zero? # Avoid clearing if present
                              actual_attrs['id'] = nil # Allow clearing of ID using zero
                            end
       # Handle special cases:
@@ -498,7 +498,6 @@ class DataFixController < ApplicationController
   # Sets @solver with current Solver instance.
   def prepare_solver
     detect_season_from_pathname # (sets @season)
-    # FUTUREDEV: display progress in real time using another ActionCable channel? (or same?)
     @solver = Import::MacroSolver.new(season_id: @season.id, data_hash: @data_hash, toggle_debug: false)
   end
 
@@ -582,6 +581,7 @@ class DataFixController < ApplicationController
       overwrite_file_path_with_json_from(@solver.data)
     end
     @events_hash = @solver.rebuild_cached_entities_for('meeting_event')
+    @prgs_hash = @solver.rebuild_cached_entities_for('meeting_program')
   end
   #-- -------------------------------------------------------------------------
   #++

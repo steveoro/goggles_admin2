@@ -151,12 +151,17 @@ class FileListController < ApplicationController
 
   # Prepares the current dir, the dir list and the file list members given the
   # current file_params.
-  def prepare_file_and_dir_list(filter = '*.*')
+  def prepare_file_and_dir_list(filter = nil)
+    file_ext = File.extname(file_params[:file_path])
     @curr_dir = File.dirname(file_params[:file_path]).split('crawler/').last
     @dirnames = Dir.glob(Rails.root.join('crawler', @curr_dir, '../*'))
                    .map { |name| name.split('crawler/').last }
                    .sort
+
+    # Clear current folder if we're handling calendar files:
+    @curr_dir = nil if file_ext == '.csv'
+    # Filter file list based on current extension:
+    filter ||= "*#{file_ext}"
     @files = Dir.glob(Rails.root.join('crawler', @curr_dir, '**', filter)).sort
-    @curr_dir = nil if File.extname(file_params[:file_path]) == '.csv' # Do not filter calendar files
   end
 end

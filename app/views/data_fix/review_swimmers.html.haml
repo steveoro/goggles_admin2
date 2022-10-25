@@ -7,7 +7,10 @@
       = render(partial: 'data_fix_tabs', locals: { active_tab: 'swimmers', file_path: @file_path })
 
     %section.my-2#review-swimmers
+      - row_count = @swimmers_hash.keys.count
       .container-fluid
+        .row-fluid
+          %p Tot.: #{row_count}
         .row-fluid
           - @swimmers_hash.keys.sort.each_with_index do |swimmer_key, index|
             :ruby
@@ -33,7 +36,13 @@
                       = "=> #{swimmer.complete_name}"
                       - if swimmer.id.present?
                         ID: #{swimmer.id}
-                        = swimmer.valid? ? '✅' : '🔵'
+                        = swimmer.valid? ? '✅' : '🔴'
+                        - if swimmer.first_name.blank? || swimmer.last_name.blank?
+                          &nbsp;
+                          🟡
+                        - if swimmer.complete_name.split.count > 2
+                          &nbsp;
+                          3️⃣
                       - else
                         🆕
                 .collapse{ id: "swimmer-panel-#{index}", 'aria-labelledby' => "swimmer-header-#{index}",

@@ -7,7 +7,10 @@
       = render(partial: 'data_fix_tabs', locals: { active_tab: 'teams', file_path: @file_path })
 
     %section.my-2#review-teams
+      - row_count = @teams_hash.keys.count
       .container-fluid
+        .row-fluid
+          %p Tot.: #{row_count}
         .row-fluid
           - @teams_hash.keys.sort.each_with_index do |team_key, index|
             :ruby
