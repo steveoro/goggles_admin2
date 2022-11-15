@@ -281,10 +281,10 @@ module Import
 
         sect['rows'].each do |row|
           team_name = row['team']
-          logger.debug("\r\n\r\n*** TEAM '#{team_name}' ***") if @toggle_debug
+          Rails.logger.debug("\r\n\r\n*** TEAM '#{team_name}' ***") if @toggle_debug
           # Add only if not already present in hash:
           unless entity_present?('team', team_name)
-            logger.debug("    ---> '#{team_name}' (+)") if @toggle_debug
+            Rails.logger.debug("    ---> '#{team_name}' (+)") if @toggle_debug
             team_entity = find_or_prepare_team(team_name)
             team_affiliation_entity = find_or_prepare_affiliation(team_entity.row, team_name, @season)
             # Convenience reference for this meeting:
@@ -295,10 +295,10 @@ module Import
           end
 
           swimmer_name = row['name']
-          logger.debug("\r\n=== SWIMMER '#{swimmer_name}' ===") if @toggle_debug
+          Rails.logger.debug("\r\n=== SWIMMER '#{swimmer_name}' ===") if @toggle_debug
           next if entity_present?('swimmer', swimmer_name)
 
-          logger.debug("    ------> '#{swimmer_name}' (+)") if @toggle_debug
+          Rails.logger.debug("    ------> '#{swimmer_name}' (+)") if @toggle_debug
           swimmer_entity = find_or_prepare_swimmer(swimmer_name, row['year'], row['sex'])
           # Special disambiguation reference (in case of same-named swimmers with same age):
           swimmer_entity.add_bindings!('team' => team_name)
@@ -350,12 +350,12 @@ module Import
         program_key = "#{event_key}-#{category_type.code}-#{gender_type.code}"
 
         # == MeetingEvent: find/create unless key is present (stores just the first unique key found):
-        logger.debug("\r\n\r\n*** EVENT '#{event_key}' ***") if @toggle_debug
+        Rails.logger.debug("\r\n\r\n*** EVENT '#{event_key}' ***") if @toggle_debug
         unless entity_present?('meeting_event', event_key)
           event_order += 1
-          logger.debug("    ---> '#{event_key}' n.#{event_order} (+)") if @toggle_debug
+          Rails.logger.debug("    ---> '#{event_key}' n.#{event_order} (+)") if @toggle_debug
           # DEBUG: ******************************************************************
-          binding.pry if meeting_session.nil? || event_type.nil? || gender_type.nil?
+          binding.pry if meeting_session.nil? || event_type.nil? || gender_type.nil? # SHOULD NOT HAPPEN
           # DEBUG: ******************************************************************
           mevent_entity = find_or_prepare_mevent(
             meeting: meeting, meeting_session: meeting_session, session_index: msession_idx,
@@ -371,7 +371,7 @@ module Import
           pool_key = cached_instance_of('meeting_session', msession_idx, 'bindings')&.fetch('swimming_pool', nil)
           swimming_pool = meeting_session.swimming_pool || cached_instance_of('swimming_pool', pool_key)
           # DEBUG: ******************************************************************
-          binding.pry if meeting_event.nil? || swimming_pool.pool_type.nil? || category_type.nil? || gender_type.nil?
+          binding.pry if meeting_event.nil? || swimming_pool.pool_type.nil? || category_type.nil? || gender_type.nil? # SHOULD NOT HAPPEN
           # DEBUG: ******************************************************************
           mprogram_entity = find_or_prepare_mprogram(
             meeting_event: meeting_event, event_key: event_key,
@@ -382,7 +382,7 @@ module Import
         end
 
         # DEBUG: ******************************************************************
-        binding.pry if sect['rows'].nil?
+        binding.pry if sect['rows'].nil? # SHOULD NOT HAPPEN
         # DEBUG: ******************************************************************
         # Build up the list of results:
         sect['rows'].each_with_index do |row, row_idx|
@@ -393,9 +393,21 @@ module Import
           team_affiliation = cached_instance_of('team_affiliation', team_name)
           swimmer = cached_instance_of('swimmer', swimmer_name)
           meeting_program = cached_instance_of('meeting_program', program_key)
-          # DEBUG: ******************************************************************
-          binding.pry if team.nil? || swimmer.nil? || team_affiliation.nil? || category_type.nil? || gender_type.nil?
-          # DEBUG: ******************************************************************
+
+          # Detect if team + swimmer mapping has been skipped and force-run it:
+          # (This shall happen only once per loop if this method has been called *before* mapping teams or swimmers)
+          if (team_name.present? && (team.nil? || team_affiliation.nil?)) ||
+             (swimmer_name.present? && swimmer.nil?) || category_type.nil? || gender_type.nil?
+            map_teams_and_swimmers
+            # Reload instances after mapping:
+            team = cached_instance_of('team', team_name)
+            team_affiliation = cached_instance_of('team_affiliation', team_name)
+            swimmer = cached_instance_of('swimmer', swimmer_name)
+            # DEBUG: ******************************************************************
+            binding.pry if team.nil? || team_affiliation.nil? || swimmer.nil? # SHOULD NOT HAPPEN
+            # DEBUG: ******************************************************************
+          end
+
           # Find or prepare badge for the swimmer:
           unless entity_present?('badge', swimmer_name)
             badge_entity = find_or_prepare_badge(
@@ -406,7 +418,7 @@ module Import
           end
           badge = cached_instance_of('badge', swimmer_name)
           # DEBUG: ******************************************************************
-          binding.pry if badge.nil?
+          binding.pry if badge.nil? # SHOULD NOT HAPPEN
           # DEBUG: ******************************************************************
 
           # TODO/FUTUREDEV: discriminate between ind. results and relay results
@@ -751,7 +763,12 @@ module Import
     # == Returns:
     # An Import::Entity wrapping the target row together with a list of all possible candidates, when found.
     def find_or_prepare_affiliation(team, team_key, season)
-      domain = GogglesDb::TeamAffiliation.for_name(team.name).where(season_id: season.id)
+      # When present, team ID is assumed to be correct and has higher priority over name:
+      domain = if team&.id
+                 GogglesDb::TeamAffiliation.where(team_id: team&.id, season_id: season.id)
+               else
+                 GogglesDb::TeamAffiliation.for_name(team.name).where(season_id: season.id)
+               end
       return Import::Entity.new(row: domain.first, matches: domain.to_a, bindings: { 'team' => team_key }) if domain.present?
 
       # ID can be nil for new rows, so we set the association using the new model directly where needed:
