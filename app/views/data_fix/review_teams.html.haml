@@ -27,17 +27,18 @@
                                                   toggle: 'collapse', 'aria-expanded' => 'false',
                                                   'aria-controls' => 'edit-team' } }
                           = team_key
-                    .col-3.mt-2
-                      %i.form-text.text-muted.bg-light-grey
-                        %pre
-                          🔑 "#{team_key}"
-                    .col.mt-2
-                      = "=> #{team.editable_name}"
+                    .col.mt-1.pt-2
+                      %span.text-secondary= '->'
+                      = team.editable_name
                       - if team.id.present?
                         ID: #{team.id}
                         = team.valid? ? '✅' : '🔵'
                       - else
                         🆕
+                    .col.mt-1.pt-2
+                      %i.form-text.text-muted.bg-light-grey
+                        %pre
+                          🔑 "#{team_key}"
                 .collapse{ id: "team-panel-#{index}", 'aria-labelledby' => "team-header-#{index}",
                            'data-parent' => "#team-card-#{index}" }
                   .card-body.border-bottom.border-secondary

@@ -27,6 +27,7 @@ pickle-email-*.html
 # Ignore all datafiles.
 /crawler/data/calendar.new/*
 /crawler/data/calendar.done/*
+/crawler/data/pdfs/*
 /crawler/data/results.new/*
 /crawler/data/results.done/*
 /crawler/data/results.old/*

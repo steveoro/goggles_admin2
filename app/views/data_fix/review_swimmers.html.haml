@@ -16,8 +16,9 @@
             :ruby
               swimmer_entity = @swimmers_hash[swimmer_key]
               swimmer = swimmer_entity.row
+              name_part = swimmer_key.split(/-\d{4}-/).first
+              difference_detected = !name_part.downcase.starts_with?(swimmer.complete_name.downcase)
             %div{ id: "swimmer-card-#{index}" }
-              - difference_detected = (swimmer_key.downcase != swimmer.complete_name.downcase)
               .card.my-2{ class: difference_detected ? 'border border-danger' : '' }
                 %div{ id: "swimmer-header-#{index}", class: swimmer.id.present? ? 'bg-light' : 'bg-light-yellow' }
                   .row
@@ -27,13 +28,10 @@
                                                   data: { target: "#swimmer-panel-#{index}",
                                                   toggle: 'collapse', 'aria-expanded' => 'false',
                                                   'aria-controls' => 'edit-swimmer' } }
-                          = swimmer_key
-                    .col-3.mt-2
-                      %i.form-text.text-muted.bg-light-grey
-                        %pre
-                          🔑 "#{swimmer_key}"
-                    .col.mt-2
-                      = "=> #{swimmer.complete_name}"
+                          = name_part
+                    .col.mt-1.pt-2
+                      %span.text-secondary= '->'
+                      = swimmer.complete_name
                       - if swimmer.id.present?
                         ID: #{swimmer.id}
                         = swimmer.valid? ? '✅' : '🔴'
@@ -45,6 +43,10 @@
                           3️⃣
                       - else
                         🆕
+                    .col.mt-1.pt-2
+                      %i.form-text.text-muted.bg-light-grey
+                        %pre
+                          🔑 "#{swimmer_key}"
                 .collapse{ id: "swimmer-panel-#{index}", 'aria-labelledby' => "swimmer-header-#{index}",
                            'data-parent' => "#swimmer-card-#{index}" }
                   .card-body.border-bottom.border-secondary
