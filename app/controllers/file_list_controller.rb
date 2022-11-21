@@ -78,8 +78,7 @@ class FileListController < ApplicationController
       redirect_to(root_path) && return
     end
 
-    # In case we'd prefer to pass just the new base filename (no path):
-    # File.rename(file_params[:file_path], File.join(File.dirname(file_params[:file_path]), file_params[:new_name]))
+    FileUtils.mkdir_p(File.dirname(file_params[:new_name])) # Ensure existence of the destination path
     File.rename(file_params[:file_path], file_params[:new_name])
     prepare_file_and_dir_list
     render('file_table_update')

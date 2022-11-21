@@ -57,6 +57,7 @@ class PushController < FileListController
     dest_file = "#{format('%03d', sql_files_count + 1)}-#{File.basename(dest_file.gsub('.json', '.sql'))}"
 
     # Move last phase's JSON file (before IDs were set) into 'done' as a backup:
+    FileUtils.mkdir_p(File.dirname(done_pathname)) # First, ensure existence of the destination path
     File.rename(@file_path, done_pathname)
     # Save also the committed data to another file (storing the resulting actual IDs):
     File.open(done_pathname.gsub('.json', '.committed.json'), 'w+') { |f| f.write(@solver.data.to_json) }
@@ -195,7 +196,7 @@ class PushController < FileListController
                                  %w[results.sent results.done]
                                end
       dest_file = file_path.gsub(from_folder, to_folder)
-      FileUtils.mkdir_p(File.dirname(dest_file)) # Make sure the destination path is there
+      FileUtils.mkdir_p(File.dirname(dest_file)) # Ensure the destination path is there
       File.rename(file_path, dest_file)
       flash[:info] = I18n.t('data_import.push.msg_send_batch_ok')
     else
