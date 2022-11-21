@@ -266,12 +266,18 @@ module Import
     #
     # == Resets & recomputes:
     # - @data['team'] => the Hash of (unique) Team meta-object instances ("name as key" => "Import::Entity value object")
+    # - @data['team_affiliation'] => the Hash of (unique) TeamAffiliation meta-object instances ("name as key" => "Import::Entity value object")
     # - @data['swimmer'] => the Hash of (unique) Swimmer meta-object instances ("name as key" => "Import::Entity value object")
+    #
+    # == Clears but doesn't recompute:
+    # - @data['badge'], because it will be filled-in during MIR mapping
     #
     def map_teams_and_swimmers
       # Clear the lists:
       @data['team'] = {}
+      @data['team_affiliation'] = {}
       @data['swimmer'] = {}
+      @data['badge'] = {}
       total = @data['sections'].count
       idx = 0
 
@@ -286,12 +292,10 @@ module Import
           unless entity_present?('team', team_name)
             Rails.logger.debug("    ---> '#{team_name}' (+)") if @toggle_debug
             team_entity = find_or_prepare_team(team_name)
-            team_affiliation_entity = find_or_prepare_affiliation(team_entity.row, team_name, @season)
             # Convenience reference for this meeting:
             team_entity.add_bindings!('team_affiliation' => team_name)
             # Store required bindings at root level in data_hash, same key, different entity:
             add_entity_with_key('team', team_name, team_entity)
-            add_entity_with_key('team_affiliation', team_name, team_affiliation_entity)
           end
 
           swimmer_name = row['name']
@@ -349,7 +353,7 @@ module Import
         # (Example section 'title': "50 Stile Libero - M25")
         event_type, category_type = Parser::EventType.from_l2_result(sect['title'], @season)
         gender_type = select_gender_type(sect['fin_sesso'])
-        event_key = event_key_for(@season.id, meeting.code, event_type.code)
+        event_key = event_key_for(event_type.code)
         program_key = program_key_for(event_key, category_type.code, gender_type.code)
 
         # == MeetingEvent: find/create unless key is present (stores just the first unique key found):
@@ -357,9 +361,6 @@ module Import
         unless entity_present?('meeting_event', event_key)
           event_order += 1
           Rails.logger.debug("    ---> '#{event_key}' n.#{event_order} (+)") if @toggle_debug
-          # DEBUG: ******************************************************************
-          binding.pry if meeting_session.nil? || event_type.nil? || gender_type.nil? # SHOULD NOT HAPPEN
-          # DEBUG: ******************************************************************
           mevent_entity = find_or_prepare_mevent(
             meeting: meeting, meeting_session: meeting_session, session_index: msession_idx,
             event_type: event_type, event_order: event_order
@@ -373,9 +374,6 @@ module Import
           meeting_event = @data['meeting_event'][event_key].row
           pool_key = cached_instance_of('meeting_session', msession_idx, 'bindings')&.fetch('swimming_pool', nil)
           swimming_pool = meeting_session.swimming_pool || cached_instance_of('swimming_pool', pool_key)
-          # DEBUG: ******************************************************************
-          binding.pry if meeting_event.nil? || swimming_pool.pool_type.nil? || category_type.nil? || gender_type.nil? # SHOULD NOT HAPPEN
-          # DEBUG: ******************************************************************
           mprogram_entity = find_or_prepare_mprogram(
             meeting_event: meeting_event, event_key: event_key,
             pool_type: swimming_pool.pool_type,
@@ -384,15 +382,19 @@ module Import
           add_entity_with_key('meeting_program', program_key, mprogram_entity)
         end
 
-        # DEBUG: ******************************************************************
-        binding.pry if sect['rows'].nil? # SHOULD NOT HAPPEN
-        # DEBUG: ******************************************************************
         # Build up the list of results:
-        sect['rows'].each_with_index do |row, row_idx|
+        sect['rows']&.each_with_index do |row, row_idx|
           # == MeetingIndividualResult: find/create unless key is present (as above):
           team_name = row['team']
           swimmer_name = row['name']
           team = cached_instance_of('team', team_name)
+
+          # Find or prepare team affiliation for the team:
+          unless entity_present?('team_affiliation', team_name)
+            team_affiliation_entity = find_or_prepare_affiliation(team, team_name, @season)
+            add_entity_with_key('team_affiliation', team_name, team_affiliation_entity)
+          end
+
           team_affiliation = cached_instance_of('team_affiliation', team_name)
           year_of_birth = row['year']
           gender_type_code = row['sex']
@@ -410,7 +412,7 @@ module Import
             team_affiliation = cached_instance_of('team_affiliation', team_name)
             swimmer = cached_instance_of('swimmer', swimmer_key) # (Assumes swimmer_key is never empty)
             # DEBUG: ******************************************************************
-            binding.pry if team.nil? || team_affiliation.nil? || swimmer.nil? # SHOULD NOT HAPPEN
+            binding.pry if team.nil? || team_affiliation.nil? || swimmer.nil? # SHOULD NEVER HAPPEN
             # DEBUG: ******************************************************************
           end
 
@@ -422,9 +424,10 @@ module Import
             )
             add_entity_with_key('badge', swimmer_key, badge_entity)
           end
+
           badge = cached_instance_of('badge', swimmer_key)
           # DEBUG: ******************************************************************
-          binding.pry if badge.nil? # SHOULD NOT HAPPEN
+          binding.pry if badge.nil? # SHOULD NEVER HAPPEN
           # DEBUG: ******************************************************************
 
           # TODO/FUTUREDEV: discriminate between ind. results and relay results
@@ -1206,13 +1209,11 @@ module Import
     # Returns the internal string key used to access a cached MeetingEvent entity row.
     #
     # == Params
-    # - <tt>season_id</tt>: GogglesDb::Season ID;
-    # - <tt>meeting_code</tt>: GogglesDb::Meeting#code;
-    # - <tt>gender_type_code</tt>: GogglesDb::GenderType#code for the event.
+    # - <tt>event_type_code</tt>: GogglesDb::EventType#code for the event.
     #
-    def event_key_for(season_id, meeting_code, event_type_code)
-      # Use a fixed '1' as session order:
-      "#{season_id}-#{meeting_code}-1-#{event_type_code}"
+    def event_key_for(event_type_code)
+      # Use a fixed '1' as session number as long as we can't determine which is which:
+      "1-#{event_type_code}"
     end
 
     # Returns the internal string key used to access a cached MeetingProgram entity row.
