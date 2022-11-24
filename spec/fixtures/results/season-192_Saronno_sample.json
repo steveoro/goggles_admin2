@@ -1,0 +1,1177 @@
+{
+    "layoutType": 2,
+    "name": "11° Trofeo Città di Saronno",
+    "meetingURL": "https://www.federnuoto.it/home/master/circuito-supermaster/archivio-2012-2021/stagione-2019-2020.html#/risultati/136723:11°-trofeo-città-di-saronno.html",
+    "manifestURL": "https://www.federnuoto.it/component/solrconnect/download.html?file=L3Zhci93d3cvZmluX2ZpbGVzL2V2ZW50aS8wMDAwMTM2NzIzLnBkZg==",
+    "dateDay1": "09",
+    "dateMonth1": "Novembre",
+    "dateYear1": "2019",
+    "dateDay2": "10",
+    "dateMonth2": "Novembre",
+    "dateYear2": "2019",
+    "organization": "A.S.D. RARI NANTES SARONNO",
+    "venue1": "PISCINA COMUNALE SARONNO",
+    "address1": "VIA MIOLA, 19 - Saronno (VA)",
+    "venue2": "PISCINA COMUNALE SARONNO",
+    "address2": "VIA MIOLA, 19 - Saronno (VA)",
+    "poolLength": "25",
+    "timeLimit": "SI",
+    "registration": "19/10 - 03/11 23:45",
+    "resultsPdfURL": "https://www.federnuoto.it/component/solrconnect/download.html?file=L3Zhci93d3cvZmluX2ZpbGVzL3Jpc3VsdGF0aS8wMDAwMTM2NzIzLnBkZg==",
+    "sections": [
+        {
+            "title": "400 Stile Libero - M45",
+            "fin_id_evento": "136723",
+            "fin_codice_gara": "04",
+            "fin_sigla_categoria": "M45",
+            "fin_sesso": "M",
+            "rows": [
+                {
+                    "pos": "1",
+                    "name": "SKILES ALVINA",
+                    "year": "1970",
+                    "sex": "M",
+                    "team": "Natatio Master Team asd",
+                    "timing": "04:15.98",
+                    "score": "974,57"
+                },
+                {
+                    "pos": "2",
+                    "name": "O'Hara Russ",
+                    "year": "1970",
+                    "sex": "M",
+                    "team": "Gate Sport La Fenice ssd",
+                    "timing": "04:44.14",
+                    "score": "877,98"
+                }
+            ]
+        },
+        {
+            "title": "100 Farfalla - M45",
+            "fin_id_evento": "136723",
+            "fin_codice_gara": "41",
+            "fin_sigla_categoria": "M45",
+            "fin_sesso": "M",
+            "rows": [
+                {
+                    "pos": "1",
+                    "name": "O'Hara Russ",
+                    "year": "1970",
+                    "sex": "M",
+                    "team": "Gate Sport La Fenice ssd",
+                    "timing": "01:05.69",
+                    "score": "871,21"
+                }
+            ]
+        }
+    ],
+    "season_id": 192,
+    "meeting": {
+        "row": {
+            "lock_version": 0,
+            "description": "11° Trofeo Città di Saronno",
+            "warm_up_pool": false,
+            "allows_under25": false,
+            "notes": "\"Trofeo Città di Saronno\", c/o: Saronno",
+            "manifest": false,
+            "startlist": false,
+            "results_acquired": false,
+            "max_individual_events": 2,
+            "edition": "11",
+            "season_id": "192",
+            "autofilled": true,
+            "header_date": "2019-11-09",
+            "code": "saronno",
+            "header_year": "2019/2020",
+            "max_individual_events_per_session": 2,
+            "off_season": false,
+            "edition_type_id": "1",
+            "timing_type_id": "3",
+            "confirmed": "1",
+            "tweeted": false,
+            "posted": false,
+            "cancelled": "0",
+            "pb_acquired": false,
+            "read_only": false,
+            "tags_by_user_list": [],
+            "tags_by_team_list": [],
+            "id": null
+        },
+        "matches": [
+            {
+                "id": null,
+                "lock_version": 0,
+                "description": "11° Trofeo Città di Saronno",
+                "entry_deadline": null,
+                "warm_up_pool": false,
+                "allows_under25": false,
+                "reference_phone": null,
+                "reference_e_mail": null,
+                "reference_name": null,
+                "notes": "\"Trofeo Città di Saronno\", c/o: Saronno",
+                "manifest": false,
+                "startlist": false,
+                "results_acquired": false,
+                "max_individual_events": 2,
+                "configuration_file": null,
+                "edition": 11,
+                "season_id": 192,
+                "created_at": null,
+                "updated_at": null,
+                "autofilled": true,
+                "header_date": "2019-11-09",
+                "code": "saronno",
+                "header_year": "2019/2020",
+                "max_individual_events_per_session": 2,
+                "off_season": false,
+                "edition_type_id": 1,
+                "timing_type_id": 3,
+                "individual_score_computation_type_id": null,
+                "relay_score_computation_type_id": null,
+                "team_score_computation_type_id": null,
+                "meeting_score_computation_type_id": null,
+                "manifest_body": null,
+                "confirmed": false,
+                "tweeted": false,
+                "posted": false,
+                "cancelled": false,
+                "pb_acquired": false,
+                "home_team_id": null,
+                "read_only": false,
+                "meeting_fee": null,
+                "event_fee": null,
+                "relay_fee": null,
+                "tags_by_user_list": [],
+                "tags_by_team_list": []
+            }
+        ],
+        "bindings": {},
+        "toggle_debug": false
+    },
+    "city": {
+        "Saronno": {
+            "row": {
+                "id": 66,
+                "lock_version": 5,
+                "name": "Saronno",
+                "zip": "?",
+                "area": "Varese",
+                "country": "Italy",
+                "country_code": "IT",
+                "created_at": "2014-10-19T00:00:00.000Z",
+                "updated_at": "2021-02-24T18:24:42.000Z",
+                "latitude": "45.633333",
+                "longitude": "9.033333",
+                "plus_code": "8FQFJ2MM+88"
+            },
+            "matches": [
+                {
+                    "id": 66,
+                    "lock_version": 5,
+                    "name": "Saronno",
+                    "zip": "?",
+                    "area": "Varese",
+                    "country": "Italy",
+                    "country_code": "IT",
+                    "created_at": "2014-10-19T00:00:00.000Z",
+                    "updated_at": "2021-02-24T18:24:42.000Z",
+                    "latitude": "45.633333",
+                    "longitude": "9.033333",
+                    "plus_code": "8FQFJ2MM+88"
+                }
+            ],
+            "bindings": {},
+            "toggle_debug": false
+        }
+    },
+    "swimming_pool": {
+        "PISCINA COMUNALE SARONNO": {
+            "row": {
+                "lock_version": 0,
+                "name": "comunale",
+                "address": "Via Cesare Miola, 5",
+                "nick_name": "saronno25",
+                "lanes_number": "8",
+                "multiple_pools": false,
+                "garden": false,
+                "bar": false,
+                "restaurant": false,
+                "gym": false,
+                "child_area": false,
+                "city_id": 66,
+                "pool_type_id": "1",
+                "read_only": false,
+                "maps_uri": "",
+                "plus_code": "",
+                "latitude": "",
+                "longitude": "",
+                "id": 69
+            },
+            "matches": [
+                {
+                    "id": null,
+                    "lock_version": 0,
+                    "name": "PISCINA COMUNALE SARONNO",
+                    "address": "VIA MIOLA, 19",
+                    "zip": null,
+                    "nick_name": "saronno25",
+                    "phone_number": null,
+                    "fax_number": null,
+                    "e_mail": null,
+                    "contact_name": null,
+                    "maps_uri": null,
+                    "lanes_number": 8,
+                    "multiple_pools": false,
+                    "garden": false,
+                    "bar": false,
+                    "restaurant": false,
+                    "gym": false,
+                    "child_area": false,
+                    "notes": null,
+                    "city_id": 66,
+                    "pool_type_id": 1,
+                    "shower_type_id": null,
+                    "hair_dryer_type_id": null,
+                    "locker_cabinet_type_id": null,
+                    "created_at": null,
+                    "updated_at": null,
+                    "read_only": false,
+                    "latitude": null,
+                    "longitude": null,
+                    "plus_code": null
+                }
+            ],
+            "bindings": {
+                "city": "Saronno"
+            },
+            "toggle_debug": false
+        }
+    },
+    "meeting_session": [
+        {
+            "row": {
+                "lock_version": 0,
+                "session_order": "1",
+                "scheduled_date": "2019-11-09",
+                "description": "Sessione 1, 2019-11-09",
+                "autofilled": false,
+                "day_part_type_id": "1",
+                "swimming_pool_id": "69"
+            },
+            "matches": [
+                {
+                    "id": null,
+                    "lock_version": 0,
+                    "session_order": 1,
+                    "scheduled_date": "2019-11-09",
+                    "warm_up_time": null,
+                    "begin_time": null,
+                    "notes": null,
+                    "meeting_id": null,
+                    "swimming_pool_id": null,
+                    "created_at": null,
+                    "updated_at": null,
+                    "description": "Sessione 1, 2019-11-09",
+                    "autofilled": false,
+                    "day_part_type_id": 1
+                }
+            ],
+            "bindings": {
+                "meeting": "11° Trofeo Città di Saronno",
+                "swimming_pool": "PISCINA COMUNALE SARONNO",
+                "city": 0
+            },
+            "toggle_debug": false
+        },
+        {
+            "row": {
+                "id": null,
+                "lock_version": 0,
+                "session_order": 2,
+                "scheduled_date": "2019-11-10",
+                "warm_up_time": null,
+                "begin_time": null,
+                "notes": null,
+                "meeting_id": null,
+                "swimming_pool_id": null,
+                "created_at": null,
+                "updated_at": null,
+                "description": "Sessione 2, 2019-11-10",
+                "autofilled": false,
+                "day_part_type_id": 1
+            },
+            "matches": [
+                {
+                    "id": null,
+                    "lock_version": 0,
+                    "session_order": 2,
+                    "scheduled_date": "2019-11-10",
+                    "warm_up_time": null,
+                    "begin_time": null,
+                    "notes": null,
+                    "meeting_id": null,
+                    "swimming_pool_id": null,
+                    "created_at": null,
+                    "updated_at": null,
+                    "description": "Sessione 2, 2019-11-10",
+                    "autofilled": false,
+                    "day_part_type_id": 1
+                }
+            ],
+            "bindings": {
+                "meeting": "11° Trofeo Città di Saronno",
+                "swimming_pool": "PISCINA COMUNALE SARONNO"
+            },
+            "toggle_debug": false
+        }
+    ],
+    "team": {
+        "Natatio Master Team asd": {
+            "row": {
+                "id": 851,
+                "lock_version": 0,
+                "name": "Natatio Master Team asd",
+                "editable_name": "Natatio Master Team asd",
+                "address": null,
+                "zip": null,
+                "phone_mobile": null,
+                "phone_number": null,
+                "fax_number": null,
+                "e_mail": null,
+                "contact_name": null,
+                "notes": null,
+                "name_variations": "Natatio Master Team asd",
+                "city_id": null,
+                "created_at": "2015-12-30T09:48:11.000Z",
+                "updated_at": "2015-12-30T09:48:11.000Z",
+                "home_page_url": null
+            },
+            "matches": [
+                {
+                    "table": {
+                        "candidate": {
+                            "id": 851,
+                            "lock_version": 0,
+                            "name": "Natatio Master Team asd",
+                            "editable_name": "Natatio Master Team asd",
+                            "address": null,
+                            "zip": null,
+                            "phone_mobile": null,
+                            "phone_number": null,
+                            "fax_number": null,
+                            "e_mail": null,
+                            "contact_name": null,
+                            "notes": null,
+                            "name_variations": "Natatio Master Team asd",
+                            "city_id": null,
+                            "created_at": "2015-12-30T09:48:11.000Z",
+                            "updated_at": "2015-12-30T09:48:11.000Z",
+                            "home_page_url": null
+                        },
+                        "weight": 0.8653846153846154
+                    }
+                },
+                {
+                    "table": {
+                        "candidate": {
+                            "id": 614,
+                            "lock_version": 0,
+                            "name": "ATLETI PER CASO ASD",
+                            "editable_name": "ATLETI PER CASO ASD",
+                            "address": null,
+                            "zip": null,
+                            "phone_mobile": null,
+                            "phone_number": null,
+                            "fax_number": null,
+                            "e_mail": null,
+                            "contact_name": null,
+                            "notes": null,
+                            "name_variations": "ATLETI PER CASO ASD",
+                            "city_id": null,
+                            "created_at": "2015-02-19T22:08:38.000Z",
+                            "updated_at": "2015-02-19T22:08:38.000Z",
+                            "home_page_url": null
+                        },
+                        "weight": 0.7500342794460441
+                    }
+                },
+                {
+                    "table": {
+                        "candidate": {
+                            "id": 556,
+                            "lock_version": 1,
+                            "name": "X - TEAM OLBIA ASD",
+                            "editable_name": "X - TEAM OLBIA ASD",
+                            "address": null,
+                            "zip": null,
+                            "phone_mobile": null,
+                            "phone_number": null,
+                            "fax_number": null,
+                            "e_mail": null,
+                            "contact_name": null,
+                            "notes": null,
+                            "name_variations": "X - TEAM OLBIA ASD",
+                            "city_id": 74,
+                            "created_at": "2015-02-18T16:38:31.000Z",
+                            "updated_at": "2022-10-11T10:31:11.000Z",
+                            "home_page_url": null
+                        },
+                        "weight": 0.7444444444444445
+                    }
+                }
+            ],
+            "bindings": {
+                "team_affiliation": "Natatio Master Team asd"
+            },
+            "toggle_debug": false
+        },
+        "Gate Sport La Fenice ssd": {
+            "row": {
+                "id": null,
+                "lock_version": 2,
+                "name": "Gate Sport La Fenice SSD",
+                "editable_name": "Gate Sport La Fenice SSD",
+                "name_variations": "Gate Sport La Fenice SSD",
+                "created_at": "2015-02-19T22:08:38.000Z",
+                "updated_at": "2022-10-21T23:12:44.000Z",
+                "city_id": ""
+            },
+            "matches": [
+                {
+                    "table": {
+                        "candidate": {
+                            "id": 618,
+                            "lock_version": 2,
+                            "name": "IFIT SPORT CENTER ASD",
+                            "editable_name": "IFIT SPORT CENTER ASD",
+                            "address": null,
+                            "zip": null,
+                            "phone_mobile": null,
+                            "phone_number": null,
+                            "fax_number": null,
+                            "e_mail": null,
+                            "contact_name": null,
+                            "notes": null,
+                            "name_variations": "IFIT SPORT CENTER ASD;IFIT SPORT CENTER A;Ifit Sport Center asd",
+                            "city_id": null,
+                            "created_at": "2015-02-19T22:08:38.000Z",
+                            "updated_at": "2022-10-21T23:12:44.000Z",
+                            "home_page_url": null
+                        },
+                        "weight": 0.7677777777777778
+                    }
+                },
+                {
+                    "table": {
+                        "candidate": {
+                            "id": 651,
+                            "lock_version": 0,
+                            "name": "Stelle Marine ssd",
+                            "editable_name": "Stelle Marine ssd",
+                            "address": null,
+                            "zip": null,
+                            "phone_mobile": null,
+                            "phone_number": null,
+                            "fax_number": null,
+                            "e_mail": null,
+                            "contact_name": null,
+                            "notes": null,
+                            "name_variations": "Stelle Marine ssd",
+                            "city_id": null,
+                            "created_at": "2015-02-25T16:34:13.000Z",
+                            "updated_at": "2015-02-25T16:34:13.000Z",
+                            "home_page_url": null
+                        },
+                        "weight": 0.7547619047619047
+                    }
+                },
+                {
+                    "table": {
+                        "candidate": {
+                            "id": 1227,
+                            "lock_version": 1,
+                            "name": "Aly Sport asd",
+                            "editable_name": "Aly Sport asd",
+                            "address": null,
+                            "zip": null,
+                            "phone_mobile": null,
+                            "phone_number": null,
+                            "fax_number": null,
+                            "e_mail": null,
+                            "contact_name": null,
+                            "notes": null,
+                            "name_variations": "Asd Aly Sport;Aly Sport asd",
+                            "city_id": null,
+                            "created_at": "2017-12-04T07:15:37.000Z",
+                            "updated_at": "2022-10-24T19:15:59.000Z",
+                            "home_page_url": null
+                        },
+                        "weight": 0.7518589743589743
+                    }
+                },
+                {
+                    "table": {
+                        "candidate": {
+                            "id": 1233,
+                            "lock_version": 0,
+                            "name": "Sport Nuoto E Fitness Ssd",
+                            "editable_name": "Sport Nuoto E Fitness Ssd",
+                            "address": null,
+                            "zip": null,
+                            "phone_mobile": null,
+                            "phone_number": null,
+                            "fax_number": null,
+                            "e_mail": null,
+                            "contact_name": null,
+                            "notes": null,
+                            "name_variations": "Sport Nuoto E Fitness Ssd",
+                            "city_id": null,
+                            "created_at": "2017-12-17T18:59:27.000Z",
+                            "updated_at": "2017-12-17T18:59:27.000Z",
+                            "home_page_url": null
+                        },
+                        "weight": 0.7456975772765246
+                    }
+                },
+                {
+                    "table": {
+                        "candidate": {
+                            "id": 1377,
+                            "lock_version": 1,
+                            "name": "Atlantide S.C. ssd",
+                            "editable_name": "Atlantide S.C. ssd",
+                            "address": null,
+                            "zip": null,
+                            "phone_mobile": null,
+                            "phone_number": null,
+                            "fax_number": null,
+                            "e_mail": null,
+                            "contact_name": null,
+                            "notes": null,
+                            "name_variations": "Atlantide S.C. ssd",
+                            "city_id": null,
+                            "created_at": "2015-02-18T15:51:37.000Z",
+                            "updated_at": "2022-10-13T09:53:26.000Z",
+                            "home_page_url": null
+                        },
+                        "weight": 0.7456975772765246
+                    }
+                }
+            ],
+            "bindings": {
+                "team_affiliation": "Gate Sport La Fenice ssd"
+            },
+            "toggle_debug": false
+        }
+    },
+    "team_affiliation": {
+        "Natatio Master Team asd": {
+            "row": {
+                "id": null,
+                "lock_version": 0,
+                "number": null,
+                "name": "Natatio Master Team asd",
+                "compute_gogglecup": false,
+                "team_id": 851,
+                "season_id": 192,
+                "created_at": "2022-11-17T15:11:14.000Z",
+                "updated_at": "2022-11-17T15:11:14.000Z",
+                "autofilled": false
+            },
+            "matches": [
+                {
+                    "id": 5988,
+                    "lock_version": 0,
+                    "number": null,
+                    "name": "Natatio Master Team asd",
+                    "compute_gogglecup": false,
+                    "team_id": 851,
+                    "season_id": 192,
+                    "created_at": "2022-11-17T15:11:14.000Z",
+                    "updated_at": "2022-11-17T15:11:14.000Z",
+                    "autofilled": false
+                }
+            ],
+            "bindings": {
+                "team": "Natatio Master Team asd"
+            },
+            "toggle_debug": false
+        },
+        "Gate Sport La Fenice ssd": {
+            "row": {
+                "id": null,
+                "lock_version": 0,
+                "number": null,
+                "name": "Gate Sport La Fenice SSD",
+                "compute_gogglecup": false,
+                "team_id": null,
+                "season_id": 192,
+                "created_at": null,
+                "updated_at": null,
+                "autofilled": false
+            },
+            "matches": [
+                {
+                    "id": null,
+                    "lock_version": 0,
+                    "number": null,
+                    "name": "Gate Sport La Fenice SSD",
+                    "compute_gogglecup": false,
+                    "team_id": null,
+                    "season_id": 192,
+                    "created_at": null,
+                    "updated_at": null,
+                    "autofilled": false
+                }
+            ],
+            "bindings": {
+                "team": "Gate Sport La Fenice ssd"
+            },
+            "toggle_debug": false
+        }
+    },
+    "swimmer": {
+        "SKILES ALVINA-1970-M-Natatio Master Team asd": {
+            "row": {
+                "id": 4766,
+                "lock_version": 0,
+                "last_name": "SKILES",
+                "first_name": "ALVINA",
+                "year_of_birth": 1970,
+                "phone_mobile": null,
+                "phone_number": null,
+                "e_mail": null,
+                "nickname": "",
+                "associated_user_id": null,
+                "gender_type_id": 1,
+                "created_at": "2014-11-17T19:19:43.000Z",
+                "updated_at": "2014-11-17T19:19:43.000Z",
+                "complete_name": "SKILES ALVINA",
+                "year_guessed": false
+            },
+            "matches": [
+                {
+                    "table": {
+                        "candidate": {
+                            "id": 4766,
+                            "lock_version": 0,
+                            "last_name": "SKILES",
+                            "first_name": "ALVINA",
+                            "year_of_birth": 1970,
+                            "phone_mobile": null,
+                            "phone_number": null,
+                            "e_mail": null,
+                            "nickname": "",
+                            "associated_user_id": null,
+                            "gender_type_id": 1,
+                            "created_at": "2014-11-17T19:19:43.000Z",
+                            "updated_at": "2014-11-17T19:19:43.000Z",
+                            "complete_name": "SKILES ALVINA",
+                            "year_guessed": false
+                        },
+                        "weight": 1
+                    }
+                }
+            ],
+            "bindings": {
+                "team": "Natatio Master Team asd"
+            },
+            "toggle_debug": false
+        },
+        "O'Hara Russ-1970-M-Gate Sport La Fenice ssd": {
+            "row": {
+                "id": 21216,
+                "lock_version": 0,
+                "last_name": "O'Hara",
+                "first_name": "Russ",
+                "year_of_birth": 1970,
+                "phone_mobile": null,
+                "phone_number": null,
+                "e_mail": null,
+                "nickname": "",
+                "associated_user_id": null,
+                "gender_type_id": 1,
+                "created_at": "2015-12-21T23:29:15.000Z",
+                "updated_at": "2015-12-21T23:29:15.000Z",
+                "complete_name": "O'Hara Russ",
+                "year_guessed": false
+            },
+            "matches": [
+                {
+                    "table": {
+                        "candidate": {
+                            "id": 21216,
+                            "lock_version": 0,
+                            "last_name": "O'Hara",
+                            "first_name": "Russ",
+                            "year_of_birth": 1970,
+                            "phone_mobile": null,
+                            "phone_number": null,
+                            "e_mail": null,
+                            "nickname": "",
+                            "associated_user_id": null,
+                            "gender_type_id": 1,
+                            "created_at": "2015-12-21T23:29:15.000Z",
+                            "updated_at": "2015-12-21T23:29:15.000Z",
+                            "complete_name": "O'Hara Russ",
+                            "year_guessed": false
+                        },
+                        "weight": 0.8619047619047618
+                    }
+                }
+            ],
+            "bindings": {
+                "team": "Gate Sport La Fenice ssd"
+            },
+            "toggle_debug": false
+        }
+    },
+    "badge": {
+        "SKILES ALVINA-1970-M-Natatio Master Team asd": {
+            "row": {
+                "id": null,
+                "lock_version": 0,
+                "number": "?",
+                "season_id": 192,
+                "swimmer_id": 4766,
+                "team_id": 851,
+                "category_type_id": 1292,
+                "created_at": null,
+                "updated_at": null,
+                "entry_time_type_id": 5,
+                "team_affiliation_id": 5988,
+                "final_rank": null,
+                "off_gogglecup": false,
+                "fees_due": false,
+                "badge_due": false,
+                "relays_due": false
+            },
+            "matches": [
+                {
+                    "id": null,
+                    "lock_version": 0,
+                    "number": "?",
+                    "season_id": 192,
+                    "swimmer_id": 4766,
+                    "team_id": 851,
+                    "category_type_id": 1292,
+                    "created_at": null,
+                    "updated_at": null,
+                    "entry_time_type_id": 5,
+                    "team_affiliation_id": 5988,
+                    "final_rank": null,
+                    "off_gogglecup": false,
+                    "fees_due": false,
+                    "badge_due": false,
+                    "relays_due": false
+                }
+            ],
+            "bindings": {
+                "swimmer": "SKILES ALVINA-1970-M-Natatio Master Team asd",
+                "team_affiliation": "Natatio Master Team asd",
+                "team": "Natatio Master Team asd"
+            },
+            "toggle_debug": false
+        },
+        "O'Hara Russ-1970-M-Gate Sport La Fenice ssd": {
+            "row": {
+                "id": null,
+                "lock_version": 0,
+                "number": "?",
+                "season_id": 192,
+                "swimmer_id": 21216,
+                "team_id": null,
+                "category_type_id": 1292,
+                "created_at": null,
+                "updated_at": null,
+                "entry_time_type_id": 5,
+                "team_affiliation_id": null,
+                "final_rank": null,
+                "off_gogglecup": false,
+                "fees_due": false,
+                "badge_due": false,
+                "relays_due": false
+            },
+            "matches": [
+                {
+                    "id": null,
+                    "lock_version": 0,
+                    "number": "?",
+                    "season_id": 192,
+                    "swimmer_id": 21216,
+                    "team_id": null,
+                    "category_type_id": 1292,
+                    "created_at": null,
+                    "updated_at": null,
+                    "entry_time_type_id": 5,
+                    "team_affiliation_id": null,
+                    "final_rank": null,
+                    "off_gogglecup": false,
+                    "fees_due": false,
+                    "badge_due": false,
+                    "relays_due": false
+                }
+            ],
+            "bindings": {
+                "swimmer": "O'Hara Russ-1970-M-Gate Sport La Fenice ssd",
+                "team_affiliation": "Gate Sport La Fenice ssd",
+                "team": "Gate Sport La Fenice ssd"
+            },
+            "toggle_debug": false
+        }
+    },
+    "meeting_event": {
+        "1-400SL": {
+            "row": {
+                "id": null,
+                "lock_version": 0,
+                "created_at": null,
+                "updated_at": null,
+                "event_order": 1,
+                "begin_time": null,
+                "out_of_race": false,
+                "autofilled": false,
+                "notes": null,
+                "meeting_session_id": null,
+                "event_type_id": 5,
+                "heat_type_id": 3,
+                "split_gender_start_list": true,
+                "split_category_start_list": false
+            },
+            "matches": [
+                {
+                    "id": null,
+                    "lock_version": 0,
+                    "created_at": null,
+                    "updated_at": null,
+                    "event_order": 1,
+                    "begin_time": null,
+                    "out_of_race": false,
+                    "autofilled": false,
+                    "notes": null,
+                    "meeting_session_id": null,
+                    "event_type_id": 5,
+                    "heat_type_id": 3,
+                    "split_gender_start_list": true,
+                    "split_category_start_list": false
+                }
+            ],
+            "bindings": {
+                "meeting_session": 0
+            },
+            "toggle_debug": false
+        },
+        "1-100FA": {
+            "row": {
+                "id": null,
+                "lock_version": 0,
+                "created_at": null,
+                "updated_at": null,
+                "event_order": 2,
+                "begin_time": null,
+                "out_of_race": false,
+                "autofilled": false,
+                "notes": null,
+                "meeting_session_id": null,
+                "event_type_id": 12,
+                "heat_type_id": 3,
+                "split_gender_start_list": true,
+                "split_category_start_list": false
+            },
+            "matches": [
+                {
+                    "id": null,
+                    "lock_version": 0,
+                    "created_at": null,
+                    "updated_at": null,
+                    "event_order": 2,
+                    "begin_time": null,
+                    "out_of_race": false,
+                    "autofilled": false,
+                    "notes": null,
+                    "meeting_session_id": null,
+                    "event_type_id": 12,
+                    "heat_type_id": 3,
+                    "split_gender_start_list": true,
+                    "split_category_start_list": false
+                }
+            ],
+            "bindings": {
+                "meeting_session": 0
+            },
+            "toggle_debug": false
+        }
+    },
+    "meeting_program": {
+        "1-400SL-M45-M": {
+            "row": {
+                "id": null,
+                "lock_version": 0,
+                "event_order": 1,
+                "category_type_id": 1292,
+                "gender_type_id": 1,
+                "created_at": null,
+                "updated_at": null,
+                "autofilled": false,
+                "out_of_race": false,
+                "begin_time": null,
+                "meeting_event_id": null,
+                "pool_type_id": 1,
+                "standard_timing_id": null
+            },
+            "matches": [
+                {
+                    "id": null,
+                    "lock_version": 0,
+                    "event_order": 1,
+                    "category_type_id": 1292,
+                    "gender_type_id": 1,
+                    "created_at": null,
+                    "updated_at": null,
+                    "autofilled": false,
+                    "out_of_race": false,
+                    "begin_time": null,
+                    "meeting_event_id": null,
+                    "pool_type_id": 1,
+                    "standard_timing_id": null
+                }
+            ],
+            "bindings": {
+                "meeting_event": "1-400SL"
+            },
+            "toggle_debug": false
+        },
+        "1-100FA-M45-M": {
+            "row": {
+                "id": null,
+                "lock_version": 0,
+                "event_order": 2,
+                "category_type_id": 1292,
+                "gender_type_id": 1,
+                "created_at": null,
+                "updated_at": null,
+                "autofilled": false,
+                "out_of_race": false,
+                "begin_time": null,
+                "meeting_event_id": null,
+                "pool_type_id": 1,
+                "standard_timing_id": null
+            },
+            "matches": [
+                {
+                    "id": null,
+                    "lock_version": 0,
+                    "event_order": 2,
+                    "category_type_id": 1292,
+                    "gender_type_id": 1,
+                    "created_at": null,
+                    "updated_at": null,
+                    "autofilled": false,
+                    "out_of_race": false,
+                    "begin_time": null,
+                    "meeting_event_id": null,
+                    "pool_type_id": 1,
+                    "standard_timing_id": null
+                }
+            ],
+            "bindings": {
+                "meeting_event": "1-100FA"
+            },
+            "toggle_debug": false
+        }
+    },
+    "meeting_individual_result": {
+        "1-400SL-M45-M/SKILES ALVINA-1970-M-Natatio Master Team asd": {
+            "row": {
+                "id": null,
+                "lock_version": 0,
+                "rank": 1,
+                "play_off": false,
+                "out_of_race": false,
+                "disqualified": false,
+                "standard_points": "974.57",
+                "meeting_points": "0.0",
+                "minutes": 4,
+                "seconds": 15,
+                "hundredths": 98,
+                "meeting_program_id": null,
+                "swimmer_id": 4766,
+                "team_id": 851,
+                "badge_id": null,
+                "created_at": null,
+                "updated_at": null,
+                "disqualification_code_type_id": null,
+                "goggle_cup_points": "0.0",
+                "reaction_time": "0.0",
+                "team_points": "0.0",
+                "team_affiliation_id": 5988,
+                "personal_best": false,
+                "season_type_best": false
+            },
+            "matches": [
+                {
+                    "id": null,
+                    "lock_version": 0,
+                    "rank": 1,
+                    "play_off": false,
+                    "out_of_race": false,
+                    "disqualified": false,
+                    "standard_points": "974.57",
+                    "meeting_points": "0.0",
+                    "minutes": 4,
+                    "seconds": 15,
+                    "hundredths": 98,
+                    "meeting_program_id": null,
+                    "swimmer_id": 4766,
+                    "team_id": 851,
+                    "badge_id": null,
+                    "created_at": null,
+                    "updated_at": null,
+                    "disqualification_code_type_id": null,
+                    "goggle_cup_points": "0.0",
+                    "reaction_time": "0.0",
+                    "team_points": "0.0",
+                    "team_affiliation_id": 5988,
+                    "personal_best": false,
+                    "season_type_best": false
+                }
+            ],
+            "bindings": {
+                "meeting_program": "1-400SL-M45-M",
+                "swimmer": "SKILES ALVINA-1970-M-Natatio Master Team asd",
+                "badge": "SKILES ALVINA-1970-M-Natatio Master Team asd",
+                "team_affiliation": "Natatio Master Team asd",
+                "team": "Natatio Master Team asd"
+            },
+            "toggle_debug": false
+        },
+        "1-400SL-M45-M/O'Hara Russ-1970-M-Gate Sport La Fenice ssd": {
+            "row": {
+                "id": null,
+                "lock_version": 0,
+                "rank": 2,
+                "play_off": false,
+                "out_of_race": false,
+                "disqualified": false,
+                "standard_points": "877.98",
+                "meeting_points": "0.0",
+                "minutes": 4,
+                "seconds": 44,
+                "hundredths": 14,
+                "meeting_program_id": null,
+                "swimmer_id": 21216,
+                "team_id": null,
+                "badge_id": null,
+                "created_at": null,
+                "updated_at": null,
+                "disqualification_code_type_id": null,
+                "goggle_cup_points": "0.0",
+                "reaction_time": "0.0",
+                "team_points": "0.0",
+                "team_affiliation_id": null,
+                "personal_best": false,
+                "season_type_best": false
+            },
+            "matches": [
+                {
+                    "id": null,
+                    "lock_version": 0,
+                    "rank": 2,
+                    "play_off": false,
+                    "out_of_race": false,
+                    "disqualified": false,
+                    "standard_points": "877.98",
+                    "meeting_points": "0.0",
+                    "minutes": 4,
+                    "seconds": 44,
+                    "hundredths": 14,
+                    "meeting_program_id": null,
+                    "swimmer_id": 21216,
+                    "team_id": null,
+                    "badge_id": null,
+                    "created_at": null,
+                    "updated_at": null,
+                    "disqualification_code_type_id": null,
+                    "goggle_cup_points": "0.0",
+                    "reaction_time": "0.0",
+                    "team_points": "0.0",
+                    "team_affiliation_id": null,
+                    "personal_best": false,
+                    "season_type_best": false
+                }
+            ],
+            "bindings": {
+                "meeting_program": "1-400SL-M45-M",
+                "swimmer": "O'Hara Russ-1970-M-Gate Sport La Fenice ssd",
+                "badge": "O'Hara Russ-1970-M-Gate Sport La Fenice ssd",
+                "team_affiliation": "Gate Sport La Fenice ssd",
+                "team": "Gate Sport La Fenice ssd"
+            },
+            "toggle_debug": false
+        },
+        "1-100FA-M45-M/O'Hara Russ-1970-M-Gate Sport La Fenice ssd": {
+            "row": {
+                "id": null,
+                "lock_version": 0,
+                "rank": 1,
+                "play_off": false,
+                "out_of_race": false,
+                "disqualified": false,
+                "standard_points": "871.21",
+                "meeting_points": "0.0",
+                "minutes": 1,
+                "seconds": 5,
+                "hundredths": 69,
+                "meeting_program_id": null,
+                "swimmer_id": 21216,
+                "team_id": null,
+                "badge_id": null,
+                "created_at": null,
+                "updated_at": null,
+                "disqualification_code_type_id": null,
+                "goggle_cup_points": "0.0",
+                "reaction_time": "0.0",
+                "team_points": "0.0",
+                "team_affiliation_id": null,
+                "personal_best": false,
+                "season_type_best": false
+            },
+            "matches": [
+                {
+                    "id": null,
+                    "lock_version": 0,
+                    "rank": 1,
+                    "play_off": false,
+                    "out_of_race": false,
+                    "disqualified": false,
+                    "standard_points": "871.21",
+                    "meeting_points": "0.0",
+                    "minutes": 1,
+                    "seconds": 5,
+                    "hundredths": 69,
+                    "meeting_program_id": null,
+                    "swimmer_id": 21216,
+                    "team_id": null,
+                    "badge_id": null,
+                    "created_at": null,
+                    "updated_at": null,
+                    "disqualification_code_type_id": null,
+                    "goggle_cup_points": "0.0",
+                    "reaction_time": "0.0",
+                    "team_points": "0.0",
+                    "team_affiliation_id": null,
+                    "personal_best": false,
+                    "season_type_best": false
+                }
+            ],
+            "bindings": {
+                "meeting_program": "1-100FA-M45-M",
+                "swimmer": "O'Hara Russ-1970-M-Gate Sport La Fenice ssd",
+                "badge": "O'Hara Russ-1970-M-Gate Sport La Fenice ssd",
+                "team_affiliation": "Gate Sport La Fenice ssd",
+                "team": "Gate Sport La Fenice ssd"
+            },
+            "toggle_debug": false
+        }
+    }
+}
