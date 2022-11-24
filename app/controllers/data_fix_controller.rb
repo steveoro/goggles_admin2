@@ -6,7 +6,7 @@
 # (Legacy data-import step 1 & 2)
 #
 class DataFixController < ApplicationController
-  # Members @data_hash & @solver must be set for all actions (redirects if the JSON parsing fails)
+  # Members @solver & @solver.data must be set for all actions (redirects if the JSON parsing fails)
   before_action :set_file_path, :parse_file_contents, :prepare_solver, except: :coded_name
 
   # [GET] /review_sessions - STEP 1: meeting + session
@@ -38,7 +38,7 @@ class DataFixController < ApplicationController
   def review_sessions
     # Prepare the data review, solving the entities first if not already serialized
     # or when a reparse is requested:
-    if @data_hash['meeting'].blank? || @data_hash['meeting_session'].blank? || edit_params['reparse'].present?
+    if @solver.data['meeting'].blank? || @solver.data['meeting_session'].blank? || edit_params['reparse'].present?
       if edit_params['reparse'] == 'sessions'
         @solver.map_sessions
       else # (assume 'reparse whole section')
@@ -47,7 +47,8 @@ class DataFixController < ApplicationController
       # Serialize this step overwriting the same file:
       overwrite_file_path_with_json_from(@solver.data)
     end
-    prepare_sessions_and_pools_from_data_hash
+    prepare_sessions_and_pools
+    @retry_needed = @solver.retry_needed
     ActionCable.server.broadcast('ImportStatusChannel', msg: 'Review sessions: ready')
   end
 
@@ -66,11 +67,12 @@ class DataFixController < ApplicationController
   def review_teams
     # Prepare the data review, solving the entities first if not already serialized
     # or when a reparse is requested:
-    if @data_hash['team'].blank? || edit_params['reparse'].present?
+    if @solver.data['team'].blank? || edit_params['reparse'].present?
       @solver.map_teams_and_swimmers
       overwrite_file_path_with_json_from(@solver.data)
     end
     @teams_hash = @solver.rebuild_cached_entities_for('team')
+    @retry_needed = @solver.retry_needed
     ActionCable.server.broadcast('ImportStatusChannel', msg: 'Review teams: ready')
   end
 
@@ -89,11 +91,12 @@ class DataFixController < ApplicationController
   def review_swimmers
     # Prepare the data review, solving the entities first if not already serialized
     # or when a reparse is requested:
-    if @data_hash['swimmer'].blank? || edit_params['reparse'].present?
+    if @solver.data['swimmer'].blank? || edit_params['reparse'].present?
       @solver.map_teams_and_swimmers
       overwrite_file_path_with_json_from(@solver.data)
     end
     @swimmers_hash = @solver.rebuild_cached_entities_for('swimmer')
+    @retry_needed = @solver.retry_needed
     ActionCable.server.broadcast('ImportStatusChannel', msg: 'Review swimmers: ready')
   end
 
@@ -113,6 +116,7 @@ class DataFixController < ApplicationController
   #
   def review_events
     prepare_for_review_events_and_results
+    @retry_needed = @solver.retry_needed
     ActionCable.server.broadcast('ImportStatusChannel', msg: 'Review events: ready')
   end
 
@@ -134,8 +138,9 @@ class DataFixController < ApplicationController
   def review_results
     prepare_for_review_events_and_results
     # Extract all Prgs & MIRs keys, giving up the rest (including bindings & matches) since we won't use them here:
-    @prgs_keys = @data_hash['meeting_program']&.keys
-    @mirs_keys = @data_hash['meeting_individual_result']&.keys
+    @prgs_keys = @solver.data['meeting_program']&.keys
+    @mirs_keys = @solver.data['meeting_individual_result']&.keys
+    @retry_needed = @solver.retry_needed
     ActionCable.server.broadcast('ImportStatusChannel', msg: 'Review results: ready')
   end
   #-- -------------------------------------------------------------------------
@@ -222,7 +227,7 @@ class DataFixController < ApplicationController
     #
     # == Bottom line:
     # - Whenever there's a 'edit_params', to retrieve the values we need the 'actual_form_key?
-    # - Whenever we access the @data_hash we need the real 'entity_key'.
+    # - Whenever we access the @solver.data we need the real 'entity_key'.
 
     entity_key = entity_key_for(model_name)
     actual_form_key = if edit_params['dom_valid_key'].present? && edit_params['dom_valid_key'] != entity_key
@@ -277,11 +282,11 @@ class DataFixController < ApplicationController
       # === Update main entity attributes: ===
       # (index must be already set to the proper key type: nil for meetings, integer for sessions, string for others)
       if entity_key.present?
-        @data_hash[model_name]&.fetch(entity_key, nil)&.fetch('row', nil)&.compact!
-        @data_hash[model_name]&.fetch(entity_key, nil)&.fetch('row', nil)&.merge!(actual_attrs)
+        @solver.data[model_name]&.fetch(entity_key, nil)&.fetch('row', nil)&.compact!
+        @solver.data[model_name]&.fetch(entity_key, nil)&.fetch('row', nil)&.merge!(actual_attrs)
       else
-        @data_hash[model_name]&.fetch('row', nil)&.compact!
-        @data_hash[model_name]&.fetch('row', nil)&.merge!(actual_attrs)
+        @solver.data[model_name]&.fetch('row', nil)&.compact!
+        @solver.data[model_name]&.fetch('row', nil)&.merge!(actual_attrs)
       end
     end
 
@@ -314,7 +319,7 @@ class DataFixController < ApplicationController
         # DEBUG ----------------------------------------------------------------
         # binding.pry
         # ----------------------------------------------------------------------
-        @data_hash[model_name]&.fetch(entity_key, nil)&.fetch('bindings', nil)&.merge!(
+        @solver.data[model_name]&.fetch(entity_key, nil)&.fetch('bindings', nil)&.merge!(
           # ASSERT: key is an index, not a string key
           { binding_model_name => updated_attrs['key'].to_i }
         )
@@ -328,12 +333,12 @@ class DataFixController < ApplicationController
       # == Update association column in main entity: ==
       if entity_key.present?
         # i.e.: 'swimming_pool' => 0 => 'swimming_pool_id' (apply to main, i.e.: 'meeting_session')
-        @data_hash[model_name]&.fetch(entity_key, nil)&.fetch('row', nil)&.compact!
-        @data_hash[model_name]&.fetch(entity_key, nil)&.fetch('row', nil)&.merge!(main_attrs)
+        @solver.data[model_name]&.fetch(entity_key, nil)&.fetch('row', nil)&.compact!
+        @solver.data[model_name]&.fetch(entity_key, nil)&.fetch('row', nil)&.merge!(main_attrs)
       else
         # Only 'meeting' doesn't have a key (the bindings, if any, must use it):
-        @data_hash[model_name]&.fetch('row', nil)&.compact!
-        @data_hash[model_name]&.fetch('row', nil)&.merge!(main_attrs)
+        @solver.data[model_name]&.fetch('row', nil)&.compact!
+        @solver.data[model_name]&.fetch('row', nil)&.merge!(main_attrs)
       end
       # DEBUG ----------------------------------------------------------------
       # binding.pry
@@ -350,15 +355,15 @@ class DataFixController < ApplicationController
 
       # EXCEPTION: City is the only "complex" binding that could be sub-nested at depth > 1, returning a whole Hash (key + attributes)
       binding_key = binding_key.keys.first if binding_key.is_a?(Hash)
-      @data_hash[binding_model_name]&.fetch(binding_key, nil)&.fetch('row', nil)&.compact!
-      @data_hash[binding_model_name]&.fetch(binding_key, nil)&.fetch('row', nil)&.merge!(nested_attrs)
+      @solver.data[binding_model_name]&.fetch(binding_key, nil)&.fetch('row', nil)&.compact!
+      @solver.data[binding_model_name]&.fetch(binding_key, nil)&.fetch('row', nil)&.merge!(nested_attrs)
     end
     # DEBUG ----------------------------------------------------------------
     # binding.pry
     # ----------------------------------------------------------------------
 
     # == Serialization on same file: ==
-    overwrite_file_path_with_json_from(@data_hash)
+    overwrite_file_path_with_json_from(@solver.data)
 
     # Clean the referer URL from a possible reparse parameter before redirecting back:
     request.headers['HTTP_REFERER'].gsub!(/&reparse=(true|sessions)/i, '')
@@ -472,7 +477,7 @@ class DataFixController < ApplicationController
   end
 
   # Parses the contents of @file_path assuming it's valid JSON.
-  # Sets @data_hash with the parsed contents.
+  # Sets @data_hash with the parsed contents, which shall be used to initialize the @solver member.
   # Redirects to #pull/index in case of errors.
   def parse_file_contents
     file_content = File.read(@file_path)
@@ -494,17 +499,17 @@ class DataFixController < ApplicationController
     @season = GogglesDb::Season.find(season_id)
   end
 
-  # Prepares the @solver instance, assuming @file_path & @data_hash have been set.
+  # Prepares the @solver instance assuming @data_hash & @file_path have been already set.
   # Sets @solver with current Solver instance.
   def prepare_solver
     detect_season_from_pathname # (sets @season)
     @solver = Import::MacroSolver.new(season_id: @season.id, data_hash: @data_hash, toggle_debug: false)
   end
 
-  # Assuming @data_hash contains already "solved" data for meeting & sessions, this sets
+  # Assuming @solver.data contains already "solved" data for meeting & sessions, this sets
   # the @meeting_sessions & @swimming_pools member arrays with the current data found in the
   # Hash, building the proper corresponding models for each one.
-  def prepare_sessions_and_pools_from_data_hash
+  def prepare_sessions_and_pools
     @solver.rebuild_cached_entities_for('city')
     @meeting_entity = @solver.rebuild_cached_entities_for('meeting')
     @meeting = @meeting_entity.row
@@ -571,12 +576,12 @@ class DataFixController < ApplicationController
   #
   def prepare_for_review_events_and_results
     # ASSERT: step 1 ("solve meeting & sessions") has already been run
-    prepare_sessions_and_pools_from_data_hash
+    prepare_sessions_and_pools
     prepare_event_types_payload
 
     # Prepare the data to be reviewed, solving the entities first when not already serialized:
     # (or when a reparse is not requested)
-    if @data_hash['meeting_event'].blank? || edit_params['reparse'].present?
+    if @solver.data['meeting_event'].blank? || edit_params['reparse'].present?
       @solver.map_events_and_results
       overwrite_file_path_with_json_from(@solver.data)
     end

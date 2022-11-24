@@ -548,8 +548,8 @@ module Import
           binding_row = @solver.cached_instance_of(binding_model_name, binding_key)
           model_row.send(update_method, binding_row.id)
         end
-        # Assume all bindings have been solved and re-seek for an existing row using an educated where clause
-        # and giving precedence to what's been found as already existing:
+
+        # Assume all validated bindings have been solved and re-seek for an existing row using an educated clause:
         db_row = GogglesDb::TeamAffiliation.where(team_id: model_row.team_id, season_id: @season.id).first
         model_row.id = db_row.id if db_row
         # Override the Import::Entity with the actual row:

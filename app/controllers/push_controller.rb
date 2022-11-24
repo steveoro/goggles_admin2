@@ -95,7 +95,9 @@ class PushController < FileListController
   def upload
     # Handle file globs:
     if @file_path.ends_with?('*.sql')
-      Dir.glob(Rails.root.join('crawler', @file_path)).sort.each do |file_path|
+      files = Dir.glob(Rails.root.join('crawler', @file_path)).sort
+      files.each_with_index do |file_path, idx|
+        ActionCable.server.broadcast('ImportStatusChannel', msg: "sending '#{file_path}'", progress: idx + 1, total: files.count)
         push_file_and_move(file_path)
         if flash[:error].present?
           flash[:error] = "#{flash[:error]} - file: '#{file_path}'"

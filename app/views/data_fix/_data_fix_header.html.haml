@@ -8,3 +8,6 @@
       .row-fluid.text-center
         %h5
           = file_path.split('data/').last
+      - if retry_needed
+        .row-fluid.text-center
+          %b.text-danger.animated.infinite.flash= t('data_import.data_fix.msg.warning_retry_needed')

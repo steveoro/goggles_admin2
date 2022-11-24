@@ -83,7 +83,7 @@ class CalendarCrawler {
   // 3.b) "Riepilogo eventi" ("current events" using layout 3 - table-like)
   $('.module-menu_acc_interno ul.mixedmenu li.divider.deeper.parent ul.nav-child li a:contains("Riepilogo Eventi")')[0].click()
 
-  // 3.c) "Archivio 2012/2021" (old archive of result lists, each using layout 2)
+  // 3.c) "Archivio 2012/20xx" (old archive of result lists, each using layout 2)
   // 3.c.1) for this one, open the sub menu:
   $('.module-menu_acc_interno ul.mixedmenu li.divider.deeper.parent ul.nav-child li span:contains("Archivio 2012-")')[0].click()
 
@@ -146,7 +146,7 @@ class CalendarCrawler {
         })
         break;
 
-      default: // "Archivio 2021-..."
+      default: // "Archivio 2012-..."
         resultsStartURL = `https://www.federnuoto.it/home/master/circuito-supermaster/archivio-2012-2022/stagione-${yearText.replace('/', '-')}.html`
         console.log(`Using 'archived' calendar page type '${yearText}'`)
         await page.evaluate((yearText) => {
@@ -331,7 +331,7 @@ class CalendarCrawler {
                    1) Using a simple GET request on the same calendar page as base URL + a special anchor stored in the dataset 'alias' field of the button link,
                       like this (acts as a composed backend query):
                       -- Example: --
-                      baseURL= "https://www.federnuoto.it/home/master/circuito-supermaster/archivio-2012-2021/stagione-2019-2020.html"
+                      baseURL= "https://www.federnuoto.it/home/master/circuito-supermaster/archivio-2012-2022/stagione-2019-2020.html"
                       anchorURL = `risultati/136714:19-trofeo-citt%C3%A0-di-verolanuova.html` => node.querySelector('.nat_eve .nat_eve_results .results').dataset['alias']
                       GET meetingUrl => `${baseURL}#/${anchorURL}`
 

@@ -36,6 +36,8 @@ it:
       btn_start_sql_batch_disable: "Elaborazione in corso..."
       btn_reparse_session_label: "Riscasiona sessioni"
       btn_reparse_session_tooltip: "Riesegui la scasione forzata di questo file risultati SOLO per le sessioni Meeting (utile se si cambia e salva l'ID del Meeting)"
+      msg:
+        warning_retry_needed: "ERRORE 'RETRY' TROVATO! Questo file risultati può essere elaborato lo stesso ma deve essere riscaricato per essere completo."
     push:
       msg_prepare_batch_ok: 'File batch SQL creato con successo.'
       msg_send_batch_ok: "File batch inviato con successo."

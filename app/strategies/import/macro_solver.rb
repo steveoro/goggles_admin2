@@ -4,9 +4,9 @@ module Import
   #
   # = MacroSolver
   #
-  #   - version:  7-0.4.10
+  #   - version:  7-0.4.23
   #   - author:   Steve A.
-  #   - build:    20221004
+  #   - build:    20221122
   #
   # Scans the already-parsed Meeting results JSON object (which stores a whole set of results)
   # and finds existing & corresponding entity rows or creates (locally) any missing associated
@@ -39,6 +39,7 @@ module Import
       @season = GogglesDb::Season.find(season_id)
       @data = data_hash || {}
       @toggle_debug = toggle_debug
+      @retry_needed = @data['sections']&.any?{ |sect| sect['retry'].present? }
     end
     #-- ------------------------------------------------------------------------
     #++
@@ -170,6 +171,10 @@ module Import
     #
     attr_accessor :data
 
+    # Flag which is +true+ only when the parsed file has been found with a "retry" data section.
+    # This implies that the file must be crawled again from its datasource in order to get the full results.
+    # The file can still be processed normally, but the whole subsection with the retry will be missing from the resulting data Hash.
+    attr_accessor :retry_needed
     #-- ------------------------------------------------------------------------
     #++
 
@@ -284,6 +289,9 @@ module Import
       @data['sections'].each do |sect|
         idx += 1
         ActionCable.server.broadcast('ImportStatusChannel', msg: 'map_teams_and_swimmers', progress: idx, total: total)
+        # If the section contains a 'retry' subsection it means the crawler received some error response during
+        # the data crawl and the result file is missing the whole result subsection.
+        next if sect['retry'].present?
 
         sect['rows'].each do |row|
           team_name = row['team']
@@ -349,6 +357,9 @@ module Import
       programs = @data['sections'].each_with_index do |sect, sect_idx|
         idx += 1
         ActionCable.server.broadcast('ImportStatusChannel', msg: 'map_events_and_results', progress: idx, total: total)
+        # If the section contains a 'retry' subsection it means the crawler received some error response during
+        # the data crawl and the result file is missing the whole result subsection.
+        next if sect['retry'].present?
 
         # (Example section 'title': "50 Stile Libero - M25")
         event_type, category_type = Parser::EventType.from_l2_result(sect['title'], @season)
@@ -773,12 +784,10 @@ module Import
     # An Import::Entity wrapping the target row together with a list of all possible candidates, when found.
     def find_or_prepare_affiliation(team, team_key, season)
       # When present, team ID is assumed to be correct and has higher priority over name:
-      domain = if team&.id
-                 GogglesDb::TeamAffiliation.where(team_id: team&.id, season_id: season.id)
-               else
-                 GogglesDb::TeamAffiliation.for_name(team.name).where(season_id: season.id)
-               end
+      domain = GogglesDb::TeamAffiliation.where(team_id: team&.id, season_id: season.id) if team&.id
       return Import::Entity.new(row: domain.first, matches: domain.to_a, bindings: { 'team' => team_key }) if domain.present?
+      # NOTE: *NEVER*, ever, use a partial match on affiliation name for detecting the domain above,
+      #       unless the team is already existing! (If the team is not there, a correct affiliation surely isn't.)
 
       # ID can be nil for new rows, so we set the association using the new model directly where needed:
       new_row = GogglesDb::TeamAffiliation.new(team_id: team&.id, season_id: season.id, name: team.name)

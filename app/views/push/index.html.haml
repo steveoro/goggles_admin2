@@ -1,3 +1,4 @@
+= render(partial: 'data_fix/modal_progress')
 .wrapper-body
   .main-content
     %section.my-2#title-box
@@ -9,19 +10,20 @@
     %section.my-2#file-tabs
       = render(partial: 'file_tabs', locals: { active_tab: @parent_folder.include?('new') ? 'new' : 'sent' })
 
-    %section#file-list
+    %section#multi-push
       - if @files.present?
         .row-fluid
           .container
             .row.justify-content-left.ml-0.mb-2
               .btn-group.mx-1.my-0#push-all-btn
                 = link_to(push_upload_path(file_path: File.join(@curr_dir, '*.sql')), method: :post,
-                                           class: 'btn btn-sm btn-outline-warning mb-1', data: { toggle: 'tooltip',
-                                           title: t('data_import.push.btn_all_sql_files_tooltip'),
-                                           confirm: t('data_import.push.btn_all_sql_files_confirm') }) do
+                                            class: 'btn btn-sm btn-outline-warning mb-1', data: { toggle: 'tooltip',
+                                            title: t('data_import.push.btn_all_sql_files_tooltip'),
+                                            confirm: t('data_import.push.btn_all_sql_files_confirm') }) do
                   %span
                     = t('data_import.push.btn_all_sql_files')
                     %i.fa.fa-upload
 
+    %section#file-list
       = render(partial: 'file_list/file_table', locals: { dirnames: @dirnames, curr_dir: @curr_dir,
                files: @files })

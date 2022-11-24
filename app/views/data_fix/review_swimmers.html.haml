@@ -2,7 +2,7 @@
 .wrapper-body
   .main-content
     %section.my-2#title-box
-      = render(partial: 'data_fix_header', locals: { file_path: @file_path })
+      = render(partial: 'data_fix_header', locals: { file_path: @file_path, retry_needed: @retry_needed })
     %section.my-2#review-swimmers-tabs
       = render(partial: 'data_fix_tabs', locals: { active_tab: 'swimmers', file_path: @file_path })
 
