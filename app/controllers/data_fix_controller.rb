@@ -7,7 +7,8 @@
 #
 class DataFixController < ApplicationController
   # Members @solver & @solver.data must be set for all actions (redirects if the JSON parsing fails)
-  before_action :set_file_path, :parse_file_contents, :prepare_solver, except: :coded_name
+  before_action :set_file_path, :parse_file_contents, :prepare_solver,
+                except: [:coded_name, :teams_for_swimmer]
 
   # [GET] /review_sessions - STEP 1: meeting + session
   #
@@ -418,6 +419,29 @@ class DataFixController < ApplicationController
     render(json: { coded_name_params[:target] => result })
   end
 
+  # [GET /teams_for_swimmer] (AJAX only)
+  # Computes and returns the rendered text displaying the list of unique team names
+  # for which the specified swimmer_id results having a badge for.
+  # Returns an empty text otherwise.
+  #
+  # == Params:
+  # <tt>:swimmer_id</tt> => target Swimmer id (required)
+  #
+  def teams_for_swimmer
+    unless request.xhr?
+      flash[:warning] = I18n.t('search_view.errors.invalid_request')
+      redirect_to root_path
+      return
+    end
+
+    @swimmer_id = teams_for_swimmer_params[:swimmer_id]
+    @team_names = GogglesDb::Badge.where(swimmer_id: @swimmer_id)
+                                  .includes(:team).joins(:team)
+                                  .map { |row| "#{row.team.editable_name} (#{row.team_id})" }
+                                  .uniq
+                                  .join(', ')
+  end
+
   private
 
   # Strong parameters checking for file & edit (patch) related actions.
@@ -439,6 +463,11 @@ class DataFixController < ApplicationController
       :name, :city_name, :pool_type_code,
       :description
     )
+  end
+
+  # Strong parameters checking for team names list retrieval.
+  def teams_for_swimmer_params
+    params.permit(:swimmer_id)
   end
 
   # Returns the correct type of <tt>edit_params['key']</tt> depending on the specified <tt>model_name</tt>.

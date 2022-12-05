@@ -72,7 +72,7 @@ module Import
     # used for an update of its corresponding database row.)
     #
     def self.difference_with_db(model_row, db_row = nil)
-      if model_row.id.blank?
+      if model_row.id.blank? || model_row.id.to_i.zero?
         return model_row.attributes.reject do |col, val|
                  %w[lock_version created_at updated_at].include?(col) || val.nil?
                end
@@ -629,12 +629,12 @@ module Import
     #
     def commit_and_log(model_row)
       # == INSERT ==
-      if model_row.valid? && model_row.id.blank?
+      if model_row.valid? && (model_row.id.blank? || model_row.id.to_i.zero?)
         model_row.save!
         @sql_log << SqlMaker.new(row: model_row).log_insert
 
       # == UPDATE ==
-      elsif model_row.id.present?
+      elsif model_row.id.to_i.positive?
         changes = self.class.difference_with_db(model_row)
         return model_row if changes.blank?
 

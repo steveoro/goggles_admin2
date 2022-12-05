@@ -153,6 +153,7 @@ class FileListController < ApplicationController
   def prepare_file_and_dir_list(filter = nil)
     file_ext = File.extname(file_params[:file_path])
     @curr_dir = File.dirname(file_params[:file_path]).split('crawler/').last
+    @parent_folder = file_params[:parent_folder]
     @dirnames = Dir.glob(Rails.root.join('crawler', @curr_dir, '../*'))
                    .map { |name| name.split('crawler/').last }
                    .sort

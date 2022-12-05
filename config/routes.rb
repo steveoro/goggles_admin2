@@ -33,6 +33,7 @@ Rails.application.routes.draw do
   get 'data_fix/review_results', to: 'data_fix#review_results', as: 'review_results'
   patch 'data_fix/update', to: 'data_fix#update', as: 'data_fix_update'
   get 'data_fix/coded_name', to: 'data_fix#coded_name'
+  get 'data_fix/teams_for_swimmer/:swimmer_id', to: 'data_fix#teams_for_swimmer', as: 'data_fix_teams_for_swimmer'
 
   get 'push/index'
   post 'push/prepare'

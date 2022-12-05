@@ -1,7 +1,22 @@
+-# Detect feasability of multi-push
+- if files.present? && filter.present? && filter == '*.sql'
+  .row-fluid
+    .container
+      .row.justify-content-left.ml-0.mb-2
+        .btn-group.mx-1.my-0#push-all-btn
+          = link_to(push_upload_path(file_path: File.join(curr_dir, '*.sql')), method: :post,
+                                     class: 'btn btn-sm btn-outline-warning mb-1', data: { toggle: 'tooltip',
+                                     title: t('data_import.push.btn_all_sql_files_tooltip'),
+                                     confirm: t('data_import.push.btn_all_sql_files_confirm') }) do
+            %span
+              = t('data_import.push.btn_all_sql_files')
+              %i.fa.fa-upload
+
 .row-fluid
   .container
     - if curr_dir.present? && dirnames.present?
-      = form_tag(update_result_files_path(filter: @filter), id: 'frm-dir-filter', method: :put, remote: true) do
+      = form_tag(update_result_files_path(filter: filter, parent_folder: parent_folder), id: 'frm-dir-filter',
+                 method: :put, remote: true) do
         .row
           .col
             .form-group

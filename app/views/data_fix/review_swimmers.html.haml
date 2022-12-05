@@ -30,19 +30,30 @@
                                                   'aria-controls' => 'edit-swimmer' } }
                           = name_part
                     .col.mt-1.pt-2
-                      %span.text-secondary= '->'
-                      = swimmer.complete_name
+                      .row
+                        %span.text-secondary= '->'
+                        = swimmer.complete_name
+                        - if swimmer.id.present?
+                          ID: #{swimmer.id}
+                          = swimmer.valid? ? '✅' : '🔴'
+                          - if swimmer.first_name.blank? || swimmer.last_name.blank?
+                            &nbsp;
+                            🟡
+                          - if swimmer.complete_name.split.count > 2
+                            &nbsp;
+                            3️⃣
+                          &nbsp;
+                          = link_to(data_fix_teams_for_swimmer_path(swimmer.id), method: :get, remote: true,
+                                    data: { toggle: 'tooltip',
+                                    title: t('data_import.data_fix.btn_teams_for_swimmer_tooltip') }) do
+                            %small
+                              %i.fa.fa-search-plus
+                              Teams
+                        - else
+                          🆕
                       - if swimmer.id.present?
-                        ID: #{swimmer.id}
-                        = swimmer.valid? ? '✅' : '🔴'
-                        - if swimmer.first_name.blank? || swimmer.last_name.blank?
-                          &nbsp;
-                          🟡
-                        - if swimmer.complete_name.split.count > 2
-                          &nbsp;
-                          3️⃣
-                      - else
-                        🆕
+                        .row
+                          %small{ id: "team-list-for-#{swimmer.id}" }
                     .col.mt-1.pt-2
                       %i.form-text.text-muted.bg-light-grey
                         %pre

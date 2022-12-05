@@ -30,6 +30,7 @@ en:
       link_to_results_pdf_download: "Download results on PDF"
       btn_maps_search: 'Search'
       btn_maps_search_tooltip: 'Search on Maps for the name & address to get the Plus code and/or the URI to be copied here'
+      btn_teams_for_swimmer_tooltip: 'Get the list of Teams this swimmer belongs to'
       btn_start_sql_batch: "Start SQL batch creation"
       btn_start_sql_batch_tooltip: "Ends the data-review phase and starts the commit phase (commits on local DB only); the remote DB will need a manual 'push' to receive the changes."
       btn_start_sql_batch_confirm: "Commit changes?"

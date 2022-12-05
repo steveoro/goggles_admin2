@@ -8,4 +8,4 @@
 
     %section#file-list
       = render(partial: 'file_list/file_table', locals: { dirnames: @dirnames, curr_dir: @curr_dir,
-               files: @files })
+               files: @files, parent_folder: @parent_folder, filter: @filter })
