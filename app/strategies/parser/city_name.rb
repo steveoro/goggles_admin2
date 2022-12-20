@@ -36,7 +36,7 @@ module Parser
     #
     def self.tokenize_address(address)
       area_code = nil
-      tokens = address.split(/\W*[-;]\W*/iu)
+      tokens = address.to_s.split(/\W*[-;]\W*/iu)
 
       if tokens.last =~ /\W*[\(\[]\w+[\)\]]/iu
         city_name, area_code = tokens.pop.split(/\W*[\(\[]/iu)

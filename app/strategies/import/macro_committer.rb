@@ -630,6 +630,7 @@ module Import
     def commit_and_log(model_row)
       # == INSERT ==
       if model_row.valid? && (model_row.id.blank? || model_row.id.to_i.zero?)
+        model_row.id = nil # force new ID creation for inserted rows
         model_row.save!
         @sql_log << SqlMaker.new(row: model_row).log_insert
 

@@ -38,10 +38,10 @@
                           = swimmer.valid? ? '✅' : '🔴'
                           - if swimmer.first_name.blank? || swimmer.last_name.blank?
                             &nbsp;
-                            🟡
+                            📝
                           - if swimmer.complete_name.split.count > 2
                             &nbsp;
-                            3️⃣
+                            ❓
                           &nbsp;
                           = link_to(data_fix_teams_for_swimmer_path(swimmer.id), method: :get, remote: true,
                                     data: { toggle: 'tooltip',

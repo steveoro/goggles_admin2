@@ -52,9 +52,8 @@ class PushController < FileListController
     done_pathname = @file_path.gsub('results.new', 'results.done') # JSON backup copy (before IDs)
 
     # Prepare a sequential counter prefix for the uploadable batch file:
-    sql_files_count = Dir.glob(Rails.root.join('crawler', curr_dir, '**', '*.sql')).count +
-                      Dir.glob(Rails.root.join('crawler', sent_dir, '**', '*.sql')).count
-    dest_file = "#{format('%03d', sql_files_count + 1)}-#{File.basename(dest_file.gsub('.json', '.sql'))}"
+    last_counter = compute_file_counter(curr_dir, sent_dir)
+    dest_file = "#{format('%03d', last_counter + 1)}-#{File.basename(dest_file.gsub('.json', '.sql'))}"
 
     # Move last phase's JSON file (before IDs were set) into 'done' as a backup:
     FileUtils.mkdir_p(File.dirname(done_pathname)) # First, ensure existence of the destination path
@@ -167,6 +166,32 @@ class PushController < FileListController
   #-- -------------------------------------------------------------------------
   #++
 
+  # Returns a valid progressive counter that can be used as a leading file name part to
+  # respect their creation order.
+  #
+  # === Params:
+  # - <tt>curr_dir</tt> => current working folder (typically "crawler/data/<SEASON_ID>/results.new")
+  # - <tt>sent_dir</tt> => folder storing the files already processed or sent (typically "crawler/data/<SEASON_ID>/results.sent")
+  # - <tt>extension</tt> => file extension of the processed files including wildchar (defaults to '*.sql')
+  #
+  def compute_file_counter(curr_dir, sent_dir, extension = '*.sql')
+    # Prepare a sequential counter prefix for the uploadable batch file:
+    curr_count = Dir.glob(Rails.root.join(curr_dir, '**', extension)).count
+    sent_count = Dir.glob(Rails.root.join(sent_dir, '**', extension)).count
+    last_counter = if curr_count.positive?
+                     File.basename(Dir.glob(Rails.root.join(curr_dir, '**', extension)).sort.last).split('-').first.to_i
+                   elsif sent_count.positive?
+                     File.basename(Dir.glob(Rails.root.join(sent_dir, '**', extension)).sort.last).split('-').first.to_i
+                   else
+                     0
+                   end
+    # In case the saved files didn't contain a leading progressive counter in their name, use the file count:
+    last_counter = curr_count + sent_count if last_counter.zero?
+    last_counter
+  end
+  #-- -------------------------------------------------------------------------
+  #++
+
   # Assuming it's a single, valid SQL batch file, using the dedicated API endpoint,
   # this uploads <tt>file_path</tt> to the currently set remote API server.
   #
@@ -177,6 +202,10 @@ class PushController < FileListController
   # 2. if in '.sent', move it to '.done' so that we know we're done.
   #
   # In case of error, flash[:error] will be non-blank.
+  #
+  # === Params:
+  # - :file_path => path to the SQL file storing the data-import transaction.
+  #
   def push_file_and_move(file_path)
     logger.info("\r\n---> Pushing '#{file_path}'...")
     res = APIProxy.call(

@@ -36,20 +36,20 @@
         .form-group
           .field
             = label_tag("swimmer[#{subkey_for_dom_id}][last_name]", 'last_name')
-            = text_field_tag("swimmer[#{subkey_for_dom_id}][last_name]", swimmer&.last_name,
+            = text_field_tag("swimmer[#{subkey_for_dom_id}][last_name]", swimmer&.last_name&.upcase,
                               class: 'form-control', required: true, placeholder: 'last_name')
       .col-lg-3.col-md-5.col-sm-6.my-1
         .form-group
           .field
             = label_tag("swimmer[#{subkey_for_dom_id}][first_name]", 'first_name')
-            = text_field_tag("swimmer[#{subkey_for_dom_id}][first_name]", swimmer&.first_name,
+            = text_field_tag("swimmer[#{subkey_for_dom_id}][first_name]", swimmer&.first_name&.upcase,
                               class: 'form-control', required: true, placeholder: 'first_name')
 
       .col-lg-6.col-md-6.my-2
         .form-group
           .field
             = label_tag("swimmer[#{subkey_for_dom_id}][complete_name]", 'complete_name')
-            = text_field_tag("swimmer[#{subkey_for_dom_id}][complete_name]", swimmer&.complete_name,
+            = text_field_tag("swimmer[#{subkey_for_dom_id}][complete_name]", swimmer&.complete_name&.upcase,
                               class: 'form-control', required: true, placeholder: 'complete_name')
       .col-lg-2.col-md-3.col-sm-4.my-2
         = label_tag("swimmer[#{subkey_for_dom_id}][year_of_birth]", 'year_of_birth')
