@@ -835,10 +835,17 @@ module Import
         first_name = tokens.last
       end
       if tokens.size == 3
-        last_name = tokens.first
-        first_name = tokens[1..2].join(' ')
+        # Common italian double surname cases:
+        if %w[DA DAL DE DEL DI DO LA LE LI LO].include?(tokens.first.upcase)
+          last_name = tokens[0..1].join(' ')
+          first_name = tokens.last
+        else # Assume double name instead:
+          last_name = tokens.first
+          first_name = tokens[1..2].join(' ')
+        end
       end
       if tokens.size > 3
+        # Assume double surname by default:
         last_name = tokens[0..1].join(' ')
         first_name = tokens[2..-1].join(' ')
       end
@@ -1145,7 +1152,7 @@ module Import
     #
     # - <tt>search_item</tt>: a matching search result, typically an Hash of attributes, to be converted
     #                         into the destination <tt>model_name</tt>.
-    #                         It may also be an OpenStruct, an Import::Entity or a plain AR Model.
+    #                         It may also be a Struct/OpenStruct, an Import::Entity or a plain AR Model.
     #
     # == Returns:
     # A <tt>model_name</tt> instance having a the <tt>search_item</tt> values as column attributes.
@@ -1160,7 +1167,7 @@ module Import
                        )
 
                      elsif search_item.respond_to?(:candidate)
-                       # original OpenStruct result (unserialized yet)
+                       # original Struct/OpenStruct result (unserialized yet)
                        search_item.candidate
 
                      elsif search_item.is_a?(Hash) && search_item.fetch('data', nil).is_a?(Hash)

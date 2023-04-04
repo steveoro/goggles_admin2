@@ -2,6 +2,7 @@
 
 _Please, add the latest build info on top of the list; use Version::MAJOR only after gold release; keep semantic versioning in line with framework's_
 
+- **0.4.25** [Steve A.] make sure that calendar rows do not get consumed unless actual result nodes are found
 - **0.4.23** [Steve A.] ensure dest. paths exist when moving files; ensure proper swimmer key is used for internal entity cache, even for same-named swimmers; extended debug & data-fix; improved display for row action toolbar in grids & other minor updates; added auto-detection for corrupted result files (containing a 'retry' error section) with flashing warning display on data-fix pages in header banner
 - **0.4.21** [Steve A.] resync w/ base engine
 - **0.4.20** [Steve A.] more debug and small improvements to data-import strategies & front-end; resync w/ base engine: some security updates; increased duration of JWTs to 10 hours; removed unconfirmed new user access possibility; added a default scope for Team

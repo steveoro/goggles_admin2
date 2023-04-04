@@ -91,9 +91,9 @@ class ResultsCrawler {
 
           if (calendarRow.url && !cancelled && calendarRow.url != 'undefined' && calendarRow.url != 'null' && calendarRow.url != ' ') {
             if (layout == 1) {
-              await this.processResultPageWithLayout1(calendarRow, browser)
+              await this.processResultPageWithLayout1(calendarRow, browser, skippedRows)
             } else if (layout == 2 || layout == 3) {
-              await this.processResultPageWithLayout2(calendarRow, browser)
+              await this.processResultPageWithLayout2(calendarRow, browser, skippedRows)
             } else {
               CrawlUtil.updateStatus('Unsupported layout specified in API call', 'ERROR')
             }
@@ -181,8 +181,9 @@ class ResultsCrawler {
     *
     * @param {Object} calendarRow - a row from the CSV file
     * @param {Object} browser - a Puppeteer instance
+    * @param {Array} skippedRows - the array storing "skipped rows" that do not have any result nodes available
     */
-  async processResultPageWithLayout1(calendarRow, browser) {
+  async processResultPageWithLayout1(calendarRow, browser, skippedRows) {
     console.log(`'FIN layout 1' - browsing to ${calendarRow.url}...`)
     // Create a new incognito browser context:
     const context = await browser.createIncognitoBrowserContext()
@@ -227,6 +228,9 @@ class ResultsCrawler {
 
     console.log(`   Extracted data for '${meetingResult.name}' with ${meetingResult.sections ? meetingResult.sections.length : 0} sections/events.`)
     this.saveResultOutputFile(calendarRow, meetingResult)
+    if (totRowCount < 1) { // Add current calendar row to skipped ones if no nodes were available:
+      skippedRows.push(calendarRow)
+    }
     console.log('   Closing context...')
     await context.close()
   }
@@ -241,8 +245,9 @@ class ResultsCrawler {
     *
     * @param {Object} calendarRow - a row from the CSV file
     * @param {Object} browser - a Puppeteer instance
+    * @param {Array} skippedRows - the array storing "skipped rows" that do not have any result nodes available
     */
-  async processResultPageWithLayout2(calendarRow, browser) {
+  async processResultPageWithLayout2(calendarRow, browser, skippedRows) {
     console.log(`'FIN layout 2' - browsing to ${calendarRow.url}...`);
     // Create a new incognito browser context:
     const context = await browser.createIncognitoBrowserContext()
@@ -287,6 +292,9 @@ class ResultsCrawler {
     // console.log("\r\n------------------------------[ meetingResult ]--------------------------------");
     // console.log(meetingResult);
     this.saveResultOutputFile(calendarRow, meetingResult)
+    if (arrayOfParams.length < 1) { // Add current calendar row to skipped ones if no nodes were available:
+      skippedRows.push(calendarRow)
+    }
     console.log('   Closing context...')
     await context.close()
   }
