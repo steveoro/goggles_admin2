@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe 'Stats', type: :request do
+RSpec.describe 'Stats' do
   describe 'GET stats (index)' do
     context 'with an unlogged user' do
       it 'is a redirect to the login path' do
@@ -65,7 +65,7 @@ RSpec.describe 'Stats', type: :request do
       end
 
       it 'does NOT set the flash error message' do
-        expect(flash[:error]).to be nil
+        expect(flash[:error]).to be_nil
       end
 
       it 'redirects to /index' do
@@ -104,7 +104,7 @@ RSpec.describe 'Stats', type: :request do
       end
 
       it 'does NOT set the flash error message' do
-        expect(flash[:error]).to be nil
+        expect(flash[:error]).to be_nil
       end
 
       it 'redirects to /index' do

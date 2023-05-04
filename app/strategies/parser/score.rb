@@ -32,8 +32,8 @@ module Parser
 
       # This will also correctly handle also any possible 'DSQ' or 'DNF' score codes as 0.0
       score_text.to_s
-                .gsub(/\,(\d{1,3})$/ui, '.\1')
-                .gsub(/[\,\']/ui, '')
+                .gsub(/,(\d{1,3})$/ui, '.\1')
+                .gsub(/[,']/ui, '')
                 .to_f
     end
   end

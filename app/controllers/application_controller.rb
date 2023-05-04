@@ -93,7 +93,7 @@ class ApplicationController < ActionController::Base
     namespaced_params(namespace).permit(
       model_class.new
                  .attributes.keys
-                 .reject { |key| %w[lock_version].include?(key) } +
+                 .reject { |key| key == 'lock_version' } +
                  %w[_method authenticity_token]
     )
   end
@@ -107,7 +107,7 @@ class ApplicationController < ActionController::Base
     namespaced_params(namespace).permit(
       model_class.new
                  .attributes.keys
-                 .reject { |key| %w[lock_version].include?(key) }
+                 .reject { |key| key == 'lock_version' }
     )
   end
   #-- -------------------------------------------------------------------------
@@ -124,8 +124,8 @@ class ApplicationController < ActionController::Base
   # The filtered attribute hash
   #
   def datagrid_model_attributes_for(model_class, attrs)
-    model_class.new.attributes.keys.reject { |key| %w[lock_version].include?(key) }
-    attrs.select { |key, _value| model_class.new.attributes.keys.include?(key) }
+    model_class.new.attributes.keys.reject { |key| key == 'lock_version' }
+    attrs.select { |key, _value| model_class.new.attributes.key?(key) }
   end
   #-- -------------------------------------------------------------------------
   #++

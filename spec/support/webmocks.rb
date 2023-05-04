@@ -32,7 +32,7 @@ RSpec.configure do |config|
            .with(body: { 'e' => 'admin-email', 'p' => 'fake-pwd', 't' => 'fake-token' })
            .to_return(
              status: 200,
-             body: { 'msg': 'OK', 'jwt': '<A_VALID_JWT>' }.to_json
+             body: { msg: 'OK', jwt: '<A_VALID_JWT>' }.to_json
            )
 
     WebMock.stub_request(:get, %r{/api/v3/users}i)

@@ -2,6 +2,6 @@
 
 require 'rails_helper'
 
-RSpec.describe 'meeting_reservations/index.html.haml', type: :view do
+RSpec.describe 'meeting_reservations/index.html.haml' do
   pending "add some examples to (or delete) #{__FILE__}"
 end

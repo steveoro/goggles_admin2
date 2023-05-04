@@ -44,6 +44,29 @@ class APITeamsController < ApplicationController
       end
     end
   end
+
+  # POST /api_teams
+  # Creates a new GogglesDb::Team row.
+  #
+  # All instance attributes are accepted, minus lock_version & the timestamps, which are
+  # handled automatically.
+  #
+  def create
+    result = APIProxy.call(
+      method: :post,
+      url: 'team',
+      jwt: current_user.jwt,
+      payload: create_params(GogglesDb::Team)
+    )
+    json = parse_json_result_from_create(result)
+
+    if json.present? && json['msg'] == 'OK' && json['new'].key?('id')
+      flash[:info] = I18n.t('datagrid.edit_modal.create_ok', id: json['new']['id'])
+    else
+      flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: result.code)
+    end
+    redirect_to api_teams_path(page: index_params[:page], per_page: index_params[:per_page])
+  end
   # rubocop:enable Metrics/AbcSize
   #-- -------------------------------------------------------------------------
   #++
@@ -73,28 +96,6 @@ class APITeamsController < ApplicationController
     redirect_to api_teams_path(page: index_params[:page], per_page: index_params[:per_page])
   end
 
-  # POST /api_teams
-  # Creates a new GogglesDb::Team row.
-  #
-  # All instance attributes are accepted, minus lock_version & the timestamps, which are
-  # handled automatically.
-  #
-  def create
-    result = APIProxy.call(
-      method: :post,
-      url: 'team',
-      jwt: current_user.jwt,
-      payload: create_params(GogglesDb::Team)
-    )
-    json = parse_json_result_from_create(result)
-
-    if json.present? && json['msg'] == 'OK' && json['new'].key?('id')
-      flash[:info] = I18n.t('datagrid.edit_modal.create_ok', id: json['new']['id'])
-    else
-      flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: result.code)
-    end
-    redirect_to api_teams_path(page: index_params[:page], per_page: index_params[:per_page])
-  end
   #-- -------------------------------------------------------------------------
   #++
 

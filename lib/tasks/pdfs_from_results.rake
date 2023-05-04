@@ -58,9 +58,7 @@ namespace :pdf_files do
     if array_of_lines.count.positive?
       puts "\r\n--> Extracted #{array_of_lines.count} #{type_name} PDF URLs."
       dest_file = "#{base_path}/#{type_name}_urls.txt"
-      File.open(dest_file, 'w+') do |f|
-        f.write(array_of_lines.join("\r\n"))
-      end
+      File.write(dest_file, array_of_lines.join("\r\n"))
       puts "--> '#{dest_file}' created."
     else
       puts "No #{type_name} URLs extracted."

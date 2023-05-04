@@ -5,14 +5,14 @@ require 'rails_helper'
 RSpec.describe SqlMaker, type: :strategy do
   describe 'self.new()' do
     context 'with valid parameters,' do
-      subject { described_class.new(row: GogglesDb::Swimmer.new) }
+      subject(:new_instance) { described_class.new(row: GogglesDb::Swimmer.new) }
 
       it 'creates a new instance' do
-        expect(subject).to be_an(described_class)
+        expect(new_instance).to be_an(described_class)
       end
 
       it 'has an empty #sql_log list of logged statements' do
-        expect(subject.sql_log).to be_an(Array) && be_empty
+        expect(new_instance.sql_log).to be_an(Array) && be_empty
       end
     end
 
@@ -26,23 +26,23 @@ RSpec.describe SqlMaker, type: :strategy do
   #++
 
   describe '#report()' do
-    subject { described_class.new(row: fixture_row) }
+    subject(:new_instance) { described_class.new(row: fixture_row) }
 
     let(:fixture_row) { GogglesDb::Swimmer.first(100).sample }
 
     context 'when no statements have been logged' do
       it 'returns an empty string' do
-        expect(subject.report).to be_a(String) && be_empty
+        expect(new_instance.report).to be_a(String) && be_empty
       end
     end
 
     context 'when at least a statement has been logged' do
-      before(:each) { subject.log_update }
+      before(:each) { new_instance.log_update }
 
       it 'returns the logged SQL statement as a single string' do
-        expect(subject.report).to be_a(String) && be_present && include('UPDATE `swimmers`')
+        expect(new_instance.report).to be_a(String) && be_present && include('UPDATE `swimmers`')
         # Checking just a couple of columns here:
-        expect(subject.report).to include(fixture_row.complete_name) && include(fixture_row.gender_type_id.to_s)
+        expect(new_instance.report).to include(fixture_row.complete_name) && include(fixture_row.gender_type_id.to_s)
       end
     end
   end
@@ -50,10 +50,10 @@ RSpec.describe SqlMaker, type: :strategy do
   #++
 
   describe '#log_insert()' do
-    subject { described_class.new(row: fixture_row) }
+    subject(:new_instance) { described_class.new(row: fixture_row) }
 
     let(:fixture_row) { GogglesDb::Swimmer.first(100).sample }
-    let(:result) { subject.log_insert }
+    let(:result) { new_instance.log_insert }
 
     describe 'result' do
       it 'is a string containing an INSERT statement based on the specified row' do
@@ -68,17 +68,17 @@ RSpec.describe SqlMaker, type: :strategy do
     end
 
     it 'adds the returned result string to the internal #sql_log list' do
-      expect(subject.sql_log).to include(result)
+      expect(new_instance.sql_log).to include(result)
     end
   end
   #-- -------------------------------------------------------------------------
   #++
 
   describe '#log_update()' do
-    subject { described_class.new(row: fixture_row) }
+    subject(:new_instance) { described_class.new(row: fixture_row) }
 
     let(:fixture_row) { GogglesDb::Swimmer.first(100).sample }
-    let(:result) { subject.log_update }
+    let(:result) { new_instance.log_update }
 
     describe 'result' do
       it 'is a string containing an UPDATE statement based on the specified row' do
@@ -95,17 +95,17 @@ RSpec.describe SqlMaker, type: :strategy do
     end
 
     it 'adds the returned result string to the internal #sql_log list' do
-      expect(subject.sql_log).to include(result)
+      expect(new_instance.sql_log).to include(result)
     end
   end
   #-- -------------------------------------------------------------------------
   #++
 
   describe '#log_destroy()' do
-    subject { described_class.new(row: fixture_row) }
+    subject(:new_instance) { described_class.new(row: fixture_row) }
 
     let(:fixture_row) { FactoryBot.create(:team) }
-    let(:result) { subject.log_destroy }
+    let(:result) { new_instance.log_destroy }
 
     describe 'result' do
       it 'is a string containing a DELETE statement based on the specified row' do
@@ -114,7 +114,7 @@ RSpec.describe SqlMaker, type: :strategy do
     end
 
     it 'adds the returned result string to the internal #sql_log list' do
-      expect(subject.sql_log).to include(result)
+      expect(new_instance.sql_log).to include(result)
     end
   end
   #-- -------------------------------------------------------------------------

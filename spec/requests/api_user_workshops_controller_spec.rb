@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe APIUserWorkshopsController, type: :request do
+RSpec.describe APIUserWorkshopsController do
   describe 'GET api_user_workshops (index)' do
     context 'with an unlogged user' do
       it 'is a redirect to the login path' do

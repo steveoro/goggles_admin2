@@ -28,7 +28,7 @@ namespace :fixtures do
     puts('==> WARNING: unsupported season ID! Season 172 and prior are still WIP due to different layout.') unless [182, 192, 202, 212].include?(season_id)
 
     limit = ENV.include?('limit') ? ENV['limit'].to_i : -1
-    files = Dir.glob(Rails.root.join("crawler/data/results.new/#{season_id}/*.json")).sort
+    files = Rails.root.glob("crawler/data/results.new/#{season_id}/*.json").sort
     puts "--> Found #{files.count} files#{limit >= 0 ? ". Limit: #{limit}" : ''}. Processing..."
     puts "\r\n"
 
@@ -74,8 +74,8 @@ namespace :fixtures do
       data['sections'].each do |section|
         event_titles << section['title'] if section['title'].present?
         if section['rows'].present?
-          swimmer_names << section['rows'].map { |row| row['name'].presence }.compact
-          team_names << section['rows'].map { |row| row['team'].presence }.compact
+          swimmer_names << section['rows'].filter_map { |row| row['name'].presence }
+          team_names << section['rows'].filter_map { |row| row['team'].presence }
         end
       end
     end

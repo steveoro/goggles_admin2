@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe APIMeetingsController, type: :request do
+RSpec.describe APIMeetingsController do
   describe 'GET api_meetings (index)' do
     context 'with an unlogged user' do
       it 'is a redirect to the login path' do
@@ -66,7 +66,7 @@ RSpec.describe APIMeetingsController, type: :request do
       end
 
       it 'does NOT set the flash error message' do
-        expect(flash[:error]).to be nil
+        expect(flash[:error]).to be_nil
       end
 
       it 'redirects to /index' do
@@ -105,7 +105,7 @@ RSpec.describe APIMeetingsController, type: :request do
       end
 
       it 'does NOT set the flash error message' do
-        expect(flash[:error]).to be nil
+        expect(flash[:error]).to be_nil
       end
 
       it 'redirects to /index' do

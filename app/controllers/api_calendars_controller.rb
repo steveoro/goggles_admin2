@@ -44,6 +44,29 @@ class APICalendarsController < ApplicationController
       end
     end
   end
+
+  # POST /api_calendars
+  # Creates a new GogglesDb::Calendar row.
+  #
+  # All instance attributes are accepted, minus lock_version & the timestamps, which are
+  # handled automatically.
+  #
+  def create
+    result = APIProxy.call(
+      method: :post,
+      url: 'calendar',
+      jwt: current_user.jwt,
+      payload: create_params(GogglesDb::Calendar)
+    )
+    json = parse_json_result_from_create(result)
+
+    if json.present? && json['msg'] == 'OK' && json['new'].key?('id')
+      flash[:info] = I18n.t('datagrid.edit_modal.create_ok', id: json['new']['id'])
+    else
+      flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: result.code)
+    end
+    redirect_to api_calendars_path(page: index_params[:page], per_page: index_params[:per_page])
+  end
   # rubocop:enable Metrics/AbcSize
   #-- -------------------------------------------------------------------------
   #++
@@ -73,29 +96,6 @@ class APICalendarsController < ApplicationController
     redirect_to api_calendars_path(page: index_params[:page], per_page: index_params[:per_page])
   end
 
-  # POST /api_calendars
-  # Creates a new GogglesDb::Calendar row.
-  #
-  # All instance attributes are accepted, minus lock_version & the timestamps, which are
-  # handled automatically.
-  #
-  def create
-    result = APIProxy.call(
-      method: :post,
-      url: 'calendar',
-      jwt: current_user.jwt,
-      payload: create_params(GogglesDb::Calendar)
-    )
-    json = parse_json_result_from_create(result)
-
-    if json.present? && json['msg'] == 'OK' && json['new'].key?('id')
-      flash[:info] = I18n.t('datagrid.edit_modal.create_ok', id: json['new']['id'])
-    else
-      flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: result.code)
-    end
-    redirect_to api_calendars_path(page: index_params[:page], per_page: index_params[:per_page])
-  end
-
   # DELETE /api_calendars
   # Removes GogglesDb::Calendar rows. Accepts single (:id) or multiple (:ids) IDs for the deletion.
   #
@@ -103,6 +103,7 @@ class APICalendarsController < ApplicationController
   # - <tt>id</tt>: single row ID, to be used for single row deletion
   # - <tt>ids</tt>: array of row IDs, to be used for multiple rows deletion
   #
+  # rubocop:disable Metrics/AbcSize
   def destroy
     row_ids = delete_params[:ids].present? ? delete_params[:ids].split(',') : []
     row_ids << delete_params[:id] if delete_params[:id].present?
@@ -118,6 +119,7 @@ class APICalendarsController < ApplicationController
     end
     redirect_to api_calendars_path(page: index_params[:page], per_page: index_params[:per_page])
   end
+  # rubocop:enable Metrics/AbcSize
   #-- -------------------------------------------------------------------------
   #++
 

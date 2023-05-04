@@ -12,6 +12,6 @@ require 'rails_helper'
 #     end
 #   end
 # end
-RSpec.describe PullHelper, type: :helper do
+RSpec.describe PullHelper do
   pending "add some examples to (or delete) #{__FILE__}"
 end

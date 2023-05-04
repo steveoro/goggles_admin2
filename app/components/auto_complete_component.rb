@@ -3,7 +3,7 @@
 #
 # = Auto-complete (DB-lookup) component
 #
-#   - version:  7-0.4.07
+#   - version:  7-0.5.02
 #   - author:   Steve A.
 #
 # Allows a search query on any lookup entity by any field in order to retrieve its ID plus its associated
@@ -142,6 +142,7 @@ class AutoCompleteComponent < ViewComponent::Base
   #   column or property name used to set the value of the Nth "external" target field;
   #   As above, totally optional: skipped when not set (default: null).
   #
+  # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
   def initialize(options = {})
     super
     @show_top_labels = options[:show_top_labels] || false
@@ -189,6 +190,7 @@ class AutoCompleteComponent < ViewComponent::Base
     @payload = options[:payload].present? ? options[:payload].to_json : nil
     @jwt = options[:jwt]
   end
+  # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
 
   # Skips rendering unless the required parameters are set
   def render?

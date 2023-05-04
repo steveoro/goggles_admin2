@@ -47,6 +47,29 @@ class APITeamAffiliationsController < ApplicationController
       end
     end
   end
+
+  # POST /api_team_affiliations
+  # Creates a new GogglesDb::TeamAffiliation row.
+  #
+  # All instance attributes are accepted, minus lock_version & the timestamps, which are
+  # handled automatically.
+  #
+  def create
+    result = APIProxy.call(
+      method: :post,
+      url: 'team_affiliation',
+      jwt: current_user.jwt,
+      payload: create_params(GogglesDb::TeamAffiliation)
+    )
+    json = parse_json_result_from_create(result)
+
+    if json.present? && json['msg'] == 'OK' && json['new'].key?('id')
+      flash[:info] = I18n.t('datagrid.edit_modal.create_ok', id: json['new']['id'])
+    else
+      flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: result.code)
+    end
+    redirect_to api_team_affiliations_path(page: index_params[:page], per_page: index_params[:per_page])
+  end
   # rubocop:enable Metrics/AbcSize
   #-- -------------------------------------------------------------------------
   #++
@@ -75,29 +98,6 @@ class APITeamAffiliationsController < ApplicationController
       flash[:info] = I18n.t('datagrid.edit_modal.edit_ok')
     else
       flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: result)
-    end
-    redirect_to api_team_affiliations_path(page: index_params[:page], per_page: index_params[:per_page])
-  end
-
-  # POST /api_team_affiliations
-  # Creates a new GogglesDb::TeamAffiliation row.
-  #
-  # All instance attributes are accepted, minus lock_version & the timestamps, which are
-  # handled automatically.
-  #
-  def create
-    result = APIProxy.call(
-      method: :post,
-      url: 'team_affiliation',
-      jwt: current_user.jwt,
-      payload: create_params(GogglesDb::TeamAffiliation)
-    )
-    json = parse_json_result_from_create(result)
-
-    if json.present? && json['msg'] == 'OK' && json['new'].key?('id')
-      flash[:info] = I18n.t('datagrid.edit_modal.create_ok', id: json['new']['id'])
-    else
-      flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: result.code)
     end
     redirect_to api_team_affiliations_path(page: index_params[:page], per_page: index_params[:per_page])
   end

@@ -1,10 +1,10 @@
 # Goggles Admin2
 
 [![Build Status](https://steveoro.semaphoreci.com/badges/goggles_admin2/branches/main.svg?style=shields)](https://steveoro.semaphoreci.com/projects/goggles_admin2)
-
 [![CodeClimate Maintainability](https://api.codeclimate.com/v1/badges/bee50721c31ebb202064/maintainability)](https://codeclimate.com/github/steveoro/goggles_admin2/maintainability)
 [![CodeClimate Test Coverage](https://api.codeclimate.com/v1/badges/bee50721c31ebb202064/test_coverage)](https://codeclimate.com/github/steveoro/goggles_admin2/test_coverage)
 [![CodeCov](https://codecov.io/gh/steveoro/goggles_admin2/branch/main/graph/badge.svg?token=JT5MIDU5PU)](https://codecov.io/gh/steveoro/goggles_admin2)
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fsteveoro%2Fgoggles_admin2.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fsteveoro%2Fgoggles_admin2?ref=badge_shield)
 
 
 Administration client UI app for version 7 and onward.
@@ -20,7 +20,7 @@ Administration client UI app for version 7 and onward.
 ## Requires
 
 - Ruby 2.7.2
-- Rails 6.0.4+
+- Rails 6.0.6.1+
 - MariaDb 10.3.25+ or any other MySql equivalent version
 
 

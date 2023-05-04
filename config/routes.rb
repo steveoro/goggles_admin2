@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-# rubocop:disable Metrics/BlockLength
 Rails.application.routes.draw do
   devise_for :users, class_name: 'GogglesDb::User',
                      controllers: {
@@ -90,4 +89,3 @@ Rails.application.routes.draw do
   delete 'stats', to: 'stats#destroy', as: 'stats_destroy'
   post 'stats/clear', to: 'stats#clear', as: 'stats_clear'
 end
-# rubocop:enable Metrics/BlockLength

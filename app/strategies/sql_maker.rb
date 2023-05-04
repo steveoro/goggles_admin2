@@ -2,9 +2,9 @@
 
 # = SqlMaker
 #
-#   - file vers.: 7-4.08
-#   - author....: Steve A.
-#   - build.....: 20220929
+#   - version:  7-0.5.02
+#   - author:   Steve A.
+#   - build:    20230424
 #
 # Creates a replayable SQL log of the called methods on record row specified
 # with the constructor.
@@ -68,11 +68,13 @@ class SqlMaker
   # == Returns
   # The last SQL (String) stament added to the log.
   #
+  # rubocop:disable Metrics/PerceivedComplexity
   def log_insert
     klass = @row.class
     con = klass.connection
     columns = []
     values  = []
+    timestamp_columns = %w[created_at updated_at]
 
     # Reject all non-columns:
     @row.attributes
@@ -81,18 +83,19 @@ class SqlMaker
       next if value.blank? || (!@force_id_on_insert && key == 'id') || (key == 'lock_version')
 
       columns << con.quote_column_name(key)
-      values << if %w[created_at updated_at].include?(key)
+      values << if timestamp_columns.include?(key)
                   'NOW()'
                 else
                   con.quote(value)
                 end
     end
 
-    sql_text = "INSERT INTO #{con.quote_column_name(klass.table_name)} (#{columns.join(', ')})\r\n" \
-               "  VALUES (#{values.join(', ')});"
+    sql_text = "INSERT INTO #{con.quote_column_name(klass.table_name)} (#{columns.join(', ')})\r\n  " \
+               "VALUES (#{values.join(', ')});"
     @sql_log << sql_text
     sql_text
   end
+  # rubocop:enable Metrics/PerceivedComplexity
 
   # Adds a new SQL UPDATE statement to the result log using the latest <tt>@row</tt> set.
   # (The statement is not executed.)
@@ -104,12 +107,13 @@ class SqlMaker
     klass = @row.class
     con = klass.connection
     sets = []
+    skippable_columns = %w[id lock_version created_at]
 
     # Write always all the attributes, unless the column name is "skippable" (& reject all non-columns):
     @row.attributes
         .keep_if { |col_name| klass.column_names.include?(col_name) }
         .each do |key, value|
-      next if %w[id lock_version created_at].include?(key)
+      next if skippable_columns.include?(key)
 
       sets << if key == 'updated_at'
                 "#{con.quote_column_name(key)}=NOW()"
@@ -118,9 +122,9 @@ class SqlMaker
               end
     end
 
-    sql_text = "UPDATE #{con.quote_column_name(klass.table_name)}\r\n" \
-               "  SET #{sets.join(', ')}\r\n" \
-               "  WHERE #{con.quote_column_name('id')}=#{@row.id};"
+    sql_text = "UPDATE #{con.quote_column_name(klass.table_name)}\r\n  " \
+               "SET #{sets.join(', ')}\r\n  " \
+               "WHERE #{con.quote_column_name('id')}=#{@row.id};"
     @sql_log << sql_text
     sql_text
   end
@@ -151,7 +155,7 @@ class SqlMaker
         # puts sql
         # puts '-------------'
         # Intercept/log only the statement that we want and log it to the internal text:
-        (@captured_sql << "#{sql};") if /^(delete)/i.match(sql)
+        (@captured_sql << "#{sql};") if /^(delete)/i.match?(sql)
         # Always execute the SQL statement afterwards:
         old_execute(sql, name)
       end

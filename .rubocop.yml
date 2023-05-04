@@ -1,6 +1,9 @@
 require:
-  - rubocop-rspec
+  - rubocop-capybara
+  - rubocop-performance
   - rubocop-rails
+  - rubocop-rake
+  - rubocop-rspec
 
 inherit_from: .rubocop_todo.yml
 
@@ -44,15 +47,20 @@ Metrics/AbcSize:
 Metrics/BlockLength:
   Max: 40
   CountAsOne: ['array', 'heredoc']
-  IgnoredMethods: ['describe', 'context', 'define', 'namespace']
   Exclude:
     - 'bin/bundle'
-    - 'spec/support/*'
+    - 'config/routes.rb'
+    - 'db/schema.rb'
+    - 'lib/tasks/fixtures_from_results.rake'
+    - 'spec/**/*'
 
 Metrics/ClassLength:
   Max: 120
   Exclude:
+    - 'app/controllers/data_fix_controller.rb'
     - 'app/controllers/pull_controller.rb'
+    - 'app/strategies/import/macro_committer.rb'
+    - 'app/strategies/import/macro_solver.rb'
 
 Metrics/CyclomaticComplexity:
   Max: 8
@@ -68,8 +76,34 @@ Metrics/PerceivedComplexity:
   Exclude:
     - 'bin/bundle'
 
+
+Rails/OutputSafety:
+  Exclude:
+    - 'app/grids/*'
+
+# Excluded files here were already corrected in later migrations:
+Rails/ThreeStateBooleanColumn:
+  Exclude:
+    - 'db/schema.rb'
+    - 'db/migrate/20210513113601_create_goggles_db_user_workshops.rb'
+    - 'db/migrate/20220228114607_add_cancelled_to_calendars.rb'
+    - 'db/migrate/20220801110842_add_sql_batch_field_to_import_queues.rb:6'
+
+
+Rake/MethodDefinitionInTask:
+  Exclude:
+    - 'lib/tasks/pdfs_from_results.rake'
+
+
+RSpec/IndexedLet:
+  Enabled: false
+
 RSpec/MultipleMemoizedHelpers:
   Max: 10
+
+RSpec/FactoryBot/SyntaxMethods:
+  Enabled: false
+
 
 Style/ClassAndModuleChildren:
   Exclude:

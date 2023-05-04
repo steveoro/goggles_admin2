@@ -10,12 +10,12 @@ class FileListController < ApplicationController
   # [GET] List CSV calendar files (and allow individual actions on them).
   #
   def calendar_files
-    @dirnames = Dir.glob(Rails.root.join('crawler/data/calendar.new/*'))
-                   .map { |name| name.split('crawler/').last }
-                   .sort
+    @dirnames = Rails.root.glob('crawler/data/calendar.new/*')
+                     .map { |name| name.split('crawler/').last }
+                     .sort
     @curr_dir = nil # (Show all calendar files at once)
     @filter = '*.csv'
-    @files = Dir.glob(Rails.root.join('crawler/data/calendar.new/**', @filter)).sort
+    @files = Rails.root.glob("crawler/data/calendar.new/**/#{@filter}").sort
   end
 
   # [GET] List JSON meeting result files (and allow individual actions on them).
@@ -29,16 +29,17 @@ class FileListController < ApplicationController
   # - :filter => override for the same-named internal member
   # - :parent_folder => as above
   #
+  # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
   def result_files
     @filter ||= file_params[:filter] || '*.json'
     @parent_folder ||= file_params[:parent_folder] || 'results.new'
-    @dirnames = Dir.glob(Rails.root.join("crawler/data/#{@parent_folder}/*"))
-                   .map { |name| name.split('crawler/').last }
-                   .sort
+    @dirnames = Rails.root.glob("crawler/data/#{@parent_folder}/*")
+                     .map { |name| name.split('crawler/').last }
+                     .sort
 
     if request.xhr? && request.put? && file_params[:curr_dir].present?
       @curr_dir = file_params[:curr_dir]
-      @files = Dir.glob(Rails.root.join('crawler', @curr_dir, '**', @filter)).sort
+      @files = Rails.root.glob("crawler/#{@curr_dir}/**/#{@filter}").sort
       render('file_table_update') && return
 
     elsif request.put?
@@ -47,8 +48,9 @@ class FileListController < ApplicationController
     end
 
     @curr_dir = @dirnames.first || "data/#{@parent_folder}/" # use default parent folder for empty dir lists
-    @files = Dir.glob(Rails.root.join('crawler', @curr_dir, "**/#{@filter}")).sort
+    @files = Rails.root.glob("crawler/#{@curr_dir}/**/#{@filter}").sort
   end
+  # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
   #-- -------------------------------------------------------------------------
   #++
 
@@ -74,7 +76,7 @@ class FileListController < ApplicationController
   #
   def file_rename
     unless request.xhr? && file_params[:file_path].present? && file_params[:new_name].present?
-      flash[:warning] = I18n.t('data_import.errors.invalid_request')
+      flash.now[:warning] = I18n.t('data_import.errors.invalid_request')
       redirect_to(root_path) && return
     end
 
@@ -112,13 +114,11 @@ class FileListController < ApplicationController
   #
   def file_edit
     unless request.xhr? && file_params[:file_path].present? && file_params[:new_content].present?
-      flash[:warning] = I18n.t('data_import.errors.invalid_request')
+      flash.now[:warning] = I18n.t('data_import.errors.invalid_request')
       redirect_to(root_path) && return
     end
 
-    File.open(file_params[:file_path], 'w') do |file|
-      file.write(file_params[:new_content])
-    end
+    File.write(file_params[:file_path], file_params[:new_content])
     prepare_file_and_dir_list
     render('file_table_update')
   end
@@ -132,7 +132,7 @@ class FileListController < ApplicationController
   #
   def file_delete
     unless request.xhr? || file_params[:file_path].present?
-      flash[:warning] = I18n.t('data_import.errors.invalid_request')
+      flash.now[:warning] = I18n.t('data_import.errors.invalid_request')
       redirect_to(root_path) && return
     end
 
@@ -154,14 +154,14 @@ class FileListController < ApplicationController
     file_ext = File.extname(file_params[:file_path])
     @curr_dir = File.dirname(file_params[:file_path]).split('crawler/').last
     @parent_folder = file_params[:parent_folder]
-    @dirnames = Dir.glob(Rails.root.join('crawler', @curr_dir, '../*'))
-                   .map { |name| name.split('crawler/').last }
-                   .sort
+    @dirnames = Rails.root.glob("crawler/#{@curr_dir}/../*")
+                     .map { |name| name.split('crawler/').last }
+                     .sort
 
     # Clear current folder if we're handling calendar files:
     @curr_dir = nil if file_ext == '.csv'
     # Filter file list based on current extension:
     filter ||= "*#{file_ext}"
-    @files = Dir.glob(Rails.root.join('crawler', @curr_dir, '**', filter)).sort
+    @files = Rails.root.glob("crawler/#{@curr_dir}/**/#{filter}").sort
   end
 end

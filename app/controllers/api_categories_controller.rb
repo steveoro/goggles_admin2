@@ -46,6 +46,29 @@ class APICategoriesController < ApplicationController
       end
     end
   end
+
+  # POST /api_categories
+  # Creates a new GogglesDb::CategoryType row.
+  #
+  # All instance attributes are accepted, minus lock_version & the timestamps, which are
+  # handled automatically.
+  #
+  def create
+    result = APIProxy.call(
+      method: :post,
+      url: 'category_type',
+      jwt: current_user.jwt,
+      payload: create_params(GogglesDb::CategoryType)
+    )
+    json = parse_json_result_from_create(result)
+
+    if json.present? && json['msg'] == 'OK' && json['new'].key?('id')
+      flash[:info] = I18n.t('datagrid.edit_modal.create_ok', id: json['new']['id'])
+    else
+      flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: result.code)
+    end
+    redirect_to api_categories_path(page: index_params[:page], per_page: index_params[:per_page])
+  end
   # rubocop:enable Metrics/AbcSize
   #-- -------------------------------------------------------------------------
   #++
@@ -71,29 +94,6 @@ class APICategoriesController < ApplicationController
       flash[:info] = I18n.t('datagrid.edit_modal.edit_ok')
     else
       flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: result)
-    end
-    redirect_to api_categories_path(page: index_params[:page], per_page: index_params[:per_page])
-  end
-
-  # POST /api_categories
-  # Creates a new GogglesDb::CategoryType row.
-  #
-  # All instance attributes are accepted, minus lock_version & the timestamps, which are
-  # handled automatically.
-  #
-  def create
-    result = APIProxy.call(
-      method: :post,
-      url: 'category_type',
-      jwt: current_user.jwt,
-      payload: create_params(GogglesDb::CategoryType)
-    )
-    json = parse_json_result_from_create(result)
-
-    if json.present? && json['msg'] == 'OK' && json['new'].key?('id')
-      flash[:info] = I18n.t('datagrid.edit_modal.create_ok', id: json['new']['id'])
-    else
-      flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: result.code)
     end
     redirect_to api_categories_path(page: index_params[:page], per_page: index_params[:per_page])
   end

@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe 'Pushes', type: :request do
+RSpec.describe 'Pushes' do
   describe 'GET /index' do
     it 'returns http success' do
       get '/push/index'

@@ -37,9 +37,11 @@ module Parser
     # - "12\"34.56" => correctly parsed but 56 hds ignored
     # - "12'34.56" => minutes ignored, rest is parsed (as 34 secs & 56 hds)
     #
+    # rubocop:disable Lint/MixedRegexpCaptureTypes
     def self.from_l2_result(timing_text)
-      reg_format1 = Regexp.new(/((?<min>\d+)\')?(?<sec>\d{1,2})\"(?<hun>\d{1,2})/u)
-      reg_format2 = Regexp.new(/((?<min>\d+)[:\.])?(?<sec>\d{1,2})\.(?<hun>\d{1,2})/u)
+      # NOTE: removing the named captures will break this parser functionality
+      reg_format1 = Regexp.new(/((?<min>\d+)')?(?<sec>\d{1,2})"(?<hun>\d{1,2})/u)
+      reg_format2 = Regexp.new(/((?<min>\d+)[:.])?(?<sec>\d{1,2})\.(?<hun>\d{1,2})/u)
 
       case timing_text
       when reg_format1
@@ -54,5 +56,6 @@ module Parser
 
       ::Timing.new(minutes: minutes, seconds: seconds, hundredths: hundredths)
     end
+    # rubocop:enable Lint/MixedRegexpCaptureTypes
   end
 end

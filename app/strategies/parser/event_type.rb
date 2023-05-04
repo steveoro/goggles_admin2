@@ -29,6 +29,7 @@ module Parser
     # 1. the corresponding GogglesDb::EventType (independent from Season); +nil+ when not found;
     # 2. the GogglesDb::CategoryType for the specified Season; +nil+ when not found.
     #
+    # rubocop:disable Metrics/CyclomaticComplexity
     def self.from_l2_result(section_title, season)
       raise(ArgumentError, 'Invalid season specified') unless season.is_a?(GogglesDb::Season) && season.valid?
       raise(ArgumentError, "Invalid or empty title specified ('#{section_title}')") if section_title.to_s.blank?
@@ -59,5 +60,6 @@ module Parser
                                .find_by(code: category_code)
       ]
     end
+    # rubocop:enable Metrics/CyclomaticComplexity
   end
 end

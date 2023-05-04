@@ -41,6 +41,7 @@ class PushController < FileListController
   # - @season, correct Season
   # - @solver, uses @data_hash & @season
   #
+  # rubocop:disable Metrics/AbcSize
   def prepare
     # Prepare the SQL batch file logging each statement:
     @committer = Import::MacroCommitter.new(solver: @solver)
@@ -59,7 +60,7 @@ class PushController < FileListController
     FileUtils.mkdir_p(File.dirname(done_pathname)) # First, ensure existence of the destination path
     File.rename(@file_path, done_pathname)
     # Save also the committed data to another file (storing the resulting actual IDs):
-    File.open(done_pathname.gsub('.json', '.committed.json'), 'w+') { |f| f.write(@solver.data.to_json) }
+    File.write(done_pathname.gsub('.json', '.committed.json'), @solver.data.to_json)
 
     # Save the SQL batch file with the sequential prefix in the same 'results.new' directory:
     File.open(File.join(curr_dir, dest_file), 'w+') do |f|
@@ -72,6 +73,7 @@ class PushController < FileListController
     flash[:notice] = I18n.t('data_import.push.msg_prepare_batch_ok')
     redirect_to(push_index_path)
   end
+  # rubocop:enable Metrics/AbcSize
   #-- -------------------------------------------------------------------------
   #++
 
@@ -91,10 +93,11 @@ class PushController < FileListController
   # See before actions for these:
   # - @file_path, containing the SQL batch file to be sent.
   #
+  # rubocop:disable Metrics/AbcSize
   def upload
     # Handle file globs:
     if @file_path.ends_with?('*.sql')
-      files = Dir.glob(Rails.root.join('crawler', @file_path)).sort
+      files = Rails.root.glob("crawler/#{@file_path}").sort
       files.each_with_index do |file_path, idx|
         ActionCable.server.broadcast('ImportStatusChannel', msg: "sending '#{file_path}'", progress: idx + 1, total: files.count)
         push_file_and_move(file_path)
@@ -103,13 +106,14 @@ class PushController < FileListController
           break
         end
       end
-      flash[:info] = I18n.t('data_import.push.all_sql_files_ok') unless flash[:error].present?
+      flash[:info] = I18n.t('data_import.push.all_sql_files_ok') if flash[:error].blank?
     else
       push_file_and_move(@file_path)
     end
 
     redirect_to(push_index_path)
   end
+  # rubocop:enable Metrics/AbcSize
   #-- -------------------------------------------------------------------------
   #++
 
@@ -176,12 +180,12 @@ class PushController < FileListController
   #
   def compute_file_counter(curr_dir, sent_dir, extension = '*.sql')
     # Prepare a sequential counter prefix for the uploadable batch file:
-    curr_count = Dir.glob(Rails.root.join(curr_dir, '**', extension)).count
-    sent_count = Dir.glob(Rails.root.join(sent_dir, '**', extension)).count
+    curr_count = Rails.root.glob("#{curr_dir}/**/#{extension}").count
+    sent_count = Rails.root.glob("#{sent_dir}/**/#{extension}").count
     last_counter = if curr_count.positive?
-                     File.basename(Dir.glob(Rails.root.join(curr_dir, '**', extension)).sort.last).split('-').first.to_i
+                     File.basename(Rails.root.glob("#{curr_dir}/**/#{extension}").max).split('-').first.to_i
                    elsif sent_count.positive?
-                     File.basename(Dir.glob(Rails.root.join(sent_dir, '**', extension)).sort.last).split('-').first.to_i
+                     File.basename(Rails.root.glob("#{sent_dir}/**/#{extension}").max).split('-').first.to_i
                    else
                      0
                    end
@@ -206,6 +210,7 @@ class PushController < FileListController
   # === Params:
   # - :file_path => path to the SQL file storing the data-import transaction.
   #
+  # rubocop:disable Metrics/AbcSize
   def push_file_and_move(file_path)
     logger.info("\r\n---> Pushing '#{file_path}'...")
     res = APIProxy.call(
@@ -234,6 +239,7 @@ class PushController < FileListController
       flash[:error] = result['msg']
     end
   end
+  # rubocop:enable Metrics/AbcSize
   #-- -------------------------------------------------------------------------
   #++
 end

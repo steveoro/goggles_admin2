@@ -208,6 +208,8 @@ class DataFixController < ApplicationController
   #   },
   #   "model"=>"team"
   # }
+  #
+  # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
   def update
     model_name = edit_params['model'].to_s
 
@@ -296,11 +298,9 @@ class DataFixController < ApplicationController
     # EXCEPTION: City is the only "complex" binding that could be sub-nested at depth > 1
     if edit_params['city'].present? && edit_params['city'][actual_form_key.to_s].present? &&
        edit_params['city'][actual_form_key.to_s]['key'].present?
-      deep_nested_bindings.merge!(
-        'city' => {
-          edit_params['city'][actual_form_key.to_s]['key'] => edit_params['city'][actual_form_key.to_s]
-        }
-      )
+      deep_nested_bindings['city'] = {
+        edit_params['city'][actual_form_key.to_s]['key'] => edit_params['city'][actual_form_key.to_s]
+      }
     end
     # DEBUG ----------------------------------------------------------------
     # binding.pry
@@ -375,6 +375,7 @@ class DataFixController < ApplicationController
     # Fall back to step 1 (sessions) in case the referrer is not available:
     redirect_back(fallback_location: review_sessions_path(file_path: file_path_from_params, reparse: false))
   end
+  # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
   #-- -------------------------------------------------------------------------
   #++
 
@@ -396,6 +397,7 @@ class DataFixController < ApplicationController
   #
   #    { coded_name: <internal_coded_name> }
   #
+  # rubocop:disable Metrics/AbcSize
   def coded_name
     unless request.format.json? && %w[code nick_name].include?(coded_name_params[:target])
       flash[:warning] = I18n.t('search_view.errors.invalid_request')
@@ -418,6 +420,7 @@ class DataFixController < ApplicationController
 
     render(json: { coded_name_params[:target] => result })
   end
+  # rubocop:enable Metrics/AbcSize
 
   # [GET /teams_for_swimmer] (AJAX only)
   # Computes and returns the rendered text displaying the list of unique team names
@@ -491,7 +494,7 @@ class DataFixController < ApplicationController
     # Assumes the file path shouldn't change in between model rows, so the following should be ok
     # even when params stores more than 1 row of model attributes:
     # (Example: { 'team' => { <any_team_index> => { 'file_path' => <file path string>, <other team attributes...> } } })
-    edit_params[params[:model]]&.values&.first['file_path']
+    edit_params[params[:model]]&.values&.first&.[]('file_path')
   end
 
   # Setter for @file_path; expects the 'file_path' parameter to be present.
@@ -582,8 +585,8 @@ class DataFixController < ApplicationController
   # and then rewriting all contents of the specified Hash (as JSON) over the same <tt>@file_path</tt>.
   # Assumes <tt>data_hash</tt> responds to <tt>:to_json</tt>.
   def overwrite_file_path_with_json_from(data_hash)
-    File.delete(@file_path) if File.exist?(@file_path)
-    File.open(@file_path, 'w') { |f| f.write(data_hash.to_json) }
+    FileUtils.rm_f(@file_path)
+    File.write(@file_path, data_hash.to_json)
   end
   #-- -------------------------------------------------------------------------
   #++

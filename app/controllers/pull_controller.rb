@@ -45,7 +45,7 @@ class PullController < FileListController
         # New base URL for (FIN) calendars must be fixed, crawler will simulate menu clicking:
         start_url: 'https://www.federnuoto.it/home/master.html',
         sub_menu_type: crawler_params['sub_menu_type'],
-        year_text: crawler_params['year_text'],
+        year_text: crawler_params['year_text']
       }
     )
     redirect_to(pull_index_path) && return
@@ -148,7 +148,7 @@ class PullController < FileListController
   #
   def call_crawler_api(cmd_endpoint, get_params: nil)
     hdrs = get_params.present? ? { 'params' => get_params.to_h.stringify_keys! } : {}
-    hdrs.merge!('Content-Type' => 'application/json')
+    hdrs['Content-Type'] = 'application/json'
     # DEBUG
     logger.debug("\r\n-- call_crawler_api headers:")
     logger.debug(hdrs.inspect)

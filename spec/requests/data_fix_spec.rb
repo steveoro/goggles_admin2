@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe 'DataFixes', type: :request do
+RSpec.describe 'DataFixes' do
   describe 'GET /index' do
     it 'returns http success' do
       get '/data_fix/index'

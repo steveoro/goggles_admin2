@@ -4,9 +4,9 @@ module Import
   #
   # = MacroSolver
   #
-  #   - version:  7-0.4.20
+  #   - version:  7-0.5.02
   #   - author:   Steve A.
-  #   - build:    20221025
+  #   - build:    20230424
   #
   # Given a MacroSolver instance that stores the already-precessed contents of the result JSON data file,
   # this class commits the individual entities "solved", either by creating the missing rows
@@ -18,6 +18,7 @@ module Import
   # Each updated or created row will generate SQL statements appended to the overall result
   # SQL batch log file, with all the statements wrapped into a single transaction. (@see SqlMaker)
   #
+  # rubocop:disable Metrics/AbcSize, Metrics/PerceivedComplexity, Metrics/CyclomaticComplexity
   class MacroCommitter
     # Creates a new MacroCommitter instance.
     #
@@ -73,16 +74,14 @@ module Import
     #
     def self.difference_with_db(model_row, db_row = nil)
       if model_row.id.blank? || model_row.id.to_i.zero?
-        return model_row.attributes.reject do |col, val|
-                 %w[lock_version created_at updated_at].include?(col) || val.nil?
-               end
+        excluded_columns = %w[lock_version created_at updated_at]
+        return model_row.attributes.reject { |col, val| excluded_columns.include?(col) || val.nil? }
       end
 
       db_row ||= model_row.class.find_by(id: model_row.id)
+      excluded_columns = %w[id lock_version created_at updated_at]
       model_row.attributes.reject do |column, value|
-        value.blank? ||
-          value == db_row&.send(column) ||
-          %w[id lock_version created_at updated_at].include?(column)
+        value.blank? || value == db_row&.send(column) || excluded_columns.include?(column)
       end
     end
     #-- ------------------------------------------------------------------------
@@ -226,13 +225,13 @@ module Import
       # or other integrity violations.
       total_sessions = @data['meeting_session']&.compact&.count
       actual_bound_keys = []
-      (0 ... total_sessions).each do |index|
+      (0...total_sessions).each do |_index|
         parent_bindings_hash = @solver.cached_instance_of('meeting_session', 0, 'bindings')
         used_key = parent_bindings_hash&.fetch('swimming_pool', nil)
-        actual_bound_keys << used_key if used_key.present? && !actual_bound_keys.include?(used_key)
+        actual_bound_keys << used_key if used_key.present? && actual_bound_keys.exclude?(used_key)
       end
 
-      entity_keys = @data['swimming_pool']&.keys&.compact.keep_if { |key| actual_bound_keys.include?(key) }
+      entity_keys = @data['swimming_pool']&.keys&.compact&.keep_if { |key| actual_bound_keys.include?(key) }
       total = entity_keys&.count
       idx = 0
 
@@ -658,4 +657,5 @@ module Import
       model_row
     end
   end
+  # rubocop:enable Metrics/AbcSize, Metrics/PerceivedComplexity, Metrics/CyclomaticComplexity
 end

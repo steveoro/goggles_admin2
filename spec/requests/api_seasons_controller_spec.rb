@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe APISeasonsController, type: :request do
+RSpec.describe APISeasonsController do
   describe 'GET api_seasons (index)' do
     context 'with an unlogged user' do
       it 'is a redirect to the login path' do
@@ -66,7 +66,7 @@ RSpec.describe APISeasonsController, type: :request do
       end
 
       it 'does NOT set the flash error message' do
-        expect(flash[:error]).to be nil
+        expect(flash[:error]).to be_nil
       end
 
       it 'redirects to /index' do
@@ -106,7 +106,7 @@ RSpec.describe APISeasonsController, type: :request do
       end
 
       it 'does NOT set the flash error message' do
-        expect(flash[:error]).to be nil
+        expect(flash[:error]).to be_nil
       end
 
       it 'redirects to /index' do

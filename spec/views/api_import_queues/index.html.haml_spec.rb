@@ -2,6 +2,6 @@
 
 require 'rails_helper'
 
-RSpec.describe 'import_queues/index.html.haml', type: :view do
+RSpec.describe 'import_queues/index.html.haml' do
   pending "add some examples to (or delete) #{__FILE__}"
 end

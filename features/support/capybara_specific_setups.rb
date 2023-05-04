@@ -23,7 +23,6 @@ Capybara.configure do |config|
   # Capybara.default_selector = :xpath
   # config.default_selector = :xpath
 end
-# Capybara.save_path = 'tmp'
 
 firefox_options = Selenium::WebDriver::Firefox::Options.new
 firefox_options.args << '--headless'
@@ -39,6 +38,8 @@ chrome_prefs = {
   'download.prompt_for_download' => false,
   'plugins.plugins_disabled' => ['Chrome PDF Viewer']
 }
+http_client = Selenium::WebDriver::Remote::Http::Default.new
+http_client.read_timeout = 120
 #-- ---------------------------------------------------------------------------
 #++
 
@@ -61,16 +62,17 @@ end
 
 # ** Chrome **
 Capybara.register_driver :physical_chrome do |app|
-  capabilities = Selenium::WebDriver::Remote::Capabilities.chrome(
-    'goog:chromeOptions': {
-      'args': [
+  Capybara::Selenium::Driver.new(
+    app,
+    browser: :chrome,
+    options: Selenium::WebDriver::Chrome::Options.new(
+      args: [
         'disable-gpu', 'disable-popup-blocking',
         'window-size=1280,1024', '--enable-features=NetworkService,NetworkServiceInProcess'
       ],
-      'prefs': chrome_prefs
-    }
+      prefs: chrome_prefs
+    )
   )
-  Capybara::Selenium::Driver.new(app, browser: :chrome, desired_capabilities: capabilities)
 end
 #-- ---------------------------------------------------------------------------
 #++
@@ -80,119 +82,153 @@ end
 # No display port required; faster: the way to go for CI builds.
 
 # ** Firefox **
-Capybara.register_driver(:headless_firefox) do |app|
-  Capybara::Selenium::Driver.new(
-    app,
-    browser: :firefox,
-    options: firefox_options
-  )
-end
+# [202112] Legacy setup:
+# Capybara.register_driver(:headless_firefox) do |app|
+#   Capybara::Selenium::Driver.new(
+#     app,
+#     browser: :firefox,
+#     options: firefox_options
+#   )
+# end
 # NOTE: Selenium webdriver using Firefox/headless currently has no real support for mobileEmulation.
 
 # ** Chrome **
 Capybara.register_driver(:headless_chrome) do |app|
-  # This will probably be the next valid syntax for Capybara:
-  # options = Selenium::WebDriver::Chrome::Options.new
-  # %w(headless disable-gpu window-size=1280,1024 no-sandbox).each { |arg| options.add_argument(arg) }
-  # Capybara::Selenium::Driver.new(app, browser: :chrome, options: options, desired_capabilities: capabilities)
-  capabilities = Selenium::WebDriver::Remote::Capabilities.chrome(
-    'goog:chromeOptions': {
-      'args': %w[headless disable-gpu window-size=1280,800 no-sandbox --enable-features=NetworkService,NetworkServiceInProcess],
-      'prefs': chrome_prefs
-    },
-    'loggingPrefs': { browser: 'ALL', client: 'ALL', driver: 'ALL', server: 'ALL' }
-  )
-  Capybara::Selenium::Driver.new(app, browser: :chrome, desired_capabilities: capabilities)
+  chrome_options = Selenium::WebDriver::Chrome::Options.new
+  %w[
+    headless disable-gpu window-size=1280,1024 no-sandbox enable-features=NetworkService,NetworkServiceInProcess
+  ].each { |arg| chrome_options.add_argument(arg) }
+  chrome_options.add_preference(:download,
+                                directory_upgrade: true,
+                                prompt_for_download: false,
+                                default_directory: ENV['downloads_folder'] || DownloadHelpers::PATH)
+  chrome_options.add_preference(:browser, set_download_behavior: { behavior: 'allow' })
+  # [202112] In case the dowwnload behaviour is not set properly we can force it using a bridge for the driver:
+  # bridge = driver.browser.send(:bridge)
+  # path = "/session/#{bridge.session_id}/chromium/send_command"
+  # bridge.http.call(:post, path, cmd: 'Page.setDownloadBehavior',
+  #                               params: {
+  #                                 behavior: 'allow',
+  #                                 downloadPath: ENV['downloads_folder'] || DownloadHelpers::PATH
+  #                               })
+  Capybara::Selenium::Driver.new(app, browser: :chrome, options: chrome_options, http_client: http_client)
 end
 
 Capybara.register_driver(:headless_chrome_iphone4) do |app|
-  capabilities = Selenium::WebDriver::Remote::Capabilities.chrome(
-    'goog:chromeOptions': {
-      'args': %w[headless disable-gpu disable-extensions --enable-features=NetworkService,NetworkServiceInProcess],
-      'mobileEmulation': { 'deviceName': 'iPhone 4' }
-    }
+  Capybara::Selenium::Driver.new(
+    app,
+    browser: :chrome,
+    options: Selenium::WebDriver::Chrome::Options.new(
+      args: %w[headless disable-gpu disable-extensions enable-features=NetworkService,NetworkServiceInProcess],
+      mobileEmulation: { deviceName: 'iPhone 4' },
+      prefs: chrome_prefs
+    ),
+    http_client: http_client
   )
-  Capybara::Selenium::Driver.new(app, browser: :chrome, desired_capabilities: capabilities)
 end
 
 Capybara.register_driver(:headless_chrome_iphone5) do |app|
-  capabilities = Selenium::WebDriver::Remote::Capabilities.chrome(
-    'goog:chromeOptions': {
-      'args': %w[headless disable-gpu disable-extensions --enable-features=NetworkService,NetworkServiceInProcess],
-      'mobileEmulation': { 'deviceName': 'iPhone 5' }
-    }
+  Capybara::Selenium::Driver.new(
+    app,
+    browser: :chrome,
+    options: Selenium::WebDriver::Chrome::Options.new(
+      args: %w[headless disable-gpu disable-extensions enable-features=NetworkService,NetworkServiceInProcess],
+      mobileEmulation: { deviceName: 'iPhone 5' },
+      prefs: chrome_prefs
+    ),
+    http_client: http_client
   )
-  Capybara::Selenium::Driver.new(app, browser: :chrome, desired_capabilities: capabilities)
 end
 
 Capybara.register_driver(:headless_chrome_iphone6) do |app|
-  capabilities = Selenium::WebDriver::Remote::Capabilities.chrome(
-    'goog:chromeOptions': {
-      'args': %w[headless disable-gpu disable-extensions --enable-features=NetworkService,NetworkServiceInProcess],
-      'mobileEmulation': { 'deviceName': 'iPhone 6' }
-    }
+  Capybara::Selenium::Driver.new(
+    app,
+    browser: :chrome,
+    options: Selenium::WebDriver::Chrome::Options.new(
+      args: %w[headless disable-gpu disable-extensions enable-features=NetworkService,NetworkServiceInProcess],
+      mobileEmulation: { deviceName: 'iPhone 6' },
+      prefs: chrome_prefs
+    ),
+    http_client: http_client
   )
-  Capybara::Selenium::Driver.new(app, browser: :chrome, desired_capabilities: capabilities)
 end
 
 Capybara.register_driver(:headless_chrome_iphone8) do |app|
-  capabilities = Selenium::WebDriver::Remote::Capabilities.chrome(
-    'goog:chromeOptions': {
-      'args': %w[headless disable-gpu disable-extensions --enable-features=NetworkService,NetworkServiceInProcess],
-      'mobileEmulation': { 'deviceName': 'iPhone 8' }
-    }
+  Capybara::Selenium::Driver.new(
+    app,
+    browser: :chrome,
+    options: Selenium::WebDriver::Chrome::Options.new(
+      args: %w[headless disable-gpu disable-extensions enable-features=NetworkService,NetworkServiceInProcess],
+      mobileEmulation: { deviceName: 'iPhone 8' },
+      prefs: chrome_prefs
+    ),
+    http_client: http_client
   )
-  Capybara::Selenium::Driver.new(app, browser: :chrome, desired_capabilities: capabilities)
 end
 
 Capybara.register_driver(:headless_chrome_iphonex) do |app|
-  capabilities = Selenium::WebDriver::Remote::Capabilities.chrome(
-    'goog:chromeOptions': {
-      'args': %w[headless disable-gpu disable-extensions --enable-features=NetworkService,NetworkServiceInProcess],
-      'mobileEmulation': { 'deviceName': 'iPhone X' }
-    }
+  Capybara::Selenium::Driver.new(
+    app,
+    browser: :chrome,
+    options: Selenium::WebDriver::Chrome::Options.new(
+      args: %w[headless disable-gpu disable-extensions enable-features=NetworkService,NetworkServiceInProcess],
+      mobileEmulation: { deviceName: 'iPhone X' },
+      prefs: chrome_prefs
+    ),
+    http_client: http_client
   )
-  Capybara::Selenium::Driver.new(app, browser: :chrome, desired_capabilities: capabilities)
 end
 
 Capybara.register_driver(:headless_chrome_galaxys5) do |app|
-  capabilities = Selenium::WebDriver::Remote::Capabilities.chrome(
-    'goog:chromeOptions': {
-      'args': %w[headless disable-gpu disable-extensions --enable-features=NetworkService,NetworkServiceInProcess],
-      'mobileEmulation': { 'deviceName': 'Galaxy S5' }
-    }
+  Capybara::Selenium::Driver.new(
+    app,
+    browser: :chrome,
+    options: Selenium::WebDriver::Chrome::Options.new(
+      args: %w[headless disable-gpu disable-extensions enable-features=NetworkService,NetworkServiceInProcess],
+      mobileEmulation: { deviceName: 'Galaxy S5' },
+      prefs: chrome_prefs
+    ),
+    http_client: http_client
   )
-  Capybara::Selenium::Driver.new(app, browser: :chrome, desired_capabilities: capabilities)
 end
 
 Capybara.register_driver(:headless_chrome_pixel2) do |app|
-  capabilities = Selenium::WebDriver::Remote::Capabilities.chrome(
-    'goog:chromeOptions': {
-      'args': %w[headless disable-gpu disable-extensions --enable-features=NetworkService,NetworkServiceInProcess],
-      'mobileEmulation': { 'deviceName': 'Pixel 2' }
-    }
+  Capybara::Selenium::Driver.new(
+    app,
+    browser: :chrome,
+    options: Selenium::WebDriver::Chrome::Options.new(
+      args: %w[headless disable-gpu disable-extensions enable-features=NetworkService,NetworkServiceInProcess],
+      mobileEmulation: { deviceName: 'Pixel 2' },
+      prefs: chrome_prefs
+    ),
+    http_client: http_client
   )
-  Capybara::Selenium::Driver.new(app, browser: :chrome, desired_capabilities: capabilities)
 end
 
 Capybara.register_driver(:headless_chrome_ipad) do |app|
-  capabilities = Selenium::WebDriver::Remote::Capabilities.chrome(
-    'goog:chromeOptions': {
-      'args': %w[headless disable-gpu disable-extensions --enable-features=NetworkService,NetworkServiceInProcess],
-      'mobileEmulation': { 'deviceName': 'iPad' }
-    }
+  Capybara::Selenium::Driver.new(
+    app,
+    browser: :chrome,
+    options: Selenium::WebDriver::Chrome::Options.new(
+      args: %w[headless disable-gpu disable-extensions enable-features=NetworkService,NetworkServiceInProcess],
+      mobileEmulation: { deviceName: 'iPad' },
+      prefs: chrome_prefs
+    ),
+    http_client: http_client
   )
-  Capybara::Selenium::Driver.new(app, browser: :chrome, desired_capabilities: capabilities)
 end
 
 Capybara.register_driver(:headless_chrome_ipadpro) do |app|
-  capabilities = Selenium::WebDriver::Remote::Capabilities.chrome(
-    'goog:chromeOptions': {
-      'args': %w[headless disable-gpu disable-extensions --enable-features=NetworkService,NetworkServiceInProcess],
-      'mobileEmulation': { 'deviceName': 'iPad Pro' }
-    }
+  Capybara::Selenium::Driver.new(
+    app,
+    browser: :chrome,
+    options: Selenium::WebDriver::Chrome::Options.new(
+      args: %w[headless disable-gpu disable-extensions enable-features=NetworkService,NetworkServiceInProcess],
+      mobileEmulation: { deviceName: 'iPad Pro' },
+      prefs: chrome_prefs
+    ),
+    http_client: http_client
   )
-  Capybara::Selenium::Driver.new(app, browser: :chrome, desired_capabilities: capabilities)
 end
 #-- ---------------------------------------------------------------------------
 #++
