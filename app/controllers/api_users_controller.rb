@@ -21,7 +21,7 @@ class APIUsersController < ApplicationController
         page: index_params[:page], per_page: index_params[:per_page]
       }
     )
-    parsed_response = JSON.parse(result.body)
+    parsed_response = result.body.present? ? JSON.parse(result.body) : { 'error' => "Error #{result.code}" }
     unless result.code == 200
       flash[:error] = I18n.t('dashboard.api_proxy_error', error_code: result.code, error_msg: parsed_response['error'])
       redirect_to(root_path) && return
@@ -58,11 +58,19 @@ class APIUsersController < ApplicationController
   # - <tt>id</tt>: ID of the instance row to be updated
   #
   def update
+    id = edit_params(GogglesDb::User)['id']
+    # Extract manually here all bool columns edited direct with a RowBoolSwitch button, which handles
+    # the field with an array of values, indexed by the current ID (doesn't matter if the value in
+    # the array is always just one).
+    # Also, 'locked_at' as column name (sent by the Grid::RowBoolValueSwitchComponent),
+    # is handled by the API as the 'locked' parameter:
+    locked = params.permit(locked: {})[:locked]&.fetch(id, nil).present?
+    active = [nil, '', 'true'].include?(params.permit(active: {})[:active]&.fetch(id, nil))
     result = APIProxy.call(
       method: :put,
-      url: "user/#{edit_params(GogglesDb::User)['id']}",
+      url: "user/#{id}",
       jwt: current_user.jwt,
-      payload: edit_params(GogglesDb::User)
+      payload: edit_params(GogglesDb::User).merge(locked: locked, active: active)
     )
 
     if result.body == 'true'

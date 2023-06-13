@@ -1,0 +1,61 @@
+.row
+  %h5.py-2= t('issues.possible_fix')
+%section#fix-details
+  .row
+    .col-3.text-right
+      %code id
+    .col
+      %b #{req['swimmer_id']}
+  .row
+    .col-3.text-right
+      %code label
+    .col
+      #{req['swimmer_label']}
+  .row
+    .col-3.text-right
+      %code year_of_birth
+    .col
+      #{req['swimmer_year_of_birth']}
+  .row
+    .col-3.text-right
+      %code gender_type_id
+    .col
+      #{req['gender_type_id']}
+  - if swimmer['associated_user']
+    .row
+      %h5.py-2= t('issues.type3b.chosen_swimmer_association')
+    .row
+      %table.table.table-striped.table-sm#associated-user-details
+        %thead.text-center
+          %tr.table-secondary
+            %th
+              %code id
+            %th
+              %code email
+            %th
+              %code name / description
+            %th
+              %code year_of_birth
+        %tbody
+          %tr
+            %td.text-right= swimmer['associated_user']['id']
+            %td
+              %pre= swimmer['associated_user']['email']
+            %td
+              #{swimmer['associated_user']['name']} / #{swimmer['associated_user']['description']}
+            %td
+              = swimmer['associated_user']['year_of_birth']
+
+.row
+  = render(partial: 'filtered_swimmers_list', locals: { title: t('issues.type2b1.filtered_swimmers_list',
+           name: req['swimmer_last_name']), filtered_swimmers: same_named_swimmers,
+           row_swimmer_id: req['swimmer_id'] })
+
+%section#form-bottom-toolbar
+  .container
+    .row.my-4
+      .col.text-center
+        = render(partial: 'form_type3_swimmer_id', locals: { issue_id: issue_id, swimmer_id: req['swimmer_id'],
+                 processable: processable })
+      .col.text-center
+        = render(partial: 'form_bottom_status_buttons', locals: { issue_id: issue_id, status: status })

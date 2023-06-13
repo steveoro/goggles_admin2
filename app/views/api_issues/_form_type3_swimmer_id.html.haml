@@ -1,0 +1,11 @@
+= form_tag(api_issue_fix_path(id: issue_id), id: 'frm-type1a', method: :post) do
+  .bg-light-green.p-1.pt-3.shadow-box
+    .row.p-3
+      .col.pl-0.pt-2
+        = label_tag(:swimmer_id, 'swimmer_id')
+      .col
+        = number_field_tag(:swimmer_id, swimmer_id, required: true, autofocus: true, class: 'form-control')
+    .row-fluid.py-3
+      = submit_tag(t('issues.grid.buttons.fix_label'), id: 'btn-solve',
+                  class: "btn btn-sm btn-success #{processable ? '' : 'disabled'}", disabled: !processable,
+                  data: { confirm: t('issues.ask_confirmation') })

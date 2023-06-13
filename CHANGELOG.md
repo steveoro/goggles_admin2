@@ -2,6 +2,9 @@
 
 _Please, add the latest build info on top of the list; use Version::MAJOR only after gold release; keep semantic versioning in line with framework's_
 
+- **0.5.12** [Steve A.] re-sync w/ base engine
+- **0.5.05** [Steve A.] check & fix actions for the issue controller; additional components & specs
+- **0.5.04** [Steve A.] issues controller w/ crude handing (low-level edit)
 - **0.5.03** [Steve A.] resync w/ base engine: slight change in ImportQueueDecorator so that #chrono_delta_label can be called also on master chrono rows
 - **0.4.25** [Steve A.] make sure that calendar rows do not get consumed unless actual result nodes are found
 - **0.4.23** [Steve A.] ensure dest. paths exist when moving files; ensure proper swimmer key is used for internal entity cache, even for same-named swimmers; extended debug & data-fix; improved display for row action toolbar in grids & other minor updates; added auto-detection for corrupted result files (containing a 'retry' error section) with flashing warning display on data-fix pages in header banner

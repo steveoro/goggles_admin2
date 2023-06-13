@@ -52,6 +52,11 @@ Rails.application.routes.draw do
   resources :api_import_queues, only: %i[index create update]
   delete 'api_import_queues', to: 'api_import_queues#destroy', as: 'api_import_queues_destroy'
 
+  resources :api_issues, only: %i[index create update]
+  delete 'api_issues', to: 'api_issues#destroy', as: 'api_issues_destroy'
+  get 'api_issues/check/:id', to: 'api_issues#check', as: 'api_issue_check'
+  post 'api_issues/fix/:id', to: 'api_issues#fix', as: 'api_issue_fix'
+
   resources :api_meeting_reservations, only: %i[index create update]
   get 'api_meeting_reservations/expand', to: 'api_meeting_reservations#expand', as: 'api_meeting_reservations_expand'
   delete 'api_meeting_reservations', to: 'api_meeting_reservations#destroy', as: 'api_meeting_reservations_destroy'

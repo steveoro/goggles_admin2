@@ -30,6 +30,8 @@
                controller_name: controller_name, request_params: @grid_filter_params))
       = datagrid_form_for(@grid, method: :get,
                           url: url_for(controller: controller_name, action: :index, params: @grid_filter_params))
+      = render(Grid::FilterLabelsComponent.new(filter_params: @grid_filter_params))
+
       .row-fluid.text-center
         %i
           %small.text-muted (REMOTE #{@connection_url} settings)

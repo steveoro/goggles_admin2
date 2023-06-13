@@ -18,6 +18,17 @@ class UsersGrid < BaseGrid
   column(:id, align: :right, mandatory: true)
   column(:name, mandatory: true)
   column(:description, mandatory: true)
+
+  column(:locked, header: 'Locked?', html: true, mandatory: true, order: false) do |asset|
+    render(Grid::RowBoolValueSwitchComponent.new(asset_row: asset, controller_name: 'api_users',
+           column_name: 'locked_at', bkgnd_color: 'red', true_color: 'text-danger', true_icon: 'fa-ban'))
+  end
+
+  column(:locked, header: 'Active?', html: true, mandatory: true, order: false) do |asset|
+    render(Grid::RowBoolValueSwitchComponent.new(asset_row: asset, controller_name: 'api_users',
+           column_name: 'active', bkgnd_color: 'green', true_color: 'text-success', true_icon: 'fa-check'))
+  end
+
   # 'swimmer_id' can be nil, need to convert the value:
   column(:swimmer_id, align: :right, mandatory: true,
                       order: proc { |scope| scope.sort { |a, b| a.swimmer_id.to_i <=> b.swimmer_id.to_i } })

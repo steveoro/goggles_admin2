@@ -12,6 +12,8 @@
                controller_name: controller_name, create: true, destroy: false, request_params: @grid_filter_params))
       = datagrid_form_for(@grid, method: :get,
                           url: url_for(controller: controller_name, action: :index, params: @index_params))
+      = render(Grid::FilterLabelsComponent.new(filter_params: @grid_filter_params))
+
       = render(PageLinksForArrayComponent.new(data: @grid&.assets, total_count: @domain_count,
                page: @domain_page, per_page: @domain_per_page))
       = datagrid_table(@grid, html: { class: 'table table-hover table-sm' })

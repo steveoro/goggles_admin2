@@ -1,4 +1,5 @@
 require:
+  - rubocop-factory_bot
   - rubocop-capybara
   - rubocop-performance
   - rubocop-rails
@@ -25,6 +26,9 @@ AllCops:
     - 'db/schema.rb'
     - 'vendor/**/*'
     - 'node_modules/**/*'
+
+FactoryBot/SyntaxMethods:
+  Enabled: false
 
 # Cop supports --auto-correct.
 # Configuration parameters: AutoCorrect, AllowHeredoc, AllowURI, URISchemes, IgnoreCopDirectives, IgnoredPatterns.
@@ -100,9 +104,6 @@ RSpec/IndexedLet:
 
 RSpec/MultipleMemoizedHelpers:
   Max: 10
-
-RSpec/FactoryBot/SyntaxMethods:
-  Enabled: false
 
 
 Style/ClassAndModuleChildren:

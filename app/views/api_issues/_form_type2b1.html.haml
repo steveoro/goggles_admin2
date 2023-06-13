@@ -1,0 +1,112 @@
+.row
+  %h5.py-2= t('issues.possible_fix')
+%section#fix-details
+  .row
+    .col-4.text-right
+      %code result_id
+    .col.table-warning
+      %b= req['result_id']
+  .row
+    .col-4.text-right
+      &nbsp;
+    .col-4.text-center
+      - if req['wrong_meeting'].present?
+        %span.badge.badge-warning
+          WRONG meeting
+      - if req['wrong_team'].present?
+        %span.badge.badge-danger
+          WRONG team
+      - if req['wrong_swimmer'].present?
+        %span.badge.badge-danger
+          WRONG swimmer
+
+= render(partial: 'parent_meeting_details', locals: { parent_meeting_class: parent_meeting_class,
+         parent_meeting: parent_meeting })
+
+.row
+  %h5.py-2= t('issues.result_to_be_edited')
+%section#result-details
+  .row
+    .col-3.text-right
+      %code id
+    .col
+      %b= result_row['id']
+    .col-3.text-right
+      %code timing
+    .col
+      #{result_row['timing']}
+  .row
+    - if result_row['meeting_program']
+      .col-3.text-right
+        %code meeting_event_id
+      .col
+        #{result_row['meeting_program']['meeting_event_id']}
+      .col-3.text-right
+        %code meeting_program_id
+      .col
+        #{result_row['meeting_program']['id']}
+  .row
+    - if result_row['event_type']
+      .col-3.text-right
+        %code event_type
+      .col
+        #{result_row['event_type']['label']} (id: #{result_row['event_type']['id']})
+    - if result_row['category_type']
+      .col-3.text-right
+        %code category_type
+      .col
+        #{result_row['category_type']['short_name']} (id: #{result_row['category_type']['id']})
+  .row
+    - if result_row['swimmer']
+      .col-3.text-right
+        %code swimmer
+      .col
+        #{result_row['swimmer']['complete_name']} (id: #{result_row['swimmer']['id']})
+    - if result_row['gender_type']
+      .col-3.text-right
+        %code year / gender
+      .col
+        #{result_row['swimmer']['year_of_birth']},
+        #{result_row['gender_type']['code']}
+        %small (id: #{result_row['gender_type']['id']})
+  .row
+    - if result_row['team_affiliation']
+      .col-3.text-right
+        %code team_affiliation
+      .col
+        #{result_row['team_affiliation']['name']} (id: #{result_row['team_affiliation']['id']})
+      .col-3.text-right
+        %code badge_id / team_id
+      .col
+        #{result_row['badge_id']} / #{result_row['team_id']}
+
+.row
+  .col
+    = render(partial: 'filtered_swimmers_list', locals: { title: t('issues.type2b1.filtered_swimmers_list',
+             name: result_row['swimmer']['last_name']), filtered_swimmers: same_named_swimmers,
+             row_swimmer_id: result_row['swimmer_id'] })
+  .col
+    %section#same-named-teams
+      %h5.py-2= t('issues.type2b1.same_named_teams')
+      %table.table.table-striped.table-sm#same-named-teams
+        %thead.text-center
+          %tr.table-info
+            %th
+              %code editable_name (id)
+            %th
+              %code city
+        %tbody
+          - if same_named_teams
+            - same_named_teams.each do |team|
+              -# Highlight table row if it belongs to the result:
+              %tr.text-right{ class: team.id == result_row['team_id'].to_i ? 'table-warning' : '' }
+                %td.text-left
+                  #{team.editable_name}
+                  %small (id: #{team.id})
+                %td.text-left
+                  #{team.city&.name}
+                  %small (id: #{team.city_id})
+
+.container.text-center
+  .row-fluid.my-4
+    = render(partial: 'form_bottom_status_buttons', locals: { status: status, issue_id: issue_id })

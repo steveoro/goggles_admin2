@@ -29,6 +29,8 @@ gem 'turbolinks', '~> 5'
 
 # Use Active Storage variant
 # gem 'image_processing', '~> 1.2'
+
+gem 'activerecord-session_store'
 # Reduces boot times through caching; required in config/boot.rb
 gem 'bootsnap', '>= 1.4.2', require: false
 gem 'browser' # detect request.variant type depending on request.user_agent
@@ -91,6 +93,7 @@ group :development, :test do
   gem 'letter_opener'
   gem 'pry'
   gem 'rspec'
+  gem 'rspec_pacman_formatter'
   gem 'rspec-rails'
 end
 
@@ -106,6 +109,7 @@ group :test do
   # (Bullet works best just on development). Do not use memoized values for testing.
   # Example:
   #          expect { get :index }.to perform_constant_number_of_queries"
+  gem 'rspec_junit_formatter' # required by new Semaphore test reports
   gem 'selenium-webdriver'
   gem 'simplecov', '= 0.13.0', require: false
   # Easy installation and use of web drivers to run system tests with browsers

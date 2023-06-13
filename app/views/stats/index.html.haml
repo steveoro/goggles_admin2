@@ -19,6 +19,7 @@
                controller_name: controller_name, request_params: @grid_filter_params))
       = datagrid_form_for(@grid, method: :get,
                           url: url_for(controller: controller_name, action: :index, params: @index_params))
+      = render(Grid::FilterLabelsComponent.new(filter_params: @grid_filter_params))
 
       -# Clear:
       .m-1

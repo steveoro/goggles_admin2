@@ -18,6 +18,9 @@ class HomeController < ApplicationController
     result = APIProxy.call(method: :get, url: 'import_queues', jwt: current_user.jwt)
     @iqs_count = result.headers[:total]
 
+    result = APIProxy.call(method: :get, url: 'issues', jwt: current_user.jwt)
+    @issues_count = result.headers[:total] || 0
+
     result = APIProxy.call(method: :get, url: 'api_daily_uses', jwt: current_user.jwt)
     @api_uses_count = result.headers[:total]
   end

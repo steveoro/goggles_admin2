@@ -1,0 +1,29 @@
+it:
+  issues:
+    ask_confirmation: "Davvero? ...Sicuri di procedere?"
+    from_title: "Da"
+    what_title: "Per"
+    possible_fix: "Correzione richiesta"
+    current_result: "Risultato corrente"
+    result_to_be_edited: "Risultato da modificare"
+    existing_results: "Risultati esistenti per %{event_label} (ID: %{event_type_id}), gender: %{gender_type_id}, cat.: %{category_type_id}"
+    badge_results: "Risultati esistenti per il Badge %{badge_id} (swimmer_id: %{swimmer_id}, team_id: %{team_id})"
+    grid:
+      params:
+        code: "Cod."
+        priority: "Priorità"
+        status: "Stato"
+      buttons:
+        check_label: " Controlla"
+        fix_label: " Accetta e risolvi automaticamente"
+    type0:
+      existing_tms: "Team Manager esistenti"
+    msgs:
+      update_ok: "Riga aggiornata!"
+    type2b1:
+      filtered_swimmers_list: "Nuotatori per '%{name}'"
+      same_named_teams: "Squadre con nome simile"
+    type3b:
+      chosen_swimmer_association: "L'atleta scelto è già associato a:"
+    type3c:
+      swimmer_id_zero_note: "Imposta swimmer_id a 0 per forzare la creazione di un nuovo Swimmer usando i dati forniti dall'utente. OCCHIO: nessun controllo per evitare duplicati verrà fatto!"

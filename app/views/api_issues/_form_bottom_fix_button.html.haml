@@ -1,0 +1,7 @@
+= button_to(api_issue_fix_path(id: issue_id), id: "btn-solve", method: :post,
+            class: "btn btn-sm btn-success #{processable ? '' : 'disabled'}",
+            disabled: !processable) do
+  %span
+    %i.fa.fa-check
+    &nbsp;
+    = t('issues.grid.buttons.fix_label')

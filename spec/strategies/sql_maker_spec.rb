@@ -8,7 +8,7 @@ RSpec.describe SqlMaker, type: :strategy do
       subject(:new_instance) { described_class.new(row: GogglesDb::Swimmer.new) }
 
       it 'creates a new instance' do
-        expect(new_instance).to be_an(described_class)
+        expect(new_instance).to be_a(described_class)
       end
 
       it 'has an empty #sql_log list of logged statements' do

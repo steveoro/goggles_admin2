@@ -1,0 +1,15 @@
+%span.d-flex.justify-content-center.p-1
+  %label.switch
+    %input{ id: "chk-#{hidden_field_id}", name: @column_name, type: 'checkbox', checked: turned_on }
+    %span.slider{ id: "toggle-#{hidden_field_id}", 'data-toggle' => 'collapse',
+                  href: "#icon-on-#{hidden_field_id}", role: 'button',
+                  class: "round #{@bkgnd_color} #{turned_on ? '' : 'collapsed'}",
+                  'aria-expanded' => turned_on.to_s,
+                  'aria-controls' => "switch for #{@column_name}", onclick: onclick_js_handler }/
+
+  %span.ml-1.collapse{ id: "icon-on-#{hidden_field_id}", class: "#{turned_on ? 'show' : ''}" }
+    %i.fa{ class: "#{@true_color} #{@true_icon}" }
+
+= form_tag(url_for(only_path: true, controller: @controller_name, action: :update, id: @asset_row.id),
+           id: "frm-#{hidden_field_id}", method: :put) do
+  = hidden_field_tag(hidden_field_name, turned_on)

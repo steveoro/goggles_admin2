@@ -124,8 +124,8 @@ class ApplicationController < ActionController::Base
   # The filtered attribute hash
   #
   def datagrid_model_attributes_for(model_class, attrs)
-    model_class.new.attributes.keys.reject { |key| key == 'lock_version' }
-    attrs.select { |key, _value| model_class.new.attributes.key?(key) }
+    allowed_keys = model_class.new.model_attributes.keys
+    attrs.select { |key, _value| allowed_keys.include?(key) }
   end
   #-- -------------------------------------------------------------------------
   #++
@@ -162,7 +162,7 @@ class ApplicationController < ActionController::Base
     @domain_per_page = api_response_headers[:per_page].to_i
 
     # Setup grid domain converting the Hash into temp models for better handling:
-    @domain = parsed_response.map { |attrs| model_class.new(attrs) }
+    @domain = parsed_response.map { |attrs| model_class.new(datagrid_model_attributes_for(model_class, attrs)) }
 
     # Setup datagrid:
     grid_class.data_domain = @domain

@@ -18,7 +18,7 @@ class APIImportQueuesController < ApplicationController
       method: :get, url: 'import_queues', jwt: current_user.jwt,
       params: { page: index_params[:page], per_page: index_params[:per_page] }
     )
-    parsed_response = JSON.parse(result.body)
+    parsed_response = result.body.present? ? JSON.parse(result.body) : { 'error' => "Error #{result.code}" }
     unless result.code == 200
       flash[:error] = I18n.t('dashboard.api_proxy_error', error_code: result.code, error_msg: parsed_response['error'])
       redirect_to(root_path) && return

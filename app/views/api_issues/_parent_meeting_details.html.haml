@@ -1,0 +1,34 @@
+.row
+  %h5.py-2= parent_meeting_class
+  %table.table.table-striped.table-sm#parent-meeting
+    %thead.text-center
+      %tr.table-info
+        %th
+          %code id
+        %th
+          %code description
+        %th
+          %code code
+        %th
+          %code header_date
+        %th
+          %code header_year
+        %th
+          %code season_id
+    %tbody
+      - if parent_meeting
+        %tr
+          %td.text-right
+            %b= parent_meeting['id']
+          %td= parent_meeting['description']
+          %td= parent_meeting['code']
+          %td= parent_meeting['header_date']
+          %td= parent_meeting['header_year']
+          %td.text-right= parent_meeting['season_id']
+        - if parent_meeting['meeting_events'].present?
+          %tr
+            %th Events:
+            %td{ colspan: 4 }
+              - parent_meeting['meeting_events'].each do |event_hash|
+                %span.text-primary #{event_hash['short_label']}
+                %small (id: #{event_hash['id']}) &dash;

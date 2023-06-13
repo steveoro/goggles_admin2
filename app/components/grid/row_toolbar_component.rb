@@ -10,7 +10,7 @@ module Grid
   #
   # = Grid::RowToolbarComponent
   #
-  # Renders a row.
+  # Renders a grid row "action" toolbar with configurable buttons.
   #
   # The DELETE action will be set to:
   # <tt>url_for(controller: controller_name, action: :destroy, params: { id: asset_row.id })</tt>

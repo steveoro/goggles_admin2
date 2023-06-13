@@ -1,0 +1,31 @@
+.row
+  %h5.py-2= t('issues.from_title')
+  %table.table.table-striped.table-sm#user-details
+    %thead.text-center
+      %tr.table-info
+        %th
+          %code id
+        %th
+          %code email
+        %th
+          %code name
+        %th
+          %code description
+    %tbody
+      %tr
+        %td.text-right= user['id']
+        %td
+          %pre= user['email']
+        %td= user['name']
+        %td= user['description']
+      %tr
+        %td= user['year_of_birth']
+        %td '#{user['first_name']}', '#{user['last_name']}'
+        %td
+          %code swimmer_id:
+        %td
+          #{user['swimmer_id']}
+          &nbsp;
+          - if associated_swimmer
+            %b
+              = associated_swimmer['long_label']

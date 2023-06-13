@@ -28,6 +28,8 @@ en:
       title: "Category Types"
     import_queues:
       title: "Import Queues"
+    issues:
+      title: "Issues"
     meetings:
       title: "Meetings"
     meeting_reservations:

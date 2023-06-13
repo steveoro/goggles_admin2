@@ -22,6 +22,12 @@ module Users
       # respond_with resource, location: after_sign_in_path_for(resource)
     end
 
+    # DELETE /resource/sign_out
+    def destroy
+      super
+      reset_session
+    end
+
     private
 
     # Makes sure a valid JWT is always stored inside the current_user instance.
