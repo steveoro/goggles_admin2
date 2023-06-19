@@ -74,7 +74,7 @@ group :development do
   # [20210128] Rubocop 1.9.0 seems to have several issues with the current stack
   gem 'rubocop' # '= 1.8.1', require: false
   gem 'rubocop-performance'
-  gem 'rubocop-rails', require: false
+  gem 'rubocop-rails', '= 2.19', require: false # currently 2.20 introduces a bug with '#falsey_literal?'
   gem 'rubocop-rake'
   gem 'rubocop-rspec'
   gem 'spring'

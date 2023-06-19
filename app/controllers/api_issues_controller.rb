@@ -166,6 +166,8 @@ class APIIssuesController < ApplicationController
       prepare_report_data_type3b
     when '3c'
       prepare_report_data_type3c
+    when '5'
+      prepare_report_data_type5
     end
   end
   #-- -------------------------------------------------------------------------
@@ -175,7 +177,7 @@ class APIIssuesController < ApplicationController
   # 1-click solver for the issue types that allow skipping manual intervention.
   #
   def fix
-    swimmer_id = params.permit(:swimmer_id).fetch(:swimmer_id)
+    swimmer_id = params.permit(:swimmer_id).fetch(:swimmer_id, nil)
     issue_id = edit_params(GogglesDb::Issue)['id']
     result = APIProxy.call(method: :get, url: "issue/#{issue_id}", jwt: current_user.jwt)
     parsed_response = result.body.present? ? JSON.parse(result.body) : { 'error' => "Error #{result.code}" }
@@ -200,7 +202,8 @@ class APIIssuesController < ApplicationController
     when '3b', '3c'                 # change associated swimmer
       autofix_type3(req, user_id, swimmer_id)
     when '5'                        # reactivate account
-      autofix_type5(req, user_id)
+      send_email = params.permit(:send_email).fetch(:send_email, nil) == '1'
+      autofix_type5(req, user_id, parsed_response['user']['name'], send_email ? parsed_response['user']['email'] : nil)
     end
 
     # Mark issue as solved unless any errors were already encountered:
@@ -486,6 +489,20 @@ class APIIssuesController < ApplicationController
                                              .order(:complete_name)
                                              .limit(25)
   end
+
+  # Prepares member variables for issue type 0: request upgrade to team manager.
+  #
+  # == Uses:
+  # - @user => attributes hash of the User reporting the issue
+  #
+  # == Sets:
+  # - @existing_issues => array of existing Issue attributes (from API call)
+  #
+  def prepare_report_data_type5
+    # GET list of existing TMs:
+    result = APIProxy.call(method: :get, url: 'issues', jwt: current_user.jwt, payload: { user_id: @user['id'] })
+    @existing_issues = result.body.present? ? JSON.parse(result.body) : { 'error' => "Error #{result.code}" }
+  end
   #-- -------------------------------------------------------------------------
   #++
 
@@ -652,27 +669,30 @@ class APIIssuesController < ApplicationController
     end
   end
 
-  # Auto-fix for issue type 5: reactivate an account if deactivated.
+  # Auto-fix for issue type 5: reactivate account if deactivated.
   #
   # == Params:
   # - req     => parsed JSON request of the issue (Issue#req)
   # - user_id => User ID of the owner of the Issue report
+  # - user_id => User ID of the owner of the Issue report
+  # - user_name => User name for the email msg
+  # - user_email => User email; blank or nil to skip sending the email msg
   #
-  def autofix_type5(req, user_id)
-    # Sets flash[:error] unless result is ok:
-    target_id = find_or_create_team_affiliation_id!(current_user.jwt, req['team_id'].to_i,
-                                                    req['team_label'], req['season_id'].to_i)
-    return unless target_id.present?
+  def autofix_type5(req, user_id, user_name, user_email)
+    result = APIProxy.call(method: :put, url: "user/#{user_id}", jwt: current_user.jwt, payload: { active: true })
 
-    # create new TM:
-    result = APIProxy.call(method: :post, url: 'team_manager', jwt: current_user.jwt,
-                            payload: { user_id: user_id, team_affiliation_id: target_id })
-    new_row = parse_json_result_from_create(result)
-    if new_row.present? && new_row['msg'] == 'OK' && new_row['new'].key?('id')
-      flash[:info] = I18n.t('datagrid.edit_modal.create_ok', id: new_row['new']['id'])
+    if result.code == 200
+      flash[:info] = I18n.t('issues.msgs.update_ok')
+      # Send an email msg to the user if requested:
+      if user_email.present?
+        ApplicationMailer.generic_message(user_email: user_email, user_name: user_name,
+          subject_text: I18n.t('issues.type5.email_subject'),
+          content_body: I18n.t('issues.type5.email_body')
+        ).deliver_now
+      end
     else
-      logger.error("\r\n---[E]--- API: error during team_manager creation! (payload: #{payload.inspect})")
-      flash[:error] = t('issues.msgs.api_error_with_action', action_desc: 'team_manager creation')
+      logger.error("\r\n---[E]--- API: error during user reactivation! (payload: #{payload.inspect})")
+      flash[:error] = t('issues.msgs.api_error_with_action', action_desc: 'user reactivation')
     end
   end
   #-- -------------------------------------------------------------------------

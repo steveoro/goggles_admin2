@@ -50,6 +50,9 @@
             .row
               %p
                 %i= t('issues.type3c.swimmer_id_zero_note')
+        - when '5'
+          = render(partial: 'form_type5', locals: { issue_id: @issue_id, processable: @processable,
+                   active: @user['active'], existing_issues: @existing_issues })
         - else
           .row.text-center
             %b

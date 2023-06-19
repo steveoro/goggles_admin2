@@ -8,6 +8,8 @@ it:
     result_to_be_edited: "Risultato da modificare"
     existing_results: "Risultati esistenti per %{event_label} (ID: %{event_type_id}), gender: %{gender_type_id}, cat.: %{category_type_id}"
     badge_results: "Risultati esistenti per il Badge %{badge_id} (swimmer_id: %{swimmer_id}, team_id: %{team_id})"
+    existing_request_count: "Segnalazioni esistenti in coda (risolte e non): %{total}"
+    send_email_label: "Mando anche un email all'utente per dire che il problema è stato risolto?"
     grid:
       params:
         code: "Cod."
@@ -27,3 +29,6 @@ it:
       chosen_swimmer_association: "L'atleta scelto è già associato a:"
     type3c:
       swimmer_id_zero_note: "Imposta swimmer_id a 0 per forzare la creazione di un nuovo Swimmer usando i dati forniti dall'utente. OCCHIO: nessun controllo per evitare duplicati verrà fatto!"
+    type5:
+      email_subject: "Account riattivato"
+      email_body: "Il tuo account presso master-goggles.org è stato riattivato."

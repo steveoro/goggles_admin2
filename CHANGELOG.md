@@ -2,7 +2,7 @@
 
 _Please, add the latest build info on top of the list; use Version::MAJOR only after gold release; keep semantic versioning in line with framework's_
 
-- **0.5.12** [Steve A.] re-sync w/ base engine
+- **0.5.22** [Steve A.] re-sync w/ base engine & API; added support for account reactivation request; bundle update
 - **0.5.05** [Steve A.] check & fix actions for the issue controller; additional components & specs
 - **0.5.04** [Steve A.] issues controller w/ crude handing (low-level edit)
 - **0.5.03** [Steve A.] resync w/ base engine: slight change in ImportQueueDecorator so that #chrono_delta_label can be called also on master chrono rows
