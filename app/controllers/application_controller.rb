@@ -73,6 +73,21 @@ class ApplicationController < ActionController::Base
   #-- -------------------------------------------------------------------------
   #++
 
+  # Strong parameters checking for /index, including pass-through from modal editors
+  # given a specific datagrid_name.
+  #
+  # (NOTE: memoizazion is needed because the member variable is used in the view.)
+  def index_params_for(datagrid_name)
+    @index_params = params.permit(:page, :per_page, datagrid_name)
+    return @index_params.merge(params.fetch(datagrid_name, {}).permit!) if params[datagrid_name].respond_to?(:fetch)
+
+    # Assuming the pass-through filtering parameters for the grid are a valid JSONified
+    # string, we'll parse them to rebuild the grid filters:
+    # (both boxed & unboxed params are currently needed)
+    pass_through = @index_params[datagrid_name].is_a?(String) ? JSON.parse(@index_params[datagrid_name]) : {}
+    @index_params.merge(pass_through).merge(datagrid_name => pass_through).permit!
+  end
+
   # Returns the sub-hash of namespaced params according to the specified <tt>namespace</tt>
   # (using <tt>require()</tt>), or the params Hash itself when no namespace is given.
   #

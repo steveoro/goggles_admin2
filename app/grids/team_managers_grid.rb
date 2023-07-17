@@ -18,6 +18,16 @@ class TeamManagersGrid < BaseGrid
   column(:user_id, align: :right)
   column(:manager_name, header: 'Manager', html: true)
   column(:team_affiliation_id, header: 'TA ID', align: :right)
+
+  column(:tas_lookup, header: 'TA', html: true) do |asset|
+    link_to(api_team_affiliations_path(team_affiliations_grid: {
+        team_id: asset.team.id,
+        season_id: asset.season.id
+      })) do
+      content_tag(:i, '', class: 'fa fa-eye')
+    end
+  end
+
   column(
     :team_name, html: true,
                 order: proc { |scope| scope.sort { |a, b| a.team&.name <=> b.team&.name } }

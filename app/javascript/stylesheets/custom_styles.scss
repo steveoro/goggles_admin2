@@ -90,3 +90,9 @@ a.expand-button.collapsed:visited:after
 #data-grid td.team_name {
   font-size: 0.75rem;
 }
+
+#data-grid td.managers_lookup, #data-grid td.badges_lookup,
+#data-grid td.tas_lookup, #data-grid td.team_lookup,
+#data-grid td.swimmer_lookup, #data-grid td.meeting_lookup {
+  text-align: center;
+}

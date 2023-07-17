@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe 'Pushes' do
+RSpec.describe PushController do
   describe 'GET /index' do
     it 'returns http success' do
       get '/push/index'

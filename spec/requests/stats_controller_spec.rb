@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe 'Stats' do
+RSpec.describe StatsController do
   describe 'GET stats (index)' do
     context 'with an unlogged user' do
       it 'is a redirect to the login path' do

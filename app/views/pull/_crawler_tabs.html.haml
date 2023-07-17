@@ -9,6 +9,11 @@
       %a.nav-link{ href: active ? '#' : pull_calendar_files_path, class: active ? 'active' : nil }
         = t('data_import.calendar.calendar_files_page_title')
     %li.nav-item
+      - active = active_tab == 'pdfs'
+      %a.nav-link{ href: active ? '#' : pull_result_files_path(filter: '*.pdf', parent_folder: 'pdfs'),
+                   class: active ? 'active' : nil }
+        = t('data_import.calendar.pdfs_page_title')
+    %li.nav-item
       - active = active_tab == 'results'
       %a.nav-link{ href: active ? '#' : pull_result_files_path, class: active ? 'active' : nil }
         = t('data_import.calendar.result_files_page_title')

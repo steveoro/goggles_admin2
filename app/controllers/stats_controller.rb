@@ -73,7 +73,7 @@ class StatsController < ApplicationController
     else
       flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: result)
     end
-    redirect_to stats_path(page: index_params[:page], per_page: index_params[:per_page])
+    redirect_to(stats_path(index_params))
   end
 
   # DELETE /stats
@@ -97,7 +97,7 @@ class StatsController < ApplicationController
     else
       flash[:info] = I18n.t('dashboard.grid_commands.no_op_msg')
     end
-    redirect_to stats_path(page: index_params[:page], per_page: index_params[:per_page])
+    redirect_to(stats_path(index_params))
   end
   # rubocop:enable Metrics/AbcSize
   #-- -------------------------------------------------------------------------
@@ -124,8 +124,7 @@ class StatsController < ApplicationController
       logger.error(result.inspect)
       flash[:error] = I18n.t('datagrid.clear_stats.clear_failed', error: result.code)
     end
-
-    redirect_to stats_path(page: index_params[:page], per_page: index_params[:per_page])
+    redirect_to(stats_path(index_params))
   end
   #-- -------------------------------------------------------------------------
   #++
@@ -138,11 +137,10 @@ class StatsController < ApplicationController
     @grid_filter_params = params.fetch(:stats_grid, {}).permit!
   end
 
-  # Strong parameters checking for /index
+  # Strong parameters checking for /index, including pass-through from modal editors.
   # (NOTE: memoizazion is needed because the member variable is used in the view.)
   def index_params
-    @index_params = params.permit(:page, :per_page, :stats_grid)
-                          .merge(params.fetch(:stats_grid, {}).permit!)
+    index_params_for(:stats_grid)
   end
 
   #

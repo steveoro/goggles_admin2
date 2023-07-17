@@ -39,6 +39,7 @@ pickle-email-*.html
 !/crawler/data/results.new/.keep
 !/crawler/data/results.done/.keep
 !/crawler/data/results.sent/.keep
+crawler/**/*
 
 # Ignore uploaded files in development.
 /storage/*

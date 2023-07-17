@@ -17,7 +17,10 @@ class APIMeetingsController < ApplicationController
     result = APIProxy.call(
       method: :get, url: 'meetings', jwt: current_user.jwt,
       params: {
-        name: index_params[:description],
+        name: index_params[:name],
+        description: index_params[:description],
+        # FIXME: 'code' is ambiguous in the current API query
+        # code: index_params[:code],
         date: index_params[:date],
         header_year: index_params[:header_year],
         season_id: index_params[:season_id],
@@ -73,7 +76,7 @@ class APIMeetingsController < ApplicationController
     else
       flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: result)
     end
-    redirect_to api_meetings_path(page: index_params[:page], per_page: index_params[:per_page])
+    redirect_to(api_meetings_path(index_params))
   end
 
   # POST /api_meetings/clone (:id)
@@ -97,7 +100,7 @@ class APIMeetingsController < ApplicationController
     else
       flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: result.code)
     end
-    redirect_to api_meetings_path(page: index_params[:page], per_page: index_params[:per_page])
+    redirect_to(api_meetings_path(index_params))
   end
   #-- -------------------------------------------------------------------------
   #++
@@ -110,10 +113,9 @@ class APIMeetingsController < ApplicationController
     @grid_filter_params = params.fetch(:meetings_grid, {}).permit!
   end
 
-  # Strong parameters checking for /index
+  # Strong parameters checking for /index, including pass-through from modal editors.
   # (NOTE: memoizazion is needed because the member variable is used in the view.)
   def index_params
-    @index_params = params.permit(:page, :per_page, :meetings_grid)
-                          .merge(params.fetch(:meetings_grid, {}).permit!)
+    index_params_for(:meetings_grid)
   end
 end

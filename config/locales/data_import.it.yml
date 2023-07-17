@@ -8,6 +8,7 @@ it:
       crawler_status_page_title: 'Crawler'
       choose_season_label: 'Scegli stagione'
       calendar_files_page_title: 'File calendario'
+      pdfs_page_title: 'PDF'
       result_files_page_title: 'File risultati'
       btn_run_crawler: '📥 CRAWL URL Calendario'
       btn_run_crawler_confirm: 'Eseguo il crawler per recuperare le ultime informazioni sui meeting trovati alla URL qui sopra?'
@@ -21,6 +22,7 @@ it:
       btn_edit_tooltip: 'Modifica file'
       btn_download_tooltip: 'Scarica file'
       btn_process_csv_tooltip: 'Elabora questo file calendario, scaricando i risultati disponibili'
+      btn_process_pdf_tooltip: 'Converti questo file risultati da PDF al formata JSON che può essere importato'
       btn_process_json_tooltip: "Elabora questo file risultati, preparandolo per l'importazione dati"
       btn_reparse_json_tooltip: "Riesegui la scasione forzata di questo file risultati usando i dati originali presenti"
       btn_process_sql_tooltip: "Esegue l'upload di questo file di importazione dati sul server remoto"

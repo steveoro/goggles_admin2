@@ -67,7 +67,7 @@ class APISeasonsController < ApplicationController
     else
       flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: result.code)
     end
-    redirect_to api_seasons_path(page: index_params[:page], per_page: index_params[:per_page])
+    redirect_to(api_seasons_path(index_params))
   end
   # rubocop:enable Metrics/AbcSize
   #-- -------------------------------------------------------------------------
@@ -95,7 +95,7 @@ class APISeasonsController < ApplicationController
     else
       flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: result)
     end
-    redirect_to api_seasons_path(page: index_params[:page], per_page: index_params[:per_page])
+    redirect_to(api_seasons_path(index_params))
   end
 
   #-- -------------------------------------------------------------------------
@@ -109,10 +109,9 @@ class APISeasonsController < ApplicationController
     @grid_filter_params = params.fetch(:seasons_grid, {}).permit!
   end
 
-  # Strong parameters checking for /index
+  # Strong parameters checking for /index, including pass-through from modal editors.
   # (NOTE: memoizazion is needed because the member variable is used in the view.)
   def index_params
-    @index_params = params.permit(:page, :per_page, :seasons_grid)
-                          .merge(params.fetch(:seasons_grid, {}).permit!)
+    index_params_for(:seasons_grid)
   end
 end

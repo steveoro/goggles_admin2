@@ -37,12 +37,13 @@
             &nbsp;
       %tbody
         - files&.each do |full_pathname|
+          - extname = File.extname(full_pathname)
           %tr
             %td.text-right
               = File.size(full_pathname)
             %td
               = File.basename(full_pathname)
-            %td.text-center
+            %td.text-left
               = link_to(pull_file_delete_path(file_path: full_pathname), method: :delete, remote: true,
                         class: 'btn btn-sm btn-outline-danger mb-1',
                         data: { toggle: 'tooltip', title: t('data_import.file.btn_delete_tooltip'),
@@ -54,11 +55,13 @@
                         title: t('data_import.file.btn_rename_tooltip') }) do
                 %i.fa.fa-text-width
               &nbsp;
-              = link_to(pull_edit_file_path(file_path: full_pathname), remote: true,
-                        class: 'btn btn-sm btn-outline-success mb-1', data: { toggle: 'tooltip',
-                        title: t('data_import.file.btn_edit_tooltip') }) do
-                %i.fa.fa-pencil-square-o
-              - case File.extname(full_pathname)
+              - if extname != '.pdf'
+                = link_to(pull_edit_file_path(file_path: full_pathname), remote: true,
+                          class: 'btn btn-sm btn-outline-success mb-1', data: { toggle: 'tooltip',
+                          title: t('data_import.file.btn_edit_tooltip') }) do
+                  %i.fa.fa-pencil-square-o
+
+              - case extname
               - when '.csv'
                 &nbsp;
                 = link_to(process_calendar_file_path(file_path: full_pathname), method: :post,
@@ -73,7 +76,16 @@
                   %i.fa.fa-cogs
               - when '.pdf'
                 &nbsp;
-                WIP
+                = link_to(pdf_extract_txt_path(file_path: full_pathname), method: :get,
+                          class: 'btn btn-sm btn-outline-warning mb-1', data: { toggle: 'tooltip',
+                          title: t('data_import.file.btn_process_pdf_tooltip') }) do
+                  %i.fa.fa-cogs
+                - if File.exist?(full_pathname.to_s.gsub('.pdf', '.txt'))
+                  &nbsp;
+                  %small TXT✔
+                - if File.exist?(full_pathname.to_s.gsub('.pdf', '.json'))
+                  &nbsp;
+                  %small JSON✔
               - when '.sql'
                 &nbsp;
                 = link_to(push_upload_path(file_path: full_pathname), method: :post,

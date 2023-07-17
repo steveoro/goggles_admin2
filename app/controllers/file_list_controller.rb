@@ -11,7 +11,7 @@ class FileListController < ApplicationController
   #
   def calendar_files
     @dirnames = Rails.root.glob('crawler/data/calendar.new/*')
-                     .map { |name| name.split('crawler/').last }
+                     .map { |name| name.to_s.split('crawler/').last }
                      .sort
     @curr_dir = nil # (Show all calendar files at once)
     @filter = '*.csv'
@@ -34,7 +34,7 @@ class FileListController < ApplicationController
     @filter ||= file_params[:filter] || '*.json'
     @parent_folder ||= file_params[:parent_folder] || 'results.new'
     @dirnames = Rails.root.glob("crawler/data/#{@parent_folder}/*")
-                     .map { |name| name.split('crawler/').last }
+                     .map { |name| name.to_s.split('crawler/').last }
                      .sort
 
     if request.xhr? && request.put? && file_params[:curr_dir].present?
@@ -155,7 +155,7 @@ class FileListController < ApplicationController
     @curr_dir = File.dirname(file_params[:file_path]).split('crawler/').last
     @parent_folder = file_params[:parent_folder]
     @dirnames = Rails.root.glob("crawler/#{@curr_dir}/../*")
-                     .map { |name| name.split('crawler/').last }
+                     .map { |name| name.to_s.split('crawler/').last }
                      .sort
 
     # Clear current folder if we're handling calendar files:

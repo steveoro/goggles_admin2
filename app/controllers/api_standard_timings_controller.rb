@@ -69,7 +69,7 @@ class APIStandardTimingsController < ApplicationController
     else
       flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: result.code)
     end
-    redirect_to api_standard_timings_path(page: index_params[:page], per_page: index_params[:per_page])
+    redirect_to(api_standard_timings_path(index_params))
   end
   # rubocop:enable Metrics/AbcSize
   #-- -------------------------------------------------------------------------
@@ -97,7 +97,7 @@ class APIStandardTimingsController < ApplicationController
     else
       flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: result)
     end
-    redirect_to api_standard_timings_path(page: index_params[:page], per_page: index_params[:per_page])
+    redirect_to(api_standard_timings_path(index_params))
   end
 
   # DELETE /api_standard_timings
@@ -121,7 +121,7 @@ class APIStandardTimingsController < ApplicationController
     else
       flash[:info] = I18n.t('dashboard.grid_commands.no_op_msg')
     end
-    redirect_to api_standard_timings_path(page: index_params[:page], per_page: index_params[:per_page])
+    redirect_to(api_standard_timings_path(index_params))
   end
   # rubocop:enable Metrics/AbcSize
   #-- -------------------------------------------------------------------------
@@ -135,10 +135,9 @@ class APIStandardTimingsController < ApplicationController
     @grid_filter_params = params.fetch(:standard_timings_grid, {}).permit!
   end
 
-  # Strong parameters checking for /index
+  # Strong parameters checking for /index, including pass-through from modal editors.
   # (NOTE: memoizazion is needed because the member variable is used in the view.)
   def index_params
-    @index_params = params.permit(:page, :per_page, :standard_timings_grid)
-                          .merge(params.fetch(:standard_timings_grid, {}).permit!)
+    index_params_for(:standard_timings_grid)
   end
 end

@@ -80,7 +80,7 @@ class SettingsController < ApplicationController
     else
       flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: result)
     end
-    redirect_to settings_path(page: index_params[:page], per_page: index_params[:per_page])
+    redirect_to(settings_path(index_params))
   end
 
   # DELETE /settings
@@ -119,7 +119,7 @@ class SettingsController < ApplicationController
     else
       flash[:info] = I18n.t('dashboard.grid_commands.no_op_msg')
     end
-    redirect_to settings_path(page: index_params[:page], per_page: index_params[:per_page])
+    redirect_to(settings_path(index_params))
   end
   # rubocop:enable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
   #-- -------------------------------------------------------------------------
@@ -163,9 +163,10 @@ class SettingsController < ApplicationController
     @grid_filter_params = params.fetch(:settings_grid, {}).permit!
   end
 
-  # Strong parameters checking for /index
+  # Strong parameters checking for /index, including pass-through from modal editors.
+  # (NOTE: memoizazion is needed because the member variable is used in the view.)
   def index_params
-    params.permit(:page, :per_page, :settings_grid)
+    index_params_for(:settings_grid)
   end
 
   private

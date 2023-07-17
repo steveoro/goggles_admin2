@@ -10,15 +10,15 @@ ruby '2.7.2'
 gem 'rails', '>= 6.0.6', '< 6.1.0'
 gem 'rails-i18n', '~> 6.0'
 # Use mysql as the database for Active Record
-gem 'mysql2', '>= 0.4.4'
+gem 'mysql2'
 # Use Puma as the app server
-gem 'puma', '>= 5.3.1'
+gem 'puma'
 # Use SCSS for stylesheets
-gem 'sass-rails', '>= 6'
+gem 'sass-rails'
 # Transpile app-like JavaScript. Read more: https://github.com/rails/webpacker
-gem 'webpacker', '~> 4.0'
+gem 'webpacker'
 # Turbolinks makes navigating your web application faster. Read more: https://github.com/turbolinks/turbolinks
-gem 'turbolinks', '~> 5'
+gem 'turbolinks'
 
 # Build JSON APIs with ease. Read more: https://github.com/rails/jbuilder
 # gem 'jbuilder', '~> 2.7'
@@ -45,9 +45,9 @@ gem 'font-awesome-rails'
 gem 'goggles_db', git: 'https://github.com/steveoro/goggles_db'
 gem 'haml-rails'
 gem 'kaminari'
-gem 'nokogiri' # (used explicitly for view specs)
+gem 'kiba'
+gem 'nokogiri' # (used explicitly in view specs)
 # [Steve A.] CORS support shouldn't be needed here for the moment, so keep this commented out:
-# Use Rack CORS for handling Cross-Origin Resource Sharing (CORS), making cross-origin AJAX possible
 # gem 'rack-cors'
 gem 'rest-client'
 gem 'scenic'
@@ -72,7 +72,7 @@ group :development do
   gem 'inch', require: false # grades source documentation
   gem 'listen', '~> 3.2'
   # [20210128] Rubocop 1.9.0 seems to have several issues with the current stack
-  gem 'rubocop' # '= 1.8.1', require: false
+  gem 'rubocop'
   gem 'rubocop-performance'
   gem 'rubocop-rails', '= 2.19', require: false # currently 2.20 introduces a bug with '#falsey_literal?'
   gem 'rubocop-rake'

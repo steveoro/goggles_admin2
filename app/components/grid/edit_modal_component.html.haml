@@ -6,6 +6,9 @@
                id: "frm-#{@base_dom_id}", method: :patch) do
       / '_model' can be used to discriminate between subdetails only when more than 1 grid is shown on page
       = hidden_field_tag('_model', @asset_row.class.name)
+      - grid_name = "#{@asset_row.class.name.split('::').last.tableize}_grid"
+      / pass-through the grid filtering parameters:
+      = hidden_field_tag(grid_name, params[grid_name].to_json) if params && params[grid_name]
       = hidden_field_tag('page', params[:page]) if params && params[:page]
       = hidden_field_tag('per_page', params[:per_page]) if params && params[:per_page]
       .modal-content

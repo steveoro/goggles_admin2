@@ -13,3 +13,7 @@ document.querySelector('#file-list').innerHTML = "<%=
     )
   )
 %>";
+
+// Re-run the pop-over controller (unnamed) bound to the main body layout, so that
+// pop-overs & modals reappear even after a partial page redraw:
+this.Stimulus.controllers[0].connect();

@@ -30,6 +30,11 @@ class SwimmersGrid < BaseGrid
   column(:associated_user_id, align: :right)
   column(:gender_type_id, align: :right, mandatory: true)
   column(:complete_name, mandatory: true)
+  column(:badges_lookup, header: 'Badges', html: true, mandatory: true) do |asset|
+    link_to(api_badges_path(badges_grid: { swimmer_id: asset.id })) do
+      content_tag(:i, '', class: 'fa fa-eye')
+    end
+  end
   boolean_column(:year_guessed, align: :center, mandatory: true, order: false)
 
   actions_column(edit: true, destroy: false, mandatory: true)

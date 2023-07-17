@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe 'Pulls' do
+RSpec.describe PullController do
   describe 'GET /index' do
     it 'returns http success' do
       get '/pull/index'

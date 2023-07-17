@@ -25,6 +25,9 @@ Rails.application.routes.draw do
   delete 'pull/file_delete'
   post 'pull/process_calendar_file', to: 'pull#process_calendar_file', as: 'process_calendar_file'
 
+  get 'pdf/extract_txt', to: 'pdf#extract_txt', as: 'pdf_extract_txt'
+  post 'pdf/export_json', to: 'pdf#export_json', as: 'pdf_export_json'
+
   get 'data_fix/review_sessions', to: 'data_fix#review_sessions', as: 'review_sessions'
   get 'data_fix/review_teams', to: 'data_fix#review_teams', as: 'review_teams'
   get 'data_fix/review_swimmers', to: 'data_fix#review_swimmers', as: 'review_swimmers'

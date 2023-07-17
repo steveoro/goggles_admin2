@@ -68,7 +68,7 @@ class APITeamManagersController < ApplicationController
     else
       flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: result.code)
     end
-    redirect_to api_team_managers_path(page: index_params[:page], per_page: index_params[:per_page])
+    redirect_to(api_team_managers_path(index_params))
   end
   # rubocop:enable Metrics/AbcSize
   #-- -------------------------------------------------------------------------
@@ -96,7 +96,7 @@ class APITeamManagersController < ApplicationController
     else
       flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: result)
     end
-    redirect_to api_team_managers_path(page: index_params[:page], per_page: index_params[:per_page])
+    redirect_to(api_team_managers_path(index_params))
   end
 
   # DELETE /api_team_managers
@@ -120,7 +120,7 @@ class APITeamManagersController < ApplicationController
     else
       flash[:info] = I18n.t('dashboard.grid_commands.no_op_msg')
     end
-    redirect_to api_team_managers_path(page: index_params[:page], per_page: index_params[:per_page])
+    redirect_to(api_team_managers_path(index_params))
   end
   # rubocop:enable Metrics/AbcSize
   #-- -------------------------------------------------------------------------
@@ -134,10 +134,9 @@ class APITeamManagersController < ApplicationController
     @grid_filter_params = params.fetch(:team_managers_grid, {}).permit!
   end
 
-  # Strong parameters checking for /index
+  # Strong parameters checking for /index, including pass-through from modal editors.
   # (NOTE: memoizazion is needed because the member variable is used in the view.)
   def index_params
-    @index_params = params.permit(:page, :per_page, :team_managers_grid)
-                          .merge(params.fetch(:team_managers_grid, {}).permit!)
+    index_params_for(:team_managers_grid)
   end
 end

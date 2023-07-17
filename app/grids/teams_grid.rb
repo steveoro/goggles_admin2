@@ -14,6 +14,13 @@ class TeamsGrid < BaseGrid
   column(:id, align: :right, mandatory: true)
   column(:name)
   column(:editable_name, mandatory: true)
+
+  column(:tas_lookup, header: 'TAs', html: true, mandatory: true) do |asset|
+    link_to(api_team_affiliations_path(team_affiliations_grid: { team_id: asset.id })) do
+      content_tag(:i, '', class: 'fa fa-eye')
+    end
+  end
+
   column(:address)
   column(:zip, align: :right)
   column(:phone_mobile)

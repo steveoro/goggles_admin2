@@ -70,7 +70,7 @@ class APIIssuesController < ApplicationController
     else
       flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: result.code)
     end
-    redirect_to api_issues_path(page: index_params[:page], per_page: index_params[:per_page])
+    redirect_to(api_issues_path(index_params))
   end
   # rubocop:enable Metrics/AbcSize
   #-- -------------------------------------------------------------------------
@@ -98,7 +98,7 @@ class APIIssuesController < ApplicationController
     else
       flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: result.presence || result.code)
     end
-    redirect_to api_issues_path(page: index_params[:page], per_page: index_params[:per_page])
+    redirect_to(api_issues_path(index_params))
   end
 
   # DELETE /api_issues
@@ -122,7 +122,7 @@ class APIIssuesController < ApplicationController
     else
       flash[:info] = I18n.t('dashboard.grid_commands.no_op_msg')
     end
-    redirect_to api_issues_path(page: index_params[:page], per_page: index_params[:per_page])
+    redirect_to(api_issues_path(index_params))
   end
   # rubocop:enable Metrics/AbcSize
   #-- -------------------------------------------------------------------------
@@ -138,7 +138,7 @@ class APIIssuesController < ApplicationController
     parsed_response = result.body.present? ? JSON.parse(result.body) : { 'error' => "Error #{result.code}" }
     unless result.code == 200
       flash[:error] = I18n.t('dashboard.api_proxy_error', error_code: result.code, error_msg: parsed_response['error'])
-      redirect_to(api_issues_path(page: index_params[:page], per_page: index_params[:per_page])) && return
+      redirect_to(api_issues_path(index_params)) && return
     end
 
     # Auto-upgrade status to 'in review' if still zero:
@@ -146,7 +146,7 @@ class APIIssuesController < ApplicationController
       result = APIProxy.call(method: :put, url: "issue/#{@issue_id}", jwt: current_user.jwt, payload: { 'status' => 1 })
       unless result.code == 200
         flash[:error] = I18n.t('dashboard.api_proxy_error', error_code: result.code, error_msg: parsed_response['error'])
-        redirect_to(api_issues_path(page: index_params[:page], per_page: index_params[:per_page])) && return
+        redirect_to(api_issues_path(index_params)) && return
       end
 
       parsed_response['status'] = 1
@@ -183,7 +183,7 @@ class APIIssuesController < ApplicationController
     parsed_response = result.body.present? ? JSON.parse(result.body) : { 'error' => "Error #{result.code}" }
     unless result.code == 200
       flash[:error] = I18n.t('dashboard.api_proxy_error', error_code: result.code, error_msg: parsed_response['error'])
-      redirect_to(api_issues_path(page: index_params[:page], per_page: index_params[:per_page])) && return
+      redirect_to(api_issues_path(index_params)) && return
     end
 
     # GET actual request:
@@ -211,7 +211,7 @@ class APIIssuesController < ApplicationController
       result = APIProxy.call(method: :put, url: "issue/#{issue_id}", jwt: current_user.jwt, payload: { 'status' => '4' })
       flash[:error] = I18n.t('dashboard.api_proxy_error', error_code: result.code, error_msg: parsed_response['error']) if result.code != 200
     end
-    redirect_to(api_issues_path(page: index_params[:page], per_page: index_params[:per_page]))
+    redirect_to(api_issues_path(index_params))
   end
   #-- -------------------------------------------------------------------------
   #++
@@ -224,12 +224,13 @@ class APIIssuesController < ApplicationController
     @grid_filter_params = params.fetch(:issues_grid, {}).permit!
   end
 
-  # Strong parameters checking for /index
+  # Strong parameters checking for /index, including pass-through from modal editors.
   # (NOTE: memoizazion is needed because the member variable is used in the view.)
   def index_params
-    @index_params = params.permit(:page, :per_page, :issues_grid)
-                          .merge(params.fetch(:issues_grid, {}).permit!)
+    index_params_for(:issues_grid)
   end
+  #-- -------------------------------------------------------------------------
+  #++
 
   # Strong parameters checking for /fix when issue type is '3[b|c]'
   # (NOTE: memoizazion is needed because the member variable is used in the view.)

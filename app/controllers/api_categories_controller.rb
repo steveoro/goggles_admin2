@@ -67,7 +67,7 @@ class APICategoriesController < ApplicationController
     else
       flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: result.code)
     end
-    redirect_to api_categories_path(page: index_params[:page], per_page: index_params[:per_page])
+    redirect_to(api_categories_path(index_params))
   end
   # rubocop:enable Metrics/AbcSize
   #-- -------------------------------------------------------------------------
@@ -95,7 +95,7 @@ class APICategoriesController < ApplicationController
     else
       flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: result)
     end
-    redirect_to api_categories_path(page: index_params[:page], per_page: index_params[:per_page])
+    redirect_to(api_categories_path(index_params))
   end
 
   # DELETE /category_types
@@ -119,7 +119,7 @@ class APICategoriesController < ApplicationController
     else
       flash[:info] = I18n.t('dashboard.grid_commands.no_op_msg')
     end
-    redirect_to api_categories_path(page: index_params[:page], per_page: index_params[:per_page])
+    redirect_to(api_categories_path(index_params))
   end
   # rubocop:enable Metrics/AbcSize
   #-- -------------------------------------------------------------------------
@@ -149,7 +149,7 @@ class APICategoriesController < ApplicationController
     else
       flash[:error] = I18n.t('datagrid.clone_form.clone_failed', error: result.code)
     end
-    redirect_to api_categories_path(page: index_params[:page], per_page: index_params[:per_page])
+    redirect_to(api_categories_path(index_params))
   end
   #-- -------------------------------------------------------------------------
   #++
@@ -162,11 +162,10 @@ class APICategoriesController < ApplicationController
     @grid_filter_params = params.fetch(:categories_grid, {}).permit!
   end
 
-  # Strong parameters checking for /index
+  # Strong parameters checking for /index, including pass-through from modal editors.
   # (NOTE: memoizazion is needed because the member variable is used in the view.)
   def index_params
-    @index_params = params.permit(:page, :per_page, :categories_grid)
-                          .merge(params.fetch(:categories_grid, {}).permit!)
+    index_params_for(:categories_grid)
   end
 
   # Strong parameters checking for /clone

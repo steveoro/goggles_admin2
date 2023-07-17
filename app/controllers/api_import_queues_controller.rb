@@ -62,7 +62,7 @@ class APIImportQueuesController < ApplicationController
     else
       flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: result.code)
     end
-    redirect_to api_import_queues_path(page: index_params[:page], per_page: index_params[:per_page])
+    redirect_to(api_import_queues_path(index_params))
   end
   # rubocop:enable Metrics/AbcSize
   #-- -------------------------------------------------------------------------
@@ -90,7 +90,7 @@ class APIImportQueuesController < ApplicationController
     else
       flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: result.presence || result.code)
     end
-    redirect_to api_import_queues_path(page: index_params[:page], per_page: index_params[:per_page])
+    redirect_to(api_import_queues_path(index_params))
   end
 
   # DELETE /api_import_queues
@@ -114,7 +114,7 @@ class APIImportQueuesController < ApplicationController
     else
       flash[:info] = I18n.t('dashboard.grid_commands.no_op_msg')
     end
-    redirect_to api_import_queues_path(page: index_params[:page], per_page: index_params[:per_page])
+    redirect_to(api_import_queues_path(index_params))
   end
   # rubocop:enable Metrics/AbcSize
   #-- -------------------------------------------------------------------------
@@ -128,10 +128,9 @@ class APIImportQueuesController < ApplicationController
     @grid_filter_params = params.fetch(:import_queues_grid, {}).permit!
   end
 
-  # Strong parameters checking for /index
+  # Strong parameters checking for /index, including pass-through from modal editors.
   # (NOTE: memoizazion is needed because the member variable is used in the view.)
   def index_params
-    @index_params = params.permit(:page, :per_page, :import_queues_grid)
-                          .merge(params.fetch(:import_queues_grid, {}).permit!)
+    index_params_for(:import_queues_grid)
   end
 end

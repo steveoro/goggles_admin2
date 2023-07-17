@@ -19,6 +19,23 @@ class TeamAffiliationsGrid < BaseGrid
   column(:number)
   boolean_column(:compute_gogglecup, align: :center, mandatory: true, order: false)
   column(:team_id, align: :right, mandatory: true)
+  column(:team_lookup, header: '~Team', html: true, mandatory: true) do |asset|
+    link_to(api_teams_path(teams_grid: { name: asset.team.name })) do
+      content_tag(:i, '', class: 'fa fa-eye')
+    end
+  end
+
+  column(:managers_lookup, header: 'Managers', html: true, mandatory: true) do |asset|
+    link_to(api_team_managers_path(team_managers_grid: { team_affiliation_id: asset.id })) do
+      content_tag(:i, '', class: 'fa fa-eye')
+    end
+  end
+  column(:badges_lookup, header: 'Badges', html: true, mandatory: true) do |asset|
+    link_to(api_badges_path(badges_grid: { team_id: asset.team_id, season_id: asset.season_id })) do
+      content_tag(:i, '', class: 'fa fa-eye')
+    end
+  end
+
   column(
     :season_type_name, header: 'Season', align: :right, html: true, mandatory: true,
                        order: proc { |scope| scope.sort { |a, b| a.season_type.code <=> b.season_type.code } }

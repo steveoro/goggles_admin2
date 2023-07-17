@@ -236,7 +236,7 @@ class APIMeetingReservationsController < ApplicationController
     else
       flash[:info] = I18n.t('dashboard.grid_commands.no_op_msg')
     end
-    redirect_to api_meeting_reservations_path(page: index_params[:page], per_page: index_params[:per_page])
+    redirect_to(api_meeting_reservations_path(index_params))
   end
   #-- -------------------------------------------------------------------------
   #++
@@ -255,11 +255,14 @@ class APIMeetingReservationsController < ApplicationController
   # Strong parameters checking for /index
   # (NOTE: memoizazion is needed because the member variable is used in the view.)
   def index_params
-    @index_params = params.permit(
-      :page, :per_page, :meeting_reservations_grid,
-      :meeting_event_reservations_grid, :meeting_relay_reservations_grid
-    )
-                          .merge(params.fetch(:meeting_reservations_grid, {}).permit!)
+    index_params_for(:meeting_reservations_grid)
+      .merge(params.permit(:meeting_event_reservations_grid, :meeting_relay_reservations_grid))
+
+    # OLD IMPL.:
+    # @index_params = params.permit(
+    #   :page, :per_page, :meeting_reservations_grid,
+    #   :meeting_event_reservations_grid, :meeting_relay_reservations_grid
+    # ).merge(params.fetch(:meeting_reservations_grid, {}).permit!)
   end
 end
 # rubocop:enable Metrics/ClassLength, Metrics/MethodLength, Metrics/AbcSize

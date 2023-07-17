@@ -4,7 +4,7 @@
       = render(partial: 'crawler_status_box')
 
     %section.my-2#crawler-tabs
-      = render(partial: 'crawler_tabs', locals: { active_tab: 'results' })
+      = render(partial: 'crawler_tabs', locals: { active_tab: @parent_folder == 'pdfs' ? 'pdfs' : 'results' })
 
     %section#file-list
       = render(partial: 'file_list/file_table', locals: { dirnames: @dirnames, curr_dir: @curr_dir,
