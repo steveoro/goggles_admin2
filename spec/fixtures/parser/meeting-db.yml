@@ -1,0 +1,1042 @@
+---
+- agosti:
+    :meeting: MEMORIAL AGOSTI
+    :city: Genova
+- albenga:
+    :meeting: TROFEO CITTA' DI ALBENGA
+    :city: Albenga
+- andria:
+    :meeting: TROFEO CITTÀ DI ANDRIA
+    :city: Andria
+- aniene:
+    :meeting: TROFEO AQUANIENE
+    :city: Roma
+- arezzodelsaracinomaster:
+    :meeting: MEETING DEL SARACINO MASTER
+    :city: Arezzo
+- baridiprimavera:
+    :meeting: TROFEO DI PRIMAVERA
+    :city: Bari
+- bariestivo:
+    :meeting: TROFEO ESTIVO
+    :city: Putignano
+- baripaolopinto:
+    :meeting: TROFEO PAOLO PINTO
+    :city: Bari
+- bariprimavera:
+    :meeting: 3° Trofeo Primavera
+    :city: Bari
+- baritorfpaolopinto:
+    :meeting: 4° Torf. Paolo Pinto
+    :city: Bari
+- barixmaster:
+    :meeting: 1° Trofeo Xmaster
+    :city: Bari
+- barra:
+    :meeting: MEETING NUOTO NAPOLI
+    :city: Barra
+- barrablueteam:
+    :meeting: 4° Trofeo Blue Team
+    :city: Barra
+- barracentroester:
+    :meeting: MEETING CENTRO ESTER
+    :city: Barra
+- barranuotonapoli:
+    :meeting: 3° Meeting Nuoto Napoli
+    :city: Barra
+- bastiaumbra:
+    :meeting: TROFEO DELLA CITTÀ DI BASTIA
+    :city: Bastia
+- bastiaumbrabastia:
+    :meeting: 8° Trofeo Città  di Bastia
+    :city: Bastia
+- battipaglia:
+    :meeting: TORNEO BALNAEA
+    :city: Battipaglia
+- battipagliamasterbalnaea:
+    :meeting: 7° Trofeo Master Balnaea
+    :city: Battipaglia
+- battipagliatorneomasterbalnaea:
+    :meeting: TORNEO MASTER BALNAEA
+    :city: Battipaglia
+- belluno:
+    :meeting: 1° Trofeo Città di Belluno
+    :city: Belluno
+- bergamo:
+    :meeting: MEMORIAL A. GNECCHI
+    :city: Bergamo
+- bergamognecchi:
+    :meeting: 22° Memorial Gnecchi
+    :city: Bergamo
+- bitontoframaros:
+    :meeting: 2° Meeting Framaros
+    :city: Paterno
+- bitontoprimavera:
+    :meeting: 7° Trofeo Primavera
+    :city: Bari
+- blueteam:
+    :meeting: TROFEO BLUE TEAM
+    :city: Giugliano in Campania
+- bolognadeakker:
+    :meeting: TROFEO ASI DE AKKER TEAM
+    :city: Bologna
+- bolognanuovonuoto:
+    :meeting: 13° Trofeo Nuovo Nuoto
+    :city: Bologna
+- bolzanodelledolomiti:
+    :meeting: Trofeo delle Dolomiti
+    :city: Bolzano
+- bolzanomercatinodibolzano:
+    :meeting: TROFEO MERCATINO DI BOLZANO
+    :city: Bolzano
+- bresciabrixiafidelis:
+    :meeting: 28° Brixia Fidelis
+    :city: Brescia
+- bresciaeuropa:
+    :meeting: TROFEO EUROPA SC
+    :city: Brescia
+- bresciaeuropasc:
+    :meeting: 4° Trofeo Europa SC
+    :city: Brescia
+- brescialeonessaditalia:
+    :meeting: TROFEO LEONESSA D'ITALIA
+    :city: Brescia
+- brixia:
+    :meeting: BRIXIA FIDELIS
+    :city: Brescia
+- buonconsiglio:
+    :meeting: TROFEO BUONCONSIGLIO NUOTO
+    :city: Trento
+- buonconvento:
+    :meeting: 3° Trofeo Buonconvento
+    :city: Buonconvento
+- buonnatale:
+    :meeting: BUON NATALE MASTER 2013
+    :city: Cagliari
+- bustogarolfo:
+    :meeting: TROFEO CITTÀ DI BUSTO GAROLFO
+    :city: Busto Garolfo
+- cagliari:
+    :meeting: SARDEGNA NUOTA 2014
+    :city: Cagliari
+- cagliaribuonnatalemaster:
+    :meeting: BUON NATALE MASTER
+    :city: Cagliari
+- cagliaridiprimavera:
+    :meeting: Meeting di Primavera
+    :city: Cagliari
+- cagliarikikkomontisci:
+    :meeting: MEMORIAL KIKKO MONTISCI
+    :city: Cagliari
+- cagliarisardegnanuota:
+    :meeting: SARDEGNA NUOTA
+    :city: Cagliari
+- cagliarisardiniainwater:
+    :meeting: 1° Sardinia in Water
+    :city: Cagliari
+- caldiero:
+    :meeting: TROFEO DELLE TERME
+    :city: Calderano
+- caldierodelleterme:
+    :meeting: TROFEO DELLE TERME
+    :city: Calderano
+- caldierotermedigiunone:
+    :meeting: 23° Trofeo Terme di Giunone
+    :city: Calderano
+- calenzano:
+    :meeting: TROFEO NUOTO ESSECI
+    :city: Calenzano
+- calimeraaquapool:
+    :meeting: TROFEO AQUAPOOL
+    :city: Calimera
+- caltanissettasprinteammastercup:
+    :meeting: 1° Sprinteam Master Cup
+    :city: Caltanisetta
+- campodipietra:
+    :meeting: TROFEO OK MASTER 2
+    :city: Campodipietra
+- campodipietraokmaster2:
+    :meeting: 1° Trofeo OK Master2
+    :city: Campodipietra
+- campodipietraokmasterm2:
+    :meeting: TROFEO OK MASTER M2
+    :city: Campodipietra
+- canosadipugliaaquariuspiscinacanosa:
+    :meeting: 10° Trofeo Aquarius Piscina Canosa
+    :city: Canosa di Puglia
+- canosadipugliasottolestelle:
+    :meeting: TROFEO SOTTO LE STELLE
+    :city: Canosa di Puglia
+- canosasottolestelle:
+    :meeting: 6° Trofeo sotto le stelle
+    :city: Canosa di Puglia
+- cantu:
+    :meeting: TROFEO MARCO LOTTAROLI
+    :city: Cantù
+- cantumarcolottaroli:
+    :meeting: 3° Trofeo Marco Lottaroli
+    :city: Cantù
+- casalemcasalemonferrato:
+    :meeting: 1° tr. Città di Casale Monferrato
+    :city: Casale Monferrato
+- casalemonferrato:
+    :meeting: TROFEO CITTA' DI CASALE MONFERRATO
+    :city: Casale Monferrato
+- casaranoestivo:
+    :meeting: 6° Trofeo Estivo
+    :city: Casarano
+- casertablueteam:
+    :meeting: 8° Trofeo Blue Team
+    :city: Caserta
+- casertafritzdennerlein:
+    :meeting: 3° Trofeo Fritz Dennerlein
+    :city: Caserta
+- castellanagrotteswimonthecaves:
+    :meeting: TROFEO SWIM ON THE CAVES
+    :city: Castellana Grotte
+- castellanagswimonthecaves:
+    :meeting: 1° Trofeo Swim on the Caves
+    :city: Castellana Grotte
+- castellogalluzzi:
+    :meeting: 28° Trofeo Galluzzi
+    :city: Città di Castello
+- catania:
+    :meeting: TROFEO DELLA REGIONE
+    :city: Catania
+- cataniacataniaswimmaster:
+    :meeting: Catania Swim Master
+    :city: Catania
+- cataniadellaregione:
+    :meeting: TROFEO DELLA REGIONE
+    :city: Catania
+- cataniaetnanuoto:
+    :meeting: TROFEO ETNA NUOTO
+    :city: Catania
+- cataniasagata:
+    :meeting: 8° Trofeo S. Agata
+    :city: Catania
+- catanzarocittatraiduemari:
+    :meeting: 1° Trofeo Citta` tra i due mari
+    :city: Catanzaro
+- cattarinich:
+    :meeting: TROFEO PINA CATTARINICH
+    :city: Palermo
+- certaldodelboccaccio:
+    :meeting: MEETING DEL BOCCACCIO
+    :city: Certaldo
+- chiavarisprint:
+    :meeting: TROFEO SPRINT DI CHIAVARI
+    :city: Chiavari
+- chiavarisprintdichiavari:
+    :meeting: 2° Trofeo Sprint di Chiavari
+    :city: Chiavari
+- cittadicastello:
+    :meeting: TROFEO ITALO GALLUZZI
+    :city: Città di Castello
+- cittadicastelloitalogalluzzi:
+    :meeting: TROFEO ITALO GALLUZZI
+    :city: Città di Castello
+- civitanovamarche:
+    :meeting: TROFEO CITTÀ DI CIVITANOVA MARCHE
+    :city: Civitanova Marche Alta
+- civitanovamarchecivitanovam:
+    :meeting: 1° tr Civitanova M
+    :city: Civitanova Marche Alta
+- civitavecchiaenzofeoli:
+    :meeting: 1° Memorial Enzo Feoli
+    :city: Civitavecchia
+- cloro:
+    :meeting: DUE GIORNI DI CLORO WATERPOLO
+    :city: Palermo
+- como:
+    :meeting: CITTA' DI COMO
+    :city: Como
+- comognovati:
+    :meeting: 9° Memorial G. Novati
+    :city: Como
+- comognovaticittadicomo:
+    :meeting: MEMORIAL G NOVATI CITTA' DI COMO
+    :city: Como
+- conversanoaironclub:
+    :meeting: TROFEO AIRON CLUB
+    :city: Conversano
+- conversanoairongaiacresce:
+    :meeting: 3° Trofeo Airon GaiaCresce
+    :city: Conversano
+- corato:
+    :meeting: MEETING FRAMAROS
+    :city: Corato
+- coratopeucetia:
+    :meeting: TROFEO PEUCETIA
+    :city: Corato
+- corda:
+    :meeting: MEMORIAL ANDREA CORDA
+    :city: Olbia
+- cortonabuonconvento:
+    :meeting: 7° Trofeo Buonconvento
+    :city: Buonconvento
+- cosenza:
+    :meeting: 1° Meeting Citta` di Cosenza
+    :city: Cosenza
+- costoli:
+    :meeting: TROFEO PAOLO COSTOLI
+    :city: Roma
+- cremona:
+    :meeting: TROFEO CITTA' DI CREMONA
+    :city: Cremona
+- cremonacanbaldesio:
+    :meeting: 4° Meeting CAN Baldesio
+    :city: Cremona
+- cremonacanottieribaldesio:
+    :meeting: MEETING CANOTTIERI BALDESIO
+    :city: Cremona
+- crocera:
+    :meeting: TROFEO MASTER CROCERA
+    :city: Genova
+- csifinale:
+    :meeting: FINALE REGIONALE CSI
+    :city: Bibbiano
+- csiprova1:
+    :meeting: 1A PROVA REGIONALE CSI
+    :city: Carpi
+- csiprova2:
+    :meeting: 2A PROVA REGIONALE CSI
+    :city: Carpi
+- csiprova3:
+    :meeting: 3A PROVA REGIONALE CSI
+    :city: Bologna
+- csiprova4:
+    :meeting: FINALE REGIONALE CSI
+    :city: Bologna
+- csiprova5:
+    :meeting: 5A PROVA REGIONALE CSI
+    :city: Reggio nell Emilia
+- csiprova6:
+    :meeting: 6A PROVA REGIONALE CSI
+    :city: Bibbiano
+- cuneocuneosupermaster:
+    :meeting: Cuneo Supermaster
+    :city: Cuneo
+- deakker:
+    :meeting: 18° Trofeo De Akker Team ASI
+    :city: Bologna
+- desenzano:
+    :meeting: TROFEO A.I.C.S. CITTA' DI DESENZANO
+    :city: Desenzano del Garda
+- dolomiti:
+    :meeting: TROFEO DELLE DOLOMITI
+    :city: Bolzano
+- etna:
+    :meeting: TROFEO ETNA NUOTO
+    :city: Catania
+- europei:
+    :meeting: EUROPEI MASTER LEN
+    :city: Stockholm
+- fanomastersday:
+    :meeting: 17° Meeting Masters Day
+    :city: Fano
+- firenze:
+    :meeting: 24° Trofeo Città di Firenze
+    :city: Firenze
+- firenzeamicidelnuoto:
+    :meeting: TROFEO AMICI DEL NUOTO
+    :city: Firenze
+- firenzefirenzeint:
+    :meeting: Firenze Int Meeting
+    :city: Firenze
+- firenzefirenzeinternational:
+    :meeting: FIRENZE INTERNATIONAL MEETING
+    :city: Firenze
+- flaminio:
+    :meeting: MEETING FLAMINIO SC
+    :city: Roma
+- follonica:
+    :meeting: 2° Coppa Città  di Follonica
+    :city: Follonica
+- forlifanatik:
+    :meeting: TROFEO FANATIK TEAM
+    :city: Forlì
+- forlifanatikteam:
+    :meeting: 4° Trofeo Fanatik Team
+    :city: Forlì
+- forum:
+    :meeting: TROFEO FORUM SPRINT.
+    :city: Roma
+- gallarate:
+    :meeting: 21° Meeting Città  di Gallarate
+    :city: Gallarate
+- genova:
+    :meeting: TROFEO PISCINE DI ALBARO
+    :city: Genova
+- genovagoamaster:
+    :meeting: Trofeo GOA master 2012
+    :city: Genova
+- genovamysport:
+    :meeting: 1° Trofeo My Sport
+    :city: Genova
+- genovanuotoponente:
+    :meeting: 1° trofeo Nuoto Ponente
+    :city: Genova
+- genovapiscinedialbaro:
+    :meeting: 1° Tr Piscine di Albaro
+    :city: Genova
+- gioiadelcolleframaros:
+    :meeting: 6° Meeting Framaros
+    :city: Molfetta
+- giuglianoswim4life:
+    :meeting: 5° Trofeo Swim4life
+    :city: Giugliano in Campania
+- giulianoswim4life:
+    :meeting: 1° trofeo Swim4life
+    :city: Giugliano in Campania
+- gorgonzola:
+    :meeting: TROFEO CITTÀ DI VIMERCATE
+    :city: Gorgonzola
+- gualdotadino:
+    :meeting: TROFEO ROLANDO PINACOLI
+    :city: Gualdo Tadino
+- gualdotadinorolandopinacoli:
+    :meeting: TROFEO ROLANDO PINACOLI
+    :city: Gualdo Tadino
+- gualdotadinorpinacoli:
+    :meeting: 6° Trofeo R. Pinacoli
+    :city: Gualdo Tadino
+- gussago:
+    :meeting: TROFEO CITTA' DI GUSSAGO
+    :city: Gussago
+- gussagotrofgussago:
+    :meeting: 17° Trof Città di Gussago
+    :city: Gussago
+- immota:
+    :meeting: TROFEO IMMOTA MANET
+    :city: L'Aquila
+- imola:
+    :meeting: III° TROFEO CITTÀ DI IMOLA
+    :city: Imola
+- innsbruck:
+    :meeting: MEETING MASTER SHARK
+    :city: Innsbruck
+- innsbruckmastershark:
+    :meeting: 7° Meeting Master Shark
+    :city: Innsbruck
+- italiani:
+    :meeting: CAMPIONATI ITALIANI FIN
+    :city: Trieste
+- italianicsi:
+    :meeting: 17° CAMPIONATO NAZIONALE DI NUOTO
+    :city: Lignano Sabbiadoro
+- italianiuisp:
+    :meeting: CAMPIONATI NAZIONALI ESTIVI
+    :city: Riccione
+- joycup:
+    :meeting: GRAN PREMIO NAZIONALE CSI
+    :city: Lignano Sabbiadoro
+- laquiladellasolidarieta:
+    :meeting: 9° meeting della Solidarietà 
+    :city: L'Aquila
+- laquilaimmotamanet:
+    :meeting: TROFEO IMMOTA MANET
+    :city: L'Aquila
+- laspezia:
+    :meeting: TROFEO DEL GOLFO
+    :city: La Spezia
+- lecco:
+    :meeting: MEETING CITTA' DI LECCO
+    :city: Lecco
+- legnano:
+    :meeting: 7° Città  di Legnano
+    :city: Legnano
+- lignanosabbiadoro:
+    :meeting: MEMORIAL MARCO
+    :city: Lignano Sabbiadoro
+- lignanosabbiadoromarco:
+    :meeting: MEMORIAL MARCO
+    :city: Lignano Sabbiadoro
+- lignanosmarco:
+    :meeting: 12° Memorial Marco
+    :city: Lignano Sabbiadoro
+- livornodegliauguri:
+    :meeting: MEETING DEGLI AUGURI
+    :city: Livorno
+- livornohardswim:
+    :meeting: 1° Trofeo Hard Swim
+    :city: Livorno
+- livornomussilombardifemiano:
+    :meeting: 12° Trofeo Mussi Lombardi Femiano
+    :city: Livorno
+- livornonuotopiuswimfestival:
+    :meeting: NUOTOPIÙ SWIM FESTIVAL
+    :city: Livorno
+- lodidelbarbarossa:
+    :meeting: TROFEO DEL BARBAROSSA
+    :city: Lodi
+- lodinordpadania:
+    :meeting: 27° Trofeo Nord Padania
+    :city: Lodi
+- lodipavia:
+    :meeting: 6° Trofeo Città  di Pavia
+    :city: Pavia
+- lovadinaspresianolebandie:
+    :meeting: TROFEO LE BANDIE
+    :city: Spresiano
+- luccailariadelcarretto:
+    :meeting: TROFEO ILARIA DEL CARRETTO
+    :city: Lucca
+- luccamemorialnatali:
+    :meeting: 1° Trofeo memorial Natali
+    :city: Lucca
+- luccamussilombardifemiano:
+    :meeting: TROFEO MUSSI-LOMBARDI-FEMIANO
+    :city: Viareggio
+- lumezzanesprintalbatros:
+    :meeting: TROFEO SPRINT ALBATROS
+    :city: LUMEZZANE
+- mantova:
+    :meeting: 1° Trofeo Città di Mantova
+    :city: Mantova
+- massalubrense:
+    :meeting: MEETING TERRA DELLE SIRENE
+    :city: Massalubrense
+- massalubrenseterredellesirene:
+    :meeting: MEETING TERRE DELLE SIRENE
+    :city: Massalubrense
+- massarosa:
+    :meeting: Trofeo Massarosa
+    :city: Massarosa
+- massarosagiovanniciuffrida:
+    :meeting: MEMORIAL GIOVANNI CIUFFRIDA
+    :city: Massarosa
+- mercatino:
+    :meeting: TROFEO MERCATINO DI BOLZANO
+    :city: Bolzano
+- messina:
+    :meeting: ULYSSE MASTER SPEED
+    :city: Messina
+- messinacusunime:
+    :meeting: 1° Trofeo CUS Unime
+    :city: Gussago
+- messinaulyssemasterspeed:
+    :meeting: Ulysse Master Speed
+    :city: Messina
+- milano:
+    :meeting: TROFEO MASTER DDS
+    :city: Milano
+- milanomasterdds:
+    :meeting: 15° Trofeo Master DDS
+    :city: Milano
+- modugnosantaclaus:
+    :meeting: TROFEO SANTA CLAUS
+    :city: Modugno
+- molfettaframaros:
+    :meeting: MEETING FRAMAROS
+    :city: Paterno
+- molinella:
+    :meeting: TROFEO MASTER MOLINELLA
+    :city: Molinella
+- monastiercasadicaccia:
+    :meeting: 1° Trofeo Casa di Caccia
+    :city: Monastier di Treviso
+- mondiali:
+    :meeting: MONDIALI MASTER FINA
+    :city: Riccione
+- mugnanoblueteam:
+    :meeting: TROFEO BLUE TEAM
+    :city: Mugnano
+- mugnanodinapoliblueteam:
+    :meeting: 9° Trofeo Blue Team
+    :city: Mugnano
+- mussi:
+    :meeting: TROFEO MUSSI-LOMBARDI-FEMIANO
+    :city: Viareggio
+- napolifritzdennerlein:
+    :meeting: 1° Trofeo Fritz Dennerlein
+    :city: Napoli
+- napoliilgabbiano:
+    :meeting: 5° Trofeo Il Gabbiano
+    :city: Napoli
+- nibionno:
+    :meeting: TROFEO LARIO E BRIANZA
+    :city: NIBIONNO
+- nibionnolarioebrianza:
+    :meeting: 16° Trofeo Lario e Brianza
+    :city: NIBIONNO
+- nociotre:
+    :meeting: TROFEO OTRE'
+    :city: Noci
+- novara:
+    :meeting: TROFEO CITTA' DI NOVARA
+    :city: Novara
+- nuovonuoto:
+    :meeting: TROFEO NUOVONUOTO - US ACLI
+    :city: Bologna
+- olbia:
+    :meeting: TROFEO COSTA SMERALDA
+    :city: Olbia
+- olbiaandreacorda:
+    :meeting: 4° Memorial Andrea Corda
+    :city: Olbia
+- olbiacostasmeralda:
+    :meeting: 5° Trofeo Costa Smeralda
+    :city: Olbia
+- osimosenzatesta:
+    :meeting: MEETING SENZA TESTA
+    :city: Osimo
+- ostia:
+    :meeting: MEMORIAL CELIO BRUNELLESCHI
+    :city: Roma
+- ostiabrunelleschi:
+    :meeting: 8° Memorial Brunelleschi
+    :city: Ostia
+- ostiaceliobrunelleschi:
+    :meeting: MEMORIAL CELIO BRUNELLESCHI
+    :city: Ostia
+- padova:
+    :meeting: MEMORIAL MAX ZUIN
+    :city: Padova
+- padovafondazionesaluspueri:
+    :meeting: 1° Trofeo SNP Fondazione Salus Pueri
+    :city: Padova
+- padovamaxzuin:
+    :meeting: MEMORIAL MAX ZUIN
+    :city: Padova
+- paganisprintdinatale:
+    :meeting: SPRINT DI NATALE
+    :city: Pagani
+- palermo:
+    :meeting: TROFEO POLISPORTIVA PALERMO
+    :city: Palermo
+- palermoacquasport:
+    :meeting: 2° Trofeo Acquasport
+    :city: Palermo
+- palermocampionatiitalianiestivi:
+    :meeting: Campionati Italiani Estivi
+    :city: Palermo
+- palermoduegiornidicloro:
+    :meeting: DUE GIORNI DI CLORO
+    :city: Palermo
+- palermogiornidicloro:
+    :meeting: 2 giorni di cloro
+    :city: Palermo
+- palermogiornidiclorowaterpolo:
+    :meeting: 2 giorni di cloro - Waterpolo
+    :city: Palermo
+- palermoironswim:
+    :meeting: TROFEO IRONSWIM
+    :city: Palermo
+- palermopinacattarinich:
+    :meeting: 4° Trofeo Pina Cattarinich
+    :city: Palermo
+- palermopolisportivapalermo:
+    :meeting: 9° Trofeo Polisportiva Palermo
+    :city: Palermo
+- parmacoopernuoto:
+    :meeting: 1° Trofeo Coopernuoto
+    :city: Parma
+- pavia:
+    :meeting: 3° Trofeo Città  di Pavia
+    :city: Pavia
+- pesarodirossini:
+    :meeting: TROFEO CITTA' DI ROSSINI
+    :city: Pesaro
+- pesarorossini:
+    :meeting: 2° Trofeo Città di Rossini
+    :city: Pesaro
+- pescara:
+    :meeting: CERTAME DANNUNZIANO
+    :city: Pescara
+- piacenza:
+    :meeting: TROFEO MASTER VITTORINO DA FELTRE
+    :city: Piacenza
+- piacenzamastervittorinodafeltre:
+    :meeting: 3° Trofeo Master Vittorino da Feltre
+    :city: Piacenza
+- pietralcina:
+    :meeting: TROFEO JOLLY NUOTO
+    :city: Pietrelcina
+- pietrelcinajollynuoto:
+    :meeting: TROFEO JOLLY NUOTO
+    :city: Pietrelcina
+- poggibonsi:
+    :meeting: 1° Trofeo Poggibonsi
+    :city: Poggibonsi
+- poggibonsibuonconvento:
+    :meeting: 8° Trofeo Buonconvento
+    :city: Poggibonsi
+- pomezia:
+    :meeting: TROFEO LATINA ACQUATEAM
+    :city: Pomezia
+- pomezialatinaacquateam:
+    :meeting: TROFEO LATINA ACQUATEAM
+    :city: Pomezia
+- pomezialatinaaquateam:
+    :meeting: 2° Trofeo Latina Aquateam
+    :city: Pomezia
+- ponente:
+    :meeting: TROFEO NUOTO PONENTE
+    :city: Genova
+- pontederadellavaldera:
+    :meeting: MEETING MASTERS DELLA VALDERA
+    :city: Pontedera
+- portici:
+    :meeting: TROFEO NUOTATORI CAMPANI
+    :city: Portici
+- porticinuotatoricampani:
+    :meeting: 4° Trofeo Nuotatori Campani
+    :city: Portici
+- pozzuoliflegreo:
+    :meeting: 3° Trofeo Flegreo
+    :city: Pozzuoli
+- pozzuolileone:
+    :meeting: 1° Memorial Leone
+    :city: Pozzuoli
+- pratosergiofaggi:
+    :meeting: 9° Trofeo Sergio Faggi
+    :city: Prato
+- priologargalloallswimpro:
+    :meeting: 1° Trofeo All Swim Pro
+    :city: Priolo Gargallo
+- priologargallomaydayitaliamaster:
+    :meeting: 5° tr Mayday Italia master
+    :city: Priolo Gargallo
+- putignanoestivo:
+    :meeting: 5° Trofeo Estivo
+    :city: Putignano
+- putignanonadir:
+    :meeting: 6° Trofeo Nadir
+    :city: Putignano
+- putignanospeedonadir:
+    :meeting: TROFEO NADIR
+    :city: Putignano
+- rapallo:
+    :meeting: TROFEO AZZURRI D'ITALIA
+    :city: Rapallo
+- rapallomasterdiprimavera:
+    :meeting: TROFEO MASTER DI PRIMAVERA
+    :city: Rapallo
+- rapallopremioazzurriditalia:
+    :meeting: 18° Premio Azzurri d`Italia
+    :city: Rapallo
+- ravenna:
+    :meeting: TROFEO CITTA' DI RAVENNA
+    :city: Ravenna
+- regabruzzo:
+    :meeting: REGIONALI ABRUZZO
+    :city: Pescara
+- regbasilicata:
+    :meeting: Campionati Regionali Basilicata
+    :city: Potenza
+- regcalabria:
+    :meeting: REGIONALI CALABRIA
+    :city: Catanzaro
+- regcampania:
+    :meeting: REGIONALI CAMPANIA
+    :city: Napoli
+- regemilia:
+    :meeting: REGIONALI FIN EMILIA
+    :city: Molinella
+- regfriulivg:
+    :meeting: Campionati Regionali Friuli VG
+    :city: Trieste
+- reggio:
+    :meeting: TROFEO CITTA' DI REGGIO EMILIA
+    :city: Reggio nell Emilia
+- reggioemiliamastermind:
+    :meeting: TROFEO MASTER MIND
+    :city: Reggio nell Emilia
+- reglazio:
+    :meeting: REGIONALI LAZIO
+    :city: Ostia
+- regliguria:
+    :meeting: REGIONALI LIGURIA
+    :city: Genova
+- reglombardia:
+    :meeting: REGIONALI LOMBARDIA
+    :city: Brescia
+- regmarche:
+    :meeting: REGIONALI MARCHE
+    :city: Senigallia
+- regmolise:
+    :meeting: REGIONALI MOLISE
+    :city: Campodipietra
+- regpiemonte:
+    :meeting: REGIONALI PIEMONTE
+    :city: Torino
+- regpuglia:
+    :meeting: Regionali Puglia
+    :city: Bari
+- regsardegna:
+    :meeting: REGIONALI SARDEGNA
+    :city: Cagliari
+- regsicilia:
+    :meeting: REGIONALI SICILIA
+    :city: Palermo
+- regtoscana:
+    :meeting: REGIONALI FIN TOSCANA
+    :city: Arezzo
+- regtrentinoaltoadige:
+    :meeting: REGIONALI TRENTINO-ALTO ADIGE
+    :city: Bolzano
+- regumbria:
+    :meeting: REGIONALI UMBRIA
+    :city: Bastia
+- regveneneto:
+    :meeting: REGIONALI FIN VENETO-FRIULI
+    :city: Lignano Sabbiadoro
+- regveneto:
+    :meeting: Campionati Regionali Veneto
+    :city: Lignano Sabbiadoro
+- regvenetoefriuli:
+    :meeting: REGIONALI VENETO E FRIULI
+    :city: Vicenza
+- regvenetoefriulivg:
+    :meeting: REGIONALI VENETO E FRIULI VG
+    :city: Lignano Sabbiadoro
+- riccione:
+    :meeting: TROFEO CITTA' DI RICCIONE
+    :city: Riccione
+- romaacqaniene:
+    :meeting: TROFEO AQUANIENE
+    :city: Roma
+- romaaquaniene:
+    :meeting: 1° Trofeo AquAniene
+    :city: Roma
+- romabrunelleschi:
+    :meeting: 4° Memorial Brunelleschi
+    :city: Ostia
+- romaflaminiosc:
+    :meeting: 13° Meeting Flaminio SC
+    :city: Roma
+- romaflaminiosg:
+    :meeting: MEETING FLAMINIO SG
+    :city: Roma
+- romaforumsprint:
+    :meeting: 16° Trofeo Forum Sprint
+    :city: Roma
+- romamasterbabel:
+    :meeting: 1° Trofeo Master Babel
+    :city: Roma
+- romanantesostiensis:
+    :meeting: 6° Trofeo Nantes Ostiensis
+    :city: Roma
+- romanotachinuota:
+    :meeting: '4° Trofeo Nota chi Nuota '
+    :city: Roma
+- romaolgiata2012:
+    :meeting: 1° Meeting Olgiata 20.12
+    :city: Roma
+- romapaolocostoli:
+    :meeting: TROFEO PAOLO COSTOLI
+    :city: Roma
+- romapcostoli:
+    :meeting: 2° Trofeo P. Costoli
+    :city: Roma
+- romaromanuotomaster:
+    :meeting: TROFEO ROMA NUOTO MASTER
+    :city: Roma
+- rovigo:
+    :meeting: TROFEO ROVIGO NUOTO
+    :city: Rovigo
+- rovigorovigonuoto:
+    :meeting: 16° Trofeo Rovigo Nuoto
+    :city: Rovigo
+- sagata:
+    :meeting: TROFEO S. AGATA
+    :city: Catania
+- sagatadimilitellowellnext:
+    :meeting: 1° Trofeo Wellnext
+    :city: Sant'Agata di Militello
+- saintvincent:
+    :meeting: TROFEO SAINT VINCENT
+    :city: Saint-Vincent
+- sandonadelpiavedelpiave:
+    :meeting: TROFEO DEL PIAVE
+    :city: San Donà di Piave
+- sanmarino:
+    :meeting: TROFEO SAN MARINO
+    :city: San Marino
+- sanmarinorepubblica:
+    :meeting: MEETING CITTA' DI SAN MARINO
+    :city: San Marino
+- sanmarinorepubblicasmarino:
+    :meeting: 12° Trofeo Repubblica S.Marino
+    :city: San Marino
+- sansalvotanocroce:
+    :meeting: MEMORIAL TANO CROCE
+    :city: San Salvo
+- santurbanoaquambiente:
+    :meeting: TROFEO AQUAMBIENTE
+    :city: Sant'Urbano
+- saronno:
+    :meeting: 4° Trofeo Città  di Saronno
+    :city: Saronno
+- sassuolo:
+    :meeting: 1° Trofeo Citta` di Sassuolo
+    :city: Sassuolo
+- scanzanoionicodonatoparadiso:
+    :meeting: 4° Trofeo Donato Paradiso
+    :city: Scanzano
+- scanzanoionicoscanzano:
+    :meeting: 3° Trofeo Città Di Scanzano
+    :city: Scanzano
+- sdonadipiave:
+    :meeting: TROFEO DEL PIAVE
+    :city: San Donà di Piave
+- senigallia:
+    :meeting: MEETING ROCCA ROVERESCA
+    :city: Senigallia
+- senigalliaroccaroveresca:
+    :meeting: 6° Meeting Rocca Roveresca
+    :city: Senigallia
+- seregno:
+    :meeting: TROFEO MASTER
+    :city: Seregno
+- seregnomaster:
+    :meeting: TROFEO MASTER
+    :city: Seregno
+- seregnomasterseregno:
+    :meeting: 8° Trofeo Master Seregno
+    :city: Seregno
+- siracusa:
+    :meeting: 12° trofeo Città  di Siracusa
+    :city: Siracusa
+- siracusasluciadellequaglie:
+    :meeting: 11° S. Lucia delle Quaglie
+    :city: Siracusa
+- sondrio:
+    :meeting: MEETING LIB SNEF
+    :city: Sondrio
+- sondriolibsnef:
+    :meeting: 6° Meeting LIB SNEF
+    :city: Sondrio
+- sondriosnef:
+    :meeting: 11° Meeting SNEF
+    :city: Sondrio
+- sori:
+    :meeting: TROFEO RN SORI
+    :city: Sori
+- sorirnsori:
+    :meeting: 2° Trofeo RN Sori
+    :city: Sori
+- speccampania:
+    :meeting: DISTANZE SPECIALI CAMPANIA
+    :city: Striano
+- specemilia:
+    :meeting: DISTANZE SPECIALI EMILIA
+    :city: San Marino
+- speclazio:
+    :meeting: DISTANZE SPECIALI LAZIO
+    :city: Civitavecchia
+- specliguria:
+    :meeting: DISTANZE SPECIALI LIGURIA
+    :city: Genova
+- speclombardia:
+    :meeting: DISTANZE SPECIALI LOMBARDIA
+    :city: Milano
+- spoletodeiduemondi:
+    :meeting: TROFEO DEI DUE MONDI
+    :city: Spoleto
+- striano:
+    :meeting: MEETING CITTA' DI STRIANO
+    :city: Striano
+- taormina:
+    :meeting: TROFEO MAYDAY ITALIA MASTER
+    :city: Taormina
+- taorminamaydayitaliamaster:
+    :meeting: 1° tr Mayday Italia master
+    :city: Taormina
+- taranto:
+    :meeting: MEETING CITTÀ DI TARANTO
+    :city: Taranto
+- tarantomeridianamastercup:
+    :meeting: MERIDIANA MASTER CUP
+    :city: Taranto
+- torinomanifestazioneestiva:
+    :meeting: Manifestazione Estiva
+    :city: Torino
+- tortona:
+    :meeting: 9° Trofeo Città  di Tortona
+    :city: Tortona
+- trabiamasternuoto:
+    :meeting: 1° trofeo Master Nuoto
+    :city: Trabia
+- trabiatorreartale:
+    :meeting: 1° Trofeo Torre Artale
+    :city: Trabia
+- travagliato:
+    :meeting: 10° Trofeo Città  di Travagliato
+    :city: Travagliato
+- trento:
+    :meeting: MEETING TRENTINO MASTER
+    :city: Trento
+- trentobuonconsiglio:
+    :meeting: 3° Trofeo Buonconsiglio
+    :city: Trento
+- trentobuonconsiglionuoto:
+    :meeting: TROFEO BUONCONSIGLIO NUOTO
+    :city: Trento
+- trentonuotatoritrentini:
+    :meeting: TROFEO NUOTATORI TRENTINI
+    :city: Trento
+- trentotrentinomaster:
+    :meeting: 26° Meeting Trentino Master
+    :city: Trento
+- treviso:
+    :meeting: MEMORIAL A. BETTIOL
+    :city: Treviso
+- trevisoabettiol:
+    :meeting: MEMORIAL A. BETTIOL
+    :city: Treviso
+- trevisobettiol:
+    :meeting: 12° Memorial Bettiol
+    :city: Treviso
+- triestemaurizialenardon:
+    :meeting: 1° Memorial Maurizia Lenardon
+    :city: Trieste
+- uispregemilia:
+    :meeting: CAMPIONATI REGIONALI MASTER UISP
+    :city: Imola
+- umbertidesprintumbertide:
+    :meeting: 1° Trofeo Sprint Umbertide
+    :city: Umbertide
+- varedonordpadania:
+    :meeting: 22° Trofeo Nord Padania
+    :city: Varedo
+- verolanuova:
+    :meeting: 12° Trofeo Città di Verolanuova
+    :city: Verolanuova
+- verona:
+    :meeting: MEMORIAL E. BRUNELLI
+    :city: Verona
+- viareggio:
+    :meeting: MEMORIAL GIOVANNI CIUFFRIDA
+    :city: Viareggio
+- viareggiociuffreda:
+    :meeting: 13° Memorial Ciuffreda
+    :city: Viareggio
+- viareggiomussilombardifemiano:
+    :meeting: 6° Trofeo Mussi Lombardi Femiano
+    :city: Viareggio
+- vicenza:
+    :meeting: TROFEO MASTER NUOTO VICENZA
+    :city: Vicenza
+- vicenzamasternuotovicenza:
+    :meeting: 9° Trofeo Master Nuoto Vicenza
+    :city: Vicenza
+- vicenzamastervicenza:
+    :meeting: TROFEO MASTER VICENZA
+    :city: Vicenza
+- vicenzatrfmasternuotovicenza:
+    :meeting: 5° Trf. Master Nuoto Vicenza
+    :city: Vicenza
+- vimercate:
+    :meeting: 30° Trofeo Città  di Vimercate
+    :city: Vimercate
+- viterbo:
+    :meeting: TROFEO LARUS MASTER
+    :city: Viterbo
+- viterboabteam:
+    :meeting: 1° Trofeo AB Team
+    :city: Viterbo
+- viterbolarusmaster:
+    :meeting: 11° Trofeo Larus Master
+    :city: Viterbo

@@ -1,0 +1,35 @@
+en:
+  issues:
+    ask_confirmation: "Really? ...Are you sure to proceed?"
+    from_title: "From"
+    what_title: "For"
+    requested_fix: "Requested fix"
+    current_result: "Current result"
+    result_to_be_edited: "Result to be edited"
+    existing_results: "Existing results for %{event_label} (ID: %{event_type_id}), gender: %{gender_type_id}, cat.: %{category_type_id}"
+    badge_results: "Existing results for badge %{badge_id} (swimmer_id: %{swimmer_id}, team_id: %{team_id})"
+    existing_request_count: "Enqueued issues (sorted or not): %{total}"
+    send_email_label: "Send also an email telling the user that this issue has been sorted out?"
+    grid:
+      params:
+        code: "Code"
+        priority: "Priority"
+        status: "Status"
+      buttons:
+        check_label: " Check"
+        fix_label: " Accept and auto-solve"
+    type0:
+      existing_tms: "Existing Team Managers"
+    msgs:
+      update_ok: "Row updated!"
+      api_error_with_action: "API: error during %{action_desc}! Check the error log file."
+    type2b1:
+      filtered_swimmers_list: "Swimmers for '%{name}'"
+      same_named_teams: "Same-named teams"
+    type3b:
+      chosen_swimmer_association: "Chosen swimmer is already associated to:"
+    type3c:
+      swimmer_id_zero_note: "Set the swimmer_id to 0 force creation of a new swimmer using the values supplied by the user. HEADS UP: no duplicate check will be done!"
+    type5:
+      email_subject: "Account reactivated"
+      email_body: "Your master-goggles.org account has been reactivated."

@@ -1,0 +1,100 @@
+-# Detect feasability of multi-push
+- if files.present? && filter.present? && filter == '*.sql'
+  .row-fluid
+    .container
+      .row.justify-content-left.ml-0.mb-2
+        .btn-group.mx-1.my-0#push-all-btn
+          = link_to(push_upload_path(file_path: File.join(curr_dir, '*.sql')), method: :post,
+                                     class: 'btn btn-sm btn-outline-warning mb-1', data: { toggle: 'tooltip',
+                                     title: t('data_import.push.btn_all_sql_files_tooltip'),
+                                     confirm: t('data_import.push.btn_all_sql_files_confirm') }) do
+            %span
+              = t('data_import.push.btn_all_sql_files')
+              %i.fa.fa-upload
+
+.row-fluid
+  .container
+    - if curr_dir.present? && dirnames.present?
+      = form_tag(update_result_files_path(filter: filter, parent_folder: parent_folder), id: 'frm-dir-filter',
+                 method: :put, remote: true) do
+        .row
+          .col
+            .form-group
+              = select_tag('curr_dir', options_for_select(dirnames, curr_dir), class: 'form-control')
+          .col-2
+            .form-group
+              = submit_tag('↩', id: 'btn-apply-dir-filter', class: 'btn btn-sm btn-primary pt-1 mt-1',
+                           'aria-label' => 'select current directory', type: 'submit')
+
+    %table.table.table-striped.table-hover.table-sm
+      %thead
+        %tr.bg-light-blue
+          %th.text-center{ scope: 'col' }
+            %i Bytes
+          %th.text-center{ scope: 'col' }
+            %i Filenames (#{files&.size})
+          %th.text-center{ scope: 'col' }
+            &nbsp;
+      %tbody
+        - files&.each do |full_pathname|
+          - extname = File.extname(full_pathname)
+          %tr
+            %td.text-right
+              = File.size(full_pathname)
+            %td
+              = File.basename(full_pathname)
+            %td.text-left
+              = link_to(pull_file_delete_path(file_path: full_pathname), method: :delete, remote: true,
+                        class: 'btn btn-sm btn-outline-danger mb-1',
+                        data: { toggle: 'tooltip', title: t('data_import.file.btn_delete_tooltip'),
+                        confirm: t('data_import.file.confirm_delete') }) do
+                %i.fa.fa-trash-o
+              &nbsp;
+              = link_to(pull_edit_name_path(file_path: full_pathname), remote: true,
+                        class: 'btn btn-sm btn-outline-primary mb-1', data: { toggle: 'tooltip',
+                        title: t('data_import.file.btn_rename_tooltip') }) do
+                %i.fa.fa-text-width
+              &nbsp;
+              - if extname != '.pdf'
+                = link_to(pull_edit_file_path(file_path: full_pathname), remote: true,
+                          class: 'btn btn-sm btn-outline-success mb-1', data: { toggle: 'tooltip',
+                          title: t('data_import.file.btn_edit_tooltip') }) do
+                  %i.fa.fa-pencil-square-o
+
+              - case extname
+              - when '.csv'
+                &nbsp;
+                = link_to(process_calendar_file_path(file_path: full_pathname), method: :post,
+                          class: 'btn btn-sm btn-outline-warning mb-1', data: { toggle: 'tooltip',
+                          title: t('data_import.file.btn_process_csv_tooltip') }) do
+                  %i.fa.fa-bolt
+              - when '.json'
+                &nbsp;
+                = link_to(review_sessions_path(file_path: full_pathname), method: :get,
+                          class: 'btn btn-sm btn-outline-warning mb-1', data: { toggle: 'tooltip',
+                          title: t('data_import.file.btn_process_json_tooltip') }) do
+                  %i.fa.fa-cogs
+              - when '.pdf'
+                &nbsp;
+                = link_to(pdf_extract_txt_path(file_path: full_pathname), method: :get,
+                          class: 'btn btn-sm btn-outline-warning mb-1', data: { toggle: 'tooltip',
+                          title: t('data_import.file.btn_process_pdf_tooltip') }) do
+                  %i.fa.fa-cogs
+                - if File.exist?(full_pathname.to_s.gsub('.pdf', '.txt'))
+                  &nbsp;
+                  %small TXT✔
+                - if File.exist?(full_pathname.to_s.gsub('.pdf', '.json'))
+                  &nbsp;
+                  %small JSON✔
+              - when '.sql'
+                &nbsp;
+                = link_to(push_upload_path(file_path: full_pathname), method: :post,
+                          class: 'btn btn-sm btn-outline-warning mb-1', data: { toggle: 'tooltip',
+                          title: t('data_import.file.btn_process_sql_tooltip'),
+                          confirm: t('data_import.file.confirm_push') }) do
+                  %i.fa.fa-upload
+- if files && files.empty?
+  .row-fluid.my-4
+    .text-center.py-4.noresults= I18n.t('datagrid.no_results')
+
+#file-modal

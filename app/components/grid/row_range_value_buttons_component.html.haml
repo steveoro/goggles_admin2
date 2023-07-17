@@ -1,0 +1,9 @@
+.d-flex.justify-content-around
+  = button_to(action_path_for_increase, id: "btn-#{@column_name}-plus-#{@asset_row.id}", method: :put,
+              disabled: !can_increase?,
+              class: "btn btn-sm btn-outline-primary px-1 py-0 ml-0 mr-1 my-0 #{can_increase? ? '' : 'disabled'}") do
+    %i.fa.fa-arrow-up
+  = button_to(action_path_for_decrease, id: "btn-#{@column_name}-minus-#{@asset_row.id}", method: :put,
+              disabled: !can_decrease?,
+              class: "btn btn-sm btn-outline-primary px-1 py-0 mx-0 my-0 #{can_decrease? ? '' : 'disabled'}") do
+    %i.fa.fa-arrow-down

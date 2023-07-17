@@ -8,19 +8,10 @@ class ImportQueuesGrid < BaseGrid
   # Returns the scope for the grid. (#assets is the filtered version of it)
   scope { data_domain }
 
-  # Unscoped data_domain read accessor
-  def unscoped
-    data_domain
-  end
-
   decorate { |row| GogglesDb::ImportQueueDecorator.new(row) }
 
-  filter(:id, :integer)
   filter(:user_id, :integer)
   filter(:done, :boolean)
-  filter(:created_at, :date, range: true, input_options: {
-           maxlength: 10, placeholder: 'YYYY-MM-DD'
-         })
 
   selection_column(mandatory: true)
   column(:id, align: :right, mandatory: true)

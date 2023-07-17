@@ -1,0 +1,12 @@
+.row-fluid.text-center.pb-3.my-2
+  %ul.nav.nav-tabs
+    %li.nav-item
+      - active = active_tab == 'new'
+      %a.nav-link{ href: active ? '#' : push_index_path(parent_folder: 'results.new'), class: active ? 'active' : nil }
+        = t('data_import.push.new_results_tab_name')
+        %pre results.new
+    %li.nav-item
+      - active = active_tab == 'sent'
+      %a.nav-link{ href: active ? '#' : push_index_path(parent_folder: 'results.sent'), class: active ? 'active' : nil }
+        = t('data_import.push.sent_results_tab_name')
+        %pre results.sent

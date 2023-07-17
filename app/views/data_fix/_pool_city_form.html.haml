@@ -1,0 +1,39 @@
+= hidden_field_tag("city[#{index}][key]", city_key) # special case for City, which is at nested depth 3
+- city_id = swimming_pool&.city_id || city&.id
+.row
+  .col-lg-5.col-md-6
+    = render(AutoCompleteComponent.new(show_top_labels: true,
+            base_dom_id: "city[#{index}]", base_api_url: api_url,
+            default_value: city_id,
+            detail_endpoint: 'city', base_name: 'city', label_column: 'area',
+            search_endpoint: 'cities', search_column: 'name',
+            target3_dom_id: "city_#{index}_name", target3_column: 'name',
+            target4_dom_id: "city_#{index}_area", target4_column: 'area',
+            target5_dom_id: "city_#{index}_zip", target5_column: 'zip',
+            target6_dom_id: "city_#{index}_country_code", target6_column: 'country_code',
+            jwt: current_user.jwt))
+  .col-lg-4.col-md-6
+    .form-group
+      .field
+        = label_tag("city[#{index}][name]", 'name')
+        = text_field_tag("city[#{index}][name]", city&.name,
+                          class: 'form-control', placeholder: 'name', onchange: onchange_event,
+                          data: { 'coded-name-target' => 'city' })
+  .col-lg-3.col-md-6
+    .form-group
+      .field
+        = label_tag("city[#{index}][area]", 'area')
+        = text_field_tag("city[#{index}][area]", city&.area,
+                          class: 'form-control', placeholder: 'area')
+  .col-lg-2.col-md-3.col-sm-3
+    .form-group
+      .field
+        = label_tag("city[#{index}][zip]", 'zip')
+        = text_field_tag("city[#{index}][zip]", city&.zip,
+                          class: 'form-control', placeholder: 'zip')
+  .col-lg-1.col-md-3.col-sm-3
+    .form-group
+      .field
+        = label_tag("city[#{index}][country_code]", 'country_code')
+        = text_field_tag("city[#{index}][country_code]", city&.country_code,
+                          class: 'form-control', placeholder: 'country_code')

@@ -1,0 +1,21 @@
+%section
+  %h5.py-2= title
+  %table.table.table-striped.table-sm
+    %thead.text-center
+      %tr.table-info
+        %th
+          %code complete_name (id)
+        %th
+          %code year / gender
+    %tbody
+      - if filtered_swimmers
+        - filtered_swimmers.each do |swimmer|
+          -# Highlight table row if it belongs to the parent row:
+          %tr.text-right{ class: swimmer.id == row_swimmer_id.to_i ? 'table-warning' : '' }
+            %td.text-left
+              #{swimmer.complete_name}
+              %small (id: #{swimmer.id})
+            %td.text-left
+              #{swimmer.year_of_birth},
+              #{swimmer.gender_type.code}
+              %small (id: #{swimmer.gender_type_id})

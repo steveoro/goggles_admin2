@@ -1,0 +1,102 @@
+.row-fluid
+  -# TODO: REFACTOR into Import::OriginalTextLabel
+  .bg-light-grey
+    %small
+      %i.form-text.text-muted
+        %pre
+          - ordinal = index + 1
+          🔑 #{data_hash["venue#{ordinal}"]} (#{data_hash['poolLength']} m.)
+          &nbsp; / &nbsp;
+          = data_hash["address#{ordinal}"]
+
+:ruby
+  swimming_pool_id = meeting_session.swimming_pool_id || swimming_pool&.id
+  city_id = swimming_pool&.city_id || city&.id
+  src_dom = '#search_pool_id'
+  target_dom = "#swimming_pool_#{index}_swimming_pool_id"
+  onclick_event = "$('#{target_dom}').val($('#{src_dom}').val()); $('#{target_dom}').trigger('change')"
+
+.row
+  - if city_id.present?
+    - pool_collection = GogglesDb::SwimmingPool.where(city_id: city_id)
+    .field.col-8.mt-1
+      = label_tag('search_pool_id', 'Existing pools')
+      = select_tag('search_pool_id', options_from_collection_for_select(pool_collection, 'id', 'name',
+                   swimming_pool_id), include_blank: true, class: 'form-control', onclick: onclick_event)
+  .col-lg-5.col-md-6
+    = render(AutoCompleteComponent.new(show_top_labels: true,
+            base_dom_id: "swimming_pool[#{index}]", base_api_url: api_url,
+            default_value: swimming_pool_id,
+            detail_endpoint: 'swimming_pool', base_name: 'swimming_pool', label_column: 'name',
+            search_endpoint: 'swimming_pools', search_column: 'name',
+            target3_dom_id: "swimming_pool_#{index}_name", target3_column: 'name',
+            target4_dom_id: "swimming_pool_#{index}_nick_name", target4_column: 'nick_name',
+            target5_dom_id: "swimming_pool_#{index}_address", target5_column: 'address',
+            target6_dom_id: "swimming_pool_#{index}_pool_type_id", target6_column: 'pool_type_id',
+            target7_dom_id: "swimming_pool_#{index}_lanes_number", target7_column: 'lanes_number',
+            target8_dom_id: "swimming_pool_#{index}_maps_uri", target8_column: 'maps_uri',
+            target9_dom_id: "swimming_pool_#{index}_latitude", target9_column: 'latitude',
+            target10_dom_id: "swimming_pool_#{index}_longitude", target10_column: 'longitude',
+            target11_dom_id: "swimming_pool_#{index}_plus_code", target11_column: 'plus_code',
+            target12_dom_id: "city_#{index}_city_id", target12_column: 'city_id',
+            jwt: current_user.jwt))
+  .col-lg-4.col-md-6
+    .form-group
+      .field
+        = label_tag("swimming_pool[#{index}][name]", 'name')
+        = text_field_tag("swimming_pool[#{index}][name]", swimming_pool&.name, required: true,
+                          class: 'form-control', placeholder: 'Pool name', onchange: onchange_event,
+                          data: { 'coded-name-target' => 'name' })
+  .col-lg-3.col-md-6.col-sm-8
+    .form-group
+      .field
+        = label_tag("swimming_pool[#{index}][nick_name]", 'nick_name')
+        = text_field_tag("swimming_pool[#{index}][nick_name]", swimming_pool&.nick_name, required: true,
+                          class: 'form-control', placeholder: 'Coded name',
+                          data: { 'coded-name-target' => 'field' })
+  .col-lg-5.col-md-6
+    .form-group
+      .field
+        = label_tag("swimming_pool[#{index}][address]", 'address')
+        = text_field_tag("swimming_pool[#{index}][address]", swimming_pool&.address,
+                          class: 'form-control', placeholder: 'address', onchange: onchange_event)
+  .col-lg-2.col-md-4.col-sm-4
+    = label_tag("swimming_pool[#{index}][pool_type_id]", 'pool_type_id')
+    = select_tag("swimming_pool[#{index}][pool_type_id]", pool_type_opts, class: 'form-control',
+                  data: { 'autocomplete-target' => 'field2', 'coded-name-target' => 'pool' })
+  .col-lg-1.col-md-3.col-sm-3
+    .form-group
+      .field
+        = label_tag("swimming_pool[#{index}][lanes_number]", 'lanes_number')
+        = number_field_tag("swimming_pool[#{index}][lanes_number]", swimming_pool&.lanes_number,
+                            class: 'form-control')
+.row
+  .col-lg-5.col-md-6
+    .form-group
+      .field
+        = label_tag("swimming_pool[#{index}][maps_uri]", 'maps_uri')
+        &nbsp;
+        %a{ id: "maps-uri-search-#{index}", href: initial_maps_href,
+            data: { toggle: 'tooltip', title: t('data_import.data_fix.btn_maps_search_tooltip') } }
+          %i.btn.btn-sm.btn-outline-primary.fa.fa-search
+            = t('data_import.data_fix.btn_maps_search')
+        = text_field_tag("swimming_pool[#{index}][maps_uri]", swimming_pool&.maps_uri,
+                          class: 'form-control', placeholder: 'Maps URI')
+  .col-lg-2.col-md-6.col-sm-4
+    .form-group
+      .field
+        = label_tag("swimming_pool[#{index}][plus_code]", 'plus_code')
+        = text_field_tag("swimming_pool[#{index}][plus_code]", swimming_pool&.plus_code,
+                          class: 'form-control', placeholder: '+ code')
+  .col-lg-2.col-md-3.col-sm-4
+    .form-group
+      .field
+        = label_tag("swimming_pool[#{index}][latitude]", 'latitude')
+        = text_field_tag("swimming_pool[#{index}][latitude]", swimming_pool&.latitude,
+                          class: 'form-control', placeholder: 'latitude')
+  .col-lg-2.col-md-3.col-sm-4
+    .form-group
+      .field
+        = label_tag("swimming_pool[#{index}][longitude]", 'longitude')
+        = text_field_tag("swimming_pool[#{index}][longitude]", swimming_pool&.longitude,
+                          class: 'form-control', placeholder: 'longitude')

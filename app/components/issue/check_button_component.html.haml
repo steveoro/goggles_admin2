@@ -1,0 +1,5 @@
+%br/
+= link_to(api_issue_check_path(id: @asset_row.id), { id: dom_id, class: 'btn btn-warning' }, role: 'button') do
+  %span
+    %i.fa.fa-cog
+    = I18n.t('issues.grid.buttons.check_label')

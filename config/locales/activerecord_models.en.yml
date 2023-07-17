@@ -4,6 +4,7 @@ en:
       goggles_db/badge: Badge
       goggles_db/meeting_session: Session
       goggles_db/meeting: Meeting
+      goggles_db/pool_type: Pool type
       goggles_db/swimming_pool: Swimming pool
       goggles_db/swimmer: Swimmer
       goggles_db/team: Team
@@ -96,6 +97,10 @@ en:
           attributes:
             entry_time_type:
               required: "is required"
+        goggles_db/federation_type:
+          attributes:
+            code:
+              already_exists: "esiste già"
         goggles_db/user:
           attributes:
             email:

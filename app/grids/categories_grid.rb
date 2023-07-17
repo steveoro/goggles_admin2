@@ -8,12 +8,6 @@ class CategoriesGrid < BaseGrid
   # Returns the scope for the grid. (#assets is the filtered version of it)
   scope { data_domain }
 
-  # Unscoped data_domain read accessor
-  def unscoped
-    data_domain
-  end
-
-  filter(:id, :integer)
   filter(:season_id, :integer)
   filter(:code)
   filter(:relay, :boolean)
@@ -29,7 +23,12 @@ class CategoriesGrid < BaseGrid
   column(:group_name, mandatory: true)
   column(:age_begin)
   column(:age_end)
-  column(:season_id, align: :right, mandatory: true)
+  column(
+    :season_type_name, header: 'Season', align: :right, html: true, mandatory: true,
+                       order: proc { |scope| scope.sort { |a, b| a.season_type.short_name <=> b.season_type.short_name } }
+  ) do |asset|
+    "<small><i>#{asset.season_type.code}</i></small> - #{asset.season.id}".html_safe
+  end
   boolean_column(:relay, align: :center, mandatory: true, order: false)
   boolean_column(:out_of_race, align: :center, mandatory: true, order: false)
   boolean_column(:undivided, align: :center)

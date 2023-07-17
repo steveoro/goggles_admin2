@@ -17,29 +17,23 @@ class APIBadgesController < ApplicationController
     result = APIProxy.call(
       method: :get, url: 'badges', jwt: current_user.jwt,
       params: {
-        swimmer_id: index_params[:swimmer_id], team_id: index_params[:team_id],
+        team_id: index_params[:team_id], team_affiliation_id: index_params[:team_affiliation_id],
         season_id: index_params[:season_id],
+        swimmer_id: index_params[:swimmer_id],
+        off_gogglecup: index_params[:off_gogglecup],
         fees_due: index_params[:fees_due],
         badge_due: index_params[:badge_due],
         relays_due: index_params[:relays_due],
         page: index_params[:page], per_page: index_params[:per_page]
       }
     )
-    json_domain = JSON.parse(result.body)
+    parsed_response = result.body.present? ? JSON.parse(result.body) : { 'error' => "Error #{result.code}" }
     unless result.code == 200
-      flash[:error] = I18n.t('dashboard.api_proxy_error', error_code: result.code, error_msg: json_domain['error'])
+      flash[:error] = I18n.t('dashboard.api_proxy_error', error_code: result.code, error_msg: parsed_response['error'])
       redirect_to(root_path) && return
     end
 
-    @domain_count = result.headers[:total].to_i
-    @domain_page = result.headers[:page].to_i
-    @domain_per_page = result.headers[:per_page].to_i
-
-    # Setup grid domain (and chart's):
-    @domain = json_domain.map { |attrs| GogglesDb::Badge.new(attrs) }
-
-    # Setup datagrid:
-    BadgesGrid.data_domain = @domain
+    set_grid_domain_for(BadgesGrid, GogglesDb::Badge, result.headers, parsed_response)
 
     respond_to do |format|
       @grid = BadgesGrid.new(grid_filter_params)
@@ -55,6 +49,29 @@ class APIBadgesController < ApplicationController
         )
       end
     end
+  end
+
+  # POST /api_badges
+  # Creates a new GogglesDb::Badge row.
+  #
+  # All instance attributes are accepted, minus lock_version & the timestamps, which are
+  # handled automatically.
+  #
+  def create
+    result = APIProxy.call(
+      method: :post,
+      url: 'badge',
+      jwt: current_user.jwt,
+      payload: create_params(GogglesDb::Badge)
+    )
+    json = parse_json_result_from_create(result)
+
+    if json.present? && json['msg'] == 'OK' && json['new'].key?('id')
+      flash[:info] = I18n.t('datagrid.edit_modal.create_ok', id: json['new']['id'])
+    else
+      flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: result.code)
+    end
+    redirect_to(api_badges_path(index_params))
   end
   # rubocop:enable Metrics/AbcSize
   #-- -------------------------------------------------------------------------
@@ -82,30 +99,7 @@ class APIBadgesController < ApplicationController
     else
       flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: result)
     end
-    redirect_to api_badges_path(page: index_params[:page], per_page: index_params[:per_page])
-  end
-
-  # POST /api_badges
-  # Creates a new GogglesDb::Badge row.
-  #
-  # All instance attributes are accepted, minus lock_version & the timestamps, which are
-  # handled automatically.
-  #
-  def create
-    result = APIProxy.call(
-      method: :post,
-      url: 'badge',
-      jwt: current_user.jwt,
-      payload: create_params(GogglesDb::Badge)
-    )
-    json = parse_json_result_from_create(result)
-
-    if json.present? && json['msg'] == 'OK' && json['new'].key?('id')
-      flash[:info] = I18n.t('datagrid.edit_modal.create_ok', id: json['new']['id'])
-    else
-      flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: result.code)
-    end
-    redirect_to api_badges_path(page: index_params[:page], per_page: index_params[:per_page])
+    redirect_to(api_badges_path(index_params))
   end
 
   # DELETE /api_badges
@@ -129,7 +123,7 @@ class APIBadgesController < ApplicationController
     else
       flash[:info] = I18n.t('dashboard.grid_commands.no_op_msg')
     end
-    redirect_to api_badges_path(page: index_params[:page], per_page: index_params[:per_page])
+    redirect_to(api_badges_path(index_params))
   end
   # rubocop:enable Metrics/AbcSize
   #-- -------------------------------------------------------------------------
@@ -143,10 +137,9 @@ class APIBadgesController < ApplicationController
     @grid_filter_params = params.fetch(:badges_grid, {}).permit!
   end
 
-  # Strong parameters checking for /index
+  # Strong parameters checking for /index, including pass-through from modal editors.
   # (NOTE: memoizazion is needed because the member variable is used in the view.)
   def index_params
-    @index_params = params.permit(:page, :per_page, :badges_grid)
-                          .merge(params.fetch(:badges_grid, {}).permit!)
+    index_params_for(:badges_grid)
   end
 end

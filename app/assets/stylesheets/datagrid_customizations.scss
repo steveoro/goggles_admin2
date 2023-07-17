@@ -18,6 +18,19 @@ th.ordered.desc a.desc {
 }
 
 #data-grid .datagrid-actions {
-  padding: 0px;
-  text-align: center !important;
+    padding: 0px;
+    text-align: center !important;
+}
+#data-grid .priority {
+    padding: 0px;
+    text-align: center !important;
+}
+#data-grid .status {
+    padding-left: 0.3em;
+    padding-right: 0.3em;
+    text-align: center !important;
+}
+#data-grid .created_at {
+    font-size: 0.7rem;
+    text-align: center !important;
 }

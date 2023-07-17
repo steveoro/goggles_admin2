@@ -23,22 +23,14 @@ class StatsController < ApplicationController
         page: index_params[:page], per_page: index_params[:per_page]
       }
     )
-    json_domain = JSON.parse(result.body)
+    parsed_response = result.body.present? ? JSON.parse(result.body) : { 'error' => "Error #{result.code}" }
     unless result.code == 200
-      flash[:error] = I18n.t('dashboard.api_proxy_error', error_code: result.code, error_msg: json_domain['error'])
+      flash[:error] = I18n.t('dashboard.api_proxy_error', error_code: result.code, error_msg: parsed_response['error'])
       redirect_to(root_path) && return
     end
 
-    @domain_count = result.headers[:total].to_i
-    @domain_page = result.headers[:page].to_i
-    @domain_per_page = result.headers[:per_page].to_i
-
-    # Setup grid domain (and chart's):
-    @domain = json_domain.map { |attrs| GogglesDb::APIDailyUse.new(attrs) }
+    set_grid_domain_for(StatsGrid, GogglesDb::APIDailyUse, result.headers, parsed_response)
     prepare_chart_domain(@domain)
-
-    # Setup datagrid:
-    StatsGrid.data_domain = @domain
 
     respond_to do |format|
       @grid = StatsGrid.new(grid_filter_params)
@@ -81,7 +73,7 @@ class StatsController < ApplicationController
     else
       flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: result)
     end
-    redirect_to stats_path(page: index_params[:page], per_page: index_params[:per_page])
+    redirect_to(stats_path(index_params))
   end
 
   # DELETE /stats
@@ -105,9 +97,35 @@ class StatsController < ApplicationController
     else
       flash[:info] = I18n.t('dashboard.grid_commands.no_op_msg')
     end
-    redirect_to stats_path(page: index_params[:page], per_page: index_params[:per_page])
+    redirect_to(stats_path(index_params))
   end
   # rubocop:enable Metrics/AbcSize
+  #-- -------------------------------------------------------------------------
+  #++
+
+  # POST /stats/clear
+  # Deletes all rows older than a specific date
+  #
+  # == Params:
+  # - <tt>older_than_day</tt>, delete all rows with day < this
+  #
+  def clear
+    day_param = params.permit('older_than_day')['older_than_day']
+    result = APIProxy.call(
+      method: :delete,
+      url: 'api_daily_uses',
+      jwt: current_user.jwt,
+      payload: { day: day_param }
+    )
+    if result.code == 200
+      flash[:info] = I18n.t('datagrid.clear_stats.clear_ok')
+    else
+      logger.error("\r\n*** ERROR: 'CLEAR API stats(day: #{day_param}')")
+      logger.error(result.inspect)
+      flash[:error] = I18n.t('datagrid.clear_stats.clear_failed', error: result.code)
+    end
+    redirect_to(stats_path(index_params))
+  end
   #-- -------------------------------------------------------------------------
   #++
 
@@ -119,11 +137,10 @@ class StatsController < ApplicationController
     @grid_filter_params = params.fetch(:stats_grid, {}).permit!
   end
 
-  # Strong parameters checking for /index
+  # Strong parameters checking for /index, including pass-through from modal editors.
   # (NOTE: memoizazion is needed because the member variable is used in the view.)
   def index_params
-    @index_params = params.permit(:page, :per_page, :stats_grid)
-                          .merge(params.fetch(:stats_grid, {}).permit!)
+    index_params_for(:stats_grid)
   end
 
   #

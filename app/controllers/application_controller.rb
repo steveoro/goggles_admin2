@@ -73,6 +73,21 @@ class ApplicationController < ActionController::Base
   #-- -------------------------------------------------------------------------
   #++
 
+  # Strong parameters checking for /index, including pass-through from modal editors
+  # given a specific datagrid_name.
+  #
+  # (NOTE: memoizazion is needed because the member variable is used in the view.)
+  def index_params_for(datagrid_name)
+    @index_params = params.permit(:page, :per_page, datagrid_name)
+    return @index_params.merge(params.fetch(datagrid_name, {}).permit!) if params[datagrid_name].respond_to?(:fetch)
+
+    # Assuming the pass-through filtering parameters for the grid are a valid JSONified
+    # string, we'll parse them to rebuild the grid filters:
+    # (both boxed & unboxed params are currently needed)
+    pass_through = @index_params[datagrid_name].is_a?(String) ? JSON.parse(@index_params[datagrid_name]) : {}
+    @index_params.merge(pass_through).merge(datagrid_name => pass_through).permit!
+  end
+
   # Returns the sub-hash of namespaced params according to the specified <tt>namespace</tt>
   # (using <tt>require()</tt>), or the params Hash itself when no namespace is given.
   #
@@ -93,7 +108,7 @@ class ApplicationController < ActionController::Base
     namespaced_params(namespace).permit(
       model_class.new
                  .attributes.keys
-                 .reject { |key| %w[lock_version].include?(key) } +
+                 .reject { |key| key == 'lock_version' } +
                  %w[_method authenticity_token]
     )
   end
@@ -107,7 +122,7 @@ class ApplicationController < ActionController::Base
     namespaced_params(namespace).permit(
       model_class.new
                  .attributes.keys
-                 .reject { |key| %w[lock_version].include?(key) }
+                 .reject { |key| key == 'lock_version' }
     )
   end
   #-- -------------------------------------------------------------------------
@@ -124,8 +139,8 @@ class ApplicationController < ActionController::Base
   # The filtered attribute hash
   #
   def datagrid_model_attributes_for(model_class, attrs)
-    model_class.new.attributes.keys.reject { |key| %w[lock_version].include?(key) }
-    attrs.select { |key, _value| model_class.new.attributes.keys.include?(key) }
+    allowed_keys = model_class.new.model_attributes.keys
+    attrs.select { |key, _value| allowed_keys.include?(key) }
   end
   #-- -------------------------------------------------------------------------
   #++
@@ -140,6 +155,33 @@ class ApplicationController < ActionController::Base
   end
   #-- -------------------------------------------------------------------------
   #++
+
+  # Prepares the grid domain and its counters using the already parsed response data and
+  # the target grid & model class.
+  #
+  # == Params:
+  # - <tt>grid_class</tt>, the target grid class
+  # - <tt>model_class</tt>, the target model class
+  # - <tt>api_response_headers</tt>, response#headers returned by the API call
+  # - <tt>parsed_response</tt>, the Hash wrapping the JSON response data from the API call
+  #
+  # == Setter for:
+  # - <tt>@domain_count</tt>, total row count for this domain
+  # - <tt>@domain_page</tt>, current page number in the domain
+  # - <tt>@domain_per_page</tt>, total rows per page
+  # - <tt>@domain</tt>, actual domain of model instances for the grid
+  #
+  def set_grid_domain_for(grid_class, model_class, api_response_headers, parsed_response)
+    @domain_count = api_response_headers[:total].to_i
+    @domain_page = api_response_headers[:page].to_i
+    @domain_per_page = api_response_headers[:per_page].to_i
+
+    # Setup grid domain converting the Hash into temp models for better handling:
+    @domain = parsed_response.map { |attrs| model_class.new(datagrid_model_attributes_for(model_class, attrs)) }
+
+    # Setup datagrid:
+    grid_class.data_domain = @domain
+  end
 
   private
 

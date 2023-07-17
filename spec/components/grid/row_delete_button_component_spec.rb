@@ -11,9 +11,9 @@ RSpec.describe Grid::RowDeleteButtonComponent, type: :component do
   end
 
   context 'with valid parameters,' do
-    let(:fixture_asset_row) { GogglesDb::User.all.to_a.sample }
+    let(:fixture_asset_row) { GogglesDb::User.first(100).sample }
     let(:expected_link_id) { "frm-delete-row-#{fixture_asset_row.id}" }
-    subject do
+    subject(:component) do
       render_inline(
         described_class.new(
           asset_row: fixture_asset_row,
@@ -24,13 +24,13 @@ RSpec.describe Grid::RowDeleteButtonComponent, type: :component do
     end
 
     it 'renders the link to the row delete action' do
-      expect(subject.css('a').attr('href')).to be_present
+      expect(component.css('a').attr('href')).to be_present
     end
     it 'has a unique DOM id' do
-      expect(subject.css("a##{expected_link_id}")).to be_present
+      expect(component.css("a##{expected_link_id}")).to be_present
     end
     it 'has a confirmation message setup' do
-      expect(subject.css('a').attr('data-confirm').value).to eq(
+      expect(component.css('a').attr('data-confirm').value).to eq(
         I18n.t('dashboard.confirm_row_delete', label: fixture_asset_row.email)
       )
     end

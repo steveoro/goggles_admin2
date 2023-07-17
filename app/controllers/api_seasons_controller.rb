@@ -17,26 +17,19 @@ class APISeasonsController < ApplicationController
     result = APIProxy.call(
       method: :get, url: 'seasons', jwt: current_user.jwt,
       params: {
-        header_year: index_params[:header_year],
         begin_date: index_params[:begin_date], end_date: index_params[:end_date],
+        header_year: index_params[:header_year],
+        season_type_id: index_params[:season_type_id],
         page: index_params[:page], per_page: index_params[:per_page]
       }
     )
-    json_domain = JSON.parse(result.body)
+    parsed_response = result.body.present? ? JSON.parse(result.body) : { 'error' => "Error #{result.code}" }
     unless result.code == 200
-      flash[:error] = I18n.t('dashboard.api_proxy_error', error_code: result.code, error_msg: json_domain['error'])
+      flash[:error] = I18n.t('dashboard.api_proxy_error', error_code: result.code, error_msg: parsed_response['error'])
       redirect_to(root_path) && return
     end
 
-    @domain_count = result.headers[:total].to_i
-    @domain_page = result.headers[:page].to_i
-    @domain_per_page = result.headers[:per_page].to_i
-
-    # Setup grid domain (and chart's):
-    @domain = json_domain.map { |attrs| GogglesDb::Season.new(attrs) }
-
-    # Setup datagrid:
-    SeasonsGrid.data_domain = @domain
+    set_grid_domain_for(SeasonsGrid, GogglesDb::Season, result.headers, parsed_response)
 
     respond_to do |format|
       @grid = SeasonsGrid.new(grid_filter_params)
@@ -52,6 +45,29 @@ class APISeasonsController < ApplicationController
         )
       end
     end
+  end
+
+  # POST /api_seasons
+  # Creates a new GogglesDb::Season row.
+  #
+  # All instance attributes are accepted, minus lock_version & the timestamps, which are
+  # handled automatically.
+  #
+  def create
+    result = APIProxy.call(
+      method: :post,
+      url: 'season',
+      jwt: current_user.jwt,
+      payload: create_params(GogglesDb::Season)
+    )
+    json = parse_json_result_from_create(result)
+
+    if json.present? && json['msg'] == 'OK' && json['new'].key?('id')
+      flash[:info] = I18n.t('datagrid.edit_modal.create_ok', id: json['new']['id'])
+    else
+      flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: result.code)
+    end
+    redirect_to(api_seasons_path(index_params))
   end
   # rubocop:enable Metrics/AbcSize
   #-- -------------------------------------------------------------------------
@@ -79,31 +95,9 @@ class APISeasonsController < ApplicationController
     else
       flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: result)
     end
-    redirect_to api_seasons_path(page: index_params[:page], per_page: index_params[:per_page])
+    redirect_to(api_seasons_path(index_params))
   end
 
-  # POST /api_seasons
-  # Creates a new GogglesDb::Season row.
-  #
-  # All instance attributes are accepted, minus lock_version & the timestamps, which are
-  # handled automatically.
-  #
-  def create
-    result = APIProxy.call(
-      method: :post,
-      url: 'season',
-      jwt: current_user.jwt,
-      payload: create_params(GogglesDb::Season)
-    )
-    json = parse_json_result_from_create(result)
-
-    if json.present? && json['msg'] == 'OK' && json['new'].key?('id')
-      flash[:info] = I18n.t('datagrid.edit_modal.create_ok', id: json['new']['id'])
-    else
-      flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: result.code)
-    end
-    redirect_to api_seasons_path(page: index_params[:page], per_page: index_params[:per_page])
-  end
   #-- -------------------------------------------------------------------------
   #++
 
@@ -115,10 +109,9 @@ class APISeasonsController < ApplicationController
     @grid_filter_params = params.fetch(:seasons_grid, {}).permit!
   end
 
-  # Strong parameters checking for /index
+  # Strong parameters checking for /index, including pass-through from modal editors.
   # (NOTE: memoizazion is needed because the member variable is used in the view.)
   def index_params
-    @index_params = params.permit(:page, :per_page, :seasons_grid)
-                          .merge(params.fetch(:seasons_grid, {}).permit!)
+    index_params_for(:seasons_grid)
   end
 end

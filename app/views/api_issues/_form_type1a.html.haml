@@ -1,0 +1,23 @@
+.row
+  %h5.py-2= t('issues.what_title')
+  %table.table.table-striped.table-sm#req-details
+    %tbody
+      %tr
+        %th.text-right
+          %code meeting_id
+        %td
+          %pre= req['meeting_id']
+      %tr
+        %th.text-right
+          %code meeting_label
+        %td
+          %pre= req['meeting_label']
+      %tr
+        %th.text-right
+          %code results_url
+        %td
+          = link_to(req['results_url'])
+
+.container.text-center
+  .row-fluid.my-4
+    = render(partial: 'form_bottom_status_buttons', locals: { status: status, issue_id: issue_id })

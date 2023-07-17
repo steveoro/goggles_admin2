@@ -27,10 +27,12 @@ global_job_config:
       - echo $DOCKERHUB_PASSWORD | docker login --username "$DOCKERHUB_USERNAME" --password-stdin
       - echo $RAILS_MASTER_KEY > config/master.key
       - mkdir -pv tmp
-      - gem i bundler
-      - cache restore bundle-3.40-$(checksum Gemfile.lock yarn.lock)
+      - export BUNDLER_VERSION=$(cat Gemfile.lock | tail -1 | tr -d " ")
+      - gem i bundler -v $BUNDLER_VERSION
+      - echo "Current Bundler with version:" && which bundler && bundle --version
+      - cache restore bundle-5.20-$(checksum Gemfile.lock yarn.lock)
       - sem-version ruby 2.7
-      - bundle config set path 'vendor/bundle'
+      - bundle config set path "vendor/bundle"
       - GIT_LFS_SKIP_SMUDGE=1 bundle install
       - yarn install --check-files
       - cp config/database.semaphore_2.yml config/database.yml
@@ -57,7 +59,7 @@ blocks:
     task:
       prologue:
         commands:
-          - echo 'Current TAG $SEMAPHORE_GIT_TAG_NAME'
+          - echo "Current TAG $SEMAPHORE_GIT_TAG_NAME"
       jobs:
         # (Admin2 doesn't need dedicated staging or prod images)
         - name: Docker tagged image

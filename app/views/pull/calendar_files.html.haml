@@ -1,0 +1,11 @@
+.wrapper-body
+  .main-content
+    %section.my-2#status-box
+      = render(partial: 'crawler_status_box')
+
+    %section.my-2#crawler-tabs
+      = render(partial: 'crawler_tabs', locals: { active_tab: 'calendar' })
+
+    %section#file-list
+      = render(partial: 'file_list/file_table', locals: { dirnames: @dirnames, curr_dir: @curr_dir,
+               files: @files, parent_folder: @parent_folder, filter: @filter })

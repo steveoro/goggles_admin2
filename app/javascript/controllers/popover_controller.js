@@ -44,7 +44,7 @@ export default class extends Controller {
     $('[data-toggle="tooltip"]').tooltip()
     // Auto-hide all tooltips after they've being shown:
     $('[data-toggle="tooltip"]').on('shown.bs.tooltip', function () {
-      $('[data-toggle="tooltip"]').delay(2000).queue(function (next) {
+      $('[data-toggle="tooltip"]').delay(4000).queue(function (next) {
         $(this).tooltip('hide')
         next()
       })
@@ -56,7 +56,8 @@ export default class extends Controller {
     })
 
     // *** Modals setup: **
-    // (none so far)
+    // Make sure the data-import progress modal is hidden on page ready:
+    $('#modal-progress').modal('hide')
   }
   // ---------------------------------------------------------------------------
 }

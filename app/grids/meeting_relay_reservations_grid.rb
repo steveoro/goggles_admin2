@@ -8,15 +8,8 @@ class MeetingRelayReservationsGrid < BaseGrid
   # Returns the scope for the grid. (#assets is the filtered version of it)
   scope { data_domain }
 
-  # Unscoped data_domain read accessor
-  def unscoped
-    data_domain
-  end
-
   filter(:id, :integer)
-  filter(:name, :string, header: 'Name (~)') do |value, scope|
-    scope.select { |row| (row.name =~ /#{value}/i) || (row.editable_name =~ /#{value}/i) }
-  end
+  filter(:name, :string, header: 'Name (~)') { |_value, scope| scope }
 
   column(:id, align: :right, mandatory: true)
   column(:meeting_reservation_id, align: :right)

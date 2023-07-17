@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe 'Homes', type: :request do
+RSpec.describe HomeController do
   describe 'GET /index' do
     context 'with an unlogged user' do
       it 'is a redirect to the login path' do

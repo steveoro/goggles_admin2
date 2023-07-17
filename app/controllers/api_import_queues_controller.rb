@@ -18,21 +18,13 @@ class APIImportQueuesController < ApplicationController
       method: :get, url: 'import_queues', jwt: current_user.jwt,
       params: { page: index_params[:page], per_page: index_params[:per_page] }
     )
-    json_domain = JSON.parse(result.body)
+    parsed_response = result.body.present? ? JSON.parse(result.body) : { 'error' => "Error #{result.code}" }
     unless result.code == 200
-      flash[:error] = I18n.t('dashboard.api_proxy_error', error_code: result.code, error_msg: json_domain['error'])
+      flash[:error] = I18n.t('dashboard.api_proxy_error', error_code: result.code, error_msg: parsed_response['error'])
       redirect_to(root_path) && return
     end
 
-    @domain_count = result.headers[:total].to_i
-    @domain_page = result.headers[:page].to_i
-    @domain_per_page = result.headers[:per_page].to_i
-
-    # Setup grid domain (and chart's):
-    @domain = json_domain.map { |attrs| GogglesDb::ImportQueue.new(attrs) }
-
-    # Setup datagrid:
-    ImportQueuesGrid.data_domain = @domain
+    set_grid_domain_for(ImportQueuesGrid, GogglesDb::ImportQueue, result.headers, parsed_response)
 
     respond_to do |format|
       @grid = ImportQueuesGrid.new(grid_filter_params)
@@ -48,6 +40,29 @@ class APIImportQueuesController < ApplicationController
         )
       end
     end
+  end
+
+  # POST /api_import_queues
+  # Creates a new GogglesDb::ImportQueue row.
+  #
+  # All instance attributes are accepted, minus lock_version & the timestamps, which are
+  # handled automatically.
+  #
+  def create
+    result = APIProxy.call(
+      method: :post,
+      url: 'import_queue',
+      jwt: current_user.jwt,
+      payload: create_params(GogglesDb::ImportQueue)
+    )
+    json = parse_json_result_from_create(result)
+
+    if json.present? && json['msg'] == 'OK' && json['new'].key?('id')
+      flash[:info] = I18n.t('datagrid.edit_modal.create_ok', id: json['new']['id'])
+    else
+      flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: result.code)
+    end
+    redirect_to(api_import_queues_path(index_params))
   end
   # rubocop:enable Metrics/AbcSize
   #-- -------------------------------------------------------------------------
@@ -75,30 +90,7 @@ class APIImportQueuesController < ApplicationController
     else
       flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: result.presence || result.code)
     end
-    redirect_to api_import_queues_path(page: index_params[:page], per_page: index_params[:per_page])
-  end
-
-  # POST /api_import_queues
-  # Creates a new GogglesDb::ImportQueue row.
-  #
-  # All instance attributes are accepted, minus lock_version & the timestamps, which are
-  # handled automatically.
-  #
-  def create
-    result = APIProxy.call(
-      method: :post,
-      url: 'import_queue',
-      jwt: current_user.jwt,
-      payload: create_params(GogglesDb::ImportQueue)
-    )
-    json = parse_json_result_from_create(result)
-
-    if json.present? && json['msg'] == 'OK' && json['new'].key?('id')
-      flash[:info] = I18n.t('datagrid.edit_modal.create_ok', id: json['new']['id'])
-    else
-      flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: result.code)
-    end
-    redirect_to api_import_queues_path(page: index_params[:page], per_page: index_params[:per_page])
+    redirect_to(api_import_queues_path(index_params))
   end
 
   # DELETE /api_import_queues
@@ -122,7 +114,7 @@ class APIImportQueuesController < ApplicationController
     else
       flash[:info] = I18n.t('dashboard.grid_commands.no_op_msg')
     end
-    redirect_to api_import_queues_path(page: index_params[:page], per_page: index_params[:per_page])
+    redirect_to(api_import_queues_path(index_params))
   end
   # rubocop:enable Metrics/AbcSize
   #-- -------------------------------------------------------------------------
@@ -136,10 +128,9 @@ class APIImportQueuesController < ApplicationController
     @grid_filter_params = params.fetch(:import_queues_grid, {}).permit!
   end
 
-  # Strong parameters checking for /index
+  # Strong parameters checking for /index, including pass-through from modal editors.
   # (NOTE: memoizazion is needed because the member variable is used in the view.)
   def index_params
-    @index_params = params.permit(:page, :per_page, :import_queues_grid)
-                          .merge(params.fetch(:import_queues_grid, {}).permit!)
+    index_params_for(:import_queues_grid)
   end
 end

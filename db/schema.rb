@@ -10,9 +10,9 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2021_07_28_183111) do
+ActiveRecord::Schema.define(version: 2023_06_08_153109) do
 
-  create_table "achievement_rows", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "achievement_rows", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -28,7 +28,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["achievement_type_id"], name: "idx_achievement_rows_achievement_type"
   end
 
-  create_table "achievement_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "achievement_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -36,7 +36,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["code"], name: "index_achievement_types_on_code", unique: true
   end
 
-  create_table "achievements", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "achievements", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -45,7 +45,28 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["code"], name: "index_achievements_on_code", unique: true
   end
 
-  create_table "admin_grants", options: "ENGINE=InnoDB DEFAULT CHARSET=latin1", force: :cascade do |t|
+  create_table "active_storage_attachments", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+    t.string "name", null: false
+    t.string "record_type", null: false
+    t.bigint "record_id", null: false
+    t.bigint "blob_id", null: false
+    t.datetime "created_at", null: false
+    t.index ["blob_id"], name: "index_active_storage_attachments_on_blob_id"
+    t.index ["record_type", "record_id", "name", "blob_id"], name: "index_active_storage_attachments_uniqueness", unique: true
+  end
+
+  create_table "active_storage_blobs", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+    t.string "key", null: false
+    t.string "filename", null: false
+    t.string "content_type"
+    t.text "metadata"
+    t.bigint "byte_size", null: false
+    t.string "checksum", null: false
+    t.datetime "created_at", null: false
+    t.index ["key"], name: "index_active_storage_blobs_on_key", unique: true
+  end
+
+  create_table "admin_grants", options: "ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.string "entity", limit: 150
     t.bigint "user_id", null: false
@@ -56,7 +77,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["user_id"], name: "index_admin_grants_on_user_id"
   end
 
-  create_table "api_daily_uses", options: "ENGINE=InnoDB DEFAULT CHARSET=latin1", force: :cascade do |t|
+  create_table "api_daily_uses", options: "ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.string "route", null: false
     t.date "day", null: false
@@ -67,7 +88,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["route"], name: "index_api_daily_uses_on_route"
   end
 
-  create_table "app_parameters", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "app_parameters", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.integer "code"
     t.string "controller_name"
@@ -106,7 +127,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["code"], name: "index_app_parameters_on_code", unique: true
   end
 
-  create_table "aux_arms_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "aux_arms_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -114,7 +135,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["code"], name: "index_aux_arms_types_on_code", unique: true
   end
 
-  create_table "aux_body_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "aux_body_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -122,7 +143,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["code"], name: "index_aux_body_types_on_code", unique: true
   end
 
-  create_table "aux_breath_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "aux_breath_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -130,7 +151,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["code"], name: "index_aux_breath_types_on_code", unique: true
   end
 
-  create_table "aux_kicks_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "aux_kicks_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -138,12 +159,12 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["code"], name: "index_aux_kicks_types_on_code", unique: true
   end
 
-  create_table "badge_payments", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "badge_payments", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.decimal "amount", precision: 10, scale: 2
     t.date "payment_date"
     t.text "notes"
-    t.boolean "manual"
+    t.boolean "manual", default: false, null: false
     t.bigint "badge_id"
     t.bigint "user_id"
     t.datetime "created_at", null: false
@@ -152,7 +173,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["user_id"], name: "index_badge_payments_on_user_id"
   end
 
-  create_table "badges", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "badges", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.string "number", limit: 40
     t.integer "season_id"
@@ -177,7 +198,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["team_id"], name: "fk_badges_teams"
   end
 
-  create_table "base_movements", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "base_movements", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -195,7 +216,39 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["stroke_type_id"], name: "fk_base_movements_stroke_types"
   end
 
-  create_table "category_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "calendars", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+    t.integer "lock_version", default: 0
+    t.string "scheduled_date"
+    t.string "meeting_name"
+    t.string "meeting_place"
+    t.string "manifest_code"
+    t.string "startlist_code"
+    t.string "results_code"
+    t.string "meeting_code"
+    t.integer "season_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.string "year", limit: 4
+    t.string "month", limit: 20
+    t.string "results_link"
+    t.string "startlist_link"
+    t.string "manifest_link"
+    t.text "manifest"
+    t.text "name_import_text"
+    t.text "organization_import_text"
+    t.text "place_import_text"
+    t.text "dates_import_text"
+    t.text "program_import_text"
+    t.integer "meeting_id"
+    t.boolean "read_only", default: false, null: false
+    t.boolean "cancelled", default: false, null: false
+    t.index ["cancelled"], name: "index_calendars_on_cancelled"
+    t.index ["meeting_code"], name: "index_calendars_on_meeting_code"
+    t.index ["meeting_id"], name: "index_calendars_on_meeting_id"
+    t.index ["season_id"], name: "index_calendars_on_season_id"
+  end
+
+  create_table "category_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.string "code", limit: 7
     t.string "federation_code", limit: 2
@@ -214,7 +267,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["season_id", "relay", "code"], name: "season_and_code", unique: true
   end
 
-  create_table "cities", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "cities", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.string "name", limit: 50
     t.string "zip", limit: 6
@@ -231,7 +284,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["name"], name: "index_cities_on_name"
   end
 
-  create_table "coach_level_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "coach_level_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -240,7 +293,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["code"], name: "index_coach_level_types_on_code", unique: true
   end
 
-  create_table "comments", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "comments", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.string "entry_text"
     t.integer "user_id"
@@ -253,7 +306,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["user_id"], name: "idx_comments_user"
   end
 
-  create_table "computed_season_rankings", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "computed_season_rankings", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -266,528 +319,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["team_id"], name: "fk_computed_season_rankings_teams"
   end
 
-  create_table "data_import_badges", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
-    t.integer "lock_version", default: 0
-    t.datetime "created_at"
-    t.datetime "updated_at"
-    t.integer "data_import_session_id"
-    t.bigint "conflicting_id", default: 0
-    t.string "import_text"
-    t.string "number", limit: 40
-    t.integer "data_import_swimmer_id"
-    t.integer "data_import_team_id"
-    t.integer "data_import_season_id"
-    t.integer "swimmer_id"
-    t.integer "team_id"
-    t.integer "season_id"
-    t.integer "category_type_id"
-    t.integer "entry_time_type_id"
-    t.integer "team_affiliation_id"
-    t.index ["category_type_id"], name: "idx_di_badges_category_type"
-    t.index ["data_import_season_id"], name: "idx_di_badges_di_season"
-    t.index ["data_import_session_id"], name: "idx_di_badges_di_session"
-    t.index ["data_import_swimmer_id"], name: "idx_di_badges_di_swimmer"
-    t.index ["data_import_team_id"], name: "idx_di_badges_di_team"
-    t.index ["entry_time_type_id"], name: "idx_di_badges_entry_time_type"
-    t.index ["number"], name: "index_data_import_badges_on_number"
-    t.index ["season_id"], name: "idx_di_badges_season"
-    t.index ["swimmer_id"], name: "idx_di_badges_swimmer"
-    t.index ["team_affiliation_id"], name: "idx_di_badges_team_affiliation"
-    t.index ["team_id"], name: "idx_di_badges_team"
-  end
-
-  create_table "data_import_cities", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
-    t.integer "lock_version", default: 0
-    t.datetime "created_at"
-    t.datetime "updated_at"
-    t.integer "data_import_session_id"
-    t.bigint "conflicting_id", default: 0
-    t.string "import_text"
-    t.string "name", limit: 50
-    t.string "zip", limit: 6
-    t.string "area", limit: 50
-    t.string "country", limit: 50
-    t.string "country_code", limit: 10
-    t.index ["data_import_session_id"], name: "idx_di_cities_di_session"
-    t.index ["name"], name: "index_data_import_cities_on_name"
-    t.index ["zip"], name: "index_data_import_cities_on_zip"
-  end
-
-  create_table "data_import_laps", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
-    t.integer "lock_version", default: 0
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.integer "data_import_session_id"
-    t.integer "conflicting_id", limit: 3, default: 0
-    t.string "import_text", null: false
-    t.decimal "reaction_time", precision: 5, scale: 2
-    t.integer "minutes", limit: 3
-    t.integer "seconds", limit: 2
-    t.integer "hundreds", limit: 2
-    t.integer "stroke_cycles", limit: 3
-    t.integer "underwater_seconds", limit: 2
-    t.integer "underwater_hundreds", limit: 2
-    t.integer "underwater_kicks", limit: 2
-    t.integer "breath_cycles", limit: 3
-    t.integer "position", limit: 3
-    t.integer "minutes_from_start", limit: 3
-    t.integer "seconds_from_start", limit: 2
-    t.integer "hundreds_from_start", limit: 2
-    t.boolean "native_from_start", default: false
-    t.integer "length_in_meters"
-    t.integer "data_import_meeting_program_id"
-    t.integer "data_import_meeting_individual_result_id"
-    t.integer "data_import_meeting_entry_id"
-    t.integer "data_import_swimmer_id"
-    t.integer "data_import_team_id"
-    t.integer "meeting_program_id"
-    t.integer "meeting_individual_result_id"
-    t.integer "meeting_entry_id"
-    t.integer "swimmer_id"
-    t.integer "team_id"
-    t.index ["data_import_meeting_entry_id"], name: "idx_di_passages_di_meeting_entry"
-    t.index ["data_import_meeting_individual_result_id"], name: "idx_di_passages_di_meeting_individual_result"
-    t.index ["data_import_meeting_program_id"], name: "idx_di_passages_di_meeting_program"
-    t.index ["data_import_session_id"], name: "idx_di_passages_di_session"
-    t.index ["data_import_swimmer_id"], name: "idx_di_passages_di_swimmer"
-    t.index ["data_import_team_id"], name: "idx_di_passages_di_team"
-    t.index ["length_in_meters"], name: "index_data_import_laps_on_length_in_meters"
-    t.index ["meeting_entry_id"], name: "idx_di_passages_meeting_entry"
-    t.index ["meeting_individual_result_id"], name: "idx_di_passages_meeting_individual_result"
-    t.index ["meeting_program_id"], name: "idx_di_passages_meeting_program"
-    t.index ["swimmer_id"], name: "idx_di_passages_swimmer"
-    t.index ["team_id"], name: "idx_di_passages_team"
-  end
-
-  create_table "data_import_meeting_entries", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
-    t.integer "lock_version", default: 0
-    t.datetime "created_at"
-    t.datetime "updated_at"
-    t.integer "data_import_session_id"
-    t.bigint "conflicting_id", default: 0
-    t.string "import_text"
-    t.string "athlete_name", limit: 100
-    t.string "team_name", limit: 60
-    t.string "athlete_badge_number", limit: 40
-    t.string "team_badge_number", limit: 40
-    t.integer "year_of_birth", default: 1900
-    t.integer "minutes", limit: 3
-    t.integer "seconds", limit: 2
-    t.integer "hundreds", limit: 2
-    t.boolean "is_no_time", default: false
-    t.integer "start_list_number"
-    t.integer "lane_number", limit: 2
-    t.integer "heat_number"
-    t.integer "heat_arrival_order", limit: 2
-    t.integer "data_import_meeting_program_id"
-    t.integer "data_import_swimmer_id"
-    t.integer "data_import_team_id"
-    t.integer "data_import_badge_id"
-    t.integer "meeting_program_id"
-    t.integer "swimmer_id"
-    t.integer "team_id"
-    t.integer "team_affiliation_id"
-    t.integer "badge_id"
-    t.integer "entry_time_type_id"
-    t.index ["badge_id"], name: "idx_di_meeting_entries_badge"
-    t.index ["data_import_badge_id"], name: "idx_di_meeting_entries_di_badge"
-    t.index ["data_import_meeting_program_id"], name: "idx_di_meeting_entries_di_meeting_program"
-    t.index ["data_import_session_id"], name: "idx_di_meeting_entries_di_session"
-    t.index ["data_import_swimmer_id"], name: "idx_di_meeting_entries_di_swimmer"
-    t.index ["data_import_team_id"], name: "idx_di_meeting_entries_di_team"
-    t.index ["entry_time_type_id"], name: "idx_di_meeting_entries_entry_time_type"
-    t.index ["meeting_program_id"], name: "idx_di_meeting_entries_meeting_program"
-    t.index ["swimmer_id"], name: "idx_di_meeting_entries_swimmer"
-    t.index ["team_affiliation_id"], name: "idx_di_meeting_entries_team_affiliation"
-    t.index ["team_id"], name: "idx_di_meeting_entries_team"
-  end
-
-  create_table "data_import_meeting_individual_results", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
-    t.integer "lock_version", default: 0
-    t.datetime "created_at"
-    t.datetime "updated_at"
-    t.integer "data_import_session_id"
-    t.bigint "conflicting_id", default: 0
-    t.string "import_text"
-    t.string "athlete_name", limit: 100
-    t.string "team_name", limit: 60
-    t.string "athlete_badge_number", limit: 40
-    t.string "team_badge_number", limit: 40
-    t.integer "year_of_birth", default: 1900
-    t.integer "rank", default: 0
-    t.boolean "play_off", default: false
-    t.boolean "out_of_race", default: false
-    t.boolean "disqualified", default: false
-    t.decimal "standard_points", precision: 10, scale: 2, default: "0.0"
-    t.decimal "meeting_individual_points", precision: 10, scale: 2, default: "0.0"
-    t.integer "minutes", limit: 3, default: 0
-    t.integer "seconds", limit: 2, default: 0
-    t.integer "hundreds", limit: 2, default: 0
-    t.integer "data_import_meeting_program_id"
-    t.integer "meeting_program_id"
-    t.integer "data_import_swimmer_id"
-    t.integer "data_import_team_id"
-    t.integer "data_import_badge_id"
-    t.integer "swimmer_id"
-    t.integer "team_id"
-    t.integer "badge_id"
-    t.integer "disqualification_code_type_id"
-    t.decimal "goggle_cup_points", precision: 10, scale: 2, default: "0.0"
-    t.decimal "reaction_time", precision: 5, scale: 2, default: "0.0"
-    t.decimal "team_points", precision: 10, scale: 2, default: "0.0"
-    t.integer "team_affiliation_id"
-    t.index ["badge_id"], name: "idx_di_mir_badge"
-    t.index ["data_import_badge_id"], name: "idx_di_mir_di_badge"
-    t.index ["data_import_meeting_program_id"], name: "idx_di_mir_di_meeting_program"
-    t.index ["data_import_session_id"], name: "idx_di_mir_di_session"
-    t.index ["data_import_swimmer_id"], name: "idx_di_mir_di_swimmer"
-    t.index ["data_import_team_id"], name: "idx_di_mir_di_team"
-    t.index ["disqualification_code_type_id"], name: "idx_di_mir_disqualification_code_type"
-    t.index ["meeting_program_id"], name: "idx_di_mir_meeting_program"
-    t.index ["swimmer_id"], name: "idx_di_mir_swimmer"
-    t.index ["team_affiliation_id"], name: "idx_di_mir_team_affiliation"
-    t.index ["team_id"], name: "idx_di_mir_team"
-  end
-
-  create_table "data_import_meeting_programs", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
-    t.integer "lock_version", default: 0
-    t.datetime "created_at"
-    t.datetime "updated_at"
-    t.integer "data_import_session_id"
-    t.bigint "conflicting_id", default: 0
-    t.string "import_text"
-    t.integer "event_order", limit: 3, default: 0
-    t.time "begin_time"
-    t.integer "data_import_meeting_session_id"
-    t.integer "meeting_session_id"
-    t.integer "event_type_id"
-    t.integer "category_type_id"
-    t.integer "gender_type_id"
-    t.integer "minutes", limit: 3, default: 0
-    t.integer "seconds", limit: 2, default: 0
-    t.integer "hundreds", limit: 2, default: 0
-    t.boolean "out_of_race", default: false
-    t.integer "heat_type_id"
-    t.integer "time_standard_id"
-    t.index ["data_import_meeting_session_id"], name: "idx_di_meeting_programs_di_meeting_session"
-    t.index ["data_import_session_id"], name: "idx_di_meeting_programs_di_session"
-    t.index ["heat_type_id"], name: "idx_di_meeting_programs_heat_type"
-    t.index ["meeting_session_id", "category_type_id"], name: "meeting_category_type"
-    t.index ["meeting_session_id", "event_order"], name: "meeting_order"
-    t.index ["meeting_session_id", "event_type_id"], name: "meeting_event_type"
-    t.index ["meeting_session_id", "gender_type_id"], name: "meeting_gender_type"
-    t.index ["time_standard_id"], name: "idx_di_meeting_programs_time_standard"
-  end
-
-  create_table "data_import_meeting_relay_results", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
-    t.integer "lock_version", default: 0
-    t.datetime "created_at"
-    t.datetime "updated_at"
-    t.integer "data_import_session_id"
-    t.bigint "conflicting_id", default: 0
-    t.string "import_text"
-    t.integer "rank", default: 0
-    t.boolean "play_off", default: false
-    t.boolean "out_of_race", default: false
-    t.boolean "disqualified", default: false
-    t.decimal "standard_points", precision: 10, scale: 2, default: "0.0"
-    t.decimal "meeting_points", precision: 10, scale: 2, default: "0.0"
-    t.integer "minutes", limit: 3, default: 0
-    t.integer "seconds", limit: 2, default: 0
-    t.integer "hundreds", limit: 2, default: 0
-    t.integer "data_import_team_id"
-    t.integer "team_id"
-    t.integer "data_import_meeting_program_id"
-    t.integer "meeting_program_id"
-    t.integer "disqualification_code_type_id"
-    t.string "relay_header", limit: 60, default: ""
-    t.decimal "reaction_time", precision: 5, scale: 2, default: "0.0"
-    t.integer "entry_minutes", limit: 3
-    t.integer "entry_seconds", limit: 2
-    t.integer "entry_hundreds", limit: 2
-    t.integer "team_affiliation_id"
-    t.integer "entry_time_type_id"
-    t.index ["data_import_meeting_program_id"], name: "idx_di_mrr_di_meeting_program"
-    t.index ["data_import_session_id"], name: "idx_di_mrr_di_session"
-    t.index ["data_import_team_id"], name: "idx_di_mrr_di_team"
-    t.index ["disqualification_code_type_id"], name: "idx_di_mrr_disqualification_code_type"
-    t.index ["entry_time_type_id"], name: "idx_di_mrr_entry_time_type"
-    t.index ["meeting_program_id"], name: "idx_di_mrr_meeting_program"
-    t.index ["team_affiliation_id"], name: "idx_di_mrr_team_affiliation"
-    t.index ["team_id"], name: "idx_di_mrr_team"
-  end
-
-  create_table "data_import_meeting_relay_swimmers", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
-    t.integer "lock_version", default: 0
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.integer "data_import_session_id"
-    t.integer "conflicting_id", limit: 3, default: 0
-    t.string "import_text", null: false
-    t.decimal "reaction_time", precision: 5, scale: 2
-    t.integer "minutes", limit: 3
-    t.integer "seconds", limit: 2
-    t.integer "hundreds", limit: 2
-    t.integer "relay_order", limit: 3, default: 0
-    t.integer "data_import_swimmer_id"
-    t.integer "data_import_team_id"
-    t.integer "data_import_badge_id"
-    t.integer "swimmer_id"
-    t.integer "badge_id"
-    t.integer "stroke_type_id"
-    t.integer "meeting_relay_result_id"
-    t.integer "data_import_meeting_relay_result_id"
-    t.integer "team_id"
-    t.index ["badge_id"], name: "idx_di_meeting_relay_swimmers_badge"
-    t.index ["data_import_badge_id"], name: "idx_di_meeting_relay_swimmers_di_badge"
-    t.index ["data_import_meeting_relay_result_id"], name: "idx_di_meeting_relay_swimmers_di_meeting_relay_result"
-    t.index ["data_import_session_id"], name: "idx_di_meeting_relay_swimmers_di_session"
-    t.index ["data_import_swimmer_id"], name: "idx_di_meeting_relay_swimmers_di_swimmer"
-    t.index ["data_import_team_id"], name: "idx_di_meeting_relay_swimmers_di_team"
-    t.index ["meeting_relay_result_id"], name: "idx_di_meeting_relay_swimmers_meeting_relay_result"
-    t.index ["stroke_type_id"], name: "idx_di_meeting_relay_swimmers_stroke_type"
-    t.index ["swimmer_id"], name: "idx_di_meeting_relay_swimmers_swimmer"
-    t.index ["team_id"], name: "idx_di_meeting_relay_swimmers_team"
-  end
-
-  create_table "data_import_meeting_sessions", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
-    t.integer "lock_version", default: 0
-    t.datetime "created_at"
-    t.datetime "updated_at"
-    t.integer "data_import_session_id"
-    t.bigint "conflicting_id", default: 0
-    t.string "import_text"
-    t.integer "session_order", limit: 2, default: 0
-    t.date "scheduled_date"
-    t.time "warm_up_time"
-    t.time "begin_time"
-    t.text "notes"
-    t.integer "data_import_meeting_id"
-    t.integer "meeting_id"
-    t.integer "swimming_pool_id"
-    t.string "description", limit: 100
-    t.integer "day_part_type_id"
-    t.index ["data_import_meeting_id"], name: "idx_di_meeting_sessions_di_meeting"
-    t.index ["data_import_session_id"], name: "idx_di_meeting_sessions_di_session"
-    t.index ["day_part_type_id"], name: "idx_di_meeting_sessions_day_part_type"
-    t.index ["meeting_id"], name: "idx_di_meeting_sessions_meeting"
-    t.index ["scheduled_date"], name: "index_data_import_meeting_sessions_on_scheduled_date"
-    t.index ["swimming_pool_id"], name: "idx_di_meeting_sessions_swimming_pool"
-  end
-
-  create_table "data_import_meeting_team_scores", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
-    t.integer "lock_version", default: 0
-    t.datetime "created_at"
-    t.datetime "updated_at"
-    t.integer "data_import_session_id"
-    t.bigint "conflicting_id", default: 0
-    t.string "import_text"
-    t.decimal "sum_individual_points", precision: 10, scale: 2, default: "0.0"
-    t.decimal "sum_relay_points", precision: 10, scale: 2, default: "0.0"
-    t.integer "data_import_team_id"
-    t.integer "data_import_meeting_id"
-    t.integer "team_id"
-    t.integer "meeting_id"
-    t.integer "rank", default: 0
-    t.decimal "sum_team_points", precision: 10, scale: 2, default: "0.0"
-    t.decimal "meeting_individual_points", precision: 10, scale: 2, default: "0.0"
-    t.decimal "meeting_relay_points", precision: 10, scale: 2, default: "0.0"
-    t.decimal "meeting_team_points", precision: 10, scale: 2, default: "0.0"
-    t.decimal "season_individual_points", precision: 10, scale: 2, default: "0.0"
-    t.decimal "season_relay_points", precision: 10, scale: 2, default: "0.0"
-    t.decimal "season_team_points", precision: 10, scale: 2, default: "0.0"
-    t.integer "season_id"
-    t.integer "team_affiliation_id"
-    t.index ["data_import_meeting_id"], name: "idx_di_meeting_team_scores_di_meeting"
-    t.index ["data_import_session_id"], name: "idx_di_meeting_team_scores_di_session"
-    t.index ["data_import_team_id"], name: "idx_di_meeting_team_scores_di_team"
-    t.index ["meeting_id"], name: "idx_di_meeting_team_scores_meeting"
-    t.index ["season_id"], name: "idx_di_meeting_team_scores_season"
-    t.index ["team_affiliation_id"], name: "idx_di_meeting_team_scores_team_affiliation"
-    t.index ["team_id"], name: "idx_di_meeting_team_scores_team"
-  end
-
-  create_table "data_import_meetings", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
-    t.integer "lock_version", default: 0
-    t.datetime "created_at"
-    t.datetime "updated_at"
-    t.integer "data_import_session_id"
-    t.bigint "conflicting_id", default: 0
-    t.string "import_text"
-    t.string "description", limit: 100
-    t.date "entry_deadline"
-    t.boolean "warm_up_pool", default: false
-    t.boolean "allows_under_25", default: false
-    t.string "reference_phone", limit: 40
-    t.string "reference_e_mail", limit: 50
-    t.string "reference_name", limit: 50
-    t.text "notes"
-    t.string "tag", limit: 20
-    t.boolean "manifest", default: false
-    t.boolean "startlist", default: false
-    t.boolean "results_acquired", default: false
-    t.integer "max_individual_events", limit: 1, default: 2
-    t.string "configuration_file", limit: 50
-    t.integer "edition", limit: 3, default: 0
-    t.integer "data_import_season_id"
-    t.integer "season_id"
-    t.date "header_date"
-    t.string "code", limit: 50
-    t.string "header_year", limit: 9
-    t.integer "max_individual_events_per_session", limit: 2, default: 2
-    t.boolean "off_season", default: false
-    t.integer "edition_type_id"
-    t.integer "timing_type_id"
-    t.integer "individual_score_computation_type_id"
-    t.integer "relay_score_computation_type_id"
-    t.integer "team_score_computation_type_id"
-    t.integer "meeting_score_computation_type_id"
-    t.index ["code", "edition"], name: "idx_di_meetings_code"
-    t.index ["data_import_season_id"], name: "idx_di_meetings_di_season"
-    t.index ["data_import_session_id"], name: "idx_di_meetings_di_session"
-    t.index ["edition_type_id"], name: "idx_di_meetings_edition_type"
-    t.index ["entry_deadline"], name: "index_data_import_meetings_on_entry_deadline"
-    t.index ["header_date"], name: "idx_di_meetings_header_date"
-    t.index ["season_id"], name: "idx_di_meetings_season"
-    t.index ["timing_type_id"], name: "idx_di_meetings_timing_type"
-  end
-
-  create_table "data_import_seasons", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
-    t.integer "lock_version", default: 0
-    t.datetime "created_at"
-    t.datetime "updated_at"
-    t.integer "data_import_session_id"
-    t.bigint "conflicting_id", default: 0
-    t.string "import_text"
-    t.string "description", limit: 100
-    t.date "begin_date"
-    t.date "end_date"
-    t.integer "season_type_id"
-    t.string "header_year", limit: 9
-    t.integer "edition", limit: 3, default: 0
-    t.integer "edition_type_id"
-    t.integer "timing_type_id"
-    t.index ["begin_date"], name: "index_data_import_seasons_on_begin_date"
-    t.index ["data_import_session_id"], name: "idx_di_seasons_di_session"
-    t.index ["edition_type_id"], name: "idx_di_seasons_edition_type"
-    t.index ["season_type_id"], name: "idx_di_seasons_season_type"
-    t.index ["timing_type_id"], name: "idx_di_seasons_timing_type"
-  end
-
-  create_table "data_import_sessions", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
-    t.datetime "created_at"
-    t.datetime "updated_at"
-    t.string "file_name"
-    t.text "source_data", size: :medium
-    t.integer "phase"
-    t.integer "total_data_rows"
-    t.string "file_format"
-    t.text "phase_1_log", size: :medium
-    t.text "phase_2_log"
-    t.text "phase_3_log", size: :medium
-    t.integer "data_import_season_id"
-    t.integer "season_id"
-    t.integer "user_id"
-    t.text "sql_diff"
-    t.integer "log_verbosity", default: 0
-    t.index ["data_import_season_id"], name: "idx_di_sessions_di_season"
-    t.index ["season_id"], name: "idx_di_sessions_season"
-    t.index ["user_id"], name: "user_id"
-  end
-
-  create_table "data_import_swimmer_aliases", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
-    t.integer "lock_version", default: 0
-    t.datetime "created_at"
-    t.datetime "updated_at"
-    t.string "complete_name", limit: 100
-    t.integer "swimmer_id"
-    t.index ["swimmer_id", "complete_name"], name: "idx_swimmer_id_complete_name", unique: true
-  end
-
-  create_table "data_import_swimmer_analysis_results", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
-    t.integer "lock_version", default: 0
-    t.datetime "created_at"
-    t.datetime "updated_at"
-    t.integer "data_import_session_id"
-    t.text "analysis_log_text", size: :medium
-    t.text "sql_text", size: :medium
-    t.string "searched_swimmer_name", limit: 100
-    t.integer "chosen_swimmer_id"
-    t.string "match_name", limit: 60
-    t.decimal "match_score", precision: 10, scale: 4, default: "0.0"
-    t.string "best_match_name", limit: 60
-    t.decimal "best_match_score", precision: 10, scale: 4, default: "0.0"
-    t.integer "desired_year_of_birth", default: 1900
-    t.bigint "desired_gender_type_id"
-    t.integer "max_year_of_birth"
-    t.integer "category_type_id"
-    t.index ["category_type_id"], name: "idx_di_swimmer_analysis_results_category_type"
-    t.index ["data_import_session_id", "searched_swimmer_name", "desired_year_of_birth", "desired_gender_type_id"], name: "idx_di_session_swimmer_name", unique: true
-    t.index ["desired_gender_type_id"], name: "idx_di_swimmer_gender_type"
-  end
-
-  create_table "data_import_swimmers", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
-    t.integer "lock_version", default: 0
-    t.datetime "created_at"
-    t.datetime "updated_at"
-    t.integer "data_import_session_id"
-    t.bigint "conflicting_id", default: 0
-    t.string "import_text"
-    t.string "last_name"
-    t.string "first_name"
-    t.integer "year_of_birth", default: 1900
-    t.integer "gender_type_id"
-    t.string "complete_name", limit: 100
-    t.index ["complete_name"], name: "index_data_import_swimmers_on_complete_name"
-    t.index ["data_import_session_id"], name: "idx_di_swimmers_di_session"
-    t.index ["gender_type_id"], name: "idx_di_swimmers_gender_type"
-    t.index ["last_name", "first_name"], name: "full_name"
-  end
-
-  create_table "data_import_team_aliases", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
-    t.integer "lock_version", default: 0
-    t.datetime "created_at"
-    t.datetime "updated_at"
-    t.string "name", limit: 60
-    t.integer "team_id"
-    t.index ["team_id", "name"], name: "idx_team_id_name", unique: true
-  end
-
-  create_table "data_import_team_analysis_results", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
-    t.integer "lock_version", default: 0
-    t.datetime "created_at"
-    t.datetime "updated_at"
-    t.integer "data_import_session_id"
-    t.text "analysis_log_text", size: :medium
-    t.text "sql_text"
-    t.string "searched_team_name", limit: 60
-    t.integer "desired_season_id"
-    t.integer "chosen_team_id"
-    t.string "team_match_name", limit: 60
-    t.decimal "team_match_score", precision: 10, scale: 4, default: "0.0"
-    t.string "best_match_name", limit: 60
-    t.decimal "best_match_score", precision: 10, scale: 4, default: "0.0"
-    t.index ["data_import_session_id", "searched_team_name", "desired_season_id"], name: "idx_di_session_name_and_season", unique: true
-  end
-
-  create_table "data_import_teams", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
-    t.integer "lock_version", default: 0
-    t.datetime "created_at"
-    t.datetime "updated_at"
-    t.integer "data_import_session_id"
-    t.bigint "conflicting_id", default: 0
-    t.string "import_text"
-    t.string "name", limit: 60
-    t.string "badge_number", limit: 40
-    t.integer "data_import_city_id"
-    t.integer "city_id"
-    t.index ["city_id"], name: "city_id"
-    t.index ["data_import_city_id"], name: "data_import_city_id"
-    t.index ["data_import_session_id"], name: "idx_di_teams_di_session"
-    t.index ["name"], name: "index_data_import_teams_on_name"
-  end
-
-  create_table "day_part_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "day_part_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -795,7 +327,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["code"], name: "index_day_part_types_on_code", unique: true
   end
 
-  create_table "day_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "day_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -804,7 +336,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["code"], name: "index_day_types_on_code", unique: true
   end
 
-  create_table "delayed_jobs", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "delayed_jobs", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "priority", default: 0
     t.integer "attempts", default: 0
     t.text "handler"
@@ -819,7 +351,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["priority", "run_at"], name: "delayed_jobs_priority"
   end
 
-  create_table "disqualification_code_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "disqualification_code_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -831,7 +363,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["stroke_type_id"], name: "idx_disqualification_code_types_stroke_type"
   end
 
-  create_table "edition_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "edition_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -839,7 +371,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["code"], name: "index_edition_types_on_code", unique: true
   end
 
-  create_table "entry_time_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "entry_time_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.string "code", limit: 1
     t.datetime "created_at"
@@ -847,7 +379,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["code"], name: "idx_entry_time_types_code", unique: true
   end
 
-  create_table "event_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "event_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.string "code", limit: 10
     t.bigint "length_in_meters"
@@ -866,7 +398,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["style_order"], name: "index_event_types_on_style_order"
   end
 
-  create_table "events_by_pool_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "events_by_pool_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.integer "pool_type_id"
     t.integer "event_type_id"
@@ -876,7 +408,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["pool_type_id"], name: "fk_events_by_pool_types_pool_types"
   end
 
-  create_table "execution_note_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "execution_note_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -884,7 +416,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["code"], name: "index_execution_note_types_on_code", unique: true
   end
 
-  create_table "exercise_rows", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "exercise_rows", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -903,7 +435,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["training_mode_type_id"], name: "fk_exercise_rows_training_mode_types"
   end
 
-  create_table "exercises", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "exercises", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -912,7 +444,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["code"], name: "index_exercises_on_code", unique: true
   end
 
-  create_table "federation_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "federation_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.string "code", limit: 4
     t.string "description", limit: 100
@@ -922,37 +454,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["code"], name: "index_federation_types_on_code", unique: true
   end
 
-  create_table "fin_calendars", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
-    t.integer "lock_version", default: 0
-    t.string "calendar_date"
-    t.string "calendar_name"
-    t.string "calendar_place"
-    t.string "fin_manifest_code"
-    t.string "fin_startlist_code"
-    t.string "fin_results_code"
-    t.string "goggles_meeting_code"
-    t.integer "season_id"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.string "calendar_year", limit: 4
-    t.string "calendar_month", limit: 20
-    t.string "results_link"
-    t.string "startlist_link"
-    t.string "manifest_link"
-    t.text "manifest"
-    t.text "name_import_text"
-    t.text "organization_import_text"
-    t.text "place_import_text"
-    t.text "dates_import_text"
-    t.text "program_import_text"
-    t.integer "meeting_id"
-    t.boolean "do_not_update", default: false, null: false
-    t.index ["goggles_meeting_code"], name: "index_fin_calendars_on_goggles_meeting_code"
-    t.index ["meeting_id"], name: "index_fin_calendars_on_meeting_id"
-    t.index ["season_id"], name: "index_fin_calendars_on_season_id"
-  end
-
-  create_table "friendships", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "friendships", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "friendable_id"
     t.integer "friend_id"
     t.integer "blocker_id"
@@ -963,7 +465,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["friendable_id", "friend_id"], name: "index_friendships_on_friendable_id_and_friend_id", unique: true
   end
 
-  create_table "gender_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "gender_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.string "code", limit: 1
     t.datetime "created_at"
@@ -971,7 +473,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["code"], name: "index_gender_types_on_code", unique: true
   end
 
-  create_table "goggle_cup_definitions", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "goggle_cup_definitions", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.integer "goggle_cup_id"
     t.integer "season_id"
@@ -981,7 +483,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["season_id"], name: "fk_goggle_cup_definitions_seasons"
   end
 
-  create_table "goggle_cup_standards", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "goggle_cup_standards", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.integer "minutes", limit: 3, default: 0
     t.integer "seconds", limit: 2, default: 0
@@ -1000,7 +502,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["swimmer_id"], name: "fk_goggle_cup_standards_swimmers"
   end
 
-  create_table "goggle_cups", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "goggle_cups", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.string "description", limit: 60
     t.integer "season_year", default: 2010
@@ -1026,7 +528,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["team_id"], name: "fk_goggle_cups_teams"
   end
 
-  create_table "hair_dryer_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "hair_dryer_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.string "code", limit: 3
     t.datetime "created_at"
@@ -1034,7 +536,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["code"], name: "index_hair_dryer_types_on_code", unique: true
   end
 
-  create_table "heat_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "heat_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.string "code", limit: 10
     t.datetime "created_at"
@@ -1043,7 +545,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["code"], name: "idx_heat_types_code", unique: true
   end
 
-  create_table "import_queues", options: "ENGINE=InnoDB DEFAULT CHARSET=latin1", force: :cascade do |t|
+  create_table "import_queues", options: "ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.bigint "user_id", null: false
     t.integer "process_runs", default: 0
@@ -1057,13 +559,15 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.string "bindings_left_list"
     t.text "error_messages"
     t.integer "import_queue_id"
+    t.boolean "batch_sql", default: false, null: false
+    t.index ["batch_sql"], name: "index_import_queues_on_batch_sql"
     t.index ["done"], name: "index_import_queues_on_done"
     t.index ["import_queue_id"], name: "index_import_queues_on_import_queue_id"
     t.index ["user_id", "uid"], name: "index_import_queues_on_user_id_and_uid"
     t.index ["user_id"], name: "index_import_queues_on_user_id"
   end
 
-  create_table "individual_records", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "individual_records", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -1093,7 +597,21 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["team_id"], name: "idx_individual_records_team"
   end
 
-  create_table "laps", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "issues", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci", force: :cascade do |t|
+    t.integer "user_id", null: false
+    t.string "code", limit: 3, null: false
+    t.text "req", null: false
+    t.integer "priority", limit: 1, default: 0
+    t.integer "status", limit: 1, default: 0
+    t.datetime "created_at", precision: 6, null: false
+    t.datetime "updated_at", precision: 6, null: false
+    t.index ["code"], name: "index_issues_on_code"
+    t.index ["priority"], name: "index_issues_on_priority"
+    t.index ["status"], name: "index_issues_on_status"
+    t.index ["user_id"], name: "index_issues_on_user_id"
+  end
+
+  create_table "laps", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.integer "minutes", limit: 3, default: 0
     t.integer "seconds", limit: 2, default: 0
@@ -1122,7 +640,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["team_id"], name: "idx_passages_team"
   end
 
-  create_table "locker_cabinet_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "locker_cabinet_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.string "code", limit: 3
     t.datetime "created_at"
@@ -1130,7 +648,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["code"], name: "index_locker_cabinet_types_on_code", unique: true
   end
 
-  create_table "managed_affiliations", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "managed_affiliations", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -1141,7 +659,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["user_id"], name: "index_managed_affiliations_on_user_id"
   end
 
-  create_table "medal_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "medal_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.string "code", limit: 1
     t.datetime "created_at"
@@ -1152,7 +670,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["code"], name: "index_medal_types_on_code", unique: true
   end
 
-  create_table "meeting_entries", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "meeting_entries", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -1178,7 +696,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["team_id"], name: "idx_meeting_entries_team"
   end
 
-  create_table "meeting_event_reservations", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=latin1", force: :cascade do |t|
+  create_table "meeting_event_reservations", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci", force: :cascade do |t|
     t.integer "meeting_id"
     t.integer "team_id"
     t.integer "swimmer_id"
@@ -1200,7 +718,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["team_id"], name: "index_meeting_event_reservations_on_team_id"
   end
 
-  create_table "meeting_events", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "meeting_events", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -1219,7 +737,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["meeting_session_id"], name: "fk_meeting_events_meeting_sessions"
   end
 
-  create_table "meeting_individual_results", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "meeting_individual_results", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.integer "rank", default: 0
     t.boolean "play_off", default: false
@@ -1256,7 +774,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["updated_at"], name: "idx_meeting_individual_results_updated_at"
   end
 
-  create_table "meeting_programs", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "meeting_programs", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.integer "event_order", limit: 3, default: 0
     t.integer "category_type_id"
@@ -1268,16 +786,16 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.time "begin_time"
     t.integer "meeting_event_id"
     t.integer "pool_type_id"
-    t.integer "time_standard_id"
+    t.integer "standard_timing_id"
     t.index ["category_type_id"], name: "meeting_category_type"
     t.index ["event_order"], name: "meeting_order"
     t.index ["gender_type_id"], name: "meeting_gender_type"
     t.index ["meeting_event_id"], name: "fk_meeting_programs_meeting_events"
     t.index ["pool_type_id"], name: "fk_meeting_programs_pool_types"
-    t.index ["time_standard_id"], name: "fk_meeting_programs_time_standards"
+    t.index ["standard_timing_id"], name: "fk_meeting_programs_time_standards"
   end
 
-  create_table "meeting_relay_reservations", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "meeting_relay_reservations", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "meeting_id"
     t.integer "team_id"
     t.integer "swimmer_id"
@@ -1297,7 +815,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["team_id"], name: "index_meeting_relay_reservations_on_team_id"
   end
 
-  create_table "meeting_relay_results", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "meeting_relay_results", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -1327,7 +845,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["team_id"], name: "fk_meeting_relay_results_teams"
   end
 
-  create_table "meeting_relay_swimmers", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "meeting_relay_swimmers", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -1347,7 +865,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["swimmer_id"], name: "fk_meeting_relay_swimmers_swimmers"
   end
 
-  create_table "meeting_reservations", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "meeting_reservations", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "meeting_id"
     t.integer "user_id"
     t.integer "team_id"
@@ -1358,15 +876,17 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.boolean "confirmed"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.boolean "payed", default: false, null: false
     t.index ["badge_id"], name: "index_meeting_reservations_on_badge_id"
     t.index ["meeting_id", "badge_id"], name: "idx_unique_reservation", unique: true
     t.index ["meeting_id"], name: "index_meeting_reservations_on_meeting_id"
+    t.index ["payed"], name: "index_meeting_reservations_on_payed"
     t.index ["swimmer_id"], name: "index_meeting_reservations_on_swimmer_id"
     t.index ["team_id"], name: "index_meeting_reservations_on_team_id"
     t.index ["user_id"], name: "index_meeting_reservations_on_user_id"
   end
 
-  create_table "meeting_sessions", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "meeting_sessions", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.integer "session_order", limit: 2, default: 0
     t.date "scheduled_date"
@@ -1386,7 +906,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["swimming_pool_id"], name: "fk_meeting_sessions_swimming_pools"
   end
 
-  create_table "meeting_team_scores", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "meeting_team_scores", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.decimal "sum_individual_points", precision: 10, scale: 2, default: "0.0"
     t.decimal "sum_relay_points", precision: 10, scale: 2, default: "0.0"
@@ -1410,7 +930,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["team_id"], name: "fk_meeting_team_scores_teams"
   end
 
-  create_table "meetings", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "meetings", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.string "description", limit: 100
     t.date "entry_deadline"
@@ -1466,7 +986,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["timing_type_id"], name: "fk_meetings_timing_types"
   end
 
-  create_table "movement_scope_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "movement_scope_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -1474,7 +994,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["code"], name: "index_movement_scope_types_on_code", unique: true
   end
 
-  create_table "movement_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "movement_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -1482,7 +1002,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["code"], name: "index_movement_types_on_code", unique: true
   end
 
-  create_table "pool_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "pool_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.string "code", limit: 3
     t.integer "length_in_meters", limit: 3
@@ -1492,7 +1012,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["code"], name: "index_pool_types_on_code", unique: true
   end
 
-  create_table "posts", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "posts", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.string "title", limit: 80
     t.text "body"
@@ -1504,7 +1024,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["user_id"], name: "idx_articles_user"
   end
 
-  create_table "presence_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "presence_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.string "code", limit: 1
     t.integer "value", limit: 3
@@ -1513,7 +1033,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["code"], name: "index_presence_types_on_code", unique: true
   end
 
-  create_table "rails_admin_histories", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "rails_admin_histories", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.text "message"
     t.string "username"
     t.integer "item"
@@ -1525,7 +1045,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["item", "table", "month", "year"], name: "index_rails_admin_histories"
   end
 
-  create_table "record_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "record_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.string "code", limit: 3
     t.datetime "created_at"
@@ -1536,7 +1056,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["code"], name: "index_record_types_on_code", unique: true
   end
 
-  create_table "score_computation_type_rows", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "score_computation_type_rows", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -1552,7 +1072,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["score_mapping_type_id"], name: "idx_score_computation_type_rows_score_mapping_type"
   end
 
-  create_table "score_computation_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "score_computation_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -1560,7 +1080,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["code"], name: "index_score_computation_types_on_code", unique: true
   end
 
-  create_table "score_mapping_type_rows", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "score_mapping_type_rows", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -1570,7 +1090,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["score_mapping_type_id"], name: "idx_score_mapping_type_rows_score_mapping_type"
   end
 
-  create_table "score_mapping_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "score_mapping_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -1578,7 +1098,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["code"], name: "index_score_mapping_types_on_code", unique: true
   end
 
-  create_table "season_personal_standards", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "season_personal_standards", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.integer "minutes", limit: 3, default: 0, null: false
     t.integer "seconds", limit: 2, default: 0, null: false
@@ -1594,7 +1114,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["swimmer_id"], name: "idx_season_personal_standards_swimmer_id"
   end
 
-  create_table "season_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "season_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.string "code", limit: 10
     t.string "description", limit: 100
@@ -1606,7 +1126,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["federation_type_id"], name: "fk_season_types_federation_types"
   end
 
-  create_table "seasons", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "seasons", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.string "description", limit: 100
     t.date "begin_date"
@@ -1627,7 +1147,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["timing_type_id"], name: "fk_seasons_timing_types"
   end
 
-  create_table "sessions", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "sessions", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.string "session_id", collation: "latin1_swedish_ci"
     t.text "data"
     t.datetime "created_at"
@@ -1636,7 +1156,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["updated_at"], name: "index_sessions_on_updated_at"
   end
 
-  create_table "settings", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8mb4", force: :cascade do |t|
+  create_table "settings", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci", force: :cascade do |t|
     t.string "var", null: false, collation: "latin1_swedish_ci"
     t.text "value"
     t.string "target_type", null: false, collation: "latin1_swedish_ci"
@@ -1647,7 +1167,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["target_type", "target_id"], name: "index_settings_on_target_type_and_target_id"
   end
 
-  create_table "shower_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "shower_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.string "code", limit: 3
     t.datetime "created_at"
@@ -1655,7 +1175,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["code"], name: "index_shower_types_on_code", unique: true
   end
 
-  create_table "social_news", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "social_news", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.string "title", limit: 150
     t.text "body"
     t.boolean "old", default: false
@@ -1668,7 +1188,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["user_id"], name: "idx_news_feeds_user"
   end
 
-  create_table "standard_timings", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "standard_timings", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.integer "minutes", limit: 3, default: 0
     t.integer "seconds", limit: 2, default: 0
@@ -1687,7 +1207,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["season_id"], name: "fk_time_standards_seasons"
   end
 
-  create_table "stroke_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "stroke_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.string "code", limit: 2
     t.datetime "created_at"
@@ -1697,7 +1217,16 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["eventable"], name: "idx_is_eventable"
   end
 
-  create_table "swimmer_level_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "swimmer_aliases", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+    t.integer "lock_version", default: 0
+    t.datetime "created_at"
+    t.datetime "updated_at"
+    t.string "complete_name", limit: 100
+    t.integer "swimmer_id"
+    t.index ["swimmer_id", "complete_name"], name: "idx_swimmer_id_complete_name", unique: true
+  end
+
+  create_table "swimmer_level_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -1708,7 +1237,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["code"], name: "index_swimmer_level_types_on_code", unique: true
   end
 
-  create_table "swimmer_season_scores", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "swimmer_season_scores", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.decimal "score", precision: 10, scale: 2
     t.integer "badge_id"
@@ -1723,7 +1252,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["meeting_individual_result_id"], name: "index_swimmer_season_scores_on_meeting_individual_result_id"
   end
 
-  create_table "swimmers", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "swimmers", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.string "last_name", limit: 50
     t.string "first_name", limit: 50
@@ -1750,7 +1279,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["nickname"], name: "index_swimmers_on_nickname"
   end
 
-  create_table "swimming_pool_reviews", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "swimming_pool_reviews", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.string "title", limit: 100
     t.text "entry_text"
@@ -1763,7 +1292,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["user_id"], name: "idx_swimming_pool_reviews_user"
   end
 
-  create_table "swimming_pools", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "swimming_pools", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.string "name", limit: 100
     t.string "address", limit: 100
@@ -1803,7 +1332,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["shower_type_id"], name: "fk_swimming_pools_shower_types"
   end
 
-  create_table "taggings", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=latin1", force: :cascade do |t|
+  create_table "taggings", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci", force: :cascade do |t|
     t.integer "tag_id"
     t.integer "taggable_id"
     t.string "taggable_type"
@@ -1822,13 +1351,13 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["tagger_id"], name: "index_taggings_on_tagger_id"
   end
 
-  create_table "tags", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=latin1", force: :cascade do |t|
+  create_table "tags", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci", force: :cascade do |t|
     t.string "name", collation: "utf8_bin"
     t.integer "taggings_count", default: 0
     t.index ["name"], name: "index_tags_on_name", unique: true
   end
 
-  create_table "team_affiliations", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "team_affiliations", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.string "number", limit: 20
     t.string "name", limit: 100
@@ -1845,7 +1374,16 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["team_id"], name: "fk_team_affiliations_teams"
   end
 
-  create_table "team_lap_templates", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "team_aliases", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+    t.integer "lock_version", default: 0
+    t.datetime "created_at"
+    t.datetime "updated_at"
+    t.string "name", limit: 60
+    t.integer "team_id"
+    t.index ["team_id", "name"], name: "idx_team_id_name", unique: true
+  end
+
+  create_table "team_lap_templates", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.integer "part_order", limit: 3, default: 0
     t.boolean "subtotal", default: false
@@ -1866,7 +1404,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["team_id"], name: "idx_team_passage_templates_team"
   end
 
-  create_table "teams", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "teams", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.string "name", limit: 60
     t.string "editable_name", limit: 60
@@ -1889,7 +1427,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["name"], name: "index_teams_on_name"
   end
 
-  create_table "timing_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "timing_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.string "code", limit: 1
     t.datetime "created_at"
@@ -1897,7 +1435,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["code"], name: "index_timing_types_on_code", unique: true
   end
 
-  create_table "training_mode_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "training_mode_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -1905,7 +1443,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["code"], name: "index_training_mode_types_on_code", unique: true
   end
 
-  create_table "training_rows", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "training_rows", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -1935,7 +1473,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["training_step_type_id"], name: "fk_training_rows_training_step_types"
   end
 
-  create_table "training_step_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "training_step_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -1945,7 +1483,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["step_order"], name: "index_training_step_types_on_step_order"
   end
 
-  create_table "trainings", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "trainings", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -1956,7 +1494,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["title"], name: "index_trainings_on_title", unique: true
   end
 
-  create_table "user_achievements", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "user_achievements", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -1965,7 +1503,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["user_id", "achievement_id"], name: "index_user_achievements_on_user_id_and_achievement_id", unique: true
   end
 
-  create_table "user_laps", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8mb4", force: :cascade do |t|
+  create_table "user_laps", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci", force: :cascade do |t|
     t.integer "user_result_id", null: false
     t.integer "swimmer_id", null: false
     t.decimal "reaction_time", precision: 5, scale: 2
@@ -1983,7 +1521,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["user_result_id"], name: "index_user_laps_on_user_result_id"
   end
 
-  create_table "user_results", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "user_results", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.decimal "standard_points", precision: 10, scale: 2, default: "0.0"
     t.decimal "meeting_points", precision: 10, scale: 2, default: "0.0"
@@ -2005,17 +1543,19 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.integer "event_type_id"
     t.bigint "user_workshop_id", null: false
     t.bigint "swimming_pool_id"
+    t.bigint "standard_timing_id"
     t.index ["category_type_id"], name: "fk_user_results_category_types"
     t.index ["disqualification_code_type_id"], name: "idx_user_results_disqualification_code_type"
     t.index ["event_type_id"], name: "fk_user_results_event_types"
     t.index ["pool_type_id"], name: "fk_user_results_pool_types"
+    t.index ["standard_timing_id"], name: "index_user_results_on_standard_timing_id"
     t.index ["swimmer_id"], name: "fk_user_results_swimmers"
     t.index ["swimming_pool_id"], name: "index_user_results_on_swimming_pool_id"
     t.index ["user_id"], name: "fk_rails_e406f4db18"
     t.index ["user_workshop_id"], name: "index_user_results_on_user_workshop_id"
   end
 
-  create_table "user_swimmer_confirmations", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "user_swimmer_confirmations", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -2026,7 +1566,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["user_id", "swimmer_id", "confirmator_id"], name: "user_swimmer_confirmator", unique: true
   end
 
-  create_table "user_training_rows", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "user_training_rows", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -2056,7 +1596,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["user_training_id", "part_order"], name: "idx_user_training_rows_part_order"
   end
 
-  create_table "user_training_stories", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "user_training_stories", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -2073,7 +1613,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["user_training_id", "swam_date"], name: "index_user_training_stories_on_user_training_id_and_swam_date"
   end
 
-  create_table "user_trainings", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "user_trainings", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -2082,7 +1622,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["user_id", "description"], name: "index_user_trainings_on_user_id_and_description"
   end
 
-  create_table "user_workshops", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8mb4", force: :cascade do |t|
+  create_table "user_workshops", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.date "header_date"
     t.string "header_year", limit: 10
@@ -2096,12 +1636,12 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.integer "edition_type_id", default: 3, null: false
     t.integer "timing_type_id", default: 1, null: false
     t.integer "swimming_pool_id"
-    t.boolean "autofilled"
-    t.boolean "off_season"
-    t.boolean "confirmed"
-    t.boolean "cancelled"
-    t.boolean "pb_acquired"
-    t.boolean "read_only"
+    t.boolean "autofilled", default: false, null: false
+    t.boolean "off_season", default: false, null: false
+    t.boolean "confirmed", default: false, null: false
+    t.boolean "cancelled", default: false, null: false
+    t.boolean "pb_acquired", default: false, null: false
+    t.boolean "read_only", default: false, null: false
     t.datetime "created_at", precision: 6, null: false
     t.datetime "updated_at", precision: 6, null: false
     t.index ["code"], name: "index_user_workshops_on_code"
@@ -2116,7 +1656,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["user_id"], name: "index_user_workshops_on_user_id"
   end
 
-  create_table "users", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "users", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.string "name", limit: 190, null: false
     t.string "description", limit: 100
@@ -2151,6 +1691,8 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.integer "year_of_birth", default: 1900
     t.string "provider"
     t.string "uid"
+    t.boolean "active", default: true, null: false
+    t.index ["active"], name: "index_users_on_active"
     t.index ["coach_level_type_id"], name: "idx_users_coach_level_type"
     t.index ["confirmation_token"], name: "index_users_on_confirmation_token", unique: true
     t.index ["email"], name: "index_users_on_email", unique: true
@@ -2163,7 +1705,7 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["unlock_token"], name: "index_users_on_unlock_token", unique: true
   end
 
-  create_table "votes", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "votes", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
     t.integer "votable_id"
     t.string "votable_type", collation: "latin1_swedish_ci"
     t.integer "voter_id"
@@ -2179,6 +1721,8 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
     t.index ["voter_id", "voter_type"], name: "index_votes_on_voter_id_and_voter_type"
   end
 
+  add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "issues", "users"
   add_foreign_key "laps", "meeting_individual_results"
   add_foreign_key "laps", "swimmers"
   add_foreign_key "laps", "teams"
@@ -2209,4 +1753,8 @@ ActiveRecord::Schema.define(version: 2021_07_28_183111) do
   add_foreign_key "user_workshops", "teams"
   add_foreign_key "user_workshops", "timing_types"
   add_foreign_key "user_workshops", "users"
+
+  create_view "last_seasons_ids", sql_definition: <<-SQL
+      select `s1`.`id` AS `id` from (select `seasons`.`id` AS `id` from `seasons` where `seasons`.`season_type_id` = 1 order by `seasons`.`begin_date` desc limit 1) `s1` union select `s1_1`.`id` AS `id` from (select `seasons`.`id` AS `id` from (((((`seasons` join `meetings` on(`meetings`.`season_id` = `seasons`.`id`)) join `meeting_sessions` on(`meeting_sessions`.`meeting_id` = `meetings`.`id`)) join `meeting_events` on(`meeting_events`.`meeting_session_id` = `meeting_sessions`.`id`)) join `meeting_programs` on(`meeting_programs`.`meeting_event_id` = `meeting_events`.`id`)) join `meeting_individual_results` on(`meeting_individual_results`.`meeting_program_id` = `meeting_programs`.`id`)) where `seasons`.`season_type_id` = 1 order by `seasons`.`begin_date` desc limit 1) `s1_1` union select `s1_2`.`id` AS `id` from (select `seasons`.`id` AS `id` from (`seasons` join `user_workshops` on(`user_workshops`.`season_id` = `seasons`.`id`)) where `seasons`.`season_type_id` = 1 order by `seasons`.`begin_date` desc limit 1) `s1_2` union select `s1_3`.`id` AS `id` from (select `seasons`.`id` AS `id` from ((`seasons` join `user_workshops` on(`user_workshops`.`season_id` = `seasons`.`id`)) join `user_results` on(`user_results`.`user_workshop_id` = `user_workshops`.`id`)) where `seasons`.`season_type_id` = 1 order by `seasons`.`begin_date` desc limit 1) `s1_3` union select `s2`.`id` AS `id` from (select `seasons`.`id` AS `id` from `seasons` where `seasons`.`season_type_id` = 7 order by `seasons`.`begin_date` desc limit 1) `s2` union select `s2_1`.`id` AS `id` from (select `seasons`.`id` AS `id` from (((((`seasons` join `meetings` on(`meetings`.`season_id` = `seasons`.`id`)) join `meeting_sessions` on(`meeting_sessions`.`meeting_id` = `meetings`.`id`)) join `meeting_events` on(`meeting_events`.`meeting_session_id` = `meeting_sessions`.`id`)) join `meeting_programs` on(`meeting_programs`.`meeting_event_id` = `meeting_events`.`id`)) join `meeting_individual_results` on(`meeting_individual_results`.`meeting_program_id` = `meeting_programs`.`id`)) where `seasons`.`season_type_id` = 7 order by `seasons`.`begin_date` desc limit 1) `s2_1` union select `s2_2`.`id` AS `id` from (select `seasons`.`id` AS `id` from (`seasons` join `user_workshops` on(`user_workshops`.`season_id` = `seasons`.`id`)) where `seasons`.`season_type_id` = 7 order by `seasons`.`begin_date` desc limit 1) `s2_2` union select `s2_3`.`id` AS `id` from (select `seasons`.`id` AS `id` from ((`seasons` join `user_workshops` on(`user_workshops`.`season_id` = `seasons`.`id`)) join `user_results` on(`user_results`.`user_workshop_id` = `user_workshops`.`id`)) where `seasons`.`season_type_id` = 7 order by `seasons`.`begin_date` desc limit 1) `s2_3` union select `s3`.`id` AS `id` from (select `seasons`.`id` AS `id` from `seasons` where `seasons`.`season_type_id` = 8 order by `seasons`.`begin_date` desc limit 1) `s3` union select `s3_1`.`id` AS `id` from (select `seasons`.`id` AS `id` from (((((`seasons` join `meetings` on(`meetings`.`season_id` = `seasons`.`id`)) join `meeting_sessions` on(`meeting_sessions`.`meeting_id` = `meetings`.`id`)) join `meeting_events` on(`meeting_events`.`meeting_session_id` = `meeting_sessions`.`id`)) join `meeting_programs` on(`meeting_programs`.`meeting_event_id` = `meeting_events`.`id`)) join `meeting_individual_results` on(`meeting_individual_results`.`meeting_program_id` = `meeting_programs`.`id`)) where `seasons`.`season_type_id` = 8 order by `seasons`.`begin_date` desc limit 1) `s3_1` union select `s2_2`.`id` AS `id` from (select `seasons`.`id` AS `id` from (`seasons` join `user_workshops` on(`user_workshops`.`season_id` = `seasons`.`id`)) where `seasons`.`season_type_id` = 8 order by `seasons`.`begin_date` desc limit 1) `s2_2` union select `s2_3`.`id` AS `id` from (select `seasons`.`id` AS `id` from ((`seasons` join `user_workshops` on(`user_workshops`.`season_id` = `seasons`.`id`)) join `user_results` on(`user_results`.`user_workshop_id` = `user_workshops`.`id`)) where `seasons`.`season_type_id` = 8 order by `seasons`.`begin_date` desc limit 1) `s2_3`
+  SQL
 end

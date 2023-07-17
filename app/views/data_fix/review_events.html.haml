@@ -1,0 +1,44 @@
+= render(partial: 'modal_progress')
+.wrapper-body
+  .main-content
+    %section.my-2#title-box
+      = render(partial: 'data_fix_header', locals: { file_path: @file_path, retry_needed: @retry_needed })
+    %section.my-2#review-events-tabs
+      = render(partial: 'data_fix_tabs', locals: { active_tab: 'events', file_path: @file_path })
+
+    %section.my-2#review-events
+      - sorted_keys = @events_hash.sort { |a, b| a.last&.row&.event_order <=> b.last&.row&.event_order }.map(&:first)
+      .container-fluid
+        .row-fluid
+          - sorted_keys.each_with_index do |event_key, index|
+            :ruby
+              event_entity = @events_hash[event_key]
+              event = event_entity.row
+            %div{ id: "event-card-#{index}" }
+              .card.my-2
+                %div{ id: "event-header-#{index}", class: event.id.present? ? 'bg-light' : 'bg-light-yellow' }
+                  .row
+                    .col-3
+                      %h5.mb-0
+                        %button.btn.btn-link.m-1{ id: "edit-event-#{index}", data: { target: "#event-panel-#{index}",
+                                                  toggle: 'collapse', 'aria-expanded' => 'false',
+                                                  'aria-controls' => 'edit-event' } }
+                          = event_key
+                    .col-3.mt-2
+                      %i.form-text.text-muted.bg-light-grey
+                        %pre
+                          🔑 "#{event_key}"
+                    .col.mt-2
+                      = "=> #{event.decorate.short_label}"
+                      - if event.id.present?
+                        ID: #{event.id}
+                        = event.valid? ? '✅' : '🔵'
+                      - else
+                        🆕
+                .collapse{ id: "event-panel-#{index}", 'aria-labelledby' => "event-header-#{index}",
+                           'data-parent' => "#event-card-#{index}" }
+                  .card-body.border-bottom.border-secondary
+                    - meeting_session_idx = event_entity.bindings['meeting_session']
+                    = render(partial: 'event_form', locals: { event: event, meeting_sessions: @meeting_sessions,
+                             meeting_session_idx: meeting_session_idx, event_types_payload: @event_types_payload,
+                             index: index, event_key: event_key, file_path: @file_path })

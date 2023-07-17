@@ -8,15 +8,7 @@ class StatsGrid < BaseGrid
   # Returns the scope for the grid. (#assets is the filtered version of it)
   scope { data_domain }
 
-  # Unscoped data_domain read accessor
-  def unscoped
-    data_domain
-  end
-
-  filter(:id, :integer)
-  filter(:route, :string, header: 'Route (~)') do |value, scope|
-    scope.select { |row| (row.route =~ /#{value}/i) }
-  end
+  filter(:route, :string, header: 'Route (~)') { |_value, scope| scope }
   filter(:day, :date, range: true, input_options: {
            maxlength: 10, placeholder: 'YYYY-MM-DD'
          })

@@ -1,0 +1,20 @@
+.row.py-2
+  %p= t('issues.existing_request_count', total: existing_issues.count)
+.row
+  %code active: #{active ? '✅' : '🚫'}
+
+%section#form-bottom-toolbar
+  .container
+    .row.my-4
+      .col.text-center
+        = form_tag(api_issue_fix_path(id: issue_id), id: 'frm-type5', method: :post) do
+          .bg-light-green.p-1.pt-3.shadow-box
+            .row.p-3
+              .col.pl-0.pt-2
+                = check_box_tag(:send_email, '1', false)
+                = label_tag(:send_email, t('issues.send_email_label'), class: 'control-label')
+            .row-fluid.py-3
+              - btn_enabled = processable && !active
+              = submit_tag(t('issues.grid.buttons.fix_label'), id: 'btn-solve',
+                          class: "btn btn-sm btn-success #{btn_enabled ? '' : 'disabled'}", disabled: !btn_enabled,
+                          data: { confirm: t('issues.ask_confirmation') })

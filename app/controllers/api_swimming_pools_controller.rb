@@ -18,24 +18,17 @@ class APISwimmingPoolsController < ApplicationController
       method: :get, url: 'swimming_pools', jwt: current_user.jwt,
       params: {
         name: index_params[:name], address: index_params[:address],
+        pool_type_id: index_params[:pool_type_id], city_id: index_params[:city_id],
         page: index_params[:page], per_page: index_params[:per_page]
       }
     )
-    json_domain = JSON.parse(result.body)
+    parsed_response = result.body.present? ? JSON.parse(result.body) : { 'error' => "Error #{result.code}" }
     unless result.code == 200
-      flash[:error] = I18n.t('dashboard.api_proxy_error', error_code: result.code, error_msg: json_domain['error'])
+      flash[:error] = I18n.t('dashboard.api_proxy_error', error_code: result.code, error_msg: parsed_response['error'])
       redirect_to(root_path) && return
     end
 
-    @domain_count = result.headers[:total].to_i
-    @domain_page = result.headers[:page].to_i
-    @domain_per_page = result.headers[:per_page].to_i
-
-    # Setup grid domain (and chart's):
-    @domain = json_domain.map { |attrs| GogglesDb::SwimmingPool.new(attrs) }
-
-    # Setup datagrid:
-    SwimmingPoolsGrid.data_domain = @domain
+    set_grid_domain_for(SwimmingPoolsGrid, GogglesDb::SwimmingPool, result.headers, parsed_response)
 
     respond_to do |format|
       @grid = SwimmingPoolsGrid.new(grid_filter_params)
@@ -51,6 +44,29 @@ class APISwimmingPoolsController < ApplicationController
         )
       end
     end
+  end
+
+  # POST /api_swimming_pools
+  # Creates a new GogglesDb::SwimmingPool row.
+  #
+  # All instance attributes are accepted, minus lock_version & the timestamps, which are
+  # handled automatically.
+  #
+  def create
+    result = APIProxy.call(
+      method: :post,
+      url: 'swimming_pool',
+      jwt: current_user.jwt,
+      payload: create_params(GogglesDb::SwimmingPool)
+    )
+    json = parse_json_result_from_create(result)
+
+    if json.present? && json['msg'] == 'OK' && json['new'].key?('id')
+      flash[:info] = I18n.t('datagrid.edit_modal.create_ok', id: json['new']['id'])
+    else
+      flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: result.code)
+    end
+    redirect_to(api_swimming_pools_path(index_params))
   end
   # rubocop:enable Metrics/AbcSize
   #-- -------------------------------------------------------------------------
@@ -78,30 +94,7 @@ class APISwimmingPoolsController < ApplicationController
     else
       flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: result)
     end
-    redirect_to api_swimming_pools_path(page: index_params[:page], per_page: index_params[:per_page])
-  end
-
-  # POST /api_swimming_pools
-  # Creates a new GogglesDb::SwimmingPool row.
-  #
-  # All instance attributes are accepted, minus lock_version & the timestamps, which are
-  # handled automatically.
-  #
-  def create
-    result = APIProxy.call(
-      method: :post,
-      url: 'swimming_pool',
-      jwt: current_user.jwt,
-      payload: create_params(GogglesDb::SwimmingPool)
-    )
-    json = parse_json_result_from_create(result)
-
-    if json.present? && json['msg'] == 'OK' && json['new'].key?('id')
-      flash[:info] = I18n.t('datagrid.edit_modal.create_ok', id: json['new']['id'])
-    else
-      flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: result.code)
-    end
-    redirect_to api_swimming_pools_path(page: index_params[:page], per_page: index_params[:per_page])
+    redirect_to(api_swimming_pools_path(index_params))
   end
   #-- -------------------------------------------------------------------------
   #++
@@ -114,10 +107,9 @@ class APISwimmingPoolsController < ApplicationController
     @grid_filter_params = params.fetch(:swimming_pools_grid, {}).permit!
   end
 
-  # Strong parameters checking for /index
+  # Strong parameters checking for /index, including pass-through from modal editors.
   # (NOTE: memoizazion is needed because the member variable is used in the view.)
   def index_params
-    @index_params = params.permit(:page, :per_page, :swimming_pools_grid)
-                          .merge(params.fetch(:swimming_pools_grid, {}).permit!)
+    index_params_for(:swimming_pools_grid)
   end
 end

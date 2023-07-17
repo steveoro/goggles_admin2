@@ -2,6 +2,22 @@
 
 _Please, add the latest build info on top of the list; use Version::MAJOR only after gold release; keep semantic versioning in line with framework's_
 
+- **0.5.22** [Steve A.] added support for account reactivation request w/ email send; added pass-through filtering parameters for all grids from row actions, including the edit modal; added button links to show filtered lists of specific sub-entities from an associated row (i.e.: from a badge to a team affiliation grid); re-sync w/ base engine & API; bundle update
+- **0.5.05** [Steve A.] check & fix actions for the issue controller; additional components & specs
+- **0.5.04** [Steve A.] issues controller w/ crude handing (low-level edit)
+- **0.5.03** [Steve A.] resync w/ base engine: slight change in ImportQueueDecorator so that #chrono_delta_label can be called also on master chrono rows
+- **0.4.25** [Steve A.] make sure that calendar rows do not get consumed unless actual result nodes are found
+- **0.4.23** [Steve A.] ensure dest. paths exist when moving files; ensure proper swimmer key is used for internal entity cache, even for same-named swimmers; extended debug & data-fix; improved display for row action toolbar in grids & other minor updates; added auto-detection for corrupted result files (containing a 'retry' error section) with flashing warning display on data-fix pages in header banner
+- **0.4.21** [Steve A.] resync w/ base engine
+- **0.4.20** [Steve A.] more debug and small improvements to data-import strategies & front-end; resync w/ base engine: some security updates; increased duration of JWTs to 10 hours; removed unconfirmed new user access possibility; added a default scope for Team
+- **0.4.10** [Steve A.] resync w/ base engine: forced UTF-8 encoding for downloaded script files in ImportQueues
+- **0.4.09** [Steve A.] resync w/ base engine: using proper download method for attachments in ImportQueue
+- **0.4.08** [Steve A.] improved & fixed data-import steps, now with onscreen progress modal
+- **0.4.07** [Steve A.] resync w/ base engine; added support for 8 additional "external" fields in AutoCompleteComponent (& related JS controller) so that we can auto-update up to 12 detail fields in 1 round
+- **0.4.06** [Steve A.] slightly improved API endpoints with more useful default ordering for most; data grids for workshops, calendars & standard timings; resync w/ base engine
+- **0.4.05** [Steve A.] support push batch SQL import data to dedicated API endpoint directly into ImportQueues as file attachments; re-sync w/ base Engine; push controller skeleton
+- **0.3.53** [Steve A.] bundle security fixes; pull, data-fix & push controllers preliminary versions w/ all related strategy classes
+- **0.3.52** [Steve A.] minor bundle security fixes; added meetings management; data-import crawler redux w/ new internal API for background updates via ActionCable; still WIP: process result file as a single macrotransaction using the SqlMaker
 - **0.3.51** [Steve A.] re-sync w/ base engine
 - **0.3.50** [Steve A.] re-sync with base engine; bump Rails to 6.0.4.7 for security fixes
 - **0.3.48** [Steve A.] re-sync with base engine

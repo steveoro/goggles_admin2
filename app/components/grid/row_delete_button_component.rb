@@ -3,7 +3,7 @@
 #
 # = Grid components module
 #
-#   - version:  7.0.3.25
+#   - version:  7.0.3.52
 #   - author:   Steve A.
 #
 module Grid
@@ -20,7 +20,7 @@ module Grid
     #
     # == Params
     # - <tt>asset_row</tt>: valid ActiveRecord Model instance to which this button component will be linked to
-    # - <tt>controller_name</tt>: Rails controller name for the <tt>:update</tt> action
+    # - <tt>controller_name</tt>: Rails controller name for the <tt>:destroy</tt> action
     # - <tt>label_method</tt>: display method invoked on the row while asking confirmation (default: 'id')
     def initialize(asset_row:, controller_name:, label_method: 'id')
       super

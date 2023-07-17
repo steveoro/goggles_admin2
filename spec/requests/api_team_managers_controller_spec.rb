@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe APITeamManagersController, type: :request do
+RSpec.describe APITeamManagersController do
   describe 'GET api_team_managers (index)' do
     context 'with an unlogged user' do
       it 'is a redirect to the login path' do
@@ -34,7 +34,7 @@ RSpec.describe APITeamManagersController, type: :request do
 
   describe 'PUT api_team_manager (update)' do
     let(:fixture_row) { FactoryBot.create(:managed_affiliation) }
-    let(:new_value) { GogglesDb::TeamAffiliation.first(200).sample.id }
+    let(:new_value) { GogglesDb::TeamAffiliation.pluck(:id).first(200).sample }
 
     context 'with an unlogged user' do
       it 'is a redirect to the login path' do
@@ -62,7 +62,7 @@ RSpec.describe APITeamManagersController, type: :request do
       end
 
       it 'does NOT set the flash error message' do
-        expect(flash[:error]).to be nil
+        expect(flash[:error]).to be_nil
       end
 
       it 'redirects to /index' do
@@ -102,7 +102,7 @@ RSpec.describe APITeamManagersController, type: :request do
       end
 
       it 'does NOT set the flash error message' do
-        expect(flash[:error]).to be nil
+        expect(flash[:error]).to be_nil
       end
 
       it 'redirects to /index' do
@@ -142,7 +142,7 @@ RSpec.describe APITeamManagersController, type: :request do
         end
 
         it 'does NOT set the flash error message' do
-          expect(flash[:error]).to be nil
+          expect(flash[:error]).to be_nil
         end
 
         it 'redirects to /index' do

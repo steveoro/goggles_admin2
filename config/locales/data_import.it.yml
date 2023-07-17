@@ -1,0 +1,58 @@
+it:
+  data_import:
+    generic_save_btn: "💾 Salva modifiche"
+    btn_save_confirm: 'Salvo le modifiche?'
+    config:
+      default_calendar_url: 'URL calendario'
+    calendar:
+      crawler_status_page_title: 'Crawler'
+      choose_season_label: 'Scegli stagione'
+      calendar_files_page_title: 'File calendario'
+      pdfs_page_title: 'PDF'
+      result_files_page_title: 'File risultati'
+      btn_run_crawler: '📥 CRAWL URL Calendario'
+      btn_run_crawler_confirm: 'Eseguo il crawler per recuperare le ultime informazioni sui meeting trovati alla URL qui sopra?'
+      btn_clear_log: 'Azzera Log'
+      btn_clear_log_confirm: 'Azzero il log?'
+      season_search_label: 'Season / cerca x label / URL calendario / layout:'
+    file:
+      btn_delete_tooltip: 'Elimina file'
+      confirm_delete: 'Sicuri di voler cancellare questo file?'
+      btn_rename_tooltip: 'Rinomina file'
+      btn_edit_tooltip: 'Modifica file'
+      btn_download_tooltip: 'Scarica file'
+      btn_process_csv_tooltip: 'Elabora questo file calendario, scaricando i risultati disponibili'
+      btn_process_pdf_tooltip: 'Converti questo file risultati da PDF al formata JSON che può essere importato'
+      btn_process_json_tooltip: "Elabora questo file risultati, preparandolo per l'importazione dati"
+      btn_reparse_json_tooltip: "Riesegui la scasione forzata di questo file risultati usando i dati originali presenti"
+      btn_process_sql_tooltip: "Esegue l'upload di questo file di importazione dati sul server remoto"
+      confirm_push: "Sicuri di voler fare l'upload di questo file?"
+    data_fix:
+      link_to_manifest_download: "Scarica locandina"
+      link_to_results_pdf_download: "Scarica risultati su PDF"
+      btn_maps_search: 'Cerca'
+      btn_maps_search_tooltip: "Cerca su Maps il nome & indirizzo per ottenere il Plus code e/o l'URI da incollare qui"
+      btn_teams_for_swimmer_tooltip: 'Trova la lista di squadre a cui appartiene questo nuotatore'
+      btn_start_sql_batch: "Start SQL batch creation"
+      btn_start_sql_batch_tooltip: "Finisce la fase di data-review e comincia il 'commit' esclusivamente su DB locale (è poi possibile inviare il batch sul server di destinazione col 'push')"
+      btn_start_sql_batch_confirm: "Eseguo il commit di tutti i cambiamenti?"
+      btn_start_sql_batch_disable: "Elaborazione in corso..."
+      btn_reparse_session_label: "Riscasiona sessioni"
+      btn_reparse_session_tooltip: "Riesegui la scasione forzata di questo file risultati SOLO per le sessioni Meeting (utile se si cambia e salva l'ID del Meeting)"
+      msg:
+        warning_retry_needed: "ERRORE 'RETRY' TROVATO! Questo file risultati può essere elaborato lo stesso ma deve essere riscaricato per essere completo."
+    push:
+      msg_prepare_batch_ok: 'File batch SQL creato con successo.'
+      msg_send_batch_ok: "File batch inviato con successo."
+      new_results_tab_name: "Nuovi"
+      sent_results_tab_name: "Inviati"
+      btn_all_sql_files: "TUTTI i file"
+      btn_all_sql_files_tooltip: "Esegue l'upload sul server remoto di TUTTI i file batch presenti in elenco qui sotto"
+      btn_all_sql_files_confirm: "Sicuri di voler caricare TUTTI i file in elenco?"
+      all_sql_files_ok: "Tutti i file batch sono stati inviati con successo."
+    errors:
+      invalid_request: 'Richiesta non valida'
+      invalid_file_content: 'Contenuto del file non valido rispetto alla sua estensione'
+      missing_url_or_season_id: 'Devi specificare un URL calendario e un ID stagione'
+      crawler_unreachable: 'Crawler server non raggiungibile'
+      crawler_connecting: 'In connessione...'

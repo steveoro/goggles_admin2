@@ -15,7 +15,7 @@ it:
     csv_export:
       btn_tooltip: "Scarica tutti i dati della pagina corrente come file CSV"
     edit_modal:
-      edit_title: "Modifica riga"
+      edit_title: "Modifica"
       create_title: "Crea nuova riga"
       close_btn: "Chiudi"
       save_btn: "Salva"
@@ -23,3 +23,20 @@ it:
       edit_ok: "I cambiamenti sono stati salvati con successo."
       edit_failed: "Il salvataggio è fallito: %{error}"
       create_ok: "Nuova riga creata! (ID: %{id})"
+    clone_form:
+      clone_title: "Clona"
+      btn_tooltip: "Clona TUTTE le righe da una stagione ad un altra"
+      clone_button: "Clona"
+      source_season: "Dalla Stagione ID"
+      target_season: "Alla Stagione ID"
+      confirm_msg: "Sicuri di voler copiare TUTTE le righe dalla stagione sorgente in quella di destinazione?"
+      clone_ok: "Riga clonate con successo!"
+      clone_failed: "Qualcosa è andato storto: %{error}"
+    clear_stats:
+      clear_title: "Ripulisci"
+      clear_tooltip: "Elimina TUTTE le righe più vecchie di una data specificata"
+      clear_button: "Elimina"
+      older_than_day: "Più vecchie di questa data"
+      confirm_msg: "Sicuri di voler eliminare TUTTE le righe più vecchie della data specificata?"
+      clear_ok: "Riga eliminate con successo!"
+      clear_failed: "Qualcosa è andato storto: %{error}"

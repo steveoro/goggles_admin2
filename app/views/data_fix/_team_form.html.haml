@@ -1,0 +1,63 @@
+:ruby
+  # "Subkey" is the actual team key (with spaces) translated to a node name to a node ID (with underscores)
+  # (it's needed to reference the DOM IDs from the AutoCompleteComponent)
+  subkey_for_dom_id = team_key.gsub(/[\s`'^?&%$!"<>:;,.*àèéìòù]/, '_')
+  src_dom = "#team_#{subkey_for_dom_id}_id"
+  target_dom = "#team_#{subkey_for_dom_id}_team_id"
+  onchange_event = "$('#{target_dom}').val($('#{src_dom}').val()); $('#{target_dom}').trigger('change')"
+
+= form_for(team, url: data_fix_update_path(team, model: 'team'), method: :patch) do |f|
+  = hidden_field_tag('key', team_key) # actual entity key, used to retrieve the entity from data hash
+  = hidden_field_tag('dom_valid_key', subkey_for_dom_id) # valid DOM ID key using inside the form
+  = hidden_field_tag('file_path', file_path)
+  .container
+    .form-group
+      .field
+        = label_tag("team[#{subkey_for_dom_id}][id]", 'fuzzy matches')
+        = select_tag("team[#{subkey_for_dom_id}][id]", options_from_collection_for_select(team_matches || [], 'id',
+                     'display_label', team&.id), include_blank: true, class: 'form-control', onchange: onchange_event)
+    .row
+      .col-6
+        = render(AutoCompleteComponent.new(show_top_labels: true,
+                base_dom_id: "team[#{subkey_for_dom_id}]", base_api_url: api_url,
+                detail_endpoint: 'team', base_name: 'team', label_column: 'editable_name',
+                default_value: team&.id,
+                search_endpoint: 'teams', search_column: 'name',
+                target3_dom_id: "team_#{subkey_for_dom_id}_editable_name", target3_column: 'editable_name',
+                target4_dom_id: "team_#{subkey_for_dom_id}_city_id", target4_column: 'city_id',
+                target5_dom_id: "team_#{subkey_for_dom_id}_name", target5_column: 'name',
+                target6_dom_id: "team_#{subkey_for_dom_id}_name_variations", target6_column: 'name_variations',
+                jwt: current_user.jwt))
+      .col-lg-4.col-md-6
+        .form-group
+          .field
+            = label_tag("team[#{subkey_for_dom_id}][editable_name]", 'editable_name')
+            = text_field_tag("team[#{subkey_for_dom_id}][editable_name]", team&.editable_name,
+                              class: 'form-control', required: true, placeholder: 'editable_name')
+    .row
+      .col-5
+        .form-group
+          .field
+            = label_tag("team[#{subkey_for_dom_id}][name]", 'name')
+            = text_field_tag("team[#{subkey_for_dom_id}][name]", team&.name,
+                              class: 'form-control', required: true, placeholder: 'name')
+      .col-7
+        .form-group
+          .field
+            = label_tag("team[#{subkey_for_dom_id}][name_variations]", 'name_variations')
+            = text_field_tag("team[#{subkey_for_dom_id}][name_variations]", team&.name_variations,
+                              class: 'form-control', placeholder: 'name_variations')
+
+    = render(AutoCompleteComponent.new(show_top_labels: true,
+            base_dom_id: "team[#{subkey_for_dom_id}]", base_api_url: api_url,
+            default_value: team&.city_id,
+            detail_endpoint: 'city', base_name: 'city', label_column: 'area',
+            search_endpoint: 'cities', search_column: 'name',
+            target2_field: 'area', target2_column: 'area',
+            target2_class: 'offset-lg-2 offset-md-3 offset-sm-3 col-md-4 col-sm-4 my-1',
+            jwt: current_user.jwt))
+
+    .form-group
+      = f.submit(t('data_import.generic_save_btn'), id: 'btn-save-session', class: 'btn btn-primary',
+                 'aria-label': 'Save', type: 'submit',
+                 data: { confirm: t('data_import.btn_save_confirm') })

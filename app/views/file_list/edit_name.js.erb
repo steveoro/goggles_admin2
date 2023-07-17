@@ -1,0 +1,18 @@
+document.querySelector('#flash-messages-container').innerHTML = "<%=
+  escape_javascript(
+    render(partial: 'goggles/flash_messages')
+  )
+%>";
+
+document.querySelector('#file-modal').innerHTML = "<%=
+  escape_javascript(
+    render(
+      partial: 'file_modal',
+      locals: {
+        file_path: @file_path,
+        rename: true
+      }
+    )
+  )
+%>";
+$('#file-actions-modal').modal();

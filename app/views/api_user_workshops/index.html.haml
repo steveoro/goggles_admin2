@@ -1,2 +1,26 @@
-%h1 UserWorkshops#index
-%p Find me in app/views/user_workshops/index.html.haml
+%meta
+.wrapper-body
+  .spacer-left
+
+  .main-content
+    = render(DashboardTitleComponent.new(title: t('dashboard.user_workshops.title'), row_count: @domain_count))
+    = render(Grid::EditModalComponent.new(controller_name: controller_name,
+             asset_row: GogglesDb::UserWorkshop.new, jwt: current_user.jwt))
+
+    %section.my-4#data-grid
+      = render(Grid::ToolbarComponent.new(asset_row: GogglesDb::UserWorkshop.new,
+               controller_name: controller_name, request_params: @grid_filter_params))
+      = datagrid_form_for(@grid, method: :get,
+                          url: url_for(controller: controller_name, action: :index, params: @index_params))
+      = render(Grid::FilterLabelsComponent.new(filter_params: @grid_filter_params))
+
+      = render(PageLinksForArrayComponent.new(data: @grid&.assets, total_count: @domain_count,
+               page: @domain_page, per_page: @domain_per_page))
+      = datagrid_table(@grid, html: { class: 'table table-hover table-sm' })
+      = render(PageLinksForArrayComponent.new(data: @grid&.assets, total_count: @domain_count,
+               page: @domain_page, per_page: @domain_per_page))
+
+    %section.text-center.fixed-bottom#footer
+      &nbsp;
+
+  .spacer-right

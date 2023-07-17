@@ -5,6 +5,7 @@
         = render(Grid::RowToolbarComponent.new(asset_row: asset, controller_name: controller_name,
                                                edit: column.options[:edit],
                                                destroy: column.options[:destroy],
+                                               clone: column.options[:clone],
                                                expand: column.options[:expand],
                                                label_method: column.options[:label_method]))
     - else

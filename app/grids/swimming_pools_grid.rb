@@ -8,34 +8,19 @@ class SwimmingPoolsGrid < BaseGrid
   # Returns the scope for the grid. (#assets is the filtered version of it)
   scope { data_domain }
 
-  # Unscoped data_domain read accessor
-  def unscoped
-    data_domain
-  end
-
-  filter(:id, :integer)
-  filter(:name, :string, header: 'Name (~)') do |value, scope|
-    scope.select do |row|
-      (row.name =~ /#{value}/i) || (row.nick_name =~ /#{value}/i)
-    end
-  end
-  filter(:city, :string, header: 'City (~)') do |value, scope|
-    scope.select do |row|
-      row.city.name =~ /#{value}/i
-    end
-  end
-  filter(:address, :string, header: 'Address (~)') do |value, scope|
-    scope.select do |row|
-      row.address =~ /#{value}/i
-    end
-  end
+  # NOTE: no point in re-filtering scopes already filtered by the API here,
+  #       so we return the whole scope (otherwise local filtering would be applied).
+  filter(:name, :string, header: 'Name (~)') { |_value, scope| scope }
+  filter(:address, :string, header: 'Address (~)') { |_value, scope| scope }
+  filter(:pool_type_id,
+         :enum, header: 'PoolType',
+                select: proc { GogglesDb::PoolType.all.map { |c| [c.code, c.id] } }) { |_value, scope| scope }
+  filter(:city_id, :integer, header: 'City ID')
 
   selection_column(mandatory: true)
   column(:id, align: :right, mandatory: true)
-
   column(:name, mandatory: true)
   column(:nick_name, mandatory: true)
-
   column(:pool_type_id, align: :right)
   column(:pool_type, html: true, align: :right, mandatory: true) { |asset| asset.pool_type.code }
   column(:city_id, align: :right)

@@ -21,21 +21,13 @@ class APIUsersController < ApplicationController
         page: index_params[:page], per_page: index_params[:per_page]
       }
     )
-    json_domain = JSON.parse(result.body)
+    parsed_response = result.body.present? ? JSON.parse(result.body) : { 'error' => "Error #{result.code}" }
     unless result.code == 200
-      flash[:error] = I18n.t('dashboard.api_proxy_error', error_code: result.code, error_msg: json_domain['error'])
+      flash[:error] = I18n.t('dashboard.api_proxy_error', error_code: result.code, error_msg: parsed_response['error'])
       redirect_to(root_path) && return
     end
 
-    @domain_count = result.headers[:total].to_i
-    @domain_page = result.headers[:page].to_i
-    @domain_per_page = result.headers[:per_page].to_i
-
-    # Setup grid domain (and chart's):
-    @domain = json_domain.map { |attrs| GogglesDb::User.new(attrs) }
-
-    # Setup datagrid:
-    UsersGrid.data_domain = @domain
+    set_grid_domain_for(UsersGrid, GogglesDb::User, result.headers, parsed_response)
 
     respond_to do |format|
       @grid = UsersGrid.new(grid_filter_params)
@@ -66,11 +58,19 @@ class APIUsersController < ApplicationController
   # - <tt>id</tt>: ID of the instance row to be updated
   #
   def update
+    id = edit_params(GogglesDb::User)['id']
+    # Extract manually here all bool columns edited direct with a RowBoolSwitch button, which handles
+    # the field with an array of values, indexed by the current ID (doesn't matter if the value in
+    # the array is always just one).
+    # Also, 'locked_at' as column name (sent by the Grid::RowBoolValueSwitchComponent),
+    # is handled by the API as the 'locked' parameter:
+    locked = params.permit(locked: {})[:locked]&.fetch(id, nil).present?
+    active = [nil, '', 'true'].include?(params.permit(active: {})[:active]&.fetch(id, nil))
     result = APIProxy.call(
       method: :put,
-      url: "user/#{edit_params(GogglesDb::User)['id']}",
+      url: "user/#{id}",
       jwt: current_user.jwt,
-      payload: edit_params(GogglesDb::User)
+      payload: edit_params(GogglesDb::User).merge(locked: locked, active: active)
     )
 
     if result.body == 'true'
@@ -78,7 +78,7 @@ class APIUsersController < ApplicationController
     else
       flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: result)
     end
-    redirect_to api_users_path(page: index_params[:page], per_page: index_params[:per_page])
+    redirect_to(api_users_path(index_params))
   end
 
   # DELETE /api_users
@@ -104,7 +104,7 @@ class APIUsersController < ApplicationController
     else
       flash[:info] = I18n.t('dashboard.grid_commands.no_op_msg')
     end
-    redirect_to api_users_path(page: index_params[:page], per_page: index_params[:per_page])
+    redirect_to(api_users_path(index_params))
   end
   # rubocop:enable Metrics/AbcSize
   #-- -------------------------------------------------------------------------
@@ -118,10 +118,9 @@ class APIUsersController < ApplicationController
     @grid_filter_params = params.fetch(:users_grid, {}).permit!
   end
 
-  # Strong parameters checking for /index
+  # Strong parameters checking for /index, including pass-through from modal editors.
   # (NOTE: memoizazion is needed because the member variable is used in the view.)
   def index_params
-    @index_params = params.permit(:page, :per_page, :users_grid)
-                          .merge(params.fetch(:users_grid, {}).permit!)
+    index_params_for(:users_grid)
   end
 end

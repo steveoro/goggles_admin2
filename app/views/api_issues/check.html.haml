@@ -1,0 +1,64 @@
+.wrapper-body
+  .spacer-left
+
+  .main-content
+    .row-fluid#issue-title
+      %h4.text-center.pb-3.mt-2
+        %span
+          %code #{@type}
+          #{'-'} #{@issue_title}
+
+    .container.my-2
+      = render(partial: 'user_details_header', locals: { user: @user, associated_swimmer: @associated_swimmer })
+      - case @type
+        - when '0'
+          = render(partial: 'form_type0', locals: { issue_id: @issue_id, processable: @processable,
+                   associated_swimmer: @associated_swimmer, req: @req, existing_tms: @existing_tms })
+        - when '1a'
+          = render(partial: 'form_type1a', locals: { issue_id: @issue_id, status: @status,
+                   associated_swimmer: @associated_swimmer, req: @req })
+
+        - when '1b'
+          = render(partial: 'form_type1b', locals: { issue_id: @issue_id, status: @status, processable: @processable,
+                   associated_swimmer: @associated_swimmer, req: @req,
+                   parent_meeting_class: @parent_meeting_class, parent_meeting: @parent_meeting,
+                   swimmer_badges: @swimmer_badges, swimmer_category: @swimmer_category,
+                   existing_mirs: @existing_mirs, badge_mirs: @badge_mirs })
+
+        - when '1b1'
+          = render(partial: 'form_type1b1', locals: { issue_id: @issue_id, status: @status, processable: @processable,
+                   associated_swimmer: @associated_swimmer, req: @req,
+                   parent_meeting_class: @parent_meeting_class, parent_meeting: @parent_meeting,
+                   result_row: @result_row })
+
+        - when '2b1'
+          = render(partial: 'form_type2b1', locals: { issue_id: @issue_id, status: @status, processable: @processable,
+                   associated_swimmer: @associated_swimmer, req: @req,
+                   parent_meeting_class: @parent_meeting_class, parent_meeting: @parent_meeting,
+                   result_row: @result_row, same_named_swimmers: @same_named_swimmers,
+                   same_named_teams: @same_named_teams })
+
+        - when '3b'
+          = render(partial: 'form_type3b', locals: { issue_id: @issue_id, status: @status, processable: @processable,
+                   associated_swimmer: @associated_swimmer, req: @req, swimmer: @swimmer,
+                   same_named_swimmers: @same_named_swimmers })
+        - when '3c'
+          = render(partial: 'form_type3c', locals: { user: @user, issue_id: @issue_id, status: @status,
+                   processable: @processable, associated_swimmer: @associated_swimmer, req: @req,
+                   user_named_swimmers: @user_named_swimmers, same_named_swimmers: @same_named_swimmers })
+          - if @processable
+            .row
+              %p
+                %i= t('issues.type3c.swimmer_id_zero_note')
+        - when '5'
+          = render(partial: 'form_type5', locals: { issue_id: @issue_id, processable: @processable,
+                   active: @user['active'], existing_issues: @existing_issues })
+        - else
+          .row.text-center
+            %b
+              %i= t('issues.invalid_type')
+
+    .row-fluid
+      %p &nbsp;
+
+  .spacer-right

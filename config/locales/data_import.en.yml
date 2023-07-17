@@ -1,0 +1,58 @@
+en:
+  data_import:
+    generic_save_btn: "💾 Save edits"
+    btn_save_confirm: 'Save the edits?'
+    config:
+      default_calendar_url: 'Calendar URL'
+    calendar:
+      crawler_status_page_title: 'Crawler'
+      choose_season_label: 'Select season'
+      calendar_files_page_title: 'Calendar files'
+      pdfs_page_title: 'PDFs'
+      result_files_page_title: 'Results files'
+      btn_run_crawler: '📥 CRAWL Calendar URL'
+      btn_run_crawler_confirm: 'Run the meeting calendar crawler to retrieve the updated data?'
+      btn_clear_log: 'Clear Log'
+      btn_clear_log_confirm: 'Clear the log?'
+      season_search_label: 'Season / search by label / Calendar URL / layout:'
+    file:
+      btn_delete_tooltip: 'Delete file'
+      confirm_delete: 'Are you sure you want to delete this file?'
+      btn_rename_tooltip: 'Rename file'
+      btn_edit_tooltip: 'Edit file'
+      btn_download_tooltip: 'Download file'
+      btn_process_csv_tooltip: 'Process this calendar file, downloading the available results'
+      btn_process_pdf_tooltip: 'Parse this PDF result file into a processable JSON results file'
+      btn_process_json_tooltip: 'Process this result file, preparing a batch data import transaction'
+      btn_reparse_json_tooltip: 'Forced re-parse of this result file using the available source data in it'
+      btn_process_sql_tooltip: 'Upload this data-import batch file to the remote server'
+      confirm_push: 'Are you sure you want to PUSH this file to the remote server?'
+    data_fix:
+      link_to_manifest_download: "Download manifest"
+      link_to_results_pdf_download: "Download results on PDF"
+      btn_maps_search: 'Search'
+      btn_maps_search_tooltip: 'Search on Maps for the name & address to get the Plus code and/or the URI to be copied here'
+      btn_teams_for_swimmer_tooltip: 'Get the list of Teams this swimmer belongs to'
+      btn_start_sql_batch: "Start SQL batch creation"
+      btn_start_sql_batch_tooltip: "Ends the data-review phase and starts the commit phase (commits on local DB only); the remote DB will need a manual 'push' to receive the changes."
+      btn_start_sql_batch_confirm: "Commit changes?"
+      btn_start_sql_batch_disable: "Processing..."
+      btn_reparse_session_label: "Reparse sessions"
+      btn_reparse_session_tooltip: "Make a forced reparse of this result file but JUST for the Meeting sessions (useful if you change and save the Meeting ID)"
+      msg:
+        warning_retry_needed: "RETRY ERROR SECTION FOUND! This result file can still be processed but needs to be re-downloaded to be complete."
+    push:
+      msg_prepare_batch_ok: 'SQL batch file created.'
+      msg_send_batch_ok: "SQL batch file successfully sent."
+      new_results_tab_name: "New"
+      sent_results_tab_name: "Sent"
+      btn_all_sql_files: "ALL files"
+      btn_all_sql_files_tooltip: "Uploads to the remote server ALL SQL batch files from the list below"
+      btn_all_sql_files_confirm: "Are you sure you want to upload ALL SQL batch files?"
+      all_sql_files_ok: "All SQL batch files have been successfully sent."
+    errors:
+      invalid_request: 'Invalid request'
+      invalid_file_content: 'Invalid file contents for the given file extension'
+      missing_url_or_season_id: 'You must specify a calendar URL and a season ID'
+      crawler_unreachable: 'Crawler server unreachable'
+      crawler_connecting: 'connecting...'

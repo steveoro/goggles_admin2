@@ -1,0 +1,7 @@
+.d-flex.mb-1.justify-content-center
+  - (0..6).to_a.each do |status|
+    - if @asset_status.to_i != status.to_i
+      = button_to(api_issue_path(id: @asset_id, status: status),
+                  id: button_id_for(status), method: :put,
+                  class: button_class_for(status)) do
+        %i{ class: icon_class_for(status), data: 'tooltip', title: I18n.t("issues.status_#{status}") }

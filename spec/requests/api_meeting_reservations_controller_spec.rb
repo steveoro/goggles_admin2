@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe APIMeetingReservationsController, type: :request do
+RSpec.describe APIMeetingReservationsController do
   describe 'GET api_meeting_reservations (index)' do
     context 'with an unlogged user' do
       it 'is a redirect to the login path' do
@@ -72,7 +72,7 @@ RSpec.describe APIMeetingReservationsController, type: :request do
 
   describe 'PUT api_meeting_reservations/:id (update)' do
     let(:fixture_row) { GogglesDb::MeetingEventReservation.joins(:meeting_reservation).last(200).sample.meeting_reservation }
-    let(:new_value) { GogglesDb::Swimmer.first(100).sample.id }
+    let(:new_value) { GogglesDb::Swimmer.pluck(:id).first(200).sample }
 
     context 'with an unlogged user' do
       it 'is a redirect to the login path' do
@@ -101,7 +101,7 @@ RSpec.describe APIMeetingReservationsController, type: :request do
       end
 
       it 'does NOT set the flash error message' do
-        expect(flash[:error]).to be nil
+        expect(flash[:error]).to be_nil
       end
 
       it 'redirects to /index' do
@@ -114,8 +114,8 @@ RSpec.describe APIMeetingReservationsController, type: :request do
   #++
 
   describe 'POST api_meeting_reservations (create)' do
-    let(:new_badge_id) { GogglesDb::Badge.last(100).sample.id }
-    let(:new_meeting_id) { GogglesDb::Meeting.last(100).sample.id }
+    let(:new_badge_id) { GogglesDb::Badge.pluck(:id).last(200).sample }
+    let(:new_meeting_id) { GogglesDb::Meeting.pluck(:id).last(200).sample }
 
     context 'with an unlogged user' do
       it 'is a redirect to the login path' do
@@ -149,7 +149,7 @@ RSpec.describe APIMeetingReservationsController, type: :request do
       end
 
       it 'does NOT set the flash error message' do
-        expect(flash[:error]).to be nil
+        expect(flash[:error]).to be_nil
       end
 
       it 'redirects to /index' do
@@ -190,7 +190,7 @@ RSpec.describe APIMeetingReservationsController, type: :request do
         end
 
         it 'does NOT set the flash error message' do
-          expect(flash[:error]).to be nil
+          expect(flash[:error]).to be_nil
         end
 
         it 'redirects to /index' do

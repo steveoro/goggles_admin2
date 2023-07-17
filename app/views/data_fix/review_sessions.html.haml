@@ -1,0 +1,84 @@
+= render(partial: 'modal_progress')
+.wrapper-body
+  .main-content
+    %section.my-2#title-box
+      = render(partial: 'data_fix_header', locals: { file_path: @file_path, retry_needed: @retry_needed })
+    %section.my-2#review-sessions-tabs
+      = render(partial: 'data_fix_tabs', locals: { active_tab: 'sessions', file_path: @file_path })
+
+    %section.my-2#review-sessions
+      .container-fluid
+        .row-fluid
+          #meeting-card
+            .card
+              .row-fluid.p-1#meeting-header{ class: @meeting.id.present? ? 'bg-light' : 'bg-light-yellow' }
+                %h5.mb-0
+                  %button.btn.btn-link{ id: 'edit-meeting', data: { target: '#meeting-panel', toggle: 'collapse',
+                                        'aria-expanded' => 'false', 'aria-controls' => 'edit-meeting' } }
+                    %b= @meeting.description
+                    &nbsp;
+                    - if @meeting.id.present?
+                      ID: #{@meeting.id}
+                      = @meeting.valid? ? '✅' : '🔵'
+                    - else
+                      🆕
+              .row-fluid.p-1
+                .bg-light-grey
+                  %small
+                    %i.text-muted
+                      %pre
+                        🔑 #{@data_hash['name']},&nbsp;
+                        #{@data_hash['dateDay1']} #{@data_hash['dateMonth1']} #{@data_hash['dateYear1']}
+                        &nbsp; ... &nbsp;
+                        #{@data_hash['dateDay2']} #{@data_hash['dateMonth2']} #{@data_hash['dateYear2']}
+              .collapse#meeting-panel{ 'aria-labelledby' => 'meeting-header', 'data-parent' => '#meeting-card' }
+                .card-body.border-bottom.border-secondary
+                  = render(partial: 'meeting_form', locals: { api_url: @api_url, meeting_entity: @meeting_entity,
+                           file_path: @file_path })
+        .row-fluid.mt-4
+          - if @data_hash['manifestURL'].present? || @data_hash['resultsPdfURL'].present?
+            - if @data_hash['manifestURL'].present?
+              = link_to(@data_hash['manifestURL']) do
+                .btn.btn-sm.btn-outline-primary
+                  %i.fa.fa-download
+                  = t('data_import.data_fix.link_to_manifest_download')
+            - if @data_hash['resultsPdfURL'].present?
+              = link_to(@data_hash['resultsPdfURL']) do
+                .btn.btn-sm.btn-outline-primary
+                  %i.fa.fa-download
+                  = t('data_import.data_fix.link_to_results_pdf_download')
+          = link_to(review_sessions_path(reparse: 'sessions', file_path: @file_path), method: :get,
+                    data: { toggle: 'tooltip',
+                    title: t('data_import.data_fix.btn_reparse_session_tooltip') }) do
+            .btn.btn-sm.btn-warning
+              %i.fa.fa-refresh
+              = t('data_import.data_fix.btn_reparse_session_label')
+
+        .row-fluid.mt-4
+          - @meeting_sessions.each_with_index do |meeting_session, index|
+            - pool_type_opts = options_from_collection_for_select(GogglesDb::PoolType.all, 'id', 'long_label',
+                              @swimming_pools[index]&.pool_type_id || cookies[:pool_type_id])
+            %div{ id: "meeting-session-card-#{index}",
+                  class: meeting_session.id.present? ? 'bg-light' : 'bg-light-yellow' }
+              .card.mt-2
+                .row-fluid.p-1{ id: "meeting-session-header-#{index}",
+                                class: @meeting.id.present? ? 'bg-light' : 'bg-light-yellow' }
+                  %h5.mb-0
+                    %button.btn.btn-link{ id: "edit-meeting-session-#{index}",
+                                          data: { target: "#meeting-session-panel-#{index}",
+                                          toggle: 'collapse', 'aria-expanded' => 'false',
+                                          'aria-controls' => 'edit-meeting-session' } }
+                      = meeting_session.description
+                      &nbsp;
+                      - if meeting_session.id.present?
+                        ID: #{meeting_session.id}
+                        = meeting_session.valid? ? '✅' : '🔵'
+                      - else
+                        🆕
+                .collapse{ id: "meeting-session-panel-#{index}", 'aria-labelledby' => "meeting-session-header-#{index}",
+                           'data-parent' => "#meeting-session-card-#{index}" }
+                  .card-body.border-bottom.border-secondary
+                    = render(partial: 'meeting_session_form', locals: { meeting_session: meeting_session,
+                             index: index, swimming_pool: @swimming_pools[index], pool_type_opts: pool_type_opts,
+                             city: @cities[index], city_key: @city_keys[index],
+                             api_url: @api_url, data_hash: @data_hash, file_path: @file_path })

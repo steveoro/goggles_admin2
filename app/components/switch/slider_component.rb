@@ -10,8 +10,9 @@ module Switch
   #   - version:  7-0.3.40
   #   - author:   Steve A.
   #
-  # Generic boolean switch that can acts as a collapse toggle or as a form boolean switch,
-  # or as both.
+  # Boolean switch that can acts as a collapse toggle or as a form boolean switch, or as both.
+  # Does *not* work for multiple radio-like select checkboxes.
+  # (Prefer default Bootstrap check boxes styling for that instead of this component.)
   #
   # === Supports:
   # - rounded/squared borders: use +'round'+ for rounded (default: squared)
@@ -19,10 +20,10 @@ module Switch
   # - namespaced fields inside forms (i.e.: input name: 'namespace[field_name]' => form ID 'namespace_field_name')
   #
   # === Usage as a collapse toggle:
-  # Use <tt>target_id</tt> with default options.
+  # Use <tt>target_id</tt> (DOM) with default options.
   #
-  # === Usage for boolean form values:
-  # Use <tt>field_id</tt> with default options.
+  # === Usage for "boolean" form values:
+  # Use <tt>field_id</tt> (Form) with default options.
   #
   class SliderComponent < ViewComponent::Base
     # Creates a new ViewComponent.
@@ -56,7 +57,7 @@ module Switch
     # Returns the base DOM ID for the hidden field changing any form-only namespaces to snake_case
     # (i.e. "base_namespace[field_name]" => "base_namespace_field_name").
     def base_field_id
-      @base_field_id ||= @field_name.gsub('[', '_').gsub(']', '')
+      @base_field_id ||= @field_name&.gsub('[', '_')&.gsub(']', '')
     end
   end
 end

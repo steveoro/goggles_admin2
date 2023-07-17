@@ -1,0 +1,67 @@
+= form_for(meeting_session, url: data_fix_update_path(meeting_session, model: 'meeting_session'),
+           method: :patch) do |f|
+  = hidden_field_tag('key', index)
+  = hidden_field_tag('file_path', file_path)
+  .container{ data: { controller: 'coded-name',
+              'coded-name-result-type-value' => 'nick_name',
+              'coded-name-jwt-value' => current_user.jwt } }
+    .row
+      .col-auto
+        .form-group
+          .field
+            = label_tag("meeting_session[#{index}][meeting_session_id]", 'M.Sess.ID')
+            = number_field_tag("meeting_session[#{index}][meeting_session_id]", meeting_session&.id,
+                               class: 'form-control', placeholder: 'M.Sess.ID')
+      .col-auto
+        .form-group
+          .field
+            = label_tag("meeting_session[#{index}][description]", 'description')
+            = text_field_tag("meeting_session[#{index}][description]", meeting_session&.description, required: true,
+                             class: 'form-control', placeholder: 'session description')
+      .col-auto
+        .form-group
+          .field
+            = label_tag("meeting_session[#{index}][session_order]", 'session_order')
+            = number_field_tag("meeting_session[#{index}][session_order]", meeting_session&.session_order,
+                               required: true, class: 'form-control', placeholder: 'order')
+      .col-auto
+        .form-group
+          .field
+            = label_tag("meeting_session[#{index}][scheduled_date]", 'scheduled_date')
+            - if meeting_session.scheduled_date.blank?
+              %span
+                %i.fa.fa-exclamation.text-danger
+            = date_field_tag("meeting_session[#{index}][scheduled_date]", meeting_session&.scheduled_date,
+                             required: true, class: 'form-control')
+      .col-auto
+        .form-group
+          .field
+            - day_part_type_opts = options_from_collection_for_select(GogglesDb::DayPartType.all, 'id', 'long_label',
+                                                                      meeting_session&.day_part_type_id)
+            = label_tag("meeting_session[#{index}][day_part_type_id]", 'day_part_type')
+            = select_tag("meeting_session[#{index}][day_part_type_id]", day_part_type_opts, class: 'form-control')
+
+    :ruby
+      # Compute initial (static) & dynamic search href location for change events:
+      search_engine = 'https://www.google.com/maps/search/'
+      initial_query = "?q=#{swimming_pool&.name}, #{swimming_pool&.address}".gsub(' ', '%20')
+      initial_maps_href = "#{search_engine}#{initial_query}"
+      name_part = "${$('#swimming_pool_#{index}_name').val()}"
+      addr_part = "${$('#swimming_pool_#{index}_address').val()}"
+      search_query = "?q=#{name_part}, #{addr_part}, ${$('#city_#{index}_name').val()}"
+      onchange_event = "document.querySelector('#maps-uri-search-#{index}').href = `#{search_engine}#{search_query}`;"
+
+    = render(partial: 'swimming_pool_form', locals: { meeting_session: meeting_session,
+              index: index, swimming_pool: swimming_pool, pool_type_opts: pool_type_opts,
+              city: city, city_key: city_key,
+              initial_maps_href: initial_maps_href, onchange_event: onchange_event,
+              api_url: api_url, data_hash: data_hash })
+
+    = render(partial: 'pool_city_form', locals: { index: index, swimming_pool: swimming_pool,
+             city: city, city_key: city_key, onchange_event: onchange_event,
+             api_url: api_url, data_hash: data_hash })
+
+    .form-group
+      = f.submit(t('data_import.generic_save_btn'), id: 'btn-save-session', class: 'btn btn-primary',
+                 'aria-label': 'Save', type: 'submit',
+                 data: { confirm: t('data_import.btn_save_confirm') })

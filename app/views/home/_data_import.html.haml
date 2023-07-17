@@ -1,0 +1,24 @@
+.mb-4.mx-1
+  .col-12
+    .card.text-dark.bg-light-blue.h-100
+      .card-body
+        .rotate
+          %i.fa.fa-database.fa-4x
+        %h6.text-uppercase
+          %span
+            Data-import
+            %sup
+              %i.fa.fa-question-circle{ data: { toggle: 'tooltip', title: t('dashboard.data_import_helper') } }
+        .row.mb-3
+          .col.py-2
+            %a.btn.btn-lg.btn-outline-primary.my-1{ href: pull_index_path }
+              %i.fa.fa-download
+              PULL data (crawler)
+          .offset-lg-0.col-lg-4.offset-md-1.col-md-5.offset-sm-0.col-sm-6.py-2
+            %a.btn.btn-lg.btn-outline-primary.my-1{ href: pull_result_files_path }
+              %i.fa.fa-edit
+              DATA-FIX results
+          .col.py-2
+            %a.btn.btn-lg.btn-outline-primary.my-1{ href: push_index_path }
+              %i.fa.fa-upload
+              PUSH data

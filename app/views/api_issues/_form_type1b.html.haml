@@ -1,0 +1,65 @@
+.row
+  %h5.py-2= t('issues.possible_fix')
+%section#fix-details
+  .row
+    .col-4.text-right
+      %code parent_meeting
+    .col.table-warning
+      #{parent_meeting['code']}
+      %small
+        %b (ID: #{req['parent_meeting_id']})
+      @ season_id
+      %b #{parent_meeting['season_id']}
+  .row
+    .col-4.text-right
+      %code event_type
+    .col.table-warning
+      #{req['event_type_label']}
+      %small
+        %b (ID: #{req['event_type_id']})
+  .row
+    .col-4.text-right
+      %code timing
+    .col.table-warning
+      #{req['minutes']}'#{req['seconds']}"#{req['hundredths']}
+  .row
+    .col-4.text-right
+      %code swimmer
+    .col.table-warning
+      #{req['swimmer_label']} -
+      %small
+        %b (ID: #{req['swimmer_id']})
+      ➡ #{swimmer_category.short_name}
+      %small
+        %b (ID: #{swimmer_category.id})
+  - if @swimmer_badges
+    .row
+      .col-4.text-right
+        %code badges
+      .col.table-warning
+        - swimmer_badges.each do |badge|
+          #{badge.team.editable_name}
+          %small
+            %b (ID: #{badge.id}) -
+          team_id
+          %small
+            %b #{badge.team_id}
+          %br/
+
+= render(partial: 'parent_meeting_details', locals: { parent_meeting_class: parent_meeting_class,
+         parent_meeting: parent_meeting })
+
+- existing_mirs_title = t('issues.existing_results', event_label: req['event_type_label'],
+                          event_type_id: req['event_type_id'], gender_type_id: req['gender_type_id'],
+                          category_type_id: swimmer_category.id)
+= render(partial: 'existing_results', locals: { title: existing_mirs_title, existing_mirs: existing_mirs, req: req,
+         swimmer_badge_ids: swimmer_badges.map(&:id), category_type_id: swimmer_category.id })
+
+-# Show at least all other existing MIRs for the first badge of the same swimmer:
+- if swimmer_badges.present? && badge_mirs.present?
+  - badge_mirs_title = t('issues.badge_results', badge_id: swimmer_badges.first.id,
+                        swimmer_id: swimmer_badges.first.swimmer_id, team_id: swimmer_badges.first.team_id)
+  = render(partial: 'existing_results', locals: { title: badge_mirs_title, existing_mirs: badge_mirs, req: req,
+          swimmer_badge_ids: swimmer_badges.map(&:id), category_type_id: swimmer_category.id })
+
+= render(partial: 'form_bottom_toolbar', locals: { issue_id: issue_id, status: status, processable: processable })

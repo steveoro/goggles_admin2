@@ -1,0 +1,66 @@
+= render(partial: 'modal_progress')
+.wrapper-body
+  .main-content
+    %section.my-2#title-box
+      = render(partial: 'data_fix_header', locals: { file_path: @file_path, retry_needed: @retry_needed })
+    %section.my-2#review-swimmers-tabs
+      = render(partial: 'data_fix_tabs', locals: { active_tab: 'swimmers', file_path: @file_path })
+
+    %section.my-2#review-swimmers
+      - row_count = @swimmers_hash.keys.count
+      .container-fluid
+        .row-fluid
+          %p Tot.: #{row_count}
+        .row-fluid
+          - @swimmers_hash.keys.sort.each_with_index do |swimmer_key, index|
+            :ruby
+              swimmer_entity = @swimmers_hash[swimmer_key]
+              swimmer = swimmer_entity.row
+              name_part = swimmer_key.split(/-\d{4}-/).first
+              difference_detected = !name_part.downcase.starts_with?(swimmer.complete_name.downcase)
+            %div{ id: "swimmer-card-#{index}" }
+              .card.my-2{ class: difference_detected ? 'border border-danger' : '' }
+                %div{ id: "swimmer-header-#{index}", class: swimmer.id.present? ? 'bg-light' : 'bg-light-yellow' }
+                  .row
+                    .col-3
+                      %h5.mb-0
+                        %button.btn.btn-link.m-1{ id: "edit-swimmer-#{index}",
+                                                  data: { target: "#swimmer-panel-#{index}",
+                                                  toggle: 'collapse', 'aria-expanded' => 'false',
+                                                  'aria-controls' => 'edit-swimmer' } }
+                          = name_part
+                    .col.mt-1.pt-2
+                      .row
+                        %span.text-secondary= '->'
+                        = swimmer.complete_name
+                        - if swimmer.id.present?
+                          ID: #{swimmer.id}
+                          = swimmer.valid? ? '✅' : '🔴'
+                          - if swimmer.first_name.blank? || swimmer.last_name.blank?
+                            &nbsp;
+                            📝
+                          - if swimmer.complete_name.split.count > 2
+                            &nbsp;
+                            ❓
+                          &nbsp;
+                          = link_to(data_fix_teams_for_swimmer_path(swimmer.id), method: :get, remote: true,
+                                    data: { toggle: 'tooltip',
+                                    title: t('data_import.data_fix.btn_teams_for_swimmer_tooltip') }) do
+                            %small
+                              %i.fa.fa-search-plus
+                              Teams
+                        - else
+                          🆕
+                      - if swimmer.id.present?
+                        .row
+                          %small{ id: "team-list-for-#{swimmer.id}" }
+                    .col.mt-1.pt-2
+                      %i.form-text.text-muted.bg-light-grey
+                        %pre
+                          🔑 "#{swimmer_key}"
+                .collapse{ id: "swimmer-panel-#{index}", 'aria-labelledby' => "swimmer-header-#{index}",
+                           'data-parent' => "#swimmer-card-#{index}" }
+                  .card-body.border-bottom.border-secondary
+                    = render(partial: 'swimmer_form', locals: { swimmer: swimmer,
+                             swimmer_matches: swimmer_entity.matches, index: index, swimmer_key: swimmer_key,
+                             api_url: @api_url, file_path: @file_path })

@@ -1,0 +1,7 @@
+%section#form-bottom-toolbar
+  .container
+    .row.my-4
+      .col.text-center
+        = render(partial: 'form_bottom_fix_button', locals: { issue_id: issue_id, processable: processable })
+      .col.text-center
+        = render(partial: 'form_bottom_status_buttons', locals: { issue_id: issue_id, status: status })

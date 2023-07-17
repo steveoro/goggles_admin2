@@ -22,6 +22,12 @@ module Users
       # respond_with resource, location: after_sign_in_path_for(resource)
     end
 
+    # DELETE /resource/sign_out
+    def destroy
+      super
+      reset_session
+    end
+
     private
 
     # Makes sure a valid JWT is always stored inside the current_user instance.
@@ -53,13 +59,13 @@ module Users
     def retrieve_jwt(params)
       logger.debug('\r\nJWT for current user expired or invalid. Refreshing...')
       payload = {
-        'e': params['email'],
-        'p': params['password'],
-        't': Rails.application.credentials.api_static_key
+        e: params['email'],
+        p: params['password'],
+        t: Rails.application.credentials.api_static_key
       }
 
       response = APIProxy.call(method: :post, url: 'session', payload: payload)
-      unless (200..299).include?(response.code)
+      unless (200..299).cover?(response.code)
         msg = JSON.parse(response.body)
         set_flash_message!(:error, msg['error'])
         redirect_to new_user_session_path && return

@@ -18,27 +18,21 @@ class APIMeetingReservationsController < ApplicationController
       method: :get, url: 'meeting_reservations', jwt: current_user.jwt,
       params: {
         meeting_id: index_params[:meeting_id],
-        swimmer_id: index_params[:swimmer_id], team_id: index_params[:team_id],
+        team_id: index_params[:team_id],
+        swimmer_id: index_params[:swimmer_id],
+        badge_id: index_params[:badge_id],
         not_coming: index_params[:not_coming],
         confirmed: index_params[:confirmed],
         page: index_params[:page], per_page: index_params[:per_page]
       }
     )
-    json_domain = JSON.parse(result.body)
+    parsed_response = result.body.present? ? JSON.parse(result.body) : { 'error' => "Error #{result.code}" }
     unless result.code == 200
-      flash[:error] = I18n.t('dashboard.api_proxy_error', error_code: result.code, error_msg: json_domain['error'])
+      flash[:error] = I18n.t('dashboard.api_proxy_error', error_code: result.code, error_msg: parsed_response['error'])
       redirect_to(root_path) && return
     end
 
-    @domain_count = result.headers[:total].to_i
-    @domain_page = result.headers[:page].to_i
-    @domain_per_page = result.headers[:per_page].to_i
-
-    # Setup grid domain (and chart's):
-    @domain = json_domain.map { |attrs| GogglesDb::MeetingReservation.new(attrs) }
-
-    # Setup datagrid:
-    MeetingReservationsGrid.data_domain = @domain
+    set_grid_domain_for(MeetingReservationsGrid, GogglesDb::MeetingReservation, result.headers, parsed_response)
 
     respond_to do |format|
       @grid = MeetingReservationsGrid.new(grid_filter_params)
@@ -125,6 +119,44 @@ class APIMeetingReservationsController < ApplicationController
   end
   # rubocop:enable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
 
+  # POST /api_meeting_reservations
+  # Creates a new GogglesDb::MeetingReservation row.
+  #
+  # All instance attributes are accepted, minus lock_version & the timestamps, which are
+  # handled automatically.
+  #
+  def create
+    # This endpoint uses a non-stadard API payload and creates both master & details using
+    # a dedicated command. Just 2 parameters are required:
+    selectable_columns = %w[badge_id meeting_id]
+    api_payload = edit_params(GogglesDb::MeetingReservation)
+                  .select { |key, _v| selectable_columns.include?(key) }
+                  .to_hash
+
+    result = APIProxy.call(
+      method: :post,
+      url: 'meeting_reservation',
+      jwt: current_user.jwt,
+      payload: api_payload
+    )
+    json = parse_json_result_from_create(result)
+
+    if json.present? && json['msg'] == 'OK' && json['new'].key?('id')
+      flash[:info] = I18n.t('datagrid.edit_modal.create_ok', id: json['new']['id'])
+    else
+      flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: result.code)
+    end
+    # Keep row focus after create redirect by forcing pass-through of the master-row filtering:
+    redirect_to api_meeting_reservations_path(
+      page: index_params[:page], per_page: index_params[:per_page],
+      meeting_reservations_grid: {
+        meeting_id: edit_params(GogglesDb::MeetingReservation)['meeting_id'],
+        swimmer_id: edit_params(GogglesDb::MeetingReservation)['swimmer_id'],
+        team_id: edit_params(GogglesDb::MeetingReservation)['team_id']
+      }
+    )
+  end
+
   # PUT /api_meeting_reservation/:id
   # Updates a single GogglesDb::MeetingReservation row.
   #
@@ -151,7 +183,7 @@ class APIMeetingReservationsController < ApplicationController
                     end
     filtered_params = edit_params(details_class, details_key)
                       .to_hash
-                      .reject { |key, _v| %w[_method authenticity_token].include?(key) }
+                      .except('_method', 'authenticity_token')
     api_payload = details_key.present? ? { details_key => [filtered_params] } : filtered_params
 
     result = APIProxy.call(
@@ -184,43 +216,6 @@ class APIMeetingReservationsController < ApplicationController
   end
   # rubocop:enable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
 
-  # POST /api_meeting_reservations
-  # Creates a new GogglesDb::MeetingReservation row.
-  #
-  # All instance attributes are accepted, minus lock_version & the timestamps, which are
-  # handled automatically.
-  #
-  def create
-    # This endpoint uses a non-stadard API payload and creates both master & details using
-    # a dedicated command. Just 2 parameters are required:
-    api_payload = edit_params(GogglesDb::MeetingReservation)
-                  .select { |key, _v| %w[badge_id meeting_id].include?(key) }
-                  .to_hash
-
-    result = APIProxy.call(
-      method: :post,
-      url: 'meeting_reservation',
-      jwt: current_user.jwt,
-      payload: api_payload
-    )
-    json = parse_json_result_from_create(result)
-
-    if json.present? && json['msg'] == 'OK' && json['new'].key?('id')
-      flash[:info] = I18n.t('datagrid.edit_modal.create_ok', id: json['new']['id'])
-    else
-      flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: result.code)
-    end
-    # Keep row focus after create redirect by forcing pass-through of the master-row filtering:
-    redirect_to api_meeting_reservations_path(
-      page: index_params[:page], per_page: index_params[:per_page],
-      meeting_reservations_grid: {
-        meeting_id: edit_params(GogglesDb::MeetingReservation)['meeting_id'],
-        swimmer_id: edit_params(GogglesDb::MeetingReservation)['swimmer_id'],
-        team_id: edit_params(GogglesDb::MeetingReservation)['team_id']
-      }
-    )
-  end
-
   # DELETE /api_meeting_reservations
   # Removes GogglesDb::MeetingReservation rows. Accepts single (:id) or multiple (:ids) IDs for the deletion.
   #
@@ -241,7 +236,7 @@ class APIMeetingReservationsController < ApplicationController
     else
       flash[:info] = I18n.t('dashboard.grid_commands.no_op_msg')
     end
-    redirect_to api_meeting_reservations_path(page: index_params[:page], per_page: index_params[:per_page])
+    redirect_to(api_meeting_reservations_path(index_params))
   end
   #-- -------------------------------------------------------------------------
   #++
@@ -260,11 +255,14 @@ class APIMeetingReservationsController < ApplicationController
   # Strong parameters checking for /index
   # (NOTE: memoizazion is needed because the member variable is used in the view.)
   def index_params
-    @index_params = params.permit(
-      :page, :per_page, :meeting_reservations_grid,
-      :meeting_event_reservations_grid, :meeting_relay_reservations_grid
-    )
-                          .merge(params.fetch(:meeting_reservations_grid, {}).permit!)
+    index_params_for(:meeting_reservations_grid)
+      .merge(params.permit(:meeting_event_reservations_grid, :meeting_relay_reservations_grid))
+
+    # OLD IMPL.:
+    # @index_params = params.permit(
+    #   :page, :per_page, :meeting_reservations_grid,
+    #   :meeting_event_reservations_grid, :meeting_relay_reservations_grid
+    # ).merge(params.fetch(:meeting_reservations_grid, {}).permit!)
   end
 end
 # rubocop:enable Metrics/ClassLength, Metrics/MethodLength, Metrics/AbcSize

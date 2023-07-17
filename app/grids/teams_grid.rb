@@ -8,20 +8,19 @@ class TeamsGrid < BaseGrid
   # Returns the scope for the grid. (#assets is the filtered version of it)
   scope { data_domain }
 
-  # Unscoped data_domain read accessor
-  def unscoped
-    data_domain
-  end
-
-  filter(:id, :integer)
-  filter(:name, :string, header: 'Name (~)') do |value, scope|
-    scope.select { |row| (row.name =~ /#{value}/i) || (row.editable_name =~ /#{value}/i) }
-  end
+  filter(:name, :string, header: 'Name (~)') { |_value, scope| scope }
 
   selection_column(mandatory: true)
   column(:id, align: :right, mandatory: true)
   column(:name)
   column(:editable_name, mandatory: true)
+
+  column(:tas_lookup, header: 'TAs', html: true, mandatory: true) do |asset|
+    link_to(api_team_affiliations_path(team_affiliations_grid: { team_id: asset.id })) do
+      content_tag(:i, '', class: 'fa fa-eye')
+    end
+  end
+
   column(:address)
   column(:zip, align: :right)
   column(:phone_mobile)

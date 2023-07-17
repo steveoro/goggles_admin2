@@ -1,14 +1,18 @@
 en:
   dashboard:
     title: "Dashboard"
-    manage_entities: "Manage entities"
+    manage_entities: "Manage entities (direct edits)"
+    manage_entities_help: "Any action in this section will be run exclusively and IMMEDIATELY on the remote server (no local changes)"
     toggle_selection: "Invert selected rows"
     n_total_rows: "%{tot} total rows"
     confirm_row_delete: "Are you sure you want to delete this row? (%{label})"
+    confirm_row_clone: "Are you sure you want to CLONE this row? (%{label})"
     generic_param_miss_error: "Missing Parameter!"
     api_proxy_error: "Unsuccessful API call: error %{error_code}, msg: '%{error_msg}'"
     not_admin_error: "Only Admins can use this application!"
     search_field: "Search %{field}"
+    search_tooltip: "Overwrite fields with the current search results"
+    data_import_helper: "Any action in this section will work on files and on both local and remote DB, but only during the final 'commit & push' phase"
     grid_commands:
       delete_selected:
         button: "Delete selected <i class='fa fa fa-trash-o'></i>"
@@ -18,10 +22,16 @@ en:
       no_op_msg: "No selection!"
     badges:
       title: "Badges"
+    calendars:
+      title: "Calendars"
     categories:
       title: "Category Types"
     import_queues:
       title: "Import Queues"
+    issues:
+      title: "Issues"
+    meetings:
+      title: "Meetings"
     meeting_reservations:
       title: "Meeting Reservations"
       expand:
@@ -36,6 +46,8 @@ en:
         save_failed: "Error during base config update. Check the logs."
     seasons:
       title: "Seasons"
+    standard_timings:
+      title: "Standard (base) timings"
     stats:
       title: "API stats"
     swimmers:
@@ -48,5 +60,7 @@ en:
       title: "Team Managers (Managed Affiliations)"
     teams:
       title: "Teams"
+    user_workshops:
+      title: "User Workshops"
     users:
       title: "Users"

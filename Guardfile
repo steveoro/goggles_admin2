@@ -37,7 +37,7 @@ end
 
 rubocop_options = {
   cmd: 'bin/rubocop',
-  cli: '-f fu'
+  cli: '-f pacman -a'
 }
 guard :rubocop, rubocop_options do
   watch(/.+\.rb$/)
@@ -78,7 +78,7 @@ end
 rspec_options = {
   cmd: 'bin/rspec',
   # Exclude performance tests; to make it fail-fast, add option "--fail-fast":
-  cmd_additional_args: ' --color --profile 10 -f progress --order rand -t ~type:performance -t ~tag:performance',
+  cmd_additional_args: ' --color --profile 10 --order rand -f RspecPacmanFormatter::Pacman -t ~type:performance -t ~tag:performance',
   all_after_pass: false,
   failed_mode: :focus
 }
@@ -186,11 +186,11 @@ guard :cucumber, cucumber_options do
   # Watch for support file updates (will trigger a re-run of all features):
   watch(%r{^features/support/.+$}) do |m|
     puts "'#{m[0]}' support file modified..."
-    Dir[File.join("features\/\*\*\/*.feature")]
+    Dir[File.join('features/**/*.feature')]
   end
   # Watch for step definition updates (will trigger a re-run of a whole feature):
   watch(%r{^features/step_definitions/(.+/)?(.+)_steps\.rb$}) do |m|
     puts "'#{m[1]}' steps file modified..."
-    Dir[File.join("features\/\*\*\/*#{m[1]}*.feature")]
+    Dir[File.join("features/**/*#{m[1]}*.feature")]
   end
 end

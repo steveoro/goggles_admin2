@@ -22,7 +22,7 @@ class DummyResponse
     {
       page: '1',
       per_page: '25',
-      total: @body.to_a.count
+      total: @body.to_a.size
     }
   end
 

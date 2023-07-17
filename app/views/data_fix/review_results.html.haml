@@ -1,0 +1,77 @@
+= render(partial: 'modal_progress')
+.wrapper-body
+  .main-content
+    %section.my-2#title-box
+      = render(partial: 'data_fix_header', locals: { file_path: @file_path, retry_needed: @retry_needed })
+    %section.my-2#review-events-tabs
+      = render(partial: 'data_fix_tabs', locals: { active_tab: 'results', file_path: @file_path })
+
+    %section.my-2#review-events
+      - sorted_keys = @events_hash.sort { |a, b| a.last&.row&.event_order <=> b.last&.row&.event_order }.map(&:first)
+      .container-fluid
+        .row-fluid
+          - sorted_keys.each_with_index do |event_key, index|
+            :ruby
+              event_entity = @events_hash[event_key]
+              event = event_entity.row
+              event_checker = Regexp.new(event_key, Regexp::IGNORECASE)
+              prg_keys_filtered = @prgs_keys&.select { |prg_key| event_checker.match?(prg_key) }
+
+            %div{ id: "event-card-#{index}" }
+              .card.my-2
+                %div{ id: "event-header-#{index}", class: event.id.present? ? 'bg-light' : 'bg-light-yellow' }
+                  .row
+                    .col-3
+                      %h5.mb-0
+                        .btn.m-1{ id: "edit-event-#{index}", data: { 'aria-expanded' => 'true',
+                                  'aria-controls' => 'edit-event' } }
+                          = event_key
+                    .col-3.mt-2
+                      %i.form-text.text-muted.bg-light-grey
+                        %pre
+                          🔑 "#{event_key}"
+                    .col.mt-2
+                      = "=> #{event.decorate.short_label}"
+                      - if event.id.present?
+                        ID: #{event.id}
+                        = event.valid? ? '✅' : '🔵'
+                      - else
+                        🆕
+                %div{ id: "event-panel-#{index}", 'aria-labelledby' => "event-header-#{index}",
+                      'data-parent' => "#event-card-#{index}" }
+                  .card-body.border-bottom.border-secondary
+                    .row
+                      - prg_keys_filtered.each do |prg_key|
+                        :ruby
+                          prg_entity = @prgs_hash[prg_key]
+                          prg = prg_entity.row
+                          prg_code = prg_key.split("#{event_key}-").last
+                          prg_checker = Regexp.new(prg_code, Regexp::IGNORECASE)
+                          mir_sub_count = @mirs_keys&.select { |mir_key| prg_checker.match?(mir_key) }&.count
+                        .col-auto.m-1
+                          = prg_code
+                          - if prg.id.present?
+                            = prg.valid? ? '✅' : '🔵'
+                            %br/
+                            %small
+                              ID: #{prg.id}
+                          - else
+                            🆕
+                          %br/
+                          %small
+                            %pre
+                              Tot: #{mir_sub_count}
+
+                    .row-fluid.mt-2
+                      - mir_count = @mirs_keys&.select { |mir_key| event_checker.match?(mir_key) }&.count
+                      %b Event tot.: #{mir_count}
+
+        .row-fluid.my-3.text-center
+          = link_to(push_prepare_path(file_path: @file_path), method: :post,
+                    class: 'btn btn-warning mb-1',
+                    data: { toggle: 'tooltip', title: t('data_import.data_fix.btn_start_sql_batch_tooltip'),
+                    confirm: t('data_import.data_fix.btn_start_sql_batch_confirm'),
+                    disable_with: t('data_import.data_fix.btn_start_sql_batch_disable') }) do
+            %span
+              %i.fa.fa-bolt
+              = t('data_import.data_fix.btn_start_sql_batch')

@@ -1,0 +1,42 @@
+.wrapper-body
+  .main-content
+    %section.my-2#status-box
+      = render(partial: 'crawler_status_box')
+
+    %section.my-2#crawler-tabs
+      = render(partial: 'crawler_tabs', locals: { active_tab: 'crawler' })
+
+    %section.my-2#calendar-crawl
+      .container.pt-3.shadow-box#curr-config-box
+        = form_tag(run_calendar_crawler_path, id: 'frm-calendar-crawler', method: :post) do
+          .row
+            .col-auto
+              = render(AutoCompleteComponent.new(show_top_labels: true, base_name: 'season',
+                        search_column: 'season_label',
+                        target2_field: 'year_text', target2_column: 'year_text', target2_class: 'col-auto my-1',
+                        target3_field: 'layout', target3_column: 'layout',
+                        label_column: 'description',
+                        payload: @season_list))
+            .col-auto
+              .form-group
+                .field
+                  = label_tag('sub_menu_type', 'Sub-menu item')
+                  = select_tag('sub_menu_type', options_for_select(['Eventi', 'Riepilogo Eventi', 'Archivio 2012-']),
+                               class: 'form-control')
+          .row
+            .col-6.mt-2.mb-3.text-left
+              = submit_tag(t('data_import.calendar.btn_run_crawler'), id: 'btn-run-calendar-crawler',
+                            class: 'btn btn-sm btn-outline-primary', 'aria-label' => 'run calendar crawler',
+                            type: 'submit', data: { confirm: t('data_import.calendar.btn_run_crawler_confirm') })
+            .col-6.mt-2.mb-3.text-right
+              = link_to('#', id: 'btn-clear-log',
+                        class: 'btn btn-sm btn-outline-danger', 'aria-label' => 'clear log',
+                        onclick: '$("#crawler_log").html(""); return false;',
+                        data: { confirm: t('data_import.calendar.btn_clear_log_confirm') }) do
+                %i.fa.fa-trash-o
+                &nbsp;
+                = t('data_import.calendar.btn_clear_log')
+        .row
+          .col-12.pb-3
+            = text_area_tag(:crawler_log, nil, rows: 15, autofocus: true, class: 'form-control form-control-sm',
+                            'aria-describedby' => 'calendar crawl log')

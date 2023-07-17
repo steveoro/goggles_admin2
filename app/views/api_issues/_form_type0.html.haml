@@ -1,0 +1,57 @@
+.row
+  %h5.py-2= t('issues.what_title')
+  %table.table.table-striped.table-sm#req-details
+    %thead.text-center
+      %tr.table-info
+        %th
+          %code team_id
+        %th
+          %code team_label
+        %th
+          %code season_id
+    %tbody
+      %tr
+        %td.text-right
+          %pre= req['team_id']
+        %td
+          %pre= req['team_label']
+        %td
+          %pre= req['season_id']
+
+%section.row-fluid.my-4#existing-tms
+  .row
+    %h5.py-2= t('issues.type0.existing_tms')
+    - if existing_tms.present?
+      %table.table.table-striped.table-sm#tms-list
+        %thead.text-center
+          %tr.table-info
+            %th
+              %code id
+            %th
+              %code user_id
+            %th
+              %code team_affiliation_id
+            %th
+              %code team_id
+            %th
+              %code season_id
+        %tbody
+          - existing_tms.each do |team_manager|
+            %tr.text-right
+              %td
+                = team_manager['id']
+              %td
+                = team_manager['user_id']
+              %td
+                = team_manager['team_affiliation_id']
+              %td
+                = req['team_id']
+              %td
+                = req['season_id']
+    - else
+      %p
+        %pre= '/'
+
+.container.text-center
+  .row-fluid.my-4
+    = render(partial: 'form_bottom_fix_button', locals: { issue_id: issue_id, processable: processable })

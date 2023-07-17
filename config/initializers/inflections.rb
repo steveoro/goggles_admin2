@@ -14,6 +14,7 @@
 
 ActiveSupport::Inflector.inflections(:en) do |inflect|
   inflect.acronym 'API'
+  inflect.acronym 'DAO'
   inflect.acronym 'JWT'
   inflect.acronym 'MIR'
   inflect.acronym 'MRR'

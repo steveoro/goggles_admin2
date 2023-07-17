@@ -1,0 +1,15 @@
+= render(partial: 'data_fix/modal_progress')
+.wrapper-body
+  .main-content
+    %section.my-2#title-box
+      .container.bg-light-green.py-2.shadow-box#crawler-status-box
+        .row-fluid.text-center
+          %h5
+            📜 Data-import scripts (#{@filter})
+
+    %section.my-2#file-tabs
+      = render(partial: 'file_tabs', locals: { active_tab: @parent_folder.include?('new') ? 'new' : 'sent' })
+
+    %section#file-list
+      = render(partial: 'file_list/file_table', locals: { dirnames: @dirnames, curr_dir: @curr_dir,
+               files: @files, parent_folder: @parent_folder, filter: @filter })

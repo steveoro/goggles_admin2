@@ -1,14 +1,18 @@
 it:
   dashboard:
     title: "Pannello di controllo"
-    manage_entities: "Gestisci entità"
+    manage_entities: "Gestisci entità (modifiche dirette)"
+    manage_entities_help: "Le azioni in questa sezione vengono eseguite IMMEDIATAMENTE e SOLO sul server remoto a cui si è connessi"
     toggle_selection: "Inverti righe selezionate"
     n_total_rows: "%{tot} righe totali"
     confirm_row_delete: "Siamo sicuri di voler eliminare questa riga?\r\n(%{label})"
+    confirm_row_clone: "Sicuri di voler CLONARE questa riga?\r\n(%{label})"
     api_proxy_error: "Chiamata API fallita: errore %{error_code}, msg: '%{error_msg}'"
     generic_param_miss_error: "Parametro mancante!"
     not_admin_error: "Solo gli Amministratori possono usare questa applicazione!"
     search_field: "Cerca %{field}"
+    search_tooltip: "Sovrascrivi coi risultati della ricerca"
+    data_import_helper: "Le azioni eseguite in questa sezione lavorano su file e su entrambi i DB (locale e remoto) ma solo nella fase finale di 'commit & push'"
     grid_commands:
       delete_selected:
         button: "Elimina selezione <i class='fa fa fa-trash-o'></i>"
@@ -18,10 +22,16 @@ it:
       no_op_msg: "Nessuna selezione!"
     badges:
       title: "Cartellini (Badges)"
+    calendars:
+      title: "Calendari"
     categories:
       title: "Categorie (CategoryTypes)"
     import_queues:
       title: "Code importazioni (ImportQueues)"
+    issues:
+      title: "Segnalazioni (Issues)"
+    meetings:
+      title: "Meeting"
     meeting_reservations:
       title: "Prenotazioni Meeting (MeetingReservations)"
       expand:
@@ -36,6 +46,8 @@ it:
         save_failed: "Errore durante il salvataggio della configurazione di base. Controlla il log di sistema."
     seasons:
       title: "Stagioni (Seasons)"
+    standard_timings:
+      title: "Tempi standard (base)"
     stats:
       title: "API stats"
     swimmers:
@@ -48,5 +60,7 @@ it:
       title: "Team Managers (Managed Affiliations)"
     teams:
       title: "Squadre (Teams)"
+    user_workshops:
+      title: "Collegiali (Workshops)"
     users:
       title: "Utenti"

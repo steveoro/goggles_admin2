@@ -4,6 +4,7 @@ it:
       goggles_db/badge: Tesserino
       goggles_db/meeting_session: Sessione
       goggles_db/meeting: Meeting
+      goggles_db/pool_type: Tipo piscina
       goggles_db/swimming_pool: Piscina
       goggles_db/swimmer: Nuotatore
       goggles_db/team: Squadra
@@ -96,6 +97,10 @@ it:
           attributes:
             entry_time_type:
               required: "è richiesto"
+        goggles_db/federation_type:
+          attributes:
+            code:
+              already_exists: "esiste già"
         goggles_db/user:
           attributes:
             email:

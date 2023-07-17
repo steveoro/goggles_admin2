@@ -1,0 +1,19 @@
+$('#file-actions-modal').modal('hide');
+document.querySelector('#flash-messages-container').innerHTML = "<%=
+  escape_javascript(
+    render(partial: 'goggles/flash_messages')
+  )
+%>";
+
+document.querySelector('#file-list').innerHTML = "<%=
+  escape_javascript(
+    render(
+      partial: 'file_list/file_table',
+      locals: { dirnames: @dirnames, curr_dir: @curr_dir, files: @files, parent_folder: @parent_folder, filter: @filter }
+    )
+  )
+%>";
+
+// Re-run the pop-over controller (unnamed) bound to the main body layout, so that
+// pop-overs & modals reappear even after a partial page redraw:
+this.Stimulus.controllers[0].connect();
