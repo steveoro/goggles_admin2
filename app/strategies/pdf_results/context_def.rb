@@ -78,7 +78,7 @@ module PdfResults
     # - +data_columns+  => Hash of field properties, usually defining a repeatable row of data that will rely on the currently set 'column_defs'
     #
     def initialize(properties = {})
-      raise "Missing required 'name' for context section!" unless properties.keys.include?('name')
+      raise "Missing required 'name' for context section!" unless properties.key?('name')
 
       init_supported_properties
       properties.each do |key, value|
@@ -93,7 +93,7 @@ module PdfResults
     class_eval do
       # Getters
       ALL_PROPS.each do |prop_key|
-        define_method("#{prop_key}".to_sym) { instance_variable_get("@#{prop_key}") if instance_variable_defined?("@#{prop_key}") }
+        define_method(prop_key.to_s.to_sym) { instance_variable_get("@#{prop_key}") if instance_variable_defined?("@#{prop_key}") }
       end
       # Define additional specific instance helper methods just for boolean values:
       BOOL_PROPS.each do |prop_key|
@@ -121,7 +121,7 @@ module PdfResults
     def all_field_properties
       return [] unless @rows.is_a?(Array)
 
-      @rows.map { |hsh| hsh['fields'] }.compact
+      @rows.filter_map { |hsh| hsh['fields'] }
     end
     #-- -----------------------------------------------------------------------
     #++

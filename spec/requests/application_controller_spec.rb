@@ -4,6 +4,7 @@ require 'rails_helper'
 
 RSpec.describe ApplicationController do
   let(:fixture_user) { GogglesDb::User.first(50).sample }
+
   before(:each) { expect(fixture_user).to be_a(GogglesDb::User).and be_valid }
 
   # Request Locale setter

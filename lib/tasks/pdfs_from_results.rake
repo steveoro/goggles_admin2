@@ -29,7 +29,7 @@ namespace :pdf_files do
     season_id = ENV.include?('season') ? ENV['season'].to_i : 212
     puts('==> WARNING: unsupported season ID! Season 172 and prior are still WIP due to different layout.') unless [182, 192, 202, 212].include?(season_id)
     base_path = Rails.root.join("crawler/data/results.new/#{season_id}")
-    files = Dir.glob("#{base_path}/*.json").sort
+    files = Dir.glob("#{base_path}/*.json")
     puts "--> Found #{files.count} files. Processing..."
     puts "\r\n"
     manifest_urls = []

@@ -29,7 +29,7 @@ RSpec.describe SettingsController do
             cfg_row.settings(group_key).value.each do |key, val|
               allow(APIProxy).to receive(:call).with(
                 method: :get, url: "setting/#{group_key}", jwt: admin_user.jwt
-              ).and_return(DummyResponse.new(body: Setting.new(group_key: group_key, key: key, value: val).to_json))
+              ).and_return(DummyResponse.new(body: Setting.new(group_key:, key:, value: val).to_json))
             end
           else
             allow(APIProxy).to receive(:call).with(

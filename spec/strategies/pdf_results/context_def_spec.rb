@@ -41,7 +41,7 @@ RSpec.describe PdfResults::ContextDef, type: :strategy do
       end
 
       it 'does not add any getter method named after the unsupported properties passed as parameters' do
-        non_existing_props.keys.each { |prop_key| expect(new_instance).not_to respond_to(prop_key) }
+        non_existing_props.each_key { |prop_key| expect(new_instance).not_to respond_to(prop_key) }
       end
 
       it 'stores only the supplied existing property values' do
@@ -49,8 +49,8 @@ RSpec.describe PdfResults::ContextDef, type: :strategy do
       end
 
       it 'leaves all other supported properties (which were not given as parameters) to nil' do
-        PdfResults::ContextDef::ALL_PROPS.reject { |key| all_valid_props.keys.include?(key) }
-                                         .each { |prop_key| expect(new_instance.send(prop_key)).to be nil }
+        PdfResults::ContextDef::ALL_PROPS.reject { |key| all_valid_props.key?(key) }
+                                         .each { |prop_key| expect(new_instance.send(prop_key)).to be_nil }
       end
     end
 

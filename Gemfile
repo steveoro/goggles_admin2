@@ -3,22 +3,20 @@
 source 'https://rubygems.org'
 git_source(:github) { |repo| "https://github.com/#{repo}.git" }
 
-ruby '2.7.2'
+ruby '3.1.4'
 
 # Bundle edge Rails instead: gem 'rails', github: 'rails/rails'
 # [20210128] ActiveRecord 6.1 introduces too many changes for the current version
 gem 'rails', '>= 6.0.6', '< 6.1.0'
 gem 'rails-i18n', '~> 6.0'
 # Use mysql as the database for Active Record
-gem 'mysql2'
+gem 'mysql2', '>= 0.4.4'
 # Use Puma as the app server
-gem 'puma'
+gem 'puma', '>= 5.3.1'
 # Use SCSS for stylesheets
-gem 'sass-rails'
+gem 'sass-rails', '>= 6'
 # Transpile app-like JavaScript. Read more: https://github.com/rails/webpacker
 gem 'webpacker'
-# Turbolinks makes navigating your web application faster. Read more: https://github.com/turbolinks/turbolinks
-gem 'turbolinks'
 
 # Build JSON APIs with ease. Read more: https://github.com/rails/jbuilder
 # gem 'jbuilder', '~> 2.7'
@@ -110,10 +108,8 @@ group :test do
   # Example:
   #          expect { get :index }.to perform_constant_number_of_queries"
   gem 'rspec_junit_formatter' # required by new Semaphore test reports
-  gem 'selenium-webdriver'
+  gem 'selenium-webdriver', '>= 4.11'
   gem 'simplecov', '= 0.13.0', require: false
-  # Easy installation and use of web drivers to run system tests with browsers
-  gem 'webdrivers'
   gem 'webmock'
 end
 

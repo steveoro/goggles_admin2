@@ -64,7 +64,7 @@ module Users
         t: Rails.application.credentials.api_static_key
       }
 
-      response = APIProxy.call(method: :post, url: 'session', payload: payload)
+      response = APIProxy.call(method: :post, url: 'session', payload:)
       unless (200..299).cover?(response.code)
         msg = JSON.parse(response.body)
         set_flash_message!(:error, msg['error'])

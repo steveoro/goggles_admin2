@@ -21,15 +21,13 @@ class BadgesGrid < BaseGrid
   column(:id, align: :right, mandatory: true)
   column(:number)
   column(:season_type_name, header: 'Season', align: :right, html: true, mandatory: true,
-                            order: proc { |scope| scope.sort { |a, b| a.season_type.code <=> b.season_type.code } }
-  ) do |asset|
+                            order: proc { |scope| scope.sort { |a, b| a.season_type.code <=> b.season_type.code } }) do |asset|
     "<small><i>#{asset.season_type.code}</i></small> - #{asset.season.id}".html_safe
   end
 
   column(:swimmer_id, align: :right, mandatory: true)
   column(:swimmer_name, header: 'Name', html: true, mandatory: true,
-                        order: proc { |scope| scope.sort { |a, b| a.swimmer.complete_name <=> b.swimmer.complete_name } }
-  ) do |asset|
+                        order: proc { |scope| scope.sort { |a, b| a.swimmer.complete_name <=> b.swimmer.complete_name } }) do |asset|
     "<small>#{asset.swimmer.complete_name}</small>".html_safe
   end
 
@@ -41,14 +39,13 @@ class BadgesGrid < BaseGrid
 
   column(:team_id, align: :right, mandatory: true)
   column(:team_name, header: 'Name', html: true, mandatory: true,
-                     order: proc { |scope| scope.sort { |a, b| a.team.name <=> b.team.name } }
-  ) do |asset|
+                     order: proc { |scope| scope.sort { |a, b| a.team.name <=> b.team.name } }) do |asset|
     content_tag(:small) do
       "#{asset.team.name}<br/>TA: <b>#{asset.team_affiliation_id}</b>&nbsp;".html_safe
     end <<
       link_to(api_team_affiliations_path(team_affiliations_grid: {
-          team_id: asset.team_id, season_id: asset.season_id
-        })) do
+                                           team_id: asset.team_id, season_id: asset.season_id
+                                         })) do
         content_tag(:i, '', class: 'fa fa-eye')
       end
   end

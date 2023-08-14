@@ -25,6 +25,7 @@ doc
 tmp
 test
 *.apib
+crawler/data/*
 
 # Ignore local keys for decrypting credentials and more.
 /config/master.key

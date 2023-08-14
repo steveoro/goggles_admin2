@@ -75,7 +75,7 @@ class BaseGrid
   #      .map((node) => { return node.value })
   #
   def self.selection_column(mandatory: false)
-    column(:selected, html: true, order: false, mandatory: mandatory) do |record|
+    column(:selected, html: true, order: false, mandatory:) do |record|
       content_tag(:div, class: 'text-center') do
         check_box_tag("row-#{record.id}", record.id, false, class: 'grid-selector')
       end
@@ -109,8 +109,8 @@ class BaseGrid
   #
   # rubocop:disable Metrics/ParameterLists
   def self.actions_column(edit:, destroy:, clone: false, expand: false, label_method: nil, mandatory: false)
-    column(:actions, html: true, order: false, edit: edit, destroy: destroy,
-                     clone: clone, expand: expand, label_method: label_method, mandatory: mandatory)
+    column(:actions, html: true, order: false, edit:, destroy:,
+                     clone:, expand:, label_method:, mandatory:)
   end
   # rubocop:enable Metrics/ParameterLists
 end

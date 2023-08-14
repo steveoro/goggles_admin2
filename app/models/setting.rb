@@ -19,7 +19,7 @@ class Setting
   # Returns self as an Hash
   def to_h
     {
-      id: id,
+      id:,
       group_key: @group_key,
       key: @key,
       value: @value

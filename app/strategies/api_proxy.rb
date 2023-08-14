@@ -37,7 +37,7 @@ class APIProxy
     # Rails.logger.debug(payload.inspect)
 
     RestClient::Request.execute(
-      method: method,
+      method:,
       url: "#{api_base_url}/api/v3/#{url}",
       payload: payload.to_h,
       headers: hdrs

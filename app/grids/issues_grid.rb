@@ -73,7 +73,7 @@ class IssuesGrid < BaseGrid
   column(:priority, header: I18n.t('issues.grid.params.priority'), html: true, mandatory: true, order: :priority) do |asset|
     asset.decorate.priority_flag <<
       render(Grid::RowRangeValueButtonsComponent.new(asset_row: asset, controller_name: 'api_issues',
-             column_name: 'priority', value_range: (0..GogglesDb::Issue::MAX_PRIORITY)))
+                                                     column_name: 'priority', value_range: (0..GogglesDb::Issue::MAX_PRIORITY)))
   end
 
   column(:status, header: I18n.t('issues.grid.params.status'), html: true, mandatory: true, order: :status) do |asset|

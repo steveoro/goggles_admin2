@@ -28,7 +28,7 @@ class SettingsController < ApplicationController
       # NOTE: the API result, in this case is a map of keys & values for the specified group key
       # Flattening the group hash of keys into a single domain:
       group_array = json_domain.map do |key, value|
-        Setting.new(group_key: group_key, key: key, value: value)
+        Setting.new(group_key:, key:, value:)
       end
       @domain += group_array
       @domain_count += group_array.count

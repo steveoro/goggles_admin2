@@ -6,7 +6,7 @@ services:
     # Set max_allowed_packet to 512M (this should prevent the "MySQL server has gone away"
     # issue due to timeout when running huge queries)
     command: --max_allowed_packet=67108864
-    container_name: goggles-db.dev
+    container_name: goggles-db
     env_file:
       - .env
     ports:
@@ -16,10 +16,10 @@ services:
       - "~/Projects/goggles_deploy/db.prod:/var/lib/mysql"
 
   api:
-    image: "steveoro/goggles-api:dev-${TAG}"
+    image: "steveoro/goggles-api:prod-${TAG}"
     depends_on:
       - goggles-db
-    container_name: goggles-api.dev
+    container_name: goggles-api
     env_file:
       - .env
     ports:
@@ -47,6 +47,7 @@ services:
       - '8080:8080'
     restart: always
     volumes:
+      - "~/Projects/goggles_deploy/storage.prod:/app/storage"
       - "~/Projects/goggles_deploy/db.prod:/var/lib/mysql"
       - "~/Projects/goggles_deploy/backups:/app/db/dump"
       - "~/Projects/goggles_deploy/log.prod:/app/log"

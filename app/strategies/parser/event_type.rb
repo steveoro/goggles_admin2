@@ -38,7 +38,7 @@ module Parser
       # DEBUG
       # puts "event_title: '#{event_title}', category_code: '#{category_code}'"
 
-      reg = Regexp.new(/(\d{2,4})\W+(\w+\s*\w*)/iu)
+      reg = /(\d{2,4})\W+(\w+\s*\w*)/iu
       match = reg.match(event_title)
       length_in_meters, stroke_type = match.captures if match
       stroke_type_id = case stroke_type
@@ -55,7 +55,7 @@ module Parser
                        end
       [
         GogglesDb::EventType.joins(:stroke_type).includes(:stroke_type)
-                            .find_by(length_in_meters: length_in_meters, stroke_type_id: stroke_type_id),
+                            .find_by(length_in_meters:, stroke_type_id:),
         GogglesDb::CategoryType.for_season(season)
                                .find_by(code: category_code)
       ]

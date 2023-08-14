@@ -21,7 +21,7 @@ inherit_from: .rubocop_todo.yml
 
 AllCops:
   NewCops: enable
-  TargetRubyVersion: 2.7.2
+  TargetRubyVersion: 3.1.4
   Exclude:
     - 'db/schema.rb'
     - 'vendor/**/*'
@@ -47,6 +47,8 @@ Metrics/AbcSize:
     - 'app/controllers/settings_controller.rb'
     - 'app/controllers/users_controller.rb'
     - 'app/controllers/pull_controller.rb'
+    - 'app/controllers/api_users_controller.rb'
+    - 'app/controllers/api_issues_controller.rb'
 
 Metrics/BlockLength:
   Max: 40
@@ -65,25 +67,38 @@ Metrics/ClassLength:
     - 'app/controllers/pull_controller.rb'
     - 'app/strategies/import/macro_committer.rb'
     - 'app/strategies/import/macro_solver.rb'
+    - 'app/controllers/api_issues_controller.rb'
 
 Metrics/CyclomaticComplexity:
   Max: 8
   Exclude:
     - 'bin/bundle'
+    - 'app/components/issue/status_buttons_component.rb'
+    - 'app/controllers/api_issues_controller.rb'
 
 Metrics/MethodLength:
   Max: 35
   Exclude:
     - 'db/migrate/*'
+    - 'app/controllers/api_issues_controller.rb'
 
 Metrics/PerceivedComplexity:
   Exclude:
     - 'bin/bundle'
+    - 'app/components/issue/status_buttons_component.rb'
+    - 'app/controllers/api_issues_controller.rb'
 
+
+Rails/Output:
+  Exclude:
+    - 'app/strategies/pdf_results/context_dao.rb'
+    - 'app/strategies/pdf_results/format_detector.rb'
 
 Rails/OutputSafety:
   Exclude:
     - 'app/grids/*'
+    - 'app/decorators/issue_decorator.rb'
+    - 'app/controllers/api_issues_controller.rb'
 
 # Excluded files here were already corrected in later migrations:
 Rails/ThreeStateBooleanColumn:
@@ -100,6 +115,9 @@ Rake/MethodDefinitionInTask:
 
 
 RSpec/IndexedLet:
+  Enabled: false
+
+RSpec/ExpectInHook:
   Enabled: false
 
 RSpec/MultipleMemoizedHelpers:
@@ -120,3 +138,7 @@ Style/Documentation:
     - 'app/helpers/application_helper.rb'
     - 'app/mailers/application_mailer.rb'
     - 'app/models/application_record.rb'
+
+Style/FormatStringToken:
+  Exclude:
+    - 'app/strategies/pdf_results/context_dao.rb'

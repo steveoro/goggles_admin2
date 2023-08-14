@@ -74,7 +74,7 @@ module PdfResults
     # a new ContextDAO instance set with this instance as parent.
     #
     def add_context(key, value)
-      @contexts << ContextDAO.new(key: key, value: value, parent: self)
+      @contexts << ContextDAO.new(key:, value:, parent: self)
       @contexts.last
     end
 
@@ -110,8 +110,8 @@ module PdfResults
     def to_s
       print("#{@parent.key} +--> ".rjust(20)) if @parent.present?
       printf("[%s] %s\n", @key, @fields)
-      @contexts.each { |dao| print(dao.to_s) }
-      @items.each_with_index { |itm, idx| printf("%20s#{idx}. #{itm.to_s}\n", nil) }
+      @contexts.each { |dao| print(dao) }
+      @items.each_with_index { |itm, idx| printf("%20s#{idx}. #{itm}\n", nil) }
       nil
     end
   end
