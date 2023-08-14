@@ -9,8 +9,7 @@
 # divided in pages by page breaks (ASCII "\f").
 #
 class PagedText
-  attr_reader :file_path
-  attr_reader :text_contents
+  attr_reader :file_path, :text_contents
 
   # Defines a new data source associated to a specific file_path.
   def initialize(file_path)
@@ -18,11 +17,9 @@ class PagedText
   end
 
   # Yields individual text pages
-  def each
+  def each(&)
     @text_contents = File.read(file_path)
     @pages = @text_contents.split("\f").first
-    @pages.each do |page|
-      yield(page)
-    end
+    @pages.each(&)
   end
 end

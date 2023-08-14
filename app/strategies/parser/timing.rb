@@ -40,8 +40,8 @@ module Parser
     # rubocop:disable Lint/MixedRegexpCaptureTypes
     def self.from_l2_result(timing_text)
       # NOTE: removing the named captures will break this parser functionality
-      reg_format1 = Regexp.new(/((?<min>\d+)')?(?<sec>\d{1,2})"(?<hun>\d{1,2})/u)
-      reg_format2 = Regexp.new(/((?<min>\d+)[:.])?(?<sec>\d{1,2})\.(?<hun>\d{1,2})/u)
+      reg_format1 = /((?<min>\d+)')?(?<sec>\d{1,2})"(?<hun>\d{1,2})/u
+      reg_format2 = /((?<min>\d+)[:.])?(?<sec>\d{1,2})\.(?<hun>\d{1,2})/u
 
       case timing_text
       when reg_format1
@@ -54,7 +54,7 @@ module Parser
         return nil
       end
 
-      ::Timing.new(minutes: minutes, seconds: seconds, hundredths: hundredths)
+      ::Timing.new(minutes:, seconds:, hundredths:)
     end
     # rubocop:enable Lint/MixedRegexpCaptureTypes
   end

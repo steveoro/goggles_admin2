@@ -12,7 +12,6 @@ class APIUsersController < ApplicationController
   # - <tt>@domain</tt>: list of all instance rows
   # - <tt>@grid</tt>: the customized Datagrid instance
   #
-  # rubocop:disable Metrics/AbcSize
   def index
     result = APIProxy.call(
       method: :get, url: 'users', jwt: current_user.jwt,
@@ -44,7 +43,6 @@ class APIUsersController < ApplicationController
       end
     end
   end
-  # rubocop:enable Metrics/AbcSize
   #-- -------------------------------------------------------------------------
   #++
 
@@ -70,7 +68,7 @@ class APIUsersController < ApplicationController
       method: :put,
       url: "user/#{id}",
       jwt: current_user.jwt,
-      payload: edit_params(GogglesDb::User).merge(locked: locked, active: active)
+      payload: edit_params(GogglesDb::User).merge(locked:, active:)
     )
 
     if result.body == 'true'
@@ -88,7 +86,6 @@ class APIUsersController < ApplicationController
   # - <tt>id</tt>: to be used for single row deletion
   # - <tt>ids</tt>: to be used for multiple rows deletion
   #
-  # rubocop:disable Metrics/AbcSize
   def destroy
     row_ids = delete_params[:ids].present? ? delete_params[:ids].split(',') : []
     row_ids << delete_params[:id] if delete_params[:id].present?
@@ -106,7 +103,6 @@ class APIUsersController < ApplicationController
     end
     redirect_to(api_users_path(index_params))
   end
-  # rubocop:enable Metrics/AbcSize
   #-- -------------------------------------------------------------------------
   #++
 

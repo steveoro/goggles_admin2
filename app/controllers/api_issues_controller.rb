@@ -12,7 +12,6 @@ class APIIssuesController < ApplicationController
   # - <tt>@domain</tt>: list of all instance rows
   # - <tt>@grid</tt>: the customized Datagrid instance
   #
-  # rubocop:disable Metrics/AbcSize
   def index
     result = APIProxy.call(
       method: :get, url: 'issues', jwt: current_user.jwt,
@@ -72,7 +71,6 @@ class APIIssuesController < ApplicationController
     end
     redirect_to(api_issues_path(index_params))
   end
-  # rubocop:enable Metrics/AbcSize
   #-- -------------------------------------------------------------------------
   #++
 
@@ -108,7 +106,6 @@ class APIIssuesController < ApplicationController
   # - <tt>id</tt>: single row ID, to be used for single row deletion
   # - <tt>ids</tt>: array of row IDs, to be used for multiple rows deletion
   #
-  # rubocop:disable Metrics/AbcSize
   def destroy
     row_ids = delete_params[:ids].present? ? delete_params[:ids].split(',') : []
     row_ids << delete_params[:id] if delete_params[:id].present?
@@ -124,7 +121,6 @@ class APIIssuesController < ApplicationController
     end
     redirect_to(api_issues_path(index_params))
   end
-  # rubocop:enable Metrics/AbcSize
   #-- -------------------------------------------------------------------------
   #++
 
@@ -267,14 +263,14 @@ class APIIssuesController < ApplicationController
   # Returns nil in case of response errors from the API.
   def find_or_create_team_affiliation_id!(jwt, team_id, team_name, season_id)
     # Seek existing TeamAffiliation:
-    result = APIProxy.call(method: :get, url: 'team_affiliations', jwt: jwt,
-                           payload: { team_id: team_id, season_id: season_id })
+    result = APIProxy.call(method: :get, url: 'team_affiliations', jwt:,
+                           payload: { team_id:, season_id: })
     existing_rows = result.body.present? ? JSON.parse(result.body) : { 'error' => "Error #{result.code}" }
     return existing_rows.first['id'] if existing_rows.is_a?(Array) && existing_rows.first.is_a?(Hash) && existing_rows.first.key?('id')
 
     # Create missing row:
-    payload = { team_id: team_id, season_id: season_id, name: team_name, number: '?' }
-    result = APIProxy.call(method: :post, url: 'team_affiliation', jwt: current_user.jwt, payload: payload)
+    payload = { team_id:, season_id:, name: team_name, number: '?' }
+    result = APIProxy.call(method: :post, url: 'team_affiliation', jwt: current_user.jwt, payload:)
     new_row = parse_json_result_from_create(result)
     return new_row['new']['id'] if new_row.present? && new_row['msg'] == 'OK' && new_row['new'].key?('id')
 
@@ -284,7 +280,7 @@ class APIIssuesController < ApplicationController
 
   # Returns the first MeetingEvent *hash* found inside the rich API details from the parent meeting.
   # Returns nil otherwise.
-  def find_meeting_event(jwt, parent_meeting, event_type_id)
+  def find_meeting_event(_jwt, parent_meeting, event_type_id)
     meeting_event_hash = parent_meeting['meeting_events'].find { |me| me['event_type_id'] == event_type_id.to_i }
     return meeting_event_hash if meeting_event_hash.is_a?(Hash) # && existing_rows.first.is_a?(Hash) && existing_rows.first.key?('id')
 
@@ -295,11 +291,12 @@ class APIIssuesController < ApplicationController
   # Returns the first MeetingProgram id found for the corresponding parameters, or
   # creates a new one if missing.
   # Returns nil in case of response errors from the API.
+  #
   def find_or_create_meeting_program_id!(jwt, parent_meeting, meeting_event_hash, category_type_id, gender_type_id)
     # Seek existing meeting program:
-    result = APIProxy.call(method: :get, url: 'meeting_programs', jwt: jwt,
+    result = APIProxy.call(method: :get, url: 'meeting_programs', jwt:,
                            payload: { meeting_id: parent_meeting['id'], meeting_event_id: meeting_event_hash['id'],
-                                      category_type_id: category_type_id, gender_type_id: gender_type_id })
+                                      category_type_id:, gender_type_id: })
     existing_rows = result.body.present? ? JSON.parse(result.body) : { 'error' => "Error #{result.code}" }
     return existing_rows.first['id'] if existing_rows.is_a?(Array) && existing_rows.first.is_a?(Hash) && existing_rows.first.key?('id')
 
@@ -308,12 +305,12 @@ class APIIssuesController < ApplicationController
     event_order = GogglesDb::MeetingProgram.includes(:meeting_event, :category_type, :gender_type)
                                            .joins(:meeting_event, :category_type, :gender_type)
                                            .where(meeting_event_id: meeting_event_hash['id'],
-                                                  category_type_id: category_type_id,
-                                                  gender_type_id: gender_type_id).last&.order.to_i + 1
+                                                  category_type_id:,
+                                                  gender_type_id:).last&.order.to_i + 1
 
-    payload = { meeting_event_id: meeting_event_hash['id'], event_order: event_order, pool_type_id: pool_type_id,
-                category_type_id: category_type_id, gender_type_id: gender_type_id }
-    result = APIProxy.call(method: :post, url: 'meeting_program', jwt: current_user.jwt,payload: payload)
+    payload = { meeting_event_id: meeting_event_hash['id'], event_order:, pool_type_id:,
+                category_type_id:, gender_type_id: }
+    result = APIProxy.call(method: :post, url: 'meeting_program', jwt: current_user.jwt, payload:)
     new_row = parse_json_result_from_create(result)
     return new_row['new']['id'] if new_row.present? && new_row['msg'] == 'OK' && new_row['new'].key?('id')
 
@@ -395,24 +392,26 @@ class APIIssuesController < ApplicationController
     prepare_parent_meeting_details(@req['parent_meeting_class'], @req['parent_meeting_id']) # sets both @parent_meeting & @parent_meeting_class
     meeting_season = GogglesDb::Season.find_by(id: @parent_meeting['season_id']) if @parent_meeting['season_id'].present?
     swimmer_age = Time.zone.today.year - @req['swimmer_year_of_birth'].to_i
-    @swimmer_category = GogglesDb::CategoryType.for_season(meeting_season)
-                                                .where('(age_end >= ?) AND (age_begin <= ?)', swimmer_age, swimmer_age)
-                                                .individuals
-                                                .first if meeting_season.present?
+    if meeting_season.present?
+      @swimmer_category = GogglesDb::CategoryType.for_season(meeting_season)
+                                                 .where('(age_end >= ?) AND (age_begin <= ?)', swimmer_age, swimmer_age)
+                                                 .individuals
+                                                 .first
+    end
     @swimmer_badges = GogglesDb::Badge.where(swimmer_id: @req['swimmer_id']).for_season(meeting_season) if meeting_season
 
     # GET list of existing MIRs:
     result = APIProxy.call(method: :get, url: 'meeting_individual_results', jwt: current_user.jwt,
-                            payload: { meeting_id: @req['parent_meeting_id'], event_type_id: @req['event_type_id'],
+                           payload: { meeting_id: @req['parent_meeting_id'], event_type_id: @req['event_type_id'],
                                       category_type_id: @swimmer_category.id, gender_type_id: @req['gender_type_id'] })
     @existing_mirs = result.body.present? ? JSON.parse(result.body) : { 'error' => "Error #{result.code}" }
 
     # GET list of existing MIRs having SAME FIRST BADGE & MEETING:
-    if @swimmer_badges.present?
-      result = APIProxy.call(method: :get, url: 'meeting_individual_results', jwt: current_user.jwt,
-                            payload: { meeting_id: @req['parent_meeting_id'], badge_id: @swimmer_badges.first.id })
-      @badge_mirs = result.body.present? ? JSON.parse(result.body) : { 'error' => "Error #{result.code}" }
-    end
+    return if @swimmer_badges.blank?
+
+    result = APIProxy.call(method: :get, url: 'meeting_individual_results', jwt: current_user.jwt,
+                           payload: { meeting_id: @req['parent_meeting_id'], badge_id: @swimmer_badges.first.id })
+    @badge_mirs = result.body.present? ? JSON.parse(result.body) : { 'error' => "Error #{result.code}" }
   end
 
   # Prepares member variables for issue type 1b1: report result mistake.
@@ -431,7 +430,7 @@ class APIIssuesController < ApplicationController
 
     # GET result row (MIR|UR) details:
     result = APIProxy.call(method: :get, url: "#{@req['result_class'].tableize.singularize}/#{@req['result_id']}",
-                            jwt: current_user.jwt)
+                           jwt: current_user.jwt)
     @result_row = result.body.present? ? JSON.parse(result.body) : { 'error' => "Error #{result.code}" }
     prepare_parent_meeting_details('Meeting', @result_row['meeting']['id']) # sets both @parent_meeting & @parent_meeting_class
   end
@@ -443,7 +442,7 @@ class APIIssuesController < ApplicationController
   def prepare_report_data_type2b1
     # GET result row (MIR|UR) details:
     result = APIProxy.call(method: :get, url: "#{@req['result_class'].tableize.singularize}/#{@req['result_id']}",
-                            jwt: current_user.jwt)
+                           jwt: current_user.jwt)
     @result_row = result.body.present? ? JSON.parse(result.body) : { 'error' => "Error #{result.code}" }
     prepare_parent_meeting_details('Meeting', @result_row['meeting']['id']) # sets both @parent_meeting & @parent_meeting_class
 
@@ -452,10 +451,10 @@ class APIIssuesController < ApplicationController
                                              .order(:complete_name)
                                              .limit(25)
 
-    tokens = @result_row['team_affiliation']['name'].split(' ')
+    tokens = @result_row['team_affiliation']['name'].split
     cmd = GogglesDb::CmdFindDbEntity.call(GogglesDb::Team, editable_name: @result_row['team_affiliation']['name'])
     @same_named_teams = cmd.successful? ? cmd.matches.map(&:candidate) : []
-    shortened_team_name = tokens.size > 2 ? tokens[-3..-1].join(' ') : tokens.join(' ')
+    shortened_team_name = tokens.size > 2 ? tokens[-3..].join(' ') : tokens.join(' ')
     cmd = GogglesDb::CmdFindDbEntity.call(GogglesDb::Team, editable_name: shortened_team_name)
     @same_named_teams = (@same_named_teams + cmd.matches.map(&:candidate)).uniq if cmd.successful?
   end
@@ -517,11 +516,11 @@ class APIIssuesController < ApplicationController
     # Sets flash[:error] unless result is ok:
     target_id = find_or_create_team_affiliation_id!(current_user.jwt, req['team_id'].to_i,
                                                     req['team_label'], req['season_id'].to_i)
-    return unless target_id.present?
+    return if target_id.blank?
 
     # create new TM:
     result = APIProxy.call(method: :post, url: 'team_manager', jwt: current_user.jwt,
-                            payload: { user_id: user_id, team_affiliation_id: target_id })
+                           payload: { user_id:, team_affiliation_id: target_id })
     new_row = parse_json_result_from_create(result)
     if new_row.present? && new_row['msg'] == 'OK' && new_row['new'].key?('id')
       flash[:info] = I18n.t('datagrid.edit_modal.create_ok', id: new_row['new']['id'])
@@ -553,10 +552,12 @@ class APIIssuesController < ApplicationController
     prepare_parent_meeting_details(req['parent_meeting_class'], req['parent_meeting_id']) # sets both @parent_meeting & @parent_meeting_class
     meeting_season = GogglesDb::Season.find_by(id: @parent_meeting['season_id']) if @parent_meeting['season_id'].present?
     swimmer_age = Time.zone.today.year - req['swimmer_year_of_birth'].to_i
-    swimmer_category = GogglesDb::CategoryType.for_season(meeting_season)
-                                              .where('(age_end >= ?) AND (age_begin <= ?)', swimmer_age, swimmer_age)
-                                              .individuals
-                                              .first if meeting_season.present?
+    if meeting_season.present?
+      swimmer_category = GogglesDb::CategoryType.for_season(meeting_season)
+                                                .where('(age_end >= ?) AND (age_begin <= ?)', swimmer_age, swimmer_age)
+                                                .individuals
+                                                .first
+    end
     swimmer_badges = GogglesDb::Badge.where(swimmer_id: req['swimmer_id']).for_season(meeting_season) if meeting_season
     # ASSUMES: at least a badge must be existing; ==> only the first one will be chosen <==
     flash[:error] = "NO badges found for swimmer_id #{req['swimmer_id']}!" && return if swimmer_badges.blank?
@@ -574,17 +575,20 @@ class APIIssuesController < ApplicationController
     badge = swimmer_badges.first
     # Auto-compute new rank:
     new_timing = Timing.new(minutes: req['minutes'], seconds: req['seconds'], hundredths: req['hundredths'])
-    timings = GogglesDb::MeetingIndividualResult.where(meeting_program_id: meeting_program_id).map(&:to_timing)
+    timings = GogglesDb::MeetingIndividualResult.where(meeting_program_id:).map(&:to_timing)
     new_rank = 0
-    timings.each_with_index { |timing, idx| new_rank = idx + 1 ; break if timing > new_timing }
+    timings.each_with_index do |timing, idx|
+      new_rank = idx + 1
+      break if timing > new_timing
+    end
 
     payload = {
-      meeting_program_id: meeting_program_id, team_affiliation_id: badge.team_affiliation_id,
+      meeting_program_id:, team_affiliation_id: badge.team_affiliation_id,
       team_id: badge.team_id, swimmer_id: badge.swimmer_id, badge_id: badge.id,
       minutes: req['minutes'], seconds: req['seconds'], hundredths: req['hundredths'],
       rank: new_rank
     }
-    result = APIProxy.call(method: :post, url: 'meeting_individual_result', jwt: current_user.jwt, payload: payload)
+    result = APIProxy.call(method: :post, url: 'meeting_individual_result', jwt: current_user.jwt, payload:)
     new_row = parse_json_result_from_create(result)
 
     if new_row.present? && new_row['msg'] == 'OK' && new_row['new'].key?('id')
@@ -607,7 +611,7 @@ class APIIssuesController < ApplicationController
     # EDIT result row (MIR|UR) details:
     payload = { minutes: req['minutes'], seconds: req['seconds'], hundredths: req['hundredths'] }
     result = APIProxy.call(method: :put, url: "#{req['result_class'].tableize.singularize}/#{req['result_id']}",
-                           jwt: current_user.jwt, payload: payload)
+                           jwt: current_user.jwt, payload:)
     if result.code == 200
       flash[:info] = I18n.t('issues.msgs.update_ok')
     else
@@ -640,10 +644,10 @@ class APIIssuesController < ApplicationController
       payload = { complete_name: "#{req['type3c_last_name']} #{req['type3c_first_name']}",
                   first_name: req['type3c_first_name'], last_name: req['type3c_last_name'],
                   year_of_birth: req['type3c_year_of_birth'].to_i, gender_type_id: req['type3c_gender_type_id'].to_i }
-      result = APIProxy.call(method: :post, url: 'swimmer', jwt: current_user.jwt, payload: payload)
+      result = APIProxy.call(method: :post, url: 'swimmer', jwt: current_user.jwt, payload:)
       new_row = parse_json_result_from_create(result)
       if new_row.present? && new_row['msg'] == 'OK' && new_row['new'].key?('id')
-        flash[:info] = I18n.t('datagrid.edit_modal.create_ok', id: new_row['new']['id']) + "<br/>".html_safe
+        flash[:info] = I18n.t('datagrid.edit_modal.create_ok', id: new_row['new']['id']) + '<br/>'.html_safe
         swimmer_id = new_row['new']['id']
       else
         logger.error("\r\n---[E]--- API: error during swimmer creation! (payload: #{payload.inspect})")
@@ -653,7 +657,7 @@ class APIIssuesController < ApplicationController
     end
 
     payload = { swimmer_id: swimmer_id.to_i }
-    result = APIProxy.call(method: :put, url: "user/#{user_id}", jwt: current_user.jwt, payload: payload)
+    result = APIProxy.call(method: :put, url: "user/#{user_id}", jwt: current_user.jwt, payload:)
     if result.code != 200
       logger.error("\r\n---[E]--- API: error during user update! (payload: #{payload.inspect})")
       flash[:error] = t('issues.msgs.api_error_with_action', action_desc: 'user update')
@@ -661,7 +665,7 @@ class APIIssuesController < ApplicationController
     end
 
     payload = { associated_user_id: user_id.to_i }
-    result = APIProxy.call(method: :put, url: "swimmer/#{swimmer_id}", jwt: current_user.jwt, payload: payload)
+    result = APIProxy.call(method: :put, url: "swimmer/#{swimmer_id}", jwt: current_user.jwt, payload:)
     if result.code == 200
       flash[:info] = flash[:info].to_s.html_safe + I18n.t('issues.msgs.update_ok')
     else
@@ -679,17 +683,16 @@ class APIIssuesController < ApplicationController
   # - user_name => User name for the email msg
   # - user_email => User email; blank or nil to skip sending the email msg
   #
-  def autofix_type5(req, user_id, user_name, user_email)
+  def autofix_type5(_req, user_id, user_name, user_email)
     result = APIProxy.call(method: :put, url: "user/#{user_id}", jwt: current_user.jwt, payload: { active: true })
 
     if result.code == 200
       flash[:info] = I18n.t('issues.msgs.update_ok')
       # Send an email msg to the user if requested:
       if user_email.present?
-        ApplicationMailer.generic_message(user_email: user_email, user_name: user_name,
-          subject_text: I18n.t('issues.type5.email_subject'),
-          content_body: I18n.t('issues.type5.email_body')
-        ).deliver_now
+        ApplicationMailer.generic_message(user_email:, user_name:,
+                                          subject_text: I18n.t('issues.type5.email_subject'),
+                                          content_body: I18n.t('issues.type5.email_body')).deliver_now
       end
     else
       logger.error("\r\n---[E]--- API: error during user reactivation! (payload: #{payload.inspect})")

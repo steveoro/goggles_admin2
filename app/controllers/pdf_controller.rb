@@ -38,8 +38,6 @@ class PdfController < ApplicationController
     # 9. custom TXT 2 PDF ()
     # 10. Firenze "DBMeeting" custom sw output (with lap timings, ie: results_2022-11-06_AmiciNuoto.txt)
     # 11. "Frediano Palazzi - Gestione manifestazioni nuoto Master" output
-
-
   end
   #-- -------------------------------------------------------------------------
   #++
@@ -47,8 +45,7 @@ class PdfController < ApplicationController
   # [POST] Parse a converted TXT file (by pathname) into the JSON format handled by
   # the DataFixController.
   #
-  def export_json
-  end
+  def export_json; end
   #-- -------------------------------------------------------------------------
   #++
 

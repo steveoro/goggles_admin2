@@ -192,7 +192,7 @@ module Import
 
       entity_keys&.each do |entity_key|
         idx += 1
-        ActionCable.server.broadcast('ImportStatusChannel', msg: "commit City '#{entity_key}'", progress: idx, total: total)
+        ActionCable.server.broadcast('ImportStatusChannel', msg: "commit City '#{entity_key}'", progress: idx, total:)
 
         model_row = @solver.cached_instance_of('city', entity_key)
         # Override the Import::Entity with the actual row:
@@ -237,7 +237,7 @@ module Import
 
       entity_keys&.each do |entity_key|
         idx += 1
-        ActionCable.server.broadcast('ImportStatusChannel', msg: "commit Sw.Pool '#{entity_key}'", progress: idx, total: total)
+        ActionCable.server.broadcast('ImportStatusChannel', msg: "commit Sw.Pool '#{entity_key}'", progress: idx, total:)
 
         model_row = @solver.cached_instance_of('swimming_pool', entity_key)
         bindings_hash = @solver.cached_instance_of('swimming_pool', entity_key, 'bindings')
@@ -278,7 +278,7 @@ module Import
       total = entity_keys&.count
 
       entity_keys&.each_with_index do |_entity_hash, index|
-        ActionCable.server.broadcast('ImportStatusChannel', msg: "commit M.Session '#{index + 1}'", progress: index + 1, total: total)
+        ActionCable.server.broadcast('ImportStatusChannel', msg: "commit M.Session '#{index + 1}'", progress: index + 1, total:)
 
         model_row = @solver.cached_instance_of('meeting_session', index)
         model_row.meeting_id = meeting.id
@@ -324,7 +324,7 @@ module Import
 
       entity_keys&.each do |entity_key|
         idx += 1
-        ActionCable.server.broadcast('ImportStatusChannel', msg: "commit Team '#{entity_key}'", progress: idx, total: total)
+        ActionCable.server.broadcast('ImportStatusChannel', msg: "commit Team '#{entity_key}'", progress: idx, total:)
 
         model_row = @solver.cached_instance_of('team', entity_key)
         bindings_hash = @solver.cached_instance_of('team', entity_key, 'bindings')
@@ -371,7 +371,7 @@ module Import
 
       entity_keys&.each do |entity_key|
         idx += 1
-        ActionCable.server.broadcast('ImportStatusChannel', msg: "commit Swimmer '#{entity_key}'", progress: idx, total: total)
+        ActionCable.server.broadcast('ImportStatusChannel', msg: "commit Swimmer '#{entity_key}'", progress: idx, total:)
 
         model_row = @solver.cached_instance_of('swimmer', entity_key)
         bindings_hash = @solver.cached_instance_of('swimmer', entity_key, 'bindings')
@@ -405,7 +405,7 @@ module Import
 
       entity_keys&.each do |entity_key|
         idx += 1
-        ActionCable.server.broadcast('ImportStatusChannel', msg: "commit M.Event '#{entity_key}'", progress: idx, total: total)
+        ActionCable.server.broadcast('ImportStatusChannel', msg: "commit M.Event '#{entity_key}'", progress: idx, total:)
 
         model_row = @solver.cached_instance_of('meeting_event', entity_key)
         bindings_hash = @solver.cached_instance_of('meeting_event', entity_key, 'bindings')
@@ -445,7 +445,7 @@ module Import
 
       entity_keys&.each do |entity_key|
         idx += 1
-        ActionCable.server.broadcast('ImportStatusChannel', msg: "commit M.Prg. '#{entity_key}'", progress: idx, total: total)
+        ActionCable.server.broadcast('ImportStatusChannel', msg: "commit M.Prg. '#{entity_key}'", progress: idx, total:)
 
         model_row = @solver.cached_instance_of('meeting_program', entity_key)
         bindings_hash = @solver.cached_instance_of('meeting_program', entity_key, 'bindings')
@@ -485,7 +485,7 @@ module Import
 
       entity_keys&.each do |entity_key|
         idx += 1
-        ActionCable.server.broadcast('ImportStatusChannel', msg: "commit MIR '#{entity_key}'", progress: idx, total: total)
+        ActionCable.server.broadcast('ImportStatusChannel', msg: "commit MIR '#{entity_key}'", progress: idx, total:)
 
         model_row = @solver.cached_instance_of('meeting_individual_result', entity_key)
         bindings_hash = @solver.cached_instance_of('meeting_individual_result', entity_key, 'bindings')
@@ -533,7 +533,7 @@ module Import
 
       entity_keys&.each do |entity_key|
         idx += 1
-        ActionCable.server.broadcast('ImportStatusChannel', msg: "commit T.Aff. '#{entity_key}'", progress: idx, total: total)
+        ActionCable.server.broadcast('ImportStatusChannel', msg: "commit T.Aff. '#{entity_key}'", progress: idx, total:)
 
         model_row = @solver.cached_instance_of('team_affiliation', entity_key)
         bindings_hash = @solver.cached_instance_of('team_affiliation', entity_key, 'bindings')
@@ -576,7 +576,7 @@ module Import
 
       entity_keys&.each do |entity_key|
         idx += 1
-        ActionCable.server.broadcast('ImportStatusChannel', msg: "commit Badge '#{entity_key}'", progress: idx, total: total)
+        ActionCable.server.broadcast('ImportStatusChannel', msg: "commit Badge '#{entity_key}'", progress: idx, total:)
 
         model_row = @solver.cached_instance_of('badge', entity_key)
         bindings_hash = @solver.cached_instance_of('badge', entity_key, 'bindings')

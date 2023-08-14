@@ -20,7 +20,7 @@ module Grid
   class RowBoolValueSwitchComponent < ViewComponent::Base
     # Creates a new ViewComponent
     #
-    # == Options: (all *required*)
+    # == Supported Options & defaults: (all *required*)
     # - <tt>asset_row</tt>:
     #   row instance to be processed.
     #
@@ -42,15 +42,14 @@ module Grid
     #   unicode gliph for the ON switch position;
     #   default 'fa-check' (override with 'fa-ban' or others).
     #
-    def initialize(asset_row:, controller_name:, column_name:, bkgnd_color: 'green',
-                   true_color: 'text-success', true_icon: 'fa-check')
+    def initialize(options = {})
       super
-      @asset_row = asset_row.reload # Force data refresh
-      @controller_name = controller_name
-      @column_name = column_name
-      @bkgnd_color = bkgnd_color
-      @true_color = true_color
-      @true_icon = true_icon
+      @asset_row = options[:asset_row]&.reload # Force data refresh
+      @controller_name = options[:controller_name]
+      @column_name = options[:column_name]
+      @bkgnd_color = options[:bkgnd_color] || 'green'
+      @true_color = options[:true_color] || 'text-success'
+      @true_icon = options[:true_icon] || 'fa-check'
     end
 
     # Skips rendering unless the required parameters are set
@@ -63,7 +62,7 @@ module Grid
     # Returns the destination path for the button action.
     def action_path_for_params
       url_for(only_path: true, controller: @controller_name, action: :update, id: @asset_row.id)
-              # WIP: @column_name => @asset_row.send(@column_name)
+      # WIP: @column_name => @asset_row.send(@column_name)
     end
 
     # Returns the unique DOM +name+ for the hidden field inside the PUT form.

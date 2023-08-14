@@ -21,9 +21,9 @@ class TeamManagersGrid < BaseGrid
 
   column(:tas_lookup, header: 'TA', html: true) do |asset|
     link_to(api_team_affiliations_path(team_affiliations_grid: {
-        team_id: asset.team.id,
-        season_id: asset.season.id
-      })) do
+                                         team_id: asset.team.id,
+                                         season_id: asset.season.id
+                                       })) do
       content_tag(:i, '', class: 'fa fa-eye')
     end
   end

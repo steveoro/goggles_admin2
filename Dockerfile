@@ -1,6 +1,6 @@
 # --- Common stuff:
-FROM ruby:2.7.2-alpine AS common_builder
-ENV BUNDLER_VERSION=2.2.7 \
+FROM ruby:3.1.4-alpine3.18 AS common_builder
+ENV BUNDLER_VERSION=2.4.15 \
     INSTALL_PATH=/app
 
 RUN mkdir -p $INSTALL_PATH
@@ -42,16 +42,16 @@ RUN apk add --update --no-cache \
 # USER $USER_ID
 
 # Rename the default container user which will result as sending out all e-mails:
-# RUN usermod -c 'Goggles Dev Mailer' root
+RUN usermod -c 'Goggles Mailer' root
 
 # App image:
 RUN gem install bundler -v $BUNDLER_VERSION
 
 # --- Image-specific stuff:
 FROM common_builder
-ENV RAILS_ENV=development \
-    NODE_ENV=development \
-    DATABASE_NAME=goggles_development \
+ENV RAILS_ENV=production \
+    NODE_ENV=production \
+    DATABASE_NAME=goggles \
     DATABASE_HOST=goggles-db \
     DATABASE_PORT=3306 \
     DATABASE_USER=root \

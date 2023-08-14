@@ -29,9 +29,9 @@ RSpec.describe AutoCompleteComponent, type: :component do
     subject(:rendered_node) do
       render_inline(
         described_class.new(
-          base_api_url: base_api_url, detail_endpoint: detail_endpoint,
-          search_endpoint: search_endpoint, search_column: search_column,
-          label_column: label_column, label2_column: label2_column, jwt: jwt
+          base_api_url:, detail_endpoint:,
+          search_endpoint:, search_column:,
+          label_column:, label2_column:, jwt:
         )
       )
     end

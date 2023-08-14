@@ -9,6 +9,7 @@ module PdfResults
   # Given the whole first page of a text file this strategy class will try to detect
   # which known layout format the text file belongs to.
   #
+  # rubocop:disable Metrics/ClassLength
   class FormatDetector
     attr_reader :first_page, :rows, :result, :curr_dao, :named_context
 
@@ -27,12 +28,14 @@ module PdfResults
     # first page specified in the constructor.
     #
     # Returns +nil+ when unknown or in case of errors.
+    #
+    # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
     def parse
-      return unless @rows.present?
+      return if @rows.blank?
 
       # Collect all defined format layouts:
       format_defs = {}
-      Dir.glob(Rails.root.join('app/strategies/pdf_results/formats/*.yml')).each do |format_file|
+      Rails.root.glob('app/strategies/pdf_results/formats/*.yml').each do |format_file|
         format_defs.merge!(YAML.load_file(format_file))
       end
 
@@ -63,7 +66,7 @@ module PdfResults
           printf("\r\n==> LINE %04d\r\n", line_index)
           # Scan each def. row:
           format_def.each_with_index do |lambda_hash, def_index|
-            next unless lambda_hash.present? # Skip empty nodes (due to syntax errors)
+            next if lambda_hash.blank? # Skip empty nodes (due to syntax errors)
 
             @format_ok = analyze_curr_line(lambda_hash, def_index, curr_row, line_index)
             break unless @format_ok
@@ -75,6 +78,7 @@ module PdfResults
         #   and process any repeatable lambdas (should bail out automatically from those not applicable)
       end
     end
+    # rubocop:enable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
     #-- -----------------------------------------------------------------------
     #++
 
@@ -102,9 +106,9 @@ module PdfResults
       return unless curr_row.present? && col_defs.is_a?(Array) && col_defs.present?
 
       # Compose & match the header, ignoring spacing between the columns:
-      col_names = col_defs.map{ |h| h.keys.first }
-      reg = Regexp.new('^\s*' + col_names.join('\s+'), Regexp::IGNORECASE)
-      return false unless curr_row =~ reg
+      col_names = col_defs.map { |h| h.keys.first }
+      reg = Regexp.new("^\\s*#{col_names.join('\s+')}", Regexp::IGNORECASE)
+      return false unless curr_row&.match?(reg)
 
       # Set column titles => format:
       col_defs.each { |col_def| @columns[col_def.keys.first] = col_def.values.first }
@@ -124,9 +128,9 @@ module PdfResults
       # Detect possible change of context and set "possible new context"
       # flag with field name when true:
       @possible_new_context_name = field_name if @new_context &&
-                                                (@curr_dao.key != field_name || @curr_dao.value != field_value)
+                                                 (@curr_dao.key != field_name || @curr_dao.value != field_value)
       # DEBUG ----------------------------------------------------------------
-      binding.pry if field_name == 'category' #&& @possible_new_context_name.present?
+      binding.pry if field_name == 'category' # && @possible_new_context_name.present?
       # ----------------------------------------------------------------------
       check_named_context(field_name, field_value, @parent_name)
 
@@ -146,7 +150,7 @@ module PdfResults
 
       # Extract all possible columns assuming each is separated by at least a couple of spaces:
       data_tokens = curr_row.split(/\s{2,}/)
-      item_hash = {}  # new row container
+      item_hash = {} # new row container
 
       # Scan each destination column field for format matches and extract the column data:
       @columns.each do |col_name, col_format|
@@ -173,29 +177,29 @@ module PdfResults
     #
     # Successful named context switch: index >= page length - row_count.
     #
-    def eop(curr_row, line_index, row_count)
+    def eop(_curr_row, line_index, row_count)
       # TODO: lambda key L1 check
-      if line_index >= @rows.length - row_count
-        @possible_new_context_name = 'eop' if @new_context &&
-                                              (@curr_dao.key != 'eop' || @curr_dao.value != row_count)
-        check_named_context('eop', row_count, @curr_dao.key)
+      return unless line_index >= @rows.length - row_count
 
-        # TODO: optional (ignore?)
-        # TODO: check startswith (ignore?)
-        # TODO: extract remainder from start until EOLN with split
-      end
+      @possible_new_context_name = 'eop' if @new_context &&
+                                            (@curr_dao.key != 'eop' || @curr_dao.value != row_count)
+      check_named_context('eop', row_count, @curr_dao.key)
+
+      # TODO: optional (ignore?)
+      # TODO: check startswith (ignore?)
+      # TODO: extract remainder from start until EOLN with split
     end
 
     # *Lambda action*: check that the last row of <tt>@first_page</tt> has the expected format.
     # Successful match: value is found according to properties.
-    def last_row(curr_row, line_index)
+    def last_row(_curr_row, line_index)
       # TODO: lambda key L1 check
-      if line_index >= @rows.length
-        @possible_new_context_name = 'eof' if @new_context &&
-                                              (@curr_dao.key != 'eof' || @curr_dao.value != line_index)
-        check_named_context('eof', line_index, @curr_dao.key)
-        # TODO: check sibling lambdas in properties.
-      end
+      return unless line_index >= @rows.length
+
+      @possible_new_context_name = 'eof' if @new_context &&
+                                            (@curr_dao.key != 'eof' || @curr_dao.value != line_index)
+      check_named_context('eof', line_index, @curr_dao.key)
+      # TODO: check sibling lambdas in properties.
     end
     #-- -----------------------------------------------------------------------
     #++
@@ -207,6 +211,7 @@ module PdfResults
     #
     # ASSUMES: @curr_dao always defined.
     #
+    # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
     def check_named_context(new_context_type, new_context_value, parent_context_type = nil)
       # DEBUG ----------------------------------------------------------------
       # binding.pry
@@ -246,7 +251,7 @@ module PdfResults
       end
 
       # 4 Parent context type found & set as curr_dao? Check validity:
-      raise("Format Def. Error: cannot find implied parent context") unless parent_ref.is_a?(PdfResults::ContextDAO)
+      raise('Format Def. Error: cannot find implied parent context') unless parent_ref.is_a?(PdfResults::ContextDAO)
 
       #   4.1 Add new context to curr_dao, going deeper in hierarchy:
       @curr_dao = parent_ref.add_context(new_context_type, new_context_value)
@@ -256,7 +261,7 @@ module PdfResults
 
       # 5. Store new current context DAO inside named references:
       @named_context[new_context_type] ||= {}
-      @named_context[new_context_type].merge!(new_context_value => @curr_dao) unless @named_context[new_context_type].key?(new_context_value)
+      @named_context[new_context_type][new_context_value] = @curr_dao unless @named_context[new_context_type].key?(new_context_value)
       @curr_dao
     end
     #-- -----------------------------------------------------------------------
@@ -278,6 +283,7 @@ module PdfResults
     # == Returns
     # +true+ if the format is valid and applicable, +false+ otherwise.
     #
+    # rubocop:disable Metrics/MethodLength
     def analyze_curr_line(lambda_hash, def_index, curr_row, line_index)
       lambda_key = lambda_hash.keys.first
       lambda_val = lambda_hash.values.first
@@ -287,7 +293,7 @@ module PdfResults
 
       # Extract node def properties:
       # repeat_each_page = property_bool('repeat_each_page', prop_vals, prop_keys) # repeat check once each page
-      repeat           = property_bool('repeat', prop_vals, prop_keys)           # repeat check every line
+      repeat           = property_bool('repeat', prop_vals, prop_keys) # repeat check every line
       optional         = property_bool('optional', prop_vals, prop_keys)
 
       only_before_row = property_int('only_before_row', prop_vals, prop_keys)
@@ -330,8 +336,8 @@ module PdfResults
         # Special case: data_columns value extraction, with format for each column
         if lambda_key == 'data_columns'
           field_data_columns(curr_row) # Never false
-        else
-          applicable = send("field_#{lambda_key}", curr_row, field_name) if respond_to?("field_#{lambda_key}")
+        elsif respond_to?("field_#{lambda_key}")
+          applicable = send("field_#{lambda_key}", curr_row, field_name)
         end
 
       elsif lambda_key == 'eop' # End of Page special context change
@@ -339,7 +345,7 @@ module PdfResults
         eop(curr_row, line_index, lambda_val)
 
       elsif lambda_key == 'last_row'
-        # TODO / WIP
+        # TODO: / WIP
         last_row(curr_row, line_index)
 
       # "Simple" value match:
@@ -359,6 +365,7 @@ module PdfResults
 
       applicable || optional || repeat
     end
+    # rubocop:enable Metrics/MethodLength, Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
     #-- -----------------------------------------------------------------------
     #++
 
@@ -400,7 +407,7 @@ module PdfResults
     #
     def property_bool(prop_name, prop_vals, prop_keys)
       result = property_raw(prop_name, prop_vals, prop_keys)
-      result.present? && (result == true || result == 'true')
+      result.present? && [true, 'true'].include?(result)
     end
 
     # Extracts the property value for <tt>prop_name</tt> assuming it will be a valid integer,
@@ -422,3 +429,4 @@ module PdfResults
     #++
   end
 end
+# rubocop:enable Metrics/ClassLength

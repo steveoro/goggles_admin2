@@ -213,7 +213,7 @@ module Import
       if meeting && meeting.id.present? && meeting.meeting_sessions.count.positive?
         @data['meeting_session'] = meeting.meeting_sessions.map do |meeting_session|
           session = find_or_prepare_session(
-            meeting: meeting,
+            meeting:,
             session_order: meeting_session.session_order,
             date_day: meeting_session.scheduled_date&.day,
             date_month: Parser::SessionDate::MONTH_NAMES[meeting_session.scheduled_date&.month&.- 1],
@@ -231,7 +231,7 @@ module Import
       end
 
       session1 = find_or_prepare_session(
-        meeting: meeting,
+        meeting:,
         session_order: 1,
         date_day: @data['dateDay1'],
         date_month: @data['dateMonth1'],
@@ -248,7 +248,7 @@ module Import
       # Prepare a second session if additional dates are given:
       session2 = if @data['dateDay2'].present? && @data['dateMonth2'].present? && @data['dateYear2'].present?
                    find_or_prepare_session(
-                     meeting: meeting,
+                     meeting:,
                      session_order: 2,
                      date_day: @data['dateDay2'],
                      date_month: @data['dateMonth2'],
@@ -290,7 +290,7 @@ module Import
 
       @data['sections'].each do |sect|
         idx += 1
-        ActionCable.server.broadcast('ImportStatusChannel', msg: 'map_teams_and_swimmers', progress: idx, total: total)
+        ActionCable.server.broadcast('ImportStatusChannel', msg: 'map_teams_and_swimmers', progress: idx, total:)
         # If the section contains a 'retry' subsection it means the crawler received some error response during
         # the data crawl and the result file is missing the whole result subsection.
         next if sect['retry'].present?
@@ -359,7 +359,7 @@ module Import
       # Map programs & events:
       @data['sections'].each_with_index do |sect, _sect_idx|
         idx += 1
-        ActionCable.server.broadcast('ImportStatusChannel', msg: 'map_events_and_results', progress: idx, total: total)
+        ActionCable.server.broadcast('ImportStatusChannel', msg: 'map_events_and_results', progress: idx, total:)
         # If the section contains a 'retry' subsection it means the crawler received some error response during
         # the data crawl and the result file is missing the whole result subsection.
         next if sect['retry'].present?
@@ -376,8 +376,8 @@ module Import
           event_order += 1
           Rails.logger.debug { "    ---> '#{event_key}' n.#{event_order} (+)" } if @toggle_debug
           mevent_entity = find_or_prepare_mevent(
-            meeting: meeting, meeting_session: meeting_session, session_index: msession_idx,
-            event_type: event_type, event_order: event_order
+            meeting:, meeting_session:, session_index: msession_idx,
+            event_type:, event_order:
           )
           add_entity_with_key('meeting_event', event_key, mevent_entity)
         end
@@ -389,9 +389,9 @@ module Import
           pool_key = cached_instance_of('meeting_session', msession_idx, 'bindings')&.fetch('swimming_pool', nil)
           swimming_pool = meeting_session.swimming_pool || cached_instance_of('swimming_pool', pool_key)
           mprogram_entity = find_or_prepare_mprogram(
-            meeting_event: meeting_event, event_key: event_key,
+            meeting_event:, event_key:,
             pool_type: swimming_pool.pool_type,
-            category_type: category_type, gender_type: gender_type, event_order: program_order
+            category_type:, gender_type:, event_order: program_order
           )
           add_entity_with_key('meeting_program', program_key, mprogram_entity)
         end
@@ -433,8 +433,8 @@ module Import
           # Find or prepare badge for the swimmer:
           unless entity_present?('badge', swimmer_key)
             badge_entity = find_or_prepare_badge(
-              swimmer: swimmer, swimmer_key: swimmer_key, team: team, team_key: team_name,
-              team_affiliation: team_affiliation, category_type: category_type
+              swimmer:, swimmer_key:, team:, team_key: team_name,
+              team_affiliation:, category_type:
             )
             add_entity_with_key('badge', swimmer_key, badge_entity)
           end
@@ -455,10 +455,10 @@ module Import
           timing = Parser::Timing.from_l2_result(row['timing'])
           rank = row['pos'].to_i
           mir_entity = find_or_prepare_mir(
-            meeting_program: meeting_program, mprogram_key: program_key,
-            swimmer: swimmer, swimmer_key: swimmer_key, team: team, team_key: team_name,
-            team_affiliation: team_affiliation, badge: badge,
-            rank: rank, timing: timing, score: score
+            meeting_program:, mprogram_key: program_key,
+            swimmer:, swimmer_key:, team:, team_key: team_name,
+            team_affiliation:, badge:,
+            rank:, timing:, score:
           )
           add_entity_with_key('meeting_individual_result', mir_key, mir_entity)
         end
@@ -486,22 +486,22 @@ module Import
     def find_or_prepare_meeting(description, main_city_name)
       cmd = GogglesDb::CmdFindDbEntity.call(
         GogglesDb::Meeting,
-        { description: description, season_id: @season.id, toggle_debug: @toggle_debug == 2 }
+        { description:, season_id: @season.id, toggle_debug: @toggle_debug == 2 }
       )
       if cmd.successful? && cmd.result.season_id == @season.id
         matches = cmd.matches.respond_to?(:map) ? cmd.matches.map(&:candidate) : cmd.matches
-        return Import::Entity.new(row: cmd.result, matches: matches)
+        return Import::Entity.new(row: cmd.result, matches:)
       end
 
       meeting_code = GogglesDb::Normalizers::CodedName.for_meeting(description, main_city_name)
       edition, name_no_edition, edition_type_id = GogglesDb::Normalizers::CodedName.edition_split_from(description)
       new_row = GogglesDb::Meeting.new(
         season_id: @season.id,
-        description: description,
+        description:,
         code: meeting_code,
         header_year: @season.header_year,
-        edition_type_id: edition_type_id,
-        edition: edition,
+        edition_type_id:,
+        edition:,
         autofilled: true,
         timing_type_id: GogglesDb::TimingType::AUTOMATIC_ID,
         notes: "\"#{name_no_edition}\", c/o: #{main_city_name}"
@@ -509,7 +509,7 @@ module Import
       matches = [new_row] + GogglesDb::Meeting.where(season_id: @season.id)
                                               .where('meetings.code LIKE ?', "%#{meeting_code}%")
                                               .to_a
-      Import::Entity.new(row: new_row, matches: matches)
+      Import::Entity.new(row: new_row, matches:)
     end
 
     # Finds or prepares for creation a City instance given its name included in a text address.
@@ -525,7 +525,7 @@ module Import
     def find_or_prepare_city(id, venue_address)
       # FINDER: -- City --
       # 1. Existing:
-      existing_row = GogglesDb::City.find_by(id: id) if id.to_i.positive?
+      existing_row = GogglesDb::City.find_by(id:) if id.to_i.positive?
       return Import::Entity.new(row: existing_row) if existing_row.present?
 
       # 2. Smart search #1:
@@ -533,7 +533,7 @@ module Import
       cmd = GogglesDb::CmdFindDbEntity.call(GogglesDb::City, { name: city_name, toggle_debug: @toggle_debug == 2 })
       if cmd.successful?
         matches = cmd.matches.respond_to?(:map) ? cmd.matches.map(&:candidate) : cmd.matches
-        return Import::Entity.new(row: cmd.result, matches: matches)
+        return Import::Entity.new(row: cmd.result, matches:)
       end
 
       # 3. Smart search #2 || New row:
@@ -555,7 +555,7 @@ module Import
                 end
       # NOTE: cmd.matches will report either the empty matches if no match was found, or the list of candidates otherwise.
       matches = cmd.matches.respond_to?(:map) ? cmd.matches.map(&:candidate) : cmd.matches
-      Import::Entity.new(row: new_row, matches: matches)
+      Import::Entity.new(row: new_row, matches:)
     end
 
     # Finds or prepares for creation a SwimmingPool instance given the parameters.
@@ -580,7 +580,7 @@ module Import
     # rubocop:disable Metrics/ParameterLists
     def find_or_prepare_pool(id, pool_name, address, pool_length, lanes_number = '8', phone_number = nil)
       # Already existing & found?
-      existing_row = GogglesDb::SwimmingPool.find_by(id: id) if id.to_i.positive?
+      existing_row = GogglesDb::SwimmingPool.find_by(id:) if id.to_i.positive?
 
       # FINDER: -- City --
       city_key_name, _area_code, remainder_address = Parser::CityName.tokenize_address(address)
@@ -592,7 +592,7 @@ module Import
       # FINDER: -- Pool --
       # 1. Existing:
       bindings = { 'city' => city_key_name }
-      return Import::Entity.new(row: existing_row, bindings: bindings) if existing_row.present?
+      return Import::Entity.new(row: existing_row, bindings:) if existing_row.present?
 
       # 2. Smart search:
       pool_type = GogglesDb::PoolType.mt_25 # Default type
@@ -603,7 +603,7 @@ module Import
         # unset on the pool just found:
         cmd.result.city_id = city_entity.row&.id if cmd.result.city_id.to_i.zero? && city_entity.row&.id.to_i.positive?
         matches = cmd.matches.respond_to?(:map) ? cmd.matches.map(&:candidate) : cmd.matches
-        return Import::Entity.new(row: cmd.result, matches: matches, bindings: bindings)
+        return Import::Entity.new(row: cmd.result, matches:, bindings:)
       end
 
       # 3. New row:
@@ -614,13 +614,13 @@ module Import
         city_id: city_entity.row&.id,
         pool_type_id: pool_type.id,
         name: pool_name,
-        nick_name: nick_name,
+        nick_name:,
         address: remainder_address,
-        phone_number: phone_number,
-        lanes_number: lanes_number
+        phone_number:,
+        lanes_number:
       )
       # Add the bindings to the new entity row (even if city_entity.row has an ID):
-      Import::Entity.new(row: new_row, matches: [new_row], bindings: bindings)
+      Import::Entity.new(row: new_row, matches: [new_row], bindings:)
     end
     # rubocop:enable Metrics/ParameterLists
 
@@ -660,7 +660,7 @@ module Import
                                 day_part_type: GogglesDb::DayPartType.morning)
       # 1. Find existing:
       iso_date = scheduled_date || Parser::SessionDate.from_l2_result(date_day, date_month, date_year)
-      domain = GogglesDb::MeetingSession.where(meeting_id: meeting&.id, session_order: session_order)
+      domain = GogglesDb::MeetingSession.where(meeting_id: meeting&.id, session_order:)
       pool_entity = find_or_prepare_pool(domain.first&.swimming_pool_id, pool_name, address, pool_length)
       # Always store in cache the sub-entity found:
       add_entity_with_key('swimming_pool', pool_name, pool_entity)
@@ -670,7 +670,7 @@ module Import
       if domain.present? # (then we're almost done)
         domain.first.swimming_pool_id = pool_entity.row&.id if domain.first.swimming_pool_id.to_i.zero? &&
                                                                pool_entity.row&.id.to_i.positive?
-        return Import::Entity.new(row: domain.first, matches: domain.to_a, bindings: bindings)
+        return Import::Entity.new(row: domain.first, matches: domain.to_a, bindings:)
       end
 
       # 2. New row:
@@ -678,12 +678,12 @@ module Import
         meeting_id: meeting&.id,
         swimming_pool: pool_entity.row,
         day_part_type_id: day_part_type.id,
-        session_order: session_order,
+        session_order:,
         scheduled_date: iso_date,
         description: "Sessione #{session_order}, #{iso_date}" # Use default supported locale only ('it' , as currently this is a FIN-specific type of parser)
       )
       # Add the bindings to the new entity row (even if pool_entity.row has an ID):
-      Import::Entity.new(row: new_row, matches: [new_row], bindings: bindings)
+      Import::Entity.new(row: new_row, matches: [new_row], bindings:)
     end
     # rubocop:enable Metrics/ParameterLists
 
@@ -729,7 +729,7 @@ module Import
 
       new_row = GogglesDb::MeetingEvent.new(
         meeting_session_id: meeting_session&.id, event_type_id: event_type.id,
-        event_order: event_order, heat_type_id: heat_type.id
+        event_order:, heat_type_id: heat_type.id
       )
       Import::Entity.new(row: new_row, matches: [new_row], bindings: { 'meeting_session' => session_index })
     end
@@ -755,14 +755,14 @@ module Import
         meeting_event_id: meeting_event&.id, pool_type_id: pool_type.id,
         category_type_id: category_type.id, gender_type_id: gender_type.id
       )
-      return Import::Entity.new(row: domain.first, matches: domain.to_a, bindings: bindings) if domain.present?
+      return Import::Entity.new(row: domain.first, matches: domain.to_a, bindings:) if domain.present?
 
       new_row = GogglesDb::MeetingProgram.new(
         meeting_event_id: meeting_event&.id, pool_type_id: pool_type.id,
         category_type_id: category_type.id, gender_type_id: gender_type.id,
-        event_order: event_order
+        event_order:
       )
-      Import::Entity.new(row: new_row, matches: [new_row], bindings: bindings)
+      Import::Entity.new(row: new_row, matches: [new_row], bindings:)
     end
     # rubocop:enable Metrics/ParameterLists
 
@@ -779,7 +779,7 @@ module Import
       cmd = GogglesDb::CmdFindDbEntity.call(GogglesDb::Team, { name: team_name, toggle_debug: @toggle_debug == 2 })
       if cmd.successful?
         matches = cmd.matches.respond_to?(:map) ? cmd.matches.map(&:candidate) : cmd.matches
-        return Import::Entity.new(row: cmd.result, matches: matches)
+        return Import::Entity.new(row: cmd.result, matches:)
       end
 
       new_row = GogglesDb::Team.new(name: team_name, editable_name: team_name)
@@ -834,12 +834,12 @@ module Import
       year_of_birth = year.to_i if year.to_i.positive?
       cmd = GogglesDb::CmdFindDbEntity.call(
         GogglesDb::Swimmer,
-        { complete_name: swimmer_name, year_of_birth: year_of_birth, gender_type_id: gender_type.id,
+        { complete_name: swimmer_name, year_of_birth:, gender_type_id: gender_type.id,
           toggle_debug: @toggle_debug == 2 }
       )
       if cmd.successful?
         matches = cmd.matches.respond_to?(:map) ? cmd.matches.map(&:candidate) : cmd.matches
-        return Import::Entity.new(row: cmd.result, matches: matches)
+        return Import::Entity.new(row: cmd.result, matches:)
       end
 
       tokens = swimmer_name.split # ASSUMES: family name(s) first, given name(s) last
@@ -864,9 +864,9 @@ module Import
       end
       new_row = GogglesDb::Swimmer.new(
         complete_name: swimmer_name,
-        first_name: first_name,
-        last_name: last_name,
-        year_of_birth: year_of_birth,
+        first_name:,
+        last_name:,
+        year_of_birth:,
         gender_type_id: gender_type.id,
         year_guessed: year_of_birth.to_i.zero?
       )
@@ -898,7 +898,7 @@ module Import
       # Swimmer & TA can be new, so we add them to the bindings Hash here:
       bindings = { 'swimmer' => swimmer_key, 'team_affiliation' => team_key, 'team' => team_key }
       domain = GogglesDb::Badge.where(swimmer_id: swimmer&.id, team_affiliation_id: team_affiliation&.id)
-      return Import::Entity.new(row: domain.first, matches: domain.to_a, bindings: bindings) if domain.present?
+      return Import::Entity.new(row: domain.first, matches: domain.to_a, bindings:) if domain.present?
 
       # ID can be nil for new rows, so we set the association using the new model directly where needed:
       new_row = GogglesDb::Badge.new(
@@ -910,7 +910,7 @@ module Import
         entry_time_type_id: entry_time_type.id,
         number: badge_code
       )
-      Import::Entity.new(row: new_row, matches: [new_row], bindings: bindings)
+      Import::Entity.new(row: new_row, matches: [new_row], bindings:)
     end
     # rubocop:enable Metrics/ParameterLists
 
@@ -948,7 +948,7 @@ module Import
         meeting_program_id: meeting_program&.id,
         team_id: team&.id, swimmer_id: swimmer&.id
       )
-      return Import::Entity.new(row: domain.first, matches: domain.to_a, bindings: bindings) if domain.present?
+      return Import::Entity.new(row: domain.first, matches: domain.to_a, bindings:) if domain.present?
 
       new_row = GogglesDb::MeetingIndividualResult.new(
         meeting_program_id: meeting_program&.id,
@@ -956,7 +956,7 @@ module Import
         swimmer_id: swimmer&.id,
         team_affiliation_id: team_affiliation&.id,
         badge_id: badge&.id,
-        rank: rank,
+        rank:,
         minutes: timing.minutes,
         seconds: timing.seconds,
         hundredths: timing.hundredths,
@@ -966,7 +966,7 @@ module Import
         meeting_points: 0.0, # (no data)
         reaction_time: 0.0 # (no data)
       )
-      Import::Entity.new(row: new_row, matches: [new_row], bindings: bindings)
+      Import::Entity.new(row: new_row, matches: [new_row], bindings:)
     end
     # rubocop:enable Metrics/ParameterLists
     #-- -------------------------------------------------------------------------

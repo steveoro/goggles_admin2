@@ -153,22 +153,22 @@ blocks:
   #           - 'bundle exec cucumber --publish-quiet'
   #       - name: Cucumber mobile, iPhone6
   #         commands:
-  #           - 'CAPYBARA_DRV="headless_chrome_iphone678" bundle exec cucumber --publish-quiet'
+  #           - 'CAPYBARA_DRV="headless_chrome_iphonese" bundle exec cucumber --publish-quiet'
   #       - name: Cucumber mobile, iPhoneX
   #         commands:
-  #           - 'CAPYBARA_DRV="headless_chrome_iphonex" bundle exec cucumber --publish-quiet'
+  #           - 'CAPYBARA_DRV="headless_chrome_iphone12" bundle exec cucumber --publish-quiet'
   #       - name: Cucumber mobile, Galaxy5
   #         commands:
   #           - 'CAPYBARA_DRV="headless_chrome_galaxys5" bundle exec cucumber --publish-quiet'
   #       - name: Cucumber mobile, Pixel2
   #         commands:
-  #           - 'CAPYBARA_DRV="headless_chrome_pixel2" bundle exec cucumber --publish-quiet'
+  #           - 'CAPYBARA_DRV="headless_chrome_pixel5" bundle exec cucumber --publish-quiet'
   #       - name: Cucumber mobile, iPad
   #         commands:
-  #           - 'CAPYBARA_DRV="headless_chrome_ipad" bundle exec cucumber --publish-quiet'
+  #           - 'CAPYBARA_DRV="headless_chrome_ipadmini" bundle exec cucumber --publish-quiet'
   #       - name: Cucumber mobile, iPadPro
   #         commands:
-  #           - 'CAPYBARA_DRV="headless_chrome_ipadpro" bundle exec cucumber --publish-quiet'
+  #           - 'CAPYBARA_DRV="headless_chrome_ipadair" bundle exec cucumber --publish-quiet'
 
 promotions:
   - name: Code coverage

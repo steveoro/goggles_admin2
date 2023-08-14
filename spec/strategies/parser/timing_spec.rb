@@ -18,7 +18,7 @@ module Parser
                                else
                                  format('%<sec>d"%<hun>02d', sec: seconds, hun: hundredths)
                                end
-              expected_value = ::Timing.new(minutes: minutes, seconds: seconds, hundredths: hundredths)
+              expected_value = ::Timing.new(minutes:, seconds:, hundredths:)
               result = described_class.from_l2_result(formatted_text)
               # DEBUG
               # puts "Parsing \"#{formatted_text}\" vs #{expected_value} => #{result}"
@@ -36,7 +36,7 @@ module Parser
                                else
                                  format('%<sec>d.%<hun>02d', sec: seconds, hun: hundredths)
                                end
-              expected_value = ::Timing.new(minutes: minutes, seconds: seconds, hundredths: hundredths)
+              expected_value = ::Timing.new(minutes:, seconds:, hundredths:)
               result = described_class.from_l2_result(formatted_text)
               # DEBUG
               # puts "Parsing \"#{formatted_text}\" vs #{expected_value} => #{result}"
@@ -54,7 +54,7 @@ module Parser
                                else
                                  format('%<sec>d.%<hun>02d', sec: seconds, hun: hundredths)
                                end
-              expected_value = ::Timing.new(minutes: minutes, seconds: seconds, hundredths: hundredths)
+              expected_value = ::Timing.new(minutes:, seconds:, hundredths:)
               result = described_class.from_l2_result(formatted_text)
               # DEBUG
               # puts "Parsing \"#{formatted_text}\" vs #{expected_value} => #{result}"

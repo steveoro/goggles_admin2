@@ -73,7 +73,7 @@ class PullController < FileListController
     call_crawler_api(
       'pull_results',
       get_params: {
-        season_id: season_id,
+        season_id:,
         file_path: file_params['file_path'],
         layout: season_id < 182 ? 1 : 2 # layouts 2 & 3 are equivalent for result pages
       }
