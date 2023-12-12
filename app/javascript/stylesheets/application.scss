@@ -14,3 +14,4 @@
 // Additional stylesheets:
 @import 'easy-autocomplete';
 @import 'easy-autocomplete.themes';
+@import 'terminal'; // Needed by the 'terminal' gem (converts ANSI 2 HTML)

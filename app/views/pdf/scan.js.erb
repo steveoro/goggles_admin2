@@ -1,0 +1,31 @@
+$('#loading-indicator').addClass('d-none');
+document.querySelector('#flash-messages-container').innerHTML = "<%=
+  escape_javascript(
+    render(partial: 'goggles/flash_messages')
+  )
+%>";
+
+document.querySelector('#scan-result').innerHTML = "<%=
+  escape_javascript(
+    render(
+      partial: 'result_card',
+      locals: {
+        json_pathname: @json_pathname,
+        checked_formats: @checked_formats,
+        last_valid_scan: @last_valid_scan,
+        page_count: @page_count,
+        limit_pages: @limit_pages,
+        last_index: @last_index,
+        last_result_fmt_name: @last_result_fmt_name
+      }
+    )
+  )
+%>"
+document.querySelector('#log-panel').innerHTML = "<%=
+  escape_javascript(
+    render(
+      partial: 'log_card',
+      locals: { log_pathname: @log_pathname }
+    )
+  )
+%>"

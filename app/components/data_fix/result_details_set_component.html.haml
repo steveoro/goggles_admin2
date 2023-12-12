@@ -1,0 +1,3 @@
+%ul.list-group.result-detail-card
+  - @prg_rows.each do |prg_key, prg_row|
+    = render(DataFix::ResultDetailsCardComponent.new(prg_key:, prg_row:, laps_rowset: laps_rowset(prg_key)))

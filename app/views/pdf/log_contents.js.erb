@@ -1,0 +1,14 @@
+document.querySelector('#flash-messages-container').innerHTML = "<%=
+  escape_javascript(
+    render(partial: 'goggles/flash_messages')
+  )
+%>";
+
+document.querySelector('#log-result').innerHTML = "<%=
+  escape_javascript(
+    render(
+      partial: 'log_output',
+      locals: { log_contents: @log_contents }
+    )
+  )
+%>";

@@ -11,15 +11,23 @@
 #   policy.font_src    :self, :https, :data
 #   policy.img_src     :self, :https, :data
 #   policy.object_src  :none
-#   policy.script_src  :self, :https, 'https://hcaptcha.com', 'https://*.hcaptcha.com'
-#   policy.style_src   :self, :https, 'https://hcaptcha.com', 'https://*.hcaptcha.com'
-#   policy.frame_src   'https://hcaptcha.com', 'https://*.hcaptcha.com'
-#   policy.connect_src :self, :https, 'https://hcaptcha.com', 'https://*.hcaptcha.com'
-#   # If you are using webpack-dev-server then specify webpack-dev-server host
-#   # policy.connect_src :self, :https, "http://localhost:3035", "ws://localhost:3035" if Rails.env.development?
+#   policy.script_src  :self, :https
+#   policy.style_src   :self, :https, 'unsafe-inline'
+
+#   policy.frame_src   :none # 'https://hcaptcha.com', 'https://*.hcaptcha.com'
+#   # policy.connect_src :self, :https, 'https://hcaptcha.com', 'https://*.hcaptcha.com'
+
+#   # If you are using webpack-dev-server then specify both the webpack-dev-server host
+#   # & the NodeJS crawler server:
+#   if Rails.env.development?
+#     policy.connect_src :self, :https, 'http://localhost:3035', 'ws://localhost:3035',
+#                                       'http://localhost:7000', 'ws://localhost:7000'
+#   else
+#     policy.connect_src :self, :https, 'http://localhost:7000', 'ws://localhost:7000'
+#   end
 
 #   # Specify URI for violation reports
-#   # policy.report_uri "/csp-violation-report-endpoint"
+#   # policy.report_uri '/csp-violation-report-endpoint'
 # end
 
 # If you are using UJS then enable automatic nonce generation

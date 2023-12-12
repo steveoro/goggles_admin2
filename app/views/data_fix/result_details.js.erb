@@ -1,0 +1,12 @@
+$('#loading-indicator').addClass('d-none');
+document.querySelector('#flash-messages-container').innerHTML = "<%=
+  escape_javascript(
+    render(partial: 'goggles/flash_messages')
+  )
+%>";
+
+document.querySelector("#<%= @target_dom_id %>").innerHTML = "<%=
+  escape_javascript(
+    render(DataFix::ResultDetailsSetComponent.new(prg_rows: @prg_rows, prg_laps: @prg_laps))
+  )
+%>"

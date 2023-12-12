@@ -22,7 +22,7 @@ it:
       btn_edit_tooltip: 'Modifica file'
       btn_download_tooltip: 'Scarica file'
       btn_process_csv_tooltip: 'Elabora questo file calendario, scaricando i risultati disponibili'
-      btn_process_pdf_tooltip: 'Converti questo file risultati da PDF al formata JSON che può essere importato'
+      btn_process_pdf_tooltip: 'Converti questo file risultati da PDF al formato JSON che può essere importato'
       btn_process_json_tooltip: "Elabora questo file risultati, preparandolo per l'importazione dati"
       btn_reparse_json_tooltip: "Riesegui la scasione forzata di questo file risultati usando i dati originali presenti"
       btn_process_sql_tooltip: "Esegue l'upload di questo file di importazione dati sul server remoto"
@@ -39,8 +39,11 @@ it:
       btn_start_sql_batch_disable: "Elaborazione in corso..."
       btn_reparse_session_label: "Riscasiona sessioni"
       btn_reparse_session_tooltip: "Riesegui la scasione forzata di questo file risultati SOLO per le sessioni Meeting (utile se si cambia e salva l'ID del Meeting)"
+      btn_purge_duplicate: "Elimina duplicato"
+      confirm_purge: "Siamo sicuri di volere ELIMINARE il possible duplicato '%{key}'? (NOTA: questo dovrebbe essere fatto SOLO PRIMA di iniziare la fase di revisione dei risultati per evitare la corruzione dei dati!)"
       msg:
         warning_retry_needed: "ERRORE 'RETRY' TROVATO! Questo file risultati può essere elaborato lo stesso ma deve essere riscaricato per essere completo."
+      btn_expand_scan_details: "Dettagli scansione"
     push:
       msg_prepare_batch_ok: 'File batch SQL creato con successo.'
       msg_send_batch_ok: "File batch inviato con successo."

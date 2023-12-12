@@ -1,0 +1,432 @@
+#
+# = Layout format definition for PdfResults::FormatParser
+#
+1-ficr2.4x200m:
+  - name: header
+    at_fixed_row: 0
+    # Repeat each page:
+    repeat: true
+    rows:
+      # "header" row-0, abs. row #0
+      - fields:
+        - name: edition
+          lambda: strip
+          format: "\\s*(\\d{1,2}).{1,2}\\s+"
+        - name: meeting_name
+          lambda: strip
+          format: "(?>\\s*[°^*oa']?)\\s+([\"“`']?.+[\"“`'\\b]?)"
+
+      # "header" row-1, abs. row #1:
+      - fields:
+        - name: meeting_place
+          lambda: strip
+          format: "\\s*(\\w{2,}),\\s+"
+        - name: meeting_date
+          lambda: strip
+          format: "\\s*(\\d{2}[-\/]\\d{2}[-\/]\\d{2,4})\\b"
+
+  - name: event
+    starts_at_row: 2
+    repeat: true
+    parent: header
+    rows:
+      - fields:
+        - name: event_length
+          lambda: strip
+          format: "\\s*([48]X\\d{2,4})m?\\s+"
+        - name: event_type
+          lambda: strip
+          format: "\\s*(?>m\\s)?((\\w+\\s?){1,2})\\sMaster\\s(Misti|Femmin|Maschi)"
+        - name: gender_type
+          lambda: strip
+          format: "\\sMaster\\s(Misti|Femmin|Maschi)"
+
+      - name: event_sub_hdr
+        lambda: strip
+        format: "Riepilogo|Serie\\s\\d{2}"
+
+  # Data columns header
+  - name: results_hdr
+    starts_at_row: 4
+    ends_at_row: 7
+    repeat: true
+    rows:
+      - name: results_hdr1
+        format: "\\s?Pos.\\s+Nominativo\\s+Crs\\s+Naz\\s+50 m\\s+100 m\\s+150 m\\s+200 m(\\s+250 m)?(\\s+300 m)?(\\s+350 m)?(\\s+400 m)?\\s+Arrivo\\s+Pt\\s+Cat"
+      - name: results_hdr2
+        format: "\\s?Società\\s+Anno(\\s+450 m)?(\\s+500 m)?(\\s+550 m)?(\\s+600 m)?(\\s+650 m)?(\\s+700 m)?(\\s+750 m)?(\\s+800 m)?\\s+FINA\\s+Pt\\s+S.C."
+
+  - name: rel_category
+    starts_at_row: 6
+    repeat: true
+    # This will match any empty row if the fields are not found:
+    optional_if_empty: true
+    parent: event
+    rows:
+      - name: cat_title
+        format: "\\s+((Under|Master)\\s(Misti|Femmine|Maschi)(\\s(\\d{2}\\s-\\s\\d{2}))?)[\\b\\n]?"
+
+  - name: rel_team
+    repeat: true
+    parent: event
+    starts_at_row: 7
+    rows:
+      - name: rel_team1
+        fields:
+          - name: rank
+            format: "^\\s?(\\d{1,2}|SQ)\\s+"
+            pop_out: false
+          - name: team_name
+            format: "\\s{3,8}(([\\w\\d]+.\\s?)+)"
+            token_end: 32
+            pop_out: false
+          - name: lane_num
+            format: "\\s*(\\d{1,2})\\s*"
+            pop_out: false
+            # Column alignment may vary (swimmer_name range can overlap safely with this due to its format):
+            token_start: 29
+            token_end: 52
+          - name: nation
+            format: "\\s*(\\w{2,3})\\s*"
+            pop_out: false
+            token_start: 53
+            token_end: 62
+          - name: lap50
+            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*"
+            pop_out: false
+            token_start: 70
+            token_end: 82
+            required: false
+          - name: lap100
+            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*"
+            pop_out: false
+            token_start: 82
+            token_end: 94
+            required: false
+          - name: lap150
+            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*"
+            pop_out: false
+            token_start: 95
+            token_end: 108
+            required: false
+          - name: lap200
+            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*"
+            pop_out: false
+            token_start: 109
+            token_end: 120
+            required: false
+          - name: lap250
+            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*"
+            pop_out: false
+            token_start: 120
+            token_end: 129
+            required: false
+          - name: lap300
+            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*"
+            pop_out: false
+            token_start: 130
+            token_end: 139
+            required: false
+          - name: lap350
+            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*"
+            pop_out: false
+            token_start: 140
+            token_end: 150
+            required: false
+          - name: lap400
+            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*"
+            pop_out: false
+            token_start: 152
+            token_end: 162
+            required: false
+          - name: timing
+            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*"
+            token_start: 162
+            pop_out: false
+            required: false
+
+      - name: rel_team2
+        fields:
+          - name: team_name
+            format: "^\\s{3,8}(([\\w\\d]+.\\s?)+)"
+            token_end: 43
+            pop_out: false
+          - name: delta100
+            format: "\\s*\\((\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)\\s*"
+            pop_out: false
+            token_start: 83
+            token_end: 94
+            required: false
+          - name: delta150
+            format: "\\s*\\((\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)\\s*"
+            pop_out: false
+            token_start: 96
+            token_end: 107
+            required: false
+          - name: delta200
+            format: "\\s*\\((\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)\\s*"
+            pop_out: false
+            token_start: 109
+            token_end: 120
+            required: false
+          - name: delta250
+            format: "\\s*\\((\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)\\s*"
+            pop_out: false
+            token_start: 120
+            token_end: 129
+            required: false
+          - name: delta300
+            format: "\\s*\\((\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)\\s*"
+            pop_out: false
+            token_start: 130
+            token_end: 139
+            required: false
+          - name: delta350
+            format: "\\s*\\((\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)\\s*"
+            pop_out: false
+            token_start: 140
+            token_end: 150
+            required: false
+          - name: delta400
+            format: "\\s*\\((\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)\\s*"
+            pop_out: false
+            token_start: 152
+            token_end: 162
+            required: false
+          - name: std_score
+            format: "\\s*(\\d?[,.]?\\d{1,4}[,.]\\d{1,2})"
+            token_start: 163
+            pop_out: false
+            # Most of the times, only the 1st relay will score:
+            required: false
+
+      - name: rel_team3
+        required: false
+        fields:
+          - name: spacer
+            format: "\\s{70,}\\s*"
+            pop_out: false
+          - name: lap450
+            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*\\b"
+            pop_out: false
+            token_start: 70
+            token_end: 82
+            required: false
+          - name: lap500
+            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*\\b"
+            pop_out: false
+            token_start: 82
+            token_end: 94
+            required: false
+          - name: lap550
+            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*\\b"
+            pop_out: false
+            token_start: 95
+            token_end: 108
+            required: false
+          - name: lap600
+            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*\\b"
+            pop_out: false
+            token_start: 109
+            token_end: 119
+            required: false
+          - name: lap650
+            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*\\b"
+            pop_out: false
+            token_start: 120
+            token_end: 129
+            required: false
+          - name: lap700
+            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*\\b"
+            pop_out: false
+            token_start: 130
+            token_end: 139
+            required: false
+          - name: lap750
+            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*\\b"
+            pop_out: false
+            token_start: 140
+            token_end: 150
+            required: false
+          - name: lap800
+            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*\\b"
+            pop_out: false
+            token_start: 152
+            token_end: 162
+            required: false
+
+      - name: rel_team4
+        required: false
+        fields:
+          - name: spacer
+            format: "\\s{70,}\\s?"
+            pop_out: false
+          - name: delta450
+            format: "\\s*\\((\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)\\s*"
+            pop_out: false
+            token_start: 71
+            token_end: 82
+            required: false
+          - name: delta500
+            format: "\\s*\\((\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)\\s*"
+            pop_out: false
+            token_start: 83
+            token_end: 94
+            required: false
+          - name: delta550
+            format: "\\s*\\((\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)\\s*"
+            pop_out: false
+            token_start: 96
+            token_end: 107
+            required: false
+          - name: delta600
+            format: "\\s*\\((\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)\\s*"
+            pop_out: false
+            token_start: 109
+            token_end: 120
+            required: false
+          - name: delta650
+            format: "\\s*\\((\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)\\s*"
+            pop_out: false
+            token_start: 120
+            token_end: 129
+            required: false
+          - name: delta700
+            format: "\\s*\\((\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)\\s*"
+            pop_out: false
+            token_start: 130
+            token_end: 139
+            required: false
+          - name: delta750
+            format: "\\s*\\((\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)\\s*"
+            pop_out: false
+            token_start: 140
+            token_end: 150
+            required: false
+          - name: delta800
+            format: "\\s*\\((\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)\\s*"
+            pop_out: false
+            token_start: 152
+            token_end: 162
+            required: false
+
+      - name: rel_separator
+        required: false
+        format: "^$"
+
+  # Optional row including the "disqualified" message/reason
+  # (When this is present, usually no relay swimmer rows are added)
+  - name: rel_dsq
+    required: false
+    parent: rel_team
+    fields:
+      - name: disqualify_type
+        # "All non-digit words from column 120 onward until the end of line"
+        format: "^(?!\\s+(Orario Ufficializzazione|\\d{1,2}|www.ficr.it|corsie|Pagina))\\s{120,}(\\D+\\s?)+\\b"
+
+  - name: rel_swimmer
+    repeat: true
+    parent: rel_team
+    starts_at_row: 8
+    rows:
+      - name: rel_swimmer1
+        fields:
+          - name: swimmer_name
+            format: "\\s+(\\D+(['`\\-\\.\\s]\\s?\\D+){1,4})\\s+"
+            pop_out: false
+            token_end: 31
+          - name: nation
+            format: "\\s*(\\w{2,3})\\s*"
+            pop_out: false
+            token_start: 53
+            token_end: 68
+
+          - name: lap50
+            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*"
+            pop_out: false
+            token_start: 70
+            token_end: 82
+            required: false
+          - name: lap100
+            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*"
+            pop_out: false
+            token_start: 82
+            token_end: 94
+            required: false
+          - name: lap150
+            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*"
+            pop_out: false
+            token_start: 95
+            token_end: 108
+            required: false
+          - name: lap200
+            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*"
+            pop_out: false
+            token_start: 109
+            token_end: 118
+            required: false
+
+      - name: rel_separator1
+        required: false
+        format: "^$"
+
+      - name: rel_swimmer2
+        fields:
+          - name: year_of_birth
+            format: "\\s*(\\d{4})\\s*"
+            pop_out: false
+
+          - name: delta100
+            format: "\\s*\\((\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)\\s*"
+            pop_out: false
+            token_start: 83
+            token_end: 94
+            required: false
+          - name: delta150
+            format: "\\s*\\((\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)\\s*"
+            pop_out: false
+            token_start: 96
+            token_end: 107
+            required: false
+          - name: delta200
+            format: "\\s*\\((\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)\\s*"
+            pop_out: false
+            token_start: 109
+            token_end: 120
+            required: false
+
+      - name: rel_separator2
+        required: false
+        format: "^$"
+
+  # Ignored header (DSQ label is stored under rel_team)
+  - name: disqualified
+    parent: event
+    required: false
+    lambda: strip
+    format: "\\s*Non Classificati\\b"
+
+  - name: empty_row
+    parent: event
+    required: false
+    format: "^$"
+
+  - name: publish_time
+    parent: event
+    required: false
+    lambda: strip
+    format: "Orario Ufficializzazione"
+
+  # End-Of-Page context
+  - name: footer
+    parent: event
+    eop: true
+    row_span: 6
+    repeat: true
+    starts_with: Elaborazione dati a cura della Federazione Italiana Cronometristi -
+    fields:
+      - name: pool_type
+        format: "\\s*www.ficr.it\\s+(\\d{1,2} corsie \\d{2}m)\\s+Pagina\\s*"
+      # Actual last-line context marker
+      - name: page_delimiter
+        format: "\\s*Risultati su https://nuoto.ficr.it\\b"

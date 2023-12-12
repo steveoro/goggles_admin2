@@ -83,7 +83,7 @@
                 - if File.exist?(full_pathname.to_s.gsub('.pdf', '.txt'))
                   &nbsp;
                   %small TXT✔
-                - if File.exist?(full_pathname.to_s.gsub('.pdf', '.json'))
+                - if File.exist?(full_pathname.to_s.gsub(parent_folder, 'results.new').gsub('.pdf', '.json'))
                   &nbsp;
                   %small JSON✔
               - when '.sql'

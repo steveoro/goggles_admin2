@@ -26,7 +26,8 @@ Rails.application.routes.draw do
   post 'pull/process_calendar_file', to: 'pull#process_calendar_file', as: 'process_calendar_file'
 
   get 'pdf/extract_txt', to: 'pdf#extract_txt', as: 'pdf_extract_txt'
-  post 'pdf/export_json', to: 'pdf#export_json', as: 'pdf_export_json'
+  put 'pdf/scan'
+  put 'pdf/log_contents'
 
   get 'data_fix/review_sessions', to: 'data_fix#review_sessions', as: 'review_sessions'
   get 'data_fix/review_teams', to: 'data_fix#review_teams', as: 'review_teams'
@@ -36,6 +37,8 @@ Rails.application.routes.draw do
   patch 'data_fix/update', to: 'data_fix#update', as: 'data_fix_update'
   get 'data_fix/coded_name', to: 'data_fix#coded_name'
   get 'data_fix/teams_for_swimmer/:swimmer_id', to: 'data_fix#teams_for_swimmer', as: 'data_fix_teams_for_swimmer'
+  delete 'data_fix/purge', to: 'data_fix#purge', as: 'data_fix_purge'
+  get 'data_fix/result_details/:prg_key', to: 'data_fix#result_details', as: 'data_fix_result_details'
 
   get 'push/index'
   post 'push/prepare'

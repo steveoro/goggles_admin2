@@ -3,116 +3,261 @@
 module PdfResults
   # = PdfResults::ContextDAO
   #
-  #   - version:  7-0.5.22
+  #   - version:  7-0.6.00
   #   - author:   Steve A.
   #
   #
   # Wraps a subset of contextual data extracted from PDF/TXT parsing
   # into a hierarchy-capable object.
   #
-  # Each ContextDAO can store any set of individual fields ("header" attributes) with values
-  # plus:
-  # - an internal array of sibling contexts;
-  # - an internal array of "leaf" items (any object);
-  # - a reference to its parent context, if any.
+  # ContextDAOs:
+  # - can store #rows of sibling ContextDAOs, if the source ContextDef acts as a parent for them;
+  #   (adding rows is not done internally: add_row(sibling_dao) needs to be called explicitly)
   #
+  # - have a #field_hash, which is the flat Hash map of all field names & values collected
+  #   from the source ContextDef (which, in turn, treats all its fields & rows as same-level data)
   #
-  # == Typical usage:
+  # == In depth:
   #
-  # root = ContextDAO.new(
-  #   key: 'header', value: nil, parent: nil,
-  #   fields: {
-  #     'description' => 'My Awesome Meeting',
-  #     'date' => '2023-07-05'
-  #   }
-  # )
-  # ...Or, without specifying the 'fields' parameter:
-  # root.add_field('description', 'My Awesome Meeting')
-  # root.add_field('date', '2023-07-05')
+  # While ContextDef store the format definition which is used to parse context sections
+  # of text and can divide each same section of text in multiple sibling rows of sub-contexts,
+  # ContextDAO store all data collected from the specified source ContextDef as same-level
+  # fields and values.
   #
-  # ev = root.add_context('event', '100 SL')
-  # ...Or:
-  # ev = ContextDAO.new(key: 'event', value: '100 SL', parent: root)
+  # At the same time, nesting data is possible within ContextDAO if the source ContextDef
+  # acts as parent context for other siblings, in which case using #add_row(context_dao)
+  # you can add multiple data rows associated to the same parent DAO.
   #
-  # cat1 = ev.add_context('category', 'M 45 M')
-  # res1 = cat1.add_item('rank' => '1', 'name' => 'Johnny Mnemonic', 'timing' => '1 03 53')
-  # res2 = cat1.add_item('rank' => '2', 'name' => 'Robby Roberts', 'timing' => '1 05 42')
+  # As a practical example, assuming we have a hierarchy of 3 nested ContextDefs like these:...
   #
-  # cat2 = ev.add_context('category', 'M 50 M')
-  # res3 = cat2.add_item('rank' => '1', 'name' => 'Paul Paulie', 'timing' => '1 08 22')
+  #   (root) 'event' ---[1:N]---> 'category' ---[1:N]---> 'result' (leaf)
+  #                           (#rows of 'event')     (#rows of 'category')
+  #
+  # ...A single ContextDef('event') can store all associated 'categories' inside its
+  # #rows member, with each item storing a list of 'results' for each possible 'category'.
+  #
+  # This way, by scanning a list of root-level DAO objects we can reconstruct the whole data
+  # hierarchy in a single pass.
+  #
+  # === NOTE:
+  # Do not confuse layout format hierarchy (from ContextDef field groups and sub-area sections)
+  # with actual data hierarchy (basically given by ContextDef 'parent' property).
+  #
+  # Any data extracted from a single ContextDef will be treated as coming from a single level
+  # of depth in the data hierarchy, regardless of how many rows the ContextDef spans.
+  # (All of its fields will become same-level keys in the resulting #data_hash).
   #
   class ContextDAO
-    attr_reader :key, :value, :parent, :fields, :contexts, :items
+    # Properties from source ContextDef
+    attr_reader :name, :parent, :key
 
-    # Creates a new context DAO.
+    # Array of sibling ContextDAOs, added with #add_row(context_dao)
+    attr_reader :rows
+
+    # Hash of all fields (names, together with their associated value) collected from the
+    # source ContextDef.
+    #
+    # Fields will be retrieved directly from the parent context inside:
+    # - actual fields definitions;
+    # - any nested field definition found in any sub-context rows.
+    #
+    # Note that same-named fields stored under different rows will overwrite each other.
+    attr_reader :fields_hash
+
+    # Creates a new context DAO, wrapping all data extracted from a single run
+    # of ContextDef#extract(<buffer>, <scan_index>).
     #
     # == Params:
-    # - +key+    => key name (master field name or data type) of the context
-    # - +value+  => any value associated with this context (typically a string name)
-    # - +parent+ => parent ContextDAO object; set this to nil for root hierarchy objects
-    # - +fields+ => hash of attributes/fields of this context
+    # - +context+ => direct link to source ContextDef instance; +nil+ (default) for a top-level DAO only.
+    #                Top-level DAOs won't have a key and will all be named 'root' and all root-level ContextDefs
+    #                will yield DAOs stored as #rows.
     #
-    def initialize(key:, value: nil, parent: nil, fields: {})
-      @key = key
-      @value = value
-      @parent = parent
-      @fields = fields
-      @contexts = []
-      @items = []
+    def initialize(context = nil)
+      raise 'Invalid ContextDef specified!' unless context.is_a?(ContextDef) || context.nil?
+
+      @name = context&.name || 'root'
+      # Store curr. reference to the latest Ctx parent DAO for usage in find & merge:
+      @parent = context&.parent&.dao
+      @key = context&.key       # Use current Context key as UID
+      @rows = []
+
+      # Collect all fields from any root-level field group and from sub-area context rows
+      # (using the sub-context DAOs #fields_hash directly):
+      @fields_hash = {}
+      if context&.fields.present?
+        context.fields.each { |fd| @fields_hash.merge!({ fd.name => fd.value }) if fd.is_a?(FieldDef) }
+      end
+      if context&.rows.present?
+        context.rows.each do |ctx|
+          @fields_hash.merge!(ctx.dao.fields_hash) if ctx.is_a?(ContextDef) && ctx.dao.present?
+        end
+      end
     end
     #-- -----------------------------------------------------------------------
     #++
 
-    # Adds a new sibling context DAO using <tt>key</tt> and <tt>value</tt>.
-    # Each new context object can store both "header fields" and sibling items.
-    #
-    # == Params
-    # - <tt>key</tt>.....: key/field/type name of the context;
-    # - <tt>value</tt>...: value associated to the +key+.
-    #
-    # == Returns
-    # a new ContextDAO instance set with this instance as parent.
-    #
-    def add_context(key, value)
-      @contexts << ContextDAO.new(key:, value:, parent: self)
-      @contexts.last
+    # Debug helper for building spec mocks for this class.
+    # Bypasses and overrides DAO values retrieval by using the specified data Hash
+    # for setting the results of #data & #field_hash.
+    def set_debug_mock_values(data_hash)
+      # TODO
     end
+    #-- -----------------------------------------------------------------------
+    #++
 
-    # Adds a new "header" field <tt>name</tt> with <tt>value</tt> to the instance.
-    #
-    # == Params
-    # - <tt>name</tt>....: string key or field name; note that any field already defined with this
-    #                      same +name+ will be overwritten with +value+.
-    # - <tt>value</tt>...: any object instance or value for +name+.
-    #
-    def add_field(name, value)
-      @fields.merge!(name => value)
+    # Collects the whole sub-hierarchy data Hash associated with this instance
+    # considering any sibling DAOs stored in #rows.
+    # Returns the Hash having as elements the values for :name, :key and :rows.
+    def data
+      result = {
+        name: @name,
+        key: @key,
+        fields: @fields_hash,
+        rows: []
+      }
+
+      @rows.each do |row|
+        next unless row.is_a?(ContextDAO)
+
+        result[:rows] << row.data
+      end
+      result
     end
+    #-- -----------------------------------------------------------------------
+    #++
 
-    # Adds a new data item to the internal list of this context's items.
+    # Searches recursively for the specified DAO inside the hierarchy, starting at
+    # this instance as a descending node, to verify if the specified DAO is really
+    # already stored in this subtree or not. (In which case, usually, it needs to be added.)
     #
-    # A data item is basically a "leaf" in the hierarchy tree, but it can be anything,
-    # even another instance of ContextDAO.
-    #
-    # == Params
-    # <tt>value</tt>: any object value to be added to the #items list.
-    #
-    # == Returns
-    # the value parameter itself.
-    #
-    def add_item(value)
-      @items << value
-      value
+    # Returns the DAO on success or +nil+ if a DAO with the same +name+ & +key+ is not found.
+    def find_existing(source_dao)
+      return nil unless source_dao.is_a?(ContextDAO)
+      return self if source_dao.name == name && source_dao.key == key
+
+      # Find DAO in siblings (FIFO, go deeper):
+      @rows.find { |dao| dao.find_existing(source_dao) }
     end
+    #-- -----------------------------------------------------------------------
+    #++
 
-    # Debug helper: converts DAO contents to a viewable multi-line string representation
-    # that includes the whole hierarchy.
+    # Adds unconditionally the specified ContextDAO to this instance @rows array.
+    def add_row(sibling_dao)
+      raise 'Invalid ContextDAO specified!' unless sibling_dao.is_a?(ContextDAO)
+
+      @rows << sibling_dao
+    end
+    #-- -----------------------------------------------------------------------
+    #++
+
+    # Merges the given ContextDAO into the proper parent DAO belonging to this subtree
+    # assuming the parent is either self or a sibling of self.
+    #
+    # The method searches recursively for the parent name and key,
+    # then adds (or merges recursively, if already existing) the specified +dao+
+    # as a sibling into its referenced parent.
+    #
+    # If the parent referenced by +source_dao+ is not found inside
+    # the DAO hierarchy starting at this instance (going deeper with the
+    # subtree), an error is raised.
+    #
+    # === Note:
+    # To prevent exceptions, merges should be performed only on a root DAO
+    # when all zero-depth level DAOs have already been found.
+    #
+    # If the exception persist during runs, this usually signals that
+    # the format definitions used to create the ContextDefs from which
+    # the DAOs are extracted may contain logical errors, such as a parent
+    # context definition written after its siblings' reference.
+    #
+    # (Parent context sections should always be defined before their siblings.)
+    #
+    # === Note on structure merge:
+    # Each DAO can store a different data hierarchy subtree. This merge
+    # aims at merging two different data subtrees into the same parent node.
+    #
+    # Given that if two DAOs have the same name & key are considered equals in value,
+    # "merging" actually implies adding just the sub-rows from the source to
+    # the destination node, preserving the existing ones while adding only what
+    # is really missing from the destination DAO.
+    #
+    # == Practical use case:
+    # - (1:N) events --> (1:N) category x event --> (1:N) results x category
+    # - Event or category change/reset on each page;
+    # - DAOs collected on a per-page basis, w/ parent section (DAO nodes) repeating on each page
+    #   --> AIM: single DAO tree => requires a merge of DAO subtrees
+    #
+    def merge(source_dao)
+      raise 'Invalid ContextDAO specified!' unless source_dao.is_a?(ContextDAO)
+
+      # Find a destination container for the source DAO: it must have the same name & key
+      # as the parent referenced by the source itself.
+      dest_parent = self if name == 'root' && source_dao.parent.blank?
+      dest_parent ||= find_existing(source_dao.parent)
+      raise 'Unable to find destination parent for source ContextDAO during merge!' unless dest_parent.is_a?(ContextDAO)
+
+      # See if the source DAO is already inside the destination rows; add it if missing
+      existing_dao = dest_parent.rows.find { |dao| dao.name == source_dao.name && dao.key == source_dao.key }
+
+      # Found source DAO as existing? Try to merge it deeper, row by row:
+      if existing_dao.is_a?(ContextDAO)
+        source_dao.rows.each { |row_dao| existing_dao.merge(row_dao) }
+      else # Not included? => add it "as is":
+        dest_parent.add_row(source_dao)
+      end
+
+      # A) FIND SELF from dest_parent
+      # B) if self not found => add to dest_parent @rows
+      # C) if self => check for missing rows & merge iteratively:
+      #    PSEUDO: found_dao.rows.each { |subdao| subdao compare if missing or not // MERGE }
+    end
+    #-- -----------------------------------------------------------------------
+    #++
+
+    # Debug helper.
+    # Converts DAO contents to a viewable multi-line string representation.
     def to_s
-      print("#{@parent.key} +--> ".rjust(20)) if @parent.present?
-      printf("[%s] %s\n", @key, @fields)
-      @contexts.each { |dao| print(dao) }
-      @items.each_with_index { |itm, idx| printf("%20s#{idx}. #{itm}\n", nil) }
-      nil
+      result = Kernel.format("[%s DAO] key: '%s' {\r\n", @name, @key)
+      @fields_hash.each { |key, val| result << "\t'#{key}' => '#{val}'\r\n" }
+      if @rows.present?
+        result << "\trows: #{@rows.count}\r\n"
+        @rows.each do |row_ctx|
+          next unless row_ctx.is_a?(ContextDAO)
+
+          result << "\t\t<#{row_ctx.name}>: #{row_ctx.key.truncate(80)}\r\n"
+          if row_ctx.rows.present?
+            row_ctx.rows.each { |sub_ctx| result << "\t\t\t<#{sub_ctx.name}>: #{sub_ctx.key}\r\n" }
+            result << "\t\t\ttot sub-rows = #{row_ctx.rows.count}\r\n"
+          end
+        end
+      end
+      result << "}\r\n"
+      result
+    end
+
+    # Debug helper.
+    # Similarly to ContextDef#hierarchy_to_s(), this scans the current #data() structure
+    # preparing a (sub-)hierarchy printable string tree, using this DAO as the starting point
+    # of the hierarchy, going deeper in breadth-first mode.
+    #
+    # Returns a printable ASCII (string) tree of this DAO data hierarchy.
+    def hierarchy_to_s(dao: self, output: '', depth: 0)
+      output = if output.blank? && depth.zero?
+                 "\r\n(#{dao.parent.present? ? dao.parent.name : '---'})\r\n"
+               else
+                 ('  ' * depth) << output
+               end
+      output << ('  ' * (depth + 1)) <<
+                "+-- #{dao.name}#{dao.fields_hash.present? ? '🔸' : ''}\r\n"
+
+      if dao.rows.present?
+        output << ('  ' * (depth + 2)) << "  [:rows]\r\n"
+        dao.rows.each do |sub_dao|
+          output = hierarchy_to_s(dao: sub_dao, output: output, depth: depth + 3)
+        end
+      end
+
+      output
     end
   end
 end

@@ -61,14 +61,14 @@ function normalizeText(text) {
  * @returns {Object} the parsed JSON file contents
  */
 function readJSONFile(pathName) {
-  if (!Fs.existsSync(pathName)) {
-    return { status: 'no-file', detail: 'File missing or not yet created.' }
-  }
+    if (!Fs.existsSync(pathName)) {
+      return { status: 'no-file', detail: `File '${pathName}' not found.` }
+    }
 
-  var contents = Fs.readFileSync(pathName, 'utf8', (err, data) => {
-    if (err) { return { status: error.name, detail: error.message, data: data } }
-    return data
-  })
+    var contents = Fs.readFileSync(pathName, 'utf8', (error, data) => {
+      if (error) { return { status: error.name, detail: error.message, data: data } }
+      return data
+    })
 
   // Note: concurrent file updates from different thread may cause the file to be
   // seldomly corrupted (this can happen only for the status file)

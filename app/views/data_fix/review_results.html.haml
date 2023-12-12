@@ -10,22 +10,25 @@
       - sorted_keys = @events_hash.sort { |a, b| a.last&.row&.event_order <=> b.last&.row&.event_order }.map(&:first)
       .container-fluid
         .row-fluid
-          - sorted_keys.each_with_index do |event_key, index|
+          - sorted_keys.each_with_index do |event_key, ev_idx|
             :ruby
               event_entity = @events_hash[event_key]
               event = event_entity.row
               event_checker = Regexp.new(event_key, Regexp::IGNORECASE)
               prg_keys_filtered = @prgs_keys&.select { |prg_key| event_checker.match?(prg_key) }
 
-            %div{ id: "event-card-#{index}" }
+            %div{ id: "event-card-#{ev_idx}" }
               .card.my-2
-                %div{ id: "event-header-#{index}", class: event.id.present? ? 'bg-light' : 'bg-light-yellow' }
+                %div{ id: "event-header-#{ev_idx}", class: event.id.present? ? 'bg-light' : 'bg-light-yellow' }
                   .row
                     .col-3
                       %h5.mb-0
-                        .btn.m-1{ id: "edit-event-#{index}", data: { 'aria-expanded' => 'true',
+                        .btn.m-1{ id: "edit-event-#{ev_idx}", data: { 'aria-expanded' => 'true',
                                   'aria-controls' => 'edit-event' } }
                           = event_key
+                          &nbsp;
+                          - if event.relay?
+                            %i.fa.fa-users
                     .col-3.mt-2
                       %i.form-text.text-muted.bg-light-grey
                         %pre
@@ -37,18 +40,22 @@
                         = event.valid? ? '✅' : '🔵'
                       - else
                         🆕
-                %div{ id: "event-panel-#{index}", 'aria-labelledby' => "event-header-#{index}",
-                      'data-parent' => "#event-card-#{index}" }
+                %div{ id: "event-panel-#{ev_idx}", 'aria-labelledby' => "event-header-#{ev_idx}",
+                      'data-parent' => "#event-card-#{ev_idx}" }
                   .card-body.border-bottom.border-secondary
-                    .row
-                      - prg_keys_filtered.each do |prg_key|
+                    :ruby
+                      row_keys = event.relay? ? @mrrs_keys : @mirs_keys
+                      lap_keys = event.relay? ? @mrss_keys : @laps_keys
+                    .row.text-center
+                      - prg_keys_filtered.each_with_index do |prg_key, prg_idx|
                         :ruby
                           prg_entity = @prgs_hash[prg_key]
                           prg = prg_entity.row
                           prg_code = prg_key.split("#{event_key}-").last
-                          prg_checker = Regexp.new(prg_code, Regexp::IGNORECASE)
-                          mir_sub_count = @mirs_keys&.select { |mir_key| prg_checker.match?(mir_key) }&.count
-                        .col-auto.m-1
+                          prg_checker = Regexp.new(prg_key, Regexp::IGNORECASE)
+                          result_sub_count = row_keys&.select { |row_key| prg_checker.match?(row_key) }&.count
+                          lap_sub_count = lap_keys&.select { |lap_key| prg_checker.match?(lap_key) }&.count
+                        .col-auto.border.pt-1.m-1
                           = prg_code
                           - if prg.id.present?
                             = prg.valid? ? '✅' : '🔵'
@@ -57,14 +64,37 @@
                               ID: #{prg.id}
                           - else
                             🆕
-                          %br/
-                          %small
-                            %pre
-                              Tot: #{mir_sub_count}
+                          .row-fluid.mb-1
+                            - collapse_dom_id = "res-panel-#{ev_idx}-#{prg_idx}"
+                            %small
+                              %pre
+                                Tot: #{result_sub_count}
+                                - if lap_sub_count.present?
+                                  &nbsp;-&nbsp;Δt: #{lap_sub_count}
+                            = form_tag(data_fix_result_details_path(prg_key: prg_key), id: "frm-#{collapse_dom_id}",
+                                       method: :get, remote: true) do
+                              = hidden_field_tag(:file_path, @file_path)
+                              = hidden_field_tag(:relay, event.relay?)
+                              = hidden_field_tag(:target_dom_id, collapse_dom_id)
+                              = submit_tag('+', id: "btn-#{collapse_dom_id}", class: 'btn btn-sm btn-outline-secondary px-1 py-0',
+                                           'aria-label' => "#{collapse_dom_id}", type: 'submit', 'aria-expanded' => false,
+                                           'aria-controls' => "#{collapse_dom_id}", data: { toggle: 'collapse',
+                                           target: "##{collapse_dom_id}" })
+
+                            .collapse.my-2{ id: "#{collapse_dom_id}", 'aria-labelledby' => "#{collapse_dom_id}",
+                                      'data-parent' => "#btn-#{collapse_dom_id}" }
+                              .text-center.my-4.py-4
+                                .spinner-border.text-primary{ role: 'status' }
 
                     .row-fluid.mt-2
-                      - mir_count = @mirs_keys&.select { |mir_key| event_checker.match?(mir_key) }&.count
-                      %b Event tot.: #{mir_count}
+                      - result_count = row_keys&.select { |row_key| event_checker.match?(row_key) }&.count
+                      %b Event tot.: #{result_count}
+
+      - if @ts_keys.present?
+        .container-fluid
+          .row-fluid
+            %b Ranking rows found: #{@ts_keys.count}
+
 
         .row-fluid.my-3.text-center
           = link_to(push_prepare_path(file_path: @file_path), method: :post,

@@ -40,7 +40,7 @@ en:
     settings:
       title: "Settings"
       connection:
-        connect_to_label: "🖥 You are connected with:"
+        connect_to_label: "🖥 You are connected with (include protocol & port):"
         save_btn: "Save"
         save_confirmation: "Changing the connection URL will log you out of the current API server. Are you sure?"
         save_failed: "Error during base config update. Check the logs."

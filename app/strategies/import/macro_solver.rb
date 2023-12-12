@@ -4,9 +4,9 @@ module Import
   #
   # = MacroSolver
   #
-  #   - version:  7-0.5.02
+  #   - version:  7-0.6.00
   #   - author:   Steve A.
-  #   - build:    20230424
+  #   - build:    20231121
   #
   # Scans the already-parsed Meeting results JSON object (which stores a whole set of results)
   # and finds existing & corresponding entity rows or creates (locally) any missing associated
@@ -89,14 +89,13 @@ module Import
     #-- -------------------------------------------------------------------------
     #++
 
-    # 1-pass solver wrapping the 3 individual steps (meeting & sessions; teams & swimmers; events & results).
+    # 1-pass solver wrapping the steps (meeting & sessions; teams & swimmers; events, results & rankings).
     # Updates the source @data with serializable DB entities.
     # Currently, used for debugging purposes only.
     def solve
       map_meeting_and_sessions
       map_teams_and_swimmers
       map_events_and_results
-      # TODO/FUTUREDEV: meeting scores & rankings for each team (currently: no data available)
     end
     #-- ------------------------------------------------------------------------
     #++
@@ -290,40 +289,75 @@ module Import
 
       @data['sections'].each do |sect|
         idx += 1
-        ActionCable.server.broadcast('ImportStatusChannel', msg: 'map_teams_and_swimmers', progress: idx, total:)
+        ActionCable.server.broadcast('ImportStatusChannel', { msg: 'map_teams_and_swimmers', progress: idx, total: })
         # If the section contains a 'retry' subsection it means the crawler received some error response during
         # the data crawl and the result file is missing the whole result subsection.
-        next if sect['retry'].present?
+        # (ALSO: not mapping team names from the ranking by choice)
+        next if sect['retry'].present? || sect['ranking'].present?
 
-        sect['rows'].each do |row|
+        _event_type, category_type = Parser::EventType.from_l2_result(sect['title'], @season)
+        # For parsed PDFs, the category code may be already set in section and the above may be nil:
+        if sect['fin_sigla_categoria'].present? && category_type.nil?
+          fin_code = sect['fin_sigla_categoria'].match(/a2[05]/i) ? 'U25' : sect['fin_sigla_categoria']
+          category_type = GogglesDb::CategoryType.for_season(@season).where(code: fin_code).first
+        end
+
+        # NOTE: category_type can still be nil at this point for some formats (relays, usually)
+        # If this happens:
+        # - category esteem is delegated to relay result & swimmer mapping
+        # - avoid mapping badges together with swimmer (here) as badge requires a category
+        # - when it's not a relay, usually the format is mis-interpreted or needs debugging
+
+        sect['rows']&.each_with_index do |row, idx|
           team_name = row['team']
-          Rails.logger.debug { "\r\n\r\n*** TEAM '#{team_name}' ***" } if @toggle_debug
-          # Add only if not already present in hash:
-          unless entity_present?('team', team_name)
-            Rails.logger.debug { "    ---> '#{team_name}' (+)" } if @toggle_debug
-            team_entity = find_or_prepare_team(team_name)
-            # Convenience reference for this meeting:
-            team_entity.add_bindings!('team_affiliation' => team_name)
-            # Store required bindings at root level in data_hash, same key, different entity:
-            add_entity_with_key('team', team_name, team_entity)
+          # DEBUG: ******************************************************************
+          binding.pry if team_name.blank? # => check rows!
+          # DEBUG: ******************************************************************
+          Rails.logger.debug("\r\n\r\n*** TEAM '#{team_name}' ***") if @toggle_debug
+          team = map_and_return_team(team_key: team_name)
+          team_affiliation = map_and_return_team_affiliation(team:, team_key: team_name)
+          # DEBUG: ******************************************************************
+          # SHOULD NEVER HAPPEN at this point:
+          binding.pry if team.nil? || team_affiliation.nil?
+          # DEBUG: ******************************************************************
+
+          if row['relay'].present?
+            (1..8).each do |idx|
+              swimmer_name = row["swimmer#{idx}"]
+              year_of_birth = row["year_of_birth#{idx}"]
+              # ('sex' currently MISSING from row data, can be extracted from event section or category section)
+              # gender_type_code = options[:row]['sex']
+              gender_type_code = sect['fin_sesso'] if sect['fin_sesso'].to_s =~ /[mf]/i
+              next unless swimmer_name.present? && year_of_birth.present?
+
+              swimmer_key, swimmer = map_and_return_swimmer(swimmer_name:, year_of_birth:, team_name:)
+              badge = map_and_return_badge(swimmer:, swimmer_key:, team:, team_key: team_name,
+                                           team_affiliation:, category_type:) if category_type
+              # DEBUG: ******************************************************************
+              # SHOULD NEVER HAPPEN at this point:
+              binding.pry unless badge.present? && swimmer.present? && swimmer_key.present?
+              # DEBUG: ******************************************************************
+            end
+
+          else
+            swimmer_name = row['name']
+            year_of_birth = row['year']
+            gender_type_code = row['sex']
+            next unless swimmer_name.present? && year_of_birth.present?
+
+            swimmer_key, swimmer = map_and_return_swimmer(swimmer_name:, year_of_birth:, gender_type_code:, team_name:)
+            badge = map_and_return_badge(swimmer:, swimmer_key:, team:, team_key: team_name,
+                                         team_affiliation:, category_type:)
+            # DEBUG: ******************************************************************
+            # SHOULD NEVER HAPPEN at this point:
+            binding.pry unless badge.present? && swimmer.present? && swimmer_key.present?
+            # DEBUG: ******************************************************************
           end
-
-          swimmer_name = row['name']
-          Rails.logger.debug { "\r\n=== SWIMMER '#{swimmer_name}' ===" } if @toggle_debug
-          year_of_birth = row['year']
-          gender_type_code = row['sex']
-          swimmer_key = swimmer_key_for(swimmer_name, year_of_birth, gender_type_code, team_name)
-          next if entity_present?('swimmer', swimmer_key)
-
-          Rails.logger.debug { "    ------> '#{swimmer_name}' (+)" } if @toggle_debug
-          swimmer_entity = find_or_prepare_swimmer(swimmer_name, year_of_birth, gender_type_code)
-          # Special disambiguation reference (in case of same-named swimmers with same age):
-          swimmer_entity.add_bindings!('team' => team_name)
-          # Store the required bindings at root level in the data_hash:
-          add_entity_with_key('swimmer', swimmer_key, swimmer_entity)
         end
       end
     end
+    #-- -----------------------------------------------------------------------
+    #++
 
     # Mapper and setter for the list of unique events & results.
     #
@@ -331,7 +365,9 @@ module Import
     # - @data['meeting_event'] => the Hash of (unique) Import::Entity-wrapped MeetingEvents.
     # - @data['meeting_program'] => the Hash of (unique) Import::Entity-wrappedMeetingPrograms.
     # - @data['meeting_individual_result'] => the Hash of (unique) Import::Entity-wrapped MeetingIndividualResults.
-    # - @data['meeting_relay_result'] => the Hash of (unique) Import::Entity-wrapped MeetingRelayResults. (FUTUREDEV)
+    # - @data['lap'] => the Hash of (unique) Import::Entity-wrapped Laps.
+    # - @data['meeting_relay_result'] => the Hash of (unique) Import::Entity-wrapped MeetingRelayResults.
+    # - @data['meeting_team_score'] => the Hash of (unique) Import::Entity-wrapped MeetingTeamScores.
     #
     # == Note:
     # Currently, no data about the actual session in which the event was performed is provided:
@@ -339,14 +375,17 @@ module Import
     # (Actual session information is usually available only on the Meeting manifest page.)
     #
     # FUTUREDEV: obtain manifest + parse it to get the actual session information.
-    # FUTUREDEV: relay results (currently: no data available)
     #
     # rubocop:disable Metrics/BlockLength
     def map_events_and_results
-      # Clear the lists:
+      # Clear the internal entity mappings:
       @data['meeting_event'] = {}
       @data['meeting_program'] = {}
       @data['meeting_individual_result'] = {}
+      @data['meeting_relay_result'] = {}
+      @data['lap'] = {}
+      @data['meeting_relay_swimmer'] = {}
+      @data['meeting_team_score'] = {}
       total = @data['sections'].count
       idx = 0
 
@@ -354,27 +393,65 @@ module Import
       msession_idx = 0 # TODO: find a way to change session number (only in manifest?)
       event_order = 0
       program_order = 0
+      curr_category_type = nil
       meeting_session = cached_instance_of('meeting_session', msession_idx)
 
       # Map programs & events:
       @data['sections'].each_with_index do |sect, _sect_idx|
         idx += 1
-        ActionCable.server.broadcast('ImportStatusChannel', msg: 'map_events_and_results', progress: idx, total:)
+        # --- MeetingTeamScore --- find/create unless key is present (stores just the first unique key found):
+        if sect['ranking'].present?
+          ActionCable.server.broadcast('ImportStatusChannel', { msg: 'map_rankings', progress: idx, total: })
+          process_team_score(rows: sect['rows'], meeting:)
+          next
+        end
+
+        ActionCable.server.broadcast('ImportStatusChannel', { msg: 'map_events_and_results', progress: idx, total: })
         # If the section contains a 'retry' subsection it means the crawler received some error response during
         # the data crawl and the result file is missing the whole result subsection.
         next if sect['retry'].present?
 
         # (Example section 'title': "50 Stile Libero - M25")
         event_type, category_type = Parser::EventType.from_l2_result(sect['title'], @season)
+        # For parsed PDFs, the category code may be already set in section and the above may be nil:
+        if sect['fin_sigla_categoria'].present? && category_type.nil?
+          fin_code = sect['fin_sigla_categoria'].match(/a2[05]/i) ? 'U25' : sect['fin_sigla_categoria']
+          category_type = GogglesDb::CategoryType.for_season(@season).where(code: fin_code).first
+        end
+        # Store current category type in case the next one is not defined due to a DSQ ranking:
+        curr_category_type = category_type if category_type.is_a?(GogglesDb::CategoryType)
+        # Use previous category type in case the current one isn't found (possible DSQ ranking):
+        category_type = curr_category_type if category_type.blank? && curr_category_type.is_a?(GogglesDb::CategoryType)
+
         gender_type = select_gender_type(sect['fin_sesso'])
         event_key = event_key_for(event_type.code)
+
+        # --- Pre-process MRR for unknown gender codes ---
+        # In case it's a relay with an unclear/unset gender code,
+        # let's try to detect the gender of the section from the swimmers of its first result:
+        # (ASSUMES a dedicated section for each gender/category change)
+        if (gender_type.nil? || category_type.nil?) && event_type.relay?
+          Rails.logger.debug("\r\n    ---> pre-scanning MRR due to nil GenderType...") if @toggle_debug
+          gender_type = preprocess_mrr_for_gender_code(row: sect['rows'].first, category_type:)
+        end
+        # (NOTE: gender_type && category_type may still be nil at this point for DSQ relays)
+        # Can't store results if we can't be sure which category/gender they belong to:
+        if (gender_type.nil? || category_type.nil?)
+          Rails.logger.warn("\r\n    ---> SKIPPING SECTION STORAGE due to missing category_type OR gender_type!")
+          Rails.logger.warn("\r\n    >>>> section: #{sect.inspect}")
+          # DEBUG ----------------------------------------------------------------
+          binding.pry
+          # ----------------------------------------------------------------------
+          next
+        end
+
         program_key = program_key_for(event_key, category_type.code, gender_type.code)
 
-        # == MeetingEvent: find/create unless key is present (stores just the first unique key found):
-        Rails.logger.debug { "\r\n\r\n*** EVENT '#{event_key}' ***" } if @toggle_debug
+        # --- MeetingEvent --- find/create unless key is present (stores just the first unique key found):
+        Rails.logger.debug("\r\n\r\n*** EVENT '#{event_key}' ***") if @toggle_debug
         unless entity_present?('meeting_event', event_key)
           event_order += 1
-          Rails.logger.debug { "    ---> '#{event_key}' n.#{event_order} (+)" } if @toggle_debug
+          Rails.logger.debug("    ---> '#{event_key}' n.#{event_order} (+)") if @toggle_debug
           mevent_entity = find_or_prepare_mevent(
             meeting:, meeting_session:, session_index: msession_idx,
             event_type:, event_order:
@@ -382,7 +459,7 @@ module Import
           add_entity_with_key('meeting_event', event_key, mevent_entity)
         end
 
-        # == MeetingProgram: find/create unless key is present (as above):
+        # --- MeetingProgram --- find/create unless key is present (as above):
         unless entity_present?('meeting_program', program_key)
           program_order += 1
           meeting_event = @data['meeting_event'][event_key].row
@@ -396,71 +473,30 @@ module Import
           add_entity_with_key('meeting_program', program_key, mprogram_entity)
         end
 
+        # Detect if team mapping has been skipped and force-run it:
+        # (This shall happen only once per loop if this method has been called *before* mapping teams or swimmers)
+        first_team_name = sect['rows'].first&.fetch('team', nil)
+        if first_team_name.blank? || !entity_present?('team_affiliation', first_team_name) ||
+           category_type.nil? || gender_type.nil?
+          map_teams_and_swimmers
+        end
+
         # Build up the list of results:
         sect['rows']&.each_with_index do |row, _row_idx|
-          # == MeetingIndividualResult: find/create unless key is present (as above):
-          team_name = row['team']
-          swimmer_name = row['name']
-          team = cached_instance_of('team', team_name)
-
-          # Find or prepare team affiliation for the team:
-          unless entity_present?('team_affiliation', team_name)
-            team_affiliation_entity = find_or_prepare_affiliation(team, team_name, @season)
-            add_entity_with_key('team_affiliation', team_name, team_affiliation_entity)
-          end
-
-          team_affiliation = cached_instance_of('team_affiliation', team_name)
-          year_of_birth = row['year']
-          gender_type_code = row['sex']
-          swimmer_key = swimmer_key_for(swimmer_name, year_of_birth, gender_type_code, team_name)
-          swimmer = cached_instance_of('swimmer', swimmer_key)
           meeting_program = cached_instance_of('meeting_program', program_key)
 
-          # Detect if team + swimmer mapping has been skipped and force-run it:
-          # (This shall happen only once per loop if this method has been called *before* mapping teams or swimmers)
-          if (team_name.present? && (team.nil? || team_affiliation.nil?)) ||
-             (swimmer_name.present? && swimmer.nil?) || category_type.nil? || gender_type.nil?
-            map_teams_and_swimmers
-            # Reload instances after mapping:
-            team = cached_instance_of('team', team_name)
-            team_affiliation = cached_instance_of('team_affiliation', team_name)
-            swimmer = cached_instance_of('swimmer', swimmer_key) # (Assumes swimmer_key is never empty)
-            # DEBUG: ******************************************************************
-            # binding.pry if team.nil? || team_affiliation.nil? || swimmer.nil? # SHOULD NEVER HAPPEN
-            # DEBUG: ******************************************************************
-          end
-
-          # Find or prepare badge for the swimmer:
-          unless entity_present?('badge', swimmer_key)
-            badge_entity = find_or_prepare_badge(
-              swimmer:, swimmer_key:, team:, team_key: team_name,
-              team_affiliation:, category_type:
+          if event_type.relay?
+            process_mrr_and_mrs(
+              row:, category_type:, event_type:,
+              mprg: meeting_program, mprg_key: program_key
             )
-            add_entity_with_key('badge', swimmer_key, badge_entity)
+
+          else
+            process_mir_and_laps(
+              row:, category_type:, event_type: event_type,
+              mprg: meeting_program, mprg_key: program_key
+            )
           end
-
-          badge = cached_instance_of('badge', swimmer_key)
-          # DEBUG: ******************************************************************
-          # binding.pry if badge.nil? # SHOULD NEVER HAPPEN
-          # DEBUG: ******************************************************************
-
-          # TODO/FUTUREDEV: discriminate between ind. results and relay results
-          # TODO/FUTUREDEV: add relay results when present (currently: no data available)
-          # TODO/FUTUREDEV: add lap timings when present (currently: no data available)
-
-          mir_key = mir_key_for(program_key, swimmer_key)
-          next if entity_present?('meeting_individual_result', mir_key)
-
-          score = Parser::Score.from_l2_result(row['score'])
-          timing = Parser::Timing.from_l2_result(row['timing'])
-          rank = row['pos'].to_i
-          mir_entity = find_or_prepare_mir(
-            meeting_program:, mprogram_key: program_key,
-            swimmer:, swimmer_key:, team:, team_key: team_name,
-            team_affiliation:, badge:,
-            rank:, timing:, score:
-          )
-          add_entity_with_key('meeting_individual_result', mir_key, mir_entity)
         end
       end
     end
@@ -624,7 +660,7 @@ module Import
     end
     # rubocop:enable Metrics/ParameterLists
 
-    # Finds or prepares for creation a MeetingSession instance given all the following parameters.
+    # Finds or prepares for creation a MeetingSession instance given all of the following parameters.
     #
     # == Params:
     # - <tt>:meeting</tt> => the current Meeting instance (single, best candidate found)
@@ -687,7 +723,7 @@ module Import
     end
     # rubocop:enable Metrics/ParameterLists
 
-    # Finds or prepares for creation a MeetingEvent instance given all the following parameters.
+    # Finds or prepares for creation a MeetingEvent instance given all of the following parameters.
     #
     # == Params:
     # - <tt>:meeting</tt> => the parent Meeting instance (single, best candidate found or created)
@@ -708,8 +744,8 @@ module Import
     def find_or_prepare_mevent(meeting:, meeting_session:, session_index:, event_type:, event_order:, heat_type: GogglesDb::HeatType.finals)
       # Prioritize any existing meeting events:
       if meeting.present? && meeting.id.present? &&
-         GogglesDb::MeetingEvent.includes(:meeting).exists?('meetings.id': meeting.id, event_type_id: event_type.id)
-        existing_mev = GogglesDb::MeetingEvent.includes(:meeting)
+         GogglesDb::MeetingEvent.joins(:meeting).includes(:meeting).exists?('meetings.id': meeting.id, event_type_id: event_type.id)
+        existing_mev = GogglesDb::MeetingEvent.joins(:meeting).includes(:meeting)
                                               .where('meetings.id': meeting.id, event_type_id: event_type.id)
                                               .first
         # Find & assign the proper msession index in case the one being processed as parameter isn't the original one
@@ -735,7 +771,7 @@ module Import
     end
     # rubocop:enable Metrics/ParameterLists
 
-    # Finds or prepares for creation a MeetingProgram instance given all the following parameters.
+    # Finds or prepares for creation a MeetingProgram instance given all of the following parameters.
     #
     # == Params:
     # - <tt>:meeting_event</tt> => the parent MeetingProgram instance (single, best candidate found or created)
@@ -812,7 +848,9 @@ module Import
     # - <tt>sex_code</tt> => coded sex string of the swimmer ('M' => male, 'F' => female, defaults to 'intermixed' when unknown)
     # == Returns:
     # A "direct" GogglesDb::GenderType instance (*not* an Import::Entity wrapper).
+    # Will return +nil+ for blank sex codes.
     def select_gender_type(sex_code)
+      return nil if sex_code.blank?
       return GogglesDb::GenderType.female if /f/i.match?(sex_code)
       return GogglesDb::GenderType.male if /m/i.match?(sex_code)
 
@@ -822,6 +860,9 @@ module Import
     # Finds or prepares for creation a Swimmer instance given its name returning also its possible
     # alternative matches (when found).
     #
+    # For most data formats scenarios this will be safe to call even when the sex code is unknown.
+    # (Depending on the already existing swimmer data.)
+    #
     # == Params:
     # - <tt>swimmer_name</tt> => name of the swimmer to find or create
     # - <tt>year</tt> => year of birth of the swimmer
@@ -830,13 +871,15 @@ module Import
     # == Returns two elements:
     # An Import::Entity wrapping the target row together with a list of all possible candidates, when found.
     def find_or_prepare_swimmer(swimmer_name, year, sex_code)
-      gender_type = select_gender_type(sex_code)
+      gender_type = select_gender_type(sex_code) # WARNING: May result +nil+ for certain relay formats
       year_of_birth = year.to_i if year.to_i.positive?
-      cmd = GogglesDb::CmdFindDbEntity.call(
-        GogglesDb::Swimmer,
-        { complete_name: swimmer_name, year_of_birth:, gender_type_id: gender_type.id,
-          toggle_debug: @toggle_debug == 2 }
-      )
+      finder_opts = { complete_name: swimmer_name, year_of_birth:, toggle_debug: @toggle_debug == 2 }
+      # Don't add nil params to the finder cmd as they may act as filters as well:
+      finder_opts.merge!(gender_type_id: gender_type.id) if gender_type.is_a?(GogglesDb::GenderType)
+
+      cmd = GogglesDb::CmdFindDbEntity.call(GogglesDb::Swimmer, finder_opts)
+      # NOTE: cmd will find a result even for nil gender types, but it may fail for "totally newbie" swimmers
+      #       added through a relay result!
       if cmd.successful?
         matches = cmd.matches.respond_to?(:map) ? cmd.matches.map(&:candidate) : cmd.matches
         return Import::Entity.new(row: cmd.result, matches:)
@@ -867,6 +910,8 @@ module Import
         first_name:,
         last_name:,
         year_of_birth:,
+        # See notes above about the possibility that gender_type may still be nil at this point
+        # (FUTUREDEV: handle this -- mostly related to new relay formats)
         gender_type_id: gender_type.id,
         year_guessed: year_of_birth.to_i.zero?
       )
@@ -914,7 +959,7 @@ module Import
     end
     # rubocop:enable Metrics/ParameterLists
 
-    # Finds or prepares for creation a MeetingIndividualResult row given all the following parameters.
+    # Finds or prepares for creation a MeetingIndividualResult row given all of the following parameters.
     #
     # == Params:
     # - <tt>:meeting_program</tt> => the parent MeetingProgram instance (single, best candidate found or created)
@@ -957,9 +1002,9 @@ module Import
         team_affiliation_id: team_affiliation&.id,
         badge_id: badge&.id,
         rank:,
-        minutes: timing.minutes,
-        seconds: timing.seconds,
-        hundredths: timing.hundredths,
+        minutes: timing&.minutes,
+        seconds: timing&.seconds,
+        hundredths: timing&.hundredths,
         goggle_cup_points: 0.0, # (no data)
         team_points: 0.0, # (no data)
         standard_points: score || 0.0,
@@ -969,8 +1014,374 @@ module Import
       Import::Entity.new(row: new_row, matches: [new_row], bindings:)
     end
     # rubocop:enable Metrics/ParameterLists
+
+    # Finds or prepares for creation a Lap row given all of the following parameters.
+    #
+    # == Params:
+    # - <tt>:meeting_program</tt> => the parent MeetingProgram instance (single, best candidate found or created)
+    # - <tt>:mprogram_key</tt> => parent MeetingProgram key
+    #
+    # - <tt>:swimmer</tt> => a valid or new GogglesDb::Swimmer instance
+    # - <tt>:swimmer_key</tt> => Swimmer key in the entity sub-Hash stored at root level in the data Hash member
+    #                            (may differ from the actual Swimmer.name returned by a search)
+    #
+    # - <tt>:team</tt> => a valid or new GogglesDb::TeamAffiliation instance
+    # - <tt>:team_key</tt> => Team key in the entity sub-Hash stored at root level in the data Hash member
+    #                         (may differ from the actual Team.name returned by a search)
+    #
+    # - <tt>:mir</tt> => a valid or new GogglesDb::MeetingIndividualResult instance
+    # - <tt>:mir_key</tt> => parent MIR key in the entity sub-Hash stored at root level in the data Hash member.
+    #
+    # - <tt>:length_in_meters</tt> => length in meters (int)
+    # - <tt>:abs_timing</tt> => Timing instance storing the absolute recorded time *from the start* of the heat
+    # - <tt>:delta_timing</tt> => Timing instance storing the relative *delta* lap time
+    #
+    # == Returns:
+    # An Import::Entity wrapping the target row together with a list of all possible candidates, when found.
+    #
+    # rubocop:disable Metrics/ParameterLists
+    def find_or_prepare_lap(meeting_program:, mprogram_key:, swimmer:, swimmer_key:, team:, team_key:,
+                            mir:, mir_key:, length_in_meters:, abs_timing:, delta_timing:)
+      bindings = {
+        'meeting_program' => mprogram_key, 'swimmer' => swimmer_key, 'team' => team_key,
+        'meeting_individual_result' => mir_key,
+      }
+      domain = GogglesDb::Lap.where(
+        meeting_program_id: meeting_program&.id,
+        team_id: team&.id, swimmer_id: swimmer&.id
+      )
+      return Import::Entity.new(row: domain.first, matches: domain.to_a, bindings:) if domain.present?
+
+      new_row = GogglesDb::Lap.new(
+        meeting_program_id: meeting_program&.id,
+        meeting_individual_result_id: mir&.id,
+        swimmer_id: swimmer&.id,
+        team_id: team&.id,
+        length_in_meters:,
+        # Make sure no nil timings:
+        minutes: delta_timing&.minutes || abs_timing&.minutes || 0,
+        seconds: delta_timing&.seconds || abs_timing&.minutes || 0,
+        hundredths: delta_timing&.hundredths || abs_timing&.minutes || 0,
+        minutes_from_start: abs_timing&.minutes || 0,
+        seconds_from_start: abs_timing&.seconds || 0,
+        hundredths_from_start: abs_timing&.hundredths || 0,
+        reaction_time: 0.0 # (no data)
+      )
+      Import::Entity.new(row: new_row, matches: [new_row], bindings:)
+    end
+    # rubocop:enable Metrics/ParameterLists
     #-- -------------------------------------------------------------------------
     #++
+
+    # Finds or prepares for creation a MeetingRelayResult row given all of the following parameters.
+    #
+    # == Params:
+    # - <tt>:meeting_program</tt> => the parent MeetingProgram instance (single, best candidate found or created)
+    # - <tt>:mprogram_key</tt> => the parent MeetingProgram instance (single, best candidate found or created)
+    #
+    # - <tt>:team</tt> => a valid or new GogglesDb::TeamAffiliation instance
+    # - <tt>:team_key</tt> => Team key in the entity sub-Hash stored at root level in the data Hash member
+    #                         (may differ from the actual Team.name returned by a search)
+    #
+    # - <tt>:team_affiliation</tt> => associated TeamAffiliation
+    # - <tt>:rank</tt> => integer ranking position
+    # - <tt>:timing</tt> => Timing instance storing the total recorded time
+    # - <tt>:score</tt> => Float score for "standard points" (using FIN scoring rules)
+    #
+    # == Returns:
+    # An Import::Entity wrapping the target row together with a list of all possible candidates, when found.
+    #
+    # == NOTE:
+    # Assuming multiple MRR are possible for the same team & MPRG (same relay category),
+    # the chosen candidate will always be the last domain row found.
+    # In other words, the result shall be the last created MRR row found satisfying
+    # the same parameter values as constraints.
+    #
+    # rubocop:disable Metrics/ParameterLists
+    def find_or_prepare_mrr(meeting_program:, mprogram_key:, team:, team_key:,
+                            team_affiliation:, rank:, timing:, score:, disqualify_type: '')
+      bindings = {
+        'meeting_program' => mprogram_key, 'team_affiliation' => team_key, 'team' => team_key
+      }
+      domain = GogglesDb::MeetingRelayResult.where(
+        meeting_program_id: meeting_program&.id, team_id: team&.id
+      )
+      return Import::Entity.new(row: domain.last, matches: domain.to_a, bindings:) if domain.present?
+
+      new_row = GogglesDb::MeetingRelayResult.new(
+        meeting_program_id: meeting_program&.id,
+        team_id: team&.id,
+        team_affiliation_id: team_affiliation&.id,
+        rank:,
+        disqualified: disqualify_type.present?,
+        # WIP: Store actual DSQ label into relay code given it's not used here
+        # (this column is used only when registering relays by hand/UI)
+        relay_code: disqualify_type,
+        minutes: timing&.minutes,
+        seconds: timing&.seconds,
+        hundredths: timing&.hundredths,
+        standard_points: score || 0.0,
+        meeting_points: 0.0, # (no data)
+        reaction_time: 0.0, # (no data)
+        # Assume generic "Nuotata irregolare" refers to 1st swimmer only:
+        # (not true, but most of the times the label isn't more specific)
+        disqualification_code_type_id: disqualify_type =~ /irregolare/i ? GogglesDb::DisqualificationCodeType.find_by(code: 'RE1').id : nil
+      )
+      Import::Entity.new(row: new_row, matches: [new_row], bindings:)
+    end
+    # rubocop:enable Metrics/ParameterLists
+
+    # Finds or prepares for creation a MeetingRelaySwimmer row given all of the following parameters.
+    #
+    # == Params:
+    # - <tt>:meeting_program</tt> => the parent MeetingProgram instance (single, best candidate found or created)
+    # - <tt>:mprogram_key</tt> => parent MeetingProgram key
+    # - <tt>:event_type</tt> => linked GogglesDb::EventType instance
+    #
+    # - <tt>:swimmer</tt> => a valid or new GogglesDb::Swimmer instance
+    # - <tt>:swimmer_key</tt> => Swimmer key in the entity sub-Hash stored at root level in the data Hash member
+    #                            (may differ from the actual Swimmer.name returned by a search)
+    #
+    # - <tt>:badge</tt> => a valid or new GogglesDb::Badge instance
+    # - <tt>:team</tt> => a valid or new GogglesDb::TeamAffiliation instance
+    # - <tt>:team_key</tt> => Team key in the entity sub-Hash stored at root level in the data Hash member
+    #                         (may differ from the actual Team.name returned by a search)
+    #
+    # - <tt>:mir</tt> => a valid or new GogglesDb::MeetingIndividualResult instance
+    # - <tt>:mir_key</tt> => parent MIR key in the entity sub-Hash stored at root level in the data Hash member.
+    #
+    # - <tt>:length_in_meters</tt> => length in meters (int)
+    # - <tt>:abs_timing</tt> => Timing instance storing the absolute recorded time *from the start* of the heat
+    # - <tt>:delta_timing</tt> => Timing instance storing the relative *delta* lap time
+    #
+    # == Returns:
+    # An Import::Entity wrapping the target row together with a list of all possible candidates, when found.
+    #
+    # rubocop:disable Metrics/ParameterLists
+    def find_or_prepare_rel_swimmer(meeting_program:, mprogram_key:, event_type:,
+                                    swimmer:, swimmer_key:, team:, team_key:,
+                                    mrr:, mrr_key:, badge:, order:, length_in_meters:,
+                                    abs_timing:, delta_timing:)
+      bindings = {
+        'meeting_program' => mprogram_key, 'swimmer' => swimmer_key, 'team' => team_key,
+        'meeting_relay_result' => mrr_key
+      }
+      domain = GogglesDb::MeetingRelaySwimmer.includes(:meeting_program, :team)
+                                             .joins(:meeting_program, :team)
+                                             .where(
+                                               'meeting_programs.id': meeting_program&.id,
+                                               'teams.id': team&.id, swimmer_id: swimmer&.id
+                                             )
+      return Import::Entity.new(row: domain.first, matches: domain.to_a, bindings:) if domain.present?
+
+      stroke_type_id = if event_type.stroke_type_id == GogglesDb::StrokeType::REL_INTERMIXED_ID && order.positive?
+                         [
+                           GogglesDb::StrokeType::BACKSTROKE_ID,
+                           GogglesDb::StrokeType::BREASTSTROKE_ID,
+                           GogglesDb::StrokeType::BUTTERFLY_ID,
+                           GogglesDb::StrokeType::FREESTYLE_ID
+                         ].at(order - 1)
+                       else
+                         event_type.stroke_type_id
+                       end
+      # DEBUG ----------------------------------------------------------------
+      binding.pry if stroke_type_id.to_i < 1
+      # ----------------------------------------------------------------------
+
+      new_row = GogglesDb::MeetingRelaySwimmer.new(
+        meeting_relay_result_id: mrr&.id,
+        relay_order: order,
+        swimmer_id: swimmer&.id,
+        badge_id: badge&.id,
+        stroke_type_id: stroke_type_id,
+        # TODO/FUTUREDEV: COLUMN NOT EXISTING YET:
+        # length_in_meters: event_type.phase_length_in_meters,
+        # Make sure no nil timings:
+        minutes: delta_timing&.minutes || 0,
+        seconds: delta_timing&.seconds || 0,
+        hundredths: delta_timing&.hundredths || 0,
+        # TODO/FUTUREDEV: COLUMNS NOT EXISTING YET:
+        # minutes_from_start: abs_timing&.minutes,
+        # seconds_from_start: abs_timing&.seconds,
+        # hundredths_from_start: abs_timing&.hundredths,
+        reaction_time: 0.0 # (no data)
+      )
+      Import::Entity.new(row: new_row, matches: [new_row], bindings:)
+    end
+    # rubocop:enable Metrics/ParameterLists
+    #-- -------------------------------------------------------------------------
+    #++
+
+    # Generalized helper for #find_or_prepare_lap or #find_or_prepare_rel_swimmer,
+    # depending on distance in meters and the class of the specified result row.
+    # Requires a prev_lap_timing instance to compute any missing timing values.
+    #
+    # == Params:
+    # - <tt>:meeting_program</tt> => the parent MeetingProgram instance (single, best candidate found or created)
+    # - <tt>:mprogram_key</tt> => parent MeetingProgram key
+    # - <tt>:event_type</tt> => linked GogglesDb::EventType instance
+    #
+    # - <tt>:swimmer</tt> => a valid or new GogglesDb::Swimmer instance
+    # - <tt>:swimmer_key</tt> => Swimmer key in the entity sub-Hash stored at root level in the data Hash member
+    #                            (may differ from the actual Swimmer.name returned by a search)
+    # - <tt>:badge</tt> => a valid or new GogglesDb::Badge instance for the current swimmer
+    # - <tt>:team</tt> => a valid or new GogglesDb::TeamAffiliation instance
+    # - <tt>:team_key</tt> => Team key in the entity sub-Hash stored at root level in the data Hash member
+    #                         (may differ from the actual Team.name returned by a search)
+    #
+    # - <tt>:mr_model</tt> => a valid or new GogglesDb::MeetingIndividualResult / GogglesDb::MeetingRelayResult instance.
+    # - <tt>:mr_key</tt> => parent MIR/MRR key in the entity sub-Hash stored at root level in the data Hash member.
+    #
+    # - <tt>:length_in_meters</tt> => length in meters (int)
+    # - <tt>:row</tt> => data Hash containing the result row being processed;
+    #
+    # - <tt>:prev_lap_timing</tt> => Timing instance extracted from previous lap ("absolute" timing from start)
+    #                                or a Timing.new instance for lap number zero.
+    #
+    # == Returns:
+    # Returns the parsed lap Timing instance given current row data Hash and its key values;
+    # +nil+ in case no lap was found for the specified distance in meters when already added as an entity.
+    #
+    # rubocop:disable Metrics/ParameterLists
+    def extract_lap_timing_for(meeting_program:, mprogram_key:, event_type:,
+                               swimmer:, swimmer_key:, badge:, team:, team_key:,
+                               mr_model:, mr_key:, order:,
+                               length_in_meters:, row:, prev_lap_timing:)
+      lap_field_key = "lap#{length_in_meters}"
+      delta_field_key = "delta#{length_in_meters}"
+      # At least one of the two timing columns should be available in order to
+      # extract any lap timings:
+      return unless row[lap_field_key].present? || row[delta_field_key].present?
+
+      # Extract both delta and abs lap timings from the row data, if the fields are present:
+      lap_timing = Parser::Timing.from_l2_result(row[lap_field_key]) if row[lap_field_key].present?
+      delta_timing = Parser::Timing.from_l2_result(row[delta_field_key]) if row[delta_field_key].present?
+
+      # Compute missing delta if lap_timing is present:
+      if (delta_timing.nil? || (delta_timing.is_a?(Timing) && delta_timing.zero?)) &&
+         lap_timing.present?
+        delta_timing = prev_lap_timing.present? ? lap_timing - prev_lap_timing : lap_timing
+      end
+
+      # Compute possible missing timing counterpart (both delta and abs lap):
+      delta_timing = lap_timing - prev_lap_timing if !delta_timing && lap_timing && lap_timing.positive? && prev_lap_timing.positive?
+      lap_timing = delta_timing + prev_lap_timing if !lap_timing && delta_timing && delta_timing.positive? && prev_lap_timing.positive?
+
+      if mr_model.is_a?(GogglesDb::MeetingIndividualResult)
+        # *** MIR -> Lap ***
+        Rails.logger.debug("    >> Lap #{length_in_meters}m: <#{lap_timing}>") if @toggle_debug
+        lap_entity = find_or_prepare_lap(
+          meeting_program:, mprogram_key:, swimmer:, swimmer_key:,
+          team:, team_key:, mir: mr_model, mir_key: mr_key,
+          length_in_meters: length_in_meters,
+          abs_timing: lap_timing,     # (abs = "from start")
+          delta_timing: delta_timing  # (delta = "each individual lap")
+        )
+        lap_key = "lap#{length_in_meters}-#{mr_key}"
+        return if entity_present?('lap', lap_key)
+
+        add_entity_with_key('lap', lap_key, lap_entity)
+
+      elsif mr_model.is_a?(GogglesDb::MeetingRelayResult)
+        # DEBUG ----------------------------------------------------------------
+        binding.pry if order < 1 || order > 8
+        # ----------------------------------------------------------------------
+        # *** MRR -> MRS ***
+        Rails.logger.debug("    >> Relay Swimmer '#{swimmer_key}' @ #{length_in_meters}m: <#{lap_timing}>") if @toggle_debug
+        mrs_entity = find_or_prepare_rel_swimmer(
+          meeting_program:, mprogram_key:, event_type:,
+          swimmer:, swimmer_key:, badge:,
+          team:, team_key:, mrr: mr_model, mrr_key: mr_key, order:,
+          length_in_meters: length_in_meters,
+          abs_timing: lap_timing,     # (abs = "from start")
+          delta_timing: delta_timing  # (delta = "each individual lap")
+        )
+        mrs_key = "mrs#{length_in_meters}-#{mr_key}"
+        return if entity_present?('meeting_relay_swimmer', mrs_key)
+
+        add_entity_with_key('meeting_relay_swimmer', mrs_key, mrs_entity)
+
+      else
+        # TODO: UNSUPPORTED!
+        Rails.logger.debug("    >> INVALID PARAMETERS for lap timing extraction: target model #{mr_model.class}") if @toggle_debug
+        # DEBUG ----------------------------------------------------------------
+        binding.pry
+        # ----------------------------------------------------------------------
+      end
+      # Return current lap timing (can be used when processing next lap to compute any missing delta):
+      lap_timing
+    end
+    #-- -----------------------------------------------------------------------
+    #++
+
+    # Finds or prepares for creation a MeetingTeamScore row given all of the following parameters.
+    #
+    # == Params:
+    # - <tt>:meeting</tt> => the parent Meeting instance (single, best candidate found or created)
+    #
+    # - <tt>:team</tt> => a valid or new GogglesDb::TeamAffiliation instance
+    # - <tt>:team_key</tt> => Team key in the entity sub-Hash stored at root level in the data Hash member
+    #                         (may differ from the actual Team.name returned by a search)
+    #
+    # - <tt>:team_affiliation</tt> => associated TeamAffiliation
+    # - <tt>:rank</tt> => integer ranking position
+    # - <tt>:ind_score</tt> => Float score for "individual points" (using FIN scoring rules)
+    # - <tt>:overall_score</tt> => Float score for "overall points" (using FIN scoring rules)
+    #
+    # == Returns:
+    # An Import::Entity wrapping the target row together with a list of all possible candidates, when found.
+    #
+    # rubocop:disable Metrics/ParameterLists
+    def find_or_prepare_team_score(meeting:, team:, team_key:, team_affiliation:, rank:,
+                                   ind_score: 0.0, overall_score: 0.0)
+      bindings = { 'team_affiliation' => team_key, 'team' => team_key }
+      domain = GogglesDb::MeetingTeamScore.where(
+        meeting_id: meeting&.id,
+        team_id: team&.id, team_affiliation_id: team_affiliation&.id
+      )
+      return Import::Entity.new(row: domain.first, matches: domain.to_a, bindings:) if domain.present?
+
+      new_row = GogglesDb::MeetingTeamScore.new(
+        meeting_id: meeting&.id,
+        season_id: @season&.id,
+        team_id: team&.id,
+        team_affiliation_id: team_affiliation&.id,
+        rank:,
+        sum_individual_points: ind_score,
+        sum_relay_points: overall_score - ind_score,
+        sum_team_points: overall_score,
+        meeting_points: ind_score, # (no data)
+        meeting_relay_points: overall_score - ind_score, # (no data)
+        meeting_team_points: overall_score, # (no data)
+        season_points: 0.0, # (no data)
+        season_relay_points: 0.0, # (no data)
+        season_team_points: 0.0 # (no data)
+      )
+      Import::Entity.new(row: new_row, matches: [new_row], bindings:)
+    end
+    # rubocop:enable Metrics/ParameterLists
+    #-- -----------------------------------------------------------------------
+    #++
+
+    # Search & returns the full string key for the specified model name; +nil+ if not found.
+    # Support Regexps as keys or partial keys for a simple find/starts_with.
+    #
+    # == Params:
+    # - <tt>model_name</tt>: the snail-case string name of the model, with the implied GogglesDb namespace.
+    #                        (i.e.: 'swimmer' for Swimmer)
+    #
+    # - <tt>key_or_regexp</tt>: use a Regexp for a #match or use a String for #starts_with?
+    #
+    # == Returns:
+    # The first key found for the specified <tt>model_name</tt> matching <tt>key_or_regexp</tt>,
+    # or +nil+ if not found.
+    def search_key_for(model_name, key_or_regexp)
+      if key_or_regexp.is_a?(Regexp)
+        @data&.fetch(model_name, {})&.keys.find { |key| key.to_s.match?(key_or_regexp) }
+      else
+        @data&.fetch(model_name, {})&.keys.find { |key| key.to_s.starts_with?(key_or_regexp) }
+      end
+    end
 
     # Getter for any model instance stored at root level (as edit/review cache) given a specific access key.
     # This method detects also if the cached row is inside an Hash (re-parsed JSON) or a not-yet serialized Import::Entity#row.
@@ -1227,16 +1638,24 @@ module Import
 
     private
 
-    # Returns the internal string key used to access a cached Swimmer entity row.
+    # Returns the internal string key used to access a cached Swimmer entity row, or
+    # a Regexp to search for it if the gender is unknown.
     #
     # == Params
     # - <tt>swimmer_original_name</tt>: original swimmer name text extracted from the result file "as is"
     #   (not the full name from the matched model row);
+    #
     # - <tt>year_of_birth</tt>: GogglesDb::Swimmer#year_of_birth;
+    #
     # - <tt>gender_type_code</tt>: GogglesDb::GenderType#code for the swimmer;
-    # - <tt>team_original_name</tt>: as above, original team name text extracted from the result file "as is".
+    #   when +nil+ a Regexp for seeking the full key will be returned instead
+    #   (so that it can be used with #cached_instance_of());
+    #
+    # - <tt>team_original_name</tt>: original team name text extracted from the result file "as is".
     #
     def swimmer_key_for(swimmer_original_name, year_of_birth, gender_type_code, team_original_name)
+      return Regexp.new("#{swimmer_original_name}-#{year_of_birth}-[fmx]-#{team_original_name}", Regexp::IGNORECASE) if gender_type_code.blank?
+
       "#{swimmer_original_name}-#{year_of_birth}-#{gender_type_code}-#{team_original_name}"
     end
 
@@ -1269,6 +1688,409 @@ module Import
     def mir_key_for(program_key, swimmer_key)
       "#{program_key}/#{swimmer_key}"
     end
+
+    # Returns the internal string key used to access a cached MeetingRelayResult entity row.
+    #
+    # == Params
+    # - <tt>program_key</tt>: string key used to access the cached entity row for the parent MeetingProgram;
+    # - <tt>team_key</tt>: as above, but for the associated GogglesDb::Team.
+    def mrr_key_for(program_key, team_key)
+      "#{program_key}/#{team_key}"
+    end
+    #-- -----------------------------------------------------------------------
+    #++
+
+    # Prepares the Team model given the specified data or simply returns it if
+    # it has been already mapped.
+    #
+    # == Options:
+    # - <tt>:team_key</tt> => string key used to ID the +team+ entity in cache
+    #
+    # == Returns:
+    # The mapped Team model row.
+    #
+    def map_and_return_team(team_key:)
+      # Add only if not already present in hash:
+      return cached_instance_of('team', team_key) if entity_present?('team', team_key)
+
+      Rails.logger.debug("\r\n\r\n*** TEAM '#{team_key}' (+) ***") if @toggle_debug
+      team_entity = find_or_prepare_team(team_key)
+      team_entity.add_bindings!('team_affiliation' => team_key)
+      add_entity_with_key('team', team_key, team_entity)
+      team_entity.row
+    end
+
+    # Prepares the TeamAffiliation model given the specified data or simply returns it if
+    # it has been already mapped.
+    #
+    # == Options:
+    # - <tt>:team_key</tt> => the Team model row associated to the TeamAffiliation
+    # - <tt>:team_key</tt> => string key used to ID the +team+/+team_affiliation+ entity in cache
+    #
+    # == Returns:
+    # The mapped TeamAffiliation model row.
+    #
+    def map_and_return_team_affiliation(team:, team_key:)
+      return cached_instance_of('team_affiliation', team_key) if entity_present?('team_affiliation', team_key)
+
+      team_affiliation_entity = find_or_prepare_affiliation(team, team_key, @season)
+      team_affiliation_entity.add_bindings!('team' => team_key)
+      add_entity_with_key('team_affiliation', team_key, team_affiliation_entity)
+      team_affiliation_entity.row
+    end
+
+    # Prepares the swimmer key and its associated model given the specified data or simply
+    # returns the already mapped model if there is one.
+    #
+    # == Options:
+    # - <tt>:swimmer_name</tt> => swimmer's full name;
+    # - <tt>:year_of_birth</tt> => swimmer's year of birth;
+    #
+    # - <tt>:gender_type_code</tt> => swimmer's gender code ('M', 'F', 'X'); leave
+    #   default +nil+ if unknown (a partial key search will be performed);
+    #
+    # - <tt>:team_name</tt> => swimmer's team name.
+    #
+    # == Returns:
+    # The tuple [<swimmer_key>, <swimmer_model>] or [nil, nil] in case of errors.
+    #
+    def map_and_return_swimmer(options = {})
+      swimmer_key = swimmer_key_for(options[:swimmer_name], options[:year_of_birth],
+                                    options[:gender_type_code], options[:team_name])
+      # Search for the actual full key in case part of it was blank:
+      swimmer_key = search_key_for('swimmer', swimmer_key) if options[:gender_type_code].blank?
+      # NOTE: swimmer_key may result nil if the search fails!
+      return [swimmer_key, cached_instance_of('swimmer', swimmer_key)] if entity_present?('swimmer', swimmer_key)
+
+      # The following can happen for swimmers that enrolled just in relays, with a result
+      # format missing the gender type
+      Rails.logger
+           .warn("\r\n    ------> '#{options[:swimmer_name]}' *** SWIMMER WITH MISSING gender_type_code (probably from a relay)") if options[:gender_type_code].blank?
+
+      Rails.logger.debug("\r\n=== SWIMMER '#{options[:swimmer_name]}' (+) ===") if @toggle_debug
+      swimmer_entity = find_or_prepare_swimmer(options[:swimmer_name], options[:year_of_birth],
+                                               options[:gender_type_code])
+      # Rebuild the key from the resulting entity in case the search nullified the partial key:
+      if swimmer_key.blank?
+        swimmer_key = swimmer_key_for(options[:swimmer_name], options[:year_of_birth],
+                                      swimmer_entity.row.gender_type.code, options[:team_name])
+      end
+      # Special disambiguation reference (in case of same-named swimmers with same age):
+      swimmer_entity.add_bindings!('team' => options[:team_name])
+      # Store the required bindings at root level in the data_hash:
+      # (ASSERT: NEVER store entities with blank keys)
+      add_entity_with_key('swimmer', swimmer_key, swimmer_entity)
+      # Return both the key and its mapped model row:
+      [swimmer_key, swimmer_entity.row]
+    end
+
+    # Prepares the badge model given the specified data or simply
+    # returns the already mapped model if there is one.
+    #
+    # == Options:
+    # - <tt>:swimmer</tt> => a valid or new GogglesDb::Swimmer instance
+    # - <tt>:swimmer_key</tt> => string key used to ID the +swimmer+ entity above in cache
+    #
+    # - <tt>:team</tt> => a valid or new GogglesDb::Team instance
+    # - <tt>:team_key</tt> => string key used to ID the +team+ entity above in cache
+    #
+    # - <tt>:team_affiliation</tt> => a valid or new GogglesDb::TeamAffiliation instance
+    # - <tt>:category_type</tt> => a valid GogglesDb::CategoryType instance
+    #
+    # == Returns:
+    # The mapped badge model row.
+    #
+    def map_and_return_badge(options = {})
+      return cached_instance_of('badge', options[:swimmer_key]) if entity_present?('badge', options[:swimmer_key])
+
+      badge_entity = find_or_prepare_badge(
+        swimmer: options[:swimmer], swimmer_key: options[:swimmer_key],
+        team: options[:team], team_key: options[:team_key],
+        team_affiliation: options[:team_affiliation],
+        category_type: options[:category_type]
+      )
+      add_entity_with_key('badge', options[:swimmer_key], badge_entity)
+      badge_entity.add_bindings!('swimmer' => options[:swimmer_key])
+      badge_entity.add_bindings!('team' => options[:team_key])
+      Rails.logger.debug("    ------> BADGE '#{swimmer_name}' (+)") if @toggle_debug
+      badge_entity.row
+    end
+    #-- -----------------------------------------------------------------------
+    #++
+
+    # Scans the content of the specified row Hash (assuming it contains data stored
+    # using our "L2" format), verifies it contains result from an INDIVIDUAL result (including
+    # Lap data), and makes sure each entity is already mapped and present inside the Entity cache.
+    # (If a required entity is already mapped and present in cache, the corresponding
+    # Import::Entity instance won't be added.)
+    #
+    # If the full options for processing also the MIR as a result are given,
+    # lap timings will be extracted & mapped as well.
+    #
+    # Each option outlines a part of the +row+ data that has been already processed.
+    #
+    # == Required options:
+    # - <tt>:row</tt>: a "L2" hash result row, allegedly from a MIR (it should NOT contain
+    #                  the 'relay' boolean flag in it), wrapping the data to be processed.
+    #
+    # - <tt>:category_type</tt> => a valid GogglesDb::CategoryType instance
+    # - <tt>:event_type</tt> => a valid GogglesDb::EventType instance
+    #
+    # == Additional options:
+    # If any of these are missing, the method will skip the extraction of the
+    # lap timings and the subsequent creation of the associated Lap entities.
+    #
+    # - <tt>:mprg</tt> => a valid or new GogglesDb::MeetingProgram instance
+    # - <tt>:mprg_key</tt> => string key used to ID the +mprg+ entity above in cache
+    #
+    def process_mir_and_laps(options = {})
+      return unless options[:row].is_a?(Hash) && options[:row]['relay'].blank?
+
+      team_name = options[:row]['team']
+      swimmer_name = options[:row]['name']
+      year_of_birth = options[:row]['year']
+      gender_type_code = options[:row]['sex']
+      # (Gender code can also be retrieved by search, if missing)
+      return unless team_name.present? && swimmer_name.present? && year_of_birth.present?
+
+      team = map_and_return_team(team_key: team_name)
+      team_affiliation = map_and_return_team_affiliation(team:, team_key: team_name)
+      swimmer_key, swimmer = map_and_return_swimmer(swimmer_name:, year_of_birth:, team_name:)
+      badge = map_and_return_badge(swimmer:, swimmer_key:, team:, team_key: team_name,
+                                   team_affiliation:, category_type: options[:category_type])
+      # DEBUG: ******************************************************************
+      # SHOULD NEVER HAPPEN at this point:
+      binding.pry unless team.present? && team_affiliation.present? && badge.present? && swimmer.present? && swimmer_key.present?
+      # DEBUG: ******************************************************************
+      return unless options[:mprg].present? && options[:mprg_key].present? && options[:event_type].present?
+
+      rank = options[:row]['pos'].to_i
+      score = Parser::Score.from_l2_result(options[:row]['score'])
+      timing = Parser::Timing.from_l2_result(options[:row]['timing'])
+      mir_key = mir_key_for(options[:mprg_key], swimmer_key)
+      # NOTE: MIR already mapped => laps won't be processed
+      return if entity_present?('meeting_individual_result', mir_key)
+
+      mir_entity = find_or_prepare_mir(
+        meeting_program: options[:mprg], mprogram_key: options[:mprg_key],
+        swimmer:, swimmer_key:, team:, team_key: team_name,
+        team_affiliation:, badge:,
+        rank:, timing:, score:
+      )
+      add_entity_with_key('meeting_individual_result', mir_key, mir_entity)
+      mr_model = mir_entity.row
+
+      # *** LAPS ***
+      # Search and prepare Laps only when present, one instance for each possible 50m lap,
+      # EXCLUDING LAST LAP (since we already use MIR's final timing as last lap result
+      # and last delta timing is computed by Main's Lap table view component):
+      lap_timing = Timing.new # (lap number zero)
+      (1..(options[:event_type].length_in_meters.to_i / 50 - 1)).each do |idx|
+        lap_timing = extract_lap_timing_for(
+          meeting_program: options[:mprg], mprogram_key: options[:mprg_key],
+          event_type: options[:event_type],
+          swimmer:, swimmer_key:, badge:, team:, team_key: team_name,
+          mr_model:, mr_key: mir_key,  order: idx,
+          length_in_meters: idx * 50, row: options[:row],
+          prev_lap_timing: lap_timing
+        )
+      end
+    end
+
+    # Scans the content of the specified row Hash (assuming it contains data stored
+    # using our "L2" format), verifies it contains result from a team RELAY RESULT (including
+    # swimmer/lap data), and makes sure each entity is already mapped and present inside the Entity cache.
+    # (If a required entity is already mapped and present in cache, the corresponding
+    # Import::Entity instance won't be added.)
+    #
+    # If the full options for processing also the MRR as a result are given,
+    # lap timings & swimmers will be extracted & mapped as well.
+    #
+    # Each option outlines a part of the +row+ data that has been already processed.
+    #
+    # == Required options:
+    # - <tt>:row</tt>: a "L2" hash result row, allegedly from a MRR (it must have
+    #                  the 'relay' boolean flag in it), wrapping the data to be processed.
+    #
+    # - <tt>:category_type</tt> => a valid GogglesDb::CategoryType instance
+    # - <tt>:event_type</tt> => a valid GogglesDb::EventType instance
+    #
+    # == Additional options:
+    # If any of these are missing, the method will skip the extraction of the
+    # lap timings and the subsequent creation of the associated MeetingRelaySwimmer entities.
+    #
+    # - <tt>:mprg</tt> => a valid or new GogglesDb::MeetingProgram instance
+    # - <tt>:mprg_key</tt> => string key used to ID the +mprg+ entity above in cache
+    #
+    def process_mrr_and_mrs(options = {})
+      return unless options[:row].is_a?(Hash) && options[:row]['relay'].present?
+
+      team_name = options[:row]['team']
+      rank = options[:row]['pos'].to_i
+      score = Parser::Score.from_l2_result(options[:row]['score'])
+      timing = Parser::Timing.from_l2_result(options[:row]['timing'])
+      mrr_key = mrr_key_for(options[:mprg_key], team_name)
+      # NOTE: MRR already mapped => MRswimmers won't be processed
+      return if entity_present?('meeting_relay_result', mrr_key)
+
+      team = map_and_return_team(team_key: team_name)
+      team_affiliation = map_and_return_team_affiliation(team:, team_key: team_name)
+      # DEBUG: ******************************************************************
+      # SHOULD NEVER HAPPEN at this point:
+      binding.pry if team.nil? || team_affiliation.nil?
+      # DEBUG: ******************************************************************
+      return unless options[:mprg].present? && options[:mprg_key].present?
+
+      mrr_entity = find_or_prepare_mrr(
+        meeting_program: options[:mprg], mprogram_key: options[:mprg_key],
+        team:, team_key: team_name, team_affiliation:, rank:,
+        timing:, score:, disqualify_type: options[:row]['disqualify_type']
+      )
+      add_entity_with_key('meeting_relay_result', mrr_key, mrr_entity)
+      mr_model = mrr_entity.row
+      # DEBUG: ******************************************************************
+      # SHOULD NEVER HAPPEN at this point:
+      binding.pry unless mr_model.present?
+      # DEBUG: ******************************************************************
+
+      # Considering only max relay swimmers x row: 8
+      lap_timing = Timing.new # (lap number zero)
+      (1..8).each do |idx|
+        swimmer_name = options[:row]["swimmer#{idx}"]
+        year_of_birth = options[:row]["year_of_birth#{idx}"]
+        # gender_type_code = options[:row]['sex'] # ('sex' currently MISSING from data)
+        next unless swimmer_name.present? && year_of_birth.present?
+
+        swimmer_key, swimmer = map_and_return_swimmer(swimmer_name:, year_of_birth:, team_name:)
+        badge = map_and_return_badge(swimmer:, swimmer_key:, team:, team_key: team_name,
+                                     team_affiliation:, category_type: options[:category_type])
+        # DEBUG: ******************************************************************
+        # SHOULD NEVER HAPPEN at this point:
+        binding.pry unless badge.present? && swimmer.present? && swimmer_key.present?
+        # DEBUG: ******************************************************************
+        # DEBUG ----------------------------------------------------------------
+        binding.pry if idx < 1 || idx > 8
+        # ----------------------------------------------------------------------
+
+        lap_timing = extract_lap_timing_for(
+          meeting_program: options[:mprg], mprogram_key: options[:mprg_key],
+          event_type: options[:event_type],
+          swimmer:, swimmer_key:, badge:, team:, team_key: team_name,
+          mr_model:, mr_key: mrr_key,
+          order: idx, length_in_meters: idx * 50,
+          row: options[:row], prev_lap_timing: lap_timing
+        )
+      end
+    end
+
+    # Similarly to #process_mrr_and_mrs(), this simplified version of the same method
+    # pre-parses a row containing relay data and possibly all its laps/swimmers,
+    # in order to detect which gender code use. (So it's useful when the gender is
+    # not specified in the meeting program section.)
+    #
+    # This will be successful only if all relay swimmers are included in the single data row
+    # and these can found on the database or have already been mapped.
+    #
+    # == NOTE:
+    # No actual MRR or MRS caching/mapping will be done here: the only entities that
+    # will be mapped if not already are:
+    #
+    # - Team & TeamAffiliation
+    # - Swimmers & Badges
+    #
+    # == Required options:
+    # - <tt>:row</tt>: a "L2" hash result row, allegedly from a MRR (it must have
+    #                  the 'relay' boolean flag in it), wrapping the data to be processed.
+    #
+    # - <tt>:category_type</tt> => a valid GogglesDb::CategoryType instance
+    #
+    # == Returns
+    # The actual GogglesDb::GenderType instance detected by looking at the swimmers
+    # forming the relay or +nil+ in case of errors or when not found at all.
+    # (The latter may happen for DSQ relays which usually don't have any swimmers enlisted
+    # as result rows.)
+    #
+    def preprocess_mrr_for_gender_code(options = {})
+      return unless options[:row].is_a?(Hash) && options[:row]['relay'].present?
+
+      team_name = options[:row]['team']
+      team = map_and_return_team(team_key: team_name)
+      team_affiliation = map_and_return_team_affiliation(team:, team_key: team_name)
+      # DEBUG: ******************************************************************
+      # SHOULD NEVER HAPPEN at this point:
+      binding.pry if team.nil? || team_affiliation.nil?
+      # DEBUG: ******************************************************************
+
+      # Considering only max relay swimmers x row: 8
+      lap_timing = Timing.new # (lap number zero)
+      gender_ids = []
+      (1..8).each do |idx|
+        swimmer_name = options[:row]["swimmer#{idx}"]
+        year_of_birth = options[:row]["year_of_birth#{idx}"]
+        # gender_type_code = options[:row]['sex'] # ('sex' currently MISSING from data)
+        next unless swimmer_name.present? && year_of_birth.present?
+
+        swimmer_key, swimmer = map_and_return_swimmer(swimmer_name:, year_of_birth:, team_name:)
+        map_and_return_badge(swimmer:, swimmer_key:, team:, team_key: team_name,
+                             team_affiliation:, category_type: options[:category_type])
+        # DEBUG: ******************************************************************
+        # SHOULD NEVER HAPPEN at this point:
+        binding.pry unless swimmer.present? && swimmer_key.present?
+        # DEBUG: ******************************************************************
+        gender_ids << swimmer.gender_type_id
+      end
+      # Return gender type as detected from the enrolled swimmers:
+      # (Assuming all swimmers were included in data & properly detected)
+      gender_ids = gender_ids.compact.uniq
+      return if gender_ids.blank?
+
+      gender_ids.count > 1 ? GogglesDb::GenderType.intermixed : GogglesDb::GenderType.find(gender_ids.first)
+    end
+    #-- -----------------------------------------------------------------------
+    #++
+
+    # Scans the content of the specified rows array (assuming each element contains a
+    # ranking Hash in "L2" format), verifies it contains proper ranking data
+    # and makes sure each entity is already mapped and present inside the Entity cache.
+    # (If a required entity is already mapped and present in cache, the corresponding
+    # Import::Entity instance won't be added.)
+    #
+    # == Required options:
+    # - <tt>:rows</tt>: the full array of ranking rows Hash in "L2" format.
+    #                   (the parent section should contain the 'ranking' flag)
+    #
+    # - <tt>:meeting</tt> => the parent GogglesDb::Meeting instance
+    #
+    def process_team_score(rows:, meeting:)
+      return unless rows.is_a?(Array) && meeting.is_a?(GogglesDb::Meeting)
+
+      rows.each do |ranking_hash|
+        next unless ranking_hash.is_a?(Hash) && ranking_hash['team'].present?
+
+        team_name = ranking_hash['team']
+        team = map_and_return_team(team_key: team_name)
+        team_affiliation = map_and_return_team_affiliation(team:, team_key: team_name)
+        # DEBUG: ******************************************************************
+        # SHOULD NEVER HAPPEN at this point:
+        binding.pry unless team.present? && team_affiliation.present?
+        # DEBUG: ******************************************************************
+
+        rank = ranking_hash['pos'].to_i
+        ts_key = "#{rank}-#{team_name}"
+        next if entity_present?('meeting_team_score', ts_key)
+
+        ind_score = ranking_hash['ind_score'].to_s.gsub(',', '.').to_f
+        overall_score = ranking_hash['overall_score'].to_s.gsub(',', '.').to_f
+
+        ts_entity = find_or_prepare_team_score(
+          meeting:, team:, team_key: team_name, team_affiliation:,
+          rank:, ind_score:, overall_score:
+        )
+        add_entity_with_key('meeting_team_score', ts_key, ts_entity)
+      end
+    end
+    #-- -----------------------------------------------------------------------
+    #++
   end
   # rubocop:enable Metrics/AbcSize, Metrics/PerceivedComplexity, Metrics/MethodLength, Metrics/CyclomaticComplexity
 end

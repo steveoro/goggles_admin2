@@ -1,0 +1,13 @@
+%li.list-group-item{ class: css_class_for_card }
+  %small
+    (#{disqualified? ? dsq_label : @rank}) #{@timing}
+    %b #{@prg_key.split('/')&.last}
+    - if lap_swimmers&.count > 1
+      %br/
+      %span.lap-swimmers= lap_swimmers&.join(' / ')
+    - if lap_timings.present?
+      %br/
+      %span.lap-timings ⏱: #{lap_timings}
+    - if delta_timings.present?
+      %br/
+      %span.lap-timings Δt: #{delta_timings}

@@ -40,7 +40,7 @@ it:
     settings:
       title: "Impostazioni"
       connection:
-        connect_to_label: "🖥 Sei connesso con:"
+        connect_to_label: "🖥 Sei connesso con (includi il protocollo e la porta):"
         save_btn: "Salva"
         save_confirmation: "Cambiare la URL di connessione ti disconnetterà dal server API conrrente. Continuo?"
         save_failed: "Errore durante il salvataggio della configurazione di base. Controlla il log di sistema."

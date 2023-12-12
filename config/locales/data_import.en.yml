@@ -26,7 +26,7 @@ en:
       btn_process_json_tooltip: 'Process this result file, preparing a batch data import transaction'
       btn_reparse_json_tooltip: 'Forced re-parse of this result file using the available source data in it'
       btn_process_sql_tooltip: 'Upload this data-import batch file to the remote server'
-      confirm_push: 'Are you sure you want to PUSH this file to the remote server?'
+      confirm_purge: "Are you sure you want to PURGE the possible duplicate '%{key}'? (NOTE: this can be done ONLY BEFORE starting reviewing results to avoid data corruption!)"
     data_fix:
       link_to_manifest_download: "Download manifest"
       link_to_results_pdf_download: "Download results on PDF"
@@ -39,8 +39,11 @@ en:
       btn_start_sql_batch_disable: "Processing..."
       btn_reparse_session_label: "Reparse sessions"
       btn_reparse_session_tooltip: "Make a forced reparse of this result file but JUST for the Meeting sessions (useful if you change and save the Meeting ID)"
+      btn_purge_duplicate: "Purge duplicate"
+      confirm_purge: 'Are you sure you want to PUSH this file to the remote server?'
       msg:
         warning_retry_needed: "RETRY ERROR SECTION FOUND! This result file can still be processed but needs to be re-downloaded to be complete."
+      btn_expand_scan_details: "Scan details"
     push:
       msg_prepare_batch_ok: 'SQL batch file created.'
       msg_send_batch_ok: "SQL batch file successfully sent."

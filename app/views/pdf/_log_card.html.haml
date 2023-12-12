@@ -1,0 +1,22 @@
+.row-fluid.container.px-0
+  .card#log-card
+    #log-header
+      .row.mb-0
+        .col-3
+          = form_tag(pdf_log_contents_path(file_path: log_pathname), id: 'frm-log-contents', method: :put, remote: true) do
+            = submit_tag('Log file', id: 'btn-log-contents', class: 'btn btn-sm btn-outline-primary m-1',
+                        'aria-label' => 'Load log file', type: 'submit', data: { toggle: 'collapse',
+                  target: '#log-body', 'aria-expanded' => false, 'aria-controls' => 'log-body' })
+        .col.py-2.text-center
+          %small
+            %b= "#{File.basename(log_pathname)} "
+        .col.py-2.mx-2.text-secondary.text-right
+          %small= "#{File.size(log_pathname)} bytes"
+
+    .collapse.bg-light-grey2{ id: 'log-body' }
+      .card-body.border-bottom.border-secondary#log-result
+        .text-center.my-4.py-4
+          .spinner-border.text-primary{ role: 'status' }
+
+.row-fluid.py-4
+  %hr/

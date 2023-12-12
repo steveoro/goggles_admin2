@@ -7,12 +7,13 @@
       = render(partial: 'data_fix_tabs', locals: { active_tab: 'swimmers', file_path: @file_path })
 
     %section.my-2#review-swimmers
-      - row_count = @swimmers_hash.keys.count
+      - swimmer_keys = @swimmers_hash.keys
+      - row_count = swimmer_keys.count
       .container-fluid
         .row-fluid
           %p Tot.: #{row_count}
         .row-fluid
-          - @swimmers_hash.keys.sort.each_with_index do |swimmer_key, index|
+          - swimmer_keys.sort.each_with_index do |swimmer_key, index|
             :ruby
               swimmer_entity = @swimmers_hash[swimmer_key]
               swimmer = swimmer_entity.row
@@ -51,6 +52,18 @@
                               Teams
                         - else
                           🆕
+                          - possible_dup_count = swimmer_keys.select { |skey| skey.starts_with?(name_part) }.count
+                          - if possible_dup_count > 1
+                            &nbsp;
+                            = form_for(swimmer, url: data_fix_purge_path(swimmer, model: 'swimmer'), method: :delete) do |f|
+                              = hidden_field_tag('key', swimmer_key) # actual entity key, used to retrieve the entity from data hash
+                              = hidden_field_tag('file_path', @file_path)
+                              %button.btn.btn-sm.btn-outline-danger{ id: "btn-purge-#{swimmer_key}", type: 'submit', method: :delete,
+                                  'aria-label' => 'Purge',
+                                  data: { confirm: t('data_import.data_fix.confirm_purge', key: swimmer_key),
+                                  disable_with: t('home.please_wait') } }
+                                %i.fa.fa-trash-o
+                                = t('data_import.data_fix.btn_purge_duplicate')
                       - if swimmer.id.present?
                         .row
                           %small{ id: "team-list-for-#{swimmer.id}" }

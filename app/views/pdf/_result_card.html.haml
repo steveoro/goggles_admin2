@@ -1,0 +1,89 @@
+.row-fluid.container.px-0
+  .card#result-card
+    #result-header
+      .row.mb-0
+        .col-3
+          %button.btn.btn-sm.btn-outline-primary.m-1{ id: 'btn-scan-result-details',
+                  'aria-label' => 'scan result details', type: 'button',
+                  data: { toggle: 'collapse', target: '#checked-formats',
+                  'aria-expanded' => true, 'aria-controls' => 'checked-formats' } }
+            = I18n.t('data_import.data_fix.btn_expand_scan_details')
+
+        .col.py-2.mx-2.text-secondary.text-right
+          %b= "#{last_index}/#{page_count}"
+          - if limit_pages
+            &nbsp;
+            Pag.:
+            = limit_pages
+
+        .col.py-2.text-center
+          - if last_index >= page_count && last_result_fmt_name.present?
+            FULL PARSE
+            &nbsp;
+            %i.text-success.fa.fa-check-square-o
+          - else
+            PARSING STOPPED!
+            &nbsp;
+            %i.text-danger.fa.fa-times
+
+    .collapse.show{ id: 'checked-formats' }
+      .card-body.border-bottom.border-secondary
+        %table.table.table-striped.table-hover.table-sm
+          %thead
+            %tr.bg-light-blue.text-center
+              %th{ scope: 'col' }
+                %small
+                  %i Format
+              %th{ scope: 'col' }
+                %small
+                  %i Valid
+              %th{ scope: 'col' }
+                %small
+                  %i Last checked @ idx
+              %th{ scope: 'col' }
+                %small
+                  %i Valid for pages (after last check)
+          %tbody
+            - checked_formats.each do |format_name, hsh_res|
+              %tr
+                %td
+                  %small
+                    %b= format_name
+                %td.text-center
+                  - if hsh_res[:valid]
+                    .text-success ✔
+                  - else
+                    .text-danger x
+                %td.text-right
+                  = hsh_res[:last_check]
+                %td.text-right
+                  = hsh_res[:valid_at].count
+              - if last_valid_scan[format_name].present?
+                %tr
+                  %td
+                    %small
+                      %i= "(#{format_name})"
+                  %td{ colspan: 3 }
+                    %small
+                      %i Latest context scan:
+              - last_valid_scan[format_name]&.each do |ctx_name, ctx_valid|
+                %tr
+                  %td{ colspan: 2 }
+                    &nbsp;
+                  %td
+                    %small
+                      %b= ctx_name
+                  %td
+                    - if ctx_valid
+                      %small.text-success ✔
+                    - else
+                      %small.text-danger -
+
+-# Enable subsequent data-fix step only on a full parse:
+- if last_index >= page_count && last_result_fmt_name.present?
+  .row-fluid.my-4.text-center
+    = link_to(review_sessions_path(file_path: json_pathname), method: :get,
+              class: 'btn btn-outline-primary mb-1', data: { toggle: 'tooltip',
+              title: t('data_import.file.btn_process_json_tooltip') }) do
+      %i.fa.fa-edit
+      DATA-FIX

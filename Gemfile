@@ -51,6 +51,7 @@ gem 'rest-client'
 gem 'scenic'
 gem 'scenic-mysql_adapter'
 gem 'stimulus-rails'
+gem 'terminal'
 gem 'view_component'
 
 group :development do

@@ -50,7 +50,7 @@ class DataFixController < ApplicationController
     end
     prepare_sessions_and_pools
     @retry_needed = @solver.retry_needed
-    ActionCable.server.broadcast('ImportStatusChannel', msg: 'Review sessions: ready')
+    ActionCable.server.broadcast('ImportStatusChannel', { msg: 'Review sessions: ready' })
   end
 
   # [GET] /review_teams - STEP 2: teams
@@ -74,7 +74,7 @@ class DataFixController < ApplicationController
     end
     @teams_hash = @solver.rebuild_cached_entities_for('team')
     @retry_needed = @solver.retry_needed
-    ActionCable.server.broadcast('ImportStatusChannel', msg: 'Review teams: ready')
+    ActionCable.server.broadcast('ImportStatusChannel', { msg: 'Review teams: ready' })
   end
 
   # [GET] /review_swimmers - STEP 3: swimmers
@@ -98,7 +98,7 @@ class DataFixController < ApplicationController
     end
     @swimmers_hash = @solver.rebuild_cached_entities_for('swimmer')
     @retry_needed = @solver.retry_needed
-    ActionCable.server.broadcast('ImportStatusChannel', msg: 'Review swimmers: ready')
+    ActionCable.server.broadcast('ImportStatusChannel', { msg: 'Review swimmers: ready' })
   end
 
   # [GET] /review_events - STEP 4: events
@@ -118,7 +118,7 @@ class DataFixController < ApplicationController
   def review_events
     prepare_for_review_events_and_results
     @retry_needed = @solver.retry_needed
-    ActionCable.server.broadcast('ImportStatusChannel', msg: 'Review events: ready')
+    ActionCable.server.broadcast('ImportStatusChannel', { msg: 'Review events: ready' })
   end
 
   # [GET] /review_results - STEP 5: results
@@ -141,8 +141,12 @@ class DataFixController < ApplicationController
     # Extract all Prgs & MIRs keys, giving up the rest (including bindings & matches) since we won't use them here:
     @prgs_keys = @solver.data['meeting_program']&.keys
     @mirs_keys = @solver.data['meeting_individual_result']&.keys
+    @laps_keys = @solver.data['lap']&.keys
+    @mrrs_keys = @solver.data['meeting_relay_result']&.keys
+    @mrss_keys = @solver.data['meeting_relay_swimmer']&.keys
+    @ts_keys = @solver.data['meeting_team_score']&.keys
     @retry_needed = @solver.retry_needed
-    ActionCable.server.broadcast('ImportStatusChannel', msg: 'Review results: ready')
+    ActionCable.server.broadcast('ImportStatusChannel', { msg: 'Review results: ready' })
   end
   #-- -------------------------------------------------------------------------
   #++
@@ -379,6 +383,49 @@ class DataFixController < ApplicationController
   #-- -------------------------------------------------------------------------
   #++
 
+  # [DELETE /data_fix/purge]
+  # Deletes the specified model from the JSON file.
+  # Usable to remove possible NEW duplicates of Teams or Swimmers added to the resulting Hash structure
+  # due to slight naming differences.
+  #
+  # == Typical example:
+  # 1. a Team name gets parsed slightly differently in 2 different contexts;
+  # 2. the same Swimmer (name & birth year) gets associated to these 2 different team names (for its key);
+  # 3. if the Swimmer is "new" (no preexisting row has been found) a duplicate row will be created
+  #    when solving & committing the entities (due to the slightly different ending keys).
+  #
+  # == Note:
+  # This is callable only before starting the "review results" phase as, after that,
+  # teams & swimmers will be already bound to results and removing them will corrupt
+  # the resulting JSON structure.
+  #
+  # Although this action is generic due to using the model parameter, this currently supports
+  # only "Team"s & "Swimmer"s.
+  #
+  # == Params:
+  # <tt>:file_path</tt> => source JSON file for the data Hash containing all entities
+  # <tt>:model</tt> => the model name in snake case, singular; only supported: 'swimmer', 'team'
+  # <tt>:key</tt> => string key for the model entity in the parsed data hash from the JSON file
+  #
+  def purge
+    model_name = edit_params['model'].to_s
+    unless %w[swimmer team].include?(model_name)
+      flash[:warning] = I18n.t('data_import.errors.invalid_request')
+      redirect_to(pull_index_path)
+    end
+
+    entity_key = entity_key_for(model_name)
+    @solver.data[model_name]&.delete(entity_key)
+    overwrite_file_path_with_json_from(@solver.data)
+    # Clean the referer URL from a possible reparse parameter before redirecting back:
+    request.headers['HTTP_REFERER'].gsub!(/&reparse=(true|sessions)/i, '')
+
+    # Fall back to step 1 (sessions) in case the referrer is not available:
+    redirect_back(fallback_location: review_sessions_path(file_path: file_path_from_params, reparse: false))
+  end
+  #-- -------------------------------------------------------------------------
+  #++
+
   # [GET /coded_name] (JSON only)
   # Computes and returns just the coded name as JSON, given the parameters.
   #
@@ -445,6 +492,33 @@ class DataFixController < ApplicationController
                                   .join(', ')
   end
 
+  # [GET /result_details] (AJAX only)
+  # Returns the rendered HTML text for showing the result details for the specified row in
+  # the selected class.
+  # Returns an empty text otherwise.
+  #
+  # == Params:
+  # <tt>:row_class</tt> => snail_case name of the result class type ('meeting_individual_result' or 'meeting_relay_result')
+  # <tt>:row_key</tt> => string key for the row stored inside @solver.data
+  #
+  def result_details
+    unless request.xhr?
+      flash[:warning] = I18n.t('search_view.errors.invalid_request')
+      redirect_to root_path
+      return
+    end
+
+    relay = result_details_params[:relay] == 'true'
+    prg_key = result_details_params[:prg_key]
+    @target_dom_id = result_details_params[:target_dom_id]
+    row_type = relay ? 'meeting_relay_result' : 'meeting_individual_result'
+    lap_type   = relay ? 'meeting_relay_swimmer' : 'lap'
+
+    prg_checker = Regexp.new(prg_key, Regexp::IGNORECASE)
+    @prg_rows = @solver.data[row_type]&.select { |row_key| prg_checker.match?(row_key) }
+    @prg_laps = @solver.data[lap_type]&.select { |row_key| prg_checker.match?(row_key) }
+  end
+
   private
 
   # Strong parameters checking for file & edit (patch) related actions.
@@ -471,6 +545,11 @@ class DataFixController < ApplicationController
   # Strong parameters checking for team names list retrieval.
   def teams_for_swimmer_params
     params.permit(:swimmer_id)
+  end
+
+  # Strong parameters checking for team names list retrieval.
+  def result_details_params
+    params.permit(:relay, :prg_key, :target_dom_id)
   end
 
   # Returns the correct type of <tt>edit_params['key']</tt> depending on the specified <tt>model_name</tt>.

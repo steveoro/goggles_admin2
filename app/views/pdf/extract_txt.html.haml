@@ -1,5 +1,45 @@
 .wrapper-body
   .main-content
+    %section.my-2#scanning
+      .row-fluid
+        .container{ data: { controller: 'remote-partial', 'remote-partial-url' => pdf_scan_path } }
+          - if @format_families.present?
+            = form_tag(pdf_scan_path(file_path: @txt_pathname), id: 'frm-format-scan', method: :put,
+                       remote: true, onsubmit: "document.querySelector('#loading-indicator').classList.remove('d-none');") do
+              .row
+                .col
+                  .form-group
+                    .field
+                      = label_tag('ffamily_lbl', 'Force format family', for: 'ffamily')
+                      = select_tag('ffamily', options_for_select(@format_families, nil), include_blank: true,
+                                  class: 'form-control',
+                                  data: { action: 'change->remote-partial#update', 'remote-partial-payload' => true })
+                .col-2
+                  .form-group
+                    .field
+                      = label_tag('start_page', 'From (0-N)', for: 'start_page')
+                      = number_field_tag(:start_page, nil, class: 'form-control')
+                .col-2
+                  .form-group
+                    .field
+                      = label_tag('end_page', 'To (0-N)', for: 'end_page')
+                      = number_field_tag(:end_page, nil, class: 'form-control')
+                .col-auto
+                  %p
+                    &nbsp;
+                  .form-check
+                    = check_box_tag(:debug, '1', false, class: 'form-check-input', type: 'checkbox')
+                    = label_tag('debug', 'Debug log', for: 'debug', class: 'form-check-label')
+                .col-2
+                  .form-group
+                    .field.mt-4
+                      = submit_tag('🔍 Scan', id: 'btn-apply-format-scan', class: 'btn btn-sm btn-primary pt-1 mt-2',
+                                  'aria-label' => 'force format parsing', type: 'submit')
+      #scan-result
+      .row-fluid
+        &nbsp;
+      #log-panel
+
     %section.my-2#extracted-file
       .container.bg-light-green.pt-2.shadow-box#crawler-status-box
         .row-fluid.text-center
@@ -8,7 +48,3 @@
         .row-fluid
           %small
             %pre= @page1
-
-    %section.my-2#parsing
-      .row-fluid
-        TODO - WIP

@@ -4,9 +4,9 @@ module Import
   #
   # = MacroSolver
   #
-  #   - version:  7-0.5.02
+  #   - version:  7-0.6.00
   #   - author:   Steve A.
-  #   - build:    20230424
+  #   - build:    20231121
   #
   # Given a MacroSolver instance that stores the already-precessed contents of the result JSON data file,
   # this class commits the individual entities "solved", either by creating the missing rows
@@ -111,6 +111,8 @@ module Import
         commit_events
         commit_programs
         commit_ind_results
+        commit_rel_results
+        commit_team_scores
 
         @sql_log << "\r\n--\r\n"
         @sql_log << 'COMMIT;'
@@ -192,7 +194,7 @@ module Import
 
       entity_keys&.each do |entity_key|
         idx += 1
-        ActionCable.server.broadcast('ImportStatusChannel', msg: "commit City '#{entity_key}'", progress: idx, total:)
+        ActionCable.server.broadcast('ImportStatusChannel', { msg: "commit City '#{entity_key}'", progress: idx, total: })
 
         model_row = @solver.cached_instance_of('city', entity_key)
         # Override the Import::Entity with the actual row:
@@ -237,7 +239,7 @@ module Import
 
       entity_keys&.each do |entity_key|
         idx += 1
-        ActionCable.server.broadcast('ImportStatusChannel', msg: "commit Sw.Pool '#{entity_key}'", progress: idx, total:)
+        ActionCable.server.broadcast('ImportStatusChannel', { msg: "commit Sw.Pool '#{entity_key}'", progress: idx, total: })
 
         model_row = @solver.cached_instance_of('swimming_pool', entity_key)
         bindings_hash = @solver.cached_instance_of('swimming_pool', entity_key, 'bindings')
@@ -278,7 +280,7 @@ module Import
       total = entity_keys&.count
 
       entity_keys&.each_with_index do |_entity_hash, index|
-        ActionCable.server.broadcast('ImportStatusChannel', msg: "commit M.Session '#{index + 1}'", progress: index + 1, total:)
+        ActionCable.server.broadcast('ImportStatusChannel', { msg: "commit M.Session '#{index + 1}'", progress: index + 1, total: })
 
         model_row = @solver.cached_instance_of('meeting_session', index)
         model_row.meeting_id = meeting.id
@@ -320,11 +322,11 @@ module Import
       total = entity_keys&.count
       idx = 0
       # Force progress clearing:
-      ActionCable.server.broadcast('ImportStatusChannel', msg: 'committing Teams', progress: 1, total: 1)
+      ActionCable.server.broadcast('ImportStatusChannel', { msg: 'committing Teams', progress: 1, total: 1 })
 
       entity_keys&.each do |entity_key|
         idx += 1
-        ActionCable.server.broadcast('ImportStatusChannel', msg: "commit Team '#{entity_key}'", progress: idx, total:)
+        ActionCable.server.broadcast('ImportStatusChannel', { msg: "commit Team '#{entity_key}'", progress: idx, total: })
 
         model_row = @solver.cached_instance_of('team', entity_key)
         bindings_hash = @solver.cached_instance_of('team', entity_key, 'bindings')
@@ -367,11 +369,11 @@ module Import
       total = entity_keys&.count
       idx = 0
       # Force progress clearing:
-      ActionCable.server.broadcast('ImportStatusChannel', msg: 'committing Swimmers', progress: 1, total: 1)
+      ActionCable.server.broadcast('ImportStatusChannel', { msg: 'committing Swimmers', progress: 1, total: 1 })
 
       entity_keys&.each do |entity_key|
         idx += 1
-        ActionCable.server.broadcast('ImportStatusChannel', msg: "commit Swimmer '#{entity_key}'", progress: idx, total:)
+        ActionCable.server.broadcast('ImportStatusChannel', { msg: "commit Swimmer '#{entity_key}'", progress: idx, total: })
 
         model_row = @solver.cached_instance_of('swimmer', entity_key)
         bindings_hash = @solver.cached_instance_of('swimmer', entity_key, 'bindings')
@@ -401,11 +403,11 @@ module Import
       total = entity_keys&.count
       idx = 0
       # Force progress clearing:
-      ActionCable.server.broadcast('ImportStatusChannel', msg: 'committing M.Events', progress: 1, total: 1)
+      ActionCable.server.broadcast('ImportStatusChannel', { msg: 'committing M.Events', progress: 1, total: 1 })
 
       entity_keys&.each do |entity_key|
         idx += 1
-        ActionCable.server.broadcast('ImportStatusChannel', msg: "commit M.Event '#{entity_key}'", progress: idx, total:)
+        ActionCable.server.broadcast('ImportStatusChannel', { msg: "commit M.Event '#{entity_key}'", progress: idx, total: })
 
         model_row = @solver.cached_instance_of('meeting_event', entity_key)
         bindings_hash = @solver.cached_instance_of('meeting_event', entity_key, 'bindings')
@@ -441,11 +443,11 @@ module Import
       total = entity_keys&.count
       idx = 0
       # Force progress clearing:
-      ActionCable.server.broadcast('ImportStatusChannel', msg: 'committing M.Prgs.', progress: 1, total: 1)
+      ActionCable.server.broadcast('ImportStatusChannel', { msg: 'committing M.Prgs.', progress: 1, total: 1 })
 
       entity_keys&.each do |entity_key|
         idx += 1
-        ActionCable.server.broadcast('ImportStatusChannel', msg: "commit M.Prg. '#{entity_key}'", progress: idx, total:)
+        ActionCable.server.broadcast('ImportStatusChannel', { msg: "commit M.Prg. '#{entity_key}'", progress: idx, total: })
 
         model_row = @solver.cached_instance_of('meeting_program', entity_key)
         bindings_hash = @solver.cached_instance_of('meeting_program', entity_key, 'bindings')
@@ -481,11 +483,11 @@ module Import
       total = entity_keys&.count
       idx = 0
       # Force progress clearing:
-      ActionCable.server.broadcast('ImportStatusChannel', msg: 'committing MIRs', progress: 1, total: 1)
+      ActionCable.server.broadcast('ImportStatusChannel', { msg: 'committing MIRs', progress: 1, total: 1 })
 
       entity_keys&.each do |entity_key|
         idx += 1
-        ActionCable.server.broadcast('ImportStatusChannel', msg: "commit MIR '#{entity_key}'", progress: idx, total:)
+        ActionCable.server.broadcast('ImportStatusChannel', { msg: "commit MIR '#{entity_key}'", progress: idx, total: })
 
         model_row = @solver.cached_instance_of('meeting_individual_result', entity_key)
         bindings_hash = @solver.cached_instance_of('meeting_individual_result', entity_key, 'bindings')
@@ -510,10 +512,53 @@ module Import
         @data['meeting_individual_result'][entity_key] = commit_and_log(model_row)
       end
 
+      commit_laps
       @data['meeting_individual_result']
     end
     #-- ------------------------------------------------------------------------
     #++
+
+    # Commits the changes for the 'meeting_relay_result' entities of the solver.
+    def commit_rel_results
+      entity_keys = @data['meeting_relay_result']&.keys&.compact
+      total = entity_keys&.count
+      idx = 0
+      # Force progress clearing:
+      ActionCable.server.broadcast('ImportStatusChannel', { msg: 'committing MRRs', progress: 1, total: 1 })
+
+      entity_keys&.each do |entity_key|
+        idx += 1
+        ActionCable.server.broadcast('ImportStatusChannel', { msg: "commit MRR '#{entity_key}'", progress: idx, total: })
+
+        model_row = @solver.cached_instance_of('meeting_relay_result', entity_key)
+        bindings_hash = @solver.cached_instance_of('meeting_relay_result', entity_key, 'bindings')
+        # Make sure all bindings have a valid ID:
+        bindings_hash.each do |binding_model_name, binding_key|
+          # Update only the single-association bindings in the model_row:
+          update_method = "#{binding_model_name}_id="
+          next unless model_row.respond_to?(update_method)
+
+          # ASSUMES: binding row has already been committed & logged by previous calls => binding_row.id.positive?
+          binding_row = @solver.cached_instance_of(binding_model_name, binding_key)
+          model_row.send(update_method, binding_row.id)
+        end
+        # Assume all validated bindings have been solved and re-seek for an existing row using an educated clause:
+        db_row = GogglesDb::MeetingRelayResult.where(
+          meeting_program_id: model_row.meeting_program_id,
+          team_id: model_row.team_id
+        ).first
+        model_row.id = db_row.id if db_row
+        # Override the Import::Entity with the actual row:
+        @data['meeting_relay_result'][entity_key] = commit_and_log(model_row)
+      end
+
+      commit_relay_swimmers
+      @data['meeting_relay_result']
+    end
+    #-- ------------------------------------------------------------------------
+    #++
+
+    private
 
     # Commits the changes for all the 'team_affiliation' entities of the solver.
     #
@@ -529,11 +574,11 @@ module Import
       total = entity_keys&.count
       idx = 0
       # Force progress clearing:
-      ActionCable.server.broadcast('ImportStatusChannel', msg: 'committing T.Affiliations', progress: 1, total: 1)
+      ActionCable.server.broadcast('ImportStatusChannel', { msg: 'committing T.Affiliations', progress: 1, total: 1 })
 
       entity_keys&.each do |entity_key|
         idx += 1
-        ActionCable.server.broadcast('ImportStatusChannel', msg: "commit T.Aff. '#{entity_key}'", progress: idx, total:)
+        ActionCable.server.broadcast('ImportStatusChannel', { msg: "commit T.Aff. '#{entity_key}'", progress: idx, total: })
 
         model_row = @solver.cached_instance_of('team_affiliation', entity_key)
         bindings_hash = @solver.cached_instance_of('team_affiliation', entity_key, 'bindings')
@@ -572,11 +617,11 @@ module Import
       total = entity_keys&.count
       idx = 0
       # Force progress clearing:
-      ActionCable.server.broadcast('ImportStatusChannel', msg: 'committing Badges', progress: 1, total: 1)
+      ActionCable.server.broadcast('ImportStatusChannel', { msg: 'committing Badges', progress: 1, total: 1 })
 
       entity_keys&.each do |entity_key|
         idx += 1
-        ActionCable.server.broadcast('ImportStatusChannel', msg: "commit Badge '#{entity_key}'", progress: idx, total:)
+        ActionCable.server.broadcast('ImportStatusChannel', { msg: "commit Badge '#{entity_key}'", progress: idx, total: })
 
         model_row = @solver.cached_instance_of('badge', entity_key)
         bindings_hash = @solver.cached_instance_of('badge', entity_key, 'bindings')
@@ -602,10 +647,118 @@ module Import
     #-- ------------------------------------------------------------------------
     #++
 
-    # TODO: relay data, any?
-    # TODO: swimmers for relay data, any?
-    # TODO: lap data, any?
-    # TODO: scores data, any?
+    # Commits the changes for the 'lap' entities of the solver.
+    def commit_laps
+      entity_keys = @data['lap']&.keys&.compact
+      total = entity_keys&.count
+      idx = 0
+      # Force progress clearing:
+      ActionCable.server.broadcast('ImportStatusChannel', { msg: 'committing MIRs', progress: 1, total: 1 })
+
+      entity_keys&.each do |entity_key|
+        idx += 1
+        ActionCable.server.broadcast('ImportStatusChannel', { msg: "commit MIR '#{entity_key}'", progress: idx, total: })
+
+        model_row = @solver.cached_instance_of('lap', entity_key)
+        bindings_hash = @solver.cached_instance_of('lap', entity_key, 'bindings')
+        # Make sure all bindings have a valid ID:
+        bindings_hash.each do |binding_model_name, binding_key|
+          # Update only the single-association bindings in the model_row:
+          update_method = "#{binding_model_name}_id="
+          next unless model_row.respond_to?(update_method)
+
+          # ASSUMES: binding row has already been committed & logged by previous calls => binding_row.id.positive?
+          binding_row = @solver.cached_instance_of(binding_model_name, binding_key)
+          model_row.send(update_method, binding_row.id)
+        end
+        # Assume all validated bindings have been solved and re-seek for an existing row using an educated clause:
+        db_row = GogglesDb::Lap.where(
+          meeting_individual_result_id: model_row.meeting_individual_result_id,
+          length_in_meters: model_row.length_in_meters
+        ).first
+        model_row.id = db_row.id if db_row
+        # Override the Import::Entity with the actual row:
+        @data['lap'][entity_key] = commit_and_log(model_row)
+      end
+
+      @data['lap']
+    end
+
+    # Commits the changes for the 'meeting_relay_swimmer' entities of the solver.
+    def commit_relay_swimmers
+      entity_keys = @data['meeting_relay_swimmer']&.keys&.compact
+      total = entity_keys&.count
+      idx = 0
+      # Force progress clearing:
+      ActionCable.server.broadcast('ImportStatusChannel', { msg: 'committing MRSs', progress: 1, total: 1 })
+
+      entity_keys&.each do |entity_key|
+        idx += 1
+        ActionCable.server.broadcast('ImportStatusChannel', { msg: "commit MRS '#{entity_key}'", progress: idx, total: })
+
+        model_row = @solver.cached_instance_of('meeting_relay_swimmer', entity_key)
+        bindings_hash = @solver.cached_instance_of('meeting_relay_swimmer', entity_key, 'bindings')
+        # Make sure all bindings have a valid ID:
+        bindings_hash.each do |binding_model_name, binding_key|
+          # Update only the single-association bindings in the model_row:
+          update_method = "#{binding_model_name}_id="
+          next unless model_row.respond_to?(update_method)
+
+          # ASSUMES: binding row has already been committed & logged by previous calls => binding_row.id.positive?
+          binding_row = @solver.cached_instance_of(binding_model_name, binding_key)
+          model_row.send(update_method, binding_row.id)
+        end
+        # Assume all validated bindings have been solved and re-seek for an existing row using an educated clause:
+        db_row = GogglesDb::MeetingRelaySwimmer.where(
+          meeting_relay_result_id: model_row.meeting_relay_result_id,
+          swimmer_id: model_row.swimmer_id
+        ).first
+        model_row.id = db_row.id if db_row
+        # Override the Import::Entity with the actual row:
+        @data['meeting_relay_swimmer'][entity_key] = commit_and_log(model_row)
+      end
+
+      @data['meeting_relay_swimmer']
+    end
+    #-- ------------------------------------------------------------------------
+    #++
+
+    # Commits the changes for the 'meeting_team_scores' entities of the solver.
+    def commit_team_scores
+      entity_keys = @data['meeting_team_score']&.keys&.compact
+      total = entity_keys&.count
+      idx = 0
+      # Force progress clearing:
+      ActionCable.server.broadcast('ImportStatusChannel', { msg: 'committing TeamScores (rankings)', progress: 1, total: 1 })
+
+      entity_keys&.each do |entity_key|
+        idx += 1
+        ActionCable.server.broadcast('ImportStatusChannel', { msg: "committing TeamScore '#{entity_key}'", progress: idx, total: })
+
+        model_row = @solver.cached_instance_of('meeting_team_score', entity_key)
+        bindings_hash = @solver.cached_instance_of('meeting_team_score', entity_key, 'bindings')
+        # Make sure all bindings have a valid ID:
+        bindings_hash.each do |binding_model_name, binding_key|
+          # Update only the single-association bindings in the model_row:
+          update_method = "#{binding_model_name}_id="
+          next unless model_row.respond_to?(update_method)
+
+          # ASSUMES: binding row has already been committed & logged by previous calls => binding_row.id.positive?
+          binding_row = @solver.cached_instance_of(binding_model_name, binding_key)
+          model_row.send(update_method, binding_row.id)
+        end
+        # Assume all validated bindings have been solved and re-seek for an existing row using an educated clause:
+        db_row = GogglesDb::MeetingTeamScore.where(
+          meeting_id: model_row.meeting_id,
+          team_id: model_row.team_id
+        ).first
+        model_row.id = db_row.id if db_row
+        # Override the Import::Entity with the actual row:
+        @data['meeting_team_score'][entity_key] = commit_and_log(model_row)
+      end
+
+      @data['meeting_team_score']
+    end
     #-- ------------------------------------------------------------------------
     #++
 
@@ -650,7 +803,8 @@ module Import
         @sql_log << SqlMaker.new(row: model_row).log_update
 
       elsif !model_row.valid?
-        raise StandardError, "Invalid #{model_row.class} row!"
+        msg = GogglesDb::ValidationErrorTools.recursive_error_for(model_row)
+        raise StandardError, "Invalid #{model_row.class} row: #{msg}"
       end
       # (else: don't do anything)
 

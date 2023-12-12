@@ -32,6 +32,13 @@ Rails.application.configure do
   # Store uploaded files on the local file system (see config/storage.yml for options).
   config.active_storage.service = :local
 
+  # Mount Action Cable outside main process or domain
+  # [Steve A., 20190118] DO NOT UNCOMMENT unless you have a standalone websocket server
+  # running separately on the address below:
+  # config.action_cable.mount_path = nil
+  # config.action_cable.url = 'wss://localhost:7777/cable'
+  # config.action_cable.allowed_request_origins = [ 'http://example.com', /http:\/\/example.*/ ]
+
   config.action_mailer.perform_deliveries = true
   # Use this to disable delivery errors, and bad email addresses will be ignored:
   config.action_mailer.raise_delivery_errors = false
