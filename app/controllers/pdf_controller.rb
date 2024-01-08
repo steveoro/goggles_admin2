@@ -108,11 +108,11 @@ class PdfController < ApplicationController
                    elsif start_page.to_i.negative? && end_page.present?
                      end_page.to_i
                    elsif start_page.present? && end_page.present?
-                     (start_page.to_i .. end_page.to_i)
+                     (start_page.to_i..end_page.to_i)
                    elsif start_page.present?
-                     (start_page.to_i ..)
+                     (start_page.to_i..)
                    elsif end_page.present?
-                     (.. end_page.to_i)
+                     (..end_page.to_i)
                    end
 
     @txt_pathname = @file_path&.gsub(/\.pdf|\.txt/i, '.txt')

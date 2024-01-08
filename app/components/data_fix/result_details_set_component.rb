@@ -25,6 +25,7 @@ module DataFix
   #
   class ResultDetailsSetComponent < ViewComponent::Base
     def initialize(prg_rows:, prg_laps:)
+      super
       @prg_rows = prg_rows
       @prg_laps = prg_laps
     end

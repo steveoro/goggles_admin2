@@ -368,6 +368,10 @@ export default class extends Controller {
       $.ajax({
         method: 'GET',
         dataType: 'json',
+        crossDomain: true, // Allow CORS
+        xhrFields: {
+          withCredentials: true
+        },
         headers: { Authorization: `Bearer ${this.jwtValue}` },
         url: `${this.baseApiUrlValue}/${detailEndpointName}/${entityId}`,
         error: (_xhr, _textStatus, errorThrown) => {
@@ -462,6 +466,10 @@ export default class extends Controller {
         dataType: 'json',
         method: 'GET',
         delay: 250,
+        crossDomain: true, // Allow CORS
+        xhrFields: {
+          withCredentials: true
+        },
         headers: { Authorization: `Bearer ${jwt}` },
         // Handle JWT expiration:
         error: (_xhr, _textStatus, errorThrown) => {

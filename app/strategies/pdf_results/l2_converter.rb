@@ -10,7 +10,8 @@ module PdfResults
   # Converter from any parsed field hash to the "Layout type 2" format
   # used by the MacroSolver.
   #
-  class L2Converter # rubocop:disable Metrics/ClassLength
+  # rubocop:disable Metrics/ClassLength, Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+  class L2Converter
     # Creates a new converter instance given the specified data Hash.
     #
     # == Params
@@ -89,7 +90,7 @@ module PdfResults
     def event_sections # rubocop:disable Metrics/MethodLength,Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
       resulting_sections = []
 
-      @data.fetch(:rows, [{}]).each_with_index do |event_hash, idx| # rubocop:disable Metrics/BlockLength
+      @data.fetch(:rows, [{}]).each_with_index do |event_hash, _idx| # rubocop:disable Metrics/BlockLength
         # Ignore unsupported contexts at this depth level:
         if event_hash[:name] == 'ranking_hdr'
           section = ranking_section(event_hash)
@@ -109,9 +110,9 @@ module PdfResults
 
           # --- RELAYS ---
           if event_length.starts_with?(/(4|8)x/i) &&
-            (row_hash[:name] == 'rel_category'|| row_hash[:name] == 'rel_team')
-             # >>> Here: "row_hash" may be both 'rel_category' or 'rel_team'
-             # Safe to call even for non-'rel_category' hashes:
+             (row_hash[:name] == 'rel_category' || row_hash[:name] == 'rel_team')
+            # >>> Here: "row_hash" may be both 'rel_category' or 'rel_team'
+            # Safe to call even for non-'rel_category' hashes:
             section = rel_category_section(row_hash, event_title)
             # DEBUG ----------------------------------------------------------------
             # binding.pry if event_title == "4X50 Misti - " && section['fin_sigla_categoria'].blank?
@@ -140,10 +141,12 @@ module PdfResults
                 # Get the possible relay category code (excluding "absolutes": it's "gender split" as scope)
                 # (if it has a gender split sub-category in it, it won't be "absolutes"/split-less)
                 overall_age = rel_result_hash['overall_age']
-                rel_cat_code = GogglesDb::CategoryType.relays.only_gender_split
-                                                      .for_season(@season)
-                                                      .where('(? >= age_begin) AND (? <= age_end)', overall_age, overall_age)
-                                                      .last.code if overall_age.positive?
+                if overall_age.positive?
+                  rel_cat_code = GogglesDb::CategoryType.relays.only_gender_split
+                                                        .for_season(@season)
+                                                        .where('(? >= age_begin) AND (? <= age_end)', overall_age, overall_age)
+                                                        .last.code
+                end
                 section['fin_sigla_categoria'] = rel_cat_code if rel_cat_code.present?
                 # Add category code to event title so that MacroSolver can deal with it automatically:
                 section['title'] = "#{section['title']} - #{rel_cat_code}"
@@ -445,7 +448,7 @@ module PdfResults
       #   data => header
       #     data[:rows] => event
       #       data[:rows].first[:rows] => category || footer
-      footer = @data.fetch(:rows, [{}])&.first[:rows]&.find { |h| h[:name] == 'footer' }
+      footer = @data.fetch(:rows, [{}])&.first&.[](:rows)&.find { |h| h[:name] == 'footer' }
 
       # Footer example:
       # {:name=>"footer", :key=>"8 corsie 25m|Risultati su https://...",
@@ -485,7 +488,7 @@ module PdfResults
       type = event_hash.fetch(:fields, {})&.fetch('event_type', '')
       gender = event_hash.fetch(:fields, {})&.fetch('gender_type', '')
       # Return just the first gender code char:
-      gender = gender.to_s =~ /mist/i ? 'X' : gender.to_s.first.upcase
+      gender = /mist/i.match?(gender.to_s) ? 'X' : gender.to_s.first.upcase
       ["#{length} #{type}", length, type, gender]
     end
 
@@ -506,11 +509,11 @@ module PdfResults
 
       # Example ('rel_category'): :key=>"Master Misti 200 - 239"
       category_hash.fetch(:key, '')
-                    .split(/\s?(master|under)\s?/i)&.last
-                    &.split(/\s?(maschi|femmine|misti)\s?/i)
-                    &.reject { |token| token.blank? }
-                    &.last
-                    &.delete(' ')
+                   .split(/\s?(master|under)\s?/i)&.last
+                   &.split(/\s?(maschi|femmine|misti)\s?/i)
+                   &.reject(&:blank?)
+                   &.last
+                   &.delete(' ')
     end
     #-- -----------------------------------------------------------------------
     #++
@@ -521,10 +524,10 @@ module PdfResults
       raise 'Unsupported Category hash!' unless category_hash.is_a?(Hash) && category_hash[:name] == 'category'
 
       # Example ('category')....: :key=>"M55 Master Maschi 55 - 59"
-      gender_name = category_hash.fetch(:key, '')
-                                 .split(/\s?(master|under)\s?/i)
-                                 &.last.split(/\s/)&.first
-                                 &.at(0)&.upcase
+      category_hash.fetch(:key, '')
+                   .split(/\s?(master|under)\s?/i)
+                   &.last&.split(/\s/)&.first
+                   &.at(0)&.upcase
     end
 
     # Gets the relay category gender code as a single char, given its source data hash.
@@ -536,7 +539,7 @@ module PdfResults
       gender_name = category_hash.fetch(:key, '')
                                  .split(/\s?(master|under)\s?/i)&.last
                                  &.split(/\s?(maschi|femmin|misti)\s?/i)
-                                 &.reject { |token| token.blank? }
+                                 &.reject(&:blank?)
                                  &.first
       return GogglesDb::GenderType.intermixed.code if gender_name&.downcase == 'misti'
 
@@ -546,3 +549,4 @@ module PdfResults
     #++
   end
 end
+# rubocop:enable Metrics/ClassLength, Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity

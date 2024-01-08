@@ -145,6 +145,7 @@ export default class extends Controller {
 
     return fetch(`${this.apiUrl2Value}/${entityName}/${entityId}`, {
       method: 'GET',
+      mode: 'cors',
       headers: {
         Authorization: `Bearer ${jwt}`,
         'Content-type': 'application/json;charset=UTF-8'
@@ -170,6 +171,10 @@ export default class extends Controller {
         url: this.apiUrlValue,
         dataType: 'json',
         method: 'GET',
+        crossDomain: true, // Allow CORS
+        xhrFields: {
+          withCredentials: true
+        },
         delay: 250,
 
         // Compose payload:

@@ -92,9 +92,9 @@ RSpec.describe PdfResults::FieldDef, type: :strategy do
     end
 
     context 'when set to any non-empty string' do
-      let(:fixture_format) { FFaker::Lorem.words(2).join(' ') }
-
       subject(:subj_w_format) { described_class.new(name: FFaker::Lorem.words(2).join, format: fixture_format) }
+
+      let(:fixture_format) { FFaker::Lorem.words(2).join(' ') }
 
       it 'is a Regexp matching the supplied format' do
         expect(subj_w_format.format).to eq(Regexp.new(fixture_format, Regexp::IGNORECASE))
@@ -124,15 +124,15 @@ RSpec.describe PdfResults::FieldDef, type: :strategy do
   # - obj_instance    => FieldDef instance to be tested
   # - result_buffer   => actual subject of the test (string buffer returned by the #extract method)
   shared_examples_for('a matching FieldDef with #pop_out true') do
-    before do
+    subject(:result_buffer) { obj_instance.extract(source_row) }
+
+    before(:each) do
       expect(expected_value).to be_a(String).and be_present
       expect(source_row).to be_a(String).and be_present
       expect(expected_src).to be_a(String).and be_present
       expect(obj_instance).to be_a(described_class)
       expect(result_buffer).to be_a(String).and be_present
     end
-
-    subject(:result_buffer) { obj_instance.extract(source_row) }
 
     it 'is the matched string value' do
       expect(obj_instance.value).to eq(expected_value)
@@ -152,15 +152,15 @@ RSpec.describe PdfResults::FieldDef, type: :strategy do
   # - obj_instance    => FieldDef instance to be tested
   # - result_buffer   => actual subject of the test (string buffer returned by the #extract method)
   shared_examples_for('a matching FieldDef with #pop_out false') do
-    before do
+    subject(:result_buffer) { obj_instance.extract(source_row) }
+
+    before(:each) do
       expect(expected_value).to be_a(String).and be_present
       expect(source_row).to be_a(String).and be_present
       expect(expected_src).to be_a(String).and be_present
       expect(obj_instance).to be_a(described_class)
       expect(result_buffer).to be_a(String).and be_present
     end
-
-    subject(:result_buffer) { obj_instance.extract(source_row) }
 
     it 'is the matched string value' do
       expect(obj_instance.value).to eq(expected_value)
@@ -175,25 +175,25 @@ RSpec.describe PdfResults::FieldDef, type: :strategy do
 
   describe '#extract' do
     context 'when not matching' do
+      subject(:result_buffer) { obj_instance.extract(source_row) }
+
       let(:source_row) { "-o- POSSIBLY SOMETHING THAT WON'T MATCH ANY FFAKER WORD -o-" }
       let(:obj_instance) { described_class.new(name: FFaker::Lorem.words(2).join) }
       let(:expected_src) { source_row.dup }
 
-      before do
+      before(:each) do
         expect(obj_instance).to be_a(described_class)
         expect(source_row).to be_a(String).and be_present
         expect(expected_src).to be_a(String).and eq(source_row)
         expect(result_buffer).to be_a(String).and be_present
       end
 
-      subject(:result_buffer) { obj_instance.extract(source_row) }
-
       it 'sets #value to nil' do
-        expect(obj_instance.value).to be nil
+        expect(obj_instance.value).to be_nil
       end
 
       it 'sets the current buffer equal to the source string' do
-          expect(result_buffer).to eq(expected_src)
+        expect(result_buffer).to eq(expected_src)
       end
     end
 
@@ -254,7 +254,9 @@ RSpec.describe PdfResults::FieldDef, type: :strategy do
     context 'when matching a format preceded with multiple lambdas' do
       let(:original_value) { FFaker::Name.name }
       let(:expected_value) { original_value.upcase }
-      let(:source_row) { " 9    #{original_value}                               ITA          1963   CSI NUOTO OBER FERRARI           3      2     7           46.25              639,35" }
+      let(:source_row) do
+        " 9    #{original_value}                               ITA          1963   CSI NUOTO OBER FERRARI           3      2     7           46.25              639,35"
+      end
 
       context 'and #pop_out is true' do
         let(:obj_instance) do
@@ -288,7 +290,9 @@ RSpec.describe PdfResults::FieldDef, type: :strategy do
     context 'when matching a format preceded with multiple lambdas and some indexes' do
       let(:original_value) { FFaker::Name.name }
       let(:expected_value) { original_value.upcase }
-      let(:source_row) { " 9    #{original_value}                               ITA          1963   CSI NUOTO OBER FERRARI           3      2     7           46.25              639,35" }
+      let(:source_row) do
+        " 9    #{original_value}                               ITA          1963   CSI NUOTO OBER FERRARI           3      2     7           46.25              639,35"
+      end
 
       context 'and #pop_out is true' do
         let(:obj_instance) do
@@ -328,8 +332,12 @@ RSpec.describe PdfResults::FieldDef, type: :strategy do
   #++
 
   describe '#to_s' do
+    subject(:result) { obj_instance.to_s }
+
     let(:original_value) { FFaker::Name.name }
-    let(:source_row) { " 9    #{original_value}                               ITA          1963   CSI NUOTO OBER FERRARI           3      2     7           46.25              639,35" }
+    let(:source_row) do
+      " 9    #{original_value}                               ITA          1963   CSI NUOTO OBER FERRARI           3      2     7           46.25              639,35"
+    end
     let(:obj_instance) do
       described_class.new(
         name: FFaker::Lorem.word,
@@ -339,16 +347,15 @@ RSpec.describe PdfResults::FieldDef, type: :strategy do
       )
     end
 
-    before do
+    before(:each) do
       expect(source_row).to be_a(String).and be_present
       expect(obj_instance).to be_a(described_class)
     end
 
-    subject(:result) { obj_instance.to_s }
-
     it 'is a String' do
       expect(result).to be_a(String).and be_present
     end
+
     it 'includes all set properties and their value' do
       # DEBUG:
       # puts result

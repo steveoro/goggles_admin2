@@ -9,8 +9,7 @@ module PdfResults
   # Base class wrapping common functionalities between FieldDefs & ContextDef.
   #
   class BaseDef
-    attr_reader :last_source_before_format # bufferized source from last run
-    attr_reader :last_validation_result    # bufferized response from last run
+    attr_reader :last_source_before_format, :last_validation_result # bufferized source from last run    # bufferized response from last run
 
     # Shared initialization for FieldDefs & ContextDef.
     # Requires the #all_props helper method to be defined/overridden in siblings.
@@ -24,19 +23,21 @@ module PdfResults
       init_supported_properties
       properties.stringify_keys.each do |key, value|
         # Set only supported properties as member variables:
-        var_name = "@#{key}".to_sym
+        var_name = :"@#{key}"
         instance_variable_set(var_name, value) if all_props.include?(key.to_s)
 
         # ContextDef#rows: store each array item as a sub-context with a parent:
         if key == 'rows' && rows.present?
           rows.each_with_index do |prop_hash, idx|
+            next unless prop_hash.is_a?(Hash)
+
             rows[idx] = ContextDef.new(
               prop_hash.merge(
                 # Make sure name gets a default only if not set:
                 name: prop_hash['name'] || "#{properties.stringify_keys['name']}-row#{idx}",
                 parent: self
               )
-            ) if prop_hash.is_a?(Hash)
+            )
           end
         # ContextDef#fields: store each array item as a group of fields:
         elsif key == 'fields' && fields.present?
@@ -85,7 +86,7 @@ module PdfResults
         result = apply_single_regexp(format, token)
         break if result
       end
-      result.present? ? result : src_buffer
+      result.presence || src_buffer
     end
 
     # Applies +regexp+ to +str_token+ or returns +nil+ otherwise.
@@ -111,7 +112,7 @@ module PdfResults
     def init_supported_properties
       all_props.each do |prop_key|
         # Store property value in dedicated instance variable:
-        instance_variable_set("@#{prop_key}".to_sym, nil)
+        instance_variable_set(:"@#{prop_key}", nil)
       end
     end
     #-- -----------------------------------------------------------------------

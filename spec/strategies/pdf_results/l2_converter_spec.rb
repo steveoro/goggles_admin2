@@ -45,7 +45,7 @@ RSpec.describe PdfResults::L2Converter, type: :strategy do
         {
           name: 'category',
           # L2Converter takes category values directly from its key:
-          key: "M#{20 + (rand * 5).to_i * 10} Master #{%w[Mas Fem].sample}",
+          key: "M#{20 + ((rand * 5).to_i * 10)} Master #{%w[Mas Fem].sample}",
           rows: result_rows
         },
         {
@@ -73,7 +73,7 @@ RSpec.describe PdfResults::L2Converter, type: :strategy do
     }
   end
 
-  before do
+  before(:each) do
     expect(fixture_data).to be_an(Hash).and be_present
     expect(fixture_data[:name]).to eq('header')
     expect(fixture_data[:rows].first[:name]).to eq('event')

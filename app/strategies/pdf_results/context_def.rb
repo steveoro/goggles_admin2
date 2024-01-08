@@ -270,7 +270,7 @@ module PdfResults
       @debug = [true, 'true'].include?(debug) # (default false for blanks)
       @format = Regexp.new(format, Regexp::IGNORECASE) if format.present?
       @optional_if_empty = [true, 'true'].include?(optional_if_empty) # (default false for blanks)
-      @required = [true, 'true', nil, ''].include?(required)  # (default true for blanks)
+      @required = [true, 'true', nil, ''].include?(required) # (default true for blanks)
       @repeat = [true, 'true'].include?(repeat)
       @eop = [true, 'true'].include?(eop)
       # == NOTE: ==
@@ -287,11 +287,11 @@ module PdfResults
     class_eval do
       # Getters
       ALL_PROPS.each do |prop_key|
-        define_method(prop_key.to_s.to_sym) { instance_variable_get("@#{prop_key}") if instance_variable_defined?("@#{prop_key}") }
+        define_method(prop_key.to_s.to_sym) { instance_variable_get(:"@#{prop_key}") if instance_variable_defined?(:"@#{prop_key}") }
       end
       # Define additional specific instance helper methods just for boolean values:
       BOOL_PROPS.each do |prop_key|
-        define_method("#{prop_key}?".to_sym) { send(prop_key).present? if respond_to?(prop_key) }
+        define_method(:"#{prop_key}?") { send(prop_key).present? if respond_to?(prop_key) }
       end
     end
     #-- -----------------------------------------------------------------------
@@ -466,7 +466,7 @@ module PdfResults
       @curr_index = 0 # Local scan index, relative to the resulting row_buffer, after resizing & limiting
       @consumed_rows = 0
       @data_hash = {}
-      log_message(scan_index: scan_index)
+      log_message(scan_index:)
       # 0) Bail-out conditions:
       # Exit with no extraction & optional or repeatable context (these are always valid)
       if !extract && (optional? || repeat?)
@@ -523,10 +523,10 @@ module PdfResults
       # 3) Force resulting buffer to stay in between row_span lines:
       # (Allows to force max range of looking-forward for matches to #row_span)
       curr_buffer = assert_row_buffer_granularity(curr_buffer)
-      curr_buffer = curr_buffer[0..(@row_span-1)] if curr_buffer.is_a?(Array)
+      curr_buffer = curr_buffer[0..(@row_span - 1)] if curr_buffer.is_a?(Array)
 
       # 4) Apply any lambda(s) if present:
-      log_message(msg: "before @lamdba: #{lambda}", scan_index: scan_index, curr_buffer: curr_buffer) if lambda
+      log_message(msg: "before @lamdba: #{lambda}", scan_index:, curr_buffer:) if lambda
 
       if lambda.is_a?(Array)
         lambda.each { |curr_lambda| curr_buffer = apply_lambda(curr_lambda, curr_buffer) }
@@ -537,7 +537,7 @@ module PdfResults
       # Re-collate buffer before format:
       curr_buffer = curr_buffer&.join("\r\n")
       @last_source_before_format = curr_buffer&.dup
-      log_message(msg: "before @format: #{format}", scan_index: scan_index, curr_buffer: curr_buffer) if format
+      log_message(msg: "before @format: #{format}", scan_index:, curr_buffer:) if format
       # DEBUG ----------------------------------------------------------------
       # if name == 'results3_dsq' # && (scan_index == 2)
       #   log_message(msg: "BEFORE @format (#{name}), @curr_index: #{@curr_index}, @consumed_rows: #{@consumed_rows}", scan_index: scan_index)
@@ -559,7 +559,7 @@ module PdfResults
         if curr_buffer.blank? && format == /^$/i
           # WAS: @curr_index = scan_index = scan_index + 1
           @consumed_rows = 1
-          @curr_index = @curr_index + 1
+          @curr_index += 1
           @last_validation_result = true
           return true
         end
@@ -592,8 +592,10 @@ module PdfResults
                       (format.present? || fields.present? || rows.present?)
 
       curr_buffer = assert_row_buffer_granularity(curr_buffer)
-      log_message(msg: "before @fields (tot: #{fields&.count})", scan_index: scan_index, curr_buffer: curr_buffer,
-                  depth: parent.present? ? 1 : 0) if fields
+      if fields
+        log_message(msg: "before @fields (tot: #{fields&.count})", scan_index:, curr_buffer:,
+                    depth: parent.present? ? 1 : 0)
+      end
       # DEBUG ----------------------------------------------------------------
       # if name == 'rel_team2'
       #   log_message(msg: "BEFORE @fields (#{name}), @curr_index: #{@curr_index}, @consumed_rows: #{@consumed_rows}", scan_index: scan_index)
@@ -609,7 +611,7 @@ module PdfResults
         # binding.pry if source_row.to_s.include?("(49.01)")
         # ----------------------------------------------------------------------
         source_row = field_def.extract(source_row) if field_def.is_a?(PdfResults::FieldDef)
-        log_message(obj: field_def, scan_index: scan_index, source_row: source_row, depth: parent.present? ? 2 : 1)
+        log_message(obj: field_def, scan_index:, source_row:, depth: parent.present? ? 2 : 1)
 
         # Add data values when present regardless being required or not:
         @data_hash.merge!(field_def.name => field_def.value) if field_def.value.present?
@@ -644,12 +646,14 @@ module PdfResults
       # ----------------------------------------------------------------------
 
       # Increase scan_index with default row_span if valid w/ fields or when just the format was found:
-      if (valid && fields.present?) # || (format.present? && source_row.present? && valid.nil?)
+      if valid && fields.present? # || (format.present? && source_row.present? && valid.nil?)
         # WAS: @curr_index = scan_index + 1
-        @curr_index = @curr_index + 1
+        @curr_index += 1
       end
-      log_message(msg: "before @rows (tot.: #{rows&.count}), @curr_index: #{@curr_index}, @consumed_rows: #{@consumed_rows}",
-                  scan_index: scan_index, curr_buffer: curr_buffer, depth: parent.present? ? 1 : 0) if rows
+      if rows
+        log_message(msg: "before @rows (tot.: #{rows&.count}), @curr_index: #{@curr_index}, @consumed_rows: #{@consumed_rows}",
+                    scan_index:, curr_buffer:, depth: parent.present? ? 1 : 0)
+      end
 
       # 7) Rows scan: valid <=> all required rows are valid
       valid = rows&.all? do |sub_context|
@@ -668,10 +672,10 @@ module PdfResults
         # Increase both the local index & the buffer offset for the exact number
         # of consumed lines (only when "actually found"):
         if valid
-          @consumed_rows = @consumed_rows + sub_context.consumed_rows
-          @curr_index = @curr_index + sub_context.consumed_rows # + sub_context.curr_index
+          @consumed_rows += sub_context.consumed_rows
+          @curr_index += sub_context.consumed_rows # + sub_context.curr_index
         end
-        log_message(obj: sub_context, scan_index: scan_index, depth: sub_context.parent.present? ? 2 : 1)
+        log_message(obj: sub_context, scan_index:, depth: sub_context.parent.present? ? 2 : 1)
 
         # Add data values when present regardless being required or not:
         # (Context 'name' here acts as a key to identify the latest context data-as-key being extracted)
@@ -684,7 +688,7 @@ module PdfResults
         valid = true
         # Increase consumed rows of all the row_span, given optional_if_empty applies
         # to this whole container context:
-        @consumed_rows = @consumed_rows + row_span
+        @consumed_rows += row_span
       end
       # DEBUG ----------------------------------------------------------------
       # if name == 'event' && (scan_index == 2)
@@ -697,14 +701,14 @@ module PdfResults
 
       # (Re)Set the DAO value whenever there's a (new) valid context found:
       if key.present?
-        log_message(msg: "\033[1;33;32mDAO created.\033[0m", scan_index: scan_index)
+        log_message(msg: "\033[1;33;32mDAO created.\033[0m", scan_index:)
         @dao = ContextDAO.new(self)
       else
-        log_message(msg: "\033[1;33;32m✔\033[0m", scan_index: scan_index)
+        log_message(msg: "\033[1;33;32m✔\033[0m", scan_index:)
       end
       # Set the internal validation result value only when actually found:
       @last_validation_result = true if valid
-      return true
+      true
     end
 
     # Applies this ContextDef extracting its field values if any (from <tt>row_buffer</tt> starting from <tt>scan_index</tt>)
@@ -745,22 +749,22 @@ module PdfResults
                  ('  ' * depth) << output
                end
       output << ('  ' * (depth + 1)) <<
-                "+-- #{ctx.name}#{ctx.has_key_values? ? '🔑' : ''}" <<
-                "#{ctx.required? ? '🔒' : ''}" <<
-                "#{ctx.repeat? ? '🌀' : ''}\r\n"
+        "+-- #{ctx.name}#{ctx.has_key_values? ? '🔑' : ''}" <<
+        "#{ctx.required? ? '🔒' : ''}" <<
+        "#{ctx.repeat? ? '🌀' : ''}\r\n"
 
       if ctx.rows.present?
         output << ('  ' * (depth + 2)) << "  [:rows]\r\n"
         ctx.rows.each do |sub_ctx|
-          output = hierarchy_to_s(list: list, ctx: sub_ctx, output: output, depth: depth + 3)
+          output = hierarchy_to_s(list:, ctx: sub_ctx, output:, depth: depth + 3)
         end
       end
 
       # Select only direct siblings from the list of available contexts and
       # add them to the sub-tree (while handling also parent-as-strings special case):
-      list.select { |ctx_item| ctx_item.parent.is_a?(ContextDef) ? ctx_item.parent&.name == ctx.name :  ctx_item.parent == ctx.name }
+      list.select { |ctx_item| ctx_item.parent.is_a?(ContextDef) ? ctx_item.parent&.name == ctx.name : ctx_item.parent == ctx.name }
           .each do |sibling_ctx|
-            output = hierarchy_to_s(list: list, ctx: sibling_ctx, output: output, depth: depth + 2)
+            output = hierarchy_to_s(list:, ctx: sibling_ctx, output:, depth: depth + 2)
           end
 
       output
@@ -770,29 +774,29 @@ module PdfResults
     def to_s
       offset = parent.present? ? "\t" : ''
       output = "\r\n#{offset}[#{self.class.name.split('::').last} <#{name}>]\r\n"
-      output << "|=> \'#{key}\'\r\n" if key.present?
+      output << "|=> '#{key}'\r\n" if key.present?
       ALL_PROPS.each do |prop_key|
         next if prop_key == 'name' # (Don't output the name twice)
 
-        if instance_variable_defined?("@#{prop_key}")
-          raw_val = instance_variable_get("@#{prop_key}")
-          prop_val = if raw_val.is_a?(String)
-                       "\"#{raw_val}\"\r\n"
-                     # Output just the name for sub-contexts:
-                     elsif raw_val.is_a?(ContextDef)
-                       "<#{raw_val.name}>\r\n"
-                     # Add carriage return for array of lambdas:
-                     elsif prop_key == 'lambda' && raw_val.present?
-                       "#{raw_val}\r\n"
-                     # Map any other list into a collated string:
-                     elsif raw_val.is_a?(Array) && raw_val.present?
-                       raw_val.map { |i| i.to_s }.join
-                     # Default output (raw value with carriage return):
-                     else
-                       "#{raw_val}\r\n"
-                     end
-          output << "#{offset}- #{prop_key.ljust(13, '.')}: #{prop_val}" if prop_val.present?
-        end
+        next unless instance_variable_defined?(:"@#{prop_key}")
+
+        raw_val = instance_variable_get(:"@#{prop_key}")
+        prop_val = if raw_val.is_a?(String)
+                     "\"#{raw_val}\"\r\n"
+                   # Output just the name for sub-contexts:
+                   elsif raw_val.is_a?(ContextDef)
+                     "<#{raw_val.name}>\r\n"
+                   # Add carriage return for array of lambdas:
+                   elsif prop_key == 'lambda' && raw_val.present?
+                     "#{raw_val}\r\n"
+                   # Map any other list into a collated string:
+                   elsif raw_val.is_a?(Array) && raw_val.present?
+                     raw_val.map { |i| i.to_s }.join
+                   # Default output (raw value with carriage return):
+                   else
+                     "#{raw_val}\r\n"
+                   end
+        output << "#{offset}- #{prop_key.ljust(13, '.')}: #{prop_val}" if prop_val.present?
       end
 
       output
@@ -823,17 +827,17 @@ module PdfResults
         formatted = Kernel.format("%s🔸 SUB-CTX [\033[1;33;37m%s\033[0m] => %s -- curr_index: %d, consumed_rows: %d, row_span: %d",
                                   indentation, obj.name, result_icon_for(obj), obj.curr_index.to_i, obj.consumed_rows.to_i, obj.row_span.to_i)
       elsif msg.blank?
-        formatted = Kernel.format("%s🔎 [%s] %s%s -- scan_index: %03d, curr_index: %d, consumed_rows: %d, row_span: %d",
-                                  indentation, name,repeat? ? '🌀' : '', required? ? '🔑' : '', scan_index,
+        formatted = Kernel.format('%s🔎 [%s] %s%s -- scan_index: %03d, curr_index: %d, consumed_rows: %d, row_span: %d',
+                                  indentation, name, repeat? ? '🌀' : '', required? ? '🔑' : '', scan_index,
                                   @curr_index.to_i, @consumed_rows.to_i, @row_span.to_i)
-        formatted = formatted + Kernel.format(" curr_buffer: <%s>", curr_buffer[0..160]) if curr_buffer
+        formatted += Kernel.format(' curr_buffer: <%s>', curr_buffer[0..160]) if curr_buffer
       else
-        formatted = Kernel.format("%s   [%s] 👉 %s", indentation, name, msg)
+        formatted = Kernel.format('%s   [%s] 👉 %s', indentation, name, msg)
         if curr_buffer
           sub_indent = indentation + ' '.rjust(name.length + 6)
           buff = curr_buffer.is_a?(Array) ? curr_buffer.join("↩\r\n#{sub_indent}") : curr_buffer
-          formatted = formatted + Kernel.format(" - curr_buffer (%s) size: %d\r\n%s<%s>", curr_buffer.class,
-                                                curr_buffer&.size, sub_indent, buff)
+          formatted += Kernel.format(" - curr_buffer (%s) size: %d\r\n%s<%s>", curr_buffer.class,
+                                     curr_buffer&.size, sub_indent, buff)
         end
       end
 

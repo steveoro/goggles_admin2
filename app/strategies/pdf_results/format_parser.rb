@@ -81,6 +81,7 @@ module PdfResults
     #   }
     #
     attr_reader :checked_formats
+
     #-- -----------------------------------------------------------------------
     #++
 
@@ -184,7 +185,7 @@ module PdfResults
     def scan(ffamily_filter: '', limit_pages: nil, debug: @debug) # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
       @debug = debug
       @logger.reopen
-      set_current_page_rows(limit_pages: limit_pages)
+      set_current_page_rows(limit_pages:)
       log_message('No pages to scan!') && return if @pages.blank? || @rows.blank?
 
       # Scan all defined/available format layouts found, page-by-page:
@@ -197,12 +198,12 @@ module PdfResults
       @checked_formats = {} # hash for keeping track of repeated checks on same format types
       continue_scan = fmt_files_idx < fmt_files.count && format_filepath.present?
 
-      while continue_scan do
+      while continue_scan
         log_message("\r\n✴✴✴ 🩺 Checking '#{current_fname}' (base: #{ffamily_name}, fmt: #{fmt_files_idx}/tot: #{fmt_files.count}) @ page idx: #{@page_index}/tot: #{@pages.count} ✴✴✴")
 
         # Parse will carry on with the current format until last page is reached
         # or the format isn't valid anymore on the current page:
-        parse(format_filepath, limit_pages: limit_pages)
+        parse(format_filepath, limit_pages:)
 
         # 2. Memorize last format check made & bail-out when actual EOF is reached with a valid format
         @checked_formats[current_fname] ||= {}
@@ -253,10 +254,9 @@ module PdfResults
       log_message("\r\nFormat list scanning results:")
       @checked_formats.each do |fname, hsh_res|
         log_message(
-          Kernel.format("- %s: %s, last checked at page idx %d, valid at: %s",
-            fname, hsh_res[:valid] ? "\033[1;33;32m✔\033[0m" : 'x', hsh_res[:last_check].to_i,
-            hsh_res[:valid_at].to_s
-          )
+          Kernel.format('- %s: %s, last checked at page idx %d, valid at: %s',
+                        fname, hsh_res[:valid] ? "\033[1;33;32m✔\033[0m" : 'x', hsh_res[:last_check].to_i,
+                        hsh_res[:valid_at].to_s)
         )
       end
       log_message("\r\nApplied format family: '#{ffamily_name}', latest found: #{@result_format_type}")
@@ -324,7 +324,7 @@ module PdfResults
       @format_name = prepare_format_defs_from_file(format_filepath)
 
       # 2. Set the current array of @rows for the current page:
-      set_current_page_rows(limit_pages: limit_pages, rewind: reset_page_index)
+      set_current_page_rows(limit_pages:, rewind: reset_page_index)
 
       # 3. Scan each ContextDef present in @format_defs, progressing in source text scan index
       #    as much as actual row span also progressing page-by-page:
@@ -334,7 +334,7 @@ module PdfResults
       ctx_name  = @format_order.at(ctx_index)
       continue_scan = row_index < @rows.count && ctx_name.present?
 
-      while continue_scan do
+      while continue_scan
         # Set the current context:
         context_def = @format_defs.fetch(ctx_name, nil)
         break unless context_def.is_a?(ContextDef)
@@ -463,8 +463,7 @@ module PdfResults
           Kernel.format('- %<name>s: last checked at row idx %<last_check>d => %<check_result>s, valid at rows: %<valid_list>s',
                         name:, last_check: hsh[:last_check].to_i,
                         check_result: hsh[:valid] ? "\033[1;33;32m✔\033[0m" : 'x',
-                        valid_list: hsh[:valid_at].to_s
-          )
+                        valid_list: hsh[:valid_at].to_s)
         )
       end
     end
@@ -479,9 +478,8 @@ module PdfResults
       dirname = File.dirname(filename)
       @logfile = File.open(File.join(dirname, basename + '.log'), 'w+')
       @logger = Logger.new(@logfile,
-        datetime_format: '%Y%m%d %H:%M:%S',
-        formatter: proc { |_severity, _datetime, _progname, msg| "#{msg}\r\n" }
-      )
+                           datetime_format: '%Y%m%d %H:%M:%S',
+                           formatter: proc { |_severity, _datetime, _progname, msg| "#{msg}\r\n" })
     end
 
     # Returns a valid Season assuming current +filename+ contains the season ID as
@@ -623,7 +621,7 @@ module PdfResults
       msg = 'Invalid context name or index referenced as parent!'
       log_message("\r\n#{msg}")
       caller.each { |trace| log_message(trace) }
-      raise RuntimeError.new(msg)
+      raise msg.to_s
     end
 
     # Returns the previous context or nil if not available.

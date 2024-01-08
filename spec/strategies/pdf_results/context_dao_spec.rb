@@ -7,20 +7,20 @@ RSpec.describe PdfResults::ContextDAO, type: :strategy do
   let(:fixture_rows) do
     [
       PdfResults::ContextDef.new(name: "#{FFaker::Lorem.word}-0", optional_if_empty: true),
-      PdfResults::ContextDef.new(name: "#{FFaker::Lorem.word}-1", optional_if_empty: true),
+      PdfResults::ContextDef.new(name: "#{FFaker::Lorem.word}-1", optional_if_empty: true)
     ]
   end
   let(:parent_fields) do
     [
-      { name: 'category', format: "\\s*([UAM]\\d{2})\\s(Under|Master)\\s" },
-      { name: 'gender', format: "\\s(Femmine|Maschi)" }
+      { name: 'category', format: '\\s*([UAM]\\d{2})\\s(Under|Master)\\s' },
+      { name: 'gender', format: '\\s(Femmine|Maschi)' }
     ]
   end
   let(:fixture_fields) do
     [
-      { name: 'rank', format: "\\s?(\\d{1,2}|SQ)\\s+" },
+      { name: 'rank', format: '\\s?(\\d{1,2}|SQ)\\s+' },
       { name: 'swimmer_name', format: "\\s+(\\D+(['`\\-\\.\\s]\\s?\\D+){1,4})\\s+" },
-      { name: 'year_of_birth', format: "\\s+(\\d{4})\\s+" }
+      { name: 'year_of_birth', format: '\\s+(\\d{4})\\s+' }
     ]
   end
 
@@ -32,10 +32,10 @@ RSpec.describe PdfResults::ContextDAO, type: :strategy do
     )
   end
 
-  let(:fixture_rank) { (1 + rand * 50).to_i.to_s }
+  let(:fixture_rank) { (1 + (rand * 50)).to_i.to_s }
   let(:fixture_name) { FFaker::Name.name }
-  let(:fixture_year) { (1980 + rand * 50).to_i.to_s }
-  let(:parent_category) { (25 + rand * 40).to_i.to_s }
+  let(:fixture_year) { (1980 + (rand * 50)).to_i.to_s }
+  let(:parent_category) { (25 + (rand * 40)).to_i.to_s }
   let(:parent_gender) { %w[Femmine Maschi].sample }
 
   let(:parent_buffer) { "    M#{parent_category} Master #{parent_gender}" }
@@ -46,7 +46,7 @@ RSpec.describe PdfResults::ContextDAO, type: :strategy do
   let(:parent_dao) { parent_ctx.extract(parent_buffer, 0) }
   let(:extracted_dao) { fixture_ctx.extract(fixture_buffer, 0) }
 
-  before do
+  before(:each) do
     expect(parent_ctx).to be_a(PdfResults::ContextDef)
     expect(fixture_ctx).to be_a(PdfResults::ContextDef)
 
@@ -104,7 +104,7 @@ RSpec.describe PdfResults::ContextDAO, type: :strategy do
         expect(new_instance.fields_hash.keys)
           .to match_array(fixture_fields.map { |fld| fld.name })
         expect(new_instance.fields_hash.values)
-          .to match_array([fixture_rank, fixture_name, fixture_year])
+          .to contain_exactly(fixture_rank, fixture_name, fixture_year)
       end
 
       it 'has same #data as the DAO resulting from extract()' do
@@ -124,11 +124,11 @@ RSpec.describe PdfResults::ContextDAO, type: :strategy do
       end
 
       it 'has a nil parent' do
-        expect(new_instance.parent).to be nil
+        expect(new_instance.parent).to be_nil
       end
 
       it 'has a nil key' do
-        expect(new_instance.key).to be nil
+        expect(new_instance.key).to be_nil
       end
 
       it 'has an empty array of rows' do
@@ -144,7 +144,7 @@ RSpec.describe PdfResults::ContextDAO, type: :strategy do
       subject(:new_instance) { described_class.new('Not a ContextDef or nil!') }
 
       it 'raises an error' do
-        expect{ new_instance }.to raise_error('Invalid ContextDef specified!')
+        expect { new_instance }.to raise_error('Invalid ContextDef specified!')
       end
     end
   end
@@ -153,9 +153,9 @@ RSpec.describe PdfResults::ContextDAO, type: :strategy do
 
   describe '#data' do
     context 'when called on an instance from a ContextDef with valid? true & called,' do
-      let(:new_instance) { described_class.new(fixture_ctx) }
-
       subject(:result) { new_instance.data }
+
+      let(:new_instance) { described_class.new(fixture_ctx) }
 
       it 'is an Hash' do
         expect(result).to be_an(Hash).and be_present
@@ -184,13 +184,13 @@ RSpec.describe PdfResults::ContextDAO, type: :strategy do
 
     context 'when searching for a non-valid DAO,' do
       it 'returns nil' do
-        expect(new_instance.find_existing('NOT-a-DAO')).to be nil
+        expect(new_instance.find_existing('NOT-a-DAO')).to be_nil
       end
     end
 
     context 'when searching for nil,' do
       it 'returns nil' do
-        expect(new_instance.find_existing(nil)).to be nil
+        expect(new_instance.find_existing(nil)).to be_nil
       end
     end
 
@@ -211,7 +211,7 @@ RSpec.describe PdfResults::ContextDAO, type: :strategy do
 
     context 'when the specified DAO cannot be found in the hierarchy below,' do
       it 'returns nil' do
-        expect(new_instance.find_existing(parent_dao)).to be nil
+        expect(new_instance.find_existing(parent_dao)).to be_nil
       end
     end
   end

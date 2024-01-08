@@ -29,6 +29,136 @@ RSpec.describe PdfResults::ContextDef, type: :strategy do
     result
   end
 
+  let(:props_1ficr1_results_indexes) do
+    {
+      name: 'results',
+      fields: [
+        { name: 'rank',         pop_out: false, format: '\\s?(\\d{1,2}|SQ)' },
+        { name: 'swimmer_name', pop_out: false, format: '\\s+(\\w+(\\s\\w+){1,4})\\s+', token_end: 45 },
+        { name: 'nation',       pop_out: false, format: '\\s+\\s(\\w{2,3})\\s\\s+' },
+        { name: 'birth_year',   pop_out: false, format: '\\s+\\s(\\d{4})\\s\\s+' },
+        { name: 'team_name',    pop_out: false, format: '\\s*([\\w\\d]+(\\s[\\w\\d&.-]+)+)\\s\\s+', token_start: 88 },
+        { name: 'heat_num',     pop_out: false, format: '\\s*(\\d{1,3})\\s*', token_start: 122 },
+        { name: 'lane_num',     pop_out: false, format: '\\s*(\\d{1,2})\\s*', token_start: 127 },
+        { name: 'heat_rank',    pop_out: false, format: '\\s*(\\d{1,2}|SQ)\\s*', token_start: 133 },
+        { name: 'timing',       pop_out: false, format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*", token_start: 138 },
+        { name: 'team_score',   pop_out: false, format: '\\s*(.+)\\s*', required: false, token_start: 146 },
+        { name: 'dsq_type',     pop_out: false, format: '\\s*(.+)\\b', required: false, token_start: 146 },
+        { name: 'std_score',    pop_out: false, format: '\\s*(\\d{1,4}[,.]\\d{1,2})\\b', required: false, token_start: 146 }
+      ]
+    }
+  end
+  let(:props_1ficr1_results_popout) do
+    {
+      name: 'results',
+      fields: [
+        { name: 'rank',         format: '\\s?(\\d{1,2}|SQ)' },
+        { name: 'swimmer_name', format: '\\s+(\\w+(\\s\\w+){1,4})\\s+', token_end: 45 },
+        { name: 'nation',       format: '\\s+\\s(\\w{2,3})\\s\\s+' },
+        { name: 'birth_year',   format: '\\s+\\s(\\d{4})\\s\\s+' },
+        { name: 'team_name',    format: '\\s+\\s([\\w\\d]+(\\s[\\w\\d&.-]+)+)\\s\\s+' },
+        { name: 'heat_num',     format: '\\s*(\\d{1,3})\\s*' },
+        { name: 'lane_num',     format: '\\s*(\\d{1,2})\\s*' },
+        { name: 'heat_rank',    format: '\\s*(\\d{1,2}|SQ)\\s*' },
+        { name: 'timing',       format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*" },
+        { name: 'team_score',   format: '\\s*(.+)\\s*', required: false },
+        { name: 'dsq_type',     format: '\\s*(.+)\\b', required: false },
+        { name: 'std_score',    format: '\\s*(\\d{1,4}[,.]\\d{1,2})\\b', required: false }
+      ]
+    }
+  end
+  let(:props_1ficr1_category) do
+    {
+      name: 'category',
+      row_span: 2,
+      format: '\\s*((\\w+\\s?){1,4})\\b'
+    }
+  end
+  let(:props_1ficr1_results_hdr) do
+    {
+      name: 'results_hdr',
+      lambda: 'strip',
+      format: '\\s?Pos.\\s+Nominativo\\s+Naz\\s+Anno\\s+Società\\s+Ser.\\s+Cor\\s+Pos\\s+Tempo\\s+Pti.\\sSC\\s+Master\\b'
+    }
+  end
+  let(:props_1ficr1_event) do
+    {
+      name: 'event',
+      rows: [
+        {
+          fields: [
+            { name: 'event_length', lambda: 'strip', format: '\\s*(\\d{2,4})m?\\s+' },
+            { name: 'event_type', lambda: 'strip', format: '\\s*((\\w+\\s?){1,4})\\b' }
+          ]
+        },
+        {
+          fields: [
+            { name: 'Riepilogo', lambda: 'strip' }
+          ]
+        }
+      ]
+    }
+  end
+  #-- -------------------------------------------------------------------------
+  #++
+
+  # === NOTE: ===
+  # The following fixture properties were all based on the actual layout format '1-ficr1'
+  # (slight differences may exist since the actual format file evolved in time and this spec has not)
+  #
+  # In any case, DO NOT edit the following to match exactly the source format file and use properties
+  # like 'required: false', 'at_fixed_row: N', or 'repeatable: true' as each fixture is tested against
+  # a limited number of source buffer lines and are expected to match at offset row #0.
+  # ("Repeatables" & "optionals" would make the test fail too.)
+  let(:props_1ficr1_header) do
+    {
+      name: 'header',
+      rows: [
+        {
+          fields: [
+            { name: 'edition', lambda: 'strip', format: '\\s*(\\d{1,2}).{1,2}\\s+' },
+            { name: 'meeting_name', lambda: 'strip', format: "\\s*[°^*oa']?\\s+(.+)\\b" }
+          ]
+        },
+        {
+          fields: [
+            { name: 'meeting_place', lambda: 'strip', format: '\\s*(\\w{2,}),\\s+' },
+            { name: 'meeting_date', lambda: 'strip', format: '\\s*(\\d{2}[-/]\\d{2}[-/]\\d{2,4})\\b' }
+          ]
+        }
+      ]
+    }
+  end
+  let(:optional_rows) do
+    [
+      PdfResults::ContextDef.new(name: FFaker::Lorem.unique.word, required: false),
+      PdfResults::ContextDef.new(name: FFaker::Lorem.unique.word, required: false)
+    ]
+  end
+  let(:required_rows) do
+    [
+      PdfResults::ContextDef.new(name: FFaker::Lorem.unique.word),
+      PdfResults::ContextDef.new(name: FFaker::Lorem.unique.word),
+      PdfResults::ContextDef.new(name: FFaker::Lorem.unique.word)
+    ]
+  end
+  let(:optional_fields) do
+    [
+      PdfResults::FieldDef.new(name: FFaker::Name.unique.name, required: false),
+      PdfResults::FieldDef.new(name: FFaker::Name.unique.name, required: false)
+    ]
+  end
+  #-- -------------------------------------------------------------------------
+  #++
+
+  let(:required_fields) do
+    [
+      PdfResults::FieldDef.new(name: FFaker::Name.unique.name),
+      PdfResults::FieldDef.new(name: FFaker::Name.unique.name),
+      PdfResults::FieldDef.new(name: FFaker::Name.unique.name)
+    ]
+  end
+
   describe 'a new instance,' do
     context 'when given a mix of existing & non-existing properties,' do
       subject(:new_instance) { described_class.new(all_valid_props.merge(non_existing_props)) }
@@ -51,7 +181,7 @@ RSpec.describe PdfResults::ContextDef, type: :strategy do
 
       it 'leaves all other supported properties (which were not given as parameters) to nil' do
         PdfResults::ContextDef::ALL_PROPS.reject { |key| all_valid_props.key?(key) || all_props_with_defaults.include?(key) }
-                                       .each { |prop_key| expect(new_instance.send(prop_key)).to be_nil }
+                                         .each { |prop_key| expect(new_instance.send(prop_key)).to be_nil }
       end
 
       it_behaves_like(
@@ -92,7 +222,7 @@ RSpec.describe PdfResults::ContextDef, type: :strategy do
   describe '#format' do
     context 'when not specified' do
       it 'defaults to nil' do
-        expect(described_class.new(name: FFaker::Lorem.word).format).to be nil
+        expect(described_class.new(name: FFaker::Lorem.word).format).to be_nil
       end
     end
   end
@@ -123,7 +253,7 @@ RSpec.describe PdfResults::ContextDef, type: :strategy do
 
   describe '#data_hash' do
     it 'is nil by default' do
-      expect(described_class.new(name: FFaker::Lorem.word).data_hash).to be nil
+      expect(described_class.new(name: FFaker::Lorem.word).data_hash).to be_nil
     end
   end
 
@@ -131,36 +261,6 @@ RSpec.describe PdfResults::ContextDef, type: :strategy do
     it 'is 1 by default' do
       expect(described_class.new(name: FFaker::Lorem.word).row_span).to eq(1)
     end
-  end
-  #-- -------------------------------------------------------------------------
-  #++
-
-  let(:required_fields) do
-    [
-      PdfResults::FieldDef.new(name: FFaker::Name.unique.name),
-      PdfResults::FieldDef.new(name: FFaker::Name.unique.name),
-      PdfResults::FieldDef.new(name: FFaker::Name.unique.name)
-    ]
-  end
-  let(:optional_fields) do
-    [
-      PdfResults::FieldDef.new(name: FFaker::Name.unique.name, required: false),
-      PdfResults::FieldDef.new(name: FFaker::Name.unique.name, required: false)
-    ]
-  end
-
-  let(:required_rows) do
-    [
-      PdfResults::ContextDef.new(name: FFaker::Lorem.unique.word),
-      PdfResults::ContextDef.new(name: FFaker::Lorem.unique.word),
-      PdfResults::ContextDef.new(name: FFaker::Lorem.unique.word)
-    ]
-  end
-  let(:optional_rows) do
-    [
-      PdfResults::ContextDef.new(name: FFaker::Lorem.unique.word, required: false),
-      PdfResults::ContextDef.new(name: FFaker::Lorem.unique.word, required: false)
-    ]
   end
 
   describe '#required_fields' do
@@ -171,7 +271,8 @@ RSpec.describe PdfResults::ContextDef, type: :strategy do
     it 'is the Array of required fields when some required fields are defined' do
       expect(
         described_class.new(
-          name: FFaker::Lorem.unique.word, fields: required_fields + optional_fields).required_fields
+          name: FFaker::Lorem.unique.word, fields: required_fields + optional_fields
+        ).required_fields
       ).to match_array(required_fields)
     end
   end
@@ -184,7 +285,8 @@ RSpec.describe PdfResults::ContextDef, type: :strategy do
     it 'is the Array of required sub-contexts when some required rows are defined' do
       expect(
         described_class.new(
-          name: FFaker::Lorem.unique.word, rows: required_rows + optional_rows).required_rows
+          name: FFaker::Lorem.unique.word, rows: required_rows + optional_rows
+        ).required_rows
       ).to match_array(required_rows)
     end
   end
@@ -254,8 +356,8 @@ RSpec.describe PdfResults::ContextDef, type: :strategy do
 
           separator = %w[| , ; /].sample
           # There should be no difference between the 2 since no key list was specified:
-          expect(subject.key(separator: separator)).to eq(subject.key_hash.values.join(separator))
-          expect(subject.key(separator: separator)).to eq(subject.data_hash.values.join(separator))
+          expect(subject.key(separator:)).to eq(subject.key_hash.values.join(separator))
+          expect(subject.key(separator:)).to eq(subject.data_hash.values.join(separator))
         end
       end
     end
@@ -290,7 +392,7 @@ RSpec.describe PdfResults::ContextDef, type: :strategy do
           subject.valid?(test_buffer, 0)
 
           separator = %w[| , ; /].sample
-          expect(subject.key(separator: separator)).to eq(subject.key_hash.values.join(separator))
+          expect(subject.key(separator:)).to eq(subject.key_hash.values.join(separator))
         end
       end
     end
@@ -350,111 +452,6 @@ RSpec.describe PdfResults::ContextDef, type: :strategy do
         end
       end
     end
-  end
-  #-- -------------------------------------------------------------------------
-  #++
-
-  # === NOTE: ===
-  # The following fixture properties were all based on the actual layout format '1-ficr1'
-  # (slight differences may exist since the actual format file evolved in time and this spec has not)
-  #
-  # In any case, DO NOT edit the following to match exactly the source format file and use properties
-  # like 'required: false', 'at_fixed_row: N', or 'repeatable: true' as each fixture is tested against
-  # a limited number of source buffer lines and are expected to match at offset row #0.
-  # ("Repeatables" & "optionals" would make the test fail too.)
-  let(:props_1ficr1_header) do
-    {
-      name: 'header',
-      rows: [
-        {
-          fields: [
-            { name: 'edition', lambda: 'strip', format: "\\s*(\\d{1,2}).{1,2}\\s+" },
-            { name: 'meeting_name', lambda: 'strip', format: "\\s*[°^*oa']?\\s+(.+)\\b" }
-          ]
-        },
-        {
-          fields: [
-            { name: 'meeting_place', lambda: 'strip', format: "\\s*(\\w{2,}),\\s+" },
-            { name: 'meeting_date', lambda: 'strip', format: "\\s*(\\d{2}[-\/]\\d{2}[-\/]\\d{2,4})\\b" }
-          ]
-        }
-      ]
-    }
-  end
-
-  let(:props_1ficr1_event) do
-    {
-      name: 'event',
-      rows: [
-        {
-          fields: [
-            { name: 'event_length', lambda: 'strip', format: "\\s*(\\d{2,4})m?\\s+" },
-            { name: 'event_type', lambda: 'strip', format: "\\s*((\\w+\\s?){1,4})\\b" }
-          ]
-        },
-        {
-          fields: [
-            { name: 'Riepilogo', lambda: 'strip' }
-          ]
-        }
-      ]
-    }
-  end
-
-  let(:props_1ficr1_results_hdr) do
-    {
-      name: 'results_hdr',
-      lambda: 'strip',
-      format: "\\s?Pos.\\s+Nominativo\\s+Naz\\s+Anno\\s+Società\\s+Ser.\\s+Cor\\s+Pos\\s+Tempo\\s+Pti.\\sSC\\s+Master\\b"
-    }
-  end
-
-  let(:props_1ficr1_category) do
-    {
-      name: 'category',
-      row_span: 2,
-      format: "\\s*((\\w+\\s?){1,4})\\b"
-    }
-  end
-
-  let(:props_1ficr1_results_popout) do
-    {
-      name: 'results',
-      fields: [
-        { name: 'rank',         format: "\\s?(\\d{1,2}|SQ)" },
-        { name: 'swimmer_name', format: "\\s+(\\w+(\\s\\w+){1,4})\\s+", token_end: 45 },
-        { name: 'nation',       format: "\\s+\\s(\\w{2,3})\\s\\s+" },
-        { name: 'birth_year',   format: "\\s+\\s(\\d{4})\\s\\s+" },
-        { name: 'team_name',    format: "\\s+\\s([\\w\\d]+(\\s[\\w\\d&.-]+)+)\\s\\s+" },
-        { name: 'heat_num',     format: "\\s*(\\d{1,3})\\s*" },
-        { name: 'lane_num',     format: "\\s*(\\d{1,2})\\s*" },
-        { name: 'heat_rank',    format: "\\s*(\\d{1,2}|SQ)\\s*" },
-        { name: 'timing',       format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*" },
-        { name: 'team_score',   format: "\\s*(.+)\\s*", required: false },
-        { name: 'dsq_type',     format: "\\s*(.+)\\b", required: false },
-        { name: 'std_score',    format: "\\s*(\\d{1,4}[,.]\\d{1,2})\\b", required: false }
-      ]
-    }
-  end
-
-  let(:props_1ficr1_results_indexes) do
-    {
-      name: 'results',
-      fields: [
-        { name: 'rank',         pop_out: false, format: "\\s?(\\d{1,2}|SQ)" },
-        { name: 'swimmer_name', pop_out: false, format: "\\s+(\\w+(\\s\\w+){1,4})\\s+", token_end: 45 },
-        { name: 'nation',       pop_out: false, format: "\\s+\\s(\\w{2,3})\\s\\s+" },
-        { name: 'birth_year',   pop_out: false, format: "\\s+\\s(\\d{4})\\s\\s+" },
-        { name: 'team_name',    pop_out: false, format: "\\s*([\\w\\d]+(\\s[\\w\\d&.-]+)+)\\s\\s+", token_start: 88 },
-        { name: 'heat_num',     pop_out: false, format: "\\s*(\\d{1,3})\\s*", token_start: 122 },
-        { name: 'lane_num',     pop_out: false, format: "\\s*(\\d{1,2})\\s*", token_start: 127 },
-        { name: 'heat_rank',    pop_out: false, format: "\\s*(\\d{1,2}|SQ)\\s*", token_start: 133 },
-        { name: 'timing',       pop_out: false, format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*", token_start: 138 },
-        { name: 'team_score',   pop_out: false, format: "\\s*(.+)\\s*", required: false, token_start: 146 },
-        { name: 'dsq_type',     pop_out: false, format: "\\s*(.+)\\b", required: false, token_start: 146 },
-        { name: 'std_score',    pop_out: false, format: "\\s*(\\d{1,4}[,.]\\d{1,2})\\b", required: false, token_start: 146 }
-      ]
-    }
   end
 
   [
@@ -527,13 +524,13 @@ RSpec.describe PdfResults::ContextDef, type: :strategy do
     },
     {
       src_buffer: [
-        '3     FALASCONI MARIA BEATRICE                                       ITA          1996   ALL ROUND SPORT & WELLNES         21    2     4    30.38             834,10',
+        '3     FALASCONI MARIA BEATRICE                                       ITA          1996   ALL ROUND SPORT & WELLNES         21    2     4    30.38             834,10'
       ],
       props: :props_1ficr1_results_popout
     },
     {
       src_buffer: [
-        '3     FALASCONI MARIA BEATRICE                                       ITA          1996   ALL ROUND SPORT & WELLNES         21    2     4    30.38             834,10',
+        '3     FALASCONI MARIA BEATRICE                                       ITA          1996   ALL ROUND SPORT & WELLNES         21    2     4    30.38             834,10'
       ],
       props: :props_1ficr1_results_indexes
     }
@@ -543,7 +540,7 @@ RSpec.describe PdfResults::ContextDef, type: :strategy do
         described_class.new(send(def_hash[:props]))
       end
 
-      before do
+      before(:each) do
         expect(def_hash[:src_buffer]).to be_an(Array).and be_present
         expect(obj_instance).to be_a(described_class)
         expect(obj_instance.log).to be_blank
@@ -598,16 +595,16 @@ RSpec.describe PdfResults::ContextDef, type: :strategy do
       #++
 
       describe '#key (after context check with valid? or extract)' do
-        before { obj_instance.valid?(def_hash[:src_buffer], 0) }
+        before(:each) { obj_instance.valid?(def_hash[:src_buffer], 0) }
 
         it 'equals the conjoined string values, using the specified separator, with values from #data_hash' do
           separator = %w[| , ; /].sample
-          expect(obj_instance.key(separator: separator)).to eq(obj_instance.data_hash.values.join(separator))
+          expect(obj_instance.key(separator:)).to eq(obj_instance.data_hash.values.join(separator))
         end
       end
 
       describe '#log (after context check with valid? or extract)' do
-        before { obj_instance.valid?(def_hash[:src_buffer], 0) }
+        before(:each) { obj_instance.valid?(def_hash[:src_buffer], 0) }
 
         it 'includes the context name' do
           expect(obj_instance.log).to include(obj_instance.name)
@@ -623,8 +620,12 @@ RSpec.describe PdfResults::ContextDef, type: :strategy do
   #++
 
   describe '#to_s' do
+    subject(:result) { obj_instance.to_s }
+
     let(:original_value) { FFaker::Name.name }
-    let(:source_row) { " 9    #{original_value}                               ITA          1963   CSI NUOTO OBER FERRARI           3      2     7           46.25              639,35" }
+    let(:source_row) do
+      " 9    #{original_value}                               ITA          1963   CSI NUOTO OBER FERRARI           3      2     7           46.25              639,35"
+    end
     let(:obj_instance) do
       described_class.new(
         name: FFaker::Lorem.word,
@@ -634,16 +635,15 @@ RSpec.describe PdfResults::ContextDef, type: :strategy do
       )
     end
 
-    before do
+    before(:each) do
       expect(source_row).to be_a(String).and be_present
       expect(obj_instance).to be_a(described_class)
     end
 
-    subject(:result) { obj_instance.to_s }
-
     it 'is a String' do
       expect(result).to be_a(String).and be_present
     end
+
     it 'includes all set properties and their value' do
       # DEBUG:
       # puts result

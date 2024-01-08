@@ -78,7 +78,7 @@ module PdfResults
       @name = context&.name || 'root'
       # Store curr. reference to the latest Ctx parent DAO for usage in find & merge:
       @parent = context&.parent&.dao
-      @key = context&.key       # Use current Context key as UID
+      @key = context&.key # Use current Context key as UID
       @rows = []
 
       # Collect all fields from any root-level field group and from sub-area context rows
@@ -87,10 +87,10 @@ module PdfResults
       if context&.fields.present?
         context.fields.each { |fd| @fields_hash.merge!({ fd.name => fd.value }) if fd.is_a?(FieldDef) }
       end
-      if context&.rows.present?
-        context.rows.each do |ctx|
-          @fields_hash.merge!(ctx.dao.fields_hash) if ctx.is_a?(ContextDef) && ctx.dao.present?
-        end
+      return unless context&.rows.present?
+
+      context.rows.each do |ctx|
+        @fields_hash.merge!(ctx.dao.fields_hash) if ctx.is_a?(ContextDef) && ctx.dao.present?
       end
     end
     #-- -----------------------------------------------------------------------
@@ -248,12 +248,12 @@ module PdfResults
                  ('  ' * depth) << output
                end
       output << ('  ' * (depth + 1)) <<
-                "+-- #{dao.name}#{dao.fields_hash.present? ? '🔸' : ''}\r\n"
+        "+-- #{dao.name}#{dao.fields_hash.present? ? '🔸' : ''}\r\n"
 
       if dao.rows.present?
         output << ('  ' * (depth + 2)) << "  [:rows]\r\n"
         dao.rows.each do |sub_dao|
-          output = hierarchy_to_s(dao: sub_dao, output: output, depth: depth + 3)
+          output = hierarchy_to_s(dao: sub_dao, output:, depth: depth + 3)
         end
       end
 

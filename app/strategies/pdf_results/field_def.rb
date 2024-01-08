@@ -171,11 +171,11 @@ module PdfResults
     class_eval do
       # Getters
       ALL_PROPS.each do |prop_key|
-        define_method(prop_key.to_s.to_sym) { instance_variable_get("@#{prop_key}") if instance_variable_defined?("@#{prop_key}") }
+        define_method(prop_key.to_s.to_sym) { instance_variable_get(:"@#{prop_key}") if instance_variable_defined?(:"@#{prop_key}") }
       end
       # Define additional specific instance helper methods just for boolean values:
       BOOL_PROPS.each do |prop_key|
-        define_method("#{prop_key}?".to_sym) { send(prop_key).present? if respond_to?(prop_key) }
+        define_method(:"#{prop_key}?") { send(prop_key).present? if respond_to?(prop_key) }
       end
     end
     #-- -----------------------------------------------------------------------
@@ -281,11 +281,11 @@ module PdfResults
       ALL_PROPS.each do |prop_key|
         next if prop_key == 'name' # (Don't output the name twice)
 
-        if instance_variable_defined?("@#{prop_key}")
-          prop_val = instance_variable_get("@#{prop_key}")
-          prop_val = "\"#{prop_val}\"" if prop_val.is_a?(String)
-          output << "\t\t- #{prop_key.ljust(11, '.')}: #{prop_val}\r\n" if prop_val.present?
-        end
+        next unless instance_variable_defined?(:"@#{prop_key}")
+
+        prop_val = instance_variable_get(:"@#{prop_key}")
+        prop_val = "\"#{prop_val}\"" if prop_val.is_a?(String)
+        output << "\t\t- #{prop_key.ljust(11, '.')}: #{prop_val}\r\n" if prop_val.present?
       end
 
       output

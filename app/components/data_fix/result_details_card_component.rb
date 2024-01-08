@@ -19,6 +19,7 @@ module DataFix
   #
   class ResultDetailsCardComponent < ViewComponent::Base
     def initialize(prg_key:, prg_row:, laps_rowset:)
+      super
       @prg_key = prg_key
       @model_row = prg_row&.fetch('row', nil)
       @laps_rowset = laps_rowset
@@ -70,12 +71,14 @@ module DataFix
 
     # Returns
     def lap_swimmers
-      @lap_swimmers ||= @laps_rowset&.map { |row| row['swimmer_id'].present? ? GogglesDb::Swimmer.find(row['swimmer_id']).last_name : '🆕' }.uniq
+      @lap_swimmers ||= @laps_rowset&.map { |row| row['swimmer_id'].present? ? GogglesDb::Swimmer.find(row['swimmer_id']).last_name : '🆕' }&.uniq
     end
 
     # Returns
     def lap_timings
-      @lap_timings ||= @laps_rowset&.map { |row| Timing.new(minutes: row['minutes_from_start'], seconds: row['seconds_from_start'], hundredths: row['hundredths_from_start']).to_s }
+      @lap_timings ||= @laps_rowset&.map do |row|
+                         Timing.new(minutes: row['minutes_from_start'], seconds: row['seconds_from_start'], hundredths: row['hundredths_from_start']).to_s
+                       end
                                    &.join(' / ')
     end
 

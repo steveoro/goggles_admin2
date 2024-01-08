@@ -46,6 +46,7 @@ gem 'kaminari'
 gem 'kiba'
 gem 'nokogiri' # (used explicitly in view specs)
 # [Steve A.] CORS support shouldn't be needed here for the moment, so keep this commented out:
+# Use Rack CORS for handling Cross-Origin Resource Sharing (CORS), making cross-origin AJAX possible
 # gem 'rack-cors'
 gem 'rest-client'
 gem 'scenic'

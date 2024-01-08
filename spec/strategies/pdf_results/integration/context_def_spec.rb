@@ -7,18 +7,18 @@ RSpec.describe PdfResults::ContextDef, type: :integration do
     {
       name: 'results',
       fields: [
-        { name: 'rank',         format: "\\s?(\\d{1,2}|SQ)" },
-        { name: 'swimmer_name', format: "\\s+(\\w+(\\s\\w+){1,4})\\s+", token_end: 45 },
-        { name: 'nation',       format: "\\s+\\s(\\w{2,3})\\s\\s+" },
-        { name: 'birth_year',   format: "\\s+\\s(\\d{4})\\s\\s+" },
-        { name: 'team_name',    format: "\\s+\\s([\\w\\d]+(\\s[\\w\\d&.-]+)+)\\s\\s+" },
-        { name: 'heat_num',     format: "\\s*(\\d{1,3})\\s*" },
-        { name: 'lane_num',     format: "\\s*(\\d{1,2})\\s*" },
-        { name: 'heat_rank',    format: "\\s*(\\d{1,2}|SQ)\\s*" },
+        { name: 'rank',         format: '\\s?(\\d{1,2}|SQ)' },
+        { name: 'swimmer_name', format: '\\s+(\\w+(\\s\\w+){1,4})\\s+', token_end: 45 },
+        { name: 'nation',       format: '\\s+\\s(\\w{2,3})\\s\\s+' },
+        { name: 'birth_year',   format: '\\s+\\s(\\d{4})\\s\\s+' },
+        { name: 'team_name',    format: '\\s+\\s([\\w\\d]+(\\s[\\w\\d&.-]+)+)\\s\\s+' },
+        { name: 'heat_num',     format: '\\s*(\\d{1,3})\\s*' },
+        { name: 'lane_num',     format: '\\s*(\\d{1,2})\\s*' },
+        { name: 'heat_rank',    format: '\\s*(\\d{1,2}|SQ)\\s*' },
         { name: 'timing',       format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*" },
-        { name: 'team_score',   format: "\\s*(.+)\\s*", required: false },
-        { name: 'dsq_type',     format: "\\s*(.+)\\b", required: false },
-        { name: 'std_score',    format: "\\s*(\\d{1,4}[,.]\\d{1,2})\\b", required: false }
+        { name: 'team_score',   format: '\\s*(.+)\\s*', required: false },
+        { name: 'dsq_type',     format: '\\s*(.+)\\b', required: false },
+        { name: 'std_score',    format: '\\s*(\\d{1,4}[,.]\\d{1,2})\\b', required: false }
       ]
     }
   end
@@ -27,18 +27,18 @@ RSpec.describe PdfResults::ContextDef, type: :integration do
     {
       name: 'results',
       fields: [
-        { name: 'rank',         pop_out: false, format: "\\s?(\\d{1,2}|SQ)" },
-        { name: 'swimmer_name', pop_out: false, format: "\\s+(\\w+(\\s\\w+){1,4})\\s+", token_end: 45 },
-        { name: 'nation',       pop_out: false, format: "\\s+\\s(\\w{2,3})\\s\\s+" },
-        { name: 'birth_year',   pop_out: false, format: "\\s+\\s(\\d{4})\\s\\s+" },
-        { name: 'team_name',    pop_out: false, format: "\\s*([\\w\\d]+(\\s[\\w\\d&.-]+)+)\\s\\s+", token_start: 88 },
-        { name: 'heat_num',     pop_out: false, format: "\\s*(\\d{1,3})\\s*", token_start: 122 },
-        { name: 'lane_num',     pop_out: false, format: "\\s*(\\d{1,2})\\s*", token_start: 127 },
-        { name: 'heat_rank',    pop_out: false, format: "\\s*(\\d{1,2}|SQ)\\s*", token_start: 133 },
+        { name: 'rank',         pop_out: false, format: '\\s?(\\d{1,2}|SQ)' },
+        { name: 'swimmer_name', pop_out: false, format: '\\s+(\\w+(\\s\\w+){1,4})\\s+', token_end: 45 },
+        { name: 'nation',       pop_out: false, format: '\\s+\\s(\\w{2,3})\\s\\s+' },
+        { name: 'birth_year',   pop_out: false, format: '\\s+\\s(\\d{4})\\s\\s+' },
+        { name: 'team_name',    pop_out: false, format: '\\s*([\\w\\d]+(\\s[\\w\\d&.-]+)+)\\s\\s+', token_start: 88 },
+        { name: 'heat_num',     pop_out: false, format: '\\s*(\\d{1,3})\\s*', token_start: 122 },
+        { name: 'lane_num',     pop_out: false, format: '\\s*(\\d{1,2})\\s*', token_start: 127 },
+        { name: 'heat_rank',    pop_out: false, format: '\\s*(\\d{1,2}|SQ)\\s*', token_start: 133 },
         { name: 'timing',       pop_out: false, format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*", token_start: 138 },
-        { name: 'team_score',   pop_out: false, format: "\\s*(.+)\\s*", required: false, token_start: 146 },
-        { name: 'dsq_type',     pop_out: false, format: "\\s*(.+)\\b", required: false, token_start: 146 },
-        { name: 'std_score',    pop_out: false, format: "\\s*(\\d{1,4}[,.]\\d{1,2})\\b", required: false, token_start: 146 }
+        { name: 'team_score',   pop_out: false, format: '\\s*(.+)\\s*', required: false, token_start: 146 },
+        { name: 'dsq_type',     pop_out: false, format: '\\s*(.+)\\b', required: false, token_start: 146 },
+        { name: 'std_score',    pop_out: false, format: '\\s*(\\d{1,4}[,.]\\d{1,2})\\b', required: false, token_start: 146 }
       ]
     }
   end
@@ -48,10 +48,10 @@ RSpec.describe PdfResults::ContextDef, type: :integration do
       name: 'results',
       eop: true,
       row_span: 6,
-      starts_with: "Elaborazione dati a cura della Federazione Italiana Cronometristi -",
+      starts_with: 'Elaborazione dati a cura della Federazione Italiana Cronometristi -',
       fields: [
-        { name: 'pool_type',      format: "\\s*www.ficr.it\\s+(\\d{1,2} corsie \\d{2}m)\\s+Pagina\\s*" },
-        { name: 'page_delimiter', format: "\\s*Risultati su https://nuoto.ficr.it\\b" }
+        { name: 'pool_type',      format: '\\s*www.ficr.it\\s+(\\d{1,2} corsie \\d{2}m)\\s+Pagina\\s*' },
+        { name: 'page_delimiter', format: '\\s*Risultati su https://nuoto.ficr.it\\b' }
       ]
     }
   end
@@ -85,7 +85,7 @@ RSpec.describe PdfResults::ContextDef, type: :integration do
         described_class.new(send(def_hash[:props]))
       end
 
-      before do
+      before(:each) do
         expect(def_hash[:src_buffer]).to be_an(Array).and be_present
         expect(obj_instance).to be_a(described_class)
         expect(obj_instance.log).to be_blank

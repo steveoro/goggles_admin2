@@ -4,9 +4,9 @@ module Import
   #
   # = MacroSolver
   #
-  #   - version:  7-0.6.00
+  #   - version:  7-0.6.12
   #   - author:   Steve A.
-  #   - build:    20231121
+  #   - build:    20240104
   #
   # Given a MacroSolver instance that stores the already-precessed contents of the result JSON data file,
   # this class commits the individual entities "solved", either by creating the missing rows
@@ -552,7 +552,8 @@ module Import
         @data['meeting_relay_result'][entity_key] = commit_and_log(model_row)
       end
 
-      commit_relay_swimmers
+      commit_relay_swimmers # (fraction overall timings, both delta & absolute)
+      commit_relay_laps # (these are actually "sub-laps", when available; i.e.: 4x100m|4x200m)
       @data['meeting_relay_result']
     end
     #-- ------------------------------------------------------------------------
@@ -720,6 +721,43 @@ module Import
 
       @data['meeting_relay_swimmer']
     end
+
+    # Commits the changes for the 'relay_lap' entities of the solver.
+    def commit_relay_laps
+      entity_keys = @data['relay_lap']&.keys&.compact
+      total = entity_keys&.count
+      idx = 0
+      # Force progress clearing:
+      ActionCable.server.broadcast('ImportStatusChannel', { msg: 'committing MRSs', progress: 1, total: 1 })
+
+      entity_keys&.each do |entity_key|
+        idx += 1
+        ActionCable.server.broadcast('ImportStatusChannel', { msg: "commit RelayLap '#{entity_key}'", progress: idx, total: })
+
+        model_row = @solver.cached_instance_of('relay_lap', entity_key)
+        bindings_hash = @solver.cached_instance_of('relay_lap', entity_key, 'bindings')
+        # Make sure all bindings have a valid ID:
+        bindings_hash.each do |binding_model_name, binding_key|
+          # Update only the single-association bindings in the model_row:
+          update_method = "#{binding_model_name}_id="
+          next unless model_row.respond_to?(update_method)
+
+          # ASSUMES: binding row has already been committed & logged by previous calls => binding_row.id.positive?
+          binding_row = @solver.cached_instance_of(binding_model_name, binding_key)
+          model_row.send(update_method, binding_row.id)
+        end
+        # Assume all validated bindings have been solved and re-seek for an existing row using an educated clause:
+        db_row = GogglesDb::RelayLap.where(
+          meeting_relay_swimmer_id: model_row.meeting_relay_swimmer_id,
+          length_in_meters: model_row.length_in_meters
+        ).first
+        model_row.id = db_row.id if db_row
+        # Override the Import::Entity with the actual row:
+        @data['relay_lap'][entity_key] = commit_and_log(model_row)
+      end
+
+      @data['relay_lap']
+    end
     #-- ------------------------------------------------------------------------
     #++
 
@@ -797,7 +835,7 @@ module Import
         # > return db_row if db_row.respond_to?(:read_only?) && db_row.read_only?
 
         # Apply the changes & save:
-        changes.each { |column, value| db_row.send("#{column}=", value) }
+        changes.each { |column, value| db_row.send(:"#{column}=", value) }
         db_row.save!
         model_row = db_row
         @sql_log << SqlMaker.new(row: model_row).log_update

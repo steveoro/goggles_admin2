@@ -17,10 +17,15 @@ module Switch
     # Creates a new ViewComponent
     #
     # == Params
-    # - target_id: the collapsed body DOM ID as target for the component
-    def initialize(target_id:)
+    # - <tt>target_id</tt>: a collapsed body DOM ID as target for the component; the component will toggle
+    #   the collapse CSS class from the target, if available.
+    #
+    # - <tt>option_classes</tt>: additional CSS class names for customization.
+    #
+    def initialize(target_id:, option_classes: '')
       super
       @target_id = target_id
+      @option_classes = option_classes
     end
   end
 end
