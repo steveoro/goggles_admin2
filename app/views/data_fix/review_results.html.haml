@@ -71,18 +71,14 @@
                                 Tot: #{result_sub_count}
                                 - if lap_sub_count.present?
                                   &nbsp;-&nbsp;Δt: #{lap_sub_count}
-                            = form_tag(data_fix_result_details_path(prg_key: prg_key), id: "frm-#{collapse_dom_id}",
-                                       method: :get, remote: true) do
-                              = hidden_field_tag(:file_path, @file_path)
-                              = hidden_field_tag(:relay, event.relay?)
-                              = hidden_field_tag(:target_dom_id, collapse_dom_id)
-                              = submit_tag('+', id: "btn-#{collapse_dom_id}", class: 'btn btn-sm btn-outline-secondary px-1 py-0',
-                                           'aria-label' => "#{collapse_dom_id}", type: 'submit', 'aria-expanded' => false,
-                                           'aria-controls' => "#{collapse_dom_id}", data: { toggle: 'collapse',
-                                           target: "##{collapse_dom_id}" })
 
-                            .collapse.my-2{ id: "#{collapse_dom_id}", 'aria-labelledby' => "#{collapse_dom_id}",
-                                      'data-parent' => "#btn-#{collapse_dom_id}" }
+                            = link_to(data_fix_result_details_path(prg_key: prg_key, file_path: @file_path,
+                                      relay: event.relay?, target_dom_id: collapse_dom_id),
+                                      id: "frm-#{collapse_dom_id}", method: :get, remote: true) do
+                              = render(Switch::RotatingComponent.new(target_id: collapse_dom_id))
+
+                            .collapse.my-2{ id: collapse_dom_id, 'aria-labelledby' => "#{collapse_dom_id}",
+                                      'data-parent' => "#toggle-#{collapse_dom_id}" }
                               .text-center.my-4.py-4
                                 .spinner-border.text-primary{ role: 'status' }
 
@@ -96,12 +92,12 @@
             %b Ranking rows found: #{@ts_keys.count}
 
 
-        .row-fluid.my-3.text-center
-          = link_to(push_prepare_path(file_path: @file_path), method: :post,
-                    class: 'btn btn-warning mb-1',
-                    data: { toggle: 'tooltip', title: t('data_import.data_fix.btn_start_sql_batch_tooltip'),
-                    confirm: t('data_import.data_fix.btn_start_sql_batch_confirm'),
-                    disable_with: t('data_import.data_fix.btn_start_sql_batch_disable') }) do
-            %span
-              %i.fa.fa-bolt
-              = t('data_import.data_fix.btn_start_sql_batch')
+      .row-fluid.my-3.text-center
+        = link_to(push_prepare_path(file_path: @file_path), method: :post,
+                  class: 'btn btn-warning mb-1',
+                  data: { toggle: 'tooltip', title: t('data_import.data_fix.btn_start_sql_batch_tooltip'),
+                  confirm: t('data_import.data_fix.btn_start_sql_batch_confirm'),
+                  disable_with: t('data_import.data_fix.btn_start_sql_batch_disable') }) do
+          %span
+            %i.fa.fa-bolt
+            = t('data_import.data_fix.btn_start_sql_batch')

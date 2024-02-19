@@ -39,10 +39,10 @@
                   %i Valid
               %th{ scope: 'col' }
                 %small
-                  %i Last checked @ idx
+                  %i Last checked page
               %th{ scope: 'col' }
                 %small
-                  %i Valid for pages (after last check)
+                  %i Valid in pages
           %tbody
             - checked_formats.each do |format_name, hsh_res|
               %tr
@@ -57,7 +57,7 @@
                 %td.text-right
                   = hsh_res[:last_check]
                 %td.text-right
-                  = hsh_res[:valid_at].count
+                  = hsh_res[:valid_at].flatten.uniq
               - if last_valid_scan[format_name].present?
                 %tr
                   %td

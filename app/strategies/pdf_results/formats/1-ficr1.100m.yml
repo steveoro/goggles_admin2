@@ -129,12 +129,14 @@
       - name: results2
         fields:
           - name: team_name
-            format: "^\\s{3,8}(([\\w\\d]+.\\s?)+)"
+            format: "^\\s{3,8}(([\\w\\d\\-&%'`]+.\\s?)+)"
             token_end: 43
             pop_out: false
           - name: year_of_birth
             format: "\\s*(\\d{4})\\s*"
             pop_out: false
+            token_start: 51
+            token_end: 64
 
           - name: delta100
             format: "\\s*\\((\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)\\s*"

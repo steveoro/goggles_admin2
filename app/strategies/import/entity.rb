@@ -14,7 +14,7 @@ module Import
   # a result that has to be imported, for example) this needs to be:
   # 1. parsed (identified in column values from the source text);
   # 2. built up (from the parsed data, including all the required values and associations);
-  # 3. seeked for existance (searched on the DB);
+  # 3. seeked for existence (searched on the DB);
   # 4. persisted (saved to the DB if modified).
   #
   # This class wraps all the required data for the above steps.

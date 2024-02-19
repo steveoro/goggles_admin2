@@ -4,9 +4,9 @@ module Import
   #
   # = MacroSolver
   #
-  #   - version:  7-0.6.12
+  #   - version:  7-0.6.20
   #   - author:   Steve A.
-  #   - build:    20240104
+  #   - build:    20240116
   #
   # Given a MacroSolver instance that stores the already-precessed contents of the result JSON data file,
   # this class commits the individual entities "solved", either by creating the missing rows
@@ -654,11 +654,11 @@ module Import
       total = entity_keys&.count
       idx = 0
       # Force progress clearing:
-      ActionCable.server.broadcast('ImportStatusChannel', { msg: 'committing MIRs', progress: 1, total: 1 })
+      ActionCable.server.broadcast('ImportStatusChannel', { msg: 'committing Laps', progress: 1, total: 1 })
 
       entity_keys&.each do |entity_key|
         idx += 1
-        ActionCable.server.broadcast('ImportStatusChannel', { msg: "commit MIR '#{entity_key}'", progress: idx, total: })
+        ActionCable.server.broadcast('ImportStatusChannel', { msg: "commit Lap '#{entity_key}'", progress: idx, total: })
 
         model_row = @solver.cached_instance_of('lap', entity_key)
         bindings_hash = @solver.cached_instance_of('lap', entity_key, 'bindings')
@@ -728,7 +728,7 @@ module Import
       total = entity_keys&.count
       idx = 0
       # Force progress clearing:
-      ActionCable.server.broadcast('ImportStatusChannel', { msg: 'committing MRSs', progress: 1, total: 1 })
+      ActionCable.server.broadcast('ImportStatusChannel', { msg: 'committing RelayLaps', progress: 1, total: 1 })
 
       entity_keys&.each do |entity_key|
         idx += 1

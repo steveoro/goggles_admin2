@@ -121,8 +121,10 @@
       - name: year_of_birth
         format: "\\s+(\\d{4})\\s+"
         pop_out: false
+        token_start: 79
+        token_end: 87
       - name: team_name
-        format: "\\s+(([\\w\\d]+.\\s?)+)\\s+"
+        format: "\\s+(([\\w\\d\\-&%'`]+.\\s?)+)\\s+"
         token_start: 88
         token_end: 122
         pop_out: false

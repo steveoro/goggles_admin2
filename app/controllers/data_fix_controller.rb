@@ -407,16 +407,42 @@ class DataFixController < ApplicationController
   # <tt>:model</tt> => the model name in snake case, singular; only supported: 'swimmer', 'team'
   # <tt>:key</tt> => string key for the model entity in the parsed data hash from the JSON file
   #
-  def purge
+  def purge # rubocop:disable Metrics/AbcSize
     model_name = edit_params['model'].to_s
     unless %w[swimmer team].include?(model_name)
       flash[:warning] = I18n.t('data_import.errors.invalid_request')
       redirect_to(pull_index_path)
     end
 
+    # 1) Get the proper key from params and delete the chosen cached entity
+    #    to avoid duplication errors during creation:
     entity_key = entity_key_for(model_name)
     @solver.data[model_name]&.delete(entity_key)
-    overwrite_file_path_with_json_from(@solver.data)
+    # 2) Delete also any existing cached badge or affiliation with the same key:
+    associated_model = model_name == 'swimmer' ? 'badge' : 'team_affiliation'
+    @solver.data[associated_model]&.delete(entity_key)
+
+    # 3) Retrieve the list of keys for this model to detect remaining candidate(s):
+    cache_keys = @solver.rebuild_cached_entities_for(model_name).keys
+
+    # 4) Get the first key matching the one just deleted and use it as candidate
+    #    for a global string subst among the resulting JSON (so that we can easily
+    #    update the bindings too):
+    checked_key_part = model_name == 'swimmer' ? entity_key.split(/-\d{4}-/).first : entity_key
+    new_key = cache_keys.find { |ckey| ckey.starts_with?(checked_key_part) }
+    # NOTE: matching the ending quote of the deleted keys allows us to substitute
+    #       shorter keys with longer ones without changing the existing longer strings
+    subst_matcher = Regexp.new("#{entity_key}\"", Regexp::IGNORECASE)
+    # NOTE: when there are 3 or more possible duplicates, this will overwrite
+    #       all references of the deleted key with just the first remaining candidate
+    #       (which may not be the one intended to remain in the data)
+
+    # 5) Substitute the deleted key with the new one, allegedly matching most
+    #    of the data, and save the JSON file overwriting the existing one:
+    corrected_json = @solver.data.to_json.gsub(subst_matcher, "#{new_key}\"")
+    FileUtils.rm_f(@file_path)
+    File.write(@file_path, corrected_json)
+
     # Clean the referer URL from a possible reparse parameter before redirecting back:
     request.headers['HTTP_REFERER'].gsub!(/&reparse=(true|sessions)/i, '')
 
@@ -501,7 +527,7 @@ class DataFixController < ApplicationController
   # <tt>:row_class</tt> => snail_case name of the result class type ('meeting_individual_result' or 'meeting_relay_result')
   # <tt>:row_key</tt> => string key for the row stored inside @solver.data
   #
-  def result_details
+  def result_details # rubocop:disable Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
     unless request.xhr?
       flash[:warning] = I18n.t('search_view.errors.invalid_request')
       redirect_to root_path
@@ -515,8 +541,10 @@ class DataFixController < ApplicationController
     lap_type   = relay ? 'meeting_relay_swimmer' : 'lap'
 
     prg_checker = Regexp.new(prg_key, Regexp::IGNORECASE)
-    @prg_rows = @solver.data[row_type]&.select { |row_key| prg_checker.match?(row_key) }
-    @prg_laps = @solver.data[lap_type]&.select { |row_key| prg_checker.match?(row_key) }
+    @prg_rows = @solver.data[row_type]&.select { |row_key, _v| prg_checker.match?(row_key) }
+    @prg_laps = @solver.data[lap_type]&.select { |row_key, _v| prg_checker.match?(row_key) }
+    @sub_laps = @solver.data['relay_lap']&.select { |row_key, _v| prg_checker.match?(row_key) } if relay
+    @prg_laps.merge!(@sub_laps) if @sub_laps.present?
   end
 
   private

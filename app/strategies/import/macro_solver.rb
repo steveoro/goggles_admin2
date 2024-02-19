@@ -4,9 +4,9 @@ module Import
   #
   # = MacroSolver
   #
-  #   - version:  7-0.6.12
+  #   - version:  7-0.6.20
   #   - author:   Steve A.
-  #   - build:    20240104
+  #   - build:    20240115
   #
   # Scans the already-parsed Meeting results JSON object (which stores a whole set of results)
   # and finds existing & corresponding entity rows or creates (locally) any missing associated
@@ -25,6 +25,8 @@ module Import
   #
   # rubocop:disable Metrics/AbcSize, Metrics/PerceivedComplexity, Metrics/MethodLength, Metrics/CyclomaticComplexity
   class MacroSolver
+    MAX_SWIMMERS_X_RELAY = 8 # Considering only this max number of relay swimmers foreach row
+
     # Creates a new MacroSolver instance.
     #
     # == Params
@@ -318,11 +320,11 @@ module Import
           team_affiliation = map_and_return_team_affiliation(team:, team_key: team_name)
           # DEBUG: ******************************************************************
           # SHOULD NEVER HAPPEN at this point:
-          binding.pry if team.nil? || team_affiliation.nil?
+          # binding.pry if team.nil? || team_affiliation.nil?
           # DEBUG: ******************************************************************
 
           if row['relay'].present?
-            (1..8).each do |idx|
+            (1..MAX_SWIMMERS_X_RELAY).each do |idx|
               swimmer_name = row["swimmer#{idx}"]
               year_of_birth = row["year_of_birth#{idx}"]
               # ('sex' currently MISSING from row data, can be extracted from event section or category section)
@@ -330,7 +332,7 @@ module Import
               gender_type_code = sect['fin_sesso'] if /[mf]/i.match?(sect['fin_sesso'].to_s)
               next unless swimmer_name.present? && year_of_birth.present?
 
-              swimmer_key, swimmer = map_and_return_swimmer(swimmer_name:, year_of_birth:, team_name:)
+              swimmer_key, swimmer = map_and_return_swimmer(swimmer_name:, year_of_birth:, gender_type_code:, team_name:)
               if category_type
                 badge = map_and_return_badge(swimmer:, swimmer_key:, team:, team_key: team_name,
                                              team_affiliation:, category_type:)
@@ -369,6 +371,8 @@ module Import
     # - @data['meeting_individual_result'] => the Hash of (unique) Import::Entity-wrapped MeetingIndividualResults.
     # - @data['lap'] => the Hash of (unique) Import::Entity-wrapped Laps.
     # - @data['meeting_relay_result'] => the Hash of (unique) Import::Entity-wrapped MeetingRelayResults.
+    # - @data['meeting_relay_swimmer'] => the Hash of (unique) Import::Entity-wrapped MeetingRelaySwimmers.
+    # - @data['relay_lap'] => the Hash of (unique) Import::Entity-wrapped RelayLaps.
     # - @data['meeting_team_score'] => the Hash of (unique) Import::Entity-wrapped MeetingTeamScores.
     #
     # == Note:
@@ -386,6 +390,7 @@ module Import
       @data['meeting_individual_result'] = {}
       @data['meeting_relay_result'] = {}
       @data['lap'] = {}
+      @data['relay_lap'] = {}
       @data['meeting_relay_swimmer'] = {}
       @data['meeting_team_score'] = {}
       total = @data['sections'].count
@@ -913,7 +918,13 @@ module Import
         last_name:,
         year_of_birth:,
         # See notes above about the possibility that gender_type may still be nil at this point
-        # (FUTUREDEV: handle this -- mostly related to new relay formats)
+        # NOTE ALSO THAT:
+        # gender_type may be nil when the swimmer was searched in cache using
+        # a team name in its key that was aggressively deleted with a data_fix#purge
+        # without substitution of the existing binding keys with the remaining duplicate
+        # found before the purge.
+        # The "Purge" action is nevertheless required each time there's a possible duplicate in
+        # new swimmers or teams to avoid errors due to duplicated rows during the commit phase.
         gender_type_id: gender_type.id,
         year_guessed: year_of_birth.to_i.zero?
       )
@@ -1004,9 +1015,9 @@ module Import
         team_affiliation_id: team_affiliation&.id,
         badge_id: badge&.id,
         rank:,
-        minutes: timing&.minutes,
-        seconds: timing&.seconds,
-        hundredths: timing&.hundredths,
+        minutes: timing&.minutes || 0,
+        seconds: timing&.seconds || 0,
+        hundredths: timing&.hundredths || 0,
         goggle_cup_points: 0.0, # (no data)
         team_points: 0.0, # (no data)
         standard_points: score || 0.0,
@@ -1110,24 +1121,23 @@ module Import
       )
       return Import::Entity.new(row: domain.last, matches: domain.to_a, bindings:) if domain.present?
 
+      # Compromise: assume generic "Nuotata irregolare" refers to 1st swimmer only:
+      # (not true, but most of the times the label isn't more specific)
+      dsq_code_type_id = GogglesDb::DisqualificationCodeType.find_by(code: 'RE1').id if /irregolare/i.match?(disqualify_type)
       new_row = GogglesDb::MeetingRelayResult.new(
         meeting_program_id: meeting_program&.id,
         team_id: team&.id,
         team_affiliation_id: team_affiliation&.id,
         rank:,
         disqualified: disqualify_type.present?,
-        # WIP: Store actual DSQ label into relay code given it's not used here
-        # (this column is used only when registering relays by hand/UI)
-        relay_code: disqualify_type,
-        minutes: timing&.minutes,
-        seconds: timing&.seconds,
-        hundredths: timing&.hundredths,
+        disqualification_notes: disqualify_type,
+        minutes: timing&.minutes || 0,
+        seconds: timing&.seconds || 0,
+        hundredths: timing&.hundredths || 0,
         standard_points: score || 0.0,
         meeting_points: 0.0, # (no data)
         reaction_time: 0.0, # (no data)
-        # Assume generic "Nuotata irregolare" refers to 1st swimmer only:
-        # (not true, but most of the times the label isn't more specific)
-        disqualification_code_type_id: /irregolare/i.match?(disqualify_type) ? GogglesDb::DisqualificationCodeType.find_by(code: 'RE1').id : nil
+        disqualification_code_type_id: dsq_code_type_id
       )
       Import::Entity.new(row: new_row, matches: [new_row], bindings:)
     end
@@ -1143,6 +1153,7 @@ module Import
     # - <tt>:swimmer</tt> => a valid or new GogglesDb::Swimmer instance
     # - <tt>:swimmer_key</tt> => Swimmer key in the entity sub-Hash stored at root level in the data Hash member
     #                            (may differ from the actual Swimmer.name returned by a search)
+    #                            NOTE: this acts also as Badge key.
     #
     # - <tt>:badge</tt> => a valid or new GogglesDb::Badge instance
     # - <tt>:team</tt> => a valid or new GogglesDb::TeamAffiliation instance
@@ -1152,6 +1163,7 @@ module Import
     # - <tt>:mir</tt> => a valid or new GogglesDb::MeetingIndividualResult instance
     # - <tt>:mir_key</tt> => parent MIR key in the entity sub-Hash stored at root level in the data Hash member.
     #
+    # - <tt>:relay_order</tt> => phase order in the relay (usually 1..4)
     # - <tt>:length_in_meters</tt> => length in meters (int)
     # - <tt>:abs_timing</tt> => Timing instance storing the absolute recorded time *from the start* of the heat
     # - <tt>:delta_timing</tt> => Timing instance storing the relative *delta* lap time
@@ -1162,11 +1174,11 @@ module Import
     # rubocop:disable Metrics/ParameterLists
     def find_or_prepare_rel_swimmer(meeting_program:, mprogram_key:, event_type:,
                                     swimmer:, swimmer_key:, team:, team_key:,
-                                    mrr:, mrr_key:, badge:, order:, length_in_meters:,
+                                    mrr:, mrr_key:, badge:, relay_order:, length_in_meters:,
                                     abs_timing:, delta_timing:)
       bindings = {
-        'meeting_program' => mprogram_key, 'swimmer' => swimmer_key, 'team' => team_key,
-        'meeting_relay_result' => mrr_key
+        'meeting_program' => mprogram_key, 'meeting_relay_result' => mrr_key,
+        'swimmer' => swimmer_key, 'badge' => swimmer_key, 'team' => team_key
       }
       domain = GogglesDb::MeetingRelaySwimmer.includes(:meeting_program, :team)
                                              .joins(:meeting_program, :team)
@@ -1176,34 +1188,34 @@ module Import
                                              )
       return Import::Entity.new(row: domain.first, matches: domain.to_a, bindings:) if domain.present?
 
-      stroke_type_id = if event_type.stroke_type_id == GogglesDb::StrokeType::REL_INTERMIXED_ID && order.positive?
+      stroke_type_id = if event_type.stroke_type_id == GogglesDb::StrokeType::REL_INTERMIXED_ID && relay_order.positive?
                          [
                            GogglesDb::StrokeType::BACKSTROKE_ID,
                            GogglesDb::StrokeType::BREASTSTROKE_ID,
                            GogglesDb::StrokeType::BUTTERFLY_ID,
                            GogglesDb::StrokeType::FREESTYLE_ID
-                         ].at(order - 1)
+                         ].at(relay_order - 1)
                        else
                          event_type.stroke_type_id
                        end
       # DEBUG ----------------------------------------------------------------
-      binding.pry if stroke_type_id.to_i < 1
+      binding.pry if stroke_type_id.to_i < 1 || relay_order.to_i < 1 || relay_order.to_i > 4
       # ----------------------------------------------------------------------
 
       new_row = GogglesDb::MeetingRelaySwimmer.new(
         meeting_relay_result_id: mrr&.id,
-        relay_order: order,
+        relay_order: relay_order || 0,
         swimmer_id: swimmer&.id,
         badge_id: badge&.id,
         stroke_type_id:,
-        length_in_meters: event_type.phase_length_in_meters,
+        length_in_meters: length_in_meters || 0,
         # Make sure no nil timings:
         minutes: delta_timing&.minutes || 0,
         seconds: delta_timing&.seconds || 0,
         hundredths: delta_timing&.hundredths || 0,
-        minutes_from_start: abs_timing&.minutes,
-        seconds_from_start: abs_timing&.seconds,
-        hundredths_from_start: abs_timing&.hundredths,
+        minutes_from_start: abs_timing&.minutes || 0,
+        seconds_from_start: abs_timing&.seconds || 0,
+        hundredths_from_start: abs_timing&.hundredths || 0,
         reaction_time: 0.0 # (no data)
       )
       Import::Entity.new(row: new_row, matches: [new_row], bindings:)
@@ -1254,7 +1266,7 @@ module Import
         meeting_relay_swimmer_id: mrs&.id,
         swimmer_id: swimmer&.id,
         team_id: team&.id,
-        length_in_meters:,
+        length_in_meters: length_in_meters || 0,
         # Make sure no nil timings:
         minutes: delta_timing&.minutes || abs_timing&.minutes || 0,
         seconds: delta_timing&.seconds || abs_timing&.minutes || 0,
@@ -1273,7 +1285,7 @@ module Import
 
     # Generalized helper for #find_or_prepare_lap or #find_or_prepare_rel_swimmer,
     # depending on distance in meters and the class of the specified result row.
-    # Requires a prev_lap_timing instance to compute any missing timing values.
+    # Uses a prev_lap_timing instance to compute any missing timing values.
     #
     # == Params:
     # - <tt>:meeting_program</tt> => the parent MeetingProgram instance (single, best candidate found or created)
@@ -1282,21 +1294,37 @@ module Import
     #
     # - <tt>:swimmer</tt> => a valid or new GogglesDb::Swimmer instance
     # - <tt>:swimmer_key</tt> => Swimmer key in the entity sub-Hash stored at root level in the data Hash member
-    #                            (may differ from the actual Swimmer.name returned by a search)
+    #                            (may differ from the actual Swimmer.name returned by a search);
+    #                            NOTE: this acts also as Badge key.
+    #
     # - <tt>:badge</tt> => a valid or new GogglesDb::Badge instance for the current swimmer
     # - <tt>:team</tt> => a valid or new GogglesDb::TeamAffiliation instance
     # - <tt>:team_key</tt> => Team key in the entity sub-Hash stored at root level in the data Hash member
     #                         (may differ from the actual Team.name returned by a search)
     #
-    # - <tt>:mr_model</tt> => a valid or new GogglesDb::MeetingIndividualResult / GogglesDb::MeetingRelayResult instance.
-    # - <tt>:mr_key</tt> => parent MIR/MRR key in the entity sub-Hash stored at root level in the data Hash member.
+    # - <tt>:mr_model</tt> => a valid parent result for the lap entity to be created; either a MIR, MRR or a MRS or new
+    #                         new instance of the same model if none was found;
     #
-    # - <tt>:length_in_meters</tt> => length in meters (int)
+    # - <tt>:mr_key</tt> => parent MIR/MRR/MRS key in the entity sub-Hash stored at root level in the data Hash member.
+    #
     # - <tt>:row</tt> => data Hash containing the result row being processed;
     #
-    # - <tt>:prev_lap_timing</tt> => Timing instance extracted from previous lap ("absolute" timing from start)
-    #                                or a Timing.new instance for lap number zero.
+    # - <tt>:order</tt> => ordinal for the relay phase (usually 1..4);
+    #                      e.g.: 2 for the 3rd 50m sub-lap of a 4x100m relay; (ignored for Laps or RelayLaps which uses the length)
     #
+    # - <tt>:length_in_meters</tt> => length in meters (int); must reflect the actual length of the phase or sub-phase
+    #                                 that is bound to the lap timing to be processed;
+    #                                 e.g.: 150 for the 3rd 50m sub-lap of a 4x100m relay;
+    #
+    # - <tt>:prev_lap_timing</tt> => Timing instance extracted from previous lap ("absolute" timing from start)
+    #                                or a Timing.new instance for lap number zero; when set to +nil+ the delta
+    #                                calculation will be skipped.
+    #
+    # - <tt>:sublap_index</tt> => when positive, allows creation of RelayLap rows if sub_phases is positive too
+    #
+    # - <tt>:sub_phases</tt> => total number of sub-phases or sub-laps; for long relays (i.e.: 4x200m), 3 sub-laps
+    #                           1 MRS entity can be generated by simply calling this method for each available
+    #                           (sub)lap length.
     # == Returns:
     # Returns the parsed lap Timing instance given current row data Hash and its key values;
     # +nil+ in case no lap was found for the specified distance in meters when already added as an entity.
@@ -1304,8 +1332,9 @@ module Import
     # rubocop:disable Metrics/ParameterLists
     def extract_lap_timing_for(meeting_program:, mprogram_key:, event_type:,
                                swimmer:, swimmer_key:, badge:, team:, team_key:,
-                               mr_model:, mr_key:, order:,
-                               length_in_meters:, row:, prev_lap_timing:)
+                               mr_model:, mr_key:, row:,
+                               order:, length_in_meters:, prev_lap_timing:,
+                               sublap_index: 0, sub_phases: 0)
       lap_field_key = "lap#{length_in_meters}"
       delta_field_key = "delta#{length_in_meters}"
       # At least one of the two timing columns should be available in order to
@@ -1323,6 +1352,7 @@ module Import
       end
 
       # Compute possible missing timing counterpart (both delta and abs lap):
+      # NOTE: this will hardly work for MRR with MRS+RelayLaps, which rely on delta timings found during the parsing.
       delta_timing = lap_timing - prev_lap_timing if !delta_timing && lap_timing && lap_timing.positive? && prev_lap_timing.positive?
       lap_timing = delta_timing + prev_lap_timing if !lap_timing && delta_timing && delta_timing.positive? && prev_lap_timing.positive?
 
@@ -1341,37 +1371,43 @@ module Import
         add_entity_with_key('lap', lap_key, lap_entity)
 
       elsif mr_model.is_a?(GogglesDb::MeetingRelayResult)
-        # DEBUG ----------------------------------------------------------------
-        binding.pry if order < 1 || order > 8
-        # ----------------------------------------------------------------------
-        # *** MRR -> MRS ***
+        mrs_key = "mrs#{order}-#{mr_key}"
+        # NOTE:
+        # 1. always create MRS first so that the binding in the relay lap can be set
+        # 2. restore MRS from cache when processing a relay lap (length < phase_length)
+        # 3. always process MRS & sub-laps in crescent order so that previous lap timing is available
+
+        # *** MRR -> MRS ("last sub-lap") ***
         Rails.logger.debug { "    >> Relay Swimmer '#{swimmer_key}' @ #{length_in_meters}m: <#{lap_timing}>" } if @toggle_debug
         mrs_entity = find_or_prepare_rel_swimmer(
           meeting_program:, mprogram_key:, event_type:,
           swimmer:, swimmer_key:, badge:,
-          team:, team_key:, mrr: mr_model, mrr_key: mr_key, order:, length_in_meters:,
+          team:, team_key:, mrr: mr_model, mrr_key: mr_key,
+          relay_order: order, length_in_meters:,
           abs_timing: lap_timing, # (abs = "from start")
           delta_timing: # (delta = "each individual lap")
         )
-        mrs_key = "mrs#{length_in_meters}-#{mr_key}"
         # Add MRS only when missing:
         add_entity_with_key('meeting_relay_swimmer', mrs_key, mrs_entity) unless entity_present?('meeting_relay_swimmer', mrs_key)
+
+      elsif mr_model.is_a?(GogglesDb::MeetingRelaySwimmer) && sub_phases.positive?
+        mrr_key = mrr_key_for(mprogram_key, team_key)
+        mrr_row = cached_instance_of('meeting_relay_result', mrr_key)
 
         # *** MRS -> RelayLap ***
         # (when length is enough and sub-laps are present)
         Rails.logger.debug { "    >> RelayLap #{length_in_meters}m: <#{lap_timing}>" } if @toggle_debug
         relay_lap_entity = find_or_prepare_relay_lap(
           swimmer:, swimmer_key:, team:, team_key:,
-          mrr: mr_model, mrr_key: mr_key,
-          mrs: mrs_entity.row, mrs_key:,
+          mrr: mrr_row, mrr_key: mrr_key,
+          mrs: mr_model, mrs_key: mr_key,
           length_in_meters:,
           abs_timing: lap_timing, # (abs = "from start")
           delta_timing: # (delta = "each individual lap")
         )
         relay_lap_key = "relay_lap#{length_in_meters}-#{mr_key}"
-        return if entity_present?('relay_lap', relay_lap_key)
-
-        add_entity_with_key('relay_lap', relay_lap_key, relay_lap_entity)
+        # Add RelayLap only when missing:
+        add_entity_with_key('relay_lap', relay_lap_key, relay_lap_entity) unless entity_present?('relay_lap', relay_lap_key)
 
       else
         # TODO: UNSUPPORTED!
@@ -1928,7 +1964,8 @@ module Import
 
       team = map_and_return_team(team_key: team_name)
       team_affiliation = map_and_return_team_affiliation(team:, team_key: team_name)
-      swimmer_key, swimmer = map_and_return_swimmer(swimmer_name:, year_of_birth:, team_name:)
+      swimmer_key, swimmer = map_and_return_swimmer(swimmer_name:, year_of_birth:, gender_type_code:,
+                                                    team_name:)
       badge = map_and_return_badge(swimmer:, swimmer_key:, team:, team_key: team_name,
                                    team_affiliation:, category_type: options[:category_type])
       # DEBUG: ******************************************************************
@@ -2000,6 +2037,7 @@ module Import
 
       team_name = options[:row]['team']
       rank = options[:row]['pos'].to_i
+      event_type = options[:event_type]
       score = Parser::Score.from_l2_result(options[:row]['score'])
       timing = Parser::Timing.from_l2_result(options[:row]['timing'])
       mrr_key = mrr_key_for(options[:mprg_key], team_name)
@@ -2010,7 +2048,7 @@ module Import
       team_affiliation = map_and_return_team_affiliation(team:, team_key: team_name)
       # DEBUG: ******************************************************************
       # SHOULD NEVER HAPPEN at this point:
-      binding.pry if team.nil? || team_affiliation.nil?
+      # binding.pry if team.nil? || team_affiliation.nil?
       # DEBUG: ******************************************************************
       return unless options[:mprg].present? && options[:mprg_key].present?
 
@@ -2021,16 +2059,10 @@ module Import
       )
       add_entity_with_key('meeting_relay_result', mrr_key, mrr_entity)
       mr_model = mrr_entity.row
-      # DEBUG: ******************************************************************
-      # SHOULD NEVER HAPPEN at this point:
-      binding.pry unless mr_model.present?
-      # DEBUG: ******************************************************************
 
-      # Considering only max relay swimmers x row: 8
-      lap_timing = Timing.new # (lap number zero)
-      (1..8).each do |idx|
-        swimmer_name = options[:row]["swimmer#{idx}"]
-        year_of_birth = options[:row]["year_of_birth#{idx}"]
+      (1..event_type.phases).each do |phase_idx|
+        swimmer_name = options[:row]["swimmer#{phase_idx}"]
+        year_of_birth = options[:row]["year_of_birth#{phase_idx}"]
         # gender_type_code = options[:row]['sex'] # ('sex' currently MISSING from data)
 
         # Move to the next lap group if the relay swimmer is missing (DSQ relays)
@@ -2041,24 +2073,63 @@ module Import
         swimmer_key, swimmer = map_and_return_swimmer(swimmer_name:, year_of_birth:, team_name:)
         badge = map_and_return_badge(swimmer:, swimmer_key:, team:, team_key: team_name,
                                      team_affiliation:, category_type: options[:category_type])
-        # DEBUG: ******************************************************************
-        # SHOULD NEVER HAPPEN at this point:
-        binding.pry unless badge.present? && swimmer.present? && swimmer_key.present?
-        # DEBUG: ******************************************************************
-        # DEBUG ----------------------------------------------------------------
-        binding.pry if idx < 1 || idx > 8
-        # ----------------------------------------------------------------------
 
-        lap_timing = extract_lap_timing_for(
+        # *** MRS (parent) ***
+        extract_lap_timing_for(
           meeting_program: options[:mprg], mprogram_key: options[:mprg_key],
-          event_type: options[:event_type],
-          swimmer:, swimmer_key:, badge:, team:, team_key: team_name,
+          event_type:, swimmer:, swimmer_key:, badge:, team:, team_key: team_name,
           mr_model:, mr_key: mrr_key,
-          order: idx, length_in_meters: idx * 50,
-          row: options[:row], prev_lap_timing: lap_timing
+          order: phase_idx, # Actual relay phase
+          length_in_meters: phase_idx * event_type.phase_length_in_meters.to_i,
+          row: options[:row],
+          prev_lap_timing: nil # (we'll rely on captured data for this)
         )
+        mrs_key = "mrs#{phase_idx}-#{mrr_key}"
+        mrs_row = cached_instance_of('meeting_relay_swimmer', mrs_key)
+
+        # *** RelayLaps (siblings) ***
+        # For long relays, support sub-laps in additional entities where the MRS will always
+        # store the overall phase timing with its swimmer data:
+        tot_sub_phases = event_type.phase_length_in_meters.to_i / 50
+        sub_phases = tot_sub_phases - 1
+        # Make it so that the parent MRS is always the last "sub-lap" of the group,
+        # if there are other sub-laps to be added:
+        sub_order_start = (phase_idx - 1) * (sub_phases + 1)
+
+        # Example phase groups & indexes processing sub-laps for a 4x200m:
+        #
+        # Sub-lengths in groups:
+        # (1..4).map { |i| (1..(200 / 50 - 1)).map {|j| ((i-1) * 200) + j * 50} }
+        #
+        # Sub-indexes in groups (actually used below to compute orders and lap lengths):
+        # (1..4).map { |i| (1..(200 / 50 - 1)).map {|j| ((i-1) * 4) + j} } # => indexes
+        # => [[1, 2, 3], [5, 6, 7], [9, 10, 11], [13, 14, 15]] # *50 => lengths
+        # => [[50, 100, 150], [250, 300, 350], [450, 500, 550], [650, 700, 750]]
+        #
+        # Note that 200, 400, 600 & 800 need to be run before the sub-lap loop so that
+        # the MRS entities associated with those can be cached before their sibling
+        # sub-laps get processed.
+        #
+        # Nested loops in variables:
+        #   (1..event_type.phases) --> (1..(event_type.phase_length_in_meters.to_i / 50 - 1))
+
+        (1..sub_phases).each do |sublap_index|
+          sub_order = sub_order_start + sublap_index
+          extract_lap_timing_for(
+            meeting_program: options[:mprg], mprogram_key: options[:mprg_key],
+            event_type:, swimmer:, swimmer_key:, badge:, team:, team_key: team_name,
+            mr_model: mrs_row, mr_key: mrs_key,
+            order: phase_idx, # Actual relay phase
+            length_in_meters: sub_order * 50, # (ASSUME sub-laps will never diverge from 50mt)
+            row: options[:row],
+            prev_lap_timing: nil, # (we'll rely on captured data for this)
+            sublap_index:, sub_phases:
+          )
+        end
       end
     end
+    #-- -------------------------------------------------------------------------
+    #++
 
     # Similarly to #process_mrr_and_mrs(), this simplified version of the same method
     # pre-parses a row containing relay data and possibly all its laps/swimmers,
@@ -2098,10 +2169,9 @@ module Import
       binding.pry if team.nil? || team_affiliation.nil?
       # DEBUG: ******************************************************************
 
-      # Considering only max relay swimmers x row: 8
       lap_timing = Timing.new # (lap number zero)
       gender_ids = []
-      (1..8).each do |idx|
+      (1..MAX_SWIMMERS_X_RELAY).each do |idx|
         swimmer_name = options[:row]["swimmer#{idx}"]
         year_of_birth = options[:row]["year_of_birth#{idx}"]
         # gender_type_code = options[:row]['sex'] # ('sex' currently MISSING from data)
@@ -2156,8 +2226,8 @@ module Import
         ts_key = "#{rank}-#{team_name}"
         next if entity_present?('meeting_team_score', ts_key)
 
-        ind_score = ranking_hash['ind_score'].to_s.tr(',', '.').to_f
-        overall_score = ranking_hash['overall_score'].to_s.tr(',', '.').to_f
+        ind_score = Parser::Score.from_l2_result(ranking_hash['ind_score'])
+        overall_score = Parser::Score.from_l2_result(ranking_hash['overall_score'])
 
         ts_entity = find_or_prepare_team_score(
           meeting:, team:, team_key: team_name, team_affiliation:,

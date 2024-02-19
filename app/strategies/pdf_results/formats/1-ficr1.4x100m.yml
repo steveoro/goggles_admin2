@@ -91,7 +91,7 @@
             format: "^\\s?(\\d{1,2}|SQ)\\s+"
             pop_out: false
           - name: team_name
-            format: "\\s{3,8}(([\\w\\d]+.\\s?)+)"
+            format: "\\s{3,8}(([\\w\\d\\-&%'`]+.\\s?)+)"
             token_end: 43
             pop_out: false
 
@@ -108,56 +108,56 @@
             token_end: 62
 
           - name: lap50
-            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*\\b"
+            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*"
             pop_out: false
             token_start: 70
             token_end: 82
             required: false
           - name: lap100
-            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*\\b"
+            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*"
             pop_out: false
             token_start: 82
             token_end: 94
             required: false
           - name: lap150
-            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*\\b"
+            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*"
             pop_out: false
             token_start: 95
             token_end: 108
             required: false
           - name: lap200
-            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*\\b"
+            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*"
             pop_out: false
             token_start: 109
             token_end: 119
             required: false
           - name: lap250
-            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*\\b"
+            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*"
             pop_out: false
             token_start: 120
             token_end: 129
             required: false
           - name: lap300
-            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*\\b"
+            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*"
             pop_out: false
             token_start: 130
             token_end: 139
             required: false
           - name: lap350
-            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*\\b"
+            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*"
             pop_out: false
             token_start: 140
             token_end: 150
             required: false
           - name: lap400
-            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*\\b"
+            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*"
             pop_out: false
             token_start: 152
             token_end: 162
             required: false
 
           - name: timing
-            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*\\b"
+            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*"
             token_start: 163
             pop_out: false
             required: false
@@ -165,54 +165,54 @@
       - name: rel_team2
         fields:
           - name: team_name
-            format: "^\\s{3,8}(([\\w\\d]+.\\s?)+)"
+            format: "^\\s{3,8}(([\\w\\d\\-&%'`]+.\\s?)+)"
             token_end: 43
             pop_out: false
 
           - name: delta100
-            format: "\\s*\\((\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)\\s*\\b"
+            format: "\\s*\\((\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)\\s*"
             pop_out: false
             token_start: 83
             token_end: 94
             required: false
           - name: delta150
-            format: "\\s*\\((\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)\\s*\\b"
+            format: "\\s*\\((\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)\\s*"
             pop_out: false
             token_start: 96
             token_end: 107
             required: false
           - name: delta200
-            format: "\\s*\\((\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)\\s*\\b"
+            format: "\\s*\\((\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)\\s*"
             pop_out: false
             token_start: 109
             token_end: 120
             required: false
           - name: delta250
-            format: "\\s*\\((\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)\\s*\\b"
+            format: "\\s*\\((\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)\\s*"
             pop_out: false
             token_start: 120
             token_end: 129
             required: false
           - name: delta300
-            format: "\\s*\\((\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)\\s*\\b"
+            format: "\\s*\\((\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)\\s*"
             pop_out: false
             token_start: 130
             token_end: 139
             required: false
           - name: delta350
-            format: "\\s*\\((\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)\\s*\\b"
+            format: "\\s*\\((\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)\\s*"
             pop_out: false
             token_start: 140
             token_end: 150
             required: false
           - name: delta400
-            format: "\\s*\\((\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)\\s*\\b"
+            format: "\\s*\\((\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)\\s*"
             pop_out: false
             token_start: 152
             token_end: 162
             required: false
           - name: std_score
-            format: "\\s*(\\d?[,.]?\\d{1,4}[,.]\\d{1,2})\\b"
+            format: "\\s*(\\d?[,.]?\\d{1,4}[,.]\\d{1,2})"
             token_start: 163
             pop_out: false
             # Most of the times, only the 1st relay will score:
@@ -249,25 +249,25 @@
             token_end: 68
 
           - name: lap50
-            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*\\b"
+            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*"
             pop_out: false
             token_start: 70
             token_end: 82
             required: false
           - name: lap100
-            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*\\b"
+            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*"
             pop_out: false
             token_start: 82
             token_end: 94
             required: false
           - name: lap150
-            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*\\b"
+            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*"
             pop_out: false
             token_start: 95
             token_end: 108
             required: false
           - name: lap200
-            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*\\b"
+            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*"
             pop_out: false
             token_start: 109
             token_end: 118
@@ -279,23 +279,24 @@
       - name: rel_swimmer2
         fields:
           - name: year_of_birth
-            format: "\\s*(\\d{4})\\s*"
+            format: "\\s{52,}(\\d{4})\\s*"
             pop_out: false
+            token_end: 70
 
           - name: delta100
-            format: "\\s*\\((\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)\\s*\\b"
+            format: "\\s*\\((\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)\\s*"
             pop_out: false
             token_start: 83
             token_end: 94
             required: false
           - name: delta150
-            format: "\\s*\\((\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)\\s*\\b"
+            format: "\\s*\\((\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)\\s*"
             pop_out: false
             token_start: 96
             token_end: 107
             required: false
           - name: delta200
-            format: "\\s*\\((\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)\\s*\\b"
+            format: "\\s*\\((\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)\\s*"
             pop_out: false
             token_start: 109
             token_end: 120

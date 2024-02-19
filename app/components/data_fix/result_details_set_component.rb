@@ -39,9 +39,8 @@ module DataFix
 
     # Memoized row-set of laps/relay_swimmers, filtered by the current #row_checker
     def laps_rowset(prg_key)
-      @prg_laps&.map { |lap_key, lap_row| lap_row&.fetch('row') if row_checker(prg_key).match?(lap_key) }
-               &.compact
-               &.sort { |a, b| a['relay_order'] <=> b['relay_order'] }
+      @prg_laps&.filter_map { |lap_key, lap_row| lap_row&.fetch('row') if row_checker(prg_key).match?(lap_key) }
+               &.sort { |a, b| a['length_in_meters'] <=> b['length_in_meters'] }
     end
 
     private

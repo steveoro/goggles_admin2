@@ -6,9 +6,9 @@ module Parser
   #
   # = Score
   #
-  #   - version:  7-0.3.53
+  #   - version:  7-0.6.20
   #   - author:   Steve A.
-  #   - build:    20220607
+  #   - build:    20240110
   #
   # Wrapper for parsing helper methods regarding result scores.
   #
@@ -16,7 +16,7 @@ module Parser
     include Singleton
 
     # Parses and extracts the score points taken from a "layout type 2" result file.
-    # (Example: "792,89")
+    # (Examples: "792,89", "1.044,06" or "1'044,06")
     #
     # == Params
     # - <tt>text</tt> => the text that includes the score
@@ -27,13 +27,13 @@ module Parser
     def self.from_l2_result(score_text)
       # Algorithm:
       # 0. Assume 1-3 digits of float precision
-      # 1. Transform the actual mantissa separator into a dot/decimal separator
-      # 2. Remove any additional embellishments
+      # 1. Remove any 3-digit/thousands embellishments
+      # 2. Transform the actual mantissa separator into a dot/decimal separator
 
       # This will also correctly handle also any possible 'DSQ' or 'DNF' score codes as 0.0
       score_text.to_s
+                .gsub(/[.']/ui, '')
                 .gsub(/,(\d{1,3})$/ui, '.\1')
-                .gsub(/[,']/ui, '')
                 .to_f
     end
   end

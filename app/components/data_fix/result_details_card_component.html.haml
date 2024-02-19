@@ -1,13 +1,25 @@
 %li.list-group-item{ class: css_class_for_card }
   %small
-    (#{disqualified? ? dsq_label : @rank}) #{@timing}
-    %b #{@prg_key.split('/')&.last}
-    - if lap_swimmers&.count > 1
+    (#{disqualified? ? dsq_label : @rank}) #{@timing} -
+    %i #{@std_points}
+    %br/
+    %b #{@prg_key&.split('/')&.last}
+    - if lap_swimmers&.count.to_i > 1
       %br/
       %span.lap-swimmers= lap_swimmers&.join(' / ')
-    - if lap_timings.present?
-      %br/
-      %span.lap-timings ⏱: #{lap_timings}
-    - if delta_timings.present?
-      %br/
-      %span.lap-timings Δt: #{delta_timings}
+
+  - if lap_list.present?
+    %br/
+    %small.text-left
+      %ul
+        - lap_list.each do |row|
+          %li
+            #{row[:timing]} Δ
+            &nbsp;
+            %i.fa.fa-long-arrow-right
+            &nbsp;
+            #{row[:timing_from_start]}
+            &nbsp;
+            (#{row[:length_in_meters]} m)
+            &nbsp;-&nbsp;
+            #{row[:swimmer]}

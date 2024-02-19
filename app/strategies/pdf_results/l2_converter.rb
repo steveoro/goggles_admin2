@@ -3,7 +3,7 @@
 module PdfResults
   # = PdfResults::L2Converter
   #
-  #   - version:  7-0.6.00
+  #   - version:  7-0.6.20
   #   - author:   Steve A.
   #
   #
@@ -277,27 +277,28 @@ module PdfResults
       #     "std_score"=>"863,81"},
       #   :rows=>[]
       # }
+      fields = result_hash.fetch(:fields, {})
       row_hash = {
-        'pos' => result_hash.fetch(:fields, {})['rank'],
-        'name' => result_hash.fetch(:fields, {})['swimmer_name'],
-        'year' => result_hash.fetch(:fields, {})['year_of_birth'],
+        'pos' => fields['rank'],
+        'name' => fields['swimmer_name'],
+        'year' => fields['year_of_birth'],
         'sex' => cat_gender_code,
-        'team' => result_hash.fetch(:fields, {})['team_name'],
-        'timing' => result_hash.fetch(:fields, {})['timing'],
-        'score' => result_hash.fetch(:fields, {})['std_score'],
+        'team' => fields['team_name'],
+        'timing' => fields['timing'],
+        'score' => fields['std_score'],
         # Optionals / added recently / To-be-supported by MacroSolver:
-        'lane_num' => result_hash.fetch(:fields, {})['lane_num'],
-        'heat_rank' => result_hash.fetch(:fields, {})['heat_rank'],
-        'nation' => result_hash.fetch(:fields, {})['nation'],
-        'disqualify_type' => result_hash.fetch(:fields, {})['disqualify_type']
+        'lane_num' => fields['lane_num'],
+        'heat_rank' => fields['heat_rank'],
+        'nation' => fields['nation'],
+        'disqualify_type' => fields['disqualify_type']
       }
 
       # Add lap & delta fields only when present in the source result_hash:
       (1..29).each do |idx|
         key = "lap#{idx * 50}"
-        row_hash[key] = result_hash.fetch(:fields, {})[key] if result_hash.fetch(:fields, {})[key].present?
+        row_hash[key] = fields[key] if fields[key].present?
         key = "delta#{idx * 50}"
-        row_hash[key] = result_hash.fetch(:fields, {})[key] if result_hash.fetch(:fields, {})[key].present?
+        row_hash[key] = fields[key] if fields[key].present?
       end
 
       row_hash
@@ -327,29 +328,30 @@ module PdfResults
     def rel_result_section(rel_team_hash) # rubocop:disable Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
       return {} unless rel_team_hash[:name] == 'rel_team'
 
-      rank = rel_team_hash.fetch(:fields, {})['rank']
+      fields = rel_team_hash.fetch(:fields, {})
+      rank = fields['rank']
       # Support for 'disqualify_type' field at 'rel_team' field level:
-      dsq_label = rel_team_hash.fetch(:fields, {})['disqualify_type'] if rank.to_i.zero?
+      dsq_label = fields['disqualify_type'] if rank.to_i.zero?
 
       row_hash = {
         'relay' => true,
         'pos' => rank,
-        'team' => rel_team_hash.fetch(:fields, {})['team_name'],
-        'timing' => rel_team_hash.fetch(:fields, {})['timing'],
-        'score' => rel_team_hash.fetch(:fields, {})['std_score'], # WIP: missing relay example w/ this
+        'team' => fields['team_name'],
+        'timing' => fields['timing'],
+        'score' => fields['std_score'],
         # Optionals / added recently / To-be-supported by MacroSolver:
-        'lane_num' => rel_team_hash.fetch(:fields, {})['lane_num'],
-        # 'heat_rank' => rel_team_hash.fetch(:fields, {})['heat_rank'], # WIP: missing relay example w/ this
-        'nation' => rel_team_hash.fetch(:fields, {})['nation'],
+        'lane_num' => fields['lane_num'],
+        # 'heat_rank' => fields['heat_rank'], # WIP: missing relay example w/ this
+        'nation' => fields['nation'],
         'disqualify_type' => dsq_label # WIP: missing relay example w/ this
       }
 
       # Add lap & delta fields only when present in the source rel_team_hash:
       (1..29).each do |idx|
         key = "lap#{idx * 50}"
-        row_hash[key] = rel_team_hash.fetch(:fields, {})[key] if rel_team_hash.fetch(:fields, {})[key].present?
+        row_hash[key] = fields[key] if fields[key].present?
         key = "delta#{idx * 50}"
-        row_hash[key] = rel_team_hash.fetch(:fields, {})[key] if rel_team_hash.fetch(:fields, {})[key].present?
+        row_hash[key] = fields[key] if fields[key].present?
       end
 
       # Add relay swimmer laps onto the same result hash & compute possible age group

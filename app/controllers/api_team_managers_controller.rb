@@ -20,6 +20,7 @@ class APITeamManagersController < ApplicationController
         team_affiliation_id: index_params[:team_affiliation_id],
         manager_name: index_params[:manager_name],
         team_name: index_params[:team_name],
+        season_id: index_params[:season_id],
         season_description: index_params[:season_description],
         page: index_params[:page], per_page: index_params[:per_page]
       }
@@ -31,10 +32,9 @@ class APITeamManagersController < ApplicationController
     end
 
     set_grid_domain_for(TeamManagersGrid, GogglesDb::ManagedAffiliation, result.headers, parsed_response)
+    @grid = TeamManagersGrid.new(grid_filter_params) # { @domain }
 
     respond_to do |format|
-      @grid = TeamManagersGrid.new(grid_filter_params)
-
       format.html { @grid }
 
       format.csv do

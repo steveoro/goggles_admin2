@@ -1,7 +1,7 @@
 #
 # = Layout format definition for PdfResults::FormatParser
 #
-1-ficr2.4x50m:
+1-ficr2.4x050m:
   - name: header
     at_fixed_row: 0
     # Repeat each page:
@@ -77,7 +77,7 @@
             format: "^\\s*(\\d{1,2}|SQ)\\s+"
             pop_out: false
           - name: team_name
-            format: "\\s+(([\\w\\d]+.\\s?)+)"
+            format: "\\s+(([\\w\\d\\-&%'`]+.\\s?)+)"
             token_start: 2
             token_end: 32
             pop_out: false
@@ -114,18 +114,18 @@
             format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*"
             pop_out: false
             token_start: 108
-            token_end: 120
+            token_end: 121
             required: false
           - name: timing
             format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*"
-            token_start: 120
+            token_start: 121
             pop_out: false
             required: false
 
       - name: rel_team2
         fields:
           - name: team_name
-            format: "^\\s{3,8}(([\\w\\d]+.\\s?)+)"
+            format: "^\\s{3,8}(([\\w\\d\\-&%'`]+.\\s?)+)"
             token_end: 43
             pop_out: false
           - name: delta100
@@ -144,11 +144,11 @@
             format: "\\s*\\((\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)\\s*"
             pop_out: false
             token_start: 108
-            token_end: 122
+            token_end: 121
             required: false
           - name: std_score
             format: "\\s*(\\d?[,.]?\\d{1,4}[,.]\\d{1,2})"
-            token_start: 122
+            token_start: 121
             pop_out: false
             # Most of the times, only the 1st relay will score:
             required: false
@@ -218,8 +218,9 @@
       - name: rel_swimmer2
         fields:
           - name: year_of_birth
-            format: "\\s{55,}(\\d{4})\\s*"
+            format: "\\s{54,}(\\d{4})\\s*"
             pop_out: false
+            token_end: 70
 
           - name: delta100
             format: "\\s*\\((\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)\\s*"

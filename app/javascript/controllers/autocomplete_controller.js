@@ -406,8 +406,8 @@ export default class extends Controller {
     const searchTargetDomId = `#${this.searchTarget.id}`
     const searchColumn = this.searchColumnValue
     // DEBUG
-    console.log("searchTargetDomId:", searchTargetDomId)
-    console.log("searchColumn:", searchColumn)
+    // console.log("searchTargetDomId:", searchTargetDomId)
+    // console.log("searchColumn:", searchColumn)
 
     $(searchTargetDomId).easyAutocomplete({
       data: this.payloadValue,
@@ -424,9 +424,9 @@ export default class extends Controller {
         maxNumberOfElements: 8,
         onSelectItemEvent: () => {
           // DEBUG
-          console.log("onSelectItemEvent: activeElement ID:", document.activeElement.id)
+          // console.log("onSelectItemEvent: activeElement ID:", document.activeElement.id)
           // DEBUG
-          console.log("onSelectItemEvent: searchTargetDomId:", searchTargetDomId)
+          // console.log("onSelectItemEvent: searchTargetDomId:", searchTargetDomId)
           this.updateFieldAndDesc($(searchTargetDomId).getSelectedItemData())
           $(searchTargetDomId).val('') // Reset search box when done
         },

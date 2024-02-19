@@ -22,9 +22,13 @@ module DataFix
       super
       @prg_key = prg_key
       @model_row = prg_row&.fetch('row', nil)
+      # The following hack will be ok even for relays as we just need to
+      # compare the result with >= 100:
+      @length_in_meters = prg_key.to_s.split('-').second.to_i
       @laps_rowset = laps_rowset
       @rank = @model_row['rank']
       @timing = Timing.new(minutes: @model_row['minutes'], seconds: @model_row['seconds'], hundredths: @model_row['hundredths'])
+      @std_points = @model_row['standard_points']
     end
 
     # Skips rendering unless the required parameters are set
@@ -47,7 +51,7 @@ module DataFix
 
     # Returns the disqualify label, if any.
     def dsq_label
-      label_text = @model_row&.fetch('relay_code', '')
+      label_text = @model_row&.fetch('disqualification_notes', '')
       return 'DSQ' if label_text.blank?
 
       "DSQ: '#{label_text}'"
@@ -69,23 +73,30 @@ module DataFix
       ''
     end
 
-    # Returns
+    # Returns the array of uniq swimmer string names for any result (memoized)
     def lap_swimmers
-      @lap_swimmers ||= @laps_rowset&.map { |row| row['swimmer_id'].present? ? GogglesDb::Swimmer.find(row['swimmer_id']).last_name : '🆕' }&.uniq
+      @lap_swimmers ||= @laps_rowset&.map { |row| row['swimmer_id'].present? ? GogglesDb::Swimmer.find(row['swimmer_id']).last_name : '🆕' }
+                                    &.uniq
     end
 
-    # Returns
-    def lap_timings
-      @lap_timings ||= @laps_rowset&.map do |row|
-                         Timing.new(minutes: row['minutes_from_start'], seconds: row['seconds_from_start'], hundredths: row['hundredths_from_start']).to_s
-                       end
-                                   &.join(' / ')
-    end
-
-    # Returns
-    def delta_timings
-      @delta_timings ||= @laps_rowset&.map { |row| Timing.new(minutes: row['minutes'], seconds: row['seconds'], hundredths: row['hundredths']).to_s }
-                                     &.join(' / ')
+    # Returns a memoized array storing a custom Hash of displayable text fields for each lap
+    # or sub-lap row present in @laps_rowset, having structure:
+    #
+    #   {
+    #     swimmer: <string name of the swimmer>,
+    #     timing_from_start: <string timing from start>,
+    #     timing: <string delta timing>,
+    #     length_in_meters: <string length of this fraction>
+    #   }
+    def lap_list
+      @lap_list ||= @laps_rowset&.map do |row|
+        {
+          swimmer: row['swimmer_id'].present? ? GogglesDb::Swimmer.find(row['swimmer_id']).last_name : '🆕',
+          timing_from_start: Timing.new(minutes: row['minutes_from_start'], seconds: row['seconds_from_start'], hundredths: row['hundredths_from_start']),
+          timing: Timing.new(minutes: row['minutes'], seconds: row['seconds'], hundredths: row['hundredths']),
+          length_in_meters: row['length_in_meters']
+        }
+      end
     end
   end
 end

@@ -3,7 +3,7 @@
 module PdfResults
   # = PdfResults::ContextDAO
   #
-  #   - version:  7-0.6.00
+  #   - version:  7-0.6.20
   #   - author:   Steve A.
   #
   #
@@ -72,7 +72,7 @@ module PdfResults
     #                Top-level DAOs won't have a key and will all be named 'root' and all root-level ContextDefs
     #                will yield DAOs stored as #rows.
     #
-    def initialize(context = nil)
+    def initialize(context = nil) # rubocop:disable Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
       raise 'Invalid ContextDef specified!' unless context.is_a?(ContextDef) || context.nil?
 
       @name = context&.name || 'root'
@@ -87,7 +87,7 @@ module PdfResults
       if context&.fields.present?
         context.fields.each { |fd| @fields_hash.merge!({ fd.name => fd.value }) if fd.is_a?(FieldDef) }
       end
-      return unless context&.rows.present?
+      return if context&.rows.blank?
 
       context.rows.each do |ctx|
         @fields_hash.merge!(ctx.dao.fields_hash) if ctx.is_a?(ContextDef) && ctx.dao.present?
@@ -99,7 +99,7 @@ module PdfResults
     # Debug helper for building spec mocks for this class.
     # Bypasses and overrides DAO values retrieval by using the specified data Hash
     # for setting the results of #data & #field_hash.
-    def set_debug_mock_values(data_hash)
+    def force_debug_mock_values(data_hash)
       # TODO
     end
     #-- -----------------------------------------------------------------------
@@ -187,7 +187,7 @@ module PdfResults
     # - DAOs collected on a per-page basis, w/ parent section (DAO nodes) repeating on each page
     #   --> AIM: single DAO tree => requires a merge of DAO subtrees
     #
-    def merge(source_dao)
+    def merge(source_dao) # rubocop:disable Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
       raise 'Invalid ContextDAO specified!' unless source_dao.is_a?(ContextDAO)
 
       # Find a destination container for the source DAO: it must have the same name & key
@@ -206,7 +206,8 @@ module PdfResults
         dest_parent.add_row(source_dao)
       end
 
-      # A) FIND SELF from dest_parent
+      # *Algorithm:*
+      # A) Find SELF from dest_parent
       # B) if self not found => add to dest_parent @rows
       # C) if self => check for missing rows & merge iteratively:
       #    PSEUDO: found_dao.rows.each { |subdao| subdao compare if missing or not // MERGE }

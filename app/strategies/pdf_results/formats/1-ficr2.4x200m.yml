@@ -77,7 +77,7 @@
             format: "^\\s?(\\d{1,2}|SQ)\\s+"
             pop_out: false
           - name: team_name
-            format: "\\s{3,8}(([\\w\\d]+.\\s?)+)"
+            format: "\\s{3,8}(([\\w\\d\\-&%'`]+.\\s?)+)"
             token_end: 32
             pop_out: false
           - name: lane_num
@@ -148,7 +148,7 @@
       - name: rel_team2
         fields:
           - name: team_name
-            format: "^\\s{3,8}(([\\w\\d]+.\\s?)+)"
+            format: "^\\s{3,8}(([\\w\\d\\-&%'`]+.\\s?)+)"
             token_end: 43
             pop_out: false
           - name: delta100

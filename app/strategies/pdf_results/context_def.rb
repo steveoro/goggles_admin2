@@ -3,7 +3,7 @@
 module PdfResults
   # = PdfResults::ContextDef
   #
-  #   - version:  7-0.6.00
+  #   - version:  7-0.6.20
   #   - author:   Steve A.
   #
   # Stores a parsing context definition, compiled from a parsing layout format YML file.
@@ -461,7 +461,7 @@ module PdfResults
     # 7. Rows scan: all required sub-contexts must be valid
     #
     # @see also: #extract
-    def valid?(row_buffer, scan_index, extract: true)
+    def valid?(row_buffer, scan_index, extract: true) # rubocop:disable Metrics/MethodLength,Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
       @last_validation_result = false
       @curr_index = 0 # Local scan index, relative to the resulting row_buffer, after resizing & limiting
       @consumed_rows = 0
@@ -690,7 +690,7 @@ module PdfResults
         # to this whole container context:
         @consumed_rows += row_span
       end
-      # DEBUG ----------------------------------------------------------------
+      # DEBUG ------------------------------ ----------------------------------
       # if name == 'event' && (scan_index == 2)
       #   log_message(msg: "AFTER ROWS (#{name}), @curr_index: #{@curr_index}, @consumed_rows: #{@consumed_rows} (BEFORE RETURN)",
       #               scan_index: scan_index, curr_buffer: curr_buffer)

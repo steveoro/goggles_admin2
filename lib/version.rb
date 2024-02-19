@@ -3,7 +3,7 @@
 #
 # == Versioning codes
 #
-#   - version:  7-0.6.12
+#   - version:  7-0.6.30
 #   - author:   Steve A.
 #
 # Framework version number usually differs from core engine versioning number.
@@ -41,5 +41,5 @@ module Version
   SEMANTIC = "#{MAJOR}.#{MINOR}.#{PATCH}".freeze
 
   # Current internal DB version (independent from migrations and framework release)
-  DB = '2.05.0'
+  DB = '2.06.0'
 end

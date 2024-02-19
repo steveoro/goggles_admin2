@@ -131,7 +131,7 @@
       - name: results2
         fields:
           - name: team_name
-            format: "^\\s{3,8}(([\\w\\d]+.\\s?)+)"
+            format: "^\\s{3,8}(([\\w\\d\\-&%'`]+.\\s?)+)"
             token_end: 43
             pop_out: false
           - name: year_of_birth
@@ -155,11 +155,11 @@
             format: "\\s*\\((\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)\\s*\\b"
             pop_out: false
             token_start: 109
-            token_end: 120
+            token_end: 119
             required: false
           - name: std_score
             format: "\\s*(\\d?[,.]?\\d{1,4}[,.]\\d{1,2})\\b"
-            token_start: 121
+            token_start: 119
             pop_out: false
             # U25 / A20 do not score:
             required: false

@@ -3,7 +3,7 @@
 module PdfResults
   # = PdfResults::FormatParser strategy
   #
-  #   - version:  7-0.6.00
+  #   - version:  7-0.6.20
   #   - author:   Steve A.
   #
   # Given at least a single whole page of a text file, this strategy class will try to detect
@@ -200,17 +200,15 @@ module PdfResults
 
       while continue_scan
         log_message("\r\n✴✴✴ 🩺 Checking '#{current_fname}' (base: #{ffamily_name}, fmt: #{fmt_files_idx}/tot: #{fmt_files.count}) @ page idx: #{@page_index}/tot: #{@pages.count} ✴✴✴")
+        @checked_formats[current_fname] ||= {}
+        @checked_formats[current_fname][:valid_at] ||= []
 
         # Parse will carry on with the current format until last page is reached
         # or the format isn't valid anymore on the current page:
         parse(format_filepath, limit_pages:)
 
-        # 2. Memorize last format check made & bail-out when actual EOF is reached with a valid format
-        @checked_formats[current_fname] ||= {}
+        # 2. Store last format check position (regardless of results) & bail-out when actual EOF is reached with a valid format:
         @checked_formats[current_fname][:last_check] = @page_index
-        @checked_formats[current_fname][:valid] = @result_format_type.present?
-        @checked_formats[current_fname][:valid_at] ||= []
-        @checked_formats[current_fname][:valid_at] << @page_index if @result_format_type.present?
         # Break out if last page is reached and we still have a result format:
         break if @page_index >= @pages.count && @result_format_type.present?
 
@@ -254,9 +252,9 @@ module PdfResults
       log_message("\r\nFormat list scanning results:")
       @checked_formats.each do |fname, hsh_res|
         log_message(
-          Kernel.format('- %s: %s, last checked at page idx %d, valid at: %s',
+          Kernel.format('- %s: %s, last checked at page idx %d, valid at pages: %s',
                         fname, hsh_res[:valid] ? "\033[1;33;32m✔\033[0m" : 'x', hsh_res[:last_check].to_i,
-                        hsh_res[:valid_at].to_s)
+                        hsh_res[:valid_at].flatten.uniq.to_s)
         )
       end
       log_message("\r\nApplied format family: '#{ffamily_name}', latest found: #{@result_format_type}")
@@ -319,7 +317,6 @@ module PdfResults
     #
     def parse(format_filepath, limit_pages: nil, reset_page_index: false, debug: @debug) # rubocop:disable Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/MethodLength,Metrics/PerceivedComplexity
       @debug = debug
-
       # 1. Build the hash list of ContextDef, defining & describing the current layout format:
       @format_name = prepare_format_defs_from_file(format_filepath)
 
@@ -343,7 +340,16 @@ module PdfResults
         # DEBUG
         log_message(Kernel.format("\r\n➡ row %04d/%04d, p: %s/%s [\033[1;94;3m%s\033[0m: '\033[1;93;40m%s\033[0m', ctx %02d/%02d]",
                                   row_index, @rows.count - 1, @page_index + 1, @pages.count, @format_name, ctx_name, ctx_index + 1, @format_order.count))
-        valid = context_def.valid?(@rows, row_index)
+
+        # -----------------------------------------------------------------------
+        # TODO: FIND a way to reference actual parent container valid? AND NOT last_check_result,
+        #       which may or may not refer to the current parent while being run on the same buffer
+        #       AND not the buffer lines which made the parent itself valid for as a container for the current ctx
+        # ------------------------------------------------------------------
+        # Parent, if set, must be valid too for a sibling to pass the check:
+        # parent_valid = context_def.parent.blank? || (context_def.parent.present? && context_def.parent.last_validation_result)
+        # -----------------------------------------------------------------------
+        valid = context_def.valid?(@rows, row_index) # && parent_valid (NOT currently possible, as valid? gets overridden each time)
         # DEBUG
         if context_def.key.present? || context_def.consumed_rows.positive?
           log_message(Kernel.format("  [%s] => %s -- curr_index: %d, consumed_rows: %d\r\n  |=> key: '\033[1;33;32m%s\033[0m'",
@@ -352,6 +358,7 @@ module PdfResults
         end
         # DEBUG ----------------------------------------------------------------
         # binding.pry if (ctx_name == 'event') && (row_index == 2)
+        # binding.pry if context_def&.dao&.fields_hash&.fetch('lap250', '') == '2:15.47'
         # ----------------------------------------------------------------------
 
         row_index = progress_row_index_and_store_result(row_index, valid, @format_name, context_def)
@@ -435,6 +442,8 @@ module PdfResults
             )
             $stdout.write("\033[1;33;32m.\033[0m") # "Valid" progress signal
             @result_format_type = @format_name
+            @checked_formats[@format_name][:valid] = true
+            @checked_formats[@format_name][:valid_at] << @page_index
             @root_dao ||= ContextDAO.new
             @page_daos.each { |dao| @root_dao.merge(dao) } # Store data: append page daos to the root DAO
           else
@@ -460,10 +469,10 @@ module PdfResults
       log_message("\r\nLast check for repeatable defs (w/ stopping index):")
       @repeatable_defs.each do |name, hsh|
         log_message(
-          Kernel.format('- %<name>s: last checked at row idx %<last_check>d => %<check_result>s, valid at rows: %<valid_list>s',
+          Kernel.format('- %<name>s: last checked @ row: %<last_check>d => %<check_result>s, valid for pages: %<valid_list>s',
                         name:, last_check: hsh[:last_check].to_i,
                         check_result: hsh[:valid] ? "\033[1;33;32m✔\033[0m" : 'x',
-                        valid_list: hsh[:valid_at].to_s)
+                        valid_list: hsh[:valid_at].flatten.uniq.to_s)
         )
       end
     end
@@ -645,12 +654,18 @@ module PdfResults
       end
       # Prepare a scan result report, once per context name:
       # (shouldn't overwrite an already scanned context on a second FAILING pass)
-      @valid_scan_results[format_name].merge!(context_def.name => valid_result) unless @valid_scan_results[format_name][context_def.name]
+      @valid_scan_results[format_name][context_def.name] = valid_result unless @valid_scan_results[format_name][context_def.name]
       return row_index unless valid_result && context_def.consumed_rows.positive?
 
       # Find parent context if any:
       # (Retrieve parent ctx in lookup table or use the link if it's not a name -- may be nil, don't care)
       parent_ctx = context_def.parent.is_a?(String) ? @format_defs.fetch(context_def.parent, nil) : context_def.parent
+      # DEBUG ----------------------------------------------------------------
+      # binding.pry if (ctx_name == 'event') && (row_index == 2)
+      # binding.pry if context_def&.dao&.fields_hash&.fetch('lap250', '') == '2:15.47' ||
+      #                parent_ctx&.dao&.fields_hash&.fetch('lap250', '') == '2:15.47'
+      # ----------------------------------------------------------------------
+
       # Store data: add DAO to parent rows if parent && there was something
       # stored in the DAO:
       if parent_ctx&.dao.present? && context_def.dao.present?

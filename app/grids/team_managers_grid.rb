@@ -8,12 +8,13 @@ class TeamManagersGrid < BaseGrid
   # Returns the scope for the grid. (#assets is the filtered version of it)
   scope { data_domain }
 
+  filter(:season_id, :string, header: 'Season ID') { |_value, scope| scope }
   filter(:team_affiliation_id, :integer, header: 'TA ID')
-  filter(:manager_name, :string, header: 'Manager name (~)') { |_value, scope| scope }
   filter(:team_name, :string, header: 'Team name (~)') { |_value, scope| scope }
+  filter(:manager_name, :string, header: 'Manager name (~)') { |_value, scope| scope }
   filter(:season_description, :string, header: 'Season desc. (~)') { |_value, scope| scope }
 
-  selection_column
+  # selection_column
   column(:id, align: :right)
   column(:user_id, align: :right)
   column(:manager_name, header: 'Manager', html: true)
@@ -37,6 +38,10 @@ class TeamManagersGrid < BaseGrid
   column(:season, html: true, align: :right) do |asset|
     asset.season ? "<small><i>#{asset.season.season_type.code}</i></small> - #{asset.season.id}".html_safe : '♻'
   end
-  date_column(:created_at, align: :right)
+
+  column(:created_at, html: true, align: :right) do |asset|
+    asset.created_at&.strftime('%Y-%m-%d')
+  end
+
   actions_column(edit: true, destroy: true)
 end
