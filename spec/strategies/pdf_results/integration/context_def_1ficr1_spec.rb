@@ -63,7 +63,7 @@ DOC
   #-- -------------------------------------------------------------------------
   #++
 
-  describe "[1-ficr1.4x100] format" do
+  describe '[1-ficr1.4x100] format' do
     let(:format_filepath) { 'app/strategies/pdf_results/formats/1-ficr1.4x100m.yml' }
     let(:layout_def) { YAML.load_file(format_filepath) }
 

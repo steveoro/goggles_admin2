@@ -7,7 +7,7 @@
 #
 # - CodeCov repot........: sent by its gem if the ENV variable CODECOV_TOKEN is set
 # - CodeClimate report...: sent by using its stand-alone 'cc-test-reporter' utility
-# - CoverAlls report.....: no longer maintained & gem dependancy removed
+# - CoverAlls report.....: no longer maintained & gem dependency removed
 #
 # See: https://github.com/steveoro/goggles_db/wiki/HOWTO-dev-code_coverage_setup
 

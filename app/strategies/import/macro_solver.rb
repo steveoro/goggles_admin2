@@ -1399,7 +1399,7 @@ module Import
         Rails.logger.debug { "    >> RelayLap #{length_in_meters}m: <#{lap_timing}>" } if @toggle_debug
         relay_lap_entity = find_or_prepare_relay_lap(
           swimmer:, swimmer_key:, team:, team_key:,
-          mrr: mrr_row, mrr_key: mrr_key,
+          mrr: mrr_row, mrr_key:,
           mrs: mr_model, mrs_key: mr_key,
           length_in_meters:,
           abs_timing: lap_timing, # (abs = "from start")
