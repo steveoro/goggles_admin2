@@ -6,7 +6,7 @@ it:
     log_out: "Esci"
     account: 'Account'
     please_wait: 'Attendi...'
-    copyright_notice: "(c) 2013-2021, FASAR Software, S. Alloro, M. Ligabue"
+    copyright_notice: "(c) 2013-2024, FASAR Software, S. Alloro, M. Ligabue"
     title: 'Principale'
     current: '(attuale)'
     commands: 'comandi'
