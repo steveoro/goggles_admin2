@@ -12,16 +12,17 @@ class HomeController < ApplicationController
   # Computes also main counters displayed on the landing dashboard.
   #
   def index
-    result = APIProxy.call(method: :get, url: 'users', jwt: current_user.jwt)
-    @users_count = result.headers[:total]
+    @users_count = count_remote_rows_for('users')
+    @iqs_count = count_remote_rows_for('import_queues')
+    @issues_count = count_remote_rows_for('issues')
+    @api_uses_count = count_remote_rows_for('api_daily_uses')
+  end
 
-    result = APIProxy.call(method: :get, url: 'import_queues', jwt: current_user.jwt)
-    @iqs_count = result.headers[:total]
+  private
 
-    result = APIProxy.call(method: :get, url: 'issues', jwt: current_user.jwt)
-    @issues_count = result.headers[:total] || 0
-
-    result = APIProxy.call(method: :get, url: 'api_daily_uses', jwt: current_user.jwt)
-    @api_uses_count = result.headers[:total]
+  # Retrieves the remote row total for a specified endpoint.
+  def count_remote_rows_for(api_endpoint)
+    result = APIProxy.call(method: :get, url: api_endpoint, jwt: current_user.jwt)
+    result.headers[:total] || 0
   end
 end

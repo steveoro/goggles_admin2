@@ -231,6 +231,29 @@
       "note": ""
     },
     {
+      "warning_type": "Command Injection",
+      "warning_code": 14,
+      "fingerprint": "88fd76ed3ecefeb55f16b4993438a899d6fe6e2dffe95d369bbe53846f2633e5",
+      "check_name": "Execute",
+      "message": "Possible command injection",
+      "file": "app/controllers/pdf_controller.rb",
+      "line": 36,
+      "link": "https://brakemanscanner.org/docs/warning_types/command_injection/",
+      "code": "system(\"pdftotext -layout #{process_params[:file_path]} #{process_params[:file_path].gsub(/\\.pdf|\\.txt/i, \".txt\")}\")",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "PdfController",
+        "method": "extract_txt"
+      },
+      "user_input": "process_params[:file_path]",
+      "confidence": "Medium",
+      "cwe_id": [
+        77
+      ],
+      "note": ""
+    },
+    {
       "warning_type": "Mass Assignment",
       "warning_code": 70,
       "fingerprint": "956293dc4e901efc9364d89275b28c7e0caf10183debfea627f8ca469c5eab7d",
@@ -296,29 +319,6 @@
       "confidence": "Medium",
       "cwe_id": [
         915
-      ],
-      "note": ""
-    },
-    {
-      "warning_type": "Command Injection",
-      "warning_code": 14,
-      "fingerprint": "a74110d9408f3d62a12f854b2c2f37c71b792535ad892fb681f893d98e3a483f",
-      "check_name": "Execute",
-      "message": "Possible command injection",
-      "file": "app/controllers/pdf_controller.rb",
-      "line": 15,
-      "link": "https://brakemanscanner.org/docs/warning_types/command_injection/",
-      "code": "system(\"pdftotext -layout #{process_params[:file_path]} #{process_params[:file_path].gsub(\".pdf\", \".txt\")}\")",
-      "render_path": null,
-      "location": {
-        "type": "method",
-        "class": "PdfController",
-        "method": "extract_txt"
-      },
-      "user_input": "process_params[:file_path]",
-      "confidence": "Medium",
-      "cwe_id": [
-        77
       ],
       "note": ""
     },
@@ -411,25 +411,6 @@
       "confidence": "Medium",
       "cwe_id": [
         915
-      ],
-      "note": ""
-    },
-    {
-      "warning_type": "Unmaintained Dependency",
-      "warning_code": 120,
-      "fingerprint": "d84924377155b41e094acae7404ec2e521629d86f97b0ff628e3d1b263f8101c",
-      "check_name": "EOLRails",
-      "message": "Support for Rails 6.0.6.1 ended on 2023-06-01",
-      "file": "Gemfile.lock",
-      "line": 407,
-      "link": "https://brakemanscanner.org/docs/warning_types/unmaintained_dependency/",
-      "code": null,
-      "render_path": null,
-      "location": null,
-      "user_input": null,
-      "confidence": "High",
-      "cwe_id": [
-        1104
       ],
       "note": ""
     },
@@ -549,6 +530,6 @@
       "note": ""
     }
   ],
-  "updated": "2023-08-14 17:44:47 +0200",
-  "brakeman_version": "5.4.1"
+  "updated": "2024-03-04 19:38:16 +0100",
+  "brakeman_version": "6.1.2"
 }

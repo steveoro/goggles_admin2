@@ -13,13 +13,19 @@ class APIUsersController < ApplicationController
   # - <tt>@grid</tt>: the customized Datagrid instance
   #
   def index
-    result = APIProxy.call(
-      method: :get, url: 'users', jwt: current_user.jwt,
-      params: {
-        name: index_params[:name], description: index_params[:description], email: index_params[:email],
-        page: index_params[:page], per_page: index_params[:per_page]
-      }
-    )
+    index_params # prepare @index_params memoized member
+    result = if grid_filter_params.present? || params[:page].present? || params[:per_page].present?
+               APIProxy.call(
+                 method: :get, url: 'users', jwt: current_user.jwt,
+                 params: {
+                   name: grid_filter_params[:name], description: grid_filter_params[:description],
+                   email: grid_filter_params[:email],
+                   page: index_params[:page], per_page: index_params[:per_page]
+                 }
+               )
+             else
+               APIProxy.call(method: :get, url: 'users', jwt: current_user.jwt)
+             end
     parsed_response = result.body.present? ? JSON.parse(result.body) : { 'error' => "Error #{result.code}" }
     unless result.code == 200
       flash[:error] = I18n.t('dashboard.api_proxy_error', error_code: result.code, error_msg: parsed_response['error'])

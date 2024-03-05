@@ -2,6 +2,7 @@
 
 _Please, add the latest build info on top of the list; use Version::MAJOR only after gold release; keep semantic versioning in line with framework's_
 
+- **0.7.00** [Steve A.] update to Rails 6.1.7; specs adjustments
 - **0.6.12** [Steve A.] Re-sync w/ base engine (0.6.10); updated bundle; support for RelayLaps (relay sub-laps) in MacroSolver & MacroCommitter
 - **0.6.00** [Steve A.] upgrade to Ruby 3.1.4
 - **0.5.22** [Steve A.] added support for account reactivation request w/ email send; added pass-through filtering parameters for all grids from row actions, including the edit modal; added button links to show filtered lists of specific sub-entities from an associated row (i.e.: from a badge to a team affiliation grid); re-sync w/ base engine & API; bundle update

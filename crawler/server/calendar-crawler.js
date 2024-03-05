@@ -147,7 +147,7 @@ class CalendarCrawler {
         break;
 
       default: // "Archivio 2012-..."
-        resultsStartURL = `https://www.federnuoto.it/home/master/circuito-supermaster/archivio-2012-2022/stagione-${yearText.replace('/', '-')}.html`
+        resultsStartURL = `https://www.federnuoto.it/home/master/circuito-supermaster/archivio-2012-2023/stagione-${yearText.replace('/', '-')}.html`
         console.log(`Using 'archived' calendar page type '${yearText}'`)
         await page.evaluate((yearText) => {
           var nodeArray = Array.from(document.querySelectorAll('.module-menu_acc_interno ul.mixedmenu li.divider.deeper.parent ul.nav-child li a'))

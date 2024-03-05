@@ -7,8 +7,8 @@ ruby '3.1.4'
 
 # Bundle edge Rails instead: gem 'rails', github: 'rails/rails'
 # [20210128] ActiveRecord 6.1 introduces too many changes for the current version
-gem 'rails', '>= 6.0.6', '< 6.1.0'
-gem 'rails-i18n', '~> 6.0'
+gem 'rails', '>= 6.1.7', '< 7'
+gem 'rails-i18n', '~> 6'
 # Use mysql as the database for Active Record
 gem 'mysql2', '>= 0.4.4'
 # Use Puma as the app server
@@ -70,8 +70,7 @@ group :development do
   gem 'guard-spring'
   gem 'haml_lint', require: false
   gem 'inch', require: false # grades source documentation
-  gem 'listen', '~> 3.2'
-  # [20210128] Rubocop 1.9.0 seems to have several issues with the current stack
+  gem 'listen', '>= 3.2'
   gem 'rubocop'
   gem 'rubocop-performance'
   gem 'rubocop-rails', '= 2.19', require: false # currently 2.20 introduces a bug with '#falsey_literal?'
