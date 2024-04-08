@@ -7,6 +7,8 @@
 class BaseGrid
   include Datagrid
 
+  self.cached = true
+
   # Common data domain for all subclasses.
   #
   # To set the domain with a list of instances rebuilt from an API responses do:

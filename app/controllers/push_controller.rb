@@ -48,19 +48,19 @@ class PushController < FileListController
     @committer.commit_all
 
     curr_dir = File.dirname(@file_path)
-    sent_dir = curr_dir.gsub('results.new', 'results.sent')
+    sent_dir = curr_dir.to_s.gsub('results.new', 'results.sent')
     dest_file = File.basename(@file_path)
-    done_pathname = @file_path.gsub('results.new', 'results.done') # JSON backup copy (before IDs)
+    done_pathname = @file_path.to_s.gsub('results.new', 'results.done') # JSON backup copy (before IDs)
 
     # Prepare a sequential counter prefix for the uploadable batch file:
     last_counter = compute_file_counter(curr_dir, sent_dir)
-    dest_file = "#{format('%03d', last_counter + 1)}-#{File.basename(dest_file.gsub('.json', '.sql'))}"
+    dest_file = "#{format('%03d', last_counter + 1)}-#{File.basename(dest_file.to_s.gsub('.json', '.sql'))}"
 
     # Move last phase's JSON file (before IDs were set) into 'done' as a backup:
     FileUtils.mkdir_p(File.dirname(done_pathname)) # First, ensure existence of the destination path
     File.rename(@file_path, done_pathname)
     # Save also the committed data to another file (storing the resulting actual IDs):
-    File.write(done_pathname.gsub('.json', '.committed.json'), @solver.data.to_json)
+    File.write(done_pathname.to_s.gsub('.json', '.committed.json'), @solver.data.to_json)
 
     # Save the SQL batch file with the sequential prefix in the same 'results.new' directory:
     File.open(File.join(curr_dir, dest_file), 'w+') do |f|
@@ -226,12 +226,12 @@ class PushController < FileListController
       # 1. 'results.new/*'
       #    2. => 'results.sent/*'
       #        3. => 'results.done/*'
-      from_folder, to_folder = if file_path.include?('results.new')
+      from_folder, to_folder = if file_path.to_s.include?('results.new')
                                  %w[results.new results.sent]
                                else
                                  %w[results.sent results.done]
                                end
-      dest_file = file_path.gsub(from_folder, to_folder)
+      dest_file = file_path.to_s.gsub(from_folder, to_folder)
       FileUtils.mkdir_p(File.dirname(dest_file)) # Ensure the destination path is there
       File.rename(file_path, dest_file)
       flash[:info] = I18n.t('data_import.push.msg_send_batch_ok')

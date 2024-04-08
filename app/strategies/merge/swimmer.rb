@@ -1,12 +1,12 @@
 # frozen_string_literal: true
 
-module Merger
+module Merge
   #
-  # = Merger::Swimmer
+  # = Merge::Swimmer
   #
-  #   - version:  7-0.6.20
+  #   - version:  7-0.7.07
   #   - author:   Steve A.
-  #   - build:    20240112
+  #   - build:    20240405
   #
   class Swimmer
     attr_reader :sql_log, :log
@@ -35,6 +35,37 @@ module Merger
     # the SQL needed for replication.
     def perform!
       # TODO
+
+      # Foreach source row
+      #   Find if destination is existing and different in key (or return when not found)
+      #     Move it over if missing (Foreach linked sub-entity row, do same check on subentities)
+      #     Delete source if existing and duplicate and is a leaf in the hierarchy tree
+
+      # *** Badges ***
+      # - Badge
+
+      # *** "Parent" Results ***
+      # - MeetingIndividualResult
+      # - UserResult
+      # - MeetingRelaySwimmer
+
+      # *** "Children" Results ***
+      # - Lap
+      # - UserLap
+      # - RelayLap
+
+      # *** "Parent" Reservations ***
+      # - MeetingReservation
+      # - MeetingEntry
+
+      # *** "Children" Reservations ***
+      # - MeetingEventReservation
+      # - MeetingRelayReservation
+
+      # FUTUREDEV: *** Cups & Records ***
+      # - SeasonPersonalStandard: currently used only in old CSI meetings and not used nor updated anymore
+      # - GoggleCupStandard: TODO
+      # - IndividualRecord: TODO, missing model (but table is there, links both team & swimmer)
     end
   end
 end

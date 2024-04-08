@@ -2,17 +2,17 @@
 # of editing this file, please use the migrations feature of Active Record to
 # incrementally modify your database, and then regenerate this schema definition.
 #
-# This file is the source Rails uses to define your schema when running `rails
-# db:schema:load`. When creating a new database, `rails db:schema:load` tends to
+# This file is the source Rails uses to define your schema when running `bin/rails
+# db:schema:load`. When creating a new database, `bin/rails db:schema:load` tends to
 # be faster and is potentially less error prone than running all of your
 # migrations from scratch. Old migrations may fail to apply correctly if those
 # migrations use external dependencies or application code.
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2023_06_08_153109) do
+ActiveRecord::Schema.define(version: 2024_02_19_180559) do
 
-  create_table "achievement_rows", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "achievement_rows", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -28,7 +28,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["achievement_type_id"], name: "idx_achievement_rows_achievement_type"
   end
 
-  create_table "achievement_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "achievement_types", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -36,7 +36,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["code"], name: "index_achievement_types_on_code", unique: true
   end
 
-  create_table "achievements", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "achievements", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -45,7 +45,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["code"], name: "index_achievements_on_code", unique: true
   end
 
-  create_table "active_storage_attachments", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "active_storage_attachments", charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.string "name", null: false
     t.string "record_type", null: false
     t.bigint "record_id", null: false
@@ -55,7 +55,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["record_type", "record_id", "name", "blob_id"], name: "index_active_storage_attachments_uniqueness", unique: true
   end
 
-  create_table "active_storage_blobs", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "active_storage_blobs", charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.string "key", null: false
     t.string "filename", null: false
     t.string "content_type"
@@ -66,7 +66,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["key"], name: "index_active_storage_blobs_on_key", unique: true
   end
 
-  create_table "admin_grants", options: "ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci", force: :cascade do |t|
+  create_table "admin_grants", charset: "latin1", collation: "latin1_swedish_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.string "entity", limit: 150
     t.bigint "user_id", null: false
@@ -77,7 +77,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["user_id"], name: "index_admin_grants_on_user_id"
   end
 
-  create_table "api_daily_uses", options: "ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci", force: :cascade do |t|
+  create_table "api_daily_uses", charset: "latin1", collation: "latin1_swedish_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.string "route", null: false
     t.date "day", null: false
@@ -88,7 +88,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["route"], name: "index_api_daily_uses_on_route"
   end
 
-  create_table "app_parameters", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "app_parameters", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.integer "code"
     t.string "controller_name"
@@ -127,7 +127,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["code"], name: "index_app_parameters_on_code", unique: true
   end
 
-  create_table "aux_arms_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "aux_arms_types", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -135,7 +135,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["code"], name: "index_aux_arms_types_on_code", unique: true
   end
 
-  create_table "aux_body_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "aux_body_types", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -143,7 +143,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["code"], name: "index_aux_body_types_on_code", unique: true
   end
 
-  create_table "aux_breath_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "aux_breath_types", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -151,7 +151,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["code"], name: "index_aux_breath_types_on_code", unique: true
   end
 
-  create_table "aux_kicks_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "aux_kicks_types", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -159,7 +159,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["code"], name: "index_aux_kicks_types_on_code", unique: true
   end
 
-  create_table "badge_payments", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "badge_payments", charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.decimal "amount", precision: 10, scale: 2
     t.date "payment_date"
@@ -173,7 +173,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["user_id"], name: "index_badge_payments_on_user_id"
   end
 
-  create_table "badges", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "badges", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.string "number", limit: 40
     t.integer "season_id"
@@ -198,7 +198,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["team_id"], name: "fk_badges_teams"
   end
 
-  create_table "base_movements", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "base_movements", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -216,7 +216,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["stroke_type_id"], name: "fk_base_movements_stroke_types"
   end
 
-  create_table "calendars", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "calendars", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.string "scheduled_date"
     t.string "meeting_name"
@@ -248,7 +248,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["season_id"], name: "index_calendars_on_season_id"
   end
 
-  create_table "category_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "category_types", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.string "code", limit: 7
     t.string "federation_code", limit: 2
@@ -267,7 +267,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["season_id", "relay", "code"], name: "season_and_code", unique: true
   end
 
-  create_table "cities", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "cities", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.string "name", limit: 50
     t.string "zip", limit: 6
@@ -284,7 +284,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["name"], name: "index_cities_on_name"
   end
 
-  create_table "coach_level_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "coach_level_types", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -293,7 +293,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["code"], name: "index_coach_level_types_on_code", unique: true
   end
 
-  create_table "comments", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "comments", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.string "entry_text"
     t.integer "user_id"
@@ -306,7 +306,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["user_id"], name: "idx_comments_user"
   end
 
-  create_table "computed_season_rankings", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "computed_season_rankings", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -319,7 +319,25 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["team_id"], name: "fk_computed_season_rankings_teams"
   end
 
-  create_table "day_part_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "data_import_swimmer_aliases", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
+    t.integer "lock_version", default: 0
+    t.datetime "created_at"
+    t.datetime "updated_at"
+    t.string "complete_name", limit: 100
+    t.integer "swimmer_id"
+    t.index ["swimmer_id", "complete_name"], name: "idx_swimmer_id_complete_name", unique: true
+  end
+
+  create_table "data_import_team_aliases", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
+    t.integer "lock_version", default: 0
+    t.datetime "created_at"
+    t.datetime "updated_at"
+    t.string "name", limit: 60
+    t.integer "team_id"
+    t.index ["team_id", "name"], name: "idx_team_id_name", unique: true
+  end
+
+  create_table "day_part_types", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -327,7 +345,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["code"], name: "index_day_part_types_on_code", unique: true
   end
 
-  create_table "day_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "day_types", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -336,7 +354,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["code"], name: "index_day_types_on_code", unique: true
   end
 
-  create_table "delayed_jobs", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "delayed_jobs", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "priority", default: 0
     t.integer "attempts", default: 0
     t.text "handler"
@@ -351,7 +369,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["priority", "run_at"], name: "delayed_jobs_priority"
   end
 
-  create_table "disqualification_code_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "disqualification_code_types", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -363,7 +381,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["stroke_type_id"], name: "idx_disqualification_code_types_stroke_type"
   end
 
-  create_table "edition_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "edition_types", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -371,7 +389,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["code"], name: "index_edition_types_on_code", unique: true
   end
 
-  create_table "entry_time_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "entry_time_types", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.string "code", limit: 1
     t.datetime "created_at"
@@ -379,7 +397,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["code"], name: "idx_entry_time_types_code", unique: true
   end
 
-  create_table "event_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "event_types", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.string "code", limit: 10
     t.bigint "length_in_meters"
@@ -398,7 +416,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["style_order"], name: "index_event_types_on_style_order"
   end
 
-  create_table "events_by_pool_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "events_by_pool_types", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.integer "pool_type_id"
     t.integer "event_type_id"
@@ -408,7 +426,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["pool_type_id"], name: "fk_events_by_pool_types_pool_types"
   end
 
-  create_table "execution_note_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "execution_note_types", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -416,7 +434,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["code"], name: "index_execution_note_types_on_code", unique: true
   end
 
-  create_table "exercise_rows", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "exercise_rows", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -435,7 +453,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["training_mode_type_id"], name: "fk_exercise_rows_training_mode_types"
   end
 
-  create_table "exercises", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "exercises", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -444,7 +462,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["code"], name: "index_exercises_on_code", unique: true
   end
 
-  create_table "federation_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "federation_types", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.string "code", limit: 4
     t.string "description", limit: 100
@@ -454,7 +472,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["code"], name: "index_federation_types_on_code", unique: true
   end
 
-  create_table "friendships", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "friendships", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "friendable_id"
     t.integer "friend_id"
     t.integer "blocker_id"
@@ -465,7 +483,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["friendable_id", "friend_id"], name: "index_friendships_on_friendable_id_and_friend_id", unique: true
   end
 
-  create_table "gender_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "gender_types", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.string "code", limit: 1
     t.datetime "created_at"
@@ -473,7 +491,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["code"], name: "index_gender_types_on_code", unique: true
   end
 
-  create_table "goggle_cup_definitions", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "goggle_cup_definitions", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.integer "goggle_cup_id"
     t.integer "season_id"
@@ -483,7 +501,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["season_id"], name: "fk_goggle_cup_definitions_seasons"
   end
 
-  create_table "goggle_cup_standards", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "goggle_cup_standards", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.integer "minutes", limit: 3, default: 0
     t.integer "seconds", limit: 2, default: 0
@@ -502,7 +520,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["swimmer_id"], name: "fk_goggle_cup_standards_swimmers"
   end
 
-  create_table "goggle_cups", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "goggle_cups", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.string "description", limit: 60
     t.integer "season_year", default: 2010
@@ -528,7 +546,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["team_id"], name: "fk_goggle_cups_teams"
   end
 
-  create_table "hair_dryer_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "hair_dryer_types", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.string "code", limit: 3
     t.datetime "created_at"
@@ -536,7 +554,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["code"], name: "index_hair_dryer_types_on_code", unique: true
   end
 
-  create_table "heat_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "heat_types", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.string "code", limit: 10
     t.datetime "created_at"
@@ -545,7 +563,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["code"], name: "idx_heat_types_code", unique: true
   end
 
-  create_table "import_queues", options: "ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci", force: :cascade do |t|
+  create_table "import_queues", charset: "latin1", collation: "latin1_swedish_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.bigint "user_id", null: false
     t.integer "process_runs", default: 0
@@ -567,7 +585,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["user_id"], name: "index_import_queues_on_user_id"
   end
 
-  create_table "individual_records", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "individual_records", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -597,7 +615,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["team_id"], name: "idx_individual_records_team"
   end
 
-  create_table "issues", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci", force: :cascade do |t|
+  create_table "issues", charset: "utf8mb4", collation: "utf8mb4_general_ci", force: :cascade do |t|
     t.integer "user_id", null: false
     t.string "code", limit: 3, null: false
     t.text "req", null: false
@@ -611,7 +629,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["user_id"], name: "index_issues_on_user_id"
   end
 
-  create_table "laps", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "laps", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.integer "minutes", limit: 3, default: 0
     t.integer "seconds", limit: 2, default: 0
@@ -640,7 +658,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["team_id"], name: "idx_passages_team"
   end
 
-  create_table "locker_cabinet_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "locker_cabinet_types", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.string "code", limit: 3
     t.datetime "created_at"
@@ -648,7 +666,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["code"], name: "index_locker_cabinet_types_on_code", unique: true
   end
 
-  create_table "managed_affiliations", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "managed_affiliations", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -659,7 +677,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["user_id"], name: "index_managed_affiliations_on_user_id"
   end
 
-  create_table "medal_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "medal_types", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.string "code", limit: 1
     t.datetime "created_at"
@@ -670,7 +688,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["code"], name: "index_medal_types_on_code", unique: true
   end
 
-  create_table "meeting_entries", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "meeting_entries", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -696,7 +714,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["team_id"], name: "idx_meeting_entries_team"
   end
 
-  create_table "meeting_event_reservations", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci", force: :cascade do |t|
+  create_table "meeting_event_reservations", id: :integer, charset: "latin1", collation: "latin1_swedish_ci", force: :cascade do |t|
     t.integer "meeting_id"
     t.integer "team_id"
     t.integer "swimmer_id"
@@ -718,7 +736,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["team_id"], name: "index_meeting_event_reservations_on_team_id"
   end
 
-  create_table "meeting_events", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "meeting_events", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -737,7 +755,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["meeting_session_id"], name: "fk_meeting_events_meeting_sessions"
   end
 
-  create_table "meeting_individual_results", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "meeting_individual_results", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.integer "rank", default: 0
     t.boolean "play_off", default: false
@@ -761,6 +779,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.integer "team_affiliation_id"
     t.boolean "personal_best", default: false, null: false
     t.boolean "season_type_best", default: false, null: false
+    t.string "disqualification_notes"
     t.index ["badge_id"], name: "fk_meeting_individual_results_badges"
     t.index ["disqualification_code_type_id"], name: "idx_mir_disqualification_code_type"
     t.index ["disqualified"], name: "index_meeting_individual_results_on_disqualified"
@@ -774,7 +793,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["updated_at"], name: "idx_meeting_individual_results_updated_at"
   end
 
-  create_table "meeting_programs", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "meeting_programs", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.integer "event_order", limit: 3, default: 0
     t.integer "category_type_id"
@@ -795,7 +814,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["standard_timing_id"], name: "fk_meeting_programs_time_standards"
   end
 
-  create_table "meeting_relay_reservations", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "meeting_relay_reservations", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "meeting_id"
     t.integer "team_id"
     t.integer "swimmer_id"
@@ -815,7 +834,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["team_id"], name: "index_meeting_relay_reservations_on_team_id"
   end
 
-  create_table "meeting_relay_results", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "meeting_relay_results", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -838,6 +857,8 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.integer "entry_hundredths", limit: 2
     t.integer "team_affiliation_id"
     t.integer "entry_time_type_id"
+    t.string "disqualification_notes"
+    t.integer "meeting_relay_swimmers_count", default: 0, null: false
     t.index ["disqualification_code_type_id"], name: "idx_mrr_disqualification_code_type"
     t.index ["entry_time_type_id"], name: "fk_meeting_relay_results_entry_time_types"
     t.index ["meeting_program_id", "rank"], name: "results_x_relay"
@@ -845,7 +866,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["team_id"], name: "fk_meeting_relay_results_teams"
   end
 
-  create_table "meeting_relay_swimmers", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "meeting_relay_swimmers", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -858,14 +879,20 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.integer "seconds", limit: 2, default: 0
     t.integer "hundredths", limit: 2, default: 0
     t.integer "meeting_relay_result_id"
+    t.integer "length_in_meters", default: 0, null: false
+    t.integer "minutes_from_start", limit: 3, default: 0, null: false
+    t.integer "seconds_from_start", limit: 2, default: 0, null: false
+    t.integer "hundredths_from_start", limit: 2, default: 0, null: false
+    t.integer "relay_laps_count", default: 0, null: false
     t.index ["badge_id"], name: "fk_meeting_relay_swimmers_badges"
+    t.index ["length_in_meters"], name: "index_meeting_relay_swimmers_on_length_in_meters"
     t.index ["meeting_relay_result_id"], name: "fk_meeting_relay_swimmers_meeting_relay_results"
     t.index ["relay_order"], name: "relay_order"
     t.index ["stroke_type_id"], name: "fk_meeting_relay_swimmers_stroke_types"
     t.index ["swimmer_id"], name: "fk_meeting_relay_swimmers_swimmers"
   end
 
-  create_table "meeting_reservations", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "meeting_reservations", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "meeting_id"
     t.integer "user_id"
     t.integer "team_id"
@@ -886,7 +913,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["user_id"], name: "index_meeting_reservations_on_user_id"
   end
 
-  create_table "meeting_sessions", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "meeting_sessions", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.integer "session_order", limit: 2, default: 0
     t.date "scheduled_date"
@@ -906,7 +933,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["swimming_pool_id"], name: "fk_meeting_sessions_swimming_pools"
   end
 
-  create_table "meeting_team_scores", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "meeting_team_scores", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.decimal "sum_individual_points", precision: 10, scale: 2, default: "0.0"
     t.decimal "sum_relay_points", precision: 10, scale: 2, default: "0.0"
@@ -930,7 +957,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["team_id"], name: "fk_meeting_team_scores_teams"
   end
 
-  create_table "meetings", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "meetings", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.string "description", limit: 100
     t.date "entry_deadline"
@@ -986,7 +1013,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["timing_type_id"], name: "fk_meetings_timing_types"
   end
 
-  create_table "movement_scope_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "movement_scope_types", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -994,7 +1021,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["code"], name: "index_movement_scope_types_on_code", unique: true
   end
 
-  create_table "movement_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "movement_types", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -1002,7 +1029,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["code"], name: "index_movement_types_on_code", unique: true
   end
 
-  create_table "pool_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "pool_types", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.string "code", limit: 3
     t.integer "length_in_meters", limit: 3
@@ -1012,7 +1039,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["code"], name: "index_pool_types_on_code", unique: true
   end
 
-  create_table "posts", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "posts", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.string "title", limit: 80
     t.text "body"
@@ -1024,7 +1051,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["user_id"], name: "idx_articles_user"
   end
 
-  create_table "presence_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "presence_types", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.string "code", limit: 1
     t.integer "value", limit: 3
@@ -1033,7 +1060,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["code"], name: "index_presence_types_on_code", unique: true
   end
 
-  create_table "rails_admin_histories", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "rails_admin_histories", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.text "message"
     t.string "username"
     t.integer "item"
@@ -1045,7 +1072,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["item", "table", "month", "year"], name: "index_rails_admin_histories"
   end
 
-  create_table "record_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "record_types", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.string "code", limit: 3
     t.datetime "created_at"
@@ -1056,7 +1083,31 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["code"], name: "index_record_types_on_code", unique: true
   end
 
-  create_table "score_computation_type_rows", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "relay_laps", charset: "utf8mb4", collation: "utf8mb4_general_ci", force: :cascade do |t|
+    t.integer "minutes", limit: 3, default: 0
+    t.integer "seconds", limit: 2, default: 0
+    t.integer "hundredths", limit: 2, default: 0
+    t.integer "minutes_from_start", limit: 3, default: 0
+    t.integer "seconds_from_start", limit: 2, default: 0
+    t.integer "hundredths_from_start", limit: 2, default: 0
+    t.decimal "reaction_time", precision: 5, scale: 2, default: "0.0"
+    t.integer "length_in_meters", default: 0
+    t.integer "position", limit: 3
+    t.integer "stroke_cycles"
+    t.integer "breath_cycles"
+    t.integer "swimmer_id", null: false
+    t.integer "team_id", null: false
+    t.integer "meeting_relay_result_id", null: false
+    t.integer "meeting_relay_swimmer_id", null: false
+    t.datetime "created_at", precision: 6, null: false
+    t.datetime "updated_at", precision: 6, null: false
+    t.index ["meeting_relay_result_id"], name: "index_relay_laps_on_meeting_relay_result_id"
+    t.index ["meeting_relay_swimmer_id"], name: "index_relay_laps_on_meeting_relay_swimmer_id"
+    t.index ["swimmer_id"], name: "index_relay_laps_on_swimmer_id"
+    t.index ["team_id"], name: "index_relay_laps_on_team_id"
+  end
+
+  create_table "score_computation_type_rows", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -1072,7 +1123,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["score_mapping_type_id"], name: "idx_score_computation_type_rows_score_mapping_type"
   end
 
-  create_table "score_computation_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "score_computation_types", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -1080,7 +1131,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["code"], name: "index_score_computation_types_on_code", unique: true
   end
 
-  create_table "score_mapping_type_rows", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "score_mapping_type_rows", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -1090,7 +1141,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["score_mapping_type_id"], name: "idx_score_mapping_type_rows_score_mapping_type"
   end
 
-  create_table "score_mapping_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "score_mapping_types", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -1098,7 +1149,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["code"], name: "index_score_mapping_types_on_code", unique: true
   end
 
-  create_table "season_personal_standards", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "season_personal_standards", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.integer "minutes", limit: 3, default: 0, null: false
     t.integer "seconds", limit: 2, default: 0, null: false
@@ -1114,7 +1165,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["swimmer_id"], name: "idx_season_personal_standards_swimmer_id"
   end
 
-  create_table "season_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "season_types", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.string "code", limit: 10
     t.string "description", limit: 100
@@ -1126,7 +1177,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["federation_type_id"], name: "fk_season_types_federation_types"
   end
 
-  create_table "seasons", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "seasons", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.string "description", limit: 100
     t.date "begin_date"
@@ -1147,7 +1198,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["timing_type_id"], name: "fk_seasons_timing_types"
   end
 
-  create_table "sessions", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "sessions", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.string "session_id", collation: "latin1_swedish_ci"
     t.text "data"
     t.datetime "created_at"
@@ -1156,7 +1207,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["updated_at"], name: "index_sessions_on_updated_at"
   end
 
-  create_table "settings", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci", force: :cascade do |t|
+  create_table "settings", id: :integer, charset: "utf8mb4", collation: "utf8mb4_general_ci", force: :cascade do |t|
     t.string "var", null: false, collation: "latin1_swedish_ci"
     t.text "value"
     t.string "target_type", null: false, collation: "latin1_swedish_ci"
@@ -1167,7 +1218,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["target_type", "target_id"], name: "index_settings_on_target_type_and_target_id"
   end
 
-  create_table "shower_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "shower_types", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.string "code", limit: 3
     t.datetime "created_at"
@@ -1175,7 +1226,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["code"], name: "index_shower_types_on_code", unique: true
   end
 
-  create_table "social_news", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "social_news", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.string "title", limit: 150
     t.text "body"
     t.boolean "old", default: false
@@ -1188,7 +1239,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["user_id"], name: "idx_news_feeds_user"
   end
 
-  create_table "standard_timings", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "standard_timings", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.integer "minutes", limit: 3, default: 0
     t.integer "seconds", limit: 2, default: 0
@@ -1207,7 +1258,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["season_id"], name: "fk_time_standards_seasons"
   end
 
-  create_table "stroke_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "stroke_types", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.string "code", limit: 2
     t.datetime "created_at"
@@ -1217,16 +1268,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["eventable"], name: "idx_is_eventable"
   end
 
-  create_table "swimmer_aliases", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
-    t.integer "lock_version", default: 0
-    t.datetime "created_at"
-    t.datetime "updated_at"
-    t.string "complete_name", limit: 100
-    t.integer "swimmer_id"
-    t.index ["swimmer_id", "complete_name"], name: "idx_swimmer_id_complete_name", unique: true
-  end
-
-  create_table "swimmer_level_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "swimmer_level_types", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -1237,7 +1279,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["code"], name: "index_swimmer_level_types_on_code", unique: true
   end
 
-  create_table "swimmer_season_scores", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "swimmer_season_scores", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.decimal "score", precision: 10, scale: 2
     t.integer "badge_id"
@@ -1252,7 +1294,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["meeting_individual_result_id"], name: "index_swimmer_season_scores_on_meeting_individual_result_id"
   end
 
-  create_table "swimmers", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "swimmers", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.string "last_name", limit: 50
     t.string "first_name", limit: 50
@@ -1279,7 +1321,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["nickname"], name: "index_swimmers_on_nickname"
   end
 
-  create_table "swimming_pool_reviews", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "swimming_pool_reviews", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.string "title", limit: 100
     t.text "entry_text"
@@ -1292,7 +1334,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["user_id"], name: "idx_swimming_pool_reviews_user"
   end
 
-  create_table "swimming_pools", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "swimming_pools", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.string "name", limit: 100
     t.string "address", limit: 100
@@ -1332,7 +1374,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["shower_type_id"], name: "fk_swimming_pools_shower_types"
   end
 
-  create_table "taggings", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci", force: :cascade do |t|
+  create_table "taggings", id: :integer, charset: "latin1", collation: "latin1_swedish_ci", force: :cascade do |t|
     t.integer "tag_id"
     t.integer "taggable_id"
     t.string "taggable_type"
@@ -1351,13 +1393,13 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["tagger_id"], name: "index_taggings_on_tagger_id"
   end
 
-  create_table "tags", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci", force: :cascade do |t|
-    t.string "name", collation: "utf8_bin"
+  create_table "tags", id: :integer, charset: "latin1", collation: "latin1_swedish_ci", force: :cascade do |t|
+    t.string "name", collation: "utf8mb3_bin"
     t.integer "taggings_count", default: 0
     t.index ["name"], name: "index_tags_on_name", unique: true
   end
 
-  create_table "team_affiliations", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "team_affiliations", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.string "number", limit: 20
     t.string "name", limit: 100
@@ -1374,16 +1416,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["team_id"], name: "fk_team_affiliations_teams"
   end
 
-  create_table "team_aliases", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
-    t.integer "lock_version", default: 0
-    t.datetime "created_at"
-    t.datetime "updated_at"
-    t.string "name", limit: 60
-    t.integer "team_id"
-    t.index ["team_id", "name"], name: "idx_team_id_name", unique: true
-  end
-
-  create_table "team_lap_templates", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "team_lap_templates", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.integer "part_order", limit: 3, default: 0
     t.boolean "subtotal", default: false
@@ -1404,7 +1437,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["team_id"], name: "idx_team_passage_templates_team"
   end
 
-  create_table "teams", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "teams", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.string "name", limit: 60
     t.string "editable_name", limit: 60
@@ -1427,7 +1460,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["name"], name: "index_teams_on_name"
   end
 
-  create_table "timing_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "timing_types", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.string "code", limit: 1
     t.datetime "created_at"
@@ -1435,7 +1468,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["code"], name: "index_timing_types_on_code", unique: true
   end
 
-  create_table "training_mode_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "training_mode_types", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -1443,7 +1476,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["code"], name: "index_training_mode_types_on_code", unique: true
   end
 
-  create_table "training_rows", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "training_rows", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -1473,7 +1506,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["training_step_type_id"], name: "fk_training_rows_training_step_types"
   end
 
-  create_table "training_step_types", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "training_step_types", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -1483,7 +1516,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["step_order"], name: "index_training_step_types_on_step_order"
   end
 
-  create_table "trainings", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "trainings", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -1494,7 +1527,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["title"], name: "index_trainings_on_title", unique: true
   end
 
-  create_table "user_achievements", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "user_achievements", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -1503,7 +1536,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["user_id", "achievement_id"], name: "index_user_achievements_on_user_id_and_achievement_id", unique: true
   end
 
-  create_table "user_laps", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci", force: :cascade do |t|
+  create_table "user_laps", charset: "latin1", collation: "latin1_swedish_ci", force: :cascade do |t|
     t.integer "user_result_id", null: false
     t.integer "swimmer_id", null: false
     t.decimal "reaction_time", precision: 5, scale: 2
@@ -1521,7 +1554,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["user_result_id"], name: "index_user_laps_on_user_result_id"
   end
 
-  create_table "user_results", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "user_results", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.decimal "standard_points", precision: 10, scale: 2, default: "0.0"
     t.decimal "meeting_points", precision: 10, scale: 2, default: "0.0"
@@ -1555,7 +1588,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["user_workshop_id"], name: "index_user_results_on_user_workshop_id"
   end
 
-  create_table "user_swimmer_confirmations", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "user_swimmer_confirmations", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -1566,7 +1599,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["user_id", "swimmer_id", "confirmator_id"], name: "user_swimmer_confirmator", unique: true
   end
 
-  create_table "user_training_rows", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "user_training_rows", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -1596,7 +1629,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["user_training_id", "part_order"], name: "idx_user_training_rows_part_order"
   end
 
-  create_table "user_training_stories", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "user_training_stories", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -1613,7 +1646,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["user_training_id", "swam_date"], name: "index_user_training_stories_on_user_training_id_and_swam_date"
   end
 
-  create_table "user_trainings", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "user_trainings", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.datetime "created_at"
     t.datetime "updated_at"
@@ -1622,7 +1655,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["user_id", "description"], name: "index_user_trainings_on_user_id_and_description"
   end
 
-  create_table "user_workshops", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci", force: :cascade do |t|
+  create_table "user_workshops", charset: "latin1", collation: "latin1_swedish_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.date "header_date"
     t.string "header_year", limit: 10
@@ -1656,7 +1689,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["user_id"], name: "index_user_workshops_on_user_id"
   end
 
-  create_table "users", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "users", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
     t.string "name", limit: 190, null: false
     t.string "description", limit: 100
@@ -1705,7 +1738,7 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
     t.index ["unlock_token"], name: "index_users_on_unlock_token", unique: true
   end
 
-  create_table "votes", id: :integer, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci", force: :cascade do |t|
+  create_table "votes", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "votable_id"
     t.string "votable_type", collation: "latin1_swedish_ci"
     t.integer "voter_id"
@@ -1741,6 +1774,10 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
   add_foreign_key "meeting_reservations", "swimmers"
   add_foreign_key "meeting_reservations", "teams"
   add_foreign_key "meeting_reservations", "users"
+  add_foreign_key "relay_laps", "meeting_relay_results"
+  add_foreign_key "relay_laps", "meeting_relay_swimmers"
+  add_foreign_key "relay_laps", "swimmers"
+  add_foreign_key "relay_laps", "teams"
   add_foreign_key "swimmer_season_scores", "badges"
   add_foreign_key "swimmer_season_scores", "event_types"
   add_foreign_key "swimmer_season_scores", "meeting_individual_results"
@@ -1755,6 +1792,6 @@ ActiveRecord::Schema.define(version: 2023_06_08_153109) do
   add_foreign_key "user_workshops", "users"
 
   create_view "last_seasons_ids", sql_definition: <<-SQL
-      select `s1`.`id` AS `id` from (select `seasons`.`id` AS `id` from `seasons` where `seasons`.`season_type_id` = 1 order by `seasons`.`begin_date` desc limit 1) `s1` union select `s1_1`.`id` AS `id` from (select `seasons`.`id` AS `id` from (((((`seasons` join `meetings` on(`meetings`.`season_id` = `seasons`.`id`)) join `meeting_sessions` on(`meeting_sessions`.`meeting_id` = `meetings`.`id`)) join `meeting_events` on(`meeting_events`.`meeting_session_id` = `meeting_sessions`.`id`)) join `meeting_programs` on(`meeting_programs`.`meeting_event_id` = `meeting_events`.`id`)) join `meeting_individual_results` on(`meeting_individual_results`.`meeting_program_id` = `meeting_programs`.`id`)) where `seasons`.`season_type_id` = 1 order by `seasons`.`begin_date` desc limit 1) `s1_1` union select `s1_2`.`id` AS `id` from (select `seasons`.`id` AS `id` from (`seasons` join `user_workshops` on(`user_workshops`.`season_id` = `seasons`.`id`)) where `seasons`.`season_type_id` = 1 order by `seasons`.`begin_date` desc limit 1) `s1_2` union select `s1_3`.`id` AS `id` from (select `seasons`.`id` AS `id` from ((`seasons` join `user_workshops` on(`user_workshops`.`season_id` = `seasons`.`id`)) join `user_results` on(`user_results`.`user_workshop_id` = `user_workshops`.`id`)) where `seasons`.`season_type_id` = 1 order by `seasons`.`begin_date` desc limit 1) `s1_3` union select `s2`.`id` AS `id` from (select `seasons`.`id` AS `id` from `seasons` where `seasons`.`season_type_id` = 7 order by `seasons`.`begin_date` desc limit 1) `s2` union select `s2_1`.`id` AS `id` from (select `seasons`.`id` AS `id` from (((((`seasons` join `meetings` on(`meetings`.`season_id` = `seasons`.`id`)) join `meeting_sessions` on(`meeting_sessions`.`meeting_id` = `meetings`.`id`)) join `meeting_events` on(`meeting_events`.`meeting_session_id` = `meeting_sessions`.`id`)) join `meeting_programs` on(`meeting_programs`.`meeting_event_id` = `meeting_events`.`id`)) join `meeting_individual_results` on(`meeting_individual_results`.`meeting_program_id` = `meeting_programs`.`id`)) where `seasons`.`season_type_id` = 7 order by `seasons`.`begin_date` desc limit 1) `s2_1` union select `s2_2`.`id` AS `id` from (select `seasons`.`id` AS `id` from (`seasons` join `user_workshops` on(`user_workshops`.`season_id` = `seasons`.`id`)) where `seasons`.`season_type_id` = 7 order by `seasons`.`begin_date` desc limit 1) `s2_2` union select `s2_3`.`id` AS `id` from (select `seasons`.`id` AS `id` from ((`seasons` join `user_workshops` on(`user_workshops`.`season_id` = `seasons`.`id`)) join `user_results` on(`user_results`.`user_workshop_id` = `user_workshops`.`id`)) where `seasons`.`season_type_id` = 7 order by `seasons`.`begin_date` desc limit 1) `s2_3` union select `s3`.`id` AS `id` from (select `seasons`.`id` AS `id` from `seasons` where `seasons`.`season_type_id` = 8 order by `seasons`.`begin_date` desc limit 1) `s3` union select `s3_1`.`id` AS `id` from (select `seasons`.`id` AS `id` from (((((`seasons` join `meetings` on(`meetings`.`season_id` = `seasons`.`id`)) join `meeting_sessions` on(`meeting_sessions`.`meeting_id` = `meetings`.`id`)) join `meeting_events` on(`meeting_events`.`meeting_session_id` = `meeting_sessions`.`id`)) join `meeting_programs` on(`meeting_programs`.`meeting_event_id` = `meeting_events`.`id`)) join `meeting_individual_results` on(`meeting_individual_results`.`meeting_program_id` = `meeting_programs`.`id`)) where `seasons`.`season_type_id` = 8 order by `seasons`.`begin_date` desc limit 1) `s3_1` union select `s2_2`.`id` AS `id` from (select `seasons`.`id` AS `id` from (`seasons` join `user_workshops` on(`user_workshops`.`season_id` = `seasons`.`id`)) where `seasons`.`season_type_id` = 8 order by `seasons`.`begin_date` desc limit 1) `s2_2` union select `s2_3`.`id` AS `id` from (select `seasons`.`id` AS `id` from ((`seasons` join `user_workshops` on(`user_workshops`.`season_id` = `seasons`.`id`)) join `user_results` on(`user_results`.`user_workshop_id` = `user_workshops`.`id`)) where `seasons`.`season_type_id` = 8 order by `seasons`.`begin_date` desc limit 1) `s2_3`
+      select `s1`.`id` AS `id` from (select `goggles`.`seasons`.`id` AS `id` from `goggles`.`seasons` where `goggles`.`seasons`.`season_type_id` = 1 order by `goggles`.`seasons`.`begin_date` desc limit 1) `s1` union select `s1_1`.`id` AS `id` from (select `goggles`.`seasons`.`id` AS `id` from (((((`goggles`.`seasons` join `goggles`.`meetings` on(`goggles`.`meetings`.`season_id` = `goggles`.`seasons`.`id`)) join `goggles`.`meeting_sessions` on(`goggles`.`meeting_sessions`.`meeting_id` = `goggles`.`meetings`.`id`)) join `goggles`.`meeting_events` on(`goggles`.`meeting_events`.`meeting_session_id` = `goggles`.`meeting_sessions`.`id`)) join `goggles`.`meeting_programs` on(`goggles`.`meeting_programs`.`meeting_event_id` = `goggles`.`meeting_events`.`id`)) join `goggles`.`meeting_individual_results` on(`goggles`.`meeting_individual_results`.`meeting_program_id` = `goggles`.`meeting_programs`.`id`)) where `goggles`.`seasons`.`season_type_id` = 1 order by `goggles`.`seasons`.`begin_date` desc limit 1) `s1_1` union select `s1_2`.`id` AS `id` from (select `goggles`.`seasons`.`id` AS `id` from (`goggles`.`seasons` join `goggles`.`user_workshops` on(`goggles`.`user_workshops`.`season_id` = `goggles`.`seasons`.`id`)) where `goggles`.`seasons`.`season_type_id` = 1 order by `goggles`.`seasons`.`begin_date` desc limit 1) `s1_2` union select `s1_3`.`id` AS `id` from (select `goggles`.`seasons`.`id` AS `id` from ((`goggles`.`seasons` join `goggles`.`user_workshops` on(`goggles`.`user_workshops`.`season_id` = `goggles`.`seasons`.`id`)) join `goggles`.`user_results` on(`goggles`.`user_results`.`user_workshop_id` = `goggles`.`user_workshops`.`id`)) where `goggles`.`seasons`.`season_type_id` = 1 order by `goggles`.`seasons`.`begin_date` desc limit 1) `s1_3` union select `s2`.`id` AS `id` from (select `goggles`.`seasons`.`id` AS `id` from `goggles`.`seasons` where `goggles`.`seasons`.`season_type_id` = 7 order by `goggles`.`seasons`.`begin_date` desc limit 1) `s2` union select `s2_1`.`id` AS `id` from (select `goggles`.`seasons`.`id` AS `id` from (((((`goggles`.`seasons` join `goggles`.`meetings` on(`goggles`.`meetings`.`season_id` = `goggles`.`seasons`.`id`)) join `goggles`.`meeting_sessions` on(`goggles`.`meeting_sessions`.`meeting_id` = `goggles`.`meetings`.`id`)) join `goggles`.`meeting_events` on(`goggles`.`meeting_events`.`meeting_session_id` = `goggles`.`meeting_sessions`.`id`)) join `goggles`.`meeting_programs` on(`goggles`.`meeting_programs`.`meeting_event_id` = `goggles`.`meeting_events`.`id`)) join `goggles`.`meeting_individual_results` on(`goggles`.`meeting_individual_results`.`meeting_program_id` = `goggles`.`meeting_programs`.`id`)) where `goggles`.`seasons`.`season_type_id` = 7 order by `goggles`.`seasons`.`begin_date` desc limit 1) `s2_1` union select `s2_2`.`id` AS `id` from (select `goggles`.`seasons`.`id` AS `id` from (`goggles`.`seasons` join `goggles`.`user_workshops` on(`goggles`.`user_workshops`.`season_id` = `goggles`.`seasons`.`id`)) where `goggles`.`seasons`.`season_type_id` = 7 order by `goggles`.`seasons`.`begin_date` desc limit 1) `s2_2` union select `s2_3`.`id` AS `id` from (select `goggles`.`seasons`.`id` AS `id` from ((`goggles`.`seasons` join `goggles`.`user_workshops` on(`goggles`.`user_workshops`.`season_id` = `goggles`.`seasons`.`id`)) join `goggles`.`user_results` on(`goggles`.`user_results`.`user_workshop_id` = `goggles`.`user_workshops`.`id`)) where `goggles`.`seasons`.`season_type_id` = 7 order by `goggles`.`seasons`.`begin_date` desc limit 1) `s2_3` union select `s3`.`id` AS `id` from (select `goggles`.`seasons`.`id` AS `id` from `goggles`.`seasons` where `goggles`.`seasons`.`season_type_id` = 8 order by `goggles`.`seasons`.`begin_date` desc limit 1) `s3` union select `s3_1`.`id` AS `id` from (select `goggles`.`seasons`.`id` AS `id` from (((((`goggles`.`seasons` join `goggles`.`meetings` on(`goggles`.`meetings`.`season_id` = `goggles`.`seasons`.`id`)) join `goggles`.`meeting_sessions` on(`goggles`.`meeting_sessions`.`meeting_id` = `goggles`.`meetings`.`id`)) join `goggles`.`meeting_events` on(`goggles`.`meeting_events`.`meeting_session_id` = `goggles`.`meeting_sessions`.`id`)) join `goggles`.`meeting_programs` on(`goggles`.`meeting_programs`.`meeting_event_id` = `goggles`.`meeting_events`.`id`)) join `goggles`.`meeting_individual_results` on(`goggles`.`meeting_individual_results`.`meeting_program_id` = `goggles`.`meeting_programs`.`id`)) where `goggles`.`seasons`.`season_type_id` = 8 order by `goggles`.`seasons`.`begin_date` desc limit 1) `s3_1` union select `s2_2`.`id` AS `id` from (select `goggles`.`seasons`.`id` AS `id` from (`goggles`.`seasons` join `goggles`.`user_workshops` on(`goggles`.`user_workshops`.`season_id` = `goggles`.`seasons`.`id`)) where `goggles`.`seasons`.`season_type_id` = 8 order by `goggles`.`seasons`.`begin_date` desc limit 1) `s2_2` union select `s2_3`.`id` AS `id` from (select `goggles`.`seasons`.`id` AS `id` from ((`goggles`.`seasons` join `goggles`.`user_workshops` on(`goggles`.`user_workshops`.`season_id` = `goggles`.`seasons`.`id`)) join `goggles`.`user_results` on(`goggles`.`user_results`.`user_workshop_id` = `goggles`.`user_workshops`.`id`)) where `goggles`.`seasons`.`season_type_id` = 8 order by `goggles`.`seasons`.`begin_date` desc limit 1) `s2_3`
   SQL
 end

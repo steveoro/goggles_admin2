@@ -899,7 +899,7 @@ module Import
       end
       if tokens.size == 3
         # Common italian double surname cases:
-        if %w[DA DAL DE DEL DI DO LA LE LI LO].include?(tokens.first.upcase)
+        if %w[DA DAL DALLA DALLE DE DEI DEL DELLA DELLE DEGLI DI DO LA LE LI LO].include?(tokens.first.upcase)
           last_name = tokens[0..1].join(' ')
           first_name = tokens.last
         else # Assume double name instead:
