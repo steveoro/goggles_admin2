@@ -86,9 +86,13 @@ module Merge
 
       @errors << 'Identical source and destination!' if @source.id == @dest.id
       @errors << 'Conflicting categories: different CategoryTypes in same Season' unless category_compatible?
-      @errors << "Gender mismatch: [#{@source.id}] #{@source.gender_type_id} |=> [#{@dest.id}] #{@dest.gender_type_id}" unless @dest.gender_type_id == @source.gender_type_id
+      unless @dest.gender_type_id == @source.gender_type_id
+        @errors << "Gender mismatch: [#{@source.id}] #{@source.gender_type_id} |=> [#{@dest.id}] #{@dest.gender_type_id}"
+      end
       @errors << 'Conflicting MIR(s) found in same meeting' unless mir_compatible?
-      @errors << "User mismatch (set/unset): [#{@source.id}] #{@source.associated_user_id} |=> [#{@dest.id}] #{@dest.associated_user_id}" unless @dest.associated_user_id == @source.associated_user_id
+      unless @dest.associated_user_id == @source.associated_user_id
+        @errors << "User mismatch (set/unset): [#{@source.id}] #{@source.associated_user_id} |=> [#{@dest.id}] #{@dest.associated_user_id}"
+      end
 
       # TODO: add seasons & badges report matrix to log
       @log += badge_analisys
@@ -166,7 +170,7 @@ module Merge
       # TODO: RL analisys
       # TODO: UL analisys
 
-      # TODO Reservations, all ********************
+      # TODO: Reservations, all ********************
       nil
     end
     #-- ------------------------------------------------------------------------
@@ -353,7 +357,7 @@ module Merge
         source = @source.badges.for_season(season).map(&:category_type_id)
         dest = @dest.badges.for_season(season).map(&:category_type_id)
         compatible = (dest - source).blank?
-        break if !compatible
+        break unless compatible
       end
       compatible
     end
@@ -376,9 +380,13 @@ module Merge
 
       if src_diff_meeting_ids_from_mirs.present?
         @mir_analisys << "\r\n+#{''.center(154, '=')}+"
-        @mir_analisys << '|' + " SOURCE (Meeting ID, MIR count) x [#{@source.id}: #{@source.display_label}] ".center(154, ' ') + '|'
+        @mir_analisys << ('|' + " SOURCE (Meeting ID, MIR count) x [#{@source.id}: #{@source.display_label}] ".center(154, ' ') + '|')
         @mir_analisys << "+#{''.center(154, '-')}+"
-        @mir_analisys += src_diff_meeting_ids_from_mirs.each_slice(8).map { |line_array| line_array.map { |meeting_id, mir_count| "#{meeting_id}: #{mir_count}" }.join(', ') }
+        @mir_analisys += src_diff_meeting_ids_from_mirs.each_slice(8).map do |line_array|
+          line_array.map do |meeting_id, mir_count|
+            "#{meeting_id}: #{mir_count}"
+          end.join(', ')
+        end
         @mir_analisys << "+#{''.center(154, '=')}+"
       else
         @mir_analisys << "\r\n>> NO source-only MIRs found."
@@ -386,9 +394,13 @@ module Merge
 
       if dest_diff_meeting_ids_from_mirs.present?
         @mir_analisys << "\r\n+#{''.center(154, '=')}+"
-        @mir_analisys << '|' + " DEST (Meeting ID, MIR count) x [#{@dest.id}: #{@dest.display_label}] ".center(154, ' ') + '|'
+        @mir_analisys << ('|' + " DEST (Meeting ID, MIR count) x [#{@dest.id}: #{@dest.display_label}] ".center(154, ' ') + '|')
         @mir_analisys << "+#{''.center(154, '-')}+"
-        @mir_analisys += dest_diff_meeting_ids_from_mirs.each_slice(8).map { |line_array| line_array.map { |meeting_id, mir_count| "#{meeting_id}: #{mir_count}" }.join(', ') }
+        @mir_analisys += dest_diff_meeting_ids_from_mirs.each_slice(8).map do |line_array|
+          line_array.map do |meeting_id, mir_count|
+            "#{meeting_id}: #{mir_count}"
+          end.join(', ')
+        end
         @mir_analisys << "+#{''.center(154, '=')}+"
       else
         @mir_analisys << "\r\n>> NO destination-only MIRs found."
@@ -396,9 +408,9 @@ module Merge
 
       if shared_meeting_ids_from_mirs.present?
         @mir_analisys << "\r\n+#{''.center(154, '=')}+"
-        @mir_analisys << '|' + " *** CONFLICTING Meeting IDs & MIR *** ".center(154, ' ') + '|'
+        @mir_analisys << ('|' + ' *** CONFLICTING Meeting IDs & MIR *** '.center(154, ' ') + '|')
         @mir_analisys << "+#{''.center(154, '-')}+"
-        @mir_analisys += shared_meeting_ids_from_mirs.each_slice(8).map { |line_array| line_array.map{ |meeting_id, _mir_count| "#{meeting_id}"}.join(', ') }
+        @mir_analisys += shared_meeting_ids_from_mirs.each_slice(8).map { |line_array| line_array.map { |meeting_id, _mir_count| "#{meeting_id}" }.join(', ') }
         @mir_analisys << "+#{''.center(154, '-')}+"
         @mir_analisys << "+#{'- Conflicting MIR details: -'.center(154, ' ')}+"
         shared_meeting_ids_from_mirs.each do |meeting_id, _mir_count|
@@ -501,9 +513,13 @@ module Merge
 
       if src_diff_meeting_ids_from_mrss.present?
         @mrs_analisys << "\r\n+#{''.center(154, '=')}+"
-        @mrs_analisys << '|' + " SOURCE (Meeting ID, MRS count) x [#{@source.id}: #{@source.display_label}] ".center(154, ' ') + '|'
+        @mrs_analisys << ('|' + " SOURCE (Meeting ID, MRS count) x [#{@source.id}: #{@source.display_label}] ".center(154, ' ') + '|')
         @mrs_analisys << "+#{''.center(154, '-')}+"
-        @mrs_analisys += src_diff_meeting_ids_from_mrss.each_slice(8).map { |line_array| line_array.map { |meeting_id, mrs_count| "#{meeting_id}: #{mrs_count}" }.join(', ') }
+        @mrs_analisys += src_diff_meeting_ids_from_mrss.each_slice(8).map do |line_array|
+          line_array.map do |meeting_id, mrs_count|
+            "#{meeting_id}: #{mrs_count}"
+          end.join(', ')
+        end
         @mrs_analisys << "+#{''.center(154, '=')}+"
       else
         @mrs_analisys << "\r\n>> NO source-only MRSs found."
@@ -511,9 +527,13 @@ module Merge
 
       if dest_diff_meeting_ids_from_mrss.present?
         @mrs_analisys << "\r\n+#{''.center(154, '=')}+"
-        @mrs_analisys << '|' + " DEST (Meeting ID, MRS count) x [#{@dest.id}: #{@dest.display_label}] ".center(154, ' ') + '|'
+        @mrs_analisys << ('|' + " DEST (Meeting ID, MRS count) x [#{@dest.id}: #{@dest.display_label}] ".center(154, ' ') + '|')
         @mrs_analisys << "+#{''.center(154, '-')}+"
-        @mrs_analisys += dest_diff_meeting_ids_from_mrss.each_slice(8).map { |line_array| line_array.map { |meeting_id, mrs_count| "#{meeting_id}: #{mrs_count}" }.join(', ') }
+        @mrs_analisys += dest_diff_meeting_ids_from_mrss.each_slice(8).map do |line_array|
+          line_array.map do |meeting_id, mrs_count|
+            "#{meeting_id}: #{mrs_count}"
+          end.join(', ')
+        end
         @mrs_analisys << "+#{''.center(154, '=')}+"
       else
         @mrs_analisys << "\r\n>> NO destination-only MRSs found."
@@ -521,9 +541,9 @@ module Merge
 
       if shared_meeting_ids_from_mrss.present?
         @mrs_analisys << "\r\n+#{''.center(154, '=')}+"
-        @mrs_analisys << '|' + " *** CONFLICTING Meeting IDs & MRS *** ".center(154, ' ') + '|'
+        @mrs_analisys << ('|' + ' *** CONFLICTING Meeting IDs & MRS *** '.center(154, ' ') + '|')
         @mrs_analisys << "+#{''.center(154, '-')}+"
-        @mrs_analisys += shared_meeting_ids_from_mrss.each_slice(8).map { |line_array| line_array.map{ |meeting_id, _mrs_count| "#{meeting_id}"}.join(', ') }
+        @mrs_analisys += shared_meeting_ids_from_mrss.each_slice(8).map { |line_array| line_array.map { |meeting_id, _mrs_count| "#{meeting_id}" }.join(', ') }
         @mrs_analisys << "+#{''.center(154, '-')}+"
         @mrs_analisys << "+#{'- Conflicting MRS details: -'.center(154, ' ')}+"
         shared_meeting_ids_from_mrss.each_key do |meeting_id|
