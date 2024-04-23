@@ -21,7 +21,7 @@ class APIMeetingsController < ApplicationController
         description: index_params[:description],
         # FIXME: 'code' is ambiguous in the current API query
         # code: index_params[:code],
-        date: index_params[:date],
+        header_date: index_params[:header_date],
         header_year: index_params[:header_year],
         season_id: index_params[:season_id],
         page: index_params[:page], per_page: index_params[:per_page] || 25

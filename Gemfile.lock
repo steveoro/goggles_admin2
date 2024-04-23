@@ -1,8 +1,8 @@
 GIT
   remote: https://github.com/steveoro/goggles_db
-  revision: 322a4bbbc8841900b37cb3a56aa0e18b2599d48f
+  revision: fea59d4437a04f7389770f845bcf87e0cf4e7914
   specs:
-    goggles_db (0.7.08)
+    goggles_db (0.7.09)
       acts-as-taggable-on
       acts_as_votable
       cities
@@ -199,7 +199,7 @@ GEM
       railties (>= 6.0)
     date (3.3.4)
     debug_inspector (1.2.0)
-    devise (4.9.3)
+    devise (4.9.4)
       bcrypt (~> 3.0)
       orm_adapter (~> 0.1)
       railties (>= 4.1.0)
@@ -371,7 +371,7 @@ GEM
       net-protocol
     netrc (0.11.0)
     nio4r (2.7.1)
-    nokogiri (1.16.3-x86_64-linux)
+    nokogiri (1.16.4-x86_64-linux)
       racc (~> 1.4)
     notiffany (0.1.3)
       nenv (~> 0.1)

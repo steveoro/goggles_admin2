@@ -13,7 +13,7 @@ class MeetingsGrid < BaseGrid
   # API filtering applied on it. So we pretend to evalute the scope, but we'll return it
   # exactly as the APIProxy made it.
   filter(:description, :string)
-  filter(:date, :date, input_options: { maxlength: 10, placeholder: 'YYYY-MM-DD' })
+  filter(:header_date, :date, input_options: { maxlength: 10, placeholder: 'YYYY-MM-DD' })
   filter(:header_year, :string, input_options: { maxlength: 10, placeholder: 'YYY1/YYY2 or YYYY' }) { |_value, scope| scope }
   filter(:season_id, :integer)
 
@@ -28,7 +28,8 @@ class MeetingsGrid < BaseGrid
   end
 
   column(:header_year, mandatory: true, order: false)
-  column(:local_mirs, header: 'MIRs (local)', align: :right, html: true, mandatory: true) do |asset|
+  column(:local_mirs, header: 'MIRs (local)', align: :right, html: true, mandatory: true,
+                      order: false) do |asset|
     num = GogglesDb::Meeting.find_by(id: asset.id)&.meeting_individual_results&.count || 0
     num.zero? ? "<code>#{num}</code>".html_safe : "<pre>#{num}</pre>".html_safe
   end

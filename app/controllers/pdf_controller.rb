@@ -69,6 +69,7 @@ class PdfController < ApplicationController
 
     l2 = PdfResults::L2Converter.new(data_hash, fp.season)
     logger.info("\r\n--> Converting to JSON & saving...")
+    FileUtils.mkdir_p(File.dirname(@json_pathname)) # Ensure existence of the destination path
     File.write(@json_pathname, l2.to_hash.to_json)
   end
   #-- -------------------------------------------------------------------------

@@ -18,17 +18,20 @@ namespace :pdf_files do
     "<BASE_FILE_NAME>" suggested.
 
 
-    Options: [season=season#id|<212>]
+    Options: [season=season#id|<232>]
+             [source='results.done'|<'results.new'>]
 
       - season: season ID used as sub-folder for storing the individual JSON result files.
+      - source: source sub-folder (default: 'results.new/<season_id>')
 
   DESC
   task from_results: :environment do
     puts "\r\n*** Extract Fixture files from JSON result files ***"
 
-    season_id = ENV.include?('season') ? ENV['season'].to_i : 212
-    puts('==> WARNING: unsupported season ID! Season 172 and prior are still WIP due to different layout.') unless [182, 192, 202, 212].include?(season_id)
-    base_path = Rails.root.join("crawler/data/results.new/#{season_id}")
+    season_id = ENV.include?('season') ? ENV['season'].to_i : 232
+    source = ENV.include?('source') ? ENV['source'] : 'results.new'
+    puts('==> WARNING: unsupported season ID! Season 172 and prior are still WIP due to different layout.') unless (182..232).step(10).to_a.include?(season_id)
+    base_path = Rails.root.join("crawler/data/#{source}/#{season_id}")
     files = Dir.glob("#{base_path}/*.json")
     puts "--> Found #{files.count} files. Processing..."
     puts "\r\n"
@@ -46,6 +49,40 @@ namespace :pdf_files do
 
     save_array_of_lines_on_file(manifest_urls, base_path, 'manifest')
     save_array_of_lines_on_file(results_urls, base_path, 'results')
+    puts "\r\n"
+  end
+
+  desc <<~DESC
+    Given a Season ID, queries all local Meeting IDs that DO/DO-NOT HAVE MIRs or MRRs associated.
+
+    The lack of MIRs is usually a red flag for meetings that either have been cancelled
+    or have a data-import still pending.
+    (MIRs should always be there for a Meeting that has occurred, whereas MRRs may not have been
+     set at all, depending by the organization hosting it.)
+
+    Options: [season=season#id|<nil=232>]
+             [mrr=true|<nil=false>]
+             [presence=true|<nil=false>]
+
+      - season: season ID
+      - mrr: when 'true' (or not blank) will count MRRs instead of MIRs
+      - presence: search for zero siblings (default, either MIRs or MRRs) or for their positive count
+
+  DESC
+  task missing: :environment do
+    includee = ENV.include?('mrr') ? :meeting_relay_results : :meeting_individual_results
+    # For presence, we'll reject the zero? counts, whereas for absence, we'll reject the positive? counts:
+    reject_check_name = ENV.include?('presence') ? :zero? : :positive?
+    puts "\r\n*** Find Meetings #{reject_check_name == :zero? ? 'WITH' : 'WITHOUT'} #{includee} rows ***"
+
+    season_id = ENV.include?('season') ? ENV['season'].to_i : 232
+    puts "\r\n"
+    puts "--> Season #{season_id}:"
+    meeting_keys = GogglesDb::Meeting.where(season_id: season_id).includes(includee)
+                                     .group('meetings.id', 'meetings.description', 'meetings.header_date')
+                                     .count("#{includee}.id")
+                                     .reject { |_k, count| count.send(reject_check_name) }
+    meeting_keys.each_key { |keys| puts "ID #{keys.first}: [#{keys.third}] \"#{keys.second}\"" }
     puts "\r\n"
   end
 

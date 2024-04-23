@@ -4,29 +4,42 @@ module Merge
   #
   # = Merge::Swimmer
   #
-  #   - version:  7-0.7.07
+  #   - version:  7-0.7.09
   #   - author:   Steve A.
-  #   - build:    20240405
+  #   - build:    20240422
   #
   class Swimmer
-    attr_reader :sql_log, :log
+    attr_reader :sql_log, :checker, :source, :dest
 
     # Allows a source Swimmer to be merged into a destination one. All related entities
     # will be handled (badges, results, laps, ...).
     #
-    # == Params
-    # - <tt>:source_row</tt> => source Swimmer row, *required*
-    # - <tt>:dest_row</tt> => destination Swimmer row, *required*
-    # - <tt>:toggle_debug</tt> => when true, additional debug output will be generated (default: +false+)
+    # "Merging" implies moving all source data into the destination, so also the actual
+    # swimmer columns will become the new destination values (names, year of birth, gender, ...).
     #
-    def initialize(source_row:, dest_row:, toggle_debug: false)
-      raise(ArgumentError, 'Both source and destination must be swimmers!') unless source_row.is_a?(GogglesDb::Swimmer) && dest_row.is_a?(GogglesDb::Swimmer)
+    # For this reason, use the dedicated parameter whenever the destination swimmer needs to
+    # keep its columns untouched.
+    #
+    # == Params
+    # - <tt>:source</tt> => source Swimmer row, *required*
+    # - <tt>:dest</tt>   => destination Swimmer row, *required*
+    #
+    # - <tt>:simulate</tt> => Force this to +false+ to actually execute the created script
+    #   on localhost too; otherwise, a #perform! call will just create the output script without any
+    #   actual changes to the database.
+    #
+    # - <tt>:skip_columns</tt> => Force this to +true+ to avoid updating the destination Swimmer columns
+    #   with the values stored in source; default: +false+.
+    #
+    def initialize(source:, dest:, simulate: true, skip_columns: false)
+      raise(ArgumentError, 'Both source and destination must be Swimmers!') unless source.is_a?(GogglesDb::Swimmer) && dest.is_a?(GogglesDb::Swimmer)
 
-      @source_row = source_row
-      @dest_row = dest_row
+      @source = source.decorate
+      @dest = dest.decorate
+      @checker = SwimmerChecker.new(source:, dest:)
       @sql_log = []
-      @log = []
-      @toggle_debug = toggle_debug
+      @simulate = simulate
+      @skip_columns = skip_columns
     end
     #-- ------------------------------------------------------------------------
     #++
@@ -34,38 +47,130 @@ module Merge
     # Executes the merge in a single transaction, logging both the process and
     # the SQL needed for replication.
     def perform!
-      # TODO
+      result_ok = @checker.run
+      @checker.display_report && return unless result_ok
 
-      # Foreach source row
-      #   Find if destination is existing and different in key (or return when not found)
-      #     Move it over if missing (Foreach linked sub-entity row, do same check on subentities)
-      #     Delete source if existing and duplicate and is a leaf in the hierarchy tree
+      @checker.log << "\r\n\r\n- #{'Checker'.ljust(44, '.')}: OK"
+      @sql_log << "--\r\n-- Merge swimmer (#{@source.id}) #{@source.display_label} |=> (#{@dest.id}) #{@dest.display_label}--\r\n"
+      # NOTE: uncommenting the following may yield nulls for created_at & updated_at if we don't provide values in the row
+      @sql_log << '-- SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";'
+      @sql_log << 'SET AUTOCOMMIT = 0;'
+      @sql_log << 'START TRANSACTION;'
+      @sql_log << "--\r\n"
 
-      # *** Badges ***
-      # - Badge
+      prepare_script_for_badge_and_swimmer_links
+      prepare_script_for_swimmer_only_links
 
-      # *** "Parent" Results ***
-      # - MeetingIndividualResult
-      # - UserResult
-      # - MeetingRelaySwimmer
+      # Overwrite all commonly used columns and then delete the source swimmer at the end:
+      unless @skip_columns
+        @sql_log << "UPDATE swimmers SET updated_at=NOW(), last_name=\"#{@source.last_name}\", first_name=\"#{@source.first_name}\", year_of_birth=#{@source.year_of_birth},"
+        @sql_log << "  complete_name=\"#{@source.complete_name}\", nickname=\"#{@source.nickname ? @source.nickname : 'NULL'}\","
+        @sql_log << "  associated_user_id=#{@source.associated_user_id ? @source.associated_user_id : 'NULL'}, gender_type_id=#{@source.gender_type_id}, year_guessed=#{@source.year_guessed}"
+        @sql_log << "  WHERE id=#{@dest.id};\r\n"
+      end
+      # Move any user-swimmer association too:
+      @sql_log << "UPDATE users SET updated_at=NOW(), swimmer_id=#{@dest.id} WHERE swimmer_id=#{@source.id};"
+      @sql_log << "DELETE FROM swimmers WHERE id=#{@source.id};"
+      @sql_log << "\r\n--"
+      @sql_log << 'COMMIT;'
+      return if @simulate
 
-      # *** "Children" Results ***
-      # - Lap
-      # - UserLap
-      # - RelayLap
-
-      # *** "Parent" Reservations ***
-      # - MeetingReservation
-      # - MeetingEntry
-
-      # *** "Children" Reservations ***
-      # - MeetingEventReservation
-      # - MeetingRelayReservation
+      @checker.log << "\r\n--> Executing script on localhost..."
+      ActiveRecord::Base.connection.execute(@sql_log.join("\r\n"))
 
       # FUTUREDEV: *** Cups & Records ***
+      # - IndividualRecord: TODO, missing model (but table is there, links both team & swimmer)
       # - SeasonPersonalStandard: currently used only in old CSI meetings and not used nor updated anymore
       # - GoggleCupStandard: TODO
-      # - IndividualRecord: TODO, missing model (but table is there, links both team & swimmer)
     end
+    #-- ------------------------------------------------------------------------
+    #++
+
+    # Returns the <tt>#log</tt> array from the internal SwimmerChecker instance.
+    def log
+      @checker.log
+    end
+
+    # Returns the <tt>#errors</tt> array from the internal SwimmerChecker instance.
+    def errors
+      @checker.errors
+    end
+
+    # Returns the <tt>#warnings</tt> array from the internal SwimmerChecker instance.
+    def warnings
+      @checker.warnings
+    end
+    #-- ------------------------------------------------------------------------
+    #++
+
+    private
+
+    # Prepares the SQL text for the "Badge update" phase involving all entities that have a
+    # foreign key to the source swimmer's Badge.
+    def prepare_script_for_badge_and_swimmer_links
+      return if @checker.src_only_badges.blank? && @checker.shared_badges.blank?
+
+      # Entities names implied in a badge IDs update (+ swimmer_id):
+      tables_with_badge = %w[
+        meeting_entries meeting_event_reservations meeting_individual_results
+        meeting_relay_reservations meeting_relay_swimmers meeting_reservations
+      ]
+
+      if @checker.src_only_badges.present?
+        @checker.log << "- #{'Updates for Badges (badge_id + swimmer_id)'.ljust(44, '.')}: #{@checker.src_only_badges.count}"
+        @checker.log << "- #{'Updates for MeetingIndividualResults'.ljust(44, '.')}: #{@checker.src_only_mirs.count}" if @checker.src_only_mirs.present?
+        @checker.log << "- #{'Updates for MeetingRelaySwimmers'.ljust(44, '.')}: #{@checker.src_only_mrss.count}" if @checker.src_only_mrss.present?
+        @checker.log << "- #{'Updates for MeetingEntries'.ljust(44, '.')}: #{@checker.src_only_mes.count}" if @checker.src_only_mes.present?
+        @checker.log << "- #{'Updates for MeetingReservations'.ljust(44, '.')}: #{@checker.src_only_mres.count}" if @checker.src_only_mres.present?
+        @checker.log << "- #{'Updates for MeetingEventReservations'.ljust(44, '.')}: #{@checker.src_only_mev_res.count}" if @checker.src_only_mev_res.present?
+        @checker.log << "- #{'Updates for MeetingRelayReservations'.ljust(44, '.')}: #{@checker.src_only_mrel_res.count}" if @checker.src_only_mrel_res.present?
+        @sql_log << '-- [Source-only badges updates:]'
+        # Move ownership to dest.row:
+        @sql_log << "UPDATE badges SET updated_at=NOW(), swimmer_id=#{@dest.id}"
+        @sql_log << "  WHERE id IN (#{@checker.src_only_badges.join(', ')});\r\n"
+
+        # Update also swimmer_id in sub-entities:
+        tables_with_badge.each do |sub_entity|
+          @sql_log << "UPDATE #{sub_entity} SET updated_at=NOW(), swimmer_id=#{@dest.id} WHERE badge_id IN (#{@checker.src_only_badges.join(', ')});"
+        end
+        @sql_log << '' # empty line separator every badge update
+      end
+      return if @checker.shared_badges.blank?
+
+      @checker.log << "- #{'Badges to be updated and DELETED'.ljust(44, '.')}: #{@checker.shared_badges.count}"
+      @sql_log << '-- [Shared badges BEGIN]'
+      # For each sub-entity linked to a SHARED source badge (key), move it to the destination
+      # swimmer and badge ID (value):
+      @checker.shared_badges.each do |src_badge_id, dest_badge_id|
+        tables_with_badge.each do |sub_entity|
+          @sql_log << "UPDATE #{sub_entity} SET updated_at=NOW(), swimmer_id=#{@dest.id}, badge_id=#{dest_badge_id} " \
+                      "WHERE badge_id=#{src_badge_id};"
+        end
+        @sql_log << '' # empty line separator every badge update
+      end
+      @sql_log << "-- [Shared badges END]\r\n"
+
+      # Delete source shared badges (keys) after sub-entity update:
+      @sql_log << "DELETE FROM badges WHERE id IN (#{@checker.shared_badges.keys.join(', ')});"
+    end
+    #-- ------------------------------------------------------------------------
+    #++
+
+    # Prepares the SQL text for the "Swimmer-only" update phase involving all entities that have a
+    # foreign key to Badge.
+    def prepare_script_for_swimmer_only_links
+      # Entities implied in a swimmer_id-only update:
+      [
+        GogglesDb::Lap, GogglesDb::RelayLap, GogglesDb::UserResult, GogglesDb::UserLap
+        # GogglesDb::IndividualRecord TODO
+      ].each do |entity|
+        next unless entity.exists?(swimmer_id: @source.id)
+
+        @checker.log << "- Updates for #{entity.name.split('::').last.ljust(32, '.')}: #{entity.where(swimmer_id: @source.id).count}"
+        @sql_log << "UPDATE #{entity.table_name} SET updated_at=NOW(), swimmer_id=#{@dest.id} WHERE swimmer_id=#{@source.id};"
+      end
+    end
+    #-- ------------------------------------------------------------------------
+    #++
   end
 end

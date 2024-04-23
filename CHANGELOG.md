@@ -2,6 +2,7 @@
 
 _Please, add the latest build info on top of the list; use Version::MAJOR only after gold release; keep semantic versioning in line with framework's_
 
+- **0.7.09** [Steve A.] re-sync w/ base engine & bundle update;
 - **0.7.08** [Steve A.] re-sync w/ base engine; bundle update; swimmer merge checker backbone
 - **0.7.00** [Steve A.] update to Rails 6.1.7; specs adjustments
 - **0.6.12** [Steve A.] Re-sync w/ base engine (0.6.10); updated bundle; support for RelayLaps (relay sub-laps) in MacroSolver & MacroCommitter
