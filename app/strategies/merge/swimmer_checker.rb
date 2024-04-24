@@ -5,7 +5,7 @@ module Merge
   #
   #   - version:  7-0.7.09
   #   - author:   Steve A.
-  #   - build:    20240419
+  #   - build:    20240424
   #
   # Service class delegated to check the feasibility of merge operation between two
   # Swimmer instances: a source/slave row into a destination/master one.
@@ -146,54 +146,6 @@ module Merge
       # TODO/FUTUREDEV: IR
       @errors.blank?
 
-      # TODO
-      # For each involved entity:
-      # 1. collect source rows
-      # 2. collect destination rows
-      # 3. collect "duplicate diff" from source for future duplicated rows after update
-      # 4. collect "movable diff" from source rows (remainder of un-conflicting rows)
-      #
-      # Duplicates may have sub-entity rows which should either be reassigned
-      # to existing destination master rows or be deleted when "leaf duplicates" are
-      # found at the bottom of the hierarchy tree.
-      #
-      # For each duplicate:
-      # 1. go-deep: depth search for associated entities in search of duplicates
-      #    (use same bindings as [Main]strategies/solver/<entity_name> and go depth-first)
-
-      # *** Badges ***
-      # - Badge:
-      #   required_keys = %i[category_type_id team_affiliation_id team_id swimmer_id season_id]
-
-      # *** "Parent" Results ***
-      # - MeetingIndividualResult:
-      #   required_keys = %i[meeting_program_id swimmer_id team_id]
-      #
-      # - UserResult:
-      #   required_keys = %i[user_workshop_id user_id swimmer_id category_type_id pool_type_id event_type_id swimming_pool_id]
-      #
-      # - MeetingRelaySwimmer:
-      #   required_keys = %i[meeting_relay_result_id stroke_type_id swimmer_id badge_id]
-
-      # *** "Children" Results ***
-      # - Lap:
-      #   required_keys = %i[meeting_individual_result_id meeting_program_id swimmer_id team_id length_in_meters]
-      #
-      # - UserLap:
-      #   required_keys = %i[user_result_id swimmer_id length_in_meters]
-      #
-      # - RelayLap:
-      #   required_keys = %i[meeting_relay_result_id meeting_relay_swimmer_id swimmer_id team_id length_in_meters]
-
-      # *** "Parent" Reservations ***
-      # - MeetingReservation (meeting_reservations => meeting_id, swimmer_id, badge_id, team_id)
-
-      # *** "Children" Reservations ***
-      # - MeetingEventReservation (meeting_event_reservations => meeting_reservation_id, swimmer_id, meeting_id, meeting_event_id)
-      # - MeetingRelayReservation (meeting_relay_reservations => meeting_reservation_id, swimmer_id, meeting_id, meeting_event_id)
-
-      # - MeetingEntry (meeting_entries => swimmer_id, badge_id, meeting_program_id / team_id, team_affiliation_id)
-
       # FUTUREDEV: *** Cups & Records ***
       # - IndividualRecord: TODO, missing model (but table is there; links: swimmer_id, team_id, season_id, meeting_individual_result_id)
       #
@@ -211,6 +163,8 @@ module Merge
       puts @log.join("\r\n")
       puts "\r\n\r\n*** WARNINGS: ***\r\n#{@warnings.join("\r\n")}" if @warnings.present?
       puts "\r\n\r\n*** ERRORS: ***\r\n#{@errors.join("\r\n")}" if @errors.present?
+      puts("\r\n")
+      puts(@errors.blank? ? 'RESULT: ✅' : 'RESULT: ❌')
       nil
     end
     #-- ------------------------------------------------------------------------
@@ -282,11 +236,11 @@ module Merge
     # Analizes source and destination badges for conflicting *teams* (source and destination teams in same Season),
     # returning an array of printable lines as an ASCII table for quick reference.
     # Table width: 156 character columns (tested with some edge-case swimmers).
-    def badge_analysis # rubocop:disable Metrics/AbcSize
+    def badge_analysis # rubocop:disable Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
       return @badge_analysis if @badge_analysis.present?
 
       @badge_analysis = [
-        "#{prepare_section_title('BADGE')}",
+        prepare_section_title('BADGE'),
         "+------+#{'+'.center(147, '-')}+",
         "|Season|#{"[ #{@source.id}: #{@source.display_label} ]".center(73, ' ')}|#{"[ #{@dest.id}: #{@dest.display_label} ]".center(73, ' ')}|",
         "|------+#{'+'.center(147, '-')}|"

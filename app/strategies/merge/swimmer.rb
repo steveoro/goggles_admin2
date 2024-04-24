@@ -6,7 +6,7 @@ module Merge
   #
   #   - version:  7-0.7.09
   #   - author:   Steve A.
-  #   - build:    20240422
+  #   - build:    20240423
   #
   class Swimmer
     attr_reader :sql_log, :checker, :source, :dest
@@ -20,63 +20,58 @@ module Merge
     # For this reason, use the dedicated parameter whenever the destination swimmer needs to
     # keep its columns untouched.
     #
+    # This merge class won't actually touch the DB: it will just prepare the script so
+    # that this process can be replicated on any DB that is in sync with the current one.
+    #
     # == Params
     # - <tt>:source</tt> => source Swimmer row, *required*
     # - <tt>:dest</tt>   => destination Swimmer row, *required*
     #
-    # - <tt>:simulate</tt> => Force this to +false+ to actually execute the created script
-    #   on localhost too; otherwise, a #perform! call will just create the output script without any
-    #   actual changes to the database.
-    #
     # - <tt>:skip_columns</tt> => Force this to +true+ to avoid updating the destination Swimmer columns
     #   with the values stored in source; default: +false+.
     #
-    def initialize(source:, dest:, simulate: true, skip_columns: false)
+    def initialize(source:, dest:, skip_columns: false)
       raise(ArgumentError, 'Both source and destination must be Swimmers!') unless source.is_a?(GogglesDb::Swimmer) && dest.is_a?(GogglesDb::Swimmer)
 
       @source = source.decorate
       @dest = dest.decorate
       @checker = SwimmerChecker.new(source:, dest:)
       @sql_log = []
-      @simulate = simulate
       @skip_columns = skip_columns
     end
     #-- ------------------------------------------------------------------------
     #++
 
-    # Executes the merge in a single transaction, logging both the process and
-    # the SQL needed for replication.
-    def perform!
+    # Prepares the merge script inside a single transaction.
+    def prepare # rubocop:disable Metrics/AbcSize
       result_ok = @checker.run
       @checker.display_report && return unless result_ok
 
       @checker.log << "\r\n\r\n- #{'Checker'.ljust(44, '.')}: OK"
-      @sql_log << "--\r\n-- Merge swimmer (#{@source.id}) #{@source.display_label} |=> (#{@dest.id}) #{@dest.display_label}--\r\n"
+      @sql_log << "\r\n-- Merge swimmer (#{@source.id}) #{@source.display_label} |=> (#{@dest.id}) #{@dest.display_label}-- \r\n"
       # NOTE: uncommenting the following may yield nulls for created_at & updated_at if we don't provide values in the row
       @sql_log << '-- SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";'
       @sql_log << 'SET AUTOCOMMIT = 0;'
       @sql_log << 'START TRANSACTION;'
-      @sql_log << "--\r\n"
+      @sql_log << ''
 
       prepare_script_for_badge_and_swimmer_links
       prepare_script_for_swimmer_only_links
 
-      # Overwrite all commonly used columns and then delete the source swimmer at the end:
+      # Move any user-swimmer association too:
+      @sql_log << "UPDATE users SET updated_at=NOW(), swimmer_id=#{@dest.id} WHERE swimmer_id=#{@source.id};"
+      # Remove the source swimmer before making the destination columns a duplicate of it:
+      @sql_log << "DELETE FROM swimmers WHERE id=#{@source.id};"
+
+      # Overwrite all commonly used columns at the end, if requested (this will update the index too):
       unless @skip_columns
         @sql_log << "UPDATE swimmers SET updated_at=NOW(), last_name=\"#{@source.last_name}\", first_name=\"#{@source.first_name}\", year_of_birth=#{@source.year_of_birth},"
         @sql_log << "  complete_name=\"#{@source.complete_name}\", nickname=\"#{@source.nickname ? @source.nickname : 'NULL'}\","
-        @sql_log << "  associated_user_id=#{@source.associated_user_id ? @source.associated_user_id : 'NULL'}, gender_type_id=#{@source.gender_type_id}, year_guessed=#{@source.year_guessed}"
-        @sql_log << "  WHERE id=#{@dest.id};\r\n"
+        @sql_log << "  associated_user_id=#{@source.associated_user_id ? @source.associated_user_id : 'NULL'}, gender_type_id=#{@source.gender_type_id}, year_guessed=#{@source.year_guessed} WHERE id=#{@dest.id};\r\n"
       end
-      # Move any user-swimmer association too:
-      @sql_log << "UPDATE users SET updated_at=NOW(), swimmer_id=#{@dest.id} WHERE swimmer_id=#{@source.id};"
-      @sql_log << "DELETE FROM swimmers WHERE id=#{@source.id};"
-      @sql_log << "\r\n--"
-      @sql_log << 'COMMIT;'
-      return if @simulate
 
-      @checker.log << "\r\n--> Executing script on localhost..."
-      ActiveRecord::Base.connection.execute(@sql_log.join("\r\n"))
+      @sql_log << ''
+      @sql_log << 'COMMIT;'
 
       # FUTUREDEV: *** Cups & Records ***
       # - IndividualRecord: TODO, missing model (but table is there, links both team & swimmer)
@@ -138,7 +133,7 @@ module Merge
       return if @checker.shared_badges.blank?
 
       @checker.log << "- #{'Badges to be updated and DELETED'.ljust(44, '.')}: #{@checker.shared_badges.count}"
-      @sql_log << '-- [Shared badges BEGIN]'
+      @sql_log << '-- [Shared badges:]'
       # For each sub-entity linked to a SHARED source badge (key), move it to the destination
       # swimmer and badge ID (value):
       @checker.shared_badges.each do |src_badge_id, dest_badge_id|
@@ -148,7 +143,7 @@ module Merge
         end
         @sql_log << '' # empty line separator every badge update
       end
-      @sql_log << "-- [Shared badges END]\r\n"
+      @sql_log << ''
 
       # Delete source shared badges (keys) after sub-entity update:
       @sql_log << "DELETE FROM badges WHERE id IN (#{@checker.shared_badges.keys.join(', ')});"
