@@ -3,9 +3,9 @@
 module Merge
   # = Merge::SwimmerChecker
   #
-  #   - version:  7-0.7.09
+  #   - version:  7-0.7.10
   #   - author:   Steve A.
-  #   - build:    20240424
+  #   - build:    20240425
   #
   # Service class delegated to check the feasibility of merge operation between two
   # Swimmer instances: a source/slave row into a destination/master one.
@@ -94,12 +94,15 @@ module Merge
       # laps (+MIR), IR (+MIR), relay_laps (+MRS),
       # user_laps, user_results, users (+ any other legacy tables [FUTUREDEV])
 
-      @src_only_irs = [] # TODO: IR
-
       @src_only_laps = []
       @src_only_user_laps = []
       @src_only_urs = []
-      # (users updated w/o array)
+
+      # IR are considered "always compatible" so we collect directly the IDs for the merge:
+      @src_only_irs = GogglesDb::IndividualRecord.where(swimmer_id: @source.id).map(&:id)
+      # (IR will have overlapping MIRs only in case of data-integrity violations -- see analysis)
+
+      # (Users updated w/o array)
     end
     #-- ------------------------------------------------------------------------
     #++
@@ -117,6 +120,8 @@ module Merge
       @warnings << 'Overlapping badges: different Badges in same Season' if shared_badge_seasons.present?
       # This is always relevant even if the returned MIRS are not involved in the merge:
       @warnings << "#{all_mirs_with_nil_badge.count} (possibly unrelated) MIRs with nil badge_id" if all_mirs_with_nil_badge.present?
+
+      @warnings << "#{all_irs_with_conflicting_data.count} (possibly unrelated) IRs with *CONFLICTING* swimmer_id or team_id" if all_irs_with_conflicting_data.present?
 
       @errors << 'Identical source and destination!' if @source.id == @dest.id
       @errors << 'Conflicting categories: different CategoryTypes in same Season' unless category_compatible?
@@ -143,15 +148,12 @@ module Merge
       @log += mrel_res_analysis
 
       @log += mes_analysis
-      # TODO/FUTUREDEV: IR
+      @log += ir_analysis
       @errors.blank?
 
-      # FUTUREDEV: *** Cups & Records ***
-      # - IndividualRecord: TODO, missing model (but table is there; links: swimmer_id, team_id, season_id, meeting_individual_result_id)
-      #
+      # FUTUREDEV: *** Cups ***
       # - SeasonPersonalStandard: (season_personal_standards => swimmer_id, season_id)
       #   (currently used only in old CSI meetings and not used nor updated anymore)
-      #
       # - GoggleCupStandard: TODO, missing model (but table is there; links: swimmer_id, goggle_cup_id)
     end
     #-- ------------------------------------------------------------------------
@@ -475,6 +477,57 @@ module Merge
       )
 
       @lap_analysis
+    end
+    #-- ------------------------------------------------------------------------
+    #++
+
+    #-- ------------------------------------------------------------------------
+    #                               IndividualRecord
+    #-- ------------------------------------------------------------------------
+    #++
+
+    # Returns the list of all MIR rows that have a nil Badge ID.
+    def all_irs_with_conflicting_data
+      return @all_irs_with_conflicting_data if @all_irs_with_conflicting_data
+
+      @all_irs_with_conflicting_data = GogglesDb::IndividualRecord.joins(:meeting_individual_result)
+                                                                  .includes(:meeting_individual_result)
+                                                                  .where(
+                                                                    '(meeting_individual_results.swimmer_id != individual_records.swimmer_id) OR ' \
+                                                                    '(meeting_individual_results.team_id != individual_records.team_id)'
+                                                                  )
+    end
+    #-- ------------------------------------------------------------------------
+    #++
+
+    # Laps are considered "compatible for merge" when no rows are shared with the same MIRs.
+    # This can only happen if for some reason data integrity has been violated and a MIR from either
+    # source or dest was assigned to a Lap set the other swimmer.
+    def ir_compatible?
+      all_irs_with_conflicting_data.blank?
+    end
+
+    # Assumes +ir+ is a valid IndividualRecord instance.
+    def decorate_ir(ir) # rubocop:disable Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity,Metrics/AbcSize
+      "[IR  #{ir.id.to_s.rjust(7)}] Swimmer ID #{ir.swimmer_id.to_s.rjust(7)}) #{ir&.swimmer&.complete_name} #{ir&.swimmer&.year_of_birth}, Team ID #{ir.team_id}) #{ir&.team&.name}\r\n  " \
+        "[MIR #{ir.meeting_individual_result_id.to_s.rjust(7)}] Swimmer ID #{ir&.meeting_individual_result&.swimmer_id.to_s.rjust(7)}) " \
+        "#{ir&.meeting_individual_result&.swimmer&.complete_name} #{ir&.meeting_individual_result&.swimmer&.year_of_birth}, " \
+        "Team ID #{ir&.meeting_individual_result&.team_id}) #{ir&.meeting_individual_result&.team&.name}\r\n"
+    end
+
+    # Analizes source and destination IRs, enlisting any confliting IR ids.
+    def ir_analysis
+      return @ir_analysis if @ir_analysis.present?
+
+      # Check for conflicting data inside *any* IRs since any conflicting swimmer_id or team_id
+      # (difference between IR & linked MIR) may be a red flag for future merges or even data integrity
+      # failure:
+      if all_irs_with_conflicting_data.present?
+        @ir_analysis = ["\r\n>> WARNING: #{all_irs_with_conflicting_data.count} IRs with *CONFLICTING* swimmer_id or team_id are present:"]
+        all_irs_with_conflicting_data.each { |ir| @ir_analysis << "- #{decorate_ir(ir)}" }
+      end
+
+      @ir_analysis
     end
     #-- ------------------------------------------------------------------------
     #++

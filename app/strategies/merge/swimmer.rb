@@ -4,9 +4,9 @@ module Merge
   #
   # = Merge::Swimmer
   #
-  #   - version:  7-0.7.09
+  #   - version:  7-0.7.10
   #   - author:   Steve A.
-  #   - build:    20240423
+  #   - build:    20240425
   #
   class Swimmer
     attr_reader :sql_log, :checker, :source, :dest
@@ -58,7 +58,8 @@ module Merge
       prepare_script_for_badge_and_swimmer_links
       prepare_script_for_swimmer_only_links
 
-      # Move any user-swimmer association too:
+      # Move any swimmer-only association too:
+      @sql_log << "UPDATE individual_records SET updated_at=NOW(), swimmer_id=#{@dest.id} WHERE swimmer_id=#{@source.id};"
       @sql_log << "UPDATE users SET updated_at=NOW(), swimmer_id=#{@dest.id} WHERE swimmer_id=#{@source.id};"
       # Remove the source swimmer before making the destination columns a duplicate of it:
       @sql_log << "DELETE FROM swimmers WHERE id=#{@source.id};"
