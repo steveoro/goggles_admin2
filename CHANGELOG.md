@@ -2,6 +2,7 @@
 
 _Please, add the latest build info on top of the list; use Version::MAJOR only after gold release; keep semantic versioning in line with framework's_
 
+- **0.7.10** [Steve A.] re-sync w/ base engine & bundle update; added support for IndividualRecords;
 - **0.7.09** [Steve A.] re-sync w/ base engine & bundle update; added Merge::Swimmer & Merge::SwimmerChecker + related rake tasks;
 - **0.7.08** [Steve A.] re-sync w/ base engine; bundle update; swimmer merge checker backbone
 - **0.7.00** [Steve A.] update to Rails 6.1.7; specs adjustments

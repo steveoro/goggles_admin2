@@ -1014,7 +1014,7 @@ module Merge
       return @src_meeting_ids_from_mrel_res if @src_meeting_ids_from_mrel_res.present?
 
       @src_meeting_ids_from_mrel_res = GogglesDb::MeetingRelayReservation.where(swimmer_id: @source.id)
-                                                                        .group('meeting_id').count
+                                                                         .group('meeting_id').count
     end
 
     # Returns an array of Hash items each one having the format <tt>{ meeting_id => mrel_res_count }</tt>
@@ -1061,7 +1061,7 @@ module Merge
     # checking also if the associated badge_id is set and existing.
     def decorate_mrel_res(mrel_res)
       season_id = mrel_res.season.id
-      badge = mrel_res.badge_id ? mrel_res.badge : GogglesDb::Badge.where(swimmer_id: mrel_res.swimmer_id, team_id: mrel_res.team_id, season_id: season_id).first
+      badge = mrel_res.badge_id ? mrel_res.badge : GogglesDb::Badge.where(swimmer_id: mrel_res.swimmer_id, team_id: mrel_res.team_id, season_id:).first
       "[MREL_RES #{mrel_res.id}, Meeting #{mrel_res.meeting_id}] swimmer_id: #{mrel_res.swimmer_id} (#{mrel_res.swimmer.complete_name}) " \
         "badge_id: #{mrel_res.badge_id}, season: #{season_id} => Badge: #{badge.nil? ? '❌' : badge.id}"
     end

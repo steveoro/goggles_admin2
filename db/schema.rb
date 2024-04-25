@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2024_02_19_180559) do
+ActiveRecord::Schema.define(version: 2024_04_15_111509) do
 
   create_table "achievement_rows", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
     t.integer "lock_version", default: 0
@@ -63,7 +63,14 @@ ActiveRecord::Schema.define(version: 2024_02_19_180559) do
     t.bigint "byte_size", null: false
     t.string "checksum", null: false
     t.datetime "created_at", null: false
+    t.string "service_name", null: false
     t.index ["key"], name: "index_active_storage_blobs_on_key", unique: true
+  end
+
+  create_table "active_storage_variant_records", charset: "utf8mb4", collation: "utf8mb4_general_ci", force: :cascade do |t|
+    t.bigint "blob_id", null: false
+    t.string "variation_digest", null: false
+    t.index ["blob_id", "variation_digest"], name: "index_active_storage_variant_records_uniqueness", unique: true
   end
 
   create_table "admin_grants", charset: "latin1", collation: "latin1_swedish_ci", force: :cascade do |t|
@@ -1000,7 +1007,9 @@ ActiveRecord::Schema.define(version: 2024_02_19_180559) do
     t.decimal "event_fee", precision: 10, scale: 2
     t.decimal "relay_fee", precision: 10, scale: 2
     t.index ["code", "edition"], name: "idx_meetings_code"
+    t.index ["code"], name: "meeting_code", type: :fulltext
     t.index ["description", "code"], name: "meeting_name", type: :fulltext
+    t.index ["description"], name: "meeting_desc", type: :fulltext
     t.index ["edition_type_id"], name: "fk_meetings_edition_types"
     t.index ["entry_deadline"], name: "index_meetings_on_entry_deadline"
     t.index ["header_date"], name: "idx_meetings_header_date"
@@ -1456,8 +1465,11 @@ ActiveRecord::Schema.define(version: 2024_02_19_180559) do
     t.string "home_page_url", limit: 150
     t.index ["city_id"], name: "fk_teams_cities"
     t.index ["editable_name"], name: "index_teams_on_editable_name"
+    t.index ["editable_name"], name: "team_editable_name", type: :fulltext
     t.index ["name", "editable_name", "name_variations"], name: "team_name", type: :fulltext
     t.index ["name"], name: "index_teams_on_name"
+    t.index ["name"], name: "team_only_name", type: :fulltext
+    t.index ["name_variations"], name: "team_name_variations", type: :fulltext
   end
 
   create_table "timing_types", id: :integer, charset: "utf8mb3", collation: "utf8mb3_general_ci", force: :cascade do |t|
@@ -1678,7 +1690,9 @@ ActiveRecord::Schema.define(version: 2024_02_19_180559) do
     t.datetime "created_at", precision: 6, null: false
     t.datetime "updated_at", precision: 6, null: false
     t.index ["code"], name: "index_user_workshops_on_code"
+    t.index ["code"], name: "workshop_code", type: :fulltext
     t.index ["description", "code"], name: "workshop_name", type: :fulltext
+    t.index ["description"], name: "workshop_desc", type: :fulltext
     t.index ["edition_type_id"], name: "index_user_workshops_on_edition_type_id"
     t.index ["header_date"], name: "index_user_workshops_on_header_date"
     t.index ["header_year"], name: "index_user_workshops_on_header_year"
@@ -1755,6 +1769,7 @@ ActiveRecord::Schema.define(version: 2024_02_19_180559) do
   end
 
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "issues", "users"
   add_foreign_key "laps", "meeting_individual_results"
   add_foreign_key "laps", "swimmers"
@@ -1792,6 +1807,6 @@ ActiveRecord::Schema.define(version: 2024_02_19_180559) do
   add_foreign_key "user_workshops", "users"
 
   create_view "last_seasons_ids", sql_definition: <<-SQL
-      select `s1`.`id` AS `id` from (select `goggles`.`seasons`.`id` AS `id` from `goggles`.`seasons` where `goggles`.`seasons`.`season_type_id` = 1 order by `goggles`.`seasons`.`begin_date` desc limit 1) `s1` union select `s1_1`.`id` AS `id` from (select `goggles`.`seasons`.`id` AS `id` from (((((`goggles`.`seasons` join `goggles`.`meetings` on(`goggles`.`meetings`.`season_id` = `goggles`.`seasons`.`id`)) join `goggles`.`meeting_sessions` on(`goggles`.`meeting_sessions`.`meeting_id` = `goggles`.`meetings`.`id`)) join `goggles`.`meeting_events` on(`goggles`.`meeting_events`.`meeting_session_id` = `goggles`.`meeting_sessions`.`id`)) join `goggles`.`meeting_programs` on(`goggles`.`meeting_programs`.`meeting_event_id` = `goggles`.`meeting_events`.`id`)) join `goggles`.`meeting_individual_results` on(`goggles`.`meeting_individual_results`.`meeting_program_id` = `goggles`.`meeting_programs`.`id`)) where `goggles`.`seasons`.`season_type_id` = 1 order by `goggles`.`seasons`.`begin_date` desc limit 1) `s1_1` union select `s1_2`.`id` AS `id` from (select `goggles`.`seasons`.`id` AS `id` from (`goggles`.`seasons` join `goggles`.`user_workshops` on(`goggles`.`user_workshops`.`season_id` = `goggles`.`seasons`.`id`)) where `goggles`.`seasons`.`season_type_id` = 1 order by `goggles`.`seasons`.`begin_date` desc limit 1) `s1_2` union select `s1_3`.`id` AS `id` from (select `goggles`.`seasons`.`id` AS `id` from ((`goggles`.`seasons` join `goggles`.`user_workshops` on(`goggles`.`user_workshops`.`season_id` = `goggles`.`seasons`.`id`)) join `goggles`.`user_results` on(`goggles`.`user_results`.`user_workshop_id` = `goggles`.`user_workshops`.`id`)) where `goggles`.`seasons`.`season_type_id` = 1 order by `goggles`.`seasons`.`begin_date` desc limit 1) `s1_3` union select `s2`.`id` AS `id` from (select `goggles`.`seasons`.`id` AS `id` from `goggles`.`seasons` where `goggles`.`seasons`.`season_type_id` = 7 order by `goggles`.`seasons`.`begin_date` desc limit 1) `s2` union select `s2_1`.`id` AS `id` from (select `goggles`.`seasons`.`id` AS `id` from (((((`goggles`.`seasons` join `goggles`.`meetings` on(`goggles`.`meetings`.`season_id` = `goggles`.`seasons`.`id`)) join `goggles`.`meeting_sessions` on(`goggles`.`meeting_sessions`.`meeting_id` = `goggles`.`meetings`.`id`)) join `goggles`.`meeting_events` on(`goggles`.`meeting_events`.`meeting_session_id` = `goggles`.`meeting_sessions`.`id`)) join `goggles`.`meeting_programs` on(`goggles`.`meeting_programs`.`meeting_event_id` = `goggles`.`meeting_events`.`id`)) join `goggles`.`meeting_individual_results` on(`goggles`.`meeting_individual_results`.`meeting_program_id` = `goggles`.`meeting_programs`.`id`)) where `goggles`.`seasons`.`season_type_id` = 7 order by `goggles`.`seasons`.`begin_date` desc limit 1) `s2_1` union select `s2_2`.`id` AS `id` from (select `goggles`.`seasons`.`id` AS `id` from (`goggles`.`seasons` join `goggles`.`user_workshops` on(`goggles`.`user_workshops`.`season_id` = `goggles`.`seasons`.`id`)) where `goggles`.`seasons`.`season_type_id` = 7 order by `goggles`.`seasons`.`begin_date` desc limit 1) `s2_2` union select `s2_3`.`id` AS `id` from (select `goggles`.`seasons`.`id` AS `id` from ((`goggles`.`seasons` join `goggles`.`user_workshops` on(`goggles`.`user_workshops`.`season_id` = `goggles`.`seasons`.`id`)) join `goggles`.`user_results` on(`goggles`.`user_results`.`user_workshop_id` = `goggles`.`user_workshops`.`id`)) where `goggles`.`seasons`.`season_type_id` = 7 order by `goggles`.`seasons`.`begin_date` desc limit 1) `s2_3` union select `s3`.`id` AS `id` from (select `goggles`.`seasons`.`id` AS `id` from `goggles`.`seasons` where `goggles`.`seasons`.`season_type_id` = 8 order by `goggles`.`seasons`.`begin_date` desc limit 1) `s3` union select `s3_1`.`id` AS `id` from (select `goggles`.`seasons`.`id` AS `id` from (((((`goggles`.`seasons` join `goggles`.`meetings` on(`goggles`.`meetings`.`season_id` = `goggles`.`seasons`.`id`)) join `goggles`.`meeting_sessions` on(`goggles`.`meeting_sessions`.`meeting_id` = `goggles`.`meetings`.`id`)) join `goggles`.`meeting_events` on(`goggles`.`meeting_events`.`meeting_session_id` = `goggles`.`meeting_sessions`.`id`)) join `goggles`.`meeting_programs` on(`goggles`.`meeting_programs`.`meeting_event_id` = `goggles`.`meeting_events`.`id`)) join `goggles`.`meeting_individual_results` on(`goggles`.`meeting_individual_results`.`meeting_program_id` = `goggles`.`meeting_programs`.`id`)) where `goggles`.`seasons`.`season_type_id` = 8 order by `goggles`.`seasons`.`begin_date` desc limit 1) `s3_1` union select `s2_2`.`id` AS `id` from (select `goggles`.`seasons`.`id` AS `id` from (`goggles`.`seasons` join `goggles`.`user_workshops` on(`goggles`.`user_workshops`.`season_id` = `goggles`.`seasons`.`id`)) where `goggles`.`seasons`.`season_type_id` = 8 order by `goggles`.`seasons`.`begin_date` desc limit 1) `s2_2` union select `s2_3`.`id` AS `id` from (select `goggles`.`seasons`.`id` AS `id` from ((`goggles`.`seasons` join `goggles`.`user_workshops` on(`goggles`.`user_workshops`.`season_id` = `goggles`.`seasons`.`id`)) join `goggles`.`user_results` on(`goggles`.`user_results`.`user_workshop_id` = `goggles`.`user_workshops`.`id`)) where `goggles`.`seasons`.`season_type_id` = 8 order by `goggles`.`seasons`.`begin_date` desc limit 1) `s2_3`
+      select `s1`.`id` AS `id` from (select `seasons`.`id` AS `id` from `seasons` where `seasons`.`season_type_id` = 1 order by `seasons`.`begin_date` desc limit 1) `s1` union select `s1_1`.`id` AS `id` from (select `seasons`.`id` AS `id` from (((((`seasons` join `meetings` on(`meetings`.`season_id` = `seasons`.`id`)) join `meeting_sessions` on(`meeting_sessions`.`meeting_id` = `meetings`.`id`)) join `meeting_events` on(`meeting_events`.`meeting_session_id` = `meeting_sessions`.`id`)) join `meeting_programs` on(`meeting_programs`.`meeting_event_id` = `meeting_events`.`id`)) join `meeting_individual_results` on(`meeting_individual_results`.`meeting_program_id` = `meeting_programs`.`id`)) where `seasons`.`season_type_id` = 1 order by `seasons`.`begin_date` desc limit 1) `s1_1` union select `s1_2`.`id` AS `id` from (select `seasons`.`id` AS `id` from (`seasons` join `user_workshops` on(`user_workshops`.`season_id` = `seasons`.`id`)) where `seasons`.`season_type_id` = 1 order by `seasons`.`begin_date` desc limit 1) `s1_2` union select `s1_3`.`id` AS `id` from (select `seasons`.`id` AS `id` from ((`seasons` join `user_workshops` on(`user_workshops`.`season_id` = `seasons`.`id`)) join `user_results` on(`user_results`.`user_workshop_id` = `user_workshops`.`id`)) where `seasons`.`season_type_id` = 1 order by `seasons`.`begin_date` desc limit 1) `s1_3` union select `s2`.`id` AS `id` from (select `seasons`.`id` AS `id` from `seasons` where `seasons`.`season_type_id` = 7 order by `seasons`.`begin_date` desc limit 1) `s2` union select `s2_1`.`id` AS `id` from (select `seasons`.`id` AS `id` from (((((`seasons` join `meetings` on(`meetings`.`season_id` = `seasons`.`id`)) join `meeting_sessions` on(`meeting_sessions`.`meeting_id` = `meetings`.`id`)) join `meeting_events` on(`meeting_events`.`meeting_session_id` = `meeting_sessions`.`id`)) join `meeting_programs` on(`meeting_programs`.`meeting_event_id` = `meeting_events`.`id`)) join `meeting_individual_results` on(`meeting_individual_results`.`meeting_program_id` = `meeting_programs`.`id`)) where `seasons`.`season_type_id` = 7 order by `seasons`.`begin_date` desc limit 1) `s2_1` union select `s2_2`.`id` AS `id` from (select `seasons`.`id` AS `id` from (`seasons` join `user_workshops` on(`user_workshops`.`season_id` = `seasons`.`id`)) where `seasons`.`season_type_id` = 7 order by `seasons`.`begin_date` desc limit 1) `s2_2` union select `s2_3`.`id` AS `id` from (select `seasons`.`id` AS `id` from ((`seasons` join `user_workshops` on(`user_workshops`.`season_id` = `seasons`.`id`)) join `user_results` on(`user_results`.`user_workshop_id` = `user_workshops`.`id`)) where `seasons`.`season_type_id` = 7 order by `seasons`.`begin_date` desc limit 1) `s2_3` union select `s3`.`id` AS `id` from (select `seasons`.`id` AS `id` from `seasons` where `seasons`.`season_type_id` = 8 order by `seasons`.`begin_date` desc limit 1) `s3` union select `s3_1`.`id` AS `id` from (select `seasons`.`id` AS `id` from (((((`seasons` join `meetings` on(`meetings`.`season_id` = `seasons`.`id`)) join `meeting_sessions` on(`meeting_sessions`.`meeting_id` = `meetings`.`id`)) join `meeting_events` on(`meeting_events`.`meeting_session_id` = `meeting_sessions`.`id`)) join `meeting_programs` on(`meeting_programs`.`meeting_event_id` = `meeting_events`.`id`)) join `meeting_individual_results` on(`meeting_individual_results`.`meeting_program_id` = `meeting_programs`.`id`)) where `seasons`.`season_type_id` = 8 order by `seasons`.`begin_date` desc limit 1) `s3_1` union select `s2_2`.`id` AS `id` from (select `seasons`.`id` AS `id` from (`seasons` join `user_workshops` on(`user_workshops`.`season_id` = `seasons`.`id`)) where `seasons`.`season_type_id` = 8 order by `seasons`.`begin_date` desc limit 1) `s2_2` union select `s2_3`.`id` AS `id` from (select `seasons`.`id` AS `id` from ((`seasons` join `user_workshops` on(`user_workshops`.`season_id` = `seasons`.`id`)) join `user_results` on(`user_results`.`user_workshop_id` = `user_workshops`.`id`)) where `seasons`.`season_type_id` = 8 order by `seasons`.`begin_date` desc limit 1) `s2_3`
   SQL
 end

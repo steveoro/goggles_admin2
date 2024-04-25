@@ -78,7 +78,7 @@ namespace :pdf_files do
     season_id = ENV.include?('season') ? ENV['season'].to_i : 232
     puts "\r\n"
     puts "--> Season #{season_id}:"
-    meeting_keys = GogglesDb::Meeting.where(season_id: season_id).includes(includee)
+    meeting_keys = GogglesDb::Meeting.where(season_id:).includes(includee)
                                      .group('meetings.id', 'meetings.description', 'meetings.header_date')
                                      .count("#{includee}.id")
                                      .reject { |_k, count| count.send(reject_check_name) }
