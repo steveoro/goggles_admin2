@@ -105,6 +105,33 @@ class APIMeetingsController < ApplicationController
   #-- -------------------------------------------------------------------------
   #++
 
+  # GET /api_meetings/no_mirs
+  # Export all Meetings on localhost that have a zero MIR count as a CSV file.
+  #
+  def no_mirs # rubocop:disable Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
+    # Compose filtered domain for localhost:
+    domain = GogglesDb::Meeting
+    domain = domain.where('meetings.description LIKE ?', "%#{pass_through_params[:name]}%") if pass_through_params[:name].present?
+    domain = domain.where(header_date: pass_through_params[:header_date]) if pass_through_params[:header_date].present?
+    domain = domain.where(header_year: pass_through_params[:header_year]) if pass_through_params[:header_year].present?
+    domain = domain.joins(:season).includes(:season).where('seasons.id': pass_through_params[:season_id]) if pass_through_params[:season_id].present?
+
+    zero_mir_ids = domain.left_joins(:meeting_individual_results)
+                         .group('meetings.id')
+                         .count('meeting_individual_results.id')
+                         .reject { |_id, mir_count| mir_count.positive? }.keys
+    filtered_data_list = GogglesDb::Meeting.where(id: zero_mir_ids).map { |meeting| meeting_to_csv(meeting) }
+
+    send_data(
+      ([meeting_csv_header] + filtered_data_list).join("\r\n"),
+      type: 'text/csv',
+      disposition: 'inline',
+      filename: "#{DateTime.now.strftime('%Y%m%d')}-#{pass_through_params[:season_id]}-0MIR-meetings.csv"
+    )
+  end
+  #-- -------------------------------------------------------------------------
+  #++
+
   protected
 
   # Default whitelist for datagrid parameters
@@ -117,5 +144,24 @@ class APIMeetingsController < ApplicationController
   # (NOTE: memoizazion is needed because the member variable is used in the view.)
   def index_params
     index_params_for(:meetings_grid)
+  end
+
+  # Default whitelist for parameters exploiting index grid params just in pass-through mode
+  def pass_through_params
+    params.permit(:name, :header_date, :header_year, :name, :season_id)
+  end
+
+  private
+
+  # Returns the meeting list CSV header as a string (','-separated).
+  def meeting_csv_header
+    'id,date,isCancelled,name,year,meetingUrl,seasonId,manifestUrl'
+  end
+
+  # Returns a CSV string (','-separated) assuming +meeting+ is a valid GogglesDb::Meeting instance.
+  def meeting_to_csv(meeting)
+    "#{meeting.id},#{meeting.header_date},#{meeting.cancelled},#{meeting.description.delete(',')}," \
+      "#{meeting.header_year},#{meeting.calendar&.results_link},#{meeting.season.id}," \
+      "#{meeting.calendar&.manifest_link}"
   end
 end

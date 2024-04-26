@@ -15,6 +15,7 @@ en:
     no_results: "No results"
     csv_export:
       btn_tooltip: "Download all data rows from the current page as a single CSV file"
+      btn_localhost_0mirs_tooltip: "Download all data rows from localhost that do not have even a single MIR, producing a single CSV file. Supports filtering by Season.\r\n(Filter must be applied to the grid even if the results are taken from localhost.)"
     edit_modal:
       edit_title: "Edit"
       create_title: "Create new row"

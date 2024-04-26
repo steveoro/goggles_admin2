@@ -68,6 +68,7 @@ Rails.application.routes.draw do
   delete 'api_meeting_reservations', to: 'api_meeting_reservations#destroy', as: 'api_meeting_reservations_destroy'
 
   resources :api_meetings, only: %i[index update]
+  get 'api_meetings/no_mirs', to: 'api_meetings#no_mirs', as: 'api_meetings_no_mirs'
   post 'api_meetings/clone', to: 'api_meetings#clone', as: 'api_meetings_clone'
 
   resources :api_seasons, only: %i[index create update]

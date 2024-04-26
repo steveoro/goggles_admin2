@@ -467,12 +467,12 @@ class ResultsCrawler {
   /**
    * Returns the output JSON filename from the given calendarRow (extracted from the CSV file).
    * @param {Object} calendarRow - a row from the CSV file
-   * @returns {string} the output JSON filename
+   * @returns {string} the output JSON filename minus the extension
    */
   getOutputJSONFilename(calendarRow) {
     const normalizedDate = calendarRow.dates ? calendarRow.dates[0] : 'xxx'
     const normalizedName = CrawlUtil.normalizeText(calendarRow.name).replace(/\s+/g, '_')
-    return `${normalizedDate}-${normalizedName}.json`
+    return `${normalizedDate}-${normalizedName}`
   }
 
   /**
@@ -484,11 +484,29 @@ class ResultsCrawler {
   saveResultOutputFile(calendarRow, meetingObject) {
     const outFileName = this.getOutputJSONFilename(calendarRow)
     const destResultFolder = CrawlUtil.assertDestFolder(CrawlUtil.resultsNewFolder, this.seasonId)
-    const destResultFilePath = `${destResultFolder}/${outFileName}`
+    const destResultFilePath = `${destResultFolder}/${outFileName}.json`
+    const destPDFFolder = CrawlUtil.assertDestFolder(CrawlUtil.pdfsFolder, this.seasonId)
+    const destPDFFilePath = `${destPDFFolder}/${outFileName}-res.pdf`
+    const destManifestFolder = CrawlUtil.assertDestFolder(CrawlUtil.manifestsFolder, this.seasonId)
+    const destManifestFilePath = `${destManifestFolder}/manifest-${outFileName}.pdf`
+    // DEBUG:
+    // console.log(`----------------- meetingObject: ----------------------`)
+    // console.log(meetingObject)
+    // console.log(`-------------------------------------------------------`)
 
     console.log(`=> Generating '${destResultFilePath}'`)
     CrawlUtil.writeJSONFile(destResultFilePath, meetingObject)
-    CrawlUtil.updateStatus(`Saved "${outFileName}"`)
+    CrawlUtil.updateStatus(`Saved "${outFileName}.json"`)
+
+    // Fetch & safe resultsPdfURL + manifestURL when present:
+    if (meetingObject.resultsPdfURL) {
+      console.log(`=> Saving PDF results '${destPDFFilePath}'`)
+      CrawlUtil.downloadFile(meetingObject.resultsPdfURL, destPDFFilePath)
+    }
+    if (meetingObject.manifestURL) {
+      console.log(`=> Saving PDF manifest '${destManifestFilePath}'`)
+      CrawlUtil.downloadFile(meetingObject.manifestURL, destManifestFilePath)
+    }
   }
 }
 //-----------------------------------------------------------------------------

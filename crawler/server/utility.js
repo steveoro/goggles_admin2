@@ -9,11 +9,18 @@ const Fs = require('fs')
 const Csv = require('csv-parser')
 const GetStream = require('get-stream')
 
+// Used by downloadFile:
+const { Readable } = require('stream');
+const { finished } = require('stream/promises');
+const path = require("path");
+
 // Shared configuration constants:
 const calendarNewFolder = "data/calendar.new";
 const calendarDoneFolder = "data/calendar.done";
 const resultsNewFolder = "data/results.new";
 const resultsDoneFolder = "data/results.done";
+const pdfsFolder = "data/pdfs";
+const manifestsFolder = "data/manifests";
 const statusFilename = "crawler-status.json";
 //-----------------------------------------------------------------------------
 
@@ -353,8 +360,24 @@ const safeFindHTMLContent = (htmlElement, parentSelector, textSelector, searchTe
 }
 //-----------------------------------------------------------------------------
 
+/**
+ * Downloads a file from a given url.
+ *
+ * @param {String} url full URL for retrieving the file
+ * @param {String} fileName the absolute full pathname for the stored file (assumed to be existing)
+ */
+const downloadFile = (async (url, fileName) => {
+  const res = await fetch(url);
+  // DEBUG:
+  // console.log(`downloadFile('${url}', '${fileName}')`)
+  const fileStream = Fs.createWriteStream(fileName, { flags: 'w+' });
+  await finished(Readable.fromWeb(res.body).pipe(fileStream));
+});
+//-----------------------------------------------------------------------------
+
 module.exports = {
   calendarNewFolder, calendarDoneFolder,
+  pdfsFolder, manifestsFolder,
   resultsNewFolder, resultsDoneFolder,
   statusFilename,
   fullTimeStamp, dateStamp, normalizeText,
@@ -363,6 +386,7 @@ module.exports = {
   assertDestFolder,
   parseDaysDate,
   readCSVData, writeCSVData,
-  safeQuerySelector, safeFindHTMLContent
+  safeQuerySelector, safeFindHTMLContent,
+  downloadFile
 }
 //-----------------------------------------------------------------------------

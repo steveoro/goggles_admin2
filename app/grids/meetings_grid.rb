@@ -22,9 +22,12 @@ class MeetingsGrid < BaseGrid
   column(:description, mandatory: true, order: :description)
   column(:header_date, mandatory: true, order: :header_date)
 
-  column(:season_type_name, header: 'Season', align: :left, html: true, mandatory: true,
+  column(:season_id, header: 'Season', align: :left, mandatory: true, order: true) do |asset|
+    asset.season.id
+  end
+  column(:season_type_name, header: 'Type', align: :left, html: true, mandatory: true,
                             order: proc { |scope| scope.sort { |a, b| a.season_type.code <=> b.season_type.code } }) do |asset|
-    "<small><i>#{asset.season_type.code}</i></small> - #{asset.season.id}".html_safe
+    "<small><i>#{asset.season_type.code}</i></small>".html_safe
   end
 
   column(:header_year, mandatory: true, order: false)

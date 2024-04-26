@@ -10,6 +10,14 @@
     %section.my-4#data-grid
       = render(Grid::ToolbarComponent.new(asset_row: GogglesDb::Meeting.new,
                controller_name: controller_name, create: false, destroy: false, request_params: @grid_filter_params))
+      .row.btn-toolbar.d-flex.justify-content-left.ml-1.mb-2
+        = link_to(api_meetings_no_mirs_path(@grid_filter_params),
+                  data: { toggle: 'tooltip', title: I18n.t('datagrid.csv_export.btn_localhost_0mirs_tooltip') },
+                  class: 'btn btn-sm btn-outline-primary', role: 'button') do
+          %span
+            CSV localhost 0-MIRs
+            %i.fa.fa-download
+        &nbsp;
       = datagrid_form_for(@grid, method: :get,
                           url: url_for(controller: controller_name, action: :index, params: @index_params))
       = render(Grid::FilterLabelsComponent.new(filter_params: @grid_filter_params))

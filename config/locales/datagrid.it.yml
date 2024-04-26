@@ -15,6 +15,7 @@ it:
     no_results: "Nessun risultato"
     csv_export:
       btn_tooltip: "Scarica tutti i dati della pagina corrente come file CSV"
+      btn_localhost_0mirs_tooltip: "Scarica l'elenco dei Meeting su localhost che non hanno neanche un MIR, ottenendo un file CSV. Supporta il filtraggio tramite Season.\r\n(Il filtro deve essere applicato alla grid anche se i dati vengono prelevati da localhost.)"
     edit_modal:
       edit_title: "Modifica"
       create_title: "Crea nuova riga"
