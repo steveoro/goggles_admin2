@@ -14,11 +14,11 @@ require 'fileutils'
 #-- ---------------------------------------------------------------------------
 #++
 
-SCRIPT_OUTPUT_DIR = Rails.root.join('crawler/data/results.done').freeze unless defined? SCRIPT_OUTPUT_DIR
+SCRIPT_OUTPUT_DIR = Rails.root.join('crawler/data/results.new').freeze unless defined? SCRIPT_OUTPUT_DIR
 #-- ---------------------------------------------------------------------------
 #++
 
-namespace :merge do
+namespace :merge do # rubocop:disable Metrics/BlockLength
   desc 'Check and creates missing directories needed by the structure assumed by some of the merge tasks.'
   task(check_needed_dirs: :environment) do
     [
