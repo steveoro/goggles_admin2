@@ -3,7 +3,7 @@
 module PdfResults
   # = PdfResults::L2Converter
   #
-  #   - version:  7-0.6.20
+  #   - version:  7-0.7.10
   #   - author:   Steve A.
   #
   #
@@ -256,7 +256,7 @@ module PdfResults
       # {
       #   :name=>"results", :key=>"...",
       #   :fields =>
-      #   {"rank"=>"4", # / "SQ" for DSQ
+      #   {"rank"=>"4", # / "SQ" for DSQ / "RT" for "Retired"
       #     "swimmer_name"=>"STAMINCHIA BOBERTO",
       #     "lane_num"=>"4",
       #     "nation"=>"ITA",
@@ -421,30 +421,37 @@ module PdfResults
       "#{@data.fetch(:fields, {})['edition']}° #{@data.fetch(:fields, {})['meeting_name']}"
     end
 
-    # Gets the Meeting session day number from the data Hash, if available. May return nil if not found.
+    # Gets the Meeting session day number from the data Hash, if available. Returns nil if not found.
+    # Supports 3 possible separators for date tokens: "-", "/" or " ":
     def fetch_session_day
-      @data.fetch(:fields, {})&.fetch('meeting_date', '').to_s.split('/').first
+      @data.fetch(:fields, {})&.fetch('meeting_date', '').to_s.split(%r{[-/\s]}).first
     end
 
-    # Gets the Meeting session month name from the data Hash, if available. May return nil if not found.
+    # Gets the Meeting session month name from the data Hash, if available. Returns nil if not found.
+    # Supports 3 possible separators for date tokens: "-", "/" or " ":
+    # Supports both numeric month & month names:
+    #   "dd[-\s/]mm[-\s/]yy(yy)" or "dd[-\s/]MMM(mmm..)[-\s/]yy(yy)"
     def fetch_session_month
-      month_index = @data.fetch(:fields, {})&.fetch('meeting_date', '').to_s.split('/').second.to_i
-      Parser::SessionDate::MONTH_NAMES[month_index]
+      month_token = @data.fetch(:fields, {})&.fetch('meeting_date', '').to_s.split(%r{[-/\s]}).second
+      return Parser::SessionDate::MONTH_NAMES[month_token.to_i] if /\d{2}/i.match?(month_token.to_s)
+
+      month_token.to_s[0..2].downcase
     end
 
-    # Gets the Meeting session day number, if available. May return nil if not found.
+    # Gets the Meeting session year number, if available. Returns nil if not found.
+    # Supports 3 possible separators for date tokens: "-", "/" or " ":
     def fetch_session_year
-      @data.fetch(:fields, {})&.fetch('meeting_date', '').to_s.split('/').last
+      @data.fetch(:fields, {})&.fetch('meeting_date', '').to_s.split(%r{[-/\s]}).last
     end
 
-    # Gets the Meeting session place, if available. May return nil if not found.
+    # Gets the Meeting session place, if available. Returns nil if not found.
     def fetch_session_place
       @data.fetch(:fields, {})&.fetch('meeting_place', '')
     end
 
     # Returns the pool total lanes (first) & the length in meters (last) as items
     # of an array of integers when the 'pool_type' field is found in the footer.
-    # May return an empty array ([]) otherwise.
+    # Returns an empty array ([]) otherwise.
     def fetch_pool_type
       # Structure:
       #   data => header
