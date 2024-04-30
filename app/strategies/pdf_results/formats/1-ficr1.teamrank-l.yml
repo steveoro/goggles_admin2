@@ -1,0 +1,136 @@
+#
+# = Layout format definition for PdfResults::FormatParser
+#
+# Spawn of 1-ficr1.teamrank; "long" version that includes *ALL* registered
+# swimmers per team ranking row, 1 team as header row, 1 swimmer per row.
+#
+1-ficr1.teamrank-l:
+  - name: header
+    at_fixed_row: 0
+    # Repeat each page:
+    repeat: true
+    rows:
+      # "header" row #0
+      - fields:
+        - name: edition
+          lambda: strip
+          format: "\\s*(\\d{1,2}).{1,2}\\s+"
+        - name: meeting_name
+          lambda: strip
+          format: "(?>\\s*[°^*oa']?)\\s+([\"“`']?.+[\"“`'\\b]?)"
+
+      # "header" row #1
+      - fields:
+        - name: meeting_place
+          lambda: strip
+          # Support long place names like "Centro Federale di Ostia" or "Reggio nell'Emilia"
+          format: "\\s*((\\w{1,}['\\s]?)+),\\s*"
+        - name: meeting_date
+          lambda: strip
+          # Support month names too: dd(-/)mm(-/)yy(yy), dd MMM(...) yy(yy)
+          format: "\\s*(\\d{2}([-\/]\\d{2}[-\/]\\d{2,4}|\\s\\w{3,}\\s\\d{2,4}))\\b"
+
+  - name: sub_title
+    at_fixed_row: 2
+    repeat: true
+    parent: header
+    rows:
+      # Optional empty row
+      - name: sub_separator1
+        required: false
+        format: "^$"
+      - name: sub_title1
+        format: "\\s+(Classifica per Società)"
+      - name: sub_separator2
+        required: false
+        format: "^$"
+      - name: sub_separator3
+        required: false
+        format: "^$"
+
+  # Data columns header
+  - name: ranking_hdr
+    starts_at_row: 6
+    ends_at_row: 7
+    parent: header
+    repeat: true
+    rows:
+      - name: ranking_hdr1
+        format: "\\s*Ord.\\s+Società\\s+Punti\\s+Staffetta\\s+Punti\\s+Individuali\\s+Punteggio"
+      - name: ranking_hdr2
+        format: "\\s*Nominativo\\s+Gara"
+      - name: ranking_hdr_sep1
+        required: false
+        format: "^$"
+      - name: ranking_hdr_sep2
+        required: false
+        format: "^$"
+
+  - name: team_ranking
+    repeat: true
+    parent: ranking_hdr
+    starts_at_row: 10
+    rows:
+      - name: team_ranking1
+        fields:
+          - name: rank
+            format: "^\\s?(\\d{1,2}|SQ)\\s+"
+            pop_out: false
+          - name: team_name
+            format: "\\s{3,8}(([\\w\\d\\-&%'`]+\\s?)+)"
+            token_end: 55
+            pop_out: false
+
+          - name: ind_score
+            format: "\\s*(\\d{1,7}[\\.,]\\d{2})\\s*"
+            pop_out: false
+            token_start: 135
+            token_end: 150
+          - name: overall_score
+            format: "\\s*(\\d{1,7}[\\.,]\\d{2})\\s*"
+            pop_out: false
+            token_start: 151
+            token_end: 170
+
+  - name: team_swimmer
+    repeat: true
+    parent: team_ranking
+    rows:
+      - name: swimmer_name1
+        fields:
+          - name: spacer
+            format: "^\\s{4,7}\\D"
+            pop_out: false
+          - name: swimmer_name
+            format: "\\s{4,7}(\\D+(['`\\-\\.\\s]\\s?\\D+){1,4})\\s+"
+            pop_out: false
+            token_end: 55
+      # Optional 2nd row for very-long swimmer names:
+      - name: swimmer_name2
+        required: false
+        fields:
+          - name: spacer
+            format: "^\\s{4,7}\\D"
+            pop_out: false
+          - name: swimmer_name_ext
+            format: "\\s{4,7}(\\D+(['`\\-\\.\\s]\\s?\\D+){1,4})\\b"
+            pop_out: false
+            token_end: 55
+
+  - name: empty_row
+    repeat: true
+    parent: ranking_hdr
+    required: false
+    format: "^$"
+
+  # End-Of-Page context
+  - name: footer
+    parent: ranking_hdr
+    eop: true
+    row_span: 6
+    repeat: true
+    starts_with: Elaborazione dati a cura della Federazione Italiana Cronometristi -
+    fields:
+      # Actual last-line context marker
+      - name: page_delimiter
+        format: "\\s*Risultati su https://nuoto.ficr.it\\b"

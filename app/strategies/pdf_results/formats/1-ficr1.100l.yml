@@ -1,7 +1,26 @@
 #
 # = Layout format definition for PdfResults::FormatParser
 #
-1-ficr1.100m:
+# Spawn of 1-ficr1.100m, it's a "long misaligned spread" version, where 100+m results are rendered
+# on a 4 text row output per result row like this:
+#
+# ---8<---
+# Pos. Nominativo                                 Crs. Naz.           50 m           100 m                                Arrivo    Pti Cat
+#       Società                                        Anno                                                               Master    Pti SC
+#
+#                                                                                            A20 Under Femmine
+#
+#                                                                     31.50         1:05.94                               1:05.94
+#    1 ROSPETTI ROMEA                               2    ITA
+#                                                                                    34.44
+#       MISTICANZA ASD                                  2001
+#
+# ---8<---
+#
+# Note that there's also an older version of this kind of layout that does not yield the
+# team name so it's unprocessable (becase we need the team name to create the MIR row).
+#
+1-ficr1.100l:
   - name: header
     # Index is page-relative:
     at_fixed_row: 0
@@ -34,11 +53,10 @@
         format: "^$"
 
   - name: event
-    # Repeat (at_fixed_row, each page)
+    # Repeat each page
     repeat: true
     parent: header
     rows:
-      # "event" row-0, absolute row #2:
       - fields:
         - name: event_length
           lambda: strip
@@ -47,7 +65,6 @@
           lambda: strip
           format: "\\s*(?>m\\s)?((\\w+\\s?){1,2})\\sMaster\\sMisti\\b"
 
-      # event" row-1, absolute row #3:
       - fields:
         - name: event_sub_hdr
           lambda: strip
@@ -58,9 +75,9 @@
     repeat: true
     rows:
       - name: results_hdr1
-        format: "\\s?Pos.\\s+Nominativo\\s+Crs\\s+Naz\\s+50 m\\s+100 m(?>\\s+150 m)?(?>\\s+200 m)?\\s+Arrivo\\s+Pt\\s+Cat"
+        format: "\\s?Pos.\\s+Nominativo\\s+Crs.?\\s+Naz.?\\s+50 m\\s+100 m(?>\\s+150 m)?(?>\\s+200 m)?\\s+Arrivo\\s+Pti?\\s+Cat"
       - name: results_hdr2
-        format: "\\s?Società\\s+Anno\\s+FINA\\s+Pt\\s+S.C."
+        format: "\\s?Società\\s+Anno\\s+(FINA|Master)\\s+Pti?\\s+S.?C.?"
 
   # Optional row before category
   - name: cat_spacer
@@ -88,37 +105,23 @@
     repeat: true
     parent: category
     rows:
-      - name: results1
+      - name: results0
+        # DSQ results usually won't have the lap row with the timings:
+        required: false
         fields:
-          - name: rank
-            format: "^\\s?(\\d{1,2}|SQ|RT)\\s+"
+          - name: spacer
+            format: "^\\s{64,}"
             pop_out: false
-          - name: swimmer_name
-            format: "\\s+(\\D+(['`\\-\\.\\s]\\s?\\D+){1,4})\\s+"
-            pop_out: false
-            token_end: 31
-          - name: lane_num
-            format: "\\s*(\\d{1,2})\\s*"
-            pop_out: false
-            # Column alignment may vary (swimmer_name range can overlap safely with this due to its format):
-            token_start: 29
-            token_end: 52
-          - name: nation
-            format: "\\s*(\\w{2,3})\\s*"
-            pop_out: false
-            token_start: 53
-            token_end: 62
-
           - name: lap50
             format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*\\b"
             pop_out: false
-            token_start: 70
-            token_end: 82
+            token_start: 68
+            token_end: 81
             required: false
           - name: lap100
             format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*\\b"
             pop_out: false
-            token_start: 82
+            token_start: 81
             token_end: 94
             required: false
           - name: lap150
@@ -133,25 +136,40 @@
             token_start: 109
             token_end: 118
             required: false
-
           - name: timing
             format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*\\b"
             token_start: 119
             pop_out: false
             required: false
 
-      - name: results2
+      - name: results1
         fields:
-          - name: team_name
-            format: "^\\s{3,8}(([\\w\\d\\-&%'`]+.\\s?)+)"
-            token_end: 43
+          - name: rank
+            format: "\\s?(\\d{1,2}|SQ|RT|NP)\\s+"
             pop_out: false
-          - name: year_of_birth
-            format: "\\s*(\\d{4})\\s*"
+          - name: swimmer_name
+            format: "\\s+(\\D+(['`\\-\\.\\s]\\s?\\D+){1,4})\\s+"
             pop_out: false
-            token_start: 51
-            token_end: 64
+            token_end: 31
+          - name: lane_num
+            format: "\\s*(\\d{1,2})\\s*"
+            pop_out: false
+            # Column alignment may vary (swimmer_name range can overlap safely with this due to its format):
+            token_start: 25
+            token_end: 52
+          - name: nation
+            format: "\\s*(\\w{2,3})\\b"
+            pop_out: false
+            token_start: 53
+            token_end: 62
 
+      - name: results2
+        # ""RT" or "Retired" result rows usually won't even have the disqualify row:
+        required: false
+        fields:
+          - name: spacer
+            format: "\\s{80,}"
+            pop_out: false
           - name: delta100
             format: "\\s*\\((\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)\\s*"
             pop_out: false
@@ -170,29 +188,38 @@
             token_start: 109
             token_end: 120
             required: false
+          - name: disqualify_type
+            format: "^(?!\\s+(Orario Ufficializzazione|\\d{1,2}|www.ficr.it|corsie|Pagina))\\s+(\\D+\\s?)+\\b"
+            token_start: 115
+            required: false
 
+      - name: results3
+        fields:
+          - name: team_name
+            format: "^\\s{3,8}(([\\w\\d\\-&%'`]+.\\s?)+)"
+            token_end: 43
+            pop_out: false
+          - name: year_of_birth
+            format: "\\s*(\\d{4})\\b"
+            pop_out: false
+            token_start: 51
+            token_end: 64
+
+      - name: results4
+        # This will match any empty row if the fields are not found:
+        optional_if_empty: true
+        # This will make the row not to fail if missing at all
+        # => row #5 can be there, or be empty (no fields at all), or have either 1 or 2 matching fields
+        required: false
+        fields:
+          - name: spacer
+            format: "\\s{120,}"
+            pop_out: false
           - name: std_score
             format: "\\s*(\\d?[,.]?\\d{1,4}[,.]\\d{1,2})\\b"
             token_start: 121
             pop_out: false
             # U25 / A20 do not score:
-            required: false
-
-      - name: results3
-        # This will match any empty row if the fields are not found:
-        optional_if_empty: true
-        # This will make the row not to fail if missing at all
-        # => row #3 can be there, or be empty (no fields at all), or have either 1 or 2 matching fields
-        required: false
-        fields:
-          - name: team_suffix
-            format: "^\\s{3,8}(([\\w]+\\s?)+)"
-            token_end: 43
-            pop_out: false
-            required: false
-          - name: disqualify_type
-            format: "^(?!\\s+(Orario Ufficializzazione|\\d{1,2}|www.ficr.it|corsie|Pagina))\\s+(\\D+\\s?)+\\b"
-            token_start: 115
             required: false
 
   - name: disqualified

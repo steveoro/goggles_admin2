@@ -22,8 +22,8 @@
     # optional: false
     # parent: nil
     # Default row_span: 1 => exact number of source lines to take in for key parsing
-    # -- implied w/ 2 lines below: --
-    # row_span: 2
+    # -- implied w/ 3 lines below: --
+    # row_span: 2 or 3
     # Also supported:
     # max_row_span: LIMIT_N => force context end after max N rows
 
@@ -50,15 +50,13 @@
           # Support month names too: dd(-/)mm(-/)yy(yy), dd MMM(...) yy(yy)
           format: "\\s*(\\d{2}([-\/]\\d{2}[-\/]\\d{2,4}|\\s\\w{3,}\\s\\d{2,4}))\\b"
 
-      # Optional empty row
+      # Optional empty row #3:
       - name: hdr_separator
         required: false
         format: "^$"
 
   - name: event
-    # Index is page-relative:
-    # at_fixed_row: 2
-    # Repeat (at_fixed_row, each page)
+    # Repeat each page
     repeat: true
     parent: header
     # -- implied / default: --
@@ -66,7 +64,7 @@
     # required: true
 
     rows:
-      # "event" row-0, absolute row #2:
+      # "event" row-0:
       - fields:
         - name: event_length
           lambda: strip
@@ -75,7 +73,7 @@
           lambda: strip
           format: "\\s*(?>m\\s)?((\\w+\\s?){1,2})\\sMaster\\sMisti\\b"
 
-      # event" row-1, absolute row #3:
+      # event" row-1:
       - fields:
         - name: event_sub_hdr
           lambda: strip
@@ -84,9 +82,7 @@
   # Data columns header
   # Row #4:
   - name: results_hdr
-    # Index is page-relative:
-    # at_fixed_row: 4
-    # Repeat (at_fixed_row, each page)
+    # (Repeat each page)
     repeat: true
     # repeat: false => ONCE per page max
     lambda: strip
@@ -116,12 +112,13 @@
         format: "^$"
 
   # Actual data starts here:
-  # Row #7:
+  # Row #7 or #8:
   - name: results
     repeat: true
     # Whenever 'category' context changes, create a different DAO wrapping the fields:
     # (Do not use sub-contexts in rows as they can't be easily referenced)
     parent: category
+    # Start searching for this context at: ('7' is not true for older files)
     # starts_at_row: 7
     fields:
       - name: rank
