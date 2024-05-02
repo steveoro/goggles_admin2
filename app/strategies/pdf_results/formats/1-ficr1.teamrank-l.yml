@@ -123,14 +123,32 @@
     required: false
     format: "^$"
 
+  - name: footer_title
+    parent: ranking_hdr
+    repeat: true
+    rows:
+      - name: pre_footer_spacer1
+        required: false
+        format: "^$"
+      - name: page_count
+        starts_with: Elaborazione dati a cura della Federazione Italiana Cronometristi - www.ficr.it
+        fields:
+          - name: pool_type
+            required: false
+            format: "\\s+(\\d{1,2} corsie \\d{2}m)\\s+"
+          - name: page_num
+            format: "\\s+Pagina\\s(\\d{1,2})\\sdi\\s\\d{1,2}"
+
   # End-Of-Page context
   - name: footer
     parent: ranking_hdr
+    # The 'eop' key implies that this context will be searched <row_span> lines before the end of page.
+    # This also implies that the file must also be parsed in pages, otherwise the recognition will fail.
+    # (DO NOT use eop: true when extracting the whole file, unless when processing batches of pages)
     eop: true
-    row_span: 6
+    row_span: 4
     repeat: true
-    starts_with: Elaborazione dati a cura della Federazione Italiana Cronometristi -
     fields:
-      # Actual last-line context marker
+      # Actual last-line context marker (page should end after this token)
       - name: page_delimiter
-        format: "\\s*Risultati su https://nuoto.ficr.it\\b"
+        format: "\\s*https?://nuoto.ficr.it/?"

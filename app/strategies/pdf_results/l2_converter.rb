@@ -433,7 +433,7 @@ module PdfResults
     #   "dd[-\s/]mm[-\s/]yy(yy)" or "dd[-\s/]MMM(mmm..)[-\s/]yy(yy)"
     def fetch_session_month
       month_token = @data.fetch(:fields, {})&.fetch('meeting_date', '').to_s.split(%r{[-/\s]}).second
-      return Parser::SessionDate::MONTH_NAMES[month_token.to_i] if /\d{2}/i.match?(month_token.to_s)
+      return Parser::SessionDate::MONTH_NAMES[month_token.to_i - 1] if /\d{2}/i.match?(month_token.to_s)
 
       month_token.to_s[0..2].downcase
     end

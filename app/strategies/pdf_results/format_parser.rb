@@ -378,10 +378,13 @@ module PdfResults
         # == Recurse to parent when set:
         # (NOT valid?) and (parent context existing?) and (check not repeated)
         # => back/recurse to parent:
-        if !valid && context_def.parent.present? &&
-           !check_already_made?(context_def.parent.name, row_index)
+
+        # NOTE: the parent context may be set up with just its name if it hasn't been encountered yet, so we
+        # make sure we're passing the actual parent name:
+        parent_name = context_def.parent.respond_to?('name') ? context_def.parent.name : context_def.parent
+        if !valid && context_def.parent.present? && !check_already_made?(parent_name, row_index)
           # Set pointers for next iteration:
-          ctx_name = context_def.parent.name
+          ctx_name = parent_name
           ctx_index = @format_order.index(ctx_name)
           validate_context(ctx_index)
           log_message(Kernel.format("  \\__ (back to PARENT '\033[94;3m%s\033[0m')", ctx_name))
