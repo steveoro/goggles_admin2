@@ -1,35 +1,15 @@
 #
 # = Layout format definition for PdfResults::FormatParser
 #
-# (50m .. 200m, with *all* lap timings)
+# "4x100 no swimmer names, with 50 & 150 50m-laps only"
 #
-# Spawn of 1-ficr1.100m, it's a "long misaligned spread" version, where 100+m results are rendered
-# on a 5x text row output for each result row like this:
-#
-# ---8<---
-# Pos. Nominativo                                 Crs. Naz.           50 m           100 m     150 m      200 m          Arrivo       Pti Cat
-#       Società                                        Anno                                                              Master       Pti SC
-#
-#                                                                                    M25 Master Femmine 25 - 29
-#
-#                                                                     31.71         1:07.43    1:46.17   2:24.97         2:24.97
-#    4 CROSTOLAX JUNIPERT                           5    ITA
-#                                                                                    35.72      38.74      38.80
-#       SBROMBALLATI ASD                                1977
-#                                                                                                                         824,51                5
-# ---8<---
-#
-# Note that there's also an older version of this kind of layout that does not yield the
-# team name so it's unprocessable (becase we need the team name to create the MIR row).
-#
-1-ficr1.100l:
+1-ficr1.4x100l:
   - name: header
-    # Index is page-relative:
     at_fixed_row: 0
-    # Repeat (at_fixed_row, each page)
+    # Repeat each page:
     repeat: true
     rows:
-      # "header" row #0
+      # "header" row-0, abs. row #0
       - fields:
         - name: edition
           lambda: strip
@@ -38,7 +18,7 @@
           lambda: strip
           format: "(?>\\s*[°^*oa']?)\\s+([\"“`']?.+[\"“`'\\b]?)"
 
-      # "header" row #1
+      # "header" row-1, abs. row #1:
       - fields:
         - name: meeting_place
           lambda: strip
@@ -49,65 +29,71 @@
           # Support month names too: dd(-/)mm(-/)yy(yy), dd MMM(...) yy(yy)
           format: "\\s*(\\d{2}([-\/]\\d{2}[-\/]\\d{2,4}|\\s\\w{3,}\\s\\d{2,4}))\\b"
 
-      # Optional empty row #3
-      - name: hdr_separator
+  - name: sub_title
+    at_fixed_row: 2
+    repeat: true
+    parent: header
+    rows:
+      # Optional empty row
+      - name: sub_separator1
         required: false
         format: "^$"
+      - name: sub_title1
+        required: false
+        format: "\\s+(Risultati)"
 
   - name: event
-    # Repeat each page
+    starts_at_row: 2
+    ends_at_row: 6
     repeat: true
     parent: header
     rows:
       - fields:
         - name: event_length
           lambda: strip
-          format: "\\s*(\\d{2,4})m?\\s+"
+          format: "\\s*([48]X\\d{2,4})m?\\s+"
         - name: event_type
           lambda: strip
-          format: "\\s*(?>m\\s)?((\\w+\\s?){1,2})\\sMaster\\sMisti\\b"
+          format: "\\s*(?>m\\s)?(((\\w+\\s?){1,2})\\sMaster\\s(Misti|Masch|Femmin))"
 
-      - fields:
-        - name: event_sub_hdr
-          lambda: strip
-          format: "Riepilogo|Serie\\s\\d{2}"
+      - name: event_sub_hdr
+        lambda: strip
+        format: "Riepilogo|Serie\\s\\d{2}"
 
   # Data columns header
   - name: results_hdr
+    starts_at_row: 4
+    ends_at_row: 7
     repeat: true
     rows:
       - name: results_hdr1
-        format: "\\s?Pos.\\s+Nominativo\\s+Crs.?\\s+Naz.?\\s+50 m(?>\\s+100 m)?(?>\\s+150 m)?(?>\\s+200 m)?\\s+Arrivo\\s+Pti?\\s+Cat"
+        format: "\\s?Pos.\\s+Nominativo\\s+Crs.?\\s+Naz.?\\s+50 m\\s+100 m\\s+150 m\\s+200 m(\\s+300 m)?(\\s+400 m)?\\s+Arrivo\\s+Pti?\\s+Cat"
       - name: results_hdr2
-        format: "\\s?Società\\s+Anno\\s+(FINA|Master)\\s+Pti?\\s+S.?C.?"
+        format: "\\s?Società\\s+Anno\\s+(FINA|Master)\\s+Pti?\\s+S\\.?C\\.?"
+      # Optional empty row
+      - name: esults_hdr_separator
+        format: "^$"
+        required: false
 
-  # Optional row before category
-  - name: cat_spacer
-    parent: results_hdr
-    required: false
-    format: "^$"
-
-  - name: category
+  - name: rel_category
+    starts_at_row: 6
     repeat: true
+    required: false
     parent: event
     rows:
-      # Another optional empty row (in older files)
-      - name: cat_spacer2
-        required: false
-        format: "^$"
-
       - name: cat_title
-        format: "\\s*([UAM]\\d{2}\\s(Under|Master)\\s(Femmine|Maschi)(\\s(\\d{2}\\s-\\s\\d{2}))?)[\\b\\n]?"
+        format: "\\s+((Under|Master)\\s(Misti|Femmin.*|Maschi)(\\s(\\d{2,3}\\s-\\s\\d{2,3}))?)\\b"
       # Optional empty row
       - name: cat_separator1
-        required: false
         format: "^$"
+        required: false
 
-  - name: results
+  - name: rel_team
     repeat: true
-    parent: category
+    parent: event
+    starts_at_row: 7
     rows:
-      - name: results0
+      - name: rel_team0
         # DSQ results usually won't have the lap row with the timings:
         required: false
         fields:
@@ -115,123 +101,159 @@
             format: "^\\s{64,}"
             pop_out: false
           - name: lap50
-            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*\\b"
+            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*"
             pop_out: false
             token_start: 66
-            token_end: 81
+            token_end: 78
             required: false
           - name: lap100
-            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*\\b"
+            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*"
             pop_out: false
-            token_start: 81
+            token_start: 80
             token_end: 92
             required: false
           - name: lap150
-            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*\\b"
+            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*"
             pop_out: false
             token_start: 92
-            token_end: 108
+            token_end: 103
             required: false
           - name: lap200
-            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*\\b"
+            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*"
             pop_out: false
-            token_start: 109
-            token_end: 118
+            token_start: 103
+            token_end: 113
+            required: false
+
+          - name: lap300
+            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*"
+            pop_out: false
+            token_start: 113
+            token_end: 123
+            required: false
+          - name: lap400
+            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*"
+            pop_out: false
+            token_start: 123
+            token_end: 133
             required: false
 
           - name: timing
             format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*\\b"
-            token_start: 118
+            token_start: 132
             pop_out: false
             required: false
 
-      - name: results1
+      - name: rel_team1
         fields:
           - name: rank
             format: "\\s?(\\d{1,2}|SQ|RT|NP)\\s+"
+            token_end: 7
             pop_out: false
-          - name: swimmer_name
-            format: "\\s+(\\D+(['`\\-\\.\\s]\\s?\\D+){1,4})\\s+"
+            # Retired or "out-of-race" results may not even have the ranking placement:
+            required: false
+          - name: team_name
+            format: "(?>\\s+\\d{1,2}|SQ|RT|NP)?\\s+(([\\w\\d\\-&%'`]+.\\s?)+)"
+            token_end: 43
             pop_out: false
-            token_end: 31
           - name: lane_num
             format: "\\s*(\\d{1,2})\\s*"
             pop_out: false
-            # Column alignment may vary (swimmer_name range can overlap safely with this due to its format):
-            token_start: 25
-            token_end: 52
+            token_start: 27
+            token_end: 55
           - name: nation
-            format: "\\s*(\\w{2,3})\\b"
+            format: "\\s*(\\w{2,3})\\s*"
             pop_out: false
             token_start: 53
             token_end: 62
+            required: false
 
-      - name: results2
-        # ""RT" or "Retired" result rows usually won't even have the disqualify row:
+      - name: rel_team2
+        # This will match any empty row if the fields are not found:
+        optional_if_empty: true
+        # ""RT" or "Retired" result rows usually won't even have the disqualify row (but at least should have an empty row instead):
         required: false
         fields:
           - name: spacer
-            format: "\\s{80,}"
+            format: "\\s{78,}"
             pop_out: false
           - name: delta100
             # may/may not have brackets:
             format: "\\s*\\(?(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)?\\s*"
             pop_out: false
-            token_start: 82
-            token_end: 93
+            token_start: 80
+            token_end: 92
             required: false
           - name: delta150
             format: "\\s*\\(?(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)?\\s*"
             pop_out: false
-            token_start: 93
-            token_end: 103
+            token_start: 92
+            token_end: 102
             required: false
           - name: delta200
             format: "\\s*\\(?(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)?\\s*"
             pop_out: false
-            token_start: 103
-            token_end: 118
+            token_start: 102
+            token_end: 111
             required: false
+
+          - name: delta300
+            format: "\\s*\\(?(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)?\\s*"
+            pop_out: false
+            token_start: 111
+            token_end: 122
+            required: false
+          - name: delta400
+            format: "\\s*\\(?(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)?\\s*"
+            pop_out: false
+            token_start: 122
+            token_end: 134
+            required: false
+
           - name: disqualify_type
             format: "^(?!\\s+(Orario Ufficializzazione|\\d{1,2}|www.ficr.it|corsie|Pagina))\\s+(\\D+\\s?)+\\b"
-            token_start: 115
+            token_start: 134
             required: false
 
-      - name: results3
+      - name: rel_team3
         fields:
-          - name: team_name
-            format: "^\\s{3,8}(([\\w\\d\\-&%'`]+.\\s?)+)"
-            token_end: 43
+          # Ignore duplicated team name:
+          - name: team_name_dup
+            lambda: strip
+            format: ".+"
+            token_end: 41
             pop_out: false
-          - name: year_of_birth
-            format: "\\s*(\\d{4})\\b"
-            pop_out: false
-            token_start: 51
-            token_end: 64
 
-      - name: results4
-        # This will match any empty row if the fields are not found:
-        optional_if_empty: true
-        # This will make the row not to fail if missing at all
-        # => row #5 can be there, or be empty (no fields at all), or have either 1 or 2 matching fields
+      - name: rel_team4
+        # Don't make the row fail when not found:
         required: false
         fields:
           - name: std_score
-            format: "^\\s{118,}(\\d?[,.]?\\d{1,4}[,.]\\d{1,2})(?>\\s+\\d+)?"
+            format: "^\\s{130,}(\\d?[,.]?\\d{1,4}[,.]\\d{1,2})\\s?"
             pop_out: false
             # U25 / A20 do not score:
             required: false
           - name: meeting_score
-            format: "^\\s{118,}(?>\\d?[,.]?\\d{1,4}[,.]\\d{1,2})?\\s{10,}(\\d+)\\b"
+            format: "^\\s{130,}(?>\\d?[,.]?\\d{1,4}[,.]\\d{1,2})?\\s{10,}(\\d+)\\b"
             pop_out: false
             # U25 / A20 do not score:
             required: false
 
+  # Optional row including the "disqualified" message/reason
+  # (When this is present, usually no relay swimmer rows are added)
+  - name: rel_dsq
+    required: false
+    parent: rel_team
+    fields:
+      - name: disqualify_type
+        # "All non-digit words from column 120 onward until the end of line"
+        format: "^(?!\\s+(Orario Ufficializzazione|\\d{1,2}|www.ficr.it|corsie|Pagina))\\s{120,}(\\D+\\s?)+\\b"
+
   - name: disqualified
-    parent: results
+    parent: rel_team
     required: false
     lambda: strip
-    format: "\\s*Non Classificati\\b"
+    format: "\\s*Non Classificati|Fuori gara\\b"
 
   - name: empty_row
     parent: event

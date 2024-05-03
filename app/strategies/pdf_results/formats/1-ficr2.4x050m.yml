@@ -11,7 +11,7 @@
       - fields:
         - name: edition
           lambda: strip
-          format: "\\s*(\\d{1,2}).{1,2}\\s+"
+          format: "\\s*(\\d{1,2}|[IVXLCM]+).{1,2}?\\s+"
         - name: meeting_name
           lambda: strip
           format: "(?>\\s*[°^*oa']?)\\s+([\"“`']?.+[\"“`'\\b]?)"
@@ -74,7 +74,7 @@
       - name: rel_team1
         fields:
           - name: rank
-            format: "^\\s*(\\d{1,2}|SQ)\\s+"
+            format: "^\\s*(\\d{1,2}|SQ|RT|NP)\\s+"
             pop_out: false
           - name: team_name
             format: "\\s+(([\\w\\d\\-&%'`]+.\\s?)+)"

@@ -45,7 +45,7 @@
       - fields:
         - name: edition
           lambda: strip
-          format: "\\s*(\\d{1,2}).{1,2}\\s+"
+          format: "\\s*(\\d{1,2}|[IVXLCM]+).{1,2}?\\s+"
         - name: meeting_name
           lambda: strip
           format: "(?>\\s*[°^*oa']?)\\s+([\"“`']?.+[\"“`'\\b]?)"
@@ -91,7 +91,7 @@
       - name: results_hdr1
         format: "\\s?Pos.\\s+Nominativo\\s+Crs.?\\s+Naz.?\\s+50 m\\s+100 m\\s+150 m\\s+200 m\\s+300 m\\s+400 m\\s+Arrivo\\s+Pti?\\s+Cat"
       - name: results_hdr2
-        format: "\\s?Società\\s+Anno\\s+\\s+(FINA|Master)\\s+Pti?\\s+S.?C.?"
+        format: "\\s?Società\\s+Anno\\s+\\s+(FINA|Master)\\s+Pti?\\s+S\\.?C\\.?"
 
   # Optional row before category
   - name: cat_spacer

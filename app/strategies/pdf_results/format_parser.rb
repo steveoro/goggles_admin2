@@ -3,7 +3,7 @@
 module PdfResults
   # = PdfResults::FormatParser strategy
   #
-  #   - version:  7-0.6.20
+  #   - version:  7-0.7.10
   #   - author:   Steve A.
   #
   # Given at least a single whole page of a text file, this strategy class will try to detect
@@ -329,6 +329,16 @@ module PdfResults
       ctx_index = 0
       row_index = 0
       ctx_name  = @format_order.at(ctx_index)
+
+      if @rows.blank? # Skip empty pages and move forward:
+        log_message("\r\nEMPTY page found @ idx #{@page_index}")
+        $stdout.write("\033[1;33;32m.\033[0m") # "Valid" progress signal
+        @result_format_type = 'EMPTY PAGE'
+        @page_index += 1
+        set_current_page_rows(rewind: false)
+        return
+      end
+
       continue_scan = row_index < @rows.count && ctx_name.present?
 
       while continue_scan
@@ -464,7 +474,7 @@ module PdfResults
         continue_scan = (row_index < @rows.count) && (ctx_index < @format_order.count)
       end
 
-      unless valid
+      unless valid && @rows.present?
         # Output where last format stopped being valid:
         puts("'#{@format_name}' [#{ctx_name}] => stops @ page idx #{@page_index}")
       end
@@ -475,7 +485,7 @@ module PdfResults
           Kernel.format('- %<name>s: last checked @ row: %<last_check>d => %<check_result>s, valid for pages: %<valid_list>s',
                         name:, last_check: hsh[:last_check].to_i,
                         check_result: hsh[:valid] ? "\033[1;33;32m✔\033[0m" : 'x',
-                        valid_list: hsh[:valid_at].flatten.uniq.to_s)
+                        valid_list: hsh.fetch(:valid_at, []).flatten.uniq.to_s)
         )
       end
     end

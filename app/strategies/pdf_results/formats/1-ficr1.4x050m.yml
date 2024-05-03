@@ -1,7 +1,9 @@
 #
 # = Layout format definition for PdfResults::FormatParser
 #
-1-ficr1.4x100m:
+# Copy of 1-ficr2.4x050m
+#
+1-ficr1.4x050m:
   - name: header
     at_fixed_row: 0
     # Repeat each page:
@@ -25,32 +27,21 @@
           lambda: strip
           format: "\\s*(\\d{2}[-\/]\\d{2}[-\/]\\d{2,4})\\b"
 
-  - name: sub_title
-    at_fixed_row: 2
-    repeat: true
-    parent: header
-    rows:
-      # Optional empty row
-      - name: sub_separator1
-        required: false
-        format: "^$"
-      - name: sub_title1
-        required: false
-        format: "\\s+(Risultati)"
-
   - name: event
     starts_at_row: 2
-    ends_at_row: 6
     repeat: true
     parent: header
     rows:
       - fields:
         - name: event_length
           lambda: strip
-          format: "\\s*([468]X\\d{2,4})m?\\s+"
+          format: "\\s*([48]X\\d{2,4})m?\\s+"
         - name: event_type
           lambda: strip
-          format: "\\s*(?>m\\s)?((\\w+\\s?){1,2})\\sMaster\\sMisti\\b"
+          format: "\\s*(?>m\\s)?((\\w+\\s?){1,2})\\sMaster\\s(Misti|Femmin|Maschi)"
+        - name: gender_type
+          lambda: strip
+          format: "\\sMaster\\s(Misti|Femmin|Maschi)"
 
       - name: event_sub_hdr
         lambda: strip
@@ -65,20 +56,17 @@
       - name: results_hdr1
         format: "\\s?Pos.\\s+Nominativo\\s+Crs\\s+Naz\\s+50 m\\s+100 m\\s+150 m\\s+200 m(\\s+250 m)?(\\s+300 m)?(\\s+350 m)?(\\s+400 m)?\\s+Arrivo\\s+Pt\\s+Cat"
       - name: results_hdr2
-        format: "\\s?Società\\s+Anno(\\s+450 m)?(\\s+500 m)?(\\s+550 m)?(\\s+600 m)?(\\s+650 m)?(\\s+700 m)?(\\s+750 m)?(\\s+800 m)?\\s+FINA\\s+Pt\\s+S.C."
+        format: "\\s?Società\\s+Anno\\s{40,}FINA\\s+Pt\\s+S.C."
 
   - name: rel_category
     starts_at_row: 6
     repeat: true
-    required: false
+    # This will match any empty row if the fields are not found:
+    optional_if_empty: true
     parent: event
     rows:
       - name: cat_title
         format: "\\s+((Under|Master)\\s(Misti|Femmin|Maschi)(\\s(\\d{2}\\s-\\s\\d{2}))?)[\\b\\n]?"
-      # Optional empty row
-      - name: cat_separator1
-        required: false
-        format: "^$"
 
   - name: rel_team
     repeat: true
@@ -88,13 +76,13 @@
       - name: rel_team1
         fields:
           - name: rank
-            format: "^\\s?(\\d{1,2}|SQ|RT|NP)\\s+"
+            format: "^\\s*(\\d{1,2}|SQ|RT|NP)\\s+"
             pop_out: false
           - name: team_name
-            format: "\\s{3,8}(([\\w\\d\\-&%'`]+.\\s?)+)"
-            token_end: 43
+            format: "\\s+(([\\w\\d\\-&%'`]+.\\s?)+)"
+            token_start: 2
+            token_end: 32
             pop_out: false
-
           - name: lane_num
             format: "\\s*(\\d{1,2})\\s*"
             pop_out: false
@@ -106,7 +94,6 @@
             pop_out: false
             token_start: 53
             token_end: 62
-
           - name: lap50
             format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*"
             pop_out: false
@@ -123,42 +110,17 @@
             format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*"
             pop_out: false
             token_start: 95
-            token_end: 108
+            token_end: 107
             required: false
           - name: lap200
             format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*"
             pop_out: false
-            token_start: 109
-            token_end: 119
+            token_start: 108
+            token_end: 121
             required: false
-          - name: lap250
-            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*"
-            pop_out: false
-            token_start: 120
-            token_end: 129
-            required: false
-          - name: lap300
-            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*"
-            pop_out: false
-            token_start: 130
-            token_end: 139
-            required: false
-          - name: lap350
-            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*"
-            pop_out: false
-            token_start: 140
-            token_end: 150
-            required: false
-          - name: lap400
-            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*"
-            pop_out: false
-            token_start: 152
-            token_end: 162
-            required: false
-
           - name: timing
             format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*"
-            token_start: 163
+            token_start: 121
             pop_out: false
             required: false
 
@@ -168,57 +130,33 @@
             format: "^\\s{3,8}(([\\w\\d\\-&%'`]+.\\s?)+)"
             token_end: 43
             pop_out: false
-
           - name: delta100
             format: "\\s*\\((\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)\\s*"
             pop_out: false
-            token_start: 83
-            token_end: 94
+            token_start: 82
+            token_end: 95
             required: false
           - name: delta150
             format: "\\s*\\((\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)\\s*"
             pop_out: false
-            token_start: 96
-            token_end: 107
+            token_start: 95
+            token_end: 108
             required: false
           - name: delta200
             format: "\\s*\\((\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)\\s*"
             pop_out: false
-            token_start: 109
-            token_end: 120
-            required: false
-          - name: delta250
-            format: "\\s*\\((\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)\\s*"
-            pop_out: false
-            token_start: 120
-            token_end: 129
-            required: false
-          - name: delta300
-            format: "\\s*\\((\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)\\s*"
-            pop_out: false
-            token_start: 130
-            token_end: 139
-            required: false
-          - name: delta350
-            format: "\\s*\\((\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)\\s*"
-            pop_out: false
-            token_start: 140
-            token_end: 150
-            required: false
-          - name: delta400
-            format: "\\s*\\((\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)\\s*"
-            pop_out: false
-            token_start: 152
-            token_end: 162
+            token_start: 108
+            token_end: 121
             required: false
           - name: std_score
             format: "\\s*(\\d?[,.]?\\d{1,4}[,.]\\d{1,2})"
-            token_start: 163
+            token_start: 121
             pop_out: false
             # Most of the times, only the 1st relay will score:
             required: false
 
       - name: rel_separator
+        required: false
         format: "^$"
 
   # Optional row including the "disqualified" message/reason
@@ -235,6 +173,8 @@
     repeat: true
     parent: rel_team
     starts_at_row: 8
+    # When the team is disqualified usually no swimmer rows are added:
+    required: false
     rows:
       - name: rel_swimmer1
         fields:
@@ -243,9 +183,9 @@
             pop_out: false
             token_end: 31
           - name: nation
-            format: "\\s*(\\w{2,3})\\s*"
+            format: "\\s+(\\w{2,3})\\s*"
             pop_out: false
-            token_start: 53
+            token_start: 31
             token_end: 68
 
           - name: lap50
@@ -274,12 +214,13 @@
             required: false
 
       - name: rel_separator1
+        required: false
         format: "^$"
 
       - name: rel_swimmer2
         fields:
           - name: year_of_birth
-            format: "\\s{52,}(\\d{4})\\s*"
+            format: "\\s{54,}(\\d{4})\\s*"
             pop_out: false
             token_end: 70
 
@@ -287,27 +228,15 @@
             format: "\\s*\\((\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)\\s*"
             pop_out: false
             token_start: 83
-            token_end: 94
-            required: false
-          - name: delta150
-            format: "\\s*\\((\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)\\s*"
-            pop_out: false
-            token_start: 96
-            token_end: 107
-            required: false
-          - name: delta200
-            format: "\\s*\\((\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)\\s*"
-            pop_out: false
-            token_start: 109
-            token_end: 120
             required: false
 
       - name: rel_separator2
         required: false
         format: "^$"
 
+  # Ignored header (DSQ label is stored under rel_team)
   - name: disqualified
-    parent: rel_team
+    parent: event
     required: false
     lambda: strip
     format: "\\s*Non Classificati\\b"

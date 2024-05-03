@@ -12,7 +12,7 @@
       - fields:
         - name: edition
           lambda: strip
-          format: "\\s*(\\d{1,2}).{1,2}\\s+"
+          format: "\\s*(\\d{1,2}|[IVXLCM]+).{1,2}?\\s+"
         - name: meeting_name
           lambda: strip
           format: "(?>\\s*[°^*oa']?)\\s+([\"“`']?.+[\"“`'\\b]?)"
@@ -78,7 +78,7 @@
       - name: results1
         fields:
           - name: rank
-            format: "^\\s?(\\d{1,2}|SQ|RT)\\s+"
+            format: "^\\s?(\\d{1,2}|SQ|RT|NP)\\s+"
             pop_out: false
             # Sometimes, this may be missing due to technicalities:
             required: false
