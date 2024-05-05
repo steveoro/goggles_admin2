@@ -51,7 +51,7 @@
       - fields:
         - name: event_length
           lambda: strip
-          format: "\\s*([48]X\\d{2,4})m?\\s+"
+          format: "\\s*([468]X\\d{2,4})m?\\s+"
         - name: event_type
           lambda: strip
           format: "\\s*(?>m\\s)?(((\\w+\\s?){1,2})\\sMaster\\s(Misti|Masch|Femmin))"

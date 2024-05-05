@@ -196,10 +196,10 @@ module PdfResults
       current_fname = format_filepath.basename.to_s.gsub('.yml', '')
       ffamily_name = current_fname&.split('.')&.first
       @checked_formats = {} # hash for keeping track of repeated checks on same format types
-      continue_scan = fmt_files_idx < fmt_files.count && format_filepath.present?
+      continue_scan = @checked_formats.keys.count { |key| key != 'EMPTY' } < fmt_files.count && format_filepath.present?
 
       while continue_scan
-        log_message("\r\n✴✴✴ 🩺 Checking '#{current_fname}' (base: #{ffamily_name}, fmt: #{fmt_files_idx}/tot: #{fmt_files.count}) @ page idx: #{@page_index}/tot: #{@pages.count} ✴✴✴")
+        log_message("\r\n✴✴✴ 🩺 Checking '#{current_fname}' (base: #{ffamily_name}, fmt: #{fmt_files_idx + 1}/tot: #{fmt_files.count}) @ page idx: #{@page_index}/tot: #{@pages.count} ✴✴✴")
         @checked_formats[current_fname] ||= {}
         @checked_formats[current_fname][:valid_at] ||= []
 
@@ -240,12 +240,11 @@ module PdfResults
         format_filepath = fmt_files[fmt_files_idx]
         current_fname = format_filepath&.basename&.to_s&.gsub('.yml', '')
         ffamily_name = current_fname&.split('.')&.first
-
         # Already checked using same format at same page? => Bail out!
         break if @checked_formats.key?(current_fname) &&
                  @checked_formats[current_fname][:last_check] == @page_index
 
-        log_message("=> Coming up next: '#{current_fname}'...") if current_fname
+        log_message("--> Coming up next: '#{current_fname}'...") if current_fname
         continue_scan = fmt_files_idx < fmt_files.count && format_filepath.present?
       end
 
@@ -333,7 +332,8 @@ module PdfResults
       if @rows.blank? # Skip empty pages and move forward:
         log_message("\r\nEMPTY page found @ idx #{@page_index}")
         $stdout.write("\033[1;33;32m.\033[0m") # "Valid" progress signal
-        @result_format_type = 'EMPTY PAGE'
+        @result_format_type = 'EMPTY' # special "empty page" format name
+        @checked_formats['EMPTY'][:valid] = true
         @page_index += 1
         set_current_page_rows(rewind: false)
         return
@@ -421,52 +421,54 @@ module PdfResults
             log_message("      <<-- \033[1;33;31mEND OF FORMAT '\033[1;93;40;3m#{@format_name}\033[0m' -->>")
           end
         end
-
         # DEBUG VERBOSE
         log_message(Kernel.format("      At loop wrap: idx => %04d (from: '\033[94;3m%s\033[0m' idx: %d, span: %d)",
                                   row_index, context_def.name, context_def.curr_index, context_def.row_span))
         log_message("      \033[38;5;3m-----------------------------------------------------------------------\033[0m")
 
-        # Handle page breaks signaled by 'eop' property in contexts:
-        if valid && context_def.eop?
-          # Page progress & reset indexes:
-          @page_index += 1
-          set_current_page_rows(rewind: false)
-          row_index = 0
-          # If there's a EOP context, then all contexts are assumed to be repeatable in
-          # format on each page. So we repeat the format section scan from the start:
-          ctx_index = 0
-          ctx_name  = @format_order.first
-          msg = if @rows.count.positive?
-                  Kernel.format("\r\n  EOP found (%s): new page %d/%d", context_def.name, @page_index, @pages&.count.to_i)
-                else
-                  Kernel.format("\r\n  EOF found (%s): no more rows.", context_def.name)
-                end
-          log_message(msg)
-          log_message("\r\n[#{@format_name}] Scan result for detecting formats (resets each page change):")
-          @valid_scan_results[@format_name].each { |name, is_valid| log_message("- #{name}: #{is_valid ? "\033[1;33;32m✔\033[0m" : 'x'}") }
+        # Set the result at the end of context def scan
+        # (only after all required contexts have been found in the current page, whether or not we reached the end of the page)
+        if valid && all_required_contexts_valid?(@format_name)
+          log_message(
+            Kernel.format("\r\nFORMAT '\033[1;93;40;3m%s\033[0m' VALID! ✅ @ page %d/%d",
+                          @format_name, @page_index, @pages&.count.to_i)
+          )
+          $stdout.write("\033[1;33;32m.\033[0m") # "Valid" progress signal
+          @result_format_type = @format_name
+          @checked_formats[@format_name][:valid] = true
+          @checked_formats[@format_name][:valid_at] << @page_index
+          @root_dao ||= ContextDAO.new
+          @page_daos.each { |dao| @root_dao.merge(dao) } # Store data: append page daos to the root DAO
 
-          # Set the result only if all required contexts have been found in the current page
-          # (after EOP/EOF is reached):
-          if all_required_contexts_valid?(@format_name)
-            log_message(
-              Kernel.format("\r\nFORMAT '\033[1;93;40;3m%s\033[0m' VALID! ✅ @ page %d/%d",
-                            @format_name, @page_index, @pages&.count.to_i)
-            )
-            $stdout.write("\033[1;33;32m.\033[0m") # "Valid" progress signal
-            @result_format_type = @format_name
-            @checked_formats[@format_name][:valid] = true
-            @checked_formats[@format_name][:valid_at] << @page_index
-            @root_dao ||= ContextDAO.new
-            @page_daos.each { |dao| @root_dao.merge(dao) } # Store data: append page daos to the root DAO
-          else
-            $stdout.write("\033[1;33;31m.\033[0m") # "INVALID format" progress signal (EOP reached w/ NOT all constraints satisfied)
-            @result_format_type = nil
+          # Handle page breaks (EOPs) or row limit when reached, only after ALL ctxs have been checked out:
+          # (Page change occurs only if there are NO more rows or if a EOP-context has been found valid,
+          #  in any other case, the current format should be considered as not checked out completely or invalid;
+          #  ctx could be repeatable in check until the actual end of rows and a required and repeatable ctx
+          #  could be found later on.)
+          if valid && (row_index >= @rows.count || context_def.eop?)
+            # Page progress & reset indexes:
+            @page_index += 1
+            set_current_page_rows(rewind: false)
+            row_index = 0
+            ctx_index = 0
+            ctx_name  = @format_order.first
+            msg = if @rows.count.positive?
+                    Kernel.format("\r\n  EOP found (%s): new page %d/%d", context_def.name, @page_index, @pages&.count.to_i)
+                  else
+                    Kernel.format("\r\n  EOF found (%s): no more rows.", context_def.name)
+                  end
+            log_message(msg)
+            log_message("\r\n[#{@format_name}] Scan result for detecting formats (resets each page change):")
+            @valid_scan_results[@format_name].each { |name, is_valid| log_message("- #{name}: #{is_valid ? "\033[1;33;32m✔\033[0m" : 'x'}") }
+
+            # Always reset page counters & page helpers before the next one (even when using same format):
+            @valid_scan_results = { @format_name => {} } # (This should reset on every page change)
+            @page_daos = []
           end
 
-          # Always reset page counters & page helpers before the next one (even when using same format):
-          @valid_scan_results = { @format_name => {} } # (This should reset on every page change)
-          @page_daos = []
+        elsif !valid && ctx_index >= @format_order.count
+          $stdout.write("\033[1;33;31m.\033[0m") # "INVALID format" progress signal (EOP reached w/ NOT all constraints satisfied)
+          @result_format_type = nil
         end
 
         # Continue scanning page with this format only if we have more rows to process

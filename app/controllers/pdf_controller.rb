@@ -44,7 +44,7 @@ class PdfController < ApplicationController
   # [XHR PUT] Scan a converted TXT file (by pathname) using the FormatParser to
   # detect which format family is best applicable.
   #
-  def scan # rubocop:disable Metrics/AbcSize
+  def scan # rubocop:disable Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
     unless request.xhr? && request.put? && @file_path.present?
       flash[:warning] = I18n.t('search_view.errors.invalid_request')
       redirect_to(root_path) && return
@@ -62,10 +62,7 @@ class PdfController < ApplicationController
     return if fp.result_format_type.blank?
 
     logger.info("\r\n--> Extracting data hash...")
-    data_hash = fp.root_dao.data[:rows]&.first
-    # DEBUG ----------------------------------------------------------------
-    # binding.pry
-    # ----------------------------------------------------------------------
+    data_hash = fp.root_dao&.data&.fetch(:rows, [])&.first
 
     l2 = PdfResults::L2Converter.new(data_hash, fp.season)
     logger.info("\r\n--> Converting to JSON & saving...")

@@ -35,7 +35,7 @@
       - fields:
         - name: event_length
           lambda: strip
-          format: "\\s*([48]X\\d{2,4})m?\\s+"
+          format: "\\s*([468]X\\d{2,4})m?\\s+"
         - name: event_type
           lambda: strip
           format: "\\s*(?>m\\s)?((\\w+\\s?){1,2})\\sMaster\\s(Misti|Femmin|Maschi)"
@@ -70,7 +70,7 @@
 
   - name: rel_team
     repeat: true
-    parent: event
+    parent: rel_category
     starts_at_row: 7
     rows:
       - name: rel_team1
@@ -163,7 +163,7 @@
   # (When this is present, usually no relay swimmer rows are added)
   - name: rel_dsq
     required: false
-    parent: rel_team
+    parent: rel_category
     fields:
       - name: disqualify_type
         # "All non-digit words from column 120 onward until the end of line"
@@ -236,7 +236,7 @@
 
   # Ignored header (DSQ label is stored under rel_team)
   - name: disqualified
-    parent: event
+    parent: rel_category
     required: false
     lambda: strip
     format: "\\s*Non Classificati\\b"

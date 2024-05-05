@@ -3,7 +3,7 @@
 module PdfResults
   # = PdfResults::ContextDAO
   #
-  #   - version:  7-0.6.20
+  #   - version:  7-0.7.10
   #   - author:   Steve A.
   #
   #
@@ -130,7 +130,8 @@ module PdfResults
     # this instance as a descending node, to verify if the specified DAO is really
     # already stored in this subtree or not. (In which case, usually, it needs to be added.)
     #
-    # Returns the DAO on success or +nil+ if a DAO with the same +name+ & +key+ is not found.
+    # Returns only the DAO with the matching +name+ & +key+.
+    # Returns +nil+ otherwise.
     def find_existing(source_dao)
       return nil unless source_dao.is_a?(ContextDAO)
       return self if source_dao.name == name && source_dao.key == key
@@ -187,13 +188,13 @@ module PdfResults
     # - DAOs collected on a per-page basis, w/ parent section (DAO nodes) repeating on each page
     #   --> AIM: single DAO tree => requires a merge of DAO subtrees
     #
-    def merge(source_dao) # rubocop:disable Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
+    def merge(source_dao) # rubocop:disable Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity,Metrics/AbcSize
       raise 'Invalid ContextDAO specified!' unless source_dao.is_a?(ContextDAO)
 
       # Find a destination container for the source DAO: it must have the same name & key
       # as the parent referenced by the source itself.
       dest_parent = self if name == 'root' && source_dao.parent.blank?
-      dest_parent ||= find_existing(source_dao.parent)
+      dest_parent ||= find_existing(source_dao.parent) || source_dao.parent
       raise 'Unable to find destination parent for source ContextDAO during merge!' unless dest_parent.is_a?(ContextDAO)
 
       # See if the source DAO is already inside the destination rows; add it if missing
@@ -242,7 +243,7 @@ module PdfResults
     # of the hierarchy, going deeper in breadth-first mode.
     #
     # Returns a printable ASCII (string) tree of this DAO data hierarchy.
-    def hierarchy_to_s(dao: self, output: '', depth: 0)
+    def hierarchy_to_s(dao: self, output: '', depth: 0) # rubocop:disable Metrics/AbcSize
       output = if output.blank? && depth.zero?
                  "\r\n(#{dao.parent.present? ? dao.parent.name : '---'})\r\n"
                else
