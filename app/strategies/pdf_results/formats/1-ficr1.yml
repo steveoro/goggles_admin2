@@ -118,8 +118,8 @@
     # Whenever 'category' context changes, create a different DAO wrapping the fields:
     # (Do not use sub-contexts in rows as they can't be easily referenced)
     parent: category
-    # Start searching for this context at: ('7' is not true for older files)
-    # starts_at_row: 7
+    # Start searching for this context at:
+    # starts_at_row: 7 #  ('7' is not true for older files, keep this commented out)
     fields:
       - name: rank
         format: "^\\s?(\\d{1,2}|SQ|RT|NP)\\s+\\w+"
@@ -131,10 +131,6 @@
         token_end: 90
         pop_out: false
       - name: nation
-        # Old version:
-        # format: "\\s+(\\w{2,3})\\s+"
-        # token_start: 60
-        # token_end: 78
         format: "\\s+(\\w{3})(?=\\s+\\d{4}\\s+)"
         token_end: 90
         pop_out: false
@@ -178,8 +174,8 @@
         pop_out: false
         required: false
       - name: disqualify_type
-        format: "\\s*(\\D+\\s?)+\\b"
-        token_start: 148
+        format: "\\s*(?>SQ|RT|NP)?\\s+(\\D+\\s?)+\\b"
+        token_start: 130
         pop_out: false
         required: false
       - name: std_score
@@ -188,6 +184,14 @@
         pop_out: false
         # U25 / A20 do not score:
         required: false
+
+  - name: results_ext
+    parent: results
+    required: false
+    fields:
+      - name: dsq_details
+        format: "\\s{135}([\\w\\s]+)"
+        pop_out: false
 
   - name: disqualified
     parent: category

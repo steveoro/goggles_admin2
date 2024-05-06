@@ -1,7 +1,7 @@
 #
 # = Layout format definition for PdfResults::FormatParser
 #
-# (50m .. 200m, with *all* lap timings)
+# (100m .. 200m, with *all* lap timings)
 #
 # Spawn of 1-ficr1.100m, it's a "long misaligned spread" version, where 100+m results are rendered
 # on a 5x text row output for each result row like this:
@@ -77,9 +77,9 @@
     repeat: true
     rows:
       - name: results_hdr1
-        format: "\\s?Pos.\\s+Nominativo\\s+Crs.?\\s+Naz.?\\s+50 m(?>\\s+100 m)?(?>\\s+150 m)?(?>\\s+200 m)?\\s+Arrivo\\s+Pti?\\s+Cat"
+        format: "\\s?Pos.\\s+Nominativo\\s+Crs\\.?\\s+Naz\\.?\\s+50 m(?>\\s+100 m)?(?>\\s+150 m)?(?>\\s+200 m)?\\s+Arrivo\\s+Pti?\\s+Cat"
       - name: results_hdr2
-        format: "\\s?Società\\s+Anno\\s+(FINA|Master)\\s+Pti?\\s+S.?C.?"
+        format: "\\s?Società\\s+Anno\\s+(FINA|Master)\\s+Pti?\\s+S\\.?C\\.?"
 
   # Optional row before category
   - name: cat_spacer
@@ -161,9 +161,9 @@
             token_start: 25
             token_end: 52
           - name: nation
-            format: "\\s*(\\w{2,3})\\b"
+            format: "\\s*(?>\\d{1,2})\\s*(\\w{2,3})\\b"
             pop_out: false
-            token_start: 53
+            token_start: 25
             token_end: 62
 
       - name: results2
@@ -217,12 +217,12 @@
         required: false
         fields:
           - name: std_score
-            format: "^\\s{118,}(\\d?[,.]?\\d{1,4}[,.]\\d{1,2})(?>\\s+\\d+)?"
+            format: "^\\s{114,}(\\d?[,.]?\\d{1,4}[,.]\\d{1,2})(?>\\s+\\d+)?"
             pop_out: false
             # U25 / A20 do not score:
             required: false
           - name: meeting_score
-            format: "^\\s{118,}(?>\\d?[,.]?\\d{1,4}[,.]\\d{1,2})?\\s{10,}(\\d+)\\b"
+            format: "^\\s{114,}(?>\\d?[,.]?\\d{1,4}[,.]\\d{1,2})?\\s{10,}(\\d+)\\b"
             pop_out: false
             # U25 / A20 do not score:
             required: false
@@ -261,15 +261,26 @@
             format: "\\s+Pagina\\s(\\d{1,2})\\sdi\\s\\d{1,2}"
 
   # End-Of-Page context
+  # - name: footer
+  #   parent: event
+  #   # The 'eop' key implies that this context will be searched <row_span> lines before the end of page.
+  #   # This also implies that the file must also be parsed in pages, otherwise the recognition will fail.
+  #   # (DO NOT use eop: true when extracting the whole file, unless when processing batches of pages)
+  #   eop: true
+  #   row_span: 4
+  #   repeat: true
+  #   fields:
+  #     # Actual last-line context marker (page should end after this token)
+  #     - name: page_delimiter
+  #       format: "\\s*https?://nuoto.ficr.it/?"
+
+  # Alternative, simpler EOP:
   - name: footer
     parent: event
-    # The 'eop' key implies that this context will be searched <row_span> lines before the end of page.
-    # This also implies that the file must also be parsed in pages, otherwise the recognition will fail.
-    # (DO NOT use eop: true when extracting the whole file, unless when processing batches of pages)
     eop: true
-    row_span: 4
+    row_span: 1
     repeat: true
     fields:
       # Actual last-line context marker (page should end after this token)
       - name: page_delimiter
-        format: "\\s*https?://nuoto.ficr.it/?"
+        format: "nuoto.ficr.it"

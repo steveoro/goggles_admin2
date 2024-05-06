@@ -1,0 +1,115 @@
+#
+# = Layout format definition for PdfResults::FormatParser
+#
+# "No content page", with just header and footer according to parent layout.
+#
+1-ficr1.empty:
+  - name: header
+    at_fixed_row: 0
+    repeat: true
+    rows:
+      # "header" row-0, abs. row #0
+      - fields:
+        - name: edition
+          lambda: strip
+          format: "\\s*(\\d{1,2}|[IVXLCM]+).{1,2}?\\s+"
+        - name: meeting_name
+          lambda: strip
+          format: "(?>\\s*[°^*oa']?)\\s+([\"“`']?.+[\"“`'\\b]?)"
+      # "header" row-1, abs. row #1:
+      - fields:
+        - name: meeting_place
+          lambda: strip
+          format: "\\s*((\\w{1,}['\\s]?)+),\\s*"
+        - name: meeting_date
+          lambda: strip
+          format: "\\s*(\\d{2}([-\/]\\d{2}[-\/]\\d{2,4}|\\s\\w{3,}\\s\\d{2,4}))\\b"
+
+      # Optional empty row #3:
+      - name: hdr_separator
+        required: false
+        format: "^$"
+
+  - name: event
+    repeat: true
+    parent: header
+    rows:
+      # "event" row-0:
+      - fields:
+        - name: event_length
+          lambda: strip
+          format: "\\s*(\\d{2,4})m?\\s+"
+        - name: event_type
+          lambda: strip
+          format: "\\s*(?>m\\s)?((\\w+\\s?){1,2})\\sMaster\\sMisti\\b"
+      # event" row-1:
+      - fields:
+        - name: event_sub_hdr
+          lambda: strip
+          format: "Riepilogo|Serie\\s\\d{2}"
+
+  # Data columns header
+  # Works for both "l" & "m" sub-formats
+  - name: results_hdr
+    repeat: true
+    rows:
+      - name: results_hdr1
+        format: "\\s?Pos.\\s+Nominativo"
+      - name: results_hdr2
+        required: false
+        format: "\\s?Società\\s+Anno\\s+(FINA|Master)\\s+Pti?\\s+S.?C.?"
+
+  - name: empty_row
+    parent: event
+    required: false
+    format: "^$"
+
+  - name: publish_time
+    # Choose a link with the wrapping parent context from which the scan may resume
+    # when after this, independently from check success or failure:
+    parent: event
+    required: false
+    starts_at_row: 7
+    lambda: strip
+    format: "Orario Ufficializzazione"
+
+  - name: footer_title
+    parent: event
+    starts_at_row: 8
+    repeat: true
+    rows:
+      - name: pre_footer_spacer1
+        required: false
+        format: "^$"
+      - name: page_count
+        starts_with: Elaborazione dati a cura della Federazione Italiana Cronometristi - www.ficr.it
+        fields:
+          - name: pool_type
+            required: false
+            format: "\\s+(\\d{1,2} corsie \\d{2}m)\\s+"
+          - name: page_num
+            format: "\\s+Pagina\\s(\\d{1,2})\\sdi\\s\\d{1,2}"
+
+  # End-Of-Page context
+  # - name: footer
+  #   starts_at_row: 9
+  #   parent: footer_title
+  #   eop: true
+  #   row_span: 5
+  #   repeat: true
+  #   fields:
+  #     # Actual last-line context marker (page should end after this token)
+  #     - name: page_delimiter
+  #       format: "\\s*https?://nuoto.ficr.it/?"
+
+  # Alternative, simpler EOP:
+  - name: footer
+    starts_at_row: 9
+    parent: footer_title
+    eop: true
+    row_span: 1
+    repeat: true
+    fields:
+      # Actual last-line context marker (page should end after this token)
+      - name: page_delimiter
+        format: "nuoto.ficr.it"

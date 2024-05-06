@@ -1,7 +1,9 @@
 #
 # = Layout format definition for PdfResults::FormatParser
 #
-1-ficr1.100m:
+# 400m correctly aligned, with all lap timings (step 50m) and optional team name extension row
+#
+1-ficr1.400m:
   - name: header
     # Index is page-relative:
     at_fixed_row: 0
@@ -58,9 +60,9 @@
     repeat: true
     rows:
       - name: results_hdr1
-        format: "\\s?Pos.\\s+Nominativo\\s+Crs\\.?\\s+Naz\\.?\\s+50 m(?>\\s+100 m)?(?>\\s+150 m)?(?>\\s+200 m)?\\s+Arrivo\\s+Pti?\\s+Cat"
+        format: "\\s?Pos.\\s+Nominativo\\s+Crs\\s+Naz\\s+50 m\\s+100 m(?>\\s+150 m)?(?>\\s+200 m)?(\\s+250 m)?(\\s+300 m)?(\\s+350 m)?(\\s+400 m)?\\s+Arrivo\\s+Pt\\s+Cat"
       - name: results_hdr2
-        format: "\\s?Società\\s+Anno\\s+(FINA|Master)\\s+Pti?\\s+S\\.?C\\.?"
+        format: "\\s?Società\\s+Anno\\s+FINA\\s+Pt\\s+S.C."
 
   # Optional row before category
   - name: cat_spacer
@@ -110,33 +112,58 @@
             token_end: 62
 
           - name: lap50
-            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*\\b"
+            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*"
             pop_out: false
             token_start: 70
-            token_end: 82
+            token_end: 83
             required: false
           - name: lap100
-            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*\\b"
+            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*"
             pop_out: false
             token_start: 82
-            token_end: 94
+            token_end: 96
             required: false
           - name: lap150
-            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*\\b"
+            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*"
             pop_out: false
             token_start: 95
-            token_end: 108
+            token_end: 110
             required: false
           - name: lap200
-            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*\\b"
+            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*"
             pop_out: false
             token_start: 109
-            token_end: 118
+            token_end: 123
+            required: false
+
+          - name: lap250
+            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*"
+            pop_out: false
+            token_start: 122
+            token_end: 133
+            required: false
+          - name: lap300
+            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*"
+            pop_out: false
+            token_start: 132
+            token_end: 143
+            required: false
+          - name: lap350
+            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*"
+            pop_out: false
+            token_start: 142
+            token_end: 153
+            required: false
+          - name: lap400
+            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*"
+            pop_out: false
+            token_start: 152
+            token_end: 162
             required: false
 
           - name: timing
-            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*\\b"
-            token_start: 119
+            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*"
+            token_start: 162
             pop_out: false
             required: false
 
@@ -156,24 +183,49 @@
             format: "\\s*\\((\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)\\s*"
             pop_out: false
             token_start: 83
-            token_end: 94
+            token_end: 96
             required: false
           - name: delta150
             format: "\\s*\\((\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)\\s*"
             pop_out: false
             token_start: 96
-            token_end: 107
+            token_end: 110
             required: false
           - name: delta200
             format: "\\s*\\((\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)\\s*"
             pop_out: false
-            token_start: 109
-            token_end: 120
+            token_start: 110
+            token_end: 123
+            required: false
+
+          - name: delta250
+            format: "\\s*\\((\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)\\s*"
+            pop_out: false
+            token_start: 123
+            token_end: 133
+            required: false
+          - name: delta300
+            format: "\\s*\\((\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)\\s*"
+            pop_out: false
+            token_start: 133
+            token_end: 144
+            required: false
+          - name: delta350
+            format: "\\s*\\((\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)\\s*"
+            pop_out: false
+            token_start: 143
+            token_end: 153
+            required: false
+          - name: delta400
+            format: "\\s*\\((\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)\\s*"
+            pop_out: false
+            token_start: 152
+            token_end: 163
             required: false
 
           - name: std_score
             format: "\\s*(\\d?[,.]?\\d{1,4}[,.]\\d{1,2})\\b"
-            token_start: 121
+            token_start: 162
             pop_out: false
             # U25 / A20 do not score:
             required: false

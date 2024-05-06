@@ -310,7 +310,7 @@
     parent: rel_team
     required: false
     lambda: strip
-    format: "\\s*Non Classificati\\b"
+    format: "\\s*(Non Classificati|Fuori Gara)\\b"
 
   - name: empty_row
     parent: event

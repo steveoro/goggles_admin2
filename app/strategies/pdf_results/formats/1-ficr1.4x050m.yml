@@ -1,7 +1,7 @@
 #
 # = Layout format definition for PdfResults::FormatParser
 #
-# Copy of 1-ficr2.4x050m
+# Copy of 1-ficr2.4x050m: 2 rows x team name + 2 rows for each relay swimmer, x each relay result
 #
 1-ficr1.4x050m:
   - name: header
@@ -54,9 +54,9 @@
     repeat: true
     rows:
       - name: results_hdr1
-        format: "\\s?Pos.\\s+Nominativo\\s+Crs\\s+Naz\\s+50 m\\s+100 m\\s+150 m\\s+200 m(\\s+250 m)?(\\s+300 m)?(\\s+350 m)?(\\s+400 m)?\\s+Arrivo\\s+Pt\\s+Cat"
+        format: "\\s?Pos.\\s+Nominativo\\s+Crs\\s+Naz\\s+50 m\\s+100 m\\s+150 m\\s+200 m(\\s+250 m)?(\\s+300 m)?(\\s+350 m)?(\\s+400 m)?\\s+Arrivo\\s+Pti?\\s+Cat"
       - name: results_hdr2
-        format: "\\s?Società\\s+Anno\\s{40,}FINA\\s+Pt\\s+S.C."
+        format: "\\s?Società\\s+Anno\\s{40,}(FINA|Master)\\s+Pti?\\s+S\\.?C\\.?"
 
   - name: rel_category
     starts_at_row: 6
@@ -78,6 +78,8 @@
           - name: rank
             format: "^\\s*(\\d{1,2}|SQ|RT|NP)\\s+"
             pop_out: false
+            # "Out of race" won't have a final ranking:
+            required: false
           - name: team_name
             format: "\\s+(([\\w\\d\\-&%'`]+.\\s?)+)"
             token_start: 2
@@ -87,13 +89,13 @@
             format: "\\s*(\\d{1,2})\\s*"
             pop_out: false
             # Column alignment may vary (swimmer_name range can overlap safely with this due to its format):
-            token_start: 29
+            token_start: 28
             token_end: 52
           - name: nation
             format: "\\s*(\\w{2,3})\\s*"
             pop_out: false
-            token_start: 53
-            token_end: 62
+            token_start: 52
+            token_end: 66
           - name: lap50
             format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*"
             pop_out: false
@@ -118,6 +120,7 @@
             token_start: 108
             token_end: 121
             required: false
+
           - name: timing
             format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*"
             token_start: 121
@@ -140,7 +143,7 @@
             format: "\\s*\\((\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)\\s*"
             pop_out: false
             token_start: 95
-            token_end: 108
+            token_end: 109
             required: false
           - name: delta200
             format: "\\s*\\((\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)\\s*"
@@ -155,15 +158,23 @@
             # Most of the times, only the 1st relay will score:
             required: false
 
-      - name: rel_separator
+      - name: rel_team3
+        # This will match any empty row if the fields are not found:
+        optional_if_empty: true
+        # This will make the row not to fail if missing at all
+        # => row #3 can be there, or be empty (no fields at all), or have either 1 or 2 matching fields
         required: false
-        format: "^$"
+        fields:
+          - name: team_suffix
+            format: "^\\s{3,8}([\\w\\d\\s]{1,34})$"
+            pop_out: false
+            required: false
 
   # Optional row including the "disqualified" message/reason
   # (When this is present, usually no relay swimmer rows are added)
   - name: rel_dsq
     required: false
-    parent: rel_category
+    parent: rel_team
     fields:
       - name: disqualify_type
         # "All non-digit words from column 120 onward until the end of line"
@@ -213,10 +224,6 @@
             token_end: 118
             required: false
 
-      - name: rel_separator1
-        required: false
-        format: "^$"
-
       - name: rel_swimmer2
         fields:
           - name: year_of_birth
@@ -230,7 +237,7 @@
             token_start: 83
             required: false
 
-      - name: rel_separator2
+      - name: rel_separator
         required: false
         format: "^$"
 
@@ -239,7 +246,7 @@
     parent: rel_category
     required: false
     lambda: strip
-    format: "\\s*Non Classificati\\b"
+    format: "\\s*(Non Classificati|Fuori Gara)\\b"
 
   - name: empty_row
     parent: event
@@ -264,4 +271,4 @@
         format: "\\s*www.ficr.it\\s+(\\d{1,2} corsie \\d{2}m)\\s+Pagina\\s*"
       # Actual last-line context marker
       - name: page_delimiter
-        format: "\\s*Risultati su https://nuoto.ficr.it\\b"
+        format: "\\s*https?://nuoto.ficr.it/?"

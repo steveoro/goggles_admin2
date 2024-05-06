@@ -253,7 +253,7 @@ module PdfResults
         log_message(
           Kernel.format('- %s: %s, last checked at page idx %d, valid at pages: %s',
                         fname, hsh_res[:valid] ? "\033[1;33;32m✔\033[0m" : 'x', hsh_res[:last_check].to_i,
-                        hsh_res[:valid_at].flatten.uniq.to_s)
+                        hsh_res[:valid_at]&.flatten&.uniq.to_s)
         )
       end
       log_message("\r\nApplied format family: '#{ffamily_name}', latest found: #{@result_format_type}")
@@ -333,7 +333,7 @@ module PdfResults
         log_message("\r\nEMPTY page found @ idx #{@page_index}")
         $stdout.write("\033[1;33;32m.\033[0m") # "Valid" progress signal
         @result_format_type = 'EMPTY' # special "empty page" format name
-        @checked_formats['EMPTY'][:valid] = true
+        @checked_formats['EMPTY'] = { valid: true, valid_at: [@page_index] } # Store just last empty page encountered
         @page_index += 1
         set_current_page_rows(rewind: false)
         return
@@ -435,7 +435,10 @@ module PdfResults
           )
           $stdout.write("\033[1;33;32m.\033[0m") # "Valid" progress signal
           @result_format_type = @format_name
+          @checked_formats ||= {}
+          @checked_formats[@format_name] ||= {}
           @checked_formats[@format_name][:valid] = true
+          @checked_formats[@format_name][:valid_at] ||= []
           @checked_formats[@format_name][:valid_at] << @page_index
           @root_dao ||= ContextDAO.new
           @page_daos.each { |dao| @root_dao.merge(dao) } # Store data: append page daos to the root DAO
