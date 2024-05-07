@@ -6,12 +6,34 @@ module PdfResults
   #   - version:  7-0.7.10
   #   - author:   Steve A.
   #
-  #
-  # Converter from any parsed field hash to the "Layout type 2" format
+  # Converts from any parsed field hash to the "Layout type 2" format
   # used by the MacroSolver.
   #
   # rubocop:disable Metrics/ClassLength, Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
   class L2Converter
+
+    # Supported "parent" section names for *individual results*. Laps & delta timings are
+    # automatically detected and collected as long as their name has the format
+    # "lap<length>" and "delta<length>".
+    #
+    # A parent result section can have any of these supported names, but ONLY ONE of them
+    # shall be the one required while all the others coexisting with it must be set as
+    # "alternative_of: <original_name>" and "required: false" in order for the layout
+    # to be logically correct.
+    #
+    # Any result or lap can be split freely into multiple subsection or sub-rows and
+    # each subsection/subrow name won't matter as all fields will be collected and become part
+    # of a single parent hash.
+    IND_RESULT_SECTION = %w[results results_alt].freeze
+
+    # Supported "parent" section names for *relay results*. Same rules for IND_RESULT_SECTION apply.
+    REL_RESULT_SECTION = %w[rel_team rel_team_alt].freeze
+
+    # Supported section names for *relay swimmers*. Same rules for IND_RESULT_SECTION apply.
+    REL_SWIMMER_SECTION = %w[rel_swimmer rel_swimmer_alt].freeze
+    #-- -------------------------------------------------------------------------
+    #++
+
     # Creates a new converter instance given the specified data Hash.
     #
     # == Params
@@ -51,7 +73,7 @@ module PdfResults
     #                     [:rows]
     #                       +-- rel_team🔸(xN)
     #                           [:rows]
-    #                             +-- rel_swimmer🔸(x4|x8)
+    #                             +-- rel_swimmer🔸(x4|x6|x8)
     #                       +-- (disqualified)
     #                       +-- publish_time
     #                       +-- footer🔸
@@ -109,8 +131,8 @@ module PdfResults
           rows = []
 
           # --- RELAYS ---
-          if event_length.starts_with?(/(4|8)x/i) &&
-             (row_hash[:name] == 'rel_category' || row_hash[:name] == 'rel_team')
+          if event_length.starts_with?(/(4|6|8)x/i) &&
+             (row_hash[:name] == 'rel_category' || REL_RESULT_SECTION.include?(row_hash[:name]))
             # >>> Here: "row_hash" may be both 'rel_category' or 'rel_team'
             # Safe to call even for non-'rel_category' hashes:
             section = rel_category_section(row_hash, event_title)
@@ -128,7 +150,7 @@ module PdfResults
               curr_rel_cat_gender = section['fin_sesso'] if section['fin_sesso'].present?
 
             # Process teams & relay swimmers/laps:
-            elsif row_hash[:name] == 'rel_team'
+            elsif REL_RESULT_SECTION.include?(row_hash[:name])
               rel_result_hash = rel_result_section(row_hash)
               rows << rel_result_hash
               # Category code or gender code wasn't found?
@@ -162,7 +184,7 @@ module PdfResults
               # Ignore unsupported contexts:
               # NOTE: the name 'disqualified' will just signal the section start, but actual DSQ results
               # will be included into a 'result' section.
-              next unless result_hash[:name] == 'results'
+              next unless IND_RESULT_SECTION.include?(result_hash[:name])
 
               rows << ind_result_section(result_hash, section['fin_sesso'])
             end
@@ -250,7 +272,8 @@ module PdfResults
     #             +-- disqualified
     #
     def ind_result_section(result_hash, cat_gender_code)
-      return {} unless result_hash[:name] == 'results' || result_hash[:name] == 'disqualified'
+      return {} unless IND_RESULT_SECTION.include?(result_hash[:name]) ||
+                       result_hash[:name] == 'disqualified'
 
       # Example of a 'result' source Hash:
       # {
@@ -326,7 +349,7 @@ module PdfResults
     #             +-- disqualified
     #
     def rel_result_section(rel_team_hash) # rubocop:disable Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
-      return {} unless rel_team_hash[:name] == 'rel_team'
+      return {} unless REL_RESULT_SECTION.include?(rel_team_hash[:name])
 
       fields = rel_team_hash.fetch(:fields, {})
       rank = fields['rank']
@@ -358,7 +381,7 @@ module PdfResults
       # in the meantime:
       overall_age = 0
       rel_team_hash.fetch(:rows, [{}]).each_with_index do |rel_swimmer_hash, idx|
-        if rel_swimmer_hash[:name] == 'rel_swimmer'
+        if REL_SWIMMER_SECTION.include?(rel_swimmer_hash[:name])
           row_hash["swimmer#{idx + 1}"] = rel_swimmer_hash.fetch(:fields, {})['swimmer_name']
           year_of_birth = rel_swimmer_hash.fetch(:fields, {})['year_of_birth'].to_i
           row_hash["year_of_birth#{idx + 1}"] = year_of_birth

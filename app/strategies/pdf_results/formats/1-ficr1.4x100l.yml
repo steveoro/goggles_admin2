@@ -98,7 +98,7 @@
         required: false
         fields:
           - name: spacer
-            format: "^\\s{64,}"
+            format: "^\\s{64,}(?!\\s*\\D+)"
             pop_out: false
           - name: lap50
             format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*"
@@ -283,15 +283,27 @@
             format: "\\s+Pagina\\s(\\d{1,2})\\sdi\\s\\d{1,2}"
 
   # End-Of-Page context
+  # - name: footer
+  #   parent: event
+  #   # The 'eop' key implies that this context will be searched <row_span> lines before the end of page.
+  #   # This also implies that the file must also be parsed in pages, otherwise the recognition will fail.
+  #   # (DO NOT use eop: true when extracting the whole file, unless when processing batches of pages)
+  #   eop: true
+  #   row_span: 4
+  #   repeat: true
+  #   fields:
+  #     # Actual last-line context marker (page should end after this token)
+  #     - name: page_delimiter
+  #       format: "\\s*https?://nuoto.ficr.it/?"
+
+  # Alternative, simpler EOP:
   - name: footer
-    parent: event
-    # The 'eop' key implies that this context will be searched <row_span> lines before the end of page.
-    # This also implies that the file must also be parsed in pages, otherwise the recognition will fail.
-    # (DO NOT use eop: true when extracting the whole file, unless when processing batches of pages)
+    parent: footer_title
     eop: true
-    row_span: 4
     repeat: true
-    fields:
-      # Actual last-line context marker (page should end after this token)
-      - name: page_delimiter
-        format: "\\s*https?://nuoto.ficr.it/?"
+    rows:
+      - name: footer1
+        required: false
+        format: "risultati su\b"
+      - name: footer_end
+        starts_with: "nuoto.ficr.it"

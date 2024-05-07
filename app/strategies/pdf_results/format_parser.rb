@@ -670,9 +670,16 @@ module PdfResults
         @repeatable_defs[context_def.name][:valid_at] ||= []
         @repeatable_defs[context_def.name][:valid_at] << row_index if valid_result
       end
+
       # Prepare a scan result report, once per context name:
       # (shouldn't overwrite an already scanned context on a second FAILING pass)
-      @valid_scan_results[format_name][context_def.name] = valid_result unless @valid_scan_results[format_name][context_def.name]
+      @valid_scan_results[format_name][context_def.name] = valid_result if @valid_scan_results[format_name][context_def.name].blank?
+
+      # "Stand-in" for another context if this is an "alternative_of" and ONLY when VALID:
+      if context_def.alternative_of.present? && valid_result &&
+         @valid_scan_results[format_name][context_def.alternative_of].blank?
+        @valid_scan_results[format_name][context_def.alternative_of] = valid_result
+      end
       return row_index unless valid_result && context_def.consumed_rows.positive?
 
       # Find parent context if any:

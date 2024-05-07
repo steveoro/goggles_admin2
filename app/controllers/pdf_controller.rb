@@ -17,20 +17,19 @@ class PdfController < ApplicationController
   # To see if you have the converter already installed on path run a: 'which pdftotext'
   #
   # === Possible PDF formats found so far:
-  # _WIP: (missing 400m+)_
-  # - "1-ficr1"       => FiCr.it 1 (url on bottom)
-  # _WIP:_
-  # - "2-ficr2"       => FiCr.it 2 (just a logo on top)
+  # _WIP / Expanding:_
+  # - "1-ficr1"       => FiCr.it 1 (url w/ variable footer on bottom)
+  # - "1-ficr2"       => FiCr.it 2 (just a logo on top)
   # _STILL_TODO:_
-  # - "3-goswim22"    => Go&Swim new (with logo/name on bottom)
-  # - "4-goswimold"   => Go&Swim old (no name)
-  # - "5-coni22"      => CONI dist. spec Lombardia
-  # - "6-finnew22"    => FIN new (ie Flegreo, SardiniaInWater)
-  # - "7-finven"      => FIN Veneto
-  # - "8-findiff"     => FIN old (diff format)
-  # - "9-txt2pdf"     => custom TXT 2 PDF ()
-  # - "10-dbmeeting"  => Firenze "DBMeeting" custom sw output (with lap timings, ie: results_2022-11-06_AmiciNuoto.txt)
-  # - "11-fredianop"  => "Frediano Palazzi - Gestione manifestazioni nuoto Master" output
+  # - "2-goswim1"    => Go&Swim new (with logo/name on bottom)
+  # - "2-goswim2"   => Go&Swim old (no name)
+  # - "3-coni1"      => CONI dist. spec Lombardia
+  # - "4-fin1"    => FIN new (ie Flegreo, SardiniaInWater)
+  # - "4-fin2"      => FIN Veneto
+  # - "4-fin3"     => FIN old (diff format)
+  # - "5-dbmeeting"  => Firenze "DBMeeting" custom sw output (with lap timings, ie: results_2022-11-06_AmiciNuoto.txt)
+  # - "6-fredianop"  => "F.Palazzi - Gestione manifestazioni nuoto Master" output
+  # - "7-txt2pdf"     => custom TXT 2 PDF ()
   #
   def extract_txt
     system("pdftotext -layout #{@file_path} #{@txt_pathname}") unless File.exist?(@txt_pathname)
@@ -94,7 +93,7 @@ class PdfController < ApplicationController
 
   # Setter for @file_path; expects the 'file_path' parameter to be present.
   # Sets also @api_url.
-  def set_file_path
+  def set_file_path # rubocop:disable Metrics/AbcSize,Metrics/PerceivedComplexity,Metrics/CyclomaticComplexity
     @file_path = process_params[:file_path]
 
     # Prepare @limit_pages, either as a single page or as a range:

@@ -3,7 +3,7 @@
 module PdfResults
   # = PdfResults::ContextDef
   #
-  #   - version:  7-0.6.20
+  #   - version:  7-0.7.10
   #   - author:   Steve A.
   #
   # Stores a parsing context definition, compiled from a parsing layout format YML file.
@@ -189,6 +189,12 @@ module PdfResults
   #     default: false.
   #     Basically, when true, will overwrite the 'starts_at_row' property with 'current_buffer.size - row_span'.
   #
+  # 17. <tt>alternative_of</tt>: +nil+ => when set with an existing ContextDef name, the instance will "stand-in" for
+  #     its counterpart and act effectively as a synonym. "Alternatives" should also be set as "required: false" in order
+  #     to act as "true" synonyms.
+  #     Their main behaviour is to add both its own name and its source context to the list of verified contexts inside
+  #     the FormatParser, even when the "alternative_of"-context has previously failed its context check.
+  #
   class ContextDef < BaseDef # rubocop:disable Metrics/ClassLength
     # Last valid? result; set to false upon each #valid? call.
     attr_reader :last_validation_result
@@ -220,7 +226,7 @@ module PdfResults
     attr_reader :dao
 
     # List of supported String properties
-    STRING_PROPS = %w[name starts_with ends_with].freeze
+    STRING_PROPS = %w[name alternative_of starts_with ends_with].freeze
 
     # List of supported Boolean properties
     BOOL_PROPS = %w[required repeat optional_if_empty eop debug].freeze

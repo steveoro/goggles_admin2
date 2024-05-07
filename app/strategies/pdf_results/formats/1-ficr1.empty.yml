@@ -104,12 +104,13 @@
 
   # Alternative, simpler EOP:
   - name: footer
-    starts_at_row: 9
+    starts_at_row: 8
     parent: footer_title
     eop: true
-    row_span: 1
     repeat: true
-    fields:
-      # Actual last-line context marker (page should end after this token)
-      - name: page_delimiter
-        format: "nuoto.ficr.it"
+    rows:
+      - name: footer1
+        required: false
+        format: "risultati su\b"
+      - name: footer_end
+        starts_with: "nuoto.ficr.it"

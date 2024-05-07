@@ -34,6 +34,8 @@
 #                                                                                                                                                                            742,25                6
 # ---8<---
 #
+# Supports also a 4x row result, without the delta row (can happen in case of technical difficulties).
+#
 1-ficr1.400l:
   - name: header
     # Index is page-relative:
@@ -266,6 +268,116 @@
             # U25 / A20 do not score:
             required: false
 
+  # Alternate result sub-section (optional, 4x rows):
+  - name: results_alt
+    # Alternative section name for which this one will "stand-in" ONLY when validated
+    alternative_of: results
+    required: false
+    repeat: true
+    parent: category
+    rows:
+      - name: results0
+        # DSQ results usually won't have the lap row with the timings:
+        required: false
+        fields:
+          - name: spacer
+            format: "^\\s{64,}(?!\\s*\\D+)"
+            pop_out: false
+          - name: lap50
+            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*\\b"
+            pop_out: false
+            token_start: 66
+            token_end: 78
+            required: false
+          - name: lap100
+            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*\\b"
+            pop_out: false
+            token_start: 80
+            token_end: 92
+            required: false
+          - name: lap150
+            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*\\b"
+            pop_out: false
+            token_start: 92
+            token_end: 104
+            required: false
+          - name: lap200
+            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*\\b"
+            pop_out: false
+            token_start: 104
+            token_end: 114
+            required: false
+
+          - name: lap300
+            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*\\b"
+            pop_out: false
+            token_start: 114
+            token_end: 124
+            required: false
+          - name: lap400
+            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*\\b"
+            pop_out: false
+            token_start: 124
+            token_end: 134
+            required: false
+
+          - name: timing
+            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*\\b"
+            token_start: 134
+            pop_out: false
+            required: false
+
+      - name: results1
+        fields:
+          - name: rank
+            format: "\\s?(\\d{1,2}|SQ|RT|NP)\\s+"
+            pop_out: false
+          - name: swimmer_name
+            format: "\\s+(\\D+(['`\\-\\.\\s]\\s?\\D+){1,4})\\s+"
+            pop_out: false
+            token_end: 31
+          - name: lane_num
+            format: "\\s*(\\d{1,2})\\s*"
+            pop_out: false
+            # Column alignment may vary (swimmer_name range can overlap safely with this due to its format):
+            token_start: 25
+            token_end: 52
+          - name: nation
+            format: "\\s*(\\w{2,3})\\b"
+            pop_out: false
+            token_start: 53
+            token_end: 62
+
+      - name: results2
+        fields:
+          - name: team_name
+            format: "^\\s{3,8}(([\\w\\d\\-&%'`]+.\\s?)+)"
+            token_end: 43
+            pop_out: false
+          - name: year_of_birth
+            format: "\\s*(\\d{4})\\b"
+            pop_out: false
+            token_start: 51
+            token_end: 64
+
+      - name: results3
+        # This will match any empty row if the fields are not found:
+        optional_if_empty: true
+        # This will make the row not to fail if missing at all
+        # => row #5 can be there, or be empty (no fields at all), or have either 1 or 2 matching fields
+        required: false
+        fields:
+          - name: std_score
+            format: "^\\s{130,}(\\d?[,.]?\\d{1,4}[,.]\\d{1,2})(?>\\s+\\d+)?"
+            pop_out: false
+            # U25 / A20 do not score:
+            required: false
+          - name: meeting_score
+            format: "^\\s{130,}(?>\\d?[,.]?\\d{1,4}[,.]\\d{1,2})?\\s{10,}(\\d+)\\b"
+            pop_out: false
+            # U25 / A20 do not score:
+            required: false
+
   - name: disqualified
     parent: results
     required: false
@@ -315,11 +427,12 @@
 
   # Alternative, simpler EOP:
   - name: footer
-    parent: event
+    parent: footer_title
     eop: true
-    row_span: 1
     repeat: true
-    fields:
-      # Actual last-line context marker (page should end after this token)
-      - name: page_delimiter
-        format: "nuoto.ficr.it"
+    rows:
+      - name: footer1
+        required: false
+        format: "risultati su\b"
+      - name: footer_end
+        starts_with: "nuoto.ficr.it"
