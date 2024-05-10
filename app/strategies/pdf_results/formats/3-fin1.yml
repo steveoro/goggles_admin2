@@ -69,10 +69,13 @@
         fields:
           - name: event_length
             lambda: strip
-            format: "\\s*(\\d{2,4})m?\\s+"
+            # Supports both relays & individual results:
+            format: "\\s*(m?i?staffetta\\s+[468]x\\d{2,4}|\\d{2,4})\\s+(?>(\\w+\\s?){1,3})\\s*\\-\\s*cronometraggio\\s"
+            pop_out: false
           - name: event_type
             lambda: strip
-            format: "\\s*(?>m\\s)?((\\w+\\s?){1,3})\\s*\\-\\s*cronometraggio"
+            format: "\\s*(?>m?i?staffetta\\s+[468]x\\d{2,4}|\\d{2,4})\\s+((?>\\w+\\s?){1,3})\\s*\\-\\s*cronometraggio\\s"
+            pop_out: false
       # "event" row-3:
       - name: event_sep2
         format: "^$"
@@ -92,22 +95,24 @@
 
       - fields:
         - name: event_length
-          format: "\\s+(\\d{2,4})\\s+"
+          format: "\\s+(\\d{2,4})\\s+(?>stile(?>\\slibero)?|dorso|rana|delfino|farfalla|misti)\\s+(?>maschil?.?|femmin.l?.?)?\\s*\\-\\s+Categoria\\s+"
           pop_out: false
         - name: event_type
-          format: "\\s*(stile(\\slibero)?|dorso|rana|delfino|farfalla|misti)\\s+(?>maschil?.?|femminil?.?)\\s+\\-\\s+"
+          format: "\\s+(?>\\d{2,4})\\s+(stile(?>\\slibero)?|dorso|rana|delfino|farfalla|misti)\\s+(?>maschil?.?|femmin.l?.?)?\\s*\\-\\s+Categoria\\s+"
           pop_out: false
         - name: gender_type
-          format: "\\s*(?>stile(?>\\slibero)?|dorso|rana|delfino|farfalla|misti)\\s+(maschil?.?|femmin.l?.?)\\s+\\-\\s+"
+          format: "\\s+(maschil?.?|femmin.l?.?)\\s+\\-\\s+Categoria\\s+"
           pop_out: false
         - name: cat_title
           format: "\\s+\\-\\s+Categoria\\s+((Master|Under)\\s\\d{2})\\s*"
           pop_out: false
         - name: base_timing
           required: false
-          format: "\\s*Tempo Base\\s*:\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})"
+          format: "\\s*Tempo Base\\s*:\\s*(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})"
           pop_out: false
 
+  # Made a sibling row instead of a child row given the single separator can fall after a page
+  # break in this layout format:
   - name: cat_sep1
     parent: category
     required: false
@@ -140,13 +145,13 @@
         token_end: 50
 
       - name: team_name
-        # "Ã¹" will be due to wrong encoding in PDFs (== "ù")
-        format: "(?>\\d{4}\\s+)(([\\w\\d\\-\\+&%'`Ã¹]+.\\s?)+)(?>\\s*\\d{1,2}[':\"]|\\s*Ritir|\\s*Squal)"
+        # "Ã¹" may come up due to wrong encoding in PDFs (== "ù")
+        format: "(?>\\d{4}\\s+)(([\\w\\d\\-\\+\\.&%'`Ã¹]+\\s?)+)(?>\\s*\\d{1,2}[':\"]|\\s*Ritir|\\s*Squal)"
         token_start: 41
         token_end: 85
         pop_out: false
       - name: timing
-        format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*"
+        format: "\\s*(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
         token_start: 76
         pop_out: false
         # DSQ don't have timings:
@@ -158,7 +163,7 @@
         pop_out: false
         required: false
       - name: std_score
-        format: "\\s*(?>\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s+(\\d?[,.]?\\d{1,4}[,.]\\d{1,2})\\b"
+        format: "\\s*(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+(\\d?[,\\.]?\\d{1,4}[,\\.]\\d{1,2})\\b"
         token_start: 76
         pop_out: false
         # U25/A20/DSQ do not score:
@@ -177,6 +182,88 @@
     parent: event
     required: false
     format: "^$"
+
+  - name: rel_category
+    # In order to validate/debug a format not always present in page,
+    # we need to set "required" to false according to current implementation:
+    required: false
+    repeat: true
+    # Whenever 'event' context changes, create a different DAO wrapping the fields:
+    parent: event
+    rows:
+      # - name: rel_sep0
+      #   # On a page change + category change, the empty row may be missing:
+      #   required: false
+      #   format: "^$"
+
+      - fields:
+        - name: event_length
+          format: "^\\s*(m?i?staffetta\\s+[468]x\\d{2,3})\\s+((\\w+\\s?){1,3})\\s+\\-\\s+Categoria\\s+"
+          pop_out: false
+        - name: event_type
+          format: "\\s*(?>m?i?staffetta\\s+[468]x\\d{2,4})\\s+(stile(?>\\slibero)?|dorso|rana|delfino|farfalla|misti)\\s+(?>maschil?.?|femmin.l?.?)?\\s*\\-\\s+Categoria\\s+"
+          pop_out: false
+        - name: gender_type
+          format: "\\s+(mistaffetta|maschil?.?|femmin.l?.?)\\s*.*\\s+\\-\\s+Categoria\\s+"
+          pop_out: false
+        - name: cat_title
+          format: "\\s+\\-\\s+Categoria\\s+((?>M|U)\\d{3}-\\d{3})\\s*"
+          pop_out: false
+        - name: base_timing
+          required: false
+          format: "\\s*Tempo Base\\s*:\\s*(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})"
+          pop_out: false
+
+  # Made a sibling row instead of a child row given the single separator can fall after a page
+  # break in this layout format:
+  - name: rel_sep1
+    parent: rel_category
+    required: false
+    format: "^-{90,}$"
+
+  - name: rel_team
+    # In order to validate/debug a format not always present in page,
+    # we need to set "required" to false according to current implementation:
+    required: false
+    repeat: true
+    parent: rel_category
+    rows:
+      - name: rel_team1
+        fields:
+          - name: rank
+            format: "^\\s{4,}(\\d{1,2}|SQ|RT|NP)\\s{3,}"
+            pop_out: false
+          - name: team_name
+            # "Ã¹" may come up due to wrong encoding in PDFs (== "ù")
+            format: "(?>^\\s+(?>\\d{1,2}|SQ|RT|NP|\\s)\\s{3,8})((?>[\\w\\d\\-\\.\\+&%'`Ã¹]+\\s)+)\\s+(?=\\s*(\\d{1,2}['\"\\.:]|Squalif))"
+            pop_out: false
+          - name: timing
+            format: "\\s*(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
+            token_start: 60
+            pop_out: false
+            required: false
+          - name: std_score
+            format: "\\s*(\\d?[,\\.]?\\d{1,4}[,\\.]\\d{1,2})"
+            token_start: 60
+            pop_out: false
+            # Most of the times, only the 1st relay will score:
+            required: false
+
+  - name: rel_swimmer
+    # In order to validate/debug a format not always present in page,
+    # we need to set "required" to false according to current implementation:
+    required: false
+    repeat: true
+    parent: rel_team
+    rows:
+      - name: rel_swimmer1
+        fields:
+          - name: swimmer_name
+            format: "(?>^\\s{5,})((\\D+\\s?){1,6})\\s+\\d{4}"
+            pop_out: false
+          - name: year_of_birth
+            format: "^\\s+.+\\s+(\\d{4})$"
+            pop_out: false
 
   - name: ranking_hdr
     required: false
@@ -198,7 +285,7 @@
             format: "^\\s?(\\d{1,3}|SQ|RT|NP)\\s+"
             pop_out: false
           - name: team_name
-            # "Ã¹" will be due to wrong encoding in PDFs (== "ù")
+            # "Ã¹" may come up due to wrong encoding in PDFs (== "ù")
             format: "\\s{3,8}(([\\w\\d\\.\\+\\-&%'`Ã¹]+\\s?)+)"
             token_end: 39
             pop_out: false

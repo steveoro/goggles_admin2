@@ -133,9 +133,12 @@ module PdfResults
         event_hash.fetch(:rows, [{}]).each do |row_hash|
           section = {}
           rows = []
+          # DEBUG ----------------------------------------------------------------
+          # binding.pry if /mistaffetta 4x50/i.match?(event_title)
+          # ----------------------------------------------------------------------
 
           # --- RELAYS ---
-          if event_length.starts_with?(/(4|6|8)x/i) &&
+          if /(4|6|8)x\d{2,3}/i.match?(event_length.to_s) &&
              (row_hash[:name] == 'rel_category' || REL_RESULT_SECTION.include?(row_hash[:name]))
             # >>> Here: "row_hash" may be both 'rel_category' or 'rel_team'
             # Safe to call even for non-'rel_category' hashes:
@@ -152,6 +155,20 @@ module PdfResults
             if row_hash[:name] == 'rel_category'
               curr_rel_cat_code = section['fin_sigla_categoria'] if section['fin_sigla_categoria'].present?
               curr_rel_cat_gender = section['fin_sesso'] if section['fin_sesso'].present?
+
+              # SUPPORT for alternative-nested 'rel_team's (inside 'rel_category'):
+              # +-- event 🌀
+              #     [:rows]
+              #       +-- rel_category 🌀
+              #            +-- rel_team 🌀
+              #                [:rows]
+              #                  +-- rel_swimmer 🌀
+              #                  +-- disqualified
+              # Loop on rel_team rows, when found, and build up the event rows with them
+              row_hash[:rows].select { |row| row[:name] == 'rel_team' }.each do |nested_row|
+                rel_result_hash = rel_result_section(nested_row)
+                rows << rel_result_hash
+              end
 
             # Process teams & relay swimmers/laps:
             elsif REL_RESULT_SECTION.include?(row_hash[:name])
@@ -177,9 +194,10 @@ module PdfResults
                 # Add category code to event title so that MacroSolver can deal with it automatically:
                 section['title'] = "#{section['title']} - #{rel_cat_code}"
               end
-              # Overwrite existing rows in current section:
-              section['rows'] = rows
             end
+
+            # Set rows for current relay section:
+            section['rows'] = rows
 
           # --- IND.RESULTS ---
           elsif row_hash[:name] == 'category'
@@ -538,7 +556,7 @@ module PdfResults
     def fetch_event_title(event_hash)
       raise 'Not an Event hash!' unless event_hash.is_a?(Hash) && event_hash[:name] == 'event'
 
-      # Structure:
+      # Example structure:
       # {:name=>"event",
       #  :key=>"4X100|Stile libero|Misti|Riepilogo",
       #  :fields=>{
@@ -581,13 +599,22 @@ module PdfResults
     def fetch_rel_category_code(category_hash)
       return unless category_hash.is_a?(Hash) && category_hash[:name] == 'rel_category'
 
-      # Example ('rel_category'): :key=>"Master Misti 200 - 239"
-      category_hash.fetch(:key, '')
-                   .split(/\s?(master|under)\s?/i)&.last
-                   &.split(/\s?(maschi|femmine|misti)\s?/i)
-                   &.reject(&:blank?)
-                   &.last
-                   &.delete(' ')
+      # *** Context 'rel_category' ***
+      key = category_hash.fetch(:key, '')
+
+      # Example key 1 => "Master Misti 200 - 239"
+      if /\s?(master|under)\s*(maschi|femmine|misti)\s*/ui.match?(key)
+        key.split(/\s?(master|under)\s?/i)&.last
+           &.split(/\s?(maschi|femmine|misti)\s?/i)
+           &.reject(&:blank?)
+           &.last
+           &.delete(' ')
+
+      # Example key 2 => "{event_length: 'mistaffetta <4|6|8>x<len>'}|<style_name>|<mistaffetta|gender>|M<age1>-<age2>|<base_time>"
+      elsif /\|M\d{2,3}-\d{2,3}\|/ui.match?(key)
+        # Skip the first 'M' to get a valid code ("<age1>-<age2>")
+        key.split('|')&.at(3)&.at(1..)
+      end
     end
     #-- -----------------------------------------------------------------------
     #++
@@ -599,11 +626,11 @@ module PdfResults
 
       # *** Context 'category' ***
       key = category_hash.fetch(:key, '')
-
       # Example key 1 => "M55 Master Maschi 55 - 59"
       if /\s*([UAM]\d{2}(\sUnder|\sMaster)?\s(Femmine|Maschi))/ui.match?(key)
         key.split(/\s?(master|under)\s?/i)
-           &.last&.split(/\s/)&.first
+           .last
+           &.split(/\s/)&.first
            &.at(0)&.upcase
 
       # Example key 2 => "<length>|<style>|<gender_label>|Master \d\d|<base_timing>|"
@@ -617,13 +644,21 @@ module PdfResults
     def fetch_rel_category_gender(category_hash)
       return unless category_hash.is_a?(Hash) && category_hash[:name] == 'rel_category'
 
-      # Example ('rel_category'): :key=>"Master Misti 200 - 239"
-      gender_name = category_hash.fetch(:key, '')
-                                 .split(/\s?(master|under)\s?/i)&.last
-                                 &.split(/\s?(maschi|femmin|misti)\s?/i)
-                                 &.reject(&:blank?)
-                                 &.first
-      return GogglesDb::GenderType.intermixed.code if gender_name&.downcase == 'misti'
+      # *** Context 'rel_category' ***
+      key = category_hash.fetch(:key, '')
+      gender_name = if /\s?(master|under)\s*(maschi|femmine|misti)\s*/ui.match?(key)
+                      # Example key 1 => "Master Misti 200 - 239"
+                      key.split(/\s?(master|under)\s?/i)
+                         .last
+                         &.split(/\s?(maschi|femmin|misti)\s?/i)
+                         &.reject(&:blank?)
+                         &.first
+
+                    elsif /\|M\d{2,3}-\d{2,3}\|/ui.match?(key)
+                      # Example key 2 => "{event_length: 'mistaffetta <4|6|8>x<len>'}|<style_name>|<mistaffetta|gender>|M<age1>-<age2>|<base_time>"
+                      key.split('|')&.at(2)
+                    end
+      return GogglesDb::GenderType.intermixed.code if /mist/i.match?(gender_name.to_s)
 
       gender_name&.at(0)&.upcase
     end

@@ -62,6 +62,9 @@ class PdfController < ApplicationController
 
     logger.info('--> Extracting data hash...')
     data_hash = fp.root_dao&.data&.fetch(:rows, [])&.first
+    # DEBUG ----------------------------------------------------------------
+    # binding.pry
+    # ----------------------------------------------------------------------
 
     l2 = PdfResults::L2Converter.new(data_hash, fp.season)
     logger.info('--> Converting to JSON & saving...')
