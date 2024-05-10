@@ -262,7 +262,7 @@ module PdfResults
       if @page_index >= @pages.count && @result_format_type.present?
         puts "\r\n--> \033[1;33;32mWHOLE document parsed! ✔\033[0m"
       else
-        puts "\r\n--> \033[1;33;31mParsing STOPPED at page idx #{@page_index - 1}/#{@pages.count}\033[0m"
+        puts "\r\n--> \033[1;33;31mParsing STOPPED at page idx #{@page_index + 1}/#{@pages.count}\033[0m"
       end
 
       @logger.close
@@ -329,8 +329,9 @@ module PdfResults
       row_index = 0
       ctx_name  = @format_order.at(ctx_index)
 
+      # === EMPTY PAGE ===
       if @rows.blank? # Skip empty pages and move forward:
-        log_message("\r\nEMPTY page found @ idx #{@page_index}")
+        log_message("\r\nEMPTY page found @ page idx #{@page_index}")
         $stdout.write("\033[1;33;32m.\033[0m") # "Valid" progress signal
         @result_format_type = 'EMPTY' # special "empty page" format name
         @checked_formats['EMPTY'] = { valid: true, valid_at: [@page_index] } # Store just last empty page encountered
@@ -366,10 +367,6 @@ module PdfResults
                                     ctx_name, result_icon_for(context_def), context_def.curr_index, context_def.consumed_rows,
                                     context_def.key))
         end
-        # DEBUG ----------------------------------------------------------------
-        # binding.pry if (ctx_name == 'event') && (row_index == 2)
-        # binding.pry if context_def&.dao&.fields_hash&.fetch('lap250', '') == '2:15.47'
-        # ----------------------------------------------------------------------
 
         row_index = progress_row_index_and_store_result(row_index, valid, @format_name, context_def)
         # DEBUG
@@ -386,13 +383,16 @@ module PdfResults
                  context_def.parent.blank?
 
         # == Recurse to parent when set:
-        # (NOT valid?) and (parent context existing?) and (check not repeated)
+        # (NOT valid?) and (parent context existing? && required) and (check not repeated)
         # => back/recurse to parent:
 
         # NOTE: the parent context may be set up with just its name if it hasn't been encountered yet, so we
         # make sure we're passing the actual parent name:
         parent_name = context_def.parent.respond_to?('name') ? context_def.parent.name : context_def.parent
-        if !valid && context_def.parent.present? && !check_already_made?(parent_name, row_index)
+        # Assume the parent was optional if it wasn't properly setup:
+        parent_required = context_def.parent.respond_to?('required?') ? context_def.parent.required? : false
+        if !valid && context_def.parent.present? && parent_required &&
+           !check_already_made?(parent_name, row_index)
           # Set pointers for next iteration:
           ctx_name = parent_name
           ctx_index = @format_order.index(ctx_name)
@@ -418,7 +418,10 @@ module PdfResults
             validate_context(ctx_name)
             log_message(Kernel.format("  \\__ checking next, '\033[94;3m%s\033[0m'", ctx_name))
           else
-            log_message("      <<-- \033[1;33;31mEND OF FORMAT '\033[1;93;40;3m#{@format_name}\033[0m' -->>")
+            log_message("      <<-- \033[1;33;31mEND OF FORMAT LOOP '\033[1;93;40;3m#{@format_name}\033[0m' -->>")
+            # DEBUG ----------------------------------------------------------------
+            # binding.pry
+            # ----------------------------------------------------------------------
           end
         end
         # DEBUG VERBOSE
@@ -426,68 +429,92 @@ module PdfResults
                                   row_index, context_def.name, context_def.curr_index, context_def.row_span))
         log_message("      \033[38;5;3m-----------------------------------------------------------------------\033[0m")
 
-        # Set the result at the end of context def scan
-        # (only after all required contexts have been found in the current page, whether or not we reached the end of the page)
+        # === STORE DATA ===
+        # ASAP the context scan is completed, even before page end, create/update
+        # the root DAO, so we don't miss "fragmented data pages" that may require
+        # the "Repeatable loop restart" to be parsed out completely:
         if valid && all_required_contexts_valid?(@format_name)
+          # Store data - append page daos to the root DAO:
+          @root_dao ||= ContextDAO.new
+          @page_daos.each { |dao| @root_dao.merge(dao) }
+        end
+
+        # === PAGE END/BREAK ===
+        # Handle page ends or page breaks (EOPs) or row limit when reached,
+        # only after ALL ctxs have been checked out.
+        # (Page change occurs only if there are NO more rows or if a EOP-context has been found valid,
+        #  in any other case, the current format should be considered as not checked out completely or invalid;
+        #  ctx could be repeatable in check until the actual end of rows and a required and repeatable ctx
+        #  could be found later on.)
+        if valid && all_required_contexts_valid?(@format_name) && (row_index >= @rows.count || context_def.eop?)
+          $stdout.write("\033[1;33;32m.\033[0m") # "Valid" progress signal (once per page)
           log_message(
             Kernel.format("\r\nFORMAT '\033[1;93;40;3m%s\033[0m' VALID! ✅ @ page %d/%d",
-                          @format_name, @page_index, @pages&.count.to_i)
+                          @format_name, @page_index + 1, @pages&.count.to_i)
           )
-          $stdout.write("\033[1;33;32m.\033[0m") # "Valid" progress signal
+          # Set the result at the end of all context def scan and only at the end of the page:
           @result_format_type = @format_name
+
           @checked_formats ||= {}
           @checked_formats[@format_name] ||= {}
           @checked_formats[@format_name][:valid] = true
           @checked_formats[@format_name][:valid_at] ||= []
-          @checked_formats[@format_name][:valid_at] << @page_index
-          @root_dao ||= ContextDAO.new
-          @page_daos.each { |dao| @root_dao.merge(dao) } # Store data: append page daos to the root DAO
+          @checked_formats[@format_name][:valid_at] << @page_index unless @checked_formats[@format_name][:valid_at].include?(@page_index)
 
-          # Handle page breaks (EOPs) or row limit when reached, only after ALL ctxs have been checked out:
-          # (Page change occurs only if there are NO more rows or if a EOP-context has been found valid,
-          #  in any other case, the current format should be considered as not checked out completely or invalid;
-          #  ctx could be repeatable in check until the actual end of rows and a required and repeatable ctx
-          #  could be found later on.)
-          if valid && (row_index >= @rows.count || context_def.eop?)
-            # Page progress & reset indexes:
-            @page_index += 1
-            set_current_page_rows(rewind: false)
-            row_index = 0
-            ctx_index = 0
-            ctx_name  = @format_order.first
-            msg = if @rows.count.positive?
-                    Kernel.format("\r\n  EOP found (%s): new page %d/%d", context_def.name, @page_index, @pages&.count.to_i)
-                  else
-                    Kernel.format("\r\n  EOF found (%s): no more rows.", context_def.name)
-                  end
-            log_message(msg)
-            log_message("\r\n[#{@format_name}] Scan result for detecting formats (resets each page change):")
-            @valid_scan_results[@format_name].each { |name, is_valid| log_message("- #{name}: #{is_valid ? "\033[1;33;32m✔\033[0m" : 'x'}") }
-
-            # Always reset page counters & page helpers before the next one (even when using same format):
-            @valid_scan_results = { @format_name => {} } # (This should reset on every page change)
-            @page_daos = []
-          end
-
-        elsif !valid && ctx_index >= @format_order.count
-          $stdout.write("\033[1;33;31m.\033[0m") # "INVALID format" progress signal (EOP reached w/ NOT all constraints satisfied)
-          @result_format_type = nil
+          # Page progress & reset indexes:
+          @page_index += 1
+          set_current_page_rows(rewind: false)
+          row_index = 0
+          ctx_index = 0
+          ctx_name  = @format_order.first
+          msg = if @rows.count.positive?
+                  Kernel.format("\r\n  EOP found (%s): new page %d/%d", context_def.name, @page_index, @pages&.count.to_i)
+                else
+                  Kernel.format("\r\n  EOF found (%s): no more rows.", context_def.name)
+                end
+          log_message(msg)
+          log_message("\r\n[#{@format_name}] Scan result for detecting formats (resets each page change):")
+          @valid_scan_results[@format_name].each { |name, is_valid| log_message("- #{name}: #{is_valid ? "\033[1;33;32m✔\033[0m" : 'x'}") }
         end
 
-        # Continue scanning page with this format only if we have more rows to process
-        # and there are other context defs to check:
+        # === "REPEATABLES" RESTART ===
+        # Valid or not, if there are still rows to process and we have "Repeatables" to check,
+        # restart the loop from the first "repeatable" context stored:
+        if (row_index < @rows.count) && (ctx_index >= @format_order.count) && @repeatable_defs.keys.present? &&
+           !check_already_made?(@repeatable_defs.keys.first, row_index)
+          # Set pointers for next iteration - RESTART "repeatables":
+          ctx_name = @repeatable_defs.keys.first
+          ctx_index = @format_order.index(ctx_name)
+          validate_context(ctx_index)
+          log_message(Kernel.format("  \\__ (RESTARTING repeatables from first: '\033[94;3m%s\033[0m')", ctx_name))
+        end
+
+        # Make sure the result format is cleared out at the end of each loop, unless found ok:
+        @result_format_type = nil unless valid
+
+        # Continue scanning page with this format whenever we have more rows to process
+        # AND still other context defs to check out at the current row pointer:
         continue_scan = (row_index < @rows.count) && (ctx_index < @format_order.count)
+        next unless continue_scan
+
+        # Always reset page result counters & page DAOs before the next iteration
+        # (even when using same format - any DAOs found valid are "storable" only if the
+        # whole page satisfies the layout definition and the DAOs should have been already
+        # merged before the following lines):
+        @valid_scan_results = { @format_name => {} } # (This should reset on every page change)
+        @page_daos = []
       end
 
-      unless valid && @rows.present?
+      unless valid
+        $stdout.write("\033[1;33;31m.\033[0m") # "INVALID format" progress signal (EOP reached, or not, w/o some of the constraints satisfied)
         # Output where last format stopped being valid:
-        puts("'#{@format_name}' [#{ctx_name}] => stops @ page idx #{@page_index}")
+        puts("'#{@format_name}' [#{ctx_name}] => stops @ page idx #{@page_index}") if @rows.present?
       end
 
       log_message("\r\nLast check for repeatable defs (w/ stopping index):")
       @repeatable_defs.each do |name, hsh|
         log_message(
-          Kernel.format('- %<name>s: last checked @ row: %<last_check>d => %<check_result>s, valid for pages: %<valid_list>s',
+          Kernel.format('- %<name>s: last checked @ row: %<last_check>d => %<check_result>s, valid rows (in valid pages): %<valid_list>s',
                         name:, last_check: hsh[:last_check].to_i,
                         check_result: hsh[:valid] ? "\033[1;33;32m✔\033[0m" : 'x',
                         valid_list: hsh.fetch(:valid_at, []).flatten.uniq.to_s)
@@ -711,12 +738,12 @@ module PdfResults
       # properly validated.
       #
       # See app/strategies/pdf_results/formats/1-ficr1.100m.yml format for an actual example:
-      # if the row_index is increase always of the row_span, some misalignment may occur when
+      # if the row_index is increased always of the row_span, some misalignment may occur when
       # parsing results that can span a max of 3 rows but most of the times they occupy just 2.
     end
 
-    # Returns true if the specified context_def name has already verified with a run at this same row_index.
-    # False otherwise.
+    # Returns true if the specified context_def name has already been verified with a
+    # run at this same row_index. False otherwise.
     # === Note:
     # The idea is to avoid infinite loops without using recursion: we need to streamline the loops
     # and avoid checking rows or extracting from rows more than once if already done, independently

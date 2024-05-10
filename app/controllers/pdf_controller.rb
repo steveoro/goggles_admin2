@@ -60,11 +60,11 @@ class PdfController < ApplicationController
     @last_valid_scan = fp.valid_scan_results
     return if fp.result_format_type.blank?
 
-    logger.info("\r\n--> Extracting data hash...")
+    logger.info('--> Extracting data hash...')
     data_hash = fp.root_dao&.data&.fetch(:rows, [])&.first
 
     l2 = PdfResults::L2Converter.new(data_hash, fp.season)
-    logger.info("\r\n--> Converting to JSON & saving...")
+    logger.info('--> Converting to JSON & saving...')
     FileUtils.mkdir_p(File.dirname(@json_pathname)) # Ensure existence of the destination path
     File.write(@json_pathname, l2.to_hash.to_json)
   end

@@ -113,16 +113,20 @@ module PdfResults
       resulting_sections = []
 
       @data.fetch(:rows, [{}]).each_with_index do |event_hash, _idx| # rubocop:disable Metrics/BlockLength
-        # Ignore unsupported contexts at this depth level:
         if event_hash[:name] == 'ranking_hdr'
           section = ranking_section(event_hash)
           resulting_sections << section if section.present?
         end
+        if event_hash[:name] == 'stats_hdr'
+          section = stats_section(event_hash)
+          resulting_sections << section if section.present?
+        end
+        # Ignore other unsupported contexts at this depth level:
         next unless event_hash[:name] == 'event'
 
         # Sometimes the gender type may be found inside the EVENT title
         # (as in "4X50m Stile Libero Master Maschi"):
-        event_title, event_length, event_type_name, gender_code = fetch_event_title(event_hash)
+        event_title, event_length, _event_type_name, gender_code = fetch_event_title(event_hash)
         # Reset event related category (& gender, if available):
         curr_rel_cat_code = nil
         curr_rel_cat_gender = gender_code
@@ -230,13 +234,13 @@ module PdfResults
       }
     end
 
-    # Builds up the "event" section that will hold the overall team ranking rows.
+    # Builds up the "event" section that will hold the overall team ranking rows (when present).
     def ranking_section(event_hash)
       return unless event_hash.is_a?(Hash)
 
       section = {
         'title' => 'Overall Team Ranking',
-        'ranking' => true,
+        'ranking' => true, # Commodity flag used by the MacroSolver
         'rows' => []
       }
       event_hash.fetch(:rows, [{}]).each do |ranking_hash|
@@ -248,6 +252,29 @@ module PdfResults
           'team' => ranking_hash.fetch(:fields, {})['team_name'],
           'ind_score' => ranking_hash.fetch(:fields, {})['ind_score'],
           'overall_score' => ranking_hash.fetch(:fields, {})['overall_score']
+        }
+      end
+
+      section
+    end
+
+    # Builds up the "stats" section that will hold the overall statistics rows for
+    # the whole Meeting (when present).
+    def stats_section(event_hash)
+      return unless event_hash.is_a?(Hash)
+
+      section = {
+        'title' => 'Overall Stats',
+        'stats' => true, # Commodity flag used by the MacroSolver
+        'rows' => []
+      }
+      event_hash.fetch(:rows, [{}]).each do |ranking_hash|
+        # Ignore unsupported contexts at this depth level:
+        next unless ranking_hash[:name] == 'stats'
+
+        section['rows'] << {
+          'stats_label' => ranking_hash.fetch(:fields, {})['stats_label'],
+          'stats_value' => ranking_hash.fetch(:fields, {})['stats_value']
         }
       end
 
@@ -476,13 +503,19 @@ module PdfResults
     # of an array of integers when the 'pool_type' field is found in the footer.
     # Returns an empty array ([]) otherwise.
     def fetch_pool_type
-      # Structure:
+      # Retrieve pool_type from header when available & return:
+      pool_type_len = @data.fetch(:fields, {})&.fetch('pool_type', '')
+      return [nil, pool_type_len] if pool_type_len.present?
+
+      # Fallback: search in footer, as in 1-ficr1
+
+      # Structure from 1-ficr1:
       #   data => header
       #     data[:rows] => event
       #       data[:rows].first[:rows] => category || footer
       footer = @data.fetch(:rows, [{}])&.first&.[](:rows)&.find { |h| h[:name] == 'footer' }
 
-      # Footer example:
+      # Supported footer example:
       # {:name=>"footer", :key=>"8 corsie 25m|Risultati su https://...",
       #  :fields=>{"pool_type"=>"8 corsie 25m",
       #            "page_delimiter"=>"Risultati su https://..."}, :rows=>[]}
@@ -529,8 +562,17 @@ module PdfResults
     def fetch_category_code(category_hash)
       raise 'Unsupported Category hash!' unless category_hash.is_a?(Hash) && category_hash[:name] == 'category'
 
-      # Example ('category')....: :key=>"M55 Master Maschi 55 - 59"
-      category_hash.fetch(:key, '').split(' ').first
+      # *** Context 'category' ***
+      key = category_hash.fetch(:key, '')
+
+      # Example key 1 => "M55 Master Maschi 55 - 59"
+      if /\s*([UAM]\d{2}(\sUnder|\sMaster)?\s(Femmine|Maschi))/ui.match?(key)
+        key.split.first
+
+      # Example key 2 => "<length>|<style>|<gender_label>|Master \d\d|<base_timing>|"
+      elsif /\d{2,4}\|(?>stile(?>\slibero)?|dorso|rana|delfino|farfalla|misti)\|(maschil?.?|femminil?.?)\|(?>Master|Under)\s\d{2}\|/ui.match?(key)
+        key.split('|')&.at(3)&.gsub(/Master /i, 'M')&.gsub(/Under /i, 'U')
+      end
     end
 
     # Gets the relay result category code given its data hash.
@@ -555,11 +597,19 @@ module PdfResults
     def fetch_category_gender(category_hash)
       raise 'Unsupported Category hash!' unless category_hash.is_a?(Hash) && category_hash[:name] == 'category'
 
-      # Example ('category')....: :key=>"M55 Master Maschi 55 - 59"
-      category_hash.fetch(:key, '')
-                   .split(/\s?(master|under)\s?/i)
-                   &.last&.split(/\s/)&.first
-                   &.at(0)&.upcase
+      # *** Context 'category' ***
+      key = category_hash.fetch(:key, '')
+
+      # Example key 1 => "M55 Master Maschi 55 - 59"
+      if /\s*([UAM]\d{2}(\sUnder|\sMaster)?\s(Femmine|Maschi))/ui.match?(key)
+        key.split(/\s?(master|under)\s?/i)
+           &.last&.split(/\s/)&.first
+           &.at(0)&.upcase
+
+      # Example key 2 => "<length>|<style>|<gender_label>|Master \d\d|<base_timing>|"
+      elsif /\d{2,4}\|(?>stile(?>\slibero)?|dorso|rana|delfino|farfalla|misti)\|(maschil?.?|femminil?.?)\|(?>Master|Under)\s\d{2}\|/ui.match?(key)
+        key.split('|')&.at(2)&.at(0)&.upcase
+      end
     end
 
     # Gets the relay category gender code as a single char, given its source data hash.

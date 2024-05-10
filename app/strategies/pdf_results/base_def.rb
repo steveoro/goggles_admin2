@@ -17,7 +17,7 @@ module PdfResults
     # == Required properties:
     # - +name+ => name of this BaseDef
     #
-    def initialize(properties = {})
+    def initialize(properties = {}) # rubocop:disable Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
       raise "Missing required 'name' for #{self.class.name}!" unless properties.stringify_keys.key?('name')
 
       init_supported_properties

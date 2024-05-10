@@ -559,13 +559,12 @@ module PdfResults
         #   binding.pry
         # end
         # ----------------------------------------------------------------------
-        # Bail out for expected blank rows:
+        # Bail out for expected blank rows but respect their override row_span (which could be >1):
         # (Let's not bother to apply format in this case 'cos it won't work as blanks aren't supported by #apply_format)
         # Note: the only way to support blank empty lines is to specify the "^$" format.
         if curr_buffer.blank? && format == /^$/i
-          # WAS: @curr_index = scan_index = scan_index + 1
-          @consumed_rows = 1
-          @curr_index += 1
+          @consumed_rows = row_span # (Setting to row_span instead of 1 allows us to skip through multiple empty rows with a single ContextDef)
+          @curr_index += row_span
           @last_validation_result = true
           return true
         end
@@ -580,9 +579,9 @@ module PdfResults
         if curr_buffer.is_a?(String)
           curr_buffer.strip!
           if curr_buffer.present? # (Add data values when present regardless being required or not)
-            @consumed_rows = 1
+            @consumed_rows = row_span # (see note on line 566 above)
             @last_validation_result = true
-            @data_hash.merge!({ name => curr_buffer })
+            @data_hash[name] = curr_buffer
           end
         end
       end
@@ -620,17 +619,17 @@ module PdfResults
         log_message(obj: field_def, scan_index:, source_row:, depth: parent.present? ? 2 : 1)
 
         # Add data values when present regardless being required or not:
-        @data_hash.merge!(field_def.name => field_def.value) if field_def.value.present?
+        @data_hash[field_def.name] = field_def.value if field_def.value.present?
 
         field_def.value.present? || !field_def.required?
       end
-      # Update consumed rows:
-      @consumed_rows = 1 if valid && key.present?
+      # Update consumed rows: (see note on line 566 above)
+      @consumed_rows = row_span if valid && key.present?
 
       # Force valid when fields may not have extracted any key with an empty buffer BUT 'optional_if_empty?':
-      if fields.present? && optional_if_empty? && curr_buffer.all? { |r| r.blank? }
+      if fields.present? && optional_if_empty? && curr_buffer.all?(&:blank?)
         valid = true
-        @consumed_rows = 1
+        @consumed_rows = row_span # (see note on line 566 above)
       end
       # DEBUG ----------------------------------------------------------------
       # if name == 'event' && (scan_index == 2)
@@ -685,12 +684,12 @@ module PdfResults
 
         # Add data values when present regardless being required or not:
         # (Context 'name' here acts as a key to identify the latest context data-as-key being extracted)
-        @data_hash.merge!(sub_context.name => sub_context.key) if sub_context.key.present?
+        @data_hash[sub_context.name] = sub_context.key if sub_context.key.present?
 
         valid || !sub_context.required?
       end
       # Still valid if rows failed because buffer is all empty but 'optional_if_empty?' is set:
-      if rows.present? && !valid && optional_if_empty? && curr_buffer.all? { |r| r.blank? }
+      if rows.present? && !valid && optional_if_empty? && curr_buffer.all?(&:blank?)
         valid = true
         # Increase consumed rows of all the row_span, given optional_if_empty applies
         # to this whole container context:
