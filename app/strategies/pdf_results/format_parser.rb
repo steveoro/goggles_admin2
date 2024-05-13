@@ -37,6 +37,9 @@ module PdfResults
   #
   # rubocop:disable Metrics/ClassLength
   class FormatParser
+    # FormatParser will throw an exception if the format validity check of a ContextDef takes more than this value of seconds.
+    REGEXP_TIMEOUT_IN_SEC = 5.0
+
     # Source document and its copy split in pages & rows
     attr_reader :document, :pages, :page_index
 
@@ -349,9 +352,12 @@ module PdfResults
 
         # Validate current context by extraction:
         # DEBUG
-        log_message(Kernel.format("\r\n➡ row %04d/%04d, p: %s/%s [\033[1;94;3m%s\033[0m: '\033[1;93;40m%s\033[0m', ctx %02d/%02d]",
-                                  row_index, @rows.count - 1, @page_index + 1, @pages.count, @format_name, ctx_name, ctx_index + 1, @format_order.count))
-
+        if @debug
+          log_message(
+            Kernel.format("\r\n➡ row %04d/%04d, p: %s/%s [\033[1;94;3m%s\033[0m: '\033[1;93;40m%s\033[0m', ctx %02d/%02d]",
+                          row_index, @rows.count - 1, @page_index + 1, @pages.count, @format_name, ctx_name, ctx_index + 1, @format_order.count)
+          )
+        end
         # -----------------------------------------------------------------------
         # TODO: FIND a way to reference actual parent container valid? AND NOT last_check_result,
         #       which may or may not refer to the current parent while being run on the same buffer
@@ -360,9 +366,21 @@ module PdfResults
         # Parent, if set, must be valid too for a sibling to pass the check:
         # parent_valid = context_def.parent.blank? || (context_def.parent.present? && context_def.parent.last_validation_result)
         # -----------------------------------------------------------------------
-        valid = context_def.valid?(@rows, row_index) # && parent_valid (NOT currently possible, as valid? gets overridden each time)
+
         # DEBUG
-        if context_def.key.present? || context_def.consumed_rows.positive?
+        # Signal the start of the validity check before doing it, so that we can spot RegExps with possible catastrophic backtracking
+        # (anthing more than a handful of seconds surely involves too many steps)
+        # $stdout.write("\033[1;33;30m?\033[0m")
+        valid = false
+        timing = Benchmark.measure do
+          # Can't *AND* the following check with parent_valid as this is NOT currently possible: valid? gets overridden each time
+          valid = context_def.valid?(@rows, row_index)
+        end
+        # Prevent excessive RegExp backtracking (unit = seconds):
+        raise "Excessive RegExp backtracking: timeout reached! Try to be more precise for the format of '#{context_def.name}'" if timing.real > REGEXP_TIMEOUT_IN_SEC
+
+        # DEBUG
+        if @debug && (context_def.key.present? || context_def.consumed_rows.positive?)
           log_message(Kernel.format("  [%s] => %s -- curr_index: %d, consumed_rows: %d\r\n  |=> key: '\033[1;33;32m%s\033[0m'",
                                     ctx_name, result_icon_for(context_def), context_def.curr_index, context_def.consumed_rows,
                                     context_def.key))
@@ -370,7 +388,7 @@ module PdfResults
 
         row_index = progress_row_index_and_store_result(row_index, valid, @format_name, context_def)
         # DEBUG
-        if context_def.last_validation_result
+        if @debug && context_def.last_validation_result
           log_message(Kernel.format("  |=> next: %04d/%04d (from: '%s' ctx idx: %d, ctx span: %d)", row_index, @rows.count - 1,
                                     context_def.name, context_def.curr_index, context_def.row_span))
         end
@@ -385,7 +403,6 @@ module PdfResults
         # == Recurse to parent when set:
         # (NOT valid?) and (parent context existing? && required) and (check not repeated)
         # => back/recurse to parent:
-
         # NOTE: the parent context may be set up with just its name if it hasn't been encountered yet, so we
         # make sure we're passing the actual parent name:
         parent_name = context_def.parent.respond_to?('name') ? context_def.parent.name : context_def.parent
@@ -397,6 +414,7 @@ module PdfResults
           ctx_name = parent_name
           ctx_index = @format_order.index(ctx_name)
           validate_context(ctx_index)
+          # $stdout.write("\033[1;33;30mP\033[0m") # signal "PARENT"
           log_message(Kernel.format("  \\__ (back to PARENT '\033[94;3m%s\033[0m')", ctx_name))
 
         # == Recurse to previous context if it was repeatable:
@@ -408,6 +426,8 @@ module PdfResults
           ctx_index -= 1
           ctx_name  = @format_order.at(ctx_index)
           validate_context(ctx_name)
+          # DEBUG
+          # $stdout.write("\033[1;33;30m⬅\033[0m") # signal "BACK to prev."
           log_message(Kernel.format("  \\__ (back to prev. '\033[94;3m%s\033[0m')", ctx_name))
 
         # == Next context: in any other case, always move forward to next context
@@ -416,18 +436,21 @@ module PdfResults
           if ctx_index < @format_order.count
             ctx_name = @format_order.at(ctx_index)
             validate_context(ctx_name)
+            # DEBUG
+            # $stdout.write("\033[1;33;30m_\033[0m") # signal "NEXT"
             log_message(Kernel.format("  \\__ checking next, '\033[94;3m%s\033[0m'", ctx_name))
           else
             log_message("      <<-- \033[1;33;31mEND OF FORMAT LOOP '\033[1;93;40;3m#{@format_name}\033[0m' -->>")
-            # DEBUG ----------------------------------------------------------------
-            # binding.pry
-            # ----------------------------------------------------------------------
+            # $stdout.write("\033[1;33;30m^\033[0m") # signal "Ctx Loop wrap"
           end
         end
+
         # DEBUG VERBOSE
-        log_message(Kernel.format("      At loop wrap: idx => %04d (from: '\033[94;3m%s\033[0m' idx: %d, span: %d)",
-                                  row_index, context_def.name, context_def.curr_index, context_def.row_span))
-        log_message("      \033[38;5;3m-----------------------------------------------------------------------\033[0m")
+        if @debug
+          log_message(Kernel.format("      At loop wrap: idx => %04d (from: '\033[94;3m%s\033[0m' idx: %d, span: %d)",
+                                    row_index, context_def.name, context_def.curr_index, context_def.row_span))
+          log_message("      \033[38;5;3m-----------------------------------------------------------------------\033[0m")
+        end
 
         # === STORE DATA ===
         # ASAP the context scan is completed, even before page end, create/update
@@ -436,6 +459,8 @@ module PdfResults
         if valid && all_required_contexts_valid?(@format_name)
           # Store data - append page daos to the root DAO:
           @root_dao ||= ContextDAO.new
+          # DEBUG
+          # $stdout.write("\033[1;33;30mm\033[0m") # Signal "Merge DAOs"
           @page_daos.each { |dao| @root_dao.merge(dao) }
         end
 
@@ -475,6 +500,13 @@ module PdfResults
           log_message(msg)
           log_message("\r\n[#{@format_name}] Scan result for detecting formats (resets each page change):")
           @valid_scan_results[@format_name].each { |name, is_valid| log_message("- #{name}: #{is_valid ? "\033[1;33;32m✔\033[0m" : 'x'}") }
+
+          # Always reset page result counters & page DAOs before the next iteration
+          # (even when using same format - any DAOs found valid are "storable" only if the
+          # whole page satisfies the layout definition and the DAOs should have been already
+          # merged before the following lines):
+          @valid_scan_results = { @format_name => {} } # (This should reset on every page change)
+          @page_daos = []
         end
 
         # === "REPEATABLES" RESTART ===
@@ -486,6 +518,8 @@ module PdfResults
           ctx_name = @repeatable_defs.keys.first
           ctx_index = @format_order.index(ctx_name)
           validate_context(ctx_index)
+          # DEBUG
+          # $stdout.write("\033[1;33;30m♻\033[0m") # Restart loop signal
           log_message(Kernel.format("  \\__ (RESTARTING repeatables from first: '\033[94;3m%s\033[0m')", ctx_name))
         end
 
@@ -495,18 +529,10 @@ module PdfResults
         # Continue scanning page with this format whenever we have more rows to process
         # AND still other context defs to check out at the current row pointer:
         continue_scan = (row_index < @rows.count) && (ctx_index < @format_order.count)
-        next unless continue_scan
-
-        # Always reset page result counters & page DAOs before the next iteration
-        # (even when using same format - any DAOs found valid are "storable" only if the
-        # whole page satisfies the layout definition and the DAOs should have been already
-        # merged before the following lines):
-        @valid_scan_results = { @format_name => {} } # (This should reset on every page change)
-        @page_daos = []
       end
 
       unless valid
-        $stdout.write("\033[1;33;31m.\033[0m") # "INVALID format" progress signal (EOP reached, or not, w/o some of the constraints satisfied)
+        $stdout.write("\033[1;33;31m✖\033[0m") # "INVALID format" progress signal (EOP reached, or not, w/o some of the constraints satisfied)
         # Output where last format stopped being valid:
         puts("'#{@format_name}' [#{ctx_name}] => stops @ page idx #{@page_index}") if @rows.present?
       end
@@ -691,11 +717,13 @@ module PdfResults
     def progress_row_index_and_store_result(row_index, valid_result, format_name, context_def)
       # Memorize last check made when the def can be checked on multiple buffer chunks:
       if context_def.repeat?
+        # DEBUG
+        # $stdout.write("\033[1;33;30mr\033[0m") # Signal "Repeatable check update"
         @repeatable_defs[context_def.name] ||= {}
         @repeatable_defs[context_def.name][:last_check] = row_index
         @repeatable_defs[context_def.name][:valid] = valid_result
         @repeatable_defs[context_def.name][:valid_at] ||= []
-        @repeatable_defs[context_def.name][:valid_at] << row_index if valid_result
+        @repeatable_defs[context_def.name][:valid_at] << row_index if valid_result && @repeatable_defs[context_def.name][:valid_at].exclude?(row_index)
       end
 
       # Prepare a scan result report, once per context name:
@@ -712,11 +740,6 @@ module PdfResults
       # Find parent context if any:
       # (Retrieve parent ctx in lookup table or use the link if it's not a name -- may be nil, don't care)
       parent_ctx = context_def.parent.is_a?(String) ? @format_defs.fetch(context_def.parent, nil) : context_def.parent
-      # DEBUG ----------------------------------------------------------------
-      # binding.pry if (ctx_name == 'event') && (row_index == 2)
-      # binding.pry if context_def&.dao&.fields_hash&.fetch('lap250', '') == '2:15.47' ||
-      #                parent_ctx&.dao&.fields_hash&.fetch('lap250', '') == '2:15.47'
-      # ----------------------------------------------------------------------
 
       # Store data: add DAO to parent rows if parent && there was something
       # stored in the DAO:
@@ -727,6 +750,8 @@ module PdfResults
         # (ELSE: don't append empties unless there's an actual DAO)
       end
 
+      # DEBUG
+      # $stdout.write("\033[1;33;30mC\033[0m") # Signal "Consumed rows"
       # Consume the scanned row(s) if found:
       row_index + context_def.consumed_rows
 
