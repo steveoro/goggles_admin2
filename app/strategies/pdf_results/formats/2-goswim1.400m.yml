@@ -3,7 +3,7 @@
 #
 # 2022~ version with logo on top
 #
-2-goswim1:
+2-goswim1.400m:
   - name: pre_header
     at_fixed_row: 0
     required: false
@@ -87,12 +87,17 @@
       # "event" row-3:
       - fields:
         - name: event_sub_hdr
-          format: "^\\s{1,}POS ATLETA\\s{10,}ANNO\\s{10,}ARRIVO$"
+          format: "^\\s{1,}POS ATLETA\\s{10,}ANNO\\s{3,}50m\\s{3,}100m\\s{3,}150m\\s{3,}200m\\s{3,}250m\\s{3,}300m\\s{3,}350m\\s{3,}ARRIVO$"
 
       # "event" row-4:
       - fields:
         - name: event_sub_hdr2
           format: "^\\s{5,}SOCIETA\\s{20,}PUNTI$"
+
+      # "event" row-5 (optional):
+      - name: event_sep3
+        required: false
+        format: "^$"
 
   # Actual data starts here:
   - name: results
@@ -109,24 +114,45 @@
           # Rank will be missing for DSQs:
           required: false
         - name: swimmer_name
-          format: "^(?>\\d{0,2}\\s+)([A-z]+(?>[A-z'`\\-\\s]\\s?[A-z]*){2,7})\\s*\\d{4}\\s{10,}"
+          format: "^(?>\\d{0,2}\\s+)([A-z]+(?>[A-z'`\\-\\s]\\s?[A-z]*){2,7})\\s+\\d{4}\\s{2,}"
           pop_out: false
         - name: year_of_birth
-          format: "^\\d{0,2}\\s*.+\\s+(\\d{4})\\s{10,}"
-          pop_out: false
-        - name: timing
-          format: "\\s+\\d{4}\\s{10,}(Non part|Squalif|Assente|\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})"
+          format: "^\\d{0,2}\\s*.+\\s+(\\d{4})\\s{2,}"
           pop_out: false
 
-      # NOTE: enabling this will mess up recognition because there's no easy way
-      #       to discriminate between team_name & swimmer_name_ext for DSQs. Edit the txt file instead!
-      # "results" row-1 (optional):
-      # - fields:
-      #   # Multiple names sometimes wrap into a newline:
-      #   - name: swimmer_name_ext
-      #     format: "^\\s{7,}([A-z]+(?>[A-z'`\\-\\s]\\s?[A-z]*){1,7})$"
-      #     required: false
-      #     pop_out: false
+        - name: lap50
+          format: "\\s+\\d{4}\\s{2,}(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s+"
+          pop_out: false
+          required: false
+        - name: lap100
+          format: "\\s+\\d{4}\\s{2,}(?>\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s+(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s+"
+          pop_out: false
+          required: false
+        - name: lap150
+          format: "\\s+\\d{4}\\s{2,}(?>\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2}\\s+){2}(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s+"
+          pop_out: false
+          required: false
+
+        - name: lap200
+          format: "\\s+\\d{4}\\s{2,}(?>\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2}\\s+){3}(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s+"
+          pop_out: false
+          required: false
+        - name: lap250
+          format: "\\s+\\d{4}\\s{2,}(?>\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2}\\s+){4}(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s+"
+          pop_out: false
+          required: false
+        - name: lap300
+          format: "\\s+\\d{4}\\s{2,}(?>\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2}\\s+){5}(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s+"
+          pop_out: false
+          required: false
+        - name: lap350
+          format: "\\s+\\d{4}\\s{2,}(?>\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2}\\s+){6}(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s+"
+          pop_out: false
+          required: false
+
+        - name: timing
+          format: "\\s+\\d{4}\\s{2,}.+\\s+(Non part|Squalif|Assente|\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})$"
+          pop_out: false
 
       # "results" row-2:
       - fields:
@@ -134,6 +160,41 @@
           format: "^\\s{6,}(\\S.+\\S)\\s?"
           pop_out: false
           token_end: 45
+
+        - name: delta50
+          format: "\\s{8,}(\\d{0,2}[':.]?\\d{2}[\":.]\\d{2})\\s+"
+          pop_out: false
+          required: false
+        - name: delta100
+          format: "\\s{8,}(?>\\d{0,2}[':.]?\\d{2}[\":.]\\d{2})\\s+(\\d{0,2}[':.]?\\d{2}[\":.]\\d{2})\\s+"
+          pop_out: false
+          required: false
+        - name: delta150
+          format: "\\s{8,}(?>\\d{0,2}[':.]?\\d{2}[\":.]\\d{2}\\s+){2}(\\d{0,2}[':.]?\\d{2}[\":.]\\d{2})\\s+"
+          pop_out: false
+          required: false
+        - name: delta200
+          format: "\\s{8,}(?>\\d{0,2}[':.]?\\d{2}[\":.]\\d{2}\\s+){3}(\\d{0,2}[':.]?\\d{2}[\":.]\\d{2})\\s+"
+          pop_out: false
+          required: false
+
+        - name: delta250
+          format: "\\s{8,}(?>\\d{0,2}[':.]?\\d{2}[\":.]\\d{2}\\s+){4}(\\d{0,2}[':.]?\\d{2}[\":.]\\d{2})\\s+"
+          pop_out: false
+          required: false
+        - name: delta300
+          format: "\\s{8,}(?>\\d{0,2}[':.]?\\d{2}[\":.]\\d{2}\\s+){5}(\\d{0,2}[':.]?\\d{2}[\":.]\\d{2})\\s+"
+          pop_out: false
+          required: false
+        - name: delta350
+          format: "\\s{8,}(?>\\d{0,2}[':.]?\\d{2}[\":.]\\d{2}\\s+){6}(\\d{0,2}[':.]?\\d{2}[\":.]\\d{2})\\s+"
+          pop_out: false
+          required: false
+        - name: delta400
+          format: "\\s{8,}(?>\\d{0,2}[':.]?\\d{2}[\":.]\\d{2}\\s+){7}(\\d{0,2}[':.]?\\d{2}[\":.]\\d{2})\\s+"
+          pop_out: false
+          required: false
+
         - name: std_score
           format: "\\s+(\\d?[',.]?\\d{0,4}[,.]\\d{1,2})$"
           pop_out: false
@@ -156,7 +217,6 @@
   - name: results_ext
     parent: results
     required: false
-    # This will match any empty row if the fields are not found:
     format: "^\\s{8,}-\\s((?>[[:alnum:]]+\\s?){2,}\\w*)$"
 
   # - name: empty_row
