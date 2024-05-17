@@ -64,7 +64,7 @@
     parent: event
     rows:
       - name: cat_title
-        format: "\\s+((Under|Master)\\s(Misti|Femmine|Maschi)(\\s(\\d{2}\\s-\\s\\d{2}))?)[\\b\\n]?"
+        format: "\\s+((?>Under|Master)\\s(?>Misti|Femmin\w*|Masch\w*)(?>\\s(?>\\d{2,3}\\s-\\s\\d{2,3}))?)[\\b\\n]?"
 
   - name: rel_team
     repeat: true

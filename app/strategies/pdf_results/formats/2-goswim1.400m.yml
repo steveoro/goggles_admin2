@@ -17,6 +17,7 @@
   - name: header
     at_fixed_row: 0
     repeat: true
+    # keys: [edition,meeting_name,meeting_name_ext,meeting_place,meeting_date,pool_type]
     rows:
       - name: hdr_row0
         fields:
@@ -43,9 +44,9 @@
           token_end: 45
 
       # "header" row-3
-      - fields:
-        - name: hdr_results
-          format: "^\\s{20,}RISULTATI"
+      - name: hdr_results
+        # (With no keys, no fields & no capture in format this line will be ignored in data extraction)
+        format: "^\\s{20,}RISULTATI\\s+Cronometraggio:\\s"
 
       # "header" row-4
       - fields:
@@ -71,13 +72,13 @@
           format: "^\\.\\s{10,}(\\d{2,4})\\s+"
           pop_out: false
         - name: event_type
-          format: "^\\.\\s{10,}(?>\\d{2,4})\\s(Stile libero|Dorso|Farfalla|Rana)\\sMASTER\\s\\d{2,3}\\s(?>Masch|Femmin)ile - Serie\\s+"
+          format: "^\\.\\s{10,}(?>\\d{2,4})\\s(Stile libero|Dorso|Farfalla|Rana|Misti)\\sMASTER\\s\\d{2,3}\\s(?>Masch|Femmin)ile - Serie\\s+"
           pop_out: false
         - name: gender_type
-          format: "\\s(?>Stile libero|Dorso|Farfalla|Rana)\\sMASTER\\s\\d{2,3}\\s(Masch|Femmin)ile - Serie\\s+"
+          format: "\\s(?>Stile libero|Dorso|Farfalla|Rana|Misti)\\sMASTER\\s\\d{2,3}\\s(Masch|Femmin)ile - Serie\\s+"
           pop_out: false
         - name: cat_title
-          format: "\\s(?>Stile libero|Dorso|Farfalla|Rana)\\s(MASTER\\s\\d{2,3})\\s(?>Masch|Femmin)ile - Serie\\s+"
+          format: "\\s(?>Stile libero|Dorso|Farfalla|Rana|Misti)\\s(MASTER\\s\\d{2,3})\\s(?>Masch|Femmin)ile - Serie\\s+"
           pop_out: false
 
       # "event" row-2:
@@ -85,14 +86,12 @@
         format: "^$"
 
       # "event" row-3:
-      - fields:
-        - name: event_sub_hdr
-          format: "^\\s{1,}POS ATLETA\\s{10,}ANNO\\s{3,}50m\\s{3,}100m\\s{3,}150m\\s{3,}200m\\s{3,}250m\\s{3,}300m\\s{3,}350m\\s{3,}ARRIVO$"
+      - name: event_sub_hdr
+        format: "^\\s{1,}POS\\sATLETA\\s{10,}ANNO\\s{3,}50m\\s{3,}100m\\s{3,}150m\\s{3,}200m\\s{3,}250m\\s{3,}300m\\s{3,}350m\\s{3,}ARRIVO$"
 
       # "event" row-4:
-      - fields:
-        - name: event_sub_hdr2
-          format: "^\\s{5,}SOCIETA\\s{20,}PUNTI$"
+      - name: event_sub_hdr2
+        format: "^\\s{5,}SOCIETA\\s{20,}PUNTI$"
 
       # "event" row-5 (optional):
       - name: event_sep3
@@ -206,18 +205,18 @@
     parent: results
     required: false
     row_span: 3
-    format: "^\\s{8,}-\\s(((?>[[:alnum:]]+\\s?){2,})(?>\\s{8,}((?>[[:alnum:]]+\\s?){2,}))(?>\\s{8,}((?>[[:alnum:]]+\\s?){2,})))"
+    format: "^\\s{8,}-\\s((?>[[:alnum:]]+\\s?){2,}\\s{8,}(?>(?>(?!.+\\s+\\d{4}\\s{3,})[[:alnum:]]+\\s?){2,})\\s{8,}(?>(?>(?!.+\\s+\\d{4}\\s{3,})[[:alnum:]]+\\s?){1,}))"
 
   - name: results_ext_x2
     parent: results
     required: false
     row_span: 2
-    format: "^\\s{8,}-\\s((?>(?>[[:alnum:]]+\\s?){2,}\\w*)(?>\\s{8,}((?>[[:alnum:]]+\\s?){2,})))"
+    format: "^\\s{8,}-\\s((?>[[:alnum:]]+\\s?){2,}\\s{8,}(?>(?>(?!.+\\s+\\d{4}\\s{3,})[[:alnum:]]+\\s?){2,}))"
 
   - name: results_ext
     parent: results
     required: false
-    format: "^\\s{8,}-\\s((?>[[:alnum:]]+\\s?){2,}\\w*)$"
+    format: "^\\s{8,}-\\s((?>(?!.+\\s+\\d{4}\\s{3,})[[:alnum:]]+\\s?){2,})"
 
   # - name: empty_row
   #   parent: event

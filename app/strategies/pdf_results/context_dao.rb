@@ -96,15 +96,6 @@ module PdfResults
     #-- -----------------------------------------------------------------------
     #++
 
-    # Debug helper for building spec mocks for this class.
-    # Bypasses and overrides DAO values retrieval by using the specified data Hash
-    # for setting the results of #data & #field_hash.
-    def force_debug_mock_values(data_hash)
-      # TODO
-    end
-    #-- -----------------------------------------------------------------------
-    #++
-
     # Collects the whole sub-hierarchy data Hash associated with this instance
     # considering any sibling DAOs stored in #rows.
     # Returns the Hash having as elements the values for :name, :key and :rows.

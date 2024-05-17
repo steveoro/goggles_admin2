@@ -98,7 +98,7 @@ module PdfResults
   #     between all contexts and fields hierarchy levels. This flat array of keys will be used as a
   #     filter to select which field or context keys will be added to the resulting key.
   #
-  #     This filtering array of "key names" is not required as a resulting "implicit" key will be
+  #     When this filtering array of "key names" is not required, a resulting "implicit" key will be
   #     collated considering this:
   #
   #     - When not defined and without a format, with neither any fields nor any rows, the resulting key

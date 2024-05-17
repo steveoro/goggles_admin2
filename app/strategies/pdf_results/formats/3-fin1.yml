@@ -27,7 +27,7 @@
       - name: hdr1
         fields:
           - name: org_team_name
-            format: "\\s+Manifestazione organizzata da\\s*(([\\w\\d\\-&%'`]+.\\s?)+)"
+            format: "\\s+Manifestazione\\sorganizzata\\sda\\s+(.+)"
             pop_out: false
       - name: hdr_sep1
         format: "^$"
@@ -205,7 +205,7 @@
           format: "\\s+(mistaffetta|maschil?.?|femmin.l?.?)\\s*.*\\s+\\-\\s+Categoria\\s+"
           pop_out: false
         - name: cat_title
-          format: "\\s+\\-\\s+Categoria\\s+((?>M|U)\\d{3}-\\d{3})\\s*"
+          format: "\\s+\\-\\s+Categoria\\s+((?>M|U)\\d{2,3}-\\d{2,3})\\s*"
           pop_out: false
         - name: base_timing
           required: false

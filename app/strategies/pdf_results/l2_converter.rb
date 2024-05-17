@@ -19,7 +19,7 @@ module PdfResults
     # A parent result section can have any of these supported names, but ONLY ONE of them
     # shall be the one required while all the others coexisting with it must be set as
     # "alternative_of: <original_name>" and "required: false" in order for the layout
-    # to be logically correct.
+    # to be logically correct and supported by the #data() gathering method of the DAO objects.
     #
     # Any result or lap can be split freely into multiple subsection or sub-rows and
     # each subsection/subrow name won't matter as all fields will be collected and become part
@@ -31,8 +31,18 @@ module PdfResults
 
     # Supported section names for *relay swimmers*. Same rules for IND_RESULT_SECTION apply.
     REL_SWIMMER_SECTION = %w[rel_swimmer rel_swimmer_alt].freeze
+
+    # Supported source "Category type" field name.
+    # (Internal format of the value stored therein may vary from layout to layout.)
+    CAT_FIELD_NAME = 'cat_title'
+
+    # Supported source "Gender type" field name.
+    # (Internal format of the value stored therein may vary from layout to layout.)
+    GENDER_FIELD_NAME = 'gender_type'
     #-- -------------------------------------------------------------------------
     #++
+
+    attr_reader :data
 
     # Creates a new converter instance given the specified data Hash.
     #
@@ -113,6 +123,12 @@ module PdfResults
       resulting_sections = []
 
       @data.fetch(:rows, [{}]).each_with_index do |event_hash, _idx| # rubocop:disable Metrics/BlockLength
+        # Supported hierarchy for "event-type" depth level:
+        #
+        # [header]
+        #     |
+        #     +---[ranking_hdr|stats_hdr|event]
+        #
         if event_hash[:name] == 'ranking_hdr'
           section = ranking_section(event_hash)
           resulting_sections << section if section.present?
@@ -138,9 +154,8 @@ module PdfResults
           # ----------------------------------------------------------------------
 
           # --- RELAYS ---
-          if /(4|6|8)x\d{2,3}/i.match?(event_length.to_s) &&
-             (row_hash[:name] == 'rel_category' || REL_RESULT_SECTION.include?(row_hash[:name]))
-            # >>> Here: "row_hash" may be both 'rel_category' or 'rel_team'
+          if /(4|6|8)x\d{2,3}/i.match?(event_length.to_s) && holds_relay_category_or_relay_result?(row_hash)
+            # >>> Here: "row_hash" may be both 'rel_category', 'rel_team' or even 'event'
             # Safe to call even for non-'rel_category' hashes:
             section = rel_category_section(row_hash, event_title)
             # DEBUG ----------------------------------------------------------------
@@ -200,7 +215,7 @@ module PdfResults
             section['rows'] = rows
 
           # --- IND.RESULTS ---
-          elsif row_hash[:name] == 'category'
+          elsif holds_category_type?(row_hash)
             section = ind_category_section(row_hash, event_title)
             row_hash.fetch(:rows, [{}]).each do |result_hash|
               # Ignore unsupported contexts:
@@ -306,7 +321,7 @@ module PdfResults
     # supported and has the expected fields. This will also extract lap & delta timings when present.
     # Returns an empty Hash otherwise.
     #
-    # == Example *source* DAO Hash structure (from '1-ficr1'):
+    # == Example *source* DAO Hash structure from '1-ficr1':
     # - 🌀: repeatable
     #
     # +-- event 🌀
@@ -315,6 +330,14 @@ module PdfResults
     #           [:rows]
     #             +-- results 🌀
     #             +-- disqualified
+    #
+    # == Example *source* DAO Hash structure from '2-goswim1':
+    #
+    # +-- event 🌀 (includes 'cat_title' & 'gender_type' fields)
+    #     [:rows]
+    #       +-- results 🌀
+    #           [:rows]
+    #             +-- results_ext|results_ext_x2|results_ext_x3 (all DSQ desc labels)
     #
     def ind_result_section(result_hash, cat_gender_code)
       return {} unless IND_RESULT_SECTION.include?(result_hash[:name]) ||
@@ -569,73 +592,101 @@ module PdfResults
       #     :key=>...,
       length = event_hash.fetch(:fields, {})&.fetch('event_length', '')
       type = event_hash.fetch(:fields, {})&.fetch('event_type', '')
-      gender = event_hash.fetch(:fields, {})&.fetch('gender_type', '')
+      gender = event_hash.fetch(:fields, {})&.fetch(GENDER_FIELD_NAME, '')
       # Return just the first gender code char:
-      gender = /mist/i.match?(gender.to_s) ? 'X' : gender.to_s.first.upcase
+      gender = /mist/i.match?(gender.to_s) ? 'X' : gender.to_s.at(0).upcase
       ["#{length} #{type}", length, type, gender]
     end
+    #-- -----------------------------------------------------------------------
+    #++
 
-    # Gets the ind. result category code given its data hash.
-    # Raises an error if the category hash is unsupported (always required for individ. results).
-    def fetch_category_code(category_hash)
-      raise 'Unsupported Category hash!' unless category_hash.is_a?(Hash) && category_hash[:name] == 'category'
+    # Returns +true+ only if the supplied row_hash seems to support and
+    # store a string value representing a possible CategoryType code.
+    def holds_category_type?(row_hash)
+      row_hash.is_a?(Hash) &&
+        ((row_hash[:name] == 'category') || row_hash.fetch(:fields, {}).key?(CAT_FIELD_NAME))
+    end
 
-      # *** Context 'category' ***
-      key = category_hash.fetch(:key, '')
+    # Gets the ind. result category code directly from the given data hash key or the supported
+    # field name if anything else fails.
+    # Estracting the code from the key value here is more generic than relying on
+    # the actual field names. Returns +nil+ for any other unsupported case.
+    def fetch_category_code(row_hash)
+      # *** Context 'category'|'event' ***
+      # (Assumed to include the "category title" field, among other possible fields in the key)
+      key = row_hash.fetch(:key, '')
 
-      # Example key 1 => "M55 Master Maschi 55 - 59"
-      if /\s*([UAM]\d{2}(\sUnder|\sMaster)?\s(Femmine|Maschi))/ui.match?(key)
-        key.split.first
+      # key type 1, example: [...]"M55 Master Maschi 55 - 59"[...]
+      if /\s*([UAM]\d{2})(?>\sUnder|\sMaster)?\s(?>Femmine|Maschi)/ui.match?(key)
+        /\s*([UAM]\d{2})(?>\sUnder|\sMaster)?\s(?>Femmine|Maschi)/ui.match(key).captures.first
 
-      # Example key 2 => "<length>|<style>|<gender_label>|Master \d\d|<base_timing>|"
-      elsif /\d{2,4}\|(?>stile(?>\slibero)?|dorso|rana|delfino|farfalla|misti)\|(maschil?.?|femminil?.?)\|(?>Master|Under)\s\d{2}\|/ui.match?(key)
-        key.split('|')&.at(3)&.gsub(/Master /i, 'M')&.gsub(/Under /i, 'U')
+      # key type 1, example: "...|(Master \d\d)|..."
+      elsif /\|((?>Master|Under)\s\d{2})\|/ui.match?(key)
+        /\|((?>Master|Under)\s\d{2})\|/ui.match(key).captures.first.gsub(/Master\s/i, 'M').gsub(/Under\s/i, 'U')
+
+      # use just the field value "as is":
+      elsif row_hash[:fields].key?(CAT_FIELD_NAME)
+        row_hash[:fields][CAT_FIELD_NAME]
       end
     end
 
-    # Gets the relay result category code given its data hash.
-    # Returns +nil+ for an unsupported category Hash or when the category code
-    # is not found.
-    def fetch_rel_category_code(category_hash)
-      return unless category_hash.is_a?(Hash) && category_hash[:name] == 'rel_category'
+    # Returns +true+ only if the supplied row_hash seems to support and
+    # store a string value representing a possible CategoryType code
+    # for relays or a relay result (which may include the category too).
+    def holds_relay_category_or_relay_result?(row_hash)
+      row_hash.is_a?(Hash) &&
+        ((row_hash[:name] == 'rel_category') ||
+         REL_RESULT_SECTION.include?(row_hash[:name]) ||
+         row_hash.fetch(:fields, {}).key?(CAT_FIELD_NAME))
+    end
 
+    # Gets the relay result category code directly from the given data hash key or the supported
+    # field name if anything else fails.
+    # Estracting the code from the key value here is more generic than relying on
+    # the actual field names. Returns +nil+ for any other unsupported case.
+    def fetch_rel_category_code(row_hash)
       # *** Context 'rel_category' ***
-      key = category_hash.fetch(:key, '')
+      # (Assumed to include the "category title" field, among other possible fields in the key)
+      key = row_hash.fetch(:key, '')
 
       # Example key 1 => "Master Misti 200 - 239"
-      if /\s?(master|under)\s*(maschi|femmine|misti)\s*/ui.match?(key)
-        key.split(/\s?(master|under)\s?/i)&.last
-           &.split(/\s?(maschi|femmine|misti)\s?/i)
-           &.reject(&:blank?)
-           &.last
-           &.delete(' ')
+      if /(?>Under|Master)\s(?>Misti|Femmin\w*|Masch\w*)(?>\s(\d{2,3}\s-\s\d{2,3}))?/ui.match?(key)
+        /(?>Under|Master)\s(?>Misti|Femmin\w*|Masch\w*)(?>\s(\d{2,3}\s-\s\d{2,3}))?/ui.match(key).captures.first.delete(' ')
 
       # Example key 2 => "{event_length: 'mistaffetta <4|6|8>x<len>'}|<style_name>|<mistaffetta|gender>|M<age1>-<age2>|<base_time>"
-      elsif /\|M\d{2,3}-\d{2,3}\|/ui.match?(key)
-        # Skip the first 'M' to get a valid code ("<age1>-<age2>")
-        key.split('|')&.at(3)&.at(1..)
+      elsif /\|M(\d{2,3}-\d{2,3})\|/ui.match?(key)
+        # Return a valid age-group code for relays ("<age1>-<age2>"):
+        /\|M(\d{2,3}-\d{2,3})\|/ui.match(key).captures.first
       end
     end
     #-- -----------------------------------------------------------------------
     #++
 
+    # Returns +true+ only if the supplied row_hash seems to support and
+    # store a string value representing a possible GenderType code.
+    def holds_gender_type?(row_hash)
+      row_hash.is_a?(Hash) &&
+        ((row_hash[:name] == 'category') || row_hash.fetch(:fields, {}).key?(GENDER_FIELD_NAME))
+    end
+
     # Gets the individual category gender code as a single char, given its source data hash.
     # Raises an error if the category hash is unsupported (always required for individ. results).
-    def fetch_category_gender(category_hash)
-      raise 'Unsupported Category hash!' unless category_hash.is_a?(Hash) && category_hash[:name] == 'category'
+    def fetch_category_gender(row_hash)
+      # *** Context 'category'|'event' ***
+      # (Assumed to include the "gender type label" field, among other possible fields in the key)
+      key = row_hash.fetch(:key, '')
 
-      # *** Context 'category' ***
-      key = category_hash.fetch(:key, '')
-      # Example key 1 => "M55 Master Maschi 55 - 59"
-      if /\s*([UAM]\d{2}(\sUnder|\sMaster)?\s(Femmine|Maschi))/ui.match?(key)
-        key.split(/\s?(master|under)\s?/i)
-           .last
-           &.split(/\s/)&.first
-           &.at(0)&.upcase
+      # key type 1, example: [...]"M55 Master Maschi 55 - 59"[...]
+      if /\s*[UAM]\d{2}(?>\sUnder|\sMaster)?\s(Femmine|Maschi)/ui.match?(key)
+        /\s*[UAM]\d{2}(?>\sUnder|\sMaster)?\s(Femmine|Maschi)/ui.match(key).captures.first.upcase.at(0)
 
-      # Example key 2 => "<length>|<style>|<gender_label>|Master \d\d|<base_timing>|"
-      elsif /\d{2,4}\|(?>stile(?>\slibero)?|dorso|rana|delfino|farfalla|misti)\|(maschil?.?|femminil?.?)\|(?>Master|Under)\s\d{2}\|/ui.match?(key)
-        key.split('|')&.at(2)&.at(0)&.upcase
+      # key type 2, example: "...|(masch\w+|femmin\w+)\|..." (more generic)
+      elsif /\|(masch\w*|femmin\w*)\|/ui.match?(key)
+        /\|(masch\w*|femmin\w*)\|/ui.match(key).captures.first.upcase.at(0)
+
+      # use just the first capital character from the field value:
+      elsif row_hash[:fields].key?(GENDER_FIELD_NAME)
+        row_hash[:fields][GENDER_FIELD_NAME]&.upcase&.at(0)
       end
     end
 
@@ -646,17 +697,13 @@ module PdfResults
 
       # *** Context 'rel_category' ***
       key = category_hash.fetch(:key, '')
-      gender_name = if /\s?(master|under)\s*(maschi|femmine|misti)\s*/ui.match?(key)
+      gender_name = if /(?>Under|Master)\s(Misti|Femmin\w*|Masch\w*)\s(?>\d{2,3}\s-\s\d{2,3})/ui.match?(key)
                       # Example key 1 => "Master Misti 200 - 239"
-                      key.split(/\s?(master|under)\s?/i)
-                         .last
-                         &.split(/\s?(maschi|femmin|misti)\s?/i)
-                         &.reject(&:blank?)
-                         &.first
+                      /(?>Under|Master)\s(Misti|Femmin\w*|Masch\w*)\s(?>\d{2,3}\s-\s\d{2,3})/ui.match(key).captures.first
 
-                    elsif /\|M\d{2,3}-\d{2,3}\|/ui.match?(key)
+                    elsif /\|(\w+)\|M\d{2,3}-\d{2,3}\|/ui.match?(key)
                       # Example key 2 => "{event_length: 'mistaffetta <4|6|8>x<len>'}|<style_name>|<mistaffetta|gender>|M<age1>-<age2>|<base_time>"
-                      key.split('|')&.at(2)
+                      /\|(\w+)\|M\d{2,3}-\d{2,3}\|/ui.match(key).captures.first
                     end
       return GogglesDb::GenderType.intermixed.code if /mist/i.match?(gender_name.to_s)
 

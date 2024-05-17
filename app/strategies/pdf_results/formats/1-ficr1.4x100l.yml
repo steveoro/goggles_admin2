@@ -82,7 +82,7 @@
     parent: event
     rows:
       - name: cat_title
-        format: "\\s+((Under|Master)\\s(Misti|Femmin.*|Maschi)(\\s(\\d{2,3}\\s-\\s\\d{2,3}))?)\\b"
+        format: "\\s+((?>Under|Master)\\s(?>Misti|Femmin\w*|Masch\w*)(?>\\s(?>\\d{2,3}\\s-\\s\\d{2,3}))?)\\b"
       # Optional empty row
       - name: cat_separator1
         format: "^$"

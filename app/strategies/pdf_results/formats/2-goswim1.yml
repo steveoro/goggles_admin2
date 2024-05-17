@@ -17,6 +17,7 @@
   - name: header
     at_fixed_row: 0
     repeat: true
+    # keys: [edition,meeting_name,meeting_date]
     rows:
       - name: hdr_row0
         fields:
@@ -43,9 +44,9 @@
           token_end: 45
 
       # "header" row-3
-      - fields:
-        - name: hdr_results
-          format: "^\\s{20,}RISULTATI"
+      - name: hdr_results
+        # (With no keys, no fields & no capture in format this line will be ignored in data extraction)
+        format: "^\\s{20,}RISULTATI\\s+Cronometraggio:\\s"
 
       # "header" row-4
       - fields:
@@ -85,14 +86,12 @@
         format: "^$"
 
       # "event" row-3:
-      - fields:
-        - name: event_sub_hdr
-          format: "^\\s{1,}POS ATLETA\\s{10,}ANNO\\s{10,}ARRIVO$"
+      - name: event_sub_hdr
+        format: "^\\s{1,}POS ATLETA\\s{10,}ANNO\\s{10,}ARRIVO$"
 
       # "event" row-4:
-      - fields:
-        - name: event_sub_hdr2
-          format: "^\\s{5,}SOCIETA\\s{20,}PUNTI$"
+      - name: event_sub_hdr2
+        format: "^\\s{5,}SOCIETA\\s{20,}PUNTI$"
 
   # Actual data starts here:
   - name: results
