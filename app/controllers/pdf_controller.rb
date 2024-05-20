@@ -61,9 +61,9 @@ class PdfController < ApplicationController
     return if fp.result_format_type.blank?
 
     logger.info('--> Extracting data hash...')
-    data_hash = fp.root_dao&.data&.fetch(:rows, [])&.first
+    data_hash = fp.root_dao&.data&.fetch(:rows, [])&.find { |hsh| hsh[:name] == 'header' }
     # DEBUG ----------------------------------------------------------------
-    binding.pry
+    # binding.pry
     # ----------------------------------------------------------------------
 
     l2 = PdfResults::L2Converter.new(data_hash, fp.season)

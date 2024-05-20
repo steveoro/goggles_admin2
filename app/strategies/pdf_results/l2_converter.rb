@@ -146,8 +146,18 @@ module PdfResults
         # Reset event related category (& gender, if available):
         curr_rel_cat_code = nil
         curr_rel_cat_gender = gender_code
-        event_hash.fetch(:rows, [{}]).each do |row_hash|
-          section = {}
+        # DEBUG ----------------------------------------------------------------
+        # binding.pry
+        # ----------------------------------------------------------------------
+
+        # --- IND.RESULTS (event -> results) ---
+        section = {}
+        if holds_category_type?(event_hash)
+          section = ind_category_section(event_hash, event_title)
+          resulting_sections << section if section.present?
+        end
+
+        event_hash.fetch(:rows, [{}]).each do |row_hash| # rubocop:disable Metrics/BlockLength
           rows = []
           # DEBUG ----------------------------------------------------------------
           # binding.pry if /mistaffetta 4x50/i.match?(event_title)
@@ -159,7 +169,7 @@ module PdfResults
             # Safe to call even for non-'rel_category' hashes:
             section = rel_category_section(row_hash, event_title)
             # DEBUG ----------------------------------------------------------------
-            # binding.pry if event_title == "4X50 Misti - " && section['fin_sigla_categoria'].blank?
+            # binding.pry # if event_title == "4X50 Misti - " && section['fin_sigla_categoria'].blank?
             # ----------------------------------------------------------------------
 
             # == Hard-wired "manual forward link" for relay categories only ==
@@ -213,8 +223,9 @@ module PdfResults
 
             # Set rows for current relay section:
             section['rows'] = rows
+            resulting_sections << section if rows.present?
 
-          # --- IND.RESULTS ---
+          # --- IND.RESULTS (category -> results) ---
           elsif holds_category_type?(row_hash)
             section = ind_category_section(row_hash, event_title)
             row_hash.fetch(:rows, [{}]).each do |result_hash|
@@ -227,13 +238,24 @@ module PdfResults
             end
             # Overwrite existing rows in current section:
             section['rows'] = rows
+            resulting_sections << section if rows.present?
+
+          # --- IND.RESULTS (event -> results) ---
+          elsif holds_category_type?(event_hash) && IND_RESULT_SECTION.include?(row_hash[:name])
+            # Since event holds the category, wrapper section should change only externally and we'll
+            # add here only its rows:
+            section['rows'] ||= []
+            section['rows'] << ind_result_section(row_hash, section['fin_sesso'])
 
           # --- (Ignore unsupported contexts) ---
           else
             next
           end
 
-          resulting_sections << section if section.present? && section['rows'].present?
+          # DEBUG ----------------------------------------------------------------
+          # binding.pry if section.present? && section['rows'].present?
+          # ----------------------------------------------------------------------
+          # resulting_sections << section if section.present? && section['rows'].present?
         end
       end
 
@@ -381,7 +403,8 @@ module PdfResults
         'lane_num' => fields['lane_num'],
         'heat_rank' => fields['heat_rank'],
         'nation' => fields['nation'],
-        'disqualify_type' => fields['disqualify_type']
+        'disqualify_type' => fields['disqualify_type'],
+        'rows' => []
       }
 
       # Add lap & delta fields only when present in the source result_hash:
@@ -416,7 +439,7 @@ module PdfResults
     #             +-- rel_swimmer 🌀
     #             +-- disqualified
     #
-    def rel_result_section(rel_team_hash) # rubocop:disable Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
+    def rel_result_section(rel_team_hash) # rubocop:disable Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity,Metrics/MethodLength
       return {} unless REL_RESULT_SECTION.include?(rel_team_hash[:name])
 
       fields = rel_team_hash.fetch(:fields, {})
@@ -448,13 +471,28 @@ module PdfResults
       # Add relay swimmer laps onto the same result hash & compute possible age group
       # in the meantime:
       overall_age = 0
+      # *** Same-depth case 1 (GoSwim-type): relay swimmer at same level ***
+      8.times do |idx|
+        next unless rel_team_hash.fetch(:fields, {}).key?("swimmer_name#{idx + 1}")
+
+        # Extract swimmer name & year:
+        row_hash["swimmer#{idx + 1}"] = rel_team_hash.fetch(:fields, {})["swimmer_name#{idx + 1}"]
+        year_of_birth = rel_team_hash.fetch(:fields, {})["year_of_birth#{idx + 1}"].to_i
+        row_hash["year_of_birth#{idx + 1}"] = year_of_birth
+        # NOTE: age group calculator currently doesn't use the season, so it will yield wrong values for results not belonging to the current season
+        overall_age = overall_age + Time.zone.now.year - year_of_birth if year_of_birth.positive?
+      end
+
       rel_team_hash.fetch(:rows, [{}]).each_with_index do |rel_swimmer_hash, idx|
+        # *** Nested case 1 (Ficr-type): relay swimmer sub-row ***
         if REL_SWIMMER_SECTION.include?(rel_swimmer_hash[:name])
           row_hash["swimmer#{idx + 1}"] = rel_swimmer_hash.fetch(:fields, {})['swimmer_name']
           year_of_birth = rel_swimmer_hash.fetch(:fields, {})['year_of_birth'].to_i
           row_hash["year_of_birth#{idx + 1}"] = year_of_birth
+          # NOTE: age group calculator currently doesn't use the season, so it will yield wrong values for results not belonging to the current season
           overall_age = overall_age + Time.zone.now.year - year_of_birth if year_of_birth.positive?
 
+        # *** Nested case 2 (Ficr-type): DSQ label for relays ***
         # Support for 'disqualify_type' field as nested row:
         elsif rel_swimmer_hash[:name] == 'rel_dsq'
           row_hash['disqualify_type'] = rel_swimmer_hash.fetch(:fields, {})['disqualify_type']
@@ -487,7 +525,7 @@ module PdfResults
 
     private
 
-    # Example data header structure: (1-ficr)
+    # ** Example data [header] structure from '1-ficr': **
     #
     # data =
     # {:name=>"header",
@@ -503,19 +541,52 @@ module PdfResults
     #        :key=>"M55 Master Maschi 55 - 59",
     #        :fields=>{},
     #        :rows=>
-    #         [{:name=>"results",
+    #         [{:name=>"rel_team",
     #           :key=>"4|GINOTTI PINO|4|ITA|33.52|1:10.27|1:10.27|NUMA OSTILIO SPORTING CLUB|1968|36.75|863,81",
-    #           :fields=>
+    #           :fields=> [...]
+    #
+    #
+    # ** Example data [header]->[post_header] structure from '2-goswim': **
+    #
+    # data = {:name=>"header",
+    #  :key=>"Campionati Regionali Master Emilia|Romagna 2020",
+    #  :fields=>{"edition"=>nil, "meeting_name"=>"Campionati Regionali Master Emilia", "meeting_name_ext"=>"Romagna 2020"},
+    #  :rows=>
+    #   [{:name=>"post_header", :key=>"Forli|16/02/2020|25", :fields=>{"meeting_place"=>"Forli", "meeting_date"=>"16/02/2020", "pool_type"=>"25"}, :rows=>[]},
+    #    {:name=>"event",
+    #     :key=>"4X50|4X50|MIST|MASTER 200-239",
+    #     :fields=>{"event_length"=>"4X50", "event_type"=>"4X50", "gender_type"=>"MIST", "cat_title"=>"MASTER 200-239"},
+    #     :rows=>
+    #      [{:name=>"rel_team", [...]
+    #-- -----------------------------------------------------------------------
+    #++
+
+    # Returns the fields Hash for the 'header', according to the detected supported structure.
+    # (Flat fields all under header or nested in a 'post_header' row).
+    # The returned field Hash will have all header fields at the same depth level.
+    def detect_header_fields
+      field_hash = @data.fetch(:fields, {})
+      # Add the post header when present:
+      post_header = @data.fetch(:rows, [{}])&.find { |h| h[:name] == 'post_header' }
+      field_hash.merge!(post_header[:fields]) if post_header.present? && post_header.key?(:fields)
+      # Join the name extension to the meeting_name when present:
+      field_hash['meeting_name'] = [field_hash['meeting_name'], field_hash['meeting_name_ext']].join(' ') if field_hash['meeting_name_ext'].present?
+      field_hash
+    end
 
     # Gets the Meeting name from the data Hash, if available; defaults to an empty string.
     def fetch_meeting_name
-      "#{@data.fetch(:fields, {})['edition']}° #{@data.fetch(:fields, {})['meeting_name']}"
+      field_hash = detect_header_fields
+      return "#{field_hash['edition']}° #{field_hash['meeting_name']}" if field_hash['edition'].present?
+
+      field_hash['meeting_name']
     end
 
     # Gets the Meeting session day number from the data Hash, if available. Returns nil if not found.
     # Supports 3 possible separators for date tokens: "-", "/" or " ":
     def fetch_session_day
-      @data.fetch(:fields, {})&.fetch('meeting_date', '').to_s.split(%r{[-/\s]}).first
+      field_hash = detect_header_fields
+      field_hash.fetch('meeting_date', '').to_s.split(%r{[-/\s]}).first
     end
 
     # Gets the Meeting session month name from the data Hash, if available. Returns nil if not found.
@@ -523,7 +594,8 @@ module PdfResults
     # Supports both numeric month & month names:
     #   "dd[-\s/]mm[-\s/]yy(yy)" or "dd[-\s/]MMM(mmm..)[-\s/]yy(yy)"
     def fetch_session_month
-      month_token = @data.fetch(:fields, {})&.fetch('meeting_date', '').to_s.split(%r{[-/\s]}).second
+      field_hash = detect_header_fields
+      month_token = field_hash.fetch('meeting_date', '').to_s.split(%r{[-/\s]}).second
       return Parser::SessionDate::MONTH_NAMES[month_token.to_i - 1] if /\d{2}/i.match?(month_token.to_s)
 
       month_token.to_s[0..2].downcase
@@ -532,12 +604,14 @@ module PdfResults
     # Gets the Meeting session year number, if available. Returns nil if not found.
     # Supports 3 possible separators for date tokens: "-", "/" or " ":
     def fetch_session_year
-      @data.fetch(:fields, {})&.fetch('meeting_date', '').to_s.split(%r{[-/\s]}).last
+      field_hash = detect_header_fields
+      field_hash.fetch('meeting_date', '').to_s.split(%r{[-/\s]}).last
     end
 
     # Gets the Meeting session place, if available. Returns nil if not found.
     def fetch_session_place
-      @data.fetch(:fields, {})&.fetch('meeting_place', '')
+      field_hash = detect_header_fields
+      field_hash.fetch('meeting_place', '')
     end
 
     # Returns the pool total lanes (first) & the length in meters (last) as items
@@ -545,7 +619,8 @@ module PdfResults
     # Returns an empty array ([]) otherwise.
     def fetch_pool_type
       # Retrieve pool_type from header when available & return:
-      pool_type_len = @data.fetch(:fields, {})&.fetch('pool_type', '')
+      field_hash = detect_header_fields
+      pool_type_len = field_hash.fetch('pool_type', '')
       return [nil, pool_type_len] if pool_type_len.present?
 
       # Fallback: search in footer, as in 1-ficr1
@@ -601,10 +676,12 @@ module PdfResults
     #++
 
     # Returns +true+ only if the supplied row_hash seems to support and
-    # store a string value representing a possible CategoryType code.
+    # store a string value representing a possible CategoryType code only for individual results.
     def holds_category_type?(row_hash)
       row_hash.is_a?(Hash) &&
-        ((row_hash[:name] == 'category') || row_hash.fetch(:fields, {}).key?(CAT_FIELD_NAME))
+        ((row_hash[:name] == 'category') ||
+         (row_hash.fetch(:fields, {}).key?(CAT_FIELD_NAME) &&
+          !row_hash.fetch(:fields, {})['event_length'].to_s.match?(/X/i)))
     end
 
     # Gets the ind. result category code directly from the given data hash key or the supported
@@ -653,10 +730,10 @@ module PdfResults
       if /(?>Under|Master)\s(?>Misti|Femmin\w*|Masch\w*)(?>\s(\d{2,3}\s-\s\d{2,3}))?/ui.match?(key)
         /(?>Under|Master)\s(?>Misti|Femmin\w*|Masch\w*)(?>\s(\d{2,3}\s-\s\d{2,3}))?/ui.match(key).captures.first.delete(' ')
 
-      # Example key 2 => "{event_length: 'mistaffetta <4|6|8>x<len>'}|<style_name>|<mistaffetta|gender>|M<age1>-<age2>|<base_time>"
-      elsif /\|M(\d{2,3}-\d{2,3})\|/ui.match?(key)
+      # Example key 2 => "{event_length: 'mistaffetta <4|6|8>x<len>'}|<style_name>|<mistaffetta|gender>|M(ASTER)?\s?<age1>-<age2>(|<base_time>)?"
+      elsif /\|M(?>ASTER)?\s?(\d{2,3}-\d{2,3})/ui.match?(key)
         # Return a valid age-group code for relays ("<age1>-<age2>"):
-        /\|M(\d{2,3}-\d{2,3})\|/ui.match(key).captures.first
+        /\|M(?>ASTER)?\s?(\d{2,3}-\d{2,3})/ui.match(key).captures.first
       end
     end
     #-- -----------------------------------------------------------------------
@@ -701,9 +778,10 @@ module PdfResults
                       # Example key 1 => "Master Misti 200 - 239"
                       /(?>Under|Master)\s(Misti|Femmin\w*|Masch\w*)\s(?>\d{2,3}\s-\s\d{2,3})/ui.match(key).captures.first
 
-                    elsif /\|(\w+)\|M\d{2,3}-\d{2,3}\|/ui.match?(key)
-                      # Example key 2 => "{event_length: 'mistaffetta <4|6|8>x<len>'}|<style_name>|<mistaffetta|gender>|M<age1>-<age2>|<base_time>"
-                      /\|(\w+)\|M\d{2,3}-\d{2,3}\|/ui.match(key).captures.first
+                    # Example key 2 => "{event_length: 'mistaffetta <4|6|8>x<len>'}|<style_name>|<mistaffetta|gender>|M(ASTER)?\s?<age1>-<age2>(|<base_time>)?"
+                    elsif /\|(\w+)\|M(?>ASTER)?\s?\d{2,3}-\d{2,3}/ui.match?(key)
+                      # Return a valid age-group code for relays ("<age1>-<age2>"):
+                      /\|(\w+)\|M(?>ASTER)?\s?\d{2,3}-\d{2,3}/ui.match(key).captures.first
                     end
       return GogglesDb::GenderType.intermixed.code if /mist/i.match?(gender_name.to_s)
 

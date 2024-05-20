@@ -506,9 +506,9 @@ module PdfResults
         curr_buffer = curr_buffer[local_start..]
       end
       # DEBUG ----------------------------------------------------------------
-      # if name == 'results3_dsq' # && (scan_index >= 64)
-      #   log_message(msg: "BEFORE @fields (#{name}), @curr_index: #{@curr_index}, @consumed_rows: #{@consumed_rows}", scan_index: scan_index)
-      #   # binding.pry if scan_index >= starts_at_row.to_i
+      # if name == 'event-row1' # && (scan_index >= 64)
+      #   log_message(msg: "BEFORE @fields (#{name}), step 1, @curr_index: #{@curr_index}, @consumed_rows: #{@consumed_rows}", scan_index: scan_index)
+      #   binding.pry if scan_index >= starts_at_row.to_i
       # end
       # ----------------------------------------------------------------------
 
@@ -545,7 +545,7 @@ module PdfResults
       @last_source_before_format = curr_buffer&.dup
       log_message(msg: "before @format: #{format}", scan_index:, curr_buffer:) if format
       # DEBUG ----------------------------------------------------------------
-      # if name == 'results3_dsq' # && (scan_index == 2)
+      # if name == 'event-row1' # && (scan_index == 2)
       #   log_message(msg: "BEFORE @format (#{name}), @curr_index: #{@curr_index}, @consumed_rows: #{@consumed_rows}", scan_index: scan_index)
       #   # binding.pry
       # end
@@ -554,7 +554,7 @@ module PdfResults
       # 5) Check & apply format (+strip) if present:
       if format.present?
         # DEBUG ----------------------------------------------------------------
-        # if name == 'event' && (scan_index == 2)
+        # if name == 'event-row1' # && (scan_index == 2)
         #   log_message(msg: "INSIDE @format, BEFORE empty check (#{name}), @curr_index: #{@curr_index}, @consumed_rows: #{@consumed_rows}", scan_index: scan_index)
         #   binding.pry
         # end
@@ -569,7 +569,7 @@ module PdfResults
           return true
         end
         # DEBUG ----------------------------------------------------------------
-        # if name == 'rel_result-row1' # && (scan_index >= 64)
+        # if name == 'event-row1' # && (scan_index >= 64)
         #   log_message(msg: "INSIDE @format, AFTER empty check (#{name}), @curr_index: #{@curr_index}, @consumed_rows: #{@consumed_rows}", scan_index: scan_index)
         #   binding.pry
         # end
@@ -586,7 +586,7 @@ module PdfResults
         end
       end
       # DEBUG ----------------------------------------------------------------
-      # if name == 'results3_dsq' # && (scan_index == 2)
+      # if name == 'event-row1' # && (scan_index == 2)
       #   log_message(msg: "AFTER @format (#{name}), @curr_index: #{@curr_index}, @consumed_rows: #{@consumed_rows}", scan_index: scan_index)
       #   # binding.pry
       # end
@@ -602,8 +602,8 @@ module PdfResults
                     depth: parent.present? ? 1 : 0)
       end
       # DEBUG ----------------------------------------------------------------
-      # if name == 'rel_team2'
-      #   log_message(msg: "BEFORE @fields (#{name}), @curr_index: #{@curr_index}, @consumed_rows: #{@consumed_rows}", scan_index: scan_index)
+      # if name == 'event-row1'
+      #   log_message(msg: "BEFORE @fields (#{name}), step 5, @curr_index: #{@curr_index}, @consumed_rows: #{@consumed_rows}", scan_index: scan_index)
       #   binding.pry
       # end
       # ----------------------------------------------------------------------
@@ -632,9 +632,9 @@ module PdfResults
         @consumed_rows = row_span # (see note on line 566 above)
       end
       # DEBUG ----------------------------------------------------------------
-      # if name == 'event' && (scan_index == 2)
-      #   log_message(msg: "AFTER @fields (#{name}), @curr_index: #{@curr_index}, @consumed_rows: #{@consumed_rows}", scan_index: scan_index)
-      #   # binding.pry
+      # if name == 'event-row1' # && (scan_index == 2)
+      #   log_message(msg: "AFTER @fields (#{name}), step 6, @curr_index: #{@curr_index}, @consumed_rows: #{@consumed_rows}", scan_index: scan_index)
+      #   binding.pry
       # end
       # ----------------------------------------------------------------------
       return false if fields.present? && !valid
