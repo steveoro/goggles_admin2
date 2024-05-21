@@ -12,11 +12,12 @@
       # "header" row-0, abs. row #0
       - fields:
         - name: edition
-          lambda: strip
-          format: "\\s*(\\d{1,2}|[IVXLCM]+).{1,2}?\\s+"
+          required: false
+          format: "^\\s{20,}(\\d{1,2}|[IVXLCM]+).{1,2}?\\s+"
+          pop_out: false
         - name: meeting_name
-          lambda: strip
-          format: "(?>\\s*[°^*oa']?)\\s+([\"“`']?.+[\"“`'\\b]?)"
+          format: "^\\s{20,}(?>\\d{1,2}|[IVXLCM]+)?.{1,2}?\\s+(.+)$"
+          pop_out: false
 
       # "header" row-1, abs. row #1:
       - fields:
@@ -82,7 +83,7 @@
     parent: event
     rows:
       - name: cat_title
-        format: "\\s+((?>Under|Master)\\s(?>Misti|Femmin\w*|Masch\w*)(?>\\s(?>\\d{2,3}\\s-\\s\\d{2,3}))?)\\b"
+        format: "\\s+((?>Under|Master)\\s(?>Misti|Femmin\\w*|Masch\\w*)(?>\\s(?>\\d{2,3}\\s-\\s\\d{2,3}))?)\\b"
       # Optional empty row
       - name: cat_separator1
         format: "^$"

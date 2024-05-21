@@ -153,19 +153,19 @@
         format: "^$"
         required: false
 
-  - name: results_ext_x3
+  - name: dsq_label_x3
     parent: results
     required: false
     row_span: 3
     format: "^\\s{8,}-\\s(((?>[[:alnum:]]+\\s?){2,})(?>\\s{8,}((?>[[:alnum:]]+\\s?){2,}))(?>\\s{8,}((?>[[:alnum:]]+\\s?){2,})))"
 
-  - name: results_ext_x2
+  - name: dsq_label_x2
     parent: results
     required: false
     row_span: 2
     format: "^\\s{8,}-\\s((?>(?>[[:alnum:]]+\\s?){2,}\\w*)(?>\\s{8,}((?>[[:alnum:]]+\\s?){2,})))"
 
-  - name: results_ext
+  - name: dsq_label
     parent: results
     required: false
     # This will match any empty row if the fields are not found:

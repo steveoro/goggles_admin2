@@ -173,6 +173,15 @@ module PdfResults
     # the destination node, preserving the existing ones while adding only what
     # is really missing from the destination DAO.
     #
+    # The only exception to the above rule is for headers: given that PDFs are assumed to
+    # refer to a single Meeting and the header should contain a key referencing to a single
+    # meeting, BUT, sometimes key data like the 'meeting_place' or the 'meeting_date' is
+    # not rendered on *all* pages in some of the formats (like 'goswim', for one),
+    # to prevent duplicated headers due to slighlty different DAO keys, a special check
+    # will be performed if the merging source_dao is named 'header' and its already
+    # contained inside the children rows. In this case, the 2 slightly-different 'headers'
+    # will have the fields and row merged into one (overlapping any existing values).
+    #
     # == Practical use case:
     # - (1:N) events --> (1:N) category x event --> (1:N) results x category
     # - Event or category change/reset on each page;
@@ -189,6 +198,20 @@ module PdfResults
       raise 'Unable to find destination parent for source ContextDAO during merge!' unless dest_parent.is_a?(ContextDAO)
 
       # See if the source DAO is already inside the destination rows; add it if missing
+      # Special cases:
+      # 1. 'header': all header DAOs should be merged into one
+      # 2. 'post_header': all post-header DAO should be merged into a 'header'
+      if source_dao.name == 'header' || source_dao.name == 'post_header'
+        header = dest_parent.rows.find { |dao| dao.name == 'header' }
+        # Merge any other header (different in key) or post_header into the first child found in destination:
+        if header.is_a?(ContextDAO) && header.key != source_dao.key
+          # Merge hash fields and each sibling rows into the existing header:
+          header.fields_hash.merge!(source_dao.fields_hash)
+          source_dao.rows.each { |row_dao| header.add_row(row_dao) }
+          return
+        end
+      end
+
       existing_dao = dest_parent.rows.find { |dao| dao.name == source_dao.name && dao.key == source_dao.key }
 
       # Found source DAO as existing? Try to merge it deeper, row by row:

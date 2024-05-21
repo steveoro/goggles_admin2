@@ -55,6 +55,7 @@ module PdfResults
 
     # Result top level ContextDAO container: all defined and used root-level contexts will become its rows
     # and related siblings will become rows of their respective parents to preserve hierarchy.
+    # Typically a root DAO should contain a single ContextDAO sibling called 'header'.
     attr_reader :root_dao
 
     # ContextDefs Hash indexed by format name

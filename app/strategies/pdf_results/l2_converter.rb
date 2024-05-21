@@ -213,7 +213,7 @@ module PdfResults
                   rel_cat_code = GogglesDb::CategoryType.relays.only_gender_split
                                                         .for_season(@season)
                                                         .where('(? >= age_begin) AND (? <= age_end)', overall_age, overall_age)
-                                                        .last.code
+                                                        .last&.code
                 end
                 section['fin_sigla_categoria'] = rel_cat_code if rel_cat_code.present?
                 # Add category code to event title so that MacroSolver can deal with it automatically:
@@ -391,6 +391,10 @@ module PdfResults
       #   :rows=>[]
       # }
       fields = result_hash.fetch(:fields, {})
+      rank = fields['rank']
+      # DSQ label:
+      dsq_label = extract_additional_dsq_labels(result_hash) if rank.to_i.zero?
+
       row_hash = {
         'pos' => fields['rank'],
         'name' => fields['swimmer_name'],
@@ -403,16 +407,16 @@ module PdfResults
         'lane_num' => fields['lane_num'],
         'heat_rank' => fields['heat_rank'],
         'nation' => fields['nation'],
-        'disqualify_type' => fields['disqualify_type'],
+        'disqualify_type' => dsq_label,
         'rows' => []
       }
 
       # Add lap & delta fields only when present in the source result_hash:
       (1..29).each do |idx|
         key = "lap#{idx * 50}"
-        row_hash[key] = fields[key] if fields[key].present?
+        row_hash[key] = fields[key] if /\d{0,2}['\":.]?\d{2}[\":.]\d{2}/i.match?(fields[key])
         key = "delta#{idx * 50}"
-        row_hash[key] = fields[key] if fields[key].present?
+        row_hash[key] = fields[key] if /\d{0,2}['\":.]?\d{2}[\":.]\d{2}/i.match?(fields[key])
       end
 
       row_hash
@@ -444,8 +448,8 @@ module PdfResults
 
       fields = rel_team_hash.fetch(:fields, {})
       rank = fields['rank']
-      # Support for 'disqualify_type' field at 'rel_team' field level:
-      dsq_label = fields['disqualify_type'] if rank.to_i.zero?
+      # DSQ label:
+      dsq_label = extract_additional_dsq_labels(rel_team_hash) if rank.to_i.zero?
 
       row_hash = {
         'relay' => true,
@@ -460,12 +464,12 @@ module PdfResults
         'disqualify_type' => dsq_label # WIP: missing relay example w/ this
       }
 
-      # Add lap & delta fields only when present in the source rel_team_hash:
+      # Add lap & delta fields only when present in the source fields and resemble a timing value:
       (1..29).each do |idx|
         key = "lap#{idx * 50}"
-        row_hash[key] = fields[key] if fields[key].present?
+        row_hash[key] = fields[key] if /\d{0,2}['\":.]?\d{2}[\":.]\d{2}/i.match?(fields[key])
         key = "delta#{idx * 50}"
-        row_hash[key] = fields[key] if fields[key].present?
+        row_hash[key] = fields[key] if /\d{0,2}['\":.]?\d{2}[\":.]\d{2}/i.match?(fields[key])
       end
 
       # Add relay swimmer laps onto the same result hash & compute possible age group
@@ -495,6 +499,7 @@ module PdfResults
         # *** Nested case 2 (Ficr-type): DSQ label for relays ***
         # Support for 'disqualify_type' field as nested row:
         elsif rel_swimmer_hash[:name] == 'rel_dsq'
+          # Precedence on swimmer DSQ labels over any pre-found:
           row_hash['disqualify_type'] = rel_swimmer_hash.fetch(:fields, {})['disqualify_type']
         end
       end
@@ -669,7 +674,7 @@ module PdfResults
       type = event_hash.fetch(:fields, {})&.fetch('event_type', '')
       gender = event_hash.fetch(:fields, {})&.fetch(GENDER_FIELD_NAME, '')
       # Return just the first gender code char:
-      gender = /mist/i.match?(gender.to_s) ? 'X' : gender.to_s.at(0).upcase
+      gender = /mist/i.match?(gender.to_s) ? 'X' : gender.to_s.at(0)&.upcase
       ["#{length} #{type}", length, type, gender]
     end
     #-- -----------------------------------------------------------------------
@@ -786,6 +791,31 @@ module PdfResults
       return GogglesDb::GenderType.intermixed.code if /mist/i.match?(gender_name.to_s)
 
       gender_name&.at(0)&.upcase
+    end
+    #-- -----------------------------------------------------------------------
+    #++
+
+    # Returns a single DSQ string label whenever the field 'disqualify_type' is present or
+    # if there are any sibling DAO rows named 'dsq_label', 'dsq_label_x2' or 'dsq_label_x3';
+    # +nil+ otherwise.
+    def extract_additional_dsq_labels(result_hash)
+      dsq_label = result_hash.fetch(:fields, {})['disqualify_type']
+      timing = result_hash.fetch(:fields, {})['timing']
+      dsq_label = timing unless dsq_label.present? || timing.blank? || /\d{0,2}['\":.]?\d{2}[\":.]\d{2}/i.match?(timing)
+      return if dsq_label.blank?
+
+      # Make sure the timing field is cleared out when we have a DSQ label:
+      result_hash[:fields]['timing'] = nil
+
+      # Check for any possible additional (up to 3x rows) DSQ labels added as sibling rows:
+      # add any additional DSQ label value (grep'ed as string keys) when present.
+      additional_hash = result_hash.fetch(:rows, [{}])&.find { |h| h[:name] == 'dsq_label' }
+      dsq_label = "#{dsq_label}: #{additional_hash[:key]}" if additional_hash&.key?(:key)
+      %w[x2 x3].each do |suffix|
+        additional_hash = result_hash.fetch(:rows, [{}])&.find { |h| h[:name] == "dsq_label_#{suffix}" }
+        dsq_label = "#{dsq_label} #{additional_hash[:key]}" if additional_hash&.key?(:key)
+      end
+      dsq_label
     end
     #-- -----------------------------------------------------------------------
     #++

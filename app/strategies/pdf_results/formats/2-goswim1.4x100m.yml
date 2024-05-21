@@ -131,7 +131,7 @@
             pop_out: false
 
           - name: lap50
-            format: "^(?>\\d{0,3})?\\s{4,}(?>[A-z\\d\\.']{1,}\\s?\\-?\\s?){1,}\\s+(?>(\\d{0,2}[':.]?\\d{2}[\":.]\\d{2})\\s+|Squalif$|Assente$|Non part$)"
+            format: "^(?>\\d{0,3})?\\s{4,}(?>[A-z\\d\\.']{1,}\\s?\\-?\\s?){1,}\\s+((\\d{0,2}[':.]?\\d{2}[\":.]\\d{2})\\s+|Squalif$|Assente$|Non part$)"
             pop_out: false
             required: false
           - name: lap100
@@ -162,6 +162,10 @@
 
           - name: timing
             format: "^(?>\\d{0,3})?\\s{4,}(?>[A-z\\d\\.']{1,}\\s?\\-?\\s?){1,}\\s+(?>(?>\\d{0,2}[':.]?\\d{2}[\":.]\\d{2}\\s+){1,}(\\d{0,2}[':.]?\\d{2}[\":.]\\d{2})$|Squalif$|Assente$|Non part$)"
+            pop_out: false
+            required: false
+          - name: disqualify_type
+            format: "(Squalif|Assente|Non part)$"
             pop_out: false
             required: false
 

@@ -32,11 +32,12 @@
       # This defines a group of FieldDefs, spanning 1 single row:
       - fields:
         - name: edition
-          lambda: strip
-          format: "\\s*(\\d{1,2}|[IVXLCM]+).{1,2}?\\s+"
+          required: false
+          format: "^\\s{20,}(\\d{1,2}|[IVXLCM]+).{1,2}?\\s+"
+          pop_out: false
         - name: meeting_name
-          lambda: strip
-          format: "(?>\\s*[°^*oa']?)\\s+([\"“`']?.+[\"“`'\\b]?)"
+          format: "^\\s{20,}(?>\\d{1,2}|[IVXLCM]+)?.{1,2}?\\s+(.+)$"
+          pop_out: false
 
       # "header" row-1, abs. row #1:
       # NOTE: consider using "at_fixed_row: 1" given ContextDef may match several lines forward.
