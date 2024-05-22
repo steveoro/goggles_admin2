@@ -414,12 +414,12 @@ module PdfResults
       # Add lap & delta fields only when present in the source result_hash:
       (1..29).each do |idx|
         key = "lap#{idx * 50}"
-        row_hash[key] = fields[key] if /\d{0,2}['\":.]?\d{2}[\":.]\d{2}/i.match?(fields[key])
+        row_hash[key] = /\d{0,2}['\":.]?\d{2}[\":.]\d{2}/i.match?(fields[key]) ? fields[key] : nil
         key = "delta#{idx * 50}"
-        row_hash[key] = fields[key] if /\d{0,2}['\":.]?\d{2}[\":.]\d{2}/i.match?(fields[key])
+        row_hash[key] = /\d{0,2}['\":.]?\d{2}[\":.]\d{2}/i.match?(fields[key]) ? fields[key] : nil
       end
 
-      row_hash
+      row_hash.compact
     end
 
     # Converts the relay result data structure into an Array of data Hash rows
@@ -467,9 +467,9 @@ module PdfResults
       # Add lap & delta fields only when present in the source fields and resemble a timing value:
       (1..29).each do |idx|
         key = "lap#{idx * 50}"
-        row_hash[key] = fields[key] if /\d{0,2}['\":.]?\d{2}[\":.]\d{2}/i.match?(fields[key])
+        row_hash[key] = /\d{0,2}['\":.]?\d{2}[\":.]\d{2}/i.match?(fields[key]) ? fields[key] : nil
         key = "delta#{idx * 50}"
-        row_hash[key] = fields[key] if /\d{0,2}['\":.]?\d{2}[\":.]\d{2}/i.match?(fields[key])
+        row_hash[key] = /\d{0,2}['\":.]?\d{2}[\":.]\d{2}/i.match?(fields[key]) ? fields[key] : nil
       end
 
       # Add relay swimmer laps onto the same result hash & compute possible age group
@@ -505,7 +505,7 @@ module PdfResults
       end
       row_hash['overall_age'] = overall_age
 
-      row_hash
+      row_hash.compact
     end
     #-- -----------------------------------------------------------------------
     #++

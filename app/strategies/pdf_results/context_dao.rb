@@ -89,8 +89,9 @@ module PdfResults
       end
       return if context&.rows.blank?
 
+      # Include only data from rows which name is included in the ContextDef data_hash keys:
       context.rows.each do |ctx|
-        @fields_hash.merge!(ctx.dao.fields_hash) if ctx.is_a?(ContextDef) && ctx.dao.present?
+        @fields_hash.merge!(ctx.dao.fields_hash) if ctx.is_a?(ContextDef) && context.data_hash.key?(ctx.name) && ctx.dao.present?
       end
     end
     #-- -----------------------------------------------------------------------

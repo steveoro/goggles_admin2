@@ -271,7 +271,7 @@ module PdfResults
       super
 
       # Preset defaults:
-      @consumed_rows = 0
+      clear_data
       @logger = logger if logger.is_a?(Logger)
       @debug = [true, 'true'].include?(debug) # (default false for blanks)
       @format = Regexp.new(format, Regexp::IGNORECASE) if format.present?
@@ -306,6 +306,16 @@ module PdfResults
     # Simple helper that returns +true+ if this ContextDef is not required.
     def optional?
       !required?
+    end
+
+    # Resets *all* previously collected data for any FieldDefs or sibling contexts included
+    # in this instance.
+    def clear_data
+      @data_hash = {}
+      @consumed_rows = 0
+      return unless @fields.is_a?(Array)
+
+      @fields.each { |fld| fld.clear if fld.respond_to?(:clear) }
     end
 
     # Returns the Array of *required* FieldDefs, if there are any defined; an empty Array otherwise.
@@ -364,7 +374,7 @@ module PdfResults
     #
     # Assumes #extract() has already been called (or the keys/values will be blank).
     # +False+ otherwise.
-    def has_key_values?
+    def has_key_values? # rubocop:disable Naming/PredicateName
       key_attributes_from_fields.present? || key_attributes_from_rows.present?
     end
 
@@ -470,8 +480,7 @@ module PdfResults
     def valid?(row_buffer, scan_index, extract: true) # rubocop:disable Metrics/MethodLength,Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
       @last_validation_result = false
       @curr_index = 0 # Local scan index, relative to the resulting row_buffer, after resizing & limiting
-      @consumed_rows = 0
-      @data_hash = {}
+      clear_data
       log_message(scan_index:)
       # 0) Bail-out conditions:
       # Exit with no extraction & optional or repeatable context (these are always valid)
@@ -506,9 +515,9 @@ module PdfResults
         curr_buffer = curr_buffer[local_start..]
       end
       # DEBUG ----------------------------------------------------------------
-      # if name == 'event-row1' # && (scan_index >= 64)
-      #   log_message(msg: "BEFORE @fields (#{name}), step 1, @curr_index: #{@curr_index}, @consumed_rows: #{@consumed_rows}", scan_index: scan_index)
-      #   binding.pry if scan_index >= starts_at_row.to_i
+      # if name == 'results' && (scan_index == 20)
+      #   log_message(msg: "BEFORE (#{name}) step 1, @curr_index: #{@curr_index}, @consumed_rows: #{@consumed_rows}", scan_index: scan_index)
+      #   binding.pry # if scan_index >= starts_at_row.to_i
       # end
       # ----------------------------------------------------------------------
 
@@ -545,9 +554,9 @@ module PdfResults
       @last_source_before_format = curr_buffer&.dup
       log_message(msg: "before @format: #{format}", scan_index:, curr_buffer:) if format
       # DEBUG ----------------------------------------------------------------
-      # if name == 'event-row1' # && (scan_index == 2)
+      # if name == 'results' && (scan_index == 20)
       #   log_message(msg: "BEFORE @format (#{name}), @curr_index: #{@curr_index}, @consumed_rows: #{@consumed_rows}", scan_index: scan_index)
-      #   # binding.pry
+      #   binding.pry
       # end
       # ----------------------------------------------------------------------
 
@@ -586,9 +595,9 @@ module PdfResults
         end
       end
       # DEBUG ----------------------------------------------------------------
-      # if name == 'event-row1' # && (scan_index == 2)
+      # if name == 'results' && (scan_index == 20)
       #   log_message(msg: "AFTER @format (#{name}), @curr_index: #{@curr_index}, @consumed_rows: #{@consumed_rows}", scan_index: scan_index)
-      #   # binding.pry
+      #   binding.pry
       # end
       # ----------------------------------------------------------------------
 
@@ -602,7 +611,7 @@ module PdfResults
                     depth: parent.present? ? 1 : 0)
       end
       # DEBUG ----------------------------------------------------------------
-      # if name == 'event-row1'
+      # if name == 'results' && (scan_index == 20)
       #   log_message(msg: "BEFORE @fields (#{name}), step 5, @curr_index: #{@curr_index}, @consumed_rows: #{@consumed_rows}", scan_index: scan_index)
       #   binding.pry
       # end
@@ -611,6 +620,9 @@ module PdfResults
       # 6) Fields scan: extract all required data from current row buffer;
       #                 valid <=> all required fields have data
       source_row = curr_buffer.dup
+      # DEBUG ----------------------------------------------------------------
+      # binding.pry if fields && fields.count >= 11
+      # ----------------------------------------------------------------------
       valid = fields&.all? do |field_def|
         # DEBUG ----------------------------------------------------------------
         # binding.pry if source_row.to_s.include?("(49.01)")
@@ -632,26 +644,26 @@ module PdfResults
         @consumed_rows = row_span # (see note on line 566 above)
       end
       # DEBUG ----------------------------------------------------------------
-      # if name == 'event-row1' # && (scan_index == 2)
+      # if name == 'results' && (scan_index == 20)
       #   log_message(msg: "AFTER @fields (#{name}), step 6, @curr_index: #{@curr_index}, @consumed_rows: #{@consumed_rows}", scan_index: scan_index)
       #   binding.pry
       # end
       # ----------------------------------------------------------------------
-      return false if fields.present? && !valid
+      if fields.present? && !valid
+        clear_data
+        return false
+      end
 
       # ** At this point: **
       # - Either fields or format must increase the row scanning index (Because of the default row span: 1)
       # (=> ASSUMES: all fields are on the same line)
 
-      # DEBUG ----------------------------------------------------------------
-      # if name == 'footer'
-      #   log_message(msg: "BEFORE BEFORE @rows (#{name}), @curr_index: #{@curr_index}, @consumed_rows: #{@consumed_rows}", scan_index: scan_index)
-      #   # binding.pry
-      # end
-      # ----------------------------------------------------------------------
-
       # Increase scan_index with default row_span if valid w/ fields or when just the format was found:
       if valid && fields.present? # || (format.present? && source_row.present? && valid.nil?)
+        # DEBUG ----------------------------------------------------------------
+        # binding.pry if fields.count >= 11 # fields.any? { |fld| fld.value == "DI DONNA ANDREA" }
+        # ----------------------------------------------------------------------
+
         # WAS: @curr_index = scan_index + 1
         @curr_index += 1
       end
@@ -665,11 +677,17 @@ module PdfResults
         # Ignore invalid rows:
         next unless sub_context.is_a?(PdfResults::ContextDef)
 
+        # DEBUG ----------------------------------------------------------------
+        # if sub_context.name == 'results0' && (scan_index == 20)
+        #   log_message(msg: "BEFORE @rows (#{name}), step 6 end, @curr_index: #{@curr_index}, @consumed_rows: #{@consumed_rows}", scan_index: scan_index)
+        #   binding.pry
+        # end
+        # ----------------------------------------------------------------------
         valid = sub_context.valid?(curr_buffer, @curr_index)
         # DEBUG ----------------------------------------------------------------
-        # if sub_context.name == 'results3_dsq' # && (scan_index == 17)
+        # if sub_context.name == 'results0' && (scan_index == 20)
         #   log_message(msg: "IN ROWS, @curr_index: #{@curr_index}", scan_index: scan_index)
-        #   # binding.pry
+        #   binding.pry
         # end
         # ----------------------------------------------------------------------
 
@@ -696,20 +714,27 @@ module PdfResults
         @consumed_rows += row_span
       end
       # DEBUG ------------------------------ ----------------------------------
-      # if name == 'event' && (scan_index == 2)
+      # if name == 'results' && (scan_index == 20)
       #   log_message(msg: "AFTER ROWS (#{name}), @curr_index: #{@curr_index}, @consumed_rows: #{@consumed_rows} (BEFORE RETURN)",
       #               scan_index: scan_index, curr_buffer: curr_buffer)
       #   binding.pry
       # end
       # ----------------------------------------------------------------------
-      return false if rows.present? && !valid
+      if rows.present? && !valid
+        clear_data
+        return false
+      end
 
       # (Re)Set the DAO value whenever there's a (new) valid context found:
       if key.present?
         log_message(msg: "\033[1;33;32mDAO created.\033[0m", scan_index:)
+        # DEBUG ----------------------------------------------------------------
+        # binding.pry if key.include?('<swimmer_name>')
+        # ----------------------------------------------------------------------
         @dao = ContextDAO.new(self)
       else
         log_message(msg: "\033[1;33;32m✔\033[0m", scan_index:)
+        @dao = nil
       end
       # Set the internal validation result value only when actually found:
       @last_validation_result = true if valid

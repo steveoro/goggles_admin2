@@ -3,7 +3,7 @@
 module PdfResults
   # = PdfResults::FieldDef
   #
-  #   - version:  7-0.6.00
+  #   - version:  7-0.7.10
   #   - author:   Steve A.
   #
   # Stores field definition & data extraction properties as read from a PDF-layout-format YML
@@ -164,6 +164,7 @@ module PdfResults
       @format = Regexp.new(default_format_val, Regexp::IGNORECASE)
       @pop_out = [true, 'true', nil, ''].include?(pop_out)    # (default true for blanks)
       @required = [true, 'true', nil, ''].include?(required)  # (default true for blanks)
+      @value = nil
     end
     #-- -----------------------------------------------------------------------
     #++
@@ -180,6 +181,11 @@ module PdfResults
     end
     #-- -----------------------------------------------------------------------
     #++
+
+    # Resets internal reference from last #extract() result.
+    def clear
+      @value = @curr_buffer = nil
+    end
 
     # Alias for #value. Assumes #extract() has already been called.
     # === Note:
@@ -228,7 +234,7 @@ module PdfResults
     #
     def extract(source_row)
       # Always reset current data at start:
-      @value = @curr_buffer = nil
+      clear
 
       if lambda.is_a?(Array)
         lambda.each { |curr_lambda| source_row = apply_lambda(curr_lambda, source_row) }
