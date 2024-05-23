@@ -89,10 +89,10 @@
           format: "^\\.\\s{6,}(?>[468]X\\d{2,4})\\s+(Stile\\slibero|Dorso|Farfalla|Rana|Misti)\\s?"
           pop_out: false
         - name: gender_type
-          format: "\\s+(?>MASTER\\s\\d{2,3}\\s?-\\s?\\d{2,3}|ASSOLUTI)\\s+(?>(FEMMINILE)\\s-\\sSerie|(MASCHILE)\\s-\\sSerie|(MIST)I\\s-\\sSerie|X-STAFFETTE\\s(MIST)E\\s-)"
+          format: "\\s+(?>MASTER\\s\\d{2,3}\\s?-\\s?\\d{2,3}|MASTER\\s\\d{2}|ASSOLUTI)\\s+(?>(FEMMINILE)\\s-\\sSerie|(MASCHILE)\\s-\\sSerie|(MIST)I\\s-\\sSerie|X-STAFFETTE\\s(MIST)E\\s-)"
           pop_out: false
         - name: cat_title
-          format: "\\s+(MASTER\\s\\d{2,3}\\s?-\\s?\\d{2,3}|ASSOLUTI)\\s+(?>FEMMINILE\\s-\\sSerie|MASCHILE\\s-\\sSerie|MISTI\\s-\\sSerie|X-STAFFETTE\\sMISTE\\s-)"
+          format: "\\s+(MASTER\\s\\d{2,3}\\s?-\\s?\\d{2,3}|MASTER\\s\\d{2}|ASSOLUTI)\\s+(?>FEMMINILE\\s-\\sSerie|MASCHILE\\s-\\sSerie|MISTI\\s-\\sSerie|X-STAFFETTE\\sMISTE\\s-)"
           pop_out: false
 
       # "event" row-2:
@@ -127,41 +127,41 @@
             # Rank will be missing for DSQs:
             required: false
           - name: team_name
-            format: "^(?>\\d{0,3})?\\s{4,}((?>[A-z\\d\\.']{1,}\\s?\\-?\\s?){1,})\\s+(?>\\d{0,2}[':.]?\\d{2}[\":.]\\d{2}\\s+|Squalif$|Assente$|Non part$)"
+            format: "^(?>\\d{0,3})?\\s{4,}((?>[A-z\\d\\.']{1,}\\s?\\-?\\s?){1,})\\s+(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+|Squalif$|Assente$|Non part$)"
             pop_out: false
 
           - name: lap50
-            format: "^(?>\\d{0,3})?\\s{4,}(?>[A-z\\d\\.']{1,}\\s?\\-?\\s?){1,}\\s+((\\d{0,2}[':.]?\\d{2}[\":.]\\d{2})\\s+|Squalif$|Assente$|Non part$)"
+            format: "^(?>\\d{0,3})?\\s{4,}(?>[A-z\\d\\.']{1,}\\s?\\-?\\s?){1,}\\s+((\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+|Squalif$|Assente$|Non part$)"
             pop_out: false
             required: false
           - name: lap100
-            format: "^(?>\\d{0,3})?\\s{4,}(?>[A-z\\d\\.']{1,}\\s?\\-?\\s?){1,}\\s+(?>\\d{0,2}[':.]?\\d{2}[\":.]\\d{2}\\s+(\\d{0,2}[':.]?\\d{2}[\":.]\\d{2})\\s+|Squalif$|Assente$|Non part$)"
+            format: "^(?>\\d{0,3})?\\s{4,}(?>[A-z\\d\\.']{1,}\\s?\\-?\\s?){1,}\\s+(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+|Squalif$|Assente$|Non part$)"
             pop_out: false
             required: false
           - name: lap150
-            format: "^(?>\\d{0,3})?\\s{4,}(?>[A-z\\d\\.']{1,}\\s?\\-?\\s?){1,}\\s+(?>(?>\\d{0,2}[':.]?\\d{2}[\":.]\\d{2}\\s+){2}(\\d{0,2}[':.]?\\d{2}[\":.]\\d{2})\\s+|Squalif$|Assente$|Non part$)"
+            format: "^(?>\\d{0,3})?\\s{4,}(?>[A-z\\d\\.']{1,}\\s?\\-?\\s?){1,}\\s+(?>(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){2}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+|Squalif$|Assente$|Non part$)"
             pop_out: false
             required: false
 
           - name: lap200
-            format: "^(?>\\d{0,3})?\\s{4,}(?>[A-z\\d\\.']{1,}\\s?\\-?\\s?){1,}\\s+(?>(?>\\d{0,2}[':.]?\\d{2}[\":.]\\d{2}\\s+){3}(\\d{0,2}[':.]?\\d{2}[\":.]\\d{2})\\s+|Squalif$|Assente$|Non part$)"
+            format: "^(?>\\d{0,3})?\\s{4,}(?>[A-z\\d\\.']{1,}\\s?\\-?\\s?){1,}\\s+(?>(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){3}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+|Squalif$|Assente$|Non part$)"
             pop_out: false
             required: false
           - name: lap250
-            format: "^(?>\\d{0,3})?\\s{4,}(?>[A-z\\d\\.']{1,}\\s?\\-?\\s?){1,}\\s+(?>(?>\\d{0,2}[':.]?\\d{2}[\":.]\\d{2}\\s+){4}(\\d{0,2}[':.]?\\d{2}[\":.]\\d{2})\\s+|Squalif$|Assente$|Non part$)"
+            format: "^(?>\\d{0,3})?\\s{4,}(?>[A-z\\d\\.']{1,}\\s?\\-?\\s?){1,}\\s+(?>(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){4}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+|Squalif$|Assente$|Non part$)"
             pop_out: false
             required: false
           - name: lap300
-            format: "^(?>\\d{0,3})?\\s{4,}(?>[A-z\\d\\.']{1,}\\s?\\-?\\s?){1,}\\s+(?>(?>\\d{0,2}[':.]?\\d{2}[\":.]\\d{2}\\s+){5}(\\d{0,2}[':.]?\\d{2}[\":.]\\d{2})\\s+|Squalif$|Assente$|Non part$)"
+            format: "^(?>\\d{0,3})?\\s{4,}(?>[A-z\\d\\.']{1,}\\s?\\-?\\s?){1,}\\s+(?>(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){5}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+|Squalif$|Assente$|Non part$)"
             pop_out: false
             required: false
           - name: lap350
-            format: "^(?>\\d{0,3})?\\s{4,}(?>[A-z\\d\\.']{1,}\\s?\\-?\\s?){1,}\\s+(?>(?>\\d{0,2}[':.]?\\d{2}[\":.]\\d{2}\\s+){6}(\\d{0,2}[':.]?\\d{2}[\":.]\\d{2})\\s+|Squalif$|Assente$|Non part$)"
+            format: "^(?>\\d{0,3})?\\s{4,}(?>[A-z\\d\\.']{1,}\\s?\\-?\\s?){1,}\\s+(?>(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){6}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+|Squalif$|Assente$|Non part$)"
             pop_out: false
             required: false
 
           - name: timing
-            format: "^(?>\\d{0,3})?\\s{4,}(?>[A-z\\d\\.']{1,}\\s?\\-?\\s?){1,}\\s+(?>(?>\\d{0,2}[':.]?\\d{2}[\":.]\\d{2}\\s+){1,}(\\d{0,2}[':.]?\\d{2}[\":.]\\d{2})$|Squalif$|Assente$|Non part$)"
+            format: "^(?>\\d{0,3})?\\s{4,}(?>[A-z\\d\\.']{1,}\\s?\\-?\\s?){1,}\\s+(?>(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){1,}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})$|Squalif$|Assente$|Non part$)"
             pop_out: false
             required: false
           - name: disqualify_type
@@ -172,43 +172,43 @@
       - name: rel_team2
         fields:
           - name: swimmer_name1
-            format: "^\\s{7,10}~\\s([A-z]+(?>[A-z'`\\-\\s]?\\s?[A-z'`]*){2,})\\s+(?>\\d{4}|\\(\\s.+\\s\\)\\s+\\d{4}\\b)"
+            format: "^\\s{4,12}~\\s([A-z]+(?>[A-z'`\\-\\s]?\\s?[A-z'`]*){2,})\\s+(?>\\d{4}|\\(\\s.+\\s\\)\\s+\\d{4}\\b)"
             pop_out: false
           - name: year_of_birth1
-            format: "^\\s{7,10}~\\s[A-z]+(?>[A-z'`\\-\\s]?\\s?[A-z'`]*){2,}\\s+(?>\\(\\s.+\\s\\)\\s+)?(\\d{4})(?>\\s|\\b)"
+            format: "^\\s{4,12}~\\s[A-z]+(?>[A-z'`\\-\\s]?\\s?[A-z'`]*){2,}\\s+(?>\\(\\s.+\\s\\)\\s+)?(\\d{4})(?>\\s|\\b)"
             pop_out: false
 
           - name: delta50
-            format: "^\\s{7,10}~\\s[A-z]+(?>[A-z'`\\-\\s]?\\s?[A-z'`]*){2,}\\s+(?>\\(\\s.+\\s\\)\\s+)?\\d{4}\\s+(\\d{2}['\":]\\d{2}['\"\\.]?\\d{0,2})"
+            format: "^\\s{4,12}~\\s[A-z]+(?>[A-z'`\\-\\s]?\\s?[A-z'`]*){2,}\\s+(?>\\(\\s.+\\s\\)\\s+)?\\d{4}\\s+(\\d{2}['\":]\\d{2}['\"\\.]?\\d{0,2})"
             pop_out: false
             required: false
           - name: delta100
-            format: "^\\s{7,10}~\\s[A-z]+(?>[A-z'`\\-\\s]?\\s?[A-z'`]*){2,}\\s+(?>\\(\\s.+\\s\\)\\s+)?\\d{4}\\s+(?>\\d{2}['\":]\\d{2}['\"\\.]?\\d{0,2}\\s+)(\\d{2}['\":]\\d{2}['\"\\.]?\\d{0,2})"
+            format: "^\\s{4,12}~\\s[A-z]+(?>[A-z'`\\-\\s]?\\s?[A-z'`]*){2,}\\s+(?>\\(\\s.+\\s\\)\\s+)?\\d{4}\\s+(?>\\d{2}['\":]\\d{2}['\"\\.]?\\d{0,2}\\s+)(\\d{2}['\":]\\d{2}['\"\\.]?\\d{0,2})"
             pop_out: false
             required: false
           - name: delta150
-            format: "^\\s{7,10}~\\s[A-z]+(?>[A-z'`\\-\\s]?\\s?[A-z'`]*){2,}\\s+(?>\\(\\s.+\\s\\)\\s+)?\\d{4}\\s+(?>\\d{2}['\":]\\d{2}['\"\\.]?\\d{0,2}\\s+){2}(\\d{2}['\":]\\d{2}['\"\\.]?\\d{0,2})"
+            format: "^\\s{4,12}~\\s[A-z]+(?>[A-z'`\\-\\s]?\\s?[A-z'`]*){2,}\\s+(?>\\(\\s.+\\s\\)\\s+)?\\d{4}\\s+(?>\\d{2}['\":]\\d{2}['\"\\.]?\\d{0,2}\\s+){2}(\\d{2}['\":]\\d{2}['\"\\.]?\\d{0,2})"
             pop_out: false
             required: false
 
           - name: delta200
-            format: "^\\s{7,10}~\\s[A-z]+(?>[A-z'`\\-\\s]?\\s?[A-z'`]*){2,}\\s+(?>\\(\\s.+\\s\\)\\s+)?\\d{4}\\s+(?>\\d{2}['\":]\\d{2}['\"\\.]?\\d{0,2}\\s+){3}(\\d{2}['\":]\\d{2}['\"\\.]?\\d{0,2})"
+            format: "^\\s{4,12}~\\s[A-z]+(?>[A-z'`\\-\\s]?\\s?[A-z'`]*){2,}\\s+(?>\\(\\s.+\\s\\)\\s+)?\\d{4}\\s+(?>\\d{2}['\":]\\d{2}['\"\\.]?\\d{0,2}\\s+){3}(\\d{2}['\":]\\d{2}['\"\\.]?\\d{0,2})"
             pop_out: false
             required: false
           - name: delta250
-            format: "^\\s{7,10}~\\s[A-z]+(?>[A-z'`\\-\\s]?\\s?[A-z'`]*){2,}\\s+(?>\\(\\s.+\\s\\)\\s+)?\\d{4}\\s+(?>\\d{2}['\":]\\d{2}['\"\\.]?\\d{0,2}\\s+){4}(\\d{2}['\":]\\d{2}['\"\\.]?\\d{0,2})"
+            format: "^\\s{4,12}~\\s[A-z]+(?>[A-z'`\\-\\s]?\\s?[A-z'`]*){2,}\\s+(?>\\(\\s.+\\s\\)\\s+)?\\d{4}\\s+(?>\\d{2}['\":]\\d{2}['\"\\.]?\\d{0,2}\\s+){4}(\\d{2}['\":]\\d{2}['\"\\.]?\\d{0,2})"
             pop_out: false
             required: false
           - name: delta300
-            format: "^\\s{7,10}~\\s[A-z]+(?>[A-z'`\\-\\s]?\\s?[A-z'`]*){2,}\\s+(?>\\(\\s.+\\s\\)\\s+)?\\d{4}\\s+(?>\\d{2}['\":]\\d{2}['\"\\.]?\\d{0,2}\\s+){5}(\\d{2}['\":]\\d{2}['\"\\.]?\\d{0,2})"
+            format: "^\\s{4,12}~\\s[A-z]+(?>[A-z'`\\-\\s]?\\s?[A-z'`]*){2,}\\s+(?>\\(\\s.+\\s\\)\\s+)?\\d{4}\\s+(?>\\d{2}['\":]\\d{2}['\"\\.]?\\d{0,2}\\s+){5}(\\d{2}['\":]\\d{2}['\"\\.]?\\d{0,2})"
             pop_out: false
             required: false
           - name: delta350
-            format: "^\\s{7,10}~\\s[A-z]+(?>[A-z'`\\-\\s]?\\s?[A-z'`]*){2,}\\s+(?>\\(\\s.+\\s\\)\\s+)?\\d{4}\\s+(?>\\d{2}['\":]\\d{2}['\"\\.]?\\d{0,2}\\s+){6}(\\d{2}['\":]\\d{2}['\"\\.]?\\d{0,2})"
+            format: "^\\s{4,12}~\\s[A-z]+(?>[A-z'`\\-\\s]?\\s?[A-z'`]*){2,}\\s+(?>\\(\\s.+\\s\\)\\s+)?\\d{4}\\s+(?>\\d{2}['\":]\\d{2}['\"\\.]?\\d{0,2}\\s+){6}(\\d{2}['\":]\\d{2}['\"\\.]?\\d{0,2})"
             pop_out: false
             required: false
           - name: delta400
-            format: "^\\s{7,10}~\\s[A-z]+(?>[A-z'`\\-\\s]?\\s?[A-z'`]*){2,}\\s+(?>\\(\\s.+\\s\\)\\s+)?\\d{4}\\s+(?>\\d{2}['\":]\\d{2}['\"\\.]?\\d{0,2}\\s+){7}(\\d{2}['\":]\\d{2}['\"\\.]?\\d{0,2})"
+            format: "^\\s{4,12}~\\s[A-z]+(?>[A-z'`\\-\\s]?\\s?[A-z'`]*){2,}\\s+(?>\\(\\s.+\\s\\)\\s+)?\\d{4}\\s+(?>\\d{2}['\":]\\d{2}['\"\\.]?\\d{0,2}\\s+){7}(\\d{2}['\":]\\d{2}['\"\\.]?\\d{0,2})"
             pop_out: false
             required: false
 
@@ -216,40 +216,40 @@
         required: false
         fields:
           - name: swimmer1_timing
-            format: "^\\s{7,}\\(\\s(.+)\\s\\)"
+            format: "^\\s{4,}\\(\\s(.+)\\s\\)"
             pop_out: false
 
       - name: rel_team4
         fields:
           - name: swimmer_name2
-            format: "^\\s{7,12}~\\s([A-z]+(?>[A-z'`\\-\\s]?\\s?[A-z'`]*){2,})\\s+(?>\\d{4})"
+            format: "^\\s{4,12}~\\s([A-z]+(?>[A-z'`\\-\\s]?\\s?[A-z'`]*){2,})\\s+(?>\\d{4})"
             pop_out: false
           - name: year_of_birth2
-            format: "^\\s{7,12}~\\s[A-z]+(?>[A-z'`\\-\\s]?\\s?[A-z'`]*){2,}\\s+(\\d{4})"
+            format: "^\\s{4,12}~\\s[A-z]+(?>[A-z'`\\-\\s]?\\s?[A-z'`]*){2,}\\s+(\\d{4})"
             pop_out: false
 
       - name: rel_team5
         fields:
           - name: swimmer_name3
-            format: "^\\s{7,12}~\\s([A-z]+(?>[A-z'`\\-\\s]?\\s?[A-z'`]*){2,})\\s+(?>\\d{4}\\b)"
+            format: "^\\s{4,12}~\\s([A-z]+(?>[A-z'`\\-\\s]?\\s?[A-z'`]*){2,})\\s+(?>\\d{4}\\b)"
             pop_out: false
           - name: year_of_birth3
-            format: "^\\s{7,12}~\\s[A-z]+(?>[A-z'`\\-\\s]?\\s?[A-z'`]*){2,}\\s+(\\d{4})\\b"
+            format: "^\\s{4,12}~\\s[A-z]+(?>[A-z'`\\-\\s]?\\s?[A-z'`]*){2,}\\s+(\\d{4})\\b"
             pop_out: false
 
       - name: rel_team6
         fields:
           - name: swimmer_name4
-            format: "^\\s{7,12}~\\s([A-z]+(?>[A-z'`\\-\\s]?\\s?[A-z'`]*){2,})\\s+(?>\\d{4}\\b)"
+            format: "^\\s{4,12}~\\s([A-z]+(?>[A-z'`\\-\\s]?\\s?[A-z'`]*){2,})\\s+(?>\\d{4}\\b)"
             pop_out: false
           - name: year_of_birth4
-            format: "^\\s{7,12}~\\s[A-z]+(?>[A-z'`\\-\\s]?\\s?[A-z'`]*){2,}\\s+(\\d{4})\\b"
+            format: "^\\s{4,12}~\\s[A-z]+(?>[A-z'`\\-\\s]?\\s?[A-z'`]*){2,}\\s+(\\d{4})\\b"
             pop_out: false
 
       - name: rel_team7
         fields:
           - name: team_name
-            format: "^(?>\\d{0,2})?\\s{5,}((?>[A-z\\d\\.']{1,}\\s?\\-?\\s?){1,})\\s*(?>\\d?[',.]?\\d{0,4}[,.]\\d{1,2})?$"
+            format: "^(?>\\d{0,2})?\\s{4,}((?>[A-z\\d\\.']{1,}\\s?\\-?\\s?){1,})\\s*(?>\\d?[',.]?\\d{0,4}[,.]\\d{1,2})?$"
             pop_out: false
           - name: std_score
             format: "\\s+(\\d?[',.]?\\d{0,4}[,.]\\d{1,2})$"
@@ -267,12 +267,12 @@
     parent: rel_team
     required: false
     row_span: 2
-    format: "^\\s{8,}-\\s((?>[[:alnum:]]+\\s?){2,}\\s{8,}(?>(?>(?!.+\\s+\\d{4}\\s{3,})[[:alnum:]]+\\s?){2,}))"
+    format: "^\\s{4,}-\\s((?>[[:alnum:]]+\\s?){2,}\\s{4,}(?>(?>(?!.+\\s+\\d{4}\\s{3,})[[:alnum:]]+\\s?){1,}))"
 
   - name: dsq_label
     parent: rel_team
     required: false
-    format: "^\\s{8,}-\\s((?>(?!.+\\s+\\d{4}\\s{3,})[[:alnum:]]+\\s?){2,})"
+    format: "^\\s{4,}-\\s((?>(?!.+\\s+\\d{4}\\s{3,})[[:alnum:]]+\\s?){2,})"
 
   # - name: empty_row
   #   parent: event

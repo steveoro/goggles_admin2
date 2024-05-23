@@ -378,12 +378,8 @@ module PdfResults
           valid = context_def.valid?(@rows, row_index)
         end
 
-
-        # TMP DISABLE********************************************************************
         # Prevent excessive RegExp backtracking (unit = seconds):
-        # raise "Excessive RegExp backtracking: timeout reached! Try to be more precise for the format of '#{context_def.name}'" if timing.real > REGEXP_TIMEOUT_IN_SEC
-        # TMP DISABLE********************************************************************
-
+        raise "Excessive RegExp backtracking: timeout reached! Try to be more precise for the format of '#{context_def.name}'" if timing.real > REGEXP_TIMEOUT_IN_SEC
 
         # DEBUG
         if @debug && (context_def.key.present? || context_def.consumed_rows.positive?)

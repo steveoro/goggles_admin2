@@ -1,0 +1,475 @@
+#
+# = Layout format definition for PdfResults::FormatParser
+#
+# 2022~ version with logo on top
+#
+2-goswim1.1500m:
+  - name: pre_header
+    at_fixed_row: 0
+    required: false
+    repeat: true
+    rows:
+      # "pre-header" row-0 (x2)
+      - name: hdr_top0
+        # Row span on sub rows takes precedence over a row_span at an upper depth level:
+        row_span: 2
+        format: "^\\s{20,}.*\\s?Emilia Romagna$"
+
+  - name: header
+    repeat: true
+    rows:
+      - name: hdr_row0
+        fields:
+          - name: edition
+            required: false
+            format: "^\\s{20,}(\\d{1,2}|[IVXLCM]+).{1,2}?\\s+"
+            pop_out: false
+          - name: meeting_name
+            format: "^\\s{20,}(?>\\d{1,2}|[IVXLCM]+)?.{1,2}?\\s+(.+)$"
+            pop_out: false
+
+      - name: hdr_row1
+        # This will match any empty row if the fields are not found:
+        optional_if_empty: true
+        fields:
+          - name: meeting_name_ext
+            required: false
+            format: "^\\s{20,}(.+)$"
+
+      # "header" row-2
+      - fields:
+        - name: meeting_place
+          format: "^Luogo:\\s+((.{1,}['\\s]?)+)"
+          token_end: 45
+
+      # "header" row-3
+      - name: hdr_results
+        # Using a custom non-existent field name in keys array to skip completely this row
+        # from being part of the resulting context key:
+        keys: [skip_me]
+        format: "^\\s{20,}RISULTATI(?>\\s+Cronometraggio:\\s)?"
+
+      # "header" row-4
+      - fields:
+        - name: meeting_date
+          format: "^Data:\\s+(\\d{2}[-\/]\\d{2}[-\/]\\d{2,4})\\s+Vasca:\\s*"
+          pop_out: false
+        - name: pool_type
+          format: "^Data:\\s+(?>\\d{2}[-\/]\\d{2}[-\/]\\d{2,4})\\s+Vasca:\\s*(25|50)"
+          pop_out: false
+
+  - name: event
+    # Repeat each page
+    repeat: true
+    parent: header
+    rows:
+      # "event" row-0:
+      - name: event_sep0
+        format: "^$"
+
+      # "event" row-1:
+      # 1. "100 STILE LIBERO MASTER 25 FEMMINILE - Serie"
+      # 2. "100 STILE LIBERO FEMMINILE CATEGORIA AMATORI 20 - Serie"
+      - fields:
+        - name: event_length
+          format: "^\\.\\s{6,}(\\d{2,4})\\s+"
+          pop_out: false
+        - name: event_type
+          format: "^\\.\\s{6,}(?>\\d{2,4})\\s(Stile libero|Dorso|Farfalla|Rana|Misti)\\s+"
+          pop_out: false
+        - name: gender_type
+          format: "\\s(Masch|Femmin)"
+          pop_out: false
+        - name: cat_title
+          format: "\\s((?>MASTER|AMATORI)\\s\\d{2,3})\\s"
+          pop_out: false
+
+      # "event" row-2:
+      - name: event_sep2
+        format: "^$"
+
+      # "event" row-3:
+      - name: event_sub_hdr
+        keys: [skip_me]
+        format: "^\\s{1,}POS\\sATLETA\\s{10,}ANNO\\s{3,}50m\\s{3,}100m\\s{3,}150m\\s{3,}200m\\s{3,}250m\\s{3,}300m\\s{3,}350m\\s{3,}400m\\s{3,}ARRIVO$"
+
+      # "event" row-4:
+      - name: event_sub_hdr2
+        keys: [skip_me]
+        format: "^\\s{5,}SOCIETA\\s{3,}450m\\s{3,}500m\\s{3,}550m\\s{3,}600m\\s{3,}650m\\s{3,}700m\\s{3,}750m\\s{3,}800m\\s{10,}PUNTI$"
+
+      # "event" row-5:
+      - name: event_sub_hdr3
+        keys: [skip_me]
+        format: "^\\s{45,}850m\\s{3,}900m\\s{3,}950m\\s{2,}1000m\\s{2,}1050m\\s{2,}1100m\\s{2,}1150m\\s{2,}1200m$"
+
+      # "event" row-6:
+      - name: event_sub_hdr4
+        keys: [skip_me]
+        format: "^\\s{45,}1250m\\s{2,}1300m\\s{2,}1350m\\s{2,}1400m\\s{2,}1450m$"
+
+      # "event" row-7:
+      - name: event_sep3
+        format: "^$"
+
+      # "event" row-8:
+      - name: event_sep4
+        format: "^$"
+
+  # Actual data starts here:
+  - name: results
+    repeat: true
+    parent: event
+    # Start searching for this context at:
+    starts_at_row: 11
+    rows:
+      # "results" row-0: laps 50..400
+      - fields:
+        - name: rank
+          format: "^(\\d{1,3})\\s{4,}"
+          pop_out: false
+          # Rank will be missing for DSQs:
+          required: false
+        - name: swimmer_name
+          format: "^(?>\\d{0,3}\\s+)([A-z]+(?>[A-z'`\\-\\s]\\s?[A-z'`]*){2,7})\\s+\\d{4}\\s{2,}"
+          pop_out: false
+        - name: year_of_birth
+          format: "^\\d{0,3}\\s*.+\\s+(\\d{4})\\s{2,}"
+          pop_out: false
+
+        - name: lap50
+          format: "\\s+\\d{4}\\s{2,}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
+          pop_out: false
+          required: false
+        - name: lap100
+          format: "\\s+\\d{4}\\s{2,}(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
+          pop_out: false
+          required: false
+        - name: lap150
+          format: "\\s+\\d{4}\\s{2,}(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}\\s+){2}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
+          pop_out: false
+          required: false
+
+        - name: lap200
+          format: "\\s+\\d{4}\\s{2,}(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}\\s+){3}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
+          pop_out: false
+          required: false
+        - name: lap250
+          format: "\\s+\\d{4}\\s{2,}(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}\\s+){4}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
+          pop_out: false
+          required: false
+        - name: lap300
+          format: "\\s+\\d{4}\\s{2,}(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}\\s+){5}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
+          pop_out: false
+          required: false
+        - name: lap350
+          format: "\\s+\\d{4}\\s{2,}(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}\\s+){6}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
+          pop_out: false
+          required: false
+        - name: lap400
+          format: "\\s+\\d{4}\\s{2,}(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}\\s+){7}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
+          pop_out: false
+          required: false
+
+        - name: timing
+          format: "\\s+\\d{4}\\s{2,}.+\\s+(Non part|Squalif|Assente|\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})$"
+          pop_out: false
+
+      # "results" row-1: deltas 50..400
+      - fields:
+        - name: team_name
+          format: "^\\s{6,}(\\S.+\\S)\\s?"
+          pop_out: false
+          token_end: 45
+
+        - name: delta50
+          format: "\\s{8,}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
+          pop_out: false
+          required: false
+        - name: delta100
+          format: "\\s{8,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
+          pop_out: false
+          required: false
+        - name: delta150
+          format: "\\s{8,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){2}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
+          pop_out: false
+          required: false
+        - name: delta200
+          format: "\\s{8,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){3}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
+          pop_out: false
+          required: false
+
+        - name: delta250
+          format: "\\s{8,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){4}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
+          pop_out: false
+          required: false
+        - name: delta300
+          format: "\\s{8,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){5}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
+          pop_out: false
+          required: false
+        - name: delta350
+          format: "\\s{8,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){6}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
+          pop_out: false
+          required: false
+        - name: delta400
+          format: "\\s{8,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){7}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
+          pop_out: false
+          required: false
+
+        - name: std_score
+          format: "\\s+(\\d?[',.]?\\d{0,4}[,.]\\d{1,2})$"
+          pop_out: false
+          token_start: 45
+          # Absent => blank, not even zero
+          required: false
+
+      # "results" row-2: laps 450..800
+      - name: results_lap450
+        required: false
+        fields:
+          - name: dsq_label
+            format: "^\\s{6,}(-\\s\\S.+\\S)\\s*"
+            pop_out: false
+            token_end: 44
+            required: false
+
+          - name: lap450
+            format: "^\\s{2,}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
+            token_start: 44
+            pop_out: false
+            required: false
+          - name: lap500
+            format: "^\\s{2,}(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
+            token_start: 44
+            pop_out: false
+            required: false
+          - name: lap550
+            format: "^\\s{2,}(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}\\s+){2}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
+            token_start: 44
+            pop_out: false
+            required: false
+
+          - name: lap600
+            format: "^\\s{2,}(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}\\s+){3}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
+            token_start: 44
+            pop_out: false
+            required: false
+          - name: lap650
+            format: "^\\s{2,}(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}\\s+){4}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
+            token_start: 44
+            pop_out: false
+            required: false
+          - name: lap700
+            format: "^\\s{2,}(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}\\s+){5}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
+            token_start: 44
+            pop_out: false
+            required: false
+          - name: lap750
+            format: "^\\s{2,}(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}\\s+){6}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
+            token_start: 44
+            pop_out: false
+            required: false
+          - name: lap800
+            format: "^\\s{2,}(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}\\s+){7}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
+            token_start: 44
+            pop_out: false
+            required: false
+
+      # "results" row-3: deltas 450..800
+      - name: results_delta450
+        required: false
+        fields:
+          - name: delta450
+            format: "^\\s{44,}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
+            pop_out: false
+            required: false
+          - name: delta500
+            format: "^\\s{44,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
+            pop_out: false
+            required: false
+          - name: delta550
+            format: "^\\s{44,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){2}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
+            pop_out: false
+            required: false
+          - name: delta600
+            format: "^\\s{44,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){3}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
+            pop_out: false
+            required: false
+
+          - name: delta650
+            format: "^\\s{44,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){4}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
+            pop_out: false
+            required: false
+          - name: delta700
+            format: "^\\s{44,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){5}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
+            pop_out: false
+            required: false
+          - name: delta750
+            format: "^\\s{44,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){6}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
+            pop_out: false
+            required: false
+          - name: delta800
+            format: "^\\s{44,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){7}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
+            pop_out: false
+            required: false
+
+      # "results" row-4: laps 850..1200
+      - name: results_lap850
+        required: false
+        fields:
+          - name: lap850
+            format: "^\\s{44,}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
+            pop_out: false
+            required: false
+          - name: lap900
+            format: "^\\s{44,}(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
+            pop_out: false
+            required: false
+          - name: lap950
+            format: "^\\s{44,}(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}\\s+){2}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
+            pop_out: false
+            required: false
+
+          - name: lap1000
+            format: "^\\s{44,}(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}\\s+){3}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
+            pop_out: false
+            required: false
+          - name: lap1050
+            format: "^\\s{44,}(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}\\s+){4}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
+            pop_out: false
+            required: false
+          - name: lap1100
+            format: "^\\s{44,}(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}\\s+){5}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
+            pop_out: false
+            required: false
+          - name: lap1150
+            format: "^\\s{44,}(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}\\s+){6}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
+            pop_out: false
+            required: false
+          - name: lap1200
+            format: "^\\s{44,}(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}\\s+){7}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
+            pop_out: false
+            required: false
+
+      # "results" row-5: deltas 850..1200
+      - name: results_delta850
+        required: false
+        fields:
+          - name: delta850
+            format: "^\\s{44,}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
+            pop_out: false
+            required: false
+          - name: delta900
+            format: "^\\s{44,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
+            pop_out: false
+            required: false
+          - name: delta950
+            format: "^\\s{44,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){2}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
+            pop_out: false
+            required: false
+          - name: delta1000
+            format: "^\\s{44,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){3}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
+            pop_out: false
+            required: false
+
+          - name: delta1050
+            format: "^\\s{44,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){4}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
+            pop_out: false
+            required: false
+          - name: delta1100
+            format: "^\\s{44,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){5}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
+            pop_out: false
+            required: false
+          - name: delta1150
+            format: "^\\s{44,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){6}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
+            pop_out: false
+            required: false
+          - name: delta1200
+            format: "^\\s{44,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){7}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
+            pop_out: false
+            required: false
+
+      # "results" row-6: laps 1250..1450
+      - name: results_lap1250
+        required: false
+        fields:
+          - name: lap1250
+            format: "^\\s{44,}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
+            pop_out: false
+            required: false
+          - name: lap1300
+            format: "^\\s{44,}(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
+            pop_out: false
+            required: false
+          - name: lap1350
+            format: "^\\s{44,}(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}\\s+){2}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
+            pop_out: false
+            required: false
+
+          - name: lap1400
+            format: "^\\s{44,}(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}\\s+){3}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
+            pop_out: false
+            required: false
+          - name: lap1450
+            format: "^\\s{44,}(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}\\s+){4}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
+            pop_out: false
+            required: false
+
+      # "results" row-7: deltas 1250..1500
+      - name: results_delta1250
+        required: false
+        fields:
+          - name: delta1250
+            format: "^\\s{44,}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
+            pop_out: false
+            required: false
+          - name: delta1300
+            format: "^\\s{44,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
+            pop_out: false
+            required: false
+          - name: delta1350
+            format: "^\\s{44,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){2}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
+            pop_out: false
+            required: false
+          - name: delta1400
+            format: "^\\s{44,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){3}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
+            pop_out: false
+            required: false
+
+          - name: delta1450
+            format: "^\\s{44,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){4}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
+            pop_out: false
+            required: false
+          - name: delta1500
+            format: "^\\s{44,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){5}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
+            pop_out: false
+            required: false
+
+  - name: dsq_label_x3
+    parent: results
+    required: false
+    row_span: 3
+    format: "^\\s{8,}-\\s((?>[[:alnum:]]+\\s?){2,}\\s{8,}(?>(?>(?!.+\\s+\\d{4}\\s{3,})[[:alnum:]]+\\s?){2,})\\s{8,}(?>(?>(?!.+\\s+\\d{4}\\s{3,})[[:alnum:]]+\\s?){1,}))"
+
+  - name: dsq_label_x2
+    parent: results
+    required: false
+    row_span: 2
+    format: "^\\s{8,}-\\s((?>[[:alnum:]]+\\s?){2,}\\s{8,}(?>(?>(?!.+\\s+\\d{4}\\s{3,})[[:alnum:]]+\\s?){2,}))"
+
+  - name: dsq_label
+    parent: results
+    required: false
+    format: "^\\s{8,}-\\s((?>(?!.+\\s+\\d{4}\\s{3,})[[:alnum:]]+\\s?){2,})"
+
+  # End-Of-Page context
+  - name: footer
+    parent: event
+    eop: true
+    row_span: 5
+    repeat: true
+    starts_with: Elaborato da GoAndSwim
+    fields:
+      - name: page_num
+        keys: [skip_me]
+        format: "\\s+Pagina\\s(\\d{1,3})\\sdi\\s\\d{1,3}"

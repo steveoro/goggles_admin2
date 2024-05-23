@@ -122,7 +122,7 @@
           format: "^\\d{0,3}\\s*.+\\s+(\\d{4})\\s{10,}"
           pop_out: false
         - name: timing
-          format: "\\s+\\d{4}\\s{10,}(Non part|Squalif|Assente|\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})"
+          format: "\\s+\\d{4}\\s{10,}(Non part|Squalif|Assente|\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})"
           pop_out: false
 
       # NOTE: enabling this will mess up recognition because there's no easy way
