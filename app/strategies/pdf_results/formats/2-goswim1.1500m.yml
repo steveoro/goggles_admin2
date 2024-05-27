@@ -58,6 +58,45 @@
           format: "^Data:\\s+(?>\\d{2}[-\/]\\d{2}[-\/]\\d{2,4})\\s+Vasca:\\s*(25|50)"
           pop_out: false
 
+
+  - name: header_old
+    # Alternative section name for which this one will "stand-in" ONLY when validated
+    alternative_of: header
+    required: false
+    row_span: 5
+    repeat: true
+    rows:
+      - name: hdr_row0
+        fields:
+          - name: edition
+            required: false
+            format: "^\\s{20,}(\\d{1,2}|[IVXLCM]+).{1,2}?\\s+"
+            pop_out: false
+          - name: meeting_name
+            format: "^\\s{20,}(?>\\d{1,2}|[IVXLCM]+)?.{1,2}?\\s+(.+)\\s(?>\\-\\s|\\()\\d{1,2}[\\/\\-]?\\d{0,2}[\\/\\-\\s](?>\\s{1,2}|\\w+)[\\/\\-\\s]\\d{2,4}\\)?$"
+            pop_out: false
+          - name: meeting_date
+            format: "\\s(?>\\-\\s|\\()(\\d{1,2}[\\/\\-]?\\d{0,2}[\\/\\-\\s](?>\\s{1,2}|\\w+)[\\/\\-\\s]\\d{2,4})\\)?$"
+            pop_out: false
+
+      # "header" row-1
+      - fields:
+        - name: meeting_place
+          format: "^\\s{20,}(.+)$"
+
+      # "header" row-2 (&3)
+      - name: hdr_sep0
+        format: "^$"
+        row_span: 2
+
+      # "header" row-4
+      - name: hdr_results
+        # Using a custom non-existent field name in keys array to skip completely this row
+        # from being part of the resulting context key:
+        keys: [skip_me]
+        format: "^\\s{20,}RISULTATI GARE$"
+
+
   - name: event
     # Repeat each page
     repeat: true
@@ -116,6 +155,64 @@
       - name: event_sep4
         format: "^$"
 
+
+  - name: event_old
+    # Alternative section name for which this one will "stand-in" ONLY when validated
+    alternative_of: event
+    required: false
+    repeat: true
+    parent: header
+    rows:
+      # "event" row-0:
+      - name: event_sub_hdr
+        keys: [skip_me]
+        format: "^\\s{0,}POS\\sATLETA\\s{10,}ANNO\\s{3,}50m\\s{3,}100m\\s{3,}150m\\s{3,}200m\\s{3,}250m\\s{3,}300m\\s{3,}350m\\s{3,}400m\\s{3,}ARRIVO$"
+
+      # "event" row-1:
+      - name: event_sub_hdr2
+        keys: [skip_me]
+        format: "^\\s{2,}SOCIETA\\s{3,}450m\\s{3,}500m\\s{3,}550m\\s{3,}600m\\s{3,}650m\\s{3,}700m\\s{3,}750m\\s{3,}800m\\s{8,}PUNTI$"
+
+      # "event" row-2:
+      - name: event_sub_hdr3
+        keys: [skip_me]
+        format: "^\\s{38,}850m\\s{3,}900m\\s{3,}950m\\s{2,}1000m\\s{2,}1050m\\s{2,}1100m\\s{2,}1150m\\s{2,}1200m$"
+
+      # "event" row-3:
+      - name: event_sub_hdr4
+        keys: [skip_me]
+        format: "^\\s{38,}1250m\\s{2,}1300m\\s{2,}1350m\\s{2,}1400m\\s{2,}1450m$"
+
+      # "event" row-4:
+      - name: event_sep3
+        format: "^$"
+
+      # "event" row-5:
+      - name: event_sep4
+        format: "^$"
+
+      # "event" row-6:
+      - name: event_sep0
+        format: "^$"
+
+      # "event" row-7:
+      # 1. "1500 STILE LIBERO MASTER 25 FEMMINE"
+      # 2. "1500 STILE LIBERO MASCHI CATEGORIA AMATORI 20"
+      - fields:
+        - name: event_length
+          format: "^\\.\\s{6,}(\\d{2,4})\\s+"
+          pop_out: false
+        - name: event_type
+          format: "^\\.\\s{6,}(?>\\d{2,4})\\s(Stile(?> libero)?|Dorso|Farfalla|Rana|Misti)\\s+"
+          pop_out: false
+        - name: gender_type
+          format: "\\s(Masch|Femmin)"
+          pop_out: false
+        - name: cat_title
+          format: "\\s((?>MASTER|AMATORI)\\s\\d{2,3})\\s"
+          pop_out: false
+
+
   # Actual data starts here:
   - name: results
     repeat: true
@@ -126,7 +223,7 @@
       # "results" row-0: laps 50..400
       - fields:
         - name: rank
-          format: "^(\\d{1,3})\\s{4,}"
+          format: "^(\\d{1,3})\\s{3,}"
           pop_out: false
           # Rank will be missing for DSQs:
           required: false
@@ -178,9 +275,9 @@
       # "results" row-1: deltas 50..400
       - fields:
         - name: team_name
-          format: "^\\s{6,}(\\S.+\\S)\\s?"
+          format: "^\\s{4,}(\\S.+\\S)\\s?"
           pop_out: false
-          token_end: 45
+          token_end: 41
 
         - name: delta50
           format: "\\s{8,}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
@@ -228,50 +325,50 @@
         required: false
         fields:
           - name: dsq_label
-            format: "^\\s{6,}(-\\s\\S.+\\S)\\s*"
+            format: "^\\s{4,}(-\\s\\S.+\\S)\\s*"
             pop_out: false
-            token_end: 44
+            token_end: 39
             required: false
 
           - name: lap450
-            format: "^\\s{2,}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
-            token_start: 44
+            format: "^\\s*(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
+            token_start: 38
             pop_out: false
             required: false
           - name: lap500
-            format: "^\\s{2,}(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
-            token_start: 44
+            format: "^\\s*(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
+            token_start: 38
             pop_out: false
             required: false
           - name: lap550
-            format: "^\\s{2,}(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}\\s+){2}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
-            token_start: 44
+            format: "^\\s*(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}\\s+){2}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
+            token_start: 38
             pop_out: false
             required: false
 
           - name: lap600
-            format: "^\\s{2,}(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}\\s+){3}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
-            token_start: 44
+            format: "^\\s*(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}\\s+){3}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
+            token_start: 38
             pop_out: false
             required: false
           - name: lap650
-            format: "^\\s{2,}(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}\\s+){4}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
-            token_start: 44
+            format: "^\\s*(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}\\s+){4}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
+            token_start: 38
             pop_out: false
             required: false
           - name: lap700
-            format: "^\\s{2,}(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}\\s+){5}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
-            token_start: 44
+            format: "^\\s*(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}\\s+){5}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
+            token_start: 38
             pop_out: false
             required: false
           - name: lap750
-            format: "^\\s{2,}(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}\\s+){6}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
-            token_start: 44
+            format: "^\\s*(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}\\s+){6}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
+            token_start: 38
             pop_out: false
             required: false
           - name: lap800
-            format: "^\\s{2,}(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}\\s+){7}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
-            token_start: 44
+            format: "^\\s*(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}\\s+){7}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
+            token_start: 38
             pop_out: false
             required: false
 
@@ -280,36 +377,36 @@
         required: false
         fields:
           - name: delta450
-            format: "^\\s{44,}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
+            format: "^\\s{38,}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
             pop_out: false
             required: false
           - name: delta500
-            format: "^\\s{44,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
+            format: "^\\s{38,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
             pop_out: false
             required: false
           - name: delta550
-            format: "^\\s{44,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){2}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
+            format: "^\\s{38,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){2}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
             pop_out: false
             required: false
           - name: delta600
-            format: "^\\s{44,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){3}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
+            format: "^\\s{38,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){3}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
             pop_out: false
             required: false
 
           - name: delta650
-            format: "^\\s{44,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){4}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
+            format: "^\\s{38,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){4}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
             pop_out: false
             required: false
           - name: delta700
-            format: "^\\s{44,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){5}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
+            format: "^\\s{38,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){5}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
             pop_out: false
             required: false
           - name: delta750
-            format: "^\\s{44,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){6}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
+            format: "^\\s{38,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){6}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
             pop_out: false
             required: false
           - name: delta800
-            format: "^\\s{44,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){7}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
+            format: "^\\s{38,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){7}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
             pop_out: false
             required: false
 
@@ -318,36 +415,36 @@
         required: false
         fields:
           - name: lap850
-            format: "^\\s{44,}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
+            format: "^\\s{38,}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
             pop_out: false
             required: false
           - name: lap900
-            format: "^\\s{44,}(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
+            format: "^\\s{38,}(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
             pop_out: false
             required: false
           - name: lap950
-            format: "^\\s{44,}(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}\\s+){2}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
+            format: "^\\s{38,}(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}\\s+){2}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
             pop_out: false
             required: false
 
           - name: lap1000
-            format: "^\\s{44,}(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}\\s+){3}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
+            format: "^\\s{38,}(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}\\s+){3}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
             pop_out: false
             required: false
           - name: lap1050
-            format: "^\\s{44,}(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}\\s+){4}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
+            format: "^\\s{38,}(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}\\s+){4}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
             pop_out: false
             required: false
           - name: lap1100
-            format: "^\\s{44,}(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}\\s+){5}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
+            format: "^\\s{38,}(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}\\s+){5}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
             pop_out: false
             required: false
           - name: lap1150
-            format: "^\\s{44,}(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}\\s+){6}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
+            format: "^\\s{38,}(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}\\s+){6}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
             pop_out: false
             required: false
           - name: lap1200
-            format: "^\\s{44,}(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}\\s+){7}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
+            format: "^\\s{38,}(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}\\s+){7}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
             pop_out: false
             required: false
 
@@ -356,36 +453,36 @@
         required: false
         fields:
           - name: delta850
-            format: "^\\s{44,}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
+            format: "^\\s{38,}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
             pop_out: false
             required: false
           - name: delta900
-            format: "^\\s{44,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
+            format: "^\\s{38,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
             pop_out: false
             required: false
           - name: delta950
-            format: "^\\s{44,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){2}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
+            format: "^\\s{38,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){2}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
             pop_out: false
             required: false
           - name: delta1000
-            format: "^\\s{44,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){3}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
+            format: "^\\s{38,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){3}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
             pop_out: false
             required: false
 
           - name: delta1050
-            format: "^\\s{44,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){4}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
+            format: "^\\s{38,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){4}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
             pop_out: false
             required: false
           - name: delta1100
-            format: "^\\s{44,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){5}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
+            format: "^\\s{38,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){5}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
             pop_out: false
             required: false
           - name: delta1150
-            format: "^\\s{44,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){6}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
+            format: "^\\s{38,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){6}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
             pop_out: false
             required: false
           - name: delta1200
-            format: "^\\s{44,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){7}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
+            format: "^\\s{38,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){7}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
             pop_out: false
             required: false
 
@@ -394,24 +491,24 @@
         required: false
         fields:
           - name: lap1250
-            format: "^\\s{44,}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
+            format: "^\\s{38,}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
             pop_out: false
             required: false
           - name: lap1300
-            format: "^\\s{44,}(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
+            format: "^\\s{38,}(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
             pop_out: false
             required: false
           - name: lap1350
-            format: "^\\s{44,}(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}\\s+){2}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
+            format: "^\\s{38,}(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}\\s+){2}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
             pop_out: false
             required: false
 
           - name: lap1400
-            format: "^\\s{44,}(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}\\s+){3}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
+            format: "^\\s{38,}(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}\\s+){3}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
             pop_out: false
             required: false
           - name: lap1450
-            format: "^\\s{44,}(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}\\s+){4}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
+            format: "^\\s{38,}(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}\\s+){4}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+"
             pop_out: false
             required: false
 
@@ -420,28 +517,28 @@
         required: false
         fields:
           - name: delta1250
-            format: "^\\s{44,}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
+            format: "^\\s{38,}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
             pop_out: false
             required: false
           - name: delta1300
-            format: "^\\s{44,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
+            format: "^\\s{38,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
             pop_out: false
             required: false
           - name: delta1350
-            format: "^\\s{44,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){2}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
+            format: "^\\s{38,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){2}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
             pop_out: false
             required: false
           - name: delta1400
-            format: "^\\s{44,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){3}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
+            format: "^\\s{38,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){3}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
             pop_out: false
             required: false
 
           - name: delta1450
-            format: "^\\s{44,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){4}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
+            format: "^\\s{38,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){4}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
             pop_out: false
             required: false
           - name: delta1500
-            format: "^\\s{44,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){5}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
+            format: "^\\s{38,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){5}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+"
             pop_out: false
             required: false
 
@@ -449,18 +546,25 @@
     parent: results
     required: false
     row_span: 3
-    format: "^\\s{8,}-\\s((?>[[:alnum:]]+\\s?){2,}\\s{8,}(?>(?>(?!.+\\s+\\d{4}\\s{3,})[[:alnum:]]+\\s?){2,})\\s{8,}(?>(?>(?!.+\\s+\\d{4}\\s{3,})[[:alnum:]]+\\s?){1,}))"
+    format: "^\\s{5,}-\\s((?>[[:alnum:]]+\\s?){2,}\\s{8,}(?>(?>(?!.+\\s+\\d{4}\\s{3,})[[:alnum:]]+\\s?){2,})\\s{8,}(?>(?>(?!.+\\s+\\d{4}\\s{3,})[[:alnum:]]+\\s?){1,}))"
 
   - name: dsq_label_x2
     parent: results
     required: false
     row_span: 2
-    format: "^\\s{8,}-\\s((?>[[:alnum:]]+\\s?){2,}\\s{8,}(?>(?>(?!.+\\s+\\d{4}\\s{3,})[[:alnum:]]+\\s?){2,}))"
+    format: "^\\s{5,}-\\s((?>[[:alnum:]]+\\s?){2,}\\s{8,}(?>(?>(?!.+\\s+\\d{4}\\s{3,})[[:alnum:]]+\\s?){2,}))"
 
   - name: dsq_label
     parent: results
     required: false
-    format: "^\\s{8,}-\\s((?>(?!.+\\s+\\d{4}\\s{3,})[[:alnum:]]+\\s?){2,})"
+    format: "^\\s{5,}-\\s((?>(?!.+\\s+\\d{4}\\s{3,})[[:alnum:]]+\\s?){2,})"
+
+  # Optional event/category end separator, 2 empty rows:
+  - name: event_end_sep
+    parent: event
+    required: false
+    row_span: 2
+    format: "^$"
 
   # End-Of-Page context
   - name: footer
@@ -468,8 +572,10 @@
     eop: true
     row_span: 5
     repeat: true
-    starts_with: Elaborato da GoAndSwim
     fields:
       - name: page_num
         keys: [skip_me]
         format: "\\s+Pagina\\s(\\d{1,3})\\sdi\\s\\d{1,3}"
+      - name: logo
+        keys: [skip_me]
+        format: "goandswim"
