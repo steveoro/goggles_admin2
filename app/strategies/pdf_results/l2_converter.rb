@@ -96,6 +96,9 @@ module PdfResults
 
       @data = data_hash
       @season = season
+      # Collect the list of associated CategoryTypes to avoid hitting the DB for category code checking:
+      @categories_cache = {}
+      @season.category_types.each { |cat| @categories_cache[cat.code] = cat }
     end
     #-- -----------------------------------------------------------------------
     #++
@@ -144,7 +147,7 @@ module PdfResults
         # (as in "4X50m Stile Libero Master Maschi"):
         event_title, event_length, _event_type_name, gender_code = fetch_event_title(event_hash)
         # Reset event related category (& gender, if available):
-        curr_rel_cat_code = nil
+        curr_rel_cat_code = fetch_rel_category_code(event_hash)
         curr_rel_cat_gender = gender_code
         # DEBUG ----------------------------------------------------------------
         # binding.pry
@@ -178,6 +181,7 @@ module PdfResults
             # fields found:
             # (this assumes 'rel_category' will be enlisted ALWAYS BEFORE actual the relay team result rows)
             if row_hash[:name] == 'rel_category'
+              # Don't overwrite category code & gender unless not set yet:
               curr_rel_cat_code = section['fin_sigla_categoria'] if section['fin_sigla_categoria'].present?
               curr_rel_cat_gender = section['fin_sesso'] if section['fin_sesso'].present?
 
@@ -210,10 +214,7 @@ module PdfResults
                 # (if it has a gender split sub-category in it, it won't be "absolutes"/split-less)
                 overall_age = rel_result_hash['overall_age']
                 if overall_age.positive?
-                  rel_cat_code = GogglesDb::CategoryType.relays.only_gender_split
-                                                        .for_season(@season)
-                                                        .where('(? >= age_begin) AND (? <= age_end)', overall_age, overall_age)
-                                                        .last&.code
+                  rel_cat_code = @categories_cache.find { |_c, cat| cat.relay? && (cat.age_begin..cat.age_end).cover?(175) && !cat.undivided? }&.code
                 end
                 section['fin_sigla_categoria'] = rel_cat_code if rel_cat_code.present?
                 # Add category code to event title so that MacroSolver can deal with it automatically:
@@ -483,8 +484,7 @@ module PdfResults
         row_hash["swimmer#{idx + 1}"] = rel_team_hash.fetch(:fields, {})["swimmer_name#{idx + 1}"]
         year_of_birth = rel_team_hash.fetch(:fields, {})["year_of_birth#{idx + 1}"].to_i
         row_hash["year_of_birth#{idx + 1}"] = year_of_birth
-        # NOTE: age group calculator currently doesn't use the season, so it will yield wrong values for results not belonging to the current season
-        overall_age = overall_age + Time.zone.now.year - year_of_birth if year_of_birth.positive?
+        overall_age = overall_age + @season.begin_date.year - year_of_birth if year_of_birth.positive?
       end
 
       rel_team_hash.fetch(:rows, [{}]).each_with_index do |rel_swimmer_hash, idx|
@@ -493,8 +493,7 @@ module PdfResults
           row_hash["swimmer#{idx + 1}"] = rel_swimmer_hash.fetch(:fields, {})['swimmer_name']
           year_of_birth = rel_swimmer_hash.fetch(:fields, {})['year_of_birth'].to_i
           row_hash["year_of_birth#{idx + 1}"] = year_of_birth
-          # NOTE: age group calculator currently doesn't use the season, so it will yield wrong values for results not belonging to the current season
-          overall_age = overall_age + Time.zone.now.year - year_of_birth if year_of_birth.positive?
+          overall_age = overall_age + @season.begin_date.year - year_of_birth if year_of_birth.positive?
 
         # *** Nested case 2 (Ficr-type): DSQ label for relays ***
         # Support for 'disqualify_type' field as nested row:
@@ -600,7 +599,9 @@ module PdfResults
     #   "dd[-\s/]mm[-\s/]yy(yy)" or "dd[-\s/]MMM(mmm..)[-\s/]yy(yy)"
     def fetch_session_month
       field_hash = detect_header_fields
-      month_token = field_hash.fetch('meeting_date', '').to_s.split(%r{[-/\s]}).second
+      month_token = field_hash.fetch('meeting_date', '').to_s
+                              .match(%r{[/\-\s](\d{1,2}|\w+)[/\-\s]\d{2,4}}i)
+                              &.captures&.first
       return Parser::SessionDate::MONTH_NAMES[month_token.to_i - 1] if /\d{2}/i.match?(month_token.to_s)
 
       month_token.to_s[0..2].downcase
@@ -703,12 +704,16 @@ module PdfResults
         /\s*([UAM]\d{2})(?>\sUnder|\sMaster)?\s(?>Femmine|Maschi)/ui.match(key).captures.first
 
       # key type 1, example: "...|(Master \d\d)|..."
-      elsif /\|((?>Master|Under)\s\d{2})\|/ui.match?(key)
-        /\|((?>Master|Under)\s\d{2})\|/ui.match(key).captures.first.gsub(/Master\s/i, 'M').gsub(/Under\s/i, 'U')
+      elsif /\|((?>Master|Under|Amatori)\s\d{2})\|/ui.match?(key)
+        /\|((?>Master|Under|Amatori)\s\d{2})\|/ui.match(key).captures
+                                                 .first
+                                                 .gsub(/Master\s/i, 'M')
+                                                 .gsub(/Under\s/i, 'U')
+                                                 .gsub(/Amatori\s/i, 'A')
 
       # use just the field value "as is":
       elsif row_hash[:fields].key?(CAT_FIELD_NAME)
-        row_hash[:fields][CAT_FIELD_NAME]
+        row_hash[:fields][CAT_FIELD_NAME].gsub(/Master\s/i, 'M').gsub(/Under\s/i, 'U').gsub(/Amatori\s/i, 'A')
       end
     end
 
@@ -724,8 +729,11 @@ module PdfResults
 
     # Gets the relay result category code directly from the given data hash key or the supported
     # field name if anything else fails.
-    # Estracting the code from the key value here is more generic than relying on
-    # the actual field names. Returns +nil+ for any other unsupported case.
+    #
+    # The implementation extracts the code from the key value because it's more generic
+    # than relying on the actual field names (which, by the way, it's usually 'cat_title').
+    #
+    # Returns +nil+ for any other unsupported case.
     def fetch_rel_category_code(row_hash)
       # *** Context 'rel_category' ***
       # (Assumed to include the "category title" field, among other possible fields in the key)
@@ -785,7 +793,8 @@ module PdfResults
 
                     # Example key 2 => "{event_length: 'mistaffetta <4|6|8>x<len>'}|<style_name>|<mistaffetta|gender>|M(ASTER)?\s?<age1>-<age2>(|<base_time>)?"
                     elsif /\|(\w+)\|M(?>ASTER)?\s?\d{2,3}-\d{2,3}/ui.match?(key)
-                      # Return a valid age-group code for relays ("<age1>-<age2>"):
+                      # Use as reference the valid age-group code for relays ("<age1>-<age2>")
+                      # (ASSUMING the gender is *BEFORE* that):
                       /\|(\w+)\|M(?>ASTER)?\s?\d{2,3}-\d{2,3}/ui.match(key).captures.first
                     end
       return GogglesDb::GenderType.intermixed.code if /mist/i.match?(gender_name.to_s)

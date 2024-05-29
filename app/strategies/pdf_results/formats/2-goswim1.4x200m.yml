@@ -3,7 +3,7 @@
 #
 # 2022~ version with logo on top
 #
-2-goswim1.4x100m:
+2-goswim1.4x200m:
   - name: pre_header
     at_fixed_row: 0
     required: false
@@ -97,36 +97,6 @@
         keys: [skip_me]
         format: "^\\s{20,}RISULTATI GARE$"
 
-  # NOTE:
-  # For relays only, the following 3 rows of header plus the follow-up event description
-  # may not be included on each page if the results belong to the same category:
-  - name: post_header
-    parent: header
-    repeat: true
-    required: false
-    rows:
-      # (post-)"header" row-2
-      - fields:
-        - name: meeting_place
-          format: "^Luogo:\\s+((.{1,}['\\s]?)+)"
-          token_end: 45
-
-      # (post-)"header" row-3
-      - name: hdr_results
-        # Using a custom non-existent field name in keys array to skip completely this row
-        # from being part of the resulting context key:
-        keys: [skip_me]
-        format: "^\\s{20,}RISULTATI(?>\\s+Cronometraggio:\\s)?"
-
-      # (post-)"header" row-4
-      - fields:
-        - name: meeting_date
-          format: "^Data:\\s+(\\d{2}[-\/]\\d{2}[-\/]\\d{2,4})\\s+Vasca:\\s*"
-          pop_out: false
-        - name: pool_type
-          format: "^Data:\\s+(?>\\d{2}[-\/]\\d{2}[-\/]\\d{2,4})\\s+Vasca:\\s*(25|50)"
-          pop_out: false
-
   - name: event
     # Repeat each page
     repeat: true
@@ -185,18 +155,22 @@
       # "event" row-0:
       - name: event_sub_hdr
         keys: [skip_me]
-        format: "^\\s{0,}POS\\sATLETA\\s{10,}ANNO\\s{3,}(?>50m\\s{3,})?(?>100m\\s{3,})?(?>150m\\s{3,})?(?>200m\\s{3,})?(?>250m\\s{3,})?(?>300m\\s{3,})?(?>350m\\s{3,})?ARRIVO$"
+        format: "^\\s{0,}POS\\sATLETA\\s{10,}ANNO\\s{3,}50m\\s{3,}100m\\s{3,}150m\\s{3,}200m\\s{3,}250m\\s{3,}300m\\s{3,}350m\\s{3,}400m\\s{3,}ARRIVO$"
 
       # "event" row-1:
       - name: event_sub_hdr2
         keys: [skip_me]
-        format: "^\\s{2,}SOCIETA\\s{20,}PUNTI$"
+        format: "^\\s{2,}SOCIETA\\s{3,}450m\\s{3,}500m\\s{3,}550m\\s{3,}600m\\s{3,}650m\\s{3,}700m\\s{3,}750m\\s{10,}PUNTI$"
 
       # "event" row-2:
       - name: event_sep3
         format: "^$"
 
       # "event" row-3:
+      - name: event_sep4
+        format: "^$"
+
+      # "event" row-4:
       # Examples:
       # 1. "4X200 STILE STAFFETTA MASTER 100-119\r\n\t\t\t\t\t\tMASCHI"
       # 2. "4X50 STILE STAFFETTA MASTER 100-119\r\n\t\t\t\t\t\tFEMMINE"
@@ -211,7 +185,7 @@
           format: "\\s+(MASTER\\s\\d{2,3}\\s?-\\s?\\d{2,3}|MASTER\\s\\d{2}|ASSOLUTI)"
           pop_out: false
 
-      # "event" row-4:
+      # "event" row-5:
       - fields:
         - name: gender_type
           format: "^\\s{38,}(Masch|Femmin|Misti)"
@@ -294,7 +268,6 @@
             format: "^\\s{4,12}~\\s[A-z]+(?>[A-z'`\\-\\s]?\\s?[A-z'`]*){2,}\\s+(?>\\(\\s.+\\s\\)\\s+)?\\d{4}\\s+(?>\\d{2}['\":]\\d{2}['\"\\.]?\\d{0,2}\\s+){2}(\\d{2}['\":]\\d{2}['\"\\.]?\\d{0,2})"
             pop_out: false
             required: false
-
           - name: delta200
             format: "^\\s{4,12}~\\s[A-z]+(?>[A-z'`\\-\\s]?\\s?[A-z'`]*){2,}\\s+(?>\\(\\s.+\\s\\)\\s+)?\\d{4}\\s+(?>\\d{2}['\":]\\d{2}['\"\\.]?\\d{0,2}\\s+){3}(\\d{2}['\":]\\d{2}['\"\\.]?\\d{0,2})"
             pop_out: false
@@ -322,6 +295,34 @@
           - name: swimmer1_timing
             format: "^\\s{4,}\\(\\s(.+)\\s\\)"
             pop_out: false
+          - name: lap450
+            format: "^\\s{4,12}\\(\\s.+\\s\\)\\s+(?>\\d{2}['\":]\\d{2}['\"\\.]?\\d{0,2}\\s+){0}(\\d{2}['\":]\\d{2}['\"\\.]?\\d{0,2})"
+            pop_out: false
+            required: false
+          - name: lap500
+            format: "^\\s{4,12}\\(\\s.+\\s\\)\\s+(?>\\d{2}['\":]\\d{2}['\"\\.]?\\d{0,2}\\s+){1}(\\d{2}['\":]\\d{2}['\"\\.]?\\d{0,2})"
+            pop_out: false
+            required: false
+          - name: lap550
+            format: "^\\s{4,12}\\(\\s.+\\s\\)\\s+(?>\\d{2}['\":]\\d{2}['\"\\.]?\\d{0,2}\\s+){2}(\\d{2}['\":]\\d{2}['\"\\.]?\\d{0,2})"
+            pop_out: false
+            required: false
+          - name: lap600
+            format: "^\\s{4,12}\\(\\s.+\\s\\)\\s+(?>\\d{2}['\":]\\d{2}['\"\\.]?\\d{0,2}\\s+){3}(\\d{2}['\":]\\d{2}['\"\\.]?\\d{0,2})"
+            pop_out: false
+            required: false
+          - name: lap650
+            format: "^\\s{4,12}\\(\\s.+\\s\\)\\s+(?>\\d{2}['\":]\\d{2}['\"\\.]?\\d{0,2}\\s+){4}(\\d{2}['\":]\\d{2}['\"\\.]?\\d{0,2})"
+            pop_out: false
+            required: false
+          - name: lap700
+            format: "^\\s{4,12}\\(\\s.+\\s\\)\\s+(?>\\d{2}['\":]\\d{2}['\"\\.]?\\d{0,2}\\s+){5}(\\d{2}['\":]\\d{2}['\"\\.]?\\d{0,2})"
+            pop_out: false
+            required: false
+          - name: lap750
+            format: "^\\s{4,12}\\(\\s.+\\s\\)\\s+(?>\\d{2}['\":]\\d{2}['\"\\.]?\\d{0,2}\\s+){6}(\\d{2}['\":]\\d{2}['\"\\.]?\\d{0,2})"
+            pop_out: false
+            required: false
 
       - name: rel_team4
         fields:
@@ -331,6 +332,39 @@
           - name: year_of_birth2
             format: "^\\s{4,12}~\\s[A-z]+(?>[A-z'`\\-\\s]?\\s?[A-z'`]*){2,}\\s+(\\d{4})"
             pop_out: false
+
+          - name: delta450
+            format: "^\\s{4,12}~\\s[A-z]+(?>[A-z'`\\-\\s]?\\s?[A-z'`]*){2,}\\s+(?>\\(\\s.+\\s\\)\\s+)?\\d{4}\\s+(\\d{2}['\":]\\d{2}['\"\\.]?\\d{0,2})"
+            pop_out: false
+            required: false
+          - name: delta500
+            format: "^\\s{4,12}~\\s[A-z]+(?>[A-z'`\\-\\s]?\\s?[A-z'`]*){2,}\\s+(?>\\(\\s.+\\s\\)\\s+)?\\d{4}\\s+(?>\\d{2}['\":]\\d{2}['\"\\.]?\\d{0,2}\\s+)(\\d{2}['\":]\\d{2}['\"\\.]?\\d{0,2})"
+            pop_out: false
+            required: false
+          - name: delta550
+            format: "^\\s{4,12}~\\s[A-z]+(?>[A-z'`\\-\\s]?\\s?[A-z'`]*){2,}\\s+(?>\\(\\s.+\\s\\)\\s+)?\\d{4}\\s+(?>\\d{2}['\":]\\d{2}['\"\\.]?\\d{0,2}\\s+){2}(\\d{2}['\":]\\d{2}['\"\\.]?\\d{0,2})"
+            pop_out: false
+            required: false
+          - name: delta600
+            format: "^\\s{4,12}~\\s[A-z]+(?>[A-z'`\\-\\s]?\\s?[A-z'`]*){2,}\\s+(?>\\(\\s.+\\s\\)\\s+)?\\d{4}\\s+(?>\\d{2}['\":]\\d{2}['\"\\.]?\\d{0,2}\\s+){3}(\\d{2}['\":]\\d{2}['\"\\.]?\\d{0,2})"
+            pop_out: false
+            required: false
+          - name: delta650
+            format: "^\\s{4,12}~\\s[A-z]+(?>[A-z'`\\-\\s]?\\s?[A-z'`]*){2,}\\s+(?>\\(\\s.+\\s\\)\\s+)?\\d{4}\\s+(?>\\d{2}['\":]\\d{2}['\"\\.]?\\d{0,2}\\s+){4}(\\d{2}['\":]\\d{2}['\"\\.]?\\d{0,2})"
+            pop_out: false
+            required: false
+          - name: delta700
+            format: "^\\s{4,12}~\\s[A-z]+(?>[A-z'`\\-\\s]?\\s?[A-z'`]*){2,}\\s+(?>\\(\\s.+\\s\\)\\s+)?\\d{4}\\s+(?>\\d{2}['\":]\\d{2}['\"\\.]?\\d{0,2}\\s+){5}(\\d{2}['\":]\\d{2}['\"\\.]?\\d{0,2})"
+            pop_out: false
+            required: false
+          - name: delta750
+            format: "^\\s{4,12}~\\s[A-z]+(?>[A-z'`\\-\\s]?\\s?[A-z'`]*){2,}\\s+(?>\\(\\s.+\\s\\)\\s+)?\\d{4}\\s+(?>\\d{2}['\":]\\d{2}['\"\\.]?\\d{0,2}\\s+){6}(\\d{2}['\":]\\d{2}['\"\\.]?\\d{0,2})"
+            pop_out: false
+            required: false
+          - name: delta800
+            format: "^\\s{4,12}~\\s[A-z]+(?>[A-z'`\\-\\s]?\\s?[A-z'`]*){2,}\\s+(?>\\(\\s.+\\s\\)\\s+)?\\d{4}\\s+(?>\\d{2}['\":]\\d{2}['\"\\.]?\\d{0,2}\\s+){7}(\\d{2}['\":]\\d{2}['\"\\.]?\\d{0,2})"
+            pop_out: false
+            required: false
 
       - name: rel_team5
         fields:

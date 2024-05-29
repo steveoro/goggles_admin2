@@ -646,7 +646,8 @@ module PdfResults
       # Actual scan result (keyed by format name & sub-keyed by ContextDef type-name);
       @valid_scan_results = { format_name => {} } # (This should reset on every page change)
 
-      @format_defs = {}         # Hash list of ContextDef
+      @format_defs = {}         # Hash list of ContextDefs
+      @aliased_defs = {}        # Hash list of aliased ContextDefs
       @repeatable_defs = {}     # Hash for keeping track of repeatable checks (keyed by context name)
       @format_order = []        # requested format order
       @page_daos = []           # Collection of DAOs found on current page
@@ -654,10 +655,20 @@ module PdfResults
       #       into @root_dao only if the current overall format is successful
 
       context_props_array.each do |context_props|
+        # Set ContextDef alias list when present:
+        if context_props['alternative_of'].present? && context_props['alternative_of'].is_a?(String)
+          @aliased_defs[context_props['alternative_of']] ||= []
+          @aliased_defs[context_props['alternative_of']] << context_props['name']
+        end
+
         # Set proper parent reference:
-        # (ASSUMES: parent context must be already defined)
+        # (ASSUMES: parent context must be already defined; when the parent is an
+        #  alias for another context, the original must be used;
+        #  when not yet defined, the parent will remain a string key instead of being
+        #  converted into a Context)
         if context_props['parent'].present? && context_props['parent'].is_a?(String)
-          parent_ctx = @format_defs.fetch(context_props['parent'], nil)
+          parent_name = unaliased_ctx_name(context_props['parent'])
+          parent_ctx = @format_defs.fetch(parent_name, nil)
           context_props['parent'] = parent_ctx if parent_ctx
         end
         context_def = ContextDef.new(context_props.merge(
@@ -739,16 +750,31 @@ module PdfResults
       end
       return row_index unless valid_result && context_def.consumed_rows.positive?
 
-      # Find parent context if any:
-      # (Retrieve parent ctx in lookup table or use the link if it's not a name -- may be nil, don't care)
-      parent_ctx = context_def.parent.is_a?(String) ? @format_defs.fetch(context_def.parent, nil) : context_def.parent
+      parent_ctx = find_unaliased_parent_context_for(context_def)
 
-      # Store data: add DAO to parent rows if parent && there was something
-      # stored in the DAO:
-      if parent_ctx&.dao.present? && context_def.dao.present?
-        parent_ctx.dao.add_row(context_def.dao)
-      elsif context_def.dao.present?
-        @page_daos << context_def.dao
+      # Un-alias current DAO before storage:
+      actual_dao = context_def.dao
+      if actual_dao.present? && context_def.alternative_of.present?
+        unaliased_ctx = @format_defs.fetch(context_def.alternative_of, nil)
+        raise "'alternative_of' context set but original context not found when storing data: check your .yml layout definition file!" if unaliased_ctx.blank?
+
+        unaliased_ctx.prepare_dao(context_def)
+        actual_dao = unaliased_ctx.dao
+      end
+
+      # *** Store data: ***
+      # case 1) parent is set => add DAO to parent rows:
+      if actual_dao.present? && parent_ctx.present? && parent_ctx.dao.present?
+        # (Handle aliases) Force parent preparation so that if we're
+        # dealing with an aliased parent which is still "blank" we will store the
+        # current DAO in the actual parent even if its alias passed the valid? check
+        # while the original didn't:
+        parent_ctx.prepare_dao if parent_ctx.dao.blank?
+        parent_ctx.dao.add_row(actual_dao)
+
+      # case 2) no parents => DAO goes to current "page root":
+      elsif actual_dao.present?
+        @page_daos << actual_dao
         # (ELSE: don't append empties unless there's an actual DAO)
       end
 
@@ -781,8 +807,8 @@ module PdfResults
       @repeatable_defs[context_name].fetch(:last_check, nil) == row_index
     end
 
-    # Returns +true+ if all *required* contexts defined in @format_defs have been satisfied.
     # Relies on @valid_scan_results to store the result of the scan for a specific context name.
+    # Returns +true+ if all *required* contexts defined in @format_defs have been satisfied.
     def all_required_contexts_valid?(format_name)
       @format_defs.all? do |ctx_name, ctx|
         ctx.required? ? @valid_scan_results.key?(format_name) && @valid_scan_results[format_name].key?(ctx_name) && @valid_scan_results[format_name][ctx_name] : true
@@ -790,6 +816,36 @@ module PdfResults
     end
     #-- -----------------------------------------------------------------------
     #++
+
+    # Scans @aliased_defs in search for the right key name.
+    # Returns the original context name of an aliased ContextDef.
+    # Returns nil otherwise.
+    def find_ctx_name_from_alias(alias_ctx_name)
+      return unless @aliased_defs.is_a?(Hash)
+
+      key_name, _aliases = @aliased_defs.find { |_key, aliases| aliases&.include?(alias_ctx_name) }
+      key_name
+    end
+
+    # Returns the unaliased context name if the specified name is an alias.
+    # Returns the same context name otherwise.
+    def unaliased_ctx_name(ctx_name)
+      unaliased_name = find_ctx_name_from_alias(ctx_name)
+      return ctx_name if unaliased_name.blank?
+
+      unaliased_name
+    end
+
+    # Returns the parent ContextDef instance when the parent property is properly set.
+    # Searches for an existing, unaliased name whenever the property value is still set to a
+    # string (parent ContextDef defined  after the sibling in the format file).
+    # Returns +nil+ when not found or if the parent property wasn't set.
+    def find_unaliased_parent_context_for(context_def)
+      return if context_def.parent.blank?
+      return @format_defs.fetch(unaliased_ctx_name(context_def.parent), nil) if context_def.parent.is_a?(String)
+
+      context_def.parent
+    end
   end
 end
 # rubocop:enable Metrics/ClassLength

@@ -4,9 +4,9 @@ module Import
   #
   # = MacroSolver
   #
-  #   - version:  7-0.6.20
+  #   - version:  7-0.7.10
   #   - author:   Steve A.
-  #   - build:    20240115
+  #   - build:    20240529
   #
   # Scans the already-parsed Meeting results JSON object (which stores a whole set of results)
   # and finds existing & corresponding entity rows or creates (locally) any missing associated
@@ -40,6 +40,9 @@ module Import
       raise(ArgumentError, 'Invalid or unknown data_hash type') unless data_hash.is_a?(Hash) && data_hash.key?('layoutType')
 
       @season = GogglesDb::Season.find(season_id)
+      # Collect the list of associated CategoryTypes to avoid hitting the DB on each section:
+      @categories_cache = {}
+      @season.category_types.each { |cat| @categories_cache[cat.code] = cat }
       @data = data_hash || {}
       @toggle_debug = toggle_debug
       @retry_needed = @data['sections']&.any? { |sect| sect['retry'].present? }
@@ -299,10 +302,7 @@ module Import
 
         _event_type, category_type = Parser::EventType.from_l2_result(sect['title'], @season)
         # For parsed PDFs, the category code may be already set in section and the above may be nil:
-        if sect['fin_sigla_categoria'].present? && category_type.nil?
-          fin_code = /a2[05]/i.match?(sect['fin_sigla_categoria']) ? 'U25' : sect['fin_sigla_categoria']
-          category_type = GogglesDb::CategoryType.for_season(@season).where(code: fin_code).first
-        end
+        category_type = detect_category_from_code(sect['fin_sigla_categoria']) if sect['fin_sigla_categoria'].present? && category_type.nil?
 
         # NOTE: category_type can still be nil at this point for some formats (relays, usually)
         # If this happens:
@@ -421,10 +421,8 @@ module Import
         # (Example section 'title': "50 Stile Libero - M25")
         event_type, category_type = Parser::EventType.from_l2_result(sect['title'], @season)
         # For parsed PDFs, the category code may be already set in section and the above may be nil:
-        if sect['fin_sigla_categoria'].present? && category_type.nil?
-          fin_code = /a2[05]/i.match?(sect['fin_sigla_categoria']) ? 'U25' : sect['fin_sigla_categoria']
-          category_type = GogglesDb::CategoryType.for_season(@season).where(code: fin_code).first
-        end
+        category_type = detect_category_from_code(sect['fin_sigla_categoria']) if sect['fin_sigla_categoria'].present? && category_type.nil?
+
         # Store current category type in case the next one is not defined due to a DSQ ranking:
         curr_category_type = category_type if category_type.is_a?(GogglesDb::CategoryType)
         # Use previous category type in case the current one isn't found (possible DSQ ranking):
@@ -2238,6 +2236,16 @@ module Import
     end
     #-- -----------------------------------------------------------------------
     #++
+
+    # Converts "generic" text categories "Axx" to "Mxx" or "Uxx", depending on what's
+    # defined inside the current season. Uses the @categories_cache.
+    # "category_label" should have the format "[AMU]dd".
+    # Returns a corresponding CategoryType instance when found or nil otherwise.
+    def detect_category_from_code(category_label)
+      lowest_cat = @categories_cache.key?('U20') ? 'U20' : 'U25'
+      cat_code = category_label.gsub(/a/i, 'M')
+      @categories_cache.key?(cat_code) ? @categories_cache[cat_code] : @categories_cache[lowest_cat]
+    end
   end
   # rubocop:enable Metrics/AbcSize, Metrics/PerceivedComplexity, Metrics/MethodLength, Metrics/CyclomaticComplexity
 end

@@ -75,7 +75,7 @@ module PdfResults
     def initialize(context = nil) # rubocop:disable Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
       raise 'Invalid ContextDef specified!' unless context.is_a?(ContextDef) || context.nil?
 
-      @name = context&.name || 'root'
+      @name = context&.alternative_of || context&.name || 'root'
       # Store curr. reference to the latest Ctx parent DAO for usage in find & merge:
       @parent = context&.parent&.dao
       @key = context&.key # Use current Context key as UID

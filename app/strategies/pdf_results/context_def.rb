@@ -192,7 +192,9 @@ module PdfResults
   # 17. <tt>alternative_of</tt>: +nil+ => when set with an existing ContextDef name, the instance will "stand-in" for
   #     its counterpart and act effectively as a synonym. "Alternatives" should also be set as "required: false" in order
   #     to act as "true" synonyms.
-  #     Their main behaviour is to add both its own name and its source context to the list of verified contexts inside
+  #     "Alternative of"-contexts, when successful, will be stored as DAOs using the name specified in this property.
+  #     (That is, "alternative_of: header" will generate a ContextDAO named 'header' when successful)
+  #     Also, they will add both their name and the source context name to the list of verified contexts inside
   #     the FormatParser, even when the "alternative_of"-context has previously failed its context check.
   #
   class ContextDef < BaseDef # rubocop:disable Metrics/ClassLength
@@ -316,6 +318,12 @@ module PdfResults
       return unless @fields.is_a?(Array)
 
       @fields.each { |fld| fld.clear if fld.respond_to?(:clear) }
+    end
+
+    # Sets the internal ContextDAO #dao member, supporting a possible
+    # override context (useful for aliased contexts).
+    def prepare_dao(override_ctx = self)
+      @dao = ContextDAO.new(override_ctx)
     end
 
     # Returns the Array of *required* FieldDefs, if there are any defined; an empty Array otherwise.
@@ -661,7 +669,7 @@ module PdfResults
       # Increase scan_index with default row_span if valid w/ fields or when just the format was found:
       if valid && fields.present? # || (format.present? && source_row.present? && valid.nil?)
         # DEBUG ----------------------------------------------------------------
-        # binding.pry if fields.count >= 11 # fields.any? { |fld| fld.value == "DI DONNA ANDREA" }
+        # binding.pry if name == 'results_lap450'
         # ----------------------------------------------------------------------
 
         # WAS: @curr_index = scan_index + 1
@@ -731,7 +739,7 @@ module PdfResults
         # DEBUG ----------------------------------------------------------------
         # binding.pry if key.include?('<swimmer_name>')
         # ----------------------------------------------------------------------
-        @dao = ContextDAO.new(self)
+        prepare_dao
       else
         log_message(msg: "\033[1;33;32m✔\033[0m", scan_index:)
         @dao = nil
@@ -877,7 +885,7 @@ module PdfResults
 
     # Returns a string representation of the type of result stored by the specified
     # FieldDef or a ContextDef. Usable for logging.
-    def result_icon_for(obj)
+    def result_icon_for(obj) # rubocop:disable Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
       return "\033[1;33;31m⚠\033[0m" unless obj.is_a?(FieldDef) || obj.is_a?(ContextDef)
       return "\033[1;33;33m~\033[0m" if !obj.required? && !((obj.is_a?(ContextDef) && obj.last_validation_result) || obj.key.present?)
       return "\033[1;33;32m✔\033[0m" if obj.key.present? || (obj.is_a?(ContextDef) && obj.last_validation_result)
