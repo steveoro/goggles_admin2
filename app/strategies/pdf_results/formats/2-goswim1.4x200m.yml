@@ -112,6 +112,11 @@
       # 1. "4X50 MISTI STAFFETTA MASTER 320-399 MASCHILE - Serie "
       # 2. "4X50 MISTI STAFFETTA MASTER 200-239 FEMMINILE - Serie"
       # 3. "4X100 STILE LIBERO STAFFETTA MASTER 240-279 MISTI - Serie"
+      # 3. "4X100 STILE LIBERO STAFFETTA MASTER 240-279 MISTI - Serie"
+      # 4. "4X100 STILE LIBERO ASSOLUTI FEMMINILE - Serie"
+      # 5. "4X100 STILE LIBERO FEMMINILE CATEGORIA\n\t\t\tASSOLUTI - Serie"
+      # 6. "4X100 MISTI MASCHILE MASTER 120-159 - Serie"
+      # 7. "4X100 MISTI X-STAFFETTE MISTE MASTER 120-159 -"
       - fields:
         - name: event_length
           format: "^\\.\\s{6,}([468]X\\d{2,4})\\s+"
@@ -120,27 +125,42 @@
           format: "^\\.\\s{6,}(?>[468]X\\d{2,4})\\s+(Stile(?>\\slibero)?|Dorso|Farfalla|Rana|Misti)\\s?"
           pop_out: false
         - name: gender_type
-          format: "\\s+(?>MASTER\\s\\d{2,3}\\s?-\\s?\\d{2,3}|MASTER\\s\\d{2}|ASSOLUTI)\\s+(?>(FEMMINILE)\\s-\\sSerie|(MASCHILE)\\s-\\sSerie|(MIST)I\\s-\\sSerie|X-STAFFETTE\\s(MIST)E\\s-)"
+          format: "(?>Stile(?>\\slibero)?|Dorso|Farfalla|Rana|Misti)?\\s+(FEMMIN|MASCHI|MIST)\\D{1,3}(?>\\sCATEGORIA|\\s\\-\\s|\\sMASTER\\s)"
           pop_out: false
         - name: cat_title
-          format: "\\s+(MASTER\\s\\d{2,3}\\s?-\\s?\\d{2,3}|MASTER\\s\\d{2}|ASSOLUTI)\\s+(?>FEMMINILE\\s-\\sSerie|MASCHILE\\s-\\sSerie|MISTI\\s-\\sSerie|X-STAFFETTE\\sMISTE\\s-)"
+          format: "\\s*(MASTER\\s\\d{2,3}\\s?-\\s?\\d{2,3}|MASTER\\s\\d{2}|ASSOLUTI)"
+          required: false
+          # (Example #5 shall get 'cat_title' from 2 rows below)
           pop_out: false
 
       # "event" row-2:
       - name: event_sep2
         format: "^$"
 
-      # "event" row-3:
+      # "event" row-3 (optional):
+      - name: event_cat_title
+        required: false
+        fields:
+          - name: cat_title
+            format: "^\\s{20,}(MASTER\\s\\d{2,3}\\s?-\\s?\\d{2,3}|MASTER\\s\\d{2}|ASSOLUTI)\\s\\-\\sSerie"
+            required: false
+            pop_out: false
+          - name: event_heat_sep
+            format: "^\\s{20,}Serie"
+            required: false
+            pop_out: false
+
+      # "event" row-4:
       - name: event_sub_hdr
         keys: [skip_me]
         format: "^\\s{1,}POS\\sATLETA\\s{10,}ANNO\\s{3,}(?>50m\\s{3,})?(?>100m\\s{3,})?(?>150m\\s{3,})?(?>200m\\s{3,})?(?>250m\\s{3,})?(?>300m\\s{3,})?(?>350m\\s{3,})?ARRIVO$"
 
-      # "event" row-4:
+      # "event" row-5:
       - name: event_sub_hdr2
         keys: [skip_me]
         format: "^\\s{5,}SOCIETA\\s{20,}PUNTI$"
 
-      # "event" row-5 (optional):
+      # "event" row-6 (optional):
       - name: event_sep3
         required: false
         format: "^$"
@@ -205,41 +225,41 @@
             # Rank will be missing for DSQs:
             required: false
           - name: team_name
-            format: "^(?>\\d{0,3})?\\s{4,}((?>[A-z\\d\\.']{1,}\\s?\\-?\\s?){1,})\\s+(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+|Squalif$|Assente$|Non part$)"
+            format: "^(?>\\d{0,3})?\\s{4,}((?>[A-z\\d\\.']{1,}\\s?\\-?\\s?){1,})\\s+(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+|Squalif$|Assente$|Non part$|Ritirato$)"
             pop_out: false
 
           - name: lap50
-            format: "^(?>\\d{0,3})?\\s{4,}(?>[A-z\\d\\.']{1,}\\s?\\-?\\s?){1,}\\s+((\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+|Squalif$|Assente$|Non part$)"
+            format: "^(?>\\d{0,3})?\\s{4,}(?>[A-z\\d\\.']{1,}\\s?\\-?\\s?){1,}\\s+((\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+|Squalif$|Assente$|Non part$|Ritirato$)"
             pop_out: false
             required: false
           - name: lap100
-            format: "^(?>\\d{0,3})?\\s{4,}(?>[A-z\\d\\.']{1,}\\s?\\-?\\s?){1,}\\s+(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+|Squalif$|Assente$|Non part$)"
+            format: "^(?>\\d{0,3})?\\s{4,}(?>[A-z\\d\\.']{1,}\\s?\\-?\\s?){1,}\\s+(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+|Squalif$|Assente$|Non part$|Ritirato$)"
             pop_out: false
             required: false
           - name: lap150
-            format: "^(?>\\d{0,3})?\\s{4,}(?>[A-z\\d\\.']{1,}\\s?\\-?\\s?){1,}\\s+(?>(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){2}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+|Squalif$|Assente$|Non part$)"
+            format: "^(?>\\d{0,3})?\\s{4,}(?>[A-z\\d\\.']{1,}\\s?\\-?\\s?){1,}\\s+(?>(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){2}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+|Squalif$|Assente$|Non part$|Ritirato$)"
             pop_out: false
             required: false
 
           - name: lap200
-            format: "^(?>\\d{0,3})?\\s{4,}(?>[A-z\\d\\.']{1,}\\s?\\-?\\s?){1,}\\s+(?>(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){3}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+|Squalif$|Assente$|Non part$)"
+            format: "^(?>\\d{0,3})?\\s{4,}(?>[A-z\\d\\.']{1,}\\s?\\-?\\s?){1,}\\s+(?>(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){3}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+|Squalif$|Assente$|Non part$|Ritirato$)"
             pop_out: false
             required: false
           - name: lap250
-            format: "^(?>\\d{0,3})?\\s{4,}(?>[A-z\\d\\.']{1,}\\s?\\-?\\s?){1,}\\s+(?>(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){4}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+|Squalif$|Assente$|Non part$)"
+            format: "^(?>\\d{0,3})?\\s{4,}(?>[A-z\\d\\.']{1,}\\s?\\-?\\s?){1,}\\s+(?>(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){4}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+|Squalif$|Assente$|Non part$|Ritirato$)"
             pop_out: false
             required: false
           - name: lap300
-            format: "^(?>\\d{0,3})?\\s{4,}(?>[A-z\\d\\.']{1,}\\s?\\-?\\s?){1,}\\s+(?>(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){5}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+|Squalif$|Assente$|Non part$)"
+            format: "^(?>\\d{0,3})?\\s{4,}(?>[A-z\\d\\.']{1,}\\s?\\-?\\s?){1,}\\s+(?>(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){5}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+|Squalif$|Assente$|Non part$|Ritirato$)"
             pop_out: false
             required: false
           - name: lap350
-            format: "^(?>\\d{0,3})?\\s{4,}(?>[A-z\\d\\.']{1,}\\s?\\-?\\s?){1,}\\s+(?>(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){6}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+|Squalif$|Assente$|Non part$)"
+            format: "^(?>\\d{0,3})?\\s{4,}(?>[A-z\\d\\.']{1,}\\s?\\-?\\s?){1,}\\s+(?>(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){6}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+|Squalif$|Assente$|Non part$|Ritirato$)"
             pop_out: false
             required: false
 
           - name: timing
-            format: "^(?>\\d{0,3})?\\s{4,}(?>[A-z\\d\\.']{1,}\\s?\\-?\\s?){1,}\\s+(?>(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){1,}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})$|Squalif$|Assente$|Non part$)"
+            format: "^(?>\\d{0,3})?\\s{4,}(?>[A-z\\d\\.']{1,}\\s?\\-?\\s?){1,}\\s+(?>(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){1,}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})$|Squalif$|Assente$|Non part$|Ritirato$)"
             pop_out: false
             required: false
           - name: disqualify_type

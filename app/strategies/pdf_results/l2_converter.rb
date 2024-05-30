@@ -214,11 +214,11 @@ module PdfResults
                 # (if it has a gender split sub-category in it, it won't be "absolutes"/split-less)
                 overall_age = rel_result_hash['overall_age']
                 if overall_age.positive?
-                  rel_cat_code = @categories_cache.find { |_c, cat| cat.relay? && (cat.age_begin..cat.age_end).cover?(175) && !cat.undivided? }&.code
+                  curr_rel_cat_code, _cat = @categories_cache.find { |_c, cat| cat.relay? && (cat.age_begin..cat.age_end).cover?(175) && !cat.undivided? }
                 end
-                section['fin_sigla_categoria'] = rel_cat_code if rel_cat_code.present?
+                section['fin_sigla_categoria'] = curr_rel_cat_code if curr_rel_cat_code.present?
                 # Add category code to event title so that MacroSolver can deal with it automatically:
-                section['title'] = "#{section['title']} - #{rel_cat_code}"
+                section['title'] = "#{section['title']} - #{curr_rel_cat_code}"
               end
             end
 

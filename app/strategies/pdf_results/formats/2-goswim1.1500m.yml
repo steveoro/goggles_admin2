@@ -267,7 +267,7 @@
           required: false
 
         - name: timing
-          format: "\\s+\\d{4}\\s{2,}.+\\s+(Non part|Squalif|Assente|\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})$"
+          format: "\\s+\\d{4}\\s{2,}.+\\s+(Non part|Ritirato|Squalif|Assente|\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})$"
           pop_out: false
 
       # "results" row-1: deltas 50..400

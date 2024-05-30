@@ -1,0 +1,202 @@
+#
+# = Layout format definition for PdfResults::FormatParser
+#
+# Example: Campania, Regional Masters Championships
+#
+4-fpalazzi:
+  - name: header
+    at_fixed_row: 0
+    # Repeat (at_fixed_row, each page)
+    repeat: true
+    row_span: 5
+    rows:
+      # header row-0
+      - name: hdr0
+        format: "^CONI\\s{20,}COMITATO\\sREGIONALE\\s\\w+\\s{20,}FIN$"
+
+      # header row-1
+      - fields:
+        - name: edition
+          required: false
+          format: "^\\s{20,}(\\d{1,2}|[IVXLCM]+).{1,2}?\\s+"
+          pop_out: false
+        - name: meeting_name
+          format: "^\\s{20,}(?>\\d{1,2}|[IVXLCM]+)?.{1,2}?\\s+(.+)$"
+          pop_out: false
+
+      # header row-2
+      - fields:
+        - name: meeting_date
+          format: "^Supermasters\\s{20,}(\\d{1,2}[\/\\-]?\\d{0,2}[\/\\-\\s](?>\\s{1,2}|\\w+)[\/\\-\\s]\\d{2,4})\\s{20,}Vasca\\s*:\\s*\\d{2}$"
+          pop_out: false
+        - name: pool_type
+          format: "^Supermasters\\s{20,}(?>\\d{1,2}[\/\\-]?\\d{0,2}[\/\\-\\s](?>\\s{1,2}|\\w+)[\/\\-\\s]\\d{2,4})\\s{20,}Vasca\\s*:\\s*(\\d{2})$"
+          pop_out: false
+
+      # header row-3..4
+      - name: hdr_sep
+        format: "^$"
+        row_span: 2
+
+  - name: event
+    repeat: true
+    parent: header
+    rows:
+      # event row-0 (1 empty row before each event change)
+      - name: event_sep0
+        format: "^$"
+
+      - name: event_detail
+        fields:
+          - name: event_length
+            # Supports both relays & individual results:
+            format: "^\\s{5,}(?>Gara|Staffetta)\\s\\d{1,2}\\s{20,}(?>mistaffetta\\s)?([48]x\\d{2,4}|\\d{2,4})\\s(?>stile\\slibero|dorso|rana|farfalla|mist[ia])"
+            pop_out: false
+          - name: event_type
+            format: "^\\s{5,}(?>Gara|Staffetta)\\s\\d{1,2}\\s{20,}(?>mistaffetta\\s)?(?>[48]x\\d{2,4}|\\d{2,4})\\s(stile\\slibero|dorso|rana|farfalla|mist[ia])"
+            pop_out: false
+          # In case gender is mixed, this should lead the gender_type (and the category won't have it):
+          - name: gender_type
+            format: "\\s(mistaffetta)\\s"
+            required: false
+            pop_out: false
+
+      - name: event_sep1
+        format: "^\\s+Cronometraggio\\s"
+
+  - name: category
+    repeat: true
+    # Whenever 'event' context changes, create a different DAO wrapping the fields:
+    parent: event
+    rows:
+      - name: cat_sep0
+        # On a page change + event change, the empty row may be missing:
+        required: false
+        format: "^$"
+
+      - fields:
+        - name: cat_title
+          format: "^\\s{40,}((?>Master|Under|M)\\s?\\d{2,3}-?\\d{0,3})\\s(?>masch|femmin)"
+          pop_out: false
+        # For mixed relays in mixed gender, the lead is only in the event title, so this is optional:
+        - name: gender_type
+          format: "\\s(masch|femmin)"
+          required: false
+          pop_out: false
+
+      - name: cat_record0
+        fields:
+          - name: world_record
+            required: false
+            format: "^\\s{5,}Primato\\smondiale\\s?:\\s?(.+)(?>$|\\s{20,}Tempo\\sBase\\s?:\\s?\\d{1,2}[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}$)"
+      - name: cat_record1
+        fields:
+          - name: ita_record
+            required: false
+            format: "^\\s{5,}Primato\\sitaliano\\s?:\\s?(.+)$"
+
+      - name: cat_sep1
+        format: "^$"
+
+  # Actual data starts here:
+  - name: results
+    # Pages with relay results usually won't have individual results in it, so to pass any page check this context must be optional:
+    required: false
+    repeat: true
+    parent: category
+    fields:
+      - name: rank
+        format: "^\\s{2,6}(\\d{1,2})\\s{2,6}\\w+"
+        pop_out: false
+        # DSQ don't have rank:
+        required: false
+      - name: swimmer_name
+        format: "^\\s{2,6}(?>\\d{1,2})?\\s{2,6}(.+)(?>\\s{10,}\\d{4}\\s{5,}\\w{3}\\s+)"
+        pop_out: false
+      - name: year_of_birth
+        format: "^\\s{2,6}(?>\\d{1,2})?\\s{2,6}.+\\s{10,}(\\d{4})\\s{5,}\\w{3}\\s+"
+        pop_out: false
+
+      - name: team_name
+        format: "^\\s{2,6}(?>\\d{1,2})?\\s{2,6}.+\\s{10,}\\d{4}\\s{5,}\\w{3}\\s{2,4}(.+)\\s{1,}(?>\\d{0,2}[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}|Non\\spartit.|Ritirat.|Squal.)"
+        pop_out: false
+      - name: timing
+        format: "\\s+(?>(\\d{0,2}[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})|Non\\spartit.|Ritirat.|Squal.)"
+        pop_out: false
+        # DSQ don't have timings:
+        required: false
+      - name: disqualify_type
+        format: "\\s*(Non\\spartit.|Squal.+\\s(\\D+\\s?)+|Ritir.+|Assent.)$"
+        token_start: 80
+        pop_out: false
+        required: false
+      - name: std_score
+        format: "\\s*\\d{0,4}[,.]?\\d{0,2}$"
+        token_start: 80
+        pop_out: false
+        # U25/A20/DSQ do not score:
+        required: false
+
+  # Optional on DSQ results, an additional empty line is added:
+  - name: dsq_results_sep
+    parent: results
+    required: false
+    format: "^$"
+
+  - name: rel_team
+    parent: category
+    # Pages with individual results won't usually have relay results in it, so to pass any page check this context must be optional:
+    required: false
+    repeat: true
+    rows:
+      - fields:
+        - name: rank
+          format: "^\\s{20,}(\\d{0,2})\\s\\w{3}"
+          pop_out: false
+          required: false
+        - name: team_name
+          format: "^\\s{20,}\\d{0,2}\\s\\w{3}\\s{10,}(.+)\\s{5,}(?>\\d{0,2}[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}\\s+|Non\\spartit.|Ritirati)"
+          pop_out: false
+        - name: timing
+          format: "\\s*(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
+          token_start: 85
+          pop_out: false
+          required: false
+
+        - name: disqualify_type
+          format: "\\s*(Squalif.+|Ritir.+|Assent.+|Non partiti)$"
+          token_start: 85
+          pop_out: false
+          required: false
+        - name: std_score
+          format: "\\s*(\\d?[,\\.]?\\d{1,4}[,\\.]\\d{1,2})\\s;\\d{0,3}$"
+          token_start: 85
+          pop_out: false
+          required: false
+
+  - name: rel_swimmer
+    parent: rel_team
+    starts_at_row: 8
+    # When the team is disqualified usually no swimmer rows are added:
+    required: false
+    repeat: true
+    rows:
+      - name: rel_swimmer1
+        fields:
+          - name: swimmer_name
+            format: "^\\s{45,}(\\D{5,})\\s{2,}\\d{4}$"
+            pop_out: false
+          - name: year_of_birth
+            format: "^\\s{45,}\\D{5,}\\s{2,}(\\d{4})$"
+            pop_out: false
+
+  # End-Of-Page context
+  - name: footer
+    parent: event
+    eop: true
+    row_span: 5
+    repeat: true
+    fields:
+      - name: page_num
+        keys: [skip_me]
+        format: "\\sGestione\\smanifestazioni\\snuoto\\sMaster\\s+Pagina\\s(\\d{1,3})"
