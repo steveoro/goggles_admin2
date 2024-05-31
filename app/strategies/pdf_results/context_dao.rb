@@ -258,19 +258,21 @@ module PdfResults
     # of the hierarchy, going deeper in breadth-first mode.
     #
     # Returns a printable ASCII (string) tree of this DAO data hierarchy.
-    def hierarchy_to_s(dao: self, output: '', depth: 0) # rubocop:disable Metrics/AbcSize
+    def hierarchy_to_s(dao: self, output: '', depth: 0, show_keys: true) # rubocop:disable Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
       output = if output.blank? && depth.zero?
                  "\r\n(#{dao.parent.present? ? dao.parent.name : '---'})\r\n"
                else
                  ('  ' * depth) << output
                end
-      output << ('  ' * (depth + 1)) <<
-        "+-- #{dao.name}#{dao.fields_hash.present? ? '🔸' : ''}\r\n"
+      output << ('  ' * (depth + 1)) << "+-- #{dao.name}"
+      output << '🔸' if dao.fields_hash.present?
+      output << "  #{dao.key}" if show_keys && dao.key.present?
+      output << "\r\n"
 
       if dao.rows.present?
         output << ('  ' * (depth + 2)) << "  [:rows]\r\n"
         dao.rows.each do |sub_dao|
-          output = hierarchy_to_s(dao: sub_dao, output:, depth: depth + 3)
+          output = hierarchy_to_s(dao: sub_dao, output:, depth: depth + 3, show_keys:)
         end
       end
 

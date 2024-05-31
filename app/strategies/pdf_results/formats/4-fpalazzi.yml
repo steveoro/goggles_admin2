@@ -50,10 +50,10 @@
         fields:
           - name: event_length
             # Supports both relays & individual results:
-            format: "^\\s{5,}(?>Gara|Staffetta)\\s\\d{1,2}\\s{20,}(?>mistaffetta\\s)?([48]x\\d{2,4}|\\d{2,4})\\s(?>stile\\slibero|dorso|rana|farfalla|mist[ia])"
+            format: "^\\s{5,}(?>Gara|Staffetta)\\s\\d{1,2}\\s{20,}(?>mistaffetta\\s|staffetta\\s)?([48]x\\d{2,4}|\\d{2,4})\\s(?>stile\\slibero|dorso|rana|farfalla|mist[ia])"
             pop_out: false
           - name: event_type
-            format: "^\\s{5,}(?>Gara|Staffetta)\\s\\d{1,2}\\s{20,}(?>mistaffetta\\s)?(?>[48]x\\d{2,4}|\\d{2,4})\\s(stile\\slibero|dorso|rana|farfalla|mist[ia])"
+            format: "^\\s{5,}(?>Gara|Staffetta)\\s\\d{1,2}\\s{20,}(?>mistaffetta\\s|staffetta\\s)?(?>[48]x\\d{2,4}|\\d{2,4})\\s(stile\\slibero|dorso|rana|farfalla|mist[ia])"
             pop_out: false
           # In case gender is mixed, this should lead the gender_type (and the category won't have it):
           - name: gender_type
@@ -61,7 +61,7 @@
             required: false
             pop_out: false
 
-      - name: event_sep1
+      - name: event_crono_type
         format: "^\\s+Cronometraggio\\s"
 
   - name: category
@@ -76,7 +76,7 @@
 
       - fields:
         - name: cat_title
-          format: "^\\s{40,}((?>Master|Under|M)\\s?\\d{2,3}-?\\d{0,3})\\s(?>masch|femmin)"
+          format: "^\\s{40,}((?>Master|Under|M)\\s?\\d{2,3}-?\\d{0,3})\\s?(?>masch|femmin)?"
           pop_out: false
         # For mixed relays in mixed gender, the lead is only in the event title, so this is optional:
         - name: gender_type
@@ -85,17 +85,18 @@
           pop_out: false
 
       - name: cat_record0
+        required: false
         fields:
           - name: world_record
-            required: false
             format: "^\\s{5,}Primato\\smondiale\\s?:\\s?(.+)(?>$|\\s{20,}Tempo\\sBase\\s?:\\s?\\d{1,2}[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}$)"
       - name: cat_record1
+        required: false
         fields:
           - name: ita_record
-            required: false
             format: "^\\s{5,}Primato\\sitaliano\\s?:\\s?(.+)$"
 
       - name: cat_sep1
+        required: false
         format: "^$"
 
   # Actual data starts here:
@@ -151,11 +152,11 @@
     rows:
       - fields:
         - name: rank
-          format: "^\\s{20,}(\\d{0,2})\\s\\w{3}"
+          format: "^(?>\\s{2,}(Fuori\\sgara)\\s*|\\s{20,}(\\d{0,2})\\s)\\w{3}"
           pop_out: false
           required: false
         - name: team_name
-          format: "^\\s{20,}\\d{0,2}\\s\\w{3}\\s{10,}(.+)\\s{5,}(?>\\d{0,2}[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}\\s+|Non\\spartit.|Ritirati)"
+          format: "^(?>\\s{2,}Fuori\\sgara\\s*|\\s{20,}\\d{0,2}\\s)\\w{3}\\s{10,}(.+)\\s{5,}(?>\\d{0,2}[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}\\s+|Non\\spartit.|Ritirati)"
           pop_out: false
         - name: timing
           format: "\\s*(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
@@ -184,10 +185,10 @@
       - name: rel_swimmer1
         fields:
           - name: swimmer_name
-            format: "^\\s{45,}(\\D{5,})\\s{2,}\\d{4}$"
+            format: "^\\s{25,}(\\D{5,})\\s{2,}\\d{4}$"
             pop_out: false
           - name: year_of_birth
-            format: "^\\s{45,}\\D{5,}\\s{2,}(\\d{4})$"
+            format: "^\\s{25,}\\D{5,}\\s{2,}(\\d{4})$"
             pop_out: false
 
   # End-Of-Page context

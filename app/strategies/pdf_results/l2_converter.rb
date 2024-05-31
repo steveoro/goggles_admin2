@@ -26,6 +26,10 @@ module PdfResults
     # of a single parent hash.
     IND_RESULT_SECTION = %w[results results_alt].freeze
 
+    # Supported section names for *categories*. Same rules for IND_RESULT_SECTION apply.
+    # Different names are supported in case they need to co-exist in the same layout file.
+    CATEGORY_SECTION = %w[category rel_category].freeze
+
     # Supported "parent" section names for *relay results*. Same rules for IND_RESULT_SECTION apply.
     REL_RESULT_SECTION = %w[rel_team rel_team_alt].freeze
 
@@ -149,9 +153,6 @@ module PdfResults
         # Reset event related category (& gender, if available):
         curr_rel_cat_code = fetch_rel_category_code(event_hash)
         curr_rel_cat_gender = gender_code
-        # DEBUG ----------------------------------------------------------------
-        # binding.pry
-        # ----------------------------------------------------------------------
 
         # --- IND.RESULTS (event -> results) ---
         section = {}
@@ -162,30 +163,27 @@ module PdfResults
 
         event_hash.fetch(:rows, [{}]).each do |row_hash| # rubocop:disable Metrics/BlockLength
           rows = []
-          # DEBUG ----------------------------------------------------------------
-          # binding.pry if /mistaffetta 4x50/i.match?(event_title)
-          # ----------------------------------------------------------------------
-
           # --- RELAYS ---
           if /(4|6|8)x\d{2,3}/i.match?(event_length.to_s) && holds_relay_category_or_relay_result?(row_hash)
-            # >>> Here: "row_hash" may be both 'rel_category', 'rel_team' or even 'event'
+            # >>> Here: "row_hash" may be both 'category', 'rel_category', 'rel_team' or even 'event'
             # Safe to call even for non-'rel_category' hashes:
             section = rel_category_section(row_hash, event_title)
-            # DEBUG ----------------------------------------------------------------
-            # binding.pry # if event_title == "4X50 Misti - " && section['fin_sigla_categoria'].blank?
-            # ----------------------------------------------------------------------
+            # Category code or gender code wasn't found?
+            # Try to get that from the current or previously category section found, if any:
+            section['fin_sigla_categoria'] = curr_rel_cat_code if section['fin_sigla_categoria'].blank? && curr_rel_cat_code.to_s =~ /^\d+/
+            section['fin_sesso'] = curr_rel_cat_gender if section['fin_sesso'].blank? && curr_rel_cat_gender.to_s.match?(/^[fmx]/i)
 
             # == Hard-wired "manual forward link" for relay categories only ==
             # Store current relay category & gender so that "unlinked" team relay
             # sections encountered later on get to be bound to the latest relay
             # fields found:
-            # (this assumes 'rel_category' will be enlisted ALWAYS BEFORE actual the relay team result rows)
-            if row_hash[:name] == 'rel_category'
+            # (this assumes the category section will be enlisted ALWAYS BEFORE actual the relay team result rows)
+            if CATEGORY_SECTION.include?(row_hash[:name])
               # Don't overwrite category code & gender unless not set yet:
               curr_rel_cat_code = section['fin_sigla_categoria'] if section['fin_sigla_categoria'].present?
               curr_rel_cat_gender = section['fin_sesso'] if section['fin_sesso'].present?
 
-              # SUPPORT for alternative-nested 'rel_team's (inside 'rel_category'):
+              # SUPPORT for alternative-nested 'rel_team's (inside a dedicated category section -- example with 'rel_category'):
               # +-- event 🌀
               #     [:rows]
               #       +-- rel_category 🌀
@@ -194,32 +192,19 @@ module PdfResults
               #                  +-- rel_swimmer 🌀
               #                  +-- disqualified
               # Loop on rel_team rows, when found, and build up the event rows with them
-              row_hash[:rows].select { |row| row[:name] == 'rel_team' }.each do |nested_row|
+              row_hash[:rows].select { |row| REL_RESULT_SECTION.include?(row[:name]) }.each do |nested_row|
                 rel_result_hash = rel_result_section(nested_row)
                 rows << rel_result_hash
               end
+              # Relay category code still missing? Fill-in possible missing category code (which is frequently missing in record trials):
+              section = post_compute_rel_category_code(section, rows.last['overall_age']) if section['fin_sigla_categoria'].blank?
 
             # Process teams & relay swimmers/laps:
             elsif REL_RESULT_SECTION.include?(row_hash[:name])
               rel_result_hash = rel_result_section(row_hash)
               rows << rel_result_hash
-              # Category code or gender code wasn't found?
-              # Try to get that from the current or previously category section found, if any:
-              section['fin_sigla_categoria'] = curr_rel_cat_code if section['fin_sigla_categoria'].blank? && curr_rel_cat_code.to_s =~ /^\d+/
-              section['fin_sesso'] = curr_rel_cat_gender if section['fin_sesso'].blank? && curr_rel_cat_gender.to_s =~ /^[fmx]/i
-
-              # Still missing? Fill-in possible missing category code (which is frequently missing in record trials):
-              if section['fin_sigla_categoria'].blank?
-                # Get the possible relay category code (excluding "absolutes": it's "gender split" as scope)
-                # (if it has a gender split sub-category in it, it won't be "absolutes"/split-less)
-                overall_age = rel_result_hash['overall_age']
-                if overall_age.positive?
-                  curr_rel_cat_code, _cat = @categories_cache.find { |_c, cat| cat.relay? && (cat.age_begin..cat.age_end).cover?(175) && !cat.undivided? }
-                end
-                section['fin_sigla_categoria'] = curr_rel_cat_code if curr_rel_cat_code.present?
-                # Add category code to event title so that MacroSolver can deal with it automatically:
-                section['title'] = "#{section['title']} - #{curr_rel_cat_code}"
-              end
+              # Relay category code still missing? Fill-in possible missing category code (which is frequently missing in record trials):
+              section = post_compute_rel_category_code(section, rel_result_hash['overall_age']) if section['fin_sigla_categoria'].blank?
             end
 
             # Set rows for current relay section:
@@ -252,11 +237,6 @@ module PdfResults
           else
             next
           end
-
-          # DEBUG ----------------------------------------------------------------
-          # binding.pry if section.present? && section['rows'].present?
-          # ----------------------------------------------------------------------
-          # resulting_sections << section if section.present? && section['rows'].present?
         end
       end
 
@@ -279,7 +259,7 @@ module PdfResults
 
     # Builds up the category section that will hold the result rows.
     # For relays only. Safe to call even if the category_hash isn't of
-    # type 'rel_category': will build just the event title instead.
+    # the "category" type: it will build just the event title instead.
     def rel_category_section(category_hash, event_title)
       {
         'title' => event_title,
@@ -398,10 +378,10 @@ module PdfResults
 
       row_hash = {
         'pos' => fields['rank'],
-        'name' => fields['swimmer_name'],
+        'name' => fields['swimmer_name']&.squeeze(' '),
         'year' => fields['year_of_birth'],
         'sex' => cat_gender_code,
-        'team' => fields['team_name'],
+        'team' => fields['team_name']&.squeeze(' '),
         'timing' => fields['timing'],
         'score' => fields['std_score'],
         # Optionals / added recently / To-be-supported by MacroSolver:
@@ -455,7 +435,7 @@ module PdfResults
       row_hash = {
         'relay' => true,
         'pos' => rank,
-        'team' => fields['team_name'],
+        'team' => fields['team_name']&.squeeze(' '),
         'timing' => fields['timing'],
         'score' => fields['std_score'],
         # Optionals / added recently / To-be-supported by MacroSolver:
@@ -478,11 +458,12 @@ module PdfResults
       overall_age = 0
       # *** Same-depth case 1 (GoSwim-type): relay swimmer at same level ***
       8.times do |idx|
-        next unless rel_team_hash.fetch(:fields, {}).key?("swimmer_name#{idx + 1}")
+        team_fields = rel_team_hash.fetch(:fields, {})
+        next unless team_fields.key?("swimmer_name#{idx + 1}")
 
         # Extract swimmer name & year:
-        row_hash["swimmer#{idx + 1}"] = rel_team_hash.fetch(:fields, {})["swimmer_name#{idx + 1}"]
-        year_of_birth = rel_team_hash.fetch(:fields, {})["year_of_birth#{idx + 1}"].to_i
+        row_hash["swimmer#{idx + 1}"] = team_fields["swimmer_name#{idx + 1}"]&.squeeze(' ')
+        year_of_birth = team_fields["year_of_birth#{idx + 1}"].to_i
         row_hash["year_of_birth#{idx + 1}"] = year_of_birth
         overall_age = overall_age + @season.begin_date.year - year_of_birth if year_of_birth.positive?
       end
@@ -490,8 +471,9 @@ module PdfResults
       rel_team_hash.fetch(:rows, [{}]).each_with_index do |rel_swimmer_hash, idx|
         # *** Nested case 1 (Ficr-type): relay swimmer sub-row ***
         if REL_SWIMMER_SECTION.include?(rel_swimmer_hash[:name])
-          row_hash["swimmer#{idx + 1}"] = rel_swimmer_hash.fetch(:fields, {})['swimmer_name']
-          year_of_birth = rel_swimmer_hash.fetch(:fields, {})['year_of_birth'].to_i
+          swimmer_fields = rel_swimmer_hash.fetch(:fields, {})
+          row_hash["swimmer#{idx + 1}"] = swimmer_fields['swimmer_name']&.squeeze(' ')
+          year_of_birth = swimmer_fields['year_of_birth'].to_i
           row_hash["year_of_birth#{idx + 1}"] = year_of_birth
           overall_age = overall_age + @season.begin_date.year - year_of_birth if year_of_birth.positive?
 
@@ -722,8 +704,7 @@ module PdfResults
     # for relays or a relay result (which may include the category too).
     def holds_relay_category_or_relay_result?(row_hash)
       row_hash.is_a?(Hash) &&
-        ((row_hash[:name] == 'rel_category') ||
-         REL_RESULT_SECTION.include?(row_hash[:name]) ||
+        (CATEGORY_SECTION.include?(row_hash[:name]) || REL_RESULT_SECTION.include?(row_hash[:name]) ||
          row_hash.fetch(:fields, {}).key?(CAT_FIELD_NAME))
     end
 
@@ -740,24 +721,22 @@ module PdfResults
       key = row_hash.fetch(:key, '')
 
       # Example key 1 => "Master Misti 200 - 239"
-      if /(?>Under|Master)\s(?>Misti|Femmin\w*|Masch\w*)(?>\s(\d{2,3}\s-\s\d{2,3}))?/ui.match?(key)
+      case key
+      when /(?>Under|Master)\s(?>Misti|Femmin\w*|Masch\w*)(?>\s(\d{2,3}\s-\s\d{2,3}))?/ui
         /(?>Under|Master)\s(?>Misti|Femmin\w*|Masch\w*)(?>\s(\d{2,3}\s-\s\d{2,3}))?/ui.match(key).captures.first.delete(' ')
 
       # Example key 2 => "{event_length: 'mistaffetta <4|6|8>x<len>'}|<style_name>|<mistaffetta|gender>|M(ASTER)?\s?<age1>-<age2>(|<base_time>)?"
-      elsif /\|M(?>ASTER)?\s?(\d{2,3}-\d{2,3})/ui.match?(key)
+      when /\|M(?>ASTER)?\s?(\d{2,3}-\d{2,3})/ui
         # Return a valid age-group code for relays ("<age1>-<age2>"):
         /\|M(?>ASTER)?\s?(\d{2,3}-\d{2,3})/ui.match(key).captures.first
+
+      # Example key 3 => "M100-119|Masch|..."
+      when /M(\d{2,3}-\d{2,3})\|(?>Masch|Femmin|Mist)/ui
+        /M(\d{2,3}-\d{2,3})\|(?>Masch|Femmin|Mist)/ui.match(key).captures.first
       end
     end
     #-- -----------------------------------------------------------------------
     #++
-
-    # Returns +true+ only if the supplied row_hash seems to support and
-    # store a string value representing a possible GenderType code.
-    def holds_gender_type?(row_hash)
-      row_hash.is_a?(Hash) &&
-        ((row_hash[:name] == 'category') || row_hash.fetch(:fields, {}).key?(GENDER_FIELD_NAME))
-    end
 
     # Gets the individual category gender code as a single char, given its source data hash.
     # Raises an error if the category hash is unsupported (always required for individ. results).
@@ -782,21 +761,31 @@ module PdfResults
 
     # Gets the relay category gender code as a single char, given its source data hash.
     # Returns +nil+ for an unsupported category Hash.
-    def fetch_rel_category_gender(category_hash)
-      return unless category_hash.is_a?(Hash) && category_hash[:name] == 'rel_category'
+    def fetch_rel_category_gender(row_hash)
+      return unless row_hash.is_a?(Hash) && CATEGORY_SECTION.include?(row_hash[:name])
 
       # *** Context 'rel_category' ***
-      key = category_hash.fetch(:key, '')
-      gender_name = if /(?>Under|Master)\s(Misti|Femmin\w*|Masch\w*)\s(?>\d{2,3}\s-\s\d{2,3})/ui.match?(key)
+      key = row_hash.fetch(:key, '')
+      gender_name = case key
+                    when /(?>Under|Master)\s(Misti|Femmin\w*|Masch\w*)\s(?>\d{2,3}\s-\s\d{2,3})/ui
                       # Example key 1 => "Master Misti 200 - 239"
                       /(?>Under|Master)\s(Misti|Femmin\w*|Masch\w*)\s(?>\d{2,3}\s-\s\d{2,3})/ui.match(key).captures.first
 
                     # Example key 2 => "{event_length: 'mistaffetta <4|6|8>x<len>'}|<style_name>|<mistaffetta|gender>|M(ASTER)?\s?<age1>-<age2>(|<base_time>)?"
-                    elsif /\|(\w+)\|M(?>ASTER)?\s?\d{2,3}-\d{2,3}/ui.match?(key)
+                    when /\|(\w+)\|M(?>ASTER)?\s?\d{2,3}-\d{2,3}/ui
                       # Use as reference the valid age-group code for relays ("<age1>-<age2>")
                       # (ASSUMING the gender is *BEFORE* that):
                       /\|(\w+)\|M(?>ASTER)?\s?\d{2,3}-\d{2,3}/ui.match(key).captures.first
+
+                    # Example key 3 => "M100-119|Masch|..."
+                    when /M\d{2,3}-\d{2,3}\|(Masch|Femmin|Mist)/ui
+                      /M\d{2,3}-\d{2,3}\|(Masch|Femmin|Mist)/ui.match(key).captures.first
                     end
+      # Use the field value when no match is found:
+      # DEBUG ----------------------------------------------------------------
+      # binding.pry
+      # ----------------------------------------------------------------------
+      gender_name = row_hash[:fields][GENDER_FIELD_NAME] if gender_name.blank? && row_hash[:fields].key?(GENDER_FIELD_NAME)
       return GogglesDb::GenderType.intermixed.code if /mist/i.match?(gender_name.to_s)
 
       gender_name&.at(0)&.upcase
@@ -825,6 +814,23 @@ module PdfResults
         dsq_label = "#{dsq_label} #{additional_hash[:key]}" if additional_hash&.key?(:key)
       end
       dsq_label
+    end
+    #-- -----------------------------------------------------------------------
+    #++
+
+    # Detects the possible valid relay category code given the overall age of the involved swimmers.
+    # This helper updates the section hash directly. Returns the section itself.
+    # == Params:
+    # - section: current section hash
+    # - overall_age: integer overall age of all relay swimmers
+    def post_compute_rel_category_code(section, overall_age)
+      return section unless overall_age.positive? && section.is_a?(Hash)
+
+      curr_rel_cat_code, _cat = @categories_cache.find { |_c, cat| cat.relay? && (cat.age_begin..cat.age_end).cover?(overall_age) && !cat.undivided? }
+      section['fin_sigla_categoria'] = curr_rel_cat_code if curr_rel_cat_code.present?
+      # Add category code to event title so that MacroSolver can deal with it automatically:
+      section['title'] = "#{section['title']} - #{curr_rel_cat_code}"
+      section
     end
     #-- -----------------------------------------------------------------------
     #++
