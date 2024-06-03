@@ -151,13 +151,13 @@ module PdfResults
         # (as in "4X50m Stile Libero Master Maschi"):
         event_title, event_length, _event_type_name, gender_code = fetch_event_title(event_hash)
         # Reset event related category (& gender, if available):
-        curr_rel_cat_code = fetch_rel_category_code(event_hash)
-        curr_rel_cat_gender = gender_code
+        curr_cat_code = fetch_rel_category_code(event_hash)
+        curr_cat_gender = gender_code
 
         # --- IND.RESULTS (event -> results) ---
         section = {}
         if holds_category_type?(event_hash)
-          section = ind_category_section(event_hash, event_title)
+          section = ind_category_section(event_hash, event_title, curr_cat_code, curr_cat_gender)
           resulting_sections << section if section.present?
         end
 
@@ -170,8 +170,8 @@ module PdfResults
             section = rel_category_section(row_hash, event_title)
             # Category code or gender code wasn't found?
             # Try to get that from the current or previously category section found, if any:
-            section['fin_sigla_categoria'] = curr_rel_cat_code if section['fin_sigla_categoria'].blank? && curr_rel_cat_code.to_s =~ /^\d+/
-            section['fin_sesso'] = curr_rel_cat_gender if section['fin_sesso'].blank? && curr_rel_cat_gender.to_s.match?(/^[fmx]/i)
+            section['fin_sigla_categoria'] = curr_cat_code if section['fin_sigla_categoria'].blank? && curr_cat_code.to_s =~ /^\d+/
+            section['fin_sesso'] = curr_cat_gender if section['fin_sesso'].blank? && curr_cat_gender.to_s.match?(/^[fmx]/i)
 
             # == Hard-wired "manual forward link" for relay categories only ==
             # Store current relay category & gender so that "unlinked" team relay
@@ -180,8 +180,8 @@ module PdfResults
             # (this assumes the category section will be enlisted ALWAYS BEFORE actual the relay team result rows)
             if CATEGORY_SECTION.include?(row_hash[:name])
               # Don't overwrite category code & gender unless not set yet:
-              curr_rel_cat_code = section['fin_sigla_categoria'] if section['fin_sigla_categoria'].present?
-              curr_rel_cat_gender = section['fin_sesso'] if section['fin_sesso'].present?
+              curr_cat_code = section['fin_sigla_categoria'] if section['fin_sigla_categoria'].present?
+              curr_cat_gender = section['fin_sesso'] if section['fin_sesso'].present?
 
               # SUPPORT for alternative-nested 'rel_team's (inside a dedicated category section -- example with 'rel_category'):
               # +-- event 🌀
@@ -213,7 +213,7 @@ module PdfResults
 
           # --- IND.RESULTS (category -> results) ---
           elsif holds_category_type?(row_hash)
-            section = ind_category_section(row_hash, event_title)
+            section = ind_category_section(row_hash, event_title, curr_cat_code, curr_cat_gender)
             row_hash.fetch(:rows, [{}]).each do |result_hash|
               # Ignore unsupported contexts:
               # NOTE: the name 'disqualified' will just signal the section start, but actual DSQ results
@@ -247,13 +247,14 @@ module PdfResults
 
     # Builds up the category section that will hold the result rows.
     # (For individual results only.)
-    def ind_category_section(category_hash, event_title)
+    # event_title, category_code & gender_code are used for default section values.
+    def ind_category_section(category_hash, event_title, category_code, gender_code)
       {
         'title' => event_title,
         'fin_id_evento' => nil,
         'fin_codice_gara' => nil,
-        'fin_sigla_categoria' => fetch_category_code(category_hash),
-        'fin_sesso' => fetch_category_gender(category_hash)
+        'fin_sigla_categoria' => fetch_category_code(category_hash) || category_code,
+        'fin_sesso' => fetch_category_gender(category_hash) || gender_code
       }
     end
 
@@ -375,6 +376,16 @@ module PdfResults
       rank = fields['rank']
       # DSQ label:
       dsq_label = extract_additional_dsq_labels(result_hash) if rank.to_i.zero?
+
+      # DEBUG ----------------------------------------------------------------
+      binding.pry if fields['swimmer_name'].to_s.match?('DELLA TOMMASA')
+      # ----------------------------------------------------------------------
+      # TODO: handle sub-rows used for extension, as with extract_additional_dsq_labels(result_hash) (:813)
+      # in 'results'
+      # :rows=>[
+      #  {:name=>"results_ext", :key=>"FEDERICA|FEDERICA", :fields=>{"swimmer_suffix"=>"FEDERICA", "badge_region"=>nil, "team_suffix"=>"FEDERICA"}, :rows=>[]}
+      # ]
+
 
       row_hash = {
         'pos' => fields['rank'],
@@ -695,7 +706,10 @@ module PdfResults
 
       # use just the field value "as is":
       elsif row_hash[:fields].key?(CAT_FIELD_NAME)
-        row_hash[:fields][CAT_FIELD_NAME].gsub(/Master\s/i, 'M').gsub(/Under\s/i, 'U').gsub(/Amatori\s/i, 'A')
+        row_hash[:fields][CAT_FIELD_NAME].gsub(/Master\s/i, 'M')
+                                         .gsub(/Under\s/i, 'U')
+                                         .gsub(/Amatori\s/i, 'A')
+                                         .gsub(/\s/i, '')
       end
     end
 
@@ -826,10 +840,10 @@ module PdfResults
     def post_compute_rel_category_code(section, overall_age)
       return section unless overall_age.positive? && section.is_a?(Hash)
 
-      curr_rel_cat_code, _cat = @categories_cache.find { |_c, cat| cat.relay? && (cat.age_begin..cat.age_end).cover?(overall_age) && !cat.undivided? }
-      section['fin_sigla_categoria'] = curr_rel_cat_code if curr_rel_cat_code.present?
+      curr_cat_code, _cat = @categories_cache.find { |_c, cat| cat.relay? && (cat.age_begin..cat.age_end).cover?(overall_age) && !cat.undivided? }
+      section['fin_sigla_categoria'] = curr_cat_code if curr_cat_code.present?
       # Add category code to event title so that MacroSolver can deal with it automatically:
-      section['title'] = "#{section['title']} - #{curr_rel_cat_code}"
+      section['title'] = "#{section['title']} - #{curr_cat_code}"
       section
     end
     #-- -----------------------------------------------------------------------

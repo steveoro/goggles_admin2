@@ -1,0 +1,312 @@
+#
+# = Layout format definition for PdfResults::FormatParser
+#
+# Example: Tuscany Masters' Meetings (Prato, Pontedera, Poggibonsi, ...)
+#
+4-dbmeeting:
+  - name: header
+    at_fixed_row: 0
+    # Repeat (at_fixed_row, each page)
+    required: false
+    repeat: false
+    row_span: 8
+    rows:
+      # header row-0
+      - name: hdr0
+        starts_with: "DBMEETING"
+        fields:
+          - name: org_team_name
+            required: false
+            format: "\\s{10,}Società\\sorganizzatrice\\s(.+)$"
+
+      # header row-1..5
+      - name: hdr1
+        row_span: 5
+        format: "^\\s{20,}RISULTATI\\s-\\sGARA$"
+
+      # header row-6
+      - fields:
+        - name: edition
+          required: false
+          format: "^\\s{20,}(\\d{1,2}|[IVXLCM]+).{1,2}?\\s+"
+          pop_out: false
+        - name: meeting_name
+          format: "^\\s{20,}(?>\\d{1,2}|[IVXLCM]+)?.{1,2}?\\s+(.+)$"
+          pop_out: false
+
+      # header row-7
+      - fields:
+        - name: meeting_place
+          format: "^\\s{20,}(.+)\\s-{1,3}\\s\\d{1,2}"
+        - name: meeting_date
+          format: "^\\s{20,}.+\\s\\-{1,3}\\s(\\d{1,2}(>?\\s?[e&,\\/]\\s?\\d{1,2})?(?>[-\\/]\\d{2}[-\\/]\\d{2,4}|\\s\\w{3,}\\s\\d{2,4}))"
+
+  - name: event
+    repeat: true
+    parent: header
+    rows:
+      # Optional empty event separator:
+      - name: event_sep0
+        required: false
+        format: "^$"
+
+      - name: event_detail
+        fields:
+          - name: event_length
+            format: "^\\s{5,}(\\d{2,4})\\s(?>stile(?>\\slibero)?|dorso|rana|farfalla|misti)\\s(?>FEMMINE|MASCHI)\\sGARA\\s\\d{1,2}\\s\\/\\sTURNO\\s\\d"
+            pop_out: false
+          - name: event_type
+            format: "^\\s{5,}\\d{2,4}\\s(stile(?>\\slibero)?|dorso|rana|farfalla|misti)\\s(?>FEMMINE|MASCHI)\\sGARA\\s\\d{1,2}\\s\\/\\sTURNO\\s\\d"
+            pop_out: false
+          - name: gender_type
+            format: "^\\s{5,}\\d{2,4}\\s(?>stile(?>\\slibero)?|dorso|rana|farfalla|misti)\\s(FEMMINE|MASCHI)\\sGARA\\s\\d{1,2}\\s\\/\\sTURNO\\s\\d"
+            pop_out: false
+
+  - name: category
+    repeat: true
+    # Whenever 'event' context changes, create a different DAO wrapping the fields:
+    parent: event
+    rows:
+      - name: cat_sep0
+        format: "^$"
+      - fields:
+        - name: cat_title
+          format: "^Categoria\\s([MU]\\s\\d{2,3})\\s+Tempo\\sBase:\\s"
+          pop_out: false
+        - name: base_time
+          format: "\\s+Tempo\\sBase:\\s(\\d{1,2}[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\|\\s"
+          required: false
+          pop_out: false
+        - name: world_record
+          format: "\\|\\sMondiale:\\s(\\d{1,2}[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\|\\s"
+          required: false
+          pop_out: false
+        - name: eu_record
+          format: "\\|\\sEuropeo:\\s(\\d{1,2}[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\|\\s"
+          required: false
+          pop_out: false
+        - name: ita_record
+          format: "\\|\\sItaliano:\\s(\\d{1,2}[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\|\\s"
+          required: false
+          pop_out: false
+
+      - name: cat_hdr
+        format: "Cl\\.\\sCodice\\s+Atleta\\s+Anno\\sSocietà\\s+Tempo\\s+P\\.Tab\\s+Reg\\."
+      - name: cat_sep1
+        format: "^$"
+
+  # Actual data starts here:
+  - name: results
+    # Pages with relay results usually won't have individual results in it, so to pass any page check this context must be optional:
+    required: false
+    repeat: true
+    parent: category
+    rows:
+      # "results" row-0:
+      - fields:
+        - name: rank
+          format: "^(\\d{1,2}|nc)\\s{2,8}\\d{5,9}\\s{1,4}"
+          pop_out: false
+          # DSQ don't have rank:
+          required: false
+        - name: badge_num
+          format: "^(?>\\d{1,2}|nc)\\s{2,8}(\\d{5,9})\\s{1,4}(?>\\w+\\s\\w*\\s?)+\\s{1,}\\d{4}\\s"
+          pop_out: false
+        - name: swimmer_name
+          format: "^(?>\\d{1,2}|nc)\\s{2,8}\\d{5,9}\\s{1,4}(\\w+\\s\\w*\\s?)+\\s{1,}\\d{4}\\s"
+          pop_out: false
+        - name: year_of_birth
+          format: "^(?>\\d{1,2}|nc)\\s{2,8}\\d{5,9}\\s{1,4}(?>\\w+\\s\\w*\\s?)+\\s{1,}(\\d{4})\\s"
+          pop_out: false
+
+        - name: team_name
+          format: "\\s{1,}\\d{4}\\s(.+)\\s{2,}\\d{2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+"
+          pop_out: false
+        - name: timing
+          format: "\\s{1,}\\d{4}\\s.+\\s{2,}(\\d{2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+\\d{3,4},\\d{2}\\s{2,}\\w{3,}$"
+          pop_out: false
+          # DSQ don't have timings:
+          required: false
+        - name: std_score
+          format: "\\s{2,}\\d{2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+(\\d{3,4},\\d{2})\\s{1,}"
+          pop_out: false
+          # U25/A20/DSQ do not score:
+          required: false
+        - name: badge_region
+          format: "\\s{1,}(\\w{3,})$"
+          pop_out: false
+        - name: disqualify_type
+          format: "\\s*(Arrivo\\sirr.+|Squal.+|Nuotata.+|Falsa.+)$"
+          pop_out: false
+          required: false
+
+  # Sibling "results" row #1: (optional)
+  - name: results_ext
+    parent: results
+    # This will match any empty row if the fields are not found:
+    # optional_if_empty: true
+    # This will make the row not to fail if missing at all
+    required: false
+    fields:
+      - name: swimmer_suffix
+        format: "^\\s{10,30}((?>\\s?[[:alpha:]]{2,})*)(?>\\s{4,}|$)"
+        pop_out: false
+        required: false
+      - name: badge_region
+        format: "^\\s{10,30}(?>\\s?[[:alpha:]]{2,})*.*\\s{4,}((?!SSD|ASD|SNC|SRL)\\w{3})$"
+        required: false
+      - name: team_suffix
+        format: "\\s+(.*)$"
+        required: false
+
+  # Sibling "results" row #2: (optional)
+  - name: dsq_label
+    parent: results
+    required: false
+    format: "^\\s{80,}(.*)(?<!\\s\\s\\w{3})$"
+
+  # Sibling "results" row #3: (optional)
+  - name: results_lap250
+    parent: results
+    required: false
+    fields:
+      - name: lap50
+        format: "\\s{2,}-50m(\\d{2}[':\\.]\\d{2}[\":\\.]\\d{2})[\\s\\(]"
+        pop_out: false
+        required: false
+      - name: lap100
+        format: "\\s{2,}-100m(\\d{2}[':\\.]\\d{2}[\":\\.]\\d{2})[\\s\\(]"
+        pop_out: false
+        required: false
+      - name: lap150
+        format: "\\s{2,}-150m(\\d{2}[':\\.]\\d{2}[\":\\.]\\d{2})[\\s\\(]"
+        pop_out: false
+        required: false
+      - name: lap200
+        format: "\\s{2,}-200m(\\d{2}[':\\.]\\d{2}[\":\\.]\\d{2})[\\s\\(]"
+        pop_out: false
+        required: false
+      - name: lap250
+        format: "\\s{2,}-250m(\\d{2}[':\\.]\\d{2}[\":\\.]\\d{2})[\\s\\(]"
+        pop_out: false
+        required: false
+
+  # Sibling "results" row #4: (optional)
+  - name: results_lap500
+    parent: results
+    required: false
+    fields:
+      - name: lap300
+        format: "\\s{2,}-300m(\\d{2}[':\\.]\\d{2}[\":\\.]\\d{2})[\\s\\(]"
+        pop_out: false
+        required: false
+      - name: lap350
+        format: "\\s{2,}-350m(\\d{2}[':\\.]\\d{2}[\":\\.]\\d{2})[\\s\\(]"
+        pop_out: false
+        required: false
+      - name: lap400
+        format: "\\s{2,}-400m(\\d{2}[':\\.]\\d{2}[\":\\.]\\d{2})[\\s\\(]"
+        pop_out: false
+        required: false
+      - name: lap450
+        format: "\\s{2,}-450m(\\d{2}[':\\.]\\d{2}[\":\\.]\\d{2})[\\s\\(]"
+        pop_out: false
+        required: false
+      - name: lap500
+        format: "\\s{2,}-500m(\\d{2}[':\\.]\\d{2}[\":\\.]\\d{2})[\\s\\(]"
+        pop_out: false
+        required: false
+
+  # Sibling "results" row #5: (optional)
+  - name: results_lap750
+    parent: results
+    required: false
+    fields:
+      - name: lap550
+        format: "\\s{2,}-550m(\\d{2}[':\\.]\\d{2}[\":\\.]\\d{2})[\\s\\(]"
+        pop_out: false
+        required: false
+      - name: lap600
+        format: "\\s{2,}-600m(\\d{2}[':\\.]\\d{2}[\":\\.]\\d{2})[\\s\\(]"
+        pop_out: false
+        required: false
+      - name: lap650
+        format: "\\s{2,}-650m(\\d{2}[':\\.]\\d{2}[\":\\.]\\d{2})[\\s\\(]"
+        pop_out: false
+        required: false
+      - name: lap700
+        format: "\\s{2,}-700m(\\d{2}[':\\.]\\d{2}[\":\\.]\\d{2})[\\s\\(]"
+        pop_out: false
+        required: false
+      - name: lap750
+        format: "\\s{2,}-750m(\\d{2}[':\\.]\\d{2}[\":\\.]\\d{2})[\\s\\(]"
+        pop_out: false
+        required: false
+
+  # Sibling "results" row #6: (optional)
+  - name: results_lap800
+    parent: results
+    required: false
+    fields:
+      - name: lap800
+        format: "\\s{2,}-800m(\\d{2}[':\\.]\\d{2}[\":\\.]\\d{2})[\\s\\(]"
+        pop_out: false
+        required: false
+
+  # - name: rel_team
+  #   parent: category
+  #   # Pages with individual results won't usually have relay results in it, so to pass any page check this context must be optional:
+  #   required: false
+  #   repeat: true
+  #   rows:
+  #     - fields:
+  #       - name: rank
+  #         format: "^(?>\\s{2,}(Fuori\\sgara)\\s*|\\s{20,}(\\d{0,2})\\s)\\w{3}"
+  #         pop_out: false
+  #         required: false
+  #       - name: team_name
+  #         format: "^(?>\\s{2,}Fuori\\sgara\\s*|\\s{20,}\\d{0,2}\\s)\\w{3}\\s{10,}(.+)\\s{5,}(?>\\d{0,2}[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}\\s+|Non\\spartit.|Ritirati)"
+  #         pop_out: false
+  #       - name: timing
+  #         format: "\\s*(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
+  #         token_start: 85
+  #         pop_out: false
+  #         required: false
+
+  #       - name: disqualify_type
+  #         format: "\\s*(Squalif.+|Ritir.+|Assent.+|Non partiti)$"
+  #         token_start: 85
+  #         pop_out: false
+  #         required: false
+  #       - name: std_score
+  #         format: "\\s*(\\d?[,\\.]?\\d{1,4}[,\\.]\\d{1,2})\\s;\\d{0,3}$"
+  #         token_start: 85
+  #         pop_out: false
+  #         required: false
+
+  # - name: rel_swimmer
+  #   parent: rel_team
+  #   starts_at_row: 8
+  #   # When the team is disqualified usually no swimmer rows are added:
+  #   required: false
+  #   repeat: true
+  #   rows:
+  #     - name: rel_swimmer1
+  #       fields:
+  #         - name: swimmer_name
+  #           format: "^\\s{25,}(\\D{5,})\\s{2,}\\d{4}$"
+  #           pop_out: false
+  #         - name: year_of_birth
+  #           format: "^\\s{25,}\\D{5,}\\s{2,}(\\d{4})$"
+  #           pop_out: false
+
+  # End-Of-Page context
+  # - name: footer
+  #   parent: event
+  #   eop: true
+  #   row_span: 5
+  #   repeat: true
+  #   fields:
+  #     - name: page_num
+  #       keys: [skip_me]
+  #       format: "\\sGestione\\smanifestazioni\\snuoto\\sMaster\\s+Pagina\\s(\\d{1,3})"

@@ -1,9 +1,9 @@
 #
 # = Layout format definition for PdfResults::FormatParser
 #
-# Example: Campania, Regional Masters Championships
+# Example: Veneto custom FIN format for Master's meetings results
 #
-4-fpalazzi:
+5-finveneto:
   - name: header
     at_fixed_row: 0
     # Repeat (at_fixed_row, each page)
