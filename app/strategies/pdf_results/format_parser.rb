@@ -147,6 +147,7 @@ module PdfResults
       prepare_logger(filename) unless skip_logging
       @debug = debug
       set_current_page_rows
+      detect_empty_page_moving_fwd
     end
     #-- -----------------------------------------------------------------------
     #++
@@ -190,6 +191,7 @@ module PdfResults
       @debug = debug
       @logger.reopen
       set_current_page_rows(limit_pages:)
+      detect_empty_page_moving_fwd
       log_message('No pages to scan!') && return if @pages.blank? || @rows.blank?
 
       # Scan all defined/available format layouts found, page-by-page:
@@ -199,7 +201,6 @@ module PdfResults
       format_filepath = fmt_files&.first
       current_fname = format_filepath.basename.to_s.gsub('.yml', '')
       ffamily_name = current_fname&.split('.')&.first
-      @checked_formats = {} # hash for keeping track of repeated checks on same format types
       continue_scan = @checked_formats.keys.count { |key| key != 'EMPTY' } < fmt_files.count && format_filepath.present?
 
       while continue_scan
@@ -325,6 +326,7 @@ module PdfResults
 
       # 2. Set the current array of @rows for the current page:
       set_current_page_rows(limit_pages:, rewind: reset_page_index)
+      detect_empty_page_moving_fwd
 
       # 3. Scan each ContextDef present in @format_defs, progressing in source text scan index
       #    as much as actual row span also progressing page-by-page:
@@ -332,17 +334,6 @@ module PdfResults
       ctx_index = 0
       row_index = 0
       ctx_name  = @format_order.at(ctx_index)
-
-      # === EMPTY PAGE ===
-      if @rows.blank? # Skip empty pages and move forward:
-        log_message("\r\nEMPTY page found @ page idx #{@page_index}")
-        $stdout.write("\033[1;33;32m.\033[0m") # "Valid" progress signal
-        @result_format_type = 'EMPTY' # special "empty page" format name
-        @checked_formats['EMPTY'] = { valid: true, valid_at: [@page_index] } # Store just last empty page encountered
-        @page_index += 1
-        set_current_page_rows(rewind: false)
-        return
-      end
 
       continue_scan = row_index < @rows.count && ctx_name.present?
 
@@ -491,6 +482,7 @@ module PdfResults
           # Page progress & reset indexes:
           @page_index += 1
           set_current_page_rows(rewind: false)
+          detect_empty_page_moving_fwd
           row_index = 0
           ctx_index = 0
           ctx_name  = @format_order.first
@@ -592,8 +584,12 @@ module PdfResults
     #   Using +false+ will preserve the current index value.
     #
     def set_current_page_rows(limit_pages: nil, rewind: true) # rubocop:disable Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
-      # Reset the page index only when requested:
-      if rewind || @page_index.blank?
+      # Make sure these two are always initialized before any source page setup:
+      @checked_formats ||= {} # hash for keeping track of repeated checks on same format types
+      @page_index ||= 0       # actual index inside the parsed document
+
+      # Force reset page index only when requested:
+      if rewind
         log_message("\r\n*** Document RESET & REWIND ***")
         @page_index = 0
       end
@@ -615,6 +611,31 @@ module PdfResults
                 []
               end
     end
+    #-- -----------------------------------------------------------------------
+    #++
+
+    # Checks status of internal @rows array member and, in case, moves forward
+    # the page index using also #set_current_page_rows() so that the parser doesn't
+    # waste a loop on empty pages.
+    # Ideally this should be checked every time a new source page array is set.
+    #
+    # Touches / updates:
+    # - @rows, @pages
+    # - @page_index
+    # - @checked_formats
+    # - @result_format_type
+    def detect_empty_page_moving_fwd
+      return if @rows.present?
+
+      log_message("\r\nEMPTY page found @ page idx #{@page_index}")
+      $stdout.write("\033[1;33;32m.\033[0m") # "Valid" progress signal # rubocop:disable Rails/Output
+      @result_format_type = 'EMPTY' # special "empty page" format name
+      @checked_formats['EMPTY'] = { valid: true, valid_at: [@page_index] } # Store just last empty page encountered
+      @page_index += 1
+      set_current_page_rows(rewind: false)
+    end
+    #-- -----------------------------------------------------------------------
+    #++
 
     # Resets the result members and prepares the @format_defs Hash for scanning
     # the source document page or pages.

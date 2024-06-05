@@ -26,6 +26,12 @@ module PdfResults
     # of a single parent hash.
     IND_RESULT_SECTION = %w[results results_alt].freeze
 
+    # Supported 'swimmer_name' column fields for individual results.
+    SWIMMER_FIELD_NAMES = %w[swimmer_name swimmer_ext swimmer_suffix].freeze
+
+    # Supported 'team_name' column fields for individual results.
+    TEAM_FIELD_NAMES = %w[team_name team_ext team_suffix].freeze
+
     # Supported section names for *categories*. Same rules for IND_RESULT_SECTION apply.
     # Different names are supported in case they need to co-exist in the same layout file.
     CATEGORY_SECTION = %w[category rel_category].freeze
@@ -377,23 +383,17 @@ module PdfResults
       # DSQ label:
       dsq_label = extract_additional_dsq_labels(result_hash) if rank.to_i.zero?
 
-      # DEBUG ----------------------------------------------------------------
-      binding.pry if fields['swimmer_name'].to_s.match?('DELLA TOMMASA')
-      # ----------------------------------------------------------------------
-      # TODO: handle sub-rows used for extension, as with extract_additional_dsq_labels(result_hash) (:813)
-      # in 'results'
-      # :rows=>[
-      #  {:name=>"results_ext", :key=>"FEDERICA|FEDERICA", :fields=>{"swimmer_suffix"=>"FEDERICA", "badge_region"=>nil, "team_suffix"=>"FEDERICA"}, :rows=>[]}
-      # ]
-
-
-      row_hash = {
-        'pos' => fields['rank'],
-        'name' => fields['swimmer_name']&.squeeze(' '),
+      {
+        'pos' => fields['rank']&.delete(')'),
+        'name' => extract_nested_field_name(result_hash, SWIMMER_FIELD_NAMES),
         'year' => fields['year_of_birth'],
         'sex' => cat_gender_code,
-        'team' => fields['team_name']&.squeeze(' '),
-        'timing' => fields['timing'],
+        'badge_num' => fields['badge_num'],
+        # Sometimes the 3-char region code may end up formatted in a second result row:
+        # (TOS format: uses 2 different field names depending on position so the nil one doesn't overwrite the other)
+        'badge_region' => fields['badge_region'] || fields['badge_region2'],
+        'team' => extract_nested_field_name(result_hash, TEAM_FIELD_NAMES),
+        'timing' => format_timing_value(fields['timing']),
         'score' => fields['std_score'],
         # Optionals / added recently / To-be-supported by MacroSolver:
         'lane_num' => fields['lane_num'],
@@ -401,17 +401,7 @@ module PdfResults
         'nation' => fields['nation'],
         'disqualify_type' => dsq_label,
         'rows' => []
-      }
-
-      # Add lap & delta fields only when present in the source result_hash:
-      (1..29).each do |idx|
-        key = "lap#{idx * 50}"
-        row_hash[key] = /\d{0,2}['\":.]?\d{2}[\":.]\d{2}/i.match?(fields[key]) ? fields[key] : nil
-        key = "delta#{idx * 50}"
-        row_hash[key] = /\d{0,2}['\":.]?\d{2}[\":.]\d{2}/i.match?(fields[key]) ? fields[key] : nil
-      end
-
-      row_hash.compact
+      }.merge(extract_nested_lap_timings(result_hash)).compact
     end
 
     # Converts the relay result data structure into an Array of data Hash rows
@@ -439,7 +429,7 @@ module PdfResults
       return {} unless REL_RESULT_SECTION.include?(rel_team_hash[:name])
 
       fields = rel_team_hash.fetch(:fields, {})
-      rank = fields['rank']
+      rank = fields['rank']&.delete(')')
       # DSQ label:
       dsq_label = extract_additional_dsq_labels(rel_team_hash) if rank.to_i.zero?
 
@@ -447,7 +437,7 @@ module PdfResults
         'relay' => true,
         'pos' => rank,
         'team' => fields['team_name']&.squeeze(' '),
-        'timing' => fields['timing'],
+        'timing' => format_timing_value(fields['timing']),
         'score' => fields['std_score'],
         # Optionals / added recently / To-be-supported by MacroSolver:
         'lane_num' => fields['lane_num'],
@@ -807,9 +797,63 @@ module PdfResults
     #-- -----------------------------------------------------------------------
     #++
 
+    # Returns the fully composed field value considering also any possibly additional name part or label
+    # stored in any of the sub-rows nested at the first level of the current/parent result_hash specified.
+    # The name of the sibling row shouldn't matter as each nested row is scanned in search for supported
+    # column names only.
+    # Returns an empty string when no values or valid field names are found (even at the "root" level
+    # of the result_hash).
+    def extract_nested_field_name(result_hash, supported_field_names)
+      result_value = ''
+      result_hash.fetch(:fields, {}).each { |fname, fvalue| result_value += " #{fvalue&.squeeze(' ')}" if supported_field_names.include?(fname) }
+
+      # Check for any possible additional (& supported) fields that need to be collated into
+      # a single swimmer name, which could be possibly stored inside sibling rows:
+      result_hash.fetch(:rows, [{}]).each do |row_hash|
+        next if row_hash[:fields].blank?
+
+        row_hash[:fields].each { |fname, fvalue| result_value += " #{fvalue&.squeeze(' ')}" if supported_field_names.include?(fname) }
+      end
+      result_value.strip
+    end
+    #-- -----------------------------------------------------------------------
+    #++
+
+    # Scans the sibling rows of the specified result_hash searching for <lapXXX> or <deltaXXX> fields.
+    #
+    # Returns an Hash with all collected fields (starting at zero-depth level).
+    # As usual, whenever a field is defined with the same name in more than one place or depth level,
+    # the last value found will overwrite anything found first.
+    # Fields at zero/root level found in the result_hash have the priority.
+    def extract_nested_lap_timings(result_hash)
+      result = {}
+      root_fields = result_hash.fetch(:fields, {})
+      rows = result_hash.fetch(:rows, []).map { |row| row.fetch(:fields, {}) } << root_fields
+
+      # For each sibling row, consider just its fields and collect all matching names in the result:
+      # (root fields last)
+      rows.each do |row_fields|
+        # Add lap & delta fields only when present in the current row:
+        (1..29).each do |idx|
+          key = "lap#{idx * 50}"
+          result[key] = format_timing_value(row_fields[key]) if row_fields.key?(key) && /\d{0,2}['\":.]?\d{2}[\":.]\d{2}/i.match?(row_fields[key])
+          key = "delta#{idx * 50}"
+          result[key] = format_timing_value(row_fields[key]) if row_fields.key?(key) && /\d{0,2}['\":.]?\d{2}[\":.]\d{2}/i.match?(row_fields[key])
+        end
+      end
+      result.compact
+    end
+    #-- -----------------------------------------------------------------------
+    #++
+
     # Returns a single DSQ string label whenever the field 'disqualify_type' is present or
     # if there are any sibling DAO rows named 'dsq_label', 'dsq_label_x2' or 'dsq_label_x3';
     # +nil+ otherwise.
+    #
+    # == Notes:
+    # 1. expected field name    => 'disqualify_type'
+    # 2. sub-row contexts names => 'dsq_label' or 'dsq_label_XXX'
+    #
     def extract_additional_dsq_labels(result_hash)
       dsq_label = result_hash.fetch(:fields, {})['disqualify_type']
       timing = result_hash.fetch(:fields, {})['timing']
@@ -821,10 +865,10 @@ module PdfResults
 
       # Check for any possible additional (up to 3x rows) DSQ labels added as sibling rows:
       # add any additional DSQ label value (grep'ed as string keys) when present.
-      additional_hash = result_hash.fetch(:rows, [{}])&.find { |h| h[:name] == 'dsq_label' }
+      additional_hash = result_hash.fetch(:rows, [{}]).find { |h| h[:name] == 'dsq_label' }
       dsq_label = "#{dsq_label}: #{additional_hash[:key]}" if additional_hash&.key?(:key)
       %w[x2 x3].each do |suffix|
-        additional_hash = result_hash.fetch(:rows, [{}])&.find { |h| h[:name] == "dsq_label_#{suffix}" }
+        additional_hash = result_hash.fetch(:rows, [{}]).find { |h| h[:name] == "dsq_label_#{suffix}" }
         dsq_label = "#{dsq_label} #{additional_hash[:key]}" if additional_hash&.key?(:key)
       end
       dsq_label
@@ -848,6 +892,17 @@ module PdfResults
     end
     #-- -----------------------------------------------------------------------
     #++
+
+    # Returns the specified timing_string formatted in a more standardized format (<HH'MM"SS>).
+    # Can detect and adjust:
+    # - misc "TOS" formats (<HH.MM.SS>, <HH MM SS>)
+    # - misc "EMI" formats (<HH:MM:SS>, <HH:MM.SS>)
+    def format_timing_value(timing_string)
+      # Assume first occurrence will be the minutes separator, the second will be the seconds'
+      timing_string&.sub('.', '\'')&.sub('.', '"')
+                   &.sub(' ', '\'')&.sub(' ', '"')
+                   &.sub(':', '\'')&.sub(':', '"')
+    end
   end
 end
 # rubocop:enable Metrics/ClassLength, Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
