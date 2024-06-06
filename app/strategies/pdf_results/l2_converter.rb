@@ -11,6 +11,8 @@ module PdfResults
   #
   # rubocop:disable Metrics/ClassLength, Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
   class L2Converter
+    # RegExp used to detect a possible timing value, with optional minutes
+    POSSIBLE_TIMING_REGEXP = /\d{0,2}['\"\s:.]?\d{2}[\"\s:.,]\d{2}/i
 
     # Supported "parent" section names for *individual results*. Laps & delta timings are
     # automatically detected and collected as long as their name has the format
@@ -260,7 +262,9 @@ module PdfResults
         'fin_id_evento' => nil,
         'fin_codice_gara' => nil,
         'fin_sigla_categoria' => fetch_category_code(category_hash) || category_code,
-        'fin_sesso' => fetch_category_gender(category_hash) || gender_code
+        'fin_sesso' => fetch_category_gender(category_hash) || gender_code,
+        # TODO: support this in MacroSolver:
+        'base_time' => format_timing_value(category_hash.fetch(:fields, {})['base_time'])
       }
     end
 
@@ -273,7 +277,9 @@ module PdfResults
         'fin_id_evento' => nil,
         'fin_codice_gara' => nil,
         'fin_sigla_categoria' => fetch_rel_category_code(category_hash),
-        'fin_sesso' => fetch_rel_category_gender(category_hash)
+        'fin_sesso' => fetch_rel_category_gender(category_hash),
+        # TODO: support this in MacroSolver:
+        'base_time' => format_timing_value(category_hash.fetch(:fields, {})['base_time'])
       }
     end
 
@@ -388,6 +394,7 @@ module PdfResults
         'name' => extract_nested_field_name(result_hash, SWIMMER_FIELD_NAMES),
         'year' => fields['year_of_birth'],
         'sex' => cat_gender_code,
+        # TODO: support this in MacroSolver:
         'badge_num' => fields['badge_num'],
         # Sometimes the 3-char region code may end up formatted in a second result row:
         # (TOS format: uses 2 different field names depending on position so the nil one doesn't overwrite the other)
@@ -430,13 +437,13 @@ module PdfResults
 
       fields = rel_team_hash.fetch(:fields, {})
       rank = fields['rank']&.delete(')')
-      # DSQ label:
+      # Additional DSQ label ('dsq_label' field inside nested row):
       dsq_label = extract_additional_dsq_labels(rel_team_hash) if rank.to_i.zero?
 
       row_hash = {
         'relay' => true,
         'pos' => rank,
-        'team' => fields['team_name']&.squeeze(' '),
+        'team' => extract_nested_field_name(rel_team_hash, TEAM_FIELD_NAMES),
         'timing' => format_timing_value(fields['timing']),
         'score' => fields['std_score'],
         # Optionals / added recently / To-be-supported by MacroSolver:
@@ -449,43 +456,37 @@ module PdfResults
       # Add lap & delta fields only when present in the source fields and resemble a timing value:
       (1..29).each do |idx|
         key = "lap#{idx * 50}"
-        row_hash[key] = /\d{0,2}['\":.]?\d{2}[\":.]\d{2}/i.match?(fields[key]) ? fields[key] : nil
+        row_hash[key] = format_timing_value(fields[key]) if fields.key?(key) && /\d{0,2}['\"\s:.]?\d{2}[\"\s:.]\d{2}/i.match?(fields[key])
         key = "delta#{idx * 50}"
-        row_hash[key] = /\d{0,2}['\":.]?\d{2}[\":.]\d{2}/i.match?(fields[key]) ? fields[key] : nil
+        row_hash[key] = format_timing_value(fields[key]) if fields.key?(key) && /\d{0,2}['\"\s:.]?\d{2}[\"\s:.]\d{2}/i.match?(fields[key])
       end
 
       # Add relay swimmer laps onto the same result hash & compute possible age group
       # in the meantime:
-      overall_age = 0
-      # *** Same-depth case 1 (GoSwim-type): relay swimmer at same level ***
+      row_hash['overall_age'] = 0
+      # *** Same-depth case 1 (GoSwim-type): relay swimmer fields inside 'rel_team' ***
       8.times do |idx|
         team_fields = rel_team_hash.fetch(:fields, {})
         next unless team_fields.key?("swimmer_name#{idx + 1}")
 
-        # Extract swimmer name & year:
-        row_hash["swimmer#{idx + 1}"] = team_fields["swimmer_name#{idx + 1}"]&.squeeze(' ')
-        year_of_birth = team_fields["year_of_birth#{idx + 1}"].to_i
-        row_hash["year_of_birth#{idx + 1}"] = year_of_birth
-        overall_age = overall_age + @season.begin_date.year - year_of_birth if year_of_birth.positive?
+        # Extract swimmer name, year or gender (when available):
+        process_relay_swimmer_fields(idx + 1, team_fields, row_hash)
       end
 
       rel_team_hash.fetch(:rows, [{}]).each_with_index do |rel_swimmer_hash, idx|
-        # *** Nested case 1 (Ficr-type): relay swimmer sub-row ***
+        # *** Nested case 1 (Ficr-type): 'rel_team' -> 'rel_swimmer' sub-row ***
         if REL_SWIMMER_SECTION.include?(rel_swimmer_hash[:name])
           swimmer_fields = rel_swimmer_hash.fetch(:fields, {})
-          row_hash["swimmer#{idx + 1}"] = swimmer_fields['swimmer_name']&.squeeze(' ')
-          year_of_birth = swimmer_fields['year_of_birth'].to_i
-          row_hash["year_of_birth#{idx + 1}"] = year_of_birth
-          overall_age = overall_age + @season.begin_date.year - year_of_birth if year_of_birth.positive?
+          # Extract swimmer name, year or gender (when available):
+          process_relay_swimmer_fields(0, swimmer_fields, row_hash)
 
-        # *** Nested case 2 (Ficr-type): DSQ label for relays ***
-        # Support for 'disqualify_type' field as nested row:
-        elsif rel_swimmer_hash[:name] == 'rel_dsq'
-          # Precedence on swimmer DSQ labels over any pre-found:
+        # *** Nested case 2 (Ficr-type): DSQ label nested for swimmers in relays ***
+        # Support also for 'disqualify_type' field inside nested row: 'rel_team' -> 'rel_dsq' sub-row
+        elsif rel_swimmer_hash[:name] == 'rel_dsq' && rel_swimmer_hash.fetch(:fields, {})['disqualify_type'].present?
+          # Precedence on swimmer DSQ labels over any other composed DSQ label found at team level:
           row_hash['disqualify_type'] = rel_swimmer_hash.fetch(:fields, {})['disqualify_type']
         end
       end
-      row_hash['overall_age'] = overall_age
 
       row_hash.compact
     end
@@ -836,9 +837,9 @@ module PdfResults
         # Add lap & delta fields only when present in the current row:
         (1..29).each do |idx|
           key = "lap#{idx * 50}"
-          result[key] = format_timing_value(row_fields[key]) if row_fields.key?(key) && /\d{0,2}['\":.]?\d{2}[\":.]\d{2}/i.match?(row_fields[key])
+          result[key] = format_timing_value(row_fields[key]) if row_fields.key?(key) && POSSIBLE_TIMING_REGEXP.match?(row_fields[key])
           key = "delta#{idx * 50}"
-          result[key] = format_timing_value(row_fields[key]) if row_fields.key?(key) && /\d{0,2}['\":.]?\d{2}[\":.]\d{2}/i.match?(row_fields[key])
+          result[key] = format_timing_value(row_fields[key]) if row_fields.key?(key) && POSSIBLE_TIMING_REGEXP.match?(row_fields[key])
         end
       end
       result.compact
@@ -857,7 +858,7 @@ module PdfResults
     def extract_additional_dsq_labels(result_hash)
       dsq_label = result_hash.fetch(:fields, {})['disqualify_type']
       timing = result_hash.fetch(:fields, {})['timing']
-      dsq_label = timing unless dsq_label.present? || timing.blank? || /\d{0,2}['\":.]?\d{2}[\":.]\d{2}/i.match?(timing)
+      dsq_label = timing unless dsq_label.present? || timing.blank? || POSSIBLE_TIMING_REGEXP.match?(timing)
       return if dsq_label.blank?
 
       # Make sure the timing field is cleared out when we have a DSQ label:
@@ -893,16 +894,88 @@ module PdfResults
     #-- -----------------------------------------------------------------------
     #++
 
-    # Returns the specified timing_string formatted in a more standardized format (<HH'MM"SS>).
+    # Returns the specified timing_string formatted in a more standardized format (<MM'SS"HN>).
     # Can detect and adjust:
-    # - misc "TOS" formats (<HH.MM.SS>, <HH MM SS>)
-    # - misc "EMI" formats (<HH:MM:SS>, <HH:MM.SS>)
+    # - misc "TOS" formats (<MM.SS.HN>, <MM SS HN>, <SS,HN>)
+    # - misc "EMI" formats (<MM:SS:HN>, <MM:SS.HN>)
     def format_timing_value(timing_string)
-      # Assume first occurrence will be the minutes separator, the second will be the seconds'
+      # Assume first occurrence will be the minutes separator, the second will be the seconds' (from the hundredths)
       timing_string&.sub('.', '\'')&.sub('.', '"')
                    &.sub(' ', '\'')&.sub(' ', '"')
                    &.sub(':', '\'')&.sub(':', '"')
+                   &.sub(',', '"')
     end
+    #-- -----------------------------------------------------------------------
+    #++
+
+    # Scans *all* result rows in search of the specified swimmer.
+    # Used to retrieve any possible missing fields for a swimmer entity.
+    #
+    # == Params:
+    # - swimmer_name: swimmer's full name
+    # - team_name: swimmer's team name
+    #
+    # == Returns:
+    # [<year_of_birth>, <gender_type>] or +nil+ when not found
+    #
+    def search_result_row_with_swimmer(swimmer_name, team_name)
+      @data.fetch(:rows, [{}]).each do |event_hash|
+        # Set current searched gender from event when found
+        _title, _length, _type, curr_gender_from_event = fetch_event_title(event_hash)
+        event_hash.fetch(:rows, [{}]).each do |category_hash|
+          # Set current searched gender from category when found
+          curr_gender = fetch_category_gender(category_hash) || curr_gender_from_event
+          # Return after first match
+          result = category_hash.fetch(:rows, [{}])
+                                .find do |row|
+                                  fields = row.fetch(:fields, {})
+                                  fields['swimmer_name'] == swimmer_name &&
+                                    fields['team_name'] == team_name
+                                end
+          return [result.fetch(:fields, {})['year_of_birth'].to_i, curr_gender] if result.present?
+        end
+      end
+
+      nil
+    end
+    #-- -----------------------------------------------------------------------
+    #++
+
+    # Converts the relay swimmer data fields into the "flattened" L2 hash format,
+    # ready to be converted to JSON as result section.
+    #
+    # == Params:
+    # - swimmer_idx     => current relay swimmer index; 0 for dedicated 'rel_swimmer' contexts,
+    #                      a positive number for swimmer data stored at the same depth level as the team;
+    # - rel_fields_hash => :fields hash either for a 'rel_team' context or a 'rel_swimmer' context;
+    # - output_hash     => relay result Hash section, which should be the destination for the current data,
+    #                      assumed to be already storing most of the zero-level fields like 'team' or 'timing'.
+    # == Returns:
+    # the specified output_hash, updated with any relay swimmer data field found.
+    #
+    def process_relay_swimmer_fields(swimmer_idx, rel_fields_hash, output_hash)
+      # Indexed source or not?
+      if swimmer_idx.positive?
+        output_hash["swimmer#{swimmer_idx}"] = rel_fields_hash["swimmer_name#{swimmer_idx}"]&.squeeze(' ')
+        year_of_birth = rel_fields_hash["year_of_birth#{swimmer_idx}"].to_i
+        gender_code = rel_fields_hash["gender_type#{swimmer_idx}"] # To-be-supported by MacroSolver
+      else
+        output_hash["swimmer#{swimmer_idx}"] = rel_fields_hash['swimmer_name']&.squeeze(' ')
+        year_of_birth = rel_fields_hash['year_of_birth'].to_i
+        gender_code = rel_fields_hash['gender_type'] # To-be-supported by MacroSolver
+      end
+      # Scan existing swimmers in results searching for missing fields:
+      if year_of_birth.zero? || gender_code.blank?
+        year_of_birth, gender_code = search_result_row_with_swimmer(output_hash["swimmer#{swimmer_idx}"], output_hash['team'])
+      end
+
+      output_hash["gender_type#{swimmer_idx}"] = gender_code
+      output_hash["year_of_birth#{swimmer_idx}"] = year_of_birth
+      output_hash['overall_age'] += @season.begin_date.year - year_of_birth if year_of_birth.to_i.positive?
+      output_hash
+    end
+    #-- -----------------------------------------------------------------------
+    #++
   end
 end
 # rubocop:enable Metrics/ClassLength, Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity

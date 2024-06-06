@@ -254,11 +254,11 @@
             pop_out: false
             required: false
 
-  - name: dsq_rel_ext
+  - name: rel_dsq
     parent: rel_team
     required: false
     fields:
-      - name: dsq_details
+      - name: dsq_label
         format: "^\\s?(partenz\\w+|irregol\\w+|arriv\\w+)$"
         pop_out: false
 

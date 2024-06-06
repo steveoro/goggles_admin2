@@ -22,11 +22,11 @@
       # "header" row-1, abs. row #1:
       - fields:
         - name: meeting_place
-          lambda: strip
-          format: "\\s*(\\w{2,}),\\s+"
+          # Support long place names like "Centro Federale di Ostia (RM)" or "Reggio nell'Emilia"
+          format: "^\\s*(.{2,}(?>\\s\\(\\w\\w\\)))?,\\s*"
         - name: meeting_date
-          lambda: strip
-          format: "\\s*(\\d{2}[-\/]\\d{2}[-\/]\\d{2,4})\\b"
+          # Support month names too: dd(-/)mm(-/)yy(yy), dd MMM(...) yy(yy)
+          format: "^\\s*.{2,}(?>\\s\\(\\w\\w\\))?,\\s*(\\d{2}([-\/]\\d{2}[-\/]\\d{2,4}|\\s\\w{3,}\\s\\d{2,4}))\\b"
 
   - name: event
     starts_at_row: 2

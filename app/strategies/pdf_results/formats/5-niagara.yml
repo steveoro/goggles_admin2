@@ -1,9 +1,9 @@
 #
 # = Layout format definition for PdfResults::FormatParser
 #
-# Example: Veneto custom FIN format for Master's meetings results
+# Example: FIN Veneto custom format for Master's meetings results
 #
-5-finveneto:
+5-niagara:
   - name: header
     at_fixed_row: 0
     # Repeat (at_fixed_row, each page)
