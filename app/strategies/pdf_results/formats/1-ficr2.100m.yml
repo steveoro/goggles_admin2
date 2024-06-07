@@ -3,7 +3,7 @@
 #
 # Ficr alternative layout, mostly, from season 182
 #
-1-ficr2:
+1-ficr2.100m:
   - name: header
     # Index is page-relative
     at_fixed_row: 0
@@ -73,24 +73,32 @@
     repeat: true
     rows:
       - name: results_hdr1
-        format: "\\s?Pos\\.\\s+Nominativo\\s+Naz\\.?\\s+Anno\\s+Società\\s+Ser.\\s+Crs\\.?\\s+Tempo\\s+Pti\\.?\\sSC(\\s+Master)?"
+        format: "\\s?Pos\\.\\s+Nominativo\\s+Naz\\.?\\s+Ser\\.?\\s+50\\sm(?>\\s+100\\sm)?(?>\\s+150 m)?(?>\\s+200 m)?\\s+Arrivo$"
+      - name: results_hdr2
+        format: "^\\s{45,}Anno\\s+Crs$"
+      - name: results_hdr2
+        format: "^\\s{2,}Società\\s{50,}(?>Master\\s+)?Pti\\s+SC$"
       - name: results_hdr_sep1
         format: "^$"
+      - name: results_hdr_sep2
+        format: "^$"
 
-  # Data columns header, alt version (doesn't need to be a synonim: it shouldn't have any siblings)
+  # Alternative header row version:
   - name: results_hdr_alt
-    required: false
     repeat: true
+    required: false
     rows:
       - name: results_hdr1
-        format: "\\s?Pos\\.\\s+Nominativo\\s+Naz\\.?\\s+Anno\\s+Società\\s+Ser.\\s+Crs\\.?(?>\\s+Pos\\.?)?\\s+Tempo\\s+Pt\\.?"
-      - name: results_hdr_sep1
+        format: "\\s?Pos\\.\\s+Nominativo\\s+Naz\\.?\\s+Ser\\.?\\s+50\\sm(?>\\s+100\\sm)?(?>\\s+150\\sm)?(?>\\s+200\\sm)?(?>\\s+250\\sm)?(?>\\s+300\\sm)?(?>\\s+350\\sm)?(?>\\s+400\\sm)?\\s+Arrivo$"
+      - name: results_hdr2
+        format: "^\\s{2,}Società\\s{20,}Anno\\s+Crs\\s{50,}Pti\\s+SC$"
+      - name: results_hdr_sep
         format: "^$"
 
   - name: results
     repeat: true
     parent: category
-    starts_at_row: 10
+    starts_at_row: 12
     rows:
       - name: results1
         fields:
@@ -100,54 +108,87 @@
             # Sometimes, this may be missing due to technicalities:
             required: false
           - name: swimmer_name
-            format: "^\\s+(?>\\d{1,2}|SQ|RT|NP)\\s+((?>[\\wìàèéòù'-]+\\s){2,})\\s+\\w{3}\\s{4,}\\d{4}\\s{2,}"
+            format: "^\\s+(?>\\d{1,2}|SQ|RT|NP)\\s+((?>[\\wìàèéòù'-]+\\s){2,})\\s+\\w{3}\\s+"
             pop_out: false
-            # token_end: 50
-
           - name: nation
-            format: "^\\s+(?>\\d{1,2}|SQ|RT|NP)\\s+(?>[\\wìàèéòù'-]+\\s){2,}\\s+(\\w{3})\\s{4,}\\d{4}\\s{2,}"
+            format: "^\\s+(?>\\d{1,2}|SQ|RT|NP)\\s+(?>[\\wìàèéòù'-]+\\s){2,}\\s{2,}(\\w{3})\\s{1,}\\d{1,2}"
             pop_out: false
-            # token_start: 50
-            # token_end: 60
-          - name: year_of_birth
-            format: "^\\s+(?>\\d{1,2}|SQ|RT|NP)\\s+(?>[\\wìàèéòù'-]+\\s){2,}\\s+\\w{3}\\s{4,}(\\d{4})\\s{2,}"
-            # token_start: 73
-            # token_end: 83
-            # format: "\\s*(\\d{4})\\s*"
-            pop_out: false
-
-          - name: team_name
-            format: "^\\s+(?>\\d{1,2}|SQ|RT|NP)\\s+(?>[\\wìàèéòù'-]+\\s){2,}\\s+\\w{3}\\s{4,}\\d{4}\\s{2,}((?>\\s?\\S{1,}){1,})\\s{2,}\\d{1,2}\\s{2,}\\d{1,2}"
-            # format: "^\\s{3,8}(([\\w\\d\\-&%'`]+.\\s?)+)"
-            # token_end: 83
-            # token_end: 115
-            pop_out: false
-
           - name: series_num
-            format: "^\\s+(?>\\d{1,2}|SQ|RT|NP)\\s+(?>[\\wìàèéòù'-]+\\s){2,}\\s+\\w{3}\\s{4,}\\d{4}\\s{2,}(?>\\s?\\S{1,}){1,}\\s{2,}(\\d{1,2})\\s{2,}\\d{1,2}"
-            # format: "\\s*(\\d{1,2})\\s*"
+            format: "^\\s+(?>\\d{1,2}|SQ|RT|NP)\\s+(?>[\\wìàèéòù'-]+\\s){2,}\\s{2,}\\w{3}\\s{1,}(\\d{1,2})"
             pop_out: false
-            # token_start: 115
-            # token_end: 120
-          - name: lane_num
-            format: "^\\s+(?>\\d{1,2}|SQ|RT|NP)\\s+(?>[\\wìàèéòù'-]+\\s){2,}\\s+\\w{3}\\s{4,}\\d{4}\\s{2,}(?>\\s?\\S{1,}){1,}\\s{2,}\\d{1,2}\\s{2,}(\\d{1,2})"
-            # format: "\\s*(\\d{1,2})\\s*"
-            pop_out: false
-            # token_start: 120
-            # token_end: 125
 
+          - name: lap50
+            format: "\\s{2,}\\w{3}\\s{1,}\\d{1,2}\\s{2,}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})"
+            pop_out: false
+            required: false
+          - name: lap100
+            format: "\\s{2,}\\w{3}\\s{1,}\\d{1,2}\\s{2,}\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}\\s{1,}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})"
+            pop_out: false
+            required: false
+          - name: lap150
+            format: "\\s{2,}\\w{3}\\s{1,}\\d{1,2}\\s{2,}(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}){2}\\s{1,}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})"
+            pop_out: false
+            required: false
+          - name: lap200
+            format: "\\s{2,}\\w{3}\\s{1,}\\d{1,2}\\s{2,}(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}){3}\\s{1,}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})"
+            pop_out: false
+            required: false
           - name: timing
-            # format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*"
-            format: "^\\s+(?>\\d{1,2}|SQ|RT|NP)\\s+(?>[\\wìàèéòù'-]+\\s){2,}\\s+\\w{3}\\s{4,}\\d{4}\\s{2,}(?>\\s?\\S{1,}){1,}\\s{2,}\\d{1,2}\\s{2,}\\d{1,2}\\s{2,}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})"
-            # token_start: 125
+            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*"
+            token_start: 118
+            pop_out: false
+            required: false
+
+      - name: results2
+        fields:
+          - name: team_name
+            format: "^\\s{3,9}((?>\\s?\\S{1,}){1,})\\s{2,}\\d{4}\\s{1,}"
+            pop_out: false
+          - name: year_of_birth
+            format: "^\\s{3,9}(?>\\s?\\S{1,}){1,}\\s{2,}(\\d{4})\\s{1,}"
+            pop_out: false
+          - name: lane_num
+            format: "^\\s{3,9}(?>\\s?\\S{1,}){1,}\\s{2,}\\d{4}\\s{1,}(\\d{1,2})"
+            pop_out: false
+
+          - name: delta100
+            format: "^\\s{3,9}((?>\\s?\\S{1,}){1,})\\s{2,}\\d{4}\\s{1,}\\d{1}\\s{4,}\\((\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\)"
+            pop_out: false
+            required: false
+          - name: delta150
+            format: "^\\s{3,9}((?>\\s?\\S{1,}){1,})\\s{2,}\\d{4}\\s{1,}\\d{1}\\s{4,}(?>\\(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}\\)\\s{1,}){1}\\((\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\)"
+            pop_out: false
+            required: false
+          - name: delta200
+            format: "^\\s{3,9}((?>\\s?\\S{1,}){1,})\\s{2,}\\d{4}\\s{1,}\\d{1}\\s{4,}(?>\\(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}\\)\\s{1,}){2}\\((\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\)"
             pop_out: false
             required: false
           - name: std_score
             format: "\\s*(\\d?[,.]?\\d{1,4}[,.]\\d{1,2})"
-            token_start: 135
+            token_start: 118
             pop_out: false
             # U25 / A20 do not score:
             required: false
+
+      # Optional row including long team name suffix & "disqualified" message/reason
+      # (Retired swimmers won't have it and will show an "RT" ranking instead)
+      # - name: results3
+      #   required: false
+      #   fields:
+      #     - name: team_suffix
+      #       format: "^\\s{3,8}(([\\w]+\\s?)+)(\\s{50,}?|$)"
+      #       token_end: 110
+      #       pop_out: false
+      #       required: false
+      #     - name: disqualify_type
+      #       # "All non-digit words from column 112 onward until the end of line"
+      #       format: "^(?!\\s+(Orario Ufficializzazione|\\d{1,2}|www.ficr.it|corsie|Pagina))\\s{112,}(\\D+\\s?)+\\b"
+      #       required: false
+
+      # Optional empty line in between results:
+      - name: result_sep
+        required: false
+        format: "^$"
 
   - name: dsq_label
     parent: results
@@ -161,6 +202,7 @@
     parent: results
     repeat: true
     required: false
+    row_span: 2
     lambda: strip
     format: "\\s*Non Classificati\\b"
 
@@ -169,16 +211,6 @@
     # repeat: false => repeat only after each new event loop
     required: false
     format: "^$"
-
-  # - name: empty_rows_separator
-  #   parent: event
-  #   required: false
-  #   repeat: true
-  #   rows:
-  #     - name: sep1
-  #       format: "^$"
-  #     - name: sep2
-  #       format: "^$"
 
   # End-Of-Page context
   - name: footer

@@ -21,7 +21,7 @@
           - name: meeting_name
             format: "^\\s{20,}(?>\\d{1,2}|[IVXLCM]+)?.{1,2}?\\s+(.+)$"
             pop_out: false
-      - name: hdr_separator0
+      - name: hdr_sep0
         format: "^$"
 
       # "header" row-2

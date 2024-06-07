@@ -85,7 +85,7 @@
     repeat: true
     # repeat: false => ONCE per page max
     lambda: strip
-    format: "\\s?Pos.\\s+Nominativo\\s+Naz\\s+Anno\\s+Società\\s+Ser.\\s+Cor\\s+Pos\\s+Tempo\\s+Pti.\\sSC\\s+Master"
+    format: "\\s?Pos.\\s+Nominativo\\s+Naz\\s+Anno\\s+Società\\s+Ser.\\s+Cor(?>\\s+Pos\\.?)?\\s+Tempo\\s+Pti.\\sSC\\s+Master"
 
   # Optional row before category
   - name: cat_spacer
