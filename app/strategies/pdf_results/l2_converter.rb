@@ -470,7 +470,7 @@ module PdfResults
         next unless team_fields.key?("swimmer_name#{idx + 1}")
 
         # Extract swimmer name, year or gender (when available):
-        process_relay_swimmer_fields(idx + 1, team_fields, row_hash)
+        process_relay_swimmer_fields(idx + 1, team_fields, row_hash, nested: false)
       end
 
       rel_team_hash.fetch(:rows, [{}]).each_with_index do |rel_swimmer_hash, idx|
@@ -478,7 +478,7 @@ module PdfResults
         if REL_SWIMMER_SECTION.include?(rel_swimmer_hash[:name])
           swimmer_fields = rel_swimmer_hash.fetch(:fields, {})
           # Extract swimmer name, year or gender (when available):
-          process_relay_swimmer_fields(0, swimmer_fields, row_hash)
+          process_relay_swimmer_fields(idx + 1, swimmer_fields, row_hash, nested: true)
 
         # *** Nested case 2 (Ficr-type): DSQ label nested for swimmers in relays ***
         # Support also for 'disqualify_type' field inside nested row: 'rel_team' -> 'rel_dsq' sub-row
@@ -953,16 +953,27 @@ module PdfResults
     # == Returns:
     # the specified output_hash, updated with any relay swimmer data field found.
     #
-    def process_relay_swimmer_fields(swimmer_idx, rel_fields_hash, output_hash)
-      # Indexed source or not?
-      if swimmer_idx.positive?
-        output_hash["swimmer#{swimmer_idx}"] = rel_fields_hash["swimmer_name#{swimmer_idx}"]&.squeeze(' ')
-        year_of_birth = rel_fields_hash["year_of_birth#{swimmer_idx}"].to_i
-        gender_code = rel_fields_hash["gender_type#{swimmer_idx}"] # To-be-supported by MacroSolver
-      else
+    def process_relay_swimmer_fields(swimmer_idx, rel_fields_hash, output_hash, nested: true)
+      # TODO: Add proper support in MacroSolver for 'swimmer_lap<N>' &  'swimmer_delta<N>' fields,
+      #       in nested or unested swimmer data sources (either indexed inside 'rel_team' or non-indexed
+      #       inside nested 'rel_swimmer'-type Hashes) that store the delta/lap timings for the corrispondent
+      #       relay_swimmer fraction in index.
+      #       (It needs the event length or the lap length to be fully processable, otherwise
+      #       an educated guess for the lap length is needed.)
+
+      # Swimmer data source is a sibling row with non-indexed fields?
+      if nested
         output_hash["swimmer#{swimmer_idx}"] = rel_fields_hash['swimmer_name']&.squeeze(' ')
         year_of_birth = rel_fields_hash['year_of_birth'].to_i
-        gender_code = rel_fields_hash['gender_type'] # To-be-supported by MacroSolver
+        gender_code = rel_fields_hash['gender_type']    # To-be-supported by MacroSolver
+        lap_timing = rel_fields_hash['swimmer_lap']     # To-be-supported by MacroSolver
+        delta_timing = rel_fields_hash['swimmer_delta'] # To-be-supported by MacroSolver
+      else
+        output_hash["swimmer#{swimmer_idx}"] = rel_fields_hash["swimmer_name#{swimmer_idx}"]&.squeeze(' ')
+        year_of_birth = rel_fields_hash["year_of_birth#{swimmer_idx}"].to_i
+        gender_code = rel_fields_hash["gender_type#{swimmer_idx}"]    # To-be-supported by MacroSolver
+        lap_timing = rel_fields_hash["swimmer_lap#{swimmer_idx}"]     # To-be-supported by MacroSolver
+        delta_timing = rel_fields_hash["swimmer_delta#{swimmer_idx}"] # To-be-supported by MacroSolver
       end
       # Scan existing swimmers in results searching for missing fields:
       if year_of_birth.zero? || gender_code.blank?
@@ -972,6 +983,8 @@ module PdfResults
       output_hash["gender_type#{swimmer_idx}"] = gender_code
       output_hash["year_of_birth#{swimmer_idx}"] = year_of_birth
       output_hash['overall_age'] += @season.begin_date.year - year_of_birth if year_of_birth.to_i.positive?
+      output_hash["swimmer_lap#{swimmer_idx}"] = lap_timing
+      output_hash["swimmer_delta#{swimmer_idx}"] = delta_timing
       output_hash
     end
     #-- -----------------------------------------------------------------------

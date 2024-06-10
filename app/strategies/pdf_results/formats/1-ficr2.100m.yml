@@ -55,6 +55,7 @@
     parent: event
     rows:
       - name: cat_sep1
+        required: false
         format: "^$"
 
       - fields:
@@ -86,6 +87,8 @@
   # Alternative header row version:
   - name: results_hdr_alt
     repeat: true
+    # Alternative section name for which this one will "stand-in" ONLY when validated
+    alternative_of: results_hdr
     required: false
     rows:
       - name: results_hdr1
@@ -142,25 +145,25 @@
       - name: results2
         fields:
           - name: team_name
-            format: "^\\s{3,9}((?>\\s?\\S{1,}){1,})\\s{2,}\\d{4}\\s{1,}"
+            format: "^\\s{3,9}((?>\\s?\\S{1,}){1,})\\s{1,}\\d{4}\\s{1,}\\d{1,2}"
             pop_out: false
           - name: year_of_birth
-            format: "^\\s{3,9}(?>\\s?\\S{1,}){1,}\\s{2,}(\\d{4})\\s{1,}"
+            format: "^\\s{3,9}(?>\\s?\\S{1,}){1,}\\s{1,}(\\d{4})\\s{1,}\\d{1,2}"
             pop_out: false
           - name: lane_num
-            format: "^\\s{3,9}(?>\\s?\\S{1,}){1,}\\s{2,}\\d{4}\\s{1,}(\\d{1,2})"
+            format: "^\\s{3,9}(?>\\s?\\S{1,}){1,}\\s{1,}\\d{4}\\s{1,}(\\d{1,2})"
             pop_out: false
 
           - name: delta100
-            format: "^\\s{3,9}((?>\\s?\\S{1,}){1,})\\s{2,}\\d{4}\\s{1,}\\d{1}\\s{4,}\\((\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\)"
+            format: "^\\s{3,9}(?>\\s?\\S{1,}){1,}\\s{1,}\\d{4}\\s{1,}\\d{1,2}\\s{4,}\\((\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\)"
             pop_out: false
             required: false
           - name: delta150
-            format: "^\\s{3,9}((?>\\s?\\S{1,}){1,})\\s{2,}\\d{4}\\s{1,}\\d{1}\\s{4,}(?>\\(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}\\)\\s{1,}){1}\\((\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\)"
+            format: "^\\s{3,9}(?>\\s?\\S{1,}){1,}\\s{1,}\\d{4}\\s{1,}\\d{1,2}\\s{4,}(?>\\(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}\\)\\s{1,}){1}\\((\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\)"
             pop_out: false
             required: false
           - name: delta200
-            format: "^\\s{3,9}((?>\\s?\\S{1,}){1,})\\s{2,}\\d{4}\\s{1,}\\d{1}\\s{4,}(?>\\(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}\\)\\s{1,}){2}\\((\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\)"
+            format: "^\\s{3,9}(?>\\s?\\S{1,}){1,}\\s{1,}\\d{4}\\s{1,}\\d{1,2}\\s{4,}(?>\\(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}\\)\\s{1,}){2}\\((\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\)"
             pop_out: false
             required: false
           - name: std_score
@@ -195,7 +198,7 @@
     required: false
     fields:
       - name: disqualify_type
-        format: "^\\s{4,}(falsa\\spartenz\\w+|arrivo\\sirr\\w*|virata\\s\\w+)"
+        format: "^\\s{3,}(falsa\\spartenz\\w+|arrivo\\sirr\\w*|virata\\s\\w+)"
         pop_out: false
 
   - name: disqualified
@@ -214,8 +217,6 @@
 
   # End-Of-Page context
   - name: footer
-    # Choose a link with the wrapping parent context from which the scan may resume
-    # when after this, independently from check success or failure:
     parent: event
     # The 'eop' key implies that this context will be searched <row_span> lines before the end of page.
     # This also implies that the file must also be parsed in pages, otherwise the recognition will fail.
