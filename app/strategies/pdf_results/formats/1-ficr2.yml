@@ -24,10 +24,10 @@
       - fields:
         - name: meeting_place
           # Support long place names like "Centro Federale di Ostia (RM)" or "Reggio nell'Emilia"
-          format: "^\\s*(.{2,}(?>\\s\\(\\w\\w\\)))?,\\s*"
+          format: "^\\s*(\\D{2,}),\\s*"
         - name: meeting_date
           # Support month names too: dd(-/)mm(-/)yy(yy), dd MMM(...) yy(yy)
-          format: "^\\s*.{2,}(?>\\s\\(\\w\\w\\))?,\\s*(\\d{2}([-\/]\\d{2}[-\/]\\d{2,4}|\\s\\w{3,}\\s\\d{2,4}))\\b"
+          format: "^\\s*.{2,}(?>\\s\\(\\w\\w\\))?,\\s*(\\d{2}(?>[-\/]\\d{2}[-\/]\\d{2,4}|\\s\\w{3,}\\s\\d{2,4}))\\b"
 
       - name: hdr_sep
         format: "^$"
@@ -102,44 +102,27 @@
           - name: swimmer_name
             format: "^\\s+(?>\\d{1,2}|SQ|RT|NP)\\s+((?>[\\wìàèéòù'-]+\\s){2,})\\s+\\w{3}\\s{4,}\\d{4}\\s{2,}"
             pop_out: false
-            # token_end: 50
 
           - name: nation
             format: "^\\s+(?>\\d{1,2}|SQ|RT|NP)\\s+(?>[\\wìàèéòù'-]+\\s){2,}\\s+(\\w{3})\\s{4,}\\d{4}\\s{2,}"
             pop_out: false
-            # token_start: 50
-            # token_end: 60
           - name: year_of_birth
             format: "^\\s+(?>\\d{1,2}|SQ|RT|NP)\\s+(?>[\\wìàèéòù'-]+\\s){2,}\\s+\\w{3}\\s{4,}(\\d{4})\\s{2,}"
-            # token_start: 73
-            # token_end: 83
-            # format: "\\s*(\\d{4})\\s*"
             pop_out: false
 
           - name: team_name
             format: "^\\s+(?>\\d{1,2}|SQ|RT|NP)\\s+(?>[\\wìàèéòù'-]+\\s){2,}\\s+\\w{3}\\s{4,}\\d{4}\\s{2,}((?>\\s?\\S{1,}){1,})\\s{2,}\\d{1,2}\\s{2,}\\d{1,2}"
-            # format: "^\\s{3,8}(([\\w\\d\\-&%'`]+.\\s?)+)"
-            # token_end: 83
-            # token_end: 115
             pop_out: false
 
           - name: series_num
             format: "^\\s+(?>\\d{1,2}|SQ|RT|NP)\\s+(?>[\\wìàèéòù'-]+\\s){2,}\\s+\\w{3}\\s{4,}\\d{4}\\s{2,}(?>\\s?\\S{1,}){1,}\\s{2,}(\\d{1,2})\\s{2,}\\d{1,2}"
-            # format: "\\s*(\\d{1,2})\\s*"
             pop_out: false
-            # token_start: 115
-            # token_end: 120
           - name: lane_num
             format: "^\\s+(?>\\d{1,2}|SQ|RT|NP)\\s+(?>[\\wìàèéòù'-]+\\s){2,}\\s+\\w{3}\\s{4,}\\d{4}\\s{2,}(?>\\s?\\S{1,}){1,}\\s{2,}\\d{1,2}\\s{2,}(\\d{1,2})"
-            # format: "\\s*(\\d{1,2})\\s*"
             pop_out: false
-            # token_start: 120
-            # token_end: 125
 
           - name: timing
-            # format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*"
             format: "^\\s+(?>\\d{1,2}|SQ|RT|NP)\\s+(?>[\\wìàèéòù'-]+\\s){2,}\\s+\\w{3}\\s{4,}\\d{4}\\s{2,}(?>\\s?\\S{1,}){1,}\\s{2,}\\d{1,2}\\s{2,}\\d{1,2}\\s{2,}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})"
-            # token_start: 125
             pop_out: false
             required: false
           - name: std_score
@@ -169,16 +152,6 @@
     # repeat: false => repeat only after each new event loop
     required: false
     format: "^$"
-
-  # - name: empty_rows_separator
-  #   parent: event
-  #   required: false
-  #   repeat: true
-  #   rows:
-  #     - name: sep1
-  #       format: "^$"
-  #     - name: sep2
-  #       format: "^$"
 
   # End-Of-Page context
   - name: footer
