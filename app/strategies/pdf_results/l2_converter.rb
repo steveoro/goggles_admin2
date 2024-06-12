@@ -136,6 +136,7 @@ module PdfResults
     # down on the hierarchy).
     def event_sections # rubocop:disable Metrics/MethodLength,Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
       resulting_sections = []
+      recompute_ranking = false
 
       @data.fetch(:rows, [{}]).each_with_index do |event_hash, _idx| # rubocop:disable Metrics/BlockLength
         # Supported hierarchy for "event-type" depth level:
@@ -217,7 +218,7 @@ module PdfResults
 
             # Set rows for current relay section:
             section['rows'] = rows
-            resulting_sections << section if rows.present?
+            add_event_section_if_missing(resulting_sections, section) if section['rows'].present?
 
           # --- IND.RESULTS (category -> results) ---
           elsif holds_category_type?(row_hash)
@@ -232,7 +233,7 @@ module PdfResults
             end
             # Overwrite existing rows in current section:
             section['rows'] = rows
-            resulting_sections << section if rows.present?
+            add_event_section_if_missing(resulting_sections, section) if section['rows'].present?
 
           # --- IND.RESULTS (event -> results) ---
           elsif holds_category_type?(event_hash) && IND_RESULT_SECTION.include?(row_hash[:name])
@@ -240,6 +241,24 @@ module PdfResults
             # add here only its rows:
             section['rows'] ||= []
             section['rows'] << ind_result_section(row_hash, section['fin_sesso'])
+            add_event_section_if_missing(resulting_sections, section) if section['rows'].present?
+
+          # --- IND.RESULTS (event -> results, but NO category code; i.e.: absolute rankings) ---
+          elsif IND_RESULT_SECTION.include?(row_hash[:name]) && gender_code.present?
+            recompute_ranking = true
+            fields = row_hash.fetch(:fields, {})
+            year_of_birth = fields['year_of_birth'].to_i
+            # 1. Detect category_code from year_of_birth
+            category_code = post_compute_ind_category_code(year_of_birth)
+            next if category_code.blank?
+
+            # 2. Fetch or create proper event section with category:
+            section = find_existing_event_section(resulting_sections, event_title, category_code, gender_code) ||
+                      ind_category_section(row_hash, event_title, category_code, gender_code)
+            # 3. Extract ind. result section and add it to the section's rows:
+            section['rows'] ||= []
+            section['rows'] << ind_result_section(row_hash, gender_code)
+            add_event_section_if_missing(resulting_sections, section) if section['rows'].present?
 
           # --- (Ignore unsupported contexts) ---
           else
@@ -248,7 +267,7 @@ module PdfResults
         end
       end
 
-      resulting_sections
+      recompute_ranking ? recompute_ranking_for_each_event_section(resulting_sections) : resulting_sections
     end
     #-- -----------------------------------------------------------------------
     #++
@@ -392,16 +411,16 @@ module PdfResults
       {
         'pos' => fields['rank']&.delete(')'),
         'name' => extract_nested_field_name(result_hash, SWIMMER_FIELD_NAMES),
-        'year' => fields['year_of_birth'],
+        'year' => fetch_field_with_alt_value(fields, 'year_of_birth'),
         'sex' => cat_gender_code,
         # TODO: support this in MacroSolver:
-        'badge_num' => fields['badge_num'],
+        'badge_num' => fetch_field_with_alt_value(fields, 'badge_num'),
         # Sometimes the 3-char region code may end up formatted in a second result row:
         # (TOS format: uses 2 different field names depending on position so the nil one doesn't overwrite the other)
-        'badge_region' => fields['badge_region'] || fields['badge_region2'],
+        'badge_region' => fetch_field_with_alt_value(fields, 'badge_region'),
         'team' => extract_nested_field_name(result_hash, TEAM_FIELD_NAMES),
-        'timing' => format_timing_value(fields['timing']),
-        'score' => fields['std_score'],
+        'timing' => format_timing_value(fetch_field_with_alt_value(fields, 'timing')),
+        'score' => fetch_field_with_alt_value(fields, 'std_score'),
         # Optionals / added recently / To-be-supported by MacroSolver:
         'lane_num' => fields['lane_num'],
         'heat_rank' => fields['heat_rank'],
@@ -444,8 +463,8 @@ module PdfResults
         'relay' => true,
         'pos' => rank,
         'team' => extract_nested_field_name(rel_team_hash, TEAM_FIELD_NAMES),
-        'timing' => format_timing_value(fields['timing']),
-        'score' => fields['std_score'],
+        'timing' => format_timing_value(fetch_field_with_alt_value(fields, 'timing')),
+        'score' => fetch_field_with_alt_value(fields, 'std_score'),
         # Optionals / added recently / To-be-supported by MacroSolver:
         'lane_num' => fields['lane_num'],
         # 'heat_rank' => fields['heat_rank'], # WIP: missing relay example w/ this
@@ -456,9 +475,12 @@ module PdfResults
       # Add lap & delta fields only when present in the source fields and resemble a timing value:
       (1..29).each do |idx|
         key = "lap#{idx * 50}"
-        row_hash[key] = format_timing_value(fields[key]) if fields.key?(key) && /\d{0,2}['\"\s:.]?\d{2}[\"\s:.]\d{2}/i.match?(fields[key])
+        value = fetch_field_with_alt_value(fields, key)
+        row_hash[key] = format_timing_value(value) if /\d{0,2}['\"\s:.]?\d{2}[\"\s:.]\d{2}/i.match?(value)
+
         key = "delta#{idx * 50}"
-        row_hash[key] = format_timing_value(fields[key]) if fields.key?(key) && /\d{0,2}['\"\s:.]?\d{2}[\"\s:.]\d{2}/i.match?(fields[key])
+        value = fetch_field_with_alt_value(fields, key)
+        row_hash[key] = format_timing_value(value) if /\d{0,2}['\"\s:.]?\d{2}[\"\s:.]\d{2}/i.match?(value)
       end
 
       # Add relay swimmer laps onto the same result hash & compute possible age group
@@ -787,9 +809,6 @@ module PdfResults
                       /M\d{2,3}-\d{2,3}\|(Masch|Femmin|Mist)/ui.match(key).captures.first
                     end
       # Use the field value when no match is found:
-      # DEBUG ----------------------------------------------------------------
-      # binding.pry
-      # ----------------------------------------------------------------------
       gender_name = row_hash[:fields][GENDER_FIELD_NAME] if gender_name.blank? && row_hash[:fields].key?(GENDER_FIELD_NAME)
       return GogglesDb::GenderType.intermixed.code if /mist/i.match?(gender_name.to_s)
 
@@ -797,6 +816,17 @@ module PdfResults
     end
     #-- -----------------------------------------------------------------------
     #++
+
+    # Retrieves the first present value for the 'field_name' specified whenever this
+    # has been also stored with an "_alt" suffix.
+    # == Params:
+    # - field_hash: the :fields Hash storing each field with its value
+    # - field_name: the String field name to retrieve
+    # == Returns:
+    # The value or "alt" found for the specified field.
+    def fetch_field_with_alt_value(field_hash, field_name)
+      field_hash[field_name] || field_hash["#{field_name}_alt"]
+    end
 
     # Returns the fully composed field value considering also any possibly additional name part or label
     # stored in any of the sub-rows nested at the first level of the current/parent result_hash specified.
@@ -837,9 +867,12 @@ module PdfResults
         # Add lap & delta fields only when present in the current row:
         (1..29).each do |idx|
           key = "lap#{idx * 50}"
-          result[key] = format_timing_value(row_fields[key]) if row_fields.key?(key) && POSSIBLE_TIMING_REGEXP.match?(row_fields[key])
+          value = fetch_field_with_alt_value(row_fields, key)
+          result[key] = format_timing_value(value) if POSSIBLE_TIMING_REGEXP.match?(value)
+
           key = "delta#{idx * 50}"
-          result[key] = format_timing_value(row_fields[key]) if row_fields.key?(key) && POSSIBLE_TIMING_REGEXP.match?(row_fields[key])
+          value = fetch_field_with_alt_value(row_fields, key)
+          result[key] = format_timing_value(value) if POSSIBLE_TIMING_REGEXP.match?(value)
         end
       end
       result.compact
@@ -876,6 +909,90 @@ module PdfResults
     end
     #-- -----------------------------------------------------------------------
     #++
+
+    # Seeks any existing event section given its title, category string and gender string codes.
+    # Returns +nil+ when not found.
+    # == Params:
+    # - array_of_sections: the Array of event section Hash yield by the conversion loop;
+    #   typically, in L2 format, this is an event section holding several rows for results
+    #   (either individual or relays)
+    #
+    # - title: string title of the section
+    # - category_code: string category code used for the 'fin_sigla_categoria' field of the section
+    # - gender_code: string gender code used for the 'fin_sesso' field of the section
+    def find_existing_event_section(array_of_sections, title, category_code, gender_code)
+      return unless array_of_sections.present? && array_of_sections.is_a?(Array) && title.present? &&
+                    category_code.present? && gender_code.present?
+
+      array_of_sections.find do |section_hash|
+        section_hash['title'] == title && section_hash['fin_sigla_categoria'] == category_code &&
+          section_hash['fin_sesso'] == gender_code
+      end
+    end
+
+    # Scans the +array_of_sections+ adding +section+ only when missing.
+    # === Note:
+    # Prevents duplicates in array due to careless usage of '<<'.
+    # Since objects like an Hash are referenced in an array, updating directly the object instance
+    # or a reference to it will make the referenced link inside the array be up to date as well.
+    #
+    # == Params:
+    # - array_of_sections: the Array of event section Hash yield by the conversion loop;
+    #   typically, in L2 format, this is an event section holding several rows for results
+    #   (either individual or relays)
+    # - section_hash: an "event section" Hash (it should have at least a 'title', a 'fin_sigla_categoria'
+    #   and 'fin_sesso' keys in it).
+    #
+    def add_event_section_if_missing(array_of_sections, section_hash)
+      return if !array_of_sections.is_a?(Array) || !section_hash.is_a?(Hash) ||
+                find_existing_event_section(array_of_sections, section_hash['title'], section_hash['fin_sigla_categoria'], section_hash['fin_sesso'])
+
+      array_of_sections << section_hash
+    end
+
+    # Sorts each +array_of_sections+ rows array by timing recomputing also the rank value.
+    # (Useful for results in event sections with an absolute ranking and without category split.)
+    #
+    # == Params:
+    # - array_of_sections: the Array of event section Hash yield by the conversion loop;
+    #   typically, in L2 format, this is an event section holding several rows for results
+    #   (either individual or relays)
+    #
+    # == Returns:
+    # The updated array of sections (in any case).
+    #
+    def recompute_ranking_for_each_event_section(array_of_sections)
+      return array_of_sections unless array_of_sections.is_a?(Array)
+
+      array_of_sections.each do |event_section|
+        next unless event_section.is_a?(Hash)
+
+        # 1. Sort event rows by timing
+        event_section.fetch('rows', []).sort! do |row_a, row_b|
+          val_1 = Parser::Timing.from_l2_result(row_a['timing']) || Parser::Timing.from_l2_result("99'99\"00")
+          val_2 = Parser::Timing.from_l2_result(row_b['timing']) || Parser::Timing.from_l2_result("99'99\"00")
+          val_1 <=> val_2
+        end
+        # 2. Recompute ranking:
+        event_section.fetch('rows', []).each_with_index do |row_hash, index|
+          row_hash['pos'] = index + 1 # WIP: if row_hash['timing'].present?
+        end
+      end
+
+      array_of_sections
+    end
+
+    # Detects the possible valid individual result category code given the year_of_birth of the swimmer.
+    # Returns the string category code ("M<nn>") or +nil+ when not found.
+    # == Params:
+    # - year_of_birth: year_of_birth of the swimmer as integer
+    def post_compute_ind_category_code(year_of_birth)
+      return unless year_of_birth.positive?
+
+      age = @season.begin_date.year - year_of_birth
+      curr_cat_code, _cat = @categories_cache.find { |_c, cat| !cat.relay? && (cat.age_begin..cat.age_end).cover?(age) && !cat.undivided? }
+      curr_cat_code
+    end
 
     # Detects the possible valid relay category code given the overall age of the involved swimmers.
     # This helper updates the section hash directly. Returns the section itself.

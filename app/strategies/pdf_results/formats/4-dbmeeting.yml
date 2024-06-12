@@ -180,7 +180,7 @@
             required: false
           # Sometimes this 3-char badge regional code will be nil in the main row above but will render in this one;
           # using a different field name will store the value without overwriting the value from the main row if this is nil:
-          - name: badge_region2
+          - name: badge_region_alt
             format: "^\\s{10,30}(?>\\s?[[:alpha:]]{2,}){0,}\\s{4,}(?>\\s?\\w{2,}){0,}\\s+((?!SSD|ASD|SNC|SRL)\\w{3})$|^\\s{45,}(?>\\s?\\w{2,}){0,}\\s{4,}((?!SSD|ASD|SNC|SRL)\\w{3})$|^\\s{80,}((?!SSD|ASD|SNC|SRL)\\w{3})$"
             pop_out: false
             required: false
@@ -200,7 +200,7 @@
             format: "^\\s{10,30}(?>\\s?[[:alpha:]]{2,}){0,}\\s{4,}(.*)(?<!\\s\\s\\w{3})$"
             pop_out: false
             required: false
-          - name: badge_region2
+          - name: badge_region_alt
             format: "^\\s{10,30}(?>\\s?[[:alpha:]]{2,}){0,}\\s{4,}(?>\\s?\\w{2,}){0,}\\s+((?!SSD|ASD|SNC|SRL)\\w{3})$|^\\s{45,}(?>\\s?\\w{2,}){0,}\\s{4,}((?!SSD|ASD|SNC|SRL)\\w{3})$|^\\s{80,}((?!SSD|ASD|SNC|SRL)\\w{3})$"
             pop_out: false
             required: false

@@ -25,8 +25,9 @@ module Parser
     # - '{...}' => optional
     # - '[...]' => variant
     #
-    # 1) {{d}d'}{d}d"dd
+    # 1) {{d}d'}{d}d[."]dd
     # 2) {{d}d[:.]}{d}d.{d}d
+    # 2) {d}d[:\s]{d}d[:\s]{d}d
     #
     # == Returns
     # A valid Timing instance; +nil+ in case of unrecognized formats.
@@ -40,8 +41,9 @@ module Parser
     # rubocop:disable Lint/MixedRegexpCaptureTypes
     def self.from_l2_result(timing_text)
       # NOTE: removing the named captures will break this parser functionality
-      reg_format1 = /((?<min>\d+)')?(?<sec>\d{1,2})"(?<hun>\d{1,2})/u
-      reg_format2 = /((?<min>\d+)[:.])?(?<sec>\d{1,2})\.(?<hun>\d{1,2})/u
+      reg_format1 = /((?<min>\d+)')?(?<sec>\d{1,2})[\."](?<hun>\d{1,2})/u
+      reg_format2 = /((?<min>\d+)[:\.])?(?<sec>\d{1,2})\.(?<hun>\d{1,2})/u
+      reg_format3 = /(?<min>\d{1,2})[:\s](?<sec>\d{1,2})[:\s](?<hun>\d{1,2})/u
 
       case timing_text
       when reg_format1
@@ -49,6 +51,9 @@ module Parser
 
       when reg_format2
         minutes, seconds, hundredths = timing_text.match(reg_format2).captures
+
+      when reg_format3
+        minutes, seconds, hundredths = timing_text.match(reg_format3).captures
 
       else
         return nil
