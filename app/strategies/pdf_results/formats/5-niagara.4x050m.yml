@@ -105,7 +105,7 @@
             pop_out: false
 
           - name: timing
-            format: "\\s+(\\d{0,2}[:'\\.]?\\d{2}[\\.\"]\\d{2})\\s*(?>\\d{2,4}[\\.,]\\d{2})?$"
+            format: "\\s+((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})\\s*(?>\\d{2,4}[\\.,]\\d{2})?$"
             pop_out: false
             required: false
           - name: std_score
@@ -126,7 +126,7 @@
             format: "^\\s{50,}(?>[\\w'àèéìòù\\.:\\/\\-]+\\s?){1,}\\s{5,}(\\d{4})\\b"
             pop_out: false
           - name: lap50
-            format: "\\s+(\\d{0,2}[:'\\.]?\\d{2}[\\.\"]\\d{2})$"
+            format: "\\s+((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})$"
             pop_out: false
             required: false
 
@@ -139,11 +139,11 @@
             format: "^\\s{50,}(?>[\\w'àèéìòù\\.:\\/\\-]+\\s?){1,}\\s{5,}(\\d{4})\\b"
             pop_out: false
           - name: lap100
-            format: "\\s+\\d{0,2}[:'\\.]?\\d{2}[\\.\"]\\d{2}\\s+(\\d{0,2}[:'\\.]?\\d{2}[\\.\"]\\d{2})$"
+            format: "\\s+(?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2}\\s+((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})$"
             pop_out: false
             required: false
           - name: delta100
-            format: "\\s+\\d{0,2}[:'\\.]?\\d{2}[\\.\"]\\d{2}\\s+(\\d{0,2}[:'\\.]?\\d{2}[\\.\"]\\d{2})$"
+            format: "\\s+(?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2}\\s+((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})$"
             pop_out: false
             required: false
 
@@ -156,11 +156,11 @@
             format: "^\\s{50,}(?>[\\w'àèéìòù\\.:\\/\\-]+\\s?){1,}\\s{5,}(\\d{4})\\b"
             pop_out: false
           - name: lap150
-            format: "\\s+\\d{0,2}[:'\\.]?\\d{2}[\\.\"]\\d{2}\\s+(\\d{0,2}[:'\\.]?\\d{2}[\\.\"]\\d{2})$"
+            format: "\\s+(?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2}\\s+((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})$"
             pop_out: false
             required: false
           - name: delta150
-            format: "\\s+\\d{0,2}[:'\\.]?\\d{2}[\\.\"]\\d{2}\\s+(\\d{0,2}[:'\\.]?\\d{2}[\\.\"]\\d{2})$"
+            format: "\\s+(?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2}\\s+((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})$"
             pop_out: false
             required: false
 
@@ -173,11 +173,11 @@
             format: "^\\s{50,}(?>[\\w'àèéìòù\\.:\\/\\-]+\\s?){1,}\\s{5,}(\\d{4})\\b"
             pop_out: false
           - name: lap200
-            format: "\\s+\\d{0,2}[:'\\.]?\\d{2}[\\.\"]\\d{2}\\s+(\\d{0,2}[:'\\.]?\\d{2}[\\.\"]\\d{2})$"
+            format: "\\s+(?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2}\\s+((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})$"
             pop_out: false
             required: false
           - name: delta200
-            format: "\\s+\\d{0,2}[:'\\.]?\\d{2}[\\.\"]\\d{2}\\s+(\\d{0,2}[:'\\.]?\\d{2}[\\.\"]\\d{2})$"
+            format: "\\s+(?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2}\\s+((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})$"
             pop_out: false
             required: false
 
@@ -187,10 +187,6 @@
         format: "^$"
 
   - name: side_overlay
-    # This "side overlay" may split in 2 a single result row (which should be counted as 1),
-    # so we use optional siblings contexts wrapped into the parent result row.
-    # (The DAO field data gathering should take care of wrapping all nested fields at DAO's zero depth level.)
-    parent: event
     repeat: true
     required: false
     starts_at_row: 10

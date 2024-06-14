@@ -117,17 +117,21 @@ module PdfResults
 
     # Returns the Hash header in "L2" structure.
     def header
+      # Support also header/session fields stored (repeatedly) in each event:
+      first_event_hash = @data.fetch(:rows, [{}]).find { |row_hash| row_hash[:name] == 'event' }
+      first_event_fields = first_event_hash.fetch(:fields, {})
+
       {
         'layoutType' => 2,
-        'name' => fetch_meeting_name,
+        'name' => fetch_meeting_name, # (Usually, this is always in the header)
         'meetingURL' => '',
         'manifestURL' => '',
-        'dateDay1' => fetch_session_day,
-        'dateMonth1' => fetch_session_month,
-        'dateYear1' => fetch_session_year,
+        'dateDay1' => fetch_session_day(extract_header_fields) || fetch_session_day(first_event_fields),
+        'dateMonth1' => fetch_session_month(extract_header_fields) || fetch_session_month(first_event_fields),
+        'dateYear1' => fetch_session_year(extract_header_fields) || fetch_session_year(first_event_fields),
         'venue1' => '',
-        'address1' => fetch_session_place,
-        'poolLength' => fetch_pool_type.last
+        'address1' => fetch_session_place(extract_header_fields) || meeting_place,
+        'poolLength' => fetch_pool_type(extract_header_fields).last || fetch_pool_type(first_event_fields).last
       }
     end
 
@@ -155,6 +159,10 @@ module PdfResults
         end
         # Ignore other unsupported contexts at this depth level:
         next unless event_hash[:name] == 'event'
+
+        # TODO:
+        # If the event_hash has either one of 'meeting_date' and/or 'meeting_place', store
+        # them into
 
         # Sometimes the gender type may be found inside the EVENT title
         # (as in "4X50m Stile Libero Master Maschi"):
@@ -574,7 +582,7 @@ module PdfResults
     # Returns the fields Hash for the 'header', according to the detected supported structure.
     # (Flat fields all under header or nested in a 'post_header' row).
     # The returned field Hash will have all header fields at the same depth level.
-    def detect_header_fields
+    def extract_header_fields
       field_hash = @data.fetch(:fields, {})
       # Add the post header when present:
       post_header = @data.fetch(:rows, [{}])&.find { |h| h[:name] == 'post_header' }
@@ -586,7 +594,7 @@ module PdfResults
 
     # Gets the Meeting name from the data Hash, if available; defaults to an empty string.
     def fetch_meeting_name
-      field_hash = detect_header_fields
+      field_hash = extract_header_fields
       return "#{field_hash['edition']}° #{field_hash['meeting_name']}" if field_hash['edition'].present?
 
       field_hash['meeting_name']
@@ -594,8 +602,13 @@ module PdfResults
 
     # Gets the Meeting session day number from the data Hash, if available. Returns nil if not found.
     # Supports 3 possible separators for date tokens: "-", "/" or " ":
-    def fetch_session_day
-      field_hash = detect_header_fields
+    #
+    # == Params:
+    # - field_hash: the :fields Hash extracted from any data row
+    #
+    # == Returns:
+    # The value found or +nil+ when none.
+    def fetch_session_day(field_hash)
       field_hash.fetch('meeting_date', '').to_s.split(%r{[-/\s]}).first
     end
 
@@ -603,10 +616,24 @@ module PdfResults
     # Supports 3 possible separators for date tokens: "-", "/" or " ":
     # Supports both numeric month & month names:
     #   "dd[-\s/]mm[-\s/]yy(yy)" or "dd[-\s/]MMM(mmm..)[-\s/]yy(yy)"
-    def fetch_session_month
-      field_hash = detect_header_fields
+    #
+    # == Params:
+    # - field_hash: the :fields Hash extracted from any data row
+    #
+    # == Returns:
+    # The value found or +nil+ when none.
+    def fetch_session_month(field_hash)
+      # WIP FIND BETTER ALTERNATIVE:
+      # (\d{2}(?>[\-\/\s]\d{2}[\-\/\s]\d{2,4}|\s\w{3,}\s\d{2,4}))
+      #
+      # Tested with:
+      # - "ddd, dd/mm/yyyy", "dd/mm/yyyy", "dd-mm-yyyy", "dd mm yyyy"
+      # - "dd mmm yyyy"
+      # - "d1-d2 mmm yyyy", "d1/d2 mmm yyyy"
+      # - "d1-d2/mmm/yyyy", "d1,d2(,d3) mmm(...) yyyy", "d1..d2 mmm yyyy"
+
       month_token = field_hash.fetch('meeting_date', '').to_s
-                              .match(%r{[/\-\s](\d{1,2}|\w+)[/\-\s]\d{2,4}}i)
+                              .match(%r{[\/\-\s]?(\d{1,2}|\w+)[\/\-\s]\d{2,4}}i)
                               &.captures&.first
       return Parser::SessionDate::MONTH_NAMES[month_token.to_i - 1] if /\d{2}/i.match?(month_token.to_s)
 
@@ -615,27 +642,41 @@ module PdfResults
 
     # Gets the Meeting session year number, if available. Returns nil if not found.
     # Supports 3 possible separators for date tokens: "-", "/" or " ":
-    def fetch_session_year
-      field_hash = detect_header_fields
+    #
+    # == Params:
+    # - field_hash: the :fields Hash extracted from any data row
+    #
+    # == Returns:
+    # The value found or +nil+ when none.
+    def fetch_session_year(field_hash)
       field_hash.fetch('meeting_date', '').to_s.split(%r{[-/\s]}).last
     end
 
     # Gets the Meeting session place, if available. Returns nil if not found.
-    def fetch_session_place
-      field_hash = detect_header_fields
+    #
+    # == Params:
+    # - field_hash: the :fields Hash extracted from any data row
+    #
+    # == Returns:
+    # The value found or +nil+ when none.
+    def fetch_session_place(field_hash)
       field_hash.fetch('meeting_place', '')
     end
 
     # Returns the pool total lanes (first) & the length in meters (last) as items
     # of an array of integers when the 'pool_type' field is found in the footer.
     # Returns an empty array ([]) otherwise.
-    def fetch_pool_type
-      # Retrieve pool_type from header when available & return:
-      field_hash = detect_header_fields
+    #
+    # == Params:
+    # - field_hash: the :fields Hash extracted from any data row
+    #
+    # == Returns:
+    # The [lanes_tot, pool_type_len] array when found.
+    def fetch_pool_type(field_hash)
       pool_type_len = field_hash.fetch('pool_type', '')
       return [nil, pool_type_len] if pool_type_len.present?
 
-      # Fallback: search in footer, as in 1-ficr1
+      # Hard-fallback: search in footer, as in 1-ficr1
 
       # Structure from 1-ficr1:
       #   data => header

@@ -79,7 +79,6 @@
 
   # Actual data starts here:
   - name: results
-    # Pages with relay results usually won't have individual results in it, so to pass any page check this context must be optional:
     required: false
     repeat: true
     parent: event
@@ -91,36 +90,39 @@
             format: "^\\s{50,}(\\d{1,3}|-)\\s+\\D+\\s*\\d{4}\\s{1,}\\w{3}\\s{1,}(?>[\\w'àèéìòù\\.:\\/\\-]+\\s?){1,}\\s+"
             pop_out: false
           - name: swimmer_name
-            format: "^\\s{50,}(?>\\d{1,3}|-)\\s+(\\D+)\\s*\\d{4}\\s{1,}\\w{3}\\s{1,}(?>[\\w'àèéìòù\\.:\\/\\-]+\\s?){1,}\\s+(?>\\d{0,2}[:'\\.\"]?\\d{2}[\\.\"]\\d{2}|SQU|ASS|RIT)"
+            format: "^\\s{50,}(?>\\d{1,3}|-)\\s+(\\D+)\\s*\\d{4}\\s{1,}\\w{3}\\s{1,}(?>[\\w'àèéìòù\\.:\\/\\-]+\\s?){1,}\\s+(?>(?>\\d{2}[:'\\.\"])?\\d{2}[\\.\"]\\d{2}|SQU|ASS|RIT)"
             pop_out: false
           - name: year_of_birth
-            format: "^\\s{50,}(?>\\d{1,3}|-)\\s+\\D+\\s*(\\d{4})\\s{1,}\\w{3}\\s{1,}(?>[\\w'àèéìòù\\.:\\/\\-]+\\s?){1,}\\s+(?>\\d{0,2}[:'\\.\"]?\\d{2}[\\.\"]\\d{2}|SQU|ASS|RIT)"
+            format: "^\\s{50,}(?>\\d{1,3}|-)\\s+\\D+\\s*(\\d{4})\\s{1,}\\w{3}\\s{1,}(?>[\\w'àèéìòù\\.:\\/\\-]+\\s?){1,}\\s+(?>(?>\\d{2}[:'\\.\"])?\\d{2}[\\.\"]\\d{2}|SQU|ASS|RIT)"
             pop_out: false
           - name: nation
-            format: "^\\s{50,}(?>\\d{1,3}|-)\\s+\\D+\\s*\\d{4}\\s{1,}(\\w{3})\\s{1,}(?>[\\w'àèéìòù\\.:\\/\\-]+\\s?){1,}\\s+(?>\\d{0,2}[:'\\.\"]?\\d{2}[\\.\"]\\d{2}|SQU|ASS|RIT)"
+            format: "^\\s{50,}(?>\\d{1,3}|-)\\s+\\D+\\s*\\d{4}\\s{1,}(\\w{3})\\s{1,}(?>[\\w'àèéìòù\\.:\\/\\-]+\\s?){1,}\\s+(?>(?>\\d{2}[:'\\.\"])?\\d{2}[\\.\"]\\d{2}|SQU|ASS|RIT)"
             pop_out: false
           - name: team_name
-            format: "^\\s{50,}(?>\\d{1,3}|-)\\s+\\D+\\s*\\d{4}\\s{1,}\\w{3}\\s{1,}((?>[\\w'àèéìòù\\.:\\/\\-]+\\s?){1,})\\s+(?>\\d{0,2}[:'\\.\"]?\\d{2}[\\.\"]\\d{2}|SQU|ASS|RIT)"
+            format: "^\\s{50,}(?>\\d{1,3}|-)\\s+\\D+\\s*\\d{4}\\s{1,}\\w{3}\\s{1,}((?>[\\w'àèéìòù\\.:\\/\\-]+\\s?){1,})\\s+(?>(?>\\d{2}[:'\\.\"])?\\d{2}[\\.\"]\\d{2}|SQU|ASS|RIT)"
             pop_out: false
-
 
           - name: lap50
             format: "^\\s{50,}(?>\\d{1,3}|-)\\s+\\D+\\s*\\d{4}\\s{1,}\\w{3}\\s{1,}(?>[\\w'àèéìòù\\.:\\/\\-]+\\s?){1,}\\s+(\\d{2}[\\.\"]\\d{2})\\s+"
             pop_out: false
             required: false
           - name: lap100
-            format: "^\\s{50,}(?>\\d{1,3}|-)\\s+\\D+\\s*\\d{4}\\s{1,}\\w{3}\\s{1,}(?>[\\w'àèéìòù\\.:\\/\\-]+\\s?){1,}\\s+(?>\\d{0,2}[:'\\.]?\\d{2}[\\.\"]\\d{2}\\s+){1}(\\d{0,2}[:'\\.]?\\d{2}[\\.\"]\\d{2})\\s+"
+            format: "^\\s{50,}(?>\\d{1,3}|-)\\s+\\D+\\s*\\d{4}\\s{1,}\\w{3}\\s{1,}(?>[\\w'àèéìòù\\.:\\/\\-]+\\s?){1,}\\s+(?>(?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2}\\s+){1}((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})\\s+"
             pop_out: false
             required: false
           - name: lap150
-            format: "^\\s{50,}(?>\\d{1,3}|-)\\s+\\D+\\s*\\d{4}\\s{1,}\\w{3}\\s{1,}(?>[\\w'àèéìòù\\.:\\/\\-]+\\s?){1,}\\s+(?>\\d{0,2}[:'\\.]?\\d{2}[\\.\"]\\d{2}\\s+){2}(\\d{0,2}[:'\\.]?\\d{2}[\\.\"]\\d{2})\\s+"
+            format: "^\\s{50,}(?>\\d{1,3}|-)\\s+\\D+\\s*\\d{4}\\s{1,}\\w{3}\\s{1,}(?>[\\w'àèéìòù\\.:\\/\\-]+\\s?){1,}\\s+(?>(?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2}\\s+){2}((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})\\s+"
             pop_out: false
             required: false
 
           - name: timing
-            format: "\\s+(\\d{0,2}[:'\\.]?\\d{2}[\\.\"]\\d{2})\\s*(?>\\d{2,4}[\\.,]\\d{2})?$"
+            format: "\\s+((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})\\s*(?>\\d{2,4}[\\.,]\\d{2})?$"
+            # Alternative for timing, 200 1st row (doesn't work if some lap is missing):
+            # ^\s{50,}(?>\d{1,3}|-)\s+\D+\s*(\d{4})\s{1,}\w{3}\s{1,}.{30}\s{1,5}(?>(?>\d{2}[:'\.\"])?\d{2}[\.\"]\d{2}\s{1,6}|\s{6,12}){3}
+            # ((?>\d{2}[:'\.\"])?\d{2}[\.\"]\d{2}|SQU|RIT|ASS)
             pop_out: false
             required: false
+
           - name: std_score
             format: "\\s+(\\d{2,4}[\\.,]\\d{2})$"
             pop_out: false
@@ -133,28 +135,107 @@
       - name: result_deltas
         required: false
         fields:
-          - name: delta50
-            format: "^\\s{130,}(\\d{2}[\\.\"]\\d{2})\\s+"
-            pop_out: false
-            required: false
           - name: delta100
-            format: "^\\s{130,}(?>\\d{2}[\\.\"]\\d{2}\\s+)?(\\d{2}[\\.\"]\\d{2})\\s+"
+            format: "^\\s{130,}((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})\\s+"
             pop_out: false
             required: false
           - name: delta150
-            format: "\\s+(\\d{2}[\\.\"]\\d{2})\\s+(?>\\d{2}[\\.\"]\\d{2})$"
+            format: "^\\s{130,}(?>(?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2}\\s+)?((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})\\s+"
             pop_out: false
             required: false
           - name: delta200
-            format: "\\s+(\\d{2}[\\.\"]\\d{2})$"
+            format: "^\\s{130,}.{20,30}\\s+(\\d{2}[\\.\"]\\d{2})\\s+(?>(?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})$"
+            pop_out: false
+            required: false
+
+  # In case result row gets split in two by the side overlay:
+  - name: results_alt
+    alternative_of: results
+    required: false
+    repeat: true
+    parent: event
+    row_span: 7
+    rows:
+      - name: result_details
+        fields:
+          - name: rank
+            # DSQ use the hypen, so rank should always be present:
+            format: "^\\s{50,}(\\d{1,3}|-)\\s+\\D+\\s*\\d{4}\\s{1,}\\w{3}\\s{1,}(?>[\\w'àèéìòù\\.:\\/\\-]+\\s?){1,}\\s+"
+            pop_out: false
+          - name: swimmer_name
+            format: "^\\s{50,}(?>\\d{1,3}|-)\\s+(\\D+)\\s*\\d{4}\\s{1,}\\w{3}\\s{1,}(?>[\\w'àèéìòù\\.:\\/\\-]+\\s?){1,}\\s+(?>(?>\\d{2}[:'\\.\"])?\\d{2}[\\.\"]\\d{2}|SQU|ASS|RIT)"
+            pop_out: false
+          - name: year_of_birth
+            format: "^\\s{50,}(?>\\d{1,3}|-)\\s+\\D+\\s*(\\d{4})\\s{1,}\\w{3}\\s{1,}(?>[\\w'àèéìòù\\.:\\/\\-]+\\s?){1,}\\s+(?>(?>\\d{2}[:'\\.\"])?\\d{2}[\\.\"]\\d{2}|SQU|ASS|RIT)"
+            pop_out: false
+          - name: nation
+            format: "^\\s{50,}(?>\\d{1,3}|-)\\s+\\D+\\s*\\d{4}\\s{1,}(\\w{3})\\s{1,}(?>[\\w'àèéìòù\\.:\\/\\-]+\\s?){1,}\\s+(?>(?>\\d{2}[:'\\.\"])?\\d{2}[\\.\"]\\d{2}|SQU|ASS|RIT)"
+            pop_out: false
+          - name: team_name
+            format: "^\\s{50,}(?>\\d{1,3}|-)\\s+\\D+\\s*\\d{4}\\s{1,}\\w{3}\\s{1,}((?>[\\w'àèéìòù\\.:\\/\\-]+\\s?){1,})\\s+(?>(?>\\d{2}[:'\\.\"])?\\d{2}[\\.\"]\\d{2}|SQU|ASS|RIT)"
+            pop_out: false
+
+          - name: lap50
+            format: "^\\s{50,}(?>\\d{1,3}|-)\\s+\\D+\\s*\\d{4}\\s{1,}\\w{3}\\s{1,}(?>[\\w'àèéìòù\\.:\\/\\-]+\\s?){1,}\\s+(\\d{2}[\\.\"]\\d{2})\\s+"
+            pop_out: false
+            required: false
+          - name: lap100
+            format: "^\\s{50,}(?>\\d{1,3}|-)\\s+\\D+\\s*\\d{4}\\s{1,}\\w{3}\\s{1,}(?>[\\w'àèéìòù\\.:\\/\\-]+\\s?){1,}\\s+(?>(?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2}\\s+){1}((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})\\s+"
+            pop_out: false
+            required: false
+          - name: lap150
+            format: "^\\s{50,}(?>\\d{1,3}|-)\\s+\\D+\\s*\\d{4}\\s{1,}\\w{3}\\s{1,}(?>[\\w'àèéìòù\\.:\\/\\-]+\\s?){1,}\\s+(?>(?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2}\\s+){2}((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})\\s+"
+            pop_out: false
+            required: false
+
+          - name: timing
+            format: "\\s+((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})\\s*(?>\\d{2,4}[\\.,]\\d{2})?$"
+            pop_out: false
+            required: false
+          - name: std_score
+            format: "\\s+(\\d{2,4}[\\.,]\\d{2})$"
+            pop_out: false
+            required: false
+          - name: disqualify_type
+            format: "\\s+(SQU|RIT|ASS)$"
+            pop_out: false
+            required: false
+
+      - name: side_overlay_in_mid
+        # This "side overlay" may split in 2 a single result row (which should be counted as 1),
+        # so we use optional siblings contexts wrapped into the parent result row.
+        # (The DAO field data gathering should take care of wrapping all nested fields at DAO's zero depth level.)
+        row_span: 5
+        rows:
+          - name: watermark
+            keys: [skip_me]
+            format: "^Generato\\sda\\sNIAGARA"
+          - name: overlay_sep
+            row_span: 4
+            format: "^$"
+
+      # In case result row gets split in two by the side overlay, we store also this
+      # position using similar field names but with an "_alt" suffix, which we'll be handled
+      # by the L2Converter as "possible alternate value for a missing field" (no overwrites
+      # if the field is already existing):
+      - name: result_deltas_split_row
+        required: false
+        # We're using the same parent field names in order to overwrite any +nil+s in the original fields:
+        fields:
+          - name: delta100_alt
+            format: "^\\s{130,}(\\d{2}[\\.\"]\\d{2})\\s+"
+            pop_out: false
+            required: false
+          - name: delta150_alt
+            format: "^\\s{130,}(?>(?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2}\\s+){1}((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})\\s+"
+            pop_out: false
+            required: false
+          - name: delta200_alt
+            format: "^\\s{130,}(?>(?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2}\\s+){2}((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})\\s+"
             pop_out: false
             required: false
 
   - name: side_overlay
-    # This "side overlay" may split in 2 a single result row (which should be counted as 1),
-    # so we use optional siblings contexts wrapped into the parent result row.
-    # (The DAO field data gathering should take care of wrapping all nested fields at DAO's zero depth level.)
-    parent: results
     repeat: true
     required: false
     starts_at_row: 9
@@ -163,31 +244,9 @@
       - name: watermark
         keys: [skip_me]
         format: "^Generato\\sda\\sNIAGARA"
-
       - name: overlay_sep
         row_span: 4
         format: "^$"
-
-  # In case result row gets split in two by the side overlay:
-  - name: results_alt
-    parent: results
-    required: false
-    repeat: true
-    parent: event
-    # We're using the same parent field names, so that what's present will overwrite any +nil+s:
-    fields:
-      - name: delta50
-        format: "^\\s{130,}(\\d{2}[\\.\"]\\d{2})\\s+"
-        pop_out: false
-        required: false
-      - name: delta100
-        format: "^\\s{130,}(?>\\d{0,2}[:'\\.]?\\d{2}[\\.\"]\\d{2}\\s+){1}(\\d{0,2}[:'\\.]?\\d{2}[\\.\"]\\d{2})\\s+"
-        pop_out: false
-        required: false
-      - name: delta150
-        format: "^\\s{130,}(?>\\d{0,2}[:'\\.]?\\d{2}[\\.\"]\\d{2}\\s+){2}(\\d{0,2}[:'\\.]?\\d{2}[\\.\"]\\d{2})\\s+"
-        pop_out: false
-        required: false
 
   # End-Of-Page context
   - name: footer
