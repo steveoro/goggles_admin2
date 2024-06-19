@@ -116,21 +116,26 @@ module PdfResults
     #++
 
     # Returns the Hash header in "L2" structure.
+    # Seeks values both the 'header' and 'event' context data rows.
     def header
-      # Support also header/session fields stored (repeatedly) in each event:
+      # Check also header/session fields stored (repeatedly) in each event:
       first_event_hash = @data.fetch(:rows, [{}]).find { |row_hash| row_hash[:name] == 'event' }
-      first_event_fields = first_event_hash.fetch(:fields, {})
+      first_event_fields = first_event_hash&.fetch(:fields, {})
+
+      # Extract meeting session date text from 2 possible places (header or event), then get the single fields:
+      meeting_date_text = fetch_session_date(extract_header_fields) || fetch_session_date(first_event_fields)
+      session_day, session_month, session_year = Parser::SessionDate.from_eu_text(meeting_date_text) if meeting_date_text.present?
 
       {
         'layoutType' => 2,
         'name' => fetch_meeting_name, # (Usually, this is always in the header)
         'meetingURL' => '',
         'manifestURL' => '',
-        'dateDay1' => fetch_session_day(extract_header_fields) || fetch_session_day(first_event_fields),
-        'dateMonth1' => fetch_session_month(extract_header_fields) || fetch_session_month(first_event_fields),
-        'dateYear1' => fetch_session_year(extract_header_fields) || fetch_session_year(first_event_fields),
+        'dateDay1' => session_day,
+        'dateMonth1' => session_month,
+        'dateYear1' => session_year,
         'venue1' => '',
-        'address1' => fetch_session_place(extract_header_fields) || meeting_place,
+        'address1' => fetch_session_place(extract_header_fields) || fetch_session_place(first_event_fields),
         'poolLength' => fetch_pool_type(extract_header_fields).last || fetch_pool_type(first_event_fields).last
       }
     end
@@ -600,59 +605,18 @@ module PdfResults
       field_hash['meeting_name']
     end
 
-    # Gets the Meeting session day number from the data Hash, if available. Returns nil if not found.
-    # Supports 3 possible separators for date tokens: "-", "/" or " ":
+    # Gets the Meeting session date, if available. Returns nil when not found.
     #
     # == Params:
     # - field_hash: the :fields Hash extracted from any data row
     #
     # == Returns:
     # The value found or +nil+ when none.
-    def fetch_session_day(field_hash)
-      field_hash.fetch('meeting_date', '').to_s.split(%r{[-/\s]}).first
+    def fetch_session_date(field_hash)
+      field_hash&.fetch('meeting_date', nil)
     end
 
-    # Gets the Meeting session month name from the data Hash, if available. Returns nil if not found.
-    # Supports 3 possible separators for date tokens: "-", "/" or " ":
-    # Supports both numeric month & month names:
-    #   "dd[-\s/]mm[-\s/]yy(yy)" or "dd[-\s/]MMM(mmm..)[-\s/]yy(yy)"
-    #
-    # == Params:
-    # - field_hash: the :fields Hash extracted from any data row
-    #
-    # == Returns:
-    # The value found or +nil+ when none.
-    def fetch_session_month(field_hash)
-      # WIP FIND BETTER ALTERNATIVE:
-      # (\d{2}(?>[\-\/\s]\d{2}[\-\/\s]\d{2,4}|\s\w{3,}\s\d{2,4}))
-      #
-      # Tested with:
-      # - "ddd, dd/mm/yyyy", "dd/mm/yyyy", "dd-mm-yyyy", "dd mm yyyy"
-      # - "dd mmm yyyy"
-      # - "d1-d2 mmm yyyy", "d1/d2 mmm yyyy"
-      # - "d1-d2/mmm/yyyy", "d1,d2(,d3) mmm(...) yyyy", "d1..d2 mmm yyyy"
-
-      month_token = field_hash.fetch('meeting_date', '').to_s
-                              .match(%r{[\/\-\s]?(\d{1,2}|\w+)[\/\-\s]\d{2,4}}i)
-                              &.captures&.first
-      return Parser::SessionDate::MONTH_NAMES[month_token.to_i - 1] if /\d{2}/i.match?(month_token.to_s)
-
-      month_token.to_s[0..2].downcase
-    end
-
-    # Gets the Meeting session year number, if available. Returns nil if not found.
-    # Supports 3 possible separators for date tokens: "-", "/" or " ":
-    #
-    # == Params:
-    # - field_hash: the :fields Hash extracted from any data row
-    #
-    # == Returns:
-    # The value found or +nil+ when none.
-    def fetch_session_year(field_hash)
-      field_hash.fetch('meeting_date', '').to_s.split(%r{[-/\s]}).last
-    end
-
-    # Gets the Meeting session place, if available. Returns nil if not found.
+    # Gets the Meeting session place, if available. Returns nil when not found.
     #
     # == Params:
     # - field_hash: the :fields Hash extracted from any data row
@@ -660,7 +624,7 @@ module PdfResults
     # == Returns:
     # The value found or +nil+ when none.
     def fetch_session_place(field_hash)
-      field_hash.fetch('meeting_place', '')
+      field_hash&.fetch('meeting_place', nil)
     end
 
     # Returns the pool total lanes (first) & the length in meters (last) as items
@@ -673,7 +637,7 @@ module PdfResults
     # == Returns:
     # The [lanes_tot, pool_type_len] array when found.
     def fetch_pool_type(field_hash)
-      pool_type_len = field_hash.fetch('pool_type', '')
+      pool_type_len = field_hash&.fetch('pool_type', '')
       return [nil, pool_type_len] if pool_type_len.present?
 
       # Hard-fallback: search in footer, as in 1-ficr1
@@ -1090,6 +1054,7 @@ module PdfResults
                                   fields['swimmer_name'] == swimmer_name &&
                                     fields['team_name'] == team_name
                                 end
+
           return [result.fetch(:fields, {})['year_of_birth'].to_i, curr_gender] if result.present?
         end
       end
@@ -1119,25 +1084,28 @@ module PdfResults
       #       (It needs the event length or the lap length to be fully processable, otherwise
       #       an educated guess for the lap length is needed.)
 
-      # Swimmer data source is a sibling row with non-indexed fields?
-      if nested
-        output_hash["swimmer#{swimmer_idx}"] = rel_fields_hash['swimmer_name']&.squeeze(' ')
-        year_of_birth = rel_fields_hash['year_of_birth'].to_i
-        gender_code = rel_fields_hash['gender_type']    # To-be-supported by MacroSolver
-        lap_timing = rel_fields_hash['swimmer_lap']     # To-be-supported by MacroSolver
-        delta_timing = rel_fields_hash['swimmer_delta'] # To-be-supported by MacroSolver
-      else
-        output_hash["swimmer#{swimmer_idx}"] = rel_fields_hash["swimmer_name#{swimmer_idx}"]&.squeeze(' ')
-        year_of_birth = rel_fields_hash["year_of_birth#{swimmer_idx}"].to_i
-        gender_code = rel_fields_hash["gender_type#{swimmer_idx}"]    # To-be-supported by MacroSolver
-        lap_timing = rel_fields_hash["swimmer_lap#{swimmer_idx}"]     # To-be-supported by MacroSolver
-        delta_timing = rel_fields_hash["swimmer_delta#{swimmer_idx}"] # To-be-supported by MacroSolver
-      end
+      # Swimmer data source at a nested depth level with non-indexed fields (or not, for same depth level)?
+      fld_swmmer = nested ? 'swimmer_name' : "swimmer_name#{swimmer_idx}"
+      fld_yob    = nested ? 'year_of_birth' : "year_of_birth#{swimmer_idx}"
+      fld_gender = nested ? 'gender_type' : "gender_type#{swimmer_idx}"
+      fld_lap    = nested ? 'swimmer_lap' : "swimmer_lap#{swimmer_idx}"
+      fld_delta  = nested ? 'swimmer_delta' : "swimmer_delta#{swimmer_idx}"
+
+      # Extract field values:
+      output_hash["swimmer#{swimmer_idx}"] = rel_fields_hash[fld_swmmer]&.squeeze(' ')
+      year_of_birth = rel_fields_hash[fld_yob].to_i
+      gender_code = rel_fields_hash[fld_gender] # To-be-supported by MacroSolver
+      lap_timing = rel_fields_hash[fld_lap]     # To-be-supported by MacroSolver
+      delta_timing = rel_fields_hash[fld_delta] # To-be-supported by MacroSolver
+
       # Scan existing swimmers in results searching for missing fields:
-      if year_of_birth.zero? || gender_code.blank?
-        year_of_birth, gender_code = search_result_row_with_swimmer(output_hash["swimmer#{swimmer_idx}"], output_hash['team'])
+      if year_of_birth&.zero? || gender_code.blank?
+        scanned_year_of_birth, scanned_gender_code = search_result_row_with_swimmer(output_hash["swimmer#{swimmer_idx}"], output_hash['team'])
+        year_of_birth ||= scanned_year_of_birth if scanned_year_of_birth.present?
+        gender_code ||= scanned_gender_code if scanned_year_of_birth.present?
       end
 
+      # Assign field values:
       output_hash["gender_type#{swimmer_idx}"] = gender_code
       output_hash["year_of_birth#{swimmer_idx}"] = year_of_birth
       output_hash['overall_age'] += @season.begin_date.year - year_of_birth if year_of_birth.to_i.positive?

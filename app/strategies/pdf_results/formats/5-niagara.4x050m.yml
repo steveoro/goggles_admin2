@@ -43,10 +43,10 @@
       - name: event_detail
         fields:
           - name: event_length
-            format: "^\\s{70,}(?>Mis|S)taff(\\.|etta)\\s([468]X\\d{2,4})\\s"
+            format: "^\\s{70,}(?>Mis|S)taff(?>\\.|etta)\\s([468]X\\d{2,4})\\s"
             pop_out: false
           - name: event_type
-            format: "\\s(?>SL|Stile(?>\\sL\\.|\\sLibero)?|DO|Dorso|RA|Rana|DL|DF|Delfino|FA|Farfalla|MI|MX|Misti)\\s-\\s"
+            format: "\\s(SL|Stile(?>\\sL\\.|\\sLibero)?|DO|Dorso|RA|Rana|DL|DF|Delfino|FA|Farfalla|MI|MX|Misti)\\s-\\s"
             pop_out: false
           - name: gender_type
             format: "\\s-\\s(?>Assoluti\\s)?(Maschi|Femmine|Maschi\\se\\sFemmine)"
@@ -75,11 +75,11 @@
       - name: results_hdr0
         format: "^\\s{50,}Pos\\s{20,}Società\\s{20,}Reg\\s{20,}FINALE\\sPunti"
       - name: results_hdr1
-        format: "^\\s{70,}1°\\sFrazionista\\s{10,}Anno\\s{10,}50m"
+        format: "^\\s{70,}1°\\sFrazionista\\s{10,}Anno(?>\\s{10,}50m)?"
       - name: results_hdr2
         format: "^\\s{70,}2°\\sFrazionista\\s{10,}Anno\\s{10,}100m"
       - name: results_hdr3
-        format: "^\\s{70,}3°\\sFrazionista\\s{10,}Anno\\s{10,}150m"
+        format: "^\\s{70,}3°\\sFrazionista\\s{10,}Anno(?>\\s{10,}150m)?"
       - name: results_hdr4
         format: "^\\s{70,}4°\\sFrazionista\\s{10,}Anno\\s{10,}200m"
       - name: results_hdr_sep1
@@ -189,7 +189,7 @@
   - name: side_overlay
     repeat: true
     required: false
-    starts_at_row: 10
+    starts_at_row: 9
     row_span: 5
     rows:
       - name: watermark

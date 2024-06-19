@@ -191,8 +191,7 @@
       # by the L2Converter as "possible alternate value for a missing field" (no overwrites
       # if the field is already existing):
       - name: results_split_row
-        required: false
-        # We're using the same parent field names in order to overwrite any +nil+s in the original fields:
+        # Requires, at least, a lot of leading spaces; then, anyone of the next fields:
         fields:
           - name: lap50_alt
             format: "^\\s{130,155}(\\d{2}[\\.\"]\\d{2})\\s*"
@@ -208,11 +207,11 @@
             pop_out: false
             required: false
           - name: std_score_alt
-            format: "^\\s{145,}.{20,30}\\s+(\\d{2,4}[\\.,]\\d{2})$"
+            format: "^\\s{130,155}.{20,30}\\s+(\\d{2,4}[\\.,]\\d{2})"
             pop_out: false
             required: false
           - name: disqualify_type_alt
-            format: "^\\s{145,}.{20,30}\\s+(SQU|RIT|ASS)$"
+            format: "^\\s{130,155}.{20,30}\\s+(SQU|RIT|ASS)"
             pop_out: false
             required: false
 

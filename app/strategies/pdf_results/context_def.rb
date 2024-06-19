@@ -693,9 +693,9 @@ module PdfResults
         # ----------------------------------------------------------------------
         valid = sub_context.valid?(curr_buffer, @curr_index)
         # DEBUG ----------------------------------------------------------------
-        # if sub_context.name == 'results0' && (scan_index == 20)
-        #   log_message(msg: "IN ROWS, @curr_index: #{@curr_index}", scan_index: scan_index)
-        #   binding.pry
+        # if curr_buffer.to_s.include?('692.54') # && sub_context.name == 'results_split_row'
+        #   log_message(msg: "IN ROWS, @curr_index: #{@curr_index} - [#{sub_context.name}] scan: #{scan_index}, consumed: #{sub_context.consumed_rows} -> #{valid ? '✅' : 'x'}", scan_index: scan_index)
+        #   # binding.pry
         # end
         # ----------------------------------------------------------------------
 
@@ -722,8 +722,8 @@ module PdfResults
         @consumed_rows += row_span
       end
       # DEBUG ------------------------------ ----------------------------------
-      # if name == 'results' && (scan_index == 20)
-      #   log_message(msg: "AFTER ROWS (#{name}), @curr_index: #{@curr_index}, @consumed_rows: #{@consumed_rows} (BEFORE RETURN)",
+      # if curr_buffer.to_s.include?('692.54') # && sub_context.name == 'results_split_row'
+      #   log_message(msg: "AFTER ROWS (#{name}), @curr_index: #{@curr_index} - @consumed_rows: #{@consumed_rows} -> #{valid ? '✅' : 'x'} (BEFORE RETURN)",
       #               scan_index: scan_index, curr_buffer: curr_buffer)
       #   binding.pry
       # end
