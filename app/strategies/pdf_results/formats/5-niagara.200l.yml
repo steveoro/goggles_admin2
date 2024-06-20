@@ -3,8 +3,7 @@
 #
 # - Source: FIN Veneto custom format for Master's meetings results (50 blanks left margin version)
 # - Should support: 200m results, LAP-only version (no additional row for deltas)
-#
-# --> This format does not have explicit category display (needs to be computed from swimmer age) <--
+# --> NO explicit category display (needs to be computed from swimmer age) <--
 #
 5-niagara.200l:
   - name: header

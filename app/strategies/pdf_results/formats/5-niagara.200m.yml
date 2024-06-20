@@ -2,9 +2,8 @@
 # = Layout format definition for PdfResults::FormatParser
 #
 # - Source: FIN Veneto custom format for Master's meetings results (50 blanks left margin version)
-# - Should support: 200m results
-#
-# --> This format does not have explicit category display (needs to be computed from swimmer age) <--
+# - Should support: 200m results, Laps + Deltas, usually 2 rows x result
+# --> NO explicit category display (needs to be computed from swimmer age) <--
 #
 5-niagara.200m:
   - name: header

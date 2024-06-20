@@ -603,7 +603,7 @@ module PdfResults
         end
       end
       # DEBUG ----------------------------------------------------------------
-      # if name == 'results' && (scan_index == 20)
+      # if name == 'results' && curr_buffer.to_s.include?(' RIT')
       #   log_message(msg: "AFTER @format (#{name}), @curr_index: #{@curr_index}, @consumed_rows: #{@consumed_rows}", scan_index: scan_index)
       #   binding.pry
       # end
@@ -619,7 +619,7 @@ module PdfResults
                     depth: parent.present? ? 1 : 0)
       end
       # DEBUG ----------------------------------------------------------------
-      # if name == 'results' && (scan_index == 20)
+      # if name == 'results' && curr_buffer.to_s.include?(' RIT')
       #   log_message(msg: "BEFORE @fields (#{name}), step 5, @curr_index: #{@curr_index}, @consumed_rows: #{@consumed_rows}", scan_index: scan_index)
       #   binding.pry
       # end
@@ -633,7 +633,7 @@ module PdfResults
       # ----------------------------------------------------------------------
       valid = fields&.all? do |field_def|
         # DEBUG ----------------------------------------------------------------
-        # binding.pry if source_row.to_s.include?("(49.01)")
+        # binding.pry if curr_buffer.to_s.include?(' RIT')
         # ----------------------------------------------------------------------
         source_row = field_def.extract(source_row) if field_def.is_a?(PdfResults::FieldDef)
         log_message(obj: field_def, scan_index:, source_row:, depth: parent.present? ? 2 : 1)
@@ -652,9 +652,9 @@ module PdfResults
         @consumed_rows = row_span # (see note on line 566 above)
       end
       # DEBUG ----------------------------------------------------------------
-      # if name == 'results' && (scan_index == 20)
+      # if name == 'result_lap_1500' && curr_buffer.to_s.include?(' RIT')
       #   log_message(msg: "AFTER @fields (#{name}), step 6, @curr_index: #{@curr_index}, @consumed_rows: #{@consumed_rows}", scan_index: scan_index)
-      #   binding.pry
+      #   # binding.pry
       # end
       # ----------------------------------------------------------------------
       if fields.present? && !valid
@@ -686,16 +686,16 @@ module PdfResults
         next unless sub_context.is_a?(PdfResults::ContextDef)
 
         # DEBUG ----------------------------------------------------------------
-        # if sub_context.name == 'results0' && (scan_index == 20)
-        #   log_message(msg: "BEFORE @rows (#{name}), step 6 end, @curr_index: #{@curr_index}, @consumed_rows: #{@consumed_rows}", scan_index: scan_index)
-        #   binding.pry
+        # if name == 'results' && sub_context.name == 'result_lap_1500' && curr_buffer.to_s.include?(' RIT')
+        #   log_message(msg: "INSIDE @rows (#{name}), step 7 loop, @curr_index: #{@curr_index}, @consumed_rows: #{@consumed_rows}", scan_index: scan_index)
+        #   # binding.pry
         # end
         # ----------------------------------------------------------------------
         valid = sub_context.valid?(curr_buffer, @curr_index)
         # DEBUG ----------------------------------------------------------------
-        # if curr_buffer.to_s.include?('692.54') # && sub_context.name == 'results_split_row'
+        # if name == 'results' && sub_context.name == 'result_lap_1500' && curr_buffer.to_s.include?(' RIT')
         #   log_message(msg: "IN ROWS, @curr_index: #{@curr_index} - [#{sub_context.name}] scan: #{scan_index}, consumed: #{sub_context.consumed_rows} -> #{valid ? '✅' : 'x'}", scan_index: scan_index)
-        #   # binding.pry
+        #   binding.pry
         # end
         # ----------------------------------------------------------------------
 
@@ -722,10 +722,10 @@ module PdfResults
         @consumed_rows += row_span
       end
       # DEBUG ------------------------------ ----------------------------------
-      # if curr_buffer.to_s.include?('692.54') # && sub_context.name == 'results_split_row'
+      # if curr_buffer.to_s.include?(' RIT') && name == 'results'
       #   log_message(msg: "AFTER ROWS (#{name}), @curr_index: #{@curr_index} - @consumed_rows: #{@consumed_rows} -> #{valid ? '✅' : 'x'} (BEFORE RETURN)",
       #               scan_index: scan_index, curr_buffer: curr_buffer)
-      #   binding.pry
+      #   # binding.pry
       # end
       # ----------------------------------------------------------------------
       if rows.present? && !valid
