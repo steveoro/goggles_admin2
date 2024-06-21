@@ -2,10 +2,10 @@
 # = Layout format definition for PdfResults::FormatParser
 #
 # - Source: FIN Veneto custom format for Master's meetings results (50 blanks left margin version)
-# - Should support: 4x50m relay results
+# - Should support: 4x100m relay results
 # --> NO explicit category display (needs to be computed from swimmer age) <--
 #
-5-niagara.4x050m:
+5-niagara.4x100m:
   - name: header
     at_fixed_row: 0
     # Repeat (at_fixed_row, each page)
@@ -72,15 +72,15 @@
         format: "^$"
 
       - name: results_hdr0
-        format: "^\\s{50,}Pos\\s{20,}Società\\s{20,}Reg\\s{20,}FINALE\\sPunti"
+        format: "^\\s{50,}Pos\\s{15,}Società\\s{10,}Reg\\s{20,}FINALE\\sPunti"
       - name: results_hdr1
-        format: "^\\s{70,}1°\\sFrazionista\\s{10,}Anno(?>\\s{10,}50m)?"
+        format: "^\\s{70,}1°\\sFrazionista\\s{8,}Anno(?>\\s{8,}50m)?\\s{8,}100m"
       - name: results_hdr2
-        format: "^\\s{70,}2°\\sFrazionista\\s{10,}Anno\\s{10,}100m"
+        format: "^\\s{70,}2°\\sFrazionista\\s{8,}Anno(?>\\s{8,}150m)?\\s{8,}200m"
       - name: results_hdr3
-        format: "^\\s{70,}3°\\sFrazionista\\s{10,}Anno(?>\\s{10,}150m)?"
+        format: "^\\s{70,}3°\\sFrazionista\\s{8,}Anno(?>\\s{8,}250m)?\\s{8,}300m"
       - name: results_hdr4
-        format: "^\\s{70,}4°\\sFrazionista\\s{10,}Anno\\s{10,}200m"
+        format: "^\\s{70,}4°\\sFrazionista\\s{8,}Anno(?>\\s{8,}350m)?\\s{8,}400m"
       - name: results_hdr_sep1
         format: "^$"
 
@@ -125,7 +125,11 @@
             format: "^\\s{50,}(?>[\\w'àèéìòù\\.:\\/\\-]+\\s?){1,}\\s{5,}(\\d{4})\\b"
             pop_out: false
           - name: lap50
-            format: "\\s+((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})$"
+            format: "\\s{5,}\\d{4}\\s{5,}((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})\\s+"
+            pop_out: false
+            required: false
+          - name: lap100
+            format: "\\s{5,}\\d{4}\\s{5,}(?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2}\\s+((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})$"
             pop_out: false
             required: false
 
@@ -137,12 +141,20 @@
           - name: year_of_birth2
             format: "^\\s{50,}(?>[\\w'àèéìòù\\.:\\/\\-]+\\s?){1,}\\s{5,}(\\d{4})\\b"
             pop_out: false
-          - name: lap100
-            format: "\\s{5,}\\d{4}\\s{5,}((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})\\s+(?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2}$"
+          - name: lap150
+            format: "\\s{5,}\\d{4}\\s{5,}((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})\\s+"
             pop_out: false
             required: false
-          - name: delta100
-            format: "\\s{5,}\\d{4}\\s{5,}(?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2}\\s+((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})$"
+          - name: delta150
+            format: "\\s{5,}\\d{4}\\s{5,}(?>(?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2}\\s+){1}((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})\\b"
+            pop_out: false
+            required: false
+          - name: lap200
+            format: "\\s{5,}\\d{4}\\s{5,}(?>(?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2}\\s+){2}((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})\\b"
+            pop_out: false
+            required: false
+          - name: delta200
+            format: "\\s{5,}\\d{4}\\s{5,}(?>(?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2}\\s+){3}((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})\\b"
             pop_out: false
             required: false
 
@@ -154,12 +166,20 @@
           - name: year_of_birth3
             format: "^\\s{50,}(?>[\\w'àèéìòù\\.:\\/\\-]+\\s?){1,}\\s{5,}(\\d{4})\\b"
             pop_out: false
-          - name: lap150
-            format: "\\s{5,}\\d{4}\\s{5,}((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})\\s+(?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2}$"
+          - name: lap250
+            format: "\\s{5,}\\d{4}\\s{5,}((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})\\s+"
             pop_out: false
             required: false
-          - name: delta150
-            format: "\\s{5,}\\d{4}\\s{5,}(?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2}\\s+((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})$"
+          - name: delta250
+            format: "\\s{5,}\\d{4}\\s{5,}(?>(?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2}\\s+){1}((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})\\b"
+            pop_out: false
+            required: false
+          - name: lap300
+            format: "\\s{5,}\\d{4}\\s{5,}(?>(?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2}\\s+){2}((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})\\b"
+            pop_out: false
+            required: false
+          - name: delta300
+            format: "\\s{5,}\\d{4}\\s{5,}(?>(?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2}\\s+){3}((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})\\b"
             pop_out: false
             required: false
 
@@ -171,12 +191,20 @@
           - name: year_of_birth4
             format: "^\\s{50,}(?>[\\w'àèéìòù\\.:\\/\\-]+\\s?){1,}\\s{5,}(\\d{4})\\b"
             pop_out: false
-          - name: lap200
-            format: "\\s{5,}\\d{4}\\s{5,}((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})\\s+(?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2}$"
+          - name: lap350
+            format: "\\s{5,}\\d{4}\\s{5,}((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})\\s+"
             pop_out: false
             required: false
-          - name: delta200
-            format: "\\s{5,}\\d{4}\\s{5,}(?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2}\\s+((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})$"
+          - name: delta350
+            format: "\\s{5,}\\d{4}\\s{5,}(?>(?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2}\\s+){1}((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})\\b"
+            pop_out: false
+            required: false
+          - name: lap400
+            format: "\\s{5,}\\d{4}\\s{5,}(?>(?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2}\\s+){2}((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})\\b"
+            pop_out: false
+            required: false
+          - name: delta400
+            format: "\\s{5,}\\d{4}\\s{5,}(?>(?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2}\\s+){3}((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})\\b"
             pop_out: false
             required: false
 

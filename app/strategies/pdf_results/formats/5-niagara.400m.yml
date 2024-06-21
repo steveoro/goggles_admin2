@@ -42,13 +42,13 @@
       - name: event_detail
         fields:
           - name: event_length
-            format: "^\\s{70,}(400)\\s(?>Stile(?>\\sLibero)?|Dorso|Rana|Delfino|Farfalla|Misti)\\s-\\s(?>Assoluti\\s)?(?>Maschi|Femmine|Maschi\\se\\sFemmine)"
+            format: "^\\s{70,}(400)\\s(?>Stile(?>\\sLibero)?|Dorso|Rana|Delfino|Farfalla|Misti)\\s-\\s"
             pop_out: false
           - name: event_type
-            format: "^\\s{70,}400\\s(Stile(?>\\sLibero)?|Dorso|Rana|Delfino|Farfalla|Misti)\\s-\\s(?>Assoluti\\s)?(?>Maschi|Femmine|Maschi\\se\\sFemmine)"
+            format: "^\\s{70,}400\\s(Stile(?>\\sLibero)?|Dorso|Rana|Delfino|Farfalla|Misti)\\s-\\s"
             pop_out: false
           - name: gender_type
-            format: "^\\s{70,}400\\s(?>Stile(?>\\sLibero)?|Dorso|Rana|Delfino|Farfalla|Misti)\\s-\\s(?>Assoluti\\s)?(Maschi|Femmine|Maschi\\se\\sFemmine)"
+            format: "^\\s{70,}400\\s(?>Stile(?>\\sLibero)?|Dorso|Rana|Delfino|Farfalla|Misti)\\s-\\s(?>Assoluti\\s)?(Maschi\\se\\sFemmine|Maschi|Femmine)"
             pop_out: false
 
       - name: event_place_and_date

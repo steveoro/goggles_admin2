@@ -686,11 +686,18 @@ module PdfResults
       type = event_hash.fetch(:fields, {})&.fetch('event_type', '')
       gender = event_hash.fetch(:fields, {})&.fetch(GENDER_FIELD_NAME, '')
       # Return just the first gender code char:
-      gender = /mist/i.match?(gender.to_s) ? 'X' : gender.to_s.at(0)&.upcase
+      gender = intermixed_gender_label?(gender) ? 'X' : gender.to_s.at(0)&.upcase
+
       ["#{length} #{type}", length, type, gender]
     end
     #-- -----------------------------------------------------------------------
     #++
+
+    # Returns +true+ if the supplied text seems to describe an intermixed-gender type of event;
+    # +false+ otherwise.
+    def intermixed_gender_label?(gender_text)
+      /mist|maschi\se\sfemmine/i.match?(gender_text.to_s)
+    end
 
     # Returns +true+ only if the supplied row_hash seems to support and
     # store a string value representing a possible CategoryType code only for individual results.
@@ -798,6 +805,8 @@ module PdfResults
 
       # *** Context 'rel_category' ***
       key = row_hash.fetch(:key, '')
+      return GogglesDb::GenderType.intermixed.code if intermixed_gender_label?(key)
+
       gender_name = case key
                     when /(?>Under|Master)\s(Misti|Femmin\w*|Masch\w*)\s(?>\d{2,3}\s-\s\d{2,3})/ui
                       # Example key 1 => "Master Misti 200 - 239"
@@ -815,7 +824,7 @@ module PdfResults
                     end
       # Use the field value when no match is found:
       gender_name = row_hash[:fields][GENDER_FIELD_NAME] if gender_name.blank? && row_hash[:fields].key?(GENDER_FIELD_NAME)
-      return GogglesDb::GenderType.intermixed.code if /mist/i.match?(gender_name.to_s)
+      return GogglesDb::GenderType.intermixed.code if intermixed_gender_label?(gender_name)
 
       gender_name&.at(0)&.upcase
     end
@@ -1087,7 +1096,7 @@ module PdfResults
       # Swimmer data source at a nested depth level with non-indexed fields (or not, for same depth level)?
       fld_swmmer = nested ? 'swimmer_name' : "swimmer_name#{swimmer_idx}"
       fld_yob    = nested ? 'year_of_birth' : "year_of_birth#{swimmer_idx}"
-      fld_gender = nested ? 'gender_type' : "gender_type#{swimmer_idx}"
+      fld_gender = nested ? GENDER_FIELD_NAME : "#{GENDER_FIELD_NAME}#{swimmer_idx}"
       fld_lap    = nested ? 'swimmer_lap' : "swimmer_lap#{swimmer_idx}"
       fld_delta  = nested ? 'swimmer_delta' : "swimmer_delta#{swimmer_idx}"
 
@@ -1106,7 +1115,7 @@ module PdfResults
       end
 
       # Assign field values:
-      output_hash["gender_type#{swimmer_idx}"] = gender_code
+      output_hash["#{GENDER_FIELD_NAME}#{swimmer_idx}"] = gender_code
       output_hash["year_of_birth#{swimmer_idx}"] = year_of_birth
       output_hash['overall_age'] += @season.begin_date.year - year_of_birth if year_of_birth.to_i.positive?
       output_hash["swimmer_lap#{swimmer_idx}"] = lap_timing
