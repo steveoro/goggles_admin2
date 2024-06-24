@@ -92,13 +92,13 @@
             # Sometimes, this may be missing due to technicalities:
             required: false
           - name: swimmer_name
-            format: "^\\s+(?>\\d{1,2}|SQ|RT|NP)\\s+((?>[\\wìàèéòù'-]+\\s){2,})\\s+\\w{3}\\s+"
+            format: "^\\s+(?>\\d{1,2}|SQ|RT|NP)\\s+((?>[\\wìàèéòù'\\.-]+\\s){2,})\\s+\\w{3}\\s+"
             pop_out: false
           - name: nation
-            format: "^\\s+(?>\\d{1,2}|SQ|RT|NP)\\s+(?>[\\wìàèéòù'-]+\\s){2,}\\s{2,}(\\w{3})\\s{1,}\\d{1,2}"
+            format: "^\\s+(?>\\d{1,2}|SQ|RT|NP)\\s+(?>[\\wìàèéòù'\\.-]+\\s){2,}\\s{2,}(\\w{3})\\s{1,}\\d{1,2}"
             pop_out: false
           - name: series_num
-            format: "^\\s+(?>\\d{1,2}|SQ|RT|NP)\\s+(?>[\\wìàèéòù'-]+\\s){2,}\\s{2,}\\w{3}\\s{1,}(\\d{1,2})"
+            format: "^\\s+(?>\\d{1,2}|SQ|RT|NP)\\s+(?>[\\wìàèéòù'\\.-]+\\s){2,}\\s{2,}\\w{3}\\s{1,}(\\d{1,2})"
             pop_out: false
 
           - name: lap50
