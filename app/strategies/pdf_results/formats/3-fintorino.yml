@@ -92,8 +92,9 @@
         pop_out: false
       - name: team_name
         # format: "\\s{1,}(?>\\w{3})?\\s{3,}\\d{4}\\s{3,}((?>[\\w'àèéìòù\\.:\\/\\-]+\\s?){1,})(?>\\s{3,}|$)"
+        # format: "\\s{3,}\\d{4}\\s{3,}((?>[\\wìàèéòù'\\.-]+\\s?){2,})"
         # Better alternative:
-        format: "\\s{3,}\\d{4}\\s{3,}((?>[\\wìàèéòù'\\.-]+\\s?){2,})"
+        format: "\\s{3,}\\d{4}\\s{3,}(.{3,30})\\s*"
         token_start: 34
         pop_out: false
       - name: timing
@@ -102,6 +103,20 @@
         pop_out: false
         # DSQ don't have timings:
         required: false
+
+  - name: dsq_label
+    parent: results
+    required: false
+    rows:
+      - name: dsq_spacer1
+        format: "^$"
+      - name: dsq_type
+        fields:
+          - name: disqualify_type
+            format: "^\\s{15,}(falsa\\spartenz\\w+|arrivo\\sirr\\w*|virata\\s\\w+|nuotata\\sirr\\w+)"
+            pop_out: false
+      - name: dsq_spacer2
+        format: "^$"
 
   - name: disqualified
     parent: event

@@ -36,7 +36,7 @@ module PdfResults
 
     # Supported section names for *categories*. Same rules for IND_RESULT_SECTION apply.
     # Different names are supported in case they need to co-exist in the same layout file.
-    CATEGORY_SECTION = %w[category rel_category].freeze
+    CATEGORY_SECTION = %w[event category rel_category].freeze
 
     # Supported "parent" section names for *relay results*. Same rules for IND_RESULT_SECTION apply.
     REL_RESULT_SECTION = %w[rel_team rel_team_alt].freeze
@@ -176,6 +176,10 @@ module PdfResults
         curr_cat_code = fetch_rel_category_code(event_hash)
         curr_cat_gender = gender_code
 
+        # Search for relay gender inside event first (if not yet found in event title):
+        # --- RELAY RESULTS (event -> rel_team): will create event section inside rel_team processing ---
+        curr_cat_gender ||= fetch_rel_category_gender(event_hash) if holds_relay_category_or_relay_result?(event_hash)
+
         # --- IND.RESULTS (event -> results) ---
         section = {}
         if holds_category_type?(event_hash)
@@ -219,14 +223,20 @@ module PdfResults
                 rows << rel_result_hash
               end
               # Relay category code still missing? Fill-in possible missing category code (which is frequently missing in record trials):
-              section = post_compute_rel_category_code(section, rows.last['overall_age']) if section['fin_sigla_categoria'].blank?
+              if section['fin_sigla_categoria'].blank?
+                section = post_compute_rel_category_code(section, rows.last['overall_age'])
+                recompute_ranking = true
+              end
 
             # Process teams & relay swimmers/laps:
             elsif REL_RESULT_SECTION.include?(row_hash[:name])
               rel_result_hash = rel_result_section(row_hash)
               rows << rel_result_hash
               # Relay category code still missing? Fill-in possible missing category code (which is frequently missing in record trials):
-              section = post_compute_rel_category_code(section, rel_result_hash['overall_age']) if section['fin_sigla_categoria'].blank?
+              if section['fin_sigla_categoria'].blank?
+                section = post_compute_rel_category_code(section, rel_result_hash['overall_age'])
+                recompute_ranking = true
+              end
             end
 
             # Set rows for current relay section:
@@ -686,7 +696,7 @@ module PdfResults
       type = event_hash.fetch(:fields, {})&.fetch('event_type', '')
       gender = event_hash.fetch(:fields, {})&.fetch(GENDER_FIELD_NAME, '')
       # Return just the first gender code char:
-      gender = intermixed_gender_label?(gender) ? 'X' : gender.to_s.at(0)&.upcase
+      gender = intermixed_gender_label?(gender) ? GogglesDb::GenderType.intermixed.code : gender.to_s.at(0)&.upcase
 
       ["#{length} #{type}", length, type, gender]
     end
@@ -762,16 +772,16 @@ module PdfResults
       # Example key 1 => "Master Misti 200 - 239"
       case key
       when /(?>Under|Master)\s(?>Misti|Femmin\w*|Masch\w*)(?>\s(\d{2,3}\s-\s\d{2,3}))?/ui
-        /(?>Under|Master)\s(?>Misti|Femmin\w*|Masch\w*)(?>\s(\d{2,3}\s-\s\d{2,3}))?/ui.match(key).captures.first.delete(' ')
+        /(?>Under|Master)\s(?>Misti|Femmin\w*|Masch\w*)(?>\s(\d{2,3}\s-\s\d{2,3}))?/ui.match(key).captures&.first&.delete(' ')
 
       # Example key 2 => "{event_length: 'mistaffetta <4|6|8>x<len>'}|<style_name>|<mistaffetta|gender>|M(ASTER)?\s?<age1>-<age2>(|<base_time>)?"
       when /\|M(?>ASTER)?\s?(\d{2,3}-\d{2,3})/ui
         # Return a valid age-group code for relays ("<age1>-<age2>"):
-        /\|M(?>ASTER)?\s?(\d{2,3}-\d{2,3})/ui.match(key).captures.first
+        /\|M(?>ASTER)?\s?(\d{2,3}-\d{2,3})/ui.match(key).captures&.first
 
       # Example key 3 => "M100-119|Masch|..."
       when /M(\d{2,3}-\d{2,3})\|(?>Masch|Femmin|Mist)/ui
-        /M(\d{2,3}-\d{2,3})\|(?>Masch|Femmin|Mist)/ui.match(key).captures.first
+        /M(\d{2,3}-\d{2,3})\|(?>Masch|Femmin|Mist)/ui.match(key).captures&.first
       end
     end
     #-- -----------------------------------------------------------------------
@@ -803,14 +813,13 @@ module PdfResults
     def fetch_rel_category_gender(row_hash)
       return unless row_hash.is_a?(Hash) && CATEGORY_SECTION.include?(row_hash[:name])
 
-      # *** Context 'rel_category' ***
+      # *** Context 'rel_category'|'rel_team'|'event' ***
       key = row_hash.fetch(:key, '')
-      return GogglesDb::GenderType.intermixed.code if intermixed_gender_label?(key)
 
       gender_name = case key
-                    when /(?>Under|Master)\s(Misti|Femmin\w*|Masch\w*)\s(?>\d{2,3}\s-\s\d{2,3})/ui
-                      # Example key 1 => "Master Misti 200 - 239"
-                      /(?>Under|Master)\s(Misti|Femmin\w*|Masch\w*)\s(?>\d{2,3}\s-\s\d{2,3})/ui.match(key).captures.first
+                    when /(?>Under|Master)\s(Mist\w|Femmin\w*|maschi\se\sfemmine|Masch\w*)\s?(?>\d{2,3}\s-\s\d{2,3})?/ui
+                      # Example key 1 => "Master Misti( 200 - 239)?"
+                      /(?>Under|Master)\s(Mist\w|Femmin\w*|maschi\se\sfemmine|Masch\w*)\s?(?>\d{2,3}\s-\s\d{2,3})?/ui.match(key).captures.first
 
                     # Example key 2 => "{event_length: 'mistaffetta <4|6|8>x<len>'}|<style_name>|<mistaffetta|gender>|M(ASTER)?\s?<age1>-<age2>(|<base_time>)?"
                     when /\|(\w+)\|M(?>ASTER)?\s?\d{2,3}-\d{2,3}/ui
@@ -1036,6 +1045,17 @@ module PdfResults
                    &.sub(':', '\'')&.sub(':', '"')
                    &.sub(',', '"')
     end
+
+    # Adjusts any 2-digit year to the proper century using current Meeting's Season year.
+    # Returns the year in 4-digit format.
+    def adjust_2digit_year(year_of_birth)
+      # 4-digit years are already ok:
+      return year_of_birth.to_i if year_of_birth.to_s.length == 4
+      # Consider masters up to a max age of 110 as born into the previous century:
+      return year_of_birth.to_i + 1900 if @season.begin_date.year - 1900 - year_of_birth.to_i < 110
+
+      year_of_birth.to_i + 2000
+    end
     #-- -----------------------------------------------------------------------
     #++
 
@@ -1060,8 +1080,8 @@ module PdfResults
           result = category_hash.fetch(:rows, [{}])
                                 .find do |row|
                                   fields = row.fetch(:fields, {})
-                                  fields['swimmer_name'] == swimmer_name &&
-                                    fields['team_name'] == team_name
+                                  fields['swimmer_name']&.upcase == swimmer_name&.upcase &&
+                                    fields['team_name']&.upcase == team_name&.upcase
                                 end
 
           return [result.fetch(:fields, {})['year_of_birth'].to_i, curr_gender] if result.present?
@@ -1101,7 +1121,7 @@ module PdfResults
       fld_delta  = nested ? 'swimmer_delta' : "swimmer_delta#{swimmer_idx}"
 
       # Extract field values:
-      output_hash["swimmer#{swimmer_idx}"] = rel_fields_hash[fld_swmmer]&.squeeze(' ')
+      output_hash["swimmer#{swimmer_idx}"] = rel_fields_hash[fld_swmmer]&.squeeze(' ')&.tr(',', ' ')
       year_of_birth = rel_fields_hash[fld_yob].to_i
       gender_code = rel_fields_hash[fld_gender] # To-be-supported by MacroSolver
       lap_timing = rel_fields_hash[fld_lap]     # To-be-supported by MacroSolver
@@ -1111,10 +1131,27 @@ module PdfResults
       if year_of_birth&.zero? || gender_code.blank?
         scanned_year_of_birth, scanned_gender_code = search_result_row_with_swimmer(output_hash["swimmer#{swimmer_idx}"], output_hash['team'])
         year_of_birth ||= scanned_year_of_birth if scanned_year_of_birth.present?
-        gender_code ||= scanned_gender_code if scanned_year_of_birth.present?
+        gender_code ||= scanned_gender_code if scanned_gender_code.present?
+      end
+      year_of_birth = adjust_2digit_year(year_of_birth)
+
+      # Whenever gender is still unknown, use the DB finders as second-last resort:
+      if gender_code.blank?
+        cmd = GogglesDb::CmdFindDbEntity.call(GogglesDb::Swimmer, complete_name: output_hash["swimmer#{swimmer_idx}"], year_of_birth:)
+        if cmd.successful?
+          gender_code = cmd.result.male? ? 'M' : 'F'
+          output_hash["swimmer#{swimmer_idx}"] = cmd.result.complete_name
+        else
+          # As very last resort, make an educated guess for the gender from the name, using common italian exceptions:
+          gender_code = if output_hash["swimmer#{swimmer_idx}"].match?(/\w+[nosl\-]\s?maria|andrea?$|one$|gabriele|gioele|luca|\w+[gkcnos]'?$/ui)
+                          'M'
+                        else
+                          'F'
+                        end
+        end
       end
 
-      # Assign field values:
+      # Finally, assign field values:
       output_hash["#{GENDER_FIELD_NAME}#{swimmer_idx}"] = gender_code
       output_hash["year_of_birth#{swimmer_idx}"] = year_of_birth
       output_hash['overall_age'] += @season.begin_date.year - year_of_birth if year_of_birth.to_i.positive?

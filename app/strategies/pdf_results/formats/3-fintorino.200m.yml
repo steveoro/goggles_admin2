@@ -1,10 +1,10 @@
 #
 # = Layout format definition for PdfResults::FormatParser
 #
-# FIN Piemonte, 100m-only, w/ lap timings, category type NOT shown,
+# FIN Piemonte, 200m-only, w/ lap timings, category type NOT shown,
 # meeting name on top, meeting place on EOP. --> GENDER SOMETIMES MISSING <--
 #
-3-fintorino.100m:
+3-fintorino.200m:
   - name: header
     at_fixed_row: 0
     # In order to validate/debug a format not always present in page,
@@ -40,7 +40,7 @@
     repeat: true
     rows:
       - name: results_hdr1
-        format: "^\\s?POS\\s{2,}COGNOME\\sE\\sNOME\\s{2,}NAZ\\sANNO\\s{1,}SOCIETA'\\s{10,}(?>50\\sm)?\\s{5,}ARRIVO\\s{2,}PUNTI"
+        format: "^\\s?POS\\s{2,}COGNOME\\sE\\sNOME\\s{2,}NAZ\\sANNO\\s{1,}SOCIETA'\\s{10,}(?>50\\sm)?\\s{3,}(?>100\\sm)?\\s{3,}(?>150\\sm)?\\s{3,}ARRIVO\\s{1,}PUNTI"
       - name: results_hdr_sep1
         format: "^$"
       # Whenever the event is not repeated on page start, 2x empty rows take its place:
@@ -60,10 +60,10 @@
     rows:
       - fields:
         - name: event_length
-          format: "^\\s{20,}(\\d{2,4})\\s?m\\s+"
+          format: "^\\s{20,}(\\d{3,4})\\s?m\\s+"
           pop_out: false
         - name: event_type
-          format: "^\\s{20,}\\d{2,4}\\s?m\\s+(Stile(?>\\sLibero)?|Dorso|Rana|Delfino|Farfalla|Misti)\\s-\\s"
+          format: "^\\s{20,}\\d{3,4}\\s?m\\s+(Stile(?>\\sLibero)?|Dorso|Rana|Delfino|Farfalla|Misti)\\s-\\s"
         - name: cat_title
           format: "\\s-\\s(Under|Master)\\s(Femmine|Maschi|mist)"
       - name: event_sep0
@@ -98,22 +98,39 @@
             pop_out: false
 
           - name: lap50
-            format: "\\s+((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})(?>\\s+(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}){2}$"
+            format: "\\s+((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})(?>\\s+(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}){3}$"
             pop_out: false
             required: false
-          - name: delta100
-            format: "(?>\\s+(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}){1}\\s+((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})\\s+((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})$"
+          - name: lap100
+            format: "(?>\\s+(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}){2}\\s+((?>\\d{1,2}[':\\.])?\\d{1}[\":\\.]\\d{2})(?>\\s+(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}){2}$"
             pop_out: false
             required: false
+          - name: lap150
+            format: "(?>\\s+(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}){2}\\s+((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})(?>\\s+(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}){1}$"
+            pop_out: false
+            required: false
+
           - name: timing
             format: "(?>\\s+(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}){2}\\s+((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})$"
             pop_out: false
             # DSQ don't have timings:
             required: false
 
-      - name: results_sep
+      - name: result_deltas
         required: false
-        format: "^$"
+        fields:
+          - name: delta100
+            format: "^\\s{80,}((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})\\s+"
+            pop_out: false
+            required: false
+          - name: delta150
+            format: "^\\s{80,}(?>(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}\\s+)?((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})\\s+"
+            pop_out: false
+            required: false
+          - name: delta200
+            format: "^\\s{80,}.{20,30}\\s+(?>(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})\\s+((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})$"
+            pop_out: false
+            required: false
 
   - name: dsq_label
     parent: results
