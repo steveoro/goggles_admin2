@@ -101,7 +101,7 @@
             format: "^\\s{4,7}\\D"
             pop_out: false
           - name: swimmer_name
-            format: "\\s{4,7}(\\D+(['`\\-\\.\\s]\\s?\\D+){1,4})\\s+"
+            format: "\\s{4,7}(\\D+(?>['`\\-\\.\\s]\\s?\\D+){1,4})\\s+"
             pop_out: false
             token_end: 55
       # Optional 2nd row for very-long swimmer names:
@@ -112,7 +112,7 @@
             format: "^\\s{4,7}\\D"
             pop_out: false
           - name: swimmer_name_ext
-            format: "\\s{4,7}(\\D+(['`\\-\\.\\s]\\s?\\D+){1,4})\\b"
+            format: "\\s{4,7}(\\D+(?>['`\\-\\.\\s]\\s?\\D+){1,4})\\b"
             pop_out: false
             token_end: 55
 

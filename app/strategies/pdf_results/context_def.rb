@@ -617,13 +617,13 @@ module PdfResults
       if fields
         log_message(msg: "before @fields (tot: #{fields&.count})", scan_index:, curr_buffer:,
                     depth: parent.present? ? 1 : 0)
+        # DEBUG ----------------------------------------------------------------
+        # if name == 'results' && curr_buffer.to_s.include?('<SWIMMER NAME>')
+        #   log_message(msg: "BEFORE @fields (#{name}), step 5, @curr_index: #{@curr_index}, @consumed_rows: #{@consumed_rows}", scan_index: scan_index)
+        #   binding.pry
+        # end
+        # ----------------------------------------------------------------------
       end
-      # DEBUG ----------------------------------------------------------------
-      # if name == 'results' && curr_buffer.to_s.include?(' RIT')
-      #   log_message(msg: "BEFORE @fields (#{name}), step 5, @curr_index: #{@curr_index}, @consumed_rows: #{@consumed_rows}", scan_index: scan_index)
-      #   binding.pry
-      # end
-      # ----------------------------------------------------------------------
 
       # 6) Fields scan: extract all required data from current row buffer;
       #                 valid <=> all required fields have data
@@ -652,9 +652,9 @@ module PdfResults
         @consumed_rows = row_span # (see note on line 566 above)
       end
       # DEBUG ----------------------------------------------------------------
-      # if name == 'result_lap_1500' && curr_buffer.to_s.include?(' RIT')
+      # if fields && name == 'results' && curr_buffer.to_s.include?('<SWIMMER NAME>')
       #   log_message(msg: "AFTER @fields (#{name}), step 6, @curr_index: #{@curr_index}, @consumed_rows: #{@consumed_rows}", scan_index: scan_index)
-      #   # binding.pry
+      #   binding.pry
       # end
       # ----------------------------------------------------------------------
       if fields.present? && !valid

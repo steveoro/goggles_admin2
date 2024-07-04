@@ -147,6 +147,7 @@ module PdfResults
       resulting_sections = []
       recompute_ranking = false
 
+      # === Event loop: ===
       @data.fetch(:rows, [{}]).each_with_index do |event_hash, _idx| # rubocop:disable Metrics/BlockLength
         # Supported hierarchy for "event-type" depth level:
         #
@@ -165,63 +166,68 @@ module PdfResults
         # Ignore other unsupported contexts at this depth level:
         next unless event_hash[:name] == 'event'
 
+        # --- Extract all possible parent section fields from 'event' hash and use them in the loops below: ---
+
         # TODO:
         # If the event_hash has either one of 'meeting_date' and/or 'meeting_place', store
-        # them into
+        # them into the header
+
+        # Reset event-related category & gender when looping inside a new event context:
+        section = {}
+        curr_cat_code = nil
 
         # Sometimes the gender type may be found inside the EVENT title
-        # (as in "4X50m Stile Libero Master Maschi"):
-        event_title, event_length, _event_type_name, gender_code = fetch_event_title(event_hash)
-        # Reset event related category (& gender, if available):
-        curr_cat_code = fetch_rel_category_code(event_hash)
-        curr_cat_gender = gender_code
+        # (as in "4X50m Stile Libero Master Maschi" or "50 m Dorso Femmine"):
+        event_title, event_length, _event_type_name, curr_cat_gender = fetch_event_title(event_hash)
 
-        # Search for relay gender inside event first (if not yet found in event title):
-        # --- RELAY RESULTS (event -> rel_team): will create event section inside rel_team processing ---
-        curr_cat_gender ||= fetch_rel_category_gender(event_hash) if holds_relay_category_or_relay_result?(event_hash)
+        # --- RELAYS (event) ---
+        if /(4|6|8)x\d{2,3}/i.match?(event_length.to_s) && holds_relay_category_or_relay_result?(event_hash)
+          curr_cat_code = fetch_rel_category_code(event_hash)
+          curr_cat_gender ||= fetch_rel_category_gender(event_hash)
 
-        # --- IND.RESULTS (event -> results) ---
-        section = {}
-        if holds_category_type?(event_hash)
-          section = ind_category_section(event_hash, event_title, curr_cat_code, curr_cat_gender)
-          resulting_sections << section if section.present?
+        # --- IND.RESULTS (event) ---
+        elsif holds_category_type?(event_hash)
+          curr_cat_code = fetch_category_code(event_hash)
+          curr_cat_gender ||= fetch_category_gender(event_hash)
         end
 
+        # === Sub-event loop: ===
         event_hash.fetch(:rows, [{}]).each do |row_hash| # rubocop:disable Metrics/BlockLength
+          # Supported hierarchy for "sub-event-type" depth level:
+          #
+          # [event]
+          #     |
+          #     +---[category|rel_category|results|rel_team]
+          #
           rows = []
-          # --- RELAYS ---
+          # --- RELAYS (sub-event, both with or w/o categ.) ---
           if /(4|6|8)x\d{2,3}/i.match?(event_length.to_s) && holds_relay_category_or_relay_result?(row_hash)
-            # >>> Here: "row_hash" may be both 'category', 'rel_category', 'rel_team' or even 'event'
-            # Safe to call even for non-'rel_category' hashes:
-            section = rel_category_section(row_hash, event_title)
-            # Category code or gender code wasn't found?
-            # Try to get that from the current or previously category section found, if any:
-            section['fin_sigla_categoria'] = curr_cat_code if section['fin_sigla_categoria'].blank? && curr_cat_code.to_s =~ /^\d+/
-            section['fin_sesso'] = curr_cat_gender if section['fin_sesso'].blank? && curr_cat_gender.to_s.match?(/^[fmx]/i)
+            section = rel_category_section(row_hash, event_title, curr_cat_code, curr_cat_gender)
 
             # == Hard-wired "manual forward link" for relay categories only ==
             # Store current relay category & gender so that "unlinked" team relay
-            # sections encountered later on get to be bound to the latest relay
-            # fields found:
+            # sections encountered later on, get to be bound to the latest relay fields found:
             # (this assumes the category section will be enlisted ALWAYS BEFORE actual the relay team result rows)
             if CATEGORY_SECTION.include?(row_hash[:name])
               # Don't overwrite category code & gender unless not set yet:
               curr_cat_code = section['fin_sigla_categoria'] if section['fin_sigla_categoria'].present?
               curr_cat_gender = section['fin_sesso'] if section['fin_sesso'].present?
 
-              # SUPPORT for alternative-nested 'rel_team's (inside a dedicated category section -- example with 'rel_category'):
-              # +-- event 🌀
-              #     [:rows]
-              #       +-- rel_category 🌀
-              #            +-- rel_team 🌀
-              #                [:rows]
-              #                  +-- rel_swimmer 🌀
-              #                  +-- disqualified
-              # Loop on rel_team rows, when found, and build up the event rows with them
+              # Supported hierarchy (category -> rel_team):
+              #
+              # [category|rel_category]
+              #     |
+              #     +-- rel_team 🌀
+              #         [:rows]
+              #            +-- rel_swimmer 🌀
+              #            +-- disqualified
+              #
+              # Loop on rel_team rows, when found, and build up the current sub-section rows with them:
               row_hash[:rows].select { |row| REL_RESULT_SECTION.include?(row[:name]) }.each do |nested_row|
                 rel_result_hash = rel_result_section(nested_row)
                 rows << rel_result_hash
               end
+
               # Relay category code still missing? Fill-in possible missing category code (which is frequently missing in record trials):
               if section['fin_sigla_categoria'].blank?
                 section = post_compute_rel_category_code(section, rows.last['overall_age'])
@@ -230,6 +236,12 @@ module PdfResults
 
             # Process teams & relay swimmers/laps:
             elsif REL_RESULT_SECTION.include?(row_hash[:name])
+              # Supported hierarchy (event -> rel_team):
+              #
+              # [event]
+              #     |
+              #     +-- rel_team
+              #
               rel_result_hash = rel_result_section(row_hash)
               rows << rel_result_hash
               # Relay category code still missing? Fill-in possible missing category code (which is frequently missing in record trials):
@@ -241,11 +253,21 @@ module PdfResults
 
             # Set rows for current relay section:
             section['rows'] = rows
-            add_event_section_if_missing(resulting_sections, section) if section['rows'].present?
+            find_or_create_event_section_and_merge(resulting_sections, section) if section['rows'].present?
 
-          # --- IND.RESULTS (category -> results) ---
+          # --- IND.RESULTS (category -> results: curr depth holds category data) ---
           elsif holds_category_type?(row_hash)
+            # Supported hierarchy (extract both):
+            #
+            # [category]
+            #     |
+            #     +---[results]
+            #
             section = ind_category_section(row_hash, event_title, curr_cat_code, curr_cat_gender)
+            # Update current cat.code & gender pointers whenever the section gets overwritten:
+            curr_cat_code = section['fin_sigla_categoria'] || curr_cat_code
+            curr_cat_gender = section['fin_sesso'] || curr_cat_gender
+
             row_hash.fetch(:rows, [{}]).each do |result_hash|
               # Ignore unsupported contexts:
               # NOTE: the name 'disqualified' will just signal the section start, but actual DSQ results
@@ -256,32 +278,69 @@ module PdfResults
             end
             # Overwrite existing rows in current section:
             section['rows'] = rows
-            add_event_section_if_missing(resulting_sections, section) if section['rows'].present?
+            find_or_create_event_section_and_merge(resulting_sections, section) if section['rows'].present?
 
-          # --- IND.RESULTS (event -> results) ---
+          # --- IND.RESULTS (event -> results: only parents holds possibly some category data) ---
           elsif holds_category_type?(event_hash) && IND_RESULT_SECTION.include?(row_hash[:name])
-            # Since event holds the category, wrapper section should change only externally and we'll
-            # add here only its rows:
-            section['rows'] ||= []
-            section['rows'] << ind_result_section(row_hash, section['fin_sesso'])
-            add_event_section_if_missing(resulting_sections, section) if section['rows'].present?
+            # Supported hierarchy:
+            #
+            # [event] (with partial gender or category data)
+            #     |
+            #     +---[results]
+            #
+            section = ind_category_section(event_hash, event_title, nil, nil) # Don't use defaults unless we have full category data
 
-          # --- IND.RESULTS (event -> results, but NO category code; i.e.: absolute rankings) ---
-          elsif IND_RESULT_SECTION.include?(row_hash[:name]) && gender_code.present?
+            # Update current cat.code & gender pointers whenever the section gets overwritten:
+            curr_cat_code = section['fin_sigla_categoria']
+            curr_cat_gender = section['fin_sesso']
+            result_row = ind_result_section(row_hash, curr_cat_gender)
+
+            # Update gender from result row (should change with current row in individ. results
+            # to reflect proper category/gender):
+            section['fin_sesso'] = curr_cat_gender = result_row['sex']
+
+            # Force category code post-computation only if not properly set:
+            unless curr_cat_code.match?(/\d{2,3}/i)
+              year_of_birth = result_row['year'].to_i
+              section['fin_sigla_categoria'] = curr_cat_code = post_compute_ind_category_code(year_of_birth)
+              # With category being manually computed, we need to recompute the rankings too:
+              recompute_ranking = true
+            end
+
+            section['rows'] ||= []
+            section['rows'] << result_row
+            find_or_create_event_section_and_merge(resulting_sections, section) if section['rows'].present?
+
+          # --- IND.RESULTS (event -> results, but NO category fields at all; i.e.: absolute rankings) ---
+          elsif IND_RESULT_SECTION.include?(row_hash[:name])
+            # Need to reconstruct both category & rankings:
             recompute_ranking = true
-            fields = row_hash.fetch(:fields, {})
-            year_of_birth = fields['year_of_birth'].to_i
-            # 1. Detect category_code from year_of_birth
-            category_code = post_compute_ind_category_code(year_of_birth)
-            next if category_code.blank?
+            result_row = ind_result_section(row_hash, curr_cat_gender)
+            # Update gender from result row (should change with current row in individ. results
+            # to reflect proper category/gender):
+            section['fin_sesso'] = curr_cat_gender = result_row['sex']
+
+            # Force category code post-computation only if not properly set:
+            unless curr_cat_code.match?(/\d{2,3}/i)
+              year_of_birth = result_row['year'].to_i
+              section['fin_sigla_categoria'] = curr_cat_code = post_compute_ind_category_code(year_of_birth)
+              # With category being manually computed, we need to recompute the rankings too:
+              recompute_ranking = true
+            end
+            # DEBUG ----------------------------------------------------------------
+            # TODO: WIP DEBUG!!
+            binding.pry if curr_cat_code.blank?
+            # ----------------------------------------------------------------------
+            # THIS SHOULD NEVER OCCUR W/ CURR IMPL.:
+            next if curr_cat_code.blank?
 
             # 2. Fetch or create proper event section with category:
-            section = find_existing_event_section(resulting_sections, event_title, category_code, gender_code) ||
-                      ind_category_section(row_hash, event_title, category_code, gender_code)
+            section = find_existing_event_section(resulting_sections, event_title, curr_cat_code, curr_cat_gender) ||
+                      ind_category_section(row_hash, event_title, curr_cat_code, curr_cat_gender)
             # 3. Extract ind. result section and add it to the section's rows:
             section['rows'] ||= []
-            section['rows'] << ind_result_section(row_hash, gender_code)
-            add_event_section_if_missing(resulting_sections, section) if section['rows'].present?
+            section['rows'] << result_row
+            find_or_create_event_section_and_merge(resulting_sections, section) if section['rows'].present?
 
           # --- (Ignore unsupported contexts) ---
           else
@@ -297,7 +356,7 @@ module PdfResults
 
     # Builds up the category section that will hold the result rows.
     # (For individual results only.)
-    # event_title, category_code & gender_code are used for default section values.
+    # 'event_title', 'category_code' & 'gender_code' are used for default section values.
     def ind_category_section(category_hash, event_title, category_code, gender_code)
       {
         'title' => event_title,
@@ -311,15 +370,19 @@ module PdfResults
     end
 
     # Builds up the category section that will hold the result rows.
-    # For relays only. Safe to call even if the category_hash isn't of
-    # the "category" type: it will build just the event title instead.
-    def rel_category_section(category_hash, event_title)
+    # (For relays only.)
+    # Safe to call even if the category_hash isn't of the "category" type: it will
+    # build just the event title instead.
+    # 'event_title', 'category_code' & 'gender_code' are used for default section values.
+    def rel_category_section(category_hash, event_title, category_code, gender_code)
+      # HERE: "row_hash" may be both 'category', 'rel_category', 'rel_team' or even 'event'
+      # (Safe to be called even for non-'rel_category' hashes: "fetch_"-methods will return nil for no matches)
       {
         'title' => event_title,
         'fin_id_evento' => nil,
         'fin_codice_gara' => nil,
-        'fin_sigla_categoria' => fetch_rel_category_code(category_hash),
-        'fin_sesso' => fetch_rel_category_gender(category_hash),
+        'fin_sigla_categoria' => fetch_rel_category_code(category_hash) || category_code,
+        'fin_sesso' => fetch_rel_category_gender(category_hash) || gender_code,
         # TODO: support this in MacroSolver:
         'base_time' => format_timing_value(category_hash.fetch(:fields, {})['base_time'])
       }
@@ -373,6 +436,59 @@ module PdfResults
     end
     #-- -----------------------------------------------------------------------
     #++
+
+    # Tries to reconstruct either the year of birth or the gender of a swimmer.
+    # If year_of_birth or gender_code are missing, this will in turn:
+    #
+    # 1. scan already parsed results in search of a matching swimmer & team tuple, hoping
+    #    the different event will show the missing fields;
+    # 2. resort to DB finders if no matches are found for the gender (slow but accurate);
+    # 3. use an educated guess with the name to detect the gender (it's ~75% accurate) when nothing
+    #    else works.
+    #
+    # Note that if the year of birth is missing, there's nothing we can do to even make a plausible
+    # guess for the age when the category is missing from the event (too many same-named swimmers in some cases).
+    #
+    # == Params:
+    # - swimmer_name  => complete name of the swimmer;
+    # - year_of_birth => year of birth of the swimmer; 2-digits years will be fixed internally;
+    # - gender_code   => gender of the swimmer (M/F) coming from current category, if available;
+    # - team_name     => team name of the swimmer;
+    #
+    # == Returns:
+    # The same array of fields as the parameters minus the team name, with any missing or incomplete field
+    # substituted with the values found elsewhere (including the swimmer name):
+    #
+    #   [swimmer_name, year_of_birth, gender_code]
+    #
+    def scan_results_or_search_db_for_missing_swimmer_fields(swimmer_name, year_of_birth, gender_code, team_name)
+      # Scan existing swimmers in results searching for missing fields:
+      if year_of_birth.to_i.zero? || gender_code.blank?
+        scanned_year_of_birth, scanned_gender_code = search_result_row_with_swimmer(swimmer_name, team_name)
+        year_of_birth ||= scanned_year_of_birth if scanned_year_of_birth.present?
+        gender_code ||= scanned_gender_code if scanned_gender_code.present?
+      end
+      year_of_birth = adjust_2digit_year(year_of_birth) # (no-op if the year is already 4-digits)
+
+      # Whenever the gender is still unknown, use the DB finders as second-last resort:
+      if gender_code.blank?
+        cmd = GogglesDb::CmdFindDbEntity.call(GogglesDb::Swimmer, complete_name: swimmer_name, year_of_birth:)
+        if cmd.successful?
+          gender_code = cmd.result.male? ? 'M' : 'F'
+          year_of_birth = cmd.result.year_of_birth
+          swimmer_name = cmd.result.complete_name
+        else
+          # As a very last resort, make an educated guess for the gender from the name, using common locale-IT exceptions:
+          gender_code = if swimmer_name.match?(/\w+[nosl\-]\s?maria|andrea?$|one$|gabriele|gioele|luca|\w+[gkcnos]'?$/ui)
+                          'M'
+                        else
+                          'F'
+                        end
+        end
+      end
+
+      [swimmer_name, year_of_birth, gender_code]
+    end
 
     # Converts the indiv. result data structure into an Array of data Hash rows
     # storable into an L2 format Hash, assuming the supplied result_hash is indeed
@@ -428,20 +544,25 @@ module PdfResults
       # }
       fields = result_hash.fetch(:fields, {})
       rank = fields['rank']
+      year_of_birth = fetch_field_with_alt_value(fields, 'year_of_birth')
+      swimmer_name = extract_nested_field_name(result_hash, SWIMMER_FIELD_NAMES)
+      team_name = extract_nested_field_name(result_hash, TEAM_FIELD_NAMES)
       # DSQ label:
       dsq_label = extract_additional_dsq_labels(result_hash) if rank.to_i.zero?
 
+      swimmer_name, year_of_birth, gender_code = scan_results_or_search_db_for_missing_swimmer_fields(swimmer_name, year_of_birth, cat_gender_code, team_name)
+
       {
         'pos' => fields['rank']&.delete(')'),
-        'name' => extract_nested_field_name(result_hash, SWIMMER_FIELD_NAMES),
-        'year' => fetch_field_with_alt_value(fields, 'year_of_birth'),
-        'sex' => cat_gender_code,
+        'name' => swimmer_name,
+        'year' => year_of_birth,
+        'sex' => gender_code,
         # TODO: support this in MacroSolver:
         'badge_num' => fetch_field_with_alt_value(fields, 'badge_num'),
         # Sometimes the 3-char region code may end up formatted in a second result row:
         # (TOS format: uses 2 different field names depending on position so the nil one doesn't overwrite the other)
         'badge_region' => fetch_field_with_alt_value(fields, 'badge_region'),
-        'team' => extract_nested_field_name(result_hash, TEAM_FIELD_NAMES),
+        'team' => team_name,
         'timing' => format_timing_value(fetch_field_with_alt_value(fields, 'timing')),
         'score' => fetch_field_with_alt_value(fields, 'std_score'),
         # Optionals / added recently / To-be-supported by MacroSolver:
@@ -479,18 +600,18 @@ module PdfResults
 
       fields = rel_team_hash.fetch(:fields, {})
       rank = fields['rank']&.delete(')')
+      timing = format_timing_value(fetch_field_with_alt_value(fields, 'timing'))
       # Additional DSQ label ('dsq_label' field inside nested row):
-      dsq_label = extract_additional_dsq_labels(rel_team_hash) if rank.to_i.zero?
+      dsq_label = extract_additional_dsq_labels(rel_team_hash) if rank.to_i.zero? || timing.blank?
 
       row_hash = {
         'relay' => true,
         'pos' => rank,
         'team' => extract_nested_field_name(rel_team_hash, TEAM_FIELD_NAMES),
-        'timing' => format_timing_value(fetch_field_with_alt_value(fields, 'timing')),
+        'timing' => timing,
         'score' => fetch_field_with_alt_value(fields, 'std_score'),
         # Optionals / added recently / To-be-supported by MacroSolver:
         'lane_num' => fields['lane_num'],
-        # 'heat_rank' => fields['heat_rank'], # WIP: missing relay example w/ this
         'nation' => fields['nation'],
         'disqualify_type' => dsq_label # WIP: missing relay example w/ this
       }
@@ -741,9 +862,9 @@ module PdfResults
 
       # use just the field value "as is":
       elsif row_hash[:fields].key?(CAT_FIELD_NAME)
-        row_hash[:fields][CAT_FIELD_NAME].gsub(/Master\s/i, 'M')
-                                         .gsub(/Under\s/i, 'U')
-                                         .gsub(/Amatori\s/i, 'A')
+        row_hash[:fields][CAT_FIELD_NAME].gsub(/Master\s?/i, 'M')
+                                         .gsub(/Under\s?/i, 'U')
+                                         .gsub(/Amatori\s?/i, 'A')
                                          .gsub(/\s/i, '')
       end
     end
@@ -914,20 +1035,21 @@ module PdfResults
     def extract_additional_dsq_labels(result_hash)
       dsq_label = result_hash.fetch(:fields, {})['disqualify_type']
       timing = result_hash.fetch(:fields, {})['timing']
+      # Check for any possible additional (up to 3x rows) DSQ labels added as sibling rows:
+      # add any additional DSQ label value (grep'ed as string keys) when present.
+      additional_hash = result_hash.fetch(:rows, [{}]).find { |h| h[:name] == 'dsq_label' }
+      dsq_label = [dsq_label, additional_hash[:key]].compact.join(': ') if additional_hash&.key?(:key)
+      %w[x2 x3].each do |suffix|
+        additional_hash = result_hash.fetch(:rows, [{}]).find { |h| h[:name] == "dsq_label_#{suffix}" }
+        dsq_label = [dsq_label, additional_hash[:key]].compact.join(' ') if additional_hash&.key?(:key)
+      end
+      # Assume the timing shall store the 'DSQ' label and use that only as last resort for label value:
       dsq_label = timing unless dsq_label.present? || timing.blank? || POSSIBLE_TIMING_REGEXP.match?(timing)
+      # Bail out if no DSQ label was found so far:
       return if dsq_label.blank?
 
       # Make sure the timing field is cleared out when we have a DSQ label:
       result_hash[:fields]['timing'] = nil
-
-      # Check for any possible additional (up to 3x rows) DSQ labels added as sibling rows:
-      # add any additional DSQ label value (grep'ed as string keys) when present.
-      additional_hash = result_hash.fetch(:rows, [{}]).find { |h| h[:name] == 'dsq_label' }
-      dsq_label = "#{dsq_label}: #{additional_hash[:key]}" if additional_hash&.key?(:key)
-      %w[x2 x3].each do |suffix|
-        additional_hash = result_hash.fetch(:rows, [{}]).find { |h| h[:name] == "dsq_label_#{suffix}" }
-        dsq_label = "#{dsq_label} #{additional_hash[:key]}" if additional_hash&.key?(:key)
-      end
       dsq_label
     end
     #-- -----------------------------------------------------------------------
@@ -953,11 +1075,19 @@ module PdfResults
       end
     end
 
-    # Scans the +array_of_sections+ adding +section+ only when missing.
+    # Scans the +array_of_sections+ adding +section+ to this master array only when missing.
+    #
+    # If the section is already found and the source section_hash has already sibling rows,
+    # the 'rows' subarray is merged into the existing event section.
+    #
+    # "Merging" implies scanning each source row, comparing it with any of the existing
+    # destination 'rows' subarray, and copying the source row (from section_hash) into the
+    # destination array (existing section 'rows') only if there are differences between the two.
+    #
     # === Note:
-    # Prevents duplicates in array due to careless usage of '<<'.
-    # Since objects like an Hash are referenced in an array, updating directly the object instance
-    # or a reference to it will make the referenced link inside the array be up to date as well.
+    # 1. Prevents duplicates in array due to careless usage of '<<'.
+    # 2. Since objects like an Hash are referenced in an array, updating directly the object instance
+    #    or a reference to it will make the referenced link inside the array be up to date as well.
     #
     # == Params:
     # - array_of_sections: the Array of event section Hash yield by the conversion loop;
@@ -966,11 +1096,29 @@ module PdfResults
     # - section_hash: an "event section" Hash (it should have at least a 'title', a 'fin_sigla_categoria'
     #   and 'fin_sesso' keys in it).
     #
-    def add_event_section_if_missing(array_of_sections, section_hash)
+    # == Returns:
+    # +nil+ on no-op, the updated array_of_sections otherwise.
+    #
+    def find_or_create_event_section_and_merge(array_of_sections, section_hash)
       return if !array_of_sections.is_a?(Array) || !section_hash.is_a?(Hash) ||
-                find_existing_event_section(array_of_sections, section_hash['title'], section_hash['fin_sigla_categoria'], section_hash['fin_sesso'])
+                !section_hash.key?('title') || !section_hash.key?('fin_sigla_categoria') ||
+                !section_hash.key?('fin_sesso')
 
-      array_of_sections << section_hash
+      # Fetch proper event section with category:
+      event_section = find_existing_event_section(array_of_sections, section_hash['title'], section_hash['fin_sigla_categoria'], section_hash['fin_sesso'])
+
+      # Add/MERGE rows from section_hash when a matching event section is found:
+      if event_section.present? && section_hash['rows'].present?
+        event_section['rows'] ||= []
+        # Scan source 'rows' from section_hash, if any:
+        section_hash['rows'].each do |result_row|
+          # Foreach source row, add it to the existing event section rows only when different or new
+          # (compare all source fields vs dest fields in all rows)
+          event_section['rows'] << result_row if event_section['rows'].none?(result_row)
+        end
+      else
+        array_of_sections << section_hash
+      end
     end
 
     # Sorts each +array_of_sections+ rows array by timing recomputing also the rank value.
@@ -998,7 +1146,7 @@ module PdfResults
         end
         # 2. Recompute ranking:
         event_section.fetch('rows', []).each_with_index do |row_hash, index|
-          row_hash['pos'] = index + 1 # WIP: if row_hash['timing'].present?
+          row_hash['pos'] = row_hash['timing'].present? ? index + 1 : nil
         end
       end
 
@@ -1121,37 +1269,17 @@ module PdfResults
       fld_delta  = nested ? 'swimmer_delta' : "swimmer_delta#{swimmer_idx}"
 
       # Extract field values:
-      output_hash["swimmer#{swimmer_idx}"] = rel_fields_hash[fld_swmmer]&.squeeze(' ')&.tr(',', ' ')
+      team_name = output_hash['team'] # (ASSUMES: already set externally, before this call)
+      swimmer_name  = rel_fields_hash[fld_swmmer]&.squeeze(' ')&.tr(',', ' ')
       year_of_birth = rel_fields_hash[fld_yob].to_i
-      gender_code = rel_fields_hash[fld_gender] # To-be-supported by MacroSolver
-      lap_timing = rel_fields_hash[fld_lap]     # To-be-supported by MacroSolver
-      delta_timing = rel_fields_hash[fld_delta] # To-be-supported by MacroSolver
+      gender_code   = rel_fields_hash[fld_gender] # To-be-supported by MacroSolver
+      lap_timing    = rel_fields_hash[fld_lap]    # To-be-supported by MacroSolver
+      delta_timing  = rel_fields_hash[fld_delta]  # To-be-supported by MacroSolver
 
-      # Scan existing swimmers in results searching for missing fields:
-      if year_of_birth&.zero? || gender_code.blank?
-        scanned_year_of_birth, scanned_gender_code = search_result_row_with_swimmer(output_hash["swimmer#{swimmer_idx}"], output_hash['team'])
-        year_of_birth ||= scanned_year_of_birth if scanned_year_of_birth.present?
-        gender_code ||= scanned_gender_code if scanned_gender_code.present?
-      end
-      year_of_birth = adjust_2digit_year(year_of_birth)
+      swimmer_name, year_of_birth, gender_code = scan_results_or_search_db_for_missing_swimmer_fields(swimmer_name, year_of_birth, gender_code, team_name)
 
-      # Whenever gender is still unknown, use the DB finders as second-last resort:
-      if gender_code.blank?
-        cmd = GogglesDb::CmdFindDbEntity.call(GogglesDb::Swimmer, complete_name: output_hash["swimmer#{swimmer_idx}"], year_of_birth:)
-        if cmd.successful?
-          gender_code = cmd.result.male? ? 'M' : 'F'
-          output_hash["swimmer#{swimmer_idx}"] = cmd.result.complete_name
-        else
-          # As very last resort, make an educated guess for the gender from the name, using common italian exceptions:
-          gender_code = if output_hash["swimmer#{swimmer_idx}"].match?(/\w+[nosl\-]\s?maria|andrea?$|one$|gabriele|gioele|luca|\w+[gkcnos]'?$/ui)
-                          'M'
-                        else
-                          'F'
-                        end
-        end
-      end
-
-      # Finally, assign field values:
+      # Finally, (re-)assign field values:
+      output_hash["swimmer#{swimmer_idx}"] = swimmer_name
       output_hash["#{GENDER_FIELD_NAME}#{swimmer_idx}"] = gender_code
       output_hash["year_of_birth#{swimmer_idx}"] = year_of_birth
       output_hash['overall_age'] += @season.begin_date.year - year_of_birth if year_of_birth.to_i.positive?

@@ -69,10 +69,22 @@
           pop_out: false
         - name: event_type
           format: "^\\s{20,}\\d{3,4}\\s?m\\s+(Stile(?>\\sLibero)?|Dorso|Rana|Delfino|Farfalla|Misti)\\s-\\s"
+          pop_out: false
         - name: cat_title
-          format: "\\s-\\s(Under|Master)\\s(Femmine|Maschi|mist)"
+          format: "\\s-\\s(Under|Master)\\s(?>Femmine|Maschi|mist)"
+          pop_out: false
+        - name: gender_type
+          format: "\\s-\\s(?>Under|Master)\\s(?>(Femmine|Maschi)|mist)"
+          pop_out: false
       - name: event_sep0
         format: "^$"
+
+  - name: event_series
+    parent: event
+    required: false
+    # Don't include this in the keys: (empty keys like empty rows are skipped by default)
+    keys: [skip_me]
+    format: "^\\s{50,}Serie\\s"
 
   # Actual data starts here:
   - name: results
@@ -87,10 +99,10 @@
             format: "^\\s{0,10}(\\d{1,3})\\s{1,10}\\w+"
             pop_out: false
           - name: swimmer_name
-            format: "^\\s{0,10}(?>\\d{1,3})\\s{1,10}(\\D+(['`\\-\\s]\\s?\\D*){1,4})\\s{2,}(?>\\w{3})?\\s{3,}"
+            format: "^\\s{0,10}(?>\\d{1,3})\\s{1,10}(\\D+)\\s{2,}(?>\\w{3})?\\s{3,}"
             pop_out: false
           - name: nation
-            format: "^\\s{0,10}(?>\\d{1,3})\\s{1,10}\\D+(['`\\-\\s]\\s?\\D*){1,4}\\s{2,}(\\w{3})\\s{3,}"
+            format: "^\\s{0,10}(?>\\d{1,3})\\s{1,10}\\D+\\s{2,}(\\w{3})\\s{3,}"
             # Sometimes the 3 letter nation code may be missing:
             required: false
             pop_out: false
@@ -137,11 +149,11 @@
       - name: result_deltas
         fields:
           - name: team_name
-            format: "^\\s{9,15}(.{3,30})\\s{2,}\\d{4}\\s*"
+            format: "^\\s{9,15}(.{3,32})\\s{2,}\\d{4}\\s*"
             token_end: 50
             pop_out: false
           - name: year_of_birth
-            format: "^\\s{9,15}.{3,30}\\s{2,}(\\d{4})\\s*"
+            format: "^\\s{9,15}.{3,32}\\s{2,}(\\d{4})\\s*"
             pop_out: false
 
           - name: delta100
@@ -203,18 +215,18 @@
             format: "^\\s{0,10}(\\d{1,3})\\s{1,10}\\w+"
             pop_out: false
           - name: swimmer_name
-            format: "^\\s{0,10}(?>\\d{1,3})\\s{1,10}(\\D+(['`\\-\\s]\\s?\\D*){1,4})\\s{2,}(?>\\w{3})?\\s{3,}\\d{4}\\s{3,}"
+            format: "^\\s{0,10}(?>\\d{1,3})\\s{1,10}(\\D+)\\s{2,}(?>\\w{3})?\\s{3,}\\d{4}\\s{3,}"
             pop_out: false
           - name: nation
-            format: "^\\s{0,10}(?>\\d{1,3})\\s{1,10}\\D+(['`\\-\\s]\\s?\\D*){1,4}\\s{2,}(\\w{3})\\s{3,}\\d{4}\\s{3,}"
+            format: "^\\s{0,10}(?>\\d{1,3})\\s{1,10}\\D+\\s{2,}(\\w{3})\\s{3,}\\d{4}\\s{3,}"
             # Sometimes the 3 letter nation code may be missing:
             required: false
             pop_out: false
           - name: year_of_birth
-            format: "^\\s{0,10}(?>\\d{1,3})\\s{1,10}(\\D+(['`\\-\\s]\\s?\\D*){1,4})\\s{2,}(?>\\w{3})?\\s{3,}(\\d{4})\\s{3,}"
+            format: "^\\s{0,10}(?>\\d{1,3})\\s{1,10}\\D+\\s{2,}(?>\\w{3})?\\s{3,}(\\d{4})\\s{3,}"
             pop_out: false
           - name: team_name
-            format: "\\s{3,}\\d{4}\\s{3,}(.+)\\s*"
+            format: "\\s{3,}\\d{4}\\s{3,}(.{3,32})(?>\\s{2,}|$)"
             token_start: 34
             pop_out: false
 
@@ -223,6 +235,7 @@
     required: false
     rows:
       - name: dsq_spacer1
+        required: false
         format: "^$"
       - name: dsq_type
         fields:
@@ -230,6 +243,7 @@
             format: "^\\s{15,}(falsa\\spartenz\\w+|arrivo\\sirr\\w*|virata\\s\\w+|nuotata\\sirr\\w+)"
             pop_out: false
       - name: dsq_spacer2
+        required: false
         format: "^$"
 
   - name: publish_time

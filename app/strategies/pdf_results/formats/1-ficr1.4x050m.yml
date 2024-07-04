@@ -191,7 +191,7 @@
       - name: rel_swimmer1
         fields:
           - name: swimmer_name
-            format: "\\s+(\\D+(['`\\-\\.\\s]\\s?\\D+){1,4})\\s+"
+            format: "\\s+(\\D+(?>['`\\-\\.\\s]\\s?\\D+){1,4})\\s+"
             pop_out: false
             token_end: 31
           - name: nation

@@ -135,7 +135,7 @@
         # DSQ don't have rank:
         required: false
       - name: swimmer_name
-        format: "^\\s{5,8}(?>\\d{1,2})?\\s{3,8}(\\D+(['`\\-\\s]\\s?\\D*){1,4})"
+        format: "^\\s{5,8}(?>\\d{1,2})?\\s{3,8}(\\D+)"
         token_end: 48
         pop_out: false
 

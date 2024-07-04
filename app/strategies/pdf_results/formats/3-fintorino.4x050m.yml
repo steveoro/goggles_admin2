@@ -59,8 +59,13 @@
           pop_out: false
         - name: event_type
           format: "^\\s{20,}[468]x\\d{2,3}\\s?m\\s+(Stile(?>\\sLibero)?|Misti)\\s-\\s"
+          pop_out: false
         - name: cat_title
           format: "\\s-\\s((?>Under|Master)\\s(?>Femmine|Maschi|mist))"
+          pop_out: false
+        - name: gender_type
+          format: "\\s-\\s(?>Under|Master)\\s(Femmine|Maschi|mist)"
+          pop_out: false
       - name: event_sep0
         format: "^$"
 
@@ -79,7 +84,7 @@
 
           # In this format, the team name is usually repeated in front of this as a stand-in for the relay name
           - name: team_name
-            format: "\\s+(.{3,40})\\s{5,}"
+            format: "\\s+(.{3,32})\\s{5,}"
             token_start: 55
             token_end: 110
             pop_out: false

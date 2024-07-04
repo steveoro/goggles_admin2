@@ -179,7 +179,7 @@
             format: "\\s?(\\d{1,2}|SQ|RT|NP)\\s+"
             pop_out: false
           - name: swimmer_name
-            format: "\\s+(\\D+(['`\\-\\.\\s]\\s?\\D+){1,4})\\s+\\d?\\s*"
+            format: "\\s+(\\D+(?>['`\\-\\.\\s]\\s?\\D+){1,4})\\s+\\d?\\s*"
             pop_out: false
             token_end: 33
           - name: lane_num
