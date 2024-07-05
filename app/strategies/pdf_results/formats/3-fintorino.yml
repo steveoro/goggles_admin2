@@ -141,7 +141,7 @@
 
   # End-Of-Page, variable span: 5-6-7
   - name: footer
-    parent: event
+    parent: header
     eop: true
     repeat: true
     rows:
@@ -169,7 +169,7 @@
             format: "^(.+),\\s.+$"
             pop_out: false
             # format: "^(.+),\\s(?>\\w{2,}\\s?){1,}"
-          - name: meeting_venue
+          - name: meeting_venue_or_date
             format: "^.+,\\s(.+)$"
             pop_out: false
       - name: footer_page

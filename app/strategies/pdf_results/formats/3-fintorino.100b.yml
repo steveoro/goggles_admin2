@@ -75,9 +75,14 @@
   - name: event_series
     parent: event
     required: false
-    # Don't include this in the keys: (empty keys like empty rows are skipped by default)
-    keys: [skip_me]
-    format: "^\\s{50,}Serie\\s"
+    rows:
+      - name: series_sep0
+        required: false
+        format: "^$"
+      - name: series_num
+        # Don't include this in the keys: (empty keys like empty rows are skipped by default)
+        keys: [skip_me]
+        format: "^\\s{50,}Serie\\s"
 
   # Actual data starts here:
   - name: results
@@ -106,7 +111,7 @@
             required: false
             pop_out: false
           - name: team_name
-            format: "\\s{3,}\\d{4}\\s{2,}\\w{3}?\\s{2,}(.{3,32})(?>\\s{2,}|$)"
+            format: "\\s{3,}\\d{4}\\s{2,}\\w{3}?\\s{2,}(.{3,32})(?>\\s{2,}\\S|$)"
             token_start: 34
             pop_out: false
 
@@ -158,12 +163,18 @@
   - name: publish_time
     parent: event
     required: false
-    row_span: 2
-    format: "^\\s+Pubblicata:"
+    rows:
+      - name: publish_sep0
+        required: false
+        format: "^$"
+      - name: publish_time1
+        # Don't include this in the keys: (empty keys like empty rows are skipped by default)
+        keys: [skip_me]
+        format: "^\\s+Pubblicata:"
 
   # End-Of-Page, variable span: 5-6-7
   - name: footer
-    parent: event
+    parent: header
     eop: true
     repeat: true
     rows:
@@ -191,7 +202,7 @@
             format: "^(.+),\\s.+$"
             pop_out: false
             # format: "^(.+),\\s(?>\\w{2,}\\s?){1,}"
-          - name: meeting_venue
+          - name: meeting_venue_or_date
             format: "^.+,\\s(.+)$"
             pop_out: false
       - name: footer_page

@@ -83,9 +83,14 @@
   - name: event_series
     parent: event
     required: false
-    # Don't include this in the keys: (empty keys like empty rows are skipped by default)
-    keys: [skip_me]
-    format: "^\\s{50,}Serie\\s"
+    rows:
+      - name: series_sep0
+        required: false
+        format: "^$"
+      - name: series_num
+        # Don't include this in the keys: (empty keys like empty rows are skipped by default)
+        keys: [skip_me]
+        format: "^\\s{50,}Serie\\s"
 
   # Actual data starts here:
   - name: results
@@ -237,6 +242,10 @@
             token_start: 34
             pop_out: false
 
+      - name: results_sep
+        required: false
+        format: "^$"
+
   - name: dsq_label
     parent: results_alt
     required: false
@@ -256,20 +265,27 @@
   - name: publish_time
     parent: event
     required: false
-    row_span: 2
-    format: "^\\s+Pubblicata:"
+    rows:
+      - name: publish_sep0
+        required: false
+        format: "^$"
+      - name: publish_time1
+        # Don't include this in the keys: (empty keys like empty rows are skipped by default)
+        keys: [skip_me]
+        format: "^\\s+Pubblicata:"
 
   # End-Of-Page, variable span: 5-6-7
   - name: footer
-    parent: event
+    parent: header
     eop: true
     repeat: true
     rows:
       - name: footer_spacer1
+        required: false
         format: "^$"
       - name: footer_spacer2
+        required: false
         format: "^$"
-
       # 3x optional empty rows (1 may be subst by the last timestamp row below, which is optional too):
       - name: footer_spacer3
         required: false
@@ -289,7 +305,7 @@
             format: "^(.+),\\s.+$"
             pop_out: false
             # format: "^(.+),\\s(?>\\w{2,}\\s?){1,}"
-          - name: meeting_venue
+          - name: meeting_venue_or_date
             format: "^.+,\\s(.+)$"
             pop_out: false
       - name: footer_page

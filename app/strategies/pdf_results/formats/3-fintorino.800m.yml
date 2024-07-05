@@ -230,6 +230,10 @@
             token_start: 34
             pop_out: false
 
+      - name: results_sep
+        required: false
+        format: "^$"
+
   - name: dsq_label
     parent: results_alt
     required: false
@@ -254,7 +258,7 @@
 
   # End-Of-Page, variable span: 5-6-7
   - name: footer
-    parent: event
+    parent: header
     eop: true
     repeat: true
     rows:
@@ -282,7 +286,7 @@
             format: "^(.+),\\s.+$"
             pop_out: false
             # format: "^(.+),\\s(?>\\w{2,}\\s?){1,}"
-          - name: meeting_venue
+          - name: meeting_venue_or_date
             format: "^.+,\\s(.+)$"
             pop_out: false
       - name: footer_page

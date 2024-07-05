@@ -42,7 +42,6 @@
     rows:
       - name: results_hdr1
         format: "^\\s?POS\\s{2,}STAFFETTA\\s{10,}NAZ\\s{5,}SOCIETA'\\s{20,}BATT\\s{2,}CRS\\s+POS\\s{2,}ARRIVO\\s{2,}PUNTI"
-      # Whenever the event is not repeated on page start, at least 2x empty rows take its place:
       - name: results_hdr_sep1
         format: "^$"
 
@@ -150,7 +149,7 @@
 
   # End-Of-Page, variable span: 5-6-7
   - name: footer
-    parent: event
+    parent: header
     eop: true
     repeat: true
     rows:
@@ -178,7 +177,7 @@
             format: "^(.+),\\s.+$"
             pop_out: false
             # format: "^(.+),\\s(?>\\w{2,}\\s?){1,}"
-          - name: meeting_venue
+          - name: meeting_venue_or_date
             format: "^.+,\\s(.+)$"
             pop_out: false
       - name: footer_page

@@ -121,9 +121,14 @@ module PdfResults
       # Check also header/session fields stored (repeatedly) in each event:
       first_event_hash = @data.fetch(:rows, [{}]).find { |row_hash| row_hash[:name] == 'event' }
       first_event_fields = first_event_hash&.fetch(:fields, {})
+      # Try to retrieve some of the header fields also from the footer, if there are any:
+      # (For the following to work, 'footer' must be a child of 'header', not 'event')
+      footer_hash = @data.fetch(:rows, [{}]).find { |row_hash| row_hash[:name] == 'footer' }
+      footer_fields = footer_hash&.fetch(:fields, {})
 
       # Extract meeting session date text from 2 possible places (header or event), then get the single fields:
-      meeting_date_text = fetch_session_date(extract_header_fields) || fetch_session_date(first_event_fields)
+      meeting_date_text = fetch_session_date(extract_header_fields) ||
+                          fetch_session_date(first_event_fields) || fetch_session_date(footer_fields)
       session_day, session_month, session_year = Parser::SessionDate.from_eu_text(meeting_date_text) if meeting_date_text.present?
 
       {
@@ -134,8 +139,8 @@ module PdfResults
         'dateDay1' => session_day,
         'dateMonth1' => session_month,
         'dateYear1' => session_year,
-        'venue1' => '',
-        'address1' => fetch_session_place(extract_header_fields) || fetch_session_place(first_event_fields),
+        'venue1' => footer_fields&.fetch('meeting_venue_or_date', nil),
+        'address1' => fetch_session_place(extract_header_fields) || fetch_session_place(first_event_fields) || fetch_session_place(footer_fields),
         'poolLength' => fetch_pool_type(extract_header_fields).last || fetch_pool_type(first_event_fields).last
       }
     end
@@ -550,6 +555,9 @@ module PdfResults
       # DSQ label:
       dsq_label = extract_additional_dsq_labels(result_hash) if rank.to_i.zero?
 
+      # Don't even consider 'X' as a possible default gender, since we're dealing with swimmers
+      # and not with categories of events:
+      cat_gender_code = nil unless cat_gender_code.upcase == 'F' || cat_gender_code.upcase == 'M'
       swimmer_name, year_of_birth, gender_code = scan_results_or_search_db_for_missing_swimmer_fields(swimmer_name, year_of_birth, cat_gender_code, team_name)
 
       {
@@ -744,7 +752,7 @@ module PdfResults
     # == Returns:
     # The value found or +nil+ when none.
     def fetch_session_date(field_hash)
-      field_hash&.fetch('meeting_date', nil)
+      field_hash&.fetch('meeting_date', nil) || field_hash&.fetch('meeting_venue_or_date', nil)
     end
 
     # Gets the Meeting session place, if available. Returns nil when not found.
@@ -1219,8 +1227,14 @@ module PdfResults
     #
     def search_result_row_with_swimmer(swimmer_name, team_name)
       @data.fetch(:rows, [{}]).each do |event_hash|
+        # Ignore other unsupported contexts at this depth level:
+        next unless event_hash[:name] == 'event'
+
         # Set current searched gender from event when found
         _title, _length, _type, curr_gender_from_event = fetch_event_title(event_hash)
+        # Don't even consider 'X' as a gender, since we're dealing with swimmers & not categories of events:
+        curr_gender_from_event = nil unless curr_gender_from_event.upcase == 'F' || curr_gender_from_event.upcase == 'M'
+
         event_hash.fetch(:rows, [{}]).each do |category_hash|
           # Set current searched gender from category when found
           curr_gender = fetch_category_gender(category_hash) || curr_gender_from_event

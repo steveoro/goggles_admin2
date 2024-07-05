@@ -1,0 +1,148 @@
+#
+# = Layout format definition for PdfResults::FormatParser
+#
+# "CONI / FIN Gest. Manif. Master" - probably an older output version of the predecessor of "dbmeeting"
+# Usually no lap timings, with world + italian records reported before each category start.
+#
+# Example: Puglia Regional Masters' Meetings
+#
+6-gestman:
+  - name: header
+    # Repeat (at_fixed_row, each page)
+    at_fixed_row: 0
+    # Each context that isn't repeated at least once *on each page* with this format should be set as optional:
+    required: false
+    repeat: false
+    row_span: 8
+    rows:
+      - name: hdr_org
+        fields:
+          - name: org_team_name
+            required: false
+            format: "^CONI\\s{20,}(.{10,})\\s{20,}FIN$"
+
+      - fields:
+        - name: edition
+          required: false
+          format: "^\\s{20,}(\\d{1,2}|[IVXLCM]+\\s)?[°^]?\\s*.+$"
+          pop_out: false
+        - name: meeting_name
+          format: "^\\s{20,}(?>\\d{1,2}|[IVXLCM]+\\s)?[°^]?\\s*(.+)$"
+          pop_out: false
+
+      - name: hdr_place_date
+        fields:
+          - name: meeting_date
+            # Support for 1 weekday name in date description:
+            # - Ex.1: "GIOVEDI' 25 APRILE 2019"
+            # - Ex.2: "25 E 26 MAGGIO 2019"
+            # - Ex.3: "4/11 Aprile 2019"
+            format: "^(?>Supermasters)?\\s{20,}(?>(?>lun(?>ed)?|mar(?>ted)?|merc(?>oled)?|gio(?>ved)?|ven(?>erd)?|sab(?>ato)?|dom(?>enica)?)[ìi']{0,2})?\\s?(\\d{1,2}(>?\\s?[e&,\\/]\\s?\\d{1,2})?(?>[-\\/]\\d{2}[-\\/]\\d{2,4}|\\s\\w{3,}\\s\\d{2,4}))"
+          - name: pool_type
+            token_start: 90
+            format: "\\s{10,}Vasca\\s?:\\s?(\\d{2})"
+
+      # 3 empty rows before event start:
+      - name: hdr_sep0
+        format: "^$"
+      - name: hdr_sep1
+        format: "^$"
+      - name: hdr_sep2
+        format: "^$"
+
+  - name: event
+    repeat: true
+    parent: header
+    rows:
+      - name: event_detail
+        fields:
+          - name: event_length
+            format: "^\\s{5,10}(?>Gara\\s\\d{1,2})?\\s{20,}(\\d{2,4})\\s(?>STILE(?>\\slibero)?|dorso|rana|farfalla|misti)"
+            pop_out: false
+          - name: event_type
+            format: "^\\s{5,10}(?>Gara\\s\\d{1,2})?\\s{20,}\\d{2,4}\\s(STILE(?>\\slibero)?|dorso|rana|farfalla|misti)"
+            pop_out: false
+      - name: event_chrono_type
+        format: "^\\s{40,}Cronometraggio\\s(\\w+)$"
+
+  - name: category
+    repeat: true
+    parent: event
+    rows:
+      - fields:
+        - name: cat_title
+          format: "^\\s{40,}((?>Master|Under)\\s\\d{2,3})\\s(?>Maschi|Femmine)$"
+          pop_out: false
+        - name: gender_type
+          format: "^\\s{40,}(?>Master|Under)\\s\\d{2,3}\\s(Maschi|Femmine)$"
+          pop_out: false
+
+      - fields:
+        - name: world_record
+          format: "^\\s{5,}Primato\\smondiale\\s?:\\s(\\d{1,2}[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s"
+          required: false
+          pop_out: false
+        - name: base_time
+          format: "\\s{2,}Tempo\\sBase\\s?:\\s(\\d{1,2}[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})$"
+          required: false
+          pop_out: false
+
+      - fields:
+        - name: ita_record
+          format: "^\\s{5,}Primato\\sitaliano\\s?:\\s(\\d{1,2}[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s"
+          required: false
+          pop_out: false
+
+      - name: cat_sep1
+        format: "^$"
+
+  # Actual data starts here:
+  - name: results
+    # Pages with relay results usually won't have individual results in it, so to pass any page check this context must be optional:
+    required: false
+    repeat: true
+    parent: category
+    rows:
+      # "results" row-0:
+      - fields:
+        ################################################################## WIP
+        # SEE: 222/tr.estivo puglia || 182/striano
+        - name: rank
+          format: "^(\\d{1,2}|nc|fg)\\s{2,8}\\d{5,9}\\s{1,4}"
+          pop_out: false
+          # DSQ don't have rank:
+          required: false
+
+        - name: swimmer_name
+          format: "^(?>\\d{1,2}|nc|fg)\\s{2,8}\\d{5,9}\\s{1,4}((?>\\s?\\S{1,}){1,})\\s{1,}\\d{4}\\s"
+          pop_out: false
+
+        - name: year_of_birth
+          format: "^(?>\\d{1,2}|nc|fg)\\s{2,8}\\d{5,9}\\s{1,4}(?>\\s?\\S{1,}){1,}\\s{1,}(\\d{4})\\s"
+          pop_out: false
+
+        - name: team_name
+          format: "\\s{1,}\\d{4}\\s((?>\\s?\\S{1,}){1,})(?>\\s{1,}\\d{2}[':\\.]|\\s{1,}Squalificat|\\s{1,}Arrivo)"
+          pop_out: false
+
+        - name: timing
+          format: "\\s{1,}\\d{4}\\s.+\\s{1,}(\\d{2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+(?>\\(?\\d{3,4},\\d{2}\\)?)?\\s{1,}\\w{3,}$"
+          pop_out: false
+          # DSQ don't have timings:
+          required: false
+        - name: std_score
+          format: "\\s{2,}\\d{2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+\\(?(\\d{3,4},\\d{2})\\)?\\s{1,}"
+          pop_out: false
+          # U25/A20/DSQ do not score:
+          required: false
+        - name: disqualify_type
+          format: "\\s*(Arrivo\\sirr.+|Squal.+|Nuotata.+|Falsa.+)$"
+          pop_out: false
+          required: false
+
+  # Sibling "results" row #1: (optional)
+  - name: dsq_label
+    parent: results
+    required: false
+    # Return the dsq_label as a string key (not as a field):
+    format: "^\\s{80,}(.*)(?<!\\s\\s\\w{3})$"
