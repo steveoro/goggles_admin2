@@ -1195,11 +1195,8 @@ module PdfResults
     # - misc "TOS" formats (<MM.SS.HN>, <MM SS HN>, <SS,HN>)
     # - misc "EMI" formats (<MM:SS:HN>, <MM:SS.HN>)
     def format_timing_value(timing_string)
-      # Assume first occurrence will be the minutes separator, the second will be the seconds' (from the hundredths)
-      timing_string&.sub('.', '\'')&.sub('.', '"')
-                   &.sub(' ', '\'')&.sub(' ', '"')
-                   &.sub(':', '\'')&.sub(':', '"')
-                   &.sub(',', '"')
+      timing_string&.gsub(/^(\d{1,2})\D/, '\1\'')
+                   &.gsub(/\D(\d{2})$/, '"\1')
     end
 
     # Adjusts any 2-digit year to the proper century using current Meeting's Season year.
