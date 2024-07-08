@@ -326,7 +326,7 @@ module PdfResults
             section['fin_sesso'] = curr_cat_gender = result_row['sex']
 
             # Force category code post-computation only if not properly set:
-            unless curr_cat_code.match?(/\d{2,3}/i)
+            if curr_cat_code.blank? || !curr_cat_code.to_s.match?(/\d{2,3}/i)
               year_of_birth = result_row['year'].to_i
               section['fin_sigla_categoria'] = curr_cat_code = post_compute_ind_category_code(year_of_birth)
               # With category being manually computed, we need to recompute the rankings too:
@@ -1170,6 +1170,11 @@ module PdfResults
 
       age = @season.begin_date.year - year_of_birth
       curr_cat_code, _cat = @categories_cache.find { |_c, cat| !cat.relay? && (cat.age_begin..cat.age_end).cover?(age) && !cat.undivided? }
+      # DEBUG ----------------------------------------------------------------
+      # THIS MAY HAPPEN only when the categories lack a certain age range:
+      binding.pry if curr_cat_code.blank?
+      # FIX: need to add the missing category *before* the parsing, using a migration on the DB & Main projects
+      # ----------------------------------------------------------------------
       curr_cat_code
     end
 
@@ -1182,6 +1187,8 @@ module PdfResults
       return section unless overall_age.positive? && section.is_a?(Hash)
 
       curr_cat_code, _cat = @categories_cache.find { |_c, cat| cat.relay? && (cat.age_begin..cat.age_end).cover?(overall_age) && !cat.undivided? }
+      curr_cat_code = '80-99' if curr_cat_code.blank? && (80..99).cover?(overall_age) # U25 (2020+, out of race)
+      curr_cat_code = '60-79' if curr_cat_code.blank? && (60..79).cover?(overall_age) # U20 (2023+, out of race)
       section['fin_sigla_categoria'] = curr_cat_code if curr_cat_code.present?
       # Add category code to event title so that MacroSolver can deal with it automatically:
       section['title'] = "#{section['title']} - #{curr_cat_code}"

@@ -302,7 +302,7 @@ module Import
 
         _event_type, category_type = Parser::EventType.from_l2_result(sect['title'], @season)
         # For parsed PDFs, the category code may be already set in section and the above may be nil:
-        category_type = detect_category_from_code(sect['fin_sigla_categoria']) if sect['fin_sigla_categoria'].present? && category_type.nil?
+        category_type = detect_ind_category_from_code(sect['fin_sigla_categoria']) if sect['fin_sigla_categoria'].present? && category_type.nil?
 
         # NOTE: category_type can still be nil at this point for some formats (relays, usually)
         # If this happens:
@@ -329,10 +329,11 @@ module Import
               year_of_birth = row["year_of_birth#{idx}"]
               # ('sex' currently MISSING from row data, can be extracted from event section or category section)
               # gender_type_code = options[:row]['sex']
-              gender_type_code = sect['fin_sesso'] if /[mf]/i.match?(sect['fin_sesso'].to_s)
+              gender_type_code = /[mf]/i.match?(sect['fin_sesso'].to_s) ? sect['fin_sesso'] : row["gender_type#{idx}"]
               next unless swimmer_name.present? && year_of_birth.present?
 
               swimmer_key, swimmer = map_and_return_swimmer(swimmer_name:, year_of_birth:, gender_type_code:, team_name:)
+              category_type = post_compute_ind_category_code(year_of_birth) if category_type.blank?
               if category_type
                 badge = map_and_return_badge(swimmer:, swimmer_key:, team:, team_key: team_name,
                                              team_affiliation:, category_type:)
@@ -421,7 +422,7 @@ module Import
         # (Example section 'title': "50 Stile Libero - M25")
         event_type, category_type = Parser::EventType.from_l2_result(sect['title'], @season)
         # For parsed PDFs, the category code may be already set in section and the above may be nil:
-        category_type = detect_category_from_code(sect['fin_sigla_categoria']) if sect['fin_sigla_categoria'].present? && category_type.nil?
+        category_type = detect_ind_category_from_code(sect['fin_sigla_categoria']) if sect['fin_sigla_categoria'].present? && category_type.nil?
 
         # Store current category type in case the next one is not defined due to a DSQ ranking:
         curr_category_type = category_type if category_type.is_a?(GogglesDb::CategoryType)
@@ -2167,7 +2168,6 @@ module Import
       binding.pry if team.nil? || team_affiliation.nil?
       # DEBUG: ******************************************************************
 
-      lap_timing = Timing.new # (lap number zero)
       gender_ids = []
       (1..MAX_SWIMMERS_X_RELAY).each do |idx|
         swimmer_name = options[:row]["swimmer#{idx}"]
@@ -2240,11 +2240,34 @@ module Import
     # Converts "generic" text categories "Axx" to "Mxx" or "Uxx", depending on what's
     # defined inside the current season. Uses the @categories_cache.
     # "category_label" should have the format "[AMU]dd".
+    #
+    # Uses the internal @categories_cache.
     # Returns a corresponding CategoryType instance when found or nil otherwise.
-    def detect_category_from_code(category_label)
+    #
+    # == NOTE:
+    # *DOESN'T WORK FOR RELAYS*
+    #
+    def detect_ind_category_from_code(category_label)
       lowest_cat = @categories_cache.key?('U20') ? 'U20' : 'U25'
       cat_code = category_label.gsub(/a/i, 'M')
       @categories_cache.key?(cat_code) ? @categories_cache[cat_code] : @categories_cache[lowest_cat]
+    end
+
+    # Detects the possible valid individual result category code given the year_of_birth of the swimmer.
+    # Returns the string category code ("M<nn>") or +nil+ when not found.
+    #
+    # == Params:
+    # - year_of_birth: year_of_birth of the swimmer as integer
+    #
+    # == NOTE:
+    # Same implementation as L2Converter's helper but returns the actual CategoryType instead of just the code.
+    #
+    def post_compute_ind_category_code(year_of_birth)
+      return unless year_of_birth.positive?
+
+      age = @season.begin_date.year - year_of_birth
+      _curr_cat_code, category_type = @categories_cache.find { |_c, cat| !cat.relay? && (cat.age_begin..cat.age_end).cover?(age) && !cat.undivided? }
+      category_type
     end
   end
   # rubocop:enable Metrics/AbcSize, Metrics/PerceivedComplexity, Metrics/MethodLength, Metrics/CyclomaticComplexity

@@ -60,16 +60,16 @@ module Parser
         mixed_gender = (stroke_type =~ /(stile(\slibero)?(\smaster)?\smisti^)|((\smaster)?\smisti$)/iu).present?
 
         stroke_type_id = case stroke_type
-                         when /stile/ui
+                         when /stile|sl/ui
                            GogglesDb::StrokeType::FREESTYLE_ID
-                         when /dorso/ui
+                         when /do/ui
                            GogglesDb::StrokeType::BACKSTROKE_ID
-                         when /rana/ui
+                         when /ra/ui
                            GogglesDb::StrokeType::BREASTSTROKE_ID
-                         when /farfalla|delfino/ui
+                         when /fa|de|df|dl/ui
                            GogglesDb::StrokeType::BUTTERFLY_ID
                          # Discriminate between relays & individual results:
-                         when /misti/ui
+                         when /mi|mx/ui
                            relay ? GogglesDb::StrokeType::REL_INTERMIXED_ID : GogglesDb::StrokeType::INTERMIXED_ID
                          end
       end
