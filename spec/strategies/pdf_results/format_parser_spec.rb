@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe PdfResults::FormatDef, type: :strategy do
+RSpec.describe PdfResults::FormatParser, type: :strategy do
   describe 'a new instance,' do
     context 'when given a valid ContextDef (with valid? true & called),' do
       subject(:new_instance) { described_class.new(fixture_ctx) }

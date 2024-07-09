@@ -102,7 +102,7 @@ RSpec.describe PdfResults::ContextDAO, type: :strategy do
       it 'collects all fields from the source context into fields_hash' do
         expect(new_instance.fields_hash).to be_present
         expect(new_instance.fields_hash.keys)
-          .to match_array(fixture_fields.map { |fld| fld.name })
+          .to match_array(fixture_fields.map(&:name))
         expect(new_instance.fields_hash.values)
           .to contain_exactly(fixture_rank, fixture_name, fixture_year)
       end

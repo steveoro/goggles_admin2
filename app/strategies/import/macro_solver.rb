@@ -290,11 +290,11 @@ module Import
       @data['swimmer'] = {}
       @data['badge'] = {}
       total = @data['sections'].count
-      idx = 0
+      section_idx = 0
 
       @data['sections'].each do |sect|
-        idx += 1
-        ActionCable.server.broadcast('ImportStatusChannel', { msg: 'map_teams_and_swimmers', progress: idx, total: })
+        section_idx += 1
+        ActionCable.server.broadcast('ImportStatusChannel', { msg: 'map_teams_and_swimmers', progress: section_idx, total: })
         # If the section contains a 'retry' subsection it means the crawler received some error response during
         # the data crawl and the result file is missing the whole result subsection.
         # (ALSO: not mapping team names from the ranking by choice)
@@ -310,7 +310,7 @@ module Import
         # - avoid mapping badges together with swimmer (here) as badge requires a category
         # - when it's not a relay, usually the format is mis-interpreted or needs debugging
 
-        sect['rows']&.each_with_index do |row, idx|
+        sect['rows']&.each_with_index do |row, row_idx|
           team_name = row['team']
           # DEBUG: ******************************************************************
           binding.pry if team_name.blank? # => check rows!
@@ -324,12 +324,12 @@ module Import
           # DEBUG: ******************************************************************
 
           if row['relay'].present?
-            (1..MAX_SWIMMERS_X_RELAY).each do |idx|
-              swimmer_name = row["swimmer#{idx}"]
-              year_of_birth = row["year_of_birth#{idx}"]
+            (1..MAX_SWIMMERS_X_RELAY).each do |swimmer_idx|
+              swimmer_name = row["swimmer#{swimmer_idx}"]
+              year_of_birth = row["year_of_birth#{swimmer_idx}"]
               # ('sex' currently MISSING from row data, can be extracted from event section or category section)
               # gender_type_code = options[:row]['sex']
-              gender_type_code = /[mf]/i.match?(sect['fin_sesso'].to_s) ? sect['fin_sesso'] : row["gender_type#{idx}"]
+              gender_type_code = /[mf]/i.match?(sect['fin_sesso'].to_s) ? sect['fin_sesso'] : row["gender_type#{swimmer_idx}"]
               next unless swimmer_name.present? && year_of_birth.present?
 
               swimmer_key, swimmer = map_and_return_swimmer(swimmer_name:, year_of_birth:, gender_type_code:, team_name:)
@@ -395,7 +395,7 @@ module Import
       @data['meeting_relay_swimmer'] = {}
       @data['meeting_team_score'] = {}
       total = @data['sections'].count
-      idx = 0
+      section_idx = 0
 
       meeting = cached_instance_of('meeting', nil)
       msession_idx = 0 # TODO: find a way to change session number (only in manifest?)
@@ -405,16 +405,16 @@ module Import
       meeting_session = cached_instance_of('meeting_session', msession_idx)
 
       # Map programs & events:
-      @data['sections'].each_with_index do |sect, _sect_idx|
-        idx += 1
+      @data['sections'].each do |sect|
+        section_idx += 1
         # --- MeetingTeamScore --- find/create unless key is present (stores just the first unique key found):
         if sect['ranking'].present?
-          ActionCable.server.broadcast('ImportStatusChannel', { msg: 'map_rankings', progress: idx, total: })
+          ActionCable.server.broadcast('ImportStatusChannel', { msg: 'map_rankings', progress: section_idx, total: })
           process_team_score(rows: sect['rows'], meeting:)
           next
         end
 
-        ActionCable.server.broadcast('ImportStatusChannel', { msg: 'map_events_and_results', progress: idx, total: })
+        ActionCable.server.broadcast('ImportStatusChannel', { msg: 'map_events_and_results', progress: section_idx, total: })
         # If the section contains a 'retry' subsection it means the crawler received some error response during
         # the data crawl and the result file is missing the whole result subsection.
         next if sect['retry'].present?
@@ -488,7 +488,7 @@ module Import
         end
 
         # Build up the list of results:
-        sect['rows']&.each_with_index do |row, _row_idx|
+        sect['rows']&.each do |row|
           meeting_program = cached_instance_of('meeting_program', program_key)
 
           if event_type.relay?
@@ -1994,13 +1994,13 @@ module Import
       # EXCLUDING LAST LAP (since we already use MIR's final timing as last lap result
       # and last delta timing is computed by Main's Lap table view component):
       lap_timing = Timing.new # (lap number zero)
-      (1..((options[:event_type].length_in_meters.to_i / 50) - 1)).each do |idx|
+      (1..((options[:event_type].length_in_meters.to_i / 50) - 1)).each do |lap_idx|
         lap_timing = extract_lap_timing_for(
           meeting_program: options[:mprg], mprogram_key: options[:mprg_key],
           event_type: options[:event_type],
           swimmer:, swimmer_key:, badge:, team:, team_key: team_name,
-          mr_model:, mr_key: mir_key, order: idx,
-          length_in_meters: idx * 50, row: options[:row],
+          mr_model:, mr_key: mir_key, order: lap_idx,
+          length_in_meters: lap_idx * 50, row: options[:row],
           prev_lap_timing: lap_timing
         )
       end
@@ -2169,9 +2169,9 @@ module Import
       # DEBUG: ******************************************************************
 
       gender_ids = []
-      (1..MAX_SWIMMERS_X_RELAY).each do |idx|
-        swimmer_name = options[:row]["swimmer#{idx}"]
-        year_of_birth = options[:row]["year_of_birth#{idx}"]
+      (1..MAX_SWIMMERS_X_RELAY).each do |swimmer_idx|
+        swimmer_name = options[:row]["swimmer#{swimmer_idx}"]
+        year_of_birth = options[:row]["year_of_birth#{swimmer_idx}"]
         # gender_type_code = options[:row]['sex'] # ('sex' currently MISSING from data)
         next unless swimmer_name.present? && year_of_birth.present?
 

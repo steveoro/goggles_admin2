@@ -38,6 +38,12 @@ Layout/LineLength:
   Max: 165
   Exclude:
     - 'bin/bundle'
+    - 'app/strategies/merge/swimmer_checker.rb'
+    - 'app/strategies/pdf_results/context_def.rb'
+    - 'app/strategies/pdf_results/format_parser.rb'
+    - 'spec/strategies/pdf_results/context_def_spec.rb'
+    - 'spec/strategies/pdf_results/field_def_spec.rb'
+    - 'spec/strategies/pdf_results/integration/context_def_spec.rb'
 
 Metrics/AbcSize:
   Max: 26
@@ -50,6 +56,8 @@ Metrics/AbcSize:
     - 'app/controllers/pull_controller.rb'
     - 'app/controllers/api_users_controller.rb'
     - 'app/controllers/api_issues_controller.rb'
+    - 'app/strategies/pdf_results/context_def.rb'
+    - 'app/strategies/merge/swimmer.rb'
 
 Metrics/BlockLength:
   Max: 40
@@ -59,6 +67,7 @@ Metrics/BlockLength:
     - 'config/routes.rb'
     - 'db/schema.rb'
     - 'lib/tasks/fixtures_from_results.rake'
+    - 'lib/tasks/pdfs_from_results.rake'
     - 'spec/**/*'
 
 Metrics/ClassLength:
@@ -76,6 +85,10 @@ Metrics/CyclomaticComplexity:
     - 'bin/bundle'
     - 'app/components/issue/status_buttons_component.rb'
     - 'app/controllers/api_issues_controller.rb'
+    - 'app/strategies/pdf_results/field_def.rb'
+    - 'app/strategies/merge/swimmer_checker.rb'
+    - 'app/strategies/pdf_results/context_def.rb'
+    - 'app/strategies/merge/swimmer.rb'
 
 Metrics/MethodLength:
   Max: 35
@@ -88,6 +101,10 @@ Metrics/PerceivedComplexity:
     - 'bin/bundle'
     - 'app/components/issue/status_buttons_component.rb'
     - 'app/controllers/api_issues_controller.rb'
+    - 'app/strategies/pdf_results/field_def.rb'
+    - 'app/strategies/merge/swimmer_checker.rb'
+    - 'app/strategies/pdf_results/context_def.rb'
+    - 'app/strategies/merge/swimmer.rb'
 
 
 Rails/Output:
@@ -121,9 +138,14 @@ RSpec/IndexedLet:
 RSpec/ExpectInHook:
   Enabled: false
 
-RSpec/MultipleMemoizedHelpers:
-  Max: 10
+RSpec/MultipleExpectations:
+  Max: 8
 
+RSpec/MultipleMemoizedHelpers:
+  Max: 20
+
+RSpec/NestedGroups:
+  Max: 5
 
 Style/ClassAndModuleChildren:
   Exclude:
@@ -143,3 +165,5 @@ Style/Documentation:
 Style/FormatStringToken:
   Exclude:
     - 'app/strategies/pdf_results/context_dao.rb'
+    - 'app/strategies/pdf_results/context_def.rb'
+    - 'app/strategies/pdf_results/format_parser.rb'

@@ -121,7 +121,9 @@ module Merge
       # This is always relevant even if the returned MIRS are not involved in the merge:
       @warnings << "#{all_mirs_with_nil_badge.count} (possibly unrelated) MIRs with nil badge_id" if all_mirs_with_nil_badge.present?
 
-      @warnings << "#{all_irs_with_conflicting_data.count} (possibly unrelated) IRs with *CONFLICTING* swimmer_id or team_id" if all_irs_with_conflicting_data.present?
+      if all_irs_with_conflicting_data.present?
+        @warnings << "#{all_irs_with_conflicting_data.count} (possibly unrelated) IRs with *CONFLICTING* swimmer_id or team_id"
+      end
 
       @errors << 'Identical source and destination!' if @source.id == @dest.id
       @errors << 'Conflicting categories: different CategoryTypes in same Season' unless category_compatible?
@@ -162,11 +164,11 @@ module Merge
     # Creates a detailed report of the entities involved in merging the source into the destination as
     # an ASCII table for quick reference.
     def display_report
-      puts @log.join("\r\n")
-      puts "\r\n\r\n*** WARNINGS: ***\r\n#{@warnings.join("\r\n")}" if @warnings.present?
-      puts "\r\n\r\n*** ERRORS: ***\r\n#{@errors.join("\r\n")}" if @errors.present?
-      puts("\r\n")
-      puts(@errors.blank? ? 'RESULT: ✅' : 'RESULT: ❌')
+      Rails.logger.debug @log.join("\r\n")
+      Rails.logger.debug { "\r\n\r\n*** WARNINGS: ***\r\n#{@warnings.join("\r\n")}" } if @warnings.present?
+      Rails.logger.debug { "\r\n\r\n*** ERRORS: ***\r\n#{@errors.join("\r\n")}" } if @errors.present?
+      Rails.logger.debug("\r\n")
+      Rails.logger.debug(@errors.blank? ? 'RESULT: ✅' : 'RESULT: ❌')
       nil
     end
     #-- ------------------------------------------------------------------------
@@ -238,7 +240,7 @@ module Merge
     # Analizes source and destination badges for conflicting *teams* (source and destination teams in same Season),
     # returning an array of printable lines as an ASCII table for quick reference.
     # Table width: 156 character columns (tested with some edge-case swimmers).
-    def badge_analysis # rubocop:disable Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
+    def badge_analysis # rubocop:disable Metrics/AbcSize
       return @badge_analysis if @badge_analysis.present?
 
       @badge_analysis = [
@@ -508,7 +510,7 @@ module Merge
     end
 
     # Assumes +ir+ is a valid IndividualRecord instance.
-    def decorate_ir(ir) # rubocop:disable Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity,Metrics/AbcSize
+    def decorate_ir(ir) # rubocop:disable Metrics/AbcSize
       "[IR  #{ir.id.to_s.rjust(7)}] Swimmer ID #{ir.swimmer_id.to_s.rjust(7)}) #{ir&.swimmer&.complete_name} #{ir&.swimmer&.year_of_birth}, Team ID #{ir.team_id}) #{ir&.team&.name}\r\n  " \
         "[MIR #{ir.meeting_individual_result_id.to_s.rjust(7)}] Swimmer ID #{ir&.meeting_individual_result&.swimmer_id.to_s.rjust(7)}) " \
         "#{ir&.meeting_individual_result&.swimmer&.complete_name} #{ir&.meeting_individual_result&.swimmer&.year_of_birth}, " \
@@ -1266,7 +1268,7 @@ module Merge
     # - <tt>:subj_tuple_title</tt>: descriptive label for the tuple stored in the domains,
     #   usually describing the format (<parent row_id>, <sibling/target count>).
     #
-    def report_fill_for(opts = {}) # rubocop:disable Metrics/AbcSize,Metrics/PerceivedComplexity
+    def report_fill_for(opts = {}) # rubocop:disable Metrics/AbcSize
       return opts[:result_array] if opts[:result_array].present?
 
       opts[:result_array] = [prepare_section_title(opts[:result_title])]

@@ -9,7 +9,7 @@ RSpec.describe PdfResults::L2Converter, type: :strategy do
 
   # (We'll deal with just the required fields & keys for the conversion)
   let(:result_rows) do
-    fixture_rows_count.times.map do |idx|
+    Array.new(fixture_rows_count) do |idx|
       {
         name: 'results',
         fields: {
@@ -145,12 +145,12 @@ RSpec.describe PdfResults::L2Converter, type: :strategy do
 
         it 'includes the category code' do
           expect(subject.event_sections.first['fin_sigla_categoria'])
-            .to eq(event_hash[:rows].first[:key].split(' ').first)
+            .to eq(event_hash[:rows].first[:key].split.first)
         end
 
         it 'includes the category gender' do
           expect(subject.event_sections.first['fin_sesso'])
-            .to eq(event_hash[:rows].first[:key].split(' ').third[0])
+            .to eq(event_hash[:rows].first[:key].split.third[0])
         end
 
         it 'includes as many result rows as the fixture data' do

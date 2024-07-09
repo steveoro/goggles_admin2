@@ -82,7 +82,7 @@ class PdfController < ApplicationController
       redirect_to(root_path) && return
     end
 
-    @log_contents = Terminal.render(File.read(@log_pathname)).html_safe
+    @log_contents = Terminal.render(File.read(@log_pathname)).html_safe # rubocop:disable Rails/OutputSafety
   end
   #-- -------------------------------------------------------------------------
   #++

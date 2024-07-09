@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 # rubocop:disable Layout/HeredocIndentation, Layout/IndentationWidth, RSpec/SpecFilePathFormat
-RSpec.describe PdfResults::ContextDef, type: :integration do # rubocop:disable RSpec/FilePath
+RSpec.describe PdfResults::ContextDef, type: :integration do
   describe "when parsing a [1-ficr1.100m] 'results' valid section buffer," do
     let(:format_filepath) { 'app/strategies/pdf_results/formats/1-ficr1.100m.yml' }
     let(:layout_def) { YAML.load_file(format_filepath) }

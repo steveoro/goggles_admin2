@@ -265,9 +265,9 @@ module PdfResults
 
       # Whole document scanned ok?
       if @page_index >= @pages.count && @result_format_type.present?
-        puts "\r\n--> \033[1;33;32mWHOLE document parsed! ✔\033[0m"
+        Rails.logger.debug "\r\n--> \033[1;33;32mWHOLE document parsed! ✔\033[0m"
       else
-        puts "\r\n--> \033[1;33;31mParsing STOPPED at page idx #{@page_index + 1}/#{@pages.count}\033[0m"
+        Rails.logger.debug { "\r\n--> \033[1;33;31mParsing STOPPED at page idx #{@page_index + 1}/#{@pages.count}\033[0m" }
       end
 
       @logger.close
@@ -398,9 +398,9 @@ module PdfResults
         # => back/recurse to parent:
         # NOTE: the parent context may be set up with just its name if it hasn't been encountered yet, so we
         # make sure we're passing the actual parent name:
-        parent_name = context_def.parent.respond_to?('name') ? context_def.parent.name : context_def.parent
+        parent_name = context_def.parent.respond_to?(:name) ? context_def.parent.name : context_def.parent
         # Assume the parent was optional if it wasn't properly setup:
-        parent_required = context_def.parent.respond_to?('required?') ? context_def.parent.required? : false
+        parent_required = context_def.parent.respond_to?(:required?) ? context_def.parent.required? : false
         if !valid && context_def.parent.present? && parent_required &&
            !check_already_made?(parent_name, row_index)
           # Set pointers for next iteration:
@@ -465,7 +465,7 @@ module PdfResults
         #  ctx could be repeatable in check until the actual end of rows and a required and repeatable ctx
         #  could be found later on.)
         if valid && all_required_contexts_valid?(@format_name) && (row_index >= @rows.count || context_def.eop?)
-          $stdout.write("\033[1;33;32m.\033[0m") # "Valid" progress signal (once per page)
+          Rails.logger.debug("\033[1;33;32m.\033[0m") # "Valid" progress signal (once per page)
           log_message(
             Kernel.format("\r\nFORMAT '\033[1;93;40;3m%s\033[0m' VALID! ✅ @ page %d/%d",
                           @format_name, @page_index + 1, @pages&.count.to_i)
@@ -526,9 +526,9 @@ module PdfResults
       end
 
       unless valid
-        $stdout.write("\033[1;33;31m✖\033[0m") # "INVALID format" progress signal (EOP reached, or not, w/o some of the constraints satisfied)
+        Rails.logger.debug("\033[1;33;31m✖\033[0m") # "INVALID format" progress signal (EOP reached, or not, w/o some of the constraints satisfied)
         # Output where last format stopped being valid:
-        puts("'#{@format_name}' [#{ctx_name}] => stops @ page idx #{@page_index}") if @rows.present?
+        Rails.logger.debug { "'#{@format_name}' [#{ctx_name}] => stops @ page idx #{@page_index}" } if @rows.present?
       end
 
       log_message("\r\nLast check for repeatable defs (w/ stopping index):")
@@ -550,7 +550,7 @@ module PdfResults
     def prepare_logger(filename)
       basename = File.basename(filename).split('.').first
       dirname = File.dirname(filename)
-      @logfile = File.open(File.join(dirname, basename + '.log'), 'w+')
+      @logfile = File.open(File.join(dirname, "#{basename}.log"), 'w+')
       @logger = Logger.new(@logfile,
                            datetime_format: '%Y%m%d %H:%M:%S',
                            formatter: proc { |_severity, _datetime, _progname, msg| "#{msg}\r\n" })

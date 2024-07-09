@@ -94,7 +94,7 @@ RSpec.describe PdfResults::ContextDef, type: :integration do
       describe '#valid?' do
         it 'is true when the scan is aligned at the proper starting index' do
           # DEBUG
-          puts '=> ' + obj_instance.name
+          puts "=> #{obj_instance.name}"
           expect(def_hash[:src_buffer]).to be_an(Array)
           expect(def_hash[:src_buffer].count).to eq(6)
           expect(obj_instance.valid?(def_hash[:src_buffer], 0)).to be true

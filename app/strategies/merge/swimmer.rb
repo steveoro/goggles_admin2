@@ -43,7 +43,7 @@ module Merge
     #++
 
     # Prepares the merge script inside a single transaction.
-    def prepare # rubocop:disable Metrics/AbcSize
+    def prepare
       result_ok = @checker.run
       @checker.display_report && return unless result_ok
 

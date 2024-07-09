@@ -44,7 +44,7 @@ module Parser
 
       event_title, category_code = section_title.split(/\W+[-;]\W+/iu)
       # DEBUG
-      puts "event_title: '#{event_title}', category_code: '#{category_code}'"
+      Rails.logger.debug { "event_title: '#{event_title}', category_code: '#{category_code}'" }
 
       stroke_type_id = nil
       relay = false
@@ -74,10 +74,9 @@ module Parser
                          end
       end
       # DEBUG ----------------------------------------------------------------
-      binding.pry unless GogglesDb::EventType.joins(:stroke_type).includes(:stroke_type)
-                                             .find_by(phases:, length_in_meters:, phase_length_in_meters:,
-                                                      stroke_type_id:, mixed_gender:)
-                                             .present?
+      binding.pry if GogglesDb::EventType.joins(:stroke_type).includes(:stroke_type)
+                                         .find_by(phases:, length_in_meters:, phase_length_in_meters:,
+                                                  stroke_type_id:, mixed_gender:).blank?
       # ----------------------------------------------------------------------
       [
         GogglesDb::EventType.joins(:stroke_type).includes(:stroke_type)

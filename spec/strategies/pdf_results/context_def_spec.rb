@@ -131,15 +131,15 @@ RSpec.describe PdfResults::ContextDef, type: :strategy do
   end
   let(:optional_rows) do
     [
-      PdfResults::ContextDef.new(name: FFaker::Lorem.unique.word, required: false),
-      PdfResults::ContextDef.new(name: FFaker::Lorem.unique.word, required: false)
+      described_class.new(name: FFaker::Lorem.unique.word, required: false),
+      described_class.new(name: FFaker::Lorem.unique.word, required: false)
     ]
   end
   let(:required_rows) do
     [
-      PdfResults::ContextDef.new(name: FFaker::Lorem.unique.word),
-      PdfResults::ContextDef.new(name: FFaker::Lorem.unique.word),
-      PdfResults::ContextDef.new(name: FFaker::Lorem.unique.word)
+      described_class.new(name: FFaker::Lorem.unique.word),
+      described_class.new(name: FFaker::Lorem.unique.word),
+      described_class.new(name: FFaker::Lorem.unique.word)
     ]
   end
   let(:optional_fields) do
@@ -300,7 +300,7 @@ RSpec.describe PdfResults::ContextDef, type: :strategy do
       subj_row = described_class.new(name: FFaker::Lorem.unique.word, fields: required_fields + optional_fields)
       expected_hash = {}
       required_fields.each do |fld|
-        expected_hash.merge!({ fld.name => fld.value }) if subj_row.keys.blank? || subj_row.keys&.include?(fld.name)
+        expected_hash.merge!({ fld.name => fld.value }) if subj_row.keys.blank? || subj_row.key?(fld.name)
       end
 
       expect(subj_row.key_attributes_from_fields).to eq(expected_hash)
@@ -316,7 +316,7 @@ RSpec.describe PdfResults::ContextDef, type: :strategy do
       subj_row = described_class.new(name: FFaker::Lorem.unique.word, rows: required_rows + optional_rows)
       expected_hash = {}
       required_rows.each do |ctx|
-        expected_hash.merge!({ ctx.name => ctx.key }) if subj_row.keys.blank? || subj_row.keys&.include?(ctx.name)
+        expected_hash.merge!({ ctx.name => ctx.key }) if subj_row.keys.blank? || subj_row.key?(ctx.name)
       end
 
       expect(subj_row.key_attributes_from_rows).to eq(expected_hash)
@@ -549,7 +549,7 @@ RSpec.describe PdfResults::ContextDef, type: :strategy do
       describe '#valid?' do
         it 'is true when the scan is aligned at the proper starting index' do
           # DEBUG
-          puts '=> ' + obj_instance.name
+          puts "=> #{obj_instance.name}"
           expect(obj_instance.valid?(def_hash[:src_buffer], 0)).to be true
         end
 

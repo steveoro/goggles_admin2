@@ -485,7 +485,7 @@ module PdfResults
     # 7. Rows scan: all required sub-contexts must be valid
     #
     # @see also: #extract
-    def valid?(row_buffer, scan_index, extract: true) # rubocop:disable Metrics/MethodLength,Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
+    def valid?(row_buffer, scan_index, extract: true) # rubocop:disable Metrics/MethodLength
       @last_validation_result = false
       @curr_index = 0 # Local scan index, relative to the resulting row_buffer, after resizing & limiting
       clear_data
@@ -780,15 +780,15 @@ module PdfResults
     # (From 'format_parser.format_defs.values' after a single #parse() call, which fills the #format_defs)
     #
     # Returns a printable ASCII (string) tree of the context hierarchy.
-    def hierarchy_to_s(list:, ctx: self, output: '', depth: 0) # rubocop:disable Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
+    def hierarchy_to_s(list:, ctx: self, output: '', depth: 0)
       output = if output.blank? && depth.zero?
                  "\r\n(#{ctx.parent.present? ? ctx.parent.name : '---'})\r\n"
                else
                  ('  ' * depth) << output
                end
       output << ('  ' * (depth + 1)) <<
-        "+-- #{ctx.name}#{ctx.has_key_values? ? '🔑' : ''}" <<
-        "#{ctx.required? ? '🔒' : ''}" <<
+        "+-- #{ctx.name}#{ctx.has_key_values? ? '🔑' : ''}" \
+        "#{ctx.required? ? '🔒' : ''}" \
         "#{ctx.repeat? ? '🌀' : ''}\r\n"
 
       if ctx.rows.present?
@@ -829,9 +829,9 @@ module PdfResults
                      "#{raw_val}\r\n"
                    # Map any other list into a collated string:
                    elsif raw_val.is_a?(Array) && raw_val.present?
-                     raw_val.map { |i| i.to_s }.join
+                     raw_val.map(&:to_s).join
                    # Default output (raw value with carriage return):
-                   else
+                   else # rubocop:disable Lint/DuplicateBranch
                      "#{raw_val}\r\n"
                    end
         output << "#{offset}- #{prop_key.ljust(13, '.')}: #{prop_val}" if prop_val.present?
@@ -885,7 +885,7 @@ module PdfResults
 
     # Returns a string representation of the type of result stored by the specified
     # FieldDef or a ContextDef. Usable for logging.
-    def result_icon_for(obj) # rubocop:disable Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
+    def result_icon_for(obj)
       return "\033[1;33;31m⚠\033[0m" unless obj.is_a?(FieldDef) || obj.is_a?(ContextDef)
       return "\033[1;33;33m~\033[0m" if !obj.required? && !((obj.is_a?(ContextDef) && obj.last_validation_result) || obj.key.present?)
       return "\033[1;33;32m✔\033[0m" if obj.key.present? || (obj.is_a?(ContextDef) && obj.last_validation_result)

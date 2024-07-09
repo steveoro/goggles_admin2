@@ -1148,9 +1148,9 @@ module PdfResults
 
         # 1. Sort event rows by timing
         event_section.fetch('rows', []).sort! do |row_a, row_b|
-          val_1 = Parser::Timing.from_l2_result(row_a['timing']) || Parser::Timing.from_l2_result("99'99\"00")
-          val_2 = Parser::Timing.from_l2_result(row_b['timing']) || Parser::Timing.from_l2_result("99'99\"00")
-          val_1 <=> val_2
+          val1 = Parser::Timing.from_l2_result(row_a['timing']) || Parser::Timing.from_l2_result("99'99\"00")
+          val2 = Parser::Timing.from_l2_result(row_b['timing']) || Parser::Timing.from_l2_result("99'99\"00")
+          val1 <=> val2
         end
         # 2. Recompute ranking:
         event_section.fetch('rows', []).each_with_index do |row_hash, index|

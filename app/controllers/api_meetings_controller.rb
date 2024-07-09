@@ -108,7 +108,7 @@ class APIMeetingsController < ApplicationController
   # GET /api_meetings/no_mirs
   # Export all Meetings on localhost that have a zero MIR count as a CSV file.
   #
-  def no_mirs # rubocop:disable Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
+  def no_mirs # rubocop:disable Metrics/AbcSize
     # Compose filtered domain for localhost:
     domain = GogglesDb::Meeting
     domain = domain.where('meetings.description LIKE ?', "%#{pass_through_params[:name]}%") if pass_through_params[:name].present?

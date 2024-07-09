@@ -241,7 +241,7 @@ module PdfResults
       elsif lambda.is_a?(String)
         source_row = apply_lambda(lambda, source_row)
       end
-      return unless source_row.present? # Bail out if there's nothing to extract
+      return if source_row.blank? # Bail out if there's nothing to extract
 
       # Index properties require a plain source string (if split):
       source_row = source_row.join("\r\n") if source_row.respond_to?(:join) &&

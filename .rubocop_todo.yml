@@ -12,6 +12,49 @@ Metrics/AbcSize:
   Max: 39
   Exclude:
 
+# Offense count: 1
+# Cop supports --auto-correct.
+# Configuration parameters: NilOrEmpty, NotPresent, UnlessPresent.
+Rails/Blank:
+  Exclude:
+    - 'app/controllers/users/sessions_controller.rb'
+
+# Offense count: 5
+# Cop supports --auto-correct.
+Rails/ContentTag:
+  Exclude:
+    - 'app/components/combo_box/db_swimmer_component.rb'
+    - 'app/components/combo_box/db_swimming_pool_component.rb'
+    - 'app/components/icon/check_mark_component.rb'
+    - 'app/components/ranking_pos_component.rb'
+    - 'app/grids/base_grid.rb'
+
+# Offense count: 6
+# Configuration parameters: EnforcedStyle.
+# SupportedStyles: slashes, arguments
+Rails/FilePath:
+  Exclude:
+    - 'config/application.rb'
+    - 'config/environments/development.rb'
+    - 'features/support/autocreate_artifacts.rb'
+    - 'features/support/download_helpers.rb'
+    - 'spec/rails_helper.rb'
+    - 'spec/requests/application_request_spec.rb'
+
+# Offense count: 1
+# Cop supports --auto-correct.
+# Configuration parameters: NotNilAndNotEmpty, NotBlank, UnlessBlank.
+Rails/Present:
+  Exclude:
+    - 'bin/bundle'
+
+# Offense count: 2
+# Configuration parameters: ForbiddenMethods, AllowedMethods.
+# ForbiddenMethods: decrement!, decrement_counter, increment!, increment_counter, insert, insert!, insert_all, insert_all!, toggle!, touch, touch_all, update_all, update_attribute, update_column, update_columns, update_counters, upsert, upsert_all
+Rails/SkipsModelValidations:
+  Exclude:
+    - 'app/controllers/users/sessions_controller.rb'
+
 # Offense count: 28
 # Configuration parameters: Prefixes.
 # Prefixes: when, with, without
@@ -19,6 +62,11 @@ RSpec/ContextWording:
   Exclude:
     - 'spec/requests/application_request_spec.rb'
     - 'spec/requests/badges_spec.rb'
+    - 'spec/strategies/pdf_results/context_dao_spec.rb'
+    - 'spec/strategies/pdf_results/context_def_spec.rb'
+    - 'spec/strategies/pdf_results/field_def_spec.rb'
+    - 'spec/strategies/pdf_results/integration/context_def_spec.rb'
+    - 'spec/strategies/pdf_results/integration/field_def_spec.rb'
     - 'spec/requests/home_request_spec.rb'
     - 'spec/requests/import_queues_spec.rb'
     - 'spec/requests/meeting_reservations_spec.rb'
@@ -98,13 +146,6 @@ RSpec/ExpectInHook:
     - 'spec/requests/application_request_spec.rb'
     - 'spec/requests/import_queues_spec.rb'
 
-# Offense count: 1
-# Configuration parameters: Include, CustomTransform, IgnoreMethods, SpecSuffixOnly.
-# Include: **/*_spec*rb*, **/spec/**/*
-RSpec/FilePath:
-  Exclude:
-    - 'spec/requests/application_request_spec.rb'
-
 # Offense count: 17
 # Cop supports --auto-correct.
 # Configuration parameters: .
@@ -132,29 +173,10 @@ RSpec/LetBeforeExamples:
     - 'spec/components/grid/row_toolbar_component_spec.rb'
     - 'spec/components/grid/toolbar_component_spec.rb'
 
-# Offense count: 36
-RSpec/MultipleExpectations:
-  Max: 6
-
-# Offense count: 79
+# Offense count: too many
 # Configuration parameters: IgnoreSharedExamples.
 RSpec/NamedSubject:
-  Exclude:
-    - 'spec/components/grid/create_new_button_component_spec.rb'
-    - 'spec/components/grid/csv_export_button_component_spec.rb'
-    - 'spec/components/grid/delete_selection_button_component_spec.rb'
-    - 'spec/components/grid/edit_modal_component_spec.rb'
-    - 'spec/components/grid/filter_show_button_component_spec.rb'
-    - 'spec/components/grid/row_delete_button_component_spec.rb'
-    - 'spec/components/grid/row_edit_button_component_spec.rb'
-    - 'spec/components/grid/row_toolbar_component_spec.rb'
-    - 'spec/components/grid/selection_toggle_button_component_spec.rb'
-    - 'spec/components/grid/toolbar_component_spec.rb'
-    - 'spec/strategies/api_proxy_spec.rb'
-
-# Offense count: 6
-RSpec/NestedGroups:
-  Max: 4
+  Enabled: false
 
 # Offense count: 3
 # Cop supports --auto-correct.
@@ -163,47 +185,6 @@ RSpec/ScatteredLet:
     - 'spec/components/grid/row_toolbar_component_spec.rb'
     - 'spec/components/grid/toolbar_component_spec.rb'
 
-# Offense count: 1
-# Cop supports --auto-correct.
-# Configuration parameters: NilOrEmpty, NotPresent, UnlessPresent.
-Rails/Blank:
-  Exclude:
-    - 'app/controllers/users/sessions_controller.rb'
-
-# Offense count: 5
-# Cop supports --auto-correct.
-Rails/ContentTag:
-  Exclude:
-    - 'app/components/combo_box/db_swimmer_component.rb'
-    - 'app/components/combo_box/db_swimming_pool_component.rb'
-    - 'app/components/icon/check_mark_component.rb'
-    - 'app/components/ranking_pos_component.rb'
-    - 'app/grids/base_grid.rb'
-
-# Offense count: 5
-# Configuration parameters: EnforcedStyle.
-# SupportedStyles: slashes, arguments
-Rails/FilePath:
-  Exclude:
-    - 'config/application.rb'
-    - 'config/environments/development.rb'
-    - 'features/support/autocreate_artifacts.rb'
-    - 'features/support/download_helpers.rb'
-    - 'spec/rails_helper.rb'
-
-# Offense count: 1
-# Cop supports --auto-correct.
-# Configuration parameters: NotNilAndNotEmpty, NotBlank, UnlessBlank.
-Rails/Present:
-  Exclude:
-    - 'bin/bundle'
-
-# Offense count: 2
-# Configuration parameters: ForbiddenMethods, AllowedMethods.
-# ForbiddenMethods: decrement!, decrement_counter, increment!, increment_counter, insert, insert!, insert_all, insert_all!, toggle!, touch, touch_all, update_all, update_attribute, update_column, update_columns, update_counters, upsert, upsert_all
-Rails/SkipsModelValidations:
-  Exclude:
-    - 'app/controllers/users/sessions_controller.rb'
 
 # Offense count: 1
 # Cop supports --auto-correct.

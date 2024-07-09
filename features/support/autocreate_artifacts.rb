@@ -42,9 +42,9 @@ module AutocreateArtifacts
     log("\r\nSaving artifacts...")
     begin
       log("\r\nScreenshot:  #{screenshot_pathname}")
-      save_screenshot(screenshot_pathname)
+      save_screenshot(screenshot_pathname) # rubocop:disable Lint/Debugger
       log("\r\nPage source: #{page_pathname}")
-      save_page(page_pathname)
+      save_page(page_pathname) # rubocop:disable Lint/Debugger
     rescue StandardError
       log("\r\nError: unable to store artifacts!")
     end
