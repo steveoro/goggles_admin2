@@ -265,9 +265,9 @@ module PdfResults
 
       # Whole document scanned ok?
       if @page_index >= @pages.count && @result_format_type.present?
-        Rails.logger.debug "\r\n--> \033[1;33;32mWHOLE document parsed! ✔\033[0m"
+        puts "\r\n--> \033[1;33;32mWHOLE document parsed! ✔\033[0m" # rubocop:disable Rails/Output
       else
-        Rails.logger.debug { "\r\n--> \033[1;33;31mParsing STOPPED at page idx #{@page_index + 1}/#{@pages.count}\033[0m" }
+        puts "\r\n--> \033[1;33;31mParsing STOPPED at page idx #{@page_index + 1}/#{@pages.count}\033[0m" # rubocop:disable Rails/Output
       end
 
       @logger.close
@@ -465,7 +465,7 @@ module PdfResults
         #  ctx could be repeatable in check until the actual end of rows and a required and repeatable ctx
         #  could be found later on.)
         if valid && all_required_contexts_valid?(@format_name) && (row_index >= @rows.count || context_def.eop?)
-          Rails.logger.debug("\033[1;33;32m.\033[0m") # "Valid" progress signal (once per page)
+          $stdout.write("\033[1;33;32m.\033[0m") # "Valid" progress signal (once per page) # rubocop:disable Rails/Output
           log_message(
             Kernel.format("\r\nFORMAT '\033[1;93;40;3m%s\033[0m' VALID! ✅ @ page %d/%d",
                           @format_name, @page_index + 1, @pages&.count.to_i)
@@ -526,9 +526,9 @@ module PdfResults
       end
 
       unless valid
-        Rails.logger.debug("\033[1;33;31m✖\033[0m") # "INVALID format" progress signal (EOP reached, or not, w/o some of the constraints satisfied)
+        $stdout.write("\033[1;33;31m✖\033[0m") # "INVALID format" progress signal (EOP reached, or not, w/o some of the constraints satisfied) # rubocop:disable Rails/Output
         # Output where last format stopped being valid:
-        Rails.logger.debug { "'#{@format_name}' [#{ctx_name}] => stops @ page idx #{@page_index}" } if @rows.present?
+        puts("'#{@format_name}' [#{ctx_name}] => stops @ page idx #{@page_index}") if @rows.present? # rubocop:disable Rails/Output
       end
 
       log_message("\r\nLast check for repeatable defs (w/ stopping index):")

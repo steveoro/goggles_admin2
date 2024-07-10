@@ -44,12 +44,12 @@ module Parser
 
       event_title, category_code = section_title.split(/\W+[-;]\W+/iu)
       # DEBUG
-      Rails.logger.debug { "event_title: '#{event_title}', category_code: '#{category_code}'" }
+      # puts "event_title: '#{event_title}', category_code: '#{category_code}'"
 
       stroke_type_id = nil
       relay = false
 
-      reg = /((?<phases>\d)x)?(?<lap_len>\d{2,4})m?\W+(?<style>(\w+\s*)+)/iu
+      reg = /((?<phases>\d)x)?(?<lap_len>\d{2,4})m?\W+(?<style>(\w+\s*)+)/iu # rubocop:disable Lint/MixedRegexpCaptureTypes
       match = reg.match(event_title)
       if match
         phases = (match[:phases] || 1).to_i

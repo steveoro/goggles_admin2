@@ -6,9 +6,9 @@ module Parser
   #
   # = Score
   #
-  #   - version:  7-0.6.20
+  #   - version:  7-0.7.12
   #   - author:   Steve A.
-  #   - build:    20240110
+  #   - build:    20240709
   #
   # Wrapper for parsing helper methods regarding result scores.
   #
@@ -16,7 +16,7 @@ module Parser
     include Singleton
 
     # Parses and extracts the score points taken from a "layout type 2" result file.
-    # (Examples: "792,89", "1.044,06" or "1'044,06")
+    # (Examples: "792.89", "792,89", "1.044,06", "1'044.06" or "1'044,06")
     #
     # == Params
     # - <tt>text</tt> => the text that includes the score
@@ -32,8 +32,7 @@ module Parser
 
       # This will also correctly handle also any possible 'DSQ' or 'DNF' score codes as 0.0
       score_text.to_s
-                .gsub(/[.']/ui, '')
-                .gsub(/,(\d{1,3})$/ui, '.\1')
+                .gsub(/^(\d{1,2})['_.,]?(\d{1,3})[.,](\d{2})/, '\1\2.\3')
                 .to_f
     end
   end

@@ -214,7 +214,7 @@ module Import
     def map_sessions
       meeting = cached_instance_of('meeting', nil)
       # Prioritize existing sessions over the one from the parsed data:
-      if meeting && meeting.id.present? && meeting.meeting_sessions.count.positive?
+      if meeting && meeting.id.present? && meeting.meeting_sessions.present?
         @data['meeting_session'] = meeting.meeting_sessions.map do |meeting_session|
           session = find_or_prepare_session(
             meeting:,
@@ -301,6 +301,7 @@ module Import
         next if sect['retry'].present? || sect['ranking'].present?
 
         _event_type, category_type = Parser::EventType.from_l2_result(sect['title'], @season)
+
         # For parsed PDFs, the category code may be already set in section and the above may be nil:
         category_type = detect_ind_category_from_code(sect['fin_sigla_categoria']) if sect['fin_sigla_categoria'].present? && category_type.nil?
 
@@ -327,14 +328,15 @@ module Import
             (1..MAX_SWIMMERS_X_RELAY).each do |swimmer_idx|
               swimmer_name = row["swimmer#{swimmer_idx}"]
               year_of_birth = row["year_of_birth#{swimmer_idx}"]
-              # ('sex' currently MISSING from row data, can be extracted from event section or category section)
-              # gender_type_code = options[:row]['sex']
+              # ('sex' can be extracted from event section or category section when missing)
               gender_type_code = /[mf]/i.match?(sect['fin_sesso'].to_s) ? sect['fin_sesso'] : row["gender_type#{swimmer_idx}"]
               next unless swimmer_name.present? && year_of_birth.present?
 
               swimmer_key, swimmer = map_and_return_swimmer(swimmer_name:, year_of_birth:, gender_type_code:, team_name:)
               category_type = post_compute_ind_category_code(year_of_birth) if category_type.blank?
               if category_type
+                # NOTE: usually badge numbers won't be added to relay swimmers due to limited space,
+                # so we revert to the default value (nil => '?')
                 badge = map_and_return_badge(swimmer:, swimmer_key:, team:, team_key: team_name,
                                              team_affiliation:, category_type:)
               end
@@ -348,11 +350,12 @@ module Import
             swimmer_name = row['name']
             year_of_birth = row['year']
             gender_type_code = row['sex']
+            badge_code = "#{row['badge_region']}-#{row['badge_num']}" if row['badge_region'].present? && row['badge_num'].present?
             next unless swimmer_name.present? && year_of_birth.present?
 
             swimmer_key, swimmer = map_and_return_swimmer(swimmer_name:, year_of_birth:, gender_type_code:, team_name:)
             badge = map_and_return_badge(swimmer:, swimmer_key:, team:, team_key: team_name,
-                                         team_affiliation:, category_type:)
+                                         team_affiliation:, category_type:, badge_code:)
             # DEBUG: ******************************************************************
             # SHOULD NEVER HAPPEN at this point:
             binding.pry unless badge.present? && swimmer.present? && swimmer_key.present?
@@ -421,6 +424,7 @@ module Import
 
         # (Example section 'title': "50 Stile Libero - M25")
         event_type, category_type = Parser::EventType.from_l2_result(sect['title'], @season)
+
         # For parsed PDFs, the category code may be already set in section and the above may be nil:
         category_type = detect_ind_category_from_code(sect['fin_sigla_categoria']) if sect['fin_sigla_categoria'].present? && category_type.nil?
 
@@ -639,8 +643,8 @@ module Import
       # 2. Smart search:
       pool_type = GogglesDb::PoolType.mt_25 # Default type
       pool_type = GogglesDb::PoolType.mt_50 if /50/i.match?(pool_length)
-      cmd = GogglesDb::CmdFindDbEntity.call(GogglesDb::SwimmingPool, { name: pool_name, pool_type_id: pool_type.id })
-      if cmd.successful?
+      cmd = GogglesDb::CmdFindDbEntity.call(GogglesDb::SwimmingPool, { name: pool_name, pool_type_id: pool_type.id }) if pool_name.present?
+      if cmd&.successful?
         # Force-set the pool city_id to the one on the City entity found (only if the city row has indeed an ID and that's still
         # unset on the pool just found:
         cmd.result.city_id = city_entity.row&.id if cmd.result.city_id.to_i.zero? && city_entity.row&.id.to_i.positive?
@@ -955,7 +959,12 @@ module Import
       # Swimmer & TA can be new, so we add them to the bindings Hash here:
       bindings = { 'swimmer' => swimmer_key, 'team_affiliation' => team_key, 'team' => team_key }
       domain = GogglesDb::Badge.where(swimmer_id: swimmer&.id, team_affiliation_id: team_affiliation&.id)
-      return Import::Entity.new(row: domain.first, matches: domain.to_a, bindings:) if domain.present?
+      if domain.present?
+        badge_row = domain.first
+        # Overwrite badge number only when previously unknown:
+        badge_row.number = badge_code if badge_row.number == '?' && badge_code != '?' && badge_code.present?
+        return Import::Entity.new(row: badge_row, matches: domain.to_a, bindings:)
+      end
 
       # ID can be nil for new rows, so we set the association using the new model directly where needed:
       new_row = GogglesDb::Badge.new(
@@ -1904,6 +1913,7 @@ module Import
     #
     # - <tt>:team_affiliation</tt> => a valid or new GogglesDb::TeamAffiliation instance
     # - <tt>:category_type</tt> => a valid GogglesDb::CategoryType instance
+    # - <tt>:badge_code</tt> => a 40-char string representing the badge number or code
     #
     # == Returns:
     # The mapped badge model row.
@@ -1915,7 +1925,8 @@ module Import
         swimmer: options[:swimmer], swimmer_key: options[:swimmer_key],
         team: options[:team], team_key: options[:team_key],
         team_affiliation: options[:team_affiliation],
-        category_type: options[:category_type]
+        category_type: options[:category_type],
+        badge_code: options[:badge_code]
       )
       add_entity_with_key('badge', options[:swimmer_key], badge_entity)
       badge_entity.add_bindings!('swimmer' => options[:swimmer_key])
@@ -1954,10 +1965,12 @@ module Import
     def process_mir_and_laps(options = {})
       return unless options[:row].is_a?(Hash) && options[:row]['relay'].blank?
 
-      team_name = options[:row]['team']
-      swimmer_name = options[:row]['name']
-      year_of_birth = options[:row]['year']
-      gender_type_code = options[:row]['sex']
+      row = options[:row]
+      team_name = row['team']
+      swimmer_name = row['name']
+      year_of_birth = row['year']
+      gender_type_code = row['sex']
+      badge_code = "#{row['badge_region']}-#{row['badge_num']}" if row['badge_region'].present? && row['badge_num'].present?
       # (Gender code can also be retrieved by search, if missing)
       return unless team_name.present? && swimmer_name.present? && year_of_birth.present?
 
@@ -1966,16 +1979,17 @@ module Import
       swimmer_key, swimmer = map_and_return_swimmer(swimmer_name:, year_of_birth:, gender_type_code:,
                                                     team_name:)
       badge = map_and_return_badge(swimmer:, swimmer_key:, team:, team_key: team_name,
-                                   team_affiliation:, category_type: options[:category_type])
+                                   team_affiliation:, category_type: options[:category_type],
+                                   badge_code:)
       # DEBUG: ******************************************************************
       # SHOULD NEVER HAPPEN at this point:
       binding.pry unless team.present? && team_affiliation.present? && badge.present? && swimmer.present? && swimmer_key.present?
       # DEBUG: ******************************************************************
       return unless options[:mprg].present? && options[:mprg_key].present? && options[:event_type].present?
 
-      rank = options[:row]['pos'].to_i
-      score = Parser::Score.from_l2_result(options[:row]['score'])
-      timing = Parser::Timing.from_l2_result(options[:row]['timing'])
+      rank = row['pos'].to_i
+      score = Parser::Score.from_l2_result(row['score'])
+      timing = Parser::Timing.from_l2_result(row['timing'])
       mir_key = mir_key_for(options[:mprg_key], swimmer_key)
       # NOTE: MIR already mapped => laps won't be processed
       return if entity_present?('meeting_individual_result', mir_key)
@@ -2000,7 +2014,7 @@ module Import
           event_type: options[:event_type],
           swimmer:, swimmer_key:, badge:, team:, team_key: team_name,
           mr_model:, mr_key: mir_key, order: lap_idx,
-          length_in_meters: lap_idx * 50, row: options[:row],
+          length_in_meters: lap_idx * 50, row:,
           prev_lap_timing: lap_timing
         )
       end
@@ -2034,11 +2048,12 @@ module Import
     def process_mrr_and_mrs(options = {})
       return unless options[:row].is_a?(Hash) && options[:row]['relay'].present?
 
-      team_name = options[:row]['team']
-      rank = options[:row]['pos'].to_i
+      row = options[:row]
+      team_name = row['team']
+      rank = row['pos'].to_i
       event_type = options[:event_type]
-      score = Parser::Score.from_l2_result(options[:row]['score'])
-      timing = Parser::Timing.from_l2_result(options[:row]['timing'])
+      score = Parser::Score.from_l2_result(row['score'])
+      timing = Parser::Timing.from_l2_result(row['timing'])
       mrr_key = mrr_key_for(options[:mprg_key], team_name)
       # NOTE: MRR already mapped => MRswimmers won't be processed
       return if entity_present?('meeting_relay_result', mrr_key)
@@ -2054,15 +2069,15 @@ module Import
       mrr_entity = find_or_prepare_mrr(
         meeting_program: options[:mprg], mprogram_key: options[:mprg_key],
         team:, team_key: team_name, team_affiliation:, rank:,
-        timing:, score:, disqualify_type: options[:row]['disqualify_type']
+        timing:, score:, disqualify_type: row['disqualify_type']
       )
       add_entity_with_key('meeting_relay_result', mrr_key, mrr_entity)
       mr_model = mrr_entity.row
 
       (1..event_type.phases).each do |phase_idx|
-        swimmer_name = options[:row]["swimmer#{phase_idx}"]
-        year_of_birth = options[:row]["year_of_birth#{phase_idx}"]
-        # gender_type_code = options[:row]['sex'] # ('sex' currently MISSING from data)
+        swimmer_name = row["swimmer#{phase_idx}"]
+        year_of_birth = row["year_of_birth#{phase_idx}"]
+        # gender_type_code = row['sex'] # ('sex' currently MISSING from data)
 
         # Move to the next lap group if the relay swimmer is missing (DSQ relays)
         # NOTE: this will loose all data regarding laps for DSQ relays but, currently,
@@ -2070,6 +2085,8 @@ module Import
         next unless swimmer_name.present? && year_of_birth.present?
 
         swimmer_key, swimmer = map_and_return_swimmer(swimmer_name:, year_of_birth:, team_name:)
+        # NOTE: usually badge numbers won't be added to relay swimmers due to limited space,
+        # so we revert to the default value (nil => '?')
         badge = map_and_return_badge(swimmer:, swimmer_key:, team:, team_key: team_name,
                                      team_affiliation:, category_type: options[:category_type])
 
@@ -2080,7 +2097,7 @@ module Import
           mr_model:, mr_key: mrr_key,
           order: phase_idx, # Actual relay phase
           length_in_meters: phase_idx * event_type.phase_length_in_meters.to_i,
-          row: options[:row],
+          row:,
           prev_lap_timing: nil # (we'll rely on captured data for this)
         )
         mrs_key = "mrs#{phase_idx}-#{mrr_key}"
@@ -2120,7 +2137,7 @@ module Import
             mr_model: mrs_row, mr_key: mrs_key,
             order: phase_idx, # Actual relay phase
             length_in_meters: sub_order * 50, # (ASSUME sub-laps will never diverge from 50mt)
-            row: options[:row],
+            row:,
             prev_lap_timing: nil, # (we'll rely on captured data for this)
             sublap_index:, sub_phases:
           )
@@ -2176,6 +2193,8 @@ module Import
         next unless swimmer_name.present? && year_of_birth.present?
 
         swimmer_key, swimmer = map_and_return_swimmer(swimmer_name:, year_of_birth:, team_name:)
+        # NOTE: usually badge numbers won't be added to relay swimmers due to limited space,
+        # so we revert to the default value (nil => '?')
         map_and_return_badge(swimmer:, swimmer_key:, team:, team_key: team_name,
                              team_affiliation:, category_type: options[:category_type])
         # DEBUG: ******************************************************************

@@ -323,15 +323,12 @@ module PdfResults
             result_row = ind_result_section(row_hash, curr_cat_gender)
             # Update gender from result row (should change with current row in individ. results
             # to reflect proper category/gender):
-            section['fin_sesso'] = curr_cat_gender = result_row['sex']
+            curr_cat_gender = result_row['sex']
 
-            # Force category code post-computation only if not properly set:
-            if curr_cat_code.blank? || !curr_cat_code.to_s.match?(/\d{2,3}/i)
-              year_of_birth = result_row['year'].to_i
-              section['fin_sigla_categoria'] = curr_cat_code = post_compute_ind_category_code(year_of_birth)
-              # With category being manually computed, we need to recompute the rankings too:
-              recompute_ranking = true
-            end
+            # Force category code post-computation always as category is missing here:
+            year_of_birth = result_row['year'].to_i
+            curr_cat_code = post_compute_ind_category_code(year_of_birth)
+
             # DEBUG ----------------------------------------------------------------
             # TODO: WIP DEBUG!!
             binding.pry if curr_cat_code.blank?
@@ -342,7 +339,9 @@ module PdfResults
             # 2. Fetch or create proper event section with category:
             section = find_existing_event_section(resulting_sections, event_title, curr_cat_code, curr_cat_gender) ||
                       ind_category_section(row_hash, event_title, curr_cat_code, curr_cat_gender)
-            # 3. Extract ind. result section and add it to the section's rows:
+            # 3. Set the section's details & rows:
+            section['fin_sesso'] = curr_cat_gender
+            section['fin_sigla_categoria'] = curr_cat_code
             section['rows'] ||= []
             section['rows'] << result_row
             find_or_create_event_section_and_merge(resulting_sections, section) if section['rows'].present?
