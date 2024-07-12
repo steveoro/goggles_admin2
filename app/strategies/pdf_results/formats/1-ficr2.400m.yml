@@ -1,7 +1,8 @@
 #
 # = Layout format definition for PdfResults::FormatParser
 #
-# Ficr alternative layout, mostly, from season 182
+# Ficr alternative layout, mostly, from season 182 (e.g.: "Fabriano")
+# currently, 400m only
 #
 1-ficr2.400m:
   - name: header
@@ -44,11 +45,11 @@
       - fields:
         - name: event_length
           lambda: strip
-          format: "\\s*(\\d{2,4})m?\\s+"
+          format: "\\s*(400)m?\\s+"
           pop_out: false
         - name: event_type
           lambda: strip
-          format: "\\s*\\d{2,4}(?>m\\s)?(Stile(?>\\sLibero)?|Dorso|Rana|Delfino|Farfalla|Misti)\\b"
+          format: "\\s*400(?>m\\s)?(Stile(?>\\sLibero)?|Dorso|Rana|Delfino|Farfalla|Misti)\\b"
 
   - name: category
     repeat: true
@@ -151,7 +152,7 @@
 
           # Take only actual deltas when they are provided:
           # (here the format uses a timing in between brackets only for an actual 50m delta; if the brackets aren't there, it's
-          #  the 100m distance gap timing, so we ignore those)
+          #  the 100m distance gap timing, SO WE IGNORE THOSE)
           - name: delta100
             format: "^\\s{3,9}(?>\\s?\\S{1,}){1,}\\s{1,}\\d{4}\\s{1,}\\d{1}\\s{4,}\\((\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\)"
             pop_out: false
@@ -183,7 +184,7 @@
           #   required: false
 
           - name: std_score
-            format: "\\s*(\\d?[,.]?\\d{1,4}[,.]\\d{1,2})"
+            format: "\\s(\\d{1,4}[,.]\\d{1,2})$"
             token_start: 118
             pop_out: false
             # U25 / A20 do not score:

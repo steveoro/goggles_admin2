@@ -29,10 +29,10 @@ module PdfResults
     IND_RESULT_SECTION = %w[results results_alt].freeze
 
     # Supported 'swimmer_name' column fields for individual results.
-    SWIMMER_FIELD_NAMES = %w[swimmer_name swimmer_ext swimmer_suffix].freeze
+    SWIMMER_FIELD_NAMES = %w[swimmer_name swimmer_ext swimmer_suffix swimmer_suffix_alt].freeze
 
     # Supported 'team_name' column fields for individual results.
-    TEAM_FIELD_NAMES = %w[team_name team_ext team_suffix].freeze
+    TEAM_FIELD_NAMES = %w[team_name team_ext team_suffix team_suffix_alt].freeze
 
     # Supported section names for *categories*. Same rules for IND_RESULT_SECTION apply.
     # Different names are supported in case they need to co-exist in the same layout file.
@@ -859,7 +859,7 @@ module PdfResults
       if /\s*([UAM]\d{2})(?>\sUnder|\sMaster)?\s(?>Femmine|Maschi)/ui.match?(key)
         /\s*([UAM]\d{2})(?>\sUnder|\sMaster)?\s(?>Femmine|Maschi)/ui.match(key).captures.first
 
-      # key type 1, example: "...|(Master \d\d)|..."
+      # key type 2, example: "...|(Master \d\d)|..."
       elsif /\|((?>Master|Under|Amatori)\s\d{2})\|/ui.match?(key)
         /\|((?>Master|Under|Amatori)\s\d{2})\|/ui.match(key).captures
                                                  .first
@@ -867,7 +867,14 @@ module PdfResults
                                                  .gsub(/Under\s/i, 'U')
                                                  .gsub(/Amatori\s/i, 'A')
 
-      # use just the field value "as is":
+      # key type 3, example: "...<gender>|(\d\d)\s?-\s?\d\d" => M/U<dd>
+      elsif /\|(\d{2})\s?-\s?\d{2}/ui.match?(key)
+        age_slot = /\|(\d{2})\s?-\s?\d{2}/ui.match(key).captures.first
+        # As of 2023 FIN lowered the bar and introduced the new "M20" & "U20" age groups:
+        under_limit = @season.begin_date.year > 2022 ? 20 : 25
+        age_slot.to_i >= under_limit ? "M#{age_slot}" : "U#{age_slot}"
+
+      # use just the field value "as is" for unsupported key value cases:
       elsif row_hash[:fields].key?(CAT_FIELD_NAME)
         row_hash[:fields][CAT_FIELD_NAME].gsub(/Master\s?/i, 'M')
                                          .gsub(/Under\s?/i, 'U')
@@ -1036,11 +1043,11 @@ module PdfResults
     # +nil+ otherwise.
     #
     # == Notes:
-    # 1. expected field name    => 'disqualify_type'
+    # 1. expected field name    => 'disqualify_type' || 'disqualify_type_alt'
     # 2. sub-row contexts names => 'dsq_label' or 'dsq_label_XXX'
     #
     def extract_additional_dsq_labels(result_hash)
-      dsq_label = result_hash.fetch(:fields, {})['disqualify_type']
+      dsq_label = result_hash.fetch(:fields, {})['disqualify_type'] || result_hash.fetch(:fields, {})['disqualify_type_alt']
       timing = result_hash.fetch(:fields, {})['timing']
       # Check for any possible additional (up to 3x rows) DSQ labels added as sibling rows:
       # add any additional DSQ label value (grep'ed as string keys) when present.
@@ -1236,7 +1243,7 @@ module PdfResults
         # Set current searched gender from event when found
         _title, _length, _type, curr_gender_from_event = fetch_event_title(event_hash)
         # Don't even consider 'X' as a gender, since we're dealing with swimmers & not categories of events:
-        curr_gender_from_event = nil unless curr_gender_from_event.upcase == 'F' || curr_gender_from_event.upcase == 'M'
+        curr_gender_from_event = nil if curr_gender_from_event&.upcase == 'X'
 
         event_hash.fetch(:rows, [{}]).each do |category_hash|
           # Set current searched gender from category when found

@@ -2,6 +2,7 @@
 # = Layout format definition for PdfResults::FormatParser
 #
 # Ficr alternative layout, mostly, from season 182
+# 50m only
 #
 1-ficr2:
   - name: header
@@ -44,11 +45,11 @@
       - fields:
         - name: event_length
           lambda: strip
-          format: "\\s*(\\d{2,4})m?\\s+"
+          format: "\\s*(50)m?\\s+"
           pop_out: false
         - name: event_type
           lambda: strip
-          format: "\\s*\\d{2,4}(?>m\\s)?(Stile(?>\\sLibero)?|Dorso|Rana|Delfino|Farfalla|Misti)\\b"
+          format: "\\s*50(?>m\\s)?(Stile(?>\\sLibero)?|Dorso|Rana|Delfino|Farfalla|Misti)\\b"
 
   - name: category
     repeat: true

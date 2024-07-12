@@ -974,7 +974,7 @@ module Import
         season_id: team_affiliation.season_id, # (ASSERT: this will be always set)
         category_type_id: category_type.id,
         entry_time_type_id: entry_time_type.id,
-        number: badge_code
+        number: badge_code || '?'
       )
       Import::Entity.new(row: new_row, matches: [new_row], bindings:)
     end
@@ -1005,7 +1005,7 @@ module Import
     #
     # rubocop:disable Metrics/ParameterLists
     def find_or_prepare_mir(meeting_program:, mprogram_key:, swimmer:, swimmer_key:, team:, team_key:,
-                            team_affiliation:, badge:, rank:, timing:, score:)
+                            team_affiliation:, badge:, rank:, timing:, score:, disqualify_type: '')
       bindings = {
         'meeting_program' => mprogram_key, 'swimmer' => swimmer_key, 'badge' => swimmer_key,
         'team_affiliation' => team_key, 'team' => team_key
@@ -1014,7 +1014,17 @@ module Import
         meeting_program_id: meeting_program&.id,
         team_id: team&.id, swimmer_id: swimmer&.id
       )
-      return Import::Entity.new(row: domain.first, matches: domain.to_a, bindings:) if domain.present?
+      # Compromise: assume anything else beside "Falsa partenza" (code: 'GA') gets a nil code:
+      # (will need to show the actual DSQ notes to get a label in the UI)
+      dsq_code_type_id = GogglesDb::DisqualificationCodeType.find_by(code: 'GA').id if /falsa/i.match?(disqualify_type)
+      if domain.present?
+        mir_row = domain.first
+        # Overwrite DSQ fields only when previously unknown:
+        mir_row.disqualified = disqualify_type.present? if disqualify_type.present? && !mir_row.disqualified
+        mir_row.disqualification_notes = disqualify_type if disqualify_type.present?
+        mir_row.disqualification_code_type_id = dsq_code_type_id if dsq_code_type_id.present?
+        return Import::Entity.new(row: mir_row, matches: domain.to_a, bindings:)
+      end
 
       new_row = GogglesDb::MeetingIndividualResult.new(
         meeting_program_id: meeting_program&.id,
@@ -1030,7 +1040,10 @@ module Import
         team_points: 0.0, # (no data)
         standard_points: score || 0.0,
         meeting_points: 0.0, # (no data)
-        reaction_time: 0.0 # (no data)
+        reaction_time: 0.0, # (no data)
+        disqualified: disqualify_type.present?,
+        disqualification_notes: disqualify_type,
+        disqualification_code_type_id: dsq_code_type_id
       )
       Import::Entity.new(row: new_row, matches: [new_row], bindings:)
     end
@@ -1127,24 +1140,31 @@ module Import
       domain = GogglesDb::MeetingRelayResult.where(
         meeting_program_id: meeting_program&.id, team_id: team&.id
       )
-      return Import::Entity.new(row: domain.last, matches: domain.to_a, bindings:) if domain.present?
-
       # Compromise: assume generic "Nuotata irregolare" refers to 1st swimmer only:
       # (not true, but most of the times the label isn't more specific)
       dsq_code_type_id = GogglesDb::DisqualificationCodeType.find_by(code: 'RE1').id if /irregolare/i.match?(disqualify_type)
+      if domain.present?
+        mrr_row = domain.last
+        # Overwrite DSQ fields only when previously unknown:
+        mrr_row.disqualified = disqualify_type.present? if disqualify_type.present? && !mrr_row.disqualified
+        mrr_row.disqualification_notes = disqualify_type if disqualify_type.present?
+        mrr_row.disqualification_code_type_id = dsq_code_type_id if dsq_code_type_id.present?
+        return Import::Entity.new(row: mrr_row, matches: domain.to_a, bindings:)
+      end
+
       new_row = GogglesDb::MeetingRelayResult.new(
         meeting_program_id: meeting_program&.id,
         team_id: team&.id,
         team_affiliation_id: team_affiliation&.id,
         rank:,
-        disqualified: disqualify_type.present?,
-        disqualification_notes: disqualify_type,
         minutes: timing&.minutes || 0,
         seconds: timing&.seconds || 0,
         hundredths: timing&.hundredths || 0,
         standard_points: score || 0.0,
         meeting_points: 0.0, # (no data)
         reaction_time: 0.0, # (no data)
+        disqualified: disqualify_type.present?,
+        disqualification_notes: disqualify_type,
         disqualification_code_type_id: dsq_code_type_id
       )
       Import::Entity.new(row: new_row, matches: [new_row], bindings:)
@@ -1295,6 +1315,12 @@ module Import
     # depending on distance in meters and the class of the specified result row.
     # Uses a prev_lap_timing instance to compute any missing timing values.
     #
+    # == IMPORTANT NOTE ON EXTRACTING THE LAST LAP:
+    # For relays, even the last lap is required as a field name in order to compute
+    # the last timing delta. The 'timing' overall field won't be used.
+    # So, for instance, in a 4x50=200m relay, the last lap field 'lap200' should be
+    # included even if it's a duplicate of the 'timing' field.
+    #
     # == Params:
     # - <tt>:meeting_program</tt> => the parent MeetingProgram instance (single, best candidate found or created)
     # - <tt>:mprogram_key</tt> => parent MeetingProgram key
@@ -1310,7 +1336,7 @@ module Import
     # - <tt>:team_key</tt> => Team key in the entity sub-Hash stored at root level in the data Hash member
     #                         (may differ from the actual Team.name returned by a search)
     #
-    # - <tt>:mr_model</tt> => a valid parent result for the lap entity to be created; either a MIR, MRR or a MRS or new
+    # - <tt>:mr_model</tt> => a valid parent result for the lap entity to be created; either a MIR, MRR or a MRS or a
     #                         new instance of the same model if none was found;
     #
     # - <tt>:mr_key</tt> => parent MIR/MRR/MRS key in the entity sub-Hash stored at root level in the data Hash member.
@@ -1319,6 +1345,8 @@ module Import
     #
     # - <tt>:order</tt> => ordinal for the relay phase (usually 1..4);
     #                      e.g.: 2 for the 3rd 50m sub-lap of a 4x100m relay; (ignored for Laps or RelayLaps which uses the length)
+    #
+    # - <tt>:max_order</tt> => max value for the above ordinal relay phase (usually 4)
     #
     # - <tt>:length_in_meters</tt> => length in meters (int); must reflect the actual length of the phase or sub-phase
     #                                 that is bound to the lap timing to be processed;
@@ -1341,28 +1369,36 @@ module Import
     def extract_lap_timing_for(meeting_program:, mprogram_key:, event_type:,
                                swimmer:, swimmer_key:, badge:, team:, team_key:,
                                mr_model:, mr_key:, row:,
-                               order:, length_in_meters:, prev_lap_timing:,
+                               order:, max_order:, length_in_meters:, prev_lap_timing:,
                                sublap_index: 0, sub_phases: 0)
       lap_field_key = "lap#{length_in_meters}"
       delta_field_key = "delta#{length_in_meters}"
       # At least one of the two timing columns should be available in order to
-      # extract any lap timings:
-      return unless row[lap_field_key].present? || row[delta_field_key].present?
+      # extract any lap timings for any lap occurring before the last one.
+      # If both are missing, lap processing should be skipped for this call.
+      return if order < max_order && row[lap_field_key].blank? && row[delta_field_key].blank?
+
+      # Whenever both are missing and it's the last lap, assuming we have the previous lap timing
+      # and the overall timing, we can compute both current lap & delta timings.
 
       # Extract both delta and abs lap timings from the row data, if the fields are present:
-      lap_timing = Parser::Timing.from_l2_result(row[lap_field_key]) if row[lap_field_key].present?
-      delta_timing = Parser::Timing.from_l2_result(row[delta_field_key]) if row[delta_field_key].present?
+      # (the Parser method will return nil for blanks)
+      lap_timing = Parser::Timing.from_l2_result(row[lap_field_key])
+      delta_timing = Parser::Timing.from_l2_result(row[delta_field_key])
+      # Make sure we fallback to the final timing if the lap timing is missing and the lap is the last one:
+      lap_timing ||= Parser::Timing.from_l2_result(row['timing']) if (lap_timing.blank? || lap_timing.zero?) && order == max_order
 
       # Compute missing delta if lap_timing is present:
-      if (delta_timing.nil? || (delta_timing.is_a?(Timing) && delta_timing.zero?)) &&
-         lap_timing.present?
-        delta_timing = prev_lap_timing.present? ? lap_timing - prev_lap_timing : lap_timing
+      if (delta_timing.blank? || delta_timing.zero?) && lap_timing&.positive?
+        delta_timing = prev_lap_timing&.positive? ? lap_timing - prev_lap_timing : lap_timing
       end
 
       # Compute possible missing timing counterpart (both delta and abs lap):
       # NOTE: this will hardly work for MRR with MRS+RelayLaps, which rely on delta timings found during the parsing.
-      delta_timing = lap_timing - prev_lap_timing if !delta_timing && lap_timing && lap_timing.positive? && prev_lap_timing.positive?
-      lap_timing = delta_timing + prev_lap_timing if !lap_timing && delta_timing && delta_timing.positive? && prev_lap_timing.positive?
+      delta_timing = lap_timing - prev_lap_timing if (delta_timing.blank? || delta_timing.zero?) && lap_timing&.positive? && prev_lap_timing&.positive?
+      lap_timing = delta_timing + prev_lap_timing if (lap_timing.blank? || lap_timing.zero?) && delta_timing&.positive? && prev_lap_timing&.positive?
+      # At this point we should have both lap_timing and delta_timing; skip it otherwise:
+      return if (delta_timing.blank? || delta_timing.zero?) && (lap_timing.blank? || lap_timing.zero?)
 
       if mr_model.is_a?(GogglesDb::MeetingIndividualResult)
         # *** MIR -> Lap ***
@@ -1998,7 +2034,7 @@ module Import
         meeting_program: options[:mprg], mprogram_key: options[:mprg_key],
         swimmer:, swimmer_key:, team:, team_key: team_name,
         team_affiliation:, badge:,
-        rank:, timing:, score:
+        rank:, timing:, score:, disqualify_type: row['disqualify_type']
       )
       add_entity_with_key('meeting_individual_result', mir_key, mir_entity)
       mr_model = mir_entity.row
@@ -2008,12 +2044,13 @@ module Import
       # EXCLUDING LAST LAP (since we already use MIR's final timing as last lap result
       # and last delta timing is computed by Main's Lap table view component):
       lap_timing = Timing.new # (lap number zero)
-      (1..((options[:event_type].length_in_meters.to_i / 50) - 1)).each do |lap_idx|
+      max_order = (options[:event_type].length_in_meters.to_i / 50)
+      (1..(max_order - 1)).each do |lap_idx|
         lap_timing = extract_lap_timing_for(
           meeting_program: options[:mprg], mprogram_key: options[:mprg_key],
           event_type: options[:event_type],
           swimmer:, swimmer_key:, badge:, team:, team_key: team_name,
-          mr_model:, mr_key: mir_key, order: lap_idx,
+          mr_model:, mr_key: mir_key, order: lap_idx, max_order:,
           length_in_meters: lap_idx * 50, row:,
           prev_lap_timing: lap_timing
         )
@@ -2073,32 +2110,36 @@ module Import
       )
       add_entity_with_key('meeting_relay_result', mrr_key, mrr_entity)
       mr_model = mrr_entity.row
+      prev_lap_timing = Timing.new # (lap number zero)
 
       (1..event_type.phases).each do |phase_idx|
         swimmer_name = row["swimmer#{phase_idx}"]
         year_of_birth = row["year_of_birth#{phase_idx}"]
-        # gender_type_code = row['sex'] # ('sex' currently MISSING from data)
+        gender_type_code = row["gender_type#{phase_idx}"] # (May be often nil)
 
         # Move to the next lap group if the relay swimmer is missing (DSQ relays)
         # NOTE: this will loose all data regarding laps for DSQ relays but, currently,
         # the DB structure requires both MRR & MRS to be present for sub-laps to be created.
         next unless swimmer_name.present? && year_of_birth.present?
 
-        swimmer_key, swimmer = map_and_return_swimmer(swimmer_name:, year_of_birth:, team_name:)
+        swimmer_key, swimmer = map_and_return_swimmer(swimmer_name:, year_of_birth:, gender_type_code:, team_name:)
         # NOTE: usually badge numbers won't be added to relay swimmers due to limited space,
         # so we revert to the default value (nil => '?')
         badge = map_and_return_badge(swimmer:, swimmer_key:, team:, team_key: team_name,
                                      team_affiliation:, category_type: options[:category_type])
 
         # *** MRS (parent) ***
-        extract_lap_timing_for(
+        prev_lap_timing = extract_lap_timing_for(
           meeting_program: options[:mprg], mprogram_key: options[:mprg_key],
           event_type:, swimmer:, swimmer_key:, badge:, team:, team_key: team_name,
           mr_model:, mr_key: mrr_key,
           order: phase_idx, # Actual relay phase
+          max_order: event_type.phases,
           length_in_meters: phase_idx * event_type.phase_length_in_meters.to_i,
           row:,
-          prev_lap_timing: nil # (we'll rely on captured data for this)
+          # Sometimes previous lap timing is missing from captured data,
+          # so here we'll rely on the resulting computed value:
+          prev_lap_timing:
         )
         mrs_key = "mrs#{phase_idx}-#{mrr_key}"
         mrs_row = cached_instance_of('meeting_relay_swimmer', mrs_key)
@@ -2136,6 +2177,7 @@ module Import
             event_type:, swimmer:, swimmer_key:, badge:, team:, team_key: team_name,
             mr_model: mrs_row, mr_key: mrs_key,
             order: phase_idx, # Actual relay phase
+            max_order: event_type.phases,
             length_in_meters: sub_order * 50, # (ASSUME sub-laps will never diverge from 50mt)
             row:,
             prev_lap_timing: nil, # (we'll rely on captured data for this)
@@ -2189,10 +2231,10 @@ module Import
       (1..MAX_SWIMMERS_X_RELAY).each do |swimmer_idx|
         swimmer_name = options[:row]["swimmer#{swimmer_idx}"]
         year_of_birth = options[:row]["year_of_birth#{swimmer_idx}"]
-        # gender_type_code = options[:row]['sex'] # ('sex' currently MISSING from data)
+        gender_type_code = row["gender_type#{phase_idx}"] # (May be often nil)
         next unless swimmer_name.present? && year_of_birth.present?
 
-        swimmer_key, swimmer = map_and_return_swimmer(swimmer_name:, year_of_birth:, team_name:)
+        swimmer_key, swimmer = map_and_return_swimmer(swimmer_name:, year_of_birth:, gender_type_code:, team_name:)
         # NOTE: usually badge numbers won't be added to relay swimmers due to limited space,
         # so we revert to the default value (nil => '?')
         map_and_return_badge(swimmer:, swimmer_key:, team:, team_key: team_name,

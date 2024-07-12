@@ -633,7 +633,7 @@ module PdfResults
       # ----------------------------------------------------------------------
       valid = fields&.all? do |field_def|
         # DEBUG ----------------------------------------------------------------
-        # binding.pry if curr_buffer.to_s.include?(' RIT')
+        # binding.pry if curr_buffer.to_s.include?(' SSD')
         # ----------------------------------------------------------------------
         source_row = field_def.extract(source_row) if field_def.is_a?(PdfResults::FieldDef)
         log_message(obj: field_def, scan_index:, source_row:, depth: parent.present? ? 2 : 1)
@@ -663,16 +663,14 @@ module PdfResults
       end
 
       # ** At this point: **
-      # - Either fields or format must increase the row scanning index (Because of the default row span: 1)
+      # - Either fields or format have to increase the row scanning index (Because of the default row span: 1)
       # (=> ASSUMES: all fields are on the same line)
 
-      # Increase scan_index with default row_span if valid w/ fields or when just the format was found:
-      if valid && fields.present? # || (format.present? && source_row.present? && valid.nil?)
+      # Increase scan_index with default row_span:
+      if valid && fields.present?
         # DEBUG ----------------------------------------------------------------
         # binding.pry if name == 'results_lap450'
         # ----------------------------------------------------------------------
-
-        # WAS: @curr_index = scan_index + 1
         @curr_index += 1
       end
       if rows

@@ -41,11 +41,11 @@
       - fields:
         - name: event_length
           lambda: strip
-          format: "\\s*([468]x\\d{2,4})m?\\s+"
+          format: "\\s*([468]x50)m?\\s+"
           pop_out: false
         - name: event_type
           lambda: strip
-          format: "\\s*[468]x\\d{2,4}m?\\s(Stile(?>\\sLibero)?|Dorso|Rana|Delfino|Farfalla|Misti)\\sMaster\\s(?>Misti|Femmin|Maschi)"
+          format: "\\s*[468]x50m?\\s(Stile(?>\\sLibero)?|Dorso|Rana|Delfino|Farfalla|Misti)\\sMaster\\s(?>Misti|Femmin|Maschi)"
         - name: gender_type
           lambda: strip
           format: "\\sMaster\\s(Misti|Femmin|Maschi)"
@@ -108,7 +108,6 @@
             pop_out: false
             required: false
 
-          # (No 200m lap in this format)
           - name: timing
             format: "^\\s{2,9}(?>\\d{1,2}|SQ|RT|NP)\\s{1,3}\\(M\\d{3}\\)\\s?-\\s?(?>\\s?\\S{1,}){1,}\\s{10,}\\d{1,2}\\s{1,3}\\d{1,2}(?>\\s{1,}\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}){3}\\s{5,}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})"
             pop_out: false

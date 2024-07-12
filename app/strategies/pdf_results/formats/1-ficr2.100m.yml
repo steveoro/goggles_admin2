@@ -2,6 +2,7 @@
 # = Layout format definition for PdfResults::FormatParser
 #
 # Ficr alternative layout, mostly, from season 182
+# 100m only
 #
 1-ficr2.100m:
   - name: header
@@ -44,11 +45,11 @@
       - fields:
         - name: event_length
           lambda: strip
-          format: "\\s*(\\d{2,4})m?\\s+"
+          format: "\\s*(100)m?\\s+"
           pop_out: false
         - name: event_type
           lambda: strip
-          format: "\\s*\\d{2,4}(?>m\\s)?(Stile(?>\\sLibero)?|Dorso|Rana|Delfino|Farfalla|Misti)\\b"
+          format: "\\s*100(?>m\\s)?(Stile(?>\\sLibero)?|Dorso|Rana|Delfino|Farfalla|Misti)\\b"
 
   - name: category
     repeat: true
@@ -167,7 +168,7 @@
             pop_out: false
             required: false
           - name: std_score
-            format: "\\s*(\\d?[,.]?\\d{1,4}[,.]\\d{1,2})"
+            format: "\\s(\\d{1,4}[,.]\\d{1,2})$"
             token_start: 118
             pop_out: false
             # U25 / A20 do not score:

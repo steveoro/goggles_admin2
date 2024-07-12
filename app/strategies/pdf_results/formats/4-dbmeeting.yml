@@ -161,27 +161,28 @@
         required: false
         fields:
           - name: swimmer_suffix
-            format: "^\\s{10,30}((?>\\s?[[:alpha:]]{2,}){1,})"
+            format: "^\\s{10,25}(?!\\s+\\d{2,4}\\s)(\\w\\D{1,35})(?>\\s+|$)"
             token_end: 50
             pop_out: false
             required: false
           - name: team_suffix
-            format: "^\\s{10,30}(?>\\s?[[:alpha:]]{2,}){1,}\\s{4,}((?>\\s?\\w{2,}){1,})\\s?|^\\s{40,}\\s{4,}((?>\\s?\\w{2,}){1,})\\s?"
+            format: "^\\s{10,25}(?!\\s+\\d{2,4}\\s)(?>\\w\\D{1,35}|\\s{2,35})\\s{2,}(.{2,30})$"
             token_end: 95
             pop_out: false
             required: false
           # XOR case (selected by spacing): DSQ label XOR badge region code:
           # (sometimes the DSQ label gets written on a second row and "moves" the badge region downward to the 3rd in formatting)
-          - name: disqualify_type
-            # WARNING: for simplicity, this doesn't work if both swimmer_suffix & team_suffix are present:
-            # (and will gobble up part of the team_suffix)
-            format: "^\\s{10,30}(?>\\s?[[:alpha:]]{2,}){0,}\\s{4,}(.*)(?<!\\s\\s\\w{3})$"
+          - name: disqualify_type_alt
+            format: "\\s{2,}(Falsa\\s\\w+|Arrivo\\s\\w+|Virata\\s\\w+|Nuotata\\s\\w+)$"
+            # WARNING: for simplicity, the following doesn't work if both swimmer_suffix & team_suffix are present and will gobble up part of the team_suffix or the swimmer suffix
+            #          (but the token start should take care of discriminating the case)
+            # format: "\\s{1,}(.{2,25})(?<!\\s\\s\\w{3}|\\d{2}|\\d{2}\\))$"
             pop_out: false
             required: false
           # Sometimes this 3-char badge regional code will be nil in the main row above but will render in this one;
           # using a different field name will store the value without overwriting the value from the main row if this is nil:
           - name: badge_region_alt
-            format: "^\\s{10,30}(?>\\s?[[:alpha:]]{2,}){0,}\\s{4,}(?>\\s?\\w{2,}){0,}\\s+((?!SSD|ASD|SNC|SRL)\\w{3})$|^\\s{45,}(?>\\s?\\w{2,}){0,}\\s{4,}((?!SSD|ASD|SNC|SRL)\\w{3})$|^\\s{80,}((?!SSD|ASD|SNC|SRL)\\w{3})$"
+            format: "^\\s{10,25}(?!\\s+\\d{2,4}\\s)(?>(?>\\w\\D{1,35}|\\s)\\s{4,})(?>\\s?\\w{2,}){0,}\\s+((?!SSD|ASD|SNC|SRL)\\w{3})$|^\\s{45,}(?>\\s?\\w{2,}){0,}\\s{4,}((?!SSD|ASD|SNC|SRL)\\w{3})$|^\\s{80,}((?!SSD|ASD|SNC|SRL)\\w{3})$"
             pop_out: false
             required: false
 
@@ -189,19 +190,22 @@
         # This will make the row not to fail if missing at all
         required: false
         fields:
-          - name: swimmer_suffix
-            format: "^\\s{10,30}((?>\\s?[[:alpha:]]{2,}){1,})"
+          - name: swimmer_suffix_alt
+            format: "^\\s{10,25}(?!\\s+\\d{2,4}\\s)(\\w\\D{1,35})(?>\\s+|$)"
             token_end: 50
             pop_out: false
             required: false
-          # XOR case (selected by spacing): DSQ label XOR badge region code:
-          # (sometimes the DSQ label gets written on a second row and "moves" the badge region downward in formatting)
-          - name: disqualify_type
-            format: "^\\s{10,30}(?>\\s?[[:alpha:]]{2,}){0,}\\s{4,}(.*)(?<!\\s\\s\\w{3})$"
+          - name: disqualify_type_alt
+            format: "\\s{2,}(Falsa\\s\\w+|Arrivo\\s\\w+|Virata\\s\\w+)$"
+            # token_start: 95
+            # format: "\\s{1,}(.{2,25})(?<!\\s\\s\\w{3}|\\d{2}|\\d{2}\\))$"
+            # XOR case (selected by spacing): DSQ label XOR badge region code:
+            # (sometimes the DSQ label gets written on a second row and "moves" the badge region downward in formatting)
+            # format: "^\\s{10,25}(?!\\s+\\d{2,4}\\s)(?>(?>\\w\\D{1,35}|\\s)\\s{4,})(.*)(?<!\\s\\s\\w{3})$"
             pop_out: false
             required: false
           - name: badge_region_alt
-            format: "^\\s{10,30}(?>\\s?[[:alpha:]]{2,}){0,}\\s{4,}(?>\\s?\\w{2,}){0,}\\s+((?!SSD|ASD|SNC|SRL)\\w{3})$|^\\s{45,}(?>\\s?\\w{2,}){0,}\\s{4,}((?!SSD|ASD|SNC|SRL)\\w{3})$|^\\s{80,}((?!SSD|ASD|SNC|SRL)\\w{3})$"
+            format: "^\\s{10,25}(?!\\s+\\d{2,4}\\s)(?>(?>\\w\\D{1,35}|\\s)\\s{4,})(?>\\s?\\w{2,}){0,}\\s+((?!SSD|ASD|SNC|SRL)\\w{3})$|^\\s{45,}(?>\\s?\\w{2,}){0,}\\s{4,}((?!SSD|ASD|SNC|SRL)\\w{3})$|^\\s{80,}((?!SSD|ASD|SNC|SRL)\\w{3})$"
             pop_out: false
             required: false
 

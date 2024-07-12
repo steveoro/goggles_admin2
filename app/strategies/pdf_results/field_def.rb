@@ -232,7 +232,7 @@ module PdfResults
     #   allows a more straightforward data extraction in text layouts that have an quasi-fixed spacing
     #   (as it is the case for converted PDF files).
     #
-    def extract(source_row)
+    def extract(source_row) # rubocop:disable Metrics/AbcSize
       # Always reset current data at start:
       clear
 
