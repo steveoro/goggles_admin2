@@ -1376,6 +1376,9 @@ module Import
       # At least one of the two timing columns should be available in order to
       # extract any lap timings for any lap occurring before the last one.
       # If both are missing, lap processing should be skipped for this call.
+
+      # But sub-lap processing should NOT be skipped even if both lap & delta are missing, using the
+      # overall 'timing' field as final lap, so that we can add the last lap or MRS even when fields are missing.
       return if order < max_order && row[lap_field_key].blank? && row[delta_field_key].blank?
 
       # Whenever both are missing and it's the last lap, assuming we have the previous lap timing
@@ -1400,6 +1403,7 @@ module Import
       # At this point we should have both lap_timing and delta_timing; skip it otherwise:
       return if (delta_timing.blank? || delta_timing.zero?) && (lap_timing.blank? || lap_timing.zero?)
 
+      # Discriminate parent in order to create proper (sub-)lap:
       if mr_model.is_a?(GogglesDb::MeetingIndividualResult)
         # *** MIR -> Lap ***
         Rails.logger.debug { "    >> Lap #{length_in_meters}m: <#{lap_timing}>" } if @toggle_debug
@@ -1454,7 +1458,14 @@ module Import
         add_entity_with_key('relay_lap', relay_lap_key, relay_lap_entity) unless entity_present?('relay_lap', relay_lap_key)
 
       else
-        # TODO: UNSUPPORTED!
+        # *** UNSUPPORTED! ***
+        # WARNING:
+        # This may happen if any of the parent entities above didn't get created before handling the child lap here.
+        # May be due to wrong sub-lap indexing or a lap timing for a relay that didn't get extracted.
+        # Most of the times, the lap timing is missing from relays due to its DSQ status.
+        # For "long relays" (4x100, 4x200), if the master lap associated with the MRS is missing its timing
+        # (e.g., for a 4x100, anyone missing from these: lap100, lap200, lap300 or lap400) then the whole relay fraction
+        # won't be stored at all. In these cases, ignore the 'pry' below as there's no point in debugging)
         Rails.logger.debug { "    >> INVALID PARAMETERS for lap timing extraction: target model #{mr_model.class}" } if @toggle_debug
         # DEBUG ----------------------------------------------------------------
         binding.pry

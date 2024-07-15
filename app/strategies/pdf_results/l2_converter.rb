@@ -320,7 +320,7 @@ module PdfResults
           elsif IND_RESULT_SECTION.include?(row_hash[:name])
             # Need to reconstruct both category & rankings:
             recompute_ranking = true
-            result_row = ind_result_section(row_hash, curr_cat_gender)
+            result_row = ind_result_section(row_hash, nil) # Force gender lookup on DB, if possible (no category fields here)
             # Update gender from result row (should change with current row in individ. results
             # to reflect proper category/gender):
             curr_cat_gender = result_row['sex']
@@ -556,7 +556,7 @@ module PdfResults
 
       # Don't even consider 'X' as a possible default gender, since we're dealing with swimmers
       # and not with categories of events:
-      cat_gender_code = nil unless cat_gender_code.upcase == 'F' || cat_gender_code.upcase == 'M'
+      cat_gender_code = nil unless cat_gender_code.nil? || cat_gender_code&.upcase == 'F' || cat_gender_code&.upcase == 'M'
       swimmer_name, year_of_birth, gender_code = scan_results_or_search_db_for_missing_swimmer_fields(swimmer_name, year_of_birth, cat_gender_code, team_name)
 
       {

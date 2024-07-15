@@ -2,7 +2,7 @@
 # = Layout format definition for PdfResults::FormatParser
 #
 # - Source: FIN Veneto custom format for Master's meetings results (50 blanks left margin version)
-# - Should support: 4x50m relay results
+# - Should support: 4x50m relay results ONLY
 # --> NO explicit category display (needs to be computed from swimmer age) <--
 #
 5-niagara.4x050m:
@@ -42,7 +42,7 @@
       - name: event_detail
         fields:
           - name: event_length
-            format: "^\\s{70,}(?>Mis|S)taff(?>\\.|etta)\\s([468]X\\d{2,4})\\s"
+            format: "^\\s{70,}(?>Mis|S)taff(?>\\.|etta)\\s([468]X50)\\s"
             pop_out: false
           - name: event_type
             format: "\\s(SL|Stile(?>\\sL\\.|\\sLibero)?|DO|Dorso|RA|Rana|DL|DF|Delfino|FA|Farfalla|MI|MX|Misti)\\s-\\s"
