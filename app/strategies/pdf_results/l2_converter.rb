@@ -469,13 +469,13 @@ module PdfResults
       # Scan existing swimmers in results searching for missing fields:
       if year_of_birth.to_i.zero? || gender_code.blank?
         scanned_year_of_birth, scanned_gender_code = search_result_row_with_swimmer(swimmer_name, team_name)
-        year_of_birth ||= scanned_year_of_birth if scanned_year_of_birth.present?
-        gender_code ||= scanned_gender_code if scanned_gender_code.present?
+        year_of_birth = scanned_year_of_birth if scanned_year_of_birth.present? && year_of_birth.to_i.zero?
+        gender_code = scanned_gender_code if scanned_gender_code.present? && gender_code.blank?
       end
-      year_of_birth = adjust_2digit_year(year_of_birth) # (no-op if the year is already 4-digits)
+      year_of_birth = adjust_2digit_year(year_of_birth) if year_of_birth.present? # (no-op if the year is already 4-digits)
 
-      # Whenever the gender is still unknown, use the DB finders as second-last resort:
-      if gender_code.blank?
+      # Whenever the gender or the year of birth are still unknown, use the DB finders as second-last resort:
+      if year_of_birth.to_i.zero? || gender_code.blank?
         cmd = GogglesDb::CmdFindDbEntity.call(GogglesDb::Swimmer, complete_name: swimmer_name, year_of_birth:)
         if cmd.successful?
           gender_code = cmd.result.male? ? 'M' : 'F'
@@ -488,6 +488,8 @@ module PdfResults
                         else
                           'F'
                         end
+          # (Leave year_of_birth unset - can't do much in this case: this may raise an error later on if no further checks
+          #  will be performed.)
         end
       end
 
@@ -1278,27 +1280,16 @@ module PdfResults
     # the specified output_hash, updated with any relay swimmer data field found.
     #
     def process_relay_swimmer_fields(swimmer_idx, rel_fields_hash, output_hash, nested: true)
-      # TODO: Add proper support in MacroSolver for 'swimmer_lap<N>' &  'swimmer_delta<N>' fields,
-      #       in nested or unested swimmer data sources (either indexed inside 'rel_team' or non-indexed
-      #       inside nested 'rel_swimmer'-type Hashes) that store the delta/lap timings for the corrispondent
-      #       relay_swimmer fraction in index.
-      #       (It needs the event length or the lap length to be fully processable, otherwise
-      #       an educated guess for the lap length is needed.)
-
       # Swimmer data source at a nested depth level with non-indexed fields (or not, for same depth level)?
       fld_swmmer = nested ? 'swimmer_name' : "swimmer_name#{swimmer_idx}"
       fld_yob    = nested ? 'year_of_birth' : "year_of_birth#{swimmer_idx}"
       fld_gender = nested ? GENDER_FIELD_NAME : "#{GENDER_FIELD_NAME}#{swimmer_idx}"
-      fld_lap    = nested ? 'swimmer_lap' : "swimmer_lap#{swimmer_idx}"
-      fld_delta  = nested ? 'swimmer_delta' : "swimmer_delta#{swimmer_idx}"
 
       # Extract field values:
       team_name = output_hash['team'] # (ASSUMES: already set externally, before this call)
       swimmer_name  = rel_fields_hash[fld_swmmer]&.squeeze(' ')&.tr(',', ' ')
-      year_of_birth = rel_fields_hash[fld_yob].to_i
-      gender_code   = rel_fields_hash[fld_gender] # To-be-supported by MacroSolver
-      lap_timing    = rel_fields_hash[fld_lap]    # To-be-supported by MacroSolver
-      delta_timing  = rel_fields_hash[fld_delta]  # To-be-supported by MacroSolver
+      year_of_birth = rel_fields_hash[fld_yob]
+      gender_code   = rel_fields_hash[fld_gender]
 
       swimmer_name, year_of_birth, gender_code = scan_results_or_search_db_for_missing_swimmer_fields(swimmer_name, year_of_birth, gender_code, team_name)
 
@@ -1307,8 +1298,6 @@ module PdfResults
       output_hash["#{GENDER_FIELD_NAME}#{swimmer_idx}"] = gender_code
       output_hash["year_of_birth#{swimmer_idx}"] = year_of_birth
       output_hash['overall_age'] += @season.begin_date.year - year_of_birth if year_of_birth.to_i.positive?
-      output_hash["swimmer_lap#{swimmer_idx}"] = lap_timing
-      output_hash["swimmer_delta#{swimmer_idx}"] = delta_timing
       output_hash
     end
     #-- -----------------------------------------------------------------------
