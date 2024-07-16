@@ -2,6 +2,7 @@
 
 _Please, add the latest build info on top of the list; use Version::MAJOR only after gold release; keep semantic versioning in line with framework's_
 
+- **0.7.16** [Steve A.] re-sync w/ base engine & bundle update
 - **0.7.12** [Steve A.] re-sync w/ base engine & bundle update
 - **0.7.10** [Steve A.] re-sync w/ base engine & bundle update; added support for IndividualRecords in Merge::Swimmer/Checker; added filtered CSV export for (localhost) Meetings with zero MIRs; added auto-download for manifests & PDF results during calendar processing with the resultCrawler;
 - **0.7.09** [Steve A.] re-sync w/ base engine & bundle update; added Merge::Swimmer & Merge::SwimmerChecker + related rake tasks;
