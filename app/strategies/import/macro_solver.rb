@@ -297,8 +297,10 @@ module Import
         ActionCable.server.broadcast('ImportStatusChannel', { msg: 'map_teams_and_swimmers', progress: section_idx, total: })
         # If the section contains a 'retry' subsection it means the crawler received some error response during
         # the data crawl and the result file is missing the whole result subsection.
-        # (ALSO: not mapping team names from the ranking by choice)
-        next if sect['retry'].present? || sect['ranking'].present?
+        # (ALSO: we're not mapping team names from the rankings or the stats)
+
+        # Search for specific sections presence that may act as a flag for skipping:
+        next if sect['retry'].present? || sect['ranking'].present? || sect['stats'].present?
 
         _event_type, category_type = Parser::EventType.from_l2_result(sect['title'], @season)
 
@@ -418,9 +420,9 @@ module Import
         end
 
         ActionCable.server.broadcast('ImportStatusChannel', { msg: 'map_events_and_results', progress: section_idx, total: })
-        # If the section contains a 'retry' subsection it means the crawler received some error response during
-        # the data crawl and the result file is missing the whole result subsection.
-        next if sect['retry'].present?
+        # Search for specific sections presence that may act as a flag for skipping:
+        # (We're not currently going to store the parsed statistics in the DB)
+        next if sect['retry'].present? || sect['stats'].present?
 
         # (Example section 'title': "50 Stile Libero - M25")
         event_type, category_type = Parser::EventType.from_l2_result(sect['title'], @season)

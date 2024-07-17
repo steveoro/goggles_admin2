@@ -161,16 +161,18 @@ module Merge
     #-- ------------------------------------------------------------------------
     #++
 
-    # Creates a detailed report of the entities involved in merging the source into the destination as
-    # an ASCII table for quick reference.
+    # Creates and outputs to stdout a detailed report of the entities involved in merging
+    # the source into the destination as an ASCII table for quick reference.
+    # rubocop:disable Rails/Output
     def display_report
-      Rails.logger.debug @log.join("\r\n")
-      Rails.logger.debug { "\r\n\r\n*** WARNINGS: ***\r\n#{@warnings.join("\r\n")}" } if @warnings.present?
-      Rails.logger.debug { "\r\n\r\n*** ERRORS: ***\r\n#{@errors.join("\r\n")}" } if @errors.present?
-      Rails.logger.debug("\r\n")
-      Rails.logger.debug(@errors.blank? ? 'RESULT: ✅' : 'RESULT: ❌')
+      puts(@log.join("\r\n"))
+      puts("\r\n\r\n*** WARNINGS: ***\r\n#{@warnings.join("\r\n")}") if @warnings.present?
+      puts("\r\n\r\n*** ERRORS: ***\r\n#{@errors.join("\r\n")}") if @errors.present?
+      puts("\r\n")
+      puts(@errors.blank? ? 'RESULT: ✅' : 'RESULT: ❌')
       nil
     end
+    # rubocop:enable Rails/Output
     #-- ------------------------------------------------------------------------
     #++
 

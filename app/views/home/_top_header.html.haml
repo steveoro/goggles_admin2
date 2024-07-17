@@ -1,6 +1,15 @@
 .row-fluid.text-center
   %h5
-    🖥 API Server: #{GogglesDb::AppParameter.config.settings(:framework_urls).api}
+    - api_url = GogglesDb::AppParameter.config.settings(:framework_urls).api
+    🖥 API Server: #{api_url}
+    - if api_url.ends_with?('446')
+      %span.animated.infinite.flash.bg-success STAGING
+    - elsif api_url.ends_with?('447')
+      %span.animated.infinite.flash.bg-danger PRODUCTION
+    - else
+      %span.animated.infinite.flash.bg-warning UNKNOWN
+
+    &nbsp;
     %a.btn.btn-sm.btn-outline-secondary{ href: settings_path }
       %i.fa.fa-cog
 
