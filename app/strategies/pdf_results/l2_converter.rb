@@ -476,14 +476,18 @@ module PdfResults
 
       # Whenever the gender or the year of birth are still unknown, use the DB finders as second-last resort:
       if year_of_birth.to_i.zero? || gender_code.blank?
-        cmd = GogglesDb::CmdFindDbEntity.call(GogglesDb::Swimmer, complete_name: swimmer_name, year_of_birth:)
+        # Don't add nil params to the finder cmd as they may act as filters as well:
+        finder_opts = { complete_name: swimmer_name }
+        finder_opts[:year_of_birth] = year_of_birth.to_i if year_of_birth.to_i.positive?
+        finder_opts[:gender_type_id] = GogglesDb::GenderType.find_by(code: gender_code).id if gender_code.present?
+        cmd = GogglesDb::CmdFindDbEntity.call(GogglesDb::Swimmer, finder_opts)
         if cmd.successful?
           gender_code = cmd.result.male? ? 'M' : 'F'
           year_of_birth = cmd.result.year_of_birth
           swimmer_name = cmd.result.complete_name
         else
           # As a very last resort, make an educated guess for the gender from the name, using common locale-IT exceptions:
-          gender_code = if swimmer_name.match?(/\w+[nosl\-]\s?maria|andrea?$|one$|gabriele|gioele|luca|\w+[gkcnos]'?$/ui)
+          gender_code = if swimmer_name.match?(/\w+[nosl\-]\s?maria|andrea?$|one$|riele$|fele$|oele$|luca$|\w+[gkcnos]'?$/ui)
                           'M'
                         else
                           'F'

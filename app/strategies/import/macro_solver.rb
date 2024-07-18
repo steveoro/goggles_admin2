@@ -885,12 +885,13 @@ module Import
     def find_or_prepare_swimmer(swimmer_name, year, sex_code)
       gender_type = select_gender_type(sex_code) # WARNING: May result +nil+ for certain relay formats
       year_of_birth = year.to_i if year.to_i.positive?
-      finder_opts = { complete_name: swimmer_name, year_of_birth:, toggle_debug: @toggle_debug == 2 }
+      finder_opts = { complete_name: swimmer_name, toggle_debug: @toggle_debug == 2 }
       # Don't add nil params to the finder cmd as they may act as filters as well:
       finder_opts[:gender_type_id] = gender_type.id if gender_type.is_a?(GogglesDb::GenderType)
+      finder_opts[:year_of_birth] = year.to_i if year.to_i.positive?
 
       cmd = GogglesDb::CmdFindDbEntity.call(GogglesDb::Swimmer, finder_opts)
-      # NOTE: cmd will find a result even for nil gender types, but it may fail for "totally newbie" swimmers
+      # NOTE: cmd will find a result even for nil gender types, but it may fail for "totally new" swimmers
       #       added through a relay result!
       if cmd.successful?
         matches = cmd.matches.respond_to?(:map) ? cmd.matches.map(&:candidate) : cmd.matches
@@ -1391,7 +1392,7 @@ module Import
       lap_timing = Parser::Timing.from_l2_result(row[lap_field_key])
       delta_timing = Parser::Timing.from_l2_result(row[delta_field_key])
       # Make sure we fallback to the final timing if the lap timing is missing and the lap is the last one:
-      lap_timing ||= Parser::Timing.from_l2_result(row['timing']) if (lap_timing.blank? || lap_timing.zero?) && order == max_order
+      lap_timing = Parser::Timing.from_l2_result(row['timing']) if (lap_timing.blank? || lap_timing.zero?) && order == max_order
 
       # Compute missing delta if lap_timing is present:
       if (delta_timing.blank? || delta_timing.zero?) && lap_timing&.positive?
@@ -1400,8 +1401,10 @@ module Import
 
       # Compute possible missing timing counterpart (both delta and abs lap):
       # NOTE: this will hardly work for MRR with MRS+RelayLaps, which rely on delta timings found during the parsing.
-      delta_timing = lap_timing - prev_lap_timing if (delta_timing.blank? || delta_timing.zero?) && lap_timing&.positive? && prev_lap_timing&.positive?
-      lap_timing = delta_timing + prev_lap_timing if (lap_timing.blank? || lap_timing.zero?) && delta_timing&.positive? && prev_lap_timing&.positive?
+      if prev_lap_timing&.positive? || prev_lap_timing&.zero?
+        delta_timing = lap_timing - prev_lap_timing if (delta_timing.blank? || delta_timing.zero?) && lap_timing&.positive?
+        lap_timing = delta_timing + prev_lap_timing if (lap_timing.blank? || lap_timing.zero?) && delta_timing&.positive?
+      end
       # At this point we should have both lap_timing and delta_timing; skip it otherwise:
       return if (delta_timing.blank? || delta_timing.zero?) && (lap_timing.blank? || lap_timing.zero?)
 
@@ -1922,15 +1925,25 @@ module Import
       swimmer_key = swimmer_key_for(options[:swimmer_name], options[:year_of_birth],
                                     options[:gender_type_code], options[:team_name])
       # Search for the actual full key in case part of it was blank:
-      swimmer_key = search_key_for('swimmer', swimmer_key) if options[:gender_type_code].blank?
-      # NOTE: swimmer_key may result nil if the search fails!
+      if options[:gender_type_code].blank? || options[:year_of_birth].blank?
+        search_exp = "#{options[:swimmer_name]}-"
+        search_exp += "#{options[:year_of_birth].presence || '\d{4}'}-"
+        search_exp += "#{options[:gender_type_code].presence || '[MF]'}-#{options[:team_name]}"
+        swimmer_key = search_key_for('swimmer', Regexp.new(search_exp, Regexp::IGNORECASE))
+      end
+      # NOTE: swimmer_key may result nil when the swimmer isn't already present as a parsed entity
+      #       (an additional DB search may address that, assuming the row is in the DB)
       return [swimmer_key, cached_instance_of('swimmer', swimmer_key)] if entity_present?('swimmer', swimmer_key)
 
       # The following can happen for swimmers that enrolled just in relays, with a result
-      # format missing the gender type
+      # format missing some of the data:
       if options[:gender_type_code].blank?
         Rails.logger
              .warn("\r\n    ------> '#{options[:swimmer_name]}' *** SWIMMER WITH MISSING gender_type_code (probably from a relay)")
+      end
+      if options[:year_of_birth].blank?
+        Rails.logger
+             .warn("\r\n    ------> '#{options[:swimmer_name]}' *** SWIMMER WITH MISSING year_of_birth (probably from a relay)")
       end
 
       Rails.logger.debug { "\r\n=== SWIMMER '#{options[:swimmer_name]}' (+) ===" } if @toggle_debug
@@ -1938,7 +1951,7 @@ module Import
                                                options[:gender_type_code])
       # Rebuild the key from the resulting entity in case the search nullified the partial key:
       if swimmer_key.blank?
-        swimmer_key = swimmer_key_for(options[:swimmer_name], options[:year_of_birth],
+        swimmer_key = swimmer_key_for(options[:swimmer_name], swimmer_entity.row.year_of_birth,
                                       swimmer_entity.row.gender_type.code, options[:team_name])
       end
       # Special disambiguation reference (in case of same-named swimmers with same age):
@@ -2133,14 +2146,14 @@ module Import
         # Move to the next lap group if the relay swimmer is missing (DSQ relays)
         # NOTE: this will loose all data regarding laps for DSQ relays but, currently,
         # the DB structure requires both MRR & MRS to be present for sub-laps to be created.
-        next unless swimmer_name.present? && year_of_birth.present?
+        # NOTE 2: year_of_birth & gender_type_code can be searched from already extracted data when missing
+        next if swimmer_name.blank?
 
         swimmer_key, swimmer = map_and_return_swimmer(swimmer_name:, year_of_birth:, gender_type_code:, team_name:)
         # NOTE: usually badge numbers won't be added to relay swimmers due to limited space,
         # so we revert to the default value (nil => '?')
         badge = map_and_return_badge(swimmer:, swimmer_key:, team:, team_key: team_name,
                                      team_affiliation:, category_type: options[:category_type])
-
         # *** MRS (parent) ***
         prev_lap_timing = extract_lap_timing_for(
           meeting_program: options[:mprg], mprogram_key: options[:mprg_key],

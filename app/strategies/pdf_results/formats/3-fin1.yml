@@ -230,12 +230,12 @@
       - name: rel_team1
         fields:
           - name: rank
-            format: "^\\s{10,}(\\d{1,2}|SQ|RT|NP|Fuori gara)\\s{3,}"
+            format: "^\\s{4,}(\\d{1,2}|SQ|RT|NP|Fuori gara)\\s{3,}"
             pop_out: false
             required: false
           - name: team_name
             # Exclude non-relay team names as much as possible:
-            format: "^(?>\\s{16,}|\\s{10,}\\d{1,2}\\s{3,8}|\\s{4,}Fuori\\sgara\\s{3,8})(.+)(?=\\s{2}(?>\\d{1,2}['\"\\.:]\\d{2}|Squalif|Non\\spartiti))"
+            format: "^\\s{4,}(?>\\d{1,2}|Fuori\\sgara|\\s{3,})?\\s{3,}(.+)(?=\\s{2}(?>\\d{1,2}['\"\\.:]\\d{2}|Squalif|Non\\spartiti))"
             pop_out: false
           - name: timing
             format: "\\s*(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
