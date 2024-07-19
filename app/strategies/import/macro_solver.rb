@@ -4,7 +4,7 @@ module Import
   #
   # = MacroSolver
   #
-  #   - version:  7-0.7.10
+  #   - version:  7-0.7.16
   #   - author:   Steve A.
   #   - build:    20240529
   #
@@ -1806,7 +1806,8 @@ module Import
     private
 
     # Returns the internal string key used to access a cached Swimmer entity row, or
-    # a Regexp to search for it if the gender is unknown.
+    # a Regexp tailored to search for the actual key whenever the gender, the YOB or
+    # even the team name are unknown.
     #
     # == Params
     # - <tt>swimmer_original_name</tt>: original swimmer name text extracted from the result file "as is"
@@ -1821,7 +1822,13 @@ module Import
     # - <tt>team_original_name</tt>: original team name text extracted from the result file "as is".
     #
     def swimmer_key_for(swimmer_original_name, year_of_birth, gender_type_code, team_original_name)
-      return Regexp.new("#{swimmer_original_name}-#{year_of_birth}-[fmx]-#{team_original_name}", Regexp::IGNORECASE) if gender_type_code.blank?
+      if gender_type_code.blank? || year_of_birth.blank? || team_original_name.blank?
+        search_exp = "#{swimmer_original_name}-"
+        search_exp += "#{year_of_birth.presence || '\d{4}'}-"
+        # If the team name is blank, being it the last part of the Regexp, it won't matter:
+        search_exp += "#{gender_type_code.presence || '[MF]'}-#{team_original_name}"
+        return search_key_for('swimmer', Regexp.new(search_exp, Regexp::IGNORECASE))
+      end
 
       "#{swimmer_original_name}-#{year_of_birth}-#{gender_type_code}-#{team_original_name}"
     end
@@ -1924,15 +1931,9 @@ module Import
     def map_and_return_swimmer(options = {})
       swimmer_key = swimmer_key_for(options[:swimmer_name], options[:year_of_birth],
                                     options[:gender_type_code], options[:team_name])
-      # Search for the actual full key in case part of it was blank:
-      if options[:gender_type_code].blank? || options[:year_of_birth].blank?
-        search_exp = "#{options[:swimmer_name]}-"
-        search_exp += "#{options[:year_of_birth].presence || '\d{4}'}-"
-        search_exp += "#{options[:gender_type_code].presence || '[MF]'}-#{options[:team_name]}"
-        swimmer_key = search_key_for('swimmer', Regexp.new(search_exp, Regexp::IGNORECASE))
-      end
       # NOTE: swimmer_key may result nil when the swimmer isn't already present as a parsed entity
-      #       (an additional DB search may address that, assuming the row is in the DB)
+      #       and some of its fields are unknown - which will yield a key search among
+      #       the ones already existing. (An additional DB search could address that, assuming the row is in the DB)
       return [swimmer_key, cached_instance_of('swimmer', swimmer_key)] if entity_present?('swimmer', swimmer_key)
 
       # The following can happen for swimmers that enrolled just in relays, with a result
@@ -1949,15 +1950,19 @@ module Import
       Rails.logger.debug { "\r\n=== SWIMMER '#{options[:swimmer_name]}' (+) ===" } if @toggle_debug
       swimmer_entity = find_or_prepare_swimmer(options[:swimmer_name], options[:year_of_birth],
                                                options[:gender_type_code])
+      raise RuntimeError('Cannot store a nil swimmer entity!') if swimmer_entity.blank?
+
       # Rebuild the key from the resulting entity in case the search nullified the partial key:
       if swimmer_key.blank?
         swimmer_key = swimmer_key_for(options[:swimmer_name], swimmer_entity.row.year_of_birth,
                                       swimmer_entity.row.gender_type.code, options[:team_name])
       end
       # Special disambiguation reference (in case of same-named swimmers with same age):
-      swimmer_entity.add_bindings!('team' => options[:team_name])
+      swimmer_entity&.add_bindings!('team' => options[:team_name])
       # Store the required bindings at root level in the data_hash:
-      # (ASSERT: NEVER store entities with blank keys)
+      # (ASSERT: NEVER store entities with blank or partial keys)
+      raise RuntimeError('Cannot store a swimmer with a blank or partial key!') if swimmer_key.blank?
+
       add_entity_with_key('swimmer', swimmer_key, swimmer_entity)
       # Return both the key and its mapped model row:
       [swimmer_key, swimmer_entity.row]

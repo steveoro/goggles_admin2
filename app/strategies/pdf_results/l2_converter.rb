@@ -3,7 +3,7 @@
 module PdfResults
   # = PdfResults::L2Converter
   #
-  #   - version:  7-0.7.10
+  #   - version:  7-0.7.16
   #   - author:   Steve A.
   #
   # Converts from any parsed field hash to the "Layout type 2" format
@@ -497,7 +497,7 @@ module PdfResults
         end
       end
 
-      [swimmer_name, year_of_birth, gender_code]
+      [swimmer_name&.upcase, year_of_birth, gender_code]
     end
 
     # Converts the indiv. result data structure into an Array of data Hash rows
@@ -555,7 +555,7 @@ module PdfResults
       fields = result_hash.fetch(:fields, {})
       rank = fields['rank']
       year_of_birth = fetch_field_with_alt_value(fields, 'year_of_birth')
-      swimmer_name = extract_nested_field_name(result_hash, SWIMMER_FIELD_NAMES)
+      swimmer_name = extract_nested_field_name(result_hash, SWIMMER_FIELD_NAMES)&.upcase
       team_name = extract_nested_field_name(result_hash, TEAM_FIELD_NAMES)
       # DSQ label:
       dsq_label = extract_additional_dsq_labels(result_hash) if rank.to_i.zero?
