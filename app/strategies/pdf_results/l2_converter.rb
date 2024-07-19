@@ -487,7 +487,7 @@ module PdfResults
           swimmer_name = cmd.result.complete_name
         else
           # As a very last resort, make an educated guess for the gender from the name, using common locale-IT exceptions:
-          gender_code = if swimmer_name.match?(/\w+[nosl\-]\s?maria|andrea?$|one$|riele$|fele$|oele$|luca$|\w+[gkcnos]'?$/ui)
+          gender_code = if swimmer_name.match?(/\w+[nosl\-]\s?maria|andrea?$|one$|riele$|fele$|oele$|luca|nicola$|\w+[gkcnos]'?$/ui)
                           'M'
                         else
                           'F'
