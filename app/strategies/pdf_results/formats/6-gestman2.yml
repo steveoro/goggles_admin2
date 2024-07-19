@@ -4,9 +4,11 @@
 # "CONI / FIN Gest. Manif. Master" - probably an older output version of the predecessor of "dbmeeting"
 # Usually no lap timings, with world + italian records reported before each category start.
 #
-# Example: Puglia Regional Masters' Meetings
+# Clone of gestman1, but with an added region code column (3 chars) in each result row.
 #
-6-gestman:
+# Example: Campania Regional Masters' Meetings
+#
+6-gestman2:
   - name: header
     # Repeat (at_fixed_row, each page)
     at_fixed_row: 0
@@ -110,18 +112,21 @@
       # "results" row-0:
       - fields:
         - name: rank
-          format: "^\\s{3,}(\\d{1,2})\\s{2,8}\\D{3,40}\\s{0,}\\d{4}\\s{2,}.{3,35}"
+          format: "^\\s{2,}(\\d{1,2})\\s{2,8}\\D{3,40}\\s{0,}\\d{4}\\s{2,}"
           pop_out: false
           # DSQ don't have rank:
           required: false
         - name: swimmer_name
-          format: "^(?>\\s{3,}\\d{1,2}\\s{2,8}|\\s{12,})(\\D{3,40})\\s{0,}\\d{4}\\s{2,}.{3,35}(?>\\s{2,}\\d{1,2}|\\s*Squal:\\s|\\s*Ritirat)"
+          format: "^(?>\\s{2,}\\d{1,2}\\s{2,8}|\\s{7,})(\\D{3,40})\\s{0,}\\d{4}\\s{3,}\\w{3}\\s{2,}.{3,35}"
           pop_out: false
         - name: year_of_birth
-          format: "^(?>\\s{3,}\\d{1,2}\\s{2,8}|\\s{12,})\\D{3,40}\\s{0,}(\\d{4})\\s{2,}.{3,35}(?>\\s{2,}\\d{1,2}|\\s*Squal:\\s|\\s*Ritirat)"
+          format: "^(?>\\s{2,}\\d{1,2}\\s{2,8}|\\s{7,})\\D{3,40}\\s{0,}(\\d{4})\\s{3,}\\w{3}\\s{2,}.{3,35}"
+          pop_out: false
+        - name: region_code
+          format: "^(?>\\s{2,}\\d{1,2}\\s{2,8}|\\s{7,})\\D{3,40}\\s{0,}\\d{4}\\s{3,}(\\w{3})\\s{2,}.{3,35}"
           pop_out: false
         - name: team_name
-          format: "^(?>\\s{3,}\\d{1,2}\\s{2,8}|\\s{12,})\\D{3,40}\\s{0,}\\d{4}\\s{2,}(.{3,35})(?>\\s{2,}\\d{1,2}|\\s*Squal:\\s|\\s*Ritirat)"
+          format: "^(?>\\s{2,}\\d{1,2}\\s{2,8}|\\s{7,})\\D{3,40}\\s{0,}\\d{4}\\s{3,}\\w{3}\\s{2,}(.{3,35})(?>\\s{1,}\\d{1,2}|\\s*Squal:\\s|\\s*Ritirat|\\s*Non\\s)"
           pop_out: false
 
         - name: timing
