@@ -2262,7 +2262,7 @@ module Import
       (1..MAX_SWIMMERS_X_RELAY).each do |swimmer_idx|
         swimmer_name = options[:row]["swimmer#{swimmer_idx}"]
         year_of_birth = options[:row]["year_of_birth#{swimmer_idx}"]
-        gender_type_code = row["gender_type#{phase_idx}"] # (May be often nil)
+        gender_type_code = options[:row]["gender_type#{swimmer_idx}"] # (May be often nil)
         next unless swimmer_name.present? && year_of_birth.present?
 
         swimmer_key, swimmer = map_and_return_swimmer(swimmer_name:, year_of_birth:, gender_type_code:, team_name:)
