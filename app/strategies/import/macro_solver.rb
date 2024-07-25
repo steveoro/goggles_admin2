@@ -1382,7 +1382,11 @@ module Import
 
       # But sub-lap processing should NOT be skipped even if both lap & delta are missing, using the
       # overall 'timing' field as final lap, so that we can add the last lap or MRS even when fields are missing.
-      return if order < max_order && row[lap_field_key].blank? && row[delta_field_key].blank?
+
+      # Also, whenever we are processing a sub-relay lap (odd length / 50) and we don't have the
+      # corresponding field value from the row, the processing SHOULD be always skipped regardless the current
+      # ordering of the lap (since we can't infer delta or lap timings from the overall value).
+      return if row[lap_field_key].blank? && row[delta_field_key].blank? && (order < max_order || (length_in_meters / 50).odd?)
 
       # Whenever both are missing and it's the last lap, assuming we have the previous lap timing
       # and the overall timing, we can compute both current lap & delta timings.

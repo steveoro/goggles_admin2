@@ -1,0 +1,233 @@
+#
+# = Layout format definition for PdfResults::FormatParser
+#
+# FIN FVG (Trieste), 50m+ but NO lap timings, category & gender display,
+# meeting name on top on event change, meeting place on EOP.
+# A variant of '3-fintorino' but more complete in data.
+#
+# The 'NAZ' column (Nation) here is used to display the category & gender info in a compressed
+# format on each row ("M40, female" => "F40" instead of the usual 3-letter code for the nation).
+#
+# Additionally, this format uses a standard category & gender display in between each age range
+# so the category data is repeated twice.
+#
+3-finfvg:
+  - name: header
+    at_fixed_row: 0
+    # In order to validate/debug a format not always present in page,
+    # we need to set "required" to false according to current implementation:
+    required: false
+    # Sometimes the header w/ the meeting title will be repeated, in between events:
+    repeat: true
+    rows:
+      - name: hdr_title
+        fields:
+          - name: edition
+            required: false
+            format: "^\\s{20,}(\\d{1,2}|[IVXLCM]+).{1,2}?\\s+"
+            pop_out: false
+          - name: meeting_name
+            format: "^\\s{20,}(?>\\d{1,2}|[IVXLCM]+)?.{1,2}?\\s+(.+)$"
+            pop_out: false
+      - name: hdr_pool
+        fields:
+          - name: pool_type
+            lambda: strip
+            format: "\\s*V\\.\\s(\\d{2})m"
+      - name: hdr_sep
+        format: "^$"
+      - name: hdr_results
+        # Using a custom non-existent field name in keys array to skip completely this row
+        # from being part of the resulting context key:
+        keys: [skip_me]
+        format: "^\\s{20,}Risultati$"
+
+  # Data columns header
+  - name: results_hdr
+    repeat: true
+    rows:
+      - name: results_hdr1
+        format: "^\\s?POS\\s{2,}COGNOME\\sE\\sNOME\\s{5,}NAZ\\sANNO\\s{2,}SOCIETA'\\s{12,}BATT\\s{2,}CRS\\s{1,}POS\\s{4,}ARRIVO\\s{2,}PUNTI"
+      - name: results_hdr_sep1
+        format: "^$"
+      # Whenever the event is not repeated on page start, 2x empty rows take its place:
+      - name: results_hdr_sep2
+        required: false
+        format: "^$"
+      - name: results_hdr_sep3
+        required: false
+        format: "^$"
+
+  - name: event
+    # Repeats only in between events, so this is not required on each page:
+    required: false
+    repeat: true
+    starts_at_row: 5
+    parent: header
+    rows:
+      - fields:
+        - name: event_length
+          format: "^\\s{20,}(\\d{2,4})\\s?m\\s+"
+          pop_out: false
+        - name: event_type
+          format: "^\\s{20,}\\d{2,4}\\s?m\\s+(Stile(?>\\sLibero)?|Dorso|Rana|Delfino|Farfalla|Misti)\\s-\\s"
+          pop_out: false
+      - name: event_sep0
+        format: "^$"
+
+  - name: category
+    repeat: true
+    starts_at_row: 4
+    parent: event
+    rows:
+      - name: cat_separator
+        required: false
+        format: "^$"
+      - fields:
+        - name: cat_title
+          format: "^\\s{50,}((?>MASTER|UNDER)\\s\\d{2})[MF]"
+          pop_out: false
+        - name: gender_type
+          format: "^\\s{50,}(?>MASTER|UNDER)\\s\\d{2}([MF])"
+          pop_out: false
+
+  # Actual data starts here:
+  - name: results
+    repeat: true
+    parent: category
+    starts_at_row: 4
+    fields:
+      - name: rank
+        format: "^\\s{1,10}(\\d{1,3})\\s{1,10}\\w+"
+        pop_out: false
+      - name: swimmer_name
+        format: "^\\s{1,10}(\\d{1,3})\\s{1,10}(\\D{3,30})\\s{2,}\\d{2}[MF]\\s{2,}\\d{4}\\s{3,}"
+        pop_out: false
+
+      - name: cat_title
+        format: "^\\s{1,10}(\\d{1,3})\\s{1,10}\\D{3,30}\\s{2,}(\\d{2})[MF]\\s{2,}\\d{4}\\s{3,}"
+        pop_out: false
+      - name: gender_type
+        format: "^\\s{1,10}(\\d{1,3})\\s{1,10}\\D{3,30}\\s{2,}\\d{2}([MF])\\s{2,}\\d{4}\\s{3,}"
+        pop_out: false
+
+      - name: year_of_birth
+        format: "^\\s{0,10}(?>\\d{1,3})\\s{1,10}\\D{3,30}\\s{2,}(?>\\w{3})?\\s{2,}(\\d{4})\\s{3,}"
+        pop_out: false
+      - name: team_name
+        format: "\\s{2,}\\d{4}\\s{3,}(.{3,32})(?>\\s{2,}|$)"
+        pop_out: false
+
+      - name: heat_num
+        format: "\\s{5,}(\\d{1,3})\\s{3,}\\d{1,2}\\s{2,}\\d{1,2}\\.\\s{2,}(?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2}\\s*"
+        token_start: 105
+        pop_out: false
+        required: false
+      - name: lane_num
+        format: "\\s{5,}\\d{1,3}\\s{3,}(\\d{1,2})\\s{2,}\\d{1,2}\\.\\s{2,}(?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2}\\s*"
+        token_start: 105
+        pop_out: false
+        required: false
+      - name: heat_rank
+        format: "\\s{5,}\\d{1,3}\\s{3,}\\d{1,2}\\s{2,}(\\d{1,2})\\.\\s{2,}(?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2}\\s*"
+        token_start: 105
+        pop_out: false
+        required: false
+
+      - name: timing
+        format: "\\s{2,}((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
+        token_start: 105
+        pop_out: false
+        # DSQ don't have timings:
+        required: false
+
+      - name: disqualify_type
+        format: "\\s+(SQ|RT|NP)\\b"
+        token_start: 120
+        pop_out: false
+        required: false
+      - name: std_score
+        format: "\\s{2,}(?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2}\\s{2,}(\\d?[,.]?\\d{1,4}[,.]\\d{1,2})$"
+        token_start: 105
+        pop_out: false
+        # U25 / A20 do not score:
+        required: false
+
+  - name: dsq_label
+    parent: results
+    required: false
+    rows:
+      - name: dsq_type
+        fields:
+          - name: disqualify_type
+            format: "^\\s{12,}(falsa\\spartenz\\w+|arrivo\\sirr\\w*|virata\\s\\w+|nuotata\\sirr\\w+)"
+            pop_out: false
+      - name: dsq_spacer2
+        required: false
+        format: "^$"
+
+  - name: disqualified
+    parent: event
+    required: false
+    rows:
+      - name: dsq_spacer1
+        format: "^$"
+      - name: dsq_title
+        format: "^\\s{3,}NON\\sCLASSIFICATI|FUORI\\sGARA"
+
+  - name: publish_time
+    # Every 'event' change, check if there is a 'publish_time' row:
+    parent: event
+    # This may repeat after each event and be multiple times on the same page:
+    repeat: true
+    required: false
+    row_span: 2
+    # Don't include this in the keys: (empty keys like empty rows are skipped by default)
+    keys: [skip_me]
+    format: "^\\s+Pubblicata:"
+
+  # End-Of-Page, variable span: 5-6-7
+  - name: footer
+    parent: header
+    eop: true
+    repeat: true
+    rows:
+      - name: footer_spacer1
+        format: "^$"
+      - name: footer_spacer2
+        format: "^$"
+
+      # 3x optional empty rows (1 may be subst by the last timestamp row below, which is optional too):
+      - name: footer_spacer3
+        required: false
+        format: "^$"
+      - name: footer_spacer4
+        required: false
+        format: "^$"
+      - name: footer_spacer5
+        required: false
+        format: "^$"
+
+      - name: footer_place
+        fields:
+          # Expected format: "<city>[,/]\\s?<venue>"
+          - name: meeting_place
+            # Support long place names like "Centro Federale di Ostia (RM)" or "Reggio nell'Emilia"
+            format: "^(.+)[,/]\\s?.+$"
+            pop_out: false
+            # format: "^(.+)[,/]\\s?(?>\\w{2,}\\s?){1,}"
+          - name: meeting_venue_or_date
+            format: "^.+[,/]\\s?(.+)$"
+            pop_out: false
+      - name: footer_page
+        format: "\\s{7,}Page\\s\\d{1,}"
+
+      - name: footer_timestamp
+        required: false
+        format: "^\\s{50,}Stampata\\sil\\s\\d{1,2}"
+
+  - name: empty_row
+    repeat: true
+    parent: event
+    required: false
+    format: "^$"

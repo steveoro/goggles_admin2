@@ -49,7 +49,7 @@ module PdfResults
   #
   class ContextDAO
     # Properties from source ContextDef
-    attr_reader :name, :parent, :key
+    attr_reader :name, :key, :parent, :parent_name
 
     # Array of sibling ContextDAOs, added with #add_row(context_dao)
     attr_reader :rows
@@ -78,6 +78,19 @@ module PdfResults
       @name = context&.alternative_of || context&.name || 'root'
       # Store curr. reference to the latest Ctx parent DAO for usage in find & merge:
       @parent = context&.parent&.dao
+
+      # Store reference to parent name for whenever the parent DAO is not found in the hierarchy.
+      # (in this case, the first matching name during merge will be used as destination parent - see #merge)
+      #
+      # == Typical example:
+      # Some layouts may not have a repeated 'header' section on each page and still use different
+      # layout format files for each page; in this case, the parent name will continue to reference
+      # the 'header' while the @parent link would be nil (as no parent DAO is found during the parsing).
+      # During the merge, the first context named 'header' found in the hierarchy will be used as
+      # the actual destination parent event though the @parent link is still nil.
+      # Without a reference to the parent name, the merge would add any sibling context with a nil
+      # parent to the root level, which is NOT what we want (creating orphans).
+      @parent_name = context&.parent&.name
       @key = context&.key # Use current Context key as UID
       @rows = []
 
@@ -131,6 +144,19 @@ module PdfResults
       # Find DAO in siblings (FIFO, go deeper):
       @rows.find { |dao| dao.find_existing(source_dao) }
     end
+
+    # Similarly to #find_existing(), this one searches recursively for the specified target name
+    # inside the hierarchy, starting at this instance's level and going down the hierarchy.
+    # Only the specified name will be matched, no matter the key.
+    #
+    # Returns the first DAO found with the matching +name+ (including self).
+    # Returns +nil+ otherwise.
+    def find_existing_by_name_only(target_name)
+      return self if target_name == name
+
+      # Find DAO in siblings (FIFO, go deeper):
+      @rows.find { |dao| dao.find_existing_by_name_only(target_name) }
+    end
     #-- -----------------------------------------------------------------------
     #++
 
@@ -144,7 +170,7 @@ module PdfResults
     #++
 
     # Merges the given ContextDAO into the proper parent DAO belonging to this subtree
-    # assuming the parent is either self or a sibling of self.
+    # assuming the destination parent is either self or a sibling of self.
     #
     # The method searches recursively for the parent name and key,
     # then adds (or merges recursively, if already existing) the specified +dao+
@@ -169,9 +195,20 @@ module PdfResults
     # Each DAO can store a different data hierarchy subtree. This merge
     # aims at merging two different data subtrees into the same parent node.
     #
-    # Given that if two DAOs have the same name & key are considered equals in value,
+    #     <self DAO(name, key, parent)> (target / destination)
+    #        |
+    #        |    <-- merge --|  <source DAO (name, key, parent)>
+    #        |                       |
+    #     [rows]                     |
+    #                              [rows]
+    #
+    # Part of the merging process requires finding the correct parent for the source DAO
+    # and its rows. The parent could be this same DAO instance or any other DAO in its
+    # sibling rows.
+    #
+    # Given that two DAOs are considered equals in value whenever they have the same name & key,
     # "merging" actually implies adding just the sub-rows from the source to
-    # the destination node, preserving the existing ones while adding only what
+    # the destination node, preserving the existing rows while adding only what
     # is really missing from the destination DAO.
     #
     # The only exception to the above rule is for headers: given that PDFs are assumed to
@@ -189,13 +226,22 @@ module PdfResults
     # - DAOs collected on a per-page basis, w/ parent section (DAO nodes) repeating on each page
     #   --> AIM: single DAO tree => requires a merge of DAO subtrees
     #
+    # == Algorithm / pseudo-code:
+    # A) Find SELF from dest_parent
+    # B) if self not found => add to dest_parent @rows
+    # C) if self => check for missing rows & merge iteratively:
+    #      found_dao.rows.each { |subdao| subdao compare if missing or not // MERGE }
+    #
     def merge(source_dao) # rubocop:disable Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity,Metrics/AbcSize
       raise 'Invalid ContextDAO specified!' unless source_dao.is_a?(ContextDAO)
 
       # Find a destination container for the source DAO: it must have the same name & key
       # as the parent referenced by the source itself.
-      dest_parent = self if name == 'root' && source_dao.parent.blank?
-      dest_parent ||= find_existing(source_dao.parent) || source_dao.parent
+      # Only true root-level DAOs should have no parent:
+      dest_parent = self if name == 'root' && source_dao.parent.blank? && source_dao.parent_name.blank?
+      # Set destination DAO parent only if not already set above, using this priority:
+      # (any matching reference || same parent link || first matching parent name)
+      dest_parent ||= find_existing(source_dao.parent) || source_dao.parent || find_existing_by_name_only(source_dao.parent_name)
       raise 'Unable to find destination parent for source ContextDAO during merge!' unless dest_parent.is_a?(ContextDAO)
 
       # See if the source DAO is already inside the destination rows; add it if missing
@@ -215,18 +261,12 @@ module PdfResults
 
       existing_dao = dest_parent.rows.find { |dao| dao.name == source_dao.name && dao.key == source_dao.key }
 
-      # Found source DAO as existing? Try to merge it deeper, row by row:
+      # Found source DAO as existing? Try to merge its subtrees deeper, row (subtree) by row (subtree):
       if existing_dao.is_a?(ContextDAO)
         source_dao.rows.each { |row_dao| existing_dao.merge(row_dao) }
       else # Not included? => add it "as is":
         dest_parent.add_row(source_dao)
       end
-
-      # *Algorithm:*
-      # A) Find SELF from dest_parent
-      # B) if self not found => add to dest_parent @rows
-      # C) if self => check for missing rows & merge iteratively:
-      #    PSEUDO: found_dao.rows.each { |subdao| subdao compare if missing or not // MERGE }
     end
     #-- -----------------------------------------------------------------------
     #++
