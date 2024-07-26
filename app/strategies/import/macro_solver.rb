@@ -1023,12 +1023,14 @@ module Import
       if domain.present?
         mir_row = domain.first
         # Overwrite DSQ fields only when previously unknown:
+        mir_row.rank = 0 if disqualify_type.present?
         mir_row.disqualified = disqualify_type.present? if disqualify_type.present? && !mir_row.disqualified
         mir_row.disqualification_notes = disqualify_type if disqualify_type.present?
         mir_row.disqualification_code_type_id = dsq_code_type_id if dsq_code_type_id.present?
         return Import::Entity.new(row: mir_row, matches: domain.to_a, bindings:)
       end
 
+      rank = 0 if disqualify_type.present? # Force blank rank for DSQs
       new_row = GogglesDb::MeetingIndividualResult.new(
         meeting_program_id: meeting_program&.id,
         team_id: team&.id,
@@ -1149,12 +1151,14 @@ module Import
       if domain.present?
         mrr_row = domain.last
         # Overwrite DSQ fields only when previously unknown:
+        mrr_row.rank = 0 if disqualify_type.present?
         mrr_row.disqualified = disqualify_type.present? if disqualify_type.present? && !mrr_row.disqualified
         mrr_row.disqualification_notes = disqualify_type if disqualify_type.present?
         mrr_row.disqualification_code_type_id = dsq_code_type_id if dsq_code_type_id.present?
         return Import::Entity.new(row: mrr_row, matches: domain.to_a, bindings:)
       end
 
+      rank = 0 if disqualify_type.present? # Force blank rank for DSQs
       new_row = GogglesDb::MeetingRelayResult.new(
         meeting_program_id: meeting_program&.id,
         team_id: team&.id,

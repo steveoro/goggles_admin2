@@ -553,12 +553,14 @@ module PdfResults
       #   :rows=>[]
       # }
       fields = result_hash.fetch(:fields, {})
-      rank = fields['rank']
+      rank = fields['rank']&.delete(')')
       year_of_birth = fetch_field_with_alt_value(fields, 'year_of_birth')
       swimmer_name = extract_nested_field_name(result_hash, SWIMMER_FIELD_NAMES)&.upcase
       team_name = extract_nested_field_name(result_hash, TEAM_FIELD_NAMES)
-      # DSQ label:
-      dsq_label = extract_additional_dsq_labels(result_hash) if rank.to_i.zero?
+      timing = format_timing_value(fetch_field_with_alt_value(fields, 'timing'))
+      # Additional DSQ label ('disqualify_type' field inside a nested 'dsq_label' row):
+      dsq_label = extract_additional_dsq_labels(result_hash) if rank.to_i.zero? || timing.blank?
+      rank = nil if dsq_label.present? || timing.blank? # Force null rank when DSQ
 
       # Don't even consider 'X' as a possible default gender, since we're dealing with swimmers
       # and not with categories of events:
@@ -566,7 +568,7 @@ module PdfResults
       swimmer_name, year_of_birth, gender_code = scan_results_or_search_db_for_missing_swimmer_fields(swimmer_name, year_of_birth, cat_gender_code, team_name)
 
       {
-        'pos' => fields['rank']&.delete(')'),
+        'pos' => rank,
         'name' => swimmer_name,
         'year' => year_of_birth,
         'sex' => gender_code,
@@ -576,7 +578,7 @@ module PdfResults
         # (TOS format: uses 2 different field names depending on position so the nil one doesn't overwrite the other)
         'badge_region' => fetch_field_with_alt_value(fields, 'badge_region'),
         'team' => team_name,
-        'timing' => format_timing_value(fetch_field_with_alt_value(fields, 'timing')),
+        'timing' => timing,
         'score' => fetch_field_with_alt_value(fields, 'std_score'),
         # Optionals / added recently / To-be-supported by MacroSolver:
         'lane_num' => fields['lane_num'],
@@ -613,20 +615,22 @@ module PdfResults
 
       fields = rel_team_hash.fetch(:fields, {})
       rank = fields['rank']&.delete(')')
+      team_name = extract_nested_field_name(rel_team_hash, TEAM_FIELD_NAMES)
       timing = format_timing_value(fetch_field_with_alt_value(fields, 'timing'))
-      # Additional DSQ label ('dsq_label' field inside nested row):
+      # Additional DSQ label ('disqualify_type' field inside a nested 'dsq_label' row):
       dsq_label = extract_additional_dsq_labels(rel_team_hash) if rank.to_i.zero? || timing.blank?
+      rank = nil if dsq_label.present? || timing.blank? # Force null rank when DSQ
 
       row_hash = {
         'relay' => true,
         'pos' => rank,
-        'team' => extract_nested_field_name(rel_team_hash, TEAM_FIELD_NAMES),
+        'team' => team_name,
         'timing' => timing,
         'score' => fetch_field_with_alt_value(fields, 'std_score'),
         # Optionals / added recently / To-be-supported by MacroSolver:
         'lane_num' => fields['lane_num'],
         'nation' => fields['nation'],
-        'disqualify_type' => dsq_label # WIP: missing relay example w/ this
+        'disqualify_type' => dsq_label
       }
 
       # Add lap & delta fields only when present in the source fields and resemble a timing value:

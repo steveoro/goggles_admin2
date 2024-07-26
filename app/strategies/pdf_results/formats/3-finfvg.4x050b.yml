@@ -1,22 +1,22 @@
 #
 # = Layout format definition for PdfResults::FormatParser
 #
-# - Based upon '3-fintorino.100b'
+# - Based upon '3-finfvg.4x050m', but w/o "CR" column and no lap timings.
 #
-# FIN FVG (Trieste), 100m-only, w/ full lap timings, category & gender display,
+# FIN FVG (Trieste), 4x50m-only, category & gender display,
 # meeting name on top on event change, meeting place on EOP.
 # A variant of '3-fintorino' but more complete in data.
 #
 # The 'NAZ' column (Nation) here is used to display the category & gender info in a compressed
 # format on each row ("M40, female" => "40F" instead of the usual 3-letter code for the nation).
 #
-# Additionally, this format uses a standard category & gender display in between each age range
-# so the category data is repeated twice.
-#
-3-finfvg.100b:
+3-finfvg.4x050m:
   - name: header
     at_fixed_row: 0
+    # In order to validate/debug a format not always present in page,
+    # we need to set "required" to false according to current implementation:
     required: false
+    # Sometimes the header w/ the meeting title will be repeated, in between events:
     repeat: true
     rows:
       - name: hdr_title
@@ -46,7 +46,7 @@
     repeat: true
     rows:
       - name: results_hdr1
-        format: "^\\s?POS\\s{1,}CR\\s{1,}COGNOME\\sE\\sNOME\\s{2,}ANNO\\s{1,}NAZ\\s{1,}SOCIETA'\\s{10,}(?>50\\sm)?\\s{10,}ARRIVO\\s{1,}(?>PUNTI|Record)"
+        format: "^\\s?POS\\s{3,}STAFFETTA\\s{30,}NAZ\\s{5,}SOCIETA'\\s{30,}ARRIVO\\s{2,}PUNTI"
       - name: results_hdr_sep1
         format: "^$"
       # Whenever the event is not repeated on page start, at least 2x empty rows take its place:
@@ -66,15 +66,15 @@
     rows:
       - fields:
         - name: event_length
-          format: "^\\s{20,}(\\d{2,4})\\s?m\\s+"
+          format: "^\\s{20,}Mista\\s([468]x50)\\s?m\\s+"
           pop_out: false
         - name: event_type
-          format: "^\\s{20,}\\d{2,4}\\s?m\\s+(Stile(?>\\sLibero)?|Dorso|Rana|Delfino|Farfalla|Misti)\\s-\\s"
+          format: "^\\s{20,}Mista\\s[468]x50\\s?m\\s+(Stile(?>\\sLibero)?|Misti)\\s-\\s"
           pop_out: false
       - name: event_sep0
         format: "^$"
 
-  - name: category
+  - name: rel_category
     repeat: true
     # May lack whenever a category is reported on the next page:
     required: false
@@ -86,89 +86,96 @@
         format: "^$"
       - fields:
         - name: cat_title
-          format: "^\\s{50,}((?>MASTER|UNDER)\\s\\d{2})[MF]"
+          format: "^\\s{50,}((?>MASTER|UNDER)\\s\\d{2,3})[MFX]"
           pop_out: false
         - name: gender_type
-          format: "^\\s{50,}(?>MASTER|UNDER)\\s\\d{2}([MF])"
+          format: "^\\s{50,}(?>MASTER|UNDER)\\s\\d{2,3}([MFX])"
           pop_out: false
 
   # Actual data starts here:
-  - name: results
+  - name: rel_team
     repeat: true
-    parent: category
+    parent: rel_category
     starts_at_row: 4
     rows:
-      - name: results_sep
-        required: false
-        format: "^$"
-
       - name: results_detail
         fields:
           - name: rank
-            format: "^\\s{0,10}(\\d{1,3})\\s{1,8}\\d{1,2}\\s{1,3}\\w+"
+            format: "^\\s{0,10}(\\d{1,3}|FG|SQ)\\s{1,8}\\d{0,2}\\s{1,3}\\w+"
             required: false
             pop_out: false
-          - name: lane_num
-            format: "^\\s{0,10}\\d{0,3}\\s{1,8}(\\d{1,2})\\s{1,3}\\w+"
+          # Currently not used in MacroSolver:
+          - name: relay_name
+            format: "^\\s{0,10}\\d{0,3}\\s{1,10}(.{3,35})\\s{2,}\\d{2,3}\\s{2,}.{3,35}\\s{2,}"
             pop_out: false
-          - name: swimmer_name
-            format: "^\\s{0,10}\\d{0,3}\\s{1,8}\\d{1,2}\\s{1,3}(\\D{3,30})\\s{0,}\\d{4}\\s{2,}\\d{2}[MF]\\s{3,}"
-            pop_out: false
-          - name: year_of_birth
-            format: "^\\s{0,10}\\d{0,3}\\s{1,8}\\d{1,2}\\s{1,3}\\D{3,30}\\s{0,}(\\d{4})\\s{2,}\\d{2}[MF]\\s{3,}"
-            pop_out: false
-          - name: cat_title
-            format: "^\\s{0,10}\\d{0,3}\\s{1,8}\\d{1,2}\\s{1,3}\\D{3,30}\\s{0,}\\d{4}\\s{2,}(\\d{2})[MF]\\s{3,}"
-            pop_out: false
-          - name: gender_type
-            format: "^\\s{0,10}\\d{0,3}\\s{1,8}\\d{1,2}\\s{1,3}\\D{3,30}\\s{0,}\\d{4}\\s{2,}\\d{2}([MF])\\s{3,}"
-            pop_out: false
-
           - name: team_name
-            format: "\\s{0,}\\d{4}\\s{2,}(?>\\d{2}[MF])\\s{2,}(.{3,32})(?>\\s{2,}|$)"
+            format: "^\\s{0,10}\\d{0,3}\\s{1,10}.{3,35}\\s{2,}\\d{2,3}\\s{2,}(.{3,35})\\s{2,}"
             pop_out: false
-
-          - name: delta50
-            format: "\\s+((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})(?>\\s+(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}){2}$"
-            pop_out: false
-            required: false
-          - name: delta100
-            format: "\\s+((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})(?>\\s+(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}){1}$"
-            pop_out: false
-            required: false
 
           - name: timing
-            format: "(?>\\s+(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}){2}\\s+((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})$"
+            format: "\\s{2,}((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s{2,}\\d?[,.]?\\d{1,4}[,.]\\d{1,2}$"
             pop_out: false
             # DSQ don't have timings:
             required: false
-
-      - name: results_sep
-        required: false
-        format: "^$"
-
-  - name: dsq_label
-    parent: results
-    required: false
-    rows:
-      - name: dsq_spacer1
-        required: false
-        format: "^$"
-      - name: dsq_type
-        fields:
-          - name: disqualify_type
-            format: "^\\s{15,}(falsa\\spartenz\\w+|arrivo\\sirr\\w*|virata\\s\\w+|nuotata\\sirr\\w+)"
+          - name: std_score
+            format: "\\s{2,}(?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2}\\s{2,}(\\d?[,.]?\\d{1,4}[,.]\\d{1,2})$"
             pop_out: false
-      - name: dsq_spacer2
-        required: false
-        format: "^$"
+            # U25 / A20 do not score:
+            required: false
+
+      - name: rel_swimmer1
+        fields:
+          - name: swimmer_name1
+            format: "^\\s{8,}(\\D{3,30})\\s{2,}\\d{4}\\s{1,}\\d{2}\\w\\b"
+            pop_out: false
+          - name: year_of_birth1
+            format: "^\\s{8,}\\D{3,30}\\s{2,}(\\d{4})\\s{1,}\\d{2}\\w\\b"
+            pop_out: false
+          - name: gender_type1
+            format: "^\\s{8,}\\D{3,30}\\s{2,}\\d{4}\\s{1,}\\d{2}(\\w)\\b"
+            pop_out: false
+
+      - name: rel_swimmer2
+        fields:
+          - name: swimmer_name2
+            format: "^\\s{8,}(\\D{3,30})\\s{2,}\\d{4}\\s{1,}\\d{2}\\w\\b"
+            pop_out: false
+          - name: year_of_birth2
+            format: "^\\s{8,}\\D{3,30}\\s{2,}(\\d{4})\\s{1,}\\d{2}\\w\\b"
+            pop_out: false
+          - name: gender_type2
+            format: "^\\s{8,}\\D{3,30}\\s{2,}\\d{4}\\s{1,}\\d{2}(\\w)\\b"
+            pop_out: false
+
+      - name: rel_swimmer3
+        fields:
+          - name: swimmer_name3
+            format: "^\\s{8,}(\\D{3,30})\\s{2,}\\d{4}\\s{1,}\\d{2}\\w\\b"
+            pop_out: false
+          - name: year_of_birth3
+            format: "^\\s{8,}\\D{3,30}\\s{2,}(\\d{4})\\s{1,}\\d{2}\\w\\b"
+            pop_out: false
+          - name: gender_type3
+            format: "^\\s{8,}\\D{3,30}\\s{2,}\\d{4}\\s{1,}\\d{2}(\\w)\\b"
+            pop_out: false
+
+      - name: rel_swimmer4
+        fields:
+          - name: swimmer_name4
+            format: "^\\s{8,}(\\D{3,30})\\s{2,}\\d{4}\\s{1,}\\d{2}\\w\\b"
+            pop_out: false
+          - name: year_of_birth4
+            format: "^\\s{8,}\\D{3,30}\\s{2,}(\\d{4})\\s{1,}\\d{2}\\w\\b"
+            pop_out: false
+          - name: gender_type4
+            format: "^\\s{8,}\\D{3,30}\\s{2,}\\d{4}\\s{1,}\\d{2}(\\w)\\b"
+            pop_out: false
 
   - name: disqualified
-    parent: event
+    parent: rel_category
     required: false
     rows:
       - name: dsq_spacer1
-        required: false
         format: "^$"
       - name: dsq_title
         format: "^\\s{3,}NON\\sCLASSIFICATI|FUORI\\sGARA"
@@ -176,16 +183,26 @@
         required: false
         format: "^$"
 
+  # Currently not used:
+  # - name: dsq_label
+  #   parent: rel_team
+  #   required: false
+  #   rows:
+  #     - name: dsq_type
+  #       fields:
+  #         - name: disqualify_type
+  #           format: "^\\s{15,}((?>\\d[°^]\\s)?cambio\\s\\w+|falsa\\spartenz\\w+|arrivo\\sirr\\w*|virata\\s\\w+|nuotata\\sirr\\w+)"
+  #           pop_out: false
+
   - name: publish_time
     # Every 'results' change, check if there is a 'publish_time' row:
-    parent: results
+    parent: rel_category
     # This may repeat after each individual result (!!) and be multiple times on the same page:
     repeat: true
     required: false
     # Variable span: 2..3 rows
     rows:
       - name: publish_time1
-        required: false
         format: "^$"
       - name: publish_time2
         keys: [skip_me]
@@ -202,10 +219,10 @@
     rows:
       - name: footer_spacer1
         format: "^$"
-      # 4x optional empty rows (1 may be subst by the last timestamp row below, which is optional too):
       - name: footer_spacer2
-        required: false
         format: "^$"
+
+      # 3x optional empty rows (1 may be subst by the last timestamp row below, which is optional too):
       - name: footer_spacer3
         required: false
         format: "^$"

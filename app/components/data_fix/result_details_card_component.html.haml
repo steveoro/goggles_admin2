@@ -1,9 +1,9 @@
 %li.list-group-item{ class: css_class_for_card }
   %small
     (#{disqualified? ? dsq_label : @rank}) #{@timing} -
-    %i #{@std_points}
+    %i= @std_points
     %br/
-    %b #{@prg_key&.split('/')&.last}
+    %b= @prg_key&.split('/')&.last
     - if lap_swimmers&.count.to_i > 1
       %br/
       %span.lap-swimmers= lap_swimmers&.join(' / ')
