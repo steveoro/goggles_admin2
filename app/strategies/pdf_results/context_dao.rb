@@ -242,6 +242,9 @@ module PdfResults
       # Set destination DAO parent only if not already set above, using this priority:
       # (any matching reference || same parent link || first matching parent name)
       dest_parent ||= find_existing(source_dao.parent) || source_dao.parent || find_existing_by_name_only(source_dao.parent_name)
+      # DEBUG ----------------------------------------------------------------
+      binding.pry unless dest_parent.is_a?(ContextDAO)
+      # ----------------------------------------------------------------------
       raise 'Unable to find destination parent for source ContextDAO during merge!' unless dest_parent.is_a?(ContextDAO)
 
       # See if the source DAO is already inside the destination rows; add it if missing

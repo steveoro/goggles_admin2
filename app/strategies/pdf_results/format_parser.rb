@@ -129,7 +129,7 @@ module PdfResults
     #
     # Full document scan with verbose logging on console:
     #
-    # > fp = PdfResults::FormatParser.new('app/strategies/pdf_results/formats/results_2022-12-18_Brunelleschi.txt')
+    # > fp = PdfResults::FormatParser.new(<path_to_result_file_converted_from_pdf>.txt')
     # > fp.scan(debug: true) # default: false
     #
     # Partial document scan with verbose logging on console:
