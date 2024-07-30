@@ -72,7 +72,7 @@
         format: "^$"
 
       - name: results_hdr1
-        format: "^\\s{50,}Pos\\s+Cognome\\se\\snome\\s{10,}Anno\\s+Naz\\s+Società\\s{15,}50m\\s{4,}100m\\s{4,}150m\\s{4,}FINALE\\s+Punti"
+        format: "^\\s{50,}Pos\\s+Cognome\\se\\snome\\s{10,}Anno\\s+Naz\\s+Società\\s{15,}50m\\s{4,}100m\\s{4,}150m\\s{2,}FINALE\\s+Punti"
       - name: results_hdr_sep1
         format: "^$"
 
@@ -135,6 +135,8 @@
             required: false
 
       - name: result_deltas
+        # "DSQ"s (SQU|RIT|ASS) may present an empty row instead, which should be consumed by the parser:
+        optional_if_empty: true
         required: false
         fields:
           - name: delta100
@@ -149,6 +151,11 @@
             format: "^\\s{125,}(?>(?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2}\\s+){2}((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})\\b"
             pop_out: false
             required: false
+
+      # Additional empty row printed out when lap timings are omitted:
+      - name: results_sep
+        required: false
+        format: "^$"
 
   # In case result row gets split in two by the side overlay:
   - name: results_alt

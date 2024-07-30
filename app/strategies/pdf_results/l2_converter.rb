@@ -1049,12 +1049,15 @@ module PdfResults
     #++
 
     # Returns a single DSQ string label whenever the field 'disqualify_type' is present or
-    # if there are any sibling DAO rows named 'dsq_label', 'dsq_label_x2' or 'dsq_label_x3';
-    # +nil+ otherwise.
+    # if there are any sibling DAO rows named 'dsq_label', 'dsq_label_ind', 'dsq_label_rel',
+    # 'dsq_label_x2' or 'dsq_label_x3';
+    # The additional rows are ignored if any of them contain a 'key' with a value.
+    # Returns +nil+ otherwise.
     #
     # == Notes:
-    # 1. expected field name    => 'disqualify_type' || 'disqualify_type_alt'
-    # 2. sub-row contexts names => 'dsq_label' or 'dsq_label_XXX'
+    # 1. expected field name    => 'disqualify_type' || 'disqualify_type_alt';
+    # 2. sub-row contexts names => 'dsq_label' or 'dsq_label_XXX' ('ind', 'rel', 'x2', 'x3') with a
+    #                              meaningful key value.
     #
     def extract_additional_dsq_labels(result_hash)
       dsq_label = result_hash.fetch(:fields, {})['disqualify_type'] || result_hash.fetch(:fields, {})['disqualify_type_alt']
@@ -1063,7 +1066,7 @@ module PdfResults
       # add any additional DSQ label value (grep'ed as string keys) when present.
       additional_hash = result_hash.fetch(:rows, [{}]).find { |h| h[:name] == 'dsq_label' }
       dsq_label = [dsq_label, additional_hash[:key]].compact.join(': ') if additional_hash&.key?(:key)
-      %w[x2 x3].each do |suffix|
+      %w[ind rel x2 x3].each do |suffix|
         additional_hash = result_hash.fetch(:rows, [{}]).find { |h| h[:name] == "dsq_label_#{suffix}" }
         dsq_label = [dsq_label, additional_hash[:key]].compact.join(' ') if additional_hash&.key?(:key)
       end
