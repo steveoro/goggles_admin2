@@ -81,16 +81,9 @@
         required: false
         format: "^\\s{30,}_{1,5}CONTINUA$"
 
-  # Sibling "results" row #1: (optional)
-  - name: dsq_label
-    parent: results
-    required: false
-    # Return the dsq_label as a string key (not as a field):
-    format: "^\\s{80,}(.*)(?<!\\s\\s\\w{3})$"
-
   - name: rel_category
     # Each context that isn't repeated at least once *on each page* with this format should be set as optional:
-    # Default:
+    # Default: (this format handles just relay results, so this context is required for the layout to be applicable)
     # required: true
     repeat: true
     parent: event
@@ -147,12 +140,13 @@
           # DSQ don't have timings:
           required: false
         - name: std_score
-          format: "\\s{2,}\\d{2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+(\\d{3,4},\\d{2})\\s{1,}"
+          format: "\\s{2,}\\d{2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+\\(?(\\d{3,4},\\d{2})\\)?\\s{1,}"
           pop_out: false
           # U25/A20/DSQ do not score:
           required: false
         - name: badge_region
-          format: "\\s{1,}(\\w{3})$"
+          # Seldom the region code is followed by the nation code (2 chars), which may cause the next row to be an optional blank line:
+          format: "\\s{1,}(\\w{3})\\s*\\w{2}?$"
           # This may be rendered on the next row in case of DSQs:
           required: false
           pop_out: false
@@ -160,6 +154,11 @@
           format: "\\s*(Arrivo\\sirr.+|Squal.+|Nuotata.+|Falsa.+)$"
           pop_out: false
           required: false
+
+      # Optional blank row for when above one is too long:
+      - name: rel_opt_blank
+        required: false
+        format: "^$"
 
       # Optional relay row for when team name gets formatted on two lines:
       - name: rel_team_ext
@@ -201,5 +200,79 @@
             required: false
           - name: delta400
             format: "^\\s{2,}(?>[\\wìàèéòù'\\.-]+\\s){2,}(?>\\([\\d\\s\\.]{8}\\)\\s)?\\-\\s(?>[\\wìàèéòù'\\.-]+\\s){2,}(?>\\([\\d\\s\\.]{8}\\)\\s)?\\-\\s(?>[\\wìàèéòù'\\.-]+\\s){2,}(?>\\([\\d\\s\\.]{8}\\)\\s)?\\-\\s(?>[\\wìàèéòù'\\.-]+\\s){2,}\\((\\d{2}[\\s\\.]+\\d{2}[\\s\\.]+\\d{2})\\)"
+            pop_out: false
+            required: false
+
+      # Sibling relay row for laps #1 (optional):
+      - name: rel_lap250
+        required: false
+        fields:
+          - name: lap50
+            format: "\\s{2,}-50m(\\d{2}[':\\.]\\d{2}[\":\\.]\\d{2})[\\s\\(]"
+            pop_out: false
+            required: false
+          - name: delta50
+            format: "\\s{2,}-50m\\d{2}[':\\.]\\d{2}[\":\\.]\\d{2}[\\s\\(](\\d{0,2}[':\\.]?\\d{2}[\":\\.,]\\d{2})\\)?"
+            pop_out: false
+            required: false
+          - name: lap100
+            format: "\\s{2,}-100m(\\d{2}[':\\.]\\d{2}[\":\\.]\\d{2})[\\s\\(]"
+            pop_out: false
+            required: false
+          - name: delta100
+            format: "\\s{2,}-100m\\d{2}[':\\.]\\d{2}[\":\\.]\\d{2}[\\s\\(](\\d{0,2}[':\\.]?\\d{2}[\":\\.,]\\d{2})\\)?"
+            pop_out: false
+            required: false
+          - name: lap150
+            format: "\\s{2,}-150m(\\d{2}[':\\.]\\d{2}[\":\\.]\\d{2})[\\s\\(]"
+            pop_out: false
+            required: false
+          - name: delta150
+            format: "\\s{2,}-150m\\d{2}[':\\.]\\d{2}[\":\\.]\\d{2}[\\s\\(](\\d{0,2}[':\\.]?\\d{2}[\":\\.,]\\d{2})\\)?"
+            pop_out: false
+            required: false
+          - name: lap200
+            format: "\\s{2,}-200m(\\d{2}[':\\.]\\d{2}[\":\\.]\\d{2})[\\s\\(]"
+            pop_out: false
+            required: false
+          - name: delta200
+            format: "\\s{2,}-200m\\d{2}[':\\.]\\d{2}[\":\\.]\\d{2}[\\s\\(](\\d{0,2}[':\\.]?\\d{2}[\":\\.,]\\d{2})\\)?"
+            pop_out: false
+            required: false
+          - name: lap250
+            format: "\\s{2,}-250m(\\d{2}[':\\.]\\d{2}[\":\\.]\\d{2})[\\s\\(]"
+            pop_out: false
+            required: false
+          - name: delta250
+            format: "\\s{2,}-250m\\d{2}[':\\.]\\d{2}[\":\\.]\\d{2}[\\s\\(](\\d{0,2}[':\\.]?\\d{2}[\":\\.,]\\d{2})\\)?"
+            pop_out: false
+            required: false
+
+      # Sibling relay row for laps #2 (optional):
+      - name: rel_lap400
+        required: false
+        fields:
+          - name: lap300
+            format: "\\s{2,}-300m(\\d{2}[':\\.]\\d{2}[\":\\.]\\d{2})[\\s\\(]"
+            pop_out: false
+            required: false
+          - name: delta300
+            format: "\\s{2,}-300m\\d{2}[':\\.]\\d{2}[\":\\.]\\d{2}[\\s\\(](\\d{0,2}[':\\.]?\\d{2}[\":\\.,]\\d{2})\\)?"
+            pop_out: false
+            required: false
+          - name: lap350
+            format: "\\s{2,}-350m(\\d{2}[':\\.]\\d{2}[\":\\.]\\d{2})[\\s\\(]"
+            pop_out: false
+            required: false
+          - name: delta350
+            format: "\\s{2,}-350m\\d{2}[':\\.]\\d{2}[\":\\.]\\d{2}[\\s\\(](\\d{0,2}[':\\.]?\\d{2}[\":\\.,]\\d{2})\\)?"
+            pop_out: false
+            required: false
+          - name: lap400
+            format: "\\s{2,}-400m(\\d{2}[':\\.]\\d{2}[\":\\.]\\d{2})[\\s\\(]"
+            pop_out: false
+            required: false
+          - name: delta400
+            format: "\\s{2,}-400m\\d{2}[':\\.]\\d{2}[\":\\.]\\d{2}[\\s\\(](\\d{0,2}[':\\.]?\\d{2}[\":\\.,]\\d{2})\\)?"
             pop_out: false
             required: false

@@ -637,11 +637,11 @@ module PdfResults
       (1..29).each do |idx|
         key = "lap#{idx * 50}"
         value = fetch_field_with_alt_value(fields, key)
-        row_hash[key] = format_timing_value(value) if /\d{0,2}['\"\s:.]?\d{2}[\"\s:.]\d{2}/i.match?(value)
+        row_hash[key] = format_timing_value(value) if POSSIBLE_TIMING_REGEXP.match?(value)
 
         key = "delta#{idx * 50}"
         value = fetch_field_with_alt_value(fields, key)
-        row_hash[key] = format_timing_value(value) if /\d{0,2}['\"\s:.]?\d{2}[\"\s:.]\d{2}/i.match?(value)
+        row_hash[key] = format_timing_value(value) if POSSIBLE_TIMING_REGEXP.match?(value)
       end
 
       # Add relay swimmer laps onto the same result hash & compute possible age group

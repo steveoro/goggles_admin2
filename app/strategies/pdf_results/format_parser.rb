@@ -504,10 +504,10 @@ module PdfResults
         end
 
         # === "REPEATABLES" RESTART ===
-        # Valid or not, if there are still rows to process and we have "Repeatables" to check,
+        # Valid or not, if there are still rows (or pages left) to process and we have "Repeatables" to check,
         # restart the loop from the first "repeatable" context stored:
-        if (row_index < @rows.count) && (ctx_index >= @format_order.count) && @repeatable_defs.keys.present? &&
-           !check_already_made?(@repeatable_defs.keys.first, row_index)
+        if @repeatable_defs.keys.present? && !check_already_made?(@repeatable_defs.keys.first, row_index) &&
+           (row_index < @rows.count || @page_index < @pages&.count.to_i) && (ctx_index >= @format_order.count)
           # Set pointers for next iteration - RESTART "repeatables":
           ctx_name = @repeatable_defs.keys.first
           ctx_index = @format_order.index(ctx_name)
@@ -515,6 +515,9 @@ module PdfResults
           # DEBUG
           # $stdout.write("\033[1;33;30m♻\033[0m") # Restart loop signal
           log_message(Kernel.format("  \\__ (RESTARTING repeatables from first: '\033[94;3m%s\033[0m')", ctx_name))
+          # DEBUG ----------------------------------------------------------------
+          # binding.pry if @page_index >= 48 && row_index >= 61
+          # ----------------------------------------------------------------------
         end
 
         # Make sure the result format is cleared out at the end of each loop, unless found ok:

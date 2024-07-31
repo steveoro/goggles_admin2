@@ -1,0 +1,225 @@
+#
+# = Layout format definition for PdfResults::FormatParser
+#
+# Bi-lingual format mostly for Trentino Alto-Adige, Bolzano, ...
+#
+7-bolzano:
+  - name: header
+    # Index is page-relative:
+    at_fixed_row: 0
+    # Repeat (at_fixed_row, each page)
+    repeat: true
+
+    rows:
+      # "header" row-0, abs. row #0
+      # This defines a group of FieldDefs, spanning 1 single row:
+      - fields:
+        - name: edition
+          required: false
+          format: "^\\s{20,}(\\d{1,2}|[IVXLCM]+).{1,2}?\\s+"
+          pop_out: false
+        - name: meeting_name
+          format: "^\\s{20,}(?>\\d{1,2}|[IVXLCM]+)?.{1,2}?\\s+(.+)$"
+          pop_out: false
+
+      # "header" row-1, abs. row #1:
+      # NOTE: consider using "at_fixed_row: 1" given ContextDef may match several lines forward.
+      - fields:
+        - name: meeting_place
+          # Support long place names like "Centro Federale di Ostia (RM)" or "Reggio nell'Emilia"
+          format: "^\\s*(.{2,}(?>\\s\\(\\w\\w\\)))?,\\s*"
+        - name: meeting_date
+          # Support month names too: dd(-/)mm(-/)yy(yy), dd MMM(...) yy(yy)
+          format: "^\\s*.{2,}(?>\\s\\(\\w\\w\\))?,\\s*(\\d{2}([-\/]\\d{2}[-\/]\\d{2,4}|\\s\\w{3,}\\s\\d{2,4}))\\b"
+
+      # Optional empty row #3:
+      - name: hdr_separator
+        required: false
+        format: "^$"
+
+  - name: event
+    # Repeat each page
+    repeat: true
+    parent: header
+    # -- implied / default: --
+    # row_span: 2
+    # required: true
+
+    rows:
+      # "event" row-0:
+      - fields:
+        - name: event_length
+          lambda: strip
+          format: "\\s*(\\d{2,4})m?\\s+"
+        - name: event_type
+          lambda: strip
+          format: "\\s*(?>m\\s)?((\\w+\\s?){1,2})\\sMaster\\sMisti\\b"
+
+      # event" row-1:
+      - fields:
+        - name: event_sub_hdr
+          lambda: strip
+          format: "Riepilogo|Serie\\s\\d{2}"
+
+  # Data columns header
+  # Row #4:
+  - name: results_hdr
+    # (Repeat each page)
+    repeat: true
+    # repeat: false => ONCE per page max
+    lambda: strip
+    format: "\\s?Pos.\\s+Nominativo\\s+Naz\\s+Anno\\s+Società\\s+Ser.\\s+Cor(?>\\s+Pos\\.?)?\\s+Tempo\\s+Pti.\\sSC\\s+Master"
+
+  # Optional row before category
+  - name: cat_spacer
+    parent: results_hdr
+    required: false
+    format: "^$"
+
+  - name: category
+    repeat: true
+    # Whenever 'event' context changes, create a different DAO wrapping the fields:
+    parent: event
+    rows:
+      # Another optional empty row (in older files)
+      - name: cat_spacer2
+        required: false
+        format: "^$"
+
+      - name: cat_title
+        format: "\\s*([UAM]\\d{2}(\\sUnder|\\sMaster)?\\s(Femmine|Maschi)(\\s(\\d{2}\\s-\\s\\d{2}))?)[\\b\\n]?"
+      # Optional empty row
+      - name: cat_separator
+        required: false
+        format: "^$"
+
+  # Actual data starts here:
+  # Row #7 or #8:
+  - name: results
+    repeat: true
+    # Whenever 'category' context changes, create a different DAO wrapping the fields:
+    # (Do not use sub-contexts in rows as they can't be easily referenced)
+    parent: category
+    # Start searching for this context at:
+    # starts_at_row: 7 #  ('7' is not true for older files, keep this commented out)
+    fields:
+      - name: rank
+        format: "^\\s?(\\d{1,2}|SQ|RT|NP)\\s+\\w+"
+        pop_out: false
+        # Sometimes this may be missing due to technicalities:
+        required: false
+      - name: swimmer_name
+        format: "^\\s*(?>\\d{1,2}|SQ|RT|NP)?\\s+(\\w+(['`\\-\\w\\s]\\s?\\w*){1,4})(?!\\w{3}\\s+\\d{4}\\s+)"
+        token_end: 90
+        pop_out: false
+      - name: nation
+        format: "\\s+(\\w{3})(?=\\s+\\d{4}\\s+)"
+        token_end: 90
+        pop_out: false
+      - name: year_of_birth
+        format: "\\s+(\\d{4})\\s+"
+        pop_out: false
+        token_start: 78
+        token_end: 90
+      - name: team_name
+        format: "\\s+(([\\w\\d\\-&%'`]+.\\s?)+)\\s+"
+        token_start: 88
+        token_end: 121
+        pop_out: false
+      - name: heat_num
+        format: "\\s+(\\d{1,3})\\s+\\d{1,2}(\\s*|\\s+(?>\\d{1,2}|SQ|RT|NP)?\\s*)"
+        token_start: 120
+        token_end: 147
+        pop_out: false
+      - name: lane_num
+        format: "\\s+\\d{1,3}\\s+(\\d{1,2})(\\s*|\\s+(?>\\d{1,2}|SQ|RT|NP)?\\s*)"
+        token_start: 120
+        token_end: 147
+        pop_out: false
+      - name: heat_rank
+        format: "\\s+\\d{1,3}\\s+\\d{1,2}\\s+(\\d{1,2}|SQ|RT|NP)?\\s*"
+        token_start: 120
+        token_end: 147
+        pop_out: false
+        # This may be missing at all (DSQ, RT or even due to technicalities):
+        required: false
+      - name: timing
+        format: "\\s+(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*\\b"
+        token_start: 120
+        token_end: 157
+        pop_out: false
+        # DSQ don't have timings:
+        required: false
+      - name: team_score
+        format: "\\s*(\\d{1,5}[,.]\\d{1,2})\\b"
+        token_start: 148
+        pop_out: false
+        required: false
+      - name: disqualify_type
+        format: "\\s*(?>SQ|RT|NP)?\\s+(\\D+\\s?)+\\b"
+        token_start: 130
+        pop_out: false
+        required: false
+      - name: std_score
+        format: "\\s*(\\d?[,.]?\\d{1,4}[,.]\\d{1,2})\\b"
+        token_start: 157
+        pop_out: false
+        # U25 / A20 do not score:
+        required: false
+
+  - name: results_ext
+    parent: results
+    required: false
+    fields:
+      - name: dsq_details
+        format: "\\s{135}([\\w\\s]+)"
+        pop_out: false
+
+  - name: disqualified
+    parent: category
+    required: false
+    lambda: strip
+    format: "\\s*Non Classificati|Fuori gara\\b"
+
+  - name: empty_row
+    parent: event
+    required: false
+    format: "^$"
+
+  - name: publish_time
+    # Choose a link with the wrapping parent context from which the scan may resume
+    # when after this, independently from check success or failure:
+    parent: event
+    required: false
+    lambda: strip
+    format: "Orario Ufficializzazione"
+
+  - name: footer_title
+    parent: event
+    repeat: true
+    rows:
+      - name: pre_footer_spacer1
+        required: false
+        format: "^$"
+      - name: page_count
+        starts_with: Elaborazione dati a cura della Federazione Italiana Cronometristi - www.ficr.it
+        fields:
+          - name: pool_type
+            required: false
+            format: "\\s+(\\d{1,2} corsie \\d{2}m)\\s+"
+          - name: page_num
+            format: "\\s+Pagina\\s(\\d{1,2})\\sdi\\s\\d{1,2}"
+
+  # End-Of-Page context
+  - name: footer
+    parent: event
+    # The 'eop' key implies that this context will be searched <row_span> lines before the end of page.
+    # This also implies that the file must also be parsed in pages, otherwise the recognition will fail.
+    # (DO NOT use eop: true when extracting the whole file, unless when processing batches of pages)
+    eop: true
+    row_span: 4
+    repeat: true
+    fields:
+      # Actual last-line context marker (page should end after this token)
+      - name: page_delimiter
+        format: "\\s*https?://nuoto.ficr.it/?"

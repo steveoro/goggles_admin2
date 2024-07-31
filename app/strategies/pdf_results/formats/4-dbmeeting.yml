@@ -81,8 +81,8 @@
   - name: category
     # In order to validate/debug a format not always present in page,
     # we need to set "required" to false.
-    # Default:
-    # required: true
+    # Default: true
+    required: false
     repeat: true
     # Whenever 'event' context changes, create a different DAO wrapping the fields:
     parent: event
@@ -486,5 +486,42 @@
             required: false
           - name: delta200
             format: "^\\s{2,}(?>[\\wìàèéòù'\\.-]+\\s){2,}(?>\\([\\d\\s\\.]{8}\\)\\s)?\\-\\s(?>[\\wìàèéòù'\\.-]+\\s){2,}(?>\\([\\d\\s\\.]{8}\\)\\s)?\\-\\s(?>[\\wìàèéòù'\\.-]+\\s){2,}(?>\\([\\d\\s\\.]{8}\\)\\s)?\\-\\s(?>[\\wìàèéòù'\\.-]+\\s){2,}\\((\\d{2}[\\s\\.]+\\d{2}[\\s\\.]+\\d{2})\\)"
+            pop_out: false
+            required: false
+
+      # Sibling relay row for laps (optional):
+      - name: rel_laps
+        required: false
+        fields:
+          - name: lap50
+            format: "\\s{2,}-50m(\\d{2}[':\\.]\\d{2}[\":\\.]\\d{2})[\\s\\(]"
+            pop_out: false
+            required: false
+          - name: delta50
+            format: "\\s{2,}-50m\\d{2}[':\\.]\\d{2}[\":\\.]\\d{2}[\\s\\(](\\d{0,2}[':\\.]?\\d{2}[\":\\.,]\\d{2})\\)?"
+            pop_out: false
+            required: false
+          - name: lap100
+            format: "\\s{2,}-100m(\\d{2}[':\\.]\\d{2}[\":\\.]\\d{2})[\\s\\(]"
+            pop_out: false
+            required: false
+          - name: delta100
+            format: "\\s{2,}-100m\\d{2}[':\\.]\\d{2}[\":\\.]\\d{2}[\\s\\(](\\d{0,2}[':\\.]?\\d{2}[\":\\.,]\\d{2})\\)?"
+            pop_out: false
+            required: false
+          - name: lap150
+            format: "\\s{2,}-150m(\\d{2}[':\\.]\\d{2}[\":\\.]\\d{2})[\\s\\(]"
+            pop_out: false
+            required: false
+          - name: delta150
+            format: "\\s{2,}-150m\\d{2}[':\\.]\\d{2}[\":\\.]\\d{2}[\\s\\(](\\d{0,2}[':\\.]?\\d{2}[\":\\.,]\\d{2})\\)?"
+            pop_out: false
+            required: false
+          - name: lap200
+            format: "\\s{2,}-200m(\\d{2}[':\\.]\\d{2}[\":\\.]\\d{2})[\\s\\(]"
+            pop_out: false
+            required: false
+          - name: delta200
+            format: "\\s{2,}-200m\\d{2}[':\\.]\\d{2}[\":\\.]\\d{2}[\\s\\(](\\d{0,2}[':\\.]?\\d{2}[\":\\.,]\\d{2})\\)?"
             pop_out: false
             required: false
