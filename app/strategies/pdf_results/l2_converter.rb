@@ -844,7 +844,7 @@ module PdfResults
     # Returns +true+ if the supplied text seems to describe an intermixed-gender type of event;
     # +false+ otherwise.
     def intermixed_gender_label?(gender_text)
-      /mist|maschi\se\sfemmine/i.match?(gender_text.to_s)
+      /mist|maschi\se\sfemmine|m\+f/i.match?(gender_text.to_s)
     end
 
     # Returns +true+ only if the supplied row_hash seems to support and

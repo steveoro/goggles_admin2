@@ -3,7 +3,7 @@
 module PdfResults
   # = PdfResults::ContextDef
   #
-  #   - version:  7-0.7.10
+  #   - version:  7-0.7.16
   #   - author:   Steve A.
   #
   # Stores a parsing context definition, compiled from a parsing layout format YML file.
@@ -545,6 +545,9 @@ module PdfResults
 
       # 3) Force resulting buffer to stay in between row_span lines:
       # (Allows to force max range of looking-forward for matches to #row_span)
+      # DEBUG ----------------------------------------------------------------
+      # binding.pry if scan_index == 54 && %w[results results-row0 results_lap50_hdr results_lap50].include?(name)
+      # ----------------------------------------------------------------------
       curr_buffer = assert_row_buffer_granularity(curr_buffer)
       curr_buffer = curr_buffer[0..(@row_span - 1)] if curr_buffer.is_a?(Array)
 
@@ -580,7 +583,9 @@ module PdfResults
         # (Let's not bother to apply format in this case 'cos it won't work as blanks aren't supported by #apply_format)
         # Note: the only way to support blank empty lines is to specify the "^$" format.
         if curr_buffer.blank? && format == /^$/i
-          @consumed_rows = row_span # (Setting to row_span instead of 1 allows us to skip through multiple empty rows with a single ContextDef)
+          @consumed_rows = row_span
+          # (Setting to row_span instead of 1 allows us to skip through multiple empty rows with a single ContextDef
+          # when forcing row_span to a value greater than 1)
           @curr_index += row_span
           @last_validation_result = true
           return true

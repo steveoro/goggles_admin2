@@ -1,0 +1,135 @@
+#
+# = Layout format definition for PdfResults::FormatParser
+#
+# Bi-lingual format mostly for Trentino Alto-Adige, Bolzano, ...
+# Supports 4x50m relays with laps.
+#
+7-bolzano.4x050m:
+  - name: header
+    # Index is page-relative:
+    at_fixed_row: 0
+    # Repeat (at_fixed_row, each page)
+    repeat: true
+    rows:
+      - fields:
+        - name: edition
+          required: false
+          format: "^\\s{0,}(\\d{1,2})[°^]?\\s(?>\\w+\\s?){1,8}\\s{5,}\\s{20,}Vasca\\/Bahn"
+          pop_out: false
+        - name: meeting_name
+          format: "^\\s{0,}(?>\\d{1,2}[°^]?)?\\s((?>\\w+\\s?){1,8})\\s{5,}\\s{20,}Vasca\\/Bahn"
+          pop_out: false
+        - name: pool_type
+          format: "\\s{20,}Vasca\\/Bahn:\\s{1,}(\\d{2})."
+        - name: meeting_date
+          format: "\\s{1,}Data\\/Datum\\s{1,}(\\d{2}[\\.\\/\\-]\\d{2}[\\.\\/\\-]\\d{4})"
+
+      - name: hdr_chrono
+        format: "^\\s{50,}Cronometraggio\\/Zeitnahme:"
+
+      - fields:
+        - name: chrono_type
+          format: "^\\s{50,}(auto|man|semi)"
+          pop_out: false
+
+      - name: hdr_sub
+        format: "^\\s{25,}Stafette"
+
+  - name: event
+    repeat: true
+    # Section is printed out only on event change and may be skipped for the whole page:
+    required: false
+    parent: header
+    rows:
+      - name: event_spacer0
+        required: false
+        format: "^$"
+
+      - fields:
+        - name: event_length
+          pop_out: false
+          format: "^\\s{0,}(4x50)\\sm\\s(?>Kraul|Schmetterling|Rücken|Brust|Lagen)\\s{10,}"
+        - name: cat_title
+          format: "^\\s{0,}4x50\\sm\\s(?>Kraul|Schmetterling|Rücken|Brust|Lagen)\\s{10,}(?>OFFENE\\sWERTUNG\\s)?(\\d{2,3}|ASSOLUTI)\\s{10,}"
+
+      - name: event_spacer1
+        required: false
+        format: "^$"
+
+      - fields:
+        - name: event_type
+          pop_out: false
+          format: "^\\s{10,}(stile\\slibero|farfalla|dorso|rana|misti)\\s"
+        - name: gender_type
+          pop_out: false
+          format: "\\s{10,}(maschile|femminile|M\\+F)"
+
+  - name: rel_team
+    parent: event
+    # Default: (this format handles just relay results, so this context is required for the layout to be applicable)
+    # required: true
+    repeat: true
+    rows:
+      - fields:
+        - name: rank
+          format: "^\\s{0,3}(\\d{1,3})\\.\\s+"
+          pop_out: false
+        - name: team_name
+          format: "^\\s{0,3}\\d{1,3}\\.\\s+(.{3,30})\\s{3,}(?>\\d)?\\s{20,}"
+          pop_out: false
+        - name: relay_code
+          # (TODO: field name still unsupported)
+          format: "^\\s{0,3}\\d{1,3}\\.\\s+.{3,30}\\s{3,}(\\d)\\s{20,}"
+          pop_out: false
+        - name: timing
+          format: "\\s{1,}((?!99\\.99,99)\\d{2}[\\.:\\']\\d{2}[\\.,]\\d{2})$"
+          pop_out: false
+
+      - fields:
+        - name: swimmer_name1
+          format: "\\s{5,}\\d\\s{2,}(\\D{3,30})\\s{1,}(?>(?!99\\.99,99)\\d{2}[\\.:\\']\\d{2}[\\.,]\\d{2})\\s{1,}S\\s{1,}"
+          pop_out: false
+        - name: lap50
+          format: "\\s{5,}\\d\\s{2,}\\D{3,30}\\s{1,}((?!99\\.99,99)\\d{2}[\\.:\\']\\d{2}[\\.,]\\d{2})\\s{1,}S\\s{1,}"
+          pop_out: false
+        - name: swimmer_name2
+          format: "\\s{5,}\\d\\s{2,}\\D{3,30}\\s{1,}(?>(?!99\\.99,99)\\d{2}[\\.:\\']\\d{2}[\\.,]\\d{2})\\s{1,}S\\s{1,}\\d\\s{2,}(\\D{3,30})\\s{1,}(?>(?!99\\.99,99)\\d{2}[\\.:\\']\\d{2}[\\.,]\\d{2})\\s{1,}S\\s*"
+          pop_out: false
+        - name: lap100
+          format: "\\s{5,}\\d\\s{2,}\\D{3,30}\\s{1,}(?>(?!99\\.99,99)\\d{2}[\\.:\\']\\d{2}[\\.,]\\d{2})\\s{1,}S\\s{1,}\\d\\s{2,}\\D{3,30}\\s{1,}((?!99\\.99,99)\\d{2}[\\.:\\']\\d{2}[\\.,]\\d{2})\\s{1,}S\\s*"
+          pop_out: false
+
+      - fields:
+        - name: swimmer_name3
+          format: "\\s{5,}\\d\\s{2,}(\\D{3,30})\\s{1,}(?>(?!99\\.99,99)\\d{2}[\\.:\\']\\d{2}[\\.,]\\d{2})\\s{1,}S\\s{1,}"
+          pop_out: false
+        - name: lap150
+          format: "\\s{5,}\\d\\s{2,}\\D{3,30}\\s{1,}((?!99\\.99,99)\\d{2}[\\.:\\']\\d{2}[\\.,]\\d{2})\\s{1,}S\\s{1,}"
+          pop_out: false
+        - name: swimmer_name4
+          format: "\\s{5,}\\d\\s{2,}\\D{3,30}\\s{1,}(?>(?!99\\.99,99)\\d{2}[\\.:\\']\\d{2}[\\.,]\\d{2})\\s{1,}S\\s{1,}\\d\\s{2,}(\\D{3,30})\\s{1,}(?>(?!99\\.99,99)\\d{2}[\\.:\\']\\d{2}[\\.,]\\d{2})\\s{1,}S\\s*"
+          pop_out: false
+        - name: lap200
+          format: "\\s{5,}\\d\\s{2,}\\D{3,30}\\s{1,}(?>(?!99\\.99,99)\\d{2}[\\.:\\']\\d{2}[\\.,]\\d{2})\\s{1,}S\\s{1,}\\d\\s{2,}\\D{3,30}\\s{1,}((?!99\\.99,99)\\d{2}[\\.:\\']\\d{2}[\\.,]\\d{2})\\s{1,}S\\s*"
+          pop_out: false
+
+  # End-Of-Page context
+  - name: footer
+    parent: header
+    eop: true
+    row_span: 5
+    repeat: true
+    rows:
+      - name: footer_spacer1
+        required: false
+        format: "^$"
+
+      - name: footer_min_size
+        row_span: 4
+        fields:
+          # Actual last-line context marker (page should end after this token)
+          - name: page_delimiter
+            # Using a custom non-existent field name in keys array to skip completely this row
+            # from being part of the resulting context key:
+            keys: [skip_me]
+            format: "\\s+SEITE\\s-\\sPAGINA\\s\\d{1,2}\\s"
