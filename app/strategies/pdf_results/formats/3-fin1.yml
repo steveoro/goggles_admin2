@@ -71,11 +71,11 @@
           - name: event_length
             lambda: strip
             # Supports both relays & individual results:
-            format: "\\s*(m?i?staffetta\\s+[468]x\\d{2,4}|\\d{2,4})\\s+(?>(\\w+\\s?){1,3})\\s*\\-\\s*cronometraggio\\s"
+            format: "\\s*(\\d{2,4}|(?>mi)?(?>sta)?staffetta\\s+[468]x\\d{2,4})\\s+(?>stile(?>\\slibero)?|dorso|rana|delfino|farfalla|mist.)\\s*\\-\\s*cronometraggio\\s"
             pop_out: false
           - name: event_type
             lambda: strip
-            format: "\\s*(?>m?i?staffetta\\s+[468]x\\d{2,4}|\\d{2,4})\\s+((?>\\w+\\s?){1,3})\\s*\\-\\s*cronometraggio\\s"
+            format: "\\s*(?>\\d{2,4}|(?>mi)?(?>sta)?staffetta\\s+[468]x\\d{2,4})\\s+(stile(?>\\slibero)?|dorso|rana|delfino|farfalla|mist.)\\s*\\-\\s*cronometraggio\\s"
             pop_out: false
       # "event" row-3:
       - name: event_sep2
@@ -192,20 +192,20 @@
     required: false
     repeat: true
     rows:
-      # - name: rel_sep0
-      #   # On a page change + category change, the empty row may be missing:
-      #   required: false
-      #   format: "^$"
+      - name: rel_sep0
+        # On a page change + category change, the empty row may be missing:
+        required: false
+        format: "^$"
 
       - fields:
         - name: event_length
-          format: "^\\s*(m?i?staffetta\\s+[468]x\\d{2,3})\\s+(?>stile(?>\\slibero)?|dorso|rana|delfino|farfalla|mist.)\\s+(?>maschil?.?|femmin.l?.?)?\\s*"
+          format: "^\\s*((?>staffetta|mistaffetta|mistastaffetta)\\s+[468]x\\d{2,4})\\s+(?>(?>\\w+\\s?){1,3})\\s*\\-\\s*Categoria\\s"
           pop_out: false
         - name: event_type
-          format: "^\\s*(?>m?i?staffetta\\s+[468]x\\d{2,3})\\s+(stile(?>\\slibero)?|dorso|rana|delfino|farfalla|mist.)\\s+(?>maschil?.?|femmin.l?.?)?\\s*\\-\\s+Categoria\\s+"
+          format: "^\\s*(?>(?>staffetta|mistaffetta|mistastaffetta)\\s+[468]x\\d{2,4})\\s+(stile(?>\\slibero)?|dorso|rana|delfino|farfalla|mist.)\\s+(?>maschil?.?|femmin.l?.?)?\\s*\\-\\s+Categoria\\s+"
           pop_out: false
         - name: gender_type
-          format: "\\s+(mistaffetta|maschil?.?|femmin.l?.?)\\s*.*\\s+\\-\\s+Categoria\\s+"
+          format: "\\s+(mist.\\w+|maschil?.?|femmin.l?.?)\\s*.*\\s+\\-\\s+Categoria\\s+"
           pop_out: false
         - name: cat_title
           format: "\\s+\\-\\s+Categoria\\s+((?>M|U)\\d{2,3}-\\d{2,3})\\s*"
@@ -302,12 +302,12 @@
       - name: team_ranking1
         fields:
           - name: rank
-            format: "^\\s{0,15}(\\d{1,3}|SQ|RT|NP)\\s{1,9}"
+            format: "^\\s{0,15}(\\d{1,3}|SQ|RT|NP)\\s{1,}"
             # Sometimes the rank may be missing:
             required: false
             pop_out: false
           - name: team_name
-            format: "^\\s{0,15}(?>\\d{1,3}|SQ|RT|NP)?\\s{1,9}((?!Numero\\s|Società\\sche|Percentuale\\sdi)\\S.{1,30}\\S)\\s{1,}\\d{1,6}\\b"
+            format: "^\\s{0,15}(?>\\d{1,3}|SQ|RT|NP)?\\s{1,}((?!Numero\\s|Società\\sche|Percentuale\\sdi)\\S.{1,40}\\S)\\s{1,}\\d{1,6}\\d{1,6}(?>[\\.,]\\d{2})?$"
             pop_out: false
           - name: overall_score
             format: "(?<!\\s{4}\\d'\\d{2}\"\\d{2})\\s{3,}(\\d{1,6}(?>[\\.,]\\d{2})?)$"
