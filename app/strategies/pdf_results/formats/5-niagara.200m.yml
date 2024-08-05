@@ -85,7 +85,7 @@
       - name: result_laps
         fields:
           - name: rank
-            # DSQ use the hypen, so rank should always be present:
+            # DSQ use the hyphen, so rank should always be present:
             format: "^\\s{50,}(\\d{1,3}|-)\\s+\\D+\\s*\\d{4}\\s{1,}(?>\\w{3}|\\s{3})\\s{1,}"
             pop_out: false
           - name: swimmer_name
@@ -168,7 +168,7 @@
       - name: result_details
         fields:
           - name: rank
-            # DSQ use the hypen, so rank should always be present:
+            # DSQ use the hyphen, so rank should always be present:
             format: "^\\s{50,}(\\d{1,3}|-)\\s+\\D+\\s*\\d{4}\\s{1,}(?>\\w{3}|\\s{3})\\s{1,}(?>[\\w'àèéìòù\\.:\\/\\-]+\\s?){1,}\\s{1,}"
             pop_out: false
           - name: swimmer_name

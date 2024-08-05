@@ -2,7 +2,8 @@
 # = Layout format definition for PdfResults::FormatParser
 #
 # - Source: FIN Veneto custom format for Master's meetings results (50 blanks left margin version)
-# - Should support: 200m results, LAP-only version (no additional row for deltas)
+# - Should support: 200m results, LAP-only version (no additional row for deltas, except for some DNS results)
+# - includes a "NAZ" column
 # --> NO explicit category display (needs to be computed from swimmer age) <--
 #
 5-niagara.200l:
@@ -85,7 +86,7 @@
       - name: result_laps
         fields:
           - name: rank
-            # DSQ use the hypen, so rank should always be present:
+            # DSQ use the hyphen, so rank should always be present:
             format: "^\\s{50,}(\\d{1,3}|-)\\s+\\D+\\s*\\d{4}\\s{1,}(?>\\w{3}|\\s{3})\\s{1,}"
             pop_out: false
           - name: swimmer_name
@@ -126,6 +127,19 @@
             pop_out: false
             required: false
 
+      - name: dsq_label
+        required: false
+        rows:
+          - name: dsq_type
+            fields:
+              - name: disqualify_type
+                format: "^\\s{120,}((?>falsa|arrivo|virata|nuotata|partenza|frazione)\\s?\\D*)$"
+                pop_out: false
+          - name: dsq_spacer
+            required: false
+            format: "^$"
+
+
   # In case result row gets split in two by the side overlay:
   - name: results_alt
     alternative_of: results
@@ -137,7 +151,7 @@
       - name: result_details
         fields:
           - name: rank
-            # DSQ use the hypen, so rank should always be present:
+            # DSQ use the hyphen, so rank should always be present:
             format: "^\\s{50,}(\\d{1,3}|-)\\s+\\D+\\s*\\d{4}\\s{1,}(?>\\w{3}|\\s{3})\\s{1,}(?>[\\w'àèéìòù\\.:\\/\\-]+\\s?){1,}\\s{1,}"
             pop_out: false
           - name: swimmer_name
@@ -218,6 +232,18 @@
             format: "\\s+(SQU|RIT|ASS)$"
             pop_out: false
             required: false
+
+      - name: dsq_label
+        required: false
+        rows:
+          - name: dsq_type
+            fields:
+              - name: disqualify_type
+                format: "^\\s{120,}((?>falsa|arrivo|virata|nuotata|partenza|frazione)\\s?\\D*)$"
+                pop_out: false
+          - name: dsq_spacer
+            required: false
+            format: "^$"
 
   - name: side_overlay
     repeat: true

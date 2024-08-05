@@ -245,6 +245,7 @@ module PdfResults
         format_filepath = fmt_files[fmt_files_idx]
         current_fname = format_filepath&.basename&.to_s&.gsub('.yml', '')
         ffamily_name = current_fname&.split('.')&.first
+
         # Already checked using same format at same page? => Bail out!
         break if @checked_formats.key?(current_fname) &&
                  @checked_formats[current_fname][:last_check] == @page_index

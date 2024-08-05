@@ -2,11 +2,11 @@
 # = Layout format definition for PdfResults::FormatParser
 #
 # - Source: FIN Veneto custom format for Master's meetings results (50 blanks left margin version)
-# - Should support: 50m & 100m results
+# - Should support: 400m results, Laps + Deltas, 2x rows/result min, laps & delta only every 100m.
+# - includes a "NAZ" column
+# --> NO explicit category display (needs to be computed from swimmer age) <--
 #
-# --> This format does not have explicit category display (needs to be computed from swimmer age) <--
-#
-5-niagara:
+5-niagara.400l:
   - name: header
     at_fixed_row: 0
     # Repeat (at_fixed_row, each page)
@@ -43,75 +43,77 @@
       - name: event_detail
         fields:
           - name: event_length
-            format: "^\\s{70,}(\\d{2,4})\\s(?>Stile(?>\\sLibero)?|Dorso|Rana|Delfino|Farfalla|Misti)\\s-\\s"
+            format: "^\\s{70,}(400)\\s(?>Stile(?>\\sLibero)?|Dorso|Rana|Delfino|Farfalla|Misti)\\s-\\s"
             pop_out: false
           - name: event_type
-            format: "^\\s{70,}\\d{2,4}\\s(Stile(?>\\sLibero)?|Dorso|Rana|Delfino|Farfalla|Misti)\\s-\\s"
+            format: "^\\s{70,}400\\s(Stile(?>\\sLibero)?|Dorso|Rana|Delfino|Farfalla|Misti)\\s-\\s"
             pop_out: false
           - name: gender_type
-            format: "^\\s{70,}\\d{2,4}\\s(?>Stile(?>\\sLibero)?|Dorso|Rana|Delfino|Farfalla|Misti)\\s-\\s(?>Assoluti\\s)?(Maschi\\se\\sFemmine|Maschi|Femmine)"
+            format: "^\\s{70,}400\\s(?>Stile(?>\\sLibero)?|Dorso|Rana|Delfino|Farfalla|Misti)\\s-\\s(?>Assoluti\\s)?(Maschi\\se\\sFemmine|Maschi|Femmine)"
             pop_out: false
 
       - name: event_place_and_date
         fields:
-        - name: meeting_place
-          format: "^\\s{50,}(\\D{2,}),\\s+"
-        - name: meeting_date
-          # Support month names too: dd(-/)mm(-/)yy(yy), dd MMM(...) yy(yy)
-          format: "^\\s{50,}\\D{2,},\\s+\\D+\\s(\\d{2}(?>[-\\/]\\d{2}[-\\/]\\d{2,4}|\\s\\w{3,}\\s\\d{2,4}))"
+          - name: meeting_place
+            format: "^\\s{50,}(\\D{2,}),\\s+"
+          - name: meeting_date
+            # Support month names too: dd(-/)mm(-/)yy(yy), dd MMM(...) yy(yy)
+            format: "^\\s{50,}\\D{2,},\\s+\\D+\\s(\\d{2}(?>[-\\/]\\d{2}[-\\/]\\d{2,4}|\\s\\w{3,}\\s\\d{2,4}))"
 
       - name: event_chrono_type
         fields:
-        - name: chrono_type
-          format: "^\\s{50,}Cron:\\s(\\w)\\s-\\sBase\\sv\\.:\\s\\d{2}"
-        - name: pool_type
-          format: "\\s-\\sBase\\sv\\.:\\s(\\d{2})"
+          - name: chrono_type
+            format: "^\\s{50,}Cron:\\s(\\w)\\s-\\sBase\\sv\\.:\\s\\d{2}"
+          - name: pool_type
+            format: "\\s-\\sBase\\sv\\.:\\s(\\d{2})"
 
       - name: event_sep1
         format: "^$"
       - name: event_sep2
         format: "^$"
 
-      - name: event_result_hdr
-        format: "^\\s{50,}Pos\\s+Cognome\\se\\snome\\s{10,}Anno\\s+Naz\\s+Società\\s{20,}(?>50m\\s{10,})?FINALE\\s+Punti"
-
-      - name: event_result_hdr_sep
+      - name: results_hdr1
+        format: "^\\s{50,}Pos\\s+Cognome\\se\\snome\\s{10,}Anno\\s+Naz\\s+Società\\s{10,}100m\\s{2,}200m\\s{2,}300m\\s{2,}FINALE\\s+Punti"
+      - name: results_hdr_sep1
         format: "^$"
 
-  # "Standard" result (1-row only)
+  # Actual data starts here:
   - name: results
     required: false
     repeat: true
     parent: event
     rows:
-      - name: result_details
+      - name: result_laps
         fields:
           - name: rank
             # DSQ use the hyphen, so rank should always be present:
-            format: "^\\s{50,}(\\d{1,3}|-)\\s+\\D+\\s*\\d{4}\\s{1,}(?>\\w{3}|\\s{3})\\s{1,}"
+            format: "^\\s{50,}(\\d{1,3}|-)\\s+\\D+\\s*\\d{4}\\s*"
             pop_out: false
           - name: swimmer_name
-            format: "^\\s{50,}(?>\\d{1,3}|-)\\s+(\\D+)\\s*\\d{4}\\s{1,}(?>\\w{3}|\\s{3})\\s{1,}"
+            format: "^\\s{50,}(?>\\d{1,3}|-)\\s+(\\D+)\\s*\\d{4}\\s*"
             pop_out: false
           - name: year_of_birth
-            format: "^\\s{50,}(?>\\d{1,3}|-)\\s+\\D+\\s*(\\d{4})\\s{1,}(?>\\w{3}|\\s{3})\\s{1,}"
+            format: "^\\s{50,}(?>\\d{1,3}|-)\\s+\\D+\\s*(\\d{4})\\s*"
             pop_out: false
           - name: nation
             format: "^\\s{50,}(?>\\d{1,3}|-)\\s+\\D+\\s*\\d{4}\\s{1,}(\\w{3})\\s{1,}"
             # seldom, this can be missing from the file:
             required: false
             pop_out: false
-          # WORKS if there are at least 2 spaces between team_name && lap50:
           - name: team_name
-            format: "^\\s{50,}(?>\\d{1,3}|-)\\s+\\D+\\s*\\d{4}\\s{1,}(?>\\w{3}|\\s{3})\\s{1,}((?>[\\w'àèéìòù\\.:\\/\\-]+\\s?){1,})\\s{1,}"
+            format: "^\\s{50,}(?>\\d{1,3}|-)\\s+\\D+\\s*\\d{4}\\s{1,}(?>\\w{3}|\\s{3})\\s{1,}((?>[\\w'àèéìòù\\.:\\/\\-]+\\s?){1,})\\s+(?>(?>\\d{2}[:'\\.\"])?\\d{2}[\\.\"]\\d{2}|SQU|ASS|RIT)"
             pop_out: false
 
-          - name: lap50
-            format: "^\\s{50,}(?>\\d{1,3}|-)\\s+\\D+\\s*\\d{4}\\s{1,}(?>\\w{3}|\\s{3})\\s{1,}(?>[\\w'àèéìòù\\.:\\/\\-]+\\s?){1,}\\s{1,}((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})\\s+"
+          - name: lap100
+            format: "^\\s{50,}(?>\\d{1,3}|-)\\s+\\D+\\s*\\d{4}\\s{1,}(?>\\w{3}|\\s{3})\\s{1,}(?>(?>[\\w'àèéìòù\\.:\\/\\-]+\\s?){1,})\\s+((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})"
             pop_out: false
             required: false
-          - name: delta100
-            format: "^\\s{50,}(?>\\d{1,3}|-)\\s+\\D+\\s*\\d{4}\\s{1,}(?>\\w{3}|\\s{3})\\s{1,}(?>[\\w'àèéìòù\\.:\\/\\-]+\\s?){1,}\\s{1,}\\d{2}[\\.\"]\\d{2}\\s+((?>\\d{2}[:'\\.\"])?\\d{2}[\\.\"]\\d{2})\\s+"
+          - name: lap200
+            format: "^\\s{50,}(?>\\d{1,3}|-)\\s+\\D+\\s*\\d{4}\\s{1,}(?>\\w{3}|\\s{3})\\s{1,}(?>(?>[\\w'àèéìòù\\.:\\/\\-]+\\s?){1,})\\s+(?>(?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})\\s+((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})"
+            pop_out: false
+            required: false
+          - name: lap300
+            format: "((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})(?>\\s+(?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})\\s*(?>\\d{2,4}[\\.,]\\d{2})?$"
             pop_out: false
             required: false
           - name: timing
@@ -127,22 +129,24 @@
             pop_out: false
             required: false
 
-      - name: dsq_label
-        required: false
-        rows:
-          - name: dsq_type
-            fields:
-              - name: disqualify_type
-                format: "^\\s{120,}((?>falsa|arrivo|virata|nuotata|partenza|frazione)\\s?\\D*)$"
-                pop_out: false
-          - name: dsq_spacer
+      - name: result_deltas
+        fields:
+          - name: delta200
+            format: "^\\s{110,}.+\\s+((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})(?>\\s*(?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2}){2}$"
+            pop_out: false
             required: false
-            format: "^$"
+          - name: delta300
+            format: "^\\s{110,}.+\\s+((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})(?>\\s*(?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2}){1}$"
+            pop_out: false
+            required: false
+          - name: delta400
+            format: "^\\s{110,}.+\\s+((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})$"
+            pop_out: false
+            required: false
 
-  # Result row split in 2 by the side overlay:
+  # In case result row gets split in two by the side overlay:
   - name: results_alt
     alternative_of: results
-    # Pages with relay results usually won't have individual results in it, so to pass any page check this context must be optional:
     required: false
     repeat: true
     parent: event
@@ -152,16 +156,16 @@
         fields:
           - name: rank
             # DSQ use the hyphen, so rank should always be present:
-            format: "^\\s{50,}(\\d{1,3}|-)\\s+\\D+\\s*\\d{4}\\s{1,}(?>\\w{3}|\\s{3})\\s{1,}(?>[\\w'àèéìòù\\.:\\/\\-]+\\s?){1,}\\s{1,}"
+            format: "^\\s{50,}(\\d{1,3}|-)\\s+\\D+\\s*\\d{4}\\s*"
             pop_out: false
           - name: swimmer_name
-            format: "^\\s{50,}(?>\\d{1,3}|-)\\s+(\\D+)\\s*\\d{4}\\s{1,}(?>\\w{3}|\\s{3})\\s{1,}(?>[\\w'àèéìòù\\.:\\/\\-]+\\s?){1,}\\s{1,}(?>(?>\\d{2}[:'\\.\"])?\\d{2}[\\.\"]\\d{2}|SQU|ASS|RIT)"
+            format: "^\\s{50,}(?>\\d{1,3}|-)\\s+(\\D+)\\s*\\d{4}\\s*"
             pop_out: false
           - name: year_of_birth
-            format: "^\\s{50,}(?>\\d{1,3}|-)\\s+\\D+\\s*(\\d{4})\\s{1,}(?>\\w{3}|\\s{3})\\s{1,}(?>[\\w'àèéìòù\\.:\\/\\-]+\\s?){1,}\\s{1,}(?>(?>\\d{2}[:'\\.\"])?\\d{2}[\\.\"]\\d{2}|SQU|ASS|RIT)"
+            format: "^\\s{50,}(?>\\d{1,3}|-)\\s+\\D+\\s*(\\d{4})\\s*"
             pop_out: false
           - name: nation
-            format: "^\\s{50,}(?>\\d{1,3}|-)\\s+\\D+\\s*\\d{4}\\s{1,}(\\w{3})\\s{1,}(?>[\\w'àèéìòù\\.:\\/\\-]+\\s?){1,}\\s{1,}(?>(?>\\d{2}[:'\\.\"])?\\d{2}[\\.\"]\\d{2}|SQU|ASS|RIT)"
+            format: "^\\s{50,}(?>\\d{1,3}|-)\\s+\\D+\\s*\\d{4}\\s{1,}(\\w{3})\\s{1,}"
             # seldom, this can be missing from the file:
             required: false
             pop_out: false
@@ -169,16 +173,20 @@
             format: "^\\s{50,}(?>\\d{1,3}|-)\\s+\\D+\\s*\\d{4}\\s{1,}(?>\\w{3}|\\s{3})\\s{1,}((?>[\\w'àèéìòù\\.:\\/\\-]+\\s?){1,})\\s+(?>(?>\\d{2}[:'\\.\"])?\\d{2}[\\.\"]\\d{2}|SQU|ASS|RIT)"
             pop_out: false
 
-          - name: lap150
-            format: "^\\s{50,55}.{85,95}\\s{2,8}((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})\\s+"
+          - name: lap100
+            format: "^\\s{50,}(?>\\d{1,3}|-)\\s+\\D+\\s*\\d{4}\\s{1,}(?>\\w{3}|\\s{3})\\s{1,}(?>(?>[\\w'àèéìòù\\.:\\/\\-]+\\s?){1,})\\s+((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})"
             pop_out: false
             required: false
-          - name: delta100
-            format: "^\\s{50,55}.{85,95}\\s{2,8}(?>(?>\\d{2}[\\.\"]\\d{2})|\\s{5,8})\\s{1,5}((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})\\s*"
+          - name: lap200
+            format: "^\\s{50,}(?>\\d{1,3}|-)\\s+\\D+\\s*\\d{4}\\s{1,}(?>\\w{3}|\\s{3})\\s{1,}(?>(?>[\\w'àèéìòù\\.:\\/\\-]+\\s?){1,})\\s+(?>(?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})\\s+((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})"
+            pop_out: false
+            required: false
+          - name: lap300
+            format: "((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})(?>\\s+(?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})\\s*(?>\\d{2,4}[\\.,]\\d{2})?$"
             pop_out: false
             required: false
           - name: timing
-            format: "\\s+((?>\\d{2}[:'\\.\"])?\\d{2}[\\.\"]\\d{2})\\s*(?>\\d{2,4}[\\.,]\\d{2})?$"
+            format: "\\s+((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})\\s*(?>\\d{2,4}[\\.,]\\d{2})?$"
             pop_out: false
             required: false
           - name: std_score
@@ -207,42 +215,21 @@
       # position using similar field names but with an "_alt" suffix, which we'll be handled
       # by the L2Converter as "possible alternate value for a missing field" (no overwrites
       # if the field is already existing):
-      - name: results_split_row
+      - name: result_deltas_split_row
         # Requires, at least, a lot of leading spaces; then, anyone of the next fields:
         fields:
-          - name: lap50_alt
-            format: "^\\s{130,155}((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})\\s*"
+          - name: delta200
+            format: "^\\s{110,}.+\\s+((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})(?>\\s*(?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2}){2}$"
             pop_out: false
             required: false
-          - name: delta100_alt
-            format: "^(?>\\s{130,155}(?>\\d{2}[\\.\"]\\d{2})\\s{1,5}|\\s{156,163})((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})\\s*"
+          - name: delta300
+            format: "^\\s{110,}.+\\s+((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})(?>\\s*(?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2}){1}$"
             pop_out: false
             required: false
-
-          - name: timing_alt
-            format: "^(?>\\s{130,155}(?>\\d{2}[\\.\"]\\d{2})\\s{1,5}|\\s{156,163})(?>\\s{1,8}|(?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})\\s{0,5}((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})\\s{0,5}"
+          - name: delta400
+            format: "^\\s{110,}.+\\s+((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})$"
             pop_out: false
             required: false
-          - name: std_score_alt
-            format: "^\\s{130,155}.{20,30}\\s+(\\d{2,4}[\\.,]\\d{2})"
-            pop_out: false
-            required: false
-          - name: disqualify_type_alt
-            format: "^\\s{130,155}.{20,30}\\s+(SQU|RIT|ASS)"
-            pop_out: false
-            required: false
-
-      - name: dsq_label
-        required: false
-        rows:
-          - name: dsq_type
-            fields:
-              - name: disqualify_type
-                format: "^\\s{120,}((?>falsa|arrivo|virata|nuotata|partenza|frazione)\\s?\\D*)$"
-                pop_out: false
-          - name: dsq_spacer
-            required: false
-            format: "^$"
 
   - name: side_overlay
     repeat: true

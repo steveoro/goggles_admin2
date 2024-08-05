@@ -175,7 +175,7 @@
     required: false
     fields:
       - name: dsq_details
-        format: "^\\s?(partenz\\w+|irregol\\w+|arriv\\w+)$"
+        format: "^\\s?(e?\\s?partenz\\w+\\s?\\w*|irregol\\w+\\s?\\w*|e?\\s?arriv\\w+\\s?\\w*)$"
         pop_out: false
 
   - name: empty_row
@@ -307,7 +307,7 @@
             required: false
             pop_out: false
           - name: team_name
-            format: "^\\s{0,15}(?>\\d{1,3}|SQ|RT|NP)?\\s{1,}((?!Numero\\s|Società\\sche|Percentuale\\sdi)\\S.{1,40}\\S)\\s{1,}\\d{1,6}\\d{1,6}(?>[\\.,]\\d{2})?$"
+            format: "^\\s{0,15}(?>\\d{1,3}|SQ|RT|NP)?\\s{1,}((?!Numero\\s|Società\\sche|Percentuale\\sdi)\\S.{1,40}\\S)\\s{1,}\\d{1,6}(?>[\\.,]\\d{2})?$"
             pop_out: false
           - name: overall_score
             format: "(?<!\\s{4}\\d'\\d{2}\"\\d{2})\\s{3,}(\\d{1,6}(?>[\\.,]\\d{2})?)$"
