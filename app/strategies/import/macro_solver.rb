@@ -315,18 +315,16 @@ module Import
 
         sect['rows']&.each_with_index do |row, row_idx|
           team_name = row['team']
-          # DEBUG: ******************************************************************
-          binding.pry if team_name.blank? # => check rows!
-          # DEBUG: ******************************************************************
-          Rails.logger.debug { "\r\n\r\n*** TEAM '#{team_name}' ***" } if @toggle_debug
-          team = map_and_return_team(team_key: team_name)
-          team_affiliation = map_and_return_team_affiliation(team:, team_key: team_name)
-          # DEBUG: ******************************************************************
-          # SHOULD NEVER HAPPEN at this point:
-          # binding.pry if team.nil? || team_affiliation.nil?
-          # DEBUG: ******************************************************************
 
-          if row['relay'].present?
+          # RELAYS:
+          if team_name.present? && row['relay'].present?
+            Rails.logger.debug { "\r\n\r\n*** TEAM '#{team_name}' (relay) ***" } if @toggle_debug
+            team = map_and_return_team(team_key: team_name)
+            team_affiliation = map_and_return_team_affiliation(team:, team_key: team_name)
+            # DEBUG: ******************************************************************
+            # SHOULD NEVER HAPPEN at this point:
+            # binding.pry if team.nil? || team_affiliation.nil?
+
             (1..MAX_SWIMMERS_X_RELAY).each do |swimmer_idx|
               swimmer_name = row["swimmer#{swimmer_idx}"]
               year_of_birth = row["year_of_birth#{swimmer_idx}"]
@@ -348,12 +346,37 @@ module Import
               # DEBUG: ******************************************************************
             end
 
-          else
+          # INDIV. RESULTS:
+          elsif row['relay'].blank?
+            # WARNING: sometimes the team_name may be blank for some formats, but we can still recover from this
+            #          if we have already imported some of the same meeting results.
+            #          (typical case: processing a more detailed PDF file for adding the lap timings of some meeting
+            #           results previously imported with a web-crawl run)
             swimmer_name = row['name']
             year_of_birth = row['year']
             gender_type_code = row['sex']
             badge_code = "#{row['badge_region']}-#{row['badge_num']}" if row['badge_region'].present? && row['badge_num'].present?
             next unless swimmer_name.present? && year_of_birth.present?
+
+            # If we have already at least a MIR or a MRR linked to the same swimmer, we can use that team,
+            # otherwise we simply cannot proceed:
+            team = if team_name.blank?
+                     map_and_return_team_from_matching_mir(swimmer_name, year_of_birth, gender_type_code)
+                   else
+                     map_and_return_team(team_key: team_name)
+                   end
+            # Team entity still not set?
+            if team.blank?
+              Rails.logger.warn("Unable to find a matching team for '#{swimmer_name}' (#{year_of_birth}, #{gender_type_code})!")
+              next
+            end
+
+            team_name = team.name if team_name.blank? # Re-assign the team name in case we searched for an existing MIR
+            Rails.logger.debug { "\r\n\r\n*** TEAM '#{team_name}' (ind.res.) ***" } if @toggle_debug
+            team_affiliation = map_and_return_team_affiliation(team:, team_key: team_name)
+            # SHOULD NEVER HAPPEN at this point:
+            # DEBUG: ******************************************************************
+            binding.pry if team.nil? || team_affiliation.nil?
 
             swimmer_key, swimmer = map_and_return_swimmer(swimmer_name:, year_of_birth:, gender_type_code:, team_name:)
             badge = map_and_return_badge(swimmer:, swimmer_key:, team:, team_key: team_name,
@@ -1902,11 +1925,49 @@ module Import
       team_entity.row
     end
 
+    # Assuming there's an existing MIR associated to the specified swimmers parameter,
+    # this method will behave more or less similarly to #map_and_return_team(team_key:).
+    #
+    # The currently cached Meeting instance will be used to find the MIR by seeking the Swimmer first.
+    # Whenever a matching MIR is found, the corresponding Team will be mapped as an entity inside
+    # the list and returned as a row model.
+    #
+    # This will only work if there's an existing meeting with a matching MIR for the specified
+    # swimmer: no mapping of the Team will occur if there's no pre-existing MIR.
+    #
+    # == Params:
+    # - <tt>swimmer_name</tt> => name of the swimmer
+    # - <tt>year_of_birth</tt> => YOB of the swimmer
+    #
+    # == Returns:
+    # The mapped Team model row when a matching MIR is found; +nil+ otherwise.
+    #
+    def map_and_return_team_from_matching_mir(swimmer_name, year_of_birth, sex_code)
+      meeting = cached_instance_of('meeting', nil)
+      if meeting.id.blank?
+        Rails.logger.warn('Team name MISSING while the Meeting is new: unable to find an existing associated MIR!')
+        return
+      end
+
+      swimmer_entity = find_or_prepare_swimmer(swimmer_name, year_of_birth, sex_code)
+      return if swimmer_entity.blank?
+
+      mir = GogglesDb::MeetingIndividualResult.includes(:meeting)
+                                              .where(swimmer_id: swimmer_entity.row.id, 'meetings.id': meeting.id)
+                                              .first
+      return unless mir&.team
+
+      team_entity = Import::Entity.new(row: mir.team, matches: [mir.team])
+      team_entity.add_bindings!('team_affiliation' => mir.team.name)
+      add_entity_with_key('team', mir.team.name, team_entity)
+      team_entity.row
+    end
+
     # Prepares the TeamAffiliation model given the specified data or simply returns it if
     # it has been already mapped.
     #
     # == Options:
-    # - <tt>:team_key</tt> => the Team model row associated to the TeamAffiliation
+    # - <tt>:team</tt> => the Team model row associated to the TeamAffiliation
     # - <tt>:team_key</tt> => string key used to ID the +team+/+team_affiliation+ entity in cache
     #
     # == Returns:
@@ -1958,7 +2019,7 @@ module Import
       Rails.logger.debug { "\r\n=== SWIMMER '#{options[:swimmer_name]}' (+) ===" } if @toggle_debug
       swimmer_entity = find_or_prepare_swimmer(options[:swimmer_name], options[:year_of_birth],
                                                options[:gender_type_code])
-      raise RuntimeError('Cannot store a nil swimmer entity!') if swimmer_entity.blank?
+      raise 'Cannot store a nil swimmer entity!' if swimmer_entity.blank?
 
       # Rebuild the key from the resulting entity in case the search nullified the partial key:
       if swimmer_key.blank?
@@ -1969,7 +2030,7 @@ module Import
       swimmer_entity&.add_bindings!('team' => options[:team_name])
       # Store the required bindings at root level in the data_hash:
       # (ASSERT: NEVER store entities with blank or partial keys)
-      raise RuntimeError('Cannot store a swimmer with a blank or partial key!') if swimmer_key.blank?
+      raise 'Cannot store a swimmer with a blank or partial key!' if swimmer_key.blank?
 
       add_entity_with_key('swimmer', swimmer_key, swimmer_entity)
       # Return both the key and its mapped model row:
@@ -2047,9 +2108,21 @@ module Import
       gender_type_code = row['sex']
       badge_code = "#{row['badge_region']}-#{row['badge_num']}" if row['badge_region'].present? && row['badge_num'].present?
       # (Gender code can also be retrieved by search, if missing)
-      return unless team_name.present? && swimmer_name.present? && year_of_birth.present?
+      return unless swimmer_name.present? && year_of_birth.present?
 
-      team = map_and_return_team(team_key: team_name)
+      # If we have already at least a MIR or a MRR linked to the same swimmer, we can use that team,
+      # otherwise we simply cannot proceed:
+      team = if team_name.blank?
+               map_and_return_team_from_matching_mir(swimmer_name, year_of_birth, gender_type_code)
+             else
+               map_and_return_team(team_key: team_name)
+             end
+      # Team entity still not set?
+      if team.blank?
+        Rails.logger.warn("Unable to find a matching team for '#{swimmer_name}' (#{year_of_birth}, #{gender_type_code})!")
+        return
+      end
+
       team_affiliation = map_and_return_team_affiliation(team:, team_key: team_name)
       swimmer_key, swimmer = map_and_return_swimmer(swimmer_name:, year_of_birth:, gender_type_code:,
                                                     team_name:)

@@ -1052,15 +1052,18 @@ module PdfResults
     # if there are any sibling DAO rows named 'dsq_label', 'dsq_label_ind', 'dsq_label_rel',
     # 'dsq_label_x2' or 'dsq_label_x3';
     # The additional rows are ignored if any of them contain a 'key' with a value.
+    # Supports additional DSQ details stored in the 'fields' Hash (as 'dsq_details' key).
     # Returns +nil+ otherwise.
     #
     # == Notes:
     # 1. expected field name    => 'disqualify_type' || 'disqualify_type_alt';
     # 2. sub-row contexts names => 'dsq_label' or 'dsq_label_XXX' ('ind', 'rel', 'x2', 'x3') with a
     #                              meaningful key value.
+    # 3. additional details     => 'dsq_details' (at "fields" level), appended to the extracted label value;
     #
     def extract_additional_dsq_labels(result_hash)
-      dsq_label = result_hash.fetch(:fields, {})['disqualify_type'] || result_hash.fetch(:fields, {})['disqualify_type_alt']
+      dsq_label = result_hash.fetch(:fields, {})['disqualify_type'] || result_hash.fetch(:fields, {})['disqualify_type_alt'] || ''
+      dsq_label += result_hash.fetch(:fields, {})['dsq_details'] if result_hash.fetch(:fields, {})['dsq_details'].present?
       timing = result_hash.fetch(:fields, {})['timing']
       # Check for any possible additional (up to 3x rows) DSQ labels added as sibling rows:
       # add any additional DSQ label value (grep'ed as string keys) when present.
