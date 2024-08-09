@@ -43,7 +43,10 @@
       - fields:
         - name: meeting_place
           # Support long place names like "Centro Federale di Ostia (RM)" or "Reggio nell'Emilia"
-          format: "^\\s*(.{2,}(?>\\s\\(\\w\\w\\)))?,\\s*"
+          # Support long place names like "Centro Federale di Ostia (RM)" or "Reggio nell'Emilia"
+          # format: "^\\s*(.{2,}(?>\\s\\(\\w\\w\\)))?,\\s*"
+          # More generic: (see ficr2)
+          format: "^\\s*(\\D{2,}),\\s*"
         - name: meeting_date
           # Support month names too: dd(-/)mm(-/)yy(yy), dd MMM(...) yy(yy)
           format: "^\\s*.{2,}(?>\\s\\(\\w\\w\\))?,\\s*(\\d{2}([-\/]\\d{2}[-\/]\\d{2,4}|\\s\\w{3,}\\s\\d{2,4}))\\b"
@@ -96,7 +99,10 @@
         format: "^$"
 
       - name: cat_title
-        format: "\\s*([UAM]\\d{2}\\s(Under|Master)\\s(Femmine|Maschi)(\\s(\\d{2}\\s-\\s\\d{2}))?)[\\b\\n]?"
+        # Original:
+        # format: "\\s*([UAM]\\d{2}\\s(?>Under|Master)?\\s?(?>Femmine|Maschi)(?>\\s(?>\\d{2}\\s-\\s\\d{2}))?)"
+        # Examples: "A20 Femmine", "M25 Master Femmine 25 -29", " » segue M40 Master Femmine 40 - 44"
+        format: "^(?>\\s*»\\ssegue\\s|\\s{10,})([UAM]\\d{2}\\s(?>Under|Master)?\\s?(?>Femmine|Maschi))"
       # Optional empty row
       - name: cat_separator1
         required: false
@@ -114,56 +120,75 @@
             format: "^\\s{64,}(?!\\s*\\D+)"
             pop_out: false
           - name: lap50
-            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*\\b"
-            pop_out: false
+            # Original:
+            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*\\b"
             token_start: 66
             token_end: 81
+            # Alternative w/o margins:
+            # format: "^\\s{25,}((?>\\d{1,2}[':.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
+            pop_out: false
             required: false
           - name: lap100
-            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*\\b"
-            pop_out: false
+            # Original:
+            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*\\b"
             token_start: 81
             token_end: 92
+            # Alternative w/o margins:
+            # format: "^\\s{25,}(?>(?>\\d{1,2}[':.])?\\d{1,2}[\":\\.]\\d{1,2}\\s+){1}((?>\\d{1,2}[':.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
+            pop_out: false
             required: false
           - name: lap150
-            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*\\b"
-            pop_out: false
+            # Original:
+            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*\\b"
             token_start: 92
             token_end: 108
+            # Alternative w/o margins:
+            # format: "^\\s{25,}(?>(?>\\d{1,2}[':.])?\\d{1,2}[\":\\.]\\d{1,2}\\s+){2}((?>\\d{1,2}[':.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
+            pop_out: false
             required: false
           - name: lap200
-            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*\\b"
-            pop_out: false
+            # Original:
+            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*\\b"
             token_start: 109
             token_end: 118
+            # Alternative w/o margins:
+            # format: "^\\s{25,}(?>(?>\\d{1,2}[':.])?\\d{1,2}[\":\\.]\\d{1,2}\\s+){3}((?>\\d{1,2}[':.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
+            pop_out: false
             required: false
 
           - name: timing
-            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*\\b"
-            token_start: 118
+            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})$"
+            # Use last lap as timing when the column is totally missing:
+            token_start: 109
             pop_out: false
             required: false
 
       - name: results1
         fields:
           - name: rank
-            format: "\\s?(\\d{1,2}|SQ|RT|NP)\\s+"
+            format: "\\s*(\\d{1,2}|SQ|RT|NP|ES)\\s+"
             pop_out: false
           - name: swimmer_name
-            format: "\\s+(\\D+(?>['`\\-\\.\\s]\\s?\\D+){1,4})\\s+"
+            # Original:
+            # format: "\\s+(\\D+(?>['`\\-\\.\\s]\\s?\\D+){1,4})\\s+"
+            # token_end: 31
+            format: "^\\s*(?>\\d{1,2}|SQ|RT|NP|ES)\\s+(\\D{3,35})\\s{1,}\\d?\\s+"
             pop_out: false
-            token_end: 31
           - name: lane_num
-            format: "\\s*(\\d{1,2})\\s*"
+            # Original:
+            # format: "\\s*(\\d{1,2})\\s*"
+            # # Column alignment may vary (swimmer_name range can overlap safely with this due to its format):
+            # token_start: 25
+            # token_end: 52
+            format: "^\\s*(?>\\d{1,2}|SQ|RT|NP|ES)\\s+\\D{3,35}\\s{1,}(\\d)\\s+"
             pop_out: false
-            # Column alignment may vary (swimmer_name range can overlap safely with this due to its format):
-            token_start: 25
-            token_end: 52
           - name: nation
-            format: "\\s*(?>\\d{1,2})\\s*(\\w{2,3})\\b"
+            # Original:
+            # format: "\\s*(?>\\d{1,2})\\s*(\\w{2,3})\\b"
+            # token_start: 25
+            # token_end: 62
+            format: "^\\s*(?>\\d{1,2}|SQ|RT|NP|ES)\\s+\\D{3,35}\\s{1,}\\d\\s{1,}(\\w{3})\\b"
             pop_out: false
-            token_start: 25
-            token_end: 62
 
       - name: results2
         # ""RT" or "Retired" result rows usually won't even have the disqualify row:
@@ -174,19 +199,19 @@
             pop_out: false
           - name: delta100
             # may/may not have brackets:
-            format: "\\s*\\(?(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)?\\s*"
+            format: "\\s*\\(?((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\)?\\s*"
             pop_out: false
             token_start: 82
             token_end: 93
             required: false
           - name: delta150
-            format: "\\s*\\(?(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)?\\s*"
+            format: "\\s*\\(?((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\)?\\s*"
             pop_out: false
             token_start: 93
             token_end: 103
             required: false
           - name: delta200
-            format: "\\s*\\(?(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\)?\\s*"
+            format: "\\s*\\(?((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\)?\\s*"
             pop_out: false
             token_start: 103
             token_end: 118
@@ -201,6 +226,8 @@
           - name: team_name
             format: "^\\s{3,8}(([\\w\\d\\-&%'`]+.\\s?)+)"
             token_end: 43
+            # Support also incomplete results without team name: (may be fetched later by MacroSolver)
+            required: false
             pop_out: false
           - name: year_of_birth
             format: "\\s*(\\d{4})\\b"
@@ -242,32 +269,32 @@
             format: "^\\s{64,}"
             pop_out: false
           - name: lap50
-            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*\\b"
+            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*\\b"
             pop_out: false
             token_start: 66
             token_end: 81
             required: false
           - name: lap100
-            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*\\b"
+            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*\\b"
             pop_out: false
             token_start: 81
             token_end: 92
             required: false
           - name: lap150
-            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*\\b"
+            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*\\b"
             pop_out: false
             token_start: 92
             token_end: 108
             required: false
           - name: lap200
-            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*\\b"
+            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*\\b"
             pop_out: false
             token_start: 109
             token_end: 118
             required: false
 
           - name: timing
-            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})\\s*\\b"
+            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*\\b"
             token_start: 118
             pop_out: false
             required: false
@@ -275,29 +302,37 @@
       - name: results1
         fields:
           - name: rank
-            format: "\\s?(\\d{1,2}|SQ|RT|NP)\\s+"
+            format: "\\s*(\\d{1,2}|SQ|RT|NP|ES)\\s+"
             pop_out: false
           - name: swimmer_name
-            format: "\\s+(\\D+(?>['`\\-\\.\\s]\\s?\\D+){1,4})\\s+"
+            # Original:
+            # format: "\\s+(\\D+(?>['`\\-\\.\\s]\\s?\\D+){1,4})\\s+"
+            # token_end: 31
+            format: "^\\s*(?>\\d{1,2}|SQ|RT|NP|ES)\\s+(\\D{3,35})\\s{1,}\\d?\\s+"
             pop_out: false
-            token_end: 31
           - name: lane_num
-            format: "\\s*(\\d{1,2})\\s*"
+            # Original:
+            # format: "\\s*(\\d{1,2})\\s*"
+            # # Column alignment may vary (swimmer_name range can overlap safely with this due to its format):
+            # token_start: 25
+            # token_end: 52
+            format: "^\\s*(?>\\d{1,2}|SQ|RT|NP|ES)\\s+\\D{3,35}\\s{1,}(\\d)\\s+"
             pop_out: false
-            # Column alignment may vary (swimmer_name range can overlap safely with this due to its format):
-            token_start: 25
-            token_end: 52
           - name: nation
-            format: "\\s*(?>\\d{1,2})\\s*(\\w{2,3})\\b"
+            # Original:
+            # format: "\\s*(?>\\d{1,2})\\s*(\\w{2,3})\\b"
+            # token_start: 25
+            # token_end: 62
+            format: "^\\s*(?>\\d{1,2}|SQ|RT|NP|ES)\\s+\\D{3,35}\\s{1,}\\d\\s{1,}(\\w{3})\\b"
             pop_out: false
-            token_start: 25
-            token_end: 62
 
       - name: results2
         fields:
           - name: team_name
             format: "^\\s{3,8}(([\\w\\d\\-&%'`]+.\\s?)+)"
             token_end: 43
+            # Support also incomplete results without team name: (may be fetched later by MacroSolver)
+            required: false
             pop_out: false
           - name: year_of_birth
             format: "\\s*(\\d{4})\\b"

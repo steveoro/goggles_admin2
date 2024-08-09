@@ -108,55 +108,55 @@
         required: false
         fields:
           - name: lap50
-            format: "^\\s{25,}((?>\\d{1,2}[':.])?\\d{1,2}[\":.]\\d{1,2})\\s*"
+            format: "^\\s{25,}((?>\\d{1,2}[':.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
             pop_out: false
             required: false
           - name: lap100
-            format: "^\\s{25,}(?>(?>\\d{1,2}[':.])?\\d{1,2}[\":.]\\d{1,2}\\s+){1}((?>\\d{1,2}[':.])?\\d{1,2}[\":.]\\d{1,2})\\s*"
+            format: "^\\s{25,}(?>(?>\\d{1,2}[':.])?\\d{1,2}[\":\\.]\\d{1,2}\\s+){1}((?>\\d{1,2}[':.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
             pop_out: false
             required: false
           - name: lap150
-            format: "^\\s{25,}(?>(?>\\d{1,2}[':.])?\\d{1,2}[\":.]\\d{1,2}\\s+){2}((?>\\d{1,2}[':.])?\\d{1,2}[\":.]\\d{1,2})\\s*"
+            format: "^\\s{25,}(?>(?>\\d{1,2}[':.])?\\d{1,2}[\":\\.]\\d{1,2}\\s+){2}((?>\\d{1,2}[':.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
             pop_out: false
             required: false
           - name: lap200
-            format: "^\\s{25,}(?>(?>\\d{1,2}[':.])?\\d{1,2}[\":.]\\d{1,2}\\s+){3}((?>\\d{1,2}[':.])?\\d{1,2}[\":.]\\d{1,2})\\s*"
+            format: "^\\s{25,}(?>(?>\\d{1,2}[':.])?\\d{1,2}[\":\\.]\\d{1,2}\\s+){3}((?>\\d{1,2}[':.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
             pop_out: false
             required: false
           - name: timing
-            format: "\\s+((?>\\d{1,2}[':.])?\\d{1,2}[\":.]\\d{1,2})$"
+            format: "\\s+((?>\\d{1,2}[':.])?\\d{1,2}[\":\\.]\\d{1,2})$"
             pop_out: false
             required: false
 
       - name: results1
         fields:
           - name: rank
-            format: "^\\s?(\\d{1,2}|SQ|RT|NP)\\s+"
+            format: "^\\s?(\\d{1,2}|SQ|RT|NP|ES)\\s+"
             pop_out: false
           - name: swimmer_name
-            format: "^\\s?(?>\\d{1,2}|SQ|RT|NP)\\s+(\\D{3,35})\\s{1,}\\d?\\s+"
+            format: "^\\s?(?>\\d{1,2}|SQ|RT|NP|ES)\\s+(\\D{3,35})\\s{1,}\\d?\\s+"
             pop_out: false
           - name: lane_num
-            format: "^\\s?(?>\\d{1,2}|SQ|RT|NP)\\s+\\D{3,35}\\s{1,}(\\d)\\s+"
+            format: "^\\s?(?>\\d{1,2}|SQ|RT|NP|ES)\\s+\\D{3,35}\\s{1,}(\\d)\\s+"
             pop_out: false
           - name: nation
-            format: "^\\s?(?>\\d{1,2}|SQ|RT|NP)\\s+\\D{3,35}\\s{1,}\\d\\s{1,}(\\w{3})\\b"
+            format: "^\\s?(?>\\d{1,2}|SQ|RT|NP|ES)\\s+\\D{3,35}\\s{1,}\\d\\s{1,}(\\w{3})\\b"
             pop_out: false
 
       - name: results2
         required: false
         fields:
           - name: delta100
-            format: "^\\s{35,}\\(((?>\\d{1,2}[':.])?\\d{1,2}[\":.]\\d{1,2})\\)\\s*"
+            format: "^\\s{35,}\\(((?>\\d{1,2}[':.])?\\d{1,2}[\":\\.]\\d{1,2})\\)\\s*"
             pop_out: false
             required: false
           - name: delta150
-            format: "^\\s{35,}(?>\\((?>\\d{1,2}[':.])?\\d{1,2}[\":.]\\d{1,2}\\)\\s+){1}\\(((?>\\d{1,2}[':.])?\\d{1,2}[\":.]\\d{1,2})\\)\\s*"
+            format: "^\\s{35,}(?>\\((?>\\d{1,2}[':.])?\\d{1,2}[\":\\.]\\d{1,2}\\)\\s+){1}\\(((?>\\d{1,2}[':.])?\\d{1,2}[\":\\.]\\d{1,2})\\)\\s*"
             pop_out: false
             required: false
           # Last delta of the row usually doesn't show brackets:
           - name: delta200
-            format: "\\(((?>\\d{1,2}[':.])?\\d{1,2}[\":.]\\d{1,2})\\)\\s+((?>\\d{1,2}[':.])?\\d{1,2}[\":.]\\d{1,2})\\b"
+            format: "\\(((?>\\d{1,2}[':.])?\\d{1,2}[\":\\.]\\d{1,2})\\)\\s+((?>\\d{1,2}[':.])?\\d{1,2}[\":\\.]\\d{1,2})\\b"
             pop_out: false
             required: false
           # Usually YOB is on next row, but for some DNS, results may be compacted into 2 rows:
@@ -213,39 +213,40 @@
         required: false
         fields:
           - name: lap50
-            format: "^\\s{25,}((?>\\d{1,2}[':.])?\\d{1,2}[\":.]\\d{1,2})\\s*"
+            format: "^\\s{25,}((?>\\d{1,2}[':.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
             pop_out: false
             required: false
           - name: lap100
-            format: "^\\s{25,}(?>(?>\\d{1,2}[':.])?\\d{1,2}[\":.]\\d{1,2}\\s+){1}((?>\\d{1,2}[':.])?\\d{1,2}[\":.]\\d{1,2})\\s*"
+            format: "^\\s{25,}(?>(?>\\d{1,2}[':.])?\\d{1,2}[\":\\.]\\d{1,2}\\s+){1}((?>\\d{1,2}[':.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
             pop_out: false
             required: false
           - name: lap150
-            format: "^\\s{25,}(?>(?>\\d{1,2}[':.])?\\d{1,2}[\":.]\\d{1,2}\\s+){2}((?>\\d{1,2}[':.])?\\d{1,2}[\":.]\\d{1,2})\\s*"
+            format: "^\\s{25,}(?>(?>\\d{1,2}[':.])?\\d{1,2}[\":\\.]\\d{1,2}\\s+){2}((?>\\d{1,2}[':.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
             pop_out: false
             required: false
           - name: lap200
-            format: "^\\s{25,}(?>(?>\\d{1,2}[':.])?\\d{1,2}[\":.]\\d{1,2}\\s+){3}((?>\\d{1,2}[':.])?\\d{1,2}[\":.]\\d{1,2})\\s*"
+            format: "^\\s{25,}(?>(?>\\d{1,2}[':.])?\\d{1,2}[\":\\.]\\d{1,2}\\s+){3}((?>\\d{1,2}[':.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
             pop_out: false
             required: false
           - name: timing
-            format: "\\s+((?>\\d{1,2}[':.])?\\d{1,2}[\":.]\\d{1,2})$"
+            # Use last lap as timing when the column is totally missing:
+            format: "\\s+((?>\\d{1,2}[':.])?\\d{1,2}[\":\\.]\\d{1,2})$"
             pop_out: false
             required: false
 
       - name: results1
         fields:
           - name: rank
-            format: "^\\s?(\\d{1,2}|SQ|RT|NP)\\s+"
+            format: "^\\s?(\\d{1,2}|SQ|RT|NP|ES)\\s+"
             pop_out: false
           - name: swimmer_name
-            format: "^\\s?(?>\\d{1,2}|SQ|RT|NP)\\s+(\\D{3,35})\\s{1,}\\d?\\s+"
+            format: "^\\s?(?>\\d{1,2}|SQ|RT|NP|ES)\\s+(\\D{3,35})\\s{1,}\\d?\\s+"
             pop_out: false
           - name: lane_num
-            format: "^\\s?(?>\\d{1,2}|SQ|RT|NP)\\s+\\D{3,35}\\s{1,}(\\d)\\s+"
+            format: "^\\s?(?>\\d{1,2}|SQ|RT|NP|ES)\\s+\\D{3,35}\\s{1,}(\\d)\\s+"
             pop_out: false
           - name: nation
-            format: "^\\s?(?>\\d{1,2}|SQ|RT|NP)\\s+\\D{3,35}\\s{1,}\\d\\s{1,}(\\w{3})\\b"
+            format: "^\\s?(?>\\d{1,2}|SQ|RT|NP|ES)\\s+\\D{3,35}\\s{1,}\\d\\s{1,}(\\w{3})\\b"
             pop_out: false
 
       - name: results2

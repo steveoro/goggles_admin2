@@ -21,7 +21,9 @@
       - fields:
         - name: meeting_place
           # Support long place names like "Centro Federale di Ostia (RM)" or "Reggio nell'Emilia"
-          format: "^\\s*(.{2,}(?>\\s\\(\\w\\w\\)))?,\\s*"
+          # format: "^\\s*(.{2,}(?>\\s\\(\\w\\w\\)))?,\\s*"
+          # More generic: (see ficr2)
+          format: "^\\s*(\\D{2,}),\\s*"
         - name: meeting_date
           # Support month names too: dd(-/)mm(-/)yy(yy), dd MMM(...) yy(yy)
           format: "^\\s*.{2,}(?>\\s\\(\\w\\w\\))?,\\s*(\\d{2}([-\/]\\d{2}[-\/]\\d{2,4}|\\s\\w{3,}\\s\\d{2,4}))\\b"
@@ -36,7 +38,7 @@
         required: false
         format: "^$"
       - name: sub_title1
-        format: "\\s+(Classifica per Società)"
+        format: "\\s+(Classifica\\s(?>per\\s)?Società)"
       - name: sub_separator2
         required: false
         format: "^$"
@@ -52,7 +54,7 @@
     repeat: true
     rows:
       - name: ranking_hdr1
-        format: "\\s*Ord.\\s+Società\\s+Punti\\s+Staffetta\\s+Punti\\s+Individuali\\s+Punteggio"
+        format: "\\s*(?>Ord\\.|pos)\\s+Società\\s+Punti\\s+Staffetta\\s+Punti\\s+Individuali\\s+Punteggio"
       - name: ranking_hdr2
         format: "\\s*Nominativo\\s+Gara"
       - name: ranking_hdr_sep1
@@ -70,7 +72,7 @@
       - name: team_ranking1
         fields:
           - name: rank
-            format: "^\\s?(\\d{1,2}|SQ|RT|NP)\\s+"
+            format: "^\\s?(\\d{1,2}|SQ|RT|NP|ES)\\s+"
             pop_out: false
           - name: team_name
             format: "\\s{3,8}(([\\w\\d\\-&%'`]+\\s?)+)"

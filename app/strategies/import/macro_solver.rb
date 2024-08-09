@@ -283,7 +283,7 @@ module Import
     # == Clears but doesn't recompute:
     # - @data['badge'], because it will be filled-in during MIR mapping
     #
-    def map_teams_and_swimmers
+    def map_teams_and_swimmers(skip_broadcast = false)
       # Clear the lists:
       @data['team'] = {}
       @data['team_affiliation'] = {}
@@ -292,28 +292,31 @@ module Import
       total = @data['sections'].count
       section_idx = 0
 
-      @data['sections'].each do |sect|
+      @data['sections'].each do |sect| # rubocop:disable Metrics/BlockLength
         section_idx += 1
-        ActionCable.server.broadcast('ImportStatusChannel', { msg: 'map_teams_and_swimmers', progress: section_idx, total: })
+        ActionCable.server.broadcast('ImportStatusChannel', { msg: 'map_teams_and_swimmers', progress: section_idx, total: }) unless skip_broadcast
         # If the section contains a 'retry' subsection it means the crawler received some error response during
         # the data crawl and the result file is missing the whole result subsection.
         # (ALSO: we're not mapping team names from the rankings or the stats)
 
         # Search for specific sections presence that may act as a flag for skipping:
-        next if sect['retry'].present? || sect['ranking'].present? || sect['stats'].present?
+        next if sect['retry'].present? || sect['ranking'].present? || sect['stats'].present? || sect['rows'].blank?
 
         _event_type, category_type = Parser::EventType.from_l2_result(sect['title'], @season)
 
         # For parsed PDFs, the category code may be already set in section and the above may be nil:
         category_type = detect_ind_category_from_code(sect['fin_sigla_categoria']) if sect['fin_sigla_categoria'].present? && category_type.nil?
-
         # NOTE: category_type can still be nil at this point for some formats (relays, usually)
         # If this happens:
         # - category esteem is delegated to relay result & swimmer mapping
         # - avoid mapping badges together with swimmer (here) as badge requires a category
         # - when it's not a relay, usually the format is mis-interpreted or needs debugging
 
-        sect['rows']&.each_with_index do |row, row_idx|
+        # Don't use an #each block here as we're going to modify the data structure in place
+        # removing the rows that aren't processable (no team names w/o a matching result elsewhere):
+        row_idx = 0
+        while row_idx < sect['rows'].count
+          row = sect['rows'][row_idx]
           team_name = row['team']
 
           # RELAYS:
@@ -321,9 +324,8 @@ module Import
             Rails.logger.debug { "\r\n\r\n*** TEAM '#{team_name}' (relay) ***" } if @toggle_debug
             team = map_and_return_team(team_key: team_name)
             team_affiliation = map_and_return_team_affiliation(team:, team_key: team_name)
-            # DEBUG: ******************************************************************
-            # SHOULD NEVER HAPPEN at this point:
-            # binding.pry if team.nil? || team_affiliation.nil?
+            # This should never occur at this point (unless data is corrupted):
+            raise("No team or team_affiliation ENTITY for '#{team_name}'!") if team.blank? || team_affiliation.blank?
 
             (1..MAX_SWIMMERS_X_RELAY).each do |swimmer_idx|
               swimmer_name = row["swimmer#{swimmer_idx}"]
@@ -340,10 +342,10 @@ module Import
                 badge = map_and_return_badge(swimmer:, swimmer_key:, team:, team_key: team_name,
                                              team_affiliation:, category_type:)
               end
-              # DEBUG: ******************************************************************
-              # SHOULD NEVER HAPPEN at this point:
-              binding.pry unless badge.present? && swimmer.present? && swimmer_key.present?
-              # DEBUG: ******************************************************************
+              # This should never occur at this point (unless data is corrupted):
+              if swimmer_key.blank? || swimmer.blank? || badge.blank?
+                raise("No swimmer_key, swimmer or badge ENTITY for '#{swimmer_name}' (#{year_of_birth}, #{gender_type_code})!")
+              end
             end
 
           # INDIV. RESULTS:
@@ -365,27 +367,31 @@ module Import
                    else
                      map_and_return_team(team_key: team_name)
                    end
-            # Team entity still not set?
+            # Team entity still not set? Kill the row and continue:
             if team.blank?
-              Rails.logger.warn("Unable to find a matching team for '#{swimmer_name}' (#{year_of_birth}, #{gender_type_code})!")
+              Rails.logger.warn("Unable to find a matching team for '#{swimmer_name}' (#{year_of_birth}, #{gender_type_code})! Result row KILLED.")
+              sect['rows'][row_idx] = nil
+              sect['rows'].compact!
+              # (Do not progress the row index as we're already shortening the array)
               next
             end
 
-            team_name = team.name if team_name.blank? # Re-assign the team name in case we searched for an existing MIR
+            update_swimmer_key = team_name.blank?
+            row['team'] = team_name = team.name if team_name.blank? # Re-assign the team name in case we searched for an existing MIR
             Rails.logger.debug { "\r\n\r\n*** TEAM '#{team_name}' (ind.res.) ***" } if @toggle_debug
             team_affiliation = map_and_return_team_affiliation(team:, team_key: team_name)
-            # SHOULD NEVER HAPPEN at this point:
-            # DEBUG: ******************************************************************
-            binding.pry if team.nil? || team_affiliation.nil?
-
             swimmer_key, swimmer = map_and_return_swimmer(swimmer_name:, year_of_birth:, gender_type_code:, team_name:)
             badge = map_and_return_badge(swimmer:, swimmer_key:, team:, team_key: team_name,
                                          team_affiliation:, category_type:, badge_code:)
-            # DEBUG: ******************************************************************
-            # SHOULD NEVER HAPPEN at this point:
-            binding.pry unless badge.present? && swimmer.present? && swimmer_key.present?
-            # DEBUG: ******************************************************************
+            # Update any other entity referring/bound to this (swimmer & team):
+            update_partial_swimmer_key(swimmer_key, team_name) if update_swimmer_key
+            # This should never occur at this point (unless data is corrupted):
+            if team_affiliation.blank? || badge.blank? || swimmer.blank?
+              raise("No team_affiliation, badge, or swimmer ENTITY for '#{swimmer_name}' (#{year_of_birth}, #{gender_type_code})!")
+            end
           end
+
+          row_idx += 1
         end
       end
     end
@@ -431,6 +437,14 @@ module Import
       program_order = 0
       curr_category_type = nil
       meeting_session = cached_instance_of('meeting_session', msession_idx)
+
+      # Detect if team & swimmer mapping has been skipped and force-run it:
+      # (This shall happen only once whenever method #map_events_and_results()
+      # gets called *before* #map_teams_and_swimmers()).
+      first_team_name = @data['sections']&.first&.[]('rows')&.first&.fetch('team', nil)
+      if @data['sections'].present? && (first_team_name.blank? || !entity_present?('team_affiliation', first_team_name))
+        map_teams_and_swimmers # (No need to skip progress report if we launch this before the loop below)
+      end
 
       # Map programs & events:
       @data['sections'].each do |sect|
@@ -506,14 +520,6 @@ module Import
             category_type:, gender_type:, event_order: program_order
           )
           add_entity_with_key('meeting_program', program_key, mprogram_entity)
-        end
-
-        # Detect if team mapping has been skipped and force-run it:
-        # (This shall happen only once per loop if this method has been called *before* mapping teams or swimmers)
-        first_team_name = sect['rows'].first&.fetch('team', nil)
-        if first_team_name.blank? || !entity_present?('team_affiliation', first_team_name) ||
-           category_type.nil? || gender_type.nil?
-          map_teams_and_swimmers
         end
 
         # Build up the list of results:
@@ -1581,6 +1587,30 @@ module Import
       end
     end
 
+    # Scans the cached @data for the specified <tt>model_name</tt> and replaces each binding key found
+    # equal to <tt>old_key</tt> with <tt>new_key</tt> in <tt>target_binding</tt>.
+    # All cached instances of <tt>model_name</tt> wil be scanned for a match in their bindings.
+    #
+    # == Params:
+    # - <tt>model_name</tt>: the snail-case string name of the model, with the implied GogglesDb namespace.
+    #                        (i.e.: 'swimmer' for Swimmer)
+    # - <tt>old_key</tt>: the original old string key to be replaced
+    # - <tt>new_key</tt>: the new value of the string key for the replacement
+    # - <tt>target_binding</tt>: the target binding to be modified
+    #
+    def replace_key_in_bindings_for(model_name, old_key, new_key, target_binding)
+      @data[model_name]&.each_value do |cached_instance|
+        bindings = if cached_instance.is_a?(Hash)
+                     cached_instance['bindings']
+                   elsif cached_instance.respond_to?(:bindings)
+                     cached_instance.bindings
+                   end
+        next if bindings.blank?
+
+        bindings[target_binding] = new_key if bindings[target_binding] == old_key
+      end
+    end
+
     # Getter for any model instance stored at root level (as edit/review cache) given a specific access key.
     # This method detects also if the cached row is inside an Hash (re-parsed JSON) or a not-yet serialized Import::Entity#row.
     #
@@ -2108,20 +2138,14 @@ module Import
       gender_type_code = row['sex']
       badge_code = "#{row['badge_region']}-#{row['badge_num']}" if row['badge_region'].present? && row['badge_num'].present?
       # (Gender code can also be retrieved by search, if missing)
-      return unless swimmer_name.present? && year_of_birth.present?
+      # Skip processing if we weren't able to set the team name before,
+      # during the "map_teams_and_swimmers" phase:
+      Rails.logger.warn("Unrecoverable null team name for '#{swimmer_name}' (#{year_of_birth}, #{gender_type_code}): skipping result.") if team_name.blank?
+      return unless team_name.present? && swimmer_name.present? && year_of_birth.present?
 
-      # If we have already at least a MIR or a MRR linked to the same swimmer, we can use that team,
-      # otherwise we simply cannot proceed:
-      team = if team_name.blank?
-               map_and_return_team_from_matching_mir(swimmer_name, year_of_birth, gender_type_code)
-             else
-               map_and_return_team(team_key: team_name)
-             end
-      # Team entity still not set?
-      if team.blank?
-        Rails.logger.warn("Unable to find a matching team for '#{swimmer_name}' (#{year_of_birth}, #{gender_type_code})!")
-        return
-      end
+      team = map_and_return_team(team_key: team_name)
+      # This should never occur at this point (unless data is corrupted):
+      raise("No team ENTITY for '#{swimmer_name}' (#{year_of_birth}, #{gender_type_code})!") if team.blank?
 
       team_affiliation = map_and_return_team_affiliation(team:, team_key: team_name)
       swimmer_key, swimmer = map_and_return_swimmer(swimmer_name:, year_of_birth:, gender_type_code:,
@@ -2129,10 +2153,10 @@ module Import
       badge = map_and_return_badge(swimmer:, swimmer_key:, team:, team_key: team_name,
                                    team_affiliation:, category_type: options[:category_type],
                                    badge_code:)
-      # DEBUG: ******************************************************************
-      # SHOULD NEVER HAPPEN at this point:
-      binding.pry unless team.present? && team_affiliation.present? && badge.present? && swimmer.present? && swimmer_key.present?
-      # DEBUG: ******************************************************************
+      # This should never occur at this point (unless data is corrupted):
+      if team_affiliation.blank? || badge.blank? || swimmer.blank?
+        raise("No team_affiliation, badge, or swimmer ENTITY for '#{swimmer_name}' (#{year_of_birth}, #{gender_type_code})!")
+      end
       return unless options[:mprg].present? && options[:mprg_key].present? && options[:event_type].present?
 
       rank = row['pos'].to_i
@@ -2209,10 +2233,8 @@ module Import
 
       team = map_and_return_team(team_key: team_name)
       team_affiliation = map_and_return_team_affiliation(team:, team_key: team_name)
-      # DEBUG: ******************************************************************
-      # SHOULD NEVER HAPPEN at this point:
-      # binding.pry if team.nil? || team_affiliation.nil?
-      # DEBUG: ******************************************************************
+      # This should never occur at this point (unless data is corrupted):
+      raise("No team or team_affiliation ENTITY for '#{team_name}'!") if team.blank? || team_affiliation.blank?
       return unless options[:mprg].present? && options[:mprg_key].present?
 
       mrr_entity = find_or_prepare_mrr(
@@ -2441,6 +2463,41 @@ module Import
       age = @season.begin_date.year - year_of_birth
       _curr_cat_code, category_type = @categories_cache.find { |_c, cat| !cat.relay? && (cat.age_begin..cat.age_end).cover?(age) && !cat.undivided? }
       category_type
+    end
+
+    # Searches for "incomplete" swimmer keys (the specified key string minus the team_name)
+    # in the @data hash and runs through every reference of it (mostly in bindings),
+    # replacing them with the correct, full, swimmer_key (the actual value specified as parameter).
+    # Does nothing if the team_name is blank or no data is present.
+    #
+    # == Params:
+    # - swimmer_key: the full string key for accessing the Swimmer entity in the @data hash
+    #                (meaning the actual full swimmer_key, including its proper team_name)
+    # - team_name: the string team name part of the key, allegedly missing from incomplete references.
+    #
+    def update_partial_swimmer_key(swimmer_key, team_name)
+      return if team_name.blank? || @data.blank? || @data['swimmer'].blank?
+
+      partial_key = swimmer_key.gsub(team_name, '')
+      # Determine whether we have to substitute the value from the partial key or the new one:
+      cached_entity = if entity_present?('swimmer', swimmer_key)
+                        @data['swimmer'][partial_key]
+                      elsif entity_present?('swimmer', partial_key)
+                        @data['swimmer'][swimmer_key]
+                      end
+      # Bail out if the entity has not been mapped at all yet:
+      return if cached_entity.blank?
+
+      # Remap or make sure the correct cached value is keyed by the full key:
+      @data['swimmer'][swimmer_key] = cached_entity
+      @data['swimmer'].delete(partial_key) if entity_present?('swimmer', partial_key)
+
+      # For each linked entity, search its bindings for a reference to the partial key:
+      replace_key_in_bindings_for('badge', partial_key, swimmer_key, 'swimmer')
+      replace_key_in_bindings_for('meeting_individual_result', partial_key, swimmer_key, 'swimmer')
+      replace_key_in_bindings_for('lap', partial_key, swimmer_key, 'swimmer')
+      replace_key_in_bindings_for('meeting_relay_swimmer', partial_key, swimmer_key, 'swimmer')
+      replace_key_in_bindings_for('relay_lap', partial_key, swimmer_key, 'swimmer')
     end
   end
   # rubocop:enable Metrics/AbcSize, Metrics/PerceivedComplexity, Metrics/MethodLength, Metrics/CyclomaticComplexity

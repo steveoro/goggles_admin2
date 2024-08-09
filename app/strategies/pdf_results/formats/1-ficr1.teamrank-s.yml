@@ -1,0 +1,82 @@
+#
+# = Layout format definition for PdfResults::FormatParser
+#
+# - Usually it has NO HEADER => requires editing the source text report (copy-paste an header from a previous page)
+# - DOES NOT SUPPORT ranking split in multiple pages w/o a repeated 'ranking_hdr'
+#
+# - Just 2x rows for each team, no distinction between relay points and individual points.
+# - Actual overall score printed on the next line.
+# - Sample header for team ranking:
+#   "pos   società                                             punti      atleti gara   atleti"
+#
+1-ficr1.teamrank-s:
+  - name: header
+    # Index is page-relative:
+    at_fixed_row: 0
+    rows:
+      # "header" row #0
+      - fields:
+        - name: edition
+          required: false
+          format: "^\\s{20,}(\\d{1,2}|[IVXLCM]+).{1,2}?\\s+"
+          pop_out: false
+        - name: meeting_name
+          format: "^\\s{20,}(?>\\d{1,2}|[IVXLCM]+)?.{1,2}?\\s+(.+)$"
+          pop_out: false
+      # "header" row #1
+      - fields:
+        - name: meeting_place
+          # Support long place names like "Centro Federale di Ostia (RM)" or "Reggio nell'Emilia"
+          # Support long place names like "Centro Federale di Ostia (RM)" or "Reggio nell'Emilia"
+          # format: "^\\s*(.{2,}(?>\\s\\(\\w\\w\\)))?,\\s*"
+          # More generic: (see ficr2)
+          format: "^\\s*(\\D{2,}),\\s*"
+        - name: meeting_date
+          # Support month names too: dd(-/)mm(-/)yy(yy), dd MMM(...) yy(yy)
+          format: "^\\s*.{2,}(?>\\s\\(\\w\\w\\))?,\\s*(\\d{2}([-\/]\\d{2}[-\/]\\d{2,4}|\\s\\w{3,}\\s\\d{2,4}))\\b"
+      # Optional empty row #3
+      - name: hdr_separator
+        required: false
+        format: "^$"
+
+  - name: ranking_hdr
+    parent: header
+    rows:
+      - name: ranking_title
+        format: "^\\s{10,}(Classifica\\sSocietà)"
+      - name: ranking_sep0
+        format: "^$"
+      - name: ranking_sep1
+        format: "^$"
+      - name: ranking_sep2
+        format: "^$"
+      - name: ranking_sep3
+        format: "^$"
+      - name: ranking_hdr1
+        format: "\\s*pos\\s+società\\s+punti\\s+atleti\\s+gara\\s+atleti"
+      - name: ranking_sub_sep1
+        format: "^$"
+
+  - name: team_ranking
+    repeat: true
+    parent: ranking_hdr
+    rows:
+      - name: team_ranking0
+        fields:
+          - name: rank
+            format: "^\\s*(\\d{1,3}|SQ|RT|NP|ES)\\s+"
+            pop_out: false
+          - name: team_name
+            format: "^\\s*(?>\\d{1,3}|SQ|RT|NP|ES)\\s{3,8}(.{3,35})\\s{2,}\\d{1,3}\\s{2,}"
+            pop_out: false
+          - name: swimmer_events
+            format: "\\s{2,}(\\d{1,3})\\s{2,}\\d{1,3}$"
+            pop_out: false
+          - name: registered_swimmers
+            format: "\\s{2,}\\d{1,3}\\s{2,}(\\d{1,3})$"
+            pop_out: false
+
+      - name: team_ranking1
+        fields:
+          - name: overall_score
+            format: "^\\s{20,}(\\d{1,7}[\\.,]\\d{1,2})$"

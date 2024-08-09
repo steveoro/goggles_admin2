@@ -351,6 +351,7 @@ module PdfResults
                           row_index, @rows.count - 1, @page_index + 1, @pages.count, @format_name, ctx_name, ctx_index + 1, @format_order.count)
           )
         end
+
         # -----------------------------------------------------------------------
         # TODO: FIND a way to reference actual parent container valid? AND NOT last_check_result,
         #       which may or may not refer to the current parent while being run on the same buffer
@@ -827,9 +828,15 @@ module PdfResults
     # and avoid checking rows or extracting from rows more than once if already done, independently
     # from the actual result.
     def check_already_made?(context_name, row_index)
-      return false unless @repeatable_defs.key?(context_name)
+      # "Repeatables" can be re-checked indefinitely but not on the same line:
+      return true if @repeatable_defs.key?(context_name) && (@repeatable_defs[context_name].fetch(:last_check, nil) == row_index)
 
-      @repeatable_defs[context_name].fetch(:last_check, nil) == row_index
+      # Retrieve the context by name and check its #last_scan_index:
+      context_def = @format_defs.fetch(context_name, nil)
+      return false unless context_def.is_a?(ContextDef)
+
+      # Return true if the context has already been scanned on the same line:
+      context_def.last_scan_index == row_index
     end
 
     # Relies on @valid_scan_results to store the result of the scan for a specific context name.

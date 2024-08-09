@@ -18,7 +18,7 @@ RSpec.describe PdfResults::ContextDAO, type: :strategy do
   end
   let(:fixture_fields) do
     [
-      { name: 'rank', format: '\\s?(\\d{1,2}|SQ|RT|NP)\\s+' },
+      { name: 'rank', format: '\\s?(\\d{1,2}|SQ|RT|NP|ES)\\s+' },
       { name: 'swimmer_name', format: "\\s+(\\D+(?>['`\\-\\.\\s]\\s?\\D+){1,4})\\s+" },
       { name: 'year_of_birth', format: '\\s+(\\d{4})\\s+' }
     ]

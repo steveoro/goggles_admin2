@@ -201,6 +201,9 @@ module PdfResults
     # Last valid? result; set to false upon each #valid? call.
     attr_reader :last_validation_result
 
+    # Last "external" scanning index set by a #valid?() call for this context.
+    attr_reader :last_scan_index
+
     # Current progress index in scanning for this context, 0..N relative a single text buffer
     attr_reader :curr_index
 
@@ -288,6 +291,7 @@ module PdfResults
       # and any additional group of fields defined is still considered as belonging to row #0 in the
       # overall @row_span.
       @row_span ||= rows&.count || 1
+      @last_scan_index = nil
     end
     #-- -----------------------------------------------------------------------
     #++
@@ -488,6 +492,9 @@ module PdfResults
     def valid?(row_buffer, scan_index, extract: true) # rubocop:disable Metrics/MethodLength
       @last_validation_result = false
       @curr_index = 0 # Local scan index, relative to the resulting row_buffer, after resizing & limiting
+      # Store also the external scan index (relative to the current page) for usage by FormatParser:
+      # (used to check if a context has already been applied to the same line)
+      @last_scan_index = scan_index
       clear_data
       log_message(scan_index:)
       # 0) Bail-out conditions:

@@ -234,7 +234,7 @@ module PdfResults
               end
 
               # Relay category code still missing? Fill-in possible missing category code (which is frequently missing in record trials):
-              if section['fin_sigla_categoria'].blank?
+              if section['fin_sigla_categoria'].blank? && rows.last.is_a?(Hash) && rows.last.key?('overall_age')
                 section = post_compute_rel_category_code(section, rows.last['overall_age'])
                 recompute_ranking = true
               end
@@ -250,7 +250,7 @@ module PdfResults
               rel_result_hash = rel_result_section(row_hash)
               rows << rel_result_hash
               # Relay category code still missing? Fill-in possible missing category code (which is frequently missing in record trials):
-              if section['fin_sigla_categoria'].blank?
+              if section['fin_sigla_categoria'].blank? && rel_result_hash.is_a?(Hash) && rel_result_hash.key?('overall_age')
                 section = post_compute_rel_category_code(section, rel_result_hash['overall_age'])
                 recompute_ranking = true
               end
@@ -408,8 +408,15 @@ module PdfResults
         section['rows'] << {
           'pos' => ranking_hash.fetch(:fields, {})['rank'],
           'team' => ranking_hash.fetch(:fields, {})['team_name'],
+
+          # TODO: missing from table 'meeting_team_scores', so we can't handle these 2:
+          # 'swimmer_events' => ranking_hash.fetch(:fields, {})['swimmer_events'],
+          # 'registered_swimmers' => ranking_hash.fetch(:fields, {})['registered_swimmers'],
+
           'ind_score' => ranking_hash.fetch(:fields, {})['ind_score'],
+          # |=> 'meeting_team_scores.meeting_points' & 'meeting_team_scores.sum_individual_points'
           'overall_score' => ranking_hash.fetch(:fields, {})['overall_score']
+          # |=> 'meeting_team_scores.meeting_team_points' & 'meeting_team_scores.sum_team_points'
         }
       end
 
@@ -908,26 +915,45 @@ module PdfResults
     # The implementation extracts the code from the key value because it's more generic
     # than relying on the actual field names (which, by the way, it's usually 'cat_title').
     #
+    # Captures just "<age1>[\s?-\s?<age2>]"
+    # Supported examples for key string relevant part:
+    #   "M 200 - 239 Master Femmine", "M 200-239 Master Femmine"
+    #   "M200 Master Maschi", "M 200 Master Misti"
+    #   "Master Maschi M200 - 239", "Master Maschi M200-239"
+    #   "M 200 - 239, M200", "M 200-239"
+    #   "Master Maschi 200 - 239", "200-239 Master Misti"
+    #   "M200 Femminile"
+    #
     # Returns +nil+ for any other unsupported case.
     def fetch_rel_category_code(row_hash)
       # *** Context 'rel_category' ***
       # (Assumed to include the "category title" field, among other possible fields in the key)
       key = row_hash.fetch(:key, '')
 
+      regexp = /
+        \b
+        (?>(?>M(?>aster)?|A(?>ssoluti)?|U(?>nder)?)\s?)?
+        (?>(?>Misti|Femmin\w*|Masch\w*)?\s)?
+        (\d{2,3}\s?-\s?\d{2,3}|[MAU]\s?\d{2,3}(?>\s?-\s?\d{2,3})?)
+        (?>(?>M(?>aster)?|A(?>ssoluti)?|U(?>nder)?)\s)?
+        (?>Misti|Femmin\w*|Masch\w*)?
+        \b
+      /uxi
+      return unless regexp.match?(key)
+
+      regexp.match(key).captures.first.delete(' ').upcase.delete('M').delete('A').delete('U')
+
+      # Old implementation:
       # Example key 1 => "Master Misti 200 - 239"
-      case key
-      when /(?>Under|Master)\s(?>Misti|Femmin\w*|Masch\w*)(?>\s(\d{2,3}\s-\s\d{2,3}))?/ui
-        /(?>Under|Master)\s(?>Misti|Femmin\w*|Masch\w*)(?>\s(\d{2,3}\s-\s\d{2,3}))?/ui.match(key).captures&.first&.delete(' ')
+      # case key
+      # when /(?>Under|Master)\s(?>Misti|Femmin\w*|Masch\w*)(?>\s(\d{2,3}\s?-\s?\d{2,3}))?/ui
+      #   /(?>Under|Master)\s(?>Misti|Femmin\w*|Masch\w*)(?>\s(\d{2,3}\s?-\s?\d{2,3}))?/ui.match(key).captures&.first&.delete(' ')
 
-      # Example key 2 => "{event_length: 'mistaffetta <4|6|8>x<len>'}|<style_name>|<mistaffetta|gender>|M(ASTER)?\s?<age1>-<age2>(|<base_time>)?"
-      when /\|M(?>ASTER)?\s?(\d{2,3}-\d{2,3})/ui
-        # Return a valid age-group code for relays ("<age1>-<age2>"):
-        /\|M(?>ASTER)?\s?(\d{2,3}-\d{2,3})/ui.match(key).captures&.first
-
-      # Example key 3 => "M100-119|Masch|..."
-      when /M(\d{2,3}-\d{2,3})\|(?>Masch|Femmin|Mist)/ui
-        /M(\d{2,3}-\d{2,3})\|(?>Masch|Femmin|Mist)/ui.match(key).captures&.first
-      end
+      # # Example key 2 => "(M(ASTER))?\s?<age1>\s?-\s?<age2>" => "M100-119...", "M 100 - 119...", "100 - 119"
+      # when /[UAM]?(?>ASTER)?\s?(\d{2,3}\s?-\s?\d{2,3})/ui
+      #   # Return a valid age-group code for relays ("<age1>-<age2>"):
+      #   /[UAM]?(?>ASTER)?\s?(\d{2,3}\s?-\s?\d{2,3})/ui.match(key).captures&.first&.delete(' ')
+      # end
     end
     #-- -----------------------------------------------------------------------
     #++

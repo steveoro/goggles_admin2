@@ -88,18 +88,18 @@
       - name: results1
         fields:
           - name: rank
-            format: "^\\s+(\\d{1,2}|SQ|RT|NP)\\s+"
+            format: "^\\s+(\\d{1,2}|SQ|RT|NP|ES)\\s+"
             pop_out: false
             # Sometimes, this may be missing due to technicalities:
             required: false
           - name: swimmer_name
-            format: "^\\s+(?>\\d{1,2}|SQ|RT|NP)\\s+((?>[\\wìàèéòù'\\.-]+\\s){2,})\\s+\\w{3}\\s+"
+            format: "^\\s+(?>\\d{1,2}|SQ|RT|NP|ES)\\s+((?>[\\wìàèéòù'\\.-]+\\s){2,})\\s+\\w{3}\\s+"
             pop_out: false
           - name: nation
-            format: "^\\s+(?>\\d{1,2}|SQ|RT|NP)\\s+(?>[\\wìàèéòù'\\.-]+\\s){2,}\\s{2,}(\\w{3})\\s{1,}\\d{1,2}"
+            format: "^\\s+(?>\\d{1,2}|SQ|RT|NP|ES)\\s+(?>[\\wìàèéòù'\\.-]+\\s){2,}\\s{2,}(\\w{3})\\s{1,}\\d{1,2}"
             pop_out: false
           - name: series_num
-            format: "^\\s+(?>\\d{1,2}|SQ|RT|NP)\\s+(?>[\\wìàèéòù'\\.-]+\\s){2,}\\s{2,}\\w{3}\\s{1,}(\\d{1,2})"
+            format: "^\\s+(?>\\d{1,2}|SQ|RT|NP|ES)\\s+(?>[\\wìàèéòù'\\.-]+\\s){2,}\\s{2,}\\w{3}\\s{1,}(\\d{1,2})"
             pop_out: false
 
           - name: lap50
@@ -133,7 +133,7 @@
             required: false
 
           - name: timing
-            format: "\\s*(\\d{1,2}?[':.]?\\d{1,2}[\":.]\\d{1,2})$"
+            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})$"
             token_start: 145
             pop_out: false
             required: false

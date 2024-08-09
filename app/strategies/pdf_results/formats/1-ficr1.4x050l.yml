@@ -1,9 +1,10 @@
 #
 # = Layout format definition for PdfResults::FormatParser
 #
-# "4x100 no swimmer names, with 50 & 150 50m-laps only"
+# Copy of 1-ficr2.4x050m: no swimmer names, lap rows "mis-aligned", 5x rows per each relay result
+# (similar to 4x100l, but with all 50m lap timings)
 #
-1-ficr1.4x100l:
+1-ficr1.4x050l:
   - name: header
     at_fixed_row: 0
     # Repeat each page:
@@ -55,7 +56,10 @@
           format: "\\s*([468]X\\d{2,4})m?\\s+"
         - name: event_type
           lambda: strip
-          format: "\\s*(?>m\\s)?(((\\w+\\s?){1,2})\\sMaster\\s(Misti|Masch|Femmin))"
+          format: "\\s*(?>m\\s)?((\\w+\\s?){1,2})\\sMaster\\s(Misti|Femmin|Maschi)"
+        - name: gender_type
+          lambda: strip
+          format: "\\sMaster\\s(Misti|Femmin|Maschi)"
 
       - name: event_sub_hdr
         lambda: strip
@@ -70,16 +74,20 @@
       - name: results_hdr1
         format: "\\s?Pos.\\s+Nominativo\\s+Crs\\.?\\s+Naz\\.?\\s+50 m\\s+100 m\\s+150 m\\s+200 m(\\s+300 m)?(\\s+400 m)?\\s+Arrivo\\s+Pti?\\s+Cat"
       - name: results_hdr2
-        format: "\\s?Società\\s+Anno\\s+(FINA|Master)\\s+Pti?\\s+S\\.?C\\.?"
-      # Optional empty row
-      - name: results_hdr_separator
+        format: "\\s?Società\\s+Anno\\s{40,}(FINA|Master)\\s+Pti?\\s+S\\.?C\\.?"
+      # Optional 2x empty rows
+      - name: results_hdr_sep1
+        format: "^$"
+        required: false
+      - name: results_hdr_sep2
         format: "^$"
         required: false
 
   - name: rel_category
     starts_at_row: 6
     repeat: true
-    required: false
+    # This will match any empty row if the fields are not found:
+    optional_if_empty: true
     parent: event
     rows:
       - name: cat_title
@@ -130,33 +138,19 @@
             token_end: 113
             required: false
 
-          - name: lap300
-            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
-            pop_out: false
-            token_start: 113
-            token_end: 123
-            required: false
-          - name: lap400
-            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
-            pop_out: false
-            token_start: 123
-            token_end: 133
-            required: false
-
           - name: timing
             format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})$"
             # Use last lap as timing when the column is totally missing:
-            token_start: 123
+            token_start: 103
             pop_out: false
             required: false
 
       - name: rel_team1
         fields:
           - name: rank
-            format: "\\s?(\\d{1,2}|SQ|RT|NP|ES)\\s+"
-            token_end: 7
+            format: "^\\s*(\\d{1,2}|SQ|RT|NP|ES)\\s+"
             pop_out: false
-            # Retired or "out-of-race" results may not even have the ranking placement:
+            # "Out of race" won't have a final ranking:
             required: false
           - name: team_name
             format: "(?>\\s+\\d{1,2}|SQ|RT|NP|ES)?\\s+(([\\w\\d\\-&%'`]+.\\s?)+)"
@@ -203,19 +197,6 @@
             token_end: 111
             required: false
 
-          - name: delta300
-            format: "\\s*\\(?((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\)?\\s*"
-            pop_out: false
-            token_start: 111
-            token_end: 122
-            required: false
-          - name: delta400
-            format: "\\s*\\(?((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\)?\\s*"
-            pop_out: false
-            token_start: 122
-            token_end: 134
-            required: false
-
           - name: disqualify_type
             format: "^(?!\\s+(Orario Ufficializzazione|\\d{1,2}|www.ficr.it|corsie|Pagina))\\s+(\\D+\\s?)+\\b"
             token_start: 134
@@ -223,11 +204,9 @@
 
       - name: rel_team3
         fields:
-          # Ignore duplicated team name:
-          - name: team_name_dup
-            lambda: strip
-            format: ".+"
-            token_end: 41
+          # Ignore zero overall years (printed out here instead of swimmer's YOB):
+          - name: team_overall_age
+            format: "^\\s{40,}\\d{1,}$"
             pop_out: false
 
       - name: rel_team4
@@ -235,12 +214,12 @@
         required: false
         fields:
           - name: std_score
-            format: "^\\s{118,}(\\d?[,.]?\\d{1,4}[,.]\\d{1,2})\\s?"
+            format: "^\\s{110,}(\\d?[,.]?\\d{1,4}[,.]\\d{1,2})\\s?"
             pop_out: false
             # U25 / A20 do not score:
             required: false
           - name: meeting_score
-            format: "^\\s{118,}(?>\\d?[,.]?\\d{1,4}[,.]\\d{1,2})?\\s{10,}(\\d+)\\b"
+            format: "^\\s{110,}(?>\\d?[,.]?\\d{1,4}[,.]\\d{1,2})?\\s{10,}(\\d+)\\b"
             pop_out: false
             # U25 / A20 do not score:
             required: false
@@ -255,11 +234,73 @@
         # "All non-digit words from column 120 onward until the end of line"
         format: "^(?!\\s+(Orario Ufficializzazione|\\d{1,2}|www.ficr.it|corsie|Pagina))\\s{120,}(\\D+\\s?)+\\b"
 
-  - name: disqualified
+  - name: rel_swimmer
+    repeat: true
     parent: rel_team
+    starts_at_row: 8
+    # When the team is disqualified usually no swimmer rows are added:
+    required: false
+    rows:
+      - name: rel_swimmer1
+        fields:
+          - name: swimmer_name
+            format: "\\s+(\\D+(?>['`\\-\\.\\s]\\s?\\D+){1,4})\\s+"
+            pop_out: false
+            token_end: 31
+          - name: nation
+            format: "\\s+(\\w{2,3})\\s*"
+            pop_out: false
+            token_start: 31
+            token_end: 68
+
+          - name: lap50
+            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
+            pop_out: false
+            token_start: 70
+            token_end: 82
+            required: false
+          - name: lap100
+            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
+            pop_out: false
+            token_start: 82
+            token_end: 94
+            required: false
+          - name: lap150
+            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
+            pop_out: false
+            token_start: 95
+            token_end: 108
+            required: false
+          - name: lap200
+            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
+            pop_out: false
+            token_start: 109
+            token_end: 118
+            required: false
+
+      - name: rel_swimmer2
+        fields:
+          - name: year_of_birth
+            format: "\\s{54,}(\\d{4})\\s*"
+            pop_out: false
+            token_end: 70
+
+          - name: delta100
+            format: "\\s*\\(((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\)\\s*"
+            pop_out: false
+            token_start: 83
+            required: false
+
+      - name: rel_separator
+        required: false
+        format: "^$"
+
+  # Ignored header (DSQ label is stored under rel_team)
+  - name: disqualified
+    parent: rel_category
     required: false
     lambda: strip
-    format: "\\s*Non Classificati|Fuori gara\\b"
+    format: "\\s*(Non Classificati|Fuori Gara)\\b"
 
   - name: empty_row
     parent: event
@@ -271,6 +312,20 @@
     required: false
     lambda: strip
     format: "Orario Ufficializzazione"
+
+  # End-Of-Page context
+  # - name: footer
+  #   parent: event
+  #   eop: true
+  #   row_span: 6
+  #   repeat: true
+  #   starts_with: Elaborazione dati a cura della Federazione Italiana Cronometristi -
+  #   fields:
+  #     - name: pool_type
+  #       format: "\\s*www.ficr.it\\s+(\\d{1,2} corsie \\d{2}m)\\s+Pagina\\s*"
+  #     # Actual last-line context marker
+  #     - name: page_delimiter
+  #       format: "\\s*https?://nuoto.ficr.it/?"
 
   - name: footer_title
     parent: event
@@ -287,20 +342,6 @@
             format: "\\s+(\\d{1,2} corsie \\d{2}m)\\s+"
           - name: page_num
             format: "\\s+Pagina\\s(\\d{1,2})\\sdi\\s\\d{1,2}"
-
-  # End-Of-Page context
-  # - name: footer
-  #   parent: event
-  #   # The 'eop' key implies that this context will be searched <row_span> lines before the end of page.
-  #   # This also implies that the file must also be parsed in pages, otherwise the recognition will fail.
-  #   # (DO NOT use eop: true when extracting the whole file, unless when processing batches of pages)
-  #   eop: true
-  #   row_span: 4
-  #   repeat: true
-  #   fields:
-  #     # Actual last-line context marker (page should end after this token)
-  #     - name: page_delimiter
-  #       format: "\\s*https?://nuoto.ficr.it/?"
 
   # Alternative, simpler EOP:
   - name: footer

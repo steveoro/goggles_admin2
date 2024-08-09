@@ -103,18 +103,18 @@
     # starts_at_row: 7 #  ('7' is not true for older files, keep this commented out)
     fields:
       - name: rank
-        format: "^\\s?(\\d{1,2}|SQ|RT|NP)\\s+"
+        format: "^\\s?(\\d{1,2}|SQ|RT|NP|ES)\\s+"
         pop_out: false
         # Sometimes this may be missing due to technicalities:
         required: false
       - name: swimmer_name
-        format: "^\\s{0,3}(?>\\d{1,2}|SQ|RT|NP)?\\s+(\\D{3,35})\\s{1,}\\w{3}\\s{2,}\\d{4}\\s{2,}"
+        format: "^\\s{0,3}(?>\\d{1,2}|SQ|RT|NP|ES)?\\s+(\\D{3,35})\\s{1,}\\w{3}\\s{2,}\\d{4}\\s{2,}"
         pop_out: false
       - name: nation
-        format: "^\\s{0,3}(?>\\d{1,2}|SQ|RT|NP)?\\s+\\D{3,35}\\s{1,}(\\w{3})\\s{2,}\\d{4}\\s{2,}"
+        format: "^\\s{0,3}(?>\\d{1,2}|SQ|RT|NP|ES)?\\s+\\D{3,35}\\s{1,}(\\w{3})\\s{2,}\\d{4}\\s{2,}"
         pop_out: false
       - name: year_of_birth
-        format: "^\\s{0,3}(?>\\d{1,2}|SQ|RT|NP)?\\s+\\D{3,35}\\s{1,}\\w{3}\\s{2,}(\\d{4})\\s{2,}"
+        format: "^\\s{0,3}(?>\\d{1,2}|SQ|RT|NP|ES)?\\s+\\D{3,35}\\s{1,}\\w{3}\\s{2,}(\\d{4})\\s{2,}"
         pop_out: false
       - name: team_name
         format: "\\s{1,}\\w{3}\\s{2,}\\d{4}\\s{2,}(.{3,30})\\s{2,}\\d{0,2}\\s{2,}"
@@ -129,12 +129,12 @@
         # This may be missing at all (DNS, RT or even due to technicalities):
         required: false
       - name: heat_rank
-        format: "\\s+\\d{1,3}\\s+\\d{1,2}\\s+(\\d{1,2}|SQ|RT|NP)?\\s{1,}(?>(?>\\d{1,2}[':.])?\\d{1,2}[\":.]\\d{1,2}|\\w{4,})"
+        format: "\\s+\\d{1,3}\\s+\\d{1,2}\\s+(\\d{1,2}|SQ|RT|NP|ES)?\\s{1,}(?>(?>\\d{1,2}[':.])?\\d{1,2}[\":\\.]\\d{1,2}|\\w{4,})"
         pop_out: false
         # This may be missing as above:
         required: false
       - name: timing
-        format: "\\s+\\d{1,3}\\s+\\d{1,2}\\s+(?>\\d{1,2}|SQ|RT|NP)?\\s{1,}((?>\\d{1,2}[':.])?\\d{1,2}[\":.]\\d{1,2})\\s*"
+        format: "\\s+\\d{1,3}\\s+\\d{1,2}\\s+(?>\\d{1,2}|SQ|RT|NP|ES)?\\s{1,}((?>\\d{1,2}[':.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
         pop_out: false
         # DNS don't have timings:
         required: false

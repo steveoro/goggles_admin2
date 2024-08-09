@@ -16,20 +16,8 @@ class PdfController < ApplicationController
   #
   # To see if you have the converter already installed on path run a: 'which pdftotext'
   #
-  # === Possible PDF formats found so far:
-  # _WIP / Expanding:_
-  # - "1-ficr1"       => FiCr.it 1 (url w/ variable footer on bottom)
-  # - "1-ficr2"       => FiCr.it 2 (just a logo on top)
-  # _STILL_TODO:_
-  # - "2-goswim1"    => Go&Swim new (with logo/name on bottom)
-  # - "2-goswim2"   => Go&Swim old (no name)
-  # - "3-coni1"      => CONI dist. spec Lombardia
-  # - "4-fin1"    => FIN new (ie Flegreo, SardiniaInWater)
-  # - "4-fin2"      => FIN Veneto
-  # - "4-fin3"     => FIN old (diff format)
-  # - "5-dbmeeting"  => Firenze "DBMeeting" custom sw output (with lap timings, ie: results_2022-11-06_AmiciNuoto.txt)
-  # - "6-fredianop"  => "F.Palazzi - Gestione manifestazioni nuoto Master" output
-  # - "7-txt2pdf"     => custom TXT 2 PDF ()
+  # === Possible PDF formats supported so far:
+  # All supported formats are listed in 'app/strategies/pdf_results/formats/*.yml'
   #
   def extract_txt
     system("pdftotext -layout #{@file_path} #{@txt_pathname}") unless File.exist?(@txt_pathname)
@@ -60,16 +48,17 @@ class PdfController < ApplicationController
     @last_valid_scan = fp.valid_scan_results
     return if fp.result_format_type.blank?
 
-    logger.info('--> Extracting data hash...')
+    logger.info("\r\n--> Extracting data hash...")
     data_hash = fp.root_dao&.data&.fetch(:rows, [])&.find { |hsh| hsh[:name] == 'header' }
-    # DEBUG ----------------------------------------------------------------
-    # binding.pry
-    # ----------------------------------------------------------------------
 
     l2 = PdfResults::L2Converter.new(data_hash, fp.season)
-    logger.info('--> Converting to JSON & saving...')
+    logger.info('--> Checking null Teams row-by-row for possible replacements...')
+    l2_hash = l2.to_hash
+    scan_l2_data_hash_for_null_team_names(l2_hash)
+
+    logger.info("\r\n--> Converting to JSON & saving...")
     FileUtils.mkdir_p(File.dirname(@json_pathname)) # Ensure existence of the destination path
-    File.write(@json_pathname, l2.to_hash.to_json)
+    File.write(@json_pathname, l2_hash.to_json)
   end
   #-- -------------------------------------------------------------------------
   #++
@@ -140,4 +129,72 @@ class PdfController < ApplicationController
                               .map { |fname| fname.basename.to_s.split('.').first }
                               .uniq
   end
+  #-- -------------------------------------------------------------------------
+  #++
+
+  # Scans each row in each 'rows' array in each section from the specified data hash (in L2 format)
+  # in search of any possible null team names inside each row result.
+  #
+  # Whenever a team name is found blank, another full scan is performed in search of a possible matching
+  # result with a non-blank team name. These scans are performed only on the data structure itself,
+  # without any DB involvement.
+  #
+  # Note that an actual DB scan to correct null team names can only be performed later on by the MacroSolver,
+  # once all bindings with actual database-stored entities have been processed (namely, the Meeting, all Swimmers,
+  # all Teams and all related MIRs).
+  #
+  # Substitution of the team name is performed "in place", directly on the data hash itself.
+  # (So it needs to be stored afterwards.)
+  #
+  # Returns the specified <tt>l2_hash</tt> instance.
+  def scan_l2_data_hash_for_null_team_names(l2_hash)
+    # Scan each row in search of null Team names:
+    l2_hash.fetch('sections', []).each do |sect|
+      sect.fetch('rows', []).each do |row|
+        # Bail out unless we have parameters for matching a team name:
+        next if row['name'].blank? || row['year'].blank? || row['team'].present?
+
+        # Scan recursively from the start, each row, in search of a possible matching team name
+        possible_team = scan_l2_data_hash_for_a_matching_team_name(
+          sections_list: l2_hash.fetch('sections', []),
+          swimmer_name: row['name'], swimmer_year: row['year'], swimmer_sex: row['sex']
+        )
+        if possible_team.blank?
+          $stdout.write('.') # (no replacement found) # rubocop:disable Rails/Output
+          next
+        end
+
+        row['team'] = possible_team
+        $stdout.write("\033[1;33;32m+\033[0m") # (team replaced!) # rubocop:disable Rails/Output
+      end
+    end
+    l2_hash
+  end
+
+  # Scans each row in each 'rows' list from the specified array of section data hashes (already in L2 format)
+  # in search of a result row matching the specified swimmer name, year and sex where team name is not blank.
+  # Returns the found team name or +nil+ otherwise.
+  def scan_l2_data_hash_for_a_matching_team_name(sections_list:, swimmer_name:, swimmer_year:, swimmer_sex:)
+    sections_list.each do |sect|
+      matching_row = sect.fetch('rows', []).detect do |row|
+        row['name'] == swimmer_name && row['year'] == swimmer_year &&
+          row['sex'] == swimmer_sex && row['team'].present?
+      end
+      return matching_row['team'] if matching_row
+    end
+    nil
+  end
+
+  # def scan_l2_data_hash_for_a_matching_team_name(sections_list:, swimmer_name:, swimmer_year:, swimmer_sex:)
+  #   result = nil
+  #   sections_list.each do |sect|
+  #     sect.fetch('rows', []).each do |row|
+  #       result = row['team'] if row['name'] == swimmer_name && row['year'] == swimmer_year &&
+  #                               row['sex'] == swimmer_sex && row['team'].present?
+  #       break if result
+  #     end
+  #     break if result
+  #   end
+  #   result
+  # end
 end
