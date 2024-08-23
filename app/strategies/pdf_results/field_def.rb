@@ -3,7 +3,7 @@
 module PdfResults
   # = PdfResults::FieldDef
   #
-  #   - version:  7-0.7.10
+  #   - version:  7-0.7.16
   #   - author:   Steve A.
   #
   # Stores field definition & data extraction properties as read from a PDF-layout-format YML
@@ -283,7 +283,7 @@ module PdfResults
 
     # Debug helper: converts instance contents into a viewable string representation, with a list of active properties.
     def to_s
-      output = "\r\n\t\t[<#{name}>]\r\n"
+      output = "\r\n\t\t[<#{name}>] |=> #{value}\r\n"
       ALL_PROPS.each do |prop_key|
         next if prop_key == 'name' # (Don't output the name twice)
 

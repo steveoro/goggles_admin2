@@ -208,6 +208,7 @@
       - name: dsq_title
         format: "^\\s{3,}NON\\sCLASSIFICATI|FUORI\\sGARA"
       - name: dsq_spacer2
+        required: false
         format: "^$"
 
   # DSQ results have swimmer & team on a single row:

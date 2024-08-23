@@ -664,8 +664,8 @@ module PdfResults
         @consumed_rows = row_span # (see note on line 566 above)
       end
       # DEBUG ----------------------------------------------------------------
-      # if fields && name == 'results' && curr_buffer.to_s.include?('<SWIMMER NAME>')
-      #   log_message(msg: "AFTER @fields (#{name}), step 6, @curr_index: #{@curr_index}, @consumed_rows: #{@consumed_rows}", scan_index: scan_index)
+      # if fields && name == 'results_detail' && curr_buffer.to_s.include?('<SWIMMER NAME>')
+      #   log_message(msg: "AFTER @fields (#{name}), step 6, @curr_index: #{@curr_index}, @consumed_rows: #{@consumed_rows}", scan_index:)
       #   binding.pry
       # end
       # ----------------------------------------------------------------------
@@ -874,6 +874,8 @@ module PdfResults
       elsif obj.is_a?(ContextDef)
         formatted = Kernel.format("%s🔸 SUB-CTX [\033[1;33;37m%s\033[0m] => %s -- curr_index: %d, consumed_rows: %d, row_span: %d",
                                   indentation, obj.name, result_icon_for(obj), obj.curr_index.to_i, obj.consumed_rows.to_i, obj.row_span.to_i)
+        # Add the fields report to the output to ease debugging of failied contexts:
+        obj.fields.each { |field| formatted += field.to_s } if obj.fields.present? && obj.key.blank? && obj.is_a?(ContextDef)
       elsif msg.blank?
         formatted = Kernel.format('%s🔎 [%s] %s%s -- scan_index: %03d, curr_index: %d, consumed_rows: %d, row_span: %d',
                                   indentation, name, repeat? ? '🌀' : '', required? ? '🔑' : '', scan_index,

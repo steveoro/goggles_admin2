@@ -147,38 +147,21 @@
     row_span: 2
     format: "^\\s+Pubblicata:"
 
-  # End-Of-Page, variable span: 5-6-7
+  # End-Of-Page, variable span: 2-3
   - name: footer
     parent: header
     eop: true
     repeat: true
     rows:
-      - name: footer_spacer1
-        format: "^$"
-      - name: footer_spacer2
-        format: "^$"
-
-      # 3x optional empty rows (1 may be subst by the last timestamp row below, which is optional too):
-      - name: footer_spacer3
-        required: false
-        format: "^$"
-      - name: footer_spacer4
-        required: false
-        format: "^$"
-      - name: footer_spacer5
-        required: false
-        format: "^$"
-
       - name: footer_place
         fields:
-          # Expected format: "<city>, <venue>"
+          # Expected format: "<city>[,\/] <venue or date>"
           - name: meeting_place
             # Support long place names like "Centro Federale di Ostia (RM)" or "Reggio nell'Emilia"
-            format: "^(.+),\\s.+$"
+            format: "^(.+)[,\/]\\s.+$"
             pop_out: false
-            # format: "^(.+),\\s(?>\\w{2,}\\s?){1,}"
           - name: meeting_venue_or_date
-            format: "^.+,\\s(.+)$"
+            format: "^.+[,\/]\\s(.+)$"
             pop_out: false
       - name: footer_page
         format: "^\\s{70,}Page\\s\\d{1,}"
@@ -186,3 +169,9 @@
       - name: footer_timestamp
         required: false
         format: "^\\s{50,}Stampata\\sil\\s\\d{1,2}"
+
+  - name: empty_row
+    repeat: true
+    parent: event
+    required: false
+    format: "^$"
