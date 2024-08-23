@@ -217,7 +217,7 @@
       - name: dsq_type
         fields:
           - name: disqualify_type
-            format: "^\\s{15,}((?>\\d[°^]\\s)?cambio\\s\\w+|falsa\\spartenz\\w+|arrivo\\sirr\\w*|virata\\s\\w+|nuotata\\sirr\\w+)"
+            format: "^\\s{15,}((?>\\d[°^]\\s)?cambio\\s\\w+.{0,30}|falsa\\spartenz\\w+.{0,30}|arrivo\\sirr\\w*.{0,30}|virata\\s\\w+.{0,30}|nuotata\\sirr\\w+.{0,30})"
             pop_out: false
 
   - name: publish_time
