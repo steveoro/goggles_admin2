@@ -33,6 +33,42 @@
       - name: hdr_sep
         format: "^$"
 
+  # Alternate header:
+  # (swaps date row with title, usually 3 empty rows at bottom, has page number on top row but we don't care for it):
+  - name: header_alt
+    # Alternative section name for which this one will "stand-in" ONLY when validated
+    alternative_of: header
+    required: false
+    at_fixed_row: 0
+    # Repeat (at_fixed_row, each page)
+    repeat: true
+    rows:
+      # header row-0
+      - fields:
+        - name: edition
+          required: false
+          format: "^\\s{50,}(\\d{1,2}|[IVXLCM]+).{1,2}?\\s+"
+          pop_out: false
+        - name: meeting_name
+          format: "^\\s{50,}(?>\\d{1,2}|[IVXLCM]+)?.{1,2}?\\s+(.+)$"
+          pop_out: false
+
+      - name: hdr_date
+        fields:
+        - name: publish_date
+          format: "^\\s{130,}(\\d{1,2}[\/\\-]?\\d{0,2}[\/\\-\\s](?>\\s{1,2}|\\w+)[\/\\-\\s]\\d{2,4})$"
+          pop_out: false
+      - name: hdr_title
+        format: "^\\s{70,}Risultati\\scompleti"
+      - name: hdr_sep1
+        format: "^$"
+      - name: hdr_sep2
+        required: false
+        format: "^$"
+      - name: hdr_sep3
+        required: false
+        format: "^$"
+
   - name: event
     # This context is not repeated every page (thus, required for page format validation), but just on value change:
     required: false
@@ -167,6 +203,7 @@
 
       - name: result_timing
         fields:
+          # NOTE: 'haven't found a result file yet that includes all 800m laps & deltas
           - name: timing
             format: "^\\s{80,}.+\\s+((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})\\s*(?>\\d{2,4}[\\.,]\\d{2})?$"
             pop_out: false
@@ -180,10 +217,17 @@
             pop_out: false
             required: false
 
-      - name: result_sep1
+      - name: result_delta750
+        # Sometimes, instead of presenting the single last lap, the row is empty:
+        # This will match any empty row if the fields are not found:
+        optional_if_empty: true
         required: false
-        format: "^$"
-      - name: result_sep2
+        fields:
+          - name: delta750
+            format: "^\\s{80,}.+\\s+((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})$"
+            pop_out: false
+
+      - name: result_sep1
         required: false
         format: "^$"
 

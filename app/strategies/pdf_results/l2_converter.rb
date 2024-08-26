@@ -1217,6 +1217,10 @@ module PdfResults
       return unless year_of_birth.positive?
 
       age = @season.begin_date.year - year_of_birth
+      # WARNING: sometimes, for older seasons or in exceptional cases, the age of the swimmer may be particularly low even if it's
+      # supposed to be at least 16. We'll round it to 16 to make it enter inside the lowest age range.
+      # (In such cases, the swimmer may be a guest of the team and flagged as "out of race", but still it can occur.)
+      age = 16 if age < 16
       curr_cat_code, _cat = @categories_cache.find { |_c, cat| !cat.relay? && (cat.age_begin..cat.age_end).cover?(age) && !cat.undivided? }
       # DEBUG ----------------------------------------------------------------
       # THIS MAY HAPPEN only when the categories lack a certain age range:
