@@ -116,7 +116,7 @@
       - name: dsq_type
         fields:
           - name: disqualify_type
-            format: "^\\s{15,}(falsa\\spartenz\\w+|arrivo\\sirr\\w*|virata\\s\\w+|nuotata\\sirr\\w+)"
+            format: "^\\s{15,}(falsa\\spartenz\\w+|arrivo\\sirr.*|virata\\s.+|nuotata(?>\\se\\s\\w+)?\\sirr.+)"
             pop_out: false
       - name: dsq_spacer2
         required: false

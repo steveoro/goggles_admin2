@@ -177,18 +177,18 @@
       - name: results1
         fields:
           - name: rank
-            format: "\\s?(\\d{1,2}|SQ|RT|NP|ES)\\s+"
+            format: "\\s*(\\d{1,2}|SQ|RT|NP|ES)\\s+"
             pop_out: false
           - name: swimmer_name
-            format: "\\s+(\\D+(?>['`\\-\\.\\s]\\s?\\D+){1,4})\\s+"
+            format: "\\s+(\\D{3,30})\\s+"
             pop_out: false
-            token_end: 31
+            token_end: 32
           - name: lane_num
             format: "\\s*(\\d{1,2})\\s*"
             pop_out: false
             # Column alignment may vary (swimmer_name range can overlap safely with this due to its format):
             token_start: 25
-            token_end: 52
+            token_end: 54
           - name: nation
             format: "\\s*(\\w{2,3})\\b"
             pop_out: false
@@ -332,12 +332,12 @@
       - name: results1
         fields:
           - name: rank
-            format: "\\s?(\\d{1,2}|SQ|RT|NP|ES)\\s+"
+            format: "\\s*(\\d{1,2}|SQ|RT|NP|ES)\\s+"
             pop_out: false
           - name: swimmer_name
-            format: "\\s+(\\D+(?>['`\\-\\.\\s]\\s?\\D+){1,4})\\s+"
+            format: "\\s+(\\D{3,30})\\s+"
             pop_out: false
-            token_end: 31
+            token_end: 32
           - name: lane_num
             format: "\\s*(\\d{1,2})\\s*"
             pop_out: false

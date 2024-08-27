@@ -1,10 +1,11 @@
 #
 # = Layout format definition for PdfResults::FormatParser
 #
-# FIN Piemonte, 400m-only, w/ lap timings for 50m then every 100m, category type NOT shown,
-# meeting name on top, meeting place on EOP. --> GENDER SOMETIMES MISSING <--
+# - Spawn of "FIN Piemonte" but with category header repeated for each event as in "3-finfvg";
+# - 400m-only w/ lap timings every 50m;
+# - meeting name on top, meeting place on EOP.
 #
-3-fintorino.400m:
+3-finlazio.400m:
   - name: header
     at_fixed_row: 0
     # In order to validate/debug a format not always present in page,
@@ -65,24 +66,42 @@
     rows:
       - fields:
         - name: event_length
-          format: "^\\s{20,}(\\d{3,4})\\s?m\\s+"
+          format: "^\\s{20,}(400)\\s?m\\s+"
           pop_out: false
         - name: event_type
-          format: "^\\s{20,}\\d{3,4}\\s?m\\s+(Stile(?>\\sLibero)?|Dorso|Rana|Delfino|Farfalla|Misti)\\s-\\s"
+          format: "^\\s{20,}400\\s?m\\s+(Stile(?>\\sLibero)?|Dorso|Rana|Delfino|Farfalla|Misti)\\s-\\s"
           pop_out: false
         - name: cat_title
-          format: "\\s-\\s(Under|Master)\\s(?>Femmine|Maschi|mist)"
+          format: "\\s-\\s(Assoluti|Under|Master)\\s(?>Femmine|Maschi|mist)"
           pop_out: false
         - name: gender_type
-          format: "\\s-\\s(?>Under|Master)\\s(?>(Femmine|Maschi)|mist)"
+          format: "\\s-\\s(?>Assoluti|Under|Master)\\s(?>(Femmine|Maschi)|mist)"
           pop_out: false
       - name: event_sep0
         format: "^$"
 
+  - name: category
+    repeat: true
+    starts_at_row: 4
+    parent: event
+    rows:
+      - name: cat_separator
+        required: false
+        format: "^$"
+      - fields:
+        - name: cat_title
+          format: "^\\s{50,}((?>MASTER|UNDER)\\s\\d{2})[MF]?"
+          pop_out: false
+        # Gender type may be missing for "Under 25":
+        - name: gender_type
+          format: "^\\s{50,}(?>MASTER|UNDER)\\s\\d{2}([MF])"
+          required: false
+          pop_out: false
+
   # Actual data starts here:
   - name: results
     repeat: true
-    parent: event
+    parent: category
     starts_at_row: 4
     rows:
       - name: results_detail
@@ -104,38 +123,50 @@
             pop_out: false
 
           - name: lap50
-            format: "\\s+((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})(?>\\s+(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}){7}$"
+            format: "\\s+((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})(?>\\s+(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}){7}(?>\\s{1,}\\d?[,.]?\\d{1,4}[,.]\\d{1,2})?$"
             pop_out: false
             required: false
           - name: lap100
-            format: "\\s+((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})(?>\\s+(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}){6}$"
+            format: "\\s+((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})(?>\\s+(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}){6}(?>\\s{1,}\\d?[,.]?\\d{1,4}[,.]\\d{1,2})?$"
             pop_out: false
             required: false
           - name: lap150
-            format: "\\s+((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})(?>\\s+(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}){5}$"
+            format: "\\s+((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})(?>\\s+(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}){5}(?>\\s{1,}\\d?[,.]?\\d{1,4}[,.]\\d{1,2})?$"
             pop_out: false
             required: false
           - name: lap200
-            format: "\\s+((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})(?>\\s+(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}){4}$"
+            format: "\\s+((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})(?>\\s+(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}){4}(?>\\s{1,}\\d?[,.]?\\d{1,4}[,.]\\d{1,2})?$"
             pop_out: false
             required: false
           - name: lap250
-            format: "\\s+((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})(?>\\s+(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}){3}$"
+            format: "\\s+((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})(?>\\s+(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}){3}(?>\\s{1,}\\d?[,.]?\\d{1,4}[,.]\\d{1,2})?$"
             pop_out: false
             required: false
           - name: lap300
-            format: "\\s+((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})(?>\\s+(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}){2}$"
+            format: "\\s+((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})(?>\\s+(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}){2}(?>\\s{1,}\\d?[,.]?\\d{1,4}[,.]\\d{1,2})?$"
             pop_out: false
             required: false
           - name: lap350
-            format: "\\s+((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})(?>\\s+(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}){1}$"
+            format: "\\s+((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})(?>\\s+(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}){1}(?>\\s{1,}\\d?[,.]?\\d{1,4}[,.]\\d{1,2})?$"
             pop_out: false
             required: false
 
           - name: timing
-            format: "(?>\\s+(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}){7}\\s+((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})$"
+            format: "(?>\\s+(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}){7}\\s+((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})(?>\\s{1,}\\d?[,.]?\\d{1,4}[,.]\\d{1,2})?$"
             pop_out: false
             # DSQ don't have timings:
+            required: false
+
+          - name: disqualify_type
+            format: "\\s+(ASS|SQ|RT|RIT|NP)\\b"
+            token_start: 45
+            pop_out: false
+            required: false
+          - name: std_score
+            format: "\\s{2,}(?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2}\\s{1,}(\\d?[,.]?\\d{1,4}[,.]\\d{1,2})$"
+            token_start: 45
+            pop_out: false
+            # U25 / A20 do not score:
             required: false
 
       - name: result_deltas
@@ -236,38 +267,21 @@
     row_span: 2
     format: "^\\s+Pubblicata:"
 
-  # End-Of-Page, variable span: 5-6-7
+  # End-Of-Page, variable span: 2-3
   - name: footer
     parent: header
     eop: true
     repeat: true
     rows:
-      - name: footer_spacer1
-        format: "^$"
-      - name: footer_spacer2
-        format: "^$"
-
-      # 3x optional empty rows (1 may be subst by the last timestamp row below, which is optional too):
-      - name: footer_spacer3
-        required: false
-        format: "^$"
-      - name: footer_spacer4
-        required: false
-        format: "^$"
-      - name: footer_spacer5
-        required: false
-        format: "^$"
-
       - name: footer_place
         fields:
-          # Expected format: "<city>, <venue>"
+          - name: meeting_date
+            # Extract the date first, popping it out so that the remainder can be treated as the meeting place:
+            format: "[,;\\/\\s](?>\\d{1,2}\\s?(?>-|\\.\\.)\\s?)?(\\d{2}[\\/-]\\d{2}[\\/-](?>\\d{4}|\\d{2}))$"
+            # pop_out: false
           - name: meeting_place
             # Support long place names like "Centro Federale di Ostia (RM)" or "Reggio nell'Emilia"
-            format: "^(.+),\\s.+$"
-            pop_out: false
-            # format: "^(.+),\\s(?>\\w{2,}\\s?){1,}"
-          - name: meeting_venue_or_date
-            format: "^.+,\\s(.+)$"
+            format: "^((?>\\w+(?<!\\d)['àéèìòù]?\\s?){1,})"
             pop_out: false
       - name: footer_page
         format: "^\\s{70,}Page\\s\\d{1,}"
@@ -275,3 +289,9 @@
       - name: footer_timestamp
         required: false
         format: "^\\s{50,}Stampata\\sil\\s\\d{1,2}"
+
+  - name: empty_row
+    repeat: true
+    parent: event
+    required: false
+    format: "^$"
