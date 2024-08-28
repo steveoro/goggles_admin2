@@ -4,6 +4,8 @@
 # FIN Piemonte, 100m-only, w/ lap timings, category type NOT shown,
 # different header w/ swapped YOB & Nation columns, an additional lane number column,
 # meeting name on top, meeting place on EOP.
+#
+# - Includes a "lane_num" column
 # --> TEAM NAME SOMETIMES MISSING <--
 # --> GENDER SOMETIMES MISSING <--
 #
@@ -200,14 +202,13 @@
 
       - name: footer_place
         fields:
-          # Expected format: "<city>, <venue>"
+          # Expected format: "<city>[,\/] <venue or date>"
           - name: meeting_place
             # Support long place names like "Centro Federale di Ostia (RM)" or "Reggio nell'Emilia"
-            format: "^(.+),\\s.+$"
+            format: "^(.+)[,\/]\\s.+$"
             pop_out: false
-            # format: "^(.+),\\s(?>\\w{2,}\\s?){1,}"
           - name: meeting_venue_or_date
-            format: "^.+,\\s(.+)$"
+            format: "^.+[,\/]\\s(.+)$"
             pop_out: false
       - name: footer_page
         format: "^\\s{70,}Page\\s\\d{1,}"

@@ -67,10 +67,10 @@
     rows:
       - fields:
         - name: event_length
-          format: "^\\s{20,}(\\d{4})\\s?m\\s+"
+          format: "^\\s{20,}(1500)\\s?m\\s+"
           pop_out: false
         - name: event_type
-          format: "^\\s{20,}\\d{4}\\s?m\\s+(Stile(?>\\sLibero)?|Dorso|Rana|Delfino|Farfalla|Misti)\\s-\\s"
+          format: "^\\s{20,}1500\\s?m\\s+(Stile(?>\\sLibero)?|Dorso|Rana|Delfino|Farfalla|Misti)\\s-\\s"
           pop_out: false
         - name: cat_title
           format: "\\s-\\s(Assoluti|Under|Master)\\s(?>Femmine|Maschi|mist)"
@@ -133,12 +133,6 @@
           - name: lap700
             format: "\\s+((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})$"
             pop_out: false
-            required: false
-
-          - name: timing
-            format: "(?>\\s+(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}){8}\\s+((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})$"
-            pop_out: false
-            # DSQ don't have timings:
             required: false
 
       - name: result_delta_700
@@ -267,6 +261,7 @@
       - name: dsq_title
         format: "^\\s{3,}NON\\sCLASSIFICATI|FUORI\\sGARA"
       - name: dsq_spacer2
+        required: false
         format: "^$"
 
   # DSQ results have swimmer & team on a single row:
@@ -346,14 +341,13 @@
 
       - name: footer_place
         fields:
-          # Expected format: "<city>, <venue>"
+          # Expected format: "<city>[,\/] <venue or date>"
           - name: meeting_place
             # Support long place names like "Centro Federale di Ostia (RM)" or "Reggio nell'Emilia"
-            format: "^(.+),\\s.+$"
+            format: "^(.+)[,\/]\\s.+$"
             pop_out: false
-            # format: "^(.+),\\s(?>\\w{2,}\\s?){1,}"
           - name: meeting_venue_or_date
-            format: "^.+,\\s(.+)$"
+            format: "^.+[,\/]\\s(.+)$"
             pop_out: false
       - name: footer_page
         format: "^\\s{70,}Page\\s\\d{1,}"

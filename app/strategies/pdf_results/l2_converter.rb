@@ -641,7 +641,7 @@ module PdfResults
       }
 
       # Add lap & delta fields only when present in the source fields and resemble a timing value:
-      (1..29).each do |idx|
+      (1..30).each do |idx|
         key = "lap#{idx * 50}"
         value = fetch_field_with_alt_value(fields, key)
         row_hash[key] = format_timing_value(value) if POSSIBLE_TIMING_REGEXP.match?(value)
@@ -1059,7 +1059,7 @@ module PdfResults
       # (root fields last)
       rows.each do |row_fields|
         # Add lap & delta fields only when present in the current row:
-        (1..29).each do |idx|
+        (1..30).each do |idx|
           key = "lap#{idx * 50}"
           value = fetch_field_with_alt_value(row_fields, key)
           result[key] = format_timing_value(value) if POSSIBLE_TIMING_REGEXP.match?(value)

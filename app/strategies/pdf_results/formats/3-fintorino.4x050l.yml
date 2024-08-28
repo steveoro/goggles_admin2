@@ -3,6 +3,8 @@
 #
 # FIN Piemonte, 4x50m-only, full lap timings + relay swimmers & year of birth,
 # category type NOT shown, meeting name on top, meeting place on EOP.
+#
+# - *May* include a "lane_num" column
 # --> GENDER SOMETIMES MISSING <--
 #
 3-fintorino.4x050l:

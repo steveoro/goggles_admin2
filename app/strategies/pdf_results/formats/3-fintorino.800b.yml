@@ -4,6 +4,8 @@
 # FIN Piemonte, 800m-only, w/ lap timings every 100m, category type NOT shown,
 # different header w/ swapped YOB & Nation columns, an additional lane number column,
 # meeting name on top, meeting place on EOP.
+#
+# - Includes a "lane_num" column
 # --> TEAM NAME SOMETIMES MISSING <--
 # --> GENDER SOMETIMES MISSING <--
 #
@@ -110,10 +112,10 @@
             format: "^\\s{0,10}\\d{0,3}\\s{1,8}(\\d{1,2})\\s{1,3}\\w+"
             pop_out: false
           - name: swimmer_name
-            format: "^\\s{0,10}\\d{0,3}\\s{1,8}\\d{1,2}\\s{1,3}(\\D{3,30})\\s{2,}\\d{4}\\s{3,}"
+            format: "^\\s{0,10}\\d{0,3}\\s{1,8}\\d{1,2}\\s{1,3}(\\D{3,30})\\s{2,}\\d{4}\\s{1,}"
             pop_out: false
           - name: year_of_birth
-            format: "^\\s{0,10}\\d{0,3}\\s{1,8}\\d{1,2}\\s{1,3}\\D{3,30}\\s{2,}(\\d{4})\\s{3,}"
+            format: "^\\s{0,10}\\d{0,3}\\s{1,8}\\d{1,2}\\s{1,3}\\D{3,30}\\s{2,}(\\d{4})\\s{1,}"
             pop_out: false
 
           - name: lap50
@@ -232,13 +234,13 @@
             format: "^\\s{0,10}\\d{0,3}\\s{1,8}(\\d{1,2})\\s{1,3}\\w+"
             pop_out: false
           - name: swimmer_name
-            format: "^\\s{0,10}\\d{0,3}\\s{1,8}\\d{1,2}\\s{1,3}(\\D{3,30})\\s{2,}\\d{4}\\s{3,}(?>\\w{3})?\\s{3,}"
+            format: "^\\s{0,10}\\d{0,3}\\s{1,8}\\d{1,2}\\s{1,3}(\\D{3,30})\\s{2,}\\d{4}\\s{3,}(?>\\w{3})?\\s{2,}"
             pop_out: false
           - name: year_of_birth
-            format: "^\\s{0,10}\\d{0,3}\\s{1,8}\\d{1,2}\\s{1,3}\\D{3,30}\\s{2,}(\\d{4})\\s{3,}(?>\\w{3})?\\s{3,}"
+            format: "^\\s{0,10}\\d{0,3}\\s{1,8}\\d{1,2}\\s{1,3}\\D{3,30}\\s{2,}(\\d{4})\\s{3,}(?>\\w{3})?\\s{2,}"
             pop_out: false
           - name: nation
-            format: "^\\s{0,10}\\d{0,3}\\s{1,8}\\d{1,2}\\s{1,3}\\D{3,30}\\s{2,}\\d{4}\\s{3,}(\\w{3})\\s{3,}"
+            format: "^\\s{0,10}\\d{0,3}\\s{1,8}\\d{1,2}\\s{1,3}\\D{3,30}\\s{2,}\\d{4}\\s{3,}(\\w{3})\\s{2,}"
             # Sometimes the 3 letter nation code may be missing:
             required: false
             pop_out: false
@@ -306,14 +308,13 @@
 
       - name: footer_place
         fields:
-          # Expected format: "<city>, <venue>"
+          # Expected format: "<city>[,\/] <venue or date>"
           - name: meeting_place
             # Support long place names like "Centro Federale di Ostia (RM)" or "Reggio nell'Emilia"
-            format: "^(.+),\\s.+$"
+            format: "^(.+)[,\/]\\s.+$"
             pop_out: false
-            # format: "^(.+),\\s(?>\\w{2,}\\s?){1,}"
           - name: meeting_venue_or_date
-            format: "^.+,\\s(.+)$"
+            format: "^.+[,\/]\\s(.+)$"
             pop_out: false
       - name: footer_page
         format: "^\\s{70,}Page\\s\\d{1,}"
