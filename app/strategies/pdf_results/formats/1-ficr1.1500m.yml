@@ -435,4 +435,4 @@
     fields:
       # Actual last-line context marker (page should end after this token)
       - name: page_delimiter
-        format: "\\s*https?://nuoto.ficr.it/?"
+        format: "nuoto.ficr.it\\b"

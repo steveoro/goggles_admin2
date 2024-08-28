@@ -106,4 +106,4 @@
     fields:
       # Actual last-line context marker
       - name: page_delimiter
-        format: "\\s*Risultati su https://nuoto.ficr.it\\b"
+        format: "nuoto.ficr.it\\b"

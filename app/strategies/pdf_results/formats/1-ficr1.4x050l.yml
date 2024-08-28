@@ -152,8 +152,9 @@
             pop_out: false
             # "Out of race" won't have a final ranking:
             required: false
+          # This is usually the relay name, but for some events it's the only place where the name is printed out:
           - name: team_name
-            format: "(?>\\s+\\d{1,2}|SQ|RT|NP|ES)?\\s+(([\\w\\d\\-&%'`]+.\\s?)+)"
+            format: "(?>\\s+\\d{1,2}|SQ|RT|NP|ES)?\\s+(.{3,35})"
             token_end: 43
             pop_out: false
           - name: lane_num
@@ -204,9 +205,16 @@
 
       - name: rel_team3
         fields:
+          # May (rightfully) overwrite the team name in rel_team1 when present (LIFO precedence):
+          - name: team_name
+            format: "^\\s{2,15}(.{3,35})"
+            token_end: 43
+            required: false
+            pop_out: false
           # Ignore zero overall years (printed out here instead of swimmer's YOB):
           - name: team_overall_age
             format: "^\\s{40,}\\d{1,}$"
+            required: false
             pop_out: false
 
       - name: rel_team4
@@ -351,6 +359,6 @@
     rows:
       - name: footer1
         required: false
-        format: "risultati su\b"
+        format: "risultati su"
       - name: footer_end
-        starts_with: "nuoto.ficr.it"
+        format: "nuoto.ficr.it\\b"

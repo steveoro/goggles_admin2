@@ -2,7 +2,9 @@
 # = Layout format definition for PdfResults::FormatParser
 #
 # FIN Piemonte, 400m-only, w/ lap timings for 50m then every 100m, category type NOT shown,
-# meeting name on top, meeting place on EOP. --> GENDER SOMETIMES MISSING <--
+# meeting name on top, meeting place on EOP.
+# --> TEAM NAME SOMETIMES MISSING <--
+# --> GENDER SOMETIMES MISSING <--
 #
 3-fintorino.400m:
   - name: header
@@ -142,35 +144,40 @@
         fields:
           - name: team_name
             format: "^\\s{9,15}(.{3,32})(?>\\s{2,}|$)"
-            token_end: 50
+            # token_end: 55
+            # Sometimes team name is MISSING (ex. "Reg. Piemonte"):
+            required: false
             pop_out: false
 
+          # NOTE: using a mixed approach for ID'ing columns because sometimes delta100 have been found missing
           - name: delta100
+            # ID the column from the left:
             format: "^.{40,}\\s{20,}((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})\\s+"
             pop_out: false
             required: false
           - name: delta150
-            format: "^.{40,}\\s{20,}(?>(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}\\s+){1}((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})\\s+"
+            # ID all remaining columns from the right (EOLN):
+            format: "((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})(?>\\s+(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}){5}$"
             pop_out: false
             required: false
           - name: delta200
-            format: "^.{40,}\\s{20,}(?>(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}\\s+){2}((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})\\s+"
+            format: "((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})(?>\\s+(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}){4}$"
             pop_out: false
             required: false
           - name: delta250
-            format: "^.{40,}\\s{20,}(?>(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}\\s+){3}((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})\\s+"
+            format: "((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})(?>\\s+(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}){3}$"
             pop_out: false
             required: false
           - name: delta300
-            format: "^.{40,}\\s{20,}(?>(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}\\s+){4}((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})\\s+"
+            format: "((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})(?>\\s+(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}){2}$"
             pop_out: false
             required: false
           - name: delta350
-            format: "^.{40,}\\s{20,}(?>(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}\\s+){5}((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})\\s+"
+            format: "((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})(?>\\s+(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}){1}$"
             pop_out: false
             required: false
           - name: delta400
-            format: "^.{40,}\\s{20,}(?>(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}\\s+){6}((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})"
+            format: "(?>(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}\\s+){5}((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})$"
             pop_out: false
             required: false
 
@@ -183,6 +190,7 @@
       - name: dsq_title
         format: "^\\s{3,}NON\\sCLASSIFICATI|FUORI\\sGARA"
       - name: dsq_spacer2
+        required: false
         format: "^$"
 
   # DSQ results have swimmer & team on a single row:
@@ -199,19 +207,21 @@
             format: "^\\s{0,10}(\\d{1,3})\\s{1,10}\\w+"
             pop_out: false
           - name: swimmer_name
-            format: "^\\s{0,10}(?>\\d{1,3})\\s{1,10}(\\D{3,30})\\s{2,}(?>\\w{3})?\\s{3,}\\d{4}\\s{3,}"
+            format: "^\\s{0,10}(?>\\d{1,3})\\s{1,10}(\\D{3,30})\\s{2,}(?>\\w{3})?\\s{2,}\\d{4}\\s*"
             pop_out: false
           - name: nation
-            format: "^\\s{0,10}(?>\\d{1,3})\\s{1,10}\\D{3,30}\\s{2,}(\\w{3})\\s{3,}\\d{4}\\s{3,}"
+            format: "^\\s{0,10}(?>\\d{1,3})\\s{1,10}\\D{3,30}\\s{2,}(\\w{3})\\s{2,}\\d{4}\\s*"
             # Sometimes the 3 letter nation code may be missing:
             required: false
             pop_out: false
           - name: year_of_birth
-            format: "^\\s{0,10}(?>\\d{1,3})\\s{1,10}\\D{3,30}\\s{2,}(?>\\w{3})?\\s{3,}(\\d{4})\\s{3,}"
+            format: "^\\s{0,10}(?>\\d{1,3})\\s{1,10}\\D{3,30}\\s{2,}(?>\\w{3})?\\s{2,}(\\d{4})\\s*"
             pop_out: false
           - name: team_name
-            format: "\\s{3,}\\d{4}\\s{3,}(.{3,32})(?>\\s{2,}|$)"
+            format: "\\s{2,}(?>\\w{3})?\\s{2,}\\d{4}\\s{2}(.{3,32})(?>\\s{2,}|$)"
             token_start: 34
+            # Sometimes team name is MISSING (ex. "Reg. Piemonte"):
+            required: false
             pop_out: false
 
   - name: dsq_label

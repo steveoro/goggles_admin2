@@ -210,4 +210,4 @@
     fields:
       # Actual last-line context marker (page should end after this token)
       - name: page_delimiter
-        format: "nuoto.ficr.it"
+        format: "nuoto.ficr.it\\b"

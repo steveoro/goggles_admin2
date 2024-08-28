@@ -435,6 +435,6 @@
     rows:
       - name: footer1
         required: false
-        format: "risultati su\b"
+        format: "risultati su"
       - name: footer_end
-        starts_with: "nuoto.ficr.it"
+        format: "nuoto.ficr.it\\b"

@@ -41,9 +41,12 @@
     repeat: true
     rows:
       - name: results_hdr1
-        format: "^\\s?POS\\s{1,}(?>CR\\s{1,})?STAFFETTA\\s{10,}NAZ\\s{5,}SOCIETA'\\s{20,}ARRIVO"
+        format: "^\\s?POS\\s{1,}(?>CR\\s{1,})?STAFFETTA\\s{10,}NAZ\\s{2,}SOCIETA'\\s{20,}ARRIVO"
+      - name: results_hdr_sep0
+        required: false
+        format: "^$"
       - name: results_hdr2
-        format: "^\\s{5,}COGNOME\\sE\\sNOME\\s{2,}ANNO\\s{1,}NAZ\\s{30,}(?>50\\sm)?\\s{2,}Totale"
+        format: "^\\s{5,}COGNOME\\sE\\sNOME\\s{2,}ANNO\\s{1,}NAZ\\s{20,}(?>50\\sm)?\\s{2,}Totale"
       - name: results_hdr_sep1
         format: "^$"
 
@@ -101,8 +104,8 @@
 
           # In this format, the team name is usually repeated in front of this as a stand-in for the relay name
           - name: team_name
-            format: "\\s{3,}(.{3,32})(?>\\s{5,}\\S|$)"
-            token_start: 45
+            # Use the first name even if it's the relay name (as sometimes this is the only one present):
+            format: "^\\s{0,}\\d{0,3}\\s{1,9}\\d{0,3}\\s{1,6}(.{3,32})(?>\\s{5,}\\S|$)"
             pop_out: false
           - name: timing
             format: "\\s+((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})$"
@@ -113,13 +116,13 @@
       - name: rel_swimmer1
         fields:
           - name: swimmer_name1
-            format: "^\\s{10,}((?>[\\w'àèéìòù\\.:\\/\\-]+\\s?){1,})\\s{2,}\\d{4}\\s{1,}\\w{0,3}"
+            format: "^\\s{9,}(\\D{2,33})\\s{2,}\\d{4}"
             pop_out: false
           - name: year_of_birth1
-            format: "^\\s{10,}(?>[\\w'àèéìòù\\.:\\/\\-]+\\s?){1,}\\s{1,}(\\d{4})\\s{1,}\\w{0,3}"
+            format: "^\\s{9,}\\D{2,33}\\s{2,}(\\d{4})"
             pop_out: false
           - name: nation1
-            format: "^\\s{10,}(?>[\\w'àèéìòù\\.:\\/\\-]+\\s?){1,}\\s{1,}\\d{4}\\s{1,}(\\w{3})"
+            format: "^\\s{9,}\\D{2,33}\\s{2,}\\d{4}\\s{1,}(\\w{3})"
             # Sometimes the nation code may be missing:
             required: false
             pop_out: false
@@ -135,13 +138,13 @@
       - name: rel_swimmer2
         fields:
           - name: swimmer_name2
-            format: "^\\s{10,}((?>[\\w'àèéìòù\\.:\\/\\-]+\\s?){1,})\\s{2,}\\d{4}\\s{1,}\\w{0,3}"
+            format: "^\\s{9,}(\\D{2,33})\\s{2,}\\d{4}"
             pop_out: false
           - name: year_of_birth2
-            format: "^\\s{10,}(?>[\\w'àèéìòù\\.:\\/\\-]+\\s?){1,}\\s{1,}(\\d{4})\\s{1,}\\w{0,3}"
+            format: "^\\s{9,}\\D{2,33}\\s{2,}(\\d{4})"
             pop_out: false
           - name: nation2
-            format: "^\\s{10,}(?>[\\w'àèéìòù\\.:\\/\\-]+\\s?){1,}\\s{1,}\\d{4}\\s{1,}(\\w{3})"
+            format: "^\\s{9,}\\D{2,33}\\s{2,}\\d{4}\\s{1,}(\\w{3})"
             # Sometimes the nation code may be missing:
             required: false
             pop_out: false
@@ -157,13 +160,13 @@
       - name: rel_swimmer3
         fields:
           - name: swimmer_name3
-            format: "^\\s{10,}((?>[\\w'àèéìòù\\.:\\/\\-]+\\s?){1,})\\s{2,}\\d{4}\\s{1,}\\w{0,3}"
+            format: "^\\s{9,}(\\D{2,33})\\s{2,}\\d{4}"
             pop_out: false
           - name: year_of_birth3
-            format: "^\\s{10,}(?>[\\w'àèéìòù\\.:\\/\\-]+\\s?){1,}\\s{1,}(\\d{4})\\s{1,}\\w{0,3}"
+            format: "^\\s{9,}\\D{2,33}\\s{2,}(\\d{4})"
             pop_out: false
           - name: nation3
-            format: "^\\s{10,}(?>[\\w'àèéìòù\\.:\\/\\-]+\\s?){1,}\\s{1,}\\d{4}\\s{1,}(\\w{3})"
+            format: "^\\s{9,}\\D{2,33}\\s{2,}\\d{4}\\s{1,}(\\w{3})"
             # Sometimes the nation code may be missing:
             required: false
             pop_out: false
@@ -179,13 +182,13 @@
       - name: rel_swimmer4
         fields:
           - name: swimmer_name4
-            format: "^\\s{10,}((?>[\\w'àèéìòù\\.:\\/\\-]+\\s?){1,})\\s{2,}\\d{4}\\s{1,}\\w{0,3}"
+            format: "^\\s{9,}(\\D{2,33})\\s{2,}\\d{4}"
             pop_out: false
           - name: year_of_birth4
-            format: "^\\s{10,}(?>[\\w'àèéìòù\\.:\\/\\-]+\\s?){1,}\\s{1,}(\\d{4})\\s{1,}\\w{0,3}"
+            format: "^\\s{9,}\\D{2,33}\\s{2,}(\\d{4})"
             pop_out: false
           - name: nation4
-            format: "^\\s{10,}(?>[\\w'àèéìòù\\.:\\/\\-]+\\s?){1,}\\s{1,}\\d{4}\\s{1,}(\\w{3})"
+            format: "^\\s{9,}\\D{2,33}\\s{2,}\\d{4}\\s{1,}(\\w{3})"
             # Sometimes the nation code may be missing:
             required: false
             pop_out: false
