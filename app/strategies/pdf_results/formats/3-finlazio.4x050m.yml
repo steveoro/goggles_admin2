@@ -88,11 +88,11 @@
         format: "^$"
       - fields:
         - name: cat_title
-          format: "^\\s{40,}((?>MASTER|UNDER)\\s\\d{2,3})[MFX]?"
+          format: "^\\s{40,}((?>MASTER\\s|UNDER\\s)?\\d{2,3})[MFX]?"
           pop_out: false
         # Gender type may be missing for "Under 25":
         - name: gender_type
-          format: "^\\s{40,}(?>MASTER|UNDER)\\s\\d{2,3}([MFX])"
+          format: "^\\s{40,}(?>MASTER\\s|UNDER\\s)?\\d{2,3}([MFX])"
           required: false
           pop_out: false
 
@@ -111,7 +111,7 @@
 
           # In this format, the team name is usually repeated in front of this as a stand-in for the relay name
           - name: team_name
-            format: "\\s{3,}(.{3,32})(?>\\s{5,}\\S|$)"
+            format: "\\s{3,}(.{3,30})(?>\\s{5,}\\S|$)"
             token_start: 45
             pop_out: false
           - name: timing

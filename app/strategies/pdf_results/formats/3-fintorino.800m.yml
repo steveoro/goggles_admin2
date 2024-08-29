@@ -157,7 +157,7 @@
             required: false
             pop_out: false
           - name: year_of_birth
-            format: "^\\s{9,15}.{3,32}\\s{2,}(\\d{4})\\s*"
+            format: "^\\s{9,15}.{3,30}\\s{2,}(\\d{4})\\s*"
             pop_out: false
 
           - name: delta100

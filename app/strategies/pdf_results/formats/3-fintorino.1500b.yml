@@ -160,7 +160,7 @@
             required: false
             pop_out: false
           - name: nation
-            format: "^\\s{9,15}.{3,32}\\s{2,}(\\w{3})(?>\\s{5,}|$)"
+            format: "^\\s{9,15}.{3,30}\\s{2,}(\\w{3})(?>\\s{5,}|$)"
             # Sometimes the 3 letter nation code may be missing:
             required: false
             pop_out: false

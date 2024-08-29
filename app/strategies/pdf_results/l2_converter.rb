@@ -28,11 +28,11 @@ module PdfResults
     # of a single parent hash.
     IND_RESULT_SECTION = %w[results results_alt].freeze
 
-    # Supported 'swimmer_name' column fields for individual results.
-    SWIMMER_FIELD_NAMES = %w[swimmer_name swimmer_ext swimmer_suffix swimmer_suffix_alt].freeze
+    # Supported 'swimmer_name' column fields for individual results ("_alt" names are automatically used for these).
+    SWIMMER_FIELD_NAMES = %w[swimmer_name swimmer_ext swimmer_suffix swimmer_suffix].freeze
 
-    # Supported 'team_name' column fields for individual results.
-    TEAM_FIELD_NAMES = %w[team_name team_ext team_suffix team_suffix_alt].freeze
+    # Supported 'team_name' column fields for individual results ("_alt" names are automatically used for these).
+    TEAM_FIELD_NAMES = %w[team_name team_ext team_suffix team_suffix].freeze
 
     # Supported section names for *categories*. Same rules for IND_RESULT_SECTION apply.
     # Different names are supported in case they need to co-exist in the same layout file.
@@ -1028,6 +1028,13 @@ module PdfResults
     # column names only.
     # Returns an empty string when no values or valid field names are found (even at the "root" level
     # of the result_hash).
+    #
+    # This method automatically supports "_alt" field names when the default field names are not found.
+    # In other words, the supported field name list will be scanned 4 times in the following order:
+    # 1. default field names at root level;
+    # 2. default field names at sibling level;
+    # 3. "_alt" field names at root level (when no values from the default field names have been found);
+    # 4. "_alt" field names at sibling level (when no values from the default field names have been found).
     def extract_nested_field_name(result_hash, supported_field_names)
       result_value = ''
       result_hash.fetch(:fields, {}).each { |fname, fvalue| result_value += " #{fvalue&.squeeze(' ')}" if supported_field_names.include?(fname) }
@@ -1038,6 +1045,20 @@ module PdfResults
         next if row_hash[:fields].blank?
 
         row_hash[:fields].each { |fname, fvalue| result_value += " #{fvalue&.squeeze(' ')}" if supported_field_names.include?(fname) }
+      end
+      return result_value.strip if result_value.strip.present?
+
+      # Search for an "_alt" value when the default field names were not found:
+      alt_field_names = supported_field_names.map { |name| "#{name}_alt" }
+      result_value = ''
+      result_hash.fetch(:fields, {}).each { |fname, fvalue| result_value += " #{fvalue&.squeeze(' ')}" if alt_field_names.include?(fname) }
+
+      # Check for any possible additional (& supported) fields that need to be collated into
+      # a single swimmer name, which could be possibly stored inside sibling rows:
+      result_hash.fetch(:rows, [{}]).each do |row_hash|
+        next if row_hash[:fields].blank?
+
+        row_hash[:fields].each { |fname, fvalue| result_value += " #{fvalue&.squeeze(' ')}" if alt_field_names.include?(fname) }
       end
       result_value.strip
     end
@@ -1193,6 +1214,8 @@ module PdfResults
 
       array_of_sections.each do |event_section|
         next unless event_section.is_a?(Hash)
+        # Do not reorder empty sections or rankings or stats:
+        next if event_section['rows'].blank? || event_section['ranking'] == true || event_section['stats'] == true
 
         # 1. Sort event rows by timing
         event_section.fetch('rows', []).sort! do |row_a, row_b|

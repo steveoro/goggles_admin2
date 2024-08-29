@@ -90,11 +90,11 @@
         format: "^$"
       - fields:
         - name: cat_title
-          format: "^\\s{50,}((?>MASTER|UNDER)\\s\\d{2})[MF]?"
+          format: "^\\s{50,}((?>MASTER\\s|UNDER\\s)?\\d{2})[MF]?"
           pop_out: false
         # Gender type may be missing for "Under 25":
         - name: gender_type
-          format: "^\\s{50,}(?>MASTER|UNDER)\\s\\d{2}([MF])"
+          format: "^\\s{50,}(?>MASTER\\s|UNDER\\s)?\\d{2}([MF])"
           required: false
           pop_out: false
 
@@ -172,7 +172,7 @@
       - name: result_deltas
         fields:
           - name: team_name
-            format: "^\\s{9,15}(.{3,32})(?>\\s{2,}|$)"
+            format: "^\\s{9,15}(.{3,30})(?>\\s{2,}|$)"
             token_end: 50
             pop_out: false
 
@@ -241,7 +241,7 @@
             format: "^\\s{0,10}(?>\\d{1,3})\\s{1,10}\\D{3,30}\\s{2,}(?>\\w{3})?\\s{3,}(\\d{4})\\s{3,}"
             pop_out: false
           - name: team_name
-            format: "\\s{3,}\\d{4}\\s{3,}(.{3,32})(?>\\s{2,}|$)"
+            format: "\\s{3,}\\d{4}\\s{3,}(.{3,30})(?>\\s{2,}|$)"
             token_start: 34
             pop_out: false
 

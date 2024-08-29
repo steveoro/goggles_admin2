@@ -1554,9 +1554,9 @@ module Import
         sum_individual_points: ind_score,
         sum_relay_points: overall_score - ind_score,
         sum_team_points: overall_score,
-        meeting_points: ind_score, # (no data)
-        meeting_relay_points: overall_score - ind_score, # (no data)
-        meeting_team_points: overall_score, # (no data)
+        meeting_points: ind_score,
+        meeting_relay_points: overall_score - ind_score,
+        meeting_team_points: overall_score,
         season_points: 0.0, # (no data)
         season_relay_points: 0.0, # (no data)
         season_team_points: 0.0 # (no data)

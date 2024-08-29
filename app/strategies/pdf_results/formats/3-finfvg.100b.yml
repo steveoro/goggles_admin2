@@ -46,7 +46,7 @@
     repeat: true
     rows:
       - name: results_hdr1
-        format: "^\\s?POS\\s{1,}CR\\s{1,}COGNOME\\sE\\sNOME\\s{2,}ANNO\\s{1,}NAZ\\s{1,}SOCIETA'\\s{10,}(?>50\\sm)?\\s{10,}ARRIVO\\s{1,}(?>PUNTI|Record)"
+        format: "^\\s?POS\\s{1,}CR\\s{1,}COGNOME\\sE\\sNOME\\s{2,}ANNO\\s{1,}NAZ\\s{1,}SOCIETA'\\s{10,}(?>50\\sm)?\\s{2,}ARRIVO\\s{1,}(?>PUNTI|Record)"
       - name: results_hdr_sep1
         format: "^$"
       # Whenever the event is not repeated on page start, at least 2x empty rows take its place:
@@ -86,10 +86,10 @@
         format: "^$"
       - fields:
         - name: cat_title
-          format: "^\\s{50,}((?>MASTER|UNDER)\\s\\d{2})[MF]"
+          format: "^\\s{50,}((?>MASTER\\s|UNDER\\s)?\\d{2})[MF]"
           pop_out: false
         - name: gender_type
-          format: "^\\s{50,}(?>MASTER|UNDER)\\s\\d{2}([MF])"
+          format: "^\\s{50,}(?>MASTER\\s|UNDER\\s)?\\d{2}([MF])"
           pop_out: false
 
   # Actual data starts here:
@@ -125,7 +125,7 @@
             pop_out: false
 
           - name: team_name
-            format: "\\s{0,}\\d{4}\\s{2,}(?>\\d{2}[MF])\\s{2,}(.{3,32})(?>\\s{2,}|$)"
+            format: "\\s{0,}\\d{4}\\s{2,}(?>\\d{2}[MF])\\s{2,}(.{3,30})(?>\\s{2,}|$)"
             pop_out: false
 
           - name: delta50
