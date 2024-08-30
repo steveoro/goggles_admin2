@@ -1,0 +1,103 @@
+#
+# = Layout format definition for PdfResults::FormatParser
+#
+# - Based upon '3-fintorino.teamrank'
+#
+# - Spawn of "FIN FVG" team ranking only, w/ both individual and relay scores.
+# - meeting name on top, meeting place on EOP;
+#
+3-finsicilia.teamrank:
+  - name: header
+    at_fixed_row: 0
+    # Doesn't repeat always on each page:
+    required: false
+    # Sometimes the header w/ the meeting title will be repeated, in between events:
+    repeat: true
+    rows:
+      - name: hdr_title
+        fields:
+          - name: edition
+            required: false
+            format: "^\\s{20,}(\\d{1,2}|[IVXLCM]+).{1,2}?\\s+"
+            pop_out: false
+          - name: meeting_name
+            format: "^\\s{20,}(?>\\d{1,2}|[IVXLCM]+)?.{1,2}?\\s+(.+)$"
+            pop_out: false
+      - name: hdr_pool
+        fields:
+          - name: pool_type
+            lambda: strip
+            format: "\\s*V\\.\\s(\\d{2})m"
+      - name: hdr_sep
+        format: "^$"
+
+  - name: ranking_hdr
+    required: false
+    parent: header
+    rows:
+      - name: ranking_title
+        format: "^\\s+Classifica Società"
+      - name: ranking_hdr1
+        format: "^\\s?POS\\s+CODICE\\s+SOCIETA'\\s+INDIVIDUALI\\s+STAFFETTE\\s+PUNTI"
+      - name: ranking_sep1
+        format: "^$"
+
+  - name: team_ranking
+    parent: ranking_hdr
+    repeat: true
+    rows:
+      # Format:
+      # <rank>  <team_code>  <team_name>   (<tot_swimmers>)  <indiv_score>  (<relay_swimmers>)  <relay_score>  <overall_score>
+      # NOTE: skipping relay scores as they will be computed by the MacroSolver like this: (overall_score - ind_score)
+      - name: team_ranking1
+        fields:
+          - name: rank
+            format: "^\\s{0,15}(\\d{1,3}|SQ|RT|NP|ES)\\s{1,}"
+            # Sometimes the rank may be missing:
+            required: false
+            pop_out: false
+          - name: team_name
+            format: "^\\s{0,15}(?>\\d{1,3}|SQ|RT|NP|ES)?\\s{1,}-?\\d{3,8}\\s{3,}(.{3,35})\\s{3,}\\(\\d{1,3}\\)\\s{2,}"
+            pop_out: false
+          - name: ind_score
+            # WARNING: EDIT FILE TO MAKE SURE THERE'S AT LEAST a '0' value when there are only relay scores, otherwise this will get the relay score instead:
+            format: "^\\s{0,15}(?>\\d{1,3}|SQ|RT|NP|ES)?\\s{1,}-?\\d{3,8}\\s{3,}.{3,35}\\s{3,}\\(\\d{1,3}\\)\\s{2,}(\\d{1,6}[.,]\\d{1,3})\\s{2,}"
+            pop_out: false
+          - name: overall_score
+            format: "\\s{3,}\\(\\d{1,3}\\)\\s{2,}\\d{2,6}[.,]\\d{1,3}\\s{3,}(\\d{2,6}[.,]\\d{1,3})$"
+            pop_out: false
+
+  - name: publish_time
+    parent: event
+    required: false
+    row_span: 2
+    format: "^\\s+Pubblicata:"
+
+  # End-Of-Page, variable span: 2-3
+  - name: footer
+    parent: header
+    eop: true
+    repeat: true
+    rows:
+      - name: footer_place
+        fields:
+          - name: meeting_date
+            # Extract the date first, popping it out so that the remainder can be treated as the meeting place:
+            format: "[,;\\/\\s](?>\\d{1,2}\\s?(?>-|\\.\\.)\\s?)?(\\d{2}[\\/\\-\\s](?>\\d{2}|\\w{3,})[\\/\\-\\s](?>\\d{4}|\\d{2}))"
+            # pop_out: false
+          - name: meeting_place
+            # Support long place names like "Centro Federale di Ostia (RM)" or "Reggio nell'Emilia"
+            format: "^((?>\\w+(?<!\\d)['àéèìòù]?\\s?){1,})"
+            pop_out: false
+      - name: footer_page
+        format: "^\\s{70,}Page\\s\\d{1,}"
+
+      - name: footer_timestamp
+        required: false
+        format: "^\\s{50,}Stampata\\sil\\s\\d{1,2}"
+
+  - name: empty_row
+    repeat: true
+    parent: event
+    required: false
+    format: "^$"

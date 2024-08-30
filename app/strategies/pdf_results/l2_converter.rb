@@ -369,7 +369,12 @@ module PdfResults
         'fin_sigla_categoria' => fetch_category_code(category_hash) || category_code,
         'fin_sesso' => fetch_category_gender(category_hash) || gender_code,
         # TODO: support this in MacroSolver:
-        'base_time' => format_timing_value(category_hash.fetch(:fields, {})['base_time'])
+        'base_time' => format_timing_value(category_hash.fetch(:fields, {})['base_time']),
+        # TODO: no specific DB fields to store these:
+        'ita_record' => format_timing_value(category_hash.fetch(:fields, {})['ita_record']),
+        'ita_record_notes' => format_timing_value(category_hash.fetch(:fields, {})['ita_record_notes']).to_s.squeeze(' '),
+        'eu_record' => format_timing_value(category_hash.fetch(:fields, {})['eu_record']),
+        'world_record' => format_timing_value(category_hash.fetch(:fields, {})['world_record'])
       }
     end
 
@@ -388,7 +393,12 @@ module PdfResults
         'fin_sigla_categoria' => fetch_rel_category_code(category_hash) || category_code,
         'fin_sesso' => fetch_rel_category_gender(category_hash) || gender_code,
         # TODO: support this in MacroSolver:
-        'base_time' => format_timing_value(category_hash.fetch(:fields, {})['base_time'])
+        'base_time' => format_timing_value(category_hash.fetch(:fields, {})['base_time']),
+        # TODO: no specific DB fields to store these:
+        'ita_record' => format_timing_value(category_hash.fetch(:fields, {})['ita_record']),
+        'ita_record_notes' => format_timing_value(category_hash.fetch(:fields, {})['ita_record_notes']).to_s.squeeze,
+        'eu_record' => format_timing_value(category_hash.fetch(:fields, {})['eu_record']),
+        'world_record' => format_timing_value(category_hash.fetch(:fields, {})['world_record'])
       }
     end
 

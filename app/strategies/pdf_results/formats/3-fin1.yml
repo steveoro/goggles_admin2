@@ -16,10 +16,10 @@
         fields:
           - name: edition
             required: false
-            format: "^\\s{20,}(\\d{1,2}|[IVXLCM]+).{1,2}?\\s+"
+            format: "^\\s{2,}(\\d{1,2}|[IVXLCM]+).{1,2}?\\s+"
             pop_out: false
           - name: meeting_name
-            format: "^\\s{20,}(?>\\d{1,2}|[IVXLCM]+)?.{1,2}?\\s+(.+)$"
+            format: "^\\s{2,}(?>\\d{1,2}|[IVXLCM]+)?.{1,2}?\\s+(.+)$"
             pop_out: false
       - name: hdr_sep0
         format: "^$"
