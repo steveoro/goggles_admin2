@@ -27,7 +27,7 @@
       # header row-1..5
       - name: hdr1
         row_span: 5
-        format: "^\\s{20,}RISULTATI\\s-\\sGARA$"
+        format: "^\\s{20,}RISULTATI\\s[-–]\\sGARA$"
 
       # header row-6
       - fields:

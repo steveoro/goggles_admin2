@@ -100,7 +100,7 @@
 
       - name: cat_title
         # Original:
-        # format: "\\s*([UAM]\\d{2}\\s(?>Under|Master)?\\s?(?>Femmine|Maschi)(?>\\s(?>\\d{2}\\s-\\s\\d{2}))?)"
+        # format: "\\s*([UAM]\\d{2}\\s(?>Under|Master)?\\s?(?>Femmine|Maschi)(?>\\s(?>\\d{2}\\s[-–]\\s\\d{2}))?)"
         # Examples: "A20 Femmine", "M25 Master Femmine 25 -29", " » segue M40 Master Femmine 40 - 44"
         format: "^(?>\\s*»\\ssegue\\s|\\s{10,})([UAM]\\d{2}\\s(?>Under|Master)?\\s?(?>Femmine|Maschi))"
       # Optional empty row

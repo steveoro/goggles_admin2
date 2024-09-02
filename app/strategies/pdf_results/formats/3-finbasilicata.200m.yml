@@ -1,0 +1,112 @@
+#
+# = Layout format definition for PdfResults::FormatParser
+#
+# 200m-only, no headers and no category separators.
+# - Gender shown on each event start
+# - Category shown on each row
+# - Laps fpr 100m+ usually present
+#
+# --> Files need editing each time because there are multiple different event per page.
+# (The format doesn't have headers and we can only discriminate events by inserting page breaks for each different event)
+#
+3-finbasilicata.200m:
+  - name: header
+    at_fixed_row: 0
+    # Doesn't repeat always on each page:
+    required: false
+    # Sometimes the header w/ the meeting title will be repeated, in between events:
+    repeat: true
+    rows:
+      - name: hdr_title
+        fields:
+          - name: edition
+            required: false
+            format: "^\\s{20,}(\\d{1,2}|[IVXLCM]+).{1,2}?\\s+"
+            pop_out: false
+          - name: meeting_name
+            format: "^\\s{20,}(?>\\d{1,2}|[IVXLCM]+)?.{1,2}?\\s+(.+)$"
+            pop_out: false
+      - name: hdr_sep0
+        format: "^$"
+      - name: hdr_sep1
+        required: false
+        format: "^$"
+
+  # (Edit the file so there's at least 1 event header per page, otherwise we won't be able to discriminate the format)
+  - name: event
+    repeat: true
+    starts_at_row: 1
+    parent: header
+    rows:
+      - fields:
+        - name: event_length
+          format: "^\\s{20,}(200)\\s?m\\s+"
+          pop_out: false
+        - name: event_type
+          format: "^\\s{20,}200\\s?m\\s+(Stile(?>\\sLibero)?|Dorso|Rana|Delfino|Farfalla|Misti)\\s[-–]\\s"
+          pop_out: false
+        - name: cat_title
+          format: "\\s[-–]\\s(Assoluti|Under|Master)\\s*(?>Femmine|Maschi|mist)?"
+          pop_out: false
+        - name: gender_type
+          format: "\\s[-–]\\s(?>Assoluti|Under|Master)\\s*(?>(Femmine|Maschi)|mist)?"
+          required: false
+          pop_out: false
+      - name: event_sep0
+        required: false
+        format: "^$"
+
+  # Actual data starts here:
+  - name: results
+    repeat: true
+    parent: event
+    starts_at_row: 3
+    fields:
+      - name: rank
+        format: "^\\s{0,10}(\\d{1,3})\\.\\s{1,5}\\w+"
+        # DSQ won't have a rank:
+        required: false
+        pop_out: false
+      - name: swimmer_name
+        format: "^\\s{0,5}\\d{0,3}\\.?\\s{1,5}(\\D{3,28})\\s{1,}\\d{4}\\s{1,}"
+        pop_out: false
+      - name: year_of_birth
+        format: "^\\s{0,5}\\d{0,3}\\.?\\s{1,5}\\D{3,28}\\s{1,}(\\d{4})\\s{1,}"
+        pop_out: false
+      - name: team_name
+        format: "^\\s{0,5}\\d{0,3}\\.?\\s{1,5}\\D{3,28}\\s{1,}\\d{4}\\s{1,}(\\D.{2,28})\\s{2,}(?>[UM]\\d{2})\\s{2,}"
+        pop_out: false
+      - name: cat_title
+        format: "^\\s{0,5}\\d{0,3}\\.?\\s{1,5}\\D{3,28}\\s{1,}\\d{4}\\s{1,}\\D.{2,28}\\s{2,}([UM]\\d{2})\\s{2,}"
+        pop_out: false
+      - name: lap50
+        # Anchor on EOLN:
+        format: "\\s{1,}((?>\\d{1,2}['’:\\.])?\\d{1,2}[\":\\.]\\d{1,2})(?>\\s{1,}(?>\\d{1,2}['’:\\.])?\\d{1,2}[\":\\.]\\d{1,2}){3}$"
+        pop_out: false
+        required: false
+      - name: lap100
+        # Anchor on EOLN:
+        format: "\\s{1,}((?>\\d{1,2}['’:\\.])?\\d{1,2}[\":\\.]\\d{1,2})(?>\\s{1,}(?>\\d{1,2}['’:\\.])?\\d{1,2}[\":\\.]\\d{1,2}){2}$"
+        pop_out: false
+        required: false
+      - name: lap150
+        # Anchor on EOLN:
+        format: "\\s{1,}((?>\\d{1,2}['’:\\.])?\\d{1,2}[\":\\.]\\d{1,2})(?>\\s{1,}(?>\\d{1,2}['’:\\.])?\\d{1,2}[\":\\.]\\d{1,2})$"
+        pop_out: false
+        required: false
+      - name: timing
+        # Anchor on EOLN:
+        format: "\\s{1,}(?>(?>\\d{1,2}['’:\\.])?\\d{1,2}[\":\\.]\\d{1,2}\\s+)((?>\\d{1,2}['’:\\.])?\\d{1,2}[\":\\.]\\d{1,2})$"
+        pop_out: false
+        # DSQ don't have timings:
+        required: false
+      - name: disqualify_type
+        format: "\\s+(Assente|Squalificat\\w+|Ritirat\\w+)\\b"
+        pop_out: false
+        required: false
+
+  - name: empty_row
+    repeat: true
+    parent: event
+    required: false
+    format: "^$"

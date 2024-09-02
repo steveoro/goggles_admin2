@@ -106,7 +106,7 @@
         format: "^$"
 
       - name: cat_title
-        format: "\\s*([UAM]\\d{2}(?>\\sUnder|\\sMaster)?\\s(?>Femmine|Maschi)(?>\\s(?>\\d{2}\\s-\\s\\d{2}))?)"
+        format: "\\s*([UAM]\\d{2}(?>\\sUnder|\\sMaster)?\\s(?>Femmine|Maschi)(?>\\s(?>\\d{2}\\s[-–]\\s\\d{2}))?)"
       # Optional empty row
       - name: cat_separator
         required: false

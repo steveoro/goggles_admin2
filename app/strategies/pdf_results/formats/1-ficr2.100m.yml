@@ -61,10 +61,10 @@
 
       - fields:
         - name: gender_type
-          format: "\\s+(?>Master)?\\s(Femmin\\w*|Maschi\\w*)\\s(?>Under\\s\\d{2}|\\d{2}\\s-\\s\\d{2})"
+          format: "\\s+(?>Master)?\\s(Femmin\\w*|Maschi\\w*)\\s(?>Under\\s\\d{2}|\\d{2}\\s[-–]\\s\\d{2})"
           pop_out: false
         - name: cat_title
-          format: "\\s+(?>Master)?\\s(?>Femmin\\w*|Maschi\\w*)\\s(Under\\s\\d{2}|\\d{2}\\s-\\s\\d{2})"
+          format: "\\s+(?>Master)?\\s(?>Femmin\\w*|Maschi\\w*)\\s(Under\\s\\d{2}|\\d{2}\\s[-–]\\s\\d{2})"
           pop_out: false
 
       - name: cat_sep2

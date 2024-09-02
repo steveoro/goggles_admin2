@@ -272,4 +272,4 @@
             # Using a custom non-existent field name in keys array to skip completely this row
             # from being part of the resulting context key:
             keys: [skip_me]
-            format: "\\s+SEITE\\s-\\sPAGINA\\s\\d{1,2}\\s"
+            format: "\\s+SEITE\\s[-–]\\sPAGINA\\s\\d{1,2}\\s"

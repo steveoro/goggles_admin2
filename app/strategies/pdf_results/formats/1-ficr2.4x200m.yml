@@ -66,7 +66,7 @@
     rows:
       - name: cat_title
         # Original:
-        # format: "\\s+((?>Under|Master)\\s(?>Misti|Femmin\\w*|Masch\\w*)(?>\\s(?>\\d{2,3}\\s-\\s\\d{2,3}))?)[\\b\\n]?"
+        # format: "\\s+((?>Under|Master)\\s(?>Misti|Femmin\\w*|Masch\\w*)(?>\\s(?>\\d{2,3}\\s[-–]\\s\\d{2,3}))?)[\\b\\n]?"
         # More versatile:
         # (Examples: "M 200 - 239 Master Misti", "M200-239 Master Femmine", "Master Maschi M 200", "M200 Femminili", ...)
         format: "\\b(?>(?>M(?>aster)?|A(?>ssoluti)?|U(?>nder)?)\\s?)?(?>(?>Misti|Femmin\\w*|Masch\\w*)?\\s)?(\\d{2,3}\\s?-\\s?\\d{2,3}|[MAU]\\s?\\d{2,3}(?>\\s?-\\s?\\d{2,3})?)(?>(?>M(?>aster)?|A(?>ssoluti)?|U(?>nder)?)\\s)?(?>Misti|Femmin\\w*|Masch\\w*)?\\b"

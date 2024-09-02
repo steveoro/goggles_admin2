@@ -69,13 +69,13 @@
           format: "^\\s{20,}(800)\\s?m\\s+"
           pop_out: false
         - name: event_type
-          format: "^\\s{20,}800\\s?m\\s+(Stile(?>\\sLibero)?|Dorso|Rana|Delfino|Farfalla|Misti)\\s-\\s"
+          format: "^\\s{20,}800\\s?m\\s+(Stile(?>\\sLibero)?|Dorso|Rana|Delfino|Farfalla|Misti)\\s[-–]\\s"
           pop_out: false
         - name: cat_title
-          format: "\\s-\\s(Assoluti|Under|Master)\\s(?>Femmine|Maschi|mist)"
+          format: "\\s[-–]\\s(Assoluti|Under|Master)\\s(?>Femmine|Maschi|mist)"
           pop_out: false
         - name: gender_type
-          format: "\\s-\\s(?>Assoluti|Under|Master)\\s(?>(Femmine|Maschi)|mist)"
+          format: "\\s[-–]\\s(?>Assoluti|Under|Master)\\s(?>(Femmine|Maschi)|mist)"
           pop_out: false
       - name: event_sep0
         format: "^$"

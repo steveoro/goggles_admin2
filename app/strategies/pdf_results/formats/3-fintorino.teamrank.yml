@@ -6,8 +6,7 @@
 3-fintorino.teamrank:
   - name: header
     at_fixed_row: 0
-    # In order to validate/debug a format not always present in page,
-    # we need to set "required" to false according to current implementation:
+    # Doesn't repeat always on each page:
     required: false
     # Sometimes the header w/ the meeting title will be repeated, in between events:
     repeat: true
@@ -74,13 +73,13 @@
     rows:
       - name: footer_place
         fields:
-          # Expected format: "<city>[,\/] <venue or date>"
+          - name: meeting_date
+            # Extract the date first, popping it out so that the remainder can be treated as the meeting place:
+            format: "[,;\\/\\s](?>\\d{1,2}\\s?(?>-|\\.\\.)\\s?)?(\\d{2}[\\/\\-\\s](?>\\d{2}|\\w{3,})[\\/\\-\\s](?>\\d{4}|\\d{2}))"
+            # pop_out: false
           - name: meeting_place
             # Support long place names like "Centro Federale di Ostia (RM)" or "Reggio nell'Emilia"
-            format: "^(.+)[,\/]\\s.+$"
-            pop_out: false
-          - name: meeting_venue_or_date
-            format: "^.+[,\/]\\s(.+)$"
+            format: "^((?>\\w+(?<!\\d)['àéèìòù]?\\s?){1,})"
             pop_out: false
       - name: footer_page
         format: "^\\s{70,}Page\\s\\d{1,}"

@@ -121,7 +121,11 @@
   # break in this layout format:
   - name: cat_sep1
     parent: category
-    required: false
+    # NOTE:
+    # Typically, there should be at least a recognizable full-row separator at least on the first page.
+    # Having the separator as required works perfectly for auto-detecting formats on the first page only.
+    # Uncomment this if it yields errors when parsing pages > 1 with long result lists that span more than 1 page:
+    # required: false
     format: "^-{90,}$"
 
   # Actual data starts here:

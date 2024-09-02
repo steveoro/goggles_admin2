@@ -78,7 +78,7 @@
           format: "^\\s{20,}(?>Mista\\s)?([468]x50)\\s?m\\s+"
           pop_out: false
         - name: event_type
-          format: "^\\s{20,}(?>Mista\\s)?[468]x50\\s?m\\s+(Stile(?>\\sLibero)?|Misti)\\s-\\s"
+          format: "^\\s{20,}(?>Mista\\s)?[468]x50\\s?m\\s+(Stile(?>\\sLibero)?|Misti)\\s[-–]\\s"
           pop_out: false
       - name: event_sep0
         format: "^$"
