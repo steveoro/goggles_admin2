@@ -260,32 +260,7 @@ module PdfResults
             section['rows'] = rows
             find_or_create_event_section_and_merge(resulting_sections, section) if section['rows'].present?
 
-          # --- IND.RESULTS (category -> results: curr depth holds category data) ---
-          elsif holds_category_type?(row_hash)
-            # Supported hierarchy (extract both):
-            #
-            # [category]
-            #     |
-            #     +---[results]
-            #
-            section = ind_category_section(row_hash, event_title, curr_cat_code, curr_cat_gender)
-            # Update current cat.code & gender pointers whenever the section gets overwritten:
-            curr_cat_code = section['fin_sigla_categoria'] || curr_cat_code
-            curr_cat_gender = section['fin_sesso'] || curr_cat_gender
-
-            row_hash.fetch(:rows, [{}]).each do |result_hash|
-              # Ignore unsupported contexts:
-              # NOTE: the name 'disqualified' will just signal the section start, but actual DSQ results
-              # will be included into a 'result' section.
-              next unless IND_RESULT_SECTION.include?(result_hash[:name])
-
-              rows << ind_result_section(result_hash, section['fin_sesso'])
-            end
-            # Overwrite existing rows in current section:
-            section['rows'] = rows
-            find_or_create_event_section_and_merge(resulting_sections, section) if section['rows'].present?
-
-          # --- IND.RESULTS (event -> results: only parents holds possibly some category data) ---
+          # --- IND.RESULTS (event -> results: parents holds possibly some category data) ---
           elsif holds_category_type?(event_hash) && IND_RESULT_SECTION.include?(row_hash[:name])
             # Supported hierarchy:
             #
@@ -314,6 +289,31 @@ module PdfResults
 
             section['rows'] ||= []
             section['rows'] << result_row
+            find_or_create_event_section_and_merge(resulting_sections, section) if section['rows'].present?
+
+          # --- IND.RESULTS (category -> results: curr depth holds category data) ---
+          elsif holds_category_type?(row_hash)
+            # Supported hierarchy (extract both):
+            #
+            # [category]
+            #     |
+            #     +---[results]
+            #
+            section = ind_category_section(row_hash, event_title, curr_cat_code, curr_cat_gender)
+            # Update current cat.code & gender pointers whenever the section gets overwritten:
+            curr_cat_code = section['fin_sigla_categoria'] || curr_cat_code
+            curr_cat_gender = section['fin_sesso'] || curr_cat_gender
+
+            row_hash.fetch(:rows, [{}]).each do |result_hash|
+              # Ignore unsupported contexts:
+              # NOTE: the name 'disqualified' will just signal the section start, but actual DSQ results
+              # will be included into a 'result' section.
+              next unless IND_RESULT_SECTION.include?(result_hash[:name])
+
+              rows << ind_result_section(result_hash, section['fin_sesso'])
+            end
+            # Overwrite existing rows in current section:
+            section['rows'] = rows
             find_or_create_event_section_and_merge(resulting_sections, section) if section['rows'].present?
 
           # --- IND.RESULTS (event -> results, but NO category fields at all; i.e.: absolute rankings) ---
@@ -471,7 +471,7 @@ module PdfResults
     # guess for the age when the category is missing from the event (too many same-named swimmers in some cases).
     #
     # == Params:
-    # - swimmer_name  => complete name of the swimmer;
+    # - swimmer_name  => complete name of the swimmer (*MUST* be present);
     # - year_of_birth => year of birth of the swimmer; 2-digits years will be fixed internally;
     # - gender_code   => gender of the swimmer (M/F) coming from current category, if available;
     # - team_name     => team name of the swimmer;
@@ -573,6 +573,9 @@ module PdfResults
       rank = fields['rank']&.delete(')')
       year_of_birth = fetch_field_with_alt_value(fields, 'year_of_birth')
       swimmer_name = extract_nested_field_name(result_hash, SWIMMER_FIELD_NAMES)&.upcase
+      # Bail out if we don't have at least a swimmer name to check for:
+      return {} if swimmer_name.blank?
+
       team_name = extract_nested_field_name(result_hash, TEAM_FIELD_NAMES)
       timing = format_timing_value(fetch_field_with_alt_value(fields, 'timing'))
       # Additional DSQ label ('disqualify_type' field inside a nested 'dsq_label' row):
@@ -1367,6 +1370,8 @@ module PdfResults
       swimmer_name  = rel_fields_hash[fld_swmmer]&.squeeze(' ')&.tr(',', ' ')
       year_of_birth = rel_fields_hash[fld_yob]
       gender_code   = rel_fields_hash[fld_gender]
+      # Bail out if we don't have at least a swimmer name to check for:
+      return output_hash if swimmer_name.blank?
 
       swimmer_name, year_of_birth, gender_code = scan_results_or_search_db_for_missing_swimmer_fields(swimmer_name, year_of_birth, gender_code, team_name)
 

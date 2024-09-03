@@ -39,14 +39,14 @@
 
       # "header" row #1
       - fields:
+        - name: meeting_date
+          # Extract the date first, popping it out so that the remainder can be treated as the meeting place:
+          format: "[,;\\/\\s](?>\\d{1,2}\\s?(?>-|\\.\\.)\\s?)?(\\d{2}[\\/\\-\\s](?>\\d{2}|\\w{3,})[\\/\\-\\s](?>\\d{4}|\\d{2}))"
+          # pop_out: false
         - name: meeting_place
           # Support long place names like "Centro Federale di Ostia (RM)" or "Reggio nell'Emilia"
-          # format: "^\\s*(.{2,}(?>\\s\\(\\w\\w\\)))?,\\s*"
           # More generic: (see ficr2)
           format: "^\\s*(\\D{2,}),\\s*"
-        - name: meeting_date
-          # Support month names too: dd(-/)mm(-/)yy(yy), dd MMM(...) yy(yy)
-          format: "^\\s*.{2,}(?>\\s\\(\\w\\w\\))?,\\s*(\\d{2}([-\/]\\d{2}[-\/]\\d{2,4}|\\s\\w{3,}\\s\\d{2,4}))\\b"
 
       # Optional empty row #3
       - name: hdr_separator
@@ -116,7 +116,7 @@
           - name: lap50
             format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
             pop_out: false
-            token_start: 66
+            token_start: 65
             token_end: 78
             required: false
           - name: lap100
@@ -128,50 +128,50 @@
           - name: lap150
             format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
             pop_out: false
-            token_start: 92
+            token_start: 91
             token_end: 103
             required: false
           - name: lap200
             format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
             pop_out: false
-            token_start: 103
+            token_start: 101
             token_end: 113
             required: false
           - name: lap300
             format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
             pop_out: false
-            token_start: 113
+            token_start: 111
             token_end: 123
             required: false
           - name: lap400
             format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
             pop_out: false
-            token_start: 123
+            token_start: 121
             token_end: 133
             required: false
 
           - name: lap500
             format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*\\d{1,2}?"
             pop_out: false
-            token_start: 133
+            token_start: 131
             token_end: 143
             required: false
           - name: lap600
             format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*\\d{1,2}?"
             pop_out: false
-            token_start: 142
+            token_start: 141
             token_end: 152
             required: false
           - name: lap700
             format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*\\d{1,2}?"
             pop_out: false
-            token_start: 152
+            token_start: 151
             token_end: 162
             required: false
 
           - name: timing
             format: "\\s*\\d{1,2}?\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\b"
-            token_start: 161
+            token_start: 156
             pop_out: false
             required: false
 
@@ -207,56 +207,56 @@
             # may/may not have brackets:
             format: "\\s*\\(?((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\)?\\s*"
             pop_out: false
-            token_start: 82
+            token_start: 80
             token_end: 92
             required: false
           - name: delta150
             format: "\\s*\\(?((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\)?\\s*"
             pop_out: false
-            token_start: 92
+            token_start: 91
             token_end: 102
             required: false
           - name: delta200
             format: "\\s*\\(?((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\)?\\s*"
             pop_out: false
-            token_start: 102
+            token_start: 101
             token_end: 113
             required: false
           - name: delta300
             format: "\\s*\\(?((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\)?\\s*"
             pop_out: false
-            token_start: 113
+            token_start: 111
             token_end: 123
             required: false
           - name: delta400
             format: "\\s*\\(?((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\)?\\s*"
             pop_out: false
-            token_start: 123
+            token_start: 121
             token_end: 133
             required: false
 
           - name: delta500
             format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*\\d{1,2}?"
             pop_out: false
-            token_start: 133
+            token_start: 131
             token_end: 143
             required: false
           - name: delta600
             format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*\\d{1,2}?"
             pop_out: false
-            token_start: 142
+            token_start: 141
             token_end: 152
             required: false
           - name: delta700
             format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*\\d{1,2}?"
             pop_out: false
-            token_start: 152
+            token_start: 151
             token_end: 162
             required: false
 
           - name: disqualify_type
             format: "^(?!\\s+(Orario Ufficializzazione|\\d{1,2}|www.ficr.it|corsie|Pagina))\\s+(\\D+\\s?)+\\b"
-            token_start: 162
+            token_start: 156
             required: false
 
       - name: results3
@@ -274,13 +274,13 @@
           - name: lap800
             format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*\\d{1,2}?"
             pop_out: false
-            token_start: 66
+            token_start: 65
             token_end: 76
             required: false
           - name: lap900
             format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*\\d{1,2}?"
             pop_out: false
-            token_start: 75
+            token_start: 74
             token_end: 85
             required: false
           - name: lap1000
@@ -292,32 +292,32 @@
           - name: lap1100
             format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*\\d{1,2}?"
             pop_out: false
-            token_start: 93
+            token_start: 92
             token_end: 103
             required: false
           - name: lap1200
             format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*\\d{1,2}?"
             pop_out: false
-            token_start: 102
+            token_start: 101
             token_end: 112
             required: false
           - name: lap1300
             format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*\\d{1,2}?"
             pop_out: false
-            token_start: 111
+            token_start: 110
             token_end: 121
             required: false
           - name: lap1400
-            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*\\d{1,2}?"
+            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})\\s*\\d{1,2}?"
             pop_out: false
-            token_start: 120
+            token_start: 119
             token_end: 130
             required: false
           - name: lap1500
-            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*\\d{1,2}?"
+            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})$"
             pop_out: false
-            token_start: 129
-            token_end: 140
+            token_start: 128
+            token_end: 142
             required: false
 
       - name: results4

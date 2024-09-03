@@ -22,14 +22,14 @@
 
       # "header" row #1
       - fields:
+        - name: meeting_date
+          # Extract the date first, popping it out so that the remainder can be treated as the meeting place:
+          format: "[,;\\/\\s](?>\\d{1,2}\\s?(?>-|\\.\\.)\\s?)?(\\d{2}[\\/\\-\\s](?>\\d{2}|\\w{3,})[\\/\\-\\s](?>\\d{4}|\\d{2}))"
+          # pop_out: false
         - name: meeting_place
           # Support long place names like "Centro Federale di Ostia (RM)" or "Reggio nell'Emilia"
-          # format: "^\\s*(.{2,}(?>\\s\\(\\w\\w\\)))?,\\s*"
           # More generic: (see ficr2)
           format: "^\\s*(\\D{2,}),\\s*"
-        - name: meeting_date
-          # Support month names too: dd(-/)mm(-/)yy(yy), dd MMM(...) yy(yy)
-          format: "^\\s*.{2,}(?>\\s\\(\\w\\w\\))?,\\s*(\\d{2}([-\/]\\d{2}[-\/]\\d{2,4}|\\s\\w{3,}\\s\\d{2,4}))\\b"
 
   - name: sub_title
     at_fixed_row: 2
@@ -141,21 +141,10 @@
             format: "\\s+Pagina\\s(\\d{1,2})\\sdi\\s\\d{1,2}"
 
   # End-Of-Page context
-  # - name: footer
-  #   parent: ranking_hdr
-  #   eop: true
-  #   row_span: 4
-  #   repeat: true
-  #   fields:
-  #     # Actual last-line context marker (page should end after this token)
-  #     - name: page_delimiter
-  #       format: "\\s*https?://nuoto.ficr.it/?"
-
-  # Alternative, simpler EOP:
   - name: footer
-    parent: ranking_hdr
+    parent: footer_title
     eop: true
-    row_span: 1
+    row_span: 4
     repeat: true
     fields:
       # Actual last-line context marker (page should end after this token)
