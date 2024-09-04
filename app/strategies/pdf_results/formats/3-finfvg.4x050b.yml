@@ -86,10 +86,10 @@
         format: "^$"
       - fields:
         - name: cat_title
-          format: "^\\s{50,}((?>MASTER\\s|UNDER\\s)?\\d{2,3})[MFX]"
+          format: "^\\s{50,}((?>MASTER\\s|UNDER\\s|PROPAGANDA\\s)?\\d{2,3})[MFX]"
           pop_out: false
         - name: gender_type
-          format: "^\\s{50,}(?>MASTER\\s|UNDER\\s)?\\d{2,3}([MFX])"
+          format: "^\\s{50,}(?>MASTER\\s|UNDER\\s|PROPAGANDA\\s)?\\d{2,3}([MFX])"
           pop_out: false
 
   # Actual data starts here:
@@ -126,49 +126,49 @@
       - name: rel_swimmer1
         fields:
           - name: swimmer_name1
-            format: "^\\s{8,}(\\D{3,30})\\s{2,}\\d{4}\\s{1,}\\d{2}\\w\\b"
+            format: "^\\s{8,}(\\D{3,28})\\s{2,}\\d{4}\\s{1,}\\d{2}\\w\\b"
             pop_out: false
           - name: year_of_birth1
-            format: "^\\s{8,}\\D{3,30}\\s{2,}(\\d{4})\\s{1,}\\d{2}\\w\\b"
+            format: "^\\s{8,}\\D{3,28}\\s{2,}(\\d{4})\\s{1,}\\d{2}\\w\\b"
             pop_out: false
           - name: gender_type1
-            format: "^\\s{8,}\\D{3,30}\\s{2,}\\d{4}\\s{1,}\\d{2}(\\w)\\b"
+            format: "^\\s{8,}\\D{3,28}\\s{2,}\\d{4}\\s{1,}\\d{2}(\\w)\\b"
             pop_out: false
 
       - name: rel_swimmer2
         fields:
           - name: swimmer_name2
-            format: "^\\s{8,}(\\D{3,30})\\s{2,}\\d{4}\\s{1,}\\d{2}\\w\\b"
+            format: "^\\s{8,}(\\D{3,28})\\s{2,}\\d{4}\\s{1,}\\d{2}\\w\\b"
             pop_out: false
           - name: year_of_birth2
-            format: "^\\s{8,}\\D{3,30}\\s{2,}(\\d{4})\\s{1,}\\d{2}\\w\\b"
+            format: "^\\s{8,}\\D{3,28}\\s{2,}(\\d{4})\\s{1,}\\d{2}\\w\\b"
             pop_out: false
           - name: gender_type2
-            format: "^\\s{8,}\\D{3,30}\\s{2,}\\d{4}\\s{1,}\\d{2}(\\w)\\b"
+            format: "^\\s{8,}\\D{3,28}\\s{2,}\\d{4}\\s{1,}\\d{2}(\\w)\\b"
             pop_out: false
 
       - name: rel_swimmer3
         fields:
           - name: swimmer_name3
-            format: "^\\s{8,}(\\D{3,30})\\s{2,}\\d{4}\\s{1,}\\d{2}\\w\\b"
+            format: "^\\s{8,}(\\D{3,28})\\s{2,}\\d{4}\\s{1,}\\d{2}\\w\\b"
             pop_out: false
           - name: year_of_birth3
-            format: "^\\s{8,}\\D{3,30}\\s{2,}(\\d{4})\\s{1,}\\d{2}\\w\\b"
+            format: "^\\s{8,}\\D{3,28}\\s{2,}(\\d{4})\\s{1,}\\d{2}\\w\\b"
             pop_out: false
           - name: gender_type3
-            format: "^\\s{8,}\\D{3,30}\\s{2,}\\d{4}\\s{1,}\\d{2}(\\w)\\b"
+            format: "^\\s{8,}\\D{3,28}\\s{2,}\\d{4}\\s{1,}\\d{2}(\\w)\\b"
             pop_out: false
 
       - name: rel_swimmer4
         fields:
           - name: swimmer_name4
-            format: "^\\s{8,}(\\D{3,30})\\s{2,}\\d{4}\\s{1,}\\d{2}\\w\\b"
+            format: "^\\s{8,}(\\D{3,28})\\s{2,}\\d{4}\\s{1,}\\d{2}\\w\\b"
             pop_out: false
           - name: year_of_birth4
-            format: "^\\s{8,}\\D{3,30}\\s{2,}(\\d{4})\\s{1,}\\d{2}\\w\\b"
+            format: "^\\s{8,}\\D{3,28}\\s{2,}(\\d{4})\\s{1,}\\d{2}\\w\\b"
             pop_out: false
           - name: gender_type4
-            format: "^\\s{8,}\\D{3,30}\\s{2,}\\d{4}\\s{1,}\\d{2}(\\w)\\b"
+            format: "^\\s{8,}\\D{3,28}\\s{2,}\\d{4}\\s{1,}\\d{2}(\\w)\\b"
             pop_out: false
 
   - name: disqualified

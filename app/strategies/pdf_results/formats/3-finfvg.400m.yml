@@ -92,10 +92,10 @@
         format: "^$"
       - fields:
         - name: cat_title
-          format: "^\\s{50,}((?>MASTER\\s|UNDER\\s)?\\d{2})[MF]"
+          format: "^\\s{50,}((?>MASTER\\s|UNDER\\s|PROPAGANDA\\s)?\\d{2})[MF]"
           pop_out: false
         - name: gender_type
-          format: "^\\s{50,}(?>MASTER\\s|UNDER\\s)?\\d{2}([MF])"
+          format: "^\\s{50,}(?>MASTER\\s|UNDER\\s|PROPAGANDA\\s)?\\d{2}([MF])"
           pop_out: false
 
   # Actual data starts here:
@@ -118,17 +118,17 @@
             format: "^\\s{0,10}\\d{0,3}\\s{1,8}(\\d{1,2})\\s{1,3}\\w+"
             pop_out: false
           - name: swimmer_name
-            format: "^\\s{0,10}\\d{0,3}\\s{1,8}\\d{1,2}\\s{1,3}(\\D{3,30})\\s{2,}\\d{4}\\s{3,}\\d{2}[MF]\\s{3,}"
+            format: "^\\s{0,10}\\d{0,3}\\s{1,8}\\d{1,2}\\s{1,3}(\\D{3,28})\\s{2,}\\d{4}\\s{3,}\\d{2}[MF]\\s{3,}"
             pop_out: false
           - name: year_of_birth
-            format: "^\\s{0,10}\\d{0,3}\\s{1,8}\\d{1,2}\\s{1,3}\\D{3,30}\\s{2,}(\\d{4})\\s{3,}\\d{2}[MF]\\s{3,}"
+            format: "^\\s{0,10}\\d{0,3}\\s{1,8}\\d{1,2}\\s{1,3}\\D{3,28}\\s{2,}(\\d{4})\\s{3,}\\d{2}[MF]\\s{3,}"
             pop_out: false
 
           - name: cat_title
-            format: "^\\s{0,10}\\d{0,3}\\s{1,8}\\d{1,2}\\s{1,3}\\D{3,30}\\s{2,}\\d{4}\\s{3,}(\\d{2})[MF]\\s{3,}"
+            format: "^\\s{0,10}\\d{0,3}\\s{1,8}\\d{1,2}\\s{1,3}\\D{3,28}\\s{2,}\\d{4}\\s{3,}(\\d{2})[MF]\\s{3,}"
             pop_out: false
           - name: gender_type
-            format: "^\\s{0,10}\\d{0,3}\\s{1,8}\\d{1,2}\\s{1,3}\\D{3,30}\\s{2,}\\d{4}\\s{3,}\\d{2}([MF])\\s{3,}"
+            format: "^\\s{0,10}\\d{0,3}\\s{1,8}\\d{1,2}\\s{1,3}\\D{3,28}\\s{2,}\\d{4}\\s{3,}\\d{2}([MF])\\s{3,}"
             pop_out: false
 
           - name: lap50
@@ -227,16 +227,16 @@
             format: "^\\s{0,10}\\d{0,3}\\s{1,8}(\\d{1,2})\\s{1,3}\\w+"
             pop_out: false
           - name: swimmer_name
-            format: "^\\s{0,10}\\d{0,3}\\s{1,8}\\d{1,2}\\s{1,3}(\\D{3,30})\\s{2,}\\d{4}\\s{3,}\\d{2}[MF]\\s{3,}"
+            format: "^\\s{0,10}\\d{0,3}\\s{1,8}\\d{1,2}\\s{1,3}(\\D{3,28})\\s{2,}\\d{4}\\s{3,}\\d{2}[MF]\\s{3,}"
             pop_out: false
           - name: year_of_birth
-            format: "^\\s{0,10}\\d{0,3}\\s{1,8}\\d{1,2}\\s{1,3}\\D{3,30}\\s{2,}(\\d{4})\\s{3,}\\d{2}[MF]\\s{3,}"
+            format: "^\\s{0,10}\\d{0,3}\\s{1,8}\\d{1,2}\\s{1,3}\\D{3,28}\\s{2,}(\\d{4})\\s{3,}\\d{2}[MF]\\s{3,}"
             pop_out: false
           - name: cat_title
-            format: "^\\s{0,10}\\d{0,3}\\s{1,8}\\d{1,2}\\s{1,3}\\D{3,30}\\s{2,}\\d{4}\\s{3,}(\\d{2})[MF]\\s{3,}"
+            format: "^\\s{0,10}\\d{0,3}\\s{1,8}\\d{1,2}\\s{1,3}\\D{3,28}\\s{2,}\\d{4}\\s{3,}(\\d{2})[MF]\\s{3,}"
             pop_out: false
           - name: gender_type
-            format: "^\\s{0,10}\\d{0,3}\\s{1,8}\\d{1,2}\\s{1,3}\\D{3,30}\\s{2,}\\d{4}\\s{3,}\\d{2}([MF])\\s{3,}"
+            format: "^\\s{0,10}\\d{0,3}\\s{1,8}\\d{1,2}\\s{1,3}\\D{3,28}\\s{2,}\\d{4}\\s{3,}\\d{2}([MF])\\s{3,}"
             pop_out: false
           - name: team_name
             format: "\\s{2,}\\d{4}\\s{3,}(?>\\d{2}[MF])\\s{2,}(.{3,30})$"

@@ -95,11 +95,11 @@
         format: "^$"
       - fields:
         - name: cat_title
-          format: "^\\s{40,}((?>MASTER\\s|UNDER\\s)?\\d{2,3})\\s?[MF]?"
+          format: "^\\s{40,}((?>MASTER\\s|UNDER\\s|PROPAGANDA\\s)?\\d{2,3})\\s?[MF]?"
           pop_out: false
         # Gender type may be missing for "Under 25":
         - name: gender_type
-          format: "^\\s{40,}(?>MASTER\\s|UNDER\\s)?\\d{2,3}\\s?(MASCHI|FEMMIN|M|F)"
+          format: "^\\s{40,}(?>MASTER\\s|UNDER\\s|PROPAGANDA\\s)?\\d{2,3}\\s?(MASCHI|FEMMIN|M|F)"
           required: false
           pop_out: false
         - name: base_time
@@ -177,17 +177,17 @@
       - name: rel_swimmer1
         fields:
           - name: swimmer_name1
-            format: "^\\s{8,}(\\D{3,30})\\s{2,}\\d{4}\\s{1,}\\d{2}\\w\\b"
+            format: "^\\s{8,}(\\D{3,28})\\s{2,}\\d{4}\\s{1,}\\d{2}\\w\\b"
             pop_out: false
           - name: year_of_birth1
-            format: "^\\s{8,}\\D{3,30}\\s{2,}(\\d{4})\\s{1,}\\d{2}\\w\\b"
+            format: "^\\s{8,}\\D{3,28}\\s{2,}(\\d{4})\\s{1,}\\d{2}\\w\\b"
             pop_out: false
           # Currently ignored, since the YOB is enough to compute the category per-se:
           - name: cat_title1
-            format: "^\\s{8,}\\D{3,30}\\s{2,}\\d{4}\\s{1,}(\\d{2})\\w\\b"
+            format: "^\\s{8,}\\D{3,28}\\s{2,}\\d{4}\\s{1,}(\\d{2})\\w\\b"
             pop_out: false
           - name: gender_type1
-            format: "^\\s{8,}\\D{3,30}\\s{2,}\\d{4}\\s{1,}\\d{2}(\\w)\\b"
+            format: "^\\s{8,}\\D{3,28}\\s{2,}\\d{4}\\s{1,}\\d{2}(\\w)\\b"
             pop_out: false
           - name: delta50
             format: "\\s+((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})$"
@@ -197,17 +197,17 @@
       - name: rel_swimmer2
         fields:
           - name: swimmer_name2
-            format: "^\\s{8,}(\\D{3,30})\\s{2,}\\d{4}\\s{1,}\\d{2}\\w\\b"
+            format: "^\\s{8,}(\\D{3,28})\\s{2,}\\d{4}\\s{1,}\\d{2}\\w\\b"
             pop_out: false
           - name: year_of_birth2
-            format: "^\\s{8,}\\D{3,30}\\s{2,}(\\d{4})\\s{1,}\\d{2}\\w\\b"
+            format: "^\\s{8,}\\D{3,28}\\s{2,}(\\d{4})\\s{1,}\\d{2}\\w\\b"
             pop_out: false
           # Currently ignored, since the YOB is enough to compute the category per-se:
           - name: cat_title2
-            format: "^\\s{8,}\\D{3,30}\\s{2,}\\d{4}\\s{1,}(\\d{2})\\w\\b"
+            format: "^\\s{8,}\\D{3,28}\\s{2,}\\d{4}\\s{1,}(\\d{2})\\w\\b"
             pop_out: false
           - name: gender_type2
-            format: "^\\s{8,}\\D{3,30}\\s{2,}\\d{4}\\s{1,}\\d{2}(\\w)\\b"
+            format: "^\\s{8,}\\D{3,28}\\s{2,}\\d{4}\\s{1,}\\d{2}(\\w)\\b"
             pop_out: false
           - name: delta100
             format: "\\s+((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})$"
@@ -217,17 +217,17 @@
       - name: rel_swimmer3
         fields:
           - name: swimmer_name3
-            format: "^\\s{8,}(\\D{3,30})\\s{2,}\\d{4}\\s{1,}\\d{2}\\w\\b"
+            format: "^\\s{8,}(\\D{3,28})\\s{2,}\\d{4}\\s{1,}\\d{2}\\w\\b"
             pop_out: false
           - name: year_of_birth3
-            format: "^\\s{8,}\\D{3,30}\\s{2,}(\\d{4})\\s{1,}\\d{2}\\w\\b"
+            format: "^\\s{8,}\\D{3,28}\\s{2,}(\\d{4})\\s{1,}\\d{2}\\w\\b"
             pop_out: false
           # Currently ignored, since the YOB is enough to compute the category per-se:
           - name: cat_title3
-            format: "^\\s{8,}\\D{3,30}\\s{2,}\\d{4}\\s{1,}(\\d{2})\\w\\b"
+            format: "^\\s{8,}\\D{3,28}\\s{2,}\\d{4}\\s{1,}(\\d{2})\\w\\b"
             pop_out: false
           - name: gender_type3
-            format: "^\\s{8,}\\D{3,30}\\s{2,}\\d{4}\\s{1,}\\d{2}(\\w)\\b"
+            format: "^\\s{8,}\\D{3,28}\\s{2,}\\d{4}\\s{1,}\\d{2}(\\w)\\b"
             pop_out: false
           - name: delta150
             format: "\\s+((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})$"
@@ -237,17 +237,17 @@
       - name: rel_swimmer4
         fields:
           - name: swimmer_name4
-            format: "^\\s{8,}(\\D{3,30})\\s{2,}\\d{4}\\s{1,}\\d{2}\\w\\b"
+            format: "^\\s{8,}(\\D{3,28})\\s{2,}\\d{4}\\s{1,}\\d{2}\\w\\b"
             pop_out: false
           - name: year_of_birth4
-            format: "^\\s{8,}\\D{3,30}\\s{2,}(\\d{4})\\s{1,}\\d{2}\\w\\b"
+            format: "^\\s{8,}\\D{3,28}\\s{2,}(\\d{4})\\s{1,}\\d{2}\\w\\b"
             pop_out: false
           # Currently ignored, since the YOB is enough to compute the category per-se:
           - name: cat_title4
-            format: "^\\s{8,}\\D{3,30}\\s{2,}\\d{4}\\s{1,}(\\d{2})\\w\\b"
+            format: "^\\s{8,}\\D{3,28}\\s{2,}\\d{4}\\s{1,}(\\d{2})\\w\\b"
             pop_out: false
           - name: gender_type4
-            format: "^\\s{8,}\\D{3,30}\\s{2,}\\d{4}\\s{1,}\\d{2}(\\w)\\b"
+            format: "^\\s{8,}\\D{3,28}\\s{2,}\\d{4}\\s{1,}\\d{2}(\\w)\\b"
             pop_out: false
           - name: delta200
             format: "\\s+((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})$"

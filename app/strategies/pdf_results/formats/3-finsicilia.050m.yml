@@ -42,7 +42,7 @@
     repeat: true
     rows:
       - name: results_hdr1
-        format: "^\\s?POS\\s{2,}COGNOME\\sE\\sNOME\\s{5,}CAT\\sANNO\\s{1,}SOCIETA'\\s{15,}ARRIVO\\s{2,}PUNTI"
+        format: "^\\s?POS\\s{2,}COGNOME\\sE\\sNOME\\s{5,}CAT\\s{1,}ANNO\\s{1,}SOCIETA'\\s{10,}ARRIVO\\s{2,}PUNTI"
       - name: results_hdr_sep1
         format: "^$"
       # Whenever the event is not repeated on page start, 2x empty rows take its place:
@@ -87,11 +87,11 @@
         format: "^$"
       - fields:
         - name: cat_title
-          format: "^\\s{40,}((?>MASTER\\s|UNDER\\s)?\\d{2})\\s?[MF]?"
+          format: "^\\s{40,}((?>MASTER\\s|UNDER\\s|PROPAGANDA\\s)?\\d{2})\\s?[MF]?"
           pop_out: false
         # Gender type may be missing for "Under 25":
         - name: gender_type
-          format: "^\\s{40,}(?>MASTER\\s|UNDER\\s)?\\d{2}\\s?(MASCHI|FEMMIN|M|F)"
+          format: "^\\s{40,}(?>MASTER\\s|UNDER\\s|PROPAGANDA\\s)?\\d{2}\\s?(MASCHI|FEMMIN|M|F)"
           required: false
           pop_out: false
         - name: base_time
@@ -128,14 +128,14 @@
         format: "^\\s{0,10}(\\d{1,3})\\s{1,10}\\w+"
         pop_out: false
       - name: swimmer_name
-        format: "^\\s{0,10}(?>\\d{1,3})\\s{1,10}(\\D{3,30})\\s{2,}(?>\\w{3})?\\s{2,}\\d{4}\\s{2,}"
+        format: "^\\s{0,10}(?>\\d{1,3})\\s{1,10}(\\D{3,28})\\s{2,}(?>\\w{3})?\\s{2,}\\d{4}\\s{2,}"
         pop_out: false
       - name: cat_title
         # Typical format: "<2_char_age_code><1_char_gender>"
-        format: "^\\s{0,10}(?>\\d{1,3})\\s{1,10}\\D{3,30}\\s{2,}(\\w{3})\\s{2,}\\d{4}\\s{2,}"
+        format: "^\\s{0,10}(?>\\d{1,3})\\s{1,10}\\D{3,28}\\s{2,}(\\w{3})\\s{2,}\\d{4}\\s{2,}"
         pop_out: false
       - name: year_of_birth
-        format: "^\\s{0,10}(?>\\d{1,3})\\s{1,10}\\D{3,30}\\s{2,}(?>\\w{3})?\\s{2,}(\\d{4})\\s{2,}"
+        format: "^\\s{0,10}(?>\\d{1,3})\\s{1,10}\\D{3,28}\\s{2,}(?>\\w{3})?\\s{2,}(\\d{4})\\s{2,}"
         pop_out: false
       - name: team_name
         format: "\\s{2,}\\d{4}\\s{2,}(.{3,30})(?>\\s{2,}|$)"

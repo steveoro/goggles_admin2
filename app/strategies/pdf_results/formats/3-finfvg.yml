@@ -47,7 +47,7 @@
     repeat: true
     rows:
       - name: results_hdr1
-        format: "^\\s?POS\\s{2,}COGNOME\\sE\\sNOME\\s{5,}NAZ\\sANNO\\s{2,}SOCIETA'\\s{12,}BATT\\s{2,}CRS\\s{1,}POS\\s{2,}ARRIVO\\s{2,}PUNTI"
+        format: "^\\s?POS\\s{2,}COGNOME\\sE\\sNOME\\s{5,}NAZ\\s{1,}ANNO\\s{2,}SOCIETA'\\s{12,}BATT\\s{2,}CRS\\s{1,}POS\\s{2,}ARRIVO\\s{2,}PUNTI"
       - name: results_hdr_sep1
         format: "^$"
       # Whenever the event is not repeated on page start, 2x empty rows take its place:
@@ -85,10 +85,10 @@
         format: "^$"
       - fields:
         - name: cat_title
-          format: "^\\s{50,}((?>MASTER\\s|UNDER\\s)?\\d{2})[MF]"
+          format: "^\\s{50,}((?>MASTER\\s|UNDER\\s|PROPAGANDA\\s)?\\d{2})[MF]"
           pop_out: false
         - name: gender_type
-          format: "^\\s{50,}(?>MASTER\\s|UNDER\\s)?\\d{2}([MF])"
+          format: "^\\s{50,}(?>MASTER\\s|UNDER\\s|PROPAGANDA\\s)?\\d{2}([MF])"
           pop_out: false
 
   # Actual data starts here:
@@ -101,18 +101,18 @@
         format: "^\\s{1,10}(\\d{1,3})\\s{1,10}\\w+"
         pop_out: false
       - name: swimmer_name
-        format: "^\\s{1,10}\\d{1,3}\\s{1,10}(\\D{3,30})\\s{2,}\\d{2}[MF]\\s{1,}\\d{4}\\s{2,}"
+        format: "^\\s{1,10}\\d{1,3}\\s{1,10}(\\D{3,28})\\s{2,}\\d{2}[MF]\\s{1,}\\d{4}\\s{2,}"
         pop_out: false
 
       - name: cat_title
-        format: "^\\s{1,10}\\d{1,3}\\s{1,10}\\D{3,30}\\s{2,}(\\d{2})[MF]\\s{1,}\\d{4}\\s{2,}"
+        format: "^\\s{1,10}\\d{1,3}\\s{1,10}\\D{3,28}\\s{2,}(\\d{2})[MF]\\s{1,}\\d{4}\\s{2,}"
         pop_out: false
       - name: gender_type
-        format: "^\\s{1,10}\\d{1,3}\\s{1,10}\\D{3,30}\\s{2,}\\d{2}([MF])\\s{1,}\\d{4}\\s{2,}"
+        format: "^\\s{1,10}\\d{1,3}\\s{1,10}\\D{3,28}\\s{2,}\\d{2}([MF])\\s{1,}\\d{4}\\s{2,}"
         pop_out: false
 
       - name: year_of_birth
-        format: "^\\s{0,10}(?>\\d{1,3})\\s{1,10}\\D{3,30}\\s{2,}(?>\\w{3})?\\s{1,}(\\d{4})\\s{2,}"
+        format: "^\\s{0,10}(?>\\d{1,3})\\s{1,10}\\D{3,28}\\s{2,}(?>\\w{3})?\\s{1,}(\\d{4})\\s{2,}"
         required: false
         pop_out: false
       - name: team_name

@@ -41,7 +41,7 @@
     repeat: true
     rows:
       - name: results_hdr1
-        format: "^\\s?POS\\s{2,}COGNOME\\sE\\sNOME\\s{2,}NAZ\\sANNO\\s{1,}SOCIETA'\\s{10,}(?>50\\sm)?\\s{3,}(?>100\\sm)?\\s{3,}(?>150\\sm)?\\s{3,}ARRIVO\\s{1,}PUNTI"
+        format: "^\\s?POS\\s{2,}COGNOME\\sE\\sNOME\\s{2,}NAZ\\s{1,}ANNO\\s{1,}SOCIETA'\\s{10,}(?>50\\sm)?\\s{3,}(?>100\\sm)?\\s{3,}(?>150\\sm)?\\s{3,}ARRIVO\\s{1,}PUNTI"
       - name: results_hdr_sep1
         format: "^$"
       # Whenever the event is not repeated on page start, 2x empty rows take its place:
@@ -85,11 +85,11 @@
         format: "^$"
       - fields:
         - name: cat_title
-          format: "^\\s{50,}((?>MASTER\\s|UNDER\\s)?\\d{2})[MF]?"
+          format: "^\\s{50,}((?>MASTER\\s|UNDER\\s|PROPAGANDA\\s)?\\d{2})[MF]?"
           pop_out: false
         # Gender type may be missing for "Under 25":
         - name: gender_type
-          format: "^\\s{50,}(?>MASTER\\s|UNDER\\s)?\\d{2}([MF])"
+          format: "^\\s{50,}(?>MASTER\\s|UNDER\\s|PROPAGANDA\\s)?\\d{2}([MF])"
           required: false
           pop_out: false
 
@@ -106,15 +106,15 @@
             format: "^\\s{0,10}(\\d{1,3})\\s{1,10}\\w+"
             pop_out: false
           - name: swimmer_name
-            format: "^\\s{0,10}(?>\\d{1,3})\\s{1,10}(\\D{3,30})\\s{2,}(?>\\w{3})?\\s{1,}\\d{4}\\s{3,}"
+            format: "^\\s{0,10}(?>\\d{1,3})\\s{1,10}(\\D{3,28})\\s{2,}(?>\\w{3})?\\s{1,}\\d{4}\\s{3,}"
             pop_out: false
           - name: nation
-            format: "^\\s{0,10}(?>\\d{1,3})\\s{1,10}\\D{3,30}\\s{2,}(\\w{3})\\s{1,}\\d{4}\\s{3,}"
+            format: "^\\s{0,10}(?>\\d{1,3})\\s{1,10}\\D{3,28}\\s{2,}(\\w{3})\\s{1,}\\d{4}\\s{3,}"
             # Sometimes the 3 letter nation code may be missing:
             required: false
             pop_out: false
           - name: year_of_birth
-            format: "^\\s{0,10}(?>\\d{1,3})\\s{1,10}\\D{3,30}\\s{2,}(?>\\w{3})?\\s{1,}(\\d{4})\\s{3,}"
+            format: "^\\s{0,10}(?>\\d{1,3})\\s{1,10}\\D{3,28}\\s{2,}(?>\\w{3})?\\s{1,}(\\d{4})\\s{3,}"
             pop_out: false
           - name: team_name
             format: "\\s{1,}\\d{4}\\s{3,}(.{3,30})(?>\\s{2,}|$)"
@@ -217,7 +217,7 @@
         fields:
           - name: meeting_date
             # Extract the date first, popping it out so that the remainder can be treated as the meeting place:
-            format: "[,;\\/\\s](?>\\d{1,2}\\s?(?>-|\\.\\.)\\s?)?(\\d{2}[\\/-]\\d{2}[\\/-](?>\\d{4}|\\d{2}))$"
+            format: "[,;\\/\\s](?>\\d{1,2}\\s?(?>-|\\.\\.)\\s?)?(\\d{2}[\\/-]\\d{2}[\\/-](?>\\d{4}|\\d{2}))(?>\\s{10,}|$)"
             # pop_out: false
           - name: meeting_place
             # Support long place names like "Centro Federale di Ostia (RM)" or "Reggio nell'Emilia"

@@ -41,7 +41,7 @@
     repeat: true
     rows:
       - name: results_hdr1
-        format: "^\\s?POS\\s{2,}COGNOME\\sE\\sNOME\\s{2,}NAZ\\sANNO\\s{1,}SOCIETA'\\s{10,}(?>50\\sm)?\\s{3,}(?>100\\sm)?\\s{3,}(?>150\\sm)?\\s{3,}ARRIVO\\s{1,}PUNTI"
+        format: "^\\s?POS\\s{2,}COGNOME\\sE\\sNOME\\s{2,}NAZ\\s{1,}ANNO\\s{1,}SOCIETA'\\s{10,}(?>50\\sm)?\\s{3,}(?>100\\sm)?\\s{3,}(?>150\\sm)?\\s{3,}ARRIVO\\s{1,}PUNTI"
       - name: results_hdr_sep1
         format: "^$"
       # Whenever the event is not repeated on page start, 2x empty rows take its place:
@@ -89,15 +89,15 @@
             format: "^\\s{0,10}(\\d{1,3})\\s{1,10}\\w+"
             pop_out: false
           - name: swimmer_name
-            format: "^\\s{0,10}(?>\\d{1,3})\\s{1,10}(\\D{3,30})\\s{2,}(?>\\w{3})?\\s{1,}\\d{4}\\s{3,}"
+            format: "^\\s{0,10}(?>\\d{1,3})\\s{1,10}(\\D{3,28})\\s{2,}(?>\\w{3})?\\s{1,}\\d{4}\\s{3,}"
             pop_out: false
           - name: nation
-            format: "^\\s{0,10}(?>\\d{1,3})\\s{1,10}\\D{3,30}\\s{2,}(\\w{3})\\s{1,}\\d{4}\\s{3,}"
+            format: "^\\s{0,10}(?>\\d{1,3})\\s{1,10}\\D{3,28}\\s{2,}(\\w{3})\\s{1,}\\d{4}\\s{3,}"
             # Sometimes the 3 letter nation code may be missing:
             required: false
             pop_out: false
           - name: year_of_birth
-            format: "^\\s{0,10}(?>\\d{1,3})\\s{1,10}\\D{3,30}\\s{2,}(?>\\w{3})?\\s{1,}(\\d{4})\\s{3,}"
+            format: "^\\s{0,10}(?>\\d{1,3})\\s{1,10}\\D{3,28}\\s{2,}(?>\\w{3})?\\s{1,}(\\d{4})\\s{3,}"
             pop_out: false
           - name: team_name
             format: "\\s{2,}(?>\\w{3})?\\s{1,}\\d{4}\\s{2}(.{3,29})(?>\\s{2,}|$)"

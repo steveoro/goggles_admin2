@@ -88,11 +88,11 @@
         format: "^$"
       - fields:
         - name: cat_title
-          format: "^\\s{40,}((?>MASTER\\s|UNDER\\s)?\\d{2,3})[MFX]?"
+          format: "^\\s{40,}((?>MASTER\\s|UNDER\\s|PROPAGANDA\\s)?\\d{2,3})[MFX]?"
           pop_out: false
         # Gender type may be missing for "Under 25":
         - name: gender_type
-          format: "^\\s{40,}(?>MASTER\\s|UNDER\\s)?\\d{2,3}([MFX])"
+          format: "^\\s{40,}(?>MASTER\\s|UNDER\\s|PROPAGANDA\\s)?\\d{2,3}([MFX])"
           required: false
           pop_out: false
 
@@ -252,7 +252,7 @@
         fields:
           - name: meeting_date
             # Extract the date first, popping it out so that the remainder can be treated as the meeting place:
-            format: "[,;\\/\\s](?>\\d{1,2}\\s?(?>-|\\.\\.)\\s?)?(\\d{2}[\\/-]\\d{2}[\\/-](?>\\d{4}|\\d{2}))$"
+            format: "[,;\\/\\s](?>\\d{1,2}\\s?(?>-|\\.\\.)\\s?)?(\\d{2}[\\/-]\\d{2}[\\/-](?>\\d{4}|\\d{2}))(?>\\s{10,}|$)"
             # pop_out: false
           - name: meeting_place
             # Support long place names like "Centro Federale di Ostia (RM)" or "Reggio nell'Emilia"

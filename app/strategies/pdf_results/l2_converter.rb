@@ -890,12 +890,13 @@ module PdfResults
         /\s*([UAM]\d{2})(?>\sUnder|\sMaster)?\s(?>Femmine|Maschi)/ui.match(key).captures.first
 
       # key type 2, example: "...|(Master \d\d)|..."
-      elsif /\|((?>Master|Under|Amatori)\s\d{2})\|/ui.match?(key)
-        /\|((?>Master|Under|Amatori)\s\d{2})\|/ui.match(key).captures
-                                                 .first
-                                                 .gsub(/Master\s/i, 'M')
-                                                 .gsub(/Under\s/i, 'U')
-                                                 .gsub(/Amatori\s/i, 'A')
+      elsif /\|((?>Master|Under|Amatori|Propaganda)\s\d{2})\|/ui.match?(key)
+        /\|((?>Master|Under|Amatori|Propaganda)\s\d{2})\|/ui.match(key).captures
+                                                            .first
+                                                            .gsub(/Master\s/i, 'M')
+                                                            .gsub(/Under\s/i, 'U')
+                                                            .gsub(/Propaganda\s?/i, 'A')
+                                                            .gsub(/Amatori\s/i, 'A')
 
       # key type 3, example: "...<gender>|(\d\d)\s?-\s?\d\d" => M/U<dd>
       elsif /\|(\d{2})\s?-\s?\d{2}/ui.match?(key)
@@ -908,6 +909,7 @@ module PdfResults
       elsif row_hash[:fields].key?(CAT_FIELD_NAME)
         row_hash[:fields][CAT_FIELD_NAME].gsub(/Master\s?/i, 'M')
                                          .gsub(/Under\s?/i, 'U')
+                                         .gsub(/Propaganda\s?/i, 'A')
                                          .gsub(/Amatori\s?/i, 'A')
                                          .gsub(/\s/i, '')
       end
