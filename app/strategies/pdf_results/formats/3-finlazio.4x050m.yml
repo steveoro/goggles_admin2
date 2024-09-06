@@ -111,7 +111,7 @@
 
           # In this format, the team name is usually repeated in front of this as a stand-in for the relay name
           - name: team_name
-            format: "\\s{3,}(.{3,30})(?>\\s{5,}\\S|$)"
+            format: "\\s{3,}(.{3,29})(?>\\s{5,}\\S|$)"
             token_start: 45
             pop_out: false
           - name: timing

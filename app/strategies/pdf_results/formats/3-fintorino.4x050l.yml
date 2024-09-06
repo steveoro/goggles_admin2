@@ -107,7 +107,7 @@
           # In this format, the team name is usually repeated in front of this as a stand-in for the relay name
           - name: team_name
             # Use the first name even if it's the relay name (as sometimes this is the only one present):
-            format: "^\\s{0,}\\d{0,3}\\s{1,9}\\d{0,3}\\s{1,6}(.{3,30})(?>\\s{5,}\\S|$)"
+            format: "^\\s{0,}\\d{0,3}\\s{1,9}\\d{0,3}\\s{1,6}(.{3,29})(?>\\s{5,}\\S|$)"
             pop_out: false
           - name: timing
             format: "\\s+((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})$"

@@ -7,13 +7,22 @@
       = render(partial: 'data_fix_tabs', locals: { active_tab: 'swimmers', file_path: @file_path })
 
     %section.my-2#review-swimmers
-      - swimmer_keys = @swimmers_hash.keys
-      - row_count = swimmer_keys.count
       .container-fluid
         .row-fluid
-          %p Tot.: #{row_count}
+          %p
+            Tot. #{@max_count}, pg. #{@curr_page} / #{@max_page + 1}
+            - if @max_page > 1
+              &nbsp;-&nbsp;
+              - (1..(@max_page + 1)).each do |page_num|
+                &nbsp;
+                - link_label = "#{(page_num - 1) * 300}..#{(page_num * 300) - 1}"
+                - if page_num == @curr_page.to_i
+                  = link_label
+                - else
+                  = link_to(review_swimmers_path(page: page_num, file_path: @file_path), method: :get) do
+                    = link_label
         .row-fluid
-          - swimmer_keys.sort.each_with_index do |swimmer_key, index|
+          - @swimmers_keys.each_with_index do |swimmer_key, index|
             :ruby
               swimmer_entity = @swimmers_hash[swimmer_key]
               swimmer = swimmer_entity.row
@@ -52,7 +61,7 @@
                               Teams
                         - else
                           🆕
-                          - possible_dup_count = swimmer_keys.select { |skey| skey.starts_with?(name_part) }.count
+                          - possible_dup_count = @swimmers_keys.select { |skey| skey.starts_with?(name_part) }.count
                           - if possible_dup_count > 1
                             &nbsp;
                             = form_for(swimmer, url: data_fix_purge_path(swimmer, model: 'swimmer'), method: :delete) do |f|

@@ -125,7 +125,7 @@
             pop_out: false
 
           - name: team_name
-            format: "\\s{0,}\\d{4}\\s{2,}(?>\\d{2}[MF])\\s{2,}(.{3,30})(?>\\s{2,}|$)"
+            format: "\\s{0,}\\d{4}\\s{2,}(?>\\d{2}[MF])\\s{2,}(.{3,29})(?>\\s{2,}|$)"
             pop_out: false
 
           - name: delta50

@@ -89,6 +89,9 @@ class DataFixController < ApplicationController
   # - <tt>file_path</tt>: the path to the file to be loaded and scanned for existing rows.
   # - <tt>reparse</tt>: when present, it will force a reparsing of this section using the MacroSolver.
   #
+  # == Additional params:
+  # - page: pagination page number; default 1
+  #
   def review_swimmers
     # Prepare the data review, solving the entities first if not already serialized
     # or when a reparse is requested:
@@ -97,7 +100,12 @@ class DataFixController < ApplicationController
       overwrite_file_path_with_json_from(@solver.data)
     end
     @swimmers_hash = @solver.rebuild_cached_entities_for('swimmer')
+    @swimmers_keys = @swimmers_hash.keys.sort
     @retry_needed = @solver.retry_needed
+    @curr_page = params[:page] || 1
+    @max_count = @swimmers_keys.count
+    @max_page = @max_count / 300
+    @swimmers_keys = Kaminari.paginate_array(@swimmers_keys).page(@curr_page).per(300) if @swimmers_keys.count > 300
     ActionCable.server.broadcast('ImportStatusChannel', { msg: 'Review swimmers: ready' })
   end
 
@@ -418,7 +426,7 @@ class DataFixController < ApplicationController
     #    to avoid duplication errors during creation:
     entity_key = entity_key_for(model_name)
     @solver.data[model_name]&.delete(entity_key)
-    # 2) Delete also any existing cached badge or affiliation with the same key:
+    # 2) Delete also just the primary existing cached badge or affiliation with the same key:
     associated_model = model_name == 'swimmer' ? 'badge' : 'team_affiliation'
     @solver.data[associated_model]&.delete(entity_key)
 

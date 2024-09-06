@@ -196,7 +196,7 @@
       - name: result_deltas
         fields:
           - name: team_name
-            format: "^\\s{9,15}(.{3,30})(?>\\s{2,}|$)"
+            format: "^\\s{9,15}(.{3,29})(?>\\s{2,}|$)"
             token_end: 50
             pop_out: false
 

@@ -171,13 +171,13 @@
       - name: result_deltas
         fields:
           - name: team_name
-            format: "^\\s{9,15}(.{3,30})\\s{2,}(?>\\w{3})?(?>\\s{5,}|$)"
+            format: "^\\s{9,15}(.{3,29})\\s{2,}(?>\\w{3})?(?>\\s{5,}|$)"
             token_end: 55
             # Sometimes team name is MISSING (ex. "Reg. Piemonte"):
             required: false
             pop_out: false
           - name: nation
-            format: "^\\s{9,15}.{3,30}\\s{2,}(\\w{3})(?>\\s{5,}|$)"
+            format: "^\\s{9,15}.{3,29}\\s{2,}(\\w{3})(?>\\s{5,}|$)"
             # Sometimes the 3 letter nation code may be missing:
             required: false
             pop_out: false
@@ -256,7 +256,7 @@
             required: false
             pop_out: false
           - name: team_name
-            format: "\\s{3,}\\d{4}\\s{2,}\\w{3}?\\s{2,}(.{3,30})(?>\\s{2,}|$)"
+            format: "\\s{3,}\\d{4}\\s{2,}\\w{3}?\\s{2,}(.{3,29})(?>\\s{2,}|$)"
             token_start: 34
             # Sometimes team name is MISSING (ex. "Reg. Piemonte"):
             required: false
