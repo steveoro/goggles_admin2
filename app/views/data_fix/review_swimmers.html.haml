@@ -11,7 +11,7 @@
         .row-fluid
           %p
             Tot. #{@max_count}, pg. #{@curr_page} / #{@max_page + 1}
-            - if @max_page > 1
+            - if @max_page.positive?
               &nbsp;-&nbsp;
               - (1..(@max_page + 1)).each do |page_num|
                 &nbsp;
@@ -37,7 +37,7 @@
                         %button.btn.btn-link.m-1{ id: "edit-swimmer-#{index}",
                                                   data: { target: "#swimmer-panel-#{index}",
                                                   toggle: 'collapse', 'aria-expanded' => 'false',
-                                                  'aria-controls' => 'edit-swimmer' } }
+                                                  'aria-controls' => 'edit-swimmer' }}
                           = name_part
                     .col.mt-1.pt-2
                       .row
