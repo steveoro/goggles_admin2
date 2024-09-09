@@ -115,41 +115,45 @@
         # DSQ results usually won't have the lap row with the timings:
         required: false
         fields:
-          - name: spacer
-            format: "^\\s{64,}(?!\\s*\\D+)"
-            pop_out: false
+          # - name: spacer
+          #   format: "^\\s{64,}(?!\\s*\\D+)"
+          #   pop_out: false
           - name: lap50
-            # Original:
-            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*\\b"
-            token_start: 66
-            token_end: 81
+            format: "\\s{50,}((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
+            pop_out: false
+            # Positional:
+            # format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*\\b"
+            # token_start: 66
+            # token_end: 81
             # Alternative w/o margins:
             # format: "^\\s{25,}((?>\\d{1,2}[':.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
-            pop_out: false
             required: false
           - name: lap100
-            # Original:
-            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*\\b"
-            token_start: 81
-            token_end: 92
+            format: "\\s{50,}(?>(?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2}\\s+){1}((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
+            # Positional:
+            # format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*\\b"
+            # token_start: 81
+            # token_end: 92
             # Alternative w/o margins:
             # format: "^\\s{25,}(?>(?>\\d{1,2}[':.])?\\d{1,2}[\":\\.]\\d{1,2}\\s+){1}((?>\\d{1,2}[':.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
             pop_out: false
             required: false
           - name: lap150
-            # Original:
-            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*\\b"
-            token_start: 92
-            token_end: 108
+            format: "\\s{50,}(?>(?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2}\\s+){2}((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
+            # Positional:
+            # format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*\\b"
+            # token_start: 92
+            # token_end: 108
             # Alternative w/o margins:
             # format: "^\\s{25,}(?>(?>\\d{1,2}[':.])?\\d{1,2}[\":\\.]\\d{1,2}\\s+){2}((?>\\d{1,2}[':.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
             pop_out: false
             required: false
           - name: lap200
-            # Original:
-            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*\\b"
-            token_start: 109
-            token_end: 118
+            format: "\\s{50,}(?>(?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2}\\s+){3}((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
+            # Positional:
+            # format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*\\b"
+            # token_start: 109
+            # token_end: 118
             # Alternative w/o margins:
             # format: "^\\s{25,}(?>(?>\\d{1,2}[':.])?\\d{1,2}[\":\\.]\\d{1,2}\\s+){3}((?>\\d{1,2}[':.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
             pop_out: false
@@ -198,22 +202,28 @@
             pop_out: false
           - name: delta100
             # may/may not have brackets:
-            format: "\\s*\\(?((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\)?\\s*"
+            format: "\\s{70,}\\(?((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\)?\\s*"
             pop_out: false
-            token_start: 82
-            token_end: 93
+            # Positional:
+            # format: "\\s*\\(?((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\)?\\s*"
+            # token_start: 82
+            # token_end: 93
             required: false
           - name: delta150
-            format: "\\s*\\(?((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\)?\\s*"
+            format: "\\s{70,}(?>\\(?(?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2}\\)?\\s+){1}\\(?((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\)?\\s*"
             pop_out: false
-            token_start: 93
-            token_end: 103
+            # Positional:
+            # format: "\\s*\\(?((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\)?\\s*"
+            # token_start: 93
+            # token_end: 103
             required: false
           - name: delta200
-            format: "\\s*\\(?((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\)?\\s*"
+            format: "\\s{70,}(?>\\(?(?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2}\\)?\\s+){2}\\(?((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\)?\\s*"
             pop_out: false
-            token_start: 103
-            token_end: 118
+            # Positional:
+            # format: "\\s*\\(?((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\)?\\s*"
+            # token_start: 103
+            # token_end: 118
             required: false
           - name: disqualify_type
             format: "^(?!\\s+(Orario Ufficializzazione|\\d{1,2}|www.ficr.it|corsie|Pagina))\\s+(\\D+\\s?)+\\b"
@@ -264,36 +274,44 @@
         # DSQ results usually won't have the lap row with the timings:
         required: false
         fields:
-          - name: spacer
-            format: "^\\s{64,}"
-            pop_out: false
+          # - name: spacer
+          #   format: "^\\s{64,}"
+          #   pop_out: false
           - name: lap50
-            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*\\b"
+            format: "\\s{50,}((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
             pop_out: false
-            token_start: 66
-            token_end: 81
+            # Positional:
+            # format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*\\b"
+            # token_start: 66
+            # token_end: 81
             required: false
           - name: lap100
-            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*\\b"
+            format: "\\s{50,}(?>(?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2}\\s+){1}((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
             pop_out: false
-            token_start: 81
-            token_end: 92
+            # Positional:
+            # format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*\\b"
+            # token_start: 81
+            # token_end: 92
             required: false
           - name: lap150
-            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*\\b"
+            format: "\\s{50,}(?>(?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2}\\s+){2}((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
             pop_out: false
-            token_start: 92
-            token_end: 108
+            # Positional:
+            # format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*\\b"
+            # token_start: 92
+            # token_end: 108
             required: false
           - name: lap200
-            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*\\b"
+            format: "\\s{50,}(?>(?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2}\\s+){3}((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
             pop_out: false
-            token_start: 109
-            token_end: 118
+            # Positional:
+            # format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*\\b"
+            # token_start: 109
+            # token_end: 118
             required: false
 
           - name: timing
-            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*\\b"
+            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})$"
             token_start: 118
             pop_out: false
             required: false

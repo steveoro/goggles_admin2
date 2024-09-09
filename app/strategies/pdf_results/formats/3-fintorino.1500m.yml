@@ -339,7 +339,9 @@
         fields:
           - name: meeting_date
             # Extract the date first, popping it out so that the remainder can be treated as the meeting place:
-            format: "[,;\\/\\s](?>\\d{1,2}\\s?(?>-|\\.\\.)\\s?)?(\\d{2}[\\/-]\\d{2}[\\/-](?>\\d{4}|\\d{2}))(?>\\s{10,}|$)"
+            format: "[,;\\/\\s](?>\\d{1,2}\\s?(?>-|\\.\\.)\\s?)?(\\d{2}[\\/\\-\\s](?>\\d{2}|\\w{3,})[\\/\\-\\s](?>\\d{4}|\\d{2}))"
+            # Old, less generic:
+            # format: "[,;\\/\\s](?>\\d{1,2}\\s?(?>-|\\.\\.)\\s?)?(\\d{2}[\\/-]\\d{2}[\\/-](?>\\d{4}|\\d{2}))(?>\\s{10,}|$)"
             # pop_out: false
           - name: meeting_place
             # Support long place names like "Centro Federale di Ostia (RM)" or "Reggio nell'Emilia"

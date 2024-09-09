@@ -58,6 +58,12 @@ module Parser
       else
         return nil
       end
+      # NOTE: for some formats, the trailing hundreths may be have the implicit trailing zero,
+      # so we left-justify the hundreths with a zero.
+      # i.e.: "12:34.0" => "12:34.00", or "12:34.5" => "12:34.50"
+      # (Not fixing this would make the parsing below misinterpret a ".1" as ".01" instead of a ".10")
+      # (NOTE also that the above is *never* valid for minutes and seconds.)
+      hundredths = hundredths.ljust(2, '0')
 
       ::Timing.new(minutes:, seconds:, hundredths:)
     end

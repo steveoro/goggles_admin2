@@ -110,32 +110,40 @@
         # DSQ results usually won't have the lap row with the timings:
         required: false
         fields:
-          - name: spacer
-            format: "^\\s{64,}(?!\\s*\\D+)"
-            pop_out: false
+          # - name: spacer
+          #   format: "^\\s{64,}(?!\\s*\\D+)"
+          #   pop_out: false
           - name: lap50
-            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
+            format: "\\s{50,}((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
             pop_out: false
-            token_start: 66
-            token_end: 78
+            # Positional:
+            # format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
+            # token_start: 66
+            # token_end: 78
             required: false
           - name: lap100
-            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
+            format: "\\s{50,}(?>(?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2}\\s+){1}((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
             pop_out: false
-            token_start: 80
-            token_end: 92
+            # Positional:
+            # format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
+            # token_start: 80
+            # token_end: 92
             required: false
           - name: lap150
-            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
+            format: "\\s{50,}(?>(?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2}\\s+){2}((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
             pop_out: false
-            token_start: 92
-            token_end: 103
+            # Positional:
+            # format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
+            # token_start: 92
+            # token_end: 103
             required: false
           - name: lap200
-            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
+            format: "\\s{50,}(?>(?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2}\\s+){3}((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
             pop_out: false
-            token_start: 103
-            token_end: 113
+            # Positional:
+            # format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
+            # token_start: 103
+            # token_end: 113
             required: false
 
           - name: timing
@@ -175,27 +183,33 @@
         # ""RT" or "Retired" result rows usually won't even have the disqualify row (but at least should have an empty row instead):
         required: false
         fields:
-          - name: spacer
-            format: "\\s{78,}"
-            pop_out: false
+          # - name: spacer
+          #   format: "\\s{78,}"
+          #   pop_out: false
           - name: delta100
             # may/may not have brackets:
-            format: "\\s*\\(?((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\)?\\s*"
+            format: "\\s{70,}\\(?((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\)?\\s*"
             pop_out: false
-            token_start: 80
-            token_end: 92
+            # Positional:
+            # format: "\\s*\\(?((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\)?\\s*"
+            # token_start: 80
+            # token_end: 92
             required: false
           - name: delta150
-            format: "\\s*\\(?((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\)?\\s*"
+            format: "\\s{70,}(?>\\(?(?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2}\\)?\\s+){1}\\(?((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\)?\\s*"
             pop_out: false
-            token_start: 92
-            token_end: 102
+            # Positional:
+            # format: "\\s*\\(?((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\)?\\s*"
+            # token_start: 92
+            # token_end: 102
             required: false
           - name: delta200
-            format: "\\s*\\(?((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\)?\\s*"
+            format: "\\s{70,}(?>\\(?(?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2}\\)?\\s+){2}\\(?((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\)?\\s*"
             pop_out: false
-            token_start: 102
-            token_end: 111
+            # Positional:
+            # format: "\\s*\\(?((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\)?\\s*"
+            # token_start: 102
+            # token_end: 111
             required: false
 
           - name: disqualify_type
@@ -262,28 +276,36 @@
             token_end: 68
 
           - name: lap50
-            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
+            format: "\\s{50,}((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
             pop_out: false
-            token_start: 70
-            token_end: 82
+            # Positional:
+            # format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
+            # token_start: 70
+            # token_end: 82
             required: false
           - name: lap100
-            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
+            format: "\\s{50,}(?>(?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2}\\s+){1}((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
             pop_out: false
-            token_start: 82
-            token_end: 94
+            # Positional:
+            # format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
+            # token_start: 82
+            # token_end: 94
             required: false
           - name: lap150
-            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
+            format: "\\s{50,}(?>(?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2}\\s+){2}((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
             pop_out: false
-            token_start: 95
-            token_end: 108
+            # Positional:
+            # format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
+            # token_start: 95
+            # token_end: 108
             required: false
           - name: lap200
-            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
+            format: "\\s{50,}(?>(?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2}\\s+){3}((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
             pop_out: false
-            token_start: 109
-            token_end: 118
+            # Positional:
+            # format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
+            # token_start: 109
+            # token_end: 118
             required: false
 
       - name: rel_swimmer2

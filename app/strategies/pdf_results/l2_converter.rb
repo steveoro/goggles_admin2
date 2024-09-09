@@ -1293,7 +1293,7 @@ module PdfResults
     # - misc "EMI" formats (<MM:SS:HN>, <MM:SS.HN>)
     def format_timing_value(timing_string)
       timing_string&.gsub(/^(\d{1,2})\D/, '\1\'')
-                   &.gsub(/\D(\d{2})$/, '"\1')
+                   &.gsub(/\D(\d{1,2})$/, '"\1')
     end
 
     # Adjusts any 2-digit year to the proper century using current Meeting's Season year.
