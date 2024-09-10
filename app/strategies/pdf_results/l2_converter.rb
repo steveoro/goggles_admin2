@@ -884,6 +884,8 @@ module PdfResults
       # *** Context 'category'|'event' ***
       # (Assumed to include the "category title" field, among other possible fields in the key)
       key = row_hash.fetch(:key, '')
+      # As of 2023 (season 232+) FIN lowered the bar and introduced the new "M20" & "U20" age groups:
+      under_limit = @season.begin_date.year > 2022 ? 20 : 25
 
       # key type 1, example: [...]"M55 Master Maschi 55 - 59"[...]
       if /\s*([UAM]\d{2})(?>\sUnder|\sMaster)?\s(?>Femmine|Maschi)/ui.match?(key)
@@ -901,17 +903,20 @@ module PdfResults
       # key type 3, example: "...<gender>|(\d\d)\s?-\s?\d\d" => M/U<dd>
       elsif /\|(\d{2})\s?-\s?\d{2}/ui.match?(key)
         age_slot = /\|(\d{2})\s?-\s?\d{2}/ui.match(key).captures.first
-        # As of 2023 FIN lowered the bar and introduced the new "M20" & "U20" age groups:
-        under_limit = @season.begin_date.year > 2022 ? 20 : 25
         age_slot.to_i >= under_limit ? "M#{age_slot}" : "U#{age_slot}"
 
-      # use just the field value "as is" for unsupported key value cases:
+      # use just the field value "almost as-is" for unsupported key value cases:
       elsif row_hash[:fields].key?(CAT_FIELD_NAME)
-        row_hash[:fields][CAT_FIELD_NAME].gsub(/Master\s?/i, 'M')
-                                         .gsub(/Under\s?/i, 'U')
-                                         .gsub(/Propaganda\s?/i, 'A')
-                                         .gsub(/Amatori\s?/i, 'A')
-                                         .gsub(/\s/i, '')
+        result = row_hash[:fields][CAT_FIELD_NAME].gsub(/Master\s?/i, 'M')
+                                                  .gsub(/Under\s?/i, 'U')
+                                                  .gsub(/Propaganda\s?/i, 'A')
+                                                  .gsub(/Amatori\s?/i, 'A')
+                                                  .gsub(/\s/i, '')
+        # Handle special FVG layout "cat_title" format (age without "M" or "U"):
+        return "M#{result}" if result.match?(/^\d{2}$/i) && result.to_i >= under_limit
+        return 'U25' if result.match?(/^\d{2}$/i) && under_limit == 25 # Ignore non-stadard age groups for older seasons
+
+        result
       end
     end
 
