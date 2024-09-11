@@ -87,7 +87,7 @@
         format: "^$"
       - fields:
         - name: cat_title
-          format: "^\\s{40,}((?>MASTER\\s|UNDER\\s|PROPAGANDA\\s)?\\d{2})\\s?[MF]?"
+          format: "^\\s{40,}((?>MASTER\\s|UNDER\\s|PROPAGANDA\\s)?\\d{2})(?!\\sm\\s\\w+)\\D"
           pop_out: false
         # Gender type may be missing for "Under 25":
         - name: gender_type
@@ -158,7 +158,10 @@
             required: false
 
           - name: timing
-            format: "(?>\\s+(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}){3}\\s+((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})"
+            # Anchor on EOLN:
+            format: "\\s+((?>\\d{1,2}[:'\\.])?\\d{2}[\\.\"]\\d{2})\\s*(?>\\d{1,4}[\\.,]\\d{1,2})?$"
+            # Anchor on lap start:
+            # format: "(?>\\s+(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}){3}\\s+((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})"
             pop_out: false
             # DSQ don't have timings:
             required: false

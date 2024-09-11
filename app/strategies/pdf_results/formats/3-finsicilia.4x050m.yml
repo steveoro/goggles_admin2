@@ -74,10 +74,10 @@
           format: "^\\s{20,}(?>Mista\\s)?[468]x50\\s?m\\s+(Stile(?>\\sLibero)?|Misti)\\s[-–]\\s"
           pop_out: false
         - name: cat_title
-          format: "\\s[-–]\\s(Assoluti|Under|Master)\\s*(?>Femmine|Maschi|mist)?"
+          format: "\\s[-–]\\s(Assoluti|Under|Master)\\s*(?>Femmin\\w+|Masch\\w+|mist\\w+)?"
           pop_out: false
         - name: gender_type
-          format: "\\s[-–]\\s(?>Assoluti|Under|Master)\\s*(?>(Femmine|Maschi)|mist)?"
+          format: "\\s[-–]\\s(?>Assoluti|Under|Master)\\s*(Femmin\\w+|Masch\\w+|mist\\w+)"
           required: false
           pop_out: false
       - name: event_sep0
@@ -99,7 +99,7 @@
           pop_out: false
         # Gender type may be missing for "Under 25":
         - name: gender_type
-          format: "^\\s{40,}(?>MASTER\\s|UNDER\\s|PROPAGANDA\\s)?\\d{2,3}\\s?(MASCHI|FEMMIN|M|F)"
+          format: "^\\s{40,}(?>MASTER\\s|UNDER\\s|PROPAGANDA\\s)?\\d{2,3}\\s?(MASCHI\\w+|FEMMIN\\w+|MIST\\w+|M|F)\\b"
           required: false
           pop_out: false
         - name: base_time
@@ -143,11 +143,15 @@
             pop_out: false
           # In this format, most of the time the team name is used for the relay name (but may differ slightly from the actual team name)
           - name: team_name_alt
-            format: "^\\s{0,10}\\d{0,3}\\s{1,8}\\d{0,2}\\s{1,5}([A-z]+.{1,28})\\s{2,}\\w{0,3}\\s{2,}\\d{2,3}\\s*"
+            format: "^\\s{0,10}\\d{0,3}\\s{1,8}\\d{0,2}\\s{1,5}([A-z]+.{1,28})\\s{2,}\\w{0,3}\\s{2,}\\d{2,3}\\s+"
+            pop_out: false
+          - name: overall_age
+            format: "^\\s{0,10}\\d{0,3}\\s{1,8}\\d{0,2}\\s{1,5}[A-z]+.{1,28}\\s{2,}\\w{0,3}\\s{2,}(\\d{2,3})\\s+"
+            required: false
             pop_out: false
           # True team name, but not always present:
           - name: team_name
-            format: "^\\s{0,10}\\d{0,3}\\s{1,8}\\d{0,2}\\s{1,5}([A-z]+.{1,28})\\s{2,}\\w{0,3}\\s{2,}\\d{2,3}\\s*([A-z]+.{1,28})\\s{2,}"
+            format: "^\\s{0,10}\\d{0,3}\\s{1,8}\\d{0,2}\\s{1,5}[A-z]+.{1,28}\\s{2,}\\w{0,3}\\s{2,}\\d{2,3}\\s+([A-z]+.{1,28})\\s{2,}"
             required: false
             pop_out: false
 

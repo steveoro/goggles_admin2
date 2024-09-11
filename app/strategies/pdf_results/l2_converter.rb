@@ -196,6 +196,9 @@ module PdfResults
           curr_cat_gender ||= fetch_category_gender(event_hash)
         end
 
+        # DEBUG ----------------------------------------------------------------
+        # binding.pry
+        # ----------------------------------------------------------------------
         # === Sub-event loop: ===
         event_hash.fetch(:rows, [{}]).each do |row_hash| # rubocop:disable Metrics/BlockLength
           # Supported hierarchy for "sub-event-type" depth level:
@@ -665,15 +668,19 @@ module PdfResults
       end
 
       # Add relay swimmer laps onto the same result hash & compute possible age group
-      # in the meantime:
-      row_hash['overall_age'] = 0
+      # in the meantime (SOURCE: fields |=> DEST.: row_hash):
+      row_hash['overall_age'] = fields['overall_age'].to_i # Make sure overall_age is initialized with an integer value in any case
+      sum_overall_age = row_hash['overall_age'].zero?      # Don't compute overall age if the field is already present in the data hash
+      # DEBUG ----------------------------------------------------------------
+      # binding.pry
+      # ----------------------------------------------------------------------
+
       # *** Same-depth case 1 (GoSwim-type): relay swimmer fields inside 'rel_team' ***
       8.times do |idx|
-        team_fields = rel_team_hash.fetch(:fields, {})
-        next unless team_fields.key?("swimmer_name#{idx + 1}")
+        next unless fields.key?("swimmer_name#{idx + 1}")
 
         # Extract swimmer name, year or gender (when available):
-        process_relay_swimmer_fields(idx + 1, team_fields, row_hash, nested: false)
+        process_relay_swimmer_fields(idx + 1, fields, row_hash, nested: false, sum_overall_age:)
       end
 
       rel_team_hash.fetch(:rows, [{}]).each_with_index do |rel_swimmer_hash, idx|
@@ -681,7 +688,7 @@ module PdfResults
         if REL_SWIMMER_SECTION.include?(rel_swimmer_hash[:name])
           swimmer_fields = rel_swimmer_hash.fetch(:fields, {})
           # Extract swimmer name, year or gender (when available):
-          process_relay_swimmer_fields(idx + 1, swimmer_fields, row_hash, nested: true)
+          process_relay_swimmer_fields(idx + 1, swimmer_fields, row_hash, nested: true, sum_overall_age:)
 
         # *** Nested case 2 (Ficr-type): DSQ label nested for swimmers in relays ***
         # Support also for 'disqualify_type' field inside nested row: 'rel_team' -> 'rel_dsq' sub-row
@@ -1363,10 +1370,14 @@ module PdfResults
     # - rel_fields_hash => :fields hash either for a 'rel_team' context or a 'rel_swimmer' context;
     # - output_hash     => relay result Hash section, which should be the destination for the current data,
     #                      assumed to be already storing most of the zero-level fields like 'team' or 'timing'.
+    # == Options:
+    # - nested:         => true if the current context is nested at a deeper depth level;
+    # - sum_overall_age => true if overall age should be summed up with the current relay swimmer age;
+    #
     # == Returns:
     # the specified output_hash, updated with any relay swimmer data field found.
     #
-    def process_relay_swimmer_fields(swimmer_idx, rel_fields_hash, output_hash, nested: true)
+    def process_relay_swimmer_fields(swimmer_idx, rel_fields_hash, output_hash, nested: true, sum_overall_age: true)
       # Swimmer data source at a nested depth level with non-indexed fields (or not, for same depth level)?
       fld_swmmer = nested ? 'swimmer_name' : "swimmer_name#{swimmer_idx}"
       fld_yob    = nested ? 'year_of_birth' : "year_of_birth#{swimmer_idx}"
@@ -1386,7 +1397,7 @@ module PdfResults
       output_hash["swimmer#{swimmer_idx}"] = swimmer_name
       output_hash["#{GENDER_FIELD_NAME}#{swimmer_idx}"] = gender_code
       output_hash["year_of_birth#{swimmer_idx}"] = year_of_birth
-      output_hash['overall_age'] += @season.begin_date.year - year_of_birth if year_of_birth.to_i.positive?
+      output_hash['overall_age'] += @season.begin_date.year - year_of_birth if sum_overall_age && year_of_birth.to_i.positive?
       output_hash
     end
     #-- -----------------------------------------------------------------------
