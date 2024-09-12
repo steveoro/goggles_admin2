@@ -93,7 +93,7 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
              src=<source_swimmer_id>
              dest=<destination_swimmer_id>
              [simulate='0'|<'1'>]
-             [skip_columns='0'|<'1'>]
+             [skip_columns=<'0'>|'1']
 
       - src: source Swimmer ID;
 
@@ -101,7 +101,7 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
 
       - simulate: when set to '0' will enable script execution on localhost (toggled off by default);
 
-      - skip_columns: when set to anything different from '1' will disable overwriting
+      - skip_columns: when set to anything different from '0' will enable the "skip" & disable overwriting
         destination row columns with the source swimmer values (toggled on by default).
 
   DESC
@@ -130,7 +130,12 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
     puts("File '#{sql_file_name}' saved.")
     puts("\r\n*** Log: ***\r\n")
     puts(merge.log.join("\r\n"))
-    exit if simulate
+    if simulate
+      puts("\r\n\t\t>>> NOTHING WAS DONE TO THE DB: THIS WAS JUST A SIMULATION <<<\r\n")
+      puts("\r\n--> Remember to use the 'simulate=0' option to actually run the generated script!")
+      puts('Done.')
+      exit
+    end
 
     puts("\r\n--> Executing script on localhost...")
     # NOTE: for security reasons, ActiveRecord::Base.connection.execute() executes just the first

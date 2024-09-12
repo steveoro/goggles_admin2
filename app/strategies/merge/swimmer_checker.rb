@@ -3,9 +3,9 @@
 module Merge
   # = Merge::SwimmerChecker
   #
-  #   - version:  7-0.7.10
+  #   - version:  7-0.7.18
   #   - author:   Steve A.
-  #   - build:    20240425
+  #   - build:    20240912
   #
   # Service class delegated to check the feasibility of merge operation between two
   # Swimmer instances: a source/slave row into a destination/master one.
@@ -1297,7 +1297,7 @@ module Merge
         shared_parent_keys = opts[:shared_list].map(&:first)
         # Foreach row in a shared parent, report a decorated line:
         opts[:target_domain].where(opts[:where_condition], @source.id, @dest.id, shared_parent_keys).each do |row|
-          opts[:result_array] << "- #{send(ops[:target_decorator], row)}"
+          opts[:result_array] << "- #{send(opts[:target_decorator], row)}"
         end
         opts[:result_array] << "+#{''.center(154, '-')}+"
       else
