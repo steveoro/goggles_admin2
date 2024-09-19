@@ -27,10 +27,10 @@ module Version
   MINOR = '7'
 
   # Patch version.
-  PATCH = '18'
+  PATCH = '19'
 
   # Current build version.
-  BUILD = '20240904'
+  BUILD = '20240919'
 
   # Full versioning for the current release.
   FULL = "#{MAJOR}.#{MINOR}.#{PATCH} (#{CORE}-#{BUILD})".freeze
@@ -39,5 +39,5 @@ module Version
   SEMANTIC = "#{MAJOR}.#{MINOR}.#{PATCH}".freeze
 
   # Current internal DB version (independent from migrations and framework release)
-  DB = '2.07.5'
+  DB = '2.07.6'
 end
