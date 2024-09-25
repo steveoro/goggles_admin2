@@ -7,17 +7,16 @@ module Merge
   #
   #   - version:  7-0.7.19
   #   - author:   Steve A.
-  #   - build:    20240923
+  #   - build:    20240925
   #
   # Check the feasibility of merging the Badge entities specified in the constructor while
   # also gathering all sub-entities that need to be moved or purged.
   #
   # See #{Merge::BadgeSeasonChecker} for more details.
-  class BadgeChecker
-    attr_reader :log, :errors, :warnings, :source, :dest,
-                :multi_badges, :diff_category_badges, :diff_team_badges, :diff_both_badges,
-                :diff_category_swimmer_ids, :possible_team_merges,
-                :relay_badges, :relay_only_badges, :sure_badge_merges
+  class BadgeChecker # rubocop:disable Metrics/ClassLength
+    attr_reader :log, :errors, :warnings, :source, :dest, :categories_x_seasons,
+                :src_only_mirs, :src_only_mrss,
+                :src_only_mes, :src_only_mres, :src_only_mev_res, :src_only_mrel_res
 
     #-- -----------------------------------------------------------------------
     #++
@@ -36,12 +35,74 @@ module Merge
     #                     the source Badge will be considered for fixing (in case the category needs
     #                     to be recomputed for any reason).
     def initialize(source:, dest: nil)
-      raise(ArgumentError, 'Invalid Season!') unless season.is_a?(GogglesDb::Season)
+      raise(ArgumentError, 'Invalid source Badge!') unless source.is_a?(GogglesDb::Badge)
+      raise(ArgumentError, 'Invalid destination!') unless dest.blank? || dest.is_a?(GogglesDb::Badge)
 
       @source = source.decorate
       @dest = dest.decorate
+    end
+    #-- ------------------------------------------------------------------------
+    #++
 
-      # TODO
+    # Maps all categories found or computed for the latest available Seasons of a specific SeasonType#id
+    # and Swimmer#id.
+    #
+    # == Rationale behind usage:
+    # The goal is to have a range of already defined categories to help identify the best possible or correct category
+    # type for a given swimmer in any season.
+    #
+    # When > 1 badge is found in a Season having different category types (even a single different category/badge
+    # is one too many), you need to go back (or forth) enough to cover the 5-years range that includes the correct
+    # category type to discriminate between them.
+    #
+    # === For example:
+    # - 2 badges found for the same swimmer in the same season, linked to 2 close-edge categories (e.g.: 'M25' vs 'M30');
+    # - 1 clearly must be wrongly assigned or computed (as swimmers can belong to only 1 category type in each Season);
+    # - to discriminate them apart (which is right? / which is wrong?), you need to see inside which 5-years range both fall;
+    # - if, for example, there are already 4 same 'M25' category types badges in the preceding 5-years range,
+    #   the current badge category shall be the last 'M25' category inside the 5-years range.
+    #
+    # == Params:
+    # * <tt>season_type_id</tt>: SeasonType#id
+    # * <tt>swimmer_id</tt>: Swimmer#id
+    # * <tt>max_latest</tt>: limit the number of seasons to consider (default: 12, usually enough to discriminate)
+    #
+    # == Returns:
+    # Returns an array of Hash items structured this way:
+    #   {
+    #     season_id: <Season#id>,
+    #     swimmer_age: <computed swimmer age>,
+    #     computed_category_type_id: <CategoryType#id> esteemed from Swimmer age & Season year,
+    #     computed_category_type_code: <CategoryType#code> (as above),
+    #     category_type_ids: array of unique <CategoryType#id> found in badges for this season,
+    #     category_type_codes: array of unique <CategoryType#code> (as above),
+    #     badges: array of Badge instances found in this season,
+    #     teams: array of Hash items structured as { <Team#id> => <Team#name> } and mapped from this season
+    #   }
+    def self.map_categories_x_seasons(season_type_id, swimmer_id, max_latest = 12) # rubocop:disable Metrics/AbcSize
+      raise(ArgumentError, "Can't find SeasonType with the specified id!") unless GogglesDb::SeasonType.exists?(season_type_id)
+      raise(ArgumentError, "Can't find Swimmer with the specified id!") unless GogglesDb::Swimmer.exists?(swimmer_id)
+
+      swimmer = GogglesDb::Swimmer.find(swimmer_id)
+      latest_seasons = GogglesDb::Season.where(season_type_id:).order(:id).last(max_latest)
+
+      latest_seasons.map do |season|
+        swimmer_age = season.begin_date.year - swimmer.year_of_birth
+        computed_category_type = season.category_types.where('relay = false AND age_begin <= ? AND age_end >= ?', swimmer_age, swimmer_age)
+                                       .first
+        badges = GogglesDb::Badge.includes(:category_type, :team)
+                                 .where('swimmer_id = ? AND season_id = ?', swimmer_id, season.id)
+        {
+          season_id: season.id,
+          swimmer_age:,
+          computed_category_type_id: computed_category_type&.id,
+          computed_category_type_code: computed_category_type&.code,
+          category_type_ids: badges.map(&:category_type_id).uniq,
+          category_type_codes: badges.map { |badge| badge.category_type.code }.uniq,
+          badges:,
+          teams: badges.map { |badge| { badge.team.id => badge.team.name } }
+        }
+      end
     end
     #-- ------------------------------------------------------------------------
     #++
@@ -59,35 +120,70 @@ module Merge
       @errors = []
       @warnings = []
 
-      # TODO
-    end
+      # Entities implied in badge merging: (all those below; src-only because source |=> dest.)
+      @src_only_mirs = []       # meeting_individual_results
+      @src_only_mrss = []       # meeting_relay_swimmers
+      @src_only_mes = []        # meeting_entries
+      @src_only_mres = []       # meeting_reservations
+      @src_only_mev_res = []    # meeting_event_reservations
+      @src_only_mrel_res = []   # meeting_relay_reservations
 
-    # Launches the analysis process for merge feasibility while collecting data for the internal members.
-    # *This process does not alter the database.*
+      # FUTUREDEV: (currently not used)
+      # - badge_payments (badge_id)
+      # - swimmer_season_scores (badge_id)
+    end
+    #-- ------------------------------------------------------------------------
+    #++
+
+    # Launches the analysis process for merge feasibility while collecting
+    # all data for the internal members. *This process DOES NOT alter the database.*
     #
     # Returns +true+ if the merge seems feasible, +false+ otherwise.
     # Check the #log & #errors members for details and error messages.
+    #
+    # == About "merging":
+    # "Merging" implies moving all source data into the destination, so also the actual
+    # swimmer columns will become the new destination values (names, year of birth, gender, ...).
+    #
+    # - SOURCE will become DESTINATION ("overwriting" everything about it, unless requested differently by parameters).
+    # - New / missing sub-entity SOURCE rows will be moved to DESTINATION.
+    # - Already existing sub-entity SOURCE rows will be purged.
+    #
+    # === About MIRs with possible nil badges:
+    # Legacy MIRs may still turn out to have nil badges here and there.
+    # In that eventuality, restore the missing seasonal Badges using the swimmer-team link.
+    #
+    # == Example usage:
+    # From BadgeSeasonChecker output: "Swimmer 2208, badges 183101 (M25) ⬅ 132792 (M30)"
+    #
+    #   > source = GogglesDb::Badge.find(132792) ; dest = GogglesDb::Badge.find(183101) ; bc = Merge::BadgeChecker.new(source:, dest:) ; bc.run ; bc.display_report
+    #
+    # Keep in mind that usually older (smaller ID) badges tend to have the correct category assigned
+    # either because imported from a web page stating the correct category or because already fixed
+    # in the past.
     def run
       initialize_data
-      @log << "\r\n[Season ID #{@season.id}] -- Badges analysis --\r\n"
 
-      # TODO
-      #
+      @log += badge_analysis
       @log += mir_analysis
-      @log += lap_analysis
-
       @log += mrs_analysis
-      @log += relay_lap_analysis
-      @log += mres_analysis
-      @log += mev_res_analysis
-      @log += mrel_res_analysis
-      @log += mes_analysis
+      # TODO
+      # @log += mes_analysis
+      # @log += mres_analysis
+      # @log += mev_res_analysis
+      # @log += mrel_res_analysis
 
-      @relay_badges = GogglesDb::Badge.joins(:category_type)
-                                      .includes(:category_type)
-                                      .where('badges.season_id = ? AND category_types.relay = true', @season.id)
+      @errors << 'Identical source and destination!' if @source.id == @dest.id
+      if @source.category_type.relay? || @dest.category_type.relay?
+        @warnings << 'Wrong relay-only category found assigned to a badge (FIXABLE)'
+      elsif @source.category_type_id != @dest.category_type_id
+        @errors << 'Conflicting categories: uncompatible CategoryTypes in same Season (MANUAL DECISION REQUIRED)'
+      end
+      @errors << 'Conflicting MIR(s) found in same MeetingEvent' if mir_conflicting?
+      @errors << 'Conflicting MRS(s) found in same MeetingEvent' if mrss_conflicting?
 
-      nil
+      @errors.blank?
+      # FUTUREDEV: (see #initialize_data above)
     end
     #-- ------------------------------------------------------------------------
     #++
@@ -101,37 +197,473 @@ module Merge
       nil
     end
     # rubocop:enable Rails/Output
+
+    #-- ------------------------------------------------------------------------
+    #                    Source vs. Destination Badge
     #-- ------------------------------------------------------------------------
     #++
 
+    # Analyzes the badges of both source & destination swimmers.
+    # Sets @categories_x_seasons with the Array of Hash items returned by Merge::BadgeChecker#map_categories_x_seasons().
+    # Returns a multi-line report as an array of printable strings, describing both the source & destination entities
+    # in detail.
+    def badge_analysis # rubocop:disable Metrics/AbcSize
+      return @badge_analysis if @badge_analysis.present?
+
+      season_type_id = @source.season.season_type_id
+      # Collect all category types found to help analyze which one to use:
+      @categories_x_seasons = Merge::BadgeChecker.map_categories_x_seasons(season_type_id, @source.swimmer_id)
+      # Returns an Array of:
+      #   {
+      #     season_id: <Season#id>,
+      #     swimmer_age: <computed swimmer age>,
+      #     computed_category_type_id: <CategoryType#id> esteemed from Swimmer age & Season year,
+      #     computed_category_type_code: <CategoryType#code> (as above),
+      #     category_type_ids: array of unique <CategoryType#id> found in badges for this season,
+      #     category_type_codes: array of unique <CategoryType#code> (as above),
+      #     badges: array of Badge instances found in this season,
+      #     teams: array of Hash items structured as { <Team#id> => <Team#name> } and mapped from this season
+      #   }
+      curr_hash = @categories_x_seasons.find { |h| h[:season_id] == @source.season_id }
+
+      @badge_analysis = [
+        "\r\n\t*** Badge Checker ***\r\n",
+        "🔹[Src  BADGE: #{@source.id.to_s.rjust(7)}] #{@source.short_label}, Cat. #{@source.category_type_id} #{@source.category_type.code} " \
+        "(computed cat. #{curr_hash[:computed_category_type_id]} #{curr_hash[:computed_category_type_code]})",
+        "🔹[Dest BADGE: #{@dest.id.to_s.rjust(7)}] #{@dest.short_label}, Cat. #{@dest.category_type_id} #{@dest.category_type.code}\r\n",
+        "Latest 12 categories found for this same swimmer (#{@source.swimmer_id}):"
+      ]
+      @categories_x_seasons.map do |season_hash|
+        existing_teams = season_hash[:teams].map { |team_id, team_name| "#{team_id}: #{team_name}" }.join(', ')
+        existing_categories = season_hash[:category_type_codes].map { |cat_code| cat_code }.join(', ')
+        @badge_analysis << "  - Season #{season_hash[:season_id]}, age: #{season_hash[:swimmer_age]}, computed Cat. #{season_hash[:computed_category_type_code]} " \
+                           "(#{season_hash[:computed_category_type_id].to_s.rjust(4)}) / found #{existing_categories} -> #{existing_teams}"
+      end
+
+      @badge_analysis
+    end
+
     #-- ------------------------------------------------------------------------
-    #                            MeetingIndividualResult
+    #                    MeetingIndividualResult (from MeetingEvent)
     #-- ------------------------------------------------------------------------
     #++
 
-    # Analizes source and destination associations for conflicting MIRs (different source & destination MIRs inside same meeting),
+    # Returns the list of all MIR rows that have a nil Badge ID.
+    def all_mirs_with_nil_badge
+      return @all_mirs_with_nil_badge if @all_mirs_with_nil_badge
+
+      @all_mirs_with_nil_badge = GogglesDb::MeetingIndividualResult.where(badge_id: nil)
+    end
+    #-- ------------------------------------------------------------------------
+    #++
+
+    # Returns an array of Hash items each one having the format <tt>{ meeting_event_id => mir_count }</tt>.
+    # Each MeetingEvent ID is unique and grouped with its MIR count as associated value.
+    # This is extracted from existing MIR rows involving the *source* badge and may return MeetingEvent IDs
+    # which are shared by the destination badge too.
+    def src_mevent_ids_from_mirs
+      return @src_mevent_ids_from_mirs if @src_mevent_ids_from_mirs.present?
+
+      @src_mevent_ids_from_mirs = GogglesDb::MeetingIndividualResult.joins(:meeting_event).includes(:meeting_event)
+                                                                    .where(badge_id: @source.id)
+                                                                    .group('meeting_events.id').count
+    end
+
+    # Similar to #src_mevent_ids_from_mirs but for @dest Badge.
+    def dest_mevent_ids_from_mirs
+      return @dest_mevent_ids_from_mirs if @dest_mevent_ids_from_mirs.present?
+
+      @dest_mevent_ids_from_mirs = GogglesDb::MeetingIndividualResult.joins(:meeting_event).includes(:meeting_event)
+                                                                     .where(badge_id: @dest.id)
+                                                                     .group('meeting_events.id').count
+    end
+
+    # Returns an array similar to the ones above but containing only the "shared" MeetingEvent IDs
+    # extracted from both source & destination MIR rows.
+    #
+    # These "shared rows" may link to different or overlapping MeetingPrograms, in turn linked
+    # to different source & destination MIRs.
+    # In other words, these "shared rows", will yield:
+    #
+    # 1. src. vs. "equal" dest. MIRs, having the same timing even though belonging to different M.Prgs.
+    # 2. src. vs. "different" dest. MIRs, having a different timing result.
+    #
+    # Case 1. => source MIR (w/ laps) can "overwrite" destination (updating any other value);
+    #      1.1 => any existing source sub-entity needs to be moved to the destination, if not already existing
+    #      1.2 => purge any source sub-entity if already existing
+    #
+    # Case 2. => conflict! => cannot merge different MIRs unless a purge is forced manually.
+    #                         (source over destination)
+    def shared_mevent_ids_from_mirs
+      return @shared_mevent_ids_from_mirs if @shared_mevent_ids_from_mirs.present?
+
+      @shared_mevent_ids_from_mirs = dest_mevent_ids_from_mirs.dup.keep_if { |mevent_id, _mir_count| src_mevent_ids_from_mirs.key?(mevent_id) }
+    end
+
+    # Returns the difference array of unique MeetingEvent IDs & MIR counts involving *just* the *source* badge.
+    def src_only_mevent_ids_from_mirs
+      return @src_only_mevent_ids_from_mirs if @src_only_mevent_ids_from_mirs.present?
+
+      @src_only_mevent_ids_from_mirs = src_mevent_ids_from_mirs.dup.delete_if { |mevent_id, _mir_count| dest_mevent_ids_from_mirs.key?(mevent_id) }
+    end
+
+    # Returns the difference array of unique MeetingEvent IDs & MIR counts involving *just* the *destination* badge.
+    def dest_only_mevent_ids_from_mirs
+      return @dest_only_mevent_ids_from_mirs if @dest_only_mevent_ids_from_mirs.present?
+
+      @dest_only_mevent_ids_from_mirs = dest_mevent_ids_from_mirs.dup.delete_if { |mevent_id, _mir_count| src_mevent_ids_from_mirs.key?(mevent_id) }
+    end
+    #-- ------------------------------------------------------------------------
+    #++
+
+    # Source and destination MIRs are considered "conflicting" when any different timing is found
+    # for any "shared" MIR inside a "shared" MeetingEvent.
+    #
+    # Even when this is +true+, purge of the conflicting MIR can always be forced when running
+    # the actual merge (with "force_purge: true").
+    def mir_conflicting?
+      return false if shared_mevent_ids_from_mirs.blank?
+
+      shared_mevent_ids_from_mirs.any? do |mevent_id, _mir_count|
+        # (1 MIR x Badge x Event only)
+        src_row = GogglesDb::MeetingIndividualResult.joins(:meeting_event).includes(:meeting_event)
+                                                    .where(badge_id: @source.id, 'meeting_events.id': mevent_id)
+                                                    .first
+        dest_row = GogglesDb::MeetingIndividualResult.joins(:meeting_event).includes(:meeting_event)
+                                                     .where(badge_id: @dest.id, 'meeting_events.id': mevent_id)
+                                                     .first
+        # Detect any conflicting timing (same timing => no conflict):
+        src_row.to_timing != dest_row.to_timing
+      end
+    end
+
+    # Prepares and returns a multi-row displayable mini-report regarding the provided couple of rows (src & dest.),
+    # comparing them for "conflicts" (different value/timing).
+    #
+    # == Params:
+    # - <tt>:mevent_id</tt> => MeetingEvent ID
+    # - <tt>:src_row</tt> => source GogglesDb::MeetingIndividualResult
+    # - <tt>:dest_row</tt> => destination GogglesDb::MeetingIndividualResult
+    def decorate_mir(mevent_id, src_row, dest_row) # rubocop:disable Metrics/AbcSize
+      unless src_row.is_a?(GogglesDb::MeetingIndividualResult) && dest_row.is_a?(GogglesDb::MeetingIndividualResult)
+        raise ArgumentError, 'Both src_row & dest_row must be MeetingIndividualResult instances'
+      end
+      unless (mevent_id == src_row.meeting_event.id) && (mevent_id == dest_row.meeting_event.id)
+        raise ArgumentError, 'Both src_row & dest_row must belong to the same MeetingEvent ID'
+      end
+
+      mevent = GogglesDb::MeetingEvent.find(mevent_id).decorate
+      conflicting = src_row.to_timing != dest_row.to_timing
+      "- {MEvent #{mevent_id.to_s.rjust(6)}} Season #{src_row.season.id}, MeetingEvent #{src_row.meeting.id} - #{mevent.display_label}\r\n" \
+        "#{''.ljust(17)}🔹Src  [MIR #{src_row.id.to_s.ljust(7)}] swimmer_id: #{src_row.swimmer_id} (#{src_row.swimmer.complete_name}), " \
+        "team_id: #{src_row.team_id} ➡ #{src_row.category_type.code} #{src_row.to_timing}, laps: #{src_row.laps.count}\r\n" \
+        "#{''.ljust(17)}🔹Dest [MIR #{dest_row.id.to_s.ljust(7)}] swimmer_id: #{dest_row.swimmer_id} (#{dest_row.swimmer.complete_name}), " \
+        "team_id: #{dest_row.team_id} ➡ #{dest_row.category_type.code} #{dest_row.to_timing} #{conflicting ? '❌' : '✅'}" \
+        ", laps: #{dest_row.laps.count}\r\n" \
+    end
+    #-- ------------------------------------------------------------------------
+    #++
+
+    # Analizes source and destination associations for possible conflicting MIRs (different source & destination MIRs
+    # belonging to the same MeetingEvent), returning an array of printable lines as an ASCII table for quick reference.
+    # Table width: 156 character columns (tested with some edge-case swimmers).
+    #
+    # Each analysis works in principle by collecting data in regard of a parent entity, which acts as a discriminant
+    # between different rows.
+    #
+    # In this case, the discriminant is the MeetingEvent ID.
+    # MIRs are considered "conflicting" whenever they have the same timing result while belonging to the same MeetingEvent.
+    # (MeetingPrograms may or may not differ, as the category may be wrongly computed or esteemed.)
+    def mir_analysis # rubocop:disable Metrics/AbcSize
+      return @mir_analysis if @mir_analysis.present?
+
+      @src_only_mirs += GogglesDb::MeetingIndividualResult.joins(:meeting_event)
+                                                          .where(
+                                                            badge_id: @source.id,
+                                                            'meeting_events.id': src_only_mevent_ids_from_mirs.keys
+                                                          ).map(&:id)
+      @mir_analysis = report_fill_for(
+        result_array: [],
+        target_domain: GogglesDb::MeetingIndividualResult.joins(:meeting_event).includes(:meeting_event),
+        target_decorator: :decorate_mir,
+        where_condition: 'meeting_individual_results.badge_id = ? AND meeting_events.id = ?',
+        src_hash: src_only_mevent_ids_from_mirs,
+        shared_hash: shared_mevent_ids_from_mirs,
+        dest_hash: dest_only_mevent_ids_from_mirs,
+        result_title: 'MIR (from parent MEvent)',
+        subj_tuple_title: '(MeetingEvent ID, MIR count)'
+      )
+
+      # Check for nil Badges inside *any* MIRs, just for further clearance:
+      # (As of 20240925 all MIRs with empty badge_id are already fixed)
+      if all_mirs_with_nil_badge.present?
+        @warnings << "#{all_mirs_with_nil_badge.count} (possibly unrelated) MIRs with nil badge_id" if all_mirs_with_nil_badge.present?
+        @mir_analysis << "\r\n>> WARNING: #{all_mirs_with_nil_badge.count} MIRs with nil badge_id are present:"
+        all_mirs_with_nil_badge.each { |mir| @mir_analysis << "- #{decorate_mir(mir)}" }
+      end
+
+      @mir_analysis
+    end
+
+    #-- ------------------------------------------------------------------------
+    #                   MeetingRelaySwimmer (from MeetingEvent)
+    #-- ------------------------------------------------------------------------
+    #++
+
+    # Returns the list of all MRS rows that have a nil Badge ID.
+    def all_mrs_with_nil_badge
+      return @all_mrs_with_nil_badge if @all_mrs_with_nil_badge
+
+      @all_mrs_with_nil_badge = GogglesDb::MeetingRelaySwimmer.where(badge_id: nil)
+    end
+    #-- ------------------------------------------------------------------------
+    #++
+
+    # Returns an array of Hash items each one having the format <tt>{ mevent_id => mrs_count }</tt>.
+    # Each MeetingEvent ID is unique and grouped with its MRS count as associated value.
+    # This is extracted from existing MRS rows involving the *source* Badge and may return
+    # MeetingEvent IDs which are shared by the destination too.
+    def src_mevent_ids_from_mrss
+      return @src_mevent_ids_from_mrss if @src_mevent_ids_from_mrss.present?
+
+      @src_mevent_ids_from_mrss = GogglesDb::MeetingRelaySwimmer.joins(:meeting_event).includes(:meeting_event)
+                                                                .where(badge_id: @source.id)
+                                                                .group('meeting_events.id').count
+    end
+
+    # Returns an array of Hash items each one having the format <tt>{ mevent_id => mrs_count }</tt>.
+    # Each MeetingEvent ID is unique and grouped with its MRS count as associated value.
+    # This is extracted from existing MRS rows involving the *destination* badge and may return MeetingEvent IDs which are shared
+    # by the source badge too.
+    def dest_mevent_ids_from_mrss
+      return @dest_mevent_ids_from_mrss if @dest_mevent_ids_from_mrss.present?
+
+      @dest_mevent_ids_from_mrss = GogglesDb::MeetingRelaySwimmer.joins(:meeting_event).includes(:meeting_event)
+                                                                 .where(badge_id: @source.id)
+                                                                 .group('meeting_events.id').count
+    end
+
+    # Returns an array similar to the one above regarding shared and *conflicting* MeetingEvent IDs extracted
+    # from MRS rows involving *both* the *source* & the *destination* badge.
+    #
+    # These "shared rows" may link to different or overlapping MeetingPrograms, in turn linked
+    # to different source & destination MRR-MRSs.
+    def shared_mevent_ids_from_mrss
+      return @shared_mevent_ids_from_mrss if @shared_mevent_ids_from_mrss.present?
+
+      @shared_mevent_ids_from_mrss = dest_mevent_ids_from_mrss.dup.keep_if { |mevent_id, _mrs_count| src_mevent_ids_from_mrss.key?(mevent_id) }
+    end
+
+    # Returns the difference array of unique MeetingEvent IDs & MRS counts involving *just* the *source* badge.
+    def src_diff_mevent_ids_from_mrss
+      return @src_diff_mevent_ids_from_mrss if @src_diff_mevent_ids_from_mrss.present?
+
+      @src_diff_mevent_ids_from_mrss = src_mevent_ids_from_mrss.dup.delete_if { |mevent_id, _mrs_count| dest_mevent_ids_from_mrss.key?(mevent_id) }
+    end
+
+    # Returns the difference array of unique MeetingEvent IDs & MRS counts involving *just* the *destination* badge.
+    def dest_diff_mevent_ids_from_mrss
+      return @dest_diff_mevent_ids_from_mrss if @dest_diff_mevent_ids_from_mrss.present?
+
+      @dest_diff_mevent_ids_from_mrss = dest_mevent_ids_from_mrss.dup.delete_if { |mevent_id, _mrs_count| src_mevent_ids_from_mrss.key?(mevent_id) }
+    end
+
+    # MRSs are considered "compatible for merge" when:
+    # - NO different timing instances (non-nil) are found inside the same MeetingEvent.
+    #   (That is, "No conflicting results"; because no swimmer can have 2 different timing results
+    #    inside the same event. Whenever the timing for 2 possibly overlapping results is the same,
+    #    the destination result is considered as "already existing" and the source can be ignored & purged.)
+    def mrss_conflicting?
+      return false if shared_mevent_ids_from_mrss.blank?
+
+      shared_mevent_ids_from_mrss.any? do |mevent_id, _mrs_count|
+        # (1 MIR x Badge x Event only)
+        src_row = GogglesDb::MeetingRelaySwimmer.joins(:meeting_event).includes(:meeting_event)
+                                                .where(badge_id: @source.id, 'meeting_events.id': mevent_id)
+                                                .first
+        dest_row = GogglesDb::MeetingRelaySwimmer.joins(:meeting_event).includes(:meeting_event)
+                                                 .where(badge_id: @dest.id, 'meeting_events.id': mevent_id)
+                                                 .first
+        # Detect any conflicting timing (same timing => no conflict):
+        src_row.to_timing != dest_row.to_timing
+      end
+    end
+
+    # Prepares and returns a multi-row displayable mini-report regarding the provided couple of rows (src & dest.),
+    # comparing them for "conflicts" (different value/timing).
+    #
+    # == Params:
+    # - <tt>:mevent_id</tt> => MeetingEvent ID
+    # - <tt>:src_row</tt> => source GogglesDb::MeetingRelaySwimmer
+    # - <tt>:dest_row</tt> => destination GogglesDb::MeetingRelaySwimmer
+    def decorate_mrss(mevent_id, src_row, dest_row) # rubocop:disable Metrics/AbcSize
+      unless src_row.is_a?(GogglesDb::MeetingRelaySwimmer) && dest_row.is_a?(GogglesDb::MeetingRelaySwimmer)
+        raise ArgumentError, 'Both src_row & dest_row must be MeetingRelaySwimmer instances'
+      end
+      unless (mevent_id == src_row.meeting_event.id) && (mevent_id == dest_row.meeting_event.id)
+        raise ArgumentError, 'Both src_row & dest_row must must belong to the same MeetingEvent ID'
+      end
+
+      mevent = GogglesDb::MeetingEvent.find(mevent_id).decorate
+      conflicting = src_row.to_timing != dest_row.to_timing
+      "- {MEvent #{mevent_id.to_s.rjust(6)}} Season #{src_row.season.id}, MeetingEvent #{src_row.meeting.id} - #{mevent.display_label}\r\n" \
+        "#{''.ljust(17)}🔹Src  [MRS #{src_row.id.to_s.ljust(7)}] swimmer_id: #{src_row.swimmer_id} (#{src_row.swimmer.complete_name}), " \
+        "team_id: #{src_row.team_id} ➡ #{src_row.category_type.code} #{src_row.to_timing}, sub-laps: #{src_row.relay_laps.count}\r\n" \
+        "#{''.ljust(17)}🔹Dest [MRS #{dest_row.id.to_s.ljust(7)}] swimmer_id: #{dest_row.swimmer_id} (#{dest_row.swimmer.complete_name}), " \
+        "team_id: #{dest_row.team_id} ➡ #{dest_row.category_type.code} #{dest_row.to_timing} #{conflicting ? '❌' : '✅'}" \
+        ", sub-laps: #{dest_row.relay_laps.count}\r\n" \
+    end
+    #-- ------------------------------------------------------------------------
+    #++
+
+    # Analizes source and destination associations for conflicting MRSs (different source & destination MRSs inside same meeting),
     # returning an array of printable lines as an ASCII table for quick reference.
     # Table width: 156 character columns (tested with some edge-case swimmers).
-    def mir_analysis
-      # TODO: see app/strategies/merge/swimmer_checker.rb:381
-      # target_domain = GogglesDb::MeetingIndividualResult.joins(:meeting)
-      #                                                   .includes(:meeting)
-      #                                                   .where()
+    def mrs_analysis # rubocop:disable Metrics/AbcSize
+      return @mrs_analysis if @mrs_analysis.present?
 
-      # BadgeSeasonChecker should also "align" source and dest. Badge-merge candidates
-      # according to which one is more data-complete of the two.
-      # (Longer swimmer names should become source data fields that overwrite the dest. Badge;
-      #  also, MIR & laps should all be moved to the actual destination.)
-      #
-      # (Badges need to point to the same swimmer in order to be considered for the merge)
-      #
-      # - src vs. dest. Badge's MIRs are: (this is valid also for MRRs and other "master" entities)
-      #   1. same timing result, same event, different or same category => 1 is correct, the other needs to be purged, sub-entities moved
-      #   2a. different timing result, same event, different category => CONFLICT: NO MERGE
-      #   2b. different timing result, same event, same category => CONFLICT: NO MERGE / ERROR: duplicated MIR (unfixable?)
-      #
-      # - src vs. dest. Badge's Laps are more loosely checked since can be user-edited:
-      #   conflicts are sorted out by either clearing the lap row or moving it to the new MIR, when not in conflict
+      @src_only_mrss += GogglesDb::MeetingRelaySwimmer.joins(:meeting_event)
+                                                      .where(
+                                                        badge_id: @source.id,
+                                                        'meeting_events.id': src_diff_mevent_ids_from_mrss.keys
+                                                      ).map(&:id)
+      @mrs_analysis = report_fill_for(
+        result_array: [],
+        target_domain: GogglesDb::MeetingRelaySwimmer.joins(:meeting_event).includes(:meeting_event),
+        target_decorator: :decorate_mrs,
+        where_condition: '(meeting_relay_swimmers.badge_id = ? AND meeting_events.id = ?',
+        src_list: src_diff_mevent_ids_from_mrss,
+        shared_list: shared_mevent_ids_from_mrss,
+        dest_list: dest_diff_mevent_ids_from_mrss,
+        result_title: 'MRS (from parent MEvent)',
+        subj_tuple_title: '(MeetingEvent ID, MRS count)'
+      )
+
+      # Check for nil Badges inside *any* MRSs, just for further clearance:
+      # (As of 20240925 all MRSs with empty badge_id are already fixed)
+      if all_mrs_with_nil_badge.present?
+        @warnings << "#{all_mrs_with_nil_badge.count} (possibly unrelated) MRSs with nil badge_id" if all_mrs_with_nil_badge.present?
+        @mrs_analysis << "\r\n>> WARNING: #{all_mrs_with_nil_badge.count} MRSs with nil badge_id are present:"
+        all_mrs_with_nil_badge.each { |mrs| @mrs_analysis << "- #{decorate_mrs(mrs)}" }
+      end
+
+      @mrs_analysis
     end
+    #-- ------------------------------------------------------------------------
+    #++
+
+    private
+
+    # Maps source and destination associations for possible conflicting rows.
+    # That is, "different" source & destination sibling rows associated to the same parent row.
+    # Whenever a timing is involved (most of the times, really: MIR, MRS, MEntries, MEventReservations...)
+    # two rows are considered different or conflicting if the timing is different (and the parent is the same).
+    #
+    # Returns an array of displayable lines as an ASCII table for quick reference.
+    # Table width: 156 character columns (tested with some edge-case swimmers).
+    #
+    # == Options:
+    # - <tt>:result_array</tt> => target array to be filled with decorated rows from the
+    #   provided domains;
+    #
+    # - <tt>:target_domain</tt>: actual ActiveRecord target domain for the analysis;
+    #   E.g., for "MRR"s should be something including the parent entity like this:
+    #     GogglesDb::MeetingRelaySwimmer.joins(:meeting).includes(:meeting)
+    #
+    # - <tt>:target_decorator</tt>: symbolic name of the method used to decorate the sibling
+    #   rows extracted for reporting purposes (e.g.: ':decorate_mrs' for MRS target rows).
+    #
+    # - <tt>:where_condition</tt>: string WHERE condition binding target columns with the filtered sibling
+    #   rows; the where_condition is assumed having these parameters:
+    #   - @source.id / @dest.id (both will be used for checking -- see below for an example)
+    #   - the array of filtered parent IDs as last parameter
+    #   E.g. of a ':where_condition' parameter for MIRs:
+    #     'meeting_individual_results.badge_id = ? AND meeting_events.id = ?'
+    #
+    # - <tt>:src_hash</tt>, <tt>:shared_hash</tt>, <tt>:dest_hash</tt> =>
+    #   filtered Hash (tuples) to be included in the analysis report, having format
+    #   [<parent row_id> => <sibling/target count>];
+    #
+    # - <tt>:result_title</tt>: label title to be used for this table section in the analysis report;
+    #
+    # - <tt>:subj_tuple_title</tt>: descriptive report label for the tuple stored in the domains,
+    #   usually describing the format (<parent row_id>, <sibling/target count>).
+    #
+    def report_fill_for(opts = {}) # rubocop:disable Metrics/AbcSize,Metrics/PerceivedComplexity
+      return opts[:result_array] if opts[:result_array].present?
+
+      opts[:result_array] = [prepare_section_title(opts[:result_title])]
+
+      if opts[:src_hash].present?
+        centered_title = " SOURCE #{opts[:subj_tuple_title]} x [#{@source.id}: #{@source.display_label}] ".center(154, ' ')
+        opts[:result_array] = fill_array_with_report_lines(tuple_list: opts[:src_hash], result_array: opts[:result_array], centered_title:)
+      else
+        opts[:result_array] << ">> NO source-only #{opts[:result_title]}s."
+      end
+
+      if opts[:dest_hash].present?
+        centered_title = " DEST #{opts[:subj_tuple_title]} x [#{@dest.id}: #{@dest.display_label}] ".center(154, ' ')
+        opts[:result_array] = fill_array_with_report_lines(tuple_list: opts[:dest_hash], result_array: opts[:result_array], centered_title:)
+      else
+        opts[:result_array] << ">> NO destination-only #{opts[:result_title]}s."
+      end
+
+      if opts[:shared_hash].present?
+        centered_title = " *** SHARED #{opts[:subj_tuple_title]}s *** ".center(154, ' ')
+        opts[:result_array] = fill_array_with_report_lines(tuple_list: opts[:shared_hash], result_array: opts[:result_array], centered_title:)
+
+        opts[:result_array] << "+#{'- Shared parent rows: -'.center(154, ' ')}+"
+        shared_parent_keys = opts[:shared_hash].keys # OLD: .map(&:first)
+        # Foreach row in a shared parent, check for conflicts and report a decorated line:
+
+        shared_parent_keys.each do |parent_id|
+          # (ASSUMES: only 1 row x Badge x parent entity)
+          src_row = opts[:target_domain].where(opts[:where_condition], @source.id, parent_id).first
+          dest_row = opts[:target_domain].where(opts[:where_condition], @dest.id, parent_id).first
+
+          # Detect & log any conflicting row by value/timing:
+          # (same value or timing => no conflict, src can be merged onto dest.)
+          opts[:result_array] << send(opts[:target_decorator], parent_id, src_row, dest_row)
+        end
+        opts[:result_array] << "+#{''.center(154, '-')}+"
+      else
+        opts[:result_array] << ">> NO shared #{opts[:result_title]}s."
+      end
+
+      opts[:result_array]
+    end
+    #-- ------------------------------------------------------------------------
+    #++
+
+    # Returns a single string title for a section of the analysis, centered on 156 columns.
+    def prepare_section_title(title_label)
+      "\r\n\r\n\r\n#{''.center(156, '*')}\r\n**#{title_label.center(152, ' ')}**\r\n#{''.center(156, '*')}"
+    end
+
+    # Returns the <tt>result_array</tt> filled with printable report lines for a sub-section
+    # report prepared by a specific section of an analysis (MIRs, MRSs, ...).
+    # Assumes <tt>result_array</tt> to be already initialized as an Array.
+    #
+    # == Params:
+    # - tuple_list: filtered list of tuples (or an Hash) to be used for filling the subtable;
+    # - result_array: array storing the formatted result line;
+    # - an already-centered title string for the subtable.
+    #
+    # == Returns:
+    # The result array filled with printable report lines, showing the subtable of tuples
+    # in the domain.
+    #
+    def fill_array_with_report_lines(tuple_list:, result_array:, centered_title:)
+      result_array << "\r\n+#{''.center(154, '-')}+"
+      result_array << ("|#{centered_title}|")
+      result_array << "+#{''.center(154, '-')}+"
+      result_array += tuple_list.each_slice(15).map do |line_array|
+        line_array.map { |key_id, count| "#{key_id}: #{count}" }.join(', ')
+      end
+      result_array << "+#{''.center(154, '-')}+"
+      result_array
+    end
+    #-- ------------------------------------------------------------------------
+    #++
   end
 end

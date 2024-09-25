@@ -69,8 +69,6 @@ module Merge
       @errors = []
       @warnings = []
 
-      # *** ID storage for later merging: ***
-
       # Src badge_ids to be updated with swimmer_id (leave sub-entities untouched):
       @src_only_badges = []
       # Deletable src badges (keys) after sub-entity reassignment to dest badges (values):
@@ -103,6 +101,14 @@ module Merge
       # (IR will have overlapping MIRs only in case of data-integrity violations -- see analysis)
 
       # (Users updated w/o array)
+
+      # FUTUREDEV: (currently not used)
+      # - badge_payments (badge_id)
+      # - swimmer_season_scores (badge_id)
+      # *** Cups ***
+      # - SeasonPersonalStandard: (season_personal_standards => swimmer_id, season_id)
+      #   (currently used only in old CSI meetings and not used nor updated anymore)
+      # - GoggleCupStandard: TODO, missing model (but table is there; links: swimmer_id, goggle_cup_id)
     end
     #-- ------------------------------------------------------------------------
     #++
@@ -151,12 +157,9 @@ module Merge
 
       @log += mes_analysis
       @log += ir_analysis
-      @errors.blank?
 
-      # FUTUREDEV: *** Cups ***
-      # - SeasonPersonalStandard: (season_personal_standards => swimmer_id, season_id)
-      #   (currently used only in old CSI meetings and not used nor updated anymore)
-      # - GoggleCupStandard: TODO, missing model (but table is there; links: swimmer_id, goggle_cup_id)
+      @errors.blank?
+      # FUTUREDEV: (see #initialize_data above)
     end
     #-- ------------------------------------------------------------------------
     #++
@@ -320,21 +323,21 @@ module Merge
     def shared_meeting_ids_from_mirs
       return @shared_meeting_ids_from_mirs if @shared_meeting_ids_from_mirs.present?
 
-      @shared_meeting_ids_from_mirs = dest_meeting_ids_from_mirs.keep_if { |meeting_id, _mir_count| src_meeting_ids_from_mirs.key?(meeting_id) }
+      @shared_meeting_ids_from_mirs = dest_meeting_ids_from_mirs.dup.keep_if { |meeting_id, _mir_count| src_meeting_ids_from_mirs.key?(meeting_id) }
     end
 
     # Returns the difference array of unique Meeting IDs & MIR counts involving *just* the *source* swimmer.
     def src_diff_meeting_ids_from_mirs
       return @src_diff_meeting_ids_from_mirs if @src_diff_meeting_ids_from_mirs.present?
 
-      @src_diff_meeting_ids_from_mirs = src_meeting_ids_from_mirs.delete_if { |meeting_id, _mir_count| dest_meeting_ids_from_mirs.key?(meeting_id) }
+      @src_diff_meeting_ids_from_mirs = src_meeting_ids_from_mirs.dup.delete_if { |meeting_id, _mir_count| dest_meeting_ids_from_mirs.key?(meeting_id) }
     end
 
     # Returns the difference array of unique Meeting IDs & MIR counts involving *just* the *destination* swimmer.
     def dest_diff_meeting_ids_from_mirs
       return @dest_diff_meeting_ids_from_mirs if @dest_diff_meeting_ids_from_mirs.present?
 
-      @dest_diff_meeting_ids_from_mirs = dest_meeting_ids_from_mirs.delete_if { |meeting_id, _mir_count| src_meeting_ids_from_mirs.key?(meeting_id) }
+      @dest_diff_meeting_ids_from_mirs = dest_meeting_ids_from_mirs.dup.delete_if { |meeting_id, _mir_count| src_meeting_ids_from_mirs.key?(meeting_id) }
     end
 
     # MIR are considered "compatible for merge" when:
@@ -431,21 +434,21 @@ module Merge
     def shared_mir_ids_from_laps
       return @shared_mir_ids_from_laps if @shared_mir_ids_from_laps.present?
 
-      @shared_mir_ids_from_laps = dest_mir_ids_with_laps.keep_if { |mir_id, _count| src_mir_ids_with_laps.key?(mir_id) }
+      @shared_mir_ids_from_laps = dest_mir_ids_with_laps.dup.keep_if { |mir_id, _count| src_mir_ids_with_laps.key?(mir_id) }
     end
 
     # Returns the difference array of unique MIR IDs & Lap counts involving *just* the *source* swimmer.
     def src_diff_mir_ids_with_laps
       return @src_diff_mir_ids_with_laps if @src_diff_mir_ids_with_laps.present?
 
-      @src_diff_mir_ids_with_laps = src_mir_ids_with_laps.delete_if { |mir_id, _count| dest_mir_ids_with_laps.key?(mir_id) }
+      @src_diff_mir_ids_with_laps = src_mir_ids_with_laps.dup.delete_if { |mir_id, _count| dest_mir_ids_with_laps.key?(mir_id) }
     end
 
     # Returns the difference array of unique MIR IDs & Lap counts involving *just* the *destination* swimmer.
     def dest_diff_mir_ids_with_laps
       return @dest_diff_mir_ids_with_laps if @dest_diff_mir_ids_with_laps.present?
 
-      @dest_diff_mir_ids_with_laps = dest_mir_ids_with_laps.delete_if { |mir_id, _count| src_mir_ids_with_laps.key?(mir_id) }
+      @dest_diff_mir_ids_with_laps = dest_mir_ids_with_laps.dup.delete_if { |mir_id, _count| src_mir_ids_with_laps.key?(mir_id) }
     end
 
     # Laps are considered "compatible for merge" when no rows are shared with the same MIRs.
@@ -574,21 +577,21 @@ module Merge
     def shared_meeting_ids_from_mrss
       return @shared_meeting_ids_from_mrss if @shared_meeting_ids_from_mrss.present?
 
-      @shared_meeting_ids_from_mrss = dest_meeting_ids_from_mrss.keep_if { |meeting_id, _mrs_count| src_meeting_ids_from_mrss.key?(meeting_id) }
+      @shared_meeting_ids_from_mrss = dest_meeting_ids_from_mrss.dup.keep_if { |meeting_id, _mrs_count| src_meeting_ids_from_mrss.key?(meeting_id) }
     end
 
     # Returns the difference array of unique Meeting IDs & MRS counts involving *just* the *source* swimmer.
     def src_diff_meeting_ids_from_mrss
       return @src_diff_meeting_ids_from_mrss if @src_diff_meeting_ids_from_mrss.present?
 
-      @src_diff_meeting_ids_from_mrss = src_meeting_ids_from_mrss.delete_if { |meeting_id, _mrs_count| dest_meeting_ids_from_mrss.key?(meeting_id) }
+      @src_diff_meeting_ids_from_mrss = src_meeting_ids_from_mrss.dup.delete_if { |meeting_id, _mrs_count| dest_meeting_ids_from_mrss.key?(meeting_id) }
     end
 
     # Returns the difference array of unique Meeting IDs & MRS counts involving *just* the *destination* swimmer.
     def dest_diff_meeting_ids_from_mrss
       return @dest_diff_meeting_ids_from_mrss if @dest_diff_meeting_ids_from_mrss.present?
 
-      @dest_diff_meeting_ids_from_mrss = dest_meeting_ids_from_mrss.delete_if { |meeting_id, _mrs_count| src_meeting_ids_from_mrss.key?(meeting_id) }
+      @dest_diff_meeting_ids_from_mrss = dest_meeting_ids_from_mrss.dup.delete_if { |meeting_id, _mrs_count| src_meeting_ids_from_mrss.key?(meeting_id) }
     end
 
     # MRSs are considered "compatible for merge" when:
@@ -621,7 +624,7 @@ module Merge
         result_array: [],
         target_domain: GogglesDb::MeetingRelaySwimmer.joins(:meeting).includes(:meeting),
         target_decorator: :decorate_mrs,
-        where_condition: '(meeting_relay_results.swimmer_id = ? OR meeting_relay_results.swimmer_id = ?) AND (meetings.id IN (?))',
+        where_condition: '(meeting_relay_swimmers.swimmer_id = ? OR meeting_relay_swimmers.swimmer_id = ?) AND (meetings.id IN (?))',
         src_list: src_diff_meeting_ids_from_mrss,
         shared_list: shared_meeting_ids_from_mrss,
         dest_list: dest_diff_meeting_ids_from_mrss,
@@ -664,21 +667,21 @@ module Merge
     def shared_mrs_ids_from_relay_laps
       return @shared_mrs_ids_from_relay_laps if @shared_mrs_ids_from_relay_laps.present?
 
-      @shared_mrs_ids_from_relay_laps = dest_mrs_ids_with_relay_laps.keep_if { |mrs_id, _count| src_mrs_ids_with_relay_laps.key?(mrs_id) }
+      @shared_mrs_ids_from_relay_laps = dest_mrs_ids_with_relay_laps.dup.keep_if { |mrs_id, _count| src_mrs_ids_with_relay_laps.key?(mrs_id) }
     end
 
     # Returns the difference array of unique MRS IDs & RelayLap counts involving *just* the *source* swimmer.
     def src_diff_mrs_ids_with_relay_laps
       return @src_diff_mrs_ids_with_relay_laps if @src_diff_mrs_ids_with_relay_laps.present?
 
-      @src_diff_mrs_ids_with_relay_laps = src_mrs_ids_with_relay_laps.delete_if { |mrs_id, _count| dest_mrs_ids_with_relay_laps.key?(mrs_id) }
+      @src_diff_mrs_ids_with_relay_laps = src_mrs_ids_with_relay_laps.dup.delete_if { |mrs_id, _count| dest_mrs_ids_with_relay_laps.key?(mrs_id) }
     end
 
     # Returns the difference array of unique MRS IDs & RelayLap counts involving *just* the *destination* swimmer.
     def dest_diff_mrs_ids_with_relay_laps
       return @dest_diff_mrs_ids_with_relay_laps if @dest_diff_mrs_ids_with_relay_laps.present?
 
-      @dest_diff_mrs_ids_with_relay_laps = dest_mrs_ids_with_relay_laps.delete_if { |mrs_id, _count| src_mrs_ids_with_relay_laps.key?(mrs_id) }
+      @dest_diff_mrs_ids_with_relay_laps = dest_mrs_ids_with_relay_laps.dup.delete_if { |mrs_id, _count| src_mrs_ids_with_relay_laps.key?(mrs_id) }
     end
 
     # RelayLaps are considered "compatible for merge" when no rows are shared with the same MRSs.
@@ -750,21 +753,21 @@ module Merge
     def shared_workshop_ids_from_urs
       return @shared_workshop_ids_from_urs if @shared_workshop_ids_from_urs.present?
 
-      @shared_workshop_ids_from_urs = dest_workshop_ids_from_urs.keep_if { |workshop_id, _count| src_workshop_ids_from_urs.key?(workshop_id) }
+      @shared_workshop_ids_from_urs = dest_workshop_ids_from_urs.dup.keep_if { |workshop_id, _count| src_workshop_ids_from_urs.key?(workshop_id) }
     end
 
     # Returns the difference array of unique UserWorkshop IDs & UR counts involving *just* the *source* swimmer.
     def src_diff_workshop_ids_from_urs
       return @src_diff_workshop_ids_from_urs if @src_diff_workshop_ids_from_urs.present?
 
-      @src_diff_workshop_ids_from_urs = src_workshop_ids_from_urs.delete_if { |workshop_id, _count| dest_workshop_ids_from_urs.key?(workshop_id) }
+      @src_diff_workshop_ids_from_urs = src_workshop_ids_from_urs.dup.delete_if { |workshop_id, _count| dest_workshop_ids_from_urs.key?(workshop_id) }
     end
 
     # Returns the difference array of unique UserWorkshop IDs & UR counts involving *just* the *destination* swimmer.
     def dest_diff_workshop_ids_from_urs
       return @dest_diff_workshop_ids_from_urs if @dest_diff_workshop_ids_from_urs.present?
 
-      @dest_diff_workshop_ids_from_urs = dest_workshop_ids_from_urs.delete_if { |workshop_id, _count| src_workshop_ids_from_urs.key?(workshop_id) }
+      @dest_diff_workshop_ids_from_urs = dest_workshop_ids_from_urs.dup.delete_if { |workshop_id, _count| src_workshop_ids_from_urs.key?(workshop_id) }
     end
 
     # UR are considered "compatible for merge" when:
@@ -834,21 +837,21 @@ module Merge
     def shared_ur_ids_from_user_laps
       return @shared_ur_ids_from_user_laps if @shared_ur_ids_from_user_laps.present?
 
-      @shared_ur_ids_from_user_laps = dest_ur_ids_with_user_laps.keep_if { |ur_id, _count| src_ur_ids_with_user_laps.key?(ur_id) }
+      @shared_ur_ids_from_user_laps = dest_ur_ids_with_user_laps.dup.keep_if { |ur_id, _count| src_ur_ids_with_user_laps.key?(ur_id) }
     end
 
     # Returns the difference array of unique UR IDs & UserLap counts involving *just* the *source* swimmer.
     def src_diff_ur_ids_with_user_laps
       return @src_diff_ur_ids_with_user_laps if @src_diff_ur_ids_with_user_laps.present?
 
-      @src_diff_ur_ids_with_user_laps = src_ur_ids_with_user_laps.delete_if { |ur_id, _count| dest_ur_ids_with_user_laps.key?(ur_id) }
+      @src_diff_ur_ids_with_user_laps = src_ur_ids_with_user_laps.dup.delete_if { |ur_id, _count| dest_ur_ids_with_user_laps.key?(ur_id) }
     end
 
     # Returns the difference array of unique UR IDs & UserLap counts involving *just* the *destination* swimmer.
     def dest_diff_ur_ids_with_user_laps
       return @dest_diff_ur_ids_with_user_laps if @dest_diff_ur_ids_with_user_laps.present?
 
-      @dest_diff_ur_ids_with_user_laps = dest_ur_ids_with_user_laps.delete_if { |ur_id, _count| src_ur_ids_with_user_laps.key?(ur_id) }
+      @dest_diff_ur_ids_with_user_laps = dest_ur_ids_with_user_laps.dup.delete_if { |ur_id, _count| src_ur_ids_with_user_laps.key?(ur_id) }
     end
 
     # Laps are considered "compatible for merge" when no rows are shared with the same URs.
@@ -916,21 +919,21 @@ module Merge
     def shared_meeting_ids_from_mres
       return @shared_meeting_ids_from_mres if @shared_meeting_ids_from_mres.present?
 
-      @shared_meeting_ids_from_mres = dest_meeting_ids_from_mres.keep_if { |meeting_id, _count| src_meeting_ids_from_mres.key?(meeting_id) }
+      @shared_meeting_ids_from_mres = dest_meeting_ids_from_mres.dup.keep_if { |meeting_id, _count| src_meeting_ids_from_mres.key?(meeting_id) }
     end
 
     # Returns the difference array of unique Meeting IDs & MRes counts involving *just* the *source* swimmer.
     def src_diff_meeting_ids_from_mres
       return @src_diff_meeting_ids_from_mres if @src_diff_meeting_ids_from_mres.present?
 
-      @src_diff_meeting_ids_from_mres = src_meeting_ids_from_mres.delete_if { |meeting_id, _count| dest_meeting_ids_from_mres.key?(meeting_id) }
+      @src_diff_meeting_ids_from_mres = src_meeting_ids_from_mres.dup.delete_if { |meeting_id, _count| dest_meeting_ids_from_mres.key?(meeting_id) }
     end
 
     # Returns the difference array of unique Meeting IDs & MRes counts involving *just* the *destination* swimmer.
     def dest_diff_meeting_ids_from_mres
       return @dest_diff_meeting_ids_from_mres if @dest_diff_meeting_ids_from_mres.present?
 
-      @dest_diff_meeting_ids_from_mres = dest_meeting_ids_from_mres.delete_if { |meeting_id, _count| src_meeting_ids_from_mres.key?(meeting_id) }
+      @dest_diff_meeting_ids_from_mres = dest_meeting_ids_from_mres.dup.delete_if { |meeting_id, _count| src_meeting_ids_from_mres.key?(meeting_id) }
     end
 
     # MRes are considered "compatible for merge" when:
@@ -1003,21 +1006,21 @@ module Merge
     def shared_meeting_ids_from_mev_res
       return @shared_meeting_ids_from_mev_res if @shared_meeting_ids_from_mev_res.present?
 
-      @shared_meeting_ids_from_mev_res = dest_meeting_ids_from_mev_res.keep_if { |meeting_id, _count| src_meeting_ids_from_mev_res.key?(meeting_id) }
+      @shared_meeting_ids_from_mev_res = dest_meeting_ids_from_mev_res.dup.keep_if { |meeting_id, _count| src_meeting_ids_from_mev_res.key?(meeting_id) }
     end
 
     # Returns the difference array of unique Meeting IDs & MRelRes counts involving *just* the *source* swimmer.
     def src_diff_meeting_ids_from_mev_res
       return @src_diff_meeting_ids_from_mev_res if @src_diff_meeting_ids_from_mev_res.present?
 
-      @src_diff_meeting_ids_from_mev_res = src_meeting_ids_from_mev_res.delete_if { |meeting_id, _count| dest_meeting_ids_from_mev_res.key?(meeting_id) }
+      @src_diff_meeting_ids_from_mev_res = src_meeting_ids_from_mev_res.dup.delete_if { |meeting_id, _count| dest_meeting_ids_from_mev_res.key?(meeting_id) }
     end
 
     # Returns the difference array of unique Meeting IDs & MEvRes counts involving *just* the *destination* swimmer.
     def dest_diff_meeting_ids_from_mev_res
       return @dest_diff_meeting_ids_from_mev_res if @dest_diff_meeting_ids_from_mev_res.present?
 
-      @dest_diff_meeting_ids_from_mev_res = dest_meeting_ids_from_mev_res.delete_if { |meeting_id, _count| src_meeting_ids_from_mev_res.key?(meeting_id) }
+      @dest_diff_meeting_ids_from_mev_res = dest_meeting_ids_from_mev_res.dup.delete_if { |meeting_id, _count| src_meeting_ids_from_mev_res.key?(meeting_id) }
     end
 
     # MEvRes are considered "compatible for merge" when:
@@ -1090,21 +1093,21 @@ module Merge
     def shared_meeting_ids_from_mrel_res
       return @shared_meeting_ids_from_mrel_res if @shared_meeting_ids_from_mrel_res.present?
 
-      @shared_meeting_ids_from_mrel_res = dest_meeting_ids_from_mrel_res.keep_if { |meeting_id, _count| src_meeting_ids_from_mrel_res.key?(meeting_id) }
+      @shared_meeting_ids_from_mrel_res = dest_meeting_ids_from_mrel_res.dup.keep_if { |meeting_id, _count| src_meeting_ids_from_mrel_res.key?(meeting_id) }
     end
 
     # Returns the difference array of unique Meeting IDs & MRelRes counts involving *just* the *source* swimmer.
     def src_diff_meeting_ids_from_mrel_res
       return @src_diff_meeting_ids_from_mrel_res if @src_diff_meeting_ids_from_mrel_res.present?
 
-      @src_diff_meeting_ids_from_mrel_res = src_meeting_ids_from_mrel_res.delete_if { |meeting_id, _count| dest_meeting_ids_from_mrel_res.key?(meeting_id) }
+      @src_diff_meeting_ids_from_mrel_res = src_meeting_ids_from_mrel_res.dup.delete_if { |meeting_id, _count| dest_meeting_ids_from_mrel_res.key?(meeting_id) }
     end
 
     # Returns the difference array of unique Meeting IDs & MRelRes counts involving *just* the *destination* swimmer.
     def dest_diff_meeting_ids_from_mrel_res
       return @dest_diff_meeting_ids_from_mrel_res if @dest_diff_meeting_ids_from_mrel_res.present?
 
-      @dest_diff_meeting_ids_from_mrel_res = dest_meeting_ids_from_mrel_res.delete_if { |meeting_id, _count| src_meeting_ids_from_mrel_res.key?(meeting_id) }
+      @dest_diff_meeting_ids_from_mrel_res = dest_meeting_ids_from_mrel_res.dup.delete_if { |meeting_id, _count| src_meeting_ids_from_mrel_res.key?(meeting_id) }
     end
 
     # MRelRes are considered "compatible for merge" when:
@@ -1178,21 +1181,21 @@ module Merge
     def shared_mprg_ids_from_mes
       return @shared_mprg_ids_from_mes if @shared_mprg_ids_from_mes.present?
 
-      @shared_mprg_ids_from_mes = dest_mprg_ids_from_mes.keep_if { |mprg_id, _count| src_mprg_ids_from_mes.key?(mprg_id) }
+      @shared_mprg_ids_from_mes = dest_mprg_ids_from_mes.dup.keep_if { |mprg_id, _count| src_mprg_ids_from_mes.key?(mprg_id) }
     end
 
     # Returns the difference array of unique Meeting IDs & MRelRes counts involving *just* the *source* swimmer.
     def src_diff_mprg_ids_from_mes
       return @src_diff_mprg_ids_from_mes if @src_diff_mprg_ids_from_mes.present?
 
-      @src_diff_mprg_ids_from_mes = src_mprg_ids_from_mes.delete_if { |mprg_id, _count| dest_mprg_ids_from_mes.key?(mprg_id) }
+      @src_diff_mprg_ids_from_mes = src_mprg_ids_from_mes.dup.delete_if { |mprg_id, _count| dest_mprg_ids_from_mes.key?(mprg_id) }
     end
 
     # Returns the difference array of unique Meeting IDs & MRelRes counts involving *just* the *destination* swimmer.
     def dest_diff_mprg_ids_from_mes
       return @dest_diff_mprg_ids_from_mes if @dest_diff_mprg_ids_from_mes.present?
 
-      @dest_diff_mprg_ids_from_mes = dest_mprg_ids_from_mes.delete_if { |mprg_id, _count| src_mprg_ids_from_mes.key?(mprg_id) }
+      @dest_diff_mprg_ids_from_mes = dest_mprg_ids_from_mes.dup.delete_if { |mprg_id, _count| src_mprg_ids_from_mes.key?(mprg_id) }
     end
 
     # MEntries are considered "compatible for merge" when:

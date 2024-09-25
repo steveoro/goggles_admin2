@@ -209,6 +209,22 @@ module Merge
         partition_teams_into_merge_candidates(badges) if different_team
       end
 
+      # TODO:
+      # BadgeSeasonChecker should also "align" source and dest. Badge-merge candidates
+      # according to which one is more data-complete of the two.
+      # (Longer swimmer names should become source data fields that overwrite the dest. Badge;
+      #  also, MIR & laps should all be moved to the actual destination.)
+      #
+      # (Badges need to point to the same swimmer in order to be considered for the merge)
+      #
+      # - src vs. dest. Badge's MIRs are: (this is valid also for MRRs and other "master" entities)
+      #   1. same timing result, same event, different or same category => 1 is correct, the other needs to be purged, sub-entities moved
+      #   2a. different timing result, same event, different category => CONFLICT: NO MERGE
+      #   2b. different timing result, same event, same category => CONFLICT: NO MERGE / ERROR: duplicated MIR (unfixable?)
+      #
+      # - src vs. dest. Badge's Laps are more loosely checked since can be user-edited:
+      #   conflicts are sorted out by either clearing the lap row or moving it to the new MIR, when not in conflict
+
       log_stats
       log_team_merge_candidates
       log_badge_merge_candidates
@@ -375,7 +391,7 @@ module Merge
         column_array = [] # Stores the composed formatted row output
         badges.each do |badge|
           age = @season.begin_date.year - badge.swimmer.year_of_birth
-          category_type = @season.category_types.where('age_begin <= ? AND age_end >= ?', age, age).first
+          category_type = @season.category_types.where('relay = false AND age_begin <= ? AND age_end >= ?', age, age).first
           # Justification size needs to compensate for all the ANSI escape sequences inside of it:
           formatted_col = "- Swimmer #{badge.swimmer_id.to_s.rjust(6)}, Badge \033[1;33;33m#{badge.id.to_s.rjust(7)}\033[0m, cat. #{badge.category_type_id} (#{badge.category_type.code}) " \
                           "=> fixed cat. #{category_type.id} (#{category_type.code}) age #{age}".ljust(105)
