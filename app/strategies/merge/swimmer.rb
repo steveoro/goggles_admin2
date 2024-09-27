@@ -4,9 +4,9 @@ module Merge
   #
   # = Merge::Swimmer
   #
-  #   - version:  7-0.7.10
+  #   - version:  7-0.7.19
   #   - author:   Steve A.
-  #   - build:    20240425
+  #   - build:    20240926
   #
   class Swimmer
     attr_reader :sql_log, :checker, :source, :dest
@@ -14,12 +14,29 @@ module Merge
     # Allows a source Swimmer to be merged into a destination one. All related entities
     # will be handled (badges, results, laps, ...).
     #
-    # "Merging" implies moving all source data into the destination, so also the actual
-    # swimmer columns will become the new destination values (names, year of birth, gender, ...).
-    #
-    # For this reason, use the dedicated parameter whenever the destination swimmer needs to
+    # "Merging" implies moving all source data into the destination, so also the final source
+    # columns values will usually become the new destination values (values from SOURCE/Master |=>
+    # become new values for DESTINATION/Slave).
+    # For this reason, use the dedicated parameter whenever the destination master row needs to
     # keep its columns untouched.
     #
+    # More schematically:
+    #
+    #   [SOURCE] ------------------------> [DESTINATION]
+    #   - to be purged (ID disappears)  /  - to be kept (ID remains)
+    #   1. copies "master" column values into "slave" dest. values (overwritten)
+    #   2. copies source sub-enties which are totally missing from dest.
+    #   3. updates "shared" sub-enties which present some differences at any level of the hierarchy.
+    #
+    # While the first step is pretty straightforward, both the second and third steps
+    # involve defining what is a "shared" sub-entity and what may make two rows similar or
+    # overlapping for the specific entity we are trying to merge.
+    #
+    # In most cases, the merge is considered "unfeasible" (at least automatically) if
+    # there are any shared/conflicting parent entities linked to any of the sub-entities involved,
+    # so step 3. from above won't even happen.
+    #
+    # == Additional notes:
     # This merge class won't actually touch the DB: it will just prepare the script so
     # that this process can be replicated on any DB that is in sync with the current one.
     #
@@ -27,17 +44,17 @@ module Merge
     # - <tt>:source</tt> => source Swimmer row, *required*
     # - <tt>:dest</tt>   => destination Swimmer row, *required*
     #
-    # - <tt>:skip_columns</tt> => Force this to +true+ to avoid updating the destination Swimmer columns
+    # - <tt>:skip_columns</tt> => Force this to +true+ to avoid updating the destination row columns
     #   with the values stored in source; default: +false+.
     #
     def initialize(source:, dest:, skip_columns: false)
       raise(ArgumentError, 'Both source and destination must be Swimmers!') unless source.is_a?(GogglesDb::Swimmer) && dest.is_a?(GogglesDb::Swimmer)
 
-      @source = source.decorate
-      @dest = dest.decorate
-      @checker = SwimmerChecker.new(source:, dest:)
-      @sql_log = []
       @skip_columns = skip_columns
+      @checker = SwimmerChecker.new(source:, dest:)
+      @source = @checker.source
+      @dest = @checker.dest
+      @sql_log = []
     end
     #-- ------------------------------------------------------------------------
     #++

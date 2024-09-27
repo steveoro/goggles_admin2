@@ -115,6 +115,7 @@ module Merge
       raise(ArgumentError, 'Invalid Season!') unless season.is_a?(GogglesDb::Season)
 
       @season = season.decorate
+      initialize_data
     end
     #-- ------------------------------------------------------------------------
     #++
@@ -156,9 +157,9 @@ module Merge
     # Returns +true+ if the merge seems feasible, +false+ otherwise.
     # Check the #log & #errors members for details and error messages.
     def run # rubocop:disable Metrics/AbcSize,Metrics/PerceivedComplexity,Metrics/CyclomaticComplexity,Metrics/MethodLength
-      initialize_data
-      @log << "\r\n[Season ID #{@season.id}] -- Badges analysis --\r\n"
+      initialize_data if @log.present?
 
+      @log << "\r\n[Season ID #{@season.id}] -- Badges analysis --\r\n"
       @relay_badges = GogglesDb::Badge.joins(:category_type)
                                       .includes(:category_type)
                                       .where('badges.season_id = ? AND category_types.relay = true', @season.id)
@@ -172,10 +173,11 @@ module Merge
                                                 .having('count(swimmer_id) > 1 AND season_id = ?', @season.id)
                                                 .to_a
       multi_badge_swimmer_ids.map do |row|
+        # (Sort by id as older badges are usually better candidates with more correct values - but not always)
         @multi_badges[row.swimmer_id] = GogglesDb::Badge.joins(:team, :category_type)
                                                         .includes(:team, :category_type)
                                                         .where('badges.season_id = ? AND swimmer_id = ?', @season.id, row.swimmer_id)
-                                                        .order(:category_type_id)
+                                                        .order(:id)
       end
 
       @multi_badges.each do |swimmer_id, badges|
@@ -194,7 +196,7 @@ module Merge
         if different_category
           @diff_category_swimmer_ids << swimmer_id if different_category
           # Store also all lists of badges that may have an alternative category:
-          @sure_badge_merges[swimmer_id] = badges.to_a
+          @sure_badge_merges[swimmer_id] = badges
         end
 
         # Collect all relay badges without any possible alternative category:
