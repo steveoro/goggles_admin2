@@ -6,7 +6,7 @@ module Merge
   #
   #   - version:  7-0.7.19
   #   - author:   Steve A.
-  #   - build:    20240926
+  #   - build:    20240930
   #
   class Swimmer
     attr_reader :sql_log, :checker, :source, :dest
@@ -66,7 +66,7 @@ module Merge
 
       @checker.log << "\r\n\r\n- #{'Checker'.ljust(44, '.')}: OK"
       @sql_log << "\r\n-- Merge swimmer (#{@source.id}) #{@source.display_label} |=> (#{@dest.id}) #{@dest.display_label}-- \r\n"
-      # NOTE: uncommenting the following may yield nulls for created_at & updated_at if we don't provide values in the row
+      # NOTE: uncommenting the following in the output SQL may yield nulls for created_at & updated_at if we don't provide values in the row
       @sql_log << '-- SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";'
       @sql_log << 'SET AUTOCOMMIT = 0;'
       @sql_log << 'START TRANSACTION;'

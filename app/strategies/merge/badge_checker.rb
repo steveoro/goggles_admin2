@@ -7,7 +7,7 @@ module Merge
   #
   #   - version:  7-0.7.19
   #   - author:   Steve A.
-  #   - build:    20240926
+  #   - build:    20240930
   #
   # Check the feasibility of merging the Badge entities specified in the constructor while
   # also gathering all sub-entities that need to be moved or purged.
@@ -160,7 +160,7 @@ module Merge
     # == Example usage:
     # From BadgeSeasonChecker output: "Swimmer 2208, badges 183101 (M25) ⬅ 132792 (M30)"
     #
-    #   > source = GogglesDb::Badge.find(132792) ; dest = GogglesDb::Badge.find(183101) ; bc = Merge::BadgeChecker.new(source:, dest:) ; bc.run ; bc.display_report
+    #   > dest = GogglesDb::Badge.find(132792) ; source = GogglesDb::Badge.find(183101) ; bc = Merge::BadgeChecker.new(source:, dest:) ; bc.run ; bc.display_report
     #
     # Keep in mind that usually older (smaller ID) badges tend to have the correct category assigned
     # either because imported from a web page stating the correct category or because already fixed
@@ -488,10 +488,10 @@ module Merge
     end
 
     # Returns the difference array of unique MeetingEvent IDs & MRS counts involving *just* the *destination* badge.
-    def dest_diff_mevent_ids_from_mrss
-      return @dest_diff_mevent_ids_from_mrss if @dest_diff_mevent_ids_from_mrss.present?
+    def dest_only_mevent_ids_from_mrss
+      return @dest_only_mevent_ids_from_mrss if @dest_only_mevent_ids_from_mrss.present?
 
-      @dest_diff_mevent_ids_from_mrss = dest_mevent_ids_from_mrss.dup.delete_if { |mevent_id, _mrs_count| src_mevent_ids_from_mrss.key?(mevent_id) }
+      @dest_only_mevent_ids_from_mrss = dest_mevent_ids_from_mrss.dup.delete_if { |mevent_id, _mrs_count| src_mevent_ids_from_mrss.key?(mevent_id) }
     end
 
     # MRSs are considered "compatible for merge" when:
@@ -560,7 +560,7 @@ module Merge
         where_condition: '(meeting_relay_swimmers.badge_id = ? AND meeting_events.id = ?',
         src_list: src_only_mevent_ids_from_mrss,
         shared_list: shared_mevent_ids_from_mrss,
-        dest_list: dest_diff_mevent_ids_from_mrss,
+        dest_list: dest_only_mevent_ids_from_mrss,
         result_title: 'MRS (from parent MEvent)',
         subj_tuple_title: '(MeetingEvent ID, MRS count)'
       )
@@ -618,10 +618,10 @@ module Merge
     end
 
     # Returns the difference array of unique Meeting IDs & MRes counts involving *just* the *destination* badge.
-    def dest_diff_meeting_ids_from_mres
-      return @dest_diff_meeting_ids_from_mres if @dest_diff_meeting_ids_from_mres.present?
+    def dest_only_meeting_ids_from_mres
+      return @dest_only_meeting_ids_from_mres if @dest_only_meeting_ids_from_mres.present?
 
-      @dest_diff_meeting_ids_from_mres = dest_meeting_ids_from_mres.dup.delete_if { |meeting_id, _count| src_meeting_ids_from_mres.key?(meeting_id) }
+      @dest_only_meeting_ids_from_mres = dest_meeting_ids_from_mres.dup.delete_if { |meeting_id, _count| src_meeting_ids_from_mres.key?(meeting_id) }
     end
 
     # MRes are considered "compatible for merge" when:
@@ -651,7 +651,7 @@ module Merge
         where_condition: 'meeting_reservations.badge_id = ? AND meeting_reservations.meeting_id = ?',
         src_list: src_only_meeting_ids_from_mres,
         shared_list: shared_meeting_ids_from_mres,
-        dest_list: dest_diff_meeting_ids_from_mres,
+        dest_list: dest_only_meeting_ids_from_mres,
         result_title: 'MRES',
         subj_tuple_title: '(Meeting ID, MRES count)'
       )
@@ -701,10 +701,10 @@ module Merge
     end
 
     # Returns the difference array of unique Meeting IDs & MEvRes counts involving *just* the *destination* badge.
-    def dest_diff_meeting_ids_from_mev_res
-      return @dest_diff_meeting_ids_from_mev_res if @dest_diff_meeting_ids_from_mev_res.present?
+    def dest_only_meeting_ids_from_mev_res
+      return @dest_only_meeting_ids_from_mev_res if @dest_only_meeting_ids_from_mev_res.present?
 
-      @dest_diff_meeting_ids_from_mev_res = dest_meeting_ids_from_mev_res.dup.delete_if { |meeting_id, _count| src_meeting_ids_from_mev_res.key?(meeting_id) }
+      @dest_only_meeting_ids_from_mev_res = dest_meeting_ids_from_mev_res.dup.delete_if { |meeting_id, _count| src_meeting_ids_from_mev_res.key?(meeting_id) }
     end
 
     # MEvRes are considered "compatible for merge" when:
@@ -734,7 +734,7 @@ module Merge
         where_condition: 'meeting_event_reservations.badge_id = ? AND meeting_event_reservations.meeting_id = ?',
         src_list: src_only_meeting_ids_from_mev_res,
         shared_list: shared_meeting_ids_from_mev_res,
-        dest_list: dest_diff_meeting_ids_from_mev_res,
+        dest_list: dest_only_meeting_ids_from_mev_res,
         result_title: 'MEV_RES',
         subj_tuple_title: '(Meeting ID, MEV_RES count)'
       )
@@ -784,10 +784,10 @@ module Merge
     end
 
     # Returns the difference array of unique Meeting IDs & MRelRes counts involving *just* the *destination* badge.
-    def dest_diff_meeting_ids_from_mrel_res
-      return @dest_diff_meeting_ids_from_mrel_res if @dest_diff_meeting_ids_from_mrel_res.present?
+    def dest_only_meeting_ids_from_mrel_res
+      return @dest_only_meeting_ids_from_mrel_res if @dest_only_meeting_ids_from_mrel_res.present?
 
-      @dest_diff_meeting_ids_from_mrel_res = dest_meeting_ids_from_mrel_res.dup.delete_if { |meeting_id, _count| src_meeting_ids_from_mrel_res.key?(meeting_id) }
+      @dest_only_meeting_ids_from_mrel_res = dest_meeting_ids_from_mrel_res.dup.delete_if { |meeting_id, _count| src_meeting_ids_from_mrel_res.key?(meeting_id) }
     end
 
     # MRelRes are considered "compatible for merge" when:
@@ -817,7 +817,7 @@ module Merge
         where_condition: '(meeting_relay_reservations.badge_id = ? AND meeting_relay_reservations.meeting_id = ?',
         src_list: src_only_meeting_ids_from_mrel_res,
         shared_list: shared_meeting_ids_from_mrel_res,
-        dest_list: dest_diff_meeting_ids_from_mrel_res,
+        dest_list: dest_only_meeting_ids_from_mrel_res,
         result_title: 'MREL_RES',
         subj_tuple_title: '(Meeting ID, MREL_RES count)'
       )
@@ -878,10 +878,10 @@ module Merge
     end
 
     # Returns the difference array of unique Meeting IDs & MEntry counts involving *just* the *destination* badge.
-    def dest_diff_mevent_ids_from_ments
-      return @dest_diff_mevent_ids_from_ments if @dest_diff_mevent_ids_from_ments.present?
+    def dest_only_mevent_ids_from_ments
+      return @dest_only_mevent_ids_from_ments if @dest_only_mevent_ids_from_ments.present?
 
-      @dest_diff_mevent_ids_from_ments = dest_mevent_ids_from_ments.dup.delete_if { |mevent_id, _count| src_mevent_ids_from_ments.key?(mevent_id) }
+      @dest_only_mevent_ids_from_ments = dest_mevent_ids_from_ments.dup.delete_if { |mevent_id, _count| src_mevent_ids_from_ments.key?(mevent_id) }
     end
 
     # MEntries are considered "compatible for merge" when:
@@ -918,7 +918,7 @@ module Merge
         where_condition: 'meeting_entries.badge_id = ? AND meeting_events.id = ?',
         src_list: src_only_mevent_ids_from_ments,
         shared_list: shared_mevent_ids_from_ments,
-        dest_list: dest_diff_mevent_ids_from_ments,
+        dest_list: dest_only_mevent_ids_from_ments,
         result_title: 'M_ENTRY (from parent MEvent)',
         subj_tuple_title: '(MeetingEvent ID, MEntry count)'
       )
