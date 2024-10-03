@@ -7,7 +7,7 @@ module Merge
   #
   #   - version:  7-0.7.19
   #   - author:   Steve A.
-  #   - build:    20240930
+  #   - build:    20241003
   #
   # Check the feasibility of merging the Badge entities specified in the constructor while
   # also gathering all sub-entities that need to be moved or purged.
@@ -176,21 +176,21 @@ module Merge
       @log += mrel_res_analysis
       @log += ments_analysis
 
-      if @source.id == @dest.id
+      if @dest && (@source.id == @dest.id)
         @unrecoverable_conflict = true
         @errors << 'Identical source and destination! (Use a nil destination to fix source.)'
       end
-      if @source.category_type.relay? || @dest.category_type.relay?
+      if @dest && (@source.category_type.relay? || @dest.category_type.relay?)
         @warnings << 'Wrong relay-only category found assigned to a badge (FIXABLE)'
-      elsif @source.category_type_id != @dest.category_type_id
+      elsif @dest && @source.category_type_id != @dest.category_type_id
         @errors << 'Conflicting categories: incompatible CategoryTypes in same Season (MANUAL DECISION REQUIRED)'
       end
 
-      if @source.season_id != @dest.season_id
+      if @dest && (@source.season_id != @dest.season_id)
         @unrecoverable_conflict = true
-        @errors << 'Conflicting seasons! (Only badges from same Season can be merged)'
+        @errors << 'Conflicting seasons! (Cannot merge badges from different Seasons)'
       end
-      @errors << 'Conflicting teams! (MANUAL DECISION REQUIRED)' if @source.team_id != @dest.team_id
+      @errors << 'Conflicting teams! (MANUAL DECISION REQUIRED)' if @dest && (@source.team_id != @dest.team_id)
       if mir_conflicting?
         @unrecoverable_conflict = true
         @errors << 'Conflicting MIR(s) found in same MeetingEvent'
@@ -224,6 +224,13 @@ module Merge
     end
     # rubocop:enable Rails/Output
 
+    # Returns true if the badge merge operation can attempt to fix the source category
+    # by computing it using the esteemed swimmer age & season year.
+    def category_auto_fixing?
+      (@dest.nil? && @source.category_type.relay?) ||
+        (@dest.present? && @source.category_type.relay? && @dest.category_type.relay?)
+    end
+
     #-- ------------------------------------------------------------------------
     #                    Source vs. Destination Badge
     #-- ------------------------------------------------------------------------
@@ -255,15 +262,17 @@ module Merge
       @badge_analysis = [
         "\r\n\t*** Badge Checker ***\r\n",
         "🔹[Src  BADGE: #{@source.id.to_s.rjust(7)}] #{@source.short_label}, Cat. #{@source.category_type_id} #{@source.category_type.code} " \
-        "(computed cat. #{curr_hash[:computed_category_type_id]} #{curr_hash[:computed_category_type_code]})",
-        "🔹[Dest BADGE: #{@dest.id.to_s.rjust(7)}] #{@dest.short_label}, Cat. #{@dest.category_type_id} #{@dest.category_type.code}\r\n",
-        "Latest 12 categories found for this same swimmer (#{@source.swimmer_id}):"
+        "(computed cat. #{curr_hash[:computed_category_type_id]} #{curr_hash[:computed_category_type_code]})"
       ]
+      @badge_analysis << "🔹[Dest BADGE: #{@dest.id.to_s.rjust(7)}] #{@dest.short_label}, Cat. #{@dest.category_type_id} #{@dest.category_type.code}\r\n" if @dest
+      @badge_analysis << "\r\n--> CATEGORY AUTO-FIXING REQUIRED <--\r\n" if category_auto_fixing?
+      @badge_analysis << "Latest 12 categories found for this same swimmer (#{@source.swimmer_id}):"
+
       @categories_x_seasons.map do |season_hash|
         existing_teams = season_hash[:teams].map { |team_id, team_name| "#{team_id}: #{team_name}" }.join(', ')
         existing_categories = season_hash[:category_type_codes].map { |cat_code| cat_code }.join(', ')
-        @badge_analysis << "  - Season #{season_hash[:season_id]}, age: #{season_hash[:swimmer_age]}, computed Cat. #{season_hash[:computed_category_type_code]} " \
-                           "(#{season_hash[:computed_category_type_id].to_s.rjust(4)}) / found #{existing_categories} -> #{existing_teams}"
+        @badge_analysis << "  - Season #{season_hash[:season_id]}, age: #{season_hash[:swimmer_age]}, cat: ~ #{season_hash[:computed_category_type_code]} " \
+                           "(#{season_hash[:computed_category_type_id].to_s.rjust(4)}) computed / found #{existing_categories} -> #{existing_teams}"
       end
 
       @badge_analysis
@@ -298,6 +307,7 @@ module Merge
     # Similar to #src_mevent_ids_from_mirs but for @dest Badge.
     def dest_mevent_ids_from_mirs
       return @dest_mevent_ids_from_mirs if @dest_mevent_ids_from_mirs.present?
+      return @dest_mevent_ids_from_mirs = {} if @dest.nil?
 
       @dest_mevent_ids_from_mirs = GogglesDb::MeetingIndividualResult.joins(:meeting_event).includes(:meeting_event)
                                                                      .where(badge_id: @dest.id)
@@ -355,11 +365,13 @@ module Merge
         src_row = GogglesDb::MeetingIndividualResult.joins(:meeting_event).includes(:meeting_event)
                                                     .where(badge_id: @source.id, 'meeting_events.id': mevent_id)
                                                     .first
-        dest_row = GogglesDb::MeetingIndividualResult.joins(:meeting_event).includes(:meeting_event)
-                                                     .where(badge_id: @dest.id, 'meeting_events.id': mevent_id)
-                                                     .first
-        # Detect any conflicting timing (same timing => no conflict):
-        src_row.to_timing != dest_row.to_timing
+        if @dest.present?
+          dest_row = GogglesDb::MeetingIndividualResult.joins(:meeting_event).includes(:meeting_event)
+                                                       .where(badge_id: @dest.id, 'meeting_events.id': mevent_id)
+                                                       .first
+        end
+        # Detect any conflicting timing (same timing or auto-fixing => no conflict):
+        dest_row && (src_row.to_timing != dest_row.to_timing)
       end
     end
 
@@ -369,23 +381,25 @@ module Merge
     # == Params:
     # - <tt>:mevent_id</tt> => MeetingEvent ID
     # - <tt>:src_row</tt> => source GogglesDb::MeetingIndividualResult
-    # - <tt>:dest_row</tt> => destination GogglesDb::MeetingIndividualResult
-    def decorate_mir(mevent_id, src_row, dest_row) # rubocop:disable Metrics/AbcSize
-      unless src_row.is_a?(GogglesDb::MeetingIndividualResult) && dest_row.is_a?(GogglesDb::MeetingIndividualResult)
-        raise ArgumentError, 'Both src_row & dest_row must be MeetingIndividualResult instances'
-      end
-      unless (mevent_id == src_row.meeting_event.id) && (mevent_id == dest_row.meeting_event.id)
-        raise ArgumentError, 'Both src_row & dest_row must belong to the same MeetingEvent ID'
+    # - <tt>:dest_row</tt> => destination GogglesDb::MeetingIndividualResult or +nil+ (auto-fixing mode)
+    def decorate_mir(mevent_id, src_row, dest_row) # rubocop:disable Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
+      raise ArgumentError, 'src_row must be a MeetingIndividualResult instance' unless src_row.is_a?(GogglesDb::MeetingIndividualResult)
+      raise ArgumentError, 'dest_row must be a MeetingIndividualResult instance or nil' unless dest_row.nil? || dest_row.is_a?(GogglesDb::MeetingIndividualResult)
+      unless (mevent_id == src_row.meeting_event.id) && (dest_row.nil? || mevent_id == dest_row&.meeting_event&.id)
+        raise ArgumentError, 'Both src_row & dest_row, when defined, must belong to the same MeetingEvent ID'
       end
 
       mevent = GogglesDb::MeetingEvent.find(mevent_id).decorate
-      conflicting = src_row.to_timing != dest_row.to_timing
-      "- {MEvent #{mevent_id.to_s.rjust(6)}} Season #{src_row.season.id}, MeetingEvent #{src_row.meeting.id} - #{mevent.display_label}\r\n" \
-        "#{''.ljust(17)}🔹Src  [MIR #{src_row.id.to_s.ljust(7)}] swimmer_id: #{src_row.swimmer_id} (#{src_row.swimmer.complete_name}), " \
-        "team_id: #{src_row.team_id} ➡ #{src_row.category_type.code} #{src_row.to_timing}, laps: #{src_row.laps.count}\r\n" \
-        "#{''.ljust(17)}🔹Dest [MIR #{dest_row.id.to_s.ljust(7)}] swimmer_id: #{dest_row.swimmer_id} (#{dest_row.swimmer.complete_name}), " \
-        "team_id: #{dest_row.team_id} ➡ #{dest_row.category_type.code} #{dest_row.to_timing} #{conflicting ? '❌' : '✅'}" \
-        ", laps: #{dest_row.laps.count}\r\n" \
+      conflicting = dest_row.present? && src_row.to_timing != dest_row.to_timing
+      result = "- {MEvent #{mevent_id.to_s.rjust(6)}} Season #{src_row.season.id}, MeetingEvent #{src_row.meeting.id} - #{mevent.display_label}\r\n" \
+               "#{''.ljust(17)}🔹Src  [MIR #{src_row.id.to_s.ljust(7)}] swimmer_id: #{src_row.swimmer_id} (#{src_row.swimmer.complete_name}), " \
+               "team_id: #{src_row.team_id} ➡ #{src_row.category_type.code} #{src_row.to_timing}, laps: #{src_row.laps.count}\r\n"
+      return if dest_row.blank?
+
+      result << "#{''.ljust(17)}🔹Dest [MIR #{dest_row.id.to_s.ljust(7)}] swimmer_id: #{dest_row.swimmer_id} (#{dest_row.swimmer.complete_name}), " \
+                "team_id: #{dest_row.team_id} ➡ #{dest_row.category_type.code} #{dest_row.to_timing} #{conflicting ? '❌' : '✅'}, " \
+                "laps: #{dest_row.laps.count}\r\n"
+      result
     end
     #-- ------------------------------------------------------------------------
     #++
@@ -463,9 +477,10 @@ module Merge
     # by the source badge too.
     def dest_mevent_ids_from_mrss
       return @dest_mevent_ids_from_mrss if @dest_mevent_ids_from_mrss.present?
+      return @dest_mevent_ids_from_mrss = {} if @dest.nil?
 
       @dest_mevent_ids_from_mrss = GogglesDb::MeetingRelaySwimmer.joins(:meeting_event).includes(:meeting_event)
-                                                                 .where(badge_id: @source.id)
+                                                                 .where(badge_id: @dest.id)
                                                                  .group('meeting_events.id').count
     end
 
@@ -503,15 +518,17 @@ module Merge
       return false if shared_mevent_ids_from_mrss.blank?
 
       shared_mevent_ids_from_mrss.any? do |mevent_id, _mrs_count|
-        # (1 MIR x Badge x Event only)
+        # (1 MRS x Badge x Event only)
         src_row = GogglesDb::MeetingRelaySwimmer.joins(:meeting_event).includes(:meeting_event)
                                                 .where(badge_id: @source.id, 'meeting_events.id': mevent_id)
                                                 .first
-        dest_row = GogglesDb::MeetingRelaySwimmer.joins(:meeting_event).includes(:meeting_event)
-                                                 .where(badge_id: @dest.id, 'meeting_events.id': mevent_id)
-                                                 .first
-        # Detect any conflicting timing (same timing => no conflict):
-        src_row.to_timing != dest_row.to_timing
+        if @dest.present?
+          dest_row = GogglesDb::MeetingRelaySwimmer.joins(:meeting_event).includes(:meeting_event)
+                                                   .where(badge_id: @dest.id, 'meeting_events.id': mevent_id)
+                                                   .first
+        end
+        # Detect any conflicting timing (same timing or auto-fixing => no conflict):
+        dest_row && (src_row.to_timing != dest_row.to_timing)
       end
     end
 
@@ -521,23 +538,25 @@ module Merge
     # == Params:
     # - <tt>:mevent_id</tt> => MeetingEvent ID
     # - <tt>:src_row</tt> => source GogglesDb::MeetingRelaySwimmer
-    # - <tt>:dest_row</tt> => destination GogglesDb::MeetingRelaySwimmer
-    def decorate_mrss(mevent_id, src_row, dest_row) # rubocop:disable Metrics/AbcSize
-      unless src_row.is_a?(GogglesDb::MeetingRelaySwimmer) && dest_row.is_a?(GogglesDb::MeetingRelaySwimmer)
-        raise ArgumentError, 'Both src_row & dest_row must be MeetingRelaySwimmer instances'
-      end
-      unless (mevent_id == src_row.meeting_event.id) && (mevent_id == dest_row.meeting_event.id)
-        raise ArgumentError, 'Both src_row & dest_row must must belong to the same MeetingEvent ID'
+    # - <tt>:dest_row</tt> => destination GogglesDb::MeetingRelaySwimmer or +nil+ (auto-fixing mode)
+    def decorate_mrss(mevent_id, src_row, dest_row) # rubocop:disable Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
+      raise ArgumentError, 'src_row must be a MeetingRelaySwimmer instance' unless src_row.is_a?(GogglesDb::MeetingRelaySwimmer)
+      raise ArgumentError, 'dest_row must be a MeetingRelaySwimmer instance or nil' unless dest_row.nil? || dest_row.is_a?(GogglesDb::MeetingRelaySwimmer)
+      unless (mevent_id == src_row.meeting_event.id) && (dest_row.nil? || mevent_id == dest_row&.meeting_event&.id)
+        raise ArgumentError, 'Both src_row & dest_row, when defined, must belong to the same MeetingEvent ID'
       end
 
       mevent = GogglesDb::MeetingEvent.find(mevent_id).decorate
       conflicting = src_row.to_timing != dest_row.to_timing
-      "- {MEvent #{mevent_id.to_s.rjust(6)}} Season #{src_row.season.id}, MeetingEvent #{src_row.meeting.id} - #{mevent.display_label}\r\n" \
-        "#{''.ljust(17)}🔹Src  [MRS #{src_row.id.to_s.ljust(7)}] swimmer_id: #{src_row.swimmer_id} (#{src_row.swimmer.complete_name}), " \
-        "team_id: #{src_row.team_id} ➡ #{src_row.category_type.code} #{src_row.to_timing}, sub-laps: #{src_row.relay_laps.count}\r\n" \
-        "#{''.ljust(17)}🔹Dest [MRS #{dest_row.id.to_s.ljust(7)}] swimmer_id: #{dest_row.swimmer_id} (#{dest_row.swimmer.complete_name}), " \
-        "team_id: #{dest_row.team_id} ➡ #{dest_row.category_type.code} #{dest_row.to_timing} #{conflicting ? '❌' : '✅'}" \
-        ", sub-laps: #{dest_row.relay_laps.count}\r\n" \
+      result = "- {MEvent #{mevent_id.to_s.rjust(6)}} Season #{src_row.season.id}, MeetingEvent #{src_row.meeting.id} - #{mevent.display_label}\r\n" \
+               "#{''.ljust(17)}🔹Src  [MRS #{src_row.id.to_s.ljust(7)}] swimmer_id: #{src_row.swimmer_id} (#{src_row.swimmer.complete_name}), " \
+               "team_id: #{src_row.team_id} ➡ #{src_row.category_type.code} #{src_row.to_timing}, sub-laps: #{src_row.relay_laps.count}\r\n"
+      return if dest_row.blank?
+
+      result << "#{''.ljust(17)}🔹Dest [MRS #{dest_row.id.to_s.ljust(7)}] swimmer_id: #{dest_row.swimmer_id} (#{dest_row.swimmer.complete_name}), " \
+                "team_id: #{dest_row.team_id} ➡ #{dest_row.category_type.code} #{dest_row.to_timing} #{conflicting ? '❌' : '✅'}, " \
+                "sub-laps: #{dest_row.relay_laps.count}\r\n"
+      result
     end
     #-- ------------------------------------------------------------------------
     #++
@@ -596,6 +615,7 @@ module Merge
     # Each Meeting ID is unique and grouped with its MRes count as associated value.
     def dest_meeting_ids_from_mres
       return @dest_meeting_ids_from_mres if @dest_meeting_ids_from_mres.present?
+      return @dest_meeting_ids_from_mres = {} if @dest.nil?
 
       @dest_meeting_ids_from_mres = GogglesDb::MeetingReservation.where(badge_id: @dest.id)
                                                                  .group('meeting_id').count
@@ -679,6 +699,7 @@ module Merge
     # Each Meeting ID is unique and grouped with its MRelRes count as associated value.
     def dest_meeting_ids_from_mev_res
       return @dest_meeting_ids_from_mev_res if @dest_meeting_ids_from_mev_res.present?
+      return @dest_meeting_ids_from_mev_res = {} if @dest.nil?
 
       @dest_meeting_ids_from_mev_res = GogglesDb::MeetingEventReservation.where(badge_id: @dest.id)
                                                                          .group('meeting_id').count
@@ -762,6 +783,7 @@ module Merge
     # Each Meeting ID is unique and grouped with its MRelRes count as associated value.
     def dest_meeting_ids_from_mrel_res
       return @dest_meeting_ids_from_mrel_res if @dest_meeting_ids_from_mrel_res.present?
+      return @dest_meeting_ids_from_mrel_res = {} if @dest.nil?
 
       @dest_meeting_ids_from_mrel_res = GogglesDb::MeetingRelayReservation.where(badge_id: @dest.id)
                                                                           .group('meeting_id').count
@@ -855,6 +877,7 @@ module Merge
     # Each MeetingEvent ID is unique and grouped with its MEntry count as associated value.
     def dest_mevent_ids_from_ments
       return @dest_mevent_ids_from_ments if @dest_mevent_ids_from_ments.present?
+      return @dest_mevent_ids_from_ments = {} if @dest.nil?
 
       @dest_mevent_ids_from_ments = GogglesDb::MeetingEntry.joins(:meeting_event).includes(:meeting_event)
                                                            .where(badge_id: @dest.id)
