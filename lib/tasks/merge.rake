@@ -122,14 +122,11 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
       exit
     end
 
-    merge = Merge::Swimmer.new(source:, dest:, skip_columns:)
-    merge.prepare
-    puts('Aborted.') && break if merge.errors.present?
+    merger = Merge::Swimmer.new(source:, dest:, skip_columns:)
+    merger.prepare
+    puts('Aborted.') && break if merger.errors.present?
 
-    process_sql_file(
-      file_index:, source_row: source, dest_row: dest,
-      sql_log_array: merge.sql_log, simulate:
-    )
+    process_sql_file(file_index:, title: 'merge_swimmers', merger:, sql_log_array: merger.sql_log, simulate:)
     puts("Done.\r\n")
   end
   #-- -------------------------------------------------------------------------
@@ -137,14 +134,15 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
 
   # Creates an SQL file under #{SCRIPT_OUTPUT_DIR} which will merge
   # the source row into the dest row.
-  # The file name have the format: "<index>-merge_swimmers-<source_id>-<dest_id>.sql"
+  # The file name have the format: "<index>-<title>-<source_id>-<dest_id|autofix>.sql"
   # The method will execute also the script on localhost only when 'simulate' is +false+.
-  def process_sql_file(file_index:, source_row:, dest_row:, sql_log_array:, simulate: true) # rubocop:disable Metrics/AbcSize,Rake/MethodDefinitionInTask
-    sql_file_name = "#{SCRIPT_OUTPUT_DIR}/#{format('%03d', file_index)}-merge_swimmers-#{source_row.id}-#{dest_row.id}.sql"
+  def process_sql_file(file_index:, title:, merger:, sql_log_array:, simulate: true) # rubocop:disable Metrics/AbcSize,Rake/MethodDefinitionInTask
+    dest_id_label = merger.dest ? merger.dest.id : 'autofix'
+    sql_file_name = "#{SCRIPT_OUTPUT_DIR}/#{format('%03d', file_index)}-#{title}-#{merger.source.id}-#{dest_id_label}.sql"
     File.open(sql_file_name, 'w+') { |f| f.puts(sql_log_array.join("\r\n")) }
-    puts("File '#{sql_file_name}' saved.")
     puts("\r\n*** Log: ***\r\n")
-    puts(merge.log.join("\r\n"))
+    puts(merger.log.join("\r\n"))
+    puts("\r\nFile '#{sql_file_name}' saved.")
 
     if simulate
       puts("\r\n\t\t>>> NOTHING WAS DONE TO THE DB: THIS WAS JUST A SIMULATION <<<\r\n")
@@ -256,7 +254,7 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
     The Rails.env will set the destination DB for script execution on localhost.
     The resulting file will be stored under:
 
-      - '#{SCRIPT_OUTPUT_DIR}/<index>-merge_badges-<src_id>-<dest_id>.sql'
+      - '#{SCRIPT_OUTPUT_DIR}/<index>-merge_badges-<src_id>-<dest_id|autofix>.sql'
 
     Options: [Rails.env=#{Rails.env}]
              src=<source_badge_id> dest=<destination_badge_id>
@@ -315,17 +313,14 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
     puts("#{'- enforce ALL source columns conflicts'.ljust(50, '.')}: ✔") if force_conflict
     puts("#{'- destination folder'.ljust(50, '.')}: #{SCRIPT_OUTPUT_DIR}")
 
-    merge = Merge::Badge.new(
+    merger = Merge::Badge.new(
       source:, dest:, keep_dest_columns:, keep_dest_category:,
       keep_dest_team:, force_conflict:
     )
-    merge.prepare
-    puts('Aborted.') && break if merge.errors.present?
+    merger.prepare
+    puts('Aborted.') && break if merger.errors.present?
 
-    # process_sql_file(
-    #   file_index:, source_row: source, dest_row: dest,
-    #   sql_log_array: merge.sql_log, simulate:
-    # )
+    process_sql_file(file_index:, title: 'merge_badges', merger:, sql_log_array: merger.single_transaction_sql_log, simulate:)
     puts("Done.\r\n")
   end
   #-- -------------------------------------------------------------------------

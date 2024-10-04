@@ -151,27 +151,7 @@ module Merge
       raise(ArgumentError, 'Unable to detect correct team_affiliation_id! Additional overrides may be needed.') if final_team_affiliation_id.blank?
 
       @checker.log << "\r\n\r\n- #{'Checker'.ljust(44, '.')}: #{result_ok ? '✅ OK' : '🟡 Overridden conflicts'}"
-      @sql_log << "-- Merge Badge (#{@source.id}) #{@source.display_label}, season #{@source.season_id}"
-      @sql_log << "--         |   team #{@source.team_id}, category_type #{@source.category_type_id} (#{@source.category_type.code})"
-      if @dest.present?
-        @sql_log << '--         |'
-        @sql_log << "--         +=> (#{@dest.id}) #{@dest.display_label}, season #{@dest.season_id}"
-        @sql_log << "--             team #{@dest.team_id}, category_type #{@dest.category_type_id} (#{@dest.category_type.code})\r\n"
-      end
-      raise(ArgumentError, 'Unable to detect final category_type_id! Additional overrides may be needed.') if final_category_type_id.blank?
-
-      final_category_type_code = GogglesDb::CategoryType.find(final_category_type_id).code
-      @sql_log << "--             => FINAL team: #{final_team_id}, FINAL category_type: #{final_category_type_id} (#{final_category_type_code})\r\n"
-      @sql_log << '-- Keep ALL dest. columns' if @keep_dest_columns
-      @sql_log << '-- Keep dest. category' if @keep_dest_category
-      @sql_log << '-- Keep dest. team' if @keep_dest_team
-      @sql_log << '-- Enforce ALL source columns conflicts' if @force_conflict
-
-      # NOTE: uncommenting the following in the output SQL may yield nulls for created_at & updated_at if we don't provide values in the row
-      @sql_log << "\r\n-- SET SQL_MODE = \"NO_AUTO_VALUE_ON_ZERO\";"
-      @sql_log << 'SET AUTOCOMMIT = 0;'
-      @sql_log << 'START TRANSACTION;'
-      @sql_log << ''
+      prepare_script_header
 
       # MIRs/Laps:
       prepare_script_for_disjointed_mirs(badge_id: @source.id,
@@ -217,9 +197,8 @@ module Merge
       end
 
       # Overwrite main dest. columns at the end (this will update the index too):
-      @sql_log << "UPDATE badges SET updated_at=NOW(), team_id=#{final_team_id}, category_type_id=#{final_category_type_id},"
-      @sql_log << "  team_affiliation_id=#{final_team_affiliation_id} WHERE id=#{final_badge_id};\r\n"
-      @sql_log << "\r\nCOMMIT;"
+      @sql_log << "UPDATE badges SET updated_at=NOW(), #{update_statement_values(actual_dest_badge)} "
+      @sql_log << "  WHERE id=#{actual_dest_badge.id};"
 
       # FUTUREDEV: *** Cups & Records ***
       # - IndividualRecord: TODO, missing model (but table is there, links both team & swimmer)
@@ -249,8 +228,58 @@ module Merge
     def warnings
       @checker.warnings
     end
+
+    # Returns a "START TRANSACTION" header as an array of SQL string statements.
+    # This merger class separates the SQL log from its single-transaction wrapper so
+    # that externally it can be combined externally multiple times with other results.
+    def start_transaction_log
+      [
+        # NOTE: uncommenting the following in the output SQL may yield nulls for created_at & updated_at if we don't provide values in the row
+        "\r\n-- SET SQL_MODE = \"NO_AUTO_VALUE_ON_ZERO\";",
+        'SET AUTOCOMMIT = 0;',
+        "START TRANSACTION;\r\n"
+      ]
+    end
+
+    # Returns a "COMMIT" footer as an array of SQL string statements.
+    # This merger class separates the SQL log from its single-transaction wrapper so
+    # that it can be combined externally multiple times with other results.
+    def end_transaction_log
+      [ "\r\nCOMMIT;" ]
+    end
+
+    # Returns the SQL log wrapped in a single transaction, as an array of SQL string statements.
+    def single_transaction_sql_log
+      start_transaction_log + @sql_log + end_transaction_log
+    end
+
+    # Adds a descriptive header to the @sql_log member.
+    def prepare_script_header
+      @sql_log << "-- Merge Badge (#{@source.id}) #{@source.display_label}, season #{@source.season_id}"
+      @sql_log << "--   |   team #{@source.team_id}, category_type #{@source.category_type_id} (#{@source.category_type.code})"
+      if @dest.present?
+        @sql_log << '--   |'
+        @sql_log << "--   +=> (#{@dest.id}) #{@dest.display_label}, season #{@dest.season_id}"
+        @sql_log << "--       team #{@dest.team_id}, category_type #{@dest.category_type_id} (#{@dest.category_type.code})\r\n"
+      end
+      raise(ArgumentError, 'Unable to detect final category_type_id! Additional overrides may be needed.') if final_category_type_id.blank?
+
+      final_category_type_code = GogglesDb::CategoryType.find(final_category_type_id).code
+      @sql_log << "--   +=> FINAL team: #{final_team_id}, FINAL category_type: #{final_category_type_id} (#{final_category_type_code})\r\n"
+      @sql_log << '-- Keep ALL dest. columns' if @keep_dest_columns
+      @sql_log << '-- Keep dest. category' if @keep_dest_category
+      @sql_log << '-- Keep dest. team' if @keep_dest_team
+      @sql_log << '-- Enforce ALL source columns conflicts' if @force_conflict
+    end
     #-- ------------------------------------------------------------------------
     #++
+
+    # Returns the "actual destination" Badge instance, depending on the operations mode:
+    # - @dest for a merge, where both source & destination are defined;
+    # - @source for a "category auto-fix" (where destination is left +nil+).
+    def actual_dest_badge
+      @dest.present? ? @dest : @source
+    end
 
     # Returns the expected <tt>#category_type_id</tt> value for the destination row.
     # Destination overrides have precedence over source.
@@ -259,6 +288,9 @@ module Merge
     # the resulting final category will be enforced to the other one with an automatic override.
     #
     # If both have a relay-only category, the result will be computed using the esteemed swimmer age.
+    #
+    # PLEASE MIND THAT the result won't necessarily match <tt>actual_dest_badge.category_type_id</tt>.
+    # (As a matter of fact, output will be generated only when the two are different.)
     def final_category_type_id # rubocop:disable Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity,Metrics/AbcSize
       return @final_category_type_id if @final_category_type_id.present?
       return compute_final_category_type if @checker.category_auto_fixing?
@@ -285,6 +317,9 @@ module Merge
 
     # Returns the expected <tt>#team_id</tt> value for the destination row.
     # Destination overrides have precedence over source.
+    #
+    # PLEASE MIND THAT the result won't necessarily match <tt>actual_dest_badge.team_id</tt>.
+    # (As a matter of fact, output will be generated only when the two are different.)
     def final_team_id # rubocop:disable Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
       return @final_team_id if @final_team_id.present?
 
@@ -300,6 +335,9 @@ module Merge
 
     # Returns the expected <tt>#team_affiliation_id</tt> value for the destination row.
     # Destination overrides have precedence over source.
+    #
+    # PLEASE MIND THAT the result won't necessarily match <tt>actual_dest_badge.team_affiliation_id</tt>.
+    # (As a matter of fact, output will be generated only when the two are different.)
     def final_team_affiliation_id # rubocop:disable Metrics/PerceivedComplexity,Metrics/CyclomaticComplexity
       return @final_team_affiliation_id if @final_team_affiliation_id.present?
 
@@ -311,15 +349,6 @@ module Merge
       return if @final_team_affiliation_id.blank? # Signal error otherwise (difference & no forced override)
 
       @final_team_affiliation_id
-    end
-
-    # Returns the actual destination <tt>#badge_id</tt>, depending on the operations mode:
-    # - @dest.id for a merge, where both source & destination are defined;
-    # - @source.id for a "category auto-fix" (where destination is left +nil+).
-    def final_badge_id
-      return @dest.id if @dest.present?
-
-      @source.id
     end
     #-- ------------------------------------------------------------------------
     #++
@@ -340,6 +369,43 @@ module Merge
       @sql_log << msg
       @checker.log << msg
       @final_category_type_id = computed_category_type&.id
+    end
+
+    # Returns +true+ if the destination badge will be different than the source.
+    def change_in_badge_id?
+      actual_dest_badge.id != @source.id
+    end
+
+    # Returns +true+ if the destination badge will have its <tt>category_type_id</tt> changed as a result of the merge.
+    def change_in_category_type_id?
+      actual_dest_badge.category_type_id != final_category_type_id
+    end
+
+    # Returns +true+ if the destination badge will have its <tt>team_id</tt> changed as a result of the merge.
+    # When this is true a change in team_affiliation_id is implied as well.
+    def change_in_team_id?
+      actual_dest_badge.team_id != final_team_id
+    end
+
+    # Returns the SQL string sub-statement for an 'UPDATE' involving just
+    # the changed column values in the specified ActiveRecord row.
+    # The <tt>row</tt> parameter is only used for its structure, not its values
+    # (which will be taken from the "#final_<XXX>" helper methods enlisted above).
+    def update_statement_values(row)
+      result = []
+      if row.respond_to?(:badge_id) && row.badge_id != actual_dest_badge.id
+        result << "badge_id=#{actual_dest_badge.id}"
+      end
+      if row.respond_to?(:team_id) && row.team_id != final_team_id
+        result << "team_id = #{final_team_id}"
+      end
+      if row.respond_to?(:team_affiliation_id) && row.team_affiliation_id != final_team_affiliation_id
+        result << "team_affiliation_id=#{final_team_affiliation_id}"
+      end
+      if row.respond_to?(:category_type_id) && row.category_type_id != final_category_type_id
+        result << "category_type_id=#{final_category_type_id}"
+      end
+      result.join(', ')
     end
 
     #-- ------------------------------------------------------------------------
@@ -368,44 +434,45 @@ module Merge
       mir_updates = 0
       mprg_inserts = 0
       lap_updates = 0
-      @checker.log << "-- (#{subset_title}-only MIRs) ---"
       @sql_log << "-- (#{subset_title}-only MIRs) --"
 
       mevent_ids.each do |mevent_id|
         # NOTE: for each meeting event: 1 Swimmer => 1 Badge => 1 Event => 1 Program => 1 result => (many laps)
-        disjointed_mir_ids = GogglesDb::MeetingIndividualResult.joins(:meeting_event)
-                                                               .where(
-                                                                 badge_id:, 'meeting_events.id': mevent_id
-                                                               ).pluck(:id)
-        raise("Found #{disjointed_mir_ids.size} #{subset_title} MIRs for event #{mevent_id}!") if disjointed_mir_ids.size != 1
+        disjointed_mirs = GogglesDb::MeetingIndividualResult.joins(:meeting_event)
+                                                            .where(badge_id:, 'meeting_events.id': mevent_id)
+        raise("Found #{disjointed_mirs.size} #{subset_title} MIRs for event #{mevent_id}!") if disjointed_mirs.size != 1
 
-        mir_updates += 1 # (only 1 MIR for event -- see above)
-        final_mir_id = disjointed_mir_ids.first
+        final_mir = disjointed_mirs.first
         # Destination program may or may not be already there when there's a difference in category:
         dest_mprg = GogglesDb::MeetingProgram.where(meeting_event_id: mevent_id, category_type_id: final_category_type_id).first
+        update_statement = update_statement_values(final_mir)
+        lap_count = GogglesDb::Lap.where(meeting_individual_result_id: final_mir.id).count
+        # Nothing to update?
+        next if update_statement.blank? && lap_count.zero? &&
+                dest_mprg && (dest_mprg.id == final_mir.meeting_program_id)
+
+        disjointed_mirs_ids = disjointed_mirs.pluck(:id)
 
         # Update MIR (and Laps) or Insert MPrg + Update MIR (and Laps)?
         if dest_mprg.present?
-          @sql_log << "UPDATE meeting_individual_results SET updated_at=NOW(), badge_id=#{final_badge_id}, " \
-                      "meeting_program_id=#{dest_mprg.id}, team_id=#{final_team_id}, " \
-                      "team_affiliation_id=#{final_team_affiliation_id} " \
-                      "WHERE id = #{final_mir_id};"
-          prepare_script_for_laps(mir_id: final_mir_id, mprg_id: dest_mprg.id, team_id: final_team_id,
-                                  mir_id_list: disjointed_mir_ids)
+          @sql_log << "UPDATE meeting_individual_results SET updated_at=NOW(), meeting_program_id=#{dest_mprg.id}, " \
+                      "#{update_statement} WHERE id = #{final_mir.id};"
+          mir_updates += 1 # (only 1 MIR for event -- see above)
+          prepare_script_for_laps(mir_id: final_mir.id, mprg_id: dest_mprg.id, team_id: final_team_id,
+                                  mir_id_list: disjointed_mirs_ids)
         else
           # Insert missing MPrg, then do the update:
-          mprg_inserts += 1
           @sql_log << 'INSERT INTO meeting_programs (updated_at, category_type_id, gender_type_id, autofilled) ' \
                       "VALUES (NOW(), #{final_category_type_id}, #{@source.gender_type.id}, 1);"
+          mprg_inserts += 1
           @sql_log << 'SELECT LAST_INSERT_ID() INTO @last_id;'
           # Move source-only MIR using correct IDs:
-          @sql_log << "UPDATE meeting_individual_results SET updated_at=NOW(), badge_id=#{final_badge_id}, " \
-                      "meeting_program_id=@last_id, team_id=#{final_team_id}, " \
-                      "team_affiliation_id=#{final_team_affiliation_id} " \
-                      "WHERE id = #{final_mir_id};"
-          prepare_script_for_laps(mir_id: final_mir_id, mprg_id: '@last_id', team_id: final_team_id,
-                                  mir_id_list: disjointed_mir_ids)
-          lap_updates += GogglesDb::Lap.where(meeting_individual_result_id: final_mir_id).count
+          @sql_log << "UPDATE meeting_individual_results SET updated_at=NOW(), meeting_program_id=@last_id, " \
+                      "#{update_statement} WHERE id = #{final_mir.id};"
+          mir_updates += 1 # (only 1 MIR for event -- see above)
+          prepare_script_for_laps(mir_id: final_mir.id, mprg_id: '@last_id', team_id: final_team_id,
+                                  mir_id_list: disjointed_mirs_ids)
+          lap_updates += lap_count
         end
       end
 
@@ -450,7 +517,6 @@ module Merge
       lap_updates = 0
       lap_deletes = 0
       mprg_inserts = 0
-      @checker.log << '-- (shared MIRs domain) ---'
       @sql_log << '-- (shared MIRs domain) --'
 
       # == Recap on the MEvents domain:
@@ -474,10 +540,10 @@ module Merge
         # Make sure the overlapping MIRs are different in IDs:
         raise("Unexpected: source MIR (ID #{src_mir.id}) must be != dest. MIR (ID #{dest_mir.id})!") if src_mir.id == dest_mir.id
 
-        mir_updates += 1 # (only 1 MIR for event/badge -- see above)
-
         # Destination program may or may not be already there when there's a difference in category:
         dest_mprg = GogglesDb::MeetingProgram.where(meeting_event_id: mevent_id, category_type_id: final_category_type_id).first
+        update_statement = update_statement_values(dest_mir)
+
         # Find all Laps missing from destination by rejecting any source lap
         # for which there's already a correspondent lap:
         existing_lap_lengths = dest_mir.laps.map(&:length_in_meters)
@@ -488,31 +554,35 @@ module Merge
         duplicated_lap_ids = src_mir.laps.to_a
                                     .keep_if { |lap| existing_lap_lengths.include?(lap.length_in_meters) }
                                     .pluck(:id)
+        # Nothing to update?
+        next if update_statement.blank? &&
+                dest_mprg && (dest_mprg.id == dest_mir.meeting_program_id) &&
+                existing_lap_ids.empty? && missing_lap_ids.empty? && duplicated_lap_ids.empty?
 
         # Just update MIR & laps or Insert MPrg + update MIR & laps?
         if dest_mprg.present?
           # Update destination MIR with the correct IDs:
-          @sql_log << 'UPDATE meeting_individual_results SET updated_at=NOW(), ' \
-                      "meeting_program_id=#{dest_mprg.id}, " \
-                      "team_id=#{final_team_id}, team_affiliation_id=#{final_team_affiliation_id} " \
-                      "WHERE id = #{dest_mir.id};"
+          @sql_log << "UPDATE meeting_individual_results SET updated_at=NOW(), meeting_program_id=#{dest_mprg.id}, " \
+                      "#{update_statement} WHERE id = #{dest_mir.id};"
+          mir_updates += 1 # (only 1 MIR for event/badge -- see above)
+
           # Update missing source Laps with correct IDs:
           prepare_script_for_laps(mir_id: dest_mir.id, mprg_id: dest_mprg.id, team_id: final_team_id,
                                   lap_id_list: missing_lap_ids)
           # Update existing dest Laps with correct IDs:
           prepare_script_for_laps(mir_id: dest_mir.id, mprg_id: dest_mprg.id, team_id: final_team_id,
                                   lap_id_list: existing_lap_ids)
+          lap_updates += missing_lap_ids.size + existing_lap_ids.size
         else
           # Insert missing MPrg, then do the update:
-          mprg_inserts += 1
           @sql_log << 'INSERT INTO meeting_programs (updated_at, category_type_id, gender_type_id, autofilled) ' \
                       "VALUES (NOW(), #{final_category_type_id}, #{@dest.gender_type.id}, 1);"
+          mprg_inserts += 1
           @sql_log << 'SELECT LAST_INSERT_ID() INTO @last_id;'
           # Update destination MIR with the correct IDs:
-          @sql_log << 'UPDATE meeting_individual_results SET updated_at=NOW(), ' \
-                      'meeting_program_id=@last_id, ' \
-                      "team_id=#{final_team_id}, team_affiliation_id=#{final_team_affiliation_id} " \
-                      "WHERE id = #{dest_mir.id};"
+          @sql_log << 'UPDATE meeting_individual_results SET updated_at=NOW(), meeting_program_id=@last_id, ' \
+                      "#{update_statement} WHERE id = #{dest_mir.id};"
+          mir_updates += 1 # (only 1 MIR for event/badge -- see above)
 
           # Update missing source Laps with correct IDs:
           prepare_script_for_laps(mir_id: dest_mir.id, mprg_id: '@last_id', team_id: final_team_id,
@@ -527,8 +597,8 @@ module Merge
         @sql_log << "DELETE FROM meeting_individual_results WHERE id = #{src_mir.id};"
         # Delete also any duplicated laps:
         if duplicated_lap_ids.present?
-          lap_deletes += duplicated_lap_ids.size
           @sql_log << "DELETE FROM laps WHERE id IN (#{duplicated_lap_ids.join(', ')});"
+          lap_deletes += duplicated_lap_ids.size
         end
       end
 
@@ -579,15 +649,15 @@ module Merge
       if mir_id_list.present?
         where_filter = mir_id_list.size > 1 ? "IN (#{mir_id_list.join(', ')})" : "= #{mir_id_list.first}"
         @sql_log << "UPDATE laps SET updated_at=NOW(), meeting_program_id=#{mprg_id}, " \
-                    "team_id=#{team_id}, meeting_individual_result_id=#{mir_id} " \
+                    "meeting_individual_result_id=#{mir_id}, team_id = #{final_team_id} " \
                     "WHERE meeting_individual_result_id #{where_filter};"
       end
       return if lap_id_list.blank?
 
       where_filter = lap_id_list.size > 1 ? "IN (#{lap_id_list.join(', ')})" : "= #{lap_id_list.first}"
       @sql_log << "UPDATE laps SET updated_at=NOW(), meeting_program_id=#{mprg_id}, " \
-                  "team_id=#{team_id}, meeting_individual_result_id=#{mir_id} " \
-                  "WHERE id IN #{where_filter};"
+                  "meeting_individual_result_id=#{mir_id}, team_id = #{final_team_id} " \
+                  "WHERE id #{where_filter};"
     end
 
     #-- ------------------------------------------------------------------------
@@ -616,8 +686,11 @@ module Merge
     #
     def prepare_script_for_disjointed_mrss(badge_id:, mevent_ids:, subset_title: 'source') # rubocop:disable Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
       return if mevent_ids.blank?
-      if @dest.present? && (@final_category_type_id != @dest.category_type_id)
-        raise("Final 'fixed' dest. category_type_id different from original destination in MRS: possible relay category type change!")
+      # Handling of relay category changes is currently UNSUPPORTED: (updating it involves potentially changing multiple badges)
+      if change_in_category_type_id?
+        @checker.warnings << "WARNING: UNSUPPORTED category_type_id change that involves #{subset_title} relays!"
+        @checker.warnings << "======== Final 'fixed' category_type_id (ID #{final_category_type_id}) different from original destination (ID #{actual_dest_badge.category_type_id});"
+        @checker.warnings << "         involving MRS in events: #{mevent_ids.join(', ')}"
       end
 
       # Implied updates for MRSs:
@@ -629,49 +702,57 @@ module Merge
       mrs_updates = 0
       mrr_updates = 0
       lap_updates = 0
-      @checker.log << "-- (#{subset_title}-only MRSs) ---"
       @sql_log << "-- (#{subset_title}-only MRSs) --"
 
-      # == Recap on the MEvents domain:
-      # "Disjointed" events are collected from just from one of the MRS's badges, being that either
-      # source or destination (but no intersection in between). So:
-      # 1. if the event is there, then "usually" only one MRS should be there;
-      #     (meaning that in some rare cases it's possible to find even more duplicates from just one badge)
-      # 2. 1 MRS x badge x 1 MeetingEvent only => 1 MRS is either source or destination
+      # == Recap on the MEvents domain (for relays):
+      # "Shared" events are collected from MRS's badges that are either from
+      # source or destination. Thus:
+      #
+      # 1. if the event is there, then "at least" both MRS should always be there;
+      #    (at least -- meaning that in some cases it's possible to find > 1 row for the same event)
+      #
+      # 2. MANY MRS for 1 MeetingEvent => Loop on each MRS, and update each + find out possible duplicates.
+      #    Typical case:
+      #    - "4x100 MX" event, stored as a single event, even though it supports 2 different
+      #      events: 1x "4x100 MX single gender" + 1x "4x100 MX mixed gender";
+      #      in this case, if the rules of a Meeting allows it, a swimmer may enroll in both relays;
+      #      => results in 2 MRS for 1 event, but different MPrograms.
+      #
       # 3. the actual destination MRS must always be tied to @dest badge
+      #
       # 4. NO MProgram changes here, because relay category changes are NOT SUPPORTED.
       mevent_ids.each do |mevent_id|
-        # 1 Swimmer => 1 Badge => 1 Event => 1 Program => 1 relay result => (many swimmers + relay_laps)
-        disjointed_mrss = GogglesDb::MeetingRelaySwimmer.joins(:meeting_event)
+        # 1 Swimmer => 1 Badge => 1 Event => 1-2 Programs => 1 relay result for each => (many swimmers + relay_laps)
+        disjointed_mrss = GogglesDb::MeetingRelaySwimmer.joins(:meeting_event, :meeting_relay_result)
+                                                        .includes(:meeting_event, :meeting_relay_result)
                                                         .where(badge_id:, 'meeting_events.id': mevent_id)
-        # DEBUG ----------------------------------------------------------------
-        binding.pry if disjointed_mrss.count != 1
-        # ----------------------------------------------------------------------
-        raise("Found #{disjointed_mrss.count} #{subset_title} MRSs for event #{mevent_id}! (It should always be 1)") if disjointed_mrss.count != 1
-
-        # TODO: ^^^^^^^^^^^^^ HANDLE THIS! Loop on all MRSS in this event!
-
-        disjointed_mrs_id = disjointed_mrss.first.id
-        disjointed_mrr_id = disjointed_mrss.first.meeting_relay_result_id
-
-        # Update needed for MRR too?
-        if final_team_id != GogglesDb::MeetingRelayResult.find_by(id: disjointed_mrr_id).team_id
-          @sql_log << "UPDATE meeting_relay_results SET updated_at=NOW(), team_id=#{final_team_id}, " \
-                      "team_affiliation_id=#{final_team_affiliation_id} " \
-                      "WHERE id = #{disjointed_mrr_id};"
-          mrr_updates += 1
+        if disjointed_mrss.count > 2 || disjointed_mrss.count.zero?
+          raise("Found #{disjointed_mrss.count} #{subset_title} MRSs for event #{mevent_id}! (It should always be 1 or 2 max.)")
         end
 
-        # Update needed for MRS even when auto-fixing category? (which shouldn't involve a MProgram change for relays)
-        dest_mrs = GogglesDb::MeetingRelayResult.find_by(id: disjointed_mrs_id)
-        next unless dest_mrs.present? && (dest_mrs.team_id != final_team_id || dest_mrs.badge_id != final_badge_id)
+        # Loop on all MRSS in this event:
+        disjointed_mrss.each do |disjointed_mrs|
+          disjointed_mrr = disjointed_mrs.meeting_relay_result
+          update_statement = update_statement_values(disjointed_mrr)
 
-        @sql_log << "UPDATE meeting_relay_swimmers SET updated_at=NOW(), badge_id=#{final_badge_id}, " \
-                    "team_id=#{final_team_id}, team_affiliation_id=#{final_team_affiliation_id} " \
-                    "WHERE id = #{disjointed_mrs_id};"
-        mrs_updates += 1 # (only 1 MRS for event -- see above)
-        prepare_script_for_relay_laps(mrs_id: disjointed_mrs_id, team_id: final_team_id, mrs_id_list: [disjointed_mrs_id])
-        lap_updates += GogglesDb::RelayLap.where(meeting_relay_swimmer_id: disjointed_mrs_id).count
+          # Update needed for MRR too?
+          if update_statement.present?
+            @sql_log << "UPDATE meeting_relay_results SET updated_at=NOW(), " \
+                        "#{update_statement} WHERE id = #{disjointed_mrr.id};"
+            mrr_updates += 1
+          end
+
+          # Update needed for MRS even when auto-fixing category? (which shouldn't involve a MProgram change for relays)
+          update_statement = update_statement_values(disjointed_mrs)
+          lap_count = GogglesDb::RelayLap.where(meeting_relay_swimmer_id: disjointed_mrs.id).count
+          next if update_statement.blank? && lap_count.zero? # (no change in category here)
+
+          @sql_log << "UPDATE meeting_relay_swimmers SET updated_at=NOW(), " \
+                      "#{update_statement} WHERE id = #{disjointed_mrs.id};"
+          mrs_updates += 1
+          prepare_script_for_relay_laps(mrs_id: disjointed_mrs.id, team_id: final_team_id, mrs_id_list: [disjointed_mrs.id])
+          lap_updates += lap_count
+        end
       end
 
       @checker.log << "- #{'Updates for MRSs'.ljust(44, '.')}: #{mrs_updates}" if mrs_updates.positive?
@@ -706,7 +787,12 @@ module Merge
     #
     def prepare_script_for_shared_mrss # rubocop:disable Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/MethodLength,Metrics/PerceivedComplexity
       return if @checker.shared_mevent_ids_from_mrss.keys.blank?
-      raise("Final 'fixed' dest. category_type_id different from original: possible relay category type change!") if final_category_type_id != @dest.category_type_id
+      # Handling of relay category changes is currently UNSUPPORTED: (updating it involves potentially changing multiple badges)
+      if change_in_category_type_id?
+        @checker.warnings << "WARNING: UNSUPPORTED category_type_id change that involves relays (with shared events)!"
+        @checker.warnings << "======== Final 'fixed' category_type_id (ID #{final_category_type_id}) different from original destination (ID #{actual_dest_badge.category_type_id});"
+        @checker.warnings << "         involving MRS in events: #{mevent_ids.join(', ')}"
+      end
 
       # Implied updates for MRSs:
       # 1. MRR...... => meeting_program_id (no change), team_id, team_affiliation_id, meeting_relay_swimmers_count (no change unless duplicate)
@@ -718,78 +804,101 @@ module Merge
       mrr_updates = 0
       lap_updates = 0
       lap_deletes = 0
-      @checker.log << '-- (shared MRSs domain) ---'
       @sql_log << '-- (shared MRSs domain) --'
 
-      # == Recap on the MEvents domain:
+      # == Recap on the MEvents domain (for relays):
       # "Shared" events are collected from MRS's badges that are either from
-      # source or destination. So:
+      # source or destination. Thus:
+      #
       # 1. if the event is there, then "at least" both MRS should always be there;
-      #     (at least -- meaning that for some rare errors it's possible to find even more duplicates)
-      # 2. 1 MRS for 1 MeetingEvent only => 1 MRS has to be deleted
+      #    (at least -- meaning that in some cases it's possible to find > 1 row for the same event)
+      #
+      # 2. MANY MRS for 1 MeetingEvent => Loop on each MRS, and update each + find out possible duplicates.
+      #    Typical case:
+      #    - "4x100 MX" event, stored as a single event, even though it supports 2 different
+      #      events: 1x "4x100 MX single gender" + 1x "4x100 MX mixed gender";
+      #      in this case, if the rules of a Meeting allows it, a swimmer may enroll in both relays;
+      #      => results in 2 MRS for 1 event, but different MPrograms.
+      #
       # 3. the actual destination MRS must always be tied to @dest badge
+      #
       # 4. NO MProgram changes here, because relay category changes are NOT SUPPORTED.
       @checker.shared_mevent_ids_from_mrss.each_key do |mevent_id|
-        # 1 Swimmer => 1 Badge => 1 Event => 1 Program => 1 relay result => (many swimmers + relay_laps)
-        src_mrss = GogglesDb::MeetingRelaySwimmer.joins(:meeting_event)
-                                                 .includes(:meeting_event, :meeting_relay_result)
+        # 1 Swimmer => 1 Badge => 1 Event => 1-2 Programs => 1 relay result for each => (many swimmers + relay_laps)
+        src_mrss = GogglesDb::MeetingRelaySwimmer.joins(:meeting_event, :meeting_program, :meeting_relay_result)
+                                                 .includes(:meeting_event, :meeting_program, :meeting_relay_result)
                                                  .where(badge_id: @source.id, 'meeting_events.id': mevent_id)
         raise("Unexpected: missing shared source MRS for event #{mevent_id}! (Both src & dest should be still existing)") if src_mrss.blank?
-        raise("Found #{src_mrss.count} source MRSs for event #{mevent_id}! (It should always be 1)") if src_mrss.count != 1
+        raise("Found #{src_mrss.count} source MRSs for event #{mevent_id}! (It should always be 1 or 2 max.)") if src_mrss.count > 2 || src_mrss.count.zero?
 
-        src_mrs = src_mrss.first
-        dest_mrss = GogglesDb::MeetingRelaySwimmer.joins(:meeting_event).includes(:meeting_event)
-                                                  .includes(:meeting_event, :meeting_relay_result)
-                                                  .where(badge_id: @dest.id, 'meeting_events.id': mevent_id)
-        raise("Unexpected: missing shared destination MRS for event #{mevent_id}! (Both src & dest should be still existing)") if dest_mrss.blank?
-        raise("Found #{dest_mrss.count} destination MRSs for event #{mevent_id}! (It should always be 1)") if src_mrss.count != 1
+        # Loop on all MRSS in this event (both source and destination):
+        src_mrss.each do |src_mrs| # rubocop:disable Metrics/BlockLength
+          # Get all existing & matching dest. MRSs belonging to the same "kind" of MProgram (regardless of category,
+          # which could be slightly different between the two due to age miscalculations):
+          dest_mrss = GogglesDb::MeetingRelaySwimmer.joins(:meeting_event, :meeting_program, :meeting_relay_result)
+                                                    .includes(:meeting_event, :meeting_program, :meeting_relay_result)
+                                                    .where(
+                                                      badge_id: @dest.id,
+                                                      'meeting_programs.gender_type_id': src_mrs.meeting_program.gender_type_id,
+                                                      'meeting_events.id': mevent_id
+                                                    )
+          raise("Unexpected: missing shared destination MRS for event #{mevent_id}! (Both src & dest should be still existing)") if dest_mrss.blank?
+          if dest_mrss.count > 2 || dest_mrss.count.zero?
+            raise("Found #{dest_mrss.count} destination MRSs for event #{mevent_id}! (It should always be 1 or 2 max.)")
+          end
 
-        # TODO: ^^^^^^^^^^^^^ HANDLE THIS! Loop on all MRSS in this event!
+          dest_mrss.each do |dest_mrs|
+            # Make sure the overlapping MRSs are different in IDs:
+            raise("Unexpected: source MRS (ID #{src_mrs.id}) must be != dest. MRS (ID #{dest_mrs.id})!") if src_mrs.id == dest_mrs.id
 
-        dest_mrs = dest_mrss.first
-        dest_mrr_id = dest_mrs.meeting_relay_result_id
-        # Make sure the overlapping MRSs are different in IDs:
-        raise("Unexpected: source MRS (ID #{src_mrs.id}) must be != dest. MRS (ID #{dest_mrs.id})!") if src_mrs.id == dest_mrs.id
+            # Find all RelayLaps missing from destination by rejecting any source lap
+            # for which there's already a correspondent dest. lap:
+            existing_lap_lengths = dest_mrs.relay_laps.map(&:length_in_meters)
+            existing_lap_ids = dest_mrs.relay_laps.pluck(:id)
+            missing_lap_ids = src_mrs.relay_laps.to_a
+                                     .reject { |lap| existing_lap_lengths.include?(lap.length_in_meters) }
+                                     .pluck(:id)
+            duplicated_lap_ids = src_mrs.relay_laps.to_a
+                                        .keep_if { |lap| existing_lap_lengths.include?(lap.length_in_meters) }
+                                        .pluck(:id)
 
-        mrs_updates += 1 # (only 1 MRS for event/badge -- see above)
+            # Update needed for dest.MRR?
+            dest_mrr = dest_mrs.meeting_relay_result
+            update_statement = update_statement_values(dest_mrr)
+            if update_statement.present?
+              @sql_log << "UPDATE meeting_relay_results SET updated_at=NOW(), " \
+                          "#{update_statement} WHERE id = #{dest_mrr.id};"
+              mrr_updates += 1
+            end
 
-        # Find all RelayLaps missing from destination by rejecting any source lap
-        # for which there's already a correspondent dest. lap:
-        existing_lap_lengths = dest_mrs.relay_laps.map(&:length_in_meters)
-        existing_lap_ids = dest_mrs.relay_laps.pluck(:id)
-        missing_lap_ids = src_mrs.relay_laps.to_a
-                                 .reject { |lap| existing_lap_lengths.include?(lap.length_in_meters) }
-                                 .pluck(:id)
-        duplicated_lap_ids = src_mrs.relay_laps.to_a
-                                    .keep_if { |lap| existing_lap_lengths.include?(lap.length_in_meters) }
-                                    .pluck(:id)
+            # Update needed for dest. MRS? (+ RelayLaps)
+            update_statement = update_statement_values(dest_mrs)
+            next if update_statement.blank? &&
+                    existing_lap_ids.empty? && missing_lap_ids.empty? && duplicated_lap_ids.empty?
 
-        # Update needed for MRR too? (only destination)
-        if final_team_id != @dest.team_id
-          @sql_log << "UPDATE meeting_relay_results SET updated_at=NOW(), team_id=#{final_team_id}, " \
-                      "team_affiliation_id=#{final_team_affiliation_id} " \
-                      "WHERE id = #{dest_mrr_id};"
-          mrr_updates += 1
+            @sql_log << "UPDATE meeting_relay_swimmers SET updated_at=NOW(), " \
+                        "#{update_statement} WHERE id = #{dest_mrs.id};"
+            mrs_updates += 1
+
+            # Update missing source Laps with correct IDs:
+            prepare_script_for_relay_laps(mrs_id: dest_mrs.id, team_id: final_team_id, lap_id_list: missing_lap_ids)
+
+            # Update existing dest Laps with correct IDs:
+            prepare_script_for_relay_laps(mrs_id: dest_mrs.id, team_id: final_team_id, lap_id_list: existing_lap_ids)
+            lap_updates += missing_lap_ids.size + existing_lap_ids.size
+
+            # Delete duplicated source MRS:
+            @sql_log << "DELETE FROM meeting_relay_swimmers WHERE id = #{src_mrs.id};"
+            # Delete also any duplicated laps:
+            if duplicated_lap_ids.present?
+              lap_deletes += duplicated_lap_ids.size
+              @sql_log << "DELETE FROM relay_laps WHERE id IN (#{duplicated_lap_ids.join(', ')});"
+            end
+            # (dest_mrs)
+          end
+          # (src_mrs)
         end
-        # Update destination MRS with the correct IDs:
-        @sql_log << "UPDATE meeting_relay_swimmers SET updated_at=NOW(), badge_id=#{@dest.id}, " \
-                    "team_id=#{final_team_id}, team_affiliation_id=#{final_team_affiliation_id} " \
-                    "WHERE id = #{dest_mrs.id};"
-
-        # Update missing source Laps with correct IDs:
-        prepare_script_for_relay_laps(mrs_id: dest_mrs.id, team_id: final_team_id, lap_id_list: missing_lap_ids)
-
-        # Update existing dest Laps with correct IDs:
-        prepare_script_for_relay_laps(mrs_id: dest_mrs.id, team_id: final_team_id, lap_id_list: existing_lap_ids)
-        lap_updates += missing_lap_ids.size + existing_lap_ids.size
-
-        # Delete duplicated source MRS:
-        @sql_log << "DELETE FROM meeting_relay_swimmers WHERE id = #{src_mrs.id};"
-        # Delete also any duplicated laps:
-        if duplicated_lap_ids.present?
-          lap_deletes += duplicated_lap_ids.size
-          @sql_log << "DELETE FROM relay_laps WHERE id IN (#{duplicated_lap_ids.join(', ')});"
-        end
+        # (mevent_id)
       end
 
       if mrs_updates.positive?
@@ -798,8 +907,8 @@ module Merge
         @checker.log << "- #{'Shared deletions for MRSs'.ljust(44, '.')}: #{mrs_updates}"
       end
       @checker.log << "- #{'Updates for MRRs (=> team_id CHANGE!)'.ljust(44, '.')}: #{mrr_updates}" if mrr_updates.positive?
-      @checker.log << "- #{'Shared updates for Laps'.ljust(44, '.')}: #{lap_updates}" if lap_updates.positive?
-      @checker.log << "- #{'Shared deletions for Laps'.ljust(44, '.')}: #{lap_deletes}" if lap_deletes.present?
+      @checker.log << "- #{'Shared updates for RelayLaps'.ljust(44, '.')}: #{lap_updates}" if lap_updates.positive?
+      @checker.log << "- #{'Shared deletions for RelayLaps'.ljust(44, '.')}: #{lap_deletes}" if lap_deletes.present?
     end
     #-- ------------------------------------------------------------------------
     #++
@@ -854,18 +963,18 @@ module Merge
       team_id = options[:team_id]
       mrs_id_list = options[:mrs_id_list]
       lap_id_list = options[:lap_id_list]
-      return if mrs_id.blank? || mprg_id.blank? || team_id.blank?
+      return if mrs_id.blank? || team_id.blank?
 
       if mrs_id_list.present?
         where_filter = mrs_id_list.size > 1 ? "IN (#{mrs_id_list.join(', ')})" : "= #{mrs_id_list.first}"
-        @sql_log << "UPDATE laps SET updated_at=NOW(), team_id=#{team_id}, " \
+        @sql_log << "UPDATE relay_laps SET updated_at=NOW(), team_id=#{team_id}, " \
                     "meeting_relay_swimmer_id=#{mrs_id} " \
                     "WHERE meeting_relay_swimmer_id #{where_filter};"
       end
       return if lap_id_list.blank?
 
       where_filter = lap_id_list.size > 1 ? "IN (#{lap_id_list.join(', ')})" : "= #{lap_id_list.first}"
-      @sql_log << "UPDATE laps SET updated_at=NOW(), team_id=#{team_id}, " \
+      @sql_log << "UPDATE relay_laps SET updated_at=NOW(), team_id=#{team_id}, " \
                   "meeting_relay_swimmer_id=#{mrs_id} " \
                   "WHERE id #{where_filter};"
     end
@@ -895,37 +1004,36 @@ module Merge
 
       ments_updates = 0
       mprg_inserts = 0
-      @checker.log << "-- (#{subset_title}-only MEntries) ---"
       @sql_log << "-- (#{subset_title}-only MEntries) --"
 
       mevent_ids.each do |mevent_id|
         # NOTE: for each meeting event: 1 Swimmer => 1 Badge => 1 Event => 1 Program => 1 meeting entry
-        disjointed_ments_ids = GogglesDb::MeetingEntry.joins(:meeting_event)
-                                                      .where(badge_id:, 'meeting_events.id': mevent_id)
-                                                      .pluck(:id)
-        raise("Found #{disjointed_ments_ids.size} #{subset_title} MEntries for event #{mevent_id}!") if disjointed_ments_ids.size != 1
+        disjointed_ments = GogglesDb::MeetingEntry.joins(:meeting_event)
+                                                  .where(badge_id:, 'meeting_events.id': mevent_id)
+        raise("Found #{disjointed_ments.count} #{subset_title} MEntries for event #{mevent_id}!") if disjointed_ments.count != 1
 
-        ments_updates += 1 # (only 1 MIR for event -- see above)
-        final_mentry_id = disjointed_ments_ids.first
+        final_mentry = disjointed_ments.first
         # Destination program may or may not be already there when there's a difference in category:
         dest_mprg = GogglesDb::MeetingProgram.where(meeting_event_id: mevent_id, category_type_id: final_category_type_id).first
+        update_statement = update_statement_values(final_mentry)
+        # Nothing to update?
+        next if update_statement.blank? &&
+                dest_mprg && (dest_mprg.id == final_mentry.meeting_program_id)
 
         # Simple update or Insert MPrg too?
         if dest_mprg.present?
-          @sql_log << "UPDATE meeting_entries SET updated_at=NOW(), badge_id=#{final_badge_id}, " \
-                      "meeting_program_id=#{dest_mprg.id}, team_id=#{final_team_id}, " \
-                      "team_affiliation_id=#{final_team_affiliation_id} " \
-                      "WHERE id=#{final_mentry_id});"
+          @sql_log << "UPDATE meeting_entries SET updated_at=NOW(), meeting_program_id=#{dest_mprg.id}, " \
+                      "#{update_statement} WHERE id = #{final_mentry.id};"
+          ments_updates += 1 # (only 1 MEntry for event -- see above)
         else
-          mprg_inserts += 1
           @sql_log << 'INSERT INTO meeting_programs (updated_at, category_type_id, gender_type_id, autofilled) ' \
                       "VALUES (NOW(), #{final_category_type_id}, #{@source.gender_type.id}, 1);"
+          mprg_inserts += 1
           @sql_log << 'SELECT LAST_INSERT_ID() INTO @last_id;'
-          # Move source-only MIR using correct IDs:
-          @sql_log << "UPDATE meeting_entries SET updated_at=NOW(), badge_id=#{final_badge_id}, " \
-                      "meeting_program_id=@last_id, team_id=#{final_team_id}, " \
-                      "team_affiliation_id=#{final_team_affiliation_id} " \
-                      "WHERE id=#{final_mentry_id});"
+          # Move source-only MEntry using correct IDs:
+          @sql_log << 'UPDATE meeting_entries SET updated_at=NOW(), meeting_program_id=@last_id, ' \
+                      "#{update_statement} WHERE id = #{final_mentry.id};"
+          ments_updates += 1 # (only 1 MEntry for event -- see above)
         end
       end
 
@@ -945,7 +1053,6 @@ module Merge
 
       mentry_updates = 0
       mprg_inserts = 0
-      @checker.log << '-- (shared MEntries domain) ---'
       @sql_log << '-- (shared MEntries domain) --'
 
       @checker.shared_mevent_ids_from_ments.each_key do |mevent_id|
@@ -961,28 +1068,33 @@ module Merge
         # Make sure the overlapping MEntrys are different in IDs:
         raise("Unexpected: source MEntry (ID #{src_mentry.id}) must be != dest. MEntry (ID #{dest_mentry.id})!") if src_mentry.id == dest_mentry.id
 
-        mentry_updates += 1 # (only 1 MEntry for event/badge -- see above)
+        # WARNING: NOT HANDLING here the very rare case in which relays MEntry are linked to different programs belonging to the same event!
+        #          (e.g.: "4x100 MX" both storing events for single-gender & mixed-gender relays)
 
         # Destination program may or may not be already there when there's a difference in category:
         dest_mprg = GogglesDb::MeetingProgram.where(meeting_event_id: mevent_id, category_type_id: final_category_type_id).first
+        update_statement = update_statement_values(dest_mentry)
+
+        # Nothing to update?
+        next if update_statement.blank? &&
+                dest_mprg && (dest_mprg.id == dest_mentry.meeting_program_id)
 
         # Simple update or Insert MPrg too?
         if dest_mprg.present?
           # Update destination MEntry with the correct IDs:
-          @sql_log << 'UPDATE meeting_entries SET updated_at=NOW(), ' \
-                      "meeting_program_id=#{dest_mprg.id}, team_id=#{final_team_id}, " \
-                      "team_affiliation_id=#{final_team_affiliation_id} " \
+          @sql_log << "UPDATE meeting_entries SET updated_at=NOW(), meeting_program_id=#{dest_mprg.id}, " \
                       "WHERE id=#{dest_mentry.id};"
+                      "#{update_statement} WHERE id = #{dest_mentry.id};"
+          mentry_updates += 1 # (only 1 MEntry for event/badge -- see above)
         else
-          mprg_inserts += 1
           @sql_log << 'INSERT INTO meeting_programs (updated_at, category_type_id, gender_type_id, autofilled) ' \
                       "VALUES (NOW(), #{final_category_type_id}, #{@source.gender_type.id}, 1);"
+          mprg_inserts += 1
           @sql_log << 'SELECT LAST_INSERT_ID() INTO @last_id;'
           # Update destination MEntry with the correct IDs:
-          @sql_log << 'UPDATE meeting_entries SET updated_at=NOW(), ' \
-                      "meeting_program_id=@last_id, team_id=#{final_team_id}, " \
-                      "team_affiliation_id=#{final_team_affiliation_id} " \
-                      "WHERE id=#{dest_mentry.id};"
+          @sql_log << 'UPDATE meeting_entries SET updated_at=NOW(), meeting_program_id=@last_id, ' \
+                      "#{update_statement} WHERE id = #{dest_mentry.id};"
+          mentry_updates += 1 # (only 1 MEntry for event/badge -- see above)
         end
         # Delete duplicated source MEntry:
         @sql_log << "DELETE FROM meeting_entries WHERE id=#{src_mentry.id};"
