@@ -281,6 +281,9 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
       - force_conflict: opposite of 'keep_dest_columns'. If no conflict override flags are used,
         the merge will halt in case of conflicting rows (different categories or teams).
 
+      - autofix: when set to '1', the script will toggle the above override flags using some
+        educated guesses (toggled off by default).
+
   DESC
   task(badge: [:check_needed_dirs]) do
     puts '*** Task: merge:badge ***'
@@ -297,6 +300,7 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
     keep_dest_category = ENV['keep_dest_category'] == '1'
     keep_dest_team = ENV['keep_dest_team'] == '1'
     force_conflict = ENV['force_conflict'] == '1'
+    autofix = ENV['autofix'] == '1'
     mode = dest.nil? ? 'Fixing ' : 'Merging'
 
     puts("\r\n#{mode} Badge (#{source.id}) #{source.display_label}, season #{source.season_id}")
@@ -315,7 +319,7 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
 
     merger = Merge::Badge.new(
       source:, dest:, keep_dest_columns:, keep_dest_category:,
-      keep_dest_team:, force_conflict:
+      keep_dest_team:, force_conflict:, autofix:
     )
     merger.prepare
     puts('Aborted.') && break if merger.errors.present?

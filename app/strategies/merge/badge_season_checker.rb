@@ -7,7 +7,7 @@ module Merge
   #
   #   - version:  7-0.7.19
   #   - author:   Steve A.
-  #   - build:    20241001
+  #   - build:    20241007
   #
   # Contrary to Merge::TeamChecker or Merge::SwimmerChecker (which handle mostly a single Team o Swimmer "target"),
   # this class allows to check a *whole* Season for duplicate swimmer badges, as well as any other conflicts
@@ -202,18 +202,12 @@ module Merge
           @diff_both_badges[swimmer_id] = badges
           @diff_category_swimmer_ids << swimmer_id # Enlist all swimmers having > 1 category x year
 
-        # (== team_id, != category id => badges may be wrongly assigned)
         elsif different_category
           @diff_category_badges[swimmer_id] = badges
           @diff_category_swimmer_ids << swimmer_id # Enlist all swimmers having > 1 category x year
-          @sure_badge_merges[swimmer_id] = badges
 
         elsif different_team
           @diff_team_badges[swimmer_id] = badges
-
-        # (== team_id, same category id => badges are all duplicates)
-        else
-          @sure_badge_merges[swimmer_id] = badges
         end
 
         # Check for possible team-merge candidates among the whole (sub-)list of badges
@@ -225,13 +219,24 @@ module Merge
         # - at least one of the badges has been found with a "similar" team name
         #     => possible merge (requires manual inspection of team names)
         if different_team
-          @possible_badge_merges[swimmer_id] = badges if any_mergeable_names
+          already_considered = false
 
           badges.to_a.combination(2).each do |badge_couple|
             next unless Merge::BadgeSeasonChecker.badges_share_a_meeting?(badge_couple.first.id, badge_couple.last.id)
 
+            # Add to "sure merges" only couples of different team ids which share a meeting in common:
             @sure_badge_merges[swimmer_id] = badge_couple
+            already_considered = true
           end
+          @possible_badge_merges[swimmer_id] = badges if any_mergeable_names && !already_considered
+
+        # (== team_id, != category id => badges may be wrongly assigned)
+        elsif different_category
+          @sure_badge_merges[swimmer_id] = badge_couple
+
+        # (== team_id, same category id => badges are all duplicates)
+        elsif !different_team && !different_category
+          @sure_badge_merges[swimmer_id] = badges
         end
 
         # Collect all relay badges without any possible alternative category for fixing:
@@ -252,14 +257,17 @@ module Merge
 
       log_stats
       log_team_merge_candidates
-      log_badge_merge_candidates(@sure_badge_merges, 'SURE')
-      log_badge_merge_candidates(@possible_badge_merges, 'POSSIBLE')
+      log_badge_merge_candidates(@sure_badge_merges, 'SURE (same swimmer, same meeting)')
+      log_badge_merge_candidates(@possible_badge_merges, 'POSSIBLE (similar team names)')
 
       compute_and_log_corrected_relay_only_categories if @relay_only_badges.present?
       if @relay_badges.present? || @sure_badge_merges.present?
         @log << "\r\nBefore doing any *TEAM* merge, fix possibly:"
-        @log << "- the #{@relay_badges.size} 'relay_badges'" if @relay_badges.present?
-        @log << "- the #{@sure_badge_merges.keys.size} 'sure_badge_merges' (may include some of the above)" if @sure_badge_merges.present?
+        @log << "1. the #{@sure_badge_merges.keys.size} 'sure_badge_merges' (may include some relay-only badges)" if @sure_badge_merges.present?
+        @log << "2. the #{@relay_badges.size} 'relay_badges'" if @relay_badges.present?
+      end
+      if @possible_badge_merges.present?
+        @log << "There are #{@possible_badge_merges.size} 'possible_badge_merges' that require manual inspection before merging, due to similar team names."
       end
       nil
     end
@@ -427,8 +435,8 @@ module Merge
       return if badges_x_swimmer_hash.blank?
 
       @log << "\r\n\033[1;33;37m#{title_label} BADGE-MERGE fixes:\033[0m (tot. #{badges_x_swimmer_hash.keys.size})"
-      @log << "(\033[1;33;32m⬅\033[0m: same team_id & category; \033[1;33;38m⬅\033[0m: != category; " \
-              "\033[1;33;34m⬅\033[0m: != team_id; \033[1;33;35m⬅\033[0m: both !=)"
+      @log << "[\033[1;33;32m⬅\033[0m : same team_id & category (true duplicates); \033[1;33;38m⬅\033[0m : != category; " \
+              "\033[1;33;34m⬅\033[0m : != team_id; \033[1;33;35m⬅\033[0m : both !=]"
       # Divide the output into multiple columns:
       badges_x_swimmer_hash.keys.each_slice(3) do |swimmer_ids|
         column_array = []    # Stores the composed formatted row output

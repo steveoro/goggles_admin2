@@ -7,7 +7,7 @@ module Merge
   #
   #   - version:  7-0.7.19
   #   - author:   Steve A.
-  #   - build:    20241003
+  #   - build:    20241007
   #
   # Check the feasibility of merging the Badge entities specified in the constructor while
   # also gathering all sub-entities that need to be moved or purged.
@@ -15,10 +15,7 @@ module Merge
   # See #{Merge::BadgeSeasonChecker} for more details.
   class BadgeChecker # rubocop:disable Metrics/ClassLength
     attr_reader :log, :errors, :warnings, :unrecoverable_conflict,
-                :source, :dest, :categories_x_seasons,
-                :src_only_mirs, :src_only_mrss,
-                :src_only_mres, :src_only_mev_res, :src_only_mrel_res,
-                :src_only_ments
+                :source, :dest, :categories_x_seasons
 
     #-- -----------------------------------------------------------------------
     #++
@@ -123,14 +120,6 @@ module Merge
       @errors = []
       @warnings = []
       @unrecoverable_conflict = false
-
-      # Entities implied in badge merging: (all those below; src-only because source |=> dest.)
-      @src_only_mirs = []       # meeting_individual_results
-      @src_only_mrss = []       # meeting_relay_swimmers
-      @src_only_mres = []       # meeting_reservations
-      @src_only_mev_res = []    # meeting_event_reservations
-      @src_only_mrel_res = []   # meeting_relay_reservations
-      @src_only_ments = []      # meeting_entries
 
       # FUTUREDEV: (currently not used)
       # - badge_payments (badge_id)
@@ -414,14 +403,9 @@ module Merge
     # In this case, the discriminant is the MeetingEvent ID.
     # MIRs are considered "conflicting" whenever they have the same timing result while belonging to the same MeetingEvent.
     # (MeetingPrograms may or may not differ, as the category may be wrongly computed or esteemed.)
-    def mir_analysis # rubocop:disable Metrics/AbcSize
+    def mir_analysis
       return @mir_analysis if @mir_analysis.present?
 
-      @src_only_mirs += GogglesDb::MeetingIndividualResult.joins(:meeting_event)
-                                                          .where(
-                                                            badge_id: @source.id,
-                                                            'meeting_events.id': src_only_mevent_ids_from_mirs.keys
-                                                          ).map(&:id)
       @mir_analysis = report_fill_for(
         result_array: [],
         target_domain: GogglesDb::MeetingIndividualResult.joins(:meeting_event, :badge).includes(:meeting_event, :badge),
@@ -466,7 +450,8 @@ module Merge
     def src_mevent_ids_from_mrss
       return @src_mevent_ids_from_mrss if @src_mevent_ids_from_mrss.present?
 
-      @src_mevent_ids_from_mrss = GogglesDb::MeetingRelaySwimmer.joins(:meeting_event).includes(:meeting_event)
+      @src_mevent_ids_from_mrss = GogglesDb::MeetingRelaySwimmer.joins(:meeting_event, :meeting_relay_result)
+                                                                .includes(:meeting_event, :meeting_relay_result)
                                                                 .where(badge_id: @source.id)
                                                                 .group('meeting_events.id').count
     end
@@ -479,7 +464,8 @@ module Merge
       return @dest_mevent_ids_from_mrss if @dest_mevent_ids_from_mrss.present?
       return @dest_mevent_ids_from_mrss = {} if @dest.nil?
 
-      @dest_mevent_ids_from_mrss = GogglesDb::MeetingRelaySwimmer.joins(:meeting_event).includes(:meeting_event)
+      @dest_mevent_ids_from_mrss = GogglesDb::MeetingRelaySwimmer.joins(:meeting_event, :meeting_relay_result)
+                                                                 .includes(:meeting_event, :meeting_relay_result)
                                                                  .where(badge_id: @dest.id)
                                                                  .group('meeting_events.id').count
     end
@@ -519,11 +505,13 @@ module Merge
 
       shared_mevent_ids_from_mrss.any? do |mevent_id, _mrs_count|
         # (1 MRS x Badge x Event only)
-        src_row = GogglesDb::MeetingRelaySwimmer.joins(:meeting_event).includes(:meeting_event)
+        src_row = GogglesDb::MeetingRelaySwimmer.joins(:meeting_event, :meeting_relay_result)
+                                                .includes(:meeting_event, :meeting_relay_result)
                                                 .where(badge_id: @source.id, 'meeting_events.id': mevent_id)
                                                 .first
         if @dest.present?
-          dest_row = GogglesDb::MeetingRelaySwimmer.joins(:meeting_event).includes(:meeting_event)
+          dest_row = GogglesDb::MeetingRelaySwimmer.joins(:meeting_event, :meeting_relay_result)
+                                                   .includes(:meeting_event, :meeting_relay_result)
                                                    .where(badge_id: @dest.id, 'meeting_events.id': mevent_id)
                                                    .first
         end
@@ -548,12 +536,16 @@ module Merge
 
       mevent = GogglesDb::MeetingEvent.find(mevent_id).decorate
       conflicting = src_row.to_timing != dest_row.to_timing
-      result = "- {MEvent #{mevent_id.to_s.rjust(6)}} Season #{src_row.season.id}, MeetingEvent #{src_row.meeting.id} - #{mevent.display_label}\r\n" \
-               "#{''.ljust(17)}🔹Src  [MRS #{src_row.id.to_s.ljust(7)}] swimmer_id: #{src_row.swimmer_id} (#{src_row.swimmer.complete_name}), " \
-               "team_id: #{src_row.team_id} ➡ #{src_row.category_type.code} #{src_row.to_timing}, sub-laps: #{src_row.relay_laps.count}\r\n"
+      result = "- {MEvent #{mevent_id.to_s.rjust(6)}} Season #{src_row.season.id}, " \
+               "MeetingEvent #{src_row.meeting.id} - #{mevent.display_label}\r\n" \
+               "#{''.ljust(17)}🔹Src  [MRS #{src_row.id.to_s.ljust(7)}] " \
+               "swimmer_id: #{src_row.swimmer_id} (#{src_row.swimmer.complete_name}), " \
+               "team_id: #{src_row.team_id} ➡ #{src_row.category_type.code} #{src_row.to_timing}, " \
+               "sub-laps: #{src_row.relay_laps.count}\r\n"
       return if dest_row.blank?
 
-      result << "#{''.ljust(17)}🔹Dest [MRS #{dest_row.id.to_s.ljust(7)}] swimmer_id: #{dest_row.swimmer_id} (#{dest_row.swimmer.complete_name}), " \
+      result << "#{''.ljust(17)}🔹Dest [MRS #{dest_row.id.to_s.ljust(7)}] " \
+                "swimmer_id: #{dest_row.swimmer_id} (#{dest_row.swimmer.complete_name}), " \
                 "team_id: #{dest_row.team_id} ➡ #{dest_row.category_type.code} #{dest_row.to_timing} #{conflicting ? '❌' : '✅'}, " \
                 "sub-laps: #{dest_row.relay_laps.count}\r\n"
       result
@@ -564,22 +556,18 @@ module Merge
     # Analizes source and destination associations for conflicting MRSs (different source & destination MRSs inside same meeting),
     # returning an array of printable lines as an ASCII table for quick reference.
     # Table width: 156 character columns (tested with some edge-case swimmers).
-    def mrs_analysis # rubocop:disable Metrics/AbcSize
+    def mrs_analysis
       return @mrs_analysis if @mrs_analysis.present?
 
-      @src_only_mrss += GogglesDb::MeetingRelaySwimmer.joins(:meeting_event)
-                                                      .where(
-                                                        badge_id: @source.id,
-                                                        'meeting_events.id': src_only_mevent_ids_from_mrss.keys
-                                                      ).map(&:id)
       @mrs_analysis = report_fill_for(
         result_array: [],
-        target_domain: GogglesDb::MeetingRelaySwimmer.joins(:meeting_event, :badge).includes(:meeting_event, :badge),
+        target_domain: GogglesDb::MeetingRelaySwimmer.joins(:meeting_event, :badge)
+                                                     .includes(:meeting_event, :badge),
         target_decorator: :decorate_mrs,
-        where_condition: '(meeting_relay_swimmers.badge_id = ? AND meeting_events.id = ?',
-        src_list: src_only_mevent_ids_from_mrss,
-        shared_list: shared_mevent_ids_from_mrss,
-        dest_list: dest_only_mevent_ids_from_mrss,
+        where_condition: 'meeting_relay_swimmers.badge_id = ? AND meeting_events.id = ?',
+        src_hash: src_only_mevent_ids_from_mrss,
+        shared_hash: shared_mevent_ids_from_mrss,
+        dest_hash: dest_only_mevent_ids_from_mrss,
         result_title: 'MRS (from parent MEvent)',
         subj_tuple_title: '(MeetingEvent ID, MRS count)'
       )
@@ -662,16 +650,14 @@ module Merge
     def mres_analysis
       return @mres_analysis if @mres_analysis.present?
 
-      @src_only_mres += GogglesDb::MeetingReservation.where(badge_id: @source.id, meeting_id: src_only_meeting_ids_from_mres.keys)
-                                                     .map(&:id)
       @mres_analysis = report_fill_for(
         result_array: [],
         target_domain: GogglesDb::MeetingReservation.joins(:meeting, :badge).includes(:meeting, :badge),
         target_decorator: :decorate_mres,
         where_condition: 'meeting_reservations.badge_id = ? AND meeting_reservations.meeting_id = ?',
-        src_list: src_only_meeting_ids_from_mres,
-        shared_list: shared_meeting_ids_from_mres,
-        dest_list: dest_only_meeting_ids_from_mres,
+        src_hash: src_only_meeting_ids_from_mres,
+        shared_hash: shared_meeting_ids_from_mres,
+        dest_hash: dest_only_meeting_ids_from_mres,
         result_title: 'MRES',
         subj_tuple_title: '(Meeting ID, MRES count)'
       )
@@ -746,16 +732,14 @@ module Merge
     def mev_res_analysis
       return @mev_res_analysis if @mev_res_analysis.present?
 
-      @src_only_mev_res += GogglesDb::MeetingEventReservation.where(badge_id: @source.id, meeting_id: src_only_meeting_ids_from_mev_res.keys)
-                                                             .map(&:id)
       @mev_res_analysis = report_fill_for(
         result_array: [],
         target_domain: GogglesDb::MeetingEventReservation.joins(:meeting, :badge).includes(:meeting, :badge),
         target_decorator: :decorate_mev_res,
         where_condition: 'meeting_event_reservations.badge_id = ? AND meeting_event_reservations.meeting_id = ?',
-        src_list: src_only_meeting_ids_from_mev_res,
-        shared_list: shared_meeting_ids_from_mev_res,
-        dest_list: dest_only_meeting_ids_from_mev_res,
+        src_hash: src_only_meeting_ids_from_mev_res,
+        shared_hash: shared_meeting_ids_from_mev_res,
+        dest_hash: dest_only_meeting_ids_from_mev_res,
         result_title: 'MEV_RES',
         subj_tuple_title: '(Meeting ID, MEV_RES count)'
       )
@@ -830,16 +814,14 @@ module Merge
     def mrel_res_analysis
       return @mrel_res_analysis if @mrel_res_analysis.present?
 
-      @src_only_mrel_res += GogglesDb::MeetingRelayReservation.where(badge_id: @source.id, meeting_id: src_only_meeting_ids_from_mrel_res.keys)
-                                                              .map(&:id)
       @mrel_res_analysis = report_fill_for(
         result_array: [],
         target_domain: GogglesDb::MeetingRelayReservation.joins(:meeting, :badge).includes(:meeting, :badge),
         target_decorator: :decorate_mrel_res,
-        where_condition: '(meeting_relay_reservations.badge_id = ? AND meeting_relay_reservations.meeting_id = ?',
-        src_list: src_only_meeting_ids_from_mrel_res,
-        shared_list: shared_meeting_ids_from_mrel_res,
-        dest_list: dest_only_meeting_ids_from_mrel_res,
+        where_condition: 'meeting_relay_reservations.badge_id = ? AND meeting_relay_reservations.meeting_id = ?',
+        src_hash: src_only_meeting_ids_from_mrel_res,
+        shared_hash: shared_meeting_ids_from_mrel_res,
+        dest_hash: dest_only_meeting_ids_from_mrel_res,
         result_title: 'MREL_RES',
         subj_tuple_title: '(Meeting ID, MREL_RES count)'
       )
@@ -926,22 +908,17 @@ module Merge
     # Analizes source and destination associations for conflicting MEntries
     # (different source & destination row inside same MeetingEvent),
     # returning an array of printable lines as an ASCII table for quick reference.
-    def ments_analysis # rubocop:disable Metrics/AbcSize
+    def ments_analysis
       return @ments_analysis if @ments_analysis.present?
 
-      @src_only_ments += GogglesDb::MeetingEntry.joins(:meeting_event)
-                                                .where(
-                                                  badge_id: @source.id,
-                                                  'meeting_events.id': src_only_mevent_ids_from_ments.keys
-                                                ).map(&:id)
       @ments_analysis = report_fill_for(
         result_array: [],
         target_domain: GogglesDb::MeetingEntry.joins(:meeting_event, :badge).includes(:meeting_event, :badge),
         target_decorator: :decorate_mentries,
         where_condition: 'meeting_entries.badge_id = ? AND meeting_events.id = ?',
-        src_list: src_only_mevent_ids_from_ments,
-        shared_list: shared_mevent_ids_from_ments,
-        dest_list: dest_only_mevent_ids_from_ments,
+        src_hash: src_only_mevent_ids_from_ments,
+        shared_hash: shared_mevent_ids_from_ments,
+        dest_hash: dest_only_mevent_ids_from_ments,
         result_title: 'M_ENTRY (from parent MEvent)',
         subj_tuple_title: '(MeetingEvent ID, MEntry count)'
       )
@@ -995,7 +972,7 @@ module Merge
     # - <tt>:subj_tuple_title</tt>: descriptive report label for the tuple stored in the domains,
     #   usually describing the format (<parent row_id>, <sibling/target count>).
     #
-    def report_fill_for(opts = {}) # rubocop:disable Metrics/AbcSize,Metrics/PerceivedComplexity
+    def report_fill_for(opts = {}) # rubocop:disable Metrics/AbcSize,Metrics/PerceivedComplexity,Metrics/CyclomaticComplexity,Metrics/MethodLength
       return opts[:result_array] if opts[:result_array].present?
 
       opts[:result_array] = [prepare_section_title(opts[:result_title])]
@@ -1003,6 +980,12 @@ module Merge
       if opts[:src_hash].present?
         centered_title = " SOURCE #{opts[:subj_tuple_title]} x [#{@source.id}: #{@source.display_label}] ".center(154, ' ')
         opts[:result_array] = fill_array_with_report_lines(tuple_list: opts[:src_hash], result_array: opts[:result_array], centered_title:)
+        opts[:result_array] << "+#{'- Source-only parent rows: -'.center(154, ' ')}+"
+        opts[:src_hash].each_key do |parent_id|
+          row_ids = opts[:target_domain].where(opts[:where_condition], @source.id, parent_id).pluck(:id)
+          opts[:result_array] << "- Parent ID #{parent_id} => Domain row IDs: #{row_ids.inspect}" if row_ids.present?
+        end
+        opts[:result_array] << "+#{''.center(154, '-')}+"
       else
         opts[:result_array] << ">> NO source-only #{opts[:result_title]}s."
       end
@@ -1010,6 +993,12 @@ module Merge
       if opts[:dest_hash].present?
         centered_title = " DEST #{opts[:subj_tuple_title]} x [#{@dest.id}: #{@dest.display_label}] ".center(154, ' ')
         opts[:result_array] = fill_array_with_report_lines(tuple_list: opts[:dest_hash], result_array: opts[:result_array], centered_title:)
+        opts[:result_array] << "+#{'- Dest.-only parent rows: -'.center(154, ' ')}+"
+        opts[:dest_hash].each_key do |parent_id|
+          row_ids = opts[:target_domain].where(opts[:where_condition], @dest.id, parent_id).pluck(:id)
+          opts[:result_array] << "- Parent ID #{parent_id} => Domain row IDs: #{row_ids.inspect}" if row_ids.present?
+        end
+        opts[:result_array] << "+#{''.center(154, '-')}+"
       else
         opts[:result_array] << ">> NO destination-only #{opts[:result_title]}s."
       end
@@ -1017,13 +1006,10 @@ module Merge
       if opts[:shared_hash].present?
         centered_title = "SHARED rows #{opts[:subj_tuple_title]}".center(154, ' ')
         opts[:result_array] = fill_array_with_report_lines(tuple_list: opts[:shared_hash], result_array: opts[:result_array], centered_title:)
-
         opts[:result_array] << "+#{'- Shared parent rows: -'.center(154, ' ')}+"
-        shared_parent_keys = opts[:shared_hash].keys # OLD: .map(&:first)
         # Foreach row in a shared parent, check for conflicts and report a decorated line:
-
-        shared_parent_keys.each do |parent_id|
-          # (ASSUMES: only 1 row x Badge x parent entity)
+        opts[:shared_hash].each_key do |parent_id|
+          # (ASSUMES/SIMPLIFICATION: mapping 1:1 => only 1 row x Badge x parent entity) Handles just the 1st:
           src_row = opts[:target_domain].where(opts[:where_condition], @source.id, parent_id).first
           dest_row = opts[:target_domain].where(opts[:where_condition], @dest.id, parent_id).first
 
