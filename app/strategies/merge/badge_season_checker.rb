@@ -7,7 +7,7 @@ module Merge
   #
   #   - version:  7-0.7.19
   #   - author:   Steve A.
-  #   - build:    20241007
+  #   - build:    20241009
   #
   # Contrary to Merge::TeamChecker or Merge::SwimmerChecker (which handle mostly a single Team o Swimmer "target"),
   # this class allows to check a *whole* Season for duplicate swimmer badges, as well as any other conflicts
@@ -45,53 +45,61 @@ module Merge
   #
   #
   # == Attributes:
-  # - <tt>#log</tt> => analysis log (array of string lines)
-  # - <tt>#errors</tt> => error messages (array of string messages)
-  # - <tt>#warnings</tt> => warning messages (array of string messages)
+  # - <tt>#log</tt>    => analysis log (array of string lines)
   # - <tt>#season</tt> => Season instance used for the analysis
   #
-  # - <tt>#diff_category_badges</tt> => Hash of arrays of duplicate badges, keyed by Swimmer#id,
-  #                                     with each array containing badges linked to the same Swimmer but
-  #                                     different *CategoryType* (array of Badge instances)
+  # - <tt>#diff_category_badges</tt>
+  #   => Hash of arrays of duplicate badges, keyed by Swimmer#id,
+  #      with each array containing badges linked to the same Swimmer but
+  #      different *CategoryType* (array of Badge instances)
   #
-  # - <tt>#diff_team_badges</tt> => Hash of arrays of duplicate badges, keyed by Swimmer#id,
-  #                                 with each array containing badges linked to the same Swimmer but
-  #                                 different *Team* (array of Badge instances)
+  # - <tt>#diff_team_badges</tt>
+  #   => Hash of arrays of duplicate badges, keyed by Swimmer#id,
+  #      with each array containing badges linked to the same Swimmer but
+  #      different *Team* (array of Badge instances)
   #
-  # - <tt>#diff_both_badges</tt> => Hash of arrays of duplicate badges, keyed by Swimmer#id,
-  #                                 with each array containing badges linked to the same Swimmer but
-  #                                 having both a different *Team* AND *CategoryType* (array of Badge instances)
+  # - <tt>#diff_both_badges</tt>
+  #   => Hash of arrays of duplicate badges, keyed by Swimmer#id,
+  #      with each array containing badges linked to the same Swimmer but
+  #      having both a different *Team* AND *CategoryType* (array of Badge instances)
   #
-  # - <tt>#multi_badges</tt> => Hash of arrays of duplicate badges, keyed by Swimmer#id,
-  #                             with each array containing all duplicate badges for the same swimmer
-  #                             (union of all the above arrays of Badges)
+  # - <tt>#multi_badges</tt>
+  #   => Hash of arrays of duplicate badges, keyed by Swimmer#id,
+  #      with each array containing all duplicate badges for the same swimmer
+  #      (union of all the above arrays of Badges)
   #
-  # - <tt>#diff_category_swimmer_ids</tt> => Array of Swimmer#ids with duplicate badges (Badges with differernt Category)
+  # - <tt>#diff_category_swimmer_ids</tt>
+  #   => Array of Swimmer#ids with duplicate badges (Badges with differerent Categories)
   #
-  # - <tt>#possible_team_merges</tt> => Array of arrays of possible Team merge candidates;
-  #                                     each array contains a list of Team instances that can be merged together.
+  # - <tt>#possible_team_merges</tt>
+  #   => Array of arrays of possible Team merge candidates;
+  #      each array contains a list of Team instances that can be merged together.
   #
-  # - <tt>#relay_badges</tt> => Array of Badge instances linked to a relay-only category, including both
-  #                             the ones with a possible valid duplicate and those without it.
-  #                             (The ones with a valid duplicate can be fixed by merging them.)
+  # - <tt>#relay_badges</tt>
+  #   => Array of Badge instances linked to a relay-only category, including both
+  #      the ones with a possible valid duplicate and those without it.
+  #      (The ones with a valid duplicate can be fixed by merging them.)
   #
-  # - <tt>#relay_only_badges</tt> => Array of Badge instances linked to a relay-only category but without
-  #                                  any known valid category (so the category needs to be computed somehow).
+  # - <tt>#relay_only_badges</tt>
+  #   => Array of Badge instances linked to a relay-only category but without
+  #      any known valid category (so the category needs to be computed somehow).
   #
-  # - <tt>#sure_badge_merges</tt> => Hash of arrays of badges in need to be either merged or fixed, keyed by Swimmer#id.
-  #                                  These "sure" merges are:
-  #                                  1. duplicate badges having the same Team but a different category
-  #                                  2. wrongly-assigned badges linked to relay-only categories with no-known valid category
-  #   (Note that duplicate badges with different Teams are not considered here on purpose as Team names of merge candidates
-  #    need to be evaluated on a case-by-case basis before doing a manual merge.)
+  # - <tt>#sure_badge_merges</tt>
+  #   => Hash of arrays of badges in need to be either merged or fixed, keyed by Swimmer#id.
+  #      These "sure" merges are:
+  #      1. duplicate badges having the same Team but a different category
+  #      2. wrongly-assigned badges linked to relay-only categories with no-known valid category
+  #      3. same-swimmer badges sharing the same meeting (either event or program)
   #
+  # - <tt>#possible_badge_merges</tt>
+  #   => Hash of arrays of possible badge-merges, keyed by Swimmer#id.
   #
   # === Example usage:
   # > season = GogglesDb::Season.find(192)
   # > bsc = Merge::BadgeSeasonChecker.new(season: season) ; bsc.run ; bsc.display_report
   #
   class BadgeSeasonChecker # rubocop:disable Metrics/ClassLength
-    attr_reader :log, :errors, :warnings, :season,
+    attr_reader :log, :season,
                 :multi_badges, :diff_category_badges, :diff_team_badges, :diff_both_badges,
                 :diff_category_swimmer_ids, :possible_team_merges,
                 :relay_badges, :relay_only_badges, :sure_badge_merges, :possible_badge_merges
@@ -130,8 +138,6 @@ module Merge
     # All internal state variables are initialized and ready for use after calling this method.
     def initialize_data
       @log = []
-      @errors = []
-      @warnings = []
 
       # Format for all below: { swimmer_id => [badge1, badge2, ...] }
       @multi_badges = {}          # Hash enlisting all swimmers x current season having more than 1 badge
@@ -152,7 +158,7 @@ module Merge
     end
 
     # Launches the analysis process for merge feasibility while collecting data for the internal members.
-    # *This process does not alter the database.*
+    # *This process does not alter the database*. Returns always +nil+.
     #
     # == "Mergeability":
     # - src vs. dest. Badge's MIRs/MRSs can have:
@@ -167,13 +173,10 @@ module Merge
     #   conflicts can be sorted out by either clearing the lap row or moving it to the new MIR,
     #   when not in conflict.
     #
-    # == Returns:
-    # +true+ if the merge seems feasible, +false+ otherwise.
-    # Check the #log & #errors members for details and error messages.
     def run # rubocop:disable Metrics/AbcSize,Metrics/PerceivedComplexity,Metrics/CyclomaticComplexity,Metrics/MethodLength
       initialize_data if @log.present?
 
-      @log << "\r\n[Season ID #{@season.id}] -- Badges analysis --\r\n"
+      @log << "\r\n[Season ID #{@season.id}] -- Badges analysis: --\r\n"
       @relay_badges = GogglesDb::Badge.joins(:category_type)
                                       .includes(:category_type)
                                       .where('badges.season_id = ? AND category_types.relay = true', @season.id)
@@ -221,11 +224,16 @@ module Merge
         if different_team
           already_considered = false
 
+          # Add to "sure merges" only the first couple of different team ids which share a meeting in common:
+          # (any following & matching couple will end up in "possible merges" for future consideration)
           badges.to_a.combination(2).each do |badge_couple|
-            next unless Merge::BadgeSeasonChecker.badges_share_a_meeting?(badge_couple.first.id, badge_couple.last.id)
+            next if already_considered || !Merge::BadgeSeasonChecker.badges_share_a_meeting?(badge_couple.first.id, badge_couple.last.id)
 
-            # Add to "sure merges" only couples of different team ids which share a meeting in common:
-            @sure_badge_merges[swimmer_id] = badge_couple
+            if already_considered
+              @possible_badge_merges[swimmer_id] = badges
+            else
+              @sure_badge_merges[swimmer_id] = badge_couple
+            end
             already_considered = true
           end
           @possible_badge_merges[swimmer_id] = badges if any_mergeable_names && !already_considered
@@ -250,11 +258,6 @@ module Merge
         end
       end
 
-      # TODO
-      # BadgeSeasonChecker should also "align" source and dest. Badge-merge candidates
-      # according to which one is more data-complete of the two.
-      # (Longer swimmer names should become source data fields that overwrite the dest. badge)
-
       log_stats
       log_team_merge_candidates
       log_badge_merge_candidates(@sure_badge_merges, 'SURE (same swimmer, same meeting)')
@@ -263,8 +266,8 @@ module Merge
       compute_and_log_corrected_relay_only_categories if @relay_only_badges.present?
       if @relay_badges.present? || @sure_badge_merges.present?
         @log << "\r\nBefore doing any *TEAM* merge, fix possibly:"
-        @log << "1. the #{@sure_badge_merges.keys.size} 'sure_badge_merges' (may include some relay-only badges)" if @sure_badge_merges.present?
-        @log << "2. the #{@relay_badges.size} 'relay_badges'" if @relay_badges.present?
+        @log << "- the #{@sure_badge_merges.keys.size} 'sure_badge_merges' (may include some relay-only badges)" if @sure_badge_merges.present?
+        @log << "- the #{@relay_badges.size} 'relay_badges'" if @relay_badges.present?
       end
       if @possible_badge_merges.present?
         @log << "There are #{@possible_badge_merges.size} 'possible_badge_merges' that require manual inspection before merging, due to similar team names."
@@ -279,7 +282,24 @@ module Merge
     # rubocop:disable Rails/Output
     def display_report
       puts(@log.join("\r\n"))
-      puts("\r\n")
+      puts('')
+      display_short_summary
+    end
+
+    # Outputs the short summary of the checking to stdout.
+    def display_short_summary # rubocop:disable Metrics/AbcSize
+      puts("    [Season ID #{@season.id}] Stats:")
+      puts("    - @sure_badge_merges........: #{@sure_badge_merges.keys.size}")
+      puts("    - @possible_badge_merges....: #{@possible_badge_merges.keys.size}")
+      puts("    - @multi_badges.............: #{@multi_badges.keys.size}")
+      puts("    - @possible_team_merges.....: #{@possible_team_merges.size}")
+      puts("    - @relay_only_badges........: #{@relay_only_badges.size}")
+      puts("    - @relay_badges.............: #{@relay_badges.size}")
+      puts("    - @diff_category_badges.....: #{@diff_category_badges.keys.size}")
+      puts("    - @diff_category_swimmer_ids: #{@diff_category_swimmer_ids.size}")
+      puts("    - @diff_team_badges.........: #{@diff_team_badges.keys.size}")
+      puts("    - @diff_both_badges.........: #{@diff_both_badges.keys.size}")
+      puts('')
       nil
     end
     # rubocop:enable Rails/Output
@@ -461,8 +481,10 @@ module Merge
         end
         @log << column_array.join(' | ')
       end
-      @log << "Total: #{badges_x_swimmer_hash.keys.size} (##{title_label.downcase}_badge_merges hash: <swimmer_id> => [badges_array])"
+      @log << "Total: #{badges_x_swimmer_hash.keys.size} (@#{title_label.split.first.downcase}_badge_merges hash: <swimmer_id> => [badges_array])"
     end
+    #-- ------------------------------------------------------------------------
+    #++
 
     # Updates the internal log buffer with the list of RELAY-ONLY Badges that may need
     # correction to their CategoryType, because they are assigned to a relay-only category.
@@ -470,7 +492,7 @@ module Merge
       return if @relay_only_badges.blank?
 
       @log << "\r\n\033[1;33;37mPossible corrections for RELAY-ONLY Badges:\033[0m"
-      @relay_only_badges.each_slice(2) do |badges|
+      @relay_only_badges.sort_by(&:swimmer_id).each_slice(2) do |badges|
         column_array = [] # Stores the composed formatted row output
         badges.each do |badge|
           age = @season.begin_date.year - badge.swimmer.year_of_birth

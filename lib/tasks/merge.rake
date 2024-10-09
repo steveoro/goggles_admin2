@@ -126,29 +126,34 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
     merger.prepare
     puts('Aborted.') && break if merger.errors.present?
 
-    process_sql_file(file_index:, title: 'merge_swimmers', merger:, sql_log_array: merger.sql_log, simulate:)
+    puts("\r\n*** Log: ***\r\n")
+    puts(merger.log.join("\r\n"))
+    file_name = "#{format('%03d', file_index)}-merge_swimmers-#{merger.source.id}-#{merger.dest.id}"
+    process_sql_file(file_name:, sql_log_array: merger.sql_log, simulate:)
     puts("Done.\r\n")
   end
   #-- -------------------------------------------------------------------------
   #++
 
-  # Creates an SQL file under #{SCRIPT_OUTPUT_DIR} which will merge
-  # the source row into the dest row.
-  # The file name have the format: "<index>-<title>-<source_id>-<dest_id|autofix>.sql"
-  # The method will execute also the script on localhost only when 'simulate' is +false+.
-  def process_sql_file(file_index:, title:, merger:, sql_log_array:, simulate: true) # rubocop:disable Metrics/AbcSize,Rake/MethodDefinitionInTask
-    dest_id_label = merger.dest ? merger.dest.id : 'autofix'
-    sql_file_name = "#{SCRIPT_OUTPUT_DIR}/#{format('%03d', file_index)}-#{title}-#{merger.source.id}-#{dest_id_label}.sql"
+  # Creates the specified file under #{SCRIPT_OUTPUT_DIR} by contatenating the log array into
+  # a single text file.
+  # If 'simulate' is +false+, the resulting script will be also executed on localhost using the MySQL client.
+  #
+  # == Params:
+  # - file_name: the resulting text file name, minus the '.sql' extension;
+  # - sql_log_array: the array of SQL statements to be written to the file;
+  # - simulate: when set to '0' will enable script execution on localhost (toggled off by default).
+  #
+  def process_sql_file(file_name:, sql_log_array:, simulate: true) # rubocop:disable Metrics/AbcSize,Rake/MethodDefinitionInTask
+    sql_file_name = "#{SCRIPT_OUTPUT_DIR}/#{file_name}.sql"
     File.open(sql_file_name, 'w+') { |f| f.puts(sql_log_array.join("\r\n")) }
-    puts("\r\n*** Log: ***\r\n")
-    puts(merger.log.join("\r\n"))
     puts("\r\nFile '#{sql_file_name}' saved.")
 
     if simulate
       puts("\r\n\t\t>>> NOTHING WAS DONE TO THE DB: THIS WAS JUST A SIMULATION <<<\r\n")
-      puts("\r\n--> Remember to use the 'simulate=0' option to actually run the generated script!")
+      puts("--> Remember to use the 'simulate=0' option to actually run the generated script!")
     else
-      puts("\r\n--> Executing script on localhost...")
+      puts('--> Executing script on localhost...')
       # NOTE: for security reasons, ActiveRecord::Base.connection.execute() executes just the first
       # command when passed multiple staments. This is somewhat overlooked and not properly documented
       # in the docs as of this writing. We'll use the MySql client for this one:
@@ -175,21 +180,37 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
 
     Options: [Rails.env=#{Rails.env}]
              season=<source_season_id>
+             list_teams=<'0'>|'1'
 
       - season: source Season ID to be checked;
 
+      - list_teams: when set to '1' will output all team names associated with possible badge merges.
+
   DESC
   task(season_check: [:environment]) do
-    puts '*** Task: merge:season_check ***'
+    puts("*** Task: merge:season_check - season #{ENV.fetch('season', nil)} ***")
     season = GogglesDb::Season.find_by(id: ENV['season'].to_i)
     if season.nil?
       puts("You need a valid 'season' ID to proceed.")
       exit
     end
+    list_teams = ENV['list_teams'] == '1'
+
+    puts('--> LIST TEAMS for possible badge merges: ✔') if list_teams
 
     checker = Merge::BadgeSeasonChecker.new(season:)
     checker.run
     checker.display_report
+    exit unless list_teams || checker.possible_badge_merges.blank?
+
+    puts("\r\n\033[1;33;37mPOSSIBLE BADGE-MERGE candidates w/ badge details:\033[0m (tot. #{checker.possible_badge_merges.size})")
+    checker.possible_badge_merges.each do |swimmer_id, badge_list|
+      deco_list = badge_list.map do |badge|
+        "[ID \033[1;33;33m#{badge.id.to_s.rjust(7)}\033[0m, team #{badge.team_id.to_s.rjust(5)}: #{badge.team.name} / #{badge.category_type.code}]".ljust(100)
+      end
+      puts("- Swimmer #{swimmer_id.to_s.rjust(6)}, badges: #{deco_list.join('| ')}")
+    end
+    puts("\r\nTot. #{checker.possible_badge_merges.count} possible badge merges.")
   end
   #-- -------------------------------------------------------------------------
   #++
@@ -310,7 +331,8 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
       puts("    +=> (#{dest.id}) #{dest.display_label}, season #{dest.season_id}")
       puts("        team #{dest.team_id}, category_type #{dest.category_type_id} (#{dest.category_type.code})\r\n")
     end
-    puts("#{"\r\n- SIMULATE".ljust(50, '.')}: ✔") if simulate
+    puts("\r\n#{'- SIMULATE'.ljust(50, '.')}: ✔") if simulate
+    puts("#{'- AUTOFIX'.ljust(50, '.')}: ✔") if autofix
     puts("#{'- keep ALL dest. columns'.ljust(50, '.')}: ✔") if keep_dest_columns
     puts("#{'- keep dest. category'.ljust(50, '.')}: ✔") if keep_dest_category
     puts("#{'- keep dest. team'.ljust(50, '.')}: ✔") if keep_dest_team
@@ -324,7 +346,10 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
     merger.prepare
     puts('Aborted.') && break if merger.errors.present?
 
-    process_sql_file(file_index:, title: 'merge_badges', merger:, sql_log_array: merger.single_transaction_sql_log, simulate:)
+    puts("\r\n*** Log: ***\r\n")
+    puts(merger.log.join("\r\n"))
+    file_name = "#{format('%03d', file_index)}-merge_badges-#{merger.source.id}-#{merger.dest ? merger.dest.id : 'autofix'}"
+    process_sql_file(file_name:, sql_log_array: merger.single_transaction_sql_log, simulate:)
     puts("Done.\r\n")
   end
   #-- -------------------------------------------------------------------------
@@ -346,21 +371,125 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
 
     Options: [Rails.env=#{Rails.env}]
              season=<source_season_id>
+             simulate=<'1'>|'0'
 
       - season: source Season ID to be checked;
 
+      - simulate: when set to '0' will enable script execution on localhost (toggled off by default);
+
   DESC
-  task(season_fix: [:environment]) do
-    puts '*** Task: merge:season_check ***'
+  task(season_fix: [:environment]) do # rubocop:disable Metrics/BlockLength
+    puts "*** Task: merge:season_fix - season #{ENV.fetch('season', nil)} ***"
     season = GogglesDb::Season.find_by(id: ENV['season'].to_i)
     if season.nil?
       puts("You need a valid 'season' ID to proceed.")
       exit
     end
+    simulate = ENV['simulate'] != '0' # Don't run locally the script unless explicitly requested
+
+    puts('')
+    puts('--> SIMULATE: ✔') if simulate
+    puts('--> Running BadgeSeasonChecker...')
 
     checker = Merge::BadgeSeasonChecker.new(season:)
     checker.run
-    checker.display_report
+    checker.display_short_summary
+
+    # 1) "Sure Mergeable Badges" (same swimmer, same event, even when category or team differs):
+    #    Note that merge candidates are paired in couples and just the first match is stored in
+    #   "sure_badge_merges"; all other candidates need more runs.
+    while checker.sure_badge_merges.present?
+      process_merge_badges(
+        step_name: "Step 1: 'sure badge merges'",
+        file_name: "#{Time.zone.now.strftime('%Y%m%d_%H%M%S')}-1-sure_merge_badges-season_#{season.id}",
+        array_of_array_of_badges: checker.sure_badge_merges.values,
+        simulate:
+      )
+      break if simulate # (Bail out if we are not applying locally the script for changes)
+
+      puts("\r\n--> Refreshing BadgeSeasonChecker results...")
+      checker.run
+      checker.display_short_summary
+      puts("\r\n--> Some residual merge candidates found: re-running step 1...") if checker.sure_badge_merges.present?
+    end
+
+    # 2) Relay-only Badges linked to a relay category and without a known alternative inside same season:
+    while checker.relay_only_badges.present?
+      process_merge_badges(
+        step_name: "Step 2: 'relay-only' badges",
+        file_name: "#{Time.zone.now.strftime('%Y%m%d_%H%M%S')}-2-relay_only_badges-season_#{season.id}",
+        array_of_array_of_badges: checker.relay_only_badges,
+        simulate:
+      )
+      break if simulate # (Bail out if we are not applying locally the script for changes)
+
+      puts("\r\n--> Refreshing BadgeSeasonChecker results...")
+      checker.run
+      checker.display_short_summary
+      puts("\r\n--> Some relay-only candidates found: re-running step 2...") if checker.relay_only_badges.present?
+    end
+
+    # 3) Remaining Badges linked to a relay category and with possibly an alternative category:
+    while checker.relay_badges.present?
+      process_merge_badges(
+        step_name: 'Step 3: remaining relay badges',
+        file_name: "#{Time.zone.now.strftime('%Y%m%d_%H%M%S')}-3-relay_badges-season_#{season.id}",
+        array_of_array_of_badges: checker.relay_badges,
+        simulate:
+      )
+      break if simulate # (Bail out if we are not applying locally the script for changes)
+
+      puts("\r\n--> Refreshing BadgeSeasonChecker results...")
+      checker.run
+      if checker.relay_badges.present?
+        puts("\r\n--> Some relay candidates found: re-running step 3...")
+        checker.display_short_summary
+      else
+        checker.display_report
+      end
+    end
+    puts("Done.\r\n")
+  end
+  #-- -------------------------------------------------------------------------
+  #++
+
+  # Runs the script on the specified subset of badges, measuring its execution time and
+  # generating a single SQL script for each call.
+  #
+  # == Params:
+  # - file_name: the resulting SQL script file name, minus the extension;
+  # - array_of_array_of_badges: the list of badges to process; it can either be an actual array of array of Badge
+  #   instances, or just an array of Badges for autofixing their category type;
+  # - step_name: the name of the current step displayed on screen;
+  # - simulate: if false it will run the script on localhost after its creation.
+  #
+  def process_merge_badges(file_name:, array_of_array_of_badges:, step_name:, simulate:) # rubocop:disable Metrics/AbcSize,Rake/MethodDefinitionInTask
+    return if array_of_array_of_badges.blank?
+
+    puts("\r\n--> #{step_name}: #{array_of_array_of_badges.count}. Preparing SQL script...")
+    sql_log = []
+    array_of_array_of_badges.each_slice(50).with_index do |badges_slice, idx|
+      tms = Benchmark.measure do
+        badges_slice.each do |merge_candidates|
+          # Detect category fix (no destination) or actual merge (dest: first <=| source: second):
+          merger = Merge::Badge.new(
+            source: merge_candidates.is_a?(Array) ? merge_candidates.second : merge_candidates,
+            dest: merge_candidates.is_a?(Array) ? merge_candidates.first : nil,
+            autofix: true
+          )
+          merger.prepare
+          sql_log += merger.sql_log
+          putc('.')
+        end
+      end
+      puts(" total time: #{tms.total}\", #{badges_slice.size + (idx * 50)}/#{array_of_array_of_badges.count}")
+    end
+
+    process_sql_file(
+      file_name:,
+      sql_log_array: Merge::Badge.start_transaction_log + sql_log + Merge::Badge.end_transaction_log,
+      simulate:
+    )
   end
   #-- -------------------------------------------------------------------------
   #++

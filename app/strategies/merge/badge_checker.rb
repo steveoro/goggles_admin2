@@ -7,7 +7,7 @@ module Merge
   #
   #   - version:  7-0.7.19
   #   - author:   Steve A.
-  #   - build:    20241007
+  #   - build:    20241009
   #
   # Check the feasibility of merging the Badge entities specified in the constructor while
   # also gathering all sub-entities that need to be moved or purged.
@@ -179,15 +179,10 @@ module Merge
         @unrecoverable_conflict = true
         @errors << 'Conflicting seasons! (Cannot merge badges from different Seasons)'
       end
-      @errors << 'Conflicting teams! (MANUAL DECISION REQUIRED)' if @dest && (@source.team_id != @dest.team_id)
-      if mir_conflicting?
-        @unrecoverable_conflict = true
-        @errors << 'Conflicting MIR(s) found in same MeetingEvent'
-      end
-      if mrss_conflicting?
-        @unrecoverable_conflict = true
-        @errors << 'Conflicting MRS(s) found in same MeetingEvent'
-      end
+      @errors << 'Conflicting teams! (MANUAL DECISION or OVERRIDE REQUIRED)' if @dest && (@source.team_id != @dest.team_id)
+
+      @warnings << 'Conflicting MIR(s) found in same MeetingEvent (possible duplicates)' if mir_conflicting?
+      @warnings << 'Conflicting MRS(s) found in same MeetingEvent (possible duplicates)' if mrss_conflicting?
 
       @warnings << 'Conflicting MReservation(s) found in same Meeting (DELETABLE)' unless mres_compatible?
       @warnings << 'Conflicting MEventReservation(s) found in same Meeting (DELETABLE)' unless mev_res_compatible?
@@ -205,6 +200,11 @@ module Merge
     # rubocop:disable Rails/Output
     def display_report
       puts(@log.join("\r\n"))
+      display_short_summary
+    end
+
+    # Outputs the short summary of the checking to stdout.
+    def display_short_summary
       puts("\r\n\r\n*** WARNINGS: ***\r\n#{@warnings.join("\r\n")}") if @warnings.present?
       puts("\r\n\r\n*** ERRORS: ***\r\n#{@errors.join("\r\n")}") if @errors.present?
       puts("\r\n")
@@ -350,13 +350,15 @@ module Merge
       return false if shared_mevent_ids_from_mirs.blank?
 
       shared_mevent_ids_from_mirs.any? do |mevent_id, _mir_count|
-        # (1 MIR x Badge x Event only)
+        # (Compare just the oldest rows: 1 MIR x Badge x Event only)
         src_row = GogglesDb::MeetingIndividualResult.joins(:meeting_event).includes(:meeting_event)
                                                     .where(badge_id: @source.id, 'meeting_events.id': mevent_id)
+                                                    .order(:id)
                                                     .first
         if @dest.present?
           dest_row = GogglesDb::MeetingIndividualResult.joins(:meeting_event).includes(:meeting_event)
                                                        .where(badge_id: @dest.id, 'meeting_events.id': mevent_id)
+                                                       .order(:id)
                                                        .first
         end
         # Detect any conflicting timing (same timing or auto-fixing => no conflict):
@@ -504,15 +506,17 @@ module Merge
       return false if shared_mevent_ids_from_mrss.blank?
 
       shared_mevent_ids_from_mrss.any? do |mevent_id, _mrs_count|
-        # (1 MRS x Badge x Event only)
+        # (Compare just the oldest rows: 1 MRS x Badge x Event only)
         src_row = GogglesDb::MeetingRelaySwimmer.joins(:meeting_event, :meeting_relay_result)
                                                 .includes(:meeting_event, :meeting_relay_result)
                                                 .where(badge_id: @source.id, 'meeting_events.id': mevent_id)
+                                                .order(:id)
                                                 .first
         if @dest.present?
           dest_row = GogglesDb::MeetingRelaySwimmer.joins(:meeting_event, :meeting_relay_result)
                                                    .includes(:meeting_event, :meeting_relay_result)
                                                    .where(badge_id: @dest.id, 'meeting_events.id': mevent_id)
+                                                   .order(:id)
                                                    .first
         end
         # Detect any conflicting timing (same timing or auto-fixing => no conflict):
