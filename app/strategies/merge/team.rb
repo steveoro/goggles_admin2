@@ -6,35 +6,47 @@ module Merge
   #
   #   - version:  7-0.7.19
   #   - author:   Steve A.
-  #   - build:    20241010
+  #   - build:    20241011
   #
   class Team
     attr_reader :sql_log, :checker, :source, :dest
 
-    # Allows a source Team to be merged into a destination one. All related entities
-    # will be handled (team_affiliations, badges, results, laps, ...).
+    # Allows a source Team to be merged into a destination one.
+    # All related entities will be handled (team_affiliations, badges, results, laps, ...)
+    # mostly by a simple 'team_id' update.
     #
-    # "Merging" implies moving all source data into the destination, so also the final source
-    # columns values will usually become the new destination values (values from SOURCE/Master |=>
-    # become new values for DESTINATION/Slave).
-    # For this reason, use the dedicated parameter whenever the destination master row needs to
-    # keep its columns untouched.
+    # This is a much more simplified version of merge process done by Merge::Badge for
+    # instance, which instead does more checks and performs additional fixes to prevent
+    # data inconsistencies.
     #
-    # More schematically:
+    # === Involved entites (in alphabetical order):
     #
-    #   [SOURCE] ------------------------> [DESTINATION]
-    #   - to be purged (ID disappears)  /  - to be kept (ID remains)
-    #   1. copies "master" column values into "slave" dest. values (overwritten)
-    #   2. copies source sub-enties which are totally missing from dest.
-    #   3. updates "shared" sub-enties which present some differences at any level of the hierarchy.
+    # - Badge                   (#team_id, #team_affiliation_id)
+    # - ComputedSeasonRanking   (#team_id)
+    # - GoggleCup               (#team_id)
+    # - IndividualRecord        (#team_id)
+    # - Lap                     (#team_id)
+    # - ManagedAffiliation      (#team_affiliation_id)
+    # - MeetingEntry            (#team_id, #team_affiliation_id)
+    # - MeetingEventReservation (#team_id) (*)unique idx with team_id + more
+    # - MeetingReservation      (#team_id) (*)unique idx with badge_id + more
+    # - MeetingRelayReservation (#team_id) (*)unique idx with team_id + more
+    # - MeetingIndividualResult (#team_id, #team_affiliation_id)
+    # - MeetingRelayResult      (#team_id, #team_affiliation_id)
+    # - MeetingTeamScore        (#team_id, #team_affiliation_id)
+    # - Meeting                 (#home_team_id)
+    # - RelayLap                (#team_id)
+    # (- Team)
+    # - TeamAffiliation         (#team_id) (*)unique idx with team_id & season_id
+    # - TeamAlias               (#team_id) (*)unique idx with team_id & name
+    # - TeamLapTemplate         (#team_id)
+    # - UserWorkshop            (#team_id)
     #
-    # While the first step is pretty straightforward, both the second and third steps
-    # involve defining what is a "shared" sub-entity and what may make two rows similar or
-    # overlapping for the specific entity we are trying to merge.
+    # Entity rows affected by unique indexes (*) need to be deleted before becoming duplicates.
     #
-    # In most cases, the merge is considered "unfeasible" (at least automatically) if
-    # there are any shared/conflicting parent entities linked to any of the sub-entities involved,
-    # so step 3. from above won't even happen.
+    # All other duplicate rows generated with the merge Team process *must* be dealed with
+    # using the dedicated tasks 'merge:season_fix' or 'merge:badge'.
+    # These will perform the necessary cleanup on a season-by-season or badge-by-badge basis.
     #
     # == Additional notes:
     # This merge class won't actually touch the DB: it will just prepare the script so
