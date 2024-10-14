@@ -6,7 +6,7 @@ module Merge
   #
   #   - version:  7-0.7.19
   #   - author:   Steve A.
-  #   - build:    20241011
+  #   - build:    20241014
   #
   class Team
     attr_reader :sql_log, :checker, :source, :dest
@@ -72,11 +72,12 @@ module Merge
     #++
 
     # Prepares the merge script inside a single transaction.
-    def prepare # rubocop:disable Metrics/AbcSize
-      result_ok = @checker.run
-      @checker.display_report && return unless result_ok
+    # Countrary to other Merge classes, this strategy class does not halt in case of conflicts
+    # and always displays the checker report.
+    def prepare
+      @checker.run
+      @checker.display_report
 
-      @checker.log << "\r\n\r\n- #{'Checker'.ljust(44, '.')}: OK"
       @sql_log << "\r\n-- Merge team (#{@source.id}) #{@source.display_label} |=> (#{@dest.id}) #{@dest.display_label}-- \r\n"
       # NOTE: uncommenting the following in the output SQL may yield nulls for created_at & updated_at if we don't provide values in the row
       @sql_log << '-- SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";'
@@ -84,29 +85,21 @@ module Merge
       @sql_log << 'START TRANSACTION;'
       @sql_log << ''
 
-      prepare_script_for_badge_and_team_links
+      prepare_script_for_team_affiliation_links
       prepare_script_for_team_only_links
-
-      # Move any team-only association too:
-      @sql_log << "UPDATE individual_records SET updated_at=NOW(), team_id=#{@dest.id} WHERE team_id=#{@source.id};"
-      @sql_log << "UPDATE users SET updated_at=NOW(), team_id=#{@dest.id} WHERE team_id=#{@source.id};"
-      # Remove the source team before making the destination columns a duplicate of it:
-      @sql_log << "DELETE FROM teams WHERE id=#{@source.id};"
 
       # Overwrite all commonly used columns at the end, if requested (this will update the index too):
       unless @skip_columns
-        @sql_log << "UPDATE teams SET updated_at=NOW(), last_name=\"#{@source.last_name}\", first_name=\"#{@source.first_name}\", year_of_birth=#{@source.year_of_birth},"
-        @sql_log << "  complete_name=\"#{@source.complete_name}\", nickname=\"#{@source.nickname || 'NULL'}\","
-        @sql_log << "  associated_user_id=#{@source.associated_user_id || 'NULL'}, gender_type_id=#{@source.gender_type_id}, year_guessed=#{@source.year_guessed} WHERE id=#{@dest.id};\r\n"
+        # Update only attributes with values (don't overwrite existing with nulls):
+        attrs = ["name=\"#{@source.name}\""]
+        attrs << "editable_name=\"#{@source.editable_name}\"" if @source.editable_name.present?
+        attrs << "name_variations=\"#{@source.name_variations}\"" if @source.name_variations.present?
+        attrs << "city_id=#{@source.city_id}" if @source.city_id.present?
+        @sql_log << "UPDATE teams SET updated_at=NOW(), #{attrs.join(', ')} WHERE id=#{@dest.id};"
       end
 
       @sql_log << ''
       @sql_log << 'COMMIT;'
-
-      # FUTUREDEV: *** Cups & Records ***
-      # - IndividualRecord: TODO, missing model (but table is there, links both team & team)
-      # - SeasonPersonalStandard: currently used only in old CSI meetings and not used nor updated anymore
-      # - GoggleCupStandard: TODO
     end
     #-- ------------------------------------------------------------------------
     #++
@@ -115,85 +108,85 @@ module Merge
     def log
       @checker.log
     end
-
-    # Returns the <tt>#errors</tt> array from the internal TeamChecker instance.
-    def errors
-      @checker.errors
-    end
-
-    # Returns the <tt>#warnings</tt> array from the internal TeamChecker instance.
-    def warnings
-      @checker.warnings
-    end
     #-- ------------------------------------------------------------------------
     #++
 
     private
 
-    # Prepares the SQL text for the "Badge update" phase involving all entities that have a
-    # foreign key to the source team's Badge.
-    def prepare_script_for_badge_and_team_links # rubocop:disable Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
-      return if @checker.src_only_badges.blank? && @checker.shared_badges.blank?
+    # Prepares the SQL text for the "TeamAffiliation update" phase involving all entities that have a
+    # foreign key to the source TeamAffiliation ID.
+    #
+    # == TeamAffiliation is bound to:
+    # - Badge                   (#team_id, #team_affiliation_id)
+    # - ManagedAffiliation      (#team_affiliation_id)
+    # - MeetingEntry            (#team_id, #team_affiliation_id)
+    # - MeetingIndividualResult (#team_id, #team_affiliation_id)
+    # - MeetingRelayResult      (#team_id, #team_affiliation_id)
+    # - MeetingTeamScore        (#team_id, #team_affiliation_id)
+    # - [TeamAffiliation]       (#team_id) (*)unique idx with team_id & season_id
+    #
+    def prepare_script_for_team_affiliation_links # rubocop:disable Metrics/AbcSize
+      # For each source TeamAffiliation, set the correct destination Team & TA for all its sub-entities:
+      GogglesDb::TeamAffiliation.where(team_id: @source.id).order(:season_id).each do |src_ta|
+        dest_ta = GogglesDb::TeamAffiliation.where(season_id: src_ta.season_id, team_id: @dest.id).first
 
-      # Entities names implied in a badge IDs update (+ team_id):
-      tables_with_badge = %w[
-        meeting_entries meeting_event_reservations meeting_individual_results
-        meeting_relay_reservations meeting_relay_teams meeting_reservations
-      ]
+        # Found dest. TA for a corresponding source? => Use it as destination for updating all source TA references
+        # (src_ta |==> dest_ta)
+        if dest_ta
+          @sql_log << "\r\n-- Season #{src_ta.season_id}, dest. TA found #{dest_ta.id}, updating references to TA #{src_ta.id}:"
+          # All source sub-entities will become dest:
+          @sql_log << "UPDATE badges SET updated_at=NOW(), team_id=#{@dest.id}, team_affiliation_id=#{dest_ta.id} WHERE team_affiliation_id=#{src_ta.id};"
+          @sql_log << "UPDATE managed_affiliations SET updated_at=NOW(), team_affiliation_id=#{dest_ta.id} WHERE team_affiliation_id=#{src_ta.id};"
+          @sql_log << "UPDATE meeting_entries SET updated_at=NOW(), team_id=#{@dest.id}, team_affiliation_id=#{dest_ta.id} WHERE team_affiliation_id=#{src_ta.id};"
+          @sql_log << "UPDATE meeting_individual_results SET updated_at=NOW(), team_id=#{@dest.id}, team_affiliation_id=#{dest_ta.id} WHERE team_affiliation_id=#{src_ta.id};"
+          @sql_log << "UPDATE meeting_relay_results SET updated_at=NOW(), team_id=#{@dest.id}, team_affiliation_id=#{dest_ta.id} WHERE team_affiliation_id=#{src_ta.id};"
+          @sql_log << "UPDATE meeting_team_scores SET updated_at=NOW(), team_id=#{@dest.id}, team_affiliation_id=#{dest_ta.id} WHERE team_affiliation_id=#{src_ta.id};"
+          # Update source TA only at the end:
+          @sql_log << "DELETE FROM team_affiliations WHERE team_affiliation_id=#{src_ta.id};"
 
-      if @checker.src_only_badges.present?
-        @checker.log << "- #{'Updates for Badges (badge_id + team_id)'.ljust(44, '.')}: #{@checker.src_only_badges.count}"
-        @checker.log << "- #{'Updates for MeetingIndividualResults'.ljust(44, '.')}: #{@checker.src_only_mirs.count}" if @checker.src_only_mirs.present?
-        @checker.log << "- #{'Updates for MeetingRelayTeams'.ljust(44, '.')}: #{@checker.src_only_mrss.count}" if @checker.src_only_mrss.present?
-        @checker.log << "- #{'Updates for MeetingEntries'.ljust(44, '.')}: #{@checker.src_only_mes.count}" if @checker.src_only_mes.present?
-        @checker.log << "- #{'Updates for MeetingReservations'.ljust(44, '.')}: #{@checker.src_only_mres.count}" if @checker.src_only_mres.present?
-        @checker.log << "- #{'Updates for MeetingEventReservations'.ljust(44, '.')}: #{@checker.src_only_mev_res.count}" if @checker.src_only_mev_res.present?
-        @checker.log << "- #{'Updates for MeetingRelayReservations'.ljust(44, '.')}: #{@checker.src_only_mrel_res.count}" if @checker.src_only_mrel_res.present?
-        @sql_log << '-- [Source-only badges updates:]'
-        # Move ownership to dest.row:
-        @sql_log << "UPDATE badges SET updated_at=NOW(), team_id=#{@dest.id}"
-        @sql_log << "  WHERE id IN (#{@checker.src_only_badges.join(', ')});\r\n"
-
-        # Update also team_id in sub-entities:
-        tables_with_badge.each do |sub_entity|
-          @sql_log << "UPDATE #{sub_entity} SET updated_at=NOW(), team_id=#{@dest.id} WHERE badge_id IN (#{@checker.src_only_badges.join(', ')});"
+        # Dest. TA MISSING? Use source TA row and change its team_id:
+        # (src_ta |==> src_ta recycled into dest, so ta's links are ok)
+        else
+          @sql_log << "\r\n-- Season #{src_ta.season_id}, dest. TA MISSING, recycling src. TA #{dest_ta.id}, updating references:"
+          @sql_log << "UPDATE badges SET updated_at=NOW(), team_id=#{@dest.id} WHERE team_affiliation_id=#{src_ta.id};"
+          # (managed_affiliations table is already ok, as src will become "new dest")
+          @sql_log << "UPDATE meeting_entries SET updated_at=NOW(), team_id=#{@dest.id} WHERE team_affiliation_id=#{src_ta.id};"
+          @sql_log << "UPDATE meeting_individual_results SET updated_at=NOW(), team_id=#{@dest.id} WHERE team_affiliation_id=#{src_ta.id};"
+          @sql_log << "UPDATE meeting_relay_results SET updated_at=NOW(), team_id=#{@dest.id} WHERE team_affiliation_id=#{src_ta.id};"
+          @sql_log << "UPDATE meeting_team_scores SET updated_at=NOW(), team_id=#{@dest.id} WHERE team_affiliation_id=#{src_ta.id};"
+          # Update source TA only at the end:
+          @sql_log << "UPDATE team_affiliations SET updated_at=NOW(), team_id=#{@dest.id} WHERE team_affiliation_id=#{dest_ta.id};"
         end
-        @sql_log << '' # empty line separator every badge update
       end
-      return if @checker.shared_badges.blank?
-
-      @checker.log << "- #{'Badges to be updated and DELETED'.ljust(44, '.')}: #{@checker.shared_badges.count}"
-      @sql_log << '-- [Shared badges:]'
-      # For each sub-entity linked to a SHARED source badge (key), move it to the destination
-      # team and badge ID (value):
-      @checker.shared_badges.each do |src_badge_id, dest_badge_id|
-        tables_with_badge.each do |sub_entity|
-          @sql_log << "UPDATE #{sub_entity} SET updated_at=NOW(), team_id=#{@dest.id}, badge_id=#{dest_badge_id} " \
-                      "WHERE badge_id=#{src_badge_id};"
-        end
-        @sql_log << '' # empty line separator every badge update
-      end
-      @sql_log << ''
-
-      # Delete source shared badges (keys) after sub-entity update:
-      @sql_log << "DELETE FROM badges WHERE id IN (#{@checker.shared_badges.keys.join(', ')});"
     end
-    #-- ------------------------------------------------------------------------
-    #++
 
-    # Prepares the SQL text for the "Team-only" update phase involving all entities that have a
-    # foreign key to Badge.
-    def prepare_script_for_team_only_links
-      # Entities implied in a team_id-only update:
-      [
-        GogglesDb::Lap, GogglesDb::RelayLap, GogglesDb::UserResult, GogglesDb::UserLap
-        # GogglesDb::IndividualRecord TODO
-      ].each do |entity|
-        next unless entity.exists?(team_id: @source.id)
-
-        @checker.log << "- Updates for #{entity.name.split('::').last.ljust(32, '.')}: #{entity.where(team_id: @source.id).count}"
-        @sql_log << "UPDATE #{entity.table_name} SET updated_at=NOW(), team_id=#{@dest.id} WHERE team_id=#{@source.id};"
-      end
+    # Prepares the SQL text for the "Team update" phase involving all entities that have a
+    # foreign key to the source Team ID.
+    #
+    # == Team is bound to:
+    # - ComputedSeasonRanking   (#team_id)
+    # - GoggleCup               (#team_id)
+    # - IndividualRecord        (#team_id)
+    # - Lap                     (#team_id)
+    # - Meeting                 (#home_team_id)
+    # - RelayLap                (#team_id)
+    # - TeamAlias               (#team_id) (*)unique idx with team_id & name
+    # - TeamLapTemplate         (#team_id)
+    # - UserWorkshop            (#team_id)
+    # - [Team]
+    #
+    def prepare_script_for_team_only_links # rubocop:disable Metrics/AbcSize
+      @sql_log << "\r\n-- Team-only updates (Team #{@source.id} |=> #{@dest.id}})"
+      @sql_log << "UPDATE computed_season_rankings SET updated_at=NOW(), team_id=#{@dest.id} WHERE team_id=#{@source.id};"
+      @sql_log << "UPDATE goggle_cups SET updated_at=NOW(), team_id=#{@dest.id} WHERE team_id=#{@source.id};"
+      @sql_log << "UPDATE laps SET updated_at=NOW(), team_id=#{@dest.id} WHERE team_id=#{@source.id};"
+      @sql_log << "UPDATE meetings SET updated_at=NOW(), home_team_id=#{@dest.id} WHERE team_id=#{@source.id};"
+      @sql_log << "UPDATE relay_laps SET updated_at=NOW(), team_id=#{@dest.id} WHERE team_id=#{@source.id};"
+      @sql_log << "UPDATE team_lap_templates SET updated_at=NOW(), team_id=#{@dest.id} WHERE team_id=#{@source.id};"
+      @sql_log << "UPDATE user_workshops SET updated_at=NOW(), team_id=#{@dest.id} WHERE team_id=#{@source.id};"
+      # No interest in keeping duplicate aliases: (Also, unique index won't allow creating duplicates)
+      @sql_log << "DELETE FROM team_aliases WHERE id=#{@source.id};"
+      @sql_log << "DELETE FROM teams WHERE id=#{@source.id};"
     end
     #-- ------------------------------------------------------------------------
     #++

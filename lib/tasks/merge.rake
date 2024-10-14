@@ -3,7 +3,7 @@
 require 'fileutils'
 
 #
-# = Local Deployment helper tasks
+# = Local Data merging/fixing helper tasks
 #
 #   - (p) FASAR Software 2007-2024
 #   - for Goggles framework vers.: 7.00
@@ -29,43 +29,6 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
       FileUtils.mkdir_p(folder) unless File.directory?(folder)
     end
     puts "\r\n"
-  end
-  #-- -------------------------------------------------------------------------
-  #++
-
-  desc <<~DESC
-      Just checks for Swimmer merge feasibility reporting any issues on the console.
-
-    Two swimmer rows are considered "mergeable" if *none* of the linked sibling entities
-    have a shared "parent container" entity.
-
-    For instance, no 2 different relay swimmers (src & dest) should be linked to the
-    same MeetingRelayResult. This rule is currently set "stricter" for MIRs, which
-    in order to be mergeable must not belong to the same Meeting, and conversely more
-    loosen for Badges, which can even be shared (between src and dest) among the same
-    Season (2 different badges may have been created for the 2 slightly different swimmers
-    during 2 different data-import procedures due to mis-parsing).
-
-    Options: [Rails.env=#{Rails.env}]
-             src=<source_swimmer_id>
-             dest=<destination_swimmer_id>
-
-      - src: source Swimmer ID
-      - dest: destination Swimmer ID
-
-  DESC
-  task(swimmer_check: [:environment]) do
-    puts '*** Task: merge:swimmer_check ***'
-    source = GogglesDb::Swimmer.find_by(id: ENV['src'].to_i)
-    dest = GogglesDb::Swimmer.find_by(id: ENV['dest'].to_i)
-    if source.nil? || dest.nil?
-      puts("You need both 'src' & 'dest' IDs to proceed.")
-      exit
-    end
-
-    checker = Merge::SwimmerChecker.new(source:, dest:)
-    checker.run
-    checker.display_report
   end
   #-- -------------------------------------------------------------------------
   #++
@@ -131,129 +94,6 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
     file_name = "#{format('%03d', file_index)}-merge_swimmers-#{merger.source.id}-#{merger.dest.id}"
     process_sql_file(file_name:, sql_log_array: merger.sql_log, simulate:)
     puts("Done.\r\n")
-  end
-  #-- -------------------------------------------------------------------------
-  #++
-
-  # Creates the specified file under #{SCRIPT_OUTPUT_DIR} by contatenating the log array into
-  # a single text file.
-  # If 'simulate' is +false+, the resulting script will be also executed on localhost using the MySQL client.
-  #
-  # == Params:
-  # - file_name: the resulting text file name, minus the '.sql' extension;
-  # - sql_log_array: the array of SQL statements to be written to the file;
-  # - simulate: when set to '0' will enable script execution on localhost (toggled off by default).
-  #
-  def process_sql_file(file_name:, sql_log_array:, simulate: true) # rubocop:disable Metrics/AbcSize,Rake/MethodDefinitionInTask
-    sql_file_name = "#{SCRIPT_OUTPUT_DIR}/#{file_name}.sql"
-    File.open(sql_file_name, 'w+') { |f| f.puts(sql_log_array.join("\r\n")) }
-    puts("\r\nFile '#{sql_file_name}' saved.")
-
-    if simulate
-      puts("\r\n\t\t>>> NOTHING WAS DONE TO THE DB: THIS WAS JUST A SIMULATION <<<\r\n")
-      puts("--> Remember to use the 'simulate=0' option to actually run the generated script!")
-    else
-      puts('--> Executing script on localhost...')
-      # NOTE: for security reasons, ActiveRecord::Base.connection.execute() executes just the first
-      # command when passed multiple staments. This is somewhat overlooked and not properly documented
-      # in the docs as of this writing. We'll use the MySql client for this one:
-      rails_config = Rails.configuration
-      db_name      = rails_config.database_configuration[Rails.env]['database']
-      db_user      = rails_config.database_configuration[Rails.env]['username']
-      db_pwd       = rails_config.database_configuration[Rails.env]['password']
-      db_host      = rails_config.database_configuration[Rails.env]['host']
-      system("mysql --host=#{db_host} --user=#{db_user} --password=\"#{db_pwd}\" --database=#{db_name} --execute=\"\\. #{sql_file_name}\"")
-    end
-  end
-  #-- -------------------------------------------------------------------------
-  #++
-
-  desc <<~DESC
-      Checks and analyzes for issues a WHOLE Season by checking the overall
-    hierarchy integrity of badges.
-
-    The resulting report will suggest:
-
-    - possible team merges;
-    - possible badge merges;
-    - badge duplication & wrong category assignments
-
-    Options: [Rails.env=#{Rails.env}]
-             season=<source_season_id>
-             list_teams=<'0'>|'1'
-
-      - season: source Season ID to be checked;
-
-      - list_teams: when set to '1' will output all team names associated with possible badge merges.
-
-  DESC
-  task(season_check: [:environment]) do
-    puts("*** Task: merge:season_check - season #{ENV.fetch('season', nil)} ***")
-    season = GogglesDb::Season.find_by(id: ENV['season'].to_i)
-    if season.nil?
-      puts("You need a valid 'season' ID to proceed.")
-      exit
-    end
-    list_teams = ENV['list_teams'] == '1'
-
-    puts('--> LIST TEAMS for possible badge merges: ✔') if list_teams
-
-    checker = Merge::BadgeSeasonChecker.new(season:)
-    checker.run
-    checker.display_report
-    exit unless list_teams || checker.possible_badge_merges.blank?
-
-    puts("\r\n\033[1;33;37mPOSSIBLE BADGE-MERGE candidates w/ badge details:\033[0m (tot. #{checker.possible_badge_merges.size})")
-    checker.possible_badge_merges.each do |swimmer_id, badge_list|
-      deco_list = badge_list.map do |badge|
-        "[ID \033[1;33;33m#{badge.id.to_s.rjust(7)}\033[0m, team #{badge.team_id.to_s.rjust(5)}: #{badge.team.name} / #{badge.category_type.code}]".ljust(100)
-      end
-      puts("- Swimmer #{swimmer_id.to_s.rjust(6)}, badges: #{deco_list.join('| ')}")
-    end
-    puts("\r\nTot. #{checker.possible_badge_merges.count} possible badge merges.")
-  end
-  #-- -------------------------------------------------------------------------
-  #++
-
-  desc <<~DESC
-      Just checks for Badge merge/fix feasibility reporting any issues on the console.
-
-    Two Badge rows are considered "mergeable" if *none* of the linked sibling entities
-    have a shared "parent container" entity with an linked different timing result.
-
-    E.g. - Two badges for the same swimmer are mergeable if:
-    1. belong to the same season & swimmer;
-    2. any MIR/MRS linked to the same MeetingEvent for both badges has the same timing result
-       of the other result associated to the different badge.
-       Each timing result can belong to a different MeetingProgram, as long as they belong
-       to the same event of the other corresponding badge.
-    3. any non-result/non-timing row associated to the corresponding other badge has no difference
-       in value (otherwise it's not a duplication, but a conflict).
-
-    Conflicts in badges to be merged may be manually overridden only for Team, TeamAffiliation &
-    CategoryType value differences.
-
-    Options: [Rails.env=#{Rails.env}]
-             src=<source_badge_id>
-             dest=<destination_badge_id>
-
-      - src: source badge ID
-      - dest: destination badge ID; when missing, the source badge will be checked for "auto-fixing"
-              for wrongly assigned categories.
-
-  DESC
-  task(badge_check: [:environment]) do
-    puts '*** Task: merge:badge_check ***'
-    source = GogglesDb::Badge.find_by(id: ENV['src'].to_i)
-    dest = GogglesDb::Badge.find_by(id: ENV['dest'].to_i)
-    if source.nil?
-      puts("You need at least the 'src' ID to proceed.")
-      exit
-    end
-
-    checker = Merge::BadgeChecker.new(source:, dest:)
-    checker.run
-    checker.display_report
   end
   #-- -------------------------------------------------------------------------
   #++
@@ -449,6 +289,41 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
       end
     end
     puts("Done.\r\n")
+  end
+  #-- -------------------------------------------------------------------------
+  #++
+
+  private
+
+  # Creates the specified file under #{SCRIPT_OUTPUT_DIR} by contatenating the log array into
+  # a single text file.
+  # If 'simulate' is +false+, the resulting script will be also executed on localhost using the MySQL client.
+  #
+  # == Params:
+  # - file_name: the resulting text file name, minus the '.sql' extension;
+  # - sql_log_array: the array of SQL statements to be written to the file;
+  # - simulate: when set to '0' will enable script execution on localhost (toggled off by default).
+  #
+  def process_sql_file(file_name:, sql_log_array:, simulate: true) # rubocop:disable Metrics/AbcSize,Rake/MethodDefinitionInTask
+    sql_file_name = "#{SCRIPT_OUTPUT_DIR}/#{file_name}.sql"
+    File.open(sql_file_name, 'w+') { |f| f.puts(sql_log_array.join("\r\n")) }
+    puts("\r\nFile '#{sql_file_name}' saved.")
+
+    if simulate
+      puts("\r\n\t\t>>> NOTHING WAS DONE TO THE DB: THIS WAS JUST A SIMULATION <<<\r\n")
+      puts("--> Remember to use the 'simulate=0' option to actually run the generated script!")
+    else
+      puts('--> Executing script on localhost...')
+      # NOTE: for security reasons, ActiveRecord::Base.connection.execute() executes just the first
+      # command when passed multiple staments. This is somewhat overlooked and not properly documented
+      # in the docs as of this writing. We'll use the MySql client for this one:
+      rails_config = Rails.configuration
+      db_name      = rails_config.database_configuration[Rails.env]['database']
+      db_user      = rails_config.database_configuration[Rails.env]['username']
+      db_pwd       = rails_config.database_configuration[Rails.env]['password']
+      db_host      = rails_config.database_configuration[Rails.env]['host']
+      system("mysql --host=#{db_host} --user=#{db_user} --password=\"#{db_pwd}\" --database=#{db_name} --execute=\"\\. #{sql_file_name}\"")
+    end
   end
   #-- -------------------------------------------------------------------------
   #++

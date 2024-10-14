@@ -10,7 +10,7 @@ module Merge
   # Check the feasibility of merging the Team entities specified in the constructor while
   # also gathering all sub-entities that need to be moved or purged.
   #
-  # Countrary to other "checker" classes, the TeamChecker does not halts in case of conflicts.
+  # Countrary to other "checker" classes, the TeamChecker does not halt in case of conflicts.
   # Any duplicated badges resulting from a team merge must be processed afterwards using
   # the Merge::Badge strategy.
   #
@@ -60,6 +60,7 @@ module Merge
     #
     def initialize(source:, dest:)
       raise(ArgumentError, 'Both source and destination must be Teams!') unless source.is_a?(GogglesDb::Team) && dest.is_a?(GogglesDb::Team)
+      raise(ArgumentError, 'Identical source and destination!') if source.id == dest.id
 
       @source = source.decorate
       @dest = dest.decorate
@@ -67,10 +68,10 @@ module Merge
       @src_entities = {}  # format: { entity.to_s => [relation_of_entity_rows] }
       @dest_entities = {} # (format as above)
 
-      @src_season_ids = src_entities(GogglesDb::Badge).pluck(:season_id).uniq
-      @dest_season_ids = dest_entities(GogglesDb::Badge).pluck(:season_id).uniq
-      @overall_season_ids = @src_season_ids.union(@dest_season_ids)
-      @shared_season_ids = @src_season_ids.intersection(@dest_season_ids)
+      @src_season_ids = src_entities(GogglesDb::TeamAffiliation).pluck(:season_id).uniq.sort
+      @dest_season_ids = dest_entities(GogglesDb::TeamAffiliation).pluck(:season_id).uniq.sort
+      @overall_season_ids = @src_season_ids.union(@dest_season_ids).sort
+      @shared_season_ids = @src_season_ids.intersection(@dest_season_ids).sort
     end
     #-- ------------------------------------------------------------------------
     #++

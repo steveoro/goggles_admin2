@@ -36,6 +36,7 @@ module Merge
     def initialize(source:, dest: nil)
       raise(ArgumentError, 'Invalid source Badge!') unless source.is_a?(GogglesDb::Badge)
       raise(ArgumentError, 'Invalid destination!') unless dest.blank? || dest.is_a?(GogglesDb::Badge)
+      raise(ArgumentError, 'Identical source and destination! (Use a nil destination to fix source.)') if dest && source.id == dest.id
 
       @source = source.decorate
       @dest = dest.decorate if dest
@@ -100,9 +101,48 @@ module Merge
           category_type_ids: badges.map(&:category_type_id).uniq,
           category_type_codes: badges.map { |badge| badge.category_type.code }.uniq,
           badges:,
-          teams: badges.map { |badge| { badge.team.id => badge.team.name } }
+          teams: badges.map { |badge| { badge.team.id => "'#{badge.team.name}' (B: #{badge.id})" } }
         }
       end
+    end
+
+    # Returns a multi-line header detailing source & destination (if available) badges.
+    #
+    # == Params:
+    # - <tt>src_badge</tt>: already decorated main/source GogglesDb::Badge instance
+    # - <tt>dest_badge</tt>: already decorated destination GogglesDb::Badge instance; default: +nil+.
+    # - <tt>computed_category_type_id</tt>: computed category type id
+    # - <tt>computed_category_type_code</tt>: computed category type code
+    #
+    def self.badge_report_header(src_badge:, computed_category_type_id:, computed_category_type_code:, dest_badge: nil)
+      return [] unless src_badge.is_a?(GogglesDb::Badge)
+
+      header = [
+        "\r\n🔹[Src  BADGE: #{src_badge.id.to_s.rjust(7)}] #{src_badge.short_label}, " \
+        "Cat. #{src_badge.category_type_id} #{src_badge.category_type.code} " \
+        "(computed cat. #{computed_category_type_id} #{computed_category_type_code})"
+      ]
+      if dest_badge.is_a?(GogglesDb::Badge)
+        header << "🔹[Dest BADGE: #{dest_badge.id.to_s.rjust(7)}] #{dest_badge.short_label}, " \
+                  "Cat. #{dest_badge.category_type_id} #{dest_badge.category_type.code}\r\n"
+      end
+
+      header
+    end
+
+    # Returns a single displayable string with the details of each category type & team found
+    # for a badge in a given season.
+    #
+    # == Params:
+    # - <tt>categories_map</tt>: a single Hash item of the list returned by BadgeChecker#map_categories_x_seasons.
+    #
+    def self.decorate_categories_map(categories_map)
+      existing_teams = categories_map[:teams].map { |team_id, team_name| "#{team_id}: #{team_name}" }.join(', ')
+      existing_categories = categories_map[:category_type_codes].map { |cat_code| cat_code }.join(', ')
+      "  - Season #{categories_map[:season_id]}, age: #{categories_map[:swimmer_age]}, " \
+        "cat: ~ #{categories_map[:computed_category_type_code]} " \
+        "(#{categories_map[:computed_category_type_id].to_s.rjust(4)}) computed / " \
+        "found #{existing_categories} -> #{existing_teams}"
     end
     #-- ------------------------------------------------------------------------
     #++
@@ -165,10 +205,6 @@ module Merge
       @log += mrel_res_analysis
       @log += ments_analysis
 
-      if @dest && (@source.id == @dest.id)
-        @unrecoverable_conflict = true
-        @errors << 'Identical source and destination! (Use a nil destination to fix source.)'
-      end
       if @dest && (@source.category_type.relay? || @dest.category_type.relay?)
         @warnings << 'Wrong relay-only category found assigned to a badge (FIXABLE)'
       elsif @dest && @source.category_type_id != @dest.category_type_id
@@ -229,7 +265,7 @@ module Merge
     # Sets @categories_x_seasons with the Array of Hash items returned by Merge::BadgeChecker#map_categories_x_seasons().
     # Returns a multi-line report as an array of printable strings, describing both the source & destination entities
     # in detail.
-    def badge_analysis # rubocop:disable Metrics/AbcSize
+    def badge_analysis
       return @badge_analysis if @badge_analysis.present?
 
       season_type_id = @source.season.season_type_id
@@ -248,20 +284,18 @@ module Merge
       #   }
       curr_hash = @categories_x_seasons.find { |h| h[:season_id] == @source.season_id }
 
-      @badge_analysis = [
-        "\r\n\t*** Badge Checker ***\r\n",
-        "🔹[Src  BADGE: #{@source.id.to_s.rjust(7)}] #{@source.short_label}, Cat. #{@source.category_type_id} #{@source.category_type.code} " \
-        "(computed cat. #{curr_hash[:computed_category_type_id]} #{curr_hash[:computed_category_type_code]})"
-      ]
-      @badge_analysis << "🔹[Dest BADGE: #{@dest.id.to_s.rjust(7)}] #{@dest.short_label}, Cat. #{@dest.category_type_id} #{@dest.category_type.code}\r\n" if @dest
+      @badge_analysis = ["\r\n\t*** Badge Checker ***"]
+      @badge_analysis += badge_report_header(
+        src_badge: @source,
+        computed_category_type_id: curr_hash[:computed_category_type_id],
+        computed_category_type_code: curr_hash[:computed_category_type_code],
+        dest_badge: @dest
+      )
       @badge_analysis << "\r\n--> CATEGORY AUTO-FIXING REQUIRED <--\r\n" if category_auto_fixing?
       @badge_analysis << "Latest 12 categories found for this same swimmer (#{@source.swimmer_id}):"
 
-      @categories_x_seasons.map do |season_hash|
-        existing_teams = season_hash[:teams].map { |team_id, team_name| "#{team_id}: #{team_name}" }.join(', ')
-        existing_categories = season_hash[:category_type_codes].map { |cat_code| cat_code }.join(', ')
-        @badge_analysis << "  - Season #{season_hash[:season_id]}, age: #{season_hash[:swimmer_age]}, cat: ~ #{season_hash[:computed_category_type_code]} " \
-                           "(#{season_hash[:computed_category_type_id].to_s.rjust(4)}) computed / found #{existing_categories} -> #{existing_teams}"
+      @categories_x_seasons.map do |categories_map|
+        @badge_analysis << decorate_categories_map(categories_map)
       end
 
       @badge_analysis
