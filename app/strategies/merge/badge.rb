@@ -6,7 +6,7 @@ module Merge
   #
   #   - version:  7-0.7.19
   #   - author:   Steve A.
-  #   - build:    20241009
+  #   - build:    20241016
   #
   class Badge # rubocop:disable Metrics/ClassLength
     attr_reader :sql_log, :checker, :source, :dest
@@ -189,6 +189,9 @@ module Merge
       @checker.log << "\r\n\r\n- #{'Checker'.ljust(44, '.')}: #{result_ok ? '✅ OK' : '🟡 Overridden conflicts'}"
       @checker.log << "- #{'AUTOFIX'.ljust(44, '.')}: ✅ ON" if @autofix
       prepare_script_header
+      # Initialize the key tuple for MPrograms insertions:
+      # (A non-existing <category_type_id, gender_type_id> tuple will force the creation of a new MProgram)
+      @last_insert_mprg_tuple = [0, 0] # ([category_type_id, gender_type_id])
 
       # MIRs/Laps:
       prepare_script_for_disjointed_mirs(badge_id: @source.id,
@@ -461,6 +464,7 @@ module Merge
       row_ids = target_domain.where(where_condition, badge_ids, parent_ids).pluck(:id)
       return if row_ids.blank?
 
+      @sql_log << ''
       @sql_log << "-- Badge IDs.........: #{badge_ids.inspect}"
       @sql_log << "-- +=> Parent IDs....: #{parent_ids.inspect}"
       @sql_log << "-- +=> Domain row IDs: #{row_ids.inspect}"
@@ -501,6 +505,46 @@ module Merge
         @sql_log << "DELETE FROM #{main_table} WHERE id = #{deletable_row.id};"
       end
       choosen_row
+    end
+
+    # Decides if a missing MeetingProgram should be added to the SQL log,
+    # updating @last_id in the script, or if the last value stored in @last_id
+    # already has the MeetingProgram ID to be used.
+    #
+    # This is needed to prevent duplicated MeetingProgram insertions in the script
+    # whenever a MPrg. is missing and needs to be added.
+    #
+    # == WARNING:
+    # THIS WORKS ONLY IF ALL PROCESSED EVENTS AND BADGES ARE SORTED BY CATEGORY & GENDER
+    # AS ONLY THE LAST-INSERT ID VALUE IS STORED AND CHECKED.
+    #
+    # 1. KEEP EACH BADGE-FIX SCRIPT IN A SINGLE TRANSACTION
+    # 2. EXECUTE EACH BADGE-FIX SCRIPT ONE BY ONE
+    #
+    # (Otherwise other badge-fixing script may insert the same MPrg. more than once)
+    #
+    # Since Merge::Badge only handles a couple of badges per event, this
+    # is most important for any other strategy or task that may use it.
+    # ('merge:season_fix', for example)
+    #
+    # == Params:
+    # - meeting_event_id: the MeetingEvent ID of the missing MProgram;
+    # - category_type_id: the CategoryType ID of the missing MProgram;
+    # - gender_type_id: the GenderType ID of the missing MProgram.
+    #
+    # == Returns:
+    # The number of MProgram insertions logged into the SQL script (0 or 1).
+    #
+    def handle_mprogram_insert_or_select(meeting_event_id, category_type_id, gender_type_id)
+      # Bail out if there's no change in category_type or gender_type with what was last used for @last_id:
+      return 0 if @last_insert_mprg_tuple == [meeting_event_id, category_type_id, gender_type_id]
+
+      @sql_log << 'INSERT INTO meeting_programs (updated_at, meeting_event_id, category_type_id, gender_type_id, autofilled) ' \
+                  "VALUES (NOW(), #{meeting_event_id}, #{category_type_id}, #{gender_type_id}, 1);"
+      @sql_log << 'SELECT LAST_INSERT_ID() INTO @last_id;'
+      # Update the internal member with the keys used for the insertion:
+      @last_insert_mprg_tuple = [meeting_event_id, category_type_id, gender_type_id]
+      1
     end
 
     #-- ------------------------------------------------------------------------
@@ -562,11 +606,7 @@ module Merge
                                   mir_id_list: disjointed_mirs_ids)
         else
           # Insert missing MPrg, then do the update:
-          @sql_log << 'INSERT INTO meeting_programs (updated_at, category_type_id, gender_type_id, autofilled) ' \
-                      "VALUES (NOW(), #{final_category_type_id}, #{@source.gender_type.id}, 1);"
-          mprg_inserts += 1
-          @sql_log << 'SELECT LAST_INSERT_ID() INTO @last_id;'
-          # Move source-only MIR using correct IDs:
+          mprg_inserts += handle_mprogram_insert_or_select(mevent_id, final_category_type_id, @source.gender_type.id)
           @sql_log << 'UPDATE meeting_individual_results SET ' \
                       "#{full_set_statement_values(row_structure: final_mir, leading_clause: 'updated_at=NOW(), meeting_program_id=@last_id')} " \
                       "WHERE id = #{final_mir.id};"
@@ -684,11 +724,7 @@ module Merge
                                   lap_id_list: existing_lap_ids)
         else
           # Insert missing MPrg, then do the update:
-          @sql_log << 'INSERT INTO meeting_programs (updated_at, category_type_id, gender_type_id, autofilled) ' \
-                      "VALUES (NOW(), #{final_category_type_id}, #{@dest.gender_type.id}, 1);"
-          mprg_inserts += 1
-          @sql_log << 'SELECT LAST_INSERT_ID() INTO @last_id;'
-          # Update destination MIR with the correct IDs:
+          mprg_inserts += handle_mprogram_insert_or_select(mevent_id, final_category_type_id, @dest.gender_type.id)
           @sql_log << 'UPDATE meeting_individual_results SET ' \
                       "#{full_set_statement_values(row_structure: dest_mir, leading_clause: 'updated_at=NOW(), meeting_program_id=@last_id')} " \
                       "WHERE id = #{dest_mir.id};"
@@ -1167,11 +1203,8 @@ module Merge
                       "#{full_set_statement_values(row_structure: final_mentry, leading_clause: 'updated_at=NOW(), meeting_program_id=' + dest_mprg.id.to_s)} " \
                       "WHERE id = #{final_mentry.id};"
         else
-          @sql_log << 'INSERT INTO meeting_programs (updated_at, category_type_id, gender_type_id, autofilled) ' \
-                      "VALUES (NOW(), #{final_category_type_id}, #{@source.gender_type.id}, 1);"
-          mprg_inserts += 1
-          @sql_log << 'SELECT LAST_INSERT_ID() INTO @last_id;'
-          # Move source-only MEntry using correct IDs:
+          # Insert missing MPrg, then do the update:
+          mprg_inserts += handle_mprogram_insert_or_select(mevent_id, final_category_type_id, @source.gender_type.id)
           @sql_log << 'UPDATE meeting_entries SET ' \
                       "#{full_set_statement_values(row_structure: final_mentry, leading_clause: 'updated_at=NOW(), meeting_program_id=@last_id')} " \
                       "WHERE id = #{final_mentry.id};"
@@ -1237,11 +1270,8 @@ module Merge
                       "#{full_set_statement_values(row_structure: dest_mentry, leading_clause: 'updated_at=NOW(), meeting_program_id=' + dest_mprg.id.to_s)} " \
                       "WHERE id = #{dest_mentry.id};"
         else
-          @sql_log << 'INSERT INTO meeting_programs (updated_at, category_type_id, gender_type_id, autofilled) ' \
-                      "VALUES (NOW(), #{final_category_type_id}, #{@source.gender_type.id}, 1);"
-          mprg_inserts += 1
-          @sql_log << 'SELECT LAST_INSERT_ID() INTO @last_id;'
-          # Update destination MEntry with the correct IDs:
+          # Insert missing MPrg, then do the update:
+          mprg_inserts += handle_mprogram_insert_or_select(mevent_id, final_category_type_id, @source.gender_type.id)
           @sql_log << 'UPDATE meeting_entries SET ' \
                       "#{full_set_statement_values(row_structure: dest_mentry, leading_clause: 'updated_at=NOW(), meeting_program_id=@last_id')} " \
                       "WHERE id = #{dest_mentry.id};"

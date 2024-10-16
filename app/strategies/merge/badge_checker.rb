@@ -7,7 +7,7 @@ module Merge
   #
   #   - version:  7-0.7.19
   #   - author:   Steve A.
-  #   - build:    20241009
+  #   - build:    20241015
   #
   # Check the feasibility of merging the Badge entities specified in the constructor while
   # also gathering all sub-entities that need to be moved or purged.
@@ -92,7 +92,8 @@ module Merge
         computed_category_type = season.category_types.where('relay = false AND age_begin <= ? AND age_end >= ?', swimmer_age, swimmer_age)
                                        .first
         badges = GogglesDb::Badge.includes(:category_type, :team)
-                                 .where('swimmer_id = ? AND season_id = ?', swimmer_id, season.id)
+                                 .joins(:category_type, :team)
+                                 .where('badges.swimmer_id = ? AND badges.season_id = ?', swimmer_id, season.id)
         {
           season_id: season.id,
           swimmer_age:,
@@ -101,7 +102,9 @@ module Merge
           category_type_ids: badges.map(&:category_type_id).uniq,
           category_type_codes: badges.map { |badge| badge.category_type.code }.uniq,
           badges:,
-          teams: badges.map { |badge| { badge.team.id => "'#{badge.team.name}' (B: #{badge.id})" } }
+          teams: badges.map do |badge|
+            { badge.team.id => "'#{badge.team.name}' (B: #{badge.id})" }
+          end
         }
       end
     end
@@ -285,7 +288,7 @@ module Merge
       curr_hash = @categories_x_seasons.find { |h| h[:season_id] == @source.season_id }
 
       @badge_analysis = ["\r\n\t*** Badge Checker ***"]
-      @badge_analysis += badge_report_header(
+      @badge_analysis += Merge::BadgeChecker.badge_report_header(
         src_badge: @source,
         computed_category_type_id: curr_hash[:computed_category_type_id],
         computed_category_type_code: curr_hash[:computed_category_type_code],
@@ -295,7 +298,7 @@ module Merge
       @badge_analysis << "Latest 12 categories found for this same swimmer (#{@source.swimmer_id}):"
 
       @categories_x_seasons.map do |categories_map|
-        @badge_analysis << decorate_categories_map(categories_map)
+        @badge_analysis << Merge::BadgeChecker.decorate_categories_map(categories_map)
       end
 
       @badge_analysis

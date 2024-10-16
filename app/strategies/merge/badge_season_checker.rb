@@ -7,7 +7,7 @@ module Merge
   #
   #   - version:  7-0.7.19
   #   - author:   Steve A.
-  #   - build:    20241009
+  #   - build:    20241015
   #
   # Contrary to Merge::TeamChecker or Merge::SwimmerChecker (which handle mostly a single Team o Swimmer "target"),
   # this class allows to check a *whole* Season for duplicate swimmer badges, as well as any other conflicts
@@ -238,12 +238,10 @@ module Merge
           end
           @possible_badge_merges[swimmer_id] = badges if any_mergeable_names && !already_considered
 
-        # (== team_id, != category id => badges may be wrongly assigned)
-        elsif different_category
-          @sure_badge_merges[swimmer_id] = badge_couple
-
-        # (== team_id, same category id => badges are all duplicates)
-        elsif !different_team && !different_category
+        # (== team_id, != category id => badges categories may be wrongly assigned)
+        # OR
+        # (== team_id, same category id => badges are all perfect duplicates)
+        else
           @sure_badge_merges[swimmer_id] = badges
         end
 
@@ -350,6 +348,9 @@ module Merge
         # Compare teams in pairs:
         team1 = badge_couple.first.team
         team2 = badge_couple.last.team
+        # Ignore badges from the same team (these are pure duplicates, already counted as "sure badge merges"):
+        next if team1.id == team2.id
+
         new_possible_merge_candidates = @possible_team_merges.none? { |similar_teams| similar_teams.include?(team1) || similar_teams.include?(team2) }
         matching_team_names = Merge::BadgeSeasonChecker.possible_matching_team_names?(team1, team2)
 

@@ -6,7 +6,7 @@ module Merge
   #
   #   - version:  7-0.7.19
   #   - author:   Steve A.
-  #   - build:    20241014
+  #   - build:    20241015
   #
   class Team
     attr_reader :sql_log, :checker, :source, :dest
@@ -74,7 +74,7 @@ module Merge
     # Prepares the merge script inside a single transaction.
     # Countrary to other Merge classes, this strategy class does not halt in case of conflicts
     # and always displays the checker report.
-    def prepare
+    def prepare # rubocop:disable Metrics/AbcSize
       @checker.run
       @checker.display_report
 
@@ -88,15 +88,20 @@ module Merge
       prepare_script_for_team_affiliation_links
       prepare_script_for_team_only_links
 
-      # Overwrite all commonly used columns at the end, if requested (this will update the index too):
-      unless @skip_columns
+      # Overwrite all commonly used columns at the end, if requested (this will update the index too)
+      attrs = []
+      if @skip_columns
+        # Update just the name variations:
+        name_variations = @dest.name_variations.include?(@source.name) ? @dest.name_variations : "#{@dest.name_variations};#{@source.name}"
+        attrs << "name_variations=\"#{name_variations}\""
+      else
         # Update only attributes with values (don't overwrite existing with nulls):
-        attrs = ["name=\"#{@source.name}\""]
+        attrs << "name=\"#{@source.name}\""
         attrs << "editable_name=\"#{@source.editable_name}\"" if @source.editable_name.present?
         attrs << "name_variations=\"#{@source.name_variations}\"" if @source.name_variations.present?
         attrs << "city_id=#{@source.city_id}" if @source.city_id.present?
-        @sql_log << "UPDATE teams SET updated_at=NOW(), #{attrs.join(', ')} WHERE id=#{@dest.id};"
       end
+      @sql_log << "UPDATE teams SET updated_at=NOW(), #{attrs.join(', ')} WHERE id=#{@dest.id};"
 
       @sql_log << ''
       @sql_log << 'COMMIT;'
@@ -133,7 +138,7 @@ module Merge
         # Found dest. TA for a corresponding source? => Use it as destination for updating all source TA references
         # (src_ta |==> dest_ta)
         if dest_ta
-          @sql_log << "\r\n-- Season #{src_ta.season_id}, dest. TA found #{dest_ta.id}, updating references to TA #{src_ta.id}:"
+          @sql_log << "\r\n-- Season #{src_ta.season_id}, dest. TA found #{dest_ta.id}, updating references to source TA #{src_ta.id}:"
           # All source sub-entities will become dest:
           @sql_log << "UPDATE badges SET updated_at=NOW(), team_id=#{@dest.id}, team_affiliation_id=#{dest_ta.id} WHERE team_affiliation_id=#{src_ta.id};"
           @sql_log << "UPDATE managed_affiliations SET updated_at=NOW(), team_affiliation_id=#{dest_ta.id} WHERE team_affiliation_id=#{src_ta.id};"
@@ -142,12 +147,12 @@ module Merge
           @sql_log << "UPDATE meeting_relay_results SET updated_at=NOW(), team_id=#{@dest.id}, team_affiliation_id=#{dest_ta.id} WHERE team_affiliation_id=#{src_ta.id};"
           @sql_log << "UPDATE meeting_team_scores SET updated_at=NOW(), team_id=#{@dest.id}, team_affiliation_id=#{dest_ta.id} WHERE team_affiliation_id=#{src_ta.id};"
           # Update source TA only at the end:
-          @sql_log << "DELETE FROM team_affiliations WHERE team_affiliation_id=#{src_ta.id};"
+          @sql_log << "DELETE FROM team_affiliations WHERE id=#{src_ta.id};"
 
         # Dest. TA MISSING? Use source TA row and change its team_id:
         # (src_ta |==> src_ta recycled into dest, so ta's links are ok)
         else
-          @sql_log << "\r\n-- Season #{src_ta.season_id}, dest. TA MISSING, recycling src. TA #{dest_ta.id}, updating references:"
+          @sql_log << "\r\n-- Season #{src_ta.season_id}, dest. TA MISSING, recycling source TA #{src_ta.id} (updating only team references):"
           @sql_log << "UPDATE badges SET updated_at=NOW(), team_id=#{@dest.id} WHERE team_affiliation_id=#{src_ta.id};"
           # (managed_affiliations table is already ok, as src will become "new dest")
           @sql_log << "UPDATE meeting_entries SET updated_at=NOW(), team_id=#{@dest.id} WHERE team_affiliation_id=#{src_ta.id};"
@@ -155,7 +160,7 @@ module Merge
           @sql_log << "UPDATE meeting_relay_results SET updated_at=NOW(), team_id=#{@dest.id} WHERE team_affiliation_id=#{src_ta.id};"
           @sql_log << "UPDATE meeting_team_scores SET updated_at=NOW(), team_id=#{@dest.id} WHERE team_affiliation_id=#{src_ta.id};"
           # Update source TA only at the end:
-          @sql_log << "UPDATE team_affiliations SET updated_at=NOW(), team_id=#{@dest.id} WHERE team_affiliation_id=#{dest_ta.id};"
+          @sql_log << "UPDATE team_affiliations SET updated_at=NOW(), team_id=#{@dest.id} WHERE id=#{src_ta.id};"
         end
       end
     end
@@ -176,11 +181,11 @@ module Merge
     # - [Team]
     #
     def prepare_script_for_team_only_links # rubocop:disable Metrics/AbcSize
-      @sql_log << "\r\n-- Team-only updates (Team #{@source.id} |=> #{@dest.id}})"
+      @sql_log << "\r\n-- Team-only updates (source Team #{@source.id} |=> dest #{@dest.id}})"
       @sql_log << "UPDATE computed_season_rankings SET updated_at=NOW(), team_id=#{@dest.id} WHERE team_id=#{@source.id};"
       @sql_log << "UPDATE goggle_cups SET updated_at=NOW(), team_id=#{@dest.id} WHERE team_id=#{@source.id};"
       @sql_log << "UPDATE laps SET updated_at=NOW(), team_id=#{@dest.id} WHERE team_id=#{@source.id};"
-      @sql_log << "UPDATE meetings SET updated_at=NOW(), home_team_id=#{@dest.id} WHERE team_id=#{@source.id};"
+      @sql_log << "UPDATE meetings SET updated_at=NOW(), home_team_id=#{@dest.id} WHERE home_team_id=#{@source.id};"
       @sql_log << "UPDATE relay_laps SET updated_at=NOW(), team_id=#{@dest.id} WHERE team_id=#{@source.id};"
       @sql_log << "UPDATE team_lap_templates SET updated_at=NOW(), team_id=#{@dest.id} WHERE team_id=#{@source.id};"
       @sql_log << "UPDATE user_workshops SET updated_at=NOW(), team_id=#{@dest.id} WHERE team_id=#{@source.id};"
