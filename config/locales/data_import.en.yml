@@ -40,7 +40,11 @@ en:
       btn_reparse_session_label: "Reparse sessions"
       btn_reparse_session_tooltip: "Make a forced reparse of this result file but JUST for the Meeting sessions (useful if you change and save the Meeting ID)"
       btn_purge_duplicate: "Purge duplicate"
-      confirm_purge: 'Are you sure you want to PUSH this file to the remote server?'
+      confirm_purge: "Are you sure you want to PURGE the row indexed by '%{key}'? (NOTE: this should be done only BEFORE starting the meeting results review phase to avoid data corruption!)"
+      btn_add_session: "Add session"
+      confirm_add_session: "Are you sure you want to add a new session to the data file?"
+      btn_add_event: "Add event"
+      confirm_add_event: "Are you sure you want to add a new event to the data file?"
       msg:
         warning_retry_needed: "RETRY ERROR SECTION FOUND! This result file can still be processed but needs to be re-downloaded to be complete."
       btn_expand_scan_details: "Scan details"

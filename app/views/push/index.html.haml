@@ -11,5 +11,7 @@
       = render(partial: 'file_tabs', locals: { active_tab: @parent_folder.include?('new') ? 'new' : 'sent' })
 
     %section#file-list
-      = render(partial: 'file_list/file_table', locals: { dirnames: @dirnames, curr_dir: @curr_dir,
-               files: @files, parent_folder: @parent_folder, filter: @filter })
+      = render(partial: 'file_list/file_table',
+               locals: { dirnames: @dirnames, curr_dir: @curr_dir,
+                         files: @files, parent_folder: @parent_folder,
+                         filter: @filter })

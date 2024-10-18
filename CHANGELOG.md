@@ -2,7 +2,8 @@
 
 _Please, add the latest build info on top of the list; use Version::MAJOR only after gold release; keep semantic versioning in line with framework's_
 
-- **0.7.19** [Steve A.] re-sync w/ base engine; bundle updates
+- **0.7.20** [Steve A.] re-sync w/ base engine; bundle updates; added support for session & event add in data-fix
+- **0.7.19** [Steve A.] re-sync w/ base engine; bundle updates; check & merge data management tasks
 - **0.7.18** [Steve A.] re-sync w/ base engine; bundle updates & misc specs adjustments; removed Patreon links for sponsorship
 - **0.7.16** [Steve A.] re-sync w/ base engine & bundle update
 - **0.7.12** [Steve A.] re-sync w/ base engine & bundle update

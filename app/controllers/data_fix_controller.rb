@@ -53,6 +53,50 @@ class DataFixController < ApplicationController
     ActionCable.server.broadcast('ImportStatusChannel', { msg: 'Review sessions: ready' })
   end
 
+  # [POST] /add_session
+  # Adds a new MeetingSession structure to the JSON file.
+  #
+  # == Params:
+  # - <tt>file_path</tt>: the path to the file to be loaded and scanned for existing rows.
+  #
+  def add_session
+    # Make sure we have Meeting & MeetingSession entities after the JSON parsing (which returns an Hash, not an Entity):
+    @solver.rebuild_cached_entities_for('meeting')
+    @solver.rebuild_cached_entities_for('meeting_session')
+
+    new_index = @solver.data['meeting_session'].count
+    meeting = @solver.cached_instance_of('meeting', nil)
+    last_session = @solver.cached_instance_of('meeting_session', new_index - 1) if new_index.positive?
+    # In case last_session is nil (for any reason), use the new index as session order:
+    session_order = last_session ? last_session.session_order + 1 : new_index + 1
+
+    new_session = @solver.find_or_prepare_session(
+      meeting:,
+      session_order:,
+      date_day: last_session&.scheduled_date&.day || @solver.data['dateDay1'],
+      date_month: last_session ? Parser::SessionDate::MONTH_NAMES[last_session&.scheduled_date&.month&.- 1] : @solver.data['dateMonth1'],
+      date_year: last_session&.scheduled_date&.year || @solver.data['dateYear1'],
+      scheduled_date: last_session&.scheduled_date,
+      pool_name: last_session&.swimming_pool&.name || @solver.data['venue1'],
+      address: last_session&.swimming_pool&.address || @solver.data['address1'],
+      pool_length: last_session&.swimming_pool&.pool_type&.code || @solver.data['poolLength']
+    )
+    if new_session
+      new_session.add_bindings!('meeting' => @solver.data['name'])
+      @solver.data['meeting_session'] << new_session
+    end
+
+    # Normalize session entity with cached classes, so that to_json converts them properly:
+    @solver.data['meeting_session'].compact! # (No nils in array)
+    @solver.rebuild_cached_entities_for('meeting_session')
+    overwrite_file_path_with_json_from(@solver.data)
+
+    # Fall back to step 1 (sessions) in case the referrer is not available:
+    redirect_to(review_sessions_path(file_path: file_path_from_params, reparse: nil))
+  end
+  #-- -------------------------------------------------------------------------
+  #++
+
   # [GET] /review_teams - STEP 2: teams
   #
   # As all other review actions, loads the specified JSON data file and prepares the data for review/edit.
@@ -108,6 +152,8 @@ class DataFixController < ApplicationController
     @swimmers_keys = Kaminari.paginate_array(@swimmers_keys).page(@curr_page).per(300) if @swimmers_keys.count > 300
     ActionCable.server.broadcast('ImportStatusChannel', { msg: 'Review swimmers: ready' })
   end
+  #-- -------------------------------------------------------------------------
+  #++
 
   # [GET] /review_events - STEP 4: events
   #
@@ -128,6 +174,50 @@ class DataFixController < ApplicationController
     @retry_needed = @solver.retry_needed
     ActionCable.server.broadcast('ImportStatusChannel', { msg: 'Review events: ready' })
   end
+
+  # [POST] /add_event
+  # Adds a new MeetingSession structure to the JSON file.
+  #
+  # == Params:
+  # - <tt>file_path</tt>: the path to the file to be loaded and scanned for existing rows.
+  #
+  def add_event
+    # ASSERT: step 1 ("solve meeting & sessions") has already been run
+    prepare_sessions_and_pools
+    prepare_event_types_payload
+
+    # Make sure we have entities models after the JSON parsing (which returns an Hash, not an Entity):
+    @solver.rebuild_cached_entities_for('meeting')
+    @solver.rebuild_cached_entities_for('meeting_session')
+    @solver.rebuild_cached_entities_for('meeting_event')
+
+    meeting = @solver.cached_instance_of('meeting', nil)
+    # Use default first MSession (editable later):
+    session_index = add_event_params[:session_index].to_i
+    meeting_session = @solver.cached_instance_of('meeting_session', session_index)
+    event_type = GogglesDb::EventType.find_by(id: add_event_params[:event_type_id])
+    if event_type.blank? || meeting_session.blank?
+      flash.now[:warning] = I18n.t('search_view.errors.invalid_request')
+      redirect_to(review_events_path(file_path: file_path_from_params, reparse: nil))
+    end
+
+    # Add a single MeetingEvent only if not present already in the parsed data:
+    event_key = @solver.event_key_for(session_index, event_type.code)
+    unless @solver.entity_present?('meeting_event', event_key)
+      event_order = @solver.data['meeting_event'].count + 1
+      mevent_entity = @solver.find_or_prepare_mevent(
+        meeting:, meeting_session:, session_index:,
+        event_type:, event_order:
+      )
+      @solver.add_entity_with_key('meeting_event', event_key, mevent_entity)
+    end
+
+    overwrite_file_path_with_json_from(@solver.data)
+    # Fall back to step 1 (sessions) in case the referrer is not available:
+    redirect_to(review_events_path(file_path: file_path_from_params, reparse: nil))
+  end
+  #-- -------------------------------------------------------------------------
+  #++
 
   # [GET] /review_results - STEP 5: results
   #
@@ -408,16 +498,17 @@ class DataFixController < ApplicationController
   # the resulting JSON structure.
   #
   # Although this action is generic due to using the model parameter, this currently supports
-  # only "Team"s & "Swimmer"s.
+  # only a limited number of cached models (see below).
   #
   # == Params:
-  # <tt>:file_path</tt> => source JSON file for the data Hash containing all entities
-  # <tt>:model</tt> => the model name in snake case, singular; only supported: 'swimmer', 'team'
-  # <tt>:key</tt> => string key for the model entity in the parsed data hash from the JSON file
+  # <tt>:file_path</tt> => source JSON file for the data Hash containing all entities;
+  # <tt>:model</tt> => the model name in snake case, singular;
+  #                    supports only: swimmer, team, meeting_session, meeting_event;
+  # <tt>:key</tt> => string key for the model entity in the parsed data hash from the JSON file.
   #
-  def purge # rubocop:disable Metrics/AbcSize
+  def purge
     model_name = edit_params['model'].to_s
-    unless %w[swimmer team].include?(model_name)
+    unless %w[swimmer team meeting_session meeting_event].include?(model_name)
       flash[:warning] = I18n.t('data_import.errors.invalid_request')
       redirect_to(pull_index_path)
     end
@@ -425,29 +516,26 @@ class DataFixController < ApplicationController
     # 1) Get the proper key from params and delete the chosen cached entity
     #    to avoid duplication errors during creation:
     entity_key = entity_key_for(model_name)
-    @solver.data[model_name]&.delete(entity_key)
-    # 2) Delete also just the primary existing cached badge or affiliation with the same key:
-    associated_model = model_name == 'swimmer' ? 'badge' : 'team_affiliation'
-    @solver.data[associated_model]&.delete(entity_key)
 
-    # 3) Retrieve the list of keys for this model to detect remaining candidate(s):
-    cache_keys = @solver.rebuild_cached_entities_for(model_name).keys
+    # 2) Delete the cached entity:
+    # Array (index) or Hash (key) deletion?
+    if @solver.data[model_name].respond_to?(:delete_at)
+      @solver.data[model_name].delete_at(entity_key)
+    else
+      @solver.data[model_name]&.delete(entity_key)
+    end
 
-    # 4) Get the first key matching the one just deleted and use it as candidate
-    #    for a global string subst among the resulting JSON (so that we can easily
-    #    update the bindings too):
-    checked_key_part = model_name == 'swimmer' ? entity_key.split(/-\d{4}-/).first : entity_key
-    new_key = cache_keys.find { |ckey| ckey.starts_with?(checked_key_part) }
-    # NOTE: matching the ending quote of the deleted keys allows us to substitute
-    #       shorter keys with longer ones without changing the existing longer strings
-    subst_matcher = Regexp.new("#{entity_key}\"", Regexp::IGNORECASE)
-    # NOTE: when there are 3 or more possible duplicates, this will overwrite
-    #       all references of the deleted key with just the first remaining candidate
-    #       (which may not be the one intended to remain in the data)
+    # 3) Delete also just the primary existing cached badge or affiliation with the same key:
+    if model_name == 'swimmer'
+      @solver.data['badge']&.delete(entity_key)
+    elsif model_name == 'team'
+      @solver.data['team_affiliation']&.delete(entity_key)
+    end
 
-    # 5) Substitute the deleted key with the new one, allegedly matching most
-    #    of the data, and save the JSON file overwriting the existing one:
-    corrected_json = @solver.data.to_json.gsub(subst_matcher, "#{new_key}\"")
+    # 4) HANDLE DUPLICATES (just for 'team' or 'swimmer') / GET THE UPDATED JSON:
+    corrected_json = handle_duplicates_in_json_data_for(model_name, entity_key)
+
+    # 5) Update JSON data file contents:
     FileUtils.rm_f(@file_path)
     File.write(@file_path, corrected_json)
 
@@ -588,6 +676,11 @@ class DataFixController < ApplicationController
     params.permit(:relay, :prg_key, :target_dom_id)
   end
 
+  # Strong parameters checking for POST 'add_event'.
+  def add_event_params
+    params.permit(:event_type_id, :event_type_label, :session_index)
+  end
+
   # Returns the correct type of <tt>edit_params['key']</tt> depending on the specified <tt>model_name</tt>.
   def entity_key_for(model_name)
     case model_name
@@ -665,8 +758,10 @@ class DataFixController < ApplicationController
     @swimming_pools = []
     @cities = []
     @city_keys = []
+
     # Don't consider nil results as part of the list:
-    @solver.data['meeting_session'].compact.each_with_index do |_item, index|
+    @solver.data['meeting_session']&.compact!
+    @solver.data['meeting_session']&.each_with_index do |_item, index|
       @meeting_sessions[index] = @solver.cached_instance_of('meeting_session', index)
       pool_key = @solver.cached_instance_of('meeting_session', index, 'bindings')&.fetch('swimming_pool', nil)
       # Get the Pool as first-class citizen of the form (for update/create):
@@ -730,10 +825,51 @@ class DataFixController < ApplicationController
     # (or when a reparse is not requested)
     if @solver.data['meeting_event'].blank? || edit_params['reparse'].present?
       @solver.map_events_and_results
+      # Prevent empty rows in source data arrays to clutter the structure (it happens frequently):
+      @solver.data['meeting_event']&.compact!
       overwrite_file_path_with_json_from(@solver.data)
     end
     @events_hash = @solver.rebuild_cached_entities_for('meeting_event')
     @prgs_hash = @solver.rebuild_cached_entities_for('meeting_program')
+  end
+  #-- -------------------------------------------------------------------------
+  #++
+
+  # Handles possible duplicates in 'swimmer' or 'team' models in the JSON data
+  # by removing any reference to the specified <tt>entity_key</tt>.
+  # Requires the internal @solver (MacroSolver) instance to be already defined and ready.
+  #
+  # == Params:
+  # - <tt>model_name</tt>: the model name in snake case, singular;
+  #                        supports only: swimmer, team;
+  # - <tt>entity_key</tt>: the key of the entity to be deleted from the JSON data.
+  #
+  # == Returns:
+  # Returns the updated JSON data file after deleting any possible reference to the
+  # specified entity key.
+  #
+  def handle_duplicates_in_json_data_for(model_name, entity_key)
+    return @solver.data.to_json unless %w[swimmer team].include?(model_name)
+
+    # 4.1) Retrieve the list of keys for this model to detect remaining candidate(s):
+    cache_keys = @solver.rebuild_cached_entities_for(model_name).keys
+
+    # 4.2) Get the first key matching the one just deleted and use it as a candidate
+    #      for a global string subst among the resulting JSON (so that we can easily
+    #      update the bindings too):
+    checked_key_part = model_name == 'swimmer' ? entity_key.split(/-\d{4}-/).first : entity_key
+    new_key = cache_keys.find { |ckey| ckey.starts_with?(checked_key_part) }
+
+    # NOTE: matching the ending quote of the deleted keys allows us to substitute
+    #       shorter keys with longer ones without changing the existing longer strings
+    subst_matcher = Regexp.new("#{entity_key}\"", Regexp::IGNORECASE)
+    # NOTE: when there are 3 or more possible duplicates, this will overwrite
+    #       all references of the deleted key with just the first remaining candidate
+    #       (which may not be the one intended to remain in the data)
+
+    # 4.3) Substitute the deleted key with the new one, allegedly matching most
+    #      of the data, and save the JSON file overwriting the existing one:
+    @solver.data.to_json.gsub(subst_matcher, "#{new_key}\"")
   end
   #-- -------------------------------------------------------------------------
   #++

@@ -6,13 +6,14 @@
       'lookup-bound-query-value' => @bound_query_param,
       'lookup-api-url2-value' => @api_url2,
       'lookup-jwt-value' => @jwt } }
-  .form-group
+  .form-group.mb-0
     .field
       = hidden_field_tag("#{@base_name}_id", nil)
       = hidden_field_tag("#{@base_name}_label", nil)
-      = label_tag(@base_name, @label)
-      %b.text-danger{ id: "#{@base_name}-presence" } *
-      %span.d-none{ id: "#{@base_name}-new" } 🆕
+      - if @label.present?
+        = label_tag(@base_name, @label)
+        %b.text-danger{ id: "#{@base_name}-presence" } *
+        %span.d-none{ id: "#{@base_name}-new" } 🆕
       %select.select2{ id: "#{@base_name}_select", autofocus: true, required: @required,
                       data: { 'lookup-target' => 'field' } }
         - if @values.present?

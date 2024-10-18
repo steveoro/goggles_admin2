@@ -9,36 +9,73 @@
     %section.my-2#review-events
       - sorted_keys = @events_hash.sort { |a, b| a.last&.row&.event_order <=> b.last&.row&.event_order }.map(&:first)
       .container-fluid
-        .row-fluid
+        = form_tag(data_fix_add_event_path, id: 'frm-add-event', method: :post) do
+          = hidden_field_tag('file_path', @file_path)
+          - event_option_list = options_from_collection_for_select(GogglesDb::EventType.all_eventable,
+                                                                   'id', 'long_label')
+          - session_option_list = []
+          - @meeting_sessions&.each_with_index { |mses, idx| session_option_list << [mses.description, idx] }
+          .row.align-items-center.mb-3
+            .col-sm-5.col-md-3
+              = render(ComboBox::DbLookupComponent.new(nil, nil, 'event_type', required: true,
+                                                       values: event_option_list))
+            .col-sm-5.col-md-3
+              = select_tag('session_index', options_for_select(session_option_list), class: 'custom-select')
+            .col-auto
+              %button.btn.btn-sm.btn-outline-success#btn-add-event{ type: 'submit', method: :delete,
+                'aria-label' => 'Add event', data: { confirm: t('data_import.data_fix.confirm_add_event'),
+                disable_with: t('home.please_wait') } }
+                %i.fa.fa-plus
+                = t('data_import.data_fix.btn_add_event')
+
+        .row
+          - last_session_idx = 0
           - sorted_keys.each_with_index do |event_key, index|
             :ruby
               event_entity = @events_hash[event_key]
               event = event_entity.row
-            %div{ id: "event-card-#{index}" }
+              meeting_session_idx = event_entity.bindings['meeting_session']
+
+            - if last_session_idx != meeting_session_idx
+              - last_session_idx = meeting_session_idx
+              .col-12
+                %hr/
+            .col-4{ id: "event-card-#{index}" }
               .card.my-2
                 %div{ id: "event-header-#{index}", class: event.id.present? ? 'bg-light' : 'bg-light-yellow' }
-                  .row
+                  .row.align-items-center
                     .col-3
                       %h5.mb-0
                         %button.btn.btn-link.m-1{ id: "edit-event-#{index}", data: { target: "#event-panel-#{index}",
                                                   toggle: 'collapse', 'aria-expanded' => 'false',
                                                   'aria-controls' => 'edit-event' } }
                           = event_key
-                    .col-3.mt-2
-                      %i.form-text.text-muted.bg-light-grey
+                    .col-3.mt-3
+                      %i.form-text.text-muted.bg-light-grey.my-0
                         %pre
                           🔑 "#{event_key}"
-                    .col.mt-2
+                    .col-auto
                       = "=> #{event.decorate.short_label}"
                       - if event.id.present?
                         ID: #{event.id}
                         = event.valid? ? '✅' : '🔵'
                       - else
                         🆕
+                    / Don't show the purge button for already-serialized events (with ID)
+                    - if event&.id.blank?
+                      .col-auto
+                        = form_tag(data_fix_purge_path(event, model: 'meeting_event'), id: "frm-purge-event-#{index}", method: :delete) do
+                          = hidden_field_tag('key', event_key) # actual entity key, used to retrieve the entity from data hash
+                          = hidden_field_tag('file_path', @file_path)
+                          %button.btn.btn-sm.btn-outline-danger{ id: "btn-purge-#{index}", type: 'submit', method: :delete,
+                              'aria-label' => 'Purge',
+                              data: { confirm: t('data_import.data_fix.confirm_purge', key: event_key),
+                              disable_with: t('home.please_wait') } }
+                            %i.fa.fa-trash-o
+
                 .collapse{ id: "event-panel-#{index}", 'aria-labelledby' => "event-header-#{index}",
                            'data-parent' => "#event-card-#{index}" }
                   .card-body.border-bottom.border-secondary
-                    - meeting_session_idx = event_entity.bindings['meeting_session']
                     = render(partial: 'event_form', locals: { event: event, meeting_sessions: @meeting_sessions,
                              meeting_session_idx: meeting_session_idx, event_types_payload: @event_types_payload,
                              index: index, event_key: event_key, file_path: @file_path })

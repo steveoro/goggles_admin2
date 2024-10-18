@@ -72,6 +72,11 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
     puts '*** Task: merge:swimmer ***'
     source = GogglesDb::Swimmer.find_by(id: ENV['src'].to_i)
     dest = GogglesDb::Swimmer.find_by(id: ENV['dest'].to_i)
+    if source.nil? || dest.nil?
+      puts("You need to have both 'src' & 'dest' IDs with valid values in order to proceed.")
+      exit
+    end
+
     file_index = ENV['index'].present? ? ENV['index'].to_i : auto_index_from_script_output_dir
     simulate = ENV['simulate'] != '0' # Don't run locally the script unless explicitly requested
     skip_columns = ENV['skip_columns'] == '1' # Don't skip columns unless requested
@@ -80,10 +85,6 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
     puts("\r\n- simulate.......: #{simulate}")
     puts("- skip_columns...: #{skip_columns}")
     puts("- dest. folder...: #{SCRIPT_OUTPUT_DIR}\r\n")
-    if source.nil? || dest.nil?
-      puts("You need to have both 'src' & 'dest' IDs with valid values in order to proceed.")
-      exit
-    end
 
     merger = Merge::Swimmer.new(source:, dest:, skip_columns:)
     merger.prepare
@@ -91,7 +92,7 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
 
     puts("\r\n*** Log: ***\r\n")
     puts(merger.log.join("\r\n"))
-    file_name = "#{format('%03d', file_index)}-merge_swimmers-#{merger.source.id}-#{merger.dest.id}"
+    file_name = "#{format('%04d', file_index)}-merge_swimmers-#{merger.source.id}-#{merger.dest.id}"
     process_sql_file(file_name:, sql_log_array: merger.sql_log, simulate:)
     puts('Done.')
   end
@@ -134,6 +135,11 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
     puts '*** Task: merge:team ***'
     source = GogglesDb::Team.find_by(id: ENV['src'].to_i)
     dest = GogglesDb::Team.find_by(id: ENV['dest'].to_i)
+    if source.nil? || dest.nil?
+      puts("You need to have both 'src' & 'dest' IDs with valid values in order to proceed.")
+      exit
+    end
+
     file_index = ENV['index'].present? ? ENV['index'].to_i : auto_index_from_script_output_dir
     simulate = ENV['simulate'] != '0' # Don't run locally the script unless explicitly requested
     skip_columns = ENV['skip_columns'] == '1' # Don't skip columns unless requested
@@ -142,16 +148,12 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
     puts("\r\n- simulate.......: #{simulate}")
     puts("- skip_columns...: #{skip_columns}")
     puts("- dest. folder...: #{SCRIPT_OUTPUT_DIR}\r\n")
-    if source.nil? || dest.nil?
-      puts("You need to have both 'src' & 'dest' IDs with valid values in order to proceed.")
-      exit
-    end
 
     merger = Merge::Team.new(source:, dest:, skip_columns:)
     puts("\r\n*** Log: ***\r\n")
     merger.prepare # (no need to diplay the log here, as the merger already does it with #prepare())
 
-    file_name = "#{format('%03d', file_index)}-merge_teams-#{merger.source.id}-#{merger.dest.id}"
+    file_name = "#{format('%04d', file_index)}-merge_teams-#{merger.source.id}-#{merger.dest.id}"
     process_sql_file(file_name:, sql_log_array: merger.sql_log, simulate:)
     puts('Done.')
   end
@@ -215,7 +217,7 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
       exit
     end
 
-    file_index = ENV['index'].present? ? ENV['index'].to_i : auto_index_from_script_output_dir
+    file_index = ENV['index'].present? ? ENV['index'].to_i : auto_index_from_script_output_dir(source.season_id)
     simulate = ENV['simulate'] != '0' # Don't run locally the script unless explicitly requested
     keep_dest_columns = ENV['keep_dest_columns'] == '1'
     keep_dest_category = ENV['keep_dest_category'] == '1'
@@ -248,7 +250,7 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
 
     puts("\r\n*** Log: ***\r\n")
     puts(merger.log.join("\r\n"))
-    file_name = "#{format('%03d', file_index)}-merge_badges-#{merger.source.id}-#{merger.dest ? merger.dest.id : 'autofix'}"
+    file_name = "#{format('%04d', file_index)}-merge_badges-#{merger.source.id}-#{merger.dest ? merger.dest.id : 'autofix'}"
     process_sql_file(file_name:, sql_log_array: merger.single_transaction_sql_log, simulate:)
     puts('Done.')
   end
@@ -278,24 +280,27 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
       in the same folder. (format: 'NNN-<script_name>.sql'), because the execution sequence
       will matter in the end.
 
-    - Be advised that this task may generate several dozens of SQL files.
+    - Be advised that this task may generate SEVERAL HUNDREDS of SQL files.
 
     Options: [Rails.env=#{Rails.env}]
              season=<source_season_id>
+             index=[file_index_start_override|<auto>]
 
       - season: source Season ID to be checked & fixed;
+      - index: an ovverride index for the generated files (default: <auto>);
 
   DESC
   task(season_fix: [:environment]) do # rubocop:disable Metrics/BlockLength
     puts "*** Task: merge:season_fix - season #{ENV.fetch('season', nil)} ***"
     season = GogglesDb::Season.find_by(id: ENV['season'].to_i)
     if season.nil?
-      puts("You need a valid 'season' ID to proceed.")
+      puts('You need a valid Season ID to proceed.')
       exit
     end
 
     puts('')
     puts('--> Running BadgeSeasonChecker...')
+    file_index = ENV['index'].present? ? ENV['index'].to_i : auto_index_from_script_output_dir(season.id)
 
     checker = Merge::BadgeSeasonChecker.new(season:)
     checker.run
@@ -307,7 +312,7 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
     while checker.sure_badge_merges.present?
       process_merge_badges(
         step_name: "Step 1: 'sure badge merges'",
-        file_name: "#{Time.zone.now.strftime('%Y%m%d_%H%M%S')}-1-sure_merge_badges-season_#{season.id}",
+        subdir: season.id, file_index:,
         array_of_array_of_badges: checker.sure_badge_merges.values
       )
 
@@ -321,7 +326,7 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
     while checker.relay_only_badges.present?
       process_merge_badges(
         step_name: "Step 2: 'relay-only' badges",
-        file_name: "#{Time.zone.now.strftime('%Y%m%d_%H%M%S')}-2-relay_only_badges-season_#{season.id}",
+        subdir: season.id,
         array_of_array_of_badges: checker.relay_only_badges
       )
 
@@ -335,7 +340,7 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
     while checker.relay_badges.present?
       process_merge_badges(
         step_name: 'Step 3: remaining relay badges',
-        file_name: "#{Time.zone.now.strftime('%Y%m%d_%H%M%S')}-3-relay_badges-season_#{season.id}",
+        subdir: season.id,
         array_of_array_of_badges: checker.relay_badges
       )
 
@@ -362,10 +367,13 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
   # == Params:
   # - file_name: the resulting text file name, minus the '.sql' extension;
   # - sql_log_array: the array of SQL statements to be written to the file;
+  # - subdir: optional subdirectory name under #{SCRIPT_OUTPUT_DIR} under which the resulting file will be stored;
   # - simulate: when set to '0' will enable script execution on localhost (toggled off by default).
   #
-  def process_sql_file(file_name:, sql_log_array:, simulate: true) # rubocop:disable Rake/MethodDefinitionInTask
-    sql_file_name = "#{SCRIPT_OUTPUT_DIR}/#{file_name}.sql"
+  def process_sql_file(file_name:, sql_log_array:, subdir: nil, simulate: true) # rubocop:disable Rake/MethodDefinitionInTask
+    output_dir = subdir ? "#{SCRIPT_OUTPUT_DIR}/#{subdir}" : SCRIPT_OUTPUT_DIR
+    FileUtils.mkdir_p(output_dir) unless File.directory?(output_dir)
+    sql_file_name = "#{output_dir}/#{file_name}.sql"
     File.open(sql_file_name, 'w+') { |f| f.puts(sql_log_array.join("\r\n")) }
     puts("\r\nFile '#{sql_file_name}' saved.")
 
@@ -382,26 +390,29 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
 
   # Returns the progressive index found at 'SCRIPT_OUTPUT_DIR' for all .sql files present.
   # Expected index format: 'IDX-<filename>.sql'.
-  def auto_index_from_script_output_dir # rubocop:disable Rake/MethodDefinitionInTask
-    Pathname.new(Dir["#{SCRIPT_OUTPUT_DIR}/*.sql"].last.to_s).basename.to_s.split('-').first.to_i + 1
+  # == Params:
+  # - subdir: optional subdirectory name under #{SCRIPT_OUTPUT_DIR} in which the files are stored.
+  def auto_index_from_script_output_dir(subdir = nil) # rubocop:disable Rake/MethodDefinitionInTask
+    glob_path = subdir ? "#{SCRIPT_OUTPUT_DIR}/#{subdir}/*.sql" : "#{SCRIPT_OUTPUT_DIR}/*.sql"
+    Pathname.new(Dir[glob_path].last.to_s).basename.to_s.split('-').first.to_i + 1
   end
 
   # Runs the script on the specified subset of badges, measuring its execution time and
   # generating a single SQL script for each call.
   #
   # == Params:
-  # - file_name: the resulting SQL script file name, minus the extension;
   # - array_of_array_of_badges: the list of badges to process; it can either be an actual array of array of Badge
   #   instances, or just an array of Badges for autofixing their category type;
+  # - subdir: optional subdirectory name under #{SCRIPT_OUTPUT_DIR} in which the files are stored;
   # - step_name: the name of the current step displayed on screen;
-  # - simulate: if false it will run the script on localhost after its creation.
+  # - file_index: optional index start override for the SQL scripts in the output directory; (default: auto)
   #
-  def process_merge_badges(file_name:, array_of_array_of_badges:, step_name:) # rubocop:disable Rake/MethodDefinitionInTask,Metrics/AbcSize
+  def process_merge_badges(array_of_array_of_badges:, subdir:, step_name:, file_index: nil) # rubocop:disable Rake/MethodDefinitionInTask,Metrics/AbcSize
     return if array_of_array_of_badges.blank?
 
     puts("\r\n--> #{step_name}: #{array_of_array_of_badges.count}. Preparing SQL script...")
     # Get the next available index for the SQL scripts in the output directory (or 1 if none):
-    file_index = auto_index_from_script_output_dir
+    file_index ||= auto_index_from_script_output_dir(subdir)
     slice_size = 10
 
     array_of_array_of_badges.each_slice(slice_size).with_index do |badges_slice, idx|
@@ -415,13 +426,12 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
 
           # NOTE: keep & run each badge-fix script in a separate transaction
           # --> See: app/strategies/merge/badge.rb:537#handle_mprogram_insert_or_select()
-          file_name = "#{format('%03d', file_index)}-season_fix_#{source.season_id}-merge_badges-#{source.id}-#{dest ? dest.id : 'autofix'}"
+          file_name = "#{format('%04d', file_index)}-season_fix_#{source.season_id}-merge_badges-#{source.id}-#{dest ? dest.id : 'autofix'}"
 
-          process_sql_file(file_name:, sql_log_array: merger.single_transaction_sql_log, simulate: false)
+          process_sql_file(file_name:, sql_log_array: merger.single_transaction_sql_log, subdir:, simulate: false)
           file_index += 1
         end
       end
-
       puts("[Total time for #{slice_size}x runs: #{tms.total}\", progress: #{badges_slice.size + (idx * slice_size)}/#{array_of_array_of_badges.count}]")
     end
   end

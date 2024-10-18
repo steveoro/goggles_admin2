@@ -187,17 +187,4 @@ class PdfController < ApplicationController
     end
     nil
   end
-
-  # def scan_l2_data_hash_for_a_matching_team_name(sections_list:, swimmer_name:, swimmer_year:, swimmer_sex:)
-  #   result = nil
-  #   sections_list.each do |sect|
-  #     sect.fetch('rows', []).each do |row|
-  #       result = row['team'] if row['name'] == swimmer_name && row['year'] == swimmer_year &&
-  #                               row['sex'] == swimmer_sex && row['team'].present?
-  #       break if result
-  #     end
-  #     break if result
-  #   end
-  #   result
-  # end
 end

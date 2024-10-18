@@ -4,9 +4,9 @@ module Import
   #
   # = MacroSolver
   #
-  #   - version:  7-0.7.16
+  #   - version:  7-0.7.19
   #   - author:   Steve A.
-  #   - build:    20240529
+  #   - build:    20241017
   #
   # Scans the already-parsed Meeting results JSON object (which stores a whole set of results)
   # and finds existing & corresponding entity rows or creates (locally) any missing associated
@@ -230,7 +230,7 @@ module Import
           )
           session.add_bindings!('meeting' => @data['name'])
           session
-        end
+        end.compact # (Don't store nils in the array)
         return @data['meeting_session']
       end
 
@@ -265,7 +265,7 @@ module Import
                  end
       session2&.add_bindings!('meeting' => @data['name'])
       # Return just an Array with all the defined sessions in it:
-      @data['meeting_session'] = [session1, session2]
+      @data['meeting_session'] = [session1, session2].compact
     end
 
     # Mapper and setter for the list of unique teams & swimmers.
@@ -305,15 +305,14 @@ module Import
         _event_type, category_type = Parser::EventType.from_l2_result(sect['title'], @season)
 
         # For parsed PDFs, the category code may be already set in section and the above may be nil:
-        category_type = detect_ind_category_from_code(sect['fin_sigla_categoria']) if sect['fin_sigla_categoria'].present? && category_type.nil?
+        category_type = detect_ind_category_from_code(sect['fin_sigla_categoria']) if sect['fin_sigla_categoria'].present? && category_type.blank?
         # NOTE: category_type can still be nil at this point for some formats (relays, usually)
         # If this happens:
-        # - category esteem is delegated to relay result & swimmer mapping
-        # - avoid mapping badges together with swimmer (here) as badge requires a category
-        # - when it's not a relay, usually the format is mis-interpreted or needs debugging
+        # - category esteem is delegated to relay result & swimmer mapping inside #map_and_return_badge()
+        # - when it's not a relay and the category code is missing, usually the format is mis-interpreted or needs debugging
 
         # Don't use an #each block here as we're going to modify the data structure in place
-        # removing the rows that aren't processable (no team names w/o a matching result elsewhere):
+        # removing/ignoring the rows that aren't processable (no team names w/o a matching result elsewhere):
         row_idx = 0
         while row_idx < sect['rows'].count
           row = sect['rows'][row_idx]
@@ -335,13 +334,11 @@ module Import
               next unless swimmer_name.present? && year_of_birth.present?
 
               swimmer_key, swimmer = map_and_return_swimmer(swimmer_name:, year_of_birth:, gender_type_code:, team_name:)
-              category_type = post_compute_ind_category_code(year_of_birth) if category_type.blank?
-              if category_type
-                # NOTE: usually badge numbers won't be added to relay swimmers due to limited space,
-                # so we revert to the default value (nil => '?')
-                badge = map_and_return_badge(swimmer:, swimmer_key:, team:, team_key: team_name,
-                                             team_affiliation:, category_type:)
-              end
+              # NOTE: usually badge numbers won't be added to relay swimmers due to limited space,
+              #       so we revert to the default value (nil => '?')
+              # NOTE 2: #map_and_return_badge will handle nil or relay category types with #post_compute_ind_category_code(YOB)
+              badge = map_and_return_badge(swimmer:, swimmer_key:, team:, team_key: team_name,
+                                           team_affiliation:, category_type:)
               # This should never occur at this point (unless data is corrupted):
               if swimmer_key.blank? || swimmer.blank? || badge.blank?
                 raise("No swimmer_key, swimmer or badge ENTITY for '#{swimmer_name}' (#{year_of_birth}, #{gender_type_code})!")
@@ -381,6 +378,8 @@ module Import
             Rails.logger.debug { "\r\n\r\n*** TEAM '#{team_name}' (ind.res.) ***" } if @toggle_debug
             team_affiliation = map_and_return_team_affiliation(team:, team_key: team_name)
             swimmer_key, swimmer = map_and_return_swimmer(swimmer_name:, year_of_birth:, gender_type_code:, team_name:)
+
+            # NOTE: #map_and_return_badge will handle nil or relay category types with #post_compute_ind_category_code(YOB)
             badge = map_and_return_badge(swimmer:, swimmer_key:, team:, team_key: team_name,
                                          team_affiliation:, category_type:, badge_code:)
             # Update any other entity referring/bound to this (swimmer & team):
@@ -473,7 +472,9 @@ module Import
         category_type = curr_category_type if category_type.blank? && curr_category_type.is_a?(GogglesDb::CategoryType)
 
         gender_type = select_gender_type(sect['fin_sesso'])
-        event_key = event_key_for(event_type.code)
+        # Use a fixed key-index of 0 for the meeting session as long as we can't
+        # determine which one it is from the parsed results file:
+        event_key = event_key_for(0, event_type.code)
 
         # --- Pre-process MRR for unknown gender codes ---
         # In case it's a relay with an unclear/unset gender code,
@@ -1864,8 +1865,6 @@ module Import
     #-- -----------------------------------------------------------------------
     #++
 
-    private
-
     # Returns the internal string key used to access a cached Swimmer entity row, or
     # a Regexp tailored to search for the actual key whenever the gender, the YOB or
     # even the team name are unknown.
@@ -1897,11 +1896,12 @@ module Import
     # Returns the internal string key used to access a cached MeetingEvent entity row.
     #
     # == Params
+    # - <tt>session_order</tt>: order of the meeting session (typically, session index + 1).
     # - <tt>event_type_code</tt>: GogglesDb::EventType#code for the event.
     #
-    def event_key_for(event_type_code)
+    def event_key_for(session_order, event_type_code)
       # Use a fixed '1' as session number as long as we can't determine which is which:
-      "1-#{event_type_code}"
+      "#{session_order}-#{event_type_code}"
     end
 
     # Returns the internal string key used to access a cached MeetingProgram entity row.
@@ -1934,6 +1934,8 @@ module Import
     end
     #-- -----------------------------------------------------------------------
     #++
+
+    private
 
     # Prepares the Team model given the specified data or simply returns it if
     # it has been already mapped.
@@ -2087,11 +2089,17 @@ module Import
     def map_and_return_badge(options = {})
       return cached_instance_of('badge', options[:swimmer_key]) if entity_present?('badge', options[:swimmer_key])
 
+      # Make sure we don't assign badges using relay category types by mistake:
+      category_type = if options[:category_type].blank? || options[:category_type]&.relay?
+                        post_compute_ind_category_code(options[:swimmer].year_of_birth)
+                      else
+                        options[:category_type]
+                      end
       badge_entity = find_or_prepare_badge(
         swimmer: options[:swimmer], swimmer_key: options[:swimmer_key],
         team: options[:team], team_key: options[:team_key],
         team_affiliation: options[:team_affiliation],
-        category_type: options[:category_type],
+        category_type:,
         badge_code: options[:badge_code]
       )
       add_entity_with_key('badge', options[:swimmer_key], badge_entity)
@@ -2150,6 +2158,7 @@ module Import
       team_affiliation = map_and_return_team_affiliation(team:, team_key: team_name)
       swimmer_key, swimmer = map_and_return_swimmer(swimmer_name:, year_of_birth:, gender_type_code:,
                                                     team_name:)
+      # NOTE: 2: #map_and_return_badge will handle nil or relay category types with #post_compute_ind_category_code(YOB)
       badge = map_and_return_badge(swimmer:, swimmer_key:, team:, team_key: team_name,
                                    team_affiliation:, category_type: options[:category_type],
                                    badge_code:)
@@ -2208,7 +2217,7 @@ module Import
     # - <tt>:row</tt>: a "L2" hash result row, allegedly from a MRR (it must have
     #                  the 'relay' boolean flag in it), wrapping the data to be processed.
     #
-    # - <tt>:category_type</tt> => a valid GogglesDb::CategoryType instance
+    # - <tt>:category_type</tt> => a valid GogglesDb::CategoryType instance (for the MRR, NOT for the MRS's badges)
     # - <tt>:event_type</tt> => a valid GogglesDb::EventType instance
     #
     # == Additional options:
@@ -2253,15 +2262,16 @@ module Import
 
         # Move to the next lap group if the relay swimmer is missing (DSQ relays)
         # NOTE: this will loose all data regarding laps for DSQ relays but, currently,
-        # the DB structure requires both MRR & MRS to be present for sub-laps to be created.
+        #       the DB structure requires both MRR & MRS to be present for sub-laps to be created.
         # NOTE 2: year_of_birth & gender_type_code can be searched from already extracted data when missing
         next if swimmer_name.blank?
 
         swimmer_key, swimmer = map_and_return_swimmer(swimmer_name:, year_of_birth:, gender_type_code:, team_name:)
         # NOTE: usually badge numbers won't be added to relay swimmers due to limited space,
-        # so we revert to the default value (nil => '?')
+        #       so we revert to the default value (nil => '?')
+        # NOTE 2: #map_and_return_badge will handle nil or relay category types with #post_compute_ind_category_code(YOB)
         badge = map_and_return_badge(swimmer:, swimmer_key:, team:, team_key: team_name,
-                                     team_affiliation:, category_type: options[:category_type])
+                                     team_affiliation:, category_type: nil) # (nil => force badge retrieval when existing or "esteem category by YOB")
         # *** MRS (parent) ***
         prev_lap_timing = extract_lap_timing_for(
           meeting_program: options[:mprg], mprogram_key: options[:mprg_key],
@@ -2370,9 +2380,10 @@ module Import
 
         swimmer_key, swimmer = map_and_return_swimmer(swimmer_name:, year_of_birth:, gender_type_code:, team_name:)
         # NOTE: usually badge numbers won't be added to relay swimmers due to limited space,
-        # so we revert to the default value (nil => '?')
+        #       so we revert to the default value (nil => '?')
+        # NOTE 2: #map_and_return_badge will handle nil or relay category types with #post_compute_ind_category_code(YOB)
         map_and_return_badge(swimmer:, swimmer_key:, team:, team_key: team_name,
-                             team_affiliation:, category_type: options[:category_type])
+                             team_affiliation:, category_type: nil) # (nil => force badge retrieval or compute category by YOB)
         # DEBUG: ******************************************************************
         # SHOULD NEVER HAPPEN at this point:
         binding.pry unless swimmer.present? && swimmer_key.present?

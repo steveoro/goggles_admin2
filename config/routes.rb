@@ -39,6 +39,8 @@ Rails.application.routes.draw do
   get 'data_fix/teams_for_swimmer/:swimmer_id', to: 'data_fix#teams_for_swimmer', as: 'data_fix_teams_for_swimmer'
   delete 'data_fix/purge', to: 'data_fix#purge', as: 'data_fix_purge'
   get 'data_fix/result_details/:prg_key', to: 'data_fix#result_details', as: 'data_fix_result_details'
+  post 'data_fix/add_session', to: 'data_fix#add_session', as: 'data_fix_add_session'
+  post 'data_fix/add_event', to: 'data_fix#add_event', as: 'data_fix_add_event'
 
   get 'push/index'
   post 'push/prepare'
