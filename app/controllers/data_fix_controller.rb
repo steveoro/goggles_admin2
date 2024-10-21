@@ -316,9 +316,9 @@ class DataFixController < ApplicationController
     model_name = edit_params['model'].to_s
 
     # == NOTE:
-    # The entity Key to used to retrieve it from the data hash should never change.
+    # The entity Key used to retrieve the entity from the data hash should *never* change.
     #
-    # Nevertheless, when the string key has special chars in it (like mostly team names),
+    # Nevertheless, when the string key has special chars in it (like most team names),
     # Rails form helpers may convert its field namespace using underscores when rendering
     # DOM IDs.
     #
@@ -394,21 +394,41 @@ class DataFixController < ApplicationController
         @solver.data[model_name]&.fetch('row', nil)&.merge!(actual_attrs)
       end
     end
+    # DEBUG ----------------------------------------------------------------
+    # binding.pry
+    # ----------------------------------------------------------------------
 
     # == Bindings update: ==
     deep_nested_bindings = @solver.cached_instance_of(model_name, entity_key, 'bindings')
-    # EXCEPTION: City is the only "complex" binding that could be sub-nested at depth > 1
-    if edit_params['city'].present? && edit_params['city'][actual_form_key.to_s].present? &&
-       edit_params['city'][actual_form_key.to_s]['key'].present?
-      deep_nested_bindings['city'] = {
-        edit_params['city'][actual_form_key.to_s]['key'] => edit_params['city'][actual_form_key.to_s]
-      }
-    end
     # DEBUG ----------------------------------------------------------------
     # binding.pry
     # ----------------------------------------------------------------------
 
     deep_nested_bindings.each do |binding_model_name, binding_key|
+      # *** Sub-binding update EXCEPTIONS:
+      # - "team" -> "team_affiliation"
+      if binding_model_name == 'team_affiliation' && model_name == 'team'
+        # Direct update of the TA entity using involved Team attributes (TeamAffiliations & Teams have the same key):
+        @solver.data['team_affiliation']&.fetch(entity_key, nil)&.fetch('row', nil)&.merge!(
+          'team_id' => edit_params['team']&.fetch(actual_form_key.to_s, nil)&.fetch('team_id', nil),
+          'name' => edit_params['team']&.fetch(actual_form_key.to_s, nil)&.fetch('editable_name', nil)
+        )
+      # - "meeting_session" -> "swimming_pool" -> "city"
+      # - "team" -> "city"
+      elsif binding_model_name == 'city' && edit_params['city'].present? &&
+           edit_params['city'][actual_form_key.to_s].present? && edit_params['city'][actual_form_key.to_s]['key'].present? &&
+           edit_params['city'][actual_form_key.to_s]['city_id'].present?
+        # City is the only "complex" binding that could be sub-nested at depth > 1
+        # 1. model_name: [MeetingSession] -> binding1: SwimmingPool -> sub-binding: City
+        # 2. model_name: [Team] -> binding1: City
+        # => Update the cached city entity (without changing its sub-binding key) directly using the ID
+        #    provided in the edit_params because the form won't include all fields for nestings > 1 and
+        #    the cached entity may need those during the MacroCommitter phase:
+        cached_key = edit_params['city'][actual_form_key.to_s]['key']
+        city_id = edit_params['city'][actual_form_key.to_s]['city_id']
+        @solver.data['city'][cached_key]['row'] = @solver.find_or_prepare_city(city_id, cached_key).row.to_hash
+      end
+
       updated_attrs = edit_params[binding_model_name]&.fetch(actual_form_key.to_s, nil)
       next if updated_attrs.blank?
 
@@ -418,12 +438,11 @@ class DataFixController < ApplicationController
       # Handle the special case in which we want to update the key/index of a binding in the main entity:
       # (not the association column ID value itself -- currently this is implemented & supported only for
       #  the meeting events form, given that both events & sessions will typically be new & ID-less each time)
-      if updated_attrs.key?('key') # (special/bespoke sub-association form field naming for binding keys)
-        # DEBUG ----------------------------------------------------------------
-        # binding.pry
-        # ----------------------------------------------------------------------
+      if binding_model_name != 'city' && updated_attrs.key?('key') # (special/bespoke sub-association form field naming for binding keys)
+        # Try to detect invalid form indexes:
+        raise "ERROR: bindings key for ['#{model_name}']['#{entity_key}'] is potentially invalid: '#{updated_attrs['key']}', it should be a single-digit integer or string." if updated_attrs['key'].to_s.size != 1
         @solver.data[model_name]&.fetch(entity_key, nil)&.fetch('bindings', nil)&.merge!(
-          # ASSERT: key is an index, not a string key
+          # ASSERT: key here is a form index, not a string key
           { binding_model_name => updated_attrs['key'].to_i }
         )
       end
@@ -433,12 +452,12 @@ class DataFixController < ApplicationController
       main_attrs = Import::MacroSolver.actual_attributes_for(updated_attrs, model_name)
       nested_attrs = Import::MacroSolver.actual_attributes_for(updated_attrs, binding_model_name)
 
-      # == Update association column in main entity: ==
-      if entity_key.present?
+      # == Update association column in main entity (if there are attributes to be updated):
+      if entity_key.present? && main_attrs.present?
         # i.e.: 'swimming_pool' => 0 => 'swimming_pool_id' (apply to main, i.e.: 'meeting_session')
         @solver.data[model_name]&.fetch(entity_key, nil)&.fetch('row', nil)&.compact!
         @solver.data[model_name]&.fetch(entity_key, nil)&.fetch('row', nil)&.merge!(main_attrs)
-      else
+      elsif main_attrs.present? && model_name != 'meeting_session'
         # Only 'meeting' doesn't have a key (the bindings, if any, must use it):
         @solver.data[model_name]&.fetch('row', nil)&.compact!
         @solver.data[model_name]&.fetch('row', nil)&.merge!(main_attrs)
@@ -446,18 +465,19 @@ class DataFixController < ApplicationController
       # DEBUG ----------------------------------------------------------------
       # binding.pry
       # ----------------------------------------------------------------------
+      # No more attributes or sub-attributes updates needed for city after this point:
+      # (City cached entity as been already updated above)
+      next if binding_model_name == 'city'
 
       # === Update binding entity attributes too: ===
+      raise "ERROR: using a 'binding_key' Hash for updates isn't supported anymore: #{binding_key.inspect} (it was used for City before)" if binding_key.is_a?(Hash)
       # i.e.: 'swimming_pool' => 0 => 'city_id' (apply to binding, i.e.: 'swimming_pool')
-      # Always add the overwrite for the binding fuzzy result ID column with the manual lookup result ID:
+      # Always add the overwrite for the binding fuzzy result ID column with the manual-lookup result ID:
       nested_attrs['id'] = if updated_attrs["#{binding_model_name}_id"].present?
                              updated_attrs["#{binding_model_name}_id"].to_i
                            elsif (nested_attrs['id']).to_i.zero? # Avoid clearing if empty or present
                              nested_attrs['id'] = nil # Allow clearing of ID using zero
                            end
-
-      # EXCEPTION: City is the only "complex" binding that could be sub-nested at depth > 1, returning a whole Hash (key + attributes)
-      binding_key = binding_key.keys.first if binding_key.is_a?(Hash)
       @solver.data[binding_model_name]&.fetch(binding_key, nil)&.fetch('row', nil)&.compact!
       @solver.data[binding_model_name]&.fetch(binding_key, nil)&.fetch('row', nil)&.merge!(nested_attrs)
     end

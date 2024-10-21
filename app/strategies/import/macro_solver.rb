@@ -1525,7 +1525,7 @@ module Import
     # == Params:
     # - <tt>:meeting</tt> => the parent Meeting instance (single, best candidate found or created)
     #
-    # - <tt>:team</tt> => a valid or new GogglesDb::TeamAffiliation instance
+    # - <tt>:team</tt> => a valid or new GogglesDb::Team instance
     # - <tt>:team_key</tt> => Team key in the entity sub-Hash stored at root level in the data Hash member
     #                         (may differ from the actual Team.name returned by a search)
     #
