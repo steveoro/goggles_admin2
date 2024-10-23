@@ -73,6 +73,15 @@
         .field.mt-1
           = f.label(:confirmed, 'confirmed')
           = f.check_box(:confirmed, default: true)
+
+    .form-group.row
+      .field.col-auto.mt-1
+        = f.label(:max_individual_events, 'max_individual_events')
+        = f.number_field(:max_individual_events, required: true, class: 'form-control')
+      .field.col-auto.mt-1
+        = f.label(:max_individual_events_per_session, 'max_individual_events_per_session')
+        = f.number_field(:max_individual_events_per_session, required: true, class: 'form-control')
+
     .form-group
       = f.submit(t('data_import.generic_save_btn'), id: 'btn-save-meeting', class: 'btn btn-primary',
                     'aria-label': 'Save', type: 'submit',

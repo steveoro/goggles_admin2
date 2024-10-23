@@ -541,8 +541,76 @@ module Import
           end
         end
       end
+      return if @data['sections'].present?
+
+      # Integrate the list with data already existing in the DB in case there are no sections at all:
+      # (so that we get a glimpse on the page on what has already been imported before)
+      map_events_from_db
+      map_programs_from_db
     end
     # rubocop:enable Metrics/BlockLength
+    #-- ------------------------------------------------------------------------
+    #++
+
+    # Integration for {#map_events_and_results} for when the 'sections' array is empty.
+    # This method looks for any existing MeetingEvent data inside the DB (only),
+    # integrating the cache with any existing row as a cached entity.
+    def map_events_from_db
+      @data&.fetch('meeting_session', []).each_with_index do |msession_hash, msession_idx|
+        meeting_session_id = msession_hash.fetch('row', {}).fetch('id', nil) if msession_hash.is_a?(Hash)
+        meeting_session_id = msession_hash.row.id if msession_hash.respond_to?(:row) && msession_hash.row.present?
+        next unless meeting_session_id
+
+        event_order = 0
+        # Fail fast: (ASSERT: if a MSession row has been cached, we expect to find it in the DB also)
+        meeting_session = GogglesDb::MeetingSession.find(meeting_session_id)
+        Rails.logger.debug { "\r\n\r\n*** Fetching EVENTS from DB for MSession #{meeting_session_id}..." } if @toggle_debug
+
+        # Retrieve all its associated events:
+        meeting_session.meeting_events.each do |meeting_event|
+          event_type = meeting_event.event_type
+          event_key = event_key_for(msession_idx, event_type.code)
+          # Add any missing event as a cached entity even if they aren't referenced yet by the JSON file:
+          # (data['sections'] will be empty when results haven't been published yet)
+          unless entity_present?('meeting_event', event_key)
+            event_order += 1
+            Rails.logger.debug { "    ---> '#{event_key}' n.#{event_order} (+)" } if @toggle_debug
+            mevent_entity = Import::Entity.new(row: meeting_event, matches: [], bindings: { 'meeting_session' => msession_idx })
+            add_entity_with_key('meeting_event', event_key, mevent_entity)
+          end
+        end
+      end
+    end
+
+    # Integration for {#map_events_and_results} for when the 'sections' array is empty.
+    # This method looks for any existing MeetingProgram data inside the DB (only),
+    # integrating the cache with any existing row as a cached entity.
+    def map_programs_from_db
+      @data&.fetch('meeting_event', {}).each do |event_key, mevent_hash|
+        meeting_event_id = mevent_hash.fetch('row', {}).fetch('id', nil) if mevent_hash.is_a?(Hash)
+        meeting_event_id = mevent_hash.row.id if mevent_hash.respond_to?(:row) && mevent_hash.row.present?
+        next unless meeting_event_id
+
+        program_order = 0
+        # Fail fast: (ASSERT: if a row has been cached, we expect to find it in the DB also)
+        meeting_event = GogglesDb::MeetingEvent.find(meeting_event_id)
+        Rails.logger.debug { "\r\n\r\n*** Fetching PROGRAMS from DB for MEvent #{meeting_event_id}..." } if @toggle_debug
+
+        # Retrieve all its associated programs:
+        meeting_event.meeting_programs.each do |meeting_program|
+          category_type = meeting_program.category_type
+          gender_type = meeting_program.gender_type
+          program_key = program_key_for(event_key, category_type.code, gender_type.code)
+          # Add any missing program as a cached entity even if they aren't referenced yet by the JSON file:
+          unless entity_present?('meeting_program', program_key)
+            program_order += 1
+            Rails.logger.debug { "    ---> '#{program_key}' n.#{program_order} (+)" } if @toggle_debug
+            mprogram_entity = Import::Entity.new(row: meeting_program, matches: [], bindings: { 'meeting_event' => event_key })
+            add_entity_with_key('meeting_program', program_key, mprogram_entity)
+          end
+        end
+      end
+    end
     #-- ------------------------------------------------------------------------
     #++
 
@@ -766,6 +834,9 @@ module Import
     # rubocop:enable Metrics/ParameterLists
 
     # Finds or prepares the creation of a MeetingEvent instance given all of the following parameters.
+    # == Context:
+    # The main purpose of this method is to find a proper match between possibly new or existing
+    # MEvents rows and existing/cached MSessions.
     #
     # == Params:
     # - <tt>:meeting</tt> => the parent Meeting instance (single, best candidate found or created)

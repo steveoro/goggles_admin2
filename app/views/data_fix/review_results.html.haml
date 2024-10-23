@@ -84,7 +84,7 @@
 
                     .row-fluid.mt-2
                       - result_count = row_keys&.select { |row_key| event_checker.match?(row_key) }&.count
-                      %b Event tot.: #{result_count}
+                      %b Programs tot.: #{result_count}
 
       - if @ts_keys.present?
         .container-fluid
