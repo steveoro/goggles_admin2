@@ -79,7 +79,8 @@ module Import
       end
 
       db_row ||= model_row.class.find_by(id: model_row.id)
-      excluded_columns = %w[id lock_version created_at updated_at]
+      # Force Calendars to be always updated:
+      excluded_columns = model_row.class.is_a?(GogglesDb::Calendar) ? %w[id lock_version created_at] : %w[id lock_version created_at updated_at]
       model_row.attributes.reject do |column, value|
         value.blank? || value == db_row&.send(column) || excluded_columns.include?(column)
       end

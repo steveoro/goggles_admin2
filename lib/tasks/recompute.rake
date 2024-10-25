@@ -59,11 +59,15 @@ namespace :recompute do
       puts("- #{description}:")
       sql_log << "-- #{description}"
       m.meeting_programs.each do |meeting_program|
-        rows = meeting_program.relay? ? meeting_program.meeting_relay_results.by_timing : meeting_program.meeting_individual_results.by_timing
-        rows.each_with_index do |row, row_index|
+        rows = meeting_program.relay? ? meeting_program.meeting_relay_results : meeting_program.meeting_individual_results
+        with_time = rows.by_timing.to_a.keep_if { |row| row.to_timing.positive? }
+        with_no_time = rows.by_timing.to_a.keep_if { |row| row.to_timing.zero? }
+
+        (with_time + with_no_time).each_with_index do |row, row_index|
           next if row.rank == row_index + 1
 
-          sql_log << "UPDATE #{row.class.table_name} SET updated_at=NOW(), rank=#{row_index + 1} WHERE id = #{row.id};"
+          sql_log << "UPDATE #{row.class.table_name} SET updated_at=NOW(), rank=#{row_index + 1} WHERE id = #{row.id}; " \
+                     "-- MPrg: #{meeting_program.id}, #{row.to_timing}"
           # DEBUG: add to the above: " -- MPrg: #{meeting_program.id}, #{row.to_timing}"
         end
         putc('.')

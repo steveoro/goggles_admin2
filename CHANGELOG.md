@@ -2,6 +2,7 @@
 
 _Please, add the latest build info on top of the list; use Version::MAJOR only after gold release; keep semantic versioning in line with framework's_
 
+- **0.7.24** [Steve A.] force calendars to be always updated after data-fix; bugfix for recompute:ranks which didn't take into accout zero timings with positive ranks
 - **0.7.23** [Steve A.] misc refactoring; re-sync w/ base engine; bundle updates; additional bugfixes; recompute ranks task
 - **0.7.20** [Steve A.] re-sync w/ base engine; bundle updates; added support for session & event add in data-fix
 - **0.7.19** [Steve A.] re-sync w/ base engine; bundle updates; check & merge data management tasks
