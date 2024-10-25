@@ -405,7 +405,8 @@ class DataFixController < ApplicationController
     # ----------------------------------------------------------------------
 
     deep_nested_bindings.each do |binding_model_name, binding_key|
-      # *** Sub-binding update EXCEPTIONS:
+      # *** Sub-binding update EXCEPTIONS that update the corresponding entity directly:
+      # Check for specific binding & model names:
       # - "team" -> "team_affiliation"
       if binding_model_name == 'team_affiliation' && model_name == 'team'
         # Direct update of the TA entity using involved Team attributes (TeamAffiliations & Teams have the same key):
@@ -413,11 +414,12 @@ class DataFixController < ApplicationController
           'team_id' => edit_params['team']&.fetch(actual_form_key.to_s, nil)&.fetch('team_id', nil),
           'name' => edit_params['team']&.fetch(actual_form_key.to_s, nil)&.fetch('editable_name', nil)
         )
+      # Indipendently from binding_model_name, valid for 'city' only:
       # - "meeting_session" -> "swimming_pool" -> "city"
       # - "team" -> "city"
-      elsif binding_model_name == 'city' && edit_params['city'].present? &&
-           edit_params['city'][actual_form_key.to_s].present? && edit_params['city'][actual_form_key.to_s]['key'].present? &&
-           edit_params['city'][actual_form_key.to_s]['city_id'].present?
+      elsif edit_params['city'].present? && edit_params['city'][actual_form_key.to_s].present? &&
+            edit_params['city'][actual_form_key.to_s]['key'].present? &&
+            edit_params['city'][actual_form_key.to_s]['city_id'].present?
         # City is the only "complex" binding that could be sub-nested at depth > 1
         # 1. model_name: [MeetingSession] -> binding1: SwimmingPool -> sub-binding: City
         # 2. model_name: [Team] -> binding1: City
@@ -440,7 +442,10 @@ class DataFixController < ApplicationController
       #  the meeting events form, given that both events & sessions will typically be new & ID-less each time)
       if binding_model_name != 'city' && updated_attrs.key?('key') # (special/bespoke sub-association form field naming for binding keys)
         # Try to detect invalid form indexes:
-        raise "ERROR: bindings key for ['#{model_name}']['#{entity_key}'] is potentially invalid: '#{updated_attrs['key']}', it should be a single-digit integer or string." if updated_attrs['key'].to_s.size != 1
+        if updated_attrs['key'].to_s.size != 1
+          raise("ERROR: bindings key for ['#{model_name}']['#{entity_key}'] is potentially invalid: '#{updated_attrs['key']}', it should be a single-digit integer or string.")
+        end
+
         @solver.data[model_name]&.fetch(entity_key, nil)&.fetch('bindings', nil)&.merge!(
           # ASSERT: key here is a form index, not a string key
           { binding_model_name => updated_attrs['key'].to_i }
@@ -471,6 +476,7 @@ class DataFixController < ApplicationController
 
       # === Update binding entity attributes too: ===
       raise "ERROR: using a 'binding_key' Hash for updates isn't supported anymore: #{binding_key.inspect} (it was used for City before)" if binding_key.is_a?(Hash)
+
       # i.e.: 'swimming_pool' => 0 => 'city_id' (apply to binding, i.e.: 'swimming_pool')
       # Always add the overwrite for the binding fuzzy result ID column with the manual-lookup result ID:
       nested_attrs['id'] = if updated_attrs["#{binding_model_name}_id"].present?

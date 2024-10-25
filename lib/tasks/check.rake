@@ -17,6 +17,42 @@ require 'kaminari'
 
 namespace :check do # rubocop:disable Metrics/BlockLength
   desc <<~DESC
+    Given a Season ID, queries all local Meeting IDs that DO/DO-NOT HAVE MIRs or MRRs associated.
+
+    The lack of MIRs is usually a red flag for meetings that either have been cancelled
+    or have a data-import still pending.
+    (MIRs should always be there for a Meeting that has occurred, whereas MRRs may not have been
+     set at all, depending by the organization hosting it.)
+
+    Options: [season=season#id|<nil=232>]
+             [mrr=true|<nil=false>]
+             [presence=true|<nil=false>]
+
+      - season: season ID
+      - mrr: when 'true' (or not blank) will count MRRs instead of MIRs
+      - presence: search for zero siblings (default, either MIRs or MRRs) or for their positive count
+
+  DESC
+  task results: :environment do
+    includee = ENV.include?('mrr') ? :meeting_relay_results : :meeting_individual_results
+    # For presence, we'll reject the zero? counts, whereas for absence, we'll reject the positive? counts:
+    reject_check_name = ENV.include?('presence') ? :zero? : :positive?
+    puts "\r\n*** Find Meetings #{reject_check_name == :zero? ? 'WITH' : 'WITHOUT'} #{includee} rows ***"
+
+    season_id = ENV.include?('season') ? ENV['season'].to_i : 242
+    puts "\r\n"
+    puts "--> Season #{season_id}:"
+    meeting_keys = GogglesDb::Meeting.where(season_id:).includes(includee)
+                                     .group('meetings.id', 'meetings.description', 'meetings.header_date')
+                                     .count("#{includee}.id")
+                                     .reject { |_k, count| count.send(reject_check_name) }
+    meeting_keys.each_key { |keys| puts "ID #{keys.first}: [#{keys.third}] \"#{keys.second}\"" }
+    puts "\r\n"
+  end
+  #-- -------------------------------------------------------------------------
+  #++
+
+  desc <<~DESC
       Runs a check for Team merge feasibility, reporting any future issues on the console.
 
     Options: [Rails.env=#{Rails.env}]

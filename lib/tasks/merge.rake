@@ -290,7 +290,7 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
       - index: an ovverride index for the generated files (default: <auto>);
 
   DESC
-  task(season_fix: [:environment]) do # rubocop:disable Metrics/BlockLength
+  task(season_fix: [:check_needed_dirs]) do # rubocop:disable Metrics/BlockLength
     puts "*** Task: merge:season_fix - season #{ENV.fetch('season', nil)} ***"
     season = GogglesDb::Season.find_by(id: ENV['season'].to_i)
     if season.nil?
@@ -358,8 +358,6 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
   #-- -------------------------------------------------------------------------
   #++
 
-  private
-
   # Creates the specified file under #{SCRIPT_OUTPUT_DIR} by contatenating the log array into
   # a single text file.
   # If 'simulate' is +false+, the resulting script will be also executed on localhost using the MySQL client.
@@ -396,6 +394,8 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
     glob_path = subdir ? "#{SCRIPT_OUTPUT_DIR}/#{subdir}/*.sql" : "#{SCRIPT_OUTPUT_DIR}/*.sql"
     Pathname.new(Dir[glob_path].last.to_s).basename.to_s.split('-').first.to_i + 1
   end
+
+  private
 
   # Runs the script on the specified subset of badges, measuring its execution time and
   # generating a single SQL script for each call.
