@@ -80,7 +80,7 @@ module Import
 
       db_row ||= model_row.class.find_by(id: model_row.id)
       # Force Calendars to be always updated:
-      excluded_columns = model_row.class.is_a?(GogglesDb::Calendar) ? %w[id lock_version created_at] : %w[id lock_version created_at updated_at]
+      excluded_columns = model_row.is_a?(GogglesDb::Calendar) ? %w[id lock_version created_at] : %w[id lock_version created_at updated_at]
       model_row.attributes.reject do |column, value|
         value.blank? || value == db_row&.send(column) || excluded_columns.include?(column)
       end
@@ -156,8 +156,9 @@ module Import
       meeting = @data['meeting']
       raise StandardError, 'Meeting not successfully committed yet!' unless meeting.is_a?(GogglesDb::Meeting) && meeting.valid?
 
-      # (ASSERT: only 1 code per season)
-      existing_row = GogglesDb::Calendar.for_season(@season).for_code(meeting.code).first
+      # (ASSERT: only 1 code per season; calendar could be already existing, before the Meeting row got its ID)
+      existing_row = GogglesDb::Calendar.for_season(@season).for_code(meeting.code).first ||
+                     GogglesDb::Calendar.for_season(@season).where(meeting_id: meeting.id).first
       model_row = GogglesDb::Calendar.new(
         id: existing_row&.id,
         meeting_id: meeting.id,
@@ -171,7 +172,8 @@ module Import
         results_link: @data['meetingURL'],
         manifest_link: @data['manifestURL'],
         organization_import_text: @data['organization'],
-        cancelled: meeting.cancelled
+        cancelled: meeting.cancelled,
+        updated_at: Time.zone.now
       )
 
       @data['calendar'] = commit_and_log(model_row)

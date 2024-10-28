@@ -59,7 +59,7 @@ class DataFixController < ApplicationController
   # == Params:
   # - <tt>file_path</tt>: the path to the file to be loaded and scanned for existing rows.
   #
-  def add_session
+  def add_session # rubocop:disable Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
     # Make sure we have Meeting & MeetingSession entities after the JSON parsing (which returns an Hash, not an Entity):
     @solver.rebuild_cached_entities_for('meeting')
     @solver.rebuild_cached_entities_for('meeting_session')
@@ -181,7 +181,7 @@ class DataFixController < ApplicationController
   # == Params:
   # - <tt>file_path</tt>: the path to the file to be loaded and scanned for existing rows.
   #
-  def add_event
+  def add_event # rubocop:disable Metrics/AbcSize
     # ASSERT: step 1 ("solve meeting & sessions") has already been run
     prepare_sessions_and_pools
     prepare_event_types_payload
@@ -532,7 +532,7 @@ class DataFixController < ApplicationController
   #                    supports only: swimmer, team, meeting_session, meeting_event;
   # <tt>:key</tt> => string key for the model entity in the parsed data hash from the JSON file.
   #
-  def purge
+  def purge # rubocop:disable Metrics/AbcSize,Metrics/PerceivedComplexity
     model_name = edit_params['model'].to_s
     unless %w[swimmer team meeting_session meeting_event].include?(model_name)
       flash[:warning] = I18n.t('data_import.errors.invalid_request')
