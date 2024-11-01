@@ -44,7 +44,7 @@ module Grid
     #
     def initialize(options = {})
       super
-      @asset_row = options[:asset_row]&.reload # Force data refresh
+      @asset_row = options[:asset_row] # (DON'T USE '@asset_row&.reload' here! Forcing a reload will yield an error if the row isn't present on localhost!)
       @controller_name = options[:controller_name]
       @column_name = options[:column_name]
       @bkgnd_color = options[:bkgnd_color] || 'green'

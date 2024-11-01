@@ -24,7 +24,7 @@ class UsersGrid < BaseGrid
                                                  column_name: 'locked_at', bkgnd_color: 'red', true_color: 'text-danger', true_icon: 'fa-ban'))
   end
 
-  column(:locked, header: 'Active?', html: true, mandatory: true, order: false) do |asset|
+  column(:active, header: 'Active?', html: true, mandatory: true, order: false) do |asset|
     render(Grid::RowBoolValueSwitchComponent.new(asset_row: asset, controller_name: 'api_users',
                                                  column_name: 'active', bkgnd_color: 'green', true_color: 'text-success', true_icon: 'fa-check'))
   end

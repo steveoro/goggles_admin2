@@ -39,10 +39,12 @@ en:
       btn_start_sql_batch_disable: "Processing..."
       btn_reparse_session_label: "Reparse sessions"
       btn_reparse_session_tooltip: "Make a forced reparse of this result file but JUST for the Meeting sessions (useful if you change and save the Meeting ID)"
+      reparse_notice_for_events: "If you have run a forced 'reparse' for the Meeting or its sessions, you'll need to run a forced 'reparse' for the events too in order to search for any existing event or program on the DB."
       btn_purge_duplicate: "Purge duplicate"
       confirm_purge: "Are you sure you want to PURGE the row indexed by '%{key}'? (NOTE: this should be done only BEFORE starting the meeting results review phase to avoid data corruption!)"
       btn_add_session: "Add session"
       confirm_add_session: "Are you sure you want to add a new session to the data file?"
+      notice_for_add_session: "WARNING: If you add a new session after editing the existing one (not yet committed to the DB), the new session will restore both the swimming pool and its city from the values found on the DB. Edit the sessions when you're done adding them if you want to save time."
       btn_add_event: "Add event"
       confirm_add_event: "Are you sure you want to add a new event to the data file?"
       msg:

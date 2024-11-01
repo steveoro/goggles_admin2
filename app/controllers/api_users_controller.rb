@@ -66,9 +66,12 @@ class APIUsersController < ApplicationController
     # Extract manually here all bool columns edited direct with a RowBoolSwitch button, which handles
     # the field with an array of values, indexed by the current ID (doesn't matter if the value in
     # the array is always just one).
-    # Also, 'locked_at' as column name (sent by the Grid::RowBoolValueSwitchComponent),
-    # is handled by the API as the 'locked' parameter:
-    locked = params.permit(locked: {})[:locked]&.fetch(id, nil).present?
+    #
+    # == NOTE:
+    # - 'locked_at' as User column is handled by the API as 'locked' & makes the account locked/unlocked;
+    # - 'active' toggles the {#active_for_authentication?} method result in the User model,
+    #    which basically acts as 'locked' but has a custom Devise message for the user trying to login.
+    locked = params.permit(locked_at: {})[:locked_at]&.fetch(id, nil) == 'true'
     active = [nil, '', 'true'].include?(params.permit(active: {})[:active]&.fetch(id, nil))
     result = APIProxy.call(
       method: :put,

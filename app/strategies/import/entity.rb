@@ -4,9 +4,9 @@ module Import
   #
   # = Import::Entity
   #
-  #   - version:  7-0.3.53
+  #   - version:  7-0.7.24
   #   - author:   Steve A.
-  #   - build:    20220617
+  #   - build:    20241101
   #
   # Wrapper for actual DB Models built or retrieved by the Import::MacroSolver.
   #
@@ -69,6 +69,16 @@ module Import
     def add_bindings!(additional_bindings)
       @bindings.merge!(additional_bindings)
       @bindings
+    end
+
+    # Returns an Hash version of the current instance.
+    # Key members are stringified.
+    def to_hash
+      {
+        'row' => @row.respond_to?(:attributes) ? @row.attributes : @row.to_hash,
+        'matches' => @matches.map { |row| row.respond_to?(:attributes) ? row.attributes : row.to_hash },
+        'bindings' => @bindings.to_hash
+      }
     end
   end
 end

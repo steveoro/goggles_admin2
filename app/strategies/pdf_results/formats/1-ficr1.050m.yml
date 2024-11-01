@@ -1,7 +1,10 @@
 #
 # = Layout format definition for PdfResults::FormatParser
 #
-1-ficr1.100m:
+# Spawn of 1-ficr1.100m, 50m-only, with header and some result columns similar to 050l or 100l.
+# (This is where it diverges from standard parent '1-ficr1')
+#
+1-ficr1.050m:
   - name: header
     # Index is page-relative:
     at_fixed_row: 0
@@ -43,7 +46,7 @@
       - fields:
         - name: event_length
           lambda: strip
-          format: "\\s*(\\d{2,4})m?\\s+"
+          format: "\\s*(50)m?\\s*"
         - name: event_type
           lambda: strip
           format: "\\s*(?>m\\s)?((\\w+\\s?){1,2})\\sMaster\\sMisti\\b"
@@ -59,7 +62,7 @@
     repeat: true
     rows:
       - name: results_hdr1
-        format: "\\s?Pos.\\s+Nominativo\\s+Crs\\.?\\s+Naz\\.?\\s+50 m(?>\\s+100 m)?(?>\\s+150 m)?(?>\\s+200 m)?\\s+Arrivo\\s+Pti?\\s+Cat"
+        format: "\\s?Pos.\\s+Nominativo\\s+Crs\\.?\\s+Naz\\.?\\s+50 m\\s+Arrivo\\s+Pti?\\s+Cat"
       - name: results_hdr2
         format: "\\s?Società\\s+Anno\\s+(FINA|Master)\\s+Pti?\\s+S\\.?C\\.?"
 
@@ -117,36 +120,10 @@
             pop_out: false
 
           - name: lap50
-            format: "\\s{2,}\\w{3}\\s{5,}\\s{2,}((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})\\s{2,}"
+            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*\\b"
             pop_out: false
-            # Positional:
-            # format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*\\b"
-            # token_start: 70
-            # token_end: 82
-            required: false
-          - name: lap100
-            format: "\\s{2,}\\w{3}\\s{5,}\\s{2,}(?>(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}\\s{2,}){1}((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})\\s{2,}"
-            pop_out: false
-            # Positional:
-            # format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*\\b"
-            # token_start: 82
-            # token_end: 94
-            required: false
-          - name: lap150
-            format: "\\s{2,}\\w{3}\\s{5,}\\s{2,}(?>(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}\\s{2,}){2}((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})\\s{2,}"
-            pop_out: false
-            # Positional:
-            # format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*\\b"
-            # token_start: 95
-            # token_end: 108
-            required: false
-          - name: lap200
-            format: "\\s{2,}\\w{3}\\s{5,}\\s{2,}(?>(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}\\s{2,}){3}((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})\\s{2,}"
-            pop_out: false
-            # Positional:
-            # format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*\\b"
-            # token_start: 109
-            # token_end: 118
+            token_start: 70
+            token_end: 82
             required: false
 
           - name: timing
@@ -168,36 +145,10 @@
             token_start: 51
             token_end: 64
 
-          - name: delta100
-            format: "\\s{2,}\\d{4}\\s{5,}\\s{2,}\\(((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})\\)\\s{2,}"
-            pop_out: false
-            # Positional:
-            # format: "\\s*\\(((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\)\\s*"
-            # token_start: 83
-            # token_end: 94
-            required: false
-          - name: delta150
-            format: "\\s{2,}\\d{4}\\s{5,}(?>\\s{2,}\\((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}\\)){1}\\s{2,}\\(((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})\\)\\s{2,}"
-            pop_out: false
-            # Positional:
-            # format: "\\s*\\(((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\)\\s*"
-            # token_start: 96
-            # token_end: 107
-            required: false
-          - name: delta200
-            format: "\\s{2,}\\d{4}\\s{5,}(?>\\s{2,}\\((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}\\)){2}\\s{2,}\\(((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})\\)\\s{2,}"
-            pop_out: false
-            # Positional:
-            # format: "\\s*\\(((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\)\\s*"
-            # token_start: 109
-            # token_end: 120
-            required: false
-
           - name: std_score
+            format: "\\s*(\\d?[,.]?\\d{1,4}[,.]\\d{1,2})\\b"
+            token_start: 109
             pop_out: false
-            # Positional:
-            format: "\\s*(\\d?[,.]?\\d{1,4}[,.]\\d{1,2})$"
-            token_start: 116
             # U25 / A20 do not score:
             required: false
 

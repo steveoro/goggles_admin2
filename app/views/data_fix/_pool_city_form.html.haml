@@ -10,7 +10,10 @@
             target3_dom_id: "city_#{index}_name", target3_column: 'name',
             target4_dom_id: "city_#{index}_area", target4_column: 'area',
             target5_dom_id: "city_#{index}_zip", target5_column: 'zip',
-            target6_dom_id: "city_#{index}_country_code", target6_column: 'country_code',
+            target6_dom_id: "city_#{index}_country", target6_column: 'country',
+            target7_dom_id: "city_#{index}_country_code", target7_column: 'country_code',
+            target8_dom_id: "city_#{index}_latitude", target8_column: 'latitude',
+            target9_dom_id: "city_#{index}_longitude", target9_column: 'longitude',
             jwt: current_user.jwt))
   .col-lg-4.col-md-6
     .form-group
@@ -31,9 +34,27 @@
         = label_tag("city[#{index}][zip]", 'zip')
         = text_field_tag("city[#{index}][zip]", city&.zip,
                           class: 'form-control', placeholder: 'zip')
+  .col-lg-2.col-md-3.col-sm-3
+    .form-group
+      .field
+        = label_tag("city[#{index}][country]", 'country')
+        = text_field_tag("city[#{index}][country]", city&.country,
+                          class: 'form-control', placeholder: 'country')
   .col-lg-1.col-md-3.col-sm-3
     .form-group
       .field
-        = label_tag("city[#{index}][country_code]", 'country_code')
+        = label_tag("city[#{index}][country_code]", 'c.code')
         = text_field_tag("city[#{index}][country_code]", city&.country_code,
                           class: 'form-control', placeholder: 'country_code')
+  .col-lg-2.col-md-4.col-sm-4
+    .form-group
+      .field
+        = label_tag("city[#{index}][latitude]", 'latitude')
+        = text_field_tag("city[#{index}][latitude]", city&.latitude,
+                          class: 'form-control', placeholder: 'latitude')
+  .col-lg-2.col-md-4.col-sm-4
+    .form-group
+      .field
+        = label_tag("city[#{index}][longitude]", 'longitude')
+        = text_field_tag("city[#{index}][longitude]", city&.longitude,
+                          class: 'form-control', placeholder: 'longitude')

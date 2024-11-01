@@ -3,7 +3,7 @@
 module PdfResults
   # = PdfResults::FormatParser strategy
   #
-  #   - version:  7-0.7.10
+  #   - version:  7-0.7.20
   #   - author:   Steve A.
   #
   # Given at least a single whole page of a text file, this strategy class will try to detect

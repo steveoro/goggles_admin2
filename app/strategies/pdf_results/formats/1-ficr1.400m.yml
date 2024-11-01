@@ -41,16 +41,14 @@
     repeat: true
     parent: header
     rows:
-      # "event" row-0, absolute row #2:
       - fields:
         - name: event_length
           lambda: strip
-          format: "\\s*(400)m?\\s+"
+          format: "\\s*(400)m?\\s*"
         - name: event_type
           lambda: strip
-          format: "\\s*400m?\\s+((\\w+\\s?){1,2})\\sMaster\\sMisti\\b"
+          format: "\\s*(?>m\\s)?((\\w+\\s?){1,2})\\sMaster\\sMisti\\b"
 
-      # event" row-1, absolute row #3:
       - fields:
         - name: event_sub_hdr
           lambda: strip
@@ -97,75 +95,99 @@
             format: "^\\s?(\\d{1,2}|SQ|RT|NP|ES)\\s+"
             pop_out: false
           - name: swimmer_name
-            format: "\\s+(\\D+(?>['`\\-\\.\\s]\\s?\\D+){1,4})\\s+"
+            # Original:
+            # format: "\\s+(\\D+(?>['`\\-\\.\\s]\\s?\\D+){1,4})\\s+"
+            # token_end: 31
+            format: "^\\s*(?>\\d{1,2}|SQ|RT|NP|ES)\\s+(\\D{3,35})\\s{1,}\\d?\\s+"
             pop_out: false
-            token_end: 31
           - name: lane_num
-            format: "\\s*(\\d{1,2})\\s*"
+            # Original:
+            # format: "\\s*(\\d{1,2})\\s*"
+            # # Column alignment may vary (swimmer_name range can overlap safely with this due to its format):
+            # token_start: 29
+            # token_end: 52
+            format: "^\\s*(?>\\d{1,2}|SQ|RT|NP|ES)\\s+\\D{3,35}\\s{1,}(\\d)\\s+"
             pop_out: false
-            # Column alignment may vary (swimmer_name range can overlap safely with this due to its format):
-            token_start: 29
-            token_end: 52
           - name: nation
-            format: "\\s*(\\w{2,3})\\s*"
+            # Original:
+            # format: "\\s*(\\w{2,3})\\s*"
+            # token_start: 53
+            # token_end: 62
+            format: "^\\s*(?>\\d{1,2}|SQ|RT|NP|ES)\\s+\\D{3,35}\\s{1,}\\d\\s{1,}(\\w{3})\\b"
             pop_out: false
-            token_start: 53
-            token_end: 62
 
           - name: lap50
-            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
+            format: "\\s{2,}\\w{3}\\s{5,}\\s{2,}((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})\\s{2,}"
             pop_out: false
-            token_start: 70
-            token_end: 83
+            # Positional:
+            # format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
+            # token_start: 70
+            # token_end: 83
             required: false
           - name: lap100
-            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
+            format: "\\s{2,}\\w{3}\\s{5,}\\s{2,}(?>(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}\\s{2,}){1}((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})\\s{2,}"
             pop_out: false
-            token_start: 82
-            token_end: 96
+            # Positional:
+            # format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
+            # token_start: 82
+            # token_end: 96
             required: false
           - name: lap150
-            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
+            format: "\\s{2,}\\w{3}\\s{5,}\\s{2,}(?>(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}\\s{2,}){2}((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})\\s{2,}"
             pop_out: false
-            token_start: 95
-            token_end: 110
+            # Positional:
+            # format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
+            # token_start: 95
+            # token_end: 110
             required: false
           - name: lap200
-            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
+            format: "\\s{2,}\\w{3}\\s{5,}\\s{2,}(?>(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}\\s{2,}){3}((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})\\s{2,}"
             pop_out: false
-            token_start: 109
-            token_end: 123
+            # Positional:
+            # format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
+            # token_start: 109
+            # token_end: 123
             required: false
 
           - name: lap250
-            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
+            format: "\\s{2,}\\w{3}\\s{5,}\\s{2,}(?>(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}\\s{2,}){4}((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})\\s{2,}"
             pop_out: false
-            token_start: 122
-            token_end: 133
+            # Positional:
+            # format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
+            # token_start: 122
+            # token_end: 133
             required: false
           - name: lap300
-            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
+            format: "\\s{2,}\\w{3}\\s{5,}\\s{2,}(?>(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}\\s{2,}){5}((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})\\s{2,}"
             pop_out: false
-            token_start: 132
-            token_end: 143
+            # Positional:
+            # format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
+            # token_start: 132
+            # token_end: 143
             required: false
           - name: lap350
-            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
+            format: "\\s{2,}\\w{3}\\s{5,}\\s{2,}(?>(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}\\s{2,}){6}((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})\\s{2,}"
             pop_out: false
-            token_start: 142
-            token_end: 153
+            # Positional:
+            # format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
+            # token_start: 142
+            # token_end: 153
             required: false
           - name: lap400
-            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
+            format: "\\s{2,}\\w{3}\\s{5,}\\s{2,}(?>(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}\\s{2,}){7}((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})\\s{2,}"
             pop_out: false
-            token_start: 152
-            token_end: 162
+            # Positional:
+            # format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
+            # token_start: 152
+            # token_end: 162
             required: false
 
           - name: timing
             format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})$"
             # Use last lap as timing when the column is totally missing:
             token_start: 152
+            # Or use full row & expect all 8 laps to be there:
+            # format: "\\s{2,}\\w{3}\\s{5,}\\s{2,}(?>(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}\\s{2,}){8}((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})$"
             pop_out: false
             required: false
 
@@ -182,51 +204,65 @@
             token_end: 64
 
           - name: delta100
-            format: "\\s*\\(((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\)\\s*"
+            format: "\\s{2,}\\d{4}\\s{5,}\\s{2,}\\(((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})\\)\\s{2,}"
             pop_out: false
-            token_start: 83
-            token_end: 96
+            # Positional:
+            # format: "\\s*\\(((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\)\\s*"
+            # token_start: 83
+            # token_end: 96
             required: false
           - name: delta150
-            format: "\\s*\\(((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\)\\s*"
+            format: "\\s{2,}\\d{4}\\s{5,}(?>\\s{2,}\\((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}\\)){1}\\s{2,}\\(((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})\\)"
             pop_out: false
-            token_start: 96
-            token_end: 110
+            # Positional:
+            # format: "\\s*\\(((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\)\\s*"
+            # token_start: 96
+            # token_end: 110
             required: false
           - name: delta200
-            format: "\\s*\\(((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\)\\s*"
+            format: "\\s{2,}\\d{4}\\s{5,}(?>\\s{2,}\\((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}\\)){2}\\s{2,}\\(((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})\\)"
             pop_out: false
-            token_start: 110
-            token_end: 123
+            # Positional:
+            # format: "\\s*\\(((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\)\\s*"
+            # token_start: 110
+            # token_end: 123
             required: false
 
           - name: delta250
-            format: "\\s*\\(((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\)\\s*"
+            format: "\\s{2,}\\d{4}\\s{5,}(?>\\s{2,}\\((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}\\)){3}\\s{2,}\\(((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})\\)"
             pop_out: false
-            token_start: 123
-            token_end: 133
+            # Positional:
+            # format: "\\s*\\(((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\)\\s*"
+            # token_start: 123
+            # token_end: 133
             required: false
           - name: delta300
-            format: "\\s*\\(((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\)\\s*"
+            format: "\\s{2,}\\d{4}\\s{5,}(?>\\s{2,}\\((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}\\)){4}\\s{2,}\\(((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})\\)"
             pop_out: false
-            token_start: 133
-            token_end: 144
+            # Positional:
+            # format: "\\s*\\(((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\)\\s*"
+            # token_start: 133
+            # token_end: 144
             required: false
           - name: delta350
-            format: "\\s*\\(((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\)\\s*"
+            format: "\\s{2,}\\d{4}\\s{5,}(?>\\s{2,}\\((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}\\)){5}\\s{2,}\\(((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})\\)"
             pop_out: false
-            token_start: 143
-            token_end: 153
+            # Positional:
+            # format: "\\s*\\(((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\)\\s*"
+            # token_start: 143
+            # token_end: 153
             required: false
           - name: delta400
-            format: "\\s*\\(((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\)\\s*"
+            format: "\\s{2,}\\d{4}\\s{5,}(?>\\s{2,}\\((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}\\)){6}\\s{2,}\\(((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})\\)"
             pop_out: false
-            token_start: 152
-            token_end: 163
+            # Positional:
+            # format: "\\s*\\(((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\)\\s*"
+            # token_start: 152
+            # token_end: 163
             required: false
 
           - name: std_score
-            format: "\\s*(\\d?[,.]?\\d{1,4}[,.]\\d{1,2})\\b"
+            format: "\\s*(\\d?[,.]?\\d{1,4}[,.]\\d{1,2})$"
             token_start: 162
             pop_out: false
             # U25 / A20 do not score:

@@ -39,10 +39,12 @@ it:
       btn_start_sql_batch_disable: "Elaborazione in corso..."
       btn_reparse_session_label: "Riscasiona sessioni"
       btn_reparse_session_tooltip: "Riesegui la scasione forzata di questo file risultati SOLO per le sessioni Meeting (utile se si cambia e salva l'ID del Meeting)"
+      reparse_notice_for_events: "Se hai eseguito il 'rescan' forzato del meeting o delle sue sessioni, devi ri-eseguire il 'rescan' per gli eventi affinché vengano integrati con quelli eventualmente già presenti su DB!"
       btn_purge_duplicate: "Elimina duplicato"
       confirm_purge: "Siamo sicuri di volere ELIMINARE la riga indicizzata da '%{key}'? (NOTA: questo dovrebbe essere fatto SOLO PRIMA di iniziare la fase di revisione dei risultati gara per evitare la corruzione dei dati!)"
       btn_add_session: "Aggiungi sessione"
       confirm_add_session: "Siamo sicuri di volere aggiungere una nuova sessione al file di dati?"
+      notice_for_add_session: "ATTENZIONE: se aggiungi una nuova sessione dopo aver modificato una di quelle esistenti (e non ancora committata su DB), la nuova sessione sovrascriverà nel mapping i valori di SwimmingPool & City per tutte le sessioni con quelli presenti nel DB. Edita le sessioni quando hai finito di aggiungerle tutte, se vuoi risparmiare tempo."
       btn_add_event: "Aggiungi evento"
       confirm_add_event: "Siamo sicuri di volere aggiungere un nuovo evento al file di dati?"
       msg:

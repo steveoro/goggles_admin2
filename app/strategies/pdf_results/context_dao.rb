@@ -3,7 +3,7 @@
 module PdfResults
   # = PdfResults::ContextDAO
   #
-  #   - version:  7-0.7.10
+  #   - version:  7-0.7.20
   #   - author:   Steve A.
   #
   #
@@ -242,6 +242,11 @@ module PdfResults
       # Set destination DAO parent only if not already set above, using this priority:
       # (any matching reference || same parent link || first matching parent name)
       dest_parent ||= find_existing(source_dao.parent) || source_dao.parent || find_existing_by_name_only(source_dao.parent_name)
+
+      # NOTE: whenever the following happens, it may be due to a context_def that is optional
+      #       but required anyway in the hierarchy tree.
+      #       For ex.: an expected 'rel_category' needed by a 'rel_team' context,
+      #                which should probably point directly to an 'event' instead.
       # DEBUG ----------------------------------------------------------------
       binding.pry unless dest_parent.is_a?(ContextDAO)
       # ----------------------------------------------------------------------

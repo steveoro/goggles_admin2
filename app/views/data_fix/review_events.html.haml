@@ -9,6 +9,8 @@
     %section.my-2#review-events
       - sorted_keys = @events_hash.sort { |a, b| a.last&.row&.event_order <=> b.last&.row&.event_order }.map(&:first)
       .container-fluid
+        %p.text-center
+          %i= t('data_import.data_fix.reparse_notice_for_events')
         = form_tag(data_fix_add_event_path, id: 'frm-add-event', method: :post) do
           = hidden_field_tag('file_path', @file_path)
           - event_option_list = options_from_collection_for_select(GogglesDb::EventType.all_eventable,
@@ -34,7 +36,7 @@
             :ruby
               event_entity = @events_hash[event_key]
               event = event_entity.row
-              meeting_session_idx = event_entity.bindings['meeting_session']
+              meeting_session_idx = event_entity.bindings&.fetch('meeting_session', 0) || 0
 
             - if last_session_idx != meeting_session_idx
               - last_session_idx = meeting_session_idx

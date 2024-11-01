@@ -70,6 +70,8 @@
                 = t('data_import.data_fix.btn_add_session')
 
         .row-fluid.mt-4
+          %p.text-center
+            %i= t('data_import.data_fix.notice_for_add_session')
           - @meeting_sessions.each_with_index do |meeting_session, index|
             - pool_type_opts = options_from_collection_for_select(GogglesDb::PoolType.all, 'id', 'long_label',
                                  @swimming_pools[index]&.pool_type_id || cookies[:pool_type_id])

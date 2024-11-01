@@ -149,28 +149,29 @@
             token_start: 121
             token_end: 133
             required: false
-
           - name: lap500
-            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*\\d{1,2}?"
+            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
             pop_out: false
             token_start: 131
             token_end: 143
             required: false
           - name: lap600
-            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*\\d{1,2}?"
+            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
             pop_out: false
             token_start: 141
             token_end: 152
             required: false
           - name: lap700
-            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*\\d{1,2}?"
+            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
             pop_out: false
             token_start: 151
             token_end: 162
             required: false
 
           - name: timing
-            format: "\\s*\\d{1,2}?\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\b"
+            # format: "\\s*\\d{1,2}?\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\b"
+            # Use last lap as timing when the column is totally missing:
+            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})$"
             token_start: 156
             pop_out: false
             required: false
@@ -205,50 +206,49 @@
             pop_out: false
           - name: delta100
             # may/may not have brackets:
-            format: "\\s*\\(?((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\)?\\s*"
+            format: "\\s*\\(?((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{2})\\)?\\s*"
             pop_out: false
             token_start: 80
             token_end: 92
             required: false
           - name: delta150
-            format: "\\s*\\(?((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\)?\\s*"
+            format: "\\s*\\(?((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{2})\\)?\\s*"
             pop_out: false
             token_start: 91
             token_end: 102
             required: false
           - name: delta200
-            format: "\\s*\\(?((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\)?\\s*"
+            format: "\\s*\\(?((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{2})\\)?\\s*"
             pop_out: false
             token_start: 101
             token_end: 113
             required: false
           - name: delta300
-            format: "\\s*\\(?((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\)?\\s*"
+            format: "\\s*\\(?((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{2})\\)?\\s*"
             pop_out: false
             token_start: 111
             token_end: 123
             required: false
           - name: delta400
-            format: "\\s*\\(?((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\)?\\s*"
+            format: "\\s*\\(?((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{2})\\)?\\s*"
             pop_out: false
             token_start: 121
             token_end: 133
             required: false
-
           - name: delta500
-            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*\\d{1,2}?"
+            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{2})\\s*"
             pop_out: false
             token_start: 131
             token_end: 143
             required: false
           - name: delta600
-            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*\\d{1,2}?"
+            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{2})\\s*"
             pop_out: false
             token_start: 141
             token_end: 152
             required: false
           - name: delta700
-            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*\\d{1,2}?"
+            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{2})\\s*"
             pop_out: false
             token_start: 151
             token_end: 162
@@ -272,37 +272,37 @@
             token_end: 64
 
           - name: lap800
-            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*\\d{1,2}?"
+            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{2})\\s*\\d{1,2}?"
             pop_out: false
             token_start: 65
             token_end: 76
             required: false
           - name: lap900
-            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*\\d{1,2}?"
+            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{2})\\s*\\d{1,2}?"
             pop_out: false
             token_start: 74
             token_end: 85
             required: false
           - name: lap1000
-            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*\\d{1,2}?"
+            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{2})\\s*\\d{1,2}?"
             pop_out: false
             token_start: 84
             token_end: 94
             required: false
           - name: lap1100
-            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*\\d{1,2}?"
+            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{2})\\s*\\d{1,2}?"
             pop_out: false
             token_start: 92
             token_end: 103
             required: false
           - name: lap1200
-            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*\\d{1,2}?"
+            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{2})\\s*\\d{1,2}?"
             pop_out: false
             token_start: 101
             token_end: 112
             required: false
           - name: lap1300
-            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*\\d{1,2}?"
+            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{2})\\s*\\d{1,2}?"
             pop_out: false
             token_start: 110
             token_end: 121

@@ -33,7 +33,7 @@ module Users
     # Makes sure a valid JWT is always stored inside the current_user instance.
     # Redirects to login (new_user_session_path) unless the user is an Admin or in case of errors.
     def freshen_jwt!(user, params)
-      unless GogglesDb::GrantChecker.admin?(user)
+      unless user && GogglesDb::GrantChecker.admin?(user)
         set_flash_message!(:error, I18n.t('devise.api_login.errors.not_an_admin'))
         redirect_to new_user_session_path && return
       end
@@ -44,7 +44,7 @@ module Users
       # Check JWT:
       decoded_jwt = GogglesDb::JWTManager.decode(user.jwt, Rails.application.credentials.api_static_key)
 
-      # JWT expired? Get a fresh one:
+      # JWT expired? Get a fresh one (use scoped params for 'user'):
       user.update_columns(jwt: retrieve_jwt(params['user'])) if decoded_jwt.nil?
       user.reload
     end

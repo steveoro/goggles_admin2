@@ -65,7 +65,9 @@
     starts_at_row: 6
     repeat: true
     # This will match any empty row if the fields are not found:
-    optional_if_empty: true
+    # optional_if_empty: true
+    # In recent years, category for relays isn't displayed at all:
+    required: false
     parent: event
     rows:
       - name: cat_title
@@ -77,7 +79,9 @@
 
   - name: rel_team
     repeat: true
-    parent: rel_category
+    # In recent years, category for relays isn't displayed at all:
+    parent: event
+    # ^^ WAS: rel_category (using event will delegate category esteemation to the L2Converter)
     starts_at_row: 7
     rows:
       - name: rel_team1
@@ -198,14 +202,18 @@
       - name: rel_swimmer1
         fields:
           - name: swimmer_name
-            format: "\\s+(\\D+(?>['`\\-\\.\\s]\\s?\\D+){1,4})\\s+"
+            # Original:
+            # format: "\\s+(\\D+(?>['`\\-\\.\\s]\\s?\\D+){1,4})\\s+"
+            # token_end: 31
+            format: "^\\s{2,}(\\D{3,35})\\s{3,}\\w{3}\\s{2,}"
             pop_out: false
-            token_end: 31
           - name: nation
-            format: "\\s+(\\w{2,3})\\s*"
+            # Original:
+            # format: "\\s+(\\w{2,3})\\s*"
+            # token_start: 31
+            # token_end: 68
+            format: "^\\s{2,}\\D{3,35}\\s{3,}(\\w{3})\\s{2,}"
             pop_out: false
-            token_start: 31
-            token_end: 68
 
           - name: lap50
             format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"

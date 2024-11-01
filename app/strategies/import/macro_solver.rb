@@ -289,10 +289,10 @@ module Import
       @data['team_affiliation'] = {}
       @data['swimmer'] = {}
       @data['badge'] = {}
-      total = @data['sections'].count
+      total = @data['sections']&.count || 0
       section_idx = 0
 
-      @data['sections'].each do |sect| # rubocop:disable Metrics/BlockLength
+      @data['sections']&.each do |sect| # rubocop:disable Metrics/BlockLength
         section_idx += 1
         ActionCable.server.broadcast('ImportStatusChannel', { msg: 'map_teams_and_swimmers', progress: section_idx, total: }) unless skip_broadcast
         # If the section contains a 'retry' subsection it means the crawler received some error response during
@@ -427,7 +427,7 @@ module Import
       @data['relay_lap'] = {}
       @data['meeting_relay_swimmer'] = {}
       @data['meeting_team_score'] = {}
-      total = @data['sections'].count
+      total = @data['sections']&.count || 0
       section_idx = 0
 
       meeting = cached_instance_of('meeting', nil)
@@ -446,7 +446,7 @@ module Import
       end
 
       # Map programs & events:
-      @data['sections'].each do |sect|
+      @data['sections']&.each do |sect|
         section_idx += 1
         # --- MeetingTeamScore --- find/create unless key is present (stores just the first unique key found):
         if sect['ranking'].present?
@@ -556,7 +556,7 @@ module Import
     # This method looks for any existing MeetingEvent data inside the DB (only),
     # integrating the cache with any existing row as a cached entity.
     def map_events_from_db
-      @data&.fetch('meeting_session', []).each_with_index do |msession_hash, msession_idx|
+      @data&.fetch('meeting_session', [])&.each_with_index do |msession_hash, msession_idx|
         meeting_session_id = msession_hash.fetch('row', {}).fetch('id', nil) if msession_hash.is_a?(Hash)
         meeting_session_id = msession_hash.row.id if msession_hash.respond_to?(:row) && msession_hash.row.present?
         next unless meeting_session_id
@@ -572,12 +572,12 @@ module Import
           event_key = event_key_for(msession_idx, event_type.code)
           # Add any missing event as a cached entity even if they aren't referenced yet by the JSON file:
           # (data['sections'] will be empty when results haven't been published yet)
-          unless entity_present?('meeting_event', event_key)
-            event_order += 1
-            Rails.logger.debug { "    ---> '#{event_key}' n.#{event_order} (+)" } if @toggle_debug
-            mevent_entity = Import::Entity.new(row: meeting_event, matches: [], bindings: { 'meeting_session' => msession_idx })
-            add_entity_with_key('meeting_event', event_key, mevent_entity)
-          end
+          next if entity_present?('meeting_event', event_key)
+
+          event_order += 1
+          Rails.logger.debug { "    ---> '#{event_key}' n.#{event_order} (+)" } if @toggle_debug
+          mevent_entity = Import::Entity.new(row: meeting_event, matches: [], bindings: { 'meeting_session' => msession_idx })
+          add_entity_with_key('meeting_event', event_key, mevent_entity)
         end
       end
     end
@@ -586,7 +586,7 @@ module Import
     # This method looks for any existing MeetingProgram data inside the DB (only),
     # integrating the cache with any existing row as a cached entity.
     def map_programs_from_db
-      @data&.fetch('meeting_event', {}).each do |event_key, mevent_hash|
+      @data&.fetch('meeting_event', {})&.each do |event_key, mevent_hash|
         meeting_event_id = mevent_hash.fetch('row', {}).fetch('id', nil) if mevent_hash.is_a?(Hash)
         meeting_event_id = mevent_hash.row.id if mevent_hash.respond_to?(:row) && mevent_hash.row.present?
         next unless meeting_event_id
@@ -602,12 +602,12 @@ module Import
           gender_type = meeting_program.gender_type
           program_key = program_key_for(event_key, category_type.code, gender_type.code)
           # Add any missing program as a cached entity even if they aren't referenced yet by the JSON file:
-          unless entity_present?('meeting_program', program_key)
-            program_order += 1
-            Rails.logger.debug { "    ---> '#{program_key}' n.#{program_order} (+)" } if @toggle_debug
-            mprogram_entity = Import::Entity.new(row: meeting_program, matches: [], bindings: { 'meeting_event' => event_key })
-            add_entity_with_key('meeting_program', program_key, mprogram_entity)
-          end
+          next if entity_present?('meeting_program', program_key)
+
+          program_order += 1
+          Rails.logger.debug { "    ---> '#{program_key}' n.#{program_order} (+)" } if @toggle_debug
+          mprogram_entity = Import::Entity.new(row: meeting_program, matches: [], bindings: { 'meeting_event' => event_key })
+          add_entity_with_key('meeting_program', program_key, mprogram_entity)
         end
       end
     end
@@ -660,51 +660,64 @@ module Import
 
     # Finds or prepares the creation of a City instance given its name included in a text address.
     #
+    # == NOTE:
+    # The 'find_or_prepare_*' methods are supposed to always retrieve or build up
+    # entity rows in order to add or replace the existing ones on the cached mappings.
+    #
     # == Params:
     # - <tt>id</tt> => City ID, if already knew (shortcut a few queries)
-    # - <tt>venue_address</tt> => a swimming_pool/venue address that includes the city name
+    # - <tt>city_key_name</tt> => City key name used for the cached Entities
+    # - <tt>area</tt> => City string area name
     #
     # == Returns:
     # An Import::Entity wrapping the target row together with a list of all possible candidates,
     # when found. <tt>Import::Entity#matches<tt> is the array of possible row candidates, as above.
     #
-    def find_or_prepare_city(id, venue_address)
+    def find_or_prepare_city(id, city_key_name, area)
       # FINDER: -- City --
-      # 1. Existing:
+      # 1. Existing in DB:
       existing_row = GogglesDb::City.find_by(id:) if id.to_i.positive?
-      return Import::Entity.new(row: existing_row) if existing_row.present?
+      if existing_row.present?
+        city_entity = Import::Entity.new(row: existing_row)
+        return add_entity_with_key('city', city_key_name, city_entity)
+      end
 
       # 2. Smart search #1:
-      city_name, area_code, _remainder = Parser::CityName.tokenize_address(venue_address)
-      cmd = GogglesDb::CmdFindDbEntity.call(GogglesDb::City, { name: city_name, toggle_debug: @toggle_debug == 2 })
+      cmd = GogglesDb::CmdFindDbEntity.call(GogglesDb::City, { name: city_key_name, toggle_debug: @toggle_debug == 2 })
       if cmd.successful?
         matches = cmd.matches.respond_to?(:map) ? cmd.matches.map(&:candidate) : cmd.matches
-        return Import::Entity.new(row: cmd.result, matches:)
+        city_entity = Import::Entity.new(row: cmd.result, matches:)
+        return add_entity_with_key('city', city_key_name, city_entity)
       end
 
       # 3. Smart search #2 || New row:
       # Try to find a match using the internal ISOCity database first:
       country = ISO3166::Country.new('IT')
-      cmd = GogglesDb::CmdFindIsoCity.call(country, city_name)
+      cmd = GogglesDb::CmdFindIsoCity.call(country, city_key_name)
       new_row = if cmd.successful?
                   GogglesDb::City.new(
                     name: cmd.result.respond_to?(:accentcity) ? cmd.result.accentcity : cmd.result.name,
                     country_code: country.alpha2,
                     country: country.iso_short_name,
-                    area: area_code,
+                    area:,
                     latitude: cmd.result.latitude,
                     longitude: cmd.result.longitude
                   )
                 else
                   # Use an educated guess:
-                  GogglesDb::City.new(name: city_name, area: area_code, country_code: 'IT', country: 'Italia')
+                  GogglesDb::City.new(name: city_key_name, area:, country_code: 'IT', country: 'Italia')
                 end
       # NOTE: cmd.matches will report either the empty matches if no match was found, or the list of candidates otherwise.
       matches = cmd.matches.respond_to?(:map) ? cmd.matches.map(&:candidate) : cmd.matches
-      Import::Entity.new(row: new_row, matches:)
+      city_entity = Import::Entity.new(row: new_row, matches:)
+      add_entity_with_key('city', city_key_name, city_entity)
     end
 
     # Finds or prepares the creation of a SwimmingPool instance given the parameters.
+    #
+    # == NOTE:
+    # The 'find_or_prepare_*' methods are supposed to always retrieve or build up
+    # entity rows in order to add or replace the existing ones on the cached mappings.
     #
     # == Params:
     # - <tt>id</tt> => swimming pool ID, if already knew (shortcut a few queries)
@@ -729,27 +742,28 @@ module Import
       existing_row = GogglesDb::SwimmingPool.find_by(id:) if id.to_i.positive?
 
       # FINDER: -- City --
-      city_key_name, _area_code, remainder_address = Parser::CityName.tokenize_address(address)
-      city_entity = find_or_prepare_city(existing_row&.city_id, address)
-      # Always store in cache the sub-entity found:
-      # (this is currently the only place where we may cache the City entity found; 'team' doesn't do this - yet)
-      add_entity_with_key('city', city_key_name, city_entity)
+      city_key_name, area, remainder_address = Parser::CityName.tokenize_address(address)
+      # For City & pool only, 'find_or_prepare_XXX' will also handle adding the entity to the cache map if missing:
+      city_entity = find_or_prepare_city(existing_row&.city_id, city_key_name, area)
 
       # FINDER: -- Pool --
       # 1. Existing:
       bindings = { 'city' => city_key_name }
-      return Import::Entity.new(row: existing_row, bindings:) if existing_row.present?
+      if existing_row.present?
+        new_entity = Import::Entity.new(row: existing_row, bindings:)
+        return add_entity_with_key('swimming_pool', pool_name, new_entity)
+      end
 
       # 2. Smart search:
-      pool_type = GogglesDb::PoolType.mt_25 # Default type
-      pool_type = GogglesDb::PoolType.mt_50 if /50/i.match?(pool_length)
+      pool_type = /50/i.match?(pool_length) ? GogglesDb::PoolType.mt_50 : GogglesDb::PoolType.mt_25
       cmd = GogglesDb::CmdFindDbEntity.call(GogglesDb::SwimmingPool, { name: pool_name, pool_type_id: pool_type.id }) if pool_name.present?
       if cmd&.successful?
         # Force-set the pool city_id to the one on the City entity found (only if the city row has indeed an ID and that's still
         # unset on the pool just found:
         cmd.result.city_id = city_entity.row&.id if cmd.result.city_id.to_i.zero? && city_entity.row&.id.to_i.positive?
         matches = cmd.matches.respond_to?(:map) ? cmd.matches.map(&:candidate) : cmd.matches
-        return Import::Entity.new(row: cmd.result, matches:, bindings:)
+        new_entity = Import::Entity.new(row: cmd.result, matches:, bindings:)
+        return add_entity_with_key('swimming_pool', pool_name, new_entity)
       end
 
       # 3. New row:
@@ -766,7 +780,8 @@ module Import
         lanes_number:
       )
       # Add the bindings to the new entity row (even if city_entity.row has an ID):
-      Import::Entity.new(row: new_row, matches: [new_row], bindings:)
+      new_entity = Import::Entity.new(row: new_row, matches: [new_row], bindings:)
+      add_entity_with_key('swimming_pool', pool_name, new_entity)
     end
     # rubocop:enable Metrics/ParameterLists
 
@@ -808,8 +823,6 @@ module Import
       iso_date = scheduled_date || Parser::SessionDate.from_l2_result(date_day, date_month, date_year)
       domain = GogglesDb::MeetingSession.where(meeting_id: meeting&.id, session_order:)
       pool_entity = find_or_prepare_pool(domain.first&.swimming_pool_id, pool_name, address, pool_length)
-      # Always store in cache the sub-entity found:
-      add_entity_with_key('swimming_pool', pool_name, pool_entity)
       bindings = { 'meeting' => meeting.description, 'swimming_pool' => pool_name }
 
       # Force-set the association id in the main row found, only if the sub-entity has an ID and is not set on the main row:
@@ -1530,7 +1543,7 @@ module Import
         lap_key = "lap#{length_in_meters}-#{mr_key}"
         return if entity_present?('lap', lap_key)
 
-        add_entity_with_key('lap', lap_key, lap_entity)
+        add_entity_with_key('lap', lap_key, lap_entity) # (always overwrite the mapped lap with the new entity)
 
       elsif mr_model.is_a?(GogglesDb::MeetingRelayResult)
         mrs_key = "mrs#{order}-#{mr_key}"
@@ -1549,7 +1562,7 @@ module Import
           abs_timing: lap_timing, # (abs = "from start")
           delta_timing: # (delta = "each individual lap")
         )
-        # Add MRS only when missing:
+        # Add MRS only when missing from the mapping:
         add_entity_with_key('meeting_relay_swimmer', mrs_key, mrs_entity) unless entity_present?('meeting_relay_swimmer', mrs_key)
 
       elsif mr_model.is_a?(GogglesDb::MeetingRelaySwimmer) && sub_phases.positive?
@@ -1800,9 +1813,10 @@ module Import
       @data[model_name].fetch(key_name_or_index, nil).present?
     end
 
-    # Adds the specified <tt>entity_value</tt> to the <tt>model_name</tt> data Hash, using <tt>key_name</tt>
-    # as unique key; initializes the sub-Hash if still missing.
+    # Adds (or overwrites) the specified <tt>entity_value</tt> to the <tt>model_name</tt> data Hash, using <tt>key_name</tt>
+    # as unique key. Initializes the sub-Hash if still missing.
     # Any preexisting value will be overwritten. Works only for Hash-type cached entities.
+    # Returns the same <tt>entity_value</tt> mapped onto the <tt>model_name</tt> data Hash.
     def add_entity_with_key(model_name, key_name, entity_value)
       @data[model_name] ||= {}
       @data[model_name][key_name] = entity_value

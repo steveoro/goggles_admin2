@@ -77,8 +77,8 @@ class DataFixController < ApplicationController
       date_month: last_session ? Parser::SessionDate::MONTH_NAMES[last_session&.scheduled_date&.month&.- 1] : @solver.data['dateMonth1'],
       date_year: last_session&.scheduled_date&.year || @solver.data['dateYear1'],
       scheduled_date: last_session&.scheduled_date,
-      pool_name: last_session&.swimming_pool&.name || @solver.data['venue1'],
-      address: last_session&.swimming_pool&.address || @solver.data['address1'],
+      pool_name: @solver.data['venue2'].presence || @solver.data['venue1'],
+      address: @solver.data['address2'].presence || @solver.data['address1'],
       pool_length: last_session&.swimming_pool&.pool_type&.code || @solver.data['poolLength']
     )
     if new_session
@@ -400,11 +400,12 @@ class DataFixController < ApplicationController
 
     # == Bindings update: ==
     deep_nested_bindings = @solver.cached_instance_of(model_name, entity_key, 'bindings')
+    city_updatable_fields = %w[name zip area country country_code latitude longitude]
     # DEBUG ----------------------------------------------------------------
     # binding.pry
     # ----------------------------------------------------------------------
 
-    deep_nested_bindings.each do |binding_model_name, binding_key|
+    deep_nested_bindings.each do |binding_model_name, binding_key| # rubocop:disable Metrics/BlockLength
       # *** Sub-binding update EXCEPTIONS that update the corresponding entity directly:
       # Check for specific binding & model names:
       # - "team" -> "team_affiliation"
@@ -415,20 +416,28 @@ class DataFixController < ApplicationController
           'name' => edit_params['team']&.fetch(actual_form_key.to_s, nil)&.fetch('editable_name', nil)
         )
       # Indipendently from binding_model_name, valid for 'city' only:
-      # - "meeting_session" -> "swimming_pool" -> "city"
+      # - "meeting_session" -> "swimming_pool" (-> "city")
       # - "team" -> "city"
       elsif edit_params['city'].present? && edit_params['city'][actual_form_key.to_s].present? &&
-            edit_params['city'][actual_form_key.to_s]['key'].present? &&
-            edit_params['city'][actual_form_key.to_s]['city_id'].present?
-        # City is the only "complex" binding that could be sub-nested at depth > 1
-        # 1. model_name: [MeetingSession] -> binding1: SwimmingPool -> sub-binding: City
-        # 2. model_name: [Team] -> binding1: City
-        # => Update the cached city entity (without changing its sub-binding key) directly using the ID
-        #    provided in the edit_params because the form won't include all fields for nestings > 1 and
+            edit_params['city'][actual_form_key.to_s]['key'].present?
+        # NOTE: City is the only "complex" binding that could be sub-nested at depth > 1
+        # 1. model_name: [MeetingSession] -> explicit binding1: [SwimmingPool] -> implicit sub-binding: [City] (fields in edit_params)
+        # 2. model_name: [Team] -> explicit binding1: [City] (fields in edit_params)
+        # => Update the cached city entity (without changing its sub-binding key) directly using the ID when
+        #    provided in the edit_params because the form won't include all fields for nestings at depth > 1 and
         #    the cached entity may need those during the MacroCommitter phase:
         cached_key = edit_params['city'][actual_form_key.to_s]['key']
-        city_id = edit_params['city'][actual_form_key.to_s]['city_id']
-        @solver.data['city'][cached_key]['row'] = @solver.find_or_prepare_city(city_id, cached_key).row.to_hash
+
+        # Retrieve and overwrite the cached entity whenever a new City ID is given:
+        if edit_params['city'][actual_form_key.to_s]['city_id'].present?
+          city_id = edit_params['city'][actual_form_key.to_s]['city_id']
+          area = edit_params['city'][actual_form_key.to_s]['area']
+          @solver.data['city'][cached_key] = @solver.find_or_prepare_city(city_id, cached_key, area).to_hash
+        end
+        # Update fields in the cached city entity using the form inputs:
+        city_updatable_fields.each do |field|
+          @solver.data['city'][cached_key]['row'][field] = edit_params['city'][actual_form_key.to_s][field]
+        end
       end
 
       updated_attrs = edit_params[binding_model_name]&.fetch(actual_form_key.to_s, nil)
@@ -472,7 +481,7 @@ class DataFixController < ApplicationController
       # ----------------------------------------------------------------------
       # No more attributes or sub-attributes updates needed for city after this point:
       # (City cached entity as been already updated above)
-      next if binding_model_name == 'city'
+      # next if binding_model_name == 'city'
 
       # === Update binding entity attributes too: ===
       raise "ERROR: using a 'binding_key' Hash for updates isn't supported anymore: #{binding_key.inspect} (it was used for City before)" if binding_key.is_a?(Hash)
@@ -484,6 +493,12 @@ class DataFixController < ApplicationController
                            elsif (nested_attrs['id']).to_i.zero? # Avoid clearing if empty or present
                              nested_attrs['id'] = nil # Allow clearing of ID using zero
                            end
+      # Overwrite the bindings to city ID inside the current binding model row:
+      # (ASSUMES: if the form presents a city as editable, then it must be part of its sub-nested bindings)
+      if edit_params['city'].present? && edit_params['city'][actual_form_key.to_s].present? &&
+         edit_params['city'][actual_form_key.to_s]['key'].present?
+        nested_attrs['city_id'] = edit_params['city'][actual_form_key.to_s]['city_id']
+      end
       @solver.data[binding_model_name]&.fetch(binding_key, nil)&.fetch('row', nil)&.compact!
       @solver.data[binding_model_name]&.fetch(binding_key, nil)&.fetch('row', nil)&.merge!(nested_attrs)
     end

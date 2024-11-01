@@ -22,7 +22,7 @@ class HomeController < ApplicationController
 
   # Retrieves the remote row total for a specified endpoint.
   def count_remote_rows_for(api_endpoint)
-    result = APIProxy.call(method: :get, url: api_endpoint, jwt: current_user.jwt)
+    result = APIProxy.call(method: :get, url: api_endpoint, jwt: current_user&.jwt)
     result.headers[:total] || 0
   end
 end

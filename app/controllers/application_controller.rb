@@ -6,7 +6,7 @@ require 'version'
 #
 # Common parent controller
 class ApplicationController < ActionController::Base
-  protect_from_forgery with: :exception
+  protect_from_forgery with: :null_session
   before_action :app_settings_row, :set_locale, :detect_device_variant,
                 :check_jwt_session, :authenticate_user!
 
@@ -19,7 +19,7 @@ class ApplicationController < ActionController::Base
 
   # Checks JWT validity and forces a new sign-in otherwise.
   def check_jwt_session
-    unless GogglesDb::GrantChecker.admin?(current_user)
+    unless current_user && GogglesDb::GrantChecker.admin?(current_user)
       logger.debug('* Not an Admin!')
       sign_out(current_user)
       flash[:error] = I18n.t('dashboard.not_admin_error')
