@@ -144,21 +144,23 @@ namespace :check do # rubocop:disable Metrics/BlockLength
     end
     list_teams = ENV['list_teams'] == '1'
 
-    puts('--> LIST TEAMS for possible badge merges: ✔') if list_teams
+    puts('--> LIST TEAMS for sure & possible badge merges: ✔') if list_teams
 
     checker = Merge::BadgeSeasonChecker.new(season:)
     checker.run
     checker.display_report
-    exit unless list_teams || checker.possible_badge_merges.blank?
+    exit unless list_teams || (checker.sure_badge_merges.blank? && checker.possible_badge_merges.blank?)
 
-    puts("\r\n\033[1;33;37mPOSSIBLE BADGE-MERGE candidates w/ badge details:\033[0m (tot. #{checker.possible_badge_merges.size})")
-    checker.possible_badge_merges.each do |swimmer_id, badge_list|
-      deco_list = badge_list.map do |badge|
-        "[ID \033[1;33;33m#{badge.id.to_s.rjust(7)}\033[0m, team #{badge.team_id.to_s.rjust(5)}: #{badge.team.name} / #{badge.category_type.code}]".ljust(100)
+    %i[possible_badge_merges sure_badge_merges].each do |method_name|
+      puts("\r\n\033[1;33;37m#{method_name.upcase} candidates w/ badge details:\033[0m (tot. #{checker.send(method_name).size})")
+      checker.send(method_name).each do |swimmer_id, badge_list|
+        deco_list = badge_list.map do |badge|
+          "[ID \033[1;33;33m#{badge.id.to_s.rjust(7)}\033[0m, team #{badge.team_id.to_s.rjust(5)}: #{badge.team.name} / #{badge.category_type.code}]".ljust(100)
+        end
+        puts("- Swimmer #{swimmer_id.to_s.rjust(6)}, badges: #{deco_list.join('| ')}")
       end
-      puts("- Swimmer #{swimmer_id.to_s.rjust(6)}, badges: #{deco_list.join('| ')}")
+      puts("\r\nTot. #{checker.send(method_name).size} possible badge merges.")
     end
-    puts("\r\nTot. #{checker.possible_badge_merges.count} possible badge merges.")
   end
   #-- -------------------------------------------------------------------------
   #++
