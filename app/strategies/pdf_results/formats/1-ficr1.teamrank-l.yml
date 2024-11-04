@@ -103,9 +103,11 @@
             format: "^\\s{4,7}\\D"
             pop_out: false
           - name: swimmer_name
-            format: "\\s{4,7}(\\D+(?>['`\\-\\.\\s]\\s?\\D+){1,4})\\s+"
+            # Original:
+            # token_end: 55
+            # format: "\\s{4,7}(\\D+(?>['`\\-\\.\\s]\\s?\\D+){1,4})\\s+"
+            format: "^\\s{4,7}(\\D{3,35})\\s{1,}"
             pop_out: false
-            token_end: 55
       # Optional 2nd row for very-long swimmer names:
       - name: swimmer_name2
         required: false

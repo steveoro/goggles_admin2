@@ -98,14 +98,19 @@
             format: "^\\s{64,}"
             pop_out: false
           - name: lap50
-            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*\\b"
+            format: "\\s{2,}\\w{3}\\s{5,}\\s{2,}((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})\\s{2,}"
             pop_out: false
-            token_start: 66
-            token_end: 81
+            # Positional:
+            # format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*\\b"
+            # token_start: 66
+            # token_end: 81
             required: false
           - name: timing
-            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*\\b"
-            token_start: 118
+            # Use last lap as timing when the column is totally missing:
+            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})$"
+            # Original:
+            # format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*\\b"
+            # token_start: 118
             pop_out: false
             required: false
 
@@ -115,20 +120,26 @@
             format: "\\s?(\\d{1,2}|SQ|RT|NP|ES)\\s+"
             pop_out: false
           - name: swimmer_name
-            format: "\\s+(\\D+(?>['`\\-\\.\\s]\\s?\\D+){1,4})\\s+"
+            # Original:
+            # format: "\\s+(\\D+(?>['`\\-\\.\\s]\\s?\\D+){1,4})\\s+"
+            # token_end: 31
+            format: "^\\s*(?>\\d{1,2}|SQ|RT|NP|ES)\\s+(\\D{3,35})\\s{1,}\\d{1,2}\\s+"
             pop_out: false
-            token_end: 31
           - name: lane_num
-            format: "\\s*(\\d{1,2})\\s*"
+            # Original:
+            # format: "\\s*(\\d{1,2})\\s*"
+            # # Column alignment may vary (swimmer_name range can overlap safely with this due to its format):
+            # token_start: 25
+            # token_end: 52
+            format: "^\\s*(?>\\d{1,2}|SQ|RT|NP|ES)\\s+\\D{3,35}\\s{1,}(\\d{1,2})\\s+"
             pop_out: false
-            # Column alignment may vary (swimmer_name range can overlap safely with this due to its format):
-            token_start: 25
-            token_end: 52
           - name: nation
-            format: "\\s*(\\w{2,3})\\b"
+            # Original:
+            # format: "\\s*(\\w{2,3})\\b"
+            # token_start: 53
+            # token_end: 62
+            format: "^\\s*(?>\\d{1,2}|SQ|RT|NP|ES)\\s+\\D{3,35}\\s{1,}\\d{1,2}\\s{1,}(\\w{3})\\b"
             pop_out: false
-            token_start: 53
-            token_end: 62
 
       - name: results2
         # ONLY for DSQ: this row won't be there for normal results (w/o delta row) or for "RT" or "Retired" results

@@ -188,7 +188,7 @@
     repeat: true
     parent: event
     # Start searching for this context at:
-    starts_at_row: 9
+    starts_at_row: 2
     rows:
       # "results" row-0:
       - fields:
@@ -198,10 +198,10 @@
           # Rank will be missing for DSQs:
           required: false
         - name: swimmer_name
-          format: "^(?>\\d{0,3}\\s+)([A-z]+(?>[A-z'`\\-\\s]\\s?[A-z'`]*){2,7})\\s+\\d{4}\\s{2,}"
+          format: "^(?>\\d{0,3}\\s+)([A-z]+(?>[A-z'`\\-\\s]\\s?[A-z'`]*){2,7})\\s+\\d{4}\\s*"
           pop_out: false
         - name: year_of_birth
-          format: "^\\d{0,3}\\s*.+\\s+(\\d{4})\\s{2,}"
+          format: "^\\d{0,3}\\s*.+\\s+(\\d{4})\\s*"
           pop_out: false
 
         - name: lap50
@@ -219,6 +219,8 @@
 
         - name: timing
           format: "\\s+\\d{4}\\s{2,}.+\\s+(Non part|Ritirato|Squalif|Assente|\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})$"
+          # Timing will be missing for DSQs:
+          required: false
           pop_out: false
 
       # NOTE: enabling this will mess up recognition because there's no easy way
