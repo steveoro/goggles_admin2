@@ -262,7 +262,10 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
     found in a WHOLE Season by checking the overall hierarchy integrity of badges.
 
     1. "sure" badge merges, i.e. when the source and destination badges share the same
-       swimmer & season;
+       swimmer & season with the same team (different category or not), or whenever the
+       team is different but the swimmer has been found enrolled more than once in one or
+       more meetings with different badges (as no swimmer can be enrolled in the same
+       meeting more than once using different teams);
        (list of badges taken from Merge::BadgeSeasonChecker#sure_badge_merges)
 
     2. wrongly assigned categories, i.e. relay-only categories assigned to a swimmer
