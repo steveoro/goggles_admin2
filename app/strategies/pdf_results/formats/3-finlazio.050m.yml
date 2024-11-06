@@ -5,7 +5,7 @@
 # - 50m-only;
 # - meeting name on top, meeting place on EOP.
 #
-3-finlazio:
+3-finlazio.050m:
   - name: header
     at_fixed_row: 0
     # In order to validate/debug a format not always present in page,
@@ -54,7 +54,7 @@
 
   - name: event
     # Repeats only in between events, so this is not required on each page:
-    required: false
+    # required: false
     repeat: true
     starts_at_row: 6
     parent: header
@@ -71,6 +71,7 @@
           pop_out: false
         - name: gender_type
           format: "\\s[-–]\\s(?>Assoluti|Under|Master)\\s(?>(Femmine|Maschi)|mist)"
+          required: false
           pop_out: false
       - name: event_sep0
         format: "^$"
@@ -104,15 +105,15 @@
         format: "^\\s{0,10}(\\d{1,3})\\s{1,10}\\w+"
         pop_out: false
       - name: swimmer_name
-        format: "^\\s{0,10}(?>\\d{1,3})\\s{1,10}((?>[a-zA-Z'`àèéìòù]{2,16}[\\-\\s]?){1,8})\\s{2,}(?>[a-zA-Z]{3})?\\s{1,}\\d{4}\\s{2,}"
+        format: "^\\s{0,10}(?>\\d{1,3})\\s{1,10}((?>[a-zA-Z'`àèéìòù]{1,16}[\\-\\s]?){1,8})\\s{2,}(?>[a-zA-Z]{3})?\\s{1,}\\d{4}\\s{2,}"
         pop_out: false
       - name: nation
-        format: "^\\s{0,10}(?>\\d{1,3})\\s{1,10}(?>[a-zA-Z'`àèéìòù]{2,16}[\\-\\s]?){1,8}\\s{2,}([a-zA-Z]{3})\\s{1,}\\d{4}\\s{2,}"
+        format: "^\\s{0,10}(?>\\d{1,3})\\s{1,10}(?>[a-zA-Z'`àèéìòù]{1,16}[\\-\\s]?){1,8}\\s{2,}([a-zA-Z]{3})\\s{1,}\\d{4}\\s{2,}"
         # Sometimes the 3 letter nation code may be missing:
         required: false
         pop_out: false
       - name: year_of_birth
-        format: "^\\s{0,10}(?>\\d{1,3})\\s{1,10}(?>[a-zA-Z'`àèéìòù]{2,16}[\\-\\s]?){1,8}\\s{2,}(?>[a-zA-Z]{3})?\\s{1,}(\\d{4})\\s{2,}"
+        format: "^\\s{0,10}(?>\\d{1,3})\\s{1,10}(?>[a-zA-Z'`àèéìòù]{1,16}[\\-\\s]?){1,8}\\s{2,}(?>[a-zA-Z]{3})?\\s{1,}(\\d{4})\\s{2,}"
         pop_out: false
       - name: team_name
         format: "\\s{2,}\\d{4}\\s{2,}(.{3,31})(?>\\s{2,}|$)"
