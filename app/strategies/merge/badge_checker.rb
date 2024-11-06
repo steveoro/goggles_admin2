@@ -419,13 +419,14 @@ module Merge
 
       mevent = GogglesDb::MeetingEvent.find(mevent_id).decorate
       conflicting = dest_row.present? && src_row.to_timing != dest_row.to_timing
+      conflict_msg = conflicting ? '(Diff. timing! ❌)' : '(MERGEABLE! ✅)'
       result = "- {MEvent #{mevent_id.to_s.rjust(6)}} Season #{src_row.season.id}, MeetingEvent #{src_row.meeting.id} - #{mevent.display_label}\r\n" \
                "#{''.ljust(17)}🔹Src  [MIR #{src_row.id.to_s.ljust(7)}] swimmer_id: #{src_row.swimmer_id} (#{src_row.swimmer.complete_name}), " \
                "team_id: #{src_row.team_id} ➡ #{src_row.category_type.code} #{src_row.to_timing}, laps: #{src_row.laps.count}\r\n"
       return if dest_row.blank?
 
       result << "#{''.ljust(17)}🔹Dest [MIR #{dest_row.id.to_s.ljust(7)}] swimmer_id: #{dest_row.swimmer_id} (#{dest_row.swimmer.complete_name}), " \
-                "team_id: #{dest_row.team_id} ➡ #{dest_row.category_type.code} #{dest_row.to_timing} #{conflicting ? '❌' : '✅'}, " \
+                "team_id: #{dest_row.team_id} ➡ #{dest_row.category_type.code} #{dest_row.to_timing} #{conflict_msg}, " \
                 "laps: #{dest_row.laps.count}\r\n"
       result
     end

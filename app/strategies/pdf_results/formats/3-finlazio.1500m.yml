@@ -90,10 +90,10 @@
         format: "^$"
       - fields:
         - name: cat_title
-          format: "^\\s{50,}((?>MASTER\\s|UNDER\\s|PROPAGANDA\\s)?\\d{2})[MF]"
+          format: "^\\s{45,}((?>MASTER\\s|UNDER\\s|PROPAGANDA\\s)?\\d{2})\\s?(?>[MF]|DONNE|UOMINI)?"
           pop_out: false
         - name: gender_type
-          format: "^\\s{50,}(?>MASTER\\s|UNDER\\s|PROPAGANDA\\s)?\\d{2}([MF])"
+          format: "^\\s{45,}(?>MASTER\\s|UNDER\\s|PROPAGANDA\\s)?\\d{2}\\s?([MF]|DONNE|UOMINI)"
           pop_out: false
 
   # Actual data starts here:
@@ -109,10 +109,10 @@
             format: "^\\s{0,10}(\\d{1,3})\\s{1,10}\\w+"
             pop_out: false
           - name: swimmer_name
-            format: "^\\s{0,10}(?>\\d{1,3})\\s{1,10}(\\D{3,28})\\s{2,}(?>\\w{3})?\\s{3,}"
+            format: "^\\s{0,10}(?>\\d{1,3})\\s{1,10}(\\D{3,28})\\s{2,}(?>\\w{3})?\\s{2,}"
             pop_out: false
           - name: nation
-            format: "^\\s{0,10}(?>\\d{1,3})\\s{1,10}\\D{3,28}\\s{2,}(\\w{3})\\s{3,}"
+            format: "^\\s{0,10}(?>\\d{1,3})\\s{1,10}\\D{3,28}\\s{2,}(\\w{3})\\s{2,}"
             # Sometimes the 3 letter nation code may be missing:
             required: false
             pop_out: false
@@ -277,23 +277,12 @@
             pop_out: false
             required: false
 
-  - name: disqualified
-    parent: event
-    required: false
-    rows:
-      - name: dsq_spacer1
-        format: "^$"
-      - name: dsq_title
-        format: "^\\s{3,}NON\\sCLASSIFICATI|FUORI\\sGARA"
-      - name: dsq_spacer2
-        format: "^$"
-
   # DSQ results have swimmer & team on a single row:
   - name: results_alt
     alternative_of: results
     required: false
     repeat: true
-    parent: event
+    parent: category
     rows:
       - name: results_detail
         fields:
@@ -313,7 +302,7 @@
             format: "^\\s{0,10}(?>\\d{1,3})\\s{1,10}\\D{3,28}\\s{2,}(?>\\w{3})?\\s{1,}(\\d{4})\\s{2,}"
             pop_out: false
           - name: team_name
-            format: "\\s{2,}\\d{4}\\s{2,}(.{3,29})(?>\\s{2,}|$)"
+            format: "\\s{1,}\\d{4}\\s{2,}(.{3,31})(?>\\s{2,}|$)"
             token_start: 34
             pop_out: false
 
@@ -329,6 +318,18 @@
           - name: disqualify_type
             format: "^\\s{15,}(falsa\\spartenz\\w+|arrivo\\sirr.*|virata\\s.+|nuotata\\s.*)"
             pop_out: false
+      - name: dsq_spacer2
+        required: false
+        format: "^$"
+
+  - name: disqualified
+    parent: event
+    required: false
+    rows:
+      - name: dsq_spacer1
+        format: "^$"
+      - name: dsq_title
+        format: "^\\s{3,}NON\\sCLASSIFICATI|FUORI\\sGARA"
       - name: dsq_spacer2
         required: false
         format: "^$"

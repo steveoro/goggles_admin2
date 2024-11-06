@@ -159,7 +159,6 @@ namespace :check do # rubocop:disable Metrics/BlockLength
         end
         puts("- Swimmer #{swimmer_id.to_s.rjust(6)}, badges: #{deco_list.join('| ')}")
       end
-      puts("\r\nTot. #{checker.send(method_name).size} possible badge merges.")
     end
   end
   #-- -------------------------------------------------------------------------

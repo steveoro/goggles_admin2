@@ -425,8 +425,8 @@ module PdfResults
           # $stdout.write("\033[1;33;30m⬅\033[0m") # signal "BACK to prev."
           log_message(Kernel.format("  \\__ (back to prev. '\033[94;3m%s\033[0m')", ctx_name))
 
-        # == Next context: in any other case, always move forward to next context
-        else
+        # == Next context: in any other NON-valid case, always move forward to next context
+        elsif !valid
           ctx_index += 1
           if ctx_index < @format_order.count
             ctx_name = @format_order.at(ctx_index)
@@ -438,6 +438,10 @@ module PdfResults
             log_message("      <<-- \033[1;33;31mEND OF FORMAT LOOP '\033[1;93;40;3m#{@format_name}\033[0m' -->>")
             # $stdout.write("\033[1;33;30m^\033[0m") # signal "Ctx Loop wrap"
           end
+
+        # == ELSE: valid => don't progress context counter until a non-valid context application is found
+        else
+          log_message(Kernel.format("  \\__ continuing with '\033[94;3m%s\033[0m'", ctx_name))
         end
 
         # DEBUG VERBOSE

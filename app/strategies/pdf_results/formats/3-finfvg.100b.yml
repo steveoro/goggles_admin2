@@ -86,10 +86,10 @@
         format: "^$"
       - fields:
         - name: cat_title
-          format: "^\\s{50,}((?>MASTER\\s|UNDER\\s|PROPAGANDA\\s)?\\d{2})[MF]"
+          format: "^\\s{45,}((?>MASTER\\s|UNDER\\s|PROPAGANDA\\s)?\\d{2})\\s?(?>[MF]|DONNE|UOMINI)?"
           pop_out: false
         - name: gender_type
-          format: "^\\s{50,}(?>MASTER\\s|UNDER\\s|PROPAGANDA\\s)?\\d{2}([MF])"
+          format: "^\\s{45,}(?>MASTER\\s|UNDER\\s|PROPAGANDA\\s)?\\d{2}\\s?([MF]|DONNE|UOMINI)"
           pop_out: false
 
   # Actual data starts here:

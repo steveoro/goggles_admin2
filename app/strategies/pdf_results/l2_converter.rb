@@ -990,7 +990,7 @@ module PdfResults
     def fetch_category_gender(row_hash)
       # *** Context 'category'|'event' ***
       # (Assumed to include the "gender type label" field, among other possible fields in the key)
-      key = row_hash.fetch(:key, '')
+      key = row_hash.fetch(:key, '').gsub(/donne/i, 'femmine').gsub(/uomini/i, 'maschi')
 
       # key type 1, example: [...]"M55 Master Maschi 55 - 59"[...]
       if /\s*[UAM]\d{2}(?>\sUnder|\sMaster)?\s(Femmine|Maschi)/ui.match?(key)
@@ -1002,7 +1002,7 @@ module PdfResults
 
       # use just the first capital character from the field value:
       elsif row_hash[:fields].key?(GENDER_FIELD_NAME)
-        row_hash[:fields][GENDER_FIELD_NAME]&.upcase&.at(0)
+        row_hash[:fields][GENDER_FIELD_NAME].to_s.gsub(/donne/i, 'femmine').gsub(/uomini/i, 'maschi').upcase.at(0)
       end
     end
 

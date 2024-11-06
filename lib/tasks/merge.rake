@@ -288,9 +288,24 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
     Options: [Rails.env=#{Rails.env}]
              season=<source_season_id>
              index=[file_index_start_override|<auto>]
+             possible=[<0>|1]
+             [src_team=<source_team_id> dest_team=<dest_team_id>]
 
       - season: source Season ID to be checked & fixed;
       - index: an ovverride index for the generated files (default: <auto>);
+
+      - possible: process and consider also the "possible badge merges" for fixing;
+                  WARNING: unless filtered with a src_team, this can be data damaging!
+
+      - src_team: when present, it may require a 'dest_team' for forcing conflicts during merges;
+                  allows to filter and process only the specified src_team for fixing/forcing;
+                  (note that the merger class may halt if no dest_team is specified and a conflict
+                  is found)
+
+      - dest_team: when present requires also a 'src_team'; as stated above,
+                  all 'src_team' badges will overwrite 'dest_team's values using a forced
+                  merge whenever required; otherwise, src_team badges will be processed
+                  using the "autofix" mode.
 
   DESC
   task(season_fix: [:check_needed_dirs]) do # rubocop:disable Metrics/BlockLength
@@ -300,14 +315,41 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
       puts('You need a valid Season ID to proceed.')
       exit
     end
+    src_team = ENV['src_team'].to_i if ENV['src_team'].present?
+    dest_team = ENV['dest_team'].to_i if ENV['dest_team'].present?
+    if dest_team.present? && src_team.nil?
+      puts('You need also a valid src_team when specifying a dest_team to force merges.')
+      exit
+    end
 
     puts('')
-    puts('--> Running BadgeSeasonChecker...')
+    consider_possible_merges = ENV['possible'] == '1'
+    puts("Filtering only badges for team #{src_team}") if src_team
+    puts('Processing also the "possible merge" candindates!') if consider_possible_merges
+    puts("[src: #{src_team}] --(will OVERWRITE)--> [dest: #{dest_team}]") if src_team && dest_team
+    puts("\r\nWARNING: ⚠ Processing 'possible merges' WITHOUT TEAM FILTERING! ⚠") if consider_possible_merges && src_team.blank?
+
+    puts('--> Running BadgeSeasonChecker to collect candidates...')
     file_index = ENV['index'].present? ? ENV['index'].to_i : auto_index_from_script_output_dir(season.id)
 
     checker = Merge::BadgeSeasonChecker.new(season:)
     checker.run
     checker.display_short_summary
+
+    # 0) "Possible Mergeable Badges" (same swimmer, sometimes also with same category, similar team names):
+    #    (NOTE: this optional step won't be run multiple times)
+    if consider_possible_merges
+      process_merge_badges(
+        step_name: "Step 0: 'POSSIBLE badge merges'",
+        subdir: season.id, file_index:,
+        array_of_array_of_badges: checker.possible_badge_merges.values,
+        src_team:, dest_team:
+      )
+      puts("\r\n--> Refreshing BadgeSeasonChecker results...")
+      checker.run
+      checker.display_short_summary
+      puts("\r\n--> Some residual merge candidates found: re-running step 0...") if checker.possible_badge_merges.present? && src_team.nil?
+    end
 
     # 1) "Sure Mergeable Badges" (same swimmer, same event, even when category or team differs):
     #    Note that merge candidates are paired in couples and just the first match is stored in
@@ -316,13 +358,16 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
       process_merge_badges(
         step_name: "Step 1: 'sure badge merges'",
         subdir: season.id, file_index:,
-        array_of_array_of_badges: checker.sure_badge_merges.values
+        array_of_array_of_badges: checker.sure_badge_merges.values,
+        src_team:, dest_team:
       )
 
       puts("\r\n--> Refreshing BadgeSeasonChecker results...")
       checker.run
       checker.display_short_summary
-      puts("\r\n--> Some residual merge candidates found: re-running step 1...") if checker.sure_badge_merges.present?
+      puts("\r\n--> Some residual merge candidates found: re-running step 1...") if checker.sure_badge_merges.present? && src_team.nil?
+      # Don't re-run the process if a src_team is specified (as filtering badges may impede the clearing of all candidates):
+      break if src_team.nil?
     end
 
     # 2) Relay-only Badges linked to a relay category and without a known alternative inside same season:
@@ -330,13 +375,16 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
       process_merge_badges(
         step_name: "Step 2: 'relay-only' badges",
         subdir: season.id,
-        array_of_array_of_badges: checker.relay_only_badges
+        array_of_array_of_badges: checker.relay_only_badges,
+        src_team:, dest_team:
       )
 
       puts("\r\n--> Refreshing BadgeSeasonChecker results...")
       checker.run
       checker.display_short_summary
-      puts("\r\n--> Some relay-only candidates found: re-running step 2...") if checker.relay_only_badges.present?
+      puts("\r\n--> Some relay-only candidates found: re-running step 2...") if checker.relay_only_badges.present? && src_team.nil?
+      # Don't re-run the process if a src_team is specified (as filtering badges may impede the clearing of all candidates):
+      break if src_team.nil?
     end
 
     # 3) Remaining Badges linked to a relay category and with possibly an alternative category:
@@ -344,17 +392,20 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
       process_merge_badges(
         step_name: 'Step 3: remaining relay badges',
         subdir: season.id,
-        array_of_array_of_badges: checker.relay_badges
+        array_of_array_of_badges: checker.relay_badges,
+        src_team:, dest_team:
       )
 
       puts("\r\n--> Refreshing BadgeSeasonChecker results...")
       checker.run
-      if checker.relay_badges.present?
+      if checker.relay_badges.present? && src_team.nil?
         puts("\r\n--> Some relay candidates found: re-running step 3...")
         checker.display_short_summary
       else
         checker.display_report
       end
+      # Don't re-run the process if a src_team is specified (as filtering badges may impede the clearing of all candidates):
+      break if src_team.nil?
     end
     puts('Done.')
   end
@@ -403,16 +454,32 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
   # Runs the script on the specified subset of badges, measuring its execution time and
   # generating a single SQL script for each call.
   #
-  # == Params:
-  # - array_of_array_of_badges: the list of badges to process; it can either be an actual array of array of Badge
-  #   instances, or just an array of Badges for autofixing their category type;
-  # - subdir: optional subdirectory name under #{SCRIPT_OUTPUT_DIR} in which the files are stored;
-  # - step_name: the name of the current step displayed on screen;
-  # - file_index: optional index start override for the SQL scripts in the output directory; (default: auto)
+  # == Options:
+  # - <tt>:array_of_array_of_badges</tt> => the list of badges to process; it can either be an actual
+  #   array of array of Badge instances, or just an array of Badges for autofixing their category type;
   #
-  def process_merge_badges(array_of_array_of_badges:, subdir:, step_name:, file_index: nil) # rubocop:disable Rake/MethodDefinitionInTask,Metrics/AbcSize
+  # - <tt>:subdir</tt> => optional subdirectory name under #{SCRIPT_OUTPUT_DIR} in which the files are stored;
+  #
+  # - <tt>step_name</tt> => the name of the current step displayed on screen;
+  #
+  # - <tt>file_index</tt> => optional index start override for the SQL scripts in the output directory;
+  #   (default: auto)
+  #
+  # - <tt>src_team</tt> => Team ID for badge filtering; only badges belonging to this team will be processed;
+  #
+  # - <tt>dest_team</tt> => Team ID that will be overwritten by the source badges when a matching source badge.
+  #   will be found. (Only destination badges belonging to this team will be "forced" for a merge; others will
+  #   be processed using the usual "autofix" behavior.)
+  #
+  def process_merge_badges(options = {}) # rubocop:disable Rake/MethodDefinitionInTask,Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
+    array_of_array_of_badges = options[:array_of_array_of_badges]
     return if array_of_array_of_badges.blank?
 
+    subdir = options[:subdir]
+    step_name = options[:step_name]
+    src_team = options[:src_team].to_i
+    dest_team = options[:dest_team].to_i
+    file_index = options[:file_index]
     puts("\r\n--> #{step_name}: #{array_of_array_of_badges.count}. Preparing SQL script...")
     # Get the next available index for the SQL scripts in the output directory (or 1 if none):
     file_index ||= auto_index_from_script_output_dir(subdir)
@@ -424,13 +491,22 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
           # Detect category fix (no destination) or actual merge (dest: first <=| source: second):
           source = merge_candidates.respond_to?(:second) ? merge_candidates.second : merge_candidates
           dest = merge_candidates.respond_to?(:first) ? merge_candidates.first : nil
-          merger = Merge::Badge.new(source:, dest:, autofix: true)
+          # Process only source teams if it's requested:
+          next if src_team && source.team_id != src_team
+
+          # Whenever we have a matching dest. badge, force all destination
+          # values into source in case of conflicts:
+          merger = if dest_team && dest && dest&.team_id == dest_team
+                     Merge::Badge.new(source:, dest:, force_conflict: true)
+                   else
+                     # Rely on autofix otherwise:
+                     Merge::Badge.new(source:, dest:, autofix: true)
+                   end
           merger.prepare
 
           # NOTE: keep & run each badge-fix script in a separate transaction
           # --> See: app/strategies/merge/badge.rb:537#handle_mprogram_insert_or_select()
           file_name = "#{format('%04d', file_index)}-season_fix_#{source.season_id}-merge_badges-#{source.id}-#{dest ? dest.id : 'autofix'}"
-
           process_sql_file(file_name:, sql_log_array: merger.single_transaction_sql_log, subdir:, simulate: false)
           file_index += 1
         end
