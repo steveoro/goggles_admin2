@@ -124,7 +124,7 @@
             format: "^\\s{9,}\\D{2,33}\\s{2,}(\\d{4})"
             pop_out: false
           - name: nation1
-            format: "^\\s{9,}\\D{2,33}\\s{2,}\\d{4}\\s{1,}(\\w{3})"
+            format: "^\\s{9,}\\D{2,33}\\s{2,}\\d{4}\\s{1,}([a-zA-Z]{3})"
             # Sometimes the nation code may be missing:
             required: false
             pop_out: false
@@ -146,7 +146,7 @@
             format: "^\\s{9,}\\D{2,33}\\s{2,}(\\d{4})"
             pop_out: false
           - name: nation2
-            format: "^\\s{9,}\\D{2,33}\\s{2,}\\d{4}\\s{1,}(\\w{3})"
+            format: "^\\s{9,}\\D{2,33}\\s{2,}\\d{4}\\s{1,}([a-zA-Z]{3})"
             # Sometimes the nation code may be missing:
             required: false
             pop_out: false
@@ -168,7 +168,7 @@
             format: "^\\s{9,}\\D{2,33}\\s{2,}(\\d{4})"
             pop_out: false
           - name: nation3
-            format: "^\\s{9,}\\D{2,33}\\s{2,}\\d{4}\\s{1,}(\\w{3})"
+            format: "^\\s{9,}\\D{2,33}\\s{2,}\\d{4}\\s{1,}([a-zA-Z]{3})"
             # Sometimes the nation code may be missing:
             required: false
             pop_out: false
@@ -190,7 +190,7 @@
             format: "^\\s{9,}\\D{2,33}\\s{2,}(\\d{4})"
             pop_out: false
           - name: nation4
-            format: "^\\s{9,}\\D{2,33}\\s{2,}\\d{4}\\s{1,}(\\w{3})"
+            format: "^\\s{9,}\\D{2,33}\\s{2,}\\d{4}\\s{1,}([a-zA-Z]{3})"
             # Sometimes the nation code may be missing:
             required: false
             pop_out: false

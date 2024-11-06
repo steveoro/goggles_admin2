@@ -116,7 +116,7 @@
             # format: "\\s*(\\w{2,3})\\s*"
             # token_start: 53
             # token_end: 62
-            format: "^\\s*(?>\\d{1,2}|SQ|RT|NP|ES)\\s+\\D{3,35}\\s{1,}\\d\\s{1,}(\\w{3})\\b"
+            format: "^\\s*(?>\\d{1,2}|SQ|RT|NP|ES)\\s+\\D{3,35}\\s{1,}\\d\\s{1,}([a-zA-Z]{3})\\b"
             pop_out: false
 
           - name: lap50

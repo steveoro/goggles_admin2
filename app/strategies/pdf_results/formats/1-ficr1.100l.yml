@@ -190,7 +190,7 @@
             # format: "\\s*(?>\\d{1,2})\\s*(\\w{2,3})\\b"
             # token_start: 25
             # token_end: 62
-            format: "^\\s*(?>\\d{1,2}|SQ|RT|NP|ES)\\s+\\D{3,35}\\s{1,}\\d{1,2}\\s{1,}(\\w{3})\\b"
+            format: "^\\s*(?>\\d{1,2}|SQ|RT|NP|ES)\\s+\\D{3,35}\\s{1,}\\d{1,2}\\s{1,}([a-zA-Z]{3})\\b"
             pop_out: false
 
       - name: results2
@@ -340,7 +340,7 @@
             # format: "\\s*(?>\\d{1,2})\\s*(\\w{2,3})\\b"
             # token_start: 25
             # token_end: 62
-            format: "^\\s*(?>\\d{1,2}|SQ|RT|NP|ES)\\s+\\D{3,35}\\s{1,}\\d\\s{1,}(\\w{3})\\b"
+            format: "^\\s*(?>\\d{1,2}|SQ|RT|NP|ES)\\s+\\D{3,35}\\s{1,}\\d\\s{1,}([a-zA-Z]{3})\\b"
             pop_out: false
 
       - name: results2

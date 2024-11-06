@@ -74,7 +74,7 @@ RSpec.describe PdfResults::FieldDef, type: :integration do
         lambda: 'strip', expected_val: '1963'
       },
       {
-        field: 'state', format: '\\s*(\\w{3})\\s*',
+        field: 'state', format: '\\s*([a-zA-Z]{3})\\s*',
         token_start: 47, token_end: 52,
         lambda: %w[strip downcase], expected_val: 'usa'
       },

@@ -153,7 +153,7 @@
           # U25/A20/DSQ do not score:
           required: false
         - name: badge_region
-          format: "\\s{1,}(\\w{3})$"
+          format: "\\s{1,}([a-zA-Z]{3})$"
           # This may be rendered on the next row in case of DSQs:
           required: false
           pop_out: false
@@ -182,13 +182,13 @@
             format: "\\s{2,}(Falsa\\s\\w+|Arrivo\\s\\w+|Virata\\s\\w+|Nuotata\\s\\w+)$"
             # WARNING: for simplicity, the following doesn't work if both swimmer_suffix & team_suffix are present and will gobble up part of the team_suffix or the swimmer suffix
             #          (but the token start should take care of discriminating the case)
-            # format: "\\s{1,}(.{2,25})(?<!\\s\\s\\w{3}|\\d{2}|\\d{2}\\))$"
+            # format: "\\s{1,}(.{2,25})(?<!\\s\\s[a-zA-Z]{3}|\\d{2}|\\d{2}\\))$"
             pop_out: false
             required: false
           # Sometimes this 3-char badge regional code will be nil in the main row above but will render in this one;
           # using a different field name will store the value without overwriting the value from the main row if this is nil:
           - name: badge_region_alt
-            format: "^\\s{10,25}(?!\\s+\\d{2,4}\\s)(?>(?>\\w\\D{1,35}|\\s)\\s{4,})(?>\\s?\\w{2,}){0,}\\s+((?!SSD|ASD|SNC|SRL)\\w{3})$|^\\s{45,}(?>\\s?\\w{2,}){0,}\\s{4,}((?!SSD|ASD|SNC|SRL)\\w{3})$|^\\s{80,}((?!SSD|ASD|SNC|SRL)\\w{3})$"
+            format: "^\\s{10,25}(?!\\s+\\d{2,4}\\s)(?>(?>\\w\\D{1,35}|\\s)\\s{4,})(?>\\s?\\w{2,}){0,}\\s+((?!SSD|ASD|SNC|SRL)[a-zA-Z]{3})$|^\\s{45,}(?>\\s?\\w{2,}){0,}\\s{4,}((?!SSD|ASD|SNC|SRL)[a-zA-Z]{3})$|^\\s{80,}((?!SSD|ASD|SNC|SRL)[a-zA-Z]{3})$"
             pop_out: false
             required: false
 
@@ -204,14 +204,14 @@
           - name: disqualify_type_alt
             format: "\\s{2,}(Falsa\\s\\w+|Arrivo\\s\\w+|Virata\\s\\w+)$"
             # token_start: 95
-            # format: "\\s{1,}(.{2,25})(?<!\\s\\s\\w{3}|\\d{2}|\\d{2}\\))$"
+            # format: "\\s{1,}(.{2,25})(?<!\\s\\s[a-zA-Z]{3}|\\d{2}|\\d{2}\\))$"
             # XOR case (selected by spacing): DSQ label XOR badge region code:
             # (sometimes the DSQ label gets written on a second row and "moves" the badge region downward in formatting)
-            # format: "^\\s{10,25}(?!\\s+\\d{2,4}\\s)(?>(?>\\w\\D{1,35}|\\s)\\s{4,})(.*)(?<!\\s\\s\\w{3})$"
+            # format: "^\\s{10,25}(?!\\s+\\d{2,4}\\s)(?>(?>\\w\\D{1,35}|\\s)\\s{4,})(.*)(?<!\\s\\s[a-zA-Z]{3})$"
             pop_out: false
             required: false
           - name: badge_region_alt
-            format: "^\\s{10,25}(?!\\s+\\d{2,4}\\s)(?>(?>\\w\\D{1,35}|\\s)\\s{4,})(?>\\s?\\w{2,}){0,}\\s+((?!SSD|ASD|SNC|SRL)\\w{3})$|^\\s{45,}(?>\\s?\\w{2,}){0,}\\s{4,}((?!SSD|ASD|SNC|SRL)\\w{3})$|^\\s{80,}((?!SSD|ASD|SNC|SRL)\\w{3})$"
+            format: "^\\s{10,25}(?!\\s+\\d{2,4}\\s)(?>(?>\\w\\D{1,35}|\\s)\\s{4,})(?>\\s?\\w{2,}){0,}\\s+((?!SSD|ASD|SNC|SRL)[a-zA-Z]{3})$|^\\s{45,}(?>\\s?\\w{2,}){0,}\\s{4,}((?!SSD|ASD|SNC|SRL)[a-zA-Z]{3})$|^\\s{80,}((?!SSD|ASD|SNC|SRL)[a-zA-Z]{3})$"
             pop_out: false
             required: false
 
@@ -220,7 +220,7 @@
     parent: results
     required: false
     # Return the dsq_label as a string key (not as a field):
-    format: "^\\s{80,}(.*)(?<!\\s\\s\\w{3})$"
+    format: "^\\s{80,}(.*)(?<!\\s\\s[a-zA-Z]{3})$"
 
   # Sibling "results" row #2: (optional)
   - name: results_lap250
@@ -437,7 +437,7 @@
           # U25/A20/DSQ do not score:
           required: false
         - name: badge_region
-          format: "\\s{1,}(\\w{3})(?>\\s{1,}IT)?$"
+          format: "\\s{1,}([a-zA-Z]{3})(?>\\s{1,}IT)?$"
           # This may be rendered on the next row in case of DSQs:
           required: false
           pop_out: false

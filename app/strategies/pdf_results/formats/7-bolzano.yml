@@ -67,16 +67,16 @@
           format: "^\\s{0,3}(\\d{1,3})\\s\\.\\s"
           pop_out: false
         - name: swimmer_name
-          format: "^\\s{0,3}\\d{1,3}\\s\\.\\s(\\D{3,40})\\s{1,}\\d{4}\\s{1,5}\\w{3}\\s{1,5}"
+          format: "^\\s{0,3}\\d{1,3}\\s\\.\\s(\\D{3,40})\\s{1,}\\d{4}\\s{1,5}[a-zA-Z]{3}\\s{1,5}"
           pop_out: false
         - name: year_of_birth
-          format: "^\\s{0,3}\\d{1,3}\\s\\.\\s\\D{3,40}\\s{1,}(\\d{4})\\s{1,5}\\w{3}\\s{1,5}"
+          format: "^\\s{0,3}\\d{1,3}\\s\\.\\s\\D{3,40}\\s{1,}(\\d{4})\\s{1,5}[a-zA-Z]{3}\\s{1,5}"
           pop_out: false
         - name: nation
-          format: "^\\s{0,3}\\d{1,3}\\s\\.\\s\\D{3,40}\\s{1,}\\d{4}\\s{1,5}(\\w{3})\\s{1,5}"
+          format: "^\\s{0,3}\\d{1,3}\\s\\.\\s\\D{3,40}\\s{1,}\\d{4}\\s{1,5}([a-zA-Z]{3})\\s{1,5}"
           pop_out: false
         - name: team_name
-          format: "^\\s{0,3}\\d{1,3}\\s\\.\\s\\D{3,40}\\s{1,}\\d{4}\\s{1,5}\\w{3}\\s{1,5}(.{3,29})\\s{1,}\\d{2}[.:\\']\\d{2}[.,]\\d{2}\\s{1,}"
+          format: "^\\s{0,3}\\d{1,3}\\s\\.\\s\\D{3,40}\\s{1,}\\d{4}\\s{1,5}[a-zA-Z]{3}\\s{1,5}(.{3,29})\\s{1,}\\d{2}[.:\\']\\d{2}[.,]\\d{2}\\s{1,}"
           pop_out: false
         - name: timing
           # DSQ don't have *valid* timings ("99.99,99") so we ignore them:

@@ -104,22 +104,22 @@
         format: "^\\s{0,10}(\\d{1,3})\\s{1,10}\\w+"
         pop_out: false
       - name: swimmer_name
-        format: "^\\s{0,10}(?>\\d{1,3})\\s{1,10}(\\D{3,28})\\s{2,}(?>\\w{3})?\\s{1,}\\d{4}\\s{2,}"
+        format: "^\\s{0,10}(?>\\d{1,3})\\s{1,10}((?>[a-zA-Z'`àèéìòù]{2,16}[\\-\\s]?){1,8})\\s{2,}(?>[a-zA-Z]{3})?\\s{1,}\\d{4}\\s{2,}"
         pop_out: false
       - name: nation
-        format: "^\\s{0,10}(?>\\d{1,3})\\s{1,10}\\D{3,28}\\s{2,}(\\w{3})\\s{1,}\\d{4}\\s{2,}"
+        format: "^\\s{0,10}(?>\\d{1,3})\\s{1,10}(?>[a-zA-Z'`àèéìòù]{2,16}[\\-\\s]?){1,8}\\s{2,}([a-zA-Z]{3})\\s{1,}\\d{4}\\s{2,}"
         # Sometimes the 3 letter nation code may be missing:
         required: false
         pop_out: false
       - name: year_of_birth
-        format: "^\\s{0,10}(?>\\d{1,3})\\s{1,10}\\D{3,28}\\s{2,}(?>\\w{3})?\\s{1,}(\\d{4})\\s{2,}"
+        format: "^\\s{0,10}(?>\\d{1,3})\\s{1,10}(?>[a-zA-Z'`àèéìòù]{2,16}[\\-\\s]?){1,8}\\s{2,}(?>[a-zA-Z]{3})?\\s{1,}(\\d{4})\\s{2,}"
         pop_out: false
       - name: team_name
         format: "\\s{2,}\\d{4}\\s{2,}(.{3,31})(?>\\s{2,}|$)"
         token_start: 34
         pop_out: false
       - name: timing
-        format: "\\s{1,}(?>\\w{3})?\\s{1,}\\d{4}\\s{2,}.{3,29}\\s{3,}((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})"
+        format: "\\s{1,}(?>[a-zA-Z]{3})?\\s{1,}\\d{4}\\s{2,}.{3,29}\\s{3,}((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})"
         token_start: 34
         pop_out: false
         # DSQ don't have timings:

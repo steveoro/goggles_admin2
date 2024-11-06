@@ -146,7 +146,7 @@
           required: false
         - name: badge_region
           # Seldom the region code is followed by the nation code (2 chars), which may cause the next row to be an optional blank line:
-          format: "\\s{1,}(\\w{3})\\s*\\w{2}?$"
+          format: "\\s{1,}([a-zA-Z]{3})\\s*\\w{2}?$"
           # This may be rendered on the next row in case of DSQs:
           required: false
           pop_out: false

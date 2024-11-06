@@ -140,7 +140,7 @@
             format: "^\\s?(?>\\d{1,2}|SQ|RT|NP|ES)\\s+\\D{3,35}\\s{1,}(\\d)\\s+"
             pop_out: false
           - name: nation
-            format: "^\\s?(?>\\d{1,2}|SQ|RT|NP|ES)\\s+\\D{3,35}\\s{1,}\\d\\s{1,}(\\w{3})\\b"
+            format: "^\\s?(?>\\d{1,2}|SQ|RT|NP|ES)\\s+\\D{3,35}\\s{1,}\\d\\s{1,}([a-zA-Z]{3})\\b"
             pop_out: false
 
       - name: results2
@@ -246,7 +246,7 @@
             format: "^\\s?(?>\\d{1,2}|SQ|RT|NP|ES)\\s+\\D{3,35}\\s{1,}(\\d)\\s+"
             pop_out: false
           - name: nation
-            format: "^\\s?(?>\\d{1,2}|SQ|RT|NP|ES)\\s+\\D{3,35}\\s{1,}\\d\\s{1,}(\\w{3})\\b"
+            format: "^\\s?(?>\\d{1,2}|SQ|RT|NP|ES)\\s+\\D{3,35}\\s{1,}\\d\\s{1,}([a-zA-Z]{3})\\b"
             pop_out: false
 
       - name: results2

@@ -263,7 +263,7 @@ RSpec.describe PdfResults::FieldDef, type: :strategy do
           described_class.new(
             name: FFaker::Lorem.word,
             lambda: %w[strip upcase],
-            format: "^\\d{1,2}?\\s+(([\\w\\-'`]+\\s){2,5})\\s*\\w{3}"
+            format: "^\\d{1,2}?\\s+(([\\w\\-'`]+\\s){2,5})\\s*[a-zA-Z]{3}"
           )
         end
         let(:expected_src) { source_row.dup.strip.upcase }
@@ -276,7 +276,7 @@ RSpec.describe PdfResults::FieldDef, type: :strategy do
           described_class.new(
             name: FFaker::Lorem.word,
             lambda: %w[strip upcase],
-            format: "^\\d{1,2}?\\s+(([\\w\\-'`]+\\s){2,5})\\s*\\w{3}", pop_out: false
+            format: "^\\d{1,2}?\\s+(([\\w\\-'`]+\\s){2,5})\\s*[a-zA-Z]{3}", pop_out: false
           )
         end
         let(:expected_src) { source_row.dup.strip.upcase }
