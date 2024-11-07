@@ -51,6 +51,34 @@ namespace :check do # rubocop:disable Metrics/BlockLength
   end
   #-- -------------------------------------------------------------------------
   #++
+  desc <<~DESC
+    Similarly to check:results, given a Season ID, queries all local Meeting IDs that DO/DO-NOT HAVE
+    MeetingEvents associated.
+
+    Options: [season=season#id|<nil=232>]
+             [presence=true|<nil=false>]
+
+      - season: season ID
+      - presence: search for zero siblings (default, either MIRs or MRRs) or for their positive count
+
+  DESC
+  task events: :environment do
+    # For presence, we'll reject the zero? counts, whereas for absence, we'll reject the positive? counts:
+    reject_check_name = ENV.include?('presence') ? :zero? : :positive?
+    puts "\r\n*** Find Meetings #{reject_check_name == :zero? ? 'WITH' : 'WITHOUT'} MeetingEvent rows ***"
+
+    season_id = ENV.include?('season') ? ENV['season'].to_i : 242
+    puts "\r\n"
+    puts "--> Season #{season_id}:"
+    meeting_keys = GogglesDb::Meeting.where(season_id:).includes(:meeting_events)
+                                     .group('meetings.id', 'meetings.description', 'meetings.header_date')
+                                     .count('meeting_events.id')
+                                     .reject { |_k, count| count.send(reject_check_name) }
+    meeting_keys.each_key { |keys| puts "ID #{keys.first}: [#{keys.third}] \"#{keys.second}\"" }
+    puts "\r\n"
+  end
+  #-- -------------------------------------------------------------------------
+  #++
 
   desc <<~DESC
       Runs a check for Team merge feasibility, reporting any future issues on the console.
