@@ -5,7 +5,7 @@
 # meeting name on top on event change, meeting place on EOP.
 # A variant of '3-fintorino' but more complete in data.
 #
-# The 'NAZ' column (Nation) here is used to display the category & gender info in a compressed
+# The 'NAZ' column (Nation) here sometimes is used to display the category & gender info in a compressed
 # format on each row ("M40, female" => "40F" instead of the usual 3-letter code for the nation).
 #
 # Additionally, this format uses a standard category & gender display in between each age range
@@ -44,6 +44,7 @@
 
   # Data columns header
   - name: results_hdr
+    parent: header
     repeat: true
     rows:
       - name: results_hdr1
@@ -91,6 +92,15 @@
           format: "^\\s{45,}(?>MASTER\\s|UNDER\\s|PROPAGANDA\\s)?\\d{2}\\s?([MF]|DONNE|UOMINI)"
           pop_out: false
 
+  - name: disqualified
+    parent: category
+    required: false
+    rows:
+      - name: dsq_spacer1
+        format: "^$"
+      - name: dsq_title
+        format: "^\\s{3,}NON\\sCLASSIFICATI|FUORI\\sGARA"
+
   # Actual data starts here:
   - name: results
     repeat: true
@@ -101,18 +111,20 @@
         format: "^\\s{1,10}(\\d{1,3})\\s{1,10}\\w+"
         pop_out: false
       - name: swimmer_name
-        format: "^\\s{1,10}\\d{1,3}\\s{1,10}((?>[a-zA-Z'`àèéìòù]{1,16}[\\-\\s]?){1,8})\\s{2,}\\d{2}[MF]\\s{1,}\\d{4}\\s{2,}"
+        format: "^\\s{1,10}\\d{1,3}\\s{1,10}((?>[a-zA-Z\\.'`àèéìòù]{1,16}[\\-\\s]?){1,8})\\s{2,}\\w{3}\\s{1,}\\d{4}\\s{2,}"
         pop_out: false
 
       - name: cat_title
-        format: "^\\s{1,10}\\d{1,3}\\s{1,10}(?>[a-zA-Z'`àèéìòù]{1,16}[\\-\\s]?){1,8}\\s{2,}(\\d{2})[MF]\\s{1,}\\d{4}\\s{2,}"
+        format: "^\\s{1,10}\\d{1,3}\\s{1,10}(?>[a-zA-Z\\.'`àèéìòù]{1,16}[\\-\\s]?){1,8}\\s{2,}(\\d{2})[MF]\\s{1,}\\d{4}\\s{2,}"
         pop_out: false
+        required: false
       - name: gender_type
-        format: "^\\s{1,10}\\d{1,3}\\s{1,10}(?>[a-zA-Z'`àèéìòù]{1,16}[\\-\\s]?){1,8}\\s{2,}\\d{2}([MF])\\s{1,}\\d{4}\\s{2,}"
+        format: "^\\s{1,10}\\d{1,3}\\s{1,10}(?>[a-zA-Z\\.'`àèéìòù]{1,16}[\\-\\s]?){1,8}\\s{2,}\\d{2}([MF])\\s{1,}\\d{4}\\s{2,}"
         pop_out: false
+        required: false
 
       - name: year_of_birth
-        format: "^\\s{0,10}(?>\\d{1,3})\\s{1,10}(?>[a-zA-Z'`àèéìòù]{1,16}[\\-\\s]?){1,8}\\s{2,}(?>[a-zA-Z]{3})?\\s{1,}(\\d{4})\\s{2,}"
+        format: "^\\s{0,10}(?>\\d{1,3})\\s{1,10}(?>[a-zA-Z\\.'`àèéìòù]{1,16}[\\-\\s]?){1,8}\\s{2,}(?>[a-zA-Z]{3})?\\s{1,}(\\d{4})\\s{2,}"
         required: false
         pop_out: false
       - name: team_name
@@ -150,6 +162,61 @@
         # U25 / A20 do not score:
         required: false
 
+  - name: results_alt
+    alternative_of: results
+    required: false
+    repeat: true
+    parent: category
+    starts_at_row: 4
+    fields:
+      - name: rank
+        format: "^\\s{1,10}(\\d{1,3})\\s{1,10}\\w+"
+        pop_out: false
+      - name: swimmer_name
+        format: "^\\s{1,10}(?>\\d{1,3})\\s{1,10}((?>[a-zA-Z\\.'`àèéìòù]{1,16}[\\-\\s]?){1,8})\\s{2,}(?>[a-zA-Z]{3})?\\s{1,}\\d{4}\\s{2,}"
+        pop_out: false
+      - name: nation
+        format: "^\\s{0,10}(?>\\d{1,3})\\s{1,10}(?>[a-zA-Z\\.'`àèéìòù]{1,16}[\\-\\s]?){1,8}\\s{2,}([a-zA-Z]{3})\\s{1,}\\d{4}\\s{2,}"
+        pop_out: false
+      - name: year_of_birth
+        format: "^\\s{0,10}(?>\\d{1,3})\\s{1,10}(?>[a-zA-Z\\.'`àèéìòù]{1,16}[\\-\\s]?){1,8}\\s{2,}(?>[a-zA-Z]{3})?\\s{1,}(\\d{4})\\s{2,}"
+        pop_out: false
+      - name: team_name
+        format: "\\s{2,}\\d{4}\\s{2,}(.{3,31})(?>\\s{2,}|$)"
+        token_start: 34
+        pop_out: false
+
+      - name: heat_num
+        format: "\\s{5,}(\\d{1,3})\\s{2,}\\d{1,2}\\s{2,}\\d{1,2}\\.\\s{2,}(?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2}\\s*"
+        pop_out: false
+        required: false
+      - name: lane_num
+        format: "\\s{5,}\\d{1,3}\\s{2,}(\\d{1,2})\\s{2,}\\d{1,2}\\.\\s{2,}(?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2}\\s*"
+        pop_out: false
+        required: false
+      - name: heat_rank
+        format: "\\s{5,}\\d{1,3}\\s{2,}\\d{1,2}\\s{2,}(\\d{1,2})\\.\\s{2,}(?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2}\\s*"
+        pop_out: false
+        required: false
+
+      - name: timing
+        format: "\\s{2,}((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
+        pop_out: false
+        # DSQ don't have timings:
+        required: false
+
+      - name: disqualify_type
+        format: "\\s+(ASS|SQ|RT|RIT|NP)\\b"
+        token_start: 80
+        pop_out: false
+        required: false
+      - name: std_score
+        format: "\\s{2,}(?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2}\\s{2,}(\\d?[,.]?\\d{1,4}[,.]\\d{1,2})$"
+        token_start: 80
+        pop_out: false
+        # U25 / A20 do not score:
+        required: false
+
   - name: dsq_label
     parent: results
     required: false
@@ -162,15 +229,6 @@
       - name: dsq_spacer2
         required: false
         format: "^$"
-
-  - name: disqualified
-    parent: event
-    required: false
-    rows:
-      - name: dsq_spacer1
-        format: "^$"
-      - name: dsq_title
-        format: "^\\s{3,}NON\\sCLASSIFICATI|FUORI\\sGARA"
 
   - name: publish_time
     # Every 'event' change, check if there is a 'publish_time' row:
@@ -217,7 +275,9 @@
             format: "^.+[,/]\\s?(.+)$"
             pop_out: false
       - name: footer_page
-        format: "\\s{7,}Page\\s\\d{1,}"
+        # Original:
+        # format: "\\s{7,}Page\\s\\d{1,}"
+        format: "^(\\s{70,}|\\s{30,}Elaborazione dati a cura della FEDERAZIONE ITALIANA NUOTO\\s{10,})Page\\s\\d{1,}"
 
       - name: footer_timestamp
         required: false

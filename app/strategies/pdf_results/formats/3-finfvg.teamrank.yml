@@ -93,7 +93,7 @@
             format: "^.+[,/]\\s?(.+)$"
             pop_out: false
       - name: footer_page
-        format: "^\\s{70,}Page\\s\\d{1,}"
+        format: "^(\\s{70,}|\\s{30,}Elaborazione dati a cura della FEDERAZIONE ITALIANA NUOTO\\s{10,})Page\\s\\d{1,}"
 
       - name: footer_timestamp
         required: false

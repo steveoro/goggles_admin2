@@ -364,7 +364,7 @@ module PdfResults
         # DEBUG
         # Signal the start of the validity check before doing it, so that we can spot RegExps with possible catastrophic backtracking
         # (anthing more than a handful of seconds surely involves too many steps)
-        # $stdout.write("\033[1;33;30m?\033[0m")
+        # $stdout.write("\033[1;33;44m?\033[0m")
         valid = false
         timing = Benchmark.measure do
           # Can't *AND* the following check with parent_valid as this is NOT currently possible: valid? gets overridden each time
@@ -425,8 +425,13 @@ module PdfResults
           # $stdout.write("\033[1;33;30m⬅\033[0m") # signal "BACK to prev."
           log_message(Kernel.format("  \\__ (back to prev. '\033[94;3m%s\033[0m')", ctx_name))
 
+        # == ELSE: valid => don't progress context counter until a non-valid context application is found
+        elsif valid
+          log_message(Kernel.format("  \\__ \033[1;33;32mcontinuing with\033[0m '\033[94;3m%s\033[0m'", ctx_name))
+          # $stdout.write("\033[1;33;32m+\033[0m") # signal "Valid ctx"
+
         # == Next context: in any other NON-valid case, always move forward to next context
-        elsif !valid
+        else
           ctx_index += 1
           if ctx_index < @format_order.count
             ctx_name = @format_order.at(ctx_index)
@@ -438,10 +443,6 @@ module PdfResults
             log_message("      <<-- \033[1;33;31mEND OF FORMAT LOOP '\033[1;93;40;3m#{@format_name}\033[0m' -->>")
             # $stdout.write("\033[1;33;30m^\033[0m") # signal "Ctx Loop wrap"
           end
-
-        # == ELSE: valid => don't progress context counter until a non-valid context application is found
-        else
-          log_message(Kernel.format("  \\__ continuing with '\033[94;3m%s\033[0m'", ctx_name))
         end
 
         # DEBUG VERBOSE
@@ -471,7 +472,7 @@ module PdfResults
         #  ctx could be repeatable in check until the actual end of rows and a required and repeatable ctx
         #  could be found later on.)
         if valid && all_required_contexts_valid?(@format_name) && (row_index >= @rows.count || context_def.eop?)
-          $stdout.write("\033[1;33;32m.\033[0m") # "Valid" progress signal (once per page) # rubocop:disable Rails/Output
+          $stdout.write("\033[1;33;32m.\033[0m") # "VALID" progress signal (once per page) # rubocop:disable Rails/Output
           log_message(
             Kernel.format("\r\nFORMAT '\033[1;93;40;3m%s\033[0m' VALID! ✅ @ page %d/%d",
                           @format_name, @page_index + 1, @pages&.count.to_i)
@@ -784,6 +785,10 @@ module PdfResults
 
       # Un-alias current DAO before storage:
       actual_dao = context_def.dao
+      # DEBUG ----------------------------------------------------------------
+      # binding.pry if valid_result && context_def.key.include?('BRIGHENTI Maurizio')
+      # ----------------------------------------------------------------------
+
       if actual_dao.present? && context_def.alternative_of.present?
         unaliased_ctx = @format_defs.fetch(context_def.alternative_of, nil)
         raise "'alternative_of' context set but original context not found when storing data: check your .yml layout definition file!" if unaliased_ctx.blank?

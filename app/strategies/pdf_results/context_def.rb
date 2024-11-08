@@ -8,9 +8,6 @@ module PdfResults
   #
   # Stores a parsing context definition, compiled from a parsing layout format YML file.
   # A ContextDef holds all properties, formats & lambdas applicable to subset of source lines.
-
-  # Stores context definition & data extraction properties as read from a PDF-layout-format YML
-  # definition file.
   #
   # (The YAML file should contain the properties that describe how to extract individual data
   #  fields from any PDF layout converted to some kind of tabular text data.)

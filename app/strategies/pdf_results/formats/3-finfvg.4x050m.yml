@@ -7,7 +7,7 @@
 # meeting name on top on event change, meeting place on EOP.
 # A variant of '3-fintorino' but more complete in data.
 #
-# The 'NAZ' column (Nation) here is used to display the category & gender info in a compressed
+# The 'NAZ' column (Nation) here sometimes is used to display the category & gender info in a compressed
 # format on each row ("M40, female" => "40F" instead of the usual 3-letter code for the nation).
 #
 # Additionally, this format uses a standard category & gender display in between each age range
@@ -154,17 +154,19 @@
       - name: rel_swimmer1
         fields:
           - name: swimmer_name1
-            format: "^\\s{8,}((?>[a-zA-Z'`àèéìòù]{1,16}[\\-\\s]?){1,8})\\s{2,}\\d{4}\\s{1,}\\d{2}\\w\\b"
+            format: "^\\s{8,}((?>[a-zA-Z\\.'`àèéìòù]{1,16}[\\-\\s]?){1,8})\\s{2,}\\d{4}\\s{1,}\\w{3}\\b"
             pop_out: false
           - name: year_of_birth1
-            format: "^\\s{8,}(?>[a-zA-Z'`àèéìòù]{1,16}[\\-\\s]?){1,8}\\s{2,}(\\d{4})\\s{1,}\\d{2}\\w\\b"
+            format: "^\\s{8,}(?>[a-zA-Z\\.'`àèéìòù]{1,16}[\\-\\s]?){1,8}\\s{2,}(\\d{4})\\s{1,}\\w{3}\\b"
             pop_out: false
-          # Currently ignored, since the YOB is enough to compute the category per-se:
+          # Currently ignored, as it's not guaranteed to be there and the YOB is enough to esteem the category by itself:
           - name: cat_title1
-            format: "^\\s{8,}(?>[a-zA-Z'`àèéìòù]{1,16}[\\-\\s]?){1,8}\\s{2,}\\d{4}\\s{1,}(\\d{2})\\w\\b"
+            format: "^\\s{8,}(?>[a-zA-Z\\.'`àèéìòù]{1,16}[\\-\\s]?){1,8}\\s{2,}\\d{4}\\s{1,}(\\d{2})[MF]\\b"
+            required: false
             pop_out: false
           - name: gender_type1
-            format: "^\\s{8,}(?>[a-zA-Z'`àèéìòù]{1,16}[\\-\\s]?){1,8}\\s{2,}\\d{4}\\s{1,}\\d{2}(\\w)\\b"
+            format: "^\\s{8,}(?>[a-zA-Z\\.'`àèéìòù]{1,16}[\\-\\s]?){1,8}\\s{2,}\\d{4}\\s{1,}\\d{2}([MF])\\b"
+            required: false
             pop_out: false
           - name: delta50
             format: "\\s{5,}((?>\\d{1,2}[:'\\.])?\\d{2}[\\.\"]\\d{2})\\s{1,}(?>\\d{1,2}[:'\\.])?\\d{2}[\\.\"]\\d{2}$"
@@ -178,18 +180,19 @@
       - name: rel_swimmer2
         fields:
           - name: swimmer_name2
-            format: "^\\s{8,}((?>[a-zA-Z'`àèéìòù]{1,16}[\\-\\s]?){1,8})\\s{2,}\\d{4}\\s{1,}\\d{2}\\w\\b"
+            format: "^\\s{8,}((?>[a-zA-Z\\.'`àèéìòù]{1,16}[\\-\\s]?){1,8})\\s{2,}\\d{4}\\s{1,}\\w{3}\\b"
             pop_out: false
           - name: year_of_birth2
-            format: "^\\s{8,}(?>[a-zA-Z'`àèéìòù]{1,16}[\\-\\s]?){1,8}\\s{2,}(\\d{4})\\s{1,}\\d{2}\\w\\b"
+            format: "^\\s{8,}(?>[a-zA-Z\\.'`àèéìòù]{1,16}[\\-\\s]?){1,8}\\s{2,}(\\d{4})\\s{1,}\\w{3}\\b"
             pop_out: false
-          # Currently ignored, since the YOB is enough to compute the category per-se:
           - name: cat_title2
-            format: "^\\s{8,}(?>[a-zA-Z'`àèéìòù]{1,16}[\\-\\s]?){1,8}\\s{2,}\\d{4}\\s{1,}(\\d{2})\\w\\b"
+            format: "^\\s{8,}(?>[a-zA-Z\\.'`àèéìòù]{1,16}[\\-\\s]?){1,8}\\s{2,}\\d{4}\\s{1,}(\\d{2})[MF]\\b"
             pop_out: false
+            required: false
           - name: gender_type2
-            format: "^\\s{8,}(?>[a-zA-Z'`àèéìòù]{1,16}[\\-\\s]?){1,8}\\s{2,}\\d{4}\\s{1,}\\d{2}(\\w)\\b"
+            format: "^\\s{8,}(?>[a-zA-Z\\.'`àèéìòù]{1,16}[\\-\\s]?){1,8}\\s{2,}\\d{4}\\s{1,}\\d{2}([MF])\\b"
             pop_out: false
+            required: false
           - name: delta100
             format: "\\s{5,}((?>\\d{1,2}[:'\\.])?\\d{2}[\\.\"]\\d{2})\\s{1,}(?>\\d{1,2}[:'\\.])?\\d{2}[\\.\"]\\d{2}$"
             pop_out: false
@@ -202,18 +205,19 @@
       - name: rel_swimmer3
         fields:
           - name: swimmer_name3
-            format: "^\\s{8,}((?>[a-zA-Z'`àèéìòù]{1,16}[\\-\\s]?){1,8})\\s{2,}\\d{4}\\s{1,}\\d{2}\\w\\b"
+            format: "^\\s{8,}((?>[a-zA-Z\\.'`àèéìòù]{1,16}[\\-\\s]?){1,8})\\s{2,}\\d{4}\\s{1,}\\w{3}\\b"
             pop_out: false
           - name: year_of_birth3
-            format: "^\\s{8,}(?>[a-zA-Z'`àèéìòù]{1,16}[\\-\\s]?){1,8}\\s{2,}(\\d{4})\\s{1,}\\d{2}\\w\\b"
+            format: "^\\s{8,}(?>[a-zA-Z\\.'`àèéìòù]{1,16}[\\-\\s]?){1,8}\\s{2,}(\\d{4})\\s{1,}\\w{3}\\b"
             pop_out: false
-          # Currently ignored, since the YOB is enough to compute the category per-se:
           - name: cat_title3
-            format: "^\\s{8,}(?>[a-zA-Z'`àèéìòù]{1,16}[\\-\\s]?){1,8}\\s{2,}\\d{4}\\s{1,}(\\d{2})\\w\\b"
+            format: "^\\s{8,}(?>[a-zA-Z\\.'`àèéìòù]{1,16}[\\-\\s]?){1,8}\\s{2,}\\d{4}\\s{1,}(\\d{2})[MF]\\b"
             pop_out: false
+            required: false
           - name: gender_type3
-            format: "^\\s{8,}(?>[a-zA-Z'`àèéìòù]{1,16}[\\-\\s]?){1,8}\\s{2,}\\d{4}\\s{1,}\\d{2}(\\w)\\b"
+            format: "^\\s{8,}(?>[a-zA-Z\\.'`àèéìòù]{1,16}[\\-\\s]?){1,8}\\s{2,}\\d{4}\\s{1,}\\d{2}([MF])\\b"
             pop_out: false
+            required: false
           - name: delta150
             format: "\\s{5,}((?>\\d{1,2}[:'\\.])?\\d{2}[\\.\"]\\d{2})\\s{1,}(?>\\d{1,2}[:'\\.])?\\d{2}[\\.\"]\\d{2}$"
             pop_out: false
@@ -226,18 +230,19 @@
       - name: rel_swimmer4
         fields:
           - name: swimmer_name4
-            format: "^\\s{8,}((?>[a-zA-Z'`àèéìòù]{1,16}[\\-\\s]?){1,8})\\s{2,}\\d{4}\\s{1,}\\d{2}\\w\\b"
+            format: "^\\s{8,}((?>[a-zA-Z\\.'`àèéìòù]{1,16}[\\-\\s]?){1,8})\\s{2,}\\d{4}\\s{1,}\\w{3}\\b"
             pop_out: false
           - name: year_of_birth4
-            format: "^\\s{8,}(?>[a-zA-Z'`àèéìòù]{1,16}[\\-\\s]?){1,8}\\s{2,}(\\d{4})\\s{1,}\\d{2}\\w\\b"
+            format: "^\\s{8,}(?>[a-zA-Z\\.'`àèéìòù]{1,16}[\\-\\s]?){1,8}\\s{2,}(\\d{4})\\s{1,}\\w{3}\\b"
             pop_out: false
-          # Currently ignored, since the YOB is enough to compute the category per-se:
           - name: cat_title4
-            format: "^\\s{8,}(?>[a-zA-Z'`àèéìòù]{1,16}[\\-\\s]?){1,8}\\s{2,}\\d{4}\\s{1,}(\\d{2})\\w\\b"
+            format: "^\\s{8,}(?>[a-zA-Z\\.'`àèéìòù]{1,16}[\\-\\s]?){1,8}\\s{2,}\\d{4}\\s{1,}(\\d{2})[MF]\\b"
             pop_out: false
+            required: false
           - name: gender_type4
-            format: "^\\s{8,}(?>[a-zA-Z'`àèéìòù]{1,16}[\\-\\s]?){1,8}\\s{2,}\\d{4}\\s{1,}\\d{2}(\\w)\\b"
+            format: "^\\s{8,}(?>[a-zA-Z\\.'`àèéìòù]{1,16}[\\-\\s]?){1,8}\\s{2,}\\d{4}\\s{1,}\\d{2}([MF])\\b"
             pop_out: false
+            required: false
           - name: delta200
             format: "\\s{5,}((?>\\d{1,2}[:'\\.])?\\d{2}[\\.\"]\\d{2})\\s{1,}(?>\\d{1,2}[:'\\.])?\\d{2}[\\.\"]\\d{2}$"
             pop_out: false
@@ -321,7 +326,9 @@
             format: "^.+[,/]\\s?(.+)$"
             pop_out: false
       - name: footer_page
-        format: "\\s{7,}Page\\s\\d{1,}"
+        # Original:
+        # format: "\\s{7,}Page\\s\\d{1,}"
+        format: "^(\\s{70,}|\\s{30,}Elaborazione dati a cura della FEDERAZIONE ITALIANA NUOTO\\s{10,})Page\\s\\d{1,}"
 
       - name: footer_timestamp
         required: false

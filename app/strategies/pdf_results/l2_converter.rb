@@ -199,15 +199,18 @@ module PdfResults
         # DEBUG ----------------------------------------------------------------
         # binding.pry
         # ----------------------------------------------------------------------
+
         # === Sub-event loop: ===
+        # - sometimes the event section has all the fields
+        # - sometimes header fields like category or gender need to be extracted result-by-result
+        # => the section hash becomes defined only later on
         event_hash.fetch(:rows, [{}]).each do |row_hash| # rubocop:disable Metrics/BlockLength
           # Supported hierarchy for "sub-event-type" depth level:
           #
           # [event]
           #     |
           #     +---[category|rel_category|results|rel_team]
-          #
-          rows = []
+
           # --- RELAYS (sub-event, both with or w/o categ.) ---
           if /(4|6|8)x\d{2,3}/i.match?(event_length.to_s) && holds_relay_category_or_relay_result?(row_hash)
             section = rel_category_section(row_hash, event_title, curr_cat_code, curr_cat_gender)
@@ -233,12 +236,12 @@ module PdfResults
               # Loop on rel_team rows, when found, and build up the current sub-section rows with them:
               row_hash[:rows].select { |row| REL_RESULT_SECTION.include?(row[:name]) }.each do |nested_row|
                 rel_result_hash = rel_result_section(nested_row)
-                rows << rel_result_hash
+                add_or_merge_results_in_rows(section['rows'], rel_result_hash)
               end
 
               # Relay category code still missing? Fill-in possible missing category code (which is frequently missing in record trials):
-              if section['fin_sigla_categoria'].blank? && rows.last.is_a?(Hash) && rows.last.key?('overall_age')
-                section = post_compute_rel_category_code(section, rows.last['overall_age'])
+              if section['fin_sigla_categoria'].blank? && section['rows'].last.is_a?(Hash) && section['rows'].last.key?('overall_age')
+                section = post_compute_rel_category_code(section, section['rows'].last['overall_age'])
                 recompute_ranking = true
               end
 
@@ -251,17 +254,14 @@ module PdfResults
               #     +-- rel_team
               #
               rel_result_hash = rel_result_section(row_hash)
-              rows << rel_result_hash
+              # rows << rel_result_hash
+              add_or_merge_results_in_rows(section['rows'], rel_result_hash)
               # Relay category code still missing? Fill-in possible missing category code (which is frequently missing in record trials):
               if section['fin_sigla_categoria'].blank? && rel_result_hash.is_a?(Hash) && rel_result_hash.key?('overall_age')
                 section = post_compute_rel_category_code(section, rel_result_hash['overall_age'])
                 recompute_ranking = true
               end
             end
-
-            # Set rows for current relay section:
-            section['rows'] = rows
-            find_or_create_event_section_and_merge(resulting_sections, section) if section['rows'].present?
 
           # --- IND.RESULTS (event -> results: parents holds possibly some category data) ---
           elsif holds_category_type?(event_hash) && IND_RESULT_SECTION.include?(row_hash[:name])
@@ -290,9 +290,7 @@ module PdfResults
               recompute_ranking = true
             end
 
-            section['rows'] ||= []
-            section['rows'] << result_row
-            find_or_create_event_section_and_merge(resulting_sections, section) if section['rows'].present?
+            add_or_merge_results_in_rows(section['rows'], result_row)
 
           # --- IND.RESULTS (category -> results: curr depth holds category data) ---
           elsif holds_category_type?(row_hash)
@@ -313,11 +311,8 @@ module PdfResults
               # will be included into a 'result' section.
               next unless IND_RESULT_SECTION.include?(result_hash[:name])
 
-              rows << ind_result_section(result_hash, section['fin_sesso'])
+              add_or_merge_results_in_rows(section['rows'], ind_result_section(result_hash, section['fin_sesso']))
             end
-            # Overwrite existing rows in current section:
-            section['rows'] = rows
-            find_or_create_event_section_and_merge(resulting_sections, section) if section['rows'].present?
 
           # --- IND.RESULTS (event -> results, but NO category fields at all; i.e.: absolute rankings) ---
           elsif IND_RESULT_SECTION.include?(row_hash[:name])
@@ -345,14 +340,15 @@ module PdfResults
             # 3. Set the section's details & rows:
             section['fin_sesso'] = curr_cat_gender
             section['fin_sigla_categoria'] = curr_cat_code
-            section['rows'] ||= []
-            section['rows'] << result_row
-            find_or_create_event_section_and_merge(resulting_sections, section) if section['rows'].present?
+            add_or_merge_results_in_rows(section['rows'], result_row)
 
           # --- (Ignore unsupported contexts) ---
           else
             next
           end
+
+          # Add or merge results in proper event section:
+          find_or_create_event_section_and_merge(resulting_sections, section) if section['rows'].present?
         end
       end
 
@@ -377,7 +373,8 @@ module PdfResults
         'ita_record' => format_timing_value(category_hash.fetch(:fields, {})['ita_record']),
         'ita_record_notes' => format_timing_value(category_hash.fetch(:fields, {})['ita_record_notes']).to_s.squeeze(' '),
         'eu_record' => format_timing_value(category_hash.fetch(:fields, {})['eu_record']),
-        'world_record' => format_timing_value(category_hash.fetch(:fields, {})['world_record'])
+        'world_record' => format_timing_value(category_hash.fetch(:fields, {})['world_record']),
+        'rows' => []
       }
     end
 
@@ -401,7 +398,8 @@ module PdfResults
         'ita_record' => format_timing_value(category_hash.fetch(:fields, {})['ita_record']),
         'ita_record_notes' => format_timing_value(category_hash.fetch(:fields, {})['ita_record_notes']).to_s.squeeze,
         'eu_record' => format_timing_value(category_hash.fetch(:fields, {})['eu_record']),
-        'world_record' => format_timing_value(category_hash.fetch(:fields, {})['world_record'])
+        'world_record' => format_timing_value(category_hash.fetch(:fields, {})['world_record']),
+        'rows' => []
       }
     end
 
@@ -901,7 +899,7 @@ module PdfResults
       # key type 2, example: "...|(Master \d\d)|..."
       elsif /\|((?>Master|Under|Amatori|Propaganda)\s\d{2})\|/ui.match?(key)
         /\|((?>Master|Under|Amatori|Propaganda)\s\d{2})\|/ui.match(key).captures
-                                                            .first
+                                                            .first.to_s
                                                             .gsub(/Master\s/i, 'M')
                                                             .gsub(/Under\s/i, 'U')
                                                             .gsub(/Propaganda\s?/i, 'A')
@@ -914,7 +912,8 @@ module PdfResults
 
       # use just the field value "almost as-is" for unsupported key value cases:
       elsif row_hash[:fields].key?(CAT_FIELD_NAME)
-        result = row_hash[:fields][CAT_FIELD_NAME].gsub(/Master\s?/i, 'M')
+        result = row_hash[:fields][CAT_FIELD_NAME].to_s
+                                                  .gsub(/Master\s?/i, 'M')
                                                   .gsub(/Under\s?/i, 'U')
                                                   .gsub(/Propaganda\s?/i, 'A')
                                                   .gsub(/Amatori\s?/i, 'A')
@@ -1186,7 +1185,19 @@ module PdfResults
     #
     # "Merging" implies scanning each source row, comparing it with any of the existing
     # destination 'rows' subarray, and copying the source row (from section_hash) into the
-    # destination array (existing section 'rows') only if there are differences between the two.
+    # destination array (existing section 'rows') only if there are differences if fields between the two.
+    #
+    # The 'rows' subarray can refer to either a MIR or a MRR result. In both cases, results can
+    # be merged by comparing keys fields, actually obtaining a single result 'row' Hash even
+    # when the format layout contains duplicated events with different reports.
+    #
+    # For instance, '3-finfvg' may enlist twice most long-distance events, with 1 layout format
+    # showing the lap timings and the final result, while the other format just shows the overall
+    # timing with its score. In this case, both layout can be parsed and the L2Converter will
+    # produce a single 'rows' array with all the merged fields.
+    #
+    # For MIR rows Hashes, merging keys to detect mergeable candidates are: 'name', 'team' & 'timing'.
+    # For MRR rows: just 'team' & 'timing'.
     #
     # === Note:
     # 1. Prevents duplicates in array due to careless usage of '<<'.
@@ -1216,13 +1227,55 @@ module PdfResults
         event_section['rows'] ||= []
         # Scan source 'rows' from section_hash, if any:
         section_hash['rows'].each do |result_row|
-          # Foreach source row, add it to the existing event section rows only when different or new
-          # (compare all source fields vs dest fields in all rows)
-          event_section['rows'] << result_row if event_section['rows'].none?(result_row)
+          add_or_merge_results_in_rows(event_section['rows'], result_row)
         end
       else
         array_of_sections << section_hash
       end
+    end
+
+    # Loops on the array of <tt>existing_rows</tt> and adds <tt>result_hash</tt> to it
+    # if it's totally missing or merges it when some matching key fields are found.
+    #
+    # Key fields for the merge are: 'name', 'team', 'timing' & 'relay'.
+    # (These works perfectly for both MIRs and MRRs.)
+    #
+    # == Params:
+    # - <tt>existing_rows</tt>: the Array of 'rows', each item a result Hash yield by the conversion loop;
+    #   (either individual or relays)
+    # - <tt>result_hash</tt>: a single result Hash to be added (or merged) into the existing array of rows.
+    #   This hash must have at least the 'team' key to be considered.
+    #
+    # === Note:
+    # 1. Prevents duplicates in array due to careless usage of '<<'.
+    # 2. Since objects like an Hash are referenced in an array, updating directly the object instance
+    #    or a reference to it will make the referenced link inside the array be up to date as well.
+    #
+    # == Returns:
+    # +nil+ on no-op, the updated existing_rows array otherwise.
+    #
+    def add_or_merge_results_in_rows(existing_rows, result_hash)
+      # DEBUG ----------------------------------------------------------------
+      binding.pry if result_hash['name'].to_s.include?('BEARZOTTI')
+      # ----------------------------------------------------------------------
+      return if !existing_rows.is_a?(Array) || !result_hash.is_a?(Hash) || !result_hash.key?('team')
+
+      existing_row_found = false
+      existing_rows.each do |existing_row|
+        # ASSUMES: *all* the fields listed in the check below are either present or missing in both rows
+        # (compare all key-source fields vs key-dest fields in all existing rows)
+        next unless existing_row['name'] == result_hash['name'] && existing_row['team'] == result_hash['team'] &&
+                    existing_row['timing'] == result_hash['timing'] && existing_row['relay'] == result_hash['relay']
+
+        # Update existing row with any missing fields from current result row:
+        existing_row.merge!(result_hash)
+        existing_row_found = true
+        break
+      end
+
+      # Add the new row unless it was already merged:
+      existing_rows << result_hash unless existing_row_found
+      existing_rows
     end
 
     # Sorts each +array_of_sections+ rows array by timing recomputing also the rank value.

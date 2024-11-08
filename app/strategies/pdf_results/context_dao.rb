@@ -6,7 +6,6 @@ module PdfResults
   #   - version:  7-0.7.20
   #   - author:   Steve A.
   #
-  #
   # Wraps a subset of contextual data extracted from PDF/TXT parsing
   # into a hierarchy-capable object.
   #
@@ -252,12 +251,17 @@ module PdfResults
       # ----------------------------------------------------------------------
       raise 'Unable to find destination parent for source ContextDAO during merge!' unless dest_parent.is_a?(ContextDAO)
 
+      # DEBUG ----------------------------------------------------------------
+      # binding.pry if source_dao.key.to_s.include?('BEARZOTTI')
+      # ----------------------------------------------------------------------
+
       # See if the source DAO is already inside the destination rows; add it if missing
       # Special cases:
-      # 1. 'header': all header DAOs should be merged into one
-      # 2. 'post_header': all post-header DAO should be merged into a 'header'
-      if source_dao.name == 'header' || source_dao.name == 'post_header'
-        header = dest_parent.rows.find { |dao| dao.name == 'header' }
+      # 1. 'header' & 'post_header': all header-type DAOs should be merged into one
+      # 2. 'footer': same as above, but with different key
+      if source_dao.name.include?('header') || source_dao.name.include?('footer')
+        target_name = source_dao.name.include?('header') ? 'header' : 'footer'
+        header = dest_parent.rows.find { |dao| dao.name == target_name }
         # Merge any other header (different in key) or post_header into the first child found in destination:
         if header.is_a?(ContextDAO) && header.key != source_dao.key
           # Merge hash fields and each sibling rows into the existing header:
