@@ -45,13 +45,13 @@ class PdfController < ApplicationController
     @page_count = fp.pages.count
     @last_index = fp.page_index
     @last_result_fmt_name = fp.result_format_type
-    @last_valid_scan = fp.valid_scan_results
+    @last_valid_scan = fp.last_valid_scan_per_format
     return if fp.result_format_type.blank?
 
     logger.info("\r\n--> Extracting data hash...")
     data_hash = fp.root_dao&.data&.fetch(:rows, [])&.find { |hsh| hsh[:name] == 'header' }
     # DEBUG ----------------------------------------------------------------
-    # binding.pry
+    binding.pry
     # ----------------------------------------------------------------------
 
     l2 = PdfResults::L2Converter.new(data_hash, fp.season)

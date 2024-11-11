@@ -36,6 +36,17 @@ module PdfResults
     # Hash list of {#ContextDef} instances that compose the layout (keyed by context name).
     attr_reader :context_defs
 
+    # Hash list of the latest parent {#ContextDef} instances that have been verified for the current
+    # layout format (keyed by context name).
+    # === NOTE:
+    # These references to parent contexts can act as containers for the current ContextDef DAOs whenever the current
+    # parent context wasn't found on the current page. But whenever the layout is changed, these references
+    # should be cleared too or considered not valid.
+    # === Example:
+    # A parent context 'event' is not found on the current page but it was found valid on the previous page using
+    # the same format layout => it should be used as parent for the current context (if it uses 'event' as parent).
+    attr_reader :valid_parent_defs
+
     # Hash list of aliased {#ContextDef}s (keyed by context name); each alias can substitute a required but missing context,
     # generating layout alternatives within a single definition file.
     attr_reader :aliased_defs
@@ -49,9 +60,12 @@ module PdfResults
     # Array collection of {#ContextDAO} instances extracted from the same layout.
     attr_reader :page_daos
 
-    # WIP: NEEDED HERE?
     # Hash results from latest valid scan.
     attr_reader :valid_scan_results
+
+    # {#ContextDAO} root instance for the currently parsed page that wraps all data stored
+    # with #store_data.
+    attr_reader :root_dao
 
     #-- -----------------------------------------------------------------------
     #++
@@ -68,8 +82,6 @@ module PdfResults
     #   be redirected to the Rails logger as an addition to the +logger+ specified above.
     #
     def initialize(yaml_filepath, logger: nil, debug: false)
-      raise 'Invalid LayoutDef specified!' unless layout_def.is_a?(LayoutDef)
-
       @yaml_filepath = yaml_filepath
       @logger = logger if logger.is_a?(Logger)
       @debug = [true, 'true'].include?(debug) # (default false for blanks)
@@ -91,12 +103,25 @@ module PdfResults
     #-- -----------------------------------------------------------------------
     #++
 
-    # Resets *all* previously collected data for any ContextDefs included in this instance.
+    # Resets *all* previously collected data for any ContextDefs included in this instance;
+    # it resets also this layout's root DAO & all its page DAOs.
+    # Note that this won't reset the @valid_parent_defs hash.
     def clear_data!
       init_scan_pointers
+      @root_dao = nil
+      @page_daos = []
       return unless @context_defs.is_a?(Hash)
 
       @context_defs.each_value { |ctx| ctx.clear_data if ctx.respond_to?(:clear_data) }
+    end
+
+    # Stores *all* previously collected page DAOs from all the valid ContextDefs included in this instance
+    # and merges it into the @root_dao.
+    def store_data
+      @root_dao ||= ContextDAO.new
+      # DEBUG
+      $stdout.write("\033[1;33;30mm\033[0m") # Signal "Merge in-page DAOs" # rubocop:disable Rails/Output
+      @page_daos.each { |dao| @root_dao.merge(dao) }
     end
     #-- -----------------------------------------------------------------------
     #++
@@ -106,7 +131,7 @@ module PdfResults
     def validate_context!(ctx_index_or_name)
       # Prevent nil contexts & signal format def error:
       existing = (ctx_index_or_name.is_a?(String) && @context_defs.key?(ctx_index_or_name)) ||
-                 (ctx_index_or_name.present? && @format_order.at(ctx_index_or_name).present?)
+                 (ctx_index_or_name.present? && context_exists_at?(ctx_index_or_name))
       return if existing
 
       msg = 'Invalid context name or index referenced as parent!'
@@ -115,10 +140,28 @@ module PdfResults
       raise msg.to_s
     end
 
-    # Returns the previous context or nil if not available.
-    # Note that if ctx_index is zero, the previous context will be the last one (array indexes wrap up only backwards).
-    def prev_context(ctx_index)
+    # Returns the previous context relative to the specified order index, or nil if not available.
+    # Note that if ctx_index is zero, the previous context will be the last one
+    # (array indexes wrap up only backwards).
+    def prev_context_for_index(ctx_index)
       @context_defs.fetch(@format_order.at(ctx_index - 1), nil)
+    end
+
+    # Returns the ContextDef instance at the specified order index, or nil if not available.
+    def fetch_context_at(ctx_index)
+      ctx_name = @format_order.at(ctx_index)
+      @context_defs.fetch(ctx_name, nil)
+    end
+
+    # Returns the ContextDef order index for the specified context name.
+    def fetch_order_index_for(ctx_name)
+      @format_order.index(ctx_name)
+    end
+
+    # Returns +true+ if there is a ContextDef defined at the specified order index, +false+ otherwise at the specified order index;
+    # +false+ otherwise.
+    def context_exists_at?(ctx_index)
+      @format_order.at(ctx_index).present?
     end
     #-- -----------------------------------------------------------------------
     #++
@@ -148,8 +191,14 @@ module PdfResults
     # Returns +nil+ when not found or if the parent property wasn't set.
     def find_unaliased_parent_context_for(context_def)
       return if context_def.parent.blank?
-      return @context_defs.fetch(unaliased_ctx_name(context_def.parent), nil) if context_def.parent.is_a?(String)
 
+      unaliased_parent_name = unaliased_ctx_name(context_def.parent.is_a?(String) ? context_def.parent : context_def.parent.name)
+      return @valid_parent_defs.fetch(unaliased_parent_name, nil) if @valid_parent_defs.key?(unaliased_parent_name)
+
+      # Fallback (#1) to the list of context def in case the parent ctx hasn't been verified yet:
+      return @context_defs.fetch(unaliased_parent_name, nil) if @context_defs.key?(unaliased_parent_name)
+
+      # Fallback #2: use the parent link directly:
       context_def.parent
     end
     #-- -----------------------------------------------------------------------
@@ -166,18 +215,19 @@ module PdfResults
       return true if @repeatable_defs.key?(context_name) && (@repeatable_defs[context_name].fetch(:last_check, nil) == row_index)
 
       # Retrieve the context by name and check its #last_scan_index:
-      context_def = @format_defs.fetch(context_name, nil)
+      context_def = @context_defs.fetch(context_name, nil)
       return false unless context_def.is_a?(ContextDef)
 
       # Return true if the context has already been scanned on the same line:
       context_def.last_scan_index == row_index
     end
 
+    # Returns +true+ if all *required* contexts defined in @context_defs have been satisfied;
+    # +false+ otherwise.
     # Relies on @valid_scan_results to store the result of the scan for a specific context name.
-    # Returns +true+ if all *required* contexts defined in @format_defs have been satisfied.
-    def all_required_contexts_valid?(format_name)
-      @format_defs.all? do |ctx_name, ctx|
-        ctx.required? ? @valid_scan_results.key?(format_name) && @valid_scan_results[format_name].key?(ctx_name) && @valid_scan_results[format_name][ctx_name] : true
+    def all_required_contexts_valid?
+      @context_defs.all? do |ctx_name, ctx|
+        ctx.required? ? @valid_scan_results.key?(ctx_name) && @valid_scan_results[ctx_name] : true
       end
     end
     #-- -----------------------------------------------------------------------
@@ -192,15 +242,6 @@ module PdfResults
     end
     #-- -----------------------------------------------------------------------
     #++
-
-    private
-
-    # Resets the internal scanning pointers & counters.
-    def init_scan_pointers
-      @last_validation_result = nil
-      @last_scan_index = 0
-      @curr_index = 0
-    end
 
     # Resets the result members and prepares the @context_defs Hash for scanning
     # the source document page or pages.
@@ -222,17 +263,14 @@ module PdfResults
     def prepare_context_defs_from_file # rubocop:disable Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
       layout_def = YAML.load_file(@yaml_filepath)
       @name = layout_def.keys.first
-      init_scan_pointers
+      clear_data!
       context_props_array = layout_def[@name]
 
       # Init result variables:
       # @result_format_type = nil # chosen & valid format type (FIFO)
 
-      # Actual scan result (keyed by format name & sub-keyed by ContextDef type-name);
-      # @valid_scan_results = { @name => {} } # (This should reset on every page change)
-      # @valid_scan_results = {}  # (This should reset on every page change)
-
       @context_defs = {}        # Hash list of ContextDefs
+      @valid_parent_defs = {}   # Hash list of latest valid parent ContextDefs, filled only when a ContextDef is found valid
       @aliased_defs = {}        # Hash list of aliased ContextDefs
       @repeatable_defs = {}     # Hash for keeping track of repeatable checks (keyed by context name)
       @format_order = []        # requested format order
@@ -270,9 +308,9 @@ module PdfResults
 
     # Returns the new row_index value given the #valid?() check result & the current context_def
     # for the scan.
-    # Updates also the #valid_scan_results hash with the valid?() response.
+    # Updates also the #valid_scan_results hash with the specified valid?() response for the context_def parameter.
     # Returns the unmodified row_index if a key value wasn't extracted.
-    def progress_row_index_and_store_result(row_index, valid_result, format_name, context_def)
+    def progress_row_index_and_store_result(row_index, valid_result, context_def) # rubocop:disable Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
       # Memorize last check made when the def can be checked on multiple buffer chunks:
       if context_def.repeat?
         # DEBUG
@@ -286,15 +324,20 @@ module PdfResults
 
       # Prepare a scan result report, once per context name:
       # (shouldn't overwrite an already scanned context on a second FAILING pass)
-      @valid_scan_results[format_name][context_def.name] = valid_result if @valid_scan_results[format_name][context_def.name].blank?
+      @valid_scan_results[context_def.name] = valid_result if @valid_scan_results[context_def.name].blank?
 
       # "Stand-in" for another context if this is an "alternative_of" and ONLY when VALID:
       if context_def.alternative_of.present? && valid_result &&
-         @valid_scan_results[format_name][context_def.alternative_of].blank?
-        @valid_scan_results[format_name][context_def.alternative_of] = valid_result
+         @valid_scan_results[context_def.alternative_of].blank?
+        @valid_scan_results[context_def.alternative_of] = valid_result
       end
+      # Store current ContextDef as a valid context parent as this may act as parent for
+      # some other future sibling context on the same page or the next:
+      @valid_parent_defs[context_def.name] = context_def if valid_result
       return row_index unless valid_result && context_def.consumed_rows.positive?
 
+      # Find the true, latest, valid parent stored in the overall format validity parent check
+      # hash (which is updated only when a context if found valid):
       parent_ctx = find_unaliased_parent_context_for(context_def)
 
       # Un-alias current DAO before storage:
@@ -313,7 +356,7 @@ module PdfResults
 
       # *** Store data: ***
       # case 1) parent is set => add DAO to parent rows:
-      if actual_dao.present? && parent_ctx.present? && parent_ctx.dao.present?
+      if actual_dao.present? && parent_ctx.present?
         # (Handle aliases) Force parent preparation so that if we're
         # dealing with an aliased parent which is still "blank" we will store the
         # current DAO in the actual parent even if its alias passed the valid? check
@@ -343,5 +386,21 @@ module PdfResults
       # if the row_index is increased always of the row_span, some misalignment may occur when
       # parsing results that can span a max of 3 rows but most of the times they occupy just 2.
     end
+    #-- -----------------------------------------------------------------------
+    #++
+
+    private
+
+    # Resets the internal scanning pointers & counters.
+    def init_scan_pointers
+      @last_validation_result = nil
+      @last_scan_index = 0
+      @curr_index = 0
+      # Actual scan result (keyed by ContextDef type-name);
+      # OLD: @valid_scan_results = { @name => {} } # (This should reset on every page change)
+      @valid_scan_results = {} # (This should reset on every page change)
+    end
+    #-- -----------------------------------------------------------------------
+    #++
   end
 end

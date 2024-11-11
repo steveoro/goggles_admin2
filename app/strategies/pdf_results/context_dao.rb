@@ -238,6 +238,14 @@ module PdfResults
       # as the parent referenced by the source itself.
       # Only true root-level DAOs should have no parent:
       dest_parent = self if name == 'root' && source_dao.parent.blank? && source_dao.parent_name.blank?
+      # Peculiar case: each supplied root DAO (with rows) must have all its row merged into
+      # this same DAO as a single array of uniquely-merged rows, so that the hierarchy tree
+      # is properly built (with just 1 DAO named 'root').
+      if name == 'root' && source_dao.name == 'root'
+        source_dao.rows.each { |row_dao| merge(row_dao) }
+        return
+      end
+
       # Set destination DAO parent only if not already set above, using this priority:
       # (any matching reference || same parent link || first matching parent name)
       dest_parent ||= find_existing(source_dao.parent) || source_dao.parent || find_existing_by_name_only(source_dao.parent_name)
@@ -251,10 +259,6 @@ module PdfResults
       # ----------------------------------------------------------------------
       raise 'Unable to find destination parent for source ContextDAO during merge!' unless dest_parent.is_a?(ContextDAO)
 
-      # DEBUG ----------------------------------------------------------------
-      # binding.pry if source_dao.key.to_s.include?('BEARZOTTI')
-      # ----------------------------------------------------------------------
-
       # See if the source DAO is already inside the destination rows; add it if missing
       # Special cases:
       # 1. 'header' & 'post_header': all header-type DAOs should be merged into one
@@ -266,7 +270,7 @@ module PdfResults
         if header.is_a?(ContextDAO) && header.key != source_dao.key
           # Merge hash fields and each sibling rows into the existing header:
           header.fields_hash.merge!(source_dao.fields_hash)
-          source_dao.rows.each { |row_dao| header.add_row(row_dao) }
+          source_dao.rows.each { |row_dao| header.merge(row_dao) } # WAS: add_row
           return
         end
       end

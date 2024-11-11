@@ -3,7 +3,7 @@
 module PdfResults
   # = PdfResults::FormatParser strategy
   #
-  #   - version:  7-0.7.20
+  #   - version:  7-0.7.24
   #   - author:   Steve A.
   #
   # Given at least a single whole page of a text file, this strategy class will try to detect
@@ -53,25 +53,11 @@ module PdfResults
     # and it will always be the last one reported as valid from the latests parse() call.
     attr_reader :result_format_type
 
-    # Result top level ContextDAO container: all defined and used root-level contexts will become its rows
-    # and related siblings will become rows of their respective parents to preserve hierarchy.
+    # Result top level Document root ContextDAO container. All defined and used root-level contexts
+    # will become its rows and related siblings will become rows of their respective parents
+    # in order to preserve hierarchy.
     # Typically a root DAO should contain a single ContextDAO sibling called 'header'.
     attr_reader :root_dao
-
-    # ContextDefs Hash indexed by format name
-    attr_reader :format_defs
-
-    # Hash of Hash storing all successful check results for each ContextDef from the last parse run,
-    # using <format_name> as key and having as value an Hash structure:
-    #
-    #   { <format_name> => { <context_def_name> => <valid_result> } }
-    #
-    # == Notes:
-    # - Failing contexts won't be added to this list. Resets on every page or format change;
-    # - the current format will be considered valid if all required contexts are within this list;
-    # - formats can change on each new document page;
-    # - a #parse scan will continue using the same successful format found until failure.
-    attr_reader :valid_scan_results
 
     # Hash of Hash storing all check results for each defined format found and tried by a #scan().
     # A format is considered valid if all its required contexts have been satisfied.
@@ -152,6 +138,15 @@ module PdfResults
     #-- -----------------------------------------------------------------------
     #++
 
+    # === TL'DR:
+    # Scans a text document in whole or in part, calling repeatedly #parse() on the first page
+    # until a known format family is detected and parses successfully the whole first page.
+    # After the first successful format family is found, each page is parsed looping on all
+    # sub-formats for the same family, until the rest of the document is parsed or the all
+    # the sub-formats are successful again (in which case the loop halts and the parsing process
+    # fails).
+    # ---
+    #
     # Detects & returns which known layout format the data file belongs to.
     # Sets the +result_format_type+ with the name/key of the first matching format found for the
     # first page specified in the constructor.
@@ -167,7 +162,9 @@ module PdfResults
     # being valid for any reason.
     #
     # (This allows to have files with multiple formats in them, as long as they all
-    # belong to the same family.)
+    # belong to the same family and, possibly, format changes occur only at page change.
+    # If that is not the case, the text data file to be parsed will need to be edited, introducing
+    # page changes everywhere the format changes.)
     #
     # The scan ends either when the last document line is reached or there are
     # no more applicable (file) formats to be checked against the remaining pages.
@@ -296,15 +293,10 @@ module PdfResults
     # Returns & sets @result_format_type value when successful or +nil+ if not.
     # Raises an exception if the YAML format-def file doesn't contain a valid list of ContextDef properties.
     #
-    # Each run of #parse will clear and set new values for:
-    #
-    # - +result_format_type+ => key root string name found inside the specified +format_filepath+
-    # - +valid_scan_results+ => Hash having as keys each ContextDef name together with its latests validation check result (true/false)
-    # - +format_defs+  => Hash of ContextDefs, keyed by their name
-    # - +format_order+ => Array ContextDef string names, setting the order in which the above defs have been found
+    # Each run of #parse will clear and set a new @curr_layout instance.
     #
     # == Params:
-    # - <tt>format_filepath</tt>  => format file pathname;
+    # - <tt>format_filepath</tt>  => format file pathname used to set the current LayoutDef;
     #
     # == Options
     # - <tt>:limit_pages</tt> => a single integer or a range of values, identifying the processed
@@ -323,24 +315,23 @@ module PdfResults
     def parse(format_filepath, limit_pages: nil, reset_page_index: false, debug: @debug) # rubocop:disable Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/MethodLength,Metrics/PerceivedComplexity
       @debug = debug
       # 1. Build the hash list of ContextDef, defining & describing the current layout format:
-      @format_name = prepare_format_defs_from_file(format_filepath)
+      @curr_layout = PdfResults::LayoutDef.new(format_filepath, logger: @logger, debug:)
+      @curr_layout.prepare_context_defs_from_file
 
       # 2. Set the current array of @rows for the current page:
       set_current_page_rows(limit_pages:, rewind: reset_page_index)
       detect_empty_page_moving_fwd
 
-      # 3. Scan each ContextDef present in @format_defs, progressing in source text scan index
+      # 3. Scan each ContextDef present in @curr_layout.context_defs, progressing in source text scan index
       #    as much as actual row span also progressing page-by-page:
-      log_message("=> FORMAT '\033[1;93;40m#{@format_name}\033[0m' @ page: #{@page_index + 1}/#{@pages.count}")
+      log_message("=> FORMAT '\033[1;93;40m#{@curr_layout.name}\033[0m' @ page: #{@page_index + 1}/#{@pages.count}")
       ctx_index = 0
       row_index = 0
-      ctx_name  = @format_order.at(ctx_index)
-
-      continue_scan = row_index < @rows.count && ctx_name.present?
+      continue_scan = row_index < @rows.count && @curr_layout.context_exists_at?(ctx_index)
 
       while continue_scan
-        # Set the current context:
-        context_def = @format_defs.fetch(ctx_name, nil)
+        # Set the current context using the order specified by ctx_index:
+        context_def = @curr_layout.fetch_context_at(ctx_index)
         break unless context_def.is_a?(ContextDef)
 
         # Validate current context by extraction:
@@ -348,7 +339,8 @@ module PdfResults
         if @debug
           log_message(
             Kernel.format("\r\n➡ row %04d/%04d, p: %s/%s [\033[1;94;3m%s\033[0m: '\033[1;93;40m%s\033[0m', ctx %02d/%02d]",
-                          row_index, @rows.count - 1, @page_index + 1, @pages.count, @format_name, ctx_name, ctx_index + 1, @format_order.count)
+                          row_index, @rows.count - 1, @page_index + 1, @pages.count, @curr_layout.name, context_def.name,
+                          ctx_index + 1, @curr_layout.format_order.count)
           )
         end
 
@@ -377,11 +369,11 @@ module PdfResults
         # DEBUG
         if @debug && (context_def.key.present? || context_def.consumed_rows.positive?)
           log_message(Kernel.format("  [%s] => %s -- curr_index: %d, consumed_rows: %d\r\n  |=> key: '\033[1;33;32m%s\033[0m'",
-                                    ctx_name, result_icon_for(context_def), context_def.curr_index, context_def.consumed_rows,
+                                    context_def.name, result_icon_for(context_def), context_def.curr_index, context_def.consumed_rows,
                                     context_def.key))
         end
 
-        row_index = progress_row_index_and_store_result(row_index, valid, @format_name, context_def)
+        row_index = @curr_layout.progress_row_index_and_store_result(row_index, valid, context_def)
         # DEBUG
         if @debug && context_def.last_validation_result
           log_message(Kernel.format("  |=> next: %04d/%04d (from: '%s' ctx idx: %d, ctx span: %d)", row_index, @rows.count - 1,
@@ -392,11 +384,11 @@ module PdfResults
         # (NOT valid?) AND required and (NOT repeatable) and
         #   (prev Ctx NOT repeatable) and (at root?) => end of validity check (FAIL)
         # (Can't move forward and should NOT check on another buffer chunk)
-        break if !valid && context_def.required? && !context_def.repeat? && !prev_context(ctx_index)&.repeat? &&
-                 context_def.parent.blank?
+        break if !valid && context_def.required? && !context_def.repeat? &&
+                 !@curr_layout.prev_context_for_index(ctx_index)&.repeat? && context_def.parent.blank?
 
-        # == Recurse to parent when set:
-        # (NOT valid?) and (parent context existing? && required) and (check not repeated)
+        # == Recurse to parent when parent is set:
+        # (NOT valid?) and (parent context existing? && required) and (check not already done)
         # => back/recurse to parent:
         # NOTE: the parent context may be set up with just its name if it hasn't been encountered yet, so we
         # make sure we're passing the actual parent name:
@@ -404,43 +396,42 @@ module PdfResults
         # Assume the parent was optional if it wasn't properly setup:
         parent_required = context_def.parent.respond_to?(:required?) ? context_def.parent.required? : false
         if !valid && context_def.parent.present? && parent_required &&
-           !check_already_made?(parent_name, row_index)
-          # Set pointers for next iteration:
-          ctx_name = parent_name
-          ctx_index = @format_order.index(ctx_name)
-          validate_context(ctx_index)
+           !@curr_layout.check_already_made?(parent_name, row_index)
+          # Set the pointer for the next iteration (will overwrite parent validity check on next iteration):
+          ctx_index = @curr_layout.fetch_order_index_for(parent_name)
+          @curr_layout.validate_context!(parent_name)
           # $stdout.write("\033[1;33;30mP\033[0m") # signal "PARENT"
-          log_message(Kernel.format("  \\__ (back to PARENT '\033[94;3m%s\033[0m')", ctx_name))
+          log_message(Kernel.format("  \\__ (back to PARENT '\033[94;3m%s\033[0m')", parent_name))
 
         # == Recurse to previous context if it was repeatable:
         # (NOT valid) and (prev Ctx repeatable) and (check not repeated)
         #  => back/recurse to previous:
-        elsif !valid && ctx_index.positive? && prev_context(ctx_index)&.repeat? &&
-              !check_already_made?(@format_order.at(ctx_index - 1), row_index)
+        elsif !valid && ctx_index.positive? && @curr_layout.prev_context_for_index(ctx_index)&.repeat? &&
+              !@curr_layout.check_already_made?(@curr_layout.format_order.at(ctx_index - 1), row_index)
           # Set pointers for next iteration:
           ctx_index -= 1
-          ctx_name  = @format_order.at(ctx_index)
-          validate_context(ctx_name)
+          ctx_name  = @curr_layout.format_order.at(ctx_index)
+          @curr_layout.validate_context!(ctx_name)
           # DEBUG
           # $stdout.write("\033[1;33;30m⬅\033[0m") # signal "BACK to prev."
           log_message(Kernel.format("  \\__ (back to prev. '\033[94;3m%s\033[0m')", ctx_name))
 
         # == ELSE: valid => don't progress context counter until a non-valid context application is found
         elsif valid
-          log_message(Kernel.format("  \\__ \033[1;33;32mcontinuing with\033[0m '\033[94;3m%s\033[0m'", ctx_name))
+          log_message(Kernel.format("  \\__ \033[1;33;32mcontinuing with\033[0m '\033[94;3m%s\033[0m'", context_def.name))
           # $stdout.write("\033[1;33;32m+\033[0m") # signal "Valid ctx"
 
         # == Next context: in any other NON-valid case, always move forward to next context
         else
           ctx_index += 1
-          if ctx_index < @format_order.count
-            ctx_name = @format_order.at(ctx_index)
-            validate_context(ctx_name)
+          if ctx_index < @curr_layout.format_order.count
+            ctx_name = @curr_layout.format_order.at(ctx_index)
+            @curr_layout.validate_context!(ctx_name)
             # DEBUG
             # $stdout.write("\033[1;33;30m_\033[0m") # signal "NEXT"
             log_message(Kernel.format("  \\__ checking next, '\033[94;3m%s\033[0m'", ctx_name))
           else
-            log_message("      <<-- \033[1;33;31mEND OF FORMAT LOOP '\033[1;93;40;3m#{@format_name}\033[0m' -->>")
+            log_message("      <<-- \033[1;33;31mEND OF FORMAT LOOP '\033[1;93;40;3m#{@curr_layout.name}\033[0m' -->>")
             # $stdout.write("\033[1;33;30m^\033[0m") # signal "Ctx Loop wrap"
           end
         end
@@ -456,12 +447,13 @@ module PdfResults
         # ASAP the context scan is completed, even before page end, create/update
         # the root DAO, so we don't miss "fragmented data pages" that may require
         # the "Repeatable loop restart" to be parsed out completely:
-        if valid && all_required_contexts_valid?(@format_name)
-          # Store data - append page daos to the root DAO:
+        if valid && @curr_layout.all_required_contexts_valid?
+          # Store data - append page daos to the overall Document root DAO:
           @root_dao ||= ContextDAO.new
+          @curr_layout.store_data
           # DEBUG
-          # $stdout.write("\033[1;33;30mm\033[0m") # Signal "Merge DAOs"
-          @page_daos.each { |dao| @root_dao.merge(dao) }
+          $stdout.write("\033[1;33;30m^M\033[0m") # Signal "Merge page root DAO"
+          @root_dao.merge(@curr_layout.root_dao)
         end
 
         # === PAGE END/BREAK ===
@@ -471,54 +463,55 @@ module PdfResults
         #  in any other case, the current format should be considered as not checked out completely or invalid;
         #  ctx could be repeatable in check until the actual end of rows and a required and repeatable ctx
         #  could be found later on.)
-        if valid && all_required_contexts_valid?(@format_name) && (row_index >= @rows.count || context_def.eop?)
+        if valid && @curr_layout.all_required_contexts_valid? && (row_index >= @rows.count || context_def.eop?)
           $stdout.write("\033[1;33;32m.\033[0m") # "VALID" progress signal (once per page) # rubocop:disable Rails/Output
           log_message(
             Kernel.format("\r\nFORMAT '\033[1;93;40;3m%s\033[0m' VALID! ✅ @ page %d/%d",
-                          @format_name, @page_index + 1, @pages&.count.to_i)
+                          @curr_layout.name, @page_index + 1, @pages&.count.to_i)
           )
           # Set the result at the end of all context def scan and only at the end of the page:
-          @result_format_type = @format_name
+          @result_format_type = @curr_layout.name
+          @last_valid_scan_per_format ||= {}
+          @last_valid_scan_per_format[@curr_layout.name] = @curr_layout.valid_scan_results
 
           @checked_formats ||= {}
-          @checked_formats[@format_name] ||= {}
-          @checked_formats[@format_name][:valid] = true
-          @checked_formats[@format_name][:valid_at] ||= []
-          @checked_formats[@format_name][:valid_at] << @page_index unless @checked_formats[@format_name][:valid_at].include?(@page_index)
+          @checked_formats[@curr_layout.name] ||= {}
+          @checked_formats[@curr_layout.name][:valid] = true
+          @checked_formats[@curr_layout.name][:valid_at] ||= []
+          @checked_formats[@curr_layout.name][:valid_at] << @page_index unless @checked_formats[@curr_layout.name][:valid_at].include?(@page_index)
 
-          # Page progress & reset indexes:
+          # Page progress: reset indexes for the next page:
           @page_index += 1
           set_current_page_rows(rewind: false)
           detect_empty_page_moving_fwd
           row_index = 0
           ctx_index = 0
-          ctx_name  = @format_order.first
+          ctx_name  = @curr_layout.format_order.first
           msg = if @rows.count.positive?
                   Kernel.format("\r\n  EOP found (%s): new page %d/%d", context_def.name, @page_index, @pages&.count.to_i)
                 else
                   Kernel.format("\r\n  EOF found (%s): no more rows.", context_def.name)
                 end
           log_message(msg)
-          log_message("\r\n[#{@format_name}] Scan result for detecting formats (resets each page change):")
-          @valid_scan_results[@format_name].each { |name, is_valid| log_message("- #{name}: #{is_valid ? "\033[1;33;32m✔\033[0m" : 'x'}") }
+          log_message("\r\n[#{@curr_layout.name}] Scan result for detecting formats (resets each page change):")
+          @curr_layout.valid_scan_results.each { |name, is_valid| log_message("- #{name}: #{is_valid ? "\033[1;33;32m✔\033[0m" : 'x'}") }
 
           # Always reset page result counters & page DAOs before the next iteration
           # (even when using same format - any DAOs found valid are "storable" only if the
           # whole page satisfies the layout definition and the DAOs should have been already
           # merged before the following lines):
-          @valid_scan_results = { @format_name => {} } # (This should reset on every page change)
-          @page_daos = []
+          @curr_layout.clear_data!
         end
 
         # === "REPEATABLES" RESTART ===
         # Valid or not, if there are still rows (or pages left) to process and we have "Repeatables" to check,
         # restart the loop from the first "repeatable" context stored:
-        if @repeatable_defs.keys.present? && !check_already_made?(@repeatable_defs.keys.first, row_index) &&
-           (row_index < @rows.count || @page_index < @pages&.count.to_i) && (ctx_index >= @format_order.count)
+        if @curr_layout.repeatable_defs.keys.present? && !@curr_layout.check_already_made?(@curr_layout.repeatable_defs.keys.first, row_index) &&
+           (row_index < @rows.count || @page_index < @pages&.count.to_i) && (ctx_index >= @curr_layout.format_order.count)
           # Set pointers for next iteration - RESTART "repeatables":
-          ctx_name = @repeatable_defs.keys.first
-          ctx_index = @format_order.index(ctx_name)
-          validate_context(ctx_index)
+          ctx_name = @curr_layout.repeatable_defs.keys.first
+          ctx_index = @curr_layout.fetch_order_index_for(ctx_name)
+          @curr_layout.validate_context!(ctx_index)
           # DEBUG
           # $stdout.write("\033[1;33;30m♻\033[0m") # Restart loop signal
           log_message(Kernel.format("  \\__ (RESTARTING repeatables from first: '\033[94;3m%s\033[0m')", ctx_name))
@@ -532,17 +525,17 @@ module PdfResults
 
         # Continue scanning page with this format whenever we have more rows to process
         # AND still other context defs to check out at the current row pointer:
-        continue_scan = (row_index < @rows.count) && (ctx_index < @format_order.count)
+        continue_scan = (row_index < @rows.count) && (ctx_index < @curr_layout.format_order.count)
       end
 
       unless valid
         $stdout.write("\033[1;33;31m✖\033[0m") # "INVALID format" progress signal (EOP reached, or not, w/o some of the constraints satisfied) # rubocop:disable Rails/Output
         # Output where last format stopped being valid:
-        puts("'#{@format_name}' [#{ctx_name}] => stops @ page idx #{@page_index}") if @rows.present? # rubocop:disable Rails/Output
+        puts("'#{@curr_layout.name}' [#{context_def.name}] => stops @ page idx #{@page_index}") if @rows.present? # rubocop:disable Rails/Output
       end
 
       log_message("\r\nLast check for repeatable defs (w/ stopping index):")
-      @repeatable_defs.each do |name, hsh|
+      @curr_layout.repeatable_defs.each do |name, hsh|
         log_message(
           Kernel.format('- %<name>s: last checked @ row: %<last_check>d => %<check_result>s, valid rows (in valid pages): %<valid_list>s',
                         name:, last_check: hsh[:last_check].to_i,
@@ -553,6 +546,21 @@ module PdfResults
     end
     #-- -----------------------------------------------------------------------
     #++
+
+    # Returns a memoized Hash of Hash storing all successful check results for each ContextDef from the last parse run,
+    # using <format_name> as key and having as value an Hash structure:
+    #
+    #   { <format_name> => { <context_def_name> => <valid_result> } }
+    #
+    # == Notes:
+    # - Failing contexts won't be added to this list. Resets on every page or format change;
+    # - the current format will be considered valid if all required contexts are within this list;
+    # - formats can change on each new document page;
+    # - a #parse scan will continue using the same successful format found until failure.
+    def last_valid_scan_per_format
+      @last_valid_scan_per_format ||= {}
+      @last_valid_scan_per_format
+    end
 
     private
 
@@ -595,8 +603,8 @@ module PdfResults
     #
     def set_current_page_rows(limit_pages: nil, rewind: true) # rubocop:disable Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
       # Make sure these two are always initialized before any source page setup:
-      @checked_formats ||= {} # hash for keeping track of repeated checks on same format types
-      @page_index ||= 0       # actual index inside the parsed document
+      @checked_formats ||= {} # hash for keeping track of repeated checks for the same format types (and avoid infinite loops)
+      @page_index ||= 0       # actual page index inside the parsed document (possibly spanning multiple pages)
 
       # Force reset page index only when requested:
       if rewind
@@ -647,75 +655,6 @@ module PdfResults
     #-- -----------------------------------------------------------------------
     #++
 
-    # Resets the result members and prepares the @format_defs Hash for scanning
-    # the source document page or pages.
-    #
-    # === Clears and prepares:
-    # - result_format_type
-    # - format_defs
-    # - repeatable_defs
-    # - format_order
-    # - @page_daos (because each page is assumed to have only 1 format)
-    #
-    # This allows #parse() to work with single formats page-by-page until detection
-    # for the same format fails, while also collecting DAOs even when resuming scan
-    # with a different format file.
-    #
-    #
-    # == Returns:
-    # The string format name usable as key for this format type.
-    #
-    # rubocop:disable Metrics/CyclomaticComplexity, Metrics/AbcSize, Metrics/PerceivedComplexity
-    def prepare_format_defs_from_file(format_filepath)
-      layout_def = YAML.load_file(format_filepath)
-      format_name = layout_def.keys.first
-      context_props_array = layout_def[format_name]
-
-      # Init result variables:
-      @result_format_type = nil # chosen & valid format type (FIFO)
-
-      # Actual scan result (keyed by format name & sub-keyed by ContextDef type-name);
-      @valid_scan_results = { format_name => {} } # (This should reset on every page change)
-
-      @format_defs = {}         # Hash list of ContextDefs
-      @aliased_defs = {}        # Hash list of aliased ContextDefs
-      @repeatable_defs = {}     # Hash for keeping track of repeatable checks (keyed by context name)
-      @format_order = []        # requested format order
-      @page_daos = []           # Collection of DAOs found on current page
-      # NOTE: page DAOs are cleared on each page break and stored
-      #       into @root_dao only if the current overall format is successful
-
-      context_props_array.each do |context_props|
-        # Set ContextDef alias list when present:
-        if context_props['alternative_of'].present? && context_props['alternative_of'].is_a?(String)
-          @aliased_defs[context_props['alternative_of']] ||= []
-          @aliased_defs[context_props['alternative_of']] << context_props['name']
-        end
-
-        # Set proper parent reference:
-        # (ASSUMES: parent context must be already defined; when the parent is an
-        #  alias for another context, the original must be used;
-        #  when not yet defined, the parent will remain a string key instead of being
-        #  converted into a Context)
-        if context_props['parent'].present? && context_props['parent'].is_a?(String)
-          parent_name = unaliased_ctx_name(context_props['parent'])
-          parent_ctx = @format_defs.fetch(parent_name, nil)
-          context_props['parent'] = parent_ctx if parent_ctx
-        end
-        context_def = ContextDef.new(context_props.merge(
-                                       logger: @verbose_log ? @logger : nil, # Skip detailed logging unless verbose
-                                       debug: @debug
-                                     ))
-        @format_defs[context_def.name] = context_def
-        @repeatable_defs[context_def.name] = {} if context_def.repeat?
-        @format_order << context_def.name
-      end
-
-      format_name
-    end
-    #-- -----------------------------------------------------------------------
-    #++
-
     # Adds +msg+ to the internal log.
     # == Params
     # - msg: String message to be added to the log
@@ -733,160 +672,8 @@ module PdfResults
 
       "\033[1;33;31m✖\033[0m"
     end
-
-    # Raises a runtime error in case the specified context index or name isn't valid.
-    # (Assumes index to be a number and name to be a string)
-    def validate_context(ctx_index_or_name)
-      # Prevent nil contexts & signal format def error:
-      existing = (ctx_index_or_name.is_a?(String) && @format_defs.key?(ctx_index_or_name)) ||
-                 (ctx_index_or_name.present? && @format_order.at(ctx_index_or_name).present?)
-      return if existing
-
-      msg = 'Invalid context name or index referenced as parent!'
-      log_message("\r\n#{msg}")
-      caller.each { |trace| log_message(trace) }
-      raise msg.to_s
-    end
-
-    # Returns the previous context or nil if not available.
-    # Note that if ctx_index is zero, the previous context will be the last one (array indexes wrap up only backwards).
-    def prev_context(ctx_index)
-      @format_defs.fetch(@format_order.at(ctx_index - 1), nil)
-    end
-
-    # Returns the new row_index value given the #valid?() check result & the current context_def
-    # for the scan.
-    # Updates also the #valid_scan_results hash with the valid?() response.
-    # Returns the unmodified row_index if a key value wasn't extracted.
-    def progress_row_index_and_store_result(row_index, valid_result, format_name, context_def)
-      # Memorize last check made when the def can be checked on multiple buffer chunks:
-      if context_def.repeat?
-        # DEBUG
-        # $stdout.write("\033[1;33;30mr\033[0m") # Signal "Repeatable check update"
-        @repeatable_defs[context_def.name] ||= {}
-        @repeatable_defs[context_def.name][:last_check] = row_index
-        @repeatable_defs[context_def.name][:valid] = valid_result
-        @repeatable_defs[context_def.name][:valid_at] ||= []
-        @repeatable_defs[context_def.name][:valid_at] << row_index if valid_result && @repeatable_defs[context_def.name][:valid_at].exclude?(row_index)
-      end
-
-      # Prepare a scan result report, once per context name:
-      # (shouldn't overwrite an already scanned context on a second FAILING pass)
-      @valid_scan_results[format_name][context_def.name] = valid_result if @valid_scan_results[format_name][context_def.name].blank?
-
-      # "Stand-in" for another context if this is an "alternative_of" and ONLY when VALID:
-      if context_def.alternative_of.present? && valid_result &&
-         @valid_scan_results[format_name][context_def.alternative_of].blank?
-        @valid_scan_results[format_name][context_def.alternative_of] = valid_result
-      end
-      return row_index unless valid_result && context_def.consumed_rows.positive?
-
-      parent_ctx = find_unaliased_parent_context_for(context_def)
-
-      # Un-alias current DAO before storage:
-      actual_dao = context_def.dao
-      # DEBUG ----------------------------------------------------------------
-      # binding.pry if valid_result && context_def.key.include?('BRIGHENTI Maurizio')
-      # ----------------------------------------------------------------------
-
-      if actual_dao.present? && context_def.alternative_of.present?
-        unaliased_ctx = @format_defs.fetch(context_def.alternative_of, nil)
-        raise "'alternative_of' context set but original context not found when storing data: check your .yml layout definition file!" if unaliased_ctx.blank?
-
-        unaliased_ctx.prepare_dao(context_def)
-        actual_dao = unaliased_ctx.dao
-      end
-
-      # *** Store data: ***
-      # case 1) parent is set => add DAO to parent rows:
-      if actual_dao.present? && parent_ctx.present? && parent_ctx.dao.present?
-        # (Handle aliases) Force parent preparation so that if we're
-        # dealing with an aliased parent which is still "blank" we will store the
-        # current DAO in the actual parent even if its alias passed the valid? check
-        # while the original didn't:
-        parent_ctx.prepare_dao if parent_ctx.dao.blank?
-        parent_ctx.dao.add_row(actual_dao)
-
-      # case 2) no parents => DAO goes to current "page root":
-      elsif actual_dao.present?
-        @page_daos << actual_dao
-        # (ELSE: don't append empties unless there's an actual DAO)
-      end
-
-      # DEBUG
-      # $stdout.write("\033[1;33;30mC\033[0m") # Signal "Consumed rows"
-      # Consume the scanned row(s) if found:
-      row_index + context_def.consumed_rows
-
-      # === NOTE:
-      # Some ContextDef may define some rows or fields as NOT required.
-      # So, for ex., while row_span may be 3 with 1 optional row, curr_index
-      # will be 2 if the optional row hasn't been found.
-      # The page-relative row_index must be increased of ONLY the actual number of rows
-      # properly validated.
-      #
-      # See app/strategies/pdf_results/formats/1-ficr1.100m.yml format for an actual example:
-      # if the row_index is increased always of the row_span, some misalignment may occur when
-      # parsing results that can span a max of 3 rows but most of the times they occupy just 2.
-    end
-
-    # Returns true if the specified context_def name has already been verified with a
-    # run at this same row_index. False otherwise.
-    # === Note:
-    # The idea is to avoid infinite loops without using recursion: we need to streamline the loops
-    # and avoid checking rows or extracting from rows more than once if already done, independently
-    # from the actual result.
-    def check_already_made?(context_name, row_index)
-      # "Repeatables" can be re-checked indefinitely but not on the same line:
-      return true if @repeatable_defs.key?(context_name) && (@repeatable_defs[context_name].fetch(:last_check, nil) == row_index)
-
-      # Retrieve the context by name and check its #last_scan_index:
-      context_def = @format_defs.fetch(context_name, nil)
-      return false unless context_def.is_a?(ContextDef)
-
-      # Return true if the context has already been scanned on the same line:
-      context_def.last_scan_index == row_index
-    end
-
-    # Relies on @valid_scan_results to store the result of the scan for a specific context name.
-    # Returns +true+ if all *required* contexts defined in @format_defs have been satisfied.
-    def all_required_contexts_valid?(format_name)
-      @format_defs.all? do |ctx_name, ctx|
-        ctx.required? ? @valid_scan_results.key?(format_name) && @valid_scan_results[format_name].key?(ctx_name) && @valid_scan_results[format_name][ctx_name] : true
-      end
-    end
     #-- -----------------------------------------------------------------------
     #++
-
-    # Scans @aliased_defs in search for the right key name.
-    # Returns the original context name of an aliased ContextDef.
-    # Returns nil otherwise.
-    def find_ctx_name_from_alias(alias_ctx_name)
-      return unless @aliased_defs.is_a?(Hash)
-
-      key_name, _aliases = @aliased_defs.find { |_key, aliases| aliases&.include?(alias_ctx_name) }
-      key_name
-    end
-
-    # Returns the unaliased context name if the specified name is an alias.
-    # Returns the same context name otherwise.
-    def unaliased_ctx_name(ctx_name)
-      unaliased_name = find_ctx_name_from_alias(ctx_name)
-      return ctx_name if unaliased_name.blank?
-
-      unaliased_name
-    end
-
-    # Returns the parent ContextDef instance when the parent property is properly set.
-    # Searches for an existing, unaliased name whenever the property value is still set to a
-    # string (parent ContextDef defined  after the sibling in the format file).
-    # Returns +nil+ when not found or if the parent property wasn't set.
-    def find_unaliased_parent_context_for(context_def)
-      return if context_def.parent.blank?
-      return @format_defs.fetch(unaliased_ctx_name(context_def.parent), nil) if context_def.parent.is_a?(String)
-
-      context_def.parent
-    end
   end
 end
 # rubocop:enable Metrics/ClassLength

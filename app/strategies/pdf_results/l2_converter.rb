@@ -3,7 +3,7 @@
 module PdfResults
   # = PdfResults::L2Converter
   #
-  #   - version:  7-0.7.16
+  #   - version:  7-0.7.24
   #   - author:   Steve A.
   #
   # Converts from any parsed field hash to the "Layout type 2" format
@@ -104,7 +104,8 @@ module PdfResults
     #                        +-- team_ranking🔸(xN)
     #
     def initialize(data_hash, season)
-      raise 'Invalid data_hash or season specified!' unless data_hash.is_a?(Hash) && data_hash[:name] == 'header' && season.is_a?(GogglesDb::Season)
+      raise 'Invalid data_hash specified!' unless data_hash.is_a?(Hash) && data_hash[:name] == 'header'
+      raise 'Invalid season specified!' unless season.is_a?(GogglesDb::Season)
 
       @data = data_hash
       @season = season
@@ -254,7 +255,6 @@ module PdfResults
               #     +-- rel_team
               #
               rel_result_hash = rel_result_section(row_hash)
-              # rows << rel_result_hash
               add_or_merge_results_in_rows(section['rows'], rel_result_hash)
               # Relay category code still missing? Fill-in possible missing category code (which is frequently missing in record trials):
               if section['fin_sigla_categoria'].blank? && rel_result_hash.is_a?(Hash) && rel_result_hash.key?('overall_age')
@@ -290,6 +290,9 @@ module PdfResults
               recompute_ranking = true
             end
 
+            # DEBUG ----------------------------------------------------------------
+            # binding.pry if result_row['name'].include?('BEARZOTTI ')
+            # ----------------------------------------------------------------------
             add_or_merge_results_in_rows(section['rows'], result_row)
 
           # --- IND.RESULTS (category -> results: curr depth holds category data) ---
@@ -311,6 +314,10 @@ module PdfResults
               # will be included into a 'result' section.
               next unless IND_RESULT_SECTION.include?(result_hash[:name])
 
+              result_row = ind_result_section(result_hash, section['fin_sesso'])
+              # DEBUG ----------------------------------------------------------------
+              # binding.pry if result_row['name'].include?('BEARZOTTI ')
+              # ----------------------------------------------------------------------
               add_or_merge_results_in_rows(section['rows'], ind_result_section(result_hash, section['fin_sesso']))
             end
 
@@ -542,6 +549,10 @@ module PdfResults
     #             +-- results_ext|results_ext_x2|results_ext_x3 (all DSQ desc labels)
     #
     def ind_result_section(result_hash, cat_gender_code)
+      # DEBUG ----------------------------------------------------------------
+      # binding.pry if result_hash['swimmer_name'].to_s.include?('BEARZOTTI ') || result_hash[:fields]['swimmer_name'].to_s.include?('BEARZOTTI ')
+      # ----------------------------------------------------------------------
+
       return {} unless IND_RESULT_SECTION.include?(result_hash[:name]) ||
                        result_hash[:name] == 'disqualified'
 
@@ -1255,9 +1266,6 @@ module PdfResults
     # +nil+ on no-op, the updated existing_rows array otherwise.
     #
     def add_or_merge_results_in_rows(existing_rows, result_hash)
-      # DEBUG ----------------------------------------------------------------
-      binding.pry if result_hash['name'].to_s.include?('BEARZOTTI')
-      # ----------------------------------------------------------------------
       return if !existing_rows.is_a?(Array) || !result_hash.is_a?(Hash) || !result_hash.key?('team')
 
       existing_row_found = false
