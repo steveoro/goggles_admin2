@@ -452,7 +452,7 @@ module PdfResults
           @root_dao ||= ContextDAO.new
           @curr_layout.store_data
           # DEBUG
-          $stdout.write("\033[1;33;30m^M\033[0m") # Signal "Merge page root DAO"
+          # $stdout.write("\033[1;33;37m.\033[0m") # Signal "Merge page root DAO"
           @root_dao.merge(@curr_layout.root_dao)
         end
 

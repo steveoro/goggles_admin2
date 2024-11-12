@@ -3,7 +3,7 @@
 module PdfResults
   # = PdfResults::ContextDAO
   #
-  #   - version:  7-0.7.20
+  #   - version:  7-0.7.24
   #   - author:   Steve A.
   #
   # Wraps a subset of contextual data extracted from PDF/TXT parsing
@@ -159,7 +159,10 @@ module PdfResults
     #-- -----------------------------------------------------------------------
     #++
 
-    # Adds unconditionally the specified ContextDAO to this instance @rows array.
+    # Adds *unconditionally* the specified ContextDAO to this instance @rows array as a new child row.
+    #
+    # Note that whenever the sibling DAO is not explicitly a _child_ of this instance it's better to use
+    # {#merge()} as that method can search and match for the proper starting merge root inside the hierarchy tree.
     def add_row(sibling_dao)
       raise 'Invalid ContextDAO specified!' unless sibling_dao.is_a?(ContextDAO)
 
@@ -234,6 +237,10 @@ module PdfResults
     def merge(source_dao) # rubocop:disable Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity,Metrics/AbcSize
       raise 'Invalid ContextDAO specified!' unless source_dao.is_a?(ContextDAO)
 
+      # DEBUG ----------------------------------------------------------------
+      # binding.pry if source_dao.key.to_s.include?('<SWIMMER_NAME_TO_CHECK>') || key.to_s.include?('<SWIMMER_NAME_TO_CHECK>')
+      # ----------------------------------------------------------------------
+
       # Find a destination container for the source DAO: it must have the same name & key
       # as the parent referenced by the source itself.
       # Only true root-level DAOs should have no parent:
@@ -255,14 +262,13 @@ module PdfResults
       #       For ex.: an expected 'rel_category' needed by a 'rel_team' context,
       #                which should probably point directly to an 'event' instead.
       # DEBUG ----------------------------------------------------------------
-      binding.pry unless dest_parent.is_a?(ContextDAO)
+      binding.pry unless dest_parent.is_a?(ContextDAO) # rubocop:disable Lint/Debugger
       # ----------------------------------------------------------------------
       raise 'Unable to find destination parent for source ContextDAO during merge!' unless dest_parent.is_a?(ContextDAO)
 
-      # See if the source DAO is already inside the destination rows; add it if missing
-      # Special cases:
-      # 1. 'header' & 'post_header': all header-type DAOs should be merged into one
-      # 2. 'footer': same as above, but with different key
+      # Special cases, "merge into one":
+      # 1. 'header' & 'post_header' (all header-type DAOs should be merged into one)
+      # 2. 'footer' (same as above, but with different base name)
       if source_dao.name.include?('header') || source_dao.name.include?('footer')
         target_name = source_dao.name.include?('header') ? 'header' : 'footer'
         header = dest_parent.rows.find { |dao| dao.name == target_name }
@@ -275,12 +281,13 @@ module PdfResults
         end
       end
 
+      # See if the source DAO is already inside the destination rows; add it if missing:
       existing_dao = dest_parent.rows.find { |dao| dao.name == source_dao.name && dao.key == source_dao.key }
 
       # Found source DAO as existing? Try to merge its subtrees deeper, row (subtree) by row (subtree):
       if existing_dao.is_a?(ContextDAO)
         source_dao.rows.each { |row_dao| existing_dao.merge(row_dao) }
-      else # Not included? => add it "as is":
+      else # Not already existing? => add it "as is" as a child of the parent:
         dest_parent.add_row(source_dao)
       end
     end

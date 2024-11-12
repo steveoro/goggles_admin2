@@ -86,19 +86,6 @@ module PdfResults
       @logger = logger if logger.is_a?(Logger)
       @debug = [true, 'true'].include?(debug) # (default false for blanks)
       prepare_context_defs_from_file
-
-      # # Collect all fields from any root-level field group and from sub-area context rows
-      # # (using the sub-context DAOs #fields_hash directly):
-      # @fields_hash = {}
-      # if context&.fields.present?
-      #   context.fields.each { |fd| @fields_hash.merge!({ fd.name => fd.value }) if fd.is_a?(FieldDef) }
-      # end
-      # return if context&.rows.blank?
-
-      # # Include only data from rows which name is included in the ContextDef data_hash keys:
-      # context.rows.each do |ctx|
-      #   @fields_hash.merge!(ctx.dao.fields_hash) if ctx.is_a?(ContextDef) && context.data_hash.key?(ctx.name) && ctx.dao.present?
-      # end
     end
     #-- -----------------------------------------------------------------------
     #++
@@ -120,7 +107,7 @@ module PdfResults
     def store_data
       @root_dao ||= ContextDAO.new
       # DEBUG
-      $stdout.write("\033[1;33;30mm\033[0m") # Signal "Merge in-page DAOs" # rubocop:disable Rails/Output
+      # $stdout.write("\033[1;33;30mm\033[0m") # Signal "Merge in-page DAOs"
       @page_daos.each { |dao| @root_dao.merge(dao) }
     end
     #-- -----------------------------------------------------------------------
@@ -264,6 +251,8 @@ module PdfResults
       layout_def = YAML.load_file(@yaml_filepath)
       @name = layout_def.keys.first
       clear_data!
+      # NOTE: page DAOs are cleared on each page break and stored
+      #       into @root_dao only if the current overall format is successful
       context_props_array = layout_def[@name]
 
       # Init result variables:
@@ -274,9 +263,6 @@ module PdfResults
       @aliased_defs = {}        # Hash list of aliased ContextDefs
       @repeatable_defs = {}     # Hash for keeping track of repeatable checks (keyed by context name)
       @format_order = []        # requested format order
-      @page_daos = []           # Collection of DAOs found on current page
-      # NOTE: page DAOs are cleared on each page break and stored
-      #       into @root_dao only if the current overall format is successful
 
       context_props_array.each do |context_props|
         # Set ContextDef alias list when present:
@@ -343,30 +329,35 @@ module PdfResults
       # Un-alias current DAO before storage:
       actual_dao = context_def.dao
       # DEBUG ----------------------------------------------------------------
-      # binding.pry if valid_result && context_def.key.include?('BRIGHENTI Maurizio')
+      # binding.pry if valid_result && actual_dao&.key.to_s.include?('<SWIMMER_NAME_TO_CHECK>')
       # ----------------------------------------------------------------------
 
       if actual_dao.present? && context_def.alternative_of.present?
         unaliased_ctx = @context_defs.fetch(context_def.alternative_of, nil)
         raise "'alternative_of' context set but original context not found when storing data: check your .yml layout definition file!" if unaliased_ctx.blank?
 
-        unaliased_ctx.prepare_dao(context_def)
+        if unaliased_ctx.dao.blank?
+          unaliased_ctx.prepare_dao(context_def) # Prepare DAO if not set yet
+        else
+          unaliased_ctx.dao.merge(actual_dao)    # Merge current data with unaliased existing when already set
+        end
         actual_dao = unaliased_ctx.dao
       end
 
       # *** Store data: ***
-      # case 1) parent is set => add DAO to parent rows:
+      # case 1) parent is set => merge DAO to parent or its rows & add to page data:
       if actual_dao.present? && parent_ctx.present?
         # (Handle aliases) Force parent preparation so that if we're
         # dealing with an aliased parent which is still "blank" we will store the
         # current DAO in the actual parent even if its alias passed the valid? check
         # while the original didn't:
         parent_ctx.prepare_dao if parent_ctx.dao.blank?
-        parent_ctx.dao.add_row(actual_dao)
+        parent_ctx.dao.merge(actual_dao) # 1. Merge into parent DAO
+        @page_daos << parent_ctx.dao     # 2. Add to page DAOs (page DAOs will be merged into root DAO later by FormatParser)
 
       # case 2) no parents => DAO goes to current "page root":
       elsif actual_dao.present?
-        @page_daos << actual_dao
+        @page_daos << actual_dao # Add DAO to page DAOs "as is"
         # (ELSE: don't append empties unless there's an actual DAO)
       end
 

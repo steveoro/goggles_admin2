@@ -48,7 +48,7 @@
     repeat: true
     rows:
       - name: results_hdr1
-        format: "^\\s?POS\\s{2,}COGNOME\\sE\\sNOME\\s{5,}NAZ\\s{1,}ANNO\\s{2,}SOCIETA'\\s{12,}BATT\\s{2,}CRS\\s{1,}POS\\s{2,}ARRIVO\\s{2,}PUNTI"
+        format: "^\\s?POS\\s{2,}COGNOME\\sE\\sNOME\\s{5,}NAZ\\s{1,}ANNO\\s{2,}SOCIETA'\\s{12,}BATT\\s{2,}CRS\\s{1,}POS\\s{2,}ARRIVO\\s{1,}(?>PUNTI|Record)"
       - name: results_hdr_sep1
         format: "^$"
       # Whenever the event is not repeated on page start, 2x empty rows take its place:
