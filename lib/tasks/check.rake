@@ -16,6 +16,11 @@ require 'kaminari'
 #++
 
 namespace :check do # rubocop:disable Metrics/BlockLength
+  # Default Goggles::Season#id value for most tasks
+  DEFAULT_SEASON_ID = 242 unless defined? DEFAULT_SEASON_ID
+  #-- ---------------------------------------------------------------------------
+  #++
+
   desc <<~DESC
     Given a Season ID, queries all local Meeting IDs that DO/DO-NOT HAVE MIRs or MRRs associated.
 
@@ -24,7 +29,7 @@ namespace :check do # rubocop:disable Metrics/BlockLength
     (MIRs should always be there for a Meeting that has occurred, whereas MRRs may not have been
      set at all, depending by the organization hosting it.)
 
-    Options: [season=season#id|<nil=232>]
+    Options: [season=season#id|<nil=#{DEFAULT_SEASON_ID}>]
              [mrr=true|<nil=false>]
              [presence=true|<nil=false>]
 
@@ -39,7 +44,7 @@ namespace :check do # rubocop:disable Metrics/BlockLength
     reject_check_name = ENV.include?('presence') ? :zero? : :positive?
     puts "\r\n*** Find Meetings #{reject_check_name == :zero? ? 'WITH' : 'WITHOUT'} #{includee} rows ***"
 
-    season_id = ENV.include?('season') ? ENV['season'].to_i : 242
+    season_id = ENV.include?('season') ? ENV['season'].to_i : DEFAULT_SEASON_ID
     puts "\r\n"
     puts "--> Season #{season_id}:"
     meeting_keys = GogglesDb::Meeting.where(season_id:).includes(includee)
@@ -55,7 +60,7 @@ namespace :check do # rubocop:disable Metrics/BlockLength
     Similarly to check:results, given a Season ID, queries all local Meeting IDs that DO/DO-NOT HAVE
     MeetingEvents associated.
 
-    Options: [season=season#id|<nil=232>]
+    Options: [season=season#id|<nil=#{DEFAULT_SEASON_ID}>]
              [presence=true|<nil=false>]
 
       - season: season ID
@@ -67,7 +72,7 @@ namespace :check do # rubocop:disable Metrics/BlockLength
     reject_check_name = ENV.include?('presence') ? :zero? : :positive?
     puts "\r\n*** Find Meetings #{reject_check_name == :zero? ? 'WITH' : 'WITHOUT'} MeetingEvent rows ***"
 
-    season_id = ENV.include?('season') ? ENV['season'].to_i : 242
+    season_id = ENV.include?('season') ? ENV['season'].to_i : DEFAULT_SEASON_ID
     puts "\r\n"
     puts "--> Season #{season_id}:"
     meeting_keys = GogglesDb::Meeting.where(season_id:).includes(:meeting_events)

@@ -6,6 +6,7 @@
   "main": "index.js",
   "scripts": {
     "start": "NODE_ENV=development node server/index.js",
+    "debug": "NODE_INSPECT_RESUME_ON_START=1 NODE_ENV=development CRAWLER_HOST=localhost CRAWLER_PORT=7000 CRAWLER_PATH='/cable' node --inspect crawler/server/index.js",
     "test": "NODE_ENV=development mocha --exit tests/*.js"
   },
   "keywords": [

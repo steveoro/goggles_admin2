@@ -8,6 +8,11 @@ SCRIPT_OUTPUT_DIR = Rails.root.join('crawler/data/results.new').freeze unless de
 #++
 
 namespace :import do # rubocop:disable Metrics/BlockLength
+  # Default Goggles::Season#id value for most tasks
+  DEFAULT_SEASON_ID = 242 unless defined? DEFAULT_SEASON_ID
+  #-- ---------------------------------------------------------------------------
+  #++
+
   desc <<~DESC
     Reads standard timings from the specified CSV file.
     Converts each row to a StandardTiming and prepares the SQL script for data-import.
@@ -20,7 +25,7 @@ namespace :import do # rubocop:disable Metrics/BlockLength
     1. "category_code;fin_event_code;event_label;gender;pool_type;hundredths;timing_mmsshh;timing"
     2. "category_code;event_label;25_m;50_m;25_f;50_f"
 
-    Options: [season=season#id|<242>]
+    Options: [season=season#id|<#{DEFAULT_SEASON_ID}>]
              [source=csv_file_name|<'{season_id}-mst_tb_ind_{begin_date.year}-{end_date.year}'>]
 
       - season: season ID used as sub-folder for storing the individual JSON result files.
@@ -34,7 +39,7 @@ namespace :import do # rubocop:disable Metrics/BlockLength
     puts ' 2. "category_code;event_label;25_m;50_m;25_f;50_f"'
     puts ''
 
-    season_id = ENV.include?('season') ? ENV['season'].to_i : 242
+    season_id = ENV.include?('season') ? ENV['season'].to_i : DEFAULT_SEASON_ID
     season = GogglesDb::Season.find_by(id: season_id)
     if season.nil?
       puts('You need a valid Season ID to proceed.')

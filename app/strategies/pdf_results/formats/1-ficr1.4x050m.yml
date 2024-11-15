@@ -13,10 +13,10 @@
       - fields:
         - name: edition
           required: false
-          format: "^\\s{20,}(\\d{1,2}|[IVXLCM]+).{1,2}?\\s+"
+          format: "^\\s{20,}(\\d{1,2}|[IVXLCM]+)\\D?\\D?\\s+"
           pop_out: false
         - name: meeting_name
-          format: "^\\s{20,}(?>\\d{1,2}|[IVXLCM]+)?.{1,2}?\\s+(.+)$"
+          format: "^\\s{20,}(?>\\d{1,2}|[IVXLCM]+)?\\D?\\D?\\s+(.+)$"
           pop_out: false
 
       # "header" row-1, abs. row #1:
@@ -92,7 +92,7 @@
             # "Out of race" won't have a final ranking:
             required: false
           - name: team_name
-            format: "\\s+(([\\w\\d\\-&%'`]+.\\s?)+)"
+            format: "\\s+((?>[\\w\\d\\-&%'`]+.\\s?)+)"
             token_start: 2
             token_end: 32
             pop_out: false
@@ -142,7 +142,7 @@
       - name: rel_team2
         fields:
           - name: team_name
-            format: "^\\s{3,8}(([\\w\\d\\-&%'`]+.\\s?)+)"
+            format: "^\\s{3,8}((?>[\\w\\d\\-&%'`]+.\\s?)+)"
             token_end: 43
             pop_out: false
           - name: delta100
@@ -178,7 +178,15 @@
         required: false
         fields:
           - name: team_suffix
-            format: "^\\s{3,8}([\\w\\d\\s]{1,34})$"
+            # Original:
+            # format: "^\\s{3,8}([\\w\\d\\s]{1,34})$"
+            # NEW, Includes DSQ at the end:
+            # Example "   <Team_Ext_name>  (...at least 50+ spaces...)  Cambio Irregolare 4° fr"(EOLN)
+            format: "^\\s{3,8}([\\w\\d\\-&%'`\\s]{5,29})(?>$|\\s{50,}(?>.{5,25})$)"
+            pop_out: false
+            required: false
+          - name: disqualify_type
+            format: "^\\s{3,8}[\\w\\d\\-&%'`\\s]{5,29}\\s{50,}(.{5,25})$"
             pop_out: false
             required: false
 
@@ -280,7 +288,7 @@
     parent: event
     eop: true
     row_span: 6
-    repeat: true
+    # repeat: true
     starts_with: Elaborazione dati a cura della Federazione Italiana Cronometristi -
     fields:
       - name: pool_type
@@ -288,3 +296,22 @@
       # Actual last-line context marker
       - name: page_delimiter
         format: "nuoto.ficr.it\\b"
+
+  # NOTE: with this alternative context, this layout can act as a more generic stand-in
+  #       for '1-ficrnologo'
+  - name: footer_alt
+    parent: event
+    eop: true
+    alternative_of: footer
+    required: false
+    rows:
+      - name: pre_footer_spacer1
+        required: false
+        format: "^$"
+      - name: page_count
+        fields:
+          - name: pool_type
+            required: false
+            format: "\\s+(\\d{1,2} corsie \\d{2}m)\\s+"
+          - name: page_num
+            format: "\\s+Pagina\\s(\\d{1,2})\\sdi\\s\\d{1,2}"

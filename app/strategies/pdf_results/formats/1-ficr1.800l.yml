@@ -41,10 +41,10 @@
       - fields:
         - name: edition
           required: false
-          format: "^\\s{20,}(\\d{1,2}|[IVXLCM]+).{1,2}?\\s+"
+          format: "^\\s{20,}(\\d{1,2}|[IVXLCM]+)\\D?\\D?\\s+"
           pop_out: false
         - name: meeting_name
-          format: "^\\s{20,}(?>\\d{1,2}|[IVXLCM]+)?.{1,2}?\\s+(.+)$"
+          format: "^\\s{20,}(?>\\d{1,2}|[IVXLCM]+)?\\D?\\D?\\s+(.+)$"
           pop_out: false
 
       # "header" row #1
@@ -263,7 +263,7 @@
       - name: results3
         fields:
           - name: team_name
-            format: "^\\s{3,8}(([\\w\\d\\-&%'`]+.\\s?)+)"
+            format: "^\\s{3,8}((?>[\\w\\d\\-&%'`]+.\\s?)+)"
             token_end: 43
             pop_out: false
           - name: year_of_birth

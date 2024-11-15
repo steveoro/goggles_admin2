@@ -419,7 +419,7 @@ module PdfResults
         # == ELSE: valid => don't progress context counter until a non-valid context application is found
         elsif valid
           log_message(Kernel.format("  \\__ \033[1;33;32mcontinuing with\033[0m '\033[94;3m%s\033[0m'", context_def.name))
-          # $stdout.write("\033[1;33;32m+\033[0m") # signal "Valid ctx"
+        # $stdout.write("\033[1;33;32m+\033[0m") # signal "Valid ctx"
 
         # == Next context: in any other NON-valid case, always move forward to next context
         else

@@ -1,17 +1,17 @@
 #
 # = Layout format definition for PdfResults::FormatParser
 #
-# FIN FVG (Trieste), 50m+ but NO lap timings, category & gender display,
-# meeting name on top on event change, meeting place on EOP.
-# A variant of '3-fintorino' but more complete in data.
-#
-# The 'NAZ' column (Nation) here sometimes is used to display the category & gender info in a compressed
-# format on each row ("M40, female" => "40F" instead of the usual 3-letter code for the nation).
+# - Spawn of FIN FVG (Trieste), any length >= 50m but NO lap timings;
+# - meeting name on top on event change, meeting place on EOP.
 #
 # Additionally, this format uses a standard category & gender display in between each age range
 # so the category data is repeated twice.
 #
-3-finfvg:
+# Typical header:
+#
+#  "POS      COGNOME E NOME           NAZ ANNO       SOCIETA'                              BATT   CRS POS    ARRIVO     PUNTI"
+#
+3-finlazio.nolaps:
   - name: header
     at_fixed_row: 0
     # In order to validate/debug a format not always present in page,
@@ -156,7 +156,7 @@
         pop_out: false
         required: false
       - name: std_score
-        format: "\\s{2,}(?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2}\\s{2,}(\\d?[,.]?\\d{1,4}[,.]\\d{1,2})$"
+        format: "\\s{2,}(?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2}\\s{1,}(\\d?[,.]?\\d{1,4}[,.]\\d{1,2})$"
         token_start: 80
         pop_out: false
         # U25 / A20 do not score:
@@ -211,7 +211,7 @@
         pop_out: false
         required: false
       - name: std_score
-        format: "\\s{2,}(?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2}\\s{2,}(\\d?[,.]?\\d{1,4}[,.]\\d{1,2})$"
+        format: "\\s{2,}(?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2}\\s{1,}(\\d?[,.]?\\d{1,4}[,.]\\d{1,2})$"
         token_start: 80
         pop_out: false
         # U25 / A20 do not score:
@@ -241,25 +241,13 @@
     keys: [skip_me]
     format: "^\\s+Pubblicata:"
 
-  # End-Of-Page, variable span: 5-6-7
+  # End-Of-Page, variable span: 2..3
   - name: footer
     parent: header
     eop: true
-    repeat: true
+    # repeat: true
     rows:
       - name: footer_spacer1
-        format: "^$"
-      - name: footer_spacer2
-        format: "^$"
-
-      # 3x optional empty rows (1 may be subst by the last timestamp row below, which is optional too):
-      - name: footer_spacer3
-        required: false
-        format: "^$"
-      - name: footer_spacer4
-        required: false
-        format: "^$"
-      - name: footer_spacer5
         required: false
         format: "^$"
 

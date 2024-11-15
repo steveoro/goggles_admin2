@@ -755,7 +755,7 @@ module Import
       end
 
       # 2. Smart search:
-      pool_type = /50/i.match?(pool_length) ? GogglesDb::PoolType.mt_50 : GogglesDb::PoolType.mt_25
+      pool_type = /50/i.match?(pool_length.to_s) ? GogglesDb::PoolType.mt_50 : GogglesDb::PoolType.mt_25
       cmd = GogglesDb::CmdFindDbEntity.call(GogglesDb::SwimmingPool, { name: pool_name, pool_type_id: pool_type.id }) if pool_name.present?
       if cmd&.successful?
         # Force-set the pool city_id to the one on the City entity found (only if the city row has indeed an ID and that's still

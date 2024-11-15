@@ -14,10 +14,10 @@
       - fields:
         - name: edition
           required: false
-          format: "^\\s{20,}(\\d{1,2}|[IVXLCM]+).{1,2}?\\s+"
+          format: "^\\s{20,}(\\d{1,2}|[IVXLCM]+)\\D?\\D?\\s+"
           pop_out: false
         - name: meeting_name
-          format: "^\\s{20,}(?>\\d{1,2}|[IVXLCM]+)?.{1,2}?\\s+(.+)$"
+          format: "^\\s{20,}(?>\\d{1,2}|[IVXLCM]+)?\\D?\\D?\\s+(.+)$"
           pop_out: false
 
       # "header" row-1, abs. row #1:
@@ -33,7 +33,7 @@
 
   - name: sub_title
     at_fixed_row: 2
-    repeat: true
+    required: false
     parent: header
     rows:
       # Optional empty row
@@ -41,7 +41,6 @@
         required: false
         format: "^$"
       - name: sub_title1
-        required: false
         format: "\\s+(Risultati)"
 
   - name: event

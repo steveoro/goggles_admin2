@@ -22,10 +22,10 @@
         fields:
           - name: edition
             required: false
-            format: "^\\s{20,}(\\d{1,2}|[IVXLCM]+).{1,2}?\\s+"
+            format: "^\\s{20,}(\\d{1,2}|[IVXLCM]+)\\D?\\D?\\s+"
             pop_out: false
           - name: meeting_name
-            format: "^\\s{20,}(?>\\d{1,2}|[IVXLCM]+)?.{1,2}?\\s+(.+)$"
+            format: "^\\s{20,}(?>\\d{1,2}|[IVXLCM]+)?\\D?\\D?\\s+(.+)$"
             pop_out: false
 
       - name: hdr_row1
@@ -75,10 +75,10 @@
         fields:
           - name: edition
             required: false
-            format: "^\\s{20,}(\\d{1,2}|[IVXLCM]+).{1,2}?\\s+"
+            format: "^\\s{20,}(\\d{1,2}|[IVXLCM]+)\\D?\\D?\\s+"
             pop_out: false
           - name: meeting_name
-            format: "^\\s{20,}(?>\\d{1,2}|[IVXLCM]+)?.{1,2}?\\s+(.+)\\s(?>\\-\\s|\\()\\d{1,2}[\\/\\-]?\\d{0,2}[\\/\\-\\s](?>\\s{1,2}|\\w+)[\\/\\-\\s]\\d{2,4}\\)?$"
+            format: "^\\s{20,}(?>\\d{1,2}|[IVXLCM]+)?\\D?\\D?\\s+(.+)\\s(?>\\-\\s|\\()\\d{1,2}[\\/\\-]?\\d{0,2}[\\/\\-\\s](?>\\s{1,2}|\\w+)[\\/\\-\\s]\\d{2,4}\\)?$"
             pop_out: false
           - name: meeting_date
             format: "\\s(?>\\-\\s|\\()(\\d{1,2}[\\/\\-]?\\d{0,2}[\\/\\-\\s](?>\\s{1,2}|\\w+)[\\/\\-\\s]\\d{2,4})\\)?$"
@@ -111,10 +111,10 @@
         fields:
           - name: edition
             required: false
-            format: "^\\s{20,}(\\d{1,2}|[IVXLCM]+).{1,2}?\\s+"
+            format: "^\\s{20,}(\\d{1,2}|[IVXLCM]+)\\D?\\D?\\s+"
             pop_out: false
           - name: meeting_name
-            format: "^\\s{20,}(?>\\d{1,2}|[IVXLCM]+)?.{1,2}?\\s+(.+)$"
+            format: "^\\s{20,}(?>\\d{1,2}|[IVXLCM]+)?\\D?\\D?\\s+(.+)$"
             pop_out: false
 
       - name: hdr_row1

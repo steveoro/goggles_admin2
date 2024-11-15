@@ -33,10 +33,10 @@
       - fields:
         - name: edition
           required: false
-          format: "^\\s{20,}(\\d{1,2}|[IVXLCM]+).{1,2}?\\s+"
+          format: "^\\s{20,}(\\d{1,2}|[IVXLCM]+)\\D?\\D?\\s+"
           pop_out: false
         - name: meeting_name
-          format: "^\\s{20,}(?>\\d{1,2}|[IVXLCM]+)?.{1,2}?\\s+(.+)$"
+          format: "^\\s{20,}(?>\\d{1,2}|[IVXLCM]+)?\\D?\\D?\\s+(.+)$"
           pop_out: false
 
       # "header" row-1, abs. row #1:
@@ -140,24 +140,24 @@
         # Positional:
         # format: "^\\s*(?>\\d{1,2}|SQ|RT|NP|ES)?\\s+(\\w+(['`\\-\\w\\s]\\s?\\w*){1,4})(?![a-zA-Z]{3}\\s+\\d{4}\\s+)"
         # token_end: 90
-        format: "^\\s{0,3}(?>\\d{1,2}|SQ|RT|NP|ES)?\\s+(\\D{3,35})\\s{1,}[a-zA-Z]{3}\\s{2,}\\d{4}\\s{2,}"
+        format: "^\\s{0,3}(?>\\d{1,2}|SQ|RT|NP|ES)?\\s+(\\D{3,35})\\s{1,}[a-zA-Z]{3}\\s{2,}\\d{4}\\b"
         pop_out: false
       - name: nation
         # Positional:
         # format: "\\s+([a-zA-Z]{3})(?=\\s+\\d{4}\\s+)"
         # token_end: 90
-        format: "^\\s{0,3}(?>\\d{1,2}|SQ|RT|NP|ES)?\\s+\\D{3,35}\\s{1,}([a-zA-Z]{3})\\s{1,}\\d{4}\\s{2,}"
+        format: "^\\s{0,3}(?>\\d{1,2}|SQ|RT|NP|ES)?\\s+\\D{3,35}\\s{1,}([a-zA-Z]{3})\\s{1,}\\d{4}\\b"
         pop_out: false
       - name: year_of_birth
         # Positional:
         # format: "\\s+(\\d{4})\\s+"
         # token_start: 78
         # token_end: 90
-        format: "^\\s{0,3}(?>\\d{1,2}|SQ|RT|NP|ES)?\\s+\\D{3,35}\\s{1,}[a-zA-Z]{3}\\s{2,}(\\d{4})\\s{2,}"
+        format: "^\\s{0,3}(?>\\d{1,2}|SQ|RT|NP|ES)?\\s+\\D{3,35}\\s{1,}[a-zA-Z]{3}\\s{2,}(\\d{4})\\b"
         pop_out: false
       - name: team_name
         # Positional:
-        # format: "\\s+(([\\w\\d\\-&%'`]+.\\s?)+)\\s+"
+        # format: "\\s+((?>[\\w\\d\\-&%'`]+.\\s?)+)\\s+"
         # token_start: 88
         # token_end: 121
         format: "\\s{1,}[a-zA-Z]{3}\\s{2,}\\d{4}\\s{2,}(.{3,29})\\s{2,}\\d{0,2}\\s{2,}"
@@ -246,7 +246,7 @@
 
   - name: footer_title
     parent: event
-    repeat: true
+    # repeat: true
     rows:
       - name: pre_footer_spacer1
         required: false
@@ -268,8 +268,27 @@
     # (DO NOT use eop: true when extracting the whole file, unless when processing batches of pages)
     eop: true
     row_span: 4
-    repeat: true
+    # repeat: true
     fields:
       # Actual last-line context marker (page should end after this token)
       - name: page_delimiter
         format: "nuoto.ficr.it\\b"
+
+  # NOTE: with this alternative context, this layout can act as a more generic stand-in
+  #       for '1-ficrnologo'
+  - name: footer_alt
+    parent: event
+    eop: true
+    alternative_of: footer
+    required: false
+    rows:
+      - name: pre_footer_spacer1
+        required: false
+        format: "^$"
+      - name: page_count
+        fields:
+          - name: pool_type
+            required: false
+            format: "\\s+(\\d{1,2} corsie \\d{2}m)\\s+"
+          - name: page_num
+            format: "\\s+Pagina\\s(\\d{1,2})\\sdi\\s\\d{1,2}"

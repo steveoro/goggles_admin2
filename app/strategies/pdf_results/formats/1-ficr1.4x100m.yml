@@ -11,10 +11,10 @@
       - fields:
         - name: edition
           required: false
-          format: "^\\s{20,}(\\d{1,2}|[IVXLCM]+).{1,2}?\\s+"
+          format: "^\\s{20,}(\\d{1,2}|[IVXLCM]+)\\D?\\D?\\s+"
           pop_out: false
         - name: meeting_name
-          format: "^\\s{20,}(?>\\d{1,2}|[IVXLCM]+)?.{1,2}?\\s+(.+)$"
+          format: "^\\s{20,}(?>\\d{1,2}|[IVXLCM]+)?\\D?\\D?\\s+(.+)$"
           pop_out: false
 
       # "header" row-1, abs. row #1:
@@ -30,7 +30,7 @@
 
   - name: sub_title
     at_fixed_row: 2
-    repeat: true
+    required: false
     parent: header
     rows:
       # Optional empty row
@@ -38,7 +38,6 @@
         required: false
         format: "^$"
       - name: sub_title1
-        required: false
         format: "\\s+(Risultati)"
 
   - name: event
@@ -98,7 +97,7 @@
             format: "^\\s?(\\d{1,2}|SQ|RT|NP|ES)\\s+"
             pop_out: false
           - name: team_name
-            format: "\\s{3,8}(([\\w\\d\\-&%'`]+.\\s?)+)"
+            format: "\\s{3,8}((?>[\\w\\d\\-&%'`]+.\\s?)+)"
             token_end: 43
             pop_out: false
 
@@ -173,7 +172,7 @@
       - name: rel_team2
         fields:
           - name: team_name
-            format: "^\\s{3,8}(([\\w\\d\\-&%'`]+.\\s?)+)"
+            format: "^\\s{3,8}((?>[\\w\\d\\-&%'`]+.\\s?)+)"
             token_end: 43
             pop_out: false
 
@@ -336,7 +335,7 @@
     parent: event
     eop: true
     row_span: 6
-    repeat: true
+    # repeat: true
     starts_with: Elaborazione dati a cura della Federazione Italiana Cronometristi -
     fields:
       - name: pool_type
@@ -344,3 +343,22 @@
       # Actual last-line context marker
       - name: page_delimiter
         format: "nuoto.ficr.it\\b"
+
+  # NOTE: with this alternative context, this layout can act as a more generic stand-in
+  #       for '1-ficrnologo'
+  - name: footer_alt
+    parent: event
+    eop: true
+    alternative_of: footer
+    required: false
+    rows:
+      - name: pre_footer_spacer1
+        required: false
+        format: "^$"
+      - name: page_count
+        fields:
+          - name: pool_type
+            required: false
+            format: "\\s+(\\d{1,2} corsie \\d{2}m)\\s+"
+          - name: page_num
+            format: "\\s+Pagina\\s(\\d{1,2})\\sdi\\s\\d{1,2}"

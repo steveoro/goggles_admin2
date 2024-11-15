@@ -32,7 +32,7 @@ class ResultsCrawler {
    * @param {Integer} layoutType - code for the layout type of the result page; defaults to 3 (FIN current season)
    *                               typically this is bound to the format layout of the calendar page.
    */
-  constructor(seasonId = 212, calendarFilePath, layoutType = 3) {
+  constructor(seasonId = 242, calendarFilePath, layoutType = 3) {
     this.seasonId = seasonId
     this.calendarFilePath = calendarFilePath
     this.layoutType = layoutType
@@ -78,6 +78,14 @@ class ResultsCrawler {
         const layout = this.layoutType
         const csvList = await CrawlUtil.readCSVData(this.calendarFilePath)
         var skippedRows = new Array()
+        // DEBUG ----------------------------------------------------------------------------------------
+        // For debugging uncomment the 'debugger' below and:
+        // 1. Run the 'npm debug' script command to run the server and attach the debugger;
+        // 2. With Chrome, browse to 'chrome://inspect/';
+        // 3. Add manual port mappings: '7000' => 'localhost:7000';
+        // 4. open 'Dedicated DevTools for Node' on the inspect page.
+        // debugger;
+        // ----------------------------------------------------------------------------------------------
         CrawlUtil.updateStatus(`Total rows found: ${csvList.length}`, 'OK, running', 0, csvList.length)
 
         for (var i = 0; i < csvList.length; i++) {

@@ -14,10 +14,10 @@
       - fields:
         - name: edition
           required: false
-          format: "^\\s{20,}(\\d{1,2}|[IVXLCM]+).{1,2}?\\s+"
+          format: "^\\s{20,}(\\d{1,2}|[IVXLCM]+)\\D?\\D?\\s+"
           pop_out: false
         - name: meeting_name
-          format: "^\\s{20,}(?>\\d{1,2}|[IVXLCM]+)?.{1,2}?\\s+(.+)$"
+          format: "^\\s{20,}(?>\\d{1,2}|[IVXLCM]+)?\\D?\\D?\\s+(.+)$"
           pop_out: false
 
       # "header" row #1
@@ -31,21 +31,20 @@
           # More generic: (see ficr2)
           format: "^\\s*(\\D{2,}),\\s*"
 
-  - name: sub_title
-    at_fixed_row: 2
-    repeat: true
+  - name: ranking_title
+    starts_at_row: 2
     parent: header
     rows:
       # Optional empty row
-      - name: sub_separator1
+      - name: ranking_sep1
         required: false
         format: "^$"
-      - name: sub_title1
+      - name: ranking_label
         format: "\\s+(Classifica\\s(?>per\\s)?Società)"
-      - name: sub_separator2
+      - name: ranking_sep2
         required: false
         format: "^$"
-      - name: sub_separator3
+      - name: ranking_sep3
         required: false
         format: "^$"
 
