@@ -3,7 +3,7 @@
 module PdfResults
   # = PdfResults::FormatParser strategy
   #
-  #   - version:  7-0.7.24
+  #   - version:  7-0.7.25
   #   - author:   Steve A.
   #
   # Given at least a single whole page of a text file, this strategy class will try to detect
@@ -416,12 +416,12 @@ module PdfResults
           # $stdout.write("\033[1;33;30m⬅\033[0m") # signal "BACK to prev."
           log_message(Kernel.format("  \\__ (back to prev. '\033[94;3m%s\033[0m')", ctx_name))
 
-        # == ELSE: valid => don't progress context counter until a non-valid context application is found
-        elsif valid
+        # == ELSE: valid & repeatable => check again the same context def (don't progress counters)
+        elsif valid && context_def.repeat?
           log_message(Kernel.format("  \\__ \033[1;33;32mcontinuing with\033[0m '\033[94;3m%s\033[0m'", context_def.name))
         # $stdout.write("\033[1;33;32m+\033[0m") # signal "Valid ctx"
 
-        # == Next context: in any other NON-valid case, always move forward to next context
+        # == Next context: in any other valid or NON-valid case, always move forward to next context
         else
           ctx_index += 1
           if ctx_index < @curr_layout.format_order.count

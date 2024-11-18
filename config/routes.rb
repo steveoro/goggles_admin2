@@ -11,6 +11,7 @@ Rails.application.routes.draw do
   mount GogglesDb::Engine => '/'
 
   get 'home/index'
+  get 'home/latest_updates'
 
   get 'pull/index'
   get 'pull/calendar_files'

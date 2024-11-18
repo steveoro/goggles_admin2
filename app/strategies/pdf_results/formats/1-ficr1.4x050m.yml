@@ -2,6 +2,7 @@
 # = Layout format definition for PdfResults::FormatParser
 #
 # Copy of 1-ficr2.4x050m: 2 rows x team name + 2 rows for each relay swimmer, x each relay result
+# Supports also 6x & 8x rows relay results.
 #
 1-ficr1.4x050m:
   - name: header
@@ -75,7 +76,7 @@
         # format: "\\s+((?>Under|Master)\\s(?>Misti|Femmin\\w*|Masch\\w*)(?>\\s(?>\\d{2,3}\\s[-–]\\s\\d{2,3}))?)[\\b\\n]?"
         # More versatile:
         # (Examples: "M 200 - 239 Master Misti", "M200-239 Master Femmine", "Master Maschi M 200", "M200 Femminili", ...)
-        format: "\\b(?>(?>M(?>aster)?|A(?>ssoluti)?|U(?>nder)?)\\s?)?(?>(?>Misti|Femmin\\w*|Masch\\w*)?\\s)?(\\d{2,3}\\s?-\\s?\\d{2,3}|[MAU]\\s?\\d{2,3}(?>\\s?-\\s?\\d{2,3})?)(?>(?>M(?>aster)?|A(?>ssoluti)?|U(?>nder)?)\\s)?(?>Misti|Femmin\\w*|Masch\\w*)?\\b"
+        format: "(?>\\s{20,}|»\\ssegue\\s)(?>(?>M(?>aster)?|A(?>ssoluti)?|U(?>nder)?)\\s?)?(?>(?>Misti|Femmin\\w*|Masch\\w*)?\\s)?(\\d{2,3}\\s?-\\s?\\d{2,3}|[MAU]\\s?\\d{2,3}(?>\\s?-\\s?\\d{2,3})?)(?>(?>M(?>aster)?|A(?>ssoluti)?|U(?>nder)?)\\s)?(?>Misti|Femmin\\w*|Masch\\w*)?\\b"
 
   - name: rel_team
     repeat: true
@@ -132,6 +133,20 @@
             token_end: 121
             required: false
 
+          # Only for 6x50:
+          - name: lap250
+            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
+            pop_out: false
+            token_start: 121
+            token_end: 131
+            required: false
+          - name: lap300
+            format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
+            pop_out: false
+            token_start: 131
+            token_end: 141
+            required: false
+
           - name: timing
             format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})$"
             # Use last lap as timing when the column is totally missing:
@@ -163,8 +178,23 @@
             token_start: 107
             token_end: 121
             required: false
+
+          # Only for 6x50:
+          - name: delta250
+            format: "\\s*\\(((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\)\\s*"
+            pop_out: false
+            token_start: 121
+            token_end: 131
+            required: false
+          - name: delta300
+            format: "\\s*\\(((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\)\\s*"
+            pop_out: false
+            token_start: 131
+            token_end: 141
+            required: false
+
           - name: std_score
-            format: "\\s*(\\d?[,.]?\\d{1,4}[,.]\\d{1,2})"
+            format: "\\s*(\\d?[,.]?\\d{1,4}[,.]\\d{1,2})$"
             token_start: 120
             pop_out: false
             # Most of the times, only the 1st relay of a team will score (the others won't count for the rankings):

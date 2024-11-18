@@ -3,7 +3,7 @@
 module PdfResults
   # = PdfResults::L2Converter
   #
-  #   - version:  7-0.7.24
+  #   - version:  7-0.7.25
   #   - author:   Steve A.
   #
   # Converts from any parsed field hash to the "Layout type 2" format

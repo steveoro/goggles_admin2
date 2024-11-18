@@ -30,6 +30,7 @@ module Parser
     #                               "50 Stile Libero - M25", "100 Farfalla - M25"m
     #                               "4X50m Stile Libero Master Maschi" (no category)
     #
+    # - <tt>gender_type</tt> => the GenderType instance for this event (when available; can be nil).
     # - <tt>season</tt> => the Season instance in which this event takes place.
     #
     # == Returns
@@ -38,7 +39,7 @@ module Parser
     # 2. the GogglesDb::CategoryType for the specified Season; +nil+ when not found or not present.
     #
     # rubocop:disable Metrics/CyclomaticComplexity
-    def self.from_l2_result(section_title, season) # rubocop:disable Metrics/AbcSize,Metrics/MethodLength,Metrics/PerceivedComplexity
+    def self.from_l2_result(section_title, gender_type, season) # rubocop:disable Metrics/AbcSize,Metrics/MethodLength,Metrics/PerceivedComplexity
       raise(ArgumentError, 'Invalid season specified') unless season.is_a?(GogglesDb::Season) && season.valid?
       raise(ArgumentError, "Invalid or empty title specified ('#{section_title}')") if section_title.to_s.blank?
 
@@ -57,7 +58,11 @@ module Parser
         phase_length_in_meters = match[:lap_len].to_i
         length_in_meters = phase_length_in_meters * phases.to_i
         stroke_type = match[:style]
-        mixed_gender = (stroke_type =~ /(stile(\slibero)?(\smaster)?\smisti^)|((\smaster)?\smisti$)/iu).present?
+        mixed_gender = if gender_type.instance_of?(GogglesDb::GenderType)
+                         gender_type.intermixed?
+                       else
+                         (stroke_type =~ /(stile(\slibero)?(\smaster)?\smisti^)|((\smaster)?\smisti$)/iu).present?
+                       end
 
         stroke_type_id = case stroke_type
                          when /stile|sl/ui

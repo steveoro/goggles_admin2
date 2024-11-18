@@ -22,3 +22,8 @@
             %a.btn.btn-lg.btn-outline-primary.my-1{ href: push_index_path }
               %i.fa.fa-upload
               PUSH data
+        .row-fluid.mb-3
+          = link_to(home_latest_updates_path, class: 'btn btn-outline-primary',
+                    'data-turbolinks' => 'false') do
+            %i.fa.fa-search
+            Fetch Latest updates...

@@ -4,7 +4,7 @@ module Import
   #
   # = MacroSolver
   #
-  #   - version:  7-0.7.19
+  #   - version:  7-0.7.25
   #   - author:   Steve A.
   #   - build:    20241017
   #
@@ -302,7 +302,9 @@ module Import
         # Search for specific sections presence that may act as a flag for skipping:
         next if sect['retry'].present? || sect['ranking'].present? || sect['stats'].present? || sect['rows'].blank?
 
-        _event_type, category_type = Parser::EventType.from_l2_result(sect['title'], @season)
+        # Pre-fetch gender type to better detect events from MRRs:
+        gender_type = select_gender_type(sect['fin_sesso'])
+        _event_type, category_type = Parser::EventType.from_l2_result(sect['title'], gender_type, @season)
 
         # For parsed PDFs, the category code may be already set in section and the above may be nil:
         category_type = detect_ind_category_from_code(sect['fin_sigla_categoria']) if sect['fin_sigla_categoria'].present? && category_type.blank?
@@ -460,8 +462,10 @@ module Import
         # (We're not currently going to store the parsed statistics in the DB)
         next if sect['retry'].present? || sect['stats'].present?
 
+        # Pre-fetch gender type to better detect MRRs:
+        gender_type = select_gender_type(sect['fin_sesso'])
         # (Example section 'title': "50 Stile Libero - M25")
-        event_type, category_type = Parser::EventType.from_l2_result(sect['title'], @season)
+        event_type, category_type = Parser::EventType.from_l2_result(sect['title'], gender_type, @season)
 
         # For parsed PDFs, the category code may be already set in section and the above may be nil:
         category_type = detect_ind_category_from_code(sect['fin_sigla_categoria']) if sect['fin_sigla_categoria'].present? && category_type.nil?
@@ -471,7 +475,6 @@ module Import
         # Use previous category type in case the current one isn't found (possible DSQ ranking):
         category_type = curr_category_type if category_type.blank? && curr_category_type.is_a?(GogglesDb::CategoryType)
 
-        gender_type = select_gender_type(sect['fin_sesso'])
         # Use a fixed key-index of 0 for the meeting session as long as we can't
         # determine which one it is from the parsed results file:
         event_key = event_key_for(0, event_type.code)
@@ -1348,7 +1351,8 @@ module Import
                          event_type.stroke_type_id
                        end
       # DEBUG ----------------------------------------------------------------
-      binding.pry if stroke_type_id.to_i < 1 || relay_order.to_i < 1 || relay_order.to_i > 4
+      # Support max relay order of 8x
+      binding.pry if stroke_type_id.to_i < 1 || relay_order.to_i < 1 || relay_order.to_i > 8
       # ----------------------------------------------------------------------
 
       new_row = GogglesDb::MeetingRelaySwimmer.new(

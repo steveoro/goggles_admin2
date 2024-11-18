@@ -1,0 +1,31 @@
+.wrapper-body
+  .spacer-left
+
+  - prod_keys = @prod_updates.keys
+  .main-content
+    %table.table-sm.table-hover
+      %thead
+        %tr
+          %th.text-center.border-0
+            %b PRODUCTION
+          %th.text-center.border-0
+            %b STAGING
+          %tbody
+            / Focus on looping just on production keys & values:
+            - prod_keys.each do |table_name|
+              %tr
+                %td.bg-light-blue.text-center.py-2{ colspan: 2 }
+                  %b
+                    %samp= table_name
+              - prod_rows = @prod_updates.fetch(table_name, [])
+              - staging_rows = @staging_updates.fetch(table_name, [])
+              - (0...prod_rows.count).each do |idx|
+                %tr
+                  %td
+                    = HashRowDecorator.decorate(prod_rows[idx]).html_row
+                  %td
+                    = HashRowDecorator.decorate(staging_rows[idx]).html_row
+    .row.mb-3
+      &nbsp;
+
+  .spacer-right
