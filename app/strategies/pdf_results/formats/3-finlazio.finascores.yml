@@ -1,0 +1,165 @@
+#
+# = Layout format definition for PdfResults::FormatParser
+#
+# - Based upon '3-finfvg.teamrank'
+#
+# *Individual results*-only FIN ranking with FINA scores.
+# Meeting name on top on event change, meeting place on EOP.
+#
+# This, typically, is the format used for displaying an overall ranking for
+# all the swimmers in a meeting, whenever the top scores have to be awarded.
+#
+# 2 different type of rows:
+# - 'NAZ' column always stores the category (<year_range><gender_code> for individuals, <age_range> for relays).
+# - when YOB is missing, it's a relay result score
+#
+# Sometimes this condensed layout is the only one showing scores for each event.
+# (The same events enlisted here may be already present in the document using their
+# full layout, including laps, but without scores.)
+#
+3-finlazio.finascores:
+  - name: header
+    at_fixed_row: 0
+    # In order to validate/debug a format not always present in page,
+    # we need to set "required" to false according to current implementation:
+    required: false
+    rows:
+      - name: hdr_title
+        fields:
+          - name: edition
+            required: false
+            format: "^\\s{20,}(\\d{1,2}|[IVXLCM]+)\\D?\\D?\\s+"
+            pop_out: false
+          - name: meeting_name
+            format: "^\\s{20,}(?>\\d{1,2}|[IVXLCM]+)?\\D?\\D?\\s+(.+)$"
+            pop_out: false
+      - name: hdr_pool
+        fields:
+          - name: pool_type
+            lambda: strip
+            format: "\\s*V\\.\\s(\\d{2})m"
+      - name: hdr_sep
+        format: "^$"
+
+  # Special "FINA scores ranking" section start for L2Converter (recognized by context name):
+  - name: fina_scores_hdr
+    parent: header
+    rows:
+      - name: ranking_title
+        format: "^\\s{30,}Classifica punti FINA"
+      - name: fina_scores_hdr1
+        format: "^\\s{1,}POS\\s{1,}COGNOME\\sE\\sNOME\\s{2,}NAZ\\s{1,}ANNO\\s{1,}SOCIETA'\\s{20,}GARA\\s{2,}TEMPO\\s{2,}PUNTI"
+      - name: ranking_sep1
+        format: "^$"
+      - name: ranking_subtitle
+        required: false
+        format: "^\\s{20,}Migliori Prestazioni"
+
+  # Ind. result format:
+  # <rank>  <swimmer_name>  <cat_code>  <year_of_birth>  <team_name> <event_code> <timing> <standard_score>
+  - name: results
+    parent: fina_scores_hdr
+    repeat: true
+    rows:
+      - name: swimmer_ranking
+        fields:
+          - name: rank
+            format: "^\\s{1,6}(\\d{1,4})\\s{2,}.{3,35}"
+            pop_out: false
+          - name: swimmer_name
+            format: "^\\s{1,6}\\d{1,4}\\s{2,}(.{3,35})\\s{1,}\\d{2}[MFUD]\\s{2,10}\\d{4}\\s{2,}"
+            pop_out: false
+          - name: cat_code
+            format: "^\\s{1,6}\\d{1,4}\\s{2,}.{3,35}\\s{1,}(\\d{2})[MFUD]\\s{2,10}\\d{4}\\s{2,}"
+            pop_out: false
+          - name: gender_type
+            format: "^\\s{1,6}\\d{1,4}\\s{2,}.{3,35}\\s{1,}\\d{2}([MFUD])\\s{2,10}\\d{4}\\s{2,}"
+            pop_out: false
+          - name: year_of_birth
+            format: "^\\s{1,6}\\d{1,4}\\s{2,}.{3,35}\\s{1,}\\d{2}[MFUD]\\s{2,10}(\\d{4})\\s{2,}"
+            pop_out: false
+          - name: team_name
+            format: "\\s{1,}\\d{2}[MFUD]\\s{2,10}\\d{4}\\s{2,}(.{3,35})\\s{2,}\\d{2,4}\\w{2}\\s+"
+            pop_out: false
+
+          - name: event_length
+            format: "\\s{3,}(\\d{2,4})\\w{2}\\s+(?>\\d{1,2}[:'\\.])?\\d{2}[\\.\"]\\d{2}\\s+(?>\\d{3}|0)[\\.,]\\d{2}$"
+            pop_out: false
+          - name: event_style
+            format: "\\s{3,}\\d{2,4}(\\w{2})\\s+(?>\\d{1,2}[:'\\.])?\\d{2}[\\.\"]\\d{2}\\s+(?>\\d{3}|0)[\\.,]\\d{2}$"
+            pop_out: false
+          - name: timing
+            format: "\\s+((?>\\d{1,2}[:'\\.])?\\d{2}[\\.\"]\\d{2})\\s+(?>\\d{3}|0)[\\.,]\\d{2}$"
+            pop_out: false
+          - name: std_score
+            format: "\\s+(?>\\d{1,2}[:'\\.])?\\d{2}[\\.\"]\\d{2}\\s+((?>\\d{3}|0)[\\.,]\\d{2})$"
+            pop_out: false
+
+  # Relay result format:
+  # <rank>  <team_name>  <cat_age_range_start>  <empty>  <team_name> <event_code> <timing> <standard_score>
+  # NOTE: gender data is missing => full category can't be properly detected
+  - name: rel_team
+    parent: fina_scores_hdr
+    repeat: true
+    required: false
+    rows:
+      - name: relay_ranking
+        fields:
+          - name: rank
+            format: "^\\s{1,6}(\\d{1,4})\\s{2,}"
+            pop_out: false
+          # (Ignore team relay name as the second team name is always more complete)
+          - name: cat_code
+            format: "^\\s{1,6}\\d{1,4}\\s{2,}.{3,35}\\s{1,}(\\d{3})\\s{10,}"
+            pop_out: false
+          - name: team_name
+            format: "\\s{1,}\\d{3}\\s{10,}(.{3,35})\\s{3,}S\\d{3}\\w{2}\\s+"
+            pop_out: false
+          - name: event_length
+            format: "\\s{3,}S(\\d{3})\\w{2}\\s+(?>\\d{1,2}[:'\\.])?\\d{2}[\\.\"]\\d{2}\\s+(?>\\d{3}|0)[\\.,]\\d{2}$"
+            pop_out: false
+          - name: event_style
+            format: "\\s{3,}S\\d{3}(\\w{2})\\s+(?>\\d{1,2}[:'\\.])?\\d{2}[\\.\"]\\d{2}\\s+(?>\\d{3}|0)[\\.,]\\d{2}$"
+            pop_out: false
+          - name: timing
+            format: "\\s{3,}S\\d{3}\\w{2}\\s+((?>\\d{1,2}[:'\\.])?\\d{2}[\\.\"]\\d{2})\\s+(?>\\d{3}|0)[\\.,]\\d{2}$"
+            pop_out: false
+          - name: std_score
+            format: "\\s{3,}S\\d{3}\\w{2}\\s+(?>\\d{1,2}[:'\\.])?\\d{2}[\\.\"]\\d{2}\\s+((?>\\d{3}|0)[\\.,]\\d{2})$"
+            pop_out: false
+
+  - name: publish_time
+    parent: fina_scores_hdr
+    required: false
+    row_span: 2
+    format: "^\\s+Pubblicata:"
+
+  # End-Of-Page, variable span: 2-3
+  - name: footer
+    parent: header
+    eop: true
+    repeat: true
+    rows:
+      - name: footer_place
+        fields:
+          # Expected format: "<city>[,|/]\\s?<venue>"
+          - name: meeting_place
+            # Support long place names like "Centro Federale di Ostia (RM)" or "Reggio nell'Emilia"
+            format: "^(.+)\\s?[,\\|/]\\s?.+$"
+            pop_out: false
+            # format: "^(.+)[,/]\\s?(?>\\w{2,}\\s?){1,}"
+          - name: meeting_venue_or_date
+            format: "^.+\\s?[,\\|/]\\s?(.+)$"
+            pop_out: false
+      - name: footer_page
+        format: "^(\\s{70,}|\\s{30,}Elaborazione dati a cura della FEDERAZIONE ITALIANA NUOTO\\s{10,})Page\\s\\d{1,}"
+
+      - name: footer_timestamp
+        required: false
+        format: "^\\s{50,}Stampata\\sil\\s\\d{1,2}"
+
+  - name: empty_row
+    repeat: true
+    parent: header
+    required: false
+    format: "^$"

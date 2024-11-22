@@ -1,0 +1,106 @@
+#
+# = Layout format definition for PdfResults::FormatParser
+#
+# - FIN Lazio, empty page, only headers.
+# - Includes the result header with the 'ANNO' + 'NAZ' columns.
+#
+3-finlazio.empty:
+  - name: header
+    at_fixed_row: 0
+    rows:
+      - name: hdr_title
+        fields:
+          - name: edition
+            required: false
+            format: "^\\s{20,}(\\d{1,2}|[IVXLCM]+)\\D?\\D?\\s+"
+            pop_out: false
+          - name: meeting_name
+            format: "^\\s{20,}(?>\\d{1,2}|[IVXLCM]+)?\\D?\\D?\\s+(.+)$"
+            pop_out: false
+      - name: hdr_pool
+        fields:
+          - name: pool_type
+            lambda: strip
+            format: "\\s*V\\.\\s(\\d{2})m"
+      - name: hdr_sep
+        format: "^$"
+      - name: hdr_results
+        # Using a custom non-existent field name in keys array to skip completely this row
+        # from being part of the resulting context key:
+        keys: [skip_me]
+        format: "^\\s{20,}Risultati$"
+
+  # Data columns header
+  - name: results_hdr
+    rows:
+      - name: results_hdr1
+        format: "^\\s?POS\\s{1,}CR\\s{1,}COGNOME\\sE\\sNOME\\s{2,}ANNO\\s{1,}NAZ\\s{1,}SOCIETA'\\s{10,}(?>50\\sm)?\\s{2,}ARRIVO\\s{1,}(?>PUNTI|Record)"
+      - name: results_hdr_sep1
+        format: "^$"
+      # Whenever the event is not repeated on page start, at least 2x empty rows take its place:
+      - name: results_hdr_sep2
+        required: false
+        format: "^$"
+      - name: results_hdr_sep3
+        required: false
+        format: "^$"
+
+  - name: publish_time
+    # Every 'results' change, check if there is a 'publish_time' row:
+    parent: results
+    # This may repeat after each individual result (!!) and be multiple times on the same page:
+    repeat: true
+    required: false
+    # Variable span: 2..3 rows
+    rows:
+      - name: publish_time1
+        required: false
+        format: "^$"
+      - name: publish_time2
+        keys: [skip_me]
+        format: "^\\s+Pubblicata:"
+      - name: publish_time3
+        required: false
+        format: "^$"
+
+  # End-Of-Page, variable span: 2..8
+  - name: footer
+    parent: header
+    eop: true
+    repeat: true
+    rows:
+      - name: footer_spacer1
+        format: "^$"
+      # 4x optional empty rows (1 may be subst by the last timestamp row below, which is optional too):
+      - name: footer_spacer2
+        required: false
+        format: "^$"
+      - name: footer_spacer3
+        required: false
+        format: "^$"
+      - name: footer_spacer4
+        required: false
+        format: "^$"
+      - name: footer_spacer5
+        required: false
+        format: "^$"
+
+      - name: footer_place
+        fields:
+          # Expected format: "<city>[,|/]\\s?<venue>"
+          - name: meeting_place
+            # Support long place names like "Centro Federale di Ostia (RM)" or "Reggio nell'Emilia"
+            format: "^(.+)\\s?[,\\|/]\\s?.+$"
+            pop_out: false
+            # format: "^(.+)[,/]\\s?(?>\\w{2,}\\s?){1,}"
+          - name: meeting_venue_or_date
+            format: "^.+\\s?[,\\|/]\\s?(.+)$"
+            pop_out: false
+      - name: footer_page
+        # Original:
+        # format: "\\s{7,}Page\\s\\d{1,}"
+        format: "^(\\s{70,}|\\s{30,}Elaborazione dati a cura della FEDERAZIONE ITALIANA NUOTO\\s{10,})Page\\s\\d{1,}"
+
+      - name: footer_timestamp
+        required: false
+        format: "^\\s{50,}Stampata\\sil\\s\\d{1,2}"

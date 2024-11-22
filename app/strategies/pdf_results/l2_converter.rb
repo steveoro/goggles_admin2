@@ -161,11 +161,14 @@ module PdfResults
         #     |
         #     +---[ranking_hdr|stats_hdr|event]
         #
-        if event_hash[:name] == 'ranking_hdr'
+        case event_hash[:name]
+        when 'ranking_hdr'
           section = ranking_section(event_hash)
           resulting_sections << section if section.present?
-        end
-        if event_hash[:name] == 'stats_hdr'
+        when 'fina_scores_hdr'
+          # Pass over the resulting sections in order to find any pre-existing sections:
+          resulting_sections = fina_scores_sections(resulting_sections, event_hash)
+        when 'stats_hdr'
           section = stats_section(event_hash)
           resulting_sections << section if section.present?
         end
@@ -206,6 +209,9 @@ module PdfResults
         # - sometimes header fields like category or gender need to be extracted result-by-result
         # => the section hash becomes defined only later on
         event_hash.fetch(:rows, [{}]).each do |row_hash| # rubocop:disable Metrics/BlockLength
+          # DEBUG ----------------------------------------------------------------
+          # binding.pry
+          # ----------------------------------------------------------------------
           # Supported hierarchy for "sub-event-type" depth level:
           #
           # [event]
@@ -291,7 +297,7 @@ module PdfResults
             end
 
             # DEBUG ----------------------------------------------------------------
-            # binding.pry if result_row['name'].include?('BEARZOTTI ')
+            # binding.pry if result_row['name'].include?('<swimmer_name>')
             # ----------------------------------------------------------------------
             add_or_merge_results_in_rows(section['rows'], result_row)
 
@@ -299,7 +305,7 @@ module PdfResults
           elsif holds_category_type?(row_hash)
             # Supported hierarchy (extract both):
             #
-            # [category]
+            # [category] (even nil => absolute listing)
             #     |
             #     +---[results]
             #
@@ -314,11 +320,21 @@ module PdfResults
               # will be included into a 'result' section.
               next unless IND_RESULT_SECTION.include?(result_hash[:name])
 
+              # Example: [event w/ gender only, no category] -> [blank category] -> [results w/ category code & gender inline]
+              recompute_ranking = update_section_hash_with_cat_headers_from_result_row_if_missing(section, result_hash)
               result_row = ind_result_section(result_hash, section['fin_sesso'])
               # DEBUG ----------------------------------------------------------------
-              # binding.pry if result_row['name'].include?('BEARZOTTI ')
+              # binding.pry if result_row['name'].include?(<swimmer_name>)
               # ----------------------------------------------------------------------
               add_or_merge_results_in_rows(section['rows'], ind_result_section(result_hash, section['fin_sesso']))
+              # If the section was updated with a new or proper category header, we need to add or merge it
+              # within the resulting sections list, before the next result row (which may belong to a different category):
+              next unless recompute_ranking
+
+              find_or_create_event_section_and_merge(resulting_sections, section)
+              # Clear current section since each result row will need a different parent:
+              # section['fin_sigla_categoria'] = section['fin_sesso'] = nil # (this will force adding/merging a new section each row)
+              section = ind_category_section(row_hash, event_title, '', '')
             end
 
           # --- IND.RESULTS (event -> results, but NO category fields at all; i.e.: absolute rankings) ---
@@ -441,6 +457,68 @@ module PdfResults
       section
     end
 
+    # Builds up *ALL* the "event" sections scanning the FINA Scores summary,
+    # which stores all individual & team result rows with their valid scores.
+    #
+    # This 'condensed format' will store a single event result x each row, including
+    # the result timing and its overall score, so this method will need to build any
+    # missing events or add the result row to any event found already converted.
+    def fina_scores_sections(resulting_sections, event_hash) # rubocop:disable Metrics/MethodLength
+      return unless event_hash.is_a?(Hash)
+
+      event_hash.fetch(:rows, [{}]).each do |scores_hash|
+        section = nil
+        fields = scores_hash.fetch(:fields, {})
+
+        # --- Individual results: ---
+        if scores_hash[:name] == 'results'
+          # Build-up event title so that the Parser::EventType can detect them
+          # for the MacroSolver later on:
+          category_code = "M#{fields.fetch('cat_code', '')}"
+          gender_code = fields.fetch(GENDER_FIELD_NAME, '').gsub(/D/i, 'F').gsub(/U/i, 'M')
+          event_length = fields.fetch('event_length', '')
+          event_style = fields.fetch('event_style', '')
+          event_title = "#{event_length} #{event_style}"
+          section = find_existing_event_section(resulting_sections, event_title, category_code, gender_code) ||
+                    ind_category_section(scores_hash, event_title, category_code, gender_code)
+          # ASSUME: section will always be found or created
+          section['rows'] << {
+            'pos' => fields.fetch('rank', ''),
+            'name' => fields.fetch('swimmer_name', ''),
+            'year' => fetch_field_with_alt_value(fields, 'year_of_birth'),
+            'sex' => gender_code,
+            'team' => fields.fetch('team_name', ''),
+            'timing' => format_timing_value(fields.fetch('timing', '')),
+            'score' => fetch_field_with_alt_value(fields, 'std_score')
+          }
+
+        # --- Relay results: ---
+        elsif scores_hash[:name] == 'rel_team'
+          category_code = "M#{fields.fetch('cat_code', '')}"
+          event_length = fields.fetch('event_length', '')
+          event_style = fields.fetch('event_style', '')
+          # ASSUME: fixed 4x relay event, gender unknown
+          event_title = "4x#{event_length} #{event_style}"
+          section = find_existing_event_section(resulting_sections, event_title, category_code, nil)
+          # (Can't build a new section w/o knowing the gender)
+          if section
+            section['rows'] << {
+              'relay' => true,
+              'pos' => fields.fetch('rank', ''),
+              'team' => fields.fetch('team_name', ''),
+              'timing' => format_timing_value(fields.fetch('timing', '')),
+              'score' => fetch_field_with_alt_value(fields, 'std_score')
+            }
+          end
+        end
+        # (Ignore any other unsupported contexts at this depth level)
+
+        find_or_create_event_section_and_merge(resulting_sections, section) if section.present?
+      end
+
+      resulting_sections
+    end
+
     # Builds up the "stats" section that will hold the overall statistics rows for
     # the whole Meeting (when present).
     def stats_section(event_hash)
@@ -550,7 +628,7 @@ module PdfResults
     #
     def ind_result_section(result_hash, cat_gender_code)
       # DEBUG ----------------------------------------------------------------
-      # binding.pry if result_hash['swimmer_name'].to_s.include?('BEARZOTTI ') || result_hash[:fields]['swimmer_name'].to_s.include?('BEARZOTTI ')
+      # binding.pry if result_hash['swimmer_name'].to_s.include?('<swimmer_name>') || result_hash[:fields]['swimmer_name'].to_s.include?('<swimmer_name>')
       # ----------------------------------------------------------------------
 
       return {} unless IND_RESULT_SECTION.include?(result_hash[:name]) ||
@@ -830,7 +908,7 @@ module PdfResults
       #   data => header
       #     data[:rows] => event
       #       data[:rows].first[:rows] => category || footer
-      footer = @data.fetch(:rows, [{}])&.first&.[](:rows)&.find { |h| h[:name] == 'footer' }
+      footer = @data.fetch(:rows, [{}]).first&.[](:rows)&.find { |h| h[:name] == 'footer' }
 
       # Supported footer example:
       # {:name=>"footer", :key=>"8 corsie 25m|Risultati su https://...",
@@ -1243,6 +1321,34 @@ module PdfResults
       else
         array_of_sections << section_hash
       end
+    end
+
+    # If the specified +section+ hash has a blank category field and/or a blank gender code field,
+    # it will try to update it with the category and gender codes from the result fields row specified
+    # with +result_hash+.
+    #
+    # Returns true if the ranking needs to be recomputed
+    # (a +nil+ category or gender was found and the section was updated).
+    # +false+ otherwise.
+    #
+    # Note that the +section+ hash is updated in-place (and being it a reference, it will be updated globally).
+    def update_section_hash_with_cat_headers_from_result_row_if_missing(section, result_hash)
+      result = false
+      row_category_code = extract_nested_field_name(result_hash, 'cat_title')
+      # Sometimes the category_code is just a number:
+      row_category_code = "M#{row_category_code}" if row_category_code.to_s.size == 2
+      if section['fin_sigla_categoria'].blank? && row_category_code.present?
+        section['fin_sigla_categoria'] = row_category_code
+        result = true
+      end
+
+      row_gender_code = extract_nested_field_name(result_hash, 'gender_type')
+      if section['fin_sesso'].blank? && row_gender_code.present?
+        section['fin_sesso'] = row_gender_code
+        result = true
+      end
+
+      result
     end
 
     # Loops on the array of <tt>existing_rows</tt> and adds <tt>result_hash</tt> to it

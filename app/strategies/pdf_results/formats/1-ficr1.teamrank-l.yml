@@ -77,7 +77,7 @@
             format: "^\\s?(\\d{1,2}|SQ|RT|NP|ES)\\s+"
             pop_out: false
           - name: team_name
-            format: "\\s{3,8}(([\\w\\d\\-&%'`]+\\s?)+)"
+            format: "\\s{3,8}((?>[\\w\\d\\-\\.&%'`]+\\s?)+)"
             token_end: 55
             pop_out: false
 

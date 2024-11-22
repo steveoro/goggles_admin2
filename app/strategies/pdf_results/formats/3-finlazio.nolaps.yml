@@ -3,6 +3,7 @@
 #
 # - Spawn of FIN FVG (Trieste), any length >= 50m but NO lap timings;
 # - meeting name on top on event change, meeting place on EOP.
+# - Supports 'NAZ' + 'ANNO' columns series 'POS' column (number with dots: 'N..') preceeding the timing column.
 #
 # Additionally, this format uses a standard category & gender display in between each age range
 # so the category data is repeated twice.
@@ -73,15 +74,24 @@
         - name: event_type
           format: "^\\s{20,}\\d{2,4}\\s?m\\s+(Stile(?>\\sLibero)?|Dorso|Rana|Delfino|Farfalla|Misti)\\s[-–]\\s"
           pop_out: false
+        # Category could be missing here, but the overall gender is usually displayed:
+        - name: gender_type
+          format: "\\s[-–]\\s(?>Master\\s|Under\\s|Propaganda\\s)?\\s?(Maschi|Femmine|Donne|Uomini)"
+          required: false
+          pop_out: false
       - name: event_sep0
         format: "^$"
 
+  # (No 'series number' context -- see finlazio-050n-pos-cr for that)
+
   - name: category
     repeat: true
+    # May lack whenever a category is reported on the next page:
+    required: false
     starts_at_row: 4
     parent: event
     rows:
-      - name: cat_separator
+      - name: cat_sep0
         required: false
         format: "^$"
       - fields:
@@ -91,15 +101,22 @@
         - name: gender_type
           format: "^\\s{45,}(?>MASTER\\s|UNDER\\s|PROPAGANDA\\s)?\\d{2}\\s?([MF]|DONNE|UOMINI)"
           pop_out: false
+      - name: cat_sep1
+        required: false
+        format: "^$"
 
   - name: disqualified
     parent: category
     required: false
     rows:
       - name: dsq_spacer1
+        required: false
         format: "^$"
       - name: dsq_title
         format: "^\\s{3,}NON\\sCLASSIFICATI|FUORI\\sGARA"
+      - name: dsq_spacer2
+        required: false
+        format: "^$"
 
   # Actual data starts here:
   - name: results
@@ -108,18 +125,18 @@
     starts_at_row: 4
     fields:
       - name: rank
-        format: "^\\s{1,10}(\\d{1,3})\\s{1,10}\\w+"
+        format: "^\\s{0,10}(\\d{1,3})\\s{1,10}\\w+"
         pop_out: false
       - name: swimmer_name
-        format: "^\\s{1,10}\\d{1,3}\\s{1,10}((?>[a-zA-Z\\.'`àèéìòù]{1,16}[\\-\\s]?){1,8})\\s{2,}\\w{3}\\s{1,}\\d{4}\\s{2,}"
+        format: "^\\s{0,10}\\d{1,3}\\s{1,10}((?>[a-zA-Z\\.'`àèéìòù]{1,16}[\\-\\s]?){1,8})\\s{2,}\\w{3}\\s{1,}\\d{4}\\s{2,}"
         pop_out: false
 
       - name: cat_title
-        format: "^\\s{1,10}\\d{1,3}\\s{1,10}(?>[a-zA-Z\\.'`àèéìòù]{1,16}[\\-\\s]?){1,8}\\s{2,}(\\d{2})[MF]\\s{1,}\\d{4}\\s{2,}"
+        format: "^\\s{0,10}\\d{1,3}\\s{1,10}(?>[a-zA-Z\\.'`àèéìòù]{1,16}[\\-\\s]?){1,8}\\s{2,}(\\d{2})[MF]\\s{1,}\\d{4}\\s{2,}"
         pop_out: false
         required: false
       - name: gender_type
-        format: "^\\s{1,10}\\d{1,3}\\s{1,10}(?>[a-zA-Z\\.'`àèéìòù]{1,16}[\\-\\s]?){1,8}\\s{2,}\\d{2}([MF])\\s{1,}\\d{4}\\s{2,}"
+        format: "^\\s{0,10}\\d{1,3}\\s{1,10}(?>[a-zA-Z\\.'`àèéìòù]{1,16}[\\-\\s]?){1,8}\\s{2,}\\d{2}([MF])\\s{1,}\\d{4}\\s{2,}"
         pop_out: false
         required: false
 
@@ -170,10 +187,10 @@
     starts_at_row: 4
     fields:
       - name: rank
-        format: "^\\s{1,10}(\\d{1,3})\\s{1,10}\\w+"
+        format: "^\\s{0,10}(\\d{1,3})\\s{1,10}\\w+"
         pop_out: false
       - name: swimmer_name
-        format: "^\\s{1,10}(?>\\d{1,3})\\s{1,10}((?>[a-zA-Z\\.'`àèéìòù]{1,16}[\\-\\s]?){1,8})\\s{2,}(?>[a-zA-Z]{3})?\\s{1,}\\d{4}\\s{2,}"
+        format: "^\\s{0,10}(?>\\d{1,3})\\s{1,10}((?>[a-zA-Z\\.'`àèéìòù]{1,16}[\\-\\s]?){1,8})\\s{2,}(?>[a-zA-Z]{3})?\\s{1,}\\d{4}\\s{2,}"
         pop_out: false
       - name: nation
         format: "^\\s{0,10}(?>\\d{1,3})\\s{1,10}(?>[a-zA-Z\\.'`àèéìòù]{1,16}[\\-\\s]?){1,8}\\s{2,}([a-zA-Z]{3})\\s{1,}\\d{4}\\s{2,}"
@@ -236,10 +253,20 @@
     # This may repeat after each event and be multiple times on the same page:
     repeat: true
     required: false
-    row_span: 2
+    # row_span: 2
     # Don't include this in the keys: (empty keys like empty rows are skipped by default)
-    keys: [skip_me]
-    format: "^\\s+Pubblicata:"
+    # keys: [skip_me]
+    # Variable span: 1..3 rows
+    rows:
+      - name: publish_time1
+        required: false
+        format: "^$"
+      - name: publish_time2
+        keys: [skip_me]
+        format: "^\\s+Pubblicata:"
+      - name: publish_time3
+        required: false
+        format: "^$"
 
   # End-Of-Page, variable span: 2..3
   - name: footer
@@ -253,14 +280,14 @@
 
       - name: footer_place
         fields:
-          # Expected format: "<city>[,/]\\s?<venue>"
+          # Expected format: "<city>[,|/]\\s?<venue>"
           - name: meeting_place
             # Support long place names like "Centro Federale di Ostia (RM)" or "Reggio nell'Emilia"
-            format: "^(.+)[,/]\\s?.+$"
+            format: "^(.+)\\s?[,\\|/]\\s?.+$"
             pop_out: false
             # format: "^(.+)[,/]\\s?(?>\\w{2,}\\s?){1,}"
           - name: meeting_venue_or_date
-            format: "^.+[,/]\\s?(.+)$"
+            format: "^.+\\s?[,\\|/]\\s?(.+)$"
             pop_out: false
       - name: footer_page
         # Original:

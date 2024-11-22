@@ -1,0 +1,267 @@
+#
+# = Layout format definition for PdfResults::FormatParser
+#
+# - FIN Lazio, 200m-only, category & gender display *EACH ROW*;
+# - "Single" lap100 + delta200 + timing, NO 50m laps, NO SCORES;
+# - Meeting name on top on event change, meeting place on EOP.
+# - Includes the 'event series' number as additional context separator
+#
+# - Uses a 'POS' + 'CR' double leading column format
+# - Supports 'ANNO' + 'NAZ' columns with CORRECT values, as opposed to 050b-pos-cr subformat.
+#
+# The 'NAZ' column (Nation) here is used to display the category & gender info in a compressed
+# format on each row ("M40, female" => "40F" instead of the usual 3-letter code for the nation).
+#
+# Additionally, this format supports also a standard category & gender display in between each age range
+# (as an optional context).
+#
+3-finlazio.200b-pos-cr:
+  - name: header
+    at_fixed_row: 0
+    required: false
+    repeat: true
+    rows:
+      - name: hdr_title
+        fields:
+          - name: edition
+            required: false
+            format: "^\\s{20,}(\\d{1,2}|[IVXLCM]+)\\D?\\D?\\s+"
+            pop_out: false
+          - name: meeting_name
+            format: "^\\s{20,}(?>\\d{1,2}|[IVXLCM]+)?\\D?\\D?\\s+(.+)$"
+            pop_out: false
+      - name: hdr_pool
+        fields:
+          - name: pool_type
+            lambda: strip
+            format: "\\s*V\\.\\s(\\d{2})m"
+      - name: hdr_sep
+        format: "^$"
+      - name: hdr_results
+        # Using a custom non-existent field name in keys array to skip completely this row
+        # from being part of the resulting context key:
+        keys: [skip_me]
+        format: "^\\s{20,}Risultati$"
+
+  # Data columns header
+  - name: results_hdr
+    repeat: true
+    rows:
+      - name: results_hdr1
+        format: "^\\s?POS\\s{1,}CR\\s{1,}COGNOME\\sE\\sNOME\\s{2,}ANNO\\s{1,}NAZ\\s{1,}SOCIETA'\\s{10,}(?>100\\sm)?\\s{2,}ARRIVO\\s{1,}(?>PUNTI|Record)"
+      - name: results_hdr_sep1
+        format: "^$"
+      # Whenever the event is not repeated on page start, at least 2x empty rows take its place:
+      - name: results_hdr_sep2
+        required: false
+        format: "^$"
+      - name: results_hdr_sep3
+        required: false
+        format: "^$"
+
+  - name: event
+    # Repeats only in between events, so this is not required on each page:
+    required: false
+    repeat: true
+    starts_at_row: 5
+    parent: header
+    rows:
+      - fields:
+        - name: event_length
+          format: "^\\s{20,}(200)\\s?m\\s+"
+          pop_out: false
+        - name: event_type
+          format: "^\\s{20,}200\\s?m\\s+(Stile(?>\\sLibero)?|Dorso|Rana|Delfino|Farfalla|Misti)\\s[-–]\\s"
+          pop_out: false
+        # (No reliable category or gender here)
+      - name: event_sep0
+        format: "^$"
+
+  - name: event_series
+    parent: event
+    required: false
+    rows:
+      - name: series_sep0
+        required: false
+        format: "^$"
+      - name: series_num
+        # Don't include this in the keys: (empty keys like empty rows are skipped by default)
+        keys: [skip_me]
+        format: "^\\s{50,}Serie\\s"
+      - name: series_sep1
+        required: false
+        format: "^$"
+
+  - name: category
+    repeat: true
+    # May lack whenever a category is reported on the next page:
+    required: false
+    starts_at_row: 4
+    parent: event
+    rows:
+      - name: cat_sep0
+        required: false
+        format: "^$"
+      - fields:
+        - name: cat_title
+          format: "^\\s{45,}((?>MASTER\\s|UNDER\\s|PROPAGANDA\\s)?\\d{2})\\s?(?>[MF]|DONNE|UOMINI)?"
+          pop_out: false
+        - name: gender_type
+          format: "^\\s{45,}(?>MASTER\\s|UNDER\\s|PROPAGANDA\\s)?\\d{2}\\s?([MF]|DONNE|UOMINI)"
+          pop_out: false
+      - name: cat_sep1
+        required: false
+        format: "^$"
+
+  - name: disqualified
+    parent: category
+    repeat: true
+    required: false
+    rows:
+      - name: dsq_spacer0
+        required: false
+        format: "^$"
+      - name: dsq_spacer1
+        required: false
+        format: "^$"
+      - name: dsq_title
+        format: "^\\s{3,}NON\\sCLASSIFICATI|FUORI\\sGARA"
+      - name: dsq_spacer2
+        required: false
+        format: "^$"
+
+  # Actual data starts here:
+  - name: results
+    repeat: true
+    parent: category
+    starts_at_row: 4
+    rows:
+      - name: results_sep
+        required: false
+        format: "^$"
+
+      - name: results_detail
+        fields:
+          - name: rank
+            format: "^\\s{0,10}(\\d{1,3})\\s{1,8}\\d{1,2}\\s{1,3}\\w+"
+            required: false
+            pop_out: false
+          - name: lane_num
+            format: "^\\s{0,10}\\d{0,3}\\s{1,8}(\\d{1,2})\\s{1,3}\\w+"
+            pop_out: false
+          - name: swimmer_name
+            format: "^\\s{0,10}\\d{0,3}\\s{1,8}\\d{1,2}\\s{1,3}((?>[a-zA-Z\\.'`àèéìòù]{1,16}[\\-\\s]?){1,8})\\s{0,}\\d{4}\\s{2,}\\w{3}\\s{3,}"
+            pop_out: false
+          - name: year_of_birth
+            format: "^\\s{0,10}\\d{0,3}\\s{1,8}\\d{1,2}\\s{1,3}(?>[a-zA-Z\\.'`àèéìòù]{1,16}[\\-\\s]?){1,8}\\s{0,}(\\d{4})\\s{2,}\\w{3}\\s{3,}"
+            pop_out: false
+          - name: cat_title
+            format: "^\\s{0,10}\\d{0,3}\\s{1,8}\\d{1,2}\\s{1,3}(?>[a-zA-Z\\.'`àèéìòù]{1,16}[\\-\\s]?){1,8}\\s{0,}\\d{4}\\s{2,}(\\d{2})[MF]\\s{3,}"
+            required: false
+            pop_out: false
+          - name: gender_type
+            format: "^\\s{0,10}\\d{0,3}\\s{1,8}\\d{1,2}\\s{1,3}(?>[a-zA-Z\\.'`àèéìòù]{1,16}[\\-\\s]?){1,8}\\s{0,}\\d{4}\\s{2,}\\d{2}([MF])\\s{3,}"
+            required: false
+            pop_out: false
+
+          - name: team_name
+            format: "\\s{0,}\\d{4}\\s{2,}(?>\\w{3})\\s{2,}(.{3,31})(?>\\s{2,}|$)"
+            pop_out: false
+
+          - name: lap100
+            format: "\\s+((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})(?>\\s+(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}){2}$"
+            pop_out: false
+            required: false
+          - name: delta200
+            format: "\\s+((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})(?>\\s+(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}){1}$"
+            pop_out: false
+            required: false
+
+          - name: timing
+            format: "(?>\\s+(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}){0,2}\\s+((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})$"
+            pop_out: false
+            # DSQ don't have timings:
+            required: false
+
+      - name: results_sep1
+        required: false
+        format: "^$"
+      - name: results_sep2
+        required: false
+        format: "^$"
+
+  - name: dsq_label
+    parent: results
+    required: false
+    rows:
+      - name: dsq_spacer1
+        required: false
+        format: "^$"
+      - name: dsq_type
+        fields:
+          - name: disqualify_type
+            format: "^\\s{15,}(falsa\\spartenz\\w+|arrivo\\sirr.*|virata\\s.+|nuotata\\s.*)"
+            pop_out: false
+      - name: dsq_spacer2
+        required: false
+        format: "^$"
+
+  - name: publish_time
+    # Every 'results' change, check if there is a 'publish_time' row:
+    parent: results
+    # This may repeat after each individual result (!!) and be multiple times on the same page:
+    repeat: true
+    required: false
+    # Variable span: 2..3 rows
+    rows:
+      - name: publish_time1
+        required: false
+        format: "^$"
+      - name: publish_time2
+        keys: [skip_me]
+        format: "^\\s+Pubblicata:"
+      - name: publish_time3
+        required: false
+        format: "^$"
+
+  # End-Of-Page, variable span: 5-6-7
+  - name: footer
+    parent: header
+    eop: true
+    repeat: true
+    rows:
+      - name: footer_spacer1
+        format: "^$"
+      # 4x optional empty rows (1 may be subst by the last timestamp row below, which is optional too):
+      - name: footer_spacer2
+        required: false
+        format: "^$"
+      - name: footer_spacer3
+        required: false
+        format: "^$"
+      - name: footer_spacer4
+        required: false
+        format: "^$"
+      - name: footer_spacer5
+        required: false
+        format: "^$"
+
+      - name: footer_place
+        fields:
+          # Expected format: "<city>[,|/]\\s?<venue>"
+          - name: meeting_place
+            # Support long place names like "Centro Federale di Ostia (RM)" or "Reggio nell'Emilia"
+            format: "^(.+)\\s?[,\\|/]\\s?.+$"
+            pop_out: false
+            # format: "^(.+)[,/]\\s?(?>\\w{2,}\\s?){1,}"
+          - name: meeting_venue_or_date
+            format: "^.+\\s?[,\\|/]\\s?(.+)$"
+            pop_out: false
+      - name: footer_page
+        # Original:
+        # format: "\\s{7,}Page\\s\\d{1,}"
+        format: "^(\\s{70,}|\\s{30,}Elaborazione dati a cura della FEDERAZIONE ITALIANA NUOTO\\s{10,})Page\\s\\d{1,}"
+
+      - name: footer_timestamp
+        required: false
+        format: "^\\s{50,}Stampata\\sil\\s\\d{1,2}"
