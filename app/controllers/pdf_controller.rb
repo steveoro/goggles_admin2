@@ -50,12 +50,12 @@ class PdfController < ApplicationController
 
     logger.info("\r\n--> Extracting data hash...")
     data_hash = fp.root_dao&.data&.fetch(:rows, [])&.find { |hsh| hsh[:name] == 'header' }
-    # DEBUG ----------------------------------------------------------------
-    # binding.pry
-    # ----------------------------------------------------------------------
 
     l2 = PdfResults::L2Converter.new(data_hash, fp.season)
     logger.info('--> Checking null Teams row-by-row for possible replacements...')
+    # DEBUG ----------------------------------------------------------------
+    # binding.pry
+    # ----------------------------------------------------------------------
     l2_hash = l2.to_hash
     scan_l2_data_hash_for_null_team_names(l2_hash)
 

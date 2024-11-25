@@ -102,12 +102,15 @@
           - name: relay_name
             format: "^\\s{0,10}\\d{0,3}\\s{1,10}(.{3,35})\\s{2,}\\d{2,3}X?\\s{2,}.{3,35}\\s{2,}"
             pop_out: false
+          - name: cat_title
+            format: "^\\s{0,10}\\d{0,3}\\s{1,10}.{3,35}\\s{2,}(\\d{2,3})X?\\s{2,}.{3,35}\\s{2,}"
+            pop_out: false
           - name: team_name
             format: "^\\s{0,10}\\d{0,3}\\s{1,10}.{3,35}\\s{2,}\\d{2,3}X?\\s{2,}(.{3,35})\\s{2,}"
             pop_out: false
 
           - name: timing
-            format: "\\s{2,}((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s{2,}\\d?[,.]?\\d{1,4}[,.]\\d{1,2}$"
+            format: "\\s{2,}((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})(?>\\s{2,}\\d?[,.]?\\d{1,4}[,.]\\d{1,2})?$"
             pop_out: false
             # DSQ don't have timings:
             required: false
@@ -117,7 +120,26 @@
             # U25 / A20 do not score:
             required: false
 
+  - name: dsq_label
+    parent: rel_team
+    required: false
+    rows:
+      - name: dsq_type
+        # required: false
+        fields:
+          - name: disqualify_type
+            format: "^\\s{15,}((?>\\d[°^]\\s)?cambio\\s\\w+.{0,30}|falsa\\spartenz\\w+.{0,30}|arrivo\\sirr\\w*.{0,30}|virata\\s\\w+.{0,30}|nuotata\\sirr\\w+.{0,30})"
+            pop_out: false
+
+  - name: rel_swimmer
+    repeat: true
+    parent: rel_team
+    starts_at_row: 8
+    # DSQ results usually won't have the swimmer rows with the laps:
+    required: false
+    rows:
       - name: rel_swimmer1
+        # required: false
         fields:
           - name: swimmer_name1
             format: "^\\s{8,}((?>[a-zA-Z\\.'`àèéìòù]{1,16}[\\-\\s]?){1,8})\\s{2,}\\d{4}\\s{1,}\\w{3}\\b"
@@ -125,7 +147,6 @@
           - name: year_of_birth1
             format: "^\\s{8,}(?>[a-zA-Z\\.'`àèéìòù]{1,16}[\\-\\s]?){1,8}\\s{2,}(\\d{4})\\s{1,}\\w{3}\\b"
             pop_out: false
-          # Currently ignored, as it's not guaranteed to be there and the YOB is enough to esteem the category by itself:
           - name: cat_title1
             format: "^\\s{8,}(?>[a-zA-Z\\.'`àèéìòù]{1,16}[\\-\\s]?){1,8}\\s{2,}\\d{4}\\s{1,}(\\d{2})[MF]\\b"
             required: false
@@ -144,6 +165,7 @@
             required: false
 
       - name: rel_swimmer2
+        # required: false
         fields:
           - name: swimmer_name2
             format: "^\\s{8,}((?>[a-zA-Z\\.'`àèéìòù]{1,16}[\\-\\s]?){1,8})\\s{2,}\\d{4}\\s{1,}\\w{3}\\b"
@@ -169,6 +191,7 @@
             required: false
 
       - name: rel_swimmer3
+        # required: false
         fields:
           - name: swimmer_name3
             format: "^\\s{8,}((?>[a-zA-Z\\.'`àèéìòù]{1,16}[\\-\\s]?){1,8})\\s{2,}\\d{4}\\s{1,}\\w{3}\\b"
@@ -194,6 +217,7 @@
             required: false
 
       - name: rel_swimmer4
+        # required: false
         fields:
           - name: swimmer_name4
             format: "^\\s{8,}((?>[a-zA-Z\\.'`àèéìòù]{1,16}[\\-\\s]?){1,8})\\s{2,}\\d{4}\\s{1,}\\w{3}\\b"
@@ -229,16 +253,6 @@
       - name: dsq_spacer2
         required: false
         format: "^$"
-
-  - name: dsq_label
-    parent: rel_team
-    required: false
-    rows:
-      - name: dsq_type
-        fields:
-          - name: disqualify_type
-            format: "^\\s{15,}((?>\\d[°^]\\s)?cambio\\s\\w+|falsa\\spartenz\\w+|arrivo\\sirr\\w*|virata\\s\\w+|nuotata\\sirr\\w+)"
-            pop_out: false
 
   - name: publish_time
     # Every 'results' change, check if there is a 'publish_time' row:

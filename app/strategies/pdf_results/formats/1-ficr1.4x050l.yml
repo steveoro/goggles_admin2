@@ -259,7 +259,7 @@
     repeat: true
     parent: rel_team
     starts_at_row: 8
-    # When the team is disqualified usually no swimmer rows are added:
+    # DSQ results usually won't have the swimmer rows with the laps:
     required: false
     rows:
       - name: rel_swimmer1

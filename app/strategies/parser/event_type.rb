@@ -6,9 +6,9 @@ module Parser
   #
   # = EventType
   #
-  #   - version:  7-0.3.53
+  #   - version:  7-0.7.25
   #   - author:   Steve A.
-  #   - build:    20220607
+  #   - build:    20241125
   #
   # Wrapper for parsing helper methods for EventType & CategoryType instances.
   #
@@ -92,5 +92,19 @@ module Parser
       ]
     end
     # rubocop:enable Metrics/CyclomaticComplexity
+
+    # Converts the specified +event_title+ into a normalized standard format string.
+    #
+    # == Params:
+    # - event_title: the String event title for the event section Hash
+    #
+    def self.normalize_event_title(event_title)
+      event_title.to_s
+                 .gsub(/stile(?>\slibero)?/i, 'SL')
+                 .gsub(/mi(?>sti)?/i, 'MI')
+                 .gsub(/do(?>rso)?/i, 'DO')
+                 .gsub(/ra(?>na)?/i, 'RA')
+                 .gsub(/fa(?>rfalla)?|de(?>lfino)?|df|dl/ui, 'FA')
+    end
   end
 end

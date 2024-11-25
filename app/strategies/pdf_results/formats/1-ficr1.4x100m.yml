@@ -241,6 +241,8 @@
   - name: rel_swimmer
     repeat: true
     parent: rel_team
+    # DSQ results usually won't have the swimmer rows with the laps:
+    required: false
     starts_at_row: 8
     rows:
       - name: rel_swimmer1
