@@ -3,7 +3,7 @@
 module PdfResults
   # = PdfResults::ContextDAO
   #
-  #   - version:  7-0.7.24
+  #   - version:  7-0.7.25
   #   - author:   Steve A.
   #
   # Wraps a subset of contextual data extracted from PDF/TXT parsing
@@ -77,6 +77,10 @@ module PdfResults
       @name = context&.alternative_of || context&.name || 'root'
       # Store curr. reference to the latest Ctx parent DAO for usage in find & merge:
       @parent = context&.parent&.dao
+      # NOTE: if "parent&.dao" ^^^ here raises an error, then the format definition has referenced a parent which hasn't been defined at all.
+      # E.g.:
+      # "NoMethodError - undefined method `dao' for "category":String"
+      #    => context referenced 'category' as parent without actually defining it elsewhere in the format file. (Most probaly a copy&paste mistake)
 
       # Store reference to parent name for whenever the parent DAO is not found in the hierarchy.
       # (in this case, the first matching name during merge will be used as destination parent - see #merge)

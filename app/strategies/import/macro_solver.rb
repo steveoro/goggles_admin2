@@ -6,7 +6,7 @@ module Import
   #
   #   - version:  7-0.7.25
   #   - author:   Steve A.
-  #   - build:    20241017
+  #   - build:    20241129
   #
   # Scans the already-parsed Meeting results JSON object (which stores a whole set of results)
   # and finds existing & corresponding entity rows or creates (locally) any missing associated
@@ -41,8 +41,7 @@ module Import
 
       @season = GogglesDb::Season.find(season_id)
       # Collect the list of associated CategoryTypes to avoid hitting the DB on each section:
-      @categories_cache = {}
-      @season.category_types.each { |cat| @categories_cache[cat.code] = cat }
+      @categories_cache = PdfResults::CategoriesCache.new(@season)
       @data = data_hash || {}
       @toggle_debug = toggle_debug
       @retry_needed = @data['sections']&.any? { |sect| sect['retry'].present? }
@@ -2561,7 +2560,7 @@ module Import
       return unless year_of_birth.positive?
 
       age = @season.begin_date.year - year_of_birth
-      _curr_cat_code, category_type = @categories_cache.find { |_c, cat| !cat.relay? && (cat.age_begin..cat.age_end).cover?(age) && !cat.undivided? }
+      _curr_cat_code, category_type = @categories_cache.find_category_code_for_age(age, relay: false)
       category_type
     end
 

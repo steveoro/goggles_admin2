@@ -1,10 +1,11 @@
 #
 # = Layout format definition for PdfResults::FormatParser
 #
-# - Spawn of FIN FVG (Trieste), any length >= 50m but NO lap timings;
-# - requires a category context separator;
-# - meeting name on top on event change, meeting place on EOP.
+# - Spawn of FIN FVG (Trieste), any length >= 50m but NO *laps*;
+# - NO category separator (event -> results);
+# - has inline category & gender data (inside the 'NAZ' column)
 # - Supports 'NAZ' + 'ANNO' columns series 'POS' column (number with dots: 'N..') preceeding the timing column.
+# - meeting name on top on event change, meeting place on EOP.
 #
 # Additionally, this format uses a standard category & gender display in between each age range
 # so the category data is repeated twice.
@@ -13,7 +14,7 @@
 #
 #  "POS      COGNOME E NOME           NAZ ANNO       SOCIETA'                              BATT   CRS POS    ARRIVO     PUNTI"
 #
-3-finlazio.nolaps:
+3-finlazio.nocategory-nolaps:
   - name: header
     at_fixed_row: 0
     # In order to validate/debug a format not always present in page,
@@ -85,61 +86,46 @@
 
   # (No 'series number' context -- see finlazio-050n-pos-cr for that)
 
-  - name: category
-    repeat: true
-    # May lack whenever a category is reported on the next page:
-    required: false
-    starts_at_row: 4
-    parent: event
-    rows:
-      - name: cat_sep0
-        required: false
-        format: "^$"
-      - fields:
-        - name: cat_title
-          format: "^\\s{45,}((?>MASTER\\s|UNDER\\s|PROPAGANDA\\s)?\\d{2})\\s?(?>[MF]|DONNE|UOMINI)?"
-          pop_out: false
-        - name: gender_type
-          format: "^\\s{45,}(?>MASTER\\s|UNDER\\s|PROPAGANDA\\s)?\\d{2}\\s?([MF]|DONNE|UOMINI)"
-          pop_out: false
-      - name: cat_sep1
-        required: false
-        format: "^$"
-
-  # Results with category separator:
+  # Results without category separator (must have inline data):
   - name: results
-    required: false
     repeat: true
-    parent: category
+    parent: event
     starts_at_row: 4
     fields:
       - name: rank
         format: "^\\s{0,10}(\\d{1,3})\\s{1,10}\\w+"
         pop_out: false
       - name: swimmer_name
-        format: "^\\s{0,10}(?>\\d{1,3})?\\s{1,10}((?>[a-zA-Z\\.'`àèéìòù]{1,16}[\\-\\s]?){1,8})\\s{2,}(?>[a-zA-Z]{3})?\\s{1,}\\d{4}\\s{2,}"
+        format: "^\\s{0,10}\\d{1,3}\\s{1,10}((?>[a-zA-Z\\.'`àèéìòù]{1,16}[\\-\\s]?){1,8})\\s{2,}\\d{2}[MF]\\s{1,}\\d{4}\\s{2,}"
         pop_out: false
-      - name: nation
-        format: "^\\s{0,10}(?>\\d{1,3})?\\s{1,10}(?>[a-zA-Z\\.'`àèéìòù]{1,16}[\\-\\s]?){1,8}\\s{2,}([a-zA-Z]{3})\\s{1,}\\d{4}\\s{2,}"
+
+      - name: cat_title
+        format: "^\\s{0,10}\\d{1,3}\\s{1,10}(?>[a-zA-Z\\.'`àèéìòù]{1,16}[\\-\\s]?){1,8}\\s{2,}(\\d{2})[MF]\\s{1,}\\d{4}\\s{2,}"
         pop_out: false
+        required: false
+      - name: gender_type
+        format: "^\\s{0,10}\\d{1,3}\\s{1,10}(?>[a-zA-Z\\.'`àèéìòù]{1,16}[\\-\\s]?){1,8}\\s{2,}\\d{2}([MF])\\s{1,}\\d{4}\\s{2,}"
+        pop_out: false
+        required: false
+
       - name: year_of_birth
-        format: "^\\s{0,10}(?>\\d{1,3})?\\s{1,10}(?>[a-zA-Z\\.'`àèéìòù]{1,16}[\\-\\s]?){1,8}\\s{2,}(?>[a-zA-Z]{3})?\\s{1,}(\\d{4})\\s{2,}"
+        format: "^\\s{0,10}(?>\\d{1,3})?\\s{1,10}(?>[a-zA-Z\\.'`àèéìòù]{1,16}[\\-\\s]?){1,8}\\s{2,}\\d{2}[MF]\\s{2,}(\\d{4})\\s{2,}"
+        required: false
         pop_out: false
       - name: team_name
-        format: "\\s{2,}\\d{4}\\s{2,}(.{3,31})(?>\\s{2,}|$)"
-        token_start: 34
+        format: "\\s{1,}\\d{4}\\s{2,}(.{3,22}\\D{0,9})(?>\\s{2,}|$)"
         pop_out: false
 
       - name: heat_num
-        format: "\\s{5,}(\\d{1,3})\\s{2,}\\d{1,2}\\s{2,}\\d{1,2}\\.{1,2}\\s{2,}(?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2}\\s*"
+        format: "\\s{5,}(\\d{1,3})\\s{3,}\\d{1,2}\\s{2,}\\d{1,2}\\.{1,2}\\s{2,}(?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2}\\s*"
         pop_out: false
         required: false
       - name: lane_num
-        format: "\\s{5,}\\d{1,3}\\s{2,}(\\d{1,2})\\s{2,}\\d{1,2}\\.{1,2}\\s{2,}(?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2}\\s*"
+        format: "\\s{5,}\\d{1,3}\\s{3,}(\\d{1,2})\\s{2,}\\d{1,2}\\.{1,2}\\s{2,}(?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2}\\s*"
         pop_out: false
         required: false
       - name: heat_rank
-        format: "\\s{5,}\\d{1,3}\\s{2,}\\d{1,2}\\s{2,}(\\d{1,2})\\.{1,2}\\s{2,}(?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2}\\s*"
+        format: "\\s{5,}\\d{1,3}\\s{3,}\\d{1,2}\\s{2,}(\\d{1,2})\\.{1,2}\\s{2,}(?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2}\\s*"
         pop_out: false
         required: false
 

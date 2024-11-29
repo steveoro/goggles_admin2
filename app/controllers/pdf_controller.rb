@@ -54,7 +54,27 @@ class PdfController < ApplicationController
     l2 = PdfResults::L2Converter.new(data_hash, fp.season)
     logger.info('--> Checking null Teams row-by-row for possible replacements...')
     # DEBUG ----------------------------------------------------------------
-    # binding.pry
+    binding.pry
+    # ----------------------------------------------------------------------
+
+    # ----------------------------------------------------------------------
+    # NOTE: (LEAVE THIS HERE FOREVER)
+    # The best way to show the data_hash hierarchy for debugging is uncommenting the pry above and use:
+    #
+    # > puts fp.root_dao.hierarchy_to_s
+    #
+    # If you spot a sub-tree which belongs multiple times to the wrong parent or is orphaned in another sub-tree
+    # or is displayed at a wrong depth level, usually it's due to a wrong layout definition programme in one of
+    # its applied YAML files.
+    #
+    # For instance:
+    # - Don't define parent contexts for results as optional (required: false) unless strictly necessary.
+    # - An "empty key" parent context like an optional "category" parenting several "results" will end up
+    #   collecting all results, even for other different events, during the DAO#merge().
+    # - The DAO#merge() is called repeatedly during the parsing and will also end up building duplicates
+    #   for each sub-context found with an "empty key" parent.
+    #
+    # Check out the 'finlazio' layout family for an example.
     # ----------------------------------------------------------------------
     l2_hash = l2.to_hash
     scan_l2_data_hash_for_null_team_names(l2_hash)

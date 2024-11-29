@@ -75,10 +75,6 @@
         - name: event_type
           format: "^\\s{20,}[468]x50\\s?m\\s(?>Mistaffetta\\s)?(Stile(?>\\sLibero)?|Mist.)\\s*-?\\s*"
           pop_out: false
-        - name: cat_title
-          format: "\\s[-–]\\s((?>Assoluti|Under|Master)\\s(?>Femmine|Maschi|mist))"
-          required: false
-          pop_out: false
         - name: gender_type
           # This will match also "Mistaffetta" for mixed gender events:
           format: "(?>\\s[-–]\\s(?>Assoluti|Under|Master))?\\s(Femmine|Maschi|mist)"

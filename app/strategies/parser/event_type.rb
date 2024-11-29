@@ -8,7 +8,7 @@ module Parser
   #
   #   - version:  7-0.7.25
   #   - author:   Steve A.
-  #   - build:    20241125
+  #   - build:    20241127
   #
   # Wrapper for parsing helper methods for EventType & CategoryType instances.
   #
@@ -93,7 +93,9 @@ module Parser
     end
     # rubocop:enable Metrics/CyclomaticComplexity
 
-    # Converts the specified +event_title+ into a normalized standard format string.
+    # Converts the specified +event_title+ into a normalized standard 2-character format string,
+    # specifically for the swim style, keeping the rest "as is".
+    # (So, it works for both individual & relay events.)
     #
     # == Params:
     # - event_title: the String event title for the event section Hash

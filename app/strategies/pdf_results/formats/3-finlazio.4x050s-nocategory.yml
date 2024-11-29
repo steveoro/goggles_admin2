@@ -2,10 +2,11 @@
 # = Layout format definition for PdfResults::FormatParser
 #
 # - Based upon '3-finfvg.4x050m', but w/o "CR" column and no lap timings.
+# - NO category separator (gender inside event, event -> rel_team -> rel_swimmer)
 # - FIN Lazio, 4x50m-only, usually NO lap timings (although supported)
 # - YOB+category (<YY[MF]>) for each swimmer in 'NAZ' column;
 #
-3-finlazio.4x050s:
+3-finlazio.4x050s-nocategory:
   - name: header
     at_fixed_row: 0
     # In order to validate/debug a format not always present in page,
@@ -73,28 +74,10 @@
       - name: event_sep0
         format: "^$"
 
-  - name: rel_category
-    repeat: true
-    # May lack whenever a category is reported on the next page:
-    required: false
-    starts_at_row: 4
-    parent: event
-    rows:
-      - name: cat_separator
-        required: false
-        format: "^$"
-      - fields:
-        - name: cat_title
-          format: "^\\s{50,}((?>MASTER\\s|UNDER\\s|PROPAGANDA\\s)?\\d{2,3})[MFX]"
-          pop_out: false
-        - name: gender_type
-          format: "^\\s{50,}(?>MASTER\\s|UNDER\\s|PROPAGANDA\\s)?\\d{2,3}([MFX])"
-          pop_out: false
-
   # Actual data starts here:
   - name: rel_team
     repeat: true
-    parent: rel_category
+    parent: event
     starts_at_row: 4
     rows:
       - name: results_detail
@@ -124,17 +107,6 @@
             pop_out: false
             # U25 / A20 do not score:
             required: false
-
-  - name: dsq_label
-    parent: rel_team
-    required: false
-    rows:
-      - name: dsq_type
-        # required: false
-        fields:
-          - name: disqualify_type
-            format: "^\\s{15,}((?>\\d[°^]\\s)?cambio\\s\\w+.{0,30}|falsa\\spartenz\\w+.{0,30}|arrivo\\sirr\\w*.{0,30}|virata\\s\\w+.{0,30}|nuotata\\sirr\\w+.{0,30})"
-            pop_out: false
 
   - name: rel_swimmer
     repeat: true
@@ -246,6 +218,17 @@
             format: "\\s{5,}(?>\\d{1,2}[:'\\.])?\\d{2}[\\.\"]\\d{2}\\s{1,}((?>\\d{1,2}[:'\\.])?\\d{2}[\\.\"]\\d{2})$"
             pop_out: false
             required: false
+
+  - name: dsq_label
+    parent: rel_team
+    required: false
+    rows:
+      - name: dsq_type
+        # required: false
+        fields:
+          - name: disqualify_type
+            format: "^\\s{15,}((?>\\d[°^]\\s)?cambio\\s\\w+.{0,30}|falsa\\spartenz\\w+.{0,30}|arrivo\\sirr\\w*.{0,30}|virata\\s\\w+.{0,30}|nuotata\\sirr\\w+.{0,30})"
+            pop_out: false
 
   - name: disqualified
     parent: event
