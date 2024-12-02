@@ -54,7 +54,7 @@ class PdfController < ApplicationController
     l2 = PdfResults::L2Converter.new(data_hash, fp.season)
     logger.info('--> Checking null Teams row-by-row for possible replacements...')
     # DEBUG ----------------------------------------------------------------
-    binding.pry
+    # binding.pry
     # ----------------------------------------------------------------------
 
     # ----------------------------------------------------------------------

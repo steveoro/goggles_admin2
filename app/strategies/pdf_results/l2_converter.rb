@@ -645,7 +645,7 @@ module PdfResults
     #
     def extract_indiv_result_fields(result_hash, cat_gender_code)
       # DEBUG ----------------------------------------------------------------
-      # binding.pry if result_hash['swimmer_name'].to_s.include?('<swimmer_name>') || result_hash[:fields]['swimmer_name'].to_s.include?('<swimmer_name>')
+      # binding.pry if result_hash['swimmer_name'].to_s.include?('*** ') || result_hash[:fields]['swimmer_name'].to_s.include?('*** ')
       # ----------------------------------------------------------------------
 
       return {} unless IND_RESULT_SECTION.include?(result_hash[:name]) ||
@@ -679,7 +679,7 @@ module PdfResults
       fields = result_hash.fetch(:fields, {})
       rank = fields['rank']&.delete(')')
       year_of_birth = fetch_field_with_alt_value(fields, 'year_of_birth')
-      swimmer_name = extract_nested_field_name(result_hash, SWIMMER_FIELD_NAMES)&.upcase
+      swimmer_name = extract_nested_field_name(result_hash, SWIMMER_FIELD_NAMES).to_s.upcase
       # Bail out if we don't have at least a swimmer name to check for:
       return {} if swimmer_name.blank?
 
@@ -695,7 +695,7 @@ module PdfResults
       # Support gender codes inline on result rows (give priority to inner-depth contexts):
       gender_code = fields[GENDER_FIELD_NAME] || cat_gender_code
       # DEBUG ----------------------------------------------------------------
-      binding.pry if (year_of_birth.to_i.zero? || gender_code != 'F') && swimmer_name.starts_with?('BONETTI ')
+      # binding.pry if (year_of_birth.to_i.zero? || gender_code != 'F') && swimmer_name.starts_with?('*** ')
       # ----------------------------------------------------------------------
       swimmer_name, year_of_birth, gender_code = scan_results_or_search_db_for_missing_swimmer_fields(swimmer_name, year_of_birth, gender_code, team_name)
 
@@ -989,7 +989,7 @@ module PdfResults
           !row_hash.fetch(:fields, {})['event_length'].to_s.match?(/X/i)))
     end
 
-    # Gets the ind. result category code directly from the given data hash key or the supported
+    # Gets the indiv. result category code directly from the given data hash key or the supported
     # field name if anything else fails.
     # Estracting the code from the key value here is more generic than relying on
     # the actual field names. Returns +nil+ for any other unsupported case.
@@ -1019,7 +1019,7 @@ module PdfResults
         age_slot.to_i >= under_limit ? "M#{age_slot}" : "U#{age_slot}"
 
       # use just the field value "almost as-is" for unsupported key value cases:
-      elsif row_hash[:fields].key?(CAT_FIELD_NAME)
+      elsif row_hash.key?(:fields) && row_hash[:fields].key?(CAT_FIELD_NAME)
         result = row_hash[:fields][CAT_FIELD_NAME].to_s
                                                   .gsub(/Master\s?/i, 'M')
                                                   .gsub(/Under\s?/i, 'U')
@@ -1110,7 +1110,7 @@ module PdfResults
         /\|(masch\w*|femmin\w*)\|/ui.match(key).captures.first.upcase.at(0)
 
       # use just the first capital character from the field value:
-      elsif row_hash[:fields].key?(GENDER_FIELD_NAME)
+      elsif row_hash.key?(:fields) && row_hash[:fields].key?(GENDER_FIELD_NAME)
         row_hash[:fields][GENDER_FIELD_NAME].to_s.gsub(/donne/i, 'femmine').gsub(/uomini/i, 'maschi').upcase.at(0)
       end
     end
@@ -1139,7 +1139,7 @@ module PdfResults
                       /M\d{2,3}-\d{2,3}\|(Masch|Femmin|Mist)/ui.match(key).captures.first
                     end
       # Use the field value when no match is found:
-      gender_name = row_hash[:fields][GENDER_FIELD_NAME] if gender_name.blank? && row_hash[:fields].key?(GENDER_FIELD_NAME)
+      gender_name = row_hash[:fields][GENDER_FIELD_NAME] if gender_name.blank? && row_hash.key?(:fields) && row_hash[:fields].key?(GENDER_FIELD_NAME)
       return GogglesDb::GenderType.intermixed.code if intermixed_gender_label?(gender_name)
 
       gender_name&.at(0)&.upcase
@@ -1210,7 +1210,8 @@ module PdfResults
     # stored in any of the sub-rows nested at the first level of the current/parent result_hash specified.
     # The name of the sibling row shouldn't matter as each nested row is scanned in search for supported
     # column names only.
-    # Returns an empty string when no values or valid field names are found (even at the "root" level
+    #
+    # Returns +nil+ when no values or valid field names are found (searching also at the "root" level
     # of the result_hash).
     #
     # This method automatically supports "_alt" field names when the default field names are not found.
@@ -1231,7 +1232,7 @@ module PdfResults
 
         row_hash[:fields].each { |fname, fvalue| result_value += " #{fvalue&.squeeze(' ')}" if supported_field_names.include?(fname) }
       end
-      return result_value.strip if result_value.strip.present?
+      return result_value.strip if result_value.present?
 
       # Search for an "_alt" value when the default field names were not found:
       alt_field_names = supported_field_names.map { |name| "#{name}_alt" }
@@ -1245,7 +1246,7 @@ module PdfResults
 
         row_hash[:fields].each { |fname, fvalue| result_value += " #{fvalue&.squeeze(' ')}" if alt_field_names.include?(fname) }
       end
-      result_value.strip
+      result_value.present? ? result_value.strip : nil
     end
     #-- -----------------------------------------------------------------------
     #++
@@ -1756,7 +1757,7 @@ module PdfResults
       #
       result_row = extract_indiv_result_fields(result_data_hash, parent_section.gender_code)
       # DEBUG ----------------------------------------------------------------
-      # binding.pry if result_row['name'].to_s.start_with?('***')
+      # binding.pry if result_row['name'].to_s.start_with?('*** ')
       # ----------------------------------------------------------------------
       putc('.')
 
