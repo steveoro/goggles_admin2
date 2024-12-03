@@ -68,7 +68,7 @@ module PdfResults
     # extract the data as an hash and use just the first element of the root node
     # (which should have the 'header' name key).
     #
-    #   > data = root_dao.data
+    #   > data = root_dao.collect_data
     #   > data_hash = data[:rows].first
     #   =>
     #   {:name=>"header", ...
@@ -170,6 +170,9 @@ module PdfResults
         case event_hash[:name]
         when 'ranking_hdr'
           putc('R')
+          # Supported hierarchy for "ranking_hdr" depth level:
+          #   [ranking_hdr]
+          #         +---[team_ranking]
           # Create a new section & add inconditionally (these usually are separated from the results):
           ranking_section = create_ranking_section(event_hash)
           resulting_sections << ranking_section if ranking_section.present?

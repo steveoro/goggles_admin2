@@ -27,6 +27,7 @@
       # header row-1..5
       - name: hdr1
         row_span: 5
+        keys: [skip_me]
         format: "^\\s{20,}RISULTATI\\s[-–]\\sGARA$"
 
       # header row-6
@@ -76,6 +77,7 @@
       # Optional carry-on event separator:
       - name: event_sep1
         required: false
+        keys: [skip_me]
         format: "^\\s{30,}_{1,5}CONTINUA$"
 
   - name: category
@@ -111,6 +113,7 @@
           pop_out: false
 
       - name: cat_hdr
+        keys: [skip_me]
         format: "Cl\\.\\sCodice\\s+Atleta\\s+Anno\\sSocietà\\s+Tempo\\s+P\\.Tab\\s+Reg\\."
       - name: cat_sep1
         format: "^$"
@@ -143,7 +146,7 @@
           format: "\\s{1,}\\d{4}\\s((?>\\s?\\S{1,}){1,})(?>\\s{1,}\\d{2}[':\\.]|\\s{1,}Squalificat|\\s{1,}Ritirat|\\s{1,}Arrivo)"
           pop_out: false
         - name: timing
-          format: "\\s{1,}\\d{4}\\s.+\\s{1,}(\\d{2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+(?>\\(?\\d{3,4},\\d{2}\\)?)?\\s{1,}\\w{3,}$"
+          format: "\\s{1,}\\d{4}\\s.+\\s{1,}(\\d{2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+(?>\\(?\\d{3,4},\\d{2}\\)?)?\\s{1,}\\w{3,}"
           pop_out: false
           # DSQ don't have timings:
           required: false
@@ -153,7 +156,7 @@
           # U25/A20/DSQ do not score:
           required: false
         - name: badge_region
-          format: "\\s{1,}([a-zA-Z]{3})$"
+          format: "\\s{1,}([a-zA-Z]{3})(?>\\s{2,}[a-zA-Z]{2}\\s\\([MU]\\d{2}\\))?$"
           # This may be rendered on the next row in case of DSQs:
           required: false
           pop_out: false
@@ -226,47 +229,51 @@
   - name: results_lap250
     parent: results
     required: false
-    fields:
-      - name: lap50
-        format: "\\s{2,}-50m(\\d{2}[':\\.]\\d{2}[\":\\.]\\d{2})[\\s\\(]"
-        pop_out: false
+    rows:
+      - name: result_sep0
         required: false
-      - name: delta50
-        format: "\\s{2,}-50m\\d{2}[':\\.]\\d{2}[\":\\.]\\d{2}[\\s\\(](\\d{0,2}[':\\.]?\\d{2}[\":\\.,]\\d{2})\\)?"
-        pop_out: false
-        required: false
-      - name: lap100
-        format: "\\s{2,}-100m(\\d{2}[':\\.]\\d{2}[\":\\.]\\d{2})[\\s\\(]"
-        pop_out: false
-        required: false
-      - name: delta100
-        format: "\\s{2,}-100m\\d{2}[':\\.]\\d{2}[\":\\.]\\d{2}[\\s\\(](\\d{0,2}[':\\.]?\\d{2}[\":\\.,]\\d{2})\\)?"
-        pop_out: false
-        required: false
-      - name: lap150
-        format: "\\s{2,}-150m(\\d{2}[':\\.]\\d{2}[\":\\.]\\d{2})[\\s\\(]"
-        pop_out: false
-        required: false
-      - name: delta150
-        format: "\\s{2,}-150m\\d{2}[':\\.]\\d{2}[\":\\.]\\d{2}[\\s\\(](\\d{0,2}[':\\.]?\\d{2}[\":\\.,]\\d{2})\\)?"
-        pop_out: false
-        required: false
-      - name: lap200
-        format: "\\s{2,}-200m(\\d{2}[':\\.]\\d{2}[\":\\.]\\d{2})[\\s\\(]"
-        pop_out: false
-        required: false
-      - name: delta200
-        format: "\\s{2,}-200m\\d{2}[':\\.]\\d{2}[\":\\.]\\d{2}[\\s\\(](\\d{0,2}[':\\.]?\\d{2}[\":\\.,]\\d{2})\\)?"
-        pop_out: false
-        required: false
-      - name: lap250
-        format: "\\s{2,}-250m(\\d{2}[':\\.]\\d{2}[\":\\.]\\d{2})[\\s\\(]"
-        pop_out: false
-        required: false
-      - name: delta250
-        format: "\\s{2,}-250m\\d{2}[':\\.]\\d{2}[\":\\.]\\d{2}[\\s\\(](\\d{0,2}[':\\.]?\\d{2}[\":\\.,]\\d{2})\\)?"
-        pop_out: false
-        required: false
+        format: "^$"
+      - fields:
+        - name: lap50
+          format: "\\s{2,}-50m(\\d{2}[':\\.]\\d{2}[\":\\.]\\d{2})[\\s\\(]"
+          pop_out: false
+          required: false
+        - name: delta50
+          format: "\\s{2,}-50m\\d{2}[':\\.]\\d{2}[\":\\.]\\d{2}[\\s\\(](\\d{0,2}[':\\.]?\\d{2}[\":\\.,]\\d{2})\\)?"
+          pop_out: false
+          required: false
+        - name: lap100
+          format: "\\s{2,}-100m(\\d{2}[':\\.]\\d{2}[\":\\.]\\d{2})[\\s\\(]"
+          pop_out: false
+          required: false
+        - name: delta100
+          format: "\\s{2,}-100m\\d{2}[':\\.]\\d{2}[\":\\.]\\d{2}[\\s\\(](\\d{0,2}[':\\.]?\\d{2}[\":\\.,]\\d{2})\\)?"
+          pop_out: false
+          required: false
+        - name: lap150
+          format: "\\s{2,}-150m(\\d{2}[':\\.]\\d{2}[\":\\.]\\d{2})[\\s\\(]"
+          pop_out: false
+          required: false
+        - name: delta150
+          format: "\\s{2,}-150m\\d{2}[':\\.]\\d{2}[\":\\.]\\d{2}[\\s\\(](\\d{0,2}[':\\.]?\\d{2}[\":\\.,]\\d{2})\\)?"
+          pop_out: false
+          required: false
+        - name: lap200
+          format: "\\s{2,}-200m(\\d{2}[':\\.]\\d{2}[\":\\.]\\d{2})[\\s\\(]"
+          pop_out: false
+          required: false
+        - name: delta200
+          format: "\\s{2,}-200m\\d{2}[':\\.]\\d{2}[\":\\.]\\d{2}[\\s\\(](\\d{0,2}[':\\.]?\\d{2}[\":\\.,]\\d{2})\\)?"
+          pop_out: false
+          required: false
+        - name: lap250
+          format: "\\s{2,}-250m(\\d{2}[':\\.]\\d{2}[\":\\.]\\d{2})[\\s\\(]"
+          pop_out: false
+          required: false
+        - name: delta250
+          format: "\\s{2,}-250m\\d{2}[':\\.]\\d{2}[\":\\.]\\d{2}[\\s\\(](\\d{0,2}[':\\.]?\\d{2}[\":\\.,]\\d{2})\\)?"
+          pop_out: false
+          required: false
 
   # Sibling "results" row #3: (optional)
   - name: results_lap500
@@ -381,6 +388,7 @@
     parent: event
     rows:
       - name: cat_sep0
+        required: false
         format: "^$"
       - fields:
         - name: cat_title
@@ -404,6 +412,7 @@
           pop_out: false
 
       - name: cat_hdr
+        keys: [skip_me]
         format: "Cl\\.\\sCodice\\s+Atleta\\s+Anno\\sSocietà\\s+Tempo\\s+P\\.Tab\\s+Reg\\."
       - name: cat_sep1
         format: "^$"

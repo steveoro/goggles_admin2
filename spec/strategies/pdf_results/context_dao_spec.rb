@@ -73,7 +73,7 @@ RSpec.describe PdfResults::ContextDAO, type: :strategy do
       it_behaves_like(
         'responding to a list of methods',
         %i[
-          name parent key rows fields_hash set_debug_mock_values data
+          name parent key rows fields_hash set_debug_mock_values collect_data
           find_existing add_row merge to_s
         ]
       )
@@ -107,8 +107,8 @@ RSpec.describe PdfResults::ContextDAO, type: :strategy do
           .to contain_exactly(fixture_rank, fixture_name, fixture_year)
       end
 
-      it 'has same #data as the DAO resulting from extract()' do
-        expect(new_instance.data).to eq(extracted_dao.data)
+      it 'has same #collect_data result as the DAO resulting from extract()' do
+        expect(new_instance.collect_data).to eq(extracted_dao.collect_data)
       end
     end
 

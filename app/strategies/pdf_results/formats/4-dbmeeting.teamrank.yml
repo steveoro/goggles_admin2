@@ -1,0 +1,108 @@
+#
+# = Layout format definition for PdfResults::FormatParser
+#
+# - Team rankings for DBMeeting format
+#
+# Example: Tuscany Masters' Meetings
+#
+4-dbmeeting.teamrank:
+  - name: header
+    # Repeat (at_fixed_row, each page)
+    at_fixed_row: 0
+    required: false
+    repeat: false
+    row_span: 7
+    rows:
+      # header row-0
+      - name: hdr0
+        starts_with: "DBMEETING"
+        fields:
+          - name: org_team_name
+            required: false
+            format: "\\s{10,}Società\\sorganizzatrice\\s(.+)$"
+
+      # header row-1..5
+      - name: hdr1
+        row_span: 4
+        keys: [skip_me]
+        format: "^\\s{20,}CLASSIFICA\\sSOCIETA'\\sPunteggio\\sTabellare$"
+
+      # header row-6
+      - fields:
+        - name: edition
+          required: false
+          format: "^\\s{20,}(\\d{1,2}|[IVXLCM]+)\\D?\\D?\\s+"
+          pop_out: false
+        - name: meeting_name
+          format: "^\\s{20,}(?>\\d{1,2}|[IVXLCM]+)?\\D?\\D?\\s+(.+)$"
+          pop_out: false
+
+      # header row-7
+      - name: hdr_place_date
+        fields:
+          - name: meeting_place
+            format: "^\\s{20,}(.+)\\s-{1,3}\\s"
+          - name: meeting_date
+            # Support for 1 weekday name in date description:
+            # - Ex.1: "<place> --- GIOVEDI' 25 APRILE 2019"
+            # - Ex.2: "<place> --- 25 E 26 MAGGIO 2019"
+            format: "^\\s{20,}.+\\s\\-{1,3}\\s(?>(?>lun(?>ed)?|mar(?>ted)?|merc(?>oled)?|gio(?>ved)?|ven(?>erd)?|sab(?>ato)?|dom(?>enica)?)[ìi']{0,2})?\\s?(\\d{1,2}(>?\\s?[e&,\\/]\\s?\\d{1,2})?(?>[-\\/]\\d{2}[-\\/]\\d{2,4}|\\s\\w{3,}\\s\\d{2,4}))"
+
+  - name: ranking_hdr
+    parent: header
+    rows:
+      - name: ranking_sep0
+        format: "^$"
+      - name: ranking_sep1
+        required: false
+        format: "^$"
+      - name: ranking_hdr1
+        keys: [skip_me]
+        format: "^\\s?Ord\\s{1,}Società\\s{20,}Reg\\.\\s{10,}Punti\\s{2,}Oro\\s{2,}Arg\\s{2,}Bro\\s{4,}N\\.Gare\\s{4,}Media"
+      - name: ranking_sep2
+        format: "^$"
+
+  - name: team_ranking
+    parent: ranking_hdr
+    repeat: true
+    rows:
+      - name: team_ranking1
+        fields:
+          - name: rank
+            format: "^\\s{0,5}(\\d{1,3})\\)\\s{2,}"
+            pop_out: false
+          - name: team_name
+            format: "\\s{0,5}\\d{1,3}\\)\\s{2,}(\\D.{2,30})\\s{2,}[a-zA-Z]{3,}(?>\\s[a-zA-Z]{3,})?\\s{3,}\\d"
+            pop_out: false
+          - name: region
+            format: "\\s{0,5}\\d{1,3}\\)\\s{2,}\\D.{2,30}\\s{2,}([a-zA-Z]{3,}(?>\\s[a-zA-Z]{3,})?)\\s{3,}\\d"
+            pop_out: false
+          - name: overall_score
+            format: "\\s{0,5}\\d{1,3}\\)\\s{2,}\\D.{2,30}\\s{2,}[a-zA-Z]{3,}(?>\\s[a-zA-Z]{3,})?\\s{3,}(\\d{1,3}['.]?\\d{1,3}[,]\\d{2})\\s{2,}\\d"
+            pop_out: false
+      - name: team_ranking_ext
+        required: false
+        fields:
+          - name: region_ext
+            format: "^\\s{30,}([a-zA-Z]{3,}(?>\\s[a-zA-Z]{3,})?)$"
+            pop_out: false
+      - name: team_ranking_sep0
+        format: "^$"
+
+  # End-Of-Page, variable span: min 2-3
+  - name: footer
+    parent: header
+    eop: true
+    # repeat: true
+    rows:
+      - name: footer_sep0
+        format: "^$"
+      - name: footer_sep1
+        required: false
+        format: "^$"
+      - name: footer_sep2
+        required: false
+        format: "^$"
+      - name: footer_page
+        keys: [skip_me]
+        format: "^\\s{40,}Pagina\\s\\d{1,}"

@@ -49,13 +49,13 @@ class PdfController < ApplicationController
     return if fp.result_format_type.blank?
 
     logger.info("\r\n--> Extracting data hash...")
-    data_hash = fp.root_dao&.data&.fetch(:rows, [])&.find { |hsh| hsh[:name] == 'header' }
-
-    l2 = PdfResults::L2Converter.new(data_hash, fp.season)
-    logger.info('--> Checking null Teams row-by-row for possible replacements...')
+    data_hash = fp.root_dao&.collect_data&.fetch(:rows, [])&.find { |hsh| hsh[:name] == 'header' }
     # DEBUG ----------------------------------------------------------------
     # binding.pry
     # ----------------------------------------------------------------------
+
+    l2 = PdfResults::L2Converter.new(data_hash, fp.season)
+    logger.info('--> Checking null Teams row-by-row for possible replacements...')
 
     # ----------------------------------------------------------------------
     # NOTE: (LEAVE THIS HERE FOREVER)

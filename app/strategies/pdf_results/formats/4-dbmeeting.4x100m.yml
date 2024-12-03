@@ -30,6 +30,7 @@
       # header row-1..5
       - name: hdr1
         row_span: 5
+        keys: [skip_me]
         format: "^\\s{20,}RISULTATI\\s[-–]\\sGARA$"
 
       # header row-6
@@ -79,6 +80,7 @@
       # Optional carry-on event separator:
       - name: event_sep1
         required: false
+        keys: [skip_me]
         format: "^\\s{30,}_{1,5}CONTINUA$"
 
   - name: rel_category
@@ -112,6 +114,7 @@
           pop_out: false
 
       - name: cat_hdr
+        keys: [skip_me]
         format: "Cl\\.\\sCodice\\s+Atleta\\s+Anno\\sSocietà\\s+Tempo\\s+P\\.Tab\\s+Reg\\."
       - name: cat_sep1
         format: "^$"

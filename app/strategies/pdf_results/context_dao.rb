@@ -115,9 +115,12 @@ module PdfResults
 
     # Collects the whole sub-hierarchy data Hash associated with this instance
     # considering any sibling DAOs stored in #rows.
-    # Returns the Hash having as elements the values for :name, :key and :rows.
-    def data
-      result = {
+    # Returns the Hash having as elements the values for :name, :key and :rows, memoized.
+    # (So it's safe to be called multiple times.)
+    def collect_data
+      return @collect_data if @collect_data.present?
+
+      @collect_data = {
         name: @name,
         key: @key,
         fields: @fields_hash,
@@ -127,9 +130,9 @@ module PdfResults
       @rows.each do |row|
         next unless row.is_a?(ContextDAO)
 
-        result[:rows] << row.data
+        @collect_data[:rows] << row.collect_data
       end
-      result
+      @collect_data
     end
     #-- -----------------------------------------------------------------------
     #++
@@ -242,7 +245,7 @@ module PdfResults
       raise 'Invalid ContextDAO specified!' unless source_dao.is_a?(ContextDAO)
 
       # DEBUG ----------------------------------------------------------------
-      # binding.pry if source_dao.key.to_s.include?('<SWIMMER_NAME_TO_CHECK>') || key.to_s.include?('<SWIMMER_NAME_TO_CHECK>')
+      # binding.pry if source_dao.key.to_s.include?('*** ') || key.to_s.include?('*** ')
       # ----------------------------------------------------------------------
 
       # Find a destination container for the source DAO: it must have the same name & key
@@ -256,6 +259,9 @@ module PdfResults
         source_dao.rows.each { |row_dao| merge(row_dao) }
         return
       end
+
+      # Return immediately if source DAO is "equal" to self:
+      return if name == source_dao.name && key == source_dao.key && parent == source_dao.parent && rows.count == source_dao.rows.count
 
       # Set destination DAO parent only if not already set above, using this priority:
       # (any matching reference || same parent link || first matching parent name)
@@ -285,15 +291,22 @@ module PdfResults
         end
       end
 
-      # See if the source DAO is already inside the destination rows; add it if missing:
-      existing_dao = dest_parent.rows.find { |dao| dao.name == source_dao.name && dao.key == source_dao.key }
+      # Seek recursively for the source DAO inside the destination rows; add it ONLY if missing:
+      existing_dao = dest_parent.rows.find { |dao| dao.find_existing(source_dao) }
 
       # Found source DAO as existing? Try to merge its subtrees deeper, row (subtree) by row (subtree):
+      # (Merge will automatically skip semi-identical subtrees. See line "return if name == source_dao.name && ..." above.)
       if existing_dao.is_a?(ContextDAO)
         source_dao.rows.each { |row_dao| existing_dao.merge(row_dao) }
       else # Not already existing? => add it "as is" as a child of the parent:
         dest_parent.add_row(source_dao)
       end
+
+      # DEBUG ----------------------------------------------------------------
+      # puts "\r\n'#{key}' <==[MERGE]==| '#{source_dao.key}'"
+      # DEBUG VERBOSE --------------------------------------------------------
+      # puts hierarchy_to_s
+      # puts "\r\n"
     end
     #-- -----------------------------------------------------------------------
     #++
