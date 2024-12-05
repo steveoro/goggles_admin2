@@ -408,7 +408,7 @@ module PdfResults
     # the specified +separator+.
     #
     # Assumes #extract() has already been called (or the keys/values will be blank).
-    # An empty string otherwise.
+    # Returns an empty string otherwise.
     #
     # == NOTE:
     # +key+ & +key_hash+ may result empty after running format_parser.parse() given

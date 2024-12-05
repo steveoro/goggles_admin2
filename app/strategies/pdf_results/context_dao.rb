@@ -94,6 +94,7 @@ module PdfResults
       # Without a reference to the parent name, the merge would add any sibling context with a nil
       # parent to the root level, which is NOT what we want (creating orphans).
       @parent_name = context&.parent&.name
+      @parent_key = context&.parent&.key
       @key = context&.key # Use current Context key as UID
       @rows = []
 
@@ -137,6 +138,22 @@ module PdfResults
     #-- -----------------------------------------------------------------------
     #++
 
+    # Compares this instance with the specified DAO to check if they are referring
+    # to the same data hierarchy node. This check is performed recursively, by
+    # comparing the DAOs' names, keys, and parents and by performing the same
+    # check on the parents' DAOs themselves.
+    def same_dao?(source_dao)
+      # Whenever the link to the parent is nil due to a parent context not being found in the current data page
+      # (as with non-repeated sections that must be carried over implicitly until different in values, like headers
+      # or some events), we need to compare both the parent name & key stored inside the instance:
+      name == source_dao.name && key == source_dao.key &&
+        ((parent == source_dao.parent) || (parent.is_a?(ContextDAO) && parent.same_dao?(source_dao.parent)))
+      # (
+      #   (parent.is_a?(ContextDAO) && parent.same_dao?(source_dao.parent)) ||
+      #   (parent_name == source_dao.parent_name && parent_key == source_dao.parent_key)
+      # )
+    end
+
     # Searches recursively for the specified DAO inside the hierarchy, starting at
     # this instance as a descending node, to verify if the specified DAO is really
     # already stored in this subtree or not. (In which case, usually, it needs to be added.)
@@ -145,7 +162,7 @@ module PdfResults
     # Returns +nil+ otherwise.
     def find_existing(source_dao)
       return nil unless source_dao.is_a?(ContextDAO)
-      return self if source_dao.name == name && source_dao.key == key
+      return self if same_dao?(source_dao)
 
       # Find DAO in siblings (FIFO, go deeper):
       @rows.find { |dao| dao.find_existing(source_dao) }
@@ -245,68 +262,78 @@ module PdfResults
       raise 'Invalid ContextDAO specified!' unless source_dao.is_a?(ContextDAO)
 
       # DEBUG ----------------------------------------------------------------
-      # binding.pry if source_dao.key.to_s.include?('*** ') || key.to_s.include?('*** ')
+      # binding.pry if source_dao.key.to_s.include?('M 30|00.25.50') && key.blank?
       # ----------------------------------------------------------------------
-
       # Find a destination container for the source DAO: it must have the same name & key
       # as the parent referenced by the source itself.
-      # Only true root-level DAOs should have no parent:
-      dest_parent = self if name == 'root' && source_dao.parent.blank? && source_dao.parent_name.blank?
-      # Peculiar case: each supplied root DAO (with rows) must have all its row merged into
-      # this same DAO as a single array of uniquely-merged rows, so that the hierarchy tree
-      # is properly built (with just 1 DAO named 'root').
-      if name == 'root' && source_dao.name == 'root'
+
+      # Merge iteratively into #rows each subtree and return whenever we hit destination level:
+      if same_dao?(source_dao)
         source_dao.rows.each { |row_dao| merge(row_dao) }
         return
       end
 
-      # Return immediately if source DAO is "equal" to self:
-      return if name == source_dao.name && key == source_dao.key && parent == source_dao.parent && rows.count == source_dao.rows.count
+      # Special cases - headers & footers, "merge into one":
+      # 1. 'header' & 'post_header' (all header-type DAOs should be merged into one)
+      # 2. 'footer' (same as above, but with different base name)
+      if source_dao.name.include?('header') || source_dao.name.include?('footer')
+        target_name = source_dao.name.include?('header') ? 'header' : 'footer'
+        header = find_existing_by_name_only(target_name)
+        # Merge any other header (different in key) or post_header into the first child found in destination:
+        if header.is_a?(ContextDAO) && header.key != source_dao.key
+          # Merge hash fields and each sibling rows into the existing header:
+          header.fields_hash.merge!(source_dao.fields_hash)
+          source_dao.rows.each { |row_dao| header.merge(row_dao) }
+          return
+        end
+      end
 
-      # Set destination DAO parent only if not already set above, using this priority:
-      # (any matching reference || same parent link || first matching parent name)
-      dest_parent ||= find_existing(source_dao.parent) || source_dao.parent || find_existing_by_name_only(source_dao.parent_name)
+      # Special case - "root": (only true root-level DAOs should have no parent)
+      dest_parent = self if name == 'root' && source_dao.parent.blank? && source_dao.parent_name.blank?
+      # Each supplied root DAO (with rows) must have all its row merged into
+      # this same DAO as a single array of uniquely-merged rows, so that the hierarchy tree
+      # is properly built (with just 1 DAO named 'root').
+
+      # Find source reference to DAO parent in order to have key & structure for matching the tree merging:
+      dest_parent ||= source_dao.parent
+      # ^^ For pages w/o header, this is a reference to another instance in a possibly different subtree and with nil key.
+      # We need to find a correct reference inside this instance's hierarchy tree to actually perform the merge:
+
+      # Find the actual target parent DAO for the merge inside *this* subtree using the parent keys from the instance set above:
+      target_dao = find_existing(dest_parent)
 
       # NOTE: whenever the following happens, it may be due to a context_def that is optional
       #       but required anyway in the hierarchy tree.
       #       For ex.: an expected 'rel_category' needed by a 'rel_team' context,
       #                which should probably point directly to an 'event' instead.
       # DEBUG ----------------------------------------------------------------
-      binding.pry unless dest_parent.is_a?(ContextDAO) # rubocop:disable Lint/Debugger
+      binding.pry unless target_dao.is_a?(ContextDAO) # rubocop:disable Lint/Debugger
       # ----------------------------------------------------------------------
-      raise 'Unable to find destination parent for source ContextDAO during merge!' unless dest_parent.is_a?(ContextDAO)
+      raise 'Unable to find destination parent for source ContextDAO during merge!' unless target_dao.is_a?(ContextDAO)
 
-      # Special cases, "merge into one":
-      # 1. 'header' & 'post_header' (all header-type DAOs should be merged into one)
-      # 2. 'footer' (same as above, but with different base name)
-      if source_dao.name.include?('header') || source_dao.name.include?('footer')
-        target_name = source_dao.name.include?('header') ? 'header' : 'footer'
-        header = dest_parent.rows.find { |dao| dao.name == target_name }
-        # Merge any other header (different in key) or post_header into the first child found in destination:
-        if header.is_a?(ContextDAO) && header.key != source_dao.key
-          # Merge hash fields and each sibling rows into the existing header:
-          header.fields_hash.merge!(source_dao.fields_hash)
-          source_dao.rows.each { |row_dao| header.merge(row_dao) } # WAS: add_row
-          return
-        end
-      end
-
-      # Seek recursively for the source DAO inside the destination rows; add it ONLY if missing:
-      existing_dao = dest_parent.rows.find { |dao| dao.find_existing(source_dao) }
-
-      # Found source DAO as existing? Try to merge its subtrees deeper, row (subtree) by row (subtree):
-      # (Merge will automatically skip semi-identical subtrees. See line "return if name == source_dao.name && ..." above.)
-      if existing_dao.is_a?(ContextDAO)
-        source_dao.rows.each { |row_dao| existing_dao.merge(row_dao) }
-      else # Not already existing? => add it "as is" as a child of the parent:
-        dest_parent.add_row(source_dao)
-      end
+      # Seek recursively for the source DAO inside *this* subtree; add it ONLY if missing:
+      existing_dao = find_existing(source_dao)
 
       # DEBUG ----------------------------------------------------------------
-      # puts "\r\n'#{key}' <==[MERGE]==| '#{source_dao.key}'"
+      # puts "\r\n" if source_dao.rows.count.positive?
+      # puts "'#{key}' <==[MERGE]==| '#{source_dao.key}'"
       # DEBUG VERBOSE --------------------------------------------------------
       # puts hierarchy_to_s
       # puts "\r\n"
+
+      # Found same source DAO as existing? Try to merge its subtrees deeper, row by row:
+      # (Merge will automatically return for any leaf w/o any rows on the #same_dao? check above)
+      if existing_dao.is_a?(ContextDAO)
+        existing_dao.merge(source_dao) # Merge any possible residual difference between the 2 subtrees
+        # DEBUG ----------------------------------------------------------------
+        # puts "'#{existing_dao.key}' existing_dao.rows: #{existing_dao.rows.count}" if source_dao.rows.count.positive?
+        # DEBUG ----------------------------------------------------------------
+      else # Not already existing? => add it "as is" as a child of the parent:
+        target_dao.add_row(source_dao)
+        # DEBUG ----------------------------------------------------------------
+        # puts "'#{target_dao.key}' TARGET_DAO.rows: #{target_dao.rows.count}"
+        # DEBUG ----------------------------------------------------------------
+      end
     end
     #-- -----------------------------------------------------------------------
     #++

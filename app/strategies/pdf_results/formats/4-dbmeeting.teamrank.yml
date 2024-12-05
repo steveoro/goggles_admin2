@@ -57,8 +57,9 @@
         required: false
         format: "^$"
       - name: ranking_hdr1
-        keys: [skip_me]
-        format: "^\\s?Ord\\s{1,}Società\\s{20,}Reg\\.\\s{10,}Punti\\s{2,}Oro\\s{2,}Arg\\s{2,}Bro\\s{4,}N\\.Gare\\s{4,}Media"
+        # NOTE: don't create blank parents keys otherwise the ContextDAO won't be able to find the referenced parent
+        #       (in this case, this useless header is referenced by the team_ranking and it needs at least a dummy value)
+        format: "^\\s?Ord\\s{1,}(Società)\\s{20,}Reg\\.\\s{10,}Punti\\s{2,}Oro\\s{2,}Arg\\s{2,}Bro\\s{4,}N\\.Gare\\s{4,}Media"
       - name: ranking_sep2
         format: "^$"
 

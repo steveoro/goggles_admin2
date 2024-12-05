@@ -16,8 +16,12 @@
     .form-group
       .field
         = label_tag("swimmer[#{subkey_for_dom_id}][id]", 'fuzzy matches')
-        = select_tag("swimmer[#{subkey_for_dom_id}][id]", options_from_collection_for_select(swimmer_matches || [],
-                     'id', 'display_label', swimmer&.id), include_blank: true, class: 'form-control',
+        / ORIG.: (Needs updated SwimmerDecorator [DB] handling nil for gender_type)
+        -# = select_tag("swimmer[#{subkey_for_dom_id}][id]", options_from_collection_for_select(swimmer_matches || [],
+        -#              'id', 'display_label', swimmer&.id), include_blank: true, class: 'form-control',
+        -#              onchange: onchange_event)
+        - select_options_for_swimmer = (swimmer_matches || []).map { |sw| [sw.id, "#{sw.complete_name} (#{sw.gender_type&.label}, #{sw.year_of_birth}#{sw.year_guessed ? '~' : ''})"] }
+        = select_tag("swimmer[#{subkey_for_dom_id}][id]", options_for_select(select_options_for_swimmer), include_blank: true, class: 'form-control',
                      onchange: onchange_event)
     .row
       .col-auto

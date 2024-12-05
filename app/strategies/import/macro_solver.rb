@@ -1006,13 +1006,19 @@ module Import
       finder_opts[:gender_type_id] = gender_type.id if gender_type.is_a?(GogglesDb::GenderType)
       finder_opts[:year_of_birth] = year.to_i if year.to_i.positive?
 
-      cmd = GogglesDb::CmdFindDbEntity.call(GogglesDb::Swimmer, finder_opts)
+      # OLD IMPLEMENTATION:
+      # cmd = GogglesDb::CmdFindDbEntity.call(GogglesDb::Swimmer, finder_opts)
       # NOTE: cmd will find a result even for nil gender types, but it may fail for "totally new" swimmers
       #       added through a relay result!
-      if cmd.successful?
-        matches = cmd.matches.respond_to?(:map) ? cmd.matches.map(&:candidate) : cmd.matches
-        return Import::Entity.new(row: cmd.result, matches:)
-      end
+      # if cmd.successful?
+      #   matches = cmd.matches.respond_to?(:map) ? cmd.matches.map(&:candidate) : cmd.matches
+      # end
+      # USE A STRICTER BIAS:
+      finder = GogglesDb::DbFinders::BaseStrategy.new(GogglesDb::Swimmer, finder_opts, :for_name, 0.92) # Orig. bias: 0.8
+      finder.scan_for_matches
+      finder.sort_matches
+      result = finder.matches.first&.candidate
+      return Import::Entity.new(row: result, matches: finder.matches&.map(&:candidate)) if result.present?
 
       tokens = swimmer_name.split # ASSUMES: family name(s) first, given name(s) last
       if tokens.size == 2
@@ -1047,7 +1053,7 @@ module Import
         # found before the purge.
         # The "Purge" action is nevertheless required each time there's a possible duplicate in
         # new swimmers or teams to avoid errors due to duplicated rows during the commit phase.
-        gender_type_id: gender_type.id,
+        gender_type_id: gender_type&.id,
         year_guessed: year_of_birth.to_i.zero?
       )
       Import::Entity.new(row: new_row, matches: [new_row])
@@ -1091,7 +1097,7 @@ module Import
         team_affiliation_id: team_affiliation&.id,
         team_id: team&.id,
         season_id: team_affiliation.season_id, # (ASSERT: this will be always set)
-        category_type_id: category_type.id,
+        category_type_id: category_type&.id, # This can be nil for swimmers w/ partial data (needs to be filled later on)
         entry_time_type_id: entry_time_type.id,
         number: badge_code || '?'
       )
@@ -1969,13 +1975,18 @@ module Import
     #
     # - <tt>team_original_name</tt>: original team name text extracted from the result file "as is".
     #
+    # == Returns
+    # The resulting string key for the specified parameters. It should be never +nil+ (even when partial
+    # due to unknown gender or YOB).
+    #
     def swimmer_key_for(swimmer_original_name, year_of_birth, gender_type_code, team_original_name)
       if gender_type_code.blank? || year_of_birth.blank? || team_original_name.blank?
         search_exp = "#{swimmer_original_name}-"
         search_exp += "#{year_of_birth.presence || '\d{4}'}-"
         # If the team name is blank, being it the last part of the Regexp, it won't matter:
         search_exp += "#{gender_type_code.presence || '[MF]'}-#{team_original_name}"
-        return search_key_for('swimmer', Regexp.new(search_exp, Regexp::IGNORECASE))
+        result = search_key_for('swimmer', Regexp.new(search_exp, Regexp::IGNORECASE))
+        return result if result.present?
       end
 
       "#{swimmer_original_name}-#{year_of_birth}-#{gender_type_code}-#{team_original_name}"
@@ -2144,7 +2155,7 @@ module Import
       # Rebuild the key from the resulting entity in case the search nullified the partial key:
       if swimmer_key.blank?
         swimmer_key = swimmer_key_for(options[:swimmer_name], swimmer_entity.row.year_of_birth,
-                                      swimmer_entity.row.gender_type.code, options[:team_name])
+                                      swimmer_entity.row.gender_type&.code, options[:team_name])
       end
       # Special disambiguation reference (in case of same-named swimmers with same age):
       swimmer_entity&.add_bindings!('team' => options[:team_name])
@@ -2557,7 +2568,7 @@ module Import
     # Same implementation as L2Converter's helper but returns the actual CategoryType instead of just the code.
     #
     def post_compute_ind_category_code(year_of_birth)
-      return unless year_of_birth.positive?
+      return unless year_of_birth.to_i.positive?
 
       age = @season.begin_date.year - year_of_birth
       _curr_cat_code, category_type = @categories_cache.find_category_code_for_age(age, relay: false)

@@ -26,7 +26,7 @@
             :ruby
               swimmer_entity = @swimmers_hash[swimmer_key]
               swimmer = swimmer_entity.row
-              name_part = swimmer_key.split(/-\d{4}-/).first
+              name_part = swimmer_key.split(/-\d{4}-|--/).first
               difference_detected = !name_part.downcase.starts_with?(swimmer.complete_name.downcase)
             %div{ id: "swimmer-card-#{index}" }
               .card.my-2{ class: difference_detected ? 'border border-danger' : '' }
@@ -77,7 +77,8 @@
                         .row
                           %small{ id: "team-list-for-#{swimmer.id}" }
                     .col.mt-1.pt-2
-                      %i.form-text.text-muted.bg-light-grey
+                      / Signal whenever there's a key with unknowns (gender or YOB):
+                      %i.form-text.text-muted{ class: swimmer_key.include?('--') ? 'bg-light-red' : 'bg-light-grey' }
                         %pre
                           🔑 "#{swimmer_key}"
                 .collapse{ id: "swimmer-panel-#{index}", 'aria-labelledby' => "swimmer-header-#{index}",

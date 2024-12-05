@@ -584,7 +584,11 @@ module PdfResults
     #
     def scan_results_or_search_db_for_missing_swimmer_fields(swimmer_name, year_of_birth, gender_code, team_name)
       # Scan existing swimmers in results searching for missing fields:
+      # DEBUG ----------------------------------------------------------------
+      # binding.pry if (year_of_birth.to_i.zero? || gender_code != 'F') && swimmer_name.starts_with?('*** ')
+      # ----------------------------------------------------------------------
 
+      # ** 1. ** Try to fix missing data searching already parsed results (in-file):
       if year_of_birth.to_i.zero? || gender_code.blank?
         scanned_year_of_birth, scanned_gender_code = search_result_row_with_swimmer(swimmer_name, team_name)
         year_of_birth = scanned_year_of_birth if scanned_year_of_birth.present? && year_of_birth.to_i.zero?
@@ -592,17 +596,32 @@ module PdfResults
       end
       year_of_birth = adjust_2digit_year(year_of_birth) if year_of_birth.present? # (no-op if the year is already 4-digits)
 
+      # ** 2. ** Try to fix missing data searching on the DB:
+      # OLD IMPLEMENTATION:
       # Whenever the gender or the year of birth are still unknown, use the DB finders as second-last resort:
-      if year_of_birth.to_i.zero? || gender_code.blank?
-        # Don't add nil params to the finder cmd as they may act as filters as well:
-        finder_opts = { complete_name: swimmer_name }
-        finder_opts[:year_of_birth] = year_of_birth.to_i if year_of_birth.to_i.positive?
-        finder_opts[:gender_type_id] = GogglesDb::GenderType.find_by(code: gender_code).id if gender_code.present?
-        cmd = GogglesDb::CmdFindDbEntity.call(GogglesDb::Swimmer, finder_opts)
-        if cmd.successful?
-          gender_code = cmd.result.male? ? 'M' : 'F'
-          year_of_birth = cmd.result.year_of_birth
-          swimmer_name = cmd.result.complete_name
+      # if year_of_birth.to_i.zero? || gender_code.blank?
+      #   # Don't add nil params to the finder cmd as they may act as filters as well:
+      #   finder_opts = { complete_name: swimmer_name }
+      #   finder_opts[:year_of_birth] = year_of_birth.to_i if year_of_birth.to_i.positive?
+      #   finder_opts[:gender_type_id] = GogglesDb::GenderType.find_by(code: gender_code).id if gender_code.present?
+      #   cmd = GogglesDb::CmdFindDbEntity.call(GogglesDb::Swimmer, finder_opts)
+      #   if cmd.successful?
+      #     gender_code = cmd.result.male? ? 'M' : 'F'
+      #     year_of_birth = cmd.result.year_of_birth
+      #     swimmer_name = cmd.result.complete_name
+
+      # [UPDATE 20241204] Use a custom finder with a more strict bias (otherwise the result may overwrite the parsed data from relays,
+      # which often lack both year of birth & gender info) and DON'T USE the DB FINDERS if we don't know the age:
+      if year_of_birth.to_i.positive? && gender_code.blank?
+        finder_opts = { complete_name: swimmer_name, year_of_birth: year_of_birth.to_i }
+        finder = GogglesDb::DbFinders::BaseStrategy.new(GogglesDb::Swimmer, finder_opts, :for_name, 0.92) # Orig. bias: 0.8
+        finder.scan_for_matches
+        finder.sort_matches
+        result = finder.matches.first&.candidate
+        if result.present?
+          gender_code = result.male? ? 'M' : 'F'
+          year_of_birth = result.year_of_birth
+          swimmer_name = result.complete_name
         else
           # As a very last resort, make an educated guess for the gender from the name, using common locale-IT exceptions:
           gender_code = if swimmer_name.match?(/\w+[nosl\-]\s?maria|andrea?$|one$|riele$|pasquale|fele$|oele$|luca|nicola$|\w+[gkcnos]'?$/ui)
@@ -778,6 +797,9 @@ module PdfResults
         value = fetch_field_with_alt_value(fields, key)
         row_hash[key] = format_timing_value(value) if POSSIBLE_TIMING_REGEXP.match?(value)
       end
+      # DEBUG ----------------------------------------------------------------
+      # binding.pry if row_hash['timing'] == "01'43\"22"
+      # ----------------------------------------------------------------------
 
       # Add relay swimmer laps onto the same result hash & compute possible age group
       # in the meantime (SOURCE: fields |=> DEST.: row_hash):
@@ -1631,7 +1653,7 @@ module PdfResults
       year_of_birth = rel_fields_hash[fld_yob]
       gender_code   = rel_fields_hash[fld_gender]
       # DEBUG ----------------------------------------------------------------
-      # binding.pry if (year_of_birth.to_i.zero? || gender_code != 'F') && swimmer_name.starts_with?('****')
+      # binding.pry if year_of_birth.to_i.zero? && swimmer_name.starts_with?('*** ')
       # ----------------------------------------------------------------------
 
       swimmer_name, year_of_birth, gender_code = scan_results_or_search_db_for_missing_swimmer_fields(swimmer_name, year_of_birth, gender_code, team_name)
