@@ -1020,14 +1020,14 @@ module Import
       result = finder.matches.first&.candidate
       return Import::Entity.new(row: result, matches: finder.matches&.map(&:candidate)) if result.present?
 
-      tokens = swimmer_name.split # ASSUMES: family name(s) first, given name(s) last
+      tokens = swimmer_name.upcase.split # ASSUMES: family name(s) first, given name(s) last
       if tokens.size == 2
         last_name = tokens.first
         first_name = tokens.last
       end
       if tokens.size == 3
         # Common italian double surname cases:
-        if %w[DA DAL DALLA DALLE DE DEI DEL DELLA DELLE DEGLI DI DO LA LE LI LO].include?(tokens.first.upcase)
+        if %w[DA DAL DALLA DALLE DE DEI DEL DELLA DELLE DEGLI DI DO LA LE LI LO].include?(tokens.first)
           last_name = tokens[0..1].join(' ')
           first_name = tokens.last
         else # Assume double name instead:

@@ -143,20 +143,29 @@ module PdfResults
     # comparing the DAOs' names, keys, and parents and by performing the same
     # check on the parents' DAOs themselves.
     def same_dao?(source_dao)
+      return true if header_or_footer?(source_dao)
+
       # Whenever the link to the parent is nil due to a parent context not being found in the current data page
       # (as with non-repeated sections that must be carried over implicitly until different in values, like headers
       # or some events), we need to compare both the parent name & key stored inside the instance:
       name == source_dao.name && key == source_dao.key &&
         ((parent == source_dao.parent) || (parent.is_a?(ContextDAO) && parent.same_dao?(source_dao.parent)))
-      # (
-      #   (parent.is_a?(ContextDAO) && parent.same_dao?(source_dao.parent)) ||
-      #   (parent_name == source_dao.parent_name && parent_key == source_dao.parent_key)
-      # )
+    end
+
+    # Returns +true+ if this instance is either a 'header' or 'footer' and the source_dao is the same.
+    # Returns +false+ otherwise.
+    def header_or_footer?(source_dao)
+      (name.include?('header') && source_dao.name.include?('header')) ||
+        (name.include?('footer') && source_dao.name.include?('footer'))
     end
 
     # Searches recursively for the specified DAO inside the hierarchy, starting at
     # this instance as a descending node, to verify if the specified DAO is really
     # already stored in this subtree or not. (In which case, usually, it needs to be added.)
+    #
+    # Handles the special case for 'header' and 'footer' sections where the key doesn't
+    # matter as they are considered as a single entity (and all merged into one) in the output
+    # hierarchy.
     #
     # Returns only the DAO with the matching +name+ & +key+.
     # Returns +nil+ otherwise.
@@ -179,6 +188,22 @@ module PdfResults
 
       # Find DAO in siblings (FIFO, go deeper):
       @rows.find { |dao| dao.find_existing_by_name_only(target_name) }
+    end
+
+    # Searches recursively inside the specified source DAO hierarchy, starting at its parent,
+    # and then looking back up the hierarchy, from parent to parent, until a blank parent node is found.
+    #
+    # Note that "root-like" ancestors should all be merged into the actual "root" DAO at some point.
+    # (This delegates to the actual format program inside the .yml file to replicate a correct hierarchy.)
+    #
+    # Returns possibly an 'header' DAO or any other 'root'-like ancestor for the specified source.
+    # Returns +nil+ otherwise.
+    def find_root_ancestor(source_dao)
+      return nil unless source_dao.is_a?(ContextDAO)
+      return source_dao unless source_dao.parent.is_a?(ContextDAO)
+
+      # Look back up if there's a parent set:
+      find_root_ancestor(source_dao.parent)
     end
     #-- -----------------------------------------------------------------------
     #++
@@ -273,7 +298,9 @@ module PdfResults
         return
       end
 
-      # Special cases - headers & footers, "merge into one":
+      # TODO: CHECK if the following check is still needed after the recent refactoring:
+
+      # Special cases - headers & footers, "merge fields into one" regardless of key:
       # 1. 'header' & 'post_header' (all header-type DAOs should be merged into one)
       # 2. 'footer' (same as above, but with different base name)
       if source_dao.name.include?('header') || source_dao.name.include?('footer')
@@ -288,8 +315,10 @@ module PdfResults
         end
       end
 
-      # Special case - "root": (only true root-level DAOs should have no parent)
-      dest_parent = self if name == 'root' && source_dao.parent.blank? && source_dao.parent_name.blank?
+      # Special case - "root-like" subtrees with only a matching name but parent link missing:
+      # (Although, with "standard" format hierarchies only true root-level DAOs should have no parent)
+      dest_parent = self if source_dao.parent.blank? && ((name == 'root' && source_dao.parent.blank?) || (name == source_dao.parent_name))
+
       # Each supplied root DAO (with rows) must have all its row merged into
       # this same DAO as a single array of uniquely-merged rows, so that the hierarchy tree
       # is properly built (with just 1 DAO named 'root').
@@ -302,10 +331,33 @@ module PdfResults
       # Find the actual target parent DAO for the merge inside *this* subtree using the parent keys from the instance set above:
       target_dao = find_existing(dest_parent)
 
+      # Special case - both source & current subtrees are sibling at the same level:
+      # (can't find the target, as dest_parent is actually higher in the hierarchy on this subtree;
+      #  example: both source and self are 'results' and need to be merged into 'category', self's parent)
+      if target_dao.nil? && dest_parent.is_a?(ContextDAO) && parent.is_a?(ContextDAO)
+        parent.merge(source_dao)
+        return
+      end
+
+      # Special case - TARGET MISSING @ "root" level
+      # (Usually root subtree is missing either an "header" DAO or any other required target DAO)
+      # This may happen whenever a page doesn't repeat the header, belongs to the same master context and it is bound to it,
+      # and/or is at the final root-merging collection phase of the current data page without the header or any other
+      # required parent subtree being already merged into the root.
+      if target_dao.nil? && dest_parent.is_a?(ContextDAO) && (name == 'root')
+        # => 1. make sure there's an 'header' inside this 'root' (may be stored into the source subtree)
+        # => 2. move back the insertion point until we find the missing 'header' (assuming there's one in the source)
+        #       so that we can then "graft" it onto the root:
+        grafting_dao = find_root_ancestor(dest_parent)
+        merge(grafting_dao)
+        return
+      end
+
       # NOTE: whenever the following happens, it may be due to a context_def that is optional
-      #       but required anyway in the hierarchy tree.
+      #       (similar to the 'header' special case above) but required anyway in the hierarchy tree.
       #       For ex.: an expected 'rel_category' needed by a 'rel_team' context,
-      #                which should probably point directly to an 'event' instead.
+      #                which should probably point as a parent directly to an 'event' instead if the 'rel_category' is
+      #                known to be possibly missing.
       # DEBUG ----------------------------------------------------------------
       binding.pry unless target_dao.is_a?(ContextDAO) # rubocop:disable Lint/Debugger
       # ----------------------------------------------------------------------
