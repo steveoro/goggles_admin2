@@ -143,7 +143,7 @@
         pop_out: false
       - name: timing
         # Anchor on lap start:
-        format: "\\s{2,}(?>[a-zA-Z]{3})?\\s{1,}\\d{4}\\s{2,}.{3,29}\\s{2,}((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})"
+        format: "\\s{2,}(?>[a-zA-Z]{3})?\\s{1,}\\d{4}\\s{2,}.{3,30}\\s{2,}((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})"
         token_start: 34
         pop_out: false
         # DSQ don't have timings:

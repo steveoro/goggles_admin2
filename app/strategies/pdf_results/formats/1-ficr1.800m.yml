@@ -1,7 +1,9 @@
 #
 # = Layout format definition for PdfResults::FormatParser
 #
-1-ficr1.100m:
+# 800m correctly aligned, with all lap timings (step 50m) and optional team name extension row
+#
+1-ficr1.800m:
   - name: header
     # Index is page-relative:
     at_fixed_row: 0
@@ -39,16 +41,14 @@
     repeat: true
     parent: header
     rows:
-      # "event" row-0, absolute row #2:
       - fields:
         - name: event_length
           lambda: strip
-          format: "\\s*(\\d{2,4})m?\\s+"
+          format: "\\s*(800)m?\\s*"
         - name: event_type
           lambda: strip
           format: "\\s*(?>m\\s)?((\\w+\\s?){1,2})\\sMaster\\sMisti\\b"
 
-      # event" row-1, absolute row #3:
       - fields:
         - name: event_sub_hdr
           lambda: strip
@@ -59,9 +59,9 @@
     repeat: true
     rows:
       - name: results_hdr1
-        format: "\\s?Pos.\\s+Nominativo\\s+Crs\\.?\\s+Naz\\.?\\s+50 m(?>\\s+100 m)?(?>\\s+150 m)?(?>\\s+200 m)?\\s+Arrivo\\s+Pti?\\s+Cat"
+        format: "\\s?Pos.\\s+Nominativo\\s+Crs\\s+Naz\\s+50 m\\s+100 m(?>\\s+150 m)?(?>\\s+200 m)?(\\s+250 m)?(\\s+300 m)?(\\s+350 m)?(\\s+400 m)?\\s+Arrivo\\s+Pt\\s+Cat"
       - name: results_hdr2
-        format: "\\s?Società\\s+Anno\\s+(FINA|Master)\\s+Pti?\\s+S\\.?C\\.?"
+        format: "\\s?Società\\s+Anno\\s+450\\sm\\s+500\\sm\\s+550\\sm\\s+600\\sm\\s+650\\sm\\s+700\\sm\\s+750\\sm\\s+800\\sm\\s+FINA\\s+Pt\\s+S\\.C\\."
 
   # Optional row before category
   - name: cat_spacer
@@ -92,67 +92,55 @@
       - name: results1
         fields:
           - name: rank
-            format: "^\\s*(\\d{1,2}|SQ|RT|NP|ES)\\s+"
+            format: "^\\s?(\\d{1,2}|SQ|RT|NP|ES)\\s+"
             pop_out: false
           - name: swimmer_name
-            # Original:
-            # format: "\\s+(\\D+(?>['`\\-\\.\\s]\\s?\\D+){1,4})\\s+"
-            # token_end: 31
             format: "^\\s*(?>\\d{1,2}|SQ|RT|NP|ES)\\s+(\\D{3,35})\\s{1,}\\d?\\s+"
             pop_out: false
           - name: lane_num
-            # Original:
-            # format: "\\s*(\\d{1,2})\\s*"
-            # # Column alignment may vary (swimmer_name range can overlap safely with this due to its format):
-            # token_start: 29
-            # token_end: 52
             format: "^\\s*(?>\\d{1,2}|SQ|RT|NP|ES)\\s+\\D{3,35}\\s{1,}(\\d)\\s+"
             pop_out: false
           - name: nation
-            # Original:
-            # format: "\\s*(\\w{2,3})\\s*"
-            # token_start: 53
-            # token_end: 62
             format: "^\\s*(?>\\d{1,2}|SQ|RT|NP|ES)\\s+\\D{3,35}\\s{1,}\\d\\s{1,}([a-zA-Z]{3})\\b"
             pop_out: false
 
           - name: lap50
             format: "\\s{2,}[a-zA-Z]{3}\\s{2,}((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})\\s{2,}"
             pop_out: false
-            # Positional:
-            # format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*\\b"
-            # token_start: 70
-            # token_end: 82
             required: false
           - name: lap100
             format: "\\s{2,}[a-zA-Z]{3}\\s{2,}(?>(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}\\s{2,}){1}((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})\\s{2,}"
             pop_out: false
-            # Positional:
-            # format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*\\b"
-            # token_start: 82
-            # token_end: 94
             required: false
           - name: lap150
             format: "\\s{2,}[a-zA-Z]{3}\\s{2,}(?>(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}\\s{2,}){2}((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})\\s{2,}"
             pop_out: false
-            # Positional:
-            # format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*\\b"
-            # token_start: 95
-            # token_end: 108
             required: false
           - name: lap200
             format: "\\s{2,}[a-zA-Z]{3}\\s{2,}(?>(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}\\s{2,}){3}((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})\\s{2,}"
             pop_out: false
-            # Positional:
-            # format: "\\s*((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s*\\b"
-            # token_start: 109
-            # token_end: 118
+            required: false
+
+          - name: lap250
+            format: "\\s{2,}[a-zA-Z]{3}\\s{2,}(?>(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}\\s{2,}){4}((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})\\s{2,}"
+            pop_out: false
+            required: false
+          - name: lap300
+            format: "\\s{2,}[a-zA-Z]{3}\\s{2,}(?>(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}\\s{2,}){5}((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})\\s{2,}"
+            pop_out: false
+            required: false
+          - name: lap350
+            format: "\\s{2,}[a-zA-Z]{3}\\s{2,}(?>(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}\\s{2,}){6}((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})\\s{2,}"
+            pop_out: false
+            required: false
+          - name: lap400
+            format: "\\s{2,}[a-zA-Z]{3}\\s{2,}(?>(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}\\s{2,}){7}((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})\\s{2,}"
+            pop_out: false
             required: false
 
           - name: timing
             # Use last lap as timing when the column is totally missing:
             format: "\\s{1,}((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})$"
-            # token_start: 109
             pop_out: false
             required: false
 
@@ -171,32 +159,37 @@
           - name: delta100
             format: "\\s{2,}\\d{4}\\s{2,}\\(((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})\\)\\s{2,}"
             pop_out: false
-            # Positional:
-            # format: "\\s*\\(((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\)\\s*"
-            # token_start: 83
-            # token_end: 94
             required: false
           - name: delta150
-            format: "\\s{2,}\\d{4}\\s{5,}(?>\\s{2,}\\((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}\\)){1}\\s{2,}\\(((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})\\)\\s{2,}"
+            format: "\\s{2,}\\d{4}\\s{5,}(?>\\s{2,}\\((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}\\)){1}\\s{2,}\\(((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})\\)"
             pop_out: false
-            # Positional:
-            # format: "\\s*\\(((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\)\\s*"
-            # token_start: 96
-            # token_end: 107
             required: false
           - name: delta200
-            format: "\\s{2,}\\d{4}\\s{5,}(?>\\s{2,}\\((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}\\)){2}\\s{2,}\\(((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})\\)\\s{2,}"
+            format: "\\s{2,}\\d{4}\\s{5,}(?>\\s{2,}\\((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}\\)){2}\\s{2,}\\(((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})\\)"
             pop_out: false
-            # Positional:
-            # format: "\\s*\\(((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\)\\s*"
-            # token_start: 109
-            # token_end: 120
+            required: false
+
+          - name: delta250
+            format: "\\s{2,}\\d{4}\\s{5,}(?>\\s{2,}\\((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}\\)){3}\\s{2,}\\(((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})\\)"
+            pop_out: false
+            required: false
+          - name: delta300
+            format: "\\s{2,}\\d{4}\\s{5,}(?>\\s{2,}\\((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}\\)){4}\\s{2,}\\(((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})\\)"
+            pop_out: false
+            required: false
+          - name: delta350
+            format: "\\s{2,}\\d{4}\\s{5,}(?>\\s{2,}\\((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}\\)){5}\\s{2,}\\(((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})\\)"
+            pop_out: false
+            required: false
+          - name: delta400
+            format: "\\s{2,}\\d{4}\\s{5,}(?>\\s{2,}\\((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}\\)){6}\\s{2,}\\(((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})\\)"
+            pop_out: false
             required: false
 
           - name: std_score
-            pop_out: false
             # Sometimes there's the "S.C." column after the score w/ 1 or 2 digits and possibly 1 decimal:
             format: "\\s{1,}(\\d?[,.]?\\d{1,4}[,.]\\d{1,2})(?>\\s+\\d{1,2},?\\d?)?$"
+            pop_out: false
             # U25 / A20 do not score:
             required: false
 
@@ -215,6 +208,80 @@
           - name: disqualify_type
             format: "^(?!\\s+(Orario Ufficializzazione|\\d{1,2}|www.ficr.it|corsie|Pagina))\\s+(\\D+\\s?)+\\b"
             token_start: 115
+            required: false
+
+          - name: lap450
+            format: "^\\s{3,8}.{3,25}\\s{10,}((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})\\s{2,}"
+            pop_out: false
+            required: false
+          - name: lap500
+            format: "^\\s{3,8}.{3,25}\\s{10,}(?>(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}\\s{2,}){1}((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})\\s{2,}"
+            pop_out: false
+            required: false
+          - name: lap550
+            format: "^\\s{3,8}.{3,25}\\s{10,}(?>(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}\\s{2,}){2}((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})\\s{2,}"
+            pop_out: false
+            required: false
+          - name: lap600
+            format: "^\\s{3,8}.{3,25}\\s{10,}(?>(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}\\s{2,}){3}((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})\\s{2,}"
+            pop_out: false
+            required: false
+
+          - name: lap650
+            format: "^\\s{3,8}.{3,25}\\s{10,}(?>(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}\\s{2,}){4}((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})\\s{2,}"
+            pop_out: false
+            required: false
+          - name: lap700
+            format: "^\\s{3,8}.{3,25}\\s{10,}(?>(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}\\s{2,}){5}((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})\\s{2,}"
+            pop_out: false
+            required: false
+          - name: lap750
+            format: "^\\s{3,8}.{3,25}\\s{10,}(?>(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}\\s{2,}){6}((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})\\s{2,}"
+            pop_out: false
+            required: false
+          - name: lap800
+            format: "^\\s{3,8}.{3,25}\\s{10,}(?>(?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}\\s{2,}){7}((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})\\s{2,}"
+            pop_out: false
+            required: false
+
+      - name: results4
+        # This will match any empty row if the fields are not found:
+        optional_if_empty: true
+        # This will make the row not to fail if missing at all
+        # => row #3 can be there, or be empty (no fields at all), or have either 1 or 2 matching fields
+        required: false
+        fields:
+          - name: delta450
+            format: "^\\s{30,}\\(((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})\\)\\s{2,}"
+            pop_out: false
+            required: false
+          - name: delta500
+            format: "^\\s{30,}(?>\\s{2,}\\((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}\\)){1}\\s{2,}\\(((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})\\)"
+            pop_out: false
+            required: false
+          - name: delta550
+            format: "^\\s{30,}(?>\\s{2,}\\((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}\\)){2}\\s{2,}\\(((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})\\)"
+            pop_out: false
+            required: false
+          - name: delta600
+            format: "^\\s{30,}(?>\\s{2,}\\((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}\\)){3}\\s{2,}\\(((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})\\)"
+            pop_out: false
+            required: false
+          - name: delta650
+            format: "^\\s{30,}(?>\\s{2,}\\((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}\\)){4}\\s{2,}\\(((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})\\)"
+            pop_out: false
+            required: false
+          - name: delta700
+            format: "^\\s{30,}(?>\\s{2,}\\((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}\\)){5}\\s{2,}\\(((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})\\)"
+            pop_out: false
+            required: false
+          - name: delta750
+            format: "^\\s{30,}(?>\\s{2,}\\((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}\\)){6}\\s{2,}\\(((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})\\)"
+            pop_out: false
+            required: false
+          - name: delta800
+            format: "^\\s{30,}(?>\\s{2,}\\((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2}\\)){7}\\s{2,}\\(((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})\\)"
+            pop_out: false
             required: false
 
   - name: disqualified

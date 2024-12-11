@@ -1575,8 +1575,8 @@ module Import
         add_entity_with_key('meeting_relay_swimmer', mrs_key, mrs_entity) unless entity_present?('meeting_relay_swimmer', mrs_key)
 
       elsif mr_model.is_a?(GogglesDb::MeetingRelaySwimmer) && sub_phases.positive?
-        mrr_key = mrr_key_for(mprogram_key, team_key)
-        mrr_row = cached_instance_of('meeting_relay_result', mrr_key)
+        # In this case, 'mr_key' refers already to the MRR key:
+        mrr_row = cached_instance_of('meeting_relay_result', mr_key)
 
         # *** MRS -> RelayLap ***
         # (when length is enough and sub-laps are present)
@@ -2028,8 +2028,11 @@ module Import
     # == Params
     # - <tt>program_key</tt>: string key used to access the cached entity row for the parent MeetingProgram;
     # - <tt>team_key</tt>: as above, but for the associated GogglesDb::Team.
-    def mrr_key_for(program_key, team_key)
-      "#{program_key}/#{team_key}"
+    # - <tt>timing_string</tt>: timing string, used to discriminate between same-team results in same categories/programs.
+    #   (in case 2 different relays of the same team, with the same timing for the same events are recorded,
+    #    only the first one encountered will be stored in the cache).
+    def mrr_key_for(program_key, team_key, timing_string)
+      "#{program_key}/#{team_key}-#{timing_string.presence || '0'}"
     end
     #-- -----------------------------------------------------------------------
     #++
@@ -2335,7 +2338,7 @@ module Import
       event_type = options[:event_type]
       score = Parser::Score.from_l2_result(row['score'])
       timing = Parser::Timing.from_l2_result(row['timing'])
-      mrr_key = mrr_key_for(options[:mprg_key], team_name)
+      mrr_key = mrr_key_for(options[:mprg_key], team_name, timing)
       # NOTE: MRR already mapped => MRswimmers won't be processed
       return if entity_present?('meeting_relay_result', mrr_key)
 

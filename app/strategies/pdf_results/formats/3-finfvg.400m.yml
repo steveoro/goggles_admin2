@@ -246,7 +246,7 @@
             required: false
             pop_out: false
           - name: team_name
-            format: "\\s{2,}\\d{4}\\s{3,}(?>\\w{3})\\s{2,}(.{3,29})$"
+            format: "\\s{2,}\\d{4}\\s{3,}(?>\\w{3})\\s{2,}(.{3,30})$"
             pop_out: false
 
   - name: dsq_label

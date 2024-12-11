@@ -173,11 +173,11 @@
       - name: result_deltas
         fields:
           - name: team_name
-            format: "^\\s{9,15}(.{3,29})\\s{2,}\\d{4}\\s*"
+            format: "^\\s{9,15}(.{3,30})\\s{2,}\\d{4}\\s*"
             token_end: 50
             pop_out: false
           - name: year_of_birth
-            format: "^\\s{9,15}.{3,29}\\s{2,}(\\d{4})\\s*"
+            format: "^\\s{9,15}.{3,30}\\s{2,}(\\d{4})\\s*"
             pop_out: false
 
           - name: delta100
