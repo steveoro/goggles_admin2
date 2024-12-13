@@ -1,0 +1,142 @@
+#
+# = Layout format definition for PdfResults::FormatParser
+#
+# - Spawn of 1-ficr1.4x050m: no laps or swimmers, just the relay timing & the score
+# - Should support any relay event without laps or swimmers
+#
+1-ficrnologo.4x050m:
+  - name: header
+    at_fixed_row: 0
+    # Repeat each page:
+    repeat: true
+    rows:
+      # "header" row-0, abs. row #0
+      - fields:
+        - name: edition
+          required: false
+          format: "^\\s{20,}(\\d{1,2}|[IVXLCM]+)\\D?\\D?\\s+"
+          pop_out: false
+        - name: meeting_name
+          format: "^\\s{20,}(?>\\d{1,2}|[IVXLCM]+)?\\D?\\D?\\s+(.+)$"
+          pop_out: false
+
+      # "header" row #1
+      - fields:
+        - name: meeting_place
+          # Support long place names like "Centro Federale di Ostia (RM)" or "Reggio nell'Emilia"
+          format: "^\\s*(.{2,})?,\\s*\\d{2}"
+        - name: meeting_date
+          # Support month names too: dd(-/)mm(-/)yy(yy), dd MMM(...) yy(yy)
+          format: "^\\s*(?>.{2,},\\s*)?(\\d{2}(?>[-\\/]\\d{2}[-\\/]\\d{2,4}|\\s\\w{3,}\\s\\d{2,4}))$"
+
+      # Optional empty row #3
+      - name: hdr_separator
+        required: false
+        format: "^$"
+
+  - name: event
+    starts_at_row: 2
+    repeat: true
+    parent: header
+    rows:
+      - fields:
+        - name: event_length
+          lambda: strip
+          format: "\\s*([468]X\\d{2,3})m?\\s+"
+        - name: event_type
+          lambda: strip
+          format: "\\s*(?>m\\s)?((\\w+\\s?){1,2})\\sMaster\\s(Misti|Femmin|Maschi)"
+        - name: gender_type
+          lambda: strip
+          format: "\\sMaster\\s(Misti|Femmin|Maschi)"
+
+      - name: event_sub_hdr
+        lambda: strip
+        format: "Riepilogo|Serie\\s\\d{2}"
+
+  # Data columns header
+  # Row #4:
+  - name: results_hdr
+    repeat: false
+    # (repeat: false => ONCE per page max)
+    lambda: strip
+    format: "\\s?Pos.\\s+Nominativo\\s+Naz\\s+Anno\\s+Società\\s+Ser.\\s+Cor(?>\\s+Pos\\.?)?\\s+Tempo\\s+Pti.\\sSC\\s+Master"
+
+  - name: rel_category
+    starts_at_row: 6
+    repeat: true
+    # This will match any empty row if the fields are not found:
+    # optional_if_empty: true
+    # In recent years, category for relays isn't displayed at all:
+    required: false
+    parent: event
+    rows:
+      - name: cat_title
+        # Original:
+        # format: "\\s+((?>Under|Master)\\s(?>Misti|Femmin\\w*|Masch\\w*)(?>\\s(?>\\d{2,3}\\s[-–]\\s\\d{2,3}))?)[\\b\\n]?"
+        # More versatile:
+        # (Examples: "M 200 - 239 Master Misti", "M200-239 Master Femmine", "Master Maschi M 200", "M200 Femminili", ...)
+        format: "(?>\\s{20,}|»\\ssegue\\s)(?>(?>M(?>aster)?|A(?>ssoluti)?|U(?>nder)?)\\s?)?(?>(?>Misti|Femmin\\w*|Masch\\w*)?\\s)?(\\d{2,3}\\s?-\\s?\\d{2,3}|[MAU]\\s?\\d{2,3}(?>\\s?-\\s?\\d{2,3})?)(?>(?>M(?>aster)?|A(?>ssoluti)?|U(?>nder)?)\\s)?(?>Misti|Femmin\\w*|Masch\\w*)?\\b"
+
+      - name: cat_separator
+        required: false
+        format: "^$"
+
+  - name: rel_team
+    repeat: true
+    # In recent years, category for relays isn't displayed at all:
+    parent: event
+    # ^^ WAS: rel_category (using event will delegate category esteemation to the L2Converter)
+    starts_at_row: 7
+    rows:
+      - name: rel_team1
+        fields:
+          - name: rank
+            format: "^\\s*(\\d{1,2}|SQ|RT|NP|ES)\\s+"
+            pop_out: false
+            # "Out of race" won't have a final ranking:
+            required: false
+          - name: nation
+            format: "^\\s{0,3}(?>\\d{1,2}|SQ|RT|NP|ES)?\\s+.{3,35}\\s{2,}([a-zA-Z]{3})\\s{2,}"
+            pop_out: false
+          - name: team_name
+            format: "^\\s{0,3}(?>\\d{1,2}|SQ|RT|NP|ES)?\\s+.{3,35}\\s{2,}(?>[a-zA-Z]{3})\\s{2,}(\\S.{3,30})\\s{2,}\\d{0,2}\\s{2,}"
+            pop_out: false
+
+          # First timing format found, separated by 2 spaces at least:
+          - name: timing
+            format: "\\s{2,}((?>\\d{1,2}[':\\.])?\\d{1,2}[\":\\.]\\d{1,2})\\s{2,}"
+            pop_out: false
+            required: false
+          - name: std_score
+            format: "\\s{3,}(\\d?[,\\.]?\\d{1,3}[,\\.]\\d{1,2})$"
+            pop_out: false
+            required: false
+
+  # Ignored header (DSQ label is stored under rel_team)
+  - name: disqualified
+    parent: rel_category
+    required: false
+    lambda: strip
+    format: "\\s*(Non Classificati|Fuori Gara)\\b"
+
+  - name: publish_time
+    # Choose a link with the wrapping parent context from which the scan may resume
+    # when after this, independently from check success or failure:
+    parent: event
+    required: false
+    lambda: strip
+    format: "Orario Ufficializzazione"
+
+  # End-Of-Page context
+  - name: footer
+    parent: event
+    repeat: true
+    eop: true
+    row_span: 5
+    fields:
+      - name: pool_type
+        required: false
+        format: "\\s+(\\d{1,2} corsie \\d{2}m)\\s+"
+      - name: page_num
+        format: "\\s+Pagina\\s(\\d{1,2})\\sdi\\s\\d{1,2}"

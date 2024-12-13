@@ -763,7 +763,7 @@ class DataFixController < ApplicationController
   def parse_file_contents
     file_content = File.read(@file_path)
     begin
-      @data_hash = JSON.parse(file_content)
+      @data_hash = JSON.parse(file_content.force_encoding('UTF-8'))
     rescue StandardError
       flash[:error] = I18n.t('data_import.errors.invalid_file_content')
       redirect_to(pull_index_path) && return
@@ -790,7 +790,7 @@ class DataFixController < ApplicationController
   # Assuming @solver.data contains already "solved" data for meeting & sessions, this sets
   # the @meeting_sessions & @swimming_pools member arrays with the current data found in the
   # Hash, building the proper corresponding models for each one.
-  def prepare_sessions_and_pools
+  def prepare_sessions_and_pools # rubocop:disable Metrics/AbcSize
     @solver.rebuild_cached_entities_for('city')
     @meeting_entity = @solver.rebuild_cached_entities_for('meeting')
     @meeting = @meeting_entity.row
@@ -837,7 +837,7 @@ class DataFixController < ApplicationController
   # Assumes <tt>data_hash</tt> responds to <tt>:to_json</tt>.
   def overwrite_file_path_with_json_from(data_hash)
     FileUtils.rm_f(@file_path)
-    File.write(@file_path, data_hash.to_json)
+    File.write(@file_path, data_hash.to_json.force_encoding('UTF-8'))
   end
   #-- -------------------------------------------------------------------------
   #++
@@ -883,13 +883,15 @@ class DataFixController < ApplicationController
   # == Params:
   # - <tt>model_name</tt>: the model name in snake case, singular;
   #                        supports only: swimmer, team;
-  # - <tt>entity_key</tt>: the key of the entity to be deleted from the JSON data.
+  #
+  # - <tt>deleted_entity_key</tt>: the (already) deleted key of the entity to be purged from
+  #                        all bindings references inside the JSON data.
   #
   # == Returns:
   # Returns the updated JSON data file after deleting any possible reference to the
   # specified entity key.
   #
-  def handle_duplicates_in_json_data_for(model_name, entity_key)
+  def handle_duplicates_in_json_data_for(model_name, deleted_entity_key)
     return @solver.data.to_json unless %w[swimmer team].include?(model_name)
 
     # 4.1) Retrieve the list of keys for this model to detect remaining candidate(s):
@@ -898,19 +900,30 @@ class DataFixController < ApplicationController
     # 4.2) Get the first key matching the one just deleted and use it as a candidate
     #      for a global string subst among the resulting JSON (so that we can easily
     #      update the bindings too):
-    checked_key_part = model_name == 'swimmer' ? entity_key.split(/-\d{4}-/).first : entity_key
-    new_key = cache_keys.find { |ckey| ckey.starts_with?(checked_key_part) }
+    existing_key_part = model_name == 'swimmer' ? deleted_entity_key.split(/-\d{4}-/).first : deleted_entity_key
+    new_key = cache_keys.find { |ckey| ckey.starts_with?(existing_key_part) }
 
-    # NOTE: matching the ending quote of the deleted keys allows us to substitute
-    #       shorter keys with longer ones without changing the existing longer strings
-    subst_matcher = Regexp.new("#{entity_key}\"", Regexp::IGNORECASE)
-    # NOTE: when there are 3 or more possible duplicates, this will overwrite
-    #       all references of the deleted key with just the first remaining candidate
-    #       (which may not be the one intended to remain in the data)
+    # Handle special chars ('&', '<', '>') that get automatically escaped in Unicode in the resulting JSON
+    # for the substitution matcher:
+    deleted_entity_key = deleted_entity_key.gsub('&', '\\\\\\u0026').gsub('<', '\\\\\\u003c').gsub('>', '\\\\\\u003e')
+    # The Unicode escape sequence code must be escaped 3 times for the double backlash to be present
+    # in the final Regexp, so that the substitution of the keys actually takes place.
+    # Example:
+    # > Regexp.new('SWIM&FITNESS'.gsub('&', '\\\\u0026'), Regexp::IGNORECASE)
+    # => /SWIM\u0026FITNESS"/i   # (this won't match the saved data.to_json, enforced encoding or not)
+    # > Regexp.new('SWIM&FITNESS'.gsub('&', '\\\\\\u0026'), Regexp::IGNORECASE)
+    # => /SWIM\\u0026FITNESS"/i  # (this will)
+
+    # NOTE: matching the ending quote of the deleted key allows us to substitute
+    #       shorter keys with longer ones in the bindings without changing the existing longer strings
+    subst_matcher = Regexp.new("#{deleted_entity_key}\"", Regexp::IGNORECASE)
 
     # 4.3) Substitute the deleted key with the new one, allegedly matching most
     #      of the data, and save the JSON file overwriting the existing one:
     @solver.data.to_json.gsub(subst_matcher, "#{new_key}\"")
+    # NOTE: when there are 3 or more possible duplicates, this will overwrite
+    #       all references of the deleted key with just the first remaining candidate
+    #       (which may not be the one intended to remain in the data)
   end
   #-- -------------------------------------------------------------------------
   #++

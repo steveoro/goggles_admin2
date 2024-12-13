@@ -2,7 +2,7 @@
 # = Layout format definition for PdfResults::FormatParser
 #
 # - Supports 50m only, or any other event w/o lap timings and results on a single line
-# - No Ficr logo or watermark on each page (different footer); examples: "DDS Trophy"
+# - No Ficr logo or watermark on each page (different footer); examples: "DDS Trophy", "Swimming Master"
 # - Spawn of 1-ficr1, example category header w/ result:
 #
 # ---8<---
@@ -152,15 +152,6 @@
         pop_out: false
         # U25 / A20 do not score:
         required: false
-
-  # NOT found yet:
-  # - name: results_ext
-  #   parent: results
-  #   required: false
-  #   fields:
-  #     - name: dsq_details
-  #       format: "\\s{135}([\\w\\s]+)"
-  #       pop_out: false
 
   - name: disqualified
     parent: category
