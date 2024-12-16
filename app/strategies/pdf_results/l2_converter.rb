@@ -54,7 +54,7 @@ module PdfResults
     #-- -------------------------------------------------------------------------
     #++
 
-    attr_reader :data
+    attr_reader :data, :header, :session_month
 
     # Creates a new converter instance given the specified data Hash.
     #
@@ -110,6 +110,8 @@ module PdfResults
       @season = season
       # Collect the list of associated CategoryTypes to avoid hitting the DB for category code checking:
       @categories_cache = PdfResults::CategoriesCache.new(season)
+      # Precompute header & session_month values:
+      header
     end
     #-- -----------------------------------------------------------------------
     #++
@@ -119,9 +121,12 @@ module PdfResults
       /(4|6|8)x\d{2,3}/i.match?(event_title.to_s)
     end
 
-    # Returns the Hash header in "L2" structure.
+    # Returns the Hash header in "L2" structure (memoized).
     # Seeks values both the 'header' and 'event' context data rows.
+    # Sets also the internal @header & @session_month instance variables.
     def header
+      return @header if @header.present?
+
       # Check also header/session fields stored (repeatedly) in each event:
       first_event_hash = @data.fetch(:rows, [{}]).find { |row_hash| row_hash[:name] == 'event' }
       first_event_fields = first_event_hash&.fetch(:fields, {})
@@ -133,9 +138,9 @@ module PdfResults
       # Extract meeting session date text from 2 possible places (header or event), then get the single fields:
       meeting_date_text = fetch_session_date(extract_header_fields) ||
                           fetch_session_date(first_event_fields) || fetch_session_date(footer_fields)
-      session_day, session_month, session_year = Parser::SessionDate.from_eu_text(meeting_date_text) if meeting_date_text.present?
+      session_day, @session_month, session_year = Parser::SessionDate.from_eu_text(meeting_date_text) if meeting_date_text.present?
 
-      {
+      @header = {
         'layoutType' => 2,
         'name' => fetch_meeting_name, # (Usually, this is always in the header)
         'meetingURL' => '',
@@ -1125,6 +1130,8 @@ module PdfResults
       # *** Context 'category'|'event' ***
       # (Assumed to include the "gender type label" field, among other possible fields in the key)
       key = row_hash.fetch(:key, '').gsub(/donne/i, 'femmine').gsub(/uomini/i, 'maschi')
+      # Return gender unknown when the key value doesn't specify a unique gender:
+      return if /Maschi\se\sFemmine/ui.match?(key) # (i.e.: "Niangara" layouts, w/o explicit category & gender labels)
 
       # key type 1, example: [...]"M55 Master Maschi 55 - 59"[...]
       if /\s*[UAM]\d{2}(?>\sUnder|\sMaster)?\s(Femmine|Maschi)/ui.match?(key)
@@ -1524,7 +1531,9 @@ module PdfResults
     def post_compute_ind_category_code(year_of_birth)
       return unless year_of_birth.positive?
 
-      age = @season.begin_date.year - year_of_birth
+      # Compute age and adjust in case the session falls into the first
+      # half of the Championship year:
+      age = @season.begin_date.year - year_of_birth + (session_month.to_i > 8 ? 1 : 0)
       curr_cat_code, _cat = @categories_cache.find_category_code_for_age(age, relay: false)
       # DEBUG ----------------------------------------------------------------
       # THIS MAY HAPPEN only when the categories lack a certain age range:

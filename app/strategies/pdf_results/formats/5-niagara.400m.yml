@@ -112,13 +112,13 @@
       - name: results_hdr2
         format: "^\\s{50,}Società\\s{10,}Naz$"
 
-  # Actual data starts here:
+  # Result row optionally split in 2 by the side overlay (but the team name is always required):
   - name: results
-    required: false
     repeat: true
     parent: event
+    row_span: 8
     rows:
-      - name: result_laps
+      - name: result_details
         fields:
           - name: rank
             # DSQ use the hyphen, so rank should always be present:
@@ -211,74 +211,12 @@
             pop_out: false
             required: false
 
-  # In case result row gets split in two by the side overlay:
-  - name: results_alt
-    alternative_of: results
-    required: false
-    repeat: true
-    parent: event
-    row_span: 7
-    rows:
-      - name: result_details
-        fields:
-          - name: rank
-            # DSQ use the hyphen, so rank should always be present:
-            format: "^\\s{50,}(\\d{1,3}|-)\\s+\\D+\\s*\\d{4}\\s*"
-            pop_out: false
-          - name: swimmer_name
-            format: "^\\s{50,}(?>\\d{1,3}|-)\\s+(\\D+)\\s*\\d{4}\\s*"
-            pop_out: false
-          - name: year_of_birth
-            format: "^\\s{50,}(?>\\d{1,3}|-)\\s+\\D+\\s*(\\d{4})\\s*"
-            pop_out: false
-
-          - name: lap50
-            format: "^\\s{50,}(?>\\d{1,3}|-)\\s+\\D+\\s*\\d{4}\\s{1,}((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})\\s{1,}"
-            pop_out: false
-            required: false
-          - name: lap100
-            format: "^\\s{50,}(?>\\d{1,3}|-)\\s+\\D+\\s*\\d{4}\\s{1,}(?>(?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2}\\s{1,}){1}((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})\\s{1,}"
-            pop_out: false
-            required: false
-          - name: lap150
-            format: "^\\s{50,}(?>\\d{1,3}|-)\\s+\\D+\\s*\\d{4}\\s{1,}(?>(?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2}\\s{1,}){2}((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})\\s{1,}"
-            pop_out: false
-            required: false
-          - name: lap200
-            format: "^\\s{50,}(?>\\d{1,3}|-)\\s+\\D+\\s*\\d{4}\\s{1,}(?>(?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2}\\s{1,}){3}((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})\\s{1,}"
-            pop_out: false
-            required: false
-          - name: lap250
-            format: "^\\s{50,}(?>\\d{1,3}|-)\\s+\\D+\\s*\\d{4}\\s{1,}(?>(?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2}\\s{1,}){4}((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})\\s{1,}"
-            pop_out: false
-            required: false
-          - name: lap300
-            format: "^\\s{50,}(?>\\d{1,3}|-)\\s+\\D+\\s*\\d{4}\\s{1,}(?>(?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2}\\s{1,}){5}((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})\\s{1,}"
-            pop_out: false
-            required: false
-          - name: lap350
-            format: "^\\s{50,}(?>\\d{1,3}|-)\\s+\\D+\\s*\\d{4}\\s{1,}(?>(?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2}\\s{1,}){6}((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})\\s{1,}"
-            pop_out: false
-            required: false
-
-          - name: timing
-            format: "\\s+((?>\\d{2}[:'\\.])?\\d{2}[\\.\"]\\d{2})\\s*(?>\\d{2,4}[\\.,]\\d{2})?$"
-            pop_out: false
-            required: false
-          - name: std_score
-            format: "\\s+(\\d{2,4}[\\.,]\\d{2})$"
-            pop_out: false
-            required: false
-          - name: disqualify_type
-            format: "\\s+(SQU|RIT|ASS)$"
-            pop_out: false
-            required: false
-
       - name: side_overlay_in_mid
         # This "side overlay" may split in 2 a single result row (which should be counted as 1),
         # so we use optional siblings contexts wrapped into the parent result row.
         # (The DAO field data gathering should take care of wrapping all nested fields at DAO's zero depth level.)
         row_span: 5
+        required: false
         rows:
           - name: watermark
             keys: [skip_me]
@@ -292,6 +230,7 @@
       # by the L2Converter as "possible alternate value for a missing field" (no overwrites
       # if the field is already existing):
       - name: result_deltas_split_row
+        required: false
         # Requires, at least, a lot of leading spaces; then, anyone of the next fields:
         fields:
           - name: delta100
