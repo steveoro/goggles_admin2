@@ -7,6 +7,6 @@ document.querySelector('#flash-messages-container').innerHTML = "<%=
 
 document.querySelector("#<%= @target_dom_id %>").innerHTML = "<%=
   escape_javascript(
-    render(DataFix::ResultDetailsSetComponent.new(prg_rows: @prg_rows, prg_laps: @prg_laps))
+    render(DataFix::ResultDetailsSetComponent.new(res_rows: @res_rows, res_laps: @res_laps))
   )
 %>"

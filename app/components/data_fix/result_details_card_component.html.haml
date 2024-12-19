@@ -3,7 +3,7 @@
     (#{disqualified? ? dsq_label : @rank}) #{@timing} -
     %i= @std_points
     %br/
-    %b= @prg_key&.split('/')&.last
+    %b= @res_key&.split('/')&.last
     - if lap_swimmers&.count.to_i > 1
       %br/
       %span.lap-swimmers= lap_swimmers&.join(' / ')

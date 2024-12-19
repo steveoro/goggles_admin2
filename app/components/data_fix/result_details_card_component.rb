@@ -3,7 +3,7 @@
 #
 # = DataFix components module
 #
-#   - version:  7.0.6.00
+#   - version:  7.0.7.25
 #   - author:   Steve A.
 #
 module DataFix
@@ -13,18 +13,21 @@ module DataFix
   # Renders a card containing all result for a certaing MeetingProgram,
   # including laps or relay swimmers if it's a relay and data is available.
   #
-  # The chosen program row is assumed to be in the Hash format created
+  # The chosen result row is assumed to be in the Hash format created
   # by the MacroParser (which includes a model 'row' element and also
   # its related 'bindings' array).
   #
   class ResultDetailsCardComponent < ViewComponent::Base
-    def initialize(prg_key:, prg_row:, laps_rowset:)
+    def initialize(res_key:, res_row:, laps_rowset:)
       super
-      @prg_key = prg_key
-      @model_row = prg_row&.fetch('row', nil)
+      @res_key = res_key
+      @model_row = res_row&.fetch('row', nil)
+      # DEBUG ----------------------------------------------------------------
+      # binding.pry
+      # ----------------------------------------------------------------------
       # The following hack will be ok even for relays as we just need to
       # compare the result with >= 100:
-      @length_in_meters = prg_key.to_s.split('-').second.to_i
+      @length_in_meters = res_key.to_s.split('-').second.to_i
       @laps_rowset = laps_rowset
       @rank = @model_row['rank']
       @timing = Timing.new(minutes: @model_row['minutes'], seconds: @model_row['seconds'], hundredths: @model_row['hundredths'])
@@ -33,7 +36,7 @@ module DataFix
 
     # Skips rendering unless the required parameters are set
     def render?
-      @model_row.present? && @prg_key.present?
+      @model_row.present? && @res_key.present?
     end
 
     protected

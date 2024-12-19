@@ -245,6 +245,9 @@ class DataFixController < ApplicationController
     @ts_keys = @solver.data['meeting_team_score']&.keys
     @retry_needed = @solver.retry_needed
     ActionCable.server.broadcast('ImportStatusChannel', { msg: 'Review results: ready' })
+    # DEBUG ----------------------------------------------------------------
+    # binding.pry
+    # ----------------------------------------------------------------------
   end
   #-- -------------------------------------------------------------------------
   #++
@@ -314,6 +317,10 @@ class DataFixController < ApplicationController
   # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
   def update
     model_name = edit_params['model'].to_s
+    # Used in case of swimmer attribute editing:
+    actual_attrs = {}
+    prev_year_of_birth = nil
+    prev_gender_type_id = nil
 
     # == NOTE:
     # The entity Key used to retrieve the entity from the data hash should *never* change.
@@ -379,6 +386,9 @@ class DataFixController < ApplicationController
       when 'swimmer'
         # Overwrite complete name when the lookup values change:
         actual_attrs['complete_name'] = updated_attrs['swimmer'].presence || "#{updated_attrs['last_name']} #{updated_attrs['first_name']}"
+        swimmer = @solver.data['swimmer']&.fetch(entity_key, nil)&.fetch('row', {})
+        prev_year_of_birth = swimmer&.fetch('year_of_birth', nil)
+        prev_gender_type_id = swimmer&.fetch('gender_type_id', nil)
       end
       # DEBUG ----------------------------------------------------------------
       # binding.pry
@@ -505,6 +515,10 @@ class DataFixController < ApplicationController
     # DEBUG ----------------------------------------------------------------
     # binding.pry
     # ----------------------------------------------------------------------
+
+    # NOTE: at this point 'actual_attrs' have been already applied to the main entity and its direct bindings
+    check_for_category_change_and_adjust_results(entity_key, prev_year_of_birth, prev_gender_type_id, actual_attrs) if model_name == 'swimmer'
+    # (^ this will return immediately if there are no changes to the category or gender to be made)
 
     # == Serialization on same file: ==
     overwrite_file_path_with_json_from(@solver.data)
@@ -678,10 +692,15 @@ class DataFixController < ApplicationController
     lap_type   = relay ? 'meeting_relay_swimmer' : 'lap'
 
     prg_checker = Regexp.new(prg_key, Regexp::IGNORECASE)
-    @prg_rows = @solver.data[row_type]&.select { |row_key, _v| prg_checker.match?(row_key) }
-    @prg_laps = @solver.data[lap_type]&.select { |row_key, _v| prg_checker.match?(row_key) }
+    # Retrieve several result rows & laps for each MeetingProgram:
+    # (Check actual bindings to support "movable" MPrgs for MIRs/MRSs/Laps)
+    @res_rows = @solver.data[row_type].select { |_k, hsh| hsh['bindings']['meeting_program'] == prg_key }
+    @res_laps = @solver.data[lap_type].select { |_k, hsh| hsh['bindings']['meeting_program'] == prg_key }
     @sub_laps = @solver.data['relay_lap']&.select { |row_key, _v| prg_checker.match?(row_key) } if relay
-    @prg_laps.merge!(@sub_laps) if @sub_laps.present?
+    @res_laps.merge!(@sub_laps) if @sub_laps.present?
+    # DEBUG ----------------------------------------------------------------
+    # binding.pry
+    # ----------------------------------------------------------------------
   end
 
   private
@@ -860,6 +879,10 @@ class DataFixController < ApplicationController
   def prepare_for_review_events_and_results
     # ASSERT: step 1 ("solve meeting & sessions") has already been run
     prepare_sessions_and_pools
+    if @solver.data['team'].blank? || @solver.data['swimmer'].blank?
+      @solver.map_teams_and_swimmers
+      ActionCable.server.broadcast('ImportStatusChannel', { msg: 'Map teams & swimmers: done.' })
+    end
     prepare_event_types_payload
 
     # Prepare the data to be reviewed, solving the entities first when not already serialized:
@@ -924,6 +947,157 @@ class DataFixController < ApplicationController
     # NOTE: when there are 3 or more possible duplicates, this will overwrite
     #       all references of the deleted key with just the first remaining candidate
     #       (which may not be the one intended to remain in the data)
+  end
+  #-- -------------------------------------------------------------------------
+  #++
+
+  # Propagates the changes to a Swimmer entity row after a gender type or YOB override, which may imply
+  # a category change and, consecutevely, a MeetingProgram update for all linked sub-entities (results and laps).
+  #
+  # This method assumes the updated attributes have already been applied to the Swimmer row and its direct
+  # bindings (namely, just its Badge). Which leaves out all results and laps tied to a specific MPrg
+  # (which may change whenever the category or the gender changes).
+  #
+  # A gender type override always implies a meeting program change. A YOB override may or may not, depending
+  # on the associated category type range (which spans 5 years).
+  # Whenever the category change happens, this resolves to:
+  # - changing the swimmer's badge (linked to a category) -- this is assumed to be already taken care of;
+  # - changing any mapped MIRs, Laps or MRSs associated to the same MeetingProgram with the new correct values;
+  #   that is, moving any existing MIRs, Laps or MRSs to the correct MPrg given the correct category/gender.
+  #
+  # In any case, the involved entities keys should *never* change (so that any subsequent purge may
+  # pinpoint uniquely to each possibly duplicated row for correct deletion).
+  #
+  # The method will return immediately if there are no relevant changes to the swimmer entity (YOB and/or gender) and,
+  # in case, will edit @solver.data directly without saving it to file.
+  #
+  # == Params:
+  # - <tt>swimmer_key</tt>: cached entity key to be processed;
+  # - <tt>prev_year_of_birth</tt>: value of the swimmer's YOB before applying the updated attributes;
+  # - <tt>prev_gender_type_id</tt>: value of the swimmer's gender_type_id before applying the updated attributes;
+  # - <tt>updated_attrs</tt>: updated attributes for the swimmer entity.
+  #
+  def check_for_category_change_and_adjust_results(swimmer_key, prev_year_of_birth, prev_gender_type_id, updated_attrs) # rubocop:disable Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
+    return if swimmer_key.blank? || prev_year_of_birth.blank? || prev_gender_type_id.blank? || updated_attrs.blank? ||
+              (prev_gender_type_id == updated_attrs['gender_type_id'].to_i && prev_year_of_birth == updated_attrs['year_of_birth'].to_i)
+
+    # Rebuild the cache for the involved sub entities (as hash of {key: ImportEntity}) so that they're easier to handle:
+    badges_hash = @solver.rebuild_cached_entities_for('badge')
+    badge_row = badges_hash&.fetch(swimmer_key, nil)&.row
+    # DEBUG ----------------------------------------------------------------
+    binding.pry if badge_row.blank?
+    # ^^ This may happen only if the swimmers weren't *all* properly mapped when reaching this point
+    # (i.e.: after a "teams & swimmers"-only partial scan, without scanning also all results)
+    # ----------------------------------------------------------------------
+
+    # Always compute the target category code & type:
+    cat_code, category_type = @solver.post_compute_ind_category(updated_attrs['year_of_birth'].to_i)
+    # Fallback to current category code & type in badge if the computed one is not valid:
+    cat_code, category_type = @solver.categories_cache.find_category_by_id(badge_row.category_type_id, relay: false) if cat_code.blank? || category_type.blank?
+
+    # Regardless of YOB change, category change can be detected by simply comparing it to the badge's one:
+    category_change = category_type.present? && category_type.id != badge_row.category_type_id
+
+    # - Possible gender change? => follow same steps above
+    gender_change = (prev_gender_type_id != updated_attrs['gender_type_id'].to_i) && updated_attrs['gender_type_id'].to_i.positive?
+    return unless category_change || gender_change # Bail out unless there's a MPrg change
+
+    gender_code = updated_attrs['gender_type_id'].to_i == GogglesDb::GenderType::FEMALE_ID ? GogglesDb::GenderType.female.code : GogglesDb::GenderType.male.code
+
+    # == NOTE: APPROXIMATED SOLUTION WARNING!
+    # The following assumes all mapped data inside the cache is "complete" (Laps have bindings on MIRs and so on);
+    # this doesn't support (yet) the special case when Laps are added on a second parsing run while the results (MIRs or MRRs)
+    # are already present on the DB but not yet re-mapped inside the MacroSolver data cache!
+    # (MacroSolver has a #map_events_from_db() and #map_programs_from_db() but it doesn't have a
+    #  "map_results_from_db" method -- yet.)
+    # In other words, this assumes all results and laps come from the original JSON data file and not also from
+    # pre-existing data on the DB.
+
+    prgs_hash = @solver.rebuild_cached_entities_for('meeting_program')
+    mirs_hash = @solver.rebuild_cached_entities_for('meeting_individual_result')
+    laps_hash = @solver.rebuild_cached_entities_for('lap')
+    mrss_hash = @solver.rebuild_cached_entities_for('meeting_relay_swimmer')
+    # DEBUG ----------------------------------------------------------------
+    # binding.pry
+    # ----------------------------------------------------------------------
+
+    mirs_hash.select { |key, _ent| key.include?(swimmer_key) }.each_value do |mir_entity|
+      update_mprogram_bindings_for_entity(
+        prgs_hash:, entity: mir_entity, category_code: cat_code, category_type_id: category_type.id,
+        gender_code:, gender_type_id: updated_attrs['gender_type_id'].to_i
+      )
+    end
+    # DEBUG ----------------------------------------------------------------
+    # binding.pry
+    # ----------------------------------------------------------------------
+
+    # For each Lap that includes this same swimmer, move it to the correct MPrg (MIR should be alread fixed at this point)
+    laps_hash.select { |key, _ent| key.include?(swimmer_key) }.each_value do |lap_entity|
+      update_mprogram_bindings_for_entity(
+        prgs_hash:, entity: lap_entity, category_code: cat_code, category_type_id: category_type.id,
+        gender_code:, gender_type_id: updated_attrs['gender_type_id'].to_i
+      )
+    end
+
+    # Same as above, with the exception that we don't need to update the RelayLap entities
+    # (The only bindings for RelayLap are MRS & MRR but no MPrg)
+    mrss_hash.select { |key, _ent| key.include?(swimmer_key) }.each_value do |mrs_entity|
+      update_mprogram_bindings_for_entity(
+        prgs_hash:, entity: mrs_entity, category_code: cat_code, category_type_id: category_type.id,
+        gender_code:, gender_type_id: updated_attrs['gender_type_id'].to_i
+      )
+    end
+    # DEBUG ----------------------------------------------------------------
+    # binding.pry
+    # ----------------------------------------------------------------------
+  end
+  #-- -------------------------------------------------------------------------
+  #++
+
+  # Updates the MeetingProgram bindings for a given Import::Entity adding a new MeetingProgram to the @solver data cache
+  # when not found.
+  # The method updates directly the Entity reference's bindings with the new target MeetingProgram, given
+  # the new values for category & gender.
+  #
+  # == Options:
+  # - <tt>:prgs_hash</tt>         => MeetingProgram entities hash, having format {mprg_key => mprg_entity};
+  # - <tt>:entity</tt>            => the ImportEntity for which the MeetingPrograms bindings have to be updated;
+  # - <tt>:category_code</tt>     => the new category code (CategoryType#code);
+  # - <tt>:category_type_id</tt>  => the new category type id (CategoryType#id);
+  # - <tt>:gender_code</tt>       => the new gender type code (GenderType#code);
+  # - <tt>:gender_type_id</tt>    => the new gender type id (GenderType#id);
+  #
+  def update_mprogram_bindings_for_entity(options = {}) # rubocop:disable Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
+    prgs_hash = options&.fetch(:prgs_hash, {})
+    entity = options&.fetch(:entity, nil)
+    category_code = options&.fetch(:category_code, nil)
+    category_type_id = options&.fetch(:category_type_id, nil)
+    gender_code = options&.fetch(:gender_code, nil)
+    gender_type_id = options&.fetch(:gender_type_id, nil)
+    return if entity.blank? || !entity.is_a?(Import::Entity) || prgs_hash.blank? || !prgs_hash.is_a?(Hash) ||
+              category_code.blank? || category_type_id.blank? || gender_code.blank? || gender_type_id.blank?
+
+    # 1. Prepare target MPrg key
+    prg_key = entity.bindings&.fetch('meeting_program', '')
+    new_prg_key = "#{prg_key.split(/-M\d{2,3}-/i).first}-#{category_code}-#{gender_code}"
+    # DEBUG ----------------------------------------------------------------
+    # binding.pry
+    # ----------------------------------------------------------------------
+
+    # 1.1 Add the target MPrg when not found yet in the solver cache:
+    unless @solver.entity_present?('meeting_program', new_prg_key)
+      # Use the original MPrg as base for the new one and update the changed fields:
+      prg_entity = prgs_hash&.fetch(prg_key, nil)
+      new_row = prg_entity.row.dup
+      new_row.event_order += 1 # (don't care if 2 MPrgs have the same order as they will be ordered also by category & gender)
+      new_row.gender_type_id = gender_type_id
+      new_row.category_type_id = category_type_id
+      new_prg_entity = Import::Entity.new(row: new_row, matches: [], bindings: prg_entity.bindings.dup)
+      @solver.add_entity_with_key('meeting_program', new_prg_key, new_prg_entity)
+    end
+
+    # 2. Move entity to the correct MPrg:
+    entity.bindings['meeting_program'] = new_prg_key
   end
   #-- -------------------------------------------------------------------------
   #++

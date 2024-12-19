@@ -3,7 +3,7 @@
 #
 # = DataFix components module
 #
-#   - version:  7.0.6.00
+#   - version:  7.0.7.25
 #   - author:   Steve A.
 #
 module DataFix
@@ -24,31 +24,46 @@ module DataFix
   # its related 'bindings' array).
   #
   class ResultDetailsSetComponent < ViewComponent::Base
-    def initialize(prg_rows:, prg_laps:)
+    def initialize(res_rows:, res_laps:)
       super
-      @prg_rows = prg_rows
-      @prg_laps = prg_laps
+      @res_rows = res_rows
+      @res_laps = res_laps
     end
 
     # Skips rendering unless the required parameters are set
     def render?
-      @prg_rows.present?
+      @res_rows.present?
     end
 
     protected
 
-    # Memoized row-set of laps/relay_swimmers, filtered by the current #row_checker
-    def laps_rowset(prg_key)
-      @prg_laps&.filter_map { |lap_key, lap_row| lap_row&.fetch('row') if row_checker(prg_key).match?(lap_key) }
+    # Sorted results rows by timing, regardless of rank
+    def sorted_result_set
+      @res_rows&.sort do |arr1, arr2|
+        # Each item, when sorting an hash, is an array having [key, value]:
+        a = arr1.second&.fetch('row', {})
+        b = arr2.second&.fetch('row', {})
+        # DEBUG ----------------------------------------------------------------
+        # binding.pry
+        # ----------------------------------------------------------------------
+        Kernel.format('%02d%02d%02d', a['minutes'].to_i, a['seconds'].to_i,
+                      a['hundredths'].to_i).to_i <=> Kernel.format('%02d%02d%02d', b['minutes'].to_i,
+                                                                   b['seconds'].to_i, b['hundredths'].to_i).to_i
+      end
+    end
+
+    # Row-set of laps/relay_swimmers, filtered by the current #row_checker
+    def laps_rowset(res_key)
+      @res_laps&.filter_map { |lap_key, lap_row| lap_row&.fetch('row') if row_checker(res_key).match?(lap_key) }
                &.sort { |a, b| a['length_in_meters'] <=> b['length_in_meters'] }
     end
 
     private
 
-    # Row filter using a string +prg_key+ from the +@prg_rows+ hash to filter out any available
+    # Row filter using a string +res_key+ from the +@res_rows+ hash to filter out any available
     # lap data.
-    def row_checker(prg_key)
-      Regexp.new(prg_key, Regexp::IGNORECASE)
+    def row_checker(res_key)
+      Regexp.new(res_key, Regexp::IGNORECASE)
     end
   end
 end

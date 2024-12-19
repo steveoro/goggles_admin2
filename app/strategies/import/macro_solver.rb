@@ -6,7 +6,7 @@ module Import
   #
   #   - version:  7-0.7.25
   #   - author:   Steve A.
-  #   - build:    20241129
+  #   - build:    20241218
   #
   # Scans the already-parsed Meeting results JSON object (which stores a whole set of results)
   # and finds existing & corresponding entity rows or creates (locally) any missing associated
@@ -49,63 +49,11 @@ module Import
     #-- ------------------------------------------------------------------------
     #++
 
-    # Returns the <tt>model_name</tt> class constant.
-    # (Uses as implied default namespace <tt>"GogglesDb::"</tt>.)
-    #
-    # == Params:
-    # - <tt>model_name</tt>: the string name of the model, with the implied GogglesDb namespace
-    #
-    def self.model_class_for(model_name)
-      "GogglesDb::#{model_name.to_s.camelcase}".constantize
-    end
-
-    # Returns the array of attribute (column) string names for the specified <tt>model_name</tt>,
-    # without any namespace.
-    # (Uses as implied default namespace <tt>"GogglesDb::"</tt>.)
-    #
-    # == Params:
-    # - <tt>model_name</tt>: the string name of the model, with the implied GogglesDb namespace
-    #
-    def self.model_attribute_names_for(model_name)
-      "GogglesDb::#{model_name.to_s.camelcase}".constantize.new.attributes.keys
-    end
-
-    # Returns a copy of the list of attributes/columns as an Hash using the specified Model name
-    # as source of truth for which the attributes should be kept in the list.
-    # Everything that's not an actual column of the table will be stripped of the list while
-    # the original unfiltered hash remains unmodified.
-    #
-    # == Params:
-    # - <tt>unfiltered_hash</tt>: unfiltered Hash of attributes
-    # - <tt>model_name</tt>: the string name of the model, with the implied GogglesDb namespace
-    #
-    # == Returns:
-    # the Hash of attributes (column names => values) extracted from <tt>unfiltered_hash</tt> and
-    # valid for updating or creating an instance of <tt>model_name</tt>.
-    # Returns an empty Hash otherwise.
-    #
-    def self.actual_attributes_for(unfiltered_hash, model_name)
-      return {} unless unfiltered_hash.respond_to?(:reject)
-
-      valid_column_keys = model_attribute_names_for(model_name)
-      unfiltered_hash.select { |key, _v| valid_column_keys.include?(key) }
-    end
-    #-- -------------------------------------------------------------------------
-    #++
-
-    # 1-pass solver wrapping the steps (meeting & sessions; teams & swimmers; events, results & rankings).
-    # Updates the source @data with serializable DB entities.
-    # Currently, used for debugging purposes only.
-    def solve
-      map_meeting_and_sessions
-      map_teams_and_swimmers
-      map_events_and_results
-    end
-    #-- ------------------------------------------------------------------------
-    #++
-
     # Returns the GogglesDb::Season specified with the constructor.
     attr_accessor :season
+
+    # Internal CategoriesCache member
+    attr_reader :categories_cache
 
     # Returns the whole internal data hash, "as is".
     #
@@ -180,6 +128,61 @@ module Import
     # The file can still be processed normally, but the whole subsection with the retry will be missing from the resulting data Hash.
     attr_accessor :retry_needed
 
+    #-- ------------------------------------------------------------------------
+    #++
+
+    # Returns the <tt>model_name</tt> class constant.
+    # (Uses as implied default namespace <tt>"GogglesDb::"</tt>.)
+    #
+    # == Params:
+    # - <tt>model_name</tt>: the string name of the model, with the implied GogglesDb namespace
+    #
+    def self.model_class_for(model_name)
+      "GogglesDb::#{model_name.to_s.camelcase}".constantize
+    end
+
+    # Returns the array of attribute (column) string names for the specified <tt>model_name</tt>,
+    # without any namespace.
+    # (Uses as implied default namespace <tt>"GogglesDb::"</tt>.)
+    #
+    # == Params:
+    # - <tt>model_name</tt>: the string name of the model, with the implied GogglesDb namespace
+    #
+    def self.model_attribute_names_for(model_name)
+      "GogglesDb::#{model_name.to_s.camelcase}".constantize.new.attributes.keys
+    end
+
+    # Returns a copy of the list of attributes/columns as an Hash using the specified Model name
+    # as source of truth for which the attributes should be kept in the list.
+    # Everything that's not an actual column of the table will be stripped of the list while
+    # the original unfiltered hash remains unmodified.
+    #
+    # == Params:
+    # - <tt>unfiltered_hash</tt>: unfiltered Hash of attributes
+    # - <tt>model_name</tt>: the string name of the model, with the implied GogglesDb namespace
+    #
+    # == Returns:
+    # the Hash of attributes (column names => values) extracted from <tt>unfiltered_hash</tt> and
+    # valid for updating or creating an instance of <tt>model_name</tt>.
+    # Returns an empty Hash otherwise.
+    #
+    def self.actual_attributes_for(unfiltered_hash, model_name)
+      return {} unless unfiltered_hash.respond_to?(:reject)
+
+      valid_column_keys = model_attribute_names_for(model_name)
+      unfiltered_hash.select { |key, _v| valid_column_keys.include?(key) }
+    end
+    #-- -------------------------------------------------------------------------
+    #++
+
+    # 1-pass solver wrapping the steps (meeting & sessions; teams & swimmers; events, results & rankings).
+    # Updates the source @data with serializable DB entities.
+    # Currently, used for debugging purposes only.
+    def solve
+      map_meeting_and_sessions
+      map_teams_and_swimmers
+      map_events_and_results
+    end
     #-- ------------------------------------------------------------------------
     #++
 
@@ -337,7 +340,7 @@ module Import
               swimmer_key, swimmer = map_and_return_swimmer(swimmer_name:, year_of_birth:, gender_type_code:, team_name:)
               # NOTE: usually badge numbers won't be added to relay swimmers due to limited space,
               #       so we revert to the default value (nil => '?')
-              # NOTE 2: #map_and_return_badge will handle nil or relay category types with #post_compute_ind_category_code(YOB)
+              # NOTE 2: #map_and_return_badge will handle nil or relay category types with #post_compute_ind_category(YOB)
               badge = map_and_return_badge(swimmer:, swimmer_key:, team:, team_key: team_name,
                                            team_affiliation:, category_type:)
               # This should never occur at this point (unless data is corrupted):
@@ -380,7 +383,7 @@ module Import
             team_affiliation = map_and_return_team_affiliation(team:, team_key: team_name)
             swimmer_key, swimmer = map_and_return_swimmer(swimmer_name:, year_of_birth:, gender_type_code:, team_name:)
 
-            # NOTE: #map_and_return_badge will handle nil or relay category types with #post_compute_ind_category_code(YOB)
+            # NOTE: #map_and_return_badge will handle nil or relay category types with #post_compute_ind_category(YOB)
             badge = map_and_return_badge(swimmer:, swimmer_key:, team:, team_key: team_name,
                                          team_affiliation:, category_type:, badge_code:)
             # Update any other entity referring/bound to this (swimmer & team):
@@ -1555,7 +1558,7 @@ module Import
         add_entity_with_key('lap', lap_key, lap_entity) # (always overwrite the mapped lap with the new entity)
 
       elsif mr_model.is_a?(GogglesDb::MeetingRelayResult)
-        mrs_key = "mrs#{order}-#{mr_key}"
+        mrs_key = mrs_key_for(order, mr_key, swimmer_key)
         # NOTE:
         # 1. always create MRS first so that the binding in the relay lap can be set
         # 2. restore MRS from cache when processing a relay lap (length < phase_length)
@@ -1577,6 +1580,7 @@ module Import
       elsif mr_model.is_a?(GogglesDb::MeetingRelaySwimmer) && sub_phases.positive?
         # In this case, 'mr_key' refers already to the MRR key:
         mrr_row = cached_instance_of('meeting_relay_result', mr_key)
+        mrs_key = mrs_key_for(order, mr_key, swimmer_key)
 
         # *** MRS -> RelayLap ***
         # (when length is enough and sub-laps are present)
@@ -1584,12 +1588,16 @@ module Import
         relay_lap_entity = find_or_prepare_relay_lap(
           swimmer:, swimmer_key:, team:, team_key:,
           mrr: mrr_row, mrr_key:,
-          mrs: mr_model, mrs_key: mr_key,
+          mrs: mr_model, mrs_key:,
           length_in_meters:,
           abs_timing: lap_timing, # (abs = "from start")
           delta_timing: # (delta = "each individual lap")
         )
-        relay_lap_key = "relay_lap#{length_in_meters}-#{mr_key}"
+        relay_lap_key = "relay_lap#{length_in_meters}-#{mr_key}" # (shortened key on purpose -- read below)
+        # (Note that the only bindings for RelayLap are MRS & MRR; in case the swimmer will be adjusted
+        # in gender or age later on, we don't need to search the RelayLaps again; so there's no need to
+        # add the whole swimmer_key to the RelayLap key)
+
         # Add RelayLap only when missing:
         add_entity_with_key('relay_lap', relay_lap_key, relay_lap_entity) unless entity_present?('relay_lap', relay_lap_key)
 
@@ -2034,6 +2042,35 @@ module Import
     def mrr_key_for(program_key, team_key, timing_string)
       "#{program_key}/#{team_key}-#{timing_string.presence || '0'}"
     end
+
+    # Returns the internal string key used to access a cached MeetingRelaySwimmer entity row.
+    #
+    # == Params
+    # - <tt>order</tt>: numeric order for the relay phase (1..4, typically, swimmer index + 1);
+    # - <tt>mrr_key</tt>: string key used to access the cached entity row for the parent MeetingRelayResult;
+    # - <tt>swimmer_key</tt>: as above, but for the associated GogglesDb::Swimmer.
+    def mrs_key_for(order, mrr_key, swimmer_key)
+      "mrs#{order}-#{mrr_key}-#{swimmer_key}"
+    end
+    #-- -----------------------------------------------------------------------
+    #++
+
+    # Detects the possible valid individual result category code given the year_of_birth of the swimmer.
+    #
+    # == Params:
+    # - year_of_birth: year_of_birth of the swimmer as integer
+    #
+    # == Returns:
+    # Similarly to CategoriesCache#find_category_for_age(), returns the array [category_code, category_type]
+    # corresponding to a matching CategoryType code. Or [nil, nil] when not found.
+    def post_compute_ind_category(year_of_birth)
+      return [nil, nil] unless year_of_birth.to_i.positive?
+
+      # Compute the age but adjust it whenever the session falls into the first half of the Championship year:
+      meeting_entity = rebuild_cached_entities_for('meeting')
+      age = PdfResults::L2Converter.swimmer_age_for_category_range(year_of_birth, meeting_entity.row.header_date) if meeting_entity.row.header_date.is_a?(Date)
+      @categories_cache.find_category_for_age(age, relay: false)
+    end
     #-- -----------------------------------------------------------------------
     #++
 
@@ -2192,11 +2229,11 @@ module Import
       return cached_instance_of('badge', options[:swimmer_key]) if entity_present?('badge', options[:swimmer_key])
 
       # Make sure we don't assign badges using relay category types by mistake:
-      category_type = if options[:category_type].blank? || options[:category_type]&.relay?
-                        post_compute_ind_category_code(options[:swimmer].year_of_birth)
-                      else
-                        options[:category_type]
-                      end
+      _curr_cat_code, category_type = if options[:category_type].blank? || options[:category_type]&.relay?
+                                        post_compute_ind_category(options[:swimmer].year_of_birth)
+                                      else
+                                        [nil, options[:category_type]]
+                                      end
       badge_entity = find_or_prepare_badge(
         swimmer: options[:swimmer], swimmer_key: options[:swimmer_key],
         team: options[:team], team_key: options[:team_key],
@@ -2260,7 +2297,7 @@ module Import
       team_affiliation = map_and_return_team_affiliation(team:, team_key: team_name)
       swimmer_key, swimmer = map_and_return_swimmer(swimmer_name:, year_of_birth:, gender_type_code:,
                                                     team_name:)
-      # NOTE: 2: #map_and_return_badge will handle nil or relay category types with #post_compute_ind_category_code(YOB)
+      # NOTE: 2: #map_and_return_badge will handle nil or relay category types with #post_compute_ind_category(YOB)
       badge = map_and_return_badge(swimmer:, swimmer_key:, team:, team_key: team_name,
                                    team_affiliation:, category_type: options[:category_type],
                                    badge_code:)
@@ -2371,7 +2408,7 @@ module Import
         swimmer_key, swimmer = map_and_return_swimmer(swimmer_name:, year_of_birth:, gender_type_code:, team_name:)
         # NOTE: usually badge numbers won't be added to relay swimmers due to limited space,
         #       so we revert to the default value (nil => '?')
-        # NOTE 2: #map_and_return_badge will handle nil or relay category types with #post_compute_ind_category_code(YOB)
+        # NOTE 2: #map_and_return_badge will handle nil or relay category types with #post_compute_ind_category(YOB)
         badge = map_and_return_badge(swimmer:, swimmer_key:, team:, team_key: team_name,
                                      team_affiliation:, category_type: nil) # (nil => force badge retrieval when existing or "esteem category by YOB")
         # *** MRS (parent) ***
@@ -2387,7 +2424,7 @@ module Import
           # so here we'll rely on the resulting computed value:
           prev_lap_timing:
         )
-        mrs_key = "mrs#{phase_idx}-#{mrr_key}"
+        mrs_key = mrs_key_for(phase_idx, mrr_key, swimmer_key)
         mrs_row = cached_instance_of('meeting_relay_swimmer', mrs_key)
 
         # *** RelayLaps (siblings) ***
@@ -2483,7 +2520,7 @@ module Import
         swimmer_key, swimmer = map_and_return_swimmer(swimmer_name:, year_of_birth:, gender_type_code:, team_name:)
         # NOTE: usually badge numbers won't be added to relay swimmers due to limited space,
         #       so we revert to the default value (nil => '?')
-        # NOTE 2: #map_and_return_badge will handle nil or relay category types with #post_compute_ind_category_code(YOB)
+        # NOTE 2: #map_and_return_badge will handle nil or relay category types with #post_compute_ind_category(YOB)
         map_and_return_badge(swimmer:, swimmer_key:, team:, team_key: team_name,
                              team_affiliation:, category_type: nil) # (nil => force badge retrieval or compute category by YOB)
         # DEBUG: ******************************************************************
@@ -2559,23 +2596,6 @@ module Import
       lowest_cat = @categories_cache.key?('U20') ? 'U20' : 'U25'
       cat_code = category_label.gsub(/a/i, 'M')
       @categories_cache.key?(cat_code) ? @categories_cache[cat_code] : @categories_cache[lowest_cat]
-    end
-
-    # Detects the possible valid individual result category code given the year_of_birth of the swimmer.
-    # Returns the string category code ("M<nn>") or +nil+ when not found.
-    #
-    # == Params:
-    # - year_of_birth: year_of_birth of the swimmer as integer
-    #
-    # == NOTE:
-    # Same implementation as L2Converter's helper but returns the actual CategoryType instead of just the code.
-    #
-    def post_compute_ind_category_code(year_of_birth)
-      return unless year_of_birth.to_i.positive?
-
-      age = @season.begin_date.year - year_of_birth
-      _curr_cat_code, category_type = @categories_cache.find_category_code_for_age(age, relay: false)
-      category_type
     end
 
     # Searches for "incomplete" swimmer keys (the specified key string minus the team_name)

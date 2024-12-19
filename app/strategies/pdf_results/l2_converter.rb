@@ -54,7 +54,13 @@ module PdfResults
     #-- -------------------------------------------------------------------------
     #++
 
-    attr_reader :data, :header, :session_month
+    attr_reader :data
+
+    # Meeting session date numberics
+    attr_reader :session_day, :session_month, :session_year
+
+    # Internal CategoriesCache member
+    attr_reader :categories_cache
 
     # Creates a new converter instance given the specified data Hash.
     #
@@ -110,7 +116,7 @@ module PdfResults
       @season = season
       # Collect the list of associated CategoryTypes to avoid hitting the DB for category code checking:
       @categories_cache = PdfResults::CategoriesCache.new(season)
-      # Precompute header & session_month values:
+      # Precompute header & session variables:
       header
     end
     #-- -----------------------------------------------------------------------
@@ -121,9 +127,37 @@ module PdfResults
       /(4|6|8)x\d{2,3}/i.match?(event_title.to_s)
     end
 
+    # Computes the swimmer's age, possily adjusted for the proper current category age range (5-years x category),
+    # according to the given meeting date.
+    #
+    # == Rationale:
+    # Given that Championships usually start in the second half of an year and we only consider the
+    # year of birth (as if the swimmer was born on the 1st of January of that year), the swimmer's age
+    # must be rounded up by 1 if the session month is in the second half of the current year - implying
+    # the first half of its season.
+    #
+    # === Example:
+    # YOB: 2000, session_year: 2024, session_month: 7 => age 24 => category 'M20' (meeting falls inside ending part of season 2023-2024)
+    # YOB: 2000, session_year: 2024, session_month: 9 => age 25 => category 'M25' (meeting falls inside starting part of season 2024-2025)
+    #
+    # == Params:
+    # - <tt>year_of_birth</tt>: the swimmer's year of birth (+Numeric+)
+    # - <tt>meeting_date</tt>: the meeting +Date+ to be considered; default: +today+
+    #
+    # == Returns:
+    # The swimmer's age (as a numeric value) for a given +date+.
+    # Raises an error unless +meeting_date+ responds to #year & #month (a valid +Date+).
+    def self.swimmer_age_for_category_range(year_of_birth, meeting_date = Time.zone.today)
+      meeting_date.year - year_of_birth + (meeting_date.month > 8 ? 1 : 0)
+    end
+    #-- -----------------------------------------------------------------------
+    #++
+
     # Returns the Hash header in "L2" structure (memoized).
     # Seeks values both the 'header' and 'event' context data rows.
-    # Sets also the internal @header & @session_month instance variables.
+    # Sets also the internal member variables:
+    # - @header
+    # - @session_day, @session_month, @session_year.
     def header
       return @header if @header.present?
 
@@ -138,21 +172,23 @@ module PdfResults
       # Extract meeting session date text from 2 possible places (header or event), then get the single fields:
       meeting_date_text = fetch_session_date(extract_header_fields) ||
                           fetch_session_date(first_event_fields) || fetch_session_date(footer_fields)
-      session_day, @session_month, session_year = Parser::SessionDate.from_eu_text(meeting_date_text) if meeting_date_text.present?
+      @session_day, @session_month, @session_year = Parser::SessionDate.from_eu_text(meeting_date_text) if meeting_date_text.present?
 
       @header = {
         'layoutType' => 2,
         'name' => fetch_meeting_name, # (Usually, this is always in the header)
         'meetingURL' => '',
         'manifestURL' => '',
-        'dateDay1' => session_day,
-        'dateMonth1' => session_month,
-        'dateYear1' => session_year,
+        'dateDay1' => @session_day,
+        'dateMonth1' => @session_month,
+        'dateYear1' => @session_year,
         'venue1' => footer_fields&.fetch('meeting_venue_or_date', nil),
         'address1' => fetch_session_place(extract_header_fields) || fetch_session_place(first_event_fields) || fetch_session_place(footer_fields),
         'poolLength' => fetch_pool_type(extract_header_fields).last || fetch_pool_type(first_event_fields).last
       }
     end
+    #-- -----------------------------------------------------------------------
+    #++
 
     # Returns the Array of Hash for the 'event' sections in standard "L2" structure.
     # Handles both individual & relays events (distinction comes also from category later
@@ -1461,7 +1497,17 @@ module PdfResults
 
       # -- RELAY RES. -- (Override blank section keys with converted/computed result values for responding keys only)
       # Force category code update with post-computation only when not properly set (and we can compute it):
-      curr_cat_code = post_compute_rel_category_code(result_data_hash['overall_age'].to_i) if curr_cat_code.blank? && result_data_hash['overall_age'].to_i.positive?
+      if curr_cat_code.blank? && result_data_hash['overall_age'].to_i.positive?
+        curr_cat_code, _cat_type = post_compute_rel_category(result_data_hash['overall_age'].to_i)
+        # DEBUG ----------------------------------------------------------------
+        # THIS MAY HAPPEN only when the categories lack a certain age range:
+        binding.pry if curr_cat_code.blank?
+        # SOLUTION: you need to add the missing category *before* the parsing, using a migration on the DB & Main projects
+        # THESE should be already there:
+        # curr_cat_code = '80-99' if curr_cat_code.blank? && (80..99).cover?(overall_age) # U25 (2020+, out of race)
+        # curr_cat_code = '60-79' if curr_cat_code.blank? && (60..79).cover?(overall_age) # U20 (2023+, out of race)
+        # ----------------------------------------------------------------------
+      end
 
       # Force section gender code update only if not properly set (and extracted data from result row can help):
       if curr_cat_gender.blank? && result_data_hash.key?('gender_type1')
@@ -1471,7 +1517,12 @@ module PdfResults
 
       # -- INVIDUAL RES. -- (Override blank section keys with converted/computed result values for responding keys only)
       # Force category code update with post-computation only when not properly set (and we can compute it):
-      curr_cat_code = post_compute_ind_category_code(result_data_hash['year'].to_i) if curr_cat_code.blank?
+      curr_cat_code, _cat_type = post_compute_ind_category(result_data_hash['year'].to_i) if curr_cat_code.blank?
+      # DEBUG ----------------------------------------------------------------
+      # THIS MAY HAPPEN only when the categories lack a certain age range:
+      binding.pry if curr_cat_code.blank?
+      # FIX: need to add the missing category *before* the parsing, using a migration on the DB & Main projects
+      # ----------------------------------------------------------------------
 
       # Force section gender code update only if not properly set (and extracted data from result row can help):
       curr_cat_gender = result_data_hash['sex'].upcase if curr_cat_gender.blank? && result_data_hash['sex'].present?
@@ -1525,41 +1576,33 @@ module PdfResults
     end
 
     # Detects the possible valid individual result category code given the year_of_birth of the swimmer.
-    # Returns the string category code ("M<nn>") or +nil+ when not found.
+    #
     # == Params:
     # - year_of_birth: year_of_birth of the swimmer as integer
-    def post_compute_ind_category_code(year_of_birth)
-      return unless year_of_birth.positive?
+    #
+    # == Returns:
+    # Similarly to CategoriesCache#find_category_for_age(), returns the array [category_code, category_type]
+    # corresponding to a matching CategoryType code. Or [nil, nil] when not found.
+    def post_compute_ind_category(year_of_birth)
+      return unless year_of_birth.positive? && session_year.present? && session_month.present?
 
-      # Compute age and adjust in case the session falls into the first
-      # half of the Championship year:
-      age = @season.begin_date.year - year_of_birth + (session_month.to_i > 8 ? 1 : 0)
-      curr_cat_code, _cat = @categories_cache.find_category_code_for_age(age, relay: false)
-      # DEBUG ----------------------------------------------------------------
-      # THIS MAY HAPPEN only when the categories lack a certain age range:
-      binding.pry if curr_cat_code.blank?
-      # FIX: need to add the missing category *before* the parsing, using a migration on the DB & Main projects
-      # ----------------------------------------------------------------------
-      curr_cat_code
+      # Compute the age but adjust it whenever the session falls into the half of the Championship year:
+      age = PdfResults::L2Converter.swimmer_age_for_category_range(year_of_birth, Date.parse("#{session_year}-#{session_month}-01"))
+      @categories_cache.find_category_for_age(age, relay: false)
     end
 
     # Detects the possible valid relay category code given the overall age of the involved swimmers.
-    # Returns the string category code ("<nnn>-<nnn>") or +nil+ when not found.
+    #
     # == Params:
     # - overall_age: integer overall age, sum of the age of all relay swimmers found
-    def post_compute_rel_category_code(overall_age)
+    #
+    # == Returns:
+    # Similarly to CategoriesCache#find_category_for_age(), returns the array [category_code, category_type]
+    # corresponding to a matching CategoryType code. Or [nil, nil] when not found.
+    def post_compute_rel_category(overall_age)
       return unless overall_age.positive?
 
-      curr_cat_code, _cat = @categories_cache.find_category_code_for_age(overall_age, relay: true)
-      # DEBUG ----------------------------------------------------------------
-      # THIS MAY HAPPEN only when the categories lack a certain age range:
-      binding.pry if curr_cat_code.blank?
-      # FIX: need to add the missing category *before* the parsing, using a migration on the DB & Main projects
-      # THESE should be already there:
-      # curr_cat_code = '80-99' if curr_cat_code.blank? && (80..99).cover?(overall_age) # U25 (2020+, out of race)
-      # curr_cat_code = '60-79' if curr_cat_code.blank? && (60..79).cover?(overall_age) # U20 (2023+, out of race)
-      # ----------------------------------------------------------------------
-      curr_cat_code
+      @categories_cache.find_category_for_age(overall_age, relay: true)
     end
     #-- -----------------------------------------------------------------------
     #++
@@ -1673,7 +1716,10 @@ module PdfResults
       output_hash["swimmer#{swimmer_idx}"] = swimmer_name
       output_hash["#{GENDER_FIELD_NAME}#{swimmer_idx}"] = gender_code
       output_hash["year_of_birth#{swimmer_idx}"] = year_of_birth
-      output_hash['overall_age'] += @season.begin_date.year - year_of_birth if sum_overall_age && year_of_birth.to_i.positive?
+      if sum_overall_age && year_of_birth.to_i.positive?
+        age = PdfResults::L2Converter.swimmer_age_for_category_range(year_of_birth, Date.parse("#{session_year}-#{session_month}-01"))
+        output_hash['overall_age'] += age
+      end
 
       # *** Check for same-depth case at rel_team-depth + 1: *all* relay swimmer fields (as sub-rows) inside a single'rel_swimmer' ***
       ((swimmer_idx + 1)..8).each do |idx|

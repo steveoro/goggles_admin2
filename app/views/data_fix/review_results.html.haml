@@ -52,9 +52,13 @@
                           prg_entity = @prgs_hash[prg_key]
                           prg = prg_entity.row
                           prg_code = prg_key.split("#{event_key}-").last
-                          prg_checker = Regexp.new(prg_key, Regexp::IGNORECASE)
-                          result_sub_count = row_keys&.select { |row_key| prg_checker.match?(row_key) }&.count
-                          lap_sub_count = lap_keys&.select { |lap_key| prg_checker.match?(lap_key) }&.count
+                          # Check actual bindings to support "movable" MPrgs for MIRs/MRSs/Laps:
+                          result_type = event.relay? ? 'meeting_relay_result' : 'meeting_individual_result'
+                          result_keys = @solver.data[result_type].select { |_k, hsh| hsh['bindings']['meeting_program'] == prg_key }.keys
+                          result_sub_count = result_keys.count
+                          lap_type = event.relay? ? 'meeting_relay_swimmer' : 'lap'
+                          lap_keys = @solver.data[lap_type].select { |_k, hsh| hsh['bindings']['meeting_program'] == prg_key }.keys
+                          lap_sub_count = lap_keys.count
                         .col-auto.border.pt-1.m-1
                           = prg_code
                           - if prg.id.present?

@@ -72,7 +72,21 @@ module PdfResults
     #-- -----------------------------------------------------------------------
     #++
 
-    # Finder for a <tt>category_code</tt> inside the internal cache.
+    # Finder for a category code & type inside the internal cache using its ID.
+    # Only categories divided by gender are considered (not the "absolute" ones).
+    #
+    # == Params:
+    # - <tt>id</tt> => the row ID belonging to the CategoryType.
+    # - <tt>relay</tt>: +true+ for relay codes; default: +false+
+    #
+    # == Returns:
+    # The array [category_code, category_type] corresponding to a matching CategoryType code.
+    # +nil+ when not found.
+    def find_category_by_id(id, relay: false)
+      @categories_cache.find { |_code, cat| (cat.relay? == relay) && (cat.id == id) && !cat.undivided? }
+    end
+
+    # Finder for a category code & type inside the internal cache.
     # Only categories divided by gender are considered (not the "absolute" ones).
     #
     # == Params:
@@ -82,7 +96,7 @@ module PdfResults
     # == Returns:
     # The array [category_code, category_type] corresponding to a matching CategoryType code.
     # +nil+ when not found.
-    def find_category_code_for_age(age, relay: false)
+    def find_category_for_age(age, relay: false)
       # WARNING: sometimes, for older seasons or in exceptional cases, the age of the swimmer may be particularly low even if it's
       # supposed to be at least 16. We'll round it to 16 to make it enter inside the lowest age range.
       # (In such cases, the swimmer may be a guest of the team and flagged as "out of race", but still it can occur.)
