@@ -619,6 +619,34 @@ module Import
     #-- ------------------------------------------------------------------------
     #++
 
+    # Forces the re-computation of all result ranks for the specified MeetingProgram entity (access using its key).
+    # Each result is properly accessed through its bindings so the even "moved" MIRs are supported.
+    #
+    # Rebuilds also all the cached entities for:
+    # - MeetingProgram;
+    # - MeetingIndividualResult;
+    # - MeetingRelayResult.
+    def recompute_ranks_for(prg_key)
+      prgs_hash = rebuild_cached_entities_for('meeting_program')
+      prg_entity = prgs_hash&.fetch(prg_key, nil)
+      return unless prg_entity.is_a?(Import::Entity)
+
+      %w[meeting_individual_result meeting_relay_result].each do |entity_type|
+        row_hash = rebuild_cached_entities_for(entity_type)
+        # 1. Filter results by the target program (checking the bindings) and with a positive timing, sorting them;
+        # 2. map just the values (the ImportEntity rows) from the [key, value] pairs;
+        # 2. recompute the rank for each filtered result row.
+        row_hash.select { |_key, ent| ent.bindings.fetch('meeting_program', '').include?(prg_key) }
+                .select { |_key, ent| ent.row.to_timing.positive? }
+                .sort { |arr1, arr2| arr1.second.row.to_timing <=> arr2.second.row.to_timing }
+                .map(&:second).each_with_index do |entity, idx|
+                  entity.row.rank = idx + 1
+                end
+      end
+    end
+    #-- ------------------------------------------------------------------------
+    #++
+
     # Finds or prepares the creation of a Meeting instance (wrapped into an <tt>Import::Entity<tt>)
     # given its description and its city name.
     #

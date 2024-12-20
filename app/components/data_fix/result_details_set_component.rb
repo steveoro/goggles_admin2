@@ -43,9 +43,6 @@ module DataFix
         # Each item, when sorting an hash, is an array having [key, value]:
         a = arr1.second&.fetch('row', {})
         b = arr2.second&.fetch('row', {})
-        # DEBUG ----------------------------------------------------------------
-        # binding.pry
-        # ----------------------------------------------------------------------
         Kernel.format('%02d%02d%02d', a['minutes'].to_i, a['seconds'].to_i,
                       a['hundredths'].to_i).to_i <=> Kernel.format('%02d%02d%02d', b['minutes'].to_i,
                                                                    b['seconds'].to_i, b['hundredths'].to_i).to_i

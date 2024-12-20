@@ -22,9 +22,6 @@ module DataFix
       super
       @res_key = res_key
       @model_row = res_row&.fetch('row', nil)
-      # DEBUG ----------------------------------------------------------------
-      # binding.pry
-      # ----------------------------------------------------------------------
       # The following hack will be ok even for relays as we just need to
       # compare the result with >= 100:
       @length_in_meters = res_key.to_s.split('-').second.to_i

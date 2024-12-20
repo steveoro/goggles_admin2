@@ -995,6 +995,11 @@ class DataFixController < ApplicationController
     # Fallback to current category code & type in badge if the computed one is not valid:
     cat_code, category_type = @solver.categories_cache.find_category_by_id(badge_row.category_type_id, relay: false) if cat_code.blank? || category_type.blank?
 
+    # WARNING: proper relay category change/adjust is NOT currently supported! (Even in case of swimmer YOB editing!)
+    # For relays, in order to use "categories_cache.find_category_for_age(overall_age, relay: true)",
+    # all the swimmers belonging to the MRR result should be collected to compute the overall age.
+    # (MRS aren't always present, age is not always known, etc.)
+
     # Regardless of YOB change, category change can be detected by simply comparing it to the badge's one:
     category_change = category_type.present? && category_type.id != badge_row.category_type_id
 
@@ -1016,10 +1021,8 @@ class DataFixController < ApplicationController
     prgs_hash = @solver.rebuild_cached_entities_for('meeting_program')
     mirs_hash = @solver.rebuild_cached_entities_for('meeting_individual_result')
     laps_hash = @solver.rebuild_cached_entities_for('lap')
-    mrss_hash = @solver.rebuild_cached_entities_for('meeting_relay_swimmer')
-    # DEBUG ----------------------------------------------------------------
-    # binding.pry
-    # ----------------------------------------------------------------------
+    # WARNING: proper relay category change/adjust is NOT currently supported! (Even in case of swimmer YOB editing!)
+    # mrss_hash = @solver.rebuild_cached_entities_for('meeting_relay_swimmer')
 
     mirs_hash.select { |key, _ent| key.include?(swimmer_key) }.each_value do |mir_entity|
       update_mprogram_bindings_for_entity(
@@ -1039,17 +1042,16 @@ class DataFixController < ApplicationController
       )
     end
 
+    # WARNING: proper relay category change/adjust is NOT currently supported! (Even in case of swimmer YOB editing!)
+
     # Same as above, with the exception that we don't need to update the RelayLap entities
     # (The only bindings for RelayLap are MRS & MRR but no MPrg)
-    mrss_hash.select { |key, _ent| key.include?(swimmer_key) }.each_value do |mrs_entity|
-      update_mprogram_bindings_for_entity(
-        prgs_hash:, entity: mrs_entity, category_code: cat_code, category_type_id: category_type.id,
-        gender_code:, gender_type_id: updated_attrs['gender_type_id'].to_i
-      )
-    end
-    # DEBUG ----------------------------------------------------------------
-    # binding.pry
-    # ----------------------------------------------------------------------
+    # mrss_hash.select { |key, _ent| key.include?(swimmer_key) }.each_value do |mrs_entity|
+    #   update_mprogram_bindings_for_entity(
+    #     prgs_hash:, entity: mrs_entity, category_code: cat_code, category_type_id: category_type.id,
+    #     gender_code:, gender_type_id: updated_attrs['gender_type_id'].to_i
+    #   )
+    # end
   end
   #-- -------------------------------------------------------------------------
   #++
@@ -1058,6 +1060,9 @@ class DataFixController < ApplicationController
   # when not found.
   # The method updates directly the Entity reference's bindings with the new target MeetingProgram, given
   # the new values for category & gender.
+  #
+  # WARNING: the implementation doesn't take into account relay category change (even on swimmer YOB change)
+  #          => DO NOT USE THIS TO MOVE/UPDATE MRS BINDINGS TO MPRGS! <=
   #
   # == Options:
   # - <tt>:prgs_hash</tt>         => MeetingProgram entities hash, having format {mprg_key => mprg_entity};
@@ -1098,6 +1103,9 @@ class DataFixController < ApplicationController
 
     # 2. Move entity to the correct MPrg:
     entity.bindings['meeting_program'] = new_prg_key
+    # 3. Adjust the ranks for both the old & new MPrgs:
+    @solver.recompute_ranks_for(prg_key)
+    @solver.recompute_ranks_for(new_prg_key)
   end
   #-- -------------------------------------------------------------------------
   #++
