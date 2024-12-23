@@ -1814,6 +1814,10 @@ module Import
       end
 
       cached_data = @data&.fetch(model_name, nil)
+      # This may happen whenever "rebuild" is called before the actual mapping:
+      # (i.e.: forcing a rebuild of MPrg before the actual mapping of results)
+      return if cached_data.nil?
+
       if model_name == 'meeting_session' # ARRAY of Import::Entity(MeetingSession)
         result = []
         # Rebuild the result structure:

@@ -1024,6 +1024,9 @@ class DataFixController < ApplicationController
     # WARNING: proper relay category change/adjust is NOT currently supported! (Even in case of swimmer YOB editing!)
     # mrss_hash = @solver.rebuild_cached_entities_for('meeting_relay_swimmer')
 
+    # There's nothing to move if the MPrgs haven't been mapped yet:
+    return if prgs_hash.blank?
+
     mirs_hash.select { |key, _ent| key.include?(swimmer_key) }.each_value do |mir_entity|
       update_mprogram_bindings_for_entity(
         prgs_hash:, entity: mir_entity, category_code: cat_code, category_type_id: category_type.id,
