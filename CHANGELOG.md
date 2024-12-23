@@ -2,6 +2,7 @@
 
 _Please, add the latest build info on top of the list; use Version::MAJOR only after gold release; keep semantic versioning in line with framework's_
 
+- **0.8.00** [Steve A.] re-sync w/ base engine; bundle updates
 - **0.7.25** [Steve A.] added /latest_updates action (& view) to landing page; slight update to MacroSolver & FormatParser toolchain to better support strange >4x relay events (thanks to Coopernuoto); re-sync w/ base engine; bundle updates
 - **0.7.24** [Steve A.] force calendars to be always updated after data-fix; bugfix for recompute:ranks which didn't take into account zero timings with positive ranks; fix for UserGrid forcing an asset refresh which prevented the grid from working with a different localhost DB; misc data-fix debug; improved misc fin layouts; improved check & merge tasks w/ new options; bugfix for FormatParser algorithm: now valid contexts won't progress the context counter until they fail (as it was supposed to do from the start); major refactoring with LayoutDef: now FormatParser can merge DAOs even from different layouts (if the context key & name are the same and the same layout parent is missing from the page); bundle & rubocop updates
 - **0.7.23** [Steve A.] misc refactoring; re-sync w/ base engine; bundle updates; additional bugfixes; recompute ranks task
