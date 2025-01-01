@@ -69,6 +69,7 @@ class ResultsCrawler {
         headless: true,
         args: [
           '--ignore-certificate-errors', '--enable-feature=NetworkService',
+          '--incognito',
           '--no-sandbox', '--disable-setuid-sandbox'
         ]
       })
@@ -258,14 +259,16 @@ class ResultsCrawler {
   async processResultPageWithLayout2(calendarRow, browser, skippedRows) {
     console.log(`'FIN layout 2' - browsing to ${calendarRow.url}...`);
     // Create a new incognito browser context:
-    const context = await browser.createIncognitoBrowserContext()
+    // const context = await browser.createIncognitoBrowserContext()
     // Create a new page in a pristine context:
-    const page = await context.newPage()
+    // const page = await context.newPage()
+    const page = await browser.newPage()
     await page.setViewport({ width: 1024, height: 768 })
-    await page.setUserAgent('Mozilla/5.0')
+    // await page.setUserAgent('Mozilla/5.0') // (it works with the default, for now)
     page.on('load', () => { console.log('=> Page fully loaded.') });
 
-    await page.goto(calendarRow.url, { waitUntil: 'load' });
+    // await page.goto(calendarRow.url, { waitUntil: 'load' });
+    await page.goto(calendarRow.url) // [20241231] Adding timeout or waitUntil doesn't seem to work as of now
     await page.waitForSelector('.details_nat_eve_list.master > .infos')
               .catch((err) => { console.log(err.toString()) })
     // DEBUG
@@ -303,8 +306,9 @@ class ResultsCrawler {
     if (arrayOfParams.length < 1) { // Add current calendar row to skipped ones if no nodes were available:
       skippedRows.push(calendarRow)
     }
-    console.log('   Closing context...')
-    await context.close()
+    // [20241231] Not using a separate browserContext anymore, for now: (see browser.newPage() above)
+    // console.log('   Closing context...')
+    // await context.close()
   }
   //---------------------------------------------------------------------------
 

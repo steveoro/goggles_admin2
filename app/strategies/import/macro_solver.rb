@@ -1032,24 +1032,25 @@ module Import
     def find_or_prepare_swimmer(swimmer_name, year, sex_code)
       gender_type = select_gender_type(sex_code) # WARNING: May result +nil+ for certain relay formats
       year_of_birth = year.to_i if year.to_i.positive?
-      finder_opts = { complete_name: swimmer_name, toggle_debug: @toggle_debug == 2 }
-      # Don't add nil params to the finder cmd as they may act as filters as well:
-      finder_opts[:gender_type_id] = gender_type.id if gender_type.is_a?(GogglesDb::GenderType)
-      finder_opts[:year_of_birth] = year.to_i if year.to_i.positive?
 
-      # OLD IMPLEMENTATION:
-      # cmd = GogglesDb::CmdFindDbEntity.call(GogglesDb::Swimmer, finder_opts)
-      # NOTE: cmd will find a result even for nil gender types, but it may fail for "totally new" swimmers
-      #       added through a relay result!
-      # if cmd.successful?
-      #   matches = cmd.matches.respond_to?(:map) ? cmd.matches.map(&:candidate) : cmd.matches
-      # end
-      # USE A STRICTER BIAS:
-      finder = GogglesDb::DbFinders::BaseStrategy.new(GogglesDb::Swimmer, finder_opts, :for_name, 0.92) # Orig. bias: 0.8
-      finder.scan_for_matches
-      finder.sort_matches
-      result = finder.matches.first&.candidate
-      return Import::Entity.new(row: result, matches: finder.matches&.map(&:candidate)) if result.present?
+      entity = execute_swimmer_finder(swimmer_name, gender_type, year_of_birth)
+      return entity if entity.present?
+
+      # Detect ticks or backticks as apostrophe and do a second search when no matches were found:
+      if swimmer_name.to_s.include?('`')
+        entity = execute_swimmer_finder(swimmer_name.upcase.tr('`', '\''), gender_type, year_of_birth)
+        return entity if entity.present?
+      elsif swimmer_name.to_s.include?('\'')
+        entity = execute_swimmer_finder(swimmer_name.upcase.tr('\'', '`'), gender_type, year_of_birth)
+        return entity if entity.present?
+      end
+
+      # LOW-LEVEL VERSION OF THE ABOVE:
+      # finder = GogglesDb::DbFinders::BaseStrategy.new(GogglesDb::Swimmer, finder_opts, :for_name, 0.92) # Orig. bias: 0.8
+      # finder.scan_for_matches
+      # finder.sort_matches
+      # result = finder.matches.first&.candidate
+      # return Import::Entity.new(row: result, matches: finder.matches&.map(&:candidate)) if result.present?
 
       tokens = swimmer_name.upcase.split # ASSUMES: family name(s) first, given name(s) last
       if tokens.size == 2
@@ -1072,7 +1073,7 @@ module Import
         first_name = tokens[2..].join(' ')
       end
       new_row = GogglesDb::Swimmer.new(
-        complete_name: swimmer_name,
+        complete_name: swimmer_name.upcase,
         first_name:,
         last_name:,
         year_of_birth:,
@@ -1088,6 +1089,39 @@ module Import
         year_guessed: year_of_birth.to_i.zero?
       )
       Import::Entity.new(row: new_row, matches: [new_row])
+    end
+
+    # Runs GogglesDb::CmdFindDbEntity and returns an already prepared Import::Entity matching
+    # any swimmer on localhost DB given the specified parameters;
+    # or +nil+ when no matches are found.
+    #
+    # == Params:
+    # - <tt>swimmer_name</tt>  => name of the swimmer to find or create
+    # - <tt>gender_type</tt>   => a valid GogglesDb::GenderType instance
+    # - <tt>year_of_birth</tt> => year of birth of the swimmer (can be +nil+)
+    #
+    # == Returns:
+    # The prepared Import::Entity, or +nil+ when no successful matches are found.
+    def execute_swimmer_finder(swimmer_name, gender_type, year_of_birth)
+      finder_opts = { complete_name: swimmer_name.upcase, toggle_debug: @toggle_debug == 2 }
+      # Don't add nil params to the finder cmd as they may act as filters as well:
+      finder_opts[:gender_type_id] = gender_type.id if gender_type.is_a?(GogglesDb::GenderType)
+      finder_opts[:year_of_birth] = year_of_birth.to_i if year_of_birth.to_i.positive?
+
+      # Use a stricter bias than the default (0.8):
+      cmd = GogglesDb::CmdFindDbEntity.call(GogglesDb::Swimmer, finder_opts, 0.92)
+      # NOTE: cmd will find a result even for nil gender types, but it may fail for "totally new" swimmers
+      #       added through a relay result!
+      return unless cmd.successful?
+
+      matches = cmd.matches.respond_to?(:map) ? cmd.matches.map(&:candidate) : cmd.matches
+      row = cmd.result
+      # "Standardize" backticks with "straight" apostrophe so that MacroCommitter will recognize any
+      # needed update for the swimmer:
+      row.last_name = row.complete_name.upcase.tr('`', '\'')
+      row.first_name = row.complete_name.upcase.tr('`', '\'')
+      row.complete_name = row.complete_name.upcase.tr('`', '\'')
+      Import::Entity.new(row:, matches:)
     end
 
     # Finds or prepares the creation of a swimmer badge.

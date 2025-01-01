@@ -30,7 +30,7 @@ class CalendarCrawler {
    * @param {String} subMenuText - text to be searched for inside the sub-menu node item (item to be selected)
    * @param {String} yearText - text to be searched in the item list from the clicked sub-menu (typically from the archive section)
    */
-  constructor(seasonId = 212, startURL, subMenuText, yearText) {
+  constructor(seasonId = 242, startURL, subMenuText, yearText) {
     this.seasonId = seasonId
     this.startURL = startURL
     this.subMenuText = subMenuText
@@ -106,16 +106,19 @@ class CalendarCrawler {
     */
   async processPage(baseURL, subMenuText, yearText, browser) {
     // Create a new incognito browser context:
-    const context = await browser.createIncognitoBrowserContext()
+    // const context = await browser.createIncognitoBrowserContext()
     // Create a new page in a pristine context:
-    const page = await context.newPage()
-    await page.setViewport({ width: 1200, height: 800 })
-    await page.setUserAgent('Mozilla/5.0')
+    // const page = await context.newPage()
+    const page = await browser.newPage()
+    await page.setViewport({ width: 1024, height: 768 })
+    // await page.setUserAgent('Mozilla/5.0') // (it works with the default, for now)
     page.on('load', () => { console.log('=> Page fully loaded.') });
 
     CrawlUtil.updateStatus(`Browsing to ${baseURL} (${subMenuText}-> ${yearText})...`)
-    await page.goto(baseURL, { waitUntil: 'load' })
-
+    // await page.goto(baseURL, { waitUntil: 'load' })
+    // await page.goto(baseURL, { waitUntil: 'load', timeout: 6000 })
+    await page.goto(baseURL) // [20241231] Adding timeout or waitUntil doesn't seem to work as of now
+    await page.waitForNetworkIdle({ idleTime: 1000 })
     // Make the cookies dialog disappear:
     await this.cookiesDialogDismiss(page)
 
@@ -147,7 +150,7 @@ class CalendarCrawler {
         break;
 
       default: // "Archivio 2012-..."
-        resultsStartURL = `https://www.federnuoto.it/home/master/circuito-supermaster/archivio-2012-2023/stagione-${yearText.replace('/', '-')}.html`
+        resultsStartURL = `https://www.federnuoto.it/home/master/circuito-supermaster/archivio-2012-2024/stagione-${yearText.replace('/', '-')}.html`
         console.log(`Using 'archived' calendar page type '${yearText}'`)
         await page.evaluate((yearText) => {
           var nodeArray = Array.from(document.querySelectorAll('.module-menu_acc_interno ul.mixedmenu li.divider.deeper.parent ul.nav-child li a'))
@@ -431,6 +434,7 @@ class CalendarCrawler {
         headless: true,
         args: [
           '--ignore-certificate-errors', '--enable-feature=NetworkService',
+          '--incognito',
           '--no-sandbox', '--disable-setuid-sandbox'
         ]
       })
