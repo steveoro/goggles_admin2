@@ -654,11 +654,17 @@ module PdfResults
       # [UPDATE 20241204] Use a custom finder with a more strict bias (otherwise the result may overwrite the parsed data from relays,
       # which often lack both year of birth & gender info) and DON'T USE the DB FINDERS if we don't know the age:
       if year_of_birth.to_i.positive? && gender_code.blank?
-        finder_opts = { complete_name: swimmer_name, year_of_birth: year_of_birth.to_i }
-        finder = GogglesDb::DbFinders::BaseStrategy.new(GogglesDb::Swimmer, finder_opts, :for_name, 0.92) # Orig. bias: 0.8
-        finder.scan_for_matches
-        finder.sort_matches
-        result = finder.matches.first&.candidate
+        finder_opts = { complete_name: swimmer_name.upcase.tr('`', '\''), year_of_birth: year_of_birth.to_i }
+        cmd = GogglesDb::CmdFindDbEntity.call(GogglesDb::Swimmer, finder_opts, 0.92)
+        result = if cmd.successful?
+                   cmd.result
+                 else
+                   # Do a second attempt converting ticks to backticks in case of failure:
+                   # (MacroSolver will deal with this later & will try to standardize the aphostrophes)
+                   finder_opts = { complete_name: swimmer_name.upcase.tr('\'', '`'), year_of_birth: year_of_birth.to_i }
+                   cmd = GogglesDb::CmdFindDbEntity.call(GogglesDb::Swimmer, finder_opts, 0.92)
+                   cmd.result if cmd.successful?
+                 end
         if result.present?
           gender_code = result.male? ? 'M' : 'F'
           year_of_birth = result.year_of_birth
@@ -680,7 +686,13 @@ module PdfResults
         end
       end
 
+      # Store names as uppercase for consistency with the DB, but don't force aphostrophes standardization
+      # until MacroSolver deals with it:
       [swimmer_name&.upcase, year_of_birth, gender_code]
+
+      # NOTE: some duplicated FK errors may still be raised during the commit phase anyway, whenever the forced apostrophes
+      #       standardization is done, making the standardized new name overlap with an existing one.
+      #       In this case, do a *manual* swimmer merge between the two swimmers to solve this.
     end
 
     # Converts the indiv. result data structure into an Array of data Hash rows
