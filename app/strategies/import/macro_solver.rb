@@ -1118,8 +1118,8 @@ module Import
       row = cmd.result
       # "Standardize" backticks with "straight" apostrophe so that MacroCommitter will recognize any
       # needed update for the swimmer:
-      row.last_name = row.complete_name.upcase.tr('`', '\'')
-      row.first_name = row.complete_name.upcase.tr('`', '\'')
+      row.last_name = row.last_name.upcase.tr('`', '\'')
+      row.first_name = row.first_name.upcase.tr('`', '\'')
       row.complete_name = row.complete_name.upcase.tr('`', '\'')
       Import::Entity.new(row:, matches:)
     end
