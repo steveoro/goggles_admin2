@@ -76,8 +76,45 @@ module Import
     def to_hash
       {
         'row' => @row.respond_to?(:attributes) ? @row.attributes : @row.to_hash,
-        'matches' => @matches.map { |row| row.respond_to?(:attributes) ? row.attributes : row.to_hash },
+        'matches' => @matches.map do |row|
+          if row.respond_to?(:attributes) # (any ActiveRecord model)
+            row.attributes
+          elsif row.is_a?(Cities::City)   # (specific for Cities::City)
+            attributes_from_iso_city(row)
+          else                            # (anything else)
+            row.to_hash
+          end
+        end,
         'bindings' => @bindings.to_hash
+      }
+    end
+
+    # Converts the given +iso_city+ (a Cities::City instance) into an Hash which
+    # can be used as a City row attributes.
+    #
+    # Returned Hash will have the following keys:
+    # - 'name'
+    # - 'latitude'
+    # - 'longitude'
+    # - 'country'
+    # - 'country_code'
+    # - 'region'
+    #
+    # Note that 'area_code' and 'area' will be empty because they are not
+    # available from the Cities gem.
+    def attributes_from_iso_city(iso_city)
+      return {} unless iso_city.is_a?(Cities::City)
+
+      iso_regions = GogglesDb::IsoRegionList.new('IT')
+      {
+        'name' => row.name,
+        'latitude' => row.latitude,
+        'longitude' => row.longitude,
+        'country' => 'Italy',
+        'country_code' => 'IT',
+        'region' => iso_regions.fetch(iso_city.region)
+        # 'area_code' => (not enough data)
+        # 'area' => (not enough data)
       }
     end
   end

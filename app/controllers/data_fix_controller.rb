@@ -855,8 +855,9 @@ class DataFixController < ApplicationController
   # and then rewriting all contents of the specified Hash (as JSON) over the same <tt>@file_path</tt>.
   # Assumes <tt>data_hash</tt> responds to <tt>:to_json</tt>.
   def overwrite_file_path_with_json_from(data_hash)
+    contents = data_hash.to_json.force_encoding('UTF-8')
     FileUtils.rm_f(@file_path)
-    File.write(@file_path, data_hash.to_json.force_encoding('UTF-8'))
+    File.write(@file_path, contents)
   end
   #-- -------------------------------------------------------------------------
   #++
