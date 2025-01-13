@@ -5,7 +5,8 @@
       %i.form-text.text-muted
         %pre
           - ordinal = index + 1
-          - session_binding_key = data_hash['meeting_session'][index].fetch('bindings', {}).fetch('swimming_pool')
+          - session_entity = data_hash['meeting_session'][index]
+          - session_binding_key = session_entity.is_a?(Import::Entity) ? session_entity.bindings&.fetch('swimming_pool') : session_entity.fetch('bindings', {}).fetch('swimming_pool')
           🔑 #{data_hash["venue#{ordinal}"]} (#{data_hash['poolLength']} m.)
           &nbsp;/&nbsp; SESSION Binding key: '#{session_binding_key}'
           &nbsp;
