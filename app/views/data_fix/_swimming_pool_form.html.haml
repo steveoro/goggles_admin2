@@ -5,8 +5,10 @@
       %i.form-text.text-muted
         %pre
           - ordinal = index + 1
+          - session_binding_key = data_hash['meeting_session'][index].fetch('bindings', {}).fetch('swimming_pool')
           🔑 #{data_hash["venue#{ordinal}"]} (#{data_hash['poolLength']} m.)
-          &nbsp; / &nbsp;
+          &nbsp;/&nbsp; SESSION Binding key: '#{session_binding_key}'
+          &nbsp;
           = data_hash["address#{ordinal}"]
 
 :ruby

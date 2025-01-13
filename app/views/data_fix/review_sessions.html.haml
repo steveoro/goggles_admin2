@@ -62,6 +62,8 @@
           .col-auto
             = form_tag(data_fix_add_session_path, id: 'frm-add-session', method: :post) do
               = hidden_field_tag('file_path', @file_path)
+              = label_tag('use_default_pool_key', t('data_import.data_fix.add_session_with_shared_place'))
+              = check_box_tag('use_default_pool_key', false)
               %button.btn.btn-sm.btn-outline-success#btn-add-session{ type: 'submit',
                   method: :delete, 'aria-label' => 'Add session',
                   data: { confirm: t('data_import.data_fix.confirm_add_session'),

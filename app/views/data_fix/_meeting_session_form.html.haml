@@ -52,16 +52,16 @@
       onchange_event = "document.querySelector('#maps-uri-search-#{index}').href = `#{search_engine}#{search_query}`;"
 
     = render(partial: 'swimming_pool_form', locals: { meeting_session: meeting_session,
-              index: index, swimming_pool: swimming_pool, pool_type_opts: pool_type_opts,
-              city: city, city_key: city_key,
-              initial_maps_href: initial_maps_href, onchange_event: onchange_event,
-              api_url: api_url, data_hash: data_hash })
+             index: index, swimming_pool: swimming_pool, pool_type_opts: pool_type_opts,
+             city: city, city_key: city_key,
+             initial_maps_href: initial_maps_href, onchange_event: onchange_event,
+             api_url: api_url, data_hash: data_hash })
 
     = render(partial: 'pool_city_form', locals: { index: index, swimming_pool: swimming_pool,
              city: city, city_key: city_key, onchange_event: onchange_event,
              api_url: api_url, data_hash: data_hash })
 
-    .form-group
-      = f.submit(t('data_import.generic_save_btn'), id: 'btn-save-session', class: 'btn btn-primary',
-                 'aria-label': 'Save', type: 'submit',
-                 data: { confirm: t('data_import.btn_save_confirm') })
+  .form-group
+    = f.submit(t('data_import.generic_save_btn'), id: 'btn-save-session', class: 'btn btn-primary',
+              'aria-label': 'Save', type: 'submit',
+              data: { confirm: t('data_import.btn_save_confirm') })

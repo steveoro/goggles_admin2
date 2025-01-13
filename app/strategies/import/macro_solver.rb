@@ -4,9 +4,9 @@ module Import
   #
   # = MacroSolver
   #
-  #   - version:  7-0.7.25
+  #   - version:  7-0.8.00
   #   - author:   Steve A.
-  #   - build:    20241218
+  #   - build:    20250113
   #
   # Scans the already-parsed Meeting results JSON object (which stores a whole set of results)
   # and finds existing & corresponding entity rows or creates (locally) any missing associated

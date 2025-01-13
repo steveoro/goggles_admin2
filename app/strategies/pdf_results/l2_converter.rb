@@ -3,7 +3,7 @@
 module PdfResults
   # = PdfResults::L2Converter
   #
-  #   - version:  7-0.7.25
+  #   - version:  7-0.8.00
   #   - author:   Steve A.
   #
   # Converts from any parsed field hash to the "Layout type 2" format
@@ -129,16 +129,8 @@ module PdfResults
 
     # Computes the swimmer's age, possily adjusted for the proper current category age range (5-years x category),
     # according to the given meeting date.
-    #
-    # == Rationale:
-    # Given that Championships usually start in the second half of an year and we only consider the
-    # year of birth (as if the swimmer was born on the 1st of January of that year), the swimmer's age
-    # must be rounded up by 1 if the session month is in the second half of the current year - implying
-    # the first half of its season.
-    #
-    # === Example:
-    # YOB: 2000, session_year: 2024, session_month: 7 => age 24 => category 'M20' (meeting falls inside ending part of season 2023-2024)
-    # YOB: 2000, session_year: 2024, session_month: 9 => age 25 => category 'M25' (meeting falls inside starting part of season 2024-2025)
+    # Calls GogglesDb::Swimmer#age_for_category_range to compute the result.
+    # (Check out the above for more details.)
     #
     # == Params:
     # - <tt>year_of_birth</tt>: the swimmer's year of birth (+Numeric+)
@@ -148,7 +140,7 @@ module PdfResults
     # The swimmer's age (as a numeric value) for a given +date+.
     # Raises an error unless +meeting_date+ responds to #year & #month (a valid +Date+).
     def self.swimmer_age_for_category_range(year_of_birth, meeting_date = Time.zone.today)
-      meeting_date.year - year_of_birth + (meeting_date.month > 8 ? 1 : 0)
+      GogglesDb::Swimmer.new(year_of_birth:).age_for_category_range(meeting_date)
     end
     #-- -----------------------------------------------------------------------
     #++

@@ -44,7 +44,8 @@ it:
       confirm_purge: "Siamo sicuri di volere ELIMINARE il possible duplicato indicizzato da '%{key}'? (NOTA: questo dovrebbe essere fatto DOPO il mapping degli eventi o un suo re-scan per evitare di ripescare nuovamente nomi già eliminati dalle righe di sezione originali ritrovandosi, quindi, a doverli eliminare TUTTI di nuovo uno dopo l'altro.)"
       btn_add_session: "Aggiungi sessione"
       confirm_add_session: "Siamo sicuri di volere aggiungere una nuova sessione al file di dati?"
-      notice_for_add_session: "ATTENZIONE: se aggiungi una nuova sessione dopo aver modificato una di quelle esistenti (e non ancora committata su DB), la nuova sessione sovrascriverà nel mapping i valori di SwimmingPool & City per tutte le sessioni con quelli presenti nel DB. Edita le sessioni quando hai finito di aggiungerle tutte, se vuoi risparmiare tempo."
+      add_session_with_shared_place: "Aggiungi sessione con stessa piscina di default"
+      notice_for_add_session: "ATTENZIONE: sessioni anche diverse ma associate alla stessa chiave dati piscina condividono i dati luogo nella cache. Se aggiungi una nuova sessione con la stessa chiave dati di default dopo aver modificato una di quelle esistenti (e non ancora committata su DB), la nuova sessione ripristinerà nel mapping i valori originali di SwimmingPool & City per tutte le sessioni con la stessa chiave sessione. Edita i dettagli di sessione solo dopo aver finito di aggiungerle tutte, se vuoi risparmiare tempo."
       btn_add_event: "Aggiungi evento"
       confirm_add_event: "Siamo sicuri di volere aggiungere un nuovo evento al file di dati?"
       msg:

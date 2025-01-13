@@ -58,17 +58,23 @@ class DataFixController < ApplicationController
   #
   # == Params:
   # - <tt>file_path</tt>: the path to the file to be loaded and scanned for existing rows.
+  # - <tt>use_default_pool_key</tt>: when present, it will force a use of the default pool key; that is,
+  #   the original name of the pool extracted from the address field of the venue.
   #
   def add_session # rubocop:disable Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
     # Make sure we have Meeting & MeetingSession entities after the JSON parsing (which returns an Hash, not an Entity):
     @solver.rebuild_cached_entities_for('meeting')
     @solver.rebuild_cached_entities_for('meeting_session')
+    use_default_pool_key = params['use_default_pool_key'].present?
 
     new_index = @solver.data['meeting_session'].count
     meeting = @solver.cached_instance_of('meeting', nil)
     last_session = @solver.cached_instance_of('meeting_session', new_index - 1) if new_index.positive?
     # In case last_session is nil (for any reason), use the new index as session order:
     session_order = last_session ? last_session.session_order + 1 : new_index + 1
+    pool_name = @solver.data['venue2'].presence || @solver.data['venue1']
+    # Use a unique pool name as key, to avoid sharing the same entity among different MeetingSessions:
+    pool_name = "#{pool_name}-#{session_order}" unless use_default_pool_key
 
     new_session = @solver.find_or_prepare_session(
       meeting:,
@@ -77,7 +83,7 @@ class DataFixController < ApplicationController
       date_month: last_session ? Parser::SessionDate::MONTH_NAMES[last_session&.scheduled_date&.month&.- 1] : @solver.data['dateMonth1'],
       date_year: last_session&.scheduled_date&.year || @solver.data['dateYear1'],
       scheduled_date: last_session&.scheduled_date,
-      pool_name: @solver.data['venue2'].presence || @solver.data['venue1'],
+      pool_name:,
       address: @solver.data['address2'].presence || @solver.data['address1'],
       pool_length: last_session&.swimming_pool&.pool_type&.code || @solver.data['poolLength']
     )
@@ -437,6 +443,9 @@ class DataFixController < ApplicationController
         #    provided in the edit_params because the form won't include all fields for nestings at depth > 1 and
         #    the cached entity may need those during the MacroCommitter phase:
         cached_key = edit_params['city'][actual_form_key.to_s]['key']
+        # DEBUG ----------------------------------------------------------------
+        # binding.pry
+        # ----------------------------------------------------------------------
 
         # Retrieve and overwrite the cached entity whenever a new City ID is given:
         if edit_params['city'][actual_form_key.to_s]['city_id'].present?
@@ -710,7 +719,7 @@ class DataFixController < ApplicationController
     # Allow any sub-hash indexed with the current model name specified as a parameter:
     # (typically: 'team' => { index => { <team attributes> } })
     params.permit(
-      :action, :reparse, :model, :key, :dom_valid_key, :file_path,
+      :action, :reparse, :model, :key, :dom_valid_key, :file_path, :shared_place,
       swimming_pool: {}, city: {}, meeting: {}, meeting_session: {}, meeting_event: {}, meeting_program: {},
       team: {}, swimmer: {}, badge: {},
       meeting_individual_result: {}, lap: {}, meeting_relay_result: {}, meeting_relay_swimmer: {}
