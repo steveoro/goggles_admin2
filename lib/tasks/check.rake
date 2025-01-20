@@ -255,7 +255,7 @@ namespace :check do # rubocop:disable Metrics/BlockLength
              page=<0>|N
 
       - season: Season ID to be checked out;
-      - season: Team ID to be checked out;
+      - team: Team ID to be checked out;
       - page: page number to display.
 
   DESC
@@ -288,6 +288,41 @@ namespace :check do # rubocop:disable Metrics/BlockLength
       categories_x_seasons.map do |categories_map|
         puts(Merge::BadgeChecker.decorate_categories_map(categories_map))
       end
+    end
+  end
+  #-- -------------------------------------------------------------------------
+  #++
+
+  desc <<~DESC
+      Groups all MIRs found for a badge belonging to the same MeetingProgram to
+    highlight and list possible duplicates per badges, created either by a wrong badge assignment
+    or after a mis-aligned data-import run.
+
+    The output lists all badge IDs associated to > 1 MIR for the specified Meeting.
+
+    Options: [Rails.env=#{Rails.env}]
+             meeting=<meeting_id>
+
+  DESC
+  task(dup_mir_badges: [:environment]) do
+    puts("*** Task: check:dup_mir_badges - Meeting: #{ENV.fetch('meeting_id', nil)} ***")
+    meeting_id = ENV.fetch('meeting_id', nil)
+    unless GogglesDb::Meeting.exists?(id: meeting_id)
+      puts('You need a valid meeting_id to proceed.')
+      exit
+    end
+
+    badge_ids = GogglesDb::MeetingIndividualResult.joins(meeting_program: { meeting_event: { meeting_session: :meeting } })
+                                                  .where(meetings: { id: meeting_id })
+                                                  .group(:badge_id, 'meeting_programs.id')
+                                                  .having('COUNT(meeting_individual_results.id) > 1')
+                                                  .pluck(:badge_id)
+
+    puts("\r\n--> Found #{badge_ids.size} badges with > 1 MIR for the *SAME* MeetingProgram.")
+    if badge_ids.size.positive?
+      puts(badge_ids.join(', '))
+    else
+      puts("THAT'S GOOD! No duplicates!")
     end
   end
   #-- -------------------------------------------------------------------------

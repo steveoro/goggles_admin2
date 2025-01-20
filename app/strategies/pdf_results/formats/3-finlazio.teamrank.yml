@@ -44,7 +44,7 @@
         format: "^$"
       - name: ranking_subtitle
         required: false
-        format: "^\\s{20,}Classifica\\sSocieta\\sCompleta"
+        format: "^\\s{20,}(Classifica\\sSocieta\\sCompleta|ASSOLUTI)"
 
   - name: team_ranking
     parent: ranking_hdr

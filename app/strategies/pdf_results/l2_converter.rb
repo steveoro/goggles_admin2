@@ -1504,8 +1504,8 @@ module PdfResults
       if curr_cat_code.blank? && result_data_hash['overall_age'].to_i.positive?
         curr_cat_code, _cat_type = post_compute_rel_category(result_data_hash['overall_age'].to_i)
         # DEBUG ----------------------------------------------------------------
-        # THIS MAY HAPPEN only when the categories lack a certain age range:
-        binding.pry if curr_cat_code.blank?
+        # THIS MAY HAPPEN when the categories lack a certain age range or during the 1st "completion try" call:
+        # binding.pry if curr_cat_code.blank?
         # SOLUTION: you need to add the missing category *before* the parsing, using a migration on the DB & Main projects
         # THESE should be already there:
         # curr_cat_code = '80-99' if curr_cat_code.blank? && (80..99).cover?(overall_age) # U25 (2020+, out of race)
@@ -1521,15 +1521,15 @@ module PdfResults
 
       # -- INVIDUAL RES. -- (Override blank section keys with converted/computed result values for responding keys only)
       # Force category code update with post-computation only when not properly set (and we can compute it):
-      curr_cat_code, _cat_type = post_compute_ind_category(result_data_hash['year'].to_i) if curr_cat_code.blank?
+      curr_cat_code, _cat_type = post_compute_ind_category(result_data_hash['year'].to_i) if result_data_hash['year'].present? && curr_cat_code.blank?
       # DEBUG ----------------------------------------------------------------
       # THIS MAY HAPPEN only when the categories lack a certain age range:
-      binding.pry if curr_cat_code.blank?
+      # binding.pry if curr_cat_code.blank?
       # FIX: need to add the missing category *before* the parsing, using a migration on the DB & Main projects
       # ----------------------------------------------------------------------
 
       # Force section gender code update only if not properly set (and extracted data from result row can help):
-      curr_cat_gender = result_data_hash['sex'].upcase if curr_cat_gender.blank? && result_data_hash['sex'].present?
+      curr_cat_gender = result_data_hash['sex'].upcase if result_data_hash['sex'].present? && curr_cat_gender.blank?
 
       # Find an existing section or create a new reference to carry around the current category/gender codes
       # until we are ready to add the current result row to it:

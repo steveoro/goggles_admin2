@@ -221,7 +221,7 @@
             format: "^((?>\\w+(?<!\\d)['àéèìòù]?\\s?){1,})"
             pop_out: false
       - name: footer_page
-        format: "^\\s{70,}Page\\s\\d{1,}"
+        format: "^\\s{25,}(?>Elaborazione\\sdati\\sa\\scura\\sdella\\s)?(?>FEDERAZIONE\\sITALIANA\\sNUOTO)?\\s{15,}Page\\s\\d{1,}"
 
       - name: footer_timestamp
         required: false

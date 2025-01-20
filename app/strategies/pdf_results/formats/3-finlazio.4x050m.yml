@@ -111,8 +111,10 @@
 
           # In this format, the team name is usually repeated in front of this as a stand-in for the relay name
           - name: team_name
-            format: "\\s{3,}(.{3,30})(?>\\s{5,}\\S|$)"
-            token_start: 45
+            # Use the 3-letter nation code column as anchor for the team name:
+            format: "\\s{3,}[a-zA-Z]{3}\\s{3,}(.{3,30})(?>\\s{5,}\\S|$)"
+            # No need:
+            # token_start: 20
             pop_out: false
           - name: timing
             format: "\\s+((?>\\d{1,2}[':\\.])?\\d{2}[\":\\.]\\d{2})$"
@@ -259,7 +261,7 @@
             format: "^((?>\\w+(?<!\\d)['àéèìòù]?\\s?){1,})"
             pop_out: false
       - name: footer_page
-        format: "^\\s{70,}Page\\s\\d{1,}"
+        format: "^\\s{25,}(?>Elaborazione\\sdati\\sa\\scura\\sdella\\s)?(?>FEDERAZIONE\\sITALIANA\\sNUOTO)?\\s{15,}Page\\s\\d{1,}"
 
       - name: footer_timestamp
         required: false

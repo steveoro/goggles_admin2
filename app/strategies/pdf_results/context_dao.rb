@@ -143,6 +143,7 @@ module PdfResults
     # comparing the DAOs' names, keys, and parents and by performing the same
     # check on the parents' DAOs themselves.
     def same_dao?(source_dao)
+      return false if source_dao.nil?
       return true if header_or_footer?(source_dao)
 
       # Whenever the link to the parent is nil due to a parent context not being found in the current data page
