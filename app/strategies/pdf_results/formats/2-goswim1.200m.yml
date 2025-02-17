@@ -1,23 +1,25 @@
 #
 # = Layout format definition for PdfResults::FormatParser
 #
-# 2022~ version with logo on top
+# - 2022~ version with optional logo on top
+# - 100m, 200m; lap step: 50m,
 #
 2-goswim1.200m:
-  - name: pre_header
-    at_fixed_row: 0
-    required: false
-    repeat: true
-    rows:
-      # "pre-header" row-0 (x2)
-      - name: hdr_top0
-        # Row span on sub rows takes precedence over a row_span at an upper depth level:
-        row_span: 2
-        format: "^\\s{20,}.*\\s?Emilia Romagna$"
-
   - name: header
+    at_fixed_row: 0
     repeat: true
     rows:
+      # "pre-header" row-0 (x2, optional)
+      - name: hdr_top0
+        # WARNING: row span on sub rows takes precedence over a row_span at an upper depth level
+        # Using "row_span: 2" here with an optional row does NOT work as specifying 2 optional rows:
+        required: false
+        keys: [skip_me]
+        format: "^\\s{20,}(?>Trofeo\\sMaster\\s)?FIN(?>\\sEmilia\\sRomagna)?$"
+      - name: hdr_top0_sep1
+        required: false
+        format: "^$"
+
       - name: hdr_row0
         fields:
           - name: edition

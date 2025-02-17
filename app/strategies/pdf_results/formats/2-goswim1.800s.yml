@@ -1,9 +1,10 @@
 #
 # = Layout format definition for PdfResults::FormatParser
 #
-# 2022~ version with logo on top
+# - 2022~ version with optional logo on top
+# - 800m only, lap step: 100m,
 #
-2-goswim1:
+2-goswim1.800s:
   - name: header
     at_fixed_row: 0
     repeat: true
@@ -47,8 +48,6 @@
       - name: hdr_results
         # Using a custom non-existent field name in keys array to skip completely this row
         # from being part of the resulting context key:
-        # (because slight differences in spacing would yield different root DAOs for an header row like this,
-        #  which shouldn't even be considered for data extraction)
         keys: [skip_me]
         format: "^\\s{20,}RISULTATI(?>\\s+Cronometraggio:\\s)?"
 
@@ -103,80 +102,38 @@
     repeat: true
     parent: header
     rows:
-      # "event" row-0:
       - name: event_sep0
         format: "^$"
 
-      # "event" row-1:
-      # Examples:
       # 1. "100 STILE LIBERO MASTER 25 FEMMINILE - Serie"
       # 2. "100 STILE LIBERO FEMMINILE CATEGORIA AMATORI 20 - Serie"
       - fields:
         - name: event_length
-          format: "^\\.\\s{6,}(\\d{2,4})\\s+"
+          format: "^\\.\\s{6,}(800)\\s+"
           pop_out: false
         - name: event_type
-          format: "^\\.\\s{6,}(?>\\d{2,4})\\s(Stile(?>\\slibero)?|Dorso|Farfalla|Rana|Misti)\\s+"
-          pop_out: false
-        - name: gender_type
-          format: "\\s(Masch|Femmin)"
+          format: "^\\.\\s{6,}(?>800)\\s(Stile(?>\\slibero)?|Dorso|Farfalla|Rana|Misti)\\s+"
           pop_out: false
         - name: cat_title
           format: "\\s((?>MASTER|AMATORI)\\s\\d{2,3})\\s"
           pop_out: false
+        - name: gender_type
+          format: "\\s(Masch|Femmin)"
+          pop_out: false
 
-      # "event" row-2:
+      - name: event_sep1
+        format: "^$"
+
+      - name: event_sub_hdr
+        keys: [skip_me]
+        format: "^\\s{1,}POS\\sATLETA\\s{10,}ANNO\\s{3,}100m\\s{3,}200m\\s{3,}300m\\s{3,}400m\\s{3,}500m\\s{3,}600m\\s{3,}700m\\s{3,}ARRIVO$"
+
+      - name: event_sub_hdr2
+        keys: [skip_me]
+        format: "^\\s{5,}SOCIETA\\s{50,}PUNTI$"
+
       - name: event_sep2
         format: "^$"
-
-      # "event" row-3:
-      - name: event_sub_hdr
-        keys: [skip_me]
-        format: "^\\s{1,}POS ATLETA\\s{10,}ANNO\\s{10,}ARRIVO$"
-
-      # "event" row-4:
-      - name: event_sub_hdr2
-        keys: [skip_me]
-        format: "^\\s{5,}SOCIETA\\s{20,}PUNTI$"
-
-  - name: event_old
-    # Alternative section name for which this one will "stand-in" ONLY when validated
-    alternative_of: event
-    required: false
-    repeat: true
-    parent: header
-    rows:
-      # "event" row-0:
-      - name: event_sub_hdr
-        keys: [skip_me]
-        format: "^\\s{0,}POS ATLETA\\s{10,}ANNO\\s{10,}ARRIVO$"
-
-      # "event" row-1:
-      - name: event_sub_hdr2
-        keys: [skip_me]
-        format: "^\\s{2,}SOCIETA\\s{20,}PUNTI$"
-
-      # "event" row-2:
-      - name: event_sep3
-        format: "^$"
-
-      # "event" row-4:
-      # 1. "50 STILE MASTER 25 FEMMINE"
-      # 2. "50 STILE MASCHI CATEGORIA AMATORI 20"
-      - fields:
-        - name: event_length
-          format: "^\\.\\s{6,}(\\d{2,4})\\s+"
-          pop_out: false
-        - name: event_type
-          format: "^\\.\\s{6,}(?>\\d{2,4})\\s(Stile(?>\\slibero)?|Dorso|Farfalla|Rana|Misti)\\s+"
-          pop_out: false
-        - name: gender_type
-          format: "\\s(Masch|Femmin)"
-          pop_out: false
-        - name: cat_title
-          format: "\\s((?>MASTER|AMATORI)\\s\\d{2,3})\\s"
-          pop_out: false
-
 
   # Actual data starts here:
   - name: results
@@ -193,31 +150,87 @@
           # Rank will be missing for DSQs:
           required: false
         - name: swimmer_name
-          format: "^(?>\\d{0,3}\\s+)([A-z]+(?>[A-z'`\\-\\s]\\s?[A-z'`]*){2,7})\\s*\\d{4}\\s{10,}"
+          format: "^(?>\\d{0,3}\\s+)([A-z]+(?>[A-z'`\\-\\s]\\s?[A-z'`]*){2,7})\\s+\\d{4}\\s{2,}"
           pop_out: false
         - name: year_of_birth
-          format: "^\\d{0,3}\\s*.+\\s+(\\d{4})\\s{10,}"
+          format: "^\\d{0,3}\\s*.+\\s+(\\d{4})\\s{2,}"
           pop_out: false
+
+        - name: lap100
+          format: "\\s+\\d{4}\\s{2,}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
+          pop_out: false
+          required: false
+        - name: lap200
+          format: "\\s+\\d{4}\\s{2,}(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s+(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
+          pop_out: false
+          required: false
+        - name: lap300
+          format: "\\s+\\d{4}\\s{2,}(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}\\s+){2}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
+          pop_out: false
+          required: false
+
+        - name: lap400
+          format: "\\s+\\d{4}\\s{2,}(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}\\s+){3}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
+          pop_out: false
+          required: false
+        - name: lap500
+          format: "\\s+\\d{4}\\s{2,}(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}\\s+){4}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
+          pop_out: false
+          required: false
+        - name: lap600
+          format: "\\s+\\d{4}\\s{2,}(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}\\s+){5}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
+          pop_out: false
+          required: false
+        - name: lap700
+          format: "\\s+\\d{4}\\s{2,}(?>\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2}\\s+){6}(\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})\\s*"
+          pop_out: false
+          required: false
+
         - name: timing
-          format: "\\s+\\d{4}\\s{10,}(Non part|Ritirato|Squalif|Assente|\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})"
+          format: "\\s+\\d{4}\\s{2,}.+\\s+(Non part|Ritirato|Squalif|Assente|\\d{1,2}?[':\\.]?\\d{1,2}[\":\\.]\\d{1,2})$"
           pop_out: false
 
-      # NOTE: enabling this will mess up recognition because there's no easy way
-      #       to discriminate between team_name & swimmer_name_ext for DSQs. Edit the txt file instead!
-      # "results" row-1 (optional):
-      # - fields:
-      #   # Multiple names sometimes wrap into a newline:
-      #   - name: swimmer_name_ext
-      #     format: "^\\s{7,}([A-z]+(?>[A-z'`\\-\\s]\\s?[A-z]*){1,7})$"
-      #     required: false
-      #     pop_out: false
-
-      # "results" row-2:
+      # "results" row-1:
       - fields:
         - name: team_name
           format: "^\\s{4,}(\\S.+\\S)\\s?"
           pop_out: false
           token_end: 38
+
+        - name: delta100
+          format: "\\s{5,}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s*"
+          pop_out: false
+          required: false
+        - name: delta200
+          format: "\\s{5,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s+(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s*"
+          pop_out: false
+          required: false
+        - name: delta300
+          format: "\\s{5,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){2}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s*"
+          pop_out: false
+          required: false
+        - name: delta400
+          format: "\\s{5,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){3}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s*"
+          pop_out: false
+          required: false
+
+        - name: delta500
+          format: "\\s{5,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){4}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s*"
+          pop_out: false
+          required: false
+        - name: delta600
+          format: "\\s{5,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){5}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s*"
+          pop_out: false
+          required: false
+        - name: delta700
+          format: "\\s{5,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){6}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s*"
+          pop_out: false
+          required: false
+        - name: delta800
+          format: "\\s{5,}(?>\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2}\\s+){7}(\\d{0,2}[':\\.]?\\d{2}[\":\\.]\\d{2})\\s*"
+          pop_out: false
+          required: false
+
         - name: std_score
           format: "\\s+(\\d?[',.]?\\d{0,4}[,.]\\d{1,2})$"
           pop_out: false
@@ -225,28 +238,22 @@
           # Absent => blank, not even zero
           required: false
 
-      # Optional empty row in between results:
-      - name: result_sep
-        format: "^$"
-        required: false
-
   - name: dsq_label_x3
     parent: results
     required: false
     row_span: 3
-    format: "^\\s{5,}-\\s(((?>[[:alnum:]]+\\s?){2,})(?>\\s{5,}((?>[[:alnum:]]+\\s?){2,}))(?>\\s{5,}((?>[[:alnum:]]+\\s?){2,})))"
+    format: "^\\s{5,}-\\s((?>[[:alnum:]]+\\s?){2,}\\s{5,}(?>(?>(?!.+\\s+\\d{4}\\s{3,})[[:alnum:]]+\\s?){2,})\\s{5,}(?>(?>(?!.+\\s+\\d{4}\\s{3,})[[:alnum:]]+\\s?){1,}))"
 
   - name: dsq_label_x2
     parent: results
     required: false
     row_span: 2
-    format: "^\\s{5,}-\\s((?>(?>[[:alnum:]]+\\s?){2,}\\w*)(?>\\s{5,}((?>[[:alnum:]]+\\s?){2,})))"
+    format: "^\\s{5,}-\\s((?>[[:alnum:]]+\\s?){2,}\\s{5,}(?>(?>(?!.+\\s+\\d{4}\\s{3,})[[:alnum:]]+\\s?){2,}))"
 
   - name: dsq_label
     parent: results
     required: false
-    # This will match any empty row if the fields are not found:
-    format: "^\\s{5,}-\\s((?>[[:alnum:]]+\\s?){2,}\\w*)$"
+    format: "^\\s{5,}-\\s((?>(?!.+\\s+\\d{4}\\s{3,})[[:alnum:]]+\\s?){2,})"
 
   # Optional event/category end separator, 2 additional empty rows:
   - name: event_end_sep
