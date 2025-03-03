@@ -6,8 +6,8 @@ require 'kaminari'
 #
 # = Local Data-integrity helper tasks
 #
-#   - (p) FASAR Software 2007-2024
-#   - for Goggles framework vers.: 7.00
+#   - (p) FASAR Software 2007-2025
+#   - for Goggles framework vers.: 7+
 #   - author: Steve A.
 #
 #   (ASSUMES TO BE rakeD inside Rails.root)
@@ -49,6 +49,7 @@ namespace :check do # rubocop:disable Metrics/BlockLength
     puts "--> Season #{season_id}:"
     meeting_keys = GogglesDb::Meeting.where(season_id:).includes(includee)
                                      .group('meetings.id', 'meetings.description', 'meetings.header_date')
+                                     .order('meetings.header_date')
                                      .count("#{includee}.id")
                                      .reject { |_k, count| count.send(reject_check_name) }
     meeting_keys.each_key { |keys| puts "ID #{keys.first}: [#{keys.third}] \"#{keys.second}\"" }
@@ -56,6 +57,7 @@ namespace :check do # rubocop:disable Metrics/BlockLength
   end
   #-- -------------------------------------------------------------------------
   #++
+
   desc <<~DESC
     Similarly to check:results, given a Season ID, queries all local Meeting IDs that DO/DO-NOT HAVE
     MeetingEvents associated.
@@ -77,6 +79,7 @@ namespace :check do # rubocop:disable Metrics/BlockLength
     puts "--> Season #{season_id}:"
     meeting_keys = GogglesDb::Meeting.where(season_id:).includes(:meeting_events)
                                      .group('meetings.id', 'meetings.description', 'meetings.header_date')
+                                     .order('meetings.header_date')
                                      .count('meeting_events.id')
                                      .reject { |_k, count| count.send(reject_check_name) }
     meeting_keys.each_key { |keys| puts "ID #{keys.first}: [#{keys.third}] \"#{keys.second}\"" }
@@ -301,7 +304,7 @@ namespace :check do # rubocop:disable Metrics/BlockLength
     The output lists all badge IDs associated to > 1 MIR for the specified Meeting.
 
     Options: [Rails.env=#{Rails.env}]
-             meeting=<meeting_id>
+             meeting_id=<meeting_id>
 
   DESC
   task(dup_mir_badges: [:environment]) do
