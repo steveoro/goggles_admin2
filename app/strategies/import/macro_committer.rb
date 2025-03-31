@@ -18,6 +18,17 @@ module Import
   # Each updated or created row will generate SQL statements appended to the overall result
   # SQL batch log file, with all the statements wrapped into a single transaction. (@see SqlMaker)
   #
+  # == Example steps for trying out the MacroSolver:
+  #
+  # ```ruby
+  # > season = GogglesDb::Season.find(242)
+  # > f = File.read(<path_to_already_data-fixed_json_file>)
+  # > data_hash = JSON.parse(f)
+  # > solver = Import::MacroSolver.new(season_id: season.id, data_hash: data_hash, toggle_debug: true)
+  # > committer = Import::MacroCommitter.new(solver: solver)
+  # > committer.commit_all
+  # ```
+  #
   # rubocop:disable Metrics/AbcSize, Metrics/PerceivedComplexity, Metrics/CyclomaticComplexity
   class MacroCommitter
     # Creates a new MacroCommitter instance.
@@ -230,13 +241,18 @@ module Import
       # or other integrity violations.
       total_sessions = @data['meeting_session']&.compact&.count
       actual_bound_keys = []
-      (0...total_sessions).each do |_index|
-        parent_bindings_hash = @solver.cached_instance_of('meeting_session', 0, 'bindings')
+      (0...total_sessions).each do |index|
+        parent_bindings_hash = @solver.cached_instance_of('meeting_session', index, 'bindings')
         used_key = parent_bindings_hash&.fetch('swimming_pool', nil)
         actual_bound_keys << used_key if used_key.present? && actual_bound_keys.exclude?(used_key)
       end
 
-      entity_keys = @data['swimming_pool']&.keys&.compact&.keep_if { |key| actual_bound_keys.include?(key) }
+      swimming_pool_data = @data['swimming_pool']
+      entity_keys = if swimming_pool_data.present?
+                      swimming_pool_data.keys&.compact&.keep_if { |key| actual_bound_keys.include?(key) }
+                    else
+                      []
+                    end
       total = entity_keys&.count
       idx = 0
 
