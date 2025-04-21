@@ -38,11 +38,11 @@ module Parser
       area_code = nil
       tokens = address.to_s.split(/\W*[-;]\W*/iu)
 
-      if /\W*[(\[]\w+[)\]]/iu.match?(tokens.last)
+      if /\W*[(\[]\w+[)\]]?/iu.match?(tokens.last)
         city_name, area_code = tokens.pop.split(/\W*[(\[]/iu)
         area_code.gsub!(/[)\]]/iu, '')
 
-      elsif /\W*[(\[]\w+[)\]]/iu.match?(tokens.first)
+      elsif /\W*[(\[]\w+[)\]]?/iu.match?(tokens.first)
         city_name, area_code = tokens.shift.split(/\W*[(\[]/iu)
         area_code.gsub!(/[)\]]/iu, '')
 

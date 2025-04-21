@@ -11,12 +11,58 @@ module Parser
         it 'returns an array having the city name and the province code with the remainder of the address, if any' do
           addresses.each do |address|
             city_name, area_code, remainder = described_class.tokenize_address(address)
-            expect(city_name).to be_a(String) && be_present
-            expect(area_code).to be_a(String) || be_nil
-            expect(remainder).to be_a(String) && be_present
-            # DEBUG
-            # puts "city: '#{city_name}', #{remainder} (#{area_code})"
+            expect(city_name).to be_a(String)
+            expect(city_name).not_to be_empty
+            expect(area_code).to be_nil.or be_a(String)
+            # The remainder won't ever be nil but it may be an empty string:
+            expect(remainder).to be_empty.or be_a(String)
           end
+        end
+      end
+
+      context 'edge and error cases' do
+        it 'handles address with only city name' do
+          expect(described_class.tokenize_address('Rome')).to eq(['Rome', nil, ''])
+        end
+
+        it 'handles city name with round brackets area code' do
+          expect(described_class.tokenize_address('Rome (RM)')).to eq(['Rome', 'RM', ''])
+        end
+
+        it 'handles city name with square brackets area code' do
+          expect(described_class.tokenize_address('Rome [RM]')).to eq(['Rome', 'RM', ''])
+        end
+
+        it 'handles address with city at end and area code' do
+          expect(described_class.tokenize_address('Via Something - Rome (RM)')).to eq(['Rome', 'RM', 'Via Something'])
+        end
+
+        it 'handles address with city at start and area code' do
+          expect(described_class.tokenize_address('Rome (RM) - Via Something')).to eq(['Rome', 'RM', 'Via Something'])
+        end
+
+        it 'handles address with semicolon delimiter' do
+          expect(described_class.tokenize_address('Via Something; Rome (RM)')).to eq(['Rome', 'RM', 'Via Something'])
+        end
+
+        it 'handles nil input' do
+          expect(described_class.tokenize_address(nil)).to eq([nil, nil, ''])
+        end
+
+        it 'handles empty string input' do
+          expect(described_class.tokenize_address('')).to eq([nil, nil, ''])
+        end
+
+        it 'handles malformed area code' do
+          expect(described_class.tokenize_address('Rome RM)')).to eq(['Rome RM)', nil, ''])
+        end
+
+        it 'handles unicode and special characters' do
+          expect(described_class.tokenize_address('München (BY)')).to eq(['München', 'BY', ''])
+        end
+
+        it 'handles address with extra delimiters' do
+          expect(described_class.tokenize_address('Via; Something - Rome (RM)')).to eq(['Rome', 'RM', 'Via; Something'])
         end
       end
     end
