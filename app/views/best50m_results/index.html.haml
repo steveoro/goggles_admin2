@@ -22,22 +22,29 @@
             .col-md-1.mt-2.ml-3.d-flex.align-items-end
               .btn-group.w-100{role: "group"}
                 = f.submit t('datagrid.form.search'), class: 'btn btn-primary'
-                = link_to('CSV', best_50m_results_path(format: :csv, team_id: @team&.id,
+                = link_to(best_50m_results_path(format: :csv, team_id: @team&.id,
                     season_id: @season&.id),
-                    class: "btn btn-secondary #{ @results_by_swimmer.blank? ? 'disabled' : '' }",
-                    disabled: @results_by_swimmer.blank?, 'data-turbo': false)
+                    class: "btn btn-outline-secondary #{ @results_by_swimmer.blank? ? 'disabled' : '' }",
+                    disabled: @results_by_swimmer.blank?, 'data-turbo': false) do
+                  %i.fa.fa-file-text-o
+                  CSV
 
-                = link_to('XLSX', best_50m_results_path(format: :xlsx, team_id: @team&.id,
+                = link_to(best_50m_results_path(format: :xlsx, team_id: @team&.id,
                     season_id: @season&.id),
-                    class: "btn btn-success #{ @results_by_swimmer.blank? ? 'disabled' : '' }",
-                    disabled: @results_by_swimmer.blank?, 'data-turbo': false)
+                    class: "btn btn-outline-secondary #{ @results_by_swimmer.blank? ? 'disabled' : '' }",
+                    disabled: @results_by_swimmer.blank?, 'data-turbo': false) do
+                  %i.fa.fa-file-excel-o
+                  XLSX
 
     .row 
       .col-12
         - if @results_by_swimmer.present?
           %h5.text-center.my-4= t('.results_for_team_season', team: @team&.name, season: @season&.description)
           - @results_by_swimmer.each do |swimmer, results|
-            %h6.text-center.bg-light-blue.mt-2= "#{swimmer.decorate.display_label} - #{swimmer.latest_category_type&.code}"
+            %h6.text-center.bg-light-blue.mt-2
+              = "#{swimmer.decorate.display_label} - #{swimmer.latest_category_type&.code}"
+              .float-right
+                %small= "ID #{swimmer.id}"
             .table-responsive
               %table.table.table-striped.table-hover.table-sm
                 %thead

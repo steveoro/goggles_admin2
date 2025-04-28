@@ -59,7 +59,8 @@ gem 'view_component'
 
 # For XLSX export
 gem 'caxlsx' # Core XLSX generation library (formerly axlsx)
-gem 'caxlsx_rails' # Rails integration (template handler, renderer)
+# NOTE: gem 'caxlsx_rails' for Rails integration (template handler, renderer) doesn't seem to work well
+# with the current application stack. We currently rely on the manual XLSX generation in the controller.
 
 # Gems used only for assets and not required
 # ===========================================
