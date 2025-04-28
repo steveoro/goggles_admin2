@@ -18,8 +18,8 @@ class APIIssuesController < ApplicationController
       params: {
         user_id: index_params[:user_id],
         code: index_params[:code], status: index_params[:status],
-        processable: index_params[:processable].present? ? true : nil,
-        done: index_params[:done].present? ? true : nil,
+        processable: index_params[:processable].present? || nil,
+        done: index_params[:done].present? || nil,
         page: index_params[:page], per_page: index_params[:per_page]
       }
     )

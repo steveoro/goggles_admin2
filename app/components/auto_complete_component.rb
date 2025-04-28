@@ -10,7 +10,7 @@
 # details in order to compose and display a full descriptive label and, possibly,
 # update also up to other 3 optional target fields rendered together with this
 # same component (if the options require them), plus 3 more "external" targets,
-# rendered indipendently from the component itself.
+# rendered independently from the component itself.
 # (If the external targets cannot be found, nothing will be updated on value change.)
 #
 # Uses the Stimulus 'autocomplete_controller.js'.

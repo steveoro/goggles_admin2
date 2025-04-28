@@ -57,18 +57,14 @@ module PdfResults
     #
     # == Params:
     # - <tt>category_code</tt> => the corresponding <tt>GogglesDb::CategoryType#code</tt> value.
-    def key?(category_code)
-      @categories_cache.key?(category_code)
-    end
+    delegate :key?, to: :@categories_cache
 
     # Returns the <tt>GogglesDb::CategoryType</tt> for the specified <tt>category_code</tt> when found; +nil+
     # otherwise.
     #
     # == Params:
     # - <tt>category_code</tt> => the corresponding <tt>GogglesDb::CategoryType#code</tt> value.
-    def [](category_code)
-      @categories_cache[category_code]
-    end
+    delegate :[], to: :@categories_cache
     #-- -----------------------------------------------------------------------
     #++
 

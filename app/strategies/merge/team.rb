@@ -110,9 +110,7 @@ module Merge
     #++
 
     # Returns the <tt>#log</tt> array from the internal TeamChecker instance.
-    def log
-      @checker.log
-    end
+    delegate :log, to: :@checker
     #-- ------------------------------------------------------------------------
     #++
 

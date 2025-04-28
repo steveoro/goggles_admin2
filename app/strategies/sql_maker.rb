@@ -36,9 +36,7 @@ class SqlMaker
   end
 
   # Clears the internal log list.
-  def clear
-    @sql_log.clear
-  end
+  delegate :clear, to: :@sql_log
 
   # Allow to set the same SqlMaker instance to a different data source without clearing
   # the internal log list.

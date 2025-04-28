@@ -1,0 +1,16 @@
+.mb-4.mx-1
+  .col-12
+    .card.text-dark.bg-light-blue.h-100
+      .card-body
+        .rotate
+          %i.fa.fa-cogs.fa-4x
+        %h6.text-uppercase
+          Tools
+          %sup
+            %i.fa.fa-question-circle{ data: { toggle: 'tooltip', title: t('dashboard.tools_helper') } }
+        .row.mb-3
+          .col.py-2
+            %a.btn.btn-lg.btn-outline-primary.my-1{ href: best_50m_results_path }
+              %i.fa.fa-search
+              Best 50m results
+          

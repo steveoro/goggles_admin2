@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 Rails.application.routes.draw do
+  get 'best50m_results/index'
   devise_for :users, class_name: 'GogglesDb::User',
                      controllers: {
                        sessions: 'users/sessions'
@@ -12,6 +13,8 @@ Rails.application.routes.draw do
 
   get 'home/index'
   get 'home/latest_updates'
+
+  get 'best_50m_results', to: 'best_50m_results#index', as: 'best_50m_results'
 
   get 'pull/index'
   get 'pull/calendar_files'

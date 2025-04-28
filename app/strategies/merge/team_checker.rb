@@ -154,10 +154,10 @@ module Merge
     def log_seasons_distribution
       @log << "\r\nShared @overall_season_ids: #{@shared_season_ids.inspect} (both Badges & TeamAffiliations)"
       @log << "\r\nSeason | #{@overall_season_ids.map { |season_id| format('%4d', season_id) }.join(' | ')}"
-      @log << ("-------#{'+------' * @overall_season_ids.size}")
+      @log << "-------#{'+------' * @overall_season_ids.size}"
       @log << "source | #{@overall_season_ids.map { |season_id| @src_season_ids.include?(season_id) ? '   ✔' : '    ' }.join(' | ')}"
       @log << "dest.  | #{@overall_season_ids.map { |season_id| @dest_season_ids.include?(season_id) ? '   ✔' : '    ' }.join(' | ')}"
-      @log << ("-------#{'-------' * @overall_season_ids.size}")
+      @log << "-------#{'-------' * @overall_season_ids.size}"
     end
 
     # Logs swimmer distribution for each season, comparing source & destination teams.
@@ -176,11 +176,11 @@ module Merge
       @log << "dest.  | #{@overall_season_ids.map do |season_id|
         @dest_season_ids.include?(season_id) ? format('%4d', count_swimmers_for(dest_entities(GogglesDb::Badge), season_id)) : '    '
       end.join(' | ')} => #{format('%5d', dest_swimmer_ids.count)} *unique* swimmer_ids"
-      @log << ("-------#{'-------' * @overall_season_ids.size}")
+      @log << "-------#{'-------' * @overall_season_ids.size}"
       @log << "shared | #{@overall_season_ids.map do |season_id|
         @shared_season_ids.include?(season_id) ? format('%4d', count_shared_swimmers_for(season_id)) : '    '
       end.join(' | ')} => #{format('%5d', shared_swimmer_ids.count)} *unique & shared* swimmer_ids"
-      @log << ("-------#{'-------' * @overall_season_ids.size}")
+      @log << "-------#{'-------' * @overall_season_ids.size}"
     end
 
     # Returns the count of the *shared* swimmer_ids for the specified season ID on

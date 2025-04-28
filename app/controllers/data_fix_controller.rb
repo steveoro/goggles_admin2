@@ -372,7 +372,7 @@ class DataFixController < ApplicationController
       # (i.e.: 'team_id' => team['id'])
       actual_attrs['id'] = if updated_attrs["#{model_name}_id"].present?
                              updated_attrs["#{model_name}_id"]
-                           elsif (actual_attrs['id']).to_i.zero? # Avoid clearing if present
+                           elsif actual_attrs['id'].to_i.zero? # Avoid clearing if present
                              actual_attrs['id'] = nil # Allow clearing of ID using zero
                            end
       # Handle special cases:
@@ -509,7 +509,7 @@ class DataFixController < ApplicationController
       # Always add the overwrite for the binding fuzzy result ID column with the manual-lookup result ID:
       nested_attrs['id'] = if updated_attrs["#{binding_model_name}_id"].present?
                              updated_attrs["#{binding_model_name}_id"].to_i
-                           elsif (nested_attrs['id']).to_i.zero? # Avoid clearing if empty or present
+                           elsif nested_attrs['id'].to_i.zero? # Avoid clearing if empty or present
                              nested_attrs['id'] = nil # Allow clearing of ID using zero
                            end
       # Overwrite the bindings to city ID inside the current binding model row:

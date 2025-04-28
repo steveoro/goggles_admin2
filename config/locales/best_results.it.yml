@@ -1,0 +1,18 @@
+it:
+  best50m_results:
+    index:
+      title: " Migliori risultati 50m per nuotatore"
+      description: "Seleziona una squadra e stagione per vedere i migliori risultati (SL, DO, RA, FA) per ogni nuotatore affiliato."
+      results_for_team_season: "Risultati per %{team} - stagione %{season}"
+      team: "Squadra"
+      best_timing: "Tempo Migliore"
+      meeting_date: "Data"
+      no_results_found: "Nessun risultato 50m trovato per la squadra e stagione selezionate."
+      errors:
+        missing_data: "Impossibile determinare squadra o stagione per visualizzare i risultati."
+        manager_not_found: "Profilo manager squadra non trovato per l'utente corrente."
+        team_not_found: "Squadra gestita non trovata per l'utente corrente."
+        season_not_found: "Impossibile determinare la stagione corrente."
+        invalid_selection: "Squadra o stagione selezionate non valide."
+      info:
+        select_team_season: "Seleziona una squadra e stagione."

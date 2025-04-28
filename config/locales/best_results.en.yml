@@ -1,0 +1,18 @@
+en:
+  best50m_results:
+    index:
+      title: "Best 50m Results per Swimmer"
+      description: "Select a team and season to view the best 50-meter results (FS, BS, BR, BT) for each currently affiliated swimmer."
+      results_for_team_season: "Results for %{team} - Season %{season}"
+      team: "Team"
+      best_timing: "Best Timing"
+      meeting_date: "Date"
+      no_results_found: "No best 50m results found for the selected team and season."
+      errors:
+        missing_data: "Could not determine team or season to display results."
+        manager_not_found: "Team manager profile not found for the current user."
+        team_not_found: "Managed team not found for the current user."
+        season_not_found: "Could not determine the current season."
+        invalid_selection: "Invalid team or season selected."
+      info:
+        select_team_season: "Please select a team and season."

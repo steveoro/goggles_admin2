@@ -412,7 +412,7 @@ module Merge
       @log << "\r\n\033[1;33;37mSwimmer IDs\033[0m & \033[1;33;33mBadge IDs\033[0m, which have > 1 category per same swimmer & season (THESE ALL NEED FIXING):"
       @diff_category_swimmer_ids.each_slice(3) do |swimmer_ids|
         # Justification size needs to compensate for all the ANSI escape sequences inside of it:
-        decorated_list = swimmer_ids.map { |id| "- \033[1;33;37m#{id.to_s.rjust(6)}\033[0m B: #{collect_all_category_codes_for(id).join(' / ')}".to_s.ljust(120) }
+        decorated_list = swimmer_ids.map { |id| "- \033[1;33;37m#{id.to_s.rjust(6)}\033[0m B: #{collect_all_category_codes_for(id).join(' / ')}".ljust(120) }
         @log << decorated_list.join(' | ')
       end
 

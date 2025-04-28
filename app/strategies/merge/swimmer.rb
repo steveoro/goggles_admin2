@@ -100,19 +100,13 @@ module Merge
     #++
 
     # Returns the <tt>#log</tt> array from the internal SwimmerChecker instance.
-    def log
-      @checker.log
-    end
+    delegate :log, to: :@checker
 
     # Returns the <tt>#errors</tt> array from the internal SwimmerChecker instance.
-    def errors
-      @checker.errors
-    end
+    delegate :errors, to: :@checker
 
     # Returns the <tt>#warnings</tt> array from the internal SwimmerChecker instance.
-    def warnings
-      @checker.warnings
-    end
+    delegate :warnings, to: :@checker
     #-- ------------------------------------------------------------------------
     #++
 

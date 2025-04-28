@@ -758,7 +758,7 @@ module PdfResults
 
       # Don't even consider 'X' as a possible default gender, since we're dealing with swimmers
       # and not with categories of events:
-      cat_gender_code = nil unless cat_gender_code&.upcase == 'F' || cat_gender_code&.upcase == 'M'
+      cat_gender_code = nil unless %w[F M].include?(cat_gender_code&.upcase)
       # Support gender codes inline on result rows (give priority to inner-depth contexts):
       gender_code = fields[GENDER_FIELD_NAME] || cat_gender_code
       # DEBUG ----------------------------------------------------------------

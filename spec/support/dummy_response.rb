@@ -32,7 +32,5 @@ class DummyResponse
   end
 
   # Overridden helper
-  def to_s
-    @body.to_s
-  end
+  delegate :to_s, to: :@body
 end

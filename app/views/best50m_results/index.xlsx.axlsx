@@ -1,0 +1,58 @@
+# frozen_string_literal: true
+
+# Log instance variable status
+Rails.logger.info("[_index.xlsx.axlsx] @team defined?: #{defined?(@team)}")
+Rails.logger.info("[_index.xlsx.axlsx] @season defined?: #{defined?(@season)}")
+Rails.logger.info("[_index.xlsx.axlsx] @best_50m_results defined?: #{defined?(@best_50m_results)}")
+Rails.logger.info("[_index.xlsx.axlsx] @best_50m_results blank?: #{@best_50m_results.blank? if defined?(@best_50m_results)}")
+Rails.logger.info("[_index.xlsx.axlsx] @team nil?: #{@team.nil? if defined?(@team)}")
+Rails.logger.info("[_index.xlsx.axlsx] @season nil?: #{@season.nil? if defined?(@season)}")
+
+# Use an empty workbook if no results or invalid selection
+wb = if !defined?(@best_50m_results) || @best_50m_results.blank? || !defined?(@team) || @team.nil? || !defined?(@season) || @season.nil?
+       Rails.logger.warn("[_index.xlsx.axlsx] Rendering empty workbook due to missing/blank instance variables.")
+       Axlsx::Package.new.workbook
+     else
+       # Create a new workbook
+       Rails.logger.info("[_index.xlsx.axlsx] Rendering workbook with data...")
+       Axlsx::Package.new.workbook do |workbook|
+         # Define some basic styles
+         header_style = workbook.styles.add_style(b: true, sz: 12, bg_color: 'DDDDDD', alignment: { horizontal: :center })
+         data_style   = workbook.styles.add_style(sz: 11)
+         center_style = workbook.styles.add_style(sz: 11, alignment: { horizontal: :center })
+         right_style  = workbook.styles.add_style(sz: 11, alignment: { horizontal: :right })
+
+         # Add a worksheet
+         workbook.add_worksheet(name: "Best 50m - #{@team.name.truncate(20)}") do |sheet|
+           # Add title row (optional, but good for context)
+           sheet.add_row ["Best 50m Results for #{@team.name} - Season #{@season.description}"], style: header_style
+           sheet.merge_cells "A1:G1" # Merge title across columns used by data
+           sheet.add_row # Add a blank row for spacing
+
+           # Add header row
+           sheet.add_row [
+             'Swimmer', 'Year', 'Age', 'Gender', 'Category', 'Event', 'Pool', 'Timing', 'Meeting', 'Date', 'Season'
+           ], style: header_style
+
+           # Add data rows
+           @best_50m_results.each do |result|
+             sheet.add_row [
+               result.swimmer.complete_name,
+               result.swimmer.year_of_birth,
+               result.swimmer.age,
+               result.swimmer.gender_type&.label,
+               result.swimmer.latest_category_type&.code,
+               result.event_type.code,
+               result.pool_type.code,
+               result.timing, # Stored as string, Excel should handle ok
+               result.meeting.description,
+               result.meeting.header_date, # Date object
+               result.season.decorate.display_label
+             ], style: [data_style, center_style, center_style, right_style, data_style, center_style, data_style] # Apply styles per column
+           end
+
+           # Optional: Adjust column widths based on content (can be slow for large datasets)
+           # sheet.column_widths nil, nil, nil, nil, nil, nil, nil # Auto-width all columns (might need adjustment)
+         end
+       end
+     end

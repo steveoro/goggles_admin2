@@ -258,10 +258,10 @@ module Merge
                                  .map(&:id)
 
       src_diff_badge_seasons.each { |season| @badge_analysis << decorate_3column_season_src_and_dest_badges_x_season(season) }
-      @badge_analysis << ("|------+#{'+'.center(147, '-')}|")
+      @badge_analysis << "|------+#{'+'.center(147, '-')}|"
 
       shared_badge_seasons.each { |season| @badge_analysis << decorate_3column_season_src_and_dest_badges_x_season(season) }
-      @badge_analysis << ("|------+#{'+'.center(147, '-')}|")
+      @badge_analysis << "|------+#{'+'.center(147, '-')}|"
 
       # Prepare a map of the shared destination badges:
       # (all shared source badges shall become a destination badge)
@@ -270,7 +270,7 @@ module Merge
       src_badges.each_with_index { |k, idx| @shared_badges.merge!(k => dest_badges[idx]) }
 
       dest_diff_badge_seasons.each { |season| @badge_analysis << decorate_3column_season_src_and_dest_badges_x_season(season) }
-      @badge_analysis << ("+#{''.center(154, '-')}+")
+      @badge_analysis << "+#{''.center(154, '-')}+"
       @badge_analysis
     end
     #-- ------------------------------------------------------------------------
@@ -1332,7 +1332,7 @@ module Merge
     #
     def fill_array_with_report_lines(tuple_list:, result_array:, centered_title:)
       result_array << "\r\n+#{''.center(154, '-')}+"
-      result_array << ("|#{centered_title}|")
+      result_array << "|#{centered_title}|"
       result_array << "+#{''.center(154, '-')}+"
       result_array += tuple_list.each_slice(15).map do |line_array|
         line_array.map { |key_id, count| "#{key_id}: #{count}" }.join(', ')

@@ -13,6 +13,7 @@ en:
     search_field: "Search %{field}"
     search_tooltip: "Overwrite fields with the current search results"
     data_import_helper: "Any action in this section will work on files and on both local and remote DB, but only during the final 'commit & push' phase"
+    tools_helper: "Any action in this section will work ESCLUSIVELY on the local DB instance (which needs to be aligned with the remote copy)"
     grid_commands:
       delete_selected:
         button: "Delete selected <i class='fa fa fa-trash-o'></i>"

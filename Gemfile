@@ -7,7 +7,9 @@ ruby '3.1.4'
 
 # Bundle edge Rails instead: gem 'rails', github: 'rails/rails'
 # [20210128] ActiveRecord 6.1 introduces too many changes for the current version
-gem 'rails', '>= 6.1.7', '< 7'
+gem 'rails', '>= 6.1.7', '< 7' # Restore original range
+# gem 'rails', '~> 6.1.7.8' # Pinning to 6.1.7.8 for testing (didn't downgrade)
+# gem 'rails', '6.1.7.8' # Force exact version 6.1.7.8 (commented out)
 gem 'rails-i18n', '~> 6'
 # Use mysql as the database for Active Record
 gem 'mysql2', '>= 0.4.4'
@@ -55,6 +57,12 @@ gem 'stimulus-rails'
 gem 'terminal'
 gem 'view_component'
 
+# For XLSX export
+gem 'caxlsx' # Core XLSX generation library (formerly axlsx)
+gem 'caxlsx_rails' # Rails integration (template handler, renderer)
+
+# Gems used only for assets and not required
+# ===========================================
 group :development do
   gem 'better_errors'
   gem 'binding_of_caller'

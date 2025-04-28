@@ -251,24 +251,16 @@ module Merge
     #++
 
     # Returns the <tt>#log</tt> array from the internal BadgeChecker instance.
-    def log
-      @checker.log
-    end
+    delegate :log, to: :@checker
 
     # Returns the <tt>#errors</tt> array from the internal BadgeChecker instance.
-    def errors
-      @checker.errors
-    end
+    delegate :errors, to: :@checker
 
     # Returns the <tt>#unrecoverable_conflict</tt> flag (true/false) from the internal BadgeChecker instance.
-    def unrecoverable_conflict
-      @checker.unrecoverable_conflict
-    end
+    delegate :unrecoverable_conflict, to: :@checker
 
     # Returns the <tt>#warnings</tt> array from the internal BadgeChecker instance.
-    def warnings
-      @checker.warnings
-    end
+    delegate :warnings, to: :@checker
 
     # Returns the SQL log wrapped in a single transaction, as an array of SQL string statements.
     def single_transaction_sql_log

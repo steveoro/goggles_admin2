@@ -1089,7 +1089,7 @@ module Merge
     #
     def fill_array_with_report_lines(tuple_list:, result_array:, centered_title:)
       result_array << "\r\n+#{''.center(154, '-')}+"
-      result_array << ("|#{centered_title}|")
+      result_array << "|#{centered_title}|"
       result_array << "+#{''.center(154, '-')}+"
       result_array += tuple_list.each_slice(15).map do |line_array|
         line_array.map { |key_id, count| "#{key_id}: #{count}" }.join(', ')
