@@ -1,18 +1,37 @@
 en:
-  best50m_results:
-    index:
-      title: "Best 50m Results per Swimmer"
+  best_results:
+    best_50m:
+      button_label: "Best 50m (3 years)"
+      title: "Best 50m-only, per Swimmer, over 3 years"
       description: "Select a team and season to view the best 50-meter results (FS, BS, BR, BT) for each currently affiliated swimmer."
-      results_for_team_season: "Results for %{team} - Season %{season}"
+    best_50_and_100:
+      button_label: "Best 50m+100m (3 years)"
+      title: "Best 50m and 100m only, per Swimmer, over 3 years"
+      description: "Select a team and season to view the best 50-meter and 100-meter results (FS, BS, BR, BT, IM) for each currently affiliated swimmer."
+    best_50_and_100_5y:
+      button_label: "Best 50m+100m (5 years)"
+      title: "Best 50m and 100m only, per Swimmer, over 5 years"
+      description: "Select a team and season to view the best 50-meter and 100-meter results (FS, BS, BR, BT, IM) for each currently affiliated swimmer."
+    best_in_5y:
+      button_label: "Best (5 years)"
+      title: "Best 5-year results, per Swimmer, over 5 years"
+      description: "Select a team and season to view the best 5-year results (FS, BS, BR, BT, IM) for each currently affiliated swimmer."
+    all_time_best:
+      button_label: "All-time best"
+      title: "All-time Best Results per Swimmer"
+      description: "Select a team and season to view the all-time best results (FS, BS, BR, BT, IM) for each currently affiliated swimmer."
+
+    list:
+      results_for_team: "Results for %{team}"
       team: "Team"
       best_timing: "Best Timing"
       meeting_date: "Date"
-      no_results_found: "No best 50m results found for the selected team and season."
-      errors:
-        missing_data: "Could not determine team or season to display results."
-        manager_not_found: "Team manager profile not found for the current user."
-        team_not_found: "Managed team not found for the current user."
-        season_not_found: "Could not determine the current season."
-        invalid_selection: "Invalid team or season selected."
-      info:
-        select_team_season: "Please select a team and season."
+      no_results_found: "No best 50m results found for the selected team."
+    errors:
+      missing_data: "Could not determine team or season to display results."
+      manager_not_found: "Team manager profile not found for the current user."
+      team_not_found: "Managed team not found for the current user."
+      season_not_found: "Could not determine the current season."
+      invalid_selection: "Invalid team selected."
+    info:
+      select_team: "Please select a team."

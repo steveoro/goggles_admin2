@@ -1,0 +1,33 @@
+%section.my-2#result-list
+  .row
+    .col-12
+      - if results_by_swimmer.present?
+        %h5.text-center.my-4= t('.results_for_team', team: team&.name)
+        - results_by_swimmer.each do |swimmer, results|
+          %h6.text-center.bg-light-blue.mt-2
+            #{swimmer.decorate.display_label} - #{swimmer.latest_category_type&.code}
+            .float-right
+              %small ID #{swimmer.id}
+          .table-responsive
+            %table.table.table-striped.table-hover.table-sm
+              %thead
+                %tr
+                  %th= GogglesDb::EventType.model_name.human
+                  %th= GogglesDb::PoolType.model_name.human
+                  %th= t('.best_timing')
+                  %th= GogglesDb::Meeting.model_name.human
+                  %th= t('.meeting_date')
+                  %th= GogglesDb::Season.model_name.human(count: 1) # Season where result was achieved
+              %tbody
+                - results.each do |result|
+                  %tr
+                    %td= result.event_type.code
+                    %td= result.pool_type.code
+                    %td.text-end
+                      %strong= result.to_timing
+                    %td.small= result.meeting.description
+                    %td.small= result.meeting.header_date
+                    %td.small= result.season.decorate.short_label
+      - elsif team.present?
+        -# Show this only if a search was attempted but yielded no results
+        .alert.alert-info= t('.no_results_found')

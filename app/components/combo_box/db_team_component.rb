@@ -24,7 +24,7 @@ module ComboBox
       super
       # Define component attributes based on initialization parameters
       @api_url     = 'teams' # Relative API path (base is assumed '/api/v3')
-      @label       = I18n.t('best50m_results.index.team')
+      @label       = I18n.t('best_results.list.team')
       @base_name   = base_name
       @default_row = default_row
       @free_text   = free_text

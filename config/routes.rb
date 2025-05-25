@@ -14,7 +14,11 @@ Rails.application.routes.draw do
   get 'home/index'
   get 'home/latest_updates'
 
-  get 'best_50m_results', to: 'best_50m_results#index', as: 'best_50m_results'
+  get 'best_results/best_50m', to: 'best_results#best_50m', as: 'best_50m_results'
+  get 'best_results/best_50_and_100', to: 'best_results#best_50_and_100', as: 'best_50_and_100_results'
+  get 'best_results/best_50_and_100_5y', to: 'best_results#best_50_and_100_5y', as: 'best_50_and_100_5y_results'
+  get 'best_results/best_in_5y', to: 'best_results#best_in_5y', as: 'best_in_5y_results'
+  get 'best_results/all_time_best', to: 'best_results#all_time_best', as: 'all_time_best_results'
 
   get 'pull/index'
   get 'pull/calendar_files'

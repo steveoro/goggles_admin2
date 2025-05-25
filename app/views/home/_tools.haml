@@ -10,6 +10,22 @@
             %i.fa.fa-question-circle{ data: { toggle: 'tooltip', title: t('dashboard.tools_helper') } }
         .row.mb-3
           .col.py-2
-            %a.btn.btn-lg.btn-outline-primary.my-1{ href: best_50m_results_path }
+            %a.btn.btn-sm.btn-outline-primary.py-2{ href: best_50m_results_path }
               %i.fa.fa-search
-              Best 50m results
+              = t('best_results.best_50m.button_label')
+          .col.py-2
+            %a.btn.btn-sm.btn-outline-primary.py-2{ href: best_50_and_100_results_path }
+              %i.fa.fa-search
+              = t('best_results.best_50_and_100.button_label')
+          .col.py-2
+            %a.btn.btn-sm.btn-outline-primary.py-2{ href: best_50_and_100_5y_results_path }
+              %i.fa.fa-search
+              = t('best_results.best_50_and_100_5y.button_label')
+          .col.py-2
+            %a.btn.btn-sm.btn-outline-primary.py-2{ href: best_in_5y_results_path }
+              %i.fa.fa-search
+              = t('best_results.best_in_5y.button_label')
+          .col.py-2
+            %a.btn.btn-sm.btn-outline-primary.py-2{ href: all_time_best_results_path }
+              %i.fa.fa-search
+              = t('best_results.all_time_best.button_label')
