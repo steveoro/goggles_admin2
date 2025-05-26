@@ -37,6 +37,14 @@ class BestResultsController < ApplicationController # rubocop:disable Metrics/Cl
     handle_responders(@best_results, @team, 'best50_and_100-5y', 'Best-50-and-100-5y')
   end
 
+  # GET /best_in_3y
+  # Displays the best timings results for all the swimmers currently belonging to the selected team,
+  # among the range of years defined by the corresponding "Best result" view. (In this case 'BestSwimmer5yResult')
+  def best_in_3y
+    prepare_params_and_dataset(GogglesDb::BestSwimmer3yResult)
+    handle_responders(@best_results, @team, 'best_3y', 'Best-3y')
+  end
+
   # GET /best_in_5y
   # Displays the best timings results for all the swimmers currently belonging to the selected team,
   # among the range of years defined by the corresponding "Best result" view. (In this case 'BestSwimmer5yResult')

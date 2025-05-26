@@ -12,6 +12,10 @@ it:
       button_label: "Best 50m+100m (5 anni)"
       title: "Migliori risultati 50m e 100m su 5 anni, per nuotatore"
       description: "Seleziona una squadra e stagione per vedere i migliori risultati (SL, DO, RA, FA, MI) per ogni nuotatore appartenente alla squadra."
+    best_in_3y:
+      button_label: "Best (su 3 anni)"
+      title: "Migliori risultati, su 3 anni, per ogni evento e nuotatore"
+      description: "Seleziona una squadra e stagione per vedere i migliori risultati (SL, DO, RA, FA, MI) per ogni nuotatore appartenente alla squadra."
     best_in_5y:
       button_label: "Best (su 5 anni)"
       title: "Migliori risultati, su 5 anni, per ogni evento e nuotatore"

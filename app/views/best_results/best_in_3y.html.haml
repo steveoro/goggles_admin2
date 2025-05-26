@@ -1,0 +1,35 @@
+.wrapper-body
+  .spacer-left
+
+  .main-content
+    - provide(:title, t('.title'))
+    .row-fluid.text-center
+      %h4= t('.title')
+      %p= t('.description')
+
+    %section.my-2#select-team
+      = form_with(url: best_in_3y_results_path, method: :get, local: true,
+                  data: { controller: 'form-utils', action: 'submit->form-utils#disableSubmit',
+                          turbo: false }) do |f|
+        .container-fluid
+          .row.mb-3.my-4
+            .col-md-4.my-2
+              = render(ComboBox::DbTeamComponent.new(default_row: @team, required: true))
+            .col-md-1.mt-2.ml-3.d-flex.align-items-end
+              .btn-group.w-100{ role: 'group' }
+                = f.submit t('datagrid.form.search'), class: 'btn btn-primary'
+                - disabled_class = @results_by_swimmer.blank? ? 'disabled' : ''
+                = link_to(best_in_3y_results_path(format: :csv, team_id: @team&.id),
+                          class: "btn btn-outline-secondary #{disabled_class}",
+                          disabled: @results_by_swimmer.blank?, 'data-turbo': false) do
+                  %i.fa.fa-file-text-o
+                  CSV
+                = link_to(best_in_3y_results_path(format: :xlsx, team_id: @team&.id),
+                          class: "btn btn-outline-secondary #{disabled_class}",
+                          disabled: @results_by_swimmer.blank?, 'data-turbo': false) do
+                  %i.fa.fa-file-excel-o
+                  XLSX
+
+    = render(partial: 'best_results_list',
+             locals: { results_by_swimmer: @results_by_swimmer, team: @team })
+  .spacer-left

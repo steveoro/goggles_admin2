@@ -12,9 +12,13 @@ en:
       button_label: "Best 50m+100m (5 years)"
       title: "Best 50m and 100m only, per Swimmer, over 5 years"
       description: "Select a team and season to view the best 50-meter and 100-meter results (FS, BS, BR, BT, IM) for each currently affiliated swimmer."
+    best_in_3y:
+      button_label: "Best (3 years)"
+      title: "Best 3-year results, per Swimmer"
+      description: "Select a team and season to view the best 3-year results (FS, BS, BR, BT, IM) for each currently affiliated swimmer."
     best_in_5y:
       button_label: "Best (5 years)"
-      title: "Best 5-year results, per Swimmer, over 5 years"
+      title: "Best 5-year results, per Swimmer"
       description: "Select a team and season to view the best 5-year results (FS, BS, BR, BT, IM) for each currently affiliated swimmer."
     all_time_best:
       button_label: "All-time best"

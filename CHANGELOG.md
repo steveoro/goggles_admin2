@@ -2,6 +2,7 @@
 
 _Please, add the latest build info on top of the list; use Version::MAJOR only after gold release; keep semantic versioning in line with framework's_
 
+- **0.8.07** [Steve A.] added "best results in 3y" to best results tool pages; re-sync w/ base engine; bundle updates
 - **0.8.01** [Steve A.] added "Tools" section: best 50m results for a whole team, report on CSV & XLSX; re-sync w/ base engine; bundle updates
 - **0.8.00** [Steve A.] re-sync w/ base engine; bundle updates
 - **0.7.25** [Steve A.] added /latest_updates action (& view) to landing page; slight update to MacroSolver & FormatParser toolchain to better support strange >4x relay events (thanks to Coopernuoto); re-sync w/ base engine; bundle updates
