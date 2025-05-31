@@ -20,20 +20,22 @@ class HomeController < ApplicationController
 
   # [GET] Retrieve the latest updates from both production & staging servers endpoints
   # (regardless of the currently connected server according to the settings).
+  # If the API is down and returns an error, the corresponding section will be empty and
+  # the error will be signaled.
   #
   def latest_updates
     # (ASSUMES: 447 => production, 446 => staging)
     @prod_updates = request_latest_updates(447)
     if @prod_updates.key?('error')
       flash[:error] = I18n.t('dashboard.api_proxy_error', error_code: @prod_updates['error'].split.last, error_msg: @prod_updates['error'])
-      redirect_to(root_path) && return
+      @prod_updates = {}
     end
 
     @staging_updates = request_latest_updates(446)
     return unless @staging_updates.key?('error')
 
     flash[:error] = I18n.t('dashboard.api_proxy_error', error_code: @staging_updates['error'].split.last, error_msg: @staging_updates['error'])
-    redirect_to(root_path) && return
+    @staging_updates = {}
   end
 
   private
@@ -48,6 +50,6 @@ class HomeController < ApplicationController
   # port used for the API endpoint); nil in case of error.
   def request_latest_updates(port_override)
     result = APIProxy.call(method: :get, url: 'tools/latest_updates', jwt: current_user.jwt, port_override: port_override)
-    result.body.present? ? JSON.parse(result.body) : { 'error' => "Error #{result.code}" }
+    result.body.present? && result.body.exclude?('DOCTYPE HTML') ? JSON.parse(result.body) : { 'error' => "Error #{result.code}" }
   end
 end

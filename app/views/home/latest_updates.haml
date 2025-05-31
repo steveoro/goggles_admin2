@@ -22,9 +22,15 @@
               - (0...prod_rows.count).each do |idx|
                 %tr
                   %td
-                    = HashRowDecorator.decorate(prod_rows[idx]).html_row
+                    - if prod_rows.present?
+                      = HashRowDecorator.decorate(prod_rows[idx]).html_row
+                    - else
+                      &nbsp;-&nbsp;
                   %td
-                    = HashRowDecorator.decorate(staging_rows[idx]).html_row
+                    - if staging_rows.present?
+                      = HashRowDecorator.decorate(staging_rows[idx]).html_row
+                    - else
+                      &nbsp;-&nbsp;
     .row.mb-3
       &nbsp;
 
