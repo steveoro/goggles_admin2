@@ -375,7 +375,7 @@ class DataFixController < ApplicationController
                            elsif actual_attrs['id'].to_i.zero? # Avoid clearing if present
                              actual_attrs['id'] = nil # Allow clearing of ID using zero
                            end
-      # Handle special cases:
+      # Handle special cases: name changes, YOB changes, ID clearing
       case model_name
       when 'team'
         # Avoid empty Team names:
@@ -389,12 +389,29 @@ class DataFixController < ApplicationController
           actual_attrs['name_variations'] =
             "#{actual_attrs['editable_name']};#{actual_attrs['name_variations']}"
         end
+
+        # Need to clear the TeamAffiliation association? (Happens when setting matched team => blank)
+        if actual_attrs['id'].blank? && @solver.data['team_affiliation']&.fetch(entity_key, nil).present?
+          ta_entity = @solver.data['team_affiliation']&.fetch(entity_key, nil)
+          # New team => new TeamAffiliation with nil team_id (to be set by MacroCommitter using bindings)
+          ta_entity['row']['id'] = nil
+          ta_entity['row']['team_id'] = nil
+        end
+
       when 'swimmer'
         # Overwrite complete name when the lookup values change:
         actual_attrs['complete_name'] = updated_attrs['swimmer'].presence || "#{updated_attrs['last_name']} #{updated_attrs['first_name']}"
         swimmer = @solver.data['swimmer']&.fetch(entity_key, nil)&.fetch('row', {})
         prev_year_of_birth = swimmer&.fetch('year_of_birth', nil)
         prev_gender_type_id = swimmer&.fetch('gender_type_id', nil)
+
+        # Need to clear the Badge association? (Happens when setting matched swimmer => blank)
+        if actual_attrs['id'].blank? && @solver.data['badge']&.fetch(entity_key, nil).present?
+          badge_entity = @solver.data['badge']&.fetch(entity_key, nil)
+          # New swimmer => new badge with nil swimmer_id (to be set by MacroCommitter using bindings)
+          badge_entity['row']['id'] = nil
+          badge_entity['row']['swimmer_id'] = nil
+        end
       end
       # DEBUG ----------------------------------------------------------------
       # binding.pry

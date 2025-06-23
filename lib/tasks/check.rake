@@ -42,7 +42,7 @@ namespace :check do # rubocop:disable Metrics/BlockLength
     includee = ENV.include?('mrr') ? :meeting_relay_results : :meeting_individual_results
     # For presence, we'll reject the zero? counts, whereas for absence, we'll reject the positive? counts:
     reject_check_name = ENV.include?('presence') ? :zero? : :positive?
-    puts "\r\n*** Find Meetings #{reject_check_name == :zero? ? 'WITH' : 'WITHOUT'} #{includee} rows ***"
+    puts("\r\n*** Find Meetings #{reject_check_name == :zero? ? 'WITH' : 'WITHOUT'} #{includee} rows ***")
 
     season_id = ENV.include?('season') ? ENV['season'].to_i : DEFAULT_SEASON_ID
     puts "\r\n"
@@ -72,7 +72,7 @@ namespace :check do # rubocop:disable Metrics/BlockLength
   task events: :environment do
     # For presence, we'll reject the zero? counts, whereas for absence, we'll reject the positive? counts:
     reject_check_name = ENV.include?('presence') ? :zero? : :positive?
-    puts "\r\n*** Find Meetings #{reject_check_name == :zero? ? 'WITH' : 'WITHOUT'} MeetingEvent rows ***"
+    puts("\r\n*** Find Meetings #{reject_check_name == :zero? ? 'WITH' : 'WITHOUT'} MeetingEvent rows ***")
 
     season_id = ENV.include?('season') ? ENV['season'].to_i : DEFAULT_SEASON_ID
     puts "\r\n"
@@ -100,7 +100,7 @@ namespace :check do # rubocop:disable Metrics/BlockLength
 
   DESC
   task(team: [:environment]) do
-    puts '*** Task: check:team ***'
+    puts("\r\n*** Task: check:team ***")
     source = GogglesDb::Team.find_by(id: ENV['src'].to_i)
     dest = GogglesDb::Team.find_by(id: ENV['dest'].to_i)
     if source.nil? || dest.nil?
@@ -137,7 +137,7 @@ namespace :check do # rubocop:disable Metrics/BlockLength
 
   DESC
   task(swimmer: [:environment]) do
-    puts '*** Task: check:swimmer ***'
+    puts("\r\n*** Task: check:swimmer ***")
     source = GogglesDb::Swimmer.find_by(id: ENV['src'].to_i)
     dest = GogglesDb::Swimmer.find_by(id: ENV['dest'].to_i)
     if source.nil? || dest.nil?
@@ -172,7 +172,7 @@ namespace :check do # rubocop:disable Metrics/BlockLength
 
   DESC
   task(season: [:environment]) do
-    puts("*** Task: check:season - season #{ENV.fetch('season', nil)} ***")
+    puts("\r\n*** Task: check:season - season #{ENV.fetch('season', nil)} ***")
     season = GogglesDb::Season.find_by(id: ENV['season'].to_i)
     if season.nil?
       puts("You need a valid 'season' ID to proceed.")
@@ -228,7 +228,7 @@ namespace :check do # rubocop:disable Metrics/BlockLength
 
   DESC
   task(badge: [:environment]) do
-    puts '*** Task: check:badge ***'
+    puts("\r\n*** Task: check:badge ***")
     source = GogglesDb::Badge.find_by(id: ENV['src'].to_i)
     dest = GogglesDb::Badge.find_by(id: ENV['dest'].to_i)
     if source.nil?
@@ -263,7 +263,7 @@ namespace :check do # rubocop:disable Metrics/BlockLength
 
   DESC
   task(map_team_badges: [:environment]) do
-    puts("*** Task: check:map_team_badges - season #{ENV.fetch('season', nil)}, team #{ENV.fetch('team', nil)} ***")
+    puts("\r\n*** Task: check:map_team_badges - season #{ENV.fetch('season', nil)}, team #{ENV.fetch('team', nil)} ***")
     season = GogglesDb::Season.find_by(id: ENV['season'].to_i)
     team = GogglesDb::Team.find_by(id: ENV['team'].to_i)
     if season.nil? || team.nil?
@@ -308,7 +308,7 @@ namespace :check do # rubocop:disable Metrics/BlockLength
 
   DESC
   task(dup_mir_badges: [:environment]) do
-    puts("*** Task: check:dup_mir_badges - Meeting: #{ENV.fetch('meeting_id', nil)} ***")
+    puts("\r\n*** Task: check:dup_mir_badges - Meeting: #{ENV.fetch('meeting_id', nil)} ***")
     meeting_id = ENV.fetch('meeting_id', nil)
     unless GogglesDb::Meeting.exists?(id: meeting_id)
       puts('You need a valid meeting_id to proceed.')
@@ -327,6 +327,56 @@ namespace :check do # rubocop:disable Metrics/BlockLength
     else
       puts("THAT'S GOOD! No duplicates!")
     end
+  end
+  #-- -------------------------------------------------------------------------
+  #++
+
+  desc <<~DESC
+      Loops upon all MIRs found for a specific swimmer and reports a mapping
+    of all involved teams x swimmer badge for the 5 latest seasons.
+
+    The output is divided into pages of 50 MIRs maximum using Kaminari.
+
+    Options: [Rails.env=#{Rails.env}]
+             swimmer=<swimmer_id>
+             page=<0>|N
+
+      - swimmer: Swimmer ID to be checked out;
+      - page: page number to display.
+
+  DESC
+  task(map_swimmer_mirs: [:environment]) do
+    puts("\r\n*** Task: check:map_swimmer_mirs - swimmer #{ENV.fetch('swimmer', nil)} ***")
+    swimmer = GogglesDb::Swimmer.find_by(id: ENV['swimmer'].to_i)
+    if swimmer.nil?
+      puts("You need a valid 'swimmer' ID to proceed.")
+      exit
+    end
+
+    min_season_id = GogglesDb::LastSeasonId.first.id - 50 # (season IDs are fixed and increased by 10 each championship)
+    per_page = 50
+    page_idx = ENV['page'].to_i
+
+    mirs = GogglesDb::MeetingIndividualResult.includes(:meeting, :season)
+                                             .joins(:season)
+                                             .where('swimmer_id = ? AND seasons.id >= ?', swimmer.id, min_season_id)
+    puts("\r\n--> Swimmer ID #{swimmer.id}")
+    puts("--> Found #{mirs.size} MIRs => showing page #{page_idx} (/#{(mirs.size / per_page) - 1})")
+    exit if mirs.empty?
+
+    mirs_page = Kaminari.paginate_array(mirs).page(page_idx).per(per_page)
+    exit if mirs_page.empty?
+
+    curr_season = 0
+    puts('MIR'.ljust(12) + ' | Season'.ljust(10) + ' | Badge'.ljust(12) + ' | Team'.ljust(12) + ' | Team Aff.'.ljust(12) + ' | Meeting'.ljust(50))
+    mirs_page.map do |mir|
+      if curr_season != mir.season.id
+        puts(''.center(120, '-'))
+        curr_season = mir.season.id
+      end
+      puts("#{mir.id.to_s.rjust(12)} | #{mir.season.id.to_s.rjust(7)} | #{mir.badge_id.to_s.rjust(9)} | #{mir.team_id.to_s.rjust(9)} | #{mir.team_affiliation_id.to_s.rjust(9)} | #{mir.meeting.description.ljust(50)}")
+    end
+    puts("\r\n")
   end
   #-- -------------------------------------------------------------------------
   #++
