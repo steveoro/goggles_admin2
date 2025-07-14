@@ -58,7 +58,7 @@ app.use(apiRouter); // Middleware: crawler API
 // Server start:
 // (`server` is a vanilla Node.js HTTP server. See:
 //  https://www.npmjs.com/package/ws#multiple-servers-sharing-a-single-https-server)
-const httpServer = app.listen(process.env.CRAWLER_PORT, () => {
+const httpServer = app.listen(process.env.CRAWLER_PORT, process.env.CRAWLER_HOST, () => {
   console.log(`*** Crawler backend server running ***`)
   console.log(`Environment....: ${process.env.NODE_ENV}`)
   console.log(`Listening on...: ${process.env.CRAWLER_HOST}:${process.env.CRAWLER_PORT}`)

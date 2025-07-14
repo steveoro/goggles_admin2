@@ -14,6 +14,7 @@ const apiRouter = express.Router();
 const CrawlUtil = require('./utility') // Crawler utility functions
 const CalendarCrawler = require('./calendar-crawler');
 const ResultsCrawler = require('./results-crawler.js');
+const MicroplusCrawler = require('./microplus-crawler.js');
 //-----------------------------------------------------------------------------
 
 apiRouter.get("/pull_calendar", (req, res) => {
@@ -40,6 +41,27 @@ apiRouter.get("/pull_results", (req, res) => {
   const resCrawler = new ResultsCrawler(req.query.season_id, req.query.file_path, req.query.layout);
   resCrawler.run();
   res.send(CrawlUtil.readStatus());
+});
+
+apiRouter.get("/pull_results_microplus", (req, res) => {
+  const seasonId = req.query.season_id;
+  const meetingUrl = req.query.meeting_url;
+  const targetEventTitle = req.query.target_event;
+
+  console.log('GET /pull_results_microplus');
+  console.log(`- season_id: ${seasonId}`);
+  console.log(`- meeting_url: ${meetingUrl}`);
+  if (targetEventTitle) {
+    console.log(`- target_event: ${targetEventTitle}`);
+  }
+
+  if ( !seasonId || !meetingUrl ) {
+    return res.status(400).json({ error: 'Missing season_id or meeting_url' });
+  }
+
+  const crawler = new MicroplusCrawler(seasonId, meetingUrl, targetEventTitle);
+  crawler.run();
+  res.json(CrawlUtil.readStatus());
 });
 
 apiRouter.get("/status", (_req, res) => {

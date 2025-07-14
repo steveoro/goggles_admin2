@@ -45,17 +45,19 @@
     "babel-loader": "^8.3.0",
     "babel-plugin-dynamic-import-node": "^2.3.3",
     "babel-plugin-macros": "^2.8.0",
+    "chai": "^4.3.4",
     "eslint": "^7.27.0",
     "eslint-config-standard": "^16.0.3",
     "eslint-plugin-import": "^2.23.4",
     "eslint-plugin-node": "^11.1.0",
     "eslint-plugin-promise": "^5.1.0",
+    "mocha": "^11.7.1",
     "standard": "^16.0.3",
     "webpack-dev-server": "^3.11.2"
   },
   "scripts": {
     "lint": "standard --parser @babel/eslint-parser --env browser --fix",
     "start": "cd crawler ; NODE_ENV=development node server/index.js",
-    "test": "cd crawler ; NODE_ENV=test mocha --exit tests/*.js"
+    "test": "NODE_ENV=test mocha --exit \"crawler/test/**/*.js\""
   }
 }

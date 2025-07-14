@@ -15,12 +15,12 @@ const { finished } = require('stream/promises');
 const path = require("path");
 
 // Shared configuration constants:
-const calendarNewFolder = "data/calendar.new";
-const calendarDoneFolder = "data/calendar.done";
-const resultsNewFolder = "data/results.new";
-const resultsDoneFolder = "data/results.done";
-const pdfsFolder = "data/pdfs";
-const manifestsFolder = "data/manifests";
+const calendarNewFolder = path.join(__dirname, '../data/calendar.new');
+const calendarDoneFolder = path.join(__dirname, '../data/calendar.done');
+const resultsNewFolder = path.join(__dirname, '../data/results.new');
+const resultsDoneFolder = path.join(__dirname, '../data/results.done');
+const pdfsFolder = path.join(__dirname, '../data/pdfs');
+const manifestsFolder = path.join(__dirname, '../data/manifests');
 const statusFilename = "crawler-status.json";
 //-----------------------------------------------------------------------------
 
@@ -49,11 +49,13 @@ function dateStamp() {
  */
 function normalizeText(text) {
   if (text) {
-    return text.replaceAll(/\r?\n/ig, '; ')
-      .replaceAll(/a\'/ig, 'à').replaceAll(/e\'/ig, 'è').replaceAll(/i\'/ig, 'ì')
-      .replaceAll(/o\'/ig, 'ò').replaceAll(/u\'/ig, 'ù')
-      .replaceAll(/&/ig, 'e').replaceAll(/,/ig, ' ')
-      .replaceAll(/[*!£$%|/\\?<>'"`]/ig, '')
+    // 1. Any hyphenated character at the end of a word should be considered as an accented word;
+    // 2. replace all multiple spaces with a single one;
+    return text.trim().replaceAll(/\r?\n/ig, '; ')
+      .replaceAll(/(a\')(?!\w)/ig, 'à').replaceAll(/(e\')(?!\w)/ig, 'è').replaceAll(/(i\')(?!\w)/ig, 'ì')
+      .replaceAll(/(o\')(?!\w)/ig, 'ò').replaceAll(/(u\')(?!\w)/ig, 'ù')
+      .replaceAll(/\s+/g, ' ')
+      .replaceAll(/[*!£$%|/\?<>"`]/ig, '')
   }
   // Return an empty string if the input is null or undefined:
   return ''
@@ -93,6 +95,20 @@ function readJSONFile(pathName) {
     }
     return { status: error.name, detail: error.message, data: data }
   }
+}
+
+/**
+ * Reads & returns the contents of a text file.
+ * -- Synchronous & blocking --
+ *
+ * @param {string} pathName - the pathname of the file
+ * @returns {string} the file contents
+ */
+function readTextFile(pathName) {
+    if (!Fs.existsSync(pathName)) {
+      return `File '${pathName}' not found.`
+    }
+    return Fs.readFileSync(pathName, 'utf8');
 }
 
 /**
@@ -163,7 +179,7 @@ function readStatus() {
  * @returns {String} the string folder path used as destination for any newly generated file.
  */
 function assertDestFolder(destFolder, seasonId, debug = false) {
-  const fullDestFolder = `${process.cwd()}/${destFolder}/${seasonId}`
+    const fullDestFolder = path.resolve(process.cwd(), destFolder, seasonId.toString());
   if (debug) { // DEBUG
     console.log(`Current folder........: ${process.cwd()}`)
     console.log(`Resulting dest. folder: ${fullDestFolder}`)
@@ -381,12 +397,75 @@ module.exports = {
   resultsNewFolder, resultsDoneFolder,
   statusFilename,
   fullTimeStamp, dateStamp, normalizeText,
-  readJSONFile, writeJSONFile,
+  readJSONFile, writeJSONFile, readTextFile,
   readStatus, updateStatus,
   assertDestFolder,
   parseDaysDate,
   readCSVData, writeCSVData,
   safeQuerySelector, safeFindHTMLContent,
-  downloadFile
+  downloadFile,
+  splitFullName: (fullName) => {
+    if (!fullName) return { lastName: '', firstName: '' };
+    const parts = fullName.trim().split(/\s+/);
+    const lastName = parts.shift() || '';
+    const firstName = parts.join(' ');
+    return { lastName, firstName };
+  },
+
+  /**
+   * Parses the event description string to extract structured information.
+   * @param {string} description - The event description (e.g., "50 m Stile Libero - Serie").
+   * @param {string} gender - The event gender ('F', 'M', or 'X').
+   * @returns {object} An object containing eventCode, eventGender, eventLength, and eventStroke.
+   */
+  parseEventInfoFromDescription: (description, gender) => {
+    const info = {
+      eventCode: '',
+      eventGender: gender || 'N/A',
+      eventLength: '',
+      eventStroke: ''
+    }
+    if (!description) return info
+
+    const strokeMap = {
+      'STILE LIBERO': 'SL',
+      'DORSO': 'DO',
+      'RANA': 'RA',
+      'FARFALLA': 'FA',
+      'MISTI': 'MI'
+    }
+
+    // e.g. "50 m Stile Libero - Serie" or "4x50 m Stile Libero - Serie"
+    const match = description.toUpperCase().match(/(4x)?(\d+)\s*m\s*([A-Z\s]+)/)
+    if (match) {
+      const isRelay = !!match[1]
+      info.eventLength = match[2]
+      const strokeName = match[3].replace(/-.*/, '').trim()
+      info.eventStroke = strokeMap[strokeName] || 'N/A'
+      info.eventCode = `${isRelay ? '4x' : ''}${info.eventLength}${info.eventStroke}`
+    }
+    return info
+  },
+
+  /**
+   * Parses a partial event date and combines it with the meeting's date range to get a full ISO date.
+   * @param {string} eventDateStr - The partial date string (e.g., "28/06").
+   * @param {string} meetingDatesStr - The meeting's date range (e.g., "24-29 GIUGNO 2025").
+   * @returns {string|null} The ISO-formatted date string (e.g., "2025-06-28") or null.
+   */
+  parseEventDate: (eventDateStr, meetingDatesStr) => {
+    if (!eventDateStr || !meetingDatesStr) return null
+
+    const yearMatch = meetingDatesStr.match(/\d{4}/)
+    if (!yearMatch) return null
+    const year = yearMatch[0]
+
+    const dateParts = eventDateStr.split('/')
+    if (dateParts.length < 2) return null
+    const day = dateParts[0]
+    const month = dateParts[1]
+
+    return `${year}-${month}-${day}`
+  }
 }
 //-----------------------------------------------------------------------------
