@@ -25,21 +25,17 @@ pickle-email-*.html
 !/tmp/pids/.keep
 
 # Ignore all datafiles.
-/crawler/data/calendar.new/*
-/crawler/data/calendar.done/*
-/crawler/data/pdfs/*
-/crawler/data/results.new/*
-/crawler/data/results.done/*
-/crawler/data/results.old/*
-/crawler/data/results.backup/*
-/crawler/data/results.sent/*
+/crawler/data/**/*
+/crawler/crawler-status.json
+!/crawler/server/*.js
+!/crawler/test/*.js
 !/crawler/data/.keep
 !/crawler/data/calendar.new/.keep
 !/crawler/data/calendar.done/.keep
 !/crawler/data/results.new/.keep
 !/crawler/data/results.done/.keep
 !/crawler/data/results.sent/.keep
-crawler/**/*
+!/crawler/data/screenshots/.keep
 
 # Ignore uploaded files in development.
 /storage/*
