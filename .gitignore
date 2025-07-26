@@ -27,6 +27,8 @@ pickle-email-*.html
 # Ignore all datafiles.
 /crawler/data/**/*
 /crawler/crawler-status.json
+/crawler/server.log
+/crawler/crawler-status.json
 !/crawler/server/*.js
 !/crawler/test/*.js
 !/crawler/data/.keep
@@ -35,7 +37,8 @@ pickle-email-*.html
 !/crawler/data/results.new/.keep
 !/crawler/data/results.done/.keep
 !/crawler/data/results.sent/.keep
-!/crawler/data/screenshots/.keep
+!/crawler/data/debug/.keep
+
 
 # Ignore uploaded files in development.
 /storage/*
@@ -92,3 +95,4 @@ yarn-debug.log*
 .yarn-integrity
 
 /config/credentials/development.key
+crawler/server.log

@@ -413,37 +413,107 @@ module.exports = {
   },
 
   /**
+   * Normalizes text by removing invisible Unicode characters and converting &nbsp; to spaces.
+   * @param {string} text - The text to normalize.
+   * @returns {string} Normalized text with proper spacing.
+   */
+  normalizeUnicodeText: (text) => {
+    if (!text) return '';
+    return text
+      // Convert HTML entities to spaces
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/&amp;/gi, '&')
+      .replace(/&lt;/gi, '<')
+      .replace(/&gt;/gi, '>')
+      .replace(/&quot;/gi, '"')
+      // Remove zero-width characters and other invisible Unicode
+      .replace(/[\u200B-\u200D\uFEFF]/g, '')
+      // Normalize Unicode (NFC normalization)
+      .normalize('NFC')
+      // Replace all Unicode whitespace with regular spaces
+      .replace(/\s+/gu, ' ')
+      // Trim and clean up
+      .trim();
+  },
+
+  /**
    * Parses the event description string to extract structured information.
-   * @param {string} description - The event description (e.g., "50 m Stile Libero - Serie").
-   * @param {string} gender - The event gender ('F', 'M', or 'X').
-   * @returns {object} An object containing eventCode, eventGender, eventLength, and eventStroke.
+   * @param {string} description - The event description (e.g., "100 m Rana - Serie").
+   * @param {string} gender - The event gender ('FEMMINE', 'MASCHI', 'MISTO', etc.).
+   * @returns {object} An object containing eventCode, eventGender, eventLength, eventStroke, eventDescription, and relay.
    */
   parseEventInfoFromDescription: (description, gender) => {
     const info = {
       eventCode: '',
-      eventGender: gender || 'N/A',
+      eventGender: 'N/A',
       eventLength: '',
-      eventStroke: ''
+      eventStroke: '',
+      eventDescription: '',
+      relay: false
+      // Note: eventDate is NOT initialized here - it should only be added when available
     }
     if (!description) return info
 
-    const strokeMap = {
-      'STILE LIBERO': 'SL',
-      'DORSO': 'DO',
-      'RANA': 'RA',
-      'FARFALLA': 'FA',
-      'MISTI': 'MI'
+    // Normalize Unicode text to handle &nbsp; and invisible characters
+    const normalizedDescription = module.exports.normalizeUnicodeText(description);
+    const normalizedGender = gender ? module.exports.normalizeUnicodeText(gender) : '';
+    
+    console.log(`[DEBUG] Original description: "${description}"`);
+    console.log(`[DEBUG] Normalized description: "${normalizedDescription}"`);
+    console.log(`[DEBUG] Original gender: "${gender}"`);
+    console.log(`[DEBUG] Normalized gender: "${normalizedGender}"`);
+
+    // 1.1. Normalize eventGender: F for female, M for male, X for mixed
+    if (normalizedGender) {
+      const genderUpper = normalizedGender.toUpperCase()
+      if (genderUpper.includes('FEMMIN') || genderUpper === 'F') {
+        info.eventGender = 'F'
+      } else if (genderUpper.includes('MASCH') || genderUpper === 'M') {
+        info.eventGender = 'M'
+      } else if (genderUpper.includes('MIST') || genderUpper.includes('MIX') || genderUpper === 'X') {
+        info.eventGender = 'X'
+      }
     }
 
-    // e.g. "50 m Stile Libero - Serie" or "4x50 m Stile Libero - Serie"
-    const match = description.toUpperCase().match(/(4x)?(\d+)\s*m\s*([A-Z\s]+)/)
-    if (match) {
-      const isRelay = !!match[1]
-      info.eventLength = match[2]
-      const strokeName = match[3].replace(/-.*/, '').trim()
-      info.eventStroke = strokeMap[strokeName] || 'N/A'
-      info.eventCode = `${isRelay ? '4x' : ''}${info.eventLength}${info.eventStroke}`
+    // 1.2. Split eventDescription at " - " and use first part (use normalized text)
+    const descriptionParts = normalizedDescription.split(' - ')
+    info.eventDescription = descriptionParts[0].trim()
+
+    // 1. Split the eventDescription using regexp to extract eventLength and stroke label
+    // Pattern: /((?>[468]x)?\d{2,4})\sm\s(.+$)/i
+    console.log(`[DEBUG] Parsing eventDescription: "${info.eventDescription}"`);
+    const eventMatch = info.eventDescription.match(/((?:[468]x)?\d{2,4})\s*m\s(.+$)/i)
+    console.log(`[DEBUG] Event match result:`, eventMatch);
+    if (eventMatch) {
+      const lengthPart = eventMatch[1] // e.g., "4x50", "200", "100"
+      const strokeLabel = eventMatch[2].trim() // e.g., "STILE LIBERO", "RANA", "MISTI"
+      
+      // Check if it's a relay (contains "x")
+      info.relay = lengthPart.toLowerCase().includes('x')
+      info.eventLength = lengthPart
+      
+      // 2. Convert stroke label to eventStroke using improved logic
+      const strokeLabelUpper = strokeLabel.toUpperCase()
+      if (/rana/i.test(strokeLabelUpper)) {
+        info.eventStroke = 'RA'
+      } else if (/dors/i.test(strokeLabelUpper)) {
+        info.eventStroke = 'DO'
+      } else if (/stil/i.test(strokeLabelUpper)) {
+        info.eventStroke = 'SL'
+      } else if (/farf|delf/i.test(strokeLabelUpper)) {
+        info.eventStroke = 'FA'
+      } else if (/mist/i.test(strokeLabelUpper)) {
+        info.eventStroke = 'MI'
+      } else {
+        info.eventStroke = '' // null/not supported
+      }
+      
+      // 3. Generate eventCode = eventLength + eventStroke
+      if (info.eventStroke) {
+        info.eventCode = info.eventLength + info.eventStroke
+      }
     }
+    
     return info
   },
 
@@ -466,6 +536,111 @@ module.exports = {
     const month = dateParts[1]
 
     return `${year}-${month}-${day}`
+  },
+
+  /**
+   * Parses place and dates from a URL with format like:
+   * "https://<main_site_domain>/<ignored_code>_<YYYY>_<MM>_<DD1>-<DD2>_<place>_web.<ext>"
+   * @param {string} url - The URL to parse.
+   * @returns {object} An object containing place and dates (ISO format comma-separated).
+   */
+  parsePlaceAndDatesFromUrl: (url) => {
+    const result = {
+      place: '',
+      dates: ''
+    }
+    
+    if (!url) return result
+    
+    // Extract filename from URL
+    const urlParts = url.split('/')
+    const filename = urlParts[urlParts.length - 1]
+    
+    // Remove extension
+    const nameWithoutExt = filename.replace(/\.[^.]+$/, '')
+    
+    // Expected format: <ignored_code>_<YYYY>_<MM>_<DD1>-<DD2>_<place>_web
+    const parts = nameWithoutExt.split('_')
+    if (parts.length >= 6) {
+      const year = parts[1]
+      const month = parts[2]
+      const dayRange = parts[3]
+      const place = parts[4]
+      
+      // Parse day range (DD1-DD2)
+      const dayParts = dayRange.split('-')
+      if (dayParts.length === 2) {
+        const day1 = dayParts[0].padStart(2, '0')
+        const day2 = dayParts[1].padStart(2, '0')
+        const monthPadded = month.padStart(2, '0')
+        
+        result.place = place
+        result.dates = `${year}-${monthPadded}-${day1},${year}-${monthPadded}-${day2}`
+      }
+    }
+    
+    return result
+  },
+
+  /**
+   * Enhanced name extraction that properly separates lastName and firstName.
+   * Uses &nbsp; as the primary delimiter, with fallback to space-based splitting.
+   * @param {string} fullName - The full name string (may contain &nbsp; entities).
+   * @returns {object} An object with lastName and firstName properties.
+   */
+  extractNameParts: (fullName) => {
+    if (!fullName) return { lastName: '', firstName: '' };
+    
+    // First normalize the text to handle HTML entities and invisible characters
+    const normalizedName = module.exports.normalizeUnicodeText(fullName);
+    
+    // Try to split by &nbsp; first (the most reliable delimiter)
+    if (normalizedName.includes('\u00A0')) {
+      const parts = normalizedName.split('\u00A0');
+      if (parts.length >= 2) {
+        // Everything before the last &nbsp; is lastName, everything after is firstName
+        const lastSpaceIndex = normalizedName.lastIndexOf('\u00A0');
+        const lastName = normalizedName.substring(0, lastSpaceIndex).trim();
+        const firstName = normalizedName.substring(lastSpaceIndex + 1).trim();
+        return { lastName, firstName };
+      }
+    }
+    
+    // Fallback to space-based splitting if no &nbsp; found
+    const parts = normalizedName.split(/\s+/);
+    if (parts.length === 1) {
+      return { lastName: parts[0], firstName: '' };
+    } else if (parts.length === 2) {
+      return { lastName: parts[0], firstName: parts[1] };
+    } else {
+      // For multiple parts, assume last word is firstName, rest is lastName
+      const firstName = parts[parts.length - 1];
+      const lastName = parts.slice(0, -1).join(' ');
+      return { lastName, firstName };
+    }
+  },
+
+  /**
+   * Creates a unique key for a swimmer based on gender, last name, first name, year, and team.
+   * @param {string} gender - The swimmer's gender ('F', 'M', or 'X').
+   * @param {string} lastName - The swimmer's last name.
+   * @param {string} firstName - The swimmer's first name.
+   * @param {string} year - The swimmer's year of birth.
+   * @param {string} team - The swimmer's team name.
+   * @returns {string} A unique key in the format "gender|lastName|firstName|year|team".
+   */
+  createSwimmerKey: (gender, lastName, firstName, year, team) => {
+    return `${gender}|${lastName}|${firstName}|${year}|${team}`.replace(/\s+/g, ' ').trim()
+  },
+
+  /**
+   * Creates a unique key for a team.
+   * @param {string} team - The team name.
+   * @returns {string} A unique key for the team.
+   */
+  createTeamKey: (team) => {
+    return team.replace(/\s+/g, ' ').trim()
   }
+
 }
 //-----------------------------------------------------------------------------
