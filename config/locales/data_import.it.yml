@@ -2,16 +2,25 @@ it:
   data_import:
     generic_save_btn: "💾 Salva modifiche"
     btn_save_confirm: 'Salvo le modifiche?'
+    crawler_headers:
+      calendar: '1. Calendar / target season'
+      results: '2. Results / target URL / layout type'
     config:
-      default_calendar_url: 'URL calendario'
+      sub_menu_type: 'Sub-menu (solo calendari)'
+      target_url: 'URL target (solo risultati, ignorata per calendari)'
+      crawler_type: 'Tipo Crawler'
+      crawler_fin_calendar: 'FIN calendar (auto-layout)'
+      crawler_fin_results: 'FIN results (layout ~3)'
+      crawler_microplus: 'Microplus results (layout 4)'
+      target_event: 'Titolo evento da scaricare (così come sulla pagina; vuoto = tutti)'
     calendar:
-      crawler_status_page_title: 'Crawler'
+      crawler_status_page_title: 'Crawler API'
       choose_season_label: 'Scegli stagione'
       calendar_files_page_title: 'File calendario'
       pdfs_page_title: 'PDF'
       result_files_page_title: 'File risultati'
-      btn_run_crawler: '📥 CRAWL URL Calendario'
-      btn_run_crawler_confirm: 'Eseguo il crawler per recuperare le ultime informazioni sui meeting trovati alla URL qui sopra?'
+      btn_run_crawler: '📥 CRAWLER run'
+      btn_run_crawler_confirm: 'Eseguo il crawler per recuperare i dati con la configurazione specificata?'
       btn_clear_log: 'Azzera Log'
       btn_clear_log_confirm: 'Azzero il log?'
       season_search_label: 'Season / cerca x label / URL calendario / layout:'
@@ -66,3 +75,4 @@ it:
       missing_url_or_season_id: 'Devi specificare un URL calendario e un ID stagione'
       crawler_unreachable: 'Crawler server non raggiungibile'
       crawler_connecting: 'In connessione...'
+      unsupported_layout_or_incomplete_url: 'Layout non supportato o target URL incompleta!'

@@ -9,6 +9,15 @@ require 'csv'
 class PullController < FileListController
   # URL for the Crawler server API
   CRAWLER_API_URL = 'http://localhost:7000/'
+
+  # Base URL for FIN event calendars:
+  FIN_CALENDAR_BASE_URL = 'https://www.federnuoto.it/home/master.html'
+
+  # Base URL for FIN results:
+  FIN_RESULTS_BASE_URL = 'https://www.federnuoto.it/home/master/circuito-supermaster/eventi-circuito-supermaster.html#/risultati/'
+
+  # Base URL for Microplus results:
+  MICROPLUS_RESULTS_BASE_URL = 'https://fin2025.microplustiming.com/'
   #-- -------------------------------------------------------------------------
   #++
 
@@ -23,6 +32,7 @@ class PullController < FileListController
                                .where("begin_date > '2012-01-01'")
                                .by_begin_date(:desc)
     prepare_season_list(seasons, seasons.first.id)
+    prepare_url_base_list
   end
   #-- -------------------------------------------------------------------------
   #++
@@ -32,22 +42,47 @@ class PullController < FileListController
   # Uses the #crawler_params for the API call.
   # The layout type of the calendar is auto-detected by the crawler itself.
   #
-  def run_calendar_crawler
+  def run_crawler_api # rubocop:disable Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
     unless crawler_params['sub_menu_type'].present? && crawler_params['season_id'].present?
       flash[:warning] = I18n.t('data_import.errors.missing_url_or_season_id')
       redirect_to(pull_index_path) && return
     end
 
-    call_crawler_api(
-      'pull_calendar',
-      get_params: {
-        season_id: crawler_params['season_id'],
-        # New base URL for (FIN) calendars must be fixed, crawler will simulate menu clicking:
-        start_url: 'https://www.federnuoto.it/home/master.html',
-        sub_menu_type: crawler_params['sub_menu_type'],
-        year_text: crawler_params['year_text']
-      }
-    )
+    # For layout types != 0, 'target_url' must be completed by hand (it's a placeholder):
+    target_url_valid = crawler_params['target_url'].present? && !crawler_params['target_url'].match?(%r{/\s\(\+})
+    if crawler_params['layout_id'] == '0' || crawler_params['layout_id'].blank? # defaults to layout type "auto"/calendar
+      call_crawler_api(
+        'pull_calendar',
+        get_params: {
+          season_id: crawler_params['season_id'],
+          # New base URL for (FIN) calendars must be fixed, crawler will simulate menu clicking:
+          start_url: FIN_CALENDAR_BASE_URL,
+          sub_menu_type: crawler_params['sub_menu_type'],
+          year_text: crawler_params['year_text']
+        }
+      )
+
+    elsif target_url_valid
+      layout = crawler_params['layout_id'].to_i
+      api_params = { season_id: crawler_params['season_id'], layout: }
+      api_endpoint = layout == 4 ? 'pull_results_microplus' : 'pull_results'
+      api_params = if layout == 4
+                     api_params.merge(meeting_url: crawler_params['target_url'],
+                                      target_event: crawler_params['target_event'])
+                   else
+                     # TODO: support actual target_url in 'pull_results' implementation instead of just 'file_path'.
+                     #       Current implementation: runs the crawler for layout 3 iterating on each row of the CSV calendar file, where each row has a target URL.
+                     #       If the 'file_path' parameter is a URL instead of a local file, it should run the results crawler directly on the specified parameter,
+                     #       instead of parsing the CSV and looping on each row.
+                     api_params.merge(file_path: crawler_params['target_url'])
+                   end
+      call_crawler_api(api_endpoint, get_params: api_params)
+
+    else
+      flash[:warning] = I18n.t('data_import.errors.unsupported_layout_or_incomplete_url')
+      redirect_to(pull_index_path) && return
+    end
+
     redirect_to(pull_index_path) && return
   end
   #-- -------------------------------------------------------------------------
@@ -87,7 +122,8 @@ class PullController < FileListController
 
   # Strong parameters checking for crawler API calls.
   def crawler_params
-    params.permit(:start_url, :season_id, :sub_menu_type, :year_text, :layout)
+    params.permit(:start_url, :season_id, :sub_menu_type, :year_text,
+                  :layout, :layout_id, :target_url, :target_event)
   end
 
   # Prepares the <tt>@season_list</tt> member variable for the view, as an Array of Hash objects
@@ -132,6 +168,47 @@ class PullController < FileListController
       end
     end
   end
+
+  # Similar to the one above, prepares the <tt>@url_base_list</tt> member variable for the view,
+  # as an Array of Hash objects having the required keys for setting up the <tt>AutoCompleteComponent</tt> data payload.
+  #
+  def prepare_url_base_list
+    @url_base_list = [
+      # FIN calendar base URL (constant, layout auto, handled by calendar-crawler.js):
+      # https://www.federnuoto.it/home/master.html
+      {
+        id: 0,
+        label: I18n.t('data_import.config.crawler_fin_calendar'),
+        base_url: FIN_CALENDAR_BASE_URL
+      },
+
+      # FIN "current season" meeting base URL (layout 3, results-crawler.js):
+      # https://www.federnuoto.it/home/master/circuito-supermaster/eventi-circuito-supermaster.html#/risultati/<sub_page_url>
+      {
+        id: 3,
+        label: I18n.t('data_import.config.crawler_fin_results'),
+        base_url: "#{FIN_RESULTS_BASE_URL} (+<LINK>)"
+      },
+
+      # Sample valid base URLs for Microplus crawler (microplus-crawler.js):
+      # season_id, url
+      # 242, https://fin2025.microplustiming.com/MA_2025_06_24-29_Riccione.php
+      # 242, https://fin2025.microplustiming.com/MA_2025_05_30_Gorizia.php
+      # 232, https://fin2024.microplustiming.com/MAS_2024_06_25-30_Riccione.php
+      # 232, https://fin2023.microplustiming.com/MAS_2023_12_08-10_Torino.php
+      # 222, https://fin2023.microplustiming.com/MAS_2023_06_27-07_02_Riccione.php
+      # 212, https://fin2022.microplustiming.com/MAS_2022_06_28-07_03_Riccione.php
+      # 182, https://fin2019.microplustiming.com/MA_2019_06_25-30_Riccione.php
+      # 172, http://fin2018.microplustiming.com/masterpalermo2018/
+      {
+        id: 4,
+        label: I18n.t('data_import.config.crawler_microplus'),
+        base_url: "#{MICROPLUS_RESULTS_BASE_URL} (+<PAGE>.php)"
+      }
+    ]
+  end
+  #-- -------------------------------------------------------------------------
+  #++
 
   # Sends a command through the crawler API.
   # Requires the Crawler server already running on localhost:7000.

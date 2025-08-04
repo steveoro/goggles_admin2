@@ -26,7 +26,7 @@ Rails.application.routes.draw do
   get 'pull/result_files'
   put 'pull/result_files', to: 'pull#result_files', as: 'update_result_files'
 
-  post 'pull/run_calendar_crawler', to: 'pull#run_calendar_crawler', as: 'run_calendar_crawler'
+  post 'pull/run_crawler_api', to: 'pull#run_crawler_api', as: 'run_crawler_api'
   get 'pull/edit_name'
   get 'pull/edit_file'
   put 'pull/file_rename'

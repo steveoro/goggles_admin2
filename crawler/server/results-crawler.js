@@ -211,7 +211,7 @@ class ResultsCrawler {
     const name = await page.$eval('#risultati-master h1.nome', (node) => { return node.textContent }).catch((err) => { console.log(err.toString()) })
     const organization = await page.$eval('#risultati-master h3', (node) => { return node.textContent }).catch((err) => { console.log(err.toString()) })
     // DEBUG
-    // await page.screenshot({ path: './screenshot.png' });
+    // await page.screenshot({ path: './data/debug/screenshot.png' });
     console.log(`   Processing event nodes...`)
     const sections = await page.$$eval('.gara', (eventNodes) => {
       return Array.from(eventNodes)
@@ -272,7 +272,7 @@ class ResultsCrawler {
     await page.waitForSelector('.details_nat_eve_list.master > .infos')
               .catch((err) => { console.log(err.toString()) })
     // DEBUG
-    // await page.screenshot({ path: './screenshot.png' });
+    // await page.screenshot({ path: './data/debug/screenshot.png' });
 
     const arrayOfParams = await page.$$eval(".categorie span.collegamento", (nodes) =>
         nodes.map((node) => {

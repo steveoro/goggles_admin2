@@ -125,7 +125,7 @@ class CalendarCrawler {
     CrawlUtil.updateStatus(`Waiting for side menu to become visible...`)
     await page.waitForSelector('.module-menu_acc_interno ul.mixedmenu li.divider.deeper.parent').catch((err) => { console.log(err.toString()) })
     // DEBUG
-    // await page.screenshot({ path: './screenshot-1.png' });
+    // await page.screenshot({ path: './data/debug/screenshot-1.png' });
     CrawlUtil.updateStatus(`Clicking on side menu...`)
 
     // Click on the sub-menu item to reach the internal page with the calendar:
@@ -161,7 +161,7 @@ class CalendarCrawler {
 
     await page.waitForNetworkIdle({ idleTime: 2000 })
     // DEBUG
-    await page.screenshot({ path: './screenshot-2.png' });
+    // await page.screenshot({ path: './data/debug/screenshot-2.png' });
 
     CrawlUtil.updateStatus('Detecting layout type...')
     const layoutType = await this.calendarLayoutDetector(page)
@@ -230,7 +230,7 @@ class CalendarCrawler {
     }
 
     // DEBUG:
-    // await page.screenshot({ path: './calendar.png', fullPage: true });
+    // await page.screenshot({ path: './data/debug/calendar.png', fullPage: true });
   }
   //---------------------------------------------------------------------------
 

@@ -466,9 +466,9 @@ module.exports = {
     // 1.1. Normalize eventGender: F for female, M for male, X for mixed
     if (normalizedGender) {
       const genderUpper = normalizedGender.toUpperCase()
-      if (genderUpper.includes('FEMMIN') || genderUpper === 'F') {
+      if (genderUpper.includes('FEM') || genderUpper === 'F') {
         info.eventGender = 'F'
-      } else if (genderUpper.includes('MASCH') || genderUpper === 'M') {
+      } else if (genderUpper.includes('MAS') || genderUpper === 'M') {
         info.eventGender = 'M'
       } else if (genderUpper.includes('MIST') || genderUpper.includes('MIX') || genderUpper === 'X') {
         info.eventGender = 'X'
@@ -640,6 +640,74 @@ module.exports = {
    */
   createTeamKey: (team) => {
     return team.replace(/\s+/g, ' ').trim()
+  },
+
+  /**
+   * Parses meeting dates from Italian format or comma-separated ISO dates and returns the first date in ISO format.
+   * Handles formats like "24/29 giugno 2025", "15 marzo 2025", or "2025-06-24,2025-06-29".
+   * @param {string} dateString - The date string in Italian format or comma-separated ISO dates.
+   * @returns {string} The first meeting date in ISO format (YYYY-MM-DD) or empty string if parsing fails.
+   */
+  parseFirstMeetingDate: (dateString) => {
+    if (!dateString) return '';
+    
+    // Check if it's already in comma-separated ISO format (e.g., "2025-06-24,2025-06-29")
+    if (dateString.includes(',') && dateString.match(/^\d{4}-\d{2}-\d{2}/)) {
+      return dateString.split(',')[0].trim(); // Return the first date
+    }
+    
+    // Check if it's a single ISO date (e.g., "2025-06-24")
+    if (dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      return dateString;
+    }
+    
+    // Italian month names to numbers mapping
+    const monthMap = {
+      'gennaio': '01', 'febbraio': '02', 'marzo': '03', 'aprile': '04',
+      'maggio': '05', 'giugno': '06', 'luglio': '07', 'agosto': '08',
+      'settembre': '09', 'ottobre': '10', 'novembre': '11', 'dicembre': '12'
+    };
+    
+    // Match patterns like "24/29 giugno 2025" or "15 marzo 2025"
+    const datePattern = /(\d{1,2})(?:\/(\d{1,2}))? (\w+) (\d{4})/;
+    const match = dateString.match(datePattern);
+    
+    if (match) {
+      const day = match[1].padStart(2, '0');
+      const monthName = match[3].toLowerCase();
+      const year = match[4];
+      const monthNum = monthMap[monthName];
+      
+      if (monthNum) {
+        return `${year}-${monthNum}-${day}`;
+      }
+    }
+    
+    return '';
+  },
+
+  /**
+   * Sanitizes a meeting name for use in filenames by replacing spaces with underscores
+   * and removing invalid filename characters.
+   * @param {string} meetingName - The meeting name to sanitize.
+   * @returns {string} The sanitized meeting name suitable for filenames.
+   */
+  sanitizeForFilename: (meetingName) => {
+    if (!meetingName) return '';
+    
+    return meetingName
+      .replace(/\s+/g, '_')  // Replace spaces with underscores
+      .replace(/[<>:"/\\|?*]/g, '')  // Remove invalid filename characters
+      .replace(/[àáâãäå]/g, 'a')  // Replace accented characters
+      .replace(/[èéêë]/g, 'e')
+      .replace(/[ìíîï]/g, 'i')
+      .replace(/[òóôõö]/g, 'o')
+      .replace(/[ùúûü]/g, 'u')
+      .replace(/[ñ]/g, 'n')
+      .replace(/[ç]/g, 'c')
+      .replace(/[^a-zA-Z0-9_-]/g, '')  // Remove any remaining special characters
+      .replace(/_+/g, '_')  // Replace multiple underscores with single
+      .replace(/^_|_$/g, '');  // Remove leading/trailing underscores
   }
 
 }

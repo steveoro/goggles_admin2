@@ -118,12 +118,19 @@ class MicroplusCrawler {
         }
 
         const events = this.limitEvents ? eventsToProcess.slice(0, 1) : eventsToProcess;
+        
+        console.log(`[DEBUG] About to process ${events.length} events:`);
+        events.forEach((event, index) => {
+          console.log(`[DEBUG] Event ${index + 1}: "${event.description}" (gender: ${event.gender})`);
+        });
 
         for (const event of events) {
           try {
-            console.log(`   Processing event: ${event.description}`);
+            console.log(`   Processing event: ${event.description} (gender: ${event.gender})`);
+            console.log(`      - Event onclick: ${event.onclick}`);
             console.log('      - Stage 1: Executing onclick and waiting for AJAX response...');
             const onclickParams = event.onclick.match(/\((.*)\)/)[1];
+            console.log(`      - Onclick parameters: ${onclickParams}`);
             const [response] = await Promise.all([
               page.waitForResponse(response => response.url().includes('.JSON') && response.status() === 200),
               page.evaluate((params) => {
@@ -132,29 +139,56 @@ class MicroplusCrawler {
             ]);
             const responseUrl = response.url();
             console.log(`      - Stage 1: AJAX response received from: ${responseUrl}`);
+            
+            // Debug: Check if the page content changed after AJAX
+            const pageTitle = await page.title();
+            console.log(`      - Page title after AJAX: ${pageTitle}`);
 
             const heatResultsHtml = await this.waitForTableToLoad(page, 'Heats');
             console.log(`[DEBUG] heatResultsHtml length: ${heatResultsHtml ? heatResultsHtml.length : 'NULL'}`);
             console.log(`[DEBUG] Calling processHeatResults...`);
             const heatData = this.processHeatResults(heatResultsHtml);
-            console.log(`[DEBUG] processHeatResults returned:`, JSON.stringify(heatData, null, 2));
-            console.log('      - Done parsing heats.');
+            // DEBUG (extremely verbose!)
+            // console.log(`[DEBUG] processHeatResults returned:`, JSON.stringify(heatData, null, 2));
+            console.log(`      - Done parsing heats: ${heatData.length} row(s).`);
 
             console.log('      - Stage 3: Clicking RIEPILOGO tab and waiting for AJAX...');
+            
+            // Debug: Check what codSummary variable is available
+            const codSummaryValue = await page.evaluate(() => {
+              return typeof codSummary !== 'undefined' ? codSummary : 'undefined';
+            });
+            console.log(`      - codSummary value: ${codSummaryValue}`);
+            
             await page.evaluate(() => {
               // This is the actual onclick function for the summary tab
               CheckJsonForLoadOnMain(codSummary, true, true);
             });
 
-            await page.waitForResponse(response => response.url().includes('.JSON') && response.status() === 200, { timeout: 30000 });
+            const riepilogoResponse = await page.waitForResponse(response => response.url().includes('.JSON') && response.status() === 200, { timeout: 30000 });
+            const riepilogoResponseUrl = riepilogoResponse.url();
+            console.log(`      - Stage 4: Rankings AJAX response received from: ${riepilogoResponseUrl}`);
             console.log('      - Stage 4: Rankings data loaded.');
 
             const rankingResultsHtml = await this.waitForRiepilogoToLoad(page);
             console.log(`[DEBUG] rankingResultsHtml length: ${rankingResultsHtml ? rankingResultsHtml.length : 'NULL'}`);
-            console.log(`[DEBUG] Calling processRankingResults...`);
-            const rankingData = this.processRankingResults(rankingResultsHtml);
-            console.log(`[DEBUG] processRankingResults returned:`, JSON.stringify(rankingData, null, 2));
-            console.log('      - Done parsing rankings.');
+            
+            let rankingData = { results: [] }; // Default to empty results
+            
+            if (rankingResultsHtml && rankingResultsHtml.trim().length > 0) {
+              console.log(`[DEBUG] Calling processRankingResults...`);
+              rankingData = this.processRankingResults(rankingResultsHtml);
+              console.log(`[DEBUG] processRankingResults returned:`, JSON.stringify({
+                hasResults: !!rankingData.results,
+                resultsLength: rankingData.results ? rankingData.results.length : 'undefined',
+                resultsType: typeof rankingData.results,
+                firstResult: rankingData.results && rankingData.results.length > 0 ? rankingData.results[0] : 'none'
+              }, null, 2));
+              console.log(`      - Done parsing rankings: ${rankingData.results.length} result(s).`);
+            } else {
+              console.log(`[DEBUG] RIEPILOGO data is null/empty, continuing with heat data only...`);
+              console.log(`      - Done parsing rankings: 0 result(s) (RIEPILOGO failed to load).`);
+            }
 
             // Parse event info with improved header details
             console.log(`[DEBUG] Parsing event: "${event.description}" with gender: "${event.gender}"`);            
@@ -176,6 +210,7 @@ class MicroplusCrawler {
             
             // First, collect all heat results with lap timings
             const heatResultsMap = new Map();
+            console.log(`[DEBUG] Building heat results map...`);
             for (const heat of heatData.heats) {
               for (const heatResult of heat.results) {
                 const swimmerKey = CrawlUtil.createSwimmerKey(
@@ -185,12 +220,66 @@ class MicroplusCrawler {
                   heatResult.year,
                   heatResult.team
                 );
+                // DEBUG (verbose)
+                // console.log(`[DEBUG] Heat result key: ${swimmerKey} (${heatResult.lastName}|${heatResult.firstName}|${heatResult.year}|${heatResult.team})`);
                 heatResultsMap.set(swimmerKey, heatResult);
               }
             }
-            
+            console.log(`[DEBUG] Heat results map size: ${heatResultsMap.size}`);
+            console.log(`[DEBUG] Heat results keys (first 5):`, Array.from(heatResultsMap.keys()).slice(0, 5)); // Show just first 5 keys
+
             // Process each RIEPILOGO result and merge with heat data
-            rankingData.results.forEach(rankingResult => {
+            console.log(`[DEBUG] Processing ${rankingData.results.length} RIEPILOGO results...`);
+            
+            if (rankingData.results.length === 0) {
+              // No RIEPILOGO data available, create results from heat data only
+              console.log(`[DEBUG] No RIEPILOGO data available, creating results from heat data only...`);
+              for (const heat of heatData.heats) {
+                for (const heatResult of heat.results) {
+                  const swimmerKey = CrawlUtil.createSwimmerKey(
+                    eventInfo.eventGender,
+                    heatResult.lastName,
+                    heatResult.firstName, 
+                    heatResult.year,
+                    heatResult.team
+                  );
+                  
+                  const teamKey = CrawlUtil.createTeamKey(heatResult.team);
+                  
+                  // Add to lookup tables
+                  if (!allResults.swimmers[swimmerKey]) {
+                    allResults.swimmers[swimmerKey] = {
+                      lastName: heatResult.lastName,
+                      firstName: heatResult.firstName,
+                      gender: eventInfo.eventGender,
+                      year: heatResult.year,
+                      team: teamKey
+                    };
+                  }
+                  
+                  if (!allResults.teams[teamKey]) {
+                    allResults.teams[teamKey] = {
+                      name: heatResult.team
+                    };
+                  }
+                  
+                  // Create result with heat data only (no ranking info)
+                  const heatOnlyResult = {
+                    swimmer: swimmerKey,
+                    team: teamKey,
+                    timing: heatResult.timing,
+                    heat_position: heatResult.heat_position,
+                    lane: heatResult.lane,
+                    nation: heatResult.nation,
+                    laps: heatResult.laps || []
+                  };
+                  
+                  mergedResults.push(heatOnlyResult);
+                }
+              }
+            } else {
+              // Process RIEPILOGO results and merge with heat data
+              rankingData.results.forEach((rankingResult, index) => {
               // Create unique swimmer key for RIEPILOGO result with gender prefix
               const swimmerKey = CrawlUtil.createSwimmerKey(
                 eventInfo.eventGender,
@@ -199,11 +288,24 @@ class MicroplusCrawler {
                 rankingResult.year,
                 rankingResult.team
               );
-              
+
               // Find corresponding heat result with lap timings
               const heatResult = heatResultsMap.get(swimmerKey);
               
-              console.log(`[DEBUG] Merging RIEPILOGO data for ${swimmerKey}: found heat result = ${!!heatResult}`);
+              if (index < 3) { // Show details for first 3 results
+                console.log(`[DEBUG] RIEPILOGO result ${index + 1}: ${rankingResult.lastName}|${rankingResult.firstName}|${rankingResult.year}|${rankingResult.team}`);
+                console.log(`[DEBUG] Generated key: ${swimmerKey}`);
+                console.log(`[DEBUG] Found in heat results: ${!!heatResult}`);
+                if (!heatResult) {
+                  // Show similar keys to help debug
+                  const similarKeys = Array.from(heatResultsMap.keys()).filter(key => 
+                    key.includes(rankingResult.lastName) || key.includes(rankingResult.firstName)
+                  );
+                  console.log(`[DEBUG] Similar heat keys found:`, similarKeys.slice(0, 3));
+                }
+              }
+              // DEBUG (verbose)
+              // console.log(`[DEBUG] Merging RIEPILOGO data for ${swimmerKey}: found heat result = ${!!heatResult}`);
               
               // Create team key
               const teamKey = CrawlUtil.createTeamKey(rankingResult.team);
@@ -224,7 +326,7 @@ class MicroplusCrawler {
                   name: rankingResult.team
                 };
               }
-              
+
               // Create merged result combining RIEPILOGO data with heat lap timings
               const mergedResult = {
                 ranking: rankingResult.ranking, // From RIEPILOGO
@@ -241,13 +343,22 @@ class MicroplusCrawler {
                 mergedResult.nation = heatResult.nation;
                 mergedResult.laps = heatResult.laps || [];
               }
-              
+
               mergedResults.push(mergedResult);
-            });
-            
+              });
+            }
+
+            // Debug: Check what's in mergedResults
+            console.log(`[DEBUG] mergedResults array length: ${mergedResults.length}`);
+            if (mergedResults.length > 0) {
+              console.log(`[DEBUG] First merged result:`, JSON.stringify(mergedResults[0], null, 2));
+              console.log(`[DEBUG] Has ranking field: ${!!mergedResults[0].ranking}`);
+              console.log(`[DEBUG] Has category field: ${!!mergedResults[0].category}`);
+            }
+
             // Create event object with merged results
             console.log(`[DEBUG] eventInfo before spreading:`, JSON.stringify(eventInfo, null, 2));
-            
+
             // Ensure we don't overwrite parsed values with empty ones
             const eventResults = {
               // Apply parsed event info first
@@ -282,12 +393,16 @@ class MicroplusCrawler {
             }
             // Note: If no eventDate is set, consumers should use the root-level "dates" field
             
+            console.log(`[DEBUG] Adding event to allResults.events: ${eventResults.eventCode}-${eventResults.eventGender}`);
+            console.log(`[DEBUG] Events array size before push: ${allResults.events.length}`);
             allResults.events.push(eventResults);
+            console.log(`[DEBUG] Events array size after push: ${allResults.events.length}`);
+            console.log(`[DEBUG] Current events in array:`, allResults.events.map(e => `${e.eventCode}-${e.eventGender}`));
           } catch (e) {
             console.error(`Failed to process event '${event.description}': ${e.message}`);
             const errorTimestamp = new Date().toISOString().replace(/:/g, '-');
-            const screenshotPath = path.join(__dirname, `../data/error_screenshot_${errorTimestamp}.png`);
-            const htmlPath = path.join(__dirname, `../data/error_page_${errorTimestamp}.html`);
+            const screenshotPath = path.join(__dirname, `../data/debug/error_screenshot_${errorTimestamp}.png`);
+            const htmlPath = path.join(__dirname, `../data/debug/error_page_${errorTimestamp}.html`);
 
             try {
               await page.screenshot({ path: screenshotPath, fullPage: true });
@@ -306,7 +421,32 @@ class MicroplusCrawler {
           }
         }
 
-        const outputPath = path.join(__dirname, `../data/results.new/${this.seasonId}/results_s${this.seasonId}_l${this.layoutType}.json`);
+        // Generate enhanced filename format: <meeting_date>-<meeting_name>-l<layoutType>
+        const meetingDate = CrawlUtil.parseFirstMeetingDate(meetingHeader.dates);
+        const sanitizedMeetingName = CrawlUtil.sanitizeForFilename(meetingHeader.meetingName);
+        
+        let filename, eventInfo;
+        if (this.targetEventTitle) {
+          eventInfo = CrawlUtil.parseEventInfoFromDescription(this.targetEventTitle, 'FEM'); // Gender ignored
+        }
+        // DEBUG
+        console.log(`[DEBUG] meetingHeader.dates: "${meetingHeader.dates}"`);
+        console.log(`[DEBUG] meetingHeader.meetingName: "${meetingHeader.meetingName}"`);
+        console.log(`[DEBUG] Meeting date: "${meetingDate}"`);
+        console.log(`[DEBUG] Meeting name: "${sanitizedMeetingName}"`);
+        console.log(`[DEBUG] Event info:`, JSON.stringify(eventInfo, null, 2));
+        console.log(`[DEBUG] Condition (meetingDate && sanitizedMeetingName): ${!!(meetingDate && sanitizedMeetingName)}`);
+
+        if (meetingDate && sanitizedMeetingName) {
+          filename = eventInfo.eventCode ? `${meetingDate}-${sanitizedMeetingName}-${eventInfo.eventCode}-l${this.layoutType}.json` :
+                                           `${meetingDate}-${sanitizedMeetingName}-l${this.layoutType}.json`;
+        } else {
+          // Fallback to original format if date and place parsing fails
+          filename = eventInfo.eventCode ? `results-${eventInfo.eventCode}-l${this.layoutType}.json` :
+                                           `results-l${this.layoutType}.json`;
+        }
+        
+        const outputPath = path.join(__dirname, `../data/results.new/${this.seasonId}/${filename}`);
         const outputDir = path.dirname(outputPath);
         if (!fs.existsSync(outputDir)) {
           fs.mkdirSync(outputDir, { recursive: true });
@@ -344,26 +484,59 @@ class MicroplusCrawler {
     while (Date.now() - startTime < 30000) {
       try {
         const hasAgeCategoryData = await page.evaluate((sel) => {
-          const table = document.querySelector(sel);
-          if (!table) return false;
-          
-          // Look for category headers that contain "MASTER" followed by age numbers
-          const categoryHeaders = table.querySelectorAll('tr.trTitolo');
-          for (let header of categoryHeaders) {
-            const headerText = header.textContent.trim();
-            // Check if this is an age category header (e.g., "MASTER 85F", "MASTER 70M")
-            if (headerText.match(/MASTER\\s+\\d+[FM]?/i)) {
-              console.log(`[DEBUG] Found age category header: "${headerText}"`);
-              return true;
-            }
-            // Reject heat series headers (e.g., "Serie 1 - 9:00")
-            if (headerText.match(/Serie\\s+\\d+/i)) {
-              console.log(`[DEBUG] Still showing heat series header: "${headerText}" - waiting for RIEPILOGO...`);
-              return false;
-            }
-          }
+        const table = document.querySelector(sel);
+        if (!table) {
+          console.log(`[DEBUG] Table not found with selector: ${sel}`);
           return false;
-        }, selector);
+        }
+        
+        // Debug: Show all available tr elements and their classes
+        const allRows = table.querySelectorAll('tr');
+        console.log(`[DEBUG] Table has ${allRows.length} total rows`);
+        
+        // Look for any row containing MASTER category headers (regardless of CSS class)
+        // The category headers actually use empty class="" instead of trTitolo
+        const allMasterHeaders = Array.from(allRows).filter(row => {
+          const text = row.textContent.trim();
+          return text.match(/MASTER\s+\d+[FM]?/i);
+        });
+        
+        console.log(`[DEBUG] Found ${allMasterHeaders.length} rows with MASTER age categories`);
+        
+        // Debug: Show first few row contents regardless of class
+        for (let i = 0; i < Math.min(5, allRows.length); i++) {
+          const row = allRows[i];
+          const rowText = row.textContent.trim();
+          const rowClass = row.className;
+          console.log(`[DEBUG] Row ${i + 1}: class="${rowClass}" text="${rowText.substring(0, 100)}..."`);
+        }
+        
+        // Check if we have MASTER age category headers (RIEPILOGO loaded)
+        if (allMasterHeaders.length > 0) {
+          console.log(`[DEBUG] Found RIEPILOGO with ${allMasterHeaders.length} age categories:`);
+          allMasterHeaders.forEach((row, i) => {
+            const headerText = row.textContent.trim();
+            console.log(`[DEBUG] Age category ${i + 1}: "${headerText}"`);
+          });
+          return true;
+        }
+        
+        // Check if we still have heat series headers (RIEPILOGO not loaded yet)
+        const heatSeriesHeaders = Array.from(allRows).filter(row => {
+          const text = row.textContent.trim();
+          return text.match(/Serie\s+\d+/i);
+        });
+        
+        if (heatSeriesHeaders.length > 0) {
+          console.log(`[DEBUG] Still showing ${heatSeriesHeaders.length} heat series headers - waiting for RIEPILOGO...`);
+          return false;
+        }
+        
+        console.log(`[DEBUG] No MASTER categories or heat series found - content may be loading...`);
+        return false;
+        
+        return false;
+      }, selector);
         
         if (hasAgeCategoryData) {
           console.log(`      - [waitForRiepilogoToLoad] RIEPILOGO loaded with age category data.`);
@@ -388,11 +561,23 @@ class MicroplusCrawler {
   async waitForTableToLoad(page, stage) {
     console.log(`      - [waitForTableToLoad] Waiting for ${stage} content to render...`);
     const selector = 'table.tblContenutiRESSTL_Sotto_Heats';
+    
+    // Debug: Check what tables are available on the page
+    const availableTables = await page.evaluate(() => {
+      const tables = document.querySelectorAll('table');
+      return Array.from(tables).map(table => ({
+        className: table.className,
+        id: table.id,
+        rowCount: table.rows ? table.rows.length : 0
+      }));
+    });
+    console.log(`      - [waitForTableToLoad] Available tables:`, JSON.stringify(availableTables, null, 2));
+    
     await page.waitForSelector(selector, { timeout: 30000 });
 
     let rowCount = 0;
     const startTime = Date.now();
-    while (Date.now() - startTime < 30000) {
+    while (Date.now() - startTime < 10000) { // (It usually doesn't take more than a couple of seconds)
       try {
         const result = await page.evaluate((sel) => {
           const table = document.querySelector(sel);
@@ -451,15 +636,54 @@ class MicroplusCrawler {
   processMeetingHeader(html) {
     const $ = cheerio.load(html);
     const headerRow = $('table.tblHeader tr.tblHeaderTr1');
-    const title = headerRow.find('td.Meeting').text().trim();
-    const dates = headerRow.find('td.Date').text().trim();
-    const place = headerRow.find('td.Place').text().trim();
-    return { title, dates, place };
+    
+    // Extract title from the second td element which contains the descriptive title
+    const titleCell = headerRow.find('td').eq(1); // Second td element (0-indexed)
+    const titleHtml = titleCell.html();
+    
+    let competitionType = '';
+    let meetingName = '';
+    let meetingPlace = '';
+    let meetingDates = '';
+    
+    if (titleHtml) {
+      // Split by <br> tags to get the three lines
+      const lines = titleHtml.split(/<br\s*\/?>/i).map(line => 
+        CrawlUtil.normalizeUnicodeText(line.replace(/<[^>]*>/g, '').trim())
+      ).filter(line => line.length > 0);
+      
+      if (lines.length >= 3) {
+        competitionType = lines[0]; // e.g., "Master"
+        meetingName = lines[1];     // e.g., "Campionati Italiani di Nuoto Master Herbalife"
+        
+        // Parse the third line for place and dates
+        const placeAndDates = lines[2]; // e.g., "Riccione (ITA) - 24/29 giugno 2025"
+        const dashIndex = placeAndDates.lastIndexOf(' - ');
+        if (dashIndex > 0) {
+          meetingPlace = placeAndDates.substring(0, dashIndex).trim();
+          meetingDates = placeAndDates.substring(dashIndex + 3).trim();
+        } else {
+          meetingPlace = placeAndDates;
+        }
+      }
+    }
+    
+    // Combine meeting name and competition type for the title field
+    const title = meetingName && competitionType ? `${meetingName} ${competitionType}` : (meetingName || competitionType || 'Unknown Meeting');
+    
+    return { 
+      title, 
+      dates: meetingDates, 
+      place: meetingPlace,
+      meetingName: meetingName,
+      competitionType: competitionType
+    };
   }
 
   processHeatResults(html) {
     const $ = cheerio.load(html);
     const heats = [];
+    // DEBUG
     console.log(`[DEBUG] processHeatResults: HTML length = ${html.length}`);
     console.log(`[DEBUG] processHeatResults: Found ${$('table.tblContenutiRESSTL_Sotto_Heats').length} tables with class tblContenutiRESSTL_Sotto_Heats`);
     console.log(`[DEBUG] processHeatResults: Found ${$('table.tblContenutiRESSTL_Sotto_Heats tr').length} rows in total`);
@@ -471,11 +695,12 @@ class MicroplusCrawler {
         const cols = $(row).find('td');
         if (cols.length > 8) {
           // Debug: show content of each column to identify timing column
-          console.log(`[DEBUG] Row with ${cols.length} columns:`);
+          // console.log(`[DEBUG] Row with ${cols.length} columns:`);
           for (let i = 0; i < Math.min(cols.length, 15); i++) {
             const colText = $(cols[i]).text().trim();
             const colClass = $(cols[i]).attr('class') || '';
-            console.log(`  Col ${i}: "${colText}" (class: "${colClass}")`);
+            // DEBUG (extremely verbose)
+            // console.log(`  Col ${i}: "${colText}" (class: "${colClass}")`);
           }
           
           // Extract nation from column 3
@@ -487,23 +712,31 @@ class MicroplusCrawler {
           const timingCell = $(row).find('td.Risultato');
           if (timingCell.length > 0) {
             timing = timingCell.text().trim();
-            console.log(`[DEBUG] Found timing with Risultato class: "${timing}"`);
+            // DEBUG (extremely verbose)
+            // console.log(`[DEBUG] Found timing with Risultato class: "${timing}"`);
           } else {
-            console.log(`[DEBUG] No td.Risultato found in row`);
+            // DEBUG (extremely verbose)
+            // console.log(`[DEBUG] No td.Risultato found in row`);
           }
           
           // Extract name data (but don't fail if missing)
           const nameDataHtml = $(cols[4]).html();
-          let nameParts = ['', ''];
+          let nameParts = { lastName: '', firstName: '' }; // Initialize as object, not array
           let year = 'N/A';
           let team = 'N/A';
+          // DEBUG (extremely verbose)
+          // console.log(`[DEBUG] Heat nameDataHtml: "${nameDataHtml}"`);
           
           if (nameDataHtml) {
             const nameData = nameDataHtml.split('<br>');
             const fullNameHtml = $('<div>').html(nameData[0]).text();
-            const nameParts = CrawlUtil.extractNameParts(fullNameHtml);
+            // DEBUG (extremely verbose)
+            // console.log(`[DEBUG] Heat fullNameHtml: "${fullNameHtml}"`);
+            nameParts = CrawlUtil.extractNameParts(fullNameHtml); // No redeclaration
             year = nameData[1] ? $('<div>').html(nameData[1]).text().replace(/[()]/g, '').trim() : 'N/A';
             team = nameData[2] ? $('<div>').html(nameData[2]).text().trim() : 'N/A';
+            // DEBUG (verbose)
+            // console.log(`[DEBUG] Heat extracted: ${nameParts.lastName}|${nameParts.firstName}|${year}|${team}`);
           }
           
           // Extract correct data based on actual HTML structure:
@@ -578,7 +811,8 @@ class MicroplusCrawler {
           // Extract year from column 8
           const year = $(cols[8]).text().trim();
           
-          console.log(`[DEBUG] RIEPILOGO extracted: ${lastName} ${firstName} (${year}) - ${team} - Rank: ${ranking} - Category: ${currentCategory}`);
+          // DEBUG (verbose)
+          // console.log(`[DEBUG] RIEPILOGO extracted: ${lastName} ${firstName} (${year}) - ${team} - Rank: ${ranking} - Category: ${currentCategory}`);
           
           const result = {
             ranking: ranking,
@@ -589,7 +823,13 @@ class MicroplusCrawler {
             timing: timing,
             category: currentCategory // Normalized category like "M85", "M70", etc.
           };
-          results.push(result);
+        
+        // Debug: Log what we're adding to results
+        if (results.length < 3) {
+          console.log(`[DEBUG] Adding RIEPILOGO result ${results.length + 1}:`, JSON.stringify(result, null, 2));
+        }
+        
+        results.push(result);
         }
       }
     });

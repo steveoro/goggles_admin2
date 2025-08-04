@@ -6,7 +6,7 @@ The `goggles_admin2` application relies on an external Node.js crawler service (
 
 The crawler is triggered via specific actions in the `PullController`:
 
-1.  **Calendar Crawling (`PullController#run_calendar_crawler`):**
+1.  **Calendar Crawling (`PullController#run_crawler_api`):**
     *   Triggered from the main crawler dashboard (`/pull/index`).
     *   The user selects a target season (e.g., "2023/2024").
     *   The controller calls the crawler's `/pull_calendar` API endpoint.

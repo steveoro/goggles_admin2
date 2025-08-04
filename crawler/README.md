@@ -67,7 +67,7 @@ The crawler includes robust error handling and debugging features:
 
 -   **Live Console Logs**: Detailed progress is logged to the console during the crawl.
 -   **Error Snapshots**: If an error occurs while processing an event, the crawler saves:
-    -   A screenshot of the page: `crawler/data/error_screenshot_<timestamp>.png`
-    -   The full HTML of the page: `crawler/data/error_page_<timestamp>.html`
+    -   A screenshot of the page: `crawler/data/debug/error_screenshot_<timestamp>.png`
+    -   The full HTML of the page: `crawler/data/debug/error_page_<timestamp>.html`
 
 These artifacts are invaluable for diagnosing issues with selectors or page structure changes.

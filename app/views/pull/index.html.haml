@@ -8,26 +8,66 @@
 
     %section.my-2#calendar-crawl
       .container.pt-3.shadow-box#curr-config-box
-        = form_tag(run_calendar_crawler_path, id: 'frm-calendar-crawler', method: :post) do
-          .row
-            .col-auto
-              = render(AutoCompleteComponent.new(show_top_labels: true, base_name: 'season',
-                        search_column: 'season_label',
-                        target2_field: 'year_text', target2_column: 'year_text', target2_class: 'col-auto my-1',
-                        target3_field: 'layout', target3_column: 'layout',
-                        label_column: 'description',
-                        payload: @season_list))
-            .col-auto
-              .form-group
-                .field
-                  = label_tag('sub_menu_type', 'Sub-menu item')
-                  = select_tag('sub_menu_type', options_for_select(['Eventi', 'Riepilogo Eventi', 'Archivio 2012-']),
-                               class: 'form-control')
+        = form_tag(run_crawler_api_path, id: 'frm-run-crawler', method: :post) do
+          #crawler-accordion.accordion
+            .card.mb-2#calendar-crawler-box
+              .card-header#calendar-header
+                %h5.mb-0
+                  %button.btn.btn-link{'data-toggle' => 'collapse', 'data-target' => '#calendar-collapse',
+                                       'aria-expanded' => 'true', 'aria-controls' => 'calendar-collapse',
+                                       type: 'button'}
+                    = t('data_import.crawler_headers.calendar')
+              #calendar-collapse.collapse.show{'aria-labelledby' => 'calendar-header', 'data-parent' => '#crawler-accordion'}
+                .card-body
+                  .row-fluid
+                    %i.text-secondary Target Season (ID 242, 252, ...)
+                  .row
+                    .col-9
+                      = render(AutoCompleteComponent.new(show_top_labels: true, base_name: 'season',
+                               search_column: 'season_label',
+                               target2_field: 'year_text', target2_column: 'year_text', target2_class: 'col-auto my-1',
+                               label_column: 'description',
+                               payload: @season_list))
+                    .col
+                      .form-group
+                        .field
+                          = label_tag('sub_menu_type', t('data_import.config.sub_menu_type'))
+                          -# Left non-localized as these are the actual target labels on the sub-menu items:
+                          = select_tag('sub_menu_type', options_for_select(['Eventi', 'Riepilogo Eventi', 'Archivio 2012-']),
+                                      class: 'form-control')
+            .card.mb-2#results-crawler-box
+              .card-header#results-header
+                %h5.mb-0
+                  %button.btn.btn-link.collapsed{'data-toggle' => 'collapse', 'data-target' => '#results-collapse', 'aria-expanded' => 'false', 'aria-controls' => 'results-collapse', type: 'button'}
+                    = t('data_import.crawler_headers.results')
+              #results-collapse.collapse{'aria-labelledby' => 'results-header', 'data-parent' => '#crawler-accordion'}
+                .card-body
+                  .row-fluid
+                    %i.text-secondary Target Layout (ID 4, 5, ...; ID 0 = calendar auto-detect) + URL
+                  .row.my-4
+                    .col-5
+                      = render(AutoCompleteComponent.new(show_top_labels: true, base_name: 'layout',
+                              search_column: 'label', label_column: 'label',
+                              target4_dom_id: 'target_url', target4_column: 'base_url',
+                              payload: @url_base_list))
+                    .col-7
+                      .form-group
+                        .field
+                          = label_tag('target_url', t('data_import.config.target_url'))
+                          = text_field_tag('target_url', nil, class: 'form-control')
+                      .row-fluid
+                        %small
+                          %i.form-text.text-muted (<a href="https://www.federnuoto.it/home/master.html">FIN Master</a>,&nbsp; <a href="https://microplus.it/events/">Microplus events</a>)
+                    .offset-5.col-7
+                      .form-group
+                        .field
+                          = label_tag('target_event', t('data_import.config.target_event'))
+                          = text_field_tag('target_event', nil, class: 'form-control')
           .row
             .col-6.mt-2.mb-3.text-left
               = submit_tag(t('data_import.calendar.btn_run_crawler'), id: 'btn-run-calendar-crawler',
-                            class: 'btn btn-sm btn-outline-primary', 'aria-label' => 'run calendar crawler',
-                            type: 'submit', data: { confirm: t('data_import.calendar.btn_run_crawler_confirm') })
+                           class: 'btn btn-sm btn-outline-primary', 'aria-label' => 'run calendar crawler',
+                           type: 'submit', data: { confirm: t('data_import.calendar.btn_run_crawler_confirm') })
             .col-6.mt-2.mb-3.text-right
               = link_to('#', id: 'btn-clear-log',
                         class: 'btn btn-sm btn-outline-danger', 'aria-label' => 'clear log',
