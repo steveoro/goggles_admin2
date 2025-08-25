@@ -40,15 +40,52 @@ class MicroplusCrawler {
         CrawlUtil.updateStatus(`[microplus-crawler] Starting crawl for season ${this.seasonId}, layout ${this.layoutType}...`);
         browser = await puppeteer.launch({
           headless: true,
-          args: ['--no-sandbox', '--disable-setuid-sandbox']
+          args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--lang=it-IT,it',
+            '--window-size=1366,900'
+          ]
         });
         const page = await browser.newPage();
         page.on('console', msg => console.log('BROWSER LOG:', msg.text()));
-        await page.setViewport({ width: 1280, height: 1024 });
+        // Timeouts and viewport
+        page.setDefaultNavigationTimeout(45000);
+        page.setDefaultTimeout(30000);
+        await page.setViewport({ width: 1366, height: 900, deviceScaleFactor: 1 });
+        // Realistic browser fingerprint
+        const userAgent = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36';
+        await page.setUserAgent(userAgent);
+        await page.setExtraHTTPHeaders({
+          'Accept-Language': 'it-IT,it;q=0.9,en-US;q=0.8,en;q=0.7',
+          'Upgrade-Insecure-Requests': '1'
+        });
+        await page.emulateTimezone('Europe/Rome');
+        await page.setJavaScriptEnabled(true);
+        await page.setCacheEnabled(false);
+        // Spoof some navigator properties before any script runs
+        await page.evaluateOnNewDocument(() => {
+          Object.defineProperty(navigator, 'webdriver', { get: () => false });
+          Object.defineProperty(navigator, 'languages', { get: () => ['it-IT', 'it', 'en-US', 'en'] });
+          Object.defineProperty(navigator, 'platform', { get: () => 'Linux x86_64' });
+          const getPlugins = () => [1, 2, 3, 4, 5];
+          Object.defineProperty(navigator, 'plugins', { get: getPlugins });
+        });
 
         // Start crawl
         console.log(`  Navigating to ${this.meetingUrl}...`);
         await page.goto(this.meetingUrl, { waitUntil: 'networkidle2' });
+
+        // Handle possible cookie/consent overlays
+        try {
+          await page.evaluate(() => {
+            const buttons = Array.from(document.querySelectorAll('button, a'));
+            const matchText = (el, texts) => texts.some(t => (el.textContent || el.innerText || '').toLowerCase().includes(t));
+            const candidates = buttons.filter(b => matchText(b, ['accetta', 'accept', 'consenti', 'consent', 'ok']));
+            candidates.slice(0, 2).forEach(b => { try { b.click(); } catch(_) {} });
+          });
+        } catch (_) {}
 
         const meetingHeader = await this.processMeetingHeader(await page.content());
         
@@ -59,10 +96,66 @@ class MicroplusCrawler {
         
         console.log(`  Meeting: ${meetingHeader.title} (${meetingHeader.dates}) at ${meetingHeader.place}`);
 
-        console.log(`      Clicking on 'PER_EVENTO_tab'...`);
-        await page.waitForSelector('a#divByEvent', { visible: true, timeout: 30000 });
-        await page.evaluate(() => document.querySelector('a#divByEvent').click());
+        console.log(`      Selecting PER EVENTO via LoadHistory_Calendar('1')...`);
+        // Wait for helpers (or fallback link) to be ready
+        try {
+          await page.waitForFunction(() => {
+            const hasHelper = typeof window.LoadHistory_Calendar === 'function';
+            const hasLink = !!document.querySelector('a#divByEvent');
+            return hasHelper || hasLink;
+          }, { timeout: 8000 });
+        } catch(_) {}
+        await page.evaluate(() => {
+          try {
+            if (typeof AddItemToHistory === 'function') {
+              AddItemToHistory("LoadHistory_Calendar('1');");
+            }
+            if (typeof LoadHistory_Calendar === 'function') {
+              LoadHistory_Calendar('1');
+            } else {
+              const link = document.querySelector('a#divByEvent');
+              if (link) link.click();
+            }
+          } catch (e) {
+            console.log('[DEBUG] Error invoking PER EVENTO helpers:', e && e.message);
+            const link = document.querySelector('a#divByEvent');
+            if (link) link.click();
+          }
+        });
+        try { await page.waitForNetworkIdle({ idleTime: 500, timeout: 5000 }); } catch(_) {}
         await page.waitForSelector('#tblMainSxScroll', { timeout: 30000 });
+        // Verify we're on PER EVENTO (and not PER GIORNO)
+        try {
+          const mode = await page.evaluate(() => ({
+            byEvent: !!document.querySelector('td#tdTitleCalendarByEvent'),
+            byDay: !!document.querySelector('td#tdTitleCalendarByDay')
+          }));
+          if (!mode.byEvent) {
+            console.log(`      - Detected non-PER EVENTO mode (byDay=${mode.byDay}). Forcing PER EVENTO...`);
+            await page.evaluate(() => {
+              try {
+                if (typeof AddItemToHistory === 'function') {
+                  AddItemToHistory("LoadHistory_Calendar('1');");
+                }
+                if (typeof LoadHistory_Calendar === 'function') {
+                  LoadHistory_Calendar('1');
+                } else {
+                  const link = document.querySelector('a#divByEvent');
+                  if (link) link.click();
+                }
+              } catch (_) {}
+            });
+            try { await page.waitForNetworkIdle({ idleTime: 500, timeout: 5000 }); } catch(_) {}
+            await page.waitForSelector('#tblMainSxScroll', { timeout: 30000 });
+          }
+          const finalMode = await page.evaluate(() => ({
+            byEvent: !!document.querySelector('td#tdTitleCalendarByEvent'),
+            byDay: !!document.querySelector('td#tdTitleCalendarByDay')
+          }));
+          console.log(`      - Page mode: PER EVENTO=${finalMode.byEvent} PER GIORNO=${finalMode.byDay}`);
+        } catch (modeErr) {
+          console.log(`      - Warning: could not assert page mode: ${modeErr.message}`);
+        }
 
         let eventsToProcess = await page.evaluate(() => {
           const events = [];
@@ -152,7 +245,7 @@ class MicroplusCrawler {
             // console.log(`[DEBUG] processHeatResults returned:`, JSON.stringify(heatData, null, 2));
             console.log(`      - Done parsing heats: ${heatData.length} row(s).`);
 
-            console.log('      - Stage 3: Clicking RIEPILOGO tab and waiting for AJAX...');
+            console.log('      - Stage 3: Switching to RIEPILOGO tab...');
             
             // Debug: Check what codSummary variable is available
             const codSummaryValue = await page.evaluate(() => {
@@ -160,17 +253,75 @@ class MicroplusCrawler {
             });
             console.log(`      - codSummary value: ${codSummaryValue}`);
             
+            // Ensure helper function exists or fallback is available
+            try {
+              await page.waitForFunction(() => {
+                const hasHelper = typeof window.CheckJsonForLoadOnMain === 'function';
+                const hasTab = !!document.querySelector('#divSummary');
+                return hasHelper || hasTab;
+              }, { timeout: 8000 });
+            } catch(_) {}
             await page.evaluate(() => {
-              // This is the actual onclick function for the summary tab
-              CheckJsonForLoadOnMain(codSummary, true, true);
+              try {
+                if (typeof AddItemToHistory === 'function') {
+                  AddItemToHistory('CheckJsonForLoadOnMain(codSummary, true, true);');
+                }
+                if (typeof CheckJsonForLoadOnMain === 'function') {
+                  CheckJsonForLoadOnMain(codSummary, true, true);
+                } else {
+                  const tab = document.querySelector('#divSummary');
+                  if (tab) tab.click();
+                }
+              } catch (e) {
+                console.log('[DEBUG] Error invoking RIEPILOGO helpers:', e && e.message);
+                const tab = document.querySelector('#divSummary');
+                if (tab) tab.click();
+              }
             });
+            console.log('      - Stage 4: Waiting for RIEPILOGO DOM to load...');
 
-            const riepilogoResponse = await page.waitForResponse(response => response.url().includes('.JSON') && response.status() === 200, { timeout: 30000 });
-            const riepilogoResponseUrl = riepilogoResponse.url();
-            console.log(`      - Stage 4: Rankings AJAX response received from: ${riepilogoResponseUrl}`);
-            console.log('      - Stage 4: Rankings data loaded.');
-
-            const rankingResultsHtml = await this.waitForRiepilogoToLoad(page);
+            let rankingResultsHtml = await this.waitForRiepilogoToLoad(page);
+            // Retry once if no category headers are detected
+            const hasCategory = await page.evaluate(() => {
+              const tbl = document.querySelector('table.tblContenutiRESSTL#tblContenuti');
+              if (!tbl) return false;
+              const text = tbl.innerText || '';
+              return /\bMASTER\s+\d{2,3}\s*[FM]?\b/i.test(text);
+            });
+            if (!hasCategory) {
+              console.log('      - RIEPILOGO appears without category headers. Retrying tab switch once...');
+              await page.evaluate(() => {
+                try {
+                  if (typeof CheckJsonForLoadOnMain === 'function') {
+                    CheckJsonForLoadOnMain(codSummary, true, true);
+                  }
+                } catch(_) {}
+              });
+              try { await page.waitForNetworkIdle({ idleTime: 500, timeout: 4000 }); } catch(_) {}
+              rankingResultsHtml = await this.waitForRiepilogoToLoad(page);
+              // Extra fallback: toggle back to Heats then Summary again
+              const stillNoCat = await page.evaluate(() => {
+                const tbl = document.querySelector('table.tblContenutiRESSTL#tblContenuti');
+                return !(tbl && /\bMASTER\s+\d{2,3}\s*[FM]?\b/i.test(tbl.innerText || ''));
+              });
+              if (stillNoCat) {
+                console.log('      - RIEPILOGO still without categories. Toggling Heats -> Summary as fallback...');
+                await page.evaluate(() => {
+                  try {
+                    const heatsTab = document.querySelector('#divHeats');
+                    const summaryTab = document.querySelector('#divSummary');
+                    if (heatsTab) heatsTab.click();
+                    if (typeof CheckJsonForLoadOnMain === 'function') {
+                      CheckJsonForLoadOnMain(codSummary, true, true);
+                    } else if (summaryTab) {
+                      setTimeout(() => summaryTab.click(), 300);
+                    }
+                  } catch(_) {}
+                });
+                try { await page.waitForNetworkIdle({ idleTime: 500, timeout: 4000 }); } catch(_) {}
+                rankingResultsHtml = await this.waitForRiepilogoToLoad(page);
+              }
+            }
             console.log(`[DEBUG] rankingResultsHtml length: ${rankingResultsHtml ? rankingResultsHtml.length : 'NULL'}`);
             
             let rankingData = { results: [] }; // Default to empty results
@@ -320,6 +471,13 @@ class MicroplusCrawler {
                   team: teamKey // Reference to team by key
                 };
               }
+              // Move category storage to swimmer object (while keeping it in results for backward compatibility)
+              if (rankingResult.category && rankingResult.category !== 'N/A') {
+                const swimmerRef = allResults.swimmers[swimmerKey];
+                if (!swimmerRef.category || swimmerRef.category === 'N/A') {
+                  swimmerRef.category = rankingResult.category;
+                }
+              }
               
               if (!allResults.teams[teamKey]) {
                 allResults.teams[teamKey] = {
@@ -415,9 +573,70 @@ class MicroplusCrawler {
             }
           } finally {
             // Go back to the event list to process the next one
-            console.log(`      - Navigating back to event list...`);
-            await page.click('#divByEvent');
-            await page.waitForTimeout(500); // Wait a bit for the tab to switch
+            console.log(`      - Navigating back to event list (PER EVENTO) via LoadHistory_Calendar('1')...`);
+            try {
+              await page.evaluate(() => {
+                try {
+                  if (typeof AddItemToHistory === 'function') {
+                    AddItemToHistory("LoadHistory_Calendar('1');");
+                  }
+                  if (typeof LoadHistory_Calendar === 'function') {
+                    LoadHistory_Calendar('1');
+                  } else {
+                    const link = document.querySelector('a#divByEvent');
+                    if (link) link.click();
+                  }
+                } catch (e) {
+                  console.log('[DEBUG] Error invoking PER EVENTO helpers (return):', e && e.message);
+                  const link = document.querySelector('a#divByEvent');
+                  if (link) link.click();
+                }
+              });
+              try { await page.waitForNetworkIdle({ idleTime: 500, timeout: 5000 }); } catch(_) {}
+              // Wait for the left event list table to be present and populated
+              await page.waitForSelector('#tblMainSxScroll', { timeout: 30000 });
+              await page.waitForFunction(() => {
+                const tbl = document.querySelector('#tblMainSxScroll');
+                if (!tbl) return false;
+                const rows = tbl.querySelectorAll('tr');
+                return rows && rows.length > 0;
+              }, { timeout: 10000 });
+              console.log(`      - Returned to PER EVENTO tab successfully.`);
+            } catch (navErr) {
+              console.log(`      - Warning: navigation back to PER EVENTO may have failed: ${navErr.message}`);
+            }
+            // Final guard: ensure PER EVENTO is active
+            try {
+              const modeBack = await page.evaluate(() => ({
+                byEvent: !!document.querySelector('td#tdTitleCalendarByEvent'),
+                byDay: !!document.querySelector('td#tdTitleCalendarByDay')
+              }));
+              if (!modeBack.byEvent) {
+                console.log(`      - Final guard: not on PER EVENTO (byDay=${modeBack.byDay}). Re-invoking switch...`);
+                await page.evaluate(() => {
+                  try {
+                    if (typeof AddItemToHistory === 'function') {
+                      AddItemToHistory("LoadHistory_Calendar('1');");
+                    }
+                    if (typeof LoadHistory_Calendar === 'function') {
+                      LoadHistory_Calendar('1');
+                    } else {
+                      const link = document.querySelector('a#divByEvent');
+                      if (link) link.click();
+                    }
+                  } catch(_) {}
+                });
+                try { await page.waitForNetworkIdle({ idleTime: 500, timeout: 5000 }); } catch(_) {}
+                await page.waitForSelector('#tblMainSxScroll', { timeout: 30000 });
+              }
+              const finalBack = await page.evaluate(() => ({
+                byEvent: !!document.querySelector('td#tdTitleCalendarByEvent'),
+                byDay: !!document.querySelector('td#tdTitleCalendarByDay')
+              }));
+              console.log(`      - After return: PER EVENTO=${finalBack.byEvent} PER GIORNO=${finalBack.byDay}`);
+            } catch (guardErr) {
+              console.log(`      - Warning: PER EVENTO guard failed: ${guardErr.message}`);
+            }
           }
         }
 
@@ -683,14 +902,48 @@ class MicroplusCrawler {
   processHeatResults(html) {
     const $ = cheerio.load(html);
     const heats = [];
+    // Track split columns (e.g., 50 m, 100 m, 150 m, ... ) for the current heat header
+    // Each item: { index: <td index>, label: '50 m' }
+    let currentSplitCols = [];
     // DEBUG
     console.log(`[DEBUG] processHeatResults: HTML length = ${html.length}`);
-    console.log(`[DEBUG] processHeatResults: Found ${$('table.tblContenutiRESSTL_Sotto_Heats').length} tables with class tblContenutiRESSTL_Sotto_Heats`);
-    console.log(`[DEBUG] processHeatResults: Found ${$('table.tblContenutiRESSTL_Sotto_Heats tr').length} rows in total`);
-    $('table.tblContenutiRESSTL_Sotto_Heats tr').each((i, row) => {
+    let $tables = $('table.tblContenutiRESSTL_Sotto_Heats');
+    if ($tables.length === 0) {
+      // Fallback for samples: allow table#tblContenuti
+      $tables = $('table#tblContenuti');
+    }
+    const $rows = $tables.find('tr');
+    console.log(`[DEBUG] processHeatResults: Found ${$tables.length} target tables; ${$rows.length} rows in total`);
+    $rows.each((i, row) => {
       const header = $(row).find('td.headerContenuti');
       if (header.length > 0) {
         heats.push({ number: header.text().trim().replace('Serie', '').trim(), results: [] });
+        // Reset split columns when a new heat header is found
+        currentSplitCols = [];
+      // Capture the header row that contains split labels (50 m, 100 m, 150 m, ...)
+      } else if ($(row).find('td.tdHeaderCont').length > 0 && heats.length > 0) {
+        const cols = $(row).find('td');
+        // Accumulate split columns across multiple header rows within the same heat
+        // (e.g., 800m has 50–400 and 450–750 headers on separate rows)
+        if (!Array.isArray(currentSplitCols)) currentSplitCols = [];
+        cols.each((idx, td) => {
+          const idAttr = ($(td).attr('id') || '').toString();
+          const text = $(td).text().trim();
+          // Identify split columns either by id like td50m1 / td100m1 / td150m1 ... or by text like "50 m"
+          if (/^td\d{2,3}m\d+$/i.test(idAttr) || /\b\d{2,3}\s*m\b/i.test(text)) {
+            // Exclude the final time (TEMPO) and other non-split columns
+            if (!$(td).hasClass('Risultato')) {
+              const already = currentSplitCols.find(c => c.index === idx);
+              if (!already) {
+                currentSplitCols.push({ index: idx, label: text || idAttr.replace(/^td|\d+$/g, '') });
+              }
+            }
+          }
+        });
+        // DEBUG
+        if (currentSplitCols.length > 0) {
+          console.log(`[DEBUG] Detected split columns: ${currentSplitCols.map(c => `${c.label}@${c.index}`).join(', ')}`);
+        }
       } else if (heats.length > 0 && ($(row).hasClass('trContenutiToggle') || $(row).hasClass('trContenuti'))) {
         const cols = $(row).find('td');
         if (cols.length > 8) {
@@ -701,6 +954,104 @@ class MicroplusCrawler {
             const colClass = $(cols[i]).attr('class') || '';
             // DEBUG (extremely verbose)
             // console.log(`  Col ${i}: "${colText}" (class: "${colClass}")`);
+          }
+
+          // Handle continuation rows (e.g., 800m second TR with deltas):
+          // These typically have the first cell with colspan="7", no name cell content and no timing cell.
+          const hasTimingCellHere = $(row).find('td.Risultato').length > 0;
+          const nameCellTextHere = $(cols[4]).text().trim();
+          const colspan0 = (($(cols[0]).attr('colspan')) || '').toString();
+          const colspanInt0 = parseInt(colspan0 || '0', 10) || 0;
+          // Fallback: detect rows that are mostly small continuation cells starting with a time token
+          const allTdsHere = $(row).find('td');
+          let contSmallCount = 0;
+          const timeTokenHere = "(?:\\d+'\\d{2}\\.\\d{2}|\\d{1,2}\\.\\d{2})";
+          const timeStartReHere = new RegExp(`^\\s*${timeTokenHere}`);
+          for (let j = 0; j < allTdsHere.length; j++) {
+            const td = allTdsHere[j];
+            if ($(td).hasClass('tdContSmall')) {
+              const txt = $(td).text().trim();
+              if (timeStartReHere.test(txt)) contSmallCount++;
+            }
+          }
+          const mostlyContSmall = contSmallCount >= Math.max(2, Math.floor(allTdsHere.length / 3));
+          const looksContinuation = !hasTimingCellHere && (colspanInt0 >= 7 || nameCellTextHere.length === 0 || mostlyContSmall);
+          if (looksContinuation && currentSplitCols.length > 0) {
+            const currentHeat = heats[heats.length - 1];
+            if (currentHeat.results && currentHeat.results.length > 0) {
+              const lastResult = currentHeat.results[currentHeat.results.length - 1];
+              console.log(`[DEBUG][cont] Continuation row detected. reason: colspan>=7? ${colspanInt0 >= 7}, nameEmpty? ${nameCellTextHere.length === 0}, mostlyContSmall? ${mostlyContSmall}; colspan0="${colspan0}", lastResult has ${lastResult.laps.length} laps so far`);
+              // Map continuation row split cells sequentially to >=450m distances
+              let secondHalf = currentSplitCols
+                .map(({ label }) => ({ label, meters: parseInt((label || '').replace(/[^0-9]/g, ''), 10) }))
+                .filter(x => Number.isFinite(x.meters) && x.meters >= 450)
+                .sort((a, b) => a.meters - b.meters);
+              console.log(`[DEBUG][cont] secondHalf split headers: ${secondHalf.map(x => x.label + ':' + x.meters).join(', ')}`);
+
+              // Build split cells by skipping the initial colspan cell, then collecting td.tdContSmall
+              const allTds = $(row).find('td');
+              const startIdx = (parseInt(($(allTds[0]).attr('colspan') || '0'), 10) >= 7) ? 1 : 0;
+              const splitCells = [];
+              for (let j = startIdx; j < allTds.length; j++) {
+                const td = allTds[j];
+                if ($(td).hasClass('tdContSmall')) splitCells.push(td);
+              }
+              console.log(`[DEBUG][cont] collected splitCells=${splitCells.length} (startIdx=${startIdx}, allTds=${allTds.length})`);
+              // Use all continuation cells in order (even empty ones) to preserve alignment.
+              const timeToken = "(?:\\d+'\\d{2}\\.\\d{2}|\\d{1,2}\\.\\d{2})";
+              const timeStartRe = new RegExp(`^\\s*${timeToken}`);
+              console.log(`[DEBUG][cont] splitCells(all)=${splitCells.length}; samples=[${splitCells.slice(0,4).map(td => $(td).text().trim().replace(/\\s+/g,' ')).join(' | ')}]`);
+              // If we have more continuation cells than detected headers (e.g., missing 750m), synthesize remaining distances by +50m steps
+              if (splitCells.length > secondHalf.length) {
+                let nextMeters = secondHalf.length > 0 ? (secondHalf[secondHalf.length - 1].meters + 50) : 450;
+                while (secondHalf.length < splitCells.length) {
+                  secondHalf.push({ label: `${nextMeters} m`, meters: nextMeters });
+                  nextMeters += 50;
+                }
+                if (process.env.MICROPLUS_DEBUG === '1') {
+                  console.log(`[DEBUG][cont] augmented split headers: ${secondHalf.map(x => x.label + ':' + x.meters).join(', ')}`);
+                }
+              }
+              const maxPairs = Math.min(secondHalf.length, splitCells.length);
+              for (let i = 0; i < maxPairs; i++) {
+                const cell = splitCells[i];
+                const label = secondHalf[i].label;
+                const raw = $(cell).text().trim().replace(/\s+/g, ' ');
+                if (!raw || !timeStartRe.test(raw)) continue;
+                // time/delta tokens: accept m'ss.xx or ss.xx; delta may have leading '+'
+                const deltaToken = '(?:\\+?' + timeToken + ')';
+                let lapTiming = null;
+                let positionAtSplit = null;
+                let delta = null;
+                const m = raw.match(new RegExp(`^\\s*(${timeToken})\\s*(?:\\((\\d+)\\))?\\s*(${deltaToken})?\\s*$`));
+                if (m) {
+                  lapTiming = m[1];
+                  positionAtSplit = m[2] ? m[2] : null;
+                  delta = m[3] ? m[3] : null;
+                } else {
+                  // Fallback: try to extract trailing delta and optional position
+                  const posMatch = raw.match(/\\((\\d+)\\)/);
+                  if (posMatch) positionAtSplit = posMatch[1];
+                  const deltaMatch = raw.match(/(\\+?\\d+'\\d{2}\\.\\d{2}|\\+?\\d{1,2}\\.\\d{2})\\s*$/);
+                  if (deltaMatch) delta = deltaMatch[1];
+                }
+                // Normalize distance label strictly as '<meters>m' (e.g., '450m') to avoid spaces/case variance
+                const distNorm = `${secondHalf[i].meters}m`;
+                const lap = { distance: distNorm, timing: lapTiming };
+                if (positionAtSplit) lap.position = positionAtSplit;
+                if (delta) lap.delta = delta;
+                lastResult.laps.push(lap);
+              }
+              // DEBUG: show distances now on lastResult
+              if (process.env.MICROPLUS_DEBUG === '1') {
+                try {
+                  const dbgDists = (lastResult.laps || []).map(l => l.distance).join(', ');
+                  console.log(`[DEBUG][cont] lastResult distances now: ${dbgDists}`);
+                } catch(_) {}
+              }
+              // Proceed to next row without creating a new result
+              return; // continue .each loop
+            }
           }
           
           // Extract nation from column 3
@@ -741,7 +1092,7 @@ class MicroplusCrawler {
           
           // Extract correct data based on actual HTML structure:
           // Col 0: heat position (inside <b>), Col 1: lane, Col 3: nation, Col 4: name/year/team
-          // Col 7: 50m split, Col 9: final timing (class="Risultato")
+          // Splits: detected dynamically from currentSplitCols; Final timing in td.Risultato
           const result = {
             heat_position: $(cols[0]).find('b').text().trim() || $(cols[0]).text().trim(),
             lane: $(cols[1]).text().trim(),
@@ -752,8 +1103,57 @@ class MicroplusCrawler {
             team: team,
             timing: timing,
             heat: heats.length > 0 ? heats[heats.length - 1].number : 'N/A', // Heat number, not category
-            laps: timing ? [{ distance: '50m', timing: $(cols[7]).text().trim() }] : [] // Add 50m split if available
+            laps: []
           };
+
+          // Build laps array from detected split columns, if any
+          if (timing && currentSplitCols.length > 0) {
+            currentSplitCols.forEach(({ index, label }) => {
+              // For the primary row, only use first-half distances (e.g., < 450m)
+              const meters = parseInt((label || '').replace(/[^0-9]/g, ''), 10);
+              if (!Number.isFinite(meters) || meters >= 450) return;
+              if (index < cols.length) {
+                const raw = $(cols[index]).text().trim().replace(/\s+/g, ' ');
+                if (raw) {
+                  // Expected formats:
+                  //  - "1'11.87" (first split)
+                  //  - "2'30.47 (8)1'18.60"  => time, (position), delta
+                  //  - sometimes without position: "2'30.47 1'18.60"
+                  //  - seconds-only values (no minutes) for timing or delta: "59.87" or with plus "+59.87"
+                  let lapTiming = null;
+                  let positionAtSplit = null;
+                  let delta = null;
+                  const timeTokenP = "(?:\\d+'\\d{2}\\.\\d{2}|\\d{1,2}\\.\\d{2})";
+                  const deltaTokenP = '(?:\\+?' + timeTokenP + ')';
+                  const m = raw.match(new RegExp(`^\\s*(${timeTokenP})\\s*(?:\\((\\d+)\\))?\\s*(${deltaTokenP})?\\s*$`));
+                  if (m) {
+                    lapTiming = m[1];
+                    positionAtSplit = m[2] ? m[2] : null;
+                    delta = m[3] ? m[3] : null;
+                  } else {
+                    // Fallback: take first token as timing
+                    const parts = raw.split(' ');
+                    lapTiming = parts[0];
+                    // Try to find parentheses for position
+                    const posMatch = raw.match(/\((\d+)\)/);
+                    if (posMatch) positionAtSplit = posMatch[1];
+                    // Try to find a trailing time as delta
+                    const deltaMatch = raw.match(/(\+?\d+'\d{2}\.\d{2}|\+?\d{1,2}\.\d{2})\s*$/);
+                    if (deltaMatch && deltaMatch[1] !== lapTiming) delta = deltaMatch[1];
+                  }
+                  const distance = (label || '').replace(/\s+/g, '').toLowerCase(); // e.g., '50 m' -> '50m'
+                  const distNorm = /\d+m/i.test(distance) ? distance : (label || '').replace(/\s+/g, '');
+                  const lap = { distance: distNorm, timing: lapTiming };
+                  if (positionAtSplit) lap.position = positionAtSplit;
+                  if (delta) lap.delta = delta;
+                  result.laps.push(lap);
+                }
+              }
+            });
+          } else if (timing && $(cols[7]).text().trim()) {
+            // Fallback to original behavior if we couldn't detect header splits
+            result.laps = [{ distance: '50m', timing: $(cols[7]).text().trim() }];
+          }
           heats[heats.length - 1].results.push(result);
         }
       }
@@ -765,74 +1165,60 @@ class MicroplusCrawler {
     const $ = cheerio.load(html);
     const results = [];
     let currentCategory = 'N/A';
-    console.log(`[DEBUG] processRankingResults: HTML length = ${html.length}`);
-    console.log(`[DEBUG] processRankingResults: Found ${$('table.tblContenutiRESSTL#tblContenuti').length} tables with RIEPILOGO structure`);
-    console.log(`[DEBUG] processRankingResults: Found ${$('table.tblContenutiRESSTL#tblContenuti tr').length} rows in total`);
 
-    // Process RIEPILOGO table structure: table.tblContenutiRESSTL#tblContenuti
-    $('table.tblContenutiRESSTL#tblContenuti tr').each((i, row) => {
-      const header = $(row).find('td.headerContenuti');
-      if (header.length > 0) {
-        const rawCategory = CrawlUtil.normalizeUnicodeText(header.text());
-        // Normalize category from "MASTER 85F" to "M85" format
-        // Examples: "MASTER 85F" -> "M85", "MASTER 70F" -> "M70", "MASTER 80M" -> "M80"
-        console.log(`[DEBUG] Raw category before normalization: "${header.text()}"`);        
-        console.log(`[DEBUG] Normalized category: "${rawCategory}"`);        
-        const categoryMatch = rawCategory.match(/MASTER\s+(\d+)[FM]?/i);
-        if (categoryMatch) {
-          currentCategory = `M${categoryMatch[1]}`;
-        } else {
-          currentCategory = rawCategory; // Fallback to original if pattern doesn't match
-        }
-        console.log(`[DEBUG] Category header found: "${rawCategory}" -> normalized to: "${currentCategory}"`);
-      } else if ($(row).hasClass('trContenutiToggle') || $(row).hasClass('trContenuti')) {
-        const cols = $(row).find('td');
-        if (cols.length >= 10) {
-          // RIEPILOGO structure based on sample HTML:
-          // Col 1: Ranking position (inside <b>)
-          // Col 6: Swimmer name (inside <nobr><b>)
-          // Col 7: Team name (inside <nobr>)
-          // Col 8: Year of birth
-          // Col 9: Timing (class="Risultato")
-          
-          const ranking = $(cols[1]).find('b').text().trim();
-          const timing = $(cols[9]).hasClass('Risultato') ? $(cols[9]).text().trim() : '';
-          
-          // Extract swimmer name from column 6 using enhanced name extraction
-          const nameHtml = $(cols[6]).find('nobr b').text();
-          const nameParts = CrawlUtil.extractNameParts(nameHtml);
-          const lastName = nameParts.lastName || '';
-          const firstName = nameParts.firstName || '';
-          
-          // Extract team from column 7
-          const teamHtml = $(cols[7]).find('nobr').text();
-          const team = CrawlUtil.normalizeUnicodeText(teamHtml);
-          
-          // Extract year from column 8
-          const year = $(cols[8]).text().trim();
-          
-          // DEBUG (verbose)
-          // console.log(`[DEBUG] RIEPILOGO extracted: ${lastName} ${firstName} (${year}) - ${team} - Rank: ${ranking} - Category: ${currentCategory}`);
-          
-          const result = {
-            ranking: ranking,
-            lastName: lastName,
-            firstName: firstName,
-            team: team,
-            year: year,
-            timing: timing,
-            category: currentCategory // Normalized category like "M85", "M70", etc.
-          };
-        
-        // Debug: Log what we're adding to results
-        if (results.length < 3) {
-          console.log(`[DEBUG] Adding RIEPILOGO result ${results.length + 1}:`, JSON.stringify(result, null, 2));
-        }
-        
-        results.push(result);
-        }
+    const rows = $('table.tblContenutiRESSTL#tblContenuti tr');
+    console.log(`[DEBUG] processRankingResults: Found ${rows.length} rows in total`);
+
+    rows.each((i, row) => {
+      const $row = $(row);
+      const rowText = CrawlUtil.normalizeUnicodeText($row.text() || '').replace(/\s+/g, ' ').trim();
+
+      // Detect category header rows (robust): "MASTER 75F" -> currentCategory = "M75"
+      const headerMatch = rowText.match(/\bMASTER\s+(\d{2,3})\s*[FM]?\b/i);
+      const isResultRow = $row.hasClass('trContenuti') || $row.hasClass('trContenutiToggle');
+
+      if (headerMatch && !isResultRow) {
+        const age = headerMatch[1];
+        currentCategory = `M${age}`;
+        console.log(`[DEBUG] Category header: "${rowText}" -> ${currentCategory}`);
+        return; // continue
       }
+
+      if (!isResultRow) return; // skip non-result rows
+
+      const cols = $row.find('td');
+      if (cols.length < 10) return; // defensive
+
+      const ranking = $(cols[1]).find('b').text().trim() || $(cols[1]).text().trim();
+      const timing = $(cols[9]).hasClass('Risultato') ? $(cols[9]).text().trim() : $(cols[9]).text().trim();
+
+      // Name extraction
+      const nameHtml = $(cols[6]).find('nobr b').text() || $(cols[6]).text();
+      const nameParts = CrawlUtil.extractNameParts(nameHtml);
+      const lastName = nameParts.lastName || '';
+      const firstName = nameParts.firstName || '';
+
+      // Team and year
+      const teamHtml = $(cols[7]).find('nobr').text() || $(cols[7]).text();
+      const team = CrawlUtil.normalizeUnicodeText(teamHtml);
+      const year = $(cols[8]).text().trim();
+
+      const result = {
+        ranking,
+        lastName,
+        firstName,
+        team,
+        year,
+        timing,
+        category: currentCategory
+      };
+
+      if (results.length < 3) {
+        console.log(`[DEBUG] Adding RIEPILOGO result ${results.length + 1}:`, JSON.stringify(result, null, 2));
+      }
+      results.push(result);
     });
+
     console.log(`[DEBUG] processRankingResults extracted ${results.length} results from RIEPILOGO`);
     return { results };
   }
