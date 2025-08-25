@@ -30,3 +30,49 @@ The crawler saves the fetched/generated files locally within the `goggles_admin2
 *   **Results (PDF):** `crawler/data/results.new/<season_id>/meeting_<id>.pdf`
 
 These files are then listed and managed using the `FileListController` actions and are the input for the subsequent processing steps within `goggles_admin2` (PDF processing, data linking, review, and commit).
+
+## JSON output structure
+
+The standardized results JSON produced by the crawler has the following structure:
+
+- __Top-level metadata__:
+  - `title`, `dates`, `place`, `meetingName`, `competitionType`, `layoutType`, `seasonId`, `meetingURL`.
+
+- __`swimmers`__ (map):
+  - Keys are stable identifiers like `"F|LASTNAME|First|YYYY|Team Name"`.
+  - Values include: `lastName`, `firstName`, `gender`, `year`, `team`, `category`.
+
+- __`teams`__ (map):
+  - Keys are team names. Values: `{ name }`.
+
+- __`events`__ (array):
+  - Each event has: `eventCode` (e.g., `800SL`), `eventGender`, `eventLength` (meters), `eventStroke`, `eventDescription`, `relay` (boolean), and `results` (array).
+
+- __`results`__ (array within each event):
+  - Each result has: `ranking`, `swimmer` (key into `swimmers`), `team`, `timing`, `category`, `heat_position`, `lane`, `nation`, and optionally `laps`.
+
+- __`laps`__ (array within each result, when available):
+  - Each lap: `{ distance: "<meters>m", timing: "..", position?: "..", delta?: ".." }`.
+  - Distances are normalized to the strict `"<meters>m"` format (e.g., `450m`).
+
+Notes:
+- Older/alternative sources may provide a legacy `heats` structure (`heats[].results[]`). The crawler and tools support both `events[].results[]` and `heats[].results[]`.
+
+## Microplus Timing (layout 4) specifics
+
+The new Microplus result pages sometimes render long-distance events (e.g., 800m) across two adjacent rows per athlete: the first row with regular splits (≤400m) and a continuation row with additional splits (≥450m).
+
+- **Continuation mapping (≥450m):**
+  - Continuation cells are mapped to distances starting from 450m in +50m steps.
+  - If headers are partially missing in the continuation row, mapping is right-aligned and synthesized so the last cells still map to the last distances present (e.g., 700m, 750m), even if intermediate cells (e.g., 650m) are blank.
+
+- **Distance label normalization:**
+  - All split distance labels are normalized to the strict format `"<meters>m"` (e.g., `450m`, `700m`).
+  - This avoids space/case variance from the source (e.g., `"450 m"`).
+
+- **Debugging continuation parsing:**
+  - Set environment variable `MICROPLUS_DEBUG=1` to enable verbose logs for continuation detection and the list of appended split distances.
+  - Example: `MICROPLUS_DEBUG=1 npm test` (for the unit tests) or set it in the crawler process environment.
+
+- **Test coverage:**
+  - Unit tests cover continuation mapping and a scenario with a missing `650m` continuation cell to ensure tail distances (e.g., `700m`, `750m`) are still appended in order.
