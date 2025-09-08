@@ -621,16 +621,48 @@ module.exports = {
   },
 
   /**
-   * Creates a unique key for a swimmer based on gender, last name, first name, year, and team.
-   * @param {string} gender - The swimmer's gender ('F', 'M', or 'X').
-   * @param {string} lastName - The swimmer's last name.
-   * @param {string} firstName - The swimmer's first name.
-   * @param {string} year - The swimmer's year of birth.
-   * @param {string} team - The swimmer's team name.
-   * @returns {string} A unique key in the format "gender|lastName|firstName|year|team".
+   * Creates a unique key for a swimmer.
+   *
+   * Unified signature with backward compatibility:
+   * - Preferred: createSwimmerKey(gender, lastName, firstName, year, team)
+   * - Back-compat (no gender): createSwimmerKey(lastName, firstName, year, team)
+   *
+   * Behavior:
+   * - When gender is provided and is not 'X' (mixed), it is prefixed to the key: "G|last|first|year|team".
+   * - When gender is omitted, null/empty, or 'X', the key is genderless: "last|first|year|team".
    */
-  createSwimmerKey: (gender, lastName, firstName, year, team) => {
-    return `${gender}|${lastName}|${firstName}|${year}|${team}`.replace(/\s+/g, ' ').trim()
+  createSwimmerKey: (...args) => {
+    let gender = null, lastName, firstName, year, team;
+    if (args.length === 5) {
+      [gender, lastName, firstName, year, team] = args;
+    } else if (args.length === 4) {
+      [lastName, firstName, year, team] = args;
+      gender = null;
+    } else {
+      // Invalid arity; return a safe empty key
+      return '';
+    }
+
+    const norm = (s) => (s || '').toString().replace(/\s+/g, ' ').trim();
+    const g = norm(gender);
+    const ln = norm(lastName);
+    const fn = norm(firstName);
+    const yr = norm(year);
+    const tm = norm(team);
+
+    if (g && g.toUpperCase() !== 'X') {
+      return `${g}|${ln}|${fn}|${yr}|${tm}`;
+    }
+    // Gender omitted or 'X' -> genderless key
+    return `${ln}|${fn}|${yr}|${tm}`;
+  },
+
+  /**
+   * Backward-compatible alias for creating a genderless swimmer key.
+   * Prefer using createSwimmerKey with optional gender instead.
+   */
+  createSwimmerKeyNoGender: (lastName, firstName, year, team) => {
+    return module.exports.createSwimmerKey(lastName, firstName, year, team);
   },
 
   /**
@@ -640,6 +672,25 @@ module.exports = {
    */
   createTeamKey: (team) => {
     return team.replace(/\s+/g, ' ').trim()
+  },
+
+  /**
+   * Creates a unique key for a relay result used to merge Heats and RIEPILOGO.
+   * Uses a normalized identifier (prefer relayName, fallback to team), plus heat, lane and timing.
+   * @param {string} relayName - The relay name (may be same as team or a truncated variant).
+   * @param {string} team - The team name.
+   * @param {string} heat - The heat number as string.
+   * @param {string} lane - The lane number as string.
+   * @param {string} timing - The overall timing string (e.g., 2'53.69).
+   * @returns {string} A stable key for matching summary rows to heat rows.
+   */
+  createRelayKey: (relayName, team, heat, lane, timing) => {
+    const base = (relayName && relayName.trim().length > 0) ? relayName : team;
+    const norm = (base || '').replace(/\s+/g, ' ').trim();
+    const h = (heat || '').toString().trim();
+    const l = (lane || '').toString().trim();
+    const t = (timing || '').replace(/\s+/g, ' ').trim();
+    return `${norm}|H${h}|L${l}|T${t}`;
   },
 
   /**

@@ -345,7 +345,7 @@ class MicroplusCrawler {
             console.log(`[DEBUG] Parsing event: "${event.description}" with gender: "${event.gender}"`);            
             const eventInfo = CrawlUtil.parseEventInfoFromDescription(event.description, event.gender);
             console.log(`[DEBUG] Parsed eventInfo:`, JSON.stringify(eventInfo, null, 2));
-            
+
             // Force debug output to file to capture what's happening
             const fs = require('fs');
             const debugInfo = {
@@ -355,25 +355,41 @@ class MicroplusCrawler {
               parsedEventInfo: eventInfo
             };
             fs.appendFileSync('/tmp/crawler_debug_detailed.log', JSON.stringify(debugInfo, null, 2) + '\n\n');
-            
+
+            // For relay events, ensure RIEPILOGO items are treated as relay summaries (team rows)
+            const isRelayEvent = !!(eventInfo && (String(eventInfo.eventLength || '').includes('4x') || eventInfo.relay === true));
+            if (isRelayEvent && rankingData && Array.isArray(rankingData.results)) {
+              rankingData.results = rankingData.results.map(r => ({
+                ...r,
+                relay: true,
+                relay_name: r.relay_name || r.team,
+                // Keep any existing values for heat/lane if present; most RIEPILOGO rows won't have them
+                heat: r.heat || null,
+                lane: r.lane || null
+              }));
+            }
+
             // Create merged results array combining ranking and heat data
             const mergedResults = [];
             
-            // First, collect all heat results with lap timings
+            // First, collect all heat results (individual or relay)
             const heatResultsMap = new Map();
             console.log(`[DEBUG] Building heat results map...`);
             for (const heat of heatData.heats) {
               for (const heatResult of heat.results) {
-                const swimmerKey = CrawlUtil.createSwimmerKey(
-                  eventInfo.eventGender,
-                  heatResult.lastName,
-                  heatResult.firstName, 
-                  heatResult.year,
-                  heatResult.team
-                );
-                // DEBUG (verbose)
-                // console.log(`[DEBUG] Heat result key: ${swimmerKey} (${heatResult.lastName}|${heatResult.firstName}|${heatResult.year}|${heatResult.team})`);
-                heatResultsMap.set(swimmerKey, heatResult);
+                if (heatResult.relay) {
+                  const relayKey = CrawlUtil.createRelayKey(heatResult.relay_name, heatResult.team, heatResult.heat, heatResult.lane, heatResult.timing);
+                  heatResultsMap.set(relayKey, heatResult);
+                } else {
+                  const swimmerKey = CrawlUtil.createSwimmerKey(
+                    eventInfo.eventGender,
+                    heatResult.lastName,
+                    heatResult.firstName, 
+                    heatResult.year,
+                    heatResult.team
+                  );
+                  heatResultsMap.set(swimmerKey, heatResult);
+                }
               }
             }
             console.log(`[DEBUG] Heat results map size: ${heatResultsMap.size}`);
@@ -387,98 +403,177 @@ class MicroplusCrawler {
               console.log(`[DEBUG] No RIEPILOGO data available, creating results from heat data only...`);
               for (const heat of heatData.heats) {
                 for (const heatResult of heat.results) {
-                  const swimmerKey = CrawlUtil.createSwimmerKey(
-                    eventInfo.eventGender,
-                    heatResult.lastName,
-                    heatResult.firstName, 
-                    heatResult.year,
-                    heatResult.team
-                  );
+                  if (heatResult.relay) {
+                    const teamKey = CrawlUtil.createTeamKey(heatResult.team);
+                    if (!allResults.teams[teamKey]) {
+                      allResults.teams[teamKey] = { name: heatResult.team };
+                    }
+                    // Build relay swimmer keys using event gender and add to global swimmers
+                    const swimmerKeys = [];
+                    if (Array.isArray(heatResult.swimmers)) {
+                      heatResult.swimmers.forEach((s) => {
+                        const sTeamName = s.team || heatResult.team;
+                        const sTeam = CrawlUtil.createTeamKey(sTeamName);
+                        if (!allResults.teams[sTeam]) allResults.teams[sTeam] = { name: sTeamName };
+
+                        let key;
+                        if (eventInfo.eventGender === 'X') {
+                          const maleKey = CrawlUtil.createSwimmerKey('M', s.lastName, s.firstName, s.year, sTeamName);
+                          const femaleKey = CrawlUtil.createSwimmerKey('F', s.lastName, s.firstName, s.year, sTeamName);
+                          const noGenKey = CrawlUtil.createSwimmerKeyNoGender(s.lastName, s.firstName, s.year, sTeamName);
+                          // Reuse existing swimmer if found, preferring gendered entries
+                          if (allResults.swimmers[maleKey]) key = maleKey;
+                          else if (allResults.swimmers[femaleKey]) key = femaleKey;
+                          else key = noGenKey;
+
+                          if (!allResults.swimmers[key]) {
+                            allResults.swimmers[key] = {
+                              lastName: s.lastName,
+                              firstName: s.firstName,
+                              gender: null,
+                              year: s.year,
+                              team: sTeam
+                            };
+                          }
+                        } else {
+                          key = CrawlUtil.createSwimmerKey(
+                            eventInfo.eventGender,
+                            s.lastName,
+                            s.firstName,
+                            s.year,
+                            sTeamName
+                          );
+                          if (!allResults.swimmers[key]) {
+                            allResults.swimmers[key] = {
+                              lastName: s.lastName,
+                              firstName: s.firstName,
+                              gender: eventInfo.eventGender,
+                              year: s.year,
+                              team: sTeam
+                            };
+                          }
+                        }
+                        swimmerKeys.push(key);
+                      });
+                    }
+
+                    // Map laps to swimmer keys by relay leg order
+                    const lapsOut = Array.isArray(heatResult.laps)
+                      ? heatResult.laps.map((lap, idx) => ({
+                          ...lap,
+                          swimmer: swimmerKeys[idx] || null
+                        }))
+                      : [];
+
+                    mergedResults.push({
+                      relay: true,
+                      relay_name: heatResult.relay_name,
+                      team: teamKey,
+                      timing: heatResult.timing,
+                      heat_position: heatResult.heat_position,
+                      lane: heatResult.lane,
+                      laps: lapsOut
+                    });
+                  } else {
+                    const swimmerKey = CrawlUtil.createSwimmerKey(
+                      eventInfo.eventGender,
+                      heatResult.lastName,
+                      heatResult.firstName, 
+                      heatResult.year,
+                      heatResult.team
+                    );
+                    const teamKey = CrawlUtil.createTeamKey(heatResult.team);
                   
-                  const teamKey = CrawlUtil.createTeamKey(heatResult.team);
-                  
-                  // Add to lookup tables
-                  if (!allResults.swimmers[swimmerKey]) {
-                    allResults.swimmers[swimmerKey] = {
-                      lastName: heatResult.lastName,
-                      firstName: heatResult.firstName,
-                      gender: eventInfo.eventGender,
-                      year: heatResult.year,
-                      team: teamKey
-                    };
+                    // Add to lookup tables
+                    if (!allResults.swimmers[swimmerKey]) {
+                      allResults.swimmers[swimmerKey] = {
+                        lastName: heatResult.lastName,
+                        firstName: heatResult.firstName,
+                        gender: eventInfo.eventGender,
+                        year: heatResult.year,
+                        team: teamKey
+                      };
+                    }
+                    if (!allResults.teams[teamKey]) {
+                      allResults.teams[teamKey] = { name: heatResult.team };
+                    }
+                    mergedResults.push({
+                      swimmer: swimmerKey,
+                      team: teamKey,
+                      timing: heatResult.timing,
+                      heat_position: heatResult.heat_position,
+                      lane: heatResult.lane,
+                      nation: heatResult.nation,
+                      laps: heatResult.laps || []
+                    });
                   }
-                  
-                  if (!allResults.teams[teamKey]) {
-                    allResults.teams[teamKey] = {
-                      name: heatResult.team
-                    };
-                  }
-                  
-                  // Create result with heat data only (no ranking info)
-                  const heatOnlyResult = {
-                    swimmer: swimmerKey,
-                    team: teamKey,
-                    timing: heatResult.timing,
-                    heat_position: heatResult.heat_position,
-                    lane: heatResult.lane,
-                    nation: heatResult.nation,
-                    laps: heatResult.laps || []
-                  };
-                  
-                  mergedResults.push(heatOnlyResult);
                 }
               }
             } else {
               // Process RIEPILOGO results and merge with heat data
               rankingData.results.forEach((rankingResult, index) => {
               // Create unique swimmer key for RIEPILOGO result with gender prefix
-              const swimmerKey = CrawlUtil.createSwimmerKey(
-                eventInfo.eventGender,
-                rankingResult.lastName,
-                rankingResult.firstName,
-                rankingResult.year,
-                rankingResult.team
-              );
-
-              // Find corresponding heat result with lap timings
-              const heatResult = heatResultsMap.get(swimmerKey);
-              
-              if (index < 3) { // Show details for first 3 results
-                console.log(`[DEBUG] RIEPILOGO result ${index + 1}: ${rankingResult.lastName}|${rankingResult.firstName}|${rankingResult.year}|${rankingResult.team}`);
-                console.log(`[DEBUG] Generated key: ${swimmerKey}`);
-                console.log(`[DEBUG] Found in heat results: ${!!heatResult}`);
+              let heatResult = null;
+              let teamKey = null;
+              if (rankingResult.relay) {
+                const relayKey = CrawlUtil.createRelayKey(rankingResult.relay_name, rankingResult.team, rankingResult.heat, rankingResult.lane, rankingResult.timing);
+                heatResult = heatResultsMap.get(relayKey);
+                // Fallbacks: progressively relax constraints and normalize values
+                const norm = (s) => (s || '').toString().normalize('NFKC').replace(/\u00A0/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
+                const simplifyTime = (t) => norm(t).replace(/[^0-9':.]/g, ''); // keep digits and time punctuation only
                 if (!heatResult) {
-                  // Show similar keys to help debug
-                  const similarKeys = Array.from(heatResultsMap.keys()).filter(key => 
-                    key.includes(rankingResult.lastName) || key.includes(rankingResult.firstName)
-                  );
+                  const targetBase = (rankingResult.relay_name && rankingResult.relay_name.trim().length > 0) ? rankingResult.relay_name : rankingResult.team;
+                  const base = norm(targetBase);
+                  const heatStr = norm(rankingResult.heat || '');
+                  const timeStr = simplifyTime(rankingResult.timing || '');
+                  // Pass 1: match by team/relay_name + heat (if any) + simplified timing
+                  heatResult = Array.from(heatResultsMap.values()).find(hr => hr.relay === true &&
+                    (norm(hr.relay_name || '') === base || norm(hr.team || '') === base) &&
+                    norm(hr.heat || '') === heatStr &&
+                    simplifyTime(hr.timing || '') === timeStr
+                  ) || null;
+                  // Pass 2: match by team/relay_name + simplified timing (ignore heat)
+                  if (!heatResult) {
+                    heatResult = Array.from(heatResultsMap.values()).find(hr => hr.relay === true &&
+                      (norm(hr.relay_name || '') === base || norm(hr.team || '') === base) &&
+                      simplifyTime(hr.timing || '') === timeStr
+                    ) || null;
+                  }
+                  // Pass 3: match by team/relay_name only (pick first)
+                  if (!heatResult) {
+                    heatResult = Array.from(heatResultsMap.values()).find(hr => hr.relay === true &&
+                      (norm(hr.relay_name || '') === base || norm(hr.team || '') === base)
+                    ) || null;
+                  }
+                }
+                teamKey = CrawlUtil.createTeamKey(rankingResult.team);
+              } else {
+                const swimmerKey = CrawlUtil.createSwimmerKey(
+                  eventInfo.eventGender,
+                  rankingResult.lastName,
+                  rankingResult.firstName,
+                  rankingResult.year,
+                  rankingResult.team
+                );
+                heatResult = heatResultsMap.get(swimmerKey);
+                teamKey = CrawlUtil.createTeamKey(rankingResult.team);
+                if (index < 3) {
+                  console.log(`[DEBUG] RIEPILOGO result ${index + 1}: ${rankingResult.lastName}|${rankingResult.firstName}|${rankingResult.year}|${rankingResult.team}`);
+                  console.log(`[DEBUG] Generated key: ${swimmerKey}`);
+                  console.log(`[DEBUG] Found in heat results: ${!!heatResult}`);
+                }
+                if (!heatResult && index < 3) {
+                  const similarKeys = Array.from(heatResultsMap.keys()).filter(key => key.includes(rankingResult.lastName) || key.includes(rankingResult.firstName));
                   console.log(`[DEBUG] Similar heat keys found:`, similarKeys.slice(0, 3));
                 }
               }
+
               // DEBUG (verbose)
               // console.log(`[DEBUG] Merging RIEPILOGO data for ${swimmerKey}: found heat result = ${!!heatResult}`);
               
-              // Create team key
-              const teamKey = CrawlUtil.createTeamKey(rankingResult.team);
+              // teamKey already set above
               
               // Add to lookup tables if not already present
-              if (!allResults.swimmers[swimmerKey]) {
-                allResults.swimmers[swimmerKey] = {
-                  lastName: rankingResult.lastName,
-                  firstName: rankingResult.firstName,
-                  gender: eventInfo.eventGender,
-                  year: rankingResult.year,
-                  team: teamKey // Reference to team by key
-                };
-              }
-              // Move category storage to swimmer object (while keeping it in results for backward compatibility)
-              if (rankingResult.category && rankingResult.category !== 'N/A') {
-                const swimmerRef = allResults.swimmers[swimmerKey];
-                if (!swimmerRef.category || swimmerRef.category === 'N/A') {
-                  swimmerRef.category = rankingResult.category;
-                }
-              }
-              
               if (!allResults.teams[teamKey]) {
                 allResults.teams[teamKey] = {
                   name: rankingResult.team
@@ -486,20 +581,114 @@ class MicroplusCrawler {
               }
 
               // Create merged result combining RIEPILOGO data with heat lap timings
-              const mergedResult = {
-                ranking: rankingResult.ranking, // From RIEPILOGO
-                swimmer: swimmerKey, // Reference to swimmer by unique key
-                team: teamKey, // Reference to team by key
-                timing: rankingResult.timing, // From RIEPILOGO
-                category: rankingResult.category // From RIEPILOGO (normalized like "M85")
-              };
+              let mergedResult;
+              if (rankingResult.relay) {
+                mergedResult = {
+                  relay: true,
+                  ranking: rankingResult.ranking,
+                  relay_name: rankingResult.relay_name,
+                  team: teamKey,
+                  timing: rankingResult.timing,
+                  category: rankingResult.category,
+                  categoryRange: rankingResult.categoryRange,
+                  heat: rankingResult.heat,
+                  lane: rankingResult.lane
+                };
+              } else {
+                const swimmerKey = CrawlUtil.createSwimmerKey(
+                  eventInfo.eventGender,
+                  rankingResult.lastName,
+                  rankingResult.firstName,
+                  rankingResult.year,
+                  rankingResult.team
+                );
+                if (!allResults.swimmers[swimmerKey]) {
+                  allResults.swimmers[swimmerKey] = {
+                    lastName: rankingResult.lastName,
+                    firstName: rankingResult.firstName,
+                    gender: eventInfo.eventGender,
+                    year: rankingResult.year,
+                    team: teamKey
+                  };
+                }
+                if (rankingResult.category && rankingResult.category !== 'N/A') {
+                  const swimmerRef = allResults.swimmers[swimmerKey];
+                  if (!swimmerRef.category || swimmerRef.category === 'N/A') {
+                    swimmerRef.category = rankingResult.category;
+                  }
+                }
+                mergedResult = {
+                  ranking: rankingResult.ranking,
+                  swimmer: swimmerKey,
+                  team: teamKey,
+                  timing: rankingResult.timing,
+                  category: rankingResult.category
+                };
+              }
               
               // Add heat-specific data if available
               if (heatResult) {
                 mergedResult.heat_position = heatResult.heat_position;
                 mergedResult.lane = heatResult.lane;
-                mergedResult.nation = heatResult.nation;
-                mergedResult.laps = heatResult.laps || [];
+                // Preserve heat number from heat results if present, avoiding null from RIEPILOGO
+                if (!mergedResult.heat || mergedResult.heat === 'N/A') {
+                  mergedResult.heat = heatResult.heat;
+                }
+                if (!rankingResult.relay) mergedResult.nation = heatResult.nation;
+                if (rankingResult.relay) {
+                  // Populate global swimmers using event gender and create lap swimmer references by leg order
+                  const swimmerKeys = [];
+                  if (Array.isArray(heatResult.swimmers)) {
+                    heatResult.swimmers.forEach((s) => {
+                      const sTeamName = s.team || heatResult.team;
+                      const sTeamKey = CrawlUtil.createTeamKey(sTeamName);
+                      if (!allResults.teams[sTeamKey]) allResults.teams[sTeamKey] = { name: sTeamName };
+
+                      let key;
+                      if (eventInfo.eventGender === 'X') {
+                        const maleKey = CrawlUtil.createSwimmerKey('M', s.lastName, s.firstName, s.year, sTeamName);
+                        const femaleKey = CrawlUtil.createSwimmerKey('F', s.lastName, s.firstName, s.year, sTeamName);
+                        const noGenKey = CrawlUtil.createSwimmerKeyNoGender(s.lastName, s.firstName, s.year, sTeamName);
+                        if (allResults.swimmers[maleKey]) key = maleKey;
+                        else if (allResults.swimmers[femaleKey]) key = femaleKey;
+                        else key = noGenKey;
+
+                        if (!allResults.swimmers[key]) {
+                          allResults.swimmers[key] = {
+                            lastName: s.lastName,
+                            firstName: s.firstName,
+                            gender: null,
+                            year: s.year,
+                            team: sTeamKey
+                          };
+                        }
+                      } else {
+                        key = CrawlUtil.createSwimmerKey(
+                          eventInfo.eventGender,
+                          s.lastName,
+                          s.firstName,
+                          s.year,
+                          sTeamName
+                        );
+                        if (!allResults.swimmers[key]) {
+                          allResults.swimmers[key] = {
+                            lastName: s.lastName,
+                            firstName: s.firstName,
+                            gender: eventInfo.eventGender,
+                            year: s.year,
+                            team: sTeamKey
+                          };
+                        }
+                      }
+                      swimmerKeys.push(key);
+                    });
+                  }
+                  mergedResult.laps = Array.isArray(heatResult.laps)
+                    ? heatResult.laps.map((lap, idx) => ({ ...lap, swimmer: swimmerKeys[idx] || null }))
+                    : [];
+                } else {
+                  mergedResult.laps = heatResult.laps || [];
+                }
               }
 
               mergedResults.push(mergedResult);
@@ -905,6 +1094,8 @@ class MicroplusCrawler {
     // Track split columns (e.g., 50 m, 100 m, 150 m, ... ) for the current heat header
     // Each item: { index: <td index>, label: '50 m' }
     let currentSplitCols = [];
+    // For relays, group 1 header + 4 swimmer rows
+    let skipUntilRowIdx = -1;
     // DEBUG
     console.log(`[DEBUG] processHeatResults: HTML length = ${html.length}`);
     let $tables = $('table.tblContenutiRESSTL_Sotto_Heats');
@@ -915,9 +1106,23 @@ class MicroplusCrawler {
     const $rows = $tables.find('tr');
     console.log(`[DEBUG] processHeatResults: Found ${$tables.length} target tables; ${$rows.length} rows in total`);
     $rows.each((i, row) => {
+      if (i <= skipUntilRowIdx) return; // skip rows already grouped under a relay header
       const header = $(row).find('td.headerContenuti');
       if (header.length > 0) {
-        heats.push({ number: header.text().trim().replace('Serie', '').trim(), results: [] });
+        // Extract heat number from header text. Samples: "Serie 1 di 18", "Serie 3", "Serie 12 of 20"
+        const rawHeader = header.text().trim();
+        let heatNo = 'N/A';
+        // Prefer explicit "Serie <n> [di|of] <m>" pattern
+        const serieRe = /Serie\s*(\d+)(?:\s*(?:di|of)\s*\d+)?/i;
+        const mSerie = rawHeader.match(serieRe);
+        if (mSerie && mSerie[1]) {
+          heatNo = mSerie[1];
+        } else {
+          // Fallback: first integer in the header
+          const mAny = rawHeader.match(/(\d{1,3})/);
+          if (mAny && mAny[1]) heatNo = mAny[1];
+        }
+        heats.push({ number: heatNo, results: [] });
         // Reset split columns when a new heat header is found
         currentSplitCols = [];
       // Capture the header row that contains split labels (50 m, 100 m, 150 m, ...)
@@ -1054,7 +1259,74 @@ class MicroplusCrawler {
             }
           }
           
-          // Extract nation from column 3
+          // Relay detection: header row has relay name + team in a nobr with <b> and a <font size="1"> team line
+          const nameCellHtml = $(cols[4]).html() || '';
+          let isRelayHeader = /<nobr>\s*<b>/.test(nameCellHtml) && /<font[^>]*size\s*=\s*"?1"?/i.test(nameCellHtml);
+          // Strengthen detection by verifying next 4 rows look like swimmer rows (name in td[4], year in td[5], delta in td[7])
+          if (isRelayHeader) {
+            let looksLikeRelay = true;
+            for (let j = i + 1; j < Math.min($rows.length, i + 5); j++) {
+              const $next = $($rows[j]);
+              if (!($next.hasClass('trContenutiToggle') || $next.hasClass('trContenuti'))) { looksLikeRelay = false; break; }
+              const tds = $next.find('td');
+              if (tds.length < 8) { looksLikeRelay = false; break; }
+              const nm = CrawlUtil.normalizeUnicodeText($(tds[4]).text() || '');
+              const yr = ($(tds[5]).text() || '').trim();
+              const hasDelta = $(tds[7]).find('font.tdContSmall').length > 0;
+              if (nm.length === 0 || !/^[12][0-9]{3}$/.test(yr) || !hasDelta) { looksLikeRelay = false; break; }
+            }
+            if (!looksLikeRelay) {
+              isRelayHeader = false;
+            }
+          }
+          if (isRelayHeader) {
+            const currentHeat = heats[heats.length - 1];
+            const heatNo = currentHeat ? currentHeat.number : 'N/A';
+            const relayName = CrawlUtil.normalizeUnicodeText($(cols[4]).find('nobr > b').first().text() || '');
+            const teamName = CrawlUtil.normalizeUnicodeText($(cols[4]).find('nobr > font').first().text() || '');
+            const heat_position = $(cols[0]).find('b').text().trim() || $(cols[0]).text().trim();
+            const lane = $(cols[1]).text().trim();
+            const timing = ($(row).find('td.Risultato').first().text() || '').trim();
+            // Collect next 4 swimmer rows
+            const swimmers = [];
+            const laps = [];
+            const relayDistances = ['50m','100m','150m','200m'];
+            let lastIdx = i;
+            for (let j = i + 1; j < Math.min($rows.length, i + 5); j++) {
+              const nextRow = $rows[j];
+              const $next = $(nextRow);
+              if (!($next.hasClass('trContenutiToggle') || $next.hasClass('trContenuti'))) break;
+              const tds = $next.find('td');
+              if (tds.length < 6) break;
+              const fullName = CrawlUtil.normalizeUnicodeText($(tds[4]).text() || '');
+              const parts = CrawlUtil.extractNameParts(fullName);
+              const year = ($(tds[5]).text() || '').trim();
+              // delta in td[7] font.tdContSmall
+              let delta = '';
+              const deltaCell = $(tds[7]).find('font.tdContSmall').first();
+              if (deltaCell && deltaCell.length > 0) delta = deltaCell.text().trim();
+              const leg = swimmers.length + 1;
+              swimmers.push({ lastName: parts.lastName, firstName: parts.firstName, year });
+              laps.push({ distance: relayDistances[Math.min(leg - 1, 3)], delta });
+              lastIdx = j;
+            }
+            skipUntilRowIdx = Math.max(skipUntilRowIdx, lastIdx);
+            const relayResult = {
+              relay: true,
+              relay_name: relayName,
+              team: teamName,
+              heat_position,
+              lane,
+              timing,
+              heat: heatNo,
+              swimmers,
+              laps
+            };
+            currentHeat.results.push(relayResult);
+            return; // processed relay group
+          }
+
+          // Extract nation from column 3 (individuals)
           const nationHtml = $(cols[3]).html();
           const nation = nationHtml ? $('<div>').html(nationHtml).text().replace(/.*<b>([^<]+)<\/b>.*/, '$1').trim() : 'N/A';
           
@@ -1070,7 +1342,7 @@ class MicroplusCrawler {
             // console.log(`[DEBUG] No td.Risultato found in row`);
           }
           
-          // Extract name data (but don't fail if missing)
+          // Extract name data (but don't fail if missing) - individual rows
           const nameDataHtml = $(cols[4]).html();
           let nameParts = { lastName: '', firstName: '' }; // Initialize as object, not array
           let year = 'N/A';
@@ -1090,7 +1362,7 @@ class MicroplusCrawler {
             // console.log(`[DEBUG] Heat extracted: ${nameParts.lastName}|${nameParts.firstName}|${year}|${team}`);
           }
           
-          // Extract correct data based on actual HTML structure:
+          // Extract correct data based on actual HTML structure (individuals):
           // Col 0: heat position (inside <b>), Col 1: lane, Col 3: nation, Col 4: name/year/team
           // Splits: detected dynamically from currentSplitCols; Final timing in td.Risultato
           const result = {
@@ -1161,10 +1433,11 @@ class MicroplusCrawler {
     return { heats };
   }
 
-  processRankingResults(html) {
+  processRankingResults(html, options = {}) {
     const $ = cheerio.load(html);
     const results = [];
     let currentCategory = 'N/A';
+    // Decide per row whether it's relay or individual; category headers appear in both
 
     const rows = $('table.tblContenutiRESSTL#tblContenuti tr');
     console.log(`[DEBUG] processRankingResults: Found ${rows.length} rows in total`);
@@ -1174,7 +1447,7 @@ class MicroplusCrawler {
       const rowText = CrawlUtil.normalizeUnicodeText($row.text() || '').replace(/\s+/g, ' ').trim();
 
       // Detect category header rows (robust): "MASTER 75F" -> currentCategory = "M75"
-      const headerMatch = rowText.match(/\bMASTER\s+(\d{2,3})\s*[FM]?\b/i);
+      const headerMatch = rowText.match(/\bMASTER\s+(\d{2,3})\s*[FMX]?\b/i);
       const isResultRow = $row.hasClass('trContenuti') || $row.hasClass('trContenutiToggle');
 
       if (headerMatch && !isResultRow) {
@@ -1187,7 +1460,46 @@ class MicroplusCrawler {
       if (!isResultRow) return; // skip non-result rows
 
       const cols = $row.find('td');
-      if (cols.length < 10) return; // defensive
+      if (cols.length < 7) return; // defensive
+
+      // Heuristic: Individuals usually have >=10 columns with name at index ~6 and year/team columns present.
+      // Relay summary rows often have fewer columns (7-9) with ranking, heat, lane, relay name, team, timing.
+      if (cols.length <= 9) {
+        // Relay summary columns (expected): 0:ranking,1:heat,2:lane,3:relay name,4:team,5:unused,6+: timing
+        const ranking = ($(cols[0]).find('b').text() || $(cols[0]).text() || '').trim();
+        const heat = ($(cols[1]).text() || '').trim();
+        const lane = ($(cols[2]).text() || '').trim();
+        const relayName = CrawlUtil.normalizeUnicodeText($(cols[3]).text() || '');
+        const team = CrawlUtil.normalizeUnicodeText($(cols[4]).text() || '');
+        const timingCell = $row.find('td.Risultato').last();
+        const timing = (timingCell.length ? timingCell.text() : ($(cols[cols.length - 1]).text() || '')).trim();
+        // Compute category range (e.g., 240 -> 240-259)
+        let categoryRange = 'N/A';
+        const ageMatch = currentCategory.match(/M(\d{2,3})/i);
+        if (ageMatch) {
+          const base = parseInt(ageMatch[1], 10);
+          if (!isNaN(base)) categoryRange = `${base}-${base + 19}`;
+        }
+        const result = {
+          relay: true,
+          ranking,
+          heat,
+          lane,
+          relay_name: relayName,
+          team,
+          timing,
+          category: currentCategory,
+          categoryRange
+        };
+        if (results.length < 3) {
+          console.log(`[DEBUG] Adding RIEPILOGO relay result ${results.length + 1}:`, JSON.stringify(result, null, 2));
+        }
+        results.push(result);
+        return;
+      }
+
+      // Individual summary (fallback)
+      if (cols.length < 10) return; // defensive for individuals
 
       const ranking = $(cols[1]).find('b').text().trim() || $(cols[1]).text().trim();
       const timing = $(cols[9]).hasClass('Risultato') ? $(cols[9]).text().trim() : $(cols[9]).text().trim();
@@ -1203,7 +1515,7 @@ class MicroplusCrawler {
       const team = CrawlUtil.normalizeUnicodeText(teamHtml);
       const year = $(cols[8]).text().trim();
 
-      const result = {
+      let result = {
         ranking,
         lastName,
         firstName,
@@ -1212,6 +1524,17 @@ class MicroplusCrawler {
         timing,
         category: currentCategory
       };
+
+      // If caller indicates we're parsing a relay RIEPILOGO, ensure relay flag is set
+      if (options && options.isRelay === true) {
+        result = {
+          ...result,
+          relay: true,
+          relay_name: team,
+          heat: null,
+          lane: null
+        };
+      }
 
       if (results.length < 3) {
         console.log(`[DEBUG] Adding RIEPILOGO result ${results.length + 1}:`, JSON.stringify(result, null, 2));

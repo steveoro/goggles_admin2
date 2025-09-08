@@ -736,7 +736,7 @@ class DataFixController < ApplicationController
     # Allow any sub-hash indexed with the current model name specified as a parameter:
     # (typically: 'team' => { index => { <team attributes> } })
     params.permit(
-      :action, :reparse, :model, :key, :dom_valid_key, :file_path, :shared_place,
+      :action, :reparse, :model, :key, :dom_valid_key, :file_path, :shared_place, :raw_lt4,
       swimming_pool: {}, city: {}, meeting: {}, meeting_session: {}, meeting_event: {}, meeting_program: {},
       team: {}, swimmer: {}, badge: {},
       meeting_individual_result: {}, lap: {}, meeting_relay_result: {}, meeting_relay_swimmer: {}
@@ -809,6 +809,10 @@ class DataFixController < ApplicationController
     file_content = File.read(@file_path)
     begin
       @data_hash = JSON.parse(file_content.force_encoding('UTF-8'))
+      # Normalize LT4 (Microplus) files into canonical LT2-like schema unless explicitly bypassed
+      if @data_hash.is_a?(Hash) && @data_hash['layoutType'].to_i == 4 && params[:raw_lt4] != 'true'
+        @data_hash = Import::Adapters::Layout4To2.normalize(data_hash: @data_hash)
+      end
     rescue StandardError
       flash[:error] = I18n.t('data_import.errors.invalid_file_content')
       redirect_to(pull_index_path) && return

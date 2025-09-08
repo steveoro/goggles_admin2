@@ -12,6 +12,9 @@ module Import
   # and finds existing & corresponding entity rows or creates (locally) any missing associated
   # entities, so that all or most of its bindings can be considered as "solved" in a single pass.
   #
+  # The JSON object is expected to be a Hash using the "layoutType" 2 structure.
+  # (For details, see a sample JSON file in crawler/data/results.done/ or crawler/data/results.new/)
+  #
   # The goal is to obtain a single SQL transaction for each Meeting with its related results (@see MacroCommitter),
   # although multiple transactions for the same Meeting are supported (so that additional
   # results can be added or updated in multiple runs).
