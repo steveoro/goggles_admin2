@@ -1,0 +1,182 @@
+<%# frozen_string_literal: true %>
+
+<div class="container">
+  <h2>Data-Fix V2 • Step 1: Meeting & Sessions (Phase 1)</h2>
+
+  <div class="mb-2">
+    <%= render(partial: 'data_fix/step_tabs', locals: { active_step: 1, file_path: @file_path }) %>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-header">Phase Metadata</div>
+    <div class="card-body">
+      <pre><%= JSON.pretty_generate(@phase1_meta || {}) %></pre>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-header">Meeting</div>
+    <div class="card-body">
+      <dl class="row">
+        <dt class="col-sm-3">Season ID</dt>
+        <dd class="col-sm-9"><%= @phase1_data['season_id'] %></dd>
+
+        <dt class="col-sm-3">Name</dt>
+        <dd class="col-sm-9"><%= @phase1_data['name'] %></dd>
+
+        <dt class="col-sm-3">URL</dt>
+        <dd class="col-sm-9"><%= @phase1_data['meetingURL'] %></dd>
+
+        <dt class="col-sm-3">Date 1</dt>
+        <dd class="col-sm-9">
+          <%= [@phase1_data['dateDay1'], @phase1_data['dateMonth1'], @phase1_data['dateYear1']].compact.join(' ') %>
+        </dd>
+
+        <dt class="col-sm-3">Date 2</dt>
+        <dd class="col-sm-9">
+          <%= [@phase1_data['dateDay2'], @phase1_data['dateMonth2'], @phase1_data['dateYear2']].compact.join(' ') %>
+        </dd>
+
+        <dt class="col-sm-3">Venue</dt>
+        <dd class="col-sm-9"><%= @phase1_data['venue1'] %></dd>
+
+        <dt class="col-sm-3">Address</dt>
+        <dd class="col-sm-9"><%= @phase1_data['address1'] %></dd>
+
+        <dt class="col-sm-3">Pool Length</dt>
+        <dd class="col-sm-9"><%= @phase1_data['poolLength'] %></dd>
+      </dl>
+
+      <hr />
+      <h6>Edit meeting</h6>
+      <%= form_tag(update_phase1_meeting_path, method: :patch, class: 'form') do %>
+        <%= hidden_field_tag :file_path, @file_path %>
+        <div class="form-row">
+          <div class="form-group col-md-2">
+            <label>Season ID</label>
+            <%= number_field_tag :season_id, @phase1_data['season_id'], class: 'form-control form-control-sm', min: 1, step: 1, placeholder: 'e.g. 242', title: 'Positive integer' %>
+            <small class="form-text text-muted">Positive integer.</small>
+          </div>
+          <div class="form-group col-md-6">
+            <label>Name</label>
+            <%= text_field_tag :name, @phase1_data['name'], class: 'form-control form-control-sm', required: true, maxlength: 200, placeholder: 'Meeting name', title: 'Required' %>
+            <small class="form-text text-muted">Required.</small>
+          </div>
+          <div class="form-group col-md-4">
+            <label>Meeting URL</label>
+            <%= text_field_tag :meetingURL, @phase1_data['meetingURL'], class: 'form-control form-control-sm', pattern: 'https?://.*', placeholder: 'https://...', title: 'Optional; must start with http(s) if provided' %>
+            <small class="form-text text-muted">Optional; must start with http(s) if provided.</small>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group col-md-2">
+            <label>Date Day 1</label>
+            <%= number_field_tag :dateDay1, @phase1_data['dateDay1'], class: 'form-control form-control-sm', min: 1, max: 31, step: 1, placeholder: 'DD' %>
+          </div>
+          <div class="form-group col-md-2">
+            <label>Date Month 1</label>
+            <%= number_field_tag :dateMonth1, @phase1_data['dateMonth1'], class: 'form-control form-control-sm', min: 1, max: 12, step: 1, placeholder: 'MM' %>
+          </div>
+          <div class="form-group col-md-2">
+            <label>Date Year 1</label>
+            <%= number_field_tag :dateYear1, @phase1_data['dateYear1'], class: 'form-control form-control-sm', min: 1900, max: 2100, step: 1, placeholder: 'YYYY' %>
+          </div>
+          <div class="form-group col-md-2">
+            <label>Date Day 2</label>
+            <%= number_field_tag :dateDay2, @phase1_data['dateDay2'], class: 'form-control form-control-sm', min: 1, max: 31, step: 1, placeholder: 'DD' %>
+          </div>
+          <div class="form-group col-md-2">
+            <label>Date Month 2</label>
+            <%= number_field_tag :dateMonth2, @phase1_data['dateMonth2'], class: 'form-control form-control-sm', min: 1, max: 12, step: 1, placeholder: 'MM' %>
+          </div>
+          <div class="form-group col-md-2">
+            <label>Date Year 2</label>
+            <%= number_field_tag :dateYear2, @phase1_data['dateYear2'], class: 'form-control form-control-sm', min: 1900, max: 2100, step: 1, placeholder: 'YYYY' %>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group col-md-4">
+            <label>Venue</label>
+            <%= text_field_tag :venue1, @phase1_data['venue1'], class: 'form-control form-control-sm', placeholder: 'Venue name' %>
+          </div>
+          <div class="form-group col-md-6">
+            <label>Address</label>
+            <%= text_field_tag :address1, @phase1_data['address1'], class: 'form-control form-control-sm', placeholder: 'Street, number, ZIP' %>
+          </div>
+          <div class="form-group col-md-2">
+            <label>Pool Length</label>
+            <% current_len = @phase1_data['poolLength'].to_s %>
+            <% options = [['25m', '25'], ['50m', '50']] %>
+            <% options << [current_len, current_len] if current_len.present? && !options.map(&:last).include?(current_len) %>
+            <%= select_tag :poolLength, options_for_select(options, current_len), class: 'form-control form-control-sm', title: 'Common values: 25m or 50m' %>
+            <small class="form-text text-muted">Common values: 25m or 50m.</small>
+          </div>
+        </div>
+        <%= submit_tag 'Save meeting', class: 'btn btn-sm btn-primary' %>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="d-flex justify-content-between mb-2">
+    <div>
+      <%= link_to 'Use legacy (Step 1)', review_sessions_path(request.query_parameters.except(:phase_v2)), class: 'btn btn-secondary' %>
+    </div>
+    <div>
+      <%= link_to 'Proceed to Step 2 (Teams)', review_teams_path(request.query_parameters.merge(phase2_v2: 1)), class: 'btn btn-primary' %>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">Sessions</div>
+    <div class="card-body">
+      <% sessions = @phase1_data['meeting_session'] || [] %>
+      <% if sessions.empty? %>
+        <em>No sessions yet. Add sessions from the UI (to be implemented in V2) or switch to legacy to add them now.</em>
+      <% else %>
+        <table class="table table-striped">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Description</th>
+              <th>Scheduled Date</th>
+              <th>Pool</th>
+              <th>City</th>
+              <th>Edit</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% sessions.each_with_index do |sess, idx| %>
+              <tr>
+                <td><%= idx + 1 %></td>
+                <td><%= sess['description'] || sess['session_order'] %></td>
+                <td><%= sess['scheduled_date'] %></td>
+                <%# Pool and City can be resolved by bindings in V2; placeholders for now %>
+                <td><%= sess['pool_name'] %></td>
+                <td><%= sess.dig('city', 'name') %></td>
+                <td>
+                  <%= form_tag(update_phase1_session_path, method: :patch, class: 'form-inline') do %>
+                    <%= hidden_field_tag :file_path, @file_path %>
+                    <%= hidden_field_tag :session_index, idx %>
+                    <div class="form-group mr-1">
+                      <%= text_field_tag :description, sess['description'], placeholder: 'Description', class: 'form-control form-control-sm' %>
+                    </div>
+                    <div class="form-group mr-1">
+                      <%= date_field_tag :scheduled_date, sess['scheduled_date'], class: 'form-control form-control-sm', placeholder: 'YYYY-MM-DD', title: 'Use YYYY-MM-DD' %>
+                    </div>
+                    <div class="form-group mr-1">
+                      <%= text_field_tag :pool_name, sess['pool_name'], placeholder: 'Pool', class: 'form-control form-control-sm' %>
+                    </div>
+                    <div class="form-group mr-1">
+                      <%= text_field_tag 'city[name]', sess.dig('city','name'), placeholder: 'City', class: 'form-control form-control-sm' %>
+                    </div>
+                    <%= submit_tag 'Save', class: 'btn btn-sm btn-outline-primary' %>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      <% end %>
+    </div>
+  </div>
+</div>

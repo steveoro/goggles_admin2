@@ -29,6 +29,7 @@ it:
       confirm_delete: 'Sicuri di voler cancellare questo file?'
       btn_rename_tooltip: 'Rinomina file'
       btn_edit_tooltip: 'Modifica file'
+      btn_process_json_v2_tooltip: 'Elabora con pipeline phased (v2)'
       btn_download_tooltip: 'Scarica file'
       btn_process_csv_tooltip: 'Elabora questo file calendario, scaricando i risultati disponibili'
       btn_process_pdf_tooltip: 'Converti questo file risultati da PDF al formato JSON che può essere importato'
@@ -76,3 +77,6 @@ it:
       crawler_unreachable: 'Crawler server non raggiungibile'
       crawler_connecting: 'In connessione...'
       unsupported_layout_or_incomplete_url: 'Layout non supportato o target URL incompleta!'
+    messages:
+      updated: 'Aggiornato con successo.'
+      phase_rebuilt: "Fase %{phase} ricostruita dall'origine."

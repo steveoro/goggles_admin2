@@ -1,4 +1,4 @@
--# Detect feasability of multi-push
+-# Detect feasibility of multi-push
 - if files.present? && filter.present? && filter == '*.sql'
   .row-fluid
     .container
@@ -74,6 +74,11 @@
                           class: 'btn btn-sm btn-outline-warning mb-1', data: { toggle: 'tooltip',
                           title: t('data_import.file.btn_process_json_tooltip') }) do
                   %i.fa.fa-cogs
+                &nbsp;
+                = link_to(review_sessions_path(file_path: full_pathname, phase_v2: 1), method: :get,
+                          class: 'btn btn-sm btn-outline-primary mb-1', data: { toggle: 'tooltip',
+                          title: t('data_import.file.btn_process_json_v2_tooltip') }) do
+                  %i.fa.fa-bolt
               - when '.pdf'
                 &nbsp;
                 = link_to(pdf_extract_txt_path(file_path: full_pathname), method: :get,

@@ -1,0 +1,52 @@
+<%# frozen_string_literal: true %>
+<%# Expects locals via controller ivars: @event_key, @gender, @category, @results %>
+<% cid = "cat-#{@event_key}-#{@gender}-#{@category}".parameterize %>
+<div class="card" id="<%= cid %>">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <div>
+      <strong>Category:</strong> <code><%= @category %></code>
+      &nbsp;•&nbsp;
+      <strong>Gender:</strong> <%= @gender %>
+      &nbsp;•&nbsp;
+      <strong>Event:</strong> <%= @event_key %>
+    </div>
+    <span class="badge badge-info">Results: <%= @results.size %></span>
+  </div>
+  <div class="card-body p-2">
+    <% if @results.empty? %>
+      <em>No results found for this selection.</em>
+    <% else %>
+      <div class="table-responsive">
+        <table class="table table-sm table-striped mb-0">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Lane</th>
+              <th>Athlete</th>
+              <th>Team</th>
+              <th>Time</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @results.each_with_index do |r, idx| %>
+              <% lane = r['lane'] || r['corsia'] || r['laneNumber'] %>
+              <% athlete = r['athlete'] || r['swimmer'] || [r['lastName'], r['firstName']].compact.join(' ') %>
+              <% team = r['team'] || r['societa'] || r['teamName'] %>
+              <% time = r['time'] || r['timing'] || r['result'] || r['swimTime'] %>
+              <% notes = r['notes'] || r['warnings'] || r['status'] %>
+              <tr>
+                <td><%= r['rank'] || r['position'] || (idx + 1) %></td>
+                <td><%= lane %></td>
+                <td><%= athlete %></td>
+                <td><%= team %></td>
+                <td><%= time %></td>
+                <td><%= notes %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% end %>
+  </div>
+</div>

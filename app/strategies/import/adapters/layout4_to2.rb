@@ -228,6 +228,7 @@ module Import
         #  - unknown => "000-999"
         def normalize_relay_category(code)
           return '000-999' if code.to_s.strip.empty?
+
           up = code.to_s.strip.upcase
           return '60-79' if up == 'U80'
 
@@ -250,17 +251,20 @@ module Import
         def inline_lap_key(distance_label)
           num = numeric_distance(distance_label)
           return nil unless num
+
           "lap#{num}"
         end
 
         def inline_delta_key(distance_label)
           num = numeric_distance(distance_label)
           return nil unless num
+
           "delta#{num}"
         end
 
         def numeric_distance(distance_label)
           return nil unless distance_label.is_a?(String)
+
           # Accept formats like "50m", "800m"; extract leading integer
           md = distance_label.match(/(\d+)/)
           md && md[1]

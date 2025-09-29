@@ -1,0 +1,72 @@
+<%# frozen_string_literal: true %>
+
+<%# Locals: active_step (1..5), params_base (Hash), file_path (String, optional) %>
+<% params_base ||= request.query_parameters %>
+<% file_param = file_path || params_base[:file_path] %>
+<% s1 = params_base.merge(file_path: file_param, phase_v2: 1).except(:phase2_v2, :phase3_v2) %>
+<% s2 = params_base.merge(file_path: file_param, phase2_v2: 1).except(:phase_v2, :phase3_v2) %>
+<% s3 = params_base.merge(file_path: file_param, phase3_v2: 1).except(:phase_v2, :phase2_v2) %>
+<% s4 = params_base.merge(file_path: file_param, phase4_v2: 1).except(:phase_v2, :phase2_v2, :phase3_v2) %>
+<% s5 = params_base.merge(file_path: file_param, phase5_v2: 1).except(:phase_v2, :phase2_v2, :phase3_v2, :phase4_v2) %>
+<ul class="nav nav-tabs">
+  <li class="nav-item">
+    <% if active_step == 1 %>
+      <div class="nav-link active d-flex align-items-center">
+        <span>Step 1 • Sessions</span>
+        <%= link_to review_sessions_path(s1.merge(rescan: 1)), class: 'btn btn-link btn-sm ml-2', data: { confirm: 'Rebuild Phase 1 from source? Local edits in phase1.json may be overwritten.' } do %>
+          <i class="fa fa-refresh text-warning" aria-hidden="true"></i>
+        <% end %>
+      </div>
+    <% else %>
+      <%= link_to 'Step 1 • Sessions', review_sessions_path(s1), class: 'nav-link' %>
+    <% end %>
+  </li>
+  <li class="nav-item">
+    <% if active_step == 2 %>
+      <div class="nav-link active d-flex align-items-center">
+        <span>Step 2 • Teams</span>
+        <%= link_to review_teams_path(s2.merge(rescan: 1)), class: 'btn btn-link btn-sm ml-2', data: { confirm: 'Rebuild Phase 2 from source? Local edits in phase2.json may be overwritten.' } do %>
+          <i class="fa fa-refresh text-warning" aria-hidden="true"></i>
+        <% end %>
+      </div>
+    <% else %>
+      <%= link_to 'Step 2 • Teams', review_teams_path(s2), class: 'nav-link' %>
+    <% end %>
+  </li>
+  <li class="nav-item">
+    <% if active_step == 3 %>
+      <div class="nav-link active d-flex align-items-center">
+        <span>Step 3 • Swimmers</span>
+        <%= link_to review_swimmers_path(s3.merge(rescan: 1)), class: 'btn btn-link btn-sm ml-2', data: { confirm: 'Rebuild Phase 3 from source? Local edits in phase3.json may be overwritten.' } do %>
+          <i class="fa fa-refresh text-warning" aria-hidden="true"></i>
+        <% end %>
+      </div>
+    <% else %>
+      <%= link_to 'Step 3 • Swimmers', review_swimmers_path(s3), class: 'nav-link' %>
+    <% end %>
+  </li>
+  <li class="nav-item">
+    <% if active_step == 4 %>
+      <div class="nav-link active d-flex align-items-center">
+        <span>Step 4 • Events</span>
+        <%= link_to review_events_path(s4.merge(rescan: 1)), class: 'btn btn-link btn-sm ml-2', data: { confirm: 'Rebuild Phase 4 from source? Local edits in phase4.json may be overwritten.' } do %>
+          <i class="fa fa-refresh text-warning" aria-hidden="true"></i>
+        <% end %>
+      </div>
+    <% else %>
+      <%= link_to 'Step 4 • Events', review_events_path(s4), class: 'nav-link' %>
+    <% end %>
+  </li>
+  <li class="nav-item">
+    <% if active_step == 5 %>
+      <div class="nav-link active d-flex align-items-center">
+        <span>Step 5 • Results</span>
+        <%= link_to review_results_path(s5.merge(rescan: 1)), class: 'btn btn-link btn-sm ml-2', data: { confirm: 'Rebuild Phase 5 from source? Local edits in phase5.json may be overwritten.' } do %>
+          <i class="fa fa-refresh text-warning" aria-hidden="true"></i>
+        <% end %>
+      </div>
+    <% else %>
+      <%= link_to 'Step 5 • Results', review_results_path(s5), class: 'nav-link' %>
+    <% end %>
+  </li>
+</ul>

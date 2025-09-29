@@ -11,10 +11,10 @@
 # -----------------------------------------------------------------------------
 
 # Add MIME type for CSV exports:
-Mime::Type.register "text/csv", :csv unless Mime::Type.lookup_by_extension(:csv)
+Mime::Type.register 'text/csv', :csv unless Mime::Type.lookup_by_extension(:csv)
 
 # Add MIME type for XLSX exports:
-Mime::Type.register "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", :xlsx unless Mime::Type.lookup_by_extension(:xlsx)
+Mime::Type.register 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', :xlsx unless Mime::Type.lookup_by_extension(:xlsx)
 
-# Note: Mime::Type.register_alias "text/html", :iphone
+# NOTE: Mime::Type.register_alias "text/html", :iphone
 # => Let's avoid aliases

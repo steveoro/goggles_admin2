@@ -1,0 +1,119 @@
+<%# frozen_string_literal: true %>
+
+<div class="container">
+  <h2>Data-Fix V2 • Step 5: Results (Phase 5)</h2>
+
+  <div class="mb-2">
+    <%= render(partial: 'data_fix/step_tabs', locals: { active_step: 5, file_path: @file_path }) %>
+  </div>
+
+  <div class="d-flex justify-content-between mb-2">
+    <div>
+      <%= link_to 'Use legacy (Step 5)', review_results_path(request.query_parameters.except(:phase5_v2)), class: 'btn btn-secondary' %>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-header">Phase Metadata</div>
+    <div class="card-body">
+      <pre><%= JSON.pretty_generate(@phase5_meta || {}) %></pre>
+    </div>
+  </div>
+
+  <% sessions = Array(@phase5_data['sessions']) %>
+  <% if sessions.empty? %>
+    <em>No results found in Phase 5.</em>
+  <% else %>
+    <% sessions.sort_by { |s| s['session_order'].to_i }.each do |s| %>
+      <div class="card mb-3">
+        <div class="card-header">
+          Session <%= s['session_order'] %>
+        </div>
+        <div class="card-body">
+          <% events = Array(s['events']).sort_by { |e| e['event_order'].to_i } %>
+          <% if events.empty? %>
+            <em>No events for this session.</em>
+          <% else %>
+            <% events.each do |e| %>
+              <div class="mb-3 border rounded">
+                <div class="p-2 bg-light d-flex justify-content-between align-items-center">
+                  <div>
+                    <strong><%= e['key'] %></strong>
+                    &nbsp;•&nbsp;
+                    <span><%= e['distance'] %> / <%= e['stroke'] %></span>
+                  </div>
+                  <span class="badge badge-info">Total: <%= e['results_count'] %></span>
+                </div>
+                <% genders = Array(e['genders']).sort_by { |g| g['gender'].to_s } %>
+                <% if genders.empty? %>
+                  <div class="p-2"><em>No gender details available.</em></div>
+                <% else %>
+                  <% genders.each do |g| %>
+                    <div class="card mb-2">
+                      <div class="card-header d-flex justify-content-between align-items-center">
+                        <div>
+                          <strong>Gender:</strong> <%= g['gender'] %>
+                        </div>
+                        <span class="badge badge-secondary">Total: <%= g['results_count'] %></span>
+                      </div>
+                      <div class="card-body">
+                        <% categories = Array(g['categories']).sort_by { |c| c['category'].to_s } %>
+                        <% if categories.empty? %>
+                          <em>No categories.</em>
+                        <% else %>
+                          <div class="row">
+                            <% categories.each do |c| %>
+                              <% cid = "cat-#{e['key']}-#{g['gender']}-#{c['category']}".parameterize %>
+                              <div class="col-12 col-md-6 col-lg-4 mb-2">
+                                <div class="card" id="<%= cid %>">
+                                  <div class="card-body py-2 d-flex justify-content-between align-items-center">
+                                    <div>
+                                      <code><%= c['category'] %></code>
+                                      &nbsp;&mdash;&nbsp;
+                                      <span><%= c['results_count'] %> results</span>
+                                    </div>
+                                    <button class="btn btn-sm btn-outline-primary load-category"
+                                            data-url="<%= results_chunk_v2_path(file_path: @file_path, event_key: e['key'], gender: g['gender'], category: c['category']) %>"
+                                            data-target="<%= cid %>">Load results</button>
+                                  </div>
+                                </div>
+                              </div>
+                            <% end %>
+                          </div>
+                        <% end %>
+                      </div>
+                    </div>
+                  <% end %>
+                <% end %>
+              </div>
+            <% end %>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  <% end %>
+</div>
+
+<script>
+document.addEventListener('click', function(e) {
+  const btn = e.target.closest('.load-category');
+  if (!btn) return;
+  e.preventDefault();
+  const url = btn.getAttribute('data-url');
+  const targetId = btn.getAttribute('data-target');
+  const card = document.getElementById(targetId);
+  if (!url || !card) return;
+  btn.disabled = true;
+  btn.textContent = 'Loading...';
+  fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' }})
+    .then(resp => resp.text())
+    .then(html => {
+      card.outerHTML = html;
+    })
+    .catch(() => {
+      btn.disabled = false;
+      btn.textContent = 'Load results';
+      alert('Failed to load results.');
+    });
+});
+</script>

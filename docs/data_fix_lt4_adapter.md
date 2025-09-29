@@ -1,12 +1,14 @@
-# Data-Fix: layoutType 4 (Microplus) Support Plan
+# Data-Fix: layoutType 4 (Microplus) Support
 
-Last updated: 2025-09-08 15:46 (local)
+Last updated: 2025-09-15 22:26 (local)
 
-## Scope
+## Status: complete (on legacy controller)
 
-- Add support for Microplus crawler result files using `layoutType: 4` to the existing multi-stage Data-Fix process handled by `app/controllers/data_fix_controller.rb`.
-- Approach: normalize LT4 JSON into the canonical LT2-like schema expected by `Import::MacroSolver` and the current views.
-- Option A: after normalization, set `layoutType: 2` in-memory before instantiating the solver (original file remains LT4 on disk until written-back by Data-Fix).
+- Support into Data-Fix for layoutType 4 (Microplus) is complete into the original data-fix controller, currently renamed `DataFixLegacyController`.
+- The legacy controller uses the `Import::MacroSolver` to solve the entities and map them into the JSON data file assuming the LT2-like schema.
+- A new adapter `Import::Adapters::Layout4To2` is being successfully used to normalize the LT4 JSON into the canonical LT2-like schema.
+- However, result files normalized from LT4 are memory huge and need to be processed 1 or 2 MeetingEvents at a time tops (not feasible for meetings with 15+ events like the national championships).
+- A new controller `DataFixController` is being implemented to handle the new multi-stage process which should solve this issue.
 
 ## Inputs / Samples
 
@@ -81,23 +83,23 @@ The canonical schema is the one described in `docs/data_fix_refactoring_and_enha
   - For individual results, gender can be read from the swimmer key prefix (`F|`, `M|`).
   - For relays, `eventGender` can be `F`, `M` or `X` (mixed). Per-leg unknown-gender swimmer keys are allowed; the MacroSolver logic is already robust to missing swimmer gender and may infer from context when needed.
 
-## Implementation Steps
+## Normalization Steps
 
-1. Create adapter skeleton
+1. Adapter
    - File: `app/strategies/import/adapters/layout4_to2.rb`
    - Module: `Import::Adapters::Layout4To2`
    - API: `def self.normalize(data_hash:) -> Hash`
 
-2. Implement header normalization
+2. Header normalization
    - Parse `dates` into `dateDay1/Month1/Year1` and optional day 2.
    - Map `meetingName` -> `name`, `meetingURL` passthrough.
    - Leave `poolLength`, `venue1`, `address1` blank if unknown (editable in Step 1).
 
-3. Implement sections builder
+3. Sections builder
    - Detect and emit one canonical `sections[]` entry per event/category/gender.
    - Create `title`, set `fin_sesso`, `fin_sigla_categoria` when derivable.
 
-4. Implement row mappers
+4. Row mappers
    - Individual rows: produce canonical fields and attach laps array (even if empty for 50m events).
    - Relay rows: set `relay: true`, expand swimmers into `swimmer1..N`, `year_of_birth{1..N}`, `gender_type{1..N}`; attach relay laps per leg if present.
 
@@ -105,31 +107,9 @@ The canonical schema is the one described in `docs/data_fix_refactoring_and_enha
    - If LT4 contains team rankings, add a `sections[]` with `ranking: true` and normalized rows.
    - Ignore stats for DB storage (consistent with current solver).
 
-6. Wire into controller
+6. Controller
    - In `DataFixController#parse_file_contents` (or immediately after JSON load), if `layoutType == 4`, call adapter, then set `layoutType: 2` on the normalized copy before passing to `Import::MacroSolver`.
    - Add optional feature flag to bypass adapter for debugging (e.g., `params[:raw_lt4]`).
-
-7. Compatibility tweaks (if needed)
-   - Verify `Import::MacroSolver` assumptions around `title`, `fin_sesso`, `fin_sigla_categoria`, row fields, and laps.
-   - Add small shims/normalizers for timing formats if LT4 differs.
-
-8. Tests
-   - Unit tests for adapter with fixtures derived from provided LT4 samples (relay-only and individual with laps).
-   - End-to-end through controller steps (1..5) to ensure dictionary sections are created as described in the doc.
-
-9. Documentation
-   - Update `docs/data_fix_refactoring_and_enhancement.md` with LT4 support notes and a short mapping summary.
-
-10. Rollout & safety
-   - Feature toggle for adapter bypass.
-   - Conservative error handling: adapter logs warnings but returns best-effort normalized structure.
-
-## Deliverables
-
-- `app/strategies/import/adapters/layout4_to2.rb` (adapter)
-- Specs for adapter and minimal E2E smoke
-- Controller wiring (layout detection + adapter call)
-- Doc updates (this plan kept in sync)
 
 ## Testing
 
@@ -145,25 +125,6 @@ How to run:
 ```bash
 bundle exec rspec spec/strategies/import/adapters/layout4_to2_spec.rb -f doc
 ```
-
-## Next: Optimization ideas (post-green tests)
-
-- Reduce memory footprint by limiting dictionary materialization until needed in each phase.
-- Consider streaming write-backs between phases to avoid building the entire enriched JSON in memory at once.
-- Profile `Import::MacroSolver` hotspots on large relay files; batch entity building where feasible.
-
-## Open Questions / Clarifications
-
-- Confirm exact LT4 per-event structure (internal blocks for events/rows), and where laps are stored for individuals and relays.
-- Confirm if LT4 exposes pool length or session/venue details anywhere (would help prefill Step 1).
-
-## Test Matrix (initial)
-
-- Individual, 800SL with laps (non-empty laps)
-- Individual, 50m (empty laps)
-- Relay 4x50 MI, with swimmers listed, no laps
-- Relay 4x50 SL, with swimmers listed, laps if present
-- Ranking section present vs absent
 
 ## Running notes
 
