@@ -101,31 +101,60 @@ This plan tracks the redesign of the Data-Fix pipeline to reduce memory footprin
   - [x] 1.3 Add action-level param flags (e.g., `phase_v2`, `phase2_v2`, `phase3_v2`)
 
 - [ ] 2. Phase 1
-  - [ ] 2.1 Finish `Phase1Solver` date/venue extraction and tests
+  - [x] 2.1 Finish `Phase1Solver` date/venue extraction and tests
   - [x] 2.2 Implement `/review_sessions` in `DataFixController` to read/write `phase1.json` (renders v2 view)
   - [x] 2.3 Update views to load only Phase 1 payload (no large `data_hash`)
-  - [ ] 2.4 UI: phase 1 must allow user to edit both the meeting details and all session matches, change the meeting or session details (not the keys for the data_hash) or add new sessions;
-    - [ ] 2.4.1 the meeting edit form must include:
-      - a dropdown list of the existing meetings matches found, that allows to overwrite all meeting details when selecting an item (including the meeting ID - if an ID remains nil it implies a new record)
-      - a season selector
-      - all meeting details (date, name)
-    - [ ] 2.4.2 the session edit form must be available for any listed session and must include:
-      - a dropdown list of the existing sessions matches found, that allows to overwrite all session details when selecting an item (including the meeting session ID)
-      - a date picker for editing the session date
-      - all venue and pool details for the session
-      - all city details for the session
+  - [ ] 2.4 UI: Meeting & Sessions editing
+    - [x] 2.4.1 Meeting edit form (see legacy `_meeting_form.html.haml` for reference):
+      - [x] Fuzzy matches dropdown (pre-populated from solver via Phase1Solver#find_meeting_matches)
+      - [x] AutoComplete search component for manual DB lookup (search by `description`)
+      - [x] All required meeting fields: id, description, code, season_id, header_year, header_date, edition, edition_type_id, timing_type_id, cancelled, confirmed, max_individual_events, max_individual_events_per_session
+      - [x] Season selector (numeric field)
+      - [x] Date picker (header_date field)
+      - [x] Coded-name controller integration for auto-generating `code` from `description`
+      - [x] Controller updated to handle all new meeting fields
+    - [ ] 2.4.2 Session edit form for each session (see legacy `_meeting_session_form.html.haml`):
+      - Session fields: id, description, session_order, scheduled_date, day_part_type_id
+      - Date picker with validation warning icon if blank
+      - Nested SwimmingPool form (see legacy `_swimming_pool_form.html.haml`):
+        - AutoComplete search by pool `name`
+        - Additional dropdown filtered by city_id when city is selected
+        - Fields: id, name, nick_name, address, pool_type_id, lanes_number, maps_uri, plus_code, latitude, longitude, city_id
+        - Dynamic Google Maps search button (constructs URL from name + address + city)
+        - Coded-name controller for nick_name generation
+      - Nested City form (see legacy `_pool_city_form.html.haml`):
+        - AutoComplete search by city `name`, label shows `area`
+        - Fields: id, name, area, zip, country, country_code, latitude, longitude
+    - [ ] 2.4.3 Form submission: single save action per session (saves meeting + session + pool + city)
+    - [ ] 2.4.4 Consider reusing legacy forms vs creating new dedicated components
+    - [ ] 2.4.5 Decide on form submission pattern: keep single `PATCH /data_fix/update` or split into `PATCH /data_fix/update_meeting`, etc.
 
-- [ ] 3. Phase 2
+- [ ] 3. Phase 2 (Teams)
   - [x] 3.1 Implement `TeamSolver` with LT4 team seeding and LT2 fallback
   - [ ] 3.2 Implement `/review_teams` in `DataFixController` using `phase2.json`
   - [x] 3.3 Paginate team keys
-  - [ ] 3.4 UI: allow user to edit team matches, change the team name (not the key) or add new teams; the team edit form must be available for any listed team and must include a search box for manual search, that allows to overwrite team details with the search results (including the team ID)
+  - [ ] 3.4 UI: Team editing (see legacy `_team_form.html.haml` for reference)
+    - [ ] 3.4.1 Paginated team list with edit form per team
+    - [ ] 3.4.2 Fuzzy matches dropdown (pre-populated from solver)
+    - [ ] 3.4.3 AutoComplete search component (search by `name`, label shows `editable_name`)
+    - [ ] 3.4.4 Team fields: id, name, editable_name, name_variations, city_id
+    - [ ] 3.4.5 Nested City AutoComplete (same as Phase 1, search by `name`)
+    - [ ] 3.4.6 Mandatory selection: operator MUST select from matches or perform manual search before saving
+    - [ ] 3.4.7 Save action per team (or batch save for page)
 
-- [ ] 4. Phase 3
+- [ ] 4. Phase 3 (Swimmers)
   - [x] 4.1 Implement `SwimmerSolver` with LT4 swimmer seeding, badge building
   - [ ] 4.2 Implement `/review_swimmers` in `DataFixController` using `phase3.json`
   - [x] 4.3 Paginate swimmer keys
-  - [ ] 4.4 UI: allow user to edit swimmer matches, change the swimmer name (not the key) or add new swimmers; the swimmer edit form must be available for any listed swimmer and must include a search box for manual search, that allows to overwrite swimmer details with the search results (including the swimmer ID)
+  - [ ] 4.4 UI: Swimmer editing (see legacy `_swimmer_form.html.haml` for reference)
+    - [ ] 4.4.1 Paginated swimmer list with edit form per swimmer
+    - [ ] 4.4.2 Fuzzy matches dropdown (pre-populated from solver, displays: "COMPLETE_NAME (GENDER, YOB)")
+    - [ ] 4.4.3 AutoComplete search component (search by `complete_name` with secondary filter by `year_of_birth`)
+    - [ ] 4.4.4 Swimmer fields: id, complete_name, first_name, last_name, year_of_birth, gender_type_id
+    - [ ] 4.4.5 Field validation: names uppercase, year range 1910..current_year
+    - [ ] 4.4.6 Mandatory selection: operator MUST select from matches or perform manual search
+    - [ ] 4.4.7 Badge creation: implicit, linked to swimmer_id + team_id + season_id
+    - [ ] 4.4.8 Save action per swimmer (or batch save for page)
 
 - [ ] 5. Phase 4
   - [ ] 5.1 Implement `EventProgramSolver` with per-section index
@@ -148,14 +177,254 @@ This plan tracks the redesign of the Data-Fix pipeline to reduce memory footprin
   - `SwimmerSolver`: LT4 swimmer seeding vs LT2 scan, badge composition
   - `EventProgramSolver`: section index, category/gender mapping
   - `ResultsSolver`: MIR/MRR/laps mapping (including relay lap inline keys fidelity)
+
+- Component tests
+  - `AutoCompleteComponent` (existing spec at `spec/components/auto_complete_component_spec.rb`)
+    - **Current coverage**: basic parameter rendering, data attribute verification
+    - **Missing coverage**: edge cases (API failures, empty results, JWT expiration), multi-target updates, inline vs remote data modes
+    - **Recommended additions**:
+      - Test with inline payload (no API calls)
+      - Test with remote API (mock API responses)
+      - Test secondary filtering (search2_column + search2_dom_id)
+      - Test multi-target updates (verify all 12 external targets)
+      - Test error states (network failures, 401/403 responses)
+      - Test cascading lookups (e.g., SwimmingPool → City via city_id)
+
 - Integration tests per phase flow (Phase 1 → Phase 2 → Phase 3, etc.)
+  - Test complete workflow: upload → phase1 → phase2 → phase3 → phase4 → phase5 → commit
+  - Test editing and re-saving entities within each phase
+  - Test pagination in phase 2/3 (teams/swimmers)
+  - Test form validation and error messages
+
 - Performance harness measuring memory/time on heavy relay files
+  - Benchmark memory usage: legacy (full load) vs new (streaming)
+  - Measure file I/O overhead for phase files
+  - Profile phase transitions (reading/writing JSON)
 
-## UI/UX
+## UI/UX Requirements
 
-- Add feature buttons to trigger v2 flows per step (action params)
-- Maintain pagination; ensure server-side pagination does not load full dicts
-- Stream subsets (per-section) in events/results
+### General Principles
+
+- **Mandatory selection from matches**: When existing entity matches are found during the initial scanning/solver phase, the operator MUST select from drop-downs before proceeding. This ensures data consistency and prevents duplicate records.
+- **Quick database search**: For each entity type, provide a dedicated search mechanism allowing operators to query existing database rows using entity-specific search criteria.
+- **Pagination**: Maintain server-side pagination; ensure pagination does not load full dictionaries into memory.
+- **Streaming**: Stream subsets (per-section) in events/results to manage memory efficiently.
+
+### Entity-Specific Search Fields
+
+Each entity requires specific search capabilities:
+
+- **Swimmer**: search by `complete_name` (may include secondary filter by `year_of_birth`)
+- **Team**: search by `name`
+- **Meeting**: search by `description`
+- **SwimmingPool**: search by `name` (with optional associated `City` lookup via `city_id`)
+- **City**: search by `name`
+- **MeetingSession**: linked to sessions array, searchable by date and description
+- **MeetingEvent**: searchable by event type label/code
+
+### Component Options
+
+#### Option A: Reuse AutoCompleteComponent (Recommended for Phase 1-3)
+
+**Advantages:**
+- Already implemented and tested
+- Supports JWT-authenticated API calls
+- Multi-tiered search (e.g., pool → city via `city_id`)
+- Can update up to 12 target DOM nodes on selection
+- Works with Bootstrap modals
+- Supports both inline payload and remote API data sources
+- Supports secondary filtering (e.g., swimmers by name + year_of_birth)
+
+**Current capabilities:**
+- Base entity ID field + search field
+- Up to 2 internal target fields (field2, field3)
+- Up to 9 external target fields (target4..target12) via DOM IDs
+- Automatic detail retrieval via optional detail endpoint
+- Description label updates on selection
+
+**Required updates:**
+- Enhance specs for edge cases (missing matches, API failures)
+- Add integration tests with actual API endpoints
+- Consider adding loading/error states to UI
+
+#### Option B: Create New Dedicated Components
+
+**When to consider:**
+- If AutoCompleteComponent becomes too complex for maintenance
+- If we need significantly different UX patterns
+- If we want to move away from jQuery dependency (currently uses EasyAutocomplete)
+
+**If creating new components, maintain these features:**
+- JWT authentication support
+- Multi-field updates on selection
+- Inline and remote data support
+- Secondary filter capability
+- Clear error states
+
+### Forms and Field Requirements
+
+Based on legacy forms, each phase requires these fields:
+
+#### Phase 1 (Meeting & Sessions)
+
+**Meeting fields** (`_meeting_form.html.haml`):
+- `id` (with fuzzy matches dropdown + AutoComplete search)
+- `description` (required, main search field)
+- `code` (required, auto-generated via coded-name controller)
+- `season_id` (required, numeric)
+- `header_year` (required, format: "YYYY/YYYY+1")
+- `header_date` (required, date picker with warning icon if blank)
+- `edition` (required, numeric)
+- `edition_type_id` (required, dropdown)
+- `timing_type_id` (required, dropdown)
+- `cancelled` (checkbox)
+- `confirmed` (checkbox, default true)
+- `max_individual_events` (required, default: 3)
+- `max_individual_events_per_session` (required, default: 3)
+
+**AutoComplete config for Meeting:**
+- `search_endpoint`: 'meetings'
+- `search_column`: 'description'
+- `detail_endpoint`: 'meeting'
+- External targets: description, code, season_id, header_year, header_date, edition, edition_type_id, timing_type_id, cancelled, confirmed
+
+**MeetingSession fields** (`_meeting_session_form.html.haml`):
+- `id` (meeting_session_id, numeric)
+- `description` (required)
+- `session_order` (required, numeric)
+- `scheduled_date` (required, date picker with warning icon if blank)
+- `day_part_type_id` (dropdown)
+- References nested SwimmingPool and City forms
+
+**SwimmingPool fields** (`_swimming_pool_form.html.haml`):
+- `id` (swimming_pool_id, with existing pools dropdown filtered by city_id)
+- `name` (required, main search field)
+- `nick_name` (required, coded name via coded-name controller)
+- `address`
+- `pool_type_id` (dropdown)
+- `lanes_number` (numeric)
+- `maps_uri` (with dynamic Google Maps search button)
+- `plus_code`
+- `latitude`
+- `longitude`
+- `city_id` (linked to City form)
+
+**AutoComplete config for SwimmingPool:**
+- `search_endpoint`: 'swimming_pools'
+- `search_column`: 'name'
+- `detail_endpoint`: 'swimming_pool'
+- External targets: name, nick_name, address, pool_type_id, lanes_number, maps_uri, latitude, longitude, plus_code, city_id
+
+**City fields** (`_pool_city_form.html.haml`):
+- `id` (city_id)
+- `name` (main search field)
+- `area`
+- `zip`
+- `country`
+- `country_code`
+- `latitude`
+- `longitude`
+
+**AutoComplete config for City:**
+- `search_endpoint`: 'cities'
+- `search_column`: 'name'
+- `detail_endpoint`: 'city'
+- `label_column`: 'area'
+- External targets: name, area, zip, country, country_code, latitude, longitude
+
+#### Phase 2 (Teams)
+
+**Team fields** (`_team_form.html.haml`):
+- `id` (with fuzzy matches dropdown + AutoComplete search)
+- `name` (required, main search field)
+- `editable_name` (required, display name)
+- `name_variations` (optional, pipe-separated aliases)
+- `city_id` (nested City AutoComplete, see above)
+
+**AutoComplete config for Team:**
+- `search_endpoint`: 'teams'
+- `search_column`: 'name'
+- `detail_endpoint`: 'team'
+- `label_column`: 'editable_name'
+- External targets: editable_name, city_id, name, name_variations
+
+#### Phase 3 (Swimmers)
+
+**Swimmer fields** (`_swimmer_form.html.haml`):
+- `id` (with fuzzy matches dropdown + AutoComplete search)
+- `complete_name` (required, computed from first + last)
+- `first_name` (required, uppercase)
+- `last_name` (required, uppercase)
+- `year_of_birth` (required, numeric, range: 1910..current_year)
+- `gender_type_id` (dropdown)
+
+**AutoComplete config for Swimmer:**
+- `search_endpoint`: 'swimmers'
+- `search_column`: 'complete_name'
+- `detail_endpoint`: 'swimmer'
+- `label_column`: 'complete_name'
+- `search2_column`: 'year_of_birth' (secondary filter)
+- `search2_dom_id`: year_of_birth field DOM ID
+- External targets: gender_type_id, last_name, first_name, complete_name
+
+**Badge fields** (implicit, derived from Swimmer):
+- `team_id` (from phase 2)
+- `season_id` (from phase 1)
+- `swimmer_id` (from current phase)
+
+#### Phase 4 (Events/Programs)
+
+**MeetingEvent fields** (`_event_form.html.haml`):
+- `meeting_session_key` (dropdown selector, index into sessions array)
+- `event_order` (required, numeric, min: 0)
+- `begin_time` (time picker, min: '07:30', step: 15 min)
+- `event_type_id` (AutoComplete with inline payload)
+- `heat_type_id` (dropdown)
+
+**AutoComplete config for EventType:**
+- Uses inline `payload` (not remote API)
+- `search_column`: 'label_column'
+- `label_column`: 'long_label'
+- `base_name`: 'event_type'
+
+**MeetingProgram fields** (implicit):
+- Derived from MeetingEvent + category/gender from section data
+- `category_type_id`
+- `gender_type_id`
+
+#### Phase 5 (Results)
+
+**Read-only summary display**:
+- No editing forms required
+- Display aggregated statistics
+- Show validation warnings (missing links, invalid times, etc.)
+- Provide pre-commit checklist
+
+### Additional UI Components Required
+
+1. **Fuzzy matches dropdown**: Pre-populated select element showing solver-found matches, with `onchange` event to copy selected ID to AutoComplete target
+2. **Dynamic Google Maps search button**: Constructs search URL from pool name + address + city
+3. **Coded-name controller** (existing): Auto-generates standardized codes from descriptive names
+4. **Validation indicators**: Warning icons for missing required dates/fields
+5. **Confirmation dialogs**: On save actions with i18n messages
+6. **Pagination controls**: For team/swimmer review pages
+
+### Form Submission Pattern
+
+All legacy forms use:
+```ruby
+form_for(entity, url: data_fix_update_path(entity, model: '<model_name>'), method: :patch)
+```
+
+With hidden fields:
+- `key`: entity key in data hash (for retrieval)
+- `dom_valid_key`: sanitized key for DOM IDs (underscores replace special chars)
+- `file_path`: path to JSON file being processed
+
+**TODO for new implementation:**
+- Decide if we keep single `PATCH /data_fix/update` action or split into per-phase dedicated actions
+- Current single action is "convoluted unmaintainable mess" per refactoring doc
+- Recommend: dedicated actions per phase (e.g., `PATCH /data_fix/update_team`, `PATCH /data_fix/update_swimmer`)
 
 ## Risks and Mitigations
 
@@ -167,7 +436,53 @@ This plan tracks the redesign of the Data-Fix pipeline to reduce memory footprin
 - Operator workload on Phase 1 for LT4
   - Keep forms ergonomic; provide sensible defaults from header/filename
 
+## Component Reuse Decision
+
+### Recommendation: **Reuse AutoCompleteComponent for Phases 1-3**
+
+**Rationale:**
+
+1. **Proven implementation**: Already handles complex scenarios (multi-target updates, JWT auth, cascading lookups)
+2. **Comprehensive feature set**: Supports all required use cases (inline/remote data, secondary filtering, 12 external targets)
+3. **Legacy compatibility**: Current legacy forms already use it extensively
+4. **Time efficiency**: Avoids reimplementing complex functionality
+5. **Risk reduction**: Well-tested component vs new untested code
+
+**Action items:**
+
+- Enhance existing specs (`spec/components/auto_complete_component_spec.rb`) with edge cases
+- Add integration tests with mocked API responses
+- Consider UI improvements (loading states, error messages)
+- Document component usage patterns for new developers
+
+**When to reconsider:**
+
+- If jQuery dependency becomes a blocker (framework migration)
+- If AutoCompleteComponent complexity becomes unmaintainable
+- If significant UX changes require different interaction patterns
+
+### Form Reuse Decision
+
+**Recommendation: Reuse legacy form partials as starting point, refactor incrementally**
+
+**Approach:**
+
+1. Copy legacy form partials to new phase-specific views
+2. Remove unnecessary data_hash dependencies
+3. Adapt to phase file structure (phase1.json, phase2.json, etc.)
+4. Keep AutoCompleteComponent integration intact
+5. Refactor progressively based on testing feedback
+
+**Benefits:**
+
+- Faster initial implementation
+- Proven field layouts and validation patterns
+- Maintains operator familiarity
+- Reduces risk of missing critical fields
+
 ## Decision Log
 
-- 2025-09-15: proceed with separate new controller (`DataFixController`), keep legacy controller as fallback
-- Action-level flags preferred over env flags to enable UI buttons
+- 2025-09-30: Documented detailed UI/UX requirements based on legacy forms analysis
+- 2025-09-30: Recommended reusing AutoCompleteComponent for Phases 1-3
+- 2025-09-15: Proceed with separate new controller (`DataFixController`), keep legacy controller as fallback
+- 2025-09-15: Action-level flags preferred over env flags to enable UI buttons

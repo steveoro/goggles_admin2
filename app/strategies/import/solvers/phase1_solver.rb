@@ -57,6 +57,9 @@ module Import
         # Dates
         set_dates!(payload, data_hash, lt_format)
 
+        # Find potential meeting matches
+        payload['meeting_fuzzy_matches'] = find_meeting_matches(payload)
+
         # Write phase file
         phase_path = opts[:phase_path] || default_phase_path_for(source_path, 1)
         pfm = PhaseFileManager.new(phase_path)
@@ -106,9 +109,13 @@ module Import
 
       def set_dates!(out, h, lt)
         if lt == 2
-          # Already split in LT2-style
-          nil if out['dateYear1'].present?
-
+          # Preserve LT2 date fields as-is
+          out['dateYear1'] = h['dateYear1']
+          out['dateMonth1'] = h['dateMonth1']
+          out['dateDay1'] = h['dateDay1']
+          out['dateYear2'] = h['dateYear2']
+          out['dateMonth2'] = h['dateMonth2']
+          out['dateDay2'] = h['dateDay2']
         elsif lt == 4
           if h['dates'].is_a?(String)
             parts = h['dates'].split(',')
@@ -136,6 +143,22 @@ module Import
         %w[Gennaio Febbraio Marzo Aprile Maggio Giugno Luglio Agosto Settembre Ottobre Novembre Dicembre][i - 1]
       rescue StandardError
         nil
+      end
+
+      # Find potential meeting matches by searching for meetings with similar description in the same season
+      # Returns array of hashes with id and description
+      def find_meeting_matches(payload)
+        return [] unless payload['name'].present? && payload['season_id'].present?
+
+        # Search for meetings with similar names in the same season
+        search_term = payload['name'].to_s.strip
+        GogglesDb::Meeting.where(season_id: payload['season_id'])
+                          .where('description LIKE ?', "%#{search_term.split.first(3).join('%')}%")
+                          .limit(10)
+                          .map { |m| { 'id' => m.id, 'description' => m.description } }
+      rescue StandardError => e
+        @logger&.warn("Phase1Solver: error finding meeting matches: #{e.message}")
+        []
       end
     end
   end

@@ -49,70 +49,212 @@
 
       <hr />
       <h6>Edit meeting</h6>
-      <%= form_tag(update_phase1_meeting_path, method: :patch, class: 'form') do %>
+      <%= form_tag(update_phase1_meeting_path, method: :patch, class: 'form', data: { controller: 'coded-name', 'coded-name-result-type-value' => 'code', 'coded-name-jwt-value' => current_user.jwt }) do %>
         <%= hidden_field_tag :file_path, @file_path %>
+        
+        <%# Fuzzy matches dropdown + AutoCompleteComponent %>
         <div class="form-row">
-          <div class="form-group col-md-2">
-            <label>Season ID</label>
-            <%= number_field_tag :season_id, @phase1_data['season_id'], class: 'form-control form-control-sm', min: 1, step: 1, placeholder: 'e.g. 242', title: 'Positive integer' %>
-            <small class="form-text text-muted">Positive integer.</small>
+          <div class="form-group col-md-6">
+            <label for="meeting_search">Fuzzy Matches (from solver)</label>
+            <% 
+              fuzzy_matches = @phase1_data['meeting_fuzzy_matches'] || []
+              src_dom = '#meeting_search'
+              target_dom = '#meeting_meeting_id'
+              onchange_event = "$('#{target_dom}').val($('#{src_dom}').val()); $('#{target_dom}').trigger('change')"
+            %>
+            <%= select_tag('meeting_search', 
+                          options_for_select(fuzzy_matches.map { |m| [m['description'], m['id']] }, nil),
+                          include_blank: true, 
+                          class: 'form-control form-control-sm', 
+                          onchange: onchange_event) %>
+            <small class="form-text text-muted">Select to populate from existing meeting</small>
           </div>
           <div class="form-group col-md-6">
-            <label>Name</label>
-            <%= text_field_tag :name, @phase1_data['name'], class: 'form-control form-control-sm', required: true, maxlength: 200, placeholder: 'Meeting name', title: 'Required' %>
-            <small class="form-text text-muted">Required.</small>
-          </div>
-          <div class="form-group col-md-4">
-            <label>Meeting URL</label>
-            <%= text_field_tag :meetingURL, @phase1_data['meetingURL'], class: 'form-control form-control-sm', pattern: 'https?://.*', placeholder: 'https://...', title: 'Optional; must start with http(s) if provided' %>
-            <small class="form-text text-muted">Optional; must start with http(s) if provided.</small>
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group col-md-2">
-            <label>Date Day 1</label>
-            <%= number_field_tag :dateDay1, @phase1_data['dateDay1'], class: 'form-control form-control-sm', min: 1, max: 31, step: 1, placeholder: 'DD' %>
-          </div>
-          <div class="form-group col-md-2">
-            <label>Date Month 1</label>
-            <%= number_field_tag :dateMonth1, @phase1_data['dateMonth1'], class: 'form-control form-control-sm', min: 1, max: 12, step: 1, placeholder: 'MM' %>
-          </div>
-          <div class="form-group col-md-2">
-            <label>Date Year 1</label>
-            <%= number_field_tag :dateYear1, @phase1_data['dateYear1'], class: 'form-control form-control-sm', min: 1900, max: 2100, step: 1, placeholder: 'YYYY' %>
-          </div>
-          <div class="form-group col-md-2">
-            <label>Date Day 2</label>
-            <%= number_field_tag :dateDay2, @phase1_data['dateDay2'], class: 'form-control form-control-sm', min: 1, max: 31, step: 1, placeholder: 'DD' %>
-          </div>
-          <div class="form-group col-md-2">
-            <label>Date Month 2</label>
-            <%= number_field_tag :dateMonth2, @phase1_data['dateMonth2'], class: 'form-control form-control-sm', min: 1, max: 12, step: 1, placeholder: 'MM' %>
-          </div>
-          <div class="form-group col-md-2">
-            <label>Date Year 2</label>
-            <%= number_field_tag :dateYear2, @phase1_data['dateYear2'], class: 'form-control form-control-sm', min: 1900, max: 2100, step: 1, placeholder: 'YYYY' %>
+            <%= render(AutoCompleteComponent.new(
+              show_top_labels: true,
+              base_dom_id: 'meeting',
+              base_api_url: GogglesDb::API_URL,
+              detail_endpoint: 'meeting',
+              base_name: 'meeting',
+              label_column: 'description',
+              search_endpoint: 'meetings',
+              search_column: 'description',
+              target3_dom_id: 'meeting_description',
+              target3_column: 'description',
+              target4_dom_id: 'meeting_code',
+              target4_column: 'code',
+              target5_dom_id: 'meeting_season_id',
+              target5_column: 'season_id',
+              target6_dom_id: 'meeting_header_year',
+              target6_column: 'header_year',
+              target7_dom_id: 'meeting_header_date',
+              target7_column: 'header_date',
+              target8_dom_id: 'meeting_edition',
+              target8_column: 'edition',
+              target9_dom_id: 'meeting_edition_type_id',
+              target9_column: 'edition_type_id',
+              target10_dom_id: 'meeting_timing_type_id',
+              target10_column: 'timing_type_id',
+              target11_dom_id: 'meeting_cancelled',
+              target11_column: 'cancelled',
+              target12_dom_id: 'meeting_confirmed',
+              target12_column: 'confirmed',
+              jwt: current_user.jwt
+            )) %>
+            <small class="form-text text-muted">Or search manually by description</small>
           </div>
         </div>
+
+        <%# Basic fields: description, code %>
         <div class="form-row">
-          <div class="form-group col-md-4">
-            <label>Venue</label>
-            <%= text_field_tag :venue1, @phase1_data['venue1'], class: 'form-control form-control-sm', placeholder: 'Venue name' %>
+          <div class="form-group col-md-8">
+            <label for="meeting_description">Description</label>
+            <%= text_field_tag :description, @phase1_data['name'], 
+                id: 'meeting_description',
+                class: 'form-control form-control-sm', 
+                required: true, 
+                maxlength: 200, 
+                placeholder: 'Meeting description',
+                data: { 'coded-name-target' => 'desc' } %>
           </div>
-          <div class="form-group col-md-6">
-            <label>Address</label>
-            <%= text_field_tag :address1, @phase1_data['address1'], class: 'form-control form-control-sm', placeholder: 'Street, number, ZIP' %>
+          <div class="form-group col-md-4">
+            <label for="meeting_code">Code</label>
+            <%= text_field_tag :code, nil,
+                id: 'meeting_code',
+                class: 'form-control form-control-sm', 
+                placeholder: 'Auto-generated',
+                data: { 'coded-name-target' => 'field' } %>
+          </div>
+        </div>
+
+        <%# Season, header_year, header_date %>
+        <div class="form-row">
+          <div class="form-group col-md-3">
+            <label for="meeting_season_id">Season ID</label>
+            <%= number_field_tag :season_id, @phase1_data['season_id'], 
+                id: 'meeting_season_id',
+                class: 'form-control form-control-sm', 
+                min: 1, step: 1, 
+                placeholder: 'e.g. 242' %>
+          </div>
+          <div class="form-group col-md-3">
+            <label for="meeting_header_year">Header Year</label>
+            <%= text_field_tag :header_year, nil,
+                id: 'meeting_header_year',
+                class: 'form-control form-control-sm', 
+                placeholder: 'YYYY/YYYY+1' %>
+          </div>
+          <div class="form-group col-md-3">
+            <label for="meeting_header_date">Header Date</label>
+            <%= date_field_tag :header_date, nil,
+                id: 'meeting_header_date',
+                class: 'form-control form-control-sm' %>
+          </div>
+          <div class="form-group col-md-3">
+            <label for="meeting_meetingURL">Meeting URL</label>
+            <%= text_field_tag :meetingURL, @phase1_data['meetingURL'], 
+                class: 'form-control form-control-sm', 
+                pattern: 'https?://.*', 
+                placeholder: 'https://...' %>
+          </div>
+        </div>
+
+        <%# Edition, edition_type, timing_type %>
+        <div class="form-row">
+          <div class="form-group col-md-2">
+            <label for="meeting_edition">Edition</label>
+            <%= number_field_tag :edition, nil,
+                id: 'meeting_edition',
+                class: 'form-control form-control-sm', 
+                placeholder: 'edition #' %>
+          </div>
+          <div class="form-group col-md-3">
+            <label for="meeting_edition_type_id">Edition Type</label>
+            <%= select_tag :edition_type_id,
+                options_for_select(GogglesDb::EditionType.all.map { |t| [t.long_label, t.id] }, nil),
+                { include_blank: true, id: 'meeting_edition_type_id', class: 'form-control form-control-sm' } %>
+          </div>
+          <div class="form-group col-md-3">
+            <label for="meeting_timing_type_id">Timing Type</label>
+            <%= select_tag :timing_type_id,
+                options_for_select(GogglesDb::TimingType.all.map { |t| [t.long_label, t.id] }, nil),
+                { include_blank: true, id: 'meeting_timing_type_id', class: 'form-control form-control-sm' } %>
+          </div>
+          <div class="form-group col-md-2">
+            <div class="form-check mt-4">
+              <%= check_box_tag :cancelled, '1', false, id: 'meeting_cancelled', class: 'form-check-input' %>
+              <label class="form-check-label" for="meeting_cancelled">Cancelled</label>
+            </div>
+          </div>
+          <div class="form-group col-md-2">
+            <div class="form-check mt-4">
+              <%= check_box_tag :confirmed, '1', true, id: 'meeting_confirmed', class: 'form-check-input' %>
+              <label class="form-check-label" for="meeting_confirmed">Confirmed</label>
+            </div>
+          </div>
+        </div>
+
+        <%# Max individual events %>
+        <div class="form-row">
+          <div class="form-group col-md-3">
+            <label>Max Individual Events</label>
+            <%= number_field_tag :max_individual_events, 3, class: 'form-control form-control-sm', min: 1 %>
+          </div>
+          <div class="form-group col-md-3">
+            <label>Max Events Per Session</label>
+            <%= number_field_tag :max_individual_events_per_session, 3, class: 'form-control form-control-sm', min: 1 %>
           </div>
           <div class="form-group col-md-2">
             <label>Pool Length</label>
             <% current_len = @phase1_data['poolLength'].to_s %>
             <% options = [['25m', '25'], ['50m', '50']] %>
             <% options << [current_len, current_len] if current_len.present? && !options.map(&:last).include?(current_len) %>
-            <%= select_tag :poolLength, options_for_select(options, current_len), class: 'form-control form-control-sm', title: 'Common values: 25m or 50m' %>
-            <small class="form-text text-muted">Common values: 25m or 50m.</small>
+            <%= select_tag :poolLength, options_for_select(options, current_len), class: 'form-control form-control-sm' %>
           </div>
         </div>
-        <%= submit_tag 'Save meeting', class: 'btn btn-sm btn-primary' %>
+
+        <%# Legacy date fields (keep for compatibility) %>
+        <details class="mb-3">
+          <summary class="text-muted"><small>Legacy date fields (for LT2 compatibility)</small></summary>
+          <div class="form-row mt-2">
+            <div class="form-group col-md-2">
+              <label>Date Day 1</label>
+              <%= number_field_tag :dateDay1, @phase1_data['dateDay1'], class: 'form-control form-control-sm', min: 1, max: 31, step: 1, placeholder: 'DD' %>
+            </div>
+            <div class="form-group col-md-2">
+              <label>Date Month 1</label>
+              <%= number_field_tag :dateMonth1, @phase1_data['dateMonth1'], class: 'form-control form-control-sm', min: 1, max: 12, step: 1, placeholder: 'MM' %>
+            </div>
+            <div class="form-group col-md-2">
+              <label>Date Year 1</label>
+              <%= number_field_tag :dateYear1, @phase1_data['dateYear1'], class: 'form-control form-control-sm', min: 1900, max: 2100, step: 1, placeholder: 'YYYY' %>
+            </div>
+            <div class="form-group col-md-2">
+              <label>Date Day 2</label>
+              <%= number_field_tag :dateDay2, @phase1_data['dateDay2'], class: 'form-control form-control-sm', min: 1, max: 31, step: 1, placeholder: 'DD' %>
+            </div>
+            <div class="form-group col-md-2">
+              <label>Date Month 2</label>
+              <%= number_field_tag :dateMonth2, @phase1_data['dateMonth2'], class: 'form-control form-control-sm', min: 1, max: 12, step: 1, placeholder: 'MM' %>
+            </div>
+            <div class="form-group col-md-2">
+              <label>Date Year 2</label>
+              <%= number_field_tag :dateYear2, @phase1_data['dateYear2'], class: 'form-control form-control-sm', min: 1900, max: 2100, step: 1, placeholder: 'YYYY' %>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group col-md-6">
+              <label>Venue</label>
+              <%= text_field_tag :venue1, @phase1_data['venue1'], class: 'form-control form-control-sm', placeholder: 'Venue name' %>
+            </div>
+            <div class="form-group col-md-6">
+              <label>Address</label>
+              <%= text_field_tag :address1, @phase1_data['address1'], class: 'form-control form-control-sm', placeholder: 'Street, number, ZIP' %>
+            </div>
+          </div>
+        </details>
+
+        <%= submit_tag 'Save meeting', class: 'btn btn-sm btn-primary', data: { confirm: 'Save meeting data?' } %>
       <% end %>
     </div>
   </div>

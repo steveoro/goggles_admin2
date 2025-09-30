@@ -249,7 +249,7 @@ class DataFixController < ApplicationController
   # rubocop:enable Metrics/AbcSize
 
   # Update Phase 1 meeting attributes in the phase file and redirect back to v2 view
-  # rubocop:disable Metrics/AbcSize
+  # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
   def update_phase1_meeting
     file_path = params[:file_path]
     if file_path.blank?
@@ -262,7 +262,11 @@ class DataFixController < ApplicationController
     pfm = PhaseFileManager.new(phase_path)
     data = pfm.data || {}
 
-    meeting_params = params.permit(:season_id, :name, :meetingURL,
+    meeting_params = params.permit(:season_id, :description, :code, :name, :meetingURL,
+                                   :header_year, :header_date, :edition,
+                                   :edition_type_id, :timing_type_id,
+                                   :cancelled, :confirmed,
+                                   :max_individual_events, :max_individual_events_per_session,
                                    :dateDay1, :dateMonth1, :dateYear1,
                                    :dateDay2, :dateMonth2, :dateYear2,
                                    :venue1, :address1, :poolLength)
@@ -275,14 +279,20 @@ class DataFixController < ApplicationController
         return redirect_to(review_sessions_path(file_path:, phase_v2: 1))
       end
     end
-    # Normalize values: strip strings, cast integers, constrain poolLength
+    # Normalize values: strip strings, cast integers, booleans
     normalized = {}
     meeting_params.each do |k, v|
       key = k.to_s
       val = v
       case key
-      when 'season_id', 'dateDay1', 'dateMonth1', 'dateYear1', 'dateDay2', 'dateMonth2', 'dateYear2'
+      when 'season_id', 'edition', 'edition_type_id', 'timing_type_id',
+           'max_individual_events', 'max_individual_events_per_session',
+           'dateDay1', 'dateMonth1', 'dateYear1', 'dateDay2', 'dateMonth2', 'dateYear2'
         normalized[key] = val.present? ? val.to_i : nil
+      when 'cancelled', 'confirmed'
+        normalized[key] = val.present? && val != '0'
+      when 'header_date'
+        normalized[key] = val.present? ? val.to_s.strip : nil
       when 'poolLength'
         vstr = (val || '').to_s.strip
         normalized[key] = vstr.presence # already validated against allowed values
@@ -290,6 +300,10 @@ class DataFixController < ApplicationController
         normalized[key] = sanitize_str(val)
       end
     end
+    
+    # Map 'description' to 'name' for phase file compatibility
+    normalized['name'] = normalized.delete('description') if normalized.key?('description')
+    
     normalized.each { |k, v| data[k] = v }
 
     meta = pfm.meta || {}
@@ -298,7 +312,7 @@ class DataFixController < ApplicationController
 
     redirect_to review_sessions_path(file_path:, phase_v2: 1), notice: I18n.t('data_import.messages.updated')
   end
-  # rubocop:enable Metrics/AbcSize
+  # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
 
   # Update a single Phase 1 session entry by index
   # rubocop:disable Metrics/AbcSize
