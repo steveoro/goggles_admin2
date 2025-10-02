@@ -6,6 +6,8 @@
 # redirects to legacy controller actions to preserve current behavior.
 #
 class DataFixController < ApplicationController
+  before_action :set_api_url
+
   # rubocop:disable Metrics/AbcSize
   def review_sessions
     if params[:phase_v2].present?
@@ -221,9 +223,7 @@ class DataFixController < ApplicationController
 
     t = teams[team_index] || {}
     team_params = params.permit(:name, :team_id)
-    if team_params.key?(:name)
-      t['name'] = sanitize_str(team_params[:name])
-    end
+    t['name'] = sanitize_str(team_params[:name]) if team_params.key?(:name)
     if team_params.key?(:team_id)
       raw = team_params[:team_id].to_s.strip
       if raw.present?
@@ -300,10 +300,10 @@ class DataFixController < ApplicationController
         normalized[key] = sanitize_str(val)
       end
     end
-    
+
     # Map 'description' to 'name' for phase file compatibility
     normalized['name'] = normalized.delete('description') if normalized.key?('description')
-    
+
     normalized.each { |k, v| data[k] = v }
 
     meta = pfm.meta || {}
@@ -314,8 +314,8 @@ class DataFixController < ApplicationController
   end
   # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
 
-  # Update a single Phase 1 session entry by index
-  # rubocop:disable Metrics/AbcSize
+  # Update a single Phase 1 session entry by index (with nested pool and city data)
+  # rubocop:disable Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity
   def update_phase1_session
     file_path = params[:file_path]
     session_index = params[:session_index].to_i
@@ -335,8 +335,20 @@ class DataFixController < ApplicationController
     end
 
     sess = sessions[session_index] || {}
-    session_params = params.permit(:description, :scheduled_date, :pool_name, city: [:name])
-    # Normalize and validate
+
+    # Permit all session, pool, and city parameters
+    session_params = params.permit(:meeting_session_id, :description, :session_order, :scheduled_date, :day_part_type_id,
+                                   pool: %i[name nick_name address pool_type_id lanes_number
+                                            maps_uri plus_code latitude longitude],
+                                   city: %i[name area zip country country_code latitude longitude])
+
+    # Update session fields
+    sess['id'] = session_params[:meeting_session_id].to_i if session_params[:meeting_session_id].present?
+    sess['description'] = sanitize_str(session_params[:description]) if session_params.key?(:description)
+    sess['session_order'] = session_params[:session_order].to_i if session_params[:session_order].present?
+    sess['day_part_type_id'] = session_params[:day_part_type_id].to_i if session_params[:day_part_type_id].present?
+
+    # Validate and update scheduled_date
     if session_params.key?(:scheduled_date)
       sd = session_params[:scheduled_date].to_s.strip
       if sd.present? && !(sd =~ /\A\d{4}-\d{2}-\d{2}\z/)
@@ -345,16 +357,36 @@ class DataFixController < ApplicationController
       end
       sess['scheduled_date'] = sd
     end
-    if session_params.key?(:description)
-      sess['description'] = sanitize_str(session_params[:description])
+
+    # Update nested swimming_pool
+    if session_params[:pool].is_a?(ActionController::Parameters)
+      sess['swimming_pool'] ||= {}
+      pool_data = session_params[:pool]
+      sess['swimming_pool']['name'] = sanitize_str(pool_data[:name]) if pool_data[:name].present?
+      sess['swimming_pool']['nick_name'] = sanitize_str(pool_data[:nick_name]) if pool_data[:nick_name].present?
+      sess['swimming_pool']['address'] = sanitize_str(pool_data[:address]) if pool_data[:address].present?
+      sess['swimming_pool']['pool_type_id'] = pool_data[:pool_type_id].to_i if pool_data[:pool_type_id].present?
+      sess['swimming_pool']['lanes_number'] = pool_data[:lanes_number].to_i if pool_data[:lanes_number].present?
+      sess['swimming_pool']['maps_uri'] = sanitize_str(pool_data[:maps_uri]) if pool_data.key?(:maps_uri)
+      sess['swimming_pool']['plus_code'] = sanitize_str(pool_data[:plus_code]) if pool_data.key?(:plus_code)
+      sess['swimming_pool']['latitude'] = pool_data[:latitude].to_s.strip if pool_data.key?(:latitude)
+      sess['swimming_pool']['longitude'] = pool_data[:longitude].to_s.strip if pool_data.key?(:longitude)
     end
-    if session_params.key?(:pool_name)
-      sess['pool_name'] = sanitize_str(session_params[:pool_name])
-    end
+
+    # Update nested city
     if session_params[:city].is_a?(ActionController::Parameters)
-      sess['city'] ||= {}
-      sess['city']['name'] = sanitize_str(session_params[:city][:name])
+      sess['swimming_pool'] ||= {}
+      sess['swimming_pool']['city'] ||= {}
+      city_data = session_params[:city]
+      sess['swimming_pool']['city']['name'] = sanitize_str(city_data[:name]) if city_data[:name].present?
+      sess['swimming_pool']['city']['area'] = sanitize_str(city_data[:area]) if city_data[:area].present?
+      sess['swimming_pool']['city']['zip'] = sanitize_str(city_data[:zip]) if city_data.key?(:zip)
+      sess['swimming_pool']['city']['country'] = sanitize_str(city_data[:country]) if city_data[:country].present?
+      sess['swimming_pool']['city']['country_code'] = sanitize_str(city_data[:country_code]) if city_data[:country_code].present?
+      sess['swimming_pool']['city']['latitude'] = city_data[:latitude].to_s.strip if city_data.key?(:latitude)
+      sess['swimming_pool']['city']['longitude'] = city_data[:longitude].to_s.strip if city_data.key?(:longitude)
     end
+
     sessions[session_index] = sess
     data['meeting_session'] = sessions
 
@@ -364,7 +396,7 @@ class DataFixController < ApplicationController
 
     redirect_to review_sessions_path(file_path:, phase_v2: 1), notice: I18n.t('data_import.messages.updated')
   end
-  # rubocop:enable Metrics/AbcSize
+  # rubocop:enable Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity
 
   # Returns an HTML partial with the detailed results for a specific (event_key, gender, category)
   # in Step 5 v2. This reads from the original source JSON (LT4 expected).
@@ -423,10 +455,17 @@ class DataFixController < ApplicationController
 
   private
 
+  # Setter for @api_url
+  def set_api_url
+    @api_url = "#{GogglesDb::AppParameter.config.settings(:framework_urls).api}/api/v3"
+    flash.now[:error] = I18n.t('lookup.errors.api_url_not_set') if @api_url.blank?
+  end
+
   # Minimal string sanitizer for form inputs
   def sanitize_str(val)
     return nil if val.nil?
     return val.strip if val.is_a?(String)
+
     val
   end
 

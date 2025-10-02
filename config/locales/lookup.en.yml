@@ -3,4 +3,5 @@ en:
     placeholder: 'Choose an option'
     placeholder_free: "Choose or add an option"
     errors:
+      api_url_not_set: "API URL not set!"
       invalid_request: "Invalid request!"

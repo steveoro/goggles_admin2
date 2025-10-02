@@ -3,4 +3,5 @@ it:
     placeholder: 'Scegli una delle opzioni'
     placeholder_free: "Scegli o aggiungi un'opzione"
     errors:
+      api_url_not_set: "L'URL API non è stato impostato!"
       invalid_request: "Richiesta non valida!"

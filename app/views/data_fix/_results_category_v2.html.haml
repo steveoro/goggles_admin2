@@ -1,0 +1,45 @@
+-# frozen_string_literal: true
+-# Expects locals via controller ivars: @event_key, @gender, @category, @results
+- cid = "cat-#{@event_key}-#{@gender}-#{@category}".parameterize
+.card{ id: cid }
+  .card-header.d-flex.justify-content-between.align-items-center
+    %div
+      %strong Category:
+      %code= @category
+      &nbsp;•&nbsp;
+      %strong Gender:
+      = @gender
+      &nbsp;•&nbsp;
+      %strong Event:
+      = @event_key
+    %span.badge.badge-info
+      Results:
+      = @results.size
+  .card-body.p-2
+    - if @results.empty?
+      %em No results found for this selection.
+    - else
+      .table-responsive
+        %table.table.table-sm.table-striped.mb-0
+          %thead
+            %tr
+              %th #
+              %th Lane
+              %th Athlete
+              %th Team
+              %th Time
+              %th Notes
+          %tbody
+            - @results.each_with_index do |r, idx|
+              - lane = r['lane'] || r['corsia'] || r['laneNumber']
+              - athlete = r['athlete'] || r['swimmer'] || [r['lastName'], r['firstName']].compact.join(' ')
+              - team = r['team'] || r['societa'] || r['teamName']
+              - time = r['time'] || r['timing'] || r['result'] || r['swimTime']
+              - notes = r['notes'] || r['warnings'] || r['status']
+              %tr
+                %td= r['rank'] || r['position'] || (idx + 1)
+                %td= lane
+                %td= athlete
+                %td= team
+                %td= time
+                %td= notes

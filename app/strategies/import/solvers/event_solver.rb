@@ -27,7 +27,7 @@ module Import
         sessions = []
         if data_hash['sections'].is_a?(Array)
           data_hash['sections'].each_with_index do |sec, idx|
-            rows = (sec['rows'] || [])
+            rows = sec['rows'] || []
             # Prefer explicit session order from JSON; else use index + 1
             session_order = sec['sessionOrder'] || sec['session_order'] || sec['order'] || (idx + 1)
 

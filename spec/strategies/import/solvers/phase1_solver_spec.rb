@@ -9,7 +9,7 @@ RSpec.describe Import::Solvers::Phase1Solver, type: :strategy do
   let(:temp_dir) { Dir.mktmpdir }
   let(:source_file) { File.join(temp_dir, 'sample.json') }
 
-  after { FileUtils.rm_rf(temp_dir) if File.directory?(temp_dir) }
+  after(:each) { FileUtils.rm_rf(temp_dir) if File.directory?(temp_dir) }
 
   describe '#build! with LT2 input' do
     let(:lt2_data) do
@@ -31,12 +31,12 @@ RSpec.describe Import::Solvers::Phase1Solver, type: :strategy do
       }
     end
 
-    before do
+    before(:each) do
       File.write(source_file, JSON.generate(lt2_data))
     end
 
     it 'creates a phase1.json file' do
-      result = solver.build!(source_path: source_file, lt_format: 2)
+      solver.build!(source_path: source_file, lt_format: 2)
       phase_file = source_file.sub('.json', '-phase1.json')
       expect(File).to exist(phase_file)
     end
@@ -59,7 +59,7 @@ RSpec.describe Import::Solvers::Phase1Solver, type: :strategy do
       solver.build!(source_path: source_file, lt_format: 2)
       phase_file = source_file.sub('.json', '-phase1.json')
       data = JSON.parse(File.read(phase_file))['data']
-      # Note: current implementation sets dates to nil, needs to be fixed to preserve LT2 dates
+      # NOTE: current implementation sets dates to nil, needs to be fixed to preserve LT2 dates
       # This test documents expected behavior
       expect([data['dateDay1'], data['dateMonth1'], data['dateYear1']]).to all(be_present).or all(be_nil)
     end
@@ -122,7 +122,7 @@ RSpec.describe Import::Solvers::Phase1Solver, type: :strategy do
       }
     end
 
-    before do
+    before(:each) do
       File.write(source_file, JSON.generate(lt4_data))
     end
 
@@ -191,7 +191,7 @@ RSpec.describe Import::Solvers::Phase1Solver, type: :strategy do
     let(:lt2_data) { { 'layoutType' => 2, 'name' => 'Test Meeting', 'poolLength' => '25' } }
     let(:custom_path) { File.join(temp_dir, 'custom-phase1.json') }
 
-    before do
+    before(:each) do
       File.write(source_file, JSON.generate(lt2_data))
     end
 
@@ -210,7 +210,7 @@ RSpec.describe Import::Solvers::Phase1Solver, type: :strategy do
   describe '#build! with pre-loaded data_hash' do
     let(:data_hash) { { 'layoutType' => 2, 'name' => 'Preloaded Meeting', 'poolLength' => '33' } }
 
-    before do
+    before(:each) do
       # Create empty source file so checksum calculation doesn't fail
       File.write(source_file, '{}')
     end
@@ -234,7 +234,7 @@ RSpec.describe Import::Solvers::Phase1Solver, type: :strategy do
       }
     end
 
-    before do
+    before(:each) do
       File.write(source_file, JSON.generate(lt4_data))
     end
 
@@ -264,6 +264,101 @@ RSpec.describe Import::Solvers::Phase1Solver, type: :strategy do
 
     it 'raises error if source file does not exist' do
       expect { solver.build!(source_path: '/nonexistent/file.json') }.to raise_error(Errno::ENOENT)
+    end
+  end
+
+  describe 'fuzzy meeting matches' do
+    let!(:meeting1) do
+      FactoryBot.create(:meeting,
+                        season: season,
+                        description: 'Regional Championship 2024 - Winter')
+    end
+    let!(:meeting2) do
+      FactoryBot.create(:meeting,
+                        season: season,
+                        description: 'Regional Championship 2024 - Spring')
+    end
+    let!(:meeting_other_season) do
+      FactoryBot.create(:meeting,
+                        description: 'Regional Championship 2024 - Other Season')
+    end
+    let(:lt2_data) do
+      {
+        'layoutType' => 2,
+        'name' => 'Regional Championship 2024',
+        'poolLength' => '25'
+      }
+    end
+
+    before(:each) do
+      File.write(source_file, JSON.generate(lt2_data))
+    end
+
+    it 'includes fuzzy matches in phase1 data' do
+      solver.build!(source_path: source_file, lt_format: 2)
+      phase_file = source_file.sub('.json', '-phase1.json')
+      data = JSON.parse(File.read(phase_file))['data']
+      expect(data['meeting_fuzzy_matches']).to be_an(Array)
+    end
+
+    it 'finds meetings with similar names in the same season' do
+      solver.build!(source_path: source_file, lt_format: 2)
+      phase_file = source_file.sub('.json', '-phase1.json')
+      matches = JSON.parse(File.read(phase_file))['data']['meeting_fuzzy_matches']
+
+      match_ids = matches.map { |m| m['id'] }
+      expect(match_ids).to include(meeting1.id)
+      expect(match_ids).to include(meeting2.id)
+    end
+
+    it 'excludes meetings from other seasons' do
+      solver.build!(source_path: source_file, lt_format: 2)
+      phase_file = source_file.sub('.json', '-phase1.json')
+      matches = JSON.parse(File.read(phase_file))['data']['meeting_fuzzy_matches']
+
+      match_ids = matches.map { |m| m['id'] }
+      expect(match_ids).not_to include(meeting_other_season.id)
+    end
+
+    it 'returns empty array when no matches found' do
+      lt2_data['name'] = 'XYZ Completely Different Meeting Name 9999'
+      File.write(source_file, JSON.generate(lt2_data))
+
+      solver.build!(source_path: source_file, lt_format: 2)
+      phase_file = source_file.sub('.json', '-phase1.json')
+      matches = JSON.parse(File.read(phase_file))['data']['meeting_fuzzy_matches']
+
+      expect(matches).to be_an(Array)
+      expect(matches).to be_empty
+    end
+
+    it 'includes meeting id and description in matches' do
+      solver.build!(source_path: source_file, lt_format: 2)
+      phase_file = source_file.sub('.json', '-phase1.json')
+      matches = JSON.parse(File.read(phase_file))['data']['meeting_fuzzy_matches']
+
+      if matches.any?
+        first_match = matches.first
+        expect(first_match).to have_key('id')
+        expect(first_match).to have_key('description')
+        expect(first_match['id']).to be_a(Integer)
+        expect(first_match['description']).to be_a(String)
+      end
+    end
+
+    it 'limits results to 10 matches' do
+      # Create 15 meetings with similar names
+      15.times do |i|
+        FactoryBot.create(:meeting,
+                          season: season,
+                          description: "Regional Championship #{i}")
+      end
+
+      solver.build!(source_path: source_file, lt_format: 2)
+      phase_file = source_file.sub('.json', '-phase1.json')
+      matches = JSON.parse(File.read(phase_file))['data']['meeting_fuzzy_matches']
+
+      expect(matches.size).to be <= 10
     end
   end
 end

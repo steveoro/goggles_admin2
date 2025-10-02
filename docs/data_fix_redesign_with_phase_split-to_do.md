@@ -107,30 +107,32 @@ This plan tracks the redesign of the Data-Fix pipeline to reduce memory footprin
   - [ ] 2.4 UI: Meeting & Sessions editing
     - [x] 2.4.1 Meeting edit form (see legacy `_meeting_form.html.haml` for reference):
       - [x] Fuzzy matches dropdown (pre-populated from solver via Phase1Solver#find_meeting_matches)
-      - [x] AutoComplete search component for manual DB lookup (search by `description`)
       - [x] All required meeting fields: id, description, code, season_id, header_year, header_date, edition, edition_type_id, timing_type_id, cancelled, confirmed, max_individual_events, max_individual_events_per_session
       - [x] Season selector (numeric field)
       - [x] Date picker (header_date field)
       - [x] Coded-name controller integration for auto-generating `code` from `description`
       - [x] Controller updated to handle all new meeting fields
-    - [ ] 2.4.2 Session edit form for each session (see legacy `_meeting_session_form.html.haml`):
-      - Session fields: id, description, session_order, scheduled_date, day_part_type_id
-      - Date picker with validation warning icon if blank
-      - Nested SwimmingPool form (see legacy `_swimming_pool_form.html.haml`):
-        - AutoComplete search by pool `name`
-        - Additional dropdown filtered by city_id when city is selected
-        - Fields: id, name, nick_name, address, pool_type_id, lanes_number, maps_uri, plus_code, latitude, longitude, city_id
-        - Dynamic Google Maps search button (constructs URL from name + address + city)
-        - Coded-name controller for nick_name generation
-      - Nested City form (see legacy `_pool_city_form.html.haml`):
-        - AutoComplete search by city `name`, label shows `area`
-        - Fields: id, name, area, zip, country, country_code, latitude, longitude
-    - [ ] 2.4.3 Form submission: single save action per session (saves meeting + session + pool + city)
+    - [x] 2.4.2 Session edit form for each session (see legacy `_meeting_session_form.html.haml`):
+      - [x] Session fields: id, description, session_order, scheduled_date, day_part_type_id
+      - [x] Date picker with validation warning icon if blank
+      - [x] Nested SwimmingPool form (see legacy `_swimming_pool_form.html.haml`):
+        - [x] AutoComplete search by pool `name`
+        - [x] Additional dropdown filtered by city_id when city is selected
+        - [x] Fields: id, name, nick_name, address, pool_type_id, lanes_number, maps_uri, plus_code, latitude, longitude, city_id
+        - [x] Dynamic Google Maps search button (constructs URL from name + address + city)
+        - [x] Coded-name controller for nick_name generation
+      - [x] Nested City form (see legacy `_pool_city_form.html.haml`):
+        - [x] AutoComplete search by city `name` or `area`
+        - [x] Fields: id, name, area, zip, country, country_code, latitude, longitude
+      - [ ] Dynamic session addition/deletion (placeholder button added)
+      - [x] Validation constraints and default values
+      - [x] Controller updated to handle nested pool/city data (meeting + session + pool + city)
     - [ ] 2.4.4 Consider reusing legacy forms vs creating new dedicated components
     - [ ] 2.4.5 Decide on form submission pattern: keep single `PATCH /data_fix/update` or split into `PATCH /data_fix/update_meeting`, etc.
 
 - [ ] 3. Phase 2 (Teams)
   - [x] 3.1 Implement `TeamSolver` with LT4 team seeding and LT2 fallback
+{{ ... }}
   - [ ] 3.2 Implement `/review_teams` in `DataFixController` using `phase2.json`
   - [x] 3.3 Paginate team keys
   - [ ] 3.4 UI: Team editing (see legacy `_team_form.html.haml` for reference)

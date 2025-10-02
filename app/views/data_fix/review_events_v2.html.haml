@@ -1,0 +1,48 @@
+-# frozen_string_literal: true
+
+.container
+  %h2 Data-Fix V2 • Step 4: Events (Phase 4)
+
+  .mb-2
+    = render(partial: 'data_fix/step_tabs', locals: { active_step: 4, file_path: @file_path })
+
+  .d-flex.justify-content-between.mb-2
+    %div
+      = link_to 'Use legacy (Step 4)', review_events_path(request.query_parameters.except(:phase4_v2)), class: 'btn btn-secondary'
+    %div
+      = link_to 'Proceed to Step 5 (Results)', review_results_path(request.query_parameters.merge(phase5_v2: 1)), class: 'btn btn-primary'
+
+  .card.mb-3
+    .card-header Phase Metadata
+    .card-body
+      %pre= JSON.pretty_generate(@phase4_meta || {})
+
+  - sessions = Array(@phase4_data['sessions'])
+  - if sessions.empty?
+    %em No sessions or events found in Phase 4.
+  - else
+    - sessions.sort_by { |s| s['session_order'].to_i }.each do |s|
+      .card.mb-3
+        .card-header
+          Session
+          = s['session_order']
+        .card-body
+          - events = Array(s['events'])
+          - if events.empty?
+            %em No events for this session.
+          - else
+            %table.table.table-sm.table-striped
+              %thead
+                %tr
+                  %th #
+                  %th Distance
+                  %th Stroke
+                  %th Key
+              %tbody
+                - events.sort_by { |e| e['event_order'].to_i }.each_with_index do |e, idx|
+                  %tr
+                    %td= e['event_order'] || (idx + 1)
+                    %td= e['distance']
+                    %td= e['stroke']
+                    %td
+                      %code= e['key']

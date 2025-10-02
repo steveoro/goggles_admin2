@@ -1,0 +1,81 @@
+-# frozen_string_literal: true
+
+.container
+  %h2 Data-Fix V2 • Step 2: Teams (Phase 2)
+
+  .mb-2
+    = render(partial: 'data_fix/step_tabs', locals: { active_step: 2, file_path: @file_path })
+
+  .card.mb-3
+    .card-header Phase Metadata
+    .card-body
+      %pre= JSON.pretty_generate(@phase2_meta || {})
+
+  .d-flex.justify-content-between.mb-2
+    %div
+      = link_to 'Use legacy (Step 2)', review_teams_path(request.query_parameters.except(:phase2_v2)), class: 'btn btn-secondary'
+    %div
+      = link_to 'Proceed to Step 3 (Swimmers)', review_swimmers_path(request.query_parameters.merge(phase3_v2: 1)), class: 'btn btn-primary'
+
+  .card
+    .card-header Teams
+    .card-body
+      .mb-2
+        = form_tag(review_teams_path, method: :get, class: 'form-inline') do
+          = hidden_field_tag :file_path, @file_path
+          = hidden_field_tag :phase2_v2, 1
+          .form-group.mr-2
+            %label.mr-1{ for: 'q' } Filter
+            = text_field_tag :q, @q, class: 'form-control form-control-sm', placeholder: 'Search teams...'
+          .form-group.mr-2
+            %label.mr-1{ for: 'per_page' } Per page
+            = select_tag :per_page, options_for_select([25,50,100,200], @per_page), class: 'form-control form-control-sm'
+          = submit_tag 'Apply', class: 'btn btn-sm btn-primary mr-1'
+          = link_to 'Clear', review_teams_path(file_path: @file_path, phase2_v2: 1), class: 'btn btn-sm btn-light'
+      - teams = @phase2_data['teams'] || []
+      - if teams.empty?
+        %em No teams found. If the source is LT2 without team names, switch to legacy to proceed or enrich the phase data.
+      - else
+        .d-flex.justify-content-between.align-items-center.mb-2
+          %div
+            %strong Page:
+            = @page
+            = "/"
+            = @total_pages
+            &nbsp;•&nbsp;
+            %strong Total rows:
+            = @total_count
+          %div
+            - prev_page = @page > 1 ? @page - 1 : nil
+            - next_page = (@page * @per_page) < @total_count ? @page + 1 : nil
+            - base_params = request.query_parameters.merge(phase2_v2: 1, per_page: @per_page)
+            - if prev_page
+              = link_to 'Prev', review_teams_path(base_params.merge(page: prev_page)), class: 'btn btn-sm btn-outline-secondary'
+            - if next_page
+              = link_to 'Next', review_teams_path(base_params.merge(page: next_page)), class: 'btn btn-sm btn-outline-secondary ml-1'
+        %table.table.table-sm.table-striped
+          %thead
+            %tr
+              %th #
+              %th Team Name
+              %th Edit
+          %tbody
+            - @items.each_with_index do |t, idx|
+              %tr
+                %td= ((@page - 1) * @per_page) + idx + 1
+                %td= t['name'] || t['key']
+                %td
+                  - team_index = ((@page - 1) * @per_page) + idx
+                  = form_tag(update_phase2_team_path, method: :patch, class: 'form-inline') do
+                    = hidden_field_tag :file_path, @file_path
+                    = hidden_field_tag :team_index, team_index
+                    .form-group.mr-1
+                      = text_field_tag :name, t['name'], placeholder: 'Team name', class: 'form-control form-control-sm'
+                    .form-group.mr-1
+                      = number_field_tag :team_id, t['team_id'], placeholder: 'Team ID', class: 'form-control form-control-sm', min: 1
+                    = submit_tag 'Save', class: 'btn btn-sm btn-outline-primary'
+        .d-flex.justify-content-end
+          - if prev_page
+            = link_to 'Prev', review_teams_path(base_params.merge(page: prev_page)), class: 'btn btn-sm btn-outline-secondary'
+          - if next_page
+            = link_to 'Next', review_teams_path(base_params.merge(page: next_page)), class: 'btn btn-sm btn-outline-secondary ml-1'
