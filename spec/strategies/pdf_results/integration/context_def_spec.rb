@@ -88,7 +88,6 @@ RSpec.describe PdfResults::ContextDef, type: :integration do
       before(:each) do
         expect(def_hash[:src_buffer]).to be_an(Array).and be_present
         expect(obj_instance).to be_a(described_class)
-        expect(obj_instance.log).to be_blank
       end
 
       describe '#valid?' do

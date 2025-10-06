@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require GogglesDb::Engine.root.join('spec', 'support', 'shared_method_existence_examples')
 
 RSpec.describe PdfResults::FormatParser, type: :strategy do
   describe 'a new instance,' do

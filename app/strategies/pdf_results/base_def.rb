@@ -9,7 +9,8 @@ module PdfResults
   # Base class wrapping common functionalities between FieldDefs & ContextDef.
   #
   class BaseDef
-    attr_reader :last_source_before_format, :last_validation_result # bufferized source from last run    # bufferized response from last run
+    attr_reader :last_source_before_format, # bufferized source from last run
+                :last_validation_result     # bufferized response from last run
 
     # Shared initialization for FieldDefs & ContextDef.
     # Requires the #all_props helper method to be defined/overridden in siblings.

@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'date'
+
 # = DataFixController: phased pipeline (v2)
 #
 # Delegates to the new phased solvers when an action-level flag is present; otherwise
@@ -269,7 +271,8 @@ class DataFixController < ApplicationController
                                    :max_individual_events, :max_individual_events_per_session,
                                    :dateDay1, :dateMonth1, :dateYear1,
                                    :dateDay2, :dateMonth2, :dateYear2,
-                                   :venue1, :address1, :poolLength)
+                                   :venue1, :address1, :poolLength,
+                                   meeting: [:meeting_id, :meeting])
     # Validate pool length strictly when provided
     if meeting_params.key?(:poolLength)
       vstr = meeting_params[:poolLength].to_s.strip
@@ -279,9 +282,9 @@ class DataFixController < ApplicationController
         return redirect_to(review_sessions_path(file_path:, phase_v2: 1))
       end
     end
-    # Normalize values: strip strings, cast integers, booleans
+    # Normalize values: strip strings, cast integers, booleans (skip nested 'meeting' hash)
     normalized = {}
-    meeting_params.each do |k, v|
+    meeting_params.except(:meeting).each do |k, v|
       key = k.to_s
       val = v
       case key
@@ -304,7 +307,33 @@ class DataFixController < ApplicationController
     # Map 'description' to 'name' for phase file compatibility
     normalized['name'] = normalized.delete('description') if normalized.key?('description')
 
+    # Assign normalized fields to data
     normalized.each { |k, v| data[k] = v }
+
+    # Persist meeting.id if provided via AutoComplete component (meeting[meeting_id])
+    raw_mid = meeting_params.dig(:meeting, :meeting_id)
+    unless raw_mid.nil?
+      str = raw_mid.to_s.strip
+      if str.blank?
+        data['id'] = nil
+      elsif /\A\d+\z/.match?(str)
+        data['id'] = str.to_i
+      else
+        flash[:warning] = I18n.t('data_import.errors.invalid_request')
+        return redirect_to(review_sessions_path(file_path:, phase_v2: 1))
+      end
+    end
+
+    # If header_date is set, derive legacy LT2 month fields for compatibility
+    if normalized.key?('header_date') && normalized['header_date'].present?
+      begin
+        hd = Date.parse(normalized['header_date'])
+        data['dateMonth1'] = hd.month
+        data['dateMonth2'] = hd.month
+      rescue StandardError
+        # ignore parse errors; keep existing values
+      end
+    end
 
     meta = pfm.meta || {}
     meta['generated_at'] = Time.now.utc.iso8601
@@ -314,12 +343,34 @@ class DataFixController < ApplicationController
   end
   # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
 
-  # Update a single Phase 1 session entry by index (with nested pool and city data)
-  # rubocop:disable Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity
+  # Update a session entry in Phase 1 using service object
   def update_phase1_session
     file_path = params[:file_path]
     session_index = params[:session_index].to_i
+
     if file_path.blank? || session_index.negative?
+      flash[:warning] = I18n.t('data_import.errors.invalid_request')
+      redirect_to(pull_index_path) && return
+    end
+
+    source_path = resolve_source_path(file_path)
+    phase_path = default_phase_path_for(source_path, 1)
+    pfm = PhaseFileManager.new(phase_path)
+
+    updater = Phase1SessionUpdater.new(pfm, session_index, params)
+    if updater.call
+      redirect_to review_sessions_path(file_path:, phase_v2: 1), notice: I18n.t('data_import.messages.updated')
+    else
+      flash[:warning] = I18n.t('data_import.errors.invalid_request')
+      redirect_to review_sessions_path(file_path:, phase_v2: 1)
+    end
+  end
+
+  # Create a new blank session entry in Phase 1 and redirect back to v2 view
+  # Mirrors legacy add_session semantics minimally for v2
+  def add_session
+    file_path = params[:file_path]
+    if file_path.blank?
       flash[:warning] = I18n.t('data_import.errors.invalid_request')
       redirect_to(pull_index_path) && return
     end
@@ -329,65 +380,39 @@ class DataFixController < ApplicationController
     pfm = PhaseFileManager.new(phase_path)
     data = pfm.data || {}
     sessions = Array(data['meeting_session'])
-    if session_index >= sessions.size
-      flash[:warning] = I18n.t('data_import.errors.invalid_request')
-      redirect_to(review_sessions_path(file_path:, phase_v2: 1)) && return
-    end
 
-    sess = sessions[session_index] || {}
+    # Build minimal blank session payload
+    new_index = sessions.size
+    sessions << {
+      'id' => nil,
+      'description' => "Session #{new_index + 1}",
+      'session_order' => new_index + 1,
+      'scheduled_date' => nil,
+      'day_part_type_id' => nil,
+      'swimming_pool' => {
+        'id' => nil,
+        'name' => nil,
+        'nick_name' => nil,
+        'address' => nil,
+        'pool_type_id' => nil,
+        'lanes_number' => nil,
+        'maps_uri' => nil,
+        'plus_code' => nil,
+        'latitude' => nil,
+        'longitude' => nil,
+        'city' => {
+          'id' => nil,
+          'name' => nil,
+          'area' => nil,
+          'zip' => nil,
+          'country' => nil,
+          'country_code' => nil,
+          'latitude' => nil,
+          'longitude' => nil
+        }
+      }
+    }
 
-    # Permit all session, pool, and city parameters
-    session_params = params.permit(:meeting_session_id, :description, :session_order, :scheduled_date, :day_part_type_id,
-                                   pool: %i[name nick_name address pool_type_id lanes_number
-                                            maps_uri plus_code latitude longitude],
-                                   city: %i[name area zip country country_code latitude longitude])
-
-    # Update session fields
-    sess['id'] = session_params[:meeting_session_id].to_i if session_params[:meeting_session_id].present?
-    sess['description'] = sanitize_str(session_params[:description]) if session_params.key?(:description)
-    sess['session_order'] = session_params[:session_order].to_i if session_params[:session_order].present?
-    sess['day_part_type_id'] = session_params[:day_part_type_id].to_i if session_params[:day_part_type_id].present?
-
-    # Validate and update scheduled_date
-    if session_params.key?(:scheduled_date)
-      sd = session_params[:scheduled_date].to_s.strip
-      if sd.present? && !(sd =~ /\A\d{4}-\d{2}-\d{2}\z/)
-        flash[:warning] = I18n.t('data_import.errors.invalid_request')
-        return redirect_to(review_sessions_path(file_path:, phase_v2: 1))
-      end
-      sess['scheduled_date'] = sd
-    end
-
-    # Update nested swimming_pool
-    if session_params[:pool].is_a?(ActionController::Parameters)
-      sess['swimming_pool'] ||= {}
-      pool_data = session_params[:pool]
-      sess['swimming_pool']['name'] = sanitize_str(pool_data[:name]) if pool_data[:name].present?
-      sess['swimming_pool']['nick_name'] = sanitize_str(pool_data[:nick_name]) if pool_data[:nick_name].present?
-      sess['swimming_pool']['address'] = sanitize_str(pool_data[:address]) if pool_data[:address].present?
-      sess['swimming_pool']['pool_type_id'] = pool_data[:pool_type_id].to_i if pool_data[:pool_type_id].present?
-      sess['swimming_pool']['lanes_number'] = pool_data[:lanes_number].to_i if pool_data[:lanes_number].present?
-      sess['swimming_pool']['maps_uri'] = sanitize_str(pool_data[:maps_uri]) if pool_data.key?(:maps_uri)
-      sess['swimming_pool']['plus_code'] = sanitize_str(pool_data[:plus_code]) if pool_data.key?(:plus_code)
-      sess['swimming_pool']['latitude'] = pool_data[:latitude].to_s.strip if pool_data.key?(:latitude)
-      sess['swimming_pool']['longitude'] = pool_data[:longitude].to_s.strip if pool_data.key?(:longitude)
-    end
-
-    # Update nested city
-    if session_params[:city].is_a?(ActionController::Parameters)
-      sess['swimming_pool'] ||= {}
-      sess['swimming_pool']['city'] ||= {}
-      city_data = session_params[:city]
-      sess['swimming_pool']['city']['name'] = sanitize_str(city_data[:name]) if city_data[:name].present?
-      sess['swimming_pool']['city']['area'] = sanitize_str(city_data[:area]) if city_data[:area].present?
-      sess['swimming_pool']['city']['zip'] = sanitize_str(city_data[:zip]) if city_data.key?(:zip)
-      sess['swimming_pool']['city']['country'] = sanitize_str(city_data[:country]) if city_data[:country].present?
-      sess['swimming_pool']['city']['country_code'] = sanitize_str(city_data[:country_code]) if city_data[:country_code].present?
-      sess['swimming_pool']['city']['latitude'] = city_data[:latitude].to_s.strip if city_data.key?(:latitude)
-      sess['swimming_pool']['city']['longitude'] = city_data[:longitude].to_s.strip if city_data.key?(:longitude)
-    end
-
-    sessions[session_index] = sess
     data['meeting_session'] = sessions
 
     meta = pfm.meta || {}
@@ -396,7 +421,69 @@ class DataFixController < ApplicationController
 
     redirect_to review_sessions_path(file_path:, phase_v2: 1), notice: I18n.t('data_import.messages.updated')
   end
-  # rubocop:enable Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity
+
+  # Delete a session entry from Phase 1 and redirect back to v2 view
+  def delete_session
+    file_path = params[:file_path]
+    session_index = params[:session_index]&.to_i
+
+    if file_path.blank? || session_index.nil?
+      flash[:warning] = I18n.t('data_import.errors.invalid_request')
+      redirect_to(pull_index_path) && return
+    end
+
+    source_path = resolve_source_path(file_path)
+    phase_path = default_phase_path_for(source_path, 1)
+    pfm = PhaseFileManager.new(phase_path)
+    data = pfm.data || {}
+    sessions = Array(data['meeting_session'])
+
+    # Validate session_index
+    if session_index.negative? || session_index >= sessions.size
+      flash[:warning] = "Invalid session index: #{session_index}"
+      redirect_to(review_sessions_path(file_path:, phase_v2: 1)) && return
+    end
+
+    # Remove the session at the specified index
+    sessions.delete_at(session_index)
+    data['meeting_session'] = sessions
+
+    # Clear downstream phase data when sessions are modified
+    data['meeting_event'] = []
+    data['meeting_program'] = []
+    data['meeting_individual_result'] = []
+    data['meeting_relay_result'] = []
+    data['lap'] = []
+    data['relay_lap'] = []
+    data['meeting_relay_swimmer'] = []
+
+    meta = pfm.meta || {}
+    meta['generated_at'] = Time.now.utc.iso8601
+    pfm.write!(data: data, meta: meta)
+
+    redirect_to review_sessions_path(file_path:, phase_v2: 1), notice: I18n.t('data_import.messages.deleted')
+  end
+
+  # Rebuild meeting_session array from selected meeting using service object
+  def rescan_phase1_sessions
+    file_path = params[:file_path]
+    if file_path.blank?
+      flash[:warning] = I18n.t('data_import.errors.invalid_request')
+      redirect_to(pull_index_path) && return
+    end
+
+    source_path = resolve_source_path(file_path)
+    phase_path = default_phase_path_for(source_path, 1)
+    pfm = PhaseFileManager.new(phase_path)
+
+    # Determine meeting id from params or current data
+    meeting_id = params[:meeting_id] || pfm.data&.dig('id')
+
+    rescanner = Phase1SessionRescanner.new(pfm, meeting_id)
+    rescanner.call
+
+    redirect_to review_sessions_path(file_path:, phase_v2: 1), notice: I18n.t('data_import.messages.updated')
+  end
 
   # Returns an HTML partial with the detailed results for a specific (event_key, gender, category)
   # in Step 5 v2. This reads from the original source JSON (LT4 expected).

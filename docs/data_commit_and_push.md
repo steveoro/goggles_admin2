@@ -2,7 +2,7 @@
 
 This final stage of the data import workflow involves permanently saving the reviewed and corrected data into the Goggles database. This is handled by the `Import::MacroCommitter` class.
 
-## Process (`Import::MacroCommitter`)
+## Commit process (`Import::MacroCommitter`)
 
 The `Import::MacroCommitter` class (`app/strategies/import/macro_committer.rb`) is responsible for translating the verified data representation into actual database changes.
 
@@ -23,4 +23,10 @@ The `Import::MacroCommitter` class (`app/strategies/import/macro_committer.rb`) 
     *   The primary result is the **modification of the Goggles database**, with new records created and existing ones updated according to the reviewed data.
     *   An SQL log detailing all the database operations performed during the commit process.
 
-This final step ensures that the carefully processed and reviewed data from external sources is accurately and permanently integrated into the application's database.
+## Push process (manual sync)
+ 
+This whole data-fix/commit/push process assumes that the local database is just a cloned dump of the remote one so that by editing locally the data and pushing just the committed changes both databases will be updated and in sync.
+
+The final result of the commit is an output SQL log file that will be generated only if the transaction is successful, and stored as `crawler/data/results.new/<season_id>/<original_json_filename>.sql`.
+
+This output SQL file is then ready to be "pushed" (manually) to the remote server. There, a background job will check for any uploaded SQL log files and, if found, will execute them to update its database, respecting the order of upload.

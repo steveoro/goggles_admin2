@@ -1,5 +1,11 @@
 # DataFix refactoring and enhancement
 
+- 20251006: note that this document was based on what is now called DataFixLegacyController (previously "DataFixController", now replaced by its version 2)
+
+- This was the starting document for the refactoring of the data fix process, which was split into multiple phases. See: docs/data_fix_refactoring_and_enhancement.md
+
+---
+
 ## Current situation:
 
 - DataFixController handles the manual review of the parsed JSON data file.
@@ -21,7 +27,7 @@
   4) Review events
   5) Review results
 
-- Currently, only phases 1..4 allow to add manually new rows to the data hash. Phase #5 is considered a read-only phase that allows a global overview of the data to be processed.
+- Currently, only phases 1..4 allow to add manually new rows to the data hash. Phase #5 is considered a read-only phase that allows a global overview of the results data to be processed.
 
 - Each phase in the controller is handled by a specific action, which is responsible for loading the data hash, "solving" the entities (i.e. finding the best matching rows in the DB), and then serializing the data hash back to the JSON file.
 
@@ -43,7 +49,7 @@
 
 1. Handle any other layoutType as the JSON layoutType 2, by using a dedicated strategy class that converts the data hash to the expected structure. This way we could reuse the same controller actions as before with minimal changes.
 
-2. Create a new controller for each layoutType, with its own actions and logic. We could reuse most of the views and components, but we'll need new implementations.
+2. Consider creating a new controller for each layoutType, with its own actions and logic. We could reuse most of the views and components, but we'll need new implementations.
 
 
 ## About the "layoutType 2" result structure and how it's being used:

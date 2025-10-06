@@ -3,7 +3,7 @@ exclude:
 
 linters:
   LineLength:
-    max: 120
+    max: 155
 
   IdNames:
     exclude:

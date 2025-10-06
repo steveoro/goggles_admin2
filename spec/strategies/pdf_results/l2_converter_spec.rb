@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require GogglesDb::Engine.root.join('spec', 'support', 'shared_method_existence_examples')
 
 RSpec.describe PdfResults::L2Converter, type: :strategy do
   subject { described_class.new(fixture_data) }

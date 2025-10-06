@@ -79,46 +79,46 @@ module Import
         File.join(dir, "#{base}-phase#{phase_num}.json")
       end
 
-      def extract_meeting_name(h, lt)
-        return h['name'] if lt == 2
+      def extract_meeting_name(hsh, layout_type)
+        return hsh['name'] if layout_type == 2
 
-        h['meetingName'].presence || h['title']
+        hsh['meetingName'].presence || hsh['title']
       end
 
-      def extract_meeting_url(h, lt)
-        return h['meetingURL'] if lt == 2
+      def extract_meeting_url(hsh, layout_type)
+        return hsh['meetingURL'] if layout_type == 2
 
-        h['meetingURL']
+        hsh['meetingURL']
       end
 
-      def extract_venue(h, lt)
-        return h['venue1'] if lt == 2
+      def extract_venue(hsh, layout_type)
+        return hsh['venue1'] if layout_type == 2
 
-        h['place']
+        hsh['place']
       end
 
-      def extract_address(h, lt)
-        return h['address1'] if lt == 2
+      def extract_address(hsh, layout_type)
+        return hsh['address1'] if layout_type == 2
 
-        h['place']
+        hsh['place']
       end
 
-      def extract_pool_length(h, _lt)
-        h['poolLength']
+      def extract_pool_length(hsh, _lt)
+        hsh['poolLength']
       end
 
-      def set_dates!(out, h, lt)
-        if lt == 2
+      def set_dates!(out, hsh, layout_type) # rubocop:disable Metrics/AbcSize
+        if layout_type == 2
           # Preserve LT2 date fields as-is
-          out['dateYear1'] = h['dateYear1']
-          out['dateMonth1'] = h['dateMonth1']
-          out['dateDay1'] = h['dateDay1']
-          out['dateYear2'] = h['dateYear2']
-          out['dateMonth2'] = h['dateMonth2']
-          out['dateDay2'] = h['dateDay2']
-        elsif lt == 4
-          if h['dates'].is_a?(String)
-            parts = h['dates'].split(',')
+          out['dateYear1'] = hsh['dateYear1']
+          out['dateMonth1'] = hsh['dateMonth1']
+          out['dateDay1'] = hsh['dateDay1']
+          out['dateYear2'] = hsh['dateYear2']
+          out['dateMonth2'] = hsh['dateMonth2']
+          out['dateDay2'] = hsh['dateDay2']
+        elsif layout_type == 4
+          if hsh['dates'].is_a?(String)
+            parts = hsh['dates'].split(',')
             if parts[0]
               y, m, d = parts[0].split('-')
               assign_date_parts(out, '1', y, m, d)
