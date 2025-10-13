@@ -97,7 +97,7 @@ RSpec.describe APISwimmersController do
           .with(
             method: :post, url: 'swimmer', jwt: admin_user.jwt,
             payload: anything
-          ).and_return(DummyResponse.new(body: { msg: 'OK', new: { id: -1 } }.to_json))
+          ).and_return(DummyResponse.new(body: { msg: 'OK', new: { id: 0 } }.to_json))
         post(api_swimmers_path, params: new_attributes)
       end
 

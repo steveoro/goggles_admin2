@@ -65,6 +65,10 @@ class DataFixController < ApplicationController
       pfm = PhaseFileManager.new(phase_path)
       @phase2_meta = pfm.meta
       @phase2_data = pfm.data
+      
+      # Set API URL for AutoComplete components
+      set_api_url
+      
       # Optional filtering
       @q = params[:q].to_s.strip
       teams = Array(@phase2_data['teams'])
@@ -204,7 +208,7 @@ class DataFixController < ApplicationController
   end
 
   # Update a single Phase 2 team entry by index
-  # rubocop:disable Metrics/AbcSize
+  # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
   def update_phase2_team
     file_path = params[:file_path]
     team_index = params[:team_index].to_i
@@ -224,21 +228,30 @@ class DataFixController < ApplicationController
     end
 
     t = teams[team_index] || {}
-    team_params = params.permit(:name, :team_id)
-    t['name'] = sanitize_str(team_params[:name]) if team_params.key?(:name)
-    if team_params.key?(:team_id)
-      raw = team_params[:team_id].to_s.strip
-      if raw.present?
-        num = raw.to_i
-        unless num.positive? && raw =~ /\A\d+\z/
-          flash[:warning] = I18n.t('data_import.errors.invalid_request')
-          return redirect_to(review_teams_path(file_path:, phase2_v2: 1))
-        end
-        t['team_id'] = num
-      else
-        t['team_id'] = nil
+    
+    # Handle nested params from AutoComplete (team[index][field]) and top-level params
+    team_params = params[:team]
+    if team_params.is_a?(ActionController::Parameters) && team_params[team_index.to_s].present?
+      nested = team_params[team_index.to_s].permit(:team_id, :editable_name, :name, :name_variations, :city_id)
+      
+      # Update team_id (from AutoComplete)
+      if nested[:team_id].present?
+        num = nested[:team_id].to_i
+        t['team_id'] = num if num.positive?
       end
+      
+      # Update city_id (from City AutoComplete)
+      if nested.key?(:city_id)
+        city_num = nested[:city_id].to_i
+        t['city_id'] = city_num.positive? ? city_num : nil
+      end
+      
+      # Update text fields
+      t['editable_name'] = sanitize_str(nested[:editable_name]) if nested.key?(:editable_name)
+      t['name'] = sanitize_str(nested[:name]) if nested.key?(:name)
+      t['name_variations'] = sanitize_str(nested[:name_variations]) if nested.key?(:name_variations)
     end
+    
     teams[team_index] = t
     data['teams'] = teams
 
@@ -248,7 +261,82 @@ class DataFixController < ApplicationController
 
     redirect_to review_teams_path(file_path:, phase2_v2: 1), notice: I18n.t('data_import.messages.updated')
   end
-  # rubocop:enable Metrics/AbcSize
+  # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
+
+  # Create a new blank team entry in Phase 2 and redirect back to v2 view
+  def add_team
+    file_path = params[:file_path]
+    if file_path.blank?
+      flash[:warning] = I18n.t('data_import.errors.invalid_request')
+      redirect_to(pull_index_path) && return
+    end
+
+    source_path = resolve_source_path(file_path)
+    phase_path = default_phase_path_for(source_path, 2)
+    pfm = PhaseFileManager.new(phase_path)
+    data = pfm.data || {}
+    teams = Array(data['teams'])
+
+    # Build minimal blank team payload
+    new_index = teams.size
+    teams << {
+      'key' => "New Team #{new_index + 1}",
+      'name' => "New Team #{new_index + 1}",
+      'editable_name' => "New Team #{new_index + 1}",
+      'name_variations' => nil,
+      'team_id' => nil,
+      'city_id' => nil
+    }
+
+    data['teams'] = teams
+
+    meta = pfm.meta || {}
+    meta['generated_at'] = Time.now.utc.iso8601
+    pfm.write!(data: data, meta: meta)
+
+    redirect_to review_teams_path(file_path:, phase2_v2: 1), notice: I18n.t('data_import.messages.updated')
+  end
+
+  # Delete a team entry from Phase 2 and clear downstream phase data
+  def delete_team
+    file_path = params[:file_path]
+    team_index = params[:team_index]&.to_i
+
+    if file_path.blank? || team_index.nil?
+      flash[:warning] = I18n.t('data_import.errors.invalid_request')
+      redirect_to(pull_index_path) && return
+    end
+
+    source_path = resolve_source_path(file_path)
+    phase_path = default_phase_path_for(source_path, 2)
+    pfm = PhaseFileManager.new(phase_path)
+    data = pfm.data || {}
+    teams = Array(data['teams'])
+
+    # Validate team_index
+    if team_index.negative? || team_index >= teams.size
+      flash[:warning] = "Invalid team index: #{team_index}"
+      redirect_to(review_teams_path(file_path:, phase2_v2: 1)) && return
+    end
+
+    # Remove the team at the specified index
+    teams.delete_at(team_index)
+    data['teams'] = teams
+
+    # Clear downstream phase data (phase3+) when teams are modified
+    # This ensures data consistency across phases
+    data['swimmers'] = [] if data.key?('swimmers')
+    data['meeting_event'] = [] if data.key?('meeting_event')
+    data['meeting_program'] = [] if data.key?('meeting_program')
+    data['meeting_individual_result'] = [] if data.key?('meeting_individual_result')
+    data['meeting_relay_result'] = [] if data.key?('meeting_relay_result')
+
+    meta = pfm.meta || {}
+    meta['generated_at'] = Time.now.utc.iso8601
+    pfm.write!(data: data, meta: meta)
+
+    redirect_to review_teams_path(file_path:, phase2_v2: 1), notice: I18n.t('data_import.messages.updated')
+  end
 
   # Update Phase 1 meeting attributes in the phase file and redirect back to v2 view
   # rubocop:disable Metrics/AbcSize, Metrics/MethodLength

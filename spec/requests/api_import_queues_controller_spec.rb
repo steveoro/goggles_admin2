@@ -37,7 +37,7 @@ RSpec.describe APIImportQueuesController do
     let(:new_request_data) do
       {
         target_entity: 'Swimmer',
-        swimmer: { id: -1, complete_name: '(Never mind: this will not get processed)' }
+        swimmer: { id: 0, complete_name: '(Never mind: this will not get processed)' }
       }.to_json
     end
 
@@ -98,7 +98,7 @@ RSpec.describe APIImportQueuesController do
           .with(
             method: :post, url: 'import_queue', jwt: admin_user.jwt,
             payload: anything
-          ).and_return(DummyResponse.new(body: { msg: 'OK', new: { id: -1 } }.to_json))
+          ).and_return(DummyResponse.new(body: { msg: 'OK', new: { id: 0 } }.to_json))
         post(api_import_queues_path, params: new_attributes)
       end
 

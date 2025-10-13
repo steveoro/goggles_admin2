@@ -96,7 +96,7 @@ RSpec.describe APIMeetingsController do
         allow(APIProxy).to receive(:call)
           .with(
             method: :post, url: "meeting/clone/#{clone_source_id}", jwt: admin_user.jwt
-          ).and_return(DummyResponse.new(body: { msg: 'OK', new: { id: -1 } }.to_json))
+          ).and_return(DummyResponse.new(body: { msg: 'OK', new: { id: 0 } }.to_json))
         post(api_meetings_clone_path, params: { id: clone_source_id })
       end
 

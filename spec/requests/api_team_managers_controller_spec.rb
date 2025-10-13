@@ -93,7 +93,7 @@ RSpec.describe APITeamManagersController do
           .with(
             method: :post, url: 'team_manager', jwt: admin_user.jwt,
             payload: anything
-          ).and_return(DummyResponse.new(body: { msg: 'OK', new: { id: -1 } }.to_json))
+          ).and_return(DummyResponse.new(body: { msg: 'OK', new: { id: 0 } }.to_json))
         post(api_team_managers_path, params: new_attributes)
       end
 

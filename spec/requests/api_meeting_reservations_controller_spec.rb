@@ -137,7 +137,7 @@ RSpec.describe APIMeetingReservationsController do
           .with(
             method: :post, url: 'meeting_reservation', jwt: admin_user.jwt,
             payload: anything
-          ).and_return(DummyResponse.new(body: { msg: 'OK', new: { id: -1 } }.to_json))
+          ).and_return(DummyResponse.new(body: { msg: 'OK', new: { id: 0 } }.to_json))
         post(
           api_meeting_reservations_path,
           params: { badge_id: new_badge_id, meeting_id: new_meeting_id }

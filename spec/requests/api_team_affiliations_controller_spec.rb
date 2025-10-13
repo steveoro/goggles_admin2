@@ -97,7 +97,7 @@ RSpec.describe APITeamAffiliationsController do
           .with(
             method: :post, url: 'team_affiliation', jwt: admin_user.jwt,
             payload: anything
-          ).and_return(DummyResponse.new(body: { msg: 'OK', new: { id: -1 } }.to_json))
+          ).and_return(DummyResponse.new(body: { msg: 'OK', new: { id: 0 } }.to_json))
         post(api_team_affiliations_path, params: new_attributes)
       end
 

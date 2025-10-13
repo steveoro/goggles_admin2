@@ -53,28 +53,119 @@
               = link_to 'Prev', review_teams_path(base_params.merge(page: prev_page)), class: 'btn btn-sm btn-outline-secondary'
             - if next_page
               = link_to 'Next', review_teams_path(base_params.merge(page: next_page)), class: 'btn btn-sm btn-outline-secondary ml-1'
-        %table.table.table-sm.table-striped
-          %thead
-            %tr
-              %th #
-              %th Team Name
-              %th Edit
-          %tbody
-            - @items.each_with_index do |t, idx|
-              %tr
-                %td= ((@page - 1) * @per_page) + idx + 1
-                %td= t['name'] || t['key']
-                %td
-                  - team_index = ((@page - 1) * @per_page) + idx
-                  = form_tag(update_phase2_team_path, method: :patch, class: 'form-inline') do
+        
+        -# Add Team button
+        .mb-3
+          = form_tag(data_fix_add_team_path, method: :post) do
+            = hidden_field_tag :file_path, @file_path
+            = submit_tag 'Add Team', class: 'btn btn-success', data: { confirm: 'Add a new blank team?' }
+        
+        -# Collapsible card layout for each team
+        - @items.each_with_index do |team, idx|
+          - team_index = ((@page - 1) * @per_page) + idx
+          - team_key = team['key'] || team['name']
+          - team_name = team['name'] || team_key
+          - editable_name = team['editable_name'] || team_name
+          - team_id = team['team_id']
+          - city_id = team['city_id']
+          - name_variations = team['name_variations']
+          
+          -# Visual indicators
+          - difference_detected = (team_key.to_s.downcase != team_name.to_s.downcase)
+          - border_class = difference_detected ? 'border border-danger' : ''
+          - bg_class = team_id.present? ? 'bg-light' : 'bg-light-yellow'
+          - status_icon = team_id.present? ? '✅' : '🆕'
+          
+          %div{ id: "team-card-#{team_index}" }
+            .card.my-2{ class: border_class }
+              .card-header{ id: "team-header-#{team_index}", class: bg_class }
+                .row
+                  .col-3
+                    %h5.mb-0
+                      %button.btn.btn-link.m-1{ data: { toggle: 'collapse', target: "#team-panel-#{team_index}",
+                                                        'aria-expanded' => 'false', 'aria-controls' => "team-panel-#{team_index}" } }
+                        = team_key
+                  .col.mt-1.pt-2
+                    %span.text-secondary= '->'
+                    = editable_name
+                    - if team_id.present?
+                      %span.ml-2
+                        ID: #{team_id}
+                        = status_icon
+                    - else
+                      %span.ml-2= status_icon
+                  .col-md-3.mt-1.pt-2
+                    %i.form-text.text-muted
+                      %small
+                        🔑 "#{team_key}"
+                  .col-md-1.mt-1.pt-1
+                    = form_tag(data_fix_delete_team_path, method: :delete, style: 'display: inline;') do
+                      = hidden_field_tag :file_path, @file_path
+                      = hidden_field_tag :team_index, team_index
+                      = button_tag type: 'submit', class: 'btn btn-sm btn-outline-danger',
+                                  data: { confirm: "Delete team '#{team_key}'? This will clear downstream phase data." },
+                                  'aria-label': 'Delete' do
+                        %i.fa.fa-trash
+              
+              .collapse{ id: "team-panel-#{team_index}", 'aria-labelledby' => "team-header-#{team_index}",
+                        'data-parent' => "#team-card-#{team_index}" }
+                .card-body.border-bottom.border-secondary
+                  = form_tag(update_phase2_team_path, method: :patch) do
                     = hidden_field_tag :file_path, @file_path
                     = hidden_field_tag :team_index, team_index
-                    .form-group.mr-1
-                      = text_field_tag :name, t['name'], placeholder: 'Team name', class: 'form-control form-control-sm'
-                    .form-group.mr-1
-                      = number_field_tag :team_id, t['team_id'], placeholder: 'Team ID', class: 'form-control form-control-sm', min: 1
-                    = submit_tag 'Save', class: 'btn btn-sm btn-outline-primary'
-        .d-flex.justify-content-end
+                    
+                    .container-fluid
+                      -# Row 1: Team AutoComplete + editable_name
+                      .row
+                        .col-6
+                          = render(AutoCompleteComponent.new(show_top_labels: true,
+                                  base_dom_id: "team[#{team_index}]", base_api_url: @api_url,
+                                  detail_endpoint: 'team', base_name: 'team', label_column: 'editable_name',
+                                  default_value: team_id,
+                                  search_endpoint: 'teams', search_column: 'name',
+                                  target3_dom_id: "team_#{team_index}_editable_name", target3_column: 'editable_name',
+                                  target4_dom_id: "team_#{team_index}_city_id", target4_column: 'city_id',
+                                  target5_dom_id: "team_#{team_index}_name", target5_column: 'name',
+                                  target6_dom_id: "team_#{team_index}_name_variations", target6_column: 'name_variations',
+                                  jwt: current_user.jwt))
+                        .col-6
+                          .form-group
+                            = label_tag "team_#{team_index}_editable_name", 'editable_name'
+                            = text_field_tag "team[#{team_index}][editable_name]", editable_name,
+                                            id: "team_#{team_index}_editable_name",
+                                            class: 'form-control', required: true, placeholder: 'editable_name'
+                      
+                      -# Row 2: name + name_variations
+                      .row
+                        .col-5
+                          .form-group
+                            = label_tag "team_#{team_index}_name", 'name'
+                            = text_field_tag "team[#{team_index}][name]", team_name,
+                                            id: "team_#{team_index}_name",
+                                            class: 'form-control', required: true, placeholder: 'name'
+                        .col-7
+                          .form-group
+                            = label_tag "team_#{team_index}_name_variations", 'name_variations'
+                            = text_field_tag "team[#{team_index}][name_variations]", name_variations,
+                                            id: "team_#{team_index}_name_variations",
+                                            class: 'form-control', placeholder: 'name_variations (pipe-separated)'
+                      
+                      -# Row 3: City AutoComplete
+                      = render(AutoCompleteComponent.new(show_top_labels: true,
+                              base_dom_id: "team[#{team_index}]", base_api_url: @api_url,
+                              default_value: city_id,
+                              detail_endpoint: 'city', base_name: 'city', label_column: 'area',
+                              search_endpoint: 'cities', search_column: 'name',
+                              target2_field: 'area', target2_column: 'area',
+                              target2_class: 'offset-lg-2 offset-md-3 offset-sm-3 col-md-4 col-sm-4 my-1',
+                              jwt: current_user.jwt))
+                      
+                      -# Save button
+                      .form-group.mt-3
+                        = submit_tag t('data_import.generic_save_btn'), class: 'btn btn-primary',
+                                    'aria-label': 'Save', data: { confirm: t('data_import.btn_save_confirm') }
+        
+        .d-flex.justify-content-end.mt-3
           - if prev_page
             = link_to 'Prev', review_teams_path(base_params.merge(page: prev_page)), class: 'btn btn-sm btn-outline-secondary'
           - if next_page
