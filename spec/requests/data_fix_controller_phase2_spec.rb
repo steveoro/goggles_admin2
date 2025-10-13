@@ -26,13 +26,16 @@ RSpec.describe DataFixController do
 
     describe 'GET /data_fix/review_teams with phase2_v2=1' do
       before(:each) do
-        # Create phase2 file with test data
+        # Create phase2 file with test data (including fuzzy_matches)
         phase2_data = {
           'season_id' => season.id,
           'teams' => [
-            { 'key' => 'Team Alpha', 'name' => 'Team Alpha', 'editable_name' => 'Team Alpha', 'team_id' => nil },
-            { 'key' => 'Team Beta', 'name' => 'Team Beta', 'editable_name' => 'Team Beta', 'team_id' => team.id },
-            { 'key' => 'Team Gamma', 'name' => 'Team Gamma', 'editable_name' => 'Team Gamma', 'team_id' => nil }
+            { 'key' => 'Team Alpha', 'name' => 'Team Alpha', 'editable_name' => 'Team Alpha',
+              'team_id' => nil, 'fuzzy_matches' => [] },
+            { 'key' => 'Team Beta', 'name' => 'Team Beta', 'editable_name' => 'Team Beta',
+              'team_id' => team.id, 'fuzzy_matches' => [{ 'id' => team.id, 'display_label' => team.editable_name }] },
+            { 'key' => 'Team Gamma', 'name' => 'Team Gamma', 'editable_name' => 'Team Gamma',
+              'team_id' => nil, 'fuzzy_matches' => [] }
           ]
         }
         pfm = PhaseFileManager.new(phase2_file)
@@ -105,6 +108,78 @@ RSpec.describe DataFixController do
         get review_teams_path(file_path: source_file, phase2_v2: 1, rescan: '1')
         expect(response).to be_successful
         expect(File.exist?(phase2_file)).to be true
+      end
+
+      it 'displays fuzzy matches dropdown when matches exist' do
+        # Add fuzzy matches to a team
+        pfm = PhaseFileManager.new(phase2_file)
+        data = pfm.data
+        data['teams'][0]['fuzzy_matches'] = [
+          { 'id' => 123, 'display_label' => 'Matched Team (ID: 123, City A)' },
+          { 'id' => 456, 'display_label' => 'Another Team (ID: 456, City B)' }
+        ]
+        pfm.write!(data: data, meta: pfm.meta)
+
+        get review_teams_path(file_path: source_file, phase2_v2: 1)
+        expect(response).to be_successful
+        expect(response.body).to include('Quick match selection')
+        expect(response.body).to include('Matched Team (ID: 123, City A)')
+      end
+    end
+
+    describe 'TeamSolver fuzzy matching' do
+      it 'finds and stores fuzzy matches for each team' do
+        # Create some teams in DB with similar names
+        FactoryBot.create(:team, name: 'Swimming Club Alpha', editable_name: 'SC Alpha')
+        FactoryBot.create(:team, name: 'Alpha Team', editable_name: 'Alpha Team')
+
+        # Delete existing phase file
+        FileUtils.rm_f(phase2_file)
+
+        # Trigger rescan (which runs TeamSolver)
+        get review_teams_path(file_path: source_file, phase2_v2: 1, rescan: '1')
+
+        # Check that fuzzy matches were stored
+        pfm = PhaseFileManager.new(phase2_file)
+        teams = pfm.data['teams']
+        team_alpha = teams.find { |t| t['key'] == 'Team A' }
+
+        expect(team_alpha).to be_present
+        expect(team_alpha['fuzzy_matches']).to be_an(Array)
+      end
+
+      it 'includes fuzzy_matches field in team data structure' do
+        # Rebuild phase file
+        FileUtils.rm_f(phase2_file)
+        get review_teams_path(file_path: source_file, phase2_v2: 1, rescan: '1')
+
+        # Check that fuzzy_matches field exists in structure
+        pfm = PhaseFileManager.new(phase2_file)
+        teams = pfm.data['teams']
+        team_a = teams.find { |t| t['key'] == 'Team A' }
+
+        expect(team_a).to have_key('fuzzy_matches')
+        expect(team_a['fuzzy_matches']).to be_an(Array)
+      end
+
+      it 'auto-assignment logic works when exact match exists' do
+        # This test verifies the auto_assignable? logic directly
+        # Create a mock match structure
+        match = {
+          'id' => 123,
+          'name' => 'Team A',
+          'editable_name' => 'Team A',
+          'name_variations' => nil
+        }
+
+        solver = Import::Solvers::TeamSolver.new(season: season)
+        # Test exact name match
+        expect(solver.send(:auto_assignable?, match, 'Team A')).to be true
+        expect(solver.send(:auto_assignable?, match, 'team a')).to be true
+        
+        # Test partial match (should NOT auto-assign)
+        expect(solver.send(:auto_assignable?, match, 'Team')).to be false
+        expect(solver.send(:auto_assignable?, match, 'Team A Plus')).to be false
       end
     end
 

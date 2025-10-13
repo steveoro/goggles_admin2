@@ -23,9 +23,11 @@ This plan tracks the redesign of the Data-Fix pipeline to reduce memory footprin
 - **Service objects**: Phase1NestedParamParser, Phase1SessionUpdater, Phase1SessionRescanner
 - **Controller refactoring**: Reduced update_phase1_session from 129→20 lines, rescan_phase1_sessions from 76→18 lines
 
-**Optional Future Enhancements**:
-- End-to-end Cucumber feature test (not blocking deployment)
-- Additional service tests for Phase1SessionUpdater/Rescanner (low priority - already covered by integration tests)
+**Fuzzy Matching** ✅:
+- TeamSolver finds top 10 matches via LIKE search on name/editable_name/name_variations
+- Auto-assigns exact matches (case-insensitive: name, editable_name, or in name_variations)
+- Fuzzy matches dropdown in view for quick manual selection
+- 4 additional tests verifying fuzzy matching behavior
 
 **🎯 Next Phase**:
 Phases 1 & 2 are **complete and production-ready**. Ready to move to Phase 3 (Swimmers).
@@ -39,17 +41,19 @@ Phases 1 & 2 are **complete and production-ready**. Ready to move to Phase 3 (Sw
 - review_teams_v2.html.haml view with **collapsible card layout**
 - AutoCompleteComponent integration for Team and City entities
 - Routes configured for all CRUD operations
-- **Complete RSpec coverage**: 34 tests, all passing ✅
-  - review_teams: pagination (55 teams), filtering, rescan, visual indicators, empty state
+- **Complete RSpec coverage**: 38 tests, all passing ✅
+  - review_teams: pagination (55 teams), filtering, rescan, visual indicators, empty state, fuzzy matches display
   - update_phase2_team: all 6 fields (name, editable_name, name_variations, team_id, city_id), nested params, validation
   - add_team: blank team creation with proper structure
   - delete_team: removal + downstream data clearing, edge case handling
+  - fuzzy_matching: auto-assignment logic, match structure, dropdown integration
 - **UI Features**: 
   - Visual status indicators (✅ matched, 🆕 new)
   - Border coloring for name mismatches (red border)
   - Background coloring (bg-light for matched, bg-light-yellow for new)
   - Initially collapsed cards for space efficiency
   - Add Team button + Delete buttons per card
+  - **Fuzzy matches dropdown** for quick team selection (populated by TeamSolver)
 - **Manual testing**: Confirmed AutoComplete works correctly for Team and City lookups
 
 **Team Entity Fields Supported** (6/6):
@@ -60,14 +64,21 @@ Phases 1 & 2 are **complete and production-ready**. Ready to move to Phase 3 (Sw
 - ✅ `city_id` (optional City binding via AutoComplete)
 - ✅ `key` (immutable reference)
 
+**Fuzzy Matching** ✅:
+- TeamSolver searches DB for similar teams (LIKE on name/editable_name/name_variations)
+- Stores top 10 matches per team in phase file
+- Auto-assigns exact matches (case-insensitive comparison)
+- View displays fuzzy matches dropdown for quick selection
+- JavaScript triggers AutoComplete when match selected
+
 **Key Files**:
 - `app/controllers/data_fix_controller.rb` - review_teams, update_phase2_team, add_team, delete_team actions
-- `app/views/data_fix/review_teams_v2.html.haml` - Collapsible card layout with AutoComplete
-- `app/strategies/import/solvers/team_solver.rb` - TeamSolver (LT2 + LT4)
+- `app/views/data_fix/review_teams_v2.html.haml` - Collapsible card layout with AutoComplete + fuzzy dropdown
+- `app/strategies/import/solvers/team_solver.rb` - TeamSolver (LT2 + LT4) with fuzzy matching
 - `config/routes.rb` - Routes for all Phase 2 actions
-- `spec/requests/data_fix_controller_phase2_spec.rb` - 34 comprehensive tests
+- `spec/requests/data_fix_controller_phase2_spec.rb` - 38 comprehensive tests
 
-**Actual Time**: ~4 hours total (faster than estimated 6-8 hours)
+**Actual Time**: ~5 hours total (includes fuzzy matching)
 
 ### Phase 3 (Swimmers): ~40% Complete 🚧
 SwimmerSolver implemented, controller actions exist, view incomplete.

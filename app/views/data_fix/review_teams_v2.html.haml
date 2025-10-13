@@ -115,6 +115,21 @@
                     = hidden_field_tag :team_index, team_index
                     
                     .container-fluid
+                      -# Row 0: Fuzzy matches dropdown (quick selection)
+                      - fuzzy_matches = team['fuzzy_matches'] || []
+                      - if fuzzy_matches.present?
+                        .row
+                          .col-12
+                            .form-group
+                              = label_tag "fuzzy_select_#{team_index}", 'Quick match selection (fuzzy matches)'
+                              = select_tag "fuzzy_select_#{team_index}",
+                                          options_for_select([['-- Select a match --', '']] + fuzzy_matches.map { |m| [m['display_label'], m['id']] }, team_id),
+                                          class: 'form-control',
+                                          id: "fuzzy_select_#{team_index}",
+                                          onchange: "var teamId = this.value; if (teamId) { $('#team_#{team_index}_team_id').val(teamId).trigger('change'); }"
+                              %small.form-text.text-muted
+                                Select a match from the list to quickly populate team fields via AutoComplete.
+                      
                       -# Row 1: Team AutoComplete + editable_name
                       .row
                         .col-6

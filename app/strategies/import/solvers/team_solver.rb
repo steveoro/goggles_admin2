@@ -45,7 +45,7 @@ module Import
               name = extract_team_name(t)
               next if name.blank?
 
-              teams << { 'key' => name, 'name' => name }
+              teams << build_team_entry(name, name)
               ta << { 'team_key' => name, 'season_id' => @season.id }
             end
           else
@@ -53,7 +53,7 @@ module Import
               name = extract_team_name(value)
               next if name.blank?
 
-              teams << { 'key' => key, 'name' => name }
+              teams << build_team_entry(key, name)
               ta << { 'team_key' => key, 'season_id' => @season.id }
             end
           end
@@ -65,7 +65,7 @@ module Import
               team_name = row['team']
               next if team_name.to_s.strip.empty?
 
-              teams << { 'key' => team_name, 'name' => team_name }
+              teams << build_team_entry(team_name, team_name)
               ta << { 'team_key' => team_name, 'season_id' => @season.id }
             end
           end
@@ -103,6 +103,90 @@ module Import
         return t['name'] if t.is_a?(Hash)
 
         nil
+      end
+
+      # Build a team entry with fuzzy matches and auto-assignment
+      # key: immutable reference key (original team name from source)
+      # name: team name to search for
+      def build_team_entry(key, name)
+        entry = {
+          'key' => key,
+          'name' => name,
+          'editable_name' => name,
+          'name_variations' => nil,
+          'team_id' => nil,
+          'city_id' => nil
+        }
+
+        # Find fuzzy matches
+        matches = find_team_matches(name)
+        entry['fuzzy_matches'] = matches
+
+        # Auto-assign top match if it's very good (exact match or close enough)
+        if matches.present? && auto_assignable?(matches.first, name)
+          top_match = matches.first
+          entry['team_id'] = top_match['id']
+          entry['editable_name'] = top_match['editable_name']
+          entry['name'] = top_match['name']
+          entry['name_variations'] = top_match['name_variations']
+          entry['city_id'] = top_match['city_id']
+          @logger&.info("[TeamSolver] Auto-assigned team '#{key}' -> ID #{top_match['id']}")
+        end
+
+        entry
+      end
+
+      # Find potential team matches by searching for similar team names
+      # Returns array of hashes with team data (id, name, editable_name, etc.)
+      def find_team_matches(name)
+        return [] if name.blank?
+
+        search_term = name.to_s.strip.downcase
+        search_pattern = "%#{search_term}%"
+        
+        # Search by name and editable_name with LIKE query
+        # Also check name_variations (pipe-separated aliases)
+        teams = GogglesDb::Team.where(
+          'LOWER(name) LIKE ? OR LOWER(editable_name) LIKE ? OR LOWER(name_variations) LIKE ?',
+          search_pattern,
+          search_pattern,
+          search_pattern
+        ).includes(:city).limit(10)
+
+        teams.map do |t|
+          {
+            'id' => t.id,
+            'name' => t.name,
+            'editable_name' => t.editable_name,
+            'name_variations' => t.name_variations,
+            'city_id' => t.city_id,
+            'city_name' => t.city&.name,
+            'display_label' => "#{t.editable_name} (ID: #{t.id}, #{t.city&.name || 'no city'})"
+          }
+        end
+      rescue StandardError => e
+        @logger&.warn("[TeamSolver] Error finding team matches for '#{name}': #{e.message}")
+        []
+      end
+
+      # Determine if top match is good enough for auto-assignment
+      # Returns true if:
+      # - Exact match on name (case-insensitive)
+      # - Exact match on editable_name (case-insensitive)
+      # - Name is in the name_variations list
+      def auto_assignable?(match, search_name)
+        return false unless match.present? && search_name.present?
+
+        search_lower = search_name.to_s.strip.downcase
+        name_lower = match['name'].to_s.strip.downcase
+        editable_lower = match['editable_name'].to_s.strip.downcase
+
+        # Exact match on name or editable_name
+        return true if search_lower == name_lower || search_lower == editable_lower
+
+        # Check name_variations (pipe-separated)
+        variations = match['name_variations'].to_s.split('|').map { |v| v.strip.downcase }
+        variations.include?(search_lower)
       end
     end
   end
