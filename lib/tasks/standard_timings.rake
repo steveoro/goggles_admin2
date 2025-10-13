@@ -9,7 +9,7 @@ SCRIPT_OUTPUT_DIR = Rails.root.join('crawler/data/results.new').freeze unless de
 
 namespace :import do # rubocop:disable Metrics/BlockLength
   # Default Goggles::Season#id value for most tasks
-  DEFAULT_SEASON_ID = 242 unless defined? DEFAULT_SEASON_ID
+  DEFAULT_SEASON_ID = 252 unless defined? DEFAULT_SEASON_ID
   #-- ---------------------------------------------------------------------------
   #++
 

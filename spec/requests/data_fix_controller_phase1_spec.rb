@@ -224,7 +224,7 @@ RSpec.describe DataFixController do
           scheduled_date: '15-12-2024' # Wrong format
         }
         expect(response).to redirect_to(review_sessions_path(file_path: source_file, phase_v2: 1))
-        
+
         # Verify the invalid date was not saved
         pfm = PhaseFileManager.new(phase1_file)
         sess = pfm.data['meeting_session'][0]
@@ -549,7 +549,7 @@ RSpec.describe DataFixController do
       it 'clears sessions when meeting not found' do
         post rescan_phase1_sessions_path, params: {
           file_path: source_file,
-          meeting_id: 99999 # Non-existent ID
+          meeting_id: 99_999 # Non-existent ID
         }
 
         pfm = PhaseFileManager.new(phase1_file)
