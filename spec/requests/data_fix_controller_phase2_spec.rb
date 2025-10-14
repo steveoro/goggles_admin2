@@ -162,24 +162,46 @@ RSpec.describe DataFixController do
         expect(team_a['fuzzy_matches']).to be_an(Array)
       end
 
-      it 'auto-assignment logic works when exact match exists' do
-        # This test verifies the auto_assignable? logic directly
-        # Create a mock match structure
-        match = {
+      it 'auto-assignment logic works with fuzzy match weights' do
+        # This test verifies the auto_assignable? logic with Jaro-Winkler weights
+        # Simple rule: weight >= 0.90 → auto-assign
+        solver = Import::Solvers::TeamSolver.new(season: season)
+
+        # Test 1: High weight (>= 0.90) should auto-assign
+        high_weight_match = {
           'id' => 123,
+          'name' => 'Team Alpha',
+          'editable_name' => 'Team Alpha',
+          'weight' => 0.96
+        }
+        expect(solver.send(:auto_assignable?, high_weight_match, 'Team Alfa')).to be true
+
+        # Test 2: Weight at threshold (0.90) should auto-assign
+        threshold_match = {
+          'id' => 124,
           'name' => 'Team A',
           'editable_name' => 'Team A',
-          'name_variations' => nil
+          'weight' => 0.90
         }
+        expect(solver.send(:auto_assignable?, threshold_match, 'Team A')).to be true
 
-        solver = Import::Solvers::TeamSolver.new(season: season)
-        # Test exact name match
-        expect(solver.send(:auto_assignable?, match, 'Team A')).to be true
-        expect(solver.send(:auto_assignable?, match, 'team a')).to be true
-        
-        # Test partial match (should NOT auto-assign)
-        expect(solver.send(:auto_assignable?, match, 'Team')).to be false
-        expect(solver.send(:auto_assignable?, match, 'Team A Plus')).to be false
+        # Test 3: Weight below threshold should NOT auto-assign
+        low_weight_match = {
+          'id' => 125,
+          'name' => 'Team A Plus',
+          'editable_name' => 'Team A+',
+          'weight' => 0.89
+        }
+        expect(solver.send(:auto_assignable?, low_weight_match, 'Team A')).to be false
+
+        # Test 4: Very low weight should NOT auto-assign
+        very_low_weight = {
+          'id' => 126,
+          'name' => 'Completely Different Team',
+          'editable_name' => 'Different',
+          'weight' => 0.45
+        }
+        expect(solver.send(:auto_assignable?, very_low_weight, 'Team A')).to be false
       end
     end
 

@@ -23,11 +23,7 @@ This plan tracks the redesign of the Data-Fix pipeline to reduce memory footprin
 - **Service objects**: Phase1NestedParamParser, Phase1SessionUpdater, Phase1SessionRescanner
 - **Controller refactoring**: Reduced update_phase1_session from 129→20 lines, rescan_phase1_sessions from 76→18 lines
 
-**Fuzzy Matching** ✅:
-- TeamSolver finds top 10 matches via LIKE search on name/editable_name/name_variations
-- Auto-assigns exact matches (case-insensitive: name, editable_name, or in name_variations)
-- Fuzzy matches dropdown in view for quick manual selection
-- 4 additional tests verifying fuzzy matching behavior
+**Note**: Phase 1 also uses fuzzy matching (for Meetings/Pools/Cities), following the same pattern as Phase 2.
 
 **🎯 Next Phase**:
 Phases 1 & 2 are **complete and production-ready**. Ready to move to Phase 3 (Swimmers).
@@ -64,12 +60,14 @@ Phases 1 & 2 are **complete and production-ready**. Ready to move to Phase 3 (Sw
 - ✅ `city_id` (optional City binding via AutoComplete)
 - ✅ `key` (immutable reference)
 
-**Fuzzy Matching** ✅:
-- TeamSolver searches DB for similar teams (LIKE on name/editable_name/name_variations)
-- Stores top 10 matches per team in phase file
-- Auto-assigns exact matches (case-insensitive comparison)
-- View displays fuzzy matches dropdown for quick selection
-- JavaScript triggers AutoComplete when match selected
+**Fuzzy Matching** ✅ (Enhanced with Jaro-Winkler):
+- Uses `GogglesDb::CmdFindDbEntity` with `FuzzyTeam` strategy (Jaro-Winkler distance metric)
+- Searches database using sophisticated fuzzy matching (not just LIKE queries)
+- Stores matches sorted by weight/confidence (0.0-1.0) in phase file
+- **Auto-assigns when weight >= 0.90** (90% confidence threshold)
+- Display labels show match percentage for operator transparency
+- View displays fuzzy matches dropdown for quick selection and manual override
+- Consistent with MacroSolver implementation (production-proven)
 
 **Key Files**:
 - `app/controllers/data_fix_controller.rb` - review_teams, update_phase2_team, add_team, delete_team actions

@@ -136,32 +136,30 @@ module Import
         entry
       end
 
-      # Find potential team matches by searching for similar team names
-      # Returns array of hashes with team data (id, name, editable_name, etc.)
+      # Find potential team matches using GogglesDb fuzzy finder with Jaro-Winkler distance
+      # Returns array of hashes with team data (id, name, editable_name, etc.) sorted by match weight
       def find_team_matches(name)
         return [] if name.blank?
 
-        search_term = name.to_s.strip.downcase
-        search_pattern = "%#{search_term}%"
-        
-        # Search by name and editable_name with LIKE query
-        # Also check name_variations (pipe-separated aliases)
-        teams = GogglesDb::Team.where(
-          'LOWER(name) LIKE ? OR LOWER(editable_name) LIKE ? OR LOWER(name_variations) LIKE ?',
-          search_pattern,
-          search_pattern,
-          search_pattern
-        ).includes(:city).limit(10)
+        # Use CmdFindDbEntity with FuzzyTeam strategy (Jaro-Winkler distance)
+        cmd = GogglesDb::CmdFindDbEntity.call(
+          GogglesDb::Team,
+          { name: name.to_s.strip }
+        )
 
-        teams.map do |t|
+        # Extract matches (sorted by weight descending) and convert to our format
+        matches = cmd.matches.respond_to?(:map) ? cmd.matches : []
+        matches.map do |match_struct|
+          team = match_struct.candidate
           {
-            'id' => t.id,
-            'name' => t.name,
-            'editable_name' => t.editable_name,
-            'name_variations' => t.name_variations,
-            'city_id' => t.city_id,
-            'city_name' => t.city&.name,
-            'display_label' => "#{t.editable_name} (ID: #{t.id}, #{t.city&.name || 'no city'})"
+            'id' => team.id,
+            'name' => team.name,
+            'editable_name' => team.editable_name,
+            'name_variations' => team.name_variations,
+            'city_id' => team.city_id,
+            'city_name' => team.city&.name,
+            'weight' => match_struct.weight.round(3),
+            'display_label' => "#{team.editable_name} (ID: #{team.id}, #{team.city&.name || 'no city'}, match: #{(match_struct.weight * 100).round(1)}%)"
           }
         end
       rescue StandardError => e
@@ -170,23 +168,18 @@ module Import
       end
 
       # Determine if top match is good enough for auto-assignment
-      # Returns true if:
-      # - Exact match on name (case-insensitive)
-      # - Exact match on editable_name (case-insensitive)
-      # - Name is in the name_variations list
+      # Uses fuzzy match weight (Jaro-Winkler distance) as criterion.
+      # Auto-assigns if weight >= 0.90 (90% confidence or higher)
+      #
+      # This threshold balances accuracy and convenience:
+      # - Catches exact matches and close variants
+      # - Low false positive rate in production
+      # - Operator can still override via dropdown if needed
       def auto_assignable?(match, search_name)
         return false unless match.present? && search_name.present?
 
-        search_lower = search_name.to_s.strip.downcase
-        name_lower = match['name'].to_s.strip.downcase
-        editable_lower = match['editable_name'].to_s.strip.downcase
-
-        # Exact match on name or editable_name
-        return true if search_lower == name_lower || search_lower == editable_lower
-
-        # Check name_variations (pipe-separated)
-        variations = match['name_variations'].to_s.split('|').map { |v| v.strip.downcase }
-        variations.include?(search_lower)
+        weight = match['weight'].to_f
+        weight >= 0.90
       end
     end
   end

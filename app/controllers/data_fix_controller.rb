@@ -65,10 +65,10 @@ class DataFixController < ApplicationController
       pfm = PhaseFileManager.new(phase_path)
       @phase2_meta = pfm.meta
       @phase2_data = pfm.data
-      
+
       # Set API URL for AutoComplete components
       set_api_url
-      
+
       # Optional filtering
       @q = params[:q].to_s.strip
       teams = Array(@phase2_data['teams'])
@@ -228,30 +228,30 @@ class DataFixController < ApplicationController
     end
 
     t = teams[team_index] || {}
-    
+
     # Handle nested params from AutoComplete (team[index][field]) and top-level params
     team_params = params[:team]
     if team_params.is_a?(ActionController::Parameters) && team_params[team_index.to_s].present?
       nested = team_params[team_index.to_s].permit(:team_id, :editable_name, :name, :name_variations, :city_id)
-      
+
       # Update team_id (from AutoComplete)
       if nested[:team_id].present?
         num = nested[:team_id].to_i
         t['team_id'] = num if num.positive?
       end
-      
+
       # Update city_id (from City AutoComplete)
       if nested.key?(:city_id)
         city_num = nested[:city_id].to_i
         t['city_id'] = city_num.positive? ? city_num : nil
       end
-      
+
       # Update text fields
       t['editable_name'] = sanitize_str(nested[:editable_name]) if nested.key?(:editable_name)
       t['name'] = sanitize_str(nested[:name]) if nested.key?(:name)
       t['name_variations'] = sanitize_str(nested[:name_variations]) if nested.key?(:name_variations)
     end
-    
+
     teams[team_index] = t
     data['teams'] = teams
 
