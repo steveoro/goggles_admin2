@@ -75,8 +75,8 @@ module Import
 
         payload = {
           'season_id' => @season.id,
-          'teams' => teams.uniq { |h| h['key'] },
-          'team_affiliations' => ta.uniq { |h| [h['team_key'], h['season_id']] }
+          'teams' => teams.uniq { |h| h['key'] }.sort_by { |h| h['key'] },
+          'team_affiliations' => ta.uniq { |h| [h['team_key'], h['season_id']] }.sort_by { |h| h['team_key'] }
         }
 
         phase_path = opts[:phase_path] || default_phase_path_for(source_path, 2)

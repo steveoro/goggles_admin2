@@ -29,7 +29,8 @@ class DataFixController < ApplicationController
           source_path: source_path,
           lt_format: lt_format
         )&.dig('path') || phase_path
-        flash.now[:notice] = I18n.t('data_import.messages.phase_rebuilt', phase: 1)
+        # Redirect without rescan parameter to avoid triggering rescan on navigation
+        redirect_to(review_sessions_path(request.query_parameters.except(:rescan)), notice: I18n.t('data_import.messages.phase_rebuilt', phase: 1)) && return
       end
       pfm = PhaseFileManager.new(phase_path)
       @phase1_meta = pfm.meta
@@ -60,7 +61,8 @@ class DataFixController < ApplicationController
           source_path: source_path,
           lt_format: lt_format
         )
-        flash.now[:notice] = I18n.t('data_import.messages.phase_rebuilt', phase: 2)
+        # Redirect without rescan parameter to avoid triggering rescan on navigation
+        redirect_to(review_teams_path(request.query_parameters.except(:rescan)), notice: I18n.t('data_import.messages.phase_rebuilt', phase: 2)) && return
       end
       pfm = PhaseFileManager.new(phase_path)
       @phase2_meta = pfm.meta
@@ -83,10 +85,13 @@ class DataFixController < ApplicationController
       @page = params[:page].to_i
       @page = 1 if @page < 1
       @per_page = params[:per_page].to_i
-      @per_page = 50 if @per_page <= 0
+      @per_page = 50 if @per_page <= 0 || !params.key?(:per_page)
       @total_count = teams.size
       @total_pages = (@total_count.to_f / @per_page).ceil
-      @items = teams.slice((@page - 1) * @per_page, @per_page) || []
+      start_idx = (@page - 1) * @per_page
+      end_idx = [start_idx + @per_page - 1, @total_count - 1].min
+      @row_range = @total_count.positive? ? "#{start_idx + 1}..#{end_idx + 1}" : '0..0'
+      @items = teams.slice(start_idx, @per_page) || []
       return render 'data_fix/review_teams_v2'
     end
 
@@ -110,7 +115,8 @@ class DataFixController < ApplicationController
           source_path: source_path,
           lt_format: lt_format
         )
-        flash.now[:notice] = I18n.t('data_import.messages.phase_rebuilt', phase: 3)
+        # Redirect without rescan parameter to avoid triggering rescan on navigation
+        redirect_to(review_swimmers_path(request.query_parameters.except(:rescan)), notice: I18n.t('data_import.messages.phase_rebuilt', phase: 3)) && return
       end
       pfm = PhaseFileManager.new(phase_path)
       @phase3_meta = pfm.meta
@@ -127,14 +133,21 @@ class DataFixController < ApplicationController
           [last, first, key].any? { |v| v.include?(qd) }
         end
       end
-      # Pagination
+      # Pagination (swimmers typically have more entries, default to 100)
       @page = params[:page].to_i
       @page = 1 if @page < 1
       @per_page = params[:per_page].to_i
-      @per_page = 50 if @per_page <= 0
+      @per_page = 100 if @per_page <= 0 || !params.key?(:per_page)
       @total_count = swimmers.size
       @total_pages = (@total_count.to_f / @per_page).ceil
-      @items = swimmers.slice((@page - 1) * @per_page, @per_page) || []
+      start_idx = (@page - 1) * @per_page
+      end_idx = [start_idx + @per_page - 1, @total_count - 1].min
+      @row_range = @total_count.positive? ? "#{start_idx + 1}..#{end_idx + 1}" : '0..0'
+      @items = swimmers.slice(start_idx, @per_page) || []
+      
+      # Set API URL for AutoComplete components
+      set_api_url
+      
       return render 'data_fix/review_swimmers_v2'
     end
 
@@ -336,6 +349,134 @@ class DataFixController < ApplicationController
     pfm.write!(data: data, meta: meta)
 
     redirect_to review_teams_path(file_path:, phase2_v2: 1), notice: I18n.t('data_import.messages.updated')
+  end
+
+  # Update a single Phase 3 swimmer entry by index
+  # rubocop:disable Metrics/AbcSize
+  def update_phase3_swimmer
+    file_path = params[:file_path]
+    swimmer_index = params[:swimmer_index]&.to_i
+
+    if file_path.blank? || swimmer_index.nil?
+      flash[:warning] = I18n.t('data_import.errors.invalid_request')
+      redirect_to(pull_index_path) && return
+    end
+
+    source_path = resolve_source_path(file_path)
+    phase_path = default_phase_path_for(source_path, 3)
+    pfm = PhaseFileManager.new(phase_path)
+    data = pfm.data || {}
+    swimmers = Array(data['swimmers'])
+
+    # Validate swimmer_index
+    if swimmer_index.negative? || swimmer_index >= swimmers.size
+      flash[:warning] = "Invalid swimmer index: #{swimmer_index}"
+      redirect_to(review_swimmers_path(file_path:, phase3_v2: 1)) && return
+    end
+
+    # Get swimmer params - handle nested params from AutoComplete
+    swimmer_params = params[:swimmer] || {}
+    
+    # Update the swimmer at the specified index
+    swimmer = swimmers[swimmer_index]
+    swimmer['complete_name'] = swimmer_params[:complete_name]&.strip if swimmer_params.key?(:complete_name)
+    swimmer['first_name'] = swimmer_params[:first_name]&.strip if swimmer_params.key?(:first_name)
+    swimmer['last_name'] = swimmer_params[:last_name]&.strip if swimmer_params.key?(:last_name)
+    swimmer['year_of_birth'] = swimmer_params[:year_of_birth].to_i if swimmer_params.key?(:year_of_birth)
+    swimmer['gender_type_code'] = swimmer_params[:gender_type_code]&.strip if swimmer_params.key?(:gender_type_code)
+    swimmer['swimmer_id'] = swimmer_params[:id].to_i if swimmer_params.key?(:id)
+
+    data['swimmers'] = swimmers
+
+    # Clear downstream phase data (phase4+) when swimmers are modified
+    data['meeting_event'] = [] if data.key?('meeting_event')
+    data['meeting_program'] = [] if data.key?('meeting_program')
+    data['meeting_individual_result'] = [] if data.key?('meeting_individual_result')
+    data['meeting_relay_result'] = [] if data.key?('meeting_relay_result')
+
+    meta = pfm.meta || {}
+    meta['generated_at'] = Time.now.utc.iso8601
+    pfm.write!(data: data, meta: meta)
+
+    redirect_to review_swimmers_path(file_path:, phase3_v2: 1), notice: I18n.t('data_import.messages.updated')
+  end
+  # rubocop:enable Metrics/AbcSize
+
+  # Add a new blank swimmer to Phase 3
+  def add_swimmer
+    file_path = params[:file_path]
+
+    if file_path.blank?
+      flash[:warning] = I18n.t('data_import.errors.invalid_request')
+      redirect_to(pull_index_path) && return
+    end
+
+    source_path = resolve_source_path(file_path)
+    phase_path = default_phase_path_for(source_path, 3)
+    pfm = PhaseFileManager.new(phase_path)
+    data = pfm.data || {}
+    swimmers = Array(data['swimmers'])
+
+    # Create a new blank swimmer entry
+    new_index = swimmers.size + 1
+    new_swimmer = {
+      'key' => "NEW|SWIMMER|#{new_index}",
+      'last_name' => 'NEW',
+      'first_name' => 'SWIMMER',
+      'year_of_birth' => Time.zone.now.year - 30,
+      'gender_type_code' => 'M',
+      'complete_name' => "NEW SWIMMER #{new_index}",
+      'swimmer_id' => nil,
+      'fuzzy_matches' => []
+    }
+
+    swimmers << new_swimmer
+    data['swimmers'] = swimmers
+
+    meta = pfm.meta || {}
+    meta['generated_at'] = Time.now.utc.iso8601
+    pfm.write!(data: data, meta: meta)
+
+    redirect_to review_swimmers_path(file_path:, phase3_v2: 1), notice: 'Swimmer added'
+  end
+
+  # Delete a swimmer entry from Phase 3 and clear downstream phase data
+  def delete_swimmer
+    file_path = params[:file_path]
+    swimmer_index = params[:swimmer_index]&.to_i
+
+    if file_path.blank? || swimmer_index.nil?
+      flash[:warning] = I18n.t('data_import.errors.invalid_request')
+      redirect_to(pull_index_path) && return
+    end
+
+    source_path = resolve_source_path(file_path)
+    phase_path = default_phase_path_for(source_path, 3)
+    pfm = PhaseFileManager.new(phase_path)
+    data = pfm.data || {}
+    swimmers = Array(data['swimmers'])
+
+    # Validate swimmer_index
+    if swimmer_index.negative? || swimmer_index >= swimmers.size
+      flash[:warning] = "Invalid swimmer index: #{swimmer_index}"
+      redirect_to(review_swimmers_path(file_path:, phase3_v2: 1)) && return
+    end
+
+    # Remove the swimmer at the specified index
+    swimmers.delete_at(swimmer_index)
+    data['swimmers'] = swimmers
+
+    # Clear downstream phase data (phase4+) when swimmers are modified
+    data['meeting_event'] = [] if data.key?('meeting_event')
+    data['meeting_program'] = [] if data.key?('meeting_program')
+    data['meeting_individual_result'] = [] if data.key?('meeting_individual_result')
+    data['meeting_relay_result'] = [] if data.key?('meeting_relay_result')
+
+    meta = pfm.meta || {}
+    meta['generated_at'] = Time.now.utc.iso8601
+    pfm.write!(data: data, meta: meta)
+
+    redirect_to review_swimmers_path(file_path:, phase3_v2: 1), notice: I18n.t('data_import.messages.updated')
   end
 
   # Update Phase 1 meeting attributes in the phase file and redirect back to v2 view

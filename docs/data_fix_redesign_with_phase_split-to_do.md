@@ -2,7 +2,7 @@
 
 This plan tracks the redesign of the Data-Fix pipeline to reduce memory footprint and improve maintainability by splitting work into per-phase files and per-entity solvers, while keeping a legacy fallback.
 
-## 🚧 Current Status (Updated: 2025-10-13 23:15)
+## 🚧 Current Status (Updated: 2025-10-15 00:25)
 
 ### Phase 1 (Sessions): 100% Complete ✅ 🎉
 **Status**: All features, UI, refactoring, and test coverage complete. Production-ready!
@@ -18,21 +18,21 @@ This plan tracks the redesign of the Data-Fix pipeline to reduce memory footprin
   - 29 controller integration tests (18 new)
   - 15 service unit tests for Phase1NestedParamParser (new)
   - Covers happy paths, error handling, validation, nested data updates
-- **Bug fixes**: Form nesting issue (rescan button), nested parameter parsing (pool/city updates)
-- **UI improvements**: Meeting name in metadata header, collapsible meeting/session forms, scheduled date in session header, session deletion button
+- **Bug fixes**: Form nesting issue (rescan button), nested parameter parsing (pool/city updates), rescan parameter persistence bug
+- **UI improvements**: Meeting name in metadata header, collapsible meeting/session forms, scheduled date in session header, session deletion button, container-fluid layout
 - **Service objects**: Phase1NestedParamParser, Phase1SessionUpdater, Phase1SessionRescanner
 - **Controller refactoring**: Reduced update_phase1_session from 129→20 lines, rescan_phase1_sessions from 76→18 lines
 
 **Note**: Phase 1 also uses fuzzy matching (for Meetings/Pools/Cities), following the same pattern as Phase 2.
 
 **🎯 Next Phase**:
-Phases 1 & 2 are **complete and production-ready**. Ready to move to Phase 3 (Swimmers).
+Phases 1, 2 & 3 are **complete and production-ready**. Ready to move to Phase 4 (Events).
 
 ### Phase 2 (Teams): 100% Complete ✅ 🎉
 **Status**: All features, UI, and test coverage complete. Production-ready!
 
 **✅ Completed**:
-- TeamSolver with LT2 + LT4 format support
+- TeamSolver with LT2 + LT4 format support + fuzzy matching (Jaro-Winkler)
 - DataFixController actions: review_teams, update_phase2_team, add_team, delete_team
 - review_teams_v2.html.haml view with **collapsible card layout**
 - AutoCompleteComponent integration for Team and City entities
@@ -43,14 +43,18 @@ Phases 1 & 2 are **complete and production-ready**. Ready to move to Phase 3 (Sw
   - add_team: blank team creation with proper structure
   - delete_team: removal + downstream data clearing, edge case handling
   - fuzzy_matching: auto-assignment logic, match structure, dropdown integration
-- **UI Features**: 
-  - Visual status indicators (✅ matched, 🆕 new)
-  - Border coloring for name mismatches (red border)
+- **UI Features (Enhanced 2025-10-15)**: 
+  - Visual status indicators: ✓ green check icon (matched), + orange plus icon (new)
+  - Badge indicators: 🟢 green "ID: 123" badge (matched), 🔵 blue "NEW" badge (new)
+  - Border styling: gray border-2 (matched, subtle), orange border-2 (new, prominent)
   - Background coloring (bg-light for matched, bg-light-yellow for new)
   - Initially collapsed cards for space efficiency
   - Add Team button + Delete buttons per card
   - **Fuzzy matches dropdown** for quick team selection (populated by TeamSolver)
+  - **Improved pagination**: 50/100/150 options, default 50 per page
+  - **Row range display**: Shows "1..50 / 150" for better navigation
 - **Manual testing**: Confirmed AutoComplete works correctly for Team and City lookups
+- **Sort order**: Teams sorted by key for consistent ordering
 
 **Team Entity Fields Supported** (6/6):
 - ✅ `name` (required)
@@ -76,10 +80,64 @@ Phases 1 & 2 are **complete and production-ready**. Ready to move to Phase 3 (Sw
 - `config/routes.rb` - Routes for all Phase 2 actions
 - `spec/requests/data_fix_controller_phase2_spec.rb` - 38 comprehensive tests
 
-**Actual Time**: ~5 hours total (includes fuzzy matching)
+**Actual Time**: ~5 hours total (includes fuzzy matching + UI enhancements)
 
-### Phase 3 (Swimmers): ~40% Complete 🚧
-SwimmerSolver implemented, controller actions exist, view incomplete.
+### Phase 3 (Swimmers): 100% Complete ✅ 🎉
+**Status**: All features, UI, and test coverage complete. Production-ready!
+
+**✅ Completed**:
+- SwimmerSolver with LT2 + LT4 format support + fuzzy matching (Jaro-Winkler)
+- DataFixController actions: review_swimmers, update_phase3_swimmer, add_swimmer, delete_swimmer
+- review_swimmers_v2.html.haml view with **collapsible card layout**
+- AutoCompleteComponent integration for Swimmer entity
+- Routes configured for all CRUD operations
+- **Complete RSpec coverage**: 35 tests, all passing ✅
+  - review_swimmers: pagination (120 swimmers), filtering, rescan, visual indicators, empty state, fuzzy matches display
+  - update_phase3_swimmer: all fields (complete_name, first_name, last_name, year_of_birth, gender_type_code, swimmer_id), nested params, validation
+  - add_swimmer: blank swimmer creation with proper structure and unique keys
+  - delete_swimmer: removal + downstream data clearing, edge case handling
+  - rescan: rescan parameter clearing bug fix, phase file rebuild
+  - fuzzy_matching: auto-assignment logic, match structure, dropdown integration
+- **UI Features**: 
+  - Visual status indicators: ✓ green check icon (matched), + orange plus icon (new)
+  - Badge indicators: 🟢 green "ID: 123" badge (matched), 🔵 blue "NEW" badge (new)
+  - Border styling: gray border-2 (matched, subtle), orange border-2 (new, prominent)
+  - Background coloring (bg-light for matched, bg-light-yellow for new)
+  - Initially collapsed cards for space efficiency
+  - Add Swimmer button + Delete buttons per card
+  - **Fuzzy matches dropdown** for quick swimmer selection (populated by SwimmerSolver)
+  - **Improved pagination**: 50/100/150 options, default 100 per page (swimmers typically have more entries)
+  - **Row range display**: Shows "51..100 / 298" for better navigation
+  - Rescan button with confirmation
+- **Manual testing**: Confirmed AutoComplete works correctly for Swimmer lookups
+- **Sort order**: Swimmers sorted by key for consistent ordering
+
+**Swimmer Entity Fields Supported** (7/7):
+- ✅ `complete_name` (required display name)
+- ✅ `first_name` (required)
+- ✅ `last_name` (required)
+- ✅ `year_of_birth` (required)
+- ✅ `gender_type_code` (required M/F)
+- ✅ `swimmer_id` (DB ID via AutoComplete)
+- ✅ `key` (immutable reference, format: "LAST|FIRST|YOB")
+
+**Fuzzy Matching** ✅ (Enhanced with Jaro-Winkler):
+- Uses `GogglesDb::CmdFindDbEntity` with `FuzzySwimmer` strategy (Jaro-Winkler distance metric)
+- Searches by `complete_name` + `year_of_birth` for accurate matching
+- Stores matches sorted by weight/confidence (0.0-1.0) in phase file
+- **Auto-assigns when weight >= 0.90** (90% confidence threshold)
+- Display labels show match percentage and year of birth for operator transparency
+- View displays fuzzy matches dropdown for quick selection and manual override
+- Top 10 matches displayed, sorted by confidence
+
+**Key Files**:
+- `app/controllers/data_fix_controller.rb` - review_swimmers, update_phase3_swimmer, add_swimmer, delete_swimmer actions
+- `app/views/data_fix/review_swimmers_v2.html.haml` - Collapsible card layout with AutoComplete + fuzzy dropdown
+- `app/strategies/import/solvers/swimmer_solver.rb` - SwimmerSolver (LT2 + LT4) with fuzzy matching
+- `config/routes.rb` - Routes for all Phase 3 actions
+- `spec/requests/data_fix_controller_phase3_spec.rb` - 35 comprehensive tests
+
+**Actual Time**: ~6 hours total (includes fuzzy matching + UI enhancements + tests)
 
 ### Phase 4 (Events): ~20% Complete 🚧
 EventSolver partially implemented.

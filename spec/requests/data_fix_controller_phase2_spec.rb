@@ -58,13 +58,15 @@ RSpec.describe DataFixController do
       it 'shows visual indicator for new teams (no DB ID)' do
         get review_teams_path(file_path: source_file, phase2_v2: 1)
         expect(response.body).to include('bg-light-yellow') # New team indicator
-        expect(response.body).to include('🆕')
+        expect(response.body).to include('fa-plus-circle') # Icon for new teams
+        expect(response.body).to include('badge-primary') # NEW badge
       end
 
       it 'shows visual indicator for matched teams (with DB ID)' do
         get review_teams_path(file_path: source_file, phase2_v2: 1)
         expect(response.body).to include('bg-light') # Matched team indicator
-        expect(response.body).to include('✅')
+        expect(response.body).to include('fa-check-circle') # Icon for matched teams
+        expect(response.body).to include('badge-success') # ID badge
       end
 
       it 'displays empty teams message when no teams exist' do
@@ -106,7 +108,8 @@ RSpec.describe DataFixController do
         expect(Import::Solvers::TeamSolver).to receive(:new).with(season: anything).and_call_original
 
         get review_teams_path(file_path: source_file, phase2_v2: 1, rescan: '1')
-        expect(response).to be_successful
+        # After rescan, redirects without rescan parameter to prevent cascading rescans
+        expect(response).to redirect_to(review_teams_path(file_path: source_file, phase2_v2: 1))
         expect(File.exist?(phase2_file)).to be true
       end
 

@@ -46,13 +46,7 @@ module Import
               next if l.blank? || f.blank? || yob.to_i.zero?
 
               key = [l, f, yob].join('|')
-              swimmers << {
-                'key' => key,
-                'last_name' => l,
-                'first_name' => f,
-                'year_of_birth' => yob.to_i,
-                'gender_type_code' => gcode
-              }
+              swimmers << build_swimmer_entry(key, l, f, yob.to_i, gcode)
               next if team_name.blank?
 
               badges << { 'swimmer_key' => key, 'team_key' => team_name, 'season_id' => @season.id }
@@ -67,13 +61,7 @@ module Import
               next if l.blank? || f.blank? || yob.to_i.zero?
 
               key = [l, f, yob].join('|')
-              swimmers << {
-                'key' => key,
-                'last_name' => l,
-                'first_name' => f,
-                'year_of_birth' => yob.to_i,
-                'gender_type_code' => gcode
-              }
+              swimmers << build_swimmer_entry(key, l, f, yob.to_i, gcode)
               next if team_name.to_s.strip.empty?
 
               badges << { 'swimmer_key' => key, 'team_key' => team_name, 'season_id' => @season.id }
@@ -91,13 +79,8 @@ module Import
               next if l.blank? || f.blank? || yob.to_i.zero?
 
               key = [l, f, yob].join('|')
-              swimmers << {
-                'key' => key,
-                'last_name' => l,
-                'first_name' => f,
-                'year_of_birth' => yob.to_i,
-                'gender_type_code' => gender_code || normalize_gender_code(row['gender'] || row['gender_type'] || row['gender_type_code'])
-              }
+              gcode = gender_code || normalize_gender_code(row['gender'] || row['gender_type'] || row['gender_type_code'])
+              swimmers << build_swimmer_entry(key, l, f, yob.to_i, gcode)
               team_name = row['team']
               next if team_name.to_s.strip.empty?
 
@@ -114,8 +97,8 @@ module Import
 
         payload = {
           'season_id' => @season.id,
-          'swimmers' => swimmers.uniq { |h| h['key'] },
-          'badges' => badges.uniq { |h| [h['swimmer_key'], h['team_key'], h['season_id']] }
+          'swimmers' => swimmers.uniq { |h| h['key'] }.sort_by { |h| h['key'] },
+          'badges' => badges.uniq { |h| [h['swimmer_key'], h['team_key'], h['season_id']] }.sort_by { |h| h['swimmer_key'] }
         }
 
         phase_path = opts[:phase_path] || default_phase_path_for(source_path, 3)
@@ -186,6 +169,76 @@ module Import
         return nil if s.nil?
 
         s.to_s.strip.presence
+      end
+
+      # Build a swimmer entry with fuzzy matches and auto-assignment
+      # key: immutable reference key (LAST|FIRST|YOB)
+      # last_name, first_name, year_of_birth, gender_type_code: swimmer attributes
+      def build_swimmer_entry(key, last_name, first_name, year_of_birth, gender_type_code)
+        complete_name = "#{last_name} #{first_name}".strip
+        entry = {
+          'key' => key,
+          'last_name' => last_name,
+          'first_name' => first_name,
+          'year_of_birth' => year_of_birth,
+          'gender_type_code' => gender_type_code,
+          'complete_name' => complete_name,
+          'swimmer_id' => nil
+        }
+
+        # Find fuzzy matches using CmdFindDbEntity with FuzzySwimmer
+        matches = find_swimmer_matches(complete_name, year_of_birth)
+        entry['fuzzy_matches'] = matches
+
+        # Auto-assign top match if confidence >= 90%
+        if matches.present? && auto_assignable?(matches.first, complete_name)
+          top_match = matches.first
+          entry['swimmer_id'] = top_match['id']
+          entry['complete_name'] = top_match['complete_name']
+          @logger&.info("[SwimmerSolver] Auto-assigned swimmer '#{key}' -> ID #{top_match['id']}")
+        end
+
+        entry
+      end
+
+      # Find potential swimmer matches using GogglesDb fuzzy finder with Jaro-Winkler distance
+      # Returns array of hashes with swimmer data sorted by match weight
+      def find_swimmer_matches(complete_name, year_of_birth)
+        return [] if complete_name.blank?
+
+        # Use CmdFindDbEntity with FuzzySwimmer strategy
+        cmd = GogglesDb::CmdFindDbEntity.call(
+          GogglesDb::Swimmer,
+          { complete_name: complete_name.to_s.strip, year_of_birth: year_of_birth.to_i }
+        )
+
+        # Extract matches (sorted by weight descending) and convert to our format
+        matches = cmd.matches.respond_to?(:map) ? cmd.matches : []
+        matches.map do |match_struct|
+          swimmer = match_struct.candidate
+          {
+            'id' => swimmer.id,
+            'complete_name' => swimmer.complete_name,
+            'last_name' => swimmer.last_name,
+            'first_name' => swimmer.first_name,
+            'year_of_birth' => swimmer.year_of_birth,
+            'gender_type_code' => swimmer.gender_type&.code,
+            'weight' => match_struct.weight.round(3),
+            'display_label' => "#{swimmer.complete_name} (#{swimmer.year_of_birth}, ID: #{swimmer.id}, match: #{(match_struct.weight * 100).round(1)}%)"
+          }
+        end
+      rescue StandardError => e
+        @logger&.warn("[SwimmerSolver] Error finding swimmer matches for '#{complete_name}': #{e.message}")
+        []
+      end
+
+      # Determine if top match is good enough for auto-assignment
+      # Auto-assigns if weight >= 0.90 (90% confidence threshold)
+      def auto_assignable?(match, _search_name)
+        return false unless match.present?
+
+        weight = match['weight'].to_f
+        weight >= 0.90
       end
     end
   end

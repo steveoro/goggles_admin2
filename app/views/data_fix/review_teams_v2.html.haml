@@ -1,22 +1,25 @@
 -# frozen_string_literal: true
 
-.container
+.container-fluid
   %h2 Data-Fix V2 • Step 2: Teams (Phase 2)
 
   .mb-2
     = render(partial: 'data_fix/step_tabs', locals: { active_step: 2, file_path: @file_path })
 
+  -# Phase Metadata card
   .card.mb-3
     .card-header Phase Metadata
     .card-body
       %pre= JSON.pretty_generate(@phase2_meta || {})
 
+  -# Phase Navigation buttons
   .d-flex.justify-content-between.mb-2
     %div
       = link_to 'Use legacy (Step 2)', review_teams_path(request.query_parameters.except(:phase2_v2)), class: 'btn btn-secondary'
     %div
       = link_to 'Proceed to Step 3 (Swimmers)', review_swimmers_path(request.query_parameters.merge(phase3_v2: 1)), class: 'btn btn-primary'
 
+  -# Search and filter controls
   .card
     .card-header Teams
     .card-body
@@ -29,106 +32,89 @@
             = text_field_tag :q, @q, class: 'form-control form-control-sm', placeholder: 'Search teams...'
           .form-group.mr-2
             %label.mr-1{ for: 'per_page' } Per page
-            = select_tag :per_page, options_for_select([25,50,100,200], @per_page), class: 'form-control form-control-sm'
+            = select_tag :per_page, options_for_select([50, 100, 150], @per_page), class: 'form-control form-control-sm'
           = submit_tag 'Apply', class: 'btn btn-sm btn-primary mr-1'
           = link_to 'Clear', review_teams_path(file_path: @file_path, phase2_v2: 1), class: 'btn btn-sm btn-light'
       - teams = @phase2_data['teams'] || []
       - if teams.empty?
         %em No teams found. If the source is LT2 without team names, switch to legacy to proceed or enrich the phase data.
-      - else
-        .d-flex.justify-content-between.align-items-center.mb-2
-          %div
-            %strong Page:
-            = @page
-            = "/"
-            = @total_pages
-            &nbsp;•&nbsp;
-            %strong Total rows:
-            = @total_count
-          %div
-            - prev_page = @page > 1 ? @page - 1 : nil
-            - next_page = (@page * @per_page) < @total_count ? @page + 1 : nil
-            - base_params = request.query_parameters.merge(phase2_v2: 1, per_page: @per_page)
-            - if prev_page
-              = link_to 'Prev', review_teams_path(base_params.merge(page: prev_page)), class: 'btn btn-sm btn-outline-secondary'
-            - if next_page
-              = link_to 'Next', review_teams_path(base_params.merge(page: next_page)), class: 'btn btn-sm btn-outline-secondary ml-1'
-        
-        -# Add Team button
-        .mb-3
-          = form_tag(data_fix_add_team_path, method: :post) do
-            = hidden_field_tag :file_path, @file_path
-            = submit_tag 'Add Team', class: 'btn btn-success', data: { confirm: 'Add a new blank team?' }
-        
-        -# Collapsible card layout for each team
-        - @items.each_with_index do |team, idx|
-          - team_index = ((@page - 1) * @per_page) + idx
-          - team_key = team['key'] || team['name']
-          - team_name = team['name'] || team_key
-          - editable_name = team['editable_name'] || team_name
-          - team_id = team['team_id']
-          - city_id = team['city_id']
-          - name_variations = team['name_variations']
+
+  -# Pagination info and Add button
+  .d-flex.justify-content-between.align-items-center.mb-2
+    %div
+      %strong Page:
+      = @page
+      = "/"
+      = @total_pages
+      &nbsp;•&nbsp;
+      %strong Rows:
+      = @row_range
+      = "/"
+      = @total_count
+    %div
+      = link_to data_fix_add_team_path(file_path: @file_path), method: :post, class: 'btn btn-sm btn-success', data: { confirm: 'Add a new blank team?' } do
+        %i.fa.fa-plus
+        Add Team
+
+  -# Collapsible card layout for each team
+  - if @items.empty?
+    .alert.alert-info
+      %em No teams found. Adjust filters or rescan to rebuild phase2 file.
+  - else
+    - @items.each_with_index do |team, idx|
+      - team_index = ((@page - 1) * @per_page) + idx
+      - team_key = team['key'] || team['name']
+      - team_name = team['name'] || team_key
+      - editable_name = team['editable_name'] || team_name
+      - team_id = team['team_id']
+      - city_id = team['city_id']
+      - name_variations = team['name_variations']
+      
+      -# Visual indicators
+      - has_match = team_id.present?
+      - card_bg = has_match ? 'bg-light' : 'bg-light-yellow'
+      - border_color = has_match ? 'border-secondary' : 'border-warning'
+      - border_width = 'border-2'
+
+      .card.mb-2{ class: "#{card_bg} #{border_color} #{border_width}", id: "team-card-#{team_index}" }
+        .card-header.d-flex.justify-content-between.align-items-center{ id: "team-header-#{team_index}", style: 'cursor: pointer;', data: { toggle: 'collapse', target: "#team-panel-#{team_index}" } }
+          .d-flex.align-items-center
+            %span.mr-2
+              - if has_match
+                %i.fa.fa-check-circle.text-success{ title: 'Matched' }
+              - else
+                %i.fa.fa-plus-circle.text-warning{ title: 'New/Unmatched' }
+            %strong
+              = editable_name
+            %small.ml-2.text-muted
+              (#{team_key})
+            - if has_match
+              %small.ml-2.badge.badge-success
+                ID: #{team_id}
+            - else
+              %small.ml-2.badge.badge-primary
+                NEW
+          .d-flex.align-items-center
+            = link_to data_fix_delete_team_path(file_path: @file_path, team_index: team_index), method: :delete, class: 'btn btn-sm btn-danger', data: { confirm: "Delete team '#{team_key}'?" }, onclick: 'event.stopPropagation();' do
+              %i.fa.fa-trash
           
-          -# Visual indicators
-          - difference_detected = (team_key.to_s.downcase != team_name.to_s.downcase)
-          - border_class = difference_detected ? 'border border-danger' : ''
-          - bg_class = team_id.present? ? 'bg-light' : 'bg-light-yellow'
-          - status_icon = team_id.present? ? '✅' : '🆕'
-          
-          %div{ id: "team-card-#{team_index}" }
-            .card.my-2{ class: border_class }
-              .card-header{ id: "team-header-#{team_index}", class: bg_class }
-                .row
-                  .col-3
-                    %h5.mb-0
-                      %button.btn.btn-link.m-1{ data: { toggle: 'collapse', target: "#team-panel-#{team_index}",
-                                                        'aria-expanded' => 'false', 'aria-controls' => "team-panel-#{team_index}" } }
-                        = team_key
-                  .col.mt-1.pt-2
-                    %span.text-secondary= '->'
-                    = editable_name
-                    - if team_id.present?
-                      %span.ml-2
-                        ID: #{team_id}
-                        = status_icon
-                    - else
-                      %span.ml-2= status_icon
-                  .col-md-3.mt-1.pt-2
-                    %i.form-text.text-muted
-                      %small
-                        🔑 "#{team_key}"
-                  .col-md-1.mt-1.pt-1
-                    = form_tag(data_fix_delete_team_path, method: :delete, style: 'display: inline;') do
-                      = hidden_field_tag :file_path, @file_path
-                      = hidden_field_tag :team_index, team_index
-                      = button_tag type: 'submit', class: 'btn btn-sm btn-outline-danger',
-                                  data: { confirm: "Delete team '#{team_key}'? This will clear downstream phase data." },
-                                  'aria-label': 'Delete' do
-                        %i.fa.fa-trash
+        .collapse{ id: "team-panel-#{team_index}", 'aria-labelledby' => "team-header-#{team_index}", 'data-parent' => "#team-card-#{team_index}" }
+          .card-body.border-bottom.border-secondary
+            = form_tag(update_phase2_team_path, method: :patch) do
+              = hidden_field_tag :file_path, @file_path
+              = hidden_field_tag :team_index, team_index
               
-              .collapse{ id: "team-panel-#{team_index}", 'aria-labelledby' => "team-header-#{team_index}",
-                        'data-parent' => "#team-card-#{team_index}" }
-                .card-body.border-bottom.border-secondary
-                  = form_tag(update_phase2_team_path, method: :patch) do
-                    = hidden_field_tag :file_path, @file_path
-                    = hidden_field_tag :team_index, team_index
-                    
-                    .container-fluid
-                      -# Row 0: Fuzzy matches dropdown (quick selection)
-                      - fuzzy_matches = team['fuzzy_matches'] || []
-                      - if fuzzy_matches.present?
-                        .row
-                          .col-12
-                            .form-group
-                              = label_tag "fuzzy_select_#{team_index}", 'Quick match selection (fuzzy matches)'
-                              = select_tag "fuzzy_select_#{team_index}",
-                                          options_for_select([['-- Select a match --', '']] + fuzzy_matches.map { |m| [m['display_label'], m['id']] }, team_id),
-                                          class: 'form-control',
-                                          id: "fuzzy_select_#{team_index}",
-                                          onchange: "var teamId = this.value; if (teamId) { $('#team_#{team_index}_team_id').val(teamId).trigger('change'); }"
-                              %small.form-text.text-muted
-                                Select a match from the list to quickly populate team fields via AutoComplete.
+              .container-fluid
+                -# Row 0: Fuzzy matches dropdown (quick selection)
+                - fuzzy_matches = team['fuzzy_matches'] || []
+                - if fuzzy_matches.present?
+                  .row
+                    .col-12
+                      .form-group
+                        = label_tag "fuzzy_select_#{team_index}", 'Quick match selection (fuzzy matches)'
+                        = select_tag "fuzzy_select_#{team_index}", options_for_select([['-- Select a match --', '']] + fuzzy_matches.map { |m| [m['display_label'], m['id']] }, team_id), class: 'form-control', id: "fuzzy_select_#{team_index}", onchange: "var teamId = this.value; if (teamId) { $('#team_#{team_index}_team_id').val(teamId).trigger('change'); }"
+                        %small.form-text.text-muted
+                          Select a match from the list to quickly populate team fields via AutoComplete.
                       
                       -# Row 1: Team AutoComplete + editable_name
                       .row
@@ -179,9 +165,24 @@
                       .form-group.mt-3
                         = submit_tag t('data_import.generic_save_btn'), class: 'btn btn-primary',
                                     'aria-label': 'Save', data: { confirm: t('data_import.btn_save_confirm') }
-        
-        .d-flex.justify-content-end.mt-3
-          - if prev_page
-            = link_to 'Prev', review_teams_path(base_params.merge(page: prev_page)), class: 'btn btn-sm btn-outline-secondary'
-          - if next_page
-            = link_to 'Next', review_teams_path(base_params.merge(page: next_page)), class: 'btn btn-sm btn-outline-secondary ml-1'
+
+  -# Pagination controls (bottom)
+  .d-flex.justify-content-between.align-items-center.mt-3
+    %div
+      - prev_page = @page > 1 ? @page - 1 : nil
+      - if prev_page
+        = link_to 'Prev', review_teams_path(request.query_parameters.merge(phase2_v2: 1, per_page: @per_page, page: prev_page)), class: 'btn btn-sm btn-outline-secondary'
+    %div
+      %strong Page:
+      = @page
+      = "/"
+      = @total_pages
+      &nbsp;•&nbsp;
+      %strong Rows:
+      = @row_range
+      = "/"
+      = @total_count
+    %div
+      - next_page = (@page * @per_page) < @total_count ? @page + 1 : nil
+      - if next_page
+        = link_to 'Next', review_teams_path(request.query_parameters.merge(phase2_v2: 1, per_page: @per_page, page: next_page)), class: 'btn btn-sm btn-outline-secondary'
