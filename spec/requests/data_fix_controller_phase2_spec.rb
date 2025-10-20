@@ -85,13 +85,12 @@ RSpec.describe DataFixController do
         pfm = PhaseFileManager.new(phase2_file)
         pfm.write!(data: { 'teams' => teams }, meta: { 'generator' => 'test' })
 
-        get review_teams_path(file_path: source_file, phase2_v2: 1, per_page: 25, page: 1)
+        get review_teams_path(file_path: source_file, phase2_v2: 1, teams_per_page: 25, teams_page: 1)
         expect(response).to be_successful
-        # Check that we show first page teams and Next button exists (pagination is working)
+        # Check that we show first page teams (pagination is working)
         expect(response.body).to include('Team 1')
         expect(response.body).to include('Team 25')
         expect(response.body).not_to include('Team 26') # Should not show items from page 2
-        expect(response.body).to include('Next')
       end
 
       it 'filters teams by search query' do

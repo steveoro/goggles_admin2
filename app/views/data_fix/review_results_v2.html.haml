@@ -10,10 +10,7 @@
     %div
       = link_to 'Use legacy (Step 5)', review_results_path(request.query_parameters.except(:phase5_v2)), class: 'btn btn-secondary'
 
-  .card.mb-3
-    .card-header Phase Metadata
-    .card-body
-      %pre= JSON.pretty_generate(@phase5_meta || {})
+  = render(partial: 'data_fix/phase_metadata', locals: { phase_number: 5, metadata: @phase5_meta })
 
   - sessions = Array(@phase5_data['sessions'])
   - if sessions.empty?

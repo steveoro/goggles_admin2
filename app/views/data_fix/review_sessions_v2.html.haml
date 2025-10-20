@@ -6,15 +6,10 @@
   .mb-2
     = render(partial: 'data_fix/step_tabs', locals: { active_step: 1, file_path: @file_path })
 
-  .card.mb-3
-    .card-header
-      - meeting_id = @phase1_data['id']
-      - meeting_name = @phase1_data['name']
-      - header_text = 'Phase Metadata'
-      - header_text += " (#{meeting_id}: #{meeting_name})" if meeting_id.present? || meeting_name.present?
-      = header_text
-    .card-body
-      %pre= JSON.pretty_generate(@phase1_meta || {})
+  - meeting_id = @phase1_data['id']
+  - meeting_name = @phase1_data['name']
+  - extra_info = [meeting_id, meeting_name].compact.join(': ').presence
+  = render(partial: 'data_fix/phase_metadata', locals: { phase_number: 1, metadata: @phase1_meta, extra_info: extra_info })
 
   .card.mb-3#meeting-card
     .card-header
@@ -190,10 +185,12 @@
         .alert.alert-info
           %em No sessions yet. Click "Add Session" above or use the legacy view.
       - else
+        - new_session_idx = params[:new_session_index]&.to_i
         - sessions.each_with_index do |sess, idx|
+          - is_new_session = new_session_idx.present? && new_session_idx == idx
           .card.mb-3.border-primary{ id: "session-card-#{idx}" }
             .card-header.bg-primary.text-white.d-flex.justify-content-between.align-items-center
-              %button.btn.btn-link.text-white.text-left.flex-grow-1{ type: 'button', data: { toggle: 'collapse', target: "#session-collapse-#{idx}" }, 'aria-expanded' => 'true', 'aria-controls' => "session-collapse-#{idx}" }
+              %button.btn.btn-link.text-white.text-left.flex-grow-1{ type: 'button', data: { toggle: 'collapse', target: "#session-collapse-#{idx}" }, 'aria-expanded' => is_new_session ? 'true' : 'false', 'aria-controls' => "session-collapse-#{idx}" }
                 %strong
                   Session #{idx + 1}
                   - if sess['scheduled_date'].present?
@@ -204,9 +201,9 @@
               = form_tag(data_fix_delete_session_path, method: :delete, class: 'd-inline', onsubmit: "return confirm('Delete this session? This will also clear all downstream data (events, results).');") do
                 = hidden_field_tag :file_path, @file_path
                 = hidden_field_tag :session_index, idx
-                %button.btn.btn-sm.btn-outline-light{ type: 'submit', 'aria-label' => 'Delete session' }
+                %button.btn.btn-sm.btn-danger{ type: 'submit', 'aria-label' => 'Delete session' }
                   %i.fa.fa-trash
-            .collapse.show{ id: "session-collapse-#{idx}" }
+            .collapse{ class: (is_new_session ? 'show' : ''), id: "session-collapse-#{idx}" }
               .card-body
                 = form_tag(update_phase1_session_path, method: :patch, data: { controller: 'coded-name', 'coded-name-result-type-value' => 'nick_name', 'coded-name-jwt-value' => current_user.jwt }) do
                   = hidden_field_tag :file_path, @file_path

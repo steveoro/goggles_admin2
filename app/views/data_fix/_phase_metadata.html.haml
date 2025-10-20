@@ -1,0 +1,27 @@
+-# frozen_string_literal: true
+-#
+-# = Phase Metadata Partial
+-#
+-# Displays phase metadata in a collapsed card with consistent styling across all phases.
+-#
+-# == Params:
+-# - phase_number: (Integer) The phase number (1-5)
+-# - metadata: (Hash) The phase metadata to display
+-# - extra_info: (String, optional) Additional information to show in header (e.g., meeting name)
+-#
+- phase_number ||= nil
+- metadata ||= {}
+- extra_info ||= nil
+- card_id = "phase#{phase_number}-metadata-card"
+- collapse_id = "phase#{phase_number}-metadata-collapse"
+
+.card{ id: card_id }
+  .card-header{ style: 'cursor: pointer;', data: { toggle: 'collapse', target: "##{collapse_id}" }, 'aria-expanded' => 'false', 'aria-controls' => collapse_id }
+    %strong
+      Phase #{phase_number} Metadata
+      - if extra_info.present?
+        %small.ml-2.text-muted= "(#{extra_info})"
+    %i.fa.fa-chevron-down.float-right.mt-1
+  .collapse{ id: collapse_id }
+    .card-body
+      %pre= JSON.pretty_generate(metadata)

@@ -55,12 +55,14 @@ Rails.application.routes.draw do
   patch 'data_fix/update_phase3_swimmer', to: 'data_fix#update_phase3_swimmer', as: 'update_phase3_swimmer'
   post 'data_fix/add_swimmer', to: 'data_fix#add_swimmer', as: 'data_fix_add_swimmer'
   delete 'data_fix/delete_swimmer', to: 'data_fix#delete_swimmer', as: 'data_fix_delete_swimmer'
+  patch 'data_fix/update_phase4_event', to: 'data_fix#update_phase4_event', as: 'update_phase4_event'
+  post 'data_fix/add_event', to: 'data_fix#add_event', as: 'data_fix_add_event'
+  delete 'data_fix/delete_event', to: 'data_fix#delete_event', as: 'data_fix_delete_event'
   patch 'data_fix/update', to: 'data_fix#update', as: 'data_fix_update'
   get 'data_fix/coded_name', to: 'data_fix#coded_name'
   get 'data_fix/teams_for_swimmer/:swimmer_id', to: 'data_fix#teams_for_swimmer', as: 'data_fix_teams_for_swimmer'
   delete 'data_fix/purge', to: 'data_fix#purge', as: 'data_fix_purge'
   get 'data_fix/result_details/:prg_key', to: 'data_fix#result_details', as: 'data_fix_result_details'
-  post 'data_fix/add_event', to: 'data_fix#add_event', as: 'data_fix_add_event'
 
   # Explicit legacy routes (directly targeting DataFixLegacyController)
   get 'data_fix_legacy/review_sessions', to: 'data_fix_legacy#review_sessions', as: 'review_sessions_legacy'

@@ -15,7 +15,7 @@ class DataFixController < ApplicationController
     if params[:phase_v2].present?
       @file_path = params[:file_path]
       if @file_path.blank?
-        flash[:warning] = I18n.t('data_import.errors.invalid_request')
+        flash.now[:warning] = I18n.t('data_import.errors.invalid_request')
         redirect_to(pull_index_path) && return
       end
 
@@ -48,7 +48,7 @@ class DataFixController < ApplicationController
     if params[:phase2_v2].present?
       @file_path = params[:file_path]
       if @file_path.blank?
-        flash[:warning] = I18n.t('data_import.errors.invalid_request')
+        flash.now[:warning] = I18n.t('data_import.errors.invalid_request')
         redirect_to(pull_index_path) && return
       end
 
@@ -81,17 +81,17 @@ class DataFixController < ApplicationController
           name.include?(qd)
         end
       end
-      # Pagination
-      @page = params[:page].to_i
+
+      # Pagination (phase-specific params to avoid cross-phase interference)
+      @page = params[:teams_page].to_i
       @page = 1 if @page < 1
-      @per_page = params[:per_page].to_i
-      @per_page = 50 if @per_page <= 0 || !params.key?(:per_page)
+      @per_page = params[:teams_per_page].to_i
+      @per_page = 50 if @per_page <= 0 || !params.key?(:teams_per_page)
       @total_count = teams.size
       @total_pages = (@total_count.to_f / @per_page).ceil
-      start_idx = (@page - 1) * @per_page
-      end_idx = [start_idx + @per_page - 1, @total_count - 1].min
-      @row_range = @total_count.positive? ? "#{start_idx + 1}..#{end_idx + 1}" : '0..0'
-      @items = teams.slice(start_idx, @per_page) || []
+      @row_range = "#{(@page * @per_page) - @per_page + 1}-#{@page * @per_page}"
+      # Use Kaminari for pagination
+      @items = Kaminari.paginate_array(teams, total_count: @total_count).page(@page).per(@per_page)
       return render 'data_fix/review_teams_v2'
     end
 
@@ -121,6 +121,10 @@ class DataFixController < ApplicationController
       pfm = PhaseFileManager.new(phase_path)
       @phase3_meta = pfm.meta
       @phase3_data = pfm.data
+
+      # Set API URL for AutoComplete components
+      set_api_url
+
       # Optional filtering
       @q = params[:q].to_s.strip
       swimmers = Array(@phase3_data['swimmers'])
@@ -133,21 +137,18 @@ class DataFixController < ApplicationController
           [last, first, key].any? { |v| v.include?(qd) }
         end
       end
-      # Pagination (swimmers typically have more entries, default to 100)
-      @page = params[:page].to_i
+
+      # Pagination (phase-specific params to avoid cross-phase interference)
+      # Swimmers typically have more entries, default to 100
+      @page = params[:swimmers_page].to_i
       @page = 1 if @page < 1
-      @per_page = params[:per_page].to_i
-      @per_page = 100 if @per_page <= 0 || !params.key?(:per_page)
+      @per_page = params[:swimmers_per_page].to_i
+      @per_page = 100 if @per_page <= 0 || !params.key?(:swimmers_per_page)
       @total_count = swimmers.size
       @total_pages = (@total_count.to_f / @per_page).ceil
-      start_idx = (@page - 1) * @per_page
-      end_idx = [start_idx + @per_page - 1, @total_count - 1].min
-      @row_range = @total_count.positive? ? "#{start_idx + 1}..#{end_idx + 1}" : '0..0'
-      @items = swimmers.slice(start_idx, @per_page) || []
-      
-      # Set API URL for AutoComplete components
-      set_api_url
-      
+      @row_range = "#{(@page * @per_page) - @per_page + 1}-#{@page * @per_page}"
+      # Use Kaminari for pagination
+      @items = Kaminari.paginate_array(swimmers, total_count: @total_count).page(@page).per(@per_page)
       return render 'data_fix/review_swimmers_v2'
     end
 
@@ -155,11 +156,11 @@ class DataFixController < ApplicationController
   end
   # rubocop:enable Metrics/AbcSize, Metrics/PerceivedComplexity, Metrics/MethodLength, Metrics/CyclomaticComplexity
 
-  def review_events
+  def review_events # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/MethodLength
     if params[:phase4_v2].present?
       @file_path = params[:file_path]
       if @file_path.blank?
-        flash[:warning] = I18n.t('data_import.errors.invalid_request')
+        flash.now[:warning] = I18n.t('data_import.errors.invalid_request')
         redirect_to(pull_index_path) && return
       end
 
@@ -177,6 +178,50 @@ class DataFixController < ApplicationController
       pfm = PhaseFileManager.new(phase_path)
       @phase4_meta = pfm.meta
       @phase4_data = pfm.data
+
+      # Set API URL for AutoComplete components
+      set_api_url
+
+      # Build sessions list for dropdown from Phase 1 (edited sessions) or fallback to Phase 4
+      phase1_path = default_phase_path_for(source_path, 1)
+      if File.exist?(phase1_path)
+        phase1_pfm = PhaseFileManager.new(phase1_path)
+        phase1_data = phase1_pfm.data || {}
+        phase1_sessions = Array(phase1_data['meeting_session'])
+        # Map Phase 1 sessions to simplified format for dropdown
+        @sessions = phase1_sessions.each_with_index.map do |sess, idx|
+          {
+            'session_order' => sess['session_order'] || (idx + 1),
+            'description' => sess['description'] || "Session #{idx + 1}",
+            'scheduled_date' => sess['scheduled_date']
+          }
+        end
+      else
+        # Fallback: use Phase 4 sessions
+        @sessions = Array(@phase4_data['sessions']).sort_by { |s| s['session_order'].to_i }
+      end
+      @sessions = [{ 'session_order' => 1, 'description' => 'Session 1', 'scheduled_date' => nil }] if @sessions.empty?
+
+      # Prepare event_types payload for AutoComplete component
+      @event_types_payload = GogglesDb::EventType.all_eventable.map do |event_type|
+        {
+          'id' => event_type.id,
+          'search_column' => event_type.label,
+          'label_column' => event_type.long_label
+        }
+      end
+
+      # Flatten all events across Phase 4 sessions with session_index for reference
+      # Sort by event_order within each session
+      @all_events = []
+      phase4_sessions = Array(@phase4_data['sessions']).sort_by { |s| s['session_order'].to_i }
+      phase4_sessions.each_with_index do |session, session_idx|
+        events = Array(session['events']).sort_by { |e| e['event_order'].to_i }
+        events.each_with_index do |event, event_idx|
+          @all_events << event.merge('_session_index' => session_idx, '_event_index' => event_idx)
+        end
+      end
+
       return render 'data_fix/review_events_v2'
     end
 
@@ -376,7 +421,7 @@ class DataFixController < ApplicationController
 
     # Get swimmer params - handle nested params from AutoComplete
     swimmer_params = params[:swimmer] || {}
-    
+
     # Update the swimmer at the specified index
     swimmer = swimmers[swimmer_index]
     swimmer['complete_name'] = swimmer_params[:complete_name]&.strip if swimmer_params.key?(:complete_name)
@@ -477,6 +522,221 @@ class DataFixController < ApplicationController
     pfm.write!(data: data, meta: meta)
 
     redirect_to review_swimmers_path(file_path:, phase3_v2: 1), notice: I18n.t('data_import.messages.updated')
+  end
+
+  # Update a single Phase 4 event entry by session and event index
+  # Also handles moving events between sessions via target_session_index
+  # rubocop:disable Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+  def update_phase4_event
+    file_path = params[:file_path]
+    session_index = params[:session_index]&.to_i
+    event_index = params[:event_index]&.to_i
+    target_session_index = params[:target_session_index]&.to_i
+
+    if file_path.blank? || session_index.nil? || event_index.nil?
+      flash[:warning] = I18n.t('data_import.errors.invalid_request')
+      redirect_to(pull_index_path) && return
+    end
+
+    source_path = resolve_source_path(file_path)
+    phase_path = default_phase_path_for(source_path, 4)
+    pfm = PhaseFileManager.new(phase_path)
+    data = pfm.data || {}
+    sessions = Array(data['sessions'])
+
+    if session_index.negative? || session_index >= sessions.size
+      flash[:warning] = "Invalid session index: #{session_index}"
+      redirect_to(review_events_path(file_path:, phase4_v2: 1)) && return
+    end
+
+    events = Array(sessions[session_index]['events'])
+    if event_index.negative? || event_index >= events.size
+      flash[:warning] = "Invalid event index: #{event_index}"
+      redirect_to(review_events_path(file_path:, phase4_v2: 1)) && return
+    end
+
+    # Get event params
+    event_params = params[:event] || {}
+
+    # Update the event at the specified index
+    event = events[event_index]
+    event['event_order'] = event_params[:event_order]&.to_i if event_params.key?(:event_order)
+    event['distance'] = event_params[:distance]&.to_i if event_params.key?(:distance)
+    event['stroke'] = event_params[:stroke]&.strip if event_params.key?(:stroke)
+    event['heat_type'] = event_params[:heat_type]&.strip if event_params.key?(:heat_type)
+    event['begin_time'] = event_params[:begin_time]&.strip if event_params.key?(:begin_time)
+
+    # Handle meeting_event_id from AutoComplete
+    raw_id = event_params[:meeting_event_id]
+    unless raw_id.nil?
+      str = raw_id.to_s.strip
+      event['id'] = str.blank? ? nil : str.to_i
+    end
+
+    # Handle event_type_id from AutoComplete
+    raw_event_type_id = event_params[:event_type_id]
+    unless raw_event_type_id.nil?
+      str = raw_event_type_id.to_s.strip
+      event['event_type_id'] = str.blank? ? nil : str.to_i
+    end
+
+    # Handle heat_type_id from dropdown
+    event['heat_type_id'] = event_params[:heat_type_id]&.to_i if event_params.key?(:heat_type_id)
+
+    # Handle session change (move event to different session)
+    if target_session_index.present? && target_session_index != session_index
+      if target_session_index.negative? || target_session_index >= sessions.size
+        flash[:warning] = "Invalid target session index: #{target_session_index}"
+        redirect_to(review_events_path(file_path:, phase4_v2: 1)) && return
+      end
+
+      # Remove event from current session
+      events.delete_at(event_index)
+      sessions[session_index]['events'] = events
+
+      # Add event to target session
+      target_events = Array(sessions[target_session_index]['events'])
+      target_events << event
+      sessions[target_session_index]['events'] = target_events
+
+      flash_msg = "Event moved to session #{target_session_index + 1} and updated"
+    else
+      # Just update in place
+      sessions[session_index]['events'] = events
+      flash_msg = I18n.t('data_import.messages.updated')
+    end
+
+    data['sessions'] = sessions
+
+    meta = pfm.meta || {}
+    meta['generated_at'] = Time.now.utc.iso8601
+    pfm.write!(data: data, meta: meta)
+
+    redirect_to review_events_path(file_path:, phase4_v2: 1), notice: flash_msg
+  end
+  # rubocop:enable Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+
+  # Add a new blank event to Phase 4
+  # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
+  def add_event
+    file_path = params[:file_path]
+    session_index = params[:session_index].to_i
+    event_type_id = params[:event_type_id]&.to_i
+
+    if file_path.blank?
+      flash[:warning] = I18n.t('data_import.errors.invalid_request')
+      redirect_to(pull_index_path) && return
+    end
+
+    source_path = resolve_source_path(file_path)
+    phase_path = default_phase_path_for(source_path, 4)
+    pfm = PhaseFileManager.new(phase_path)
+    data = pfm.data || {}
+    sessions = Array(data['sessions'])
+
+    # Default to first session if no sessions exist
+    sessions << { 'session_order' => 1, 'events' => [] } if sessions.empty?
+
+    session_index = 0 if session_index.negative? || session_index >= sessions.size
+
+    events = Array(sessions[session_index]['events'])
+    new_order = events.size + 1
+
+    # Determine event details from event_type_id if provided
+    if event_type_id.present?
+      event_type = GogglesDb::EventType.find_by(id: event_type_id)
+      if event_type
+        distance = event_type.length_in_meters
+        stroke = event_type.stroke_type.code
+        key = event_type.label
+      else
+        distance = 50
+        stroke = 'SL'
+        key = "#{new_order * 50}SL"
+      end
+    else
+      distance = 50
+      stroke = 'SL'
+      key = "#{new_order * 50}SL"
+      event_type_id = nil
+    end
+
+    # Create a new event based on selected event type
+    new_event = {
+      'id' => nil,
+      'event_order' => new_order,
+      'event_type_id' => event_type_id,
+      'distance' => distance,
+      'stroke' => stroke,
+      'heat_type' => 'F',
+      'heat_type_id' => nil,
+      'begin_time' => nil,
+      'key' => key
+    }
+
+    events << new_event
+    sessions[session_index]['events'] = events
+    data['sessions'] = sessions
+
+    meta = pfm.meta || {}
+    meta['generated_at'] = Time.now.utc.iso8601
+    pfm.write!(data: data, meta: meta)
+
+    # Calculate the flattened event index for highlighting
+    flattened_index = 0
+    sessions[0...session_index].each do |s|
+      flattened_index += Array(s['events']).size
+    end
+    flattened_index += events.size - 1
+
+    redirect_to review_events_path(file_path:, phase4_v2: 1, new_event_index: flattened_index),
+                notice: I18n.t('data_import.messages.updated')
+  end
+  # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
+
+  # Delete an event entry from Phase 4 and clear downstream phase data
+  def delete_event
+    file_path = params[:file_path]
+    session_index = params[:session_index]&.to_i
+    event_index = params[:event_index]&.to_i
+
+    if file_path.blank? || session_index.nil? || event_index.nil?
+      flash[:warning] = I18n.t('data_import.errors.invalid_request')
+      redirect_to(pull_index_path) && return
+    end
+
+    source_path = resolve_source_path(file_path)
+    phase_path = default_phase_path_for(source_path, 4)
+    pfm = PhaseFileManager.new(phase_path)
+    data = pfm.data || {}
+    sessions = Array(data['sessions'])
+
+    if session_index.negative? || session_index >= sessions.size
+      flash[:warning] = "Invalid session index: #{session_index}"
+      redirect_to(review_events_path(file_path:, phase4_v2: 1)) && return
+    end
+
+    events = Array(sessions[session_index]['events'])
+    if event_index.negative? || event_index >= events.size
+      flash[:warning] = "Invalid event index: #{event_index}"
+      redirect_to(review_events_path(file_path:, phase4_v2: 1)) && return
+    end
+
+    # Remove the event at the specified index
+    events.delete_at(event_index)
+    sessions[session_index]['events'] = events
+    data['sessions'] = sessions
+
+    # Clear downstream phase data (phase5) when events are modified
+    data['meeting_program'] = [] if data.key?('meeting_program')
+    data['meeting_individual_result'] = [] if data.key?('meeting_individual_result')
+    data['meeting_relay_result'] = [] if data.key?('meeting_relay_result')
+
+    meta = pfm.meta || {}
+    meta['generated_at'] = Time.now.utc.iso8601
+    pfm.write!(data: data, meta: meta)
+
+    redirect_to review_events_path(file_path:, phase4_v2: 1), notice: I18n.t('data_import.messages.updated')
   end
 
   # Update Phase 1 meeting attributes in the phase file and redirect back to v2 view
@@ -648,7 +908,7 @@ class DataFixController < ApplicationController
     meta['generated_at'] = Time.now.utc.iso8601
     pfm.write!(data: data, meta: meta)
 
-    redirect_to review_sessions_path(file_path:, phase_v2: 1), notice: I18n.t('data_import.messages.updated')
+    redirect_to review_sessions_path(file_path:, phase_v2: 1, new_session_index: new_index), notice: I18n.t('data_import.messages.updated')
   end
 
   # Delete a session entry from Phase 1 and redirect back to v2 view

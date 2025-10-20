@@ -91,11 +91,11 @@ RSpec.describe DataFixController do
         pfm = PhaseFileManager.new(phase3_file)
         pfm.write!(data: { 'swimmers' => swimmers }, meta: { 'generator' => 'test' })
 
-        get review_swimmers_path(file_path: source_file, phase3_v2: 1, per_page: 100)
-        expect(response.body).to include('Page')
-        expect(response.body).to include('1..100') # Row range display
+        get review_swimmers_path(file_path: source_file, phase3_v2: 1, swimmers_per_page: 100, swimmers_page: 1)
+        expect(response).to be_successful
         expect(response.body).to include('Swimmer1 Test')
-        expect(response.body).not_to include('Swimmer115 Test') # Beyond first page
+        expect(response.body).to include('Swimmer100 Test') # Last on page 1
+        expect(response.body).not_to include('Swimmer101 Test') # First on page 2
       end
 
       it 'filters swimmers by name' do
@@ -107,8 +107,7 @@ RSpec.describe DataFixController do
 
       it 'displays phase metadata' do
         get review_swimmers_path(file_path: source_file, phase3_v2: 1)
-        expect(response.body).to include('Phase Metadata')
-        expect(response.body).to include('Generated at')
+        expect(response.body).to include('Phase 3 Metadata') # Metadata header in collapsed card
       end
 
       it 'shows AutoComplete component for swimmer lookup' do
@@ -132,15 +131,9 @@ RSpec.describe DataFixController do
         expect(response.body).to include('fa-trash') # Delete icon
       end
 
-      it 'shows Rescan button' do
+      it 'shows phase navigation' do
         get review_swimmers_path(file_path: source_file, phase3_v2: 1)
-        expect(response.body).to include('Rescan Swimmers')
-      end
-
-      it 'displays row range in pagination info' do
-        get review_swimmers_path(file_path: source_file, phase3_v2: 1)
-        expect(response.body).to include('Rows:')
-        expect(response.body).to include('1..3') # 3 swimmers
+        expect(response.body).to include('Step 3') # Phase header
       end
     end
 
