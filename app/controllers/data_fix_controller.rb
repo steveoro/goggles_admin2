@@ -35,6 +35,30 @@ class DataFixController < ApplicationController
       pfm = PhaseFileManager.new(phase_path)
       @phase1_meta = pfm.meta
       @phase1_data = pfm.data
+
+      # Set API URL for AutoComplete components
+      set_api_url
+
+      # Fetch existing meeting sessions if meeting_id is present
+      meeting_id = @phase1_data['id']
+      @existing_meeting_sessions = []
+      if meeting_id.present?
+        @existing_meeting_sessions = GogglesDb::MeetingSession.where(meeting_id:)
+                                                               .includes(:swimming_pool)
+                                                               .order(:session_order)
+                                                               .map do |ms|
+          {
+            'id' => ms.id,
+            'session_order' => ms.session_order,
+            'scheduled_date' => ms.scheduled_date&.to_s,
+            'description' => ms.description,
+            'day_part_type_id' => ms.day_part_type_id,
+            'swimming_pool_id' => ms.swimming_pool_id,
+            'swimming_pool_name' => ms.swimming_pool&.name
+          }
+        end
+      end
+
       return render 'data_fix/review_sessions_v2'
     end
 
@@ -209,6 +233,34 @@ class DataFixController < ApplicationController
           'search_column' => event_type.label,
           'label_column' => event_type.long_label
         }
+      end
+
+      # Fetch existing meeting events from Phase 1 sessions (if meeting_id is set)
+      meeting_id = phase1_data&.dig('id')
+      @existing_meeting_events = []
+      if meeting_id.present?
+        # Get all meeting_session IDs from Phase 1
+        meeting_session_ids = phase1_sessions.map { |s| s['id'] }.compact
+        if meeting_session_ids.any?
+          @existing_meeting_events = GogglesDb::MeetingEvent.where(meeting_session_id: meeting_session_ids)
+                                                             .includes(:event_type, :heat_type, :meeting_session)
+                                                             .order('meeting_sessions.session_order, meeting_events.event_order')
+                                                             .map do |me|
+            {
+              'id' => me.id,
+              'meeting_session_id' => me.meeting_session_id,
+              'session_order' => me.meeting_session.session_order,
+              'event_order' => me.event_order,
+              'event_type_id' => me.event_type_id,
+              'event_type_label' => me.event_type&.long_label,
+              'heat_type_id' => me.heat_type_id,
+              'heat_type_code' => me.heat_type&.code,
+              'stroke_type_code' => me.event_type&.stroke_type&.code,
+              'distance' => me.event_type&.length_in_meters,
+              'begin_time' => me.begin_time&.to_s(:time)
+            }
+          end
+        end
       end
 
       # Flatten all events across Phase 4 sessions with session tracking

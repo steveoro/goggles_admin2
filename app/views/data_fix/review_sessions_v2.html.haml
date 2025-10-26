@@ -2,173 +2,30 @@
 
 .container-fluid
   %h2 Data-Fix V2 • Step 1: Meeting & Sessions (Phase 1)
-
   .mb-2
     = render(partial: 'data_fix/step_tabs', locals: { active_step: 1, file_path: @file_path })
 
-  - meeting_id = @phase1_data['id']
-  - meeting_name = @phase1_data['name']
-  - extra_info = [meeting_id, meeting_name].compact.join(': ').presence
-  = render(partial: 'data_fix/phase_metadata', locals: { phase_number: 1, metadata: @phase1_meta, extra_info: extra_info })
-
-  .card.mb-3#meeting-card
-    .card-header
-      %button.btn.btn-link.w-100.text-left{ type: 'button', data: { toggle: 'collapse', target: '#meeting-collapse' }, 'aria-expanded' => 'true', 'aria-controls' => 'meeting-collapse' }
-        %strong Meeting
-        %i.fa.fa-chevron-down.float-right
-    .collapse.show#meeting-collapse
-      .card-body
-        %dl.row
-          %dt.col-sm-3 Season ID
-          %dd.col-sm-9= @phase1_data['season_id']
-
-          %dt.col-sm-3 Name
-          %dd.col-sm-9= @phase1_data['name']
-
-          %dt.col-sm-3 URL
-          %dd.col-sm-9= @phase1_data['meetingURL']
-
-          %dt.col-sm-3 Date 1
-          %dd.col-sm-9
-            = [@phase1_data['dateDay1'], @phase1_data['dateMonth1'], @phase1_data['dateYear1']].compact.join(' ')
-
-          %dt.col-sm-3 Date 2
-          %dd.col-sm-9
-            = [@phase1_data['dateDay2'], @phase1_data['dateMonth2'], @phase1_data['dateYear2']].compact.join(' ')
-
-          %dt.col-sm-3 Venue
-          %dd.col-sm-9= @phase1_data['venue1']
-
-          %dt.col-sm-3 Address
-          %dd.col-sm-9= @phase1_data['address1']
-
-          %dt.col-sm-3 Pool Length
-          %dd.col-sm-9= @phase1_data['poolLength']
-
-        %hr/
-        %h6 Edit meeting
-        = form_tag(update_phase1_meeting_path, method: :patch, class: 'form', data: { controller: 'coded-name', 'coded-name-result-type-value' => 'code', 'coded-name-jwt-value' => current_user.jwt }) do
-          = hidden_field_tag :file_path, @file_path
-
-          -# Fuzzy matches dropdown + AutoCompleteComponent
-          .form-row
-            .form-group.col-md-6
-              %label{ for: 'meeting_search' } Fuzzy Matches (from solver)
-              - fuzzy_matches = @phase1_data['meeting_fuzzy_matches'] || []
-              - src_dom = '#meeting_search'
-              - target_dom = '#meeting_meeting_id'
-              - onchange_event = "$('#{target_dom}').val($('#{src_dom}').val()); $('#{target_dom}').trigger('change')"
-              = select_tag('meeting_search', options_for_select(fuzzy_matches.map { |m| [m['description'], m['id']] }, nil), include_blank: true, class: 'form-control form-control-sm', onchange: onchange_event)
-              %small.form-text.text-muted Select to populate from existing meeting
-            .form-group.col-md-6
-              = render(AutoCompleteComponent.new(show_top_labels: true, base_dom_id: 'meeting', default_value: @phase1_data['id'], base_api_url: @api_url, detail_endpoint: 'meeting', base_name: 'meeting', label_column: 'description', search_endpoint: 'meetings', search_column: 'description', target3_dom_id: 'meeting_description', target3_column: 'description', target4_dom_id: 'meeting_code', target4_column: 'code', target5_dom_id: 'meeting_season_id', target5_column: 'season_id', target6_dom_id: 'meeting_header_year', target6_column: 'header_year', target7_dom_id: 'meeting_header_date', target7_column: 'header_date', target8_dom_id: 'meeting_edition', target8_column: 'edition', target9_dom_id: 'meeting_edition_type_id', target9_column: 'edition_type_id', target10_dom_id: 'meeting_timing_type_id', target10_column: 'timing_type_id', target11_dom_id: 'meeting_cancelled', target11_column: 'cancelled', target12_dom_id: 'meeting_confirmed', target12_column: 'confirmed', jwt: current_user.jwt))
-              %small.form-text.text-muted Or search manually by description
-
-          -# Basic fields: description, code
-          .form-row
-            .form-group.col-md-8
-              %label{ for: 'meeting_description' } Description
-              = text_field_tag :description, @phase1_data['name'], id: 'meeting_description', class: 'form-control form-control-sm', required: true, maxlength: 200, placeholder: 'Meeting description', data: { 'coded-name-target' => 'desc' }
-            .form-group.col-md-4
-              %label{ for: 'meeting_code' } Code
-              = text_field_tag :code, @phase1_data['code'], id: 'meeting_code', class: 'form-control form-control-sm', placeholder: 'Auto-generated', data: { 'coded-name-target' => 'field' }
-
-          -# Season, header_year, header_date
-          .form-row
-            .form-group.col-md-3
-              %label{ for: 'meeting_season_id' } Season ID
-              = number_field_tag :season_id, @phase1_data['season_id'], id: 'meeting_season_id', class: 'form-control form-control-sm', min: 1, step: 1, placeholder: 'e.g. 242'
-            .form-group.col-md-3
-              %label{ for: 'meeting_header_year' } Header Year
-              = text_field_tag :header_year, @phase1_data['header_year'], id: 'meeting_header_year', class: 'form-control form-control-sm', placeholder: 'YYYY/YYYY+1'
-            .form-group.col-md-3
-              %label{ for: 'meeting_header_date' } Header Date
-              = date_field_tag :header_date, @phase1_data['header_date'], id: 'meeting_header_date', class: 'form-control form-control-sm'
-            .form-group.col-md-3
-              %label{ for: 'meeting_meetingURL' } Meeting URL
-              = text_field_tag :meetingURL, @phase1_data['meetingURL'], class: 'form-control form-control-sm', pattern: 'https?://.*', placeholder: 'https://...'
-
-          -# Edition, edition_type, timing_type
-          .form-row
-            .form-group.col-md-2
-              %label{ for: 'meeting_edition' } Edition
-              = number_field_tag :edition, @phase1_data['edition'], id: 'meeting_edition', class: 'form-control form-control-sm', placeholder: 'edition #'
-            .form-group.col-md-3
-              %label{ for: 'meeting_edition_type_id' } Edition Type
-              = select_tag :edition_type_id, options_for_select(GogglesDb::EditionType.all.map { |t| [t.long_label, t.id] }, @phase1_data['edition_type_id']), { include_blank: true, id: 'meeting_edition_type_id', class: 'form-control form-control-sm' }
-            .form-group.col-md-3
-              %label{ for: 'meeting_timing_type_id' } Timing Type
-              = select_tag :timing_type_id, options_for_select(GogglesDb::TimingType.all.map { |t| [t.long_label, t.id] }, @phase1_data['timing_type_id']), { include_blank: true, id: 'meeting_timing_type_id', class: 'form-control form-control-sm' }
-            .form-group.col-md-2
-              .form-check.mt-4
-                = check_box_tag :cancelled, '1', @phase1_data['cancelled'].present? && @phase1_data['cancelled'], id: 'meeting_cancelled', class: 'form-check-input'
-                %label.form-check-label{ for: 'meeting_cancelled' } Cancelled
-            .form-group.col-md-2
-              .form-check.mt-4
-                = check_box_tag :confirmed, '1', @phase1_data['confirmed'].nil? ? true : @phase1_data['confirmed'], id: 'meeting_confirmed', class: 'form-check-input'
-                %label.form-check-label{ for: 'meeting_confirmed' } Confirmed
-
-          -# Max individual events
-          .form-row
-            .form-group.col-md-3
-              %label Max Individual Events
-              = number_field_tag :max_individual_events, @phase1_data['max_individual_events'] || 3, class: 'form-control form-control-sm', min: 1
-            .form-group.col-md-3
-              %label Max Events Per Session
-              = number_field_tag :max_individual_events_per_session, @phase1_data['max_individual_events_per_session'] || 3, class: 'form-control form-control-sm', min: 1
-            .form-group.col-md-2
-              %label Pool Length
-              - current_len = @phase1_data['poolLength'].to_s
-              - options = [['25m', '25'], ['50m', '50']]
-              - options << [current_len, current_len] if current_len.present? && !options.map(&:last).include?(current_len)
-              = select_tag :poolLength, options_for_select(options, current_len), class: 'form-control form-control-sm'
-
-          -# Legacy date fields (keep for compatibility)
-          %details.mb-3
-            %summary.text-muted
-              %small Legacy date fields (for LT2 compatibility)
-            .form-row.mt-2
-              .form-group.col-md-2
-                %label Date Day 1
-                = number_field_tag :dateDay1, @phase1_data['dateDay1'], class: 'form-control form-control-sm', min: 1, max: 31, step: 1, placeholder: 'DD'
-              .form-group.col-md-2
-                %label Date Month 1
-                = number_field_tag :dateMonth1, @phase1_data['dateMonth1'], class: 'form-control form-control-sm', min: 1, max: 12, step: 1, placeholder: 'MM'
-              .form-group.col-md-2
-                %label Date Year 1
-                = number_field_tag :dateYear1, @phase1_data['dateYear1'], class: 'form-control form-control-sm', min: 1900, max: 2100, step: 1, placeholder: 'YYYY'
-              .form-group.col-md-2
-                %label Date Day 2
-                = number_field_tag :dateDay2, @phase1_data['dateDay2'], class: 'form-control form-control-sm', min: 1, max: 31, step: 1, placeholder: 'DD'
-              .form-group.col-md-2
-                %label Date Month 2
-                = number_field_tag :dateMonth2, @phase1_data['dateMonth2'], class: 'form-control form-control-sm', min: 1, max: 12, step: 1, placeholder: 'MM'
-              .form-group.col-md-2
-                %label Date Year 2
-                = number_field_tag :dateYear2, @phase1_data['dateYear2'], class: 'form-control form-control-sm', min: 1900, max: 2100, step: 1, placeholder: 'YYYY'
-            .form-row
-              .form-group.col-md-6
-                %label Venue
-                = text_field_tag :venue1, @phase1_data['venue1'], class: 'form-control form-control-sm', placeholder: 'Venue name'
-              .form-group.col-md-6
-                %label Address
-                = text_field_tag :address1, @phase1_data['address1'], class: 'form-control form-control-sm', placeholder: 'Street, number, ZIP'
-
-          = submit_tag 'Save meeting', class: 'btn btn-sm btn-primary', data: { confirm: 'Save meeting data?' }
-
-        -# Rescan form (separate from meeting form to avoid nesting)
-        = form_tag(rescan_phase1_sessions_path, method: :post, class: 'd-inline-block mt-2', onsubmit: "$('#rescan_meeting_id').val($('#meeting_meeting_id').val()); return confirm('Rescan sessions from selected meeting? This will replace current sessions.');") do
-          = hidden_field_tag :file_path, @file_path
-          = hidden_field_tag :meeting_id, nil, id: 'rescan_meeting_id'
-          %button.btn.btn-sm.btn-warning{ type: 'submit' }
-            %i.fa.fa-sync
-            Rescan sessions from meeting
-
-  .d-flex.justify-content-between.mb-2
+  -# Phase Navigation buttons
+  .d-flex.justify-content-between.my-2
     %div
       = link_to 'Use legacy (Step 1)', review_sessions_path(request.query_parameters.except(:phase_v2)), class: 'btn btn-secondary'
     %div
       = link_to 'Proceed to Step 2 (Teams)', review_teams_path(request.query_parameters.merge(phase2_v2: 1)), class: 'btn btn-primary'
+  :ruby
+    meeting_id = @phase1_data['id']
+    meeting_name = @phase1_data['name']
+    extra_info = [meeting_id, meeting_name].compact.join(': ').presence
+  = render(partial: 'data_fix/phase_metadata', locals: { phase_number: 1, metadata: @phase1_meta, extra_info: extra_info })
+
+  -# Meeting card with consistent styling
+  :ruby
+    has_match = meeting_id.present?
+    card_bg = has_match ? 'bg-light' : 'bg-light-yellow'
+    border_color = has_match ? 'border-secondary' : 'border-warning'
+    border_width = 'border-2'
+  = render(partial: 'meeting_form_card',
+           locals: { file_path: @file_path, api_url: @api_url, meeting_data: @phase1_data,
+                     meeting_id:, has_match:, card_bg:, border_color:, border_width: })
 
   -# Sessions Section Header
   .card.mb-2
@@ -204,4 +61,5 @@
 
       = render(partial: 'session_form_card',
                locals: { file_path: @file_path, api_url: @api_url, sess_hash:, idx:,
-                         is_new_session:, session_id:, has_match:, card_bg:, border_color:, border_width: })
+                         is_new_session:, session_id:, has_match:, card_bg:, border_color:, border_width:,
+                         existing_meeting_sessions: @existing_meeting_sessions })

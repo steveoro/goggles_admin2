@@ -13,6 +13,10 @@ import '../controllers/index'
 
 import Chart from 'chart.js/auto'
 window.Chart = Chart
+
+// Import DataFix helpers and expose to window for inline event handlers
+import * as DataFixHelpers from './data_fix_helpers'
+window.DataFix = DataFixHelpers
 // import { Chart, registerables } from 'chart.js';
 // Chart.register(...registerables);
 

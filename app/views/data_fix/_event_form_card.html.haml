@@ -54,17 +54,33 @@
           .row
             .col-6
               %label Event Order
-              = number_field_tag('event[event_order]', event['event_order'], class: 'form-control', min: 1)
+              = number_field_tag('event[event_order]', event['event_order'],
+                                 class: 'form-control', min: 1,
+                                 id: "event_#{event_index}_order")
             .col-6
               %label Begin Time
-              = time_field_tag('event[begin_time]', event['begin_time'], class: 'form-control', step: 900)
+              = time_field_tag('event[begin_time]', event['begin_time'],
+                               class: 'form-control', step: 900,
+                               id: "event_#{event_index}_begin_time")
 
           -# Row 2: Meeting Event ID
           .row
             .col
               %label Event ID
-              = number_field_tag('event[meeting_event_id]', event['id'],
-                                 class: 'form-control', placeholder: 'Leave blank for new')
+              - if existing_meeting_events.present?
+                - event_options = existing_meeting_events.map do |me|
+                  - label = "#{me['event_type_label']} (S#{me['session_order']}, E#{me['event_order']}, ID: #{me['id']})"
+                  - [label, me['id']]
+                = select_tag('event[meeting_event_id]',
+                             options_for_select([['-- New Event --', '']] + event_options, event['id']),
+                             class: 'form-control',
+                             id: "meeting_event_#{event_index}_id",
+                             onchange: "DataFix.populateEventFromExisting(#{event_index}, this.value, #{existing_meeting_events.to_json.gsub('"', "'")})")
+                %small.form-text.text-muted Select to populate from existing
+              - else
+                = number_field_tag('event[meeting_event_id]', event['id'],
+                                   class: 'form-control', placeholder: 'Leave blank for new')
+                %small.form-text.text-muted No meeting events available
 
           -# Row 3: Event Type (AutoComplete) & Heat Type
           .row.mt-2
@@ -78,22 +94,26 @@
               %label Heat Type
               = select_tag('event[heat_type_id]',
                            options_from_collection_for_select(GogglesDb::HeatType.all, 'id', 'long_label', event['heat_type_id']),
-                           class: 'form-control')
+                           class: 'form-control',
+                           id: "event_#{event_index}_heat_type_id")
 
-          -# Legacy fields (hidden by default, for backward compatibility)
+          -# Legacy fields (auto-populated from event_type/heat_type)
           .row.mt-2
             .col-4
-              %small.form-text.text-muted Distance
+              %small.form-text.text-muted Distance (auto)
               = number_field_tag('event[distance]', event['distance'],
-                                 disabled: true, class: 'form-control form-control-sm', min: 25)
+                                 readonly: true, class: 'form-control form-control-sm bg-light', min: 25,
+                                 id: "event_#{event_index}_distance")
             .col-4
-              %small.form-text.text-muted Stroke Code
+              %small.form-text.text-muted Stroke Code (auto)
               = text_field_tag('event[stroke]', event['stroke'],
-                               disabled: true, class: 'form-control form-control-sm')
+                               readonly: true, class: 'form-control form-control-sm bg-light',
+                               id: "event_#{event_index}_stroke")
             .col-4
-              %small.form-text.text-muted Heat Type Code
+              %small.form-text.text-muted Heat Type Code (auto)
               = text_field_tag('event[heat_type]', event['heat_type'],
-                               disabled: true, class: 'form-control form-control-sm')
+                               readonly: true, class: 'form-control form-control-sm bg-light',
+                               id: "event_#{event_index}_heat_type_code")
 
           -# Submit button
           .row.mt-3

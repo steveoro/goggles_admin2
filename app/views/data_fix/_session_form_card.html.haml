@@ -42,28 +42,45 @@
         -# Session Fields
         %h6.text-primary Session Details
         .form-row
-          .form-group.col-md-2
+          .form-group.col-md-3
             %label Session ID
-            = number_field_tag 'meeting_session_id', sess_hash['id'], class: 'form-control form-control-sm', placeholder: 'ID'
+            - if existing_meeting_sessions.present?
+              - session_options = existing_meeting_sessions.map { |ms| ["#{ms['description']} (#{ms['session_order']}, ID: #{ms['id']})", ms['id']] }
+              = select_tag('meeting_session_id',
+                           options_for_select([['-- New Session --', '']] + session_options, sess_hash['id']),
+                           class: 'form-control form-control-sm',
+                           id: "meeting_session_#{idx}_id",
+                           onchange: "DataFix.populateSessionFromExisting(#{idx}, this.value, #{existing_meeting_sessions.to_json.gsub('"', "'")})")
+              %small.form-text.text-muted Select to populate from existing
+            - else
+              = number_field_tag('meeting_session_id', sess_hash['id'],
+                                 class: 'form-control form-control-sm', placeholder: 'ID (auto)')
+              %small.form-text.text-muted No meeting sessions available
           .form-group.col-md-4
             %label Description
             = text_field_tag(:description, sess_hash['description'],
                              required: true, class: 'form-control form-control-sm',
+                             id: "session_#{idx}_description",
                              placeholder: 'Session description')
           .form-group.col-md-2
             %label Order
-            = number_field_tag :session_order, sess_hash['session_order'] || (idx + 1), required: true, class: 'form-control form-control-sm', min: 1
+            = number_field_tag(:session_order, sess_hash['session_order'] || (idx + 1),
+                               required: true, class: 'form-control form-control-sm', min: 1,
+                               id: "session_#{idx}_order")
           .form-group.col-md-3
             %label Scheduled Date
             - if sess_hash['scheduled_date'].blank?
               %span
                 %i.fa.fa-exclamation.text-danger
-            = date_field_tag :scheduled_date, sess_hash['scheduled_date'], required: true, class: 'form-control form-control-sm'
+            = date_field_tag(:scheduled_date, sess_hash['scheduled_date'],
+                             required: true, class: 'form-control form-control-sm',
+                             id: "session_#{idx}_scheduled_date")
           .form-group.col-md-1
             %label Day Part
             = select_tag(:day_part_type_id,
                          options_for_select(GogglesDb::DayPartType.all.map { |t| [t.long_label, t.id] }, sess_hash['day_part_type_id']),
-                         class: 'form-control form-control-sm')
+                         class: 'form-control form-control-sm',
+                         id: "session_#{idx}_day_part_type_id")
 
         %hr.my-3
 

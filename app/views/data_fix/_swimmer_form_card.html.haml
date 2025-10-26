@@ -28,7 +28,7 @@
       = form_tag(update_phase3_swimmer_path, method: :patch) do
         = hidden_field_tag :file_path, file_path
         = hidden_field_tag :swimmer_index, swimmer_index
-        
+
         .container-fluid
           -# Row 0: Fuzzy matches dropdown (quick selection)
           - fuzzy_matches = swimmer_hash['fuzzy_matches'] || []

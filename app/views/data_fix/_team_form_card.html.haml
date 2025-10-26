@@ -24,13 +24,13 @@
         = hidden_field_tag :team_index, team_index
         %button.btn.btn-sm.btn-danger{ type: 'submit', 'aria-label' => 'Delete team', onclick: 'event.stopPropagation();' }
           %i.fa.fa-trash
-    
+
   .collapse{ id: "team-panel-#{team_index}", 'aria-labelledby' => "team-header-#{team_index}", 'data-parent' => "#team-card-#{team_index}" }
     .card-body.border-bottom.border-secondary
       = form_tag(update_phase2_team_path, method: :patch) do
         = hidden_field_tag :file_path, file_path
         = hidden_field_tag :team_index, team_index
-        
+
         .container-fluid
           -# Row 0: Fuzzy matches dropdown (quick selection)
           - fuzzy_matches = team_hash['fuzzy_matches'] || []
