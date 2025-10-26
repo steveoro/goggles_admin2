@@ -211,14 +211,20 @@ class DataFixController < ApplicationController
         }
       end
 
-      # Flatten all events across Phase 4 sessions with session_index for reference
+      # Flatten all events across Phase 4 sessions with session tracking
       # Sort by event_order within each session
+      # Use session_order as stable identifier instead of array index
       @all_events = []
       phase4_sessions = Array(@phase4_data['sessions']).sort_by { |s| s['session_order'].to_i }
       phase4_sessions.each_with_index do |session, session_idx|
         events = Array(session['events']).sort_by { |e| e['event_order'].to_i }
+        session_order = session['session_order'] || (session_idx + 1)
         events.each_with_index do |event, event_idx|
-          @all_events << event.merge('_session_index' => session_idx, '_event_index' => event_idx)
+          @all_events << event.merge(
+            '_session_index' => session_idx,
+            '_event_index' => event_idx,
+            '_session_order' => session_order
+          )
         end
       end
 
@@ -544,6 +550,15 @@ class DataFixController < ApplicationController
     data = pfm.data || {}
     sessions = Array(data['sessions'])
 
+    # Load Phase 1 data to get session structure (for creating missing sessions)
+    phase1_path = default_phase_path_for(source_path, 1)
+    phase1_sessions = []
+    if File.exist?(phase1_path)
+      phase1_pfm = PhaseFileManager.new(phase1_path)
+      phase1_data = phase1_pfm.data || {}
+      phase1_sessions = Array(phase1_data['meeting_session'])
+    end
+
     if session_index.negative? || session_index >= sessions.size
       flash[:warning] = "Invalid session index: #{session_index}"
       redirect_to(review_events_path(file_path:, phase4_v2: 1)) && return
@@ -585,9 +600,31 @@ class DataFixController < ApplicationController
 
     # Handle session change (move event to different session)
     if target_session_index.present? && target_session_index != session_index
-      if target_session_index.negative? || target_session_index >= sessions.size
+      # Validate target session exists in Phase 1
+      if target_session_index.negative? || target_session_index >= phase1_sessions.size
         flash[:warning] = "Invalid target session index: #{target_session_index}"
         redirect_to(review_events_path(file_path:, phase4_v2: 1)) && return
+      end
+
+      # Get the target session from Phase 1
+      target_phase1_session = phase1_sessions[target_session_index]
+      target_session_order = target_phase1_session['session_order'] || (target_session_index + 1)
+
+      # Find or create the target session in Phase 4 by session_order
+      phase4_target_session = sessions.find { |s| s['session_order'] == target_session_order }
+      phase4_target_session_index = sessions.index(phase4_target_session) if phase4_target_session
+
+      unless phase4_target_session
+        # Create new session in Phase 4 based on Phase 1 session
+        phase4_target_session = {
+          'session_order' => target_session_order,
+          'description' => target_phase1_session['description'],
+          'scheduled_date' => target_phase1_session['scheduled_date'],
+          'events' => []
+        }
+        sessions << phase4_target_session
+        sessions.sort_by! { |s| s['session_order'].to_i }
+        phase4_target_session_index = sessions.index(phase4_target_session)
       end
 
       # Remove event from current session
@@ -595,11 +632,11 @@ class DataFixController < ApplicationController
       sessions[session_index]['events'] = events
 
       # Add event to target session
-      target_events = Array(sessions[target_session_index]['events'])
+      target_events = Array(sessions[phase4_target_session_index]['events'])
       target_events << event
-      sessions[target_session_index]['events'] = target_events
+      sessions[phase4_target_session_index]['events'] = target_events
 
-      flash_msg = "Event moved to session #{target_session_index + 1} and updated"
+      flash_msg = "Event moved to session #{target_session_order} and updated"
     else
       # Just update in place
       sessions[session_index]['events'] = events
@@ -634,12 +671,42 @@ class DataFixController < ApplicationController
     data = pfm.data || {}
     sessions = Array(data['sessions'])
 
-    # Default to first session if no sessions exist
-    sessions << { 'session_order' => 1, 'events' => [] } if sessions.empty?
+    # Load Phase 1 data to get session structure
+    phase1_path = default_phase_path_for(source_path, 1)
+    phase1_sessions = []
+    if File.exist?(phase1_path)
+      phase1_pfm = PhaseFileManager.new(phase1_path)
+      phase1_data = phase1_pfm.data || {}
+      phase1_sessions = Array(phase1_data['meeting_session'])
+    end
 
-    session_index = 0 if session_index.negative? || session_index >= sessions.size
+    # Get the target session from Phase 1 by index
+    if session_index.negative? || session_index >= phase1_sessions.size
+      flash[:warning] = "Invalid session index: #{session_index}"
+      redirect_to(review_events_path(file_path:, phase4_v2: 1)) && return
+    end
 
-    events = Array(sessions[session_index]['events'])
+    target_phase1_session = phase1_sessions[session_index]
+    target_session_order = target_phase1_session['session_order'] || (session_index + 1)
+
+    # Find or create the session in Phase 4 by session_order
+    phase4_session = sessions.find { |s| s['session_order'] == target_session_order }
+    phase4_session_index = sessions.index(phase4_session) if phase4_session
+
+    unless phase4_session
+      # Create new session in Phase 4 based on Phase 1 session
+      phase4_session = {
+        'session_order' => target_session_order,
+        'description' => target_phase1_session['description'],
+        'scheduled_date' => target_phase1_session['scheduled_date'],
+        'events' => []
+      }
+      sessions << phase4_session
+      sessions.sort_by! { |s| s['session_order'].to_i }
+      phase4_session_index = sessions.index(phase4_session)
+    end
+
+    events = Array(phase4_session['events'])
     new_order = events.size + 1
 
     # Determine event details from event_type_id if provided
@@ -669,13 +736,14 @@ class DataFixController < ApplicationController
       'distance' => distance,
       'stroke' => stroke,
       'heat_type' => 'F',
-      'heat_type_id' => nil,
-      'begin_time' => nil,
+      'heat_type_id' => 3,      # Default ID for "finals"
+      'begin_time' => '08:30',  # Default begin time
       'key' => key
     }
 
     events << new_event
-    sessions[session_index]['events'] = events
+    phase4_session['events'] = events
+    sessions[phase4_session_index] = phase4_session
     data['sessions'] = sessions
 
     meta = pfm.meta || {}
@@ -684,7 +752,7 @@ class DataFixController < ApplicationController
 
     # Calculate the flattened event index for highlighting
     flattened_index = 0
-    sessions[0...session_index].each do |s|
+    sessions[0...phase4_session_index].each do |s|
       flattened_index += Array(s['events']).size
     end
     flattened_index += events.size - 1

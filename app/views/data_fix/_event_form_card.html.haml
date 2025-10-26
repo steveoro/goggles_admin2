@@ -1,0 +1,101 @@
+.card.mb-2{ class: "#{card_bg} #{border_color} #{border_width}", id: "event-card-#{event_index}" }
+  .card-header.d-flex.justify-content-between.align-items-center{ id: "event-header-#{event_index}", style: 'cursor: pointer;', data: { toggle: 'collapse', target: "#event-panel-#{event_index}" } }
+    .d-flex.align-items-center
+      %span.mr-2
+        - if has_match
+          %i.fa.fa-check-circle.text-success{ title: 'Matched' }
+        - else
+          %i.fa.fa-plus-circle.text-warning{ title: 'New/Unmatched' }
+      %strong
+        = event_key
+      %small.ml-2.text-muted
+        - if event['event_type_id'].present?
+          - event_type = GogglesDb::EventType.find_by(id: event['event_type_id'])
+          = event_type&.long_label || "#{event['distance']}#{event['stroke']}"
+        - else
+          = "#{event['distance']}#{event['stroke']}"
+      - if has_match
+        %small.ml-2.badge.badge-success
+          ID: #{event_id}
+      - else
+        %small.ml-2.badge.badge-primary
+          NEW
+    .d-flex.align-items-center
+      -# Delete button (only for events without DB ID)
+      - if event_id.blank?
+        = form_tag(data_fix_delete_event_path, method: :delete, class: 'd-inline', onsubmit: "return confirm('Delete event \\'#{event_key}\\'?');") do
+          = hidden_field_tag :file_path, file_path
+          = hidden_field_tag :session_index, session_index
+          = hidden_field_tag :event_index, local_event_index
+          %button.btn.btn-sm.btn-danger{ type: 'submit', 'aria-label' => 'Delete event', onclick: 'event.stopPropagation();' }
+            %i.fa.fa-trash
+
+  .collapse{ class: (is_new_event ? 'show' : ''), id: "event-panel-#{event_index}", 'aria-labelledby' => "event-header-#{event_index}", 'data-parent' => "#event-card-#{event_index}" }
+    .card-body.border-bottom.border-secondary
+      = form_tag(update_phase4_event_path, method: :patch) do
+        = hidden_field_tag :file_path, file_path
+        = hidden_field_tag :session_index, session_index
+        = hidden_field_tag :event_index, local_event_index
+
+        .container-fluid
+          -# Row 0: Session Binding
+          .row.mb-3
+            .col-12
+              %label Session Binding
+              - session_options = sessions.map.with_index do |s, i|
+                - label = "Session #{s['session_order']}"
+                - label += " - #{s['description']}" if s['description'].present?
+                - label += " (#{s['scheduled_date']})" if s['scheduled_date'].present?
+                - [label, i]
+              = select_tag :target_session_index, options_for_select(session_options, session_index), class: 'form-control'
+              %small.form-text.text-muted Change to move event to a different session
+
+          -# Row 1: Event Order & Begin Time
+          .row
+            .col-6
+              %label Event Order
+              = number_field_tag('event[event_order]', event['event_order'], class: 'form-control', min: 1)
+            .col-6
+              %label Begin Time
+              = time_field_tag('event[begin_time]', event['begin_time'], class: 'form-control', step: 900)
+
+          -# Row 2: Meeting Event ID
+          .row
+            .col
+              %label Event ID
+              = number_field_tag('event[meeting_event_id]', event['id'],
+                                 class: 'form-control', placeholder: 'Leave blank for new')
+
+          -# Row 3: Event Type (AutoComplete) & Heat Type
+          .row.mt-2
+            .col
+              %label Event Type
+              = render(AutoCompleteComponent.new(base_dom_id: "meeting_event[#{event_index}]",
+                                                 payload: event_types_payload, base_name: 'event_type',
+                                                 search_column: 'label_column', label_column: 'long_label',
+                                                 default_value: event['event_type_id']))
+            .col-md-4
+              %label Heat Type
+              = select_tag('event[heat_type_id]',
+                           options_from_collection_for_select(GogglesDb::HeatType.all, 'id', 'long_label', event['heat_type_id']),
+                           class: 'form-control')
+
+          -# Legacy fields (hidden by default, for backward compatibility)
+          .row.mt-2
+            .col-4
+              %small.form-text.text-muted Distance
+              = number_field_tag('event[distance]', event['distance'],
+                                 disabled: true, class: 'form-control form-control-sm', min: 25)
+            .col-4
+              %small.form-text.text-muted Stroke Code
+              = text_field_tag('event[stroke]', event['stroke'],
+                               disabled: true, class: 'form-control form-control-sm')
+            .col-4
+              %small.form-text.text-muted Heat Type Code
+              = text_field_tag('event[heat_type]', event['heat_type'],
+                               disabled: true, class: 'form-control form-control-sm')
+
+          -# Submit button
+          .row.mt-3
+            .col-12
+              = submit_tag('Save Event', class: 'btn btn-primary')

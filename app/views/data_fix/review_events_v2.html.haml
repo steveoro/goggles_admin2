@@ -16,153 +16,84 @@
     %div
       = link_to 'Proceed to Step 5 (Results)', review_results_path(request.query_parameters.merge(phase5_v2: 1)), class: 'btn btn-primary'
 
-  -# Add Event Form (similar to legacy)
-  .container-fluid.mb-3
-    = form_tag(data_fix_add_event_path, id: 'frm-add-event', method: :post) do
-      = hidden_field_tag 'file_path', @file_path
-      - event_option_list = options_from_collection_for_select(GogglesDb::EventType.all_eventable, 'id', 'long_label')
-      - session_option_list = []
-      - @sessions&.each_with_index do |sess, idx|
-        - label = "Session #{sess['session_order']}"
-        - label += " - #{sess['description']}" if sess['description'].present?
-        - session_option_list << [label, idx]
-      .row.align-items-center.mb-3
-        .col-sm-5.col-md-3
+  -# Add Event Form
+  .card.mb-2
+    .card-header
+      %strong Add New Event
+    .card-body.py-2
+      = form_tag(data_fix_add_event_path, id: 'frm-add-event', method: :post, class: 'form-inline') do
+        = hidden_field_tag 'file_path', @file_path
+        - event_option_list = options_from_collection_for_select(GogglesDb::EventType.all_eventable, 'id', 'long_label')
+        - session_option_list = []
+        - @sessions&.each_with_index do |sess, idx|
+          - label = "Session #{sess['session_order']}"
+          - label += " - #{sess['description']}" if sess['description'].present?
+          - session_option_list << [label, idx]
+        .form-group.mr-2
+          = label_tag 'event_type_id', 'Event Type', class: 'mr-1'
           = render(ComboBox::DbLookupComponent.new(nil, nil, 'event_type', required: true, values: event_option_list))
-        .col-sm-5.col-md-3
+        .form-group.mr-2
+          = label_tag 'session_index', 'Target Session', class: 'mr-1'
           = select_tag('session_index', options_for_select(session_option_list), class: 'custom-select')
-        .col-auto
-          %button.btn.btn-sm.btn-outline-success#btn-add-event{ type: 'submit',
-            'aria-label' => 'Add event',
-            data: { confirm: 'Add a new event?', disable_with: 'Please wait...' } }
-            %i.fa.fa-plus
-            Add Event
+        %button.btn.btn-sm.btn-success#btn-add-event{ type: 'submit',
+          'aria-label' => 'Add event',
+          data: { confirm: 'Add a new event?', disable_with: 'Please wait...' } }
+          %i.fa.fa-plus
+          Add Event
 
-  -# Events as collapsible cards (3 per row)
+  -# Events grouped by session
   - if @all_events.empty?
     .alert.alert-info
       %em No events found. Rescan to rebuild phase4 file.
   - else
     - new_event_idx = params[:new_event_index]&.to_i
-    - last_session_index = -1
-    .row
-      - @all_events.each_with_index do |event, index|
-        - session_index = event['_session_index']
-        - event_index = event['_event_index']
+    
+    -# Group events by session_order (stable identifier)
+    - events_by_session = @all_events.group_by { |e| e['_session_order'] }
+    - events_by_session.keys.sort.each do |session_order|
+      - session_events = events_by_session[session_order]
+      - session_data = @sessions.find { |s| s['session_order'] == session_order } || {}
 
-        -# Add horizontal line between sessions
-        - if last_session_index != session_index
-          - last_session_index = session_index
-          .col-12
-            %hr/
+      -# Session header (small, white/transparent)
+      .card.mb-2.mt-3.bg-white.border-0
+        .card-body.py-2
+          .row.align-items-center
+            .col-auto
+              %strong.text-muted
+                = "Session #{session_order}"
+            - if session_data['scheduled_date'].present?
+              .col-auto
+                %small.text-muted
+                  %i.fa.fa-calendar.mr-1
+                  = session_data['scheduled_date']
+            - if session_data['description'].present?
+              .col-auto
+                %small.text-muted
+                  = session_data['description']
+            .col-auto
+              %small.badge.badge-secondary
+                = "Order: #{session_order}"
 
-        - is_new_event = new_event_idx.present? && new_event_idx == index
-        - event_id = event['id']
-        - has_match = event_id.present?
-        - card_bg = has_match ? 'bg-light' : 'bg-light-yellow'
-        - event_key = event['key'] || "#{event['distance']}#{event['stroke']}"
+      -# Events in this session (2-3 per row using Bootstrap columns)
+      .row
+        - session_events.each do |event|
+          :ruby
+            # Calculate global event index for unique IDs
+            event_index = @all_events.index(event)
+            local_event_index = event['_event_index']
+            session_index = event['_session_index']
+            
+            is_new_event = new_event_idx.present? && new_event_idx == event_index
+            event_id = event['id']
+            has_match = event_id.present?
+            card_bg = has_match ? 'bg-light' : 'bg-light-yellow'
+            border_color = has_match ? 'border-secondary' : 'border-warning'
+            border_width = 'border-2'
+            event_key = event['key'] || "#{event['distance']}#{event['stroke']}"
 
-        .col-4{ id: "event-card-#{index}" }
-          .card.my-2
-            %div{ id: "event-header-#{index}", class: card_bg }
-              .row.align-items-center
-                .col-3
-                  %h5.mb-0
-                    %button.btn.btn-link.m-1{ id: "edit-event-#{index}",
-                      data: { target: "#event-panel-#{index}", toggle: 'collapse',
-                              'aria-expanded' => (is_new_event ? 'true' : 'false'),
-                              'aria-controls' => 'edit-event' } }
-                      = event_key
-                .col-3.mt-3
-                  %i.form-text.text-muted.bg-light-grey.my-0
-                    %pre
-                      = "🔑 \"#{event_key}\""
-                .col-auto
-                  - if event['event_type_id'].present?
-                    - event_type = GogglesDb::EventType.find_by(id: event['event_type_id'])
-                    = event_type&.long_label || "#{event['distance']}#{event['stroke']}"
-                  - else
-                    = "#{event['distance']}#{event['stroke']}"
-                  - if has_match
-                    ID: #{event_id}
-                    = event.is_a?(Hash) ? '✅' : '🔵'
-                  - else
-                    🆕
-                -# Delete button (only for events without DB ID)
-                - if event_id.blank?
-                  .col-auto
-                    = form_tag(data_fix_delete_event_path, id: "frm-purge-event-#{index}", method: :delete) do
-                      = hidden_field_tag 'file_path', @file_path
-                      = hidden_field_tag 'session_index', session_index
-                      = hidden_field_tag 'event_index', event_index
-                      %button.btn.btn-sm.btn-outline-danger{ id: "btn-purge-#{index}", type: 'submit',
-                        'aria-label' => 'Delete',
-                        data: { confirm: "Delete event '#{event_key}'?", disable_with: 'Please wait...' } }
-                        %i.fa.fa-trash-o
-
-            .collapse{ class: (is_new_event ? 'show' : ''), id: "event-panel-#{index}",
-                      'aria-labelledby' => "event-header-#{index}",
-                      'data-parent' => "#event-card-#{index}" }
-              .card-body.border-bottom.border-secondary
-                = form_tag(update_phase4_event_path, method: :patch) do
-                  = hidden_field_tag :file_path, @file_path
-                  = hidden_field_tag :session_index, session_index
-                  = hidden_field_tag :event_index, event_index
-
-                  .container-fluid
-                    -# Row 0: Session Binding
-                    .row.mb-3
-                      .col-12
-                        %label Session Binding
-                        - session_options = @sessions.map.with_index do |s, i|
-                          - label = "Session #{s['session_order']}"
-                          - label += " - #{s['description']}" if s['description'].present?
-                          - label += " (#{s['scheduled_date']})" if s['scheduled_date'].present?
-                          - [label, i]
-                        = select_tag :target_session_index, options_for_select(session_options, session_index), class: 'form-control'
-                        %small.form-text.text-muted Change to move event to a different session
-
-                    -# Row 1: Event Order & Begin Time
-                    .row
-                      .col-6
-                        %label Event Order
-                        = number_field_tag "event[event_order]", event['event_order'], class: 'form-control', min: 1
-                      .col-6
-                        %label Begin Time
-                        = time_field_tag "event[begin_time]", event['begin_time'], class: 'form-control', step: 900
-
-                    -# Row 2: Event Type (AutoComplete) & Heat Type
-                    .row.mt-2
-                      .col-auto
-                        = render(AutoCompleteComponent.new(base_dom_id: "meeting_event[#{index}]",
-                                 payload: @event_types_payload, base_name: 'event_type',
-                                 search_column: 'label_column', label_column: 'long_label',
-                                 default_value: event['event_type_id']))
-                      .col-auto.mt-1.mb-2
-                        = select_tag "event[heat_type_id]", options_from_collection_for_select(GogglesDb::HeatType.all, 'id', 'long_label', event['heat_type_id']), class: 'form-control'
-
-                    -# Row 3: Meeting Event ID
-                    .row
-                      .col-12
-                        %label Meeting Event ID
-                        = number_field_tag "event[meeting_event_id]", event['id'], class: 'form-control', placeholder: 'Leave blank for new'
-
-                    -# Legacy fields (hidden by default, for backward compatibility)
-                    .row.mt-2
-                      .col-4
-                        %label Distance
-                        %small.form-text.text-muted Legacy
-                        = number_field_tag "event[distance]", event['distance'], class: 'form-control form-control-sm', min: 25
-                      .col-4
-                        %label Stroke Code
-                        %small.form-text.text-muted Legacy
-                        = text_field_tag "event[stroke]", event['stroke'], class: 'form-control form-control-sm'
-                      .col-4
-                        %label Heat Type Code
-                        %small.form-text.text-muted Legacy
-                        = text_field_tag "event[heat_type]", event['heat_type'], class: 'form-control form-control-sm'
-
-                    -# Submit button
-                    .row.mt-3
-                      .col-12
-                        = submit_tag 'Save Event', class: 'btn btn-primary'
+          .col-lg-4.col-md-6.col-sm-12
+            = render(partial: 'event_form_card',
+                     locals: { file_path: @file_path, api_url: @api_url, event:, event_index:,
+                               local_event_index:, session_index:, sessions: @sessions,
+                               event_id:, has_match:, card_bg:, border_color:, border_width:,
+                               event_key:, is_new_event:, event_types_payload: @event_types_payload })

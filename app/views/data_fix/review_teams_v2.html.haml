@@ -57,113 +57,25 @@
     .alert.alert-info
       %em No teams found. Adjust filters or rescan to rebuild phase2 file.
   - else
-    - @items.each_with_index do |team, idx|
-      - team_index = ((@page - 1) * @per_page) + idx
-      - team_key = team['key'] || team['name']
-      - team_name = team['name'] || team_key
-      - editable_name = team['editable_name'] || team_name
-      - team_id = team['team_id']
-      - city_id = team['city_id']
-      - name_variations = team['name_variations']
-      
-      -# Visual indicators
-      - has_match = team_id.present?
-      - card_bg = has_match ? 'bg-light' : 'bg-light-yellow'
-      - border_color = has_match ? 'border-secondary' : 'border-warning'
-      - border_width = 'border-2'
+    - @items.each_with_index do |team_hash, idx|
+      :ruby
+        team_index = ((@page - 1) * @per_page) + idx
+        team_key = team_hash['key'] || team_hash['name']
+        team_name = team_hash['name'] || team_key
+        editable_name = team_hash['editable_name'] || team_name
+        team_id = team_hash['team_id']
+        city_id = team_hash['city_id']
+        name_variations = team_hash['name_variations']
+        # Visual indicators
+        has_match = team_id.present?
+        card_bg = has_match ? 'bg-light' : 'bg-light-yellow'
+        border_color = has_match ? 'border-secondary' : 'border-warning'
+        border_width = 'border-2'
 
-      .card.mb-2{ class: "#{card_bg} #{border_color} #{border_width}", id: "team-card-#{team_index}" }
-        .card-header.d-flex.justify-content-between.align-items-center{ id: "team-header-#{team_index}", style: 'cursor: pointer;', data: { toggle: 'collapse', target: "#team-panel-#{team_index}" } }
-          .d-flex.align-items-center
-            %span.mr-2
-              - if has_match
-                %i.fa.fa-check-circle.text-success{ title: 'Matched' }
-              - else
-                %i.fa.fa-plus-circle.text-warning{ title: 'New/Unmatched' }
-            %strong
-              = editable_name
-            %small.ml-2.text-muted
-              (#{team_key})
-            - if has_match
-              %small.ml-2.badge.badge-success
-                ID: #{team_id}
-            - else
-              %small.ml-2.badge.badge-primary
-                NEW
-          .d-flex.align-items-center
-            = form_tag(data_fix_delete_team_path, method: :delete, class: 'd-inline', onsubmit: "return confirm('Delete team \\'#{team_key}\\'?');") do
-              = hidden_field_tag :file_path, @file_path
-              = hidden_field_tag :team_index, team_index
-              %button.btn.btn-sm.btn-danger{ type: 'submit', 'aria-label' => 'Delete team', onclick: 'event.stopPropagation();' }
-                %i.fa.fa-trash
-          
-        .collapse{ id: "team-panel-#{team_index}", 'aria-labelledby' => "team-header-#{team_index}", 'data-parent' => "#team-card-#{team_index}" }
-          .card-body.border-bottom.border-secondary
-            = form_tag(update_phase2_team_path, method: :patch) do
-              = hidden_field_tag :file_path, @file_path
-              = hidden_field_tag :team_index, team_index
-              
-              .container-fluid
-                -# Row 0: Fuzzy matches dropdown (quick selection)
-                - fuzzy_matches = team['fuzzy_matches'] || []
-                - if fuzzy_matches.present?
-                  .row
-                    .col-12
-                      .form-group
-                        = label_tag "fuzzy_select_#{team_index}", 'Quick match selection (fuzzy matches)'
-                        = select_tag "fuzzy_select_#{team_index}", options_for_select([['-- Select a match --', '']] + fuzzy_matches.map { |m| [m['display_label'], m['id']] }, team_id), class: 'form-control', id: "fuzzy_select_#{team_index}", onchange: "var teamId = this.value; if (teamId) { $('#team_#{team_index}_team_id').val(teamId).trigger('change'); }"
-                        %small.form-text.text-muted
-                          Select a match from the list to quickly populate team fields via AutoComplete.
-                      
-                      -# Row 1: Team AutoComplete + editable_name
-                      .row
-                        .col-6
-                          = render(AutoCompleteComponent.new(show_top_labels: true,
-                                                             base_dom_id: "team[#{team_index}]", base_api_url: @api_url,
-                                                             default_value: team_id,
-                                                             detail_endpoint: 'team', base_name: 'team', label_column: 'editable_name',
-                                                             search_endpoint: 'teams', search_column: 'name',
-                                                             target3_dom_id: "team_#{team_index}_editable_name", target3_column: 'editable_name',
-                                                             target4_dom_id: "team_#{team_index}_city_id", target4_column: 'city_id',
-                                                             target5_dom_id: "team_#{team_index}_name", target5_column: 'name',
-                                                             target6_dom_id: "team_#{team_index}_name_variations", target6_column: 'name_variations',
-                                                             jwt: current_user.jwt))
-                        .col-6
-                          .form-group
-                            = label_tag "team_#{team_index}_editable_name", 'editable_name'
-                            = text_field_tag "team[#{team_index}][editable_name]", editable_name,
-                                            id: "team_#{team_index}_editable_name",
-                                            class: 'form-control', required: true, placeholder: 'editable_name'
-                      
-                      -# Row 2: name + name_variations
-                      .row
-                        .col-5
-                          .form-group
-                            = label_tag "team_#{team_index}_name", 'name'
-                            = text_field_tag "team[#{team_index}][name]", team_name,
-                                            id: "team_#{team_index}_name",
-                                            class: 'form-control', required: true, placeholder: 'name'
-                        .col-7
-                          .form-group
-                            = label_tag "team_#{team_index}_name_variations", 'name_variations'
-                            = text_field_tag "team[#{team_index}][name_variations]", name_variations,
-                                            id: "team_#{team_index}_name_variations",
-                                            class: 'form-control', placeholder: 'name_variations (pipe-separated)'
-                      
-                      -# Row 3: City AutoComplete
-                      = render(AutoCompleteComponent.new(show_top_labels: true,
-                              base_dom_id: "team[#{team_index}]", base_api_url: @api_url,
-                              default_value: city_id,
-                              detail_endpoint: 'city', base_name: 'city', label_column: 'area',
-                              search_endpoint: 'cities', search_column: 'name',
-                              target2_field: 'area', target2_column: 'area',
-                              target2_class: 'offset-lg-2 offset-md-3 offset-sm-3 col-md-4 col-sm-4 my-1',
-                              jwt: current_user.jwt))
-                      
-                      -# Save button
-                      .form-group.mt-3
-                        = submit_tag t('data_import.generic_save_btn'), class: 'btn btn-primary',
-                                    'aria-label': 'Save', data: { confirm: t('data_import.btn_save_confirm') }
+      = render(partial: 'team_form_card',
+               locals: { file_path: @file_path, api_url: @api_url, team_hash:, team_index:,
+                         team_key:, team_name:, editable_name:, team_id:, city_id:,
+                         name_variations:, has_match:, card_bg:, border_color:, border_width: })
 
   -# Pagination controls (bottom)
   .mt-3

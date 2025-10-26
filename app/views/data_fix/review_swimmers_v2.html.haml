@@ -53,109 +53,24 @@
             %button.btn.btn-sm.btn-success{ type: 'submit' }
               %i.fa.fa-plus
               Add Swimmer
-  
+
   -# Swimmers as collapsible cards
   - if @items.empty?
     .alert.alert-info
       %em No swimmers found. Adjust filters or rescan to rebuild phase3 file.
   - else
-    - @items.each_with_index do |swimmer, idx|
-      - swimmer_index = ((@page - 1) * @per_page) + idx
-      - swimmer_id = swimmer['swimmer_id']
-      - has_match = swimmer_id.present?
-      - card_bg = has_match ? 'bg-light' : 'bg-light-yellow'
-      - border_color = has_match ? 'border-secondary' : 'border-warning'
-      - border_width = 'border-2'
-      
-      .card.mb-2{ class: "#{card_bg} #{border_color} #{border_width}", id: "swimmer-card-#{swimmer_index}" }
-        .card-header.d-flex.justify-content-between.align-items-center{ id: "swimmer-header-#{swimmer_index}", style: 'cursor: pointer;', data: { toggle: 'collapse', target: "#swimmer-panel-#{swimmer_index}" } }
-          .d-flex.align-items-center
-            %span.mr-2
-              - if has_match
-                %i.fa.fa-check-circle.text-success{ title: 'Matched' }
-              - else
-                %i.fa.fa-plus-circle.text-warning{ title: 'New/Unmatched' }
-            %strong
-              = swimmer['complete_name']
-            %small.ml-2.text-muted
-              (#{swimmer['year_of_birth']}, #{swimmer['gender_type_code']})
-            - if has_match
-              %small.ml-2.badge.badge-success
-                ID: #{swimmer_id}
-            - else
-              %small.ml-2.badge.badge-primary
-                NEW
-          .d-flex.align-items-center
-            = form_tag(data_fix_delete_swimmer_path, method: :delete, class: 'd-inline', onsubmit: "return confirm('Delete swimmer #{swimmer['complete_name']}?');") do
-              = hidden_field_tag :file_path, @file_path
-              = hidden_field_tag :swimmer_index, swimmer_index
-              %button.btn.btn-sm.btn-danger{ type: 'submit', 'aria-label' => 'Delete swimmer', onclick: 'event.stopPropagation();' }
-                %i.fa.fa-trash
+    - @items.each_with_index do |swimmer_hash, idx|
+      :ruby
+        swimmer_index = ((@page - 1) * @per_page) + idx
+        swimmer_id = swimmer_hash['swimmer_id']
+        has_match = swimmer_id.present?
+        card_bg = has_match ? 'bg-light' : 'bg-light-yellow'
+        border_color = has_match ? 'border-secondary' : 'border-warning'
+        border_width = 'border-2'
 
-        .collapse{ id: "swimmer-panel-#{swimmer_index}", 'aria-labelledby' => "swimmer-header-#{swimmer_index}", 'data-parent' => "#swimmer-card-#{swimmer_index}" }
-          .card-body.border-bottom.border-secondary
-            = form_tag(update_phase3_swimmer_path, method: :patch) do
-              = hidden_field_tag :file_path, @file_path
-              = hidden_field_tag :swimmer_index, swimmer_index
-              
-              .container-fluid
-                -# Row 0: Fuzzy matches dropdown (quick selection)
-                - fuzzy_matches = swimmer['fuzzy_matches'] || []
-                - if fuzzy_matches.present?
-                  .row
-                    .col-12
-                      .form-group
-                        = label_tag "fuzzy_select_#{swimmer_index}", 'Quick match selection (fuzzy matches)'
-                        = select_tag "fuzzy_select_#{swimmer_index}", options_for_select([['-- Select a match --', '']] + fuzzy_matches.map { |m| [m['display_label'], m['id']] }, swimmer_id), class: 'form-control', id: "fuzzy_select_#{swimmer_index}", onchange: "var swimmerId = this.value; if (swimmerId) { $('#swimmer_#{swimmer_index}_swimmer_id').val(swimmerId).trigger('change'); }"
-                        %small.form-text.text-muted
-                          Select a match from the list to quickly populate swimmer fields via AutoComplete.
-
-                -# Row 1: Swimmer AutoComplete + complete_name
-                .row
-                  .col
-                    = render(AutoCompleteComponent.new(show_top_labels: true,
-                                                       base_dom_id: "swimmer[#{swimmer_index}]", base_api_url: @api_url,
-                                                       default_value: swimmer_id,
-                                                       detail_endpoint: 'swimmer', base_name: 'swimmer', label_column: 'complete_name',
-                                                       search_endpoint: 'swimmers', search_column: 'complete_name',
-                                                       search2_dom_id: "swimmer_#{swimmer_index}_year_of_birth", search2_column: 'year_of_birth',
-                                                       target3_dom_id: "swimmer_#{swimmer_index}_gender_type_code", target3_column: 'gender_code',
-                                                       target4_dom_id: "swimmer_#{swimmer_index}_last_name", target4_column: 'last_name',
-                                                       target5_dom_id: "swimmer_#{swimmer_index}_first_name", target5_column: 'first_name',
-                                                       target6_dom_id: "swimmer_#{swimmer_index}_complete_name", target6_column: 'complete_name',
-                                                       jwt: current_user.jwt))
-                  .col-md-7
-                    .form-group
-                      %label Complete Name
-                      = text_field_tag('swimmer[complete_name]', swimmer['complete_name'],
-                                       class: 'form-control', id: "swimmer_#{swimmer_index}_complete_name")
-                -# Row 2: Last Name + First Name + Year of Birth + Gender
-                .row
-                  .col-md-4
-                    .form-group
-                      %label Last Name
-                      = text_field_tag('swimmer[last_name]', swimmer['last_name'],
-                                       class: 'form-control', id: "swimmer_#{swimmer_index}_last_name")
-                  .col-md-4
-                    .form-group
-                      %label First Name
-                      = text_field_tag('swimmer[first_name]', swimmer['first_name'],
-                                       class: 'form-control', id: "swimmer_#{swimmer_index}_first_name")
-                  .col-md-2
-                    .form-group
-                      %label Year of Birth
-                      = number_field_tag('swimmer[year_of_birth]', swimmer['year_of_birth'],
-                                         class: 'form-control', id: "swimmer_#{swimmer_index}_year_of_birth")
-                  .col-md-2
-                    .form-group
-                      %label Gender Type Code
-                      = select_tag('swimmer[gender_type_code]', options_for_select([['M', 'M'], ['F', 'F']],
-                                   swimmer['gender_type_code']),
-                                   include_blank: true, class: 'form-control', id: "swimmer_#{swimmer_index}_gender_type_code")
-                -# Submit button
-                .row
-                  .col-12
-                    = submit_tag('Save Swimmer', class: 'btn btn-primary')
+      = render(partial: 'swimmer_form_card',
+               locals: { file_path: @file_path, api_url: @api_url, swimmer_hash:, swimmer_index:,
+                         swimmer_id:, has_match:, card_bg:, border_color:, border_width: })
 
   -# Pagination controls (bottom)
   .mt-3

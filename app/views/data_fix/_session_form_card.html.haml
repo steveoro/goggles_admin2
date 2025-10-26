@@ -1,0 +1,225 @@
+.card.mb-2{ class: "#{card_bg} #{border_color} #{border_width}", id: "session-card-#{idx}" }
+  .card-header.d-flex.justify-content-between.align-items-center{ id: "session-header-#{idx}", style: 'cursor: pointer;', data: { toggle: 'collapse', target: "#session-collapse-#{idx}" } }
+    .d-flex.align-items-center
+      %span.mr-2
+        - if has_match
+          %i.fa.fa-check-circle.text-success{ title: 'Matched' }
+        - else
+          %i.fa.fa-plus-circle.text-warning{ title: 'New/Unmatched' }
+      %strong
+        = "Session #{sess_hash['session_order'] || (idx + 1)}"
+      - if sess_hash['scheduled_date'].present?
+        %small.ml-2.text-muted
+          = sess_hash['scheduled_date']
+      - if sess_hash['description'].present?
+        %small.ml-2.text-muted
+          = ": #{sess_hash['description']}"
+      - if has_match
+        %small.ml-2.badge.badge-success
+          ID: #{session_id}
+      - else
+        %small.ml-2.badge.badge-primary
+          NEW
+    .d-flex.align-items-center
+      = form_tag(data_fix_delete_session_path, method: :delete,
+                 class: 'd-inline',
+                 onsubmit: "return confirm('Delete this session? This will also clear all downstream data (events, results).');") do
+        = hidden_field_tag :file_path, file_path
+        = hidden_field_tag :session_index, idx
+        %button.btn.btn-sm.btn-danger{ type: 'submit', 'aria-label' => 'Delete session', onclick: 'event.stopPropagation();' }
+          %i.fa.fa-trash
+
+  .collapse{ class: (is_new_session ? 'show' : ''), id: "session-collapse-#{idx}",
+             'aria-labelledby' => "session-header-#{idx}",
+             'data-parent' => "#session-card-#{idx}" }
+    .card-body.border-bottom.border-secondary
+      = form_tag(update_phase1_session_path, method: :patch,
+                 data: { controller: 'coded-name', 'coded-name-result-type-value' => 'nick_name',
+                         'coded-name-jwt-value' => current_user.jwt }) do
+        = hidden_field_tag :file_path, file_path
+        = hidden_field_tag :session_index, idx
+
+        -# Session Fields
+        %h6.text-primary Session Details
+        .form-row
+          .form-group.col-md-2
+            %label Session ID
+            = number_field_tag 'meeting_session_id', sess_hash['id'], class: 'form-control form-control-sm', placeholder: 'ID'
+          .form-group.col-md-4
+            %label Description
+            = text_field_tag(:description, sess_hash['description'],
+                             required: true, class: 'form-control form-control-sm',
+                             placeholder: 'Session description')
+          .form-group.col-md-2
+            %label Order
+            = number_field_tag :session_order, sess_hash['session_order'] || (idx + 1), required: true, class: 'form-control form-control-sm', min: 1
+          .form-group.col-md-3
+            %label Scheduled Date
+            - if sess_hash['scheduled_date'].blank?
+              %span
+                %i.fa.fa-exclamation.text-danger
+            = date_field_tag :scheduled_date, sess_hash['scheduled_date'], required: true, class: 'form-control form-control-sm'
+          .form-group.col-md-1
+            %label Day Part
+            = select_tag(:day_part_type_id,
+                         options_for_select(GogglesDb::DayPartType.all.map { |t| [t.long_label, t.id] }, sess_hash['day_part_type_id']),
+                         class: 'form-control form-control-sm')
+
+        %hr.my-3
+
+        :ruby
+          # Pool Fields with AutoComplete
+          pool_data = sess_hash['swimming_pool'] || {}
+          city_data = pool_data['city'] || sess_hash['city'] || {}
+          pool_id = pool_data['id']
+          city_id = city_data['id'] || pool_data['city_id']
+          search_engine = 'https://www.google.com/maps/search/'
+          initial_query = "?q=#{pool_data['name']}, #{pool_data['address']}".gsub(' ', '%20')
+          initial_maps_href = "#{search_engine}#{initial_query}"
+          name_part = "${$('#pool_#{idx}_name').val()}"
+          addr_part = "${$('#pool_#{idx}_address').val()}"
+          search_query = "?q=#{name_part}, #{addr_part}, ${$('#city_#{idx}_name').val()}"
+          onchange_event = "document.querySelector('#maps-uri-search-#{idx}').href = `#{search_engine}#{search_query}`;"
+
+        %h6.text-secondary Swimming Pool
+
+        -# City-filtered pool dropdown (when city is selected)
+        - if city_id.present?
+          .form-row.mb-2
+            .form-group.col-md-8
+              %label Existing pools in selected city
+              - pool_collection = GogglesDb::SwimmingPool.where(city_id: city_id)
+              - onclick_copy = "$('#pool_#{idx}_swimming_pool_id').val($('#search_pool_#{idx}').val()); $('#pool_#{idx}_swimming_pool_id').trigger('change');"
+              = select_tag "search_pool_#{idx}", options_for_select(pool_collection.map { |p| [p.name, p.id] }, pool_id), { include_blank: true, class: 'form-control form-control-sm', onclick: onclick_copy }
+
+        .form-row
+          .form-group.col-md-6
+            = render(AutoCompleteComponent.new(show_top_labels: true, base_dom_id: "pool[#{idx}]", base_api_url: api_url,
+                                               default_value: pool_id, detail_endpoint: 'swimming_pool', base_name: 'swimming_pool',
+                                               label_column: 'name', search_endpoint: 'swimming_pools', search_column: 'name',
+                                               target3_dom_id: "pool_#{idx}_name", target3_column: 'name',
+                                               target4_dom_id: "pool_#{idx}_nick_name", target4_column: 'nick_name',
+                                               target5_dom_id: "pool_#{idx}_address", target5_column: 'address',
+                                               target6_dom_id: "pool_#{idx}_pool_type_id", target6_column: 'pool_type_id',
+                                               target7_dom_id: "pool_#{idx}_lanes_number", target7_column: 'lanes_number',
+                                               target8_dom_id: "pool_#{idx}_maps_uri", target8_column: 'maps_uri',
+                                               target9_dom_id: "pool_#{idx}_latitude", target9_column: 'latitude',
+                                               target10_dom_id: "pool_#{idx}_longitude", target10_column: 'longitude',
+                                               target11_dom_id: "pool_#{idx}_plus_code", target11_column: 'plus_code',
+                                               target12_dom_id: "city_#{idx}_city_id", target12_column: 'city_id',
+                                               jwt: current_user.jwt))
+            %small.form-text.text-muted Search by ID or Pool name
+          .form-group.col-md-4
+            %label{ for: "pool_#{idx}_name" } Pool Name
+            = text_field_tag('pool[name]', pool_data['name'],
+                             id: "pool_#{idx}_name", required: true, class: 'form-control form-control-sm',
+                             placeholder: 'Pool name', onchange: onchange_event,
+                             data: { 'coded-name-target' => 'name' })
+          .form-group.col-md-2
+            %label{ for: "pool_#{idx}_nick_name" } Nick Name
+            = text_field_tag('pool[nick_name]', pool_data['nick_name'],
+                             id: "pool_#{idx}_nick_name", class: 'form-control form-control-sm',
+                             placeholder: 'Coded', data: { 'coded-name-target' => 'field' })
+
+        .form-row
+          .form-group.col-md-5
+            %label Address
+            = text_field_tag('pool[address]', pool_data['address'],
+                             id: "pool_#{idx}_address", class: 'form-control form-control-sm',
+                             placeholder: 'Street address', onchange: onchange_event)
+          .form-group.col-md-2
+            %label Pool Type
+            - pool_type_opts = options_for_select(GogglesDb::PoolType.all.map { |t| [t.long_label, t.id] },
+                                                  pool_data['pool_type_id'])
+            = select_tag('pool[pool_type_id]', pool_type_opts,
+                          { id: "pool_#{idx}_pool_type_id", class: 'form-control form-control-sm',
+                            data: { 'autocomplete-target' => 'field2', 'coded-name-target' => 'pool' } })
+          .form-group.col-md-1
+            %label Lanes
+            = number_field_tag('pool[lanes_number]', pool_data['lanes_number'],
+                               id: "pool_#{idx}_lanes_number", class: 'form-control form-control-sm', min: 1, max: 10)
+          .form-group.col-md-4
+            %label
+              Maps URI
+              %a.btn.btn-sm.btn-outline-primary{ id: "maps-uri-search-#{idx}", href: initial_maps_href,
+                                                 target: '_blank', data: { toggle: 'tooltip', title: 'Search on Google Maps' } }
+                %i.fa.fa-search
+                Search Maps
+            = text_field_tag('pool[maps_uri]', pool_data['maps_uri'],
+                             id: "pool_#{idx}_maps_uri", class: 'form-control form-control-sm',
+                             placeholder: 'Google Maps URI')
+
+        .form-row
+          .form-group.col-md-2
+            %label Plus Code
+            = text_field_tag('pool[plus_code]', pool_data['plus_code'],
+                             id: "pool_#{idx}_plus_code", class: 'form-control form-control-sm',
+                             placeholder: '+ code')
+          .form-group.col-md-2
+            %label Latitude
+            = text_field_tag('pool[latitude]', pool_data['latitude'],
+                             id: "pool_#{idx}_latitude", class: 'form-control form-control-sm',
+                             placeholder: 'lat')
+          .form-group.col-md-2
+            %label Longitude
+            = text_field_tag('pool[longitude]', pool_data['longitude'],
+                             id: "pool_#{idx}_longitude", class: 'form-control form-control-sm',
+                             placeholder: 'lng')
+
+        %hr.my-3
+
+        -# City Fields with AutoComplete
+        %h6.text-info City
+        .form-row
+          .form-group.col-md-5
+            = render(AutoCompleteComponent.new(show_top_labels: true, base_dom_id: "city[#{idx}]", base_api_url: api_url,
+                                               default_value: city_id, detail_endpoint: 'city', base_name: 'city',
+                                               label_column: 'area', search_endpoint: 'cities', search_column: 'name',
+                                               target3_dom_id: "city_#{idx}_name", target3_column: 'name',
+                                               target4_dom_id: "city_#{idx}_area", target4_column: 'area',
+                                               target5_dom_id: "city_#{idx}_zip", target5_column: 'zip',
+                                               target6_dom_id: "city_#{idx}_country", target6_column: 'country',
+                                               target7_dom_id: "city_#{idx}_country_code", target7_column: 'country_code',
+                                               target8_dom_id: "city_#{idx}_latitude", target8_column: 'latitude',
+                                               target9_dom_id: "city_#{idx}_longitude", target9_column: 'longitude',
+                                               jwt: current_user.jwt))
+            %small.form-text.text-muted Search by ID or City name
+          .form-group.col-md-3
+            %label City Name
+            = text_field_tag('city[name]', city_data['name'],
+                             id: "city_#{idx}_name", class: 'form-control form-control-sm',
+                             placeholder: 'City name', onchange: onchange_event,
+                             data: { 'coded-name-target' => 'city' })
+          .form-group.col-md-2
+            %label Area
+            = text_field_tag('city[area]', city_data['area'],
+                             id: "city_#{idx}_area", class: 'form-control form-control-sm',
+                             placeholder: 'Province/State')
+          .form-group.col-md-2
+            %label ZIP
+            = text_field_tag('city[zip]', city_data['zip'],
+                             id: "city_#{idx}_zip", class: 'form-control form-control-sm',
+                             placeholder: 'ZIP')
+
+        .form-row
+          .form-group.col-md-3
+            %label Country
+            = text_field_tag('city[country]', city_data['country'], id: "city_#{idx}_country",
+                             class: 'form-control form-control-sm', placeholder: 'Country')
+          .form-group.col-md-1
+            %label Code
+            = text_field_tag('city[country_code]', city_data['country_code'],
+                             id: "city_#{idx}_country_code",
+                             class: 'form-control form-control-sm', placeholder: 'IT')
+          .form-group.col-md-2
+            %label Latitude
+            = text_field_tag('city[latitude]', city_data['latitude'],
+                             id: "city_#{idx}_latitude",
+                             class: 'form-control form-control-sm', placeholder: 'lat')
+          .form-group.col-md-2
+            %label Longitude
+            = text_field_tag('city[longitude]', city_data['longitude'],
+                             id: "city_#{idx}_longitude",
+                             class: 'form-control form-control-sm', placeholder: 'lng')
+
+        = submit_tag('Save Session', class: 'btn btn-primary', data: { confirm: 'Save this session data?' })
