@@ -5,7 +5,8 @@ module Import
     # Builds Phase 4 payload (Events) from a LT2/LT4 source JSON.
     # - Groups events by sessions when session info is present; otherwise
     #   falls back to source section order and per-section row order.
-    # - Keeps a minimal set of attributes: key, distance, stroke, event_order, session_order
+    # - Stores event attributes: key, distance, stroke, event_order, session_order,
+    #   event_type_id (matched from DB), heat_type_id (default: 3=Finals), heat_type (default: "F")
     #
     # It does not persist any DB records; it only prepares the JSON for UI review.
     class EventSolver
@@ -46,13 +47,21 @@ module Import
               key = [distance, stroke].join('|')
               next if seen[key]
 
-              events << {
+              event_hash = {
                 'key' => key,
                 'distance' => distance,
                 'stroke' => stroke,
                 'event_order' => event_order,
-                'session_order' => session_order
+                'session_order' => session_order,
+                'heat_type_id' => 3, # Default: Finals
+                'heat_type' => 'F'   # Finals code
               }
+              
+              # Try to find matching event_type_id based on distance + stroke code
+              event_type_id = find_event_type_id(distance, stroke)
+              event_hash['event_type_id'] = event_type_id if event_type_id.present?
+              
+              events << event_hash
               seen[key] = true
             end
 
@@ -87,13 +96,21 @@ module Import
             bucket = sessions_map[session_order]
             next if bucket['__seen__'][key]
 
-            bucket['events'] << {
+            event_hash = {
               'key' => key,
               'distance' => distance,
               'stroke' => stroke,
               'event_order' => event_order,
-              'session_order' => session_order
+              'session_order' => session_order,
+              'heat_type_id' => 3, # Default: Finals
+              'heat_type' => 'F'   # Finals code
             }
+            
+            # Try to find matching event_type_id based on distance + stroke code
+            event_type_id = find_event_type_id(distance, stroke)
+            event_hash['event_type_id'] = event_type_id if event_type_id.present?
+            
+            bucket['events'] << event_hash
             bucket['__seen__'][key] = true
           end
 
@@ -123,6 +140,16 @@ module Import
         dir = File.dirname(source_path)
         base = File.basename(source_path, File.extname(source_path))
         File.join(dir, "#{base}-phase4.json")
+      end
+
+      # Find EventType ID by constructing the code from distance + stroke
+      # Example: distance=200, stroke="RA" => code="200RA" => EventType.id=21
+      def find_event_type_id(distance, stroke)
+        return nil if distance.to_s.strip.empty? || stroke.to_s.strip.empty?
+
+        code = "#{distance}#{stroke}"
+        event_type = GogglesDb::EventType.find_by(code: code)
+        event_type&.id
       end
     end
   end

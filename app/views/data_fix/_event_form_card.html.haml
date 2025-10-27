@@ -82,15 +82,15 @@
                 %small.form-text.text-muted No meeting events available
 
           -# Row 3: Event Type (AutoComplete) & Heat Type
-          .row.mt-2
-            .col
+          .row.mt-2.p-0
+            .col.mr-4
               %label Event Type
               = render(AutoCompleteComponent.new(base_dom_id: "meeting_event[#{event_index}]",
                                                  payload: event_types_payload, base_name: 'event_type',
                                                  search_column: 'label_column', label_column: 'long_label',
                                                  default_value: event['event_type_id']))
           .row.mt-1
-            .col-md-4
+            .col-auto
               %label Heat Type
               = select_tag('event[heat_type_id]',
                            options_from_collection_for_select(GogglesDb::HeatType.all, 'id', 'long_label', event['heat_type_id']),
