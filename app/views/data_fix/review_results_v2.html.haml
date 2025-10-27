@@ -12,86 +12,38 @@
 
   = render(partial: 'data_fix/phase_metadata', locals: { phase_number: 5, metadata: @phase5_meta })
 
-  - sessions = Array(@phase5_data['sessions'])
-  - if sessions.empty?
-    %em No results found in Phase 5.
-  - else
-    - sessions.sort_by { |s| s['session_order'].to_i }.each do |s|
-      .card.mb-3
-        .card-header
-          Session
-          = s['session_order']
-        .card-body
-          - events = Array(s['events']).sort_by { |e| e['event_order'].to_i }
-          - if events.empty?
-            %em No events for this session.
-          - else
-            - events.each do |e|
-              .mb-3.border.rounded
-                .p-2.bg-light.d-flex.justify-content-between.align-items-center
-                  %div
-                    %strong= e['key']
-                    &nbsp;•&nbsp;
-                    %span
-                      = e['distance']
-                      = "/"
-                      = e['stroke']
-                  %span.badge.badge-info
-                    Total:
-                    = e['results_count']
-                - genders = Array(e['genders']).sort_by { |g| g['gender'].to_s }
-                - if genders.empty?
-                  .p-2
-                    %em No gender details available.
-                - else
-                  - genders.each do |g|
-                    .card.mb-2
-                      .card-header.d-flex.justify-content-between.align-items-center
-                        %div
-                          %strong Gender:
-                          = g['gender']
-                        %span.badge.badge-secondary
-                          Total:
-                          = g['results_count']
-                      .card-body
-                        - categories = Array(g['categories']).sort_by { |c| c['category'].to_s }
-                        - if categories.empty?
-                          %em No categories.
-                        - else
-                          .row
-                            - categories.each do |c|
-                              - cid = "cat-#{e['key']}-#{g['gender']}-#{c['category']}".parameterize
-                              .col-12.col-md-6.col-lg-4.mb-2
-                                .card{ id: cid }
-                                  .card-body.py-2.d-flex.justify-content-between.align-items-center
-                                    %div
-                                      %code= c['category']
-                                      &nbsp;&mdash;&nbsp;
-                                      %span
-                                        = c['results_count']
-                                        results
-                                    %button.btn.btn-sm.btn-outline-primary.load-category{ data: { url: results_chunk_v2_path(file_path: @file_path, event_key: e['key'], gender: g['gender'], category: c['category']), target: cid } }
-                                      Load results
+  - if @populate_stats
+    .alert.alert-info.mb-3
+      %strong Populated:
+      = @populate_stats[:mir_created]
+      results,
+      = @populate_stats[:laps_created]
+      laps
+      - if @populate_stats[:errors].any?
+        %span.text-danger
+          (#{@populate_stats[:errors].size} errors)
 
-:javascript
-  document.addEventListener('click', function(e) {
-    const btn = e.target.closest('.load-category');
-    if (!btn) return;
-    e.preventDefault();
-    const url = btn.getAttribute('data-url');
-    const targetId = btn.getAttribute('data-target');
-    const card = document.getElementById(targetId);
-    if (!url || !card) return;
-    btn.disabled = true;
-    btn.textContent = 'Loading...';
-    fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' }})
-      .then(resp => resp.text())
-      .then(html => {
-        card.outerHTML = html;
-      })
-      .catch(() => {
-        btn.disabled = false;
-        btn.textContent = 'Load results';
-        alert('Failed to load results.');
-      });
-  });
+  - if @all_results.blank?
+    .alert.alert-warning
+      %p No results loaded from database yet.
+      %p
+        = link_to 'Populate DB Tables', review_results_path(file_path: @file_path, phase5_v2: 1, populate_db: 1), class: 'btn btn-primary'
+  - else
+    .mb-3.d-flex.justify-content-between.align-items-center
+      %div
+        %strong Total results in DB:
+        = @all_results.size
+      %small.text-muted
+        Displaying up to 1000 results
+
+    - # Group results by import_key prefix (session-event-category-gender)
+    - grouped = @all_results.group_by do |mir|
+      - parts = mir.import_key.split('/')
+      - parts[0] # program_key: "1-200RA-M75-F"
+
+    - # Responsive grid: 2 columns on large displays
+    .row
+      - grouped.keys.sort.each_with_index do |program_key, idx|
+        - results = grouped[program_key]
+        .col-12.col-lg-6
+          = render partial: 'data_fix/result_program_card', locals: { program_key: program_key, results: results, swimmers_by_id: @swimmers_by_id, teams_by_id: @teams_by_id, laps_by_parent_key: @laps_by_parent_key, card_index: idx }

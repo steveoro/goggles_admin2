@@ -1,0 +1,103 @@
+-# frozen_string_literal: true
+-# Displays a collapsible card for a MeetingProgram group with expandable result rows
+-#
+-# == Params:
+-# - program_key: String, e.g., "1-200RA-M75-F"
+-# - results: Array of DataImportMeetingIndividualResult
+-# - swimmers_by_id: Hash of Swimmer by ID
+-# - teams_by_id: Hash of Team by ID
+-# - laps_by_parent_key: Hash of DataImportLap arrays by parent_import_key
+-# - card_index: Integer, for unique IDs
+
+- parts = program_key.split('-')
+- session_order = parts[0]
+- event_code = parts[1]
+- category = parts[2]
+- gender = parts[3]
+- sorted_results = results.sort_by(&:rank)
+- program_id = sorted_results.first&.meeting_program_id
+- has_match = program_id.present?
+- border_color = has_match ? 'border-success' : 'border-warning'
+- border_width = 'border-2'
+
+.card.mb-2{ class: "#{border_color} #{border_width}", id: "program-card-#{card_index}" }
+  .card-header.d-flex.justify-content-between.align-items-center{ id: "program-header-#{card_index}", style: 'cursor: pointer;', data: { toggle: 'collapse', target: "#program-panel-#{card_index}" } }
+    .d-flex.align-items-center
+      %span.mr-2
+        - if has_match
+          %i.fa.fa-check-circle.text-success{ title: 'Matched MeetingProgram' }
+        - else
+          %i.fa.fa-plus-circle.text-warning{ title: 'New MeetingProgram' }
+      %strong
+        = "#{event_code} • #{category} • #{gender}"
+      &nbsp;
+      %small.ml-2.text-muted
+        Session #{session_order}
+      - if has_match
+        %small.ml-2.badge.badge-success
+          ID: #{program_id}
+      - else
+        %small.ml-2.badge.badge-primary
+          NEW
+    .d-flex.align-items-center
+      %span.badge.badge-info
+        = "#{sorted_results.size} results"
+
+  .collapse.show{ id: "program-panel-#{card_index}", 'aria-labelledby' => "program-header-#{card_index}" }
+    .card-body.p-0
+      %table.table.table-sm.table-hover.mb-0
+        %thead.thead-light
+          %tr
+            %th.text-center{ style: 'width: 40px;' }
+            %th.text-center{ style: 'width: 50px;' } Rank
+            %th Swimmer
+            %th Team
+            %th.text-right Timing
+            %th.text-center Status
+        %tbody
+          - sorted_results.each_with_index do |mir, idx|
+            - swimmer = swimmers_by_id[mir.swimmer_id]
+            - team = teams_by_id[mir.team_id]
+            - is_matched = swimmer.present? && team.present?
+            - laps = laps_by_parent_key[mir.import_key] || []
+            - has_laps = laps.any?
+            - result_id = "result-#{card_index}-#{idx}"
+            %tr{ id: "#{result_id}-row" }
+              %td.text-center
+                - if has_laps
+                  %i.fa.fa-chevron-right{ style: 'cursor: pointer;', data: { toggle: 'collapse', target: "##{result_id}-laps" }, onclick: 'this.classList.toggle("fa-chevron-right"); this.classList.toggle("fa-chevron-down");' }
+              %td.text-center= mir.rank
+              %td
+                - if swimmer
+                  = swimmer.complete_name
+                  %small.text-muted= "(#{swimmer.year_of_birth})"
+                - else
+                  %code.text-muted= mir.import_key.split('/')[1]
+              %td
+                - if team
+                  = team.editable_name
+                - else
+                  %span.text-muted N/A
+              %td.text-right
+                %strong= mir.to_timing.to_s
+              %td.text-center
+                - if is_matched
+                  %i.fa.fa-check-circle.text-success{ title: 'Swimmer & Team matched' }
+                - else
+                  %i.fa.fa-plus-circle.text-warning{ title: 'New or unmatched' }
+            - if has_laps
+              %tr.collapse{ id: "#{result_id}-laps" }
+                %td{ colspan: 6 }
+                  .bg-light.p-2
+                    %table.table.table-sm.mb-0
+                      %thead
+                        %tr
+                          %th Distance
+                          %th.text-right Timing
+                      %tbody
+                        - laps.each do |lap|
+                          %tr
+                            %td
+                              %small= "#{lap.length_in_meters}m"
+                            %td.text-right
+                              %small= lap.to_timing.to_s

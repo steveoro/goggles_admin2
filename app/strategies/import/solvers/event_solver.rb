@@ -56,11 +56,11 @@ module Import
                 'heat_type_id' => 3, # Default: Finals
                 'heat_type' => 'F'   # Finals code
               }
-              
+
               # Try to find matching event_type_id based on distance + stroke code
               event_type_id = find_event_type_id(distance, stroke)
               event_hash['event_type_id'] = event_type_id if event_type_id.present?
-              
+
               events << event_hash
               seen[key] = true
             end
@@ -105,11 +105,11 @@ module Import
               'heat_type_id' => 3, # Default: Finals
               'heat_type' => 'F'   # Finals code
             }
-            
+
             # Try to find matching event_type_id based on distance + stroke code
             event_type_id = find_event_type_id(distance, stroke)
             event_hash['event_type_id'] = event_type_id if event_type_id.present?
-            
+
             bucket['events'] << event_hash
             bucket['__seen__'][key] = true
           end

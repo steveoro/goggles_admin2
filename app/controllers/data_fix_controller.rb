@@ -44,9 +44,9 @@ class DataFixController < ApplicationController
       @existing_meeting_sessions = []
       if meeting_id.present?
         @existing_meeting_sessions = GogglesDb::MeetingSession.where(meeting_id:)
-                                                               .includes(:swimming_pool)
-                                                               .order(:session_order)
-                                                               .map do |ms|
+                                                              .includes(:swimming_pool)
+                                                              .order(:session_order)
+                                                              .map do |ms|
           {
             'id' => ms.id,
             'session_order' => ms.session_order,
@@ -243,9 +243,9 @@ class DataFixController < ApplicationController
         meeting_session_ids = phase1_sessions.map { |s| s['id'] }.compact
         if meeting_session_ids.any?
           @existing_meeting_events = GogglesDb::MeetingEvent.where(meeting_session_id: meeting_session_ids)
-                                                             .includes(:event_type, :heat_type, :meeting_session)
-                                                             .order('meeting_sessions.session_order, meeting_events.event_order')
-                                                             .map do |me|
+                                                            .includes(:event_type, :heat_type, :meeting_session)
+                                                            .order('meeting_sessions.session_order, meeting_events.event_order')
+                                                            .map do |me|
             {
               'id' => me.id,
               'meeting_session_id' => me.meeting_session_id,
@@ -286,6 +286,7 @@ class DataFixController < ApplicationController
     redirect_to controller: 'data_fix_legacy', action: 'review_events', params: request.query_parameters
   end
 
+  # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
   def review_results
     if params[:phase5_v2].present?
       @file_path = params[:file_path]
@@ -298,6 +299,8 @@ class DataFixController < ApplicationController
       season = detect_season_from_pathname(source_path)
       lt_format = detect_layout_type(source_path)
       phase_path = default_phase_path_for(source_path, 5)
+
+      # Build/rebuild phase 5 JSON scaffold (for summary display)
       if params[:rescan].present? || !File.exist?(phase_path)
         Import::Solvers::ResultSolver.new(season:).build!(
           source_path: source_path,
@@ -305,14 +308,52 @@ class DataFixController < ApplicationController
         )
         flash.now[:notice] = I18n.t('data_import.messages.phase_rebuilt', phase: 5)
       end
+
       pfm = PhaseFileManager.new(phase_path)
       @phase5_meta = pfm.meta
       @phase5_data = pfm.data
+
+      # Populate data_import_* tables for detailed review
+      if params[:populate_db].present? || params[:rescan].present?
+        phase1_path = default_phase_path_for(source_path, 1)
+        phase2_path = default_phase_path_for(source_path, 2)
+        phase3_path = default_phase_path_for(source_path, 3)
+        phase4_path = default_phase_path_for(source_path, 4)
+
+        populator = Import::Phase5Populator.new(
+          source_path: source_path,
+          phase1_path: phase1_path,
+          phase2_path: phase2_path,
+          phase3_path: phase3_path,
+          phase4_path: phase4_path
+        )
+        @populate_stats = populator.populate!
+        flash.now[:info] = "Populated DB: #{@populate_stats[:mir_created]} results, #{@populate_stats[:laps_created]} laps"
+      end
+
+      # Query data_import tables for display
+      @all_results = GogglesDb::DataImportMeetingIndividualResult
+                     .where(phase_file_path: source_path)
+                     .order(:import_key)
+                     .limit(1000) # Safety limit for now
+
+      # Eager-load swimmers and teams to avoid N+1 queries
+      swimmer_ids = @all_results.map(&:swimmer_id).compact.uniq
+      team_ids = @all_results.map(&:team_id).compact.uniq
+      @swimmers_by_id = GogglesDb::Swimmer.where(id: swimmer_ids).index_by(&:id)
+      @teams_by_id = GogglesDb::Team.where(id: team_ids).index_by(&:id)
+
+      # Eager-load laps grouped by parent import_key
+      import_keys = @all_results.map(&:import_key)
+      all_laps = GogglesDb::DataImportLap.where(parent_import_key: import_keys).order(:length_in_meters)
+      @laps_by_parent_key = all_laps.group_by(&:parent_import_key)
+
       return render 'data_fix/review_results_v2'
     end
 
     redirect_to controller: 'data_fix_legacy', action: 'review_results', params: request.query_parameters
   end
+  # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
 
   # Shared read-only endpoints delegate to legacy for now
   def coded_name

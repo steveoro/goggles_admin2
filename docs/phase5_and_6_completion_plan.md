@@ -35,27 +35,68 @@ Complete Data-Fix pipeline by finalizing Phase 5 (Result Review) and implementin
 
 ## Phase 5: Result Review Finalization
 
-### 5.1 Result Card Styling ✅
+### 5.0 Phase 5 Data Population ✅
 
-**Goal**: Reuse form card styling from phases 1-4.
+**Goal**: Populate `data_import_*` tables from source JSON.
 
 **Implementation**:
-- Collapsible cards (Bootstrap accordion)
-- Header: event code + category + gender + ID/NEW badge
-- Visual indicators: ✓ green (matched), + orange (new)
-- Borders: gray-2 (matched), orange-2 (new)
-- Background: bg-light (matched), bg-light-yellow (new)
-- Read-only content (no forms)
+- ✅ Created `Import::Phase5Populator` service
+- ✅ Reads phases 1-4 for entity IDs
+- ✅ Generates `import_key` using MacroSolver patterns
+- ✅ Populates `DataImportMeetingIndividualResult` + `DataImportLap` tables
+- ✅ Links swimmer_id and team_id from prior phases
+- ✅ Integrated into `DataFixController#review_results`
 
-**Interaction**: 1st click = fetch+expand, 2nd click = collapse
+**Flow**:
+1. `ResultSolver` builds phase 5 JSON (summary/scaffold)
+2. `Phase5Populator` populates DB tables (detailed data)
+3. Controller queries `DataImportMeetingIndividualResult` for display
 
 **Tasks**:
-- [ ] Update `_results_category_v2.html.haml` with card layout
-- [ ] Add visual status indicators
-- [ ] Implement AJAX load on first expand
-- [ ] Test collapse/expand behavior
+- [x] Create `Phase5Populator` service
+- [x] Integrate into controller
+- [ ] Add specs for populator
+- [ ] Test with real data file
 
-### 5.2 Match Existing Database Rows ✅
+### 5.1 Result Display UI ✅
+
+**Goal**: Display results from `data_import_*` tables with consistent card-based UI matching events/swimmers/teams.
+
+**Design Requirements**:
+- ✅ Use **collapsible cards** for each MeetingProgram group (category within event)
+- ✅ Card borders: **green** if `meeting_program_id` exists (matched), **yellow** if new
+- ✅ Card layout: **2 cards per row** on large displays (responsive grid)
+- ✅ Each card contains result rows (not full cards)
+- ✅ Result rows can **expand** to show lap details (collapsible sub-content)
+- ✅ Background: **white/light grey** for result rows (consistent)
+- ✅ Icons/badges: show match status per result (swimmer_id/team_id presence)
+- ✅ Replicate look-and-feel from `_event_form_card.html.haml`
+
+**Current Status** (v1 - table-based):
+- ✅ Table-based display grouped by session/event/category/gender
+- ✅ Visual indicators: green rows (matched), yellow rows (new)
+- ✅ Shows swimmer names, teams, timings, lap splits
+- ✅ Eager-loaded swimmers/teams (no N+1 queries)
+- ✅ Status badges: "✓ Matched" (green), "+ New" (yellow)
+
+**Next Iteration** (v2 - card-based):
+- Replicate legacy behavior: collapsible cards per MeetingProgram
+- Result rows expand to show laps (accordion within accordion)
+- Match visual style of event/swimmer cards
+- Responsive grid: 2 columns on large screens
+
+**Tasks**:
+- [x] ~~Table-based display~~ (v1 complete)
+- [x] Test with real data in browser (v1 working)
+- [x] Create card-based partial `_result_program_card.html.haml`
+- [x] Add collapsible result rows with lap expansion
+- [x] Match border colors and styling from event cards
+- [x] Implement responsive grid layout (2 cols on lg+)
+- [x] Add expand/collapse icons and interactions
+- [x] Eager-load laps to avoid N+1 queries
+- [ ] Test card interactions in browser (v2)
+
+### 5.2 Match Existing Database Rows 🚧
 
 **Goal**: Find and display existing `MeetingEvent` and `MeetingProgram` IDs.
 
