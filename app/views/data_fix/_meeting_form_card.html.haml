@@ -11,6 +11,7 @@
       - if meeting_data['name'].present?
         %small.ml-2.text-muted
           = meeting_data['name']
+      &nbsp;
       - if has_match
         %small.ml-2.badge.badge-success
           ID: #{meeting_id}

@@ -7,13 +7,12 @@
         - else
           %i.fa.fa-plus-circle.text-warning{ title: 'New/Unmatched' }
       %strong
-        = event_key
+        = "#{event['distance']}#{event['stroke']}"
+      &nbsp;
       %small.ml-2.text-muted
-        - if event['event_type_id'].present?
-          - event_type = GogglesDb::EventType.find_by(id: event['event_type_id'])
-          = event_type&.long_label || "#{event['distance']}#{event['stroke']}"
-        - else
-          = "#{event['distance']}#{event['stroke']}"
+        .fa.fa-key.text-warning
+        #{event_key}
+      &nbsp;
       - if has_match
         %small.ml-2.badge.badge-success
           ID: #{event_id}
@@ -90,6 +89,7 @@
                                                  payload: event_types_payload, base_name: 'event_type',
                                                  search_column: 'label_column', label_column: 'long_label',
                                                  default_value: event['event_type_id']))
+          .row.mt-1
             .col-md-4
               %label Heat Type
               = select_tag('event[heat_type_id]',
@@ -100,17 +100,17 @@
           -# Legacy fields (auto-populated from event_type/heat_type)
           .row.mt-2
             .col-4
-              %small.form-text.text-muted Distance (auto)
+              %small.form-text.text-muted Distance
               = number_field_tag('event[distance]', event['distance'],
                                  readonly: true, class: 'form-control form-control-sm bg-light', min: 25,
                                  id: "event_#{event_index}_distance")
             .col-4
-              %small.form-text.text-muted Stroke Code (auto)
+              %small.form-text.text-muted Stroke
               = text_field_tag('event[stroke]', event['stroke'],
                                readonly: true, class: 'form-control form-control-sm bg-light',
                                id: "event_#{event_index}_stroke")
             .col-4
-              %small.form-text.text-muted Heat Type Code (auto)
+              %small.form-text.text-muted Heat Type
               = text_field_tag('event[heat_type]', event['heat_type'],
                                readonly: true, class: 'form-control form-control-sm bg-light',
                                id: "event_#{event_index}_heat_type_code")

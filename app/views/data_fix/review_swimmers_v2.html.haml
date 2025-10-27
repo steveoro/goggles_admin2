@@ -60,6 +60,7 @@
   - else
     - @items.each_with_index do |swimmer_hash, idx|
       :ruby
+        swimmer_key = swimmer_hash['key']
         swimmer_index = ((@page - 1) * @per_page) + idx
         swimmer_id = swimmer_hash['swimmer_id']
         has_match = swimmer_id.present?
@@ -69,7 +70,7 @@
 
       = render(partial: 'swimmer_form_card',
                locals: { file_path: @file_path, api_url: @api_url, swimmer_hash:, swimmer_index:,
-                         swimmer_id:, has_match:, card_bg:, border_color:, border_width: })
+                         swimmer_key:, swimmer_id:, has_match:, card_bg:, border_color:, border_width: })
 
   -# Pagination controls (bottom)
   .mt-3

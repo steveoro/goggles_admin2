@@ -10,6 +10,10 @@
         = swimmer_hash['complete_name']
       %small.ml-2.text-muted
         (#{swimmer_hash['year_of_birth']}, #{swimmer_hash['gender_type_code']})
+        &nbsp;
+        .fa.fa-key.text-warning
+        #{swimmer_key}
+      &nbsp;
       - if has_match
         %small.ml-2.badge.badge-success
           ID: #{swimmer_id}

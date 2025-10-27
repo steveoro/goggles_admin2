@@ -10,8 +10,11 @@
           %i.fa.fa-plus-circle.text-warning{ title: 'New/Unmatched' }
       %strong
         = editable_name
+      &nbsp;
       %small.ml-2.text-muted
-        (#{team_key})
+        .fa.fa-key.text-warning
+        #{team_key}
+      &nbsp;
       - if has_match
         %small.ml-2.badge.badge-success
           ID: #{team_id}
