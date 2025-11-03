@@ -27,6 +27,10 @@
         .form-group.mr-2
           %label.mr-1{ for: 'swimmers_per_page' } Per page
           = select_tag :swimmers_per_page, options_for_select([50, 100, 150], @per_page), class: 'form-control form-control-sm'
+        .form-group.mr-2
+          .custom-control.custom-checkbox
+            = check_box_tag :unmatched, '1', params[:unmatched].present?, class: 'custom-control-input', id: 'unmatched-filter'
+            %label.custom-control-label{ for: 'unmatched-filter' } Show only unmatched
         = submit_tag 'Apply', class: 'btn btn-sm btn-primary mr-1'
         = link_to 'Clear', review_swimmers_path(file_path: @file_path, phase3_v2: 1), class: 'btn btn-sm btn-light'
     .card-body.py-0
@@ -49,6 +53,10 @@
         %div
           = form_tag(data_fix_add_swimmer_path, method: :post, class: 'd-inline', onsubmit: "return confirm('Add a new blank swimmer?');") do
             = hidden_field_tag :file_path, @file_path
+            = hidden_field_tag :swimmers_page, params[:swimmers_page] if params[:swimmers_page].present?
+            = hidden_field_tag :swimmers_per_page, params[:swimmers_per_page] if params[:swimmers_per_page].present?
+            = hidden_field_tag :q, params[:q] if params[:q].present?
+            = hidden_field_tag :unmatched, params[:unmatched] if params[:unmatched].present?
             %button.btn.btn-sm.btn-success{ type: 'submit' }
               %i.fa.fa-plus
               Add Swimmer

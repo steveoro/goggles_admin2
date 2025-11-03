@@ -16,7 +16,10 @@
         #{team_key}
       &nbsp;
       - if has_match
-        %small.ml-2.badge.badge-success
+        - fuzzy_matches = team_hash['fuzzy_matches'] || []
+        - selected_match = fuzzy_matches.find { |m| m['id'] == team_id }
+        - badge_color = selected_match ? "badge-#{selected_match['color_class']}" : 'badge-success'
+        %small.ml-2.badge{ class: badge_color }
           ID: #{team_id}
       - else
         %small.ml-2.badge.badge-primary
@@ -24,7 +27,11 @@
     .d-flex.align-items-center
       = form_tag(data_fix_delete_team_path, method: :delete, class: 'd-inline', onsubmit: "return confirm('Delete team \\'#{team_key}\\'?');") do
         = hidden_field_tag :file_path, file_path
-        = hidden_field_tag :team_index, team_index
+        = hidden_field_tag :team_key, team_key
+        = hidden_field_tag :teams_page, params[:teams_page] if params[:teams_page].present?
+        = hidden_field_tag :teams_per_page, params[:teams_per_page] if params[:teams_per_page].present?
+        = hidden_field_tag :q, params[:q] if params[:q].present?
+        = hidden_field_tag :unmatched, params[:unmatched] if params[:unmatched].present?
         %button.btn.btn-sm.btn-danger{ type: 'submit', 'aria-label' => 'Delete team', onclick: 'event.stopPropagation();' }
           %i.fa.fa-trash
 
@@ -32,7 +39,11 @@
     .card-body.border-bottom.border-secondary
       = form_tag(update_phase2_team_path, method: :patch) do
         = hidden_field_tag :file_path, file_path
-        = hidden_field_tag :team_index, team_index
+        = hidden_field_tag :team_key, team_key
+        = hidden_field_tag :teams_page, params[:teams_page] if params[:teams_page].present?
+        = hidden_field_tag :teams_per_page, params[:teams_per_page] if params[:teams_per_page].present?
+        = hidden_field_tag :q, params[:q] if params[:q].present?
+        = hidden_field_tag :unmatched, params[:unmatched] if params[:unmatched].present?
 
         .container-fluid
           -# Row 0: Fuzzy matches dropdown (quick selection)

@@ -4,32 +4,35 @@
 
 import { application } from "./application"
 
-import AutocompleteController from "./autocomplete_controller.js"
+import AutocompleteController from "./autocomplete_controller"
 application.register("autocomplete", AutocompleteController)
 
-import ChartApiController from "./chart_api_controller.js"
+import ChartApiController from "./chart_api_controller"
 application.register("chart-api", ChartApiController)
 
-import CodedNameController from "./coded_name_controller.js"
+import CodedNameController from "./coded_name_controller"
 application.register("coded-name", CodedNameController)
 
-import GridEditController from "./grid_edit_controller.js"
+import CollapseAllController from "./collapse_all_controller"
+application.register("collapse-all", CollapseAllController)
+
+import GridEditController from "./grid_edit_controller"
 application.register("grid-edit", GridEditController)
 
-import GridSelectionController from "./grid_selection_controller.js"
+import GridSelectionController from "./grid_selection_controller"
 application.register("grid-selection", GridSelectionController)
 
-import LookupController from "./lookup_controller.js"
+import LookupController from "./lookup_controller"
 application.register("lookup", LookupController)
 
-import PopoverController from "./popover_controller.js"
+import PopoverController from "./popover_controller"
 application.register("popover", PopoverController)
 
-import RemotePartialController from "./remote_partial_controller.js"
+import RemotePartialController from "./remote_partial_controller"
 application.register("remote-partial", RemotePartialController)
 
-import SwitchController from "./switch_controller.js"
+import SwitchController from "./switch_controller"
 application.register("switch", SwitchController)
 
-import UnsavedChangesController from "./unsaved_changes_controller.js"
+import UnsavedChangesController from "./unsaved_changes_controller"
 application.register("unsaved-changes", UnsavedChangesController)

@@ -187,15 +187,15 @@ module Import
         }
 
         # Find fuzzy matches using CmdFindDbEntity with FuzzySwimmer
-        matches = find_swimmer_matches(complete_name, year_of_birth)
+        matches = find_swimmer_matches(complete_name, year_of_birth, last_name, gender_type_code)
         entry['fuzzy_matches'] = matches
 
-        # Auto-assign top match if confidence >= 90%
+        # Auto-assign top match if confidence >= 60% (lower threshold for more auto-matching)
         if matches.present? && auto_assignable?(matches.first, complete_name)
           top_match = matches.first
           entry['swimmer_id'] = top_match['id']
           entry['complete_name'] = top_match['complete_name']
-          @logger&.info("[SwimmerSolver] Auto-assigned swimmer '#{key}' -> ID #{top_match['id']}")
+          @logger&.info("[SwimmerSolver] Auto-assigned swimmer '#{key}' -> ID #{top_match['id']} (#{(top_match['weight'] * 100).round(1)}%)")
         end
 
         entry
@@ -203,19 +203,53 @@ module Import
 
       # Find potential swimmer matches using GogglesDb fuzzy finder with Jaro-Winkler distance
       # Returns array of hashes with swimmer data sorted by match weight
-      def find_swimmer_matches(complete_name, year_of_birth)
+      # Implements fallback matching by last_name + gender + year_of_birth when no matches found
+      def find_swimmer_matches(complete_name, year_of_birth, last_name = nil, gender_code = nil)
         return [] if complete_name.blank?
 
-        # Use CmdFindDbEntity with FuzzySwimmer strategy
+        # Primary search: Use CmdFindDbEntity with FuzzySwimmer strategy (full name)
         cmd = GogglesDb::CmdFindDbEntity.call(
           GogglesDb::Swimmer,
           { complete_name: complete_name.to_s.strip, year_of_birth: year_of_birth.to_i }
         )
 
-        # Extract matches (sorted by weight descending) and convert to our format
+        # Extract matches (sorted by weight descending)
         matches = cmd.matches.respond_to?(:map) ? cmd.matches : []
+
+        # Fallback: If no matches found, try with a lower bias (0.50) and last name only
+        # This handles cases where first name is abbreviated or spelled differently
+        if matches.empty? && last_name.present?
+          @logger&.info("[SwimmerSolver] No matches for '#{complete_name}', trying fallback with lower bias")
+          fallback_cmd = GogglesDb::CmdFindDbEntity.call(
+            GogglesDb::Swimmer,
+            { complete_name: last_name.to_s.strip, year_of_birth: year_of_birth.to_i },
+            0.50 # Lower bias for more permissive matching
+          )
+
+          fallback_matches = fallback_cmd.matches.respond_to?(:map) ? fallback_cmd.matches : []
+          # Filter by gender if available to reduce false positives
+          if gender_code.present?
+            gender_type = GogglesDb::GenderType.find_by(code: gender_code)
+            fallback_matches = fallback_matches.select { |m| m.candidate.gender_type_id == gender_type&.id } if gender_type
+          end
+
+          matches = fallback_matches.take(5) # Limit to top 5 fallback matches
+          @logger&.info("[SwimmerSolver] Fallback found #{matches.size} matches")
+        end
+
+        # Convert all matches to our format with color-coded display labels
         matches.map do |match_struct|
           swimmer = match_struct.candidate
+          weight = match_struct.weight.round(3)
+          percentage = (weight * 100).round(1)
+
+          # Color coding based on match percentage
+          color_class = case percentage
+                        when 90..100 then 'success' # Green - excellent match
+                        when 70...90 then 'warning' # Yellow - acceptable/good match
+                        when 50...70 then 'danger'  # Red - questionable match
+                          # else: no badge pill for very poor match
+                        end
           {
             'id' => swimmer.id,
             'complete_name' => swimmer.complete_name,
@@ -223,8 +257,10 @@ module Import
             'first_name' => swimmer.first_name,
             'year_of_birth' => swimmer.year_of_birth,
             'gender_type_code' => swimmer.gender_type&.code,
-            'weight' => match_struct.weight.round(3),
-            'display_label' => "#{swimmer.complete_name} (#{swimmer.year_of_birth}, ID: #{swimmer.id}, match: #{(match_struct.weight * 100).round(1)}%)"
+            'weight' => weight,
+            'percentage' => percentage,
+            'color_class' => color_class,
+            'display_label' => "#{swimmer.complete_name} (#{swimmer.year_of_birth}, ID: #{swimmer.id}, match: #{percentage}%)"
           }
         end
       rescue StandardError => e
@@ -233,12 +269,12 @@ module Import
       end
 
       # Determine if top match is good enough for auto-assignment
-      # Auto-assigns if weight >= 0.90 (90% confidence threshold)
+      # Auto-assigns if weight >= 0.60 (60% confidence threshold - lowered to accept more matches)
       def auto_assignable?(match, _search_name)
-        return false unless match.present?
+        return false if match.blank?
 
         weight = match['weight'].to_f
-        weight >= 0.90
+        weight >= 0.60
       end
     end
   end

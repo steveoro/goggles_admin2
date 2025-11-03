@@ -30,7 +30,8 @@ class DataFixController < ApplicationController
           lt_format: lt_format
         )&.dig('path') || phase_path
         # Redirect without rescan parameter to avoid triggering rescan on navigation
-        redirect_to(review_sessions_path(request.query_parameters.except(:rescan)), notice: I18n.t('data_import.messages.phase_rebuilt', phase: 1)) && return
+        redirect_to(review_sessions_path(request.query_parameters.except(:rescan)),
+                    notice: I18n.t('data_import.messages.phase_rebuilt', phase: 1)) && return
       end
       pfm = PhaseFileManager.new(phase_path)
       @phase1_meta = pfm.meta
@@ -86,7 +87,8 @@ class DataFixController < ApplicationController
           lt_format: lt_format
         )
         # Redirect without rescan parameter to avoid triggering rescan on navigation
-        redirect_to(review_teams_path(request.query_parameters.except(:rescan)), notice: I18n.t('data_import.messages.phase_rebuilt', phase: 2)) && return
+        redirect_to(review_teams_path(request.query_parameters.except(:rescan)),
+                    notice: I18n.t('data_import.messages.phase_rebuilt', phase: 2)) && return
       end
       pfm = PhaseFileManager.new(phase_path)
       @phase2_meta = pfm.meta
@@ -98,6 +100,8 @@ class DataFixController < ApplicationController
       # Optional filtering
       @q = params[:q].to_s.strip
       teams = Array(@phase2_data['teams'])
+
+      # Filter by search query
       if @q.present?
         qd = @q.downcase
         teams = teams.select do |t|
@@ -105,6 +109,9 @@ class DataFixController < ApplicationController
           name.include?(qd)
         end
       end
+
+      # Filter unmatched only (no team_id assigned)
+      teams = teams.select { |t| t['team_id'].nil? } if params[:unmatched].present?
 
       # Pagination (phase-specific params to avoid cross-phase interference)
       @page = params[:teams_page].to_i
@@ -140,7 +147,8 @@ class DataFixController < ApplicationController
           lt_format: lt_format
         )
         # Redirect without rescan parameter to avoid triggering rescan on navigation
-        redirect_to(review_swimmers_path(request.query_parameters.except(:rescan)), notice: I18n.t('data_import.messages.phase_rebuilt', phase: 3)) && return
+        redirect_to(review_swimmers_path(request.query_parameters.except(:rescan)),
+                    notice: I18n.t('data_import.messages.phase_rebuilt', phase: 3)) && return
       end
       pfm = PhaseFileManager.new(phase_path)
       @phase3_meta = pfm.meta
@@ -152,6 +160,8 @@ class DataFixController < ApplicationController
       # Optional filtering
       @q = params[:q].to_s.strip
       swimmers = Array(@phase3_data['swimmers'])
+
+      # Filter by search query
       if @q.present?
         qd = @q.downcase
         swimmers = swimmers.select do |s|
@@ -161,6 +171,9 @@ class DataFixController < ApplicationController
           [last, first, key].any? { |v| v.include?(qd) }
         end
       end
+
+      # Filter unmatched only (no swimmer_id assigned)
+      swimmers = swimmers.select { |s| s['swimmer_id'].nil? } if params[:unmatched].present?
 
       # Pagination (phase-specific params to avoid cross-phase interference)
       # Swimmers typically have more entries, default to 100
@@ -198,6 +211,9 @@ class DataFixController < ApplicationController
           lt_format: lt_format
         )
         flash.now[:notice] = I18n.t('data_import.messages.phase_rebuilt', phase: 4)
+        # Redirect without rescan parameter to avoid triggering rescan on navigation
+        redirect_to(review_events_path(request.query_parameters.except(:rescan)),
+                    notice: I18n.t('data_import.messages.phase_rebuilt', phase: 4)) && return
       end
       pfm = PhaseFileManager.new(phase_path)
       @phase4_meta = pfm.meta
@@ -306,7 +322,9 @@ class DataFixController < ApplicationController
           source_path: source_path,
           lt_format: lt_format
         )
-        flash.now[:notice] = I18n.t('data_import.messages.phase_rebuilt', phase: 5)
+        # Redirect without rescan parameter to avoid triggering rescan on navigation
+        redirect_to(review_results_path(request.query_parameters.except(:rescan)),
+                    notice: I18n.t('data_import.messages.phase_rebuilt', phase: 5)) && return
       end
 
       pfm = PhaseFileManager.new(phase_path)
@@ -328,7 +346,8 @@ class DataFixController < ApplicationController
           phase4_path: phase4_path
         )
         @populate_stats = populator.populate!
-        flash.now[:info] = "Populated DB: #{@populate_stats[:mir_created]} results, #{@populate_stats[:laps_created]} laps"
+        flash.now[:info] =
+          "Populated DB: #{@populate_stats[:mir_created]} results, #{@populate_stats[:laps_created]} laps, #{@populate_stats[:programs_matched]} programs matched, #{@populate_stats[:mirs_matched]} MIRs matched"
       end
 
       # Query data_import tables for display
@@ -342,6 +361,26 @@ class DataFixController < ApplicationController
       team_ids = @all_results.map(&:team_id).compact.uniq
       @swimmers_by_id = GogglesDb::Swimmer.where(id: swimmer_ids).index_by(&:id)
       @teams_by_id = GogglesDb::Team.where(id: team_ids).index_by(&:id)
+
+      # Load phase 2 and phase 3 data for team/badge lookup by key
+      phase2_path = default_phase_path_for(source_path, 2)
+      phase3_path = default_phase_path_for(source_path, 3)
+      @phase2_data = JSON.parse(File.read(phase2_path)) if File.exist?(phase2_path)
+      @phase3_data = JSON.parse(File.read(phase3_path)) if File.exist?(phase3_path)
+
+      # Build team lookup by key (for unmatched teams)
+      if @phase2_data
+        teams = @phase2_data.dig('data', 'teams') || []
+        @teams_by_key = teams.index_by { |t| t['key'] }
+      end
+
+      # Build badge/team key mapping: swimmer_key => team_key
+      if @phase3_data
+        badges = @phase3_data.dig('data', 'badges') || []
+        @team_key_by_swimmer_key = badges.each_with_object({}) do |badge, hash|
+          hash[badge['swimmer_key']] = badge['team_key']
+        end
+      end
 
       # Eager-load laps grouped by parent import_key
       import_keys = @all_results.map(&:import_key)
@@ -364,12 +403,12 @@ class DataFixController < ApplicationController
     redirect_to controller: 'data_fix_legacy', action: 'teams_for_swimmer', params: request.query_parameters
   end
 
-  # Update a single Phase 2 team entry by index
+  # Update a single Phase 2 team entry by key
   # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
   def update_phase2_team
     file_path = params[:file_path]
-    team_index = params[:team_index].to_i
-    if file_path.blank? || team_index.negative?
+    team_key = params[:team_key]
+    if file_path.blank? || team_key.blank?
       flash[:warning] = I18n.t('data_import.errors.invalid_request')
       redirect_to(pull_index_path) && return
     end
@@ -379,7 +418,10 @@ class DataFixController < ApplicationController
     pfm = PhaseFileManager.new(phase_path)
     data = pfm.data || {}
     teams = Array(data['teams'])
-    if team_index >= teams.size
+
+    # Find team by key (not index, since filtering changes indices)
+    team_index = teams.find_index { |t| t['key'] == team_key }
+    if team_index.nil?
       flash[:warning] = I18n.t('data_import.errors.invalid_request')
       redirect_to(review_teams_path(file_path:, phase2_v2: 1)) && return
     end
@@ -416,7 +458,14 @@ class DataFixController < ApplicationController
     meta['generated_at'] = Time.now.utc.iso8601
     pfm.write!(data: data, meta: meta)
 
-    redirect_to review_teams_path(file_path:, phase2_v2: 1), notice: I18n.t('data_import.messages.updated')
+    # Preserve pagination and filter params
+    redirect_params = { file_path:, phase2_v2: 1 }
+    redirect_params[:teams_page] = params[:teams_page] if params[:teams_page].present?
+    redirect_params[:teams_per_page] = params[:teams_per_page] if params[:teams_per_page].present?
+    redirect_params[:q] = params[:q] if params[:q].present?
+    redirect_params[:unmatched] = params[:unmatched] if params[:unmatched].present?
+
+    redirect_to review_teams_path(redirect_params), notice: I18n.t('data_import.messages.updated')
   end
   # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
 
@@ -457,9 +506,9 @@ class DataFixController < ApplicationController
   # Delete a team entry from Phase 2 and clear downstream phase data
   def delete_team
     file_path = params[:file_path]
-    team_index = params[:team_index]&.to_i
+    team_key = params[:team_key]
 
-    if file_path.blank? || team_index.nil?
+    if file_path.blank? || team_key.blank?
       flash[:warning] = I18n.t('data_import.errors.invalid_request')
       redirect_to(pull_index_path) && return
     end
@@ -470,13 +519,14 @@ class DataFixController < ApplicationController
     data = pfm.data || {}
     teams = Array(data['teams'])
 
-    # Validate team_index
-    if team_index.negative? || team_index >= teams.size
-      flash[:warning] = "Invalid team index: #{team_index}"
+    # Find and remove team by key (not index, since filtering changes indices)
+    team_index = teams.find_index { |t| t['key'] == team_key }
+    if team_index.nil?
+      flash[:warning] = "Team not found: #{team_key}"
       redirect_to(review_teams_path(file_path:, phase2_v2: 1)) && return
     end
 
-    # Remove the team at the specified index
+    # Remove the team at the found index
     teams.delete_at(team_index)
     data['teams'] = teams
 
@@ -492,16 +542,23 @@ class DataFixController < ApplicationController
     meta['generated_at'] = Time.now.utc.iso8601
     pfm.write!(data: data, meta: meta)
 
-    redirect_to review_teams_path(file_path:, phase2_v2: 1), notice: I18n.t('data_import.messages.updated')
+    # Preserve pagination and filter params
+    redirect_params = { file_path:, phase2_v2: 1 }
+    redirect_params[:teams_page] = params[:teams_page] if params[:teams_page].present?
+    redirect_params[:teams_per_page] = params[:teams_per_page] if params[:teams_per_page].present?
+    redirect_params[:q] = params[:q] if params[:q].present?
+    redirect_params[:unmatched] = params[:unmatched] if params[:unmatched].present?
+
+    redirect_to review_teams_path(redirect_params), notice: I18n.t('data_import.messages.updated')
   end
 
-  # Update a single Phase 3 swimmer entry by index
+  # Update a single Phase 3 swimmer entry by key
   # rubocop:disable Metrics/AbcSize
   def update_phase3_swimmer
     file_path = params[:file_path]
-    swimmer_index = params[:swimmer_index]&.to_i
+    swimmer_key = params[:swimmer_key]
 
-    if file_path.blank? || swimmer_index.nil?
+    if file_path.blank? || swimmer_key.blank?
       flash[:warning] = I18n.t('data_import.errors.invalid_request')
       redirect_to(pull_index_path) && return
     end
@@ -512,16 +569,17 @@ class DataFixController < ApplicationController
     data = pfm.data || {}
     swimmers = Array(data['swimmers'])
 
-    # Validate swimmer_index
-    if swimmer_index.negative? || swimmer_index >= swimmers.size
-      flash[:warning] = "Invalid swimmer index: #{swimmer_index}"
+    # Find swimmer by key (not index, since filtering changes indices)
+    swimmer_index = swimmers.find_index { |s| s['key'] == swimmer_key }
+    if swimmer_index.nil?
+      flash[:warning] = "Swimmer not found: #{swimmer_key}"
       redirect_to(review_swimmers_path(file_path:, phase3_v2: 1)) && return
     end
 
     # Get swimmer params - handle nested params from AutoComplete
     swimmer_params = params[:swimmer] || {}
 
-    # Update the swimmer at the specified index
+    # Update the swimmer at the found index
     swimmer = swimmers[swimmer_index]
     swimmer['complete_name'] = swimmer_params[:complete_name]&.strip if swimmer_params.key?(:complete_name)
     swimmer['first_name'] = swimmer_params[:first_name]&.strip if swimmer_params.key?(:first_name)
@@ -542,7 +600,14 @@ class DataFixController < ApplicationController
     meta['generated_at'] = Time.now.utc.iso8601
     pfm.write!(data: data, meta: meta)
 
-    redirect_to review_swimmers_path(file_path:, phase3_v2: 1), notice: I18n.t('data_import.messages.updated')
+    # Preserve pagination and filter params
+    redirect_params = { file_path:, phase3_v2: 1 }
+    redirect_params[:swimmers_page] = params[:swimmers_page] if params[:swimmers_page].present?
+    redirect_params[:swimmers_per_page] = params[:swimmers_per_page] if params[:swimmers_per_page].present?
+    redirect_params[:q] = params[:q] if params[:q].present?
+    redirect_params[:unmatched] = params[:unmatched] if params[:unmatched].present?
+
+    redirect_to review_swimmers_path(redirect_params), notice: I18n.t('data_import.messages.updated')
   end
   # rubocop:enable Metrics/AbcSize
 
@@ -587,9 +652,9 @@ class DataFixController < ApplicationController
   # Delete a swimmer entry from Phase 3 and clear downstream phase data
   def delete_swimmer
     file_path = params[:file_path]
-    swimmer_index = params[:swimmer_index]&.to_i
+    swimmer_key = params[:swimmer_key]
 
-    if file_path.blank? || swimmer_index.nil?
+    if file_path.blank? || swimmer_key.blank?
       flash[:warning] = I18n.t('data_import.errors.invalid_request')
       redirect_to(pull_index_path) && return
     end
@@ -600,13 +665,14 @@ class DataFixController < ApplicationController
     data = pfm.data || {}
     swimmers = Array(data['swimmers'])
 
-    # Validate swimmer_index
-    if swimmer_index.negative? || swimmer_index >= swimmers.size
-      flash[:warning] = "Invalid swimmer index: #{swimmer_index}"
+    # Find and remove swimmer by key (not index, since filtering changes indices)
+    swimmer_index = swimmers.find_index { |s| s['key'] == swimmer_key }
+    if swimmer_index.nil?
+      flash[:warning] = "Swimmer not found: #{swimmer_key}"
       redirect_to(review_swimmers_path(file_path:, phase3_v2: 1)) && return
     end
 
-    # Remove the swimmer at the specified index
+    # Remove the swimmer at the found index
     swimmers.delete_at(swimmer_index)
     data['swimmers'] = swimmers
 
@@ -620,7 +686,14 @@ class DataFixController < ApplicationController
     meta['generated_at'] = Time.now.utc.iso8601
     pfm.write!(data: data, meta: meta)
 
-    redirect_to review_swimmers_path(file_path:, phase3_v2: 1), notice: I18n.t('data_import.messages.updated')
+    # Preserve pagination and filter params
+    redirect_params = { file_path:, phase3_v2: 1 }
+    redirect_params[:swimmers_page] = params[:swimmers_page] if params[:swimmers_page].present?
+    redirect_params[:swimmers_per_page] = params[:swimmers_per_page] if params[:swimmers_per_page].present?
+    redirect_params[:q] = params[:q] if params[:q].present?
+    redirect_params[:unmatched] = params[:unmatched] if params[:unmatched].present?
+
+    redirect_to review_swimmers_path(redirect_params), notice: I18n.t('data_import.messages.updated')
   end
 
   # Update a single Phase 4 event entry by session and event index

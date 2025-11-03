@@ -1,24 +1,27 @@
 -# frozen_string_literal: true
--# Displays a collapsible card for a MeetingProgram group with expandable result rows
--#
--# == Params:
--# - program_key: String, e.g., "1-200RA-M75-F"
--# - results: Array of DataImportMeetingIndividualResult
--# - swimmers_by_id: Hash of Swimmer by ID
--# - teams_by_id: Hash of Team by ID
--# - laps_by_parent_key: Hash of DataImportLap arrays by parent_import_key
--# - card_index: Integer, for unique IDs
 
-- parts = program_key.split('-')
-- session_order = parts[0]
-- event_code = parts[1]
-- category = parts[2]
-- gender = parts[3]
-- sorted_results = results.sort_by(&:rank)
-- program_id = sorted_results.first&.meeting_program_id
-- has_match = program_id.present?
-- border_color = has_match ? 'border-success' : 'border-warning'
-- border_width = 'border-2'
+:ruby
+  # Displays a collapsible card for a MeetingProgram group with expandable result rows
+  #
+  # == Params:
+  # - program_key: String, e.g., "1-200RA-M75-F"
+  # - results: Array of DataImportMeetingIndividualResult
+  # - swimmers_by_id: Hash of Swimmer by ID
+  # - teams_by_id: Hash of Team by ID (for matched teams)
+  # - teams_by_key: Hash of Team data by key (for unmatched teams from phase 2)
+  # - team_key_by_swimmer_key: Hash mapping swimmer_key => team_key (from phase 3 badges)
+  # - laps_by_parent_key: Hash of DataImportLap arrays by parent_import_key
+  # - card_index: Integer, for unique IDs
+  parts = program_key.split('-')
+  session_order = parts[0]
+  event_code = parts[1]
+  category = parts[2]
+  gender = parts[3]
+  sorted_results = results.sort_by(&:rank)
+  program_id = sorted_results.first&.meeting_program_id
+  has_match = program_id.present?
+  border_color = has_match ? 'border-success' : 'border-warning'
+  border_width = 'border-2'
 
 .card.mb-2{ class: "#{border_color} #{border_width}", id: "program-card-#{card_index}" }
   .card-header.d-flex.justify-content-between.align-items-center{ id: "program-header-#{card_index}", style: 'cursor: pointer;', data: { toggle: 'collapse', target: "#program-panel-#{card_index}" } }
@@ -56,12 +59,22 @@
             %th.text-center Status
         %tbody
           - sorted_results.each_with_index do |mir, idx|
-            - swimmer = swimmers_by_id[mir.swimmer_id]
-            - team = teams_by_id[mir.team_id]
-            - is_matched = swimmer.present? && team.present?
-            - laps = laps_by_parent_key[mir.import_key] || []
-            - has_laps = laps.any?
-            - result_id = "result-#{card_index}-#{idx}"
+            :ruby
+              swimmer = swimmers_by_id[mir.swimmer_id]
+              # Try to find team by ID first (matched teams)
+              team = teams_by_id[mir.team_id]
+              team_data = nil
+              # If no team found by ID, look up by key using swimmer_key from import_key
+              if team.nil? && teams_by_key.present? && team_key_by_swimmer_key.present?
+                swimmer_key = mir.import_key.split('/')[1] # Extract swimmer_key from import_key
+                team_key = team_key_by_swimmer_key[swimmer_key]
+                team_data = teams_by_key[team_key] if team_key
+              end
+              # Fully matched = swimmer AND team both have DB IDs
+              is_fully_matched = swimmer.present? && team.present?
+              laps = laps_by_parent_key[mir.import_key] || []
+              has_laps = laps.any?
+              result_id = "result-#{card_index}-#{idx}"
             %tr{ id: "#{result_id}-row" }
               %td.text-center
                 - if has_laps
@@ -76,15 +89,17 @@
               %td
                 - if team
                   = team.editable_name
+                - elsif team_data
+                  = team_data['editable_name'] || team_data['name']
                 - else
                   %span.text-muted N/A
               %td.text-right
                 %strong= mir.to_timing.to_s
               %td.text-center
-                - if is_matched
-                  %i.fa.fa-check-circle.text-success{ title: 'Swimmer & Team matched' }
+                - if is_fully_matched
+                  %i.fa.fa-check-circle.text-success{ title: 'Swimmer & Team fully matched to DB' }
                 - else
-                  %i.fa.fa-plus-circle.text-warning{ title: 'New or unmatched' }
+                  %i.fa.fa-plus-circle.text-warning{ title: 'New or unmatched (swimmer or team)' }
             - if has_laps
               %tr.collapse{ id: "#{result_id}-laps" }
                 %td{ colspan: 6 }
@@ -92,12 +107,28 @@
                     %table.table.table-sm.mb-0
                       %thead
                         %tr
-                          %th Distance
-                          %th.text-right Timing
+                          %th.text-center Distance
+                          %th.text-right Delta
+                          %th.text-right From Start
                       %tbody
                         - laps.each do |lap|
+                          :ruby
+                            # Delta timing (default columns)
+                            delta_timing = Timing.new(
+                              minutes: lap.minutes,
+                              seconds: lap.seconds,
+                              hundredths: lap.hundredths
+                            )
+                            # From-start timing (cumulative)
+                            from_start_timing = Timing.new(
+                              minutes: lap.minutes_from_start,
+                              seconds: lap.seconds_from_start,
+                              hundredths: lap.hundredths_from_start
+                            )
                           %tr
-                            %td
-                              %small= "#{lap.length_in_meters}m"
+                            %td.text-center
+                              %strong= "#{lap.length_in_meters}m"
                             %td.text-right
-                              %small= lap.to_timing.to_s
+                              = delta_timing.to_s
+                            %td.text-right.text-muted
+                              = from_start_timing.to_s

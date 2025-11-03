@@ -31,7 +31,7 @@ module Import
       @phase2_path = phase2_path
       @phase3_path = phase3_path
       @phase4_path = phase4_path
-      @stats = { mir_created: 0, laps_created: 0, errors: [] }
+      @stats = { mir_created: 0, laps_created: 0, programs_matched: 0, mirs_matched: 0, errors: [] }
     end
 
     # Main entry point: truncate existing data, load phase files, populate tables
@@ -89,6 +89,11 @@ module Import
           swimmer_id = find_swimmer_id(swimmer_key)
           team_id = find_team_id(result)
           meeting_program_id = find_meeting_program_id(session_order, event_code, category, gender)
+          @stats[:programs_matched] += 1 if meeting_program_id
+
+          # Find existing MIR if all IDs present
+          meeting_individual_result_id = find_existing_mir(meeting_program_id, swimmer_id, team_id)
+          @stats[:mirs_matched] += 1 if meeting_individual_result_id
 
           # Parse timing from string format "M'SS.HH"
           timing_hash = parse_timing_string(result['timing'])
@@ -100,7 +105,8 @@ module Import
             timing: timing_hash,
             swimmer_id: swimmer_id,
             team_id: team_id,
-            meeting_program_id: meeting_program_id
+            meeting_program_id: meeting_program_id,
+            meeting_individual_result_id: meeting_individual_result_id
           )
 
           next unless mir
@@ -211,20 +217,122 @@ module Import
       team&.dig('team_id')
     end
 
-    # Find meeting_program_id from phase 4 data
-    # TODO: Implement actual matching logic once we understand phase 4 structure better
-    def find_meeting_program_id(_session_order, _event_code, _category, _gender)
-      nil # Will be implemented in phase 5.2
+    # Find meeting_program_id by matching against existing database records
+    # Matches: MeetingEvent (by session + event_type) → MeetingProgram (by event + category + gender)
+    def find_meeting_program_id(session_order, event_code, category, gender)
+      return nil unless phase1_data && phase4_data
+
+      # Step 1: Get meeting_id from phase 1
+      meeting_id = phase1_data.dig('data', 'meeting_id')
+      return nil unless meeting_id
+
+      # Step 2: Find meeting_session_id from phase 1 data
+      sessions = phase1_data.dig('data', 'sessions') || []
+      session = sessions.find { |s| s['session_order'].to_i == session_order.to_i }
+      meeting_session_id = session&.dig('meeting_session_id')
+      return nil unless meeting_session_id
+
+      # Step 3: Parse event_code to get event_type_id
+      event_type = parse_event_type(event_code)
+      return nil unless event_type
+
+      # Step 4: Find MeetingEvent
+      meeting_event = GogglesDb::MeetingEvent
+                      .where(meeting_session_id: meeting_session_id, event_type_id: event_type.id)
+                      .first
+      return nil unless meeting_event
+
+      # Step 5: Parse category and gender to get type IDs
+      category_type = parse_category_type(category)
+      gender_type = parse_gender_type(gender)
+      return nil unless category_type && gender_type
+
+      # Step 6: Find MeetingProgram
+      meeting_program = GogglesDb::MeetingProgram
+                        .where(
+                          meeting_event_id: meeting_event.id,
+                          category_type_id: category_type.id,
+                          gender_type_id: gender_type.id
+                        )
+                        .first
+
+      meeting_program&.id
+    end
+
+    # Parse event code to EventType (e.g., "200RA" → 200m Breaststroke)
+    def parse_event_type(event_code)
+      return nil if event_code.blank?
+
+      # Extract distance and stroke code from event_code
+      # Format: "200RA", "100SL", "50FA", etc.
+      match = event_code.match(/\A(\d{2,4})([A-Z]{2})\z/)
+      return nil unless match
+
+      distance = match[1].to_i
+      stroke_code = match[2]
+
+      # Stroke codes are already in the correct 2-letter format
+      # SL = Stile Libero (Freestyle)
+      # DO = Dorso (Backstroke)
+      # RA = Rana (Breaststroke)
+      # FA = Farfalla (Butterfly)
+      # MI = Misti (Individual Medley)
+      # MX = Mista (Mixed)
+
+      # Find StrokeType directly by the 2-letter code
+      stroke_type = GogglesDb::StrokeType.find_by(code: stroke_code)
+      return nil unless stroke_type
+
+      # Filter to individual events (not relays) within standard distances
+      GogglesDb::EventType
+        .where(length_in_meters: distance, stroke_type_id: stroke_type.id, relay: false)
+        .where('length_in_meters <= 1500')
+        .first
+    end
+
+    # Parse category code to CategoryType (e.g., "M75" → Master 75-79)
+    def parse_category_type(category)
+      return nil if category.blank?
+
+      # Category format: "M75", "M45", "U25", etc.
+      # Use undecorate to get plain code if it's decorated
+      code = category.to_s.strip
+      GogglesDb::CategoryType.find_by(code: code)
+    end
+
+    # Parse gender code to GenderType (e.g., "F" → Female, "M" → Male)
+    def parse_gender_type(gender)
+      return nil if gender.blank?
+
+      code = gender.to_s.strip.upcase
+      GogglesDb::GenderType.find_by(code: code)
+    end
+
+    # Find existing MeetingIndividualResult for UPDATE operations
+    # Requires all 3 IDs to be present (meeting_program_id, swimmer_id, team_id)
+    def find_existing_mir(meeting_program_id, swimmer_id, team_id)
+      return nil if meeting_program_id.nil? || swimmer_id.nil? || team_id.nil?
+
+      mir = GogglesDb::MeetingIndividualResult
+            .where(
+              meeting_program_id: meeting_program_id,
+              swimmer_id: swimmer_id,
+              team_id: team_id
+            )
+            .first
+
+      mir&.id
     end
 
     # Create MIR record
-    def create_mir_record(import_key:, result:, timing:, swimmer_id:, team_id:, meeting_program_id:)
+    def create_mir_record(import_key:, result:, timing:, swimmer_id:, team_id:, meeting_program_id:, meeting_individual_result_id:)
       mir = GogglesDb::DataImportMeetingIndividualResult.create!(
         import_key: import_key,
         phase_file_path: source_path,
         meeting_program_id: meeting_program_id,
         swimmer_id: swimmer_id,
         team_id: team_id,
+        meeting_individual_result_id: meeting_individual_result_id,
         rank: result['ranking']&.to_i || result['rank']&.to_i || result['position']&.to_i || 0,
         minutes: timing[:minutes],
         seconds: timing[:seconds],
@@ -243,16 +351,22 @@ module Import
     end
 
     # Create lap records for a given MIR
+    # Computes both delta timing and from_start timing
     def create_lap_records(_mir, result, mir_import_key)
       laps = result['laps'] || []
+      previous_from_start = { minutes: 0, seconds: 0, hundredths: 0 }
+
       laps.each do |lap|
         # Parse distance: "50m" → 50
         distance_str = lap['distance'] || lap['length_in_meters'] || lap['lengthInMeters'] || lap['length']
         length = distance_str.to_s.gsub(/\D/, '').to_i
         next if length.zero?
 
-        # Parse lap timing: "1'11.87" → {minutes: 1, seconds: 11, hundredths: 87}
-        lap_timing = parse_timing_string(lap['timing'])
+        # Parse lap timing from source (this is "from_start" timing)
+        from_start = parse_timing_string(lap['timing'])
+
+        # Compute delta timing: current_from_start - previous_from_start
+        delta = compute_timing_delta(from_start, previous_from_start)
 
         lap_import_key = GogglesDb::DataImportLap.build_import_key(mir_import_key, length)
 
@@ -262,15 +376,45 @@ module Import
           phase_file_path: source_path,
           meeting_individual_result_id: nil, # Will be set in phase 6
           length_in_meters: length,
-          minutes: lap_timing[:minutes],
-          seconds: lap_timing[:seconds],
-          hundredths: lap_timing[:hundredths],
+          # Delta timing (default columns)
+          minutes: delta[:minutes],
+          seconds: delta[:seconds],
+          hundredths: delta[:hundredths],
+          # From-start timing (cumulative from race start)
+          minutes_from_start: from_start[:minutes],
+          seconds_from_start: from_start[:seconds],
+          hundredths_from_start: from_start[:hundredths],
           reaction_time: lap['reaction_time'].to_f
         )
         @stats[:laps_created] += 1
+
+        # Update previous timing for next iteration
+        previous_from_start = from_start
       rescue ActiveRecord::RecordInvalid => e
         @stats[:errors] << "Lap error for #{lap_import_key}: #{e.message}"
       end
+    end
+
+    # Compute delta timing: current - previous
+    # Uses Timing wrapper for accurate subtraction
+    def compute_timing_delta(current, previous)
+      current_timing = Timing.new(
+        minutes: current[:minutes],
+        seconds: current[:seconds],
+        hundredths: current[:hundredths]
+      )
+      previous_timing = Timing.new(
+        minutes: previous[:minutes],
+        seconds: previous[:seconds],
+        hundredths: previous[:hundredths]
+      )
+      delta_timing = current_timing - previous_timing
+
+      {
+        minutes: delta_timing.minutes,
+        seconds: delta_timing.seconds,
+        hundredths: delta_timing.hundredths
+      }
     end
   end
 end

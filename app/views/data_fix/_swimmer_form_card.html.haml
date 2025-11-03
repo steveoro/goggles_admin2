@@ -15,7 +15,10 @@
         #{swimmer_key}
       &nbsp;
       - if has_match
-        %small.ml-2.badge.badge-success
+        - fuzzy_matches = swimmer_hash['fuzzy_matches'] || []
+        - selected_match = fuzzy_matches.find { |m| m['id'] == swimmer_id }
+        - badge_color = selected_match ? "badge-#{selected_match['color_class']}" : 'badge-success'
+        %small.ml-2.badge{ class: badge_color }
           ID: #{swimmer_id}
       - else
         %small.ml-2.badge.badge-primary
@@ -23,7 +26,11 @@
     .d-flex.align-items-center
       = form_tag(data_fix_delete_swimmer_path, method: :delete, class: 'd-inline', onsubmit: "return confirm('Delete swimmer #{swimmer_hash['complete_name']}?');") do
         = hidden_field_tag :file_path, file_path
-        = hidden_field_tag :swimmer_index, swimmer_index
+        = hidden_field_tag :swimmer_key, swimmer_key
+        = hidden_field_tag :swimmers_page, params[:swimmers_page] if params[:swimmers_page].present?
+        = hidden_field_tag :swimmers_per_page, params[:swimmers_per_page] if params[:swimmers_per_page].present?
+        = hidden_field_tag :q, params[:q] if params[:q].present?
+        = hidden_field_tag :unmatched, params[:unmatched] if params[:unmatched].present?
         %button.btn.btn-sm.btn-danger{ type: 'submit', 'aria-label' => 'Delete swimmer', onclick: 'event.stopPropagation();' }
           %i.fa.fa-trash
 
@@ -31,7 +38,11 @@
     .card-body.border-bottom.border-secondary
       = form_tag(update_phase3_swimmer_path, method: :patch) do
         = hidden_field_tag :file_path, file_path
-        = hidden_field_tag :swimmer_index, swimmer_index
+        = hidden_field_tag :swimmer_key, swimmer_key
+        = hidden_field_tag :swimmers_page, params[:swimmers_page] if params[:swimmers_page].present?
+        = hidden_field_tag :swimmers_per_page, params[:swimmers_per_page] if params[:swimmers_per_page].present?
+        = hidden_field_tag :q, params[:q] if params[:q].present?
+        = hidden_field_tag :unmatched, params[:unmatched] if params[:unmatched].present?
 
         .container-fluid
           -# Row 0: Fuzzy matches dropdown (quick selection)
@@ -40,8 +51,11 @@
             .row
               .col-12
                 .form-group
-                  = label_tag "fuzzy_select_#{swimmer_index}", 'Quick match selection (fuzzy matches)'
-                  = select_tag "fuzzy_select_#{swimmer_index}", options_for_select([['-- Select a match --', '']] + fuzzy_matches.map { |m| [m['display_label'], m['id']] }, swimmer_id), class: 'form-control', id: "fuzzy_select_#{swimmer_index}", onchange: "var swimmerId = this.value; if (swimmerId) { $('#swimmer_#{swimmer_index}_swimmer_id').val(swimmerId).trigger('change'); }"
+                  = label_tag("fuzzy_select_#{swimmer_index}", 'Quick match selection (fuzzy matches)')
+                  = select_tag("fuzzy_select_#{swimmer_index}",
+                               options_for_select([['-- Select a match --', '']] + fuzzy_matches.map { |m| [m['display_label'], m['id']] }, swimmer_id),
+                               class: 'form-control', id: "fuzzy_select_#{swimmer_index}",
+                               onchange: "var swimmerId = this.value; if (swimmerId) { $('#swimmer_#{swimmer_index}_swimmer_id').val(swimmerId).trigger('change'); }")
                   %small.form-text.text-muted
                     Select a match from the list to quickly populate swimmer fields via AutoComplete.
 

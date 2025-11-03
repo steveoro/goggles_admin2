@@ -1,6 +1,6 @@
 -# frozen_string_literal: true
 
-.container-fluid
+.container-fluid{ data: { controller: 'collapse-all', collapse_all_selector_value: '[id^="program-panel-"]' } }
   %h2 Data-Fix V2 • Step 5: Results (Phase 5)
 
   .mb-2
@@ -9,6 +9,10 @@
   .d-flex.justify-content-between.mb-2
     %div
       = link_to 'Use legacy (Step 5)', review_results_path(request.query_parameters.except(:phase5_v2)), class: 'btn btn-secondary'
+    %div
+      %button.btn.btn-outline-primary{ type: 'button', data: { action: 'collapse-all#toggle', collapse_all_target: 'button' } }
+        %i.fa.fa-compress
+        Collapse All Results
 
   = render(partial: 'data_fix/phase_metadata', locals: { phase_number: 5, metadata: @phase5_meta })
 
@@ -36,14 +40,18 @@
       %small.text-muted
         Displaying up to 1000 results
 
-    - # Group results by import_key prefix (session-event-category-gender)
+    -# Group results by import_key prefix (session-event-category-gender)
     - grouped = @all_results.group_by do |mir|
       - parts = mir.import_key.split('/')
       - parts[0] # program_key: "1-200RA-M75-F"
 
-    - # Responsive grid: 2 columns on large displays
+    -# Responsive grid: 2 columns on large displays
     .row
       - grouped.keys.sort.each_with_index do |program_key, idx|
         - results = grouped[program_key]
         .col-12.col-lg-6
-          = render partial: 'data_fix/result_program_card', locals: { program_key: program_key, results: results, swimmers_by_id: @swimmers_by_id, teams_by_id: @teams_by_id, laps_by_parent_key: @laps_by_parent_key, card_index: idx }
+          = render(partial: 'data_fix/result_program_card',
+                   locals: { program_key: program_key, results: results, swimmers_by_id: @swimmers_by_id,
+                             teams_by_id: @teams_by_id, teams_by_key: @teams_by_key,
+                             team_key_by_swimmer_key: @team_key_by_swimmer_key,
+                             laps_by_parent_key: @laps_by_parent_key, card_index: idx })

@@ -151,6 +151,16 @@ module Import
         matches = cmd.matches.respond_to?(:map) ? cmd.matches : []
         matches.map do |match_struct|
           team = match_struct.candidate
+          weight = match_struct.weight.round(3)
+          percentage = (weight * 100).round(1)
+
+          # Color coding based on match percentage
+          color_class = case percentage
+                        when 90..100 then 'success' # Green - excellent match
+                        when 70...90 then 'warning' # Yellow - acceptable/good match
+                        when 50...70 then 'danger'  # Red - questionable match
+                          # else: no badge pill for very poor match
+                        end
           {
             'id' => team.id,
             'name' => team.name,
@@ -158,8 +168,10 @@ module Import
             'name_variations' => team.name_variations,
             'city_id' => team.city_id,
             'city_name' => team.city&.name,
-            'weight' => match_struct.weight.round(3),
-            'display_label' => "#{team.editable_name} (ID: #{team.id}, #{team.city&.name || 'no city'}, match: #{(match_struct.weight * 100).round(1)}%)"
+            'weight' => weight,
+            'percentage' => percentage,
+            'color_class' => color_class,
+            'display_label' => "#{team.editable_name} (ID: #{team.id}, #{team.city&.name || 'no city'}, match: #{percentage}%)"
           }
         end
       rescue StandardError => e
@@ -169,17 +181,17 @@ module Import
 
       # Determine if top match is good enough for auto-assignment
       # Uses fuzzy match weight (Jaro-Winkler distance) as criterion.
-      # Auto-assigns if weight >= 0.90 (90% confidence or higher)
+      # Auto-assigns if weight >= 0.60 (60% confidence or higher - lowered to accept more matches)
       #
       # This threshold balances accuracy and convenience:
       # - Catches exact matches and close variants
-      # - Low false positive rate in production
+      # - Increased auto-matching for operator convenience
       # - Operator can still override via dropdown if needed
       def auto_assignable?(match, search_name)
         return false unless match.present? && search_name.present?
 
         weight = match['weight'].to_f
-        weight >= 0.90
+        weight >= 0.60
       end
     end
   end

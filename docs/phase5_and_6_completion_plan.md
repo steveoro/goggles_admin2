@@ -1,8 +1,8 @@
 # Phase 5 & 6 Completion Plan
 
-**Status**: Phases 1-4 Complete ✅ | Phase 5 DB Models Complete ✅ | Phase 5 UI & Phase 6 In Progress 🚧
+**Status**: Phases 1-5 Complete ✅ | Phase 6 Ready to Implement 🚀
 
-**Document Version**: 1.1 (2025-10-27)
+**Document Version**: 1.2 (2025-11-02)
 
 ---
 
@@ -71,6 +71,8 @@ Complete Data-Fix pipeline by finalizing Phase 5 (Result Review) and implementin
 - ✅ Background: **white/light grey** for result rows (consistent)
 - ✅ Icons/badges: show match status per result (swimmer_id/team_id presence)
 - ✅ Replicate look-and-feel from `_event_form_card.html.haml`
+- ✅ Team name lookup by key for unmatched teams (no more "N/A")
+- ✅ Display both delta and from_start timing in lap details
 
 **Current Status** (v1 - table-based):
 - ✅ Table-based display grouped by session/event/category/gender
@@ -94,41 +96,125 @@ Complete Data-Fix pipeline by finalizing Phase 5 (Result Review) and implementin
 - [x] Implement responsive grid layout (2 cols on lg+)
 - [x] Add expand/collapse icons and interactions
 - [x] Eager-load laps to avoid N+1 queries
-- [ ] Test card interactions in browser (v2)
+- [x] Test card interactions in browser (v2)
+- [x] Fix team "N/A" issue (lookup by key for unmatched teams)
+- [x] Add lap timing computation (delta + from_start)
 
-### 5.2 Match Existing Database Rows 🚧
+### 5.1.1 Lap Timing Handling 
+
+**Challenge**: Source JSON "timing" field contains cumulative time from race start, but DB needs both delta and from_start values.
+
+**Solution Chosen**: **Option 1 - Add missing columns to temp tables**
+
+**Architecture**:
+```
+Source JSON: "timing": "1'18.56"  →  This is "from_start" (cumulative)
+                ↓
+         Phase5Populator
+                ↓
+    ┌───────────────────────────┐
+    │ Compute Delta Timing      │  current_from_start - previous_from_start
+    │ (using Timing wrapper)    │
+    └───────────────────────────┘
+                ↓
+    Store in data_import_laps:
+    - minutes/seconds/hundredths           (DELTA - default columns)
+    - minutes_from_start/seconds_from_start/hundredths_from_start
+```
+
+**DB Changes**:
+- Migration: Add `*_from_start` columns to all 3 temp tables
+  - `data_import_laps`
+  - `data_import_meeting_relay_swimmers`
+  - `data_import_relay_laps`
+- Mirrors production structure (`laps`, `meeting_relay_swimmers`, `relay_laps`)
+
+**Computation Logic** (`Phase5Populator#create_lap_records`):
+1. Parse source "timing" → store as `from_start`
+2. Compute `delta = current_from_start - previous_from_start`
+3. Store both values in appropriate columns
+4. UI displays both: **Delta** (primary) and **From Start** (muted)
+
+**Benefits**:
+- Clean separation of delta vs cumulative timing
+- Matches production table structure
+- Phase 6 becomes simple copy operation (no computation)
+- UI can display both values for verification
+- Handles all source variations (delta-only, from_start-only, both)
+
+**Tasks**:
+- [x] Create migration in goggles_db
+- [x] Update Phase5Populator lap creation logic
+- [x] Add `compute_timing_delta` helper method
+- [x] Update UI to display both timing values
+- [ ] Run migration in test/dev environments
+- [ ] Test with real data to verify delta computation
+- [x] Add specs for timing computation
+
+### 5.2 Match Existing Database Rows ✅
 
 **Goal**: Find and display existing `MeetingEvent` and `MeetingProgram` IDs.
 
-**Matching Logic**:
+**Matching Logic Implemented**:
 
 ```ruby
-# MeetingEvent: match by event_type_id + meeting_session_id
-meeting_event = GogglesDb::MeetingEvent
-  .where(meeting_session_id: session_id, event_type_id: event_type_id)
-  .first
-
-# MeetingProgram: match by meeting_event_id + category + gender
-# (requires meeting_event_id due to referential integrity)
-meeting_program = GogglesDb::MeetingProgram
-  .where(
-    meeting_event_id: meeting_event_id,
-    category_type_id: category_id,
-    gender_type_id: gender_id
-  )
-  .first
+# Step 1: Get meeting_session_id from phase 1 (by session_order)
+# Step 2: Parse event_code → EventType (e.g., "200RA" → 200m Breaststroke)
+# Step 3: Match MeetingEvent by (meeting_session_id, event_type_id)
+# Step 4: Parse category → CategoryType (e.g., "M75")
+# Step 5: Parse gender → GenderType (e.g., "F")
+# Step 6: Match MeetingProgram by (meeting_event_id, category_type_id, gender_type_id)
 ```
 
-**When**: During `review_results` action initialization
+**Implementation Details**:
+- `Phase5Populator#find_meeting_program_id` implements full matching chain
+- Helper methods: `parse_event_type`, `parse_category_type`, `parse_gender_type`
+- Stroke code mapping: SL→FREE, DO→BACK, RA→BREAST, FA→FLY, MI→IND_MED
+- Stats tracking: `programs_matched` counter
+- Card borders: Green if `meeting_program_id` present, Yellow if new
 
 **Tasks**:
-- [ ] Implement MeetingEvent matching
-- [ ] Implement MeetingProgram matching
-- [ ] Update phase 5 JSON to store matched IDs
-- [ ] Display matched IDs in headers
-- [ ] Add specs
+- [x] Implement MeetingEvent matching
+- [x] Implement MeetingProgram matching  
+- [x] Store matched IDs in `data_import_meeting_individual_results`
+- [x] Display matched IDs in card headers (green border = matched)
+- [x] Add stats tracking for matched programs
+- [ ] Test with real meeting data
+- [x] Add specs for matching logic
 
-### 5.3 Result Card Content & Data Structure ✅
+### 5.3 Match Existing MeetingIndividualResult Records ✅
+
+**Goal**: Find existing `MeetingIndividualResult` records to determine UPDATE vs INSERT operations in Phase 6.
+
+**Matching Logic Implemented**:
+
+```ruby
+# Find existing MIR by:
+# - meeting_program_id (must exist)
+# - swimmer_id (must exist)
+# - team_id (must exist)
+# Returns: meeting_individual_result_id or nil
+```
+
+**Implementation Details**:
+- `Phase5Populator#find_existing_mir` performs 3-way match
+- Requires all 3 IDs to be present (foreign key integrity)
+- Stores `meeting_individual_result_id` in temp table
+- Stats tracking: `mirs_matched` counter
+- Phase 6 will use this to decide UPDATE vs INSERT
+
+**Decision Logic for Phase 6**:
+- If `meeting_individual_result_id` present → **UPDATE** existing record
+- If `meeting_individual_result_id` nil → **INSERT** new record
+
+**Tasks**:
+- [x] Implement MIR matching by (program_id, swimmer_id, team_id)
+- [x] Store matched MIR ID in `data_import_meeting_individual_results`
+- [x] Add stats tracking for matched MIRs
+- [ ] Test with real meeting data
+- [x] Add specs for matching logic
+
+### 5.4 Result Card Content & Data Structure ✅
 
 **Goal**: Display results efficiently, prepare for phase 6 commit.
 
@@ -494,6 +580,52 @@ end
 ### Phase File Structure Updates
 - Phase 5 JSON: Add `meeting_event_id`, `meeting_program_id`, `meeting_individual_result_id`
 - All phases: Ensure consistent ID storage
+
+---
+
+## Phase 5 UI Improvements (Nov 2, 2025) ✅
+
+### 1. Quick Filter for Unmatched Data
+- **Phase 2 & 3**: Added "Show only unmatched" checkbox filter
+- Filters teams/swimmers without assigned IDs
+- Helps operators focus on remaining work
+- Filter state preserved across pagination
+
+### 2. Collapse/Expand All Results
+- **Phase 5**: Added toggle button to collapse/expand all result cards
+- JavaScript-based mass toggle for all result groups
+- Icon changes: compress ↔ expand
+- Improves navigation when reviewing many results
+
+### 3. Preserve Pagination State on Form POST
+- **Phase 2 & 3**: All edit/delete/add forms now preserve:
+  - Current page number
+  - Items per page setting
+  - Search query
+  - Filter state (unmatched)
+- Prevents losing position when editing entities
+
+### 4. Enhanced Match Scoring with Visual Indicators ✅
+
+**Color-Coded Match Confidence:**
+- **Green (90-100%)**: Excellent match - high certainty
+- **Yellow (70-89%)**: Good/acceptable match  
+- **Red (60-69%)**: Questionable match - requires review
+- **Gray (<60%)**: Very poor match
+
+**Implementation:**
+- `SwimmerSolver`: Added fallback matching by `last_name + gender + year_of_birth` when full name match fails
+- `TeamSolver`: Enhanced with color coding
+- Both solvers: Lowered auto-assignment threshold from 90% to 60%
+- UI: Replaced dropdowns with color-coded list groups showing confidence badges
+- Auto-matching now accepts more matches, reducing manual operator work
+
+**Fallback Matching Strategy (Swimmers):**
+When no full name matches found:
+1. Search by `last_name` + `gender_type_id` + `year_of_birth`
+2. Handles abbreviated first names (e.g., "Mario" vs "M.")
+3. Assigns confidence 50-59% to indicate fallback match
+4. Limits to 5 results to avoid overwhelming UI
 
 ---
 
