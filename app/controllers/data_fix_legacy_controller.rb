@@ -422,8 +422,8 @@ class DataFixLegacyController < ApplicationController
       # === Update main entity attributes: ===
       # (index must be already set to the proper key type: nil for meetings, integer for sessions, string for others)
       if entity_key.present?
-        @solver.data[model_name]&.fetch(entity_key, nil)&.fetch('row', nil)&.compact!
-        @solver.data[model_name]&.fetch(entity_key, nil)&.fetch('row', nil)&.merge!(actual_attrs)
+        @solver.data[model_name]&.dig(entity_key, 'row')&.compact!
+        @solver.data[model_name]&.dig(entity_key, 'row')&.merge!(actual_attrs)
       else
         @solver.data[model_name]&.fetch('row', nil)&.compact!
         @solver.data[model_name]&.fetch('row', nil)&.merge!(actual_attrs)
@@ -446,9 +446,9 @@ class DataFixLegacyController < ApplicationController
       # - "team" -> "team_affiliation"
       if binding_model_name == 'team_affiliation' && model_name == 'team'
         # Direct update of the TA entity using involved Team attributes (TeamAffiliations & Teams have the same key):
-        @solver.data['team_affiliation']&.fetch(entity_key, nil)&.fetch('row', nil)&.merge!(
-          'team_id' => edit_params['team']&.fetch(actual_form_key.to_s, nil)&.fetch('team_id', nil),
-          'name' => edit_params['team']&.fetch(actual_form_key.to_s, nil)&.fetch('editable_name', nil)
+        @solver.data['team_affiliation']&.dig(entity_key, 'row')&.merge!(
+          'team_id' => edit_params['team']&.dig(actual_form_key.to_s, 'team_id'),
+          'name' => edit_params['team']&.dig(actual_form_key.to_s, 'editable_name')
         )
       # Indipendently from binding_model_name, valid for 'city' only:
       # - "meeting_session" -> "swimming_pool" (-> "city")
@@ -493,7 +493,7 @@ class DataFixLegacyController < ApplicationController
           raise("ERROR: bindings key for ['#{model_name}']['#{entity_key}'] is potentially invalid: '#{updated_attrs['key']}', it should be a single-digit integer or string.")
         end
 
-        @solver.data[model_name]&.fetch(entity_key, nil)&.fetch('bindings', nil)&.merge!(
+        @solver.data[model_name]&.dig(entity_key, 'bindings')&.merge!(
           # ASSERT: key here is a form index, not a string key
           { binding_model_name => updated_attrs['key'].to_i }
         )
@@ -507,8 +507,8 @@ class DataFixLegacyController < ApplicationController
       # == Update association column in main entity (if there are attributes to be updated):
       if entity_key.present? && main_attrs.present?
         # i.e.: 'swimming_pool' => 0 => 'swimming_pool_id' (apply to main, i.e.: 'meeting_session')
-        @solver.data[model_name]&.fetch(entity_key, nil)&.fetch('row', nil)&.compact!
-        @solver.data[model_name]&.fetch(entity_key, nil)&.fetch('row', nil)&.merge!(main_attrs)
+        @solver.data[model_name]&.dig(entity_key, 'row')&.compact!
+        @solver.data[model_name]&.dig(entity_key, 'row')&.merge!(main_attrs)
       elsif main_attrs.present? && model_name != 'meeting_session'
         # Only 'meeting' doesn't have a key (the bindings, if any, must use it):
         @solver.data[model_name]&.fetch('row', nil)&.compact!
@@ -537,8 +537,8 @@ class DataFixLegacyController < ApplicationController
          edit_params['city'][actual_form_key.to_s]['key'].present?
         nested_attrs['city_id'] = edit_params['city'][actual_form_key.to_s]['city_id']
       end
-      @solver.data[binding_model_name]&.fetch(binding_key, nil)&.fetch('row', nil)&.compact!
-      @solver.data[binding_model_name]&.fetch(binding_key, nil)&.fetch('row', nil)&.merge!(nested_attrs)
+      @solver.data[binding_model_name]&.dig(binding_key, 'row')&.compact!
+      @solver.data[binding_model_name]&.dig(binding_key, 'row')&.merge!(nested_attrs)
     end
     # DEBUG ----------------------------------------------------------------
     # binding.pry
@@ -815,7 +815,7 @@ class DataFixLegacyController < ApplicationController
       if @data_hash.is_a?(Hash) && @data_hash['layoutType'].to_i == 4
         # 1) Filter events by codes if requested (pre-adapter)
         if params[:only_event_codes].present? && @data_hash['events'].is_a?(Array)
-          codes = params[:only_event_codes].to_s.split(',').map(&:strip).reject(&:blank?)
+          codes = params[:only_event_codes].to_s.split(',').map(&:strip).compact_blank
           @data_hash['events'].select! { |evt| codes.include?(evt['eventCode']) }
         end
         # 2) Drop root dictionaries early unless requested to keep

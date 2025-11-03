@@ -142,9 +142,13 @@ class DataFixController < ApplicationController
       lt_format = detect_layout_type(source_path)
       phase_path = default_phase_path_for(source_path, 3)
       if params[:rescan].present? || !File.exist?(phase_path)
+        phase1_path = default_phase_path_for(source_path, 1)
+        phase2_path = default_phase_path_for(source_path, 2)
         Import::Solvers::SwimmerSolver.new(season:).build!(
           source_path: source_path,
-          lt_format: lt_format
+          lt_format: lt_format,
+          phase1_path: phase1_path,
+          phase2_path: phase2_path
         )
         # Redirect without rescan parameter to avoid triggering rescan on navigation
         redirect_to(review_swimmers_path(request.query_parameters.except(:rescan)),
@@ -206,9 +210,11 @@ class DataFixController < ApplicationController
       lt_format = detect_layout_type(source_path)
       phase_path = default_phase_path_for(source_path, 4)
       if params[:rescan].present? || !File.exist?(phase_path)
+        phase1_path = default_phase_path_for(source_path, 1)
         Import::Solvers::EventSolver.new(season:).build!(
           source_path: source_path,
-          lt_format: lt_format
+          lt_format: lt_format,
+          phase1_path: phase1_path
         )
         flash.now[:notice] = I18n.t('data_import.messages.phase_rebuilt', phase: 4)
         # Redirect without rescan parameter to avoid triggering rescan on navigation
@@ -256,7 +262,7 @@ class DataFixController < ApplicationController
       @existing_meeting_events = []
       if meeting_id.present?
         # Get all meeting_session IDs from Phase 1
-        meeting_session_ids = phase1_sessions.map { |s| s['id'] }.compact
+        meeting_session_ids = phase1_sessions.filter_map { |s| s['id'] }
         if meeting_session_ids.any?
           @existing_meeting_events = GogglesDb::MeetingEvent.where(meeting_session_id: meeting_session_ids)
                                                             .includes(:event_type, :heat_type, :meeting_session)
@@ -307,7 +313,7 @@ class DataFixController < ApplicationController
     if params[:phase5_v2].present?
       @file_path = params[:file_path]
       if @file_path.blank?
-        flash[:warning] = I18n.t('data_import.errors.invalid_request')
+        flash.now[:warning] = I18n.t('data_import.errors.invalid_request')
         redirect_to(pull_index_path) && return
       end
 
@@ -373,8 +379,8 @@ class DataFixController < ApplicationController
                      .limit(1000) # Safety limit for now
 
       # Eager-load swimmers and teams to avoid N+1 queries
-      swimmer_ids = @all_results.map(&:swimmer_id).compact.uniq
-      team_ids = @all_results.map(&:team_id).compact.uniq
+      swimmer_ids = @all_results.filter_map(&:swimmer_id).uniq
+      team_ids = @all_results.filter_map(&:team_id).uniq
       @swimmers_by_id = GogglesDb::Swimmer.where(id: swimmer_ids).index_by(&:id)
       @teams_by_id = GogglesDb::Team.where(id: team_ids).index_by(&:id)
 
@@ -1016,7 +1022,7 @@ class DataFixController < ApplicationController
     if meeting_params.key?(:poolLength)
       vstr = meeting_params[:poolLength].to_s.strip
       allowed = %w[25 33 50]
-      if vstr.present? && !allowed.include?(vstr)
+      if vstr.present? && allowed.exclude?(vstr)
         flash[:warning] = I18n.t('data_import.errors.invalid_request')
         return redirect_to(review_sessions_path(file_path:, phase_v2: 1))
       end

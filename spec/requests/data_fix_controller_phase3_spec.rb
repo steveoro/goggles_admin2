@@ -224,7 +224,7 @@ RSpec.describe DataFixController do
 
         pfm = PhaseFileManager.new(phase3_file)
         meta = pfm.meta
-        updated_time = Time.parse(meta['generated_at'])
+        updated_time = Time.zone.parse(meta['generated_at'])
         expect(updated_time).to be > original_time
       end
     end

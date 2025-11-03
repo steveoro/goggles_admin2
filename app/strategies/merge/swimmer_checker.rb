@@ -1299,7 +1299,7 @@ module Merge
         opts[:result_array] << "+#{'- Offending rows: -'.center(154, ' ')}+"
         shared_parent_keys = opts[:shared_list].map(&:first)
         # Foreach row in a shared parent, report a decorated line:
-        opts[:target_domain].where(opts[:where_condition], @source.id, @dest.id, shared_parent_keys).each do |row|
+        opts[:target_domain].where(opts[:where_condition], @source.id, @dest.id, shared_parent_keys).find_each do |row|
           opts[:result_array] << "- #{send(opts[:target_decorator], row)}"
         end
         opts[:result_array] << "+#{''.center(154, '-')}+"

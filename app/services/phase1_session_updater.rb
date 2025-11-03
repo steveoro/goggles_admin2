@@ -41,7 +41,7 @@ class Phase1SessionUpdater
     sess['day_part_type_id'] = @params[:day_part_type_id].to_i if @params[:day_part_type_id].present?
 
     # Scheduled date with validation
-    return unless @params[:scheduled_date].present?
+    return if @params[:scheduled_date].blank?
 
     sd = @params[:scheduled_date].to_s.strip
     if sd.match?(/^\d{4}-\d{2}-\d{2}$/)

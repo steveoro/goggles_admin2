@@ -1,0 +1,211 @@
+{
+  "_meta": {
+    "schema_version": "1.0",
+    "created_at": "2025-10-14T20:26:30Z",
+    "generator": "Import::Solvers::Phase1Solver",
+    "source_path": "/home/steve/Projects/goggles_admin2/crawler/data/results.new/242/2025-06-24-Campionati_Italiani_di_Nuoto_Master_Herbalife-200RA-l4.json",
+    "parent_checksum": "2460df05f168300f510e26d6c47c5b1adc3cb88fd892f6e93f042a1e2bec6e66",
+    "generated_at": "2025-10-27T22:12:30Z"
+  },
+  "data": {
+    "season_id": 242,
+    "name": "Campionati Italiani di Nuoto Master Herbalife",
+    "meetingURL": "https://fin2025.microplustiming.com/MA_2025_06_24-29_Riccione_web.php",
+    "dateYear1": 2025,
+    "dateMonth1": 6,
+    "dateDay1": 24,
+    "dateYear2": 2025,
+    "dateMonth2": 6,
+    "dateDay2": 29,
+    "venue1": "Riccione",
+    "address1": "Riccione",
+    "poolLength": "50",
+    "meeting_session": [
+      {
+        "id": null,
+        "description": "Sessione 1",
+        "session_order": 1,
+        "scheduled_date": "2025-06-24",
+        "day_part_type_id": 1,
+        "swimming_pool": {
+          "id": 22,
+          "name": "Stadio Nuoto",
+          "nick_name": "riccionestadio50",
+          "address": "Via Monte Rosa, 60, 47838 Riccione RN, Italy",
+          "pool_type_id": 2,
+          "lanes_number": 10,
+          "maps_uri": "https://g.page/stadiodelnuotoriccione?share",
+          "plus_code": "8FPJ2J3P+FW",
+          "latitude": "44.003687",
+          "longitude": "12.637313",
+          "city": {
+            "id": 38,
+            "name": "Riccione",
+            "area": "Rimini",
+            "zip": "47838",
+            "country": "Italia",
+            "country_code": "IT",
+            "latitude": "43.983333",
+            "longitude": "12.65"
+          }
+        }
+      },
+      {
+        "id": null,
+        "description": "Sessione 2",
+        "session_order": 2,
+        "scheduled_date": "2025-06-25",
+        "day_part_type_id": 1,
+        "swimming_pool": {
+          "id": 22,
+          "name": "Stadio Nuoto",
+          "nick_name": "riccionestadio50",
+          "address": "Via Monte Rosa, 60, 47838 Riccione RN, Italy",
+          "pool_type_id": 2,
+          "lanes_number": 10,
+          "maps_uri": "https://g.page/stadiodelnuotoriccione?share",
+          "plus_code": "8FPJ2J3P+FW",
+          "latitude": "44.003687",
+          "longitude": "12.637313",
+          "city": {
+            "id": 38,
+            "name": "Riccione",
+            "area": "Rimini",
+            "zip": "47838",
+            "country": "Italia",
+            "country_code": "IT",
+            "latitude": "43.983333",
+            "longitude": "12.65"
+          }
+        }
+      },
+      {
+        "id": null,
+        "description": "Sessione 3",
+        "session_order": 3,
+        "scheduled_date": "2025-06-26",
+        "day_part_type_id": 1,
+        "swimming_pool": {
+          "id": 22,
+          "name": "Stadio Nuoto",
+          "nick_name": "riccionestadio50",
+          "address": "Via Monte Rosa, 60, 47838 Riccione RN, Italy",
+          "pool_type_id": 2,
+          "lanes_number": 10,
+          "maps_uri": "https://g.page/stadiodelnuotoriccione?share",
+          "plus_code": "8FPJ2J3P+FW",
+          "latitude": "44.003687",
+          "longitude": "12.637313",
+          "city": {
+            "id": 38,
+            "name": "Riccione",
+            "area": "Rimini",
+            "zip": "47838",
+            "country": "Italia",
+            "country_code": "IT",
+            "latitude": "43.983333",
+            "longitude": "12.65"
+          }
+        }
+      },
+      {
+        "id": null,
+        "description": "Sessione 4",
+        "session_order": 4,
+        "scheduled_date": "2025-06-27",
+        "day_part_type_id": 1,
+        "swimming_pool": {
+          "id": 22,
+          "name": "Stadio Nuoto",
+          "nick_name": "riccionestadio50",
+          "address": "Via Monte Rosa, 60, 47838 Riccione RN, Italy",
+          "pool_type_id": 2,
+          "lanes_number": 10,
+          "maps_uri": "https://g.page/stadiodelnuotoriccione?share",
+          "plus_code": "8FPJ2J3P+FW",
+          "latitude": "44.003687",
+          "longitude": "12.637313",
+          "city": {
+            "id": 38,
+            "name": "Riccione",
+            "area": "Rimini",
+            "zip": "47838",
+            "country": "Italia",
+            "country_code": "IT",
+            "latitude": "43.983333",
+            "longitude": "12.65"
+          }
+        }
+      },
+      {
+        "id": null,
+        "description": "Sessione 5",
+        "session_order": 5,
+        "scheduled_date": "2025-06-28",
+        "day_part_type_id": 1,
+        "swimming_pool": {
+          "id": 22,
+          "name": "Stadio Nuoto",
+          "nick_name": "riccionestadio50",
+          "address": "Via Monte Rosa, 60, 47838 Riccione RN, Italy",
+          "pool_type_id": 2,
+          "lanes_number": 10,
+          "maps_uri": "https://g.page/stadiodelnuotoriccione?share",
+          "plus_code": "8FPJ2J3P+FW",
+          "latitude": "44.003687",
+          "longitude": "12.637313",
+          "city": {
+            "id": 38,
+            "name": "Riccione",
+            "area": "Rimini",
+            "zip": "47838",
+            "country": "Italia",
+            "country_code": "IT",
+            "latitude": "43.983333",
+            "longitude": "12.65"
+          }
+        }
+      },
+      {
+        "id": null,
+        "description": "Session 6",
+        "session_order": 6,
+        "scheduled_date": "2025-02-09",
+        "day_part_type_id": 1,
+        "swimming_pool": {
+          "id": 22,
+          "name": "Stadio Nuoto",
+          "nick_name": "riccionestadio50",
+          "address": "Via Monte Rosa, 60, 47838 Riccione RN, Italy",
+          "pool_type_id": 2,
+          "lanes_number": 10,
+          "maps_uri": "https://g.page/stadiodelnuotoriccione?share",
+          "plus_code": "8FPJ2J3P+FW",
+          "latitude": "44.003687",
+          "longitude": "12.637313",
+          "city": {
+            "id": 38,
+            "name": "Riccione",
+            "area": "Rimini",
+            "zip": "47838",
+            "country": "Italia",
+            "country_code": "IT",
+            "latitude": "43.983333",
+            "longitude": "12.65"
+          }
+        }
+      }
+    ],
+    "meeting_fuzzy_matches": [],
+    "code": "italianiherbalife",
+    "header_year": "2024/2025",
+    "header_date": "2025-06-24",
+    "edition": 2025,
+    "edition_type_id": 4,
+    "timing_type_id": 3,
+    "confirmed": true,
+    "max_individual_events": 3,
+    "max_individual_events_per_session": 3,
+    "id": null
+  }
+}

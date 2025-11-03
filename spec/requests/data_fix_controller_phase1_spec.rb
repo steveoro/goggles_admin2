@@ -299,7 +299,7 @@ RSpec.describe DataFixController do
         post data_fix_add_session_path, params: { file_path: source_file }
 
         pfm = PhaseFileManager.new(phase1_file)
-        new_time = Time.parse(pfm.meta['generated_at'])
+        new_time = Time.zone.parse(pfm.meta['generated_at'])
         expect(new_time).to be > original_time
       end
 
@@ -591,7 +591,7 @@ RSpec.describe DataFixController do
         }
 
         pfm = PhaseFileManager.new(phase1_file)
-        new_time = Time.parse(pfm.meta['generated_at'])
+        new_time = Time.zone.parse(pfm.meta['generated_at'])
         expect(new_time).to be > original_time
       end
 

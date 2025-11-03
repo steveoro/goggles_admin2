@@ -1,0 +1,5660 @@
+{
+  "_meta": {
+    "schema_version": "1.0",
+    "created_at": "2025-11-03T12:40:48Z",
+    "generator": "Import::Solvers::TeamSolver",
+    "source_path": "/home/steve/Projects/goggles_admin2/crawler/data/results.new/242/2025-06-24-Campionati_Italiani_di_Nuoto_Master_Herbalife-200RA-l4.json",
+    "parent_checksum": "2460df05f168300f510e26d6c47c5b1adc3cb88fd892f6e93f042a1e2bec6e66"
+  },
+  "data": {
+    "season_id": 242,
+    "teams": [
+      {
+        "key": "A.P.Padana ssd",
+        "name": "Olindachester Swimming Club ASD",
+        "editable_name": "Olindachester Swimming Club ASD",
+        "name_variations": "A.P. Padana ssd;AP PADANA;A.P.Padana ssd",
+        "team_id": 405,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "A.S.D. Life Academy - Hadria Nu",
+        "name": "A.S.D. Life Academy - Hadria Nuoto",
+        "editable_name": "A.S.D. Life Academy - Hadria Nuoto",
+        "name_variations": null,
+        "team_id": null,
+        "city_id": null,
+        "fuzzy_matches": [
+          {
+            "id": 1564,
+            "name": "A.S.D. Life Academy - Hadria Nuoto",
+            "editable_name": "A.S.D. Life Academy - Hadria Nuoto",
+            "name_variations": null,
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.955,
+            "percentage": 95.5,
+            "color_class": "success",
+            "display_label": "A.S.D. Life Academy - Hadria Nuoto (ID: 1564, no city, match: 95.5%)"
+          }
+        ]
+      },
+      {
+        "key": "ASA asd - Cinisello Balsa",
+        "name": "Carlastad Swimming Club ASD",
+        "editable_name": "Carlastad Swimming Club ASD",
+        "name_variations": "ASA Cinisello;ASA asd - Cinisello Balsamo;ASA  CINISELLO;ASA asd - Cinisello B.;ASA asd - Cinisello Balsa",
+        "team_id": 77,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "ASSISI NUOTO MASTER",
+        "name": "ASSISI NUOTO MASTER",
+        "editable_name": "ASSISI NUOTO MASTER",
+        "name_variations": "ASSISI NUOTO MASTER",
+        "team_id": null,
+        "city_id": null,
+        "fuzzy_matches": [
+          {
+            "id": 1556,
+            "name": "ASSISI NUOTO MASTER",
+            "editable_name": "ASSISI NUOTO MASTER",
+            "name_variations": "ASSISI NUOTO MASTER",
+            "city_id": null,
+            "city_name": null,
+            "weight": 1.0,
+            "percentage": 100.0,
+            "color_class": "success",
+            "display_label": "ASSISI NUOTO MASTER (ID: 1556, no city, match: 100.0%)"
+          },
+          {
+            "id": 250,
+            "name": "AICS NUOTO MASTER",
+            "editable_name": "AICS NUOTO MASTER",
+            "name_variations": "AICS NUOTO MASTER",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.88,
+            "percentage": 88.0,
+            "color_class": "warning",
+            "display_label": "AICS NUOTO MASTER (ID: 250, no city, match: 88.0%)"
+          },
+          {
+            "id": 327,
+            "name": "Lerici Nuoto Master asd",
+            "editable_name": "Lerici Nuoto Master asd",
+            "name_variations": "LERICI NUOTO MASTER;Lerici Nuoto Master asd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.805,
+            "percentage": 80.5,
+            "color_class": "warning",
+            "display_label": "Lerici Nuoto Master asd (ID: 327, no city, match: 80.5%)"
+          },
+          {
+            "id": 514,
+            "name": "TEAM NUOTO SIRACUSA",
+            "editable_name": "TEAM NUOTO SIRACUSA",
+            "name_variations": "TEAM NUOTO SIRACUSA",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.759,
+            "percentage": 75.9,
+            "color_class": "warning",
+            "display_label": "TEAM NUOTO SIRACUSA (ID: 514, no city, match: 75.9%)"
+          },
+          {
+            "id": 659,
+            "name": "SESTIUS NUOTO CASER",
+            "editable_name": "SESTIUS NUOTO CASER",
+            "name_variations": "SESTIUS NUOTO CASER",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.757,
+            "percentage": 75.7,
+            "color_class": "warning",
+            "display_label": "SESTIUS NUOTO CASER (ID: 659, no city, match: 75.7%)"
+          },
+          {
+            "id": 449,
+            "name": "AMICI NUOTO RIVA",
+            "editable_name": "AMICI NUOTO RIVA",
+            "name_variations": "AMICI NUOTO RIVA",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.752,
+            "percentage": 75.2,
+            "color_class": "warning",
+            "display_label": "AMICI NUOTO RIVA (ID: 449, no city, match: 75.2%)"
+          },
+          {
+            "id": 715,
+            "name": "SICILIA NUOTO SSD ARL",
+            "editable_name": "SICILIA NUOTO SSD ARL",
+            "name_variations": "SICILIA NUOTO SSD ARL",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.747,
+            "percentage": 74.7,
+            "color_class": "warning",
+            "display_label": "SICILIA NUOTO SSD ARL (ID: 715, no city, match: 74.7%)"
+          },
+          {
+            "id": 689,
+            "name": "KAS NUOTO COMISO",
+            "editable_name": "KAS NUOTO COMISO",
+            "name_variations": "KAS NUOTO COMISO",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.744,
+            "percentage": 74.4,
+            "color_class": "warning",
+            "display_label": "KAS NUOTO COMISO (ID: 689, no city, match: 74.4%)"
+          },
+          {
+            "id": 236,
+            "name": "Milano Nuoto Master asd",
+            "editable_name": "Milano Nuoto Master asd",
+            "name_variations": "Milano Nuoto Master asd;MILANO NUOTO MASTER",
+            "city_id": 62,
+            "city_name": "Milano",
+            "weight": 0.743,
+            "percentage": 74.3,
+            "color_class": "warning",
+            "display_label": "Milano Nuoto Master asd (ID: 236, Milano, match: 74.3%)"
+          }
+        ]
+      },
+      {
+        "key": "Acqua1village ssd",
+        "name": "New Minnie Swimming Club ASD",
+        "editable_name": "New Minnie Swimming Club ASD",
+        "name_variations": "ACQUA1VILLAGE SSD;ACQUA1VILLAGE ASD;Acqua1village ssd",
+        "team_id": 265,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Acquarius Popoli asd",
+        "name": "Acquarius Popoli asd",
+        "editable_name": "Acquarius Popoli asd",
+        "name_variations": "Acquarius Popoli asd",
+        "team_id": null,
+        "city_id": null,
+        "fuzzy_matches": [
+          {
+            "id": 1545,
+            "name": "Acquarius Popoli asd",
+            "editable_name": "Acquarius Popoli asd",
+            "name_variations": "Acquarius Popoli asd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 1.0,
+            "percentage": 100.0,
+            "color_class": "success",
+            "display_label": "Acquarius Popoli asd (ID: 1545, no city, match: 100.0%)"
+          },
+          {
+            "id": 1372,
+            "name": "Aquarius Ssd- Trapani",
+            "editable_name": "Aquarius Ssd- Trapani",
+            "name_variations": "Aquarius asd - Trapani;Aquarius Ssd- Trapani",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.768,
+            "percentage": 76.8,
+            "color_class": "warning",
+            "display_label": "Aquarius Ssd- Trapani (ID: 1372, no city, match: 76.8%)"
+          },
+          {
+            "id": 880,
+            "name": "Suprema Nuoto asd",
+            "editable_name": "Suprema Nuoto asd",
+            "name_variations": "Suprema Nuoto asd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.741,
+            "percentage": 74.1,
+            "color_class": "warning",
+            "display_label": "Suprema Nuoto asd (ID: 880, no city, match: 74.1%)"
+          }
+        ]
+      },
+      {
+        "key": "AlbatrosNuoto - Montegrot",
+        "name": "AlbatrosNuoto - Montegrot",
+        "editable_name": "AlbatrosNuoto - Montegrot",
+        "name_variations": null,
+        "team_id": null,
+        "city_id": null,
+        "fuzzy_matches": [
+          {
+            "id": 1473,
+            "name": "AlbatrosNuoto - Montegrot",
+            "editable_name": "AlbatrosNuoto - Montegrot",
+            "name_variations": null,
+            "city_id": null,
+            "city_name": null,
+            "weight": 1.0,
+            "percentage": 100.0,
+            "color_class": "success",
+            "display_label": "AlbatrosNuoto - Montegrot (ID: 1473, no city, match: 100.0%)"
+          }
+        ]
+      },
+      {
+        "key": "All Round Sport & Wellnes",
+        "name": "All Round Sport & Wellnes",
+        "editable_name": "All Round Sport & Wellnes",
+        "name_variations": null,
+        "team_id": null,
+        "city_id": null,
+        "fuzzy_matches": [
+          {
+            "id": 1331,
+            "name": "All Round Sport & Wellnes",
+            "editable_name": "All Round Sport & Wellnes",
+            "name_variations": null,
+            "city_id": null,
+            "city_name": null,
+            "weight": 1.0,
+            "percentage": 100.0,
+            "color_class": "success",
+            "display_label": "All Round Sport & Wellnes (ID: 1331, no city, match: 100.0%)"
+          }
+        ]
+      },
+      {
+        "key": "Aly Sport asd",
+        "name": "South Max Swimming Club ASD",
+        "editable_name": "South Max Swimming Club ASD",
+        "name_variations": "Aly Sport A.S.D.;A.S.D. Aly Sport;Asd Aly Sport;Aly Sport asd",
+        "team_id": 1227,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Amatori Nuoto ssd arl",
+        "name": "Amatori Nuoto ssd arl",
+        "editable_name": "Amatori Nuoto ssd arl",
+        "name_variations": "Amatori Nuoto ssd arl",
+        "team_id": null,
+        "city_id": null,
+        "fuzzy_matches": [
+          {
+            "id": 1361,
+            "name": "Amatori Nuoto ssd arl",
+            "editable_name": "Amatori Nuoto ssd arl",
+            "name_variations": "Amatori Nuoto ssd arl",
+            "city_id": null,
+            "city_name": null,
+            "weight": 1.0,
+            "percentage": 100.0,
+            "color_class": "success",
+            "display_label": "Amatori Nuoto ssd arl (ID: 1361, no city, match: 100.0%)"
+          },
+          {
+            "id": 294,
+            "name": "AMATORI NUOTO LIB",
+            "editable_name": "AMATORI NUOTO LIB",
+            "name_variations": "AMATORI NUOTO LIB",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.842,
+            "percentage": 84.2,
+            "color_class": "warning",
+            "display_label": "AMATORI NUOTO LIB (ID: 294, no city, match: 84.2%)"
+          },
+          {
+            "id": 279,
+            "name": "Amatori Nuoto Savona",
+            "editable_name": "Amatori Nuoto Savona",
+            "name_variations": "AMATORI N SAVONA SC;Amatori Nuoto Savona",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.837,
+            "percentage": 83.7,
+            "color_class": "warning",
+            "display_label": "Amatori Nuoto Savona (ID: 279, no city, match: 83.7%)"
+          },
+          {
+            "id": 796,
+            "name": "Athlon Roma ssd a rl",
+            "editable_name": "Athlon Roma ssd a rl",
+            "name_variations": "ATHLON SSD - ROMA;Athlon Roma ssd a rl",
+            "city_id": 72,
+            "city_name": "Roma",
+            "weight": 0.811,
+            "percentage": 81.1,
+            "color_class": "warning",
+            "display_label": "Athlon Roma ssd a rl (ID: 796, Roma, match: 81.1%)"
+          },
+          {
+            "id": 296,
+            "name": "Aquatika ssd arl",
+            "editable_name": "Aquatika ssd arl",
+            "name_variations": "AQUATIKA ASD - CRIS;Aquatika ssd arl",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.791,
+            "percentage": 79.1,
+            "color_class": "warning",
+            "display_label": "Aquatika ssd arl (ID: 296, no city, match: 79.1%)"
+          },
+          {
+            "id": 386,
+            "name": "AMATORI NUOTO FOLLONICA",
+            "editable_name": "AMATORI NUOTO FOLLONICA",
+            "name_variations": "AMATORI NUOTO FOLLONICA",
+            "city_id": 106,
+            "city_name": "Follonica",
+            "weight": 0.789,
+            "percentage": 78.9,
+            "color_class": "warning",
+            "display_label": "AMATORI NUOTO FOLLONICA (ID: 386, Follonica, match: 78.9%)"
+          },
+          {
+            "id": 849,
+            "name": "PRIMA SSD ARL",
+            "editable_name": "PRIMA SSD ARL",
+            "name_variations": "PRIMA SSD ARL",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.782,
+            "percentage": 78.2,
+            "color_class": "warning",
+            "display_label": "PRIMA SSD ARL (ID: 849, no city, match: 78.2%)"
+          },
+          {
+            "id": 941,
+            "name": "Aquafit Ssd A Rl",
+            "editable_name": "Aquafit Ssd A Rl",
+            "name_variations": "Aquafit Ssd A Rl",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.782,
+            "percentage": 78.2,
+            "color_class": "warning",
+            "display_label": "Aquafit Ssd A Rl (ID: 941, no city, match: 78.2%)"
+          },
+          {
+            "id": 1281,
+            "name": "Matrix ssd - Roma",
+            "editable_name": "Matrix ssd - Roma",
+            "name_variations": "Matrix ssd - Roma",
+            "city_id": 72,
+            "city_name": "Roma",
+            "weight": 0.782,
+            "percentage": 78.2,
+            "color_class": "warning",
+            "display_label": "Matrix ssd - Roma (ID: 1281, Roma, match: 78.2%)"
+          },
+          {
+            "id": 322,
+            "name": "Altair Nuoto ssd",
+            "editable_name": "Altair Nuoto ssd",
+            "name_variations": "ALTAIR VULCANIA NUOTO;Altair Nuoto ssd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.773,
+            "percentage": 77.3,
+            "color_class": "warning",
+            "display_label": "Altair Nuoto ssd (ID: 322, no city, match: 77.3%)"
+          },
+          {
+            "id": 715,
+            "name": "SICILIA NUOTO SSD ARL",
+            "editable_name": "SICILIA NUOTO SSD ARL",
+            "name_variations": "SICILIA NUOTO SSD ARL",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.768,
+            "percentage": 76.8,
+            "color_class": "warning",
+            "display_label": "SICILIA NUOTO SSD ARL (ID: 715, no city, match: 76.8%)"
+          },
+          {
+            "id": 830,
+            "name": "PISCINE DELLO STADIO SSD ARL",
+            "editable_name": "PISCINE DELLO STADIO SSD ARL",
+            "name_variations": "PISCINE DELLO STADIO SSD ARL",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.766,
+            "percentage": 76.6,
+            "color_class": "warning",
+            "display_label": "PISCINE DELLO STADIO SSD ARL (ID: 830, no city, match: 76.6%)"
+          },
+          {
+            "id": 983,
+            "name": "Maniago Nuoto SSD",
+            "editable_name": "Maniago Nuoto SSD",
+            "name_variations": "Maniago Nuoto SSD;Maniago Nuoto;MANIAGO NUOTO SSD",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.759,
+            "percentage": 75.9,
+            "color_class": "warning",
+            "display_label": "Maniago Nuoto SSD (ID: 983, no city, match: 75.9%)"
+          },
+          {
+            "id": 105,
+            "name": "AQUARIUM SSD ARL",
+            "editable_name": "AQUARIUM SSD ARL",
+            "name_variations": "AQUARIUM SSD ARL",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.757,
+            "percentage": 75.7,
+            "color_class": "warning",
+            "display_label": "AQUARIUM SSD ARL (ID: 105, no city, match: 75.7%)"
+          },
+          {
+            "id": 962,
+            "name": "Centro Nuoto Sestri asd",
+            "editable_name": "Centro Nuoto Sestri asd",
+            "name_variations": "C.N.SESTRI;Centro Nuoto Sestri asd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.75,
+            "percentage": 75.0,
+            "color_class": "warning",
+            "display_label": "Centro Nuoto Sestri asd (ID: 962, no city, match: 75.0%)"
+          },
+          {
+            "id": 382,
+            "name": "ROMA NUOTO MASTER ssd",
+            "editable_name": "ROMA NUOTO MASTER",
+            "name_variations": "ROMA NUOTO MASTER ASD;ROMA NUOTO MASTER ssd",
+            "city_id": 72,
+            "city_name": "Roma",
+            "weight": 0.745,
+            "percentage": 74.5,
+            "color_class": "warning",
+            "display_label": "ROMA NUOTO MASTER (ID: 382, Roma, match: 74.5%)"
+          },
+          {
+            "id": 223,
+            "name": "Rapallo Nuoto ssd",
+            "editable_name": "Rapallo Nuoto ssd",
+            "name_variations": "Rapallo Nuoto ssd;RAPALLO N.",
+            "city_id": 53,
+            "city_name": "via S. Pietro di Novella, 35",
+            "weight": 0.744,
+            "percentage": 74.4,
+            "color_class": "warning",
+            "display_label": "Rapallo Nuoto ssd (ID: 223, via S. Pietro di Novella, 35, match: 74.4%)"
+          },
+          {
+            "id": 815,
+            "name": "Napoli Nuoto ssd",
+            "editable_name": "Napoli Nuoto ssd",
+            "name_variations": "CIRC.SPORT.NAPOLI NUOTO;Napoli Nuoto ssd",
+            "city_id": 92,
+            "city_name": "Napoli",
+            "weight": 0.743,
+            "percentage": 74.3,
+            "color_class": "warning",
+            "display_label": "Napoli Nuoto ssd (ID: 815, Napoli, match: 74.3%)"
+          },
+          {
+            "id": 236,
+            "name": "Milano Nuoto Master asd",
+            "editable_name": "Milano Nuoto Master asd",
+            "name_variations": "Milano Nuoto Master asd;MILANO NUOTO MASTER",
+            "city_id": 62,
+            "city_name": "Milano",
+            "weight": 0.742,
+            "percentage": 74.2,
+            "color_class": "warning",
+            "display_label": "Milano Nuoto Master asd (ID: 236, Milano, match: 74.2%)"
+          },
+          {
+            "id": 446,
+            "name": "ROMA 2000 SSD",
+            "editable_name": "ROMA 2000 SSD",
+            "name_variations": "ROMA 2000 SSD",
+            "city_id": 72,
+            "city_name": "Roma",
+            "weight": 0.741,
+            "percentage": 74.1,
+            "color_class": "warning",
+            "display_label": "ROMA 2000 SSD (ID: 446, Roma, match: 74.1%)"
+          }
+        ]
+      },
+      {
+        "key": "Aqa Sport Cusago ssd",
+        "name": "AQA SPORT CUSAGO SSD",
+        "editable_name": "AQA SPORT CUSAGO SSD",
+        "name_variations": "AQA SPORT CUSAGO SSD",
+        "team_id": null,
+        "city_id": null,
+        "fuzzy_matches": [
+          {
+            "id": 1614,
+            "name": "AQA SPORT CUSAGO SSD",
+            "editable_name": "AQA SPORT CUSAGO SSD",
+            "name_variations": "AQA SPORT CUSAGO SSD",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.971,
+            "percentage": 97.1,
+            "color_class": "success",
+            "display_label": "AQA SPORT CUSAGO SSD (ID: 1614, no city, match: 97.1%)"
+          },
+          {
+            "id": 1634,
+            "name": "Aqua Sport ssd",
+            "editable_name": "Aqua Sport ssd",
+            "name_variations": "Aqua Sport ssd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.777,
+            "percentage": 77.7,
+            "color_class": "warning",
+            "display_label": "Aqua Sport ssd (ID: 1634, no city, match: 77.7%)"
+          },
+          {
+            "id": 1635,
+            "name": "Baia Sport Asd",
+            "editable_name": "Baia Sport Asd",
+            "name_variations": "Baia Sport Asd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.769,
+            "percentage": 76.9,
+            "color_class": "warning",
+            "display_label": "Baia Sport Asd (ID: 1635, no city, match: 76.9%)"
+          },
+          {
+            "id": 1388,
+            "name": "Klab Sport ssd",
+            "editable_name": "Klab Sport ssd",
+            "name_variations": "Klab Florence Sport;Klab Sport ssd",
+            "city_id": 99,
+            "city_name": "Firenze",
+            "weight": 0.759,
+            "percentage": 75.9,
+            "color_class": "warning",
+            "display_label": "Klab Sport ssd (ID: 1388, Firenze, match: 75.9%)"
+          },
+          {
+            "id": 539,
+            "name": "ACQUASPORT SRL SSD",
+            "editable_name": "ACQUASPORT SRL SSD",
+            "name_variations": "ACQUASPORT SRL SSD;Acquasport ssd - Cagliari",
+            "city_id": 83,
+            "city_name": "Cagliari",
+            "weight": 0.755,
+            "percentage": 75.5,
+            "color_class": "warning",
+            "display_label": "ACQUASPORT SRL SSD (ID: 539, Cagliari, match: 75.5%)"
+          },
+          {
+            "id": 226,
+            "name": "Sisport Spa ssd",
+            "editable_name": "Sisport Spa ssd",
+            "name_variations": "SISPORT S.P.A.;SISPORT FIAT S.P.A.;Sisport Spa ssd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.755,
+            "percentage": 75.5,
+            "color_class": "warning",
+            "display_label": "Sisport Spa ssd (ID: 226, no city, match: 75.5%)"
+          },
+          {
+            "id": 1605,
+            "name": "IN SPORT SRL SOC SD",
+            "editable_name": "IN SPORT SRL SOC SD",
+            "name_variations": "IN SPORT SRL SOC SD",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.754,
+            "percentage": 75.4,
+            "color_class": "warning",
+            "display_label": "IN SPORT SRL SOC SD (ID: 1605, no city, match: 75.4%)"
+          },
+          {
+            "id": 521,
+            "name": "Augustea S.C. ssd",
+            "editable_name": "Augustea S.C. ssd",
+            "name_variations": "Augustea S.C. ssd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.752,
+            "percentage": 75.2,
+            "color_class": "warning",
+            "display_label": "Augustea S.C. ssd (ID: 521, no city, match: 75.2%)"
+          },
+          {
+            "id": 1559,
+            "name": "Ama Sport ssd - Rozzano",
+            "editable_name": "Ama Sport ssd - Rozzano",
+            "name_variations": "Ama Sport ssd - Rozzano",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.751,
+            "percentage": 75.1,
+            "color_class": "warning",
+            "display_label": "Ama Sport ssd - Rozzano (ID: 1559, no city, match: 75.1%)"
+          },
+          {
+            "id": 1510,
+            "name": "TSG Sporting Club ssd",
+            "editable_name": "TSG Sporting Club ssd",
+            "name_variations": "TSG Sporting Club ssd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.75,
+            "percentage": 75.0,
+            "color_class": "warning",
+            "display_label": "TSG Sporting Club ssd (ID: 1510, no city, match: 75.0%)"
+          },
+          {
+            "id": 1227,
+            "name": "Aly Sport asd",
+            "editable_name": "Aly Sport A.S.D.",
+            "name_variations": "Aly Sport A.S.D.;A.S.D. Aly Sport;Asd Aly Sport;Aly Sport asd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.746,
+            "percentage": 74.6,
+            "color_class": "warning",
+            "display_label": "Aly Sport A.S.D. (ID: 1227, no city, match: 74.6%)"
+          },
+          {
+            "id": 266,
+            "name": "Acquaria ssd - Sommo",
+            "editable_name": "Acquaria ssd - Sommo",
+            "name_variations": "ACQUARIA SRL SSD;Acquaria ssd - Sommo",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.744,
+            "percentage": 74.4,
+            "color_class": "warning",
+            "display_label": "Acquaria ssd - Sommo (ID: 266, no city, match: 74.4%)"
+          },
+          {
+            "id": 1332,
+            "name": "Oasi Sport Village ssd",
+            "editable_name": "Oasi Sport Village ssd",
+            "name_variations": "Oasi Sport Village ssd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.743,
+            "percentage": 74.3,
+            "color_class": "warning",
+            "display_label": "Oasi Sport Village ssd (ID: 1332, no city, match: 74.3%)"
+          },
+          {
+            "id": 1579,
+            "name": "Atlas Sport Village ssd",
+            "editable_name": "Atlas Sport Village ssd",
+            "name_variations": "Atlas Sport Village ssd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.743,
+            "percentage": 74.3,
+            "color_class": "warning",
+            "display_label": "Atlas Sport Village ssd (ID: 1579, no city, match: 74.3%)"
+          },
+          {
+            "id": 610,
+            "name": "ALBATROS SP. CLUB SSD",
+            "editable_name": "ALBATROS SP. CLUB SSD",
+            "name_variations": "ALBATROS SP. CLUB SSD;Albatros S.C. ssd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.741,
+            "percentage": 74.1,
+            "color_class": "warning",
+            "display_label": "ALBATROS SP. CLUB SSD (ID: 610, no city, match: 74.1%)"
+          },
+          {
+            "id": 729,
+            "name": "ARIA SPORT S.S.D.",
+            "editable_name": "ARIA SPORT S.S.D.",
+            "name_variations": "ARIA SPORT S.S.D.",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.741,
+            "percentage": 74.1,
+            "color_class": "warning",
+            "display_label": "ARIA SPORT S.S.D. (ID: 729, no city, match: 74.1%)"
+          }
+        ]
+      },
+      {
+        "key": "Aqua Alpha ssd s.r.l.",
+        "name": "Aqua Alpha ssd s.r.l.",
+        "editable_name": "Aqua Alpha ssd s.r.l.",
+        "name_variations": "Aqua Alpha ssd s.r.l.",
+        "team_id": null,
+        "city_id": null,
+        "fuzzy_matches": [
+          {
+            "id": 1538,
+            "name": "Aqua Alpha ssd s.r.l.",
+            "editable_name": "Aqua Alpha ssd s.r.l.",
+            "name_variations": "Aqua Alpha ssd s.r.l.",
+            "city_id": null,
+            "city_name": null,
+            "weight": 1.0,
+            "percentage": 100.0,
+            "color_class": "success",
+            "display_label": "Aqua Alpha ssd s.r.l. (ID: 1538, no city, match: 100.0%)"
+          },
+          {
+            "id": 877,
+            "name": "Aqua Planet ssd - Broni",
+            "editable_name": "Aqua Planet ssd - Broni",
+            "name_variations": "Aqua Planet ssd - Broni",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.774,
+            "percentage": 77.4,
+            "color_class": "warning",
+            "display_label": "Aqua Planet ssd - Broni (ID: 877, no city, match: 77.4%)"
+          },
+          {
+            "id": 266,
+            "name": "Acquaria ssd - Sommo",
+            "editable_name": "Acquaria ssd - Sommo",
+            "name_variations": "ACQUARIA SRL SSD;Acquaria ssd - Sommo",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.767,
+            "percentage": 76.7,
+            "color_class": "warning",
+            "display_label": "Acquaria ssd - Sommo (ID: 266, no city, match: 76.7%)"
+          },
+          {
+            "id": 1305,
+            "name": "Aqua Sport ssd - Cagliari",
+            "editable_name": "Aqua Sport ssd - Cagliari",
+            "name_variations": "Aqua Sport ssd - Cagliari;Aqua Sport ssd;Acqua Sport ssd - Cagliari",
+            "city_id": 83,
+            "city_name": "Cagliari",
+            "weight": 0.763,
+            "percentage": 76.3,
+            "color_class": "warning",
+            "display_label": "Aqua Sport ssd - Cagliari (ID: 1305, Cagliari, match: 76.3%)"
+          },
+          {
+            "id": 296,
+            "name": "Aquatika ssd arl",
+            "editable_name": "Aquatika ssd arl",
+            "name_variations": "AQUATIKA ASD - CRIS;Aquatika ssd arl",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.753,
+            "percentage": 75.3,
+            "color_class": "warning",
+            "display_label": "Aquatika ssd arl (ID: 296, no city, match: 75.3%)"
+          },
+          {
+            "id": 941,
+            "name": "Aquafit Ssd A Rl",
+            "editable_name": "Aquafit Ssd A Rl",
+            "name_variations": "Aquafit Ssd A Rl",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.743,
+            "percentage": 74.3,
+            "color_class": "warning",
+            "display_label": "Aquafit Ssd A Rl (ID: 941, no city, match: 74.3%)"
+          },
+          {
+            "id": 1419,
+            "name": "Mas Club ssd arl",
+            "editable_name": "Mas Club ssd arl",
+            "name_variations": "Mas Club ssd arl",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.743,
+            "percentage": 74.3,
+            "color_class": "warning",
+            "display_label": "Mas Club ssd arl (ID: 1419, no city, match: 74.3%)"
+          },
+          {
+            "id": 1231,
+            "name": "Acqua13 Ssd",
+            "editable_name": "Acqua13 Ssd",
+            "name_variations": "Acqua13 Ssd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.741,
+            "percentage": 74.1,
+            "color_class": "warning",
+            "display_label": "Acqua13 Ssd (ID: 1231, no city, match: 74.1%)"
+          }
+        ]
+      },
+      {
+        "key": "Aquamore Acqua 13",
+        "name": "Aquamore Acqua 13",
+        "editable_name": "Aquamore Acqua 13",
+        "name_variations": null,
+        "team_id": null,
+        "city_id": null,
+        "fuzzy_matches": [
+          {
+            "id": 1535,
+            "name": "Aquamore Acqua 13",
+            "editable_name": "Aquamore Acqua 13",
+            "name_variations": null,
+            "city_id": null,
+            "city_name": null,
+            "weight": 1.0,
+            "percentage": 100.0,
+            "color_class": "success",
+            "display_label": "Aquamore Acqua 13 (ID: 1535, no city, match: 100.0%)"
+          }
+        ]
+      },
+      {
+        "key": "Aquareal asd",
+        "name": "Aquareal asd",
+        "editable_name": "Aquareal asd",
+        "name_variations": "Aquareal asd",
+        "team_id": null,
+        "city_id": null,
+        "fuzzy_matches": [
+          {
+            "id": 1440,
+            "name": "Aquareal asd",
+            "editable_name": "Aquareal asd",
+            "name_variations": "Aquareal asd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 1.0,
+            "percentage": 100.0,
+            "color_class": "success",
+            "display_label": "Aquareal asd (ID: 1440, no city, match: 100.0%)"
+          },
+          {
+            "id": 1330,
+            "name": "Aurelia Nuoto asd",
+            "editable_name": "Aurelia Nuoto asd",
+            "name_variations": "Aurelia Nuoto asd",
+            "city_id": 72,
+            "city_name": "Roma",
+            "weight": 0.799,
+            "percentage": 79.9,
+            "color_class": "warning",
+            "display_label": "Aurelia Nuoto asd (ID: 1330, Roma, match: 79.9%)"
+          },
+          {
+            "id": 738,
+            "name": "AQUATIK TEAM ASD",
+            "editable_name": "AQUATIK TEAM ASD",
+            "name_variations": "AQUATIK TEAM ASD",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.778,
+            "percentage": 77.8,
+            "color_class": "warning",
+            "display_label": "AQUATIK TEAM ASD (ID: 738, no city, match: 77.8%)"
+          },
+          {
+            "id": 265,
+            "name": "ACQUA1VILLAGE SSD",
+            "editable_name": "ACQUA1VILLAGE ASD",
+            "name_variations": "ACQUA1VILLAGE SSD;ACQUA1VILLAGE ASD;Acqua1village ssd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.768,
+            "percentage": 76.8,
+            "color_class": "warning",
+            "display_label": "ACQUA1VILLAGE ASD (ID: 265, no city, match: 76.8%)"
+          },
+          {
+            "id": 1399,
+            "name": "AQA ASD",
+            "editable_name": "AQA asd Cosenza",
+            "name_variations": "AQA ASD;AQA asd Cosenza",
+            "city_id": 172,
+            "city_name": "Cosenza",
+            "weight": 0.763,
+            "percentage": 76.3,
+            "color_class": "warning",
+            "display_label": "AQA asd Cosenza (ID: 1399, Cosenza, match: 76.3%)"
+          },
+          {
+            "id": 695,
+            "name": "Aquaria asd - Pontinia",
+            "editable_name": "Aquaria asd - Pontinia",
+            "name_variations": "A.S.DILETT. AQUARIA;Aquaria asd - Pontinia",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.762,
+            "percentage": 76.2,
+            "color_class": "warning",
+            "display_label": "Aquaria asd - Pontinia (ID: 695, no city, match: 76.2%)"
+          },
+          {
+            "id": 501,
+            "name": "AQUADEMIA ASD",
+            "editable_name": "AQUADEMIA ASD",
+            "name_variations": "AQUADEMIA ASD",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.754,
+            "percentage": 75.4,
+            "color_class": "warning",
+            "display_label": "AQUADEMIA ASD (ID: 501, no city, match: 75.4%)"
+          },
+          {
+            "id": 848,
+            "name": "Chiaravalle Nuoto asd",
+            "editable_name": "Chiaravalle Nuoto asd",
+            "name_variations": "Chiaravalle Nuoto asd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.748,
+            "percentage": 74.8,
+            "color_class": "warning",
+            "display_label": "Chiaravalle Nuoto asd (ID: 848, no city, match: 74.8%)"
+          },
+          {
+            "id": 502,
+            "name": "AQUAGYM ASD",
+            "editable_name": "AQUAGYM ASD",
+            "name_variations": "AQUAGYM ASD",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.741,
+            "percentage": 74.1,
+            "color_class": "warning",
+            "display_label": "AQUAGYM ASD (ID: 502, no city, match: 74.1%)"
+          },
+          {
+            "id": 926,
+            "name": "Area Nuoto Asd",
+            "editable_name": "Area Nuoto Asd",
+            "name_variations": "Area Nuoto Asd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.74,
+            "percentage": 74.0,
+            "color_class": "warning",
+            "display_label": "Area Nuoto Asd (ID: 926, no city, match: 74.0%)"
+          },
+          {
+            "id": 1436,
+            "name": "Area 51 ASD",
+            "editable_name": "Area 51 ASD",
+            "name_variations": "Area 51 ASD",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.74,
+            "percentage": 74.0,
+            "color_class": "warning",
+            "display_label": "Area 51 ASD (ID: 1436, no city, match: 74.0%)"
+          }
+        ]
+      },
+      {
+        "key": "Aquarium ssd - Novi Ligur",
+        "name": "South Patriceberg Swimming Club ASD",
+        "editable_name": "South Patriceberg Swimming Club ASD",
+        "name_variations": "AQUARIUM SSD - NOVI LIGURE;AQUARIUM NOVI LIGURE - AL;Aquarium ssd - Novi Ligure",
+        "team_id": 753,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Aquatika ssd arl",
+        "name": "New Mika Swimming Club ASD",
+        "editable_name": "New Mika Swimming Club ASD",
+        "name_variations": "AQUATIKA ASD - CRIS;Aquatika ssd arl",
+        "team_id": 296,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Arezzo Nuoto",
+        "name": "North Aprilhaven Swimming Club ASD",
+        "editable_name": "North Aprilhaven Swimming Club ASD",
+        "name_variations": "AREZZO NUOTO ASD;Arezzo Nuoto",
+        "team_id": 297,
+        "city_id": 52,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Asd Polisportiva Riccione Aps",
+        "name": "North Marcel Swimming Club ASD",
+        "editable_name": "North Marcel Swimming Club ASD",
+        "name_variations": "POL. COM. RICCIONE;Pol Comunale Riccione;Asd Polisportiva Riccione Aps",
+        "team_id": 131,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Asola Nuoto",
+        "name": "East Pierre Swimming Club ASD",
+        "editable_name": "East Pierre Swimming Club ASD",
+        "name_variations": "ASOLA Nuoto;ASOLA N;Asola Nuoto",
+        "team_id": 324,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Atlantide Nuoto asd",
+        "name": "Port Linetteton Swimming Club ASD",
+        "editable_name": "Port Linetteton Swimming Club ASD",
+        "name_variations": "ASD ATLANTIDE NUOTO;Atlantide Nuoto asd",
+        "team_id": 484,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Aventino Sporting Roma ssd",
+        "name": "Aventino Sporting Roma ssd",
+        "editable_name": "Aventino Sporting Roma ssd",
+        "name_variations": "Aventino Sporting Roma ssd",
+        "team_id": null,
+        "city_id": 72,
+        "fuzzy_matches": [
+          {
+            "id": 1640,
+            "name": "Aventino Sporting Roma ssd",
+            "editable_name": "Aventino Sporting Roma ssd",
+            "name_variations": "Aventino Sporting Roma ssd",
+            "city_id": 72,
+            "city_name": "Roma",
+            "weight": 1.0,
+            "percentage": 100.0,
+            "color_class": "success",
+            "display_label": "Aventino Sporting Roma ssd (ID: 1640, Roma, match: 100.0%)"
+          },
+          {
+            "id": 1525,
+            "name": "Aventino Nuoto Roma ssd",
+            "editable_name": "Aventino Nuoto Roma ssd",
+            "name_variations": "Aventino Nuoto Roma ssd",
+            "city_id": 72,
+            "city_name": "Roma",
+            "weight": 0.857,
+            "percentage": 85.7,
+            "color_class": "warning",
+            "display_label": "Aventino Nuoto Roma ssd (ID: 1525, Roma, match: 85.7%)"
+          },
+          {
+            "id": 1405,
+            "name": "Centro Sport Roma ssd",
+            "editable_name": "Centro Sport Roma SSD",
+            "name_variations": "Centro Sport Roma SSD;Centro Sport Roma ssd",
+            "city_id": 72,
+            "city_name": "Roma",
+            "weight": 0.791,
+            "percentage": 79.1,
+            "color_class": "warning",
+            "display_label": "Centro Sport Roma SSD (ID: 1405, Roma, match: 79.1%)"
+          },
+          {
+            "id": 727,
+            "name": "Centro Nuoto Rosa' SSD",
+            "editable_name": "Centro Nuoto Rosà SSD",
+            "name_variations": "Centro Nuoto Rosa' SSD;CENTRO NUOTO ROSA';Centro Nuoto Rosà SSD;Centro Nuoto Rosa ' ssd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.786,
+            "percentage": 78.6,
+            "color_class": "warning",
+            "display_label": "Centro Nuoto Rosà SSD (ID: 727, no city, match: 78.6%)"
+          },
+          {
+            "id": 843,
+            "name": "Roman Sport City ssd",
+            "editable_name": "Roman Sport City ssd",
+            "name_variations": "Roman Sport City ssd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.78,
+            "percentage": 78.0,
+            "color_class": "warning",
+            "display_label": "Roman Sport City ssd (ID: 843, no city, match: 78.0%)"
+          },
+          {
+            "id": 1294,
+            "name": "V02 Nuoto Torino ssd",
+            "editable_name": "V02 Nuoto Torino ssd",
+            "name_variations": "V02 Nuoto Torino ssd",
+            "city_id": 90,
+            "city_name": "Torino",
+            "weight": 0.763,
+            "percentage": 76.3,
+            "color_class": "warning",
+            "display_label": "V02 Nuoto Torino ssd (ID: 1294, Torino, match: 76.3%)"
+          },
+          {
+            "id": 1417,
+            "name": "Centro Nuoto Roma ssd",
+            "editable_name": "Centro Nuoto Roma ssd",
+            "name_variations": "Centro Nuoto Roma ssd",
+            "city_id": 72,
+            "city_name": "Roma",
+            "weight": 0.762,
+            "percentage": 76.2,
+            "color_class": "warning",
+            "display_label": "Centro Nuoto Roma ssd (ID: 1417, Roma, match: 76.2%)"
+          },
+          {
+            "id": 352,
+            "name": "GESTIONI NUOTO SSD",
+            "editable_name": "GESTIONI NUOTO SSD",
+            "name_variations": "GESTIONI NUOTO SSD",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.756,
+            "percentage": 75.6,
+            "color_class": "warning",
+            "display_label": "GESTIONI NUOTO SSD (ID: 352, no city, match: 75.6%)"
+          },
+          {
+            "id": 284,
+            "name": "ON SPORT VINOVO SSD",
+            "editable_name": "ON SPORT VINOVO SSD",
+            "name_variations": "ON SPORT VINOVO SSD",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.754,
+            "percentage": 75.4,
+            "color_class": "warning",
+            "display_label": "ON SPORT VINOVO SSD (ID: 284, no city, match: 75.4%)"
+          },
+          {
+            "id": 1067,
+            "name": "Sport Training 2 Ssd",
+            "editable_name": "Sport Training 2 Ssd",
+            "name_variations": "Sport Training 2 Ssd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.753,
+            "percentage": 75.3,
+            "color_class": "warning",
+            "display_label": "Sport Training 2 Ssd (ID: 1067, no city, match: 75.3%)"
+          },
+          {
+            "id": 1415,
+            "name": "Nautilus Nuoto Roma ssd",
+            "editable_name": "Nautilus Nuoto Roma ssd",
+            "name_variations": "Nautilus Nuoto Roma ssd",
+            "city_id": 72,
+            "city_name": "Roma",
+            "weight": 0.753,
+            "percentage": 75.3,
+            "color_class": "warning",
+            "display_label": "Nautilus Nuoto Roma ssd (ID: 1415, Roma, match: 75.3%)"
+          },
+          {
+            "id": 1475,
+            "name": "Livorno Aquatics ssd",
+            "editable_name": "Livorno Aquatics ssd",
+            "name_variations": "Livorno Aquatics ssd",
+            "city_id": 23,
+            "city_name": "Livorno",
+            "weight": 0.749,
+            "percentage": 74.9,
+            "color_class": "warning",
+            "display_label": "Livorno Aquatics ssd (ID: 1475, Livorno, match: 74.9%)"
+          },
+          {
+            "id": 237,
+            "name": "MOZZATE SPORT SSD",
+            "editable_name": "MOZZATE SPORT SSD",
+            "name_variations": "MOZZATE SPORT SSD",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.746,
+            "percentage": 74.6,
+            "color_class": "warning",
+            "display_label": "MOZZATE SPORT SSD (ID: 237, no city, match: 74.6%)"
+          },
+          {
+            "id": 819,
+            "name": "C.I.S. NOVATE SSD",
+            "editable_name": "C.I.S. NOVATE SSD",
+            "name_variations": "C.I.S. NOVATE SSD",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.746,
+            "percentage": 74.6,
+            "color_class": "warning",
+            "display_label": "C.I.S. NOVATE SSD (ID: 819, no city, match: 74.6%)"
+          },
+          {
+            "id": 1576,
+            "name": "Sport Active ssd",
+            "editable_name": "Sport Active ssd",
+            "name_variations": "Sport Active ssd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.744,
+            "percentage": 74.4,
+            "color_class": "warning",
+            "display_label": "Sport Active ssd (ID: 1576, no city, match: 74.4%)"
+          }
+        ]
+      },
+      {
+        "key": "Bergamo Swim Team",
+        "name": "North Marylandbury Swimming Club ASD",
+        "editable_name": "North Marylandbury Swimming Club ASD",
+        "name_variations": "Bergamo Swim Team;BERGAMO SWIM TEAM",
+        "team_id": 217,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "CS Il Gabbiano Paola ssd",
+        "name": "New Delicia Swimming Club ASD",
+        "editable_name": "New Delicia Swimming Club ASD",
+        "name_variations": "CS IL GABBIANO PAOLA ssd",
+        "team_id": 574,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "CSI Nuoto Prato Asd",
+        "name": "Beershire Swimming Club ASD",
+        "editable_name": "Beershire Swimming Club ASD",
+        "name_variations": "CSI NUOTO PRATO; CSI NUOTO PRATO A.S.D.;ASD CSI NUOTO PRATO",
+        "team_id": 34,
+        "city_id": 35,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "CSI Roma Flaminio",
+        "name": "West Breanaburgh Swimming Club ASD",
+        "editable_name": "West Breanaburgh Swimming Club ASD",
+        "name_variations": "CSI Roma Flaminio",
+        "team_id": 241,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "CUS Bari asd",
+        "name": "Dennyborough Swimming Club ASD",
+        "editable_name": "Dennyborough Swimming Club ASD",
+        "name_variations": "CUS Bari A.S.D.;CUS BARI AS DILETT.;CUS Bari asd",
+        "team_id": 477,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Can. Vittorino da Feltre",
+        "name": "East Katherynville Swimming Club ASD",
+        "editable_name": "East Katherynville Swimming Club ASD",
+        "name_variations": "Can. Vittorino da Feltre A.S.D.;Can. Vittorino da Feltre;CAN VITTORINO;CANOTTIERI VITTORINO DA FELTRE ASD",
+        "team_id": 100,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Canottieri Baldesio",
+        "name": "Walshville Swimming Club ASD",
+        "editable_name": "Walshville Swimming Club ASD",
+        "name_variations": "Canottieri Baldesio;CAN BALDESIO",
+        "team_id": 45,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Canottieri Lecco",
+        "name": "Akikofort Swimming Club ASD",
+        "editable_name": "Akikofort Swimming Club ASD",
+        "name_variations": "Canottieri Lecco;CAN LECCO",
+        "team_id": 229,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Caravaggio S.V. Aqua ssd",
+        "name": "Port Ema Swimming Club ASD",
+        "editable_name": "Port Ema Swimming Club ASD",
+        "name_variations": "CARAVAGGIO SPORTING VILLAGE;Caravaggio S.V. Aqua ssd",
+        "team_id": 731,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Centro Nuoto Bastia asd",
+        "name": "West Mellisaview Swimming Club ASD",
+        "editable_name": "West Mellisaview Swimming Club ASD",
+        "name_variations": "CENTRO NUOTO BASTIA;CENTRO NUOTO BASTIA ASD",
+        "team_id": 76,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Centro Nuoto Le Bandie",
+        "name": "South Sasha Swimming Club ASD",
+        "editable_name": "South Sasha Swimming Club ASD",
+        "name_variations": "CENTRO NUOTO LE BAN;CENTRO NUOTO LE BANDIE;CENTRO NUOTO LE BANDIE SSD ARL",
+        "team_id": 900,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Centro Nuoto Macerata ssd",
+        "name": "Binsstad Swimming Club ASD",
+        "editable_name": "Binsstad Swimming Club ASD",
+        "name_variations": "CENTRO NUOTO MACERATA;CENTRO NUOTO MACERA;Centro Nuoto Macerata ssd",
+        "team_id": 739,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Centro Nuoto Stra",
+        "name": "Bernhardberg Swimming Club ASD",
+        "editable_name": "Bernhardberg Swimming Club ASD",
+        "name_variations": "CENTRO NUOTO STRA",
+        "team_id": 730,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Circolo Canottieri Aniene",
+        "name": "North Pattieville Swimming Club ASD",
+        "editable_name": "North Pattieville Swimming Club ASD",
+        "name_variations": "Circolo Canottieri Aniene;C.C. ANIENE ASD",
+        "team_id": 89,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Citta' Sport Vicenza ssd",
+        "name": "East Marcellberg Swimming Club ASD",
+        "editable_name": "East Marcellberg Swimming Club ASD",
+        "name_variations": "CITTÀ DELLO SPORT SSD;Città Sport Vicenza ssd",
+        "team_id": 800,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Club L 'Aquila Nuoto",
+        "name": "West Elvis Swimming Club ASD",
+        "editable_name": "West Elvis Swimming Club ASD",
+        "name_variations": "A.S.D. CLUB L`AQUILA NUOTO;ASD CLUB L`AQUILA NUOTO;Club L 'Aquila Nuoto;A.S. DILETT. CLUB L'AQUILA NUOTO",
+        "team_id": 119,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Coopernuoto",
+        "name": "Littleville Swimming Club ASD",
+        "editable_name": "Littleville Swimming Club ASD",
+        "name_variations": "COOPERNUOTO",
+        "team_id": 42,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Crocera Stadium ssd",
+        "name": "Port Mackenziehaven Swimming Club ASD",
+        "editable_name": "Port Mackenziehaven Swimming Club ASD",
+        "name_variations": "Crocera Stadium Ssd",
+        "team_id": 1205,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "DDS Camaiore apd",
+        "name": "DDS Camaiore apd",
+        "editable_name": "DDS Camaiore apd",
+        "name_variations": null,
+        "team_id": null,
+        "city_id": null,
+        "fuzzy_matches": [
+          {
+            "id": 1443,
+            "name": "DDS Camaiore apd",
+            "editable_name": "DDS Camaiore apd",
+            "name_variations": null,
+            "city_id": null,
+            "city_name": null,
+            "weight": 1.0,
+            "percentage": 100.0,
+            "color_class": "success",
+            "display_label": "DDS Camaiore apd (ID: 1443, no city, match: 100.0%)"
+          }
+        ]
+      },
+      {
+        "key": "DDS ssd",
+        "name": "Harberton Swimming Club ASD",
+        "editable_name": "Harberton Swimming Club ASD",
+        "name_variations": "DDS ssd;DDS",
+        "team_id": 50,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "DLF Nuoto Livorno",
+        "name": "Beverlyton Swimming Club ASD",
+        "editable_name": "Beverlyton Swimming Club ASD",
+        "name_variations": "D.L.F. LIVORNO;DLF Nuoto Livorno",
+        "team_id": 219,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Derthona Nuoto",
+        "name": "East Jovita Swimming Club ASD",
+        "editable_name": "East Jovita Swimming Club ASD",
+        "name_variations": "DERTHONA NUOTO",
+        "team_id": 48,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Dimensione NUOTO Pontedera Asd",
+        "name": "Elbertshire Swimming Club ASD",
+        "editable_name": "Elbertshire Swimming Club ASD",
+        "name_variations": "D.N. PONTEDERA;Dimensione Nuoto Pontedera;Dimensione N Pontedera",
+        "team_id": 111,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Domar Sporting Club ssd",
+        "name": "Port Barbera Swimming Club ASD",
+        "editable_name": "Port Barbera Swimming Club ASD",
+        "name_variations": "Domar Sporting Club;Domar Sporting Club ssd",
+        "team_id": 525,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Edoardo Antonelli ssd",
+        "name": "Prosaccoville Swimming Club ASD",
+        "editable_name": "Prosaccoville Swimming Club ASD",
+        "name_variations": "EDOARDO ANTONELLI 2;Edoardo Antonelli ssd",
+        "team_id": 432,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Effetto Sport - Barzano'",
+        "name": "Hettingerbury Swimming Club ASD",
+        "editable_name": "Hettingerbury Swimming Club ASD",
+        "name_variations": "Effetto Sport S.S.D. - Barzanò;Effetto Sport - Barzanò;Effetto Sport ssd",
+        "team_id": 836,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Emmedue ssd",
+        "name": "East Melany Swimming Club ASD",
+        "editable_name": "East Melany Swimming Club ASD",
+        "name_variations": "EMMEDUE SSD",
+        "team_id": 185,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Fermo Nuoto e Pallanuoto",
+        "name": "Fermo Nuoto e Pallanuoto",
+        "editable_name": "Fermo Nuoto e Pallanuoto",
+        "name_variations": "Fermo Nuoto e Pallanuoto",
+        "team_id": null,
+        "city_id": 188,
+        "fuzzy_matches": [
+          {
+            "id": 1385,
+            "name": "Fermo Nuoto e Pallanuoto",
+            "editable_name": "Fermo Nuoto e Pallanuoto",
+            "name_variations": "Fermo Nuoto e Pallanuoto",
+            "city_id": 188,
+            "city_name": "Fermo",
+            "weight": 1.0,
+            "percentage": 100.0,
+            "color_class": "success",
+            "display_label": "Fermo Nuoto e Pallanuoto (ID: 1385, Fermo, match: 100.0%)"
+          },
+          {
+            "id": 436,
+            "name": "FONTE ROMA EUR NUOTO",
+            "editable_name": "FONTE ROMA EUR NUOTO",
+            "name_variations": "FONTE ROMA EUR NUOTO",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.757,
+            "percentage": 75.7,
+            "color_class": "warning",
+            "display_label": "FONTE ROMA EUR NUOTO (ID: 436, no city, match: 75.7%)"
+          }
+        ]
+      },
+      {
+        "key": "Fin Plus ssd- Roma",
+        "name": "South Audrieview Swimming Club ASD",
+        "editable_name": "South Audrieview Swimming Club ASD",
+        "name_variations": "Ssd Fin Plus - Roma",
+        "team_id": 535,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Firenze Nuota Master",
+        "name": "Port Giuseppeberg Swimming Club ASD",
+        "editable_name": "Port Giuseppeberg Swimming Club ASD",
+        "name_variations": "FIRENZE NUOTA MASTER",
+        "team_id": 62,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Flaminio Sporting Club",
+        "name": "Kamalaview Swimming Club ASD",
+        "editable_name": "Kamalaview Swimming Club ASD",
+        "name_variations": "Flaminio Sporting Club;FLAMINIO SPORTING C;A.S.D. Flaminio Sporting Club",
+        "team_id": 202,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Fonte Meravigliosa Sport",
+        "name": "East Roseanna Swimming Club ASD",
+        "editable_name": "East Roseanna Swimming Club ASD",
+        "name_variations": "FONTE MERAVIGLIOSA SPORT",
+        "team_id": 789,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Forum Sport Center",
+        "name": "Kesslerstad Swimming Club ASD",
+        "editable_name": "Kesslerstad Swimming Club ASD",
+        "name_variations": "FORUM SPORT CENTER SSD;FORUM SPORT CENTER",
+        "team_id": 203,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Forum ssd - Assago",
+        "name": "South Wenona Swimming Club ASD",
+        "editable_name": "South Wenona Swimming Club ASD",
+        "name_variations": "Forum ssd - Assago;FORUM SSD",
+        "team_id": 96,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "G. Sport Village ssd",
+        "name": "G. Sport Village ssd",
+        "editable_name": "G. Sport Village ssd",
+        "name_variations": "G. Sport Village ssd",
+        "team_id": null,
+        "city_id": null,
+        "fuzzy_matches": [
+          {
+            "id": 1333,
+            "name": "G. Sport Village ssd",
+            "editable_name": "G. Sport Village ssd",
+            "name_variations": "G. Sport Village ssd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 1.0,
+            "percentage": 100.0,
+            "color_class": "success",
+            "display_label": "G. Sport Village ssd (ID: 1333, no city, match: 100.0%)"
+          },
+          {
+            "id": 359,
+            "name": "SPORT VILLAGE SSD",
+            "editable_name": "SPORT VILLAGE SSD",
+            "name_variations": "SPORT VILLAGE SSD -;SPORT VILLAGE SSD",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.808,
+            "percentage": 80.8,
+            "color_class": "warning",
+            "display_label": "SPORT VILLAGE SSD (ID: 359, no city, match: 80.8%)"
+          },
+          {
+            "id": 966,
+            "name": "Sport Village Onda",
+            "editable_name": "Sport Village Onda",
+            "name_variations": "Sport Village Onda",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.791,
+            "percentage": 79.1,
+            "color_class": "warning",
+            "display_label": "Sport Village Onda (ID: 966, no city, match: 79.1%)"
+          },
+          {
+            "id": 1058,
+            "name": "SPORT VILLAGE 2003",
+            "editable_name": "SPORT VILLAGE 2003",
+            "name_variations": "SPORT VILLAGE 2003",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.786,
+            "percentage": 78.6,
+            "color_class": "warning",
+            "display_label": "SPORT VILLAGE 2003 (ID: 1058, no city, match: 78.6%)"
+          },
+          {
+            "id": 1218,
+            "name": "Sport4life Ssd",
+            "editable_name": "Sport4life Ssd",
+            "name_variations": "Sport4life Ssd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.769,
+            "percentage": 76.9,
+            "color_class": "warning",
+            "display_label": "Sport4life Ssd (ID: 1218, no city, match: 76.9%)"
+          },
+          {
+            "id": 1323,
+            "name": "Olimpia Sport Village ssd",
+            "editable_name": "Olimpia Sport Village ssd",
+            "name_variations": "Olimpia Sport Village ssd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.756,
+            "percentage": 75.6,
+            "color_class": "warning",
+            "display_label": "Olimpia Sport Village ssd (ID: 1323, no city, match: 75.6%)"
+          },
+          {
+            "id": 1332,
+            "name": "Oasi Sport Village ssd",
+            "editable_name": "Oasi Sport Village ssd",
+            "name_variations": "Oasi Sport Village ssd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.748,
+            "percentage": 74.8,
+            "color_class": "warning",
+            "display_label": "Oasi Sport Village ssd (ID: 1332, no city, match: 74.8%)"
+          },
+          {
+            "id": 819,
+            "name": "C.I.S. NOVATE SSD",
+            "editable_name": "C.I.S. NOVATE SSD",
+            "name_variations": "C.I.S. NOVATE SSD",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.748,
+            "percentage": 74.8,
+            "color_class": "warning",
+            "display_label": "C.I.S. NOVATE SSD (ID: 819, no city, match: 74.8%)"
+          },
+          {
+            "id": 1143,
+            "name": "Maiella Nuoto SSD",
+            "editable_name": "Maiella Nuoto SSD",
+            "name_variations": "Maiella Nuoto SSD;A.S.Maiella Nuoto;Maiella Nuoto ssd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.746,
+            "percentage": 74.6,
+            "color_class": "warning",
+            "display_label": "Maiella Nuoto SSD (ID: 1143, no city, match: 74.6%)"
+          }
+        ]
+      },
+      {
+        "key": "G.A.M. Team ssd - Brescia",
+        "name": "Port Karimamouth Swimming Club ASD",
+        "editable_name": "Port Karimamouth Swimming Club ASD",
+        "name_variations": "G.A.M. TEAM;G.A.M. Team ssd - Brescia",
+        "team_id": 49,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "G.P. Nuoto Mira",
+        "name": "Lake Audrea Swimming Club ASD",
+        "editable_name": "Lake Audrea Swimming Club ASD",
+        "name_variations": "S.S.D. G.P. NUOTO MIRA a r.l.;G.P. Nuoto Mira",
+        "team_id": 172,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Gonzaga Sport Club ssd",
+        "name": "Cummingsside Swimming Club ASD",
+        "editable_name": "Cummingsside Swimming Club ASD",
+        "name_variations": "Gonzaga Sport Club ssd",
+        "team_id": 874,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Gryphus Sporting Club",
+        "name": "Port Lorinaport Swimming Club ASD",
+        "editable_name": "Port Lorinaport Swimming Club ASD",
+        "name_variations": "GRYPHUS SPORTING CLUB",
+        "team_id": 821,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "H. Sport ssd - Firenze",
+        "name": "H. Sport ssd - Firenze",
+        "editable_name": "H. Sport ssd - Firenze",
+        "name_variations": "H. Sport ssd - Firenze",
+        "team_id": null,
+        "city_id": 99,
+        "fuzzy_matches": [
+          {
+            "id": 1359,
+            "name": "H. Sport ssd - Firenze",
+            "editable_name": "H. Sport ssd - Firenze",
+            "name_variations": "H. Sport ssd - Firenze",
+            "city_id": 99,
+            "city_name": "Firenze",
+            "weight": 1.0,
+            "percentage": 100.0,
+            "color_class": "success",
+            "display_label": "H. Sport ssd - Firenze (ID: 1359, Firenze, match: 100.0%)"
+          },
+          {
+            "id": 1089,
+            "name": "OLD STARS FIRENZE",
+            "editable_name": "OLD STARS FIRENZE",
+            "name_variations": "OLD STARS FIRENZE",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.769,
+            "percentage": 76.9,
+            "color_class": "warning",
+            "display_label": "OLD STARS FIRENZE (ID: 1089, no city, match: 76.9%)"
+          },
+          {
+            "id": 976,
+            "name": "Nuoto Club Firenze",
+            "editable_name": "Nuoto Club Firenze",
+            "name_variations": "Nuoto Club Firenze",
+            "city_id": 99,
+            "city_name": "Firenze",
+            "weight": 0.76,
+            "percentage": 76.0,
+            "color_class": "warning",
+            "display_label": "Nuoto Club Firenze (ID: 976, Firenze, match: 76.0%)"
+          },
+          {
+            "id": 1305,
+            "name": "Aqua Sport ssd - Cagliari",
+            "editable_name": "Aqua Sport ssd - Cagliari",
+            "name_variations": "Aqua Sport ssd - Cagliari;Aqua Sport ssd;Acqua Sport ssd - Cagliari",
+            "city_id": 83,
+            "city_name": "Cagliari",
+            "weight": 0.756,
+            "percentage": 75.6,
+            "color_class": "warning",
+            "display_label": "Aqua Sport ssd - Cagliari (ID: 1305, Cagliari, match: 75.6%)"
+          }
+        ]
+      },
+      {
+        "key": "Heaven Due ssd",
+        "name": "Port Corene Swimming Club ASD",
+        "editable_name": "Port Corene Swimming Club ASD",
+        "name_variations": "HEAVEN 2 SSD;Heaven Due ssd",
+        "team_id": 440,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Idra Nuoto e Fitness ssd",
+        "name": "Idra Nuoto e Fitness ssd",
+        "editable_name": "Idra Nuoto e Fitness ssd",
+        "name_variations": "Idra Nuoto e Fitness ssd",
+        "team_id": null,
+        "city_id": null,
+        "fuzzy_matches": [
+          {
+            "id": 1461,
+            "name": "Idra Nuoto e Fitness ssd",
+            "editable_name": "Idra Nuoto e Fitness ssd",
+            "name_variations": "Idra Nuoto e Fitness ssd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 1.0,
+            "percentage": 100.0,
+            "color_class": "success",
+            "display_label": "Idra Nuoto e Fitness ssd (ID: 1461, no city, match: 100.0%)"
+          },
+          {
+            "id": 303,
+            "name": "CLODIA PISCINA E FITNESS",
+            "editable_name": "Clodia Piscina & Fitness - Chio",
+            "name_variations": "CLODIA PISCINA E FITNESS;Clodia Piscina & Fitness - Chio;CLODIA PISCINA FITN;Clodia Piscina & F - Chio",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.811,
+            "percentage": 81.1,
+            "color_class": "warning",
+            "display_label": "Clodia Piscina & Fitness - Chio (ID: 303, no city, match: 81.1%)"
+          },
+          {
+            "id": 1233,
+            "name": "Sport Nuoto E Fitness Ssd",
+            "editable_name": "Sport Nuoto E Fitness Ssd",
+            "name_variations": "Sport Nuoto E Fitness Ssd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.798,
+            "percentage": 79.8,
+            "color_class": "warning",
+            "display_label": "Sport Nuoto E Fitness Ssd (ID: 1233, no city, match: 79.8%)"
+          },
+          {
+            "id": 221,
+            "name": "Nuotatori Genovesi ssd",
+            "editable_name": "Nuotatori Genovesi ssd",
+            "name_variations": "NUOTATORI GENOVESI;Nuotatori Genovesi ssd",
+            "city_id": 17,
+            "city_name": "Genova",
+            "weight": 0.767,
+            "percentage": 76.7,
+            "color_class": "warning",
+            "display_label": "Nuotatori Genovesi ssd (ID: 221, Genova, match: 76.7%)"
+          },
+          {
+            "id": 923,
+            "name": "Life Pool & Fitness Ssd",
+            "editable_name": "Life Pool & Fitness Ssd",
+            "name_variations": "Life Pool & Fitness Ssd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.76,
+            "percentage": 76.0,
+            "color_class": "warning",
+            "display_label": "Life Pool & Fitness Ssd (ID: 923, no city, match: 76.0%)"
+          },
+          {
+            "id": 842,
+            "name": "PISCINE STADIO FITNESS SS",
+            "editable_name": "PISCINE STADIO FITNESS SS",
+            "name_variations": "PISCINE STADIO FITNESS SS",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.755,
+            "percentage": 75.5,
+            "color_class": "warning",
+            "display_label": "PISCINE STADIO FITNESS SS (ID: 842, no city, match: 75.5%)"
+          },
+          {
+            "id": 829,
+            "name": "Interamnia Fitness asd",
+            "editable_name": "Interamnia Fitness asd",
+            "name_variations": "Interamnia Fitness asd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.751,
+            "percentage": 75.1,
+            "color_class": "warning",
+            "display_label": "Interamnia Fitness asd (ID: 829, no city, match: 75.1%)"
+          },
+          {
+            "id": 1351,
+            "name": "US Triestina Nuoto ssd",
+            "editable_name": "US Triestina Nuoto",
+            "name_variations": "US Triestina Nuoto ssd;US Triestina Nuoto;Triestina Nuoto",
+            "city_id": 48,
+            "city_name": "Trieste",
+            "weight": 0.75,
+            "percentage": 75.0,
+            "color_class": "warning",
+            "display_label": "US Triestina Nuoto (ID: 1351, Trieste, match: 75.0%)"
+          },
+          {
+            "id": 1234,
+            "name": "Asd Neri Fitness Club",
+            "editable_name": "Asd Neri Fitness Club",
+            "name_variations": "Asd Neri Fitness Club",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.75,
+            "percentage": 75.0,
+            "color_class": "warning",
+            "display_label": "Asd Neri Fitness Club (ID: 1234, no city, match: 75.0%)"
+          },
+          {
+            "id": 1160,
+            "name": "Sports And Events Ssd",
+            "editable_name": "Sports And Events Ssd",
+            "name_variations": "Sports And Events Ssd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.745,
+            "percentage": 74.5,
+            "color_class": "warning",
+            "display_label": "Sports And Events Ssd (ID: 1160, no city, match: 74.5%)"
+          }
+        ]
+      },
+      {
+        "key": "Imolanuoto ssd a r.l.",
+        "name": "New Toshiko Swimming Club ASD",
+        "editable_name": "New Toshiko Swimming Club ASD",
+        "name_variations": "IMOLANUOTO;IMOLANUOTO SSD A R.L.",
+        "team_id": 17,
+        "city_id": 19,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "In Sport Rane Rosse",
+        "name": "Beverleeburgh Swimming Club ASD",
+        "editable_name": "Beverleeburgh Swimming Club ASD",
+        "name_variations": "In Sport Rane Rosse;IN SPORT SRL",
+        "team_id": 478,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Klab Sport ssd",
+        "name": "Klab Sport ssd",
+        "editable_name": "Klab Sport ssd",
+        "name_variations": "Klab Florence Sport;Klab Sport ssd",
+        "team_id": null,
+        "city_id": 99,
+        "fuzzy_matches": [
+          {
+            "id": 1388,
+            "name": "Klab Sport ssd",
+            "editable_name": "Klab Sport ssd",
+            "name_variations": "Klab Florence Sport;Klab Sport ssd",
+            "city_id": 99,
+            "city_name": "Firenze",
+            "weight": 1.0,
+            "percentage": 100.0,
+            "color_class": "success",
+            "display_label": "Klab Sport ssd (ID: 1388, Firenze, match: 100.0%)"
+          },
+          {
+            "id": 1256,
+            "name": "BLU SPORT S.S.D.",
+            "editable_name": "BLU SPORT S.S.D.",
+            "name_variations": "BLU SPORT S.S.D.",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.825,
+            "percentage": 82.5,
+            "color_class": "warning",
+            "display_label": "BLU SPORT S.S.D. (ID: 1256, no city, match: 82.5%)"
+          },
+          {
+            "id": 1227,
+            "name": "Aly Sport asd",
+            "editable_name": "Aly Sport A.S.D.",
+            "name_variations": "Aly Sport A.S.D.;A.S.D. Aly Sport;Asd Aly Sport;Aly Sport asd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.822,
+            "percentage": 82.2,
+            "color_class": "warning",
+            "display_label": "Aly Sport A.S.D. (ID: 1227, no city, match: 82.2%)"
+          },
+          {
+            "id": 524,
+            "name": "Daily Sport asd",
+            "editable_name": "Daily Sport asd",
+            "name_variations": "Daily Sport asd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.794,
+            "percentage": 79.4,
+            "color_class": "warning",
+            "display_label": "Daily Sport asd (ID: 524, no city, match: 79.4%)"
+          },
+          {
+            "id": 1063,
+            "name": "La Seneta Ssd",
+            "editable_name": "La Seneta Ssd",
+            "name_variations": "La Seneta Ssd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.764,
+            "percentage": 76.4,
+            "color_class": "warning",
+            "display_label": "La Seneta Ssd (ID: 1063, no city, match: 76.4%)"
+          },
+          {
+            "id": 407,
+            "name": "DYNAMIC SPORT ASD",
+            "editable_name": "DYNAMIC SPORT ASD",
+            "name_variations": "DYNAMIC SPORT ASD",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.761,
+            "percentage": 76.1,
+            "color_class": "warning",
+            "display_label": "DYNAMIC SPORT ASD (ID: 407, no city, match: 76.1%)"
+          },
+          {
+            "id": 1285,
+            "name": "Ta.Bu. ssd",
+            "editable_name": "Ta.Bu. SSD",
+            "name_variations": "Ta.Bu. ssd;apd Ta.Bu.;Ta.Bu. SSD",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.758,
+            "percentage": 75.8,
+            "color_class": "warning",
+            "display_label": "Ta.Bu. SSD (ID: 1285, no city, match: 75.8%)"
+          },
+          {
+            "id": 226,
+            "name": "Sisport Spa ssd",
+            "editable_name": "Sisport Spa ssd",
+            "name_variations": "SISPORT S.P.A.;SISPORT FIAT S.P.A.;Sisport Spa ssd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.751,
+            "percentage": 75.1,
+            "color_class": "warning",
+            "display_label": "Sisport Spa ssd (ID: 226, no city, match: 75.1%)"
+          },
+          {
+            "id": 223,
+            "name": "Rapallo Nuoto ssd",
+            "editable_name": "Rapallo Nuoto ssd",
+            "name_variations": "Rapallo Nuoto ssd;RAPALLO N.",
+            "city_id": 53,
+            "city_name": "via S. Pietro di Novella, 35",
+            "weight": 0.744,
+            "percentage": 74.4,
+            "color_class": "warning",
+            "display_label": "Rapallo Nuoto ssd (ID: 223, via S. Pietro di Novella, 35, match: 74.4%)"
+          },
+          {
+            "id": 729,
+            "name": "ARIA SPORT S.S.D.",
+            "editable_name": "ARIA SPORT S.S.D.",
+            "name_variations": "ARIA SPORT S.S.D.",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.744,
+            "percentage": 74.4,
+            "color_class": "warning",
+            "display_label": "ARIA SPORT S.S.D. (ID: 729, no city, match: 74.4%)"
+          },
+          {
+            "id": 1022,
+            "name": "SALARIA NUOTO SSD",
+            "editable_name": "SALARIA NUOTO SSD",
+            "name_variations": "SALARIA NUOTO SSD",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.744,
+            "percentage": 74.4,
+            "color_class": "warning",
+            "display_label": "SALARIA NUOTO SSD (ID: 1022, no city, match: 74.4%)"
+          },
+          {
+            "id": 1305,
+            "name": "Aqua Sport ssd - Cagliari",
+            "editable_name": "Aqua Sport ssd - Cagliari",
+            "name_variations": "Aqua Sport ssd - Cagliari;Aqua Sport ssd;Acqua Sport ssd - Cagliari",
+            "city_id": 83,
+            "city_name": "Cagliari",
+            "weight": 0.743,
+            "percentage": 74.3,
+            "color_class": "warning",
+            "display_label": "Aqua Sport ssd - Cagliari (ID: 1305, Cagliari, match: 74.3%)"
+          },
+          {
+            "id": 237,
+            "name": "MOZZATE SPORT SSD",
+            "editable_name": "MOZZATE SPORT SSD",
+            "name_variations": "MOZZATE SPORT SSD",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.742,
+            "percentage": 74.2,
+            "color_class": "warning",
+            "display_label": "MOZZATE SPORT SSD (ID: 237, no city, match: 74.2%)"
+          },
+          {
+            "id": 1033,
+            "name": "PIANETA SPORT SSD -",
+            "editable_name": "PIANETA SPORT SSD -",
+            "name_variations": "PIANETA SPORT SSD -",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.742,
+            "percentage": 74.2,
+            "color_class": "warning",
+            "display_label": "PIANETA SPORT SSD - (ID: 1033, no city, match: 74.2%)"
+          },
+          {
+            "id": 786,
+            "name": "INSUBRIKA NUOTO SSD",
+            "editable_name": "INSUBRIKA NUOTO SSD",
+            "name_variations": "INSUBRIKA NUOTO SSD;Insubrika Nuoto - Verbani",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.742,
+            "percentage": 74.2,
+            "color_class": "warning",
+            "display_label": "INSUBRIKA NUOTO SSD (ID: 786, no city, match: 74.2%)"
+          }
+        ]
+      },
+      {
+        "key": "Komaros Sub Ancona Asd",
+        "name": "Medhurstville Swimming Club ASD",
+        "editable_name": "Medhurstville Swimming Club ASD",
+        "name_variations": "KOMAROS SUB ANCONA",
+        "team_id": 126,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "La Meridiana Sport",
+        "name": "Donellashire Swimming Club ASD",
+        "editable_name": "Donellashire Swimming Club ASD",
+        "name_variations": "La Meridiana Sport Ssd Ar",
+        "team_id": 1213,
+        "city_id": 19,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Lecco Olimpica Nuoto",
+        "name": "Trompmouth Swimming Club ASD",
+        "editable_name": "Trompmouth Swimming Club ASD",
+        "name_variations": "Lecco Olimpica Nuoto;LECCOLIMPICA NUOTO",
+        "team_id": 85,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Leonessa Nuoto asd",
+        "name": "Leonessa Nuoto asd",
+        "editable_name": "Leonessa Nuoto asd",
+        "name_variations": "Leonessa Nuoto asd",
+        "team_id": null,
+        "city_id": null,
+        "fuzzy_matches": [
+          {
+            "id": 1464,
+            "name": "Leonessa Nuoto asd",
+            "editable_name": "Leonessa Nuoto asd",
+            "name_variations": "Leonessa Nuoto asd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 1.0,
+            "percentage": 100.0,
+            "color_class": "success",
+            "display_label": "Leonessa Nuoto asd (ID: 1464, no city, match: 100.0%)"
+          },
+          {
+            "id": 675,
+            "name": "Cosenza Nuoto asd",
+            "editable_name": "Cosenza Nuoto asd",
+            "name_variations": "AS COSENZA NUOTO;Cosenza Nuoto asd",
+            "city_id": 172,
+            "city_name": "Cosenza",
+            "weight": 0.839,
+            "percentage": 83.9,
+            "color_class": "warning",
+            "display_label": "Cosenza Nuoto asd (ID: 675, Cosenza, match: 83.9%)"
+          },
+          {
+            "id": 854,
+            "name": "Rane Rosse asd",
+            "editable_name": "Rane Rosse asd",
+            "name_variations": "Rane Rosse asd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.821,
+            "percentage": 82.1,
+            "color_class": "warning",
+            "display_label": "Rane Rosse asd (ID: 854, no city, match: 82.1%)"
+          },
+          {
+            "id": 1232,
+            "name": "Solbiatese Nuoto Asd",
+            "editable_name": "Solbiatese Nuoto Asd",
+            "name_variations": "Solbiatese Nuoto Asd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.817,
+            "percentage": 81.7,
+            "color_class": "warning",
+            "display_label": "Solbiatese Nuoto Asd (ID: 1232, no city, match: 81.7%)"
+          },
+          {
+            "id": 700,
+            "name": "ENERGY SPLASH ASD",
+            "editable_name": "ENERGY SPLASH ASD",
+            "name_variations": "ENERGY SPLASH ASD",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.791,
+            "percentage": 79.1,
+            "color_class": "warning",
+            "display_label": "ENERGY SPLASH ASD (ID: 700, no city, match: 79.1%)"
+          },
+          {
+            "id": 546,
+            "name": "OLBIA NUOTO ASD",
+            "editable_name": "OLBIA NUOTO ASD",
+            "name_variations": "OLBIA NUOTO ASD",
+            "city_id": 74,
+            "city_name": "Olbia",
+            "weight": 0.791,
+            "percentage": 79.1,
+            "color_class": "warning",
+            "display_label": "OLBIA NUOTO ASD (ID: 546, Olbia, match: 79.1%)"
+          },
+          {
+            "id": 1293,
+            "name": "Palermo Nuoto asd",
+            "editable_name": "Palermo Nuoto asd",
+            "name_variations": "Palermo Nuoto asd",
+            "city_id": 76,
+            "city_name": "Palermo",
+            "weight": 0.78,
+            "percentage": 78.0,
+            "color_class": "warning",
+            "display_label": "Palermo Nuoto asd (ID: 1293, Palermo, match: 78.0%)"
+          },
+          {
+            "id": 297,
+            "name": "AREZZO NUOTO ASD",
+            "editable_name": "AREZZO NUOTO ASD",
+            "name_variations": "AREZZO NUOTO ASD;Arezzo Nuoto",
+            "city_id": 52,
+            "city_name": "Arezzo",
+            "weight": 0.777,
+            "percentage": 77.7,
+            "color_class": "warning",
+            "display_label": "AREZZO NUOTO ASD (ID: 297, Arezzo, match: 77.7%)"
+          },
+          {
+            "id": 815,
+            "name": "Napoli Nuoto ssd",
+            "editable_name": "Napoli Nuoto ssd",
+            "name_variations": "CIRC.SPORT.NAPOLI NUOTO;Napoli Nuoto ssd",
+            "city_id": 92,
+            "city_name": "Napoli",
+            "weight": 0.777,
+            "percentage": 77.7,
+            "color_class": "warning",
+            "display_label": "Napoli Nuoto ssd (ID: 815, Napoli, match: 77.7%)"
+          },
+          {
+            "id": 1124,
+            "name": "OSTIGLIA NUOTO ASD",
+            "editable_name": "OSTIGLIA NUOTO ASD",
+            "name_variations": "OSTIGLIA NUOTO ASD",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.768,
+            "percentage": 76.8,
+            "color_class": "warning",
+            "display_label": "OSTIGLIA NUOTO ASD (ID: 1124, no city, match: 76.8%)"
+          },
+          {
+            "id": 252,
+            "name": "BRINDISI NUOTO ASD",
+            "editable_name": "BRINDISI NUOTO ASD",
+            "name_variations": "BRINDISI NUOTO ASD",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.768,
+            "percentage": 76.8,
+            "color_class": "warning",
+            "display_label": "BRINDISI NUOTO ASD (ID: 252, no city, match: 76.8%)"
+          },
+          {
+            "id": 487,
+            "name": "CUS SALERNO ASD",
+            "editable_name": "CUS SALERNO ASD",
+            "name_variations": "CUS SALERNO ASD",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.767,
+            "percentage": 76.7,
+            "color_class": "warning",
+            "display_label": "CUS SALERNO ASD (ID: 487, no city, match: 76.7%)"
+          },
+          {
+            "id": 880,
+            "name": "Suprema Nuoto asd",
+            "editable_name": "Suprema Nuoto asd",
+            "name_variations": "Suprema Nuoto asd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.765,
+            "percentage": 76.5,
+            "color_class": "warning",
+            "display_label": "Suprema Nuoto asd (ID: 880, no city, match: 76.5%)"
+          },
+          {
+            "id": 1368,
+            "name": "Village Nuoto asd",
+            "editable_name": "Village Nuoto asd",
+            "name_variations": "Village Nuoto asd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.765,
+            "percentage": 76.5,
+            "color_class": "warning",
+            "display_label": "Village Nuoto asd (ID: 1368, no city, match: 76.5%)"
+          },
+          {
+            "id": 1396,
+            "name": "SIS Nuoto Verona asd",
+            "editable_name": "SIS Nuoto Verona",
+            "name_variations": "SIS Nuoto Verona asd;SIS Nuoto Verona;Sis Nuoto Verona asd",
+            "city_id": 128,
+            "city_name": "Verona",
+            "weight": 0.76,
+            "percentage": 76.0,
+            "color_class": "warning",
+            "display_label": "SIS Nuoto Verona (ID: 1396, Verona, match: 76.0%)"
+          },
+          {
+            "id": 828,
+            "name": "AVEZZANO NUOTO S.S.DIL.",
+            "editable_name": "AVEZZANO NUOTO S.S.DIL.",
+            "name_variations": "AVEZZANO NUOTO S.S.DIL.",
+            "city_id": 139,
+            "city_name": "Avezzano",
+            "weight": 0.757,
+            "percentage": 75.7,
+            "color_class": "warning",
+            "display_label": "AVEZZANO NUOTO S.S.DIL. (ID: 828, Avezzano, match: 75.7%)"
+          },
+          {
+            "id": 559,
+            "name": "FUMANE NUOTO ASD",
+            "editable_name": "FUMANE NUOTO ASD",
+            "name_variations": "FUMANE NUOTO ASD",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.753,
+            "percentage": 75.3,
+            "color_class": "warning",
+            "display_label": "FUMANE NUOTO ASD (ID: 559, no city, match: 75.3%)"
+          },
+          {
+            "id": 633,
+            "name": "Gorizia Nuoto ASD",
+            "editable_name": "Gorizia Nuoto A.S.D.",
+            "name_variations": "Gorizia Nuoto A.S.D.;Gorizia Nuoto ASD;A.S.DILETT. GORIZIA;A.S.D. GORIZIA Nuoto",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.752,
+            "percentage": 75.2,
+            "color_class": "warning",
+            "display_label": "Gorizia Nuoto A.S.D. (ID: 633, no city, match: 75.2%)"
+          },
+          {
+            "id": 888,
+            "name": "Green Alghero asd",
+            "editable_name": "Green Alghero asd",
+            "name_variations": "Green Alghero asd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.748,
+            "percentage": 74.8,
+            "color_class": "warning",
+            "display_label": "Green Alghero asd (ID: 888, no city, match: 74.8%)"
+          },
+          {
+            "id": 408,
+            "name": "Nuoto Chivasso asd",
+            "editable_name": "Nuoto Chivasso asd",
+            "name_variations": "LIB. NUOTO CHIVASSO;Libertas Nuoto Chivasso;Nuoto Chivasso asd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.746,
+            "percentage": 74.6,
+            "color_class": "warning",
+            "display_label": "Nuoto Chivasso asd (ID: 408, no city, match: 74.6%)"
+          },
+          {
+            "id": 1400,
+            "name": "RENDE NUOTO ASD",
+            "editable_name": "RENDE NUOTO ASD",
+            "name_variations": "RENDE NUOTO ASD;Rende Nuoto ssd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.743,
+            "percentage": 74.3,
+            "color_class": "warning",
+            "display_label": "RENDE NUOTO ASD (ID: 1400, no city, match: 74.3%)"
+          },
+          {
+            "id": 892,
+            "name": "Massa Lubrense Nuoto Asd",
+            "editable_name": "Massa Lubrense Nuoto Asd",
+            "name_variations": "Massa Lubrense Nuoto Asd",
+            "city_id": 116,
+            "city_name": "Massalubrense",
+            "weight": 0.742,
+            "percentage": 74.2,
+            "color_class": "warning",
+            "display_label": "Massa Lubrense Nuoto Asd (ID: 892, Massalubrense, match: 74.2%)"
+          },
+          {
+            "id": 67,
+            "name": "MODENA NUOTO",
+            "editable_name": "MODENA NUOTO",
+            "name_variations": "MODENA NUOTO",
+            "city_id": 27,
+            "city_name": "Molinella",
+            "weight": 0.74,
+            "percentage": 74.0,
+            "color_class": "warning",
+            "display_label": "MODENA NUOTO (ID: 67, Molinella, match: 74.0%)"
+          }
+        ]
+      },
+      {
+        "key": "MY TRAINERS CLUB S.S.D. a r.l.",
+        "name": "MY TRAINERS CLUB S.S.D. a r.l.",
+        "editable_name": "MY TRAINERS CLUB S.S.D. a r.l.",
+        "name_variations": null,
+        "team_id": null,
+        "city_id": null,
+        "fuzzy_matches": [
+          {
+            "id": 1532,
+            "name": "MY TRAINERS CLUB S.S.D. a r.l.",
+            "editable_name": "MY TRAINERS CLUB S.S.D. a r.l.",
+            "name_variations": null,
+            "city_id": null,
+            "city_name": null,
+            "weight": 1.0,
+            "percentage": 100.0,
+            "color_class": "success",
+            "display_label": "MY TRAINERS CLUB S.S.D. a r.l. (ID: 1532, no city, match: 100.0%)"
+          }
+        ]
+      },
+      {
+        "key": "Master Melzo Nuoto",
+        "name": "New Tashia Swimming Club ASD",
+        "editable_name": "New Tashia Swimming Club ASD",
+        "name_variations": "MASTER MELZO N;Master Melzo Nuoto",
+        "team_id": 64,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Milano Nuoto Master asd",
+        "name": "New Kyliebury Swimming Club ASD",
+        "editable_name": "New Kyliebury Swimming Club ASD",
+        "name_variations": "Milano Nuoto Master asd;MILANO NUOTO MASTER",
+        "team_id": 236,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Mirano Nuoto",
+        "name": "New Jasmine Swimming Club ASD",
+        "editable_name": "New Jasmine Swimming Club ASD",
+        "name_variations": "MIRANO NUOTO S.S.D.;MIRANO NUOTO",
+        "team_id": 979,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Montenuoto ssd",
+        "name": "Selinahaven Swimming Club ASD",
+        "editable_name": "Selinahaven Swimming Club ASD",
+        "name_variations": "MONTENUOTO S.S.D. A R.L.;Montenuoto ssd;MONTENUOTO",
+        "team_id": 161,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Muovi Lecce ssd",
+        "name": "New Danyell Swimming Club ASD",
+        "editable_name": "New Danyell Swimming Club ASD",
+        "name_variations": "MUOVI LECCE SSD",
+        "team_id": 585,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "NC RN Cairo M.Acqui Terme",
+        "name": "South Yukoburgh Swimming Club ASD",
+        "editable_name": "South Yukoburgh Swimming Club ASD",
+        "name_variations": "Nc Rn Cairo M.Acqui Terme",
+        "team_id": 1206,
+        "city_id": 41,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "NS Marche ssd",
+        "name": "NS Marche SSD",
+        "editable_name": "NS Marche SSD",
+        "name_variations": "NS Marche SSD",
+        "team_id": null,
+        "city_id": null,
+        "fuzzy_matches": [
+          {
+            "id": 1386,
+            "name": "NS Marche SSD",
+            "editable_name": "NS Marche SSD",
+            "name_variations": "NS Marche SSD",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.958,
+            "percentage": 95.8,
+            "color_class": "success",
+            "display_label": "NS Marche SSD (ID: 1386, no city, match: 95.8%)"
+          },
+          {
+            "id": 1431,
+            "name": "NS Emilia SSD",
+            "editable_name": "NS Emilia SSD",
+            "name_variations": "NS Emilia SSD",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.794,
+            "percentage": 79.4,
+            "color_class": "warning",
+            "display_label": "NS Emilia SSD (ID: 1431, no city, match: 79.4%)"
+          },
+          {
+            "id": 447,
+            "name": "00100 Sporting Club Roma ssd",
+            "editable_name": "00100 Sporting Club Roma ssd",
+            "name_variations": "SPORT. C. ROMA ASD;00100 Sporting Club Roma ssd;Sporting Club Roma ssd",
+            "city_id": 72,
+            "city_name": "Roma",
+            "weight": 0.779,
+            "percentage": 77.9,
+            "color_class": "warning",
+            "display_label": "00100 Sporting Club Roma ssd (ID: 447, Roma, match: 77.9%)"
+          },
+          {
+            "id": 1405,
+            "name": "Centro Sport Roma ssd",
+            "editable_name": "Centro Sport Roma SSD",
+            "name_variations": "Centro Sport Roma SSD;Centro Sport Roma ssd",
+            "city_id": 72,
+            "city_name": "Roma",
+            "weight": 0.779,
+            "percentage": 77.9,
+            "color_class": "warning",
+            "display_label": "Centro Sport Roma SSD (ID: 1405, Roma, match: 77.9%)"
+          },
+          {
+            "id": 1662,
+            "name": "AN Brescia SSD",
+            "editable_name": "A.N. Brescia S.S.D.",
+            "name_variations": "A.N. Brescia S.S.D.;AN Brescia SSD;an Brescia ssd",
+            "city_id": 4,
+            "city_name": "Brescia",
+            "weight": 0.771,
+            "percentage": 77.1,
+            "color_class": "warning",
+            "display_label": "A.N. Brescia S.S.D. (ID: 1662, Brescia, match: 77.1%)"
+          },
+          {
+            "id": 840,
+            "name": "Sporting Club 63 ssd",
+            "editable_name": "Sporting Club 63 ssd",
+            "name_variations": "Sporting Club 63 ssd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.766,
+            "percentage": 76.6,
+            "color_class": "warning",
+            "display_label": "Sporting Club 63 ssd (ID: 840, no city, match: 76.6%)"
+          },
+          {
+            "id": 446,
+            "name": "ROMA 2000 SSD",
+            "editable_name": "ROMA 2000 SSD",
+            "name_variations": "ROMA 2000 SSD",
+            "city_id": 72,
+            "city_name": "Roma",
+            "weight": 0.761,
+            "percentage": 76.1,
+            "color_class": "warning",
+            "display_label": "ROMA 2000 SSD (ID: 446, Roma, match: 76.1%)"
+          },
+          {
+            "id": 310,
+            "name": "MARCHE NUOTO",
+            "editable_name": "MARCHE NUOTO",
+            "name_variations": "MARCHE NUOTO",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.759,
+            "percentage": 75.9,
+            "color_class": "warning",
+            "display_label": "MARCHE NUOTO (ID: 310, no city, match: 75.9%)"
+          },
+          {
+            "id": 1576,
+            "name": "Sport Active ssd",
+            "editable_name": "Sport Active ssd",
+            "name_variations": "Sport Active ssd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.758,
+            "percentage": 75.8,
+            "color_class": "warning",
+            "display_label": "Sport Active ssd (ID: 1576, no city, match: 75.8%)"
+          },
+          {
+            "id": 819,
+            "name": "C.I.S. NOVATE SSD",
+            "editable_name": "C.I.S. NOVATE SSD",
+            "name_variations": "C.I.S. NOVATE SSD",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.748,
+            "percentage": 74.8,
+            "color_class": "warning",
+            "display_label": "C.I.S. NOVATE SSD (ID: 819, no city, match: 74.8%)"
+          },
+          {
+            "id": 800,
+            "name": "Città Sport Vicenza ssd",
+            "editable_name": "Città Sport Vicenza ssd",
+            "name_variations": "CITTÀ DELLO SPORT SSD;Città Sport Vicenza ssd",
+            "city_id": 68,
+            "city_name": "Vicenza",
+            "weight": 0.746,
+            "percentage": 74.6,
+            "color_class": "warning",
+            "display_label": "Città Sport Vicenza ssd (ID: 800, Vicenza, match: 74.6%)"
+          },
+          {
+            "id": 1381,
+            "name": "NP Varedo SSD",
+            "editable_name": "NP Varedo SSD",
+            "name_variations": "NP Varedo SSD",
+            "city_id": 49,
+            "city_name": "Varedo",
+            "weight": 0.746,
+            "percentage": 74.6,
+            "color_class": "warning",
+            "display_label": "NP Varedo SSD (ID: 1381, Varedo, match: 74.6%)"
+          },
+          {
+            "id": 1517,
+            "name": "Sport Project ssd",
+            "editable_name": "Sport Project ssd",
+            "name_variations": "Sport Project ssd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.746,
+            "percentage": 74.6,
+            "color_class": "warning",
+            "display_label": "Sport Project ssd (ID: 1517, no city, match: 74.6%)"
+          },
+          {
+            "id": 95,
+            "name": "CORSIA 8 SSD",
+            "editable_name": "CORSIA 8 SSD",
+            "name_variations": "CORSIA 8 SSD",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.743,
+            "percentage": 74.3,
+            "color_class": "warning",
+            "display_label": "CORSIA 8 SSD (ID: 95, no city, match: 74.3%)"
+          },
+          {
+            "id": 727,
+            "name": "Centro Nuoto Rosa' SSD",
+            "editable_name": "Centro Nuoto Rosà SSD",
+            "name_variations": "Centro Nuoto Rosa' SSD;CENTRO NUOTO ROSA';Centro Nuoto Rosà SSD;Centro Nuoto Rosa ' ssd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.743,
+            "percentage": 74.3,
+            "color_class": "warning",
+            "display_label": "Centro Nuoto Rosà SSD (ID: 727, no city, match: 74.3%)"
+          },
+          {
+            "id": 1417,
+            "name": "Centro Nuoto Roma ssd",
+            "editable_name": "Centro Nuoto Roma ssd",
+            "name_variations": "Centro Nuoto Roma ssd",
+            "city_id": 72,
+            "city_name": "Roma",
+            "weight": 0.743,
+            "percentage": 74.3,
+            "color_class": "warning",
+            "display_label": "Centro Nuoto Roma ssd (ID: 1417, Roma, match: 74.3%)"
+          },
+          {
+            "id": 382,
+            "name": "ROMA NUOTO MASTER ssd",
+            "editable_name": "ROMA NUOTO MASTER",
+            "name_variations": "ROMA NUOTO MASTER ASD;ROMA NUOTO MASTER ssd",
+            "city_id": 72,
+            "city_name": "Roma",
+            "weight": 0.741,
+            "percentage": 74.1,
+            "color_class": "warning",
+            "display_label": "ROMA NUOTO MASTER (ID: 382, Roma, match: 74.1%)"
+          }
+        ]
+      },
+      {
+        "key": "Natatio Master Team asd",
+        "name": "Feestborough Swimming Club ASD",
+        "editable_name": "Feestborough Swimming Club ASD",
+        "name_variations": "Natatio Master Team asd",
+        "team_id": 851,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Nautilus ssd",
+        "name": "Markston Swimming Club ASD",
+        "editable_name": "Markston Swimming Club ASD",
+        "name_variations": "NAUTILUS SSD",
+        "team_id": 206,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "New Swim asd - Castiglion",
+        "name": "Prohaskaville Swimming Club ASD",
+        "editable_name": "Prohaskaville Swimming Club ASD",
+        "name_variations": "New Swim asd - Castiglione;NEW SWIM;New Swim asd - Castiglion",
+        "team_id": 480,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Nord Padania Nuoto",
+        "name": "Meridithburgh Swimming Club ASD",
+        "editable_name": "Meridithburgh Swimming Club ASD",
+        "name_variations": "Nord Padania Nuoto - Varedo;NORD PADANIA N",
+        "team_id": 56,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Nuotatori Canavesani",
+        "name": "Bradtkechester Swimming Club ASD",
+        "editable_name": "Bradtkechester Swimming Club ASD",
+        "name_variations": "NUOTATORI CANAVESANI;NUOTATORI CANAVESAN;Nuotatori Canavesani",
+        "team_id": 414,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Nuotatori Genovesi ssd",
+        "name": "South Mandyville Swimming Club ASD",
+        "editable_name": "South Mandyville Swimming Club ASD",
+        "name_variations": "NUOTATORI GENOVESI;Nuotatori Genovesi ssd",
+        "team_id": 221,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Nuotatori Milanesi",
+        "name": "East Willmouth Swimming Club ASD",
+        "editable_name": "East Willmouth Swimming Club ASD",
+        "name_variations": "NUOTATORI MILANESI",
+        "team_id": 239,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Nuotatori Padovani",
+        "name": "Port Lottiemouth Swimming Club ASD",
+        "editable_name": "Port Lottiemouth Swimming Club ASD",
+        "name_variations": "S.NUOTATORI PADOVANI A.S.D.;Nuotatori Padovani",
+        "team_id": 171,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Nuotatori del Carroccio",
+        "name": "Silvaborough Swimming Club ASD",
+        "editable_name": "Silvaborough Swimming Club ASD",
+        "name_variations": "Nuotatori del Carroccio",
+        "team_id": 839,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Nuoto Chivasso asd",
+        "name": "Port Waylon Swimming Club ASD",
+        "editable_name": "Port Waylon Swimming Club ASD",
+        "name_variations": "LIB. NUOTO CHIVASSO;Libertas Nuoto Chivasso;Nuoto Chivasso asd",
+        "team_id": 408,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Nuoto Club Cagliari",
+        "name": "Port Ettatown Swimming Club ASD",
+        "editable_name": "Port Ettatown Swimming Club ASD",
+        "name_variations": "Nuoto Club Cagliari",
+        "team_id": 889,
+        "city_id": 83,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Nuoto Club Firenze Asd",
+        "name": "Simonashire Swimming Club ASD",
+        "editable_name": "Simonashire Swimming Club ASD",
+        "name_variations": "Nuoto Club Firenze",
+        "team_id": 976,
+        "city_id": 99,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Nuoto Club Milano asd",
+        "name": "New Rosina Swimming Club ASD",
+        "editable_name": "New Rosina Swimming Club ASD",
+        "name_variations": "Nuoto Club Milano asd;NC MILANO",
+        "team_id": 87,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Nuoto Club Sassuolo",
+        "name": "Ankundingside Swimming Club ASD",
+        "editable_name": "Ankundingside Swimming Club ASD",
+        "name_variations": "NUOTO CLUB SASSUOLO",
+        "team_id": 106,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Nuoto Master Brescia asd",
+        "name": "Nuoto Master Brescia asd",
+        "editable_name": "Nuoto Master Brescia asd",
+        "name_variations": "Nuoto Master Brescia asd",
+        "team_id": null,
+        "city_id": 4,
+        "fuzzy_matches": [
+          {
+            "id": 1326,
+            "name": "Nuoto Master Brescia asd",
+            "editable_name": "Nuoto Master Brescia asd",
+            "name_variations": "Nuoto Master Brescia asd",
+            "city_id": 4,
+            "city_name": "Brescia",
+            "weight": 1.0,
+            "percentage": 100.0,
+            "color_class": "success",
+            "display_label": "Nuoto Master Brescia asd (ID: 1326, Brescia, match: 100.0%)"
+          },
+          {
+            "id": 355,
+            "name": "NUOTO MASTER CREMA",
+            "editable_name": "NUOTO MASTER CREMA",
+            "name_variations": "NUOTO MASTER CREMA",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.841,
+            "percentage": 84.1,
+            "color_class": "warning",
+            "display_label": "NUOTO MASTER CREMA (ID: 355, no city, match: 84.1%)"
+          },
+          {
+            "id": 138,
+            "name": "A.r.c.a. ssd",
+            "editable_name": "Arca ssd - Oderzo",
+            "name_variations": "Arca ssd - Oderzo;Arca Ssd - Oderzo;Arca Nuoto asd - Oderzo;A.r.c.a. ssd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.819,
+            "percentage": 81.9,
+            "color_class": "warning",
+            "display_label": "Arca ssd - Oderzo (ID: 138, no city, match: 81.9%)"
+          },
+          {
+            "id": 1042,
+            "name": "NUOTO MASTER TERRA",
+            "editable_name": "NUOTO MASTER TERRA",
+            "name_variations": "NUOTO MASTER TERRA",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.81,
+            "percentage": 81.0,
+            "color_class": "warning",
+            "display_label": "NUOTO MASTER TERRA (ID: 1042, no city, match: 81.0%)"
+          },
+          {
+            "id": 739,
+            "name": "Centro Nuoto Macerata ssd",
+            "editable_name": "Centro Nuoto Macerata ssd",
+            "name_variations": "CENTRO NUOTO MACERATA;CENTRO NUOTO MACERA;Centro Nuoto Macerata ssd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.798,
+            "percentage": 79.8,
+            "color_class": "warning",
+            "display_label": "Centro Nuoto Macerata ssd (ID: 739, no city, match: 79.8%)"
+          },
+          {
+            "id": 685,
+            "name": "UMBRIA NUOTO ASD",
+            "editable_name": "UMBRIA NUOTO ASD",
+            "name_variations": "UMBRIA NUOTO ASD",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.798,
+            "percentage": 79.8,
+            "color_class": "warning",
+            "display_label": "UMBRIA NUOTO ASD (ID: 685, no city, match: 79.8%)"
+          },
+          {
+            "id": 998,
+            "name": "Nuoto Alto Milanese Ssd",
+            "editable_name": "Nuoto Alto Milanese Ssd",
+            "name_variations": "Nuoto Alto Milanese Ssd",
+            "city_id": 62,
+            "city_name": "Milano",
+            "weight": 0.79,
+            "percentage": 79.0,
+            "color_class": "warning",
+            "display_label": "Nuoto Alto Milanese Ssd (ID: 998, Milano, match: 79.0%)"
+          },
+          {
+            "id": 327,
+            "name": "Lerici Nuoto Master asd",
+            "editable_name": "Lerici Nuoto Master asd",
+            "name_variations": "LERICI NUOTO MASTER;Lerici Nuoto Master asd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.772,
+            "percentage": 77.2,
+            "color_class": "warning",
+            "display_label": "Lerici Nuoto Master asd (ID: 327, no city, match: 77.2%)"
+          },
+          {
+            "id": 477,
+            "name": "CUS Bari asd",
+            "editable_name": "CUS Bari A.S.D.",
+            "name_variations": "CUS Bari A.S.D.;CUS BARI AS DILETT.;CUS Bari asd",
+            "city_id": 108,
+            "city_name": "Bari",
+            "weight": 0.767,
+            "percentage": 76.7,
+            "color_class": "warning",
+            "display_label": "CUS Bari A.S.D. (ID: 477, Bari, match: 76.7%)"
+          },
+          {
+            "id": 154,
+            "name": "NUOTO MASTER VERONA IN-SPORT",
+            "editable_name": "Nuoto Master Verona In-Sport",
+            "name_variations": "ASD Nuoto Master Verona In-Sport;ASD NUOTO MASTER VERONA IN-SPORT;Nuoto Master Verona In-Sport",
+            "city_id": 128,
+            "city_name": "Verona",
+            "weight": 0.765,
+            "percentage": 76.5,
+            "color_class": "warning",
+            "display_label": "Nuoto Master Verona In-Sport (ID: 154, Verona, match: 76.5%)"
+          },
+          {
+            "id": 546,
+            "name": "OLBIA NUOTO ASD",
+            "editable_name": "OLBIA NUOTO ASD",
+            "name_variations": "OLBIA NUOTO ASD",
+            "city_id": 74,
+            "city_name": "Olbia",
+            "weight": 0.761,
+            "percentage": 76.1,
+            "color_class": "warning",
+            "display_label": "OLBIA NUOTO ASD (ID: 546, Olbia, match: 76.1%)"
+          },
+          {
+            "id": 1039,
+            "name": "CREMA N ASD",
+            "editable_name": "CREMA N ASD",
+            "name_variations": "CREMA N ASD",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.761,
+            "percentage": 76.1,
+            "color_class": "warning",
+            "display_label": "CREMA N ASD (ID: 1039, no city, match: 76.1%)"
+          },
+          {
+            "id": 1189,
+            "name": "Nuoto Club Alessandria Asd",
+            "editable_name": "Nuoto Club Alessandria Asd",
+            "name_variations": "Nuoto Club Alessandria Asd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.759,
+            "percentage": 75.9,
+            "color_class": "warning",
+            "display_label": "Nuoto Club Alessandria Asd (ID: 1189, no city, match: 75.9%)"
+          },
+          {
+            "id": 408,
+            "name": "Nuoto Chivasso asd",
+            "editable_name": "Nuoto Chivasso asd",
+            "name_variations": "LIB. NUOTO CHIVASSO;Libertas Nuoto Chivasso;Nuoto Chivasso asd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.759,
+            "percentage": 75.9,
+            "color_class": "warning",
+            "display_label": "Nuoto Chivasso asd (ID: 408, no city, match: 75.9%)"
+          },
+          {
+            "id": 1154,
+            "name": "U.P. PERSICETANA ASD",
+            "editable_name": "U.P. PERSICETANA ASD",
+            "name_variations": "U.P. PERSICETANA ASD",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.753,
+            "percentage": 75.3,
+            "color_class": "warning",
+            "display_label": "U.P. PERSICETANA ASD (ID: 1154, no city, match: 75.3%)"
+          },
+          {
+            "id": 675,
+            "name": "Cosenza Nuoto asd",
+            "editable_name": "Cosenza Nuoto asd",
+            "name_variations": "AS COSENZA NUOTO;Cosenza Nuoto asd",
+            "city_id": 172,
+            "city_name": "Cosenza",
+            "weight": 0.746,
+            "percentage": 74.6,
+            "color_class": "warning",
+            "display_label": "Cosenza Nuoto asd (ID: 675, Cosenza, match: 74.6%)"
+          },
+          {
+            "id": 880,
+            "name": "Suprema Nuoto asd",
+            "editable_name": "Suprema Nuoto asd",
+            "name_variations": "Suprema Nuoto asd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.746,
+            "percentage": 74.6,
+            "color_class": "warning",
+            "display_label": "Suprema Nuoto asd (ID: 880, no city, match: 74.6%)"
+          },
+          {
+            "id": 382,
+            "name": "ROMA NUOTO MASTER ssd",
+            "editable_name": "ROMA NUOTO MASTER",
+            "name_variations": "ROMA NUOTO MASTER ASD;ROMA NUOTO MASTER ssd",
+            "city_id": 72,
+            "city_name": "Roma",
+            "weight": 0.744,
+            "percentage": 74.4,
+            "color_class": "warning",
+            "display_label": "ROMA NUOTO MASTER (ID: 382, Roma, match: 74.4%)"
+          },
+          {
+            "id": 822,
+            "name": "BRESCIA ACQUARE' MAFECO",
+            "editable_name": "Aquarè Mafeco - Brescia",
+            "name_variations": "Aquarè Mafeco - Brescia;AICS Aquarè Mafeco;BRESCIA ACQUARE' MAFECO",
+            "city_id": 4,
+            "city_name": "Brescia",
+            "weight": 0.744,
+            "percentage": 74.4,
+            "color_class": "warning",
+            "display_label": "Aquarè Mafeco - Brescia (ID: 822, Brescia, match: 74.4%)"
+          },
+          {
+            "id": 1253,
+            "name": "NUOTO CT ASD",
+            "editable_name": "NUOTO CT ASD",
+            "name_variations": "NUOTO CT ASD",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.744,
+            "percentage": 74.4,
+            "color_class": "warning",
+            "display_label": "NUOTO CT ASD (ID: 1253, no city, match: 74.4%)"
+          },
+          {
+            "id": 717,
+            "name": "CSI VERBANIA ASD",
+            "editable_name": "CSI VERBANIA ASD",
+            "name_variations": "CSI VERBANIA ASD",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.741,
+            "percentage": 74.1,
+            "color_class": "warning",
+            "display_label": "CSI VERBANIA ASD (ID: 717, no city, match: 74.1%)"
+          },
+          {
+            "id": 34,
+            "name": "CSI NUOTO PRATO A.S.D.",
+            "editable_name": "CSI NUOTO PRATO A.S.D.",
+            "name_variations": "CSI NUOTO PRATO; CSI NUOTO PRATO A.S.D.;ASD CSI NUOTO PRATO",
+            "city_id": 35,
+            "city_name": "Prato",
+            "weight": 0.741,
+            "percentage": 74.1,
+            "color_class": "warning",
+            "display_label": "CSI NUOTO PRATO A.S.D. (ID: 34, Prato, match: 74.1%)"
+          },
+          {
+            "id": 1276,
+            "name": "Nuoto Seriate",
+            "editable_name": "Nuoto Seriate",
+            "name_variations": "Nuoto Seriate",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.74,
+            "percentage": 74.0,
+            "color_class": "warning",
+            "display_label": "Nuoto Seriate (ID: 1276, no city, match: 74.0%)"
+          }
+        ]
+      },
+      {
+        "key": "Nuoto Pn Pontassieve",
+        "name": "Nuoto Pn Pontassieve",
+        "editable_name": "Nuoto Pn Pontassieve",
+        "name_variations": "Nuoto Pn Pontassieve",
+        "team_id": null,
+        "city_id": null,
+        "fuzzy_matches": [
+          {
+            "id": 1570,
+            "name": "Nuoto Pn Pontassieve",
+            "editable_name": "Nuoto Pn Pontassieve",
+            "name_variations": "Nuoto Pn Pontassieve",
+            "city_id": null,
+            "city_name": null,
+            "weight": 1.0,
+            "percentage": 100.0,
+            "color_class": "success",
+            "display_label": "Nuoto Pn Pontassieve (ID: 1570, no city, match: 100.0%)"
+          },
+          {
+            "id": 1485,
+            "name": "Nuova Partenope Nuoto ssd",
+            "editable_name": "Nuova Partenope Nuoto ssd",
+            "name_variations": "Nuova Partenope Nuoto ssd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.789,
+            "percentage": 78.9,
+            "color_class": "warning",
+            "display_label": "Nuova Partenope Nuoto ssd (ID: 1485, no city, match: 78.9%)"
+          },
+          {
+            "id": 1276,
+            "name": "Nuoto Seriate",
+            "editable_name": "Nuoto Seriate",
+            "name_variations": "Nuoto Seriate",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.759,
+            "percentage": 75.9,
+            "color_class": "warning",
+            "display_label": "Nuoto Seriate (ID: 1276, no city, match: 75.9%)"
+          },
+          {
+            "id": 886,
+            "name": "San Paolo Ostiense",
+            "editable_name": "San Paolo Ostiense Nuoto",
+            "name_variations": "San Paolo Ostiense;San Paolo Ostiense Nuoto",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.752,
+            "percentage": 75.2,
+            "color_class": "warning",
+            "display_label": "San Paolo Ostiense Nuoto (ID: 886, no city, match: 75.2%)"
+          },
+          {
+            "id": 998,
+            "name": "Nuoto Alto Milanese Ssd",
+            "editable_name": "Nuoto Alto Milanese Ssd",
+            "name_variations": "Nuoto Alto Milanese Ssd",
+            "city_id": 62,
+            "city_name": "Milano",
+            "weight": 0.743,
+            "percentage": 74.3,
+            "color_class": "warning",
+            "display_label": "Nuoto Alto Milanese Ssd (ID: 998, Milano, match: 74.3%)"
+          }
+        ]
+      },
+      {
+        "key": "Nuoto Sub Faenza asd",
+        "name": "Nuoto Sub Faenza asd",
+        "editable_name": "Nuoto Sub Faenza asd",
+        "name_variations": "Nuoto Sub Faenza asd",
+        "team_id": null,
+        "city_id": null,
+        "fuzzy_matches": [
+          {
+            "id": 1616,
+            "name": "Nuoto Sub Faenza asd",
+            "editable_name": "Nuoto Sub Faenza asd",
+            "name_variations": "Nuoto Sub Faenza asd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 1.0,
+            "percentage": 100.0,
+            "color_class": "success",
+            "display_label": "Nuoto Sub Faenza asd (ID: 1616, no city, match: 100.0%)"
+          },
+          {
+            "id": 673,
+            "name": "Nuoto Club Giulianova asd",
+            "editable_name": "NUOTO GIULIANOVA ASD",
+            "name_variations": "NUOTO GIULIANOVA ASD;Nuoto Club Giulianova asd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.806,
+            "percentage": 80.6,
+            "color_class": "warning",
+            "display_label": "NUOTO GIULIANOVA ASD (ID: 673, no city, match: 80.6%)"
+          },
+          {
+            "id": 87,
+            "name": "Nuoto Club Milano asd",
+            "editable_name": "Nuoto Club Milano asd",
+            "name_variations": "Nuoto Club Milano asd;NC MILANO",
+            "city_id": 62,
+            "city_name": "Milano",
+            "weight": 0.789,
+            "percentage": 78.9,
+            "color_class": "warning",
+            "display_label": "Nuoto Club Milano asd (ID: 87, Milano, match: 78.9%)"
+          },
+          {
+            "id": 976,
+            "name": "Nuoto Club Firenze",
+            "editable_name": "Nuoto Club Firenze",
+            "name_variations": "Nuoto Club Firenze",
+            "city_id": 99,
+            "city_name": "Firenze",
+            "weight": 0.778,
+            "percentage": 77.8,
+            "color_class": "warning",
+            "display_label": "Nuoto Club Firenze (ID: 976, Firenze, match: 77.8%)"
+          },
+          {
+            "id": 1374,
+            "name": "Nuoto La Gabella asd",
+            "editable_name": "Nuoto La Gabella asd",
+            "name_variations": "Nuoto La Gabella asd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.778,
+            "percentage": 77.8,
+            "color_class": "warning",
+            "display_label": "Nuoto La Gabella asd (ID: 1374, no city, match: 77.8%)"
+          },
+          {
+            "id": 824,
+            "name": "CUS Ferrara asd",
+            "editable_name": "CUS Ferrara asd",
+            "name_variations": "CUS Ferrara asd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.767,
+            "percentage": 76.7,
+            "color_class": "warning",
+            "display_label": "CUS Ferrara asd (ID: 824, no city, match: 76.7%)"
+          },
+          {
+            "id": 1189,
+            "name": "Nuoto Club Alessandria Asd",
+            "editable_name": "Nuoto Club Alessandria Asd",
+            "name_variations": "Nuoto Club Alessandria Asd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.766,
+            "percentage": 76.6,
+            "color_class": "warning",
+            "display_label": "Nuoto Club Alessandria Asd (ID: 1189, no city, match: 76.6%)"
+          },
+          {
+            "id": 559,
+            "name": "FUMANE NUOTO ASD",
+            "editable_name": "FUMANE NUOTO ASD",
+            "name_variations": "FUMANE NUOTO ASD",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.764,
+            "percentage": 76.4,
+            "color_class": "warning",
+            "display_label": "FUMANE NUOTO ASD (ID: 559, no city, match: 76.4%)"
+          },
+          {
+            "id": 980,
+            "name": "A.B. TEAM A.S.D.",
+            "editable_name": "A.B. TEAM A.S.D.",
+            "name_variations": "A.B. Team Asd;A.B. TEAM A.S.D.",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.76,
+            "percentage": 76.0,
+            "color_class": "warning",
+            "display_label": "A.B. TEAM A.S.D. (ID: 980, no city, match: 76.0%)"
+          },
+          {
+            "id": 1541,
+            "name": "Nuoto Club Nuoro ssd",
+            "editable_name": "Nuoto Club Nuoro ssd",
+            "name_variations": "Nuoto Club Nuoro ssd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.758,
+            "percentage": 75.8,
+            "color_class": "warning",
+            "display_label": "Nuoto Club Nuoro ssd (ID: 1541, no city, match: 75.8%)"
+          },
+          {
+            "id": 1471,
+            "name": "ABC Nuoto Pisa asd",
+            "editable_name": "ABC Nuoto Pisa asd",
+            "name_variations": "ABC Nuoto Pisa asd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.758,
+            "percentage": 75.8,
+            "color_class": "warning",
+            "display_label": "ABC Nuoto Pisa asd (ID: 1471, no city, match: 75.8%)"
+          },
+          {
+            "id": 717,
+            "name": "CSI VERBANIA ASD",
+            "editable_name": "CSI VERBANIA ASD",
+            "name_variations": "CSI VERBANIA ASD",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.755,
+            "percentage": 75.5,
+            "color_class": "warning",
+            "display_label": "CSI VERBANIA ASD (ID: 717, no city, match: 75.5%)"
+          },
+          {
+            "id": 992,
+            "name": "NUOTO CLUB APUANIA",
+            "editable_name": "NUOTO CLUB APUANIA",
+            "name_variations": "NUOTO CLUB APUANIA",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.754,
+            "percentage": 75.4,
+            "color_class": "warning",
+            "display_label": "NUOTO CLUB APUANIA (ID: 992, no city, match: 75.4%)"
+          },
+          {
+            "id": 1200,
+            "name": "NUOTO CLUB FERRARA",
+            "editable_name": "NUOTO CLUB FERRARA",
+            "name_variations": "NUOTO CLUB FERRARA",
+            "city_id": 13,
+            "city_name": "Ferrara",
+            "weight": 0.754,
+            "percentage": 75.4,
+            "color_class": "warning",
+            "display_label": "NUOTO CLUB FERRARA (ID: 1200, Ferrara, match: 75.4%)"
+          },
+          {
+            "id": 57,
+            "name": "TEAM INSUBRIKA ASD",
+            "editable_name": "TEAM INSUBRIKA ASD",
+            "name_variations": "TEAM INSUBRIKA ASD",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.752,
+            "percentage": 75.2,
+            "color_class": "warning",
+            "display_label": "TEAM INSUBRIKA ASD (ID: 57, no city, match: 75.2%)"
+          },
+          {
+            "id": 9,
+            "name": "NUOTO CLUB AZZURRA 91",
+            "editable_name": "Nuoto Cl.Azzurra 91 - Bologna",
+            "name_variations": "Nuoto Cl.Azzurra 91 - Bologna;N.C. AZZURRA 1991;NUOTO CLUB AZZURRA 91",
+            "city_id": 3,
+            "city_name": "Bologna",
+            "weight": 0.75,
+            "percentage": 75.0,
+            "color_class": "warning",
+            "display_label": "Nuoto Cl.Azzurra 91 - Bologna (ID: 9, Bologna, match: 75.0%)"
+          },
+          {
+            "id": 228,
+            "name": "BUSTO NUOTO AS",
+            "editable_name": "BUSTO NUOTO AS",
+            "name_variations": "BUSTO NUOTO AS",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.743,
+            "percentage": 74.3,
+            "color_class": "warning",
+            "display_label": "BUSTO NUOTO AS (ID: 228, no city, match: 74.3%)"
+          },
+          {
+            "id": 619,
+            "name": "NUOTO CLUB VITERBO ssd",
+            "editable_name": "NUOTO CLUB VITERBO",
+            "name_variations": "NUOTO CLUB VITERBO;NUOTO CLUB VITERBO ssd",
+            "city_id": 98,
+            "city_name": "Viterbo",
+            "weight": 0.742,
+            "percentage": 74.2,
+            "color_class": "warning",
+            "display_label": "NUOTO CLUB VITERBO (ID: 619, Viterbo, match: 74.2%)"
+          },
+          {
+            "id": 1595,
+            "name": "Nuoto Aurelia ssd",
+            "editable_name": "Nuoto Aurelia ssd",
+            "name_variations": "Nuoto Aurelia ssd",
+            "city_id": 72,
+            "city_name": "Roma",
+            "weight": 0.741,
+            "percentage": 74.1,
+            "color_class": "warning",
+            "display_label": "Nuoto Aurelia ssd (ID: 1595, Roma, match: 74.1%)"
+          },
+          {
+            "id": 799,
+            "name": "BARCELLONA NUOTO ASD",
+            "editable_name": "BARCELLONA NUOTO ASD",
+            "name_variations": "BARCELLONA NUOTO ASD",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.741,
+            "percentage": 74.1,
+            "color_class": "warning",
+            "display_label": "BARCELLONA NUOTO ASD (ID: 799, no city, match: 74.1%)"
+          }
+        ]
+      },
+      {
+        "key": "Nuoto Valdinievole",
+        "name": "New Wilhelmina Swimming Club ASD",
+        "editable_name": "New Wilhelmina Swimming Club ASD",
+        "name_variations": "AN VALDINIEVOLE;Nuoto Valdinievole",
+        "team_id": 295,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Nuoto Venezia ssd",
+        "name": "Raynormouth Swimming Club ASD",
+        "editable_name": "Raynormouth Swimming Club ASD",
+        "name_variations": "A.S.D. NUOTO VENEZIA;Nuoto Venezia",
+        "team_id": 899,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Olgiata 20.12 ssd",
+        "name": "Port Napoleonmouth Swimming Club ASD",
+        "editable_name": "Port Napoleonmouth Swimming Club ASD",
+        "name_variations": "Olgiata 20.12 ssd; OLGIATA",
+        "team_id": 207,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Ondablu ssd",
+        "name": "Magenfurt Swimming Club ASD",
+        "editable_name": "Magenfurt Swimming Club ASD",
+        "name_variations": "ONDABLU",
+        "team_id": 1187,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "PASSPORT SSD srl",
+        "name": "PASSPORT SSD srl",
+        "editable_name": "PASSPORT SSD srl",
+        "name_variations": "PASSPORT SSD srl",
+        "team_id": null,
+        "city_id": null,
+        "fuzzy_matches": [
+          {
+            "id": 1524,
+            "name": "PASSPORT SSD srl",
+            "editable_name": "PASSPORT SSD srl",
+            "name_variations": "PASSPORT SSD srl",
+            "city_id": null,
+            "city_name": null,
+            "weight": 1.0,
+            "percentage": 100.0,
+            "color_class": "success",
+            "display_label": "PASSPORT SSD srl (ID: 1524, no city, match: 100.0%)"
+          },
+          {
+            "id": 539,
+            "name": "ACQUASPORT SRL SSD",
+            "editable_name": "ACQUASPORT SRL SSD",
+            "name_variations": "ACQUASPORT SRL SSD;Acquasport ssd - Cagliari",
+            "city_id": 83,
+            "city_name": "Cagliari",
+            "weight": 0.799,
+            "percentage": 79.9,
+            "color_class": "warning",
+            "display_label": "ACQUASPORT SRL SSD (ID: 539, Cagliari, match: 79.9%)"
+          },
+          {
+            "id": 1071,
+            "name": "POLISPORT SSD A RL",
+            "editable_name": "POLISPORT SSD A RL",
+            "name_variations": "POLISPORT SSD A RL",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.782,
+            "percentage": 78.2,
+            "color_class": "warning",
+            "display_label": "POLISPORT SSD A RL (ID: 1071, no city, match: 78.2%)"
+          },
+          {
+            "id": 1466,
+            "name": "Games Sport ssd rl",
+            "editable_name": "Games Sport ssd rl",
+            "name_variations": "Games Sport ssd rl",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.754,
+            "percentage": 75.4,
+            "color_class": "warning",
+            "display_label": "Games Sport ssd rl (ID: 1466, no city, match: 75.4%)"
+          },
+          {
+            "id": 784,
+            "name": "ERACLE SPORTS SSD",
+            "editable_name": "ERACLE SPORTS SSD",
+            "name_variations": "ERACLE SPORTS SSD",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.744,
+            "percentage": 74.4,
+            "color_class": "warning",
+            "display_label": "ERACLE SPORTS SSD (ID: 784, no city, match: 74.4%)"
+          }
+        ]
+      },
+      {
+        "key": "Parco Kolbe ssd",
+        "name": "Mimishire Swimming Club ASD",
+        "editable_name": "Mimishire Swimming Club ASD",
+        "name_variations": "PARCO KOLBE SSD A R.L.;Parco Kolbe ssd",
+        "team_id": 1296,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Pavia Nuoto asd",
+        "name": "Dietrichfurt Swimming Club ASD",
+        "editable_name": "Dietrichfurt Swimming Club ASD",
+        "name_variations": "AICS Pavia Nuoto ASD;AICS Pavia Nuoto;Pavia Nuoto ASD;Pavia Nuoto",
+        "team_id": 227,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Peppe Lamberti N.C. asd",
+        "name": "Laurencefurt Swimming Club ASD",
+        "editable_name": "Laurencefurt Swimming Club ASD",
+        "name_variations": "PEPPE LAMBERTI N.C.;Peppe Lamberti N.C. asd",
+        "team_id": 658,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Planet Sport Todi ssd",
+        "name": "Planet Sport Todi ssd",
+        "editable_name": "Planet Sport Todi ssd",
+        "name_variations": "Planet Sport Todi ssd",
+        "team_id": null,
+        "city_id": null,
+        "fuzzy_matches": [
+          {
+            "id": 1557,
+            "name": "Planet Sport Todi ssd",
+            "editable_name": "Planet Sport Todi ssd",
+            "name_variations": "Planet Sport Todi ssd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 1.0,
+            "percentage": 100.0,
+            "color_class": "success",
+            "display_label": "Planet Sport Todi ssd (ID: 1557, no city, match: 100.0%)"
+          },
+          {
+            "id": 1455,
+            "name": "Planet Sport ssd",
+            "editable_name": "Planet Sport ssd",
+            "name_variations": "Planet Sport ssd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.87,
+            "percentage": 87.0,
+            "color_class": "warning",
+            "display_label": "Planet Sport ssd (ID: 1455, no city, match: 87.0%)"
+          },
+          {
+            "id": 1033,
+            "name": "PIANETA SPORT SSD -",
+            "editable_name": "PIANETA SPORT SSD -",
+            "name_variations": "PIANETA SPORT SSD -",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.809,
+            "percentage": 80.9,
+            "color_class": "warning",
+            "display_label": "PIANETA SPORT SSD - (ID: 1033, no city, match: 80.9%)"
+          },
+          {
+            "id": 1194,
+            "name": "PIANETA SPORT MASSA",
+            "editable_name": "PIANETA SPORT MASSA",
+            "name_variations": "PIANETA SPORT MASSA",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.788,
+            "percentage": 78.8,
+            "color_class": "warning",
+            "display_label": "PIANETA SPORT MASSA (ID: 1194, no city, match: 78.8%)"
+          },
+          {
+            "id": 1169,
+            "name": "Citta' Dello Sport Ssd",
+            "editable_name": "Citta' Dello Sport Ssd",
+            "name_variations": "Citta' Dello Sport Ssd",
+            "city_id": 125,
+            "city_name": "Città di Castello",
+            "weight": 0.769,
+            "percentage": 76.9,
+            "color_class": "warning",
+            "display_label": "Citta' Dello Sport Ssd (ID: 1169, Città di Castello, match: 76.9%)"
+          },
+          {
+            "id": 589,
+            "name": "PLANET ANDRIA SSD",
+            "editable_name": "PLANET ANDRIA SSD",
+            "name_variations": "PLANET ANDRIA SSD",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.766,
+            "percentage": 76.6,
+            "color_class": "warning",
+            "display_label": "PLANET ANDRIA SSD (ID: 589, no city, match: 76.6%)"
+          },
+          {
+            "id": 1377,
+            "name": "Atlantide S.C. ssd",
+            "editable_name": "Atlantide S.C. ssd",
+            "name_variations": "Atlantide S.C. ssd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.763,
+            "percentage": 76.3,
+            "color_class": "warning",
+            "display_label": "Atlantide S.C. ssd (ID: 1377, no city, match: 76.3%)"
+          },
+          {
+            "id": 311,
+            "name": "MEDITERRANEO SPORT SSD",
+            "editable_name": "MEDITERRANEO SPORT SSD",
+            "name_variations": "MEDITERRANEO SPORT SSD;MEDITERRANEO SPORT",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.753,
+            "percentage": 75.3,
+            "color_class": "warning",
+            "display_label": "MEDITERRANEO SPORT SSD (ID: 311, no city, match: 75.3%)"
+          },
+          {
+            "id": 1523,
+            "name": "Poseidon 2.0 ssd",
+            "editable_name": "Poseidon 2.0 ssd",
+            "name_variations": "Poseidon 2.0 ssd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.742,
+            "percentage": 74.2,
+            "color_class": "warning",
+            "display_label": "Poseidon 2.0 ssd (ID: 1523, no city, match: 74.2%)"
+          },
+          {
+            "id": 648,
+            "name": "Poseidon ssd",
+            "editable_name": "Poseidon ssd",
+            "name_variations": "Poseidon ssd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.742,
+            "percentage": 74.2,
+            "color_class": "warning",
+            "display_label": "Poseidon ssd (ID: 648, no city, match: 74.2%)"
+          }
+        ]
+      },
+      {
+        "key": "Pol Nadir - Palermo",
+        "name": "Lake Synthiaville Swimming Club ASD",
+        "editable_name": "Lake Synthiaville Swimming Club ASD",
+        "name_variations": "Pol. Nadir - Palermo;POLISPORTIVA NADIR",
+        "team_id": 511,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Pol. Amatori Prato asd",
+        "name": "East Albertine Swimming Club ASD",
+        "editable_name": "East Albertine Swimming Club ASD",
+        "name_variations": "POL. AMATORI PRATO",
+        "team_id": 343,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Pol. Nuoto Montefeltro Asd",
+        "name": "O'Konshire Swimming Club ASD",
+        "editable_name": "O'Konshire Swimming Club ASD",
+        "name_variations": "NUOTO MONTEFELTRO;Pol. Nuoto Montefeltro",
+        "team_id": 136,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Pol.Vigor Perconti asd",
+        "name": "Pol.Vigor Perconti asd",
+        "editable_name": "Pol.Vigor Perconti asd",
+        "name_variations": "Pol.Vigor Perconti asd",
+        "team_id": null,
+        "city_id": null,
+        "fuzzy_matches": [
+          {
+            "id": 1426,
+            "name": "Pol.Vigor Perconti asd",
+            "editable_name": "Pol.Vigor Perconti asd",
+            "name_variations": "Pol.Vigor Perconti asd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 1.0,
+            "percentage": 100.0,
+            "color_class": "success",
+            "display_label": "Pol.Vigor Perconti asd (ID: 1426, no city, match: 100.0%)"
+          },
+          {
+            "id": 330,
+            "name": "POL.MIMMO FERRITO S.S.D.",
+            "editable_name": "POL.MIMMO FERRITO S.S.D.",
+            "name_variations": "POL.MIMMO FERRITO S.S.D.",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.75,
+            "percentage": 75.0,
+            "color_class": "warning",
+            "display_label": "POL.MIMMO FERRITO S.S.D. (ID: 330, no city, match: 75.0%)"
+          },
+          {
+            "id": 415,
+            "name": "POL.UISP RIVERB. ASD",
+            "editable_name": "POL.UISP RIVERB. ASD",
+            "name_variations": "POL.UISP RIVERB. ASD",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.748,
+            "percentage": 74.8,
+            "color_class": "warning",
+            "display_label": "POL.UISP RIVERB. ASD (ID: 415, no city, match: 74.8%)"
+          },
+          {
+            "id": 846,
+            "name": "Pol. Univ. Foro Ita",
+            "editable_name": "Pol. Univ. Foro Italico",
+            "name_variations": "Pol. Univ. Foro Italico;Pol. Univ. Foro Ita",
+            "city_id": 72,
+            "city_name": "Roma",
+            "weight": 0.745,
+            "percentage": 74.5,
+            "color_class": "warning",
+            "display_label": "Pol. Univ. Foro Italico (ID: 846, Roma, match: 74.5%)"
+          }
+        ]
+      },
+      {
+        "key": "Pool Nuoto Asd",
+        "name": "Neryberg Swimming Club ASD",
+        "editable_name": "Neryberg Swimming Club ASD",
+        "name_variations": "Pool Nuoto Sambenedettese A.S.D.;Pool Nuoto A.S.D.;POOL N SAMBENEDETTE;Pool Nuoto Sambenedettese;Pool Nuoto Asd",
+        "team_id": 120,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Prosport Acqua ssd",
+        "name": "Fridashire Swimming Club ASD",
+        "editable_name": "Fridashire Swimming Club ASD",
+        "name_variations": "PROSPORT ACQUA SSD",
+        "team_id": 751,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Rari Master Pesaro asd",
+        "name": "South Ned Swimming Club ASD",
+        "editable_name": "South Ned Swimming Club ASD",
+        "name_variations": "RARI MASTER PESARO",
+        "team_id": 315,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Rari Nantes Saronno",
+        "name": "Mitchelltown Swimming Club ASD",
+        "editable_name": "Mitchelltown Swimming Club ASD",
+        "name_variations": "Rari Nantes Saronno;RN SARONNO",
+        "team_id": 63,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Rari Nantes Trento",
+        "name": "Port Collenmouth Swimming Club ASD",
+        "editable_name": "Port Collenmouth Swimming Club ASD",
+        "name_variations": "POL. R.N. TRENTO;Rari Nantes Trento",
+        "team_id": 102,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Rari Nantes Venezia",
+        "name": "West Earlinechester Swimming Club ASD",
+        "editable_name": "West Earlinechester Swimming Club ASD",
+        "name_variations": "A.S.D. RARI NANTES VENEZIA;Rari Nantes Venezia",
+        "team_id": 143,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Riviera Nuoto - Dolo",
+        "name": "Bernettafurt Swimming Club ASD",
+        "editable_name": "Bernettafurt Swimming Club ASD",
+        "name_variations": "S.S.D. RIVIERA NUOTO SRL;Riviera Nuoto - Dolo;RIVIERA NUOTO",
+        "team_id": 175,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Roma Nuoto Master ssd",
+        "name": "Deandreaville Swimming Club ASD",
+        "editable_name": "Deandreaville Swimming Club ASD",
+        "name_variations": "ROMA NUOTO MASTER ASD;ROMA NUOTO MASTER ssd",
+        "team_id": 382,
+        "city_id": 72,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Roncadenuoto ssd arl",
+        "name": "North Sandyburgh Swimming Club ASD",
+        "editable_name": "North Sandyburgh Swimming Club ASD",
+        "name_variations": "RONCADENUOTO SSD;RONCADENUOTO",
+        "team_id": 1273,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "SO.GE.SE SOC. COOP",
+        "name": "Port Tammie Swimming Club ASD",
+        "editable_name": "Port Tammie Swimming Club ASD",
+        "name_variations": "SO.GE.SE SOC. COOP",
+        "team_id": 1321,
+        "city_id": 45,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "SPM Sport ssd - Paullo",
+        "name": "Gladisborough Swimming Club ASD",
+        "editable_name": "Gladisborough Swimming Club ASD",
+        "name_variations": "SPM SPORT - PAULLO;SPM Sport ssd - Paullo",
+        "team_id": 334,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "SSV Brixen",
+        "name": "Emilyside Swimming Club ASD",
+        "editable_name": "Emilyside Swimming Club ASD",
+        "name_variations": "SSV BRIXEN",
+        "team_id": 467,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Serapo Sport Gaeta",
+        "name": "Lake Mitchel Swimming Club ASD",
+        "editable_name": "Lake Mitchel Swimming Club ASD",
+        "name_variations": "Serapo Sport Gaeta",
+        "team_id": 532,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Seven Master Nuoto asd",
+        "name": "East Roxane Swimming Club ASD",
+        "editable_name": "East Roxane Swimming Club ASD",
+        "name_variations": "SEVEN MASTER NUOTO",
+        "team_id": 317,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Sintesi ssd",
+        "name": "Lowemouth Swimming Club ASD",
+        "editable_name": "Lowemouth Swimming Club ASD",
+        "name_variations": "SINTESI S.S.D.;SINTESI SSD",
+        "team_id": 194,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Sport 2000 ssd - Roma",
+        "name": "Kleintown Swimming Club ASD",
+        "editable_name": "Kleintown Swimming Club ASD",
+        "name_variations": "Sport 2000 ssd - Roma",
+        "team_id": 649,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Sport Shuttle 3.0 ssd",
+        "name": "East Barb Swimming Club ASD",
+        "editable_name": "East Barb Swimming Club ASD",
+        "name_variations": "SPORT SHUTTLE - SEL;Sport Shuttle 3.0 ssd",
+        "team_id": 621,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Sporting Club 63 ssd",
+        "name": "Port Doraberg Swimming Club ASD",
+        "editable_name": "Port Doraberg Swimming Club ASD",
+        "name_variations": "Sporting Club 63 ssd",
+        "team_id": 840,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Sportivamente Belluno ssd",
+        "name": "Bernhardmouth Swimming Club ASD",
+        "editable_name": "Bernhardmouth Swimming Club ASD",
+        "name_variations": "SPORTIVAMENTE BELLUNO",
+        "team_id": 465,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Sports and Events ssd",
+        "name": "Franciscastad Swimming Club ASD",
+        "editable_name": "Franciscastad Swimming Club ASD",
+        "name_variations": "Sports And Events Ssd",
+        "team_id": 1160,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Ssd 2001 srl - Padova",
+        "name": "West Fatimahshire Swimming Club ASD",
+        "editable_name": "West Fatimahshire Swimming Club ASD",
+        "name_variations": "SOC. S. D. 2001 SRL - PADOVA;Ssd 2001 srl - Padova",
+        "team_id": 177,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Swim Sassari ssd",
+        "name": "Pagacside Swimming Club ASD",
+        "editable_name": "Pagacside Swimming Club ASD",
+        "name_variations": "Asd Swim Sassari;Swim Sassari ssd",
+        "team_id": 887,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Swim Team Abruzzo asd",
+        "name": "North Audreaport Swimming Club ASD",
+        "editable_name": "North Audreaport Swimming Club ASD",
+        "name_variations": "Swim Team Abruzzo Asd",
+        "team_id": 946,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Swim in Action asd",
+        "name": "Swim in Action asd",
+        "editable_name": "Swim in Action asd",
+        "name_variations": "Swim in Action asd",
+        "team_id": null,
+        "city_id": null,
+        "fuzzy_matches": [
+          {
+            "id": 1467,
+            "name": "Swim in Action asd",
+            "editable_name": "Swim in Action asd",
+            "name_variations": "Swim in Action asd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 1.0,
+            "percentage": 100.0,
+            "color_class": "success",
+            "display_label": "Swim in Action asd (ID: 1467, no city, match: 100.0%)"
+          },
+          {
+            "id": 594,
+            "name": "DINAMICA TORINO ASD",
+            "editable_name": "DINAMICA TORINO ASD",
+            "name_variations": "DINAMICA TORINO ASD",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.773,
+            "percentage": 77.3,
+            "color_class": "warning",
+            "display_label": "DINAMICA TORINO ASD (ID: 594, no city, match: 77.3%)"
+          },
+          {
+            "id": 34,
+            "name": "CSI NUOTO PRATO A.S.D.",
+            "editable_name": "CSI NUOTO PRATO A.S.D.",
+            "name_variations": "CSI NUOTO PRATO; CSI NUOTO PRATO A.S.D.;ASD CSI NUOTO PRATO",
+            "city_id": 35,
+            "city_name": "Prato",
+            "weight": 0.765,
+            "percentage": 76.5,
+            "color_class": "warning",
+            "display_label": "CSI NUOTO PRATO A.S.D. (ID: 34, Prato, match: 76.5%)"
+          },
+          {
+            "id": 480,
+            "name": "New Swim asd - Castiglion",
+            "editable_name": "New Swim asd - Castiglione",
+            "name_variations": "New Swim asd - Castiglione;NEW SWIM;New Swim asd - Castiglion",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.742,
+            "percentage": 74.2,
+            "color_class": "warning",
+            "display_label": "New Swim asd - Castiglione (ID: 480, no city, match: 74.2%)"
+          },
+          {
+            "id": 788,
+            "name": "QSWIM ASD",
+            "editable_name": "QSWIM ASD",
+            "name_variations": "QSWIM ASD",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.741,
+            "percentage": 74.1,
+            "color_class": "warning",
+            "display_label": "QSWIM ASD (ID: 788, no city, match: 74.1%)"
+          },
+          {
+            "id": 725,
+            "name": "OLIMPICA SALENTINA ASD",
+            "editable_name": "OLIMPICA SALENTINA ASD",
+            "name_variations": "OLIMPICA SALENTINA ASD",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.741,
+            "percentage": 74.1,
+            "color_class": "warning",
+            "display_label": "OLIMPICA SALENTINA ASD (ID: 725, no city, match: 74.1%)"
+          },
+          {
+            "id": 1313,
+            "name": "Kiran Club Nuoto asd",
+            "editable_name": "Kiran Club Nuoto Caltagirone asd",
+            "name_variations": "Kiran Club Nuoto Caltagirone asd;Kiran Club Nuoto asd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.74,
+            "percentage": 74.0,
+            "color_class": "warning",
+            "display_label": "Kiran Club Nuoto Caltagirone asd (ID: 1313, no city, match: 74.0%)"
+          },
+          {
+            "id": 1418,
+            "name": "Swimtime ASD",
+            "editable_name": "Swimtime ASD",
+            "name_variations": "Swimtime ASD",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.74,
+            "percentage": 74.0,
+            "color_class": "warning",
+            "display_label": "Swimtime ASD (ID: 1418, no city, match: 74.0%)"
+          }
+        ]
+      },
+      {
+        "key": "Swim&Care asd",
+        "name": "North Mireille Swimming Club ASD",
+        "editable_name": "North Mireille Swimming Club ASD",
+        "name_variations": "Swim&Care asd",
+        "team_id": 1304,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Swimming Club asd ets",
+        "name": "Swimming Club asd ets",
+        "editable_name": "Swimming Club asd ets",
+        "name_variations": "Swimming Club asd ets",
+        "team_id": null,
+        "city_id": null,
+        "fuzzy_matches": [
+          {
+            "id": 1638,
+            "name": "Swimming Club asd ets",
+            "editable_name": "Swimming Club asd ets",
+            "name_variations": "Swimming Club asd ets",
+            "city_id": null,
+            "city_name": null,
+            "weight": 1.0,
+            "percentage": 100.0,
+            "color_class": "success",
+            "display_label": "Swimming Club asd ets (ID: 1638, no city, match: 100.0%)"
+          },
+          {
+            "id": 94,
+            "name": "SWIMMING CLUB Alessandria",
+            "editable_name": "SWIMMING CLUB Alessandria",
+            "name_variations": "SWIMMING CLUB Alessandria",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.841,
+            "percentage": 84.1,
+            "color_class": "warning",
+            "display_label": "SWIMMING CLUB Alessandria (ID: 94, no city, match: 84.1%)"
+          },
+          {
+            "id": 691,
+            "name": "SWIMMING CL SRL S.D.",
+            "editable_name": "SWIMMING CL SRL S.D.",
+            "name_variations": "SWIMMING CL SRL S.D.",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.818,
+            "percentage": 81.8,
+            "color_class": "warning",
+            "display_label": "SWIMMING CL SRL S.D. (ID: 691, no city, match: 81.8%)"
+          },
+          {
+            "id": 733,
+            "name": "Swimming Caltanisse",
+            "editable_name": "Swimming Caltanisse",
+            "name_variations": "Swimming Caltanisse",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.79,
+            "percentage": 79.0,
+            "color_class": "warning",
+            "display_label": "Swimming Caltanisse (ID: 733, no city, match: 79.0%)"
+          },
+          {
+            "id": 1079,
+            "name": "Swimming Club - Colleferro",
+            "editable_name": "Swimming Club - Colleferro",
+            "name_variations": "Swimming Club - Colleferro",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.786,
+            "percentage": 78.6,
+            "color_class": "warning",
+            "display_label": "Swimming Club - Colleferro (ID: 1079, no city, match: 78.6%)"
+          },
+          {
+            "id": 972,
+            "name": "SWIMMING WHY NOT S.",
+            "editable_name": "SWIMMING WHY NOT S.",
+            "name_variations": "SWIMMING WHY NOT S.",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.777,
+            "percentage": 77.7,
+            "color_class": "warning",
+            "display_label": "SWIMMING WHY NOT S. (ID: 972, no city, match: 77.7%)"
+          },
+          {
+            "id": 627,
+            "name": "Swiming Club Quattroventi",
+            "editable_name": "Swiming Club Quattroventi",
+            "name_variations": "SWIMMING CLUB QUATT;Swiming Club Quattroventi",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.774,
+            "percentage": 77.4,
+            "color_class": "warning",
+            "display_label": "Swiming Club Quattroventi (ID: 627, no city, match: 77.4%)"
+          },
+          {
+            "id": 722,
+            "name": "SWIMBLU ASD",
+            "editable_name": "SWIMBLU ASD",
+            "name_variations": "SWIMBLU ASD",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.773,
+            "percentage": 77.3,
+            "color_class": "warning",
+            "display_label": "SWIMBLU ASD (ID: 722, no city, match: 77.3%)"
+          },
+          {
+            "id": 925,
+            "name": "Swim Academy ssd",
+            "editable_name": "Swim Academy ssd",
+            "name_variations": "ASD SWIM ACADEMY;Swim Academy ssd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.753,
+            "percentage": 75.3,
+            "color_class": "warning",
+            "display_label": "Swim Academy ssd (ID: 925, no city, match: 75.3%)"
+          },
+          {
+            "id": 1099,
+            "name": "POWERSWIMMING ASD",
+            "editable_name": "POWERSWIMMING ASD",
+            "name_variations": "POWERSWIMMING ASD;Powerswimming asd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.752,
+            "percentage": 75.2,
+            "color_class": "warning",
+            "display_label": "POWERSWIMMING ASD (ID: 1099, no city, match: 75.2%)"
+          },
+          {
+            "id": 1419,
+            "name": "Mas Club ssd arl",
+            "editable_name": "Mas Club ssd arl",
+            "name_variations": "Mas Club ssd arl",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.743,
+            "percentage": 74.3,
+            "color_class": "warning",
+            "display_label": "Mas Club ssd arl (ID: 1419, no city, match: 74.3%)"
+          },
+          {
+            "id": 660,
+            "name": "SWIMMING SORRENTO A",
+            "editable_name": "SWIMMING SORRENTO A",
+            "name_variations": "SWIMMING SORRENTO A",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.743,
+            "percentage": 74.3,
+            "color_class": "warning",
+            "display_label": "SWIMMING SORRENTO A (ID: 660, no city, match: 74.3%)"
+          },
+          {
+            "id": 1350,
+            "name": "Poseidon Sporting Club as",
+            "editable_name": "Poseidon Sporting Club as",
+            "name_variations": "Poseidon Sporting Club as",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.742,
+            "percentage": 74.2,
+            "color_class": "warning",
+            "display_label": "Poseidon Sporting Club as (ID: 1350, no city, match: 74.2%)"
+          },
+          {
+            "id": 788,
+            "name": "QSWIM ASD",
+            "editable_name": "QSWIM ASD",
+            "name_variations": "QSWIM ASD",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.741,
+            "percentage": 74.1,
+            "color_class": "warning",
+            "display_label": "QSWIM ASD (ID: 788, no city, match: 74.1%)"
+          }
+        ]
+      },
+      {
+        "key": "Swimprove ssd",
+        "name": "Swimprove ssd",
+        "editable_name": "Swimprove ssd",
+        "name_variations": "Swimprove ssd",
+        "team_id": null,
+        "city_id": null,
+        "fuzzy_matches": [
+          {
+            "id": 1618,
+            "name": "Swimprove ssd",
+            "editable_name": "Swimprove ssd",
+            "name_variations": "Swimprove ssd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 1.0,
+            "percentage": 100.0,
+            "color_class": "success",
+            "display_label": "Swimprove ssd (ID: 1618, no city, match: 100.0%)"
+          },
+          {
+            "id": 1218,
+            "name": "Sport4life Ssd",
+            "editable_name": "Sport4life Ssd",
+            "name_variations": "Sport4life Ssd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.781,
+            "percentage": 78.1,
+            "color_class": "warning",
+            "display_label": "Sport4life Ssd (ID: 1218, no city, match: 78.1%)"
+          },
+          {
+            "id": 1437,
+            "name": "Sport.E.R. ssd",
+            "editable_name": "Sport.E.R. ssd",
+            "name_variations": "Sport.E.R. ssd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.776,
+            "percentage": 77.6,
+            "color_class": "warning",
+            "display_label": "Sport.E.R. ssd (ID: 1437, no city, match: 77.6%)"
+          },
+          {
+            "id": 1236,
+            "name": "Impianti Sportivi Nf Ssd",
+            "editable_name": "Impianti Sportivi Nf Ssd",
+            "name_variations": "Impianti Sportivi Nf Ssd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.769,
+            "percentage": 76.9,
+            "color_class": "warning",
+            "display_label": "Impianti Sportivi Nf Ssd (ID: 1236, no city, match: 76.9%)"
+          },
+          {
+            "id": 906,
+            "name": "Sprinteam Ssd",
+            "editable_name": "Sprinteam Ssd",
+            "name_variations": "Sprinteam Ssd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.764,
+            "percentage": 76.4,
+            "color_class": "warning",
+            "display_label": "Sprinteam Ssd (ID: 906, no city, match: 76.4%)"
+          },
+          {
+            "id": 359,
+            "name": "SPORT VILLAGE SSD",
+            "editable_name": "SPORT VILLAGE SSD",
+            "name_variations": "SPORT VILLAGE SSD -;SPORT VILLAGE SSD",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.763,
+            "percentage": 76.3,
+            "color_class": "warning",
+            "display_label": "SPORT VILLAGE SSD (ID: 359, no city, match: 76.3%)"
+          },
+          {
+            "id": 642,
+            "name": "CSI Roma Est ssd",
+            "editable_name": "CSI Roma Est ssd",
+            "name_variations": "CSI Roma Est ssd",
+            "city_id": 72,
+            "city_name": "Roma",
+            "weight": 0.758,
+            "percentage": 75.8,
+            "color_class": "warning",
+            "display_label": "CSI Roma Est ssd (ID: 642, Roma, match: 75.8%)"
+          },
+          {
+            "id": 593,
+            "name": "XSPORTING SSD",
+            "editable_name": "XSPORTING SSD",
+            "name_variations": "XSPORTING SSD",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.746,
+            "percentage": 74.6,
+            "color_class": "warning",
+            "display_label": "XSPORTING SSD (ID: 593, no city, match: 74.6%)"
+          }
+        ]
+      },
+      {
+        "key": "Synthesis ssd",
+        "name": "South Wyattburgh Swimming Club ASD",
+        "editable_name": "South Wyattburgh Swimming Club ASD",
+        "name_variations": "Synthesis Nuoto ssd;A.S.D. SYNTHESIS NUOTO;Synthesis ssd",
+        "team_id": 600,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Team Insubrika asd",
+        "name": "West Winnifred Swimming Club ASD",
+        "editable_name": "West Winnifred Swimming Club ASD",
+        "name_variations": "TEAM INSUBRIKA ASD",
+        "team_id": 57,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Team Legnano Nuoto a.s.d.",
+        "name": "Team Legnano Nuoto a.s.d.",
+        "editable_name": "Team Legnano Nuoto a.s.d.",
+        "name_variations": "Team Legnano Nuoto a.s.d.",
+        "team_id": null,
+        "city_id": 114,
+        "fuzzy_matches": [
+          {
+            "id": 1598,
+            "name": "Team Legnano Nuoto a.s.d.",
+            "editable_name": "Team Legnano Nuoto a.s.d.",
+            "name_variations": "Team Legnano Nuoto a.s.d.",
+            "city_id": 114,
+            "city_name": "Legnano",
+            "weight": 1.0,
+            "percentage": 100.0,
+            "color_class": "success",
+            "display_label": "Team Legnano Nuoto a.s.d. (ID: 1598, Legnano, match: 100.0%)"
+          },
+          {
+            "id": 1421,
+            "name": "New Team Giano asd",
+            "editable_name": "New Team Giano ASD",
+            "name_variations": "New Team Giano ASD;New Team Giano asd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.82,
+            "percentage": 82.0,
+            "color_class": "warning",
+            "display_label": "New Team Giano ASD (ID: 1421, no city, match: 82.0%)"
+          },
+          {
+            "id": 1463,
+            "name": "Mantova Nuoto Master asd",
+            "editable_name": "Mantova Nuoto Master asd",
+            "name_variations": "Mantova Nuoto asd;Mantova Nuoto Master asd",
+            "city_id": 24,
+            "city_name": "Mantova",
+            "weight": 0.794,
+            "percentage": 79.4,
+            "color_class": "warning",
+            "display_label": "Mantova Nuoto Master asd (ID: 1463, Mantova, match: 79.4%)"
+          },
+          {
+            "id": 494,
+            "name": "SAN MAURO NUOTO ASD",
+            "editable_name": "SAN MAURO NUOTO ASD",
+            "name_variations": "SAN MAURO NUOTO ASD;SAN MAURO SSD",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.77,
+            "percentage": 77.0,
+            "color_class": "warning",
+            "display_label": "SAN MAURO NUOTO ASD (ID: 494, no city, match: 77.0%)"
+          },
+          {
+            "id": 134,
+            "name": "SENIGALLIA NUOTO A.S.D.",
+            "editable_name": "SENIGALLIA NUOTO A.S.D.",
+            "name_variations": "SENIGALLIA NUOTO A.S.D.",
+            "city_id": 97,
+            "city_name": "Senigallia",
+            "weight": 0.763,
+            "percentage": 76.3,
+            "color_class": "warning",
+            "display_label": "SENIGALLIA NUOTO A.S.D. (ID: 134, Senigallia, match: 76.3%)"
+          },
+          {
+            "id": 1558,
+            "name": "TERNANA NUOTO asd",
+            "editable_name": "TERNANA NUOTO asd",
+            "name_variations": "TERNANA NUOTO asd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.756,
+            "percentage": 75.6,
+            "color_class": "warning",
+            "display_label": "TERNANA NUOTO asd (ID: 1558, no city, match: 75.6%)"
+          },
+          {
+            "id": 176,
+            "name": "TEAM EUGANEO",
+            "editable_name": "S.S.D. TEAM EUGANEO RL",
+            "name_variations": "S.S.D. TEAM EUGANEO RL;ssd Team Euganeo - Montag",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.751,
+            "percentage": 75.1,
+            "color_class": "warning",
+            "display_label": "S.S.D. TEAM EUGANEO RL (ID: 176, no city, match: 75.1%)"
+          },
+          {
+            "id": 123,
+            "name": "TEAM OSIMO NUOTO ASD",
+            "editable_name": "TEAM OSIMO NUOTO ASD",
+            "name_variations": "TEAM OSIMO NUOTO ASD;TEAM OSIMO NUOTO AS",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.75,
+            "percentage": 75.0,
+            "color_class": "warning",
+            "display_label": "TEAM OSIMO NUOTO ASD (ID: 123, no city, match: 75.0%)"
+          },
+          {
+            "id": 881,
+            "name": "Team Orte asd",
+            "editable_name": "Team Orte asd",
+            "name_variations": "Team Orte asd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.75,
+            "percentage": 75.0,
+            "color_class": "warning",
+            "display_label": "Team Orte asd (ID: 881, no city, match: 75.0%)"
+          },
+          {
+            "id": 883,
+            "name": "Centro Nuoto Anagni ASD",
+            "editable_name": "Centro Nuoto Anagni ASD",
+            "name_variations": "Centro Nuoto Anagni ASD;Centro Nuoto Anagni;Centro Nuoto Anagni asd",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.75,
+            "percentage": 75.0,
+            "color_class": "warning",
+            "display_label": "Centro Nuoto Anagni ASD (ID: 883, no city, match: 75.0%)"
+          },
+          {
+            "id": 865,
+            "name": "TEAM NUOTO FORLÌ ASD",
+            "editable_name": "TEAM NUOTO FORLÌ ASD",
+            "name_variations": "TEAM NUOTO FORLÌ ASD",
+            "city_id": 15,
+            "city_name": "Forlì",
+            "weight": 0.74,
+            "percentage": 74.0,
+            "color_class": "warning",
+            "display_label": "TEAM NUOTO FORLÌ ASD (ID: 865, Forlì, match: 74.0%)"
+          }
+        ]
+      },
+      {
+        "key": "Team Lombardia Nuoto MGM Sport",
+        "name": "Ortizhaven Swimming Club ASD",
+        "editable_name": "Ortizhaven Swimming Club ASD",
+        "name_variations": "TEAM NUOTO LOMBARDIA;Team Lombardia Nuoto MGM Sport",
+        "team_id": 277,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Teramo Nuoto",
+        "name": "Wintheiserborough Swimming Club ASD",
+        "editable_name": "Wintheiserborough Swimming Club ASD",
+        "name_variations": "TERAMO NUOTO ASD",
+        "team_id": 757,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Tergeste Nuoto Altura ssd",
+        "name": "Halinaview Swimming Club ASD",
+        "editable_name": "Halinaview Swimming Club ASD",
+        "name_variations": "Tergeste Nuoto A.S.D.;A.S.D. VV. F. TERGESTE NUOTO;Tergeste Nuoto Altura ASD;Vv.F. Tergeste Nuoto Asd;Tergeste Nuoto Altura asd",
+        "team_id": 987,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Torino Nuoto",
+        "name": "West Fayfurt Swimming Club ASD",
+        "editable_name": "West Fayfurt Swimming Club ASD",
+        "name_variations": "TORINO NUOTO",
+        "team_id": 687,
+        "city_id": 90,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "UISP Nuoto Cordenons",
+        "name": "O'Connerhaven Swimming Club ASD",
+        "editable_name": "O'Connerhaven Swimming Club ASD",
+        "name_variations": "UISP NUOTO CORDENON;\"UISP Nuoto Cordenons",
+        "team_id": 362,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Vela Nuoto Ancona",
+        "name": "South Nicolaville Swimming Club ASD",
+        "editable_name": "South Nicolaville Swimming Club ASD",
+        "name_variations": "VELA NUOTO ANCONA",
+        "team_id": 124,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Verolanuoto",
+        "name": "South Jeniffertown Swimming Club ASD",
+        "editable_name": "South Jeniffertown Swimming Club ASD",
+        "name_variations": "VEROLANUOTO",
+        "team_id": 80,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Villa Aurelia SC",
+        "name": "Villa Aurelia SC",
+        "editable_name": "Villa Aurelia SC",
+        "name_variations": "Villa Aurelia SC",
+        "team_id": null,
+        "city_id": null,
+        "fuzzy_matches": [
+          {
+            "id": 1537,
+            "name": "Villa Aurelia SC",
+            "editable_name": "Villa Aurelia SC",
+            "name_variations": "Villa Aurelia SC",
+            "city_id": null,
+            "city_name": null,
+            "weight": 1.0,
+            "percentage": 100.0,
+            "color_class": "success",
+            "display_label": "Villa Aurelia SC (ID: 1537, no city, match: 100.0%)"
+          },
+          {
+            "id": 798,
+            "name": "VILLA YORK SPORTING CLUB",
+            "editable_name": "VILLA YORK SPORTING CLUB",
+            "name_variations": "VILLA YORK SPORTING CLUB",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.765,
+            "percentage": 76.5,
+            "color_class": "warning",
+            "display_label": "VILLA YORK SPORTING CLUB (ID: 798, no city, match: 76.5%)"
+          },
+          {
+            "id": 970,
+            "name": "Villa Flaminia Sport",
+            "editable_name": "Villa Flaminia Sport",
+            "name_variations": "Villa Flaminia Sport",
+            "city_id": null,
+            "city_name": null,
+            "weight": 0.751,
+            "percentage": 75.1,
+            "color_class": "warning",
+            "display_label": "Villa Flaminia Sport (ID: 970, no city, match: 75.1%)"
+          }
+        ]
+      },
+      {
+        "key": "Villa Bonelli ssd",
+        "name": "Murazikborough Swimming Club ASD",
+        "editable_name": "Murazikborough Swimming Club ASD",
+        "name_variations": "VILLA BONELLI NUOTO;Villa Bonelli  ssd",
+        "team_id": 79,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Villa York Sporting Club",
+        "name": "Faustinabury Swimming Club ASD",
+        "editable_name": "Faustinabury Swimming Club ASD",
+        "name_variations": "VILLA YORK SPORTING CLUB",
+        "team_id": 798,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "Zero9 Team ssd",
+        "name": "Hyattton Swimming Club ASD",
+        "editable_name": "Hyattton Swimming Club ASD",
+        "name_variations": "Zero9 Team SSD;ZERO9 SSD;Zero9 ssd arl;Zero9 Team ssd",
+        "team_id": 213,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "ssd Stilelibero - Preganz",
+        "name": "Wisozktown Swimming Club ASD",
+        "editable_name": "Wisozktown Swimming Club ASD",
+        "name_variations": "SSD STILE LIBERO - Preganziol;STILE LIBERO - Preganziol;SSD STILE LIBERO - Preganz;STILE LIBERO - Preganz;SSD STILE LIBERO SRL;ssd Stilelibero - Preganz;STILE LIBERO SSD",
+        "team_id": 179,
+        "city_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "ssd Team Marche",
+        "name": "Faheyview Swimming Club ASD",
+        "editable_name": "Faheyview Swimming Club ASD",
+        "name_variations": "SSD Team Marche;TEAM MARCHE MASTER SSD;TEAM MARCHE MASTER;ssd Team Marche",
+        "team_id": 122,
+        "city_id": null,
+        "fuzzy_matches": []
+      }
+    ],
+    "team_affiliations": [
+      {
+        "team_key": "A.P.Padana ssd",
+        "season_id": 242,
+        "team_id": 405,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "A.S.D. Life Academy - Hadria Nu",
+        "season_id": 242,
+        "team_id": 1564,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "ASA asd - Cinisello Balsa",
+        "season_id": 242,
+        "team_id": 77,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "ASSISI NUOTO MASTER",
+        "season_id": 242,
+        "team_id": 1556,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Acqua1village ssd",
+        "season_id": 242,
+        "team_id": 265,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Acquarius Popoli asd",
+        "season_id": 242,
+        "team_id": 1545,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "AlbatrosNuoto - Montegrot",
+        "season_id": 242,
+        "team_id": 1473,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "All Round Sport & Wellnes",
+        "season_id": 242,
+        "team_id": 1331,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Aly Sport asd",
+        "season_id": 242,
+        "team_id": 1227,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Amatori Nuoto ssd arl",
+        "season_id": 242,
+        "team_id": 1361,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Aqa Sport Cusago ssd",
+        "season_id": 242,
+        "team_id": 1614,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Aqua Alpha ssd s.r.l.",
+        "season_id": 242,
+        "team_id": 1538,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Aquamore Acqua 13",
+        "season_id": 242,
+        "team_id": 1535,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Aquareal asd",
+        "season_id": 242,
+        "team_id": 1440,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Aquarium ssd - Novi Ligur",
+        "season_id": 242,
+        "team_id": 753,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Aquatika ssd arl",
+        "season_id": 242,
+        "team_id": 296,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Arezzo Nuoto",
+        "season_id": 242,
+        "team_id": 297,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Asd Polisportiva Riccione Aps",
+        "season_id": 242,
+        "team_id": 131,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Asola Nuoto",
+        "season_id": 242,
+        "team_id": 324,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Atlantide Nuoto asd",
+        "season_id": 242,
+        "team_id": 484,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Aventino Sporting Roma ssd",
+        "season_id": 242,
+        "team_id": 1640,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Bergamo Swim Team",
+        "season_id": 242,
+        "team_id": 217,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "CS Il Gabbiano Paola ssd",
+        "season_id": 242,
+        "team_id": 574,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "CSI Nuoto Prato Asd",
+        "season_id": 242,
+        "team_id": 34,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "CSI Roma Flaminio",
+        "season_id": 242,
+        "team_id": 241,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "CUS Bari asd",
+        "season_id": 242,
+        "team_id": 477,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Can. Vittorino da Feltre",
+        "season_id": 242,
+        "team_id": 100,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Canottieri Baldesio",
+        "season_id": 242,
+        "team_id": 45,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Canottieri Lecco",
+        "season_id": 242,
+        "team_id": 229,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Caravaggio S.V. Aqua ssd",
+        "season_id": 242,
+        "team_id": 731,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Centro Nuoto Bastia asd",
+        "season_id": 242,
+        "team_id": 76,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Centro Nuoto Le Bandie",
+        "season_id": 242,
+        "team_id": 900,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Centro Nuoto Macerata ssd",
+        "season_id": 242,
+        "team_id": 739,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Centro Nuoto Stra",
+        "season_id": 242,
+        "team_id": 730,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Circolo Canottieri Aniene",
+        "season_id": 242,
+        "team_id": 89,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Citta' Sport Vicenza ssd",
+        "season_id": 242,
+        "team_id": 800,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Club L 'Aquila Nuoto",
+        "season_id": 242,
+        "team_id": 119,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Coopernuoto",
+        "season_id": 242,
+        "team_id": 42,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Crocera Stadium ssd",
+        "season_id": 242,
+        "team_id": 1205,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "DDS Camaiore apd",
+        "season_id": 242,
+        "team_id": 1443,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "DDS ssd",
+        "season_id": 242,
+        "team_id": 50,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "DLF Nuoto Livorno",
+        "season_id": 242,
+        "team_id": 219,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Derthona Nuoto",
+        "season_id": 242,
+        "team_id": 48,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Dimensione NUOTO Pontedera Asd",
+        "season_id": 242,
+        "team_id": 111,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Domar Sporting Club ssd",
+        "season_id": 242,
+        "team_id": 525,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Edoardo Antonelli ssd",
+        "season_id": 242,
+        "team_id": 432,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Effetto Sport - Barzano'",
+        "season_id": 242,
+        "team_id": 836,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Emmedue ssd",
+        "season_id": 242,
+        "team_id": 185,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Fermo Nuoto e Pallanuoto",
+        "season_id": 242,
+        "team_id": 1385,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Fin Plus ssd- Roma",
+        "season_id": 242,
+        "team_id": 535,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Firenze Nuota Master",
+        "season_id": 242,
+        "team_id": 62,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Flaminio Sporting Club",
+        "season_id": 242,
+        "team_id": 202,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Fonte Meravigliosa Sport",
+        "season_id": 242,
+        "team_id": 789,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Forum Sport Center",
+        "season_id": 242,
+        "team_id": 203,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Forum ssd - Assago",
+        "season_id": 242,
+        "team_id": 96,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "G. Sport Village ssd",
+        "season_id": 242,
+        "team_id": 1333,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "G.A.M. Team ssd - Brescia",
+        "season_id": 242,
+        "team_id": 49,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "G.P. Nuoto Mira",
+        "season_id": 242,
+        "team_id": 172,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Gonzaga Sport Club ssd",
+        "season_id": 242,
+        "team_id": 874,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Gryphus Sporting Club",
+        "season_id": 242,
+        "team_id": 821,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "H. Sport ssd - Firenze",
+        "season_id": 242,
+        "team_id": 1359,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Heaven Due ssd",
+        "season_id": 242,
+        "team_id": 440,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Idra Nuoto e Fitness ssd",
+        "season_id": 242,
+        "team_id": 1461,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Imolanuoto ssd a r.l.",
+        "season_id": 242,
+        "team_id": 17,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "In Sport Rane Rosse",
+        "season_id": 242,
+        "team_id": 478,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Klab Sport ssd",
+        "season_id": 242,
+        "team_id": 1388,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Komaros Sub Ancona Asd",
+        "season_id": 242,
+        "team_id": 126,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "La Meridiana Sport",
+        "season_id": 242,
+        "team_id": 1213,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Lecco Olimpica Nuoto",
+        "season_id": 242,
+        "team_id": 85,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Leonessa Nuoto asd",
+        "season_id": 242,
+        "team_id": 1464,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "MY TRAINERS CLUB S.S.D. a r.l.",
+        "season_id": 242,
+        "team_id": 1532,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Master Melzo Nuoto",
+        "season_id": 242,
+        "team_id": 64,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Milano Nuoto Master asd",
+        "season_id": 242,
+        "team_id": 236,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Mirano Nuoto",
+        "season_id": 242,
+        "team_id": 979,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Montenuoto ssd",
+        "season_id": 242,
+        "team_id": 161,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Muovi Lecce ssd",
+        "season_id": 242,
+        "team_id": 585,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "NC RN Cairo M.Acqui Terme",
+        "season_id": 242,
+        "team_id": 1206,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "NS Marche ssd",
+        "season_id": 242,
+        "team_id": 1386,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Natatio Master Team asd",
+        "season_id": 242,
+        "team_id": 851,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Nautilus ssd",
+        "season_id": 242,
+        "team_id": 206,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "New Swim asd - Castiglion",
+        "season_id": 242,
+        "team_id": 480,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Nord Padania Nuoto",
+        "season_id": 242,
+        "team_id": 56,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Nuotatori Canavesani",
+        "season_id": 242,
+        "team_id": 414,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Nuotatori Genovesi ssd",
+        "season_id": 242,
+        "team_id": 221,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Nuotatori Milanesi",
+        "season_id": 242,
+        "team_id": 239,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Nuotatori Padovani",
+        "season_id": 242,
+        "team_id": 171,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Nuotatori del Carroccio",
+        "season_id": 242,
+        "team_id": 839,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Nuoto Chivasso asd",
+        "season_id": 242,
+        "team_id": 408,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Nuoto Club Cagliari",
+        "season_id": 242,
+        "team_id": 889,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Nuoto Club Firenze Asd",
+        "season_id": 242,
+        "team_id": 976,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Nuoto Club Milano asd",
+        "season_id": 242,
+        "team_id": 87,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Nuoto Club Sassuolo",
+        "season_id": 242,
+        "team_id": 106,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Nuoto Master Brescia asd",
+        "season_id": 242,
+        "team_id": 1326,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Nuoto Pn Pontassieve",
+        "season_id": 242,
+        "team_id": 1570,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Nuoto Sub Faenza asd",
+        "season_id": 242,
+        "team_id": 1616,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Nuoto Valdinievole",
+        "season_id": 242,
+        "team_id": 295,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Nuoto Venezia ssd",
+        "season_id": 242,
+        "team_id": 899,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Olgiata 20.12 ssd",
+        "season_id": 242,
+        "team_id": 207,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Ondablu ssd",
+        "season_id": 242,
+        "team_id": 1187,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "PASSPORT SSD srl",
+        "season_id": 242,
+        "team_id": 1524,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Parco Kolbe ssd",
+        "season_id": 242,
+        "team_id": 1296,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Pavia Nuoto asd",
+        "season_id": 242,
+        "team_id": 227,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Peppe Lamberti N.C. asd",
+        "season_id": 242,
+        "team_id": 658,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Planet Sport Todi ssd",
+        "season_id": 242,
+        "team_id": 1557,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Pol Nadir - Palermo",
+        "season_id": 242,
+        "team_id": 511,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Pol. Amatori Prato asd",
+        "season_id": 242,
+        "team_id": 343,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Pol. Nuoto Montefeltro Asd",
+        "season_id": 242,
+        "team_id": 136,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Pol.Vigor Perconti asd",
+        "season_id": 242,
+        "team_id": 1426,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Pool Nuoto Asd",
+        "season_id": 242,
+        "team_id": 120,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Prosport Acqua ssd",
+        "season_id": 242,
+        "team_id": 751,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Rari Master Pesaro asd",
+        "season_id": 242,
+        "team_id": 315,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Rari Nantes Saronno",
+        "season_id": 242,
+        "team_id": 63,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Rari Nantes Trento",
+        "season_id": 242,
+        "team_id": 102,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Rari Nantes Venezia",
+        "season_id": 242,
+        "team_id": 143,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Riviera Nuoto - Dolo",
+        "season_id": 242,
+        "team_id": 175,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Roma Nuoto Master ssd",
+        "season_id": 242,
+        "team_id": 382,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Roncadenuoto ssd arl",
+        "season_id": 242,
+        "team_id": 1273,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "SO.GE.SE SOC. COOP",
+        "season_id": 242,
+        "team_id": 1321,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "SPM Sport ssd - Paullo",
+        "season_id": 242,
+        "team_id": 334,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "SSV Brixen",
+        "season_id": 242,
+        "team_id": 467,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Serapo Sport Gaeta",
+        "season_id": 242,
+        "team_id": 532,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Seven Master Nuoto asd",
+        "season_id": 242,
+        "team_id": 317,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Sintesi ssd",
+        "season_id": 242,
+        "team_id": 194,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Sport 2000 ssd - Roma",
+        "season_id": 242,
+        "team_id": 649,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Sport Shuttle 3.0 ssd",
+        "season_id": 242,
+        "team_id": 621,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Sporting Club 63 ssd",
+        "season_id": 242,
+        "team_id": 840,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Sportivamente Belluno ssd",
+        "season_id": 242,
+        "team_id": 465,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Sports and Events ssd",
+        "season_id": 242,
+        "team_id": 1160,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Ssd 2001 srl - Padova",
+        "season_id": 242,
+        "team_id": 177,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Swim Sassari ssd",
+        "season_id": 242,
+        "team_id": 887,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Swim Team Abruzzo asd",
+        "season_id": 242,
+        "team_id": 946,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Swim in Action asd",
+        "season_id": 242,
+        "team_id": 1467,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Swim&Care asd",
+        "season_id": 242,
+        "team_id": 1304,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Swimming Club asd ets",
+        "season_id": 242,
+        "team_id": 1638,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Swimprove ssd",
+        "season_id": 242,
+        "team_id": 1618,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Synthesis ssd",
+        "season_id": 242,
+        "team_id": 600,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Team Insubrika asd",
+        "season_id": 242,
+        "team_id": 57,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Team Legnano Nuoto a.s.d.",
+        "season_id": 242,
+        "team_id": 1598,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Team Lombardia Nuoto MGM Sport",
+        "season_id": 242,
+        "team_id": 277,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Teramo Nuoto",
+        "season_id": 242,
+        "team_id": 757,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Tergeste Nuoto Altura ssd",
+        "season_id": 242,
+        "team_id": 987,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Torino Nuoto",
+        "season_id": 242,
+        "team_id": 687,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "UISP Nuoto Cordenons",
+        "season_id": 242,
+        "team_id": 362,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Vela Nuoto Ancona",
+        "season_id": 242,
+        "team_id": 124,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Verolanuoto",
+        "season_id": 242,
+        "team_id": 80,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Villa Aurelia SC",
+        "season_id": 242,
+        "team_id": 1537,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Villa Bonelli ssd",
+        "season_id": 242,
+        "team_id": 79,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Villa York Sporting Club",
+        "season_id": 242,
+        "team_id": 798,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "Zero9 Team ssd",
+        "season_id": 242,
+        "team_id": 213,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "ssd Stilelibero - Preganz",
+        "season_id": 242,
+        "team_id": 179,
+        "team_affiliation_id": null
+      },
+      {
+        "team_key": "ssd Team Marche",
+        "season_id": 242,
+        "team_id": 122,
+        "team_affiliation_id": null
+      }
+    ]
+  }
+}

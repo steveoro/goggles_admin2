@@ -140,7 +140,7 @@ class ApplicationController < ActionController::Base
   #
   def datagrid_model_attributes_for(model_class, attrs)
     allowed_keys = model_class.new.model_attributes.keys
-    attrs.select { |key, _value| allowed_keys.include?(key) }
+    attrs.slice(*allowed_keys)
   end
   #-- -------------------------------------------------------------------------
   #++

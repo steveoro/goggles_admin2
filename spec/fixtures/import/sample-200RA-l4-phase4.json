@@ -1,0 +1,39 @@
+{
+  "_meta": {
+    "schema_version": "1.0",
+    "created_at": "2025-11-03T12:41:58Z",
+    "source_path": "/home/steve/Projects/goggles_admin2/crawler/data/results.new/242/2025-06-24-Campionati_Italiani_di_Nuoto_Master_Herbalife-200RA-l4.json",
+    "generated_at": "2025-11-03T12:42:15Z",
+    "season_id": 242,
+    "lt_format": 4,
+    "phase": 4
+  },
+  "data": {
+    "sessions": [
+      {
+        "session_order": 1,
+        "events": []
+      },
+      {
+        "session_order": 3,
+        "description": "Sessione 3",
+        "scheduled_date": "2025-06-26",
+        "events": [
+          {
+            "key": "200RA",
+            "distance": 200,
+            "stroke": "RA",
+            "event_order": 1,
+            "session_order": 1,
+            "heat_type_id": 3,
+            "heat_type": "F",
+            "event_type_id": 21,
+            "meeting_session_id": null,
+            "begin_time": "08:30",
+            "id": null
+          }
+        ]
+      }
+    ]
+  }
+}

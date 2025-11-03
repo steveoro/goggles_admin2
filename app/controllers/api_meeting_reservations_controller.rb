@@ -130,7 +130,7 @@ class APIMeetingReservationsController < ApplicationController
     # a dedicated command. Just 2 parameters are required:
     selectable_columns = %w[badge_id meeting_id]
     api_payload = edit_params(GogglesDb::MeetingReservation)
-                  .select { |key, _v| selectable_columns.include?(key) }
+                  .slice(*selectable_columns)
                   .to_hash
 
     result = APIProxy.call(

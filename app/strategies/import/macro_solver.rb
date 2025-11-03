@@ -173,7 +173,7 @@ module Import
       return {} unless unfiltered_hash.respond_to?(:reject)
 
       valid_column_keys = model_attribute_names_for(model_name)
-      unfiltered_hash.select { |key, _v| valid_column_keys.include?(key) }
+      unfiltered_hash.slice(*valid_column_keys)
     end
     #-- -------------------------------------------------------------------------
     #++
@@ -220,7 +220,7 @@ module Import
       meeting = cached_instance_of('meeting', nil)
       # Prioritize existing sessions over the one from the parsed data:
       if meeting && meeting.id.present? && meeting.meeting_sessions.present?
-        @data['meeting_session'] = meeting.meeting_sessions.map do |meeting_session|
+        @data['meeting_session'] = meeting.meeting_sessions.filter_map do |meeting_session|
           session = find_or_prepare_session(
             meeting:,
             session_order: meeting_session.session_order,
@@ -235,7 +235,7 @@ module Import
           )
           session.add_bindings!('meeting' => @data['name'])
           session
-        end.compact # (Don't store nils in the array)
+        end
         return @data['meeting_session']
       end
 
@@ -565,7 +565,7 @@ module Import
     # integrating the cache with any existing row as a cached entity.
     def map_events_from_db
       @data&.fetch('meeting_session', [])&.each_with_index do |msession_hash, msession_idx|
-        meeting_session_id = msession_hash.fetch('row', {}).fetch('id', nil) if msession_hash.is_a?(Hash)
+        meeting_session_id = msession_hash.dig('row', 'id') if msession_hash.is_a?(Hash)
         meeting_session_id = msession_hash.row.id if msession_hash.respond_to?(:row) && msession_hash.row.present?
         next unless meeting_session_id
 
@@ -595,7 +595,7 @@ module Import
     # integrating the cache with any existing row as a cached entity.
     def map_programs_from_db
       @data&.fetch('meeting_event', {})&.each do |event_key, mevent_hash|
-        meeting_event_id = mevent_hash.fetch('row', {}).fetch('id', nil) if mevent_hash.is_a?(Hash)
+        meeting_event_id = mevent_hash.dig('row', 'id') if mevent_hash.is_a?(Hash)
         meeting_event_id = mevent_hash.row.id if mevent_hash.respond_to?(:row) && mevent_hash.row.present?
         next unless meeting_event_id
 
@@ -1809,7 +1809,7 @@ module Import
 
         cached_entity = @data&.fetch(model_name, nil)
       else
-        cached_entity = @data&.fetch(model_name, nil)&.fetch(key_name_or_index, nil)
+        cached_entity = @data&.dig(model_name, key_name_or_index)
       end
 
       return cached_entity if cached_entity.is_a?(ActiveRecord::Base) # already a row model
@@ -1893,7 +1893,7 @@ module Import
     #
     def entity_present?(model_name, key_name_or_index)
       return @data&.fetch('meeting', nil).present? if model_name == 'meeting'
-      return @data&.fetch('meeting_session', nil)&.fetch(key_name_or_index, nil).present? if model_name == 'meeting_session'
+      return @data&.dig('meeting_session', key_name_or_index).present? if model_name == 'meeting_session'
 
       @data[model_name] ||= {}
       @data[model_name].fetch(key_name_or_index, nil).present?

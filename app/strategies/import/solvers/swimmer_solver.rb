@@ -13,10 +13,11 @@ module Import
     #   "_meta": { ... },
     #   "data": {
     #     "season_id": <int>,
-    #     "swimmers": [ { "key": "LAST|FIRST|YOB", "last_name": "LAST", "first_name": "FIRST", "year_of_birth": 1970, "gender_type_code": "F" } ],
-    #     "badges":   [ { "swimmer_key": "...", "team_key": "Team Name", "season_id": 242 } ]
+    #     "swimmers": [ { "key": "LAST|FIRST|YOB", "last_name": "LAST", "first_name": "FIRST", "year_of_birth": 1970, "gender_type_code": "F", "swimmer_id": 123 } ],
+    #     "badges":   [ { "swimmer_key": "...", "team_key": "...", "season_id": 242, "swimmer_id": 123, "team_id": 456, "category_type_id": 789, "badge_id": 999 } ]
     #   }
     # }
+    # NOTE: badge_id will be nil for new badges that don't exist in DB yet
     #
     class SwimmerSolver
       def initialize(season:, logger: Rails.logger)
@@ -29,12 +30,24 @@ module Import
       # - :source_path (String, required)
       # - :lt_format (Integer, 2 or 4)
       # - :phase_path (String, optional custom output path)
+      # - :phase1_path (String, optional, for meeting date extraction and category calculation)
+      # - :phase2_path (String, optional, for team_id lookups when matching badges)
       #
       # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
       def build!(opts = {})
         source_path = opts.fetch(:source_path)
         lt_format = opts.fetch(:lt_format, 2).to_i
         data_hash = JSON.parse(File.read(source_path))
+
+        # Load phase1 and phase2 data for meeting date and team lookups
+        phase1_path = opts[:phase1_path] || default_phase_path_for(source_path, 1)
+        phase2_path = opts[:phase2_path] || default_phase_path_for(source_path, 2)
+        @phase1_data = File.exist?(phase1_path) ? JSON.parse(File.read(phase1_path)) : nil
+        @phase2_data = File.exist?(phase2_path) ? JSON.parse(File.read(phase2_path)) : nil
+        meeting_date = @phase1_data&.dig('data', 'meeting', 'header_date')
+
+        # Initialize CategoriesCache for season-aware category lookups
+        @categories_cache = PdfResults::CategoriesCache.new(@season)
 
         swimmers = []
         badges = []
@@ -49,10 +62,10 @@ module Import
               swimmers << build_swimmer_entry(key, l, f, yob.to_i, gcode)
               next if team_name.blank?
 
-              badges << { 'swimmer_key' => key, 'team_key' => team_name, 'season_id' => @season.id }
+              badges << build_badge_entry(key, team_name, yob.to_i, gcode, meeting_date)
             end
           else # Hash dictionary: key => swimmerKey, value => details
-            data_hash['swimmers'].each do |_sw_key, v|
+            data_hash['swimmers'].each_value do |v|
               l = v['last_name'] || v['lastName']
               f = v['first_name'] || v['firstName']
               yob = v['year_of_birth'] || v['year']
@@ -64,7 +77,7 @@ module Import
               swimmers << build_swimmer_entry(key, l, f, yob.to_i, gcode)
               next if team_name.to_s.strip.empty?
 
-              badges << { 'swimmer_key' => key, 'team_key' => team_name, 'season_id' => @season.id }
+              badges << build_badge_entry(key, team_name, yob.to_i, gcode, meeting_date)
             end
           end
         elsif data_hash['sections'].is_a?(Array)
@@ -84,11 +97,7 @@ module Import
               team_name = row['team']
               next if team_name.to_s.strip.empty?
 
-              badges << {
-                'swimmer_key' => key,
-                'team_key' => team_name,
-                'season_id' => @season.id
-              }
+              badges << build_badge_entry(key, team_name, yob.to_i, gcode, meeting_date)
             end
           end
         else
@@ -275,6 +284,125 @@ module Import
 
         weight = match['weight'].to_f
         weight >= 0.60
+      end
+
+      # Build a badge entry with category_type_id calculated using CategoriesCache
+      # Also attempts to match existing badge in DB if all required keys are available
+      # Returns hash with swimmer_key, team_key, season_id, category_type_id, and badge_id (if matched)
+      def build_badge_entry(swimmer_key, team_key, year_of_birth, gender_code, meeting_date)
+        # Resolve swimmer_id and team_id from phase data
+        swimmer_id = find_swimmer_id_by_key(swimmer_key)
+        team_id = find_team_id_by_key(team_key)
+
+        badge = {
+          'swimmer_key' => swimmer_key,
+          'team_key' => team_key,
+          'season_id' => @season.id,
+          'swimmer_id' => swimmer_id,
+          'team_id' => team_id,
+          'category_type_id' => nil,
+          'badge_id' => nil
+        }
+
+        # Calculate category_type_id if we have all required data
+        if year_of_birth.present? && gender_code.present? && meeting_date.present? && @categories_cache
+          category_type = calculate_category_type(
+            year_of_birth: year_of_birth,
+            gender_code: gender_code,
+            meeting_date: meeting_date
+          )
+          badge['category_type_id'] = category_type&.id
+
+          if category_type
+            @logger&.info("[SwimmerSolver] Badge for '#{swimmer_key}' -> category #{category_type.code} (ID: #{category_type.id})")
+          else
+            @logger&.warn("[SwimmerSolver] Could not find category for '#{swimmer_key}' (YOB: #{year_of_birth}, gender: #{gender_code})")
+          end
+        end
+
+        # Try to match existing badge if we have all required keys
+        # Guard clause: skip matching if any key is missing
+        return badge unless swimmer_id && team_id && @season.id
+
+        existing_badge = GogglesDb::Badge.find_by(
+          season_id: @season.id,
+          swimmer_id: swimmer_id,
+          team_id: team_id
+        )
+
+        if existing_badge
+          badge['badge_id'] = existing_badge.id
+          @logger&.info("[SwimmerSolver] Matched existing Badge ID=#{existing_badge.id} for '#{swimmer_key}' + '#{team_key}'")
+        else
+          @logger&.debug("[SwimmerSolver] No existing badge found for '#{swimmer_key}' + '#{team_key}' (will create new)")
+        end
+
+        badge
+      rescue StandardError => e
+        @logger&.error("[SwimmerSolver] Error matching badge for '#{swimmer_key}': #{e.message}")
+        badge # Return badge without ID on error
+      end
+
+      # Calculate CategoryType using CategoriesCache
+      # Same logic as PhaseCommitter but used during Phase 3
+      def calculate_category_type(year_of_birth:, gender_code:, meeting_date:)
+        return nil unless year_of_birth && meeting_date && @categories_cache
+
+        # Parse meeting date to get year
+        meeting_year = begin
+          Date.parse(meeting_date.to_s).year
+        rescue StandardError
+          nil
+        end
+        return nil unless meeting_year
+
+        # Calculate swimmer's age at meeting
+        age = meeting_year - year_of_birth.to_i
+
+        # Use CategoriesCache to find the correct category for this season
+        result = @categories_cache.find_category_for_age(age, relay: false)
+        return nil unless result
+
+        _category_code, category_type = result
+
+        # Verify gender matches (categories are gender-specific)
+        category_type if category_type.code.start_with?(gender_code)
+      end
+
+      # Find swimmer_id by swimmer_key from current swimmers being built
+      # Note: This looks at swimmers array being built in this phase, not from saved phase3 file
+      def find_swimmer_id_by_key(swimmer_key)
+        # First check phase3 data if available (from previous build)
+        if @phase1_data # Reusing phase data loaded at start
+          swimmers = Array(@phase3_data&.dig('data', 'swimmers'))
+          swimmer = swimmers.find { |s| s['key'] == swimmer_key }
+          return swimmer&.dig('swimmer_id') if swimmer
+        end
+
+        # Otherwise, try to find in DB by parsing key
+        parts = swimmer_key.split('|')
+        return nil if parts.size < 3
+
+        last_name = parts[0]
+        first_name = parts[1]
+        year_of_birth = parts[2].to_i
+
+        # Quick lookup - exact match by name and YOB
+        swimmer = GogglesDb::Swimmer.find_by(
+          last_name: last_name,
+          first_name: first_name,
+          year_of_birth: year_of_birth
+        )
+        swimmer&.id
+      end
+
+      # Find team_id by team_key from phase2 data
+      def find_team_id_by_key(team_key)
+        return nil unless @phase2_data
+
+        teams = Array(@phase2_data.dig('data', 'teams'))
+        team = teams.find { |t| t['key'] == team_key }
+        team&.dig('team_id')
       end
     end
   end

@@ -1,0 +1,5864 @@
+{
+  "_meta": {
+    "schema_version": "1.0",
+    "created_at": "2025-11-03T12:41:41Z",
+    "generator": "Import::Solvers::SwimmerSolver",
+    "source_path": "/home/steve/Projects/goggles_admin2/crawler/data/results.new/242/2025-06-24-Campionati_Italiani_di_Nuoto_Master_Herbalife-200RA-l4.json",
+    "parent_checksum": "2460df05f168300f510e26d6c47c5b1adc3cb88fd892f6e93f042a1e2bec6e66"
+  },
+  "data": {
+    "season_id": 242,
+    "swimmers": [
+      {
+        "key": "ROWE|Jennifer|1951",
+        "last_name": "Rowe",
+        "first_name": "Jennifer",
+        "year_of_birth": 1951,
+        "gender_type_code": "M",
+        "complete_name": "Rowe Jennifer 4643",
+        "swimmer_id": 32608,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "LOCKMAN|Deon|1990",
+        "last_name": "Lockman",
+        "first_name": "Deon",
+        "year_of_birth": 1990,
+        "gender_type_code": "F",
+        "complete_name": "Lockman Deon 78443",
+        "swimmer_id": 10397,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "SAWAYN|Roberta|1975",
+        "last_name": "Sawayn",
+        "first_name": "Roberta",
+        "year_of_birth": 1975,
+        "gender_type_code": "F",
+        "complete_name": "Sawayn Roberta",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "TOWNE|Giulia|2003",
+        "last_name": "Towne",
+        "first_name": "Giulia",
+        "year_of_birth": 2003,
+        "gender_type_code": "F",
+        "complete_name": "Towne Giulia",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "WINDLER|Nelia|1990",
+        "last_name": "Windler",
+        "first_name": "Nelia",
+        "year_of_birth": 1990,
+        "gender_type_code": "M",
+        "complete_name": "Windler Nelia 72998",
+        "swimmer_id": 8004,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "PROHASKA|Merry|1963",
+        "last_name": "Prohaska",
+        "first_name": "Merry",
+        "year_of_birth": 1963,
+        "gender_type_code": "M",
+        "complete_name": "Prohaska Merry 30117",
+        "swimmer_id": 36269,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "CROOKS|Erna|1976",
+        "last_name": "Crooks",
+        "first_name": "Erna",
+        "year_of_birth": 1976,
+        "gender_type_code": "M",
+        "complete_name": "Crooks Erna 14460",
+        "swimmer_id": 34990,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "ALLORO|STEFANO|1969",
+        "last_name": "ALLORO",
+        "first_name": "STEFANO",
+        "year_of_birth": 1969,
+        "gender_type_code": "M",
+        "complete_name": "ALLORO STEFANO",
+        "swimmer_id": 142,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "BAHRINGER|Alona|1955",
+        "last_name": "Bahringer",
+        "first_name": "Alona",
+        "year_of_birth": 1955,
+        "gender_type_code": "M",
+        "complete_name": "Bahringer Alona 41535",
+        "swimmer_id": 16874,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "STEUBER|Debbra|1996",
+        "last_name": "Steuber",
+        "first_name": "Debbra",
+        "year_of_birth": 1996,
+        "gender_type_code": "M",
+        "complete_name": "Steuber Debbra 13156",
+        "swimmer_id": 22533,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "PURDY|Arianna|2001",
+        "last_name": "Purdy",
+        "first_name": "Arianna",
+        "year_of_birth": 2001,
+        "gender_type_code": "F",
+        "complete_name": "Purdy Arianna",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "O'CONNER|Giorgio|1997",
+        "last_name": "O'Conner",
+        "first_name": "Giorgio",
+        "year_of_birth": 1997,
+        "gender_type_code": "M",
+        "complete_name": "O'Conner Giorgio",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "HEGMANN|Tova|1997",
+        "last_name": "Hegmann",
+        "first_name": "Tova",
+        "year_of_birth": 1997,
+        "gender_type_code": "F",
+        "complete_name": "Hegmann Tova 67166",
+        "swimmer_id": 10601,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "MCKENZIE|Federica|1994",
+        "last_name": "McKenzie",
+        "first_name": "Federica",
+        "year_of_birth": 1994,
+        "gender_type_code": "F",
+        "complete_name": "McKenzie Federica",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "GRADY|Clayton|1942",
+        "last_name": "Grady",
+        "first_name": "Clayton",
+        "year_of_birth": 1942,
+        "gender_type_code": "M",
+        "complete_name": "Grady Clayton 39313",
+        "swimmer_id": 19821,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "JACOBI|Maria|1995",
+        "last_name": "Jacobi",
+        "first_name": "Maria",
+        "year_of_birth": 1995,
+        "gender_type_code": "M",
+        "complete_name": "Jacobi Maria",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "DONNELLY|Rex|2001",
+        "last_name": "Donnelly",
+        "first_name": "Rex",
+        "year_of_birth": 2001,
+        "gender_type_code": "F",
+        "complete_name": "Donnelly Rex 62189",
+        "swimmer_id": 4702,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "HOEGER|Jerica|1943",
+        "last_name": "Hoeger",
+        "first_name": "Jerica",
+        "year_of_birth": 1943,
+        "gender_type_code": "M",
+        "complete_name": "Hoeger Jerica 41696",
+        "swimmer_id": 19227,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "GLEASON|Donette|1935",
+        "last_name": "Gleason",
+        "first_name": "Donette",
+        "year_of_birth": 1935,
+        "gender_type_code": "M",
+        "complete_name": "Gleason Donette 89798",
+        "swimmer_id": 12486,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "BRAUN|Alice|1994",
+        "last_name": "Braun",
+        "first_name": "Alice",
+        "year_of_birth": 1994,
+        "gender_type_code": "F",
+        "complete_name": "Braun Alice",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "FUNK|Giulia|1995",
+        "last_name": "Funk",
+        "first_name": "Giulia",
+        "year_of_birth": 1995,
+        "gender_type_code": "F",
+        "complete_name": "Funk Giulia",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "HAMILL|Juli|1940",
+        "last_name": "Hamill",
+        "first_name": "Juli",
+        "year_of_birth": 1940,
+        "gender_type_code": "M",
+        "complete_name": "Hamill Juli 79681",
+        "swimmer_id": 35635,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "BERGE|Chiara|1991",
+        "last_name": "Berge",
+        "first_name": "Chiara",
+        "year_of_birth": 1991,
+        "gender_type_code": "F",
+        "complete_name": "Berge Chiara",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "DOOLEY|Nicolo'|1997",
+        "last_name": "Dooley",
+        "first_name": "Nicolo'",
+        "year_of_birth": 1997,
+        "gender_type_code": "M",
+        "complete_name": "Dooley Nicolo'",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "WINDLER|Claris|1998",
+        "last_name": "Windler",
+        "first_name": "Claris",
+        "year_of_birth": 1998,
+        "gender_type_code": "F",
+        "complete_name": "Windler Claris 44624",
+        "swimmer_id": 4640,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "METZ|Queenie|1976",
+        "last_name": "Metz",
+        "first_name": "Queenie",
+        "year_of_birth": 1976,
+        "gender_type_code": "F",
+        "complete_name": "Metz Queenie 79285",
+        "swimmer_id": 4217,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "SCHOEN|Marci|2002",
+        "last_name": "Schoen",
+        "first_name": "Marci",
+        "year_of_birth": 2002,
+        "gender_type_code": "F",
+        "complete_name": "Schoen Marci 58799",
+        "swimmer_id": 6825,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "JOHNSON|Elena|1986",
+        "last_name": "Johnson",
+        "first_name": "Elena",
+        "year_of_birth": 1986,
+        "gender_type_code": "F",
+        "complete_name": "Johnson Elena",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "BEER|Rosamond|1944",
+        "last_name": "Beer",
+        "first_name": "Rosamond",
+        "year_of_birth": 1944,
+        "gender_type_code": "M",
+        "complete_name": "Beer Rosamond 78014",
+        "swimmer_id": 8737,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "GUTKOWSKI|Twanda|1968",
+        "last_name": "Gutkowski",
+        "first_name": "Twanda",
+        "year_of_birth": 1968,
+        "gender_type_code": "M",
+        "complete_name": "Gutkowski Twanda 59278",
+        "swimmer_id": 17081,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "PARKER|Fidel|1990",
+        "last_name": "Parker",
+        "first_name": "Fidel",
+        "year_of_birth": 1990,
+        "gender_type_code": "M",
+        "complete_name": "Parker Fidel 13817",
+        "swimmer_id": 6136,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "O'KEEFE|Larisa|1935",
+        "last_name": "O'Keefe",
+        "first_name": "Larisa",
+        "year_of_birth": 1935,
+        "gender_type_code": "M",
+        "complete_name": "O'Keefe Larisa 3529",
+        "swimmer_id": 18659,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "COLE|Riccardo|1996",
+        "last_name": "Cole",
+        "first_name": "Riccardo",
+        "year_of_birth": 1996,
+        "gender_type_code": "M",
+        "complete_name": "Cole Riccardo",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "KULAS|Ryan|1990",
+        "last_name": "Kulas",
+        "first_name": "Ryan",
+        "year_of_birth": 1990,
+        "gender_type_code": "M",
+        "complete_name": "Kulas Ryan 34622",
+        "swimmer_id": 7438,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "SCHOEN|Francesca|1978",
+        "last_name": "Schoen",
+        "first_name": "Francesca",
+        "year_of_birth": 1978,
+        "gender_type_code": "F",
+        "complete_name": "Schoen Francesca",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "KEEBLER|Manuel|2002",
+        "last_name": "Keebler",
+        "first_name": "Manuel",
+        "year_of_birth": 2002,
+        "gender_type_code": "M",
+        "complete_name": "Keebler Manuel",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "BREITENBERG|Alfreda|1966",
+        "last_name": "Breitenberg",
+        "first_name": "Alfreda",
+        "year_of_birth": 1966,
+        "gender_type_code": "M",
+        "complete_name": "Breitenberg Alfreda 47071",
+        "swimmer_id": 4552,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "KOEPP|Josef|2002",
+        "last_name": "Koepp",
+        "first_name": "Josef",
+        "year_of_birth": 2002,
+        "gender_type_code": "F",
+        "complete_name": "Koepp Josef 78931",
+        "swimmer_id": 6155,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "WIZA|Rochelle|1938",
+        "last_name": "Wiza",
+        "first_name": "Rochelle",
+        "year_of_birth": 1938,
+        "gender_type_code": "M",
+        "complete_name": "Wiza Rochelle 26683",
+        "swimmer_id": 10632,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "KUNZE|Jacalyn|1998",
+        "last_name": "Kunze",
+        "first_name": "Jacalyn",
+        "year_of_birth": 1998,
+        "gender_type_code": "M",
+        "complete_name": "Kunze Jacalyn 7066",
+        "swimmer_id": 2561,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "HALEY|Selena|1978",
+        "last_name": "Haley",
+        "first_name": "Selena",
+        "year_of_birth": 1978,
+        "gender_type_code": "M",
+        "complete_name": "Haley Selena 62815",
+        "swimmer_id": 4378,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "DURGAN|Leo|1999",
+        "last_name": "Durgan",
+        "first_name": "Leo",
+        "year_of_birth": 1999,
+        "gender_type_code": "M",
+        "complete_name": "Durgan Leo 74513",
+        "swimmer_id": 23279,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "TRANTOW|Freddy|1957",
+        "last_name": "Trantow",
+        "first_name": "Freddy",
+        "year_of_birth": 1957,
+        "gender_type_code": "M",
+        "complete_name": "Trantow Freddy 10624",
+        "swimmer_id": 32810,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "LESCH|Luca|1985",
+        "last_name": "Lesch",
+        "first_name": "Luca",
+        "year_of_birth": 1985,
+        "gender_type_code": "M",
+        "complete_name": "Lesch Luca",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "KUVALIS|Genny|1970",
+        "last_name": "Kuvalis",
+        "first_name": "Genny",
+        "year_of_birth": 1970,
+        "gender_type_code": "M",
+        "complete_name": "Kuvalis Genny 3579",
+        "swimmer_id": 23443,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "BEAHAN|Delora|1960",
+        "last_name": "Beahan",
+        "first_name": "Delora",
+        "year_of_birth": 1960,
+        "gender_type_code": "M",
+        "complete_name": "Beahan Delora 94593",
+        "swimmer_id": 5654,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "WEIMANN|Vaughn|1987",
+        "last_name": "Weimann",
+        "first_name": "Vaughn",
+        "year_of_birth": 1987,
+        "gender_type_code": "M",
+        "complete_name": "Weimann Vaughn 62500",
+        "swimmer_id": 28463,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "KERTZMANN|Ricki|1980",
+        "last_name": "Kertzmann",
+        "first_name": "Ricki",
+        "year_of_birth": 1980,
+        "gender_type_code": "F",
+        "complete_name": "Kertzmann Ricki 27489",
+        "swimmer_id": 2492,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "REMPEL|Lorenzo|2005",
+        "last_name": "Rempel",
+        "first_name": "Lorenzo",
+        "year_of_birth": 2005,
+        "gender_type_code": "M",
+        "complete_name": "Rempel Lorenzo",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "PACOCHA|Cristiano|2003",
+        "last_name": "Pacocha",
+        "first_name": "Cristiano",
+        "year_of_birth": 2003,
+        "gender_type_code": "M",
+        "complete_name": "Pacocha Cristiano",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "LANGOSH|Emma|2004",
+        "last_name": "Langosh",
+        "first_name": "Emma",
+        "year_of_birth": 2004,
+        "gender_type_code": "F",
+        "complete_name": "Langosh Emma",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "BORER|Angela|1965",
+        "last_name": "Borer",
+        "first_name": "Angela",
+        "year_of_birth": 1965,
+        "gender_type_code": "F",
+        "complete_name": "Borer Angela",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "KUNDE|Opal|1982",
+        "last_name": "Kunde",
+        "first_name": "Opal",
+        "year_of_birth": 1982,
+        "gender_type_code": "M",
+        "complete_name": "Kunde Opal 52767",
+        "swimmer_id": 38542,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "JOHNSON|Warner|1979",
+        "last_name": "Johnson",
+        "first_name": "Warner",
+        "year_of_birth": 1979,
+        "gender_type_code": "F",
+        "complete_name": "Johnson Warner 16405",
+        "swimmer_id": 2679,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "MORAR|Piera|1981",
+        "last_name": "Morar",
+        "first_name": "Piera",
+        "year_of_birth": 1981,
+        "gender_type_code": "F",
+        "complete_name": "Morar Piera",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "HOEGER|Igor|1975",
+        "last_name": "Hoeger",
+        "first_name": "Igor",
+        "year_of_birth": 1975,
+        "gender_type_code": "M",
+        "complete_name": "Hoeger Igor",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "BEATTY|Beatrice|1991",
+        "last_name": "Beatty",
+        "first_name": "Beatrice",
+        "year_of_birth": 1991,
+        "gender_type_code": "F",
+        "complete_name": "Beatty Beatrice",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "SCHAEFER|Alessandra|1970",
+        "last_name": "Schaefer",
+        "first_name": "Alessandra",
+        "year_of_birth": 1970,
+        "gender_type_code": "F",
+        "complete_name": "Schaefer Alessandra",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "O'HARA|Hye|1975",
+        "last_name": "O'Hara",
+        "first_name": "Hye",
+        "year_of_birth": 1975,
+        "gender_type_code": "F",
+        "complete_name": "O'Hara Hye 18725",
+        "swimmer_id": 19348,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "CHRISTIANSEN|Kory|1992",
+        "last_name": "Christiansen",
+        "first_name": "Kory",
+        "year_of_birth": 1992,
+        "gender_type_code": "M",
+        "complete_name": "Christiansen Kory 10824",
+        "swimmer_id": 10670,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "JERDE|Robbie|1983",
+        "last_name": "Jerde",
+        "first_name": "Robbie",
+        "year_of_birth": 1983,
+        "gender_type_code": "F",
+        "complete_name": "Jerde Robbie 42170",
+        "swimmer_id": 13344,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "BOEHM|Vittorio|2001",
+        "last_name": "Boehm",
+        "first_name": "Vittorio",
+        "year_of_birth": 2001,
+        "gender_type_code": "M",
+        "complete_name": "Boehm Vittorio",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "FLATLEY|Gertrudis|1962",
+        "last_name": "Flatley",
+        "first_name": "Gertrudis",
+        "year_of_birth": 1962,
+        "gender_type_code": "M",
+        "complete_name": "Flatley Gertrudis 57947",
+        "swimmer_id": 11883,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "EMARD|Dana|1988",
+        "last_name": "Emard",
+        "first_name": "Dana",
+        "year_of_birth": 1988,
+        "gender_type_code": "F",
+        "complete_name": "Emard Dana 25711",
+        "swimmer_id": 18321,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "JENKINS|Eloise|1988",
+        "last_name": "Jenkins",
+        "first_name": "Eloise",
+        "year_of_birth": 1988,
+        "gender_type_code": "M",
+        "complete_name": "Jenkins Eloise 94692",
+        "swimmer_id": 5025,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "KOEPP|Sandy|1940",
+        "last_name": "Koepp",
+        "first_name": "Sandy",
+        "year_of_birth": 1940,
+        "gender_type_code": "M",
+        "complete_name": "Koepp Sandy 81472",
+        "swimmer_id": 6194,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "STANTON|Debora|1994",
+        "last_name": "Stanton",
+        "first_name": "Debora",
+        "year_of_birth": 1994,
+        "gender_type_code": "F",
+        "complete_name": "Stanton Debora",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "PROHASKA|Tajuana|1951",
+        "last_name": "Prohaska",
+        "first_name": "Tajuana",
+        "year_of_birth": 1951,
+        "gender_type_code": "M",
+        "complete_name": "Prohaska Tajuana 54873",
+        "swimmer_id": 28464,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "DUBUQUE|Simona|1981",
+        "last_name": "DuBuque",
+        "first_name": "Simona",
+        "year_of_birth": 1981,
+        "gender_type_code": "F",
+        "complete_name": "DuBuque Simona",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "PFANNERSTILL|Ines|1982",
+        "last_name": "Pfannerstill",
+        "first_name": "Ines",
+        "year_of_birth": 1982,
+        "gender_type_code": "F",
+        "complete_name": "Pfannerstill Ines 29869",
+        "swimmer_id": 7462,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "MCDERMOTT|Earlie|1972",
+        "last_name": "McDermott",
+        "first_name": "Earlie",
+        "year_of_birth": 1972,
+        "gender_type_code": "M",
+        "complete_name": "McDermott Earlie 98647",
+        "swimmer_id": 24147,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "GREENHOLT|Giuseppe|1984",
+        "last_name": "Greenholt",
+        "first_name": "Giuseppe",
+        "year_of_birth": 1984,
+        "gender_type_code": "M",
+        "complete_name": "Greenholt Giuseppe",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "ROBERTS|Roberto|1963",
+        "last_name": "Roberts",
+        "first_name": "Roberto",
+        "year_of_birth": 1963,
+        "gender_type_code": "M",
+        "complete_name": "Roberts Roberto",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "WATERS|Doloris|1978",
+        "last_name": "Waters",
+        "first_name": "Doloris",
+        "year_of_birth": 1978,
+        "gender_type_code": "F",
+        "complete_name": "Waters Doloris 49092",
+        "swimmer_id": 32628,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "JOHNSTON|Mattia|1996",
+        "last_name": "Johnston",
+        "first_name": "Mattia",
+        "year_of_birth": 1996,
+        "gender_type_code": "M",
+        "complete_name": "Johnston Mattia",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "WAELCHI|Carletta|1963",
+        "last_name": "Waelchi",
+        "first_name": "Carletta",
+        "year_of_birth": 1963,
+        "gender_type_code": "F",
+        "complete_name": "Waelchi Carletta 9824",
+        "swimmer_id": 1916,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "PACOCHA|Salvador|1944",
+        "last_name": "Pacocha",
+        "first_name": "Salvador",
+        "year_of_birth": 1944,
+        "gender_type_code": "M",
+        "complete_name": "Pacocha Salvador 50213",
+        "swimmer_id": 34997,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "POUROS|Pierre|1975",
+        "last_name": "Pouros",
+        "first_name": "Pierre",
+        "year_of_birth": 1975,
+        "gender_type_code": "F",
+        "complete_name": "Pouros Pierre 68302",
+        "swimmer_id": 8787,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "REICHEL|Luca|1964",
+        "last_name": "Reichel",
+        "first_name": "Luca",
+        "year_of_birth": 1964,
+        "gender_type_code": "M",
+        "complete_name": "Reichel Luca",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "SENGER|Lavelle|1942",
+        "last_name": "Senger",
+        "first_name": "Lavelle",
+        "year_of_birth": 1942,
+        "gender_type_code": "F",
+        "complete_name": "Senger Lavelle 81577",
+        "swimmer_id": 10693,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "FRITSCH|Carlo|1973",
+        "last_name": "Fritsch",
+        "first_name": "Carlo",
+        "year_of_birth": 1973,
+        "gender_type_code": "M",
+        "complete_name": "Fritsch Carlo",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "ROGAHN|Angelika|1982",
+        "last_name": "Rogahn",
+        "first_name": "Angelika",
+        "year_of_birth": 1982,
+        "gender_type_code": "F",
+        "complete_name": "Rogahn Angelika",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "JACOBSON|Alessandra|1965",
+        "last_name": "Jacobson",
+        "first_name": "Alessandra",
+        "year_of_birth": 1965,
+        "gender_type_code": "F",
+        "complete_name": "Jacobson Alessandra",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "FRANECKI|Karri|1981",
+        "last_name": "Franecki",
+        "first_name": "Karri",
+        "year_of_birth": 1981,
+        "gender_type_code": "M",
+        "complete_name": "Franecki Karri 44303",
+        "swimmer_id": 21087,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "BECKER|Fabrizio|1998",
+        "last_name": "Becker",
+        "first_name": "Fabrizio",
+        "year_of_birth": 1998,
+        "gender_type_code": "M",
+        "complete_name": "Becker Fabrizio",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "ARMSTRONG|Jon|1944",
+        "last_name": "Armstrong",
+        "first_name": "Jon",
+        "year_of_birth": 1944,
+        "gender_type_code": "M",
+        "complete_name": "Armstrong Jon 4578",
+        "swimmer_id": 30197,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "DICKINSON|Candie|2000",
+        "last_name": "Dickinson",
+        "first_name": "Candie",
+        "year_of_birth": 2000,
+        "gender_type_code": "F",
+        "complete_name": "Dickinson Candie 78244",
+        "swimmer_id": 40147,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "ROGAHN|Luisa|1966",
+        "last_name": "Rogahn",
+        "first_name": "Luisa",
+        "year_of_birth": 1966,
+        "gender_type_code": "F",
+        "complete_name": "Rogahn Luisa",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "O'HARA|Clelia|1963",
+        "last_name": "O'Hara",
+        "first_name": "Clelia",
+        "year_of_birth": 1963,
+        "gender_type_code": "F",
+        "complete_name": "O'Hara Clelia",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "EMARD|Andrea|1996",
+        "last_name": "Emard",
+        "first_name": "Andrea",
+        "year_of_birth": 1996,
+        "gender_type_code": "M",
+        "complete_name": "Emard Andrea",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "DECKOW|Alessandro|2001",
+        "last_name": "Deckow",
+        "first_name": "Alessandro",
+        "year_of_birth": 2001,
+        "gender_type_code": "M",
+        "complete_name": "Deckow Alessandro",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "ZIEME|Matteo|1994",
+        "last_name": "Zieme",
+        "first_name": "Matteo",
+        "year_of_birth": 1994,
+        "gender_type_code": "M",
+        "complete_name": "Zieme Matteo",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "FEEST|Edoardo|1996",
+        "last_name": "Feest",
+        "first_name": "Edoardo",
+        "year_of_birth": 1996,
+        "gender_type_code": "M",
+        "complete_name": "Feest Edoardo",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "SATTERFIELD|Saturnina|1997",
+        "last_name": "Satterfield",
+        "first_name": "Saturnina",
+        "year_of_birth": 1997,
+        "gender_type_code": "M",
+        "complete_name": "Satterfield Saturnina 37726",
+        "swimmer_id": 11313,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "FRIESEN|Maud|1992",
+        "last_name": "Friesen",
+        "first_name": "Maud",
+        "year_of_birth": 1992,
+        "gender_type_code": "M",
+        "complete_name": "Friesen Maud 39001",
+        "swimmer_id": 38290,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "BUCKRIDGE|Jan|1995",
+        "last_name": "Buckridge",
+        "first_name": "Jan",
+        "year_of_birth": 1995,
+        "gender_type_code": "F",
+        "complete_name": "Buckridge Jan 58085",
+        "swimmer_id": 5080,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "ULLRICH|Raffaella|1972",
+        "last_name": "Ullrich",
+        "first_name": "Raffaella",
+        "year_of_birth": 1972,
+        "gender_type_code": "F",
+        "complete_name": "Ullrich Raffaella",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "SCHROEDER|Keenan|1969",
+        "last_name": "Schroeder",
+        "first_name": "Keenan",
+        "year_of_birth": 1969,
+        "gender_type_code": "M",
+        "complete_name": "Schroeder Keenan 95053",
+        "swimmer_id": 6230,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "KESSLER|Lily|1939",
+        "last_name": "Kessler",
+        "first_name": "Lily",
+        "year_of_birth": 1939,
+        "gender_type_code": "M",
+        "complete_name": "Kessler Lily 47975",
+        "swimmer_id": 11954,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "SCHOEN|Lyndia|2000",
+        "last_name": "Schoen",
+        "first_name": "Lyndia",
+        "year_of_birth": 2000,
+        "gender_type_code": "M",
+        "complete_name": "Schoen Lyndia 472",
+        "swimmer_id": 14457,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "BASHIRIAN|Pia|1956",
+        "last_name": "Bashirian",
+        "first_name": "Pia",
+        "year_of_birth": 1956,
+        "gender_type_code": "F",
+        "complete_name": "Bashirian Pia 75782",
+        "swimmer_id": 3284,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "TREUTEL|Calvin|1997",
+        "last_name": "Treutel",
+        "first_name": "Calvin",
+        "year_of_birth": 1997,
+        "gender_type_code": "F",
+        "complete_name": "Treutel Calvin 86194",
+        "swimmer_id": 23805,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "SPENCER|Nancie|1995",
+        "last_name": "Spencer",
+        "first_name": "Nancie",
+        "year_of_birth": 1995,
+        "gender_type_code": "M",
+        "complete_name": "Spencer Nancie 63043",
+        "swimmer_id": 21913,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "SAWAYN|Cleta|1962",
+        "last_name": "Sawayn",
+        "first_name": "Cleta",
+        "year_of_birth": 1962,
+        "gender_type_code": "M",
+        "complete_name": "Sawayn Cleta 96955",
+        "swimmer_id": 11660,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "SAUER|Matteo|1998",
+        "last_name": "Sauer",
+        "first_name": "Matteo",
+        "year_of_birth": 1998,
+        "gender_type_code": "M",
+        "complete_name": "Sauer Matteo",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "PAUCEK|Douglass|1947",
+        "last_name": "Paucek",
+        "first_name": "Douglass",
+        "year_of_birth": 1947,
+        "gender_type_code": "M",
+        "complete_name": "Paucek Douglass 90796",
+        "swimmer_id": 23117,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "CREMIN|Bertie|1996",
+        "last_name": "Cremin",
+        "first_name": "Bertie",
+        "year_of_birth": 1996,
+        "gender_type_code": "F",
+        "complete_name": "Cremin Bertie 74686",
+        "swimmer_id": 21281,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "RODRIGUEZ|Vasiliki|1980",
+        "last_name": "Rodriguez",
+        "first_name": "Vasiliki",
+        "year_of_birth": 1980,
+        "gender_type_code": "M",
+        "complete_name": "Rodriguez Vasiliki 74754",
+        "swimmer_id": 8507,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "CONN|Stefano|2002",
+        "last_name": "Conn",
+        "first_name": "Stefano",
+        "year_of_birth": 2002,
+        "gender_type_code": "M",
+        "complete_name": "Conn Stefano",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "MOEN|Salley|1962",
+        "last_name": "Moen",
+        "first_name": "Salley",
+        "year_of_birth": 1962,
+        "gender_type_code": "M",
+        "complete_name": "Moen Salley 83152",
+        "swimmer_id": 8151,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "STEUBER|Darci|1997",
+        "last_name": "Steuber",
+        "first_name": "Darci",
+        "year_of_birth": 1997,
+        "gender_type_code": "M",
+        "complete_name": "Steuber Darci 47421",
+        "swimmer_id": 3788,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "LANGOSH|Catrice|1953",
+        "last_name": "Langosh",
+        "first_name": "Catrice",
+        "year_of_birth": 1953,
+        "gender_type_code": "M",
+        "complete_name": "Langosh Catrice 55848",
+        "swimmer_id": 35547,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "REINGER|Mattia|2002",
+        "last_name": "Reinger",
+        "first_name": "Mattia",
+        "year_of_birth": 2002,
+        "gender_type_code": "M",
+        "complete_name": "Reinger Mattia",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "BOYLE|Renee|1998",
+        "last_name": "Boyle",
+        "first_name": "Renee",
+        "year_of_birth": 1998,
+        "gender_type_code": "M",
+        "complete_name": "Boyle Renee 3839",
+        "swimmer_id": 785,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "ANKUNDING|Adriano|1975",
+        "last_name": "Ankunding",
+        "first_name": "Adriano",
+        "year_of_birth": 1975,
+        "gender_type_code": "M",
+        "complete_name": "Ankunding Adriano",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "PAGAC|Carlotta|2000",
+        "last_name": "Pagac",
+        "first_name": "Carlotta",
+        "year_of_birth": 2000,
+        "gender_type_code": "F",
+        "complete_name": "Pagac Carlotta",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "O'KEEFE|Chantal|1976",
+        "last_name": "O'Keefe",
+        "first_name": "Chantal",
+        "year_of_birth": 1976,
+        "gender_type_code": "M",
+        "complete_name": "O'Keefe Chantal 88616",
+        "swimmer_id": 14472,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "LEFFLER|Florine|1993",
+        "last_name": "Leffler",
+        "first_name": "Florine",
+        "year_of_birth": 1993,
+        "gender_type_code": "M",
+        "complete_name": "Leffler Florine 87101",
+        "swimmer_id": 8157,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "STRACKE|Larae|1997",
+        "last_name": "Stracke",
+        "first_name": "Larae",
+        "year_of_birth": 1997,
+        "gender_type_code": "F",
+        "complete_name": "Stracke Larae 15223",
+        "swimmer_id": 40229,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "KLING|Paolo|1958",
+        "last_name": "Kling",
+        "first_name": "Paolo",
+        "year_of_birth": 1958,
+        "gender_type_code": "M",
+        "complete_name": "Kling Paolo",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "KESSLER|Kurtis|1943",
+        "last_name": "Kessler",
+        "first_name": "Kurtis",
+        "year_of_birth": 1943,
+        "gender_type_code": "M",
+        "complete_name": "Kessler Kurtis 79047",
+        "swimmer_id": 20264,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "CORWIN|Giovanni|1993",
+        "last_name": "Corwin",
+        "first_name": "Giovanni",
+        "year_of_birth": 1993,
+        "gender_type_code": "M",
+        "complete_name": "Corwin Giovanni",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "LIND|Harriet|1968",
+        "last_name": "Lind",
+        "first_name": "Harriet",
+        "year_of_birth": 1968,
+        "gender_type_code": "M",
+        "complete_name": "Lind Harriet 24234",
+        "swimmer_id": 13099,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "DIETRICH|Casie|1998",
+        "last_name": "Dietrich",
+        "first_name": "Casie",
+        "year_of_birth": 1998,
+        "gender_type_code": "M",
+        "complete_name": "Dietrich Casie 33245",
+        "swimmer_id": 4325,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "STIEDEMANN|Lanelle|2002",
+        "last_name": "Stiedemann",
+        "first_name": "Lanelle",
+        "year_of_birth": 2002,
+        "gender_type_code": "M",
+        "complete_name": "Stiedemann Lanelle 94171",
+        "swimmer_id": 1949,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "MARKS|Bianca|1971",
+        "last_name": "Marks",
+        "first_name": "Bianca",
+        "year_of_birth": 1971,
+        "gender_type_code": "F",
+        "complete_name": "Marks Bianca 17003",
+        "swimmer_id": 8168,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "GRAHAM|Alessio|1985",
+        "last_name": "Graham",
+        "first_name": "Alessio",
+        "year_of_birth": 1985,
+        "gender_type_code": "M",
+        "complete_name": "Graham Alessio",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "KOEPP|Sara|1970",
+        "last_name": "Koepp",
+        "first_name": "Sara",
+        "year_of_birth": 1970,
+        "gender_type_code": "F",
+        "complete_name": "Koepp Sara",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "STOKES|Jeffry|1991",
+        "last_name": "Stokes",
+        "first_name": "Jeffry",
+        "year_of_birth": 1991,
+        "gender_type_code": "M",
+        "complete_name": "Stokes Jeffry 25939",
+        "swimmer_id": 26960,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "TROMP|Janice|1983",
+        "last_name": "Tromp",
+        "first_name": "Janice",
+        "year_of_birth": 1983,
+        "gender_type_code": "M",
+        "complete_name": "Tromp Janice 27674",
+        "swimmer_id": 32849,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "HAGENES|Alisha|1988",
+        "last_name": "Hagenes",
+        "first_name": "Alisha",
+        "year_of_birth": 1988,
+        "gender_type_code": "M",
+        "complete_name": "Hagenes Alisha 27690",
+        "swimmer_id": 2159,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "STAMM|Temika|1941",
+        "last_name": "Stamm",
+        "first_name": "Temika",
+        "year_of_birth": 1941,
+        "gender_type_code": "M",
+        "complete_name": "Stamm Temika 82276",
+        "swimmer_id": 2329,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "HUELS|Lila|1978",
+        "last_name": "Huels",
+        "first_name": "Lila",
+        "year_of_birth": 1978,
+        "gender_type_code": "F",
+        "complete_name": "Huels Lila 66807",
+        "swimmer_id": 39723,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "GRADY|Emanuele|1986",
+        "last_name": "Grady",
+        "first_name": "Emanuele",
+        "year_of_birth": 1986,
+        "gender_type_code": "M",
+        "complete_name": "Grady Emanuele",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "LANGWORTH|Sofia|2005",
+        "last_name": "Langworth",
+        "first_name": "Sofia",
+        "year_of_birth": 2005,
+        "gender_type_code": "F",
+        "complete_name": "Langworth Sofia",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "JERDE|Son|1975",
+        "last_name": "Jerde",
+        "first_name": "Son",
+        "year_of_birth": 1975,
+        "gender_type_code": "M",
+        "complete_name": "Jerde Son 79094",
+        "swimmer_id": 26963,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "DICKINSON|Noelia|1987",
+        "last_name": "Dickinson",
+        "first_name": "Noelia",
+        "year_of_birth": 1987,
+        "gender_type_code": "F",
+        "complete_name": "Dickinson Noelia 43477",
+        "swimmer_id": 1907,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "HILLL|Sheena|1956",
+        "last_name": "Hilll",
+        "first_name": "Sheena",
+        "year_of_birth": 1956,
+        "gender_type_code": "F",
+        "complete_name": "Hilll Sheena 32744",
+        "swimmer_id": 8543,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "BERNHARD|Assunta|1998",
+        "last_name": "Bernhard",
+        "first_name": "Assunta",
+        "year_of_birth": 1998,
+        "gender_type_code": "F",
+        "complete_name": "Bernhard Assunta 63817",
+        "swimmer_id": 10474,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "SATTERFIELD|Ling|1980",
+        "last_name": "Satterfield",
+        "first_name": "Ling",
+        "year_of_birth": 1980,
+        "gender_type_code": "M",
+        "complete_name": "Satterfield Ling 60273",
+        "swimmer_id": 114,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "BATZ|Gerry|1962",
+        "last_name": "Batz",
+        "first_name": "Gerry",
+        "year_of_birth": 1962,
+        "gender_type_code": "F",
+        "complete_name": "Batz Gerry 82955",
+        "swimmer_id": 18259,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "STROSIN|Kate|1978",
+        "last_name": "Strosin",
+        "first_name": "Kate",
+        "year_of_birth": 1978,
+        "gender_type_code": "M",
+        "complete_name": "Strosin Kate 77172",
+        "swimmer_id": 25148,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "DAUGHERTY|Reuben|1989",
+        "last_name": "Daugherty",
+        "first_name": "Reuben",
+        "year_of_birth": 1989,
+        "gender_type_code": "M",
+        "complete_name": "Daugherty Reuben 77386",
+        "swimmer_id": 1974,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "HETTINGER|Paulita|1948",
+        "last_name": "Hettinger",
+        "first_name": "Paulita",
+        "year_of_birth": 1948,
+        "gender_type_code": "F",
+        "complete_name": "Hettinger Paulita 36709",
+        "swimmer_id": 19404,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "REICHERT|Albertine|1936",
+        "last_name": "Reichert",
+        "first_name": "Albertine",
+        "year_of_birth": 1936,
+        "gender_type_code": "M",
+        "complete_name": "Reichert Albertine 4696",
+        "swimmer_id": 3709,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "D'AMORE|Sima|1991",
+        "last_name": "D'Amore",
+        "first_name": "Sima",
+        "year_of_birth": 1991,
+        "gender_type_code": "F",
+        "complete_name": "D'Amore Sima 81812",
+        "swimmer_id": 22514,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "PROSACCO|Giada|1998",
+        "last_name": "Prosacco",
+        "first_name": "Giada",
+        "year_of_birth": 1998,
+        "gender_type_code": "F",
+        "complete_name": "Prosacco Giada",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "KUTCH|Shante|1976",
+        "last_name": "Kutch",
+        "first_name": "Shante",
+        "year_of_birth": 1976,
+        "gender_type_code": "F",
+        "complete_name": "Kutch Shante 49465",
+        "swimmer_id": 12076,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "DANIEL|Alessandra|1999",
+        "last_name": "Daniel",
+        "first_name": "Alessandra",
+        "year_of_birth": 1999,
+        "gender_type_code": "F",
+        "complete_name": "Daniel Alessandra",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "VOLKMAN|Lorri|1968",
+        "last_name": "Volkman",
+        "first_name": "Lorri",
+        "year_of_birth": 1968,
+        "gender_type_code": "F",
+        "complete_name": "Volkman Lorri 36532",
+        "swimmer_id": 15670,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "SCHUMM|Michele|1970",
+        "last_name": "Schumm",
+        "first_name": "Michele",
+        "year_of_birth": 1970,
+        "gender_type_code": "M",
+        "complete_name": "Schumm Michele",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "YUNDT|Rufus|1955",
+        "last_name": "Yundt",
+        "first_name": "Rufus",
+        "year_of_birth": 1955,
+        "gender_type_code": "M",
+        "complete_name": "Yundt Rufus 74236",
+        "swimmer_id": 14123,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "BINS|Alessia|1980",
+        "last_name": "Bins",
+        "first_name": "Alessia",
+        "year_of_birth": 1980,
+        "gender_type_code": "F",
+        "complete_name": "Bins Alessia",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "FARRELL|Karoline|1983",
+        "last_name": "Farrell",
+        "first_name": "Karoline",
+        "year_of_birth": 1983,
+        "gender_type_code": "F",
+        "complete_name": "Farrell Karoline 28386",
+        "swimmer_id": 4269,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "WALSH|Fransisca|1991",
+        "last_name": "Walsh",
+        "first_name": "Fransisca",
+        "year_of_birth": 1991,
+        "gender_type_code": "F",
+        "complete_name": "Walsh Fransisca 98249",
+        "swimmer_id": 13427,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "SWIFT|Vada|1963",
+        "last_name": "Swift",
+        "first_name": "Vada",
+        "year_of_birth": 1963,
+        "gender_type_code": "M",
+        "complete_name": "Swift Vada 74285",
+        "swimmer_id": 4730,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "QUITZON|Garnet|1975",
+        "last_name": "Quitzon",
+        "first_name": "Garnet",
+        "year_of_birth": 1975,
+        "gender_type_code": "M",
+        "complete_name": "Quitzon Garnet 49625",
+        "swimmer_id": 14128,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "CUMMERATA|Juliane|1979",
+        "last_name": "Cummerata",
+        "first_name": "Juliane",
+        "year_of_birth": 1979,
+        "gender_type_code": "M",
+        "complete_name": "Cummerata Juliane 1421",
+        "swimmer_id": 3497,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "MAYER|Letizia|1999",
+        "last_name": "Mayer",
+        "first_name": "Letizia",
+        "year_of_birth": 1999,
+        "gender_type_code": "F",
+        "complete_name": "Mayer Letizia",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "EMMERICH|Lorenzo|1996",
+        "last_name": "Emmerich",
+        "first_name": "Lorenzo",
+        "year_of_birth": 1996,
+        "gender_type_code": "M",
+        "complete_name": "Emmerich Lorenzo",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "JACOBSON|Riccardo|1998",
+        "last_name": "Jacobson",
+        "first_name": "Riccardo",
+        "year_of_birth": 1998,
+        "gender_type_code": "M",
+        "complete_name": "Jacobson Riccardo",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "DAVIS|Samara|1958",
+        "last_name": "Davis",
+        "first_name": "Samara",
+        "year_of_birth": 1958,
+        "gender_type_code": "F",
+        "complete_name": "Davis Samara 74978",
+        "swimmer_id": 38714,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "HEGMANN|Laura|1982",
+        "last_name": "Hegmann",
+        "first_name": "Laura",
+        "year_of_birth": 1982,
+        "gender_type_code": "F",
+        "complete_name": "Hegmann Laura",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "KULAS|Twila|1973",
+        "last_name": "Kulas",
+        "first_name": "Twila",
+        "year_of_birth": 1973,
+        "gender_type_code": "M",
+        "complete_name": "Kulas Twila 96388",
+        "swimmer_id": 4528,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "TORP|Micheline|1954",
+        "last_name": "Torp",
+        "first_name": "Micheline",
+        "year_of_birth": 1954,
+        "gender_type_code": "M",
+        "complete_name": "Torp Micheline 45622",
+        "swimmer_id": 19166,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "LARSON|Kaley|1959",
+        "last_name": "Larson",
+        "first_name": "Kaley",
+        "year_of_birth": 1959,
+        "gender_type_code": "F",
+        "complete_name": "Larson Kaley 92516",
+        "swimmer_id": 35393,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "MANTE|Giorgio|1966",
+        "last_name": "Mante",
+        "first_name": "Giorgio",
+        "year_of_birth": 1966,
+        "gender_type_code": "M",
+        "complete_name": "Mante Giorgio",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "COLLIER|Flavio|1992",
+        "last_name": "Collier",
+        "first_name": "Flavio",
+        "year_of_birth": 1992,
+        "gender_type_code": "M",
+        "complete_name": "Collier Flavio",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "PROSACCO|Asia|1998",
+        "last_name": "Prosacco",
+        "first_name": "Asia",
+        "year_of_birth": 1998,
+        "gender_type_code": "F",
+        "complete_name": "Prosacco Asia",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "KASSULKE|Sofia|2002",
+        "last_name": "Kassulke",
+        "first_name": "Sofia",
+        "year_of_birth": 2002,
+        "gender_type_code": "F",
+        "complete_name": "Kassulke Sofia",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "LARKIN|Viki|1967",
+        "last_name": "Larkin",
+        "first_name": "Viki",
+        "year_of_birth": 1967,
+        "gender_type_code": "F",
+        "complete_name": "Larkin Viki 87579",
+        "swimmer_id": 5981,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "ROHAN|Cythia|1955",
+        "last_name": "Rohan",
+        "first_name": "Cythia",
+        "year_of_birth": 1955,
+        "gender_type_code": "M",
+        "complete_name": "Rohan Cythia 28927",
+        "swimmer_id": 11391,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "OLSON|Theodora|1977",
+        "last_name": "Olson",
+        "first_name": "Theodora",
+        "year_of_birth": 1977,
+        "gender_type_code": "F",
+        "complete_name": "Olson Theodora 23917",
+        "swimmer_id": 9646,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "MEDHURST|Donald|1980",
+        "last_name": "Medhurst",
+        "first_name": "Donald",
+        "year_of_birth": 1980,
+        "gender_type_code": "F",
+        "complete_name": "Medhurst Donald 16973",
+        "swimmer_id": 5264,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "HARVEY|Rayna|1987",
+        "last_name": "Harvey",
+        "first_name": "Rayna",
+        "year_of_birth": 1987,
+        "gender_type_code": "M",
+        "complete_name": "Harvey Rayna 38972",
+        "swimmer_id": 8231,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "ABBOTT|Riccardo|1982",
+        "last_name": "Abbott",
+        "first_name": "Riccardo",
+        "year_of_birth": 1982,
+        "gender_type_code": "M",
+        "complete_name": "Abbott Riccardo",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "DECKOW|Marylin|1973",
+        "last_name": "Deckow",
+        "first_name": "Marylin",
+        "year_of_birth": 1973,
+        "gender_type_code": "M",
+        "complete_name": "Deckow Marylin 63691",
+        "swimmer_id": 34245,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "OSINSKI|Francesco|1953",
+        "last_name": "Osinski",
+        "first_name": "Francesco",
+        "year_of_birth": 1953,
+        "gender_type_code": "M",
+        "complete_name": "Osinski Francesco",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "STROSIN|Deangelo|1950",
+        "last_name": "Strosin",
+        "first_name": "Deangelo",
+        "year_of_birth": 1950,
+        "gender_type_code": "M",
+        "complete_name": "Strosin Deangelo 39760",
+        "swimmer_id": 8232,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "CARROLL|Christeen|1991",
+        "last_name": "Carroll",
+        "first_name": "Christeen",
+        "year_of_birth": 1991,
+        "gender_type_code": "F",
+        "complete_name": "Carroll Christeen 5472",
+        "swimmer_id": 14544,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "DONNELLY|Mertie|1943",
+        "last_name": "Donnelly",
+        "first_name": "Mertie",
+        "year_of_birth": 1943,
+        "gender_type_code": "M",
+        "complete_name": "Donnelly Mertie 4535",
+        "swimmer_id": 40302,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "LESCH|Fonda|1990",
+        "last_name": "Lesch",
+        "first_name": "Fonda",
+        "year_of_birth": 1990,
+        "gender_type_code": "M",
+        "complete_name": "Lesch Fonda 79098",
+        "swimmer_id": 5761,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "PFEFFER|Marco|1989",
+        "last_name": "Pfeffer",
+        "first_name": "Marco",
+        "year_of_birth": 1989,
+        "gender_type_code": "M",
+        "complete_name": "Pfeffer Marco",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "RIPPIN|Costanza|1994",
+        "last_name": "Rippin",
+        "first_name": "Costanza",
+        "year_of_birth": 1994,
+        "gender_type_code": "F",
+        "complete_name": "Rippin Costanza",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "GULGOWSKI|Abram|1977",
+        "last_name": "Gulgowski",
+        "first_name": "Abram",
+        "year_of_birth": 1977,
+        "gender_type_code": "F",
+        "complete_name": "Gulgowski Abram 68495",
+        "swimmer_id": 1917,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "MCGLYNN|Leonia|1991",
+        "last_name": "McGlynn",
+        "first_name": "Leonia",
+        "year_of_birth": 1991,
+        "gender_type_code": "F",
+        "complete_name": "McGlynn Leonia 46199",
+        "swimmer_id": 4726,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "HELLER|Nevada|1991",
+        "last_name": "Heller",
+        "first_name": "Nevada",
+        "year_of_birth": 1991,
+        "gender_type_code": "M",
+        "complete_name": "Heller Nevada 21166",
+        "swimmer_id": 2708,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "RUNTE|Carlene|1986",
+        "last_name": "Runte",
+        "first_name": "Carlene",
+        "year_of_birth": 1986,
+        "gender_type_code": "F",
+        "complete_name": "Runte Carlene 4570",
+        "swimmer_id": 8243,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "NOLAN|Nilda|1975",
+        "last_name": "Nolan",
+        "first_name": "Nilda",
+        "year_of_birth": 1975,
+        "gender_type_code": "F",
+        "complete_name": "Nolan Nilda 17903",
+        "swimmer_id": 22464,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "ROSENBAUM|Elinor|1967",
+        "last_name": "Rosenbaum",
+        "first_name": "Elinor",
+        "year_of_birth": 1967,
+        "gender_type_code": "F",
+        "complete_name": "Rosenbaum Elinor 38668",
+        "swimmer_id": 34114,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "HILLL|Riccardo|2001",
+        "last_name": "Hilll",
+        "first_name": "Riccardo",
+        "year_of_birth": 2001,
+        "gender_type_code": "M",
+        "complete_name": "Hilll Riccardo",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "ZIEME|Dionna|1991",
+        "last_name": "Zieme",
+        "first_name": "Dionna",
+        "year_of_birth": 1991,
+        "gender_type_code": "M",
+        "complete_name": "Zieme Dionna 99478",
+        "swimmer_id": 4550,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "MANTE|Bobbye|1999",
+        "last_name": "Mante",
+        "first_name": "Bobbye",
+        "year_of_birth": 1999,
+        "gender_type_code": "M",
+        "complete_name": "Mante Bobbye 84471",
+        "swimmer_id": 4549,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "FEENEY|Coral|1998",
+        "last_name": "Feeney",
+        "first_name": "Coral",
+        "year_of_birth": 1998,
+        "gender_type_code": "M",
+        "complete_name": "Feeney Coral 2018",
+        "swimmer_id": 5592,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "WITTING|Monica|1984",
+        "last_name": "Witting",
+        "first_name": "Monica",
+        "year_of_birth": 1984,
+        "gender_type_code": "F",
+        "complete_name": "Witting Monica",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "SCHIMMEL|Nicholas|1997",
+        "last_name": "Schimmel",
+        "first_name": "Nicholas",
+        "year_of_birth": 1997,
+        "gender_type_code": "M",
+        "complete_name": "Schimmel Nicholas",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "RUNOLFSDOTTIR|Talisha|1951",
+        "last_name": "Runolfsdottir",
+        "first_name": "Talisha",
+        "year_of_birth": 1951,
+        "gender_type_code": "F",
+        "complete_name": "Runolfsdottir Talisha 78456",
+        "swimmer_id": 27689,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "KUNZE|Tameka|2001",
+        "last_name": "Kunze",
+        "first_name": "Tameka",
+        "year_of_birth": 2001,
+        "gender_type_code": "M",
+        "complete_name": "Kunze Tameka 49127",
+        "swimmer_id": 35467,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "WISOZK|Ayana|1982",
+        "last_name": "Wisozk",
+        "first_name": "Ayana",
+        "year_of_birth": 1982,
+        "gender_type_code": "F",
+        "complete_name": "Wisozk Ayana 74903",
+        "swimmer_id": 5315,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "PRICE|Chu|1955",
+        "last_name": "Price",
+        "first_name": "Chu",
+        "year_of_birth": 1955,
+        "gender_type_code": "M",
+        "complete_name": "Price Chu 13230",
+        "swimmer_id": 4634,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "WILDERMAN|Merissa|1956",
+        "last_name": "Wilderman",
+        "first_name": "Merissa",
+        "year_of_birth": 1956,
+        "gender_type_code": "F",
+        "complete_name": "Wilderman Merissa 58814",
+        "swimmer_id": 1485,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "HEIDENREICH|Manuel|1995",
+        "last_name": "Heidenreich",
+        "first_name": "Manuel",
+        "year_of_birth": 1995,
+        "gender_type_code": "M",
+        "complete_name": "Heidenreich Manuel",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "O'KON|Fiamma|1998",
+        "last_name": "O'Kon",
+        "first_name": "Fiamma",
+        "year_of_birth": 1998,
+        "gender_type_code": "F",
+        "complete_name": "O'Kon Fiamma",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "ERDMAN|Lue|1946",
+        "last_name": "Erdman",
+        "first_name": "Lue",
+        "year_of_birth": 1946,
+        "gender_type_code": "M",
+        "complete_name": "Erdman Lue 88305",
+        "swimmer_id": 7601,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "SCHULIST|Curtis|1971",
+        "last_name": "Schulist",
+        "first_name": "Curtis",
+        "year_of_birth": 1971,
+        "gender_type_code": "F",
+        "complete_name": "Schulist Curtis 94654",
+        "swimmer_id": 2049,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "QUIGLEY|Marco|2003",
+        "last_name": "Quigley",
+        "first_name": "Marco",
+        "year_of_birth": 2003,
+        "gender_type_code": "M",
+        "complete_name": "Quigley Marco",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "REICHEL|Johnette|1995",
+        "last_name": "Reichel",
+        "first_name": "Johnette",
+        "year_of_birth": 1995,
+        "gender_type_code": "M",
+        "complete_name": "Reichel Johnette 39496",
+        "swimmer_id": 2150,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "ZEMLAK|Ermes|1972",
+        "last_name": "Zemlak",
+        "first_name": "Ermes",
+        "year_of_birth": 1972,
+        "gender_type_code": "M",
+        "complete_name": "Zemlak Ermes",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "CRIST|Ladonna|1981",
+        "last_name": "Crist",
+        "first_name": "Ladonna",
+        "year_of_birth": 1981,
+        "gender_type_code": "F",
+        "complete_name": "Crist Ladonna 90155",
+        "swimmer_id": 36587,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "HOWELL|Fritz|1976",
+        "last_name": "Howell",
+        "first_name": "Fritz",
+        "year_of_birth": 1976,
+        "gender_type_code": "M",
+        "complete_name": "Howell Fritz 66418",
+        "swimmer_id": 14571,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "KRAJCIK|Alessandro|1970",
+        "last_name": "Krajcik",
+        "first_name": "Alessandro",
+        "year_of_birth": 1970,
+        "gender_type_code": "M",
+        "complete_name": "Krajcik Alessandro",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "KRAJCIK|Myesha|1959",
+        "last_name": "Krajcik",
+        "first_name": "Myesha",
+        "year_of_birth": 1959,
+        "gender_type_code": "M",
+        "complete_name": "Krajcik Myesha 48917",
+        "swimmer_id": 12195,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "DECKOW|M.|1994",
+        "last_name": "Deckow",
+        "first_name": "M.",
+        "year_of_birth": 1994,
+        "gender_type_code": "F",
+        "complete_name": "Deckow M.",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "KUNDE|Sparkle|1944",
+        "last_name": "Kunde",
+        "first_name": "Sparkle",
+        "year_of_birth": 1944,
+        "gender_type_code": "F",
+        "complete_name": "Kunde Sparkle 8303",
+        "swimmer_id": 39484,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "STREICH|Harrison|1988",
+        "last_name": "Streich",
+        "first_name": "Harrison",
+        "year_of_birth": 1988,
+        "gender_type_code": "M",
+        "complete_name": "Streich Harrison 16480",
+        "swimmer_id": 2241,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "JERDE|Francesco|1994",
+        "last_name": "Jerde",
+        "first_name": "Francesco",
+        "year_of_birth": 1994,
+        "gender_type_code": "M",
+        "complete_name": "Jerde Francesco",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "KOSS|Martina|2002",
+        "last_name": "Koss",
+        "first_name": "Martina",
+        "year_of_birth": 2002,
+        "gender_type_code": "F",
+        "complete_name": "Koss Martina",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "EICHMANN|Wenona|1966",
+        "last_name": "Eichmann",
+        "first_name": "Wenona",
+        "year_of_birth": 1966,
+        "gender_type_code": "M",
+        "complete_name": "Eichmann Wenona 14809",
+        "swimmer_id": 35019,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "BARTON|Maria|1963",
+        "last_name": "Barton",
+        "first_name": "Maria",
+        "year_of_birth": 1963,
+        "gender_type_code": "F",
+        "complete_name": "Barton Maria",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "GUTKOWSKI|Alanna|1978",
+        "last_name": "Gutkowski",
+        "first_name": "Alanna",
+        "year_of_birth": 1978,
+        "gender_type_code": "F",
+        "complete_name": "Gutkowski Alanna 18179",
+        "swimmer_id": 6962,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "WUCKERT|Carolyn|1992",
+        "last_name": "Wuckert",
+        "first_name": "Carolyn",
+        "year_of_birth": 1992,
+        "gender_type_code": "M",
+        "complete_name": "Wuckert Carolyn 6207",
+        "swimmer_id": 33970,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "BARTON|Judie|1977",
+        "last_name": "Barton",
+        "first_name": "Judie",
+        "year_of_birth": 1977,
+        "gender_type_code": "M",
+        "complete_name": "Barton Judie 26551",
+        "swimmer_id": 3647,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "ARMSTRONG|Daniele|1971",
+        "last_name": "Armstrong",
+        "first_name": "Daniele",
+        "year_of_birth": 1971,
+        "gender_type_code": "M",
+        "complete_name": "Armstrong Daniele",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "TRANTOW|Yon|1979",
+        "last_name": "Trantow",
+        "first_name": "Yon",
+        "year_of_birth": 1979,
+        "gender_type_code": "F",
+        "complete_name": "Trantow Yon 54276",
+        "swimmer_id": 6963,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "KUHN|Sara|1999",
+        "last_name": "Kuhn",
+        "first_name": "Sara",
+        "year_of_birth": 1999,
+        "gender_type_code": "F",
+        "complete_name": "Kuhn Sara",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "GULGOWSKI|Riccardo|1973",
+        "last_name": "Gulgowski",
+        "first_name": "Riccardo",
+        "year_of_birth": 1973,
+        "gender_type_code": "M",
+        "complete_name": "Gulgowski Riccardo",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "SCHUMM|Maddalena|2000",
+        "last_name": "Schumm",
+        "first_name": "Maddalena",
+        "year_of_birth": 2000,
+        "gender_type_code": "F",
+        "complete_name": "Schumm Maddalena",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "FRIESEN|Clarissa|2005",
+        "last_name": "Friesen",
+        "first_name": "Clarissa",
+        "year_of_birth": 2005,
+        "gender_type_code": "F",
+        "complete_name": "Friesen Clarissa",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "CUMMERATA|Meredith|1943",
+        "last_name": "Cummerata",
+        "first_name": "Meredith",
+        "year_of_birth": 1943,
+        "gender_type_code": "M",
+        "complete_name": "Cummerata Meredith 8501",
+        "swimmer_id": 19326,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "HAMILL|Deon|1988",
+        "last_name": "Hamill",
+        "first_name": "Deon",
+        "year_of_birth": 1988,
+        "gender_type_code": "F",
+        "complete_name": "Hamill Deon 81560",
+        "swimmer_id": 4216,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "VON|Rubi|1959",
+        "last_name": "Von",
+        "first_name": "Rubi",
+        "year_of_birth": 1959,
+        "gender_type_code": "M",
+        "complete_name": "Von Rubi 76528",
+        "swimmer_id": 4345,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "DOOLEY|Clement|1997",
+        "last_name": "Dooley",
+        "first_name": "Clement",
+        "year_of_birth": 1997,
+        "gender_type_code": "F",
+        "complete_name": "Dooley Clement 31519",
+        "swimmer_id": 5408,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "WILLIAMSON|Cherise|1952",
+        "last_name": "Williamson",
+        "first_name": "Cherise",
+        "year_of_birth": 1952,
+        "gender_type_code": "F",
+        "complete_name": "Williamson Cherise 38495",
+        "swimmer_id": 5801,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "PFANNERSTILL|Stefano|1972",
+        "last_name": "Pfannerstill",
+        "first_name": "Stefano",
+        "year_of_birth": 1972,
+        "gender_type_code": "M",
+        "complete_name": "Pfannerstill Stefano",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "ANDERSON|Chanel|2002",
+        "last_name": "Anderson",
+        "first_name": "Chanel",
+        "year_of_birth": 2002,
+        "gender_type_code": "M",
+        "complete_name": "Anderson Chanel 9266",
+        "swimmer_id": 30451,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "ADAMS|Lorenzo|1999",
+        "last_name": "Adams",
+        "first_name": "Lorenzo",
+        "year_of_birth": 1999,
+        "gender_type_code": "M",
+        "complete_name": "Adams Lorenzo",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "HAND|Tessie|1969",
+        "last_name": "Hand",
+        "first_name": "Tessie",
+        "year_of_birth": 1969,
+        "gender_type_code": "M",
+        "complete_name": "Hand Tessie 27927",
+        "swimmer_id": 2993,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "BARTOLETTI|Patria|1981",
+        "last_name": "Bartoletti",
+        "first_name": "Patria",
+        "year_of_birth": 1981,
+        "gender_type_code": "M",
+        "complete_name": "Bartoletti Patria 13082",
+        "swimmer_id": 4547,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "EICHMANN|Simone|1998",
+        "last_name": "Eichmann",
+        "first_name": "Simone",
+        "year_of_birth": 1998,
+        "gender_type_code": "M",
+        "complete_name": "Eichmann Simone",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "BOYLE|Saran|1961",
+        "last_name": "Boyle",
+        "first_name": "Saran",
+        "year_of_birth": 1961,
+        "gender_type_code": "F",
+        "complete_name": "Boyle Saran 2684",
+        "swimmer_id": 40657,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "RODRIGUEZ|Kennith|1940",
+        "last_name": "Rodriguez",
+        "first_name": "Kennith",
+        "year_of_birth": 1940,
+        "gender_type_code": "M",
+        "complete_name": "Rodriguez Kennith 55403",
+        "swimmer_id": 13158,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "MURPHY|Lucille|1997",
+        "last_name": "Murphy",
+        "first_name": "Lucille",
+        "year_of_birth": 1997,
+        "gender_type_code": "F",
+        "complete_name": "Murphy Lucille 72413",
+        "swimmer_id": 40688,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "KUHIC|Aracely|1990",
+        "last_name": "Kuhic",
+        "first_name": "Aracely",
+        "year_of_birth": 1990,
+        "gender_type_code": "M",
+        "complete_name": "Kuhic Aracely 4016",
+        "swimmer_id": 14208,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "KUHIC|Pierre|1995",
+        "last_name": "Kuhic",
+        "first_name": "Pierre",
+        "year_of_birth": 1995,
+        "gender_type_code": "M",
+        "complete_name": "Kuhic Pierre 72267",
+        "swimmer_id": 36902,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "POUROS|Tennie|1940",
+        "last_name": "Pouros",
+        "first_name": "Tennie",
+        "year_of_birth": 1940,
+        "gender_type_code": "F",
+        "complete_name": "Pouros Tennie 80662",
+        "swimmer_id": 17769,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "QUIGLEY|Evelin|1988",
+        "last_name": "Quigley",
+        "first_name": "Evelin",
+        "year_of_birth": 1988,
+        "gender_type_code": "F",
+        "complete_name": "Quigley Evelin 39256",
+        "swimmer_id": 2966,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "BEDNAR|Genevive|1966",
+        "last_name": "Bednar",
+        "first_name": "Genevive",
+        "year_of_birth": 1966,
+        "gender_type_code": "M",
+        "complete_name": "Bednar Genevive 48954",
+        "swimmer_id": 12612,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "WILKINSON|Marilee|1994",
+        "last_name": "Wilkinson",
+        "first_name": "Marilee",
+        "year_of_birth": 1994,
+        "gender_type_code": "M",
+        "complete_name": "Wilkinson Marilee 90327",
+        "swimmer_id": 4570,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "KEMMER|Markita|1948",
+        "last_name": "Kemmer",
+        "first_name": "Markita",
+        "year_of_birth": 1948,
+        "gender_type_code": "M",
+        "complete_name": "Kemmer Markita 48635",
+        "swimmer_id": 1968,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "TILLMAN|Tommye|1945",
+        "last_name": "Tillman",
+        "first_name": "Tommye",
+        "year_of_birth": 1945,
+        "gender_type_code": "F",
+        "complete_name": "Tillman Tommye 81043",
+        "swimmer_id": 3815,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "KUVALIS|Sofia|2000",
+        "last_name": "Kuvalis",
+        "first_name": "Sofia",
+        "year_of_birth": 2000,
+        "gender_type_code": "F",
+        "complete_name": "Kuvalis Sofia",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "SCHULIST|Rosa|1958",
+        "last_name": "Schulist",
+        "first_name": "Rosa",
+        "year_of_birth": 1958,
+        "gender_type_code": "M",
+        "complete_name": "Schulist Rosa 80427",
+        "swimmer_id": 38766,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "ZULAUF|Vinicio|1968",
+        "last_name": "Zulauf",
+        "first_name": "Vinicio",
+        "year_of_birth": 1968,
+        "gender_type_code": "M",
+        "complete_name": "Zulauf Vinicio",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "HILPERT|Lorenzo|1997",
+        "last_name": "Hilpert",
+        "first_name": "Lorenzo",
+        "year_of_birth": 1997,
+        "gender_type_code": "M",
+        "complete_name": "Hilpert Lorenzo",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "LUEILWITZ|Lashaun|1935",
+        "last_name": "Lueilwitz",
+        "first_name": "Lashaun",
+        "year_of_birth": 1935,
+        "gender_type_code": "M",
+        "complete_name": "Lueilwitz Lashaun 42431",
+        "swimmer_id": 38084,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "BARROWS|Luciana|1986",
+        "last_name": "Barrows",
+        "first_name": "Luciana",
+        "year_of_birth": 1986,
+        "gender_type_code": "F",
+        "complete_name": "Barrows Luciana 8398",
+        "swimmer_id": 7651,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "WUCKERT|Cira|1971",
+        "last_name": "Wuckert",
+        "first_name": "Cira",
+        "year_of_birth": 1971,
+        "gender_type_code": "M",
+        "complete_name": "Wuckert Cira 56198",
+        "swimmer_id": 10313,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "BEDNAR|Nakisha|1983",
+        "last_name": "Bednar",
+        "first_name": "Nakisha",
+        "year_of_birth": 1983,
+        "gender_type_code": "M",
+        "complete_name": "Bednar Nakisha 25512",
+        "swimmer_id": 10912,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "LITTLE|Daniele|1990",
+        "last_name": "Little",
+        "first_name": "Daniele",
+        "year_of_birth": 1990,
+        "gender_type_code": "M",
+        "complete_name": "Little Daniele",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "MILLS|Fabrizio|1963",
+        "last_name": "Mills",
+        "first_name": "Fabrizio",
+        "year_of_birth": 1963,
+        "gender_type_code": "M",
+        "complete_name": "Mills Fabrizio",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "BOGAN|Lina|1987",
+        "last_name": "Bogan",
+        "first_name": "Lina",
+        "year_of_birth": 1987,
+        "gender_type_code": "M",
+        "complete_name": "Bogan Lina 96379",
+        "swimmer_id": 10913,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "WOLF|Bernard|1955",
+        "last_name": "Wolf",
+        "first_name": "Bernard",
+        "year_of_birth": 1955,
+        "gender_type_code": "M",
+        "complete_name": "Wolf Bernard",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "SWIFT|Gabriele|1980",
+        "last_name": "Swift",
+        "first_name": "Gabriele",
+        "year_of_birth": 1980,
+        "gender_type_code": "M",
+        "complete_name": "Swift Gabriele",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "HILPERT|Sung|1985",
+        "last_name": "Hilpert",
+        "first_name": "Sung",
+        "year_of_birth": 1985,
+        "gender_type_code": "M",
+        "complete_name": "Hilpert Sung 40845",
+        "swimmer_id": 2447,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "BOGAN|Hassie|1938",
+        "last_name": "Bogan",
+        "first_name": "Hassie",
+        "year_of_birth": 1938,
+        "gender_type_code": "F",
+        "complete_name": "Bogan Hassie 80437",
+        "swimmer_id": 14638,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "STEHR|Alessia|2002",
+        "last_name": "Stehr",
+        "first_name": "Alessia",
+        "year_of_birth": 2002,
+        "gender_type_code": "F",
+        "complete_name": "Stehr Alessia",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "GOYETTE|Mauro|1974",
+        "last_name": "Goyette",
+        "first_name": "Mauro",
+        "year_of_birth": 1974,
+        "gender_type_code": "M",
+        "complete_name": "Goyette Mauro",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "BEER|Vilma|2000",
+        "last_name": "Beer",
+        "first_name": "Vilma",
+        "year_of_birth": 2000,
+        "gender_type_code": "M",
+        "complete_name": "Beer Vilma 67373",
+        "swimmer_id": 2552,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "KSHLERIN|Antoine|1960",
+        "last_name": "Kshlerin",
+        "first_name": "Antoine",
+        "year_of_birth": 1960,
+        "gender_type_code": "M",
+        "complete_name": "Kshlerin Antoine 23665",
+        "swimmer_id": 8969,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "WOLFF|Tiffany|1996",
+        "last_name": "Wolff",
+        "first_name": "Tiffany",
+        "year_of_birth": 1996,
+        "gender_type_code": "M",
+        "complete_name": "Wolff Tiffany 6164",
+        "swimmer_id": 24291,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "FERRY|Brian|1998",
+        "last_name": "Ferry",
+        "first_name": "Brian",
+        "year_of_birth": 1998,
+        "gender_type_code": "M",
+        "complete_name": "Ferry Brian",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "RATH|G.|1994",
+        "last_name": "Rath",
+        "first_name": "G.",
+        "year_of_birth": 1994,
+        "gender_type_code": "M",
+        "complete_name": "Rath G.",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "RUTHERFORD|Maria|1997",
+        "last_name": "Rutherford",
+        "first_name": "Maria",
+        "year_of_birth": 1997,
+        "gender_type_code": "F",
+        "complete_name": "Rutherford Maria",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "COLLINS|Alessandra|1978",
+        "last_name": "Collins",
+        "first_name": "Alessandra",
+        "year_of_birth": 1978,
+        "gender_type_code": "F",
+        "complete_name": "Collins Alessandra",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "MCCLURE|Georgetta|1989",
+        "last_name": "McClure",
+        "first_name": "Georgetta",
+        "year_of_birth": 1989,
+        "gender_type_code": "M",
+        "complete_name": "McClure Georgetta 23176",
+        "swimmer_id": 10932,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "KING|Davide|1979",
+        "last_name": "King",
+        "first_name": "Davide",
+        "year_of_birth": 1979,
+        "gender_type_code": "M",
+        "complete_name": "King Davide",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "BOYER|Waylon|1983",
+        "last_name": "Boyer",
+        "first_name": "Waylon",
+        "year_of_birth": 1983,
+        "gender_type_code": "M",
+        "complete_name": "Boyer Waylon 62993",
+        "swimmer_id": 14659,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "KILBACK|Concetto|1999",
+        "last_name": "Kilback",
+        "first_name": "Concetto",
+        "year_of_birth": 1999,
+        "gender_type_code": "M",
+        "complete_name": "Kilback Concetto",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "METZ|Michela|2005",
+        "last_name": "Metz",
+        "first_name": "Michela",
+        "year_of_birth": 2005,
+        "gender_type_code": "F",
+        "complete_name": "Metz Michela",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "JERDE|Kyle|1942",
+        "last_name": "Jerde",
+        "first_name": "Kyle",
+        "year_of_birth": 1942,
+        "gender_type_code": "M",
+        "complete_name": "Jerde Kyle 6590",
+        "swimmer_id": 19210,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "FAY|Gianluca|2001",
+        "last_name": "Fay",
+        "first_name": "Gianluca",
+        "year_of_birth": 2001,
+        "gender_type_code": "M",
+        "complete_name": "Fay Gianluca",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "CRONA|Fabio|1955",
+        "last_name": "Crona",
+        "first_name": "Fabio",
+        "year_of_birth": 1955,
+        "gender_type_code": "M",
+        "complete_name": "Crona Fabio",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "LARKIN|Giulia|1993",
+        "last_name": "Larkin",
+        "first_name": "Giulia",
+        "year_of_birth": 1993,
+        "gender_type_code": "F",
+        "complete_name": "Larkin Giulia",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "GULGOWSKI|Joel|1980",
+        "last_name": "Gulgowski",
+        "first_name": "Joel",
+        "year_of_birth": 1980,
+        "gender_type_code": "M",
+        "complete_name": "Gulgowski Joel 81356",
+        "swimmer_id": 4314,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "HOMENICK|Abigail|1955",
+        "last_name": "Homenick",
+        "first_name": "Abigail",
+        "year_of_birth": 1955,
+        "gender_type_code": "M",
+        "complete_name": "Homenick Abigail 26310",
+        "swimmer_id": 20416,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "BRAUN|Kandi|2001",
+        "last_name": "Braun",
+        "first_name": "Kandi",
+        "year_of_birth": 2001,
+        "gender_type_code": "M",
+        "complete_name": "Braun Kandi 27052",
+        "swimmer_id": 4568,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "LANG|Bethel|1976",
+        "last_name": "Lang",
+        "first_name": "Bethel",
+        "year_of_birth": 1976,
+        "gender_type_code": "F",
+        "complete_name": "Lang Bethel 72245",
+        "swimmer_id": 1807,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "LUEILWITZ|Sophie|1969",
+        "last_name": "Lueilwitz",
+        "first_name": "Sophie",
+        "year_of_birth": 1969,
+        "gender_type_code": "F",
+        "complete_name": "Lueilwitz Sophie",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "KING|Matteo|2001",
+        "last_name": "King",
+        "first_name": "Matteo",
+        "year_of_birth": 2001,
+        "gender_type_code": "M",
+        "complete_name": "King Matteo",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "KOELPIN|Reatha|1974",
+        "last_name": "Koelpin",
+        "first_name": "Reatha",
+        "year_of_birth": 1974,
+        "gender_type_code": "M",
+        "complete_name": "Koelpin Reatha 20226",
+        "swimmer_id": 2019,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      },
+      {
+        "key": "RODRIGUEZ|Sherika|1953",
+        "last_name": "Rodriguez",
+        "first_name": "Sherika",
+        "year_of_birth": 1953,
+        "gender_type_code": "M",
+        "complete_name": "Rodriguez Sherika 68383",
+        "swimmer_id": 8392,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "KUHIC|Linnea|1986",
+        "last_name": "Kuhic",
+        "first_name": "Linnea",
+        "year_of_birth": 1986,
+        "gender_type_code": "F",
+        "complete_name": "Kuhic Linnea 42616",
+        "swimmer_id": 32317,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "KULAS|Rosalee|1933",
+        "last_name": "Kulas",
+        "first_name": "Rosalee",
+        "year_of_birth": 1933,
+        "gender_type_code": "F",
+        "complete_name": "Kulas Rosalee 55542",
+        "swimmer_id": 7690,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "KSHLERIN|Claudia|1997",
+        "last_name": "Kshlerin",
+        "first_name": "Claudia",
+        "year_of_birth": 1997,
+        "gender_type_code": "F",
+        "complete_name": "Kshlerin Claudia",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "RYAN|Claudia|1972",
+        "last_name": "Ryan",
+        "first_name": "Claudia",
+        "year_of_birth": 1972,
+        "gender_type_code": "F",
+        "complete_name": "Ryan Claudia",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "SCHAMBERGER|Carey|1962",
+        "last_name": "Schamberger",
+        "first_name": "Carey",
+        "year_of_birth": 1962,
+        "gender_type_code": "M",
+        "complete_name": "Schamberger Carey 11463",
+        "swimmer_id": 2799,
+        "fuzzy_matches": [],
+        "gender_type_id": 1
+      },
+      {
+        "key": "NADER|Tobia|1993",
+        "last_name": "Nader",
+        "first_name": "Tobia",
+        "year_of_birth": 1993,
+        "gender_type_code": "M",
+        "complete_name": "Nader Tobia",
+        "swimmer_id": null,
+        "fuzzy_matches": []
+      },
+      {
+        "key": "LANG|Kendrick|1962",
+        "last_name": "Lang",
+        "first_name": "Kendrick",
+        "year_of_birth": 1962,
+        "gender_type_code": "M",
+        "complete_name": "Lang Kendrick 49900",
+        "swimmer_id": 34453,
+        "fuzzy_matches": [],
+        "gender_type_id": 2
+      }
+    ],
+    "badges": [
+      {
+        "swimmer_key": "ROWE|Jennifer|1951",
+        "team_key": "Nord Padania Nuoto",
+        "season_id": 242,
+        "swimmer_id": 32608,
+        "team_id": 56,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "LOCKMAN|Deon|1990",
+        "team_key": "Gonzaga Sport Club ssd",
+        "season_id": 242,
+        "swimmer_id": 10397,
+        "team_id": 874,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "SAWAYN|Roberta|1975",
+        "team_key": "Aquamore Acqua 13",
+        "season_id": 242,
+        "swimmer_id": null,
+        "team_id": 1535,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "TOWNE|Giulia|2003",
+        "team_key": "Aquareal asd",
+        "season_id": 242,
+        "swimmer_id": 51710,
+        "team_id": 1440,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "WINDLER|Nelia|1990",
+        "team_key": "Circolo Canottieri Aniene",
+        "season_id": 242,
+        "swimmer_id": 8004,
+        "team_id": 89,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "PROHASKA|Merry|1963",
+        "team_key": "All Round Sport & Wellnes",
+        "season_id": 242,
+        "swimmer_id": 36269,
+        "team_id": 1331,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "CROOKS|Erna|1976",
+        "team_key": "Ssd 2001 srl - Padova",
+        "season_id": 242,
+        "swimmer_id": 34990,
+        "team_id": 177,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "ALLORO|STEFANO|1969",
+        "team_key": "Coopernuoto",
+        "season_id": 242,
+        "swimmer_id": 142,
+        "team_id": 42,
+        "category_type_id": 838,
+        "badge_id": 8399
+      },
+      {
+        "swimmer_key": "BAHRINGER|Alona|1955",
+        "team_key": "Circolo Canottieri Aniene",
+        "season_id": 242,
+        "swimmer_id": 16874,
+        "team_id": 89,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "STEUBER|Debbra|1996",
+        "team_key": "Roma Nuoto Master ssd",
+        "season_id": 242,
+        "swimmer_id": null,
+        "team_id": 382,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "PURDY|Arianna|2001",
+        "team_key": "Centro Nuoto Bastia asd",
+        "season_id": 242,
+        "swimmer_id": 50318,
+        "team_id": 76,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "O'CONNER|Giorgio|1997",
+        "team_key": "Aquamore Acqua 13",
+        "season_id": 242,
+        "swimmer_id": 44092,
+        "team_id": 1535,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "HEGMANN|Tova|1997",
+        "team_key": "Roma Nuoto Master ssd",
+        "season_id": 242,
+        "swimmer_id": 10601,
+        "team_id": 382,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "MCKENZIE|Federica|1994",
+        "team_key": "Firenze Nuota Master",
+        "season_id": 242,
+        "swimmer_id": 53126,
+        "team_id": 62,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "GRADY|Clayton|1942",
+        "team_key": "ssd Stilelibero - Preganz",
+        "season_id": 242,
+        "swimmer_id": 19821,
+        "team_id": 179,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "JACOBI|Maria|1995",
+        "team_key": "Forum Sport Center",
+        "season_id": 242,
+        "swimmer_id": null,
+        "team_id": 203,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "DONNELLY|Rex|2001",
+        "team_key": "Nuoto Club Firenze Asd",
+        "season_id": 242,
+        "swimmer_id": 4702,
+        "team_id": 976,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "HOEGER|Jerica|1943",
+        "team_key": "Gonzaga Sport Club ssd",
+        "season_id": 242,
+        "swimmer_id": 19227,
+        "team_id": 874,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "GLEASON|Donette|1935",
+        "team_key": "Forum Sport Center",
+        "season_id": 242,
+        "swimmer_id": 12486,
+        "team_id": 203,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "BRAUN|Alice|1994",
+        "team_key": "Nuoto Chivasso asd",
+        "season_id": 242,
+        "swimmer_id": 42256,
+        "team_id": 408,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "FUNK|Giulia|1995",
+        "team_key": "Asola Nuoto",
+        "season_id": 242,
+        "swimmer_id": 46375,
+        "team_id": 324,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "HAMILL|Juli|1940",
+        "team_key": "Imolanuoto ssd a r.l.",
+        "season_id": 242,
+        "swimmer_id": 35635,
+        "team_id": 17,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "BERGE|Chiara|1991",
+        "team_key": "Swim&Care asd",
+        "season_id": 242,
+        "swimmer_id": 46334,
+        "team_id": 1304,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "DOOLEY|Nicolo'|1997",
+        "team_key": "Centro Nuoto Stra",
+        "season_id": 242,
+        "swimmer_id": 44698,
+        "team_id": 730,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "WINDLER|Claris|1998",
+        "team_key": "Nuoto Club Milano asd",
+        "season_id": 242,
+        "swimmer_id": 4640,
+        "team_id": 87,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "METZ|Queenie|1976",
+        "team_key": "Lecco Olimpica Nuoto",
+        "season_id": 242,
+        "swimmer_id": null,
+        "team_id": 85,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "SCHOEN|Marci|2002",
+        "team_key": "CSI Nuoto Prato Asd",
+        "season_id": 242,
+        "swimmer_id": 6825,
+        "team_id": 34,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "JOHNSON|Elena|1986",
+        "team_key": "Team Insubrika asd",
+        "season_id": 242,
+        "swimmer_id": 44720,
+        "team_id": 57,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "BEER|Rosamond|1944",
+        "team_key": "PASSPORT SSD srl",
+        "season_id": 242,
+        "swimmer_id": 8737,
+        "team_id": 1524,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "GUTKOWSKI|Twanda|1968",
+        "team_key": "Nuotatori Padovani",
+        "season_id": 242,
+        "swimmer_id": 17081,
+        "team_id": 171,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "PARKER|Fidel|1990",
+        "team_key": "Dimensione NUOTO Pontedera Asd",
+        "season_id": 242,
+        "swimmer_id": 6136,
+        "team_id": 111,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "O'KEEFE|Larisa|1935",
+        "team_key": "Seven Master Nuoto asd",
+        "season_id": 242,
+        "swimmer_id": 18659,
+        "team_id": 317,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "COLE|Riccardo|1996",
+        "team_key": "Nuoto Pn Pontassieve",
+        "season_id": 242,
+        "swimmer_id": 45150,
+        "team_id": 1570,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "KULAS|Ryan|1990",
+        "team_key": "Aly Sport asd",
+        "season_id": 242,
+        "swimmer_id": null,
+        "team_id": 1227,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "SCHOEN|Francesca|1978",
+        "team_key": "New Swim asd - Castiglion",
+        "season_id": 242,
+        "swimmer_id": 46405,
+        "team_id": 480,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "KEEBLER|Manuel|2002",
+        "team_key": "Ondablu ssd",
+        "season_id": 242,
+        "swimmer_id": 51983,
+        "team_id": 1187,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "BREITENBERG|Alfreda|1966",
+        "team_key": "A.P.Padana ssd",
+        "season_id": 242,
+        "swimmer_id": 4552,
+        "team_id": 405,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "KOEPP|Josef|2002",
+        "team_key": "Nuotatori del Carroccio",
+        "season_id": 242,
+        "swimmer_id": 6155,
+        "team_id": 839,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "WIZA|Rochelle|1938",
+        "team_key": "Forum Sport Center",
+        "season_id": 242,
+        "swimmer_id": 10632,
+        "team_id": 203,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "KUNZE|Jacalyn|1998",
+        "team_key": "Komaros Sub Ancona Asd",
+        "season_id": 242,
+        "swimmer_id": 2561,
+        "team_id": 126,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "HALEY|Selena|1978",
+        "team_key": "Rari Nantes Saronno",
+        "season_id": 242,
+        "swimmer_id": 4378,
+        "team_id": 63,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "DURGAN|Leo|1999",
+        "team_key": "Centro Nuoto Le Bandie",
+        "season_id": 242,
+        "swimmer_id": 23279,
+        "team_id": 900,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "TRANTOW|Freddy|1957",
+        "team_key": "Roma Nuoto Master ssd",
+        "season_id": 242,
+        "swimmer_id": 32810,
+        "team_id": 382,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "LESCH|Luca|1985",
+        "team_key": "Caravaggio S.V. Aqua ssd",
+        "season_id": 242,
+        "swimmer_id": 45690,
+        "team_id": 731,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "KUVALIS|Genny|1970",
+        "team_key": "La Meridiana Sport",
+        "season_id": 242,
+        "swimmer_id": 23443,
+        "team_id": 1213,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "BEAHAN|Delora|1960",
+        "team_key": "Nuoto Master Brescia asd",
+        "season_id": 242,
+        "swimmer_id": 5654,
+        "team_id": 1326,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "WEIMANN|Vaughn|1987",
+        "team_key": "Fonte Meravigliosa Sport",
+        "season_id": 242,
+        "swimmer_id": 28463,
+        "team_id": 789,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "KERTZMANN|Ricki|1980",
+        "team_key": "Centro Nuoto Bastia asd",
+        "season_id": 242,
+        "swimmer_id": 2492,
+        "team_id": 76,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "REMPEL|Lorenzo|2005",
+        "team_key": "A.P.Padana ssd",
+        "season_id": 242,
+        "swimmer_id": 51902,
+        "team_id": 405,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "PACOCHA|Cristiano|2003",
+        "team_key": "Aquareal asd",
+        "season_id": 242,
+        "swimmer_id": 50658,
+        "team_id": 1440,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "LANGOSH|Emma|2004",
+        "team_key": "AlbatrosNuoto - Montegrot",
+        "season_id": 242,
+        "swimmer_id": 53500,
+        "team_id": 1473,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "BORER|Angela|1965",
+        "team_key": "NC RN Cairo M.Acqui Terme",
+        "season_id": 242,
+        "swimmer_id": 48993,
+        "team_id": 1206,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "KUNDE|Opal|1982",
+        "team_key": "Team Lombardia Nuoto MGM Sport",
+        "season_id": 242,
+        "swimmer_id": 38542,
+        "team_id": 277,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "JOHNSON|Warner|1979",
+        "team_key": "Ssd 2001 srl - Padova",
+        "season_id": 242,
+        "swimmer_id": 2679,
+        "team_id": 177,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "MORAR|Piera|1981",
+        "team_key": "Team Insubrika asd",
+        "season_id": 242,
+        "swimmer_id": 46296,
+        "team_id": 57,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "HOEGER|Igor|1975",
+        "team_key": "Crocera Stadium ssd",
+        "season_id": 242,
+        "swimmer_id": 44861,
+        "team_id": 1205,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "BEATTY|Beatrice|1991",
+        "team_key": "Asd Polisportiva Riccione Aps",
+        "season_id": 242,
+        "swimmer_id": 49058,
+        "team_id": 131,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "SCHAEFER|Alessandra|1970",
+        "team_key": "Aventino Sporting Roma ssd",
+        "season_id": 242,
+        "swimmer_id": 44847,
+        "team_id": 1640,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "O'HARA|Hye|1975",
+        "team_key": "Derthona Nuoto",
+        "season_id": 242,
+        "swimmer_id": 19348,
+        "team_id": 48,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "CHRISTIANSEN|Kory|1992",
+        "team_key": "CSI Roma Flaminio",
+        "season_id": 242,
+        "swimmer_id": 10670,
+        "team_id": 241,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "JERDE|Robbie|1983",
+        "team_key": "Flaminio Sporting Club",
+        "season_id": 242,
+        "swimmer_id": 13344,
+        "team_id": 202,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "BOEHM|Vittorio|2001",
+        "team_key": "Rari Nantes Venezia",
+        "season_id": 242,
+        "swimmer_id": 49621,
+        "team_id": 143,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "FLATLEY|Gertrudis|1962",
+        "team_key": "CUS Bari asd",
+        "season_id": 242,
+        "swimmer_id": 11883,
+        "team_id": 477,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "EMARD|Dana|1988",
+        "team_key": "Caravaggio S.V. Aqua ssd",
+        "season_id": 242,
+        "swimmer_id": 18321,
+        "team_id": 731,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "JENKINS|Eloise|1988",
+        "team_key": "Derthona Nuoto",
+        "season_id": 242,
+        "swimmer_id": 5025,
+        "team_id": 48,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "KOEPP|Sandy|1940",
+        "team_key": "Circolo Canottieri Aniene",
+        "season_id": 242,
+        "swimmer_id": 6194,
+        "team_id": 89,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "STANTON|Debora|1994",
+        "team_key": "Nuoto Valdinievole",
+        "season_id": 242,
+        "swimmer_id": 51815,
+        "team_id": 295,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "PROHASKA|Tajuana|1951",
+        "team_key": "Nautilus ssd",
+        "season_id": 242,
+        "swimmer_id": 28464,
+        "team_id": 206,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "DUBUQUE|Simona|1981",
+        "team_key": "Atlantide Nuoto asd",
+        "season_id": 242,
+        "swimmer_id": 47983,
+        "team_id": 484,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "PFANNERSTILL|Ines|1982",
+        "team_key": "Acqua1village ssd",
+        "season_id": 242,
+        "swimmer_id": 7462,
+        "team_id": 265,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "MCDERMOTT|Earlie|1972",
+        "team_key": "Forum Sport Center",
+        "season_id": 242,
+        "swimmer_id": 24147,
+        "team_id": 203,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "GREENHOLT|Giuseppe|1984",
+        "team_key": "Nuoto Club Firenze Asd",
+        "season_id": 242,
+        "swimmer_id": 48734,
+        "team_id": 976,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "ROBERTS|Roberto|1963",
+        "team_key": "Zero9 Team ssd",
+        "season_id": 242,
+        "swimmer_id": 43599,
+        "team_id": 213,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "WATERS|Doloris|1978",
+        "team_key": "Team Legnano Nuoto a.s.d.",
+        "season_id": 242,
+        "swimmer_id": 32628,
+        "team_id": 1598,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "JOHNSTON|Mattia|1996",
+        "team_key": "Asd Polisportiva Riccione Aps",
+        "season_id": 242,
+        "swimmer_id": 44239,
+        "team_id": 131,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "WAELCHI|Carletta|1963",
+        "team_key": "Firenze Nuota Master",
+        "season_id": 242,
+        "swimmer_id": 1916,
+        "team_id": 62,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "PACOCHA|Salvador|1944",
+        "team_key": "G.P. Nuoto Mira",
+        "season_id": 242,
+        "swimmer_id": 34997,
+        "team_id": 172,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "POUROS|Pierre|1975",
+        "team_key": "Acqua1village ssd",
+        "season_id": 242,
+        "swimmer_id": 8787,
+        "team_id": 265,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "REICHEL|Luca|1964",
+        "team_key": "NS Marche ssd",
+        "season_id": 242,
+        "swimmer_id": null,
+        "team_id": 1386,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "SENGER|Lavelle|1942",
+        "team_key": "Forum Sport Center",
+        "season_id": 242,
+        "swimmer_id": 10693,
+        "team_id": 203,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "FRITSCH|Carlo|1973",
+        "team_key": "Nuoto Club Firenze Asd",
+        "season_id": 242,
+        "swimmer_id": 48652,
+        "team_id": 976,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "ROGAHN|Angelika|1982",
+        "team_key": "Domar Sporting Club ssd",
+        "season_id": 242,
+        "swimmer_id": 46026,
+        "team_id": 525,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "JACOBSON|Alessandra|1965",
+        "team_key": "Nuoto Club Cagliari",
+        "season_id": 242,
+        "swimmer_id": 55004,
+        "team_id": 889,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "FRANECKI|Karri|1981",
+        "team_key": "Roma Nuoto Master ssd",
+        "season_id": 242,
+        "swimmer_id": 21087,
+        "team_id": 382,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "BECKER|Fabrizio|1998",
+        "team_key": "Idra Nuoto e Fitness ssd",
+        "season_id": 242,
+        "swimmer_id": 46143,
+        "team_id": 1461,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "ARMSTRONG|Jon|1944",
+        "team_key": "Roma Nuoto Master ssd",
+        "season_id": 242,
+        "swimmer_id": 30197,
+        "team_id": 382,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "DICKINSON|Candie|2000",
+        "team_key": "Heaven Due ssd",
+        "season_id": 242,
+        "swimmer_id": 40147,
+        "team_id": 440,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "ROGAHN|Luisa|1966",
+        "team_key": "Nuotatori Genovesi ssd",
+        "season_id": 242,
+        "swimmer_id": 48999,
+        "team_id": 221,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "O'HARA|Clelia|1963",
+        "team_key": "Coopernuoto",
+        "season_id": 242,
+        "swimmer_id": 45615,
+        "team_id": 42,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "EMARD|Andrea|1996",
+        "team_key": "Team Lombardia Nuoto MGM Sport",
+        "season_id": 242,
+        "swimmer_id": 42979,
+        "team_id": 277,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "DECKOW|Alessandro|2001",
+        "team_key": "Torino Nuoto",
+        "season_id": 242,
+        "swimmer_id": 51629,
+        "team_id": 687,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "ZIEME|Matteo|1994",
+        "team_key": "Sportivamente Belluno ssd",
+        "season_id": 242,
+        "swimmer_id": 49111,
+        "team_id": 465,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "FEEST|Edoardo|1996",
+        "team_key": "Fonte Meravigliosa Sport",
+        "season_id": 242,
+        "swimmer_id": 46219,
+        "team_id": 789,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "SATTERFIELD|Saturnina|1997",
+        "team_key": "SSV Brixen",
+        "season_id": 242,
+        "swimmer_id": 11313,
+        "team_id": 467,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "FRIESEN|Maud|1992",
+        "team_key": "Nuotatori Genovesi ssd",
+        "season_id": 242,
+        "swimmer_id": null,
+        "team_id": 221,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "BUCKRIDGE|Jan|1995",
+        "team_key": "Swim Team Abruzzo asd",
+        "season_id": 242,
+        "swimmer_id": 5080,
+        "team_id": 946,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "ULLRICH|Raffaella|1972",
+        "team_key": "Nuotatori Genovesi ssd",
+        "season_id": 242,
+        "swimmer_id": 53265,
+        "team_id": 221,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "SCHROEDER|Keenan|1969",
+        "team_key": "Tergeste Nuoto Altura ssd",
+        "season_id": 242,
+        "swimmer_id": 6230,
+        "team_id": 987,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "KESSLER|Lily|1939",
+        "team_key": "Aquatika ssd arl",
+        "season_id": 242,
+        "swimmer_id": 11954,
+        "team_id": 296,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "SCHOEN|Lyndia|2000",
+        "team_key": "Zero9 Team ssd",
+        "season_id": 242,
+        "swimmer_id": 14457,
+        "team_id": 213,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "BASHIRIAN|Pia|1956",
+        "team_key": "Sintesi ssd",
+        "season_id": 242,
+        "swimmer_id": 3284,
+        "team_id": 194,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "TREUTEL|Calvin|1997",
+        "team_key": "Sintesi ssd",
+        "season_id": 242,
+        "swimmer_id": 23805,
+        "team_id": 194,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "SPENCER|Nancie|1995",
+        "team_key": "Caravaggio S.V. Aqua ssd",
+        "season_id": 242,
+        "swimmer_id": 21913,
+        "team_id": 731,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "SAWAYN|Cleta|1962",
+        "team_key": "Aqua Alpha ssd s.r.l.",
+        "season_id": 242,
+        "swimmer_id": 11660,
+        "team_id": 1538,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "SAUER|Matteo|1998",
+        "team_key": "Villa Aurelia SC",
+        "season_id": 242,
+        "swimmer_id": 46735,
+        "team_id": 1537,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "PAUCEK|Douglass|1947",
+        "team_key": "Aquamore Acqua 13",
+        "season_id": 242,
+        "swimmer_id": 23117,
+        "team_id": 1535,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "CREMIN|Bertie|1996",
+        "team_key": "Acqua1village ssd",
+        "season_id": 242,
+        "swimmer_id": 21281,
+        "team_id": 265,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "RODRIGUEZ|Vasiliki|1980",
+        "team_key": "Canottieri Baldesio",
+        "season_id": 242,
+        "swimmer_id": 8507,
+        "team_id": 45,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "CONN|Stefano|2002",
+        "team_key": "Ssd 2001 srl - Padova",
+        "season_id": 242,
+        "swimmer_id": 52057,
+        "team_id": 177,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "MOEN|Salley|1962",
+        "team_key": "Parco Kolbe ssd",
+        "season_id": 242,
+        "swimmer_id": 8151,
+        "team_id": 1296,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "STEUBER|Darci|1997",
+        "team_key": "ASA asd - Cinisello Balsa",
+        "season_id": 242,
+        "swimmer_id": 3788,
+        "team_id": 77,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "LANGOSH|Catrice|1953",
+        "team_key": "Teramo Nuoto",
+        "season_id": 242,
+        "swimmer_id": 35547,
+        "team_id": 757,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "REINGER|Mattia|2002",
+        "team_key": "SPM Sport ssd - Paullo",
+        "season_id": 242,
+        "swimmer_id": 51903,
+        "team_id": 334,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "BOYLE|Renee|1998",
+        "team_key": "Coopernuoto",
+        "season_id": 242,
+        "swimmer_id": 785,
+        "team_id": 42,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "ANKUNDING|Adriano|1975",
+        "team_key": "G.P. Nuoto Mira",
+        "season_id": 242,
+        "swimmer_id": 43675,
+        "team_id": 172,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "PAGAC|Carlotta|2000",
+        "team_key": "G.A.M. Team ssd - Brescia",
+        "season_id": 242,
+        "swimmer_id": 48321,
+        "team_id": 49,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "O'KEEFE|Chantal|1976",
+        "team_key": "Forum Sport Center",
+        "season_id": 242,
+        "swimmer_id": 14472,
+        "team_id": 203,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "LEFFLER|Florine|1993",
+        "team_key": "All Round Sport & Wellnes",
+        "season_id": 242,
+        "swimmer_id": 8157,
+        "team_id": 1331,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "STRACKE|Larae|1997",
+        "team_key": "Effetto Sport - Barzano'",
+        "season_id": 242,
+        "swimmer_id": 40229,
+        "team_id": 836,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "KLING|Paolo|1958",
+        "team_key": "Planet Sport Todi ssd",
+        "season_id": 242,
+        "swimmer_id": 55023,
+        "team_id": 1557,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "KESSLER|Kurtis|1943",
+        "team_key": "Sports and Events ssd",
+        "season_id": 242,
+        "swimmer_id": 20264,
+        "team_id": 1160,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "CORWIN|Giovanni|1993",
+        "team_key": "Rari Nantes Venezia",
+        "season_id": 242,
+        "swimmer_id": 46651,
+        "team_id": 143,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "LIND|Harriet|1968",
+        "team_key": "Arezzo Nuoto",
+        "season_id": 242,
+        "swimmer_id": 13099,
+        "team_id": 297,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "DIETRICH|Casie|1998",
+        "team_key": "Acqua1village ssd",
+        "season_id": 242,
+        "swimmer_id": 4325,
+        "team_id": 265,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "STIEDEMANN|Lanelle|2002",
+        "team_key": "Nuoto Club Firenze Asd",
+        "season_id": 242,
+        "swimmer_id": 1949,
+        "team_id": 976,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "MARKS|Bianca|1971",
+        "team_key": "Villa York Sporting Club",
+        "season_id": 242,
+        "swimmer_id": 8168,
+        "team_id": 798,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "GRAHAM|Alessio|1985",
+        "team_key": "Roma Nuoto Master ssd",
+        "season_id": 242,
+        "swimmer_id": 46186,
+        "team_id": 382,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "KOEPP|Sara|1970",
+        "team_key": "Citta' Sport Vicenza ssd",
+        "season_id": 242,
+        "swimmer_id": 41376,
+        "team_id": 800,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "STOKES|Jeffry|1991",
+        "team_key": "Nuoto Club Firenze Asd",
+        "season_id": 242,
+        "swimmer_id": 26960,
+        "team_id": 976,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "TROMP|Janice|1983",
+        "team_key": "G. Sport Village ssd",
+        "season_id": 242,
+        "swimmer_id": 32849,
+        "team_id": 1333,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "HAGENES|Alisha|1988",
+        "team_key": "Rari Nantes Trento",
+        "season_id": 242,
+        "swimmer_id": 2159,
+        "team_id": 102,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "STAMM|Temika|1941",
+        "team_key": "MY TRAINERS CLUB S.S.D. a r.l.",
+        "season_id": 242,
+        "swimmer_id": 2329,
+        "team_id": 1532,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "HUELS|Lila|1978",
+        "team_key": "Acquarius Popoli asd",
+        "season_id": 242,
+        "swimmer_id": 39723,
+        "team_id": 1545,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "GRADY|Emanuele|1986",
+        "team_key": "Roma Nuoto Master ssd",
+        "season_id": 242,
+        "swimmer_id": 40759,
+        "team_id": 382,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "LANGWORTH|Sofia|2005",
+        "team_key": "Coopernuoto",
+        "season_id": 242,
+        "swimmer_id": 51642,
+        "team_id": 42,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "JERDE|Son|1975",
+        "team_key": "DLF Nuoto Livorno",
+        "season_id": 242,
+        "swimmer_id": 26963,
+        "team_id": 219,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "DICKINSON|Noelia|1987",
+        "team_key": "Nuoto Club Firenze Asd",
+        "season_id": 242,
+        "swimmer_id": null,
+        "team_id": 976,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "HILLL|Sheena|1956",
+        "team_key": "SSV Brixen",
+        "season_id": 242,
+        "swimmer_id": 8543,
+        "team_id": 467,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "BERNHARD|Assunta|1998",
+        "team_key": "Nuotatori Milanesi",
+        "season_id": 242,
+        "swimmer_id": 10474,
+        "team_id": 239,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "SATTERFIELD|Ling|1980",
+        "team_key": "Coopernuoto",
+        "season_id": 242,
+        "swimmer_id": 114,
+        "team_id": 42,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "BATZ|Gerry|1962",
+        "team_key": "Nuoto Club Firenze Asd",
+        "season_id": 242,
+        "swimmer_id": 18259,
+        "team_id": 976,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "STROSIN|Kate|1978",
+        "team_key": "Serapo Sport Gaeta",
+        "season_id": 242,
+        "swimmer_id": 25148,
+        "team_id": 532,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "DAUGHERTY|Reuben|1989",
+        "team_key": "In Sport Rane Rosse",
+        "season_id": 242,
+        "swimmer_id": 1974,
+        "team_id": 478,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "HETTINGER|Paulita|1948",
+        "team_key": "Nuotatori Genovesi ssd",
+        "season_id": 242,
+        "swimmer_id": 19404,
+        "team_id": 221,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "REICHERT|Albertine|1936",
+        "team_key": "DLF Nuoto Livorno",
+        "season_id": 242,
+        "swimmer_id": 3709,
+        "team_id": 219,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "D'AMORE|Sima|1991",
+        "team_key": "Centro Nuoto Bastia asd",
+        "season_id": 242,
+        "swimmer_id": 22514,
+        "team_id": 76,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "PROSACCO|Giada|1998",
+        "team_key": "H. Sport ssd - Firenze",
+        "season_id": 242,
+        "swimmer_id": 50140,
+        "team_id": 1359,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "KUTCH|Shante|1976",
+        "team_key": "CUS Bari asd",
+        "season_id": 242,
+        "swimmer_id": 12076,
+        "team_id": 477,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "DANIEL|Alessandra|1999",
+        "team_key": "Centro Nuoto Macerata ssd",
+        "season_id": 242,
+        "swimmer_id": 49696,
+        "team_id": 739,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "VOLKMAN|Lorri|1968",
+        "team_key": "Nuoto Club Firenze Asd",
+        "season_id": 242,
+        "swimmer_id": 15670,
+        "team_id": 976,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "SCHUMM|Michele|1970",
+        "team_key": "Swimprove ssd",
+        "season_id": 242,
+        "swimmer_id": 53293,
+        "team_id": 1618,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "YUNDT|Rufus|1955",
+        "team_key": "UISP Nuoto Cordenons",
+        "season_id": 242,
+        "swimmer_id": 14123,
+        "team_id": 362,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "BINS|Alessia|1980",
+        "team_key": "DDS Camaiore apd",
+        "season_id": 242,
+        "swimmer_id": 52342,
+        "team_id": 1443,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "FARRELL|Karoline|1983",
+        "team_key": "Milano Nuoto Master asd",
+        "season_id": 242,
+        "swimmer_id": 4269,
+        "team_id": 236,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "WALSH|Fransisca|1991",
+        "team_key": "Flaminio Sporting Club",
+        "season_id": 242,
+        "swimmer_id": 13427,
+        "team_id": 202,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "SWIFT|Vada|1963",
+        "team_key": "Pavia Nuoto asd",
+        "season_id": 242,
+        "swimmer_id": 4730,
+        "team_id": 227,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "QUITZON|Garnet|1975",
+        "team_key": "Riviera Nuoto - Dolo",
+        "season_id": 242,
+        "swimmer_id": 14128,
+        "team_id": 175,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "CUMMERATA|Juliane|1979",
+        "team_key": "G. Sport Village ssd",
+        "season_id": 242,
+        "swimmer_id": 3497,
+        "team_id": 1333,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "MAYER|Letizia|1999",
+        "team_key": "Mirano Nuoto",
+        "season_id": 242,
+        "swimmer_id": 48608,
+        "team_id": 979,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "EMMERICH|Lorenzo|1996",
+        "team_key": "Fermo Nuoto e Pallanuoto",
+        "season_id": 242,
+        "swimmer_id": 43060,
+        "team_id": 1385,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "JACOBSON|Riccardo|1998",
+        "team_key": "SO.GE.SE SOC. COOP",
+        "season_id": 242,
+        "swimmer_id": 48047,
+        "team_id": 1321,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "DAVIS|Samara|1958",
+        "team_key": "Fin Plus ssd- Roma",
+        "season_id": 242,
+        "swimmer_id": 38714,
+        "team_id": 535,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "HEGMANN|Laura|1982",
+        "team_key": "Vela Nuoto Ancona",
+        "season_id": 242,
+        "swimmer_id": 51053,
+        "team_id": 124,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "KULAS|Twila|1973",
+        "team_key": "Effetto Sport - Barzano'",
+        "season_id": 242,
+        "swimmer_id": 4528,
+        "team_id": 836,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "TORP|Micheline|1954",
+        "team_key": "Milano Nuoto Master asd",
+        "season_id": 242,
+        "swimmer_id": 19166,
+        "team_id": 236,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "LARSON|Kaley|1959",
+        "team_key": "Prosport Acqua ssd",
+        "season_id": 242,
+        "swimmer_id": 35393,
+        "team_id": 751,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "MANTE|Giorgio|1966",
+        "team_key": "Bergamo Swim Team",
+        "season_id": 242,
+        "swimmer_id": 53354,
+        "team_id": 217,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "COLLIER|Flavio|1992",
+        "team_key": "Nautilus ssd",
+        "season_id": 242,
+        "swimmer_id": 45019,
+        "team_id": 206,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "PROSACCO|Asia|1998",
+        "team_key": "ASSISI NUOTO MASTER",
+        "season_id": 242,
+        "swimmer_id": 51487,
+        "team_id": 1556,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "KASSULKE|Sofia|2002",
+        "team_key": "Pavia Nuoto asd",
+        "season_id": 242,
+        "swimmer_id": 53272,
+        "team_id": 227,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "LARKIN|Viki|1967",
+        "team_key": "Pol. Amatori Prato asd",
+        "season_id": 242,
+        "swimmer_id": 5981,
+        "team_id": 343,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "ROHAN|Cythia|1955",
+        "team_key": "DDS ssd",
+        "season_id": 242,
+        "swimmer_id": 11391,
+        "team_id": 50,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "OLSON|Theodora|1977",
+        "team_key": "A.P.Padana ssd",
+        "season_id": 242,
+        "swimmer_id": 9646,
+        "team_id": 405,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "MEDHURST|Donald|1980",
+        "team_key": "Seven Master Nuoto asd",
+        "season_id": 242,
+        "swimmer_id": 5264,
+        "team_id": 317,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "HARVEY|Rayna|1987",
+        "team_key": "Parco Kolbe ssd",
+        "season_id": 242,
+        "swimmer_id": 8231,
+        "team_id": 1296,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "ABBOTT|Riccardo|1982",
+        "team_key": "Aquamore Acqua 13",
+        "season_id": 242,
+        "swimmer_id": 49369,
+        "team_id": 1535,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "DECKOW|Marylin|1973",
+        "team_key": "Flaminio Sporting Club",
+        "season_id": 242,
+        "swimmer_id": 34245,
+        "team_id": 202,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "OSINSKI|Francesco|1953",
+        "team_key": "Nuotatori Genovesi ssd",
+        "season_id": 242,
+        "swimmer_id": 44862,
+        "team_id": 221,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "STROSIN|Deangelo|1950",
+        "team_key": "CSI Roma Flaminio",
+        "season_id": 242,
+        "swimmer_id": 8232,
+        "team_id": 241,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "CARROLL|Christeen|1991",
+        "team_key": "Flaminio Sporting Club",
+        "season_id": 242,
+        "swimmer_id": 14544,
+        "team_id": 202,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "DONNELLY|Mertie|1943",
+        "team_key": "Peppe Lamberti N.C. asd",
+        "season_id": 242,
+        "swimmer_id": 40302,
+        "team_id": 658,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "LESCH|Fonda|1990",
+        "team_key": "Can. Vittorino da Feltre",
+        "season_id": 242,
+        "swimmer_id": 5761,
+        "team_id": 100,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "PFEFFER|Marco|1989",
+        "team_key": "Milano Nuoto Master asd",
+        "season_id": 242,
+        "swimmer_id": 46318,
+        "team_id": 236,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "RIPPIN|Costanza|1994",
+        "team_key": "Gryphus Sporting Club",
+        "season_id": 242,
+        "swimmer_id": 52128,
+        "team_id": 821,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "GULGOWSKI|Abram|1977",
+        "team_key": "Verolanuoto",
+        "season_id": 242,
+        "swimmer_id": 1917,
+        "team_id": 80,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "MCGLYNN|Leonia|1991",
+        "team_key": "Nuoto Club Firenze Asd",
+        "season_id": 242,
+        "swimmer_id": 4726,
+        "team_id": 976,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "HELLER|Nevada|1991",
+        "team_key": "Amatori Nuoto ssd arl",
+        "season_id": 242,
+        "swimmer_id": 2708,
+        "team_id": 1361,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "RUNTE|Carlene|1986",
+        "team_key": "Flaminio Sporting Club",
+        "season_id": 242,
+        "swimmer_id": 8243,
+        "team_id": 202,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "NOLAN|Nilda|1975",
+        "team_key": "DLF Nuoto Livorno",
+        "season_id": 242,
+        "swimmer_id": 22464,
+        "team_id": 219,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "ROSENBAUM|Elinor|1967",
+        "team_key": "NC RN Cairo M.Acqui Terme",
+        "season_id": 242,
+        "swimmer_id": 34114,
+        "team_id": 1206,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "HILLL|Riccardo|2001",
+        "team_key": "Team Lombardia Nuoto MGM Sport",
+        "season_id": 242,
+        "swimmer_id": 48460,
+        "team_id": 277,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "ZIEME|Dionna|1991",
+        "team_key": "Sporting Club 63 ssd",
+        "season_id": 242,
+        "swimmer_id": 4550,
+        "team_id": 840,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "MANTE|Bobbye|1999",
+        "team_key": "Natatio Master Team asd",
+        "season_id": 242,
+        "swimmer_id": 4549,
+        "team_id": 851,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "FEENEY|Coral|1998",
+        "team_key": "Imolanuoto ssd a r.l.",
+        "season_id": 242,
+        "swimmer_id": 5592,
+        "team_id": 17,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "WITTING|Monica|1984",
+        "team_key": "Club L 'Aquila Nuoto",
+        "season_id": 242,
+        "swimmer_id": 51497,
+        "team_id": 119,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "SCHIMMEL|Nicholas|1997",
+        "team_key": "Ssd 2001 srl - Padova",
+        "season_id": 242,
+        "swimmer_id": 47076,
+        "team_id": 177,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "RUNOLFSDOTTIR|Talisha|1951",
+        "team_key": "Team Lombardia Nuoto MGM Sport",
+        "season_id": 242,
+        "swimmer_id": null,
+        "team_id": 277,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "KUNZE|Tameka|2001",
+        "team_key": "Ssd 2001 srl - Padova",
+        "season_id": 242,
+        "swimmer_id": 35467,
+        "team_id": 177,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "WISOZK|Ayana|1982",
+        "team_key": "Asd Polisportiva Riccione Aps",
+        "season_id": 242,
+        "swimmer_id": 5315,
+        "team_id": 131,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "PRICE|Chu|1955",
+        "team_key": "Nord Padania Nuoto",
+        "season_id": 242,
+        "swimmer_id": 4634,
+        "team_id": 56,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "WILDERMAN|Merissa|1956",
+        "team_key": "CSI Nuoto Prato Asd",
+        "season_id": 242,
+        "swimmer_id": 1485,
+        "team_id": 34,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "HEIDENREICH|Manuel|1995",
+        "team_key": "Mirano Nuoto",
+        "season_id": 242,
+        "swimmer_id": 44386,
+        "team_id": 979,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "O'KON|Fiamma|1998",
+        "team_key": "Centro Nuoto Bastia asd",
+        "season_id": 242,
+        "swimmer_id": 51799,
+        "team_id": 76,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "ERDMAN|Lue|1946",
+        "team_key": "Nuotatori Canavesani",
+        "season_id": 242,
+        "swimmer_id": 7601,
+        "team_id": 414,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "SCHULIST|Curtis|1971",
+        "team_key": "Forum ssd - Assago",
+        "season_id": 242,
+        "swimmer_id": 2049,
+        "team_id": 96,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "QUIGLEY|Marco|2003",
+        "team_key": "Pool Nuoto Asd",
+        "season_id": 242,
+        "swimmer_id": 49244,
+        "team_id": 120,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "REICHEL|Johnette|1995",
+        "team_key": "Aquamore Acqua 13",
+        "season_id": 242,
+        "swimmer_id": null,
+        "team_id": 1535,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "ZEMLAK|Ermes|1972",
+        "team_key": "Aqa Sport Cusago ssd",
+        "season_id": 242,
+        "swimmer_id": null,
+        "team_id": 1614,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "CRIST|Ladonna|1981",
+        "team_key": "Synthesis ssd",
+        "season_id": 242,
+        "swimmer_id": 36587,
+        "team_id": 600,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "HOWELL|Fritz|1976",
+        "team_key": "Villa York Sporting Club",
+        "season_id": 242,
+        "swimmer_id": null,
+        "team_id": 798,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "KRAJCIK|Alessandro|1970",
+        "team_key": "Nuoto Club Sassuolo",
+        "season_id": 242,
+        "swimmer_id": 51673,
+        "team_id": 106,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "KRAJCIK|Myesha|1959",
+        "team_key": "CS Il Gabbiano Paola ssd",
+        "season_id": 242,
+        "swimmer_id": null,
+        "team_id": 574,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "DECKOW|M.|1994",
+        "team_key": "Edoardo Antonelli ssd",
+        "season_id": 242,
+        "swimmer_id": null,
+        "team_id": 432,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "KUNDE|Sparkle|1944",
+        "team_key": "Villa Aurelia SC",
+        "season_id": 242,
+        "swimmer_id": 39484,
+        "team_id": 1537,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "STREICH|Harrison|1988",
+        "team_key": "Nuoto Club Firenze Asd",
+        "season_id": 242,
+        "swimmer_id": 2241,
+        "team_id": 976,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "JERDE|Francesco|1994",
+        "team_key": "Montenuoto ssd",
+        "season_id": 242,
+        "swimmer_id": 43004,
+        "team_id": 161,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "KOSS|Martina|2002",
+        "team_key": "ssd Stilelibero - Preganz",
+        "season_id": 242,
+        "swimmer_id": 54285,
+        "team_id": 179,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "EICHMANN|Wenona|1966",
+        "team_key": "G.P. Nuoto Mira",
+        "season_id": 242,
+        "swimmer_id": 35019,
+        "team_id": 172,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "BARTON|Maria|1963",
+        "team_key": "Gonzaga Sport Club ssd",
+        "season_id": 242,
+        "swimmer_id": null,
+        "team_id": 874,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "GUTKOWSKI|Alanna|1978",
+        "team_key": "Roma Nuoto Master ssd",
+        "season_id": 242,
+        "swimmer_id": 6962,
+        "team_id": 382,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "WUCKERT|Carolyn|1992",
+        "team_key": "Emmedue ssd",
+        "season_id": 242,
+        "swimmer_id": 33970,
+        "team_id": 185,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "BARTON|Judie|1977",
+        "team_key": "Club L 'Aquila Nuoto",
+        "season_id": 242,
+        "swimmer_id": 3647,
+        "team_id": 119,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "ARMSTRONG|Daniele|1971",
+        "team_key": "Centro Nuoto Stra",
+        "season_id": 242,
+        "swimmer_id": 49629,
+        "team_id": 730,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "TRANTOW|Yon|1979",
+        "team_key": "Roma Nuoto Master ssd",
+        "season_id": 242,
+        "swimmer_id": 6963,
+        "team_id": 382,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "KUHN|Sara|1999",
+        "team_key": "Coopernuoto",
+        "season_id": 242,
+        "swimmer_id": 48670,
+        "team_id": 42,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "GULGOWSKI|Riccardo|1973",
+        "team_key": "Fonte Meravigliosa Sport",
+        "season_id": 242,
+        "swimmer_id": 40758,
+        "team_id": 789,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "SCHUMM|Maddalena|2000",
+        "team_key": "Aqua Alpha ssd s.r.l.",
+        "season_id": 242,
+        "swimmer_id": 49404,
+        "team_id": 1538,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "FRIESEN|Clarissa|2005",
+        "team_key": "Nuoto Venezia ssd",
+        "season_id": 242,
+        "swimmer_id": 53471,
+        "team_id": 899,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "CUMMERATA|Meredith|1943",
+        "team_key": "Fermo Nuoto e Pallanuoto",
+        "season_id": 242,
+        "swimmer_id": 19326,
+        "team_id": 1385,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "HAMILL|Deon|1988",
+        "team_key": "Effetto Sport - Barzano'",
+        "season_id": 242,
+        "swimmer_id": null,
+        "team_id": 836,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "VON|Rubi|1959",
+        "team_key": "Aqua Alpha ssd s.r.l.",
+        "season_id": 242,
+        "swimmer_id": 4345,
+        "team_id": 1538,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "DOOLEY|Clement|1997",
+        "team_key": "Rari Master Pesaro asd",
+        "season_id": 242,
+        "swimmer_id": 5408,
+        "team_id": 315,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "WILLIAMSON|Cherise|1952",
+        "team_key": "Team Lombardia Nuoto MGM Sport",
+        "season_id": 242,
+        "swimmer_id": 5801,
+        "team_id": 277,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "PFANNERSTILL|Stefano|1972",
+        "team_key": "Nuoto Club Firenze Asd",
+        "season_id": 242,
+        "swimmer_id": 41147,
+        "team_id": 976,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "ANDERSON|Chanel|2002",
+        "team_key": "Team Insubrika asd",
+        "season_id": 242,
+        "swimmer_id": 30451,
+        "team_id": 57,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "ADAMS|Lorenzo|1999",
+        "team_key": "Planet Sport Todi ssd",
+        "season_id": 242,
+        "swimmer_id": 49031,
+        "team_id": 1557,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "HAND|Tessie|1969",
+        "team_key": "Ssd 2001 srl - Padova",
+        "season_id": 242,
+        "swimmer_id": 2993,
+        "team_id": 177,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "BARTOLETTI|Patria|1981",
+        "team_key": "Derthona Nuoto",
+        "season_id": 242,
+        "swimmer_id": 4547,
+        "team_id": 48,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "EICHMANN|Simone|1998",
+        "team_key": "Effetto Sport - Barzano'",
+        "season_id": 242,
+        "swimmer_id": 46788,
+        "team_id": 836,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "BOYLE|Saran|1961",
+        "team_key": "Nuoto Club Sassuolo",
+        "season_id": 242,
+        "swimmer_id": 40657,
+        "team_id": 106,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "RODRIGUEZ|Kennith|1940",
+        "team_key": "DLF Nuoto Livorno",
+        "season_id": 242,
+        "swimmer_id": 13158,
+        "team_id": 219,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "MURPHY|Lucille|1997",
+        "team_key": "Imolanuoto ssd a r.l.",
+        "season_id": 242,
+        "swimmer_id": 40688,
+        "team_id": 17,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "KUHIC|Aracely|1990",
+        "team_key": "A.S.D. Life Academy - Hadria Nu",
+        "season_id": 242,
+        "swimmer_id": 14208,
+        "team_id": 1564,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "KUHIC|Pierre|1995",
+        "team_key": "Centro Nuoto Stra",
+        "season_id": 242,
+        "swimmer_id": 36902,
+        "team_id": 730,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "POUROS|Tennie|1940",
+        "team_key": "DLF Nuoto Livorno",
+        "season_id": 242,
+        "swimmer_id": 17769,
+        "team_id": 219,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "QUIGLEY|Evelin|1988",
+        "team_key": "Centro Nuoto Le Bandie",
+        "season_id": 242,
+        "swimmer_id": 2966,
+        "team_id": 900,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "BEDNAR|Genevive|1966",
+        "team_key": "Aly Sport asd",
+        "season_id": 242,
+        "swimmer_id": 12612,
+        "team_id": 1227,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "WILKINSON|Marilee|1994",
+        "team_key": "Aly Sport asd",
+        "season_id": 242,
+        "swimmer_id": 4570,
+        "team_id": 1227,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "KEMMER|Markita|1948",
+        "team_key": "Nuoto Club Firenze Asd",
+        "season_id": 242,
+        "swimmer_id": 1968,
+        "team_id": 976,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "TILLMAN|Tommye|1945",
+        "team_key": "Nuotatori Milanesi",
+        "season_id": 242,
+        "swimmer_id": 3815,
+        "team_id": 239,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "KUVALIS|Sofia|2000",
+        "team_key": "Nuoto Sub Faenza asd",
+        "season_id": 242,
+        "swimmer_id": 53898,
+        "team_id": 1616,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "SCHULIST|Rosa|1958",
+        "team_key": "Master Melzo Nuoto",
+        "season_id": 242,
+        "swimmer_id": 38766,
+        "team_id": 64,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "ZULAUF|Vinicio|1968",
+        "team_key": "Forum Sport Center",
+        "season_id": 242,
+        "swimmer_id": null,
+        "team_id": 203,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "HILPERT|Lorenzo|1997",
+        "team_key": "Pol. Nuoto Montefeltro Asd",
+        "season_id": 242,
+        "swimmer_id": 49030,
+        "team_id": 136,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "LUEILWITZ|Lashaun|1935",
+        "team_key": "Aquamore Acqua 13",
+        "season_id": 242,
+        "swimmer_id": null,
+        "team_id": 1535,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "BARROWS|Luciana|1986",
+        "team_key": "Natatio Master Team asd",
+        "season_id": 242,
+        "swimmer_id": 7651,
+        "team_id": 851,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "WUCKERT|Cira|1971",
+        "team_key": "Pol Nadir - Palermo",
+        "season_id": 242,
+        "swimmer_id": 10313,
+        "team_id": 511,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "BEDNAR|Nakisha|1983",
+        "team_key": "Forum Sport Center",
+        "season_id": 242,
+        "swimmer_id": 10912,
+        "team_id": 203,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "LITTLE|Daniele|1990",
+        "team_key": "Fonte Meravigliosa Sport",
+        "season_id": 242,
+        "swimmer_id": 44567,
+        "team_id": 789,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "MILLS|Fabrizio|1963",
+        "team_key": "Olgiata 20.12 ssd",
+        "season_id": 242,
+        "swimmer_id": 45453,
+        "team_id": 207,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "BOGAN|Lina|1987",
+        "team_key": "Nuoto Club Firenze Asd",
+        "season_id": 242,
+        "swimmer_id": 10913,
+        "team_id": 976,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "WOLF|Bernard|1955",
+        "team_key": "Sport 2000 ssd - Roma",
+        "season_id": 242,
+        "swimmer_id": null,
+        "team_id": 649,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "SWIFT|Gabriele|1980",
+        "team_key": "Can. Vittorino da Feltre",
+        "season_id": 242,
+        "swimmer_id": 51422,
+        "team_id": 100,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "HILPERT|Sung|1985",
+        "team_key": "Leonessa Nuoto asd",
+        "season_id": 242,
+        "swimmer_id": 2447,
+        "team_id": 1464,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "BOGAN|Hassie|1938",
+        "team_key": "Aquareal asd",
+        "season_id": 242,
+        "swimmer_id": 14638,
+        "team_id": 1440,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "STEHR|Alessia|2002",
+        "team_key": "Effetto Sport - Barzano'",
+        "season_id": 242,
+        "swimmer_id": 50981,
+        "team_id": 836,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "GOYETTE|Mauro|1974",
+        "team_key": "Acqua1village ssd",
+        "season_id": 242,
+        "swimmer_id": 41404,
+        "team_id": 265,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "BEER|Vilma|2000",
+        "team_key": "ssd Team Marche",
+        "season_id": 242,
+        "swimmer_id": 2552,
+        "team_id": 122,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "KSHLERIN|Antoine|1960",
+        "team_key": "ASA asd - Cinisello Balsa",
+        "season_id": 242,
+        "swimmer_id": 8969,
+        "team_id": 77,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "WOLFF|Tiffany|1996",
+        "team_key": "Nuoto Club Firenze Asd",
+        "season_id": 242,
+        "swimmer_id": 24291,
+        "team_id": 976,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "FERRY|Brian|1998",
+        "team_key": "Klab Sport ssd",
+        "season_id": 242,
+        "swimmer_id": 52114,
+        "team_id": 1388,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "RATH|G.|1994",
+        "team_key": "Centro Nuoto Bastia asd",
+        "season_id": 242,
+        "swimmer_id": null,
+        "team_id": 76,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "RUTHERFORD|Maria|1997",
+        "team_key": "Montenuoto ssd",
+        "season_id": 242,
+        "swimmer_id": null,
+        "team_id": 161,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "COLLINS|Alessandra|1978",
+        "team_key": "Crocera Stadium ssd",
+        "season_id": 242,
+        "swimmer_id": 45650,
+        "team_id": 1205,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "MCCLURE|Georgetta|1989",
+        "team_key": "Forum Sport Center",
+        "season_id": 242,
+        "swimmer_id": 10932,
+        "team_id": 203,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "KING|Davide|1979",
+        "team_key": "DDS ssd",
+        "season_id": 242,
+        "swimmer_id": 50174,
+        "team_id": 50,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "BOYER|Waylon|1983",
+        "team_key": "Roma Nuoto Master ssd",
+        "season_id": 242,
+        "swimmer_id": 14659,
+        "team_id": 382,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "KILBACK|Concetto|1999",
+        "team_key": "Sport Shuttle 3.0 ssd",
+        "season_id": 242,
+        "swimmer_id": 47004,
+        "team_id": 621,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "METZ|Michela|2005",
+        "team_key": "Swimming Club asd ets",
+        "season_id": 242,
+        "swimmer_id": 53393,
+        "team_id": 1638,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "JERDE|Kyle|1942",
+        "team_key": "Acqua1village ssd",
+        "season_id": 242,
+        "swimmer_id": null,
+        "team_id": 265,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "FAY|Gianluca|2001",
+        "team_key": "Mirano Nuoto",
+        "season_id": 242,
+        "swimmer_id": 49106,
+        "team_id": 979,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "CRONA|Fabio|1955",
+        "team_key": "Aly Sport asd",
+        "season_id": 242,
+        "swimmer_id": 45416,
+        "team_id": 1227,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "LARKIN|Giulia|1993",
+        "team_key": "Aquarium ssd - Novi Ligur",
+        "season_id": 242,
+        "swimmer_id": 44620,
+        "team_id": 753,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "GULGOWSKI|Joel|1980",
+        "team_key": "Rari Nantes Saronno",
+        "season_id": 242,
+        "swimmer_id": 4314,
+        "team_id": 63,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "HOMENICK|Abigail|1955",
+        "team_key": "Nautilus ssd",
+        "season_id": 242,
+        "swimmer_id": null,
+        "team_id": 206,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "BRAUN|Kandi|2001",
+        "team_key": "Canottieri Lecco",
+        "season_id": 242,
+        "swimmer_id": 4568,
+        "team_id": 229,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "LANG|Bethel|1976",
+        "team_key": "Villa Bonelli ssd",
+        "season_id": 242,
+        "swimmer_id": 1807,
+        "team_id": 79,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "LUEILWITZ|Sophie|1969",
+        "team_key": "Swim Sassari ssd",
+        "season_id": 242,
+        "swimmer_id": 42692,
+        "team_id": 887,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "KING|Matteo|2001",
+        "team_key": "NS Marche ssd",
+        "season_id": 242,
+        "swimmer_id": 52113,
+        "team_id": 1386,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "KOELPIN|Reatha|1974",
+        "team_key": "Circolo Canottieri Aniene",
+        "season_id": 242,
+        "swimmer_id": 2019,
+        "team_id": 89,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "RODRIGUEZ|Sherika|1953",
+        "team_key": "Pol.Vigor Perconti asd",
+        "season_id": 242,
+        "swimmer_id": 8392,
+        "team_id": 1426,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "KUHIC|Linnea|1986",
+        "team_key": "Muovi Lecce ssd",
+        "season_id": 242,
+        "swimmer_id": 32317,
+        "team_id": 585,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "KULAS|Rosalee|1933",
+        "team_key": "Derthona Nuoto",
+        "season_id": 242,
+        "swimmer_id": 7690,
+        "team_id": 48,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "KSHLERIN|Claudia|1997",
+        "team_key": "Aquamore Acqua 13",
+        "season_id": 242,
+        "swimmer_id": 44100,
+        "team_id": 1535,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "RYAN|Claudia|1972",
+        "team_key": "Swim in Action asd",
+        "season_id": 242,
+        "swimmer_id": 46330,
+        "team_id": 1467,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "SCHAMBERGER|Carey|1962",
+        "team_key": "Nuotatori Padovani",
+        "season_id": 242,
+        "swimmer_id": 2799,
+        "team_id": 171,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "NADER|Tobia|1993",
+        "team_key": "Ssd 2001 srl - Padova",
+        "season_id": 242,
+        "swimmer_id": 45893,
+        "team_id": 177,
+        "category_type_id": null,
+        "badge_id": null
+      },
+      {
+        "swimmer_key": "LANG|Kendrick|1962",
+        "team_key": "Roncadenuoto ssd arl",
+        "season_id": 242,
+        "swimmer_id": 34453,
+        "team_id": 1273,
+        "category_type_id": null,
+        "badge_id": null
+      }
+    ]
+  }
+}

@@ -1,6 +1,8 @@
+# frozen_string_literal: true
+
 require 'rails_helper'
 
-RSpec.describe 'Best50mResults', type: :request do
+RSpec.describe 'Best50mResults' do
   describe 'GET /index' do
     it 'returns http success' do
       get '/best50m_results/index'

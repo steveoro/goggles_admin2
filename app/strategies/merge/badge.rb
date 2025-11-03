@@ -592,7 +592,7 @@ module Merge
         # Update MIR (and Laps) or Insert MPrg + Update MIR (and Laps)?
         if dest_mprg.present?
           @sql_log << 'UPDATE meeting_individual_results SET ' \
-                      "#{full_set_statement_values(row_structure: final_mir, leading_clause: 'updated_at=NOW(), meeting_program_id=' + dest_mprg.id.to_s)} " \
+                      "#{full_set_statement_values(row_structure: final_mir, leading_clause: "updated_at=NOW(), meeting_program_id=#{dest_mprg.id}")} " \
                       "WHERE id = #{final_mir.id};"
           prepare_script_for_laps(mir_id: final_mir.id, mprg_id: dest_mprg.id, team_id: final_team_id,
                                   mir_id_list: disjointed_mirs_ids)
@@ -704,7 +704,7 @@ module Merge
         if dest_mprg.present?
           # Update destination MIR with the correct IDs:
           @sql_log << 'UPDATE meeting_individual_results SET ' \
-                      "#{full_set_statement_values(row_structure: dest_mir, leading_clause: 'updated_at=NOW(), meeting_program_id=' + dest_mprg.id.to_s)} " \
+                      "#{full_set_statement_values(row_structure: dest_mir, leading_clause: "updated_at=NOW(), meeting_program_id=#{dest_mprg.id}")} " \
                       "WHERE id = #{dest_mir.id};"
           mir_updates += 1 # (only 1 MIR for event/badge -- see above)
 
@@ -1192,7 +1192,7 @@ module Merge
         # Simple update or Insert MPrg too?
         if dest_mprg.present?
           @sql_log << 'UPDATE meeting_entries SET ' \
-                      "#{full_set_statement_values(row_structure: final_mentry, leading_clause: 'updated_at=NOW(), meeting_program_id=' + dest_mprg.id.to_s)} " \
+                      "#{full_set_statement_values(row_structure: final_mentry, leading_clause: "updated_at=NOW(), meeting_program_id=#{dest_mprg.id}")} " \
                       "WHERE id = #{final_mentry.id};"
         else
           # Insert missing MPrg, then do the update:
@@ -1259,7 +1259,7 @@ module Merge
         if dest_mprg.present?
           # Update destination MEntry with the correct IDs:
           @sql_log << 'UPDATE meeting_entries SET ' \
-                      "#{full_set_statement_values(row_structure: dest_mentry, leading_clause: 'updated_at=NOW(), meeting_program_id=' + dest_mprg.id.to_s)} " \
+                      "#{full_set_statement_values(row_structure: dest_mentry, leading_clause: "updated_at=NOW(), meeting_program_id=#{dest_mprg.id}")} " \
                       "WHERE id = #{dest_mentry.id};"
         else
           # Insert missing MPrg, then do the update:

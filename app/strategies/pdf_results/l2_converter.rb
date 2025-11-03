@@ -192,7 +192,7 @@ module PdfResults
       data_hash_rows = @data.fetch(:rows, [{}])
 
       # === Event loop: ===
-      puts("\r\n-> Event loop rows: #{data_hash_rows.count}")
+      Rails.logger.debug { "\r\n-> Event loop rows: #{data_hash_rows.count}" }
       data_hash_rows.each_with_index do |event_hash, _idx| # rubocop:disable Metrics/BlockLength
         # Supported hierarchy for "event-type" depth level:
         #
@@ -238,13 +238,13 @@ module PdfResults
 
         # --- RELAYS (event) ---
         if L2Converter.event_title_is_a_relay?(event_length) && holds_relay_category_or_relay_result?(event_hash)
-          $stdout.write("\033[1;33;42mr\033[0m")
+          Rails.logger.debug("\033[1;33;42mr\033[0m")
           curr_cat_code = fetch_rel_category_code(event_hash)
           curr_cat_gender ||= fetch_rel_category_gender(event_hash)
 
         # --- IND.RESULTS (event) ---
         elsif holds_category_type?(event_hash)
-          $stdout.write("\033[1;33;42mi\033[0m")
+          Rails.logger.debug("\033[1;33;42mi\033[0m")
           curr_cat_code = fetch_category_code(event_hash)
           curr_cat_gender ||= fetch_category_gender(event_hash)
         end
@@ -512,7 +512,7 @@ module PdfResults
     def create_fina_scores_sections(resulting_sections, event_hash)
       return unless event_hash.is_a?(Hash)
 
-      puts("\r\n-> FINA scores contiguous rows: #{event_hash.fetch(:rows, [{}]).count} (i: individ., r: relay results)")
+      Rails.logger.debug { "\r\n-> FINA scores contiguous rows: #{event_hash.fetch(:rows, [{}]).count} (i: individ., r: relay results)" }
       event_hash.fetch(:rows, [{}]).each do |scores_hash|
         fields = scores_hash.fetch(:fields, {})
         rank = fields.fetch('rank', '')
@@ -562,7 +562,7 @@ module PdfResults
         # ^^ Note that result_row won't be added to any section if title, category or gender are still unknown
       end
 
-      puts('')
+      Rails.logger.debug('')
       resulting_sections
     end
 
@@ -1666,7 +1666,7 @@ module PdfResults
                                 end
           # Set current searched gender from event, category or current row result when found
           curr_gender = fetch_category_gender(category_hash) || curr_gender_from_event ||
-                        result&.fetch(:fields, {})&.fetch('gender_type', nil)
+                        result&.dig(:fields, 'gender_type')
 
           return [result.fetch(:fields, {})['year_of_birth'].to_i, curr_gender] if result.present?
         end

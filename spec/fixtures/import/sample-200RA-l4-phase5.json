@@ -1,0 +1,146 @@
+{
+  "_meta": {
+    "schema_version": "1.0",
+    "created_at": "2025-11-03T12:42:33Z",
+    "source_path": "/home/steve/Projects/goggles_admin2/crawler/data/results.new/242/2025-06-24-Campionati_Italiani_di_Nuoto_Master_Herbalife-200RA-l4.json",
+    "generated_at": "2025-11-03T12:42:33Z",
+    "season_id": 242,
+    "lt_format": 4,
+    "phase": 5
+  },
+  "data": {
+    "sessions": [
+      {
+        "session_order": 1,
+        "events": [
+          {
+            "key": "200RA",
+            "distance": "200",
+            "stroke": "RA",
+            "event_order": 1,
+            "session_order": 1,
+            "results_count": 298,
+            "genders": [
+              {
+                "gender": "F",
+                "results_count": 116,
+                "categories": [
+                  {
+                    "category": "M20",
+                    "results_count": 9
+                  },
+                  {
+                    "category": "M25",
+                    "results_count": 13
+                  },
+                  {
+                    "category": "M30",
+                    "results_count": 11
+                  },
+                  {
+                    "category": "M35",
+                    "results_count": 7
+                  },
+                  {
+                    "category": "M40",
+                    "results_count": 12
+                  },
+                  {
+                    "category": "M45",
+                    "results_count": 12
+                  },
+                  {
+                    "category": "M50",
+                    "results_count": 14
+                  },
+                  {
+                    "category": "M55",
+                    "results_count": 14
+                  },
+                  {
+                    "category": "M60",
+                    "results_count": 10
+                  },
+                  {
+                    "category": "M65",
+                    "results_count": 10
+                  },
+                  {
+                    "category": "M70",
+                    "results_count": 3
+                  },
+                  {
+                    "category": "M75",
+                    "results_count": 1
+                  }
+                ]
+              },
+              {
+                "gender": "M",
+                "results_count": 182,
+                "categories": [
+                  {
+                    "category": "M20",
+                    "results_count": 11
+                  },
+                  {
+                    "category": "M25",
+                    "results_count": 17
+                  },
+                  {
+                    "category": "M30",
+                    "results_count": 11
+                  },
+                  {
+                    "category": "M35",
+                    "results_count": 15
+                  },
+                  {
+                    "category": "M40",
+                    "results_count": 21
+                  },
+                  {
+                    "category": "M45",
+                    "results_count": 16
+                  },
+                  {
+                    "category": "M50",
+                    "results_count": 20
+                  },
+                  {
+                    "category": "M55",
+                    "results_count": 20
+                  },
+                  {
+                    "category": "M60",
+                    "results_count": 19
+                  },
+                  {
+                    "category": "M65",
+                    "results_count": 16
+                  },
+                  {
+                    "category": "M70",
+                    "results_count": 6
+                  },
+                  {
+                    "category": "M75",
+                    "results_count": 5
+                  },
+                  {
+                    "category": "M80",
+                    "results_count": 4
+                  },
+                  {
+                    "category": "M85",
+                    "results_count": 1
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

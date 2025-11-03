@@ -13,10 +13,11 @@ module Import
     #   "_meta": { ... },
     #   "data": {
     #     "season_id": <int>,
-    #     "teams": [ { "key": "Team Name", "name": "Team Name" } ],
-    #     "team_affiliations": [ { "team_key": "Team Name", "season_id": 242 } ]
+    #     "teams": [ { "key": "Team Name", "name": "Team Name", "team_id": 123 } ],
+    #     "team_affiliations": [ { "team_key": "Team Name", "season_id": 242, "team_id": 123, "team_affiliation_id": 456 } ]
     #   }
     # }
+    # NOTE: team_affiliation_id will be nil for new affiliations that don't exist in DB yet
     #
     class TeamSolver
       def initialize(season:, logger: Rails.logger)
@@ -45,16 +46,18 @@ module Import
               name = extract_team_name(t)
               next if name.blank?
 
-              teams << build_team_entry(name, name)
-              ta << { 'team_key' => name, 'season_id' => @season.id }
+              team_entry = build_team_entry(name, name)
+              teams << team_entry
+              ta << build_team_affiliation_entry(name, team_entry['team_id'])
             end
           else
             data_hash['teams'].each do |key, value|
               name = extract_team_name(value)
               next if name.blank?
 
-              teams << build_team_entry(key, name)
-              ta << { 'team_key' => key, 'season_id' => @season.id }
+              team_entry = build_team_entry(key, name)
+              teams << team_entry
+              ta << build_team_affiliation_entry(key, team_entry['team_id'])
             end
           end
         elsif data_hash['sections'].is_a?(Array)
@@ -65,8 +68,9 @@ module Import
               team_name = row['team']
               next if team_name.to_s.strip.empty?
 
-              teams << build_team_entry(team_name, team_name)
-              ta << { 'team_key' => team_name, 'season_id' => @season.id }
+              team_entry = build_team_entry(team_name, team_name)
+              teams << team_entry
+              ta << build_team_affiliation_entry(team_name, team_entry['team_id'])
             end
           end
         else
@@ -192,6 +196,39 @@ module Import
 
         weight = match['weight'].to_f
         weight >= 0.60
+      end
+
+      # Build a team affiliation entry with matching logic
+      # Attempts to match existing TeamAffiliation if team_id is available
+      # Returns hash with team_key, season_id, team_id, and team_affiliation_id (if matched)
+      def build_team_affiliation_entry(team_key, team_id)
+        affiliation = {
+          'team_key' => team_key,
+          'season_id' => @season.id,
+          'team_id' => team_id,
+          'team_affiliation_id' => nil
+        }
+
+        # Guard clause: skip matching if team_id is missing
+        return affiliation unless team_id && @season.id
+
+        # Try to match existing team affiliation
+        existing = GogglesDb::TeamAffiliation.find_by(
+          season_id: @season.id,
+          team_id: team_id
+        )
+
+        if existing
+          affiliation['team_affiliation_id'] = existing.id
+          @logger&.info("[TeamSolver] Matched existing TeamAffiliation ID=#{existing.id} for '#{team_key}'")
+        else
+          @logger&.debug("[TeamSolver] No existing affiliation found for '#{team_key}' (will create new)")
+        end
+
+        affiliation
+      rescue StandardError => e
+        @logger&.error("[TeamSolver] Error matching team affiliation for '#{team_key}': #{e.message}")
+        affiliation # Return affiliation without ID on error
       end
     end
   end
