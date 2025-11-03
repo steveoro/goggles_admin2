@@ -57,6 +57,13 @@ module Import
       @phase2_data = JSON.parse(File.read(phase2_path)) if File.exist?(phase2_path)
       @phase3_data = JSON.parse(File.read(phase3_path)) if File.exist?(phase3_path)
       @phase4_data = JSON.parse(File.read(phase4_path)) if File.exist?(phase4_path)
+
+      # DEBUG logging
+      Rails.logger.info('[Phase5Populator] Loaded phase files:')
+      Rails.logger.info("  - phase1_path: #{phase1_path}, exists: #{File.exist?(phase1_path)}")
+      Rails.logger.info("  - phase2_path: #{phase2_path}, exists: #{File.exist?(phase2_path)}, teams: #{@phase2_data&.dig('data', 'teams')&.size || 0}")
+      Rails.logger.info("  - phase3_path: #{phase3_path}, exists: #{File.exist?(phase3_path)}, swimmers: #{@phase3_data&.dig('data', 'swimmers')&.size || 0}")
+      Rails.logger.info("  - phase4_path: #{phase4_path}, exists: #{File.exist?(phase4_path)}")
     end
 
     # Populate MIR + Laps from source events array (LT4 format)
@@ -200,7 +207,16 @@ module Import
 
       swimmers = phase3_data.dig('data', 'swimmers') || []
       swimmer = swimmers.find { |s| s['key'] == swimmer_key }
-      swimmer&.dig('swimmer_id')
+      swimmer_id = swimmer&.dig('swimmer_id')
+
+      # DEBUG logging
+      if swimmer_id
+        Rails.logger.info("[Phase5Populator] Found swimmer_id=#{swimmer_id} for key=#{swimmer_key}")
+      else
+        Rails.logger.warn("[Phase5Populator] No swimmer_id found for key=#{swimmer_key}, swimmer=#{swimmer.inspect}")
+      end
+
+      swimmer_id
     end
 
     # Find team_id from phase 2 data
@@ -214,7 +230,16 @@ module Import
       # Match by key first (exact match), then try name/editable_name
       team = teams.find { |t| t['key'] == team_name } ||
              teams.find { |t| t['name'] == team_name || t['editable_name'] == team_name }
-      team&.dig('team_id')
+      team_id = team&.dig('team_id')
+
+      # DEBUG logging
+      if team_id
+        Rails.logger.info("[Phase5Populator] Found team_id=#{team_id} for team_name=#{team_name}")
+      else
+        Rails.logger.warn("[Phase5Populator] No team_id found for team_name=#{team_name}, team=#{team.inspect}")
+      end
+
+      team_id
     end
 
     # Find meeting_program_id by matching against existing database records
@@ -326,6 +351,9 @@ module Import
 
     # Create MIR record
     def create_mir_record(import_key:, result:, timing:, swimmer_id:, team_id:, meeting_program_id:, meeting_individual_result_id:)
+      # DEBUG logging
+      Rails.logger.info("[Phase5Populator] Creating MIR: import_key=#{import_key}, swimmer_id=#{swimmer_id}, team_id=#{team_id}, program_id=#{meeting_program_id}")
+
       mir = GogglesDb::DataImportMeetingIndividualResult.create!(
         import_key: import_key,
         phase_file_path: source_path,

@@ -322,17 +322,33 @@ class DataFixController < ApplicationController
           source_path: source_path,
           lt_format: lt_format
         )
+
+        # Populate data_import_* tables immediately after rescan (before redirect)
+        phase1_path = default_phase_path_for(source_path, 1)
+        phase2_path = default_phase_path_for(source_path, 2)
+        phase3_path = default_phase_path_for(source_path, 3)
+        phase4_path = default_phase_path_for(source_path, 4)
+
+        populator = Import::Phase5Populator.new(
+          source_path: source_path,
+          phase1_path: phase1_path,
+          phase2_path: phase2_path,
+          phase3_path: phase3_path,
+          phase4_path: phase4_path
+        )
+        populate_stats = populator.populate!
+
         # Redirect without rescan parameter to avoid triggering rescan on navigation
         redirect_to(review_results_path(request.query_parameters.except(:rescan)),
-                    notice: I18n.t('data_import.messages.phase_rebuilt', phase: 5)) && return
+                    notice: "Phase 5 rebuilt. Populated DB: #{populate_stats[:mir_created]} results, #{populate_stats[:laps_created]} laps") && return
       end
 
       pfm = PhaseFileManager.new(phase_path)
       @phase5_meta = pfm.meta
       @phase5_data = pfm.data
 
-      # Populate data_import_* tables for detailed review
-      if params[:populate_db].present? || params[:rescan].present?
+      # Populate data_import_* tables for detailed review (triggered by populate_db only)
+      if params[:populate_db].present?
         phase1_path = default_phase_path_for(source_path, 1)
         phase2_path = default_phase_path_for(source_path, 2)
         phase3_path = default_phase_path_for(source_path, 3)
