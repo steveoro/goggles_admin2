@@ -416,6 +416,86 @@ class DataFixController < ApplicationController
   end
   # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
 
+  # Phase 6: Commit all entities to DB and generate SQL log
+  # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
+  def commit_phase6
+    file_path = params[:file_path]
+    if file_path.blank?
+      flash[:warning] = I18n.t('data_import.errors.invalid_request')
+      redirect_to(pull_index_path) && return
+    end
+
+    source_path = resolve_source_path(file_path)
+
+    # Gather all phase file paths
+    phase1_path = default_phase_path_for(source_path, 1)
+    phase2_path = default_phase_path_for(source_path, 2)
+    phase3_path = default_phase_path_for(source_path, 3)
+    phase4_path = default_phase_path_for(source_path, 4)
+
+    # Validate all phase files exist
+    missing_phases = []
+    missing_phases << 1 unless File.exist?(phase1_path)
+    missing_phases << 2 unless File.exist?(phase2_path)
+    missing_phases << 3 unless File.exist?(phase3_path)
+    missing_phases << 4 unless File.exist?(phase4_path)
+
+    if missing_phases.any?
+      flash[:error] = "Missing phase files: #{missing_phases.join(', ')}. Please complete all phases first."
+      redirect_to(review_results_path(file_path: file_path, phase5_v2: 1)) && return
+    end
+
+    begin
+      # Initialize PhaseCommitter with all phase paths
+      committer = Import::Strategies::PhaseCommitter.new(
+        phase1_path: phase1_path,
+        phase2_path: phase2_path,
+        phase3_path: phase3_path,
+        phase4_path: phase4_path,
+        source_path: source_path
+      )
+
+      # Commit all entities in a transaction
+      stats = committer.commit_all
+
+      # Generate SQL file in results.new directory
+      curr_dir = File.dirname(source_path)
+      sql_filename = "#{File.basename(source_path, '.json')}.sql"
+      sql_path = File.join(curr_dir, sql_filename)
+
+      File.write(sql_path, committer.sql_log_content)
+
+      # Move source JSON to results.done as backup
+      done_dir = curr_dir.gsub('results.new', 'results.done')
+      FileUtils.mkdir_p(done_dir)
+      done_path = File.join(done_dir, File.basename(source_path))
+      FileUtils.cp(source_path, done_path)
+
+      # Clean up phase files after successful commit
+      [phase1_path, phase2_path, phase3_path, phase4_path].each do |path|
+        FileUtils.rm_f(path)
+      end
+
+      # Clean up data_import_* tables for this source
+      GogglesDb::DataImportMeetingIndividualResult.where(phase_file_path: source_path).delete_all
+      GogglesDb::DataImportLap.where(phase_file_path: source_path).delete_all
+
+      flash[:notice] = 'Phase 6 commit successful! ' \
+                       "Created: #{stats[:meetings_created]} meetings, #{stats[:teams_created]} teams, " \
+                       "#{stats[:swimmers_created]} swimmers, #{stats[:badges_created]} badges, " \
+                       "#{stats[:events_created]} events, #{stats[:programs_created]} programs, " \
+                       "#{stats[:mirs_created]} results, #{stats[:laps_created]} laps. " \
+                       "SQL file saved to: #{sql_filename}"
+      redirect_to(push_index_path)
+    rescue StandardError => e
+      flash[:error] = "Phase 6 commit failed: #{e.message}"
+      Rails.logger.error("[Phase 6 Commit] Error: #{e.message}")
+      Rails.logger.error(e.backtrace.join("\n"))
+      redirect_to(review_results_path(file_path: file_path, phase5_v2: 1))
+    end
+  end
+  # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
+
   # Shared read-only endpoints delegate to legacy for now
   def coded_name
     redirect_to controller: 'data_fix_legacy', action: 'coded_name', params: request.query_parameters
@@ -456,9 +536,9 @@ class DataFixController < ApplicationController
       nested = team_params[team_index.to_s].permit(:team_id, :editable_name, :name, :name_variations, :city_id)
 
       # Update team_id (from AutoComplete)
-      if nested[:team_id].present?
-        num = nested[:team_id].to_i
-        t['team_id'] = num if num.positive?
+      if nested.key?(:team_id)
+        team_num = nested[:team_id].to_i
+        t['team_id'] = team_num.positive? ? team_num : nil
       end
 
       # Update city_id (from City AutoComplete)
@@ -608,7 +688,10 @@ class DataFixController < ApplicationController
     swimmer['last_name'] = swimmer_params[:last_name]&.strip if swimmer_params.key?(:last_name)
     swimmer['year_of_birth'] = swimmer_params[:year_of_birth].to_i if swimmer_params.key?(:year_of_birth)
     swimmer['gender_type_code'] = swimmer_params[:gender_type_code]&.strip if swimmer_params.key?(:gender_type_code)
-    swimmer['swimmer_id'] = swimmer_params[:id].to_i if swimmer_params.key?(:id)
+    if swimmer_params.key?(:id)
+      swimmer_id_num = swimmer_params[:id].to_i
+      swimmer['swimmer_id'] = swimmer_id_num.positive? ? swimmer_id_num : nil
+    end
 
     data['swimmers'] = swimmers
 

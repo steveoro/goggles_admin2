@@ -55,13 +55,14 @@
                   = select_tag("fuzzy_select_#{swimmer_index}",
                                options_for_select([['-- Select a match --', '']] + fuzzy_matches.map { |m| [m['display_label'], m['id']] }, swimmer_id),
                                class: 'form-control', id: "fuzzy_select_#{swimmer_index}",
-                               onchange: "var swimmerId = this.value; if (swimmerId) { $('#swimmer_#{swimmer_index}_swimmer_id').val(swimmerId).trigger('change'); }")
+                               onchange: "var swimmerId = this.value; $('#swimmer_#{swimmer_index}_swimmer_id').val(swimmerId).trigger('change'); $('#swimmer_#{swimmer_index}_id_field').val(swimmerId);")
                   %small.form-text.text-muted
                     Select a match from the list to quickly populate swimmer fields via AutoComplete.
 
-          -# Row 1: Swimmer AutoComplete + complete_name
+          -# Row 1: Swimmer AutoComplete + complete_name + hidden ID field
           .row
             .col
+              = hidden_field_tag('swimmer[id]', swimmer_id, id: "swimmer_#{swimmer_index}_id_field")
               = render(AutoCompleteComponent.new(show_top_labels: true,
                                                  base_dom_id: "swimmer[#{swimmer_index}]", base_api_url: api_url,
                                                  default_value: swimmer_id,
@@ -72,7 +73,9 @@
                                                  target4_dom_id: "swimmer_#{swimmer_index}_last_name", target4_column: 'last_name',
                                                  target5_dom_id: "swimmer_#{swimmer_index}_first_name", target5_column: 'first_name',
                                                  target6_dom_id: "swimmer_#{swimmer_index}_complete_name", target6_column: 'complete_name',
+                                                 target7_dom_id: "swimmer_#{swimmer_index}_id_field", target7_column: 'id',
                                                  jwt: current_user.jwt))
+              %small.form-text.text-muted Clear search to unmatch swimmer
             .col-md-7
               .form-group
                 %label Complete Name

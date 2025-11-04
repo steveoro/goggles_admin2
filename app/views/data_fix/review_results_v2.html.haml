@@ -10,6 +10,13 @@
     %div
       = link_to 'Use legacy (Step 5)', review_results_path(request.query_parameters.except(:phase5_v2)), class: 'btn btn-secondary'
     %div
+      - if @all_results.present?
+        = button_to commit_phase6_path(file_path: @file_path),
+                                       method: :post, class: 'btn btn-success',
+                                       data: { confirm: I18n.t('data_import.data_fix.btn_start_sql_batch_confirm') } do
+          %i.fa.fa-database
+          = I18n.t('data_import.data_fix.btn_start_sql_batch')
+    %div
       %button.btn.btn-outline-primary{ type: 'button', data: { action: 'collapse-all#toggle', collapse_all_target: 'button' } }
         %i.fa.fa-compress
         Collapse All Results

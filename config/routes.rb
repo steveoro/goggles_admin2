@@ -44,6 +44,7 @@ Rails.application.routes.draw do
   get 'data_fix/review_events', to: 'data_fix#review_events', as: 'review_events'
   get 'data_fix/review_results', to: 'data_fix#review_results', as: 'review_results'
   get 'data_fix/results_chunk_v2', to: 'data_fix#results_chunk_v2', as: 'results_chunk_v2'
+  post 'data_fix/commit_phase6', to: 'data_fix#commit_phase6', as: 'commit_phase6'
   patch 'data_fix/update_phase1_meeting', to: 'data_fix#update_phase1_meeting', as: 'update_phase1_meeting'
   patch 'data_fix/update_phase1_session', to: 'data_fix#update_phase1_session', as: 'update_phase1_session'
   post 'data_fix/add_session', to: 'data_fix#add_session', as: 'data_fix_add_session'

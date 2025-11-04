@@ -53,23 +53,26 @@
               .col-12
                 .form-group
                   = label_tag "fuzzy_select_#{team_index}", 'Quick match selection (fuzzy matches)'
-                  = select_tag "fuzzy_select_#{team_index}", options_for_select([['-- Select a match --', '']] + fuzzy_matches.map { |m| [m['display_label'], m['id']] }, team_id), class: 'form-control', id: "fuzzy_select_#{team_index}", onchange: "var teamId = this.value; if (teamId) { $('#team_#{team_index}_team_id').val(teamId).trigger('change'); }"
+                  = select_tag "fuzzy_select_#{team_index}", options_for_select([['-- Select a match --', '']] + fuzzy_matches.map { |m| [m['display_label'], m['id']] }, team_id), class: 'form-control', id: "fuzzy_select_#{team_index}", onchange: "var teamId = this.value; $('#team_#{team_index}_team_id').val(teamId).trigger('change'); $('#team_#{team_index}_id_field').val(teamId);"
                   %small.form-text.text-muted
                     Select a match from the list to quickly populate team fields via AutoComplete.
 
-                -# Row 1: Team AutoComplete + editable_name
+                -# Row 1: Team AutoComplete + editable_name + hidden ID field
                 .row
                   .col-6
+                    = hidden_field_tag "team[#{team_index}][team_id]", team_id, id: "team_#{team_index}_id_field"
                     = render(AutoCompleteComponent.new(show_top_labels: true,
                                                        base_dom_id: "team[#{team_index}]", base_api_url: api_url,
                                                        default_value: team_id,
                                                        detail_endpoint: 'team', base_name: 'team', label_column: 'editable_name',
                                                        search_endpoint: 'teams', search_column: 'name',
                                                        target3_dom_id: "team_#{team_index}_editable_name", target3_column: 'editable_name',
-                                                       target4_dom_id: "team_#{team_index}_city_id", target4_column: 'city_id',
+                                                       target4_dom_id: "team_#{team_index}_city_id_field", target4_column: 'city_id',
                                                        target5_dom_id: "team_#{team_index}_name", target5_column: 'name',
                                                        target6_dom_id: "team_#{team_index}_name_variations", target6_column: 'name_variations',
+                                                       target7_dom_id: "team_#{team_index}_id_field", target7_column: 'id',
                                                        jwt: current_user.jwt))
+                    %small.form-text.text-muted Clear search to unmatch team
                   .col-6
                     .form-group
                       = label_tag "team_#{team_index}_editable_name", 'editable_name'
@@ -92,7 +95,8 @@
                                       id: "team_#{team_index}_name_variations",
                                       class: 'form-control', placeholder: 'name_variations (pipe-separated)'
                 
-                -# Row 3: City AutoComplete
+                -# Row 3: City AutoComplete + hidden city_id field
+                = hidden_field_tag "team[#{team_index}][city_id]", city_id, id: "team_#{team_index}_city_id_field"
                 = render(AutoCompleteComponent.new(show_top_labels: true,
                                                    base_dom_id: "team[#{team_index}]", base_api_url: api_url,
                                                    default_value: city_id,
@@ -100,7 +104,9 @@
                                                    search_endpoint: 'cities', search_column: 'name',
                                                    target2_field: 'area', target2_column: 'area',
                                                    target2_class: 'offset-lg-2 offset-md-3 offset-sm-3 col-md-4 col-sm-4 my-1',
+                                                   target3_dom_id: "team_#{team_index}_city_id_field", target3_column: 'id',
                                                    jwt: current_user.jwt))
+                %small.form-text.text-muted.ml-3 Clear search to unmatch city
                 -# Save button
                 .form-group.mt-3
                   = submit_tag(t('data_import.generic_save_btn'),

@@ -35,7 +35,11 @@ class Phase1SessionUpdater
 
   def update_session_fields(sess)
     # Basic session fields
-    sess['id'] = @params[:meeting_session_id].to_i if @params[:meeting_session_id].present?
+    if @params.key?(:meeting_session_id)
+      raw = @params[:meeting_session_id].to_s.strip
+      sess_id = raw.present? ? raw.to_i : nil
+      sess['id'] = sess_id.to_i.positive? ? sess_id : nil
+    end
     sess['description'] = sanitize_str(@params[:description]) if @params[:description].present?
     sess['session_order'] = @params[:session_order].to_i if @params[:session_order].present?
     sess['day_part_type_id'] = @params[:day_part_type_id].to_i if @params[:day_part_type_id].present?
@@ -62,15 +66,18 @@ class Phase1SessionUpdater
     # IDs first
     if pool_data.key?('id')
       raw = pool_data['id'].to_s.strip
-      sess['swimming_pool']['id'] = raw.present? ? raw.to_i : nil
+      pool_id = raw.present? ? raw.to_i : nil
+      sess['swimming_pool']['id'] = pool_id.to_i.positive? ? pool_id : nil
     end
     if pool_data.key?('swimming_pool_id')
       raw = pool_data['swimming_pool_id'].to_s.strip
-      sess['swimming_pool']['id'] = raw.present? ? raw.to_i : sess['swimming_pool']['id']
+      pool_id = raw.present? ? raw.to_i : sess['swimming_pool']['id']
+      sess['swimming_pool']['id'] = pool_id.to_i.positive? ? pool_id : nil
     end
     if pool_data.key?('city_id')
       raw = pool_data['city_id'].to_s.strip
-      sess['swimming_pool']['city_id'] = raw.present? ? raw.to_i : nil
+      city_id = raw.present? ? raw.to_i : nil
+      sess['swimming_pool']['city_id'] = city_id.to_i.positive? ? city_id : nil
     end
 
     # String fields
@@ -101,11 +108,13 @@ class Phase1SessionUpdater
     # IDs first (support either id or city_id)
     if city_data.key?('id')
       raw = city_data['id'].to_s.strip
-      sess['swimming_pool']['city']['id'] = raw.present? ? raw.to_i : nil
+      city_id = raw.present? ? raw.to_i : nil
+      sess['swimming_pool']['city']['id'] = city_id.to_i.positive? ? city_id : nil
     end
     if city_data.key?('city_id')
       raw = city_data['city_id'].to_s.strip
-      sess['swimming_pool']['city']['id'] = raw.present? ? raw.to_i : sess['swimming_pool']['city']['id']
+      city_id = raw.present? ? raw.to_i : sess['swimming_pool']['city']['id']
+      sess['swimming_pool']['city']['id'] = city_id.to_i.positive? ? city_id : nil
     end
 
     # String fields

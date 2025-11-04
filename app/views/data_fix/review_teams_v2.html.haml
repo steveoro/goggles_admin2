@@ -76,7 +76,7 @@
         city_id = team_hash['city_id']
         name_variations = team_hash['name_variations']
         # Visual indicators
-        has_match = team_id.present?
+        has_match = team_id.to_i.positive?
         card_bg = has_match ? 'bg-light' : 'bg-light-yellow'
         border_color = has_match ? 'border-secondary' : 'border-warning'
         border_width = 'border-2'

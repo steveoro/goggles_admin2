@@ -71,7 +71,7 @@
         swimmer_key = swimmer_hash['key']
         swimmer_index = ((@page - 1) * @per_page) + idx
         swimmer_id = swimmer_hash['swimmer_id']
-        has_match = swimmer_id.present?
+        has_match = swimmer_id.to_i.positive?
         card_bg = has_match ? 'bg-light' : 'bg-light-yellow'
         border_color = has_match ? 'border-secondary' : 'border-warning'
         border_width = 'border-2'

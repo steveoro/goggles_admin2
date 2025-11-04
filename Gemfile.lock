@@ -1,8 +1,8 @@
 GIT
   remote: https://github.com/steveoro/goggles_db
-  revision: 48d00006432b5591e1f3d717be6a03abf5f30e63
+  revision: 95c98a5a97bc42eb7f241e65be02fcc3c4d0221e
   specs:
-    goggles_db (0.8.20)
+    goggles_db (0.8.21)
       acts-as-taggable-on
       acts_as_votable
       cities
@@ -631,7 +631,7 @@ GEM
       unicode-emoji (~> 4.0, >= 4.0.4)
     unicode-emoji (4.0.4)
     uniform_notifier (1.17.0)
-    uri (1.1.0)
+    uri (1.1.1)
     version_gem (1.1.9)
     view_component (3.23.2)
       activesupport (>= 5.2.0, < 8.1)

@@ -1,1 +1,2 @@
-Look for documentation files under the /docs folder of each project.
+Look for documentation files under the /docs folder of each project and keep them up to date whenever changes are made.
+If documentation is split among multiple files, organize them under a subfolder of /docs.

@@ -111,6 +111,7 @@
 
         .form-row
           .form-group.col-md-6
+            = hidden_field_tag('pool[id]', pool_id, id: "pool_#{idx}_id_field")
             = render(AutoCompleteComponent.new(show_top_labels: true, base_dom_id: "pool[#{idx}]", base_api_url: api_url,
                                                default_value: pool_id, detail_endpoint: 'swimming_pool', base_name: 'swimming_pool',
                                                label_column: 'name', search_endpoint: 'swimming_pools', search_column: 'name',
@@ -123,9 +124,10 @@
                                                target9_dom_id: "pool_#{idx}_latitude", target9_column: 'latitude',
                                                target10_dom_id: "pool_#{idx}_longitude", target10_column: 'longitude',
                                                target11_dom_id: "pool_#{idx}_plus_code", target11_column: 'plus_code',
-                                               target12_dom_id: "city_#{idx}_city_id", target12_column: 'city_id',
+                                               target12_dom_id: "city_#{idx}_id_field", target12_column: 'city_id',
+                                               target13_dom_id: "pool_#{idx}_id_field", target13_column: 'id',
                                                jwt: current_user.jwt))
-            %small.form-text.text-muted Search by ID or Pool name
+            %small.form-text.text-muted Search by ID or Pool name. Clear search to create new pool.
           .form-group.col-md-4
             %label{ for: "pool_#{idx}_name" } Pool Name
             = text_field_tag('pool[name]', pool_data['name'],
@@ -189,6 +191,7 @@
         %h6.text-info City
         .form-row
           .form-group.col-md-5
+            = hidden_field_tag('city[id]', city_id, id: "city_#{idx}_id_field")
             = render(AutoCompleteComponent.new(show_top_labels: true, base_dom_id: "city[#{idx}]", base_api_url: api_url,
                                                default_value: city_id, detail_endpoint: 'city', base_name: 'city',
                                                label_column: 'area', search_endpoint: 'cities', search_column: 'name',
@@ -199,8 +202,9 @@
                                                target7_dom_id: "city_#{idx}_country_code", target7_column: 'country_code',
                                                target8_dom_id: "city_#{idx}_latitude", target8_column: 'latitude',
                                                target9_dom_id: "city_#{idx}_longitude", target9_column: 'longitude',
+                                               target10_dom_id: "city_#{idx}_id_field", target10_column: 'id',
                                                jwt: current_user.jwt))
-            %small.form-text.text-muted Search by ID or City name
+            %small.form-text.text-muted Search by ID or City name. Clear search to create new city.
           .form-group.col-md-3
             %label City Name
             = text_field_tag('city[name]', city_data['name'],

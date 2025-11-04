@@ -19,7 +19,7 @@
 
   -# Meeting card with consistent styling
   :ruby
-    has_match = meeting_id.present?
+    has_match = meeting_id.to_i.positive?
     card_bg = has_match ? 'bg-light' : 'bg-light-yellow'
     border_color = has_match ? 'border-secondary' : 'border-warning'
     border_width = 'border-2'
@@ -54,7 +54,7 @@
       :ruby
         is_new_session = new_session_idx.present? && new_session_idx == idx
         session_id = sess_hash['id']
-        has_match = session_id.present?
+        has_match = session_id.to_i.positive?
         card_bg = has_match ? 'bg-light' : 'bg-light-yellow'
         border_color = has_match ? 'border-secondary' : 'border-warning'
         border_width = 'border-2'
