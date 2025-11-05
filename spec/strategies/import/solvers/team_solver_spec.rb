@@ -3,9 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe Import::Solvers::TeamSolver do
-  let(:season) do
-    GogglesDb::Season.first || GogglesDb::Season.create!(id: 212, description: 'Test Season', begin_date: Date.new(2025, 1, 1), end_date: Date.new(2025, 12, 31))
-  end
+  # Use existing season from test DB (no creation needed)
+  let(:season) { GogglesDb::Season.find(242) }
 
   def write_json(tmpdir, name, hash)
     path = File.join(tmpdir, name)

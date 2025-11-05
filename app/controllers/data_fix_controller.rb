@@ -446,51 +446,72 @@ class DataFixController < ApplicationController
     end
 
     begin
-      # Initialize PhaseCommitter with all phase paths
+      # Generate paths for output files
+      curr_dir = File.dirname(source_path)
+      sql_filename = "#{File.basename(source_path, '.json')}.sql"
+      sql_path = File.join(curr_dir, sql_filename)
+      log_path = File.join(curr_dir, "#{File.basename(source_path, '.json')}.log")
+
+      # Initialize PhaseCommitter with all phase paths and log path
       committer = Import::Strategies::PhaseCommitter.new(
         phase1_path: phase1_path,
         phase2_path: phase2_path,
         phase3_path: phase3_path,
         phase4_path: phase4_path,
-        source_path: source_path
+        source_path: source_path,
+        log_path: log_path
       )
 
-      # Commit all entities in a transaction
+      # Commit all entities in a transaction (will generate log file)
       stats = committer.commit_all
 
-      # Generate SQL file in results.new directory
-      curr_dir = File.dirname(source_path)
-      sql_filename = "#{File.basename(source_path, '.json')}.sql"
-      sql_path = File.join(curr_dir, sql_filename)
+      # Check for errors
+      raise StandardError, "Commit completed with #{stats[:errors].count} errors. Check #{log_path} for details." if stats[:errors].any?
 
+      # Generate SQL file in results.new directory
       File.write(sql_path, committer.sql_log_content)
 
-      # Move source JSON to results.done as backup
-      done_dir = curr_dir.gsub('results.new', 'results.done')
-      FileUtils.mkdir_p(done_dir)
-      done_path = File.join(done_dir, File.basename(source_path))
-      FileUtils.cp(source_path, done_path)
+      # Get season_id for organized archiving
+      season_id = JSON.parse(File.read(phase1_path))&.dig('data', 'season_id') || 'unknown'
 
-      # Clean up phase files after successful commit
+      # Move source JSON and ALL phase files to results.done/<season_id>
+      done_dir = File.join(curr_dir.gsub('results.new', 'results.done'), season_id.to_s)
+      FileUtils.mkdir_p(done_dir)
+
+      # Move source JSON as backup
+      done_source_path = File.join(done_dir, File.basename(source_path))
+      FileUtils.mv(source_path, done_source_path)
+
+      # Move phase files (keep them for audit trail)
       [phase1_path, phase2_path, phase3_path, phase4_path].each do |path|
-        FileUtils.rm_f(path)
+        next unless File.exist?(path)
+
+        done_phase_path = File.join(done_dir, File.basename(path))
+        FileUtils.mv(path, done_phase_path)
       end
 
-      # Clean up data_import_* tables for this source
-      GogglesDb::DataImportMeetingIndividualResult.where(phase_file_path: source_path).delete_all
-      GogglesDb::DataImportLap.where(phase_file_path: source_path).delete_all
+      # Clean up data_import_* tables for this source (use done_source_path as reference)
+      GogglesDb::DataImportMeetingIndividualResult.where(phase_file_path: done_source_path).delete_all
+      GogglesDb::DataImportLap.where(phase_file_path: done_source_path).delete_all
 
+      # Summary message
       flash[:notice] = 'Phase 6 commit successful! ' \
                        "Created: #{stats[:meetings_created]} meetings, #{stats[:teams_created]} teams, " \
                        "#{stats[:swimmers_created]} swimmers, #{stats[:badges_created]} badges, " \
                        "#{stats[:events_created]} events, #{stats[:programs_created]} programs, " \
                        "#{stats[:mirs_created]} results, #{stats[:laps_created]} laps. " \
-                       "SQL file saved to: #{sql_filename}"
+                       "Updated: #{stats[:meetings_updated]} meetings, #{stats[:teams_updated]} teams, " \
+                       "#{stats[:swimmers_updated]} swimmers, #{stats[:sessions_updated]} sessions. " \
+                       "Files: #{sql_filename} (SQL) and .log. " \
+                       "Phase files archived to results.done/#{season_id}/"
       redirect_to(push_index_path)
     rescue StandardError => e
-      flash[:error] = "Phase 6 commit failed: #{e.message}"
-      Rails.logger.error("[Phase 6 Commit] Error: #{e.message}")
+      # Log detailed error
+      error_msg = "Phase 6 commit failed: #{e.message}"
+      Rails.logger.error("[Phase 6 Commit] #{error_msg}")
       Rails.logger.error(e.backtrace.join("\n"))
+
+      flash[:error] = "#{error_msg} - Check log file for details."
       redirect_to(review_results_path(file_path: file_path, phase5_v2: 1))
     end
   end

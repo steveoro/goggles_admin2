@@ -23,9 +23,9 @@ module Import
     class PhaseCommitter # rubocop:disable Metrics/ClassLength
       attr_reader :phase1_path, :phase2_path, :phase3_path, :phase4_path, :source_path,
                   :phase1_data, :phase2_data, :phase3_data, :phase4_data,
-                  :sql_log, :stats
+                  :sql_log, :stats, :logger
 
-      def initialize(phase1_path:, phase2_path:, phase3_path:, phase4_path:, source_path:)
+      def initialize(phase1_path:, phase2_path:, phase3_path:, phase4_path:, source_path:, log_path: nil)
         @phase1_path = phase1_path
         @phase2_path = phase2_path
         @phase3_path = phase3_path
@@ -47,20 +47,51 @@ module Import
           laps_created: 0, laps_updated: 0,
           errors: []
         }
+        # Initialize logger
+        @log_path = log_path || source_path.to_s.gsub('.json', '.log')
+        @logger = Import::PhaseCommitLogger.new(log_path: @log_path)
       end
       # -----------------------------------------------------------------------
 
       # Main entry point: commits all entities in dependency order within a transaction
       def commit_all
         load_phase_files!
+        broadcast_progress('Loading phase files', 0, 6)
+
+        # Add SQL transaction wrapper
+        meeting_name = phase1_data&.dig('data', 'name') || 'Unknown Meeting'
+        meeting_date = phase1_data&.dig('data', 'header_date') || Time.current.to_date
+        @sql_log << "-- #{meeting_name}"
+        @sql_log << "-- #{meeting_date}\r\n"
+        @sql_log << 'SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";'
+        @sql_log << 'SET AUTOCOMMIT = 0;'
+        @sql_log << 'START TRANSACTION;'
+        @sql_log << "--\r\n"
 
         ActiveRecord::Base.transaction do
+          broadcast_progress('Committing Phase 1', 1, 6)
           commit_phase1_entities  # Meeting, Sessions, Pools, Cities
+
+          broadcast_progress('Committing Phase 2', 2, 6)
           commit_phase2_entities  # Teams, TeamAffiliations
+
+          broadcast_progress('Committing Phase 3', 3, 6)
           commit_phase3_entities  # Swimmers, Badges
+
+          broadcast_progress('Committing Phase 4', 4, 6)
           commit_phase4_entities  # MeetingEvents
+
+          broadcast_progress('Committing Phase 5', 5, 6)
           commit_phase5_entities  # MeetingPrograms, MIRs, Laps (from DB tables)
         end
+
+        # Close SQL transaction
+        @sql_log << "\r\n--\r\n"
+        @sql_log << 'COMMIT;'
+
+        # Write log file
+        broadcast_progress('Writing log file', 6, 6)
+        @logger.write_log_file(stats: @stats)
 
         stats
       end
@@ -91,8 +122,9 @@ module Import
         Rails.logger.info('[PhaseCommitter] Committing Phase 1: Meeting & Sessions')
         return unless phase1_data
 
-        meeting_data = phase1_data.dig('data', 'meeting') || {}
-        sessions_data = Array(phase1_data.dig('data', 'sessions'))
+        # FIXED: Meeting data is directly under 'data', not 'data.meeting'
+        meeting_data = phase1_data['data'] || {}
+        sessions_data = Array(meeting_data['meeting_session'])
 
         # Commit meeting (may create/update city and pool as side effects)
         commit_meeting(meeting_data)
@@ -218,18 +250,26 @@ module Import
         new_meeting = GogglesDb::Meeting.create!(attributes)
         @sql_log << SqlMaker.new(row: new_meeting).log_insert
         @stats[:meetings_created] += 1
+        @logger.log_success(entity_type: 'Meeting', entity_id: new_meeting.id, action: 'created')
         Rails.logger.info("[PhaseCommitter] Created Meeting ID=#{new_meeting.id}, #{new_meeting.description}")
         new_meeting.id
       rescue ActiveRecord::RecordInvalid => e
-        @stats[:errors] << "Meeting error: #{e.message}"
+        error_msg = "Meeting creation failed: #{e.message}"
+        @stats[:errors] << error_msg
+        @logger.log_validation_error(
+          entity_type: 'Meeting',
+          entity_key: meeting_hash['name'],
+          model_row: GogglesDb::Meeting.new(attributes),
+          error: e
+        )
         Rails.logger.error("[PhaseCommitter] ERROR committing meeting: #{e.message}")
         nil
       end
       # -----------------------------------------------------------------------
 
       def commit_meeting_session(session_hash)
-        session_id = session_hash['meeting_session_id']
-        meeting_id = phase1_data&.dig('data', 'meeting', 'meeting_id')
+        session_id = session_hash['meeting_session_id'] || session_hash['id']
+        meeting_id = phase1_data&.dig('data', 'id') || phase1_data&.dig('data', 'meeting_id')
 
         return unless meeting_id
 
@@ -782,6 +822,17 @@ module Import
         @stats[:errors] << "#{model_class.name} error: #{e.message}"
         Rails.logger.error("[PhaseCommitter] ERROR: #{e.message}")
         nil
+      end
+      # -----------------------------------------------------------------------
+
+      # Broadcasts progress updates via ActionCable for real-time UI feedback
+      def broadcast_progress(message, current, total)
+        ActionCable.server.broadcast(
+          'ImportStatusChannel',
+          { msg: message, progress: current, total: total }
+        )
+      rescue StandardError => e
+        Rails.logger.warn("[PhaseCommitter] Failed to broadcast progress: #{e.message}")
       end
       # -----------------------------------------------------------------------
 
