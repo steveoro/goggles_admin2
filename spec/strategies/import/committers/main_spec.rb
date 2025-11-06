@@ -589,4 +589,233 @@ RSpec.describe Import::Committers::Main do
       GogglesDb::TeamAffiliation.where(team_id: team.id, season_id: season.id).destroy_all
     end
   end
+
+  describe 'normalization helpers' do
+    let(:committer) do
+      Dir.mktmpdir do |tmp|
+        src = File.join(tmp, 'test.json')
+        File.write(src, '{}')
+        return create_committer(src)
+      end
+    end
+
+    describe '#commit_calendar' do
+      let(:meeting) do
+        FactoryBot.create(
+          :meeting,
+          code: 'CAL-CODE',
+          description: 'Calendar meeting',
+          header_date: Date.current,
+          season: season
+        )
+      end
+
+      let(:meeting_hash) do
+        header_date = meeting.header_date || Date.current
+        {
+          'meeting_id' => meeting.id,
+          'meeting_code' => meeting.code,
+          'meeting_name' => meeting.description,
+          'scheduled_date' => header_date,
+          'season_id' => meeting.season_id,
+          'dateYear1' => header_date.year.to_s,
+          'dateMonth1' => header_date.strftime('%m')
+        }
+      end
+
+      before do
+        meeting.calendar&.destroy
+        committer.sql_log.clear
+      end
+
+      after do
+        meeting.reload.calendar&.destroy if meeting.persisted?
+        meeting.destroy
+      end
+
+      it 'creates a calendar, updates stats, and logs an INSERT' do
+        expect do
+          committer.send(:commit_calendar, meeting_hash)
+        end.to change(GogglesDb::Calendar, :count).by(1)
+
+        created = GogglesDb::Calendar.find_by(meeting_id: meeting.id)
+        expect(created).not_to be_nil
+        expect(created.meeting_code).to eq(meeting.code)
+        expect(created.season_id).to eq(meeting.season_id)
+        expect(committer.stats[:calendars_created]).to eq(1)
+        expect(committer.stats[:calendars_updated]).to eq(0)
+        expect(committer.stats[:errors]).to be_empty
+        expect(committer.sql_log_content).to include('INSERT INTO `calendars`')
+      end
+
+      it 'updates an existing calendar when attributes change' do
+        scheduled_date = meeting.header_date || Date.current
+        calendar = meeting.create_calendar!(
+          season: meeting.season,
+          meeting_code: 'OUTDATED',
+          meeting_name: 'Old name',
+          scheduled_date: scheduled_date,
+          year: scheduled_date.year.to_s,
+          month: scheduled_date.strftime('%m'),
+          cancelled: false
+        )
+
+        committer.sql_log.clear
+
+        expect do
+          committer.send(:commit_calendar, meeting_hash)
+        end.not_to change(GogglesDb::Calendar, :count)
+
+        calendar.reload
+        expect(calendar.meeting_code).to eq(meeting.code)
+        expect(calendar.meeting_name).to eq(meeting.description)
+        expect(committer.stats[:calendars_created]).to eq(0)
+        expect(committer.stats[:calendars_updated]).to eq(1)
+        expect(committer.stats[:errors]).to be_empty
+        expect(committer.sql_log_content).to include('UPDATE `calendars`')
+      end
+    end
+
+    describe '#build_calendar_attributes' do
+      let(:meeting) do
+        record = FactoryBot.create(:meeting)
+        record.assign_attributes(code: nil, description: nil, header_date: nil)
+        record
+      end
+
+      after do
+        GogglesDb::Calendar.where(meeting_id: meeting.id).destroy_all
+        meeting.destroy
+      end
+
+      it 'falls back to phase data and casts flags' do
+        meeting_hash = {
+          'meeting_id' => meeting.id,
+          'meeting_code' => 'PHASE-CODE',
+          'meeting_name' => 'Phase Meeting',
+          'scheduled_date' => '2025-01-02',
+          'meetingURL' => 'https://example.org/results',
+          'manifestURL' => 'https://example.org/manifest',
+          'organization' => 'Local Org',
+          'season_id' => meeting.season_id,
+          'dateYear1' => '2025',
+          'dateMonth1' => '01',
+          'cancelled' => 'true'
+        }
+
+        attributes = committer.send(:build_calendar_attributes, meeting_hash, meeting)
+
+        expect(attributes['meeting_code']).to eq('PHASE-CODE')
+        expect(attributes['meeting_name']).to eq('Phase Meeting')
+        expect(attributes['scheduled_date']).to eq('2025-01-02')
+        expect(attributes['organization_import_text']).to eq('Local Org')
+        expect(attributes['cancelled']).to eq(true)
+        expect(attributes['year']).to eq('2025')
+        expect(attributes['month']).to eq('01')
+      end
+    end
+
+    describe '#normalize_team_attributes' do
+      it 'fills editable_name when missing and strips unknown keys' do
+        team_hash = {
+          'name' => 'Test Team',
+          'address' => '123 Main St',
+          'unexpected' => 'value'
+        }
+
+        normalized = committer.send(:normalize_team_attributes, team_hash)
+
+        expect(normalized['editable_name']).to eq('Test Team')
+        expect(normalized['address']).to eq('123 Main St')
+        expect(normalized).not_to have_key('unexpected')
+        expect(normalized.keys).to all(be_a(String))
+      end
+    end
+
+    describe '#normalize_team_affiliation_attributes' do
+      let(:team) { FactoryBot.create(:team, name: 'Affiliates Club') }
+
+      after(:each) { team.destroy }
+
+      it 'casts boolean flags and back-fills missing name' do
+        affiliation_hash = {
+          'compute_gogglecup' => '1',
+          'autofilled' => 'false',
+          'name' => nil
+        }
+
+        normalized = committer.send(
+          :normalize_team_affiliation_attributes,
+          affiliation_hash,
+          team_id: team.id,
+          season_id: season.id,
+          team: team
+        )
+
+        expect(normalized['team_id']).to eq(team.id)
+        expect(normalized['season_id']).to eq(season.id)
+        expect(normalized['name']).to eq('Affiliates Club')
+        expect(normalized['compute_gogglecup']).to eq(true)
+        expect(normalized['autofilled']).to eq(false)
+      end
+    end
+
+    describe '#normalize_swimmer_attributes' do
+      let(:gender_type) { GogglesDb::GenderType.find_by(code: 'M') || GogglesDb::GenderType.first }
+
+      it 'derives gender_type_id and complete_name' do
+        skip 'No gender types available in test DB' unless gender_type
+
+        swimmer_hash = {
+          'first_name' => 'Mario',
+          'last_name' => 'Rossi',
+          'year_of_birth' => 1980,
+          'gender_type_code' => gender_type.code,
+          'year_guessed' => '1'
+        }
+
+        normalized = committer.send(:normalize_swimmer_attributes, swimmer_hash)
+
+        expect(normalized['gender_type_id']).to eq(gender_type.id)
+        expect(normalized['complete_name']).to eq('Rossi Mario')
+        expect(normalized['year_guessed']).to eq(true)
+        expect(normalized.keys).to all(be_a(String))
+      end
+    end
+
+    describe '#normalize_badge_attributes' do
+      let(:default_entry_time) { GogglesDb::EntryTimeType.manual }
+      let(:category_type) { GogglesDb::CategoryType.first }
+
+      it 'casts boolean flags and applies defaults' do
+        skip 'No entry time type available in test DB' unless default_entry_time
+        skip 'No category types available in test DB' unless category_type
+
+        badge_hash = {
+          'number' => 'A123',
+          'off_gogglecup' => 'false',
+          'fees_due' => '1',
+          'badge_due' => '0',
+          'relays_due' => 'true'
+        }
+
+        normalized = committer.send(
+          :normalize_badge_attributes,
+          badge_hash,
+          swimmer_id: 1,
+          team_id: 2,
+          season_id: season.id,
+          category_type_id: category_type.id,
+          team_affiliation_id: 3
+        )
+
+        expect(normalized['entry_time_type_id']).to eq(default_entry_time.id)
+        expect(normalized['off_gogglecup']).to eq(false)
+        expect(normalized['fees_due']).to eq(true)
+        expect(normalized['badge_due']).to eq(false)
+        expect(normalized['relays_due']).to eq(true)
+        expect(normalized.keys).to all(be_a(String))
+      end
+    end
+  end
 end

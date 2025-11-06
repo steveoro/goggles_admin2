@@ -21,6 +21,8 @@ module Import
     # @author Steve A.
     #
     class Main # rubocop:disable Metrics/ClassLength
+      BOOLEAN_TYPE = ActiveModel::Type::Boolean.new
+
       attr_reader :phase1_path, :phase2_path, :phase3_path, :phase4_path, :source_path,
                   :phase1_data, :phase2_data, :phase3_data, :phase4_data,
                   :sql_log, :stats, :logger
@@ -360,13 +362,14 @@ module Import
 
       def commit_team(team_hash)
         team_id = team_hash['team_id']
+        normalized_attributes = normalize_team_attributes(team_hash)
 
         # If team already has a DB ID, it's matched - just verify or update if needed
         if team_id.present? && team_id.positive?
           team = GogglesDb::Team.find_by(id: team_id)
-          if team && attributes_changed?(team, team_hash)
+          if team && attributes_changed?(team, normalized_attributes)
             # Update existing team if attributes changed
-            team.update!(sanitize_attributes(team_hash, GogglesDb::Team))
+            team.update!(normalized_attributes)
             @sql_log << SqlMaker.new(row: team).log_update
             @stats[:teams_updated] += 1
             Rails.logger.info("[Main] Updated Team ID=#{team_id}")
@@ -375,14 +378,7 @@ module Import
         end
 
         # Create new team (team_id is nil or 0)
-        attributes = {
-          'name' => team_hash['name'],
-          'editable_name' => team_hash['editable_name'] || team_hash['name'],
-          'name_variations' => team_hash['name_variations'],
-          'city_id' => team_hash['city_id']
-        }.compact
-
-        new_team = GogglesDb::Team.create!(attributes)
+        new_team = GogglesDb::Team.create!(normalized_attributes)
         @sql_log << SqlMaker.new(row: new_team).log_insert
         @stats[:teams_created] += 1
         Rails.logger.info("[Main] Created Team ID=#{new_team.id}, name=#{new_team.name}")
@@ -396,9 +392,9 @@ module Import
 
       def commit_team_affiliation(affiliation_hash:)
         # Affiliation data comes from phase2 with pre-matched team_affiliation_id
-        team_affiliation_id = affiliation_hash['team_affiliation_id']
-        team_id = affiliation_hash['team_id']
-        season_id = affiliation_hash['season_id']
+        team_affiliation_id = affiliation_hash['team_affiliation_id'] || affiliation_hash[:team_affiliation_id]
+        team_id = affiliation_hash['team_id'] || affiliation_hash[:team_id]
+        season_id = affiliation_hash['season_id'] || affiliation_hash[:season_id]
 
         # Guard clause: skip if missing required keys
         return unless team_id && season_id
@@ -411,11 +407,12 @@ module Import
 
         # Create new affiliation (minimal data - just links team to season)
         team = GogglesDb::Team.find_by(id: team_id)
-        attributes = {
-          'team_id' => team_id,
-          'season_id' => season_id,
-          'name' => team&.name || '' # Use team name if available
-        }
+        attributes = normalize_team_affiliation_attributes(
+          affiliation_hash,
+          team_id: team_id,
+          season_id: season_id,
+          team: team
+        )
 
         affiliation = GogglesDb::TeamAffiliation.create!(attributes)
         @sql_log << SqlMaker.new(row: affiliation).log_insert
@@ -433,13 +430,14 @@ module Import
 
       def commit_swimmer(swimmer_hash)
         swimmer_id = swimmer_hash['swimmer_id']
+        normalized_attributes = normalize_swimmer_attributes(swimmer_hash)
 
         # If swimmer already has a DB ID, it's matched - just verify or update if needed
         if swimmer_id.present? && swimmer_id.positive?
           swimmer = GogglesDb::Swimmer.find_by(id: swimmer_id)
-          if swimmer && attributes_changed?(swimmer, swimmer_hash)
+          if swimmer && attributes_changed?(swimmer, normalized_attributes)
             # Update existing swimmer if attributes changed
-            swimmer.update!(sanitize_attributes(swimmer_hash, GogglesDb::Swimmer))
+            swimmer.update!(normalized_attributes)
             @sql_log << SqlMaker.new(row: swimmer).log_update
             @stats[:swimmers_updated] += 1
             Rails.logger.info("[Main] Updated Swimmer ID=#{swimmer_id}")
@@ -448,17 +446,7 @@ module Import
         end
 
         # Create new swimmer (swimmer_id is nil or 0)
-        gender_type = GogglesDb::GenderType.find_by(code: swimmer_hash['gender_type_code'])
-
-        attributes = {
-          'complete_name' => swimmer_hash['complete_name'],
-          'first_name' => swimmer_hash['first_name'],
-          'last_name' => swimmer_hash['last_name'],
-          'year_of_birth' => swimmer_hash['year_of_birth'],
-          'gender_type_id' => gender_type&.id
-        }.compact
-
-        new_swimmer = GogglesDb::Swimmer.create!(attributes)
+        new_swimmer = GogglesDb::Swimmer.create!(normalized_attributes)
         @sql_log << SqlMaker.new(row: new_swimmer).log_insert
         @stats[:swimmers_created] += 1
         Rails.logger.info("[Main] Created Swimmer ID=#{new_swimmer.id}, name=#{new_swimmer.complete_name}")
@@ -495,19 +483,14 @@ module Import
           return
         end
 
-        # Create new badge
-        # Use a default entry_time_type since we don't have it from import data
-        default_entry_time = GogglesDb::EntryTimeType.manual
-
-        attributes = {
-          'swimmer_id' => swimmer_id,
-          'team_id' => team_id,
-          'season_id' => season_id,
-          'team_affiliation_id' => team_affiliation.id,
-          'category_type_id' => category_type_id, # Pre-calculated in Phase 3
-          'entry_time_type_id' => default_entry_time&.id,
-          'number' => nil # Badge number not available from import data
-        }.compact
+        attributes = normalize_badge_attributes(
+          badge_hash,
+          swimmer_id: swimmer_id,
+          team_id: team_id,
+          season_id: season_id,
+          category_type_id: category_type_id,
+          team_affiliation_id: team_affiliation.id
+        )
 
         badge = GogglesDb::Badge.create!(attributes)
         @sql_log << SqlMaker.new(row: badge).log_insert
@@ -800,6 +783,70 @@ module Import
       end
       # -----------------------------------------------------------------------
 
+      def normalize_team_attributes(team_hash)
+        normalized = team_hash.deep_dup.with_indifferent_access
+        normalized['editable_name'] ||= normalized['name']
+        sanitized = sanitize_attributes(normalized, GogglesDb::Team)
+        sanitized['name'] ||= sanitized['editable_name']
+        sanitized
+      end
+      # -----------------------------------------------------------------------
+
+      def normalize_team_affiliation_attributes(affiliation_hash, team_id:, season_id:, team:)
+        normalized = affiliation_hash.deep_dup.with_indifferent_access
+        normalized['team_id'] = team_id
+        normalized['season_id'] = season_id
+        normalized['name'] = normalized['name'].presence || team&.name
+        if normalized.key?('compute_gogglecup') || normalized.key?(:compute_gogglecup)
+          normalized['compute_gogglecup'] = BOOLEAN_TYPE.cast(normalized['compute_gogglecup'])
+        end
+        if normalized.key?('autofilled') || normalized.key?(:autofilled)
+          normalized['autofilled'] = BOOLEAN_TYPE.cast(normalized['autofilled'])
+        end
+
+        sanitized = sanitize_attributes(normalized, GogglesDb::TeamAffiliation)
+        sanitized['name'] ||= team&.name || ''
+        sanitized
+      end
+      # -----------------------------------------------------------------------
+
+      def normalize_swimmer_attributes(swimmer_hash)
+        normalized = swimmer_hash.deep_dup.with_indifferent_access
+        gender_code = normalized.delete('gender_type_code') || normalized.delete(:gender_type_code)
+        normalized['gender_type_id'] ||= GogglesDb::GenderType.find_by(code: gender_code)&.id if gender_code.present?
+        normalized['complete_name'] ||= build_complete_name(normalized)
+        normalized['year_guessed'] = BOOLEAN_TYPE.cast(normalized['year_guessed']) if normalized.key?('year_guessed')
+
+        sanitize_attributes(normalized, GogglesDb::Swimmer)
+      end
+      # -----------------------------------------------------------------------
+
+      def normalize_badge_attributes(badge_hash, swimmer_id:, team_id:, season_id:, category_type_id:, team_affiliation_id:)
+        normalized = badge_hash.deep_dup.with_indifferent_access
+        normalized['swimmer_id'] = swimmer_id
+        normalized['team_id'] = team_id
+        normalized['season_id'] = season_id
+        normalized['category_type_id'] ||= category_type_id
+        normalized['team_affiliation_id'] = team_affiliation_id
+
+        default_entry_time = GogglesDb::EntryTimeType.manual
+        normalized['entry_time_type_id'] ||= default_entry_time&.id
+
+        %w[off_gogglecup fees_due badge_due relays_due].each do |flag|
+          next unless normalized.key?(flag)
+
+          normalized[flag] = BOOLEAN_TYPE.cast(normalized[flag])
+        end
+
+        sanitize_attributes(normalized, GogglesDb::Badge)
+      end
+      # -----------------------------------------------------------------------
+
+      def build_complete_name(swimmer_hash)
+        swimmer_hash['complete_name'].presence || [swimmer_hash['last_name'], swimmer_hash['first_name']].compact_blank.join(' ')
+      end
+      # -----------------------------------------------------------------------
+
       def commit_calendar(meeting_hash)
         meeting_id = meeting_hash['meeting_id']
         meeting = GogglesDb::Meeting.find_by(id: meeting_id)
@@ -841,24 +888,29 @@ module Import
         {
           'id' => existing&.id,
           'meeting_id' => meeting.id,
-          'meeting_code' => meeting.code,
-          'meeting_name' => meeting.description,
+          'meeting_code' => meeting.code || meeting_hash['meeting_code'],
+          'meeting_name' => meeting.description || meeting_hash['meeting_name'],
           'scheduled_date' => scheduled_date,
           'meeting_place' => build_meeting_place(meeting_hash),
-          'season_id' => meeting.season_id,
+          'season_id' => meeting.season_id || meeting_hash['season_id'],
           'year' => meeting_hash['dateYear1'] || scheduled_date&.year&.to_s,
           'month' => meeting_hash['dateMonth1'] || scheduled_date&.strftime('%m'),
           'results_link' => meeting_hash['meetingURL'] || meeting_hash['results_link'],
           'manifest_link' => meeting_hash['manifestURL'] || meeting_hash['manifest_link'],
           'organization_import_text' => meeting_hash['organization'],
-          'cancelled' => meeting.cancelled,
+          'cancelled' => meeting_hash.key?('cancelled') ? BOOLEAN_TYPE.cast(meeting_hash['cancelled']) : meeting.cancelled,
           'updated_at' => Time.zone.now
         }.compact
       end
       # -----------------------------------------------------------------------
 
       def find_existing_calendar(meeting)
-        scopes = GogglesDb::Calendar.for_season(meeting.season_id)
+        season = meeting.season || GogglesDb::Season.find_by(id: meeting.season_id)
+        scopes = if season
+                   GogglesDb::Calendar.for_season(season)
+                 else
+                   GogglesDb::Calendar.where(season_id: meeting.season_id)
+                 end
         scopes.for_code(meeting.code).first || scopes.where(meeting_id: meeting.id).first
       end
       # -----------------------------------------------------------------------
@@ -895,7 +947,7 @@ module Import
       # Remove attributes not in the model's column list
       def sanitize_attributes(attributes, model_class)
         column_names = model_class.column_names.map(&:to_s)
-        attributes.slice(*column_names).except('id')
+        attributes.slice(*column_names).except('id').stringify_keys
       end
       # -----------------------------------------------------------------------
     end
