@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe Import::Strategies::PhaseCommitter do
+RSpec.describe Import::Committers::Main do
   let(:season) do
     # Random FIN-type season from the last available ones:
     # (badges, affiliations and results may exist already for some swimmers, but not always)

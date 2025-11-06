@@ -13,7 +13,7 @@ Complete Data-Fix pipeline by finalizing Phase 5 (Result Review) and implementin
 ### Goals
 
 1. **Phase 5**: Hybrid storage (DB tables for results/laps), read-only review UI, entity matching
-2. **Phase 6**: New `PhaseCommitter` strategy reading JSON (phases 1-4) + DB tables (phase 5) to generate SQL
+2. **Phase 6**: New `Main` strategy reading JSON (phases 1-4) + DB tables (phase 5) to generate SQL
 
 ### Key Principles
 
@@ -298,7 +298,7 @@ Source JSON: "timing": "1'18.56"  →  This is "from_start" (cumulative)
 
 ## Phase 6: Commit & SQL Generation
 
-### 6.1 PhaseCommitter Architecture ✅
+### 6.1 Main Architecture ✅
 
 **Goal**: Create new committer working with phase files instead of MacroSolver.
 
@@ -306,7 +306,7 @@ Source JSON: "timing": "1'18.56"  →  This is "from_start" (cumulative)
 ```ruby
 module Import
   module Strategies
-    class PhaseCommitter
+    class Main
       attr_reader :phase_files, :sql_log, :commit_data
       
       def initialize(phase_file_paths:)
@@ -330,7 +330,7 @@ end
 ```
 
 **Tasks**:
-- [ ] Create `PhaseCommitter` class skeleton
+- [ ] Create `Main` class skeleton
 - [ ] Implement phase file loading
 - [ ] Add transaction wrapper
 - [ ] Implement `commit_entity` core method
@@ -446,7 +446,7 @@ end
 
 ### 6.8 PushController Integration ✅
 
-**Goal**: Update `PushController#prepare` to use `PhaseCommitter`.
+**Goal**: Update `PushController#prepare` to use `Main`.
 
 **Current Flow** (Legacy):
 ```ruby
@@ -456,7 +456,7 @@ end
 
 **New Flow**:
 ```ruby
-@committer = Import::Strategies::PhaseCommitter.new(
+@committer = Import::Committers::Main.new(
   phase_file_paths: {
     phase1: params[:phase1_path],
     phase2: params[:phase2_path],
@@ -474,7 +474,7 @@ end
 
 **Tasks**:
 - [ ] Update `PushController#prepare` to accept phase file paths
-- [ ] Instantiate `PhaseCommitter` instead of `MacroCommitter`
+- [ ] Instantiate `Main` instead of `MacroCommitter`
 - [ ] Keep SQL file generation logic
 - [ ] Move files to `results.done` on success
 - [ ] Add error handling and rollback
@@ -508,7 +508,7 @@ end
 ## Testing Strategy
 
 ### Unit Tests
-- [ ] PhaseCommitter initialization and phase loading
+- [ ] Main initialization and phase loading
 - [ ] Each `commit_phaseN_entities` method
 - [ ] Change detection logic
 - [ ] SQL generation via SqlMaker
@@ -536,7 +536,7 @@ end
 - Day 5: Commit button and testing
 
 ### Week 2-3: Phase 6 Implementation
-- Day 1-2: PhaseCommitter architecture
+- Day 1-2: Main architecture
 - Day 3-4: Phase 1-2 commits
 - Day 5-6: Phase 3-4 commits
 - Day 7-9: Phase 5 commits (results + laps)
@@ -567,8 +567,8 @@ end
 ## Files to Create/Update
 
 ### New Files
-- `app/strategies/import/strategies/phase_committer.rb`
-- `spec/strategies/import/strategies/phase_committer_spec.rb`
+- `app/strategies/import/committers/phase_committer.rb`
+- `spec/strategies/import/committers/phase_committer_spec.rb`
 
 ### Updated Files
 - `app/controllers/data_fix_controller.rb` (phase 5 matching)
@@ -633,6 +633,6 @@ When no full name matches found:
 
 - Legacy "Use Legacy" buttons are broken and should be removed
 - Phase files can be enhanced as needed (no backward compatibility required)
-- PhaseCommitter is completely new (no MacroCommitter compatibility needed)
+- Main is completely new (no MacroCommitter compatibility needed)
 - SQL generation uses existing `SqlMaker` utility
 - Transaction ensures all-or-nothing commit

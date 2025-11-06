@@ -43,7 +43,7 @@ Phase 6 (Commit & SQL Generation) is the final step that commits all reviewed en
 ### ✅ Completed
 
 #### Core Infrastructure
-- [x] `PhaseCommitter` class fully implemented
+- [x] `Main` class fully implemented
 - [x] Architecture defined with clear separation of concerns
 - [x] Generic `commit_entity` helper implemented
 - [x] Change detection logic (`attributes_changed?`)
@@ -87,12 +87,12 @@ Phase 6 (Commit & SQL Generation) is the final step that commits all reviewed en
 ### 🚧 To Implement (Future Enhancements)
 
 #### Testing
-- [ ] Unit tests for PhaseCommitter
+- [ ] Unit tests for Main
 - [ ] Integration tests for complete workflow
 - [ ] Performance tests with large datasets
 
 #### Optional
-- [ ] Update `PushController#prepare` to optionally use `PhaseCommitter` (legacy still works)
+- [ ] Update `PushController#prepare` to optionally use `Main` (legacy still works)
 
 ---
 
@@ -133,7 +133,7 @@ All commits wrapped in try/rescue with error accumulation:
 ```ruby
 rescue ActiveRecord::RecordInvalid => e
   @stats[:errors] << "#{model_class.name} error: #{e.message}"
-  Rails.logger.error("[PhaseCommitter] ERROR: #{e.message}")
+  Rails.logger.error("[Main] ERROR: #{e.message}")
   nil
 end
 ```
@@ -190,7 +190,7 @@ For each `commit_<entity>` method:
 
 ```ruby
 def commit_phase2_entities
-  Rails.logger.info('[PhaseCommitter] Committing Phase 2: Teams')
+  Rails.logger.info('[Main] Committing Phase 2: Teams')
   return unless phase2_data
 
   teams_data = Array(phase2_data.dig('data', 'teams'))
@@ -249,7 +249,7 @@ end
    - Results require reading from DB tables
 
 5. **Wire PushController**:
-   - Replace `MacroCommitter` with `PhaseCommitter`
+   - Replace `MacroCommitter` with `Main`
    - Keep SQL file generation
    - Test end-to-end workflow
 
@@ -270,7 +270,7 @@ end
 ## Files Created/Updated
 
 ### Created ✅
-- `/app/strategies/import/strategies/phase_committer.rb` - Main committer class (already existed)
+- `/app/strategies/import/committers/phase_committer.rb` - Main committer class (already existed)
 - `/docs/data_fix/phase6_implementation_complete.md` - Completion documentation
 
 ### Updated ✅
@@ -279,9 +279,9 @@ end
 - `/app/views/data_fix/review_results_v2.html.haml` - Added Commit button
 
 ### Future Work
-- [ ] `/spec/strategies/import/strategies/phase_committer_spec.rb` - Unit tests
+- [ ] `/spec/strategies/import/committers/phase_committer_spec.rb` - Unit tests
 - [ ] `/spec/integration/phase6_commit_workflow_spec.rb` - Integration tests
-- [ ] `/app/controllers/push_controller.rb` - Optionally switch to PhaseCommitter
+- [ ] `/app/controllers/push_controller.rb` - Optionally switch to Main
 
 ---
 

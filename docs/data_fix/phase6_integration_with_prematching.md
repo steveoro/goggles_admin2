@@ -8,21 +8,21 @@
 
 ## Executive Summary
 
-Phase 6 (PhaseCommitter) is complete and enhanced with the **"solve early, commit later"** pre-matching pattern. All junction tables and dependent entities now have their IDs pre-matched during phase building (Phases 2-4), making Phase 6 primarily a **pure persistence layer** with minimal lookup logic.
+Phase 6 (Main) is complete and enhanced with the **"solve early, commit later"** pre-matching pattern. All junction tables and dependent entities now have their IDs pre-matched during phase building (Phases 2-4), making Phase 6 primarily a **pure persistence layer** with minimal lookup logic.
 
 ---
 
 ## What Changed from Original Plan
 
 ### Original Design (v1.0)
-- PhaseCommitter performed cross-phase lookups at commit time
+- Main performed cross-phase lookups at commit time
 - Matched existing entities during commit
 - Complex logic for finding IDs by keys
 - ~38 lines more code in committer
 
 ### Enhanced Design (v2.0) ✅
 - Phase Solvers match entities during phase building
-- PhaseCommitter reads pre-matched IDs from JSON
+- Main reads pre-matched IDs from JSON
 - Minimal cross-phase lookups (only for Phase 5)
 - Simpler, more maintainable code
 
@@ -33,7 +33,7 @@ Phase 6 (PhaseCommitter) is complete and enhanced with the **"solve early, commi
 ### Phase 2: TeamAffiliations ✅
 **Match Key**: `(season_id, team_id)`  
 **Enhanced**: `TeamSolver#build_team_affiliation_entry`  
-**Simplified**: `PhaseCommitter#commit_team_affiliation`
+**Simplified**: `Main#commit_team_affiliation`
 
 **Phase 2 Output:**
 ```json
@@ -61,7 +61,7 @@ end
 ### Phase 3: Badges ✅
 **Match Key**: `(season_id, swimmer_id, team_id)`  
 **Enhanced**: `SwimmerSolver#build_badge_entry` + category calculation  
-**Simplified**: `PhaseCommitter#commit_badge`  
+**Simplified**: `Main#commit_badge`  
 **Dependencies**: phase1 (meeting date), phase2 (team_id)
 
 **Phase 3 Output:**
@@ -92,7 +92,7 @@ end
 ### Phase 4: MeetingEvents ✅
 **Match Key**: `(meeting_session_id, event_type_id)`  
 **Enhanced**: `EventSolver#enhance_event_with_matching!`  
-**Simplified**: `PhaseCommitter#commit_meeting_event`  
+**Simplified**: `Main#commit_meeting_event`  
 **Dependencies**: phase1 (meeting_session_id)
 
 **Phase 4 Output:**
@@ -146,12 +146,12 @@ Phase 5: MeetingProgram → MIR → Lap
 
 ---
 
-## PhaseCommitter Implementation
+## Main Implementation
 
 ### Class Structure
 
 ```ruby
-class PhaseCommitter
+class Main
   attr_reader :stats, :sql_log
   
   def initialize(source_path:)
@@ -226,7 +226,7 @@ def prepare
   source_path = resolve_source_path(@file_path)
   
   # Step 1: Commit all phases
-  committer = Import::PhaseCommitter.new(source_path: source_path)
+  committer = Import::Main.new(source_path: source_path)
   stats = committer.commit_all
   
   # Step 2: Generate SQL file
@@ -282,7 +282,7 @@ end
 
 ## Testing Strategy
 
-### Unit Tests (PhaseCommitter)
+### Unit Tests (Main)
 
 **For each `commit_*` method:**
 - ✅ CREATE new entity (ID is nil)
@@ -294,7 +294,7 @@ end
 
 **Example Test:**
 ```ruby
-RSpec.describe Import::PhaseCommitter do
+RSpec.describe Import::Main do
   describe '#commit_badge' do
     context 'when badge_id is present' do
       it 'skips creation' do
@@ -340,7 +340,7 @@ RSpec.describe 'Phase 1-6 Complete Workflow', type: :integration do
     Import::Phase5Populator.new(source_path).populate_all!
     
     # Phase 6: Commit
-    committer = Import::PhaseCommitter.new(source_path:)
+    committer = Import::Main.new(source_path:)
     stats = committer.commit_all
     
     expect(stats[:meetings_created]).to eq(1)
@@ -391,11 +391,11 @@ end
 
 ## Migration Path
 
-### From MacroCommitter to PhaseCommitter
+### From MacroCommitter to Main
 
 **Step 1: Parallel Implementation** ✅
 - Keep existing MacroCommitter
-- Implement PhaseCommitter alongside
+- Implement Main alongside
 - Test with same datasets
 
 **Step 2: Feature Flag**
@@ -406,7 +406,7 @@ config.x.use_phase_committer = ENV.fetch('USE_PHASE_COMMITTER', 'false') == 'tru
 # app/controllers/push_controller.rb
 def prepare
   if Rails.configuration.x.use_phase_committer
-    committer = Import::PhaseCommitter.new(source_path:)
+    committer = Import::Main.new(source_path:)
   else
     committer = Import::MacroCommitter.new(source_path:)  # Legacy
   end
@@ -440,7 +440,7 @@ end
 - [x] No duplicate records created
 
 ### Code Quality ✅
-- [x] PhaseCommitter: -38 lines vs. original plan
+- [x] Main: -38 lines vs. original plan
 - [x] Eliminated 3 helper methods
 - [x] Eliminated 5+ cross-phase lookups
 - [x] Consistent guard clause pattern
@@ -464,10 +464,10 @@ end
 ## Next Steps
 
 ### Immediate (Week 1)
-1. ✅ Complete PhaseCommitter implementation
+1. ✅ Complete Main implementation
 2. ✅ Add pre-matching to Phases 2-4
 3. ✅ Update documentation
-4. 🚧 Write unit tests for PhaseCommitter
+4. 🚧 Write unit tests for Main
 5. 🚧 Write integration tests
 
 ### Short-term (Week 2-3)
@@ -490,7 +490,7 @@ end
 - ✅ `/app/strategies/import/solvers/team_solver.rb` (+32 lines)
 - ✅ `/app/strategies/import/solvers/swimmer_solver.rb` (+60 lines)
 - ✅ `/app/strategies/import/solvers/event_solver.rb` (+40 lines)
-- ✅ `/app/strategies/import/strategies/phase_committer.rb` (-38 lines net)
+- ✅ `/app/strategies/import/committers/phase_committer.rb` (-38 lines net)
 - ✅ `/app/controllers/data_fix_controller.rb` (+6 lines)
 
 ### Documentation
@@ -501,7 +501,7 @@ end
 - ✅ `/docs/phase6_integration_with_prematching.md` (this file)
 
 ### To Create
-- [ ] `/spec/strategies/import/strategies/phase_committer_spec.rb`
+- [ ] `/spec/strategies/import/committers/phase_committer_spec.rb`
 - [ ] `/spec/integration/phase6_commit_workflow_spec.rb`
 
 ### To Update
@@ -512,7 +512,7 @@ end
 
 ## Conclusion
 
-Phase 6 (PhaseCommitter) is **architecturally complete** with significant improvements over the original plan:
+Phase 6 (Main) is **architecturally complete** with significant improvements over the original plan:
 
 1. **Simpler Code**: Pre-matching eliminated ~38 lines and 3 helper methods
 2. **Better Performance**: ~93% reduction in DB queries during commit

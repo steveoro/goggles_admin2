@@ -1,15 +1,15 @@
 # frozen_string_literal: true
 
 module Import
-  module Strategies
+  module Committers
     #
-    # = PhaseCommitter
+    # = Main
     #
     # Commits all entities from phase files (1-4) and data_import tables (phase 5)
     # to the production database in correct dependency order.
     #
     # == Usage:
-    #   committer = Import::Strategies::PhaseCommitter.new(
+    #   committer = Import::Committers::Main.new(
     #     phase1_path: '/path/to/phase1.json',
     #     phase2_path: '/path/to/phase2.json',
     #     phase3_path: '/path/to/phase3.json',
@@ -20,7 +20,7 @@ module Import
     #
     # @author Steve A.
     #
-    class PhaseCommitter # rubocop:disable Metrics/ClassLength
+    class Main # rubocop:disable Metrics/ClassLength
       attr_reader :phase1_path, :phase2_path, :phase3_path, :phase4_path, :source_path,
                   :phase1_data, :phase2_data, :phase3_data, :phase4_data,
                   :sql_log, :stats, :logger
@@ -36,6 +36,7 @@ module Import
           cities_created: 0, cities_updated: 0,
           pools_created: 0, pools_updated: 0,
           meetings_created: 0, meetings_updated: 0,
+          calendars_created: 0, calendars_updated: 0,
           sessions_created: 0, sessions_updated: 0,
           teams_created: 0, teams_updated: 0,
           affiliations_created: 0,
@@ -112,24 +113,32 @@ module Import
         @phase3_data = JSON.parse(File.read(phase3_path)) if File.exist?(phase3_path)
         @phase4_data = JSON.parse(File.read(phase4_path)) if File.exist?(phase4_path)
 
-        Rails.logger.info('[PhaseCommitter] Loaded phase files')
+        Rails.logger.info('[Main] Loaded phase files')
       end
       # -----------------------------------------------------------------------
 
       # Phase 1: Cities, SwimmingPools, Meetings, MeetingSessions
       # Dependency order: City → SwimmingPool → Meeting → MeetingSession
       def commit_phase1_entities
-        Rails.logger.info('[PhaseCommitter] Committing Phase 1: Meeting & Sessions')
+        Rails.logger.info('[Main] Committing Phase 1: Meeting & Sessions')
         return unless phase1_data
 
-        # FIXED: Meeting data is directly under 'data', not 'data.meeting'
-        meeting_data = phase1_data['data'] || {}
-        sessions_data = Array(meeting_data['meeting_session'])
+        # Meeting data is directly under 'data', not 'data.meeting'
+        meeting_data = normalize_meeting_attributes(phase1_data['data'] || {})
+        sessions_data = Array(meeting_data.delete('meeting_session')).map.with_index do |session_hash, index|
+          normalize_session_attributes(session_hash, meeting_data['id'], index: index)
+        end
 
-        # Commit meeting (may create/update city and pool as side effects)
-        commit_meeting(meeting_data)
+        # Commit meeting (returns resulting meeting_id)
+        meeting_id = commit_meeting(meeting_data)
+        return unless meeting_id
 
-        # Commit sessions
+        commit_calendar(meeting_data.merge('meeting_id' => meeting_id))
+
+        # Update sessions with the resulting meeting_id so they can be persisted
+        sessions_data.each { |session_hash| session_hash['meeting_id'] = meeting_id }
+
+        # Commit sessions (mutates hashes with resulting IDs)
         sessions_data.each { |session_hash| commit_meeting_session(session_hash) }
       end
       # -----------------------------------------------------------------------
@@ -137,7 +146,7 @@ module Import
       # Phase 2: Teams, TeamAffiliations
       # Dependency order: Team → TeamAffiliation
       def commit_phase2_entities
-        Rails.logger.info('[PhaseCommitter] Committing Phase 2: Teams & Affiliations')
+        Rails.logger.info('[Main] Committing Phase 2: Teams & Affiliations')
         return unless phase2_data
 
         teams_data = Array(phase2_data.dig('data', 'teams'))
@@ -154,7 +163,7 @@ module Import
       # Phase 3: Swimmers, Badges
       # Dependency order: Swimmer → Badge (requires Swimmer + Team + Season + Category)
       def commit_phase3_entities
-        Rails.logger.info('[PhaseCommitter] Committing Phase 3: Swimmers & Badges')
+        Rails.logger.info('[Main] Committing Phase 3: Swimmers & Badges')
         return unless phase3_data
 
         swimmers_data = Array(phase3_data.dig('data', 'swimmers'))
@@ -171,7 +180,7 @@ module Import
       # Phase 4: MeetingEvents
       # MeetingPrograms deferred to Phase 5 (created when committing results)
       def commit_phase4_entities
-        Rails.logger.info('[PhaseCommitter] Committing Phase 4: Events')
+        Rails.logger.info('[Main] Committing Phase 4: Events')
         return unless phase4_data
 
         # Phase 4 data is structured as { "sessions": [ { "session_order": 1, "events": [...] }, ... ] }
@@ -187,7 +196,7 @@ module Import
       # Reads from data_import_* tables (not JSON)
       # Dependency order: MeetingProgram → MIR → Lap
       def commit_phase5_entities
-        Rails.logger.info('[PhaseCommitter] Committing Phase 5: Results from DB tables')
+        Rails.logger.info('[Main] Committing Phase 5: Results from DB tables')
 
         # Query all results for this source file
         all_mirs = GogglesDb::DataImportMeetingIndividualResult
@@ -226,32 +235,17 @@ module Import
             meeting.update!(sanitize_attributes(meeting_hash, GogglesDb::Meeting))
             @sql_log << SqlMaker.new(row: meeting).log_update
             @stats[:meetings_updated] += 1
-            Rails.logger.info("[PhaseCommitter] Updated Meeting ID=#{meeting_id}")
+            Rails.logger.info("[Main] Updated Meeting ID=#{meeting_id}")
           end
           return meeting_id
         end
 
-        # Create new meeting
-        attributes = {
-          'description' => meeting_hash['description'],
-          'code' => meeting_hash['code'],
-          'season_id' => meeting_hash['season_id'],
-          'header_year' => meeting_hash['header_year'],
-          'header_date' => meeting_hash['header_date'],
-          'edition' => meeting_hash['edition'] || 0,
-          'edition_type_id' => meeting_hash['edition_type_id'],
-          'timing_type_id' => meeting_hash['timing_type_id'],
-          'cancelled' => meeting_hash['cancelled'] || false,
-          'confirmed' => meeting_hash['confirmed'].nil? || meeting_hash['confirmed'],
-          'max_individual_events' => meeting_hash['max_individual_events'] || 3,
-          'max_individual_events_per_session' => meeting_hash['max_individual_events_per_session'] || 3
-        }.compact
-
-        new_meeting = GogglesDb::Meeting.create!(attributes)
+        normalized_attributes = sanitize_attributes(meeting_hash, GogglesDb::Meeting)
+        new_meeting = GogglesDb::Meeting.create!(normalized_attributes)
         @sql_log << SqlMaker.new(row: new_meeting).log_insert
         @stats[:meetings_created] += 1
         @logger.log_success(entity_type: 'Meeting', entity_id: new_meeting.id, action: 'created')
-        Rails.logger.info("[PhaseCommitter] Created Meeting ID=#{new_meeting.id}, #{new_meeting.description}")
+        Rails.logger.info("[Main] Created Meeting ID=#{new_meeting.id}, #{new_meeting.description}")
         new_meeting.id
       rescue ActiveRecord::RecordInvalid => e
         error_msg = "Meeting creation failed: #{e.message}"
@@ -262,60 +256,49 @@ module Import
           model_row: GogglesDb::Meeting.new(attributes),
           error: e
         )
-        Rails.logger.error("[PhaseCommitter] ERROR committing meeting: #{e.message}")
+        Rails.logger.error("[Main] ERROR committing meeting: #{e.message}")
         nil
       end
       # -----------------------------------------------------------------------
 
       def commit_meeting_session(session_hash)
         session_id = session_hash['meeting_session_id'] || session_hash['id']
-        meeting_id = phase1_data&.dig('data', 'id') || phase1_data&.dig('data', 'meeting_id')
+        meeting_id = session_hash['meeting_id']
 
         return unless meeting_id
 
         # Commit nested city first (if new)
-        city_id = commit_city(session_hash['city']) if session_hash['city']
+        city_id = commit_city(session_hash.dig('swimming_pool', 'city'))
 
         # Commit nested swimming pool (may reference city)
         pool_hash = session_hash['swimming_pool']
-        if pool_hash
-          pool_hash['city_id'] = city_id if city_id && !pool_hash['city_id']
-          swimming_pool_id = commit_swimming_pool(pool_hash)
-        end
+        swimming_pool_id = if pool_hash
+                             pool_hash['city_id'] ||= city_id if city_id
+                             commit_swimming_pool(pool_hash)
+                           end
+
+        normalized_session = sanitize_attributes(session_hash.merge('swimming_pool_id' => swimming_pool_id), GogglesDb::MeetingSession)
 
         # If session already has a DB ID, update if needed
         if session_id.present? && session_id.positive?
           session = GogglesDb::MeetingSession.find_by(id: session_id)
-          if session && attributes_changed?(session, session_hash)
-            session.update!(sanitize_attributes(session_hash, GogglesDb::MeetingSession).merge(
-              'meeting_id' => meeting_id,
-              'swimming_pool_id' => swimming_pool_id
-            ).compact)
+          if session && attributes_changed?(session, normalized_session)
+            session.update!(normalized_session)
             @sql_log << SqlMaker.new(row: session).log_update
             @stats[:sessions_updated] += 1
-            Rails.logger.info("[PhaseCommitter] Updated MeetingSession ID=#{session_id}")
+            Rails.logger.info("[Main] Updated MeetingSession ID=#{session_id}")
           end
           return session_id
         end
 
-        # Create new meeting session
-        attributes = {
-          'meeting_id' => meeting_id,
-          'swimming_pool_id' => swimming_pool_id,
-          'session_order' => session_hash['session_order'] || 0,
-          'scheduled_date' => session_hash['scheduled_date'],
-          'description' => session_hash['description'],
-          'day_part_type_id' => session_hash['day_part_type_id']
-        }.compact
-
-        new_session = GogglesDb::MeetingSession.create!(attributes)
+        new_session = GogglesDb::MeetingSession.create!(normalized_session)
         @sql_log << SqlMaker.new(row: new_session).log_insert
         @stats[:sessions_created] += 1
-        Rails.logger.info("[PhaseCommitter] Created MeetingSession ID=#{new_session.id}, order=#{new_session.session_order}")
+        Rails.logger.info("[Main] Created MeetingSession ID=#{new_session.id}, order=#{new_session.session_order}")
         new_session.id
       rescue ActiveRecord::RecordInvalid => e
         @stats[:errors] << "MeetingSession error: #{e.message}"
-        Rails.logger.error("[PhaseCommitter] ERROR committing session: #{e.message}")
+        Rails.logger.error("[Main] ERROR committing session: #{e.message}")
         nil
       end
       # -----------------------------------------------------------------------
@@ -330,24 +313,16 @@ module Import
         return city_id if city_id.present? && city_id.positive?
 
         # Create new city
-        attributes = {
-          'name' => city_hash['name'],
-          'area' => city_hash['area'],
-          'zip' => city_hash['zip'],
-          'country' => city_hash['country'],
-          'country_code' => city_hash['country_code'],
-          'latitude' => city_hash['latitude'],
-          'longitude' => city_hash['longitude']
-        }.compact
+        normalized_city = sanitize_attributes(city_hash, GogglesDb::City)
 
-        new_city = GogglesDb::City.create!(attributes)
+        new_city = GogglesDb::City.create!(normalized_city)
         @sql_log << SqlMaker.new(row: new_city).log_insert
         @stats[:cities_created] += 1
-        Rails.logger.info("[PhaseCommitter] Created City ID=#{new_city.id}, #{new_city.name}")
+        Rails.logger.info("[Main] Created City ID=#{new_city.id}, #{new_city.name}")
         new_city.id
       rescue ActiveRecord::RecordInvalid => e
         @stats[:errors] << "City error: #{e.message}"
-        Rails.logger.error("[PhaseCommitter] ERROR committing city: #{e.message}")
+        Rails.logger.error("[Main] ERROR committing city: #{e.message}")
         nil
       end
       # -----------------------------------------------------------------------
@@ -365,27 +340,16 @@ module Import
 
         # Retrieve PoolType only if not already set by ID:
         pool_type = GogglesDb::PoolType.find_by(code: pool_hash['pool_type_code']) if pool_hash['pool_type_code'].present? && pool_hash['pool_type_id'].blank?
-        attributes = {
-          'name' => pool_hash['name'],
-          'nick_name' => pool_hash['nick_name'],
-          'address' => pool_hash['address'],
-          'city_id' => pool_hash['city_id'],
-          'pool_type_id' => pool_hash['pool_type_id'] || pool_type&.id,
-          'lanes_number' => pool_hash['lanes_number'] || 8,
-          'maps_uri' => pool_hash['maps_uri'],
-          'plus_code' => pool_hash['plus_code'],
-          'latitude' => pool_hash['latitude'],
-          'longitude' => pool_hash['longitude']
-        }.compact
+        normalized_pool = sanitize_attributes(pool_hash.merge('pool_type_id' => pool_hash['pool_type_id'] || pool_type&.id), GogglesDb::SwimmingPool)
 
-        new_pool = GogglesDb::SwimmingPool.create!(attributes)
+        new_pool = GogglesDb::SwimmingPool.create!(normalized_pool)
         @sql_log << SqlMaker.new(row: new_pool).log_insert
         @stats[:pools_created] += 1
-        Rails.logger.info("[PhaseCommitter] Created SwimmingPool ID=#{new_pool.id}, #{new_pool.name}")
+        Rails.logger.info("[Main] Created SwimmingPool ID=#{new_pool.id}, #{new_pool.name}")
         new_pool.id
       rescue ActiveRecord::RecordInvalid => e
         @stats[:errors] << "SwimmingPool error: #{e.message}"
-        Rails.logger.error("[PhaseCommitter] ERROR committing pool: #{e.message}")
+        Rails.logger.error("[Main] ERROR committing pool: #{e.message}")
         nil
       end
       # -----------------------------------------------------------------------
@@ -405,7 +369,7 @@ module Import
             team.update!(sanitize_attributes(team_hash, GogglesDb::Team))
             @sql_log << SqlMaker.new(row: team).log_update
             @stats[:teams_updated] += 1
-            Rails.logger.info("[PhaseCommitter] Updated Team ID=#{team_id}")
+            Rails.logger.info("[Main] Updated Team ID=#{team_id}")
           end
           return team_id
         end
@@ -421,11 +385,11 @@ module Import
         new_team = GogglesDb::Team.create!(attributes)
         @sql_log << SqlMaker.new(row: new_team).log_insert
         @stats[:teams_created] += 1
-        Rails.logger.info("[PhaseCommitter] Created Team ID=#{new_team.id}, name=#{new_team.name}")
+        Rails.logger.info("[Main] Created Team ID=#{new_team.id}, name=#{new_team.name}")
         new_team.id
       rescue ActiveRecord::RecordInvalid => e
         @stats[:errors] << "Team error (#{team_hash['key']}): #{e.message}"
-        Rails.logger.error("[PhaseCommitter] ERROR committing team: #{e.message}")
+        Rails.logger.error("[Main] ERROR committing team: #{e.message}")
         nil
       end
       # -----------------------------------------------------------------------
@@ -441,7 +405,7 @@ module Import
 
         # If team_affiliation_id exists, it's already in DB - skip
         if team_affiliation_id.present?
-          Rails.logger.debug { "[PhaseCommitter] TeamAffiliation ID=#{team_affiliation_id} already exists, skipping" }
+          Rails.logger.debug { "[Main] TeamAffiliation ID=#{team_affiliation_id} already exists, skipping" }
           return
         end
 
@@ -456,10 +420,10 @@ module Import
         affiliation = GogglesDb::TeamAffiliation.create!(attributes)
         @sql_log << SqlMaker.new(row: affiliation).log_insert
         @stats[:affiliations_created] += 1
-        Rails.logger.info("[PhaseCommitter] Created TeamAffiliation ID=#{affiliation.id}, team_id=#{team_id}, season_id=#{season_id}")
+        Rails.logger.info("[Main] Created TeamAffiliation ID=#{affiliation.id}, team_id=#{team_id}, season_id=#{season_id}")
       rescue ActiveRecord::RecordInvalid => e
         @stats[:errors] << "TeamAffiliation error (team_id=#{team_id}): #{e.message}"
-        Rails.logger.error("[PhaseCommitter] ERROR creating affiliation: #{e.message}")
+        Rails.logger.error("[Main] ERROR creating affiliation: #{e.message}")
       end
       # -----------------------------------------------------------------------
 
@@ -478,7 +442,7 @@ module Import
             swimmer.update!(sanitize_attributes(swimmer_hash, GogglesDb::Swimmer))
             @sql_log << SqlMaker.new(row: swimmer).log_update
             @stats[:swimmers_updated] += 1
-            Rails.logger.info("[PhaseCommitter] Updated Swimmer ID=#{swimmer_id}")
+            Rails.logger.info("[Main] Updated Swimmer ID=#{swimmer_id}")
           end
           return swimmer_id
         end
@@ -497,11 +461,11 @@ module Import
         new_swimmer = GogglesDb::Swimmer.create!(attributes)
         @sql_log << SqlMaker.new(row: new_swimmer).log_insert
         @stats[:swimmers_created] += 1
-        Rails.logger.info("[PhaseCommitter] Created Swimmer ID=#{new_swimmer.id}, name=#{new_swimmer.complete_name}")
+        Rails.logger.info("[Main] Created Swimmer ID=#{new_swimmer.id}, name=#{new_swimmer.complete_name}")
         new_swimmer.id
       rescue ActiveRecord::RecordInvalid => e
         @stats[:errors] << "Swimmer error (#{swimmer_hash['key']}): #{e.message}"
-        Rails.logger.error("[PhaseCommitter] ERROR committing swimmer: #{e.message}")
+        Rails.logger.error("[Main] ERROR committing swimmer: #{e.message}")
         nil
       end
       # -----------------------------------------------------------------------
@@ -519,7 +483,7 @@ module Import
 
         # If badge_id exists, it's already in DB - skip
         if badge_id.present?
-          Rails.logger.debug { "[PhaseCommitter] Badge ID=#{badge_id} already exists, skipping" }
+          Rails.logger.debug { "[Main] Badge ID=#{badge_id} already exists, skipping" }
           return
         end
 
@@ -527,7 +491,7 @@ module Import
         team_affiliation = GogglesDb::TeamAffiliation.find_by(team_id: team_id, season_id: season_id)
         unless team_affiliation
           @stats[:errors] << "Badge error: TeamAffiliation not found for team_id=#{team_id}, season_id=#{season_id}"
-          Rails.logger.error('[PhaseCommitter] ERROR: TeamAffiliation not found for badge creation')
+          Rails.logger.error('[Main] ERROR: TeamAffiliation not found for badge creation')
           return
         end
 
@@ -548,10 +512,10 @@ module Import
         badge = GogglesDb::Badge.create!(attributes)
         @sql_log << SqlMaker.new(row: badge).log_insert
         @stats[:badges_created] += 1
-        Rails.logger.info("[PhaseCommitter] Created Badge ID=#{badge.id}, swimmer_id=#{swimmer_id}, team_id=#{team_id}, category_id=#{category_type_id}")
+        Rails.logger.info("[Main] Created Badge ID=#{badge.id}, swimmer_id=#{swimmer_id}, team_id=#{team_id}, category_id=#{category_type_id}")
       rescue ActiveRecord::RecordInvalid => e
         @stats[:errors] << "Badge error (swimmer_id=#{swimmer_id}, team_id=#{team_id}): #{e.message}"
-        Rails.logger.error("[PhaseCommitter] ERROR creating badge: #{e.message}")
+        Rails.logger.error("[Main] ERROR creating badge: #{e.message}")
       end
       # -----------------------------------------------------------------------
 
@@ -570,7 +534,7 @@ module Import
 
         # If meeting_event_id exists, it's already in DB - skip (could add update logic here if needed)
         if meeting_event_id.present?
-          Rails.logger.debug { "[PhaseCommitter] MeetingEvent ID=#{meeting_event_id} already exists, skipping" }
+          Rails.logger.debug { "[Main] MeetingEvent ID=#{meeting_event_id} already exists, skipping" }
           return meeting_event_id
         end
 
@@ -589,11 +553,11 @@ module Import
         new_event = GogglesDb::MeetingEvent.create!(attributes)
         @sql_log << SqlMaker.new(row: new_event).log_insert
         @stats[:events_created] += 1
-        Rails.logger.info("[PhaseCommitter] Created MeetingEvent ID=#{new_event.id}, session=#{meeting_session_id}, type=#{event_type_id}, order=#{new_event.event_order}")
+        Rails.logger.info("[Main] Created MeetingEvent ID=#{new_event.id}, session=#{meeting_session_id}, type=#{event_type_id}, order=#{new_event.event_order}")
         new_event.id
       rescue ActiveRecord::RecordInvalid => e
         @stats[:errors] << "MeetingEvent error (session=#{meeting_session_id}, type=#{event_type_id}): #{e.message}"
-        Rails.logger.error("[PhaseCommitter] ERROR committing event: #{e.message}")
+        Rails.logger.error("[Main] ERROR committing event: #{e.message}")
         nil
       end
       # -----------------------------------------------------------------------
@@ -650,13 +614,13 @@ module Import
           )
           @sql_log << SqlMaker.new(row: program).log_insert
           @stats[:programs_created] += 1
-          Rails.logger.info("[PhaseCommitter] Created MeetingProgram ID=#{program.id}, event=#{meeting_event_id}, #{category_code}-#{gender_code}")
+          Rails.logger.info("[Main] Created MeetingProgram ID=#{program.id}, event=#{meeting_event_id}, #{category_code}-#{gender_code}")
         end
 
         program.id
       rescue ActiveRecord::RecordInvalid => e
         @stats[:errors] << "MeetingProgram error: #{e.message}"
-        Rails.logger.error("[PhaseCommitter] ERROR ensuring program: #{e.message}")
+        Rails.logger.error("[Main] ERROR ensuring program: #{e.message}")
         nil
       end
       # -----------------------------------------------------------------------
@@ -673,7 +637,7 @@ module Import
               update_mir_attributes(existing_mir, data_import_mir, program_id)
               @sql_log << SqlMaker.new(row: existing_mir).log_update
               @stats[:mirs_updated] += 1
-              Rails.logger.info("[PhaseCommitter] Updated MIR ID=#{mir_id}")
+              Rails.logger.info("[Main] Updated MIR ID=#{mir_id}")
             end
             return mir_id
           end
@@ -698,11 +662,11 @@ module Import
         new_mir = GogglesDb::MeetingIndividualResult.create!(attributes)
         @sql_log << SqlMaker.new(row: new_mir).log_insert
         @stats[:mirs_created] += 1
-        Rails.logger.info("[PhaseCommitter] Created MIR ID=#{new_mir.id}, program=#{program_id}, rank=#{new_mir.rank}")
+        Rails.logger.info("[Main] Created MIR ID=#{new_mir.id}, program=#{program_id}, rank=#{new_mir.rank}")
         new_mir.id
       rescue ActiveRecord::RecordInvalid => e
         @stats[:errors] << "MIR error (#{data_import_mir.import_key}): #{e.message}"
-        Rails.logger.error("[PhaseCommitter] ERROR committing MIR: #{e.message}")
+        Rails.logger.error("[Main] ERROR committing MIR: #{e.message}")
         nil
       end
       # -----------------------------------------------------------------------
@@ -731,7 +695,7 @@ module Import
         new_lap.id
       rescue ActiveRecord::RecordInvalid => e
         @stats[:errors] << "Lap error (#{data_import_lap.import_key}): #{e.message}"
-        Rails.logger.error("[PhaseCommitter] ERROR committing lap: #{e.message}")
+        Rails.logger.error("[Main] ERROR committing lap: #{e.message}")
         nil
       end
       # -----------------------------------------------------------------------
@@ -795,33 +759,112 @@ module Import
       # Helper Methods
       # =========================================================================
 
-      # Generic commit helper: INSERT or UPDATE entity based on presence of ID
-      # Returns the final ID (either existing or newly created)
-      def commit_entity(model_class, attributes, stat_prefix)
-        id = attributes['id'] || attributes[:id]
+      # Build normalized meeting attributes matching DB schema
+      def normalize_meeting_attributes(raw_meeting)
+        meeting_hash = raw_meeting.deep_dup
 
-        if id.present?
-          # UPDATE existing record (if changed)
-          existing = model_class.find_by(id: id)
-          if existing && attributes_changed?(existing, attributes)
-            existing.update!(sanitize_attributes(attributes, model_class))
-            @sql_log << SqlMaker.new(row: existing).log_update
-            @stats[:"#{stat_prefix}_updated"] += 1
-            Rails.logger.info("[PhaseCommitter] Updated #{model_class.name} ID=#{id}")
+        meeting_hash['autofilled'] = true if meeting_hash['autofilled'].nil?
+        meeting_hash['allows_under25'] = meeting_hash.fetch('allows_under25', true)
+        meeting_hash['cancelled'] = meeting_hash.fetch('cancelled', false)
+        meeting_hash['confirmed'] = meeting_hash.fetch('confirmed', false)
+        meeting_hash['max_individual_events'] ||= GogglesDb::Meeting.columns_hash['max_individual_events'].default
+        meeting_hash['max_individual_events_per_session'] ||= GogglesDb::Meeting.columns_hash['max_individual_events_per_session'].default
+        meeting_hash['notes'] = build_meeting_notes(meeting_hash)
+
+        meeting_hash
+      end
+      # -----------------------------------------------------------------------
+
+      def build_meeting_notes(meeting_hash)
+        meeting_url = meeting_hash['meetingURL'] || meeting_hash['meeting_url']
+        return meeting_hash['notes'] if meeting_url.blank?
+
+        note_line = "meetingURL: #{meeting_url}"
+        existing_notes = meeting_hash['notes']
+        return note_line unless existing_notes.present?
+
+        notes = existing_notes.split("\n")
+        notes.prepend(note_line) unless notes.include?(note_line)
+        notes.join("\n")
+      end
+      # -----------------------------------------------------------------------
+
+      def normalize_session_attributes(session_hash, meeting_id, index: 0)
+        normalized = session_hash.deep_dup
+        normalized['meeting_id'] ||= meeting_id
+        normalized['session_order'] ||= index + 1
+        normalized['autofilled'] = normalized.fetch('autofilled', true)
+        normalized['description'] ||= "Session #{normalized['session_order']}"
+
+        normalized
+      end
+      # -----------------------------------------------------------------------
+
+      def commit_calendar(meeting_hash)
+        meeting_id = meeting_hash['meeting_id']
+        meeting = GogglesDb::Meeting.find_by(id: meeting_id)
+        return unless meeting
+
+        calendar_attributes = build_calendar_attributes(meeting_hash, meeting)
+        calendar_id = calendar_attributes['id']
+
+        begin
+          if calendar_id.present?
+            existing = GogglesDb::Calendar.find_by(id: calendar_id)
+            if existing && attributes_changed?(existing, calendar_attributes)
+              existing.update!(calendar_attributes)
+              @sql_log << SqlMaker.new(row: existing).log_update
+              @stats[:calendars_updated] += 1
+              Rails.logger.info("[Main] Updated Calendar ID=#{existing.id}")
+            end
+            return existing&.id
           end
-          id
-        else
-          # INSERT new record
-          new_record = model_class.create!(sanitize_attributes(attributes, model_class))
-          @sql_log << SqlMaker.new(row: new_record).log_insert
-          @stats[:"#{stat_prefix}_created"] += 1
-          Rails.logger.info("[PhaseCommitter] Created #{model_class.name} ID=#{new_record.id}")
-          new_record.id
+
+          calendar = GogglesDb::Calendar.create!(calendar_attributes)
+          @sql_log << SqlMaker.new(row: calendar).log_insert
+          @stats[:calendars_created] += 1
+          Rails.logger.info("[Main] Created Calendar ID=#{calendar.id}, meeting_id=#{meeting_id}")
+          calendar.id
+        rescue ActiveRecord::RecordInvalid => e
+          error_details = GogglesDb::ValidationErrorTools.recursive_error_for(e.record)
+          @stats[:errors] << "Calendar error: #{e.message} -- #{error_details}"
+          Rails.logger.error("[Main] ERROR committing calendar: #{e.message}")
+          nil
         end
-      rescue ActiveRecord::RecordInvalid => e
-        @stats[:errors] << "#{model_class.name} error: #{e.message}"
-        Rails.logger.error("[PhaseCommitter] ERROR: #{e.message}")
-        nil
+      end
+      # -----------------------------------------------------------------------
+
+      def build_calendar_attributes(meeting_hash, meeting)
+        existing = find_existing_calendar(meeting)
+        scheduled_date = meeting.header_date || meeting_hash['scheduled_date']
+
+        {
+          'id' => existing&.id,
+          'meeting_id' => meeting.id,
+          'meeting_code' => meeting.code,
+          'meeting_name' => meeting.description,
+          'scheduled_date' => scheduled_date,
+          'meeting_place' => build_meeting_place(meeting_hash),
+          'season_id' => meeting.season_id,
+          'year' => meeting_hash['dateYear1'] || scheduled_date&.year&.to_s,
+          'month' => meeting_hash['dateMonth1'] || scheduled_date&.strftime('%m'),
+          'results_link' => meeting_hash['meetingURL'] || meeting_hash['results_link'],
+          'manifest_link' => meeting_hash['manifestURL'] || meeting_hash['manifest_link'],
+          'organization_import_text' => meeting_hash['organization'],
+          'cancelled' => meeting.cancelled,
+          'updated_at' => Time.zone.now
+        }.compact
+      end
+      # -----------------------------------------------------------------------
+
+      def find_existing_calendar(meeting)
+        scopes = GogglesDb::Calendar.for_season(meeting.season_id)
+        scopes.for_code(meeting.code).first || scopes.where(meeting_id: meeting.id).first
+      end
+      # -----------------------------------------------------------------------
+
+      def build_meeting_place(meeting_hash)
+        [meeting_hash['venue1'], meeting_hash['address1']].compact_blank.join(', ')
       end
       # -----------------------------------------------------------------------
 
@@ -832,7 +875,7 @@ module Import
           { msg: message, progress: current, total: total }
         )
       rescue StandardError => e
-        Rails.logger.warn("[PhaseCommitter] Failed to broadcast progress: #{e.message}")
+        Rails.logger.warn("[Main] Failed to broadcast progress: #{e.message}")
       end
       # -----------------------------------------------------------------------
 

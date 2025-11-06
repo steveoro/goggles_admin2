@@ -56,15 +56,14 @@ A 6-phase import workflow that processes meeting results from PDF/JSON to produc
 - [Phase 3 Badge Matching](./phase3_badge_matching.md) - Complex 3-key + calculation
 - [Phase 4 Event Matching](./phase4_event_matching.md) - Standard 2-key with nesting
 
-**Legacy Documents** (Historical Reference):
+**Older Documents** (Historical Reference):
 - [Phase 6 Implementation Plan (v1.0)](./phase6_implementation_plan.md) - Original design
 - [Phase 5 & 6 Completion Plan](./phase5_and_6_completion_plan.md) - Hybrid architecture
-- [Phase 1 Status (Oct 2)](./phase1_status_20251002.md) - Initial implementation
 - [Data-Fix Redesign (To-Do)](./data_fix_redesign_with_phase_split-to_do.md) - Original spec
 
 **Supporting Documentation**:
-- [Data Review and Linking](./data_review_and_linking.md) - User workflow
-- [Data Commit and Push](./data_commit_and_push.md) - Deployment
+- [Data Review and Linking](./legacy_version/data_review_and_linking.md) - User workflow
+- [Data Commit and Push](./legacy_version/data_commit_and_push.md) - Deployment
 - [PDF Processing](./pdf_processing.md) - Source extraction
 - [AutoComplete Analysis](./data_fix_autocomplete_analysis.md) - UI components
 
@@ -169,8 +168,6 @@ docs/
 ├── data_fix_phases_master_index.md              ← START HERE (comprehensive)
 │
 ├── Phase-Specific Implementation
-│   ├── phase1_status_20251006.md                ← Phase 1 details
-│   ├── phase2_status_20251006.md                ← Phase 2 details
 │   ├── phase2_affiliation_matching.md           ← Phase 2 matching
 │   ├── phase3_badge_matching.md                 ← Phase 3 matching
 │   ├── phase4_event_matching.md                 ← Phase 4 matching
@@ -189,7 +186,6 @@ docs/
 │   └── data_fix_lt4_adapter.md                  ← Format handling
 │
 └── Legacy (Historical)
-    ├── phase1_status_20251002.md                ← Early Phase 1
     ├── data_fix_redesign_with_phase_split-to_do.md  ← Original spec
     └── data_fix_refactoring_and_enhancement.md  ← Early design
 ```
@@ -273,8 +269,8 @@ A: Unit tests for solvers, integration tests for full workflow. See [Master Inde
 ## 📞 Getting Help
 
 1. **Check documentation**: Start with [Master Index](./data_fix_phases_master_index.md)
-2. **Review code**: `/app/strategies/import/solvers/` and `/app/strategies/import/strategies/`
-3. **Check logs**: Look for `[<Phase>Solver]` and `[PhaseCommitter]` messages
+2. **Review code**: `/app/strategies/import/solvers/` and `/app/strategies/import/committers/`
+3. **Check logs**: Look for `[<Phase>Solver]` and `[Main]` messages
 4. **Ask team**: Reference specific documentation section when asking
 
 ---

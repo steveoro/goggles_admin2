@@ -452,8 +452,8 @@ class DataFixController < ApplicationController
       sql_path = File.join(curr_dir, sql_filename)
       log_path = File.join(curr_dir, "#{File.basename(source_path, '.json')}.log")
 
-      # Initialize PhaseCommitter with all phase paths and log path
-      committer = Import::Strategies::PhaseCommitter.new(
+      # Initialize Main with all phase paths and log path
+      committer = Import::Committers::Main.new(
         phase1_path: phase1_path,
         phase2_path: phase2_path,
         phase3_path: phase3_path,

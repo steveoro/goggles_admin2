@@ -214,7 +214,7 @@ rm -f spec/fixtures/import/*-edited.json
 RAILS_ENV=test bundle exec rake fixtures:sync_with_testdb
 
 # 2. Run tests normally (development env)
-bundle exec rspec spec/strategies/import/strategies/phase_committer_integration_spec.rb
+bundle exec rspec spec/strategies/import/committers/phase_committer_integration_spec.rb
 ```
 
 ---

@@ -60,7 +60,7 @@ def enhance_event_with_matching!(event_hash, session_order)
 end
 ```
 
-### PhaseCommitter Simplification
+### Main Simplification
 
 **Before: ~40 lines**  
 **After: ~20 lines**

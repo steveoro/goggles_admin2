@@ -44,7 +44,7 @@ Phase 4: Events Solver → phase4.json (with meeting_event_id, meeting_session_i
     ↓                                  ↑ loads phase1 (meeting_session_id)
 Phase 5: Results Populator → data_import_* DB tables (with all resolved IDs)
     ↓
-Phase 6: PhaseCommitter → Production DB + SQL log
+Phase 6: Main → Production DB + SQL log
 ```
 
 ### Pre-Matching Pattern (New in v2.0)
@@ -54,7 +54,7 @@ Phase 6: PhaseCommitter → Production DB + SQL log
 **Implementation**:
 - Phase Solvers match existing entities during build
 - Store matched IDs in phase JSON/DB
-- PhaseCommitter skips existing, creates new only
+- Main skips existing, creates new only
 - Zero lookups at commit time
 
 **Benefits**:
@@ -466,7 +466,7 @@ end
 **Reduction:** ~35 lines → ~8 lines (77% less code!)
 
 ### Implementation Files
-- `app/strategies/import/strategies/phase_committer.rb`
+- `app/strategies/import/committers/phase_committer.rb`
 - `app/controllers/push_controller.rb` (integration point)
 
 ---
@@ -516,7 +516,7 @@ end
 ### Benefits Realized
 
 **Code Quality**:
-- PhaseCommitter: -38 lines
+- Main: -38 lines
 - Helper methods removed: 3
 - Cross-phase lookups eliminated: 5+
 
@@ -595,7 +595,7 @@ config.x.use_phase_committer = ENV['USE_PHASE_COMMITTER'] == 'true'
 ```
 
 **Step 2: Parallel Testing** (Week 2-3)
-- Run both MacroCommitter and PhaseCommitter
+- Run both MacroCommitter and Main
 - Compare SQL output
 - Verify identical results
 

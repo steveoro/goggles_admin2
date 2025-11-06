@@ -60,7 +60,7 @@ This ensures:
 ## Purpose
 
 These fixtures provide **real, production-like data** for testing:
-- PhaseCommitter integration tests
+- Main integration tests
 - Solver unit tests  
 - End-to-end workflow tests
 
@@ -107,4 +107,4 @@ If the phase JSON structure changes significantly, these files should be regener
 ---
 
 **Created**: 2025-11-03  
-**Purpose**: Testing pre-matching pattern and PhaseCommitter integration
+**Purpose**: Testing pre-matching pattern and Main integration

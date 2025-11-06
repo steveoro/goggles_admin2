@@ -14,7 +14,7 @@ Phase 6 (Commit & SQL Generation) has been successfully integrated into the gogg
 
 Added `commit_phase6` action that:
 - Validates all phase files (1-4) exist
-- Initializes `PhaseCommitter` with all phase paths
+- Initializes `Main` with all phase paths
 - Commits all entities in a single transaction
 - Generates SQL file in `results.new` directory
 - Moves source JSON to `results.done` as backup
@@ -48,7 +48,7 @@ Added **"Commit"** button at the top of Phase 5 review page:
 2. **Phase 5 populated** with results in `data_import_*` tables
 3. **User clicks "Commit" button** on Phase 5 review page
 4. **Confirmation dialog** appears asking to confirm commit
-5. **PhaseCommitter executes** in dependency-aware order:
+5. **Main executes** in dependency-aware order:
    - Phase 1: Cities → Pools → Meetings → Sessions
    - Phase 2: Teams → TeamAffiliations  
    - Phase 3: Swimmers → Badges
@@ -102,7 +102,7 @@ SQL file saved to: sample-meeting-200RA.sql
 
 ## Dependencies
 
-- **PhaseCommitter** (`/app/strategies/import/strategies/phase_committer.rb`) - Already implemented ✅
+- **Main** (`/app/strategies/import/committers/phase_committer.rb`) - Already implemented ✅
 - **SqlMaker** (`/app/strategies/sql_maker.rb`) - Already implemented ✅
 - **Phase files** (phases 1-4) - Must exist before commit
 - **data_import_* tables** - Must be populated via Phase 5
@@ -133,7 +133,7 @@ Phase 6 commit failed: [error message]
 
 ### PushController
 
-The existing `PushController` still uses `MacroCommitter` for legacy workflow. Future enhancement could switch it to use `PhaseCommitter` for consistency, but this is not required since:
+The existing `PushController` still uses `MacroCommitter` for legacy workflow. Future enhancement could switch it to use `Main` for consistency, but this is not required since:
 - Legacy workflow is being phased out
 - New V2 workflow (phases 1-6) is self-contained
 - Both workflows produce compatible SQL output
@@ -151,4 +151,4 @@ Phase 6 moves JSON to `done` immediately since entities are committed locally.
 
 - [Phase 6 Implementation Plan](./phase6_implementation_plan.md)
 - [Phase 5 Pipeline Documentation](./README_PHASES.md)
-- [PhaseCommitter Code](../../app/strategies/import/strategies/phase_committer.rb)
+- [Main Code](../../app/strategies/import/committers/phase_committer.rb)

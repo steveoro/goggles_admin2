@@ -344,7 +344,7 @@ module Import
       end
 
       # Calculate CategoryType using CategoriesCache
-      # Same logic as PhaseCommitter but used during Phase 3
+      # Same logic as Main but used during Phase 3
       def calculate_category_type(year_of_birth:, gender_code:, meeting_date:)
         return nil unless year_of_birth && meeting_date && @categories_cache
 

@@ -7,7 +7,7 @@
 
 ## Overview
 
-Enhanced Phase 3 (SwimmerSolver) to pre-match existing badges during phase building, eliminating matching logic from Phase 6 (PhaseCommitter) and providing early feedback to operators.
+Enhanced Phase 3 (SwimmerSolver) to pre-match existing badges during phase building, eliminating matching logic from Phase 6 (Main) and providing early feedback to operators.
 
 ## Architecture Change
 
@@ -142,7 +142,7 @@ def find_team_id_by_key(team_key)
 end
 ```
 
-### PhaseCommitter Simplification
+### Main Simplification
 
 **Before: ~35 lines with lookups**
 ```ruby
@@ -207,7 +207,7 @@ Import::Solvers::SwimmerSolver.new(season:).build!(
 Operators see badge status **during Phase 3 review**, not at commit time.
 
 ### 2. Simpler Commit Logic 📦
-- PhaseCommitter reduced from ~35 to ~20 lines
+- Main reduced from ~35 to ~20 lines
 - No cross-phase lookups needed
 - Pure INSERT logic (no duplicate checks)
 - Removed 2 helper methods
@@ -259,8 +259,8 @@ This ensures:
 - [x] Badge matching skipped gracefully when IDs missing
 - [x] Existing badges detected and `badge_id` populated
 - [x] New badges have `badge_id: null`
-- [x] PhaseCommitter skips existing badges
-- [x] PhaseCommitter creates new badges only
+- [x] Main skips existing badges
+- [x] Main creates new badges only
 - [x] Logging shows matched vs. new badges
 - [x] Category calculation still works
 - [x] Cross-phase lookups (phase1 → phase3, phase2 → phase3)
@@ -299,8 +299,8 @@ Following same pattern for other entities:
   - Added `find_team_id_by_key` helper
   - Updated documentation
 
-### PhaseCommitter
-- `/app/strategies/import/strategies/phase_committer.rb`
+### Main
+- `/app/strategies/import/committers/phase_committer.rb`
   - Simplified `commit_badge` method
   - Removed `find_swimmer_id_by_key` helper (no longer needed)
   - Removed `find_team_id_by_key` helper (no longer needed)
@@ -314,7 +314,7 @@ Following same pattern for other entities:
 ## Success Metrics
 
 **Code Reduction:**
-- PhaseCommitter: -15 lines
+- Main: -15 lines
 - Helper methods removed: 2
 - Cross-phase lookups eliminated: 2
 

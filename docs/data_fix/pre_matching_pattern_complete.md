@@ -7,7 +7,7 @@
 
 ## Executive Summary
 
-Successfully implemented the **"solve early, commit later"** pre-matching pattern across Phases 2, 3, and 4 of the data import workflow. All junction tables and dependent entities now have their IDs pre-matched during phase building, eliminating complex lookup logic from Phase 6 (PhaseCommitter) and providing early feedback to operators.
+Successfully implemented the **"solve early, commit later"** pre-matching pattern across Phases 2, 3, and 4 of the data import workflow. All junction tables and dependent entities now have their IDs pre-matched during phase building, eliminating complex lookup logic from Phase 6 (Main) and providing early feedback to operators.
 
 ---
 
@@ -21,7 +21,7 @@ Successfully implemented the **"solve early, commit later"** pre-matching patter
 - Match existing records in DB
 - Store complete data with all IDs in phase JSON
 
-**PhaseCommitter** (commit time):
+**Main** (commit time):
 - Read pre-matched IDs from phase files
 - Skip existing records
 - Create new records only
@@ -46,7 +46,7 @@ Successfully implemented the **"solve early, commit later"** pre-matching patter
 
 **Changes:**
 - `TeamSolver#build_team_affiliation_entry`: Matches existing affiliations
-- `PhaseCommitter#commit_team_affiliation`: Simplified to skip existing
+- `Main#commit_team_affiliation`: Simplified to skip existing
 - `commit_phase2_entities`: Iterate over affiliations array
 
 **Phase 2 Output Example:**
@@ -64,7 +64,7 @@ Successfully implemented the **"solve early, commit later"** pre-matching patter
 
 **Code Metrics:**
 - TeamSolver: +32 lines (new method)
-- PhaseCommitter: -3 lines (simplified)
+- Main: -3 lines (simplified)
 - Eliminated: 1 lookup operation per affiliation
 
 ---
@@ -79,7 +79,7 @@ Successfully implemented the **"solve early, commit later"** pre-matching patter
 - `SwimmerSolver#calculate_category_type`: Uses CategoriesCache
 - `SwimmerSolver#find_swimmer_id_by_key`: Resolves swimmer_id
 - `SwimmerSolver#find_team_id_by_key`: Resolves team_id from phase2
-- `PhaseCommitter#commit_badge`: Simplified to skip existing
+- `Main#commit_badge`: Simplified to skip existing
 - `commit_phase3_entities`: Iterate over badges array
 
 **Dependencies Loaded:**
@@ -104,7 +104,7 @@ Successfully implemented the **"solve early, commit later"** pre-matching patter
 
 **Code Metrics:**
 - SwimmerSolver: +60 lines (badge matching + helpers)
-- PhaseCommitter: -15 lines (simplified badge + removed helpers)
+- Main: -15 lines (simplified badge + removed helpers)
 - Eliminated: 3 lookup operations per badge
 
 ---
@@ -117,7 +117,7 @@ Successfully implemented the **"solve early, commit later"** pre-matching patter
 **Changes:**
 - `EventSolver#enhance_event_with_matching!`: Matches existing events
 - `EventSolver#find_meeting_session_id_by_order`: Resolves session_id from phase1
-- `PhaseCommitter#commit_meeting_event`: Simplified to skip existing
+- `Main#commit_meeting_event`: Simplified to skip existing
 - `commit_phase4_entities`: Fixed to handle nested sessions/events structure
 
 **Dependencies Loaded:**
@@ -142,7 +142,7 @@ Successfully implemented the **"solve early, commit later"** pre-matching patter
 
 **Code Metrics:**
 - EventSolver: +40 lines (matching logic + helpers)
-- PhaseCommitter: -20 lines (simplified + fixed structure)
+- Main: -20 lines (simplified + fixed structure)
 - Eliminated: 1 lookup operation + 1 duplicate check per event
 
 ---
@@ -225,24 +225,24 @@ EventSolver.new(season:).build!(
 ```log
 [TeamSolver] Matched existing TeamAffiliation ID=456 for 'CSI OBER FERRARI'
 [TeamSolver] No existing affiliation found for 'NUOTO CLUB' (will create new)
-[PhaseCommitter] TeamAffiliation ID=456 already exists, skipping
-[PhaseCommitter] Created TeamAffiliation ID=457, team_id=124
+[Main] TeamAffiliation ID=456 already exists, skipping
+[Main] Created TeamAffiliation ID=457, team_id=124
 ```
 
 ### Phase 3
 ```log
 [SwimmerSolver] Badge for 'ROSSI|MARIO|1978' -> category M45 (ID: 789)
 [SwimmerSolver] Matched existing Badge ID=999 for 'ROSSI|MARIO|1978' + 'CSI OBER FERRARI'
-[PhaseCommitter] Badge ID=999 already exists, skipping
-[PhaseCommitter] Created Badge ID=1000, swimmer_id=124, category_id=790
+[Main] Badge ID=999 already exists, skipping
+[Main] Created Badge ID=1000, swimmer_id=124, category_id=790
 ```
 
 ### Phase 4
 ```log
 [EventSolver] Matched existing MeetingEvent ID=890 for 200|RA
 [EventSolver] No existing event found for 400|SL (will create new)
-[PhaseCommitter] MeetingEvent ID=890 already exists, skipping
-[PhaseCommitter] Created MeetingEvent ID=891, session=567, type=22
+[Main] MeetingEvent ID=890 already exists, skipping
+[Main] Created MeetingEvent ID=891, session=567, type=22
 ```
 
 ---
@@ -254,8 +254,8 @@ EventSolver.new(season:).build!(
 - [x] Guard clause when team_id missing
 - [x] Existing affiliations detected
 - [x] New affiliations have `team_affiliation_id: null`
-- [x] PhaseCommitter skips existing
-- [x] PhaseCommitter creates new only
+- [x] Main skips existing
+- [x] Main creates new only
 
 ### Phase 3 ✅
 - [x] Badge matching with all keys
@@ -264,8 +264,8 @@ EventSolver.new(season:).build!(
 - [x] New badges have `badge_id: null`
 - [x] Category calculation works
 - [x] Cross-phase lookups work (phase1 + phase2)
-- [x] PhaseCommitter skips existing
-- [x] PhaseCommitter creates new only
+- [x] Main skips existing
+- [x] Main creates new only
 
 ### Phase 4 ✅
 - [x] Event matching with session + type
@@ -274,8 +274,8 @@ EventSolver.new(season:).build!(
 - [x] New events have `meeting_event_id: null`
 - [x] Cross-phase lookup works (phase1)
 - [x] Nested sessions/events structure handled
-- [x] PhaseCommitter skips existing
-- [x] PhaseCommitter creates new only
+- [x] Main skips existing
+- [x] Main creates new only
 
 ---
 
@@ -286,8 +286,8 @@ EventSolver.new(season:).build!(
 - `/app/strategies/import/solvers/swimmer_solver.rb` (+60 lines)
 - `/app/strategies/import/solvers/event_solver.rb` (+40 lines)
 
-### PhaseCommitter
-- `/app/strategies/import/strategies/phase_committer.rb` (-38 lines net)
+### Main
+- `/app/strategies/import/committers/phase_committer.rb` (-38 lines net)
   - Simplified: `commit_team_affiliation`, `commit_badge`, `commit_meeting_event`
   - Fixed: `commit_phase4_entities` structure
   - Removed: Helper methods (replaced by phase data)
@@ -308,7 +308,7 @@ EventSolver.new(season:).build!(
 ## Overall Metrics
 
 **Code Reduction:**
-- PhaseCommitter: -38 lines
+- Main: -38 lines
 - Helper methods removed: 3
 - Cross-phase lookups eliminated: 5+ per record
 

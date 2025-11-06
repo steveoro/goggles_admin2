@@ -7,7 +7,7 @@
 
 ## Overview
 
-Enhanced Phase 2 (TeamSolver) to pre-match existing team affiliations during phase building, following the same pattern as Phase 3 badges. This eliminates matching logic from Phase 6 (PhaseCommitter) and provides early feedback.
+Enhanced Phase 2 (TeamSolver) to pre-match existing team affiliations during phase building, following the same pattern as Phase 3 badges. This eliminates matching logic from Phase 6 (Main) and provides early feedback.
 
 ## Architecture Change
 
@@ -113,7 +113,7 @@ All three badge creation points updated:
 - LT4 hash format (line 58-60)
 - LT2 sections (line 71-73)
 
-### PhaseCommitter Simplification
+### Main Simplification
 
 **Before: ~18 lines with lookup**
 ```ruby
@@ -211,8 +211,8 @@ Handles incomplete data gracefully:
 [TeamSolver] Auto-assigned team 'NUOTO CLUB' -> ID 124
 [TeamSolver] No existing affiliation found for 'NUOTO CLUB' (will create new)
 ...
-[PhaseCommitter] TeamAffiliation ID=456 already exists, skipping
-[PhaseCommitter] Created TeamAffiliation ID=457, team_id=124, season_id=242
+[Main] TeamAffiliation ID=456 already exists, skipping
+[Main] Created TeamAffiliation ID=457, team_id=124, season_id=242
 ```
 
 ---
@@ -238,8 +238,8 @@ Both follow the same pattern:
 - [x] Affiliation matching skipped gracefully when team_id missing
 - [x] Existing affiliations detected and ID populated
 - [x] New affiliations have `team_affiliation_id: null`
-- [x] PhaseCommitter skips existing affiliations
-- [x] PhaseCommitter creates new affiliations only
+- [x] Main skips existing affiliations
+- [x] Main creates new affiliations only
 - [x] Logging shows matched vs. new
 - [x] All three data source paths updated (LT4 array, LT4 hash, LT2)
 
@@ -253,8 +253,8 @@ Both follow the same pattern:
   - Updated all 3 affiliation creation points
   - Updated documentation
 
-### PhaseCommitter
-- `/app/strategies/import/strategies/phase_committer.rb`
+### Main
+- `/app/strategies/import/committers/phase_committer.rb`
   - Updated `commit_phase2_entities` to iterate over affiliations
   - Simplified `commit_team_affiliation` method
   - Changed method signature from `(team_id:, season_id:)` to `(affiliation_hash:)`
@@ -267,7 +267,7 @@ Both follow the same pattern:
 - +32 lines (new method + error handling)
 - 3 update sites (all affiliation creations)
 
-**PhaseCommitter:**
+**Main:**
 - -3 lines (simplified logic)
 - -1 lookup operation (no DB query needed)
 - +1 array iteration (explicit affiliations loop)

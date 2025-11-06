@@ -257,4 +257,4 @@ For large imports (500+ results):
 - [Phase 6 Implementation Plan](./phase6_implementation_plan.md)
 - [Phase 6 Implementation Complete](./phase6_implementation_complete.md)
 - [Phase 5 Pipeline](./README_PHASES.md)
-- [PhaseCommitter Code](../../app/strategies/import/strategies/phase_committer.rb)
+- [Main Code](../../app/strategies/import/committers/phase_committer.rb)

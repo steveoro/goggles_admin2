@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe Import::Strategies::PhaseCommitter, type: :strategy do
+RSpec.describe Import::Committers::Main, type: :strategy do
   let(:fixture_base) { 'sample-200RA-l4' }
   let(:source_path) { Rails.root.join('spec', 'fixtures', 'import', "#{fixture_base}.json").to_s }
   let(:phase1_path) { Rails.root.join('spec', 'fixtures', 'import', "#{fixture_base}-phase1.json").to_s }
