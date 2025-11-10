@@ -1,0 +1,105 @@
+:ruby
+  panel_id = "relay-enrichment-#{File.basename(file_path.to_s, File.extname(file_path.to_s)).parameterize}"
+  collapse_id = "#{panel_id}-collapse"
+  aux_list = Array(auxiliary_files)
+  select_size = [[aux_list.size, 5].max, 10].min
+  issue_labels = {
+    'missing_year_of_birth' => t('data_import.relay_enrichment.table.issues.missing_year_of_birth'),
+    'missing_gender' => t('data_import.relay_enrichment.table.issues.missing_gender'),
+    'missing_swimmer_id' => t('data_import.relay_enrichment.table.issues.missing_swimmer_id')
+  }
+  totals = Hash.new(0)
+  summary.each do |relay|
+    relay.fetch('missing_counts', {}).each do |issue, count|
+      totals[issue] += count.to_i
+    end
+  end
+
+.card.border-warning.mb-3
+  .card-header{id: "#{panel_id}-header"}
+    %h5.mb-0.d-flex.align-items-center
+      %button.btn.btn-link.p-0.text-left{ type: 'button', 'data-toggle' => 'collapse', 'data-target' => "##{collapse_id}", 'aria-expanded' => 'true', 'aria-controls' => collapse_id }
+        %i.fa.fa-life-ring.mr-2
+        = t('data_import.relay_enrichment.title')
+        %span.badge.badge-pill.badge-warning.ml-2= summary.size
+  %div{ id: "#{collapse_id}", class: "collapse show", 'aria-labelledby' => "#{panel_id}-header" }
+    .card-body
+      %p.text-muted
+        = t('data_import.relay_enrichment.description_html', count: summary.size).html_safe
+
+      - unless totals.empty?
+        .mb-3
+          %strong= t('data_import.relay_enrichment.missing_totals')
+          - totals.each do |issue, count|
+            %span.badge.badge-danger.ml-2
+              = "#{issue_labels[issue]}: #{count}"
+
+      - if aux_list.present?
+        = form_tag(merge_phase3_swimmers_path, method: :post, class: 'mb-3') do
+          = hidden_field_tag :file_path, file_path
+          .form-group
+            %label{ for: "#{panel_id}-aux-files" }
+              = t('data_import.relay_enrichment.fields.auxiliary_files')
+            = select_tag 'auxiliary_paths[]', options_for_select(aux_list.map { |path| [File.basename(path), path] }, selected_auxiliary), multiple: true, size: select_size, id: "#{panel_id}-aux-files", class: 'form-control'
+            %small.form-text.text-muted= t('data_import.relay_enrichment.fields.auxiliary_hint')
+          %button.btn.btn-sm.btn-primary{ type: 'submit', data: { confirm: t('data_import.relay_enrichment.confirm_merge') } }
+            %i.fa.fa-sync-alt.mr-1
+            = t('data_import.relay_enrichment.actions.scan_and_merge')
+      - else
+        .alert.alert-warning
+          = t('data_import.relay_enrichment.no_auxiliary_files')
+
+      %table.table.table-sm.table-striped.mt-3
+        %thead
+          %tr
+            %th= t('data_import.relay_enrichment.table.headers.relay')
+            %th= t('data_import.relay_enrichment.table.headers.team')
+            %th= t('data_import.relay_enrichment.table.headers.category')
+            %th= t('data_import.relay_enrichment.table.headers.issues')
+            %th= t('data_import.relay_enrichment.table.headers.swimmers')
+        %tbody
+          - summary.each do |relay|
+            %tr
+              %td
+                %strong= relay['relay_label']
+                - if relay['event_title'].present?
+                  %div.text-muted.small= relay['event_title']
+              %td= relay['team']
+              %td= relay['category']
+              %td
+                - relay.fetch('missing_counts', {}).each do |issue, count|
+                  %span.badge.badge-warning.mr-1.mb-1
+                    = "#{issue_labels[issue]}: #{count}"
+              %td
+                - Array(relay['swimmers']).each do |leg|
+                  .mb-2.pb-2.border-bottom
+                    %div.font-weight-bold
+                      = t('data_import.relay_enrichment.table.leg_label', number: leg['leg_order'])
+                      - if leg['phase3_key'].present?
+                        %span.badge.badge-success.ml-2
+                          = t('data_import.relay_enrichment.status.matched', key: leg['phase3_key'])
+                      - else
+                        %span.badge.badge-secondary.ml-2
+                          = t('data_import.relay_enrichment.status.unmatched')
+                    %div.small
+                      %span.mr-2
+                        %strong= t('data_import.relay_enrichment.table.swimmer_fields.name')
+                        = leg['name']
+                      %span.mr-2
+                        %strong= t('data_import.relay_enrichment.table.swimmer_fields.year')
+                        = leg['effective_year_of_birth'] || '—'
+                      %span.mr-2
+                        %strong= t('data_import.relay_enrichment.table.swimmer_fields.gender')
+                        = leg['effective_gender'] || '—'
+                    - active_issues = Array(leg['issues']).select { |_, flag| flag }
+                    - if active_issues.present?
+                      %div.small.mt-1
+                        - active_issues.each do |issue_key, _|
+                          %span.badge.badge-danger.mr-1
+                            = issue_labels[issue_key]
+                    - raw_info = []
+                    - raw_info << t('data_import.relay_enrichment.table.swimmer_fields.raw_year', value: leg['raw_year_of_birth']) if leg['raw_year_of_birth'].present?
+                    - raw_info << t('data_import.relay_enrichment.table.swimmer_fields.raw_gender', value: leg['raw_gender']) if leg['raw_gender'].present?
+                    - raw_info << t('data_import.relay_enrichment.table.swimmer_fields.lap_reference', value: leg['lap_reference']) if leg['lap_reference'].present?
+                    - if raw_info.any?
+                      %div.text-muted.small.mt-1= raw_info.join(' • ')

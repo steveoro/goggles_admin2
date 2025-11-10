@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require 'bigdecimal'
 
 RSpec.describe Import::Committers::Main do
   let(:season) do
@@ -814,6 +815,149 @@ RSpec.describe Import::Committers::Main do
         expect(normalized['fees_due']).to eq(true)
         expect(normalized['badge_due']).to eq(false)
         expect(normalized['relays_due']).to eq(true)
+        expect(normalized.keys).to all(be_a(String))
+      end
+    end
+
+    describe '#normalize_swimming_pool_attributes' do
+      it 'resolves pool type code, casts booleans, and strips unknown keys' do
+        pool_type = GogglesDb::PoolType.first || FactoryBot.create(:pool_type)
+
+        pool_hash = {
+          'name' => 'Downtown Pool',
+          'pool_type_code' => pool_type.code,
+          'multiple_pools' => '1',
+          'garden' => 'false',
+          'unexpected' => 'value'
+        }
+
+        normalized = committer.send(:normalize_swimming_pool_attributes, pool_hash, city_id: 42)
+
+        expect(normalized['pool_type_id']).to eq(pool_type.id)
+        expect(normalized['multiple_pools']).to eq(true)
+        expect(normalized['garden']).to eq(false)
+        expect(normalized['city_id']).to eq(42)
+        expect(normalized).not_to have_key('unexpected')
+      end
+    end
+
+    describe '#normalize_meeting_event_attributes' do
+      it 'resolves heat type code, casts flags, and sanitizes attributes' do
+        heat_type = GogglesDb::HeatType.first || FactoryBot.create(:heat_type)
+
+        event_hash = {
+          'meeting_session_id' => 7,
+          'event_type_id' => 3,
+          'heat_type' => heat_type.code,
+          'out_of_race' => 'false',
+          'split_gender_start_list' => '1',
+          'unexpected' => 'value'
+        }
+
+        normalized = committer.send(
+          :normalize_meeting_event_attributes,
+          event_hash,
+          meeting_session_id: 7,
+          event_type_id: 3
+        )
+
+        expect(normalized['heat_type_id']).to eq(heat_type.id)
+        expect(normalized['out_of_race']).to eq(false)
+        expect(normalized['split_gender_start_list']).to eq(true)
+        expect(normalized['meeting_session_id']).to eq(7)
+        expect(normalized['event_type_id']).to eq(3)
+        expect(normalized).not_to have_key('unexpected')
+      end
+    end
+
+    describe '#normalize_meeting_program_attributes' do
+      it 'fills required foreign keys, casts booleans, and strips extras' do
+        program_hash = {
+          'out_of_race' => '0',
+          'autofilled' => 'true',
+          'unexpected' => 'value'
+        }
+
+        normalized = committer.send(
+          :normalize_meeting_program_attributes,
+          program_hash,
+          meeting_event_id: 10,
+          category_type_id: 20,
+          gender_type_id: 30
+        )
+
+        expect(normalized['meeting_event_id']).to eq(10)
+        expect(normalized['category_type_id']).to eq(20)
+        expect(normalized['gender_type_id']).to eq(30)
+        expect(normalized['out_of_race']).to eq(false)
+        expect(normalized['autofilled']).to eq(true)
+        expect(normalized).not_to have_key('unexpected')
+      end
+    end
+
+    describe '#normalize_meeting_individual_result_attributes' do
+      it 'casts booleans, normalizes numerics, and ignores unexpected fields' do
+        data_import_mir = Struct.new(
+          :swimmer_id, :team_id, :rank, :minutes, :seconds, :hundredths,
+          :disqualified, :disqualification_code_type_id, :standard_points,
+          :meeting_points, :reaction_time, :out_of_race, :goggle_cup_points,
+          :team_points
+        ).new(
+          11, 22, '5', '01', '59', '12', 'true', 'DQ01', '12.50', '3.4', '0.45', '0', '0.12', ''
+        )
+
+        normalized = committer.send(
+          :normalize_meeting_individual_result_attributes,
+          data_import_mir,
+          program_id: 99
+        )
+
+        expect(normalized['meeting_program_id']).to eq(99)
+        expect(normalized['swimmer_id']).to eq(11)
+        expect(normalized['team_id']).to eq(22)
+        expect(normalized['rank']).to eq(5)
+        expect(normalized['minutes']).to eq(1)
+        expect(normalized['seconds']).to eq(59)
+        expect(normalized['hundredths']).to eq(12)
+        expect(normalized['disqualified']).to eq(true)
+        expect(normalized['out_of_race']).to eq(false)
+        expect(normalized['standard_points']).to eq(BigDecimal('12.50'))
+        expect(normalized['meeting_points']).to eq(BigDecimal('3.4'))
+        expect(normalized['reaction_time']).to eq(BigDecimal('0.45'))
+        expect(normalized['goggle_cup_points']).to eq(BigDecimal('0.12'))
+        expect(normalized).not_to have_key('team_points')
+        expect(normalized.keys).to all(be_a(String))
+      end
+    end
+
+    describe '#normalize_meeting_lap_attributes' do
+      it 'casts numeric fields and preserves associations' do
+        data_import_lap = Struct.new(
+          :length_in_meters, :minutes, :seconds, :hundredths,
+          :minutes_from_start, :seconds_from_start, :hundredths_from_start,
+          :reaction_time, :breath_number, :underwater_seconds,
+          :underwater_hundredths, :underwater_kicks, :position
+        ).new(
+          '50', '0', '31', '45', '0', '31', '45', '0.32', '4', '7', '', '2', nil
+        )
+
+        normalized = committer.send(
+          :normalize_meeting_lap_attributes,
+          data_import_lap,
+          mir_id: 123
+        )
+
+        expect(normalized['meeting_individual_result_id']).to eq(123)
+        expect(normalized['length_in_meters']).to eq(50)
+        expect(normalized['seconds']).to eq(31)
+        expect(normalized['hundredths']).to eq(45)
+        expect(normalized['seconds_from_start']).to eq(31)
+        expect(normalized['reaction_time']).to eq(BigDecimal('0.32'))
+        expect(normalized['breath_cycles']).to eq(4)
+        expect(normalized['underwater_seconds']).to eq(7)
+        expect(normalized).not_to have_key('underwater_hundredths')
+        expect(normalized['underwater_kicks']).to eq(2)
+        expect(normalized['position']).to be_nil
         expect(normalized.keys).to all(be_a(String))
       end
     end

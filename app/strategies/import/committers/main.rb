@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'bigdecimal'
+
 module Import
   module Committers
     #
@@ -341,8 +343,7 @@ module Import
         # Create new swimming pool
 
         # Retrieve PoolType only if not already set by ID:
-        pool_type = GogglesDb::PoolType.find_by(code: pool_hash['pool_type_code']) if pool_hash['pool_type_code'].present? && pool_hash['pool_type_id'].blank?
-        normalized_pool = sanitize_attributes(pool_hash.merge('pool_type_id' => pool_hash['pool_type_id'] || pool_type&.id), GogglesDb::SwimmingPool)
+        normalized_pool = normalize_swimming_pool_attributes(pool_hash, city_id: city_id)
 
         new_pool = GogglesDb::SwimmingPool.create!(normalized_pool)
         @sql_log << SqlMaker.new(row: new_pool).log_insert
@@ -502,12 +503,7 @@ module Import
       end
       # -----------------------------------------------------------------------
 
-      # =========================================================================
-      # Phase 4 Commit Methods
-      # =========================================================================
-
       def commit_meeting_event(event_hash)
-        # Event data comes from phase4 with pre-matched meeting_event_id and meeting_session_id
         meeting_event_id = event_hash['meeting_event_id']
         meeting_session_id = event_hash['meeting_session_id']
         event_type_id = event_hash['event_type_id']
@@ -515,23 +511,22 @@ module Import
         # Guard clause: skip if missing required keys
         return unless meeting_session_id && event_type_id
 
-        # If meeting_event_id exists, it's already in DB - skip (could add update logic here if needed)
+        attributes = normalize_meeting_event_attributes(
+          event_hash,
+          meeting_session_id: meeting_session_id,
+          event_type_id: event_type_id
+        )
+
         if meeting_event_id.present?
-          Rails.logger.debug { "[Main] MeetingEvent ID=#{meeting_event_id} already exists, skipping" }
-          return meeting_event_id
+          existing = GogglesDb::MeetingEvent.find_by(id: meeting_event_id)
+          if existing && attributes_changed?(existing, attributes)
+            existing.update!(attributes)
+            @sql_log << SqlMaker.new(row: existing).log_update
+            @stats[:events_updated] += 1
+            Rails.logger.info("[Main] Updated MeetingEvent ID=#{existing.id}")
+          end
+          return existing&.id || meeting_event_id
         end
-
-        # Create new meeting event
-
-        # Retrieve HeatType only if not already set by ID:
-        heat_type = GogglesDb::HeatType.find_by(code: event_hash['heat_type']) if event_hash['heat_type'].present? && event_hash['heat_type_id'].blank?
-        attributes = {
-          'meeting_session_id' => meeting_session_id,
-          'event_order' => event_hash['event_order'] || 0,
-          'event_type_id' => event_type_id,
-          'heat_type_id' => event_hash['heat_type_id'] || heat_type&.id,
-          'begin_time' => event_hash['begin_time']
-        }.compact
 
         new_event = GogglesDb::MeetingEvent.create!(attributes)
         @sql_log << SqlMaker.new(row: new_event).log_insert
@@ -589,12 +584,14 @@ module Import
 
         # Create if not found
         unless program
-          program = GogglesDb::MeetingProgram.create!(
+          program_attributes = normalize_meeting_program_attributes(
+            { 'event_order' => 0 },
             meeting_event_id: meeting_event_id,
             category_type_id: category_type.id,
-            gender_type_id: gender_type.id,
-            event_order: 0 # Default order
+            gender_type_id: gender_type.id
           )
+
+          program = GogglesDb::MeetingProgram.create!(program_attributes)
           @sql_log << SqlMaker.new(row: program).log_insert
           @stats[:programs_created] += 1
           Rails.logger.info("[Main] Created MeetingProgram ID=#{program.id}, event=#{meeting_event_id}, #{category_code}-#{gender_code}")
@@ -615,9 +612,10 @@ module Import
         if mir_id.present? && mir_id.positive?
           existing_mir = GogglesDb::MeetingIndividualResult.find_by(id: mir_id)
           if existing_mir
+            normalized_attributes = normalize_meeting_individual_result_attributes(data_import_mir, program_id: program_id)
             # Check if timing or other attributes changed
-            if mir_attributes_changed?(existing_mir, data_import_mir)
-              update_mir_attributes(existing_mir, data_import_mir, program_id)
+            if mir_attributes_changed?(existing_mir, normalized_attributes)
+              update_mir_attributes(existing_mir, normalized_attributes)
               @sql_log << SqlMaker.new(row: existing_mir).log_update
               @stats[:mirs_updated] += 1
               Rails.logger.info("[Main] Updated MIR ID=#{mir_id}")
@@ -627,20 +625,7 @@ module Import
         end
 
         # Create new MIR
-        attributes = {
-          'meeting_program_id' => program_id,
-          'swimmer_id' => data_import_mir.swimmer_id,
-          'team_id' => data_import_mir.team_id,
-          'rank' => data_import_mir.rank,
-          'minutes' => data_import_mir.minutes,
-          'seconds' => data_import_mir.seconds,
-          'hundredths' => data_import_mir.hundredths,
-          'disqualified' => data_import_mir.disqualified || false,
-          'disqualification_code_type_id' => data_import_mir.disqualification_code_type_id,
-          'standard_points' => data_import_mir.standard_points,
-          'meeting_points' => data_import_mir.meeting_points,
-          'reaction_time' => data_import_mir.reaction_time
-        }.compact
+        attributes = normalize_meeting_individual_result_attributes(data_import_mir, program_id: program_id)
 
         new_mir = GogglesDb::MeetingIndividualResult.create!(attributes)
         @sql_log << SqlMaker.new(row: new_mir).log_insert
@@ -656,21 +641,7 @@ module Import
 
       def commit_lap(data_import_lap, mir_id)
         # All laps are new (no matching logic for laps)
-        attributes = {
-          'meeting_individual_result_id' => mir_id,
-          'length_in_meters' => data_import_lap.length_in_meters,
-          'minutes' => data_import_lap.minutes,
-          'seconds' => data_import_lap.seconds,
-          'hundredths' => data_import_lap.hundredths,
-          'minutes_from_start' => data_import_lap.minutes_from_start,
-          'seconds_from_start' => data_import_lap.seconds_from_start,
-          'hundredths_from_start' => data_import_lap.hundredths_from_start,
-          'reaction_time' => data_import_lap.reaction_time,
-          'breath_number' => data_import_lap.breath_number,
-          'underwater_seconds' => data_import_lap.underwater_seconds,
-          'underwater_hundredths' => data_import_lap.underwater_hundredths,
-          'position' => data_import_lap.position
-        }.compact
+        attributes = normalize_meeting_lap_attributes(data_import_lap, mir_id: mir_id)
 
         new_lap = GogglesDb::Lap.create!(attributes)
         @sql_log << SqlMaker.new(row: new_lap).log_insert
@@ -708,33 +679,21 @@ module Import
       # -----------------------------------------------------------------------
 
       # Check if MIR attributes have changed
-      def mir_attributes_changed?(existing_mir, data_import_mir)
-        [
-          existing_mir.rank != data_import_mir.rank,
-          existing_mir.minutes != data_import_mir.minutes,
-          existing_mir.seconds != data_import_mir.seconds,
-          existing_mir.hundredths != data_import_mir.hundredths,
-          existing_mir.disqualified != data_import_mir.disqualified,
-          existing_mir.standard_points != data_import_mir.standard_points,
-          existing_mir.meeting_points != data_import_mir.meeting_points
-        ].any?
+      def mir_attributes_changed?(existing_mir, normalized_attributes)
+        normalized_attributes.any? do |key, value|
+          begin
+            existing_value = existing_mir.public_send(key.to_sym)
+          rescue NoMethodError
+            existing_value = nil
+          end
+          existing_value != value
+        end
       end
       # -----------------------------------------------------------------------
 
       # Update MIR attributes from data_import_mir
-      def update_mir_attributes(existing_mir, data_import_mir, program_id)
-        existing_mir.update!(
-          meeting_program_id: program_id,
-          rank: data_import_mir.rank,
-          minutes: data_import_mir.minutes,
-          seconds: data_import_mir.seconds,
-          hundredths: data_import_mir.hundredths,
-          disqualified: data_import_mir.disqualified,
-          disqualification_code_type_id: data_import_mir.disqualification_code_type_id,
-          standard_points: data_import_mir.standard_points,
-          meeting_points: data_import_mir.meeting_points,
-          reaction_time: data_import_mir.reaction_time
-        )
+      def update_mir_attributes(existing_mir, normalized_attributes)
+        existing_mir.update!(normalized_attributes)
       end
       # -----------------------------------------------------------------------
 
@@ -780,6 +739,126 @@ module Import
         normalized['description'] ||= "Session #{normalized['session_order']}"
 
         normalized
+      end
+      # -----------------------------------------------------------------------
+
+      def normalize_swimming_pool_attributes(pool_hash, city_id:)
+        normalized = pool_hash.deep_dup.with_indifferent_access
+        normalized['city_id'] ||= city_id if city_id
+
+        pool_type_code = normalized.delete('pool_type_code')
+        if normalized['pool_type_id'].blank? && pool_type_code.present?
+          normalized['pool_type_id'] = GogglesDb::PoolType.find_by(code: pool_type_code)&.id
+        end
+
+        %w[multiple_pools garden bar restaurant gym child_area read_only].each do |flag|
+          next unless normalized.key?(flag)
+
+          normalized[flag] = BOOLEAN_TYPE.cast(normalized[flag])
+        end
+
+        sanitize_attributes(normalized, GogglesDb::SwimmingPool)
+      end
+      # -----------------------------------------------------------------------
+
+      def normalize_meeting_event_attributes(event_hash, meeting_session_id:, event_type_id:)
+        normalized = event_hash.deep_dup.with_indifferent_access
+        normalized['meeting_session_id'] = meeting_session_id
+        normalized['event_type_id'] ||= event_type_id
+
+        heat_type_code = normalized.delete('heat_type') || normalized.delete(:heat_type)
+        if normalized['heat_type_id'].blank? && heat_type_code.present?
+          normalized['heat_type_id'] = GogglesDb::HeatType.find_by(code: heat_type_code)&.id
+        end
+
+        %w[out_of_race autofilled split_gender_start_list split_category_start_list].each do |flag|
+          next unless normalized.key?(flag)
+
+          normalized[flag] = BOOLEAN_TYPE.cast(normalized[flag])
+        end
+
+        normalized['event_order'] ||= normalized['event_order'] || 0
+
+        sanitize_attributes(normalized, GogglesDb::MeetingEvent)
+      end
+      # -----------------------------------------------------------------------
+
+      def normalize_meeting_program_attributes(program_hash, meeting_event_id:, category_type_id:, gender_type_id:)
+        normalized = program_hash.deep_dup.with_indifferent_access
+        normalized['meeting_event_id'] ||= meeting_event_id
+        normalized['category_type_id'] ||= category_type_id
+        normalized['gender_type_id'] ||= gender_type_id
+
+        %w[out_of_race autofilled].each do |flag|
+          next unless normalized.key?(flag)
+
+          normalized[flag] = BOOLEAN_TYPE.cast(normalized[flag])
+        end
+
+        sanitize_attributes(normalized, GogglesDb::MeetingProgram)
+      end
+      # -----------------------------------------------------------------------
+
+      def normalize_meeting_individual_result_attributes(data_import_mir, program_id:)
+        normalized = {
+          'meeting_program_id' => program_id,
+          'swimmer_id' => data_import_mir.swimmer_id,
+          'team_id' => data_import_mir.team_id,
+          'rank' => integer_or_nil(data_import_mir.rank),
+          'minutes' => integer_or_nil(data_import_mir.minutes),
+          'seconds' => integer_or_nil(data_import_mir.seconds),
+          'hundredths' => integer_or_nil(data_import_mir.hundredths),
+          'disqualified' => BOOLEAN_TYPE.cast(data_import_mir.disqualified),
+          'disqualification_code_type_id' => data_import_mir.disqualification_code_type_id,
+          'standard_points' => decimal_or_nil(data_import_mir.standard_points),
+          'meeting_points' => decimal_or_nil(data_import_mir.meeting_points),
+          'reaction_time' => decimal_or_nil(data_import_mir.reaction_time),
+          'out_of_race' => BOOLEAN_TYPE.cast(data_import_mir.out_of_race),
+          'goggle_cup_points' => decimal_or_nil(data_import_mir.goggle_cup_points),
+          'team_points' => decimal_or_nil(data_import_mir.team_points)
+        }.compact
+
+        sanitize_attributes(normalized, GogglesDb::MeetingIndividualResult)
+      end
+      # -----------------------------------------------------------------------
+
+      def normalize_meeting_lap_attributes(data_import_lap, mir_id:)
+        normalized = {
+          'meeting_individual_result_id' => mir_id,
+          'length_in_meters' => integer_or_nil(data_import_lap.length_in_meters),
+          'minutes' => integer_or_nil(data_import_lap.minutes),
+          'seconds' => integer_or_nil(data_import_lap.seconds),
+          'hundredths' => integer_or_nil(data_import_lap.hundredths),
+          'minutes_from_start' => integer_or_nil(data_import_lap.minutes_from_start),
+          'seconds_from_start' => integer_or_nil(data_import_lap.seconds_from_start),
+          'hundredths_from_start' => integer_or_nil(data_import_lap.hundredths_from_start),
+          'reaction_time' => decimal_or_nil(data_import_lap.reaction_time),
+          'breath_cycles' => integer_or_nil(data_import_lap.breath_number),
+          'underwater_seconds' => integer_or_nil(data_import_lap.underwater_seconds),
+          'underwater_hundredths' => integer_or_nil(data_import_lap.underwater_hundredths),
+          'underwater_kicks' => integer_or_nil(data_import_lap.underwater_kicks),
+          'position' => integer_or_nil(data_import_lap.position)
+        }.compact
+
+        sanitize_attributes(normalized, GogglesDb::Lap)
+      end
+      # -----------------------------------------------------------------------
+
+      def integer_or_nil(value)
+        return nil if value.nil? || (value.respond_to?(:blank?) && value.blank?)
+
+        value.to_i
+      end
+      # -----------------------------------------------------------------------
+
+      def decimal_or_nil(value)
+        return nil if value.nil? || (value.respond_to?(:blank?) && value.blank?)
+
+        return value if value.is_a?(BigDecimal)
+
+        BigDecimal(value.to_s)
+      rescue ArgumentError
+        nil
       end
       # -----------------------------------------------------------------------
 

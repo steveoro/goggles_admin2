@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require 'date'
+require 'pathname'
+require 'json'
 
 # = DataFixController: phased pipeline (v2)
 #
@@ -157,6 +159,27 @@ class DataFixController < ApplicationController
       pfm = PhaseFileManager.new(phase_path)
       @phase3_meta = pfm.meta
       @phase3_data = pfm.data
+      @source_path = source_path
+      base_dir = File.dirname(source_path)
+
+      detector = Phase3::RelayEnrichmentDetector.new(
+        source_path: source_path,
+        phase3_swimmers: @phase3_data.fetch('swimmers', [])
+      )
+      @relay_enrichment_summary = detector.detect
+      @auxiliary_phase3_files = Dir.glob(File.join(base_dir, '*-phase3*.json'))
+                                   .reject { |path| path == phase_path }
+                                   .sort
+      stored_auxiliary = Array(@phase3_meta['auxiliary_phase3_paths']).map do |stored_path|
+        next if stored_path.blank?
+
+        begin
+          Pathname.new(File.expand_path(stored_path, base_dir)).to_s
+        rescue StandardError
+          nil
+        end
+      end.compact
+      @selected_auxiliary_phase3_files = stored_auxiliary & @auxiliary_phase3_files
 
       # Set API URL for AutoComplete components
       set_api_url
@@ -774,6 +797,96 @@ class DataFixController < ApplicationController
 
     redirect_to review_swimmers_path(file_path:, phase3_v2: 1), notice: 'Swimmer added'
   end
+
+  # Merge auxiliary Phase 3 files to enrich relay swimmers
+  # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
+  def merge_phase3_swimmers
+    file_path = params[:file_path]
+    selected_paths = Array(params[:auxiliary_paths]).reject(&:blank?)
+
+    if file_path.blank?
+      flash[:warning] = I18n.t('data_import.errors.invalid_request')
+      redirect_to(pull_index_path) && return
+    end
+
+    source_path = resolve_source_path(file_path)
+    base_dir = File.dirname(source_path)
+    phase_path = default_phase_path_for(source_path, 3)
+
+    unless File.exist?(phase_path)
+      flash[:warning] = I18n.t('data_import.relay_enrichment.errors.missing_phase_file')
+      redirect_to(review_swimmers_path(file_path:, phase3_v2: 1)) && return
+    end
+
+    if selected_paths.empty?
+      flash[:warning] = I18n.t('data_import.relay_enrichment.errors.no_selection')
+      redirect_to(review_swimmers_path(file_path:, phase3_v2: 1)) && return
+    end
+
+    pfm = PhaseFileManager.new(phase_path)
+    data = pfm.data || {}
+    meta = pfm.meta || {}
+
+    warnings = []
+    resolved_aux_paths = selected_paths.filter_map do |raw|
+      begin
+        abs_path = Pathname.new(File.expand_path(raw, base_dir)).to_s
+        if File.exist?(abs_path)
+          abs_path
+        else
+          warnings << I18n.t('data_import.relay_enrichment.errors.missing_file', file: File.basename(raw))
+          nil
+        end
+      rescue StandardError
+        warnings << I18n.t('data_import.relay_enrichment.errors.invalid_path', path: raw)
+        nil
+      end
+    end
+
+    if resolved_aux_paths.empty?
+      flash[:warning] = warnings.presence || I18n.t('data_import.relay_enrichment.errors.no_valid_files')
+      redirect_to(review_swimmers_path(file_path:, phase3_v2: 1)) && return
+    end
+
+    merger = Phase3::RelayMergeService.new(data.deep_dup)
+    resolved_aux_paths.each do |aux_path|
+      begin
+        payload = JSON.parse(File.read(aux_path))
+        aux_data = payload.is_a?(Hash) ? payload['data'] || payload : {}
+        merger.merge_from(aux_data)
+      rescue JSON::ParserError
+        warnings << I18n.t('data_import.relay_enrichment.errors.unreadable_file', file: File.basename(aux_path))
+      end
+    end
+
+    merged_data = merger.result
+    %w[meeting_event meeting_program meeting_individual_result meeting_relay_result].each do |key|
+      merged_data[key] = [] if merged_data.key?(key)
+    end
+
+    relative_aux_paths = resolved_aux_paths.map do |abs|
+      begin
+        Pathname.new(abs).relative_path_from(Pathname.new(base_dir)).to_s
+      rescue StandardError
+        abs
+      end
+    end
+
+    meta['auxiliary_phase3_paths'] = relative_aux_paths
+    meta['generated_at'] = Time.now.utc.iso8601
+
+    pfm.write!(data: merged_data, meta: meta)
+
+    stats = merger.stats
+    flash[:notice] = I18n.t('data_import.relay_enrichment.merge_success',
+                            swimmers_added: stats[:swimmers_added],
+                            swimmers_updated: stats[:swimmers_updated],
+                            badges_added: stats[:badges_added])
+    flash[:warning] = warnings.join(' ') if warnings.present?
+
+    redirect_to review_swimmers_path(file_path:, phase3_v2: 1)
+  end
+  # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
 
   # Delete a swimmer entry from Phase 3 and clear downstream phase data
   def delete_swimmer

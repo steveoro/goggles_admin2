@@ -17,7 +17,9 @@
       - if has_match
         - fuzzy_matches = swimmer_hash['fuzzy_matches'] || []
         - selected_match = fuzzy_matches.find { |m| m['id'] == swimmer_id }
-        - badge_color = selected_match ? "badge-#{selected_match['color_class']}" : 'badge-success'
+        - fallback_badge_color = 'badge-success'
+        - color_class = selected_match&.[]('color_class')
+        - badge_color = color_class.present? ? "badge-#{color_class}" : fallback_badge_color
         %small.ml-2.badge{ class: badge_color }
           ID: #{swimmer_id}
       - else

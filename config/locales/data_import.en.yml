@@ -80,3 +80,44 @@ en:
     messages:
       updated: 'Updated successfully.'
       phase_rebuilt: 'Phase %{phase} rebuilt from source.'
+    relay_enrichment:
+      title: 'Relay swimmer enrichment'
+      description_html: 'Detected <strong>%{count}</strong> relays with incomplete swimmer data. Merge auxiliary Phase 3 files to fill in missing attributes.'
+      missing_totals: 'Missing attributes'
+      fields:
+        auxiliary_files: 'Auxiliary Phase 3 files'
+        auxiliary_hint: 'Select one or more *-phase3 JSON files from the same meeting folder to merge into the current Phase 3 data.'
+      actions:
+        scan_and_merge: 'Scan & merge'
+      confirm_merge: 'Merge swimmers from the selected auxiliary files?'
+      no_auxiliary_files: 'No auxiliary Phase 3 files were found alongside the source file.'
+      status:
+        matched: 'Matched (%{key})'
+        unmatched: 'Unmatched'
+      table:
+        headers:
+          relay: 'Relay'
+          team: 'Team'
+          category: 'Category'
+          issues: 'Issues'
+          swimmers: 'Swimmers'
+        issues:
+          missing_year_of_birth: 'Year missing'
+          missing_gender: 'Gender missing'
+          missing_swimmer_id: 'Swimmer ID missing'
+        leg_label: 'Leg %{number}'
+        swimmer_fields:
+          name: 'Name:'
+          year: 'Year:'
+          gender: 'Gender:'
+          raw_year: 'Raw year: %{value}'
+          raw_gender: 'Raw gender: %{value}'
+          lap_reference: 'Lap reference: %{value}'
+      errors:
+        missing_phase_file: 'Phase 3 file not found. Please rebuild Phase 3 before merging.'
+        no_selection: 'Select at least one auxiliary Phase 3 file before merging.'
+        missing_file: "Auxiliary file not found: %{file}."
+        invalid_path: 'Invalid auxiliary file path: %{path}'
+        unreadable_file: 'Unable to read JSON payload for %{file}.'
+        no_valid_files: 'No valid auxiliary Phase 3 files were provided.'
+      merge_success: 'Merge complete: %{swimmers_added} swimmers added, %{swimmers_updated} swimmers updated, %{badges_added} badges added.'

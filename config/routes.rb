@@ -56,6 +56,7 @@ Rails.application.routes.draw do
   patch 'data_fix/update_phase3_swimmer', to: 'data_fix#update_phase3_swimmer', as: 'update_phase3_swimmer'
   post 'data_fix/add_swimmer', to: 'data_fix#add_swimmer', as: 'data_fix_add_swimmer'
   delete 'data_fix/delete_swimmer', to: 'data_fix#delete_swimmer', as: 'data_fix_delete_swimmer'
+  post 'data_fix/merge_phase3_swimmers', to: 'data_fix#merge_phase3_swimmers', as: 'merge_phase3_swimmers'
   patch 'data_fix/update_phase4_event', to: 'data_fix#update_phase4_event', as: 'update_phase4_event'
   post 'data_fix/add_event', to: 'data_fix#add_event', as: 'data_fix_add_event'
   delete 'data_fix/delete_event', to: 'data_fix#delete_event', as: 'data_fix_delete_event'

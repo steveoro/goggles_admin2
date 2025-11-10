@@ -15,6 +15,13 @@
   -# Phase Metadata card
   = render(partial: 'data_fix/phase_metadata', locals: { phase_number: 3, metadata: @phase3_meta })
 
+  - if @relay_enrichment_summary.present?
+    = render(partial: 'data_fix/relay_enrichment_panel',
+             locals: { summary: @relay_enrichment_summary,
+                       auxiliary_files: @auxiliary_phase3_files,
+                       selected_auxiliary: @selected_auxiliary_phase3_files,
+                       file_path: @file_path })
+
   -# Search and filter controls
   .card.my-2
     .card-header

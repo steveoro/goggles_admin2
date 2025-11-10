@@ -152,3 +152,15 @@ Phase 6 moves JSON to `done` immediately since entities are committed locally.
 - [Phase 6 Implementation Plan](./phase6_implementation_plan.md)
 - [Phase 5 Pipeline Documentation](./README_PHASES.md)
 - [Main Code](../../app/strategies/import/committers/phase_committer.rb)
+- [Current Committer Implementation](../../app/strategies/import/committers/main.rb)
+- [RSpec Coverage](../../spec/strategies/import/committers/main_spec.rb)
+
+## 2025-11-07 Updates
+
+- Added attribute normalization helpers for teams, affiliations, swimmers, and badges to ensure incoming hashes are trimmed to the ActiveRecord column set and that booleans/derived fields (for example `compute_gogglecup`, `year_guessed`, `entry_time_type_id`) are cast consistently. See @app/strategies/import/committers/main.rb#360-520.
+- Hardened calendar synchronization so that `build_calendar_attributes` backfills missing meeting metadata from the phase hash and `find_existing_calendar` gracefully handles `season_id` integers. See @app/strategies/import/committers/main.rb#884-914.
+- Extended spec coverage for calendar commits, verifying SQL logging and stats deltas for inserts/updates as well as fallback behavior when meeting attributes are nil. See @spec/strategies/import/committers/main_spec.rb#602-705.
+- Normalized meeting program descendants by adding helpers for MIR and lap rows that cast booleans (`disqualified`, `out_of_race`) and numerics (rank, timing splits, reaction times) while filtering extraneous fields. See @app/strategies/import/committers/main.rb#608-862.
+- Added regression specs guaranteeing string inputs like `'true'`/`'0.45'` are persisted with the correct types and that lap attributes map onto the legacy schema (`breath_cycles`, `underwater_kicks`). See @spec/strategies/import/committers/main_spec.rb#898-961.
+- Introduced Phase 3 relay swimmer enrichment workflow: inline accordion in the swimmers review highlights incomplete relay legs, allows selecting auxiliary `*-phase3` files, and posts to a new merge endpoint that persists auxiliary paths and clears downstream phases. See @app/views/data_fix/review_swimmers_v2.html.haml#18-34, @app/views/data_fix/_relay_enrichment_panel.html.haml#1-105, @app/controllers/data_fix_controller.rb#801-888, and @app/services/phase3/relay_merge_service.rb#1-163. Request coverage at @spec/requests/data_fix_controller_phase3_spec.rb#370-503.
+

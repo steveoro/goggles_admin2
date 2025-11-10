@@ -80,3 +80,44 @@ it:
     messages:
       updated: 'Aggiornato con successo.'
       phase_rebuilt: "Fase %{phase} ricostruita dall'origine."
+    relay_enrichment:
+      title: 'Arricchimento staffette (Phase 3)'
+      description_html: 'Trovate <strong>%{count}</strong> staffette con dati nuotatori incompleti. Unisci i file Phase 3 ausiliari per completare le informazioni mancanti.'
+      missing_totals: 'Dati mancanti'
+      fields:
+        auxiliary_files: 'File Phase 3 ausiliari'
+        auxiliary_hint: 'Seleziona uno o più file JSON *-phase3 nella stessa cartella del meeting per unirli al Phase 3 principale.'
+      actions:
+        scan_and_merge: 'Scansiona & unisci'
+      confirm_merge: 'Unire i nuotatori dai file Phase 3 selezionati?'
+      no_auxiliary_files: 'Non sono stati trovati file Phase 3 ausiliari accanto al file sorgente.'
+      status:
+        matched: 'Agganciato (%{key})'
+        unmatched: 'Non agganciato'
+      table:
+        headers:
+          relay: 'Staffetta'
+          team: 'Squadra'
+          category: 'Categoria'
+          issues: 'Problemi'
+          swimmers: 'Nuotatori'
+        issues:
+          missing_year_of_birth: 'Anno mancante'
+          missing_gender: 'Genere mancante'
+          missing_swimmer_id: 'ID nuotatore mancante'
+        leg_label: 'Frazione %{number}'
+        swimmer_fields:
+          name: 'Nome:'
+          year: 'Anno:'
+          gender: 'Genere:'
+          raw_year: 'Anno grezzo: %{value}'
+          raw_gender: 'Genere grezzo: %{value}'
+          lap_reference: 'Riferimento lap: %{value}'
+      errors:
+        missing_phase_file: 'File Phase 3 non trovato. Ricostruire la Phase 3 prima di procedere.'
+        no_selection: 'Selezionare almeno un file Phase 3 ausiliario prima di unire.'
+        missing_file: "File ausiliario non trovato: %{file}."
+        invalid_path: 'Percorso file ausiliario non valido: %{path}'
+        unreadable_file: 'Impossibile leggere il JSON del file %{file}.'
+        no_valid_files: 'Non sono stati forniti file Phase 3 ausiliari validi.'
+      merge_success: 'Merge completato: %{swimmers_added} nuotatori aggiunti, %{swimmers_updated} aggiornati, %{badges_added} badge aggiunti.'

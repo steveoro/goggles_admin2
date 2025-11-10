@@ -153,7 +153,7 @@ RSpec.describe DataFixController do
 
       it 'updates swimmer attributes successfully' do
         patch update_phase3_swimmer_path,
-              params: { file_path: source_file, swimmer_index: 0,
+              params: { file_path: source_file, swimmer_key: 'DOE|JOHN|1985',
                         swimmer: { complete_name: 'Smith John', first_name: 'John', last_name: 'Smith',
                                    year_of_birth: 1986, gender_type_code: 'M' } }
 
@@ -170,7 +170,7 @@ RSpec.describe DataFixController do
 
       it 'updates swimmer_id when provided' do
         patch update_phase3_swimmer_path,
-              params: { file_path: source_file, swimmer_index: 0,
+              params: { file_path: source_file, swimmer_key: 'DOE|JOHN|1985',
                         swimmer: { id: swimmer.id, complete_name: swimmer.complete_name } }
 
         pfm = PhaseFileManager.new(phase3_file)
@@ -187,7 +187,7 @@ RSpec.describe DataFixController do
         pfm.write!(data: data, meta: { 'generator' => 'test' })
 
         patch update_phase3_swimmer_path,
-              params: { file_path: source_file, swimmer_index: 0,
+              params: { file_path: source_file, swimmer_key: 'DOE|JOHN|1985',
                         swimmer: { complete_name: 'Updated Name' } }
 
         pfm = PhaseFileManager.new(phase3_file)
@@ -196,13 +196,13 @@ RSpec.describe DataFixController do
         expect(data['meeting_program']).to eq([])
       end
 
-      it 'returns error for invalid swimmer_index' do
+      it 'returns error for invalid swimmer key' do
         patch update_phase3_swimmer_path,
-              params: { file_path: source_file, swimmer_index: 999,
+              params: { file_path: source_file, swimmer_key: 'UNKNOWN|KEY|999',
                         swimmer: { complete_name: 'Test' } }
 
         expect(response).to redirect_to(review_swimmers_path(file_path: source_file, phase3_v2: 1))
-        expect(flash[:warning]).to include('Invalid swimmer index')
+        expect(flash[:warning]).to include('Swimmer not found')
       end
 
       it 'returns error for missing file_path' do
@@ -219,7 +219,7 @@ RSpec.describe DataFixController do
         pfm.write!(data: pfm.data, meta: { 'generated_at' => original_time.iso8601 })
 
         patch update_phase3_swimmer_path,
-              params: { file_path: source_file, swimmer_index: 0,
+              params: { file_path: source_file, swimmer_key: 'DOE|JOHN|1985',
                         swimmer: { complete_name: 'Updated' } }
 
         pfm = PhaseFileManager.new(phase3_file)
@@ -316,7 +316,7 @@ RSpec.describe DataFixController do
       end
 
       it 'deletes swimmer successfully' do
-        delete data_fix_delete_swimmer_path, params: { file_path: source_file, swimmer_index: 0 }
+        delete data_fix_delete_swimmer_path, params: { file_path: source_file, swimmer_key: 'ALPHA|JOHN|1985' }
 
         expect(response).to redirect_to(review_swimmers_path(file_path: source_file, phase3_v2: 1))
         expect(flash[:notice]).to be_present
@@ -336,7 +336,7 @@ RSpec.describe DataFixController do
         data['meeting_individual_result'] = [{ 'some' => 'data' }]
         pfm.write!(data: data, meta: { 'generator' => 'test' })
 
-        delete data_fix_delete_swimmer_path, params: { file_path: source_file, swimmer_index: 0 }
+        delete data_fix_delete_swimmer_path, params: { file_path: source_file, swimmer_key: 'ALPHA|JOHN|1985' }
 
         pfm = PhaseFileManager.new(phase3_file)
         data = pfm.data
@@ -344,11 +344,11 @@ RSpec.describe DataFixController do
         expect(data['meeting_individual_result']).to eq([])
       end
 
-      it 'returns error for invalid swimmer_index' do
-        delete data_fix_delete_swimmer_path, params: { file_path: source_file, swimmer_index: 999 }
+      it 'returns error for invalid swimmer key' do
+        delete data_fix_delete_swimmer_path, params: { file_path: source_file, swimmer_key: 'UNKNOWN|KEY|999' }
 
         expect(response).to redirect_to(review_swimmers_path(file_path: source_file, phase3_v2: 1))
-        expect(flash[:warning]).to include('Invalid swimmer index')
+        expect(flash[:warning]).to include('Swimmer not found')
       end
 
       it 'returns error for missing file_path' do
@@ -359,10 +359,149 @@ RSpec.describe DataFixController do
       end
 
       it 'updates metadata timestamp' do
-        delete data_fix_delete_swimmer_path, params: { file_path: source_file, swimmer_index: 0 }
+        delete data_fix_delete_swimmer_path, params: { file_path: source_file, swimmer_key: 'ALPHA|JOHN|1985' }
 
         pfm = PhaseFileManager.new(phase3_file)
         meta = pfm.meta
+        expect(meta['generated_at']).to be_present
+      end
+    end
+
+    describe 'Relay enrichment workflow' do
+      let(:relay_payload) do
+        {
+          'layoutType' => 4,
+          'sections' => [
+            {
+              'title' => '4x50 Mixed Medley',
+              'fin_sigla_categoria' => 'M200',
+              'rows' => [
+                {
+                  'relay' => true,
+                  'team' => 'Sharks Masters',
+                  'swimmer1' => 'Alpha John',
+                  'laps' => []
+                }
+              ]
+            }
+          ]
+        }
+      end
+
+      let(:incomplete_swimmer) do
+        {
+          'key' => 'ALPHA|JOHN|0',
+          'last_name' => 'Alpha',
+          'first_name' => 'John',
+          'complete_name' => 'Alpha John',
+          'year_of_birth' => 0,
+          'gender_type_code' => nil,
+          'swimmer_id' => nil,
+          'fuzzy_matches' => []
+        }
+      end
+
+      let(:aux_phase3_file) { File.join(temp_dir, 'auxiliary-phase3.json') }
+
+      it 'renders relay enrichment panel when incomplete relay swimmers are detected' do
+        File.write(source_file, JSON.pretty_generate(relay_payload))
+
+        PhaseFileManager.new(phase3_file).write!(
+          data: { 'swimmers' => [incomplete_swimmer], 'badges' => [] },
+          meta: { 'generator' => 'test' }
+        )
+
+        get review_swimmers_path(file_path: source_file, phase3_v2: 1)
+
+        File.write('/tmp/relay_panel.html', response.body)
+        expect(response).to be_successful
+        expect(response.body).to include(I18n.t('data_import.relay_enrichment.title'))
+        expect(response.body).to include(I18n.t('data_import.relay_enrichment.actions.scan_and_merge'))
+        expect(response.body).to include('Alpha John')
+      end
+
+      it 'does not render relay enrichment panel when no relay issues are found' do
+        complete_payload = JSON.parse(relay_payload.to_json)
+        complete_payload['sections'][0]['rows'][0]['year_of_birth1'] = 1985
+        complete_payload['sections'][0]['rows'][0]['gender_type1'] = 'M'
+        File.write(source_file, JSON.pretty_generate(complete_payload))
+
+        complete_swimmer = incomplete_swimmer.merge(
+          'key' => 'ALPHA|JOHN|1985',
+          'year_of_birth' => 1985,
+          'gender_type_code' => 'M',
+          'swimmer_id' => swimmer.id
+        )
+
+        PhaseFileManager.new(phase3_file).write!(
+          data: { 'swimmers' => [complete_swimmer], 'badges' => [] },
+          meta: { 'generator' => 'test' }
+        )
+
+        get review_swimmers_path(file_path: source_file, phase3_v2: 1)
+
+        expect(response.body).not_to include(I18n.t('data_import.relay_enrichment.title'))
+      end
+
+      it 'merges swimmers and badges from auxiliary phase3 files' do
+        File.write(source_file, JSON.pretty_generate(relay_payload))
+
+        main_data = {
+          'swimmers' => [incomplete_swimmer],
+          'badges' => [],
+          'meeting_event' => [{ 'existing' => 'value' }],
+          'meeting_program' => [{ 'existing' => 'value' }],
+          'meeting_individual_result' => [{ 'existing' => 'value' }],
+          'meeting_relay_result' => [{ 'existing' => 'value' }]
+        }
+        PhaseFileManager.new(phase3_file).write!(data: main_data, meta: { 'generator' => 'test' })
+
+        aux_data = {
+          'swimmers' => [
+            incomplete_swimmer.merge(
+              'year_of_birth' => 1980,
+              'gender_type_code' => 'M',
+              'swimmer_id' => swimmer.id,
+              'fuzzy_matches' => [{ 'id' => swimmer.id, 'label' => swimmer.complete_name }]
+            )
+          ],
+          'badges' => [
+            { 'swimmer_key' => 'ALPHA|JOHN|0', 'team_key' => 'Sharks Masters', 'season_id' => season.id }
+          ]
+        }
+        PhaseFileManager.new(aux_phase3_file).write!(data: aux_data, meta: { 'generator' => 'auxiliary' })
+
+        post merge_phase3_swimmers_path,
+             params: { file_path: source_file, auxiliary_paths: [aux_phase3_file] }
+
+        expect(response).to redirect_to(review_swimmers_path(file_path: source_file, phase3_v2: 1))
+        expect(flash[:notice]).to eq(
+          I18n.t(
+            'data_import.relay_enrichment.merge_success',
+            swimmers_added: 0,
+            swimmers_updated: 1,
+            badges_added: 1
+          )
+        )
+        expect(flash[:warning]).to be_nil
+
+        pfm = PhaseFileManager.new(phase3_file)
+        data = pfm.data
+        meta = pfm.meta
+
+        File.write('/tmp/relay_merge_data.json', JSON.pretty_generate(data))
+        File.write('/tmp/relay_merge_meta.json', JSON.pretty_generate(meta))
+
+        merged_swimmer = data['swimmers'].find { |s| s['key'] == 'ALPHA|JOHN|0' }
+        expect(merged_swimmer['year_of_birth']).to eq(1980)
+        expect(merged_swimmer['gender_type_code']).to eq('M')
+        expect(merged_swimmer['swimmer_id']).to eq(swimmer.id)
+
+        %w[meeting_event meeting_program meeting_individual_result meeting_relay_result].each do |key|
+          expect(data[key]).to eq([])
+        end
+
+        expect(meta['auxiliary_phase3_paths']).to include(File.basename(aux_phase3_file))
         expect(meta['generated_at']).to be_present
       end
     end
