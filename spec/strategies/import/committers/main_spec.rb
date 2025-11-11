@@ -624,12 +624,12 @@ RSpec.describe Import::Committers::Main do
         }
       end
 
-      before do
+      before(:each) do
         meeting.calendar&.destroy
         committer.sql_log.clear
       end
 
-      after do
+      after(:each) do
         meeting.reload.calendar&.destroy if meeting.persisted?
         meeting.destroy
       end
@@ -684,7 +684,7 @@ RSpec.describe Import::Committers::Main do
         record
       end
 
-      after do
+      after(:each) do
         GogglesDb::Calendar.where(meeting_id: meeting.id).destroy_all
         meeting.destroy
       end

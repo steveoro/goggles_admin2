@@ -102,17 +102,26 @@ populator = Import::Phase5Populator.new(...)
 
 ---
 
-## Day 2: LT2 Individual Results (3-4 hours)
+## Day 2: Layout2To4 Adapter Implementation (2-3 hours) ✅ COMPLETE
 
-### Session 1: LT2 Individual Results Core (2 hours)
-- [ ] Implement `populate_lt2_individual_results!` method
-- [ ] Read `source_data['meeting_individual_result']` array
-- [ ] Generate `import_key` for each MIR
-- [ ] Match swimmer/team IDs from phase files
-- [ ] Create `DataImportMeetingIndividualResult` records
-- [ ] Add error handling and logging
-- [ ] Test with LT2 individual file
-- [ ] Commit: "Implement LT2 individual result population"
+### Session 1: Create Layout2To4 Adapter (2-3 hours) ✅ COMPLETE
+**Approach Change**: Instead of dual LT2/LT4 logic, normalize LT2→LT4 for single code path
+- [x] Create `Import::Adapters::Layout2To4` class (reverse of Layout4To2)
+- [x] Add comprehensive RSpec tests (18 examples, all passing)
+- [x] Update `Phase5Populator` to normalize LT2→LT4 during load
+- [x] Remove LT2-specific stub methods (no longer needed)
+- [x] Update Phase5Populator specs to verify normalization
+- [x] Test with both LT2 and LT4 fixture files
+
+**Files Changed**:
+- `app/strategies/import/adapters/layout2_to4.rb` (NEW - 360 lines)
+- `spec/strategies/import/adapters/layout2_to4_spec.rb` (NEW - 18 tests)
+- `app/strategies/import/phase5_populator.rb` (updated)
+- `spec/strategies/import/phase5_populator_spec.rb` (updated tests)
+
+**Test Results**: 26 total specs passing (18 adapter + 8 Phase5Populator)
+
+**Key Achievement**: Single unified code path! LT2 files auto-normalize to LT4 format
 
 ### Session 2: LT2 Lap Handling (1-2 hours)
 - [ ] Implement `create_lap_records_lt2` method

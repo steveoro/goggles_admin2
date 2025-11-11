@@ -8,12 +8,13 @@ module Import
   # Reads phases 1-4 JSON for entity IDs, generates import_keys using MacroSolver patterns,
   # and inserts individual results + laps into GogglesDb data_import tables.
   #
-  # Supports both LT2 and LT4 source formats:
-  # - LT2 (layoutType: 2): Direct entity keys (meeting_individual_result, meeting_relay_result)
-  # - LT4 (layoutType: 4): Events array structure
+  # Supports both LT2 and LT4 source formats through automatic normalization:
+  # - LT2 (layoutType: 2): Sections/rows structure → normalized to LT4 via Layout2To4 adapter
+  # - LT4 (layoutType: 4): Events array structure → used directly
   #
-  # Format is auto-detected from the source file's 'layoutType' field and routed to
-  # appropriate population methods.
+  # Format is auto-detected from the source file's 'layoutType' field. LT2 files are
+  # automatically normalized to LT4 format during load, allowing a single code path for
+  # all population logic.
   #
   # == Usage:
   #   populator = Import::Phase5Populator.new(
@@ -51,19 +52,14 @@ module Import
     end
 
     # Main entry point: truncate existing data, load phase files, populate tables
+    # Note: LT2 files are normalized to LT4 format during load_phase_files!
     def populate!
       truncate_tables!
       load_phase_files!
 
-      # Route based on detected source format
-      case source_format
-      when :lt2
-        Rails.logger.info('[Phase5Populator] Detected LT2 format')
-        populate_lt2_results!
-      when :lt4
-        Rails.logger.info('[Phase5Populator] Detected LT4 format')
-        populate_lt4_results!
-      end
+      # All files are now in LT4 format (normalized if needed)
+      Rails.logger.info('[Phase5Populator] Populating from LT4 format (normalized if LT2)')
+      populate_lt4_results!
 
       stats
     end
@@ -76,16 +72,28 @@ module Import
       GogglesDb::DataImportLap.delete_all
     end
 
-    # Load all phase JSON files
+    # Load all phase JSON files and normalize source to LT4 format
     def load_phase_files!
       @source_data = JSON.parse(File.read(source_path))
+
+      # Detect format before loading other phases
+      original_format = detect_source_format
+
       @phase1_data = JSON.parse(File.read(phase1_path)) if File.exist?(phase1_path)
       @phase2_data = JSON.parse(File.read(phase2_path)) if File.exist?(phase2_path)
       @phase3_data = JSON.parse(File.read(phase3_path)) if File.exist?(phase3_path)
       @phase4_data = JSON.parse(File.read(phase4_path)) if File.exist?(phase4_path)
 
+      # Normalize LT2 files to LT4 format for unified processing
+      if original_format == :lt2
+        Rails.logger.info('[Phase5Populator] Normalizing LT2 → LT4 format')
+        @source_data = Import::Adapters::Layout2To4.normalize(data_hash: @source_data)
+        Rails.logger.info('[Phase5Populator] Normalization complete')
+      end
+
       # DEBUG logging
       Rails.logger.info('[Phase5Populator] Loaded phase files:')
+      Rails.logger.info("  - source format: #{original_format} → normalized to LT4")
       Rails.logger.info("  - phase1_path: #{phase1_path}, exists: #{File.exist?(phase1_path)}")
       Rails.logger.info("  - phase2_path: #{phase2_path}, exists: #{File.exist?(phase2_path)}, teams: #{@phase2_data&.dig('data', 'teams')&.size || 0}")
       Rails.logger.info("  - phase3_path: #{phase3_path}, exists: #{File.exist?(phase3_path)}, swimmers: #{@phase3_data&.dig('data', 'swimmers')&.size || 0}")
@@ -112,28 +120,11 @@ module Import
       end
     end
 
-    # Populate from LT2 format (direct entity arrays)
-    def populate_lt2_results!
-      populate_lt2_individual_results!
-      populate_lt2_relay_results!
-    end
-
-    # Populate individual results from LT2 format
-    def populate_lt2_individual_results!
-      Rails.logger.info('[Phase5Populator] LT2 individual results population - NOT YET IMPLEMENTED')
-      # TODO: Implement in Session 2 (Day 2)
-    end
-
-    # Populate relay results from LT2 format
-    def populate_lt2_relay_results!
-      Rails.logger.info('[Phase5Populator] LT2 relay results population - NOT YET IMPLEMENTED')
-      # TODO: Implement in Session 2 (Day 3)
-    end
-
     # Populate from LT4 format (events array)
+    # Note: LT2 files are automatically normalized to LT4 format before this runs
     def populate_lt4_results!
       populate_lt4_individual_results!
-      # populate_lt4_relay_results! # TODO: Implement in Session 2 (Day 4)
+      # populate_lt4_relay_results! # TODO: Implement relay support (Day 3)
     end
 
     # Populate MIR + Laps from source events array (LT4 format)

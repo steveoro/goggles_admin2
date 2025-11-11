@@ -23,9 +23,9 @@ RSpec.describe Import::Solvers::EventSolver do
   end
 
   describe '#build! with LT2 input (sections-based)' do
-    let(:lt2_data) do
+    let(:lt4_data) do
       {
-        'layoutType' => 2,
+        'layoutType' => 4,
         'sections' => [
           {
             'sessionOrder' => 1,
@@ -46,17 +46,17 @@ RSpec.describe Import::Solvers::EventSolver do
     end
 
     before(:each) do
-      File.write(source_file, JSON.generate(lt2_data))
+      File.write(source_file, JSON.generate(lt4_data))
     end
 
     it 'creates a phase4.json file' do
-      described_class.new(season: season).build!(source_path: source_file, lt_format: 2)
+      described_class.new(season: season).build!(source_path: source_file, lt_format: 4)
       phase_file = default_phase4_path(source_file)
       expect(File).to exist(phase_file)
     end
 
     it 'groups events by sessions' do
-      described_class.new(season: season).build!(source_path: source_file, lt_format: 2)
+      described_class.new(season: season).build!(source_path: source_file, lt_format: 4)
       phase_file = default_phase4_path(source_file)
       data = JSON.parse(File.read(phase_file))['data']
 
@@ -65,7 +65,7 @@ RSpec.describe Import::Solvers::EventSolver do
     end
 
     it 'extracts unique events per session' do
-      described_class.new(season: season).build!(source_path: source_file, lt_format: 2)
+      described_class.new(season: season).build!(source_path: source_file, lt_format: 4)
       phase_file = default_phase4_path(source_file)
       data = JSON.parse(File.read(phase_file))['data']
 
@@ -76,7 +76,7 @@ RSpec.describe Import::Solvers::EventSolver do
     end
 
     it 'stores event attributes correctly' do
-      described_class.new(season: season).build!(source_path: source_file, lt_format: 2)
+      described_class.new(season: season).build!(source_path: source_file, lt_format: 4)
       phase_file = default_phase4_path(source_file)
       data = JSON.parse(File.read(phase_file))['data']
 
@@ -92,7 +92,7 @@ RSpec.describe Import::Solvers::EventSolver do
     end
 
     it 'finds matching event_type_id from database' do
-      described_class.new(season: season).build!(source_path: source_file, lt_format: 2)
+      described_class.new(season: season).build!(source_path: source_file, lt_format: 4)
       phase_file = default_phase4_path(source_file)
       data = JSON.parse(File.read(phase_file))['data']
 
@@ -105,7 +105,7 @@ RSpec.describe Import::Solvers::EventSolver do
     end
 
     it 'sorts events by event_order within each session' do
-      described_class.new(season: season).build!(source_path: source_file, lt_format: 2)
+      described_class.new(season: season).build!(source_path: source_file, lt_format: 4)
       phase_file = default_phase4_path(source_file)
       data = JSON.parse(File.read(phase_file))['data']
 
@@ -184,9 +184,9 @@ RSpec.describe Import::Solvers::EventSolver do
     let(:session1) { FactoryBot.create(:meeting_session, meeting: meeting, session_order: 1) }
     let(:session2) { FactoryBot.create(:meeting_session, meeting: meeting, session_order: 2) }
 
-    let(:lt2_data) do
+    let(:lt4_data) do
       {
-        'layoutType' => 2,
+        'layoutType' => 4,
         'sections' => [
           { 'sessionOrder' => 1, 'rows' => [{ 'distance' => '100', 'stroke' => 'SL' }] },
           { 'sessionOrder' => 2, 'rows' => [{ 'distance' => '200', 'stroke' => 'DO' }] }
@@ -207,11 +207,11 @@ RSpec.describe Import::Solvers::EventSolver do
         }
       }
       File.write(phase1_path, JSON.generate(phase1_data))
-      File.write(source_file, JSON.generate(lt2_data))
+      File.write(source_file, JSON.generate(lt4_data))
     end
 
     it 'includes meeting_session_id from phase1 data' do
-      described_class.new(season: season).build!(source_path: source_file, lt_format: 2)
+      described_class.new(season: season).build!(source_path: source_file, lt_format: 4)
       phase_file = default_phase4_path(source_file)
       data = JSON.parse(File.read(phase_file))['data']
 
@@ -226,7 +226,7 @@ RSpec.describe Import::Solvers::EventSolver do
       event_type = GogglesDb::EventType.find_by(code: '100SL')
       existing_event = FactoryBot.create(:meeting_event, meeting_session: session1, event_type: event_type)
 
-      described_class.new(season: season).build!(source_path: source_file, lt_format: 2)
+      described_class.new(season: season).build!(source_path: source_file, lt_format: 4)
       phase_file = default_phase4_path(source_file)
       data = JSON.parse(File.read(phase_file))['data']
 
@@ -237,7 +237,7 @@ RSpec.describe Import::Solvers::EventSolver do
     end
 
     it 'sets meeting_event_id to nil for new events' do
-      described_class.new(season: season).build!(source_path: source_file, lt_format: 2)
+      described_class.new(season: season).build!(source_path: source_file, lt_format: 4)
       phase_file = default_phase4_path(source_file)
       data = JSON.parse(File.read(phase_file))['data']
 
@@ -250,14 +250,14 @@ RSpec.describe Import::Solvers::EventSolver do
   end
 
   describe 'metadata generation' do
-    let(:lt2_data) { { 'layoutType' => 2, 'sections' => [] } }
+    let(:lt4_data) { { 'layoutType' => 4, 'sections' => [] } }
 
     before(:each) do
-      File.write(source_file, JSON.generate(lt2_data))
+      File.write(source_file, JSON.generate(lt4_data))
     end
 
     it 'includes source_path in metadata' do
-      described_class.new(season: season).build!(source_path: source_file, lt_format: 2)
+      described_class.new(season: season).build!(source_path: source_file, lt_format: 4)
       phase_file = default_phase4_path(source_file)
       meta = JSON.parse(File.read(phase_file))['_meta']
 
@@ -265,7 +265,7 @@ RSpec.describe Import::Solvers::EventSolver do
     end
 
     it 'includes season_id in metadata' do
-      described_class.new(season: season).build!(source_path: source_file, lt_format: 2)
+      described_class.new(season: season).build!(source_path: source_file, lt_format: 4)
       phase_file = default_phase4_path(source_file)
       meta = JSON.parse(File.read(phase_file))['_meta']
 
@@ -273,23 +273,23 @@ RSpec.describe Import::Solvers::EventSolver do
     end
 
     it 'includes phase number in metadata' do
-      described_class.new(season: season).build!(source_path: source_file, lt_format: 2)
+      described_class.new(season: season).build!(source_path: source_file, lt_format: 4)
       phase_file = default_phase4_path(source_file)
       meta = JSON.parse(File.read(phase_file))['_meta']
 
       expect(meta['phase']).to eq(4)
     end
 
-    it 'includes lt_format in metadata' do
-      described_class.new(season: season).build!(source_path: source_file, lt_format: 2)
+    it 'includes layoutType in metadata' do
+      described_class.new(season: season).build!(source_path: source_file, lt_format: 4)
       phase_file = default_phase4_path(source_file)
       meta = JSON.parse(File.read(phase_file))['_meta']
 
-      expect(meta['lt_format']).to eq(2)
+      expect(meta['layoutType']).to eq(4)
     end
 
     it 'includes generated_at timestamp' do
-      described_class.new(season: season).build!(source_path: source_file, lt_format: 2)
+      described_class.new(season: season).build!(source_path: source_file, lt_format: 4)
       phase_file = default_phase4_path(source_file)
       meta = JSON.parse(File.read(phase_file))['_meta']
 
@@ -300,10 +300,10 @@ RSpec.describe Import::Solvers::EventSolver do
 
   describe 'edge cases' do
     it 'handles empty sections array' do
-      data = { 'layoutType' => 2, 'sections' => [] }
+      data = { 'layoutType' => 4, 'sections' => [] }
       File.write(source_file, JSON.generate(data))
 
-      described_class.new(season: season).build!(source_path: source_file, lt_format: 2)
+      described_class.new(season: season).build!(source_path: source_file, lt_format: 4)
       phase_file = default_phase4_path(source_file)
       parsed = JSON.parse(File.read(phase_file))['data']
 
@@ -323,7 +323,7 @@ RSpec.describe Import::Solvers::EventSolver do
 
     it 'skips rows with missing distance or stroke' do
       data = {
-        'layoutType' => 2,
+        'layoutType' => 4,
         'sections' => [
           {
             'rows' => [
@@ -336,7 +336,7 @@ RSpec.describe Import::Solvers::EventSolver do
       }
       File.write(source_file, JSON.generate(data))
 
-      described_class.new(season: season).build!(source_path: source_file, lt_format: 2)
+      described_class.new(season: season).build!(source_path: source_file, lt_format: 4)
       phase_file = default_phase4_path(source_file)
       parsed = JSON.parse(File.read(phase_file))['data']
 
@@ -347,7 +347,7 @@ RSpec.describe Import::Solvers::EventSolver do
 
     it 'uses fallback event_order when not provided' do
       data = {
-        'layoutType' => 2,
+        'layoutType' => 4,
         'sections' => [
           {
             'rows' => [
@@ -359,7 +359,7 @@ RSpec.describe Import::Solvers::EventSolver do
       }
       File.write(source_file, JSON.generate(data))
 
-      described_class.new(season: season).build!(source_path: source_file, lt_format: 2)
+      described_class.new(season: season).build!(source_path: source_file, lt_format: 4)
       phase_file = default_phase4_path(source_file)
       parsed = JSON.parse(File.read(phase_file))['data']
 

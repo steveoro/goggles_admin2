@@ -192,37 +192,32 @@ RSpec.describe Import::Phase5Populator, type: :strategy do
     context 'with LT2 format file (Molinella sample)' do
       let(:source_path) { 'spec/fixtures/results/season-182_Molinella_sample.json' }
 
-      before(:each) do
-        subject.send(:load_phase_files!)
+      it 'detects LT2 format from original file' do
+        raw_data = JSON.parse(File.read(source_path))
+        expect(raw_data['layoutType']).to eq(2)
       end
 
-      it 'detects LT2 format based on layoutType field' do
-        format = subject.send(:source_format)
-        expect(format).to eq(:lt2)
-      end
-
-      it 'reads layoutType field from source' do
+      it 'normalizes LT2 to LT4 format during load' do
         subject.send(:load_phase_files!)
-        layout_type = subject.source_data['layoutType']
-        expect(layout_type).to eq(2)
+        # After normalization, source_data should be in LT4 format
+        expect(subject.source_data['layoutType']).to eq(4)
+        expect(subject.source_data['events']).to be_an(Array)
       end
     end
 
     context 'with LT2 format file (Saronno sample)' do
       let(:source_path) { 'spec/fixtures/results/season-192_Saronno_sample.json' }
 
-      before(:each) do
+      it 'detects LT2 format from original file' do
+        raw_data = JSON.parse(File.read(source_path))
+        expect(raw_data['layoutType']).to eq(2)
+      end
+
+      it 'normalizes LT2 to LT4 format during load' do
         subject.send(:load_phase_files!)
-      end
-
-      it 'detects LT2 format based on layoutType field' do
-        format = subject.send(:source_format)
-        expect(format).to eq(:lt2)
-      end
-
-      it 'reads layoutType field from source' do
-        layout_type = subject.source_data['layoutType']
-        expect(layout_type).to eq(2)
+        # After normalization, source_data should be in LT4 format
+        expect(subject.source_data['layoutType']).to eq(4)
+        expect(subject.source_data['events']).to be_an(Array)
       end
     end
 
@@ -256,9 +251,8 @@ RSpec.describe Import::Phase5Populator, type: :strategy do
         FileUtils.rm_rf(temp_dir) if File.directory?(temp_dir)
       end
 
-      it 'raises an error' do
-        subject.send(:load_phase_files!)
-        expect { subject.send(:source_format) }.to raise_error(/layoutType.*missing/)
+      it 'raises an error during load' do
+        expect { subject.send(:load_phase_files!) }.to raise_error(/layoutType.*missing/)
       end
     end
 
@@ -274,9 +268,8 @@ RSpec.describe Import::Phase5Populator, type: :strategy do
         FileUtils.rm_rf(temp_dir) if File.directory?(temp_dir)
       end
 
-      it 'raises an error' do
-        subject.send(:load_phase_files!)
-        expect { subject.send(:source_format) }.to raise_error(/Unknown layoutType 99/)
+      it 'raises an error during load' do
+        expect { subject.send(:load_phase_files!) }.to raise_error(/Unknown layoutType 99/)
       end
     end
   end
