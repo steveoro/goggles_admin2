@@ -262,7 +262,10 @@ RSpec.describe DataFixController do
 
       it 'creates a new blank session' do
         post data_fix_add_session_path, params: { file_path: source_file }
-        expect(response).to redirect_to(review_sessions_path(file_path: source_file, phase_v2: 1))
+        expect(response).to have_http_status(:redirect)
+        expect(response.location).to include('/data_fix/review_sessions')
+        expect(response.location).to include("file_path=#{CGI.escape(source_file)}")
+        expect(response.location).to include('phase_v2=1')
 
         pfm = PhaseFileManager.new(phase1_file)
         sessions = pfm.data['meeting_session']

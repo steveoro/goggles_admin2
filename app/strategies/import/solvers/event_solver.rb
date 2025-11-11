@@ -31,39 +31,48 @@ module Import
         @phase1_data = File.exist?(phase1_path) ? JSON.parse(File.read(phase1_path)) : nil
 
         sessions = []
-        if data_hash['sections'].is_a?(Array)
-          data_hash['sections'].each_with_index do |sec, idx|
+        if data_hash['sections'].is_a?(Array) && data_hash['sections'].any?
+          # Check if this is a relay-only file (all sections are relays)
+          all_relay = data_hash['sections'].all? do |sec|
             rows = sec['rows'] || []
-            # Prefer explicit session order from JSON; else use index + 1
-            session_order = sec['sessionOrder'] || sec['session_order'] || sec['order'] || (idx + 1)
+            rows.any? { |row| row['relay'] == true }
+          end
 
-            # Collect unique events within session
+          if all_relay
+            # For relay files, group all sections into ONE session with events grouped by gender
             seen = {}
             events = []
-            rows.each_with_index do |row, r_idx|
-              # Derive distance and stroke
-              distance = row['distance'] || row['distanceInMeters'] || row['evento_distanza'] || row['distanza']
-              stroke = row['stroke'] || row['style'] || row['fin_stile'] || row['stile']
+
+            data_hash['sections'].each_with_index do |sec, idx|
+              rows = sec['rows'] || []
+              next if rows.empty?
+
+              # Parse relay details from section title
+              distance, stroke, relay_code = parse_relay_event_from_title(sec['title'], sec['fin_sesso'])
               next if distance.to_s.strip.empty? || stroke.to_s.strip.empty?
 
-              # Event order if present; else fallback to first appearance order
-              event_order = row['eventOrder'] || row['evento_ordine'] || row['event_order'] || (r_idx + 1)
-
-              key = [distance, stroke].join('|')
+              # Use relay_code + gender as key to group by unique event/gender combinations
+              gender = sec['fin_sesso'].to_s.strip.upcase
+              key = "#{relay_code}|#{gender}"
               next if seen[key]
 
+              # Use first available session order (usually from phase1 data)
+              session_order = sec['sessionOrder'] || sec['session_order'] || sec['order'] || 1
+
               event_hash = {
-                'key' => key,
+                'key' => relay_code,
                 'distance' => distance,
                 'stroke' => stroke,
-                'event_order' => event_order,
+                'relay' => true,
+                'gender' => gender,
+                'event_order' => idx + 1,
                 'session_order' => session_order,
                 'heat_type_id' => 3, # Default: Finals
                 'heat_type' => 'F'   # Finals code
               }
 
-              # Try to find matching event_type_id based on distance + stroke code
-              event_type_id = find_event_type_id(distance, stroke)
+              # Try to find matching event_type_id
+              event_type_id = find_relay_event_type_id(relay_code)
               event_hash['event_type_id'] = event_type_id if event_type_id.present?
 
               # Enhance with meeting_session_id and meeting_event_id matching
@@ -73,9 +82,74 @@ module Import
               seen[key] = true
             end
 
-            # Sort by event_order for stable UI display
+            # All relay events go in the FIRST session
+            first_session_order = events.first&.dig('session_order') || 1
+            events.each { |e| e['session_order'] = first_session_order }
             events.sort_by! { |e| e['event_order'].to_i }
-            sessions << { 'session_order' => session_order, 'events' => events }
+            sessions << { 'session_order' => first_session_order, 'events' => events }
+          else
+            # For individual/mixed files, process sections normally
+            data_hash['sections'].each_with_index do |sec, idx|
+              rows = sec['rows'] || []
+              # Prefer explicit session order from JSON; else use index + 1
+              session_order = sec['sessionOrder'] || sec['session_order'] || sec['order'] || (idx + 1)
+
+              # Collect unique events within session
+              seen = {}
+              events = []
+              rows.each_with_index do |row, r_idx|
+                # Check if this is a relay row
+                is_relay = row['relay'] == true || sec['relay'] == true
+
+                # For relays, parse event details from section title
+                if is_relay
+                  distance, stroke, relay_code = parse_relay_event_from_title(sec['title'], sec['fin_sesso'])
+                  next if distance.to_s.strip.empty? || stroke.to_s.strip.empty?
+                else
+                  # For individual events, derive distance and stroke from row
+                  distance = row['distance'] || row['distanceInMeters'] || row['evento_distanza'] || row['distanza']
+                  stroke = row['stroke'] || row['style'] || row['fin_stile'] || row['stile']
+                  next if distance.to_s.strip.empty? || stroke.to_s.strip.empty?
+
+                  relay_code = nil
+                end
+
+                # Event order if present; else fallback to first appearance order
+                event_order = row['eventOrder'] || row['evento_ordine'] || row['event_order'] || (r_idx + 1)
+
+                key = relay_code || [distance, stroke].join('|')
+                next if seen[key]
+
+                event_hash = {
+                  'key' => key,
+                  'distance' => distance,
+                  'stroke' => stroke,
+                  'relay' => is_relay,
+                  'event_order' => event_order,
+                  'session_order' => session_order,
+                  'heat_type_id' => 3, # Default: Finals
+                  'heat_type' => 'F'   # Finals code
+                }
+
+                # Try to find matching event_type_id
+                event_type_id = if relay_code
+                                  find_relay_event_type_id(relay_code)
+                                else
+                                  find_event_type_id(distance, stroke)
+                                end
+                event_hash['event_type_id'] = event_type_id if event_type_id.present?
+
+                # Enhance with meeting_session_id and meeting_event_id matching
+                enhance_event_with_matching!(event_hash, session_order)
+
+                events << event_hash
+                seen[key] = true
+              end
+
+              # Sort by event_order for stable UI display
+              events.sort_by! { |e| e['event_order'].to_i }
+              sessions << { 'session_order' => session_order, 'events' => events }
+            end
           end
         else
           # Fallback: no sections, try a flat events array (LT4 style)
@@ -83,17 +157,31 @@ module Import
           sessions_map = Hash.new { |h, k| h[k] = { 'session_order' => k, 'events' => [], '__seen__' => {} } }
 
           arr.each_with_index do |ev, idx_ev|
-            next if ev['relay'] == true
-
             # Distance / stroke support for LT4 (eventLength, eventStroke) and generic fields
             distance = ev['distance'] || ev['distanceInMeters'] || ev['eventLength']
             stroke = ev['stroke'] || ev['style'] || ev['eventStroke']
+            is_relay = ev['relay'] == true
 
-            # Try to derive from eventCode as last resort
-            if (distance.to_s.strip.empty? || stroke.to_s.strip.empty?) && ev['eventCode'].to_s.match?(/\A\d{2,4}[A-Z]{2}\z/)
-              code = ev['eventCode']
-              distance = code.gsub(/[^0-9]/, '') if distance.to_s.strip.empty?
-              stroke = code.gsub(/[^A-Z]/, '') if stroke.to_s.strip.empty?
+            # Try to derive from eventCode
+            if distance.to_s.strip.empty? || stroke.to_s.strip.empty?
+              code = ev['eventCode'].to_s
+              if code.match?(/\A\d{2,4}[A-Z]{2}\z/)
+                # Individual event code: "200RA", "100SL"
+                distance = code.gsub(/[^0-9]/, '') if distance.to_s.strip.empty?
+                stroke = code.gsub(/[^A-Z]/, '') if stroke.to_s.strip.empty?
+              elsif code.match?(/\A[MS]?\d+[xX]\d+[A-Z]{2}\z/i)
+                # Relay event code: "4x50SL", "S4X50MI", "M4X50SL"
+                # Parse participants and phase length
+                match = code.match(/(\d+)[xX](\d+)/i)
+                if match
+                  participants = match[1].to_i
+                  phase_length = match[2].to_i
+                  distance = (participants * phase_length).to_s if distance.to_s.strip.empty?
+                  # Extract stroke code (last 2 letters)
+                  stroke = code.match(/([A-Z]{2})\z/)[1] if stroke.to_s.strip.empty?
+                  is_relay = true
+                end
+              end
             end
             next if distance.to_s.strip.empty? || stroke.to_s.strip.empty?
 
@@ -108,6 +196,7 @@ module Import
               'key' => key,
               'distance' => distance,
               'stroke' => stroke,
+              'relay' => is_relay,
               'event_order' => event_order,
               'session_order' => session_order,
               'heat_type_id' => 3, # Default: Finals
@@ -138,7 +227,7 @@ module Import
           'source_path' => source_path,
           'generated_at' => Time.now.utc.iso8601,
           'season_id' => @season.id,
-          'lt_format' => lt_format,
+          'layoutType' => lt_format,
           'phase' => 4
         }
         pfm.write!(data: payload, meta: meta)
@@ -206,6 +295,56 @@ module Import
         sessions = Array(@phase1_data.dig('data', 'sessions'))
         session = sessions.find { |s| s['session_order'].to_i == session_order.to_i }
         session&.dig('meeting_session_id')
+      end
+
+      # Parse relay event details from section title
+      # Example: "4x50 m Misti - M80" with fin_sesso="F"
+      # Returns: [distance, stroke, event_code]
+      # - distance: total event length (e.g., 200 for 4x50)
+      # - stroke: stroke code (e.g., "MI" for mixed relay, "SL" for freestyle)
+      # - event_code: full event type code (e.g., "S4X50MI" or "M4X50SL")
+      def parse_relay_event_from_title(title, fin_sesso)
+        return [nil, nil, nil] if title.to_s.strip.empty?
+
+        # Match pattern like "4x50 m" or "4X50m" from title
+        match = title.match(/(\d+)\s*[xX]\s*(\d+)\s*m/i)
+        return [nil, nil, nil] unless match
+
+        participants = match[1].to_i
+        phase_length = match[2].to_i
+        total_distance = participants * phase_length
+
+        # Determine stroke from title keywords (italian)
+        stroke_code = if /misti|medley/i.match?(title)
+                        'MI' # Mixed relay (backstroke, breaststroke, butterfly, freestyle) - stroke_type_id=10
+                      elsif /stile\s*libero|freestyle/i.match?(title)
+                        'SL' # Freestyle
+                      elsif /dorso|backstroke/i.match?(title)
+                        'DO' # Backstroke
+                      elsif /rana|breaststroke/i.match?(title)
+                        'RA' # Breaststroke
+                      elsif /farfalla|delfino|butterfly/i.match?(title)
+                        'FA' # Butterfly
+                      else
+                        'SL' # Default to freestyle if unknown
+                      end
+
+        # Determine mixed gender prefix: 'M' for mixed, 'S' for same gender
+        gender_prefix = fin_sesso.to_s.strip.upcase == 'X' ? 'M' : 'S'
+
+        # Build event code: <gender_prefix><participants>X<phase_length><stroke>
+        event_code = "#{gender_prefix}#{participants}X#{phase_length}#{stroke_code}"
+
+        [total_distance, stroke_code, event_code]
+      end
+
+      # Find relay EventType ID by event code
+      # Example: "S4X50MX" => finds EventType with code="S4X50MX"
+      def find_relay_event_type_id(event_code)
+        return nil if event_code.to_s.strip.empty?
+
+        event_type = GogglesDb::EventType.find_by(code: event_code, relay: true)
+        event_type&.id
       end
     end
   end

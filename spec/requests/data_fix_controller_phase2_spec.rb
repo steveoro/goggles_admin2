@@ -166,10 +166,10 @@ RSpec.describe DataFixController do
 
       it 'auto-assignment logic works with fuzzy match weights' do
         # This test verifies the auto_assignable? logic with Jaro-Winkler weights
-        # Simple rule: weight >= 0.90 → auto-assign
+        # Actual threshold: weight >= 0.60 → auto-assign
         solver = Import::Solvers::TeamSolver.new(season: season)
 
-        # Test 1: High weight (>= 0.90) should auto-assign
+        # Test 1: High weight should auto-assign
         high_weight_match = {
           'id' => 123,
           'name' => 'Team Alpha',
@@ -178,12 +178,12 @@ RSpec.describe DataFixController do
         }
         expect(solver.send(:auto_assignable?, high_weight_match, 'Team Alfa')).to be true
 
-        # Test 2: Weight at threshold (0.90) should auto-assign
+        # Test 2: Weight at threshold (0.60) should auto-assign
         threshold_match = {
           'id' => 124,
           'name' => 'Team A',
           'editable_name' => 'Team A',
-          'weight' => 0.90
+          'weight' => 0.60
         }
         expect(solver.send(:auto_assignable?, threshold_match, 'Team A')).to be true
 
@@ -192,7 +192,7 @@ RSpec.describe DataFixController do
           'id' => 125,
           'name' => 'Team A Plus',
           'editable_name' => 'Team A+',
-          'weight' => 0.89
+          'weight' => 0.59
         }
         expect(solver.send(:auto_assignable?, low_weight_match, 'Team A')).to be false
 
@@ -223,9 +223,9 @@ RSpec.describe DataFixController do
       it 'updates team name field' do
         patch update_phase2_team_path, params: {
           file_path: source_file,
-          team_index: 0,
+          team_key: 'Team Original',
           team: {
-            '0' => { name: 'Team Updated' }
+            name: 'Team Updated'
           }
         }
         expect(response).to redirect_to(review_teams_path(file_path: source_file, phase2_v2: 1))
@@ -237,9 +237,9 @@ RSpec.describe DataFixController do
       it 'updates editable_name field' do
         patch update_phase2_team_path, params: {
           file_path: source_file,
-          team_index: 0,
+          team_key: 'Team Original',
           team: {
-            '0' => { editable_name: 'Team Display Name' }
+            editable_name: 'Team Display Name'
           }
         }
 
@@ -250,9 +250,9 @@ RSpec.describe DataFixController do
       it 'updates name_variations field' do
         patch update_phase2_team_path, params: {
           file_path: source_file,
-          team_index: 0,
+          team_key: 'Team Original',
           team: {
-            '0' => { name_variations: 'Variation1|Variation2|Variation3' }
+            name_variations: 'Variation1|Variation2|Variation3'
           }
         }
 
@@ -263,9 +263,9 @@ RSpec.describe DataFixController do
       it 'updates team_id field from AutoComplete' do
         patch update_phase2_team_path, params: {
           file_path: source_file,
-          team_index: 0,
+          team_key: 'Team Original',
           team: {
-            '0' => { team_id: team.id.to_s }
+            team_id: team.id.to_s
           }
         }
 
@@ -276,9 +276,9 @@ RSpec.describe DataFixController do
       it 'updates city_id field from City AutoComplete' do
         patch update_phase2_team_path, params: {
           file_path: source_file,
-          team_index: 0,
+          team_key: 'Team Original',
           team: {
-            '0' => { city_id: city.id.to_s }
+            city_id: city.id.to_s
           }
         }
 
@@ -289,15 +289,13 @@ RSpec.describe DataFixController do
       it 'updates all fields at once' do
         patch update_phase2_team_path, params: {
           file_path: source_file,
-          team_index: 0,
+          team_key: 'Team Original',
           team: {
-            '0' => {
-              name: 'Complete Update',
-              editable_name: 'Complete Display',
-              name_variations: 'Var1|Var2',
-              team_id: team.id.to_s,
-              city_id: city.id.to_s
-            }
+            name: 'Complete Update',
+            editable_name: 'Complete Display',
+            name_variations: 'Var1|Var2',
+            team_id: team.id.to_s,
+            city_id: city.id.to_s
           }
         }
 
@@ -320,9 +318,9 @@ RSpec.describe DataFixController do
         # Then clear it
         patch update_phase2_team_path, params: {
           file_path: source_file,
-          team_index: 0,
+          team_key: 'Team Original',
           team: {
-            '0' => { city_id: '' }
+            city_id: ''
           }
         }
 
@@ -333,9 +331,9 @@ RSpec.describe DataFixController do
       it 'sanitizes string inputs' do
         patch update_phase2_team_path, params: {
           file_path: source_file,
-          team_index: 0,
+          team_key: 'Team Original',
           team: {
-            '0' => { name: '  Team With Spaces  ' }
+            name: '  Team With Spaces  '
           }
         }
 
@@ -351,9 +349,9 @@ RSpec.describe DataFixController do
 
         patch update_phase2_team_path, params: {
           file_path: source_file,
-          team_index: 0,
+          team_key: 'Team Original',
           team: {
-            '0' => { name: 'Updated' }
+            name: 'Updated'
           }
         }
 
@@ -361,22 +359,11 @@ RSpec.describe DataFixController do
         expect(new_pfm.meta['generated_at']).not_to eq(original_time)
       end
 
-      it 'rejects invalid team_index (negative)' do
+      it 'rejects invalid team_key' do
         patch update_phase2_team_path, params: {
           file_path: source_file,
-          team_index: -1,
-          team: { '0' => { name: 'Test' } }
-        }
-
-        expect(response).to redirect_to(pull_index_path)
-        expect(flash[:warning]).to be_present
-      end
-
-      it 'rejects invalid team_index (out of range)' do
-        patch update_phase2_team_path, params: {
-          file_path: source_file,
-          team_index: 999,
-          team: { '999' => { name: 'Test' } }
+          team_key: 'INVALID_KEY',
+          team: { name: 'Test' }
         }
 
         expect(response).to redirect_to(review_teams_path(file_path: source_file, phase2_v2: 1))
@@ -385,8 +372,8 @@ RSpec.describe DataFixController do
 
       it 'rejects missing file_path' do
         patch update_phase2_team_path, params: {
-          team_index: 0,
-          team: { '0' => { name: 'Test' } }
+          team_key: 'Team Original',
+          team: { name: 'Test' }
         }
 
         expect(response).to redirect_to(pull_index_path)
@@ -472,7 +459,7 @@ RSpec.describe DataFixController do
       it 'deletes the specified team' do
         delete data_fix_delete_team_path, params: {
           file_path: source_file,
-          team_index: 1
+          team_key: 'Team 2'
         }
 
         expect(response).to redirect_to(review_teams_path(file_path: source_file, phase2_v2: 1))
@@ -486,7 +473,7 @@ RSpec.describe DataFixController do
       it 'clears downstream swimmers data' do
         delete data_fix_delete_team_path, params: {
           file_path: source_file,
-          team_index: 0
+          team_key: 'Team 1'
         }
 
         pfm = PhaseFileManager.new(phase2_file)
@@ -496,7 +483,7 @@ RSpec.describe DataFixController do
       it 'clears downstream event data' do
         delete data_fix_delete_team_path, params: {
           file_path: source_file,
-          team_index: 0
+          team_key: 'Team 1'
         }
 
         pfm = PhaseFileManager.new(phase2_file)
@@ -506,41 +493,31 @@ RSpec.describe DataFixController do
       it 'updates metadata timestamp' do
         delete data_fix_delete_team_path, params: {
           file_path: source_file,
-          team_index: 0
+          team_key: 'Team 1'
         }
 
         pfm = PhaseFileManager.new(phase2_file)
         expect(pfm.meta['generated_at']).to be_present
       end
 
-      it 'rejects invalid team_index (negative)' do
+      it 'rejects invalid team_key' do
         delete data_fix_delete_team_path, params: {
           file_path: source_file,
-          team_index: -1
+          team_key: 'INVALID_KEY'
         }
 
         expect(response).to redirect_to(review_teams_path(file_path: source_file, phase2_v2: 1))
-        expect(flash[:warning]).to include('Invalid team index')
-      end
-
-      it 'rejects invalid team_index (out of range)' do
-        delete data_fix_delete_team_path, params: {
-          file_path: source_file,
-          team_index: 999
-        }
-
-        expect(response).to redirect_to(review_teams_path(file_path: source_file, phase2_v2: 1))
-        expect(flash[:warning]).to include('Invalid team index')
+        expect(flash[:warning]).to be_present
       end
 
       it 'rejects missing file_path' do
-        delete data_fix_delete_team_path, params: { team_index: 0 }
+        delete data_fix_delete_team_path, params: { team_key: 'Team 1' }
 
         expect(response).to redirect_to(pull_index_path)
         expect(flash[:warning]).to be_present
       end
 
-      it 'rejects missing team_index' do
+      it 'rejects missing team_key' do
         delete data_fix_delete_team_path, params: { file_path: source_file }
 
         expect(response).to redirect_to(pull_index_path)

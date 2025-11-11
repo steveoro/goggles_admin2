@@ -65,15 +65,15 @@ module Phase3
 
     def merge_swimmer_attributes(target, source)
       changed = false
-      copy_if_blank(target, source, 'complete_name')
-      changed ||= copy_if_blank(target, source, 'first_name')
-      changed ||= copy_if_blank(target, source, 'last_name')
-      changed ||= copy_if_blank(target, source, 'name_variations')
+      changed |= copy_if_blank(target, source, 'complete_name')
+      changed |= copy_if_blank(target, source, 'first_name')
+      changed |= copy_if_blank(target, source, 'last_name')
+      changed |= copy_if_blank(target, source, 'name_variations')
 
-      changed ||= copy_year_if_missing(target, source)
-      changed ||= copy_gender_if_missing(target, source)
-      changed ||= copy_swimmer_id_if_missing(target, source)
-      changed ||= merge_fuzzy_matches(target, source)
+      changed |= copy_year_if_missing(target, source)
+      changed |= copy_gender_if_missing(target, source)
+      changed |= copy_swimmer_id_if_missing(target, source)
+      changed |= merge_fuzzy_matches(target, source)
       changed
     end
 

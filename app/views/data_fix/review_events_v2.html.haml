@@ -1,5 +1,7 @@
 -# frozen_string_literal: true
 
+= render(partial: 'data_fix_legacy/modal_progress')
+
 -# Phase 4 Events view
 .container-fluid
   %h2 Data-Fix V2 • Step 4: Events (Phase 4)
@@ -7,11 +9,8 @@
     = render(partial: 'data_fix/step_tabs', locals: { active_step: 4, file_path: @file_path })
 
   -# Phase Navigation buttons
-  .d-flex.justify-content-between.my-2
-    %div
-      = link_to 'Use legacy (Step 4)', review_events_path(request.query_parameters.except(:phase4_v2)), class: 'btn btn-secondary'
-    %div
-      = link_to 'Proceed to Step 5 (Results)', review_results_path(request.query_parameters.merge(phase5_v2: 1)), class: 'btn btn-primary'
+  .d-flex.justify-content-end.my-2
+    = link_to 'Proceed to Step 5 (Results)', review_results_path(request.query_parameters.merge(phase5_v2: 1)), class: 'btn btn-primary'
   -# Phase Metadata card
   = render(partial: 'data_fix/phase_metadata', locals: { phase_number: 4, metadata: @phase4_meta })
 

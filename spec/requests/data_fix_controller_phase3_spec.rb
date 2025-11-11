@@ -413,11 +413,11 @@ RSpec.describe DataFixController do
 
         get review_swimmers_path(file_path: source_file, phase3_v2: 1)
 
-        File.write('/tmp/relay_panel.html', response.body)
         expect(response).to be_successful
         expect(response.body).to include(I18n.t('data_import.relay_enrichment.title'))
-        expect(response.body).to include(I18n.t('data_import.relay_enrichment.actions.scan_and_merge'))
         expect(response.body).to include('Alpha John')
+        # Without auxiliary files, shows warning instead of button
+        expect(response.body).to include(I18n.t('data_import.relay_enrichment.no_auxiliary_files'))
       end
 
       it 'does not render relay enrichment panel when no relay issues are found' do

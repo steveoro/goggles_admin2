@@ -188,6 +188,99 @@ RSpec.describe Import::Phase5Populator, type: :strategy do
     end
   end
 
+  describe '#detect_source_format' do
+    context 'with LT2 format file (Molinella sample)' do
+      let(:source_path) { 'spec/fixtures/results/season-182_Molinella_sample.json' }
+
+      before(:each) do
+        subject.send(:load_phase_files!)
+      end
+
+      it 'detects LT2 format based on layoutType field' do
+        format = subject.send(:source_format)
+        expect(format).to eq(:lt2)
+      end
+
+      it 'reads layoutType field from source' do
+        subject.send(:load_phase_files!)
+        layout_type = subject.source_data['layoutType']
+        expect(layout_type).to eq(2)
+      end
+    end
+
+    context 'with LT2 format file (Saronno sample)' do
+      let(:source_path) { 'spec/fixtures/results/season-192_Saronno_sample.json' }
+
+      before(:each) do
+        subject.send(:load_phase_files!)
+      end
+
+      it 'detects LT2 format based on layoutType field' do
+        format = subject.send(:source_format)
+        expect(format).to eq(:lt2)
+      end
+
+      it 'reads layoutType field from source' do
+        layout_type = subject.source_data['layoutType']
+        expect(layout_type).to eq(2)
+      end
+    end
+
+    context 'with LT4 format file' do
+      let(:source_path) { 'spec/fixtures/import/sample-200RA-l4.json' }
+
+      before(:each) do
+        subject.send(:load_phase_files!)
+      end
+
+      it 'detects LT4 format based on layoutType field' do
+        format = subject.send(:source_format)
+        expect(format).to eq(:lt4)
+      end
+
+      it 'reads layoutType field from source' do
+        layout_type = subject.source_data['layoutType']
+        expect(layout_type).to eq(4)
+      end
+    end
+
+    context 'with missing layoutType field' do
+      let(:temp_dir) { Dir.mktmpdir }
+      let(:source_path) { File.join(temp_dir, 'no_layout_type.json') }
+
+      before(:each) do
+        File.write(source_path, JSON.generate({ 'name' => 'Test Meeting' }))
+      end
+
+      after(:each) do
+        FileUtils.rm_rf(temp_dir) if File.directory?(temp_dir)
+      end
+
+      it 'raises an error' do
+        subject.send(:load_phase_files!)
+        expect { subject.send(:source_format) }.to raise_error(/layoutType.*missing/)
+      end
+    end
+
+    context 'with unknown layoutType value' do
+      let(:temp_dir) { Dir.mktmpdir }
+      let(:source_path) { File.join(temp_dir, 'unknown_layout_type.json') }
+
+      before(:each) do
+        File.write(source_path, JSON.generate({ 'layoutType' => 99, 'name' => 'Test Meeting' }))
+      end
+
+      after(:each) do
+        FileUtils.rm_rf(temp_dir) if File.directory?(temp_dir)
+      end
+
+      it 'raises an error' do
+        subject.send(:load_phase_files!)
+        expect { subject.send(:source_format) }.to raise_error(/Unknown layoutType 99/)
+      end
+    end
+  end
+
   # NOTE: Full integration tests (#populate!) require fixture files
   # These should be added once we have sample JSON files in spec/fixtures/
 end

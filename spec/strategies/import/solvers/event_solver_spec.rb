@@ -151,15 +151,17 @@ RSpec.describe Import::Solvers::EventSolver do
       expect(event_200ra['stroke']).to eq('RA')
     end
 
-    it 'skips relay events' do
+    it 'processes relay events' do
       described_class.new(season: season).build!(source_path: source_file, lt_format: 4)
       phase_file = default_phase4_path(source_file)
       data = JSON.parse(File.read(phase_file))['data']
 
       all_events = data['sessions'].flat_map { |s| s['events'] }
-      # Should have 3 individual events, not 4
-      expect(all_events.size).to eq(3)
-      expect(all_events.map { |e| e['key'] }).not_to include('4x50SL')
+      # Should have 4 events total: 3 individual + 1 relay
+      expect(all_events.size).to eq(4)
+      relay_event = all_events.find { |e| e['key'] == '4x50SL' }
+      expect(relay_event).to be_present
+      expect(relay_event['relay']).to eq(true)
     end
 
     it 'groups events by sessionOrder' do
@@ -171,7 +173,8 @@ RSpec.describe Import::Solvers::EventSolver do
       session1 = data['sessions'].find { |s| s['session_order'] == 1 }
       session2 = data['sessions'].find { |s| s['session_order'] == 2 }
 
-      expect(session1['events'].size).to eq(2)
+      # Session 1 now has 3 events (2 individual + 1 relay without sessionOrder defaults to 1)
+      expect(session1['events'].size).to eq(3)
       expect(session2['events'].size).to eq(1)
     end
   end

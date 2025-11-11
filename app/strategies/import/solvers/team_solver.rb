@@ -42,22 +42,26 @@ module Import
 
         if lt_format == 4 && (data_hash['teams'].is_a?(Array) || data_hash['teams'].is_a?(Hash))
           if data_hash['teams'].is_a?(Array)
-            data_hash['teams'].each do |t|
+            total = data_hash['teams'].size
+            data_hash['teams'].each_with_index do |t, idx|
               name = extract_team_name(t)
               next if name.blank?
 
               team_entry = build_team_entry(name, name)
               teams << team_entry
               ta << build_team_affiliation_entry(name, team_entry['team_id'])
+              broadcast_progress('map_teams', idx + 1, total) if (idx + 1) % 5 == 0 || (idx + 1) == total
             end
           else
-            data_hash['teams'].each do |key, value|
+            total = data_hash['teams'].size
+            data_hash['teams'].each_with_index do |(key, value), idx|
               name = extract_team_name(value)
               next if name.blank?
 
               team_entry = build_team_entry(key, name)
               teams << team_entry
               ta << build_team_affiliation_entry(key, team_entry['team_id'])
+              broadcast_progress('map_teams', idx + 1, total) if (idx + 1) % 5 == 0 || (idx + 1) == total
             end
           end
         elsif data_hash['sections'].is_a?(Array)
@@ -88,6 +92,10 @@ module Import
         meta = {
           'generator' => self.class.name,
           'source_path' => source_path,
+          'generated_at' => Time.now.utc.iso8601,
+          'season_id' => @season.id,
+          'layoutType' => lt_format,
+          'phase' => 2,
           'parent_checksum' => pfm.checksum(source_path)
         }
         pfm.write!(data: payload, meta: meta)
@@ -229,6 +237,16 @@ module Import
       rescue StandardError => e
         @logger&.error("[TeamSolver] Error matching team affiliation for '#{team_key}': #{e.message}")
         affiliation # Return affiliation without ID on error
+      end
+
+      # Broadcast progress updates via ActionCable for real-time UI feedback
+      def broadcast_progress(message, current, total)
+        ActionCable.server.broadcast(
+          'ImportStatusChannel',
+          { msg: message, progress: current, total: total }
+        )
+      rescue StandardError => e
+        @logger&.warn("[TeamSolver] Failed to broadcast progress: #{e.message}")
       end
     end
   end

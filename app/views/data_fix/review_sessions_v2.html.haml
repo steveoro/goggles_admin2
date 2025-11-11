@@ -1,16 +1,15 @@
 -# frozen_string_literal: true
 
+= render(partial: 'data_fix_legacy/modal_progress')
+
 .container-fluid
   %h2 Data-Fix V2 • Step 1: Meeting & Sessions (Phase 1)
   .mb-2
     = render(partial: 'data_fix/step_tabs', locals: { active_step: 1, file_path: @file_path })
 
   -# Phase Navigation buttons
-  .d-flex.justify-content-between.my-2
-    %div
-      = link_to 'Use legacy (Step 1)', review_sessions_path(request.query_parameters.except(:phase_v2)), class: 'btn btn-secondary'
-    %div
-      = link_to 'Proceed to Step 2 (Teams)', review_teams_path(request.query_parameters.merge(phase2_v2: 1)), class: 'btn btn-primary'
+  .d-flex.justify-content-end.my-2
+    = link_to 'Proceed to Step 2 (Teams)', review_teams_path(request.query_parameters.merge(phase2_v2: 1)), class: 'btn btn-primary'
   :ruby
     meeting_id = @phase1_data['id']
     meeting_name = @phase1_data['name']
@@ -47,7 +46,7 @@
   -# Sessions as collapsible cards
   - if sessions.empty?
     .alert.alert-info
-      %em No sessions yet. Click "Add Session" above or use the legacy view.
+      %em No sessions yet. Click "Add Session" above.
   - else
     - new_session_idx = params[:new_session_index]&.to_i
     - sessions.each_with_index do |sess_hash, idx|

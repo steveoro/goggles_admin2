@@ -1,5 +1,7 @@
 -# frozen_string_literal: true
 
+= render(partial: 'data_fix_legacy/modal_progress')
+
 -# Phase 3 Swimmers view with collapsible cards + AutoComplete + fuzzy matching
 .container-fluid
   %h2 Data-Fix V2 • Step 3: Swimmers (Phase 3)
@@ -7,10 +9,8 @@
     = render(partial: 'data_fix/step_tabs', locals: { active_step: 3, file_path: @file_path })
 
   -# Phase Navigation buttons
-  .d-flex.justify-content-between.my-2
-    %div
-      = link_to 'Use legacy (Step 3)', review_swimmers_path(request.query_parameters.except(:phase3_v2)), class: 'btn btn-secondary btn-block'
-    %div
+  .d-flex.justify-content-end.my-2
+    .div
       = link_to 'Proceed to Step 4 (Events)', review_events_path(request.query_parameters), class: 'btn btn-primary btn-block'
   -# Phase Metadata card
   = render(partial: 'data_fix/phase_metadata', locals: { phase_number: 3, metadata: @phase3_meta })

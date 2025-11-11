@@ -343,7 +343,7 @@ module Import
         # Create new swimming pool
 
         # Retrieve PoolType only if not already set by ID:
-        normalized_pool = normalize_swimming_pool_attributes(pool_hash, city_id: city_id)
+        normalized_pool = normalize_swimming_pool_attributes(pool_hash, city_id: pool_hash['city_id'])
 
         new_pool = GogglesDb::SwimmingPool.create!(normalized_pool)
         @sql_log << SqlMaker.new(row: new_pool).log_insert
@@ -747,9 +747,7 @@ module Import
         normalized['city_id'] ||= city_id if city_id
 
         pool_type_code = normalized.delete('pool_type_code')
-        if normalized['pool_type_id'].blank? && pool_type_code.present?
-          normalized['pool_type_id'] = GogglesDb::PoolType.find_by(code: pool_type_code)&.id
-        end
+        normalized['pool_type_id'] = GogglesDb::PoolType.find_by(code: pool_type_code)&.id if normalized['pool_type_id'].blank? && pool_type_code.present?
 
         %w[multiple_pools garden bar restaurant gym child_area read_only].each do |flag|
           next unless normalized.key?(flag)
@@ -767,9 +765,7 @@ module Import
         normalized['event_type_id'] ||= event_type_id
 
         heat_type_code = normalized.delete('heat_type') || normalized.delete(:heat_type)
-        if normalized['heat_type_id'].blank? && heat_type_code.present?
-          normalized['heat_type_id'] = GogglesDb::HeatType.find_by(code: heat_type_code)&.id
-        end
+        normalized['heat_type_id'] = GogglesDb::HeatType.find_by(code: heat_type_code)&.id if normalized['heat_type_id'].blank? && heat_type_code.present?
 
         %w[out_of_race autofilled split_gender_start_list split_category_start_list].each do |flag|
           next unless normalized.key?(flag)
@@ -833,6 +829,9 @@ module Import
           'seconds_from_start' => integer_or_nil(data_import_lap.seconds_from_start),
           'hundredths_from_start' => integer_or_nil(data_import_lap.hundredths_from_start),
           'reaction_time' => decimal_or_nil(data_import_lap.reaction_time),
+          # NOTE: there's a column naming difference between data_import_* tables and actual target tables.
+          # FUTUREDEV: rename breath_number to breath_cycles in data_import_* tables to match the target entities.
+          # (low-priority as currently the breath_* columns are not used in meeting results)
           'breath_cycles' => integer_or_nil(data_import_lap.breath_number),
           'underwater_seconds' => integer_or_nil(data_import_lap.underwater_seconds),
           'underwater_hundredths' => integer_or_nil(data_import_lap.underwater_hundredths),
@@ -879,9 +878,7 @@ module Import
         if normalized.key?('compute_gogglecup') || normalized.key?(:compute_gogglecup)
           normalized['compute_gogglecup'] = BOOLEAN_TYPE.cast(normalized['compute_gogglecup'])
         end
-        if normalized.key?('autofilled') || normalized.key?(:autofilled)
-          normalized['autofilled'] = BOOLEAN_TYPE.cast(normalized['autofilled'])
-        end
+        normalized['autofilled'] = BOOLEAN_TYPE.cast(normalized['autofilled']) if normalized.key?('autofilled') || normalized.key?(:autofilled)
 
         sanitized = sanitize_attributes(normalized, GogglesDb::TeamAffiliation)
         sanitized['name'] ||= team&.name || ''

@@ -8,6 +8,13 @@ module Import
   # Reads phases 1-4 JSON for entity IDs, generates import_keys using MacroSolver patterns,
   # and inserts individual results + laps into GogglesDb data_import tables.
   #
+  # Supports both LT2 and LT4 source formats:
+  # - LT2 (layoutType: 2): Direct entity keys (meeting_individual_result, meeting_relay_result)
+  # - LT4 (layoutType: 4): Events array structure
+  #
+  # Format is auto-detected from the source file's 'layoutType' field and routed to
+  # appropriate population methods.
+  #
   # == Usage:
   #   populator = Import::Phase5Populator.new(
   #     source_path: '/path/to/source.json',
@@ -31,14 +38,33 @@ module Import
       @phase2_path = phase2_path
       @phase3_path = phase3_path
       @phase4_path = phase4_path
-      @stats = { mir_created: 0, laps_created: 0, programs_matched: 0, mirs_matched: 0, errors: [] }
+      @stats = {
+        mir_created: 0,
+        laps_created: 0,
+        relay_results_created: 0,
+        relay_swimmers_created: 0,
+        relay_laps_created: 0,
+        programs_matched: 0,
+        mirs_matched: 0,
+        errors: []
+      }
     end
 
     # Main entry point: truncate existing data, load phase files, populate tables
     def populate!
       truncate_tables!
       load_phase_files!
-      populate_individual_results!
+
+      # Route based on detected source format
+      case source_format
+      when :lt2
+        Rails.logger.info('[Phase5Populator] Detected LT2 format')
+        populate_lt2_results!
+      when :lt4
+        Rails.logger.info('[Phase5Populator] Detected LT4 format')
+        populate_lt4_results!
+      end
+
       stats
     end
 
@@ -66,9 +92,53 @@ module Import
       Rails.logger.info("  - phase4_path: #{phase4_path}, exists: #{File.exist?(phase4_path)}")
     end
 
+    # Detect source file format (LT2 or LT4) based on layoutType field
+    def source_format
+      @source_format ||= detect_source_format
+    end
+
+    def detect_source_format
+      layout_type = source_data['layoutType']
+
+      raise "Unknown source format: 'layoutType' field missing in #{source_path}" if layout_type.nil?
+
+      case layout_type.to_i
+      when 2
+        :lt2
+      when 4
+        :lt4
+      else
+        raise "Unknown layoutType #{layout_type} in #{source_path}. Expected 2 (LT2) or 4 (LT4)"
+      end
+    end
+
+    # Populate from LT2 format (direct entity arrays)
+    def populate_lt2_results!
+      populate_lt2_individual_results!
+      populate_lt2_relay_results!
+    end
+
+    # Populate individual results from LT2 format
+    def populate_lt2_individual_results!
+      Rails.logger.info('[Phase5Populator] LT2 individual results population - NOT YET IMPLEMENTED')
+      # TODO: Implement in Session 2 (Day 2)
+    end
+
+    # Populate relay results from LT2 format
+    def populate_lt2_relay_results!
+      Rails.logger.info('[Phase5Populator] LT2 relay results population - NOT YET IMPLEMENTED')
+      # TODO: Implement in Session 2 (Day 3)
+    end
+
+    # Populate from LT4 format (events array)
+    def populate_lt4_results!
+      populate_lt4_individual_results!
+      # populate_lt4_relay_results! # TODO: Implement in Session 2 (Day 4)
+    end
+
     # Populate MIR + Laps from source events array (LT4 format)
     # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
-    def populate_individual_results!
+    def populate_lt4_individual_results!
       events = source_data['events'] || []
 
       events.each_with_index do |event, _idx|

@@ -125,6 +125,9 @@ class DataFixController < ApplicationController
       @row_range = "#{(@page * @per_page) - @per_page + 1}-#{@page * @per_page}"
       # Use Kaminari for pagination
       @items = Kaminari.paginate_array(teams, total_count: @total_count).page(@page).per(@per_page)
+
+      # Broadcast ready status to clear progress modal
+      broadcast_progress('Review teams: ready', @total_count, @total_count)
       return render 'data_fix/review_teams_v2'
     end
 
@@ -213,6 +216,9 @@ class DataFixController < ApplicationController
       @row_range = "#{(@page * @per_page) - @per_page + 1}-#{@page * @per_page}"
       # Use Kaminari for pagination
       @items = Kaminari.paginate_array(swimmers, total_count: @total_count).page(@page).per(@per_page)
+
+      # Broadcast ready status to clear progress modal
+      broadcast_progress('Review swimmers: ready', @total_count, @total_count)
       return render 'data_fix/review_swimmers_v2'
     end
 
@@ -574,10 +580,16 @@ class DataFixController < ApplicationController
 
     t = teams[team_index] || {}
 
-    # Handle nested params from AutoComplete (team[index][field]) and top-level params
+    # Handle both nested params from form (team[index][field]) and direct params from API (team[field])
     team_params = params[:team]
-    if team_params.is_a?(ActionController::Parameters) && team_params[team_index.to_s].present?
-      nested = team_params[team_index.to_s].permit(:team_id, :editable_name, :name, :name_variations, :city_id)
+    if team_params.is_a?(ActionController::Parameters)
+      # Try nested params first (from form with index)
+      nested = if team_params[team_index.to_s].present?
+                 team_params[team_index.to_s].permit(:team_id, :editable_name, :name, :name_variations, :city_id)
+               else
+                 # Direct params (from API or specs)
+                 team_params.permit(:team_id, :editable_name, :name, :name_variations, :city_id)
+               end
 
       # Update team_id (from AutoComplete)
       if nested.key?(:team_id)
@@ -829,18 +841,16 @@ class DataFixController < ApplicationController
 
     warnings = []
     resolved_aux_paths = selected_paths.filter_map do |raw|
-      begin
-        abs_path = Pathname.new(File.expand_path(raw, base_dir)).to_s
-        if File.exist?(abs_path)
-          abs_path
-        else
-          warnings << I18n.t('data_import.relay_enrichment.errors.missing_file', file: File.basename(raw))
-          nil
-        end
-      rescue StandardError
-        warnings << I18n.t('data_import.relay_enrichment.errors.invalid_path', path: raw)
+      abs_path = Pathname.new(File.expand_path(raw, base_dir)).to_s
+      if File.exist?(abs_path)
+        abs_path
+      else
+        warnings << I18n.t('data_import.relay_enrichment.errors.missing_file', file: File.basename(raw))
         nil
       end
+    rescue StandardError
+      warnings << I18n.t('data_import.relay_enrichment.errors.invalid_path', path: raw)
+      nil
     end
 
     if resolved_aux_paths.empty?
@@ -850,13 +860,11 @@ class DataFixController < ApplicationController
 
     merger = Phase3::RelayMergeService.new(data.deep_dup)
     resolved_aux_paths.each do |aux_path|
-      begin
-        payload = JSON.parse(File.read(aux_path))
-        aux_data = payload.is_a?(Hash) ? payload['data'] || payload : {}
-        merger.merge_from(aux_data)
-      rescue JSON::ParserError
-        warnings << I18n.t('data_import.relay_enrichment.errors.unreadable_file', file: File.basename(aux_path))
-      end
+      payload = JSON.parse(File.read(aux_path))
+      aux_data = payload.is_a?(Hash) ? payload['data'] || payload : {}
+      merger.merge_from(aux_data)
+    rescue JSON::ParserError
+      warnings << I18n.t('data_import.relay_enrichment.errors.unreadable_file', file: File.basename(aux_path))
     end
 
     merged_data = merger.result
@@ -865,11 +873,9 @@ class DataFixController < ApplicationController
     end
 
     relative_aux_paths = resolved_aux_paths.map do |abs|
-      begin
-        Pathname.new(abs).relative_path_from(Pathname.new(base_dir)).to_s
-      rescue StandardError
-        abs
-      end
+      Pathname.new(abs).relative_path_from(Pathname.new(base_dir)).to_s
+    rescue StandardError
+      abs
     end
 
     meta['auxiliary_phase3_paths'] = relative_aux_paths
@@ -1574,5 +1580,16 @@ class DataFixController < ApplicationController
     meta['source_path'].presence || file_path
   rescue StandardError
     file_path
+  end
+
+  # Broadcast progress updates via ActionCable for real-time UI feedback
+  # Used during long-running operations (team/swimmer/result processing)
+  def broadcast_progress(message, current, total)
+    ActionCable.server.broadcast(
+      'ImportStatusChannel',
+      { msg: message, progress: current, total: total }
+    )
+  rescue StandardError => e
+    Rails.logger.warn("[DataFixController] Failed to broadcast progress: #{e.message}")
   end
 end

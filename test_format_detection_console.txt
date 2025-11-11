@@ -1,0 +1,34 @@
+# Copy and paste these commands into Rails console to test format detection
+# Run: rails console
+
+# Test 1: LT2 Format Detection (Relay file)
+lt2_file = 'crawler/data/results.new/242/2025-06-24-Campionati_Italiani_di_Nuoto_Master_Herbalife-4X50MI-l4.json'
+base_path = lt2_file.gsub('.json', '')
+
+populator = Import::Phase5Populator.new(
+  source_path: lt2_file,
+  phase1_path: "#{base_path}-phase1.json",
+  phase2_path: "#{base_path}-phase2.json",
+  phase3_path: "#{base_path}-phase3.json",
+  phase4_path: "#{base_path}-phase4.json"
+)
+
+populator.send(:load_phase_files!)
+format = populator.send(:source_format)
+puts "Detected format: #{format}"
+puts "Expected: :lt2"
+
+# Check source structure
+source = populator.source_data
+puts "\nSource keys present:"
+puts "  - meeting_relay_result: #{source.key?('meeting_relay_result')} (#{source['meeting_relay_result']&.size || 0} results)"
+puts "  - meeting_individual_result: #{source.key?('meeting_individual_result')}"
+puts "  - events: #{source.key?('events')}"
+puts "  - layoutType: #{source['layoutType']}"
+
+puts "\n✅ Format detection #{format == :lt2 ? 'PASSED' : 'FAILED'}!"
+
+# Test 2: Test populate! method to see logging
+puts "\n" + "=" * 60
+puts "Testing populate! method (will see format detection log):"
+populator.populate!

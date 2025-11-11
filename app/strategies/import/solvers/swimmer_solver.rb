@@ -115,6 +115,10 @@ module Import
         meta = {
           'generator' => self.class.name,
           'source_path' => source_path,
+          'generated_at' => Time.now.utc.iso8601,
+          'season_id' => @season.id,
+          'layoutType' => lt_format,
+          'phase' => 3,
           'parent_checksum' => pfm.checksum(source_path)
         }
         pfm.write!(data: payload, meta: meta)

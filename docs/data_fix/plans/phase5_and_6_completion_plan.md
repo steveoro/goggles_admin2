@@ -1,8 +1,14 @@
 # Phase 5 & 6 Completion Plan
 
-**Status**: Phases 1-5 Complete ✅ | Phase 6 Ready to Implement 🚀
+**Status**: Phases 1-4 Complete ✅ | Phase 5 Relay Support In Progress 🟡 | Phase 6 Individual Results Ready 🚀
 
-**Document Version**: 1.2 (2025-11-02)
+**Document Version**: 1.3 (2025-11-10)
+
+**Recent Updates**:
+- ✅ **EventSolver relay support** (2025-11-10): Relay-only file detection, event grouping by gender
+- ✅ **ResultSolver relay support** (2025-11-10): Relay result counting, metadata preservation
+- ⚠️ **Phase5Populator**: Needs relay population logic
+- ⚠️ **Phase 6 Main**: Needs relay commit methods
 
 ---
 
@@ -35,11 +41,11 @@ Complete Data-Fix pipeline by finalizing Phase 5 (Result Review) and implementin
 
 ## Phase 5: Result Review Finalization
 
-### 5.0 Phase 5 Data Population ✅
+### 5.0 Phase 5 Data Population (⚠️ Individual: ✅ | Relay: 🟡)
 
 **Goal**: Populate `data_import_*` tables from source JSON.
 
-**Implementation**:
+**Implementation (Individual Results)**:
 - ✅ Created `Import::Phase5Populator` service
 - ✅ Reads phases 1-4 for entity IDs
 - ✅ Generates `import_key` using MacroSolver patterns
@@ -47,16 +53,30 @@ Complete Data-Fix pipeline by finalizing Phase 5 (Result Review) and implementin
 - ✅ Links swimmer_id and team_id from prior phases
 - ✅ Integrated into `DataFixController#review_results`
 
+**Implementation (Relay Results)** 🎯 ACTIVE WORK:
+- ✅ `EventSolver` processes relay events correctly (phase4)
+- ✅ `ResultSolver` includes relay data (phase5 JSON)
+- ⚠️ **BLOCKER**: `Phase5Populator` only handles LT4, test file is LT2!
+- 🎯 **NEXT**: Add LT2+LT4 format support (see detailed plan below)
+- ❌ Need to populate `DataImportMeetingRelayResult` tables
+- ❌ Need to populate `DataImportRelaySwimmer` and `DataImportRelayLap` tables
+
+👉 **Detailed implementation plan**: [`PHASE5_LT2_LT4_SUPPORT_PLAN.md`](./PHASE5_LT2_LT4_SUPPORT_PLAN.md)
+
 **Flow**:
-1. `ResultSolver` builds phase 5 JSON (summary/scaffold)
-2. `Phase5Populator` populates DB tables (detailed data)
-3. Controller queries `DataImportMeetingIndividualResult` for display
+1. `EventSolver` builds phase 4 JSON with relay events (1 session, 3 events by gender) ✅
+2. `ResultSolver` builds phase 5 JSON with relay result summary ✅
+3. `Phase5Populator` populates DB tables (individual: ✅, relay: ❌)
+4. Controller queries tables for display
 
 **Tasks**:
 - [x] Create `Phase5Populator` service
 - [x] Integrate into controller
-- [ ] Add specs for populator
-- [ ] Test with real data file
+- [x] Fix EventSolver relay recognition (2025-11-10)
+- [x] Fix ResultSolver relay recognition (2025-11-10)
+- [ ] Add relay population to Phase5Populator
+- [ ] Add specs for relay populator
+- [ ] Test with real relay data file
 
 ### 5.1 Result Display UI ✅
 
@@ -87,7 +107,7 @@ Complete Data-Fix pipeline by finalizing Phase 5 (Result Review) and implementin
 - Match visual style of event/swimmer cards
 - Responsive grid: 2 columns on large screens
 
-**Tasks**:
+**Tasks (Individual Results)**:
 - [x] ~~Table-based display~~ (v1 complete)
 - [x] Test with real data in browser (v1 working)
 - [x] Create card-based partial `_result_program_card.html.haml`
@@ -98,6 +118,16 @@ Complete Data-Fix pipeline by finalizing Phase 5 (Result Review) and implementin
 - [x] Eager-load laps to avoid N+1 queries
 - [x] Test card interactions in browser (v2)
 - [x] Fix team "N/A" issue (lookup by key for unmatched teams)
+
+**Tasks (Relay Results)** 🟡 PENDING:
+- [ ] Create `_relay_result_program_card.html.haml`
+- [ ] Create `_relay_result_row.html.haml` with leg expansion
+- [ ] Create `_relay_leg_details.html.haml`
+- [ ] Add relay result queries to controller
+- [ ] Eager-load relay associations
+- [ ] Test relay card display
+
+**Next Steps**: See `phase5_relay_display_task_list.md` for detailed relay implementation plan
 - [x] Add lap timing computation (delta + from_start)
 
 ### 5.1.1 Lap Timing Handling 
@@ -213,6 +243,59 @@ Source JSON: "timing": "1'18.56"  →  This is "from_start" (cumulative)
 - [x] Add stats tracking for matched MIRs
 - [ ] Test with real meeting data
 - [x] Add specs for matching logic
+
+### 5.3 Relay Event Recognition ✅ (COMPLETED 2025-11-10)
+
+**Goal**: Fix EventSolver and ResultSolver to properly handle relay events.
+
+**Problem**: 
+- Relay events were skipped entirely in phases 4 & 5
+- Each section created a separate session (23 sessions for 1 relay file)
+- No EventType matching for relay events
+
+**Solution Implemented**:
+1. **EventSolver** (`app/strategies/import/solvers/event_solver.rb`):
+   - Relay-only file detection: groups all relay sections into ONE session
+   - Section title parsing: `"4x50 m Misti"` → `[200, "MI", "S4X50MI"]`
+   - LT4 relay code parsing: handles `"4x50SL"`, `"S4X50MI"`, `"M4X50MI"`
+   - EventType matching with `relay: true`
+   - Helper methods: `parse_relay_event_from_title`, `find_relay_event_type_id`
+
+2. **ResultSolver** (`app/strategies/import/solvers/result_solver.rb`):
+   - Same relay detection and grouping logic
+   - Result counting per gender group (F, M, X)
+   - Relay metadata preserved
+
+**Test Results**:
+```
+Source: 2025-06-24-...4X50MI-l4.json (23 sections)
+Before: 23 sessions, 0-23 unmatched events ❌
+After:  1 session, 3 events (F/M/X), all matched ✅
+
+Phase 4 EventSolver:
+  - S4X50MI (gender: F, event_type_id: 26)
+  - S4X50MI (gender: M, event_type_id: 26)
+  - M4X50MI (gender: X, event_type_id: 33)
+
+Phase 5 ResultSolver:
+  - F: 22 results
+  - M: 24 results
+  - X: 1 result
+```
+
+**Tasks**:
+- [x] Fix EventSolver relay detection
+- [x] Add relay-only file grouping logic
+- [x] Parse Italian relay titles ("misti", "stile libero", etc.)
+- [x] Parse LT4 relay event codes
+- [x] Match EventTypes with `relay: true`
+- [x] Fix ResultSolver relay handling
+- [x] Update specs (3 specs updated, all 60 passing)
+- [x] Test with actual relay file
+- [x] Document changes (FIXES_progress_and_relay_events.md)
+
+**Documentation**:
+- See `docs/data_fix/FIXES_progress_and_relay_events.md` for complete details
 
 ### 5.4 Result Card Content & Data Structure ✅
 
