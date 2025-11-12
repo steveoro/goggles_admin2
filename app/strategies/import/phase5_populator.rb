@@ -70,6 +70,9 @@ module Import
     def truncate_tables!
       GogglesDb::DataImportMeetingIndividualResult.delete_all
       GogglesDb::DataImportLap.delete_all
+      GogglesDb::DataImportMeetingRelayResult.delete_all
+      GogglesDb::DataImportMeetingRelaySwimmer.delete_all
+      GogglesDb::DataImportRelayLap.delete_all
     end
 
     # Load all phase JSON files and normalize source to LT4 format
@@ -124,7 +127,7 @@ module Import
     # Note: LT2 files are automatically normalized to LT4 format before this runs
     def populate_lt4_results!
       populate_lt4_individual_results!
-      # populate_lt4_relay_results! # TODO: Implement relay support (Day 3)
+      populate_lt4_relay_results!
     end
 
     # Populate MIR + Laps from source events array (LT4 format)
@@ -181,6 +184,67 @@ module Import
 
           # Create lap records
           create_lap_records(mir, result, import_key)
+        end
+      end
+    end
+    # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+
+    # Populate relay results from source events array (LT4 format)
+    # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+    def populate_lt4_relay_results!
+      events = source_data['events'] || []
+
+      events.each do |event|
+        next unless event['relay'] == true # Only process relay events
+
+        session_order = event['sessionOrder'] || 1
+        distance = extract_distance(event)
+        stroke = extract_stroke(event)
+        next if distance.blank? || stroke.blank?
+
+        event_code = event['eventCode'].presence || "#{distance}#{stroke}"
+        results = Array(event['results'])
+
+        results.each do |result|
+          # For relays, gender and category might be on result or event
+          gender = result['gender'] || event['eventGender'] || event['gender'] || 'X'
+          category = result['category'] || result['categoryTypeCode'] || result['category_code']
+          next if category.blank?
+
+          # Generate keys
+          program_key = build_program_key(session_order, event_code, category, gender)
+          team_key = build_team_key_from_result(result)
+          timing_string = result['timing'] || '0'
+          import_key = GogglesDb::DataImportMeetingRelayResult.build_import_key(program_key, team_key, timing_string)
+
+          # Find entity IDs from phase files
+          team_id = find_team_id(result)
+          meeting_program_id = find_meeting_program_id(session_order, event_code, category, gender)
+          @stats[:programs_matched] += 1 if meeting_program_id
+
+          # Find existing MRR if all IDs present (for potential UPDATE)
+          meeting_relay_result_id = find_existing_mrr(meeting_program_id, team_id) if meeting_program_id && team_id
+
+          # Parse timing
+          timing_hash = parse_timing_string(result['timing'])
+
+          # Create MRR record
+          mrr = create_mrr_record(
+            import_key: import_key,
+            result: result,
+            timing_hash: timing_hash,
+            team_id: team_id,
+            meeting_program_id: meeting_program_id,
+            meeting_relay_result_id: meeting_relay_result_id
+          )
+
+          next unless mrr
+
+          @stats[:relay_results_created] += 1
+
+          # Create relay swimmers and laps
+          create_relay_swimmers(mrr, result, import_key)
+          create_relay_laps(mrr, result, import_key)
         end
       end
     end
@@ -504,6 +568,142 @@ module Import
         seconds: delta_timing.seconds,
         hundredths: delta_timing.hundredths
       }
+    end
+
+    # Build team key from result for relay events
+    def build_team_key_from_result(result)
+      team_name = result['team'] || result['teamName'] || ''
+      team_name.strip
+    end
+
+    # Find existing MeetingRelayResult for UPDATE operations
+    def find_existing_mrr(meeting_program_id, team_id)
+      return nil unless meeting_program_id && team_id
+
+      mrr = GogglesDb::MeetingRelayResult
+            .where(meeting_program_id: meeting_program_id, team_id: team_id)
+            .first
+
+      mrr&.id
+    end
+
+    # Create MRR record
+    def create_mrr_record(import_key:, result:, timing_hash:, team_id:, meeting_program_id:, meeting_relay_result_id:)
+      GogglesDb::DataImportMeetingRelayResult.create!(
+        import_key: import_key,
+        phase_file_path: source_path,
+        meeting_relay_result_id: meeting_relay_result_id,
+        meeting_program_id: meeting_program_id,
+        team_id: team_id,
+        rank: result['ranking'] || result['rank'] || result['pos'],
+        minutes: timing_hash[:minutes],
+        seconds: timing_hash[:seconds],
+        hundredths: timing_hash[:hundredths],
+        disqualified: result['disqualified'] || false,
+        standard_points: (result['standard_points'] || result['standardPoints'] || 0).to_f,
+        meeting_points: (result['meeting_points'] || result['meetingPoints'] || 0).to_f
+      )
+    rescue ActiveRecord::RecordInvalid => e
+      @stats[:errors] << "MRR error for #{import_key}: #{e.message}"
+      nil
+    end
+
+    # Create relay swimmer records for a given MRR
+    def create_relay_swimmers(_mrr, result, mrr_import_key)
+      swimmers = result['swimmers'] || []
+
+      swimmers.each_with_index do |swimmer_data, idx|
+        relay_order = idx + 1
+
+        # Build swimmer key for matching
+        swimmer_name = swimmer_data['complete_name'] || swimmer_data['name'] || ''
+        year = swimmer_data['year_of_birth'] || swimmer_data['year'] || ''
+
+        # Match swimmer from phase3 if possible
+        name_parts = swimmer_name.split(' ', 2)
+        last_name = name_parts[0] || ''
+        first_name = name_parts[1] || ''
+        swimmer_key = "#{last_name}|#{first_name}|#{year}"
+        swimmer_id = find_swimmer_id_by_key(swimmer_key)
+
+        rs_import_key = "#{mrr_import_key}-swimmer#{relay_order}"
+
+        GogglesDb::DataImportMeetingRelaySwimmer.create!(
+          import_key: rs_import_key,
+          parent_import_key: mrr_import_key,
+          swimmer_id: swimmer_id,
+          relay_order: relay_order,
+          minutes: 0,
+          seconds: 0,
+          hundredths: 0
+        )
+
+        @stats[:relay_swimmers_created] += 1
+      rescue ActiveRecord::RecordInvalid => e
+        @stats[:errors] << "RelaySwimmer error for #{rs_import_key}: #{e.message}"
+      end
+    end
+
+    # Create relay lap records for a given MRR
+    def create_relay_laps(_mrr, result, mrr_import_key)
+      laps = result['laps'] || []
+      previous_from_start = { minutes: 0, seconds: 0, hundredths: 0 }
+
+      laps.each do |lap|
+        # Parse distance: "50m" → 50
+        distance_str = lap['distance'] || lap['length_in_meters'] || lap['lengthInMeters']
+        length = distance_str.to_s.gsub(/\D/, '').to_i
+        next if length.zero?
+
+        # Parse lap timing from source (this is "from_start" timing)
+        from_start = parse_timing_string(lap['timing'])
+
+        # Compute delta timing
+        delta = compute_timing_delta(from_start, previous_from_start)
+
+        lap_import_key = "#{mrr_import_key}-lap#{length}"
+
+        GogglesDb::DataImportRelayLap.create!(
+          import_key: lap_import_key,
+          parent_import_key: mrr_import_key,
+          length_in_meters: length,
+          minutes: delta[:minutes],
+          seconds: delta[:seconds],
+          hundredths: delta[:hundredths],
+          minutes_from_start: from_start[:minutes],
+          seconds_from_start: from_start[:seconds],
+          hundredths_from_start: from_start[:hundredths]
+        )
+
+        @stats[:relay_laps_created] += 1
+        previous_from_start = from_start
+      rescue ActiveRecord::RecordInvalid => e
+        @stats[:errors] << "RelayLap error for #{lap_import_key}: #{e.message}"
+      end
+    end
+
+    # Find swimmer_id from phase 3 using simple key format
+    def find_swimmer_id_by_key(swimmer_key)
+      swimmers = phase3_data&.dig('data', 'swimmers') || []
+
+      swimmer = swimmers.find do |s|
+        s['key'] == swimmer_key
+      end
+
+      swimmer&.dig('swimmer_id')
+    end
+
+    # Find swimmer_id from composite key format (e.g., "M|ROSSI|Mario|1978|TeamName")
+    def find_swimmer_id_from_composite_key(composite_key)
+      parts = composite_key.split('|')
+      return nil if parts.size < 4
+
+      last_name = parts[1]
+      first_name = parts[2]
+      year = parts[3]
+
+      swimmer_key = "#{last_name}|#{first_name}|#{year}"
+      find_swimmer_id_by_key(swimmer_key)
     end
   end
 end

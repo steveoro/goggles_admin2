@@ -123,14 +123,27 @@ populator = Import::Phase5Populator.new(...)
 
 **Key Achievement**: Single unified code path! LT2 files auto-normalize to LT4 format
 
-### Session 2: LT2 Lap Handling (1-2 hours)
-- [ ] Implement `create_lap_records_lt2` method
-- [ ] Read `source_data['lap']` array
-- [ ] Filter laps by parent `meeting_individual_result_id`
-- [ ] Create `DataImportLap` records with timing
-- [ ] Handle `from_start` timing fields
-- [ ] Test lap creation
-- [ ] Commit: "Add LT2 lap record creation"
+### Session 2: Relay Support Implementation (2 hours) ✅ COMPLETE
+**Approach**: Implemented full relay population leveraging unified LT4 format
+- [x] Implement `populate_lt4_relay_results!` method
+- [x] Create DataImportMeetingRelayResult records
+- [x] Create DataImportMeetingRelaySwimmer records (with relay_order)
+- [x] Create DataImportRelayLap records (split + cumulative times)
+- [x] Add 7 helper methods for relay processing
+- [x] Create relay fixture files (source + phase1-4)
+- [x] Add 16 comprehensive RSpec tests
+- [x] Fix model associations (parent_import_key pattern)
+- [x] Fix build_import_key (3 args: program, team, timing)
+- [x] All 48 Phase5Populator tests passing ✅
+
+**Files Changed**:
+- `app/strategies/import/phase5_populator.rb` (200 lines added)
+- `spec/strategies/import/phase5_populator_spec.rb` (16 new tests)
+- `spec/fixtures/import/sample-relay-*.json` (5 new fixture files)
+
+**Test Results**: 48/48 passing (32 existing + 16 relay tests)
+
+**Key Achievement**: Complete relay support! Works with both LT2 and LT4 formats
 
 **Verification**:
 ```ruby

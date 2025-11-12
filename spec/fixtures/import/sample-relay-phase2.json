@@ -1,0 +1,30 @@
+{
+  "data": {
+    "teams": [
+      {
+        "id": 101,
+        "team_id": 101,
+        "name": "Sample Team A",
+        "editable_name": "Sample Team A",
+        "city": "City A",
+        "key": "Sample Team A"
+      },
+      {
+        "id": 102,
+        "team_id": 102,
+        "name": "Sample Team B",
+        "editable_name": "Sample Team B",
+        "city": "City B",
+        "key": "Sample Team B"
+      },
+      {
+        "id": 103,
+        "team_id": 103,
+        "name": "Mixed Team C",
+        "editable_name": "Mixed Team C",
+        "city": "City C",
+        "key": "Mixed Team C"
+      }
+    ]
+  }
+}

@@ -276,4 +276,142 @@ RSpec.describe Import::Phase5Populator, type: :strategy do
 
   # NOTE: Full integration tests (#populate!) require fixture files
   # These should be added once we have sample JSON files in spec/fixtures/
+
+  describe 'relay population' do
+    let(:relay_fixture_path) { 'spec/fixtures/import/sample-relay-4x50sl-l4.json' }
+    let(:source_path) { relay_fixture_path }
+    let(:phase1_path) { 'spec/fixtures/import/sample-relay-phase1.json' }
+    let(:phase2_path) { 'spec/fixtures/import/sample-relay-phase2.json' }
+    let(:phase3_path) { 'spec/fixtures/import/sample-relay-phase3.json' }
+    let(:phase4_path) { 'spec/fixtures/import/sample-relay-phase4.json' }
+
+    before(:each) do
+      # Clear relay tables
+      GogglesDb::DataImportMeetingRelayResult.delete_all
+      GogglesDb::DataImportMeetingRelaySwimmer.delete_all
+      GogglesDb::DataImportRelayLap.delete_all
+    end
+
+    context 'with relay fixture file' do
+      it 'detects LT4 format' do
+        raw_data = JSON.parse(File.read(relay_fixture_path))
+        expect(raw_data['layoutType']).to eq(4)
+        expect(raw_data['events']).to be_an(Array)
+      end
+
+      it 'has relay events' do
+        raw_data = JSON.parse(File.read(relay_fixture_path))
+        relay_events = raw_data['events'].select { |e| e['relay'] == true }
+        expect(relay_events.size).to be > 0
+      end
+    end
+
+    describe '#populate_lt4_relay_results!' do
+      before(:each) do
+        subject.send(:load_phase_files!)
+      end
+
+      it 'processes relay events only' do
+        expect(subject).to receive(:create_mrr_record).at_least(:once)
+        subject.send(:populate_lt4_relay_results!)
+      end
+
+      it 'creates DataImportMeetingRelayResult records' do
+        expect do
+          subject.send(:populate_lt4_relay_results!)
+        end.to change(GogglesDb::DataImportMeetingRelayResult, :count)
+      end
+
+      it 'creates DataImportMeetingRelaySwimmer records' do
+        expect do
+          subject.send(:populate_lt4_relay_results!)
+        end.to change(GogglesDb::DataImportMeetingRelaySwimmer, :count)
+      end
+
+      it 'creates DataImportRelayLap records' do
+        expect do
+          subject.send(:populate_lt4_relay_results!)
+        end.to change(GogglesDb::DataImportRelayLap, :count)
+      end
+
+      it 'creates correct number of relay results' do
+        subject.send(:populate_lt4_relay_results!)
+        # Fixture has 2 events with 3 total results (2 + 1)
+        expect(GogglesDb::DataImportMeetingRelayResult.count).to eq(3)
+      end
+
+      it 'creates correct number of relay swimmers' do
+        subject.send(:populate_lt4_relay_results!)
+        # Each relay result has 4 swimmers = 3 results × 4 = 12
+        expect(GogglesDb::DataImportMeetingRelaySwimmer.count).to eq(12)
+      end
+
+      it 'creates correct number of relay laps' do
+        subject.send(:populate_lt4_relay_results!)
+        # Each relay result has 4 laps = 3 results × 4 = 12
+        expect(GogglesDb::DataImportRelayLap.count).to eq(12)
+      end
+
+      it 'stores timing correctly in MRR' do
+        subject.send(:populate_lt4_relay_results!)
+        mrr = GogglesDb::DataImportMeetingRelayResult.first
+
+        expect(mrr.minutes).to eq(1)
+        expect(mrr.seconds).to be_between(0, 59)
+        expect(mrr.hundredths).to be_between(0, 99)
+      end
+
+      it 'stores relay order correctly in swimmers' do
+        subject.send(:populate_lt4_relay_results!)
+        mrr = GogglesDb::DataImportMeetingRelayResult.first
+        swimmers = GogglesDb::DataImportMeetingRelaySwimmer.where(parent_import_key: mrr.import_key)
+                                                           .order(:relay_order)
+
+        expect(swimmers.map(&:relay_order)).to eq([1, 2, 3, 4])
+      end
+
+      it 'stores lap distances correctly' do
+        subject.send(:populate_lt4_relay_results!)
+        mrr = GogglesDb::DataImportMeetingRelayResult.first
+        laps = GogglesDb::DataImportRelayLap.where(parent_import_key: mrr.import_key)
+                                            .order(:length_in_meters)
+
+        expect(laps.map(&:length_in_meters)).to eq([50, 100, 150, 200])
+      end
+
+      it 'computes delta timing for laps' do
+        subject.send(:populate_lt4_relay_results!)
+        laps = GogglesDb::DataImportRelayLap.order(:length_in_meters).limit(2)
+
+        # First lap should have delta timing
+        expect(laps.first.minutes).to be >= 0
+        expect(laps.first.seconds).to be_between(0, 59)
+      end
+
+      it 'computes from_start timing for laps' do
+        subject.send(:populate_lt4_relay_results!)
+        laps = GogglesDb::DataImportRelayLap.order(:length_in_meters).to_a
+
+        # from_start should increase with each lap
+        expect(laps[1].seconds_from_start).to be > laps[0].seconds_from_start
+      end
+
+      it 'updates statistics' do
+        subject.send(:populate_lt4_relay_results!)
+        stats = subject.stats
+
+        expect(stats[:relay_results_created]).to eq(3)
+        expect(stats[:relay_swimmers_created]).to eq(12)
+        expect(stats[:relay_laps_created]).to eq(12)
+      end
+
+      it 'generates valid import_keys' do
+        subject.send(:populate_lt4_relay_results!)
+        mrr = GogglesDb::DataImportMeetingRelayResult.first
+
+        expect(mrr.import_key).to be_present
+        expect(mrr.import_key).to include('-4X50')
+      end
+    end
+  end
 end

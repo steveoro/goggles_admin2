@@ -1,0 +1,46 @@
+{
+  "data": {
+    "meeting_events": [
+      {
+        "id": 301,
+        "meeting_session_id": 1,
+        "event_order": 1,
+        "event_type_id": 1,
+        "heat_type_id": 1,
+        "session_order": 1,
+        "event_type_code": "4X50SL"
+      },
+      {
+        "id": 302,
+        "meeting_session_id": 1,
+        "event_order": 2,
+        "event_type_id": 2,
+        "heat_type_id": 1,
+        "session_order": 1,
+        "event_type_code": "4X50MI"
+      }
+    ],
+    "meeting_programs": [
+      {
+        "id": 401,
+        "meeting_program_id": 401,
+        "meeting_event_id": 301,
+        "category_type_id": 1,
+        "gender_type_id": 3,
+        "key": "1-4X50SL-100-119-X",
+        "category_code": "100-119",
+        "gender_code": "X"
+      },
+      {
+        "id": 402,
+        "meeting_program_id": 402,
+        "meeting_event_id": 302,
+        "category_type_id": 2,
+        "gender_type_id": 3,
+        "key": "1-4X50MI-120-159-X",
+        "category_code": "120-159",
+        "gender_code": "X"
+      }
+    ]
+  }
+}

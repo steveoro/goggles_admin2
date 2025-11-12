@@ -1,0 +1,126 @@
+{
+  "data": {
+    "swimmers": [
+      {
+        "id": 201,
+        "swimmer_id": 201,
+        "complete_name": "ROSSI Mario",
+        "last_name": "ROSSI",
+        "first_name": "Mario",
+        "year_of_birth": 1978,
+        "gender_type_id": 1,
+        "key": "ROSSI|Mario|1978"
+      },
+      {
+        "id": 202,
+        "swimmer_id": 202,
+        "complete_name": "BIANCHI Anna",
+        "last_name": "BIANCHI",
+        "first_name": "Anna",
+        "year_of_birth": 1980,
+        "gender_type_id": 2,
+        "key": "BIANCHI|Anna|1980"
+      },
+      {
+        "id": 203,
+        "swimmer_id": 203,
+        "complete_name": "VERDI Luca",
+        "last_name": "VERDI",
+        "first_name": "Luca",
+        "year_of_birth": 1975,
+        "gender_type_id": 1,
+        "key": "VERDI|Luca|1975"
+      },
+      {
+        "id": 204,
+        "swimmer_id": 204,
+        "complete_name": "NERI Sara",
+        "last_name": "NERI",
+        "first_name": "Sara",
+        "year_of_birth": 1982,
+        "gender_type_id": 2,
+        "key": "NERI|Sara|1982"
+      },
+      {
+        "id": 205,
+        "swimmer_id": 205,
+        "complete_name": "GIALLI Marco",
+        "last_name": "GIALLI",
+        "first_name": "Marco",
+        "year_of_birth": 1976,
+        "gender_type_id": 1,
+        "key": "GIALLI|Marco|1976"
+      },
+      {
+        "id": 206,
+        "swimmer_id": 206,
+        "complete_name": "VIOLA Elena",
+        "last_name": "VIOLA",
+        "first_name": "Elena",
+        "year_of_birth": 1979,
+        "gender_type_id": 2,
+        "key": "VIOLA|Elena|1979"
+      },
+      {
+        "id": 207,
+        "swimmer_id": 207,
+        "complete_name": "AZZURRI Paolo",
+        "last_name": "AZZURRI",
+        "first_name": "Paolo",
+        "year_of_birth": 1977,
+        "gender_type_id": 1,
+        "key": "AZZURRI|Paolo|1977"
+      },
+      {
+        "id": 208,
+        "swimmer_id": 208,
+        "complete_name": "ROSA Maria",
+        "last_name": "ROSA",
+        "first_name": "Maria",
+        "year_of_birth": 1981,
+        "gender_type_id": 2,
+        "key": "ROSA|Maria|1981"
+      },
+      {
+        "id": 209,
+        "swimmer_id": 209,
+        "complete_name": "DORSO Carlo",
+        "last_name": "DORSO",
+        "first_name": "Carlo",
+        "year_of_birth": 1970,
+        "gender_type_id": 1,
+        "key": "DORSO|Carlo|1970"
+      },
+      {
+        "id": 210,
+        "swimmer_id": 210,
+        "complete_name": "RANA Laura",
+        "last_name": "RANA",
+        "first_name": "Laura",
+        "year_of_birth": 1972,
+        "gender_type_id": 2,
+        "key": "RANA|Laura|1972"
+      },
+      {
+        "id": 211,
+        "swimmer_id": 211,
+        "complete_name": "FARFALLA Sandro",
+        "last_name": "FARFALLA",
+        "first_name": "Sandro",
+        "year_of_birth": 1971,
+        "gender_type_id": 1,
+        "key": "FARFALLA|Sandro|1971"
+      },
+      {
+        "id": 212,
+        "swimmer_id": 212,
+        "complete_name": "LIBERO Giulia",
+        "last_name": "LIBERO",
+        "first_name": "Giulia",
+        "year_of_birth": 1973,
+        "gender_type_id": 2,
+        "key": "LIBERO|Giulia|1973"
+      }
+    ]
+  }
+}

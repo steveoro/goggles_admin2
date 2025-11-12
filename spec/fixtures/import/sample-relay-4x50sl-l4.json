@@ -1,0 +1,196 @@
+{
+  "layoutType": 4,
+  "meetingName": "Test Relay Meeting",
+  "meetingURL": "http://example.test/relay-meeting",
+  "dates": "2025-06-24,2025-06-25",
+  "place": "Test Pool",
+  "poolLength": "50",
+  "seasonId": "242",
+  "competitionType": "CHMP",
+  "events": [
+    {
+      "eventCode": "4X50SL",
+      "eventGender": "X",
+      "eventLength": "4x50",
+      "eventStroke": "SL",
+      "eventDescription": "4x50 m Stile Libero",
+      "relay": true,
+      "sessionOrder": 1,
+      "results": [
+        {
+          "ranking": "1",
+          "team": "Sample Team A",
+          "timing": "1'40.50",
+          "category": "100-119",
+          "swimmers": [
+            {
+              "complete_name": "ROSSI Mario",
+              "year_of_birth": "1978",
+              "gender_type": "M"
+            },
+            {
+              "complete_name": "BIANCHI Anna",
+              "year_of_birth": "1980",
+              "gender_type": "F"
+            },
+            {
+              "complete_name": "VERDI Luca",
+              "year_of_birth": "1975",
+              "gender_type": "M"
+            },
+            {
+              "complete_name": "NERI Sara",
+              "year_of_birth": "1982",
+              "gender_type": "F"
+            }
+          ],
+          "laps": [
+            {
+              "distance": "50m",
+              "timing": "25.00",
+              "delta": "25.00",
+              "swimmer": "M|ROSSI|Mario|1978|Sample Team A"
+            },
+            {
+              "distance": "100m",
+              "timing": "50.20",
+              "delta": "25.20",
+              "swimmer": "F|BIANCHI|Anna|1980|Sample Team A"
+            },
+            {
+              "distance": "150m",
+              "timing": "1'15.30",
+              "delta": "25.10",
+              "swimmer": "M|VERDI|Luca|1975|Sample Team A"
+            },
+            {
+              "distance": "200m",
+              "timing": "1'40.50",
+              "delta": "25.20",
+              "swimmer": "F|NERI|Sara|1982|Sample Team A"
+            }
+          ]
+        },
+        {
+          "ranking": "2",
+          "team": "Sample Team B",
+          "timing": "1'45.80",
+          "category": "100-119",
+          "swimmers": [
+            {
+              "complete_name": "GIALLI Marco",
+              "year_of_birth": "1976",
+              "gender_type": "M"
+            },
+            {
+              "complete_name": "VIOLA Elena",
+              "year_of_birth": "1979",
+              "gender_type": "F"
+            },
+            {
+              "complete_name": "AZZURRI Paolo",
+              "year_of_birth": "1977",
+              "gender_type": "M"
+            },
+            {
+              "complete_name": "ROSA Maria",
+              "year_of_birth": "1981",
+              "gender_type": "F"
+            }
+          ],
+          "laps": [
+            {
+              "distance": "50m",
+              "timing": "26.50",
+              "delta": "26.50",
+              "swimmer": "M|GIALLI|Marco|1976|Sample Team B"
+            },
+            {
+              "distance": "100m",
+              "timing": "53.20",
+              "delta": "26.70",
+              "swimmer": "F|VIOLA|Elena|1979|Sample Team B"
+            },
+            {
+              "distance": "150m",
+              "timing": "1'19.50",
+              "delta": "26.30",
+              "swimmer": "M|AZZURRI|Paolo|1977|Sample Team B"
+            },
+            {
+              "distance": "200m",
+              "timing": "1'45.80",
+              "delta": "26.30",
+              "swimmer": "F|ROSA|Maria|1981|Sample Team B"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "eventCode": "4X50MI",
+      "eventGender": "X",
+      "eventLength": "4x50",
+      "eventStroke": "MI",
+      "eventDescription": "4x50 m Mista",
+      "relay": true,
+      "sessionOrder": 1,
+      "results": [
+        {
+          "ranking": "1",
+          "team": "Mixed Team C",
+          "timing": "1'50.00",
+          "category": "120-159",
+          "swimmers": [
+            {
+              "complete_name": "DORSO Carlo",
+              "year_of_birth": "1970",
+              "gender_type": "M"
+            },
+            {
+              "complete_name": "RANA Laura",
+              "year_of_birth": "1972",
+              "gender_type": "F"
+            },
+            {
+              "complete_name": "FARFALLA Sandro",
+              "year_of_birth": "1971",
+              "gender_type": "M"
+            },
+            {
+              "complete_name": "LIBERO Giulia",
+              "year_of_birth": "1973",
+              "gender_type": "F"
+            }
+          ],
+          "laps": [
+            {
+              "distance": "50m",
+              "timing": "28.00",
+              "delta": "28.00",
+              "swimmer": "M|DORSO|Carlo|1970|Mixed Team C"
+            },
+            {
+              "distance": "100m",
+              "timing": "55.50",
+              "delta": "27.50",
+              "swimmer": "F|RANA|Laura|1972|Mixed Team C"
+            },
+            {
+              "distance": "150m",
+              "timing": "1'22.80",
+              "delta": "27.30",
+              "swimmer": "M|FARFALLA|Sandro|1971|Mixed Team C"
+            },
+            {
+              "distance": "200m",
+              "timing": "1'50.00",
+              "delta": "27.20",
+              "swimmer": "F|LIBERO|Giulia|1973|Mixed Team C"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

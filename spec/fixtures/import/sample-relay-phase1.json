@@ -1,0 +1,43 @@
+{
+  "data": {
+    "meeting": {
+      "id": 1,
+      "description": "Test Relay Meeting",
+      "entry_deadline": "2025-06-20",
+      "header_date": "2025-06-24",
+      "header_year": "2024/2025",
+      "code": "testrel",
+      "edition": 1,
+      "season_id": 242,
+      "timing_type": "manual"
+    },
+    "meeting_sessions": [
+      {
+        "id": 1,
+        "session_order": 1,
+        "scheduled_date": "2025-06-24",
+        "warm_up_time": "08:00",
+        "begin_time": "09:00",
+        "day_part_type_id": 1,
+        "swimming_pool_id": 1,
+        "meeting_id": 1
+      }
+    ],
+    "swimming_pools": [
+      {
+        "id": 1,
+        "name": "Test Pool",
+        "nick_name": "TestPool",
+        "pool_type_id": 1,
+        "city_id": 1,
+        "lanes_number": 8,
+        "multiple_pools": false,
+        "garden": false,
+        "bar": false,
+        "restaurant": false,
+        "gym": false,
+        "child_area": false
+      }
+    ]
+  }
+}
