@@ -1,0 +1,157 @@
+-# frozen_string_literal: true
+
+:ruby
+  # Displays a collapsible card for relay results grouped by MeetingProgram
+  #
+  # == Params:
+  # - program_key: String, e.g., "1-4X50SL-100-119-X"
+  # - relay_results: Array of DataImportMeetingRelayResult
+  # - swimmers_by_id: Hash of Swimmer by ID
+  # - teams_by_id: Hash of Team by ID
+  # - teams_by_key: Hash of Team data by key (from phase 2)
+  # - relay_swimmers_by_parent_key: Hash of DataImportMeetingRelaySwimmer arrays
+  # - relay_laps_by_parent_key: Hash of DataImportRelayLap arrays
+  # - card_index: Integer, for unique IDs
+  parts = program_key.split('-')
+  session_order = parts[0]
+  event_code = parts[1]
+  category = parts[2]
+  gender = parts[3]
+  sorted_results = relay_results.sort_by(&:rank)
+  program_id = sorted_results.first&.meeting_program_id
+  has_match = program_id.present?
+  border_color = has_match ? 'border-success' : 'border-warning'
+  border_width = 'border-2'
+
+.card.mb-2{ class: "#{border_color} #{border_width}", id: "relay-program-card-#{card_index}" }
+  .card-header.d-flex.justify-content-between.align-items-center{ id: "relay-program-header-#{card_index}", style: 'cursor: pointer;', data: { toggle: 'collapse', target: "#relay-program-panel-#{card_index}" } }
+    .d-flex.align-items-center
+      %span.mr-2
+        - if has_match
+          %i.fa.fa-check-circle.text-success{ title: 'Matched MeetingProgram' }
+        - else
+          %i.fa.fa-plus-circle.text-warning{ title: 'New MeetingProgram' }
+      %i.fa.fa-users.mr-2
+      %strong
+        = "#{event_code} • #{category} • #{gender}"
+      &nbsp;
+      %small.ml-2.text-muted
+        Session #{session_order}
+      - if has_match
+        %small.ml-2.badge.badge-success
+          ID: #{program_id}
+      - else
+        %small.ml-2.badge.badge-primary
+          NEW
+    .d-flex.align-items-center
+      %span.badge.badge-info
+        = "#{sorted_results.size} relay results"
+
+  .collapse.show{ id: "relay-program-panel-#{card_index}", 'aria-labelledby' => "relay-program-header-#{card_index}" }
+    .card-body.p-0
+      - sorted_results.each_with_index do |mrr, idx|
+        :ruby
+          team = teams_by_id[mrr.team_id]
+          team_data = teams_by_key[mrr.import_key.split('/')[1]] if teams_by_key && team.nil?
+          is_matched = team.present?
+          relay_swimmers = relay_swimmers_by_parent_key[mrr.import_key] || []
+          relay_laps = relay_laps_by_parent_key[mrr.import_key] || []
+          has_laps = relay_laps.any?
+          result_id = "relay-result-#{card_index}-#{idx}"
+          bg_color = is_matched ? 'bg-light' : 'bg-warning-subtle'
+        
+        .border-bottom{ class: bg_color }
+          -# Main result row
+          .p-3
+            .d-flex.justify-content-between.align-items-start
+              .d-flex.align-items-center
+                %strong.mr-3{ style: 'font-size: 1.2em;' }
+                  #{mrr.rank}º
+                .d-flex.flex-column
+                  %div
+                    - if team
+                      %strong= team.name
+                      %small.ml-2.badge.badge-success
+                        ID: #{team.id}
+                    - elsif team_data
+                      %strong= team_data['name']
+                      %small.ml-2.badge.badge-warning
+                        Unmatched
+                    - else
+                      %em.text-muted No team
+                  - if team&.city
+                    %small.text-muted= team.city.name
+              .text-right
+                %h5.mb-0
+                  = mrr.to_timing.to_s
+                - if mrr.disqualified?
+                  %span.badge.badge-danger.ml-2 DQ
+            
+            -# Expand button for swimmers/laps
+            - if relay_swimmers.any? || relay_laps.any?
+              %button.btn.btn-sm.btn-outline-secondary.mt-2{ type: 'button', data: { toggle: 'collapse', target: "##{result_id}-details" } }
+                %i.fa.fa-chevron-down.mr-1
+                Show Details
+                (#{relay_swimmers.size} swimmers, #{relay_laps.size} laps)
+          
+          -# Collapsible details section
+          .collapse{ id: "#{result_id}-details" }
+            .p-3.bg-white
+              -# Unified Relay Swimmers Table (merged with lap data)
+              - if relay_swimmers.any? || relay_laps.any?
+                %h6.mb-2
+                  %i.fa.fa-users.mr-2
+                  Relay Swimmers
+                .table-responsive
+                  %table.table.table-sm.table-bordered
+                    %thead.thead-light
+                      %tr
+                        %th.text-center{ style: 'width: 60px;' } Order
+                        %th.text-center{ style: 'width: 80px;' } Distance
+                        %th Swimmer
+                        %th.text-right{ style: 'width: 90px;' } From Start
+                        %th.text-right{ style: 'width: 80px;' } Split
+                        %th.text-center{ style: 'width: 100px;' } Status
+                    %tbody
+                      - relay_laps.sort_by(&:length_in_meters).each_with_index do |lap, idx|
+                        :ruby
+                          relay_order = idx + 1
+                          # Find MRS for this lap by relay_order
+                          mrs = relay_swimmers.find { |rs| rs.relay_order == relay_order }
+                          swimmer = swimmers_by_id[mrs&.swimmer_id] if mrs
+                          
+                          # Timing values
+                          delta_timing = Timing.new(minutes: lap.minutes, seconds: lap.seconds, hundredths: lap.hundredths)
+                          from_start_timing = Timing.new(minutes: lap.minutes_from_start, seconds: lap.seconds_from_start, hundredths: lap.hundredths_from_start)
+                          
+                          # Match status
+                          mrs_match_id = mrs&.meeting_relay_swimmer_id
+                          lap_match_id = lap&.relay_lap_id
+                        %tr
+                          %td.text-center
+                            %strong= relay_order
+                          %td.text-center= "#{lap.length_in_meters}m"
+                          %td
+                            - if swimmer
+                              = swimmer.complete_name
+                              - if swimmer.id
+                                %small.ml-2.badge.badge-success
+                                  ID: #{swimmer.id}
+                            - elsif mrs&.swimmer_id
+                              %em.text-muted Swimmer ##{mrs.swimmer_id}
+                            - else
+                              %span.text-danger
+                                %strong MISSING
+                          %td.text-right
+                            = from_start_timing.to_s
+                          %td.text-right
+                            = delta_timing.to_s
+                          %td.text-center
+                            - if mrs_match_id
+                              %small.text-secondary
+                                ID: #{mrs_match_id}
+                            - elsif lap_match_id
+                              %small.text-secondary
+                                ID: #{lap_match_id}
+                            - else
+                              %small.badge.badge-primary NEW

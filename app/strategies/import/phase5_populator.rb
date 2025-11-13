@@ -54,13 +54,18 @@ module Import
     # Main entry point: truncate existing data, load phase files, populate tables
     # Note: LT2 files are normalized to LT4 format during load_phase_files!
     def populate!
+      broadcast_progress('Starting Phase 5 population...', 0, 100)
+
       truncate_tables!
       load_phase_files!
 
       # All files are now in LT4 format (normalized if needed)
       Rails.logger.info('[Phase5Populator] Populating from LT4 format (normalized if LT2)')
+      broadcast_progress('Processing results...', 20, 100)
+
       populate_lt4_results!
 
+      broadcast_progress('Population complete', 100, 100)
       stats
     end
 
@@ -134,9 +139,16 @@ module Import
     # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
     def populate_lt4_individual_results!
       events = source_data['events'] || []
+      total_events = events.count { |e| e['relay'] != true }
 
-      events.each_with_index do |event, _idx|
+      events.each_with_index do |event, event_idx|
         next if event['relay'] == true # Skip relay events for now
+
+        # Broadcast progress every 5 events or on last event
+        if (event_idx + 1) % 5 == 0 || (event_idx + 1) == total_events
+          broadcast_progress("Processing individual results (#{event_idx + 1}/#{total_events})...",
+                             20 + (event_idx * 40 / [total_events, 1].max), 100)
+        end
 
         session_order = event['sessionOrder'] || 1
         distance = extract_distance(event)
@@ -193,9 +205,18 @@ module Import
     # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
     def populate_lt4_relay_results!
       events = source_data['events'] || []
+      relay_events = events.select { |e| e['relay'] == true }
+      total_relay = relay_events.size
 
-      events.each do |event|
+      events.each_with_index do |event, _event_idx|
         next unless event['relay'] == true # Only process relay events
+
+        # Broadcast progress every 5 relay events or on last event
+        relay_idx = relay_events.index(event) || 0
+        if (relay_idx + 1) % 5 == 0 || (relay_idx + 1) == total_relay
+          broadcast_progress("Processing relay results (#{relay_idx + 1}/#{total_relay})...",
+                             60 + (relay_idx * 30 / [total_relay, 1].max), 100)
+        end
 
         session_order = event['sessionOrder'] || 1
         distance = extract_distance(event)
@@ -570,9 +591,31 @@ module Import
       }
     end
 
+    # Compute cumulative timing: sum of timing1 + timing2
+    # Uses Timing wrapper for accurate addition with overflow handling
+    def compute_timing_sum(timing1, timing2)
+      timing1_obj = Timing.new(
+        minutes: timing1[:minutes],
+        seconds: timing1[:seconds],
+        hundredths: timing1[:hundredths]
+      )
+      timing2_obj = Timing.new(
+        minutes: timing2[:minutes],
+        seconds: timing2[:seconds],
+        hundredths: timing2[:hundredths]
+      )
+      sum_timing = timing1_obj + timing2_obj
+
+      {
+        minutes: sum_timing.minutes,
+        seconds: sum_timing.seconds,
+        hundredths: sum_timing.hundredths
+      }
+    end
+
     # Build team key from result for relay events
     def build_team_key_from_result(result)
-      team_name = result['team'] || result['teamName'] || ''
+      team_name = result['team'] || result['team_name'] || result['teamName'] || ''
       team_name.strip
     end
 
@@ -609,22 +652,46 @@ module Import
     end
 
     # Create relay swimmer records for a given MRR
+    # Uses lap data to extract swimmer info and timing
     def create_relay_swimmers(_mrr, result, mrr_import_key)
-      swimmers = result['swimmers'] || []
+      laps = result['laps'] || []
 
-      swimmers.each_with_index do |swimmer_data, idx|
+      laps.each_with_index do |lap, idx|
         relay_order = idx + 1
 
-        # Build swimmer key for matching
-        swimmer_name = swimmer_data['complete_name'] || swimmer_data['name'] || ''
-        year = swimmer_data['year_of_birth'] || swimmer_data['year'] || ''
+        # Extract swimmer info from lap swimmer key
+        # Format: "GENDER|LAST_NAME|FIRST_NAME|YEAR|TEAM" or "LAST_NAME|FIRST_NAME|YEAR|TEAM"
+        swimmer_key_raw = lap['swimmer'] || ''
+        swimmer_parts = swimmer_key_raw.split('|')
 
-        # Match swimmer from phase3 if possible
-        name_parts = swimmer_name.split(' ', 2)
-        last_name = name_parts[0] || ''
-        first_name = name_parts[1] || ''
-        swimmer_key = "#{last_name}|#{first_name}|#{year}"
-        swimmer_id = find_swimmer_id_by_key(swimmer_key)
+        # Handle both formats: with or without leading gender
+        if swimmer_parts.size >= 5
+          # Format: "M|LA MORGIA|Andrea|1993|Team"
+          last_name = swimmer_parts[1]
+          first_name = swimmer_parts[2]
+          year = swimmer_parts[3]
+        elsif swimmer_parts.size >= 4
+          # Format: "LA MORGIA|Andrea|1993|Team"
+          last_name = swimmer_parts[0]
+          first_name = swimmer_parts[1]
+          year = swimmer_parts[2]
+        else
+          # Fallback: can't parse swimmer key
+          last_name = ''
+          first_name = ''
+          year = ''
+        end
+
+        # Build lookup key for phase3 swimmer matching
+        swimmer_lookup_key = "#{last_name}|#{first_name}|#{year}"
+        swimmer_id = find_swimmer_id_by_key(swimmer_lookup_key)
+
+        # Parse lap timing for MRS (each lap is the swimmer's leg timing)
+        delta = parse_timing_string(lap['delta'])
+
+        # Extract distance from lap
+        distance_str = lap['distance'] || lap['length_in_meters'] || lap['lengthInMeters']
+        length = distance_str.to_s.gsub(/\D/, '').to_i
 
         rs_import_key = "#{mrr_import_key}-swimmer#{relay_order}"
 
@@ -633,9 +700,10 @@ module Import
           parent_import_key: mrr_import_key,
           swimmer_id: swimmer_id,
           relay_order: relay_order,
-          minutes: 0,
-          seconds: 0,
-          hundredths: 0
+          length_in_meters: length,
+          minutes: delta[:minutes],
+          seconds: delta[:seconds],
+          hundredths: delta[:hundredths]
         )
 
         @stats[:relay_swimmers_created] += 1
@@ -649,19 +717,22 @@ module Import
       laps = result['laps'] || []
       previous_from_start = { minutes: 0, seconds: 0, hundredths: 0 }
 
-      laps.each do |lap|
+      laps.each_with_index do |lap, idx|
+        relay_order = idx + 1
+
         # Parse distance: "50m" → 50
         distance_str = lap['distance'] || lap['length_in_meters'] || lap['lengthInMeters']
         length = distance_str.to_s.gsub(/\D/, '').to_i
         next if length.zero?
 
-        # Parse lap timing from source (this is "from_start" timing)
-        from_start = parse_timing_string(lap['timing'])
+        # Parse delta (split time) from source
+        # Real LT4 relay data has only 'delta', not cumulative 'timing'
+        delta = parse_timing_string(lap['delta'] || lap['timing'])
 
-        # Compute delta timing
-        delta = compute_timing_delta(from_start, previous_from_start)
+        # Compute cumulative timing by adding delta to previous
+        from_start = compute_timing_sum(previous_from_start, delta)
 
-        lap_import_key = "#{mrr_import_key}-lap#{length}"
+        lap_import_key = "#{mrr_import_key}-lap#{relay_order}"
 
         GogglesDb::DataImportRelayLap.create!(
           import_key: lap_import_key,
@@ -704,6 +775,16 @@ module Import
 
       swimmer_key = "#{last_name}|#{first_name}|#{year}"
       find_swimmer_id_by_key(swimmer_key)
+    end
+
+    # Broadcast progress updates via ActionCable for real-time UI feedback
+    def broadcast_progress(message, current, total)
+      ActionCable.server.broadcast(
+        'ImportStatusChannel',
+        { msg: message, progress: current, total: total }
+      )
+    rescue StandardError => e
+      Rails.logger&.warn("[Phase5Populator] Failed to broadcast progress: #{e.message}")
     end
   end
 end

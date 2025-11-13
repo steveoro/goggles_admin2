@@ -47,25 +47,21 @@
           "laps": [
             {
               "distance": "50m",
-              "timing": "25.00",
               "delta": "25.00",
               "swimmer": "M|ROSSI|Mario|1978|Sample Team A"
             },
             {
               "distance": "100m",
-              "timing": "50.20",
               "delta": "25.20",
               "swimmer": "F|BIANCHI|Anna|1980|Sample Team A"
             },
             {
               "distance": "150m",
-              "timing": "1'15.30",
               "delta": "25.10",
               "swimmer": "M|VERDI|Luca|1975|Sample Team A"
             },
             {
               "distance": "200m",
-              "timing": "1'40.50",
               "delta": "25.20",
               "swimmer": "F|NERI|Sara|1982|Sample Team A"
             }
@@ -101,25 +97,21 @@
           "laps": [
             {
               "distance": "50m",
-              "timing": "26.50",
               "delta": "26.50",
               "swimmer": "M|GIALLI|Marco|1976|Sample Team B"
             },
             {
               "distance": "100m",
-              "timing": "53.20",
               "delta": "26.70",
               "swimmer": "F|VIOLA|Elena|1979|Sample Team B"
             },
             {
               "distance": "150m",
-              "timing": "1'19.50",
               "delta": "26.30",
               "swimmer": "M|AZZURRI|Paolo|1977|Sample Team B"
             },
             {
               "distance": "200m",
-              "timing": "1'45.80",
               "delta": "26.30",
               "swimmer": "F|ROSA|Maria|1981|Sample Team B"
             }
@@ -166,26 +158,22 @@
           "laps": [
             {
               "distance": "50m",
-              "timing": "28.00",
               "delta": "28.00",
               "swimmer": "M|DORSO|Carlo|1970|Mixed Team C"
             },
             {
               "distance": "100m",
-              "timing": "55.50",
               "delta": "27.50",
               "swimmer": "F|RANA|Laura|1972|Mixed Team C"
             },
             {
               "distance": "150m",
-              "timing": "1'22.80",
               "delta": "27.30",
               "swimmer": "M|FARFALLA|Sandro|1971|Mixed Team C"
             },
             {
               "distance": "200m",
-              "timing": "1'50.00",
-              "delta": "27.20",
+              "delta": "27.90",
               "swimmer": "F|LIBERO|Giulia|1973|Mixed Team C"
             }
           ]

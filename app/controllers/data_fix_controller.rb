@@ -398,7 +398,9 @@ class DataFixController < ApplicationController
         )
         @populate_stats = populator.populate!
         flash.now[:info] =
-          "Populated DB: #{@populate_stats[:mir_created]} results, #{@populate_stats[:laps_created]} laps, #{@populate_stats[:programs_matched]} programs matched, #{@populate_stats[:mirs_matched]} MIRs matched"
+          "Populated DB: #{@populate_stats[:mir_created]} results, #{@populate_stats[:laps_created]} laps, " \
+          "#{@populate_stats[:relay_results_created]} relay results, #{@populate_stats[:relay_swimmers_created]} relay swimmers, " \
+          "#{@populate_stats[:relay_laps_created]} relay laps, #{@populate_stats[:programs_matched]} programs matched"
       end
 
       # Query data_import tables for display
@@ -437,6 +439,33 @@ class DataFixController < ApplicationController
       import_keys = @all_results.map(&:import_key)
       all_laps = GogglesDb::DataImportLap.where(parent_import_key: import_keys).order(:length_in_meters)
       @laps_by_parent_key = all_laps.group_by(&:parent_import_key)
+
+      # Query relay results for display
+      @all_relay_results = GogglesDb::DataImportMeetingRelayResult
+                           .where(phase_file_path: source_path)
+                           .order(:import_key)
+                           .limit(1000) # Safety limit for now
+
+      # Eager-load relay teams (add to existing team query)
+      relay_team_ids = @all_relay_results.filter_map(&:team_id).uniq
+      additional_teams = GogglesDb::Team.where(id: relay_team_ids - team_ids).index_by(&:id)
+      @teams_by_id.merge!(additional_teams)
+
+      # Eager-load relay swimmers and laps grouped by parent import_key
+      relay_import_keys = @all_relay_results.map(&:import_key)
+      @relay_swimmers_by_parent_key = GogglesDb::DataImportMeetingRelaySwimmer
+                                      .where(parent_import_key: relay_import_keys)
+                                      .order(:relay_order)
+                                      .group_by(&:parent_import_key)
+      @relay_laps_by_parent_key = GogglesDb::DataImportRelayLap
+                                  .where(parent_import_key: relay_import_keys)
+                                  .order(:length_in_meters)
+                                  .group_by(&:parent_import_key)
+
+      # Build swimmer lookup for relay swimmers (add to existing swimmer query if needed)
+      relay_swimmer_ids = @relay_swimmers_by_parent_key.values.flatten.filter_map(&:swimmer_id).uniq
+      additional_swimmers = GogglesDb::Swimmer.where(id: relay_swimmer_ids - swimmer_ids).index_by(&:id)
+      @swimmers_by_id.merge!(additional_swimmers)
 
       return render 'data_fix/review_results_v2'
     end

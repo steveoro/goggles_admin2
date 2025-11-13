@@ -31,8 +31,12 @@
         .mb-3
           %strong= t('data_import.relay_enrichment.missing_totals')
           - totals.each do |issue, count|
-            %span.badge.badge-danger.ml-2
-              = "#{issue_labels[issue]}: #{count}"
+            - if issue == 'missing_swimmer_id' # Quite normal to have nil IDs for new swimmers, not a big deal
+              %span.badge.badge-primary.ml-2
+                = "#{issue_labels['missing_swimmer_id']}: #{count}"
+            - else
+              %span.badge.badge-danger.ml-2
+                = "#{issue_labels[issue]}: #{count}"
 
       - if aux_list.present?
         = form_tag(merge_phase3_swimmers_path, method: :post, class: 'mb-3') do
@@ -43,7 +47,7 @@
             = select_tag 'auxiliary_paths[]', options_for_select(aux_list.map { |path| [File.basename(path), path] }, selected_auxiliary), multiple: true, size: select_size, id: "#{panel_id}-aux-files", class: 'form-control'
             %small.form-text.text-muted= t('data_import.relay_enrichment.fields.auxiliary_hint')
           %button.btn.btn-sm.btn-primary{ type: 'submit', data: { confirm: t('data_import.relay_enrichment.confirm_merge') } }
-            %i.fa.fa-sync-alt.mr-1
+            %i.fa.fa-sync-alt
             = t('data_import.relay_enrichment.actions.scan_and_merge')
       - else
         .alert.alert-warning
@@ -68,8 +72,12 @@
               %td= relay['category']
               %td
                 - relay.fetch('missing_counts', {}).each do |issue, count|
-                  %span.badge.badge-warning.mr-1.mb-1
-                    = "#{issue_labels[issue]}: #{count}"
+                  - if issue == 'missing_swimmer_id' # Quite normal to have nil IDs for new swimmers, not a big deal
+                    %span.badge.ml-2
+                      = "#{issue_labels['missing_swimmer_id']}: #{count}"
+                  - else
+                    %span.badge.badge-warning.mr-1.mb-1
+                      = "#{issue_labels[issue]}: #{count}"
               %td
                 - Array(relay['swimmers']).each do |leg|
                   .mb-2.pb-2.border-bottom
@@ -95,8 +103,12 @@
                     - if active_issues.present?
                       %div.small.mt-1
                         - active_issues.each do |issue_key, _|
-                          %span.badge.badge-danger.mr-1
-                            = issue_labels[issue_key]
+                          - if issue_key == 'missing_swimmer_id' # Quite normal to have nil IDs for new swimmers, not a big deal
+                            %span.badge.badge-primary.mr-1
+                              = issue_labels['missing_swimmer_id']
+                          - else
+                            %span.badge.badge-danger.mr-1
+                              = issue_labels[issue_key]
                     - raw_info = []
                     - raw_info << t('data_import.relay_enrichment.table.swimmer_fields.raw_year', value: leg['raw_year_of_birth']) if leg['raw_year_of_birth'].present?
                     - raw_info << t('data_import.relay_enrichment.table.swimmer_fields.raw_gender', value: leg['raw_gender']) if leg['raw_gender'].present?
