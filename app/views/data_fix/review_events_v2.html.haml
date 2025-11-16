@@ -9,11 +9,14 @@
     = render(partial: 'data_fix/step_tabs', locals: { active_step: 4, file_path: @file_path })
 
   -# Phase Navigation buttons
-  .d-flex.justify-content-end.my-2
+  .d-flex.justify-content-between.my-2
+    = link_to '< Back to file list', pull_result_files_path, class: 'btn btn-outline-secondary mr-2'
     = link_to 'Proceed to Step 5 (Results)', review_results_path(request.query_parameters.merge(phase5_v2: 1)), class: 'btn btn-primary'
-  -# Phase Metadata card
-  = render(partial: 'data_fix/phase_metadata', locals: { phase_number: 4, metadata: @phase4_meta })
 
+  -# Phase Metadata card
+  - basename = File.basename(@file_path).split('.json').first
+  = render(partial: 'data_fix/phase_metadata', locals: { phase_number: 4, metadata: @phase4_meta,
+                                                         extra_info: basename })
   -# Add Event Form
   .card.my-2
     .card-header

@@ -45,11 +45,17 @@ module Phase3
 
     def index_phase3_swimmers
       @phase3_by_key = {}
+      @phase3_by_key_normalized = {}
       @phase3_by_name = Hash.new { |h, k| h[k] = [] }
 
       @phase3_swimmers.each do |swimmer|
         key = swimmer['key']
-        @phase3_by_key[key] = swimmer if key
+        if key
+          @phase3_by_key[key] = swimmer
+          # Also index by normalized (lowercase) key for case-insensitive matching
+          normalized_key = key.downcase
+          @phase3_by_key_normalized[normalized_key] = swimmer
+        end
 
         name_key = name_key_for(swimmer['last_name'], swimmer['first_name'])
         @phase3_by_name[name_key] << swimmer if name_key
@@ -67,6 +73,25 @@ module Phase3
       1.upto(MAX_LEGS) do |idx|
         leg = build_leg(section, row, idx)
         next unless leg
+
+        phase3_swimmer = leg['phase3_swimmer']
+        phase3_key = leg['phase3_key']
+
+        # If Phase 3 already has a swimmer_id for this leg, it is considered matched
+        # and no longer needs enrichment. Check both the swimmer object and key lookup.
+        if phase3_swimmer
+          swimmer_id = phase3_swimmer['swimmer_id'].to_i
+          next if swimmer_id.positive?
+        end
+
+        # Double-check by looking up the key in the indexed Phase 3 data (case-insensitive)
+        if phase3_key
+          indexed_swimmer = @phase3_by_key[phase3_key] || @phase3_by_key_normalized[phase3_key.downcase]
+          if indexed_swimmer
+            indexed_id = indexed_swimmer['swimmer_id'].to_i
+            next if indexed_id.positive?
+          end
+        end
 
         issues = detect_issues_for(leg)
         next if issues.values.none?
@@ -151,11 +176,29 @@ module Phase3
     def parse_swimmer_reference(name, lap_reference)
       if lap_reference && lap_reference['swimmer'].to_s.include?('|')
         tokens = lap_reference['swimmer'].split('|')
+
+        # Detect format: check if first token is a gender code
         gcode = normalize_gender(tokens[0])
-        last = tokens[1]&.strip
-        first = tokens[2]&.strip
-        yob = tokens[3]&.strip
-        team = tokens[4]&.strip
+
+        if gcode && tokens.size >= 5
+          # Format: "M|LAST|FIRST|YEAR|TEAM" (5 tokens with gender)
+          last = tokens[1]&.strip
+          first = tokens[2]&.strip
+          yob = tokens[3]&.strip
+          team = tokens[4]&.strip
+        elsif tokens.size >= 4
+          # Format: "LAST|FIRST|YEAR|TEAM" (4 tokens without gender)
+          last = tokens[0]&.strip
+          first = tokens[1]&.strip
+          yob = tokens[2]&.strip
+          team = tokens[3]&.strip
+          gcode = nil
+        else
+          # Malformed lap data, fall back to name parsing
+          Rails.logger.warn("[RelayEnrichment] Malformed lap swimmer key: #{lap_reference['swimmer']}")
+          return nil
+        end
+
         return build_parsed_swimmer(last, first, yob, gcode, team, name)
       end
 
@@ -180,8 +223,17 @@ module Phase3
 
     def phase3_match_for(parsed)
       key = swimmer_key_for(parsed[:last_name], parsed[:first_name], parsed[:year_of_birth])
+
+      # Try exact match first
       return @phase3_by_key[key] if key && @phase3_by_key[key]
 
+      # Try case-insensitive match
+      if key
+        normalized_key = key.downcase
+        return @phase3_by_key_normalized[normalized_key] if @phase3_by_key_normalized[normalized_key]
+      end
+
+      # Fallback to name-only matching
       name_key = name_key_for(parsed[:last_name], parsed[:first_name])
       candidates = @phase3_by_name[name_key]
       return nil if candidates.blank?

@@ -4,10 +4,7 @@
                                                                   data: { toggle: 'collapse', target: "#team-panel-#{team_index}" } }
     .d-flex.align-items-center
       %span.mr-2
-        - if has_match
-          %i.fa.fa-check-circle.text-success{ title: 'Matched' }
-        - else
-          %i.fa.fa-plus-circle.text-warning{ title: 'New/Unmatched' }
+        %i.fa{ class: icon_class, title: icon_title }
       %strong
         = editable_name
       &nbsp;
@@ -21,6 +18,9 @@
         - color_class = selected_match&.dig('color_class').presence || 'success'
         %small.ml-2.badge{ class: "badge-#{color_class}" }
           ID: #{team_id}
+      - elsif has_missing_data
+        %small.ml-2.badge.badge-danger
+          MISSING DATA
       - else
         %small.ml-2.badge.badge-primary
           NEW

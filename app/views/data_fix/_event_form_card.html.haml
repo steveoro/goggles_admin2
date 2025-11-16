@@ -7,10 +7,6 @@
         - else
           %i.fa.fa-plus-circle.text-warning{ title: 'New/Unmatched' }
       %strong
-        = "#{event['distance']}#{event['stroke']}"
-      &nbsp;
-      %small.ml-2.text-muted
-        .fa.fa-key.text-warning
         #{event_key}
       &nbsp;
       - if has_match

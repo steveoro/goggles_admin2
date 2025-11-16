@@ -79,21 +79,20 @@
                         Unmatched
                     - else
                       %em.text-muted No team
+                    -# Expand button for swimmers/laps
+                    - if relay_swimmers.any? || relay_laps.any?
+                      %button.btn.btn-sm.btn-outline-secondary.mt-2{ type: 'button', data: { toggle: 'collapse', target: "##{result_id}-details" } }
+                        %i.fa.fa-chevron-down.mr-1
+                        #{relay_swimmers.size} s, #{relay_laps.size} laps
                   - if team&.city
                     %small.text-muted= team.city.name
+
               .text-right
                 %h5.mb-0
                   = mrr.to_timing.to_s
                 - if mrr.disqualified?
                   %span.badge.badge-danger.ml-2 DQ
-            
-            -# Expand button for swimmers/laps
-            - if relay_swimmers.any? || relay_laps.any?
-              %button.btn.btn-sm.btn-outline-secondary.mt-2{ type: 'button', data: { toggle: 'collapse', target: "##{result_id}-details" } }
-                %i.fa.fa-chevron-down.mr-1
-                Show Details
-                (#{relay_swimmers.size} swimmers, #{relay_laps.size} laps)
-          
+
           -# Collapsible details section
           .collapse{ id: "#{result_id}-details" }
             .p-3.bg-white
@@ -127,6 +126,11 @@
                           # Match status
                           mrs_match_id = mrs&.meeting_relay_swimmer_id
                           lap_match_id = lap&.relay_lap_id
+                          
+                          # Lookup unmatched swimmer name from source data
+                          swimmer_info = relay_swimmer_names&.dig(mrr.import_key, relay_order)
+                          swimmer_name_from_source = swimmer_info&.dig('name')
+                          swimmer_key_from_source = swimmer_info&.dig('key')
                         %tr
                           %td.text-center
                             %strong= relay_order
@@ -139,6 +143,9 @@
                                   ID: #{swimmer.id}
                             - elsif mrs&.swimmer_id
                               %em.text-muted Swimmer ##{mrs.swimmer_id}
+                            - elsif swimmer_name_from_source.present?
+                              = swimmer_name_from_source
+                              %small.ml-2.badge.badge-warning Unmatched
                             - else
                               %span.text-danger
                                 %strong MISSING

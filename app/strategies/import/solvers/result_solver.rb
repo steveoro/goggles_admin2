@@ -8,7 +8,7 @@ module Import
     #
     # This is intentionally minimal to enable UI scaffolding; it can be enriched later
     # with detailed per-result rows when we finalize the structure we want to review/edit.
-    class ResultSolver
+    class ResultSolver # rubocop:disable Metrics/ClassLength
       def initialize(season:)
         @season = season
       end
@@ -25,7 +25,9 @@ module Import
         data_hash = JSON.parse(File.read(source_path))
 
         sessions = []
+
         if data_hash['sections'].is_a?(Array) && data_hash['sections'].any?
+          total = data_hash['sections'].size
           # Check if this is a relay-only file (all sections are relays)
           all_relay = data_hash['sections'].all? do |sec|
             rows = sec['rows'] || []
@@ -68,6 +70,7 @@ module Import
                 'genders' => [{ 'gender' => gender, 'results_count' => results_count, 'categories' => [] }]
               }
               seen[key] = true
+              broadcast_progress('map result sections', idx + 1, total)
             end
 
             # All relay events go in the FIRST session
@@ -75,6 +78,7 @@ module Import
             events.each { |e| e['session_order'] = first_session_order }
             events.sort_by! { |e| e['event_order'].to_i }
             sessions << { 'session_order' => first_session_order, 'events' => events }
+
           else
             # For individual/mixed files, process sections normally
             data_hash['sections'].each_with_index do |sec, idx|
@@ -120,13 +124,16 @@ module Import
               end
               events.sort_by! { |e| e['event_order'].to_i }
               sessions << { 'session_order' => session_order, 'events' => events }
+              broadcast_progress('map result sections', idx + 1, total)
             end
           end
+
         else
           # LT4: events array with results
           arr = data_hash['events'] || []
           # Per-session aggregator; within each session aggregate by event key (eventCode or distance|stroke)
           sessions_map = Hash.new { |h, k| h[k] = { 'session_order' => k, 'events_map' => {} } }
+          total = arr.size
 
           arr.each_with_index do |ev, idx_ev|
             distance = ev['distance'] || ev['distanceInMeters'] || ev['eventLength']
@@ -176,6 +183,7 @@ module Import
               agg['genders_map'][g]['categories'][c] += 1 if c.present?
               agg['results_count'] += 1
             end
+            broadcast_progress('map result events', idx_ev + 1, total)
           end
 
           # Finalize sessions/events arrays
@@ -262,6 +270,16 @@ module Import
         event_code = "#{gender_prefix}#{participants}X#{phase_length}#{stroke_code}"
 
         [total_distance, stroke_code, event_code]
+      end
+
+      # Broadcast progress updates via ActionCable for real-time UI feedback
+      def broadcast_progress(message, current, total)
+        ActionCable.server.broadcast(
+          'ImportStatusChannel',
+          { msg: message, progress: current, total: total }
+        )
+      rescue StandardError => e
+        @logger&.warn("[SwimmerSolver] Failed to broadcast progress: #{e.message}")
       end
     end
   end

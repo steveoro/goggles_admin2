@@ -8,23 +8,35 @@
     = render(partial: 'data_fix/step_tabs', locals: { active_step: 1, file_path: @file_path })
 
   -# Phase Navigation buttons
-  .d-flex.justify-content-end.my-2
-    = link_to 'Proceed to Step 2 (Teams)', review_teams_path(request.query_parameters.merge(phase2_v2: 1)), class: 'btn btn-primary'
+  .d-flex.justify-content-between.my-2
+    = link_to('< Back to file list', pull_result_files_path, class: 'btn btn-outline-secondary mr-2')
+    = link_to('Proceed to Step 2 (Teams)', review_teams_path(request.query_parameters.merge(phase2_v2: 1)),
+              class: 'btn btn-primary')
+
   :ruby
     meeting_id = @phase1_data['id']
     meeting_name = @phase1_data['name']
     extra_info = [meeting_id, meeting_name].compact.join(': ').presence
-  = render(partial: 'data_fix/phase_metadata', locals: { phase_number: 1, metadata: @phase1_meta, extra_info: extra_info })
-
+  = render(partial: 'data_fix/phase_metadata', locals: { phase_number: 1, metadata: @phase1_meta,
+                                                         extra_info: extra_info })
   -# Meeting card with consistent styling
   :ruby
     has_match = meeting_id.to_i.positive?
     card_bg = has_match ? 'bg-light' : 'bg-light-yellow'
     border_color = has_match ? 'border-secondary' : 'border-warning'
     border_width = 'border-2'
+    
+    # Check if all required fields are filled to determine default collapse state
+    season_id = @phase1_data['season_id']
+    name = @phase1_data['name']
+    date_year1 = @phase1_data['dateYear1']
+    date_month1 = @phase1_data['dateMonth1']
+    date_day1 = @phase1_data['dateDay1']
+    all_required_filled = season_id.present? && name.present? && date_year1.present? && date_month1.present? && date_day1.present?
+    
   = render(partial: 'meeting_form_card',
            locals: { file_path: @file_path, api_url: @api_url, meeting_data: @phase1_data,
-                     meeting_id:, has_match:, card_bg:, border_color:, border_width: })
+                     meeting_id:, has_match:, card_bg:, border_color:, border_width:, all_required_filled: })
 
   -# Sessions Section Header
   .card.mb-2

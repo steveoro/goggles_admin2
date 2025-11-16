@@ -20,7 +20,7 @@
     %strong
       Phase #{phase_number} Metadata
       - if extra_info.present?
-        %small.ml-2.text-muted= "(#{extra_info})"
+        %bold.ml-2.text-muted= extra_info
     %i.fa.fa-chevron-down.float-right.mt-1
   .collapse{ id: collapse_id }
     .card-body

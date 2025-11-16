@@ -96,6 +96,16 @@ class DataFixController < ApplicationController
       @phase2_meta = pfm.meta
       @phase2_data = pfm.data
 
+      # Safety: rebuild Phase 2 file if teams dictionary is missing (older generator or corrupted file)
+      if @phase2_data['teams'].nil?
+        Import::Solvers::TeamSolver.new(season:).build!(
+          source_path: source_path,
+          lt_format: lt_format
+        )
+        redirect_to(review_teams_path(request.query_parameters),
+                    notice: I18n.t('data_import.messages.phase_rebuilt', phase: 2)) && return
+      end
+
       # Set API URL for AutoComplete components
       set_api_url
 
@@ -162,6 +172,20 @@ class DataFixController < ApplicationController
       pfm = PhaseFileManager.new(phase_path)
       @phase3_meta = pfm.meta
       @phase3_data = pfm.data
+
+      # Safety: rebuild Phase 3 file if swimmers dictionary is missing (older generator or corrupted file)
+      if @phase3_data['swimmers'].nil?
+        phase1_path = default_phase_path_for(source_path, 1)
+        phase2_path = default_phase_path_for(source_path, 2)
+        Import::Solvers::SwimmerSolver.new(season:).build!(
+          source_path: source_path,
+          lt_format: lt_format,
+          phase1_path: phase1_path,
+          phase2_path: phase2_path
+        )
+        redirect_to(review_swimmers_path(request.query_parameters),
+                    notice: I18n.t('data_import.messages.phase_rebuilt', phase: 3)) && return
+      end
       @source_path = source_path
       base_dir = File.dirname(source_path)
 
@@ -169,7 +193,8 @@ class DataFixController < ApplicationController
         source_path: source_path,
         phase3_swimmers: @phase3_data.fetch('swimmers', [])
       )
-      @relay_enrichment_summary = detector.detect
+      @show_new_relay_swimmers = params[:show_new_relay_swimmers].present?
+      @relay_enrichment_summary = filter_relay_enrichment_summary(detector.detect, @show_new_relay_swimmers)
       @auxiliary_phase3_files = Dir.glob(File.join(base_dir, '*-phase3*.json'))
                                    .reject { |path| path == phase_path }
                                    .sort
@@ -371,6 +396,7 @@ class DataFixController < ApplicationController
           phase3_path: phase3_path,
           phase4_path: phase4_path
         )
+        broadcast_progress('Populating phase 5...', 0, 100)
         populate_stats = populator.populate!
 
         # Redirect without rescan parameter to avoid triggering rescan on navigation
@@ -396,6 +422,7 @@ class DataFixController < ApplicationController
           phase3_path: phase3_path,
           phase4_path: phase4_path
         )
+        broadcast_progress('Populating DB from phase 5 data...', 0, 100)
         @populate_stats = populator.populate!
         flash.now[:info] =
           "Populated DB: #{@populate_stats[:mir_created]} results, #{@populate_stats[:laps_created]} laps, " \
@@ -413,7 +440,7 @@ class DataFixController < ApplicationController
       swimmer_ids = @all_results.filter_map(&:swimmer_id).uniq
       team_ids = @all_results.filter_map(&:team_id).uniq
       @swimmers_by_id = GogglesDb::Swimmer.where(id: swimmer_ids).index_by(&:id)
-      @teams_by_id = GogglesDb::Team.where(id: team_ids).index_by(&:id)
+      @teams_by_id = GogglesDb::Team.includes(:city).where(id: team_ids).index_by(&:id)
 
       # Load phase 2 and phase 3 data for team/badge lookup by key
       phase2_path = default_phase_path_for(source_path, 2)
@@ -428,11 +455,15 @@ class DataFixController < ApplicationController
       end
 
       # Build badge/team key mapping: swimmer_key => team_key
+      # Build swimmers lookup by key for unmatched relay swimmers
       if @phase3_data
         badges = @phase3_data.dig('data', 'badges') || []
         @team_key_by_swimmer_key = badges.each_with_object({}) do |badge, hash|
           hash[badge['swimmer_key']] = badge['team_key']
         end
+
+        swimmers = @phase3_data.dig('data', 'swimmers') || []
+        @swimmers_by_key = swimmers.index_by { |s| s['key'] }
       end
 
       # Eager-load laps grouped by parent import_key
@@ -448,7 +479,7 @@ class DataFixController < ApplicationController
 
       # Eager-load relay teams (add to existing team query)
       relay_team_ids = @all_relay_results.filter_map(&:team_id).uniq
-      additional_teams = GogglesDb::Team.where(id: relay_team_ids - team_ids).index_by(&:id)
+      additional_teams = GogglesDb::Team.includes(:city).where(id: relay_team_ids - team_ids).index_by(&:id)
       @teams_by_id.merge!(additional_teams)
 
       # Eager-load relay swimmers and laps grouped by parent import_key
@@ -467,6 +498,10 @@ class DataFixController < ApplicationController
       additional_swimmers = GogglesDb::Swimmer.where(id: relay_swimmer_ids - swimmer_ids).index_by(&:id)
       @swimmers_by_id.merge!(additional_swimmers)
 
+      # Build relay swimmer name lookup from source data for unmatched swimmers
+      # Maps: {mrr_import_key => {relay_order => {name, key}}}
+      @relay_swimmer_names = build_relay_swimmer_names_from_source(source_path, relay_import_keys)
+
       return render 'data_fix/review_results_v2'
     end
 
@@ -476,7 +511,7 @@ class DataFixController < ApplicationController
 
   # Phase 6: Commit all entities to DB and generate SQL log
   # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
-  def commit_phase6
+  def commit_phase6 # rubocop:disable Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
     file_path = params[:file_path]
     if file_path.blank?
       flash[:warning] = I18n.t('data_import.errors.invalid_request')
@@ -582,6 +617,56 @@ class DataFixController < ApplicationController
 
   def teams_for_swimmer
     redirect_to controller: 'data_fix_legacy', action: 'teams_for_swimmer', params: request.query_parameters
+  end
+
+  # Filter relay enrichment summary based on swimmer ID and issues.
+  # - Always removes legs already matched to a swimmer_id > 0
+  # - When show_new is false, hides legs whose only issue is missing_swimmer_id
+  def filter_relay_enrichment_summary(summary, show_new)
+    # Build swimmer_id lookup from Phase 3 data for double-checking (case-insensitive)
+    swimmers_with_id = Set.new
+    if @phase3_data
+      Array(@phase3_data['swimmers']).each do |s|
+        key = s['key']
+        sid = s['swimmer_id'].to_i
+        if key.present? && sid.positive?
+          swimmers_with_id.add(key.downcase) # Normalize to lowercase
+        end
+      end
+    end
+
+    Array(summary).map do |relay|
+      swimmers = Array(relay['swimmers'])
+
+      filtered_swimmers = swimmers.reject do |leg|
+        issues = leg['issues'] || {}
+        phase3_swimmer = leg['phase3_swimmer'] || {}
+        swimmer_id = phase3_swimmer['swimmer_id'].to_i
+        phase3_key = leg['phase3_key']
+
+        # Matched swimmers are never part of enrichment list
+        # Check both the swimmer_id from phase3_swimmer AND the key lookup (case-insensitive)
+        key_matched = phase3_key.present? && swimmers_with_id.include?(phase3_key.downcase)
+        matched = swimmer_id.positive? || key_matched
+
+        # New swimmers with only missing_swimmer_id (no other blocking issue)
+        only_missing_id = issues['missing_swimmer_id'] && !issues['missing_year_of_birth'] && !issues['missing_gender']
+        new_non_blocking = !matched && only_missing_id && !show_new
+
+        matched || new_non_blocking
+      end
+
+      next if filtered_swimmers.empty?
+
+      # Recompute missing_counts for the filtered swimmers
+      missing_counts = filtered_swimmers.each_with_object(Hash.new(0)) do |leg, acc|
+        (leg['issues'] || {}).each do |issue_key, flag|
+          acc[issue_key] += 1 if flag
+        end
+      end
+
+      relay.merge('swimmers' => filtered_swimmers, 'missing_counts' => missing_counts)
+    end.compact
   end
 
   # Update a single Phase 2 team entry by key
@@ -1551,6 +1636,79 @@ class DataFixController < ApplicationController
     return val.strip if val.is_a?(String)
 
     val
+  end
+
+  # Build relay swimmer name lookup from source data
+  # Returns: {mrr_import_key => {relay_order => {name: ..., key: ...}}}
+  def build_relay_swimmer_names_from_source(source_path, relay_import_keys)
+    return {} unless File.exist?(source_path)
+    return {} if relay_import_keys.blank?
+
+    source_data = JSON.parse(File.read(source_path))
+    result = {}
+
+    # Parse sections for relay results
+    sections = source_data['sections'] || []
+    sections.each do |section|
+      rows = section['rows'] || []
+      rows.each do |row|
+        next unless row['relay']
+
+        # Build import key for this row (matches Phase5Populator logic)
+        session_order = section['session_order'] || 1
+        distance = section['event_length'] || section['distance']
+        stroke = section['event_stroke'] || section['stroke']
+        next if distance.blank? || stroke.blank?
+
+        event_code = "#{distance}#{stroke}"
+        category = section['fin_sigla_categoria']
+        gender = section['fin_sesso'] || 'X'
+        team_key = row['team']
+        timing_string = row['timing'] || '0'
+
+        program_key = "#{session_order}-#{event_code}-#{category}-#{gender}"
+        mrr_import_key = "#{program_key}/#{team_key}/#{timing_string}"
+
+        # Only process if this import_key is in our relay results
+        next unless relay_import_keys.include?(mrr_import_key)
+
+        # Extract swimmer names from laps
+        laps = row['laps'] || []
+        result[mrr_import_key] = {}
+
+        laps.each_with_index do |lap, idx|
+          relay_order = idx + 1
+          swimmer_key_raw = lap['swimmer'] || ''
+          swimmer_parts = swimmer_key_raw.split('|')
+
+          # Parse composite key to extract name and build Phase 3 key
+          if swimmer_parts.size >= 5
+            last_name = swimmer_parts[1]
+            first_name = swimmer_parts[2]
+            year = swimmer_parts[3]
+          elsif swimmer_parts.size >= 4
+            last_name = swimmer_parts[0]
+            first_name = swimmer_parts[1]
+            year = swimmer_parts[2]
+          else
+            next
+          end
+
+          swimmer_key = "#{last_name}|#{first_name}|#{year}"
+          swimmer_name = "#{first_name} #{last_name}".strip
+
+          result[mrr_import_key][relay_order] = {
+            'name' => swimmer_name,
+            'key' => swimmer_key
+          }
+        end
+      end
+    end
+
+    result
+  rescue StandardError => e
+    Rails.logger.error("[DataFixController] Error building relay swimmer names: #{e.message}")
+    {}
   end
 
   def handle_phase1

@@ -8,12 +8,15 @@
     = render(partial: 'data_fix/step_tabs', locals: { active_step: 2, file_path: @file_path })
 
   -# Phase Navigation buttons
-  .d-flex.justify-content-end.my-2
-    = link_to 'Proceed to Step 3 (Swimmers)', review_swimmers_path(request.query_parameters.merge(phase3_v2: 1)), class: 'btn btn-primary'
+  .d-flex.justify-content-between.my-2
+    = link_to('< Back to file list', pull_result_files_path, class: 'btn btn-outline-secondary mr-2')
+    = link_to('Proceed to Step 3 (Swimmers)', review_swimmers_path(request.query_parameters.merge(phase3_v2: 1)),
+              class: 'btn btn-primary')
 
   -# Phase Metadata card
-  = render(partial: 'data_fix/phase_metadata', locals: { phase_number: 2, metadata: @phase2_meta })
-
+  - basename = File.basename(@file_path).split('.json').first
+  = render(partial: 'data_fix/phase_metadata', locals: { phase_number: 2, metadata: @phase2_meta,
+                                                         extra_info: basename })
   -# Search and filter controls
   .card.my-2
     .card-header
@@ -74,16 +77,40 @@
         team_id = team_hash['team_id']
         city_id = team_hash['city_id']
         name_variations = team_hash['name_variations']
+        
         # Visual indicators
         has_match = team_id.to_i.positive?
-        card_bg = has_match ? 'bg-light' : 'bg-light-yellow'
-        border_color = has_match ? 'border-secondary' : 'border-warning'
+        
+        # Check for required data (for teams, only name is required)
+        has_missing_data = team_name.blank?
+        
+        # Determine visual styling
+        if has_match
+          # Matched team
+          card_bg = 'bg-light'
+          border_color = 'border-secondary'
+          icon_class = 'fa-check-circle text-success'
+          icon_title = 'Matched'
+        elsif has_missing_data
+          # Missing required data (extremely rare for teams since name is always present)
+          card_bg = 'bg-light-red'
+          border_color = 'border-danger'
+          icon_class = 'fa-exclamation-triangle text-danger'
+          icon_title = 'Missing required data'
+        else
+          # New team with all required data
+          card_bg = 'bg-light-yellow'
+          border_color = 'border-warning'
+          icon_class = 'fa-plus-circle text-warning'
+          icon_title = 'New/Unmatched'
+        end
         border_width = 'border-2'
 
       = render(partial: 'team_form_card',
                locals: { file_path: @file_path, api_url: @api_url, team_hash:, team_index:,
                          team_key:, team_name:, editable_name:, team_id:, city_id:,
-                         name_variations:, has_match:, card_bg:, border_color:, border_width: })
+                         name_variations:, has_match:, has_missing_data:,
+                         card_bg:, border_color:, border_width:, icon_class:, icon_title: })
 
   -# Pagination controls (bottom)
   .mt-3

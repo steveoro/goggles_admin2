@@ -157,10 +157,18 @@ module Import
         affiliations_data = Array(phase2_data.dig('data', 'team_affiliations'))
 
         # Commit all teams first
-        teams_data.each { |team_hash| commit_team(team_hash) }
+        total = teams_data.size
+        teams_data.each_with_index do |team_hash, idx|
+          commit_team(team_hash)
+          broadcast_progress('Committing Teams', idx + 1, total)
+        end
 
         # Then commit affiliations (affiliations now have pre-matched team_affiliation_id from Phase 2)
-        affiliations_data.each { |affiliation_hash| commit_team_affiliation(affiliation_hash: affiliation_hash) }
+        affiliations_total = affiliations_data.size
+        affiliations_data.each_with_index do |affiliation_hash, idx|
+          commit_team_affiliation(affiliation_hash: affiliation_hash)
+          broadcast_progress('Committing Team Affiliations', idx + 1, affiliations_total)
+        end
       end
       # -----------------------------------------------------------------------
 
@@ -174,10 +182,18 @@ module Import
         badges_data = Array(phase3_data.dig('data', 'badges'))
 
         # Commit all swimmers first
-        swimmers_data.each { |swimmer_hash| commit_swimmer(swimmer_hash) }
+        total = swimmers_data.size
+        swimmers_data.each_with_index do |swimmer_hash, idx|
+          commit_swimmer(swimmer_hash)
+          broadcast_progress('Committing Swimmers', idx + 1, total)
+        end
 
         # Then commit badges (badges now have pre-calculated category_type_id from Phase 3)
-        badges_data.each { |badge_hash| commit_badge(badge_hash: badge_hash) }
+        badges_total = badges_data.size
+        badges_data.each_with_index do |badge_hash, idx|
+          commit_badge(badge_hash: badge_hash)
+          broadcast_progress('Committing Badges', idx + 1, badges_total)
+        end
       end
       # -----------------------------------------------------------------------
 
@@ -189,9 +205,13 @@ module Import
 
         # Phase 4 data is structured as { "sessions": [ { "session_order": 1, "events": [...] }, ... ] }
         sessions = Array(phase4_data['sessions'])
-        sessions.each do |session_hash|
+        sessions.each_with_index do |session_hash, sess_idx|
           events = Array(session_hash['events'])
-          events.each { |event_hash| commit_meeting_event(event_hash) }
+          session_total = events.size
+          events.each_with_index do |event_hash, evt_idx|
+            commit_meeting_event(event_hash)
+            broadcast_progress("Committing Events for session #{sess_idx}", evt_idx + 1, session_total)
+          end
         end
       end
       # -----------------------------------------------------------------------
@@ -208,7 +228,8 @@ module Import
                    .includes(:data_import_laps)
                    .order(:import_key)
 
-        all_mirs.each do |data_import_mir|
+        mir_total = all_mirs.size
+        all_mirs.each_with_index do |data_import_mir, mir_idx|
           # Ensure MeetingProgram exists (may need to create it)
           program_id = ensure_meeting_program(data_import_mir)
           next unless program_id
@@ -217,11 +238,14 @@ module Import
           mir_id = commit_meeting_individual_result(data_import_mir, program_id)
           next unless mir_id
 
-          # Commit laps
+          broadcast_progress("Committing MIR for MPrg ID #{program_id}", mir_idx + 1, mir_total)
+          # Commit laps (skipping broadcast for these)
           data_import_mir.data_import_laps.each do |data_import_lap|
             commit_lap(data_import_lap, mir_id)
           end
         end
+
+        # TODO: ass commits for MRR / MRS / RelayLap rows
       end
       # -----------------------------------------------------------------------
 

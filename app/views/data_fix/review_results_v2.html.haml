@@ -2,14 +2,15 @@
 
 = render(partial: 'data_fix_legacy/modal_progress')
 
-.container-fluid{ data: { controller: 'collapse-all', collapse_all_selector_value: '[id^="program-panel-"]' } }
+.container-fluid{ data: { controller: 'collapse-all', collapse_all_selector_value: '[id^="program-panel-"], [id^="relay-program-panel-"]' } }
   %h2 Data-Fix V2 • Step 5: Results (Phase 5)
 
   .mb-2
     = render(partial: 'data_fix/step_tabs', locals: { active_step: 5, file_path: @file_path })
 
-  .d-flex.justify-content-between.mb-2
-    .mx-4.px-4 &nbsp;
+  .d-flex.justify-content-between.my-2
+    = link_to '< Back to file list', pull_result_files_path, class: 'btn btn-outline-secondary mr-2'
+    -# .mx-4.px-4 &nbsp;
     - if @all_results.present?
       %div
         = button_to commit_phase6_path(file_path: @file_path),
@@ -22,7 +23,9 @@
         %i.fa.fa-compress
         Collapse All Results
 
-  = render(partial: 'data_fix/phase_metadata', locals: { phase_number: 5, metadata: @phase5_meta })
+  - basename = File.basename(@file_path).split('.json').first
+  = render(partial: 'data_fix/phase_metadata', locals: { phase_number: 5, metadata: @phase5_meta,
+                                                         extra_info: basename })
 
   - if @populate_stats
     .alert.alert-info.mb-3
@@ -100,8 +103,9 @@
           .col-12.col-lg-6
             = render(partial: 'data_fix/relay_program_card',
                      locals: { program_key: program_key, relay_results: relay_results,
-                               swimmers_by_id: @swimmers_by_id, teams_by_id: @teams_by_id,
-                               teams_by_key: @teams_by_key,
+                               swimmers_by_id: @swimmers_by_id, swimmers_by_key: @swimmers_by_key,
+                               teams_by_id: @teams_by_id, teams_by_key: @teams_by_key,
                                relay_swimmers_by_parent_key: @relay_swimmers_by_parent_key,
                                relay_laps_by_parent_key: @relay_laps_by_parent_key,
+                               relay_swimmer_names: @relay_swimmer_names,
                                card_index: idx })

@@ -19,7 +19,7 @@
         %small.ml-2.badge.badge-primary
           NEW
 
-  .collapse{ class: (meeting_id.blank? ? 'show' : ''), id: 'meeting-collapse',
+  .collapse{ class: (all_required_filled ? '' : 'show'), id: 'meeting-collapse',
              'aria-labelledby' => 'meeting-header', 'data-parent' => '#meeting-card' }
     .card-body.border-bottom.border-secondary
       -# Read-only summary

@@ -4,9 +4,13 @@ module Import
   module Solvers
     # SwimmerSolver: builds Phase 3 payload (swimmers and badges)
     #
-    # Inputs:
+    # Typical inputs:
     # - LT4: prefer root 'swimmers' dictionary when present (strings or objects)
-    # - LT2: fallback (TODO) scan of sections when LT4 dict missing
+    # - LT2: fallback scan of sections when LT4 dict missing
+    #
+    # NOTE:
+    # LayoutType is indicative, what really counts is the actual hierarchical structure
+    # found in the data file (regardless of specified layout type).
     #
     # Output (phase3 file):
     # {
@@ -19,7 +23,7 @@ module Import
     # }
     # NOTE: badge_id will be nil for new badges that don't exist in DB yet
     #
-    class SwimmerSolver
+    class SwimmerSolver # rubocop:disable Metrics/ClassLength
       def initialize(season:, logger: Rails.logger)
         @season = season
         @logger = logger
@@ -52,10 +56,12 @@ module Import
         swimmers = []
         badges = []
 
-        if lt_format == 4 && (data_hash['swimmers'].is_a?(Array) || data_hash['swimmers'].is_a?(Hash))
+        if data_hash['swimmers'].is_a?(Array) || data_hash['swimmers'].is_a?(Hash)
+          total = data_hash['swimmers'].size
           if data_hash['swimmers'].is_a?(Array)
-            data_hash['swimmers'].each do |s|
+            data_hash['swimmers'].each_with_index do |s, idx|
               l, f, yob, gcode, team_name = extract_swimmer_parts(s)
+              broadcast_progress('Map swimmers', idx + 1, total)
               next if l.blank? || f.blank? || yob.to_i.zero?
 
               key = [l, f, yob].join('|')
@@ -65,40 +71,69 @@ module Import
               badges << build_badge_entry(key, team_name, yob.to_i, gcode, meeting_date)
             end
           else # Hash dictionary: key => swimmerKey, value => details
-            data_hash['swimmers'].each_value do |v|
+            data_hash['swimmers'].each_with_index do |(key, v), idx|
               l = v['last_name'] || v['lastName']
               f = v['first_name'] || v['firstName']
               yob = v['year_of_birth'] || v['year']
               gcode = normalize_gender_code(v['gender'] || v['gender_type_code'])
               team_name = v['team']
+              broadcast_progress('Map swimmers', idx + 1, total)
               next if l.blank? || f.blank? || yob.to_i.zero?
 
-              key = [l, f, yob].join('|')
               swimmers << build_swimmer_entry(key, l, f, yob.to_i, gcode)
               next if team_name.to_s.strip.empty?
 
               badges << build_badge_entry(key, team_name, yob.to_i, gcode, meeting_date)
             end
           end
+
         elsif data_hash['sections'].is_a?(Array)
           # LT2 fallback: scan sections/rows for swimmers and teams (infer badges)
-          data_hash['sections'].each do |sec|
+          total = data_hash['sections'].size
+          data_hash['sections'].each_with_index do |sec, sec_idx|
             rows = sec['rows'] || []
             gender_code = normalize_gender_code(sec['fin_sesso'])
             rows.each do |row|
-              next if row['relay'] # skip relays here
+              if row['relay']
+                # Extract relay swimmers from swimmer1..swimmer8 fields
+                team_name = row['team']
+                (1..8).each do |idx|
+                  swimmer_name = row["swimmer#{idx}"]
+                  break if swimmer_name.blank?
 
-              l, f, yob = extract_name_yob_from_row(row)
-              next if l.blank? || f.blank? || yob.to_i.zero?
+                  yob = row["year_of_birth#{idx}"]
+                  gtype = row["gender_type#{idx}"]
+                  next if swimmer_name.blank? || yob.to_i.zero?
 
-              key = [l, f, yob].join('|')
-              gcode = gender_code || normalize_gender_code(row['gender'] || row['gender_type'] || row['gender_type_code'])
-              swimmers << build_swimmer_entry(key, l, f, yob.to_i, gcode)
-              team_name = row['team']
-              next if team_name.to_s.strip.empty?
+                  # Parse swimmer name (usually "LAST FIRST" format)
+                  parts = swimmer_name.to_s.strip.split
+                  next if parts.size < 2
 
-              badges << build_badge_entry(key, team_name, yob.to_i, gcode, meeting_date)
+                  first = parts.pop
+                  last = parts.join(' ')
+                  key = [last, first, yob].join('|')
+                  gcode = normalize_gender_code(gtype)
+
+                  swimmers << build_swimmer_entry(key, last, first, yob.to_i, gcode)
+                  next if team_name.to_s.strip.empty?
+
+                  badges << build_badge_entry(key, team_name, yob.to_i, gcode, meeting_date)
+                end
+              else
+                # Individual result row
+                l, f, yob = extract_name_yob_from_row(row)
+                next if l.blank? || f.blank? || yob.to_i.zero?
+
+                key = [l, f, yob].join('|')
+                gcode = gender_code || normalize_gender_code(row['gender'] || row['gender_type'] || row['gender_type_code'])
+                swimmers << build_swimmer_entry(key, l, f, yob.to_i, gcode)
+                team_name = row['team']
+                next if team_name.to_s.strip.empty?
+
+                badges << build_badge_entry(key, team_name, yob.to_i, gcode, meeting_date)
+              end
             end
+            broadcast_progress('Collect swimmers from sections', sec_idx + 1, total)
           end
         else
           @logger.info('[SwimmerSolver] No LT4 swimmers dict and no LT2 sections found')
@@ -189,6 +224,8 @@ module Import
       # last_name, first_name, year_of_birth, gender_type_code: swimmer attributes
       def build_swimmer_entry(key, last_name, first_name, year_of_birth, gender_type_code)
         complete_name = "#{last_name} #{first_name}".strip
+        search_name = normalize_swimmer_name(complete_name)
+        search_last = normalize_swimmer_name(last_name)
         entry = {
           'key' => key,
           'last_name' => last_name,
@@ -200,7 +237,7 @@ module Import
         }
 
         # Find fuzzy matches using CmdFindDbEntity with FuzzySwimmer
-        matches = find_swimmer_matches(complete_name, year_of_birth, last_name, gender_type_code)
+        matches = find_swimmer_matches(search_name, year_of_birth, search_last, gender_type_code)
         entry['fuzzy_matches'] = matches
 
         # Auto-assign top match if confidence >= 60% (lower threshold for more auto-matching)
@@ -288,6 +325,15 @@ module Import
 
         weight = match['weight'].to_f
         weight >= 0.60
+      end
+
+      # Normalize swimmer names for matching: remove accents, unify apostrophes and extra spaces
+      def normalize_swimmer_name(name)
+        base = name.to_s.strip
+        return '' if base.empty?
+
+        normalized = I18n.transliterate(base)
+        normalized.gsub(/[`’]/, "'").squeeze(' ')
       end
 
       # Build a badge entry with category_type_id calculated using CategoriesCache
@@ -407,6 +453,16 @@ module Import
         teams = Array(@phase2_data.dig('data', 'teams'))
         team = teams.find { |t| t['key'] == team_key }
         team&.dig('team_id')
+      end
+
+      # Broadcast progress updates via ActionCable for real-time UI feedback
+      def broadcast_progress(message, current, total)
+        ActionCable.server.broadcast(
+          'ImportStatusChannel',
+          { msg: message, progress: current, total: total }
+        )
+      rescue StandardError => e
+        @logger&.warn("[SwimmerSolver] Failed to broadcast progress: #{e.message}")
       end
     end
   end

@@ -2,10 +2,7 @@
   .card-header.d-flex.justify-content-between.align-items-center{ id: "swimmer-header-#{swimmer_index}", style: 'cursor: pointer;', data: { toggle: 'collapse', target: "#swimmer-panel-#{swimmer_index}" } }
     .d-flex.align-items-center
       %span.mr-2
-        - if has_match
-          %i.fa.fa-check-circle.text-success{ title: 'Matched' }
-        - else
-          %i.fa.fa-plus-circle.text-warning{ title: 'New/Unmatched' }
+        %i.fa{ class: icon_class, title: icon_title }
       %strong
         = swimmer_hash['complete_name']
       %small.ml-2.text-muted
@@ -22,6 +19,18 @@
         - badge_color = color_class.present? ? "badge-#{color_class}" : fallback_badge_color
         %small.ml-2.badge{ class: badge_color }
           ID: #{swimmer_id}
+      - elsif has_missing_data
+        %small.ml-2.badge.badge-danger
+          MISSING DATA
+        - if missing_name
+          %small.ml-1.badge.badge-danger
+            No Name
+        - if missing_yob
+          %small.ml-1.badge.badge-danger
+            No YOB
+        - if missing_gender
+          %small.ml-1.badge.badge-danger
+            No Gender
       - else
         %small.ml-2.badge.badge-primary
           NEW

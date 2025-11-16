@@ -54,18 +54,12 @@ module Import
     # Main entry point: truncate existing data, load phase files, populate tables
     # Note: LT2 files are normalized to LT4 format during load_phase_files!
     def populate!
-      broadcast_progress('Starting Phase 5 population...', 0, 100)
-
       truncate_tables!
       load_phase_files!
 
       # All files are now in LT4 format (normalized if needed)
       Rails.logger.info('[Phase5Populator] Populating from LT4 format (normalized if LT2)')
-      broadcast_progress('Processing results...', 20, 100)
-
       populate_lt4_results!
-
-      broadcast_progress('Population complete', 100, 100)
       stats
     end
 
@@ -137,18 +131,16 @@ module Import
 
     # Populate MIR + Laps from source events array (LT4 format)
     # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
-    def populate_lt4_individual_results!
+    def populate_lt4_individual_results! # rubocop:disable Metrics/MethodLength
       events = source_data['events'] || []
       total_events = events.count { |e| e['relay'] != true }
 
       events.each_with_index do |event, event_idx|
         next if event['relay'] == true # Skip relay events for now
 
-        # Broadcast progress every 5 events or on last event
-        if (event_idx + 1) % 5 == 0 || (event_idx + 1) == total_events
-          broadcast_progress("Processing individual results (#{event_idx + 1}/#{total_events})...",
-                             20 + (event_idx * 40 / [total_events, 1].max), 100)
-        end
+        # Broadcast progress every event:
+        broadcast_progress("Processing individual results (#{event_idx + 1}/#{total_events})...",
+                           event_idx + 1, total_events)
 
         session_order = event['sessionOrder'] || 1
         distance = extract_distance(event)
@@ -203,7 +195,7 @@ module Import
 
     # Populate relay results from source events array (LT4 format)
     # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
-    def populate_lt4_relay_results!
+    def populate_lt4_relay_results! # rubocop:disable Metrics/MethodLength
       events = source_data['events'] || []
       relay_events = events.select { |e| e['relay'] == true }
       total_relay = relay_events.size
@@ -211,12 +203,10 @@ module Import
       events.each_with_index do |event, _event_idx|
         next unless event['relay'] == true # Only process relay events
 
-        # Broadcast progress every 5 relay events or on last event
+        # Broadcast progress every relay event
         relay_idx = relay_events.index(event) || 0
-        if (relay_idx + 1) % 5 == 0 || (relay_idx + 1) == total_relay
-          broadcast_progress("Processing relay results (#{relay_idx + 1}/#{total_relay})...",
-                             60 + (relay_idx * 30 / [total_relay, 1].max), 100)
-        end
+        broadcast_progress("Processing relay results (#{relay_idx + 1}/#{total_relay})...",
+                           relay_idx + 1, total_relay)
 
         session_order = event['sessionOrder'] || 1
         distance = extract_distance(event)
@@ -500,6 +490,14 @@ module Import
       # DEBUG logging
       Rails.logger.info("[Phase5Populator] Creating MIR: import_key=#{import_key}, swimmer_id=#{swimmer_id}, team_id=#{team_id}, program_id=#{meeting_program_id}")
 
+      raw_rank = result['ranking'] || result['rank'] || result['position'] || result['pos']
+      rank_int = raw_rank.to_i
+      rank_non_numeric = raw_rank.present? && raw_rank.to_s !~ /^\d+$/
+
+      timing_zero = timing[:minutes].to_i.zero? && timing[:seconds].to_i.zero? && timing[:hundredths].to_i.zero?
+
+      disqualified_flag = !!result['disqualified'] || rank_non_numeric || timing_zero
+
       mir = GogglesDb::DataImportMeetingIndividualResult.create!(
         import_key: import_key,
         phase_file_path: source_path,
@@ -507,11 +505,11 @@ module Import
         swimmer_id: swimmer_id,
         team_id: team_id,
         meeting_individual_result_id: meeting_individual_result_id,
-        rank: result['ranking']&.to_i || result['rank']&.to_i || result['position']&.to_i || 0,
+        rank: rank_int,
         minutes: timing[:minutes],
         seconds: timing[:seconds],
         hundredths: timing[:hundredths],
-        disqualified: result['disqualified'] || false,
+        disqualified: disqualified_flag,
         disqualification_code_type_id: result['disqualification_code'],
         standard_points: result['standard_points'].to_f,
         meeting_points: result['meeting_points'].to_f,
@@ -632,17 +630,25 @@ module Import
 
     # Create MRR record
     def create_mrr_record(import_key:, result:, timing_hash:, team_id:, meeting_program_id:, meeting_relay_result_id:)
+      raw_rank = result['ranking'] || result['rank'] || result['pos']
+      rank_int = raw_rank.to_i
+      rank_non_numeric = raw_rank.present? && raw_rank.to_s !~ /^\d+$/
+
+      timing_zero = timing_hash[:minutes].to_i.zero? && timing_hash[:seconds].to_i.zero? && timing_hash[:hundredths].to_i.zero?
+
+      disqualified_flag = !!result['disqualified'] || rank_non_numeric || timing_zero
+
       GogglesDb::DataImportMeetingRelayResult.create!(
         import_key: import_key,
         phase_file_path: source_path,
         meeting_relay_result_id: meeting_relay_result_id,
         meeting_program_id: meeting_program_id,
         team_id: team_id,
-        rank: result['ranking'] || result['rank'] || result['pos'],
+        rank: rank_int,
         minutes: timing_hash[:minutes],
         seconds: timing_hash[:seconds],
         hundredths: timing_hash[:hundredths],
-        disqualified: result['disqualified'] || false,
+        disqualified: disqualified_flag,
         standard_points: (result['standard_points'] || result['standardPoints'] || 0).to_f,
         meeting_points: (result['meeting_points'] || result['meetingPoints'] || 0).to_f
       )

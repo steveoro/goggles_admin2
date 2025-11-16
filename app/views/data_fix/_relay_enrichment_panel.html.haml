@@ -6,7 +6,7 @@
   issue_labels = {
     'missing_year_of_birth' => t('data_import.relay_enrichment.table.issues.missing_year_of_birth'),
     'missing_gender' => t('data_import.relay_enrichment.table.issues.missing_gender'),
-    'missing_swimmer_id' => t('data_import.relay_enrichment.table.issues.missing_swimmer_id')
+    'missing_swimmer_id' => 'NEW' # Ignore localizations for this
   }
   totals = Hash.new(0)
   summary.each do |relay|
@@ -26,6 +26,15 @@
     .card-body
       %p.text-muted
         = t('data_import.relay_enrichment.description_html', count: summary.size).html_safe
+
+      .mb-3
+        = form_tag(review_swimmers_path, method: :get, class: 'form-inline') do
+          = hidden_field_tag :file_path, file_path
+          = hidden_field_tag :phase3_v2, 1
+          .custom-control.custom-checkbox
+            = check_box_tag :show_new_relay_swimmers, '1', @show_new_relay_swimmers, class: 'custom-control-input', id: "#{panel_id}-show-new"
+            %label.custom-control-label{ for: "#{panel_id}-show-new" } Show new swimmers (nil ID)
+          = submit_tag 'Apply', class: 'btn btn-sm btn-primary ml-2'
 
       - unless totals.empty?
         .mb-3
@@ -84,10 +93,10 @@
                     %div.font-weight-bold
                       = t('data_import.relay_enrichment.table.leg_label', number: leg['leg_order'])
                       - if leg['phase3_key'].present?
-                        %span.badge.badge-success.ml-2
+                        %span.badge.badge-secondary.ml-2
                           = t('data_import.relay_enrichment.status.matched', key: leg['phase3_key'])
                       - else
-                        %span.badge.badge-secondary.ml-2
+                        %span.badge.badge-danger.ml-2
                           = t('data_import.relay_enrichment.status.unmatched')
                     %div.small
                       %span.mr-2

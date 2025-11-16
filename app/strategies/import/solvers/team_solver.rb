@@ -4,10 +4,13 @@ module Import
   module Solvers
     # TeamSolver: builds Phase 2 payload (teams and team_affiliations)
     #
-    # Inputs:
-    # - LT4: prefer root 'teams' dictionary when present (strings or objects)
-    # - LT2: fallback (TODO) scan of sections when LT4 dict missing
+    # Typical inputs:
+    # - LT4: prefer root 'swimmers' dictionary when present (strings or objects)
+    # - LT2: fallback scan of sections when LT4 dict missing
     #
+    # NOTE:
+    # LayoutType is indicative, what really counts is the actual hierarchical structure
+    # found in the data file (regardless of specified layout type).
     # Output (phase2 file):
     # {
     #   "_meta": { ... },
@@ -19,7 +22,7 @@ module Import
     # }
     # NOTE: team_affiliation_id will be nil for new affiliations that don't exist in DB yet
     #
-    class TeamSolver
+    class TeamSolver # rubocop:disable Metrics/ClassLength
       def initialize(season:, logger: Rails.logger)
         @season = season
         @logger = logger
@@ -40,33 +43,34 @@ module Import
         teams = []
         ta = []
 
-        if lt_format == 4 && (data_hash['teams'].is_a?(Array) || data_hash['teams'].is_a?(Hash))
+        if data_hash['teams'].is_a?(Array) || data_hash['teams'].is_a?(Hash)
+          total = data_hash['teams'].size
           if data_hash['teams'].is_a?(Array)
-            total = data_hash['teams'].size
             data_hash['teams'].each_with_index do |t, idx|
               name = extract_team_name(t)
+              broadcast_progress('Map teams', idx + 1, total)
               next if name.blank?
 
               team_entry = build_team_entry(name, name)
               teams << team_entry
               ta << build_team_affiliation_entry(name, team_entry['team_id'])
-              broadcast_progress('map_teams', idx + 1, total) if (idx + 1) % 5 == 0 || (idx + 1) == total
             end
-          else
-            total = data_hash['teams'].size
+          else # Hash dictionary: key => teamKey, value => details
             data_hash['teams'].each_with_index do |(key, value), idx|
               name = extract_team_name(value)
+              broadcast_progress('Map teams', idx + 1, total)
               next if name.blank?
 
               team_entry = build_team_entry(key, name)
               teams << team_entry
               ta << build_team_affiliation_entry(key, team_entry['team_id'])
-              broadcast_progress('map_teams', idx + 1, total) if (idx + 1) % 5 == 0 || (idx + 1) == total
             end
           end
+
         elsif data_hash['sections'].is_a?(Array)
           # LT2 fallback: scan sections/rows for team names
-          data_hash['sections'].each do |sec|
+          total = data_hash['sections'].size
+          data_hash['sections'].each_with_index do |sec, idx|
             rows = sec['rows'] || []
             rows.each do |row|
               team_name = row['team']
@@ -76,6 +80,7 @@ module Import
               teams << team_entry
               ta << build_team_affiliation_entry(team_name, team_entry['team_id'])
             end
+            broadcast_progress('Collect teams from sections', idx + 1, total)
           end
         else
           @logger.info('[TeamSolver] No LT4 teams dict and no LT2 sections found')
