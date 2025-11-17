@@ -50,6 +50,9 @@ module Import
           programs_created: 0, programs_updated: 0,
           mirs_created: 0, mirs_updated: 0,
           laps_created: 0, laps_updated: 0,
+          mrrs_created: 0, mrrs_updated: 0,
+          mrss_created: 0, mrss_updated: 0,
+          relay_laps_created: 0, relay_laps_updated: 0,
           errors: []
         }
         # Initialize logger
@@ -245,7 +248,34 @@ module Import
           end
         end
 
-        # TODO: add support for commits for MRR / MRS / RelayLap rows
+        # Commit relay results (MRR), relay swimmers (MRS), and relay laps
+        all_mrrs = GogglesDb::DataImportMeetingRelayResult
+                   .where(phase_file_path: source_path)
+                   .includes(:data_import_meeting_relay_swimmers)
+                   .order(:import_key)
+
+        mrr_total = all_mrrs.size
+        all_mrrs.each_with_index do |data_import_mrr, mrr_idx|
+          # Ensure MeetingProgram exists (may need to create it)
+          program_id = ensure_meeting_program(data_import_mrr)
+          next unless program_id
+
+          # Commit MRR (INSERT or UPDATE)
+          mrr_id = commit_meeting_relay_result(data_import_mrr, program_id)
+          next unless mrr_id
+
+          broadcast_progress("Committing MRR for MPrg ID #{program_id}", mrr_idx + 1, mrr_total)
+          # Commit relay swimmers and their laps
+          data_import_mrr.data_import_meeting_relay_swimmers.each do |data_import_mrs|
+            mrs_id = commit_meeting_relay_swimmer(data_import_mrs, mrr_id)
+            next unless mrs_id
+
+            # Commit relay laps for this swimmer
+            data_import_mrs.data_import_relay_laps.each do |data_import_relay_lap|
+              commit_relay_lap(data_import_relay_lap, mrs_id)
+            end
+          end
+        end
       end
       # -----------------------------------------------------------------------
 
@@ -678,6 +708,88 @@ module Import
       end
       # -----------------------------------------------------------------------
 
+      def commit_meeting_relay_result(data_import_mrr, program_id)
+        mrr_id = data_import_mrr.meeting_relay_result_id
+
+        # If MRR already has a DB ID (matched), update if needed
+        if mrr_id.present? && mrr_id.positive?
+          existing_mrr = GogglesDb::MeetingRelayResult.find_by(id: mrr_id)
+          if existing_mrr
+            normalized_attributes = normalize_meeting_relay_result_attributes(data_import_mrr, program_id: program_id)
+            # Check if timing or other attributes changed
+            if mrr_attributes_changed?(existing_mrr, normalized_attributes)
+              update_mrr_attributes(existing_mrr, normalized_attributes)
+              @sql_log << SqlMaker.new(row: existing_mrr).log_update
+              @stats[:mrrs_updated] += 1
+              Rails.logger.info("[Main] Updated MRR ID=#{mrr_id}")
+            end
+            return mrr_id
+          end
+        end
+
+        # Create new MRR
+        attributes = normalize_meeting_relay_result_attributes(data_import_mrr, program_id: program_id)
+
+        new_mrr = GogglesDb::MeetingRelayResult.create!(attributes)
+        @sql_log << SqlMaker.new(row: new_mrr).log_insert
+        @stats[:mrrs_created] += 1
+        Rails.logger.info("[Main] Created MRR ID=#{new_mrr.id}, program=#{program_id}, rank=#{new_mrr.rank}")
+        new_mrr.id
+      rescue ActiveRecord::RecordInvalid => e
+        @stats[:errors] << "MRR error (#{data_import_mrr.import_key}): #{e.message}"
+        Rails.logger.error("[Main] ERROR committing MRR: #{e.message}")
+        nil
+      end
+      # -----------------------------------------------------------------------
+
+      def commit_meeting_relay_swimmer(data_import_mrs, mrr_id)
+        mrs_id = data_import_mrs.meeting_relay_swimmer_id
+
+        # If MRS already has a DB ID (matched), update if needed
+        if mrs_id.present? && mrs_id.positive?
+          existing_mrs = GogglesDb::MeetingRelaySwimmer.find_by(id: mrs_id)
+          if existing_mrs
+            normalized_attributes = normalize_meeting_relay_swimmer_attributes(data_import_mrs, mrr_id: mrr_id)
+            if mrs_attributes_changed?(existing_mrs, normalized_attributes)
+              update_mrs_attributes(existing_mrs, normalized_attributes)
+              @sql_log << SqlMaker.new(row: existing_mrs).log_update
+              @stats[:mrss_updated] += 1
+              Rails.logger.info("[Main] Updated MRS ID=#{mrs_id}")
+            end
+            return mrs_id
+          end
+        end
+
+        # Create new MRS
+        attributes = normalize_meeting_relay_swimmer_attributes(data_import_mrs, mrr_id: mrr_id)
+
+        new_mrs = GogglesDb::MeetingRelaySwimmer.create!(attributes)
+        @sql_log << SqlMaker.new(row: new_mrs).log_insert
+        @stats[:mrss_created] += 1
+        Rails.logger.info("[Main] Created MRS ID=#{new_mrs.id}, mrr=#{mrr_id}, order=#{new_mrs.relay_order}")
+        new_mrs.id
+      rescue ActiveRecord::RecordInvalid => e
+        @stats[:errors] << "MRS error (#{data_import_mrs.import_key}): #{e.message}"
+        Rails.logger.error("[Main] ERROR committing MRS: #{e.message}")
+        nil
+      end
+      # -----------------------------------------------------------------------
+
+      def commit_relay_lap(data_import_relay_lap, mrs_id)
+        # All relay laps are new (no matching logic for relay laps)
+        attributes = normalize_relay_lap_attributes(data_import_relay_lap, mrs_id: mrs_id)
+
+        new_relay_lap = GogglesDb::RelayLap.create!(attributes)
+        @sql_log << SqlMaker.new(row: new_relay_lap).log_insert
+        @stats[:relay_laps_created] += 1
+        new_relay_lap.id
+      rescue ActiveRecord::RecordInvalid => e
+        @stats[:errors] << "RelayLap error (#{data_import_relay_lap.import_key}): #{e.message}"
+        Rails.logger.error("[Main] ERROR committing relay lap: #{e.message}")
+        nil
+      end
+      # -----------------------------------------------------------------------
+
       # Find meeting_event_id from import_key by parsing program key and matching with phase 4 data
       def find_meeting_event_id_from_import_key(import_key)
         # Extract program key: "1-100SL-M45-M" from "1-100SL-M45-M/ROSSI|MARIO|1978"
@@ -718,6 +830,44 @@ module Import
       # Update MIR attributes from data_import_mir
       def update_mir_attributes(existing_mir, normalized_attributes)
         existing_mir.update!(normalized_attributes)
+      end
+      # -----------------------------------------------------------------------
+
+      # Check if MRR attributes have changed
+      def mrr_attributes_changed?(existing_mrr, normalized_attributes)
+        normalized_attributes.any? do |key, value|
+          begin
+            existing_value = existing_mrr.public_send(key.to_sym)
+          rescue NoMethodError
+            existing_value = nil
+          end
+          existing_value != value
+        end
+      end
+      # -----------------------------------------------------------------------
+
+      # Update MRR attributes from data_import_mrr
+      def update_mrr_attributes(existing_mrr, normalized_attributes)
+        existing_mrr.update!(normalized_attributes)
+      end
+      # -----------------------------------------------------------------------
+
+      # Check if MRS attributes have changed
+      def mrs_attributes_changed?(existing_mrs, normalized_attributes)
+        normalized_attributes.any? do |key, value|
+          begin
+            existing_value = existing_mrs.public_send(key.to_sym)
+          rescue NoMethodError
+            existing_value = nil
+          end
+          existing_value != value
+        end
+      end
+      # -----------------------------------------------------------------------
+
+      # Update MRS attributes from data_import_mrs
+      def update_mrs_attributes(existing_mrs, normalized_attributes)
+        existing_mrs.update!(normalized_attributes)
       end
       # -----------------------------------------------------------------------
 
@@ -864,6 +1014,66 @@ module Import
         }.compact
 
         sanitize_attributes(normalized, GogglesDb::Lap)
+      end
+      # -----------------------------------------------------------------------
+
+      def normalize_meeting_relay_result_attributes(data_import_mrr, program_id:)
+        normalized = {
+          'meeting_program_id' => program_id,
+          'team_id' => data_import_mrr.team_id,
+          'rank' => integer_or_nil(data_import_mrr.rank),
+          'minutes' => integer_or_nil(data_import_mrr.minutes),
+          'seconds' => integer_or_nil(data_import_mrr.seconds),
+          'hundredths' => integer_or_nil(data_import_mrr.hundredths),
+          'disqualified' => BOOLEAN_TYPE.cast(data_import_mrr.disqualified),
+          'disqualification_code_type_id' => data_import_mrr.disqualification_code_type_id,
+          'standard_points' => decimal_or_nil(data_import_mrr.standard_points),
+          'meeting_points' => decimal_or_nil(data_import_mrr.meeting_points),
+          'reaction_time' => decimal_or_nil(data_import_mrr.reaction_time),
+          'out_of_race' => BOOLEAN_TYPE.cast(data_import_mrr.out_of_race),
+          'team_points' => decimal_or_nil(data_import_mrr.team_points)
+        }.compact
+
+        sanitize_attributes(normalized, GogglesDb::MeetingRelayResult)
+      end
+      # -----------------------------------------------------------------------
+
+      def normalize_meeting_relay_swimmer_attributes(data_import_mrs, mrr_id:)
+        normalized = {
+          'meeting_relay_result_id' => mrr_id,
+          'swimmer_id' => data_import_mrs.swimmer_id,
+          'badge_id' => data_import_mrs.badge_id,
+          'stroke_type_id' => data_import_mrs.stroke_type_id,
+          'relay_order' => integer_or_nil(data_import_mrs.relay_order),
+          'minutes' => integer_or_nil(data_import_mrs.minutes),
+          'seconds' => integer_or_nil(data_import_mrs.seconds),
+          'hundredths' => integer_or_nil(data_import_mrs.hundredths),
+          'reaction_time' => decimal_or_nil(data_import_mrs.reaction_time)
+        }.compact
+
+        sanitize_attributes(normalized, GogglesDb::MeetingRelaySwimmer)
+      end
+      # -----------------------------------------------------------------------
+
+      def normalize_relay_lap_attributes(data_import_relay_lap, mrs_id:)
+        normalized = {
+          'meeting_relay_swimmer_id' => mrs_id,
+          'length_in_meters' => integer_or_nil(data_import_relay_lap.length_in_meters),
+          'minutes' => integer_or_nil(data_import_relay_lap.minutes),
+          'seconds' => integer_or_nil(data_import_relay_lap.seconds),
+          'hundredths' => integer_or_nil(data_import_relay_lap.hundredths),
+          'minutes_from_start' => integer_or_nil(data_import_relay_lap.minutes_from_start),
+          'seconds_from_start' => integer_or_nil(data_import_relay_lap.seconds_from_start),
+          'hundredths_from_start' => integer_or_nil(data_import_relay_lap.hundredths_from_start),
+          'reaction_time' => decimal_or_nil(data_import_relay_lap.reaction_time),
+          'breath_cycles' => integer_or_nil(data_import_relay_lap.breath_number),
+          'underwater_seconds' => integer_or_nil(data_import_relay_lap.underwater_seconds),
+          'underwater_hundredths' => integer_or_nil(data_import_relay_lap.underwater_hundredths),
+          'underwater_kicks' => integer_or_nil(data_import_relay_lap.underwater_kicks),
+          'position' => integer_or_nil(data_import_relay_lap.position)
+        }.compact
+
+        sanitize_attributes(normalized, GogglesDb::RelayLap)
       end
       # -----------------------------------------------------------------------
 

@@ -620,13 +620,18 @@ class DataFixController < ApplicationController
       # Clean up data_import_* tables for this source (use done_source_path as reference)
       GogglesDb::DataImportMeetingIndividualResult.where(phase_file_path: done_source_path).delete_all
       GogglesDb::DataImportLap.where(phase_file_path: done_source_path).delete_all
+      GogglesDb::DataImportMeetingRelayResult.where(phase_file_path: done_source_path).delete_all
+      GogglesDb::DataImportMeetingRelaySwimmer.where(phase_file_path: done_source_path).delete_all
+      GogglesDb::DataImportRelayLap.where(phase_file_path: done_source_path).delete_all
 
       # Summary message
       flash[:notice] = 'Phase 6 commit successful! ' \
                        "Created: #{stats[:meetings_created]} meetings, #{stats[:teams_created]} teams, " \
                        "#{stats[:swimmers_created]} swimmers, #{stats[:badges_created]} badges, " \
                        "#{stats[:events_created]} events, #{stats[:programs_created]} programs, " \
-                       "#{stats[:mirs_created]} results, #{stats[:laps_created]} laps. " \
+                       "#{stats[:mirs_created]} results, #{stats[:laps_created]} laps, " \
+                       "#{stats[:mrrs_created]} relay results, #{stats[:mrss_created]} relay swimmers, " \
+                       "#{stats[:relay_laps_created]} relay laps. " \
                        "Updated: #{stats[:meetings_updated]} meetings, #{stats[:teams_updated]} teams, " \
                        "#{stats[:swimmers_updated]} swimmers, #{stats[:sessions_updated]} sessions. " \
                        "Files: #{sql_filename} (SQL) and .log. " \

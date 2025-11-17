@@ -1,8 +1,8 @@
 # Data-Fix: Development Roadmap
 
 **Last Updated**: 2025-11-17  
-**Version**: 2.2  
-**Status**: ✅ Phases 1-5 Complete | 🎯 Phase 6 Relay In Progress | 🟡 Polish & Testing Ongoing
+**Version**: 2.3  
+**Status**: ✅ All Phases Complete | 🟡 Testing & Polish Ongoing
 
 This document consolidates all active development plans and tracks progress toward full relay support completion.
 
@@ -18,9 +18,9 @@ This document consolidates all active development plans and tracks progress towa
 | **Phase 4: Events** | ✅ Complete | 100% | Relay support added 2025-11-10 |
 | **Phase 5 Individual** | ✅ Complete | 100% | Populator + UI working |
 | **Phase 5 Relay** | ✅ Complete | 100% | Populator + UI + string keys |
-| **Phase 5 Polish** | 🟡 In Progress | 70% | Pagination & filtering pending |
+| **Phase 5 Polish** | ✅ Complete | 100% | Pagination & filtering working |
 | **Phase 6 Individual** | ✅ Complete | 100% | Full commit working |
-| **Phase 6 Relay** | 🎯 Next Up | 0% | MRR/MRS/RelayLap commit needed |
+| **Phase 6 Relay** | ✅ Complete | 100% | MRR/MRS/RelayLap commit implemented |
 | **Testing** | 🟡 In Progress | 60% | Need Phase 5 relay specs |
 | **Documentation** | 🟡 In Progress | 90% | Cleanup needed |
 
@@ -29,35 +29,41 @@ This document consolidates all active development plans and tracks progress towa
 ## 🎯 Current Sprint (2025-11-17)
 
 ### ✅ Recently Completed
-- **Phase 5 Relay Populator** (2025-11-17) ✨ NEW
+
+- **Phase 6 Relay Commit** (2025-11-17) ✨ NEW
+  - Full relay results commit to production tables
+  - MRR → MeetingRelayResult
+  - MRS → MeetingRelaySwimmer
+  - RelayLap → RelayLap
+  - UPDATE support for existing relays
+  - INSERT for new relays
+  - Complete SQL batch file generation
+  - Cleanup of data_import relay tables after commit
+  
+- **Phase 5 Polish: Pagination & Filtering** (2025-11-17) ✨ NEW
+  - Server-side filtering for programs with issues
+  - Client-side row filtering within cards
+  - Pagination (max 2500 rows per page)
+  - Helper method refactoring (explicit parameters)
+  - Phase 3 enrichment fix (only update existing swimmers)
+  
+- **Phase 5 Relay Populator** (2025-11-17)
   - Full relay results, swimmers, and laps population
   - String keys integration for unmatched entity referencing
   - MRR/MRS/RelayLap tables populated from source JSON
   - Import keys generated correctly
   
-- **Phase 5 Relay UI** (2025-11-17) ✨ NEW
+- **Phase 5 Relay UI** (2025-11-17)
   - Relay program cards with collapsible details
   - Auto-expand for results with missing data
   - Red border highlighting for problematic results
   - N+1 query fixes with eager loading
   - Swimmer keys displayed even when unmatched
-  
-- **String Keys Integration** (2025-11-17) ✨ NEW
-  - Added string key columns to all data_import_* tables
-  - Phase5Populator updated to populate all keys
-  - Controller helpers work with matched AND unmatched entities
-  - Foundation for Phase 6 commit workflow
 
-### 🎯 Active Tasks
+### 🎯 Next Steps
 
-#### 1. Phase 5 Pagination (NEXT UP)
-**Goal**: Split program result groups into pages (max 500 rows per page)
-
-**Requirements**:
-- Add page parameter to controller
-- Calculate total rows per program (results + laps)
-- Split programs across pages when limit exceeded
-- Add pagination UI controls
+#### 1. Testing (Priority)
+**Goal**: Comprehensive RSpec coverage for Phase 5 relay workflow
 - Make page limit configurable via constant
 
 **Acceptance Criteria**:
