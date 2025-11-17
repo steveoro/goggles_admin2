@@ -28,7 +28,12 @@
   results_with_issues = []
   total_issue_count = 0
   sorted_results.each do |mrr|
-    issue_info = relay_result_has_issues?(mrr)
+    issue_info = relay_result_has_issues?(
+      mrr,
+      relay_swimmers_by_key: relay_swimmers_by_parent_key,
+      swimmers_by_id: swimmers_by_id,
+      swimmers_by_key: swimmers_by_key
+    )
     if issue_info[:has_issues]
       results_with_issues << mrr.import_key
       total_issue_count += issue_info[:issue_count]
@@ -94,7 +99,7 @@
               swimmer && (swimmer.gender_type_id.nil? || swimmer.year_of_birth.nil?)
             else
               # Unmatched swimmer - check phase3 data
-              rs.swimmer_key && swimmer_has_missing_data?(rs.swimmer_key).values.any?
+              rs.swimmer_key && swimmer_has_missing_data?(rs.swimmer_key, swimmers_by_key: swimmers_by_key).values.any?
             end
           end
         

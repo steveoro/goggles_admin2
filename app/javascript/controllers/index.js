@@ -16,6 +16,9 @@ application.register("coded-name", CodedNameController)
 import CollapseAllController from "./collapse_all_controller"
 application.register("collapse-all", CollapseAllController)
 
+import FilterResultsController from "./filter_results_controller"
+application.register("filter-results", FilterResultsController)
+
 import GridEditController from "./grid_edit_controller"
 application.register("grid-edit", GridEditController)
 

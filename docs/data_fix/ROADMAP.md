@@ -1,8 +1,8 @@
 # Data-Fix: Development Roadmap
 
-**Last Updated**: 2025-11-15  
-**Version**: 2.1  
-**Status**: ✅ Phases 1-4 Complete | 🟡 Phase 5 In Progress | 🎯 Phase 6 Relay Pending
+**Last Updated**: 2025-11-17  
+**Version**: 2.2  
+**Status**: ✅ Phases 1-5 Complete | 🎯 Phase 6 Relay In Progress | 🟡 Polish & Testing Ongoing
 
 This document consolidates all active development plans and tracks progress toward full relay support completion.
 
@@ -17,31 +17,69 @@ This document consolidates all active development plans and tracks progress towa
 | **Phase 3: Swimmers** | ✅ Complete | 100% | Pre-matching + relay enrichment |
 | **Phase 4: Events** | ✅ Complete | 100% | Relay support added 2025-11-10 |
 | **Phase 5 Individual** | ✅ Complete | 100% | Populator + UI working |
-| **Phase 5 Relay** | 🟡 In Progress | 60% | Enrichment ✅, Populator pending |
+| **Phase 5 Relay** | ✅ Complete | 100% | Populator + UI + string keys |
+| **Phase 5 Polish** | 🟡 In Progress | 70% | Pagination & filtering pending |
 | **Phase 6 Individual** | ✅ Complete | 100% | Full commit working |
-| **Phase 6 Relay** | 🎯 Planned | 0% | Needs commit methods |
-| **Documentation** | 🟡 In Progress | 85% | Consolidation ongoing |
-| **UI Polish** | 🟡 In Progress | 90% | Minor improvements needed |
+| **Phase 6 Relay** | 🎯 Next Up | 0% | MRR/MRS/RelayLap commit needed |
+| **Testing** | 🟡 In Progress | 60% | Need Phase 5 relay specs |
+| **Documentation** | 🟡 In Progress | 90% | Cleanup needed |
 
 ---
 
-## 🎯 Current Sprint (2025-11-15)
+## 🎯 Current Sprint (2025-11-17)
 
 ### ✅ Recently Completed
-- **Phase 3 Relay Enrichment** (2025-11-14)
-  - Fixed swimmer matching (case-sensitivity + 4/5-token lap format)
-  - Enrichment filtering now correctly excludes matched swimmers
-  - All swimmers with `swimmer_id` removed from enrichment list
+- **Phase 5 Relay Populator** (2025-11-17) ✨ NEW
+  - Full relay results, swimmers, and laps population
+  - String keys integration for unmatched entity referencing
+  - MRR/MRS/RelayLap tables populated from source JSON
+  - Import keys generated correctly
   
-- **UI Standardization** (2025-11-15)
-  - Phase 1 meeting card auto-collapses when required fields filled
-  - Standardized border colors: gray (matched), yellow (new), red (missing data)
-  - Unified badge system with detailed missing data indicators
-  - Special "needs edit" case for matched swimmers with incomplete names
+- **Phase 5 Relay UI** (2025-11-17) ✨ NEW
+  - Relay program cards with collapsible details
+  - Auto-expand for results with missing data
+  - Red border highlighting for problematic results
+  - N+1 query fixes with eager loading
+  - Swimmer keys displayed even when unmatched
+  
+- **String Keys Integration** (2025-11-17) ✨ NEW
+  - Added string key columns to all data_import_* tables
+  - Phase5Populator updated to populate all keys
+  - Controller helpers work with matched AND unmatched entities
+  - Foundation for Phase 6 commit workflow
 
 ### 🎯 Active Tasks
 
-#### 1. Documentation Consolidation (IN PROGRESS)
+#### 1. Phase 5 Pagination (NEXT UP)
+**Goal**: Split program result groups into pages (max 500 rows per page)
+
+**Requirements**:
+- Add page parameter to controller
+- Calculate total rows per program (results + laps)
+- Split programs across pages when limit exceeded
+- Add pagination UI controls
+- Make page limit configurable via constant
+
+**Acceptance Criteria**:
+- ✅ No page renders more than 500 result/lap rows
+- ✅ Pagination controls work smoothly
+- ✅ Page limit easily tweakable
+
+#### 2. Phase 5 Filtering (NEXT UP)
+**Goal**: Implement "Show only results with issues" filter toggle
+
+**Requirements**:
+- JavaScript toggle for checkbox
+- Hide/show program cards based on has_issues flag
+- Hide/show individual results based on missing data
+- Smooth animations
+
+**Acceptance Criteria**:
+- ✅ Toggle works for both individual and relay results
+- ✅ Only problematic results visible when checked
+- ✅ All results visible when unchecked
+
+#### 3. Documentation Consolidation (IN PROGRESS)
 **Goal**: 1 main README + specialized reference docs + 1 active ROADMAP
 
 **Changes**:
@@ -66,22 +104,22 @@ docs/data_fix/
     └── [task-specific docs if needed]
 ```
 
-#### 2. Phase 5 Relay Populator (NEXT UP)
-**Estimate**: 4-6 hours  
-**Priority**: High
+#### 4. Phase 6 Relay Commit (PLANNED)
+**Goal**: Commit MRR/MRS/RelayLap from data_import_* tables to production
 
 **Requirements**:
-- Populate `data_import_meeting_relay_results` table
-- Populate `data_import_relay_swimmers` (4 per result)
-- Populate `data_import_relay_laps` (1+ per swimmer)
-- Link to Phase 3 swimmer data via enrichment
-- Handle both LT2 and LT4 formats
+- `commit_meeting_relay_result` method
+- `commit_relay_swimmers` method  
+- `commit_relay_laps` method
+- Transaction safety
+- SQL log generation
+- Error handling and rollback
 
 **Acceptance Criteria**:
-- Relay results appear in Phase 5 UI
-- All 4 swimmers correctly linked per relay
-- Lap times match source data
-- Import keys generate correctly
+- ✅ All relay entities commit correctly
+- ✅ SQL log generates properly
+- ✅ Transaction rollback on any error
+- ✅ No flash messages (use dedicated results page)
 
 ---
 
@@ -125,75 +163,67 @@ docs/data_fix/
 
 **Result**: Consistent UI experience across all phases
 
-### Milestone 4: Phase 5 Relay Populator 🎯 NEXT
-**Estimate**: 4-6 hours  
-**Target**: 2025-11-16
+### Milestone 4: Phase 5 Relay Populator ✅ COMPLETE
+**Duration**: 6 hours  
+**Completed**: 2025-11-17
 
-**Tasks**:
-1. **Extract relay data from source** (1 hour)
-   - Read relay rows from source JSON
-   - Parse swimmer1-8 fields
-   - Parse lap data with 4/5-token handling
-   
-2. **Populate relay result tables** (2 hours)
-   - Generate import keys
-   - Create `DataImportMeetingRelayResult` records
-   - Link to meeting_program_id
-   - Handle timing and status flags
-   
-3. **Populate relay swimmer tables** (1.5 hours)
-   - Create `DataImportRelaySwimmer` records (4 per result)
-   - Link to phase3 swimmer data
-   - Calculate stroke_type_id
-   - Handle timing
-   
-4. **Populate relay lap tables** (0.5 hours)
-   - Create `DataImportRelayLap` records
-   - Parse cumulative vs delta timing
-   - Link to relay swimmers
-   
-5. **Testing** (1 hour)
-   - Unit tests for each table type
-   - Integration test with real relay file
-   - Verify all swimmers linked correctly
-
-**Acceptance Criteria**:
-- ✅ All 3 relay tables populated
+**Delivered**:
+- ✅ Extract relay data from source JSON
+- ✅ Populate `DataImportMeetingRelayResult` records
+- ✅ Populate `DataImportRelaySwimmer` records (4 per result)
+- ✅ Populate `DataImportRelayLap` records
+- ✅ String keys for all data_import_* tables
 - ✅ Import keys generate correctly
 - ✅ Swimmer links resolve from phase3
-- ✅ Timing data accurate
-- ✅ Tests pass
+- ✅ Timing data accurate (delta + cumulative)
 
-### Milestone 5: Phase 5 Relay UI 🎯 PLANNED
+**Result**: All relay data now flows from source → Phase 5 UI
+
+### Milestone 5: Phase 5 Relay UI ✅ COMPLETE
+**Duration**: 4 hours  
+**Completed**: 2025-11-17
+
+**Delivered**:
+- ✅ `_relay_program_card.html.haml` partial
+- ✅ Display team, timing, rank
+- ✅ Show 4 swimmers with match status
+- ✅ Expandable lap details with cumulative timing
+- ✅ Auto-expand for problematic results
+- ✅ Red border highlighting for missing data
+- ✅ N+1 query fixes with eager loading
+- ✅ Controller queries optimized
+
+**Result**: Full relay UI with issue detection and highlighting
+
+### Milestone 6: Phase 5 Polish 🎯 NEXT UP
 **Estimate**: 3-4 hours  
-**Dependencies**: Milestone 4
+**Dependencies**: Milestone 4 & 5 complete
 
 **Tasks**:
-1. **Create relay card partial** (1.5 hours)
-   - `_relay_program_card.html.haml`
-   - Display team, timing, rank
-   - Show 4 swimmers with badges
-   - Expandable lap details
+1. **Pagination** (2 hours)
+   - Add page parameter and calculation
+   - Split programs when >500 rows
+   - Add pagination UI
+   - Make limit configurable
    
-2. **Controller queries** (1 hour)
-   - Load relay results grouped by program
-   - Eager load swimmers and laps
-   - Build display hashes
+2. **Filter Toggle** (1 hour)
+   - JavaScript show/hide logic
+   - Filter by has_issues flag
+   - Smooth animations
    
-3. **Testing** (0.5 hours)
-   - Manual browser testing
-   - Screenshot verification
-   - Edge cases (disqualified, missing data)
+3. **Testing** (1 hour)
+   - Test with large meetings
+   - Verify filter works
+   - Edge cases
 
 **Acceptance Criteria**:
-- ✅ Relay results display in Phase 5
-- ✅ All 4 swimmers shown per relay
-- ✅ Lap times expandable
-- ✅ Match status badges correct
+- ✅ Pages never exceed 500 rows
+- ✅ Filter toggle works smoothly
+- ✅ Performance acceptable
 
-### Milestone 6: Phase 6 Relay Commit 🎯 PLANNED
-**Estimate**: 6-8 hours  
-**Dependencies**: Milestone 4 & 5
+### Milestone 7: Phase 6 Relay Commit 🎯 PLANNED
+**Estimate**: 8-10 hours  
+**Dependencies**: Phase 5 complete
 
 **Tasks**:
 1. **Commit relay results** (2-3 hours)
@@ -234,9 +264,9 @@ docs/data_fix/
 ## 🐛 Known Issues
 
 ### Phase 5
-- ⚠️ **Relay populator missing** - Currently skips relay events (line 75)
-- ⚠️ **LT2 format support** - Only LT4 fully supported
-- ℹ️ **Large meeting performance** - 10,000+ results may be slow
+- ⚠️ **Pagination missing** - Large meetings may slow UI (needs 500-row limit)
+- ⚠️ **Filter toggle incomplete** - UI skeleton present but JS not implemented
+- ℹ️ **LT2 format support** - Only LT4 fully tested
 
 ### UI
 - ℹ️ **Progress broadcasting** - Needs optimization for large datasets
@@ -250,11 +280,12 @@ docs/data_fix/
 
 ## 📝 Future Enhancements
 
-### Short Term (Next 2-4 weeks)
-- [ ] Complete relay support (Milestones 4-6)
+### Short Term (Next 1-2 weeks)
+- [ ] Phase 5 pagination and filtering (Milestone 6)
+- [ ] Phase 6 relay commit support (Milestone 7)
+- [ ] RSpec tests for Phase 5 relay populator
+- [ ] Documentation cleanup and archiving
 - [ ] LT2 format full support
-- [ ] Performance optimization for large meetings
-- [ ] Complete documentation consolidation
 
 ### Medium Term (1-2 months)
 - [ ] Background job processing for Phase 5
