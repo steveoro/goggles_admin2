@@ -167,13 +167,14 @@ module Import
           category = result['category'] || result['categoryTypeCode'] || result['category_code']
 
           # Broadcast progress every event:
-          broadcast_progress("Processing MIRs for event #{event_code} (#{res_idx + 1}/#{results_x_event_tot})...",
+          broadcast_progress("Processing MIRs for event #{event_code} #{category} #{gender} (#{res_idx + 1}/#{results_x_event_tot})...",
                              res_idx + 1, results_x_event_tot)
           next if gender.blank? || category.blank?
 
           # Generate keys
           program_key = build_program_key(session_order, event_code, category, gender)
           swimmer_key = build_swimmer_key(result)
+          team_key = build_team_key_from_result(result)
           import_key = GogglesDb::DataImportMeetingIndividualResult.build_import_key(program_key, swimmer_key)
 
           # Find entity IDs from phase files
@@ -195,8 +196,11 @@ module Import
             result: result,
             timing: timing_hash,
             swimmer_id: swimmer_id,
+            swimmer_key: swimmer_key,
             team_id: team_id,
+            team_key: team_key,
             meeting_program_id: meeting_program_id,
+            meeting_program_key: program_key,
             meeting_individual_result_id: meeting_individual_result_id
           )
 
@@ -248,7 +252,7 @@ module Import
           # Use integrated values (with fallbacks)
           gender = integrated[:gender] || result['gender'] || event['eventGender'] || event['gender'] || 'X'
           category = integrated[:category] || result['category'] || result['categoryTypeCode'] || result['category_code']
-          broadcast_progress("Processing MRR for #{event_code} relay #{relay_idx + 1}/#{total_relay} (#{res_idx + 1}/#{results_x_event_tot})...",
+          broadcast_progress("Processing MRR for #{event_code} #{category} #{gender} (#{relay_idx + 1}/#{total_relay}, #{res_idx + 1}/#{results_x_event_tot})...",
                              res_idx + 1, results_x_event_tot)
           next if category.blank?
 
@@ -275,7 +279,9 @@ module Import
             result: result,
             timing_hash: timing_hash,
             team_id: team_id,
+            team_key: team_key,
             meeting_program_id: meeting_program_id,
+            meeting_program_key: program_key,
             meeting_relay_result_id: meeting_relay_result_id
           )
 
@@ -527,7 +533,8 @@ module Import
     end
 
     # Create MIR record
-    def create_mir_record(import_key:, result:, timing:, swimmer_id:, team_id:, meeting_program_id:, meeting_individual_result_id:)
+    def create_mir_record(import_key:, result:, timing:, swimmer_id:, swimmer_key:, team_id:, team_key:, meeting_program_id:, meeting_program_key:,
+                          meeting_individual_result_id:)
       # DEBUG logging
       Rails.logger.info("[Phase5Populator] Creating MIR: import_key=#{import_key}, swimmer_id=#{swimmer_id}, team_id=#{team_id}, program_id=#{meeting_program_id}")
 
@@ -542,10 +549,16 @@ module Import
       mir = GogglesDb::DataImportMeetingIndividualResult.create!(
         import_key: import_key,
         phase_file_path: source_path,
+        # DB foreign keys (may be nil for unmatched entities)
         meeting_program_id: meeting_program_id,
         swimmer_id: swimmer_id,
         team_id: team_id,
         meeting_individual_result_id: meeting_individual_result_id,
+        # String keys for referencing entities when IDs are nil
+        swimmer_key: swimmer_key,
+        team_key: team_key,
+        meeting_program_key: meeting_program_key,
+        # Result data
         rank: rank_int,
         minutes: timing[:minutes],
         seconds: timing[:seconds],
@@ -586,6 +599,7 @@ module Import
         GogglesDb::DataImportLap.create!(
           import_key: lap_import_key,
           parent_import_key: mir_import_key,
+          meeting_individual_result_key: mir_import_key, # Parent MIR reference
           phase_file_path: source_path,
           meeting_individual_result_id: nil, # Will be set in phase 6
           length_in_meters: length,
@@ -670,7 +684,7 @@ module Import
     end
 
     # Create MRR record
-    def create_mrr_record(import_key:, result:, timing_hash:, team_id:, meeting_program_id:, meeting_relay_result_id:)
+    def create_mrr_record(import_key:, result:, timing_hash:, team_id:, team_key:, meeting_program_id:, meeting_program_key:, meeting_relay_result_id:)
       raw_rank = result['ranking'] || result['rank'] || result['pos']
       rank_int = raw_rank.to_i
       rank_non_numeric = raw_rank.present? && raw_rank.to_s !~ /^\d+$/
@@ -682,9 +696,14 @@ module Import
       GogglesDb::DataImportMeetingRelayResult.create!(
         import_key: import_key,
         phase_file_path: source_path,
+        # DB foreign keys (may be nil for unmatched entities)
         meeting_relay_result_id: meeting_relay_result_id,
         meeting_program_id: meeting_program_id,
         team_id: team_id,
+        # String keys for referencing entities when IDs are nil
+        team_key: team_key,
+        meeting_program_key: meeting_program_key,
+        # Result data
         rank: rank_int,
         minutes: timing_hash[:minutes],
         seconds: timing_hash[:seconds],
@@ -745,7 +764,13 @@ module Import
         GogglesDb::DataImportMeetingRelaySwimmer.create!(
           import_key: rs_import_key,
           parent_import_key: mrr_import_key,
+          phase_file_path: source_path,
+          # DB foreign keys (may be nil for unmatched entities)
           swimmer_id: swimmer_id,
+          # String keys for referencing entities when IDs are nil
+          swimmer_key: swimmer_lookup_key,
+          meeting_relay_result_key: mrr_import_key,
+          # Leg data
           relay_order: relay_order,
           length_in_meters: length,
           minutes: delta[:minutes],
@@ -780,10 +805,16 @@ module Import
         from_start = compute_timing_sum(previous_from_start, delta)
 
         lap_import_key = "#{mrr_import_key}-lap#{relay_order}"
+        # Reference the relay swimmer for this leg
+        relay_swimmer_import_key = "#{mrr_import_key}-swimmer#{relay_order}"
 
         GogglesDb::DataImportRelayLap.create!(
           import_key: lap_import_key,
           parent_import_key: mrr_import_key,
+          phase_file_path: source_path,
+          # String key for referencing parent relay swimmer
+          meeting_relay_swimmer_key: relay_swimmer_import_key,
+          # Lap data
           length_in_meters: length,
           minutes: delta[:minutes],
           seconds: delta[:seconds],

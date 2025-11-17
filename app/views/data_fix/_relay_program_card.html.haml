@@ -86,8 +86,19 @@
           has_laps = relay_laps.any?
           result_id = "relay-result-#{card_index}-#{idx}"
           bg_color = is_matched ? 'bg-light' : 'bg-warning-subtle'
+          
+          # Check if this result has missing swimmer data issues
+          result_has_issues = relay_swimmers.any? do |rs|
+            if rs.swimmer_id
+              swimmer = swimmers_by_id[rs.swimmer_id]
+              swimmer && (swimmer.gender_type_id.nil? || swimmer.year_of_birth.nil?)
+            else
+              # Unmatched swimmer - check phase3 data
+              rs.swimmer_key && swimmer_has_missing_data?(rs.swimmer_key).values.any?
+            end
+          end
         
-        .border-bottom{ class: bg_color }
+        .border-bottom{ class: bg_color, style: (result_has_issues ? 'border-left: 4px solid #dc3545 !important;' : '') }
           -# Main result row
           .p-3
             .d-flex.justify-content-between.align-items-start
@@ -124,14 +135,11 @@
                   %h5.mb-0
                     = mrr.to_timing.to_s
 
-          -# Collapsible details section
-          .collapse{ id: "#{result_id}-details" }
+          -# Collapsible details section (auto-expand if issues detected)
+          .collapse{ class: (result_has_issues ? 'show' : ''), id: "#{result_id}-details" }
             .p-3.bg-white
               -# Unified Relay Swimmers Table (merged with lap data)
               - if relay_swimmers.any? || relay_laps.any?
-                %h6.mb-2
-                  %i.fa.fa-users.mr-2
-                  Relay Swimmers
                 .table-responsive
                   %table.table.table-sm.table-bordered
                     %thead.thead-light
@@ -178,8 +186,9 @@
                               = swimmer_name_from_source
                               %small.ml-2.badge.badge-warning Unmatched
                             - else
-                              %span.text-danger
-                                %strong MISSING
+                              %span.text-secondary
+                                = lap&.data_import_meeting_relay_swimmer&.try(:swimmer_key) || 'N/A'
+                              %small.ml-2.badge.badge-danger MISSING DATA
                           %td.text-right
                             = from_start_timing.to_s
                           %td.text-right

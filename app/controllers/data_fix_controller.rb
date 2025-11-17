@@ -498,6 +498,7 @@ class DataFixController < ApplicationController
                                       .order(:relay_order)
                                       .group_by(&:parent_import_key)
       @relay_laps_by_parent_key = GogglesDb::DataImportRelayLap
+                                  .includes(:data_import_meeting_relay_swimmer)
                                   .where(parent_import_key: relay_import_keys)
                                   .order(:length_in_meters)
                                   .group_by(&:parent_import_key)

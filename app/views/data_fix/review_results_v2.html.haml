@@ -54,12 +54,12 @@
         = link_to 'Populate DB Tables', review_results_path(file_path: @file_path, phase5_v2: 1, populate_db: 1), class: 'btn btn-primary'
   - else
     -# Filter toggle for showing only issues
-    .mb-3.d-flex.align-items-center
-      %label.me-2.mb-0
+    .container-fluid.m-2
+      %label
         %input#filter-issues{ type: 'checkbox', class: 'form-check-input' }
         %strong.ms-2 Show only results with issues
       %small.text-muted.ms-3
-        (Missing swimmer gender or year of birth)
+        (Missing swimmer data)
 
     -# Separate individual and relay programs
     - individual_programs = @phase5_programs.reject { |p| p['relay'] }
