@@ -245,7 +245,7 @@ module Import
           end
         end
 
-        # TODO: ass commits for MRR / MRS / RelayLap rows
+        # TODO: add support for commits for MRR / MRS / RelayLap rows
       end
       # -----------------------------------------------------------------------
 

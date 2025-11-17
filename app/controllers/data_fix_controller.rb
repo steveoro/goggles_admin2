@@ -415,6 +415,7 @@ class DataFixController < ApplicationController
         phase5_json = JSON.parse(File.read(phase_path))
         @phase5_meta = { 'name' => phase5_json['name'], 'source_file' => phase5_json['source_file'] }
         all_programs = phase5_json['programs'] || []
+        @total_programs_count = all_programs.size # Track unfiltered count
 
         # Server-side filtering: only include programs with issues if filter is active
         @filter_active = params[:filter_issues].present?
@@ -430,6 +431,7 @@ class DataFixController < ApplicationController
       else
         @phase5_meta = {}
         @phase5_programs = []
+        @total_programs_count = 0
         @current_page = 1
         @total_pages = 1
       end
@@ -461,6 +463,11 @@ class DataFixController < ApplicationController
                      .where(phase_file_path: source_path)
                      .order(:import_key)
                      .limit(1000) # Safety limit for now
+
+      # Also check for relay results to determine if commit button should be visible
+      @has_relay_results = GogglesDb::DataImportMeetingRelayResult
+                           .where(phase_file_path: source_path)
+                           .exists?
 
       # Eager-load swimmers and teams to avoid N+1 queries
       swimmer_ids = @all_results.filter_map(&:swimmer_id).uniq
@@ -1026,7 +1033,6 @@ class DataFixController < ApplicationController
 
     stats = merger.stats
     flash[:notice] = I18n.t('data_import.relay_enrichment.merge_success',
-                            swimmers_added: stats[:swimmers_added],
                             swimmers_updated: stats[:swimmers_updated],
                             badges_added: stats[:badges_added])
     flash[:warning] = warnings.join(' ') if warnings.present?

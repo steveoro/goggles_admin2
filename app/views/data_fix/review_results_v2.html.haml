@@ -10,8 +10,7 @@
 
   .d-flex.justify-content-between.my-2
     = link_to '< Back to file list', pull_result_files_path, class: 'btn btn-outline-secondary mr-2'
-    -# .mx-4.px-4 &nbsp;
-    - if @all_results.present?
+    - if @all_results.present? || @has_relay_results
       %div
         = button_to commit_phase6_path(file_path: @file_path),
                                        method: :post, class: 'btn btn-success',
@@ -47,11 +46,20 @@
         %span.text-danger.ms-2
           (#{@populate_stats[:errors].size} errors)
 
-  - if @phase5_programs.blank?
+  - if @total_programs_count.to_i.zero?
     .alert.alert-warning
       %p No results loaded from phase5 JSON yet.
       %p
         = link_to 'Populate DB Tables', review_results_path(file_path: @file_path, phase5_v2: 1, populate_db: 1), class: 'btn btn-primary'
+  - elsif @phase5_programs.blank? && @filter_active
+    .alert.alert-info
+      %p
+        %i.fa.fa-filter
+        No results match the current filter (no issues found).
+      %p
+        All results are valid!
+        = link_to 'Clear filter', review_results_path(file_path: @file_path, phase5_v2: 1), class: 'btn btn-outline-primary'
+        to view all #{@total_programs_count} programs.
   - else
     %div{ data: { controller: 'filter-results' } }
       -# Filter toggle and pagination controls

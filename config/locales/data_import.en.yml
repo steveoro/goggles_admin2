@@ -120,4 +120,4 @@ en:
         invalid_path: 'Invalid auxiliary file path: %{path}'
         unreadable_file: 'Unable to read JSON payload for %{file}.'
         no_valid_files: 'No valid auxiliary Phase 3 files were provided.'
-      merge_success: 'Merge complete: %{swimmers_added} swimmers added, %{swimmers_updated} swimmers updated, %{badges_added} badges added.'
+      merge_success: 'Merge complete: %{swimmers_updated} swimmers updated, %{badges_added} badges added.'

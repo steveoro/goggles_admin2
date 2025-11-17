@@ -120,4 +120,4 @@ it:
         invalid_path: 'Percorso file ausiliario non valido: %{path}'
         unreadable_file: 'Impossibile leggere il JSON del file %{file}.'
         no_valid_files: 'Non sono stati forniti file Phase 3 ausiliari validi.'
-      merge_success: 'Merge completato: %{swimmers_added} nuotatori aggiunti, %{swimmers_updated} aggiornati, %{badges_added} badge aggiunti.'
+      merge_success: 'Merge completato: %{swimmers_updated} nuotatori aggiornati, %{badges_added} badge aggiunti.'

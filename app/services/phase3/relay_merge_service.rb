@@ -20,7 +20,6 @@ module Phase3
       @swimmers_by_key = @swimmers.index_by { |swimmer| swimmer[SWIMMER_KEY] }
       @badge_signatures = build_badge_signatures(@badges)
       @stats = {
-        swimmers_added: 0,
         swimmers_updated: 0,
         badges_added: 0
       }
@@ -51,15 +50,12 @@ module Phase3
         key = aux_swimmer[SWIMMER_KEY].to_s
         next if key.blank?
 
-        if (existing = @swimmers_by_key[key])
-          @stats[:swimmers_updated] += 1 if merge_swimmer_attributes(existing, aux_swimmer)
-        else
-          copied = deep_dup(aux_swimmer)
-          copied['fuzzy_matches'] = Array(copied['fuzzy_matches'])
-          @swimmers << copied
-          @swimmers_by_key[key] = copied
-          @stats[:swimmers_added] += 1
-        end
+        # Only update existing swimmers - do NOT add new ones from auxiliary files
+        # The purpose of enrichment is to fill missing attributes, not expand the dictionary
+        existing = @swimmers_by_key[key]
+        next unless existing
+
+        @stats[:swimmers_updated] += 1 if merge_swimmer_attributes(existing, aux_swimmer)
       end
     end
 
