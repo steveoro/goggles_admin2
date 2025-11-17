@@ -158,11 +158,17 @@ module Import
           sections = src['sections'] || []
 
           # Group sections by event code to merge into single LT4 event
+          # For relays, keep separate events per gender (since that determines MeetingProgram)
           events_map = {}
 
           sections.each do |section|
             event_info = extract_event_info(section)
-            event_key = event_info[:code]
+            # For relays, include gender in key to keep F/M/X separate
+            event_key = if event_info[:relay]
+                          "#{event_info[:code]}_#{event_info[:gender]}"
+                        else
+                          event_info[:code]
+                        end
 
             events_map[event_key] ||= {
               'eventCode' => event_info[:code],

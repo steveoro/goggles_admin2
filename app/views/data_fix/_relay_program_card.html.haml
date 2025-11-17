@@ -17,13 +17,36 @@
   event_code = parts[1]
   category = parts[2]
   gender = parts[3]
-  sorted_results = relay_results.sort_by(&:rank)
-  program_id = sorted_results.first&.meeting_program_id
+  # Split results: non-DSQ first (sorted by rank), then DSQ (natural order)
+  non_dsq_results = relay_results.reject(&:disqualified?).sort_by(&:rank)
+  dsq_results = relay_results.select(&:disqualified?)
+  sorted_results = non_dsq_results + dsq_results
+  program_id = relay_results.first&.meeting_program_id
   has_match = program_id.present?
-  border_color = has_match ? 'border-success' : 'border-warning'
+  
+  # Check if any results have issues (missing swimmer data)
+  results_with_issues = []
+  total_issue_count = 0
+  sorted_results.each do |mrr|
+    issue_info = relay_result_has_issues?(mrr)
+    if issue_info[:has_issues]
+      results_with_issues << mrr.import_key
+      total_issue_count += issue_info[:issue_count]
+    end
+  end
+  has_issues = results_with_issues.any?
+  
+  # Border color: red for issues, green for matched, yellow for new
+  border_color = if has_issues
+                   'border-danger'
+                 elsif has_match
+                   'border-success'
+                 else
+                   'border-warning'
+                 end
   border_width = 'border-2'
 
-.card.mb-2{ class: "#{border_color} #{border_width}", id: "relay-program-card-#{card_index}" }
+.card.mb-2{ class: "#{border_color} #{border_width}", id: "relay-program-card-#{card_index}", data: { has_issues: has_issues } }
   .card-header.d-flex.justify-content-between.align-items-center{ id: "relay-program-header-#{card_index}", style: 'cursor: pointer;', data: { toggle: 'collapse', target: "#relay-program-panel-#{card_index}" } }
     .d-flex.align-items-center
       %span.mr-2
@@ -46,8 +69,12 @@
     .d-flex.align-items-center
       %span.badge.badge-info
         = "#{sorted_results.size} relay results"
+      - if has_issues
+        %span.badge.badge-danger.ml-2
+          %i.fa.fa-exclamation-triangle
+          = "#{total_issue_count} missing data"
 
-  .collapse.show{ id: "relay-program-panel-#{card_index}", 'aria-labelledby' => "relay-program-header-#{card_index}" }
+  .collapse{ class: (has_issues ? 'show' : ''), id: "relay-program-panel-#{card_index}", 'aria-labelledby' => "relay-program-header-#{card_index}" }
     .card-body.p-0
       - sorted_results.each_with_index do |mrr, idx|
         :ruby
@@ -65,8 +92,11 @@
           .p-3
             .d-flex.justify-content-between.align-items-start
               .d-flex.align-items-center
-                %strong.mr-3{ style: 'font-size: 1.2em;' }
-                  #{mrr.rank}º
+                - if mrr.disqualified?
+                  %span.mr-3.text-muted{ style: 'font-size: 1.2em;' } -
+                - else
+                  %strong.mr-3{ style: 'font-size: 1.2em;' }
+                    #{mrr.rank}º
                 .d-flex.flex-column
                   %div
                     - if team
@@ -88,10 +118,11 @@
                     %small.text-muted= team.city.name
 
               .text-right
-                %h5.mb-0
-                  = mrr.to_timing.to_s
                 - if mrr.disqualified?
-                  %span.badge.badge-danger.ml-2 DQ
+                  %span.badge.badge-danger.ml-2{ style: 'font-size: 1.2em;' } DSQ
+                - else
+                  %h5.mb-0
+                    = mrr.to_timing.to_s
 
           -# Collapsible details section
           .collapse{ id: "#{result_id}-details" }

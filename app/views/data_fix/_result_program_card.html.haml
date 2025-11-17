@@ -17,8 +17,11 @@
   event_code = parts[1]
   category = parts[2]
   gender = parts[3]
-  sorted_results = results.sort_by(&:rank)
-  program_id = sorted_results.first&.meeting_program_id
+  # Split results: non-DSQ first (sorted by rank), then DSQ (natural order)
+  non_dsq_results = results.reject(&:disqualified?).sort_by(&:rank)
+  dsq_results = results.select(&:disqualified?)
+  sorted_results = non_dsq_results + dsq_results
+  program_id = results.first&.meeting_program_id
   has_match = program_id.present?
   border_color = has_match ? 'border-success' : 'border-warning'
   border_width = 'border-2'
@@ -79,7 +82,11 @@
               %td.text-center
                 - if has_laps
                   %i.fa.fa-chevron-right{ style: 'cursor: pointer;', data: { toggle: 'collapse', target: "##{result_id}-laps" }, onclick: 'this.classList.toggle("fa-chevron-right"); this.classList.toggle("fa-chevron-down");' }
-              %td.text-center= mir.rank
+              %td.text-center
+                - if mir.disqualified?
+                  %span.text-muted -
+                - else
+                  = mir.rank
               %td
                 - if swimmer
                   = swimmer.complete_name
@@ -94,9 +101,14 @@
                 - else
                   %span.text-muted N/A
               %td.text-right
-                %strong= mir.to_timing.to_s
+                - if mir.disqualified?
+                  %span.text-muted —
+                - else
+                  %strong= mir.to_timing.to_s
               %td.text-center
-                - if is_fully_matched
+                - if mir.disqualified?
+                  %span.badge.badge-danger DSQ
+                - elsif is_fully_matched
                   %i.fa.fa-check-circle.text-success{ title: 'Swimmer & Team fully matched to DB' }
                 - else
                   %i.fa.fa-plus-circle.text-warning{ title: 'New or unmatched (swimmer or team)' }

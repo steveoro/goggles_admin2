@@ -12,6 +12,9 @@ require 'json'
 class DataFixController < ApplicationController
   before_action :set_api_url
 
+  # Expose issue detection helpers to views
+  helper_method :swimmer_has_missing_data?, :relay_result_has_issues?
+
   # rubocop:disable Metrics/AbcSize
   def review_sessions
     if params[:phase_v2].present?
@@ -404,9 +407,15 @@ class DataFixController < ApplicationController
                     notice: "Phase 5 rebuilt. Populated DB: #{populate_stats[:mir_created]} results, #{populate_stats[:laps_created]} laps") && return
       end
 
-      pfm = PhaseFileManager.new(phase_path)
-      @phase5_meta = pfm.meta
-      @phase5_data = pfm.data
+      # Load phase5 JSON with program groups
+      if File.exist?(phase_path)
+        phase5_json = JSON.parse(File.read(phase_path))
+        @phase5_meta = { 'name' => phase5_json['name'], 'source_file' => phase5_json['source_file'] }
+        @phase5_programs = phase5_json['programs'] || []
+      else
+        @phase5_meta = {}
+        @phase5_programs = []
+      end
 
       # Populate data_import_* tables for detailed review (triggered by populate_db only)
       if params[:populate_db].present?
@@ -1767,6 +1776,64 @@ class DataFixController < ApplicationController
     meta['source_path'].presence || file_path
   rescue StandardError
     file_path
+  end
+
+  # Check if a swimmer (from phase3) has missing critical data
+  # Returns hash with { missing_gender: bool, missing_year: bool }
+  def swimmer_has_missing_data?(swimmer_key)
+    return { missing_gender: false, missing_year: false } unless @swimmers_by_key && swimmer_key
+
+    swimmer = @swimmers_by_key[swimmer_key]
+    return { missing_gender: false, missing_year: false } unless swimmer
+
+    {
+      missing_gender: swimmer['gender_type_code'].blank?,
+      missing_year: swimmer['year_of_birth'].blank? || swimmer['year_of_birth'].to_i.zero?
+    }
+  end
+
+  # Check if a relay result has any swimmers with missing data
+  # Returns { has_issues: bool, issue_count: int, issues: { swimmer_key => {...} } }
+  def relay_result_has_issues?(relay_result)
+    relay_swimmers = @relay_swimmers_by_parent_key[relay_result.import_key] || []
+    issues = {}
+
+    relay_swimmers.each do |rs|
+      # Check both matched swimmers (via swimmer_id) and unmatched (via swimmer_key in phase3)
+      if rs.swimmer_id
+        swimmer = @swimmers_by_id[rs.swimmer_id]
+        next unless swimmer
+
+        missing_gender = swimmer.gender_type_id.blank?
+        missing_year = swimmer.year_of_birth.blank? || swimmer.year_of_birth.to_i.zero?
+
+        if missing_gender || missing_year
+          issues[rs.relay_order] = {
+            swimmer_key: "#{swimmer.last_name}|#{swimmer.first_name}|#{swimmer.year_of_birth}",
+            missing_gender: missing_gender,
+            missing_year: missing_year
+          }
+        end
+      else
+        # Unmatched swimmer - check phase3 data via swimmer_key
+        swimmer_key = rs.swimmer_key
+        swimmer_issues = swimmer_has_missing_data?(swimmer_key)
+
+        if swimmer_issues[:missing_gender] || swimmer_issues[:missing_year]
+          issues[rs.relay_order] = {
+            swimmer_key: swimmer_key,
+            missing_gender: swimmer_issues[:missing_gender],
+            missing_year: swimmer_issues[:missing_year]
+          }
+        end
+      end
+    end
+
+    {
+      has_issues: issues.any?,
+      issue_count: issues.size,
+      issues: issues
+    }
   end
 
   # Broadcast progress updates via ActionCable for real-time UI feedback

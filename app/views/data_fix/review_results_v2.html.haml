@@ -47,65 +47,100 @@
         %span.text-danger.ms-2
           (#{@populate_stats[:errors].size} errors)
 
-  - if @all_results.blank? && @all_relay_results.blank?
+  - if @phase5_programs.blank?
     .alert.alert-warning
-      %p No results loaded from database yet.
+      %p No results loaded from phase5 JSON yet.
       %p
         = link_to 'Populate DB Tables', review_results_path(file_path: @file_path, phase5_v2: 1, populate_db: 1), class: 'btn btn-primary'
-  
-  - if @all_results.present?
-    .mb-3.d-flex.justify-content-between.align-items-center
-      %div
-        %strong Total results in DB:
-        = @all_results.size
-      %small.text-muted
-        Displaying up to 1000 results
+  - else
+    -# Filter toggle for showing only issues
+    .mb-3.d-flex.align-items-center
+      %label.me-2.mb-0
+        %input#filter-issues{ type: 'checkbox', class: 'form-check-input' }
+        %strong.ms-2 Show only results with issues
+      %small.text-muted.ms-3
+        (Missing swimmer gender or year of birth)
 
-    -# Group results by import_key prefix (session-event-category-gender)
-    - grouped = @all_results.group_by do |mir|
-      - parts = mir.import_key.split('/')
-      - parts[0] # program_key: "1-200RA-M75-F"
+    -# Separate individual and relay programs
+    - individual_programs = @phase5_programs.reject { |p| p['relay'] }
+    - relay_programs = @phase5_programs.select { |p| p['relay'] }
 
-    -# Responsive grid: 2 columns on large displays
-    .row
-      - grouped.keys.sort.each_with_index do |program_key, idx|
-        - results = grouped[program_key]
-        .col-12.col-lg-6
-          = render(partial: 'data_fix/result_program_card',
-                   locals: { program_key: program_key, results: results, swimmers_by_id: @swimmers_by_id,
-                             teams_by_id: @teams_by_id, teams_by_key: @teams_by_key,
-                             team_key_by_swimmer_key: @team_key_by_swimmer_key,
-                             laps_by_parent_key: @laps_by_parent_key, card_index: idx })
-
-  -# Relay Results Section
-  - if @all_relay_results.present?
-    .mt-5
-      %h3.mb-3
-        %i.fa.fa-users.me-2
-        Relay Results
-
-      .mb-3.d-flex.justify-content-between.align-items-center
-        %div
-          %strong Total relay results in DB:
-          = @all_relay_results.size
-        %small.text-muted
-          Displaying up to 1000 results
-
-      -# Group relay results by import_key prefix (session-event-category-gender)
-      - grouped_relay = @all_relay_results.group_by do |mrr|
-        - parts = mrr.import_key.split('/')
-        - parts[0] # program_key: "1-4X50SL-100-119-X"
+    -# Individual Results Section
+    - if individual_programs.any?
+      .mb-3
+        %strong Total individual programs:
+        = individual_programs.size
+        %span.text-muted.ml-2
+          (#{individual_programs.sum { |p| p['result_count']&.to_i || 0 }} results)
 
       -# Responsive grid: 2 columns on large displays
       .row
-        - grouped_relay.keys.sort.each_with_index do |program_key, idx|
-          - relay_results = grouped_relay[program_key]
+        - individual_programs.each_with_index do |program, idx|
+          :ruby
+            # Build program_key for compatibility with partials
+            program_key = "#{program['session_order']}-#{program['event_code']}-#{program['category_code']}-#{program['gender_code']}"
+            # Query temp tables for this program's results
+            results = GogglesDb::DataImportMeetingIndividualResult.where(
+              "import_key LIKE ?", "#{program_key}/%"
+            ).order(:rank)
           .col-12.col-lg-6
-            = render(partial: 'data_fix/relay_program_card',
-                     locals: { program_key: program_key, relay_results: relay_results,
-                               swimmers_by_id: @swimmers_by_id, swimmers_by_key: @swimmers_by_key,
+            = render(partial: 'data_fix/result_program_card',
+                     locals: { program_key: program_key, results: results, swimmers_by_id: @swimmers_by_id,
                                teams_by_id: @teams_by_id, teams_by_key: @teams_by_key,
-                               relay_swimmers_by_parent_key: @relay_swimmers_by_parent_key,
-                               relay_laps_by_parent_key: @relay_laps_by_parent_key,
-                               relay_swimmer_names: @relay_swimmer_names,
-                               card_index: idx })
+                               team_key_by_swimmer_key: @team_key_by_swimmer_key,
+                               laps_by_parent_key: @laps_by_parent_key, card_index: idx })
+
+    -# Relay Results Section
+    - if relay_programs.any?
+      .mt-5
+        %h3.mb-3
+          %i.fa.fa-users.me-2
+          Relay Results
+
+        .mb-3
+          %strong Total relay programs:
+          = relay_programs.size
+          %span.text-muted.ml-2
+            (#{relay_programs.sum { |p| p['result_count']&.to_i || 0 }} results)
+
+        -# Responsive grid: 2 columns on large displays
+        .row
+          - relay_programs.each_with_index do |program, idx|
+            :ruby
+              # Build program_key for compatibility with partials
+              program_key = "#{program['session_order']}-#{program['event_code']}-#{program['category_code']}-#{program['gender_code']}"
+              # Query temp tables for this program's relay results
+              relay_results = GogglesDb::DataImportMeetingRelayResult.where(
+                "import_key LIKE ?", "#{program_key}/%"
+              ).order(:rank)
+            .col-12.col-lg-6
+              = render(partial: 'data_fix/relay_program_card',
+                       locals: { program_key: program_key, relay_results: relay_results,
+                                 swimmers_by_id: @swimmers_by_id, swimmers_by_key: @swimmers_by_key,
+                                 teams_by_id: @teams_by_id, teams_by_key: @teams_by_key,
+                                 relay_swimmers_by_parent_key: @relay_swimmers_by_parent_key,
+                                 relay_laps_by_parent_key: @relay_laps_by_parent_key,
+                                 relay_swimmer_names: @relay_swimmer_names,
+                                 card_index: idx })
+
+:javascript
+  // Filter toggle for showing only results with issues
+  document.addEventListener('DOMContentLoaded', function() {
+    const filterCheckbox = document.getElementById('filter-issues');
+    if (filterCheckbox) {
+      filterCheckbox.addEventListener('change', function() {
+        const showOnlyIssues = this.checked;
+        const allCards = document.querySelectorAll('[id^="relay-program-card-"], [id^="program-card-"]');
+        
+        allCards.forEach(function(card) {
+          const hasIssues = card.dataset.hasIssues === 'true';
+          
+          if (showOnlyIssues && !hasIssues) {
+            card.style.display = 'none';
+          } else {
+            card.style.display = 'block';
+          }
+        });
+      });
+    }
+  });

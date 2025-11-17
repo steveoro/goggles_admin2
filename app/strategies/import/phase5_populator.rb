@@ -29,9 +29,9 @@ module Import
   # @author Steve A.
   #
   class Phase5Populator # rubocop:disable Metrics/ClassLength
-    attr_reader :source_path, :phase1_path, :phase2_path, :phase3_path, :phase4_path,
+    attr_reader :source_path, :phase1_path, :phase2_path, :phase3_path, :phase4_path, :phase5_output_path,
                 :source_data, :phase1_data, :phase2_data, :phase3_data, :phase4_data,
-                :stats
+                :stats, :data_integrator, :programs
 
     def initialize(source_path:, phase1_path:, phase2_path:, phase3_path:, phase4_path:)
       @source_path = source_path
@@ -39,6 +39,8 @@ module Import
       @phase2_path = phase2_path
       @phase3_path = phase3_path
       @phase4_path = phase4_path
+      # Derive phase5 output path from phase4 path
+      @phase5_output_path = phase4_path.gsub('phase4', 'phase5')
       @stats = {
         mir_created: 0,
         laps_created: 0,
@@ -49,6 +51,8 @@ module Import
         mirs_matched: 0,
         errors: []
       }
+      # Hash to collect program groups: program_key => program_data
+      @programs = {}
     end
 
     # Main entry point: truncate existing data, load phase files, populate tables
@@ -60,6 +64,7 @@ module Import
       # All files are now in LT4 format (normalized if needed)
       Rails.logger.info('[Phase5Populator] Populating from LT4 format (normalized if LT2)')
       populate_lt4_results!
+      write_phase5_output!
       stats
     end
 
@@ -85,6 +90,14 @@ module Import
       @phase2_data = JSON.parse(File.read(phase2_path)) if File.exist?(phase2_path)
       @phase3_data = JSON.parse(File.read(phase3_path)) if File.exist?(phase3_path)
       @phase4_data = JSON.parse(File.read(phase4_path)) if File.exist?(phase4_path)
+
+      # Initialize data integrator for gender/category inference
+      season = extract_season
+      @data_integrator = Phase5::DataIntegrator.new(
+        source_data: @source_data,
+        phase3_data: @phase3_data,
+        season: season
+      )
 
       # Normalize LT2 files to LT4 format for unified processing
       if original_format == :lt2
@@ -127,32 +140,35 @@ module Import
     def populate_lt4_results!
       populate_lt4_individual_results!
       populate_lt4_relay_results!
+      # NOTE: DSQ results keep rank=0 in DB; display sorting handled in view layer
     end
 
     # Populate MIR + Laps from source events array (LT4 format)
     # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
     def populate_lt4_individual_results! # rubocop:disable Metrics/MethodLength
       events = source_data['events'] || []
-      total_events = events.count { |e| e['relay'] != true }
 
-      events.each_with_index do |event, event_idx|
+      events.each_with_index do |event, _event_idx|
         next if event['relay'] == true # Skip relay events for now
-
-        # Broadcast progress every event:
-        broadcast_progress("Processing individual results (#{event_idx + 1}/#{total_events})...",
-                           event_idx + 1, total_events)
 
         session_order = event['sessionOrder'] || 1
         distance = extract_distance(event)
         stroke = extract_stroke(event)
         next if distance.blank? || stroke.blank?
 
+        # Use key if available (phase4), otherwise use eventCode (normalized LT2)
+        event_key = event['key'] || event['eventCode']
         event_code = event['eventCode'].presence || "#{distance}#{stroke}"
         results = Array(event['results'])
 
-        results.each do |result|
+        results_x_event_tot = results.count
+        results.each_with_index do |result, res_idx|
           gender = result['gender'] || event['eventGender'] || event['gender']
           category = result['category'] || result['categoryTypeCode'] || result['category_code']
+
+          # Broadcast progress every event:
+          broadcast_progress("Processing MIRs for event #{event_code} (#{res_idx + 1}/#{results_x_event_tot})...",
+                             res_idx + 1, results_x_event_tot)
           next if gender.blank? || category.blank?
 
           # Generate keys
@@ -188,13 +204,22 @@ module Import
 
           # Create lap records
           create_lap_records(mir, result, import_key)
+
+          # Register program in phase5 output (metadata only)
+          add_to_programs(
+            session_order: session_order,
+            event_key: event_key,
+            event_code: event_code,
+            category: category,
+            gender: gender,
+            meeting_program_id: meeting_program_id,
+            relay: false
+          )
         end
       end
     end
-    # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
 
     # Populate relay results from source events array (LT4 format)
-    # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
     def populate_lt4_relay_results! # rubocop:disable Metrics/MethodLength
       events = source_data['events'] || []
       relay_events = events.select { |e| e['relay'] == true }
@@ -205,21 +230,26 @@ module Import
 
         # Broadcast progress every relay event
         relay_idx = relay_events.index(event) || 0
-        broadcast_progress("Processing relay results (#{relay_idx + 1}/#{total_relay})...",
-                           relay_idx + 1, total_relay)
-
         session_order = event['sessionOrder'] || 1
         distance = extract_distance(event)
         stroke = extract_stroke(event)
         next if distance.blank? || stroke.blank?
 
+        # Use key if available (phase4), otherwise use eventCode (normalized LT2)
+        event_key = event['key'] || event['eventCode']
         event_code = event['eventCode'].presence || "#{distance}#{stroke}"
         results = Array(event['results'])
+        results_x_event_tot = results.size
 
-        results.each do |result|
-          # For relays, gender and category might be on result or event
-          gender = result['gender'] || event['eventGender'] || event['gender'] || 'X'
-          category = result['category'] || result['categoryTypeCode'] || result['category_code']
+        results.each_with_index do |result, res_idx|
+          # Use data integrator to infer missing gender/category
+          integrated = data_integrator.integrate_relay_result(result: result, event: event)
+
+          # Use integrated values (with fallbacks)
+          gender = integrated[:gender] || result['gender'] || event['eventGender'] || event['gender'] || 'X'
+          category = integrated[:category] || result['category'] || result['categoryTypeCode'] || result['category_code']
+          broadcast_progress("Processing MRR for #{event_code} relay #{relay_idx + 1}/#{total_relay} (#{res_idx + 1}/#{results_x_event_tot})...",
+                             res_idx + 1, results_x_event_tot)
           next if category.blank?
 
           # Generate keys
@@ -256,6 +286,17 @@ module Import
           # Create relay swimmers and laps
           create_relay_swimmers(mrr, result, import_key)
           create_relay_laps(mrr, result, import_key)
+
+          # Register program in phase5 output (metadata only)
+          add_to_programs(
+            session_order: session_order,
+            event_key: event_key,
+            event_code: event_code,
+            category: category,
+            gender: gender,
+            meeting_program_id: meeting_program_id,
+            relay: true
+          )
         end
       end
     end
@@ -719,7 +760,7 @@ module Import
     end
 
     # Create relay lap records for a given MRR
-    def create_relay_laps(_mrr, result, mrr_import_key)
+    def create_relay_laps(_mrr, result, mrr_import_key) # rubocop:disable Metrics/AbcSize
       laps = result['laps'] || []
       previous_from_start = { minutes: 0, seconds: 0, hundredths: 0 }
 
@@ -781,6 +822,61 @@ module Import
 
       swimmer_key = "#{last_name}|#{first_name}|#{year}"
       find_swimmer_id_by_key(swimmer_key)
+    end
+
+    # Extract season from phase 1 data for category computation
+    def extract_season
+      return nil unless phase1_data
+
+      season_id = phase1_data.dig('data', 'season_id')
+      return nil unless season_id
+
+      GogglesDb::Season.find_by(id: season_id)
+    end
+
+    # Register a program in the programs collection
+    # Only stores program metadata (headers), NOT results (results stay in temp tables)
+    # Groups by program_key (session + event + category + gender)
+    def add_to_programs(session_order:, event_key:, event_code:, category:, gender:, meeting_program_id:, relay: false)
+      program_key = build_program_key(session_order, event_code, category, gender)
+
+      # Initialize program header if not exists
+      unless @programs.key?(program_key)
+        @programs[program_key] = {
+          'session_order' => session_order.to_i,
+          'event_key' => event_key,        # Links to phase4 events[].key
+          'event_code' => event_code,      # Human-readable code (e.g., "S4X50MI")
+          'category_code' => category,
+          'gender_code' => gender,
+          'meeting_program_id' => meeting_program_id,
+          'relay' => relay,
+          'result_count' => 0
+        }
+      end
+
+      # Increment result count for this program
+      @programs[program_key]['result_count'] += 1
+    end
+
+    # Write phase5 output JSON file with program groups
+    def write_phase5_output!
+      Rails.logger.info("[Phase5Populator] Writing phase5 output to #{phase5_output_path}")
+
+      # Convert programs hash to sorted array
+      programs_array = @programs.values.sort_by do |prog|
+        [prog['session_order'], prog['event_code'], prog['category_code'], prog['gender_code']]
+      end
+
+      output_data = {
+        'name' => 'phase5',
+        'source_file' => File.basename(source_path),
+        'total_programs' => programs_array.size,
+        'total_results' => programs_array.sum { |p| p['result_count'] },
+        'programs' => programs_array
+      }
+
+      File.write(phase5_output_path, JSON.pretty_generate(output_data))
+      Rails.logger.info("[Phase5Populator] Phase5 output written: #{programs_array.size} programs, #{output_data['total_results']} results")
     end
 
     # Broadcast progress updates via ActionCable for real-time UI feedback
