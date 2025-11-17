@@ -135,10 +135,9 @@ RSpec/EmptyLineAfterSubject:
     - 'spec/components/grid/row_toolbar_component_spec.rb'
     - 'spec/components/grid/toolbar_component_spec.rb'
 
-# Offense count: 4
 # Configuration parameters: CountAsOne.
 RSpec/ExampleLength:
-  Max: 10
+  Max: 40
 
 # Offense count: 3
 RSpec/ExpectInHook:
@@ -176,6 +175,9 @@ RSpec/LetBeforeExamples:
 # Offense count: too many
 # Configuration parameters: IgnoreSharedExamples.
 RSpec/NamedSubject:
+  Enabled: false
+
+RSpec/PendingWithoutReason:
   Enabled: false
 
 # Offense count: 3
