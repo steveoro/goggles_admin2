@@ -37,10 +37,12 @@ module Import
         source_path = opts.fetch(:source_path)
         lt_format = opts.fetch(:lt_format, 2).to_i
         data_hash = opts[:data_hash] || JSON.parse(File.read(source_path))
+        meeting_name = extract_meeting_name(data_hash, lt_format)
 
         payload = {
           'season_id' => @season.id,
-          'name' => extract_meeting_name(data_hash, lt_format),
+          'name' => meeting_name, # Form input
+          'description' => meeting_name, # meeting.description field
           'meetingURL' => extract_meeting_url(data_hash, lt_format),
           'dateYear1' => nil,
           'dateMonth1' => nil,
@@ -48,6 +50,13 @@ module Import
           'dateYear2' => nil,
           'dateMonth2' => nil,
           'dateDay2' => nil,
+
+          # Needed for meeting creation:
+          'header_date' => nil, # TODO: meeting.header_date field, ISO date from dateYear1, dateMonth1, dateDay1
+          'code' => nil, # TODO: generate
+          'header_year' => nil, # TODO: dateYear1
+
+          # Pool fields and sessions:
           'venue1' => extract_venue(data_hash, lt_format),
           'address1' => extract_address(data_hash, lt_format),
           'poolLength' => extract_pool_length(data_hash, lt_format),

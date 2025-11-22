@@ -65,8 +65,8 @@ module Users
       }
 
       response = APIProxy.call(method: :post, url: 'session', payload:)
-      unless (200..299).cover?(response.code)
-        msg = JSON.parse(response.body)
+      unless response.present? && (200..299).cover?(response.try(:code))
+        msg = response.blank? ? { 'error' => 'NO API RESPONSE!' } : JSON.parse(response.try(:body))
         set_flash_message!(:error, msg['error'])
         redirect_to new_user_session_path && return
       end

@@ -1,0 +1,83 @@
+-# frozen_string_literal: true
+
+.container-fluid
+  %h2 Data-Fix V2 • Step 6: Commit Report
+
+  .mb-2.d-flex.justify-content-between
+    %div
+      = link_to '< Back to file list', pull_result_files_path, class: 'btn btn-outline-secondary mr-2'
+      - unless @commit_success
+        = render(partial: 'data_fix/step_tabs', locals: { active_step: 5, file_path: @file_path })
+    %div
+      = link_to 'Go to Push page', push_index_path, class: 'btn btn-primary'
+
+  -# Outcome banner
+  - if @commit_success
+    .alert.alert-success
+      %p.mb-1 Phase 6 commit completed successfully.
+      %p.mb-0
+        %strong SQL file:
+        = @sql_filename
+      %p.mb-0
+        %strong Log file:
+        = File.basename(@log_path)
+      - if @season_id && @done_dir
+        %p.mb-0
+          %strong Archived to:
+          = @done_dir
+  - else
+    .alert.alert-danger
+      %p.mb-1
+        %strong Commit failed.
+      - if @error_message.present?
+        -# Truncate error msg to prevent committer instances from being displayed (too long)
+        %p.mb-0= @error_message.split(" #<Import::Committers::").first
+      - if @stats && @stats[:errors].present?
+        %p.mt-1.mb-0
+          %strong First error:
+          = @stats[:errors].first
+      - if defined?(@first_error_step_label) && @first_error_step_label.present?
+        %p.mt-1.mb-0
+          %strong Suggested step to review:
+          = @first_error_step_label
+      %p.mt-1.mb-0
+        %strong Log file:
+        = File.basename(@log_path)
+
+  -# Stats summary
+  - if @stats.present?
+    .card.mt-3
+      .card-header
+        %strong Commit statistics
+      .card-body
+        %dl.row
+          - @stats.each do |key, value|
+            - next if key == :errors
+            %dt.col-sm-4= key.to_s.humanize
+            %dd.col-sm-8= value
+
+  -# Errors list (if any)
+  - if @stats && @stats[:errors].present?
+    .card.mt-3
+      .card-header.bg-danger.text-white
+        %strong Errors (#{@stats[:errors].size})
+      .card-body
+        %ul
+          - @stats[:errors].each do |err|
+            %li= err
+
+  -# File context
+  .card.mt-3
+    .card-header
+      %strong File context
+    .card-body
+      %p
+        %strong Source file:
+        = @file_path
+      %p
+        %strong Log path:
+        = @log_path
+      - if @commit_success
+        %p
+          %strong SQL path:
+          = File.join(File.dirname(@log_path), @sql_filename)

@@ -543,7 +543,7 @@ class DataFixController < ApplicationController
   end
   # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
 
-  # Phase 6: Commit all entities to DB and generate SQL log
+  # Phase 6: Commit all entities to DB and generate SQL/log report
   # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
   def commit_phase6 # rubocop:disable Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
     file_path = params[:file_path]
@@ -572,28 +572,33 @@ class DataFixController < ApplicationController
       redirect_to(review_results_path(file_path: file_path, phase5_v2: 1)) && return
     end
 
+    # Generate paths for output files
+    curr_dir = File.dirname(source_path)
+    sql_filename = "#{File.basename(source_path, '.json')}.sql"
+    sql_path = File.join(curr_dir, sql_filename)
+    log_path = File.join(curr_dir, "#{File.basename(source_path, '.json')}.log")
+
+    # Initialize Main with all phase paths and log path
+    committer = Import::Committers::Main.new(
+      phase1_path: phase1_path,
+      phase2_path: phase2_path,
+      phase3_path: phase3_path,
+      phase4_path: phase4_path,
+      source_path: source_path,
+      log_path: log_path
+    )
+
+    @file_path = file_path
+    @log_path = log_path
+    @sql_filename = sql_filename
+    @commit_success = false
+
     begin
-      # Generate paths for output files
-      curr_dir = File.dirname(source_path)
-      sql_filename = "#{File.basename(source_path, '.json')}.sql"
-      sql_path = File.join(curr_dir, sql_filename)
-      log_path = File.join(curr_dir, "#{File.basename(source_path, '.json')}.log")
+      # Commit all entities in a transaction (will generate log file via Main)
+      @stats = committer.commit_all
 
-      # Initialize Main with all phase paths and log path
-      committer = Import::Committers::Main.new(
-        phase1_path: phase1_path,
-        phase2_path: phase2_path,
-        phase3_path: phase3_path,
-        phase4_path: phase4_path,
-        source_path: source_path,
-        log_path: log_path
-      )
-
-      # Commit all entities in a transaction (will generate log file)
-      stats = committer.commit_all
-
-      # Check for errors
-      raise StandardError, "Commit completed with #{stats[:errors].count} errors. Check #{log_path} for details." if stats[:errors].any?
+      # Guard: if any errors were accumulated, treat as failure even if transaction did not raise
+      raise StandardError, "Commit completed with #{@stats[:errors].count} errors. Check #{log_path} for details." if @stats[:errors].any?
 
       # Generate SQL file in results.new directory
       File.write(sql_path, committer.sql_log_content)
@@ -624,28 +629,66 @@ class DataFixController < ApplicationController
       GogglesDb::DataImportMeetingRelaySwimmer.where(phase_file_path: done_source_path).delete_all
       GogglesDb::DataImportRelayLap.where(phase_file_path: done_source_path).delete_all
 
-      # Summary message
-      flash[:notice] = 'Phase 6 commit successful! ' \
-                       "Created: #{stats[:meetings_created]} meetings, #{stats[:teams_created]} teams, " \
-                       "#{stats[:swimmers_created]} swimmers, #{stats[:badges_created]} badges, " \
-                       "#{stats[:events_created]} events, #{stats[:programs_created]} programs, " \
-                       "#{stats[:mirs_created]} results, #{stats[:laps_created]} laps, " \
-                       "#{stats[:mrrs_created]} relay results, #{stats[:mrss_created]} relay swimmers, " \
-                       "#{stats[:relay_laps_created]} relay laps. " \
-                       "Updated: #{stats[:meetings_updated]} meetings, #{stats[:teams_updated]} teams, " \
-                       "#{stats[:swimmers_updated]} swimmers, #{stats[:sessions_updated]} sessions. " \
-                       "Files: #{sql_filename} (SQL) and .log. " \
-                       "Phase files archived to results.done/#{season_id}/"
-      redirect_to(push_index_path)
+      @season_id = season_id
+      @done_dir = done_dir
+      @commit_success = true
+      @error_message = nil
     rescue StandardError => e
-      # Log detailed error
-      error_msg = "Phase 6 commit failed: #{e.message}"
-      Rails.logger.error("[Phase 6 Commit] #{error_msg}")
+      # Log detailed error and prepare report data
+      @error_message = "Phase 6 commit failed: #{e.message}"
+      Rails.logger.error("[Phase 6 Commit] #{@error_message}")
       Rails.logger.error(e.backtrace.join("\n"))
 
-      flash[:error] = "#{error_msg} - Check log file for details."
-      redirect_to(review_results_path(file_path: file_path, phase5_v2: 1))
+      # Ensure stats is available for the report even if commit_all raised early
+      @stats ||= committer.stats if committer.respond_to?(:stats)
+      @stats ||= { errors: [] }
+
+      # Derive a suggested step to review from the first logged validation error
+      begin
+        if committer.respond_to?(:logger) && committer.logger.respond_to?(:entries)
+          entries = committer.logger.entries || []
+          first_error_entry = entries.find { |entry| entry[:level] == :error }
+
+          if first_error_entry
+            entity_type = first_error_entry[:entity_type].to_s
+            phase_hint_map = {
+              'Meeting' => 1,
+              'Calendar' => 1,
+              'City' => 1,
+              'SwimmingPool' => 1,
+              'MeetingSession' => 1,
+              'Team' => 2,
+              'TeamAffiliation' => 2,
+              'Swimmer' => 3,
+              'Badge' => 3,
+              'MeetingEvent' => 4,
+              'MeetingProgram' => 5,
+              'MeetingIndividualResult' => 5,
+              'MeetingRelayResult' => 5,
+              'MeetingRelaySwimmer' => 5,
+              'Lap' => 5,
+              'RelayLap' => 5
+            }
+
+            step = phase_hint_map[entity_type]
+            if step
+              step_labels = {
+                1 => 'Step 1 • Sessions / Meeting',
+                2 => 'Step 2 • Teams',
+                3 => 'Step 3 • Swimmers',
+                4 => 'Step 4 • Events',
+                5 => 'Step 5 • Results'
+              }
+              @first_error_step_label = step_labels[step]
+            end
+          end
+        end
+      rescue StandardError
+        # Best-effort hinting only; never break the report rendering
+      end
     end
+
+    render 'data_fix/commit_phase6_report'
   end
   # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
 

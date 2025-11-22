@@ -76,30 +76,37 @@ module Import
         @sql_log << 'START TRANSACTION;'
         @sql_log << "--\r\n"
 
-        ActiveRecord::Base.transaction do
-          broadcast_progress('Committing Phase 1', 1, 6)
-          commit_phase1_entities  # Meeting, Sessions, Pools, Cities
+        begin
+          ActiveRecord::Base.transaction do
+            broadcast_progress('Committing Phase 1', 1, 6)
+            commit_phase1_entities  # Meeting, Sessions, Pools, Cities
 
-          broadcast_progress('Committing Phase 2', 2, 6)
-          commit_phase2_entities  # Teams, TeamAffiliations
+            broadcast_progress('Committing Phase 2', 2, 6)
+            commit_phase2_entities  # Teams, TeamAffiliations
 
-          broadcast_progress('Committing Phase 3', 3, 6)
-          commit_phase3_entities  # Swimmers, Badges
+            broadcast_progress('Committing Phase 3', 3, 6)
+            commit_phase3_entities  # Swimmers, Badges
 
-          broadcast_progress('Committing Phase 4', 4, 6)
-          commit_phase4_entities  # MeetingEvents
+            broadcast_progress('Committing Phase 4', 4, 6)
+            commit_phase4_entities  # MeetingEvents
 
-          broadcast_progress('Committing Phase 5', 5, 6)
-          commit_phase5_entities  # MeetingPrograms, MIRs, Laps (from DB tables)
+            broadcast_progress('Committing Phase 5', 5, 6)
+            commit_phase5_entities  # MeetingPrograms, MIRs, Laps (from DB tables)
+          end
+
+          # Close SQL transaction with COMMIT
+          @sql_log << "\r\n--\r\n"
+          @sql_log << 'COMMIT;'
+        rescue StandardError
+          # Mark transaction as rolled back in SQL log and re-raise
+          @sql_log << "\r\n--\r\n"
+          @sql_log << 'ROLLBACK;'
+          raise
+        ensure
+          # Always write log file so Phase 6 report can reference it
+          broadcast_progress('Writing log file', 6, 6)
+          @logger.write_log_file(stats: @stats)
         end
-
-        # Close SQL transaction
-        @sql_log << "\r\n--\r\n"
-        @sql_log << 'COMMIT;'
-
-        # Write log file
-        broadcast_progress('Writing log file', 6, 6)
-        @logger.write_log_file(stats: @stats)
 
         stats
       end
@@ -131,16 +138,18 @@ module Import
         return unless phase1_data
 
         # Meeting data is directly under 'data', not 'data.meeting'
-        meeting_data = normalize_meeting_attributes(phase1_data['data'] || {})
+        raw_meeting_data = phase1_data['data'] || {}
+        meeting_data = meeting_committer.normalize_attributes(raw_meeting_data)
+
         sessions_data = Array(meeting_data.delete('meeting_session')).map.with_index do |session_hash, index|
           normalize_session_attributes(session_hash, meeting_data['id'], index: index)
         end
 
         # Commit meeting (returns resulting meeting_id)
-        meeting_id = commit_meeting(meeting_data)
+        meeting_id = meeting_committer.commit(meeting_data)
         return unless meeting_id
 
-        commit_calendar(meeting_data.merge('meeting_id' => meeting_id))
+        calendar_committer.commit(meeting_data.merge('meeting_id' => meeting_id))
 
         # Update sessions with the resulting meeting_id so they can be persisted
         sessions_data.each { |session_hash| session_hash['meeting_id'] = meeting_id }
@@ -283,131 +292,58 @@ module Import
       # Phase 1 Commit Methods
       # =========================================================================
 
-      def commit_meeting(meeting_hash)
-        meeting_id = meeting_hash['meeting_id']
-
-        # If meeting already has a DB ID, it's matched - update if needed
-        if meeting_id.present? && meeting_id.positive?
-          meeting = GogglesDb::Meeting.find_by(id: meeting_id)
-          if meeting && attributes_changed?(meeting, meeting_hash)
-            meeting.update!(sanitize_attributes(meeting_hash, GogglesDb::Meeting))
-            @sql_log << SqlMaker.new(row: meeting).log_update
-            @stats[:meetings_updated] += 1
-            Rails.logger.info("[Main] Updated Meeting ID=#{meeting_id}")
-          end
-          return meeting_id
-        end
-
-        normalized_attributes = sanitize_attributes(meeting_hash, GogglesDb::Meeting)
-        new_meeting = GogglesDb::Meeting.create!(normalized_attributes)
-        @sql_log << SqlMaker.new(row: new_meeting).log_insert
-        @stats[:meetings_created] += 1
-        @logger.log_success(entity_type: 'Meeting', entity_id: new_meeting.id, action: 'created')
-        Rails.logger.info("[Main] Created Meeting ID=#{new_meeting.id}, #{new_meeting.description}")
-        new_meeting.id
-      rescue ActiveRecord::RecordInvalid => e
-        error_msg = "Meeting creation failed: #{e.message}"
-        @stats[:errors] << error_msg
-        @logger.log_validation_error(
-          entity_type: 'Meeting',
-          entity_key: meeting_hash['name'],
-          model_row: GogglesDb::Meeting.new(attributes),
-          error: e
+      def meeting_committer
+        @meeting_committer ||= Import::Committers::Meeting.new(
+          stats: @stats,
+          logger: @logger,
+          sql_log: @sql_log
         )
-        Rails.logger.error("[Main] ERROR committing meeting: #{e.message}")
-        nil
+      end
+      # -----------------------------------------------------------------------
+
+      def calendar_committer
+        @calendar_committer ||= Import::Committers::Calendar.new(
+          stats: @stats,
+          logger: @logger,
+          sql_log: @sql_log
+        )
+      end
+      # -----------------------------------------------------------------------
+
+      def city_committer
+        @city_committer ||= Import::Committers::City.new(
+          stats: @stats,
+          logger: @logger,
+          sql_log: @sql_log
+        )
+      end
+      # -----------------------------------------------------------------------
+
+      def swimming_pool_committer
+        @swimming_pool_committer ||= Import::Committers::SwimmingPool.new(
+          stats: @stats,
+          logger: @logger,
+          sql_log: @sql_log
+        )
       end
       # -----------------------------------------------------------------------
 
       def commit_meeting_session(session_hash)
-        session_id = session_hash['meeting_session_id'] || session_hash['id']
         meeting_id = session_hash['meeting_id']
 
         return unless meeting_id
 
         # Commit nested city first (if new)
-        city_id = commit_city(session_hash.dig('swimming_pool', 'city'))
+        city_hash = session_hash.dig('swimming_pool', 'city')
+        city_id = city_committer.commit(city_hash)
 
         # Commit nested swimming pool (may reference city)
         pool_hash = session_hash['swimming_pool']
-        swimming_pool_id = if pool_hash
-                             pool_hash['city_id'] ||= city_id if city_id
-                             commit_swimming_pool(pool_hash)
-                           end
+        pool_hash = pool_hash.merge('city_id' => city_id) if pool_hash && city_id
+        swimming_pool_id = swimming_pool_committer.commit(pool_hash)
 
-        normalized_session = sanitize_attributes(session_hash.merge('swimming_pool_id' => swimming_pool_id), GogglesDb::MeetingSession)
-
-        # If session already has a DB ID, update if needed
-        if session_id.present? && session_id.positive?
-          session = GogglesDb::MeetingSession.find_by(id: session_id)
-          if session && attributes_changed?(session, normalized_session)
-            session.update!(normalized_session)
-            @sql_log << SqlMaker.new(row: session).log_update
-            @stats[:sessions_updated] += 1
-            Rails.logger.info("[Main] Updated MeetingSession ID=#{session_id}")
-          end
-          return session_id
-        end
-
-        new_session = GogglesDb::MeetingSession.create!(normalized_session)
-        @sql_log << SqlMaker.new(row: new_session).log_insert
-        @stats[:sessions_created] += 1
-        Rails.logger.info("[Main] Created MeetingSession ID=#{new_session.id}, order=#{new_session.session_order}")
-        new_session.id
-      rescue ActiveRecord::RecordInvalid => e
-        @stats[:errors] << "MeetingSession error: #{e.message}"
-        Rails.logger.error("[Main] ERROR committing session: #{e.message}")
-        nil
-      end
-      # -----------------------------------------------------------------------
-
-      # Commit a City entity (nested within swimming pool data)
-      def commit_city(city_hash)
-        return nil unless city_hash
-
-        city_id = city_hash['city_id'] || city_hash['id']
-
-        # If city already exists, return its ID
-        return city_id if city_id.present? && city_id.positive?
-
-        # Create new city
-        normalized_city = sanitize_attributes(city_hash, GogglesDb::City)
-
-        new_city = GogglesDb::City.create!(normalized_city)
-        @sql_log << SqlMaker.new(row: new_city).log_insert
-        @stats[:cities_created] += 1
-        Rails.logger.info("[Main] Created City ID=#{new_city.id}, #{new_city.name}")
-        new_city.id
-      rescue ActiveRecord::RecordInvalid => e
-        @stats[:errors] << "City error: #{e.message}"
-        Rails.logger.error("[Main] ERROR committing city: #{e.message}")
-        nil
-      end
-      # -----------------------------------------------------------------------
-
-      # Commit a SwimmingPool entity (nested within session data)
-      def commit_swimming_pool(pool_hash)
-        return nil unless pool_hash
-
-        pool_id = pool_hash['swimming_pool_id'] || pool_hash['id']
-
-        # If pool already exists, return its ID
-        return pool_id if pool_id.present? && pool_id.positive?
-
-        # Create new swimming pool
-
-        # Retrieve PoolType only if not already set by ID:
-        normalized_pool = normalize_swimming_pool_attributes(pool_hash, city_id: pool_hash['city_id'])
-
-        new_pool = GogglesDb::SwimmingPool.create!(normalized_pool)
-        @sql_log << SqlMaker.new(row: new_pool).log_insert
-        @stats[:pools_created] += 1
-        Rails.logger.info("[Main] Created SwimmingPool ID=#{new_pool.id}, #{new_pool.name}")
-        new_pool.id
-      rescue ActiveRecord::RecordInvalid => e
-        @stats[:errors] << "SwimmingPool error: #{e.message}"
-        Rails.logger.error("[Main] ERROR committing pool: #{e.message}")
-        nil
+        normalized_session = session_hash.merge('swimming_pool_id' => swimming_pool_id)
+        meeting_session_committer.commit(normalized_session)
       end
       # -----------------------------------------------------------------------
 
@@ -879,6 +815,7 @@ module Import
       def normalize_meeting_attributes(raw_meeting)
         meeting_hash = raw_meeting.deep_dup
 
+        meeting_hash['description'] = meeting_hash['name']
         meeting_hash['autofilled'] = true if meeting_hash['autofilled'].nil?
         meeting_hash['allows_under25'] = meeting_hash.fetch('allows_under25', true)
         meeting_hash['cancelled'] = meeting_hash.fetch('cancelled', false)
@@ -886,8 +823,9 @@ module Import
         meeting_hash['max_individual_events'] ||= GogglesDb::Meeting.columns_hash['max_individual_events'].default
         meeting_hash['max_individual_events_per_session'] ||= GogglesDb::Meeting.columns_hash['max_individual_events_per_session'].default
         meeting_hash['notes'] = build_meeting_notes(meeting_hash)
+        meeting_hash['notes']
 
-        meeting_hash
+        meeting_hash['header_date'] = "#{meeting_hash['header_date']}-#{meeting_hash['header_date']}-#{meeting_hash['header_date']}"
       end
       # -----------------------------------------------------------------------
 
@@ -911,6 +849,9 @@ module Import
         normalized['session_order'] ||= index + 1
         normalized['autofilled'] = normalized.fetch('autofilled', true)
         normalized['description'] ||= "Session #{normalized['session_order']}"
+        # DEBUG -------------------------------------------------------------------------
+        # binding.pry
+        #--------------------------------------------------------------------------------
 
         normalized
       end
@@ -1003,9 +944,6 @@ module Import
           'seconds_from_start' => integer_or_nil(data_import_lap.seconds_from_start),
           'hundredths_from_start' => integer_or_nil(data_import_lap.hundredths_from_start),
           'reaction_time' => decimal_or_nil(data_import_lap.reaction_time),
-          # NOTE: there's a column naming difference between data_import_* tables and actual target tables.
-          # FUTUREDEV: rename breath_number to breath_cycles in data_import_* tables to match the target entities.
-          # (low-priority as currently the breath_* columns are not used in meeting results)
           'breath_cycles' => integer_or_nil(data_import_lap.breath_number),
           'underwater_seconds' => integer_or_nil(data_import_lap.underwater_seconds),
           'underwater_hundredths' => integer_or_nil(data_import_lap.underwater_hundredths),
@@ -1157,77 +1095,7 @@ module Import
       end
       # -----------------------------------------------------------------------
 
-      def commit_calendar(meeting_hash)
-        meeting_id = meeting_hash['meeting_id']
-        meeting = GogglesDb::Meeting.find_by(id: meeting_id)
-        return unless meeting
-
-        calendar_attributes = build_calendar_attributes(meeting_hash, meeting)
-        calendar_id = calendar_attributes['id']
-
-        begin
-          if calendar_id.present?
-            existing = GogglesDb::Calendar.find_by(id: calendar_id)
-            if existing && attributes_changed?(existing, calendar_attributes)
-              existing.update!(calendar_attributes)
-              @sql_log << SqlMaker.new(row: existing).log_update
-              @stats[:calendars_updated] += 1
-              Rails.logger.info("[Main] Updated Calendar ID=#{existing.id}")
-            end
-            return existing&.id
-          end
-
-          calendar = GogglesDb::Calendar.create!(calendar_attributes)
-          @sql_log << SqlMaker.new(row: calendar).log_insert
-          @stats[:calendars_created] += 1
-          Rails.logger.info("[Main] Created Calendar ID=#{calendar.id}, meeting_id=#{meeting_id}")
-          calendar.id
-        rescue ActiveRecord::RecordInvalid => e
-          error_details = GogglesDb::ValidationErrorTools.recursive_error_for(e.record)
-          @stats[:errors] << "Calendar error: #{e.message} -- #{error_details}"
-          Rails.logger.error("[Main] ERROR committing calendar: #{e.message}")
-          nil
-        end
-      end
-      # -----------------------------------------------------------------------
-
-      def build_calendar_attributes(meeting_hash, meeting)
-        existing = find_existing_calendar(meeting)
-        scheduled_date = meeting.header_date || meeting_hash['scheduled_date']
-
-        {
-          'id' => existing&.id,
-          'meeting_id' => meeting.id,
-          'meeting_code' => meeting.code || meeting_hash['meeting_code'],
-          'meeting_name' => meeting.description || meeting_hash['meeting_name'],
-          'scheduled_date' => scheduled_date,
-          'meeting_place' => build_meeting_place(meeting_hash),
-          'season_id' => meeting.season_id || meeting_hash['season_id'],
-          'year' => meeting_hash['dateYear1'] || scheduled_date&.year&.to_s,
-          'month' => meeting_hash['dateMonth1'] || scheduled_date&.strftime('%m'),
-          'results_link' => meeting_hash['meetingURL'] || meeting_hash['results_link'],
-          'manifest_link' => meeting_hash['manifestURL'] || meeting_hash['manifest_link'],
-          'organization_import_text' => meeting_hash['organization'],
-          'cancelled' => meeting_hash.key?('cancelled') ? BOOLEAN_TYPE.cast(meeting_hash['cancelled']) : meeting.cancelled,
-          'updated_at' => Time.zone.now
-        }.compact
-      end
-      # -----------------------------------------------------------------------
-
-      def find_existing_calendar(meeting)
-        season = meeting.season || GogglesDb::Season.find_by(id: meeting.season_id)
-        scopes = if season
-                   GogglesDb::Calendar.for_season(season)
-                 else
-                   GogglesDb::Calendar.where(season_id: meeting.season_id)
-                 end
-        scopes.for_code(meeting.code).first || scopes.where(meeting_id: meeting.id).first
-      end
-      # -----------------------------------------------------------------------
-
-      def build_meeting_place(meeting_hash)
-        [meeting_hash['venue1'], meeting_hash['address1']].compact_blank.join(', ')
-      end
+      # (Calendar commit logic moved to Import::Committers::Calendar)
       # -----------------------------------------------------------------------
 
       # Broadcasts progress updates via ActionCable for real-time UI feedback
