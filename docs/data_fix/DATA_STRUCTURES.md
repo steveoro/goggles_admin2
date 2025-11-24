@@ -1,22 +1,12 @@
 # Data-Fix: Data Structures Reference
 
-**Last Updated**: 2025-11-15  
-**Version**: 2.1
+Comprehensive reference for most data structures used in the Data-Fix pipeline, from source JSON through phase files to database tables.
 
-This document provides comprehensive reference for all data structures used in the Data-Fix pipeline, from source JSON through phase files to database tables.
-
----
-
-## Table of Contents
-
-1. [Source Data Formats](#source-data-formats)
-2. [Phase File Structures](#phase-file-structures)
-3. [Temporary Database Tables](#temporary-database-tables)
-4. [Production Database Entities](#production-database-entities)
-5. [Import Keys](#import-keys)
-6. [Quick Reference](#quick-reference)
+**Last Updated**: 2025-11-24
+**Version**: 3.0
 
 ---
+
 
 ## Source Data Formats
 
@@ -25,6 +15,147 @@ This document provides comprehensive reference for all data structures used in t
 The primary source format used by the Microplus timing system.
 
 #### Individual Result Structure
+
+- events[] -> 1 object per event, containing event details, gender and category, each in dedicated fields
+- in each event: results[] -> 1 object per result, usually containing lap data
+- in each result: laps[] -> 1 object per lap data, present only if eventLength (in meters) > 50
+
+Hierarchical structure can be examined using our custom script `bin/json_tree_viewer.py`.
+Example output:
+
+```
+$ bin/json_tree_viewer.py crawler/data/results.new/242/2025-06-24-Campionati_Italiani_di_Nuoto_Master_Herbalife-800SL-l4.json
+
+# (Output corrected as the script mistakes hyphenated names as field-separated keys; in any case it works perfectly as a quick reference to the tree structure in the datafile)
+
+[root]
+     +--- competitionType
+     +--- dates
+     +--- events
+     |   +--- [0]
+     |       +--- eventCode
+     |       +--- eventDescription
+     |       +--- eventGender
+     |       +--- eventLength
+     |       +--- eventStroke
+     |       +--- relay
+     |       +--- results
+     |           +--- [0]
+     |               +--- category
+     |               +--- heat
+     |               +--- heat_position
+     |               +--- lane
+     |               +--- laps
+     |               |   +--- [0]
+     |               |       +--- delta
+     |               |       +--- distance
+     |               |       +--- position
+     |               |       +--- timing
+     |               +--- nation
+     |               +--- ranking
+     |               +--- swimmer
+     |               +--- team
+     |               +--- timing
+     +--- layoutType
+     +--- meetingName
+     +--- meetingURL
+     +--- place
+     +--- seasonId
+     +--- swimmers
+     |   +--- "<fld1>|<fld2>|<fld3>|<fld4>|<fld5>" (ex.: "F|MARCA|Rossi|1949|Swimmo Sporting Club")
+     |       +--- category
+     |       +--- firstName
+     |       +--- gender
+     |       +--- lastName
+     |       +--- team
+     |       +--- year
+     +--- teams
+     |   +--- "<fld1>" (ex.: "Swimmo Sporting Club")
+     |   |   +--- name
+     +--- title
+```
+
+---
+
+#### Relay Result Structure
+
+Same hierarchical structure as LT4 individual results, with the only major difference being that the swimmer key may not have the leading gender when only relay results are crawled (i.e., the gender prefix field is omitted from the swimmer key).
+
+These "incomplete" swimmer dictionaries may be integrated during the data-fix procedure using information from the swimmers section from other data-files crawled from the same competition (e.g.,from individual results data files).
+
+```
+$ bin/json_tree_viewer.py crawler/data/results.new/242/2025-06-24-Campionati_Italiani_di_Nuoto_Master_Herbalife-4X50MI-l4.json
+[root]
+     +--- competitionType
+     +--- dates
+     +--- events
+     |   +--- [0]
+     |       +--- eventCode
+     |       +--- eventDescription
+     |       +--- eventGender
+     |       +--- eventLength
+     |       +--- eventStroke
+     |       +--- relay
+     |       +--- results
+     |           +--- [0]
+     |               +--- category
+     |               +--- heat
+     |               +--- heat_position
+     |               +--- lane
+     |               +--- laps
+     |               |   +--- [0]
+     |               |       +--- delta
+     |               |       +--- distance
+     |               |       +--- swimmer
+     |               +--- ranking
+     |               +--- relay
+     |               +--- relay_name
+     |               +--- team
+     |               +--- timing
+     +--- layoutType
+     +--- meetingName
+     +--- meetingURL
+     +--- place
+     +--- seasonId
+     +--- swimmers
+     |   +--- "<fld1>|<fld2>|<fld3>|<fld4>" (ex.: "FRISCO|Frengo|1938|Johnny Swimmer Klub" - if the gender is missing or unknown, the total number of fields is 4)
+     |   |   +--- firstName
+     |   |   +--- gender
+     |   |   +--- lastName
+     |   |   +--- team
+     |   |   +--- year
+     |   +--- "<fld1>|<fld2>|<fld3>|<fld4>|<fld5>" (ex.: "F|FRISCO|Frenga|2002|G.P. Super Cup" - when the gender is known, 5 fields in total)
+     |       +--- firstName
+     |       +--- gender
+     |       +--- lastName
+     |       +--- team
+     |       +--- year
+     +--- teams
+     |   +--- "<fld1>" (ex.: "G.P. Nuoto Mira")
+     |   |   +--- name
+     +--- title
+```
+
+
+---
+
+
+### Layout Type 2 (LT2) - FIN result crawler
+
+Usually created by the FIN result crawler, these are also generated from parsing PDF result files.
+
+Note that the legacy data-fix process usually handles the following raw structure, but after each step, it appends to the same data file its own arrays of serialized entities as additional keys under the same root object. This inevitable will alter the source file making it extremely large and difficult to manage for competitions with many events and results.
+
+(Example: step 2 will add to the root object the "team" key - note the singular - pointing to the dictionary of serialized team entities reviewed by the operator; step 3 will add the "swimmer" dictionary, and so on...)
+
+
+#### Individual Result Structure
+
+- sections[] -> 1 section per event, section header with event details, gender and category
+- rows[] -> 1 row per result, usually lap data is missing
+
+*Concrete example:*
+
 ```json
 {
   "sections": [
@@ -135,250 +266,9 @@ The primary source format used by the Microplus timing system.
 - The system handles both 4-token and 5-token lap swimmer formats
 - Relay category codes like "M320" represent sum of ages (4 swimmers × ~80 years avg)
 
-### Layout Type 2 (LT2) - Legacy Format
-
-Older format still used by some timing systems.
-
-```json
-{
-  "category": "M45",
-  "results": [
-    {
-      "rank": 1,
-      "swimmer_name": "ROSSI MARIO",
-      "year": 1978,
-      "team_name": "CSI OBER FERRARI",
-      "time": "2:05.45",
-      "splits": ["28.45", "30.12", "31.88", "35.00"]
-    }
-  ]
-}
-```
-
-**Key Differences from LT4**:
-- Simpler structure
-- Less metadata
-- No embedded swimmer keys in laps
-- Requires more parsing logic
 
 ---
 
-## Phase File Structures
-
-All phase files share a common metadata structure:
-
-```json
-{
-  "_meta": {
-    "schema_version": "1.0",
-    "created_at": "2025-11-15T10:00:00Z",
-    "generator": "Import::Solvers::Phase3Solver",
-    "source_path": "/path/to/source.json",
-    "parent_checksum": "abc123...",
-    "layoutType": 4
-  },
-  "data": {
-    // Phase-specific data here
-  }
-}
-```
-
-### Phase 1: Meeting & Sessions
-
-```json
-{
-  "_meta": { /* ... */ },
-  "data": {
-    "season_id": 242,
-    "name": "Campionati Italiani di Nuoto Master",
-    "code": "regit",
-    "header_date": "2025-06-24",
-    "id": 12345,
-    "meeting_fuzzy_matches": [
-      {
-        "id": 12345,
-        "description": "Campionati Italiani 2025",
-        "score": 0.95
-      }
-    ],
-    "meeting_session": [
-      {
-        "id": 5678,
-        "session_order": 1,
-        "scheduled_date": "2025-06-24",
-        "day_part_type_id": 1,
-        "swimming_pool": {
-          "id": 22,
-          "name": "Stadio Nuoto",
-          "nick_name": "riccionestadio50",
-          "pool_type_id": 2,
-          "lanes_number": 10,
-          "city": {
-            "id": 38,
-            "name": "Riccione",
-            "zip": "47838",
-            "country_code": "IT"
-          }
-        }
-      }
-    ]
-  }
-}
-```
-
-**Required Fields**:
-- `season_id`: Must match active season
-- `name`: Meeting name
-- `header_date`: Meeting start date (YYYY-MM-DD)
-
-**Resolved IDs**:
-- `id`: Meeting ID (if matched)
-- `meeting_session[].id`: Session IDs
-- `swimming_pool.id`: Pool ID
-- `city.id`: City ID
-
-### Phase 2: Teams & Affiliations
-
-```json
-{
-  "_meta": { /* ... */ },
-  "data": {
-    "season_id": 242,
-    "teams": [
-      {
-        "key": "CSI OBER FERRARI",
-        "name": "CSI OBER FERRARI",
-        "editable_name": "CSI Ober Ferrari",
-        "team_id": 123,
-        "city_id": 38,
-        "name_variations": 5,
-        "fuzzy_matches": [
-          {
-            "id": 123,
-            "complete_name": "CSI OBER FERRARI",
-            "score": 0.98,
-            "auto_assigned": true
-          }
-        ]
-      }
-    ],
-    "team_affiliations": [
-      {
-        "team_key": "CSI OBER FERRARI",
-        "team_id": 123,
-        "season_id": 242,
-        "team_affiliation_id": 456,
-        "name": "CSI OBER FERRARI",
-        "number": "01234"
-      }
-    ]
-  }
-}
-```
-
-**Key Concepts**:
-- `key`: Unique identifier within phase file (usually uppercase team name)
-- `team_id`: Matched Team record ID
-- `team_affiliation_id`: Pre-matched TeamAffiliation ID (if exists)
-- `name_variations`: Count of different name formats found in source
-
-### Phase 3: Swimmers & Badges
-
-```json
-{
-  "_meta": { /* ... */ },
-  "data": {
-    "season_id": 242,
-    "swimmers": [
-      {
-        "key": "ROSSI|MARIO|1978",
-        "last_name": "ROSSI",
-        "first_name": "MARIO",
-        "complete_name": "ROSSI MARIO",
-        "year_of_birth": 1978,
-        "gender_type_code": "M",
-        "swimmer_id": 789,
-        "fuzzy_matches": [
-          {
-            "id": 789,
-            "complete_name": "ROSSI MARIO",
-            "year_of_birth": 1978,
-            "gender_type_code": "M",
-            "weight": 0.98,
-            "percentage": 98.0
-          }
-        ]
-      }
-    ],
-    "badges": [
-      {
-        "swimmer_key": "ROSSI|MARIO|1978",
-        "team_key": "CSI OBER FERRARI",
-        "swimmer_id": 789,
-        "team_id": 123,
-        "season_id": 242,
-        "category_type_id": 1425,
-        "badge_id": 999
-      }
-    ]
-  }
-}
-```
-
-**Swimmer Key Format**: `"LAST|FIRST|YEAR"`
-- All uppercase
-- Pipe-separated
-- Year is 4-digit
-
-**Pre-Calculated Fields**:
-- `category_type_id`: Calculated from age at meeting date
-- `badge_id`: Pre-matched existing Badge (if found)
-
-**Required Fields for New Swimmers**:
-- `last_name` OR `first_name` (at least one)
-- `year_of_birth` (4-digit year, > 0)
-- `gender_type_code` ("M" or "F")
-
-### Phase 4: Events
-
-```json
-{
-  "_meta": { /* ... */ },
-  "data": {
-    "season_id": 242,
-    "sessions": [
-      {
-        "session_order": 1,
-        "meeting_session_id": 5678,
-        "events": [
-          {
-            "key": "200SL-M45",
-            "event_code": "200SL",
-            "distance": 200,
-            "stroke": "SL",
-            "relay": false,
-            "category": "M45",
-            "gender": "M",
-            "event_type_id": 15,
-            "meeting_event_id": 1234
-          },
-          {
-            "key": "S4X50MI-F",
-            "event_code": "S4X50MI",
-            "distance": 200,
-            "stroke": "MI",
-            "relay": true,
-            "category": null,
-            "gender": "F",
-            "event_type_id": 26,
-            "meeting_event_id": 1235
-          }
-        ]
-      }
-    ]
-  }
-}
-```
 
 **Event Codes**:
 - Individual: `"<distance><stroke>"` (e.g., "200SL", "100DO")
@@ -396,39 +286,6 @@ All phase files share a common metadata structure:
 - `event_type_id`: Matched EventType record
 - `meeting_event_id`: Pre-matched MeetingEvent (if exists)
 
-### Phase 5: Results Summary
-
-Phase 5 produces a **summary JSON** plus **detailed DB tables**.
-
-#### Phase5.json (Summary)
-```json
-{
-  "_meta": { /* ... */ },
-  "data": {
-    "season_id": 242,
-    "result_counts": {
-      "individual": 1543,
-      "relay": 47
-    },
-    "sessions": [
-      {
-        "session_order": 1,
-        "events": [
-          {
-            "event_code": "200SL",
-            "relay": false,
-            "results_by_category": {
-              "M45": 23,
-              "M50": 18,
-              "M55": 15
-            }
-          }
-        ]
-      }
-    ]
-  }
-}
-```
 
 ---
 
@@ -713,16 +570,6 @@ SQL Log:         crawler/data/sql.new/<season_id>/<filename>.sql
 Completed:       crawler/data/results.done/<season_id>/<filename>.json
 ```
 
-### Common Field Mappings
-
-| Source Field | Phase File | DB Table | Production Entity |
-|--------------|------------|----------|-------------------|
-| `name` | `swimmer_key` | `swimmer_name` | `Swimmer.complete_name` |
-| `team` | `team_key` | `team_name` | `Team.name` |
-| `timing` | (parsed) | `minutes/seconds/hundredths` | Same |
-| `year_of_birth` | `year_of_birth` | N/A | `Swimmer.year_of_birth` |
-| `fin_sigla_categoria` | `category` | `category_code` | `CategoryType.code` |
-
 ### Status Codes
 
 | Code | Meaning | Flag |
@@ -739,13 +586,3 @@ Completed:       crawler/data/results.done/<season_id>/<filename>.json
 | "M" | Male | Individual events |
 | "F" | Female | Individual events |
 | "X" | Mixed | Relay events only |
-
----
-
-**For Implementation Details**, see:
-- [README.md](./README.md) - Main index
-- [PHASES.md](./PHASES.md) - Phase-by-phase guide
-- [TECHNICAL.md](./TECHNICAL.md) - Architecture patterns
-- [RELAY_IMPLEMENTATION.md](./RELAY_IMPLEMENTATION.md) - Relay-specific implementation
-
-**Last Updated**: 2025-11-15 by Steve A. (Leega)
