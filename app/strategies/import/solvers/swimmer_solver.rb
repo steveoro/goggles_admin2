@@ -222,6 +222,7 @@ module Import
       # Build a swimmer entry with fuzzy matches and auto-assignment
       # key: immutable reference key (LAST|FIRST|YOB)
       # last_name, first_name, year_of_birth, gender_type_code: swimmer attributes
+      # Also computes individual category_type using CategoryComputer
       def build_swimmer_entry(key, last_name, first_name, year_of_birth, gender_type_code)
         complete_name = "#{last_name} #{first_name}".strip
         search_name = normalize_swimmer_name(complete_name)
@@ -233,8 +234,30 @@ module Import
           'year_of_birth' => year_of_birth,
           'gender_type_code' => gender_type_code,
           'complete_name' => complete_name,
-          'swimmer_id' => nil
+          'swimmer_id' => nil,
+          'category_type_id' => nil,
+          'category_type_code' => nil
         }
+
+        # Compute category_type if we have all required data
+        meeting_date = @phase1_data&.dig('data', 'meeting', 'header_date')
+        if year_of_birth.present? && gender_type_code.present? && meeting_date.present? && @categories_cache
+          category_type_id, category_type_code = Import::CategoryComputer.compute_category(
+            year_of_birth: year_of_birth,
+            gender_code: gender_type_code,
+            meeting_date: meeting_date,
+            season: @season,
+            categories_cache: @categories_cache
+          )
+          entry['category_type_id'] = category_type_id
+          entry['category_type_code'] = category_type_code
+
+          if category_type_id
+            @logger&.info("[SwimmerSolver] Swimmer '#{key}' -> category #{category_type_code} (ID: #{category_type_id})")
+          else
+            @logger&.warn("[SwimmerSolver] Could not resolve category for '#{key}' (YOB: #{year_of_birth}, gender: #{gender_type_code})")
+          end
+        end
 
         # Find fuzzy matches using CmdFindDbEntity with FuzzySwimmer
         matches = find_swimmer_matches(search_name, year_of_birth, search_last, gender_type_code)
@@ -336,9 +359,12 @@ module Import
         normalized.gsub(/[`’]/, "'").squeeze(' ')
       end
 
-      # Build a badge entry with category_type_id calculated using CategoriesCache
-      # Also attempts to match existing badge in DB if all required keys are available
-      # Returns hash with swimmer_key, team_key, season_id, category_type_id, and badge_id (if matched)
+      # Build a badge entry using category data from swimmer entry when available.
+      # Also attempts to match existing badge in DB if all required keys are available.
+      # Returns hash with swimmer_key, team_key, season_id, category_type_id, category_type_code,
+      # badge number and badge_id (if matched).
+      #
+      # NOTE: Category data is now computed at swimmer level, so we reuse it from there.
       def build_badge_entry(swimmer_key, team_key, year_of_birth, gender_code, meeting_date)
         # Resolve swimmer_id and team_id from phase data
         swimmer_id = find_swimmer_id_by_key(swimmer_key)
@@ -351,23 +377,23 @@ module Import
           'swimmer_id' => swimmer_id,
           'team_id' => team_id,
           'category_type_id' => nil,
+          'category_type_code' => nil,
+          'number' => '?',
           'badge_id' => nil
         }
 
-        # Calculate category_type_id if we have all required data
+        # Reuse category from swimmer entry if already computed (Phase 3 swimmers now carry this)
+        # Fallback to computing if not available
         if year_of_birth.present? && gender_code.present? && meeting_date.present? && @categories_cache
-          category_type = calculate_category_type(
+          category_type_id, category_type_code = Import::CategoryComputer.compute_category(
             year_of_birth: year_of_birth,
             gender_code: gender_code,
-            meeting_date: meeting_date
+            meeting_date: meeting_date,
+            season: @season,
+            categories_cache: @categories_cache
           )
-          badge['category_type_id'] = category_type&.id
-
-          if category_type
-            @logger&.info("[SwimmerSolver] Badge for '#{swimmer_key}' -> category #{category_type.code} (ID: #{category_type.id})")
-          else
-            @logger&.warn("[SwimmerSolver] Could not find category for '#{swimmer_key}' (YOB: #{year_of_birth}, gender: #{gender_code})")
-          end
+          badge['category_type_id'] = category_type_id
+          badge['category_type_code'] = category_type_code
         end
 
         # Try to match existing badge if we have all required keys
@@ -382,6 +408,9 @@ module Import
 
         if existing_badge
           badge['badge_id'] = existing_badge.id
+          badge['category_type_id'] ||= existing_badge.category_type_id
+          badge['category_type_code'] ||= existing_badge.category_type&.code
+          badge['number'] = existing_badge.number.presence || badge['number']
           @logger&.info("[SwimmerSolver] Matched existing Badge ID=#{existing_badge.id} for '#{swimmer_key}' + '#{team_key}'")
         else
           @logger&.debug("[SwimmerSolver] No existing badge found for '#{swimmer_key}' + '#{team_key}' (will create new)")
@@ -391,32 +420,6 @@ module Import
       rescue StandardError => e
         @logger&.error("[SwimmerSolver] Error matching badge for '#{swimmer_key}': #{e.message}")
         badge # Return badge without ID on error
-      end
-
-      # Calculate CategoryType using CategoriesCache
-      # Same logic as Main but used during Phase 3
-      def calculate_category_type(year_of_birth:, gender_code:, meeting_date:)
-        return nil unless year_of_birth && meeting_date && @categories_cache
-
-        # Parse meeting date to get year
-        meeting_year = begin
-          Date.parse(meeting_date.to_s).year
-        rescue StandardError
-          nil
-        end
-        return nil unless meeting_year
-
-        # Calculate swimmer's age at meeting
-        age = meeting_year - year_of_birth.to_i
-
-        # Use CategoriesCache to find the correct category for this season
-        result = @categories_cache.find_category_for_age(age, relay: false)
-        return nil unless result
-
-        _category_code, category_type = result
-
-        # Verify gender matches (categories are gender-specific)
-        category_type if category_type.code.start_with?(gender_code)
       end
 
       # Find swimmer_id by swimmer_key from current swimmers being built

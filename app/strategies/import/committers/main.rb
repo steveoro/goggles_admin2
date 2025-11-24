@@ -58,6 +58,8 @@ module Import
         # Initialize logger
         @log_path = log_path || source_path.to_s.gsub('.json', '.log')
         @logger = Import::PhaseCommitLogger.new(log_path: @log_path)
+        @transaction_rolled_back = false
+        @top_level_error = nil
       end
       # -----------------------------------------------------------------------
 
@@ -75,6 +77,10 @@ module Import
         @sql_log << 'SET AUTOCOMMIT = 0;'
         @sql_log << 'START TRANSACTION;'
         @sql_log << "--\r\n"
+
+        # Reset outcome flags for this run
+        @transaction_rolled_back = false
+        @top_level_error = nil
 
         begin
           ActiveRecord::Base.transaction do
@@ -97,15 +103,23 @@ module Import
           # Close SQL transaction with COMMIT
           @sql_log << "\r\n--\r\n"
           @sql_log << 'COMMIT;'
-        rescue StandardError
-          # Mark transaction as rolled back in SQL log and re-raise
+        rescue StandardError => e
+          # Mark transaction as rolled back in SQL log, record error for logging, and re-raise
           @sql_log << "\r\n--\r\n"
           @sql_log << 'ROLLBACK;'
+          @transaction_rolled_back = true
+          @top_level_error = e.message
+          @stats[:errors] << e.message
+          @logger.log_error(message: e.message)
           raise
         ensure
           # Always write log file so Phase 6 report can reference it
           broadcast_progress('Writing log file', 6, 6)
-          @logger.write_log_file(stats: @stats)
+          @logger.write_log_file(
+            stats: @stats,
+            rolled_back: @transaction_rolled_back,
+            top_level_error: @top_level_error
+          )
         end
 
         stats
@@ -328,6 +342,15 @@ module Import
       end
       # -----------------------------------------------------------------------
 
+      def meeting_session_committer
+        @meeting_session_committer ||= Import::Committers::MeetingSession.new(
+          stats: @stats,
+          logger: @logger,
+          sql_log: @sql_log
+        )
+      end
+      # -----------------------------------------------------------------------
+
       def commit_meeting_session(session_hash)
         meeting_id = session_hash['meeting_id']
 
@@ -368,7 +391,22 @@ module Import
           return team_id
         end
 
-        # Create new team (team_id is nil or 0)
+        # Fallback: try to match an existing team by name when team_id is missing
+        existing = nil
+        team_name = normalized_attributes['name']
+        existing = GogglesDb::Team.find_by(name: team_name) if team_name.present?
+
+        if existing
+          if attributes_changed?(existing, normalized_attributes)
+            existing.update!(normalized_attributes)
+            @sql_log << SqlMaker.new(row: existing).log_update
+            @stats[:teams_updated] += 1
+            Rails.logger.info("[Main] Updated Team ID=#{existing.id} (matched by name)")
+          end
+          return existing.id
+        end
+
+        # Create new team (team_id is nil or 0 and no existing match found)
         new_team = GogglesDb::Team.create!(normalized_attributes)
         @sql_log << SqlMaker.new(row: new_team).log_insert
         @stats[:teams_created] += 1
@@ -396,7 +434,6 @@ module Import
           return
         end
 
-        # Create new affiliation (minimal data - just links team to season)
         team = GogglesDb::Team.find_by(id: team_id)
         attributes = normalize_team_affiliation_attributes(
           affiliation_hash,
@@ -405,6 +442,18 @@ module Import
           team: team
         )
 
+        # Fallback: reuse existing team affiliation when one already exists for the same team/season
+        existing = GogglesDb::TeamAffiliation.find_by(team_id: team_id, season_id: season_id)
+        if existing
+          if attributes_changed?(existing, attributes)
+            existing.update!(attributes)
+            @sql_log << SqlMaker.new(row: existing).log_update
+            Rails.logger.info("[Main] Updated TeamAffiliation ID=#{existing.id}, team_id=#{team_id}, season_id=#{season_id}")
+          end
+          return
+        end
+
+        # Create new affiliation (minimal data - just links team to season)
         affiliation = GogglesDb::TeamAffiliation.create!(attributes)
         @sql_log << SqlMaker.new(row: affiliation).log_insert
         @stats[:affiliations_created] += 1
@@ -436,7 +485,33 @@ module Import
           return swimmer_id
         end
 
-        # Create new swimmer (swimmer_id is nil or 0)
+        # Fallback: try to match an existing swimmer by complete_name + year_of_birth
+        existing = nil
+        complete_name = normalized_attributes['complete_name']
+        year_of_birth = normalized_attributes['year_of_birth']
+        existing = GogglesDb::Swimmer.find_by(complete_name: complete_name, year_of_birth: year_of_birth) if complete_name.present? && year_of_birth.present?
+
+        # Secondary fallback: match by last_name + first_name + year_of_birth
+        if existing.nil? && normalized_attributes['last_name'].present? &&
+           normalized_attributes['first_name'].present? && year_of_birth.present?
+          existing = GogglesDb::Swimmer.find_by(
+            last_name: normalized_attributes['last_name'],
+            first_name: normalized_attributes['first_name'],
+            year_of_birth: year_of_birth
+          )
+        end
+
+        if existing
+          if attributes_changed?(existing, normalized_attributes)
+            existing.update!(normalized_attributes)
+            @sql_log << SqlMaker.new(row: existing).log_update
+            @stats[:swimmers_updated] += 1
+            Rails.logger.info("[Main] Updated Swimmer ID=#{existing.id} (matched by name/year)")
+          end
+          return existing.id
+        end
+
+        # Create new swimmer (swimmer_id is nil or 0 and no existing match found)
         new_swimmer = GogglesDb::Swimmer.create!(normalized_attributes)
         @sql_log << SqlMaker.new(row: new_swimmer).log_insert
         @stats[:swimmers_created] += 1
@@ -483,13 +558,51 @@ module Import
           team_affiliation_id: team_affiliation.id
         )
 
+        # Fallback: reuse existing badge when one already exists for the same swimmer/team/season
+        existing_badge = GogglesDb::Badge.find_by(
+          season_id: season_id,
+          swimmer_id: swimmer_id,
+          team_id: team_id
+        )
+
+        if existing_badge
+          if attributes_changed?(existing_badge, attributes)
+            existing_badge.update!(attributes)
+            @sql_log << SqlMaker.new(row: existing_badge).log_update
+            Rails.logger.info("[Main] Updated Badge ID=#{existing_badge.id}, swimmer_id=#{swimmer_id}, team_id=#{team_id}, category_id=#{category_type_id}")
+          end
+          return existing_badge.id
+        end
+
         badge = GogglesDb::Badge.create!(attributes)
         @sql_log << SqlMaker.new(row: badge).log_insert
         @stats[:badges_created] += 1
         Rails.logger.info("[Main] Created Badge ID=#{badge.id}, swimmer_id=#{swimmer_id}, team_id=#{team_id}, category_id=#{category_type_id}")
       rescue ActiveRecord::RecordInvalid => e
-        @stats[:errors] << "Badge error (swimmer_id=#{swimmer_id}, team_id=#{team_id}): #{e.message}"
-        Rails.logger.error("[Main] ERROR creating badge: #{e.message}")
+        model_row = e.record
+        begin
+          model_row ||= GogglesDb::Badge.new(attributes) if defined?(attributes)
+        rescue StandardError
+          # Best-effort reconstruction only; ignore secondary failures
+        end
+
+        error_details = if model_row
+                          GogglesDb::ValidationErrorTools.recursive_error_for(model_row)
+                        else
+                          e.message
+                        end
+
+        swimmer_key = badge_hash['swimmer_key'] || badge_hash[:swimmer_key]
+        team_key = badge_hash['team_key'] || badge_hash[:team_key]
+        @stats[:errors] << "Badge error (swimmer_key=#{swimmer_key}, swimmer_id=#{swimmer_id}, team_id=#{team_id}): #{error_details}"
+        @logger.log_validation_error(
+          entity_type: 'Badge',
+          entity_key: "swimmer_key=#{swimmer_key},swimmer_id=#{swimmer_id},team_id=#{team_id},team_key=#{team_key},season_id=#{season_id}",
+          entity_id: model_row&.id,
+          model_row: model_row,
+          error: e
+        )
+        Rails.logger.error("[Main] ERROR creating badge: #{error_details}")
       end
       # -----------------------------------------------------------------------
 

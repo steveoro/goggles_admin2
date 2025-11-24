@@ -6,6 +6,7 @@
   issue_labels = {
     'missing_year_of_birth' => t('data_import.relay_enrichment.table.issues.missing_year_of_birth'),
     'missing_gender' => t('data_import.relay_enrichment.table.issues.missing_gender'),
+    'missing_category' => 'Missing category',
     'missing_swimmer_id' => 'NEW' # Ignore localizations for this
   }
   totals = Hash.new(0)
@@ -20,12 +21,12 @@
     %h5.mb-0.d-flex.align-items-center
       %button.btn.btn-link.p-0.text-left{ type: 'button', 'data-toggle' => 'collapse', 'data-target' => "##{collapse_id}", 'aria-expanded' => 'true', 'aria-controls' => collapse_id }
         %i.fa.fa-life-ring.mr-2
-        = t('data_import.relay_enrichment.title')
+        Phase 3: Missing Swimmer Data
         %span.badge.badge-pill.badge-warning.ml-2= summary.size
   %div{ id: "#{collapse_id}", class: "collapse show", 'aria-labelledby' => "#{panel_id}-header" }
     .card-body
       %p.text-muted
-        = t('data_import.relay_enrichment.description_html', count: summary.size).html_safe
+        Some swimmers are missing critical data (year of birth, gender, or individual category). Use the data merge feature or manually edit swimmer entries to complete this information.
 
       .mb-3
         = form_tag(review_swimmers_path, method: :get, class: 'form-inline') do

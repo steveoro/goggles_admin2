@@ -19,6 +19,15 @@ module Import
         @sql_log = sql_log
       end
 
+      def prepare_model(meeting_hash)
+        meeting_id = meeting_hash['meeting_id']
+        meeting = GogglesDb::Meeting.find_by(id: meeting_id)
+        return nil unless meeting
+
+        attributes = build_calendar_attributes(meeting_hash, meeting)
+        GogglesDb::Calendar.new(attributes.except('id'))
+      end
+
       # Commit calendar for a given meeting hash (expects meeting_id present).
       # Returns calendar_id or nil.
       def commit(meeting_hash)
@@ -28,6 +37,7 @@ module Import
 
         calendar_attributes = build_calendar_attributes(meeting_hash, meeting)
         calendar_id = calendar_attributes['id']
+        model = nil
 
         begin
           if calendar_id.present?
@@ -41,13 +51,14 @@ module Import
             return existing&.id
           end
 
-          calendar = GogglesDb::Calendar.create!(calendar_attributes)
-          sql_log << SqlMaker.new(row: calendar).log_insert
+          model = prepare_model(meeting_hash)
+          model.save!
+          sql_log << SqlMaker.new(row: model).log_insert
           stats[:calendars_created] += 1
-          Rails.logger.info("[Main] Created Calendar ID=#{calendar.id}, meeting_id=#{meeting_id}")
-          calendar.id
+          Rails.logger.info("[Main] Created Calendar ID=#{model.id}, meeting_id=#{meeting_id}")
+          model.id
         rescue ActiveRecord::RecordInvalid => e
-          model_row = e.record
+          model_row = e.record || model
           error_details = if model_row
                             GogglesDb::ValidationErrorTools.recursive_error_for(model_row)
                           else

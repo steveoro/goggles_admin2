@@ -34,11 +34,16 @@ module Import
         meeting_hash
       end
 
+      def prepare_model(meeting_hash)
+        attributes = sanitize_attributes(meeting_hash, GogglesDb::Meeting)
+        GogglesDb::Meeting.new(attributes)
+      end
+
       # Commit meeting (returns resulting meeting_id)
       # NOTE: This is a direct extraction of Main#commit_meeting
       def commit(meeting_hash)
         meeting_id = meeting_hash['meeting_id']
-        attributes_for_logging = nil
+        model = nil
 
         # If meeting already has a DB ID, it's matched - update if needed
         if meeting_id.present? && meeting_id.positive?
@@ -53,15 +58,15 @@ module Import
           return meeting_id
         end
 
-        attributes_for_logging = sanitize_attributes(meeting_hash, GogglesDb::Meeting)
-        new_meeting = GogglesDb::Meeting.create!(attributes_for_logging)
-        sql_log << SqlMaker.new(row: new_meeting).log_insert
+        model = prepare_model(meeting_hash)
+        model.save!
+        sql_log << SqlMaker.new(row: model).log_insert
         stats[:meetings_created] += 1
-        logger.log_success(entity_type: 'Meeting', entity_id: new_meeting.id, action: 'created')
-        Rails.logger.info("[Main] Created Meeting ID=#{new_meeting.id}, #{new_meeting.description}")
-        new_meeting.id
+        logger.log_success(entity_type: 'Meeting', entity_id: model.id, action: 'created')
+        Rails.logger.info("[Main] Created Meeting ID=#{model.id}, #{model.description}")
+        model.id
       rescue ActiveRecord::RecordInvalid => e
-        model_row = e.record || (attributes_for_logging && GogglesDb::Meeting.new(attributes_for_logging))
+        model_row = e.record || model
         error_details = if model_row
                           GogglesDb::ValidationErrorTools.recursive_error_for(model_row)
                         else

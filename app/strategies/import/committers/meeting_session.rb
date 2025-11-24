@@ -18,6 +18,11 @@ module Import
         @sql_log = sql_log
       end
 
+      def prepare_model(session_hash)
+        normalized_session = sanitize_attributes(session_hash, GogglesDb::MeetingSession)
+        GogglesDb::MeetingSession.new(normalized_session)
+      end
+
       # Commit a MeetingSession entity.
       # Expects session_hash to already include meeting_id and (optionally)
       # swimming_pool_id.
@@ -29,6 +34,7 @@ module Import
         return unless meeting_id
 
         normalized_session = sanitize_attributes(session_hash, GogglesDb::MeetingSession)
+        model = nil
 
         # If session already has a DB ID, update if needed
         if session_id.present? && session_id.positive?
@@ -42,13 +48,14 @@ module Import
           return session_id
         end
 
-        new_session = GogglesDb::MeetingSession.create!(normalized_session)
-        sql_log << SqlMaker.new(row: new_session).log_insert
+        model = prepare_model(session_hash)
+        model.save!
+        sql_log << SqlMaker.new(row: model).log_insert
         stats[:sessions_created] += 1
-        Rails.logger.info("[Main] Created MeetingSession ID=#{new_session.id}, order=#{new_session.session_order}")
-        new_session.id
+        Rails.logger.info("[Main] Created MeetingSession ID=#{model.id}, order=#{model.session_order}")
+        model.id
       rescue ActiveRecord::RecordInvalid => e
-        model_row = e.record
+        model_row = e.record || model
         error_details = if model_row
                           GogglesDb::ValidationErrorTools.recursive_error_for(model_row)
                         else

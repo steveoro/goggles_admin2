@@ -61,11 +61,22 @@ module Import
     end
 
     # Write the log file with formatted entries and stats summary
-    def write_log_file(stats:)
+    # @param rolled_back [Boolean] whether the DB transaction was rolled back
+    # @param top_level_error [String, nil] the top-level error message, if any
+    def write_log_file(stats:, rolled_back: false, top_level_error: nil)
       File.open(log_path, 'w') do |f|
         f.puts '=' * 80
         f.puts "Phase 6 Commit Log - #{Time.current}"
         f.puts '=' * 80
+        f.puts
+
+        outcome = if rolled_back
+                    'FAILURE (transaction rolled back; DB changes were not persisted)'
+                  else
+                    'SUCCESS (transaction committed)'
+                  end
+        f.puts "Outcome: #{outcome}"
+        f.puts "Top-level error: #{top_level_error}" if top_level_error
         f.puts
 
         # Write stats summary

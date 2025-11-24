@@ -10,9 +10,12 @@ module Phase3
   class RelayEnrichmentDetector
     MAX_LEGS = 8
 
-    def initialize(source_path:, phase3_swimmers: [])
+    def initialize(source_path:, phase3_swimmers: [], season: nil, meeting_date: nil)
       @source_path = source_path
       @phase3_swimmers = Array(phase3_swimmers)
+      @season = season
+      @meeting_date = meeting_date
+      @categories_cache = season ? PdfResults::CategoriesCache.new(season) : nil
       index_phase3_swimmers
     end
 
@@ -119,6 +122,19 @@ module Phase3
       effective_year = raw_year.presence || phase3_match&.fetch('year_of_birth', nil)
       effective_gender = normalize_gender(raw_gender.presence || phase3_match&.fetch('gender_type_code', nil))
 
+      # Compute individual category if we have all required data
+      category_type_id = nil
+      category_type_code = nil
+      if effective_year.present? && effective_gender.present? && @meeting_date.present? && @season && @categories_cache
+        category_type_id, category_type_code = Import::CategoryComputer.compute_category(
+          year_of_birth: effective_year,
+          gender_code: effective_gender,
+          meeting_date: @meeting_date,
+          season: @season,
+          categories_cache: @categories_cache
+        )
+      end
+
       {
         'leg_order' => idx,
         'relay_title' => section['title'],
@@ -129,6 +145,8 @@ module Phase3
         'raw_gender' => raw_gender,
         'effective_year_of_birth' => effective_year,
         'effective_gender' => effective_gender,
+        'category_type_id' => category_type_id,
+        'category_type_code' => category_type_code,
         'phase3_swimmer' => phase3_match,
         'lap_reference' => lap_reference
       }
@@ -136,10 +154,18 @@ module Phase3
 
     def detect_issues_for(leg)
       phase3_swimmer = leg['phase3_swimmer']
+      missing_year = leg['effective_year_of_birth'].to_i.zero?
+      missing_gender = leg['effective_gender'].blank?
+      missing_swimmer_id = phase3_swimmer.present? && phase3_swimmer['swimmer_id'].to_i.zero?
+
+      # Category is missing if we have year+gender but no category_type_id
+      missing_category = !missing_year && !missing_gender && leg['category_type_id'].blank?
+
       {
-        'missing_year_of_birth' => leg['effective_year_of_birth'].to_i.zero?,
-        'missing_gender' => leg['effective_gender'].blank?,
-        'missing_swimmer_id' => phase3_swimmer.present? && phase3_swimmer['swimmer_id'].to_i.zero?
+        'missing_year_of_birth' => missing_year,
+        'missing_gender' => missing_gender,
+        'missing_swimmer_id' => missing_swimmer_id,
+        'missing_category' => missing_category
       }
     end
 

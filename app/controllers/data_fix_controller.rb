@@ -195,9 +195,19 @@ class DataFixController < ApplicationController
       @source_path = source_path
       base_dir = File.dirname(source_path)
 
+      # Extract season and meeting date for category computation
+      season = detect_season_from_pathname(source_path)
+      phase1_path = default_phase_path_for(source_path, 1)
+      meeting_date = if File.exist?(phase1_path)
+                       phase1_data = JSON.parse(File.read(phase1_path))
+                       phase1_data.dig('data', 'meeting', 'header_date')
+                     end
+
       detector = Phase3::RelayEnrichmentDetector.new(
         source_path: source_path,
-        phase3_swimmers: @phase3_data.fetch('swimmers', [])
+        phase3_swimmers: @phase3_data.fetch('swimmers', []),
+        season: season,
+        meeting_date: meeting_date
       )
       @show_new_relay_swimmers = params[:show_new_relay_swimmers].present?
       @relay_enrichment_summary = filter_relay_enrichment_summary(detector.detect, @show_new_relay_swimmers)
@@ -1867,6 +1877,10 @@ class DataFixController < ApplicationController
       missing_year: swimmer['year_of_birth'].blank? || swimmer['year_of_birth'].to_i.zero?
     }
   end
+
+  # NOTE: build_phase3_category_issues_summary was removed.
+  # Category issues are now detected and shown via RelayEnrichmentDetector
+  # which includes missing_category in its issue detection.
 
   # Check if a relay result has any swimmers with missing data
   # Returns { has_issues: bool, issue_count: int, issues: { swimmer_key => {...} } }

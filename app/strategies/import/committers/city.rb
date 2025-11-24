@@ -18,6 +18,11 @@ module Import
         @sql_log = sql_log
       end
 
+      def prepare_model(city_hash)
+        attributes = sanitize_attributes(city_hash, GogglesDb::City)
+        GogglesDb::City.new(attributes)
+      end
+
       # Commit a City entity (nested within swimming pool data).
       # Returns city_id or nil.
       def commit(city_hash)
@@ -29,15 +34,14 @@ module Import
         return city_id if city_id.present? && city_id.positive?
 
         # Create new city
-        normalized_city = sanitize_attributes(city_hash, GogglesDb::City)
-
-        new_city = GogglesDb::City.create!(normalized_city)
-        sql_log << SqlMaker.new(row: new_city).log_insert
+        model = prepare_model(city_hash)
+        model.save!
+        sql_log << SqlMaker.new(row: model).log_insert
         stats[:cities_created] += 1
-        Rails.logger.info("[Main] Created City ID=#{new_city.id}, #{new_city.name}")
-        new_city.id
+        Rails.logger.info("[Main] Created City ID=#{model.id}, #{model.name}")
+        model.id
       rescue ActiveRecord::RecordInvalid => e
-        model_row = e.record
+        model_row = e.record || model
         error_details = if model_row
                           GogglesDb::ValidationErrorTools.recursive_error_for(model_row)
                         else

@@ -21,6 +21,11 @@ module Import
         @sql_log = sql_log
       end
 
+      def prepare_model(pool_hash)
+        normalized_pool = normalize_attributes(pool_hash, city_id: pool_hash['city_id'])
+        GogglesDb::SwimmingPool.new(normalized_pool)
+      end
+
       # Commit a SwimmingPool entity (nested within session data).
       # Returns swimming_pool_id or nil.
       def commit(pool_hash)
@@ -32,15 +37,14 @@ module Import
         return pool_id if pool_id.present? && pool_id.positive?
 
         # Create new swimming pool
-        normalized_pool = normalize_attributes(pool_hash, city_id: pool_hash['city_id'])
-
-        new_pool = GogglesDb::SwimmingPool.create!(normalized_pool)
-        sql_log << SqlMaker.new(row: new_pool).log_insert
+        model = prepare_model(pool_hash)
+        model.save!
+        sql_log << SqlMaker.new(row: model).log_insert
         stats[:pools_created] += 1
-        Rails.logger.info("[Main] Created SwimmingPool ID=#{new_pool.id}, #{new_pool.name}")
-        new_pool.id
+        Rails.logger.info("[Main] Created SwimmingPool ID=#{model.id}, #{model.name}")
+        model.id
       rescue ActiveRecord::RecordInvalid => e
-        model_row = e.record
+        model_row = e.record || model
         error_details = if model_row
                           GogglesDb::ValidationErrorTools.recursive_error_for(model_row)
                         else
