@@ -1,0 +1,90 @@
+{
+  "root": {
+    "normal_key": "value",
+    "group_1": {
+      "A|B|C": {
+        "key1": "val1",
+        "key2": "val2"
+      },
+      "X|Y|Z": {
+        "key1": "val3",
+        "key2": "val4"
+      },
+      "1|2|3": {
+        "key1": "val5",
+        "key2": "val6"
+      }
+    },
+    "group_2": {
+      "Single|Pipe": {
+        "sub": "val"
+      },
+      "Another|Pipe": {
+        "sub": "val"
+      }
+    },
+    "group_3_no_pipes": {
+      "KeyA": {
+        "x": 1,
+        "y": 2
+      },
+      "KeyB": {
+        "x": 10,
+        "y": 20
+      },
+      "KeyC": {
+        "x": 100,
+        "y": 200
+      }
+    },
+    "group_4_dashes": {
+      "Key-A-1": {
+        "a": 1
+      },
+      "Key-B-2": {
+        "a": 2
+      },
+      "Key-C-3": {
+        "a": 3
+      }
+    },
+    "group_5_whitespace_separators": {
+      "Invalid | Pipe": {
+        "k": 1
+      },
+      "Another | Invalid": {
+        "k": 2
+      },
+      "Valid|Pipe": {
+        "k": 3
+      }
+    },
+    "group_6_whitespace_dashes": {
+      "Invalid - Dash": {
+        "z": 1
+      },
+      "Another - Invalid": {
+        "z": 2
+      },
+      "Valid-Dash": {
+        "z": 3
+      }
+    },
+    "group_7_names": {
+      "Amat.Nuoto Lib. Soc.Coop": {
+        "id": 1
+      },
+      "Centro Nuoto Torino": {
+        "id": 2
+      },
+      "Klab Sport ssd": {
+        "id": 3
+      }
+    },
+    "mixed": {
+      "NoPipe": {},
+      "Pipe|One": {},
+      "Pipe|Two": {}
+    }
+  }
+}
