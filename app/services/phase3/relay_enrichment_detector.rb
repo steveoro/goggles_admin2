@@ -26,6 +26,7 @@ module Phase3
       sections = Array(raw['sections'])
       summary = []
 
+      # 1. Scan relay results from sections/rows (LT2 format)
       sections.each do |section|
         rows = Array(section['rows'])
         rows.each do |row|
@@ -36,6 +37,20 @@ module Phase3
 
           summary << build_relay_summary(section, row, swimmers_info)
         end
+      end
+
+      # 2. Scan Phase 3 swimmers dictionary for orphan swimmers with missing data
+      #    (swimmers not yet matched to any relay leg in results)
+      orphan_swimmers = detect_orphan_swimmers_with_issues(summary)
+      unless orphan_swimmers.empty?
+        summary << {
+          'relay_label' => '⚠️ Orphan Swimmers (in dictionary, not in results)',
+          'team' => nil,
+          'category' => nil,
+          'event_title' => 'Swimmers from dictionary',
+          'swimmers' => orphan_swimmers,
+          'missing_counts' => count_issues(orphan_swimmers)
+        }
       end
 
       summary
@@ -289,6 +304,94 @@ module Phase3
       return 'F' if up.start_with?('F')
 
       nil
+    end
+
+    # Detect orphan swimmers from Phase 3 dictionary that have issues but are not in results
+    def detect_orphan_swimmers_with_issues(existing_summary)
+      # Build set of swimmer keys already present in results summary
+      keys_in_results = Set.new
+      existing_summary.each do |relay|
+        Array(relay['swimmers']).each do |leg|
+          key = leg['phase3_key']
+          keys_in_results.add(key.downcase) if key.present?
+        end
+      end
+
+      orphans = []
+      @phase3_swimmers.each do |swimmer|
+        key = swimmer['key']
+        swimmer_id = swimmer['swimmer_id'].to_i
+
+        # Skip matched swimmers
+        next if swimmer_id.positive?
+
+        # Skip swimmers already in results
+        next if key.present? && keys_in_results.include?(key.downcase)
+
+        # Build leg-like structure for this swimmer
+        leg = build_orphan_leg(swimmer)
+
+        # Detect issues
+        issues = detect_issues_for_orphan(leg)
+        next if issues.values.none?
+
+        orphans << leg.merge('issues' => issues)
+      end
+
+      orphans
+    end
+
+    # Build a leg-like structure from a Phase 3 swimmer entry
+    def build_orphan_leg(swimmer)
+      year = swimmer['year_of_birth']
+      gender = normalize_gender(swimmer['gender_type_code'])
+
+      # Compute category if we have all required data
+      category_type_id = nil
+      category_type_code = nil
+      if year.present? && gender.present? && @meeting_date.present? && @season && @categories_cache
+        category_type_id, category_type_code = Import::CategoryComputer.compute_category(
+          year_of_birth: year,
+          gender_code: gender,
+          meeting_date: @meeting_date,
+          season: @season,
+          categories_cache: @categories_cache
+        )
+      end
+
+      {
+        'leg_order' => nil,
+        'relay_title' => nil,
+        'team' => nil,
+        'name' => swimmer['complete_name'] || "#{swimmer['last_name']} #{swimmer['first_name']}",
+        'phase3_key' => swimmer['key'],
+        'raw_year_of_birth' => year,
+        'raw_gender' => gender,
+        'effective_year_of_birth' => year,
+        'effective_gender' => gender,
+        'category_type_id' => category_type_id,
+        'category_type_code' => category_type_code,
+        'phase3_swimmer' => swimmer,
+        'lap_reference' => nil
+      }
+    end
+
+    # Detect issues for an orphan swimmer (from dictionary, not in results)
+    def detect_issues_for_orphan(leg)
+      missing_year = leg['effective_year_of_birth'].to_i.zero?
+      missing_gender = leg['effective_gender'].blank?
+      # Orphan swimmers by definition have no swimmer_id match
+      missing_swimmer_id = true
+
+      # Category is missing if we have year+gender but no category_type_id
+      missing_category = !missing_year && !missing_gender && leg['category_type_id'].blank?
+
+      {
+        'missing_year_of_birth' => missing_year,
+        'missing_gender' => missing_gender,
+        'missing_swimmer_id' => missing_swimmer_id,
+        'missing_category' => missing_category
+      }
     end
   end
 end

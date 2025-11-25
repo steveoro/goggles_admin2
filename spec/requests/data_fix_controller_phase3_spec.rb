@@ -414,7 +414,7 @@ RSpec.describe DataFixController do
         get review_swimmers_path(file_path: source_file, phase3_v2: 1)
 
         expect(response).to be_successful
-        expect(response.body).to include(I18n.t('data_import.relay_enrichment.title'))
+        expect(response.body).to include('Phase 3: Missing Swimmer Data')
         expect(response.body).to include('Alpha John')
         # Without auxiliary files, shows warning instead of button
         expect(response.body).to include(I18n.t('data_import.relay_enrichment.no_auxiliary_files'))
@@ -440,7 +440,7 @@ RSpec.describe DataFixController do
 
         get review_swimmers_path(file_path: source_file, phase3_v2: 1)
 
-        expect(response.body).not_to include(I18n.t('data_import.relay_enrichment.title'))
+        expect(response.body).not_to include('Phase 3: Missing Swimmer Data')
       end
 
       it 'merges swimmers and badges from auxiliary phase3 files' do

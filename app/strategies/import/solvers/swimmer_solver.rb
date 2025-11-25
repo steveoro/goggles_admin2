@@ -64,14 +64,15 @@ module Import
               broadcast_progress('Map swimmers', idx + 1, total)
               next if l.blank? || f.blank? || yob.to_i.zero?
 
-              key = [l, f, yob].join('|')
+              # Always include leading pipe: |LAST|FIRST|YOB or GENDER|LAST|FIRST|YOB
+              key = gcode.present? ? "#{gcode}|#{l}|#{f}|#{yob}" : "|#{l}|#{f}|#{yob}"
               swimmers << build_swimmer_entry(key, l, f, yob.to_i, gcode)
               next if team_name.blank?
 
               badges << build_badge_entry(key, team_name, yob.to_i, gcode, meeting_date)
             end
           else # Hash dictionary: key => swimmerKey, value => details
-            data_hash['swimmers'].each_with_index do |(key, v), idx|
+            data_hash['swimmers'].each_with_index do |(_original_key, v), idx|
               l = v['last_name'] || v['lastName']
               f = v['first_name'] || v['firstName']
               yob = v['year_of_birth'] || v['year']
@@ -80,6 +81,8 @@ module Import
               broadcast_progress('Map swimmers', idx + 1, total)
               next if l.blank? || f.blank? || yob.to_i.zero?
 
+              # Always include leading pipe: |LAST|FIRST|YOB or GENDER|LAST|FIRST|YOB
+              key = gcode.present? ? "#{gcode}|#{l}|#{f}|#{yob}" : "|#{l}|#{f}|#{yob}"
               swimmers << build_swimmer_entry(key, l, f, yob.to_i, gcode)
               next if team_name.to_s.strip.empty?
 
@@ -111,8 +114,9 @@ module Import
 
                   first = parts.pop
                   last = parts.join(' ')
-                  key = [last, first, yob].join('|')
                   gcode = normalize_gender_code(gtype)
+                  # Always include leading pipe: |LAST|FIRST|YOB or GENDER|LAST|FIRST|YOB
+                  key = gcode.present? ? "#{gcode}|#{last}|#{first}|#{yob}" : "|#{last}|#{first}|#{yob}"
 
                   swimmers << build_swimmer_entry(key, last, first, yob.to_i, gcode)
                   next if team_name.to_s.strip.empty?
@@ -124,8 +128,9 @@ module Import
                 l, f, yob = extract_name_yob_from_row(row)
                 next if l.blank? || f.blank? || yob.to_i.zero?
 
-                key = [l, f, yob].join('|')
                 gcode = gender_code || normalize_gender_code(row['gender'] || row['gender_type'] || row['gender_type_code'])
+                # Always include leading pipe: |LAST|FIRST|YOB or GENDER|LAST|FIRST|YOB
+                key = gcode.present? ? "#{gcode}|#{l}|#{f}|#{yob}" : "|#{l}|#{f}|#{yob}"
                 swimmers << build_swimmer_entry(key, l, f, yob.to_i, gcode)
                 team_name = row['team']
                 next if team_name.to_s.strip.empty?
@@ -268,6 +273,34 @@ module Import
           top_match = matches.first
           entry['swimmer_id'] = top_match['id']
           entry['complete_name'] = top_match['complete_name']
+
+          # Populate gender from matched swimmer if it was missing
+          if entry['gender_type_code'].blank? && top_match['gender_type_code'].present?
+            entry['gender_type_code'] = top_match['gender_type_code']
+            @logger&.info("[SwimmerSolver] Populated gender '#{top_match['gender_type_code']}' from matched swimmer ID #{top_match['id']}")
+
+            # Update key to include gender prefix now that we have it
+            parts = key.split('|').reject(&:blank?)
+            # Rebuild key: GENDER|LAST|FIRST|YOB
+            entry['key'] = "#{entry['gender_type_code']}|#{parts[0]}|#{parts[1]}|#{parts[2]}"
+            @logger&.debug("[SwimmerSolver] Updated key from '#{key}' to '#{entry['key']}'")
+
+            # Recompute category now that we have complete data
+            meeting_date = @phase1_data&.dig('data', 'meeting', 'header_date')
+            if year_of_birth.present? && meeting_date.present? && @categories_cache
+              category_type_id, category_type_code = Import::CategoryComputer.compute_category(
+                year_of_birth: year_of_birth,
+                gender_code: entry['gender_type_code'],
+                meeting_date: meeting_date,
+                season: @season,
+                categories_cache: @categories_cache
+              )
+              entry['category_type_id'] = category_type_id
+              entry['category_type_code'] = category_type_code
+              @logger&.info("[SwimmerSolver] Recomputed category '#{category_type_code}' after gender assignment")
+            end
+          end
+
           @logger&.info("[SwimmerSolver] Auto-assigned swimmer '#{key}' -> ID #{top_match['id']} (#{(top_match['weight'] * 100).round(1)}%)")
         end
 
@@ -424,21 +457,29 @@ module Import
 
       # Find swimmer_id by swimmer_key from current swimmers being built
       # Note: This looks at swimmers array being built in this phase, not from saved phase3 file
+      # Keys now have format: |LAST|FIRST|YOB or GENDER|LAST|FIRST|YOB
       def find_swimmer_id_by_key(swimmer_key)
         # First check phase3 data if available (from previous build)
+        # Use include? for partial match to handle keys with/without gender prefix
         if @phase1_data # Reusing phase data loaded at start
           swimmers = Array(@phase3_data&.dig('data', 'swimmers'))
+          # Exact match first
           swimmer = swimmers.find { |s| s['key'] == swimmer_key }
+          # Fallback: partial match if key contains the swimmer key (handles gender prefix variations)
+          swimmer ||= swimmers.find { |s| s['key'].include?(swimmer_key.sub(/^[MF]?\|?/, '|')) }
           return swimmer&.dig('swimmer_id') if swimmer
         end
 
         # Otherwise, try to find in DB by parsing key
-        parts = swimmer_key.split('|')
+        # Remove leading empty part if present (|LAST|... format)
+        parts = swimmer_key.split('|').reject(&:blank?)
         return nil if parts.size < 3
 
-        last_name = parts[0]
-        first_name = parts[1]
-        year_of_birth = parts[2].to_i
+        # Handle both formats: GENDER|LAST|FIRST|YOB or LAST|FIRST|YOB
+        offset = parts[0].length == 1 && parts[0].match?(/[MF]/) ? 1 : 0
+        last_name = parts[offset]
+        first_name = parts[offset + 1]
+        year_of_birth = parts[offset + 2].to_i
 
         # Quick lookup - exact match by name and YOB
         swimmer = GogglesDb::Swimmer.find_by(

@@ -31,7 +31,77 @@ module Import
         @phase1_data = File.exist?(phase1_path) ? JSON.parse(File.read(phase1_path)) : nil
 
         sessions = []
-        if data_hash['sections'].is_a?(Array) && data_hash['sections'].any?
+        # Priority 1: LT4 format (events array) - Microplus crawler output
+        if data_hash['events'].is_a?(Array) && data_hash['events'].any?
+          arr = data_hash['events']
+          sessions_map = Hash.new { |h, k| h[k] = { 'session_order' => k, 'events' => [], '__seen__' => {} } }
+
+          arr.each_with_index do |ev, idx_ev|
+            # Distance / stroke support for LT4 (eventLength, eventStroke) and generic fields
+            distance = ev['distance'] || ev['distanceInMeters'] || ev['eventLength']
+            stroke = ev['stroke'] || ev['style'] || ev['eventStroke']
+            is_relay = ev['relay'] == true
+
+            # Try to derive from eventCode
+            if distance.to_s.strip.empty? || stroke.to_s.strip.empty?
+              code = ev['eventCode'].to_s
+              if code.match?(/\A\d{2,4}[A-Z]{2}\z/)
+                # Individual event code: "200RA", "100SL"
+                distance = code.gsub(/[^0-9]/, '') if distance.to_s.strip.empty?
+                stroke = code.gsub(/[^A-Z]/, '') if stroke.to_s.strip.empty?
+              elsif code.match?(/\A[MS]?\d+[xX]\d+[A-Z]{2}\z/i)
+                # Relay event code: "4x50SL", "S4X50MI", "M4X50SL"
+                # Parse participants and phase length
+                match = code.match(/(\d+)[xX](\d+)/i)
+                if match
+                  participants = match[1].to_i
+                  phase_length = match[2].to_i
+                  distance = (participants * phase_length).to_s if distance.to_s.strip.empty?
+                  # Extract stroke code (last 2 letters)
+                  stroke = code.match(/([A-Z]{2})\z/)[1] if stroke.to_s.strip.empty?
+                  is_relay = true
+                end
+              end
+            end
+            next if distance.to_s.strip.empty? || stroke.to_s.strip.empty?
+
+            session_order = ev['sessionOrder'] || 1
+            event_order = ev['eventOrder'] || (idx_ev + 1)
+            key = ev['eventCode'].presence || [distance, stroke].join('|')
+
+            bucket = sessions_map[session_order]
+            next if bucket['__seen__'][key]
+
+            event_hash = {
+              'key' => key,
+              'distance' => distance,
+              'stroke' => stroke,
+              'relay' => is_relay,
+              'event_order' => event_order,
+              'session_order' => session_order,
+              'heat_type_id' => 3, # Default: Finals
+              'heat_type' => 'F'   # Finals code
+            }
+
+            # Try to find matching event_type_id based on distance + stroke code
+            event_type_id = find_event_type_id(distance, stroke)
+            event_hash['event_type_id'] = event_type_id if event_type_id.present?
+
+            # Enhance with meeting_session_id and meeting_event_id matching
+            enhance_event_with_matching!(event_hash, session_order)
+
+            bucket['events'] << event_hash
+            bucket['__seen__'][key] = true
+          end
+
+          sessions = sessions_map.values.map do |h|
+            h.delete('__seen__')
+            h['events'].sort_by! { |e| e['event_order'].to_i }
+            h
+          end.sort_by { |s| s['session_order'].to_i }
+
+        # Priority 2: LT2 format (sections array) - Legacy/PDF parsed
+        elsif data_hash['sections'].is_a?(Array) && data_hash['sections'].any?
           # Check if this is a relay-only file (all sections are relays)
           all_relay = data_hash['sections'].all? do |sec|
             rows = sec['rows'] || []
@@ -152,73 +222,9 @@ module Import
             end
           end
         else
-          # Fallback: no sections, try a flat events array (LT4 style)
-          arr = data_hash['events'] || []
-          sessions_map = Hash.new { |h, k| h[k] = { 'session_order' => k, 'events' => [], '__seen__' => {} } }
-
-          arr.each_with_index do |ev, idx_ev|
-            # Distance / stroke support for LT4 (eventLength, eventStroke) and generic fields
-            distance = ev['distance'] || ev['distanceInMeters'] || ev['eventLength']
-            stroke = ev['stroke'] || ev['style'] || ev['eventStroke']
-            is_relay = ev['relay'] == true
-
-            # Try to derive from eventCode
-            if distance.to_s.strip.empty? || stroke.to_s.strip.empty?
-              code = ev['eventCode'].to_s
-              if code.match?(/\A\d{2,4}[A-Z]{2}\z/)
-                # Individual event code: "200RA", "100SL"
-                distance = code.gsub(/[^0-9]/, '') if distance.to_s.strip.empty?
-                stroke = code.gsub(/[^A-Z]/, '') if stroke.to_s.strip.empty?
-              elsif code.match?(/\A[MS]?\d+[xX]\d+[A-Z]{2}\z/i)
-                # Relay event code: "4x50SL", "S4X50MI", "M4X50SL"
-                # Parse participants and phase length
-                match = code.match(/(\d+)[xX](\d+)/i)
-                if match
-                  participants = match[1].to_i
-                  phase_length = match[2].to_i
-                  distance = (participants * phase_length).to_s if distance.to_s.strip.empty?
-                  # Extract stroke code (last 2 letters)
-                  stroke = code.match(/([A-Z]{2})\z/)[1] if stroke.to_s.strip.empty?
-                  is_relay = true
-                end
-              end
-            end
-            next if distance.to_s.strip.empty? || stroke.to_s.strip.empty?
-
-            session_order = ev['sessionOrder'] || 1
-            event_order = ev['eventOrder'] || (idx_ev + 1)
-            key = ev['eventCode'].presence || [distance, stroke].join('|')
-
-            bucket = sessions_map[session_order]
-            next if bucket['__seen__'][key]
-
-            event_hash = {
-              'key' => key,
-              'distance' => distance,
-              'stroke' => stroke,
-              'relay' => is_relay,
-              'event_order' => event_order,
-              'session_order' => session_order,
-              'heat_type_id' => 3, # Default: Finals
-              'heat_type' => 'F'   # Finals code
-            }
-
-            # Try to find matching event_type_id based on distance + stroke code
-            event_type_id = find_event_type_id(distance, stroke)
-            event_hash['event_type_id'] = event_type_id if event_type_id.present?
-
-            # Enhance with meeting_session_id and meeting_event_id matching
-            enhance_event_with_matching!(event_hash, session_order)
-
-            bucket['events'] << event_hash
-            bucket['__seen__'][key] = true
-          end
-
-          sessions = sessions_map.values.map do |h|
-            h.delete('__seen__')
-            h['events'].sort_by! { |e| e['event_order'].to_i }
-            h
-          end.sort_by { |s| s['session_order'].to_i }
+          # No recognizable structure found
+          Rails.logger.warn("[EventSolver] No events[] or sections[] found in #{source_path}")
+          sessions = []
         end
 
         payload = { 'sessions' => sessions }
@@ -315,18 +321,19 @@ module Import
         total_distance = participants * phase_length
 
         # Determine stroke from title keywords (italian)
-        stroke_code = if /misti|medley/i.match?(title)
+        stroke_code = case title
+                      when /misti|medley/i
                         'MI' # Mixed relay (backstroke, breaststroke, butterfly, freestyle) - stroke_type_id=10
-                      elsif /stile\s*libero|freestyle/i.match?(title)
+                      when /stile\s*libero|freestyle/i
                         'SL' # Freestyle
-                      elsif /dorso|backstroke/i.match?(title)
+                      when /dorso|backstroke/i
                         'DO' # Backstroke
-                      elsif /rana|breaststroke/i.match?(title)
+                      when /rana|breaststroke/i
                         'RA' # Breaststroke
-                      elsif /farfalla|delfino|butterfly/i.match?(title)
+                      when /farfalla|delfino|butterfly/i
                         'FA' # Butterfly
                       else
-                        'SL' # Default to freestyle if unknown
+                        raise "Unable detect stroke code from title '#{title}'"
                       end
 
         # Determine mixed gender prefix: 'M' for mixed, 'S' for same gender

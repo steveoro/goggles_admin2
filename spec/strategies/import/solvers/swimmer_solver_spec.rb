@@ -34,9 +34,10 @@ RSpec.describe Import::Solvers::SwimmerSolver do
       expect(File).to exist(phase3)
       data = JSON.parse(File.read(phase3))['data']
       keys = data['swimmers'].map { |h| h['key'] }
-      expect(keys).to include('DOE|JOHN|1970')
-      expect(keys).to include('ROSSI|Mario|1980')
-      expect(data['badges']).to include(include('swimmer_key' => 'DOE|JOHN|1970', 'team_key' => 'Team X', 'season_id' => season.id))
+      # New format: gender prefix when known, leading pipe when unknown
+      expect(keys).to include('M|DOE|JOHN|1970')
+      expect(keys).to include('M|ROSSI|Mario|1980')
+      expect(data['badges']).to include(include('swimmer_key' => 'M|DOE|JOHN|1970', 'team_key' => 'Team X', 'season_id' => season.id))
     end
   end
 
@@ -59,10 +60,11 @@ RSpec.describe Import::Solvers::SwimmerSolver do
       expect(File).to exist(phase3)
       data = JSON.parse(File.read(phase3))['data']
       keys = data['swimmers'].map { |h| h['key'] }
-      expect(keys).to include('Neri|Luca|1990')
-      expect(keys).to include('VERDI|Paolo|1985')
+      # New format: gender prefix from section fin_sesso
+      expect(keys).to include('M|Neri|Luca|1990')
+      expect(keys).to include('M|VERDI|Paolo|1985')
       # Badge inferred from team
-      expect(data['badges']).to include(include('swimmer_key' => 'Neri|Luca|1990', 'team_key' => 'Alpha', 'season_id' => season.id))
+      expect(data['badges']).to include(include('swimmer_key' => 'M|Neri|Luca|1990', 'team_key' => 'Alpha', 'season_id' => season.id))
     end
   end
 
@@ -82,7 +84,9 @@ RSpec.describe Import::Solvers::SwimmerSolver do
         phase3 = default_phase3_path(src)
         data = JSON.parse(File.read(phase3))['data']
 
-        swimmer_entry = data['swimmers'].find { |s| s['key'] == "#{swimmer.last_name}|#{swimmer.first_name}|#{swimmer.year_of_birth}" }
+        # Key now includes gender prefix
+        expected_key = "#{swimmer.gender_type.code}|#{swimmer.last_name}|#{swimmer.first_name}|#{swimmer.year_of_birth}"
+        swimmer_entry = data['swimmers'].find { |s| s['key'] == expected_key }
         expect(swimmer_entry['swimmer_id']).to eq(swimmer.id)
       end
       # No cleanup needed - using existing DB data
@@ -137,8 +141,9 @@ RSpec.describe Import::Solvers::SwimmerSolver do
         phase3 = default_phase3_path(src)
         data = JSON.parse(File.read(phase3))['data']
 
+        expected_key = "#{swimmer.gender_type.code}|#{swimmer.last_name}|#{swimmer.first_name}|#{swimmer.year_of_birth}"
         badge_entry = data['badges'].find do |b|
-          b['swimmer_key'] == "#{swimmer.last_name}|#{swimmer.first_name}|#{swimmer.year_of_birth}"
+          b['swimmer_key'] == expected_key
         end
 
         expect(badge_entry['badge_id']).to eq(badge.id)
@@ -147,7 +152,7 @@ RSpec.describe Import::Solvers::SwimmerSolver do
       end
     end
 
-    it 'stores category_type_id when category can be calculated' do
+    it 'stores category_type_id on badges when category can be calculated' do
       swimmer = GogglesDb::Swimmer.first
       team = GogglesDb::Team.first
       meeting_date = '2025-10-15'
@@ -188,12 +193,111 @@ RSpec.describe Import::Solvers::SwimmerSolver do
         phase3 = default_phase3_path(src)
         data = JSON.parse(File.read(phase3))['data']
 
+        expected_key = "#{swimmer.gender_type.code}|#{swimmer.last_name}|#{swimmer.first_name}|#{swimmer.year_of_birth}"
         badge_entry = data['badges'].find do |b|
-          b['swimmer_key'] == "#{swimmer.last_name}|#{swimmer.first_name}|#{swimmer.year_of_birth}"
+          b['swimmer_key'] == expected_key
         end
 
         expect(badge_entry['category_type_id']).to be_a(Integer)
         expect(badge_entry['category_type_id']).to be > 0
+        expect(badge_entry['category_type_code']).to be_a(String)
+        # Category codes: M## (Master), U## (Under), MA# (100+)
+        expect(badge_entry['category_type_code']).to match(/^(M\d{2}|MA\d|U\d{2})$/)
+      end
+    end
+
+    it 'stores category_type_id on swimmers when category can be calculated' do
+      swimmer = GogglesDb::Swimmer.first
+      meeting_date = '2025-10-15'
+
+      Dir.mktmpdir do |tmp|
+        # Create phase1 with meeting date
+        phase1_path = File.join(tmp, 'meeting-l4-phase1.json')
+        File.write(phase1_path, JSON.pretty_generate({
+                                                       '_meta' => {},
+                                                       'data' => {
+                                                         'meeting' => { 'header_date' => meeting_date }
+                                                       }
+                                                     }))
+
+        src = write_json(tmp, 'meeting-l4.json', {
+                           'layoutType' => 4,
+                           'swimmers' => [
+                             "#{swimmer.gender_type.code}|#{swimmer.last_name}|#{swimmer.first_name}|#{swimmer.year_of_birth}|Team X"
+                           ]
+                         })
+
+        described_class.new(season:).build!(
+          source_path: src,
+          lt_format: 4,
+          phase1_path: phase1_path
+        )
+
+        phase3 = default_phase3_path(src)
+        data = JSON.parse(File.read(phase3))['data']
+
+        expected_key = "#{swimmer.gender_type.code}|#{swimmer.last_name}|#{swimmer.first_name}|#{swimmer.year_of_birth}"
+        swimmer_entry = data['swimmers'].find do |s|
+          s['key'] == expected_key
+        end
+
+        expect(swimmer_entry['category_type_id']).to be_a(Integer)
+        expect(swimmer_entry['category_type_id']).to be > 0
+        expect(swimmer_entry['category_type_code']).to be_a(String)
+        # Category codes: M## (Master), U## (Under), MA# (100+)
+        expect(swimmer_entry['category_type_code']).to match(/^(M\d{2}|MA\d|U\d{2})$/)
+      end
+    end
+
+    it 'populates gender and category from matched swimmer when initially missing' do
+      # Use existing swimmer from test DB
+      swimmer = GogglesDb::Swimmer.limit(100).sample
+      meeting_date = '2025-10-15'
+
+      Dir.mktmpdir do |tmp|
+        # Create phase1 with meeting date
+        phase1_path = File.join(tmp, 'meeting-l4-phase1.json')
+        File.write(phase1_path, JSON.pretty_generate({
+                                                       '_meta' => {},
+                                                       'data' => {
+                                                         'meeting' => { 'header_date' => meeting_date }
+                                                       }
+                                                     }))
+
+        # Simulate swimmer data WITHOUT gender (happens when parsing incomplete source data)
+        src = write_json(tmp, 'meeting-l4.json', {
+                           'layoutType' => 4,
+                           'swimmers' => [
+                             { 'last_name' => swimmer.last_name, 'first_name' => swimmer.first_name, 'year_of_birth' => swimmer.year_of_birth, 'team' => 'Team X' }
+                           ]
+                         })
+
+        described_class.new(season:).build!(
+          source_path: src,
+          lt_format: 4,
+          phase1_path: phase1_path
+        )
+
+        phase3 = default_phase3_path(src)
+        data = JSON.parse(File.read(phase3))['data']
+
+        # Should find swimmer with gender prefix (populated from matched DB record)
+        expected_key = "#{swimmer.gender_type.code}|#{swimmer.last_name}|#{swimmer.first_name}|#{swimmer.year_of_birth}"
+        swimmer_entry = data['swimmers'].find do |s|
+          s['key'] == expected_key
+        end
+
+        # Verify gender was populated from matched swimmer
+        expect(swimmer_entry['gender_type_code']).to eq(swimmer.gender_type.code)
+        # Verify category was attempted (may be nil if season has no categories, but should not be blank string)
+        expect(swimmer_entry).to have_key('category_type_id')
+        expect(swimmer_entry).to have_key('category_type_code')
+        # If category was successfully computed, verify it's valid
+        if swimmer_entry['category_type_id'].present?
+          expect(swimmer_entry['category_type_id']).to be_a(Integer)
+          # Category codes: M## (Master), U## (Under), MA# (100+)
+          expect(swimmer_entry['category_type_code']).to match(/^(M\d{2}|MA\d|U\d{2})$/)
+        end
       end
     end
 
@@ -238,8 +342,9 @@ RSpec.describe Import::Solvers::SwimmerSolver do
         phase3 = default_phase3_path(src)
         data = JSON.parse(File.read(phase3))['data']
 
+        expected_key = "#{swimmer.gender_type.code}|#{swimmer.last_name}|#{swimmer.first_name}|#{swimmer.year_of_birth}"
         badge_entry = data['badges'].find do |b|
-          b['swimmer_key'] == "#{swimmer.last_name}|#{swimmer.first_name}|#{swimmer.year_of_birth}"
+          b['swimmer_key'] == expected_key
         end
 
         # Should be nil (new badge to create)

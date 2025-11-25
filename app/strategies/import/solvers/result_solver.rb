@@ -26,7 +26,63 @@ module Import
 
         sessions = []
 
-        if data_hash['sections'].is_a?(Array) && data_hash['sections'].any?
+        # Priority 1: LT4 format (events array) - Microplus crawler output
+        if data_hash['events'].is_a?(Array) && data_hash['events'].any?
+          arr = data_hash['events']
+          # Per-session aggregator; within each session aggregate by event key (eventCode or distance|stroke)
+          sessions_map = Hash.new { |h, k| h[k] = { 'session_order' => k, 'events' => [] } }
+          # Track unique event keys per session (to avoid duplicates)
+          seen_map = Hash.new { |h, k| h[k] = {} }
+
+          arr.each_with_index do |event, _ev_idx|
+            session_order = event['sessionOrder'] || 1
+            distance = event['distance'] || event['distanceInMeters'] || event['eventLength']
+            stroke = event['stroke'] || event['style'] || event['eventStroke']
+            is_relay = event['relay'] == true
+
+            next if distance.blank? || stroke.blank?
+
+            event_code = event['eventCode'].presence || "#{distance}#{stroke}"
+            key = event_code
+            session_bucket = sessions_map[session_order]
+            seen_bucket = seen_map[session_order]
+            next if seen_bucket[key]
+
+            # Count results in this event
+            results = event['results'] || []
+            results_count = results.size
+
+            # Group by gender for individual events (relay events may have mixed genders)
+            genders_hash = {}
+            results.each do |result|
+              gender = result['gender'] || result['gender_type'] || result['gender_type_code'] || event['eventGender'] || 'X'
+              genders_hash[gender] ||= { 'gender' => gender, 'results_count' => 0, 'categories' => [] }
+              genders_hash[gender]['results_count'] += 1
+
+              category = result['category'] || result['categoryTypeCode']
+              genders_hash[gender]['categories'] << category if category && !genders_hash[gender]['categories'].include?(category)
+            end
+
+            session_bucket['events'] << {
+              'key' => key,
+              'distance' => distance,
+              'stroke' => stroke,
+              'relay' => is_relay,
+              'event_order' => event['eventOrder'] || 1,
+              'session_order' => session_order,
+              'results_count' => results_count,
+              'genders' => genders_hash.values.sort_by { |g| g['gender'] }
+            }
+            seen_bucket[key] = true
+          end
+
+          sessions = sessions_map.values.map do |h|
+            h['events'].sort_by! { |e| e['event_order'].to_i }
+            h
+          end.sort_by { |s| s['session_order'].to_i }
+
+        # Priority 2: LT2 format (sections array) - Legacy/PDF parsed
+        elsif data_hash['sections'].is_a?(Array) && data_hash['sections'].any?
           total = data_hash['sections'].size
           # Check if this is a relay-only file (all sections are relays)
           all_relay = data_hash['sections'].all? do |sec|
@@ -129,88 +185,9 @@ module Import
           end
 
         else
-          # LT4: events array with results
-          arr = data_hash['events'] || []
-          # Per-session aggregator; within each session aggregate by event key (eventCode or distance|stroke)
-          sessions_map = Hash.new { |h, k| h[k] = { 'session_order' => k, 'events_map' => {} } }
-          total = arr.size
-
-          arr.each_with_index do |ev, idx_ev|
-            distance = ev['distance'] || ev['distanceInMeters'] || ev['eventLength']
-            stroke = ev['stroke'] || ev['style'] || ev['eventStroke']
-            is_relay = ev['relay'] == true
-            if (distance.to_s.strip.empty? || stroke.to_s.strip.empty?) && ev['eventCode'].to_s.match?(/\A\d{2,4}[A-Z]{2}\z/)
-              code = ev['eventCode']
-              distance = code.gsub(/[^0-9]/, '') if distance.to_s.strip.empty?
-              stroke = code.gsub(/[^A-Z]/, '') if stroke.to_s.strip.empty?
-            end
-            next if distance.to_s.strip.empty? || stroke.to_s.strip.empty?
-
-            session_order = ev['sessionOrder'] || 1
-            event_order = ev['eventOrder'] || (idx_ev + 1)
-            key = ev['eventCode'].presence || [distance, stroke].join('|')
-            gender = (ev['eventGender'] || ev['gender']).to_s
-            results = Array(ev['results'])
-
-            bucket = sessions_map[session_order]
-            emap = bucket['events_map']
-            # Initialize event aggregate if missing
-            unless emap[key]
-              emap[key] = {
-                'key' => key,
-                'distance' => distance,
-                'stroke' => stroke,
-                'relay' => is_relay,
-                'event_order' => event_order,
-                'session_order' => session_order,
-                'results_count' => 0,
-                'genders_map' => Hash.new { |h2, g| h2[g] = { 'gender' => g, 'categories' => Hash.new(0), 'results_count' => 0 } }
-              }
-            end
-            agg = emap[key]
-            # Update minimal fields keeping the earliest event_order
-            agg['event_order'] = [agg['event_order'].to_i, event_order.to_i].min
-
-            # Aggregate results into genders/categories
-            if gender.present?
-              agg['genders_map'][gender] # ensure group exists
-            end
-            results.each do |res|
-              g = (res['gender'] || gender).to_s
-              c = res['category'] || res['categoryTypeCode'] || res['category_code'] || res['cat'] || res['category_type_code']
-              c = c.to_s
-              agg['genders_map'][g]['results_count'] += 1
-              agg['genders_map'][g]['categories'][c] += 1 if c.present?
-              agg['results_count'] += 1
-            end
-            broadcast_progress('map result events', idx_ev + 1, total)
-          end
-
-          # Finalize sessions/events arrays
-          sessions = sessions_map.values.map do |h|
-            events = h['events_map'].values.map do |eagg|
-              genders_summary = eagg['genders_map'].values.map do |gh|
-                {
-                  'gender' => gh['gender'],
-                  'results_count' => gh['results_count'],
-                  'categories' => gh['categories'].map { |cc, cnt| { 'category' => cc, 'results_count' => cnt } }.sort_by { |hcat| hcat['category'].to_s }
-                }
-              end.sort_by { |hg| hg[:gender].to_s }
-
-              {
-                'key' => eagg['key'],
-                'distance' => eagg['distance'],
-                'stroke' => eagg['stroke'],
-                'relay' => eagg['relay'],
-                'event_order' => eagg['event_order'],
-                'session_order' => eagg['session_order'],
-                'results_count' => eagg['results_count'],
-                'genders' => genders_summary
-              }
-            end.sort_by { |evh| evh['event_order'].to_i }
-
-            { 'session_order' => h['session_order'], 'events' => events }
-          end.sort_by { |s| s['session_order'].to_i }
+          # No recognizable structure found
+          Rails.logger.warn("[ResultSolver] No events[] or sections[] found in #{source_path}")
+          sessions = []
         end
 
         payload = { 'sessions' => sessions }
@@ -224,7 +201,7 @@ module Import
         }
         pfm.write!(data: payload, meta: meta)
       end
-      # rubocop:enable Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity
+      # rubocop:enable Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
 
       private
 

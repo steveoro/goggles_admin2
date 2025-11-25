@@ -169,11 +169,15 @@ module Phase5
     end
 
     # Lookup swimmer gender from phase 3 data
+    # Handles partial matching for backward compatibility with old/new key formats
     def lookup_swimmer_gender_from_phase3(swimmer_key)
       return nil unless phase3_data
 
       swimmers = phase3_data.dig('data', 'swimmers') || []
+      # Try exact match first
       swimmer = swimmers.find { |s| s['key'] == swimmer_key }
+      # Fallback: partial match (handles keys with/without gender prefix)
+      swimmer ||= swimmers.find { |s| s['key'].include?(swimmer_key.sub(/^[MF]?\|?/, '|')) }
       normalize_gender(swimmer&.dig('gender_type_code'))
     end
 
@@ -296,18 +300,18 @@ module Phase5
     end
 
     # Extract phase3 swimmer key from lap
-    # Format: "LAST|FIRST|YEAR"
+    # New format: "|LAST|FIRST|YEAR" or "GENDER|LAST|FIRST|YEAR"
     def extract_phase3_key_from_lap(lap)
       swimmer_key = lap['swimmer']
       return nil if swimmer_key.blank?
 
       tokens = swimmer_key.split('|')
       if tokens.size >= 5
-        # 5-token: "GENDER|LAST|FIRST|YEAR|TEAM"
-        "#{tokens[1]}|#{tokens[2]}|#{tokens[3]}"
+        # 5-token: "GENDER|LAST|FIRST|YEAR|TEAM" -> "GENDER|LAST|FIRST|YEAR"
+        "#{tokens[0]}|#{tokens[1]}|#{tokens[2]}|#{tokens[3]}"
       elsif tokens.size >= 4
-        # 4-token: "LAST|FIRST|YEAR|TEAM"
-        "#{tokens[0]}|#{tokens[1]}|#{tokens[2]}"
+        # 4-token: "LAST|FIRST|YEAR|TEAM" -> "|LAST|FIRST|YEAR"
+        "|#{tokens[0]}|#{tokens[1]}|#{tokens[2]}"
       end
     end
 

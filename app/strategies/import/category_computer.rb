@@ -43,13 +43,9 @@ module Import
 
       _category_code, category_type = result
 
-      # Verify gender matches (categories are gender-specific)
-      return [nil, nil] unless category_type.code.start_with?(gender_code)
-
+      # NOTE: Individual categories are gender-independent (M25, M30, etc. for both genders)
+      # Gender is only used for relay categories
       [category_type.id, category_type.code]
-    rescue StandardError => e
-      Rails.logger.warn("[CategoryComputer] Error computing category: #{e.message}")
-      [nil, nil]
     end
 
     # Compute category using Swimmer model's latest_category_type method as fallback.
@@ -66,9 +62,6 @@ module Import
       return [nil, nil] unless category_type
 
       [category_type.id, category_type.code]
-    rescue StandardError => e
-      Rails.logger.warn("[CategoryComputer] Error computing category from swimmer: #{e.message}")
-      [nil, nil]
     end
   end
 end

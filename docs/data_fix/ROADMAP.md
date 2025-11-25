@@ -1,8 +1,8 @@
 # Data-Fix: Development Roadmap
 
-**Last Updated**: 2025-11-17  
-**Version**: 2.3  
-**Status**: ✅ All Phases Complete | 🟡 Testing & Polish Ongoing
+**Last Updated**: 2025-11-25  
+**Version**: 2.4  
+**Status**: ✅ All Phases Complete | ✅ LT4 Structure Review Complete
 
 This document consolidates all active development plans and tracks progress toward full relay support completion.
 
@@ -26,10 +26,25 @@ This document consolidates all active development plans and tracks progress towa
 
 ---
 
-## 🎯 Current Sprint (2025-11-17)
+## 🎯 Current Sprint (2025-11-25)
 
 ### ✅ Recently Completed
 
+- **Relay Enrichment Panel - Orphan Swimmers** (2025-11-25) ✨ NEW
+  - Extended `Phase3::RelayEnrichmentDetector` to scan swimmers dictionary
+  - Detects orphan swimmers (in dictionary but not in results) with missing data
+  - Shows as "⚠️ Orphan Swimmers" group in enrichment panel
+  - Covers all sources: dictionary scan, results scan, enrichment loop
+  - RSpec coverage: 4 examples, 0 failures
+
+- **LT4 Structure Review** (2025-11-25) ✨ NEW
+  - Fixed EventSolver and ResultSolver priority order
+  - LT4 (events[]) now checked FIRST (Microplus primary format)
+  - LT2 (sections[]) as FALLBACK (Legacy/PDF parsed)
+  - Phase5Populator already correct (normalizes LT2→LT4)
+  - SwimmerSolver and TeamSolver already correct
+  - All EventSolver specs passing (22 examples, 0 failures)
+  
 - **Phase 6 Relay Commit** (2025-11-17) ✨ NEW
   - Full relay results commit to production tables
   - MRR → MeetingRelayResult
