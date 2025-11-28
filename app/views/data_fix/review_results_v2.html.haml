@@ -115,7 +115,7 @@
             .col-12.col-lg-6
               = render(partial: 'data_fix/result_program_card',
                        locals: { program_key: program_key, results: results, swimmers_by_id: @swimmers_by_id,
-                                 teams_by_id: @teams_by_id, teams_by_key: @teams_by_key,
+                                 swimmers_by_key: @swimmers_by_key, teams_by_id: @teams_by_id, teams_by_key: @teams_by_key,
                                  team_key_by_swimmer_key: @team_key_by_swimmer_key,
                                  laps_by_parent_key: @laps_by_parent_key, card_index: idx })
 

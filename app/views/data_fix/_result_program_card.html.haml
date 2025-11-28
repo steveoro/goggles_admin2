@@ -6,7 +6,8 @@
   # == Params:
   # - program_key: String, e.g., "1-200RA-M75-F"
   # - results: Array of DataImportMeetingIndividualResult
-  # - swimmers_by_id: Hash of Swimmer by ID
+  # - swimmers_by_id: Hash of Swimmer by ID (for matched swimmers)
+  # - swimmers_by_key: Hash of swimmer data by key (for unmatched swimmers from phase 3)
   # - teams_by_id: Hash of Team by ID (for matched teams)
   # - teams_by_key: Hash of Team data by key (for unmatched teams from phase 2)
   # - team_key_by_swimmer_key: Hash mapping swimmer_key => team_key (from phase 3 badges)
@@ -101,6 +102,8 @@
                 - if swimmer
                   = swimmer.complete_name
                   %small.text-muted= "(#{swimmer.year_of_birth})"
+                  - if swimmer.id
+                    %small.text-success= swimmer.id
                 - else
                   %code.text-muted= mir.import_key.split('/')[1]
               %td

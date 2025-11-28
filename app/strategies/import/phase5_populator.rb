@@ -171,14 +171,17 @@ module Import
                              res_idx + 1, results_x_event_tot)
           next if gender.blank? || category.blank?
 
+          # Find swimmer data from Phase 3 (returns both ID and full key when matched)
+          swimmer_data = find_swimmer_data(result)
+          swimmer_id = swimmer_data[:swimmer_id]
+          swimmer_key = swimmer_data[:swimmer_key] # Full Phase 3 key if matched
+
           # Generate keys
           program_key = build_program_key(session_order, event_code, category, gender)
-          swimmer_key = build_swimmer_key(result)
           team_key = build_team_key_from_result(result)
           import_key = GogglesDb::DataImportMeetingIndividualResult.build_import_key(program_key, swimmer_key)
 
-          # Find entity IDs from phase files
-          swimmer_id = find_swimmer_id(swimmer_key)
+          # Find team_id from phase files
           team_id = find_team_id(result)
           meeting_program_id = find_meeting_program_id(session_order, event_code, category, gender)
           @stats[:programs_matched] += 1 if meeting_program_id
@@ -366,9 +369,9 @@ module Import
       { minutes: minutes, seconds: seconds, hundredths: hundredths }
     end
 
-    # Build swimmer key matching phase 3 format: "LAST|FIRST|YEAR"
+    # Build swimmer key from source result
+    # Returns partial key for initial lookup: "LAST|FIRST|YEAR"
     # Source swimmer format: "F|ROSSI|Bianca|1950|CSI Ober Ferrari"
-    # Phase 3 key format: "ROSSI|Bianca|1950"
     def build_swimmer_key(result)
       swimmer_str = result['swimmer'] || result['swimmer_name'] || ''
       parts = swimmer_str.split('|')
@@ -383,46 +386,136 @@ module Import
       "#{last_name}|#{first_name}|#{year}"
     end
 
-    # Find swimmer_id from phase 3 data
-    # swimmer_key format: "LAST|FIRST|YEAR"
-    def find_swimmer_id(swimmer_key)
-      return nil unless phase3_data
+    # Find swimmer data from phase 3: returns { swimmer_id:, swimmer_key: }
+    # The returned swimmer_key is the FULL Phase 3 key (with gender prefix) when matched
+    # This ensures stored keys are consistent with Phase 3 format
+    def find_swimmer_data(result)
+      return { swimmer_id: nil, swimmer_key: build_swimmer_key(result) } unless phase3_data
+
+      partial_key = build_swimmer_key(result)
+      return { swimmer_id: nil, swimmer_key: partial_key } if partial_key.blank?
 
       swimmers = phase3_data.dig('data', 'swimmers') || []
-      swimmer = swimmers.find { |s| s['key'] == swimmer_key }
-      swimmer_id = swimmer&.dig('swimmer_id')
+
+      # First try exact match
+      swimmer = swimmers.find { |s| s['key'] == partial_key }
+      if swimmer&.dig('swimmer_id')
+        Rails.logger.info("[Phase5Populator] Found swimmer_id=#{swimmer['swimmer_id']} for exact key=#{partial_key}")
+        return { swimmer_id: swimmer['swimmer_id'], swimmer_key: swimmer['key'] }
+      end
+
+      # Try partial key matching (ignoring gender prefix)
+      normalized_partial = normalize_to_partial_key(partial_key)
+      if normalized_partial
+        matching_swimmers = swimmers.select do |s|
+          normalize_to_partial_key(s['key']) == normalized_partial
+        end
+
+        if matching_swimmers.size == 1
+          matched = matching_swimmers.first
+          Rails.logger.info("[Phase5Populator] Found swimmer_id=#{matched['swimmer_id']} via partial match, using Phase3 key=#{matched['key']}")
+          return { swimmer_id: matched['swimmer_id'], swimmer_key: matched['key'] }
+        elsif matching_swimmers.size > 1
+          # Multiple matches - find one with swimmer_id
+          with_id = matching_swimmers.find { |s| s['swimmer_id'].to_i.positive? }
+          if with_id
+            Rails.logger.info("[Phase5Populator] Found swimmer_id=#{with_id['swimmer_id']} from multiple matches, using Phase3 key=#{with_id['key']}")
+            return { swimmer_id: with_id['swimmer_id'], swimmer_key: with_id['key'] }
+          end
+        end
+      end
+
+      Rails.logger.warn("[Phase5Populator] No swimmer match found for key=#{partial_key}")
+      { swimmer_id: nil, swimmer_key: partial_key }
+    end
+
+    # Find swimmer_id from phase 3 data using flexible key matching
+    # Supports both exact match and partial matching (ignoring gender prefix)
+    # @deprecated Use find_swimmer_data instead for both ID and full key
+    def find_swimmer_id(swimmer_key)
+      return nil unless phase3_data
+      return nil if swimmer_key.blank?
+
+      # Use unified flexible lookup
+      swimmer_id = find_swimmer_id_by_key(swimmer_key)
 
       # DEBUG logging
       if swimmer_id
         Rails.logger.info("[Phase5Populator] Found swimmer_id=#{swimmer_id} for key=#{swimmer_key}")
       else
-        Rails.logger.warn("[Phase5Populator] No swimmer_id found for key=#{swimmer_key}, swimmer=#{swimmer.inspect}")
+        Rails.logger.warn("[Phase5Populator] No swimmer_id found for key=#{swimmer_key}")
       end
 
       swimmer_id
     end
 
-    # Find team_id from phase 2 data
+    # Find team_id from phase 2 data or phase 3 badges
+    # First tries Phase 2 teams, then falls back to Phase 3 badges
+    # Handles team name embedded in swimmer string (LT4 format: "F|LAST|FIRST|YOB|TeamName")
     def find_team_id(result)
-      return nil unless phase2_data
-
       team_name = result['team'] || result['team_name'] || result['teamName']
-      return nil if team_name.blank?
 
-      teams = phase2_data.dig('data', 'teams') || []
-      # Match by key first (exact match), then try name/editable_name
-      team = teams.find { |t| t['key'] == team_name } ||
-             teams.find { |t| t['name'] == team_name || t['editable_name'] == team_name }
-      team_id = team&.dig('team_id')
-
-      # DEBUG logging
-      if team_id
-        Rails.logger.info("[Phase5Populator] Found team_id=#{team_id} for team_name=#{team_name}")
-      else
-        Rails.logger.warn("[Phase5Populator] No team_id found for team_name=#{team_name}, team=#{team.inspect}")
+      # If no explicit team field, try to extract from swimmer string
+      # Format: "F|MURACCHIOLI|Elisa|1998|Team Sport Isola asd"
+      if team_name.blank?
+        swimmer_str = result['swimmer'] || result['swimmer_name'] || ''
+        parts = swimmer_str.split('|')
+        team_name = parts[4] if parts.size >= 5
       end
 
-      team_id
+      # Try Phase 2 team lookup first (if we have a team_name)
+      if team_name.present? && phase2_data
+        teams = phase2_data.dig('data', 'teams') || []
+        # Match by key first (exact match), then try name/editable_name
+        team = teams.find { |t| t['key'] == team_name } ||
+               teams.find { |t| t['name'] == team_name || t['editable_name'] == team_name }
+        team_id = team&.dig('team_id')
+
+        if team_id
+          Rails.logger.info("[Phase5Populator] Found team_id=#{team_id} from phase2 for team_name=#{team_name}")
+          return team_id
+        end
+      end
+
+      # Fallback: Try to find team_id from Phase 3 badges using swimmer key
+      # This works even if team_name is blank - we match by swimmer
+      if phase3_data
+        swimmer_key = build_swimmer_key(result)
+        badge_team_id = find_team_id_from_badges(swimmer_key, team_name)
+
+        if badge_team_id
+          Rails.logger.info("[Phase5Populator] Found team_id=#{badge_team_id} from phase3 badge for swimmer_key=#{swimmer_key}")
+          return badge_team_id
+        end
+      end
+
+      Rails.logger.warn("[Phase5Populator] No team_id found for team_name=#{team_name.presence || 'N/A'}")
+      nil
+    end
+
+    # Find team_id from Phase 3 badges using swimmer key or team key
+    def find_team_id_from_badges(swimmer_key, team_name)
+      return nil unless phase3_data
+
+      badges = phase3_data.dig('data', 'badges') || []
+
+      # First try to find badge by swimmer key (partial matching)
+      partial_key = normalize_to_partial_key(swimmer_key)
+      if partial_key
+        badge = badges.find do |b|
+          badge_partial = normalize_to_partial_key(b['swimmer_key'])
+          badge_partial == partial_key && b['team_id'].to_i.positive?
+        end
+        return badge['team_id'] if badge
+      end
+
+      # Fallback: find by team_key matching team_name
+      badge = badges.find do |b|
+        (b['team_key'] == team_name || b['team_key']&.downcase == team_name&.downcase) &&
+          b['team_id'].to_i.positive?
+      end
+
+      badge&.dig('team_id')
     end
 
     # Find meeting_program_id by matching against existing database records
@@ -666,10 +759,19 @@ module Import
       }
     end
 
-    # Build team key from result for relay events
+    # Build team key from result (for both individual and relay events)
+    # Handles team embedded in swimmer string (LT4 format: "F|LAST|FIRST|YOB|TeamName")
     def build_team_key_from_result(result)
-      team_name = result['team'] || result['team_name'] || result['teamName'] || ''
-      team_name.strip
+      team_name = result['team'] || result['team_name'] || result['teamName']
+
+      # If no explicit team field, try to extract from swimmer string
+      if team_name.blank?
+        swimmer_str = result['swimmer'] || result['swimmer_name'] || ''
+        parts = swimmer_str.split('|')
+        team_name = parts[4] if parts.size >= 5
+      end
+
+      (team_name || '').strip
     end
 
     # Find existing MeetingRelayResult for UPDATE operations
@@ -725,32 +827,12 @@ module Import
       laps.each_with_index do |lap, idx|
         relay_order = idx + 1
 
-        # Extract swimmer info from lap swimmer key
-        # Format: "GENDER|LAST_NAME|FIRST_NAME|YEAR|TEAM" or "LAST_NAME|FIRST_NAME|YEAR|TEAM"
-        swimmer_key_raw = lap['swimmer'] || ''
-        swimmer_parts = swimmer_key_raw.split('|')
-
-        # Handle both formats: with or without leading gender
-        if swimmer_parts.size >= 5
-          # Format: "M|LA MORGIA|Andrea|1993|Team"
-          last_name = swimmer_parts[1]
-          first_name = swimmer_parts[2]
-          year = swimmer_parts[3]
-        elsif swimmer_parts.size >= 4
-          # Format: "LA MORGIA|Andrea|1993|Team"
-          last_name = swimmer_parts[0]
-          first_name = swimmer_parts[1]
-          year = swimmer_parts[2]
-        else
-          # Fallback: can't parse swimmer key
-          last_name = ''
-          first_name = ''
-          year = ''
-        end
-
-        # Build lookup key for phase3 swimmer matching
-        swimmer_lookup_key = "#{last_name}|#{first_name}|#{year}"
-        swimmer_id = find_swimmer_id_by_key(swimmer_lookup_key)
+        # Find swimmer data from Phase 3 (returns both ID and full key when matched)
+        # Builds a mock result hash for the lap swimmer
+        lap_result = { 'swimmer' => lap['swimmer'] }
+        swimmer_data = find_swimmer_data(lap_result)
+        swimmer_id = swimmer_data[:swimmer_id]
+        swimmer_key = swimmer_data[:swimmer_key] # Full Phase 3 key if matched
 
         # Parse lap timing for MRS (each lap is the swimmer's leg timing)
         delta = parse_timing_string(lap['delta'])
@@ -767,8 +849,8 @@ module Import
           phase_file_path: source_path,
           # DB foreign keys (may be nil for unmatched entities)
           swimmer_id: swimmer_id,
-          # String keys for referencing entities when IDs are nil
-          swimmer_key: swimmer_lookup_key,
+          # String keys for referencing entities when IDs are nil (Full Phase 3 key if matched)
+          swimmer_key: swimmer_key,
           meeting_relay_result_key: mrr_import_key,
           # Leg data
           relay_order: relay_order,
@@ -831,15 +913,67 @@ module Import
       end
     end
 
-    # Find swimmer_id from phase 3 using simple key format
+    # Find swimmer_id from phase 3 using flexible key matching
+    # Supports matching by partial key (ignoring gender prefix)
+    # Phase 3 keys: "F|ANTONIOLI|Manuela|1983" or "|ANGELINI|Giulio|2002"
+    # Lookup keys: "ANTONIOLI|Manuela|1983" (without gender)
     def find_swimmer_id_by_key(swimmer_key)
+      return nil if swimmer_key.blank?
+
       swimmers = phase3_data&.dig('data', 'swimmers') || []
 
-      swimmer = swimmers.find do |s|
-        s['key'] == swimmer_key
+      # First try exact match
+      swimmer = swimmers.find { |s| s['key'] == swimmer_key }
+      return swimmer['swimmer_id'] if swimmer&.dig('swimmer_id')
+
+      # Build partial key for matching (|LAST|FIRST|YOB)
+      partial_key = normalize_to_partial_key(swimmer_key)
+      return nil if partial_key.blank?
+
+      # Find swimmers with matching partial key (ignoring gender prefix)
+      matching_swimmers = swimmers.select do |s|
+        phase3_partial = normalize_to_partial_key(s['key'])
+        phase3_partial == partial_key
       end
 
-      swimmer&.dig('swimmer_id')
+      # Return swimmer_id if exactly one match found
+      if matching_swimmers.size == 1
+        matching_swimmers.first&.dig('swimmer_id')
+      elsif matching_swimmers.size > 1
+        # Multiple matches - try to find one with swimmer_id
+        with_id = matching_swimmers.find { |s| s['swimmer_id'].to_i.positive? }
+        with_id&.dig('swimmer_id')
+      end
+    end
+
+    # Normalize any key format to |LAST|FIRST|YOB (partial key without gender)
+    # Input formats:
+    #   - "F|ANTONIOLI|Manuela|1983" -> "|ANTONIOLI|Manuela|1983"
+    #   - "|ANGELINI|Giulio|2002" -> "|ANGELINI|Giulio|2002"
+    #   - "ANTONIOLI|Manuela|1983" -> "|ANTONIOLI|Manuela|1983"
+    #   - "PRESICCE|Edoardo|2004|TeamName" -> "|PRESICCE|Edoardo|2004"
+    def normalize_to_partial_key(key)
+      return nil if key.blank?
+
+      parts = key.to_s.split('|')
+      return nil if parts.size < 3
+
+      # Detect format based on parts
+      if parts[0].match?(/\A[MF]?\z/i)
+        # Format: G|LAST|FIRST|YOB or |LAST|FIRST|YOB
+        last = parts[1]
+        first = parts[2]
+        yob = parts[3]
+      else
+        # Format: LAST|FIRST|YOB|Team (no gender prefix)
+        last = parts[0]
+        first = parts[1]
+        yob = parts[2]
+      end
+
+      return nil if last.blank? || first.blank? || yob.to_s.strip.empty?
+
+      "|#{last}|#{first}|#{yob}"
     end
 
     # Find swimmer_id from composite key format (e.g., "M|ROSSI|Mario|1978|TeamName")

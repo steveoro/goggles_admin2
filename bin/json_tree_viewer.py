@@ -5,7 +5,54 @@ import sys
 import os
 import re
 
-def process_dict_children(node, current_path, depth, target_path, prefix):
+def build_interest_tree(node, query):
+    """
+    Recursively searches the node for the query string.
+    Returns (has_match, interest_tree)
+    interest_tree is a dict where keys are children keys/indices that lead to a match.
+    """
+    if isinstance(node, str):
+        if query in node:
+            return True, {}
+        return False, {}
+    
+    if isinstance(node, dict):
+        my_interest = {}
+        has_match = False
+        for key, value in node.items():
+            child_match, child_tree = build_interest_tree(value, query)
+            if child_match:
+                my_interest[key] = child_tree
+                has_match = True
+        return has_match, my_interest
+
+    if isinstance(node, list):
+        my_interest = {}
+        has_match = False
+        for i, value in enumerate(node):
+            child_match, child_tree = build_interest_tree(value, query)
+            if child_match:
+                my_interest[i] = child_tree
+                has_match = True
+        return has_match, my_interest
+        
+    # Other types (int, float, bool, None)
+    # Convert to string to check? User said "string value contains the query string".
+    # Let's stick to strings for now, or maybe cast leaf nodes to string?
+    # "if the string value contains the query string" -> implies checking string values.
+    # But if user searches for "123" and value is 123 (int), should it match?
+    # Let's assume strict string matching for now as per request "string value".
+    return False, {}
+
+def highlight_match(text, query):
+    if not query:
+        return text
+    # Green ANSI code
+    green = "\033[92m"
+    reset = "\033[0m"
+    return text.replace(query, f"{green}{query}{reset}")
+
+def process_dict_children(node, current_path, depth, target_path, prefix, interest_tree=None, query=None):
     keys = list(node.keys())
     
     # Grouping Logic
@@ -18,8 +65,18 @@ def process_dict_children(node, current_path, depth, target_path, prefix):
         next_target_key = target_path[len(current_path)]
 
     for key in keys:
+        # If we have an interest tree, only process keys in it
+        if interest_tree is not None and key not in interest_tree:
+            continue
+
         # Check if this key is the next step in target path
         if key == next_target_key:
+            non_grouped_keys.append(key)
+            continue
+            
+        # If this key is interesting (part of query result), do not group it
+        # to ensure we can see the match inside.
+        if interest_tree is not None and key in interest_tree:
             non_grouped_keys.append(key)
             continue
 
@@ -82,7 +139,11 @@ def process_dict_children(node, current_path, depth, target_path, prefix):
         
         if item['type'] == 'single':
             key = item['key']
-            print_tree(node[key], current_path + [key], depth + 1, target_path, is_last_child, prefix)
+            child_interest = None
+            if interest_tree is not None:
+                child_interest = interest_tree.get(key)
+            
+            print_tree(node[key], current_path + [key], depth + 1, target_path, is_last_child, prefix, interest_tree=child_interest, query=query)
         else:
             # Print group representative
             group_keys = item['keys']
@@ -117,15 +178,17 @@ def process_dict_children(node, current_path, depth, target_path, prefix):
             
             # Recursively process the children of the representative node
             # using the same grouping logic
+            # Note: Grouping logic implies we don't have specific interest inside the group 
+            # (because we excluded interesting keys from groups), so interest_tree is likely None or irrelevant here?
+            # Actually, if we grouped them, it means none of them were in interest_tree (if query is active).
+            # So we can pass None for interest_tree.
+            
             if isinstance(representative_node, dict):
-                process_dict_children(representative_node, current_path + [first_key], depth + 1, target_path, grand_child_prefix)
+                process_dict_children(representative_node, current_path + [first_key], depth + 1, target_path, grand_child_prefix, interest_tree=None, query=query)
             elif isinstance(representative_node, list):
-                 # Should not happen based on grouping criteria (value is dict), but for safety
-                 # If it were a list, we would need to handle it like print_tree handles lists
-                 # But our grouping logic ensures value is dict.
                  pass
 
-def print_tree(node, current_path=None, depth=0, target_path=None, is_last=True, prefix=""):
+def print_tree(node, current_path=None, depth=0, target_path=None, is_last=True, prefix="", interest_tree=None, query=None):
     if current_path == None:
         current_path = []
     
@@ -155,6 +218,11 @@ def print_tree(node, current_path=None, depth=0, target_path=None, is_last=True,
     # Highlight if this is the exact target
     if target_path and current_path == target_path:
         node_label += " <--- TARGET"
+        
+    # If query is active and this node is a string match, append the value
+    if query and isinstance(node, str) and query in node:
+        highlighted_val = highlight_match(node, query)
+        node_label += f": {highlighted_val}"
 
     # Print the current node
     connector = ""
@@ -172,42 +240,48 @@ def print_tree(node, current_path=None, depth=0, target_path=None, is_last=True,
 
     # Recurse
     if isinstance(node, dict):
-        process_dict_children(node, current_path, depth, target_path, child_prefix)
+        process_dict_children(node, current_path, depth, target_path, child_prefix, interest_tree=interest_tree, query=query)
 
     elif isinstance(node, list):
         if not node:
             return
 
-        # If we are on the target path and the next step is an index in this array, follow it.
-        # Otherwise, default to index 0.
-        
         indices_to_visit = []
         
-        next_target_index = -1
-        if target_path and len(target_path) > len(current_path):
-             # Check if the next item in target_path is an integer (index)
-             next_step = target_path[len(current_path)]
-             if isinstance(next_step, int):
-                 next_target_index = next_step
-
-        if next_target_index != -1:
-            if 0 <= next_target_index < len(node):
-                indices_to_visit.append(next_target_index)
-            else:
-                # Index out of bounds, maybe just show 0?
-                indices_to_visit.append(0)
+        if query and interest_tree is not None:
+            # Only visit indices in interest_tree
+            indices_to_visit = sorted([i for i in interest_tree.keys() if isinstance(i, int)])
         else:
-            # Default to index 0
-            indices_to_visit.append(0)
+            # Default logic
+            next_target_index = -1
+            if target_path and len(target_path) > len(current_path):
+                 # Check if the next item in target_path is an integer (index)
+                 next_step = target_path[len(current_path)]
+                 if isinstance(next_step, int):
+                     next_target_index = next_step
+
+            if next_target_index != -1:
+                if 0 <= next_target_index < len(node):
+                    indices_to_visit.append(next_target_index)
+                else:
+                    indices_to_visit.append(0)
+            else:
+                # Default to index 0
+                indices_to_visit.append(0)
             
         for i, index in enumerate(indices_to_visit):
             is_last_child = (i == len(indices_to_visit) - 1)
-            print_tree(node[index], current_path + [index], depth + 1, target_path, is_last_child, child_prefix)
+            child_interest = None
+            if interest_tree is not None:
+                child_interest = interest_tree.get(index)
+                
+            print_tree(node[index], current_path + [index], depth + 1, target_path, is_last_child, child_prefix, interest_tree=child_interest, query=query)
 
 def main():
     parser = argparse.ArgumentParser(description="Visualize JSON structure as an ASCII tree. Test it with: 'bin/json_tree_viewer.py crawler/test/test_grouping.json'")
     parser.add_argument("file_path", help="Path to the JSON file")
     parser.add_argument("--path", help="JSON string representing the path to follow (e.g., '[\"sections\", 22]')", default=None)
+    parser.add_argument("-q", "--query", help="Search for a string value and focus the tree on matches", default=None)
 
     args = parser.parse_args()
 
@@ -227,8 +301,15 @@ def main():
         except Exception as e:
             print(f"Error parsing path: {e}", file=sys.stderr)
             sys.exit(1)
+            
+    interest_tree = None
+    if args.query:
+        has_match, interest_tree = build_interest_tree(data, args.query)
+        if not has_match:
+            print(f"No matches found for query: '{args.query}'")
+            return
 
-    print_tree(data, target_path=target_path)
+    print_tree(data, target_path=target_path, interest_tree=interest_tree, query=args.query)
 
 if __name__ == "__main__":
     main()

@@ -21,13 +21,24 @@ module Phase3
       @badge_signatures = build_badge_signatures(@badges)
       @stats = {
         swimmers_updated: 0,
-        badges_added: 0
+        badges_added: 0,
+        partial_matches_ambiguous: [] # Track swimmers with multiple partial matches
       }
+
+      # Build partial key indexes for flexible matching
+      build_partial_key_indexes
     end
 
     def merge_from(aux_data)
       merge_swimmers(Array(aux_data['swimmers']))
       merge_badges(Array(aux_data['badges']))
+      self
+    end
+
+    # Enrich swimmers from own badges (within same file)
+    # Call this before merge_from to fill gaps from internal data
+    def self_enrich!
+      enrich_swimmers_from_badges(@badges)
       self
     end
 
@@ -46,6 +57,7 @@ module Phase3
     private
 
     def merge_swimmers(aux_swimmers)
+      # First pass: exact key matches
       aux_swimmers.each do |aux_swimmer|
         key = aux_swimmer[SWIMMER_KEY].to_s
         next if key.blank?
@@ -56,6 +68,137 @@ module Phase3
         next unless existing
 
         @stats[:swimmers_updated] += 1 if merge_swimmer_attributes(existing, aux_swimmer)
+      end
+
+      # Second pass: partial key matches for swimmers still missing gender or YOB
+      enrich_from_partial_matches(aux_swimmers)
+    end
+
+    # Enrich swimmers from badges using partial key matching
+    # Badges often have more complete keys (with gender) from individual results
+    def enrich_swimmers_from_badges(badges)
+      # Build badge indexes for partial matching
+      badges_by_name_yob = Hash.new { |h, k| h[k] = [] }
+
+      badges.each do |badge|
+        key = badge['swimmer_key'].to_s
+        next if key.blank?
+
+        name_yob_key = extract_name_yob_key(key)
+        badges_by_name_yob[name_yob_key] << badge if name_yob_key
+      end
+
+      @swimmers.each do |swimmer|
+        key = swimmer[SWIMMER_KEY].to_s
+        next if key.blank?
+
+        # Try to fill missing gender from badge keys
+        next unless swimmer['gender_type_code'].to_s.strip.empty?
+
+        name_yob_key = extract_name_yob_key(key)
+        next unless name_yob_key
+
+        # Find badges matching the partial key that have gender in their key
+        matching_badges = badges_by_name_yob[name_yob_key]
+        genders_found = matching_badges.map { |b| extract_gender_from_key(b['swimmer_key']) }.compact.uniq
+
+        if genders_found.size == 1
+          swimmer['gender_type_code'] = genders_found.first
+          update_swimmer_key_with_gender(swimmer)
+          @stats[:swimmers_updated] += 1
+        elsif genders_found.size > 1
+          @stats[:partial_matches_ambiguous] << {
+            swimmer_key: key,
+            name: swimmer['complete_name'] || "#{swimmer['last_name']} #{swimmer['first_name']}",
+            issue: 'multiple_genders_in_badges',
+            found_genders: genders_found
+          }
+        end
+      end
+    end
+
+    # Extract gender code from key if present
+    # ASSUMES: key starts with the pipe separator even if the gender is missing
+    def extract_gender_from_key(key)
+      return nil if key.blank?
+
+      parts = key.split('|')
+      return nil if parts.empty?
+
+      gender = parts[0].to_s.strip.upcase
+      gender.match?(/\A[MF]\z/) ? gender : nil
+    end
+
+    # Enrich swimmers with missing data using partial key matching
+    # - For missing gender: find aux swimmers matching |LAST|FIRST|YOB (ignoring gender prefix)
+    # - For missing YOB: find aux swimmers matching G|LAST|FIRST| (ignoring YOB suffix)
+    def enrich_from_partial_matches(aux_swimmers)
+      # Build aux indexes for partial matching
+      aux_by_name_yob = Hash.new { |h, k| h[k] = [] } # |LAST|FIRST|YOB => [swimmers]
+      aux_by_gender_name = Hash.new { |h, k| h[k] = [] } # G|LAST|FIRST| => [swimmers]
+
+      aux_swimmers.each do |aux|
+        key = aux[SWIMMER_KEY].to_s
+        next if key.blank?
+
+        name_yob_key = extract_name_yob_key(key)
+        aux_by_name_yob[name_yob_key] << aux if name_yob_key
+
+        gender_name_key = extract_gender_name_key(key)
+        aux_by_gender_name[gender_name_key] << aux if gender_name_key
+      end
+
+      @swimmers.each do |swimmer|
+        key = swimmer[SWIMMER_KEY].to_s
+        next if key.blank?
+
+        # Try to fill missing gender from partial matches
+        if swimmer['gender_type_code'].to_s.strip.empty?
+          name_yob_key = extract_name_yob_key(key)
+          if name_yob_key
+            candidates = aux_by_name_yob[name_yob_key].select { |c| c['gender_type_code'].present? }
+            unique_genders = candidates.map { |c| c['gender_type_code'] }.uniq
+
+            if unique_genders.size == 1
+              # Single unique gender found - use it
+              swimmer['gender_type_code'] = unique_genders.first
+              update_swimmer_key_with_gender(swimmer)
+              @stats[:swimmers_updated] += 1
+            elsif unique_genders.size > 1
+              # Multiple genders found - ambiguous, record for UI warning
+              @stats[:partial_matches_ambiguous] << {
+                swimmer_key: key,
+                name: swimmer['complete_name'] || "#{swimmer['last_name']} #{swimmer['first_name']}",
+                issue: 'multiple_genders',
+                found_genders: unique_genders
+              }
+            end
+          end
+        end
+
+        # Try to fill missing YOB from partial matches (when gender is known)
+        next unless missing_year?(swimmer['year_of_birth']) && swimmer['gender_type_code'].present?
+
+        gender_name_key = extract_gender_name_key(key)
+        next unless gender_name_key
+
+        candidates = aux_by_gender_name[gender_name_key].select { |c| present_year?(c['year_of_birth']) }
+        unique_yobs = candidates.map { |c| c['year_of_birth'].to_i }.uniq
+
+        if unique_yobs.size == 1
+          # Single unique YOB found - use it
+          swimmer['year_of_birth'] = unique_yobs.first
+          update_swimmer_key_with_yob(swimmer)
+          @stats[:swimmers_updated] += 1
+        elsif unique_yobs.size > 1
+          # Multiple YOBs found - ambiguous, record for UI warning
+          @stats[:partial_matches_ambiguous] << {
+            swimmer_key: key,
+            name: swimmer['complete_name'] || "#{swimmer['last_name']} #{swimmer['first_name']}",
+            issue: 'multiple_yobs',
+            found_yobs: unique_yobs
+          }
+        end
       end
     end
 
@@ -153,6 +296,106 @@ module Phase3
 
     def deep_dup(value)
       value.deep_dup
+    end
+
+    # Build partial key indexes for flexible matching within main data
+    def build_partial_key_indexes
+      @main_by_name_yob = Hash.new { |h, k| h[k] = [] }
+      @main_by_gender_name = Hash.new { |h, k| h[k] = [] }
+
+      @swimmers.each do |swimmer|
+        key = swimmer[SWIMMER_KEY].to_s
+        next if key.blank?
+
+        name_yob_key = extract_name_yob_key(key)
+        @main_by_name_yob[name_yob_key] << swimmer if name_yob_key
+
+        gender_name_key = extract_gender_name_key(key)
+        @main_by_gender_name[gender_name_key] << swimmer if gender_name_key
+      end
+    end
+
+    # Extract |LAST|FIRST|YOB key (ignoring gender prefix)
+    # Input: "M|ANGELINI|Mario|2001" or "|ANGELINI|Mario|2001"
+    # Output: "|ANGELINI|Mario|2001"
+    def extract_name_yob_key(key)
+      return nil if key.blank?
+
+      parts = key.split('|')
+      return nil if parts.size < 4
+
+      # Key format: G|LAST|FIRST|YOB or |LAST|FIRST|YOB
+      # Normalize: always start with pipe, then LAST|FIRST|YOB
+      return nil unless parts[0].match?(/\A[MF]?\z/i)
+
+      # First part is gender or empty - take remaining parts
+      last = parts[1]
+      first = parts[2]
+      yob = parts[3]
+
+      # No leading pipe/gender - unusual format
+      return nil if last.blank? || first.blank? || yob.to_s.strip.empty?
+
+      "|#{last}|#{first}|#{yob}"
+    end
+
+    # Extract G|LAST|FIRST| key (ignoring YOB suffix)
+    # Input: "M|ANGELINI|Mario|2001"
+    # Output: "M|ANGELINI|Mario|"
+    def extract_gender_name_key(key)
+      return nil if key.blank?
+
+      parts = key.split('|')
+      return nil if parts.size < 4
+
+      gender = parts[0].to_s.strip.upcase
+      return nil unless gender.match?(/\A[MF]\z/)
+
+      last = parts[1]
+      first = parts[2]
+
+      return nil if last.blank? || first.blank?
+
+      "#{gender}|#{last}|#{first}|"
+    end
+
+    # Update swimmer key to include gender prefix when gender is newly set
+    def update_swimmer_key_with_gender(swimmer)
+      key = swimmer[SWIMMER_KEY].to_s
+      gender = swimmer['gender_type_code'].to_s.strip.upcase
+      return if key.blank? || gender.blank?
+
+      # Only update if key currently has no gender prefix
+      return unless key.start_with?('|')
+
+      # Key format: |LAST|FIRST|YOB -> G|LAST|FIRST|YOB
+      new_key = "#{gender}#{key}"
+      swimmer[SWIMMER_KEY] = new_key
+
+      # Update index
+      @swimmers_by_key.delete(key)
+      @swimmers_by_key[new_key] = swimmer
+    end
+
+    # Update swimmer key to include YOB when YOB is newly set
+    def update_swimmer_key_with_yob(swimmer)
+      key = swimmer[SWIMMER_KEY].to_s
+      yob = swimmer['year_of_birth'].to_i
+      return if key.blank? || yob <= 0
+
+      parts = key.split('|')
+      return if parts.size < 4
+
+      # Update YOB in key if it was empty/zero
+      return unless parts[3].to_s.strip.empty? || parts[3].to_i <= 0
+
+      parts[3] = yob.to_s
+      new_key = parts.join('|')
+      swimmer[SWIMMER_KEY] = new_key
+
+      # Update index
+      @swimmers_by_key.delete(key)
+      @swimmers_by_key[new_key] = swimmer
     end
   end
 end

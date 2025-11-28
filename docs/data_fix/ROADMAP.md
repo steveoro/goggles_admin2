@@ -1,8 +1,8 @@
 # Data-Fix: Development Roadmap
 
-**Last Updated**: 2025-11-25  
-**Version**: 2.4  
-**Status**: ✅ All Phases Complete | ✅ LT4 Structure Review Complete
+**Last Updated**: 2025-11-28  
+**Version**: 2.5  
+**Status**: ✅ All Phases Complete | ✅ LT4 Structure Review Complete | ✅ Partial Key Matching Fixed
 
 This document consolidates all active development plans and tracks progress toward full relay support completion.
 
@@ -18,7 +18,7 @@ This document consolidates all active development plans and tracks progress towa
 | **Phase 4: Events** | ✅ Complete | 100% | Relay support added 2025-11-10 |
 | **Phase 5 Individual** | ✅ Complete | 100% | Populator + UI working |
 | **Phase 5 Relay** | ✅ Complete | 100% | Populator + UI + string keys |
-| **Phase 5 Polish** | ✅ Complete | 100% | Pagination & filtering working |
+| **Phase 5 Polish** | ✅ Complete | 100% | Pagination, filtering, partial key matching |
 | **Phase 6 Individual** | ✅ Complete | 100% | Full commit working |
 | **Phase 6 Relay** | ✅ Complete | 100% | MRR/MRS/RelayLap commit implemented |
 | **Testing** | 🟡 In Progress | 60% | Need Phase 5 relay specs |
@@ -26,9 +26,19 @@ This document consolidates all active development plans and tracks progress towa
 
 ---
 
-## 🎯 Current Sprint (2025-11-25)
+## 🎯 Current Sprint (2025-11-28)
 
 ### ✅ Recently Completed
+
+- **Phase 5 Partial Key Matching Fix** (2025-11-28) ✨ CRITICAL FIX
+  - Fixed swimmer/team ID lookup in Phase5Populator using partial key matching
+  - Handles mixed crawler key formats (with/without gender prefix)
+  - Phase 3 keys: `F|ANTONIOLI|Manuela|1983` vs populator keys: `ANTONIOLI|Manuela|1983`
+  - Added `normalize_to_partial_key()` for flexible matching
+  - Added team_id fallback lookup from Phase 3 badges
+  - Fixed `swimmer_has_missing_data?` helper to use partial matching
+  - Fixed filter logic to correctly detect actual issues
+  - All Phase 5 specs passing
 
 - **Relay Enrichment Panel - Orphan Swimmers** (2025-11-25) ✨ NEW
   - Extended `Phase3::RelayEnrichmentDetector` to scan swimmers dictionary

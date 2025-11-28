@@ -121,3 +121,4 @@ it:
         unreadable_file: 'Impossibile leggere il JSON del file %{file}.'
         no_valid_files: 'Non sono stati forniti file Phase 3 ausiliari validi.'
       merge_success: 'Merge completato: %{swimmers_updated} nuotatori aggiornati, %{badges_added} badge aggiunti.'
+      ambiguous_matches: 'Corrispondenze ambigue trovate (generi/anni multipli): %{names}'

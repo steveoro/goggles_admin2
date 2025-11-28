@@ -121,3 +121,4 @@ en:
         unreadable_file: 'Unable to read JSON payload for %{file}.'
         no_valid_files: 'No valid auxiliary Phase 3 files were provided.'
       merge_success: 'Merge complete: %{swimmers_updated} swimmers updated, %{badges_added} badges added.'
+      ambiguous_matches: 'Ambiguous matches found (multiple genders/YOBs): %{names}'

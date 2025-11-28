@@ -435,6 +435,10 @@ class DataFixController < ApplicationController
           all_programs = filter_programs_with_issues(all_programs, filter_data)
         end
 
+        # Sort programs by event order from phase4 (individual events first, then relays)
+        phase4_path = default_phase_path_for(source_path, 4)
+        all_programs = sort_programs_by_event_order(all_programs, phase4_path)
+
         # Apply pagination to prevent UI slowdown
         @current_page = [params[:page].to_i, 1].max
         @phase5_programs, @total_pages = paginate_phase5_programs(all_programs, @current_page)
@@ -480,8 +484,16 @@ class DataFixController < ApplicationController
                            .exists?
 
       # Eager-load swimmers and teams to avoid N+1 queries
-      swimmer_ids = @all_results.filter_map(&:swimmer_id).uniq
-      team_ids = @all_results.filter_map(&:team_id).uniq
+      # NOTE: Load ALL swimmer/team IDs from source file, not just from @all_results (which is limited)
+      # This ensures the view can find swimmers for any program displayed via pagination
+      swimmer_ids = GogglesDb::DataImportMeetingIndividualResult
+                    .where(phase_file_path: source_path)
+                    .pluck(:swimmer_id)
+                    .compact.uniq
+      team_ids = GogglesDb::DataImportMeetingIndividualResult
+                 .where(phase_file_path: source_path)
+                 .pluck(:team_id)
+                 .compact.uniq
       @swimmers_by_id = GogglesDb::Swimmer.where(id: swimmer_ids).index_by(&:id)
       @teams_by_id = GogglesDb::Team.includes(:city).where(id: team_ids).index_by(&:id)
 
@@ -498,11 +510,21 @@ class DataFixController < ApplicationController
       end
 
       # Build badge/team key mapping: swimmer_key => team_key
-      # Build swimmers lookup by key for unmatched relay swimmers
+      # Also index by partial key (without gender) for flexible lookup
       if @phase3_data
         badges = @phase3_data.dig('data', 'badges') || []
         @team_key_by_swimmer_key = badges.each_with_object({}) do |badge, hash|
-          hash[badge['swimmer_key']] = badge['team_key']
+          swimmer_key = badge['swimmer_key']
+          team_key = badge['team_key']
+          # Index by full key
+          hash[swimmer_key] = team_key
+          # Also index by partial key (|LAST|FIRST|YOB or LAST|FIRST|YOB)
+          partial_key = normalize_swimmer_key_for_lookup(swimmer_key)
+          next unless partial_key
+
+          # Store both with and without leading pipe for flexible lookup
+          hash[partial_key] = team_key
+          hash[partial_key.sub(/^\|/, '')] = team_key # Without leading pipe
         end
 
         swimmers = @phase3_data.dig('data', 'swimmers') || []
@@ -1065,6 +1087,10 @@ class DataFixController < ApplicationController
     end
 
     merger = Phase3::RelayMergeService.new(data.deep_dup)
+
+    # First, enrich from own badges (same file) - badges often have gender from individual results
+    merger.self_enrich!
+
     resolved_aux_paths.each do |aux_path|
       payload = JSON.parse(File.read(aux_path))
       aux_data = payload.is_a?(Hash) ? payload['data'] || payload : {}
@@ -1093,6 +1119,14 @@ class DataFixController < ApplicationController
     flash[:notice] = I18n.t('data_import.relay_enrichment.merge_success',
                             swimmers_updated: stats[:swimmers_updated],
                             badges_added: stats[:badges_added])
+
+    # Add warning for ambiguous partial matches
+    ambiguous = stats[:partial_matches_ambiguous] || []
+    if ambiguous.any?
+      ambiguous_names = ambiguous.map { |a| "#{a[:name]} (#{a[:issue]})" }.join(', ')
+      warnings << I18n.t('data_import.relay_enrichment.ambiguous_matches', names: ambiguous_names)
+    end
+
     flash[:warning] = warnings.join(' ') if warnings.present?
 
     redirect_to review_swimmers_path(file_path:, phase3_v2: 1)
@@ -1862,6 +1896,7 @@ class DataFixController < ApplicationController
 
   # Check if a swimmer (from phase3) has missing critical data
   # Returns hash with { missing_gender: bool, missing_year: bool }
+  # Uses partial key matching to handle different key formats
   #
   # @param swimmer_key [String] the swimmer key to check
   # @param swimmers_by_key [Hash] swimmers indexed by key (from phase3)
@@ -1869,13 +1904,43 @@ class DataFixController < ApplicationController
   def swimmer_has_missing_data?(swimmer_key, swimmers_by_key: {})
     return { missing_gender: false, missing_year: false } unless swimmers_by_key.present? && swimmer_key
 
+    # First try exact match
     swimmer = swimmers_by_key[swimmer_key]
+
+    # If not found, try partial key matching (ignoring gender prefix)
+    unless swimmer
+      partial_key = normalize_swimmer_key_for_lookup(swimmer_key)
+      if partial_key
+        swimmer = swimmers_by_key.values.find do |s|
+          normalize_swimmer_key_for_lookup(s['key']) == partial_key
+        end
+      end
+    end
+
     return { missing_gender: false, missing_year: false } unless swimmer
 
     {
       missing_gender: swimmer['gender_type_code'].blank?,
       missing_year: swimmer['year_of_birth'].blank? || swimmer['year_of_birth'].to_i.zero?
     }
+  end
+
+  # Normalize swimmer key to partial format for matching
+  # Input: "M|LIGABUE|Marco|1971" or "LIGABUE|Marco|1971"
+  # Output: "|LIGABUE|Marco|1971"
+  def normalize_swimmer_key_for_lookup(key)
+    return nil if key.blank?
+
+    parts = key.to_s.split('|')
+    return nil if parts.size < 3
+
+    if parts[0].match?(/\A[MF]?\z/i)
+      # Format: G|LAST|FIRST|YOB or |LAST|FIRST|YOB
+      "|#{parts[1]}|#{parts[2]}|#{parts[3]}"
+    else
+      # Format: LAST|FIRST|YOB (no gender prefix)
+      "|#{parts[0]}|#{parts[1]}|#{parts[2]}"
+    end
   end
 
   # NOTE: build_phase3_category_issues_summary was removed.
@@ -1992,6 +2057,41 @@ class DataFixController < ApplicationController
     total_pages = [pages.size, 1].max
     page_index = [[page - 1, 0].max, total_pages - 1].min
     [pages[page_index] || [], total_pages]
+  end
+
+  # Sort programs by event order from phase4
+  # Individual events come first (sorted by session_order, event_order), then relays
+  #
+  # @param programs [Array<Hash>] programs from phase5 JSON
+  # @param phase4_path [String] path to phase4 JSON file
+  # @return [Array<Hash>] sorted programs
+  def sort_programs_by_event_order(programs, phase4_path)
+    return programs unless File.exist?(phase4_path)
+
+    # Build event order map: {session_order => {event_key => event_order}}
+    phase4_json = JSON.parse(File.read(phase4_path))
+    sessions = phase4_json.dig('data', 'sessions') || []
+
+    event_order_map = {}
+    sessions.each do |session|
+      session_order = session['session_order'].to_i
+      event_order_map[session_order] ||= {}
+      (session['events'] || []).each do |event|
+        event_order_map[session_order][event['key']] = event['event_order'].to_i
+      end
+    end
+
+    # Sort programs: individual first, then relay; within each group by session_order and event_order
+    programs.sort_by do |prog|
+      session_order = prog['session_order'].to_i
+      event_code = prog['event_code'].to_s
+      event_order = event_order_map.dig(session_order, event_code) || 9999
+      is_relay = prog['relay'] ? 1 : 0
+
+      [is_relay, session_order, event_order, prog['category_code'].to_s, prog['gender_code'].to_s]
+    end
+  rescue JSON::ParserError
+    programs
   end
 
   # Load minimal data needed for filtering programs
