@@ -70,13 +70,14 @@ module Import
 
     private
 
-    # Clear existing data_import_* records
+    # Clear existing data_import_* records for the current source file only
+    # This allows working on multiple files simultaneously without data loss
     def truncate_tables!
-      GogglesDb::DataImportMeetingIndividualResult.delete_all
-      GogglesDb::DataImportLap.delete_all
-      GogglesDb::DataImportMeetingRelayResult.delete_all
-      GogglesDb::DataImportMeetingRelaySwimmer.delete_all
-      GogglesDb::DataImportRelayLap.delete_all
+      GogglesDb::DataImportMeetingIndividualResult.where(phase_file_path: source_path).delete_all
+      GogglesDb::DataImportLap.where(phase_file_path: source_path).delete_all
+      GogglesDb::DataImportMeetingRelayResult.where(phase_file_path: source_path).delete_all
+      GogglesDb::DataImportMeetingRelaySwimmer.where(phase_file_path: source_path).delete_all
+      GogglesDb::DataImportRelayLap.where(phase_file_path: source_path).delete_all
     end
 
     # Load all phase JSON files and normalize source to LT4 format
@@ -371,17 +372,29 @@ module Import
 
     # Build swimmer key from source result
     # Returns partial key for initial lookup: "LAST|FIRST|YEAR"
-    # Source swimmer format: "F|ROSSI|Bianca|1950|CSI Ober Ferrari"
+    # Handles TWO source formats:
+    #   - WITH gender prefix: "F|ROSSI|Bianca|1950|CSI Ober Ferrari" (5 parts)
+    #   - WITHOUT gender prefix: "ROSSI|Bianca|1950|CSI Ober Ferrari" (4 parts)
     def build_swimmer_key(result)
       swimmer_str = result['swimmer'] || result['swimmer_name'] || ''
       parts = swimmer_str.split('|')
 
-      # Format: gender|last|first|year|team
-      return swimmer_str if parts.size < 4
+      return swimmer_str if parts.size < 3
 
-      last_name = parts[1]
-      first_name = parts[2]
-      year = parts[3]
+      # Detect format: if parts[0] is a single-char gender code (M/F) or empty, it's WITH gender prefix
+      # Otherwise, parts[0] is the last_name (no gender prefix)
+      if parts[0].match?(/\A[MF]?\z/i)
+        # Format: gender|last|first|year|team (5 parts)
+        return swimmer_str if parts.size < 4
+        last_name = parts[1]
+        first_name = parts[2]
+        year = parts[3]
+      else
+        # Format: last|first|year|team (4 parts, no gender prefix)
+        last_name = parts[0]
+        first_name = parts[1]
+        year = parts[2]
+      end
 
       "#{last_name}|#{first_name}|#{year}"
     end
@@ -451,16 +464,25 @@ module Import
 
     # Find team_id from phase 2 data or phase 3 badges
     # First tries Phase 2 teams, then falls back to Phase 3 badges
-    # Handles team name embedded in swimmer string (LT4 format: "F|LAST|FIRST|YOB|TeamName")
+    # Handles TWO source formats:
+    #   - WITH gender prefix: "F|LAST|FIRST|YOB|TeamName" (5 parts)
+    #   - WITHOUT gender prefix: "LAST|FIRST|YOB|TeamName" (4 parts)
     def find_team_id(result)
       team_name = result['team'] || result['team_name'] || result['teamName']
 
       # If no explicit team field, try to extract from swimmer string
-      # Format: "F|MURACCHIOLI|Elisa|1998|Team Sport Isola asd"
       if team_name.blank?
         swimmer_str = result['swimmer'] || result['swimmer_name'] || ''
         parts = swimmer_str.split('|')
-        team_name = parts[4] if parts.size >= 5
+
+        # Detect format based on first part
+        if parts[0].match?(/\A[MF]?\z/i)
+          # Format: gender|last|first|year|team (5 parts)
+          team_name = parts[4] if parts.size >= 5
+        else
+          # Format: last|first|year|team (4 parts, no gender prefix)
+          team_name = parts[3] if parts.size >= 4
+        end
       end
 
       # Try Phase 2 team lookup first (if we have a team_name)
@@ -639,32 +661,32 @@ module Import
 
       disqualified_flag = !!result['disqualified'] || rank_non_numeric || timing_zero
 
-      mir = GogglesDb::DataImportMeetingIndividualResult.create!(
-        import_key: import_key,
-        phase_file_path: source_path,
+      # Use find_or_create to handle potential duplicates gracefully
+      mir = GogglesDb::DataImportMeetingIndividualResult.find_or_create_by!(import_key: import_key) do |record|
+        record.phase_file_path = source_path
         # DB foreign keys (may be nil for unmatched entities)
-        meeting_program_id: meeting_program_id,
-        swimmer_id: swimmer_id,
-        team_id: team_id,
-        meeting_individual_result_id: meeting_individual_result_id,
+        record.meeting_program_id = meeting_program_id
+        record.swimmer_id = swimmer_id
+        record.team_id = team_id
+        record.meeting_individual_result_id = meeting_individual_result_id
         # String keys for referencing entities when IDs are nil
-        swimmer_key: swimmer_key,
-        team_key: team_key,
-        meeting_program_key: meeting_program_key,
+        record.swimmer_key = swimmer_key
+        record.team_key = team_key
+        record.meeting_program_key = meeting_program_key
         # Result data
-        rank: rank_int,
-        minutes: timing[:minutes],
-        seconds: timing[:seconds],
-        hundredths: timing[:hundredths],
-        disqualified: disqualified_flag,
-        disqualification_code_type_id: result['disqualification_code'],
-        standard_points: result['standard_points'].to_f,
-        meeting_points: result['meeting_points'].to_f,
-        reaction_time: result['reaction_time'].to_f
-      )
+        record.rank = rank_int
+        record.minutes = timing[:minutes]
+        record.seconds = timing[:seconds]
+        record.hundredths = timing[:hundredths]
+        record.disqualified = disqualified_flag
+        record.disqualification_code_type_id = result['disqualification_code']
+        record.standard_points = result['standard_points'].to_f
+        record.meeting_points = result['meeting_points'].to_f
+        record.reaction_time = result['reaction_time'].to_f
+      end
       @stats[:mir_created] += 1
       mir
-    rescue ActiveRecord::RecordInvalid => e
+    rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
       @stats[:errors] << "MIR error for #{import_key}: #{e.message}"
       nil
     end
@@ -689,28 +711,28 @@ module Import
 
         lap_import_key = GogglesDb::DataImportLap.build_import_key(mir_import_key, length)
 
-        GogglesDb::DataImportLap.create!(
-          import_key: lap_import_key,
-          parent_import_key: mir_import_key,
-          meeting_individual_result_key: mir_import_key, # Parent MIR reference
-          phase_file_path: source_path,
-          meeting_individual_result_id: nil, # Will be set in phase 6
-          length_in_meters: length,
+        # Use find_or_create to handle potential duplicates gracefully
+        GogglesDb::DataImportLap.find_or_create_by!(import_key: lap_import_key) do |record|
+          record.parent_import_key = mir_import_key
+          record.meeting_individual_result_key = mir_import_key # Parent MIR reference
+          record.phase_file_path = source_path
+          record.meeting_individual_result_id = nil # Will be set in phase 6
+          record.length_in_meters = length
           # Delta timing (default columns)
-          minutes: delta[:minutes],
-          seconds: delta[:seconds],
-          hundredths: delta[:hundredths],
+          record.minutes = delta[:minutes]
+          record.seconds = delta[:seconds]
+          record.hundredths = delta[:hundredths]
           # From-start timing (cumulative from race start)
-          minutes_from_start: from_start[:minutes],
-          seconds_from_start: from_start[:seconds],
-          hundredths_from_start: from_start[:hundredths],
-          reaction_time: lap['reaction_time'].to_f
-        )
+          record.minutes_from_start = from_start[:minutes]
+          record.seconds_from_start = from_start[:seconds]
+          record.hundredths_from_start = from_start[:hundredths]
+          record.reaction_time = lap['reaction_time'].to_f
+        end
         @stats[:laps_created] += 1
 
         # Update previous timing for next iteration
         previous_from_start = from_start
-      rescue ActiveRecord::RecordInvalid => e
+      rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
         @stats[:errors] << "Lap error for #{lap_import_key}: #{e.message}"
       end
     end
@@ -760,7 +782,9 @@ module Import
     end
 
     # Build team key from result (for both individual and relay events)
-    # Handles team embedded in swimmer string (LT4 format: "F|LAST|FIRST|YOB|TeamName")
+    # Handles TWO source formats:
+    #   - WITH gender prefix: "F|LAST|FIRST|YOB|TeamName" (5 parts, team at index 4)
+    #   - WITHOUT gender prefix: "LAST|FIRST|YOB|TeamName" (4 parts, team at index 3)
     def build_team_key_from_result(result)
       team_name = result['team'] || result['team_name'] || result['teamName']
 
@@ -768,7 +792,15 @@ module Import
       if team_name.blank?
         swimmer_str = result['swimmer'] || result['swimmer_name'] || ''
         parts = swimmer_str.split('|')
-        team_name = parts[4] if parts.size >= 5
+
+        # Detect format based on first part
+        if parts[0].match?(/\A[MF]?\z/i)
+          # Format: gender|last|first|year|team (5 parts)
+          team_name = parts[4] if parts.size >= 5
+        else
+          # Format: last|first|year|team (4 parts, no gender prefix)
+          team_name = parts[3] if parts.size >= 4
+        end
       end
 
       (team_name || '').strip
@@ -795,26 +827,26 @@ module Import
 
       disqualified_flag = !!result['disqualified'] || rank_non_numeric || timing_zero
 
-      GogglesDb::DataImportMeetingRelayResult.create!(
-        import_key: import_key,
-        phase_file_path: source_path,
+      # Use find_or_create to handle potential duplicates gracefully
+      GogglesDb::DataImportMeetingRelayResult.find_or_create_by!(import_key: import_key) do |mrr|
+        mrr.phase_file_path = source_path
         # DB foreign keys (may be nil for unmatched entities)
-        meeting_relay_result_id: meeting_relay_result_id,
-        meeting_program_id: meeting_program_id,
-        team_id: team_id,
+        mrr.meeting_relay_result_id = meeting_relay_result_id
+        mrr.meeting_program_id = meeting_program_id
+        mrr.team_id = team_id
         # String keys for referencing entities when IDs are nil
-        team_key: team_key,
-        meeting_program_key: meeting_program_key,
+        mrr.team_key = team_key
+        mrr.meeting_program_key = meeting_program_key
         # Result data
-        rank: rank_int,
-        minutes: timing_hash[:minutes],
-        seconds: timing_hash[:seconds],
-        hundredths: timing_hash[:hundredths],
-        disqualified: disqualified_flag,
-        standard_points: (result['standard_points'] || result['standardPoints'] || 0).to_f,
-        meeting_points: (result['meeting_points'] || result['meetingPoints'] || 0).to_f
-      )
-    rescue ActiveRecord::RecordInvalid => e
+        mrr.rank = rank_int
+        mrr.minutes = timing_hash[:minutes]
+        mrr.seconds = timing_hash[:seconds]
+        mrr.hundredths = timing_hash[:hundredths]
+        mrr.disqualified = disqualified_flag
+        mrr.standard_points = (result['standard_points'] || result['standardPoints'] || 0).to_f
+        mrr.meeting_points = (result['meeting_points'] || result['meetingPoints'] || 0).to_f
+      end
+    rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
       @stats[:errors] << "MRR error for #{import_key}: #{e.message}"
       nil
     end
@@ -843,25 +875,25 @@ module Import
 
         rs_import_key = "#{mrr_import_key}-swimmer#{relay_order}"
 
-        GogglesDb::DataImportMeetingRelaySwimmer.create!(
-          import_key: rs_import_key,
-          parent_import_key: mrr_import_key,
-          phase_file_path: source_path,
+        # Use find_or_create to handle potential duplicates gracefully
+        GogglesDb::DataImportMeetingRelaySwimmer.find_or_create_by!(import_key: rs_import_key) do |rs|
+          rs.parent_import_key = mrr_import_key
+          rs.phase_file_path = source_path
           # DB foreign keys (may be nil for unmatched entities)
-          swimmer_id: swimmer_id,
+          rs.swimmer_id = swimmer_id
           # String keys for referencing entities when IDs are nil (Full Phase 3 key if matched)
-          swimmer_key: swimmer_key,
-          meeting_relay_result_key: mrr_import_key,
+          rs.swimmer_key = swimmer_key
+          rs.meeting_relay_result_key = mrr_import_key
           # Leg data
-          relay_order: relay_order,
-          length_in_meters: length,
-          minutes: delta[:minutes],
-          seconds: delta[:seconds],
-          hundredths: delta[:hundredths]
-        )
+          rs.relay_order = relay_order
+          rs.length_in_meters = length
+          rs.minutes = delta[:minutes]
+          rs.seconds = delta[:seconds]
+          rs.hundredths = delta[:hundredths]
+        end
 
         @stats[:relay_swimmers_created] += 1
-      rescue ActiveRecord::RecordInvalid => e
+      rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
         @stats[:errors] << "RelaySwimmer error for #{rs_import_key}: #{e.message}"
       end
     end
@@ -890,25 +922,25 @@ module Import
         # Reference the relay swimmer for this leg
         relay_swimmer_import_key = "#{mrr_import_key}-swimmer#{relay_order}"
 
-        GogglesDb::DataImportRelayLap.create!(
-          import_key: lap_import_key,
-          parent_import_key: mrr_import_key,
-          phase_file_path: source_path,
+        # Use find_or_create to handle potential duplicates gracefully
+        GogglesDb::DataImportRelayLap.find_or_create_by!(import_key: lap_import_key) do |record|
+          record.parent_import_key = mrr_import_key
+          record.phase_file_path = source_path
           # String key for referencing parent relay swimmer
-          meeting_relay_swimmer_key: relay_swimmer_import_key,
+          record.meeting_relay_swimmer_key = relay_swimmer_import_key
           # Lap data
-          length_in_meters: length,
-          minutes: delta[:minutes],
-          seconds: delta[:seconds],
-          hundredths: delta[:hundredths],
-          minutes_from_start: from_start[:minutes],
-          seconds_from_start: from_start[:seconds],
-          hundredths_from_start: from_start[:hundredths]
-        )
+          record.length_in_meters = length
+          record.minutes = delta[:minutes]
+          record.seconds = delta[:seconds]
+          record.hundredths = delta[:hundredths]
+          record.minutes_from_start = from_start[:minutes]
+          record.seconds_from_start = from_start[:seconds]
+          record.hundredths_from_start = from_start[:hundredths]
+        end
 
         @stats[:relay_laps_created] += 1
         previous_from_start = from_start
-      rescue ActiveRecord::RecordInvalid => e
+      rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
         @stats[:errors] << "RelayLap error for #{lap_import_key}: #{e.message}"
       end
     end

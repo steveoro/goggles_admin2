@@ -48,7 +48,7 @@ module Import
         phase2_path = opts[:phase2_path] || default_phase_path_for(source_path, 2)
         @phase1_data = File.exist?(phase1_path) ? JSON.parse(File.read(phase1_path)) : nil
         @phase2_data = File.exist?(phase2_path) ? JSON.parse(File.read(phase2_path)) : nil
-        meeting_date = @phase1_data&.dig('data', 'meeting', 'header_date')
+        meeting_date = @phase1_data&.dig('data', 'header_date')
 
         # Initialize CategoriesCache for season-aware category lookups
         @categories_cache = PdfResults::CategoriesCache.new(@season)
@@ -66,10 +66,13 @@ module Import
 
               # Always include leading pipe: |LAST|FIRST|YOB or GENDER|LAST|FIRST|YOB
               key = gcode.present? ? "#{gcode}|#{l}|#{f}|#{yob}" : "|#{l}|#{f}|#{yob}"
-              swimmers << build_swimmer_entry(key, l, f, yob.to_i, gcode)
+              swimmer_entry = build_swimmer_entry(key, l, f, yob.to_i, gcode)
+              swimmers << swimmer_entry
               next if team_name.blank?
 
-              badges << build_badge_entry(key, team_name, yob.to_i, gcode, meeting_date)
+              # Use swimmer entry's updated key/gender (may have been populated from DB match)
+              badges << build_badge_entry(swimmer_entry['key'], team_name, yob.to_i,
+                                          swimmer_entry['gender_type_code'], meeting_date)
             end
           else # Hash dictionary: key => swimmerKey, value => details
             data_hash['swimmers'].each_with_index do |(_original_key, v), idx|
@@ -83,10 +86,13 @@ module Import
 
               # Always include leading pipe: |LAST|FIRST|YOB or GENDER|LAST|FIRST|YOB
               key = gcode.present? ? "#{gcode}|#{l}|#{f}|#{yob}" : "|#{l}|#{f}|#{yob}"
-              swimmers << build_swimmer_entry(key, l, f, yob.to_i, gcode)
+              swimmer_entry = build_swimmer_entry(key, l, f, yob.to_i, gcode)
+              swimmers << swimmer_entry
               next if team_name.to_s.strip.empty?
 
-              badges << build_badge_entry(key, team_name, yob.to_i, gcode, meeting_date)
+              # Use swimmer entry's updated key/gender (may have been populated from DB match)
+              badges << build_badge_entry(swimmer_entry['key'], team_name, yob.to_i,
+                                          swimmer_entry['gender_type_code'], meeting_date)
             end
           end
 
@@ -118,10 +124,13 @@ module Import
                   # Always include leading pipe: |LAST|FIRST|YOB or GENDER|LAST|FIRST|YOB
                   key = gcode.present? ? "#{gcode}|#{last}|#{first}|#{yob}" : "|#{last}|#{first}|#{yob}"
 
-                  swimmers << build_swimmer_entry(key, last, first, yob.to_i, gcode)
+                  swimmer_entry = build_swimmer_entry(key, last, first, yob.to_i, gcode)
+                  swimmers << swimmer_entry
                   next if team_name.to_s.strip.empty?
 
-                  badges << build_badge_entry(key, team_name, yob.to_i, gcode, meeting_date)
+                  # Use swimmer entry's updated key/gender (may have been populated from DB match)
+                  badges << build_badge_entry(swimmer_entry['key'], team_name, yob.to_i,
+                                              swimmer_entry['gender_type_code'], meeting_date)
                 end
               else
                 # Individual result row
@@ -131,11 +140,14 @@ module Import
                 gcode = gender_code || normalize_gender_code(row['gender'] || row['gender_type'] || row['gender_type_code'])
                 # Always include leading pipe: |LAST|FIRST|YOB or GENDER|LAST|FIRST|YOB
                 key = gcode.present? ? "#{gcode}|#{l}|#{f}|#{yob}" : "|#{l}|#{f}|#{yob}"
-                swimmers << build_swimmer_entry(key, l, f, yob.to_i, gcode)
+                swimmer_entry = build_swimmer_entry(key, l, f, yob.to_i, gcode)
+                swimmers << swimmer_entry
                 team_name = row['team']
                 next if team_name.to_s.strip.empty?
 
-                badges << build_badge_entry(key, team_name, yob.to_i, gcode, meeting_date)
+                # Use swimmer entry's updated key/gender (may have been populated from DB match)
+                badges << build_badge_entry(swimmer_entry['key'], team_name, yob.to_i,
+                                            swimmer_entry['gender_type_code'], meeting_date)
               end
             end
             broadcast_progress('Collect swimmers from sections', sec_idx + 1, total)
@@ -245,7 +257,7 @@ module Import
         }
 
         # Compute category_type if we have all required data
-        meeting_date = @phase1_data&.dig('data', 'meeting', 'header_date')
+        meeting_date = @phase1_data&.dig('data', 'header_date')
         if year_of_birth.present? && gender_type_code.present? && meeting_date.present? && @categories_cache
           category_type_id, category_type_code = Import::CategoryComputer.compute_category(
             year_of_birth: year_of_birth,
@@ -286,7 +298,7 @@ module Import
             @logger&.debug("[SwimmerSolver] Updated key from '#{key}' to '#{entry['key']}'")
 
             # Recompute category now that we have complete data
-            meeting_date = @phase1_data&.dig('data', 'meeting', 'header_date')
+            meeting_date = @phase1_data&.dig('data', 'header_date')
             if year_of_birth.present? && meeting_date.present? && @categories_cache
               category_type_id, category_type_code = Import::CategoryComputer.compute_category(
                 year_of_birth: year_of_birth,
@@ -329,7 +341,7 @@ module Import
           fallback_cmd = GogglesDb::CmdFindDbEntity.call(
             GogglesDb::Swimmer,
             { complete_name: last_name.to_s.strip, year_of_birth: year_of_birth.to_i },
-            0.50 # Lower bias for more permissive matching
+            0.70 # Lower bias for more permissive matching
           )
 
           fallback_matches = fallback_cmd.matches.respond_to?(:map) ? fallback_cmd.matches : []

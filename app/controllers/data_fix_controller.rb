@@ -427,12 +427,17 @@ class DataFixController < ApplicationController
         all_programs = phase5_json['programs'] || []
         @total_programs_count = all_programs.size # Track unfiltered count
 
-        # Server-side filtering: only include programs with issues if filter is active
-        @filter_active = params[:filter_issues].present?
-        if @filter_active
-          # Load minimal data needed for filtering (before full load for rendering)
-          filter_data = load_filter_data(source_path)
-          all_programs = filter_programs_with_issues(all_programs, filter_data)
+        # ALWAYS run server-side issue detection BEFORE pagination
+        # This ensures we know about issues regardless of filtering or pagination
+        filter_data = load_filter_data(source_path)
+        @programs_with_issues = detect_programs_with_issues(all_programs, filter_data)
+        @issue_count = @programs_with_issues.size
+
+        # Server-side filtering: only show programs with issues if filter is active
+        # Auto-activate filter if there are issues and no explicit filter param
+        @filter_active = params[:filter_issues] == '1' || (@issue_count.positive? && !params[:filter_issues].to_i.zero?)
+        if @filter_active && @issue_count.positive?
+          all_programs = @programs_with_issues
         end
 
         # Sort programs by event order from phase4 (individual events first, then relays)
@@ -472,11 +477,10 @@ class DataFixController < ApplicationController
           "#{@populate_stats[:relay_laps_created]} relay laps, #{@populate_stats[:programs_matched]} programs matched"
       end
 
-      # Query data_import tables for display
+      # Query data_import tables for display (no limit needed - view re-queries per program)
       @all_results = GogglesDb::DataImportMeetingIndividualResult
                      .where(phase_file_path: source_path)
                      .order(:import_key)
-                     .limit(1000) # Safety limit for now
 
       # Also check for relay results to determine if commit button should be visible
       @has_relay_results = GogglesDb::DataImportMeetingRelayResult
@@ -531,31 +535,29 @@ class DataFixController < ApplicationController
         @swimmers_by_key = swimmers.index_by { |s| s['key'] }
       end
 
-      # Eager-load laps grouped by parent import_key
-      import_keys = @all_results.map(&:import_key)
-      all_laps = GogglesDb::DataImportLap.where(parent_import_key: import_keys).order(:length_in_meters)
+      # Eager-load laps for ALL individual results in this source file
+      all_laps = GogglesDb::DataImportLap.where(phase_file_path: source_path).order(:length_in_meters)
       @laps_by_parent_key = all_laps.group_by(&:parent_import_key)
 
-      # Query relay results for display
+      # Query ALL relay results for display (no limit - relay swimmers need all parent keys)
       @all_relay_results = GogglesDb::DataImportMeetingRelayResult
                            .where(phase_file_path: source_path)
                            .order(:import_key)
-                           .limit(1000) # Safety limit for now
 
       # Eager-load relay teams (add to existing team query)
-      relay_team_ids = @all_relay_results.filter_map(&:team_id).uniq
+      relay_team_ids = @all_relay_results.pluck(:team_id).compact.uniq
       additional_teams = GogglesDb::Team.includes(:city).where(id: relay_team_ids - team_ids).index_by(&:id)
       @teams_by_id.merge!(additional_teams)
 
-      # Eager-load relay swimmers and laps grouped by parent import_key
-      relay_import_keys = @all_relay_results.map(&:import_key)
+      # Eager-load relay swimmers and laps for ALL relay results in this source file
+      # (No limit - must load all to avoid missing swimmers when view re-queries results)
       @relay_swimmers_by_parent_key = GogglesDb::DataImportMeetingRelaySwimmer
-                                      .where(parent_import_key: relay_import_keys)
+                                      .where(phase_file_path: source_path)
                                       .order(:relay_order)
                                       .group_by(&:parent_import_key)
       @relay_laps_by_parent_key = GogglesDb::DataImportRelayLap
                                   .includes(:data_import_meeting_relay_swimmer)
-                                  .where(parent_import_key: relay_import_keys)
+                                  .where(phase_file_path: source_path)
                                   .order(:length_in_meters)
                                   .group_by(&:parent_import_key)
 
@@ -566,6 +568,7 @@ class DataFixController < ApplicationController
 
       # Build relay swimmer name lookup from source data for unmatched swimmers
       # Maps: {mrr_import_key => {relay_order => {name, key}}}
+      relay_import_keys = @all_relay_results.pluck(:import_key)
       @relay_swimmer_names = build_relay_swimmer_names_from_source(source_path, relay_import_keys)
 
       return render 'data_fix/review_results_v2'
@@ -1895,14 +1898,14 @@ class DataFixController < ApplicationController
   end
 
   # Check if a swimmer (from phase3) has missing critical data
-  # Returns hash with { missing_gender: bool, missing_year: bool }
+  # Returns hash with { missing_gender: bool, missing_year: bool, not_found: bool }
   # Uses partial key matching to handle different key formats
   #
   # @param swimmer_key [String] the swimmer key to check
   # @param swimmers_by_key [Hash] swimmers indexed by key (from phase3)
-  # @return [Hash] { missing_gender: bool, missing_year: bool }
+  # @return [Hash] { missing_gender: bool, missing_year: bool, not_found: bool }
   def swimmer_has_missing_data?(swimmer_key, swimmers_by_key: {})
-    return { missing_gender: false, missing_year: false } unless swimmers_by_key.present? && swimmer_key
+    return { missing_gender: false, missing_year: false, not_found: true } unless swimmers_by_key.present? && swimmer_key
 
     # First try exact match
     swimmer = swimmers_by_key[swimmer_key]
@@ -1917,11 +1920,13 @@ class DataFixController < ApplicationController
       end
     end
 
-    return { missing_gender: false, missing_year: false } unless swimmer
+    # If swimmer not found in Phase 3, this is an issue
+    return { missing_gender: true, missing_year: false, not_found: true } unless swimmer
 
     {
       missing_gender: swimmer['gender_type_code'].blank?,
-      missing_year: swimmer['year_of_birth'].blank? || swimmer['year_of_birth'].to_i.zero?
+      missing_year: swimmer['year_of_birth'].blank? || swimmer['year_of_birth'].to_i.zero?,
+      not_found: false
     }
   end
 
@@ -2101,12 +2106,23 @@ class DataFixController < ApplicationController
   # @return [Hash] { relay_swimmers_by_parent_key:, swimmers_by_id:, swimmers_by_key: }
   def load_filter_data(source_path)
     # Load phase3 data for unmatched swimmer lookup
+    # Index by both full key AND partial key for flexible matching
     phase3_path = default_phase_path_for(source_path, 3)
     swimmers_by_key = {}
     if File.exist?(phase3_path)
       phase3_data = JSON.parse(File.read(phase3_path))
       swimmers = phase3_data.dig('data', 'swimmers') || []
-      swimmers_by_key = swimmers.index_by { |s| s['key'] }
+      swimmers.each do |s|
+        # Index by full key
+        swimmers_by_key[s['key']] = s
+        # Also index by partial key (without leading pipe) for flexible lookup
+        partial_key = normalize_swimmer_key_for_lookup(s['key'])
+        if partial_key
+          swimmers_by_key[partial_key] = s
+          # And without leading pipe
+          swimmers_by_key[partial_key.sub(/^\|/, '')] = s
+        end
+      end
     end
 
     # Load relay swimmers grouped by parent key
@@ -2115,9 +2131,14 @@ class DataFixController < ApplicationController
                                    .order(:relay_order)
                                    .group_by(&:parent_import_key)
 
-    # Load swimmers by ID for matched relay swimmers
+    # Load swimmers by ID for BOTH individual AND relay results
+    individual_swimmer_ids = GogglesDb::DataImportMeetingIndividualResult
+                             .where(phase_file_path: source_path)
+                             .pluck(:swimmer_id)
+                             .compact.uniq
     relay_swimmer_ids = relay_swimmers_by_parent_key.values.flatten.filter_map(&:swimmer_id).uniq
-    swimmers_by_id = GogglesDb::Swimmer.where(id: relay_swimmer_ids).index_by(&:id)
+    all_swimmer_ids = (individual_swimmer_ids + relay_swimmer_ids).uniq
+    swimmers_by_id = GogglesDb::Swimmer.where(id: all_swimmer_ids).index_by(&:id)
 
     {
       relay_swimmers_by_parent_key: relay_swimmers_by_parent_key,
@@ -2126,13 +2147,13 @@ class DataFixController < ApplicationController
     }
   end
 
-  # Filter programs to only those with results that have issues (missing swimmer data)
-  # Used for server-side filtering when filter_issues parameter is present
+  # Detect programs with issues (missing swimmer data, unmatched swimmers, etc.)
+  # Run server-side BEFORE pagination to provide accurate issue counts
   #
   # @param programs [Array<Hash>] all programs from phase5 JSON
   # @param filter_data [Hash] data needed for filtering
   # @return [Array<Hash>] programs with at least one result with issues
-  def filter_programs_with_issues(programs, filter_data)
+  def detect_programs_with_issues(programs, filter_data)
     relay_swimmers_by_parent_key = filter_data[:relay_swimmers_by_parent_key]
     swimmers_by_id = filter_data[:swimmers_by_id]
     swimmers_by_key = filter_data[:swimmers_by_key]
@@ -2160,14 +2181,35 @@ class DataFixController < ApplicationController
                              .where('import_key LIKE ?', "#{program_key}/%")
 
         individual_results.any? do |mir|
-          if mir.swimmer_id
-            swimmer = swimmers_by_id[mir.swimmer_id]
-            swimmer && (swimmer.gender_type_id.nil? || swimmer.year_of_birth.nil?)
-          else
-            mir.swimmer_key && swimmer_has_missing_data?(mir.swimmer_key, swimmers_by_key: swimmers_by_key).values.any?
-          end
+          result_has_issues?(mir, swimmers_by_id: swimmers_by_id, swimmers_by_key: swimmers_by_key)
         end
       end
+    end
+  end
+
+  # Check if an individual result has issues (missing swimmer data or unmatched swimmer)
+  # Issues include:
+  #   - swimmer_id is nil (unmatched swimmer)
+  #   - matched swimmer missing gender or year of birth
+  #   - unmatched swimmer in Phase 3 missing gender
+  #
+  # @param mir [DataImportMeetingIndividualResult] the individual result to check
+  # @param swimmers_by_id [Hash] swimmers indexed by ID
+  # @param swimmers_by_key [Hash] swimmers indexed by key (from phase3)
+  # @return [Boolean] true if result has issues
+  def result_has_issues?(mir, swimmers_by_id:, swimmers_by_key:)
+    if mir.swimmer_id
+      # Matched swimmer - check if missing gender or year
+      swimmer = swimmers_by_id[mir.swimmer_id]
+      return false unless swimmer # If swimmer not found in lookup, skip (data loading issue)
+
+      swimmer.gender_type_id.nil? || swimmer.year_of_birth.nil?
+    else
+      # Unmatched swimmer - check Phase 3 data for missing gender
+      return true if mir.swimmer_key.blank? # No key = definite issue
+
+      swimmer_issues = swimmer_has_missing_data?(mir.swimmer_key, swimmers_by_key: swimmers_by_key)
+      swimmer_issues[:missing_gender] || swimmer_issues[:missing_year] || swimmer_issues[:not_found]
     end
   end
 

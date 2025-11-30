@@ -14,6 +14,7 @@
       %div
         = button_to commit_phase6_path(file_path: @file_path),
                                        method: :post, class: 'btn btn-success',
+                                       disabled: @issue_count.to_i.positive?,
                                        data: { confirm: I18n.t('data_import.data_fix.btn_start_sql_batch_confirm') } do
           %i.fa.fa-database
           = I18n.t('data_import.data_fix.btn_start_sql_batch')
@@ -51,44 +52,63 @@
       %p No results loaded from phase5 JSON yet.
       %p
         = link_to 'Populate DB Tables', review_results_path(file_path: @file_path, phase5_v2: 1, populate_db: 1), class: 'btn btn-primary'
-  - elsif @phase5_programs.blank? && @filter_active
-    .alert.alert-info
-      %p
-        %i.fa.fa-filter
-        No results match the current filter (no issues found).
-      %p
-        All results are valid!
-        = link_to 'Clear filter', review_results_path(file_path: @file_path, phase5_v2: 1), class: 'btn btn-outline-primary'
-        to view all #{@total_programs_count} programs.
   - else
-    %div{ data: { controller: 'filter-results' } }
-      -# Filter toggle and pagination controls
-      .container-fluid.m-2.d-flex.justify-content-between.align-items-center
-        .d-flex.align-items-center
-          %label.mb-0
-            -# Server-side filter: checkbox triggers page reload with filter_issues parameter
-            - filter_checked = params[:filter_issues].present?
-            - base_params = request.query_parameters.except(:filter_issues, :page)
-            %input#filter-issues{ type: 'checkbox', class: 'form-check-input',
-                                   checked: filter_checked,
-                                   onchange: "window.location.href='#{review_results_path(filter_checked ? base_params : base_params.merge(filter_issues: '1'))}'",
-                                   data: { action: 'filter-results#toggle', filter_results_target: 'checkbox' } }
-            %strong.ms-2 Show only results with issues
-          %small.text-muted.ms-3
-            (Missing swimmer data)
-      
-        -# Pagination controls
-        - if @total_pages && @total_pages > 1
-          .pagination-controls
-            %span.me-3
-              %strong Page #{@current_page} of #{@total_pages}
-            - prev_page = [@current_page - 1, 1].max
-            - next_page = [@current_page + 1, @total_pages].min
-            - pagination_base_params = request.query_parameters.except(:page)
-            = link_to '← Previous', review_results_path(pagination_base_params.merge(page: prev_page)), 
-                      class: "btn btn-sm btn-outline-primary me-2 #{'disabled' if @current_page == 1}"
-            = link_to 'Next →', review_results_path(pagination_base_params.merge(page: next_page)), 
-                      class: "btn btn-sm btn-outline-primary #{'disabled' if @current_page == @total_pages}"
+    -# Issue Summary Banner (always shown)
+    - if @issue_count.to_i.positive?
+      .alert.alert-warning.d-flex.justify-content-between.align-items-center
+        %div
+          %i.fa.fa-exclamation-triangle.me-2
+          %strong= "#{@issue_count} program(s) with issues detected"
+          %span.text-muted.ms-2 (missing swimmer gender, year, or unmatched swimmers)
+        %div
+          - if @filter_active
+            = link_to review_results_path(file_path: @file_path, phase5_v2: 1, filter_issues: '0'), class: 'btn btn-sm btn-outline-secondary' do
+              %i.fa.fa-times
+              Show All Programs
+          - else
+            = link_to review_results_path(file_path: @file_path, phase5_v2: 1, filter_issues: '1'), class: 'btn btn-sm btn-warning' do
+              %i.fa.fa-filter
+              Show Only Issues
+    - else
+      .alert.alert-success
+        %i.fa.fa-check-circle.me-2
+        %strong All results are valid!
+        No missing swimmer data detected.
+
+    -# Pagination and Filter Controls (similar to teams/swimmers pages)
+    .card.mb-3
+      .card-body.py-2
+        .d-flex.justify-content-between.align-items-center
+          %div
+            %strong Page:
+            = @current_page
+            = "/"
+            = @total_pages
+            &nbsp;•&nbsp;
+            %strong Programs:
+            = @phase5_programs.size
+            = "/"
+            = @filter_active ? @issue_count : @total_programs_count
+            - if @filter_active
+              %span.badge.bg-warning.ms-2 Filtered
+
+          -# Pagination links (first, prev, next, last)
+          - if @total_pages && @total_pages > 1
+            .flex-grow-1.text-center
+              - pagination_base_params = request.query_parameters.except(:page)
+              = link_to '«', review_results_path(pagination_base_params.merge(page: 1)),
+                        class: "btn btn-sm btn-outline-primary me-1 #{'disabled' if @current_page == 1}",
+                        title: 'First'
+              = link_to '‹', review_results_path(pagination_base_params.merge(page: [@current_page - 1, 1].max)),
+                        class: "btn btn-sm btn-outline-primary me-1 #{'disabled' if @current_page == 1}",
+                        title: 'Previous'
+              %span.mx-2= "#{@current_page} / #{@total_pages}"
+              = link_to '›', review_results_path(pagination_base_params.merge(page: [@current_page + 1, @total_pages].min)),
+                        class: "btn btn-sm btn-outline-primary me-1 #{'disabled' if @current_page == @total_pages}",
+                        title: 'Next'
+              = link_to '»', review_results_path(pagination_base_params.merge(page: @total_pages)),
+                        class: "btn btn-sm btn-outline-primary #{'disabled' if @current_page == @total_pages}",
+                        title: 'Last'
 
       -# Separate individual and relay programs
       - individual_programs = @phase5_programs.reject { |p| p['relay'] }

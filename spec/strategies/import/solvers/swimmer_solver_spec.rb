@@ -158,12 +158,12 @@ RSpec.describe Import::Solvers::SwimmerSolver do
       meeting_date = '2025-10-15'
 
       Dir.mktmpdir do |tmp|
-        # Create phase1 with meeting date
+        # Create phase1 with meeting date (header_date is at data level, not data.meeting)
         phase1_path = File.join(tmp, 'meeting-l4-phase1.json')
         File.write(phase1_path, JSON.pretty_generate({
                                                        '_meta' => {},
                                                        'data' => {
-                                                         'meeting' => { 'header_date' => meeting_date }
+                                                         'header_date' => meeting_date
                                                        }
                                                      }))
 
@@ -211,12 +211,12 @@ RSpec.describe Import::Solvers::SwimmerSolver do
       meeting_date = '2025-10-15'
 
       Dir.mktmpdir do |tmp|
-        # Create phase1 with meeting date
+        # Create phase1 with meeting date (header_date is at data level, not data.meeting)
         phase1_path = File.join(tmp, 'meeting-l4-phase1.json')
         File.write(phase1_path, JSON.pretty_generate({
                                                        '_meta' => {},
                                                        'data' => {
-                                                         'meeting' => { 'header_date' => meeting_date }
+                                                         'header_date' => meeting_date
                                                        }
                                                      }))
 
