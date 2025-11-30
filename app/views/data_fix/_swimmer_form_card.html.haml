@@ -19,6 +19,10 @@
         - badge_color = color_class.present? ? "badge-#{color_class}" : fallback_badge_color
         %small.ml-2.badge{ class: badge_color }
           ID: #{swimmer_id}
+        - if defined?(gender_guessed) && gender_guessed
+          %small.ml-1.badge.badge-warning{ title: 'Gender inferred from high-confidence fuzzy match - please verify' }
+            %i.fa.fa-question-circle
+            GENDER GUESSED
       - elsif has_missing_data
         %small.ml-2.badge.badge-danger
           MISSING DATA

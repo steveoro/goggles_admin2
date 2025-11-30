@@ -132,12 +132,16 @@ module Import
           'editable_name' => name,
           'name_variations' => nil,
           'team_id' => nil,
-          'city_id' => nil
+          'city_id' => nil,
+          'match_percentage' => 0.0
         }
 
         # Find fuzzy matches
         matches = find_team_matches(name)
         entry['fuzzy_matches'] = matches
+
+        # Store top match percentage for filtering (0.0 if no matches)
+        entry['match_percentage'] = matches.first&.dig('percentage') || 0.0
 
         # Auto-assign top match if it's very good (exact match or close enough)
         if matches.present? && auto_assignable?(matches.first, name)
@@ -198,7 +202,7 @@ module Import
 
       # Determine if top match is good enough for auto-assignment
       # Uses fuzzy match weight (Jaro-Winkler distance) as criterion.
-      # Auto-assigns if weight >= 0.60 (60% confidence or higher - lowered to accept more matches)
+      # Auto-assigns if weight >= 0.80 (80% confidence or higher - lowered to accept more matches)
       #
       # This threshold balances accuracy and convenience:
       # - Catches exact matches and close variants
@@ -208,7 +212,7 @@ module Import
         return false unless match.present? && search_name.present?
 
         weight = match['weight'].to_f
-        weight >= 0.60
+        weight >= 0.81
       end
 
       # Build a team affiliation entry with matching logic

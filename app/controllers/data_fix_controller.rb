@@ -128,8 +128,13 @@ class DataFixController < ApplicationController
         end
       end
 
-      # Filter unmatched only (no team_id assigned)
-      teams = teams.select { |t| t['team_id'].nil? } if params[:unmatched].present?
+      # Filter teams needing review: unmatched (no team_id) OR match < 90% (yellow/red matches)
+      # This shows ALL teams that need manual verification at a glance
+      if params[:unmatched].present?
+        teams = teams.select do |t|
+          t['team_id'].nil? || (t['match_percentage'] || 0.0) < 90.0
+        end
+      end
 
       # Pagination (phase-specific params to avoid cross-phase interference)
       @page = params[:teams_page].to_i
@@ -243,8 +248,13 @@ class DataFixController < ApplicationController
         end
       end
 
-      # Filter unmatched only (no swimmer_id assigned)
-      swimmers = swimmers.select { |s| s['swimmer_id'].nil? } if params[:unmatched].present?
+      # Filter swimmers needing review: unmatched (no swimmer_id) OR match < 90% (yellow/red matches)
+      # This shows ALL swimmers that need manual verification at a glance
+      if params[:unmatched].present?
+        swimmers = swimmers.select do |s|
+          s['swimmer_id'].nil? || (s['match_percentage'] || 0.0) < 90.0
+        end
+      end
 
       # Pagination (phase-specific params to avoid cross-phase interference)
       # Swimmers typically have more entries, default to 100
@@ -436,9 +446,7 @@ class DataFixController < ApplicationController
         # Server-side filtering: only show programs with issues if filter is active
         # Auto-activate filter if there are issues and no explicit filter param
         @filter_active = params[:filter_issues] == '1' || (@issue_count.positive? && !params[:filter_issues].to_i.zero?)
-        if @filter_active && @issue_count.positive?
-          all_programs = @programs_with_issues
-        end
+        all_programs = @programs_with_issues if @filter_active && @issue_count.positive?
 
         # Sort programs by event order from phase4 (individual events first, then relays)
         phase4_path = default_phase_path_for(source_path, 4)
@@ -608,10 +616,10 @@ class DataFixController < ApplicationController
     end
 
     # Generate paths for output files
-    curr_dir = File.dirname(source_path)
+    source_dir = File.dirname(source_path) # Typically 'crawler/data/results.new/<season_id>/'
     sql_filename = "#{File.basename(source_path, '.json')}.sql"
-    sql_path = File.join(curr_dir, sql_filename)
-    log_path = File.join(curr_dir, "#{File.basename(source_path, '.json')}.log")
+    sql_path = File.join(source_dir, sql_filename)
+    log_path = File.join(source_dir, "#{File.basename(source_path, '.json')}.log")
 
     # Initialize Main with all phase paths and log path
     committer = Import::Committers::Main.new(
@@ -641,8 +649,8 @@ class DataFixController < ApplicationController
       # Get season_id for organized archiving
       season_id = JSON.parse(File.read(phase1_path))&.dig('data', 'season_id') || 'unknown'
 
-      # Move source JSON and ALL phase files to results.done/<season_id>
-      done_dir = File.join(curr_dir.gsub('results.new', 'results.done'), season_id.to_s)
+      # Move source JSON and ALL phase files to 'crawler/data/results.done/<season_id>/'
+      done_dir = source_dir.gsub('results.new', 'results.done')
       FileUtils.mkdir_p(done_dir)
 
       # Move source JSON as backup
@@ -811,33 +819,29 @@ class DataFixController < ApplicationController
 
     t = teams[team_index] || {}
 
-    # Handle both nested params from form (team[index][field]) and direct params from API (team[field])
+    # Handle direct params from form (team[field])
+    # Note: AutoComplete component adds extra fields (team, city, area) which we permit but ignore
     team_params = params[:team]
     if team_params.is_a?(ActionController::Parameters)
-      # Try nested params first (from form with index)
-      nested = if team_params[team_index.to_s].present?
-                 team_params[team_index.to_s].permit(:team_id, :editable_name, :name, :name_variations, :city_id)
-               else
-                 # Direct params (from API or specs)
-                 team_params.permit(:team_id, :editable_name, :name, :name_variations, :city_id)
-               end
+      permitted = team_params.permit(:team_id, :editable_name, :name, :name_variations, :city_id,
+                                     :team, :city, :area)
 
       # Update team_id (from AutoComplete)
-      if nested.key?(:team_id)
-        team_num = nested[:team_id].to_i
+      if permitted.key?(:team_id)
+        team_num = permitted[:team_id].to_i
         t['team_id'] = team_num.positive? ? team_num : nil
       end
 
       # Update city_id (from City AutoComplete)
-      if nested.key?(:city_id)
-        city_num = nested[:city_id].to_i
+      if permitted.key?(:city_id)
+        city_num = permitted[:city_id].to_i
         t['city_id'] = city_num.positive? ? city_num : nil
       end
 
       # Update text fields
-      t['editable_name'] = sanitize_str(nested[:editable_name]) if nested.key?(:editable_name)
-      t['name'] = sanitize_str(nested[:name]) if nested.key?(:name)
-      t['name_variations'] = sanitize_str(nested[:name_variations]) if nested.key?(:name_variations)
+      t['editable_name'] = sanitize_str(permitted[:editable_name]) if permitted.key?(:editable_name)
+      t['name'] = sanitize_str(permitted[:name]) if permitted.key?(:name)
+      t['name_variations'] = sanitize_str(permitted[:name_variations]) if permitted.key?(:name_variations)
     end
 
     teams[team_index] = t
@@ -1795,7 +1799,8 @@ class DataFixController < ApplicationController
         timing_string = row['timing'] || '0'
 
         program_key = "#{session_order}-#{event_code}-#{category}-#{gender}"
-        mrr_import_key = "#{program_key}/#{team_key}/#{timing_string}"
+        # Use same format as GogglesDb::DataImportMeetingRelayResult.build_import_key
+        mrr_import_key = "#{program_key}/#{team_key}-#{timing_string}"
 
         # Only process if this import_key is in our relay results
         next unless relay_import_keys.include?(mrr_import_key)
@@ -2117,11 +2122,11 @@ class DataFixController < ApplicationController
         swimmers_by_key[s['key']] = s
         # Also index by partial key (without leading pipe) for flexible lookup
         partial_key = normalize_swimmer_key_for_lookup(s['key'])
-        if partial_key
-          swimmers_by_key[partial_key] = s
-          # And without leading pipe
-          swimmers_by_key[partial_key.sub(/^\|/, '')] = s
-        end
+        next unless partial_key
+
+        swimmers_by_key[partial_key] = s
+        # And without leading pipe
+        swimmers_by_key[partial_key.sub(/^\|/, '')] = s
       end
     end
 

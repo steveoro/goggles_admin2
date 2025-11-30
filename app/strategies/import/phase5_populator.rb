@@ -386,6 +386,7 @@ module Import
       if parts[0].match?(/\A[MF]?\z/i)
         # Format: gender|last|first|year|team (5 parts)
         return swimmer_str if parts.size < 4
+
         last_name = parts[1]
         first_name = parts[2]
         year = parts[3]
@@ -479,9 +480,9 @@ module Import
         if parts[0].match?(/\A[MF]?\z/i)
           # Format: gender|last|first|year|team (5 parts)
           team_name = parts[4] if parts.size >= 5
-        else
+        elsif parts.size >= 4
           # Format: last|first|year|team (4 parts, no gender prefix)
-          team_name = parts[3] if parts.size >= 4
+          team_name = parts[3]
         end
       end
 
@@ -797,9 +798,9 @@ module Import
         if parts[0].match?(/\A[MF]?\z/i)
           # Format: gender|last|first|year|team (5 parts)
           team_name = parts[4] if parts.size >= 5
-        else
+        elsif parts.size >= 4
           # Format: last|first|year|team (4 parts, no gender prefix)
-          team_name = parts[3] if parts.size >= 4
+          team_name = parts[3]
         end
       end
 

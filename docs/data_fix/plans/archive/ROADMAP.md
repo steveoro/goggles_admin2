@@ -47,14 +47,14 @@ This document consolidates all active development plans and tracks progress towa
   - Covers all sources: dictionary scan, results scan, enrichment loop
   - RSpec coverage: 4 examples, 0 failures
 
-- **LT4 Structure Review** (2025-11-25) ✨ NEW
+- **LT4 Structure Review** (2025-11-25)
   - Fixed EventSolver and ResultSolver priority order
   - LT4 (events[]) now checked FIRST (Microplus primary format)
   - LT2 (sections[]) as FALLBACK (Legacy/PDF parsed)
   - Phase5Populator already correct (normalizes LT2→LT4)
   - SwimmerSolver and TeamSolver already correct
   - All EventSolver specs passing (22 examples, 0 failures)
-  
+
 - **Phase 6 Relay Commit** (2025-11-17) ✨ NEW
   - Full relay results commit to production tables
   - MRR → MeetingRelayResult
@@ -63,9 +63,9 @@ This document consolidates all active development plans and tracks progress towa
   - UPDATE support for existing relays
   - INSERT for new relays
   - Complete SQL batch file generation
-  - Cleanup of data_import relay tables after commit
+  - Cleanup of data_import tables after commit
   
-- **Phase 5 Polish: Pagination & Filtering** (2025-11-17) ✨ NEW
+- **Phase 5 Polish: Pagination & Filtering** (2025-11-17)
   - Server-side filtering for programs with issues
   - Client-side row filtering within cards
   - Pagination (max 2500 rows per page)

@@ -32,7 +32,8 @@
         .form-group.mr-2
           .custom-control.custom-checkbox
             = check_box_tag :unmatched, '1', params[:unmatched].present?, class: 'custom-control-input', id: 'unmatched-filter'
-            %label.custom-control-label{ for: 'unmatched-filter' } Show only unmatched
+            %label.custom-control-label{ for: 'unmatched-filter' } Show needing review
+          %small.text-muted.ml-1 (unmatched + yellow/red matches)
         = submit_tag 'Apply', class: 'btn btn-sm btn-primary mr-1'
         = link_to 'Clear', review_teams_path(file_path: @file_path, phase2_v2: 1), class: 'btn btn-sm btn-light'
     .card-body.py-0

@@ -71,8 +71,8 @@ module Import
               next if team_name.blank?
 
               # Use swimmer entry's updated key/gender (may have been populated from DB match)
-              badges << build_badge_entry(swimmer_entry['key'], team_name, yob.to_i,
-                                          swimmer_entry['gender_type_code'], meeting_date)
+              add_or_replace_badge(badges, build_badge_entry(swimmer_entry['key'], team_name, yob.to_i,
+                                                             swimmer_entry['gender_type_code'], meeting_date))
             end
           else # Hash dictionary: key => swimmerKey, value => details
             data_hash['swimmers'].each_with_index do |(_original_key, v), idx|
@@ -91,8 +91,8 @@ module Import
               next if team_name.to_s.strip.empty?
 
               # Use swimmer entry's updated key/gender (may have been populated from DB match)
-              badges << build_badge_entry(swimmer_entry['key'], team_name, yob.to_i,
-                                          swimmer_entry['gender_type_code'], meeting_date)
+              add_or_replace_badge(badges, build_badge_entry(swimmer_entry['key'], team_name, yob.to_i,
+                                                             swimmer_entry['gender_type_code'], meeting_date))
             end
           end
 
@@ -129,8 +129,8 @@ module Import
                   next if team_name.to_s.strip.empty?
 
                   # Use swimmer entry's updated key/gender (may have been populated from DB match)
-                  badges << build_badge_entry(swimmer_entry['key'], team_name, yob.to_i,
-                                              swimmer_entry['gender_type_code'], meeting_date)
+                  add_or_replace_badge(badges, build_badge_entry(swimmer_entry['key'], team_name, yob.to_i,
+                                                                 swimmer_entry['gender_type_code'], meeting_date))
                 end
               else
                 # Individual result row
@@ -146,8 +146,8 @@ module Import
                 next if team_name.to_s.strip.empty?
 
                 # Use swimmer entry's updated key/gender (may have been populated from DB match)
-                badges << build_badge_entry(swimmer_entry['key'], team_name, yob.to_i,
-                                            swimmer_entry['gender_type_code'], meeting_date)
+                add_or_replace_badge(badges, build_badge_entry(swimmer_entry['key'], team_name, yob.to_i,
+                                                               swimmer_entry['gender_type_code'], meeting_date))
               end
             end
             broadcast_progress('Collect swimmers from sections', sec_idx + 1, total)
@@ -156,10 +156,15 @@ module Import
           @logger.info('[SwimmerSolver] No LT4 swimmers dict and no LT2 sections found')
         end
 
+        # Deduplicate badges: when both partial-key (|LAST|FIRST|YOB) and full-key (F|LAST|FIRST|YOB)
+        # badges exist for the same swimmer+team+season, keep only the full-key one to prevent
+        # duplicate badge commits (same swimmer_id+team_id+season_id would fail unique constraint)
+        deduplicated_badges = deduplicate_badges(badges)
+
         payload = {
           'season_id' => @season.id,
           'swimmers' => swimmers.uniq { |h| h['key'] }.sort_by { |h| h['key'] },
-          'badges' => badges.uniq { |h| [h['swimmer_key'], h['team_key'], h['season_id']] }.sort_by { |h| h['swimmer_key'] }
+          'badges' => deduplicated_badges.sort_by { |h| h['swimmer_key'] }
         }
 
         phase_path = opts[:phase_path] || default_phase_path_for(source_path, 3)
@@ -279,39 +284,59 @@ module Import
         # Find fuzzy matches using CmdFindDbEntity with FuzzySwimmer
         matches = find_swimmer_matches(search_name, year_of_birth, search_last, gender_type_code)
         entry['fuzzy_matches'] = matches
+        entry['gender_guessed'] = false
 
-        # Auto-assign top match if confidence >= 60% (lower threshold for more auto-matching)
-        if matches.present? && auto_assignable?(matches.first, complete_name)
+        # Store top match percentage for filtering (0 if no matches)
+        entry['match_percentage'] = matches.first&.dig('percentage') || 0.0
+
+        # Handle gender-unknown swimmers: only accept very high confidence matches (>=90%)
+        # to infer gender safely. Lower matches could be wrong-gender swimmers with similar names.
+        if gender_type_code.blank?
           top_match = matches.first
-          entry['swimmer_id'] = top_match['id']
-          entry['complete_name'] = top_match['complete_name']
-
-          # Populate gender from matched swimmer if it was missing
-          if entry['gender_type_code'].blank? && top_match['gender_type_code'].present?
+          if top_match && top_match['percentage'] >= 90.0 && top_match['gender_type_code'].present?
+            # High confidence match - safe to infer gender
             entry['gender_type_code'] = top_match['gender_type_code']
-            @logger&.info("[SwimmerSolver] Populated gender '#{top_match['gender_type_code']}' from matched swimmer ID #{top_match['id']}")
+            entry['gender_guessed'] = true
+            entry['swimmer_id'] = top_match['id']
+            entry['complete_name'] = top_match['complete_name']
+            entry['last_name'] = top_match['last_name']
+            entry['first_name'] = top_match['first_name']
 
-            # Update key to include gender prefix now that we have it
+            # Update key to include inferred gender prefix
             parts = key.split('|').reject(&:blank?)
-            # Rebuild key: GENDER|LAST|FIRST|YOB
             entry['key'] = "#{entry['gender_type_code']}|#{parts[0]}|#{parts[1]}|#{parts[2]}"
-            @logger&.debug("[SwimmerSolver] Updated key from '#{key}' to '#{entry['key']}'")
 
-            # Recompute category now that we have complete data
+            # Recompute category now that we have gender
             meeting_date = @phase1_data&.dig('data', 'header_date')
             if year_of_birth.present? && meeting_date.present? && @categories_cache
-              category_type_id, category_type_code = Import::CategoryComputer.compute_category(
+              cat_id, cat_code = Import::CategoryComputer.compute_category(
                 year_of_birth: year_of_birth,
                 gender_code: entry['gender_type_code'],
                 meeting_date: meeting_date,
                 season: @season,
                 categories_cache: @categories_cache
               )
-              entry['category_type_id'] = category_type_id
-              entry['category_type_code'] = category_type_code
-              @logger&.info("[SwimmerSolver] Recomputed category '#{category_type_code}' after gender assignment")
+              entry['category_type_id'] = cat_id
+              entry['category_type_code'] = cat_code
             end
+
+            # Force match_percentage below 90 so it appears in "needs review" filter
+            entry['match_percentage'] = 89.9
+            @logger&.info("[SwimmerSolver] Gender guessed for '#{key}' -> #{entry['gender_type_code']} from match ID #{top_match['id']} (#{top_match['percentage']}%)")
+          else
+            # No high-confidence match - leave unmatched for manual review
+            @logger&.info("[SwimmerSolver] No high-confidence match for '#{key}' (gender unknown) - requires manual review")
           end
+          return entry
+        end
+
+        # Auto-assign top match if confidence >= 60% (lower threshold for more auto-matching)
+        if matches.present? && auto_assignable?(matches.first, complete_name)
+          top_match = matches.first
+          entry['swimmer_id'] = top_match['id']
+          entry['complete_name'] = top_match['complete_name']
+          entry['last_name'] = top_match['last_name']
+          entry['first_name'] = top_match['first_name']
 
           @logger&.info("[SwimmerSolver] Auto-assigned swimmer '#{key}' -> ID #{top_match['id']} (#{(top_match['weight'] * 100).round(1)}%)")
         end
@@ -322,7 +347,7 @@ module Import
       # Find potential swimmer matches using GogglesDb fuzzy finder with Jaro-Winkler distance
       # Returns array of hashes with swimmer data sorted by match weight
       # Implements fallback matching by last_name + gender + year_of_birth when no matches found
-      def find_swimmer_matches(complete_name, year_of_birth, last_name = nil, gender_code = nil)
+      def find_swimmer_matches(complete_name, year_of_birth, _last_name = nil, gender_code = nil)
         return [] if complete_name.blank?
 
         # Primary search: Use CmdFindDbEntity with FuzzySwimmer strategy (full name)
@@ -334,14 +359,14 @@ module Import
         # Extract matches (sorted by weight descending)
         matches = cmd.matches.respond_to?(:map) ? cmd.matches : []
 
-        # Fallback: If no matches found, try with a lower bias (0.50) and last name only
-        # This handles cases where first name is abbreviated or spelled differently
-        if matches.empty? && last_name.present?
+        # Fallback: If no matches found, try with a more permissive bias (0.80) which should be
+        # enough for a last name only match.
+        if matches.empty?
           @logger&.info("[SwimmerSolver] No matches for '#{complete_name}', trying fallback with lower bias")
           fallback_cmd = GogglesDb::CmdFindDbEntity.call(
             GogglesDb::Swimmer,
-            { complete_name: last_name.to_s.strip, year_of_birth: year_of_birth.to_i },
-            0.70 # Lower bias for more permissive matching
+            { complete_name: complete_name.to_s.strip, year_of_birth: year_of_birth.to_i },
+            0.80 # More permissive bias for fallback matching (default is 0.89)
           )
 
           fallback_matches = fallback_cmd.matches.respond_to?(:map) ? fallback_cmd.matches : []
@@ -354,6 +379,9 @@ module Import
           matches = fallback_matches.take(5) # Limit to top 5 fallback matches
           @logger&.info("[SwimmerSolver] Fallback found #{matches.size} matches")
         end
+
+        # TODO: Fallback #2: we could try to do a 3rd run, using just the last_name parameter, but this
+        # implies ranking any possible resulting match very low (red in color)
 
         # Convert all matches to our format with color-coded display labels
         matches.map do |match_struct|
@@ -511,7 +539,84 @@ module Import
         team&.dig('team_id')
       end
 
-      # Broadcast progress updates via ActionCable for real-time UI feedback
+      # Add a badge to the array, replacing any existing partial-key badge for the same swimmer+team+season.
+      # This ensures that when a full-key badge (F|LAST|FIRST|YOB) is added, any existing partial-key
+      # badge (|LAST|FIRST|YOB) for the same swimmer is removed to prevent duplicate commits.
+      def add_or_replace_badge(badges, new_badge)
+        new_key = new_badge['swimmer_key']
+        new_parts = new_key.to_s.split('|').reject(&:blank?)
+
+        # Extract normalized identity (last|first|yob without gender)
+        new_offset = new_parts[0]&.length == 1 && new_parts[0]&.match?(/[MF]/) ? 1 : 0
+        new_last = new_parts[new_offset]&.upcase
+        new_first = new_parts[new_offset + 1]&.upcase
+        new_yob = new_parts[new_offset + 2]
+        new_team = new_badge['team_key']
+        new_season = new_badge['season_id']
+
+        # Check if this is a full-key badge (has gender prefix)
+        has_gender_prefix = new_key.to_s.match?(/^[MF]\|/)
+
+        if has_gender_prefix
+          # Remove any existing partial-key badge for the same swimmer+team+season
+          badges.reject! do |existing|
+            existing_key = existing['swimmer_key']
+            existing_parts = existing_key.to_s.split('|').reject(&:blank?)
+            existing_offset = existing_parts[0]&.length == 1 && existing_parts[0]&.match?(/[MF]/) ? 1 : 0
+            existing_last = existing_parts[existing_offset]&.upcase
+            existing_first = existing_parts[existing_offset + 1]&.upcase
+            existing_yob = existing_parts[existing_offset + 2]
+
+            # Match by identity + team + season, but only remove partial-key badges
+            !existing_key.to_s.match?(/^[MF]\|/) &&
+              existing_last == new_last &&
+              existing_first == new_first &&
+              existing_yob == new_yob &&
+              existing['team_key'] == new_team &&
+              existing['season_id'] == new_season
+          end
+        end
+
+        # Add the new badge (unless exact duplicate already exists)
+        return if badges.any? { |b| b['swimmer_key'] == new_key && b['team_key'] == new_team && b['season_id'] == new_season }
+
+        badges << new_badge
+      end
+
+      # Deduplicate badges by normalized swimmer identity (last_name+first_name+yob) + team_key + season
+      # When both partial-key (|LAST|FIRST|YOB) and full-key (F|LAST|FIRST|YOB) badges exist,
+      # keep only the most complete one (with gender prefix and category data)
+      def deduplicate_badges(badges)
+        # Group by normalized identity: extract last|first|yob from swimmer_key
+        grouped = badges.group_by do |badge|
+          key = badge['swimmer_key']
+          parts = key.to_s.split('|').reject(&:blank?)
+          # Handle both formats: GENDER|LAST|FIRST|YOB or LAST|FIRST|YOB
+          offset = parts[0]&.length == 1 && parts[0]&.match?(/[MF]/) ? 1 : 0
+          last = parts[offset]
+          first = parts[offset + 1]
+          yob = parts[offset + 2]
+          # Create normalized identity key (case-insensitive)
+          "#{last&.upcase}|#{first&.upcase}|#{yob}|#{badge['team_key']}|#{badge['season_id']}"
+        end
+
+        # For each group, select the best badge (prefer full key with gender and category)
+        grouped.values.map do |group|
+          if group.size == 1
+            group.first
+          else
+            # Sort to prefer: 1) has category_type_id, 2) has gender prefix in key, 3) has swimmer_id
+            group.max_by do |b|
+              score = 0
+              score += 4 if b['swimmer_id'].present? # If the swimmer is already in the DB, we can derive the rest
+              score += 2 if b['category_type_id'].present?
+              score += 1 if b['swimmer_key'].to_s.match?(/^[MF]\|/) # Full keys happen often for new swimmers with all data
+              score
+            end
+          end
+        end
+      end
+
       def broadcast_progress(message, current, total)
         ActionCable.server.broadcast(
           'ImportStatusChannel',

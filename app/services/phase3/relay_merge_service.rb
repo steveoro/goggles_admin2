@@ -18,6 +18,10 @@ module Phase3
       @swimmers = @main_data['swimmers']
       @badges = @main_data['badges']
       @swimmers_by_key = @swimmers.index_by { |swimmer| swimmer[SWIMMER_KEY] }
+
+      # Deduplicate badges: remove partial-key badges when full-key badges exist
+      deduplicate_initial_badges!
+
       @badge_signatures = build_badge_signatures(@badges)
       @stats = {
         swimmers_updated: 0,
@@ -274,10 +278,97 @@ module Phase3
         signature = badge_signature(badge)
         next if signature.nil? || @badge_signatures.include?(signature)
 
-        @badges << deep_dup(badge)
-        @badge_signatures << signature
-        @stats[:badges_added] += 1
+        # Use normalized identity to prevent duplicates with different key formats
+        # (partial key |LAST|FIRST|YOB vs full key F|LAST|FIRST|YOB)
+        normalized_id = normalized_badge_identity(badge)
+        next if normalized_id.nil?
+
+        # IMPORTANT: Only process badges for swimmers that exist in our main dictionary.
+        # The purpose of merge is to ENRICH existing data, not to add new swimmers/badges
+        # from other result files.
+        swimmer_key = badge['swimmer_key']
+        next unless swimmer_exists_in_main?(swimmer_key)
+
+        # Check if we already have a badge for this swimmer+team+season (by normalized identity)
+        existing_idx = @badges.find_index do |existing|
+          normalized_badge_identity(existing) == normalized_id
+        end
+
+        if existing_idx
+          existing = @badges[existing_idx]
+          new_has_gender = badge['swimmer_key'].to_s.match?(/^[MF]\|/)
+          existing_has_gender = existing['swimmer_key'].to_s.match?(/^[MF]\|/)
+
+          if new_has_gender && !existing_has_gender
+            # New badge has full key, existing has partial - replace
+            @badge_signatures.delete(badge_signature(existing))
+            @badges[existing_idx] = deep_dup(badge)
+            @badge_signatures << signature
+            @stats[:badges_added] += 1
+          end
+          # Otherwise keep existing (either both have gender, or existing has and new doesn't)
+        else
+          # No existing badge with this normalized identity - add new
+          @badges << deep_dup(badge)
+          @badge_signatures << signature
+          @stats[:badges_added] += 1
+        end
       end
+    end
+
+    # Check if a swimmer exists in our main dictionary (by exact or normalized key)
+    def swimmer_exists_in_main?(swimmer_key)
+      return false if swimmer_key.blank?
+
+      # Direct key match
+      return true if @swimmers_by_key.key?(swimmer_key)
+
+      # Try normalized match (ignoring gender prefix)
+      name_yob_key = extract_name_yob_key(swimmer_key)
+      return false unless name_yob_key
+
+      @main_by_name_yob[name_yob_key].any?
+    end
+
+    # Remove partial-key badges when full-key badges exist for the same swimmer+team+season
+    def deduplicate_initial_badges!
+      # Group badges by normalized identity
+      grouped = @badges.group_by { |badge| normalized_badge_identity(badge) }
+
+      # For each group, keep only the best badge (prefer full key)
+      @badges.replace(
+        grouped.values.map do |group|
+          if group.size == 1
+            group.first
+          else
+            # Prefer badge with gender prefix in key, then with swimmer_id, then with category_type_id
+            group.max_by do |b|
+              score = 0
+              score += 4 if b['swimmer_id'].present?
+              score += 2 if b['category_type_id'].present?
+              score += 1 if b['swimmer_key'].to_s.match?(/^[MF]\|/)
+              score
+            end
+          end
+        end.compact
+      )
+    end
+
+    # Normalized badge identity: |LAST|FIRST|YOB + team_key + season_id (ignoring gender prefix)
+    def normalized_badge_identity(badge)
+      key = badge['swimmer_key'].to_s
+      return nil if key.blank?
+
+      parts = key.split('|').reject(&:blank?)
+      return nil if parts.size < 3
+
+      # Handle both formats: GENDER|LAST|FIRST|YOB or LAST|FIRST|YOB
+      offset = parts[0]&.length == 1 && parts[0]&.match?(/[MF]/) ? 1 : 0
+      last = parts[offset]&.upcase
+      first = parts[offset + 1]&.upcase
+      yob = parts[offset + 2]
+
+      "#{last}|#{first}|#{yob}|#{badge['team_key']}|#{badge['season_id']}"
     end
 
     def build_badge_signatures(badges)

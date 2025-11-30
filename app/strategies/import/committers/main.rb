@@ -60,6 +60,11 @@ module Import
         @logger = Import::PhaseCommitLogger.new(log_path: @log_path)
         @transaction_rolled_back = false
         @top_level_error = nil
+
+        # Session order → meeting_session_id mapping (populated in Phase 1, used in Phase 4)
+        @session_id_by_order = {}
+        # Event key → meeting_event_id mapping (populated in Phase 4, used in Phase 5)
+        @event_id_by_key = {}
       end
       # -----------------------------------------------------------------------
 
@@ -98,6 +103,18 @@ module Import
 
             broadcast_progress('Committing Phase 5', 5, 6)
             commit_phase5_entities  # MeetingPrograms, MIRs, Laps (from DB tables)
+
+            # CRITICAL: Check for any errors collected during commit phases.
+            # If any errors occurred, raise an exception to trigger transaction rollback.
+            # This ensures ALL changes are rolled back when ANY error occurs, maintaining
+            # DB consistency for the final SQL script that will run on the target server.
+            # NOTE: We use RuntimeError (not ActiveRecord::Rollback) because Rollback is
+            # silently swallowed by Rails and won't propagate to our rescue block.
+            if @stats[:errors].any?
+              error_summary = @stats[:errors].first(5).join('; ')
+              error_summary += " (and #{@stats[:errors].size - 5} more)" if @stats[:errors].size > 5
+              raise "Commit halted due to #{@stats[:errors].size} error(s): #{error_summary}"
+            end
           end
 
           # Close SQL transaction with COMMIT
@@ -168,8 +185,12 @@ module Import
         # Update sessions with the resulting meeting_id so they can be persisted
         sessions_data.each { |session_hash| session_hash['meeting_id'] = meeting_id }
 
-        # Commit sessions (mutates hashes with resulting IDs)
-        sessions_data.each { |session_hash| commit_meeting_session(session_hash) }
+        # Commit sessions and capture IDs for Phase 4 lookup
+        sessions_data.each do |session_hash|
+          session_id = commit_meeting_session(session_hash)
+          session_order = session_hash['session_order']
+          @session_id_by_order[session_order] = session_id if session_id && session_order
+        end
       end
       # -----------------------------------------------------------------------
 
@@ -229,14 +250,31 @@ module Import
         Rails.logger.info('[Main] Committing Phase 4: Events')
         return unless phase4_data
 
-        # Phase 4 data is structured as { "sessions": [ { "session_order": 1, "events": [...] }, ... ] }
-        sessions = Array(phase4_data['sessions'])
+        # Phase 4 data is structured as { "data": { "sessions": [ { "session_order": 1, "events": [...] }, ... ] } }
+        sessions = Array(phase4_data.dig('data', 'sessions'))
         sessions.each_with_index do |session_hash, sess_idx|
+          session_order = session_hash['session_order']
+          meeting_session_id = @session_id_by_order[session_order]
+
+          unless meeting_session_id
+            Rails.logger.warn("[Main] No meeting_session_id found for session_order=#{session_order}")
+            next
+          end
+
           events = Array(session_hash['events'])
           session_total = events.size
           events.each_with_index do |event_hash, evt_idx|
-            commit_meeting_event(event_hash)
-            broadcast_progress("Committing Events for session #{sess_idx}", evt_idx + 1, session_total)
+            # Inject the resolved meeting_session_id into the event hash
+            event_hash_with_session = event_hash.merge('meeting_session_id' => meeting_session_id)
+            event_id = commit_meeting_event(event_hash_with_session)
+
+            # Store event_id for Phase 5 program creation
+            if event_id
+              event_key = event_hash['key'] # e.g., "50SL", "4x50MI"
+              @event_id_by_key["#{session_order}-#{event_key}"] = event_id
+            end
+
+            broadcast_progress("Committing Events for session #{sess_idx + 1}", evt_idx + 1, session_total)
           end
         end
       end
@@ -611,6 +649,9 @@ module Import
         meeting_session_id = event_hash['meeting_session_id']
         event_type_id = event_hash['event_type_id']
 
+        # Fallback: resolve event_type_id if missing (common for relay events)
+        event_type_id ||= resolve_event_type_id(event_hash)
+
         # Guard clause: skip if missing required keys
         return unless meeting_session_id && event_type_id
 
@@ -639,6 +680,32 @@ module Import
       rescue ActiveRecord::RecordInvalid => e
         @stats[:errors] << "MeetingEvent error (session=#{meeting_session_id}, type=#{event_type_id}): #{e.message}"
         Rails.logger.error("[Main] ERROR committing event: #{e.message}")
+        nil
+      end
+      # -----------------------------------------------------------------------
+
+      # Resolve event_type_id from event hash attributes (fallback for relay events)
+      # Uses distance, stroke, and relay flag to find the correct EventType
+      def resolve_event_type_id(event_hash)
+        distance = event_hash['distance'] # e.g., "4x50", "50", "100"
+        stroke = event_hash['stroke']     # e.g., "SL", "MI", "DO", "RA", "FA"
+
+        return nil unless distance && stroke
+
+        # Build event code for lookup
+        # EventType.code format: "50SL", "4X50SL", "4X100MI", etc.
+        event_code = "#{distance}#{stroke}".upcase
+
+        # Find by code (exact match)
+        event_type = GogglesDb::EventType.find_by(code: event_code)
+        return event_type.id if event_type
+
+        # Fallback: try with relay prefix normalization (4x50 -> 4X50)
+        normalized_code = event_code.gsub(/(\d)x(\d)/i, '\1X\2').upcase
+        event_type = GogglesDb::EventType.find_by(code: normalized_code)
+        return event_type.id if event_type
+
+        Rails.logger.warn("[Main] Could not resolve event_type_id for event: #{event_hash.inspect}")
         nil
       end
       # -----------------------------------------------------------------------
@@ -839,27 +906,23 @@ module Import
       end
       # -----------------------------------------------------------------------
 
-      # Find meeting_event_id from import_key by parsing program key and matching with phase 4 data
+      # Find meeting_event_id from import_key using the mappings populated during Phase 4 commit
       def find_meeting_event_id_from_import_key(import_key)
         # Extract program key: "1-100SL-M45-M" from "1-100SL-M45-M/ROSSI|MARIO|1978"
+        # Or for relays: "1-4x50MI-M120-X/TEAM NAME-1'23.45"
         program_key = import_key.split('/').first
         key_parts = program_key.split('-')
 
-        session_order = key_parts[0] # "1"
-        event_code = key_parts[1] # "100SL"
+        session_order = key_parts[0].to_i # "1" -> 1
+        event_code = key_parts[1]         # "100SL" or "4x50MI"
 
-        # Find meeting_session_id from phase 1
-        sessions = Array(phase1_data&.dig('data', 'sessions'))
-        session = sessions.find { |s| s['session_order'].to_s == session_order.to_s }
-        meeting_session_id = session&.dig('meeting_session_id')
-        return nil unless meeting_session_id
+        # Use the mapping populated during Phase 4 commit
+        event_key = "#{session_order}-#{event_code}"
+        meeting_event_id = @event_id_by_key[event_key]
 
-        # Find meeting_event_id from phase 4 by session + event_code
-        events = Array(phase4_data&.dig('data', 'events'))
-        event = events.find do |e|
-          e['meeting_session_key'] == session_order && e['event_code'] == event_code
-        end
-        event&.dig('meeting_event_id')
+        Rails.logger.warn("[Main] No meeting_event_id found for event_key=#{event_key} (import_key=#{import_key})") unless meeting_event_id
+
+        meeting_event_id
       end
       # -----------------------------------------------------------------------
 

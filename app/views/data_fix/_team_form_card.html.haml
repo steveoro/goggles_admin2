@@ -58,11 +58,12 @@
                     Select a match from the list to quickly populate team fields via AutoComplete.
 
                 -# Row 1: Team AutoComplete + editable_name + hidden ID field
+                -# Note: base_dom_id uses index for unique DOM IDs; hidden field uses flat name for form submission
                 .row
                   .col-6
-                    = hidden_field_tag "team[#{team_index}][team_id]", team_id, id: "team_#{team_index}_id_field"
+                    = hidden_field_tag 'team[team_id]', team_id, id: "team_#{team_index}_id_field"
                     = render(AutoCompleteComponent.new(show_top_labels: true,
-                                                       base_dom_id: "team[#{team_index}]", base_api_url: api_url,
+                                                       base_dom_id: "team_#{team_index}", base_api_url: api_url,
                                                        default_value: team_id,
                                                        detail_endpoint: 'team', base_name: 'team', label_column: 'editable_name',
                                                        search_endpoint: 'teams', search_column: 'name',
@@ -76,7 +77,7 @@
                   .col-6
                     .form-group
                       = label_tag "team_#{team_index}_editable_name", 'editable_name'
-                      = text_field_tag "team[#{team_index}][editable_name]", editable_name,
+                      = text_field_tag 'team[editable_name]', editable_name,
                                       id: "team_#{team_index}_editable_name",
                                       class: 'form-control', required: true, placeholder: 'editable_name'
 
@@ -85,20 +86,20 @@
                   .col-5
                     .form-group
                       = label_tag "team_#{team_index}_name", 'name'
-                      = text_field_tag "team[#{team_index}][name]", team_name,
+                      = text_field_tag 'team[name]', team_name,
                                       id: "team_#{team_index}_name",
                                       class: 'form-control', required: true, placeholder: 'name'
                   .col-7
                     .form-group
                       = label_tag "team_#{team_index}_name_variations", 'name_variations'
-                      = text_field_tag "team[#{team_index}][name_variations]", name_variations,
+                      = text_field_tag 'team[name_variations]', name_variations,
                                       id: "team_#{team_index}_name_variations",
                                       class: 'form-control', placeholder: 'name_variations (pipe-separated)'
                 
                 -# Row 3: City AutoComplete + hidden city_id field
-                = hidden_field_tag "team[#{team_index}][city_id]", city_id, id: "team_#{team_index}_city_id_field"
+                = hidden_field_tag 'team[city_id]', city_id, id: "team_#{team_index}_city_id_field"
                 = render(AutoCompleteComponent.new(show_top_labels: true,
-                                                   base_dom_id: "team[#{team_index}]", base_api_url: api_url,
+                                                   base_dom_id: "team_#{team_index}_city", base_api_url: api_url,
                                                    default_value: city_id,
                                                    detail_endpoint: 'city', base_name: 'city', label_column: 'area',
                                                    search_endpoint: 'cities', search_column: 'name',

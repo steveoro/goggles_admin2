@@ -170,7 +170,7 @@
                           # Match status
                           mrs_match_id = mrs&.meeting_relay_swimmer_id
                           lap_match_id = lap&.relay_lap_id
-                          
+
                           # Lookup unmatched swimmer name from source data
                           swimmer_info = relay_swimmer_names&.dig(mrr.import_key, relay_order)
                           swimmer_name_from_source = swimmer_info&.dig('name')
@@ -190,10 +190,15 @@
                             - elsif swimmer_name_from_source.present?
                               = swimmer_name_from_source
                               %small.ml-2.badge.badge-warning Unmatched
+                            - elsif mrs&.swimmer_key.present?
+                              -# Has swimmer_key but no swimmer_id - show key and explain
+                              %span.text-secondary= mrs.swimmer_key
+                              %small.ml-2.badge.badge-warning{ title: 'Swimmer key present but not matched to DB' } Unmatched
                             - else
-                              %span.text-secondary
+                              -# Truly missing - no swimmer info at all
+                              %span.text-muted
                                 = lap&.data_import_meeting_relay_swimmer&.try(:swimmer_key) || 'N/A'
-                              %small.ml-2.badge.badge-danger MISSING DATA
+                              %small.ml-2.badge.badge-danger{ title: 'No swimmer key found in source data' } NO SWIMMER KEY
                           %td.text-right
                             = from_start_timing.to_s
                           %td.text-right
