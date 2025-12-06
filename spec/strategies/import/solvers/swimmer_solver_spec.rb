@@ -290,7 +290,7 @@ RSpec.describe Import::Solvers::SwimmerSolver do
 
         # If high-confidence match found, gender should be guessed and flagged
         if swimmer_entry['swimmer_id'].present?
-          expect(swimmer_entry['gender_guessed']).to eq(true)
+          expect(swimmer_entry['gender_guessed']).to be(true)
           expect(swimmer_entry['gender_type_code']).to eq(swimmer.gender_type.code)
           # Key should include gender prefix
           expect(swimmer_entry['key']).to start_with("#{swimmer.gender_type.code}|")
@@ -298,7 +298,7 @@ RSpec.describe Import::Solvers::SwimmerSolver do
           expect(swimmer_entry['match_percentage']).to eq(89.9)
         else
           # No high-confidence match found - stays unmatched
-          expect(swimmer_entry['gender_guessed']).to eq(false)
+          expect(swimmer_entry['gender_guessed']).to be(false)
           expect(swimmer_entry['gender_type_code']).to be_blank
         end
       end

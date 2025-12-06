@@ -53,6 +53,8 @@ module Import
             meeting.update!(attributes_for_logging)
             sql_log << SqlMaker.new(row: meeting).log_update
             stats[:meetings_updated] += 1
+            logger.log_success(entity_type: 'Meeting', entity_id: meeting_id, action: 'updated',
+                               entity_key: meeting.description)
             Rails.logger.info("[Main] Updated Meeting ID=#{meeting_id}")
           end
           return meeting_id
@@ -62,7 +64,8 @@ module Import
         model.save!
         sql_log << SqlMaker.new(row: model).log_insert
         stats[:meetings_created] += 1
-        logger.log_success(entity_type: 'Meeting', entity_id: model.id, action: 'created')
+        logger.log_success(entity_type: 'Meeting', entity_id: model.id, action: 'created',
+                           entity_key: model.description)
         Rails.logger.info("[Main] Created Meeting ID=#{model.id}, #{model.description}")
         model.id
       rescue ActiveRecord::RecordInvalid => e

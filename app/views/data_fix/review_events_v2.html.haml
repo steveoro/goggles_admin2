@@ -83,6 +83,7 @@
             event_index = @all_events.index(event)
             local_event_index = event['_event_index']
             session_index = event['_session_index']
+            session_order = event['_session_order']
             
             is_new_event = new_event_idx.present? && new_event_idx == event_index
             event_id = event['id']
@@ -95,7 +96,9 @@
           .col-lg-4.col-md-6.col-sm-12
             = render(partial: 'event_form_card',
                      locals: { file_path: @file_path, api_url: @api_url, event:, event_index:,
-                               local_event_index:, session_index:, sessions: @sessions,
+                               local_event_index:, session_index:, session_order:, sessions: @sessions,
                                event_id:, has_match:, card_bg:, border_color:, border_width:,
                                event_key:, is_new_event:, event_types_payload: @event_types_payload,
                                existing_meeting_events: @existing_meeting_events })
+
+  .mb-4 &nbsp;

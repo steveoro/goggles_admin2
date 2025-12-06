@@ -41,6 +41,7 @@ module Import
             distance = ev['distance'] || ev['distanceInMeters'] || ev['eventLength']
             stroke = ev['stroke'] || ev['style'] || ev['eventStroke']
             is_relay = ev['relay'] == true
+            event_gender = ev['eventGender'].to_s.strip.upcase # M, F, or X
 
             # Try to derive from eventCode
             if distance.to_s.strip.empty? || stroke.to_s.strip.empty?
@@ -67,7 +68,22 @@ module Import
 
             session_order = ev['sessionOrder'] || 1
             event_order = ev['eventOrder'] || (idx_ev + 1)
-            key = ev['eventCode'].presence || [distance, stroke].join('|')
+
+            # Build event key and find event_type_id
+            if is_relay
+              # Build full relay code from eventGender:
+              # - M or F (same-sex) → prefix 'S' (e.g., S4X50SL)
+              # - X (mixed) → prefix 'M' (e.g., M4X50SL)
+              gender_prefix = event_gender == 'X' ? 'M' : 'S'
+              # Normalize: 4x50 → 4X50
+              normalized_distance = distance.to_s.gsub(/x/i, 'X').upcase
+              full_relay_code = "#{gender_prefix}#{normalized_distance}#{stroke}".upcase
+              key = full_relay_code
+              event_type_id = find_relay_event_type_id(full_relay_code)
+            else
+              key = ev['eventCode'].presence || "#{distance}#{stroke}"
+              event_type_id = find_event_type_id(distance, stroke)
+            end
 
             bucket = sessions_map[session_order]
             next if bucket['__seen__'][key]
@@ -82,9 +98,6 @@ module Import
               'heat_type_id' => 3, # Default: Finals
               'heat_type' => 'F'   # Finals code
             }
-
-            # Try to find matching event_type_id based on distance + stroke code
-            event_type_id = find_event_type_id(distance, stroke)
             event_hash['event_type_id'] = event_type_id if event_type_id.present?
 
             # Enhance with meeting_session_id and meeting_event_id matching
@@ -254,13 +267,13 @@ module Import
         File.join(dir, "#{base}-phase#{phase_num}.json")
       end
 
-      # Find EventType ID by constructing the code from distance + stroke
+      # Find EventType ID for individual events by constructing the code from distance + stroke
       # Example: distance=200, stroke="RA" => code="200RA" => EventType.id=21
       def find_event_type_id(distance, stroke)
         return nil if distance.to_s.strip.empty? || stroke.to_s.strip.empty?
 
-        code = "#{distance}#{stroke}"
-        event_type = GogglesDb::EventType.find_by(code: code)
+        code = "#{distance}#{stroke}".upcase
+        event_type = GogglesDb::EventType.find_by(code: code, relay: false)
         event_type&.id
       end
 

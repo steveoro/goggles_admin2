@@ -107,13 +107,40 @@ module Import
         Rails.logger.info('[Phase5Populator] Normalization complete')
       end
 
+      # Build event_key → session_order mapping from Phase 4 data
+      # This ensures we use the correct session assignments even if events were moved during editing
+      build_event_session_mapping!
+
       # DEBUG logging
       Rails.logger.info('[Phase5Populator] Loaded phase files:')
       Rails.logger.info("  - source format: #{original_format} → normalized to LT4")
       Rails.logger.info("  - phase1_path: #{phase1_path}, exists: #{File.exist?(phase1_path)}")
       Rails.logger.info("  - phase2_path: #{phase2_path}, exists: #{File.exist?(phase2_path)}, teams: #{@phase2_data&.dig('data', 'teams')&.size || 0}")
       Rails.logger.info("  - phase3_path: #{phase3_path}, exists: #{File.exist?(phase3_path)}, swimmers: #{@phase3_data&.dig('data', 'swimmers')&.size || 0}")
-      Rails.logger.info("  - phase4_path: #{phase4_path}, exists: #{File.exist?(phase4_path)}")
+      Rails.logger.info("  - phase4_path: #{phase4_path}, exists: #{File.exist?(phase4_path)}, event_mappings: #{@event_session_map.size}")
+    end
+
+    # Build mapping from event_key → session_order using Phase 4 data
+    # This is the source of truth for session assignments after any edits
+    def build_event_session_mapping!
+      @event_session_map = {}
+      return unless @phase4_data
+
+      sessions = Array(@phase4_data.dig('data', 'sessions'))
+      sessions.each do |session|
+        session_order = session['session_order']
+        events = Array(session['events'])
+        events.each do |event|
+          event_key = event['key']
+          @event_session_map[event_key] = session_order if event_key.present?
+        end
+      end
+    end
+
+    # Get session_order for an event - use Phase 4 mapping if available, fall back to source data
+    def session_order_for_event(event)
+      event_key = build_event_key(event)
+      @event_session_map[event_key] || event['sessionOrder'] || 1
     end
 
     # Detect source file format (LT2 or LT4) based on layoutType field
@@ -152,14 +179,15 @@ module Import
       events.each_with_index do |event, _event_idx|
         next if event['relay'] == true # Skip relay events for now
 
-        session_order = event['sessionOrder'] || 1
         distance = extract_distance(event)
         stroke = extract_stroke(event)
         next if distance.blank? || stroke.blank?
 
-        # Use key if available (phase4), otherwise use eventCode (normalized LT2)
-        event_key = event['key'] || event['eventCode']
-        event_code = event['eventCode'].presence || "#{distance}#{stroke}"
+        # Build event_key matching EventSolver's format (for Phase 4 mapping lookup)
+        event_key = build_event_key(event)
+        event_code = event_key # Use same for display and program key
+        # Get session_order from Phase 4 mapping (reflects any edits made in Phase 4 review)
+        session_order = session_order_for_event(event)
         results = Array(event['results'])
 
         results_x_event_tot = results.count
@@ -238,14 +266,15 @@ module Import
 
         # Broadcast progress every relay event
         relay_idx = relay_events.index(event) || 0
-        session_order = event['sessionOrder'] || 1
         distance = extract_distance(event)
         stroke = extract_stroke(event)
         next if distance.blank? || stroke.blank?
 
-        # Use key if available (phase4), otherwise use eventCode (normalized LT2)
-        event_key = event['key'] || event['eventCode']
-        event_code = event['eventCode'].presence || "#{distance}#{stroke}"
+        # Build event_key matching EventSolver's format (for Phase 4 mapping lookup)
+        event_key = build_event_key(event)
+        event_code = event_key # Use same for display and program key
+        # Get session_order from Phase 4 mapping (reflects any edits made in Phase 4 review)
+        session_order = session_order_for_event(event)
         results = Array(event['results'])
         results_x_event_tot = results.size
 
@@ -330,6 +359,28 @@ module Import
       # Try to extract from eventCode
       code = event['eventCode'].to_s
       code.gsub(/[^A-Z]/, '') if code.match?(/\A\d{2,4}[A-Z]{2}\z/)
+    end
+
+    # Build event key matching EventSolver's format for Phase 4 mapping
+    # For relays: builds "S4X50MI" or "M4X50MI" (with gender prefix)
+    # For individuals: returns "50SL", "100RA" etc.
+    def build_event_key(event)
+      is_relay = event['relay'] == true
+      distance = extract_distance(event)
+      stroke = extract_stroke(event)
+
+      if is_relay
+        # Build full relay code matching EventSolver format:
+        # - M or F (same-sex) → prefix 'S'
+        # - X (mixed) → prefix 'M'
+        event_gender = (event['eventGender'] || event['gender'] || 'X').to_s.strip.upcase
+        gender_prefix = event_gender == 'X' ? 'M' : 'S'
+        # Normalize: 4x50 → 4X50
+        normalized_distance = distance.to_s.gsub(/x/i, 'X').upcase
+        "#{gender_prefix}#{normalized_distance}#{stroke}".upcase
+      else
+        event['eventCode'].presence || "#{distance}#{stroke}"
+      end
     end
 
     # Build program key: "session_order-event_code-category-gender"
@@ -660,7 +711,7 @@ module Import
 
       timing_zero = timing[:minutes].to_i.zero? && timing[:seconds].to_i.zero? && timing[:hundredths].to_i.zero?
 
-      disqualified_flag = !!result['disqualified'] || rank_non_numeric || timing_zero
+      disqualified_flag = !result['disqualified'].nil? || rank_non_numeric || timing_zero
 
       # Use find_or_create to handle potential duplicates gracefully
       mir = GogglesDb::DataImportMeetingIndividualResult.find_or_create_by!(import_key: import_key) do |record|
@@ -826,7 +877,7 @@ module Import
 
       timing_zero = timing_hash[:minutes].to_i.zero? && timing_hash[:seconds].to_i.zero? && timing_hash[:hundredths].to_i.zero?
 
-      disqualified_flag = !!result['disqualified'] || rank_non_numeric || timing_zero
+      disqualified_flag = !result['disqualified'].nil? || rank_non_numeric || timing_zero
 
       # Use find_or_create to handle potential duplicates gracefully
       GogglesDb::DataImportMeetingRelayResult.find_or_create_by!(import_key: import_key) do |mrr|

@@ -38,6 +38,7 @@ Rails.application.routes.draw do
   put 'pdf/scan'
   put 'pdf/log_contents'
 
+  get 'data_fix/commit_phase6_report'
   get 'data_fix/review_sessions', to: 'data_fix#review_sessions', as: 'review_sessions'
   get 'data_fix/review_teams', to: 'data_fix#review_teams', as: 'review_teams'
   get 'data_fix/review_swimmers', to: 'data_fix#review_swimmers', as: 'review_swimmers'

@@ -104,7 +104,7 @@ module Phase3
 
         # Find badges matching the partial key that have gender in their key
         matching_badges = badges_by_name_yob[name_yob_key]
-        genders_found = matching_badges.map { |b| extract_gender_from_key(b['swimmer_key']) }.compact.uniq
+        genders_found = matching_badges.filter_map { |b| extract_gender_from_key(b['swimmer_key']) }.uniq
 
         if genders_found.size == 1
           swimmer['gender_type_code'] = genders_found.first
@@ -337,7 +337,7 @@ module Phase3
 
       # For each group, keep only the best badge (prefer full key)
       @badges.replace(
-        grouped.values.map do |group|
+        grouped.values.filter_map do |group|
           if group.size == 1
             group.first
           else
@@ -350,7 +350,6 @@ module Phase3
               score
             end
           end
-        end.compact
       )
     end
 
@@ -359,7 +358,7 @@ module Phase3
       key = badge['swimmer_key'].to_s
       return nil if key.blank?
 
-      parts = key.split('|').reject(&:blank?)
+      parts = key.split('|').compact_blank
       return nil if parts.size < 3
 
       # Handle both formats: GENDER|LAST|FIRST|YOB or LAST|FIRST|YOB

@@ -37,12 +37,12 @@ Four critical improvements needed for Phase 5 results review:
 
 **Tasks**:
 1. Update populator to set proper rank for DSQ results (1.5 hrs)
-   - Detect `is_disqualified: true`
+   - Detect `disqualified: true`
    - Count non-DSQ results in same group
    - Set rank = max_non_dsq_rank + dsq_sequence
    
 2. Update display partials (1 hr)
-   - Check `is_disqualified` flag
+   - Check `disqualified` flag
    - Display "-" instead of rank number
    - Hide timing, show red "DSQ" badge
    - Ensure DSQ results render at bottom

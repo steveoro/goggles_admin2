@@ -25,15 +25,16 @@ module Import
     class Main # rubocop:disable Metrics/ClassLength
       BOOLEAN_TYPE = ActiveModel::Type::Boolean.new
 
-      attr_reader :phase1_path, :phase2_path, :phase3_path, :phase4_path, :source_path,
-                  :phase1_data, :phase2_data, :phase3_data, :phase4_data,
+      attr_reader :phase1_path, :phase2_path, :phase3_path, :phase4_path, :phase5_path, :source_path,
+                  :phase1_data, :phase2_data, :phase3_data, :phase4_data, :phase5_data,
                   :sql_log, :stats, :logger
 
-      def initialize(phase1_path:, phase2_path:, phase3_path:, phase4_path:, source_path:, log_path: nil)
+      def initialize(phase1_path:, phase2_path:, phase3_path:, phase4_path:, phase5_path:, source_path:, log_path: nil)
         @phase1_path = phase1_path
         @phase2_path = phase2_path
         @phase3_path = phase3_path
         @phase4_path = phase4_path
+        @phase5_path = phase5_path
         @source_path = source_path
         @sql_log = []
         @stats = {
@@ -65,6 +66,11 @@ module Import
         @session_id_by_order = {}
         # Event key → meeting_event_id mapping (populated in Phase 4, used in Phase 5)
         @event_id_by_key = {}
+        # Meeting and season IDs (populated in Phase 1, passed to child committers)
+        @meeting_id = nil
+        @season_id = nil
+        # Categories cache (populated after season is known, passed to Badge committer)
+        @categories_cache = nil
       end
       # -----------------------------------------------------------------------
 
@@ -157,8 +163,9 @@ module Import
         @phase2_data = JSON.parse(File.read(phase2_path)) if File.exist?(phase2_path)
         @phase3_data = JSON.parse(File.read(phase3_path)) if File.exist?(phase3_path)
         @phase4_data = JSON.parse(File.read(phase4_path)) if File.exist?(phase4_path)
+        @phase5_data = JSON.parse(File.read(phase5_path)) if File.exist?(phase5_path)
 
-        Rails.logger.info('[Main] Loaded phase files')
+        Rails.logger.info('[Main] Loaded phase files (including phase5 with programs)')
       end
       # -----------------------------------------------------------------------
 
@@ -180,13 +187,27 @@ module Import
         meeting_id = meeting_committer.commit(meeting_data)
         return unless meeting_id
 
+        # Store meeting_id and season_id for later phases (badge resolution)
+        @meeting_id = meeting_id
+        meeting = GogglesDb::Meeting.find_by(id: meeting_id)
+        @season_id = meeting&.season_id
+
+        # Initialize categories cache for efficient category lookups
+        @categories_cache = PdfResults::CategoriesCache.new(meeting.season) if meeting&.season
+
+        # Update committers with season_id and meeting_id now that they're known
+        # (committers may be lazily initialized, so we set the values directly)
+        team_affiliation_committer.season_id = @season_id
+        badge_committer.season_id = @season_id
+        badge_committer.meeting_id = @meeting_id
+        badge_committer.categories_cache = @categories_cache
+
         calendar_committer.commit(meeting_data.merge('meeting_id' => meeting_id))
 
         # Update sessions with the resulting meeting_id so they can be persisted
-        sessions_data.each { |session_hash| session_hash['meeting_id'] = meeting_id }
-
-        # Commit sessions and capture IDs for Phase 4 lookup
         sessions_data.each do |session_hash|
+          session_hash['meeting_id'] = meeting_id
+          # Commit sessions and capture IDs for Phase 4 lookup
           session_id = commit_meeting_session(session_hash)
           session_order = session_hash['session_order']
           @session_id_by_order[session_order] = session_id if session_id && session_order
@@ -203,17 +224,17 @@ module Import
         teams_data = Array(phase2_data.dig('data', 'teams'))
         affiliations_data = Array(phase2_data.dig('data', 'team_affiliations'))
 
-        # Commit all teams first
+        # Commit all teams first (Team committer handles ID mapping internally)
         total = teams_data.size
         teams_data.each_with_index do |team_hash, idx|
-          commit_team(team_hash)
+          team_committer.commit(team_hash)
           broadcast_progress('Committing Teams', idx + 1, total)
         end
 
-        # Then commit affiliations (affiliations now have pre-matched team_affiliation_id from Phase 2)
+        # Then commit affiliations (TeamAffiliation committer handles ID mapping internally)
         affiliations_total = affiliations_data.size
         affiliations_data.each_with_index do |affiliation_hash, idx|
-          commit_team_affiliation(affiliation_hash: affiliation_hash)
+          team_affiliation_committer.commit(affiliation_hash)
           broadcast_progress('Committing Team Affiliations', idx + 1, affiliations_total)
         end
       end
@@ -228,17 +249,17 @@ module Import
         swimmers_data = Array(phase3_data.dig('data', 'swimmers'))
         badges_data = Array(phase3_data.dig('data', 'badges'))
 
-        # Commit all swimmers first
+        # Commit all swimmers first (Swimmer committer handles ID mapping internally)
         total = swimmers_data.size
         swimmers_data.each_with_index do |swimmer_hash, idx|
-          commit_swimmer(swimmer_hash)
+          swimmer_committer.commit(swimmer_hash)
           broadcast_progress('Committing Swimmers', idx + 1, total)
         end
 
-        # Then commit badges (badges now have pre-calculated category_type_id from Phase 3)
+        # Then commit badges (Badge committer handles ID mapping internally)
         badges_total = badges_data.size
         badges_data.each_with_index do |badge_hash, idx|
-          commit_badge(badge_hash: badge_hash)
+          badge_committer.commit(badge_hash)
           broadcast_progress('Committing Badges', idx + 1, badges_total)
         end
       end
@@ -266,12 +287,20 @@ module Import
           events.each_with_index do |event_hash, evt_idx|
             # Inject the resolved meeting_session_id into the event hash
             event_hash_with_session = event_hash.merge('meeting_session_id' => meeting_session_id)
-            event_id = commit_meeting_event(event_hash_with_session)
+
+            # Resolve event_type_id if missing (common for relay events)
+            event_hash_with_session['event_type_id'] ||= resolve_event_type_id(event_hash)
+
+            event_id = meeting_event_committer.commit(event_hash_with_session)
 
             # Store event_id for Phase 5 program creation
+            # Use event's internal session_order (should match parent after proper editing)
             if event_id
               event_key = event_hash['key'] # e.g., "50SL", "4x50MI"
-              @event_id_by_key["#{session_order}-#{event_key}"] = event_id
+              event_session_order = event_hash['session_order'] || session_order
+              lookup_key = "#{event_session_order}-#{event_key}"
+              @event_id_by_key[lookup_key] = event_id
+              Rails.logger.debug { "[Main] Phase4 stored: @event_id_by_key['#{lookup_key}'] = #{event_id}" }
             end
 
             broadcast_progress("Committing Events for session #{sess_idx + 1}", evt_idx + 1, session_total)
@@ -280,60 +309,203 @@ module Import
       end
       # -----------------------------------------------------------------------
 
-      # Phase 5: MeetingPrograms, MeetingIndividualResults, Laps
-      # Reads from data_import_* tables (not JSON)
-      # Dependency order: MeetingProgram → MIR → Lap
+      # Phase 5: MeetingPrograms, MeetingIndividualResults, Laps, MeetingRelayResults, etc.
+      # Iterates over programs from phase5 JSON, then queries data_import_* tables for results
+      # Dependency order: MeetingProgram → (MIR → Lap) or (MRR → MRS → RelayLap)
+      # rubocop:disable Metrics/AbcSize
       def commit_phase5_entities
-        Rails.logger.info('[Main] Committing Phase 5: Results from DB tables')
+        Rails.logger.info('[Main] Committing Phase 5: Programs and Results')
+        return unless phase5_data
 
-        # Query all results for this source file
-        all_mirs = GogglesDb::DataImportMeetingIndividualResult
-                   .where(phase_file_path: source_path)
-                   .includes(:data_import_laps)
-                   .order(:import_key)
+        programs = Array(phase5_data['programs'])
+        Rails.logger.info("[Main] Processing #{programs.size} programs from phase5 data")
 
-        mir_total = all_mirs.size
-        all_mirs.each_with_index do |data_import_mir, mir_idx|
-          # Ensure MeetingProgram exists (may need to create it)
-          program_id = ensure_meeting_program(data_import_mir)
-          next unless program_id
+        programs.each_with_index do |program, prog_idx|
+          session_order = program['session_order']
+          event_key = program['event_key']     # e.g., "50SL", "S4X50MI"
+          event_code = program['event_code']   # Same, for display
+          category_code = program['category_code']
+          gender_code = program['gender_code']
+          is_relay = program['relay'] == true
 
-          # Commit MIR (INSERT or UPDATE)
-          mir_id = commit_meeting_individual_result(data_import_mir, program_id)
-          next unless mir_id
+          # Build program key for querying data_import tables
+          program_key = "#{session_order}-#{event_code}-#{category_code}-#{gender_code}"
 
-          broadcast_progress("Committing MIR for MPrg ID #{program_id}", mir_idx + 1, mir_total)
-          # Commit laps (skipping broadcast for these)
-          data_import_mir.data_import_laps.each do |data_import_lap|
-            commit_lap(data_import_lap, mir_id)
+          # Find meeting_event_id from Phase 4 mapping
+          event_lookup_key = "#{session_order}-#{event_key}"
+          meeting_event_id = @event_id_by_key[event_lookup_key]
+
+          unless meeting_event_id
+            @stats[:errors] << "MeetingProgram error: meeting_event_id not found for #{event_lookup_key}"
+            Rails.logger.error("[Main] No meeting_event_id for event_lookup_key=#{event_lookup_key}")
+            next # Skip this program but continue with others
+          end
+
+          # Create or find MeetingProgram
+          program_id = commit_meeting_program(
+            meeting_event_id: meeting_event_id,
+            category_code: category_code,
+            gender_code: gender_code,
+            is_relay: is_relay
+          )
+
+          unless program_id
+            Rails.logger.error("[Main] Failed to create MeetingProgram for #{program_key}")
+            next
+          end
+
+          broadcast_progress("Committing Program #{event_code} #{category_code}-#{gender_code}", prog_idx + 1, programs.size)
+
+          if is_relay
+            # Commit relay results for this program
+            commit_relay_results_for_program(program_key, program_id)
+          else
+            # Commit individual results for this program
+            commit_individual_results_for_program(program_key, program_id)
           end
         end
+      end
+      # rubocop:enable Metrics/AbcSize
 
-        # Commit relay results (MRR), relay swimmers (MRS), and relay laps
-        all_mrrs = GogglesDb::DataImportMeetingRelayResult
-                   .where(phase_file_path: source_path)
-                   .includes(:data_import_meeting_relay_swimmers)
-                   .order(:import_key)
+      # Commit MeetingProgram and return its ID
+      def commit_meeting_program(meeting_event_id:, category_code:, gender_code:, is_relay: false)
+        category_type = resolve_category_type(category_code, is_relay: is_relay)
 
-        mrr_total = all_mrrs.size
-        all_mrrs.each_with_index do |data_import_mrr, mrr_idx|
-          # Ensure MeetingProgram exists (may need to create it)
-          program_id = ensure_meeting_program(data_import_mrr)
-          next unless program_id
+        # Handle gender code 'X' (mixed/intermixed) for relays
+        gender_type = gender_type_instance_from_code(gender_code)
 
-          # Commit MRR (INSERT or UPDATE)
-          mrr_id = commit_meeting_relay_result(data_import_mrr, program_id)
+        unless category_type && gender_type
+          @stats[:errors] << "MeetingProgram error: category=#{category_code} or gender=#{gender_code} not found (season=#{@season_id}, relay=#{is_relay})"
+          Rails.logger.warn("[Main] MeetingProgram lookup failed: category=#{category_code}, gender=#{gender_code}, season=#{@season_id}, relay=#{is_relay}")
+          return nil
+        end
+
+        program_hash = {
+          'meeting_event_id' => meeting_event_id,
+          'category_type_id' => category_type.id,
+          'gender_type_id' => gender_type.id,
+          'event_order' => 0
+        }
+
+        meeting_program_committer.commit(program_hash)
+      end
+
+      # Resolve CategoryType from code, handling relay categories specially.
+      # Relay categories in source data use simplified codes like "M100", "M120",
+      # but DB stores them as age ranges like "100-119", "120-159".
+      # For relays, we extract the age from the code and use find_category_for_age.
+      def resolve_category_type(category_code, is_relay: false)
+        return nil if category_code.blank?
+
+        if is_relay
+          # For relays: extract age from code (e.g., "M100" → 100) and find by age range
+          age = extract_relay_age_from_code(category_code)
+          if age && @categories_cache
+            result = @categories_cache.find_category_for_age(age, relay: true)
+            return result&.last # find_category_for_age returns [code, category_type]
+          end
+
+          # Fallback: try direct DB lookup with age-range pattern
+          if age
+            category = GogglesDb::CategoryType.where(season_id: @season_id, relay: true)
+                                              .where('age_begin <= ? AND age_end >= ?', age, age)
+                                              .first
+            return category if category
+          end
+        else
+          # For individual categories: direct code lookup
+          category_type = @categories_cache&.[](category_code)
+          return category_type if category_type
+
+          # Fallback to DB query
+          return GogglesDb::CategoryType.find_by(code: category_code, season_id: @season_id)
+        end
+
+        nil
+      end
+
+      # Extract age from relay category code (e.g., "M100" → 100, "M80" → 80)
+      def extract_relay_age_from_code(category_code)
+        return nil if category_code.blank?
+
+        # Match codes like "M100", "M80", "M120", etc.
+        match = category_code.match(/^M?(\d+)$/i)
+        match ? match[1].to_i : nil
+      end
+
+      # Commit individual results (MIR + Laps) for a given program
+      def commit_individual_results_for_program(program_key, program_id)
+        # Query MIRs matching this program's key pattern
+        mirs = GogglesDb::DataImportMeetingIndividualResult
+               .where(phase_file_path: source_path)
+               .where('import_key LIKE ?', "#{program_key}/%")
+               .includes(:data_import_laps)
+               .order(:import_key)
+
+        mirs.each do |data_import_mir|
+          # Resolve swimmer_id: use existing or resolve from Swimmer committer's mapping
+          swimmer_id = data_import_mir.swimmer_id || swimmer_committer.resolve_id(data_import_mir.swimmer_key)
+
+          # Resolve badge_id: use existing or resolve via Badge committer (includes on-demand creation)
+          badge_id = data_import_mir.badge_id || badge_committer.resolve_or_create(swimmer_id, data_import_mir.team_id)
+
+          # Pass resolved IDs explicitly to committer
+          mir_id = mir_committer.commit(
+            data_import_mir,
+            program_id: program_id,
+            swimmer_id: swimmer_id,
+            badge_id: badge_id,
+            season_id: @season_id
+          )
+          next unless mir_id
+
+          # Commit laps
+          data_import_mir.data_import_laps.each do |data_import_lap|
+            lap_committer.commit(data_import_lap, mir_id: mir_id)
+          end
+        end
+      end
+
+      # Commit relay results (MRR + MRS + RelayLaps) for a given program
+      def commit_relay_results_for_program(program_key, program_id)
+        # Query MRRs matching this program's key pattern
+        mrrs = GogglesDb::DataImportMeetingRelayResult
+               .where(phase_file_path: source_path)
+               .where('import_key LIKE ?', "#{program_key}/%")
+               .includes(data_import_meeting_relay_swimmers: :data_import_relay_laps)
+               .order(:import_key)
+
+        mrrs.each do |data_import_mrr|
+          mrr_id = mrr_committer.commit(data_import_mrr, program_id: program_id, season_id: @season_id)
           next unless mrr_id
 
-          broadcast_progress("Committing MRR for MPrg ID #{program_id}", mrr_idx + 1, mrr_total)
           # Commit relay swimmers and their laps
           data_import_mrr.data_import_meeting_relay_swimmers.each do |data_import_mrs|
-            mrs_id = commit_meeting_relay_swimmer(data_import_mrs, mrr_id)
+            # Resolve swimmer_id: use existing or resolve from Swimmer committer's mapping
+            swimmer_id = data_import_mrs.swimmer_id || swimmer_committer.resolve_id(data_import_mrs.swimmer_key)
+
+            # Resolve badge_id: use existing or resolve via Badge committer (includes on-demand creation)
+            # Note: team_id comes from parent MRR for relays
+            badge_id = data_import_mrs.badge_id || badge_committer.resolve_or_create(swimmer_id, data_import_mrr.team_id)
+
+            # Pass resolved IDs explicitly to committer
+            mrs_id = mrs_committer.commit(
+              data_import_mrs,
+              mrr_id: mrr_id,
+              swimmer_id: swimmer_id,
+              badge_id: badge_id
+            )
             next unless mrs_id
 
-            # Commit relay laps for this swimmer
             data_import_mrs.data_import_relay_laps.each do |data_import_relay_lap|
-              commit_relay_lap(data_import_relay_lap, mrs_id)
+              relay_lap_committer.commit(
+                data_import_relay_lap,
+                mrs_id: mrs_id,
+                mrr_id: mrr_id,
+                swimmer_id: swimmer_id,
+                team_id: data_import_mrr.team_id,
+                mrs_length: data_import_mrs.length_in_meters
+              )
             end
           end
         end
@@ -389,6 +561,110 @@ module Import
       end
       # -----------------------------------------------------------------------
 
+      def meeting_event_committer
+        @meeting_event_committer ||= Import::Committers::MeetingEvent.new(
+          stats: @stats,
+          logger: @logger,
+          sql_log: @sql_log
+        )
+      end
+      # -----------------------------------------------------------------------
+
+      def meeting_program_committer
+        @meeting_program_committer ||= Import::Committers::MeetingProgram.new(
+          stats: @stats,
+          logger: @logger,
+          sql_log: @sql_log
+        )
+      end
+      # -----------------------------------------------------------------------
+
+      def mir_committer
+        @mir_committer ||= Import::Committers::MeetingIndividualResult.new(
+          stats: @stats,
+          logger: @logger,
+          sql_log: @sql_log
+        )
+      end
+      # -----------------------------------------------------------------------
+
+      def lap_committer
+        @lap_committer ||= Import::Committers::Lap.new(
+          stats: @stats,
+          logger: @logger,
+          sql_log: @sql_log
+        )
+      end
+      # -----------------------------------------------------------------------
+
+      def mrr_committer
+        @mrr_committer ||= Import::Committers::MeetingRelayResult.new(
+          stats: @stats,
+          logger: @logger,
+          sql_log: @sql_log
+        )
+      end
+      # -----------------------------------------------------------------------
+
+      def mrs_committer
+        @mrs_committer ||= Import::Committers::MeetingRelaySwimmer.new(
+          stats: @stats,
+          logger: @logger,
+          sql_log: @sql_log
+        )
+      end
+      # -----------------------------------------------------------------------
+
+      def relay_lap_committer
+        @relay_lap_committer ||= Import::Committers::RelayLap.new(
+          stats: @stats,
+          logger: @logger,
+          sql_log: @sql_log
+        )
+      end
+      # -----------------------------------------------------------------------
+
+      def team_committer
+        @team_committer ||= Import::Committers::Team.new(
+          stats: @stats,
+          logger: @logger,
+          sql_log: @sql_log
+        )
+      end
+      # -----------------------------------------------------------------------
+
+      def swimmer_committer
+        @swimmer_committer ||= Import::Committers::Swimmer.new(
+          stats: @stats,
+          logger: @logger,
+          sql_log: @sql_log
+        )
+      end
+      # -----------------------------------------------------------------------
+
+      def team_affiliation_committer
+        @team_affiliation_committer ||= Import::Committers::TeamAffiliation.new(
+          stats: @stats,
+          logger: @logger,
+          sql_log: @sql_log,
+          season_id: @season_id
+        )
+      end
+      # -----------------------------------------------------------------------
+
+      def badge_committer
+        @badge_committer ||= Import::Committers::Badge.new(
+          stats: @stats,
+          logger: @logger,
+          sql_log: @sql_log,
+          team_affiliation_committer: team_affiliation_committer,
+          categories_cache: @categories_cache,
+          season_id: @season_id,
+          meeting_id: @meeting_id
+        )
+      end
+      # -----------------------------------------------------------------------
+
       def commit_meeting_session(session_hash)
         meeting_id = session_hash['meeting_id']
 
@@ -409,300 +685,30 @@ module Import
       # -----------------------------------------------------------------------
 
       # =========================================================================
-      # Phase 2 Commit Methods
+      # Helper Methods
       # =========================================================================
-
-      def commit_team(team_hash)
-        team_id = team_hash['team_id']
-        normalized_attributes = normalize_team_attributes(team_hash)
-
-        # If team already has a DB ID, it's matched - just verify or update if needed
-        if team_id.present? && team_id.positive?
-          team = GogglesDb::Team.find_by(id: team_id)
-          if team && attributes_changed?(team, normalized_attributes)
-            # Update existing team if attributes changed
-            team.update!(normalized_attributes)
-            @sql_log << SqlMaker.new(row: team).log_update
-            @stats[:teams_updated] += 1
-            Rails.logger.info("[Main] Updated Team ID=#{team_id}")
-          end
-          return team_id
-        end
-
-        # Fallback: try to match an existing team by name when team_id is missing
-        existing = nil
-        team_name = normalized_attributes['name']
-        existing = GogglesDb::Team.find_by(name: team_name) if team_name.present?
-
-        if existing
-          if attributes_changed?(existing, normalized_attributes)
-            existing.update!(normalized_attributes)
-            @sql_log << SqlMaker.new(row: existing).log_update
-            @stats[:teams_updated] += 1
-            Rails.logger.info("[Main] Updated Team ID=#{existing.id} (matched by name)")
-          end
-          return existing.id
-        end
-
-        # Create new team (team_id is nil or 0 and no existing match found)
-        new_team = GogglesDb::Team.create!(normalized_attributes)
-        @sql_log << SqlMaker.new(row: new_team).log_insert
-        @stats[:teams_created] += 1
-        Rails.logger.info("[Main] Created Team ID=#{new_team.id}, name=#{new_team.name}")
-        new_team.id
-      rescue ActiveRecord::RecordInvalid => e
-        @stats[:errors] << "Team error (#{team_hash['key']}): #{e.message}"
-        Rails.logger.error("[Main] ERROR committing team: #{e.message}")
-        nil
-      end
-      # -----------------------------------------------------------------------
-
-      def commit_team_affiliation(affiliation_hash:)
-        # Affiliation data comes from phase2 with pre-matched team_affiliation_id
-        team_affiliation_id = affiliation_hash['team_affiliation_id'] || affiliation_hash[:team_affiliation_id]
-        team_id = affiliation_hash['team_id'] || affiliation_hash[:team_id]
-        season_id = affiliation_hash['season_id'] || affiliation_hash[:season_id]
-
-        # Guard clause: skip if missing required keys
-        return unless team_id && season_id
-
-        # If team_affiliation_id exists, it's already in DB - skip
-        if team_affiliation_id.present?
-          Rails.logger.debug { "[Main] TeamAffiliation ID=#{team_affiliation_id} already exists, skipping" }
-          return
-        end
-
-        team = GogglesDb::Team.find_by(id: team_id)
-        attributes = normalize_team_affiliation_attributes(
-          affiliation_hash,
-          team_id: team_id,
-          season_id: season_id,
-          team: team
-        )
-
-        # Fallback: reuse existing team affiliation when one already exists for the same team/season
-        existing = GogglesDb::TeamAffiliation.find_by(team_id: team_id, season_id: season_id)
-        if existing
-          if attributes_changed?(existing, attributes)
-            existing.update!(attributes)
-            @sql_log << SqlMaker.new(row: existing).log_update
-            Rails.logger.info("[Main] Updated TeamAffiliation ID=#{existing.id}, team_id=#{team_id}, season_id=#{season_id}")
-          end
-          return
-        end
-
-        # Create new affiliation (minimal data - just links team to season)
-        affiliation = GogglesDb::TeamAffiliation.create!(attributes)
-        @sql_log << SqlMaker.new(row: affiliation).log_insert
-        @stats[:affiliations_created] += 1
-        Rails.logger.info("[Main] Created TeamAffiliation ID=#{affiliation.id}, team_id=#{team_id}, season_id=#{season_id}")
-      rescue ActiveRecord::RecordInvalid => e
-        @stats[:errors] << "TeamAffiliation error (team_id=#{team_id}): #{e.message}"
-        Rails.logger.error("[Main] ERROR creating affiliation: #{e.message}")
-      end
-      # -----------------------------------------------------------------------
-
-      # =========================================================================
-      # Phase 3 Commit Methods
-      # =========================================================================
-
-      def commit_swimmer(swimmer_hash)
-        swimmer_id = swimmer_hash['swimmer_id']
-        normalized_attributes = normalize_swimmer_attributes(swimmer_hash)
-
-        # If swimmer already has a DB ID, it's matched - just verify or update if needed
-        if swimmer_id.present? && swimmer_id.positive?
-          swimmer = GogglesDb::Swimmer.find_by(id: swimmer_id)
-          if swimmer && attributes_changed?(swimmer, normalized_attributes)
-            # Update existing swimmer if attributes changed
-            swimmer.update!(normalized_attributes)
-            @sql_log << SqlMaker.new(row: swimmer).log_update
-            @stats[:swimmers_updated] += 1
-            Rails.logger.info("[Main] Updated Swimmer ID=#{swimmer_id}")
-          end
-          return swimmer_id
-        end
-
-        # Fallback: try to match an existing swimmer by complete_name + year_of_birth
-        existing = nil
-        complete_name = normalized_attributes['complete_name']
-        year_of_birth = normalized_attributes['year_of_birth']
-        existing = GogglesDb::Swimmer.find_by(complete_name: complete_name, year_of_birth: year_of_birth) if complete_name.present? && year_of_birth.present?
-
-        # Secondary fallback: match by last_name + first_name + year_of_birth
-        if existing.nil? && normalized_attributes['last_name'].present? &&
-           normalized_attributes['first_name'].present? && year_of_birth.present?
-          existing = GogglesDb::Swimmer.find_by(
-            last_name: normalized_attributes['last_name'],
-            first_name: normalized_attributes['first_name'],
-            year_of_birth: year_of_birth
-          )
-        end
-
-        if existing
-          if attributes_changed?(existing, normalized_attributes)
-            existing.update!(normalized_attributes)
-            @sql_log << SqlMaker.new(row: existing).log_update
-            @stats[:swimmers_updated] += 1
-            Rails.logger.info("[Main] Updated Swimmer ID=#{existing.id} (matched by name/year)")
-          end
-          return existing.id
-        end
-
-        # Create new swimmer (swimmer_id is nil or 0 and no existing match found)
-        new_swimmer = GogglesDb::Swimmer.create!(normalized_attributes)
-        @sql_log << SqlMaker.new(row: new_swimmer).log_insert
-        @stats[:swimmers_created] += 1
-        Rails.logger.info("[Main] Created Swimmer ID=#{new_swimmer.id}, name=#{new_swimmer.complete_name}")
-        new_swimmer.id
-      rescue ActiveRecord::RecordInvalid => e
-        @stats[:errors] << "Swimmer error (#{swimmer_hash['key']}): #{e.message}"
-        Rails.logger.error("[Main] ERROR committing swimmer: #{e.message}")
-        nil
-      end
-      # -----------------------------------------------------------------------
-
-      def commit_badge(badge_hash:)
-        # Badge data comes from phase3 with pre-calculated category_type_id and pre-matched badge_id
-        badge_id = badge_hash['badge_id']
-        swimmer_id = badge_hash['swimmer_id']
-        team_id = badge_hash['team_id']
-        season_id = badge_hash['season_id']
-        category_type_id = badge_hash['category_type_id']
-
-        # Guard clause: skip if missing required keys
-        return unless swimmer_id && team_id && season_id
-
-        # If badge_id exists, it's already in DB - skip
-        if badge_id.present?
-          Rails.logger.debug { "[Main] Badge ID=#{badge_id} already exists, skipping" }
-          return
-        end
-
-        # Find the team_affiliation (should have been created in Phase 2)
-        team_affiliation = GogglesDb::TeamAffiliation.find_by(team_id: team_id, season_id: season_id)
-        unless team_affiliation
-          @stats[:errors] << "Badge error: TeamAffiliation not found for team_id=#{team_id}, season_id=#{season_id}"
-          Rails.logger.error('[Main] ERROR: TeamAffiliation not found for badge creation')
-          return
-        end
-
-        attributes = normalize_badge_attributes(
-          badge_hash,
-          swimmer_id: swimmer_id,
-          team_id: team_id,
-          season_id: season_id,
-          category_type_id: category_type_id,
-          team_affiliation_id: team_affiliation.id
-        )
-
-        # Fallback: reuse existing badge when one already exists for the same swimmer/team/season
-        existing_badge = GogglesDb::Badge.find_by(
-          season_id: season_id,
-          swimmer_id: swimmer_id,
-          team_id: team_id
-        )
-
-        if existing_badge
-          if attributes_changed?(existing_badge, attributes)
-            existing_badge.update!(attributes)
-            @sql_log << SqlMaker.new(row: existing_badge).log_update
-            Rails.logger.info("[Main] Updated Badge ID=#{existing_badge.id}, swimmer_id=#{swimmer_id}, team_id=#{team_id}, category_id=#{category_type_id}")
-          end
-          return existing_badge.id
-        end
-
-        badge = GogglesDb::Badge.create!(attributes)
-        @sql_log << SqlMaker.new(row: badge).log_insert
-        @stats[:badges_created] += 1
-        Rails.logger.info("[Main] Created Badge ID=#{badge.id}, swimmer_id=#{swimmer_id}, team_id=#{team_id}, category_id=#{category_type_id}")
-      rescue ActiveRecord::RecordInvalid => e
-        model_row = e.record
-        begin
-          model_row ||= GogglesDb::Badge.new(attributes) if defined?(attributes)
-        rescue StandardError
-          # Best-effort reconstruction only; ignore secondary failures
-        end
-
-        error_details = if model_row
-                          GogglesDb::ValidationErrorTools.recursive_error_for(model_row)
-                        else
-                          e.message
-                        end
-
-        swimmer_key = badge_hash['swimmer_key'] || badge_hash[:swimmer_key]
-        team_key = badge_hash['team_key'] || badge_hash[:team_key]
-        @stats[:errors] << "Badge error (swimmer_key=#{swimmer_key}, swimmer_id=#{swimmer_id}, team_id=#{team_id}): #{error_details}"
-        @logger.log_validation_error(
-          entity_type: 'Badge',
-          entity_key: "swimmer_key=#{swimmer_key},swimmer_id=#{swimmer_id},team_id=#{team_id},team_key=#{team_key},season_id=#{season_id}",
-          entity_id: model_row&.id,
-          model_row: model_row,
-          error: e
-        )
-        Rails.logger.error("[Main] ERROR creating badge: #{error_details}")
-      end
-      # -----------------------------------------------------------------------
-
-      def commit_meeting_event(event_hash)
-        meeting_event_id = event_hash['meeting_event_id']
-        meeting_session_id = event_hash['meeting_session_id']
-        event_type_id = event_hash['event_type_id']
-
-        # Fallback: resolve event_type_id if missing (common for relay events)
-        event_type_id ||= resolve_event_type_id(event_hash)
-
-        # Guard clause: skip if missing required keys
-        return unless meeting_session_id && event_type_id
-
-        attributes = normalize_meeting_event_attributes(
-          event_hash,
-          meeting_session_id: meeting_session_id,
-          event_type_id: event_type_id
-        )
-
-        if meeting_event_id.present?
-          existing = GogglesDb::MeetingEvent.find_by(id: meeting_event_id)
-          if existing && attributes_changed?(existing, attributes)
-            existing.update!(attributes)
-            @sql_log << SqlMaker.new(row: existing).log_update
-            @stats[:events_updated] += 1
-            Rails.logger.info("[Main] Updated MeetingEvent ID=#{existing.id}")
-          end
-          return existing&.id || meeting_event_id
-        end
-
-        new_event = GogglesDb::MeetingEvent.create!(attributes)
-        @sql_log << SqlMaker.new(row: new_event).log_insert
-        @stats[:events_created] += 1
-        Rails.logger.info("[Main] Created MeetingEvent ID=#{new_event.id}, session=#{meeting_session_id}, type=#{event_type_id}, order=#{new_event.event_order}")
-        new_event.id
-      rescue ActiveRecord::RecordInvalid => e
-        @stats[:errors] << "MeetingEvent error (session=#{meeting_session_id}, type=#{event_type_id}): #{e.message}"
-        Rails.logger.error("[Main] ERROR committing event: #{e.message}")
-        nil
-      end
-      # -----------------------------------------------------------------------
 
       # Resolve event_type_id from event hash attributes (fallback for relay events)
-      # Uses distance, stroke, and relay flag to find the correct EventType
+      # Uses key, distance, stroke to find the correct EventType
       def resolve_event_type_id(event_hash)
-        distance = event_hash['distance'] # e.g., "4x50", "50", "100"
-        stroke = event_hash['stroke']     # e.g., "SL", "MI", "DO", "RA", "FA"
+        # First try using the 'key' field (most reliable for relays)
+        # Key format: "4x50MI", "50SL", "100DO", etc.
+        event_key = event_hash['key']
+        if event_key.present?
+          # Normalize: 4x50MI -> 4X50MI
+          normalized_key = event_key.to_s.gsub(/(\d)x(\d)/i, '\1X\2').upcase
+          event_type = GogglesDb::EventType.find_by(code: normalized_key)
+          return event_type.id if event_type
+        end
 
-        return nil unless distance && stroke
+        # Fallback: build from distance + stroke
+        distance = event_hash['distance']
+        stroke = event_hash['stroke']
 
-        # Build event code for lookup
-        # EventType.code format: "50SL", "4X50SL", "4X100MI", etc.
+        return nil unless distance.to_i.positive? && stroke.present?
+
         event_code = "#{distance}#{stroke}".upcase
-
-        # Find by code (exact match)
         event_type = GogglesDb::EventType.find_by(code: event_code)
-        return event_type.id if event_type
-
-        # Fallback: try with relay prefix normalization (4x50 -> 4X50)
-        normalized_code = event_code.gsub(/(\d)x(\d)/i, '\1X\2').upcase
-        event_type = GogglesDb::EventType.find_by(code: normalized_code)
         return event_type.id if event_type
 
         Rails.logger.warn("[Main] Could not resolve event_type_id for event: #{event_hash.inspect}")
@@ -721,190 +727,8 @@ module Import
       # -----------------------------------------------------------------------
 
       # =========================================================================
-      # Phase 5 Commit Methods
+      # Phase 5 Commit Methods (legacy helper, kept for reference)
       # =========================================================================
-
-      def ensure_meeting_program(data_import_mir)
-        # If MeetingProgram ID already set, return it
-        return data_import_mir.meeting_program_id if data_import_mir.meeting_program_id.present?
-
-        # Otherwise, we need to find or create the program
-        # Programs are identified by: meeting_event_id + category_type + gender_type
-        meeting_event_id = find_meeting_event_id_from_import_key(data_import_mir.import_key)
-        return nil unless meeting_event_id
-
-        # Extract category and gender from import_key
-        # Format: "session-event-category-gender/swimmer_key"
-        # Example: "1-100SL-M45-M/ROSSI|MARIO|1978"
-        key_parts = data_import_mir.import_key.split('/').first.split('-')
-        category_code = key_parts[2] # "M45"
-        gender_code = key_parts[3]   # "M"
-
-        category_type = GogglesDb::CategoryType.find_by(code: category_code)
-        gender_type = GogglesDb::GenderType.find_by(code: gender_code)
-
-        return nil unless category_type && gender_type
-
-        # Find existing program
-        program = GogglesDb::MeetingProgram.find_by(
-          meeting_event_id: meeting_event_id,
-          category_type_id: category_type.id,
-          gender_type_id: gender_type.id
-        )
-
-        # Create if not found
-        unless program
-          program_attributes = normalize_meeting_program_attributes(
-            { 'event_order' => 0 },
-            meeting_event_id: meeting_event_id,
-            category_type_id: category_type.id,
-            gender_type_id: gender_type.id
-          )
-
-          program = GogglesDb::MeetingProgram.create!(program_attributes)
-          @sql_log << SqlMaker.new(row: program).log_insert
-          @stats[:programs_created] += 1
-          Rails.logger.info("[Main] Created MeetingProgram ID=#{program.id}, event=#{meeting_event_id}, #{category_code}-#{gender_code}")
-        end
-
-        program.id
-      rescue ActiveRecord::RecordInvalid => e
-        @stats[:errors] << "MeetingProgram error: #{e.message}"
-        Rails.logger.error("[Main] ERROR ensuring program: #{e.message}")
-        nil
-      end
-      # -----------------------------------------------------------------------
-
-      def commit_meeting_individual_result(data_import_mir, program_id)
-        mir_id = data_import_mir.meeting_individual_result_id
-
-        # If MIR already has a DB ID (matched), update if needed
-        if mir_id.present? && mir_id.positive?
-          existing_mir = GogglesDb::MeetingIndividualResult.find_by(id: mir_id)
-          if existing_mir
-            normalized_attributes = normalize_meeting_individual_result_attributes(data_import_mir, program_id: program_id)
-            # Check if timing or other attributes changed
-            if mir_attributes_changed?(existing_mir, normalized_attributes)
-              update_mir_attributes(existing_mir, normalized_attributes)
-              @sql_log << SqlMaker.new(row: existing_mir).log_update
-              @stats[:mirs_updated] += 1
-              Rails.logger.info("[Main] Updated MIR ID=#{mir_id}")
-            end
-            return mir_id
-          end
-        end
-
-        # Create new MIR
-        attributes = normalize_meeting_individual_result_attributes(data_import_mir, program_id: program_id)
-
-        new_mir = GogglesDb::MeetingIndividualResult.create!(attributes)
-        @sql_log << SqlMaker.new(row: new_mir).log_insert
-        @stats[:mirs_created] += 1
-        Rails.logger.info("[Main] Created MIR ID=#{new_mir.id}, program=#{program_id}, rank=#{new_mir.rank}")
-        new_mir.id
-      rescue ActiveRecord::RecordInvalid => e
-        @stats[:errors] << "MIR error (#{data_import_mir.import_key}): #{e.message}"
-        Rails.logger.error("[Main] ERROR committing MIR: #{e.message}")
-        nil
-      end
-      # -----------------------------------------------------------------------
-
-      def commit_lap(data_import_lap, mir_id)
-        # All laps are new (no matching logic for laps)
-        attributes = normalize_meeting_lap_attributes(data_import_lap, mir_id: mir_id)
-
-        new_lap = GogglesDb::Lap.create!(attributes)
-        @sql_log << SqlMaker.new(row: new_lap).log_insert
-        @stats[:laps_created] += 1
-        new_lap.id
-      rescue ActiveRecord::RecordInvalid => e
-        @stats[:errors] << "Lap error (#{data_import_lap.import_key}): #{e.message}"
-        Rails.logger.error("[Main] ERROR committing lap: #{e.message}")
-        nil
-      end
-      # -----------------------------------------------------------------------
-
-      def commit_meeting_relay_result(data_import_mrr, program_id)
-        mrr_id = data_import_mrr.meeting_relay_result_id
-
-        # If MRR already has a DB ID (matched), update if needed
-        if mrr_id.present? && mrr_id.positive?
-          existing_mrr = GogglesDb::MeetingRelayResult.find_by(id: mrr_id)
-          if existing_mrr
-            normalized_attributes = normalize_meeting_relay_result_attributes(data_import_mrr, program_id: program_id)
-            # Check if timing or other attributes changed
-            if mrr_attributes_changed?(existing_mrr, normalized_attributes)
-              update_mrr_attributes(existing_mrr, normalized_attributes)
-              @sql_log << SqlMaker.new(row: existing_mrr).log_update
-              @stats[:mrrs_updated] += 1
-              Rails.logger.info("[Main] Updated MRR ID=#{mrr_id}")
-            end
-            return mrr_id
-          end
-        end
-
-        # Create new MRR
-        attributes = normalize_meeting_relay_result_attributes(data_import_mrr, program_id: program_id)
-
-        new_mrr = GogglesDb::MeetingRelayResult.create!(attributes)
-        @sql_log << SqlMaker.new(row: new_mrr).log_insert
-        @stats[:mrrs_created] += 1
-        Rails.logger.info("[Main] Created MRR ID=#{new_mrr.id}, program=#{program_id}, rank=#{new_mrr.rank}")
-        new_mrr.id
-      rescue ActiveRecord::RecordInvalid => e
-        @stats[:errors] << "MRR error (#{data_import_mrr.import_key}): #{e.message}"
-        Rails.logger.error("[Main] ERROR committing MRR: #{e.message}")
-        nil
-      end
-      # -----------------------------------------------------------------------
-
-      def commit_meeting_relay_swimmer(data_import_mrs, mrr_id)
-        mrs_id = data_import_mrs.meeting_relay_swimmer_id
-
-        # If MRS already has a DB ID (matched), update if needed
-        if mrs_id.present? && mrs_id.positive?
-          existing_mrs = GogglesDb::MeetingRelaySwimmer.find_by(id: mrs_id)
-          if existing_mrs
-            normalized_attributes = normalize_meeting_relay_swimmer_attributes(data_import_mrs, mrr_id: mrr_id)
-            if mrs_attributes_changed?(existing_mrs, normalized_attributes)
-              update_mrs_attributes(existing_mrs, normalized_attributes)
-              @sql_log << SqlMaker.new(row: existing_mrs).log_update
-              @stats[:mrss_updated] += 1
-              Rails.logger.info("[Main] Updated MRS ID=#{mrs_id}")
-            end
-            return mrs_id
-          end
-        end
-
-        # Create new MRS
-        attributes = normalize_meeting_relay_swimmer_attributes(data_import_mrs, mrr_id: mrr_id)
-
-        new_mrs = GogglesDb::MeetingRelaySwimmer.create!(attributes)
-        @sql_log << SqlMaker.new(row: new_mrs).log_insert
-        @stats[:mrss_created] += 1
-        Rails.logger.info("[Main] Created MRS ID=#{new_mrs.id}, mrr=#{mrr_id}, order=#{new_mrs.relay_order}")
-        new_mrs.id
-      rescue ActiveRecord::RecordInvalid => e
-        @stats[:errors] << "MRS error (#{data_import_mrs.import_key}): #{e.message}"
-        Rails.logger.error("[Main] ERROR committing MRS: #{e.message}")
-        nil
-      end
-      # -----------------------------------------------------------------------
-
-      def commit_relay_lap(data_import_relay_lap, mrs_id)
-        # All relay laps are new (no matching logic for relay laps)
-        attributes = normalize_relay_lap_attributes(data_import_relay_lap, mrs_id: mrs_id)
-
-        new_relay_lap = GogglesDb::RelayLap.create!(attributes)
-        @sql_log << SqlMaker.new(row: new_relay_lap).log_insert
-        @stats[:relay_laps_created] += 1
-        new_relay_lap.id
-      rescue ActiveRecord::RecordInvalid => e
-        @stats[:errors] << "RelayLap error (#{data_import_relay_lap.import_key}): #{e.message}"
-        Rails.logger.error("[Main] ERROR committing relay lap: #{e.message}")
-        nil
-      end
-      # -----------------------------------------------------------------------
 
       # Find meeting_event_id from import_key using the mappings populated during Phase 4 commit
       def find_meeting_event_id_from_import_key(import_key)
@@ -923,63 +747,6 @@ module Import
         Rails.logger.warn("[Main] No meeting_event_id found for event_key=#{event_key} (import_key=#{import_key})") unless meeting_event_id
 
         meeting_event_id
-      end
-      # -----------------------------------------------------------------------
-
-      # Check if MIR attributes have changed
-      def mir_attributes_changed?(existing_mir, normalized_attributes)
-        normalized_attributes.any? do |key, value|
-          begin
-            existing_value = existing_mir.public_send(key.to_sym)
-          rescue NoMethodError
-            existing_value = nil
-          end
-          existing_value != value
-        end
-      end
-      # -----------------------------------------------------------------------
-
-      # Update MIR attributes from data_import_mir
-      def update_mir_attributes(existing_mir, normalized_attributes)
-        existing_mir.update!(normalized_attributes)
-      end
-      # -----------------------------------------------------------------------
-
-      # Check if MRR attributes have changed
-      def mrr_attributes_changed?(existing_mrr, normalized_attributes)
-        normalized_attributes.any? do |key, value|
-          begin
-            existing_value = existing_mrr.public_send(key.to_sym)
-          rescue NoMethodError
-            existing_value = nil
-          end
-          existing_value != value
-        end
-      end
-      # -----------------------------------------------------------------------
-
-      # Update MRR attributes from data_import_mrr
-      def update_mrr_attributes(existing_mrr, normalized_attributes)
-        existing_mrr.update!(normalized_attributes)
-      end
-      # -----------------------------------------------------------------------
-
-      # Check if MRS attributes have changed
-      def mrs_attributes_changed?(existing_mrs, normalized_attributes)
-        normalized_attributes.any? do |key, value|
-          begin
-            existing_value = existing_mrs.public_send(key.to_sym)
-          rescue NoMethodError
-            existing_value = nil
-          end
-          existing_value != value
-        end
-      end
-      # -----------------------------------------------------------------------
-
-      # Update MRS attributes from data_import_mrs
-      def update_mrs_attributes(existing_mrs, normalized_attributes)
-        existing_mrs.update!(normalized_attributes)
       end
       # -----------------------------------------------------------------------
 
@@ -1011,7 +778,7 @@ module Import
 
         note_line = "meetingURL: #{meeting_url}"
         existing_notes = meeting_hash['notes']
-        return note_line unless existing_notes.present?
+        return note_line if existing_notes.blank?
 
         notes = existing_notes.split("\n")
         notes.prepend(note_line) unless notes.include?(note_line)
@@ -1025,10 +792,6 @@ module Import
         normalized['session_order'] ||= index + 1
         normalized['autofilled'] = normalized.fetch('autofilled', true)
         normalized['description'] ||= "Session #{normalized['session_order']}"
-        # DEBUG -------------------------------------------------------------------------
-        # binding.pry
-        #--------------------------------------------------------------------------------
-
         normalized
       end
       # -----------------------------------------------------------------------
@@ -1086,111 +849,6 @@ module Import
       end
       # -----------------------------------------------------------------------
 
-      def normalize_meeting_individual_result_attributes(data_import_mir, program_id:)
-        normalized = {
-          'meeting_program_id' => program_id,
-          'swimmer_id' => data_import_mir.swimmer_id,
-          'team_id' => data_import_mir.team_id,
-          'rank' => integer_or_nil(data_import_mir.rank),
-          'minutes' => integer_or_nil(data_import_mir.minutes),
-          'seconds' => integer_or_nil(data_import_mir.seconds),
-          'hundredths' => integer_or_nil(data_import_mir.hundredths),
-          'disqualified' => BOOLEAN_TYPE.cast(data_import_mir.disqualified),
-          'disqualification_code_type_id' => data_import_mir.disqualification_code_type_id,
-          'standard_points' => decimal_or_nil(data_import_mir.standard_points),
-          'meeting_points' => decimal_or_nil(data_import_mir.meeting_points),
-          'reaction_time' => decimal_or_nil(data_import_mir.reaction_time),
-          'out_of_race' => BOOLEAN_TYPE.cast(data_import_mir.out_of_race),
-          'goggle_cup_points' => decimal_or_nil(data_import_mir.goggle_cup_points),
-          'team_points' => decimal_or_nil(data_import_mir.team_points)
-        }.compact
-
-        sanitize_attributes(normalized, GogglesDb::MeetingIndividualResult)
-      end
-      # -----------------------------------------------------------------------
-
-      def normalize_meeting_lap_attributes(data_import_lap, mir_id:)
-        normalized = {
-          'meeting_individual_result_id' => mir_id,
-          'length_in_meters' => integer_or_nil(data_import_lap.length_in_meters),
-          'minutes' => integer_or_nil(data_import_lap.minutes),
-          'seconds' => integer_or_nil(data_import_lap.seconds),
-          'hundredths' => integer_or_nil(data_import_lap.hundredths),
-          'minutes_from_start' => integer_or_nil(data_import_lap.minutes_from_start),
-          'seconds_from_start' => integer_or_nil(data_import_lap.seconds_from_start),
-          'hundredths_from_start' => integer_or_nil(data_import_lap.hundredths_from_start),
-          'reaction_time' => decimal_or_nil(data_import_lap.reaction_time),
-          'breath_cycles' => integer_or_nil(data_import_lap.breath_number),
-          'underwater_seconds' => integer_or_nil(data_import_lap.underwater_seconds),
-          'underwater_hundredths' => integer_or_nil(data_import_lap.underwater_hundredths),
-          'underwater_kicks' => integer_or_nil(data_import_lap.underwater_kicks),
-          'position' => integer_or_nil(data_import_lap.position)
-        }.compact
-
-        sanitize_attributes(normalized, GogglesDb::Lap)
-      end
-      # -----------------------------------------------------------------------
-
-      def normalize_meeting_relay_result_attributes(data_import_mrr, program_id:)
-        normalized = {
-          'meeting_program_id' => program_id,
-          'team_id' => data_import_mrr.team_id,
-          'rank' => integer_or_nil(data_import_mrr.rank),
-          'minutes' => integer_or_nil(data_import_mrr.minutes),
-          'seconds' => integer_or_nil(data_import_mrr.seconds),
-          'hundredths' => integer_or_nil(data_import_mrr.hundredths),
-          'disqualified' => BOOLEAN_TYPE.cast(data_import_mrr.disqualified),
-          'disqualification_code_type_id' => data_import_mrr.disqualification_code_type_id,
-          'standard_points' => decimal_or_nil(data_import_mrr.standard_points),
-          'meeting_points' => decimal_or_nil(data_import_mrr.meeting_points),
-          'reaction_time' => decimal_or_nil(data_import_mrr.reaction_time),
-          'out_of_race' => BOOLEAN_TYPE.cast(data_import_mrr.out_of_race),
-          'team_points' => decimal_or_nil(data_import_mrr.team_points)
-        }.compact
-
-        sanitize_attributes(normalized, GogglesDb::MeetingRelayResult)
-      end
-      # -----------------------------------------------------------------------
-
-      def normalize_meeting_relay_swimmer_attributes(data_import_mrs, mrr_id:)
-        normalized = {
-          'meeting_relay_result_id' => mrr_id,
-          'swimmer_id' => data_import_mrs.swimmer_id,
-          'badge_id' => data_import_mrs.badge_id,
-          'stroke_type_id' => data_import_mrs.stroke_type_id,
-          'relay_order' => integer_or_nil(data_import_mrs.relay_order),
-          'minutes' => integer_or_nil(data_import_mrs.minutes),
-          'seconds' => integer_or_nil(data_import_mrs.seconds),
-          'hundredths' => integer_or_nil(data_import_mrs.hundredths),
-          'reaction_time' => decimal_or_nil(data_import_mrs.reaction_time)
-        }.compact
-
-        sanitize_attributes(normalized, GogglesDb::MeetingRelaySwimmer)
-      end
-      # -----------------------------------------------------------------------
-
-      def normalize_relay_lap_attributes(data_import_relay_lap, mrs_id:)
-        normalized = {
-          'meeting_relay_swimmer_id' => mrs_id,
-          'length_in_meters' => integer_or_nil(data_import_relay_lap.length_in_meters),
-          'minutes' => integer_or_nil(data_import_relay_lap.minutes),
-          'seconds' => integer_or_nil(data_import_relay_lap.seconds),
-          'hundredths' => integer_or_nil(data_import_relay_lap.hundredths),
-          'minutes_from_start' => integer_or_nil(data_import_relay_lap.minutes_from_start),
-          'seconds_from_start' => integer_or_nil(data_import_relay_lap.seconds_from_start),
-          'hundredths_from_start' => integer_or_nil(data_import_relay_lap.hundredths_from_start),
-          'reaction_time' => decimal_or_nil(data_import_relay_lap.reaction_time),
-          'breath_cycles' => integer_or_nil(data_import_relay_lap.breath_number),
-          'underwater_seconds' => integer_or_nil(data_import_relay_lap.underwater_seconds),
-          'underwater_hundredths' => integer_or_nil(data_import_relay_lap.underwater_hundredths),
-          'underwater_kicks' => integer_or_nil(data_import_relay_lap.underwater_kicks),
-          'position' => integer_or_nil(data_import_relay_lap.position)
-        }.compact
-
-        sanitize_attributes(normalized, GogglesDb::RelayLap)
-      end
-      # -----------------------------------------------------------------------
-
       def integer_or_nil(value)
         return nil if value.nil? || (value.respond_to?(:blank?) && value.blank?)
 
@@ -1209,69 +867,31 @@ module Import
       end
       # -----------------------------------------------------------------------
 
-      def normalize_team_attributes(team_hash)
-        normalized = team_hash.deep_dup.with_indifferent_access
-        normalized['editable_name'] ||= normalized['name']
-        sanitized = sanitize_attributes(normalized, GogglesDb::Team)
-        sanitized['name'] ||= sanitized['editable_name']
-        sanitized
-      end
-      # -----------------------------------------------------------------------
-
-      def normalize_team_affiliation_attributes(affiliation_hash, team_id:, season_id:, team:)
-        normalized = affiliation_hash.deep_dup.with_indifferent_access
-        normalized['team_id'] = team_id
-        normalized['season_id'] = season_id
-        normalized['name'] = normalized['name'].presence || team&.name
-        if normalized.key?('compute_gogglecup') || normalized.key?(:compute_gogglecup)
-          normalized['compute_gogglecup'] = BOOLEAN_TYPE.cast(normalized['compute_gogglecup'])
+      # Returns the prefixed gender_types.id value for the specified code.
+      # @see app/models/goggles_db/gender_type.rb
+      def gender_type_id_from_code(gender_code)
+        case gender_code
+        when 'M'
+          GogglesDb::GenderType::MALE_ID
+        when 'F'
+          GogglesDb::GenderType::FEMALE_ID
+        when 'X'
+          GogglesDb::GenderType::INTERMIXED_ID
         end
-        normalized['autofilled'] = BOOLEAN_TYPE.cast(normalized['autofilled']) if normalized.key?('autofilled') || normalized.key?(:autofilled)
-
-        sanitized = sanitize_attributes(normalized, GogglesDb::TeamAffiliation)
-        sanitized['name'] ||= team&.name || ''
-        sanitized
       end
-      # -----------------------------------------------------------------------
 
-      def normalize_swimmer_attributes(swimmer_hash)
-        normalized = swimmer_hash.deep_dup.with_indifferent_access
-        gender_code = normalized.delete('gender_type_code') || normalized.delete(:gender_type_code)
-        normalized['gender_type_id'] ||= GogglesDb::GenderType.find_by(code: gender_code)&.id if gender_code.present?
-        normalized['complete_name'] ||= build_complete_name(normalized)
-        normalized['year_guessed'] = BOOLEAN_TYPE.cast(normalized['year_guessed']) if normalized.key?('year_guessed')
-
-        sanitize_attributes(normalized, GogglesDb::Swimmer)
-      end
-      # -----------------------------------------------------------------------
-
-      def normalize_badge_attributes(badge_hash, swimmer_id:, team_id:, season_id:, category_type_id:, team_affiliation_id:)
-        normalized = badge_hash.deep_dup.with_indifferent_access
-        normalized['swimmer_id'] = swimmer_id
-        normalized['team_id'] = team_id
-        normalized['season_id'] = season_id
-        normalized['category_type_id'] ||= category_type_id
-        normalized['team_affiliation_id'] = team_affiliation_id
-
-        default_entry_time = GogglesDb::EntryTimeType.manual
-        normalized['entry_time_type_id'] ||= default_entry_time&.id
-
-        %w[off_gogglecup fees_due badge_due relays_due].each do |flag|
-          next unless normalized.key?(flag)
-
-          normalized[flag] = BOOLEAN_TYPE.cast(normalized[flag])
+      # Returns the cached gender_types row instance for the specified code.
+      # @see app/models/goggles_db/gender_type.rb
+      def gender_type_instance_from_code(gender_code)
+        case gender_code
+        when 'M'
+          GogglesDb::GenderType.male
+        when 'F'
+          GogglesDb::GenderType.female
+        when 'X'
+          GogglesDb::GenderType.intermixed
         end
-
-        sanitize_attributes(normalized, GogglesDb::Badge)
       end
-      # -----------------------------------------------------------------------
-
-      def build_complete_name(swimmer_hash)
-        swimmer_hash['complete_name'].presence || [swimmer_hash['last_name'], swimmer_hash['first_name']].compact_blank.join(' ')
-      end
-      # -----------------------------------------------------------------------
-
-      # (Calendar commit logic moved to Import::Committers::Calendar)
       # -----------------------------------------------------------------------
 
       # Broadcasts progress updates via ActionCable for real-time UI feedback
