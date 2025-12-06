@@ -84,17 +84,12 @@ module Import
         Rails.logger.info("[TeamAffiliation] Created on-demand ID=#{affiliation.id}, team_id=#{team_id}")
         affiliation.id
       rescue ActiveRecord::RecordInvalid => e
-        model_row = e.record || model
-        error_details = if model_row
-                          GogglesDb::ValidationErrorTools.recursive_error_for(model_row)
-                        else
-                          e.message
-                        end
-
+        model_row = e.record
+        error_details = model_row ? GogglesDb::ValidationErrorTools.recursive_error_for(model_row) : e.message
         stats[:errors] << "TeamAffiliation error (team_id=#{team_id}): #{error_details}"
         logger.log_validation_error(
           entity_type: 'TeamAffiliation',
-          entity_key: "team_id=#{team_id},season_id=#{hash_season_id}",
+          entity_key: "team_id=#{team_id},season_id=#{@season_id}",
           entity_id: model_row&.id,
           model_row: model_row,
           error: e

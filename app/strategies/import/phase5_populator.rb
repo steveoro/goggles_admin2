@@ -711,7 +711,7 @@ module Import
 
       timing_zero = timing[:minutes].to_i.zero? && timing[:seconds].to_i.zero? && timing[:hundredths].to_i.zero?
 
-      disqualified_flag = !result['disqualified'].nil? || rank_non_numeric || timing_zero
+      disqualified_flag = !!result['disqualified'] || rank_non_numeric || timing_zero
 
       # Use find_or_create to handle potential duplicates gracefully
       mir = GogglesDb::DataImportMeetingIndividualResult.find_or_create_by!(import_key: import_key) do |record|
@@ -877,7 +877,7 @@ module Import
 
       timing_zero = timing_hash[:minutes].to_i.zero? && timing_hash[:seconds].to_i.zero? && timing_hash[:hundredths].to_i.zero?
 
-      disqualified_flag = !result['disqualified'].nil? || rank_non_numeric || timing_zero
+      disqualified_flag = !!result['disqualified'] || rank_non_numeric || timing_zero
 
       # Use find_or_create to handle potential duplicates gracefully
       GogglesDb::DataImportMeetingRelayResult.find_or_create_by!(import_key: import_key) do |mrr|

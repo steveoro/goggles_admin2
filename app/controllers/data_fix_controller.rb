@@ -590,7 +590,7 @@ class DataFixController < ApplicationController
   def commit_phase6 # rubocop:disable Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
     file_path = params[:file_path]
     if file_path.blank?
-      flash.now[:warning] = I18n.t('data_import.errors.invalid_request')
+      flash[:warning] = I18n.t('data_import.errors.invalid_request')
       redirect_to(pull_index_path) && return
     end
 
@@ -612,7 +612,7 @@ class DataFixController < ApplicationController
     missing_phases << 5 unless File.exist?(phase5_path)
 
     if missing_phases.any?
-      flash.now[:error] = "Missing phase files: #{missing_phases.join(', ')}. Please complete all phases first."
+      flash[:error] = "Missing phase files: #{missing_phases.join(', ')}. Please complete all phases first."
       redirect_to(review_results_path(file_path: file_path, phase5_v2: 1)) && return
     end
 
@@ -621,7 +621,7 @@ class DataFixController < ApplicationController
     mrr_count = GogglesDb::DataImportMeetingRelayResult.where(phase_file_path: source_path).count
 
     if mir_count.zero? && mrr_count.zero?
-      flash.now[:error] = 'No Phase 5 data found. Please rescan Phase 5 (Results) before committing.'
+      flash[:error] = 'No Phase 5 data found. Please rescan Phase 5 (Results) before committing.'
       redirect_to(review_results_path(file_path: file_path, phase5_v2: 1, rescan: 1)) && return
     end
 
