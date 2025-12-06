@@ -317,9 +317,9 @@ Phase 5 populates temporary tables for review. These tables are defined in `gogg
   
   # Result details
   rank: 1,
-  is_play_off: false,
-  is_out_of_race: false,
-  is_disqualified: false,
+  play_off: false,
+  out_of_race: false,
+  disqualified: false,
   standard_points: "812.45",
   meeting_points: 950.5,
   
@@ -343,7 +343,7 @@ Phase 5 populates temporary tables for review. These tables are defined in `gogg
 - `import_key`: Unique identifier for O(1) lookups
 - `meeting_program_id`: Links to specific event+category+gender combination
 - `swimmer_id` + `badge_id`: Fully resolved swimmer identity
-- `is_disqualified`: Status flags (RT, SQ, NP)
+- `disqualified`: Status flags (RT, SQ, NP)
 
 #### `data_import_laps`
 
@@ -405,9 +405,9 @@ Phase 5 populates temporary tables for review. These tables are defined in `gogg
   
   # Result details
   rank: 1,
-  is_play_off: false,
-  is_out_of_race: false,
-  is_disqualified: false,
+  play_off: false,
+  out_of_race: false,
+  disqualified: false,
   standard_points: "925.00",
   meeting_points: 1000.0,
   
@@ -574,10 +574,10 @@ Completed:       crawler/data/results.done/<season_id>/<filename>.json
 
 | Code | Meaning | Flag |
 |------|---------|------|
-| Rank 1-999 | Normal placement | `is_out_of_race: false` |
-| "SQ" | Disqualified | `is_disqualified: true` |
-| "RT" | Retired | `is_out_of_race: true` |
-| "NP" | Did Not Participate | `is_out_of_race: true` |
+| Rank 1-999 | Normal placement | `out_of_race: false` |
+| "SQ" | Disqualified | `disqualified: true` |
+| "RT" | Retired | `out_of_race: true` |
+| "NP" | Did Not Participate | `out_of_race: true` |
 
 ### Gender Codes
 

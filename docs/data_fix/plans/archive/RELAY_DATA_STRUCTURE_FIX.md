@@ -206,6 +206,7 @@ def create_relay_laps(_mrr, result, mrr_import_key)
     previous_from_start = from_start  # Update for next lap
   rescue ActiveRecord::RecordInvalid => e
     @stats[:errors] << "RelayLap error for #{lap_import_key}: #{e.message}"
+    raise  # Re-raise to trigger rollback
   end
 end
 ```

@@ -1,5 +1,3 @@
--# frozen_string_literal: true
-
 .container-fluid
   %h2 Data-Fix V2 • Step 6: Commit Report
 
@@ -20,7 +18,7 @@
         = @sql_filename
       %p.mb-0
         %strong Log file:
-        = File.basename(@log_path)
+        = File.basename(@log_path) if @log_path
       - if @season_id && @done_dir
         %p.mb-0
           %strong Archived to:
@@ -42,19 +40,55 @@
           = @first_error_step_label
       %p.mt-1.mb-0
         %strong Log file:
-        = File.basename(@log_path)
+        = File.basename(@log_path) if @log_path
 
-  -# Stats summary
+  -# Stats summary table
   - if @stats.present?
     .card.mt-3
       .card-header
-        %strong Commit statistics
+        %strong Commit Statistics
       .card-body
-        %dl.row
-          - @stats.each do |key, value|
-            - next if key == :errors
-            %dt.col-sm-4= key.to_s.humanize
-            %dd.col-sm-8= value
+        %table.table.table-sm.table-striped
+          %thead.thead-light
+            %tr
+              %th Entity
+              %th.text-center Inserts
+              %th.text-center Updates
+          %tbody
+            :ruby
+              entity_groups = { 'Cities' => [:cities_created, :cities_updated],
+                'Swimming Pools' => [:pools_created, :pools_updated],
+                'Meetings' => [:meetings_created, :meetings_updated],
+                'Calendars' => [:calendars_created, :calendars_updated],
+                'Sessions' => [:sessions_created, :sessions_updated],
+                'Teams' => [:teams_created, :teams_updated],
+                'Affiliations' => [:affiliations_created, nil],
+                'Swimmers' => [:swimmers_created, :swimmers_updated],
+                'Badges' => [:badges_created, nil],
+                'Events' => [:events_created, :events_updated],
+                'Programs' => [:programs_created, :programs_updated],
+                'Individual Results' => [:mirs_created, :mirs_updated],
+                'Laps' => [:laps_created, :laps_updated],
+                'Relay Results' => [:mrrs_created, :mrrs_updated],
+                'Relay Swimmers' => [:mrss_created, :mrss_updated],
+                'Relay Laps' => [:relay_laps_created, :relay_laps_updated]
+              }
+            - entity_groups.each do |name, keys|
+              - created_key, updated_key = keys
+              - created_val = @stats[created_key] || 0
+              - updated_val = updated_key ? (@stats[updated_key] || 0) : '-'
+              - next if created_val == 0 && (updated_val == '-' || updated_val == 0)
+              %tr
+                %td= name
+                %td.text-center= created_val
+                %td.text-center= updated_val
+            -# Totals row
+            - total_created = entity_groups.values.sum { |keys| @stats[keys[0]] || 0 }
+            - total_updated = entity_groups.values.sum { |keys| keys[1] ? (@stats[keys[1]] || 0) : 0 }
+            %tr.table-info.font-weight-bold
+              %td Total
+              %td.text-center= total_created
+              %td.text-center= total_updated
 
   -# Errors list (if any)
   - if @stats && @stats[:errors].present?
@@ -77,7 +111,7 @@
       %p
         %strong Log path:
         = @log_path
-      - if @commit_success
+      - if @commit_success && @log_path
         %p
           %strong SQL path:
           = File.join(File.dirname(@log_path), @sql_filename)

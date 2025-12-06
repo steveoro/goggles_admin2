@@ -60,6 +60,17 @@ module Import
       }
     end
 
+    # Log a general operation (file move, cleanup, etc.)
+    def log_operation(action:, details: nil)
+      entries << {
+        level: :info,
+        entity_type: 'Operation',
+        action: action,
+        entity_key: details,
+        timestamp: Time.current
+      }
+    end
+
     # Write the log file with formatted entries and stats summary
     # @param rolled_back [Boolean] whether the DB transaction was rolled back
     # @param top_level_error [String, nil] the top-level error message, if any
@@ -98,18 +109,25 @@ module Import
         # Write detailed log entries
         f.puts '=== DETAILED LOG ==='
         entries.each do |entry|
+          ts = begin
+            entry[:timestamp].strftime('%H:%M:%S')
+          rescue StandardError
+            entry[:timestamp]
+          end
           case entry[:level]
           when :info
-            f.puts "[#{entry[:timestamp]}] INFO: #{entry[:action]} #{entry[:entity_type]}"
-            f.puts "  Key: #{entry[:entity_key]}" if entry[:entity_key]
-            f.puts "  ID: #{entry[:entity_id]}" if entry[:entity_id]
+            # Format: [HH:MM:SS] created Meeting, ID: 123
+            line = "[#{ts}] #{entry[:action]} #{entry[:entity_type]}"
+            line += ", ID: #{entry[:entity_id]}" if entry[:entity_id]
+            line += " (#{entry[:entity_key]})" if entry[:entity_key].present?
+            f.puts line
           when :error
-            f.puts "[#{entry[:timestamp]}] ERROR: #{entry[:entity_type]}"
+            f.puts "[#{ts}] ERROR: #{entry[:entity_type]}"
             f.puts "  Key: #{entry[:entity_key]}" if entry[:entity_key]
             f.puts "  ID: #{entry[:entity_id]}" if entry[:entity_id]
             f.puts "  Error: #{entry[:error] || entry[:message]}"
+            f.puts
           end
-          f.puts
         end
 
         f.puts '=' * 80

@@ -161,7 +161,7 @@ RSpec.describe Import::Solvers::EventSolver do
       expect(all_events.size).to eq(4)
       relay_event = all_events.find { |e| e['key'] == '4x50SL' }
       expect(relay_event).to be_present
-      expect(relay_event['relay']).to eq(true)
+      expect(relay_event['relay']).to be(true)
     end
 
     it 'groups events by sessionOrder' do

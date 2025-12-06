@@ -303,7 +303,7 @@ module Import
             entry['first_name'] = top_match['first_name']
 
             # Update key to include inferred gender prefix
-            parts = key.split('|').reject(&:blank?)
+            parts = key.split('|').compact_blank
             entry['key'] = "#{entry['gender_type_code']}|#{parts[0]}|#{parts[1]}|#{parts[2]}"
 
             # Recompute category now that we have gender
@@ -512,7 +512,7 @@ module Import
 
         # Otherwise, try to find in DB by parsing key
         # Remove leading empty part if present (|LAST|... format)
-        parts = swimmer_key.split('|').reject(&:blank?)
+        parts = swimmer_key.split('|').compact_blank
         return nil if parts.size < 3
 
         # Handle both formats: GENDER|LAST|FIRST|YOB or LAST|FIRST|YOB
@@ -544,7 +544,7 @@ module Import
       # badge (|LAST|FIRST|YOB) for the same swimmer is removed to prevent duplicate commits.
       def add_or_replace_badge(badges, new_badge)
         new_key = new_badge['swimmer_key']
-        new_parts = new_key.to_s.split('|').reject(&:blank?)
+        new_parts = new_key.to_s.split('|').compact_blank
 
         # Extract normalized identity (last|first|yob without gender)
         new_offset = new_parts[0]&.length == 1 && new_parts[0]&.match?(/[MF]/) ? 1 : 0
@@ -561,7 +561,7 @@ module Import
           # Remove any existing partial-key badge for the same swimmer+team+season
           badges.reject! do |existing|
             existing_key = existing['swimmer_key']
-            existing_parts = existing_key.to_s.split('|').reject(&:blank?)
+            existing_parts = existing_key.to_s.split('|').compact_blank
             existing_offset = existing_parts[0]&.length == 1 && existing_parts[0]&.match?(/[MF]/) ? 1 : 0
             existing_last = existing_parts[existing_offset]&.upcase
             existing_first = existing_parts[existing_offset + 1]&.upcase
@@ -590,7 +590,7 @@ module Import
         # Group by normalized identity: extract last|first|yob from swimmer_key
         grouped = badges.group_by do |badge|
           key = badge['swimmer_key']
-          parts = key.to_s.split('|').reject(&:blank?)
+          parts = key.to_s.split('|').compact_blank
           # Handle both formats: GENDER|LAST|FIRST|YOB or LAST|FIRST|YOB
           offset = parts[0]&.length == 1 && parts[0]&.match?(/[MF]/) ? 1 : 0
           last = parts[offset]

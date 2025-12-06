@@ -9,13 +9,31 @@ module Import
     # previously implemented inside Import::Committers::Main#commit_team
     # (including matching semantics to avoid duplicates).
     #
+    # Maintains an internal ID mapping (team_key → team_id) for efficient
+    # lookups during later phases.
+    #
     class Team
-      attr_reader :stats, :logger, :sql_log
+      attr_reader :stats, :logger, :sql_log, :id_by_key
 
       def initialize(stats:, logger:, sql_log:)
         @stats = stats
         @logger = logger
         @sql_log = sql_log
+        @id_by_key = {} # team_key → team_id mapping
+      end
+
+      # Store team_id in mapping for later lookup
+      def store_id(team_key, team_id)
+        return unless team_key.present? && team_id
+
+        @id_by_key[team_key] = team_id
+      end
+
+      # Lookup team_id from mapping by key
+      def lookup_id(team_key)
+        return nil if team_key.blank?
+
+        @id_by_key[team_key]
       end
 
       def prepare_model(team_hash)
@@ -23,9 +41,10 @@ module Import
         GogglesDb::Team.new(attributes)
       end
 
-      # Commit a Team entity.
+      # Commit a Team entity and store ID in mapping.
       # Returns team_id or nil.
       def commit(team_hash)
+        team_key = team_hash['key']
         team_id = team_hash['team_id']
         normalized_attributes = normalize_attributes(team_hash)
         model = nil
@@ -37,9 +56,12 @@ module Import
             team.update!(normalized_attributes)
             sql_log << SqlMaker.new(row: team).log_update
             stats[:teams_updated] += 1
-            Rails.logger.info("[Main] Updated Team ID=#{team_id}")
+            logger.log_success(entity_type: 'Team', entity_id: team_id, action: 'updated',
+                               entity_key: team.name)
+            Rails.logger.info("[Team] Updated Team ID=#{team_id}")
           end
-          return team_id
+          store_id(team_key, team_id.to_i)
+          return team_id.to_i
         end
 
         # Fallback: try to match an existing team by name when team_id is missing
@@ -52,8 +74,11 @@ module Import
             existing.update!(normalized_attributes)
             sql_log << SqlMaker.new(row: existing).log_update
             stats[:teams_updated] += 1
-            Rails.logger.info("[Main] Updated Team ID=#{existing.id} (matched by name)")
+            logger.log_success(entity_type: 'Team', entity_id: existing.id, action: 'updated',
+                               entity_key: existing.name)
+            Rails.logger.info("[Team] Updated Team ID=#{existing.id} (matched by name)")
           end
+          store_id(team_key, existing.id)
           return existing.id
         end
 
@@ -62,7 +87,10 @@ module Import
         model.save!
         sql_log << SqlMaker.new(row: model).log_insert
         stats[:teams_created] += 1
-        Rails.logger.info("[Main] Created Team ID=#{model.id}, name=#{model.name}")
+        logger.log_success(entity_type: 'Team', entity_id: model.id, action: 'created',
+                           entity_key: model.name)
+        Rails.logger.info("[Team] Created Team ID=#{model.id}, name=#{model.name}")
+        store_id(team_key, model.id)
         model.id
       rescue ActiveRecord::RecordInvalid => e
         model_row = e.record || model

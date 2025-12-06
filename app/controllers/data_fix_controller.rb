@@ -219,7 +219,7 @@ class DataFixController < ApplicationController
       @auxiliary_phase3_files = Dir.glob(File.join(base_dir, '*-phase3*.json'))
                                    .reject { |path| path == phase_path }
                                    .sort
-      stored_auxiliary = Array(@phase3_meta['auxiliary_phase3_paths']).map do |stored_path|
+      stored_auxiliary = Array(@phase3_meta['auxiliary_phase3_paths']).filter_map do |stored_path|
         next if stored_path.blank?
 
         begin
@@ -227,7 +227,7 @@ class DataFixController < ApplicationController
         rescue StandardError
           nil
         end
-      end.compact
+      end
       @selected_auxiliary_phase3_files = stored_auxiliary & @auxiliary_phase3_files
 
       # Set API URL for AutoComplete components
@@ -492,8 +492,7 @@ class DataFixController < ApplicationController
 
       # Also check for relay results to determine if commit button should be visible
       @has_relay_results = GogglesDb::DataImportMeetingRelayResult
-                           .where(phase_file_path: source_path)
-                           .exists?
+                           .exists?(phase_file_path: source_path)
 
       # Eager-load swimmers and teams to avoid N+1 queries
       # NOTE: Load ALL swimmer/team IDs from source file, not just from @all_results (which is limited)
@@ -591,7 +590,7 @@ class DataFixController < ApplicationController
   def commit_phase6 # rubocop:disable Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
     file_path = params[:file_path]
     if file_path.blank?
-      flash[:warning] = I18n.t('data_import.errors.invalid_request')
+      flash.now[:warning] = I18n.t('data_import.errors.invalid_request')
       redirect_to(pull_index_path) && return
     end
 
@@ -602,6 +601,7 @@ class DataFixController < ApplicationController
     phase2_path = default_phase_path_for(source_path, 2)
     phase3_path = default_phase_path_for(source_path, 3)
     phase4_path = default_phase_path_for(source_path, 4)
+    phase5_path = default_phase_path_for(source_path, 5)
 
     # Validate all phase files exist
     missing_phases = []
@@ -609,10 +609,20 @@ class DataFixController < ApplicationController
     missing_phases << 2 unless File.exist?(phase2_path)
     missing_phases << 3 unless File.exist?(phase3_path)
     missing_phases << 4 unless File.exist?(phase4_path)
+    missing_phases << 5 unless File.exist?(phase5_path)
 
     if missing_phases.any?
-      flash[:error] = "Missing phase files: #{missing_phases.join(', ')}. Please complete all phases first."
+      flash.now[:error] = "Missing phase files: #{missing_phases.join(', ')}. Please complete all phases first."
       redirect_to(review_results_path(file_path: file_path, phase5_v2: 1)) && return
+    end
+
+    # Validate Phase 5 data exists in data_import_* tables
+    mir_count = GogglesDb::DataImportMeetingIndividualResult.where(phase_file_path: source_path).count
+    mrr_count = GogglesDb::DataImportMeetingRelayResult.where(phase_file_path: source_path).count
+
+    if mir_count.zero? && mrr_count.zero?
+      flash.now[:error] = 'No Phase 5 data found. Please rescan Phase 5 (Results) before committing.'
+      redirect_to(review_results_path(file_path: file_path, phase5_v2: 1, rescan: 1)) && return
     end
 
     # Generate paths for output files
@@ -627,6 +637,7 @@ class DataFixController < ApplicationController
       phase2_path: phase2_path,
       phase3_path: phase3_path,
       phase4_path: phase4_path,
+      phase5_path: phase5_path,
       source_path: source_path,
       log_path: log_path
     )
@@ -658,19 +669,36 @@ class DataFixController < ApplicationController
       FileUtils.mv(source_path, done_source_path)
 
       # Move phase files (keep them for audit trail)
-      [phase1_path, phase2_path, phase3_path, phase4_path].each do |path|
+      moved_files = [source_path]
+      [phase1_path, phase2_path, phase3_path, phase4_path, phase5_path].each do |path|
         next unless File.exist?(path)
 
         done_phase_path = File.join(done_dir, File.basename(path))
         FileUtils.mv(path, done_phase_path)
+        moved_files << path
       end
 
-      # Clean up data_import_* tables for this source (use done_source_path as reference)
-      GogglesDb::DataImportMeetingIndividualResult.where(phase_file_path: done_source_path).delete_all
-      GogglesDb::DataImportLap.where(phase_file_path: done_source_path).delete_all
-      GogglesDb::DataImportMeetingRelayResult.where(phase_file_path: done_source_path).delete_all
-      GogglesDb::DataImportMeetingRelaySwimmer.where(phase_file_path: done_source_path).delete_all
-      GogglesDb::DataImportRelayLap.where(phase_file_path: done_source_path).delete_all
+      # Clean up data_import_* tables for this source (use source_path as reference - before move!)
+      mir_deleted = GogglesDb::DataImportMeetingIndividualResult.where(phase_file_path: source_path).delete_all
+      lap_deleted = GogglesDb::DataImportLap.where(phase_file_path: source_path).delete_all
+      mrr_deleted = GogglesDb::DataImportMeetingRelayResult.where(phase_file_path: source_path).delete_all
+      mrs_deleted = GogglesDb::DataImportMeetingRelaySwimmer.where(phase_file_path: source_path).delete_all
+      relay_lap_deleted = GogglesDb::DataImportRelayLap.where(phase_file_path: source_path).delete_all
+      total_deleted = mir_deleted + lap_deleted + mrr_deleted + mrs_deleted + relay_lap_deleted
+
+      # Append post-commit operations to log file
+      File.open(log_path, 'a') do |f|
+        f.puts
+        f.puts '=== POST-COMMIT OPERATIONS ==='
+        f.puts "[#{Time.current.strftime('%H:%M:%S')}] moved #{moved_files.size} files to #{done_dir}"
+        moved_files.each { |path| f.puts "  - #{File.basename(path)}" }
+        f.puts "[#{Time.current.strftime('%H:%M:%S')}] cleaned up #{total_deleted} data_import_* temp records"
+        f.puts "  - DataImportMeetingIndividualResult: #{mir_deleted}"
+        f.puts "  - DataImportLap: #{lap_deleted}"
+        f.puts "  - DataImportMeetingRelayResult: #{mrr_deleted}"
+        f.puts "  - DataImportMeetingRelaySwimmer: #{mrs_deleted}"
+        f.puts "  - DataImportRelayLap: #{relay_lap_deleted}"
+      end
 
       @season_id = season_id
       @done_dir = done_dir
@@ -735,6 +763,11 @@ class DataFixController < ApplicationController
   end
   # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
 
+  # TEMP test for wrong view syntax:
+  def commit_phase6_report
+    # (no-op, just render the view)
+  end
+
   # Shared read-only endpoints delegate to legacy for now
   def coded_name
     redirect_to controller: 'data_fix_legacy', action: 'coded_name', params: request.query_parameters
@@ -760,7 +793,7 @@ class DataFixController < ApplicationController
       end
     end
 
-    Array(summary).map do |relay|
+    Array(summary).filter_map do |relay|
       swimmers = Array(relay['swimmers'])
 
       filtered_swimmers = swimmers.reject do |leg|
@@ -791,7 +824,7 @@ class DataFixController < ApplicationController
       end
 
       relay.merge('swimmers' => filtered_swimmers, 'missing_counts' => missing_counts)
-    end.compact
+    end
   end
 
   # Update a single Phase 2 team entry by key
@@ -1049,7 +1082,7 @@ class DataFixController < ApplicationController
   # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
   def merge_phase3_swimmers
     file_path = params[:file_path]
-    selected_paths = Array(params[:auxiliary_paths]).reject(&:blank?)
+    selected_paths = Array(params[:auxiliary_paths]).compact_blank
 
     if file_path.blank?
       flash[:warning] = I18n.t('data_import.errors.invalid_request')
@@ -1188,13 +1221,13 @@ class DataFixController < ApplicationController
   end
 
   # Update a single Phase 4 event entry by session and event index
-  # Also handles moving events between sessions via target_session_index
+  # Also handles moving events between sessions via target_session_order
   # rubocop:disable Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
   def update_phase4_event
     file_path = params[:file_path]
     session_index = params[:session_index]&.to_i
     event_index = params[:event_index]&.to_i
-    target_session_index = params[:target_session_index]&.to_i
+    target_session_order = params[:target_session_order]&.to_i
 
     if file_path.blank? || session_index.nil? || event_index.nil?
       flash[:warning] = I18n.t('data_import.errors.invalid_request')
@@ -1221,7 +1254,11 @@ class DataFixController < ApplicationController
       redirect_to(review_events_path(file_path:, phase4_v2: 1)) && return
     end
 
-    events = Array(sessions[session_index]['events'])
+    # Get current session by reference (not index) to handle sorting correctly
+    source_session = sessions[session_index]
+    current_session_order = source_session['session_order']&.to_i
+
+    events = Array(source_session['events'])
     if event_index.negative? || event_index >= events.size
       flash[:warning] = "Invalid event index: #{event_index}"
       redirect_to(review_events_path(file_path:, phase4_v2: 1)) && return
@@ -1255,21 +1292,21 @@ class DataFixController < ApplicationController
     # Handle heat_type_id from dropdown
     event['heat_type_id'] = event_params[:heat_type_id]&.to_i if event_params.key?(:heat_type_id)
 
-    # Handle session change (move event to different session)
-    if target_session_index.present? && target_session_index != session_index
-      # Validate target session exists in Phase 1
-      if target_session_index.negative? || target_session_index >= phase1_sessions.size
-        flash[:warning] = "Invalid target session index: #{target_session_index}"
+    # Handle autofilled checkbox (unchecked = false, checked = true)
+    # Checkbox sends '1' when checked, nothing when unchecked
+    event['autofilled'] = event_params[:autofilled] == '1'
+
+    # Handle session change (move event to different session) - compare by session_order
+    if target_session_order.present? && target_session_order != current_session_order
+      # Validate target session exists in Phase 1 by session_order
+      target_phase1_session = phase1_sessions.find { |s| s['session_order'].to_i == target_session_order }
+      unless target_phase1_session
+        flash[:warning] = "Invalid target session order: #{target_session_order}"
         redirect_to(review_events_path(file_path:, phase4_v2: 1)) && return
       end
 
-      # Get the target session from Phase 1
-      target_phase1_session = phase1_sessions[target_session_index]
-      target_session_order = target_phase1_session['session_order'] || (target_session_index + 1)
-
       # Find or create the target session in Phase 4 by session_order
-      phase4_target_session = sessions.find { |s| s['session_order'] == target_session_order }
-      phase4_target_session_index = sessions.index(phase4_target_session) if phase4_target_session
+      phase4_target_session = sessions.find { |s| s['session_order'].to_i == target_session_order }
 
       unless phase4_target_session
         # Create new session in Phase 4 based on Phase 1 session
@@ -1281,22 +1318,24 @@ class DataFixController < ApplicationController
         }
         sessions << phase4_target_session
         sessions.sort_by! { |s| s['session_order'].to_i }
-        phase4_target_session_index = sessions.index(phase4_target_session)
       end
 
-      # Remove event from current session
+      # Remove event from source session (use reference, not stale index)
       events.delete_at(event_index)
-      sessions[session_index]['events'] = events
+      source_session['events'] = events
 
-      # Add event to target session
-      target_events = Array(sessions[phase4_target_session_index]['events'])
+      # Update event's internal session_order to match target session
+      event['session_order'] = target_session_order
+
+      # Add event to target session (use reference, not index)
+      target_events = Array(phase4_target_session['events'])
       target_events << event
-      sessions[phase4_target_session_index]['events'] = target_events
+      phase4_target_session['events'] = target_events
 
       flash_msg = "Event moved to session #{target_session_order} and updated"
     else
-      # Just update in place
-      sessions[session_index]['events'] = events
+      # Just update in place (use reference, not stale index)
+      source_session['events'] = events
       flash_msg = I18n.t('data_import.messages.updated')
     end
 
@@ -1844,27 +1883,6 @@ class DataFixController < ApplicationController
     {}
   end
 
-  def handle_phase1
-    @file_path = params[:file_path]
-    if @file_path.blank?
-      flash.now[:warning] = I18n.t('data_import.errors.invalid_request')
-      redirect_to(pull_index_path) && return
-    end
-
-    season = detect_season_from_pathname(@file_path)
-    lt_format = detect_layout_type(@file_path)
-    # Build or refresh phase1 file from source
-    Import::Solvers::Phase1Solver.new(season:).build!(
-      source_path: @file_path,
-      lt_format:
-        lt_format
-    )
-
-    # For now, render legacy page to reuse views, but make it read from original file
-    # (We will wire the views to read phase1.json in a subsequent step)
-    redirect_to controller: 'data_fix_legacy', action: 'review_sessions', params: request.query_parameters
-  end
-
   def detect_season_from_pathname(file_path)
     season_id = File.dirname(file_path).split('/').last.to_i
     season_id = 212 unless season_id.positive?
@@ -2050,7 +2068,7 @@ class DataFixController < ApplicationController
 
     programs_with_counts.each do |prog_data|
       # If adding this program exceeds limit, start new page
-      if current_page_rows > 0 && (current_page_rows + prog_data[:row_count]) > PHASE5_MAX_ROWS_PER_PAGE
+      if current_page_rows.positive? && (current_page_rows + prog_data[:row_count]) > PHASE5_MAX_ROWS_PER_PAGE
         pages << current_page_programs
         current_page_programs = []
         current_page_rows = 0

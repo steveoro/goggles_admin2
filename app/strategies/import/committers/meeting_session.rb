@@ -43,6 +43,8 @@ module Import
             session.update!(normalized_session)
             sql_log << SqlMaker.new(row: session).log_update
             stats[:sessions_updated] += 1
+            logger.log_success(entity_type: 'MeetingSession', entity_id: session_id, action: 'updated',
+                               entity_key: "order #{session.session_order}")
             Rails.logger.info("[Main] Updated MeetingSession ID=#{session_id}")
           end
           return session_id
@@ -52,6 +54,8 @@ module Import
         model.save!
         sql_log << SqlMaker.new(row: model).log_insert
         stats[:sessions_created] += 1
+        logger.log_success(entity_type: 'MeetingSession', entity_id: model.id, action: 'created',
+                           entity_key: "order #{model.session_order}")
         Rails.logger.info("[Main] Created MeetingSession ID=#{model.id}, order=#{model.session_order}")
         model.id
       rescue ActiveRecord::RecordInvalid => e

@@ -60,7 +60,7 @@ module Import
               genders_hash[gender]['results_count'] += 1
 
               category = result['category'] || result['categoryTypeCode']
-              genders_hash[gender]['categories'] << category if category && !genders_hash[gender]['categories'].include?(category)
+              genders_hash[gender]['categories'] << category if category && genders_hash[gender]['categories'].exclude?(category)
             end
 
             session_bucket['events'] << {
@@ -226,15 +226,16 @@ module Import
         total_distance = participants * phase_length
 
         # Determine stroke from title keywords (italian)
-        stroke_code = if /misti|medley/i.match?(title)
+        stroke_code = case title
+                      when /misti|medley/i
                         'MI' # Mixed relay (backstroke, breaststroke, butterfly, freestyle) - stroke_type_id=10
-                      elsif /stile\s*libero|freestyle/i.match?(title)
+                      when /stile\s*libero|freestyle/i
                         'SL' # Freestyle
-                      elsif /dorso|backstroke/i.match?(title)
+                      when /dorso|backstroke/i
                         'DO' # Backstroke
-                      elsif /rana|breaststroke/i.match?(title)
+                      when /rana|breaststroke/i
                         'RA' # Breaststroke
-                      elsif /farfalla|delfino|butterfly/i.match?(title)
+                      when /farfalla|delfino|butterfly/i
                         'FA' # Butterfly
                       else
                         'SL' # Default to freestyle if unknown

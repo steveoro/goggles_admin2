@@ -710,7 +710,7 @@ RSpec.describe Import::Committers::Main do
         expect(attributes['meeting_name']).to eq('Phase Meeting')
         expect(attributes['scheduled_date']).to eq('2025-01-02')
         expect(attributes['organization_import_text']).to eq('Local Org')
-        expect(attributes['cancelled']).to eq(true)
+        expect(attributes['cancelled']).to be(true)
         expect(attributes['year']).to eq('2025')
         expect(attributes['month']).to eq('01')
       end
@@ -756,8 +756,8 @@ RSpec.describe Import::Committers::Main do
         expect(normalized['team_id']).to eq(team.id)
         expect(normalized['season_id']).to eq(season.id)
         expect(normalized['name']).to eq('Affiliates Club')
-        expect(normalized['compute_gogglecup']).to eq(true)
-        expect(normalized['autofilled']).to eq(false)
+        expect(normalized['compute_gogglecup']).to be(true)
+        expect(normalized['autofilled']).to be(false)
       end
     end
 
@@ -779,7 +779,7 @@ RSpec.describe Import::Committers::Main do
 
         expect(normalized['gender_type_id']).to eq(gender_type.id)
         expect(normalized['complete_name']).to eq('Rossi Mario')
-        expect(normalized['year_guessed']).to eq(true)
+        expect(normalized['year_guessed']).to be(true)
         expect(normalized.keys).to all(be_a(String))
       end
     end
@@ -811,10 +811,10 @@ RSpec.describe Import::Committers::Main do
         )
 
         expect(normalized['entry_time_type_id']).to eq(default_entry_time.id)
-        expect(normalized['off_gogglecup']).to eq(false)
-        expect(normalized['fees_due']).to eq(true)
-        expect(normalized['badge_due']).to eq(false)
-        expect(normalized['relays_due']).to eq(true)
+        expect(normalized['off_gogglecup']).to be(false)
+        expect(normalized['fees_due']).to be(true)
+        expect(normalized['badge_due']).to be(false)
+        expect(normalized['relays_due']).to be(true)
         expect(normalized.keys).to all(be_a(String))
       end
     end
@@ -834,8 +834,8 @@ RSpec.describe Import::Committers::Main do
         normalized = committer.send(:normalize_swimming_pool_attributes, pool_hash, city_id: 42)
 
         expect(normalized['pool_type_id']).to eq(pool_type.id)
-        expect(normalized['multiple_pools']).to eq(true)
-        expect(normalized['garden']).to eq(false)
+        expect(normalized['multiple_pools']).to be(true)
+        expect(normalized['garden']).to be(false)
         expect(normalized['city_id']).to eq(42)
         expect(normalized).not_to have_key('unexpected')
       end
@@ -862,8 +862,8 @@ RSpec.describe Import::Committers::Main do
         )
 
         expect(normalized['heat_type_id']).to eq(heat_type.id)
-        expect(normalized['out_of_race']).to eq(false)
-        expect(normalized['split_gender_start_list']).to eq(true)
+        expect(normalized['out_of_race']).to be(false)
+        expect(normalized['split_gender_start_list']).to be(true)
         expect(normalized['meeting_session_id']).to eq(7)
         expect(normalized['event_type_id']).to eq(3)
         expect(normalized).not_to have_key('unexpected')
@@ -889,8 +889,8 @@ RSpec.describe Import::Committers::Main do
         expect(normalized['meeting_event_id']).to eq(10)
         expect(normalized['category_type_id']).to eq(20)
         expect(normalized['gender_type_id']).to eq(30)
-        expect(normalized['out_of_race']).to eq(false)
-        expect(normalized['autofilled']).to eq(true)
+        expect(normalized['out_of_race']).to be(false)
+        expect(normalized['autofilled']).to be(true)
         expect(normalized).not_to have_key('unexpected')
       end
     end
@@ -919,8 +919,8 @@ RSpec.describe Import::Committers::Main do
         expect(normalized['minutes']).to eq(1)
         expect(normalized['seconds']).to eq(59)
         expect(normalized['hundredths']).to eq(12)
-        expect(normalized['disqualified']).to eq(true)
-        expect(normalized['out_of_race']).to eq(false)
+        expect(normalized['disqualified']).to be(true)
+        expect(normalized['out_of_race']).to be(false)
         expect(normalized['standard_points']).to eq(BigDecimal('12.50'))
         expect(normalized['meeting_points']).to eq(BigDecimal('3.4'))
         expect(normalized['reaction_time']).to eq(BigDecimal('0.45'))

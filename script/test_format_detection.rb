@@ -55,7 +55,7 @@ else
 end
 
 # Test 2: Find an LT4 file (if available)
-puts "\n" + ('=' * 60)
+puts "\n#{'=' * 60}"
 puts "\n🔍 Searching for LT4 test file..."
 
 # Look for any file with events array
@@ -103,5 +103,5 @@ else
   puts "\n⚠️  Test 2 SKIPPED: No LT4 files found"
 end
 
-puts "\n" + ('=' * 60)
+puts "\n#{'=' * 60}"
 puts "✅ Format detection tests complete!\n\n"

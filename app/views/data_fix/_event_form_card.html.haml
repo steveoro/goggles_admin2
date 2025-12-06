@@ -33,16 +33,17 @@
         = hidden_field_tag :event_index, local_event_index
 
         .container-fluid
-          -# Row 0: Session Binding
+          -# Row 0: Session Binding (use session_order as value, not array index)
           .row.mb-3
             .col-12
               %label Session Binding
               - session_options = sessions.map.with_index do |s, i|
-                - label = "Session #{s['session_order']}"
+                - s_order = s['session_order'] || (i + 1)
+                - label = "Session #{s_order}"
                 - label += " - #{s['description']}" if s['description'].present?
                 - label += " (#{s['scheduled_date']})" if s['scheduled_date'].present?
-                - [label, i]
-              = select_tag :target_session_index, options_for_select(session_options, session_index), class: 'form-control'
+                - [label, s_order]
+              = select_tag :target_session_order, options_for_select(session_options, session_order), class: 'form-control'
               %small.form-text.text-muted Change to move event to a different session
 
           -# Row 1: Event Order & Begin Time
@@ -81,7 +82,7 @@
           .row.mt-2.p-0
             .col.mr-4
               %label Event Type
-              = render(AutoCompleteComponent.new(base_dom_id: "meeting_event[#{event_index}]",
+              = render(AutoCompleteComponent.new(base_dom_id: "event",
                                                  payload: event_types_payload, base_name: 'event_type',
                                                  search_column: 'label_column', label_column: 'long_label',
                                                  default_value: event['event_type_id']))
@@ -92,6 +93,12 @@
                            options_from_collection_for_select(GogglesDb::HeatType.all, 'id', 'long_label', event['heat_type_id']),
                            class: 'form-control',
                            id: "event_#{event_index}_heat_type_id")
+            .col-auto.ml-4
+              .form-check.mt-4
+                - autofilled_val = is_new_event ? false : event.fetch('autofilled', true)
+                = check_box_tag('event[autofilled]', '1', autofilled_val, class: 'form-check-input', id: "event_#{event_index}_autofilled")
+                %label.form-check-label{ for: "event_#{event_index}_autofilled" } Autofilled
+                %small.form-text.text-muted Uncheck if manually edited
 
           -# Legacy fields (auto-populated from event_type/heat_type)
           .row.mt-2

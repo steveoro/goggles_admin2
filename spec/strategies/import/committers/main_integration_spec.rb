@@ -20,7 +20,7 @@ RSpec.describe Import::Committers::Main, type: :strategy do
     )
   end
 
-  before(:all) do
+  before(:all) do # rubocop:disable RSpec/BeforeAfterAll
     # Verify fixtures exist
     fixture_file = Rails.root.join('spec/fixtures/import/sample-200RA-l4.json')
     raise 'Fixture files not found! Run: rake fixtures:sync_with_testdb fixture_pattern=200RA' unless File.exist?(fixture_file)

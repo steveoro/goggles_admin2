@@ -560,7 +560,10 @@ class APIIssuesController < ApplicationController
     end
     swimmer_badges = GogglesDb::Badge.where(swimmer_id: req['swimmer_id']).for_season(meeting_season) if meeting_season
     # ASSUMES: at least a badge must be existing; ==> only the first one will be chosen <==
-    flash[:error] = "NO badges found for swimmer_id #{req['swimmer_id']}!" && return if swimmer_badges.blank?
+    if swimmer_badges.blank?
+      flash[:error] = "NO badges found for swimmer_id #{req['swimmer_id']}!"
+      return
+    end
 
     # Sets flash[:error] unless result is ok:
     meeting_event = find_meeting_event(current_user.jwt, @parent_meeting, req['event_type_id'])
