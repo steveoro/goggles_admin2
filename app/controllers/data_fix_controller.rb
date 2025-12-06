@@ -621,7 +621,7 @@ class DataFixController < ApplicationController
     mrr_count = GogglesDb::DataImportMeetingRelayResult.where(phase_file_path: source_path).count
 
     if mir_count.zero? && mrr_count.zero?
-      flash.now[:error] = 'No Phase 5 data found. Please rescan Phase 5 (Results) before committing.'
+      flash[:error] = 'No Phase 5 data found. Please rescan Phase 5 (Results) before committing.'
       redirect_to(review_results_path(file_path: file_path, phase5_v2: 1, rescan: 1)) && return
     end
 

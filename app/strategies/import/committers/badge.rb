@@ -156,19 +156,12 @@ module Import
         Rails.logger.info("[Badge] Created on-demand ID=#{badge.id}, swimmer_id=#{swimmer_id}, team_id=#{team_id}")
         badge.id
       rescue ActiveRecord::RecordInvalid => e
-        model_row = e.record || model
-        error_details = if model_row
-                          GogglesDb::ValidationErrorTools.recursive_error_for(model_row)
-                        else
-                          e.message
-                        end
-
-        swimmer_key = badge_hash['swimmer_key'] || badge_hash[:swimmer_key]
-        team_key = badge_hash['team_key'] || badge_hash[:team_key]
-        stats[:errors] << "Badge error (swimmer_key=#{swimmer_key}, swimmer_id=#{swimmer_id}, team_id=#{team_id}): #{error_details}"
+        model_row = e.record
+        error_details = model_row ? GogglesDb::ValidationErrorTools.recursive_error_for(model_row) : e.message
+        stats[:errors] << "Badge error (swimmer_id=#{swimmer_id}, team_id=#{team_id}): #{error_details}"
         logger.log_validation_error(
           entity_type: 'Badge',
-          entity_key: "swimmer_key=#{swimmer_key},swimmer_id=#{swimmer_id},team_id=#{team_id},team_key=#{team_key},season_id=#{hash_season_id}",
+          entity_key: "swimmer_id=#{swimmer_id},team_id=#{team_id},season_id=#{@season_id}",
           entity_id: model_row&.id,
           model_row: model_row,
           error: e
