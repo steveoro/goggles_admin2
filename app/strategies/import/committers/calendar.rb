@@ -18,65 +18,69 @@ module Import
         @logger = logger
         @sql_log = sql_log
       end
+      # -----------------------------------------------------------------------
 
       def prepare_model(meeting_hash)
         meeting_id = meeting_hash['meeting_id']
-        meeting = GogglesDb::Meeting.find_by(id: meeting_id)
-        return nil unless meeting
+        meeting = GogglesDb::Meeting.find(meeting_id) # Fail fast
 
         attributes = build_calendar_attributes(meeting_hash, meeting)
         GogglesDb::Calendar.new(attributes.except('id'))
       end
+      # -----------------------------------------------------------------------
 
       # Commit calendar for a given meeting hash (expects meeting_id present).
-      # Returns calendar_id or nil.
+      # Returns the committed row ID or raises an error.
       def commit(meeting_hash)
         meeting_id = meeting_hash['meeting_id']
-        meeting = GogglesDb::Meeting.find_by(id: meeting_id)
-        return unless meeting
+        raise StandardError, 'Null meeting_id in datafile object!' if meeting_id.blank?
 
-        calendar_attributes = build_calendar_attributes(meeting_hash, meeting)
-        calendar_id = calendar_attributes['id']
-        model = nil
+        meeting = GogglesDb::Meeting.find(meeting_id) # Always fail fast
 
-        begin
-          if calendar_id.present?
-            existing = GogglesDb::Calendar.find_by(id: calendar_id)
-            if existing && attributes_changed?(existing, calendar_attributes)
-              existing.update!(calendar_attributes)
-              sql_log << SqlMaker.new(row: existing).log_update
-              stats[:calendars_updated] += 1
-              Rails.logger.info("[Main] Updated Calendar ID=#{existing.id}")
-            end
-            return existing&.id
+        attributes = build_calendar_attributes(meeting_hash, meeting)
+        calendar_id = attributes['id']
+        # Search existing row for a possible update:
+        existing_row = GogglesDb::Calendar.find_by(id: calendar_id) if calendar_id.present?
+
+        if existing_row
+          if attributes_changed?(existing_row, attributes)
+            existing_row.update!(attributes)
+            sql_log << SqlMaker.new(row: existing_row).log_update
+            stats[:calendars_updated] += 1
+            logger.log_success(entity_type: 'Calendar', entity_id: existing_row.id, action: 'updated')
+            Rails.logger.info("[Calendar] Updated ID=#{existing_row.id}, meeting=#{existing_row.meeting_code}/#{existing_row.meeting_id}")
           end
+          return existing_row.id
+        end
 
-          model = prepare_model(meeting_hash)
-          model.save!
-          sql_log << SqlMaker.new(row: model).log_insert
-          stats[:calendars_created] += 1
-          Rails.logger.info("[Main] Created Calendar ID=#{model.id}, meeting_id=#{meeting_id}")
-          model.id
-        rescue ActiveRecord::RecordInvalid => e
-          model_row = e.record || model
-          error_details = if model_row
-                            GogglesDb::ValidationErrorTools.recursive_error_for(model_row)
-                          else
-                            e.message
-                          end
+        # Create new row but do also an additional search by meeting_code and season_id if possible:
+        model_row = prepare_model(meeting_hash)
+        existing_row = GogglesDb::Calendar.find_by(meeting_code: model_row.meeting_code, season_id: model_row.season_id) if model_row.meeting_code.present? && model_row.season_id.present?
 
-          stats[:errors] << "Calendar error: #{error_details}"
+        # Check validation before saving
+        unless model_row.valid?
+          error_details = GogglesDb::ValidationErrorTools.recursive_error_for(model_row)
+          stats[:errors] << "Calendar error (#{model_row.meeting_code}): #{error_details}"
           logger.log_validation_error(
             entity_type: 'Calendar',
-            entity_key: meeting.code || meeting_hash['meeting_code'],
+            entity_key: model_row.meeting_code,
             entity_id: model_row&.id,
             model_row: model_row,
-            error: e
+            error: error_details
           )
-          Rails.logger.error("[Main] ERROR committing calendar: #{error_details}")
-          raise
+          Rails.logger.error("[Calendar] ERROR creating: #{error_details}")
+          raise StandardError, "Invalid #{model_row.class} row: #{error_details}"
         end
+
+        model_row.save!
+        sql_log << SqlMaker.new(row: model_row).log_insert
+        stats[:calendars_created] += 1
+        logger.log_success(entity_type: 'Calendar', entity_id: model_row.id, action: 'created',
+                           entity_key: model_row.meeting_code)
+        Rails.logger.info("[Calendar] Created ID=#{model_row.id}, #{model_row.meeting_code}")
+        model_row.id
       end
+      # -----------------------------------------------------------------------
 
       private
 
@@ -101,6 +105,7 @@ module Import
           'updated_at' => Time.zone.now
         }.compact
       end
+      # -----------------------------------------------------------------------
 
       def find_existing_calendar(meeting)
         season = meeting.season || GogglesDb::Season.find_by(id: meeting.season_id)
@@ -111,10 +116,12 @@ module Import
                  end
         scopes.for_code(meeting.code).first || scopes.where(meeting_id: meeting.id).first
       end
+      # -----------------------------------------------------------------------
 
       def build_meeting_place(meeting_hash)
         [meeting_hash['venue1'], meeting_hash['address1']].compact_blank.join(', ')
       end
+      # -----------------------------------------------------------------------
 
       # These helpers mirror the ones in Main and are scoped here so the
       # behavior remains identical while we incrementally refactor.
@@ -122,6 +129,7 @@ module Import
         column_names = model_class.column_names.map(&:to_s)
         attributes.slice(*column_names).except('id').stringify_keys
       end
+      # -----------------------------------------------------------------------
 
       def attributes_changed?(model, new_attributes)
         new_attributes.except('id', :id).any? do |key, value|
@@ -133,6 +141,7 @@ module Import
           model_value != value
         end
       end
+      # -----------------------------------------------------------------------
     end
   end
 end

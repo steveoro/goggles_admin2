@@ -24,7 +24,7 @@ module Import
       # @param swimmer_id [Integer] swimmer_id from parent MRS (required for relay_laps)
       # @param team_id [Integer] team_id from parent MRR (required for relay_laps)
       # @param mrs_length [Integer] length_in_meters from parent MRS (to detect sub-laps)
-      # Returns relay_lap_id or nil.
+      # Returns the committed row ID or raises an error.
       def commit(data_import_relay_lap, mrs_id:, mrr_id:, swimmer_id:, team_id:, mrs_length:)
         model = nil
         lap_length = data_import_relay_lap.length_in_meters

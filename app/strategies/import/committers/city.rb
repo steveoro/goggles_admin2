@@ -17,57 +17,85 @@ module Import
         @logger = logger
         @sql_log = sql_log
       end
-
-      def prepare_model(city_hash)
-        attributes = sanitize_attributes(city_hash, GogglesDb::City)
-        GogglesDb::City.new(attributes)
-      end
+      # -----------------------------------------------------------------------
 
       # Commit a City entity (nested within swimming pool data).
-      # Returns city_id or nil.
+      # Returns the committed row ID or raises an error.
       def commit(city_hash)
-        return nil unless city_hash
-
         city_id = city_hash['city_id'] || city_hash['id']
 
-        # If city already exists, return its ID
-        return city_id if city_id.present? && city_id.positive?
+        # Reuse existing row:
+        existing_row = GogglesDb::City.find_by(id: city_id) if city_id.to_i.positive?
+        attributes = normalize_attributes(city_hash)
 
-        # Create new city
-        model = prepare_model(city_hash)
-        model.save!
-        sql_log << SqlMaker.new(row: model).log_insert
+        if existing_row
+          if attributes_changed?(existing_row, attributes)
+            existing_row.update!(attributes)
+            sql_log << SqlMaker.new(row: existing_row).log_update
+            stats[:cities_updated] += 1
+            logger.log_success(entity_type: 'City', entity_id: city_id, action: 'updated',
+                               entity_key: existing_row.name)
+            Rails.logger.info("[City] Updated ID=#{city_id}")
+          end
+          return city_id.to_i
+        end
+
+        # Create new row:
+        model_row = GogglesDb::City.new(attributes)
+
+        # Check validation before saving
+        unless model_row.valid?
+          error_details = GogglesDb::ValidationErrorTools.recursive_error_for(model_row)
+          stats[:errors] << "City error (#{model_row.name}): #{error_details}"
+          logger.log_validation_error(
+            entity_type: 'City',
+            entity_key: model_row.name,
+            entity_id: model_row&.id,
+            model_row: model_row,
+            error: error_details
+          )
+          Rails.logger.error("[City] ERROR creating: #{error_details}")
+          raise StandardError, "Invalid #{model_row.class} row: #{error_details}"
+        end
+
+        model_row.save!
+        sql_log << SqlMaker.new(row: model_row).log_insert
         stats[:cities_created] += 1
-        Rails.logger.info("[Main] Created City ID=#{model.id}, #{model.name}")
-        model.id
-      rescue ActiveRecord::RecordInvalid => e
-        model_row = e.record || model
-        error_details = if model_row
-                          GogglesDb::ValidationErrorTools.recursive_error_for(model_row)
-                        else
-                          e.message
-                        end
-
-        stats[:errors] << "City error: #{error_details}"
-        logger.log_validation_error(
-          entity_type: 'City',
-          entity_key: city_hash['name'],
-          entity_id: model_row&.id,
-          model_row: model_row,
-          error: e
-        )
-        Rails.logger.error("[Main] ERROR committing city: #{error_details}")
-        raise
+        logger.log_success(entity_type: 'City', entity_id: model_row.id, action: 'created',
+                           entity_key: model_row.name)
+        Rails.logger.info("[City] Created ID=#{model_row.id}, #{model_row.name}")
+        model_row.id
       end
+      # -----------------------------------------------------------------------
 
       private
 
-      # Local copy of attribute sanitization to keep behavior identical while
-      # we refactor out of Main.
+      def normalize_attributes(city_hash)
+        normalized = city_hash.deep_dup.with_indifferent_access
+        normalized['country_code'] ||= 'IT'
+        normalized['country'] ||= 'Italia'
+
+        sanitize_attributes(normalized, GogglesDb::City)
+      end
+      # -----------------------------------------------------------------------
+
       def sanitize_attributes(attributes, model_class)
         column_names = model_class.column_names.map(&:to_s)
-        attributes.slice(*column_names).except('id').stringify_keys
+        attributes.stringify_keys.slice(*column_names)
       end
+      # -----------------------------------------------------------------------
+
+      def attributes_changed?(model, new_attributes)
+        new_attributes.except('id', :id).any? do |key, value|
+          model_value = begin
+            model.send(key.to_sym)
+          rescue NoMethodError
+            nil
+          end
+          model_value != value
+        end
+      end
+      # -----------------------------------------------------------------------
     end
   end
 end

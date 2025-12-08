@@ -16,20 +16,22 @@ module Import
         @logger = logger
         @sql_log = sql_log
       end
+      # -----------------------------------------------------------------------
 
       # Commit a MeetingRelayResult from a data_import record.
       # @param data_import_mrr [GogglesDb::DataImportMeetingRelayResult] the temp record
       # @param program_id [Integer] the resolved meeting_program_id
       # @param season_id [Integer] the season_id for resolving team_affiliation_id
-      # Returns mrr_id or nil.
+      # Returns the committed row ID or raises an error.
       def commit(data_import_mrr, program_id:, season_id: nil)
         mrr_id = data_import_mrr.meeting_relay_result_id
         model = nil
 
         # Guard clause: skip if missing required keys
         unless program_id && data_import_mrr.team_id
-          stats[:errors] << "MRR error: missing required keys (program=#{program_id}, team=#{data_import_mrr.team_id})"
-          return nil
+          msg = "MRR error: missing required keys (program=#{program_id}, team=#{data_import_mrr.team_id})"
+          stats[:errors] << msg
+          raise StandardError, msg
         end
 
         attributes = normalize_attributes(data_import_mrr, program_id: program_id, season_id: season_id)
@@ -42,6 +44,7 @@ module Import
               existing.update!(attributes)
               sql_log << SqlMaker.new(row: existing).log_update
               stats[:mrrs_updated] += 1
+              logger.log_success(entity_type: 'MRR', entity_id: mrr_id, action: 'updated')
               Rails.logger.info("[MRR] Updated ID=#{mrr_id}")
             end
             return mrr_id
@@ -53,7 +56,7 @@ module Import
         model.save!
         sql_log << SqlMaker.new(row: model).log_insert
         stats[:mrrs_created] += 1
-        Rails.logger.info("[MRR] Created ID=#{model.id}, program=#{program_id}, team=#{data_import_mrr.team_id}, rank=#{model.rank}")
+        Rails.logger.info("[MRR] Created ID=#{model.id}")
         model.id
       rescue ActiveRecord::RecordInvalid => e
         model_row = e.record || model
@@ -75,6 +78,7 @@ module Import
         Rails.logger.error("[MRR] ERROR: #{error_details}")
         raise
       end
+      # -----------------------------------------------------------------------
 
       private
 
@@ -88,6 +92,7 @@ module Import
         )
         affiliation&.id
       end
+      # -----------------------------------------------------------------------
 
       def normalize_attributes(data_import_mrr, program_id:, season_id: nil)
         # Resolve team_affiliation_id from team_id and season_id
@@ -109,6 +114,7 @@ module Import
           'reaction_time' => decimal_or_nil(data_import_mrr.reaction_time)
         }.compact
       end
+      # -----------------------------------------------------------------------
 
       def integer_or_nil(value)
         return nil if value.blank?
@@ -132,6 +138,7 @@ module Import
           model_value != value
         end
       end
+      # -----------------------------------------------------------------------
     end
   end
 end

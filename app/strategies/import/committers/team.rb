@@ -21,6 +21,7 @@ module Import
         @sql_log = sql_log
         @id_by_key = {} # team_key → team_id mapping
       end
+      # -----------------------------------------------------------------------
 
       # Store team_id in mapping for later lookup
       def store_id(team_key, team_id)
@@ -28,89 +29,86 @@ module Import
 
         @id_by_key[team_key] = team_id
       end
+      # -----------------------------------------------------------------------
 
-      # Lookup team_id from mapping by key
-      def lookup_id(team_key)
+      # Resolve team_id from team_key using mapping
+      # Tries partial key matching if direct lookup fails
+      def resolve_id(team_key)
         return nil if team_key.blank?
 
-        @id_by_key[team_key]
-      end
+        # 1. Check cached mapping first
+        cached_id = @id_by_key[team_key]
+        return cached_id if cached_id
 
-      def prepare_model(team_hash)
-        attributes = normalize_attributes(team_hash)
-        GogglesDb::Team.new(attributes)
+        # 2. Fallback to DB query (using a LIKE scope on key/name)
+        team = GogglesDb::Team.for_name(team_key).first
+        if team
+          logger.log_operation(
+            action: 'Fallback query for unresolved Team key',
+            details: "used name-LIKE query for team_key='#{team_key}' -> found id=#{team.id}, name=#{team.name}"
+          )
+          store_id(team_key, team.id)
+          return team.id
+        end
+
+        nil
       end
+      # -----------------------------------------------------------------------
 
       # Commit a Team entity and store ID in mapping.
-      # Returns team_id or nil.
+      # Returns the committed row ID or raises an error.
       def commit(team_hash)
-        team_key = team_hash['key']
-        team_id = team_hash['team_id']
-        normalized_attributes = normalize_attributes(team_hash)
-        model = nil
+        team_key = team_hash['key'] # TODO: NORMALIZE field names (it should be "team_key", not "key")
+        # Prevent invalid mappings due to nil key components:
+        raise StandardError, 'Null team_key found in datafile object!' if team_key.blank?
 
-        # If team already has a DB ID, it's matched - just verify or update if needed
-        if team_id.present? && team_id.to_i.positive?
-          team = GogglesDb::Team.find_by(id: team_id)
-          if team && attributes_changed?(team, normalized_attributes)
-            team.update!(normalized_attributes)
-            sql_log << SqlMaker.new(row: team).log_update
+        team_id = team_hash['team_id']
+        attributes = normalize_attributes(team_hash)
+
+        # Reuse existing row:
+        existing_row = GogglesDb::Team.find_by(id: team_id) if team_id.to_i.positive?
+
+        if existing_row
+          if attributes_changed?(existing_row, attributes)
+            existing_row.update!(attributes)
+            sql_log << SqlMaker.new(row: existing_row).log_update
             stats[:teams_updated] += 1
             logger.log_success(entity_type: 'Team', entity_id: team_id, action: 'updated',
-                               entity_key: team.name)
-            Rails.logger.info("[Team] Updated Team ID=#{team_id}")
+                               entity_key: team_key)
+            Rails.logger.info("[Team] Team ID=#{team_id}")
           end
           store_id(team_key, team_id.to_i)
           return team_id.to_i
         end
 
-        # Fallback: try to match an existing team by name when team_id is missing
-        existing = nil
-        team_name = normalized_attributes['name']
-        existing = GogglesDb::Team.find_by(name: team_name) if team_name.present?
+        # Create new row:
+        model_row = GogglesDb::Team.new(attributes)
 
-        if existing
-          if attributes_changed?(existing, normalized_attributes)
-            existing.update!(normalized_attributes)
-            sql_log << SqlMaker.new(row: existing).log_update
-            stats[:teams_updated] += 1
-            logger.log_success(entity_type: 'Team', entity_id: existing.id, action: 'updated',
-                               entity_key: existing.name)
-            Rails.logger.info("[Team] Updated Team ID=#{existing.id} (matched by name)")
-          end
-          store_id(team_key, existing.id)
-          return existing.id
+        # Check validation before saving
+        unless model_row.valid?
+          error_details = GogglesDb::ValidationErrorTools.recursive_error_for(model_row)
+          stats[:errors] << "Team error (team_key=#{attributes['team_key']}): #{error_details}"
+          logger.log_validation_error(
+            entity_type: 'Team',
+            entity_key: "team_key=#{attributes['team_key']}",
+            entity_id: model_row&.id,
+            model_row: model_row,
+            error: error_details
+          )
+          Rails.logger.error("[Team] ERROR creating: #{error_details}")
+          raise StandardError, "Invalid #{model_row.class} row: #{error_details}"
         end
 
-        # Create new team (team_id is nil or 0 and no existing match found)
-        model = prepare_model(team_hash)
-        model.save!
-        sql_log << SqlMaker.new(row: model).log_insert
+        model_row.save!
+        sql_log << SqlMaker.new(row: model_row).log_insert
         stats[:teams_created] += 1
-        logger.log_success(entity_type: 'Team', entity_id: model.id, action: 'created',
-                           entity_key: model.name)
-        Rails.logger.info("[Team] Created Team ID=#{model.id}, name=#{model.name}")
-        store_id(team_key, model.id)
-        model.id
-      rescue ActiveRecord::RecordInvalid => e
-        model_row = e.record || model
-        error_details = if model_row
-                          GogglesDb::ValidationErrorTools.recursive_error_for(model_row)
-                        else
-                          e.message
-                        end
-
-        stats[:errors] << "Team error (#{team_hash['key']}): #{error_details}"
-        logger.log_validation_error(
-          entity_type: 'Team',
-          entity_key: team_hash['key'] || team_name,
-          entity_id: model_row&.id,
-          model_row: model_row,
-          error: e
-        )
-        Rails.logger.error("[Main] ERROR committing team: #{error_details}")
-        raise
+        logger.log_success(entity_type: 'Team', entity_id: model_row.id, action: 'created',
+                           entity_key: model_row.name)
+        Rails.logger.info("[Team] Created ID=#{model_row.id}, #{model_row.name}")
+        store_id(team_key, model_row.id)
+        model_row.id
       end
+      # -----------------------------------------------------------------------
 
       private
 
@@ -119,13 +117,15 @@ module Import
         normalized['editable_name'] ||= normalized['name']
         sanitize_attributes(normalized, GogglesDb::Team)
       end
+      # -----------------------------------------------------------------------
 
       # Local copy of attribute helpers to keep behavior identical while
       # we refactor out of Main.
       def sanitize_attributes(attributes, model_class)
         column_names = model_class.column_names.map(&:to_s)
-        attributes.slice(*column_names).except('id').stringify_keys
+        attributes.stringify_keys.slice(*column_names)
       end
+      # -----------------------------------------------------------------------
 
       def attributes_changed?(model, new_attributes)
         new_attributes.except('id', :id).any? do |key, value|
@@ -137,6 +137,7 @@ module Import
           model_value != value
         end
       end
+      # -----------------------------------------------------------------------
     end
   end
 end

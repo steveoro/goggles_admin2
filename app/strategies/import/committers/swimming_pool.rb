@@ -20,57 +20,62 @@ module Import
         @logger = logger
         @sql_log = sql_log
       end
-
-      def prepare_model(pool_hash)
-        normalized_pool = normalize_attributes(pool_hash, city_id: pool_hash['city_id'])
-        GogglesDb::SwimmingPool.new(normalized_pool)
-      end
+      # -----------------------------------------------------------------------
 
       # Commit a SwimmingPool entity (nested within session data).
-      # Returns swimming_pool_id or nil.
+      # Returns the committed row ID or raises an error.
       def commit(pool_hash)
-        return nil unless pool_hash
-
         pool_id = pool_hash['swimming_pool_id'] || pool_hash['id']
 
-        # If pool already exists, return its ID
-        return pool_id if pool_id.present? && pool_id.positive?
+        # Reuse existing row:
+        existing_row = GogglesDb::SwimmingPool.find_by(id: pool_id) if pool_id.to_i.positive?
+        attributes = normalize_attributes(pool_hash)
 
-        # Create new swimming pool
-        model = prepare_model(pool_hash)
-        model.save!
-        sql_log << SqlMaker.new(row: model).log_insert
+        if existing_row
+          if attributes_changed?(existing_row, attributes)
+            existing_row.update!(attributes)
+            sql_log << SqlMaker.new(row: existing_row).log_update
+            stats[:pools_updated] += 1
+            logger.log_success(entity_type: 'SwimmingPool', entity_id: pool_id, action: 'updated',
+                               entity_key: existing_row.nick_name)
+            Rails.logger.info("[SwimmingPool] Updated ID=#{existing_row.id}")
+          end
+          return pool_id.to_i
+        end
+
+        # Create new row:
+        model_row = GogglesDb::SwimmingPool.new(attributes)
+
+        # Check validation before saving
+        unless model_row.valid?
+          error_details = GogglesDb::ValidationErrorTools.recursive_error_for(model_row)
+          stats[:errors] << "SwimmingPool error (#{model_row.name}): #{error_details}"
+          logger.log_validation_error(
+            entity_type: 'SwimmingPool',
+            entity_key: model_row.name,
+            entity_id: model_row&.id,
+            model_row: model_row,
+            error: error_details
+          )
+          Rails.logger.error("[SwimmingPool] ERROR creating: #{error_details}")
+          raise StandardError, "Invalid #{model_row.class} row: #{error_details}"
+        end
+
+        model_row.save!
+        sql_log << SqlMaker.new(row: model_row).log_insert
         stats[:pools_created] += 1
-        Rails.logger.info("[Main] Created SwimmingPool ID=#{model.id}, #{model.name}")
-        model.id
-      rescue ActiveRecord::RecordInvalid => e
-        model_row = e.record || model
-        error_details = if model_row
-                          GogglesDb::ValidationErrorTools.recursive_error_for(model_row)
-                        else
-                          e.message
-                        end
-
-        stats[:errors] << "SwimmingPool error: #{error_details}"
-        logger.log_validation_error(
-          entity_type: 'SwimmingPool',
-          entity_key: pool_hash['name'],
-          entity_id: model_row&.id,
-          model_row: model_row,
-          error: e
-        )
-        Rails.logger.error("[Main] ERROR committing pool: #{error_details}")
-        raise
+        logger.log_success(entity_type: 'SwimmingPool', entity_id: model_row.id, action: 'created',
+                           entity_key: model_row.description)
+        Rails.logger.info("[SwimmingPool] Created ID=#{model_row.id}, #{model_row.description}")
+        model_row.id
       end
+      # -----------------------------------------------------------------------
 
       private
 
       # Normalizes pool attributes, mirroring Main#normalize_swimming_pool_attributes.
-      def normalize_attributes(pool_hash, city_id:)
+      def normalize_attributes(pool_hash)
         normalized = pool_hash.deep_dup.with_indifferent_access
-        normalized['city_id'] ||= city_id if city_id
-
-        pool_type_code = normalized.delete('pool_type_code')
         normalized['pool_type_id'] = GogglesDb::PoolType.find_by(code: pool_type_code)&.id if normalized['pool_type_id'].blank? && pool_type_code.present?
 
         %w[multiple_pools garden bar restaurant gym child_area read_only].each do |flag|
@@ -81,11 +86,25 @@ module Import
 
         sanitize_attributes(normalized, GogglesDb::SwimmingPool)
       end
+      # -----------------------------------------------------------------------
 
       def sanitize_attributes(attributes, model_class)
         column_names = model_class.column_names.map(&:to_s)
-        attributes.slice(*column_names).except('id').stringify_keys
+        attributes.stringify_keys.slice(*column_names)
       end
+      # -----------------------------------------------------------------------
+
+      def attributes_changed?(model, new_attributes)
+        new_attributes.except('id', :id).any? do |key, value|
+          model_value = begin
+            model.send(key.to_sym)
+          rescue NoMethodError
+            nil
+          end
+          model_value != value
+        end
+      end
+      # -----------------------------------------------------------------------
     end
   end
 end

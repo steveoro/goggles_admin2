@@ -25,24 +25,17 @@ module Import
         @logger = logger
         @sql_log = sql_log
       end
+      # -----------------------------------------------------------------------
 
       # Commit a MeetingRelaySwimmer from a data_import record.
       # @param data_import_mrs [GogglesDb::DataImportMeetingRelaySwimmer] the temp record
       # @param mrr_id [Integer] the resolved meeting_relay_result_id
       # @param swimmer_id [Integer] the resolved swimmer_id (passed explicitly)
       # @param badge_id [Integer] the resolved badge_id (passed explicitly)
-      # Returns mrs_id or nil.
-      def commit(data_import_mrs, mrr_id:, swimmer_id:, badge_id:)
+      # Returns the committed row ID or raises an error.
+      def commit(data_import_mrs)
         mrs_id = data_import_mrs.meeting_relay_swimmer_id
-        model = nil
-
-        # Guard clause: skip if missing required keys
-        unless mrr_id && swimmer_id && badge_id
-          stats[:errors] << "MRS error: missing required keys (mrr=#{mrr_id}, swimmer=#{swimmer_id}, badge=#{badge_id})"
-          return nil
-        end
-
-        attributes = normalize_attributes(data_import_mrs, mrr_id: mrr_id, swimmer_id: swimmer_id, badge_id: badge_id)
+        attributes = normalize_attributes(data_import_mrs)
 
         # If MRS already has a DB ID (matched), update if needed
         if mrs_id.present? && mrs_id.to_i.positive?
@@ -63,7 +56,7 @@ module Import
         model.save!
         sql_log << SqlMaker.new(row: model).log_insert
         stats[:mrss_created] += 1
-        Rails.logger.info("[MRS] Created ID=#{model.id}, mrr=#{mrr_id}, swimmer=#{data_import_mrs.swimmer_id}, order=#{model.relay_order}")
+        Rails.logger.info("[MRS] Created ID=#{model.id}, swimmer=#{data_import_mrs.swimmer_id}")
         model.id
       rescue ActiveRecord::RecordInvalid => e
         model_row = e.record || model
@@ -85,6 +78,7 @@ module Import
         Rails.logger.error("[MRS] ERROR: #{error_details}")
         raise
       end
+      # -----------------------------------------------------------------------
 
       private
 
@@ -106,15 +100,16 @@ module Import
           GogglesDb::StrokeType::FREESTYLE_ID
         end
       end
+      # -----------------------------------------------------------------------
 
-      def normalize_attributes(data_import_mrs, mrr_id:, swimmer_id:, badge_id:)
+      def normalize_attributes(data_import_mrs)
         relay_order = integer_or_nil(data_import_mrs.relay_order)
         stroke_type_id = resolve_stroke_type_id(data_import_mrs.import_key, relay_order)
 
         {
-          'meeting_relay_result_id' => mrr_id,
-          'swimmer_id' => swimmer_id,
-          'badge_id' => badge_id,
+          'meeting_relay_result_id' => data_import_mrs.meeting_relay_result_id,
+          'swimmer_id' => data_import_mrs.swimmer_id,
+          'badge_id' => data_import_mrs.badge_id,
           'stroke_type_id' => stroke_type_id,
           'relay_order' => relay_order,
           'minutes' => integer_or_nil(data_import_mrs.minutes),
@@ -127,6 +122,7 @@ module Import
           'length_in_meters' => integer_or_nil(data_import_mrs.length_in_meters)
         }.compact
       end
+      # -----------------------------------------------------------------------
 
       def integer_or_nil(value)
         return nil if value.blank?
@@ -139,6 +135,7 @@ module Import
 
         value.to_d
       end
+      # -----------------------------------------------------------------------
 
       def attributes_changed?(model, new_attributes)
         new_attributes.except('id', :id).any? do |key, value|
@@ -150,6 +147,7 @@ module Import
           model_value != value
         end
       end
+      # -----------------------------------------------------------------------
     end
   end
 end

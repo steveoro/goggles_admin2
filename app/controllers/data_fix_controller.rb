@@ -67,14 +67,10 @@ class DataFixController < ApplicationController
           }
         end
       end
-
-      return render 'data_fix/review_sessions_v2'
     end
-
-    # Fallback to legacy controller action
-    redirect_to controller: 'data_fix_legacy', action: 'review_sessions', params: request.query_parameters
   end
   # rubocop:enable Metrics/AbcSize
+  # ---------------------------------------------------------------------------
 
   # rubocop:disable Metrics/AbcSize, Metrics/PerceivedComplexity, Metrics/MethodLength, Metrics/CyclomaticComplexity
   def review_teams
@@ -149,11 +145,9 @@ class DataFixController < ApplicationController
 
       # Broadcast ready status to clear progress modal
       broadcast_progress('Review teams: ready', @total_count, @total_count)
-      return render 'data_fix/review_teams_v2'
     end
-
-    redirect_to controller: 'data_fix_legacy', action: 'review_teams', params: request.query_parameters
   end
+  # ---------------------------------------------------------------------------
 
   def review_swimmers
     if params[:phase3_v2].present?
@@ -270,12 +264,10 @@ class DataFixController < ApplicationController
 
       # Broadcast ready status to clear progress modal
       broadcast_progress('Review swimmers: ready', @total_count, @total_count)
-      return render 'data_fix/review_swimmers_v2'
     end
-
-    redirect_to controller: 'data_fix_legacy', action: 'review_swimmers', params: request.query_parameters
   end
   # rubocop:enable Metrics/AbcSize, Metrics/PerceivedComplexity, Metrics/MethodLength, Metrics/CyclomaticComplexity
+  # ---------------------------------------------------------------------------
 
   def review_events # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/MethodLength
     if params[:phase4_v2].present?
@@ -381,12 +373,9 @@ class DataFixController < ApplicationController
           )
         end
       end
-
-      return render 'data_fix/review_events_v2'
     end
-
-    redirect_to controller: 'data_fix_legacy', action: 'review_events', params: request.query_parameters
   end
+  # ---------------------------------------------------------------------------
 
   # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
   def review_results
@@ -578,12 +567,12 @@ class DataFixController < ApplicationController
       relay_import_keys = @all_relay_results.pluck(:import_key)
       @relay_swimmer_names = build_relay_swimmer_names_from_source(source_path, relay_import_keys)
 
-      return render 'data_fix/review_results_v2'
+      # Broadcast ready status to clear progress modal
+      broadcast_progress('Review results: ready', 100, 100)
     end
-
-    redirect_to controller: 'data_fix_legacy', action: 'review_results', params: request.query_parameters
   end
   # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
+  # ---------------------------------------------------------------------------
 
   # Phase 6: Commit all entities to DB and generate SQL/log report
   # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
@@ -762,20 +751,24 @@ class DataFixController < ApplicationController
     render 'data_fix/commit_phase6_report'
   end
   # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
+  # ---------------------------------------------------------------------------
 
   # TEMP test for wrong view syntax:
   def commit_phase6_report
     # (no-op, just render the view)
   end
+  # ---------------------------------------------------------------------------
 
   # Shared read-only endpoints delegate to legacy for now
   def coded_name
     redirect_to controller: 'data_fix_legacy', action: 'coded_name', params: request.query_parameters
   end
+  # ---------------------------------------------------------------------------
 
   def teams_for_swimmer
     redirect_to controller: 'data_fix_legacy', action: 'teams_for_swimmer', params: request.query_parameters
   end
+  # ---------------------------------------------------------------------------
 
   # Filter relay enrichment summary based on swimmer ID and issues.
   # - Always removes legs already matched to a swimmer_id > 0

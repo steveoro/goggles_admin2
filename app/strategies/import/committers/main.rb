@@ -44,9 +44,9 @@ module Import
           calendars_created: 0, calendars_updated: 0,
           sessions_created: 0, sessions_updated: 0,
           teams_created: 0, teams_updated: 0,
-          affiliations_created: 0,
+          affiliations_created: 0, affiliations_updated: 0,
           swimmers_created: 0, swimmers_updated: 0,
-          badges_created: 0,
+          badges_created: 0, badges_updated: 0,
           events_created: 0, events_updated: 0,
           programs_created: 0, programs_updated: 0,
           mirs_created: 0, mirs_updated: 0,
@@ -67,7 +67,7 @@ module Import
         # Event key → meeting_event_id mapping (populated in Phase 4, used in Phase 5)
         @event_id_by_key = {}
         # Meeting and season IDs (populated in Phase 1, passed to child committers)
-        @meeting_id = nil
+        @meeting = nil
         @season_id = nil
         # Categories cache (populated after season is known, passed to Badge committer)
         @categories_cache = nil
@@ -172,46 +172,54 @@ module Import
       # Phase 1: Cities, SwimmingPools, Meetings, MeetingSessions
       # Dependency order: City → SwimmingPool → Meeting → MeetingSession
       def commit_phase1_entities
-        Rails.logger.info('[Main] Committing Phase 1: Meeting & Sessions')
-        return unless phase1_data
+        raise StandardError, 'Null phase 1 data object!' if phase1_data.blank?
 
+        Rails.logger.info('[Main] Committing Phase 1: Meeting, SwimmingPools, Cities & Sessions')
         # Meeting data is directly under 'data', not 'data.meeting'
-        raw_meeting_data = phase1_data['data'] || {}
-        meeting_data = meeting_committer.normalize_attributes(raw_meeting_data)
+        meeting_data = phase1_data['data'] || {}
 
         sessions_data = Array(meeting_data.delete('meeting_session')).map.with_index do |session_hash, index|
           normalize_session_attributes(session_hash, meeting_data['id'], index: index)
         end
 
-        # Commit meeting (returns resulting meeting_id)
+        # Commit meeting (returns resulting meeting_id or raises an error)
         meeting_id = meeting_committer.commit(meeting_data)
-        return unless meeting_id
-
-        # Store meeting_id and season_id for later phases (badge resolution)
-        @meeting_id = meeting_id
-        meeting = GogglesDb::Meeting.find_by(id: meeting_id)
-        @season_id = meeting&.season_id
+        @meeting = GogglesDb::Meeting.find(meeting_id)
+        @season_id = @meeting.season_id # Link to the actual season ID from the committed meeting
 
         # Initialize categories cache for efficient category lookups
-        @categories_cache = PdfResults::CategoriesCache.new(meeting.season) if meeting&.season
+        @categories_cache = PdfResults::CategoriesCache.new(@meeting.season)
 
-        # Update committers with season_id and meeting_id now that they're known
-        # (committers may be lazily initialized, so we set the values directly)
-        team_affiliation_committer.season_id = @season_id
-        badge_committer.season_id = @season_id
-        badge_committer.meeting_id = @meeting_id
-        badge_committer.categories_cache = @categories_cache
+        calendar_committer.commit(meeting_data.merge('meeting_id' => @meeting.id))
 
-        calendar_committer.commit(meeting_data.merge('meeting_id' => meeting_id))
-
-        # Update sessions with the resulting meeting_id so they can be persisted
-        sessions_data.each do |session_hash|
-          session_hash['meeting_id'] = meeting_id
-          # Commit sessions and capture IDs for Phase 4 lookup
-          session_id = commit_meeting_session(session_hash)
+        # Update sessions with the resulting meeting id so they can be persisted
+        sessions_data.each_with_index do |session_hash, index|
+          session_hash['meeting_id'] = @meeting.id
+          session_hash['session_order'] ||= index + 1
+          # Commit bindings for sessions and capture IDs for Phase 4 lookup
+          session_id = commit_bindings_for_meeting_session(session_hash) # TODO: move this into MeetingSession committer, passing also SwimmingPool committer in init
           session_order = session_hash['session_order']
           @session_id_by_order[session_order] = session_id if session_id && session_order
         end
+      end
+      # -----------------------------------------------------------------------
+
+      # Commit bindings for MeetingSession (SwimmingPool, City)
+      def commit_bindings_for_meeting_session(session_hash)
+        meeting_id = session_hash['meeting_id'] || @meeting.id
+        raise StandardError, 'Null meeting_id in meeting session hash!' if meeting_id.to_i.zero?
+
+        # Commit nested city first (if new)
+        city_hash = session_hash.dig('swimming_pool', 'city')
+        city_id = city_committer.commit(city_hash)
+
+        # Commit nested swimming pool (may reference city)
+        pool_hash = session_hash['swimming_pool']
+        pool_hash = pool_hash.merge('city_id' => city_id) if pool_hash && city_id
+        swimming_pool_id = swimming_pool_committer.commit(pool_hash)
+
+        normalized_session = session_hash.merge('swimming_pool_id' => swimming_pool_id)
+        meeting_session_committer.commit(normalized_session)
       end
       # -----------------------------------------------------------------------
 
@@ -228,15 +236,17 @@ module Import
         total = teams_data.size
         teams_data.each_with_index do |team_hash, idx|
           team_committer.commit(team_hash)
-          broadcast_progress('Committing Teams', idx + 1, total)
+          broadcast_progress('Committing Teams...', idx + 1, total)
         end
+        broadcast_progress('Committing Teams done.', total, total)
 
         # Then commit affiliations (TeamAffiliation committer handles ID mapping internally)
         affiliations_total = affiliations_data.size
         affiliations_data.each_with_index do |affiliation_hash, idx|
           team_affiliation_committer.commit(affiliation_hash)
-          broadcast_progress('Committing Team Affiliations', idx + 1, affiliations_total)
+          broadcast_progress('Committing Team Affiliations...', idx + 1, affiliations_total)
         end
+        broadcast_progress('Committing Team Affiliations done.', affiliations_total, affiliations_total)
       end
       # -----------------------------------------------------------------------
 
@@ -253,15 +263,17 @@ module Import
         total = swimmers_data.size
         swimmers_data.each_with_index do |swimmer_hash, idx|
           swimmer_committer.commit(swimmer_hash)
-          broadcast_progress('Committing Swimmers', idx + 1, total)
+          broadcast_progress('Committing Swimmers...', idx + 1, total)
         end
+        broadcast_progress('Committing Swimmers done.', total, total)
 
         # Then commit badges (Badge committer handles ID mapping internally)
         badges_total = badges_data.size
         badges_data.each_with_index do |badge_hash, idx|
           badge_committer.commit(badge_hash)
-          broadcast_progress('Committing Badges', idx + 1, badges_total)
+          broadcast_progress('Committing Badges...', idx + 1, badges_total)
         end
+        broadcast_progress('Committing Badges done.', badges_total, badges_total)
       end
       # -----------------------------------------------------------------------
 
@@ -305,6 +317,7 @@ module Import
 
             broadcast_progress("Committing Events for session #{sess_idx + 1}", evt_idx + 1, session_total)
           end
+          broadcast_progress("Committing Events for session #{sess_idx + 1} done.", session_total, session_total)
         end
       end
       # -----------------------------------------------------------------------
@@ -366,6 +379,7 @@ module Import
         end
       end
       # rubocop:enable Metrics/AbcSize
+      # -----------------------------------------------------------------------
 
       # Commit MeetingProgram and return its ID
       def commit_meeting_program(meeting_event_id:, category_code:, gender_code:, is_relay: false)
@@ -389,6 +403,7 @@ module Import
 
         meeting_program_committer.commit(program_hash)
       end
+      # -----------------------------------------------------------------------
 
       # Resolve CategoryType from code, handling relay categories specially.
       # Relay categories in source data use simplified codes like "M100", "M120",
@@ -401,8 +416,8 @@ module Import
           # For relays: extract age from code (e.g., "M100" → 100) and find by age range
           age = extract_relay_age_from_code(category_code)
           if age && @categories_cache
-            result = @categories_cache.find_category_for_age(age, relay: true)
-            return result&.last # find_category_for_age returns [code, category_type]
+            _category_code, category_type = @categories_cache.find_category_for_age(age, relay: true)
+            return category_type
           end
 
           # Fallback: try direct DB lookup with age-range pattern
@@ -423,6 +438,7 @@ module Import
 
         nil
       end
+      # -----------------------------------------------------------------------
 
       # Extract age from relay category code (e.g., "M100" → 100, "M80" → 80)
       def extract_relay_age_from_code(category_code)
@@ -432,6 +448,7 @@ module Import
         match = category_code.match(/^M?(\d+)$/i)
         match ? match[1].to_i : nil
       end
+      # -----------------------------------------------------------------------
 
       # Commit individual results (MIR + Laps) for a given program
       def commit_individual_results_for_program(program_key, program_id)
@@ -443,28 +460,24 @@ module Import
                .order(:import_key)
 
         mirs.each do |data_import_mir|
-          # Resolve swimmer_id: use existing or resolve from Swimmer committer's mapping
-          swimmer_id = data_import_mir.swimmer_id || swimmer_committer.resolve_id(data_import_mir.swimmer_key)
-
-          # Resolve badge_id: use existing or resolve via Badge committer (includes on-demand creation)
-          badge_id = data_import_mir.badge_id || badge_committer.resolve_or_create(swimmer_id, data_import_mir.team_id)
+          # Resolve all bindings:
+          data_import_mir.meeting_program_id ||= program_id
+          data_import_mir.swimmer_id ||= swimmer_committer.resolve_id(data_import_mir.swimmer_key)
+          data_import_mir.team_id ||= team_committer.resolve_id(data_import_mir.team_key)
+          data_import_mir.badge_id ||= badge_committer.resolve_id(data_import_mir.swimmer_key, data_import_mir.team_key)
 
           # Pass resolved IDs explicitly to committer
-          mir_id = mir_committer.commit(
-            data_import_mir,
-            program_id: program_id,
-            swimmer_id: swimmer_id,
-            badge_id: badge_id,
-            season_id: @season_id
-          )
-          next unless mir_id
+          mir_id = mir_committer.commit(data_import_mir, season_id: @season_id)
 
           # Commit laps
           data_import_mir.data_import_laps.each do |data_import_lap|
+            data_import_lap.swimmer_id ||= swimmer_committer.resolve_id(data_import_mir.swimmer_key)
+            data_import_lap.team_id ||= team_committer.resolve_id(data_import_mir.team_key)
             lap_committer.commit(data_import_lap, mir_id: mir_id)
           end
         end
       end
+      # -----------------------------------------------------------------------
 
       # Commit relay results (MRR + MRS + RelayLaps) for a given program
       def commit_relay_results_for_program(program_key, program_id)
@@ -476,33 +489,26 @@ module Import
                .order(:import_key)
 
         mrrs.each do |data_import_mrr|
+          # Fail fast if commit fails:
           mrr_id = mrr_committer.commit(data_import_mrr, program_id: program_id, season_id: @season_id)
-          next unless mrr_id
 
           # Commit relay swimmers and their laps
           data_import_mrr.data_import_meeting_relay_swimmers.each do |data_import_mrs|
-            # Resolve swimmer_id: use existing or resolve from Swimmer committer's mapping
-            swimmer_id = data_import_mrs.swimmer_id || swimmer_committer.resolve_id(data_import_mrs.swimmer_key)
-
-            # Resolve badge_id: use existing or resolve via Badge committer (includes on-demand creation)
+            # Resolve all bindings:
+            data_import_mrs.meeting_relay_result_id ||= mrr_id
+            data_import_mrs.swimmer_id ||= swimmer_committer.resolve_id(data_import_mrs.swimmer_key)
             # Note: team_id comes from parent MRR for relays
-            badge_id = data_import_mrs.badge_id || badge_committer.resolve_or_create(swimmer_id, data_import_mrr.team_id)
+            data_import_mrs.badge_id ||= badge_committer.resolve_id(data_import_mrs.swimmer_key, data_import_mrr.team_key)
 
-            # Pass resolved IDs explicitly to committer
-            mrs_id = mrs_committer.commit(
-              data_import_mrs,
-              mrr_id: mrr_id,
-              swimmer_id: swimmer_id,
-              badge_id: badge_id
-            )
-            next unless mrs_id
+            # Fail fast if commit fails:
+            mrs_id = mrs_committer.commit(data_import_mrs)
 
             data_import_mrs.data_import_relay_laps.each do |data_import_relay_lap|
               relay_lap_committer.commit(
                 data_import_relay_lap,
                 mrs_id: mrs_id,
                 mrr_id: mrr_id,
-                swimmer_id: swimmer_id,
+                swimmer_id: data_import_mrs.swimmer_id,
                 team_id: data_import_mrr.team_id,
                 mrs_length: data_import_mrs.length_in_meters
               )
@@ -557,6 +563,50 @@ module Import
           stats: @stats,
           logger: @logger,
           sql_log: @sql_log
+        )
+      end
+      # -----------------------------------------------------------------------
+
+      def team_committer
+        @team_committer ||= Import::Committers::Team.new(
+          stats: @stats,
+          logger: @logger,
+          sql_log: @sql_log
+        )
+      end
+      # -----------------------------------------------------------------------
+
+      def swimmer_committer
+        @swimmer_committer ||= Import::Committers::Swimmer.new(
+          stats: @stats,
+          logger: @logger,
+          sql_log: @sql_log
+        )
+      end
+      # -----------------------------------------------------------------------
+
+      def team_affiliation_committer
+        @team_affiliation_committer ||= Import::Committers::TeamAffiliation.new(
+          stats: @stats,
+          logger: @logger,
+          sql_log: @sql_log,
+          team_committer: team_committer,
+          season_id: @season_id
+        )
+      end
+      # -----------------------------------------------------------------------
+
+      def badge_committer
+        @badge_committer ||= Import::Committers::Badge.new(
+          stats: @stats,
+          logger: @logger,
+          sql_log: @sql_log,
+          swimmer_committer: swimmer_committer,
+          team_committer: team_committer,
+          team_affiliation_committer: team_affiliation_committer,
+          categories_cache: @categories_cache,
+          season_id: @season_id,
+          meeting: @meeting
         )
       end
       # -----------------------------------------------------------------------
@@ -621,66 +671,6 @@ module Import
           logger: @logger,
           sql_log: @sql_log
         )
-      end
-      # -----------------------------------------------------------------------
-
-      def team_committer
-        @team_committer ||= Import::Committers::Team.new(
-          stats: @stats,
-          logger: @logger,
-          sql_log: @sql_log
-        )
-      end
-      # -----------------------------------------------------------------------
-
-      def swimmer_committer
-        @swimmer_committer ||= Import::Committers::Swimmer.new(
-          stats: @stats,
-          logger: @logger,
-          sql_log: @sql_log
-        )
-      end
-      # -----------------------------------------------------------------------
-
-      def team_affiliation_committer
-        @team_affiliation_committer ||= Import::Committers::TeamAffiliation.new(
-          stats: @stats,
-          logger: @logger,
-          sql_log: @sql_log,
-          season_id: @season_id
-        )
-      end
-      # -----------------------------------------------------------------------
-
-      def badge_committer
-        @badge_committer ||= Import::Committers::Badge.new(
-          stats: @stats,
-          logger: @logger,
-          sql_log: @sql_log,
-          team_affiliation_committer: team_affiliation_committer,
-          categories_cache: @categories_cache,
-          season_id: @season_id,
-          meeting_id: @meeting_id
-        )
-      end
-      # -----------------------------------------------------------------------
-
-      def commit_meeting_session(session_hash)
-        meeting_id = session_hash['meeting_id']
-
-        return unless meeting_id
-
-        # Commit nested city first (if new)
-        city_hash = session_hash.dig('swimming_pool', 'city')
-        city_id = city_committer.commit(city_hash)
-
-        # Commit nested swimming pool (may reference city)
-        pool_hash = session_hash['swimming_pool']
-        pool_hash = pool_hash.merge('city_id' => city_id) if pool_hash && city_id
-        swimming_pool_id = swimming_pool_committer.commit(pool_hash)
-
-        normalized_session = session_hash.merge('swimming_pool_id' => swimming_pool_id)
-        meeting_session_committer.commit(normalized_session)
       end
       # -----------------------------------------------------------------------
 

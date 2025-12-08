@@ -20,7 +20,7 @@ module Import
       # Commit a Lap from a data_import record.
       # @param data_import_lap [GogglesDb::DataImportLap] the temp record
       # @param mir_id [Integer] the resolved meeting_individual_result_id
-      # Returns lap_id or nil.
+      # Returns the committed row ID or raises an error.
       def commit(data_import_lap, mir_id:)
         model = nil
 

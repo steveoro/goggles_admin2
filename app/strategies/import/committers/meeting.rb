@@ -16,9 +16,61 @@ module Import
         @logger = logger
         @sql_log = sql_log
       end
+      # -----------------------------------------------------------------------
 
-      # Build normalized meeting attributes matching DB schema
-      # NOTE: This is a direct extraction of Main#normalize_meeting_attributes
+      # Commit meeting (returns resulting meeting_id)
+      # Returns the committed row ID or raises an error.
+      def commit(meeting_hash)
+        # Meeting data is currently under the "data" root in phase-1 JSON datafiles:
+        meeting_id = meeting_hash['meeting_id'] || meeting_hash['id'] # Support both column names
+
+        # Reuse existing row:
+        existing_row = GogglesDb::Meeting.find_by(id: meeting_id) if meeting_id.to_i.positive?
+        attributes = normalize_attributes(meeting_hash)
+
+        if existing_row
+          if attributes_changed?(existing_row, attributes)
+            existing_row.update!(attributes)
+            sql_log << SqlMaker.new(row: existing_row).log_update
+            stats[:meetings_updated] += 1
+            logger.log_success(entity_type: 'Meeting', entity_id: meeting_id, action: 'updated',
+                               entity_key: existing_row.description)
+            Rails.logger.info("[Meeting] Updated ID=#{meeting_id}")
+          end
+          return meeting_id.to_i
+        end
+
+        # Create new row:
+        model_row = GogglesDb::Meeting.new(attributes)
+
+        # Check validation before saving
+        unless model_row.valid?
+          error_details = GogglesDb::ValidationErrorTools.recursive_error_for(model_row)
+          stats[:errors] << "Meeting error (#{model_row.description}): #{error_details}"
+          logger.log_validation_error(
+            entity_type: 'Meeting',
+            entity_key: model_row.description,
+            entity_id: model_row&.id,
+            model_row: model_row,
+            error: error_details
+          )
+          Rails.logger.error("[Meeting] ERROR creating: #{error_details}")
+          raise StandardError, "Invalid #{model_row.class} row: #{error_details}"
+        end
+
+        model_row.save!
+        sql_log << SqlMaker.new(row: model_row).log_insert
+        stats[:meetings_created] += 1
+        logger.log_success(entity_type: 'Meeting', entity_id: model_row.id, action: 'created',
+                           entity_key: model_row.description)
+        Rails.logger.info("[Meeting] Created ID=#{model_row.id}, #{model_row.description}")
+        model_row.id
+      end
+      # -----------------------------------------------------------------------
+
+      private
+
+      # Build normalized attributes matching DB schema
       def normalize_attributes(raw_meeting)
         meeting_hash = raw_meeting.deep_dup
 
@@ -31,64 +83,9 @@ module Import
         meeting_hash['max_individual_events_per_session'] ||= GogglesDb::Meeting.columns_hash['max_individual_events_per_session'].default
         meeting_hash['notes'] = build_meeting_notes(meeting_hash)
 
-        meeting_hash
+        sanitize_attributes(meeting_hash, GogglesDb::Meeting)
       end
-
-      def prepare_model(meeting_hash)
-        attributes = sanitize_attributes(meeting_hash, GogglesDb::Meeting)
-        GogglesDb::Meeting.new(attributes)
-      end
-
-      # Commit meeting (returns resulting meeting_id)
-      # NOTE: This is a direct extraction of Main#commit_meeting
-      def commit(meeting_hash)
-        meeting_id = meeting_hash['meeting_id']
-        model = nil
-
-        # If meeting already has a DB ID, it's matched - update if needed
-        if meeting_id.present? && meeting_id.positive?
-          meeting = GogglesDb::Meeting.find_by(id: meeting_id)
-          if meeting && attributes_changed?(meeting, meeting_hash)
-            attributes_for_logging = sanitize_attributes(meeting_hash, GogglesDb::Meeting)
-            meeting.update!(attributes_for_logging)
-            sql_log << SqlMaker.new(row: meeting).log_update
-            stats[:meetings_updated] += 1
-            logger.log_success(entity_type: 'Meeting', entity_id: meeting_id, action: 'updated',
-                               entity_key: meeting.description)
-            Rails.logger.info("[Main] Updated Meeting ID=#{meeting_id}")
-          end
-          return meeting_id
-        end
-
-        model = prepare_model(meeting_hash)
-        model.save!
-        sql_log << SqlMaker.new(row: model).log_insert
-        stats[:meetings_created] += 1
-        logger.log_success(entity_type: 'Meeting', entity_id: model.id, action: 'created',
-                           entity_key: model.description)
-        Rails.logger.info("[Main] Created Meeting ID=#{model.id}, #{model.description}")
-        model.id
-      rescue ActiveRecord::RecordInvalid => e
-        model_row = e.record || model
-        error_details = if model_row
-                          GogglesDb::ValidationErrorTools.recursive_error_for(model_row)
-                        else
-                          e.message
-                        end
-
-        stats[:errors] << "Meeting error: #{error_details}"
-        logger.log_validation_error(
-          entity_type: 'Meeting',
-          entity_key: meeting_hash['name'] || meeting_hash['code'],
-          entity_id: model_row&.id,
-          model_row: model_row,
-          error: e
-        )
-        Rails.logger.error("[Main] ERROR committing meeting: #{error_details}")
-        raise
-      end
-
-      private
+      # -----------------------------------------------------------------------
 
       def build_meeting_notes(meeting_hash)
         meeting_url = meeting_hash['meetingURL'] || meeting_hash['meeting_url']
@@ -102,13 +99,15 @@ module Import
         notes.prepend(note_line) unless notes.include?(note_line)
         notes.join("\n")
       end
+      # -----------------------------------------------------------------------
 
       # These helpers mirror the ones in Main and are scoped here so the
       # behavior remains identical while we incrementally refactor.
       def sanitize_attributes(attributes, model_class)
         column_names = model_class.column_names.map(&:to_s)
-        attributes.slice(*column_names).except('id').stringify_keys
+        attributes.stringify_keys.slice(*column_names)
       end
+      # -----------------------------------------------------------------------
 
       def attributes_changed?(model, new_attributes)
         new_attributes.except('id', :id).any? do |key, value|
@@ -120,6 +119,7 @@ module Import
           model_value != value
         end
       end
+      # -----------------------------------------------------------------------
     end
   end
 end

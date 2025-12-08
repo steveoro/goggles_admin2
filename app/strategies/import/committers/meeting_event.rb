@@ -24,7 +24,7 @@ module Import
       end
 
       # Commit a MeetingEvent entity.
-      # Returns event_id or nil.
+      # Returns the committed row ID or raises an error.
       def commit(event_hash)
         meeting_event_id = event_hash['meeting_event_id']
         meeting_session_id = event_hash['meeting_session_id']
