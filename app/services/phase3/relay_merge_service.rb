@@ -350,6 +350,7 @@ module Phase3
               score
             end
           end
+        end
       )
     end
 
