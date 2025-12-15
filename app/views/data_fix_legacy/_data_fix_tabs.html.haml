@@ -5,12 +5,12 @@
       - if active
         .nav-link.active
           1: Meeting & Session
-          = link_to(review_sessions_path(reparse: true, file_path: file_path), method: :get,
+          = link_to(review_sessions_legacy_path(reparse: true, file_path: file_path), method: :get,
                     data: { toggle: 'tooltip',
                     title: t('data_import.file.btn_reparse_json_tooltip') }) do
             %i.btn.btn-sm.btn-outline-warning.fa.fa-refresh
       - else
-        %a.nav-link{ href: review_sessions_path(file_path: file_path),
+        %a.nav-link{ href: review_sessions_legacy_path(file_path: file_path),
                      onclick: "$('#loading-indicator').removeClass('d-none');" }
           1: Meeting & Session
 
@@ -19,12 +19,12 @@
       - if active
         .nav-link.active
           2: Teams
-          = link_to(review_teams_path(reparse: true, file_path: file_path), method: :get,
+          = link_to(review_teams_legacy_path(reparse: true, file_path: file_path), method: :get,
                     data: { toggle: 'tooltip',
                     title: t('data_import.file.btn_reparse_json_tooltip') }) do
             %i.btn.btn-sm.btn-outline-warning.fa.fa-refresh
       - else
-        %a.nav-link{ href: review_teams_path(file_path: file_path),
+        %a.nav-link{ href: review_teams_legacy_path(file_path: file_path),
                      onclick: "$('#loading-indicator').removeClass('d-none');" }
           2: Teams
 
@@ -33,12 +33,12 @@
       - if active
         .nav-link.active
           3: Swimmers
-          = link_to(review_swimmers_path(reparse: true, file_path: file_path), method: :get,
+          = link_to(review_swimmers_legacy_path(reparse: true, file_path: file_path), method: :get,
                     data: { toggle: 'tooltip',
                     title: t('data_import.file.btn_reparse_json_tooltip') }) do
             %i.btn.btn-sm.btn-outline-warning.fa.fa-refresh
       - else
-        %a.nav-link{ href: review_swimmers_path(file_path: file_path),
+        %a.nav-link{ href: review_swimmers_legacy_path(file_path: file_path),
                      onclick: "$('#loading-indicator').removeClass('d-none');" }
           3: Swimmers
 
@@ -47,12 +47,12 @@
       - if active
         .nav-link.active
           4: Events
-          = link_to(review_events_path(reparse: true, file_path: file_path), method: :get,
+          = link_to(review_events_legacy_path(reparse: true, file_path: file_path), method: :get,
                     data: { toggle: 'tooltip',
                     title: t('data_import.file.btn_reparse_json_tooltip') }) do
             %i.btn.btn-sm.btn-outline-warning.fa.fa-refresh
       - else
-        %a.nav-link{ href: review_events_path(file_path: file_path),
+        %a.nav-link{ href: review_events_legacy_path(file_path: file_path),
                      onclick: "$('#loading-indicator').removeClass('d-none');" }
           4: Events
 
@@ -61,11 +61,11 @@
       - if active
         .nav-link.active
           5: Results
-          = link_to(review_results_path(reparse: true, file_path: file_path), method: :get,
+          = link_to(review_results_legacy_path(reparse: true, file_path: file_path), method: :get,
                     data: { toggle: 'tooltip',
                     title: t('data_import.file.btn_reparse_json_tooltip') }) do
             %i.btn.btn-sm.btn-outline-warning.fa.fa-refresh
       - else
-        %a.nav-link{ href: review_results_path(file_path: file_path),
+        %a.nav-link{ href: review_results_legacy_path(file_path: file_path),
                      onclick: "$('#loading-indicator').removeClass('d-none');" }
           5: Results

@@ -125,8 +125,8 @@ TeamAffiliation.create\!(...)  # Only create if missing
 
 ### What It Does
 - Matches swimmers by (last_name, first_name, year_of_birth)
-- **Pre-matches badges** (v2.0 feature)
-- **Calculates category types** using CategoriesCache (v2.0 feature)
+- **Pre-matches badges**
+- **Calculates category types** for Badges, using CategoriesCache; note that in some cases the category_types link cannot be finalized until the swimmer results are processed
 - Loads phase1 for meeting_date, phase2 for team_id
 
 ### Pre-Matching Pattern
@@ -260,7 +260,7 @@ end
 
 ## Phase 5: Results & Laps
 
-**Status**: Individual ✅ Complete | Relay 🟡 In Progress  
+**Status**: Individual ✅ Complete
 **Purpose**: Populate temporary DB tables for result review  
 **Populator**: `app/strategies/import/phase5_populator.rb`  
 **Solver**: `app/strategies/import/solvers/result_solver.rb`
@@ -331,7 +331,7 @@ Created in goggles_db gem v0.8.11+:
 
 ## Phase 6: Commit & SQL Generation
 
-**Status**: Individual ✅ Complete | Relay 🟡 In Progress  
+**Status**: Individual ✅ Complete
 **Purpose**: Atomic commit to production DB with SQL logging  
 **Committer**: `app/strategies/import/committers/main.rb`
 

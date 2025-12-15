@@ -53,7 +53,7 @@
                     %i.fa.fa-download
                     = t('data_import.data_fix.link_to_results_pdf_download')
           .col-auto
-            = link_to(review_sessions_path(reparse: 'sessions', file_path: @file_path),
+            = link_to(review_sessions_legacy_path(reparse: 'sessions', file_path: @file_path),
                       method: :get, data: { toggle: 'tooltip',
                                             title: t('data_import.data_fix.btn_reparse_session_tooltip') }) do
               .btn.btn-sm.btn-warning
@@ -61,7 +61,7 @@
                 = t('data_import.data_fix.btn_reparse_session_label')
 
           .col-auto
-            = form_tag(data_fix_add_session_path, id: 'frm-add-session', method: :post) do
+            = form_tag(data_fix_add_session_legacy_path, id: 'frm-add-session', method: :post) do
               = hidden_field_tag('file_path', @file_path)
               = label_tag('use_default_pool_key', t('data_import.data_fix.add_session_with_shared_place'))
               = check_box_tag('use_default_pool_key', false)
@@ -99,7 +99,7 @@
                     / Don't show the purge button for already-serialized sessions (with ID)
                     - if meeting_session&.id.blank?
                       .col-auto
-                        = form_tag(data_fix_purge_path(meeting_session, model: 'meeting_session'), id: "frm-purge-session-#{index}", method: :delete) do
+                        = form_tag(data_fix_purge_legacy_path(meeting_session, model: 'meeting_session'), id: "frm-purge-session-#{index}", method: :delete) do
                           = hidden_field_tag('key', index) # actual entity key, used to retrieve the entity from data hash
                           = hidden_field_tag('file_path', @file_path)
                           %button.btn.btn-sm.btn-outline-danger{ id: "btn-purge-#{index}", type: 'submit', method: :delete,

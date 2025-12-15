@@ -8,7 +8,7 @@
   gender_type_opts = options_from_collection_for_select(GogglesDb::GenderType.all, 'id', 'label',
                                                         swimmer&.gender_type_id)
 
-= form_for(swimmer, url: data_fix_update_path(swimmer, model: 'swimmer'), method: :patch) do |f|
+= form_for(swimmer, url: data_fix_update_legacy_path(swimmer, model: 'swimmer'), method: :patch) do |f|
   = hidden_field_tag('key', swimmer_key) # actual entity key, used to retrieve the entity from data hash
   = hidden_field_tag('dom_valid_key', subkey_for_dom_id) # valid DOM ID key using inside the form
   = hidden_field_tag('file_path', file_path)

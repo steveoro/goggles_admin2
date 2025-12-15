@@ -1,4 +1,4 @@
-= form_for(meeting_session, url: data_fix_update_path(meeting_session, model: 'meeting_session'),
+= form_for(meeting_session, url: data_fix_update_legacy_path(meeting_session, model: 'meeting_session'),
            method: :patch) do |f|
   = hidden_field_tag('key', index)
   = hidden_field_tag('file_path', file_path)

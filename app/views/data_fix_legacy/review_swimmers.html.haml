@@ -19,7 +19,7 @@
                 - if page_num == @curr_page.to_i
                   = link_label
                 - else
-                  = link_to(review_swimmers_path(page: page_num, file_path: @file_path), method: :get) do
+                  = link_to(review_swimmers_legacy_path(page: page_num, file_path: @file_path), method: :get) do
                     = link_label
         .row-fluid
           - @swimmers_keys.each_with_index do |swimmer_key, index|
@@ -53,7 +53,7 @@
                             &nbsp;
                             ❓
                           &nbsp;
-                          = link_to(data_fix_teams_for_swimmer_path(swimmer.id), method: :get, remote: true,
+                          = link_to(data_fix_teams_for_swimmer_legacy_path(swimmer.id), method: :get, remote: true,
                                     data: { toggle: 'tooltip',
                                     title: t('data_import.data_fix.btn_teams_for_swimmer_tooltip') }) do
                             %small
@@ -64,7 +64,7 @@
                           - possible_dup_count = @swimmers_keys.select { |skey| skey.starts_with?(name_part) }.count
                           - if possible_dup_count > 1
                             &nbsp;
-                            = form_for(swimmer, url: data_fix_purge_path(swimmer, model: 'swimmer'), method: :delete) do |f|
+                            = form_for(swimmer, url: data_fix_purge_legacy_path(swimmer, model: 'swimmer'), method: :delete) do |f|
                               = hidden_field_tag('key', swimmer_key) # actual entity key, used to retrieve the entity from data hash
                               = hidden_field_tag('file_path', @file_path)
                               %button.btn.btn-sm.btn-outline-danger{ id: "btn-purge-#{swimmer_key}", type: 'submit', method: :delete,

@@ -4,7 +4,7 @@
   onchange_event = "$('#{target_dom}').val($('#{src_dom}').val()); $('#{target_dom}').trigger('change')"
   meeting = meeting_entity.row
 
-= form_for(meeting, url: data_fix_update_path(meeting.attributes.merge(model: 'meeting')), method: :patch) do |f|
+= form_for(meeting, url: data_fix_update_legacy_path(meeting.attributes.merge(model: 'meeting')), method: :patch) do |f|
   = hidden_field_tag('file_path', file_path)
   .container{ data: { controller: 'coded-name',
               'coded-name-result-type-value' => 'code',

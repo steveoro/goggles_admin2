@@ -70,7 +70,7 @@
                   %i.fa.fa-bolt
               - when '.json'
                 &nbsp;
-                = link_to(review_sessions_path(file_path: full_pathname), method: :get,
+                = link_to(review_sessions_legacy_path(file_path: full_pathname), method: :get,
                           class: 'btn btn-sm btn-outline-warning mb-1', data: { toggle: 'tooltip',
                           title: t('data_import.file.btn_process_json_tooltip') }) do
                   %i.fa.fa-cogs

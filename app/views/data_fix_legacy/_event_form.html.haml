@@ -7,7 +7,7 @@
     selected: meeting_session_idx
   )
 
-= form_for(event, url: data_fix_update_path(event, model: 'meeting_event'), method: :patch) do |f|
+= form_for(event, url: data_fix_update_legacy_path(event, model: 'meeting_event'), method: :patch) do |f|
   = hidden_field_tag('key', event_key)
   = hidden_field_tag('file_path', file_path)
   .container

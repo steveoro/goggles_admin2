@@ -66,7 +66,7 @@
                     / Don't show the purge button for already-serialized events (with ID)
                     - if event&.id.blank?
                       .col-auto
-                        = form_tag(data_fix_purge_path(event, model: 'meeting_event'), id: "frm-purge-event-#{index}", method: :delete) do
+                        = form_tag(data_fix_purge_legacy_path(event, model: 'meeting_event'), id: "frm-purge-event-#{index}", method: :delete) do
                           = hidden_field_tag('key', event_key) # actual entity key, used to retrieve the entity from data hash
                           = hidden_field_tag('file_path', @file_path)
                           %button.btn.btn-sm.btn-outline-danger{ id: "btn-purge-#{index}", type: 'submit', method: :delete,

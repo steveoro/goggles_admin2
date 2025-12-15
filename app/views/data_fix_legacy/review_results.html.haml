@@ -76,7 +76,7 @@
                                 - if lap_sub_count.present?
                                   &nbsp;-&nbsp;Δt: #{lap_sub_count}
 
-                            = link_to(data_fix_result_details_path(prg_key: prg_key, file_path: @file_path,
+                            = link_to(data_fix_result_details_legacy_path(prg_key: prg_key, file_path: @file_path,
                                       relay: event.relay?, target_dom_id: collapse_dom_id),
                                       id: "frm-#{collapse_dom_id}", method: :get, remote: true) do
                               = render(Switch::RotatingComponent.new(target_id: collapse_dom_id))

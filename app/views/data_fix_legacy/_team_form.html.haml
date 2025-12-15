@@ -6,7 +6,7 @@
   target_dom = "#team_#{subkey_for_dom_id}_team_id"
   onchange_event = "$('#{target_dom}').val($('#{src_dom}').val()); $('#{target_dom}').trigger('change')"
 
-= form_for(team, url: data_fix_update_path(team, model: 'team'), method: :patch) do |f|
+= form_for(team, url: data_fix_update_legacy_path(team, model: 'team'), method: :patch) do |f|
   = hidden_field_tag('key', team_key) # actual entity key, used to retrieve the entity from data hash
   = hidden_field_tag('dom_valid_key', subkey_for_dom_id) # valid DOM ID key using inside the form
   = hidden_field_tag('file_path', file_path)

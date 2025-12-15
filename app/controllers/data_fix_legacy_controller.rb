@@ -100,7 +100,7 @@ class DataFixLegacyController < ApplicationController
     overwrite_file_path_with_json_from(@solver.data)
 
     # Fall back to step 1 (sessions) in case the referrer is not available:
-    redirect_to(review_sessions_path(file_path: file_path_from_params, reparse: nil))
+    redirect_to(review_sessions_legacy_path(file_path: file_path_from_params, reparse: nil))
   end
   #-- -------------------------------------------------------------------------
   #++
@@ -206,7 +206,7 @@ class DataFixLegacyController < ApplicationController
     event_type = GogglesDb::EventType.find_by(id: add_event_params[:event_type_id])
     if event_type.blank? || meeting_session.blank?
       flash.now[:warning] = I18n.t('search_view.errors.invalid_request')
-      redirect_to(review_events_path(file_path: file_path_from_params, reparse: nil))
+      redirect_to(review_events_legacy_path(file_path: file_path_from_params, reparse: nil))
     end
 
     # Add a single MeetingEvent only if not present already in the parsed data:
@@ -222,7 +222,7 @@ class DataFixLegacyController < ApplicationController
 
     overwrite_file_path_with_json_from(@solver.data)
     # Fall back to step 1 (sessions) in case the referrer is not available:
-    redirect_to(review_events_path(file_path: file_path_from_params, reparse: nil))
+    redirect_to(review_events_legacy_path(file_path: file_path_from_params, reparse: nil))
   end
   #-- -------------------------------------------------------------------------
   #++
@@ -558,7 +558,7 @@ class DataFixLegacyController < ApplicationController
     # ----------------------------------------------------------------------
 
     # Fall back to step 1 (sessions) in case the referrer is not available:
-    redirect_back(fallback_location: review_sessions_path(file_path: file_path_from_params, reparse: false))
+    redirect_back(fallback_location: review_sessions_legacy_path(file_path: file_path_from_params, reparse: false))
   end
   # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
   #-- -------------------------------------------------------------------------
@@ -626,7 +626,7 @@ class DataFixLegacyController < ApplicationController
     request.headers['HTTP_REFERER'].gsub!(/&reparse=(true|sessions)/i, '')
 
     # Fall back to step 1 (sessions) in case the referrer is not available:
-    redirect_back(fallback_location: review_sessions_path(file_path: file_path_from_params, reparse: false))
+    redirect_back(fallback_location: review_sessions_legacy_path(file_path: file_path_from_params, reparse: false))
   end
   #-- -------------------------------------------------------------------------
   #++
@@ -1012,7 +1012,7 @@ class DataFixLegacyController < ApplicationController
   #++
 
   # Propagates the changes to a Swimmer entity row after a gender type or YOB override, which may imply
-  # a category change and, consecutevely, a MeetingProgram update for all linked sub-entities (results and laps).
+  # a category change and, consecutively, a MeetingProgram update for all linked sub-entities (results and laps).
   #
   # This method assumes the updated attributes have already been applied to the Swimmer row and its direct
   # bindings (namely, just its Badge). Which leaves out all results and laps tied to a specific MPrg
