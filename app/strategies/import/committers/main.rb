@@ -452,13 +452,10 @@ module Import
 
       # Commit individual results (MIR + Laps) for a given program
       def commit_individual_results_for_program(program_key, program_id)
-        # Query MIRs matching this program's key pattern
-        mirs = GogglesDb::DataImportMeetingIndividualResult
-               .where(phase_file_path: source_path)
-               .where('import_key LIKE ?', "#{program_key}/%")
-               .includes(:data_import_laps)
-               .order(:import_key)
-
+        # Retrieve MIRs bound to the program's key
+        mirs = GogglesDb::DataImportMeetingIndividualResult.where(meeting_program_key: program_key)
+                                                           .includes(:data_import_laps)
+                                                           .order(:import_key)
         mirs.each do |data_import_mir|
           # Resolve all bindings:
           data_import_mir.meeting_program_id ||= program_id
@@ -468,12 +465,14 @@ module Import
 
           # Pass resolved IDs explicitly to committer
           mir_id = mir_committer.commit(data_import_mir, season_id: @season_id)
+          data_import_mir.meeting_individual_result_id = mir_id
 
+          # Retrieve laps bound to the parent MIR
+          data_import_laps = GogglesDb::DataImportLap.where(parent_import_key: data_import_mir.import_key)
+                                                     .order(:import_key)
           # Commit laps
-          data_import_mir.data_import_laps.each do |data_import_lap|
-            data_import_lap.swimmer_id ||= swimmer_committer.resolve_id(data_import_mir.swimmer_key)
-            data_import_lap.team_id ||= team_committer.resolve_id(data_import_mir.team_key)
-            lap_committer.commit(data_import_lap, mir_id: mir_id)
+          data_import_laps.each do |data_import_lap|
+            lap_committer.commit(data_import_lap, data_import_mir:)
           end
         end
       end
@@ -481,15 +480,16 @@ module Import
 
       # Commit relay results (MRR + MRS + RelayLaps) for a given program
       def commit_relay_results_for_program(program_key, program_id)
-        # Query MRRs matching this program's key pattern
-        mrrs = GogglesDb::DataImportMeetingRelayResult
-               .where(phase_file_path: source_path)
-               .where('import_key LIKE ?', "#{program_key}/%")
-               .includes(data_import_meeting_relay_swimmers: :data_import_relay_laps)
-               .order(:import_key)
-
+        # Retrieve MRRs bound to the program's key
+        mrrs = GogglesDb::DataImportMeetingRelayResult.where(meeting_program_key: program_key)
+                                                      .includes(data_import_meeting_relay_swimmers: :data_import_relay_laps)
+                                                      .order(:import_key)
         mrrs.each do |data_import_mrr|
-          # Fail fast if commit fails:
+          # Resolve all bindings:
+          data_import_mrr.team_id ||= team_committer.resolve_id(data_import_mrr.team_key)
+          data_import_mrr.team_affiliation_id ||= team_affiliation_committer.resolve_id(data_import_mrr.team_key)
+
+          # Pass resolved IDs explicitly to committer
           mrr_id = mrr_committer.commit(data_import_mrr, program_id: program_id, season_id: @season_id)
 
           # Commit relay swimmers and their laps
@@ -497,7 +497,7 @@ module Import
             # Resolve all bindings:
             data_import_mrs.meeting_relay_result_id ||= mrr_id
             data_import_mrs.swimmer_id ||= swimmer_committer.resolve_id(data_import_mrs.swimmer_key)
-            # Note: team_id comes from parent MRR for relays
+            # NOTE: team_id comes from parent MRR for relays
             data_import_mrs.badge_id ||= badge_committer.resolve_id(data_import_mrs.swimmer_key, data_import_mrr.team_key)
 
             # Fail fast if commit fails:

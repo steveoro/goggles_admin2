@@ -21,8 +21,8 @@ module Import
       # @param data_import_lap [GogglesDb::DataImportLap] the temp record
       # @param mir_id [Integer] the resolved meeting_individual_result_id
       # Returns the committed row ID or raises an error.
-      def commit(data_import_lap, mir_id:)
-        model = nil
+      def commit(data_import_lap, data_import_mir:)
+        mir_id = data_import_mir.meeting_individual_result_id
 
         # Guard clause: skip if missing required keys
         unless mir_id && data_import_lap.length_in_meters
@@ -30,7 +30,7 @@ module Import
           return nil
         end
 
-        attributes = normalize_attributes(data_import_lap, mir_id: mir_id)
+        attributes = normalize_attributes(data_import_lap, data_import_mir:)
 
         # Create new lap (no matching logic for laps - they're always new)
         model = GogglesDb::Lap.new(attributes)
@@ -61,12 +61,13 @@ module Import
 
       private
 
-      def normalize_attributes(data_import_lap, mir_id:)
+      def normalize_attributes(data_import_lap, data_import_mir:)
         {
-          'meeting_individual_result_id' => mir_id,
+          'meeting_program_id' => data_import_mir.meeting_program_id,
+          'meeting_individual_result_id' => data_import_mir.meeting_individual_result_id,
           'length_in_meters' => integer_or_nil(data_import_lap.length_in_meters),
-          'swimmer_id' => data_import_lap.swimmer_id,
-          'team_id' => data_import_lap.team_id,
+          'swimmer_id' => data_import_mir.swimmer_id,
+          'team_id' => data_import_mir.team_id,
           'minutes' => integer_or_nil(data_import_lap.minutes),
           'seconds' => integer_or_nil(data_import_lap.seconds),
           'hundredths' => integer_or_nil(data_import_lap.hundredths),
@@ -74,7 +75,7 @@ module Import
           'seconds_from_start' => integer_or_nil(data_import_lap.seconds_from_start),
           'hundredths_from_start' => integer_or_nil(data_import_lap.hundredths_from_start),
           'reaction_time' => decimal_or_nil(data_import_lap.reaction_time),
-          'position' => integer_or_nil(data_import_lap.position)
+          'position' => nil # # Currently not stored in data_import_* tables: integer_or_nil(data_import_lap.position)
         }.compact
       end
 

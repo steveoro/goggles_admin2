@@ -95,7 +95,7 @@ module Import
           'seconds_from_start' => integer_or_nil(data_import_relay_lap.seconds_from_start),
           'hundredths_from_start' => integer_or_nil(data_import_relay_lap.hundredths_from_start),
           'reaction_time' => decimal_or_nil(data_import_relay_lap.reaction_time),
-          'position' => integer_or_nil(data_import_relay_lap.position)
+          'position' => nil # Currently not stored in data_import_* tables: integer_or_nil(data_import_relay_lap.position)
         }.compact
       end
 
