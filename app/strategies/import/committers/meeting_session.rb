@@ -38,7 +38,7 @@ module Import
             sql_log << SqlMaker.new(row: existing_row).log_update
             stats[:sessions_updated] += 1
             logger.log_success(entity_type: 'MeetingSession', entity_id: session_id, action: 'updated',
-                               entity_key: "order #{session.session_order}")
+                               entity_key: "order #{existing_row.session_order}")
             Rails.logger.info("[MeetingSession] Updated ID=#{session_id}")
           end
           return session_id.to_i

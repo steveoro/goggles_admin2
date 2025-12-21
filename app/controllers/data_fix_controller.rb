@@ -20,53 +20,53 @@ class DataFixController < ApplicationController
 
   # rubocop:disable Metrics/AbcSize
   def review_sessions
-    if params[:phase_v2].present?
-      @file_path = params[:file_path]
-      if @file_path.blank?
-        flash.now[:warning] = I18n.t('data_import.errors.invalid_request')
-        redirect_to(pull_index_path) && return
-      end
+    return unless params[:phase_v2].present?
 
-      source_path = resolve_source_path(@file_path)
-      season = detect_season_from_pathname(source_path)
-      lt_format = detect_layout_type(source_path)
-      # Use existing phase file unless rescan is requested; build when missing or rescan
-      phase_path = default_phase_path_for(source_path, 1)
-      if params[:rescan].present? || !File.exist?(phase_path)
-        phase_path = Import::Solvers::Phase1Solver.new(season:).build!(
-          source_path: source_path,
-          lt_format: lt_format
-        )&.dig('path') || phase_path
-        # Redirect without rescan parameter to avoid triggering rescan on navigation
-        redirect_to(review_sessions_path(request.query_parameters.except(:rescan)),
-                    notice: I18n.t('data_import.messages.phase_rebuilt', phase: 1)) && return
-      end
-      pfm = PhaseFileManager.new(phase_path)
-      @phase1_meta = pfm.meta
-      @phase1_data = pfm.data
+    @file_path = params[:file_path]
+    if @file_path.blank?
+      flash.now[:warning] = I18n.t('data_import.errors.invalid_request')
+      redirect_to(pull_index_path) && return
+    end
 
-      # Set API URL for AutoComplete components
-      set_api_url
+    source_path = resolve_source_path(@file_path)
+    season = detect_season_from_pathname(source_path)
+    lt_format = detect_layout_type(source_path)
+    # Use existing phase file unless rescan is requested; build when missing or rescan
+    phase_path = default_phase_path_for(source_path, 1)
+    if params[:rescan].present? || !File.exist?(phase_path)
+      phase_path = Import::Solvers::Phase1Solver.new(season:).build!(
+        source_path: source_path,
+        lt_format: lt_format
+      )&.dig('path') || phase_path
+      # Redirect without rescan parameter to avoid triggering rescan on navigation
+      redirect_to(review_sessions_path(request.query_parameters.except(:rescan)),
+                  notice: I18n.t('data_import.messages.phase_rebuilt', phase: 1)) && return
+    end
+    pfm = PhaseFileManager.new(phase_path)
+    @phase1_meta = pfm.meta
+    @phase1_data = pfm.data
 
-      # Fetch existing meeting sessions if meeting_id is present
-      meeting_id = @phase1_data['id']
-      @existing_meeting_sessions = []
-      if meeting_id.present?
-        @existing_meeting_sessions = GogglesDb::MeetingSession.where(meeting_id:)
-                                                              .includes(:swimming_pool)
-                                                              .order(:session_order)
-                                                              .map do |ms|
-          {
-            'id' => ms.id,
-            'session_order' => ms.session_order,
-            'scheduled_date' => ms.scheduled_date&.to_s,
-            'description' => ms.description,
-            'day_part_type_id' => ms.day_part_type_id,
-            'swimming_pool_id' => ms.swimming_pool_id,
-            'swimming_pool_name' => ms.swimming_pool&.name
-          }
-        end
-      end
+    # Set API URL for AutoComplete components
+    set_api_url
+
+    # Fetch existing meeting sessions if meeting_id is present
+    meeting_id = @phase1_data['id']
+    @existing_meeting_sessions = []
+    return unless meeting_id.present?
+
+    @existing_meeting_sessions = GogglesDb::MeetingSession.where(meeting_id:)
+                                                          .includes(:swimming_pool)
+                                                          .order(:session_order)
+                                                          .map do |ms|
+      {
+        'id' => ms.id,
+        'session_order' => ms.session_order,
+        'scheduled_date' => ms.scheduled_date&.to_s,
+        'description' => ms.description,
+        'day_part_type_id' => ms.day_part_type_id,
+        'swimming_pool_id' => ms.swimming_pool_id,
+        'swimming_pool_name' => ms.swimming_pool&.name
+      }
     end
   end
   # rubocop:enable Metrics/AbcSize
@@ -74,304 +74,304 @@ class DataFixController < ApplicationController
 
   # rubocop:disable Metrics/AbcSize, Metrics/PerceivedComplexity, Metrics/MethodLength, Metrics/CyclomaticComplexity
   def review_teams
-    if params[:phase2_v2].present?
-      @file_path = params[:file_path]
-      if @file_path.blank?
-        flash.now[:warning] = I18n.t('data_import.errors.invalid_request')
-        redirect_to(pull_index_path) && return
-      end
+    return unless params[:phase2_v2].present?
 
-      source_path = resolve_source_path(@file_path)
-      season = detect_season_from_pathname(source_path)
-      lt_format = detect_layout_type(source_path)
-      phase_path = default_phase_path_for(source_path, 2)
-      if params[:rescan].present? || !File.exist?(phase_path)
-        Import::Solvers::TeamSolver.new(season:).build!(
-          source_path: source_path,
-          lt_format: lt_format
-        )
-        # Redirect without rescan parameter to avoid triggering rescan on navigation
-        redirect_to(review_teams_path(request.query_parameters.except(:rescan)),
-                    notice: I18n.t('data_import.messages.phase_rebuilt', phase: 2)) && return
-      end
-      pfm = PhaseFileManager.new(phase_path)
-      @phase2_meta = pfm.meta
-      @phase2_data = pfm.data
-
-      # Safety: rebuild Phase 2 file if teams dictionary is missing (older generator or corrupted file)
-      if @phase2_data['teams'].nil?
-        Import::Solvers::TeamSolver.new(season:).build!(
-          source_path: source_path,
-          lt_format: lt_format
-        )
-        redirect_to(review_teams_path(request.query_parameters),
-                    notice: I18n.t('data_import.messages.phase_rebuilt', phase: 2)) && return
-      end
-
-      # Set API URL for AutoComplete components
-      set_api_url
-
-      # Optional filtering
-      @q = params[:q].to_s.strip
-      teams = Array(@phase2_data['teams'])
-
-      # Filter by search query
-      if @q.present?
-        qd = @q.downcase
-        teams = teams.select do |t|
-          name = (t['name'] || t['key']).to_s.downcase
-          name.include?(qd)
-        end
-      end
-
-      # Filter teams needing review: unmatched (no team_id) OR match < 90% (yellow/red matches)
-      # This shows ALL teams that need manual verification at a glance
-      if params[:unmatched].present?
-        teams = teams.select do |t|
-          t['team_id'].nil? || (t['match_percentage'] || 0.0) < 90.0
-        end
-      end
-
-      # Pagination (phase-specific params to avoid cross-phase interference)
-      @page = params[:teams_page].to_i
-      @page = 1 if @page < 1
-      @per_page = params[:teams_per_page].to_i
-      @per_page = 50 if @per_page <= 0 || !params.key?(:teams_per_page)
-      @total_count = teams.size
-      @total_pages = (@total_count.to_f / @per_page).ceil
-      @row_range = "#{(@page * @per_page) - @per_page + 1}-#{@page * @per_page}"
-      # Use Kaminari for pagination
-      @items = Kaminari.paginate_array(teams, total_count: @total_count).page(@page).per(@per_page)
-
-      # Broadcast ready status to clear progress modal
-      broadcast_progress('Review teams: ready', @total_count, @total_count)
+    @file_path = params[:file_path]
+    if @file_path.blank?
+      flash.now[:warning] = I18n.t('data_import.errors.invalid_request')
+      redirect_to(pull_index_path) && return
     end
+
+    source_path = resolve_source_path(@file_path)
+    season = detect_season_from_pathname(source_path)
+    lt_format = detect_layout_type(source_path)
+    phase_path = default_phase_path_for(source_path, 2)
+    if params[:rescan].present? || !File.exist?(phase_path)
+      Import::Solvers::TeamSolver.new(season:).build!(
+        source_path: source_path,
+        lt_format: lt_format
+      )
+      # Redirect without rescan parameter to avoid triggering rescan on navigation
+      redirect_to(review_teams_path(request.query_parameters.except(:rescan)),
+                  notice: I18n.t('data_import.messages.phase_rebuilt', phase: 2)) && return
+    end
+    pfm = PhaseFileManager.new(phase_path)
+    @phase2_meta = pfm.meta
+    @phase2_data = pfm.data
+
+    # Safety: rebuild Phase 2 file if teams dictionary is missing (older generator or corrupted file)
+    if @phase2_data['teams'].nil?
+      Import::Solvers::TeamSolver.new(season:).build!(
+        source_path: source_path,
+        lt_format: lt_format
+      )
+      redirect_to(review_teams_path(request.query_parameters),
+                  notice: I18n.t('data_import.messages.phase_rebuilt', phase: 2)) && return
+    end
+
+    # Set API URL for AutoComplete components
+    set_api_url
+
+    # Optional filtering
+    @q = params[:q].to_s.strip
+    teams = Array(@phase2_data['teams'])
+
+    # Filter by search query
+    if @q.present?
+      qd = @q.downcase
+      teams = teams.select do |t|
+        name = (t['name'] || t['key']).to_s.downcase
+        name.include?(qd)
+      end
+    end
+
+    # Filter teams needing review: unmatched (no team_id) OR match < 90% (yellow/red matches)
+    # This shows ALL teams that need manual verification at a glance
+    if params[:unmatched].present?
+      teams = teams.select do |t|
+        t['team_id'].nil? || (t['match_percentage'] || 0.0) < 90.0
+      end
+    end
+
+    # Pagination (phase-specific params to avoid cross-phase interference)
+    @page = params[:teams_page].to_i
+    @page = 1 if @page < 1
+    @per_page = params[:teams_per_page].to_i
+    @per_page = 50 if @per_page <= 0 || !params.key?(:teams_per_page)
+    @total_count = teams.size
+    @total_pages = (@total_count.to_f / @per_page).ceil
+    @row_range = "#{(@page * @per_page) - @per_page + 1}-#{@page * @per_page}"
+    # Use Kaminari for pagination
+    @items = Kaminari.paginate_array(teams, total_count: @total_count).page(@page).per(@per_page)
+
+    # Broadcast ready status to clear progress modal
+    broadcast_progress('Review teams: ready', @total_count, @total_count)
   end
   # ---------------------------------------------------------------------------
 
   def review_swimmers
-    if params[:phase3_v2].present?
-      @file_path = params[:file_path]
-      if @file_path.blank?
-        flash.now[:warning] = I18n.t('data_import.errors.invalid_request')
-        redirect_to(pull_index_path) && return
-      end
+    return unless params[:phase3_v2].present?
 
-      source_path = resolve_source_path(@file_path)
-      season = detect_season_from_pathname(source_path)
-      lt_format = detect_layout_type(source_path)
-      phase_path = default_phase_path_for(source_path, 3)
-      if params[:rescan].present? || !File.exist?(phase_path)
-        phase1_path = default_phase_path_for(source_path, 1)
-        phase2_path = default_phase_path_for(source_path, 2)
-        Import::Solvers::SwimmerSolver.new(season:).build!(
-          source_path: source_path,
-          lt_format: lt_format,
-          phase1_path: phase1_path,
-          phase2_path: phase2_path
-        )
-        # Redirect without rescan parameter to avoid triggering rescan on navigation
-        redirect_to(review_swimmers_path(request.query_parameters.except(:rescan)),
-                    notice: I18n.t('data_import.messages.phase_rebuilt', phase: 3)) && return
-      end
-      pfm = PhaseFileManager.new(phase_path)
-      @phase3_meta = pfm.meta
-      @phase3_data = pfm.data
-
-      # Safety: rebuild Phase 3 file if swimmers dictionary is missing (older generator or corrupted file)
-      if @phase3_data['swimmers'].nil?
-        phase1_path = default_phase_path_for(source_path, 1)
-        phase2_path = default_phase_path_for(source_path, 2)
-        Import::Solvers::SwimmerSolver.new(season:).build!(
-          source_path: source_path,
-          lt_format: lt_format,
-          phase1_path: phase1_path,
-          phase2_path: phase2_path
-        )
-        redirect_to(review_swimmers_path(request.query_parameters),
-                    notice: I18n.t('data_import.messages.phase_rebuilt', phase: 3)) && return
-      end
-      @source_path = source_path
-      base_dir = File.dirname(source_path)
-
-      # Extract season and meeting date for category computation
-      season = detect_season_from_pathname(source_path)
-      phase1_path = default_phase_path_for(source_path, 1)
-      meeting_date = if File.exist?(phase1_path)
-                       phase1_data = JSON.parse(File.read(phase1_path))
-                       phase1_data.dig('data', 'meeting', 'header_date')
-                     end
-
-      detector = Phase3::RelayEnrichmentDetector.new(
-        source_path: source_path,
-        phase3_swimmers: @phase3_data.fetch('swimmers', []),
-        season: season,
-        meeting_date: meeting_date
-      )
-      @show_new_relay_swimmers = params[:show_new_relay_swimmers].present?
-      @relay_enrichment_summary = filter_relay_enrichment_summary(detector.detect, @show_new_relay_swimmers)
-      @auxiliary_phase3_files = Dir.glob(File.join(base_dir, '*-phase3*.json'))
-                                   .reject { |path| path == phase_path }
-                                   .sort
-      stored_auxiliary = Array(@phase3_meta['auxiliary_phase3_paths']).filter_map do |stored_path|
-        next if stored_path.blank?
-
-        begin
-          Pathname.new(File.expand_path(stored_path, base_dir)).to_s
-        rescue StandardError
-          nil
-        end
-      end
-      @selected_auxiliary_phase3_files = stored_auxiliary & @auxiliary_phase3_files
-
-      # Set API URL for AutoComplete components
-      set_api_url
-
-      # Optional filtering
-      @q = params[:q].to_s.strip
-      swimmers = Array(@phase3_data['swimmers'])
-
-      # Filter by search query
-      if @q.present?
-        qd = @q.downcase
-        swimmers = swimmers.select do |s|
-          last = s['last_name'].to_s.downcase
-          first = s['first_name'].to_s.downcase
-          key = s['key'].to_s.downcase
-          [last, first, key].any? { |v| v.include?(qd) }
-        end
-      end
-
-      # Filter swimmers needing review: unmatched (no swimmer_id) OR match < 90% (yellow/red matches)
-      # This shows ALL swimmers that need manual verification at a glance
-      if params[:unmatched].present?
-        swimmers = swimmers.select do |s|
-          s['swimmer_id'].nil? || (s['match_percentage'] || 0.0) < 90.0
-        end
-      end
-
-      # Pagination (phase-specific params to avoid cross-phase interference)
-      # Swimmers typically have more entries, default to 100
-      @page = params[:swimmers_page].to_i
-      @page = 1 if @page < 1
-      @per_page = params[:swimmers_per_page].to_i
-      @per_page = 100 if @per_page <= 0 || !params.key?(:swimmers_per_page)
-      @total_count = swimmers.size
-      @total_pages = (@total_count.to_f / @per_page).ceil
-      @row_range = "#{(@page * @per_page) - @per_page + 1}-#{@page * @per_page}"
-      # Use Kaminari for pagination
-      @items = Kaminari.paginate_array(swimmers, total_count: @total_count).page(@page).per(@per_page)
-
-      # Broadcast ready status to clear progress modal
-      broadcast_progress('Review swimmers: ready', @total_count, @total_count)
+    @file_path = params[:file_path]
+    if @file_path.blank?
+      flash.now[:warning] = I18n.t('data_import.errors.invalid_request')
+      redirect_to(pull_index_path) && return
     end
+
+    source_path = resolve_source_path(@file_path)
+    season = detect_season_from_pathname(source_path)
+    lt_format = detect_layout_type(source_path)
+    phase_path = default_phase_path_for(source_path, 3)
+    if params[:rescan].present? || !File.exist?(phase_path)
+      phase1_path = default_phase_path_for(source_path, 1)
+      phase2_path = default_phase_path_for(source_path, 2)
+      Import::Solvers::SwimmerSolver.new(season:).build!(
+        source_path: source_path,
+        lt_format: lt_format,
+        phase1_path: phase1_path,
+        phase2_path: phase2_path
+      )
+      # Redirect without rescan parameter to avoid triggering rescan on navigation
+      redirect_to(review_swimmers_path(request.query_parameters.except(:rescan)),
+                  notice: I18n.t('data_import.messages.phase_rebuilt', phase: 3)) && return
+    end
+    pfm = PhaseFileManager.new(phase_path)
+    @phase3_meta = pfm.meta
+    @phase3_data = pfm.data
+
+    # Safety: rebuild Phase 3 file if swimmers dictionary is missing (older generator or corrupted file)
+    if @phase3_data['swimmers'].nil?
+      phase1_path = default_phase_path_for(source_path, 1)
+      phase2_path = default_phase_path_for(source_path, 2)
+      Import::Solvers::SwimmerSolver.new(season:).build!(
+        source_path: source_path,
+        lt_format: lt_format,
+        phase1_path: phase1_path,
+        phase2_path: phase2_path
+      )
+      redirect_to(review_swimmers_path(request.query_parameters),
+                  notice: I18n.t('data_import.messages.phase_rebuilt', phase: 3)) && return
+    end
+    @source_path = source_path
+    base_dir = File.dirname(source_path)
+
+    # Extract season and meeting date for category computation
+    season = detect_season_from_pathname(source_path)
+    phase1_path = default_phase_path_for(source_path, 1)
+    meeting_date = if File.exist?(phase1_path)
+                     phase1_data = JSON.parse(File.read(phase1_path))
+                     phase1_data.dig('data', 'meeting', 'header_date')
+                   end
+
+    detector = Phase3::RelayEnrichmentDetector.new(
+      source_path: source_path,
+      phase3_swimmers: @phase3_data.fetch('swimmers', []),
+      season: season,
+      meeting_date: meeting_date
+    )
+    @show_new_relay_swimmers = params[:show_new_relay_swimmers].present?
+    @relay_enrichment_summary = filter_relay_enrichment_summary(detector.detect, @show_new_relay_swimmers)
+    @auxiliary_phase3_files = Dir.glob(File.join(base_dir, '*-phase3*.json'))
+                                 .reject { |path| path == phase_path }
+                                 .sort
+    stored_auxiliary = Array(@phase3_meta['auxiliary_phase3_paths']).filter_map do |stored_path|
+      next if stored_path.blank?
+
+      begin
+        Pathname.new(File.expand_path(stored_path, base_dir)).to_s
+      rescue StandardError
+        nil
+      end
+    end
+    @selected_auxiliary_phase3_files = stored_auxiliary & @auxiliary_phase3_files
+
+    # Set API URL for AutoComplete components
+    set_api_url
+
+    # Optional filtering
+    @q = params[:q].to_s.strip
+    swimmers = Array(@phase3_data['swimmers'])
+
+    # Filter by search query
+    if @q.present?
+      qd = @q.downcase
+      swimmers = swimmers.select do |s|
+        last = s['last_name'].to_s.downcase
+        first = s['first_name'].to_s.downcase
+        key = s['key'].to_s.downcase
+        [last, first, key].any? { |v| v.include?(qd) }
+      end
+    end
+
+    # Filter swimmers needing review: unmatched (no swimmer_id) OR match < 90% (yellow/red matches)
+    # This shows ALL swimmers that need manual verification at a glance
+    if params[:unmatched].present?
+      swimmers = swimmers.select do |s|
+        s['swimmer_id'].nil? || (s['match_percentage'] || 0.0) < 90.0
+      end
+    end
+
+    # Pagination (phase-specific params to avoid cross-phase interference)
+    # Swimmers typically have more entries, default to 100
+    @page = params[:swimmers_page].to_i
+    @page = 1 if @page < 1
+    @per_page = params[:swimmers_per_page].to_i
+    @per_page = 100 if @per_page <= 0 || !params.key?(:swimmers_per_page)
+    @total_count = swimmers.size
+    @total_pages = (@total_count.to_f / @per_page).ceil
+    @row_range = "#{(@page * @per_page) - @per_page + 1}-#{@page * @per_page}"
+    # Use Kaminari for pagination
+    @items = Kaminari.paginate_array(swimmers, total_count: @total_count).page(@page).per(@per_page)
+
+    # Broadcast ready status to clear progress modal
+    broadcast_progress('Review swimmers: ready', @total_count, @total_count)
   end
   # rubocop:enable Metrics/AbcSize, Metrics/PerceivedComplexity, Metrics/MethodLength, Metrics/CyclomaticComplexity
   # ---------------------------------------------------------------------------
 
   def review_events # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/MethodLength
-    if params[:phase4_v2].present?
-      @file_path = params[:file_path]
-      if @file_path.blank?
-        flash.now[:warning] = I18n.t('data_import.errors.invalid_request')
-        redirect_to(pull_index_path) && return
-      end
+    return unless params[:phase4_v2].present?
 
-      source_path = resolve_source_path(@file_path)
-      season = detect_season_from_pathname(source_path)
-      lt_format = detect_layout_type(source_path)
-      phase_path = default_phase_path_for(source_path, 4)
-      if params[:rescan].present? || !File.exist?(phase_path)
-        phase1_path = default_phase_path_for(source_path, 1)
-        Import::Solvers::EventSolver.new(season:).build!(
-          source_path: source_path,
-          lt_format: lt_format,
-          phase1_path: phase1_path
-        )
-        flash.now[:notice] = I18n.t('data_import.messages.phase_rebuilt', phase: 4)
-        # Redirect without rescan parameter to avoid triggering rescan on navigation
-        redirect_to(review_events_path(request.query_parameters.except(:rescan)),
-                    notice: I18n.t('data_import.messages.phase_rebuilt', phase: 4)) && return
-      end
-      pfm = PhaseFileManager.new(phase_path)
-      @phase4_meta = pfm.meta
-      @phase4_data = pfm.data
+    @file_path = params[:file_path]
+    if @file_path.blank?
+      flash.now[:warning] = I18n.t('data_import.errors.invalid_request')
+      redirect_to(pull_index_path) && return
+    end
 
-      # Set API URL for AutoComplete components
-      set_api_url
-
-      # Build sessions list for dropdown from Phase 1 (edited sessions) or fallback to Phase 4
+    source_path = resolve_source_path(@file_path)
+    season = detect_season_from_pathname(source_path)
+    lt_format = detect_layout_type(source_path)
+    phase_path = default_phase_path_for(source_path, 4)
+    if params[:rescan].present? || !File.exist?(phase_path)
       phase1_path = default_phase_path_for(source_path, 1)
-      if File.exist?(phase1_path)
-        phase1_pfm = PhaseFileManager.new(phase1_path)
-        phase1_data = phase1_pfm.data || {}
-        phase1_sessions = Array(phase1_data['meeting_session'])
-        # Map Phase 1 sessions to simplified format for dropdown
-        @sessions = phase1_sessions.each_with_index.map do |sess, idx|
-          {
-            'session_order' => sess['session_order'] || (idx + 1),
-            'description' => sess['description'] || "Session #{idx + 1}",
-            'scheduled_date' => sess['scheduled_date']
-          }
-        end
-      else
-        # Fallback: use Phase 4 sessions
-        @sessions = Array(@phase4_data['sessions']).sort_by { |s| s['session_order'].to_i }
-      end
-      @sessions = [{ 'session_order' => 1, 'description' => 'Session 1', 'scheduled_date' => nil }] if @sessions.empty?
+      Import::Solvers::EventSolver.new(season:).build!(
+        source_path: source_path,
+        lt_format: lt_format,
+        phase1_path: phase1_path
+      )
+      flash.now[:notice] = I18n.t('data_import.messages.phase_rebuilt', phase: 4)
+      # Redirect without rescan parameter to avoid triggering rescan on navigation
+      redirect_to(review_events_path(request.query_parameters.except(:rescan)),
+                  notice: I18n.t('data_import.messages.phase_rebuilt', phase: 4)) && return
+    end
+    pfm = PhaseFileManager.new(phase_path)
+    @phase4_meta = pfm.meta
+    @phase4_data = pfm.data
 
-      # Prepare event_types payload for AutoComplete component
-      @event_types_payload = GogglesDb::EventType.all_eventable.map do |event_type|
+    # Set API URL for AutoComplete components
+    set_api_url
+
+    # Build sessions list for dropdown from Phase 1 (edited sessions) or fallback to Phase 4
+    phase1_path = default_phase_path_for(source_path, 1)
+    if File.exist?(phase1_path)
+      phase1_pfm = PhaseFileManager.new(phase1_path)
+      phase1_data = phase1_pfm.data || {}
+      phase1_sessions = Array(phase1_data['meeting_session'])
+      # Map Phase 1 sessions to simplified format for dropdown
+      @sessions = phase1_sessions.each_with_index.map do |sess, idx|
         {
-          'id' => event_type.id,
-          'search_column' => event_type.label,
-          'label_column' => event_type.long_label
+          'session_order' => sess['session_order'] || (idx + 1),
+          'description' => sess['description'] || "Session #{idx + 1}",
+          'scheduled_date' => sess['scheduled_date']
         }
       end
+    else
+      # Fallback: use Phase 4 sessions
+      @sessions = Array(@phase4_data['sessions']).sort_by { |s| s['session_order'].to_i }
+    end
+    @sessions = [{ 'session_order' => 1, 'description' => 'Session 1', 'scheduled_date' => nil }] if @sessions.empty?
 
-      # Fetch existing meeting events from Phase 1 sessions (if meeting_id is set)
-      meeting_id = phase1_data&.dig('id')
-      @existing_meeting_events = []
-      if meeting_id.present?
-        # Get all meeting_session IDs from Phase 1
-        meeting_session_ids = phase1_sessions.filter_map { |s| s['id'] }
-        if meeting_session_ids.any?
-          @existing_meeting_events = GogglesDb::MeetingEvent.where(meeting_session_id: meeting_session_ids)
-                                                            .includes(:event_type, :heat_type, :meeting_session)
-                                                            .order('meeting_sessions.session_order, meeting_events.event_order')
-                                                            .map do |me|
-            {
-              'id' => me.id,
-              'meeting_session_id' => me.meeting_session_id,
-              'session_order' => me.meeting_session.session_order,
-              'event_order' => me.event_order,
-              'event_type_id' => me.event_type_id,
-              'event_type_label' => me.event_type&.long_label,
-              'heat_type_id' => me.heat_type_id,
-              'heat_type_code' => me.heat_type&.code,
-              'stroke_type_code' => me.event_type&.stroke_type&.code,
-              'distance' => me.event_type&.length_in_meters,
-              'begin_time' => me.begin_time&.to_s(:time)
-            }
-          end
+    # Prepare event_types payload for AutoComplete component
+    @event_types_payload = GogglesDb::EventType.all_eventable.map do |event_type|
+      {
+        'id' => event_type.id,
+        'search_column' => event_type.label,
+        'label_column' => event_type.long_label
+      }
+    end
+
+    # Fetch existing meeting events from Phase 1 sessions (if meeting_id is set)
+    meeting_id = phase1_data&.dig('id')
+    @existing_meeting_events = []
+    if meeting_id.present?
+      # Get all meeting_session IDs from Phase 1
+      meeting_session_ids = phase1_sessions.filter_map { |s| s['id'] }
+      if meeting_session_ids.any?
+        @existing_meeting_events = GogglesDb::MeetingEvent.where(meeting_session_id: meeting_session_ids)
+                                                          .includes(:event_type, :heat_type, :meeting_session)
+                                                          .order('meeting_sessions.session_order, meeting_events.event_order')
+                                                          .map do |me|
+          {
+            'id' => me.id,
+            'meeting_session_id' => me.meeting_session_id,
+            'session_order' => me.meeting_session.session_order,
+            'event_order' => me.event_order,
+            'event_type_id' => me.event_type_id,
+            'event_type_label' => me.event_type&.long_label,
+            'heat_type_id' => me.heat_type_id,
+            'heat_type_code' => me.heat_type&.code,
+            'stroke_type_code' => me.event_type&.stroke_type&.code,
+            'distance' => me.event_type&.length_in_meters,
+            'begin_time' => me.begin_time&.to_s(:time)
+          }
         end
       end
+    end
 
-      # Flatten all events across Phase 4 sessions with session tracking
-      # Sort by event_order within each session
-      # Use session_order as stable identifier instead of array index
-      @all_events = []
-      phase4_sessions = Array(@phase4_data['sessions']).sort_by { |s| s['session_order'].to_i }
-      phase4_sessions.each_with_index do |session, session_idx|
-        events = Array(session['events']).sort_by { |e| e['event_order'].to_i }
-        session_order = session['session_order'] || (session_idx + 1)
-        events.each_with_index do |event, event_idx|
-          @all_events << event.merge(
-            '_session_index' => session_idx,
-            '_event_index' => event_idx,
-            '_session_order' => session_order
-          )
-        end
+    # Flatten all events across Phase 4 sessions with session tracking
+    # Sort by event_order within each session
+    # Use session_order as stable identifier instead of array index
+    @all_events = []
+    phase4_sessions = Array(@phase4_data['sessions']).sort_by { |s| s['session_order'].to_i }
+    phase4_sessions.each_with_index do |session, session_idx|
+      events = Array(session['events']).sort_by { |e| e['event_order'].to_i }
+      session_order = session['session_order'] || (session_idx + 1)
+      events.each_with_index do |event, event_idx|
+        @all_events << event.merge(
+          '_session_index' => session_idx,
+          '_event_index' => event_idx,
+          '_session_order' => session_order
+        )
       end
     end
   end
@@ -379,197 +379,196 @@ class DataFixController < ApplicationController
 
   # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
   def review_results
-    if params[:phase5_v2].present?
-      @file_path = params[:file_path]
-      if @file_path.blank?
-        flash.now[:warning] = I18n.t('data_import.errors.invalid_request')
-        redirect_to(pull_index_path) && return
-      end
+    return unless params[:phase5_v2].present?
 
-      source_path = resolve_source_path(@file_path)
-      season = detect_season_from_pathname(source_path)
-      lt_format = detect_layout_type(source_path)
-      phase_path = default_phase_path_for(source_path, 5)
+    @file_path = params[:file_path]
+    if @file_path.blank?
+      flash.now[:warning] = I18n.t('data_import.errors.invalid_request')
+      redirect_to(pull_index_path) && return
+    end
 
-      # Build/rebuild phase 5 JSON scaffold (for summary display)
-      if params[:rescan].present? || !File.exist?(phase_path)
-        Import::Solvers::ResultSolver.new(season:).build!(
-          source_path: source_path,
-          lt_format: lt_format
-        )
+    source_path = resolve_source_path(@file_path)
+    season = detect_season_from_pathname(source_path)
+    lt_format = detect_layout_type(source_path)
+    phase_path = default_phase_path_for(source_path, 5)
 
-        # Populate data_import_* tables immediately after rescan (before redirect)
-        phase1_path = default_phase_path_for(source_path, 1)
-        phase2_path = default_phase_path_for(source_path, 2)
-        phase3_path = default_phase_path_for(source_path, 3)
-        phase4_path = default_phase_path_for(source_path, 4)
+    # Build/rebuild phase 5 JSON scaffold (for summary display)
+    if params[:rescan].present? || !File.exist?(phase_path)
+      Import::Solvers::ResultSolver.new(season:).build!(
+        source_path: source_path,
+        lt_format: lt_format
+      )
 
-        populator = Import::Phase5Populator.new(
-          source_path: source_path,
-          phase1_path: phase1_path,
-          phase2_path: phase2_path,
-          phase3_path: phase3_path,
-          phase4_path: phase4_path
-        )
-        broadcast_progress('Populating phase 5...', 0, 100)
-        populate_stats = populator.populate!
-
-        # Redirect without rescan parameter to avoid triggering rescan on navigation
-        redirect_to(review_results_path(request.query_parameters.except(:rescan)),
-                    notice: "Phase 5 rebuilt. Populated DB: #{populate_stats[:mir_created]} results, #{populate_stats[:laps_created]} laps") && return
-      end
-
-      # Load phase5 JSON with program groups
-      if File.exist?(phase_path)
-        phase5_json = JSON.parse(File.read(phase_path))
-        @phase5_meta = { 'name' => phase5_json['name'], 'source_file' => phase5_json['source_file'] }
-        all_programs = phase5_json['programs'] || []
-        @total_programs_count = all_programs.size # Track unfiltered count
-
-        # ALWAYS run server-side issue detection BEFORE pagination
-        # This ensures we know about issues regardless of filtering or pagination
-        filter_data = load_filter_data(source_path)
-        @programs_with_issues = detect_programs_with_issues(all_programs, filter_data)
-        @issue_count = @programs_with_issues.size
-
-        # Server-side filtering: only show programs with issues if filter is active
-        # Auto-activate filter if there are issues and no explicit filter param
-        @filter_active = params[:filter_issues] == '1' || (@issue_count.positive? && !params[:filter_issues].to_i.zero?)
-        all_programs = @programs_with_issues if @filter_active && @issue_count.positive?
-
-        # Sort programs by event order from phase4 (individual events first, then relays)
-        phase4_path = default_phase_path_for(source_path, 4)
-        all_programs = sort_programs_by_event_order(all_programs, phase4_path)
-
-        # Apply pagination to prevent UI slowdown
-        @current_page = [params[:page].to_i, 1].max
-        @phase5_programs, @total_pages = paginate_phase5_programs(all_programs, @current_page)
-      else
-        @phase5_meta = {}
-        @phase5_programs = []
-        @total_programs_count = 0
-        @current_page = 1
-        @total_pages = 1
-      end
-
-      # Populate data_import_* tables for detailed review (triggered by populate_db only)
-      if params[:populate_db].present?
-        phase1_path = default_phase_path_for(source_path, 1)
-        phase2_path = default_phase_path_for(source_path, 2)
-        phase3_path = default_phase_path_for(source_path, 3)
-        phase4_path = default_phase_path_for(source_path, 4)
-
-        populator = Import::Phase5Populator.new(
-          source_path: source_path,
-          phase1_path: phase1_path,
-          phase2_path: phase2_path,
-          phase3_path: phase3_path,
-          phase4_path: phase4_path
-        )
-        broadcast_progress('Populating DB from phase 5 data...', 0, 100)
-        @populate_stats = populator.populate!
-        flash.now[:info] =
-          "Populated DB: #{@populate_stats[:mir_created]} results, #{@populate_stats[:laps_created]} laps, " \
-          "#{@populate_stats[:relay_results_created]} relay results, #{@populate_stats[:relay_swimmers_created]} relay swimmers, " \
-          "#{@populate_stats[:relay_laps_created]} relay laps, #{@populate_stats[:programs_matched]} programs matched"
-      end
-
-      # Query data_import tables for display (no limit needed - view re-queries per program)
-      @all_results = GogglesDb::DataImportMeetingIndividualResult
-                     .where(phase_file_path: source_path)
-                     .order(:import_key)
-
-      # Also check for relay results to determine if commit button should be visible
-      @has_relay_results = GogglesDb::DataImportMeetingRelayResult
-                           .exists?(phase_file_path: source_path)
-
-      # Eager-load swimmers and teams to avoid N+1 queries
-      # NOTE: Load ALL swimmer/team IDs from source file, not just from @all_results (which is limited)
-      # This ensures the view can find swimmers for any program displayed via pagination
-      swimmer_ids = GogglesDb::DataImportMeetingIndividualResult
-                    .where(phase_file_path: source_path)
-                    .pluck(:swimmer_id)
-                    .compact.uniq
-      team_ids = GogglesDb::DataImportMeetingIndividualResult
-                 .where(phase_file_path: source_path)
-                 .pluck(:team_id)
-                 .compact.uniq
-      @swimmers_by_id = GogglesDb::Swimmer.where(id: swimmer_ids).index_by(&:id)
-      @teams_by_id = GogglesDb::Team.includes(:city).where(id: team_ids).index_by(&:id)
-
-      # Load phase 2 and phase 3 data for team/badge lookup by key
+      # Populate data_import_* tables immediately after rescan (before redirect)
+      phase1_path = default_phase_path_for(source_path, 1)
       phase2_path = default_phase_path_for(source_path, 2)
       phase3_path = default_phase_path_for(source_path, 3)
-      @phase2_data = JSON.parse(File.read(phase2_path)) if File.exist?(phase2_path)
-      @phase3_data = JSON.parse(File.read(phase3_path)) if File.exist?(phase3_path)
+      phase4_path = default_phase_path_for(source_path, 4)
 
-      # Build team lookup by key (for unmatched teams)
-      if @phase2_data
-        teams = @phase2_data.dig('data', 'teams') || []
-        @teams_by_key = teams.index_by { |t| t['key'] }
-      end
+      populator = Import::Phase5Populator.new(
+        source_path: source_path,
+        phase1_path: phase1_path,
+        phase2_path: phase2_path,
+        phase3_path: phase3_path,
+        phase4_path: phase4_path
+      )
+      broadcast_progress('Populating phase 5...', 0, 100)
+      populate_stats = populator.populate!
 
-      # Build badge/team key mapping: swimmer_key => team_key
-      # Also index by partial key (without gender) for flexible lookup
-      if @phase3_data
-        badges = @phase3_data.dig('data', 'badges') || []
-        @team_key_by_swimmer_key = badges.each_with_object({}) do |badge, hash|
-          swimmer_key = badge['swimmer_key']
-          team_key = badge['team_key']
-          # Index by full key
-          hash[swimmer_key] = team_key
-          # Also index by partial key (|LAST|FIRST|YOB or LAST|FIRST|YOB)
-          partial_key = normalize_swimmer_key_for_lookup(swimmer_key)
-          next unless partial_key
-
-          # Store both with and without leading pipe for flexible lookup
-          hash[partial_key] = team_key
-          hash[partial_key.sub(/^\|/, '')] = team_key # Without leading pipe
-        end
-
-        swimmers = @phase3_data.dig('data', 'swimmers') || []
-        @swimmers_by_key = swimmers.index_by { |s| s['key'] }
-      end
-
-      # Eager-load laps for ALL individual results in this source file
-      all_laps = GogglesDb::DataImportLap.where(phase_file_path: source_path).order(:length_in_meters)
-      @laps_by_parent_key = all_laps.group_by(&:parent_import_key)
-
-      # Query ALL relay results for display (no limit - relay swimmers need all parent keys)
-      @all_relay_results = GogglesDb::DataImportMeetingRelayResult
-                           .where(phase_file_path: source_path)
-                           .order(:import_key)
-
-      # Eager-load relay teams (add to existing team query)
-      relay_team_ids = @all_relay_results.pluck(:team_id).compact.uniq
-      additional_teams = GogglesDb::Team.includes(:city).where(id: relay_team_ids - team_ids).index_by(&:id)
-      @teams_by_id.merge!(additional_teams)
-
-      # Eager-load relay swimmers and laps for ALL relay results in this source file
-      # (No limit - must load all to avoid missing swimmers when view re-queries results)
-      @relay_swimmers_by_parent_key = GogglesDb::DataImportMeetingRelaySwimmer
-                                      .where(phase_file_path: source_path)
-                                      .order(:relay_order)
-                                      .group_by(&:parent_import_key)
-      @relay_laps_by_parent_key = GogglesDb::DataImportRelayLap
-                                  .includes(:data_import_meeting_relay_swimmer)
-                                  .where(phase_file_path: source_path)
-                                  .order(:length_in_meters)
-                                  .group_by(&:parent_import_key)
-
-      # Build swimmer lookup for relay swimmers (add to existing swimmer query if needed)
-      relay_swimmer_ids = @relay_swimmers_by_parent_key.values.flatten.filter_map(&:swimmer_id).uniq
-      additional_swimmers = GogglesDb::Swimmer.where(id: relay_swimmer_ids - swimmer_ids).index_by(&:id)
-      @swimmers_by_id.merge!(additional_swimmers)
-
-      # Build relay swimmer name lookup from source data for unmatched swimmers
-      # Maps: {mrr_import_key => {relay_order => {name, key}}}
-      relay_import_keys = @all_relay_results.pluck(:import_key)
-      @relay_swimmer_names = build_relay_swimmer_names_from_source(source_path, relay_import_keys)
-
-      # Broadcast ready status to clear progress modal
-      broadcast_progress('Review results: ready', 100, 100)
+      # Redirect without rescan parameter to avoid triggering rescan on navigation
+      redirect_to(review_results_path(request.query_parameters.except(:rescan)),
+                  notice: "Phase 5 rebuilt. Populated DB: #{populate_stats[:mir_created]} results, #{populate_stats[:laps_created]} laps") && return
     end
+
+    # Load phase5 JSON with program groups
+    if File.exist?(phase_path)
+      phase5_json = JSON.parse(File.read(phase_path))
+      @phase5_meta = { 'name' => phase5_json['name'], 'source_file' => phase5_json['source_file'] }
+      all_programs = phase5_json['programs'] || []
+      @total_programs_count = all_programs.size # Track unfiltered count
+
+      # ALWAYS run server-side issue detection BEFORE pagination
+      # This ensures we know about issues regardless of filtering or pagination
+      filter_data = load_filter_data(source_path)
+      @programs_with_issues = detect_programs_with_issues(all_programs, filter_data)
+      @issue_count = @programs_with_issues.size
+
+      # Server-side filtering: only show programs with issues if filter is active
+      # Auto-activate filter if there are issues and no explicit filter param
+      @filter_active = params[:filter_issues] == '1' || (@issue_count.positive? && !params[:filter_issues].to_i.zero?)
+      all_programs = @programs_with_issues if @filter_active && @issue_count.positive?
+
+      # Sort programs by event order from phase4 (individual events first, then relays)
+      phase4_path = default_phase_path_for(source_path, 4)
+      all_programs = sort_programs_by_event_order(all_programs, phase4_path)
+
+      # Apply pagination to prevent UI slowdown
+      @current_page = [params[:page].to_i, 1].max
+      @phase5_programs, @total_pages = paginate_phase5_programs(all_programs, @current_page)
+    else
+      @phase5_meta = {}
+      @phase5_programs = []
+      @total_programs_count = 0
+      @current_page = 1
+      @total_pages = 1
+    end
+
+    # Populate data_import_* tables for detailed review (triggered by populate_db only)
+    if params[:populate_db].present?
+      phase1_path = default_phase_path_for(source_path, 1)
+      phase2_path = default_phase_path_for(source_path, 2)
+      phase3_path = default_phase_path_for(source_path, 3)
+      phase4_path = default_phase_path_for(source_path, 4)
+
+      populator = Import::Phase5Populator.new(
+        source_path: source_path,
+        phase1_path: phase1_path,
+        phase2_path: phase2_path,
+        phase3_path: phase3_path,
+        phase4_path: phase4_path
+      )
+      broadcast_progress('Populating DB from phase 5 data...', 0, 100)
+      @populate_stats = populator.populate!
+      flash.now[:info] =
+        "Populated DB: #{@populate_stats[:mir_created]} results, #{@populate_stats[:laps_created]} laps, " \
+        "#{@populate_stats[:relay_results_created]} relay results, #{@populate_stats[:relay_swimmers_created]} relay swimmers, " \
+        "#{@populate_stats[:relay_laps_created]} relay laps, #{@populate_stats[:programs_matched]} programs matched"
+    end
+
+    # Query data_import tables for display (no limit needed - view re-queries per program)
+    @all_results = GogglesDb::DataImportMeetingIndividualResult
+                   .where(phase_file_path: source_path)
+                   .order(:import_key)
+
+    # Also check for relay results to determine if commit button should be visible
+    @has_relay_results = GogglesDb::DataImportMeetingRelayResult.exists?(phase_file_path: source_path)
+
+    # Eager-load swimmers and teams to avoid N+1 queries
+    # NOTE: Load ALL swimmer/team IDs from source file, not just from @all_results (which is limited)
+    # This ensures the view can find swimmers for any program displayed via pagination
+    swimmer_ids = GogglesDb::DataImportMeetingIndividualResult
+                  .where(phase_file_path: source_path)
+                  .pluck(:swimmer_id)
+                  .compact.uniq
+    team_ids = GogglesDb::DataImportMeetingIndividualResult
+               .where(phase_file_path: source_path)
+               .pluck(:team_id)
+               .compact.uniq
+    @swimmers_by_id = GogglesDb::Swimmer.where(id: swimmer_ids).index_by(&:id)
+    @teams_by_id = GogglesDb::Team.includes(:city).where(id: team_ids).index_by(&:id)
+
+    # Load phase 2 and phase 3 data for team/badge lookup by key
+    phase2_path = default_phase_path_for(source_path, 2)
+    phase3_path = default_phase_path_for(source_path, 3)
+    @phase2_data = JSON.parse(File.read(phase2_path)) if File.exist?(phase2_path)
+    @phase3_data = JSON.parse(File.read(phase3_path)) if File.exist?(phase3_path)
+
+    # Build team lookup by key (for unmatched teams)
+    if @phase2_data
+      teams = @phase2_data.dig('data', 'teams') || []
+      @teams_by_key = teams.index_by { |t| t['key'] }
+    end
+
+    # Build badge/team key mapping: swimmer_key => team_key
+    # Also index by partial key (without gender) for flexible lookup
+    if @phase3_data
+      badges = @phase3_data.dig('data', 'badges') || []
+      @team_key_by_swimmer_key = badges.each_with_object({}) do |badge, hash|
+        swimmer_key = badge['swimmer_key']
+        team_key = badge['team_key']
+        # Index by full key
+        hash[swimmer_key] = team_key
+        # Also index by partial key (|LAST|FIRST|YOB or LAST|FIRST|YOB)
+        partial_key = normalize_swimmer_key_for_lookup(swimmer_key)
+        next unless partial_key
+
+        # Store both with and without leading pipe for flexible lookup
+        hash[partial_key] = team_key
+        hash[partial_key.sub(/^\|/, '')] = team_key # Without leading pipe
+      end
+
+      swimmers = @phase3_data.dig('data', 'swimmers') || []
+      @swimmers_by_key = swimmers.index_by { |s| s['key'] }
+    end
+
+    # Eager-load laps for ALL individual results in this source file
+    all_laps = GogglesDb::DataImportLap.where(phase_file_path: source_path).order(:length_in_meters)
+    @laps_by_parent_key = all_laps.group_by(&:parent_import_key)
+
+    # Query ALL relay results for display (no limit - relay swimmers need all parent keys)
+    @all_relay_results = GogglesDb::DataImportMeetingRelayResult
+                         .where(phase_file_path: source_path)
+                         .order(:import_key)
+
+    # Eager-load relay teams (add to existing team query)
+    relay_team_ids = @all_relay_results.pluck(:team_id).compact.uniq
+    additional_teams = GogglesDb::Team.includes(:city).where(id: relay_team_ids - team_ids).index_by(&:id)
+    @teams_by_id.merge!(additional_teams)
+
+    # Eager-load relay swimmers and laps for ALL relay results in this source file
+    # (No limit - must load all to avoid missing swimmers when view re-queries results)
+    @relay_swimmers_by_parent_key = GogglesDb::DataImportMeetingRelaySwimmer
+                                    .where(phase_file_path: source_path)
+                                    .order(:relay_order)
+                                    .group_by(&:parent_import_key)
+    @relay_laps_by_parent_key = GogglesDb::DataImportRelayLap
+                                .includes(:data_import_meeting_relay_swimmer)
+                                .where(phase_file_path: source_path)
+                                .order(:length_in_meters)
+                                .group_by(&:parent_import_key)
+
+    # Build swimmer lookup for relay swimmers (add to existing swimmer query if needed)
+    relay_swimmer_ids = @relay_swimmers_by_parent_key.values.flatten.filter_map(&:swimmer_id).uniq
+    additional_swimmers = GogglesDb::Swimmer.where(id: relay_swimmer_ids - swimmer_ids).index_by(&:id)
+    @swimmers_by_id.merge!(additional_swimmers)
+
+    # Build relay swimmer name lookup from source data for unmatched swimmers
+    # Maps: {mrr_import_key => {relay_order => {name, key}}}
+    relay_import_keys = @all_relay_results.pluck(:import_key)
+    @relay_swimmer_names = build_relay_swimmer_names_from_source(source_path, relay_import_keys)
+
+    # Broadcast ready status to clear progress modal
+    broadcast_progress('Review results: ready', 100, 100)
   end
   # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
   # ---------------------------------------------------------------------------
@@ -616,9 +615,14 @@ class DataFixController < ApplicationController
 
     # Generate paths for output files
     source_dir = File.dirname(source_path) # Typically 'crawler/data/results.new/<season_id>/'
-    sql_filename = "#{File.basename(source_path, '.json')}.sql"
-    sql_path = File.join(source_dir, sql_filename)
-    log_path = File.join(source_dir, "#{File.basename(source_path, '.json')}.log")
+    # Get folder that stores already sent SQL files to produce a reliable index counter for the file:
+    sent_dir = source_dir.to_s.gsub('results.new', 'results.sent')
+    dest_file = File.basename(source_path)
+    # Prepare a sequential counter prefix for the uploadable batch file:
+    last_counter = compute_file_counter(source_dir, sent_dir)
+    dest_file = "#{format('%04d', last_counter + 1)}-#{File.basename(dest_file.to_s.gsub('.json', '.sql'))}"
+    sql_full_path = File.join(source_dir, dest_file)
+    log_full_path = File.join(source_dir, "#{File.basename(source_path, '.json')}.log")
 
     # Initialize Main with all phase paths and log path
     committer = Import::Committers::Main.new(
@@ -628,12 +632,12 @@ class DataFixController < ApplicationController
       phase4_path: phase4_path,
       phase5_path: phase5_path,
       source_path: source_path,
-      log_path: log_path
+      log_path: log_full_path
     )
 
     @file_path = file_path
-    @log_path = log_path
-    @sql_filename = sql_filename
+    @log_path = log_full_path
+    @sql_filename = sql_full_path
     @commit_success = false
 
     begin
@@ -641,10 +645,10 @@ class DataFixController < ApplicationController
       @stats = committer.commit_all
 
       # Guard: if any errors were accumulated, treat as failure even if transaction did not raise
-      raise StandardError, "Commit completed with #{@stats[:errors].count} errors. Check #{log_path} for details." if @stats[:errors].any?
+      raise StandardError, "Commit completed with #{@stats[:errors].count} errors. Check #{log_full_path} for details." if @stats[:errors].any?
 
       # Generate SQL file in results.new directory
-      File.write(sql_path, committer.sql_log_content)
+      File.write(sql_full_path, committer.sql_log_content)
 
       # Get season_id for organized archiving
       season_id = JSON.parse(File.read(phase1_path))&.dig('data', 'season_id') || 'unknown'
@@ -676,7 +680,7 @@ class DataFixController < ApplicationController
       total_deleted = mir_deleted + lap_deleted + mrr_deleted + mrs_deleted + relay_lap_deleted
 
       # Append post-commit operations to log file
-      File.open(log_path, 'a') do |f|
+      File.open(log_full_path, 'a') do |f|
         f.puts
         f.puts '=== POST-COMMIT OPERATIONS ==='
         f.puts "[#{Time.current.strftime('%H:%M:%S')}] moved #{moved_files.size} files to #{done_dir}"
@@ -2239,4 +2243,41 @@ class DataFixController < ApplicationController
   rescue StandardError => e
     Rails.logger.warn("[DataFixController] Failed to broadcast progress: #{e.message}")
   end
+  #-- -------------------------------------------------------------------------
+  #++
+
+  # Returns a valid progressive counter that can be used as a leading file name part to
+  # respect their creation order.
+  #
+  # Takes in consideration both the 'results.new' & the 'results.sent' sub-folders so that
+  # the next computed file counter is in continuous progression relative to the whole
+  # push process. (That is, the counter should reset only after all the files are processed
+  # and moved to the 'results.done' folder.)
+  #
+  # Assumes files have to be processed in order and moved sequentially:
+  # 1) 'results.new'  |=> 'results.sent' (staging phase)
+  # 2) 'results.sent' |=> 'results.done' (production phase)
+  #
+  # === Params:
+  # - <tt>curr_dir</tt> => current working folder (typically "crawler/data/results.new/<SEASON_ID>")
+  # - <tt>sent_dir</tt> => folder storing the files already processed or sent (typically "crawler/data/results.sent/<SEASON_ID>")
+  # - <tt>extension</tt> => file extension of the processed files including wildchar (defaults to '*.sql')
+  #
+  def compute_file_counter(curr_dir, sent_dir, extension = '*.sql')
+    # Prepare a sequential counter prefix for the uploadable batch file:
+    curr_count = Rails.root.glob("#{curr_dir}/**/#{extension}").count
+    sent_count = Rails.root.glob("#{sent_dir}/**/#{extension}").count
+    last_counter = if curr_count.positive?
+                     File.basename(Rails.root.glob("#{curr_dir}/**/#{extension}").max).split('-').first.to_i
+                   elsif sent_count.positive?
+                     File.basename(Rails.root.glob("#{sent_dir}/**/#{extension}").max).split('-').first.to_i
+                   else
+                     0
+                   end
+    # In case the saved files didn't contain a leading progressive counter in their name, use the file count:
+    last_counter = curr_count + sent_count if last_counter.zero?
+    last_counter
+  end
+  #-- -------------------------------------------------------------------------
+  #++
 end

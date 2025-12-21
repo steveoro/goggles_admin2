@@ -846,12 +846,12 @@ class MicroplusCrawler {
         console.log(`[DEBUG] Condition (meetingDate && sanitizedMeetingName): ${!!(meetingDate && sanitizedMeetingName)}`);
 
         if (meetingDate && sanitizedMeetingName) {
-          filename = eventInfo.eventCode ? `${meetingDate}-${sanitizedMeetingName}-${eventInfo.eventCode}-l${this.layoutType}.json` :
-                                           `${meetingDate}-${sanitizedMeetingName}-l${this.layoutType}.json`;
+          filename = eventInfo && eventInfo.eventCode ? `${meetingDate}-${sanitizedMeetingName}-${eventInfo.eventCode}-l${this.layoutType}.json` :
+                                                        `${meetingDate}-${sanitizedMeetingName}-l${this.layoutType}.json`;
         } else {
           // Fallback to original format if date and place parsing fails
-          filename = eventInfo.eventCode ? `results-${eventInfo.eventCode}-l${this.layoutType}.json` :
-                                           `results-l${this.layoutType}.json`;
+          filename = eventInfo && eventInfo.eventCode ? `results-${eventInfo.eventCode}-l${this.layoutType}.json` :
+                                                        `results-l${this.layoutType}.json`;
         }
         
         const outputPath = path.join(__dirname, `../data/results.new/${this.seasonId}/${filename}`);
