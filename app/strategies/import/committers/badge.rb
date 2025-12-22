@@ -134,12 +134,12 @@ module Import
 
         # Search #2: even if not set/recognized during phase 3, look for an existing row by season, swimmer and team ids:
         existing_row = if attributes['swimmer_id'].to_i.positive? && attributes['team_id'].to_i.positive?
-                           GogglesDb::Badge.find_by(
-                             season_id: attributes['season_id'] || @season_id,
-                             swimmer_id: attributes['swimmer_id'].to_i,
-                             team_id: attributes['team_id'].to_i
-                           )
-                         end
+                         GogglesDb::Badge.find_by(
+                           season_id: attributes['season_id'] || @season_id,
+                           swimmer_id: attributes['swimmer_id'].to_i,
+                           team_id: attributes['team_id'].to_i
+                         )
+                       end
 
         if existing_row
           if attributes_changed?(existing_row, attributes)

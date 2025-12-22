@@ -55,7 +55,10 @@ module Import
 
         # Create new row but do also an additional search by meeting_code and season_id if possible:
         model_row = prepare_model(meeting_hash)
-        existing_row = GogglesDb::Calendar.find_by(meeting_code: model_row.meeting_code, season_id: model_row.season_id) if model_row.meeting_code.present? && model_row.season_id.present?
+        if model_row.meeting_code.present? && model_row.season_id.present?
+          GogglesDb::Calendar.find_by(meeting_code: model_row.meeting_code,
+                                      season_id: model_row.season_id)
+        end
 
         # Check validation before saving
         unless model_row.valid?

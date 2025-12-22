@@ -56,6 +56,7 @@ module Import
         model.save!
         sql_log << SqlMaker.new(row: model).log_insert
         stats[:mrrs_created] += 1
+        logger.log_success(entity_type: 'MRR', entity_id: model.id, action: 'created')
         Rails.logger.info("[MRR] Created ID=#{model.id}")
         model.id
       rescue ActiveRecord::RecordInvalid => e

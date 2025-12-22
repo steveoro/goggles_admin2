@@ -9,14 +9,16 @@ RSpec.describe Import::Committers::Main, type: :strategy do
   let(:phase2_path) { Rails.root.join('spec', 'fixtures', 'import', "#{fixture_base}-phase2.json").to_s }
   let(:phase3_path) { Rails.root.join('spec', 'fixtures', 'import', "#{fixture_base}-phase3.json").to_s }
   let(:phase4_path) { Rails.root.join('spec', 'fixtures', 'import', "#{fixture_base}-phase4.json").to_s }
+  let(:phase5_path) { Rails.root.join('spec', 'fixtures', 'import', "#{fixture_base}-phase5.json").to_s }
 
   let(:committer) do
     described_class.new(
-      source_path: source_path,
-      phase1_path: phase1_path,
-      phase2_path: phase2_path,
-      phase3_path: phase3_path,
-      phase4_path: phase4_path
+      source_path:,
+      phase1_path:,
+      phase2_path:,
+      phase3_path:,
+      phase4_path:,
+      phase5_path:
     )
   end
 
@@ -33,6 +35,7 @@ RSpec.describe Import::Committers::Main, type: :strategy do
       expect(committer.phase2_path).to eq(phase2_path)
       expect(committer.phase3_path).to eq(phase3_path)
       expect(committer.phase4_path).to eq(phase4_path)
+      expect(committer.phase5_path).to eq(phase5_path)
     end
 
     it 'initializes stats hash' do
@@ -53,11 +56,13 @@ RSpec.describe Import::Committers::Main, type: :strategy do
       phase2_data = committer.instance_variable_get(:@phase2_data)
       phase3_data = committer.instance_variable_get(:@phase3_data)
       phase4_data = committer.instance_variable_get(:@phase4_data)
+      phase5_data = committer.instance_variable_get(:@phase5_data)
 
       expect(phase1_data).not_to be_nil
       expect(phase2_data).not_to be_nil
       expect(phase3_data).not_to be_nil
       expect(phase4_data).not_to be_nil
+      expect(phase5_data).not_to be_nil
 
       # Verify data structure
       expect(phase1_data['data']).to have_key('season_id')
@@ -141,29 +146,14 @@ RSpec.describe Import::Committers::Main, type: :strategy do
     end
   end
 
-  describe '#commit_badge with synced data' do
+  # NOTE: commit_badge, commit_meeting_event, commit_team_affiliation methods
+  # were refactored to dedicated committer classes. Tests for those are in their
+  # respective spec files.
+
+  describe 'phase3 data structure' do
     before(:each) { committer.send(:load_phase_files!) }
 
-    it 'handles badges correctly based on ID presence' do
-      phase3_data = committer.instance_variable_get(:@phase3_data)
-
-      # Find a badge with an ID (if any exist after sync)
-      badge_with_id = phase3_data['data']['badges'].find { |b| b['badge_id'].present? }
-
-      if badge_with_id
-        initial_count = GogglesDb::Badge.count
-        committer.send(:commit_badge, badge_hash: badge_with_id)
-        # Should skip because ID is present
-        expect(GogglesDb::Badge.count).to eq(initial_count)
-      else
-        # All IDs were cleared - verify structure is still valid
-        first_badge = phase3_data['data']['badges'].first
-        expect(first_badge).to have_key('swimmer_id')
-        expect(first_badge).to have_key('team_id')
-      end
-    end
-
-    it 'uses pre-calculated category_type_id' do
+    it 'has valid badge structure with category_type_id' do
       phase3_data = committer.instance_variable_get(:@phase3_data)
 
       # Find a badge with category_type_id set
@@ -175,65 +165,17 @@ RSpec.describe Import::Committers::Main, type: :strategy do
     end
   end
 
-  describe '#commit_meeting_event with pre-matched data' do
-    before(:each) { committer.send(:load_phase_files!) }
-
-    it 'skips existing events (pre-matched) and returns ID' do
-      phase4_data = committer.instance_variable_get(:@phase4_data)
-
-      # Find a session with events (first session might be empty)
-      session_with_events = phase4_data['data']['sessions'].find { |s| s['events']&.any? }
-      skip 'No session with events in fixtures' unless session_with_events
-
-      existing_event = session_with_events['events'].first
-
-      initial_count = GogglesDb::MeetingEvent.count
-
-      # Should skip because meeting_event_id is present
-      result = committer.send(:commit_meeting_event, existing_event)
-
-      expect(GogglesDb::MeetingEvent.count).to eq(initial_count)
-      expect(result).to eq(existing_event['meeting_event_id'])
-    end
-  end
-
   describe 'SQL log generation' do
     it 'generates SQL log entries' do
-      # This test verifies that sql_log is accessible, not that we can always
-      # create new entities (test DB is very complete)
-
       # Just verify the SQL log mechanism exists and is accessible
       expect(committer.sql_log).to be_an(Array)
       expect(committer).to respond_to(:sql_log_content)
-
-      # The actual SQL generation is tested indirectly by the commit tests above
-      # Since all fixture IDs exist in test DB, no new SQL is generated (which is correct!)
     end
   end
 
   describe 'error handling' do
-    it 'handles missing required keys gracefully' do
-      invalid_affiliation = {
-        'team_id' => nil,
-        'season_id' => nil,
-        'team_affiliation_id' => nil
-      }
-
-      expect do
-        committer.send(:commit_team_affiliation, affiliation_hash: invalid_affiliation)
-      end.not_to raise_error
-    end
-
-    it 'logs errors when creation fails' do
-      invalid_affiliation = {
-        'team_id' => 999_999_999, # Non-existent
-        'season_id' => 242,
-        'team_affiliation_id' => nil
-      }
-
-      committer.send(:commit_team_affiliation, affiliation_hash: invalid_affiliation)
-
-      expect(committer.stats[:errors]).not_to be_empty
+    it 'initializes with empty errors array' do
+      expect(committer.stats[:errors]).to eq([])
     end
   end
 

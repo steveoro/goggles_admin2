@@ -89,8 +89,8 @@ module Import
         # Reuse existing row even if not set/recognized during phase 2:
         existing_row = if attributes['team_id'].to_i.positive?
                          GogglesDb::TeamAffiliation.find_by(
-                           team_id:  attributes['team_id'].to_i,
-                           season_id: attributes['season_id'] || @season_id,
+                           team_id: attributes['team_id'].to_i,
+                           season_id: attributes['season_id'] || @season_id
                          )
                        end
 

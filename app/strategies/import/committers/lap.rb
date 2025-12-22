@@ -19,24 +19,45 @@ module Import
 
       # Commit a Lap from a data_import record.
       # @param data_import_lap [GogglesDb::DataImportLap] the temp record
-      # @param mir_id [Integer] the resolved meeting_individual_result_id
+      # @param data_import_mir [GogglesDb::DataImportMeetingIndividualResult] parent MIR record
       # Returns the committed row ID or raises an error.
       def commit(data_import_lap, data_import_mir:)
         mir_id = data_import_mir.meeting_individual_result_id
+        lap_length = data_import_lap.length_in_meters
+        model = nil
 
         # Guard clause: skip if missing required keys
-        unless mir_id && data_import_lap.length_in_meters
-          stats[:errors] << "Lap error: missing required keys (mir=#{mir_id}, length=#{data_import_lap.length_in_meters})"
+        unless mir_id && lap_length
+          stats[:errors] << "Lap error: missing required keys (mir=#{mir_id}, length=#{lap_length})"
           return nil
         end
 
         attributes = normalize_attributes(data_import_lap, data_import_mir:)
 
-        # Create new lap (no matching logic for laps - they're always new)
+        # Match by parent MIR ID + lap distance
+        existing = GogglesDb::Lap.find_by(
+          meeting_individual_result_id: mir_id,
+          length_in_meters: lap_length
+        )
+
+        if existing
+          if attributes_changed?(existing, attributes)
+            existing.update!(attributes)
+            sql_log << SqlMaker.new(row: existing).log_update
+            stats[:laps_updated] += 1
+            logger.log_success(entity_type: 'Lap', entity_id: existing.id, action: 'updated')
+            Rails.logger.info("[Lap] Updated ID=#{existing.id}")
+          end
+          return existing.id
+        end
+
+        # Create new lap
         model = GogglesDb::Lap.new(attributes)
         model.save!
         sql_log << SqlMaker.new(row: model).log_insert
         stats[:laps_created] += 1
+        logger.log_success(entity_type: 'Lap', entity_id: model.id, action: 'created')
+        Rails.logger.info("[Lap] Created ID=#{model.id}")
         model.id
       rescue ActiveRecord::RecordInvalid => e
         model_row = e.record || model
@@ -60,6 +81,15 @@ module Import
       end
 
       private
+
+      # Check if any attribute values differ between existing record and new attributes
+      def attributes_changed?(existing, attributes)
+        attributes.any? do |key, value|
+          existing_value = existing.send(key)
+          # Compare as strings to handle type differences (e.g., Integer vs String)
+          existing_value.to_s != value.to_s
+        end
+      end
 
       def normalize_attributes(data_import_lap, data_import_mir:)
         {

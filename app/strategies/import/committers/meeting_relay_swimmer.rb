@@ -45,6 +45,7 @@ module Import
               existing.update!(attributes)
               sql_log << SqlMaker.new(row: existing).log_update
               stats[:mrss_updated] += 1
+              logger.log_success(entity_type: 'MRS', entity_id: mrs_id, action: 'updated')
               Rails.logger.info("[MRS] Updated ID=#{mrs_id}")
             end
             return mrs_id
@@ -56,6 +57,7 @@ module Import
         model.save!
         sql_log << SqlMaker.new(row: model).log_insert
         stats[:mrss_created] += 1
+        logger.log_success(entity_type: 'MRS', entity_id: model.id, action: 'created')
         Rails.logger.info("[MRS] Created ID=#{model.id}, swimmer=#{data_import_mrs.swimmer_id}")
         model.id
       rescue ActiveRecord::RecordInvalid => e

@@ -93,7 +93,9 @@ RSpec.describe Import::PhaseCommitLogger do
       expect(content).to include('ERRORS SUMMARY (2)')
       expect(content).to include('Error 1')
       expect(content).to include('DETAILED LOG')
-      expect(content).to include('INFO: created Meeting')
+      # Log format: [HH:MM:SS] action entity_type, ID: id
+      expect(content).to include('created Meeting')
+      expect(content).to include('ID: 1')
       expect(content).to include('ERROR: Badge')
     end
 

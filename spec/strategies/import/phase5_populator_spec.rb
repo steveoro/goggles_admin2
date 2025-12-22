@@ -410,7 +410,8 @@ RSpec.describe Import::Phase5Populator, type: :strategy do
         mrr = GogglesDb::DataImportMeetingRelayResult.first
 
         expect(mrr.import_key).to be_present
-        expect(mrr.import_key).to include('-4X50')
+        # Relay import keys include the relay code with gender prefix (M or S) e.g., M4X50SL
+        expect(mrr.import_key).to match(/[MS]?4X50/i)
       end
     end
   end

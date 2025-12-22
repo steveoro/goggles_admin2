@@ -76,7 +76,10 @@ module Import
       # Normalizes pool attributes, mirroring Main#normalize_swimming_pool_attributes.
       def normalize_attributes(pool_hash)
         normalized = pool_hash.deep_dup.with_indifferent_access
-        normalized['pool_type_id'] = GogglesDb::PoolType.find_by(code: normalized['pool_type_code'])&.id if normalized['pool_type_id'].blank? && normalized['pool_type_code'].present?
+        if normalized['pool_type_id'].blank? && normalized['pool_type_code'].present?
+          normalized['pool_type_id'] =
+            GogglesDb::PoolType.find_by(code: normalized['pool_type_code'])&.id
+        end
 
         %w[multiple_pools garden bar restaurant gym child_area read_only].each do |flag|
           next unless normalized.key?(flag)

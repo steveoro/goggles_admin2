@@ -52,11 +52,30 @@ module Import
           team_id: team_id
         )
 
-        # Create new relay lap (no matching logic - always new)
+        # Match by parent MRS ID + lap distance
+        existing = GogglesDb::RelayLap.find_by(
+          meeting_relay_swimmer_id: mrs_id,
+          length_in_meters: lap_length
+        )
+
+        if existing
+          if attributes_changed?(existing, attributes)
+            existing.update!(attributes)
+            sql_log << SqlMaker.new(row: existing).log_update
+            stats[:relay_laps_updated] += 1
+            logger.log_success(entity_type: 'RelayLap', entity_id: existing.id, action: 'updated')
+            Rails.logger.info("[RelayLap] Updated ID=#{existing.id}")
+          end
+          return existing.id
+        end
+
+        # Create new relay lap
         model = GogglesDb::RelayLap.new(attributes)
         model.save!
         sql_log << SqlMaker.new(row: model).log_insert
         stats[:relay_laps_created] += 1
+        logger.log_success(entity_type: 'RelayLap', entity_id: model.id, action: 'created')
+        Rails.logger.info("[RelayLap] Created ID=#{model.id}")
         model.id
       rescue ActiveRecord::RecordInvalid => e
         model_row = e.record || model
@@ -80,6 +99,15 @@ module Import
       end
 
       private
+
+      # Check if any attribute values differ between existing record and new attributes
+      def attributes_changed?(existing, attributes)
+        attributes.any? do |key, value|
+          existing_value = existing.send(key)
+          # Compare as strings to handle type differences (e.g., Integer vs String)
+          existing_value.to_s != value.to_s
+        end
+      end
 
       def normalize_attributes(data_import_relay_lap, mrs_id:, mrr_id:, swimmer_id:, team_id:)
         {

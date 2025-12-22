@@ -159,9 +159,12 @@ RSpec.describe Import::Solvers::EventSolver do
       all_events = data['sessions'].flat_map { |s| s['events'] }
       # Should have 4 events total: 3 individual + 1 relay
       expect(all_events.size).to eq(4)
-      relay_event = all_events.find { |e| e['key'] == '4x50SL' }
+      # Relay event is marked with relay: true, key uses computed total distance (4*50=200)
+      relay_event = all_events.find { |e| e['relay'] == true }
       expect(relay_event).to be_present
-      expect(relay_event['relay']).to be(true)
+      # Key format is gender_prefix + total_distance + stroke, e.g., S200SL for 4x50SL same-sex
+      expect(relay_event['key']).to match(/[SM]\d+SL/i)
+      expect(relay_event['distance']).to eq('200') # 4 × 50 = 200
     end
 
     it 'groups events by sessionOrder' do

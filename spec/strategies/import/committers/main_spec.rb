@@ -43,7 +43,8 @@ RSpec.describe Import::Committers::Main do
       phase1_path: phase_path_for(source, 1),
       phase2_path: phase_path_for(source, 2),
       phase3_path: phase_path_for(source, 3),
-      phase4_path: phase_path_for(source, 4)
+      phase4_path: phase_path_for(source, 4),
+      phase5_path: phase_path_for(source, 5)
     )
   end
 
@@ -83,741 +84,60 @@ RSpec.describe Import::Committers::Main do
     end
   end
 
-  describe '#commit_team_affiliation' do
-    let(:team) { GogglesDb::Team.last(20).sample }
-    let(:committer) do
-      Dir.mktmpdir do |tmp|
-        src = File.join(tmp, 'test.json')
-        File.write(src, '{}')
-        return create_committer(src)
-      end
-    end
-
-    context 'when team_affiliation_id is present (existing affiliation)' do
-      it 'skips creation' do
-        # Find or create an affiliation
-        existing_ta = GogglesDb::TeamAffiliation.find_by(team: team, season: season) ||
-                      FactoryBot.create(:team_affiliation, team: team, season: season)
-        affiliation_hash = {
-          'team_id' => team.id,
-          'season_id' => season.id,
-          'team_affiliation_id' => existing_ta.id
-        }
-
-        expect do
-          committer.send(:commit_team_affiliation, affiliation_hash: affiliation_hash)
-        end.not_to change(GogglesDb::TeamAffiliation, :count)
-
-        # No cleanup - affiliation may have existed in test dump
-      end
-    end
-
-    context 'when team_affiliation_id is nil (new affiliation)' do
-      # Use a new team to be sure there won't be any affiliations for it:
-      let(:new_team) { FactoryBot.create(:team) }
-
-      # Clean up any existing affiliation before test
-      before(:each) do
-        GogglesDb::TeamAffiliation.where(team_id: new_team.id, season_id: season.id).destroy_all
-      end
-
-      it 'creates new affiliation' do
-        affiliation_hash = {
-          'team_id' => new_team.id,
-          'season_id' => season.id,
-          'team_affiliation_id' => nil
-        }
-
-        expect do
-          committer.send(:commit_team_affiliation, affiliation_hash: affiliation_hash)
-        end.to change(GogglesDb::TeamAffiliation, :count).by(1)
-
-        expect(committer.stats[:affiliations_created]).to eq(1)
-        expect(committer.stats[:errors]).to be_empty
-
-        # Safe cleanup
-        new_affiliation = GogglesDb::TeamAffiliation.where(team_id: new_team.id, season_id: season.id).last
-        new_affiliation&.destroy
-      end
-
-      it 'generates SQL log entry' do
-        # Clean up first to ensure fresh creation
-        GogglesDb::TeamAffiliation.where(team_id: new_team.id, season_id: season.id).destroy_all
-
-        affiliation_hash = {
-          'team_id' => new_team.id,
-          'season_id' => season.id,
-          'team_affiliation_id' => nil
-        }
-
-        committer.send(:commit_team_affiliation, affiliation_hash: affiliation_hash)
-
-        expect(committer.stats[:errors]).to be_empty
-        expect(committer.sql_log).not_to be_empty
-        expect(committer.sql_log_content).to include('INSERT INTO')
-
-        # Safe cleanup
-        new_affiliation = GogglesDb::TeamAffiliation.where(team_id: new_team.id, season_id: season.id).last
-        new_affiliation&.destroy
-      end
-    end
-
-    context 'when required keys are missing' do
-      it 'skips creation when team_id is nil' do
-        affiliation_hash = {
-          'team_id' => nil,
-          'season_id' => season.id,
-          'team_affiliation_id' => nil
-        }
-
-        expect do
-          committer.send(:commit_team_affiliation, affiliation_hash: affiliation_hash)
-        end.not_to change(GogglesDb::TeamAffiliation, :count)
-      end
-
-      it 'skips creation when season_id is nil' do
-        affiliation_hash = {
-          'team_id' => team.id,
-          'season_id' => nil,
-          'team_affiliation_id' => nil
-        }
-
-        expect do
-          committer.send(:commit_team_affiliation, affiliation_hash: affiliation_hash)
-        end.not_to change(GogglesDb::TeamAffiliation, :count)
-      end
-    end
-  end
-
-  describe '#commit_badge' do
-    let(:swimmer) { GogglesDb::Swimmer.first }
-    let(:team) { GogglesDb::Team.first }
-    let(:category_type) { GogglesDb::CategoryType.first }
-    let(:committer) do
-      Dir.mktmpdir do |tmp|
-        src = File.join(tmp, 'test.json')
-        File.write(src, '{}')
-        return create_committer(src)
-      end
-    end
-
-    context 'when badge_id is present (existing badge)' do
-      it 'skips creation' do
-        # Find or create a badge to avoid validation errors
-        existing = GogglesDb::Badge.find_by(swimmer: swimmer, team: team, season: season) ||
-                   FactoryBot.create(:badge, swimmer: swimmer, team: team, season: season)
-
-        badge_hash = {
-          'swimmer_id' => swimmer.id,
-          'team_id' => team.id,
-          'season_id' => season.id,
-          'category_type_id' => existing.category_type_id,
-          'badge_id' => existing.id
-        }
-
-        expect do
-          committer.send(:commit_badge, badge_hash: badge_hash)
-        end.not_to change(GogglesDb::Badge, :count)
-
-        # No cleanup - badge may have existed in test dump
-      end
-    end
-
-    context 'when badge_id is nil (new badge)' do
-      it 'attempts to create badge and requires team_affiliation' do
-        # Use entities from test DB
-        test_swimmer = GogglesDb::Swimmer.limit(100).sample
-        test_team = GogglesDb::Team.limit(100).sample
-
-        # Clean up any existing badge
-        GogglesDb::Badge.where(swimmer_id: test_swimmer.id, team_id: test_team.id, season_id: season.id).destroy_all
-
-        badge_hash = {
-          'swimmer_id' => test_swimmer.id,
-          'team_id' => test_team.id,
-          'season_id' => season.id,
-          'category_type_id' => category_type.id,
-          'badge_id' => nil
-        }
-
-        # Without team_affiliation, should log error
-        GogglesDb::TeamAffiliation.where(team_id: test_team.id, season_id: season.id).destroy_all
-
-        committer.send(:commit_badge, badge_hash: badge_hash)
-
-        # Should have error about missing team_affiliation
-        expect(committer.stats[:errors]).not_to be_empty
-        expect(committer.stats[:errors].first).to include('TeamAffiliation not found')
-      end
-
-      it 'uses pre-calculated category_type_id when provided' do
-        # Verify the method accepts and would use category_type_id from hash
-        badge_hash = {
-          'swimmer_id' => swimmer.id,
-          'team_id' => team.id,
-          'season_id' => season.id,
-          'category_type_id' => category_type.id,
-          'badge_id' => nil
-        }
-
-        # Method should process the category_type_id (verified by attributes hash construction)
-        # We're testing the interface, not full creation in pre-populated DB
-        expect(badge_hash['category_type_id']).to eq(category_type.id)
-        expect(badge_hash['badge_id']).to be_nil
-      end
-    end
-
-    context 'when required keys are missing' do
-      it 'skips creation when swimmer_id is nil' do
-        badge_hash = {
-          'swimmer_id' => nil,
-          'team_id' => team.id,
-          'season_id' => season.id,
-          'category_type_id' => category_type.id,
-          'badge_id' => nil
-        }
-
-        expect do
-          committer.send(:commit_badge, badge_hash: badge_hash)
-        end.not_to change(GogglesDb::Badge, :count)
-      end
-
-      it 'skips creation when team_id is nil' do
-        badge_hash = {
-          'swimmer_id' => swimmer.id,
-          'team_id' => nil,
-          'season_id' => season.id,
-          'category_type_id' => category_type.id,
-          'badge_id' => nil
-        }
-
-        expect do
-          committer.send(:commit_badge, badge_hash: badge_hash)
-        end.not_to change(GogglesDb::Badge, :count)
-      end
-    end
-  end
-
-  describe '#commit_meeting_event' do
-    let(:meeting) { GogglesDb::Meeting.first }
-    let(:meeting_session) { meeting.meeting_sessions.first || create_meeting_session(meeting) }
-    let(:event_type) { GogglesDb::EventType.first }
-    let(:heat_type) { GogglesDb::HeatType.find_by(code: 'F') }
-    let(:committer) do
-      Dir.mktmpdir do |tmp|
-        src = File.join(tmp, 'test.json')
-        File.write(src, '{}')
-        return create_committer(src)
-      end
-    end
-
-    def create_meeting_session(meeting)
-      GogglesDb::MeetingSession.create!(
-        meeting: meeting,
-        session_order: 1,
-        scheduled_date: meeting.header_date,
-        warm_up_time: '09:00',
-        begin_time: '09:30'
-      )
-    end
-
-    # Cleanup meeting_session if we created it
-    after(:each) do
-      meeting_session&.destroy if meeting_session&.persisted? &&
-                                  meeting_session.meeting_events.empty? &&
-                                  meeting_session.session_order == 1
-    end
-
-    context 'when meeting_event_id is present (existing event)' do
-      it 'skips creation and returns existing ID' do
-        existing = GogglesDb::MeetingEvent.create!(
-          meeting_session: meeting_session,
-          event_type: event_type,
-          heat_type: heat_type,
-          event_order: 1
-        )
-
-        event_hash = {
-          'meeting_session_id' => meeting_session.id,
-          'event_type_id' => event_type.id,
-          'meeting_event_id' => existing.id,
-          'event_order' => 1,
-          'heat_type_id' => heat_type.id
-        }
-
-        expect do
-          result = committer.send(:commit_meeting_event, event_hash)
-          expect(result).to eq(existing.id)
-        end.not_to change(GogglesDb::MeetingEvent, :count)
-
-        existing.destroy # Cleanup
-      end
-    end
-
-    context 'when meeting_event_id is nil (new event)' do
-      it 'creates new event' do
-        event_hash = {
-          'meeting_session_id' => meeting_session.id,
-          'event_type_id' => event_type.id,
-          'meeting_event_id' => nil,
-          'event_order' => 99,
-          'heat_type_id' => heat_type.id
-        }
-
-        expect do
-          committer.send(:commit_meeting_event, event_hash)
-        end.to change(GogglesDb::MeetingEvent, :count).by(1)
-
-        expect(committer.stats[:events_created]).to eq(1)
-
-        # Cleanup
-        GogglesDb::MeetingEvent.where(
-          meeting_session_id: meeting_session.id,
-          event_type_id: event_type.id,
-          event_order: 99
-        ).destroy_all
-      end
-
-      it 'returns new event ID' do
-        event_hash = {
-          'meeting_session_id' => meeting_session.id,
-          'event_type_id' => event_type.id,
-          'meeting_event_id' => nil,
-          'event_order' => 99,
-          'heat_type_id' => heat_type.id
-        }
-
-        result = committer.send(:commit_meeting_event, event_hash)
-
-        expect(result).to be_a(Integer)
-        expect(result).to be > 0
-
-        # Cleanup
-        GogglesDb::MeetingEvent.find(result)&.destroy
-      end
-
-      it 'generates SQL log entry' do
-        event_hash = {
-          'meeting_session_id' => meeting_session.id,
-          'event_type_id' => event_type.id,
-          'meeting_event_id' => nil,
-          'event_order' => 99,
-          'heat_type_id' => heat_type.id
-        }
-
-        result = committer.send(:commit_meeting_event, event_hash)
-
-        expect(committer.sql_log).not_to be_empty
-        expect(committer.sql_log_content).to include('INSERT INTO')
-
-        # Cleanup
-        GogglesDb::MeetingEvent.find(result)&.destroy
-      end
-    end
-
-    context 'when required keys are missing' do
-      it 'skips creation when meeting_session_id is nil' do
-        event_hash = {
-          'meeting_session_id' => nil,
-          'event_type_id' => event_type.id,
-          'meeting_event_id' => nil,
-          'event_order' => 1
-        }
-
-        expect do
-          committer.send(:commit_meeting_event, event_hash)
-        end.not_to change(GogglesDb::MeetingEvent, :count)
-      end
-
-      it 'skips creation when event_type_id is nil' do
-        event_hash = {
-          'meeting_session_id' => meeting_session.id,
-          'event_type_id' => nil,
-          'meeting_event_id' => nil,
-          'event_order' => 1
-        }
-
-        expect do
-          committer.send(:commit_meeting_event, event_hash)
-        end.not_to change(GogglesDb::MeetingEvent, :count)
-      end
-    end
-  end
+  # NOTE: commit_team_affiliation, commit_badge, commit_meeting_event methods
+  # were refactored to dedicated committer classes. Tests for those are in their
+  # respective spec files (team_affiliation_spec.rb, badge_spec.rb, meeting_event_spec.rb).
+  #
+  # The Main committer now delegates to these classes via commit_phase2_entities,
+  # commit_phase3_entities, commit_phase4_entities methods.
 
   describe '#sql_log_content' do
-    let(:committer) do
-      Dir.mktmpdir do |tmp|
-        src = File.join(tmp, 'test.json')
-        File.write(src, '{}')
-        return create_committer(src)
-      end
-    end
+    let(:tmp_dir) { Dir.mktmpdir }
+    let(:src_path) { File.join(tmp_dir, 'test.json').tap { |p| File.write(p, '{}') } }
+    let(:committer) { create_committer(src_path) }
+
+    after(:each) { FileUtils.rm_rf(tmp_dir) }
 
     it 'returns formatted SQL log as string' do
-      # Create a team_affiliation to generate SQL
-      test_team = FactoryBot.create(:team)
-      affiliation_hash = {
-        'team_id' => test_team.id,
-        'season_id' => season.id,
-        'team_affiliation_id' => nil
-      }
-
-      committer.send(:commit_team_affiliation, affiliation_hash: affiliation_hash)
-
-      sql_content = committer.sql_log_content
-
-      expect(sql_content).to be_a(String)
-      expect(sql_content).to include('INSERT INTO')
-      expect(sql_content).to match(/team_affiliations/)
-
-      # Cleanup
-      GogglesDb::TeamAffiliation.where(team_id: test_team.id, season_id: season.id).last&.destroy
+      # SQL log is an array that can be joined
+      expect(committer.sql_log).to be_an(Array)
+      expect(committer.sql_log_content).to be_a(String)
     end
   end
 
   describe 'error handling' do
-    let(:committer) do
-      Dir.mktmpdir do |tmp|
-        src = File.join(tmp, 'test.json')
-        File.write(src, '{}')
-        return create_committer(src)
-      end
+    let(:tmp_dir) { Dir.mktmpdir }
+    let(:src_path) { File.join(tmp_dir, 'test.json').tap { |p| File.write(p, '{}') } }
+    let(:committer) { create_committer(src_path) }
+
+    after(:each) { FileUtils.rm_rf(tmp_dir) }
+
+    it 'initializes with empty errors array' do
+      expect(committer.stats[:errors]).to eq([])
     end
 
-    context 'when badge creation fails' do
-      it 'captures error and continues' do
-        # Invalid badge (missing required fields)
-        badge_hash = {
-          'swimmer_id' => nil,
-          'team_id' => nil,
-          'season_id' => nil,
-          'category_type_id' => nil,
-          'badge_id' => nil
-        }
-
-        # Should not raise, just skip
-        expect do
-          committer.send(:commit_badge, badge_hash: badge_hash)
-        end.not_to raise_error
-      end
-    end
-
-    context 'when affiliation creation fails with invalid data' do
-      it 'captures error in stats' do
-        # Try to create with invalid foreign key
-        affiliation_hash = {
-          'team_id' => 999_999_999, # Non-existent
-          'season_id' => season.id,
-          'team_affiliation_id' => nil
-        }
-
-        expect do
-          committer.send(:commit_team_affiliation, affiliation_hash: affiliation_hash)
-        end.not_to change(GogglesDb::TeamAffiliation, :count)
-
-        expect(committer.stats[:errors]).not_to be_empty
-      end
+    it 'provides access to stats for error tracking' do
+      expect(committer.stats).to be_a(Hash)
+      expect(committer.stats).to have_key(:errors)
     end
   end
 
-  describe 'pre-matching pattern verification' do
-    let(:committer) do
-      Dir.mktmpdir do |tmp|
-        src = File.join(tmp, 'test.json')
-        File.write(src, '{}')
-        return create_committer(src)
-      end
-    end
+  # NOTE: Most normalization helpers were moved to dedicated committer classes.
+  # Tests for those are in their respective spec files:
+  # - team_spec.rb: normalize_team_attributes
+  # - team_affiliation_spec.rb: normalize_team_affiliation_attributes
+  # - swimmer_spec.rb: normalize_swimmer_attributes
+  # - badge_spec.rb: normalize_badge_attributes
+  # - calendar_spec.rb: commit_calendar, build_calendar_attributes
+  # - meeting_individual_result_spec.rb: normalize_attributes
+  # - lap_spec.rb: normalize_attributes
 
-    it 'skips all entities with pre-matched IDs' do
-      team = GogglesDb::Team.first
-      swimmer = GogglesDb::Swimmer.first
+  describe 'normalization helpers (still in Main)' do
+    let(:tmp_dir) { Dir.mktmpdir }
+    let(:src_path) { File.join(tmp_dir, 'test.json').tap { |p| File.write(p, '{}') } }
+    let(:committer) { create_committer(src_path) }
 
-      # Find or create existing records using FactoryBot to avoid validation errors
-      affiliation = GogglesDb::TeamAffiliation.find_by(team: team, season: season) ||
-                    FactoryBot.create(:team_affiliation, team: team, season: season)
-
-      badge = GogglesDb::Badge.find_by(swimmer: swimmer, team: team, season: season) ||
-              FactoryBot.create(:badge, swimmer: swimmer, team: team, season: season)
-
-      # Hashes with pre-matched IDs
-      affiliation_hash = {
-        'team_id' => team.id,
-        'season_id' => season.id,
-        'team_affiliation_id' => affiliation.id
-      }
-
-      badge_hash = {
-        'swimmer_id' => swimmer.id,
-        'team_id' => team.id,
-        'season_id' => season.id,
-        'category_type_id' => badge.category_type_id,
-        'badge_id' => badge.id
-      }
-
-      # Should skip both
-      expect do
-        committer.send(:commit_team_affiliation, affiliation_hash: affiliation_hash)
-        committer.send(:commit_badge, badge_hash: badge_hash)
-      end.not_to(change { [GogglesDb::TeamAffiliation.count, GogglesDb::Badge.count] })
-
-      # No cleanup needed - using existing data from test dump
-    end
-
-    it 'creates only entities without pre-matched IDs' do
-      # Use new entities to guarantee no existing data
-      team = FactoryBot.create(:team)
-
-      # Clean up any existing records first
-      GogglesDb::TeamAffiliation.where(team_id: team.id, season_id: season.id).destroy_all
-
-      # Hash without ID (new entity)
-      affiliation_hash = {
-        'team_id' => team.id,
-        'season_id' => season.id,
-        'team_affiliation_id' => nil
-      }
-
-      # Should create affiliation
-      expect do
-        committer.send(:commit_team_affiliation, affiliation_hash: affiliation_hash)
-      end.to change(GogglesDb::TeamAffiliation, :count).by(1)
-
-      expect(committer.stats[:errors]).to be_empty
-      expect(committer.stats[:affiliations_created]).to eq(1)
-
-      # Cleanup
-      GogglesDb::TeamAffiliation.where(team_id: team.id, season_id: season.id).destroy_all
-    end
-  end
-
-  describe 'normalization helpers' do
-    let(:committer) do
-      Dir.mktmpdir do |tmp|
-        src = File.join(tmp, 'test.json')
-        File.write(src, '{}')
-        return create_committer(src)
-      end
-    end
-
-    describe '#commit_calendar' do
-      let(:meeting) do
-        FactoryBot.create(
-          :meeting,
-          code: 'CAL-CODE',
-          description: 'Calendar meeting',
-          header_date: Date.current,
-          season: season
-        )
-      end
-
-      let(:meeting_hash) do
-        header_date = meeting.header_date || Date.current
-        {
-          'meeting_id' => meeting.id,
-          'meeting_code' => meeting.code,
-          'meeting_name' => meeting.description,
-          'scheduled_date' => header_date,
-          'season_id' => meeting.season_id,
-          'dateYear1' => header_date.year.to_s,
-          'dateMonth1' => header_date.strftime('%m')
-        }
-      end
-
-      before(:each) do
-        meeting.calendar&.destroy
-        committer.sql_log.clear
-      end
-
-      after(:each) do
-        meeting.reload.calendar&.destroy if meeting.persisted?
-        meeting.destroy
-      end
-
-      it 'creates a calendar, updates stats, and logs an INSERT' do
-        expect do
-          committer.send(:commit_calendar, meeting_hash)
-        end.to change(GogglesDb::Calendar, :count).by(1)
-
-        created = GogglesDb::Calendar.find_by(meeting_id: meeting.id)
-        expect(created).not_to be_nil
-        expect(created.meeting_code).to eq(meeting.code)
-        expect(created.season_id).to eq(meeting.season_id)
-        expect(committer.stats[:calendars_created]).to eq(1)
-        expect(committer.stats[:calendars_updated]).to eq(0)
-        expect(committer.stats[:errors]).to be_empty
-        expect(committer.sql_log_content).to include('INSERT INTO `calendars`')
-      end
-
-      it 'updates an existing calendar when attributes change' do
-        scheduled_date = meeting.header_date || Date.current
-        calendar = meeting.create_calendar!(
-          season: meeting.season,
-          meeting_code: 'OUTDATED',
-          meeting_name: 'Old name',
-          scheduled_date: scheduled_date,
-          year: scheduled_date.year.to_s,
-          month: scheduled_date.strftime('%m'),
-          cancelled: false
-        )
-
-        committer.sql_log.clear
-
-        expect do
-          committer.send(:commit_calendar, meeting_hash)
-        end.not_to change(GogglesDb::Calendar, :count)
-
-        calendar.reload
-        expect(calendar.meeting_code).to eq(meeting.code)
-        expect(calendar.meeting_name).to eq(meeting.description)
-        expect(committer.stats[:calendars_created]).to eq(0)
-        expect(committer.stats[:calendars_updated]).to eq(1)
-        expect(committer.stats[:errors]).to be_empty
-        expect(committer.sql_log_content).to include('UPDATE `calendars`')
-      end
-    end
-
-    describe '#build_calendar_attributes' do
-      let(:meeting) do
-        record = FactoryBot.create(:meeting)
-        record.assign_attributes(code: nil, description: nil, header_date: nil)
-        record
-      end
-
-      after(:each) do
-        GogglesDb::Calendar.where(meeting_id: meeting.id).destroy_all
-        meeting.destroy
-      end
-
-      it 'falls back to phase data and casts flags' do
-        meeting_hash = {
-          'meeting_id' => meeting.id,
-          'meeting_code' => 'PHASE-CODE',
-          'meeting_name' => 'Phase Meeting',
-          'scheduled_date' => '2025-01-02',
-          'meetingURL' => 'https://example.org/results',
-          'manifestURL' => 'https://example.org/manifest',
-          'organization' => 'Local Org',
-          'season_id' => meeting.season_id,
-          'dateYear1' => '2025',
-          'dateMonth1' => '01',
-          'cancelled' => 'true'
-        }
-
-        attributes = committer.send(:build_calendar_attributes, meeting_hash, meeting)
-
-        expect(attributes['meeting_code']).to eq('PHASE-CODE')
-        expect(attributes['meeting_name']).to eq('Phase Meeting')
-        expect(attributes['scheduled_date']).to eq('2025-01-02')
-        expect(attributes['organization_import_text']).to eq('Local Org')
-        expect(attributes['cancelled']).to be(true)
-        expect(attributes['year']).to eq('2025')
-        expect(attributes['month']).to eq('01')
-      end
-    end
-
-    describe '#normalize_team_attributes' do
-      it 'fills editable_name when missing and strips unknown keys' do
-        team_hash = {
-          'name' => 'Test Team',
-          'address' => '123 Main St',
-          'unexpected' => 'value'
-        }
-
-        normalized = committer.send(:normalize_team_attributes, team_hash)
-
-        expect(normalized['editable_name']).to eq('Test Team')
-        expect(normalized['address']).to eq('123 Main St')
-        expect(normalized).not_to have_key('unexpected')
-        expect(normalized.keys).to all(be_a(String))
-      end
-    end
-
-    describe '#normalize_team_affiliation_attributes' do
-      let(:team) { FactoryBot.create(:team, name: 'Affiliates Club') }
-
-      after(:each) { team.destroy }
-
-      it 'casts boolean flags and back-fills missing name' do
-        affiliation_hash = {
-          'compute_gogglecup' => '1',
-          'autofilled' => 'false',
-          'name' => nil
-        }
-
-        normalized = committer.send(
-          :normalize_team_affiliation_attributes,
-          affiliation_hash,
-          team_id: team.id,
-          season_id: season.id,
-          team: team
-        )
-
-        expect(normalized['team_id']).to eq(team.id)
-        expect(normalized['season_id']).to eq(season.id)
-        expect(normalized['name']).to eq('Affiliates Club')
-        expect(normalized['compute_gogglecup']).to be(true)
-        expect(normalized['autofilled']).to be(false)
-      end
-    end
-
-    describe '#normalize_swimmer_attributes' do
-      let(:gender_type) { GogglesDb::GenderType.find_by(code: 'M') || GogglesDb::GenderType.first }
-
-      it 'derives gender_type_id and complete_name' do
-        skip 'No gender types available in test DB' unless gender_type
-
-        swimmer_hash = {
-          'first_name' => 'Mario',
-          'last_name' => 'Rossi',
-          'year_of_birth' => 1980,
-          'gender_type_code' => gender_type.code,
-          'year_guessed' => '1'
-        }
-
-        normalized = committer.send(:normalize_swimmer_attributes, swimmer_hash)
-
-        expect(normalized['gender_type_id']).to eq(gender_type.id)
-        expect(normalized['complete_name']).to eq('Rossi Mario')
-        expect(normalized['year_guessed']).to be(true)
-        expect(normalized.keys).to all(be_a(String))
-      end
-    end
-
-    describe '#normalize_badge_attributes' do
-      let(:default_entry_time) { GogglesDb::EntryTimeType.manual }
-      let(:category_type) { GogglesDb::CategoryType.first }
-
-      it 'casts boolean flags and applies defaults' do
-        skip 'No entry time type available in test DB' unless default_entry_time
-        skip 'No category types available in test DB' unless category_type
-
-        badge_hash = {
-          'number' => 'A123',
-          'off_gogglecup' => 'false',
-          'fees_due' => '1',
-          'badge_due' => '0',
-          'relays_due' => 'true'
-        }
-
-        normalized = committer.send(
-          :normalize_badge_attributes,
-          badge_hash,
-          swimmer_id: 1,
-          team_id: 2,
-          season_id: season.id,
-          category_type_id: category_type.id,
-          team_affiliation_id: 3
-        )
-
-        expect(normalized['entry_time_type_id']).to eq(default_entry_time.id)
-        expect(normalized['off_gogglecup']).to be(false)
-        expect(normalized['fees_due']).to be(true)
-        expect(normalized['badge_due']).to be(false)
-        expect(normalized['relays_due']).to be(true)
-        expect(normalized.keys).to all(be_a(String))
-      end
-    end
+    after(:each) { FileUtils.rm_rf(tmp_dir) }
 
     describe '#normalize_swimming_pool_attributes' do
       it 'resolves pool type code, casts booleans, and strips unknown keys' do
@@ -894,71 +214,323 @@ RSpec.describe Import::Committers::Main do
         expect(normalized).not_to have_key('unexpected')
       end
     end
+  end
 
-    describe '#normalize_meeting_individual_result_attributes' do
-      it 'casts booleans, normalizes numerics, and ignores unexpected fields' do
-        data_import_mir = Struct.new(
-          :swimmer_id, :team_id, :rank, :minutes, :seconds, :hundredths,
-          :disqualified, :disqualification_code_type_id, :standard_points,
-          :meeting_points, :reaction_time, :out_of_race, :goggle_cup_points,
-          :team_points
-        ).new(
-          11, 22, '5', '01', '59', '12', 'true', 'DQ01', '12.50', '3.4', '0.45', '0', '0.12', ''
-        )
+  describe 'relay category/gender auto-computation' do
+    let(:season) { GogglesDb::Season.find(242) } # Use known season with relay categories
+    let(:meeting) do
+      GogglesDb::Meeting.joins(:season).where(seasons: { id: season.id }).first ||
+        FactoryBot.create(:meeting, season: season, header_date: Date.new(2024, 12, 6))
+    end
+    let(:committer) do
+      Dir.mktmpdir do |tmp|
+        src = File.join(tmp, 'test.json')
+        File.write(src, '{}')
 
-        normalized = committer.send(
-          :normalize_meeting_individual_result_attributes,
-          data_import_mir,
-          program_id: 99
-        )
+        # Create phase files with swimmer data
+        write_phase_json(src, 1, { 'season_id' => season.id, 'meeting' => { 'id' => meeting.id }, 'sessions' => [] })
+        write_phase_json(src, 2, { 'teams' => [] })
+        write_phase_json(src, 3, {
+                           'swimmers' => [
+                             { 'key' => 'M|ROSSI|Mario|1970', 'gender_type_code' => 'M', 'swimmer_id' => 1 },
+                             { 'key' => 'M|BIANCHI|Luigi|1975', 'gender_type_code' => 'M', 'swimmer_id' => 2 },
+                             { 'key' => 'F|VERDI|Anna|1980', 'gender_type_code' => 'F', 'swimmer_id' => 3 },
+                             { 'key' => 'F|NERI|Sara|1985', 'gender_type_code' => 'F', 'swimmer_id' => 4 }
+                           ]
+                         })
+        write_phase_json(src, 4, { 'sessions' => [] })
+        write_phase_json(src, 5, { 'programs' => [] })
 
-        expect(normalized['meeting_program_id']).to eq(99)
-        expect(normalized['swimmer_id']).to eq(11)
-        expect(normalized['team_id']).to eq(22)
-        expect(normalized['rank']).to eq(5)
-        expect(normalized['minutes']).to eq(1)
-        expect(normalized['seconds']).to eq(59)
-        expect(normalized['hundredths']).to eq(12)
-        expect(normalized['disqualified']).to be(true)
-        expect(normalized['out_of_race']).to be(false)
-        expect(normalized['standard_points']).to eq(BigDecimal('12.50'))
-        expect(normalized['meeting_points']).to eq(BigDecimal('3.4'))
-        expect(normalized['reaction_time']).to eq(BigDecimal('0.45'))
-        expect(normalized['goggle_cup_points']).to eq(BigDecimal('0.12'))
-        expect(normalized).not_to have_key('team_points')
-        expect(normalized.keys).to all(be_a(String))
+        c = create_committer(src)
+        c.send(:load_phase_files!)
+
+        # Set up internal state
+        c.instance_variable_set(:@meeting, meeting)
+        c.instance_variable_set(:@season_id, season.id)
+        c.instance_variable_set(:@categories_cache, PdfResults::CategoriesCache.new(season))
+        return c
       end
     end
 
-    describe '#normalize_meeting_lap_attributes' do
-      it 'casts numeric fields and preserves associations' do
-        data_import_lap = Struct.new(
-          :length_in_meters, :minutes, :seconds, :hundredths,
-          :minutes_from_start, :seconds_from_start, :hundredths_from_start,
-          :reaction_time, :breath_number, :underwater_seconds,
-          :underwater_hundredths, :underwater_kicks, :position
-        ).new(
-          '50', '0', '31', '45', '0', '31', '45', '0.32', '4', '7', '', '2', nil
-        )
+    describe '#extract_yob_from_swimmer_key' do
+      it 'extracts YOB from 4-token format (GENDER|LAST|FIRST|YEAR)' do
+        result = committer.send(:extract_yob_from_swimmer_key, 'M|ROSSI|Mario|1970')
+        expect(result).to eq(1970)
+      end
 
-        normalized = committer.send(
-          :normalize_meeting_lap_attributes,
-          data_import_lap,
-          mir_id: 123
-        )
+      it 'extracts YOB from 3-token format (LAST|FIRST|YEAR)' do
+        result = committer.send(:extract_yob_from_swimmer_key, 'ROSSI|Mario|1970')
+        expect(result).to eq(1970)
+      end
 
-        expect(normalized['meeting_individual_result_id']).to eq(123)
-        expect(normalized['length_in_meters']).to eq(50)
-        expect(normalized['seconds']).to eq(31)
-        expect(normalized['hundredths']).to eq(45)
-        expect(normalized['seconds_from_start']).to eq(31)
-        expect(normalized['reaction_time']).to eq(BigDecimal('0.32'))
-        expect(normalized['breath_cycles']).to eq(4)
-        expect(normalized['underwater_seconds']).to eq(7)
-        expect(normalized).not_to have_key('underwater_hundredths')
-        expect(normalized['underwater_kicks']).to eq(2)
-        expect(normalized['position']).to be_nil
-        expect(normalized.keys).to all(be_a(String))
+      it 'extracts YOB as last token regardless of format' do
+        # YOB is always the last token in swimmer keys
+        expect(committer.send(:extract_yob_from_swimmer_key, 'F|ABBRUSCATO Maria|F.|1957')).to eq(1957)
+      end
+
+      it 'returns nil for invalid YOB' do
+        expect(committer.send(:extract_yob_from_swimmer_key, 'ROSSI|Mario|invalid')).to be_nil
+        expect(committer.send(:extract_yob_from_swimmer_key, nil)).to be_nil
+        expect(committer.send(:extract_yob_from_swimmer_key, '')).to be_nil
+      end
+
+      it 'returns nil for out-of-range YOB' do
+        expect(committer.send(:extract_yob_from_swimmer_key, 'ROSSI|Mario|1800')).to be_nil
+        expect(committer.send(:extract_yob_from_swimmer_key, 'ROSSI|Mario|2200')).to be_nil
+      end
+
+      it 'returns nil for keys with less than 3 tokens' do
+        expect(committer.send(:extract_yob_from_swimmer_key, 'ROSSI|Mario')).to be_nil
+      end
+    end
+
+    describe '#extract_gender_from_swimmer_key' do
+      it 'extracts gender from 4-token format (GENDER|LAST|FIRST|YEAR)' do
+        expect(committer.send(:extract_gender_from_swimmer_key, 'M|ROSSI|Mario|1970')).to eq('M')
+        expect(committer.send(:extract_gender_from_swimmer_key, 'F|VERDI|Anna|1980')).to eq('F')
+      end
+
+      it 'returns nil for 3-token format (no gender prefix)' do
+        expect(committer.send(:extract_gender_from_swimmer_key, 'ROSSI|Mario|1970')).to be_nil
+      end
+
+      it 'returns nil for invalid gender code' do
+        expect(committer.send(:extract_gender_from_swimmer_key, 'X|ROSSI|Mario|1970')).to be_nil
+      end
+
+      it 'returns nil for blank input' do
+        expect(committer.send(:extract_gender_from_swimmer_key, nil)).to be_nil
+        expect(committer.send(:extract_gender_from_swimmer_key, '')).to be_nil
+      end
+    end
+
+    describe '#normalize_to_partial_key' do
+      it 'normalizes 4-token format to partial key (strips gender)' do
+        result = committer.send(:normalize_to_partial_key, 'M|ROSSI|Mario|1970')
+        expect(result).to eq('|ROSSI|Mario|1970')
+      end
+
+      it 'normalizes 3-token format to partial key' do
+        result = committer.send(:normalize_to_partial_key, 'ROSSI|Mario|1970')
+        expect(result).to eq('|ROSSI|Mario|1970')
+      end
+
+      it 'returns nil for blank input' do
+        expect(committer.send(:normalize_to_partial_key, nil)).to be_nil
+        expect(committer.send(:normalize_to_partial_key, '')).to be_nil
+      end
+    end
+
+    describe '#normalize_gender_code' do
+      it 'normalizes male codes' do
+        expect(committer.send(:normalize_gender_code, 'M')).to eq('M')
+        expect(committer.send(:normalize_gender_code, 'Male')).to eq('M')
+        expect(committer.send(:normalize_gender_code, 'MASCHIO')).to eq('M')
+      end
+
+      it 'normalizes female codes' do
+        expect(committer.send(:normalize_gender_code, 'F')).to eq('F')
+        expect(committer.send(:normalize_gender_code, 'Female')).to eq('F')
+        expect(committer.send(:normalize_gender_code, 'FEMMINA')).to eq('F')
+      end
+
+      it 'returns nil for unknown codes' do
+        expect(committer.send(:normalize_gender_code, 'X')).to be_nil
+        expect(committer.send(:normalize_gender_code, nil)).to be_nil
+        expect(committer.send(:normalize_gender_code, '')).to be_nil
+      end
+    end
+
+    describe '#lookup_swimmer_gender_from_phase3' do
+      it 'finds gender by exact key match' do
+        result = committer.send(:lookup_swimmer_gender_from_phase3, 'M|ROSSI|Mario|1970')
+        expect(result).to eq('M')
+      end
+
+      it 'finds gender by partial key match' do
+        # The phase3 has 'M|ROSSI|Mario|1970', should match partial key from 3-token format
+        result = committer.send(:lookup_swimmer_gender_from_phase3, 'ROSSI|Mario|1970')
+        expect(result).to eq('M')
+      end
+
+      it 'returns nil for unknown swimmer' do
+        result = committer.send(:lookup_swimmer_gender_from_phase3, 'UNKNOWN|Person|1990')
+        expect(result).to be_nil
+      end
+    end
+
+    describe '#compute_relay_category_from_swimmers' do
+      context 'when MRS data is available' do
+        before(:each) do
+          # Create test MRR with 4 swimmers
+          @mrr = GogglesDb::DataImportMeetingRelayResult.create!(
+            import_key: 'test-mrr-1',
+            meeting_program_key: '1-4X50SL-N/A-X',
+            phase_file_path: '/tmp/test.json',
+            rank: 1,
+            minutes: 1, seconds: 45, hundredths: 0
+          )
+
+          # Create 4 relay swimmers with YOBs (ages ~54, 49, 44, 39 = 186 total at 2024)
+          [
+            { order: 1, key: 'M|ROSSI|Mario|1970' },
+            { order: 2, key: 'M|BIANCHI|Luigi|1975' },
+            { order: 3, key: 'F|VERDI|Anna|1980' },
+            { order: 4, key: 'F|NERI|Sara|1985' }
+          ].each do |swimmer_data|
+            GogglesDb::DataImportMeetingRelaySwimmer.create!(
+              import_key: "mrs#{swimmer_data[:order]}-#{@mrr.import_key}-#{swimmer_data[:key]}",
+              parent_import_key: @mrr.import_key,
+              phase_file_path: '/tmp/test.json',
+              relay_order: swimmer_data[:order],
+              swimmer_key: swimmer_data[:key],
+              minutes: 0, seconds: 25, hundredths: 0
+            )
+          end
+        end
+
+        after(:each) do
+          GogglesDb::DataImportMeetingRelaySwimmer.where(parent_import_key: @mrr.import_key).destroy_all
+          @mrr.destroy
+        end
+
+        it 'computes relay category from swimmer ages' do
+          # Ages at 2024: 54 + 49 + 44 + 39 = 186
+          result = committer.send(:compute_relay_category_from_swimmers, '1-4X50SL-N/A-X')
+          expect(result).to be_a(GogglesDb::CategoryType)
+          expect(result.relay?).to be true
+          # Should match a relay category with age range containing 186
+          expect(result.age_begin..result.age_end).to cover(186)
+        end
+      end
+
+      context 'when no MRS data is available' do
+        it 'returns nil' do
+          result = committer.send(:compute_relay_category_from_swimmers, '99-4X50SL-N/A-X')
+          expect(result).to be_nil
+        end
+      end
+
+      context 'when meeting is not set' do
+        it 'returns nil' do
+          committer.instance_variable_set(:@meeting, nil)
+          result = committer.send(:compute_relay_category_from_swimmers, '1-4X50SL-N/A-X')
+          expect(result).to be_nil
+        end
+      end
+    end
+
+    describe '#compute_relay_gender_from_swimmers' do
+      context 'with all-male relay' do
+        before(:each) do
+          @mrr = GogglesDb::DataImportMeetingRelayResult.create!(
+            import_key: 'test-mrr-male',
+            meeting_program_key: '1-4X50SL-M100-M',
+            phase_file_path: '/tmp/test.json',
+            rank: 1,
+            minutes: 1, seconds: 45, hundredths: 0
+          )
+
+          4.times do |i|
+            GogglesDb::DataImportMeetingRelaySwimmer.create!(
+              import_key: "mrs#{i + 1}-#{@mrr.import_key}",
+              parent_import_key: @mrr.import_key,
+              phase_file_path: '/tmp/test.json',
+              relay_order: i + 1,
+              swimmer_key: "M|SWIMMER#{i}|Name|#{1970 + (i * 5)}",
+              minutes: 0, seconds: 25, hundredths: 0
+            )
+          end
+        end
+
+        after(:each) do
+          GogglesDb::DataImportMeetingRelaySwimmer.where(parent_import_key: @mrr.import_key).destroy_all
+          @mrr.destroy
+        end
+
+        it 'returns M for all-male relay' do
+          result = committer.send(:compute_relay_gender_from_swimmers, '1-4X50SL-M100-M')
+          expect(result).to eq('M')
+        end
+      end
+
+      context 'with all-female relay' do
+        before(:each) do
+          @mrr = GogglesDb::DataImportMeetingRelayResult.create!(
+            import_key: 'test-mrr-female',
+            meeting_program_key: '1-4X50SL-M100-F',
+            phase_file_path: '/tmp/test.json',
+            rank: 1,
+            minutes: 1, seconds: 45, hundredths: 0
+          )
+
+          4.times do |i|
+            GogglesDb::DataImportMeetingRelaySwimmer.create!(
+              import_key: "mrs#{i + 1}-#{@mrr.import_key}",
+              parent_import_key: @mrr.import_key,
+              phase_file_path: '/tmp/test.json',
+              relay_order: i + 1,
+              swimmer_key: "F|SWIMMER#{i}|Name|#{1970 + (i * 5)}",
+              minutes: 0, seconds: 25, hundredths: 0
+            )
+          end
+        end
+
+        after(:each) do
+          GogglesDb::DataImportMeetingRelaySwimmer.where(parent_import_key: @mrr.import_key).destroy_all
+          @mrr.destroy
+        end
+
+        it 'returns F for all-female relay' do
+          result = committer.send(:compute_relay_gender_from_swimmers, '1-4X50SL-M100-F')
+          expect(result).to eq('F')
+        end
+      end
+
+      context 'with mixed relay' do
+        before(:each) do
+          @mrr = GogglesDb::DataImportMeetingRelayResult.create!(
+            import_key: 'test-mrr-mixed',
+            meeting_program_key: '1-4X50SL-N/A-X',
+            phase_file_path: '/tmp/test.json',
+            rank: 1,
+            minutes: 1, seconds: 45, hundredths: 0
+          )
+
+          # 2 male + 2 female swimmers
+          [
+            { order: 1, key: 'M|ROSSI|Mario|1970' },
+            { order: 2, key: 'M|BIANCHI|Luigi|1975' },
+            { order: 3, key: 'F|VERDI|Anna|1980' },
+            { order: 4, key: 'F|NERI|Sara|1985' }
+          ].each do |swimmer_data|
+            GogglesDb::DataImportMeetingRelaySwimmer.create!(
+              import_key: "mrs#{swimmer_data[:order]}-#{@mrr.import_key}",
+              parent_import_key: @mrr.import_key,
+              phase_file_path: '/tmp/test.json',
+              relay_order: swimmer_data[:order],
+              swimmer_key: swimmer_data[:key],
+              minutes: 0, seconds: 25, hundredths: 0
+            )
+          end
+        end
+
+        after(:each) do
+          GogglesDb::DataImportMeetingRelaySwimmer.where(parent_import_key: @mrr.import_key).destroy_all
+          @mrr.destroy
+        end
+
+        it 'returns X for mixed relay' do
+          result = committer.send(:compute_relay_gender_from_swimmers, '1-4X50SL-N/A-X')
+          expect(result).to eq('X')
+        end
+      end
+
+      context 'when no MRS data is available' do
+        it 'returns nil' do
+          result = committer.send(:compute_relay_gender_from_swimmers, '99-4X50SL-N/A-X')
+          expect(result).to be_nil
+        end
       end
     end
   end

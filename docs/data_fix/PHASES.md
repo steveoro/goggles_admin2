@@ -358,12 +358,56 @@ Created in goggles_db gem v0.8.11+:
 12. Lap (requires meeting_individual_result_id)
 ```
 
-**Relay commit order** (TODO):
+**Relay commit order**:
 ```
 13. MeetingRelayResult (requires meeting_program_id, team_id)
 14. MeetingRelaySwimmer (requires meeting_relay_result_id, swimmer_id)
 15. RelayLap (requires meeting_relay_swimmer_id)
 ```
+
+### Relay Category/Gender Auto-Computation (v3.0)
+
+When relay results are crawled from older meeting reports, the category and/or gender headers may be missing (e.g., `category: "N/A"`). Phase 6 now includes fallback auto-computation:
+
+**Category Auto-Computation**:
+- Queries `data_import_meeting_relay_swimmers` for the program's relay results
+- Extracts year of birth from each swimmer's key
+- Computes swimmer ages at meeting date
+- Sums ages to get overall relay age (e.g., 54 + 49 + 44 + 39 = 186)
+- Finds matching relay category by age range
+
+**Gender Auto-Computation**:
+- Queries relay swimmers for the program
+- Extracts gender codes from swimmer keys or phase3 data
+- Returns 'M' if all male, 'F' if all female, 'X' if mixed
+
+```ruby
+# In commit_meeting_program:
+if is_relay && program_key.present?
+  # Auto-compute category if resolution failed
+  if category_type.nil?
+    computed_category = compute_relay_category_from_swimmers(program_key)
+    category_type = computed_category if computed_category
+  end
+
+  # Auto-compute gender if resolution failed
+  if gender_type.nil?
+    computed_gender = compute_relay_gender_from_swimmers(program_key)
+    gender_type = gender_type_instance_from_code(computed_gender) if computed_gender
+  end
+end
+```
+
+**Key Methods**:
+- `compute_relay_category_from_swimmers(program_key)` - Returns CategoryType or nil
+- `compute_relay_gender_from_swimmers(program_key)` - Returns 'M', 'F', 'X', or nil
+- `extract_yob_from_swimmer_key(swimmer_key)` - Parses YOB (always last token) from 3/4-token format
+- `extract_gender_from_swimmer_key(swimmer_key)` - Parses gender from 4-token format (GENDER|LAST|FIRST|YEAR)
+- `lookup_swimmer_gender_from_phase3(swimmer_key)` - Fallback to phase3 data
+
+**Swimmer Key Formats** (team is never included - stored separately in phase3):
+- 3-token: `LAST|FIRST|YEAR` (no gender)
+- 4-token: `GENDER|LAST|FIRST|YEAR` (with gender prefix)
 
 ### Pre-Matching Benefits
 Before v2.0, Phase 6 had to:

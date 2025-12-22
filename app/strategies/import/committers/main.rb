@@ -359,7 +359,8 @@ module Import
             meeting_event_id: meeting_event_id,
             category_code: category_code,
             gender_code: gender_code,
-            is_relay: is_relay
+            is_relay: is_relay,
+            program_key: program_key
           )
 
           unless program_id
@@ -382,15 +383,35 @@ module Import
       # -----------------------------------------------------------------------
 
       # Commit MeetingProgram and return its ID
-      def commit_meeting_program(meeting_event_id:, category_code:, gender_code:, is_relay: false)
+      # For relays with unknown category/gender, attempts auto-computation from swimmer data.
+      def commit_meeting_program(meeting_event_id:, category_code:, gender_code:, is_relay: false, program_key: nil)
         category_type = resolve_category_type(category_code, is_relay: is_relay)
-
-        # Handle gender code 'X' (mixed/intermixed) for relays
         gender_type = gender_type_instance_from_code(gender_code)
 
+        # For relays with unknown category/gender, try auto-computation from swimmer data
+        if is_relay && program_key.present?
+          # Auto-compute category if resolution failed (e.g., 'N/A' or unrecognized code)
+          if category_type.nil?
+            computed_category = compute_relay_category_from_swimmers(program_key)
+            if computed_category
+              Rails.logger.info("[Main] Auto-computed relay category: #{computed_category.code} (was: #{category_code})")
+              category_type = computed_category
+            end
+          end
+
+          # Auto-compute gender if resolution failed
+          if gender_type.nil?
+            computed_gender_code = compute_relay_gender_from_swimmers(program_key)
+            if computed_gender_code
+              Rails.logger.info("[Main] Auto-computed relay gender: #{computed_gender_code} (was: #{gender_code})")
+              gender_type = gender_type_instance_from_code(computed_gender_code)
+            end
+          end
+        end
+
         unless category_type && gender_type
-          @stats[:errors] << "MeetingProgram error: category=#{category_code} or gender=#{gender_code} not found (season=#{@season_id}, relay=#{is_relay})"
-          Rails.logger.warn("[Main] MeetingProgram lookup failed: category=#{category_code}, gender=#{gender_code}, season=#{@season_id}, relay=#{is_relay}")
+          @stats[:errors] << "MeetingProgram error: category=#{category_code} or gender=#{gender_code} not found (season=#{@season_id}, relay=#{is_relay}, meeting_event_id=#{meeting_event_id})"
+          Rails.logger.warn("[Main] MeetingProgram lookup failed: category=#{category_code}, gender=#{gender_code}, season=#{@season_id}, relay=#{is_relay}, meeting_event_id=#{meeting_event_id}")
           return nil
         end
 
@@ -881,6 +902,194 @@ module Import
         when 'X'
           GogglesDb::GenderType.intermixed
         end
+      end
+      # -----------------------------------------------------------------------
+
+      # =========================================================================
+      # Relay Category/Gender Auto-Computation
+      # =========================================================================
+
+      # (Post-)Computes relay category from swimmer ages when category_code is unknown ('N/A' or nil).
+      # Queries data_import_meeting_relay_swimmers for the program's relay results,
+      # extracts YOBs from swimmer_keys, sums ages, and finds matching relay category.
+      #
+      # Note that data_import_* tables won't be updated with the new correct key, code and ID:
+      # only the SQL script will contain the proper values.
+      #
+      # == Params:
+      # - program_key: program key pattern (e.g., "1-M4X50SL-N/A-X")
+      #
+      # == Returns:
+      # GogglesDb::CategoryType instance or nil if computation fails
+      #
+      def compute_relay_category_from_swimmers(program_key)
+        return nil unless @meeting && @categories_cache
+
+        # Query MRRs for this program pattern (may have 'N/A' or other unknown category)
+        mrrs = GogglesDb::DataImportMeetingRelayResult.where('meeting_program_key LIKE ?', "#{program_key.split('-')[0..1].join('-')}-%")
+        return nil if mrrs.empty?
+
+        meeting_year = @meeting.header_date&.year || Date.current.year
+
+        # Collect all swimmer ages from all MRS records
+        swimmer_ages = []
+        mrrs.each do |mrr|
+          mrr.data_import_meeting_relay_swimmers.order(:relay_order).each do |mrs|
+            yob = extract_yob_from_swimmer_key(mrs.swimmer_key)
+            next unless yob&.positive?
+
+            age = meeting_year - yob
+            swimmer_ages << age
+          end
+        end
+
+        return nil if swimmer_ages.empty?
+
+        # For relay category, sum ages of first complete relay team (4 swimmers)
+        # If we have multiple relays, use the first one as reference
+        relay_size = 4 # Standard relay team size
+        return nil if swimmer_ages.size < relay_size
+
+        overall_age = swimmer_ages.first(relay_size).sum
+        Rails.logger.info("[Main] Computed relay overall_age=#{overall_age} from #{relay_size} swimmers")
+
+        # Find matching relay category by age
+        _code, category_type = @categories_cache.find_category_for_age(overall_age, relay: true)
+        category_type
+      end
+      # -----------------------------------------------------------------------
+
+      # (Post-)Computes relay gender from swimmer genders when gender_code is unknown.
+      # Queries data_import_meeting_relay_swimmers for the program's relay results,
+      # extracts gender codes from swimmer_keys or phase3 data.
+      #
+      # Note that data_import_* tables won't be updated with the new correct key, code and ID:
+      # only the SQL script will contain the proper values.
+      #
+      # == Params:
+      # - program_key: program key pattern (e.g., "1-4X50SL-M120-X")
+      #
+      # == Returns:
+      # 'M', 'F', or 'X' based on swimmer composition, or nil if computation fails
+      #
+      def compute_relay_gender_from_swimmers(program_key)
+        # Query MRRs for this program pattern
+        mrrs = GogglesDb::DataImportMeetingRelayResult.where('meeting_program_key LIKE ?', "#{program_key.split('-')[0..1].join('-')}-%")
+        return nil if mrrs.empty?
+
+        # Collect all swimmer genders from MRS records
+        gender_codes = []
+        mrrs.each do |mrr|
+          mrr.data_import_meeting_relay_swimmers.each do |mrs|
+            gender = extract_gender_from_swimmer_key(mrs.swimmer_key)
+            gender ||= lookup_swimmer_gender_from_phase3(mrs.swimmer_key)
+            gender_codes << gender if gender.present?
+          end
+        end
+
+        return nil if gender_codes.empty?
+
+        unique_genders = gender_codes.compact.uniq
+        return 'F' if unique_genders == ['F']
+        return 'M' if unique_genders == ['M']
+
+        'X' # Mixed or indeterminate
+      end
+      # -----------------------------------------------------------------------
+
+      # Extracts year of birth from swimmer_key.
+      # Handles any composition of tokens for the key ("LAST|FIRST|YEAR" or "GENDER|LAST|FIRST|YEAR"),
+      # as long as the last token field in the key is the year of birth (YoB).
+      #
+      # == Returns:
+      # Integer year of birth or nil
+      #
+      def extract_yob_from_swimmer_key(swimmer_key)
+        return nil if swimmer_key.blank?
+
+        tokens = swimmer_key.split('|')
+        return nil if tokens.size < 3
+
+        yob = tokens.last.to_i
+        yob.positive? && yob > 1900 && yob < 2100 ? yob : nil
+      end
+      # -----------------------------------------------------------------------
+
+      # Extracts gender code from swimmer_key if present in a 4+ token format.
+      # Assumes the gender code is the first token only if there are at least 4 tokens.
+      # ("GENDER|LAST|FIRST|YEAR")
+      #
+      # == Returns:
+      # 'M' or 'F' if found, nil otherwise
+      #
+      def extract_gender_from_swimmer_key(swimmer_key)
+        return nil if swimmer_key.blank?
+
+        tokens = swimmer_key.split('|')
+        return nil unless tokens.size >= 4
+
+        gender_code = tokens[0].to_s.strip.upcase
+        %w[M F].include?(gender_code) ? gender_code : nil
+      end
+      # -----------------------------------------------------------------------
+
+      # Looks up swimmer gender from phase3 data using swimmer_key.
+      # Handles partial key matching (ignoring gender prefix).
+      #
+      # == Returns:
+      # 'M' or 'F' if found, nil otherwise
+      #
+      def lookup_swimmer_gender_from_phase3(swimmer_key)
+        return nil unless phase3_data && swimmer_key.present?
+
+        swimmers = phase3_data.dig('data', 'swimmers') || []
+
+        # Try exact match first
+        swimmer = swimmers.find { |s| s['key'] == swimmer_key }
+        return normalize_gender_code(swimmer['gender_type_code']) if swimmer&.dig('gender_type_code')
+
+        # Build partial key for matching (|LAST|FIRST|YOB or LAST|FIRST|YOB)
+        partial_key = normalize_to_partial_key(swimmer_key)
+        return nil if partial_key.blank?
+
+        # Find swimmers with matching partial key
+        matching = swimmers.select do |s|
+          s_partial = normalize_to_partial_key(s['key'])
+          s_partial == partial_key
+        end
+
+        matching.find { |s| s['gender_type_code'].present? }&.dig('gender_type_code')&.then { |g| normalize_gender_code(g) }
+      end
+      # -----------------------------------------------------------------------
+
+      # Normalizes swimmer_key to partial key format (|LAST|FIRST|YOB) for matching.
+      # Strips gender prefix if present.
+      # Swimmer keys are either 3-token (LAST|FIRST|YEAR) or 4-token (GENDER|LAST|FIRST|YEAR).
+      # Team is never included in swimmer keys (stored as separate field in phase3 data).
+      #
+      def normalize_to_partial_key(swimmer_key)
+        return nil if swimmer_key.blank?
+
+        tokens = swimmer_key.split('|')
+        if tokens.size >= 4
+          # 4-token: "GENDER|LAST|FIRST|YEAR" -> "|LAST|FIRST|YEAR"
+          "|#{tokens[1]}|#{tokens[2]}|#{tokens[3]}"
+        elsif tokens.size == 3
+          # 3-token: "LAST|FIRST|YEAR" -> "|LAST|FIRST|YEAR"
+          "|#{tokens[0]}|#{tokens[1]}|#{tokens[2]}"
+        end
+      end
+      # -----------------------------------------------------------------------
+
+      # Normalizes gender code to M/F
+      def normalize_gender_code(gender_code)
+        return nil if gender_code.blank?
+
+        code = gender_code.to_s.strip.upcase
+        return 'M' if code.start_with?('M')
+        return 'F' if code.start_with?('F')
+
+        nil
       end
       # -----------------------------------------------------------------------
 

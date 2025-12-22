@@ -147,6 +147,10 @@ RSpec/MultipleMemoizedHelpers:
 RSpec/NestedGroups:
   Max: 5
 
+RSpec/SpecFilePathFormat:
+  Exclude:
+  - 'spec/strategies/pdf_results/integration/**/*'
+
 Style/ClassAndModuleChildren:
   Exclude:
   - 'api/**/*'
