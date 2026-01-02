@@ -55,7 +55,11 @@ The crawler emits lap arrays with distances and deltas keyed by a composite swim
 ]
 ```
 
-The `swimmer` string follows `gender|LAST|First|YOB|Team`, matching the identifier stored in `allResults.swimmers` within the crawler pipeline.
+The `swimmer` string follows `G|LAST|First|YOB|Team` format:
+- Known gender: `"F|ROSSI|Maria|1980|TeamA"` or `"M|BIANCHI|Marco|1975|TeamB"`
+- Unknown gender: `"|VERDI|Anna|1990|TeamC"` (leading pipe indicates unknown)
+
+This matches the identifier stored in `allResults.swimmers` within the crawler pipeline. For mixed relays (`eventGender: 'X'`), individual swimmer gender is set to `null` and the key has a leading pipe.
 
 ## Known payload variants
 

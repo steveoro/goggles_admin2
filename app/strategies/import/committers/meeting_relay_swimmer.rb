@@ -35,7 +35,13 @@ module Import
       # Returns the committed row ID or raises an error.
       def commit(data_import_mrs)
         mrs_id = data_import_mrs.meeting_relay_swimmer_id
+        mrr_id = data_import_mrs.meeting_relay_result_id
+        relay_order = data_import_mrs.relay_order.to_i
         attributes = normalize_attributes(data_import_mrs)
+
+        # Compute missing timing (delta or absolute) from previous swimmer if available
+        previous_swimmer = find_previous_relay_swimmer(mrr_id, relay_order)
+        attributes = compute_missing_timing(attributes, previous_swimmer)
 
         # If MRS already has a DB ID (matched), update if needed
         if mrs_id.present? && mrs_id.to_i.positive?
@@ -101,6 +107,101 @@ module Import
           # Other relays (SL, etc.): all swimmers use freestyle
           GogglesDb::StrokeType::FREESTYLE_ID
         end
+      end
+      # -----------------------------------------------------------------------
+
+      # Find the previous relay swimmer for timing computation
+      # @param mrr_id [Integer] meeting_relay_result_id
+      # @param current_order [Integer] current swimmer's relay_order
+      # @return [GogglesDb::MeetingRelaySwimmer, nil] previous swimmer or nil if not found
+      def find_previous_relay_swimmer(mrr_id, current_order)
+        return nil unless mrr_id && current_order.to_i > 1
+
+        GogglesDb::MeetingRelaySwimmer
+          .where(meeting_relay_result_id: mrr_id)
+          .where('relay_order < ?', current_order.to_i)
+          .order(relay_order: :desc)
+          .first
+      end
+
+      # Check if timing components are present in attributes
+      # @param attrs [Hash] the attributes hash
+      # @param type [Symbol] :delta or :absolute
+      # @return [Boolean] true if any timing component is present and non-zero
+      def timing_present?(attrs, type)
+        case type
+        when :delta
+          attrs['minutes'].to_i.positive? || attrs['seconds'].to_i.positive? || attrs['hundredths'].to_i.positive?
+        when :absolute
+          attrs['minutes_from_start'].to_i.positive? || attrs['seconds_from_start'].to_i.positive? || attrs['hundredths_from_start'].to_i.positive?
+        else
+          false
+        end
+      end
+
+      # Compute missing timing (delta or absolute) from previous swimmer
+      # @param attributes [Hash] current swimmer attributes
+      # @param previous_swimmer [GogglesDb::MeetingRelaySwimmer, nil] previous swimmer record
+      # @return [Hash] updated attributes with computed timing
+      def compute_missing_timing(attributes, previous_swimmer)
+        delta_present = timing_present?(attributes, :delta)
+        absolute_present = timing_present?(attributes, :absolute)
+
+        # Both present or neither present: nothing to compute
+        return attributes if delta_present == absolute_present
+
+        if delta_present && !absolute_present
+          # Compute absolute = previous_absolute + delta
+          delta = Timing.new(
+            minutes: attributes['minutes'].to_i,
+            seconds: attributes['seconds'].to_i,
+            hundredths: attributes['hundredths'].to_i
+          )
+
+          if previous_swimmer
+            prev_absolute = Timing.new(
+              minutes: previous_swimmer.minutes_from_start.to_i,
+              seconds: previous_swimmer.seconds_from_start.to_i,
+              hundredths: previous_swimmer.hundredths_from_start.to_i
+            )
+            new_absolute = prev_absolute + delta
+          else
+            # First swimmer: absolute = delta
+            new_absolute = delta
+          end
+
+          attributes['minutes_from_start'] = new_absolute.minutes
+          attributes['seconds_from_start'] = new_absolute.seconds
+          attributes['hundredths_from_start'] = new_absolute.hundredths
+          Rails.logger.debug { "[MRS] Computed absolute timing: #{new_absolute}" }
+
+        elsif absolute_present && !delta_present
+          # Compute delta = absolute - previous_absolute
+          curr_absolute = Timing.new(
+            minutes: attributes['minutes_from_start'].to_i,
+            seconds: attributes['seconds_from_start'].to_i,
+            hundredths: attributes['hundredths_from_start'].to_i
+          )
+
+          if previous_swimmer
+            prev_absolute = Timing.new(
+              minutes: previous_swimmer.minutes_from_start.to_i,
+              seconds: previous_swimmer.seconds_from_start.to_i,
+              hundredths: previous_swimmer.hundredths_from_start.to_i
+            )
+            new_delta = curr_absolute - prev_absolute
+          else
+            # First swimmer: delta = absolute
+            new_delta = curr_absolute
+          end
+
+          attributes['minutes'] = new_delta.minutes
+          attributes['seconds'] = new_delta.seconds
+          attributes['hundredths'] = new_delta.hundredths
+          Rails.logger.debug { "[MRS] Computed delta timing: #{new_delta}" }
+        end
+
+        attributes
       end
       # -----------------------------------------------------------------------
 

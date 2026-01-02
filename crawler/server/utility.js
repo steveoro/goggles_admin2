@@ -445,11 +445,12 @@ module.exports = {
   parseEventInfoFromDescription: (description, gender) => {
     const info = {
       eventCode: '',
-      eventGender: 'N/A',
+      eventGender: '',
       eventLength: '',
       eventStroke: '',
       eventDescription: '',
-      relay: false
+      relay: false,
+      isMixedIndividual: false // True when MIXED gender detected for non-relay event
       // Note: eventDate is NOT initialized here - it should only be added when available
     }
     if (!description) return info
@@ -462,18 +463,6 @@ module.exports = {
     console.log(`[DEBUG] Normalized description: "${normalizedDescription}"`);
     console.log(`[DEBUG] Original gender: "${gender}"`);
     console.log(`[DEBUG] Normalized gender: "${normalizedGender}"`);
-
-    // 1.1. Normalize eventGender: F for female, M for male, X for mixed
-    if (normalizedGender) {
-      const genderUpper = normalizedGender.toUpperCase()
-      if (genderUpper.includes('FEM') || genderUpper === 'F') {
-        info.eventGender = 'F'
-      } else if (genderUpper.includes('MAS') || genderUpper === 'M') {
-        info.eventGender = 'M'
-      } else if (genderUpper.includes('MIST') || genderUpper.includes('MIX') || genderUpper === 'X') {
-        info.eventGender = 'X'
-      }
-    }
 
     // 1.2. Split eventDescription at " - " and use first part (use normalized text)
     const descriptionParts = normalizedDescription.split(' - ')
@@ -513,8 +502,78 @@ module.exports = {
         info.eventCode = info.eventLength + info.eventStroke
       }
     }
+
+    // 1.1. Normalize eventGender: F for female, M for male, X for mixed relays ONLY
+    // NOTE: 'X' is ONLY valid for relay events. For individual events:
+    // - If gender detection yields 'X' or unknown, leave eventGender empty
+    // - Swimmer gender should be inferred later by Admin2's Solver classes
+    if (normalizedGender) {
+      const genderUpper = normalizedGender.toUpperCase()
+      if (genderUpper.includes('FEM') || genderUpper === 'F') {
+        info.eventGender = 'F'
+      } else if (genderUpper.includes('MAS') || genderUpper === 'M') {
+        info.eventGender = 'M'
+      } else if (genderUpper.includes('MIST') || genderUpper.includes('MIX') || genderUpper === 'X') {
+        // Only assign 'X' if this is a relay event; otherwise leave empty
+        if (info.relay) {
+          info.eventGender = 'X'
+        } else {
+          info.eventGender = '' // Unknown for individual events
+          info.isMixedIndividual = true // Flag to skip event-level gender fallback
+          console.log(`[DEBUG] Mixed/unknown gender detected for non-relay event, leaving empty (isMixedIndividual=true)`);
+        }
+      }
+    }
     
     return info
+  },
+
+  /**
+   * Extracts gender code from an event header text like "FEMMINE - 50 M STILE LIBERO - SERIE".
+   * Used as fallback when gender detection from event list fails.
+   * @param {string} headerText - The event header text from #tdGaraRound.
+   * @returns {string} Gender code ('F', 'M', 'X') or empty string if not detected.
+   */
+  extractGenderFromEventHeader: (headerText) => {
+    if (!headerText) return '';
+    
+    const normalized = module.exports.normalizeUnicodeText(headerText).toUpperCase();
+    
+    // Check for gender keywords at the start of the header
+    if (/^\s*FEMMIN/i.test(normalized) || /^\s*F\s*-/i.test(normalized)) {
+      return 'F';
+    } else if (/^\s*MASCH/i.test(normalized) || /^\s*M\s*-/i.test(normalized)) {
+      return 'M';
+    } else if (/^\s*MIST[OI]/i.test(normalized) || /^\s*MIX/i.test(normalized)) {
+      return 'X';
+    }
+    
+    return '';
+  },
+
+  /**
+   * Extracts gender code from a category header like "MASTER 80F" or "MASTER 95M".
+   * The trailing letter indicates gender (F/M).
+   * @param {string} categoryText - The category header text.
+   * @returns {string} Gender code ('F', 'M') or empty string if not detected.
+   */
+  extractGenderFromCategoryHeader: (categoryText) => {
+    if (!categoryText) return '';
+    
+    const normalized = module.exports.normalizeUnicodeText(categoryText).toUpperCase().trim();
+    
+    // Match patterns like "MASTER 80F", "MASTER 95M", "M80F", "M95M"
+    const match = normalized.match(/MASTER\s*(\d{2,3})\s*([FMX])/i) || 
+                  normalized.match(/M(\d{2,3})\s*([FMX])/i);
+    
+    if (match && match[2]) {
+      const genderChar = match[2].toUpperCase();
+      if (genderChar === 'F' || genderChar === 'M') {
+        return genderChar;
+      }
+    }
+    
+    return '';
   },
 
   /**
@@ -627,9 +686,10 @@ module.exports = {
    * - Preferred: createSwimmerKey(gender, lastName, firstName, year, team)
    * - Back-compat (no gender): createSwimmerKey(lastName, firstName, year, team)
    *
-   * Behavior:
-   * - When gender is provided and is not 'X' (mixed), it is prefixed to the key: "G|last|first|year|team".
-   * - When gender is omitted, null/empty, or 'X', the key is genderless: "last|first|year|team".
+   * Key format:
+   * - Known gender: "G|LAST|FIRST|YOB|TEAM" (5 tokens)
+   * - Unknown gender: "|LAST|FIRST|YOB|TEAM" (5 tokens, first one empty - leading pipe indicates unknown)
+   * - 'X' is only valid for event gender, never for individual swimmers.
    */
   createSwimmerKey: (...args) => {
     let gender = null, lastName, firstName, year, team;
@@ -640,21 +700,23 @@ module.exports = {
       gender = null;
     } else {
       // Invalid arity; return a safe empty key
-      return '';
+      return '||||';
     }
 
     const norm = (s) => (s || '').toString().replace(/\s+/g, ' ').trim();
-    const g = norm(gender);
     const ln = norm(lastName);
     const fn = norm(firstName);
     const yr = norm(year);
     const tm = norm(team);
 
-    if (g && g.toUpperCase() !== 'X') {
-      return `${g}|${ln}|${fn}|${yr}|${tm}`;
+    // Normalize gender: only 'M' or 'F' are valid for swimmers; 'X' or unknown -> empty
+    let g = norm(gender).toUpperCase();
+    if (g !== 'M' && g !== 'F') {
+      g = ''; // Unknown, null, 'X', 'N/A' etc. -> empty string
     }
-    // Gender omitted or 'X' -> genderless key
-    return `${ln}|${fn}|${yr}|${tm}`;
+
+    // Key format: G|LAST|FIRST|YOB|TEAM (leading pipe only if gender is empty)
+    return `${g}|${ln}|${fn}|${yr}|${tm}`;
   },
 
   /**

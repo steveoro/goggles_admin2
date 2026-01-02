@@ -39,8 +39,10 @@ The standardized results JSON produced by the crawler has the following structur
   - `title`, `dates`, `place`, `meetingName`, `competitionType`, `layoutType`, `seasonId`, `meetingURL`.
 
 - __`swimmers`__ (map):
-  - Keys are stable identifiers like `"F|LASTNAME|First|YYYY|Team Name"`.
-  - Values include: `lastName`, `firstName`, `gender`, `year`, `team`, `category`.
+  - Keys are stable identifiers:
+    - Known gender: `"G|LASTNAME|First|YYYY|Team Name"` (e.g., `"F|ROSSI|Maria|1980|TeamA"`)
+    - Unknown gender: `"|LASTNAME|First|YYYY|Team Name"` (leading pipe indicates unknown)
+  - Values include: `lastName`, `firstName`, `gender` (`'M'`, `'F'`, or `null`), `year`, `team`, `category`.
 
 - __`teams`__ (map):
   - Keys are team names. Values: `{ name }`.
@@ -57,6 +59,30 @@ The standardized results JSON produced by the crawler has the following structur
 
 Notes:
 - Older/alternative sources may provide a legacy `heats` structure (`heats[].results[]`). The crawler and tools support both `events[].results[]` and `heats[].results[]`.
+
+## Gender Detection
+
+The crawler uses a multi-level fallback strategy for detecting event and swimmer gender:
+
+### Detection Priority
+
+1. **Event list page** (`td.GaraRound.aCenter`): Primary source from the calendar event list containing "FEMMINE", "MASCHI", or "MISTO".
+
+2. **Event header fallback** (`#tdGaraRound`): If event list detection fails, the crawler extracts gender from the event detail page header (e.g., "FEMMINE - 50 M STILE LIBERO").
+
+3. **Category header fallback**: If still unknown, gender is inferred from RIEPILOGO category headers like "MASTER 80F" or "MASTER 95M" where the trailing letter indicates gender.
+
+### Gender Values
+
+| Context | Valid Values | Notes |
+|---------|--------------|-------|
+| **Event gender** (`eventGender`) | `'M'`, `'F'`, `'X'`, `''` | `'X'` only valid for relay events; individual events use `''` if unknown |
+| **Swimmer gender** (`gender`) | `'M'`, `'F'`, `null` | Never `'X'`; mixed relay swimmers get `null` |
+
+### Helper Functions (utility.js)
+
+- `extractGenderFromEventHeader(headerText)`: Parses "FEMMINE - 50 M STILE LIBERO" → `'F'`
+- `extractGenderFromCategoryHeader(categoryText)`: Parses "MASTER 80F" → `'F'`
 
 ## Microplus Timing (layout 4) specifics
 

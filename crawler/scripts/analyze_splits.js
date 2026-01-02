@@ -64,7 +64,7 @@ function nameForResult(res, swimmersMap) {
       base = `${s.lastName || ''} ${s.firstName || ''}`.trim();
     }
   }
-  if (!base) base = res.relay || res.team || 'N/A';
+  if (!base) base = res.relay || res.team || '';
   const lane = res.lane ? ` (lane ${res.lane})` : '';
   return `${base}${lane}`;
 }

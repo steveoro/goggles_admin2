@@ -346,6 +346,40 @@ class MicroplusCrawler {
             const eventInfo = CrawlUtil.parseEventInfoFromDescription(event.description, event.gender);
             console.log(`[DEBUG] Parsed eventInfo:`, JSON.stringify(eventInfo, null, 2));
 
+            // Fallback gender detection from #tdGaraRound header if eventGender is empty
+            if (!eventInfo.eventGender) {
+              console.log(`[DEBUG] eventGender is empty, trying fallback from #tdGaraRound header...`);
+              const headerGender = await page.evaluate(() => {
+                const genderCell = document.querySelector('#tdGaraRound');
+                return genderCell ? genderCell.innerText.trim() : '';
+              });
+              if (headerGender) {
+                const fallbackGender = CrawlUtil.extractGenderFromEventHeader(headerGender);
+                if (fallbackGender) {
+                  // For relays, allow 'X'; for individual events, only 'M' or 'F'
+                  if (eventInfo.relay || fallbackGender !== 'X') {
+                    eventInfo.eventGender = fallbackGender;
+                    console.log(`[DEBUG] Fallback gender from header: "${fallbackGender}"`);
+                  } else {
+                    console.log(`[DEBUG] Ignoring 'X' gender for non-relay event`);
+                  }
+                }
+              }
+            }
+
+            // Second fallback: extract gender from category headers in RIEPILOGO (e.g., "MASTER 80F")
+            // SKIP this fallback for mixed individual events - gender must be detected per-swimmer
+            if (!eventInfo.eventGender && rankingData.detectedGenderFromCategory && !eventInfo.isMixedIndividual) {
+              const catGender = rankingData.detectedGenderFromCategory;
+              // For relays, allow 'X'; for individual events, only 'M' or 'F'
+              if (eventInfo.relay || catGender !== 'X') {
+                eventInfo.eventGender = catGender;
+                console.log(`[DEBUG] Fallback gender from category header: "${catGender}"`);
+              }
+            } else if (eventInfo.isMixedIndividual) {
+              console.log(`[DEBUG] Skipping event-level gender fallback for mixed individual event - gender will be per-swimmer`);
+            }
+
             // Force debug output to file to capture what's happening
             const fs = require('fs');
             const debugInfo = {
@@ -444,10 +478,12 @@ class MicroplusCrawler {
                             sTeamName
                           );
                           if (!allResults.swimmers[key]) {
+                            // Swimmer gender: only 'M' or 'F' are valid; 'X' or unknown -> null
+                            const swimmerGender = (eventInfo.eventGender === 'M' || eventInfo.eventGender === 'F') ? eventInfo.eventGender : null;
                             allResults.swimmers[key] = {
                               lastName: s.lastName,
                               firstName: s.firstName,
-                              gender: eventInfo.eventGender,
+                              gender: swimmerGender,
                               year: s.year,
                               team: sTeam
                             };
@@ -486,10 +522,12 @@ class MicroplusCrawler {
                   
                     // Add to lookup tables
                     if (!allResults.swimmers[swimmerKey]) {
+                      // Swimmer gender: only 'M' or 'F' are valid; 'X' or unknown -> null
+                      const swimmerGender = (eventInfo.eventGender === 'M' || eventInfo.eventGender === 'F') ? eventInfo.eventGender : null;
                       allResults.swimmers[swimmerKey] = {
                         lastName: heatResult.lastName,
                         firstName: heatResult.firstName,
-                        gender: eventInfo.eventGender,
+                        gender: swimmerGender,
                         year: heatResult.year,
                         team: teamKey
                       };
@@ -504,7 +542,8 @@ class MicroplusCrawler {
                       heat_position: heatResult.heat_position,
                       lane: heatResult.lane,
                       nation: heatResult.nation,
-                      laps: heatResult.laps || []
+                      laps: heatResult.laps || [],
+                      gender: eventInfo.eventGender || '' // Explicit gender for Phase 5 processing
                     });
                   }
                 }
@@ -595,25 +634,34 @@ class MicroplusCrawler {
                   lane: rankingResult.lane
                 };
               } else {
+                // For mixed individual events, use per-swimmer gender from category header
+                let effectiveGender = eventInfo.eventGender;
+                if (eventInfo.isMixedIndividual && rankingResult.categoryGender) {
+                  effectiveGender = rankingResult.categoryGender;
+                  console.log(`[DEBUG] Mixed individual: using categoryGender '${effectiveGender}' for ${rankingResult.lastName}`);
+                }
+                
                 const swimmerKey = CrawlUtil.createSwimmerKey(
-                  eventInfo.eventGender,
+                  effectiveGender,
                   rankingResult.lastName,
                   rankingResult.firstName,
                   rankingResult.year,
                   rankingResult.team
                 );
                 if (!allResults.swimmers[swimmerKey]) {
+                  // Swimmer gender: only 'M' or 'F' are valid; 'X' or unknown -> null
+                  const swimmerGender = (effectiveGender === 'M' || effectiveGender === 'F') ? effectiveGender : null;
                   allResults.swimmers[swimmerKey] = {
                     lastName: rankingResult.lastName,
                     firstName: rankingResult.firstName,
-                    gender: eventInfo.eventGender,
+                    gender: swimmerGender,
                     year: rankingResult.year,
                     team: teamKey
                   };
                 }
-                if (rankingResult.category && rankingResult.category !== 'N/A') {
+                if (rankingResult.category && rankingResult.category !== 'N/A' && rankingResult.category !== '') {
                   const swimmerRef = allResults.swimmers[swimmerKey];
-                  if (!swimmerRef.category || swimmerRef.category === 'N/A') {
+                  if (!swimmerRef.category || swimmerRef.category === '' || swimmerRef.category === 'N/A') {
                     swimmerRef.category = rankingResult.category;
                   }
                 }
@@ -622,7 +670,8 @@ class MicroplusCrawler {
                   swimmer: swimmerKey,
                   team: teamKey,
                   timing: rankingResult.timing,
-                  category: rankingResult.category
+                  category: rankingResult.category,
+                  gender: effectiveGender || '' // Explicit gender for Phase 5 processing
                 };
               }
               
@@ -631,7 +680,7 @@ class MicroplusCrawler {
                 mergedResult.heat_position = heatResult.heat_position;
                 mergedResult.lane = heatResult.lane;
                 // Preserve heat number from heat results if present, avoiding null from RIEPILOGO
-                if (!mergedResult.heat || mergedResult.heat === 'N/A') {
+                if (!mergedResult.heat || mergedResult.heat === '' || mergedResult.heat === 'N/A') {
                   mergedResult.heat = heatResult.heat;
                 }
                 if (!rankingResult.relay) mergedResult.nation = heatResult.nation;
@@ -671,10 +720,12 @@ class MicroplusCrawler {
                           sTeamName
                         );
                         if (!allResults.swimmers[key]) {
+                          // Swimmer gender: only 'M' or 'F' are valid; 'X' or unknown -> null
+                          const swimmerGender = (eventInfo.eventGender === 'M' || eventInfo.eventGender === 'F') ? eventInfo.eventGender : null;
                           allResults.swimmers[key] = {
                             lastName: s.lastName,
                             firstName: s.firstName,
-                            gender: eventInfo.eventGender,
+                            gender: swimmerGender,
                             year: s.year,
                             team: sTeamKey
                           };
@@ -710,7 +761,7 @@ class MicroplusCrawler {
             const eventResults = {
               // Apply parsed event info first
               eventCode: eventInfo.eventCode || '',
-              eventGender: eventInfo.eventGender || 'N/A',
+              eventGender: eventInfo.eventGender || '',
               eventLength: eventInfo.eventLength || '',
               eventStroke: eventInfo.eventStroke || '',
               eventDescription: eventInfo.eventDescription || '',
@@ -1111,7 +1162,7 @@ class MicroplusCrawler {
       if (header.length > 0) {
         // Extract heat number from header text. Samples: "Serie 1 di 18", "Serie 3", "Serie 12 of 20"
         const rawHeader = header.text().trim();
-        let heatNo = 'N/A';
+        let heatNo = '';
         // Prefer explicit "Serie <n> [di|of] <m>" pattern
         const serieRe = /Serie\s*(\d+)(?:\s*(?:di|of)\s*\d+)?/i;
         const mSerie = rawHeader.match(serieRe);
@@ -1281,7 +1332,7 @@ class MicroplusCrawler {
           }
           if (isRelayHeader) {
             const currentHeat = heats[heats.length - 1];
-            const heatNo = currentHeat ? currentHeat.number : 'N/A';
+            const heatNo = currentHeat ? currentHeat.number : '';
             const relayName = CrawlUtil.normalizeUnicodeText($(cols[4]).find('nobr > b').first().text() || '');
             const teamName = CrawlUtil.normalizeUnicodeText($(cols[4]).find('nobr > font').first().text() || '');
             const heat_position = $(cols[0]).find('b').text().trim() || $(cols[0]).text().trim();
@@ -1328,7 +1379,7 @@ class MicroplusCrawler {
 
           // Extract nation from column 3 (individuals)
           const nationHtml = $(cols[3]).html();
-          const nation = nationHtml ? $('<div>').html(nationHtml).text().replace(/.*<b>([^<]+)<\/b>.*/, '$1').trim() : 'N/A';
+          const nation = nationHtml ? $('<div>').html(nationHtml).text().replace(/.*<b>([^<]+)<\/b>.*/, '$1').trim() : '';
           
           // Find timing column by specifically looking for "Risultato" class
           let timing = '';
@@ -1345,8 +1396,8 @@ class MicroplusCrawler {
           // Extract name data (but don't fail if missing) - individual rows
           const nameDataHtml = $(cols[4]).html();
           let nameParts = { lastName: '', firstName: '' }; // Initialize as object, not array
-          let year = 'N/A';
-          let team = 'N/A';
+          let year = '';
+          let team = '';
           // DEBUG (extremely verbose)
           // console.log(`[DEBUG] Heat nameDataHtml: "${nameDataHtml}"`);
           
@@ -1356,8 +1407,8 @@ class MicroplusCrawler {
             // DEBUG (extremely verbose)
             // console.log(`[DEBUG] Heat fullNameHtml: "${fullNameHtml}"`);
             nameParts = CrawlUtil.extractNameParts(fullNameHtml); // No redeclaration
-            year = nameData[1] ? $('<div>').html(nameData[1]).text().replace(/[()]/g, '').trim() : 'N/A';
-            team = nameData[2] ? $('<div>').html(nameData[2]).text().trim() : 'N/A';
+            year = nameData[1] ? $('<div>').html(nameData[1]).text().replace(/[()]/g, '').trim() : '';
+            team = nameData[2] ? $('<div>').html(nameData[2]).text().trim() : '';
             // DEBUG (verbose)
             // console.log(`[DEBUG] Heat extracted: ${nameParts.lastName}|${nameParts.firstName}|${year}|${team}`);
           }
@@ -1374,7 +1425,7 @@ class MicroplusCrawler {
             year: year,
             team: team,
             timing: timing,
-            heat: heats.length > 0 ? heats[heats.length - 1].number : 'N/A', // Heat number, not category
+            heat: heats.length > 0 ? heats[heats.length - 1].number : '', // Heat number, not category
             laps: []
           };
 
@@ -1436,7 +1487,9 @@ class MicroplusCrawler {
   processRankingResults(html, options = {}) {
     const $ = cheerio.load(html);
     const results = [];
-    let currentCategory = 'N/A';
+    let currentCategory = '';
+    let currentGenderFromCategory = ''; // Track gender for current category section
+    let detectedGenderFromCategory = ''; // Track first gender detected (for non-mixed events)
     // Decide per row whether it's relay or individual; category headers appear in both
 
     const rows = $('table.tblContenutiRESSTL#tblContenuti tr');
@@ -1447,12 +1500,24 @@ class MicroplusCrawler {
       const rowText = CrawlUtil.normalizeUnicodeText($row.text() || '').replace(/\s+/g, ' ').trim();
 
       // Detect category header rows (robust): "MASTER 75F" -> currentCategory = "M75"
-      const headerMatch = rowText.match(/\bMASTER\s+(\d{2,3})\s*[FMX]?\b/i);
+      // Also extract gender suffix (F/M) for per-swimmer gender detection
+      const headerMatch = rowText.match(/\bMASTER\s+(\d{2,3})\s*([FMX])?\b/i);
       const isResultRow = $row.hasClass('trContenuti') || $row.hasClass('trContenutiToggle');
 
       if (headerMatch && !isResultRow) {
         const age = headerMatch[1];
         currentCategory = `M${age}`;
+        // Extract gender from category header suffix (e.g., "MASTER 80F" -> 'F')
+        if (headerMatch[2]) {
+          const genderChar = headerMatch[2].toUpperCase();
+          if (genderChar === 'F' || genderChar === 'M') {
+            currentGenderFromCategory = genderChar; // Update current gender for this section
+            if (!detectedGenderFromCategory) {
+              detectedGenderFromCategory = genderChar; // First detected gender for fallback
+            }
+            console.log(`[DEBUG] Detected gender from category header: "${genderChar}" (current section)`);
+          }
+        }
         console.log(`[DEBUG] Category header: "${rowText}" -> ${currentCategory}`);
         return; // continue
       }
@@ -1474,7 +1539,7 @@ class MicroplusCrawler {
         const timingCell = $row.find('td.Risultato').last();
         const timing = (timingCell.length ? timingCell.text() : ($(cols[cols.length - 1]).text() || '')).trim();
         // Compute category range (e.g., 240 -> 240-259)
-        let categoryRange = 'N/A';
+        let categoryRange = '';
         const ageMatch = currentCategory.match(/M(\d{2,3})/i);
         if (ageMatch) {
           const base = parseInt(ageMatch[1], 10);
@@ -1522,7 +1587,8 @@ class MicroplusCrawler {
         team,
         year,
         timing,
-        category: currentCategory
+        category: currentCategory,
+        categoryGender: currentGenderFromCategory // Per-swimmer gender from category header
       };
 
       // If caller indicates we're parsing a relay RIEPILOGO, ensure relay flag is set
@@ -1543,7 +1609,7 @@ class MicroplusCrawler {
     });
 
     console.log(`[DEBUG] processRankingResults extracted ${results.length} results from RIEPILOGO`);
-    return { results };
+    return { results, detectedGenderFromCategory };
   }
 }
 
