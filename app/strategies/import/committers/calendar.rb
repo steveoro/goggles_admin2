@@ -36,11 +36,10 @@ module Import
         raise StandardError, 'Null meeting_id in datafile object!' if meeting_id.blank?
 
         meeting = GogglesDb::Meeting.find(meeting_id) # Always fail fast
-
         attributes = build_calendar_attributes(meeting_hash, meeting)
-        calendar_id = attributes['id']
+
         # Search existing row for a possible update:
-        existing_row = GogglesDb::Calendar.find_by(id: calendar_id) if calendar_id.present?
+        existing_row = GogglesDb::Calendar.find_by(meeting_id: meeting.id)
 
         if existing_row
           if attributes_changed?(existing_row, attributes)
