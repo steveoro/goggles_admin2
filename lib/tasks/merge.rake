@@ -161,6 +161,87 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
   #++
 
   desc <<~DESC
+      Merges two Meeting entities belonging to the same Season.
+    All sub-entities from the source meeting will be moved to the destination,
+    creating missing rows or updating existing ones, ensuring no duplicates.
+
+    The resulting script won't be applied (and no DB changes will be made) *unless*
+    the 'simulate' option is set explicitly to '0'. (Default: DO NOT MAKE DB CHANGES.)
+
+    The Rails.env will set the destination DB for script execution on localhost.
+    The resulting file will be stored under:
+
+      - '#{SCRIPT_OUTPUT_DIR}/<index>-merge_meetings-<src_id>-<dest_id>.sql'
+
+    A separate warning log file will also be generated with timing conflicts and
+    other non-fatal issues encountered during the merge.
+
+    Options: [Rails.env=#{Rails.env}]
+            src=<source_meeting_id>
+            dest=<destination_meeting_id>
+            [index=<auto>] [simulate='0'|<'1'>]
+            [skip_columns=<'0'>|'1']
+
+      - index: a progressive number for the generated file;
+      - src: source Meeting ID;
+      - dest: destination Meeting ID;
+
+      - simulate: when set to '0' will enable script execution on localhost (toggled off by default);
+
+      - skip_columns: when set to anything different from '0' will disable overwriting
+        destination meeting flag columns with the source values (toggled off by default).
+        Note that only meeting flags are carried over from source to destination: description,
+        notes and all other columns are NOT copied over by design.
+
+  DESC
+  task(meeting: [:check_needed_dirs]) do
+    puts '*** Task: merge:meeting ***'
+    source = GogglesDb::Meeting.find_by(id: ENV['src'].to_i)
+    dest = GogglesDb::Meeting.find_by(id: ENV['dest'].to_i)
+    if source.nil? || dest.nil?
+      puts("You need to have both 'src' & 'dest' IDs with valid values in order to proceed.")
+      exit
+    end
+
+    file_index = ENV['index'].present? ? ENV['index'].to_i : auto_index_from_script_output_dir
+    simulate = ENV['simulate'] != '0' # Don't run locally the script unless explicitly requested
+    skip_columns = ENV['skip_columns'] == '1' # Don't skip columns unless requested
+
+    puts("\r\nMerging Meeting (#{source.id}) '#{source.description}'")
+    puts("    |=> (#{dest.id}) '#{dest.description}'")
+    puts("    Season: #{source.season_id}")
+    puts("\r\n- simulate.......: #{simulate}")
+    puts("- skip_columns...: #{skip_columns}")
+    puts("- dest. folder...: #{SCRIPT_OUTPUT_DIR}\r\n")
+
+    merger = Merge::Meeting.new(source:, dest:, skip_columns:)
+    result = merger.prepare
+    unless result
+      puts('Aborted due to errors.')
+      merger.display_report
+      break
+    end
+
+    puts("\r\n*** Checker Log: ***\r\n")
+    puts(merger.log.join("\r\n"))
+
+    file_name = "#{format('%04d', file_index)}-merge_meetings-#{merger.source.id}-#{merger.dest.id}"
+    process_sql_file(file_name:, sql_log_array: merger.sql_log, simulate:)
+
+    # Also save warning log if present
+    if merger.warning_log.present?
+      warning_file = "#{SCRIPT_OUTPUT_DIR}/#{file_name}-warnings.log"
+      File.open(warning_file, 'w+') { |f| f.puts(merger.warning_log.join("\r\n")) }
+      puts("\r\nWarning log saved to: #{warning_file}")
+      puts("Total warnings: #{merger.warning_log.count}")
+    end
+
+    puts('Done.')
+  end
+  #-- -------------------------------------------------------------------------
+  #++
+
+  desc <<~DESC
       Checks for badge merge feasibility before creating an SQL script that merges
     the source badge row into the destination.
 

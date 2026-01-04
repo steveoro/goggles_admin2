@@ -2,6 +2,7 @@
 
 _Please, add the latest build info on top of the list; use Version::MAJOR only after gold release; keep semantic versioning in line with framework's_
 
+- **0.8.25** [Steve A.] added merge:meeting task & support classes (merger + checker)
 - **0.8.22** [Steve A.] auto-compute category & gender in phased data-fix for relays only; additional specs
 - **0.8.22** [Steve A.] re-sync w/ base engine; bundle updates
 - **0.8.11** [Steve A.] re-sync w/ base engine; bundle updates

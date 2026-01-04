@@ -3,6 +3,8 @@
 - Reference schema: db/schema.rb
 - Models from Rails engine, project `goggles_db`
 
+=> DONE, 2026-01-05; plan kept as reference
+
 ## Overview
 This new task will create a new rake command to merge two Meeting instances belonging to the same Season.
 The source meeting's data will be transferred to the destination meeting, creating any missing linked entities rows or updating existing ones, while ensuring no duplicate records are created.
