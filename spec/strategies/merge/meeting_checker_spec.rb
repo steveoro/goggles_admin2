@@ -87,13 +87,13 @@ RSpec.describe Merge::MeetingChecker do
     end
 
     context 'with meetings in different seasons' do
+      subject(:checker) { described_class.new(source: source_meeting, dest: different_season_meeting) }
+
       let(:different_season_meeting) do
         GogglesDb::Meeting.where.not(season_id: source_meeting.season_id)
                           .joins(:meeting_sessions)
                           .first
       end
-
-      subject(:checker) { described_class.new(source: source_meeting, dest: different_season_meeting) }
 
       it 'returns false (merge not feasible)' do
         expect(checker.run).to be false
@@ -109,7 +109,7 @@ RSpec.describe Merge::MeetingChecker do
   describe 'session mapping accessors' do
     subject(:checker) { described_class.new(source: source_meeting, dest: dest_meeting) }
 
-    before { checker.run }
+    before(:each) { checker.run }
 
     describe '#shared_session_keys' do
       it 'returns an array' do
@@ -140,7 +140,7 @@ RSpec.describe Merge::MeetingChecker do
   describe 'event mapping accessors' do
     subject(:checker) { described_class.new(source: source_meeting, dest: dest_meeting) }
 
-    before { checker.run }
+    before(:each) { checker.run }
 
     describe '#shared_event_keys' do
       it 'returns an array' do
@@ -171,7 +171,7 @@ RSpec.describe Merge::MeetingChecker do
   describe 'program mapping accessors' do
     subject(:checker) { described_class.new(source: source_meeting, dest: dest_meeting) }
 
-    before { checker.run }
+    before(:each) { checker.run }
 
     describe '#shared_program_keys' do
       it 'returns an array' do
@@ -240,7 +240,7 @@ RSpec.describe Merge::MeetingChecker do
   describe '#display_report' do
     subject(:checker) { described_class.new(source: source_meeting, dest: dest_meeting) }
 
-    before { checker.run }
+    before(:each) { checker.run }
 
     it 'outputs to stdout without raising' do
       expect { checker.display_report }.to output.to_stdout

@@ -72,8 +72,12 @@ module Import
 
       def normalize_attributes(city_hash)
         normalized = city_hash.deep_dup.with_indifferent_access
-        normalized['country_code'] ||= 'IT'
-        normalized['country'] ||= 'Italia'
+
+        # Apply defaults only when creating a brand-new row (no id provided)
+        unless normalized['id'].to_i.positive? || normalized['city_id'].to_i.positive?
+          normalized['country_code'] ||= 'IT'
+          normalized['country'] ||= 'Italia'
+        end
 
         sanitize_attributes(normalized, GogglesDb::City)
       end
@@ -85,8 +89,19 @@ module Import
       end
       # -----------------------------------------------------------------------
 
+      # Checks if any attributes have changed, excluding the ID.
+      # Returns false for nil/blank attributes if the ID is set
       def attributes_changed?(model, new_attributes)
+        has_id = model.id.present?
+        # Note that for nested entities like City or SwimmingPool, the attributes may
+        # have NOT been filled-in by the solvers strategy classes, so we'll prevent
+        # clearing out existing values if the id is present but the attribute is nil/blank.
+
         new_attributes.except('id', :id).any? do |key, value|
+          # When updating an existing row, ignore nil/blank values to avoid
+          # unintentionally clearing columns when the input only carries an id.
+          next false if has_id && (value.nil? || value == '')
+
           model_value = begin
             model.send(key.to_sym)
           rescue NoMethodError

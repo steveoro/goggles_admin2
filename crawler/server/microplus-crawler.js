@@ -683,6 +683,10 @@ class MicroplusCrawler {
                 if (!mergedResult.heat || mergedResult.heat === '' || mergedResult.heat === 'N/A') {
                   mergedResult.heat = heatResult.heat;
                 }
+                // Prioritize timing from RISULTATI (heats with laps) over RIEPILOGO
+                if (heatResult.timing && heatResult.timing.trim().length > 0) {
+                  mergedResult.timing = heatResult.timing;
+                }
                 if (!rankingResult.relay) mergedResult.nation = heatResult.nation;
                 if (rankingResult.relay) {
                   // Populate global swimmers using event gender and create lap swimmer references by leg order

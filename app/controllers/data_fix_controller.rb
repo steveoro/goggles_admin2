@@ -755,7 +755,7 @@ class DataFixController < ApplicationController
     session[:commit_report] = {
       file_path: file_path,
       log_path: log_full_path,
-      sql_filename: sql_full_path,
+      sql_filename: File.basename(sql_full_path),
       commit_success: commit_success,
       error_message: error_message,
       stats: stats,

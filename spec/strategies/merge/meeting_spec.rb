@@ -153,13 +153,13 @@ RSpec.describe Merge::Meeting do
     end
 
     context 'with meetings in different seasons' do
+      subject(:merger) { described_class.new(source: source_meeting, dest: different_season_meeting) }
+
       let(:different_season_meeting) do
         GogglesDb::Meeting.where.not(season_id: source_meeting.season_id)
                           .joins(:meeting_sessions)
                           .first
       end
-
-      subject(:merger) { described_class.new(source: source_meeting, dest: different_season_meeting) }
 
       it 'returns false' do
         expect(merger.prepare).to be false
@@ -175,7 +175,7 @@ RSpec.describe Merge::Meeting do
   describe '#single_transaction_sql_log' do
     subject(:merger) { described_class.new(source: source_meeting, dest: dest_meeting) }
 
-    before { merger.prepare }
+    before(:each) { merger.prepare }
 
     it 'returns the sql_log wrapped in transaction' do
       result = merger.single_transaction_sql_log
@@ -188,7 +188,7 @@ RSpec.describe Merge::Meeting do
   describe 'delegated methods' do
     subject(:merger) { described_class.new(source: source_meeting, dest: dest_meeting) }
 
-    before { merger.prepare }
+    before(:each) { merger.prepare }
 
     it 'delegates log to checker' do
       expect(merger.log).to eq(merger.checker.log)
@@ -206,7 +206,7 @@ RSpec.describe Merge::Meeting do
   describe '#display_report' do
     subject(:merger) { described_class.new(source: source_meeting, dest: dest_meeting) }
 
-    before { merger.prepare }
+    before(:each) { merger.prepare }
 
     it 'outputs to stdout without raising' do
       expect { merger.display_report }.to output.to_stdout

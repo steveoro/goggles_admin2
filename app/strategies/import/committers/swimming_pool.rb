@@ -97,8 +97,19 @@ module Import
       end
       # -----------------------------------------------------------------------
 
+      # Checks if any attributes have changed, excluding the ID.
+      # Returns false for nil/blank attributes if the ID is set
       def attributes_changed?(model, new_attributes)
+        has_id = model.id.present?
+        # Note that for nested entities like City or SwimmingPool, the attributes may
+        # have NOT been filled-in by the solvers strategy classes, so we'll prevent
+        # clearing out existing values if the id is present but the attribute is nil/blank.
+
         new_attributes.except('id', :id).any? do |key, value|
+          # When updating an existing row, ignore nil/blank values to avoid
+          # unintentionally clearing columns when the input only carries an id.
+          next false if has_id && (value.nil? || value == '')
+
           model_value = begin
             model.send(key.to_sym)
           rescue NoMethodError
