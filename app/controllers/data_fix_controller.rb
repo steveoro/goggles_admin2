@@ -635,17 +635,19 @@ class DataFixController < ApplicationController
       log_path: log_full_path
     )
 
-    @file_path = file_path
-    @log_path = log_full_path
-    @sql_filename = sql_full_path
-    @commit_success = false
+    commit_success = false
+    error_message = nil
+    stats = nil
+    season_id = nil
+    done_dir = nil
+    first_error_step_label = nil
 
     begin
       # Commit all entities in a transaction (will generate log file via Main)
-      @stats = committer.commit_all
+      stats = committer.commit_all
 
       # Guard: if any errors were accumulated, treat as failure even if transaction did not raise
-      raise StandardError, "Commit completed with #{@stats[:errors].count} errors. Check #{log_full_path} for details." if @stats[:errors].any?
+      raise StandardError, "Commit completed with #{stats[:errors].count} errors. Check #{log_full_path} for details." if stats[:errors].any?
 
       # Generate SQL file in results.new directory
       File.write(sql_full_path, committer.sql_log_content)
@@ -693,19 +695,16 @@ class DataFixController < ApplicationController
         f.puts "  - DataImportRelayLap: #{relay_lap_deleted}"
       end
 
-      @season_id = season_id
-      @done_dir = done_dir
-      @commit_success = true
-      @error_message = nil
+      commit_success = true
     rescue StandardError => e
       # Log detailed error and prepare report data
-      @error_message = "Phase 6 commit failed: #{e.message}"
-      Rails.logger.error("[Phase 6 Commit] #{@error_message}")
+      error_message = "Phase 6 commit failed: #{e.message}"
+      Rails.logger.error("[Phase 6 Commit] #{error_message}")
       Rails.logger.error(e.backtrace.join("\n"))
 
       # Ensure stats is available for the report even if commit_all raised early
-      @stats ||= committer.stats if committer.respond_to?(:stats)
-      @stats ||= { errors: [] }
+      stats ||= committer.stats if committer.respond_to?(:stats)
+      stats ||= { errors: [] }
 
       # Derive a suggested step to review from the first logged validation error
       begin
@@ -743,7 +742,7 @@ class DataFixController < ApplicationController
                 4 => 'Step 4 • Events',
                 5 => 'Step 5 • Results'
               }
-              @first_error_step_label = step_labels[step]
+              first_error_step_label = step_labels[step]
             end
           end
         end
@@ -752,14 +751,51 @@ class DataFixController < ApplicationController
       end
     end
 
-    render 'data_fix/commit_phase6_report'
+    # Store report data in session for GET action
+    session[:commit_report] = {
+      file_path: file_path,
+      log_path: log_full_path,
+      sql_filename: sql_full_path,
+      commit_success: commit_success,
+      error_message: error_message,
+      stats: stats,
+      season_id: season_id,
+      done_dir: done_dir,
+      first_error_step_label: first_error_step_label
+    }
+
+    # Redirect to report page (POST-redirect-GET pattern)
+    redirect_to data_fix_commit_phase6_report_path
   end
   # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
   # ---------------------------------------------------------------------------
 
-  # TEMP test for wrong view syntax:
+  # Phase 6: Display commit report (GET action after POST redirect)
   def commit_phase6_report
-    # (no-op, just render the view)
+    report_data = session[:commit_report]
+
+    # Guard: if no report data in session, redirect to file list
+    unless report_data
+      flash[:warning] = 'No commit report data found. Please run Phase 6 commit first.'
+      redirect_to(pull_result_files_path) && return
+    end
+
+    # Clear session data (one-time use)
+    session.delete(:commit_report)
+
+    # Set instance variables for view
+    @file_path = report_data[:file_path]
+    @log_path = report_data[:log_path]
+    @sql_filename = report_data[:sql_filename]
+    @commit_success = report_data[:commit_success]
+    @error_message = report_data[:error_message]
+    @stats = report_data[:stats]
+    @season_id = report_data[:season_id]
+    @done_dir = report_data[:done_dir]
+    @first_error_step_label = report_data[:first_error_step_label]
+
+    # Render the report view
+    render 'data_fix/commit_phase6_report'
   end
   # ---------------------------------------------------------------------------
 
