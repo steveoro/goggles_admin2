@@ -47,24 +47,35 @@ Phase 6: Commit → Production DB + SQL log
 - Venue/city cascading creation
 
 ### Output Structure
+
+**Note**: The actual phase1 JSON uses a flat structure for meeting attributes under `data`, but:
+- Sessions are at `data.meeting_session[]` (not nested under `meeting`)
+- Session IDs use the field `id` (not `meeting_session_id`)
+- SwimmingPool are nested under `meeting_session`
+- SwimmingPool IDs use the field `id` (not `swimming_pool_id`)
+- City are nested under `swimming_pool`
+- City IDs use the field `id` (not `city_id`)
+
 ```json
 {
-  "meeting": {
-    "meeting_id": 123,
-    "code": "regcsi",
-    "header_date": "2025-06-24",
-    "sessions": [
+  "_meta": { "phase": 1, "season_id": 232 },
+  "data": {
+    "id": 19766,
+    "season_id": 232,
+    "code": "italianoinvernale",
+    "header_date": "2023-12-08",
+    "meeting_session": [
       {
-        "meeting_session_id": 456,
+        "id": 3878,
         "session_order": 1,
-        "scheduled_date": "2025-06-24"
+        "scheduled_date": "2023-12-08",
+        "swimming_pool": {
+          "id": 165,
+          "name": "Palazzo Nuoto",
+          "city": { "id": 90, "name": "Torino" }
+        }
       }
-    ],
-    "swimming_pool": {
-      "swimming_pool_id": 789,
-      "name": "Piscina Comunale",
-      "city": {"city_id": 101}
-    }
+    ]
   }
 }
 ```
@@ -558,7 +569,7 @@ rails server
 ```
 
 ### Relay Test File
-**Path**: `crawler/data/results.new/242/2025-06-24-Campionati_Italiani_di_Nuoto_Master_Herbalife-4X50MI-l4.json`
+**Path**: `crawler/data/results.new/242/2024-12-06-Campionati_Italiani_Invernali_di_Nuoto_Unipol-4x50sl-l4.json`
 
 **Expected Phase 4 Output**:
 - 1 session (not 23\!)

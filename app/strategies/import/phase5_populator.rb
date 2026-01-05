@@ -598,17 +598,19 @@ module Import
       return nil unless phase1_data && phase4_data
 
       # Step 1: Get meeting_id from phase 1
-      meeting_id = phase1_data.dig('data', 'meeting_id')
+      meeting_id = phase1_data.dig('data', 'id')
       return nil unless meeting_id
 
       # Step 2: Find meeting_session_id from phase 1 data
-      sessions = phase1_data.dig('data', 'sessions') || []
+      sessions = phase1_data.dig('data', 'meeting_session') || []
       session = sessions.find { |s| s['session_order'].to_i == session_order.to_i }
-      meeting_session_id = session&.dig('meeting_session_id')
+      meeting_session_id = session&.dig('id')
       return nil unless meeting_session_id
 
       # Step 3: Parse event_code to get event_type_id
-      event_type = parse_event_type(event_code)
+      # Detect relay events by pattern (S4X50SL, M4X50MI, etc.)
+      is_relay = event_code.match?(/\A[SM]\d+X\d+[A-Z]{2}\z/i)
+      event_type = is_relay ? parse_relay_event_type(event_code) : parse_event_type(event_code)
       return nil unless event_type
 
       # Step 4: Find MeetingEvent
@@ -663,6 +665,34 @@ module Import
         .where(length_in_meters: distance, stroke_type_id: stroke_type.id, relay: false)
         .where('length_in_meters <= 1500')
         .first
+
+    # Parse relay event code to EventType (e.g., "S4X50SL" → 4x50m Freestyle Relay)
+    # Relay codes: [S|M]<participants>X<phase_length><stroke>
+    # - S = same-sex relay, M = mixed-gender relay
+    # - Example: "S4X50SL" = same-sex 4x50m freestyle
+    def parse_relay_event_type(event_code)
+      return nil if event_code.blank?
+
+      # Match relay format: S4X50SL, M4X50MI, etc.
+      match = event_code.match(/\A([SM])(\d+)X(\d+)([A-Z]{2})\z/i)
+      return nil unless match
+
+      # gender_prefix = match[1] # S or M (not used for EventType lookup)
+      # participants = match[2].to_i
+      phase_length = match[3].to_i
+      stroke_code = match[4].upcase
+
+      # Find StrokeType by code
+      stroke_type = GogglesDb::StrokeType.find_by(code: stroke_code)
+      return nil unless stroke_type
+
+      # Find relay EventType by code (exact match is best for relays)
+      GogglesDb::EventType.find_by(code: event_code.upcase, relay: true) ||
+        GogglesDb::EventType.where(
+          phase_length_in_meters: phase_length,
+          stroke_type_id: stroke_type.id,
+          relay: true
+        ).first
     end
 
     # Parse category code to CategoryType (e.g., "M75" → Master 75-79)

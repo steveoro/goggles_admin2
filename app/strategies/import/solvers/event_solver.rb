@@ -311,9 +311,9 @@ module Import
       def find_meeting_session_id_by_order(session_order)
         return nil unless @phase1_data
 
-        sessions = Array(@phase1_data.dig('data', 'sessions'))
+        sessions = Array(@phase1_data.dig('data', 'meeting_session'))
         session = sessions.find { |s| s['session_order'].to_i == session_order.to_i }
-        session&.dig('meeting_session_id')
+        session&.dig('id')
       end
 
       # Parse relay event details from section title
