@@ -296,15 +296,15 @@ module Import
         )
 
         if existing
-          event_hash['meeting_event_id'] = existing.id
+          event_hash['id'] = existing.id
           Rails.logger.info("[EventSolver] Matched existing MeetingEvent ID=#{existing.id} for #{event_hash['key']}")
         else
-          event_hash['meeting_event_id'] = nil
+          event_hash['id'] = nil
           Rails.logger.debug { "[EventSolver] No existing event found for #{event_hash['key']} (will create new)" }
         end
       rescue StandardError => e
         Rails.logger.error("[EventSolver] Error matching event for #{event_hash['key']}: #{e.message}")
-        event_hash['meeting_event_id'] = nil
+        event_hash['id'] = nil
       end
 
       # Find meeting_session_id from phase1 data by session_order

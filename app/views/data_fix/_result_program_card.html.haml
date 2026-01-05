@@ -135,6 +135,7 @@
                           %th.text-center Distance
                           %th.text-right Delta
                           %th.text-right From Start
+                          %th.text-center Status
                       %tbody
                         - laps.each do |lap|
                           :ruby
@@ -150,6 +151,8 @@
                               seconds: lap.seconds_from_start,
                               hundredths: lap.hundredths_from_start
                             )
+                            # Matched lap ID (if present)
+                            lap_match_id = lap.lap_id
                           %tr
                             %td.text-center
                               %strong= "#{lap.length_in_meters}m"
@@ -157,3 +160,9 @@
                               = delta_timing.to_s
                             %td.text-right.text-muted
                               = from_start_timing.to_s
+                            %td.text-center
+                              - if lap_match_id
+                                %small.text-secondary
+                                  ID: #{lap_match_id}
+                              - else
+                                %small.badge.badge-primary NEW

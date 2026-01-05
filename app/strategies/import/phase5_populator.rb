@@ -593,47 +593,69 @@ module Import
     end
 
     # Find meeting_program_id by matching against existing database records
-    # Matches: MeetingEvent (by session + event_type) → MeetingProgram (by event + category + gender)
+    # First tries to use existing event ID from phase4 data, then falls back to DB lookup
+    # Matches: MeetingEvent (from phase4 ID or by session + event_type) → MeetingProgram (by event + category + gender)
     def find_meeting_program_id(session_order, event_code, category, gender)
       return nil unless phase1_data && phase4_data
 
-      # Step 1: Get meeting_id from phase 1
-      meeting_id = phase1_data.dig('data', 'id')
-      return nil unless meeting_id
+      # Step 1: Try to find existing meeting_event_id from phase4 data first
+      meeting_event_id = find_meeting_event_id_from_phase4(session_order, event_code)
 
-      # Step 2: Find meeting_session_id from phase 1 data
-      sessions = phase1_data.dig('data', 'meeting_session') || []
-      session = sessions.find { |s| s['session_order'].to_i == session_order.to_i }
-      meeting_session_id = session&.dig('id')
-      return nil unless meeting_session_id
+      # Step 2: If not found in phase4, do database lookup as fallback
+      unless meeting_event_id
+        # Parse event_code to get event_type_id
+        is_relay = event_code.match?(/\A[SM]\d+X\d+[A-Z]{2}\z/i)
+        event_type = is_relay ? parse_relay_event_type(event_code) : parse_event_type(event_code)
+        return nil unless event_type
 
-      # Step 3: Parse event_code to get event_type_id
-      # Detect relay events by pattern (S4X50SL, M4X50MI, etc.)
-      is_relay = event_code.match?(/\A[SM]\d+X\d+[A-Z]{2}\z/i)
-      event_type = is_relay ? parse_relay_event_type(event_code) : parse_event_type(event_code)
-      return nil unless event_type
+        # Find meeting_session_id from phase 1 data
+        sessions = phase1_data.dig('data', 'meeting_session') || []
+        session = sessions.find { |s| s['session_order'].to_i == session_order.to_i }
+        meeting_session_id = session&.dig('id')
+        return nil unless meeting_session_id
 
-      # Step 4: Find MeetingEvent
-      meeting_event = GogglesDb::MeetingEvent
-                      .where(meeting_session_id: meeting_session_id, event_type_id: event_type.id)
-                      .first
-      return nil unless meeting_event
+        # Find MeetingEvent from database
+        meeting_event = GogglesDb::MeetingEvent
+                        .where(meeting_session_id: meeting_session_id, event_type_id: event_type.id)
+                        .first
+        meeting_event_id = meeting_event&.id
+      end
+      return nil unless meeting_event_id
 
-      # Step 5: Parse category and gender to get type IDs
-      category_type = parse_category_type(category)
+      # Step 3: Parse category and gender to get type IDs (need season_id for correct CategoryType)
+      season_id = phase1_data.dig('data', 'season_id')
+      category_type = parse_category_type(category, season_id)
       gender_type = parse_gender_type(gender)
       return nil unless category_type && gender_type
 
-      # Step 6: Find MeetingProgram
+      # Step 4: Find MeetingProgram
       meeting_program = GogglesDb::MeetingProgram
                         .where(
-                          meeting_event_id: meeting_event.id,
+                          meeting_event_id: meeting_event_id,
                           category_type_id: category_type.id,
                           gender_type_id: gender_type.id
                         )
                         .first
 
       meeting_program&.id
+    end
+
+    # Find meeting_event_id from phase4 data by session_order and event_code
+    def find_meeting_event_id_from_phase4(session_order, event_code)
+      return nil unless phase4_data
+
+      sessions = Array(phase4_data.dig('data', 'sessions'))
+      session = sessions.find { |s| s['session_order'].to_i == session_order.to_i }
+      return nil unless session
+
+      events = Array(session['events'])
+      # Match by event code (for individual events like "50SL") or relay code (for relays like "S4X50SL")
+      event = events.find do |e|
+        e['key'] == event_code ||
+          (e['distance'] && e['stroke'] && "#{e['distance']}#{e['stroke']}" == event_code)
+      end
+
+      event&.dig('id') # This is the meeting_event_id matched by EventSolver
     end
 
     # Parse event code to EventType (e.g., "200RA" → 200m Breaststroke)
@@ -665,6 +687,7 @@ module Import
         .where(length_in_meters: distance, stroke_type_id: stroke_type.id, relay: false)
         .where('length_in_meters <= 1500')
         .first
+    end
 
     # Parse relay event code to EventType (e.g., "S4X50SL" → 4x50m Freestyle Relay)
     # Relay codes: [S|M]<participants>X<phase_length><stroke>
@@ -694,15 +717,17 @@ module Import
           relay: true
         ).first
     end
-
     # Parse category code to CategoryType (e.g., "M75" → Master 75-79)
-    def parse_category_type(category)
+    def parse_category_type(category, season_id = nil)
       return nil if category.blank?
 
       # Category format: "M75", "M45", "U25", etc.
-      # Use undecorate to get plain code if it's decorated
       code = category.to_s.strip
-      GogglesDb::CategoryType.find_by(code: code)
+      if season_id
+        GogglesDb::CategoryType.find_by(code: code, season_id: season_id)
+      else
+        GogglesDb::CategoryType.find_by(code: code)
+      end
     end
 
     # Parse gender code to GenderType (e.g., "F" → Female, "M" → Male)

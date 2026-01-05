@@ -338,7 +338,7 @@ class DataFixController < ApplicationController
       meeting_session_ids = phase1_sessions.filter_map { |s| s['id'] }
       if meeting_session_ids.any?
         @existing_meeting_events = GogglesDb::MeetingEvent.where(meeting_session_id: meeting_session_ids)
-                                                          .includes(:event_type, :heat_type, :meeting_session)
+                                                          .includes(:heat_type, :meeting_session, event_type: :stroke_type)
                                                           .order('meeting_sessions.session_order, meeting_events.event_order')
                                                           .map do |me|
           {
