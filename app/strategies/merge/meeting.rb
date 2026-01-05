@@ -95,6 +95,10 @@ module Merge
       @sql_log << ''
       @sql_log << 'COMMIT;'
 
+      # Cache expected counts NOW, while DB still has original state
+      # (verify_merge_result is called AFTER SQL execution)
+      @expected_counts = calculate_expected_counts
+
       true
     end
     #-- ------------------------------------------------------------------------
@@ -302,6 +306,8 @@ module Merge
           if dest_lap
             set_clauses, = build_merge_set_clauses(src_lap, dest_lap, lap_merge_columns, 'Lap')
             @sql_log << "UPDATE laps SET updated_at=NOW(), #{set_clauses.join(', ')} WHERE id=#{dest_lap.id};" if set_clauses.any?
+          else
+            @sql_log << "UPDATE laps SET updated_at=NOW(), meeting_program_id=#{dest_mir.meeting_program_id}, meeting_individual_result_id=#{dest_mir.id} WHERE id=#{src_lap.id};"
           end
         end
         @sql_log << "DELETE FROM laps WHERE meeting_individual_result_id=#{src_mir.id};"
@@ -539,8 +545,8 @@ module Merge
       src_only_team_scores = count_source_only_team_scores
 
       {
-        events: @checker.dest.meeting_events.count + @checker.src_only_event_keys.count,
-        programs: @checker.dest_programs.count + @checker.src_only_program_keys.count,
+        events: @checker.event_map.size,
+        programs: @checker.program_map.size,
         mirs: @checker.dest_mirs.count + src_only_mirs,
         laps: count_expected_laps,
         mrrs: @checker.dest_mrrs.count + src_only_mrrs,

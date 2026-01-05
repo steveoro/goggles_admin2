@@ -235,6 +235,7 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
       puts("\r\nWarning log saved to: #{warning_file}")
       puts("Total warnings: #{merger.warning_log.count}")
     end
+    merger.verify_merge_result unless simulate
 
     puts('Done.')
   end
@@ -493,7 +494,7 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
   #-- -------------------------------------------------------------------------
   #++
 
-  # Creates the specified file under #{SCRIPT_OUTPUT_DIR} by contatenating the log array into
+  # Creates the specified file under #{SCRIPT_OUTPUT_DIR} by concatenating the log array into
   # a single text file.
   # If 'simulate' is +false+, the resulting script will be also executed on localhost using the MySQL client.
   #
