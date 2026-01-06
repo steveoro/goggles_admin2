@@ -25,6 +25,7 @@ class Phase1SessionUpdater
     update_session_fields(sess)
     update_pool_data(sess)
     update_city_data(sess)
+    enrich_city_from_db(sess)
 
     data['meeting_session'] = sessions
     save_data(data)
@@ -127,6 +128,31 @@ class Phase1SessionUpdater
     # Coordinates
     sess['swimming_pool']['city']['latitude'] = city_data['latitude'].to_s.strip if city_data.key?('latitude')
     sess['swimming_pool']['city']['longitude'] = city_data['longitude'].to_s.strip if city_data.key?('longitude')
+  end
+
+  def enrich_city_from_db(sess)
+    city = sess.dig('swimming_pool', 'city')
+    return unless city.is_a?(Hash)
+
+    city_id = city['id'] || city['city_id']
+    return unless city_id.to_i.positive?
+
+    needed_fields = %w[name country area zip country_code latitude longitude]
+    missing = needed_fields.any? { |k| city[k].to_s.strip.empty? }
+    return unless missing
+
+    db_city = GogglesDb::City.find_by(id: city_id)
+    return unless db_city
+
+    city['id'] = db_city.id
+    city['city_id'] ||= db_city.id
+    city['name'] ||= db_city.name
+    city['area'] ||= db_city.area
+    city['zip'] ||= db_city.zip
+    city['country'] ||= db_city.country
+    city['country_code'] ||= db_city.country_code
+    city['latitude'] ||= db_city.latitude&.to_s
+    city['longitude'] ||= db_city.longitude&.to_s
   end
 
   def save_data(data)

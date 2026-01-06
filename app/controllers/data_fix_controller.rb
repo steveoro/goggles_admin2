@@ -20,7 +20,7 @@ class DataFixController < ApplicationController
 
   # rubocop:disable Metrics/AbcSize
   def review_sessions
-    return unless params[:phase_v2].present?
+    return if params[:phase_v2].blank?
 
     @file_path = params[:file_path]
     if @file_path.blank?
@@ -52,7 +52,7 @@ class DataFixController < ApplicationController
     # Fetch existing meeting sessions if meeting_id is present
     meeting_id = @phase1_data['id']
     @existing_meeting_sessions = []
-    return unless meeting_id.present?
+    return if meeting_id.blank?
 
     @existing_meeting_sessions = GogglesDb::MeetingSession.where(meeting_id:)
                                                           .includes(:swimming_pool)
@@ -74,7 +74,7 @@ class DataFixController < ApplicationController
 
   # rubocop:disable Metrics/AbcSize, Metrics/PerceivedComplexity, Metrics/MethodLength, Metrics/CyclomaticComplexity
   def review_teams
-    return unless params[:phase2_v2].present?
+    return if params[:phase2_v2].blank?
 
     @file_path = params[:file_path]
     if @file_path.blank?
@@ -100,7 +100,7 @@ class DataFixController < ApplicationController
     @phase2_data = pfm.data
 
     # Safety: rebuild Phase 2 file if teams dictionary is missing (older generator or corrupted file)
-    if @phase2_data['teams'].nil?
+    if @phase2_data['teams'].blank?
       Import::Solvers::TeamSolver.new(season:).build!(
         source_path: source_path,
         lt_format: lt_format
@@ -150,7 +150,7 @@ class DataFixController < ApplicationController
   # ---------------------------------------------------------------------------
 
   def review_swimmers
-    return unless params[:phase3_v2].present?
+    return if params[:phase3_v2].blank?
 
     @file_path = params[:file_path]
     if @file_path.blank?
@@ -270,7 +270,7 @@ class DataFixController < ApplicationController
   # ---------------------------------------------------------------------------
 
   def review_events # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/MethodLength
-    return unless params[:phase4_v2].present?
+    return if params[:phase4_v2].blank?
 
     @file_path = params[:file_path]
     if @file_path.blank?
@@ -379,7 +379,7 @@ class DataFixController < ApplicationController
 
   # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
   def review_results
-    return unless params[:phase5_v2].present?
+    return if params[:phase5_v2].blank?
 
     @file_path = params[:file_path]
     if @file_path.blank?
@@ -911,6 +911,30 @@ class DataFixController < ApplicationController
     end
 
     teams[team_index] = t
+    # Keep team_affiliations in sync with team edits (team_id/manual selections)
+    affiliations = Array(data['team_affiliations'])
+    season_id = data['season_id'] || params[:season_id]
+    aff_index = affiliations.find_index { |a| a['team_key'] == team_key }
+    if aff_index
+      affiliations[aff_index]['team_id'] = t['team_id']
+      affiliations[aff_index]['season_id'] ||= season_id
+    else
+      affiliations << {
+        'team_key' => team_key,
+        'season_id' => season_id,
+        'team_id' => t['team_id'],
+        'team_affiliation_id' => nil
+      }
+      aff_index = affiliations.size - 1
+    end
+
+    # Try to resolve existing affiliation when team_id and season are present
+    if t['team_id'].to_i.positive? && season_id.to_i.positive?
+      existing_aff = GogglesDb::TeamAffiliation.find_by(team_id: t['team_id'], season_id: season_id)
+      affiliations[aff_index]['team_affiliation_id'] = existing_aff&.id
+    end
+
+    data['team_affiliations'] = affiliations
     data['teams'] = teams
 
     meta = pfm.meta || {}
@@ -1051,6 +1075,32 @@ class DataFixController < ApplicationController
     end
 
     data['swimmers'] = swimmers
+
+    # Keep badges in sync with swimmer edits (ID and existing badge lookup)
+    badges = Array(data['badges'])
+    season_id = data['season_id'] || params[:season_id]
+    base_key = swimmer_key.sub(/^[MF]\|/, '|')
+    badges.each do |badge|
+      bkey = badge['swimmer_key']
+      next unless bkey == swimmer_key || bkey&.include?(base_key)
+
+      badge['swimmer_id'] = swimmer['swimmer_id']
+      # Try to resolve existing badge when IDs are available
+      if swimmer['swimmer_id'].to_i.positive? && badge['team_id'].to_i.positive? && season_id.to_i.positive?
+        existing_badge = GogglesDb::Badge.find_by(
+          season_id: season_id,
+          swimmer_id: swimmer['swimmer_id'],
+          team_id: badge['team_id']
+        )
+        if existing_badge
+          badge['badge_id'] = existing_badge.id
+          badge['number'] ||= existing_badge.number
+          badge['category_type_id'] ||= existing_badge.category_type_id
+          badge['category_type_code'] ||= existing_badge.category_type&.code
+        end
+      end
+    end
+    data['badges'] = badges
 
     # Clear downstream phase data (phase4+) when swimmers are modified
     data['meeting_event'] = [] if data.key?('meeting_event')

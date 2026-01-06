@@ -36,10 +36,10 @@ module Import
         raise StandardError, 'Null meeting_id in datafile object!' if meeting_id.blank?
 
         meeting = GogglesDb::Meeting.find(meeting_id) # Always fail fast
-        attributes = build_calendar_attributes(meeting_hash, meeting)
 
-        # Search existing row for a possible update:
-        existing_row = GogglesDb::Calendar.find_by(meeting_id: meeting.id)
+        # Prefer an existing calendar matched by meeting code/season (or meeting_id)
+        existing_row = find_existing_calendar(meeting)
+        attributes = build_calendar_attributes(meeting_hash, meeting)
 
         if existing_row
           if attributes_changed?(existing_row, attributes)
@@ -81,6 +81,12 @@ module Import
                            entity_key: model_row.meeting_code)
         Rails.logger.info("[Calendar] Created ID=#{model_row.id}, #{model_row.meeting_code}")
         model_row.id
+      rescue ActiveRecord::RecordNotUnique => e
+        # Surface clearer context when hitting DB uniqueness/PK errors
+        details = "Calendar insert failed for meeting_id=#{meeting_id}, meeting_code=#{attributes&.dig('meeting_code')}, season_id=#{attributes&.dig('season_id')}: #{e.message}"
+        Rails.logger.error("[Calendar] #{details}")
+        stats[:errors] << details
+        raise
       end
       # -----------------------------------------------------------------------
 
