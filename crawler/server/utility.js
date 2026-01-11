@@ -501,6 +501,14 @@ module.exports = {
       if (info.eventStroke) {
         info.eventCode = info.eventLength + info.eventStroke
       }
+    } else {
+      // Distance-only descriptions (e.g., "50 m") still capture the length
+      const distanceOnlyMatch = info.eventDescription.match(/((?:[468]x)?\d{2,4})\s*m\b/i)
+      if (distanceOnlyMatch) {
+        const lengthPart = distanceOnlyMatch[1]
+        info.eventLength = lengthPart
+        info.relay = lengthPart.toLowerCase().includes('x')
+      }
     }
 
     // 1.1. Normalize eventGender: F for female, M for male, X for mixed relays ONLY

@@ -888,9 +888,15 @@ class MicroplusCrawler {
         const meetingDate = CrawlUtil.parseFirstMeetingDate(meetingHeader.dates);
         const sanitizedMeetingName = CrawlUtil.sanitizeForFilename(meetingHeader.meetingName);
         
-        let filename, eventInfo;
+        let filename, eventInfo, eventToken;
         if (this.targetEventTitle) {
           eventInfo = CrawlUtil.parseEventInfoFromDescription(this.targetEventTitle, 'FEM'); // Gender ignored
+          // Prefer eventCode; fallback to distance-only token when stroke is missing
+          if (eventInfo?.eventCode) {
+            eventToken = eventInfo.eventCode;
+          } else if (eventInfo?.eventLength) {
+            eventToken = `all${eventInfo.eventLength}`;
+          }
         }
         // DEBUG
         console.log(`[DEBUG] meetingHeader.dates: "${meetingHeader.dates}"`);
@@ -901,12 +907,12 @@ class MicroplusCrawler {
         console.log(`[DEBUG] Condition (meetingDate && sanitizedMeetingName): ${!!(meetingDate && sanitizedMeetingName)}`);
 
         if (meetingDate && sanitizedMeetingName) {
-          filename = eventInfo && eventInfo.eventCode ? `${meetingDate}-${sanitizedMeetingName}-${eventInfo.eventCode}-l${this.layoutType}.json` :
-                                                        `${meetingDate}-${sanitizedMeetingName}-l${this.layoutType}.json`;
+          filename = eventToken ? `${meetingDate}-${sanitizedMeetingName}-${eventToken}-l${this.layoutType}.json` :
+                                  `${meetingDate}-${sanitizedMeetingName}-l${this.layoutType}.json`;
         } else {
           // Fallback to original format if date and place parsing fails
-          filename = eventInfo && eventInfo.eventCode ? `results-${eventInfo.eventCode}-l${this.layoutType}.json` :
-                                                        `results-l${this.layoutType}.json`;
+          filename = eventToken ? `results-${eventToken}-l${this.layoutType}.json` :
+                                  `results-l${this.layoutType}.json`;
         }
         
         const outputPath = path.join(__dirname, `../data/results.new/${this.seasonId}/${filename}`);
