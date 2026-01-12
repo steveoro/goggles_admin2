@@ -44,8 +44,8 @@ module Merge
     #   [SOURCE] ------------------------> [DESTINATION]
     #   - to be purged (ID disappears)  /  - to be kept (ID remains)
     #   1. copies "master" column values into "slave" dest. values (overwritten)
-    #   2. copies source sub-enties which are totally missing from dest.
-    #   3. updates "shared" sub-enties which present some differences at any level of the hierarchy.
+    #   2. copies source sub-entities which are totally missing from dest.
+    #   3. updates "shared" sub-entities which present some differences at any level of the hierarchy.
     #
     # While the first step is pretty straightforward, both the second and third steps
     # involve defining what is a "shared" sub-entity and what may make two rows similar or
@@ -59,7 +59,7 @@ module Merge
     # The typical example are two results identical in timing, for the same meeting, event
     # and swimmer but different in category assignment due to any error.
     #
-    # Given that we can only have 1 swimmer per meeting event per badge, whenver 2 results
+    # Given that we can only have 1 swimmer per meeting event per badge, whenever 2 results
     # identical in timing belong to the same swimmer, meeting event and badge, merging
     # a badge that will imply a category change for the destination will imply also
     # updating all related results to the new, correct MeetingPrograms or "master" rows.

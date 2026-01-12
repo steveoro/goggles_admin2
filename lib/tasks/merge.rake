@@ -100,7 +100,7 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
   #++
 
   desc <<~DESC
-      Analyzes the Team merge process before creating an SQL script that will merges
+      Analyzes the Team merge process before creating an SQL script that will merge
     the source Team row into the destination.
 
     The resulting script won't be applied (and no DB changes will be made) *unless*
@@ -129,6 +129,16 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
 
       - skip_columns: when set to anything different from '0' will enable the "skip" & disable overwriting
         destination row columns with the source swimmer values (toggled on by default).
+
+                ** NOTE THAT THIS TASK PERFORMS A SIMPLIFIED CHECK & MERGE **
+
+      => USE either 'merge:season_fix' (DANGEROUS) or 'merge:badge' FIRST, whenever possible
+        - run 'check:team' first and take note of all possible badge duplicates
+        - run 'check:season' for more confirmation
+        - for "sure team merges", use 'merge:season_fix' for each season involved, but keep in mind
+          that the season fix CANNOT simulate the operations -- or:
+        - run 'merge:badge' for each badge couple reported by the check:team analysis
+        - run 'merge:team' last
 
   DESC
   task(team: [:check_needed_dirs]) do
@@ -421,60 +431,71 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
     # 0) "Possible Mergeable Badges" (same swimmer, sometimes also with same category, similar team names):
     #    (NOTE: this optional step won't be run multiple times)
     if consider_possible_merges
+      array_of_array_of_badges = checker.possible_badge_merges.values.dup
       process_merge_badges(
         step_name: "Step 0: 'POSSIBLE badge merges'",
         subdir: season.id, file_index:,
-        array_of_array_of_badges: checker.possible_badge_merges.values,
+        array_of_array_of_badges:,
         src_team:, dest_team:
       )
       puts("\r\n--> Refreshing BadgeSeasonChecker results...")
       checker.run
       checker.display_short_summary
-      puts("\r\n--> Some residual merge candidates found: re-running step 0...") if checker.possible_badge_merges.present? && src_team.nil?
     end
 
     # 1) "Sure Mergeable Badges" (same swimmer, same event, even when category or team differs):
     #    Note that merge candidates are paired in couples and just the first match is stored in
-    #   "sure_badge_merges"; all other candidates need more runs.
+    #   "sure_badge_merges": all other candidates need more runs.
     while checker.sure_badge_merges.present?
+      array_of_array_of_badges = checker.sure_badge_merges.values.dup
       process_merge_badges(
         step_name: "Step 1: 'sure badge merges'",
         subdir: season.id, file_index:,
-        array_of_array_of_badges: checker.sure_badge_merges.values,
+        array_of_array_of_badges:,
         src_team:, dest_team:
       )
 
       puts("\r\n--> Refreshing BadgeSeasonChecker results...")
       checker.run
       checker.display_short_summary
-      puts("\r\n--> Some residual merge candidates found: re-running step 1...") if checker.sure_badge_merges.present? && src_team.nil?
-      # Don't re-run the process if a src_team is specified (as filtering badges may impede the clearing of all candidates):
-      break if src_team.nil?
+      # Try a new analysis if some badges were actually fixed (and result sizes are different)
+      if checker.sure_badge_merges.values.size == array_of_array_of_badges.size
+        puts("\r\n--> No changes detected: moving on...")
+        break # Bail out on no changes
+      else
+        puts("\r\n--> Some residual merge candidates found: re-running step 1...")
+      end
     end
 
     # 2) Relay-only Badges linked to a relay category and without a known alternative inside same season:
     while checker.relay_only_badges.present?
+      array_of_array_of_badges = checker.relay_only_badges.dup
       process_merge_badges(
         step_name: "Step 2: 'relay-only' badges",
         subdir: season.id,
-        array_of_array_of_badges: checker.relay_only_badges,
+        array_of_array_of_badges:,
         src_team:, dest_team:
       )
 
       puts("\r\n--> Refreshing BadgeSeasonChecker results...")
       checker.run
       checker.display_short_summary
-      puts("\r\n--> Some relay-only candidates found: re-running step 2...") if checker.relay_only_badges.present? && src_team.nil?
-      # Don't re-run the process if a src_team is specified (as filtering badges may impede the clearing of all candidates):
-      break if src_team.nil?
+      # Try a new analysis if some badges were actually fixed (and result sizes are different)
+      if checker.relay_only_badges.size == array_of_array_of_badges.size
+        puts("\r\n--> No changes detected: moving on...")
+        break # Bail out on no changes
+      else
+        puts("\r\n--> Some relay-only candidates found: re-running step 2...")
+      end
     end
 
     # 3) Remaining Badges linked to a relay category and with possibly an alternative category:
     while checker.relay_badges.present?
+      array_of_array_of_badges = checker.relay_badges.dup
       process_merge_badges(
         step_name: 'Step 3: remaining relay badges',
         subdir: season.id,
-        array_of_array_of_badges: checker.relay_badges,
+        array_of_array_of_badges:,
         src_team:, dest_team:
       )
 
@@ -487,7 +508,7 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
         checker.display_report
       end
       # Don't re-run the process if a src_team is specified (as filtering badges may impede the clearing of all candidates):
-      break if src_team.nil?
+      break if src_team.present?
     end
     puts('Done.')
   end

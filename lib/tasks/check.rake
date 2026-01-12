@@ -332,6 +332,61 @@ namespace :check do # rubocop:disable Metrics/BlockLength
   #++
 
   desc <<~DESC
+      Groups all MIRs found for the same swimmer_id and belonging to the same MeetingProgram to
+    highlight and list possible duplicates per swimmers, created either by a wrong badge or team assignment
+    or after a mis-aligned data-import run.
+
+    The output lists all swimmer IDs associated to > 1 MIR for the specified Meeting and inside the same
+    MeetingProgram.
+
+    Options: [Rails.env=#{Rails.env}]
+             meeting_id=<meeting_id>
+
+  DESC
+  task(dup_mir_swimmers: [:environment]) do
+    puts("\r\n*** Task: check:dup_mir_swimmers - Meeting: #{ENV.fetch('meeting_id', nil)} ***")
+    meeting_id = ENV.fetch('meeting_id', nil)
+    unless GogglesDb::Meeting.exists?(id: meeting_id)
+      puts('You need a valid meeting_id to proceed.')
+      exit
+    end
+
+    swimmer_ids = GogglesDb::MeetingIndividualResult.joins(meeting_program: { meeting_event: { meeting_session: :meeting } })
+                                                    .where(meetings: { id: meeting_id })
+                                                    .group(:swimmer_id, 'meeting_programs.id')
+                                                    .having('COUNT(meeting_individual_results.id) > 1')
+                                                    .pluck(:swimmer_id)
+
+    puts("\r\n--> Found #{swimmer_ids.size} swimmers with > 1 MIR for the *SAME* MeetingProgram.")
+    if swimmer_ids.size.positive?
+      swimmers = GogglesDb::Swimmer.where(id: swimmer_ids.uniq)
+      swimmers.each do |swimmer|
+        teams = []
+        puts('-' * 80)
+        puts("\r\n- #{swimmer.id} -> #{swimmer.first_name} #{swimmer.last_name} (#{swimmer.year_of_birth}):")
+        mirs = GogglesDb::MeetingIndividualResult.joins(meeting_program: { meeting_event: { meeting_session: :meeting } })
+                                                 .includes(:team, :badge)
+                                                 .where(meetings: { id: meeting_id }, swimmer_id: swimmer.id)
+        mirs.each do |mir|
+          mev = GogglesDb::MeetingEventDecorator.decorate(mir.meeting_event)
+          teams << mir.team unless teams.include?(mir.team)
+          puts("  MIR ID #{mir.id}: #{mev.short_label} #{mir.to_timing} => team #{mir.team_id}, badge #{mir.badge_id}: '#{mir.team.editable_name}'")
+        end
+        puts("\r\n")
+
+        teams.each do |team|
+          puts("  Team ID #{team.id}: '#{team.editable_name}'")
+        end
+      end
+
+    else
+      puts("THAT'S GOOD! No duplicates!")
+    end
+  end
+  #-- -------------------------------------------------------------------------
+  #++
+
+  desc <<~DESC
       Loops upon all MIRs found for a specific swimmer and reports a mapping
     of all involved teams x swimmer badge for the 5 latest seasons.
 

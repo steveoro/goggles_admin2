@@ -19,7 +19,7 @@ module Merge
     # instance, which instead does more checks and performs additional fixes to prevent
     # data inconsistencies.
     #
-    # === Involved entites (in alphabetical order):
+    # === Involved entities (in alphabetical order):
     #
     # - Badge                   (#team_id, #team_affiliation_id)
     # - ComputedSeasonRanking   (#team_id)
@@ -44,7 +44,7 @@ module Merge
     #
     # Entity rows affected by unique indexes (*) need to be deleted before becoming duplicates.
     #
-    # All other duplicate rows generated with the merge Team process *must* be dealed with
+    # All other duplicate rows generated with the merge Team process *must* be dealt with
     # using the dedicated tasks 'merge:season_fix' or 'merge:badge'.
     # These will perform the necessary cleanup on a season-by-season or badge-by-badge basis.
     #
