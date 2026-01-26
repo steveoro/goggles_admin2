@@ -275,7 +275,7 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
              src=<source_badge_id> dest=<destination_badge_id>
              [index=<auto>] [simulate='0'|<'1'>]
              [keep_dest_columns=<'0'>|'1'] [keep_dest_category=<'0'>|'1']
-             [keep_dest_team=<'0'>|'1'] [force_conflict=<'0'>|'1']
+             [keep_dest_team=<'0'>|'1'] [force=<'0'>|'1']
 
       - index: override for a progressive number appended to the name of the generated file;
 
@@ -293,7 +293,7 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
 
       - keep_dest_team: same as above, but just for team_id & team_affiliation_id.
 
-      - force_conflict: opposite of 'keep_dest_columns'. If no conflict override flags are used,
+      - force: opposite of 'keep_dest_columns'. If no conflict override flags are used,
         the merge will halt in case of conflicting rows (different categories or teams).
 
       - autofix: when set to '1', the script will toggle the above override flags using some
@@ -314,7 +314,7 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
     keep_dest_columns = ENV['keep_dest_columns'] == '1'
     keep_dest_category = ENV['keep_dest_category'] == '1'
     keep_dest_team = ENV['keep_dest_team'] == '1'
-    force_conflict = ENV['force_conflict'] == '1'
+    force = ENV['force'] == '1'
     autofix = ENV['autofix'] == '1'
     mode = dest.nil? ? 'Fixing ' : 'Merging'
 
@@ -330,12 +330,12 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
     puts("#{'- keep ALL dest. columns'.ljust(50, '.')}: ✔") if keep_dest_columns
     puts("#{'- keep dest. category'.ljust(50, '.')}: ✔") if keep_dest_category
     puts("#{'- keep dest. team'.ljust(50, '.')}: ✔") if keep_dest_team
-    puts("#{'- enforce ALL source columns conflicts'.ljust(50, '.')}: ✔") if force_conflict
+    puts("#{'- enforce ALL source columns conflicts'.ljust(50, '.')}: ✔") if force
     puts("#{'- destination folder'.ljust(50, '.')}: #{SCRIPT_OUTPUT_DIR}")
 
     merger = Merge::Badge.new(
       source:, dest:, keep_dest_columns:, keep_dest_category:,
-      keep_dest_team:, force_conflict:, autofix:
+      keep_dest_team:, force:, autofix:
     )
     merger.prepare
     puts('Aborted.') && break if merger.errors.present?
@@ -600,7 +600,7 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
           # Whenever we have a matching dest. badge, force all destination
           # values into source in case of conflicts:
           merger = if dest_team && dest && dest&.team_id == dest_team
-                     Merge::Badge.new(source:, dest:, force_conflict: true)
+                     Merge::Badge.new(source:, dest:, force: true)
                    else
                      # Rely on autofix otherwise:
                      Merge::Badge.new(source:, dest:, autofix: true)
@@ -616,6 +616,73 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
       end
       puts("[Total time for #{slice_size}x runs: #{tms.total}\", progress: #{badges_slice.size + (idx * slice_size)}/#{array_of_array_of_badges.count}]")
     end
+  end
+  #-- -------------------------------------------------------------------------
+  #++
+
+  desc <<~DESC
+    Merge wrongly-assigned team results within a single meeting.
+
+    This task merges all results (MIRs, MRRs, laps, relay_laps) from a wrong team
+    to the correct team within a specific meeting, and cleans up duplicates.
+
+    Options: [meeting=<meeting_id> src=<wrong_team_id> dest=<good_team_id> simulate=<0>|1 index=N full_report=1]
+    - meeting:     the Meeting ID (required)
+    - src:         the source (wrong) Team ID (required)
+    - dest:        the destination (correct) Team ID (required)
+    - simulate:    when set to '0', the script will be executed locally (default: 1)
+    - index:       override the default progressive file index (default: auto)
+    - full_report: when set to '1', displays all IDs (10 per row) and badge merge commands (default: 0)
+
+  DESC
+  task(team_in_1_meeting: [:check_needed_dirs]) do
+    puts '*** Task: merge:team_in_1_meeting ***'
+    meeting = GogglesDb::Meeting.find_by(id: ENV.fetch('meeting', nil).to_i)
+    src_team = GogglesDb::Team.find_by(id: ENV.fetch('src', nil).to_i)
+    dest_team = GogglesDb::Team.find_by(id: ENV.fetch('dest', nil).to_i)
+
+    if meeting.nil? || src_team.nil? || dest_team.nil?
+      puts("You need valid 'meeting', 'src' & 'dest' IDs to proceed.")
+      puts('  meeting: Meeting ID')
+      puts('  src:     source (wrong) Team ID')
+      puts('  dest:    destination (correct) Team ID')
+      exit
+    end
+
+    file_index = ENV['index'].present? ? ENV['index'].to_i : auto_index_from_script_output_dir
+    simulate = ENV['simulate'] != '0'
+    full_report = ENV['full_report'] == '1'
+
+    puts("\r\nMeeting: #{meeting.id} - #{meeting.decorate.display_label}")
+    puts("Merging Team '#{src_team.name}' (#{src_team.id}) |=> '#{dest_team.name}' (#{dest_team.id})")
+    puts("\r\n- simulate.......: #{simulate}")
+    puts("- full_report....: #{full_report}")
+    puts("- dest. folder...: #{SCRIPT_OUTPUT_DIR}\r\n")
+
+    begin
+      merger = Merge::TeamInMeeting.new(meeting:, src_team:, dest_team:, full_report:, index: file_index)
+    rescue ArgumentError => e
+      puts("\r\n*** ERROR: #{e.message}")
+      exit
+    end
+
+    puts("\r\n*** Preview Report: ***\r\n")
+    merger.display_report
+
+    # Always ask for confirmation
+    print "\r\nProceed with merge? [y/N] "
+    response = $stdin.gets&.chomp&.downcase
+    unless response == 'y'
+      puts('Aborted.')
+      exit
+    end
+
+    puts("\r\nPreparing SQL script...")
+    merger.prepare
+
+    file_name = "#{format('%04d', file_index)}-merge_team_in_meeting-#{meeting.id}-#{src_team.id}-to-#{dest_team.id}"
+    process_sql_file(file_name:, sql_log_array: merger.sql_log, simulate:)
+    puts('Done.')
   end
   #-- -------------------------------------------------------------------------
   #++

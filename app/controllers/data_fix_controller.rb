@@ -1086,19 +1086,19 @@ class DataFixController < ApplicationController
 
       badge['swimmer_id'] = swimmer['swimmer_id']
       # Try to resolve existing badge when IDs are available
-      if swimmer['swimmer_id'].to_i.positive? && badge['team_id'].to_i.positive? && season_id.to_i.positive?
-        existing_badge = GogglesDb::Badge.find_by(
-          season_id: season_id,
-          swimmer_id: swimmer['swimmer_id'],
-          team_id: badge['team_id']
-        )
-        if existing_badge
-          badge['badge_id'] = existing_badge.id
-          badge['number'] ||= existing_badge.number
-          badge['category_type_id'] ||= existing_badge.category_type_id
-          badge['category_type_code'] ||= existing_badge.category_type&.code
-        end
-      end
+      next unless swimmer['swimmer_id'].to_i.positive? && badge['team_id'].to_i.positive? && season_id.to_i.positive?
+
+      existing_badge = GogglesDb::Badge.find_by(
+        season_id: season_id,
+        swimmer_id: swimmer['swimmer_id'],
+        team_id: badge['team_id']
+      )
+      next unless existing_badge
+
+      badge['badge_id'] = existing_badge.id
+      badge['number'] ||= existing_badge.number
+      badge['category_type_id'] ||= existing_badge.category_type_id
+      badge['category_type_code'] ||= existing_badge.category_type&.code
     end
     data['badges'] = badges
 

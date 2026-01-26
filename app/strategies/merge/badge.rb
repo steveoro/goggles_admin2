@@ -103,7 +103,7 @@ module Merge
     #      the correct ones; default: +false+ (correct team/affiliation comes from source).
     #      This will also force the merge to ignore any conflicts for team (only).
     #
-    # - <tt>:force_conflict</tt>
+    # - <tt>:force</tt>
     #   => Opposite of 'keep_dest_columns' but for source (uses the full source as key values even in case of differences).
     #      Forces merge from source to destination even in case of category or team conflict (from source).
     #
@@ -122,14 +122,14 @@ module Merge
     #
     # === Conflict options examples:
     # Note that:
-    # - destination overrides have precedence over source overrides ('force_conflict' is checked last);
+    # - destination overrides have precedence over source overrides ('force' is checked last);
     # - in case of conflicts, if no overrides at all are provided, the merge will halt;
     # - the "autofix" option may override or change any of the flags above.
     #
     # /-keep_dest_columns: true
     # |-keep_dest_category: (ignored)
     # |-keep_dest_team: (ignored)
-    # |-force_conflict: (ignored)
+    # |-force: (ignored)
     # |
     # \--> MASTER = destination, will merge with conflicts in category or team,
     #      dest. gets all missing data from source, adapting it accordingly
@@ -138,7 +138,7 @@ module Merge
     # /-keep_dest_columns: (ignored)
     # |-keep_dest_category: true
     # |-keep_dest_team: (ignored)
-    # |-force_conflict: (ignored)
+    # |-force: (ignored)
     # |
     # \--> MASTER = source, but correct category type comes from destination;
     #      merge will ignore ONLY category conflicts and will halt for team conflict,
@@ -155,7 +155,7 @@ module Merge
       @keep_dest_columns = options[:keep_dest_columns].present?
       @keep_dest_category = options[:keep_dest_category].present?
       @keep_dest_team = options[:keep_dest_team].present?
-      @force_conflict = options[:force_conflict].present?
+      @force = options[:force].present?
       @autofix = options[:autofix].present?
       source, dest = setup_autofix_policies(source:, dest:) if @autofix
 
@@ -175,8 +175,8 @@ module Merge
       result_ok = @checker.run
       with_conflict = @dest.present? &&
                       ((@source.category_type_id != @dest.category_type_id) || (@source.team_id != @dest.team_id))
-      can_ignore = @keep_dest_columns || @keep_dest_category || @keep_dest_team || @force_conflict
-      # Halt only in case of unrecoverable errors:
+      can_ignore = @keep_dest_columns || @keep_dest_category || @keep_dest_team || @force
+      # Halt only in case of unskippable or unrecoverable errors:
       if @checker.unrecoverable_conflict || (with_conflict && !can_ignore)
         @checker.display_report
         raise('Unrecoverable errors detected! Cannot continue.')
@@ -284,7 +284,7 @@ module Merge
       @sql_log << '-- Keep ALL dest. columns' if @keep_dest_columns
       @sql_log << '-- Keep dest. category' if @keep_dest_category
       @sql_log << '-- Keep dest. team' if @keep_dest_team
-      @sql_log << '-- Enforce ALL source columns conflicts' if @force_conflict
+      @sql_log << '-- Enforce ALL source columns conflicts' if @force
       @sql_log << ''
     end
     #-- ------------------------------------------------------------------------
@@ -317,7 +317,7 @@ module Merge
 
       elsif !@source.category_type.relay? &&
             (
-              @force_conflict ||
+              @force ||
               (@dest.present? && ((@source.category_type_id == @dest.category_type_id) || @dest.category_type.relay?))
             )
         @final_category_type_id = @source.category_type_id
@@ -342,7 +342,7 @@ module Merge
 
       if @dest.present? && (@keep_dest_columns || @keep_dest_team)
         @final_team_id = @dest.team_id
-      elsif @force_conflict || (@dest.present? && (@source.team_id == @dest.team_id))
+      elsif @force || (@dest.present? && (@source.team_id == @dest.team_id))
         @final_team_id = @source.team_id
       end
       return if @final_team_id.blank? # Signal error otherwise (difference & no forced override)
@@ -360,7 +360,7 @@ module Merge
 
       if @dest.present? && (@keep_dest_columns || @keep_dest_team)
         @final_team_affiliation_id = @dest.team_affiliation_id
-      elsif @force_conflict || (@dest.present? && (@source.team_affiliation_id == @dest.team_affiliation_id))
+      elsif @force || (@dest.present? && (@source.team_affiliation_id == @dest.team_affiliation_id))
         @final_team_affiliation_id = @source.team_affiliation_id
       end
       return if @final_team_affiliation_id.blank? # Signal error otherwise (difference & no forced override)
@@ -1287,7 +1287,7 @@ module Merge
     def setup_autofix_policies(source:, dest:)
       if dest.blank?
         # default conflict resolution ON for "autofix mode":
-        @force_conflict = true
+        @force = true
         return [source, nil]
       end
 
@@ -1295,7 +1295,7 @@ module Merge
       source, dest = dest, source if source.id < dest.id
 
       # Force default conflict resolution, given we have (allegedly) a proper source vs dest.:
-      @force_conflict = true
+      @force = true
 
       # Choose the team_id to be kept by "longer team name":
       @keep_dest_team = true if source.team.editable_name.length <= dest.team.editable_name.length
