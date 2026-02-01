@@ -79,7 +79,7 @@ RSpec.describe Import::PhaseCommitLogger do
       }
     end
 
-    it 'writes formatted log file with stats and entries' do
+    it 'writes formatted log file with stats and entries' do # rubocop:disable RSpec/MultipleExpectations
       logger.log_success(entity_type: 'Meeting', entity_id: 1, action: 'created')
       logger.log_error(message: 'Test error', entity_type: 'Badge')
 

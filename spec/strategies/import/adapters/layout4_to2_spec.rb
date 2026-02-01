@@ -44,7 +44,7 @@ RSpec.describe Import::Adapters::Layout4To2 do
         )
       end
 
-      it 'produces LT2-like structure with inline lapXX and deltaXX keys' do
+      it 'produces LT2-like structure with inline lapXX and deltaXX keys' do # rubocop:disable RSpec/MultipleExpectations
         out = described_class.normalize(data_hash: lt4_hash)
         expect(out['layoutType']).to eq(2)
         expect(out['sections']).to be_an(Array)
@@ -102,7 +102,7 @@ RSpec.describe Import::Adapters::Layout4To2 do
         )
       end
 
-      it 'normalizes relay category and emits inline lapXX/deltaXX keys with swimmers' do
+      it 'normalizes relay category and emits inline lapXX/deltaXX keys with swimmers' do # rubocop:disable RSpec/MultipleExpectations
         out = described_class.normalize(data_hash: relay_lt4_hash)
         expect(out['layoutType']).to eq(2)
         expect(out['sections'].size).to eq(2)
@@ -163,7 +163,7 @@ RSpec.describe Import::Adapters::Layout4To2 do
       end
     end
 
-    context 'relay with unknown gender swimmer keys and blank category' do
+    context 'with relay having unknown gender swimmer keys and blank category' do
       let(:relay_unknown_hash) do
         header.merge(
           'layoutType' => 4,

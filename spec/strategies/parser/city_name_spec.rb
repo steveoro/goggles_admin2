@@ -20,7 +20,7 @@ module Parser
         end
       end
 
-      context 'edge and error cases' do
+      context 'when dealing with edge and error cases' do
         it 'handles address with only city name' do
           expect(described_class.tokenize_address('Rome')).to eq(['Rome', nil, ''])
         end

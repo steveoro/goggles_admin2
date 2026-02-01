@@ -456,8 +456,8 @@ module Merge
       return if badges_x_swimmer_hash.blank?
 
       @log << "\r\n\033[1;33;37m#{title_label} BADGE-MERGE fixes:\033[0m (tot. #{badges_x_swimmer_hash.keys.size})"
-      @log << "[\033[1;33;32m⬅\033[0m : same team_id & category (true duplicates); \033[1;33;38m⬅\033[0m : != category; " \
-              "\033[1;33;34m⬅\033[0m : != team_id; \033[1;33;35m⬅\033[0m : both !=]"
+      @log << "[\033[1;33;32m↔\033[0m : same team_id & category (true duplicates); \033[1;33;38m↗\033[0m : != category, same team; " \
+              "\033[1;33;34m⬅\033[0m : != team_id; \033[1;33;35m✖\033[0m : both !=]"
       # Divide the output into multiple columns:
       badges_x_swimmer_hash.keys.each_slice(3) do |swimmer_ids|
         column_array = []    # Stores the composed formatted row output
@@ -466,13 +466,13 @@ module Merge
           all_same_team = badges_x_swimmer_hash[swimmer_id].map(&:team_id).uniq.size == 1
           all_same_category = badges_x_swimmer_hash[swimmer_id].map(&:category_type_id).uniq.size == 1
           joiner = if all_same_team && all_same_category
-                     " \033[1;33;32m⬅\033[0m "
+                     " \033[1;33;32m↔\033[0m "
                    elsif all_same_team
-                     " \033[1;33;38m⬅\033[0m "
+                     " \033[1;33;38m↗\033[0m "
                    elsif all_same_category
                      " \033[1;33;34m⬅\033[0m "
                    else
-                     " \033[1;33;35m⬅\033[0m "
+                     " \033[1;33;35m✖\033[0m "
                    end
           decorated_list = badges_x_swimmer_hash[swimmer_id].map { |badge| "\033[1;33;33m#{badge.id.to_s.rjust(7)}\033[0m (#{badge.category_type.code})" }
           decorated_list << "\033[1;33;31m⚠\033[0m FIXME (relay category only)" if decorated_list.size == 1

@@ -647,6 +647,7 @@ module Merge
       return if @checker.shared_mevent_ids_from_mirs.keys.blank?
 
       mir_updates = 0
+      mir_deletes = 0
       lap_updates = 0
       lap_deletes = 0
       mprg_inserts = 0
@@ -666,7 +667,7 @@ module Merge
       # 2. 1 MIR for 1 MeetingEvent only => all other MIRs have to be deleted
       # 3. the actual destination MIR must always be tied to @dest badge (when in "merge mode")
       # 4. the MProgram could change (or need to be created) only due to a category change
-      mevent_ids.each do |mevent_id| # rubocop:disable Metrics/BlockLength
+      mevent_ids.each do |mevent_id|
         # NOTE: for each meeting event: 1 Swimmer => 1 Badge => 1 Event => 1 Program => 1 result (many laps)
         src_mirs = GogglesDb::MeetingIndividualResult.joins(:meeting_event).includes(:meeting_event)
                                                      .where(badge_id: @source.id, 'meeting_events.id': mevent_id)
@@ -685,19 +686,23 @@ module Merge
         # Destination program may or may not be already there when there's a difference in category:
         dest_mprg = GogglesDb::MeetingProgram.where(meeting_event_id: mevent_id, category_type_id: final_category_type_id).first
 
-        # Find all Laps missing from destination by rejecting any source lap
-        # for which there's already a correspondent lap:
-        existing_lap_lengths = dest_mir.laps.map(&:length_in_meters)
+        # Get existing destination lap IDs for potential update:
         existing_lap_ids = dest_mir.laps.pluck(:id)
-        missing_lap_ids = src_mir.laps.to_a
-                                 .reject { |lap| existing_lap_lengths.include?(lap.length_in_meters) }
-                                 .pluck(:id)
-        duplicated_lap_ids = src_mir.laps.to_a
-                                    .keep_if { |lap| existing_lap_lengths.include?(lap.length_in_meters) }
-                                    .pluck(:id)
-        # Nothing to update?
+
+        # == ALWAYS delete source MIR and its laps (they are duplicates in a shared event) ==
+        # Delete ALL source laps first (before deleting the source MIR):
+        all_src_lap_ids = src_mir.laps.pluck(:id)
+        if all_src_lap_ids.present?
+          @sql_log << "DELETE FROM laps WHERE id IN (#{all_src_lap_ids.join(', ')});"
+          lap_deletes += all_src_lap_ids.size
+        end
+        # Delete the duplicated source MIR:
+        @sql_log << "DELETE FROM meeting_individual_results WHERE id = #{src_mir.id};"
+        mir_deletes += 1
+
+        # Nothing else to update on destination?
         next if changed_set_statement_values(row_structure: dest_mir).blank? &&
-                existing_lap_ids.empty? && missing_lap_ids.empty? && duplicated_lap_ids.empty? &&
+                existing_lap_ids.empty? &&
                 dest_mprg && (dest_mprg.id == dest_mir.meeting_program_id)
 
         # Just update MIR & laps or Insert MPrg + update MIR & laps?
@@ -708,9 +713,6 @@ module Merge
                       "WHERE id = #{dest_mir.id};"
           mir_updates += 1 # (only 1 MIR for event/badge -- see above)
 
-          # Update missing source Laps with correct IDs:
-          prepare_script_for_laps(mir_id: dest_mir.id, mprg_id: dest_mprg.id, team_id: final_team_id,
-                                  lap_id_list: missing_lap_ids)
           # Update existing dest Laps with correct IDs:
           prepare_script_for_laps(mir_id: dest_mir.id, mprg_id: dest_mprg.id, team_id: final_team_id,
                                   lap_id_list: existing_lap_ids)
@@ -722,28 +724,15 @@ module Merge
                       "WHERE id = #{dest_mir.id};"
           mir_updates += 1 # (only 1 MIR for event/badge -- see above)
 
-          # Update missing source Laps with correct IDs:
-          prepare_script_for_laps(mir_id: dest_mir.id, mprg_id: '@last_id', team_id: final_team_id,
-                                  lap_id_list: missing_lap_ids)
           # Update existing dest Laps with correct IDs:
           prepare_script_for_laps(mir_id: dest_mir.id, mprg_id: '@last_id', team_id: final_team_id,
                                   lap_id_list: existing_lap_ids)
         end
-        lap_updates += missing_lap_ids.size + existing_lap_ids.size
-
-        # Delete any duplicated laps first (usually tied to the duplicated MIRs below):
-        if duplicated_lap_ids.present?
-          @sql_log << "DELETE FROM laps WHERE id IN (#{duplicated_lap_ids.join(', ')});"
-          lap_deletes += duplicated_lap_ids.size
-        end
-        # Delete any duplicated source MIR:
-        @sql_log << "DELETE FROM meeting_individual_results WHERE id = #{src_mir.id};"
+        lap_updates += existing_lap_ids.size
       end
 
-      if mir_updates.positive?
-        @checker.log << "- #{'Shared updates for MIRs'.ljust(44, '.')}: #{mir_updates}"
-        @checker.log << "- #{'Shared deletions for MIRs'.ljust(44, '.')}: #{mir_updates}"
-      end
+      @checker.log << "- #{'Shared updates for MIRs'.ljust(44, '.')}: #{mir_updates}" if mir_updates.positive?
+      @checker.log << "- #{'Shared deletions for MIRs'.ljust(44, '.')}: #{mir_deletes}" if mir_deletes.positive?
       @checker.log << "- #{'Shared updates for Laps'.ljust(44, '.')}: #{lap_updates}" if lap_updates.positive?
       @checker.log << "- #{'Shared deletions for Laps'.ljust(44, '.')}: #{lap_deletes}" if lap_deletes.present?
       @checker.log << "- #{'Shared insertions for MPrograms'.ljust(44, '.')}: #{mprg_inserts}" if mprg_inserts.positive?
@@ -950,6 +939,7 @@ module Merge
       #
       # (*** NOTE: relay category changes in MPrograms for relays are NOT supported! ***)
       mrs_updates = 0
+      mrs_deletes = 0
       mrr_updates = 0
       lap_updates = 0
       lap_deletes = 0
@@ -993,7 +983,7 @@ module Merge
         end
 
         # Loop on all MRSS in this event (both source and destination):
-        src_mrss.each do |src_mrs| # rubocop:disable Metrics/BlockLength
+        src_mrss.each do |src_mrs|
           # Get all existing & matching dest. MRSs belonging to the same "kind" of MProgram (regardless of category,
           # which could be slightly different between the two due to age miscalculations):
           dest_mrss = GogglesDb::MeetingRelaySwimmer.joins(:meeting_event, :meeting_program, :meeting_relay_result)
@@ -1015,16 +1005,19 @@ module Merge
             # Make sure the overlapping MRSs are different in IDs:
             raise("Unexpected: source MRS (ID #{src_mrs.id}) must be != dest. MRS (ID #{dest_mrs.id})!") if src_mrs.id == dest_mrs.id
 
-            # Find all RelayLaps missing from destination by rejecting any source lap
-            # for which there's already a correspondent dest. lap:
-            existing_lap_lengths = dest_mrs.relay_laps.map(&:length_in_meters)
+            # Get existing destination relay lap IDs for potential update:
             existing_lap_ids = dest_mrs.relay_laps.pluck(:id)
-            missing_lap_ids = src_mrs.relay_laps.to_a
-                                     .reject { |lap| existing_lap_lengths.include?(lap.length_in_meters) }
-                                     .pluck(:id)
-            duplicated_lap_ids = src_mrs.relay_laps.to_a
-                                        .keep_if { |lap| existing_lap_lengths.include?(lap.length_in_meters) }
-                                        .pluck(:id)
+
+            # == ALWAYS delete source MRS and its relay_laps (they are duplicates in a shared event) ==
+            # Delete ALL source relay_laps first (before deleting the source MRS):
+            all_src_lap_ids = src_mrs.relay_laps.pluck(:id)
+            if all_src_lap_ids.present?
+              @sql_log << "DELETE FROM relay_laps WHERE id IN (#{all_src_lap_ids.join(', ')});"
+              lap_deletes += all_src_lap_ids.size
+            end
+            # Delete the duplicated source MRS:
+            @sql_log << "DELETE FROM meeting_relay_swimmers WHERE id = #{src_mrs.id};"
+            mrs_deletes += 1
 
             # Update needed for dest.MRR?
             dest_mrr = dest_mrs.meeting_relay_result
@@ -1035,29 +1028,18 @@ module Merge
               mrr_updates += 1
             end
 
-            # Update needed for dest. MRS? (+ RelayLaps)
+            # Nothing else to update on destination MRS? (+ RelayLaps)
             next if changed_set_statement_values(row_structure: dest_mrs).blank? &&
-                    existing_lap_ids.empty? && missing_lap_ids.empty? && duplicated_lap_ids.empty?
+                    existing_lap_ids.empty?
 
             @sql_log << 'UPDATE meeting_relay_swimmers SET ' \
                         "#{full_set_statement_values(row_structure: dest_mrs)} " \
                         "WHERE id = #{dest_mrs.id};"
             mrs_updates += 1
 
-            # Update missing source Laps with correct IDs:
-            prepare_script_for_relay_laps(mrs_id: dest_mrs.id, team_id: final_team_id, lap_id_list: missing_lap_ids)
-
             # Update existing dest Laps with correct IDs:
             prepare_script_for_relay_laps(mrs_id: dest_mrs.id, team_id: final_team_id, lap_id_list: existing_lap_ids)
-            lap_updates += missing_lap_ids.size + existing_lap_ids.size
-
-            # Delete any duplicated laps first (usually tied to the duplicated MRSs below):
-            if duplicated_lap_ids.present?
-              lap_deletes += duplicated_lap_ids.size
-              @sql_log << "DELETE FROM relay_laps WHERE id IN (#{duplicated_lap_ids.join(', ')});"
-            end
-            # Delete any duplicated source MRS:
-            @sql_log << "DELETE FROM meeting_relay_swimmers WHERE id = #{src_mrs.id};"
+            lap_updates += existing_lap_ids.size
             # (dest_mrs)
           end
           # (src_mrs)
@@ -1065,11 +1047,8 @@ module Merge
         # (mevent_id)
       end
 
-      if mrs_updates.positive?
-        # (Each time we update a "shared" MRSs we'll have the same number of deletes:)
-        @checker.log << "- #{'Shared updates for MRSs'.ljust(44, '.')}: #{mrs_updates}"
-        @checker.log << "- #{'Shared deletions for MRSs'.ljust(44, '.')}: #{mrs_updates}"
-      end
+      @checker.log << "- #{'Shared updates for MRSs'.ljust(44, '.')}: #{mrs_updates}" if mrs_updates.positive?
+      @checker.log << "- #{'Shared deletions for MRSs'.ljust(44, '.')}: #{mrs_deletes}" if mrs_deletes.positive?
       @checker.log << "- #{'Updates for MRRs (=> team_id CHANGE!)'.ljust(44, '.')}: #{mrr_updates}" if mrr_updates.positive?
       @checker.log << "- #{'Shared updates for RelayLaps'.ljust(44, '.')}: #{lap_updates}" if lap_updates.positive?
       @checker.log << "- #{'Shared deletions for RelayLaps'.ljust(44, '.')}: #{lap_deletes}" if lap_deletes.present?

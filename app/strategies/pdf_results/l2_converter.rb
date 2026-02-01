@@ -222,8 +222,7 @@ module PdfResults
         # Ignore other unsupported contexts at this depth level:
         next unless event_hash[:name] == 'event'
 
-        # TODO:
-        # If the event_hash has either one of 'meeting_date' and/or 'meeting_place', store
+        # TODO: If the event_hash has either one of 'meeting_date' and/or 'meeting_place', store
         # them into the header to simplify Meeting match later on.
 
         # --- Extract all possible parent section fields from 'event' hash and use them in the loops below: ---
@@ -279,8 +278,7 @@ module PdfResults
             # binding.pry
             # ----------------------------------------------------------------------
 
-            # NOTE:
-            # As opposed to how indiv. results are processed (overriding section default with #fetch_best_category_and_gender_codes_from_any_depth),
+            # NOTE: As opposed to how indiv. results are processed (overriding section default with #fetch_best_category_and_gender_codes_from_any_depth),
             # here the relays are using the 'section' instance to pass around the keys to be used in each iteration.
 
             # Store current relay category & gender so that "unlinked" team relay

@@ -776,7 +776,7 @@ class DataFixController < ApplicationController
 
     # Guard: if no report data in session, redirect to file list
     unless report_data
-      flash[:warning] = 'No commit report data found. Please run Phase 6 commit first.'
+      flash.now[:warning] = 'No commit report data found. Please run Phase 6 commit first.'
       redirect_to(pull_result_files_path) && return
     end
 

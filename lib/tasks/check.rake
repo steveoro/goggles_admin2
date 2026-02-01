@@ -189,11 +189,13 @@ namespace :check do # rubocop:disable Metrics/BlockLength
 
     %i[possible_badge_merges sure_badge_merges].each do |method_name|
       puts("\r\n\033[1;33;37m#{method_name.upcase} candidates w/ badge details:\033[0m (tot. #{checker.send(method_name).size})")
+      puts("#{'SWIMMER'.center(40)} #{'BADGE ID DETAILS'.center(90)}")
       checker.send(method_name).each do |swimmer_id, badge_list|
         deco_list = badge_list.map do |badge|
-          "[ID \033[1;33;33m#{badge.id.to_s.rjust(7)}\033[0m, team #{badge.team_id.to_s.rjust(5)}: #{badge.team.name} / #{badge.category_type.code}]".ljust(100)
+          "[\033[1;33;33m#{badge.id.to_s.rjust(6)}\033[0m, team #{badge.team_id.to_s.rjust(5)}: #{badge.team.name} / #{badge.category_type.code}]".ljust(90)
         end
-        puts("- Swimmer #{swimmer_id.to_s.rjust(6)}, badges: #{deco_list.join('| ')}")
+        swimmer_name = GogglesDb::Swimmer.find(swimmer_id).complete_name
+        puts("- #{swimmer_id.to_s.rjust(5)}, #{swimmer_name.ljust(30)}#{deco_list.join(' ')}")
       end
     end
   end
@@ -332,55 +334,86 @@ namespace :check do # rubocop:disable Metrics/BlockLength
   #++
 
   desc <<~DESC
-      Groups all MIRs found for the same swimmer_id and belonging to the same MeetingProgram to
-    highlight and list possible duplicates per swimmers, created either by a wrong badge or team assignment
-    or after a mis-aligned data-import run.
+      Detects and optionally removes duplicate swimmer results (MIRs, laps, MRSs, relay_laps, MRRs)
+    within a meeting or across all meetings in a season.
 
-    The output lists all swimmer IDs associated to > 1 MIR for the specified Meeting and inside the same
-    MeetingProgram.
+    Duplicates are identified when multiple results exist for the same swimmer in the same program.
+    When autofix=1, generates a SQL script to delete duplicates (keeps lowest ID).
 
     Options: [Rails.env=#{Rails.env}]
-             meeting_id=<meeting_id>
+             meeting_id=<meeting_id> | season_id=<season_id>
+             [autofix=<'0'>|'1']
+             [simulate=<'1'>|'0']
+             [index=<auto>]
+
+    - meeting_id: Check a single meeting (mutually exclusive with season_id)
+    - season_id:  Check all meetings in a season (mutually exclusive with meeting_id)
+    - autofix:    When '1', generates DELETE statements for duplicates (default: 0)
+    - simulate:   When '0', executes the generated script locally (default: 1)
+    - index:      Override the default progressive file index (default: auto)
 
   DESC
-  task(dup_mir_swimmers: [:environment]) do
-    puts("\r\n*** Task: check:dup_mir_swimmers - Meeting: #{ENV.fetch('meeting_id', nil)} ***")
+  task(dup_mir_swimmers: ['merge:check_needed_dirs']) do # rubocop:disable Metrics/BlockLength
+    puts("\r\n*** Task: check:dup_mir_swimmers ***")
     meeting_id = ENV.fetch('meeting_id', nil)
-    unless GogglesDb::Meeting.exists?(id: meeting_id)
-      puts('You need a valid meeting_id to proceed.')
+    season_id = ENV.fetch('season_id', nil)
+    autofix = ENV['autofix'] == '1'
+    simulate = ENV['simulate'] != '0'
+
+    meeting = GogglesDb::Meeting.find_by(id: meeting_id) if meeting_id.present?
+    season = GogglesDb::Season.find_by(id: season_id) if season_id.present?
+
+    if meeting.nil? && season.nil?
+      puts('You need a valid meeting_id or season_id to proceed.')
+      puts('  meeting_id: Check a single meeting')
+      puts('  season_id:  Check all meetings in a season')
       exit
     end
 
-    swimmer_ids = GogglesDb::MeetingIndividualResult.joins(meeting_program: { meeting_event: { meeting_session: :meeting } })
-                                                    .where(meetings: { id: meeting_id })
-                                                    .group(:swimmer_id, 'meeting_programs.id')
-                                                    .having('COUNT(meeting_individual_results.id) > 1')
-                                                    .pluck(:swimmer_id)
+    file_index = ENV['index'].present? ? ENV['index'].to_i : auto_index_from_script_output_dir
 
-    puts("\r\n--> Found #{swimmer_ids.size} swimmers with > 1 MIR for the *SAME* MeetingProgram.")
-    if swimmer_ids.size.positive?
-      swimmers = GogglesDb::Swimmer.where(id: swimmer_ids.uniq)
-      swimmers.each do |swimmer|
-        teams = []
-        puts('-' * 80)
-        puts("\r\n- #{swimmer.id} -> #{swimmer.first_name} #{swimmer.last_name} (#{swimmer.year_of_birth}):")
-        mirs = GogglesDb::MeetingIndividualResult.joins(meeting_program: { meeting_event: { meeting_session: :meeting } })
-                                                 .includes(:team, :badge)
-                                                 .where(meetings: { id: meeting_id }, swimmer_id: swimmer.id)
-        mirs.each do |mir|
-          mev = GogglesDb::MeetingEventDecorator.decorate(mir.meeting_event)
-          teams << mir.team unless teams.include?(mir.team)
-          puts("  MIR ID #{mir.id}: #{mev.short_label} #{mir.to_timing} => team #{mir.team_id}, badge #{mir.badge_id}: '#{mir.team.editable_name}'")
-        end
-        puts("\r\n")
+    puts("\r\n- Meeting.......: #{meeting.id} - #{meeting.decorate.display_label}") if meeting
+    puts("- Season........: #{season.id} - #{season.description}") if season && meeting.nil?
+    puts("- autofix.......: #{autofix}")
+    puts("- simulate......: #{simulate}")
+    puts("- dest. folder..: #{SCRIPT_OUTPUT_DIR}\r\n") if autofix
 
-        teams.each do |team|
-          puts("  Team ID #{team.id}: '#{team.editable_name}'")
+    begin
+      cleaner = if meeting.present?
+                  Merge::DuplicateResultCleaner.new(meeting: meeting, autofix: autofix)
+                else
+                  Merge::DuplicateResultCleaner.new(season: season, autofix: autofix)
+                end
+    rescue ArgumentError => e
+      puts("\r\n*** ERROR: #{e.message}")
+      exit
+    end
+
+    cleaner.display_report
+
+    # If autofix is enabled, generate and optionally execute the script
+    if autofix
+      cleaner.prepare
+      sql_log = cleaner.single_transaction_sql_log
+
+      if sql_log.empty? || sql_log.size <= 5 # Only transaction wrapper, no actual deletions
+        puts("\r\nNo duplicates found requiring deletion.")
+      else
+        # Ask for confirmation
+        print "\r\nProceed with generating fix script? [y/N] "
+        response = $stdin.gets&.chomp&.downcase
+        unless response == 'y'
+          puts('Aborted.')
+          exit
         end
+
+        target_id = meeting&.id || "season_#{season.id}"
+        file_name = "#{format('%04d', file_index)}-fix_dup_results-#{target_id}"
+        process_sql_file(file_name: file_name, sql_log_array: sql_log, simulate: simulate)
+        puts('Done.')
       end
-
     else
-      puts("THAT'S GOOD! No duplicates!")
+      puts("\r\nRun with autofix=1 to generate deletion script.")
     end
   end
   #-- -------------------------------------------------------------------------
@@ -400,6 +433,7 @@ namespace :check do # rubocop:disable Metrics/BlockLength
       - page: page number to display.
 
   DESC
+  # rubocop:disable Layout/LineLength
   task(map_swimmer_mirs: [:environment]) do
     puts("\r\n*** Task: check:map_swimmer_mirs - swimmer #{ENV.fetch('swimmer', nil)} ***")
     swimmer = GogglesDb::Swimmer.find_by(id: ENV['swimmer'].to_i)
@@ -433,6 +467,7 @@ namespace :check do # rubocop:disable Metrics/BlockLength
     end
     puts("\r\n")
   end
+  # rubocop:enable Layout/LineLength
   #-- -------------------------------------------------------------------------
   #++
 end

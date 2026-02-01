@@ -2,6 +2,7 @@
 
 require 'goggles_db'
 
+# rubocop:disable Rake/MethodDefinitionInTask, Metrics/CyclomaticComplexity, Metrics/AbcSize, Metrics/MethodLength, Metrics/PerceivedComplexity, Metrics/BlockLength
 namespace :fixtures do
   desc <<~DESC
     Synchronizes phase fixture files with the anonymized test database.
@@ -512,3 +513,4 @@ namespace :fixtures do
     changed
   end
 end
+# rubocop:enable Rake/MethodDefinitionInTask, Metrics/CyclomaticComplexity, Metrics/AbcSize, Metrics/MethodLength, Metrics/PerceivedComplexity, Metrics/BlockLength

@@ -665,7 +665,7 @@ module PdfResults
 
     # Returns a string representation of the type of result stored by the specified
     # FieldDef or a ContextDef. Usable for logging.
-    def result_icon_for(obj)
+    def result_icon_for(obj) # rubocop:disable Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
       return "\033[1;33;31m⚠\033[0m" unless obj.is_a?(FieldDef) || obj.is_a?(ContextDef)
       return "\033[1;33;33m~\033[0m" if !obj.required? && !((obj.is_a?(ContextDef) && obj.last_validation_result) || obj.key.present?)
       return "\033[1;33;32m✔\033[0m" if obj.key.present? || (obj.is_a?(ContextDef) && obj.last_validation_result)

@@ -34,7 +34,6 @@ RSpec.describe PdfResults::ContextDAO, type: :strategy do
   end
 
   let(:fixture_rank) { (1 + (rand * 50)).to_i.to_s }
-  let(:fixture_name) { FFaker::Name.name }
   let(:fixture_year) { (1980 + (rand * 50)).to_i.to_s }
   let(:parent_category) { (25 + (rand * 40)).to_i.to_s }
   let(:parent_gender) { %w[Femmine Maschi].sample }

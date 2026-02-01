@@ -102,7 +102,7 @@ module Import
       def find_previous_lap(mir_id, current_length)
         GogglesDb::Lap
           .where(meeting_individual_result_id: mir_id)
-          .where('length_in_meters < ?', current_length.to_i)
+          .where(length_in_meters: ...current_length.to_i)
           .order(length_in_meters: :desc)
           .first
       end

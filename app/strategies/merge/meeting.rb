@@ -282,7 +282,7 @@ module Merge
           @sql_log << "UPDATE meeting_individual_results SET updated_at=NOW(), meeting_program_id=#{dest_program_id} WHERE id=#{src_mir.id};"
           @sql_log << "UPDATE laps SET updated_at=NOW(), meeting_program_id=#{dest_program_id} WHERE meeting_individual_result_id=#{src_mir.id};"
         end
-        $stdout.write("\033[1;33;37m.\033[0m") if @console_output
+        Rails.logger.debug("\033[1;33;37m.\033[0m") if @console_output
       end
     end
 
@@ -336,7 +336,7 @@ module Merge
         else
           @sql_log << "UPDATE meeting_relay_results SET updated_at=NOW(), meeting_program_id=#{dest_program_id} WHERE id=#{src_mrr.id};"
         end
-        $stdout.write("\033[1;33;35m.\033[0m") if @console_output
+        Rails.logger.debug("\033[1;33;35m.\033[0m") if @console_output
       end
     end
 

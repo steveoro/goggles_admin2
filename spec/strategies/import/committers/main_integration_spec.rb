@@ -49,7 +49,7 @@ RSpec.describe Import::Committers::Main, type: :strategy do
       expect(stats[:errors]).to eq([])
     end
 
-    it 'loads phase data when load_phase_files! is called' do
+    it 'loads phase data when load_phase_files! is called' do # rubocop:disable RSpec/MultipleExpectations
       committer.send(:load_phase_files!)
 
       phase1_data = committer.instance_variable_get(:@phase1_data)

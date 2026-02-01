@@ -3,6 +3,7 @@
 require 'goggles_db'
 require 'ffaker'
 
+# rubocop:disable Metrics/BlockLength
 namespace :fixtures do
   desc <<~DESC
     Anonymizes swimmer keys in phase fixture files for privacy compliance.
@@ -24,6 +25,7 @@ namespace :fixtures do
       RAILS_ENV=test bundle exec rake fixtures:anonymize_keys fixture_pattern=200RA dry_run=true
 
   DESC
+
   task anonymize_keys: :environment do
     # CRITICAL: Must run in test environment to access test database
     unless Rails.env.test?
@@ -179,3 +181,4 @@ namespace :fixtures do
     "#{new_last_name.upcase}|#{first_name}|#{year}"
   end
 end
+# rubocop:enable Metrics/BlockLength

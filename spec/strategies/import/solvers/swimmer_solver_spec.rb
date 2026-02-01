@@ -92,7 +92,7 @@ RSpec.describe Import::Solvers::SwimmerSolver do
       # No cleanup needed - using existing DB data
     end
 
-    it 'stores badge_id when badge exists' do
+    it 'stores badge_id when badge exists' do # rubocop:disable RSpec/ExampleLength
       # Use existing badge from test DB (with all required associations)
       # Fallback to FactoryBot if no badges exist for this season
       badge = GogglesDb::Badge.joins(:team, :swimmer)
@@ -152,7 +152,7 @@ RSpec.describe Import::Solvers::SwimmerSolver do
       end
     end
 
-    it 'stores category_type_id on badges when category can be calculated' do
+    it 'stores category_type_id on badges when category can be calculated' do # rubocop:disable RSpec/ExampleLength
       swimmer = GogglesDb::Swimmer.first
       team = GogglesDb::Team.first
       meeting_date = '2025-10-15'

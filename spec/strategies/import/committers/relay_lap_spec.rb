@@ -28,7 +28,7 @@ RSpec.describe Import::Committers::RelayLap do
     let(:mrr) { mrs.meeting_relay_result }
 
     context 'when required keys are missing' do
-      let(:data_import_relay_lap) { FactoryBot.build(:data_import_relay_lap, :length_50) }
+      let(:data_import_relay_lap) { FactoryBot.build(:data_import_relay_lap, :length_50) } # rubocop:disable Naming/VariableNumber
 
       it 'returns nil when MRS ID is nil' do
         result = committer.commit(

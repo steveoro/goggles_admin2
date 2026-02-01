@@ -261,7 +261,7 @@ module Merge
     # Builds the event_map: { [scheduled_date, event_type_id] => { src_id:, dest_id: } }
     def build_event_map
       # Add source events
-      @source.meeting_events.includes(:meeting_session).each do |event|
+      @source.meeting_events.includes(:meeting_session).find_each do |event|
         session_key = event.meeting_session.scheduled_date
         key = [session_key, event.event_type_id]
         @event_map[key] ||= { src_id: nil, dest_id: nil }
@@ -269,7 +269,7 @@ module Merge
       end
 
       # Add destination events
-      @dest.meeting_events.includes(:meeting_session).each do |event|
+      @dest.meeting_events.includes(:meeting_session).find_each do |event|
         session_key = event.meeting_session.scheduled_date
         key = [session_key, event.event_type_id]
         @event_map[key] ||= { src_id: nil, dest_id: nil }
@@ -280,7 +280,7 @@ module Merge
     # Builds the program_map: { [event_type_id, category_type_id, gender_type_id] => { src_id:, dest_id:, src_event_id:, dest_event_id: } }
     def build_program_map
       # Add source programs
-      src_programs.includes(:event_type).each do |program|
+      src_programs.includes(:event_type).find_each do |program|
         key = [program.event_type.id, program.category_type_id, program.gender_type_id]
         @program_map[key] ||= { src_id: nil, dest_id: nil, src_event_id: nil, dest_event_id: nil }
         @program_map[key][:src_id] = program.id
@@ -288,7 +288,7 @@ module Merge
       end
 
       # Add destination programs
-      dest_programs.includes(:event_type).each do |program|
+      dest_programs.includes(:event_type).find_each do |program|
         key = [program.event_type.id, program.category_type_id, program.gender_type_id]
         @program_map[key] ||= { src_id: nil, dest_id: nil, src_event_id: nil, dest_event_id: nil }
         @program_map[key][:dest_id] = program.id
@@ -302,7 +302,7 @@ module Merge
 
     # Returns an array of log strings analyzing the session distribution.
     def session_analysis
-      puts('- Sessions analysis...') if @console_output
+      Rails.logger.debug('- Sessions analysis...') if @console_output
       lines = ["\r\n--- Sessions Analysis ---"]
       lines << "Source sessions:      #{src_sessions.count}"
       lines << "Destination sessions: #{dest_sessions.count}"
@@ -323,7 +323,7 @@ module Merge
 
     # Returns an array of log strings analyzing the event distribution.
     def event_analysis
-      puts('- Event analysis...') if @console_output
+      Rails.logger.debug('- Event analysis...') if @console_output
       lines = ["\r\n--- Events Analysis ---"]
       lines << "Source events:      #{@source.meeting_events.count}"
       lines << "Destination events: #{@dest.meeting_events.count}"
@@ -344,7 +344,7 @@ module Merge
 
     # Returns an array of log strings analyzing the program distribution.
     def program_analysis
-      puts('- Program analysis...') if @console_output
+      Rails.logger.debug('- Program analysis...') if @console_output
       lines = ["\r\n--- Programs Analysis ---"]
       lines << "Source programs:      #{src_programs.count}"
       lines << "Destination programs: #{dest_programs.count}"
@@ -367,7 +367,7 @@ module Merge
 
     # Returns an array of log strings analyzing the results distribution.
     def result_analysis
-      puts('- Results & details analysis...') if @console_output
+      Rails.logger.debug('- Results & details analysis...') if @console_output
       lines = ["\r\n--- Results Analysis ---"]
 
       # MIRs

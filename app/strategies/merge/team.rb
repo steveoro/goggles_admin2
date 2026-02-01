@@ -128,6 +128,7 @@ module Merge
     # - MeetingTeamScore        (#team_id, #team_affiliation_id)
     # - [TeamAffiliation]       (#team_id) (*)unique idx with team_id & season_id
     #
+    # rubocop:disable Layout/LineLength
     def prepare_script_for_team_affiliation_links # rubocop:disable Metrics/AbcSize
       # For each source TeamAffiliation, set the correct destination Team & TA for all its sub-entities:
       GogglesDb::TeamAffiliation.where(team_id: @source.id).order(:season_id).each do |src_ta|
@@ -162,6 +163,7 @@ module Merge
         end
       end
     end
+    # rubocop:enable Layout/LineLength
 
     # Prepares the SQL text for the "Team update" phase involving all entities that have a
     # foreign key to the source Team ID.

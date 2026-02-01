@@ -554,15 +554,14 @@ RSpec.describe PdfResults::ContextDef, type: :strategy do
           expect(obj_instance.valid?(def_hash[:src_buffer], 0)).to be true
         end
 
+        # rubocop:disable Performance/CollectionLiteralInLoop
         it 'is true when the scan is correctly set for forward looking among the buffered lines' do
           # Move the source buffer up 2 rows and test it again with a proper offset index:
           expect(obj_instance.valid?(['', ''] + def_hash[:src_buffer], 2)).to be true
-        end
-
-        it 'is true when the scan is correctly set for forward looking among the buffered lines' do
           expect(obj_instance.valid?(['    Riepilogo', '    A20 Under Femmine', ''] + def_hash[:src_buffer], 3))
             .to be true
         end
+        # rubocop:enable Performance/CollectionLiteralInLoop
 
         it 'is false with a misaligned start offset' do
           expect(obj_instance.valid?(def_hash[:src_buffer], 5)).to be false

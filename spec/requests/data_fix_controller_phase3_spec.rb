@@ -35,7 +35,8 @@ RSpec.describe DataFixController do
               'swimmer_id' => nil, 'fuzzy_matches' => [] },
             { 'key' => 'BETA|JANE|1990', 'last_name' => 'Beta', 'first_name' => 'Jane',
               'year_of_birth' => 1990, 'gender_type_code' => 'F', 'complete_name' => 'Beta Jane',
-              'swimmer_id' => swimmer.id, 'fuzzy_matches' => [{ 'id' => swimmer.id, 'display_label' => "#{swimmer.complete_name} (1990, ID: #{swimmer.id}, match: 95%)" }] },
+              'swimmer_id' => swimmer.id, 'fuzzy_matches' => [{ 'id' => swimmer.id,
+                                                                'display_label' => "#{swimmer.complete_name} (1990, ID: #{swimmer.id}, match: 95%)" }] },
             { 'key' => 'GAMMA|BOB|1988', 'last_name' => 'Gamma', 'first_name' => 'Bob',
               'year_of_birth' => 1988, 'gender_type_code' => 'M', 'complete_name' => 'Gamma Bob',
               'swimmer_id' => nil, 'fuzzy_matches' => [] }
@@ -443,7 +444,7 @@ RSpec.describe DataFixController do
         expect(response.body).not_to include('Phase 3: Missing Swimmer Data')
       end
 
-      it 'merges swimmers and badges from auxiliary phase3 files' do
+      it 'merges swimmers and badges from auxiliary phase3 files' do # rubocop:disable RSpec/MultipleExpectations, RSpec/ExampleLength
         File.write(source_file, JSON.pretty_generate(relay_payload))
 
         main_data = {

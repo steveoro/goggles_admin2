@@ -120,7 +120,7 @@ module Import
       def find_previous_relay_lap(mrs_id, current_length)
         GogglesDb::RelayLap
           .where(meeting_relay_swimmer_id: mrs_id)
-          .where('length_in_meters < ?', current_length.to_i)
+          .where(length_in_meters: ...current_length.to_i)
           .order(length_in_meters: :desc)
           .first
       end

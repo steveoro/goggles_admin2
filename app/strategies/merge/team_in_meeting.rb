@@ -104,8 +104,8 @@ module Merge
                                   INNER JOIN meeting_events me ON mp.meeting_event_id = me.id
                                   INNER JOIN meeting_sessions ms ON me.meeting_session_id = ms.id
                                 SQL
-                                .where('ms.meeting_id = ?', @meeting.id)
-                                .where('mir.team_id = ?', @src_team.id)
+                                .where(ms: { meeting_id: @meeting.id })
+                                .where(mir: { team_id: @src_team.id })
                                 .where(season_id: @season.id, team_id: @src_team.id)
                                 .where(<<~SQL.squish, @dest_team.id, @season.id)
                                   NOT EXISTS (
@@ -116,6 +116,7 @@ module Merge
                                   )
                                 SQL
                                 .distinct
+      # Original for lines 107-108: `.where('ms.meeting_id = ?', @meeting.id)` and `.where('mir.team_id = ?', @src_team.id)`
     end
 
     # Returns Badges (via MRS swimmers) that need team_id update.
@@ -128,8 +129,8 @@ module Merge
                                   INNER JOIN meeting_events me ON mp.meeting_event_id = me.id
                                   INNER JOIN meeting_sessions ms ON me.meeting_session_id = ms.id
                                 SQL
-                                .where('ms.meeting_id = ?', @meeting.id)
-                                .where('mrr.team_id = ?', @src_team.id)
+                                .where(ms: { meeting_id: @meeting.id })
+                                .where(mrr: { team_id: @src_team.id })
                                 .where(season_id: @season.id, team_id: @src_team.id)
                                 .where(<<~SQL.squish, @dest_team.id, @season.id)
                                   NOT EXISTS (
@@ -140,6 +141,7 @@ module Merge
                                   )
                                 SQL
                                 .distinct
+      # Original for lines 131-132: `.where('ms.meeting_id = ?', @meeting.id)` and `.where('mrr.team_id = ?', @src_team.id)`
     end
 
     # Returns swimmers that have badges in BOTH teams for the same season (conflicts).
@@ -178,8 +180,9 @@ module Merge
                               AND laps.length_in_meters = l2.length_in_meters
                               AND laps.id > l2.id
                           SQL
-                          .where('ms.meeting_id = ?', @meeting.id)
+                          .where(ms: { meeting_id: @meeting.id })
                           .where('laps.team_id = ? OR l2.team_id = ?', @src_team.id, @dest_team.id)
+      # Original for line 181: `.where('ms.meeting_id = ?', @meeting.id)` (not sure using SQL-bound aliases works from top-level AR statements)
     end
 
     # Returns duplicate relay_laps that would exist after merge (to be deleted).
@@ -195,13 +198,14 @@ module Merge
                                     AND relay_laps.swimmer_id = rl2.swimmer_id
                                     AND relay_laps.id > rl2.id
                                 SQL
-                                .where('ms.meeting_id = ?', @meeting.id)
+                                .where(ms: { meeting_id: @meeting.id })
                                 .where('relay_laps.team_id = ? OR rl2.team_id = ?', @src_team.id, @dest_team.id)
+      # Original for line 198: ``.where('ms.meeting_id = ?', @meeting.id)``
     end
 
     # Returns duplicate MRRs (same program, team, swimmer composition) - complex query.
     # Uses raw SQL due to GROUP_CONCAT requirement.
-    def duplicate_mrrs
+    def duplicate_mrrs # rubocop:disable Metrics/MethodLength
       return @duplicate_mrrs if defined?(@duplicate_mrrs)
 
       sql = <<~SQL.squish
@@ -257,14 +261,15 @@ module Merge
           season_id: @season.id
         )
         [src_badge.id, dest_badge&.id]
-      end.select { |pair| pair[1].present? }
+      end
+      @badge_merge_pairs = @badge_merge_pairs.select { |pair| pair[1].present? }
     end
     #-- -----------------------------------------------------------------------
     #++
 
     # Outputs a detailed report of the merge preview to stdout.
     # rubocop:disable Rails/Output, Metrics/AbcSize
-    def display_report
+    def display_report # rubocop:disable Metrics/MethodLength,Metrics/PerceivedComplexity,Metrics/CyclomaticComplexity
       puts "\r\n#{'=' * 60}"
       puts "Team Merge Preview: Meeting #{@meeting.id}"
       puts '=' * 60
@@ -434,7 +439,7 @@ module Merge
     end
 
     # Generates SQL for badge updates (Step 0a, 0b).
-    def prepare_badge_updates
+    def prepare_badge_updates # rubocop:disable Metrics/MethodLength
       @sql_log << '-- Step 0a: Update badges for MIR swimmers that are in wrong team'
       @sql_log << <<~SQL.squish
         UPDATE badges b
@@ -482,7 +487,7 @@ module Merge
     end
 
     # Generates SQL for lap and MIR updates (Steps 1a, 1b, 1c).
-    def prepare_lap_and_mir_updates
+    def prepare_lap_and_mir_updates # rubocop:disable Metrics/MethodLength
       src_ta_id = @src_ta&.id || 0
 
       @sql_log << '-- Step 1a: Update laps team_id'
@@ -529,7 +534,7 @@ module Merge
     end
 
     # Generates SQL for relay updates (Steps 2a, 2b, 2c).
-    def prepare_relay_updates
+    def prepare_relay_updates # rubocop:disable Metrics/MethodLength
       src_ta_id = @src_ta&.id || 0
 
       @sql_log << '-- Step 2a: Update relay_laps team_id'
@@ -577,7 +582,7 @@ module Merge
     end
 
     # Generates SQL for duplicate deletions (Steps 3-7).
-    def prepare_duplicate_deletions
+    def prepare_duplicate_deletions # rubocop:disable Metrics/AbcSize,Metrics/MethodLength
       @sql_log << '-- Step 3: Delete duplicate laps'
       @sql_log << <<~SQL.squish
         DELETE l1

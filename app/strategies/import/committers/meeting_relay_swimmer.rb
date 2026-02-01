@@ -119,7 +119,7 @@ module Import
 
         GogglesDb::MeetingRelaySwimmer
           .where(meeting_relay_result_id: mrr_id)
-          .where('relay_order < ?', current_order.to_i)
+          .where(relay_order: ...current_order.to_i)
           .order(relay_order: :desc)
           .first
       end

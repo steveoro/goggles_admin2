@@ -81,9 +81,11 @@ module Parser
       # DEBUG ----------------------------------------------------------------
       # --> Left here because this is not supposed to be ever true <--
       # If this edge case happens, a new EventType/StrokeType tuple must be added to the database seeds.
+      # rubocop:disable Lint/Debugger
       binding.pry if GogglesDb::EventType.joins(:stroke_type).includes(:stroke_type)
                                          .find_by(phases:, length_in_meters:, phase_length_in_meters:,
                                                   stroke_type_id:, mixed_gender:).blank?
+      # rubocop:enable Lint/Debugger
       # ----------------------------------------------------------------------
       [
         GogglesDb::EventType.joins(:stroke_type).includes(:stroke_type)
