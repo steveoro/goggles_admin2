@@ -116,7 +116,7 @@ module Import
         hsh['place']
       end
 
-      def extract_pool_length(hsh, _lt)
+      def extract_pool_length(hsh, _lt) # rubocop:disable Naming/MethodParameterName
         hsh['poolLength']
       end
 
@@ -144,7 +144,7 @@ module Import
         end
       end
 
-      def assign_date_parts(out, idx, y, m, d)
+      def assign_date_parts(out, idx, y, m, d) # rubocop:disable Naming/MethodParameterName
         return unless y && m && d
 
         out["dateYear#{idx}"]  = y
@@ -152,7 +152,7 @@ module Import
         out["dateDay#{idx}"]   = d
       end
 
-      def month_name(i)
+      def month_name(i) # rubocop:disable Naming/MethodParameterName
         %w[Gennaio Febbraio Marzo Aprile Maggio Giugno Luglio Agosto Settembre Ottobre Novembre Dicembre][i - 1]
       rescue StandardError
         nil

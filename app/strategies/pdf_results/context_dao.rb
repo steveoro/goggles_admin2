@@ -46,7 +46,7 @@ module PdfResults
   # of depth in the data hierarchy, regardless of how many rows the ContextDef spans.
   # (All of its fields will become same-level keys in the resulting #data_hash).
   #
-  class ContextDAO
+  class ContextDAO # rubocop:disable Metrics/ClassLength
     # Properties from source ContextDef
     attr_reader :name, :key, :parent, :parent_name
 

@@ -159,10 +159,12 @@ module Import
         # Check validation before saving
         unless model_row.valid?
           error_details = GogglesDb::ValidationErrorTools.recursive_error_for(model_row)
-          stats[:errors] << "Badge error (swimmer_id=#{attributes['swimmer_id']}, swimmer_key=#{attributes['swimmer_key']}, team_id=#{attributes['team_id']}, team_key=#{attributes['team_key']}): #{error_details}"
+          stats[:errors] << "Badge error (swimmer_id=#{attributes['swimmer_id']}, swimmer_key=#{attributes['swimmer_key']}, " \
+                            "team_id=#{attributes['team_id']}, team_key=#{attributes['team_key']}): #{error_details}"
           logger.log_validation_error(
             entity_type: 'Badge',
-            entity_key: "swimmer_id=#{attributes['swimmer_id']}, swimmer_key=#{attributes['swimmer_key']}, team_id=#{attributes['team_id']}, team_key=#{attributes['team_key']}",
+            entity_key: "swimmer_id=#{attributes['swimmer_id']}, swimmer_key=#{attributes['swimmer_key']}, " \
+                        "team_id=#{attributes['team_id']}, team_key=#{attributes['team_key']}",
             entity_id: model_row&.id,
             model_row: model_row,
             error: error_details

@@ -210,7 +210,8 @@ class BestResultsController < ApplicationController # rubocop:disable Metrics/Cl
           result.meeting.description,
           result.meeting.header_date.to_s,
           result.season.decorate.short_label
-        ], style: [data_style, right_style, right_style, right_style, center_style, right_style, right_style, center_style, right_style, data_style, center_style, data_style]
+        ], style: [data_style, right_style, right_style, right_style, center_style, right_style,
+                   right_style, center_style, right_style, data_style, center_style, data_style]
       end
 
       # Adjust column widths

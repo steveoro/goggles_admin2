@@ -82,12 +82,12 @@ class DataFixLegacyController < ApplicationController
       meeting:,
       session_order:,
       date_day: last_session&.scheduled_date&.day || @solver.data['dateDay1'],
-      date_month: last_session ? Parser::SessionDate::MONTH_NAMES[last_session&.scheduled_date&.month&.- 1] : @solver.data['dateMonth1'],
+      date_month: last_session ? Parser::SessionDate::MONTH_NAMES[last_session&.scheduled_date&.month&.- 1] : @solver.data['dateMonth1'], # rubocop:disable Style/SafeNavigationChainLength
       date_year: last_session&.scheduled_date&.year || @solver.data['dateYear1'],
       scheduled_date: last_session&.scheduled_date,
       pool_name:,
       address: @solver.data['address2'].presence || @solver.data['address1'],
-      pool_length: last_session&.swimming_pool&.pool_type&.code || @solver.data['poolLength']
+      pool_length: last_session&.swimming_pool&.pool_type&.code || @solver.data['poolLength'] # rubocop:disable Style/SafeNavigationChainLength
     )
     if new_session
       new_session.add_bindings!('meeting' => @solver.data['name'])
@@ -490,7 +490,8 @@ class DataFixLegacyController < ApplicationController
       if binding_model_name != 'city' && updated_attrs.key?('key') # (special/bespoke sub-association form field naming for binding keys)
         # Try to detect invalid form indexes:
         if updated_attrs['key'].to_s.size != 1
-          raise("ERROR: bindings key for ['#{model_name}']['#{entity_key}'] is potentially invalid: '#{updated_attrs['key']}', it should be a single-digit integer or string.")
+          raise("ERROR: bindings key for ['#{model_name}']['#{entity_key}'] is potentially invalid: " \
+                "'#{updated_attrs['key']}', it should be a single-digit integer or string.")
         end
 
         @solver.data[model_name]&.dig(entity_key, 'bindings')&.merge!(
@@ -790,7 +791,7 @@ class DataFixLegacyController < ApplicationController
     # Assumes the file path shouldn't change in between model rows, so the following should be ok
     # even when params stores more than 1 row of model attributes:
     # (Example: { 'team' => { <any_team_index> => { 'file_path' => <file path string>, <other team attributes...> } } })
-    edit_params[params[:model]]&.values&.first&.[]('file_path')
+    edit_params[params[:model]]&.values&.first&.[]('file_path') # rubocop:disable Style/SafeNavigationChainLength
   end
 
   # Setter for @file_path; expects the 'file_path' parameter to be present.
@@ -807,7 +808,7 @@ class DataFixLegacyController < ApplicationController
   # Parses the contents of @file_path assuming it's valid JSON.
   # Sets @data_hash with the parsed contents, which shall be used to initialize the @solver member.
   # Redirects to #pull/index in case of errors.
-  def parse_file_contents
+  def parse_file_contents # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
     file_content = File.read(@file_path)
     begin
       @data_hash = JSON.parse(file_content.force_encoding('UTF-8'))

@@ -49,7 +49,7 @@ class PdfController < ApplicationController
     return if fp.result_format_type.blank?
 
     logger.info("\r\n--> Extracting data hash...")
-    data_hash = fp.root_dao&.collect_data&.fetch(:rows, [])&.find { |hsh| hsh[:name] == 'header' }
+    data_hash = fp.root_dao&.collect_data&.fetch(:rows, [])&.find { |hsh| hsh[:name] == 'header' } # rubocop:disable Style/SafeNavigationChainLength
     # DEBUG ----------------------------------------------------------------
     # binding.pry
     # ----------------------------------------------------------------------

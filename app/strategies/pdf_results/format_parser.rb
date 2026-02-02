@@ -240,7 +240,7 @@ module PdfResults
 
         # Update file name, key format name & family name:
         format_filepath = fmt_files[fmt_files_idx]
-        current_fname = format_filepath&.basename&.to_s&.gsub('.yml', '')
+        current_fname = format_filepath&.basename&.to_s&.gsub('.yml', '') # rubocop:disable Style/SafeNavigationChainLength
         ffamily_name = current_fname&.split('.')&.first
 
         # Already checked using same format at same page? => Bail out!

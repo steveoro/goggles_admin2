@@ -82,11 +82,13 @@ module Merge
       @sql_log << "DELETE FROM swimmers WHERE id=#{@source.id};"
 
       # Overwrite all commonly used columns at the end, if requested (this will update the index too):
+      # rubocop:disable Layout/LineLength
       unless @skip_columns
         @sql_log << "UPDATE swimmers SET updated_at=NOW(), last_name=\"#{@source.last_name}\", first_name=\"#{@source.first_name}\", year_of_birth=#{@source.year_of_birth},"
         @sql_log << "  complete_name=\"#{@source.complete_name}\", nickname=\"#{@source.nickname || 'NULL'}\","
         @sql_log << "  associated_user_id=#{@source.associated_user_id || 'NULL'}, gender_type_id=#{@source.gender_type_id}, year_guessed=#{@source.year_guessed} WHERE id=#{@dest.id};\r\n"
       end
+      # rubocop:enable Layout/LineLength
 
       @sql_log << ''
       @sql_log << 'COMMIT;'

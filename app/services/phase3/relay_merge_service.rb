@@ -6,7 +6,7 @@ module Phase3
   # RelayMergeService merges swimmer and badge data from auxiliary Phase 3 files
   # into the primary Phase 3 payload. It favours filling missing attributes on
   # existing swimmers and keeps badge entries unique.
-  class RelayMergeService
+  class RelayMergeService # rubocop:disable Metrics/ClassLength
     SWIMMER_KEY = 'key'
     BADGE_SIGNATURE_FIELDS = %w[swimmer_key team_key season_id badge_id].freeze
 
@@ -80,7 +80,7 @@ module Phase3
 
     # Enrich swimmers from badges using partial key matching
     # Badges often have more complete keys (with gender) from individual results
-    def enrich_swimmers_from_badges(badges)
+    def enrich_swimmers_from_badges(badges) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
       # Build badge indexes for partial matching
       badges_by_name_yob = Hash.new { |h, k| h[k] = [] }
 
@@ -136,7 +136,7 @@ module Phase3
     # Enrich swimmers with missing data using partial key matching
     # - For missing gender: find aux swimmers matching |LAST|FIRST|YOB (ignoring gender prefix)
     # - For missing YOB: find aux swimmers matching G|LAST|FIRST| (ignoring YOB suffix)
-    def enrich_from_partial_matches(aux_swimmers)
+    def enrich_from_partial_matches(aux_swimmers) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
       # Build aux indexes for partial matching
       aux_by_name_yob = Hash.new { |h, k| h[k] = [] } # |LAST|FIRST|YOB => [swimmers]
       aux_by_gender_name = Hash.new { |h, k| h[k] = [] } # G|LAST|FIRST| => [swimmers]

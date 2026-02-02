@@ -298,6 +298,7 @@ module Merge
       src_laps = GogglesDb::Lap.where(meeting_individual_result_id: src_mir.id)
       return if src_laps.empty?
 
+      # rubocop:disable Layout/LineLength
       if dest_laps.empty?
         @sql_log << "UPDATE laps SET updated_at=NOW(), meeting_program_id=#{dest_mir.meeting_program_id}, meeting_individual_result_id=#{dest_mir.id} WHERE meeting_individual_result_id=#{src_mir.id};"
       else
@@ -312,6 +313,7 @@ module Merge
         end
         @sql_log << "DELETE FROM laps WHERE meeting_individual_result_id=#{src_mir.id};"
       end
+      # rubocop:enable Layout/LineLength
     end
 
     def prepare_script_for_relay_results
@@ -486,10 +488,12 @@ module Merge
 
     def prepare_script_for_deprecated_entities
       @sql_log << "\r\n-- === DEPRECATED ENTITIES (DELETE) ==="
+      # rubocop:disable Layout/LineLength
       @sql_log << "DELETE FROM meeting_entries WHERE meeting_program_id IN (SELECT id FROM meeting_programs WHERE meeting_event_id IN (SELECT id FROM meeting_events WHERE meeting_session_id IN (SELECT id FROM meeting_sessions WHERE meeting_id=#{@source.id})));"
       @sql_log << "DELETE FROM meeting_event_reservations WHERE meeting_id=#{@source.id};"
       @sql_log << "DELETE FROM meeting_relay_reservations WHERE meeting_id=#{@source.id};"
       @sql_log << "DELETE FROM meeting_reservations WHERE meeting_id=#{@source.id};"
+      # rubocop:enable Layout/LineLength
     end
 
     def prepare_script_for_calendar

@@ -71,7 +71,7 @@ RSpec.describe DataFixController do
         expect(pfm.data['name']).to eq('Updated Meeting Name')
       end
 
-      it 'updates all meeting fields' do
+      it 'updates all meeting fields' do # rubocop:disable RSpec/MultipleExpectations
         edition_type = GogglesDb::EditionType.first
         timing_type = GogglesDb::TimingType.first
 
@@ -161,7 +161,7 @@ RSpec.describe DataFixController do
         expect(sess['day_part_type_id']).to eq(day_part_type.id)
       end
 
-      it 'updates nested pool data' do
+      it 'updates nested pool data' do # rubocop:disable RSpec/MultipleExpectations
         patch update_phase1_session_path, params: {
           file_path: source_file,
           session_index: 0,
@@ -260,7 +260,7 @@ RSpec.describe DataFixController do
         pfm.write!(data: phase1_data, meta: { 'generator' => 'test' })
       end
 
-      it 'creates a new blank session' do
+      it 'creates a new blank session' do # rubocop:disable RSpec/MultipleExpectations
         post data_fix_add_session_path, params: { file_path: source_file }
         expect(response).to have_http_status(:redirect)
         expect(response.location).to include('/data_fix/review_sessions')
@@ -462,7 +462,7 @@ RSpec.describe DataFixController do
         pfm.write!(data: phase1_data, meta: { 'generator' => 'test' })
       end
 
-      it 'rebuilds sessions from existing meeting' do
+      it 'rebuilds sessions from existing meeting' do # rubocop:disable RSpec/MultipleExpectations
         post rescan_phase1_sessions_path, params: {
           file_path: source_file,
           meeting_id: meeting.id

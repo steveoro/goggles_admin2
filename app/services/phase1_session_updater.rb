@@ -34,7 +34,7 @@ class Phase1SessionUpdater
 
   private
 
-  def update_session_fields(sess)
+  def update_session_fields(sess) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
     # Basic session fields
     if @params.key?(:meeting_session_id)
       raw = @params[:meeting_session_id].to_s.strip
@@ -56,7 +56,7 @@ class Phase1SessionUpdater
     end
   end
 
-  def update_pool_data(sess)
+  def update_pool_data(sess) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
     allowed_pool_keys = %w[id swimming_pool_id name nick_name address pool_type_id lanes_number maps_uri plus_code latitude longitude city_id]
     pool_data = Phase1NestedParamParser.parse(@params[:pool], allowed_pool_keys, @session_index)
 
@@ -97,7 +97,7 @@ class Phase1SessionUpdater
     sess['swimming_pool']['longitude'] = pool_data['longitude'].to_s.strip if pool_data.key?('longitude')
   end
 
-  def update_city_data(sess)
+  def update_city_data(sess) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
     allowed_city_keys = %w[id city_id name area zip country country_code latitude longitude]
     city_data = Phase1NestedParamParser.parse(@params[:city], allowed_city_keys, @session_index)
 
@@ -130,7 +130,7 @@ class Phase1SessionUpdater
     sess['swimming_pool']['city']['longitude'] = city_data['longitude'].to_s.strip if city_data.key?('longitude')
   end
 
-  def enrich_city_from_db(sess)
+  def enrich_city_from_db(sess) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
     city = sess.dig('swimming_pool', 'city')
     return unless city.is_a?(Hash)
 

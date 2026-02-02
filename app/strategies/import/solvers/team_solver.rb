@@ -115,7 +115,7 @@ module Import
         File.join(dir, "#{base}-phase#{phase_num}.json")
       end
 
-      def extract_team_name(t)
+      def extract_team_name(t) # rubocop:disable Naming/MethodParameterName
         return t if t.is_a?(String)
         return t['name'] if t.is_a?(Hash)
 

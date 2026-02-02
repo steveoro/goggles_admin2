@@ -86,7 +86,7 @@ namespace :fixtures do
   end
 
   # Process a single phase file
-  def process_phase_file(file_path, dry_run, stats)
+  def process_phase_file(file_path, dry_run, stats) # rubocop:disable Rake/MethodDefinitionInTask
     filename = File.basename(file_path)
     puts "\r\n--- Processing: #{filename} ---"
 
@@ -121,12 +121,12 @@ namespace :fixtures do
     end
   end
 
-  def extract_phase_number(filename)
+  def extract_phase_number(filename) # rubocop:disable Rake/MethodDefinitionInTask
     filename[/phase(\d+)/, 1]&.to_i
   end
 
   # Phase 1: Meeting, MeetingSessions
-  def process_phase1(data, stats)
+  def process_phase1(data, stats) # rubocop:disable Rake/MethodDefinitionInTask,Metrics/AbcSize,Metrics/MethodLength
     modified = false
     phase_data = data['data']
 
@@ -182,7 +182,7 @@ namespace :fixtures do
   end
 
   # Phase 2: Teams, TeamAffiliations
-  def process_phase2(data, stats)
+  def process_phase2(data, stats) # rubocop:disable Rake/MethodDefinitionInTask,Metrics/AbcSize,Metrics/MethodLength
     modified = false
     phase_data = data['data']
 
@@ -247,7 +247,7 @@ namespace :fixtures do
   end
 
   # Phase 3: Swimmers, Badges
-  def process_phase3(data, stats)
+  def process_phase3(data, stats) # rubocop:disable Rake/MethodDefinitionInTask,Metrics/AbcSize,Metrics/MethodLength
     modified = false
     phase_data = data['data']
 
@@ -311,7 +311,7 @@ namespace :fixtures do
   end
 
   # Phase 4: MeetingEvents
-  def process_phase4(data, stats)
+  def process_phase4(data, stats) # rubocop:disable Rake/MethodDefinitionInTask,Metrics/AbcSize
     modified = false
     phase_data = data['data']
 
@@ -348,7 +348,7 @@ namespace :fixtures do
   end
 
   # Phase 5: MeetingIndividualResults, Laps (via DataImport models)
-  def process_phase5(_data, _stats)
+  def process_phase5(_data, _stats) # rubocop:disable Rake/MethodDefinitionInTask
     # Phase 5 uses DataImport models which don't have direct DB IDs yet
     # This phase is typically generated fresh, so no sync needed
     puts '  Phase 5 processing: skipped (uses DataImport models)'
@@ -357,7 +357,7 @@ namespace :fixtures do
 
   # Sync methods - update hash with DB values
 
-  def sync_meeting!(hash, meeting)
+  def sync_meeting!(hash, meeting) # rubocop:disable Rake/MethodDefinitionInTask
     changed = false
 
     # Sync core attributes with DB (anonymized values)
@@ -381,7 +381,7 @@ namespace :fixtures do
     changed
   end
 
-  def sync_meeting_session!(hash, session)
+  def sync_meeting_session!(hash, session) # rubocop:disable Rake/MethodDefinitionInTask
     changed = false
 
     db_attrs = {
@@ -400,7 +400,7 @@ namespace :fixtures do
     changed
   end
 
-  def sync_team!(hash, team)
+  def sync_team!(hash, team) # rubocop:disable Rake/MethodDefinitionInTask
     changed = false
 
     # Use anonymized DB values (FFaker-generated)
@@ -426,7 +426,7 @@ namespace :fixtures do
     changed
   end
 
-  def sync_team_affiliation!(hash, affiliation)
+  def sync_team_affiliation!(hash, affiliation) # rubocop:disable Rake/MethodDefinitionInTask
     changed = false
 
     db_attrs = {
@@ -445,7 +445,7 @@ namespace :fixtures do
     changed
   end
 
-  def sync_swimmer!(hash, swimmer)
+  def sync_swimmer!(hash, swimmer) # rubocop:disable Rake/MethodDefinitionInTask
     changed = false
 
     # Use anonymized DB values (FFaker-generated names)
@@ -473,7 +473,7 @@ namespace :fixtures do
     changed
   end
 
-  def sync_badge!(hash, badge)
+  def sync_badge!(hash, badge) # rubocop:disable Rake/MethodDefinitionInTask
     changed = false
 
     db_attrs = {
@@ -493,7 +493,7 @@ namespace :fixtures do
     changed
   end
 
-  def sync_meeting_event!(hash, event)
+  def sync_meeting_event!(hash, event) # rubocop:disable Rake/MethodDefinitionInTask
     changed = false
 
     db_attrs = {

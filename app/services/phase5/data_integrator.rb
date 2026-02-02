@@ -11,7 +11,7 @@ module Phase5
   #
   # Follows legacy l2_converter.rb patterns for category inference.
   #
-  class DataIntegrator
+  class DataIntegrator # rubocop:disable Metrics/ClassLength
     attr_reader :source_data, :phase3_data, :season, :categories_cache
 
     # Initialize with source data and phase 3 data for swimmer lookup
@@ -155,7 +155,7 @@ module Phase5
         tokens = swimmer_key.split('|')
         if tokens.size >= 5
           gender_code = tokens[0].to_s.strip.upcase
-          genders << gender_code if %w[M F].include?(gender_code)
+          genders << gender_code if %w[M F].include?(gender_code) # rubocop:disable Performance/CollectionLiteralInLoop
         else
           # 4-token format has no gender: "LAST|FIRST|YEAR|TEAM"
           # Try to lookup from phase3 data

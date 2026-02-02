@@ -515,7 +515,7 @@ module Merge
     end
 
     # Assumes +ir+ is a valid IndividualRecord instance.
-    def decorate_ir(ir) # rubocop:disable Metrics/AbcSize
+    def decorate_ir(ir) # rubocop:disable Metrics/AbcSize, Naming/MethodParameterName
       "[IR  #{ir.id.to_s.rjust(7)}] Swimmer ID #{ir.swimmer_id.to_s.rjust(7)}) #{ir&.swimmer&.complete_name} #{ir&.swimmer&.year_of_birth}, Team ID #{ir.team_id}) #{ir&.team&.name}\r\n  " \
         "[MIR #{ir.meeting_individual_result_id.to_s.rjust(7)}] Swimmer ID #{ir&.meeting_individual_result&.swimmer_id.to_s.rjust(7)}) " \
         "#{ir&.meeting_individual_result&.swimmer&.complete_name} #{ir&.meeting_individual_result&.swimmer&.year_of_birth}, " \
@@ -778,7 +778,7 @@ module Merge
     end
 
     # Assuming <tt>ur</tt> is a GogglesDb::UserResult, returns a displayable label for the row.
-    def decorate_ur(ur)
+    def decorate_ur(ur) # rubocop:disable Naming/MethodParameterName
       ur_season_id = ur.season.id
       "[UR #{ur.id}, UserWorkshop #{ur.user_workshop_id}] swimmer_id: #{ur.swimmer_id} (#{ur.swimmer.complete_name}) category_type_id: #{ur.category_type_id}, season: #{ur_season_id}"
     end

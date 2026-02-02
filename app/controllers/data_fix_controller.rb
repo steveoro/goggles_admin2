@@ -18,7 +18,7 @@ class DataFixController < ApplicationController
   # Expose issue detection helpers to views
   helper_method :swimmer_has_missing_data?, :relay_result_has_issues?
 
-  # rubocop:disable Metrics/AbcSize
+  # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
   def review_sessions
     return if params[:phase_v2].blank?
 
@@ -72,7 +72,7 @@ class DataFixController < ApplicationController
   # rubocop:enable Metrics/AbcSize
   # ---------------------------------------------------------------------------
 
-  # rubocop:disable Metrics/AbcSize, Metrics/PerceivedComplexity, Metrics/MethodLength, Metrics/CyclomaticComplexity
+  # rubocop:disable Metrics/AbcSize
   def review_teams
     return if params[:phase2_v2].blank?
 
@@ -377,7 +377,7 @@ class DataFixController < ApplicationController
   end
   # ---------------------------------------------------------------------------
 
-  # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
+  # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
   def review_results
     return if params[:phase5_v2].blank?
 
@@ -609,7 +609,7 @@ class DataFixController < ApplicationController
     mrr_count = GogglesDb::DataImportMeetingRelayResult.where(phase_file_path: source_path).count
 
     if mir_count.zero? && mrr_count.zero?
-      flash[:error] = 'No Phase 5 data found. Please rescan Phase 5 (Results) before committing.'
+      flash[:error] = 'No Phase 5 data found. Please rescan Phase 5 (Results) before committing.' # rubocop:disable Rails/I18nLocaleTexts
       redirect_to(review_results_path(file_path: file_path, phase5_v2: 1, rescan: 1)) && return
     end
 
@@ -776,7 +776,7 @@ class DataFixController < ApplicationController
 
     # Guard: if no report data in session, redirect to file list
     unless report_data
-      flash.now[:warning] = 'No commit report data found. Please run Phase 6 commit first.'
+      flash.now[:warning] = 'No commit report data found. Please run Phase 6 commit first.' # rubocop:disable Rails/I18nLocaleTexts
       redirect_to(pull_result_files_path) && return
     end
 
@@ -813,7 +813,7 @@ class DataFixController < ApplicationController
   # Filter relay enrichment summary based on swimmer ID and issues.
   # - Always removes legs already matched to a swimmer_id > 0
   # - When show_new is false, hides legs whose only issue is missing_swimmer_id
-  def filter_relay_enrichment_summary(summary, show_new)
+  def filter_relay_enrichment_summary(summary, show_new) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
     # Build swimmer_id lookup from Phase 3 data for double-checking (case-insensitive)
     swimmers_with_id = Set.new
     if @phase3_data
@@ -861,7 +861,7 @@ class DataFixController < ApplicationController
   end
 
   # Update a single Phase 2 team entry by key
-  # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
+  # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
   def update_phase2_team
     file_path = params[:file_path]
     team_key = params[:team_key]
@@ -953,7 +953,7 @@ class DataFixController < ApplicationController
   # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
 
   # Create a new blank team entry in Phase 2 and redirect back to v2 view
-  def add_team
+  def add_team # rubocop:disable Metrics/AbcSize
     file_path = params[:file_path]
     if file_path.blank?
       flash[:warning] = I18n.t('data_import.errors.invalid_request')
@@ -987,7 +987,7 @@ class DataFixController < ApplicationController
   end
 
   # Delete a team entry from Phase 2 and clear downstream phase data
-  def delete_team
+  def delete_team # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
     file_path = params[:file_path]
     team_key = params[:team_key]
 
@@ -1036,7 +1036,7 @@ class DataFixController < ApplicationController
   end
 
   # Update a single Phase 3 swimmer entry by key
-  # rubocop:disable Metrics/AbcSize
+  # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
   def update_phase3_swimmer
     file_path = params[:file_path]
     swimmer_key = params[:swimmer_key]
@@ -1124,7 +1124,7 @@ class DataFixController < ApplicationController
   # rubocop:enable Metrics/AbcSize
 
   # Add a new blank swimmer to Phase 3
-  def add_swimmer
+  def add_swimmer # rubocop:disable Metrics/AbcSize
     file_path = params[:file_path]
 
     if file_path.blank?
@@ -1158,11 +1158,11 @@ class DataFixController < ApplicationController
     meta['generated_at'] = Time.now.utc.iso8601
     pfm.write!(data: data, meta: meta)
 
-    redirect_to review_swimmers_path(file_path:, phase3_v2: 1), notice: 'Swimmer added'
+    redirect_to review_swimmers_path(file_path:, phase3_v2: 1), notice: 'Swimmer added' # rubocop:disable Rails/I18nLocaleTexts
   end
 
   # Merge auxiliary Phase 3 files to enrich relay swimmers
-  # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
+  # rubocop:disable Metrics/AbcSize
   def merge_phase3_swimmers
     file_path = params[:file_path]
     selected_paths = Array(params[:auxiliary_paths]).compact_blank
@@ -1305,7 +1305,7 @@ class DataFixController < ApplicationController
 
   # Update a single Phase 4 event entry by session and event index
   # Also handles moving events between sessions via target_session_order
-  # rubocop:disable Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+  # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
   def update_phase4_event
     file_path = params[:file_path]
     session_index = params[:session_index]&.to_i
@@ -1759,7 +1759,7 @@ class DataFixController < ApplicationController
   end
 
   # Delete a session entry from Phase 1 and redirect back to v2 view
-  def delete_session
+  def delete_session # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
     file_path = params[:file_path]
     session_index = params[:session_index]&.to_i
 
@@ -1894,7 +1894,7 @@ class DataFixController < ApplicationController
 
   # Build relay swimmer name lookup from source data
   # Returns: {mrr_import_key => {relay_order => {name: ..., key: ...}}}
-  def build_relay_swimmer_names_from_source(source_path, relay_import_keys)
+  def build_relay_swimmer_names_from_source(source_path, relay_import_keys) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
     return {} unless File.exist?(source_path)
     return {} if relay_import_keys.blank?
 
@@ -2066,7 +2066,7 @@ class DataFixController < ApplicationController
   # @param swimmers_by_id [Hash] swimmers indexed by ID
   # @param swimmers_by_key [Hash] swimmers indexed by key (from phase3)
   # @return [Hash] { has_issues: bool, issue_count: int, issues: {...} }
-  def relay_result_has_issues?(relay_result, relay_swimmers_by_key:, swimmers_by_id:, swimmers_by_key: {})
+  def relay_result_has_issues?(relay_result, relay_swimmers_by_key:, swimmers_by_id:, swimmers_by_key: {}) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
     relay_swimmers = relay_swimmers_by_key[relay_result.import_key] || []
     issues = {}
 
@@ -2114,7 +2114,7 @@ class DataFixController < ApplicationController
   # @param programs [Array<Hash>] all programs from phase5 JSON
   # @param page [Integer] current page number (1-indexed)
   # @return [Array<Array, Integer>] [programs_for_page, total_pages]
-  def paginate_phase5_programs(programs, page)
+  def paginate_phase5_programs(programs, page) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
     return [programs, 1] if programs.empty?
 
     # Calculate row count for each program (results + laps)
@@ -2136,7 +2136,8 @@ class DataFixController < ApplicationController
                        .where('import_key LIKE ?', "#{program_key}/%")
                        .count
         lap_count = GogglesDb::DataImportLap
-                    .joins('INNER JOIN data_import_meeting_individual_results ON data_import_laps.parent_import_key = data_import_meeting_individual_results.import_key')
+                    .joins('INNER JOIN data_import_meeting_individual_results ' \
+                           'ON data_import_laps.parent_import_key = data_import_meeting_individual_results.import_key')
                     .where('data_import_meeting_individual_results.import_key LIKE ?', "#{program_key}/%")
                     .count
       end
@@ -2166,7 +2167,7 @@ class DataFixController < ApplicationController
 
     # Return programs for requested page
     total_pages = [pages.size, 1].max
-    page_index = [[page - 1, 0].max, total_pages - 1].min
+    page_index = (page - 1).clamp(0, total_pages - 1)
     [pages[page_index] || [], total_pages]
   end
 
@@ -2176,7 +2177,7 @@ class DataFixController < ApplicationController
   # @param programs [Array<Hash>] programs from phase5 JSON
   # @param phase4_path [String] path to phase4 JSON file
   # @return [Array<Hash>] sorted programs
-  def sort_programs_by_event_order(programs, phase4_path)
+  def sort_programs_by_event_order(programs, phase4_path) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
     return programs unless File.exist?(phase4_path)
 
     # Build event order map: {session_order => {event_key => event_order}}
@@ -2210,7 +2211,7 @@ class DataFixController < ApplicationController
   #
   # @param source_path [String] source file path
   # @return [Hash] { relay_swimmers_by_parent_key:, swimmers_by_id:, swimmers_by_key: }
-  def load_filter_data(source_path)
+  def load_filter_data(source_path) # rubocop:disable Metrics/AbcSize
     # Load phase3 data for unmatched swimmer lookup
     # Index by both full key AND partial key for flexible matching
     phase3_path = default_phase_path_for(source_path, 3)

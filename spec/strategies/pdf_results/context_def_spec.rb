@@ -598,7 +598,7 @@ RSpec.describe PdfResults::ContextDef, type: :strategy do
         before(:each) { obj_instance.valid?(def_hash[:src_buffer], 0) }
 
         it 'equals the conjoined string values, using the specified separator, with values from #data_hash' do
-          separator = %w[| , ; /].sample
+          separator = %w[| , ; /].sample # rubocop:disable Performance/CollectionLiteralInLoop
           expect(obj_instance.key(separator:)).to eq(obj_instance.data_hash.values.join(separator))
         end
       end

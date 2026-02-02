@@ -87,7 +87,7 @@ module Import
           month_num = month_number(month)
           return nil unless month_num
 
-          format('%04d-%02d-%02d', year.to_i, month_num, day.to_i)
+          format('%<y>04d-%<m>02d-%<d>02d', y: year.to_i, m: month_num, d: day.to_i)
         rescue StandardError
           nil
         end
@@ -215,15 +215,12 @@ module Import
           stroke = nil
 
           # Try relay format first: "4x50 Mista", "4x50 Stile Libero"
-          if (m = title.match(/(\d+x\d+|4x\d+)\s+([^-]+?)\s*-/i))
-            distance = m[1]
-            stroke = normalize_stroke_name(m[2]&.strip || '')
-          # Then try individual format: "100 Stile Libero", "800 RANA"
-          elsif (m = title.match(/(\d+)\s+([^-]+?)\s*-/i))
-            distance = m[1]
-            stroke = normalize_stroke_name(m[2]&.strip || '')
-          # Fallback without category: "100 Stile Libero"
-          elsif (m = title.match(/(\d+)\s+(.+)$/i))
+          # Then individual with category: "100 Stile Libero - M20"
+          # Finally fallback without category: "100 Stile Libero"
+          m = title.match(/(\d+x\d+|4x\d+)\s+([^-]+?)\s*-/i) ||
+              title.match(/(\d+)\s+([^-]+?)\s*-/i) ||
+              title.match(/(\d+)\s+(.+)$/i)
+          if m
             distance = m[1]
             stroke = normalize_stroke_name(m[2]&.strip || '')
           end
@@ -294,7 +291,7 @@ module Import
                 'position' => lap['position']
               }.compact
             end
-          elsif has_inline_laps?(row)
+          elsif inline_laps?(row)
             # Build laps from inline keys (lap50, lap100, etc.)
             result['laps'] = extract_inline_laps(row)
           end
@@ -339,7 +336,7 @@ module Import
           result
         end
 
-        def has_inline_laps?(row)
+        def inline_laps?(row)
           row.keys.any? { |k| k.to_s.match?(/^lap\d+$/) }
         end
 

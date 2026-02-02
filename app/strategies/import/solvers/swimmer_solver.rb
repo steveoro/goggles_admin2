@@ -191,7 +191,7 @@ module Import
       end
 
       # Accepts string (e.g., "F|LAST|FIRST|YYYY|TEAM") or hash-like objects
-      def extract_swimmer_parts(s)
+      def extract_swimmer_parts(s) # rubocop:disable Naming/MethodParameterName
         if s.is_a?(String)
           parts = s.split('|')
           gcode = parts[0].presence
@@ -235,7 +235,7 @@ module Import
         [safe_str(last), safe_str(first), yob.to_i]
       end
 
-      def safe_str(s)
+      def safe_str(s) # rubocop:disable Naming/MethodParameterName
         return nil if s.nil?
 
         s.to_s.strip.presence
@@ -322,7 +322,8 @@ module Import
 
             # Force match_percentage below 90 so it appears in "needs review" filter
             entry['match_percentage'] = 89.9
-            @logger&.info("[SwimmerSolver] Gender guessed for '#{key}' -> #{entry['gender_type_code']} from match ID #{top_match['id']} (#{top_match['percentage']}%)")
+            @logger&.info("[SwimmerSolver] Gender guessed for '#{key}' -> #{entry['gender_type_code']} " \
+                          "from match ID #{top_match['id']} (#{top_match['percentage']}%)")
           else
             # No high-confidence match - leave unmatched for manual review
             @logger&.info("[SwimmerSolver] No high-confidence match for '#{key}' (gender unknown) - requires manual review")

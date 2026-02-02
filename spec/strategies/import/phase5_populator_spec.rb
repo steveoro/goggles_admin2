@@ -312,7 +312,7 @@ RSpec.describe Import::Phase5Populator, type: :strategy do
       end
 
       it 'processes relay events only' do
-        expect(subject).to receive(:create_mrr_record).at_least(:once)
+        expect(subject).to receive(:create_mrr_record).at_least(:once) # rubocop:disable RSpec/MessageSpies
         subject.send(:populate_lt4_relay_results!)
       end
 

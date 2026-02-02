@@ -83,7 +83,8 @@ module Import
         model_row.id
       rescue ActiveRecord::RecordNotUnique => e
         # Surface clearer context when hitting DB uniqueness/PK errors
-        details = "Calendar insert failed for meeting_id=#{meeting_id}, meeting_code=#{attributes&.dig('meeting_code')}, season_id=#{attributes&.dig('season_id')}: #{e.message}"
+        details = "Calendar insert failed for meeting_id=#{meeting_id}, meeting_code=#{attributes&.dig('meeting_code')}, " \
+                  "season_id=#{attributes&.dig('season_id')}: #{e.message}"
         Rails.logger.error("[Calendar] #{details}")
         stats[:errors] << details
         raise

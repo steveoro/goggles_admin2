@@ -24,7 +24,7 @@ RSpec.describe Import::Committers::Lap do
 
   describe '#commit' do
     context 'when required keys are missing' do
-      let(:data_import_lap) { FactoryBot.build(:data_import_lap, :length_50) }
+      let(:data_import_lap) { FactoryBot.build(:data_import_lap, :length_50) } # rubocop:disable Naming/VariableNumber
 
       it 'returns nil when MIR ID is nil' do
         invalid_mir = FactoryBot.build(

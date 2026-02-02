@@ -452,5 +452,6 @@ module Merge
 
       conflicts
     end
+    # rubocop:enable Rails/Output
   end
 end

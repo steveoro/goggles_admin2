@@ -75,7 +75,7 @@ module Import
       # -----------------------------------------------------------------------
 
       # Main entry point: commits all entities in dependency order within a transaction
-      def commit_all
+      def commit_all # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
         load_phase_files!
         broadcast_progress('Loading phase files', 0, 6)
 
@@ -158,7 +158,7 @@ module Import
       private
 
       # Load all phase JSON files
-      def load_phase_files!
+      def load_phase_files! # rubocop:disable Metrics/AbcSize
         @phase1_data = JSON.parse(File.read(phase1_path)) if File.exist?(phase1_path)
         @phase2_data = JSON.parse(File.read(phase2_path)) if File.exist?(phase2_path)
         @phase3_data = JSON.parse(File.read(phase3_path)) if File.exist?(phase3_path)
@@ -171,7 +171,7 @@ module Import
 
       # Phase 1: Cities, SwimmingPools, Meetings, MeetingSessions
       # Dependency order: City → SwimmingPool → Meeting → MeetingSession
-      def commit_phase1_entities
+      def commit_phase1_entities # rubocop:disable Metrics/AbcSize
         raise StandardError, 'Null phase 1 data object!' if phase1_data.blank?
 
         Rails.logger.info('[Main] Committing Phase 1: Meeting, SwimmingPools, Cities & Sessions')
@@ -279,7 +279,7 @@ module Import
 
       # Phase 4: MeetingEvents
       # MeetingPrograms deferred to Phase 5 (created when committing results)
-      def commit_phase4_entities
+      def commit_phase4_entities # rubocop:disable Metrics/AbcSize
         Rails.logger.info('[Main] Committing Phase 4: Events')
         return unless phase4_data
 
@@ -325,7 +325,7 @@ module Import
       # Phase 5: MeetingPrograms, MeetingIndividualResults, Laps, MeetingRelayResults, etc.
       # Iterates over programs from phase5 JSON, then queries data_import_* tables for results
       # Dependency order: MeetingProgram → (MIR → Lap) or (MRR → MRS → RelayLap)
-      # rubocop:disable Metrics/AbcSize
+      # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
       def commit_phase5_entities
         Rails.logger.info('[Main] Committing Phase 5: Programs and Results')
         return unless phase5_data
@@ -384,7 +384,7 @@ module Import
 
       # Commit MeetingProgram and return its ID
       # For relays with unknown category/gender, attempts auto-computation from swimmer data.
-      def commit_meeting_program(meeting_event_id:, category_code:, gender_code:, is_relay: false, program_key: nil)
+      def commit_meeting_program(meeting_event_id:, category_code:, gender_code:, is_relay: false, program_key: nil) # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
         category_type = resolve_category_type(category_code, is_relay: is_relay)
         gender_type = gender_type_instance_from_code(gender_code)
 
@@ -409,11 +409,13 @@ module Import
           end
         end
 
+        # rubocop:disable Layout/LineLength
         unless category_type && gender_type
           @stats[:errors] << "MeetingProgram error: category=#{category_code} or gender=#{gender_code} not found (season=#{@season_id}, relay=#{is_relay}, meeting_event_id=#{meeting_event_id})"
           Rails.logger.warn("[Main] MeetingProgram lookup failed: category=#{category_code}, gender=#{gender_code}, season=#{@season_id}, relay=#{is_relay}, meeting_event_id=#{meeting_event_id}")
           return nil
         end
+        # rubocop:enable Layout/LineLength
 
         program_hash = {
           'meeting_event_id' => meeting_event_id,
@@ -430,7 +432,7 @@ module Import
       # Relay categories in source data use simplified codes like "M100", "M120",
       # but DB stores them as age ranges like "100-119", "120-159".
       # For relays, we extract the age from the code and use find_category_for_age.
-      def resolve_category_type(category_code, is_relay: false)
+      def resolve_category_type(category_code, is_relay: false) # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
         return nil if category_code.blank?
 
         if is_relay
@@ -472,7 +474,7 @@ module Import
       # -----------------------------------------------------------------------
 
       # Commit individual results (MIR + Laps) for a given program
-      def commit_individual_results_for_program(program_key, program_id)
+      def commit_individual_results_for_program(program_key, program_id) # rubocop:disable Metrics/AbcSize
         # Retrieve MIRs bound to the program's key
         mirs = GogglesDb::DataImportMeetingIndividualResult.where(meeting_program_key: program_key)
                                                            .includes(:data_import_laps)
@@ -500,7 +502,7 @@ module Import
       # -----------------------------------------------------------------------
 
       # Commit relay results (MRR + MRS + RelayLaps) for a given program
-      def commit_relay_results_for_program(program_key, program_id)
+      def commit_relay_results_for_program(program_key, program_id) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
         # Retrieve MRRs bound to the program's key
         mrrs = GogglesDb::DataImportMeetingRelayResult.where(meeting_program_key: program_key)
                                                       .includes(data_import_meeting_relay_swimmers: :data_import_relay_laps)

@@ -186,7 +186,8 @@ module PdfResults
     # Handles both individual & relays events (distinction comes also from category later
     # down on the hierarchy).
     def event_sections # rubocop:disable Metrics/MethodLength,Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
-      # Init the Array of resulting PdfResults::L2EventSection items (each one to be then converted into the final Hash form) or ready-to-go Hash ('rankings' or 'stats' sections):
+      # Init the Array of resulting PdfResults::L2EventSection items (each one to be then converted into
+      # the final Hash form) or ready-to-go Hash ('rankings' or 'stats' sections):
       resulting_sections = []
       recompute_ranking = false
       data_hash_rows = @data.fetch(:rows, [{}])

@@ -68,8 +68,9 @@ module Import
           # The DataFix controller extracts season_id from the file path; we keep the info if present
           out['season_id'] = src['seasonId'] if src['seasonId'].present?
         end
+        # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
 
-        def assign_date_parts(out, idx, y, m, d)
+        def assign_date_parts(out, idx, y, m, d) # rubocop:disable Naming/MethodParameterName
           return unless y && m && d
 
           out["dateYear#{idx}"]  = y
@@ -241,7 +242,7 @@ module Import
                       else
                         start_age + 39
                       end
-            return format('%d-%d', start_age, end_age)
+            return format('%<start>d-%<finish>d', start: start_age, finish: end_age)
           end
 
           '000-999'
@@ -299,5 +300,6 @@ module Import
         end
       end
     end
+    # rubocop:enable Metrics/ClassLength
   end
 end

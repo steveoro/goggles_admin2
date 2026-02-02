@@ -288,7 +288,7 @@ module Import
     # == Clears but doesn't recompute:
     # - @data['badge'], because it will be filled-in during MIR mapping
     #
-    def map_teams_and_swimmers(skip_broadcast = false)
+    def map_teams_and_swimmers(skip_broadcast: false)
       # Clear the lists:
       @data['team'] = {}
       @data['team_affiliation'] = {}
@@ -447,7 +447,7 @@ module Import
       # Detect if team & swimmer mapping has been skipped and force-run it:
       # (This shall happen only once whenever method #map_events_and_results()
       # gets called *before* #map_teams_and_swimmers()).
-      first_team_name = @data['sections']&.first&.[]('rows')&.first&.fetch('team', nil)
+      first_team_name = @data['sections']&.first&.[]('rows')&.first&.fetch('team', nil) # rubocop:disable Style/SafeNavigationChainLength
       if @data['sections'].present? && (first_team_name.blank? || !entity_present?('team_affiliation', first_team_name))
         map_teams_and_swimmers # (No need to skip progress report if we launch this before the loop below)
       end
@@ -498,7 +498,7 @@ module Import
           Rails.logger.warn("\r\n    ---> SKIPPING SECTION STORAGE due to missing category_type OR gender_type!")
           Rails.logger.warn("\r\n    >>>> section: #{sect.inspect}")
           # DEBUG ----------------------------------------------------------------
-          binding.pry
+          # DEBUG binding.pry
           # ----------------------------------------------------------------------
           next
         end
@@ -1425,7 +1425,7 @@ module Import
                        end
       # DEBUG ----------------------------------------------------------------
       # Support max relay order of 8x
-      binding.pry if stroke_type_id.to_i < 1 || relay_order.to_i < 1 || relay_order.to_i > 8
+      # DEBUG binding.pry if stroke_type_id.to_i < 1 || relay_order.to_i < 1 || relay_order.to_i > 8
       # ----------------------------------------------------------------------
 
       new_row = GogglesDb::MeetingRelaySwimmer.new(
@@ -1666,7 +1666,7 @@ module Import
         # Add RelayLap only when missing:
         add_entity_with_key('relay_lap', relay_lap_key, relay_lap_entity) unless entity_present?('relay_lap', relay_lap_key)
 
-      else
+      elsif @toggle_debug
         # *** UNSUPPORTED! ***
         # WARNING:
         # This may happen if any of the parent entities above didn't get created before handling the child lap here.
@@ -1675,9 +1675,9 @@ module Import
         # For "long relays" (4x100, 4x200), if the master lap associated with the MRS is missing its timing
         # (e.g., for a 4x100, anyone missing from these: lap100, lap200, lap300 or lap400) then the whole relay fraction
         # won't be stored at all. In these cases, ignore the 'pry' below as there's no point in debugging)
-        Rails.logger.debug { "    >> INVALID PARAMETERS for lap timing extraction: target model #{mr_model.class}" } if @toggle_debug
+        Rails.logger.debug { "    >> INVALID PARAMETERS for lap timing extraction: target model #{mr_model.class}" }
         # DEBUG ----------------------------------------------------------------
-        binding.pry
+        # DEBUG binding.pry
         # ----------------------------------------------------------------------
       end
       # Return current lap timing (can be used when processing next lap to compute any missing delta):
@@ -1747,11 +1747,13 @@ module Import
     # The first key found for the specified <tt>model_name</tt> matching <tt>key_or_regexp</tt>,
     # or +nil+ if not found.
     def search_key_for(model_name, key_or_regexp)
+      # rubocop:disable Style/SafeNavigationChainLength
       if key_or_regexp.is_a?(Regexp)
         @data&.fetch(model_name, {})&.keys&.find { |key| key.to_s.match?(key_or_regexp) }
       else
         @data&.fetch(model_name, {})&.keys&.find { |key| key.to_s.starts_with?(key_or_regexp) }
       end
+      # rubocop:enable Style/SafeNavigationChainLength
     end
 
     # Scans the cached @data for the specified <tt>model_name</tt> and replaces each binding key found
@@ -2576,7 +2578,7 @@ module Import
       team_affiliation = map_and_return_team_affiliation(team:, team_key: team_name)
       # DEBUG: ******************************************************************
       # SHOULD NEVER HAPPEN at this point:
-      binding.pry if team.nil? || team_affiliation.nil?
+      # DEBUG binding.pry if team.nil? || team_affiliation.nil?
       # DEBUG: ******************************************************************
 
       gender_ids = []
@@ -2594,7 +2596,7 @@ module Import
                              team_affiliation:, category_type: nil) # (nil => force badge retrieval or compute category by YOB)
         # DEBUG: ******************************************************************
         # SHOULD NEVER HAPPEN at this point:
-        binding.pry unless swimmer.present? && swimmer_key.present?
+        # DEBUG binding.pry unless swimmer.present? && swimmer_key.present?
         # DEBUG: ******************************************************************
         gender_ids << swimmer.gender_type_id
       end
@@ -2631,7 +2633,7 @@ module Import
         team_affiliation = map_and_return_team_affiliation(team:, team_key: team_name)
         # DEBUG: ******************************************************************
         # SHOULD NEVER HAPPEN at this point:
-        binding.pry unless team.present? && team_affiliation.present?
+        # DEBUG binding.pry unless team.present? && team_affiliation.present?
         # DEBUG: ******************************************************************
 
         rank = ranking_hash['pos'].to_i

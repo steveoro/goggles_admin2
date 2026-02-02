@@ -83,7 +83,7 @@ namespace :fixtures do
   end
 
   # Process a single phase 3 file
-  def process_phase3_file(file_path, dry_run, stats)
+  def process_phase3_file(file_path, dry_run, stats) # rubocop:disable Rake/MethodDefinitionInTask,Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/MethodLength,Metrics/PerceivedComplexity
     filename = File.basename(file_path)
     puts "\r\n--- Processing: #{filename} ---"
 
@@ -151,7 +151,7 @@ namespace :fixtures do
   end
 
   # Build key from DB values (already anonymized)
-  def build_key_from_db(swimmer_hash)
+  def build_key_from_db(swimmer_hash) # rubocop:disable Rake/MethodDefinitionInTask
     last_name = swimmer_hash['last_name']
     first_name = swimmer_hash['first_name']
     year = swimmer_hash['year_of_birth']
@@ -163,7 +163,7 @@ namespace :fixtures do
   end
 
   # Build key with FFaker for unmatched swimmers
-  def build_key_with_ffaker(swimmer_hash)
+  def build_key_with_ffaker(swimmer_hash) # rubocop:disable Rake/MethodDefinitionInTask
     # Keep first_name, generate new last_name
     first_name = swimmer_hash['first_name']
     year = swimmer_hash['year_of_birth']
