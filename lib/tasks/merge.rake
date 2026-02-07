@@ -100,15 +100,20 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
   #++
 
   desc <<~DESC
-      Analyzes the Team merge process before creating an SQL script that will merge
-    the source Team row into the destination.
+      Analyzes the Team merge process before creating a single-transaction SQL script
+    that will merge the source Team row into the destination, including full duplicate
+    elimination for shared badges and their sub-entities (MIRs, MRSs, Laps, etc.).
 
     The resulting script won't be applied (and no DB changes will be made) *unless*
     the 'simulate' option is set explicitly to '0'. (Default: DO NOT MAKE DB CHANGES.)
 
-    The resulting script will merge all linked sub-entities under the single destination row,
-    also overwriting the destination columns with the corresponding source Swimmer column
-    values. (Default: OVERWRITE DEST WITH SRC IN SCRIPT.)
+    The resulting script will:
+      1. Delete deprecated reservation entities for the source team
+      2. Merge shared badge couples inline (via Merge::Badge per couple)
+      3. Update orphan source badges and remaining TA-linked entities
+      4. Update team-only links
+      5. Run DuplicateResultCleaner as safety net per shared season
+      6. Overwrite destination team columns and delete the source team
 
     The Rails.env will set the destination DB for script execution on localhost.
     The resulting file will be stored under:
@@ -128,17 +133,7 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
       - simulate: when set to '0' will enable script execution on localhost (toggled off by default);
 
       - skip_columns: when set to anything different from '0' will enable the "skip" & disable overwriting
-        destination row columns with the source swimmer values (toggled on by default).
-
-                ** NOTE THAT THIS TASK PERFORMS A SIMPLIFIED CHECK & MERGE **
-
-      => USE either 'merge:season_fix' (DANGEROUS) or 'merge:badge' FIRST, whenever possible
-        - run 'check:team' first and take note of all possible badge duplicates
-        - run 'check:season' for more confirmation
-        - for "sure team merges", use 'merge:season_fix' for each season involved, but keep in mind
-          that the season fix CANNOT simulate the operations -- or:
-        - run 'merge:badge' for each badge couple reported by the check:team analysis
-        - run 'merge:team' last
+        destination row columns with the source team values (toggled on by default).
 
   DESC
   task(team: [:check_needed_dirs]) do

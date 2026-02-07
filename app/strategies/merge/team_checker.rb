@@ -10,14 +10,11 @@ module Merge
   # Check the feasibility of merging the Team entities specified in the constructor while
   # also gathering all sub-entities that need to be moved or purged.
   #
-  # Countrary to other "checker" classes, the TeamChecker does not halt in case of conflicts.
-  # Any duplicated badges resulting from a team merge must be processed afterwards using
-  # the Merge::Badge strategy.
+  # Contrary to other "checker" classes, the TeamChecker does not halt in case of conflicts.
+  # After calling #run, use #shared_badge_couples_by_season and #orphan_src_badges_by_season
+  # to retrieve the badge data needed by Merge::Team for inline badge merging.
   #
-  # Use Merge::TeamChecker#shared_badge_couples after a team merge to loop over all Badge
-  # merge candidates that may need to be processed.
-  #
-  class TeamChecker
+  class TeamChecker # rubocop:disable Metrics/ClassLength
     attr_reader :log, :source, :dest,
                 :src_season_ids, :dest_season_ids,
                 :overall_season_ids, :shared_season_ids,
@@ -91,14 +88,6 @@ module Merge
       log_entity_rows_count
 
       log_badge_merge_candidates
-
-      # TODO: For Merging:
-      # - loop over shared badges / team_affiliations
-      # - reservations can be deleted
-      # - meeting entries can be deleted
-      # - list all shared badges which will need merging afterwards
-      # - update all other links to dest. team_id & team_affiliation_id
-      # - delete src team_affiliation & team only at the end of the script
       nil
     end
     #-- ------------------------------------------------------------------------
@@ -143,6 +132,30 @@ module Merge
     # - season_id: the Season ID for the WHERE condition.
     def count_swimmers_for(domain, season_id)
       domain.where(season_id:).pluck(:swimmer_id).uniq.count
+    end
+
+    # Returns shared_badge_couples grouped by season_id.
+    # Requires #run to have been called first.
+    #
+    # == Returns:
+    # Hash { season_id => [[src_badge, dest_badge], ...] }
+    #
+    def shared_badge_couples_by_season
+      return {} if @shared_badge_couples.blank?
+
+      @shared_badge_couples_by_season ||= @shared_badge_couples.group_by { |couple| couple.first.season_id }
+    end
+
+    # Returns source badges that have no destination counterpart for the same swimmer
+    # in the same season, grouped by season_id. These badges only need a team_id /
+    # team_affiliation_id update (no merge).
+    # Requires #run to have been called first.
+    #
+    # == Returns:
+    # Hash { season_id => [badge, ...] }
+    #
+    def orphan_src_badges_by_season
+      @orphan_src_badges_by_season ||= compute_orphan_src_badges
     end
     #-- ------------------------------------------------------------------------
     #++
@@ -237,6 +250,22 @@ module Merge
                 "Swimmer #{format('%5d', b1.swimmer_id)} #{b1.swimmer.complete_name}"
       end
       @log << "\r\nTot. shared Swimmer IDs: #{@shared_badge_couples.count}"
+    end
+
+    # Computes orphan source badges (no dest counterpart for the same swimmer+season).
+    def compute_orphan_src_badges
+      result = {}
+      shared_ids_by_season = shared_badge_couples_by_season.transform_values do |couples|
+        couples.map { |c| c.first.swimmer_id }.uniq
+      end
+
+      @src_season_ids.each do |season_id|
+        shared_ids = shared_ids_by_season[season_id] || []
+        orphans = src_entities(GogglesDb::Badge).where(season_id:)
+        orphans = orphans.where.not(swimmer_id: shared_ids) if shared_ids.present?
+        result[season_id] = orphans.to_a if orphans.exists?
+      end
+      result
     end
 
     def log_entity_rows_count

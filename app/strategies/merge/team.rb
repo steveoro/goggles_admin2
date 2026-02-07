@@ -4,20 +4,22 @@ module Merge
   #
   # = Merge::Team
   #
-  #   - version:  7-0.7.19
+  #   - version:  7-0.7.25
   #   - author:   Steve A.
-  #   - build:    20241015
+  #   - build:    20260207
   #
-  class Team
+  class Team # rubocop:disable Metrics/ClassLength
     attr_reader :sql_log, :checker, :source, :dest
 
-    # Allows a source Team to be merged into a destination one.
-    # All related entities will be handled (team_affiliations, badges, results, laps, ...)
-    # mostly by a simple 'team_id' update.
+    # Allows a source Team to be merged into a destination one, producing a single-transaction
+    # SQL script that handles all sub-entities including full duplicate elimination.
     #
-    # This is a much more simplified version of merge process done by Merge::Badge for
-    # instance, which instead does more checks and performs additional fixes to prevent
-    # data inconsistencies.
+    # For each shared season, shared badge couples (same swimmer on both teams) are merged
+    # inline using Merge::Badge. Orphan source badges (no dest counterpart) get a simple
+    # team_id / team_affiliation_id update. All remaining TA-linked entities are then
+    # updated with a catch-all pass.
+    #
+    # At the end, Merge::DuplicateResultCleaner runs per shared season as a safety net.
     #
     # === Involved entities (in alphabetical order):
     #
@@ -28,9 +30,9 @@ module Merge
     # - Lap                     (#team_id)
     # - ManagedAffiliation      (#team_affiliation_id)
     # - MeetingEntry            (#team_id, #team_affiliation_id)
-    # - MeetingEventReservation (#team_id) (*)unique idx with team_id + more
-    # - MeetingReservation      (#team_id) (*)unique idx with badge_id + more
-    # - MeetingRelayReservation (#team_id) (*)unique idx with team_id + more
+    # - MeetingEventReservation (#team_id) — deleted (deprecated)
+    # - MeetingReservation      (#team_id) — deleted (deprecated)
+    # - MeetingRelayReservation (#team_id) — deleted (deprecated)
     # - MeetingIndividualResult (#team_id, #team_affiliation_id)
     # - MeetingRelayResult      (#team_id, #team_affiliation_id)
     # - MeetingTeamScore        (#team_id, #team_affiliation_id)
@@ -41,12 +43,6 @@ module Merge
     # - TeamAlias               (#team_id) (*)unique idx with team_id & name
     # - TeamLapTemplate         (#team_id)
     # - UserWorkshop            (#team_id)
-    #
-    # Entity rows affected by unique indexes (*) need to be deleted before becoming duplicates.
-    #
-    # All other duplicate rows generated with the merge Team process *must* be dealt with
-    # using the dedicated tasks 'merge:season_fix' or 'merge:badge'.
-    # These will perform the necessary cleanup on a season-by-season or badge-by-badge basis.
     #
     # == Additional notes:
     # This merge class won't actually touch the DB: it will just prepare the script so
@@ -72,39 +68,39 @@ module Merge
     #++
 
     # Prepares the merge script inside a single transaction.
-    # Countrary to other Merge classes, this strategy class does not halt in case of conflicts
+    # Contrary to other Merge classes, this strategy class does not halt in case of conflicts
     # and always displays the checker report.
-    def prepare # rubocop:disable Metrics/AbcSize
+    #
+    # == Script phases:
+    # 1. Delete deprecated reservations for the source team
+    # 2. Per-season TA processing (badge sub-merges, orphan updates, remaining TA links)
+    # 3. Team-only link updates
+    # 4. DuplicateResultCleaner safety net (per shared season)
+    # 5. Destination column updates & source team deletion
+    #
+    def prepare
+      return if @sql_log.present? # Don't allow a second run
+
       @checker.run
       @checker.display_report
 
-      @sql_log << "\r\n-- Merge team (#{@source.id}) #{@source.display_label} |=> (#{@dest.id}) #{@dest.display_label}-- \r\n"
-      # NOTE: uncommenting the following in the output SQL may yield nulls for created_at & updated_at if we don't provide values in the row
-      @sql_log << '-- SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";'
-      @sql_log << 'SET AUTOCOMMIT = 0;'
-      @sql_log << 'START TRANSACTION;'
-      @sql_log << ''
+      prepare_script_header
+      prepare_script_for_reservation_cleanup
 
-      prepare_script_for_team_affiliation_links
-      prepare_script_for_team_only_links
-
-      # Overwrite all commonly used columns at the end, if requested (this will update the index too)
-      attrs = []
-      if @skip_columns
-        # Update just the name variations:
-        name_variations = @dest.name_variations.include?(@source.name) ? @dest.name_variations : "#{@dest.name_variations};#{@source.name}"
-        attrs << "name_variations=\"#{name_variations}\""
-      else
-        # Update only attributes with values (don't overwrite existing with nulls):
-        attrs << "name=\"#{@source.name}\""
-        attrs << "editable_name=\"#{@source.editable_name}\"" if @source.editable_name.present?
-        attrs << "name_variations=\"#{@source.name_variations}\"" if @source.name_variations.present?
-        attrs << "city_id=#{@source.city_id}" if @source.city_id.present?
+      # Per-season TeamAffiliation processing:
+      GogglesDb::TeamAffiliation.where(team_id: @source.id).order(:season_id).each do |src_ta|
+        dest_ta = GogglesDb::TeamAffiliation.where(season_id: src_ta.season_id, team_id: @dest.id).first
+        prepare_script_for_season(src_ta, dest_ta)
       end
-      @sql_log << "UPDATE teams SET updated_at=NOW(), #{attrs.join(', ')} WHERE id=#{@dest.id};"
+
+      prepare_script_for_team_only_links
+      prepare_script_for_duplicate_cleanup
+      prepare_dest_column_updates
 
       @sql_log << ''
-      @sql_log << 'COMMIT;'
+      @sql_log << "DELETE FROM team_aliases WHERE team_id=#{@source.id};"
+      @sql_log << "DELETE FROM teams WHERE id=#{@source.id};"
+      @sql_log << "\r\nCOMMIT;"
     end
     #-- ------------------------------------------------------------------------
     #++
@@ -116,54 +112,106 @@ module Merge
 
     private
 
-    # Prepares the SQL text for the "TeamAffiliation update" phase involving all entities that have a
-    # foreign key to the source TeamAffiliation ID.
-    #
-    # == TeamAffiliation is bound to:
-    # - Badge                   (#team_id, #team_affiliation_id)
-    # - ManagedAffiliation      (#team_affiliation_id)
-    # - MeetingEntry            (#team_id, #team_affiliation_id)
-    # - MeetingIndividualResult (#team_id, #team_affiliation_id)
-    # - MeetingRelayResult      (#team_id, #team_affiliation_id)
-    # - MeetingTeamScore        (#team_id, #team_affiliation_id)
-    # - [TeamAffiliation]       (#team_id) (*)unique idx with team_id & season_id
-    #
-    # rubocop:disable Layout/LineLength
-    def prepare_script_for_team_affiliation_links # rubocop:disable Metrics/AbcSize
-      # For each source TeamAffiliation, set the correct destination Team & TA for all its sub-entities:
-      GogglesDb::TeamAffiliation.where(team_id: @source.id).order(:season_id).each do |src_ta|
-        dest_ta = GogglesDb::TeamAffiliation.where(season_id: src_ta.season_id, team_id: @dest.id).first
+    # Adds the transaction header to @sql_log.
+    def prepare_script_header
+      @sql_log << "\r\n-- Merge team (#{@source.id}) #{@source.display_label} |=> (#{@dest.id}) #{@dest.display_label}"
+      # NOTE: uncommenting the following in the output SQL may yield nulls for created_at & updated_at if we don't provide values in the row
+      @sql_log << '-- SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";'
+      @sql_log << 'SET AUTOCOMMIT = 0;'
+      @sql_log << 'START TRANSACTION;'
+      @sql_log << ''
+    end
 
-        # Found dest. TA for a corresponding source? => Use it as destination for updating all source TA references
-        # (src_ta |==> dest_ta)
-        if dest_ta
-          @sql_log << "\r\n-- Season #{src_ta.season_id}, dest. TA found #{dest_ta.id}, updating references to source TA #{src_ta.id}:"
-          # All source sub-entities will become dest:
-          @sql_log << "UPDATE badges SET updated_at=NOW(), team_id=#{@dest.id}, team_affiliation_id=#{dest_ta.id} WHERE team_affiliation_id=#{src_ta.id};"
-          @sql_log << "UPDATE managed_affiliations SET updated_at=NOW(), team_affiliation_id=#{dest_ta.id} WHERE team_affiliation_id=#{src_ta.id};"
-          @sql_log << "UPDATE meeting_entries SET updated_at=NOW(), team_id=#{@dest.id}, team_affiliation_id=#{dest_ta.id} WHERE team_affiliation_id=#{src_ta.id};"
-          @sql_log << "UPDATE meeting_individual_results SET updated_at=NOW(), team_id=#{@dest.id}, team_affiliation_id=#{dest_ta.id} WHERE team_affiliation_id=#{src_ta.id};"
-          @sql_log << "UPDATE meeting_relay_results SET updated_at=NOW(), team_id=#{@dest.id}, team_affiliation_id=#{dest_ta.id} WHERE team_affiliation_id=#{src_ta.id};"
-          @sql_log << "UPDATE meeting_team_scores SET updated_at=NOW(), team_id=#{@dest.id}, team_affiliation_id=#{dest_ta.id} WHERE team_affiliation_id=#{src_ta.id};"
-          # Update source TA only at the end:
-          @sql_log << "DELETE FROM team_affiliations WHERE id=#{src_ta.id};"
+    # Deletes all source-team reservation rows (deprecated entities).
+    def prepare_script_for_reservation_cleanup
+      @sql_log << '-- Delete all source-team reservations (deprecated entities)'
+      @sql_log << "DELETE FROM meeting_event_reservations WHERE team_id=#{@source.id};"
+      @sql_log << "DELETE FROM meeting_relay_reservations WHERE team_id=#{@source.id};"
+      @sql_log << "DELETE FROM meeting_reservations WHERE team_id=#{@source.id};"
+      @sql_log << ''
+    end
 
-        # Dest. TA MISSING? Use source TA row and change its team_id:
-        # (src_ta |==> src_ta recycled into dest, so ta's links are ok)
-        else
-          @sql_log << "\r\n-- Season #{src_ta.season_id}, dest. TA MISSING, recycling source TA #{src_ta.id} (updating only team references):"
-          @sql_log << "UPDATE badges SET updated_at=NOW(), team_id=#{@dest.id} WHERE team_affiliation_id=#{src_ta.id};"
-          # (managed_affiliations table is already ok, as src will become "new dest")
-          @sql_log << "UPDATE meeting_entries SET updated_at=NOW(), team_id=#{@dest.id} WHERE team_affiliation_id=#{src_ta.id};"
-          @sql_log << "UPDATE meeting_individual_results SET updated_at=NOW(), team_id=#{@dest.id} WHERE team_affiliation_id=#{src_ta.id};"
-          @sql_log << "UPDATE meeting_relay_results SET updated_at=NOW(), team_id=#{@dest.id} WHERE team_affiliation_id=#{src_ta.id};"
-          @sql_log << "UPDATE meeting_team_scores SET updated_at=NOW(), team_id=#{@dest.id} WHERE team_affiliation_id=#{src_ta.id};"
-          # Update source TA only at the end:
-          @sql_log << "UPDATE team_affiliations SET updated_at=NOW(), team_id=#{@dest.id} WHERE id=#{src_ta.id};"
-        end
+    # Dispatches per-season processing depending on whether a destination TA exists.
+    def prepare_script_for_season(src_ta, dest_ta)
+      if dest_ta
+        prepare_script_for_season_with_dest_ta(src_ta, dest_ta)
+      else
+        prepare_script_for_season_recycle_ta(src_ta)
       end
     end
-    # rubocop:enable Layout/LineLength
+
+    # Processes a source TA when a matching dest TA exists:
+    # 1. Badge sub-merges for shared swimmers
+    # 2. Orphan badge updates
+    # 3. Catch-all for remaining TA-linked entities
+    # 4. Delete source TA
+    #
+    # rubocop:disable Metrics/AbcSize
+    def prepare_script_for_season_with_dest_ta(src_ta, dest_ta)
+      @sql_log << "\r\n-- Season #{src_ta.season_id}, dest. TA found #{dest_ta.id}, processing source TA #{src_ta.id}:"
+
+      # Badge sub-merges for shared badge couples:
+      prepare_script_for_badge_merges(src_ta.season_id)
+
+      # Orphan source badges (no dest counterpart) — simple team_id + TA update:
+      prepare_script_for_orphan_badges(src_ta.season_id, dest_ta)
+
+      # Catch-all for remaining TA-linked entities (rows not already handled by badge merges):
+      @sql_log << "-- Remaining TA-linked entity updates for source TA #{src_ta.id}:"
+      @sql_log << "UPDATE badges SET updated_at=NOW(), team_id=#{@dest.id}, team_affiliation_id=#{dest_ta.id} WHERE team_affiliation_id=#{src_ta.id};"
+      @sql_log << "UPDATE managed_affiliations SET updated_at=NOW(), team_affiliation_id=#{dest_ta.id} WHERE team_affiliation_id=#{src_ta.id};"
+      @sql_log << "UPDATE meeting_entries SET updated_at=NOW(), team_id=#{@dest.id}, team_affiliation_id=#{dest_ta.id} WHERE team_affiliation_id=#{src_ta.id};"
+      @sql_log << "UPDATE meeting_individual_results SET updated_at=NOW(), team_id=#{@dest.id}, team_affiliation_id=#{dest_ta.id} WHERE team_affiliation_id=#{src_ta.id};"
+      @sql_log << "UPDATE meeting_relay_results SET updated_at=NOW(), team_id=#{@dest.id}, team_affiliation_id=#{dest_ta.id} WHERE team_affiliation_id=#{src_ta.id};"
+      @sql_log << "UPDATE meeting_team_scores SET updated_at=NOW(), team_id=#{@dest.id}, team_affiliation_id=#{dest_ta.id} WHERE team_affiliation_id=#{src_ta.id};"
+      @sql_log << "DELETE FROM team_affiliations WHERE id=#{src_ta.id};"
+    end
+    # rubocop:enable Metrics/AbcSize
+
+    # Processes a source TA when no dest TA exists — recycle the source TA by updating its team_id.
+    def prepare_script_for_season_recycle_ta(src_ta)
+      @sql_log << "\r\n-- Season #{src_ta.season_id}, dest. TA MISSING, recycling source TA #{src_ta.id} (updating only team references):"
+      @sql_log << "UPDATE badges SET updated_at=NOW(), team_id=#{@dest.id} WHERE team_affiliation_id=#{src_ta.id};"
+      # (managed_affiliations table is already ok, as src will become "new dest")
+      @sql_log << "UPDATE meeting_entries SET updated_at=NOW(), team_id=#{@dest.id} WHERE team_affiliation_id=#{src_ta.id};"
+      @sql_log << "UPDATE meeting_individual_results SET updated_at=NOW(), team_id=#{@dest.id} WHERE team_affiliation_id=#{src_ta.id};"
+      @sql_log << "UPDATE meeting_relay_results SET updated_at=NOW(), team_id=#{@dest.id} WHERE team_affiliation_id=#{src_ta.id};"
+      @sql_log << "UPDATE meeting_team_scores SET updated_at=NOW(), team_id=#{@dest.id} WHERE team_affiliation_id=#{src_ta.id};"
+      @sql_log << "UPDATE team_affiliations SET updated_at=NOW(), team_id=#{@dest.id} WHERE id=#{src_ta.id};"
+    end
+
+    # Composes Merge::Badge sub-merges for each shared badge couple in the given season.
+    # Each badge merger's sql_log is appended (without its own transaction wrapper).
+    # If a single badge merge fails, a warning is logged and processing continues.
+    def prepare_script_for_badge_merges(season_id)
+      couples = @checker.shared_badge_couples_by_season[season_id]
+      return if couples.blank?
+
+      @sql_log << "-- Badge sub-merges for #{couples.size} shared swimmer(s) in season #{season_id}:"
+      couples.each do |src_badge, dest_badge|
+        next if src_badge.blank? || dest_badge.blank?
+
+        begin
+          badge_merger = Merge::Badge.new(source: src_badge, dest: dest_badge, keep_dest_team: true, force: true)
+          badge_merger.prepare
+          @sql_log.concat(badge_merger.sql_log)
+        rescue StandardError => e
+          @sql_log << "-- WARNING: Badge merge failed for badge #{src_badge.id} => #{dest_badge.id}: #{e.message}"
+          @sql_log << '-- (Manual merge may be needed for this badge couple)'
+        end
+        @sql_log << ''
+      end
+    end
+
+    # Updates orphan source badges (no dest counterpart for the same swimmer+season).
+    def prepare_script_for_orphan_badges(season_id, dest_ta)
+      orphans = @checker.orphan_src_badges_by_season[season_id]
+      return if orphans.blank?
+
+      orphan_ids = orphans.map(&:id)
+      @sql_log << "-- Orphan badge updates for season #{season_id} (#{orphans.size} badge(s)):"
+      @sql_log << "UPDATE badges SET updated_at=NOW(), team_id=#{@dest.id}, team_affiliation_id=#{dest_ta.id} WHERE id IN (#{orphan_ids.join(', ')});"
+    end
 
     # Prepares the SQL text for the "Team update" phase involving all entities that have a
     # foreign key to the source Team ID.
@@ -175,23 +223,54 @@ module Merge
     # - Lap                     (#team_id)
     # - Meeting                 (#home_team_id)
     # - RelayLap                (#team_id)
-    # - TeamAlias               (#team_id) (*)unique idx with team_id & name
     # - TeamLapTemplate         (#team_id)
     # - UserWorkshop            (#team_id)
-    # - [Team]
     #
     def prepare_script_for_team_only_links # rubocop:disable Metrics/AbcSize
-      @sql_log << "\r\n-- Team-only updates (source Team #{@source.id} |=> dest #{@dest.id}})"
+      @sql_log << "\r\n-- Team-only updates (source Team #{@source.id} |=> dest #{@dest.id})"
       @sql_log << "UPDATE computed_season_rankings SET updated_at=NOW(), team_id=#{@dest.id} WHERE team_id=#{@source.id};"
       @sql_log << "UPDATE goggle_cups SET updated_at=NOW(), team_id=#{@dest.id} WHERE team_id=#{@source.id};"
+      @sql_log << "UPDATE individual_records SET updated_at=NOW(), team_id=#{@dest.id} WHERE team_id=#{@source.id};"
       @sql_log << "UPDATE laps SET updated_at=NOW(), team_id=#{@dest.id} WHERE team_id=#{@source.id};"
       @sql_log << "UPDATE meetings SET updated_at=NOW(), home_team_id=#{@dest.id} WHERE home_team_id=#{@source.id};"
       @sql_log << "UPDATE relay_laps SET updated_at=NOW(), team_id=#{@dest.id} WHERE team_id=#{@source.id};"
       @sql_log << "UPDATE team_lap_templates SET updated_at=NOW(), team_id=#{@dest.id} WHERE team_id=#{@source.id};"
       @sql_log << "UPDATE user_workshops SET updated_at=NOW(), team_id=#{@dest.id} WHERE team_id=#{@source.id};"
-      # No interest in keeping duplicate aliases: (Also, unique index won't allow creating duplicates)
-      @sql_log << "DELETE FROM team_aliases WHERE id=#{@source.id};"
-      @sql_log << "DELETE FROM teams WHERE id=#{@source.id};"
+    end
+
+    # Runs Merge::DuplicateResultCleaner for each shared season as a safety net.
+    def prepare_script_for_duplicate_cleanup
+      return if @checker.shared_season_ids.blank?
+
+      @sql_log << "\r\n-- DuplicateResultCleaner safety net --"
+      @checker.shared_season_ids.each do |season_id|
+        season = GogglesDb::Season.find_by(id: season_id)
+        next unless season
+
+        cleaner = Merge::DuplicateResultCleaner.new(season:, autofix: true)
+        cleaner.prepare
+        next if cleaner.sql_log.blank?
+
+        @sql_log.concat(cleaner.sql_log)
+      end
+    end
+
+    # Overwrites commonly used destination team columns at the end.
+    def prepare_dest_column_updates
+      attrs = []
+      if @skip_columns
+        # Update just the name variations:
+        dest_variations = @dest.name_variations.to_s
+        name_variations = dest_variations.include?(@source.name) ? dest_variations : "#{dest_variations};#{@source.name}"
+        attrs << "name_variations=\"#{name_variations}\""
+      else
+        # Update only attributes with values (don't overwrite existing with nulls):
+        attrs << "name=\"#{@source.name}\""
+        attrs << "editable_name=\"#{@source.editable_name}\"" if @source.editable_name.present?
+        attrs << "name_variations=\"#{@source.name_variations}\"" if @source.name_variations.present?
+        attrs << "city_id=#{@source.city_id}" if @source.city_id.present?
+      end
+      @sql_log << "\r\nUPDATE teams SET updated_at=NOW(), #{attrs.join(', ')} WHERE id=#{@dest.id};"
     end
     #-- ------------------------------------------------------------------------
     #++
