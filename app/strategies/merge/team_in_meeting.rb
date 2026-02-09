@@ -330,7 +330,7 @@ module Merge
       puts "\r\n-- Suggested commands:"
       cmd_index = @index + 1
       badge_merge_pairs.each do |pair|
-        puts "bundle exec rake merge:badge src=#{pair[0]} dest=#{pair[1]} index=#{cmd_index} simulate=0"
+        puts "bundle exec rake merge:badge src=#{pair[0]} dest=#{pair[1]} index=#{cmd_index} simulate=0 force=1"
         cmd_index += 1
       end
     end
@@ -490,7 +490,7 @@ module Merge
     def prepare_lap_and_mir_updates # rubocop:disable Metrics/MethodLength
       src_ta_id = @src_ta&.id || 0
 
-      @sql_log << '-- Step 1a: Update laps team_id'
+      @sql_log << '-- Step 1a: Update laps team_id (move existing laps to CORRECT team)'
       @sql_log << <<~SQL.squish
         UPDATE laps l
         INNER JOIN meeting_individual_results mir ON l.meeting_individual_result_id = mir.id
@@ -503,7 +503,7 @@ module Merge
       SQL
       @sql_log << ''
 
-      @sql_log << '-- Step 1b: Update MIR team_id and team_affiliation_id'
+      @sql_log << '-- Step 1b: Update MIR team_id and team_affiliation_id with CORRECT values'
       @sql_log << <<~SQL.squish
         UPDATE meeting_individual_results mir
         INNER JOIN meeting_programs mp ON mir.meeting_program_id = mp.id
@@ -517,7 +517,7 @@ module Merge
       SQL
       @sql_log << ''
 
-      @sql_log << '-- Step 1c: Update MIR badge_ids to match new team'
+      @sql_log << '-- Step 1c: Update MIR badge_ids to match new CORRECT team'
       @sql_log << <<~SQL.squish
         UPDATE meeting_individual_results mir
         INNER JOIN meeting_programs mp ON mir.meeting_program_id = mp.id
@@ -537,7 +537,7 @@ module Merge
     def prepare_relay_updates # rubocop:disable Metrics/MethodLength
       src_ta_id = @src_ta&.id || 0
 
-      @sql_log << '-- Step 2a: Update relay_laps team_id'
+      @sql_log << '-- Step 2a: Update relay_laps with CORRECT team_id'
       @sql_log << <<~SQL.squish
         UPDATE relay_laps rl
         INNER JOIN meeting_relay_results mrr ON rl.meeting_relay_result_id = mrr.id
@@ -550,7 +550,7 @@ module Merge
       SQL
       @sql_log << ''
 
-      @sql_log << '-- Step 2b: Update MRR team_id and team_affiliation_id'
+      @sql_log << '-- Step 2b: Update MRR with CORRECT team_id and team_affiliation_id'
       @sql_log << <<~SQL.squish
         UPDATE meeting_relay_results mrr
         INNER JOIN meeting_programs mp ON mrr.meeting_program_id = mp.id
@@ -564,7 +564,7 @@ module Merge
       SQL
       @sql_log << ''
 
-      @sql_log << '-- Step 2c: Update MRS badge_ids to match new team'
+      @sql_log << '-- Step 2c: Update MRS badge_ids to match new CORRECT team'
       @sql_log << <<~SQL.squish
         UPDATE meeting_relay_swimmers mrs
         INNER JOIN meeting_relay_results mrr ON mrs.meeting_relay_result_id = mrr.id
@@ -599,6 +599,24 @@ module Merge
           AND l1.id > l2.id
         WHERE ms.meeting_id = #{@meeting.id}
           AND l1.team_id = #{@dest_team.id};
+      SQL
+      @sql_log << ''
+
+      @sql_log << '-- Step 3b: Delete laps belonging to duplicate MIRs (clear FK before MIR deletion)'
+      @sql_log << <<~SQL.squish
+        DELETE l1
+        FROM laps l1
+        INNER JOIN meeting_individual_results mir1 ON l1.meeting_individual_result_id = mir1.id
+        INNER JOIN meeting_programs mp ON mir1.meeting_program_id = mp.id
+        INNER JOIN meeting_events me ON mp.meeting_event_id = me.id
+        INNER JOIN meeting_sessions ms ON me.meeting_session_id = ms.id
+        INNER JOIN meeting_individual_results mir2 ON
+          mir1.meeting_program_id = mir2.meeting_program_id
+          AND mir1.swimmer_id = mir2.swimmer_id
+          AND mir1.team_id = mir2.team_id
+          AND mir1.id > mir2.id
+        WHERE ms.meeting_id = #{@meeting.id}
+          AND mir1.team_id = #{@dest_team.id};
       SQL
       @sql_log << ''
 
@@ -651,6 +669,100 @@ module Merge
           AND mrs1.id > mrs2.id
         WHERE ms.meeting_id = #{@meeting.id}
           AND mrr.team_id = #{@dest_team.id};
+      SQL
+      @sql_log << ''
+
+      @sql_log << '-- Step 6b: Delete relay_laps belonging to duplicate MRRs (clear FK before MRR deletion)'
+      @sql_log << <<~SQL.squish
+        DELETE rl1
+        FROM relay_laps rl1
+        INNER JOIN meeting_relay_results mrr1 ON rl1.meeting_relay_result_id = mrr1.id
+        INNER JOIN meeting_programs mp ON mrr1.meeting_program_id = mp.id
+        INNER JOIN meeting_events me ON mp.meeting_event_id = me.id
+        INNER JOIN meeting_sessions ms ON me.meeting_session_id = ms.id
+        INNER JOIN (
+          SELECT
+            mrr_inner.id,
+            mrr_inner.meeting_program_id,
+            mrr_inner.team_id,
+            GROUP_CONCAT(mrs_inner.swimmer_id ORDER BY mrs_inner.swimmer_id) AS swimmer_signature
+          FROM meeting_relay_results mrr_inner
+          INNER JOIN meeting_relay_swimmers mrs_inner ON mrs_inner.meeting_relay_result_id = mrr_inner.id
+          INNER JOIN meeting_programs mp_inner ON mrr_inner.meeting_program_id = mp_inner.id
+          INNER JOIN meeting_events me_inner ON mp_inner.meeting_event_id = me_inner.id
+          INNER JOIN meeting_sessions ms_inner ON me_inner.meeting_session_id = ms_inner.id
+          WHERE ms_inner.meeting_id = #{@meeting.id}
+            AND mrr_inner.team_id = #{@dest_team.id}
+          GROUP BY mrr_inner.id
+        ) AS mrr_sigs1 ON mrr1.id = mrr_sigs1.id
+        INNER JOIN (
+          SELECT
+            mrr_inner.id,
+            mrr_inner.meeting_program_id,
+            mrr_inner.team_id,
+            GROUP_CONCAT(mrs_inner.swimmer_id ORDER BY mrs_inner.swimmer_id) AS swimmer_signature
+          FROM meeting_relay_results mrr_inner
+          INNER JOIN meeting_relay_swimmers mrs_inner ON mrs_inner.meeting_relay_result_id = mrr_inner.id
+          INNER JOIN meeting_programs mp_inner ON mrr_inner.meeting_program_id = mp_inner.id
+          INNER JOIN meeting_events me_inner ON mp_inner.meeting_event_id = me_inner.id
+          INNER JOIN meeting_sessions ms_inner ON me_inner.meeting_session_id = ms_inner.id
+          WHERE ms_inner.meeting_id = #{@meeting.id}
+            AND mrr_inner.team_id = #{@dest_team.id}
+          GROUP BY mrr_inner.id
+        ) AS mrr_sigs2 ON
+          mrr_sigs1.meeting_program_id = mrr_sigs2.meeting_program_id
+          AND mrr_sigs1.team_id = mrr_sigs2.team_id
+          AND mrr_sigs1.swimmer_signature = mrr_sigs2.swimmer_signature
+          AND mrr_sigs1.id > mrr_sigs2.id
+        WHERE ms.meeting_id = #{@meeting.id}
+          AND mrr1.team_id = #{@dest_team.id};
+      SQL
+      @sql_log << ''
+
+      @sql_log << '-- Step 6c: Delete MRS belonging to duplicate MRRs (clear FK before MRR deletion)'
+      @sql_log << <<~SQL.squish
+        DELETE mrs1
+        FROM meeting_relay_swimmers mrs1
+        INNER JOIN meeting_relay_results mrr1 ON mrs1.meeting_relay_result_id = mrr1.id
+        INNER JOIN meeting_programs mp ON mrr1.meeting_program_id = mp.id
+        INNER JOIN meeting_events me ON mp.meeting_event_id = me.id
+        INNER JOIN meeting_sessions ms ON me.meeting_session_id = ms.id
+        INNER JOIN (
+          SELECT
+            mrr_inner.id,
+            mrr_inner.meeting_program_id,
+            mrr_inner.team_id,
+            GROUP_CONCAT(mrs_inner.swimmer_id ORDER BY mrs_inner.swimmer_id) AS swimmer_signature
+          FROM meeting_relay_results mrr_inner
+          INNER JOIN meeting_relay_swimmers mrs_inner ON mrs_inner.meeting_relay_result_id = mrr_inner.id
+          INNER JOIN meeting_programs mp_inner ON mrr_inner.meeting_program_id = mp_inner.id
+          INNER JOIN meeting_events me_inner ON mp_inner.meeting_event_id = me_inner.id
+          INNER JOIN meeting_sessions ms_inner ON me_inner.meeting_session_id = ms_inner.id
+          WHERE ms_inner.meeting_id = #{@meeting.id}
+            AND mrr_inner.team_id = #{@dest_team.id}
+          GROUP BY mrr_inner.id
+        ) AS mrr_sigs1 ON mrr1.id = mrr_sigs1.id
+        INNER JOIN (
+          SELECT
+            mrr_inner.id,
+            mrr_inner.meeting_program_id,
+            mrr_inner.team_id,
+            GROUP_CONCAT(mrs_inner.swimmer_id ORDER BY mrs_inner.swimmer_id) AS swimmer_signature
+          FROM meeting_relay_results mrr_inner
+          INNER JOIN meeting_relay_swimmers mrs_inner ON mrs_inner.meeting_relay_result_id = mrr_inner.id
+          INNER JOIN meeting_programs mp_inner ON mrr_inner.meeting_program_id = mp_inner.id
+          INNER JOIN meeting_events me_inner ON mp_inner.meeting_event_id = me_inner.id
+          INNER JOIN meeting_sessions ms_inner ON me_inner.meeting_session_id = ms_inner.id
+          WHERE ms_inner.meeting_id = #{@meeting.id}
+            AND mrr_inner.team_id = #{@dest_team.id}
+          GROUP BY mrr_inner.id
+        ) AS mrr_sigs2 ON
+          mrr_sigs1.meeting_program_id = mrr_sigs2.meeting_program_id
+          AND mrr_sigs1.team_id = mrr_sigs2.team_id
+          AND mrr_sigs1.swimmer_signature = mrr_sigs2.swimmer_signature
+          AND mrr_sigs1.id > mrr_sigs2.id
+        WHERE ms.meeting_id = #{@meeting.id}
+          AND mrr1.team_id = #{@dest_team.id};
       SQL
       @sql_log << ''
 

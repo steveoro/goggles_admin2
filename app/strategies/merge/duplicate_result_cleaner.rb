@@ -95,7 +95,7 @@ module Merge
             swimmer: swimmer,
             meeting_program_id: mprg_id,
             mirs: mir_group,
-            timing_match: mir_group.map(&:to_timing).uniq.size == 1
+            timing_match: mir_group.map { |mir| mir.to_timing.to_hundredths }.uniq.size == 1
           }
         end
       end
@@ -213,7 +213,7 @@ module Merge
             dup[:mirs].each do |mir|
               badge_exists = GogglesDb::Badge.exists?(id: mir.badge_id)
               badge_status = badge_exists ? '' : ' [BADGE MISSING!]'
-              puts "    - MIR #{mir.id}: #{mir.to_timing} => team #{mir.team_id}, badge #{mir.badge_id}#{badge_status}"
+              puts "    - MIR #{mir.id}: #{mir.to_timing} => team #{mir.team_id} (#{mir.team&.editable_name}), badge #{mir.badge_id}#{badge_status} #{mir.badge&.decorate&.short_label}"
             end
           end
           total_dup_mirs += dup_mirs.size
