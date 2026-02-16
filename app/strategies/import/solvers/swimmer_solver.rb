@@ -297,10 +297,27 @@ module Import
           if cross_ref['has_similar']
             entry['similar_on_team'] = true
             entry['team_cross_ref'] = cross_ref
-            # Merge cross-ref candidates into fuzzy_matches (prepend, deduplicated by ID)
-            existing_ids = matches.map { |m| m['id'] }.compact
+            # Promote-or-prepend: move existing matches to top with cross-ref label,
+            # or prepend truly new candidates
+            current_matches = entry['fuzzy_matches'] || []
+            cross_ref_ids = cross_ref['candidates'].map { |c| c['id'] }.to_set
+            promoted = []
+            remaining = []
+            current_matches.each do |m|
+              if cross_ref_ids.include?(m['id'])
+                # Update existing match with cross-ref label and flag
+                xref_candidate = cross_ref['candidates'].find { |c| c['id'] == m['id'] }
+                m['display_label'] = xref_candidate['display_label'] if xref_candidate
+                m['from_team_cross_ref'] = true
+                promoted << m
+              else
+                remaining << m
+              end
+            end
+            # Add truly new candidates (not already in fuzzy_matches)
+            existing_ids = current_matches.map { |m| m['id'] }.compact.to_set
             new_candidates = cross_ref['candidates'].reject { |c| existing_ids.include?(c['id']) }
-            entry['fuzzy_matches'] = new_candidates + matches if new_candidates.any?
+            entry['fuzzy_matches'] = new_candidates + promoted + remaining
           end
         end
 

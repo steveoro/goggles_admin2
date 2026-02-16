@@ -19,17 +19,29 @@
         %small.ml-2.badge{ class: "badge-#{color_class}" }
           ID: #{team_id}
         - if defined?(similar_affiliated) && similar_affiliated
-          %small.ml-1.badge.badge-warning{ title: 'A similar team is already affiliated for this season - please verify' }
-            %i.fa.fa-exclamation-triangle
-            SIMILAR TEAM IN SEASON
+          - aff_top = (team_hash['fuzzy_matches'] || []).find { |m| m['affiliated_this_season'] }
+          - if aff_top
+            %small.ml-1.badge.badge-warning{ title: 'A similar team is already affiliated for this season - please verify' }
+              %i.fa.fa-exclamation-triangle
+              SIMILAR ROW FOUND: ID #{aff_top['id']} (#{aff_top['editable_name']})
+          - else
+            %small.ml-1.badge.badge-warning{ title: 'A similar team is already affiliated for this season - please verify' }
+              %i.fa.fa-exclamation-triangle
+              SIMILAR TEAM IN SEASON
       - elsif has_missing_data
         %small.ml-2.badge.badge-danger
           MISSING DATA
       - else
         - if defined?(similar_affiliated) && similar_affiliated
-          %small.ml-2.badge.badge-warning{ title: 'A similar team is already affiliated for this season - please verify' }
-            %i.fa.fa-exclamation-triangle
-            SIMILAR TEAM IN SEASON
+          - aff_top = (team_hash['fuzzy_matches'] || []).find { |m| m['affiliated_this_season'] }
+          - if aff_top
+            %small.ml-2.badge.badge-warning{ title: 'A similar team is already affiliated for this season - please verify' }
+              %i.fa.fa-exclamation-triangle
+              SIMILAR ROW FOUND: ID #{aff_top['id']} (#{aff_top['editable_name']})
+          - else
+            %small.ml-2.badge.badge-warning{ title: 'A similar team is already affiliated for this season - please verify' }
+              %i.fa.fa-exclamation-triangle
+              SIMILAR TEAM IN SEASON
         - else
           %small.ml-2.badge.badge-primary
             NEW

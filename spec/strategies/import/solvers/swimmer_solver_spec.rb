@@ -316,6 +316,8 @@ RSpec.describe Import::Solvers::SwimmerSolver do
         cat_type = GogglesDb::CategoryType.where(season_id: season.id).sample ||
                    FactoryBot.create(:category_type, season: season)
         badge = FactoryBot.create(:badge, category_type: cat_type)
+        # Factory appends random number to complete_name; clean it for Jaro-Winkler comparison
+        badge.swimmer.update_column(:complete_name, "#{badge.swimmer.last_name} #{badge.swimmer.first_name}")
       end
 
       swimmer = badge.swimmer
@@ -364,6 +366,16 @@ RSpec.describe Import::Solvers::SwimmerSolver do
         expect(swimmer_entry['team_cross_ref']).to be_present
         expect(swimmer_entry['team_cross_ref']['candidates']).to be_an(Array)
         expect(swimmer_entry['team_cross_ref']['candidates'].map { |c| c['id'] }).to include(swimmer.id)
+
+        # Cross-ref candidate should appear in fuzzy_matches with from_team_cross_ref flag
+        fuzzy = swimmer_entry['fuzzy_matches'] || []
+        xref_in_fuzzy = fuzzy.find { |m| m['id'] == swimmer.id }
+        expect(xref_in_fuzzy).to be_present
+        expect(xref_in_fuzzy['from_team_cross_ref']).to be(true)
+        # Cross-ref candidate should be at or near the top (before non-cross-ref matches)
+        xref_index = fuzzy.index(xref_in_fuzzy)
+        non_xref_indices = fuzzy.each_with_index.reject { |m, _| m['from_team_cross_ref'] }.map(&:last)
+        expect(xref_index).to be < non_xref_indices.first if non_xref_indices.any?
       end
     end
 

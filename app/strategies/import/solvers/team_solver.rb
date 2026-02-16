@@ -154,6 +154,31 @@ module Import
 
         # Enrich matches with affiliation status for this season
         enrich_matches_with_affiliation_status!(matches)
+
+        # Affiliation cross-reference: find similar affiliated teams that fuzzy search may have missed
+        xref_candidates = find_similar_affiliated_teams(name)
+        if xref_candidates.any?
+          # Promote-or-prepend: move existing matches to top with cross-ref label,
+          # or prepend truly new candidates
+          xref_ids = xref_candidates.map { |c| c['id'] }.to_set
+          promoted = []
+          remaining = []
+          matches.each do |m|
+            if xref_ids.include?(m['id'])
+              xref_candidate = xref_candidates.find { |c| c['id'] == m['id'] }
+              m['display_label'] = xref_candidate['display_label'] if xref_candidate
+              m['affiliated_this_season'] = true
+              m['from_affiliation_cross_ref'] = true
+              promoted << m
+            else
+              remaining << m
+            end
+          end
+          existing_ids = matches.map { |m| m['id'] }.compact.to_set
+          new_candidates = xref_candidates.reject { |c| existing_ids.include?(c['id']) }
+          matches = new_candidates + promoted + remaining
+        end
+
         entry['fuzzy_matches'] = matches
 
         # Store top match percentage for filtering (0.0 if no matches)
@@ -312,6 +337,68 @@ module Import
       rescue StandardError => e
         @logger&.warn("[TeamSolver] Error enriching affiliation status: #{e.message}")
       end
+
+      # Find teams affiliated for the current season with similar normalized names.
+      # This catches cases where fuzzy search missed an affiliated team entirely.
+      # Returns array of candidate hashes compatible with fuzzy_matches format.
+      #
+      # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/MethodLength
+      def find_similar_affiliated_teams(name)
+        return [] if name.blank?
+
+        normalized_search = normalize_team_name(name)
+        return [] if normalized_search.blank?
+
+        metric = GogglesDb::DbFinders::BaseStrategy::METRIC
+        affiliations = GogglesDb::TeamAffiliation.where(season_id: @season.id).includes(:team)
+        candidates = []
+
+        affiliations.each do |aff|
+          team = aff.team
+          next if team.nil?
+
+          normalized_candidate = normalize_team_name(team.editable_name)
+          next if normalized_candidate.blank?
+
+          similarity = metric.getDistance(normalized_search.downcase, normalized_candidate.downcase)
+          # Accept candidates with similarity >= 0.75 but skip perfect matches
+          # (perfect matches are already handled by standard fuzzy matching)
+          next if similarity < 0.75 || similarity >= 1.0
+
+          percentage = (similarity * 100).round(1)
+          color_class = case percentage
+                        when 90..100 then 'success'
+                        when 70...90 then 'warning'
+                        when 50...70 then 'danger'
+                        end
+          candidates << {
+            'id' => team.id,
+            'name' => team.name,
+            'editable_name' => team.editable_name,
+            'name_variations' => team.name_variations,
+            'city_id' => team.city_id,
+            'city_name' => team.city&.name,
+            'weight' => similarity.round(3),
+            'percentage' => percentage,
+            'color_class' => color_class,
+            'display_label' => "(Affiliated) #{team.editable_name} (ID: #{team.id}, match: #{percentage}%)",
+            'affiliated_this_season' => true,
+            'from_affiliation_cross_ref' => true
+          }
+        end
+
+        candidates.sort_by! { |c| -c['weight'] }
+        if candidates.any?
+          @logger&.info("[TeamSolver] Affiliation cross-ref found #{candidates.size} similar team(s) for '#{name}': " \
+                        "#{candidates.map { |c| "#{c['editable_name']} (#{c['percentage']}%)" }.join(', ')}")
+        end
+
+        candidates
+      rescue StandardError => e
+        @logger&.warn("[TeamSolver] Error in affiliation cross-ref for '#{name}': #{e.message}")
+        []
+      end
+      # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/MethodLength
 
       # Broadcast progress updates via ActionCable for real-time UI feedback
       def broadcast_progress(message, current, total)

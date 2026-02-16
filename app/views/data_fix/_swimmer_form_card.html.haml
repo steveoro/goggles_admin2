@@ -24,9 +24,15 @@
             %i.fa.fa-question-circle
             GENDER GUESSED
         - if defined?(similar_on_team) && similar_on_team
-          %small.ml-1.badge.badge-warning{ title: 'A swimmer with a similar name exists on the same team - please verify' }
-            %i.fa.fa-exclamation-triangle
-            SIMILAR NAME ON SAME TEAM
+          - xref_top = swimmer_hash.dig('team_cross_ref', 'candidates')&.first
+          - if xref_top
+            %small.ml-1.badge.badge-warning{ title: 'A swimmer with a similar name exists on the same team - please verify' }
+              %i.fa.fa-exclamation-triangle
+              SIMILAR ROW FOUND: ID #{xref_top['id']} (#{xref_top['complete_name']})
+          - else
+            %small.ml-1.badge.badge-warning{ title: 'A swimmer with a similar name exists on the same team - please verify' }
+              %i.fa.fa-exclamation-triangle
+              SIMILAR NAME ON SAME TEAM
       - elsif has_missing_data
         %small.ml-2.badge.badge-danger
           MISSING DATA
@@ -41,9 +47,15 @@
             No Gender
       - else
         - if defined?(similar_on_team) && similar_on_team
-          %small.ml-2.badge.badge-warning{ title: 'A swimmer with a similar name exists on the same team - please verify' }
-            %i.fa.fa-exclamation-triangle
-            SIMILAR NAME ON SAME TEAM
+          - xref_top = swimmer_hash.dig('team_cross_ref', 'candidates')&.first
+          - if xref_top
+            %small.ml-2.badge.badge-warning{ title: 'A swimmer with a similar name exists on the same team - please verify' }
+              %i.fa.fa-exclamation-triangle
+              SIMILAR ROW FOUND: ID #{xref_top['id']} (#{xref_top['complete_name']})
+          - else
+            %small.ml-2.badge.badge-warning{ title: 'A swimmer with a similar name exists on the same team - please verify' }
+              %i.fa.fa-exclamation-triangle
+              SIMILAR NAME ON SAME TEAM
         - else
           %small.ml-2.badge.badge-primary
             NEW

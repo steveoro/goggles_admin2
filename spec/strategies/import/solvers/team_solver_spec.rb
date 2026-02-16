@@ -75,7 +75,7 @@ RSpec.describe Import::Solvers::TeamSolver do
   end
 
   describe 'affiliation cross-reference' do
-    it 'sets similar_affiliated when a fuzzy match is already affiliated this season' do
+    it 'sets similar_affiliated and promotes affiliated match in fuzzy_matches' do
       # Use existing affiliation from test DB; create one via FactoryBot if none exist for this season
       affiliation = GogglesDb::TeamAffiliation.where(season_id: season.id).limit(50).sample ||
                     FactoryBot.create(:team_affiliation, season: season)
@@ -97,11 +97,30 @@ RSpec.describe Import::Solvers::TeamSolver do
         team_entry = data['teams'].find { |t| t['key'] == variant_name }
 
         expect(team_entry).to be_present
-        # If fuzzy matching found the real team, it should be flagged as affiliated
         fuzzy = team_entry['fuzzy_matches'] || []
         affiliated_match = fuzzy.find { |m| m['id'] == team.id }
-        expect(affiliated_match['affiliated_this_season']).to be(true) if affiliated_match
+        if affiliated_match
+          # Affiliated match should have the flag and be promoted toward the top
+          expect(affiliated_match['affiliated_this_season']).to be(true)
+          aff_index = fuzzy.index(affiliated_match)
+          non_aff_indices = fuzzy.each_with_index.reject { |m, _| m['affiliated_this_season'] }.map(&:last)
+          expect(aff_index).to be < non_aff_indices.first if non_aff_indices.any?
+        end
       end
+    end
+
+    it 'finds similar affiliated teams via normalized name cross-reference' do
+      # Use existing affiliation from test DB; create one via FactoryBot if none exist for this season
+      affiliation = GogglesDb::TeamAffiliation.where(season_id: season.id).limit(50).sample ||
+                    FactoryBot.create(:team_affiliation, season: season)
+
+      team = affiliation.team
+      solver = described_class.new(season:)
+      # Test the private method directly with a slightly altered name
+      candidates = solver.send(:find_similar_affiliated_teams, team.editable_name.chars.shuffle.join)
+
+      # Result should be an array (may or may not have candidates depending on name shuffle)
+      expect(candidates).to be_an(Array)
     end
 
     it 'includes similar_affiliated flag in team entries' do

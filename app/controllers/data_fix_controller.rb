@@ -126,10 +126,11 @@ class DataFixController < ApplicationController
     end
 
     # Filter teams needing review: unmatched (no team_id) OR match < 90% (yellow/red matches)
+    # OR similar affiliated team found in season (cross-ref warning)
     # This shows ALL teams that need manual verification at a glance
     if params[:unmatched].present?
       teams = teams.select do |t|
-        t['team_id'].nil? || (t['match_percentage'] || 0.0) < 90.0
+        t['team_id'].nil? || (t['match_percentage'] || 0.0) < 90.0 || t['similar_affiliated'] == true
       end
     end
 
@@ -244,10 +245,11 @@ class DataFixController < ApplicationController
     end
 
     # Filter swimmers needing review: unmatched (no swimmer_id) OR match < 90% (yellow/red matches)
+    # OR similar name found on same team (cross-ref warning)
     # This shows ALL swimmers that need manual verification at a glance
     if params[:unmatched].present?
       swimmers = swimmers.select do |s|
-        s['swimmer_id'].nil? || (s['match_percentage'] || 0.0) < 90.0
+        s['swimmer_id'].nil? || (s['match_percentage'] || 0.0) < 90.0 || s['similar_on_team'] == true
       end
     end
 
