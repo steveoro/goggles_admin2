@@ -18,12 +18,21 @@
         - color_class = selected_match&.dig('color_class').presence || 'success'
         %small.ml-2.badge{ class: "badge-#{color_class}" }
           ID: #{team_id}
+        - if defined?(similar_affiliated) && similar_affiliated
+          %small.ml-1.badge.badge-warning{ title: 'A similar team is already affiliated for this season - please verify' }
+            %i.fa.fa-exclamation-triangle
+            SIMILAR TEAM IN SEASON
       - elsif has_missing_data
         %small.ml-2.badge.badge-danger
           MISSING DATA
       - else
-        %small.ml-2.badge.badge-primary
-          NEW
+        - if defined?(similar_affiliated) && similar_affiliated
+          %small.ml-2.badge.badge-warning{ title: 'A similar team is already affiliated for this season - please verify' }
+            %i.fa.fa-exclamation-triangle
+            SIMILAR TEAM IN SEASON
+        - else
+          %small.ml-2.badge.badge-primary
+            NEW
     .d-flex.align-items-center
       = form_tag(data_fix_delete_team_path, method: :delete, class: 'd-inline', onsubmit: "return confirm('Delete team \\'#{team_key}\\'?');") do
         = hidden_field_tag :file_path, file_path

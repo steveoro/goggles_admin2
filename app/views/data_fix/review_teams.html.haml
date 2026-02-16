@@ -81,6 +81,7 @@
         
         # Visual indicators
         has_match = team_id.to_i.positive?
+        similar_affiliated = team_hash['similar_affiliated'] == true
         
         # Check for required data (for teams, only name is required)
         has_missing_data = team_name.blank?
@@ -98,6 +99,12 @@
           border_color = 'border-danger'
           icon_class = 'fa-exclamation-triangle text-danger'
           icon_title = 'Missing required data'
+        elsif similar_affiliated
+          # New team but a similar team is already affiliated this season
+          card_bg = 'bg-light-yellow'
+          border_color = 'border-warning'
+          icon_class = 'fa-exclamation-triangle text-warning'
+          icon_title = 'Similar team in season'
         else
           # New team with all required data
           card_bg = 'bg-light-yellow'
@@ -110,7 +117,7 @@
       = render(partial: 'team_form_card',
                locals: { file_path: @file_path, api_url: @api_url, team_hash:, team_index:,
                          team_key:, team_name:, editable_name:, team_id:, city_id:,
-                         name_variations:, has_match:, has_missing_data:,
+                         name_variations:, has_match:, has_missing_data:, similar_affiliated:,
                          card_bg:, border_color:, border_width:, icon_class:, icon_title: })
 
   -# Pagination controls (bottom)

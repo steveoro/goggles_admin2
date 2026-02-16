@@ -56,4 +56,71 @@ RSpec.describe Import::Solvers::TeamSolver do
       expect(data['team_affiliations']).to include(include('team_key' => 'Alpha', 'season_id' => season.id))
     end
   end
+
+  describe 'team name normalization' do
+    subject(:solver) { described_class.new(season:) }
+
+    it 'strips common Italian association abbreviations' do
+      # Access private method for direct testing
+      expect(solver.send(:normalize_team_name, 'Nuoto Master A.S.D.')).to eq('NUOTO MASTER')
+      expect(solver.send(:normalize_team_name, 'ASD Nuoto Master')).to eq('NUOTO MASTER')
+      expect(solver.send(:normalize_team_name, 'S.S.D. Gonzaga S.R.L.')).to eq('GONZAGA')
+      expect(solver.send(:normalize_team_name, 'Team Test')).to eq('TEAM TEST')
+    end
+
+    it 'handles empty and nil names' do
+      expect(solver.send(:normalize_team_name, '')).to eq('')
+      expect(solver.send(:normalize_team_name, nil)).to eq('')
+    end
+  end
+
+  describe 'affiliation cross-reference' do
+    it 'sets similar_affiliated when a fuzzy match is already affiliated this season' do
+      # Use existing affiliation from test DB; create one via FactoryBot if none exist for this season
+      affiliation = GogglesDb::TeamAffiliation.where(season_id: season.id).limit(50).sample ||
+                    FactoryBot.create(:team_affiliation, season: season)
+
+      team = affiliation.team
+      # Create a slightly different team name to trigger fuzzy matching but not auto-assignment
+      variant_name = "#{team.editable_name} XYZ"
+
+      Dir.mktmpdir do |tmp|
+        src = write_json(tmp, 'meeting-l4.json', {
+                           'layoutType' => 4,
+                           'teams' => [variant_name]
+                         })
+
+        described_class.new(season:).build!(source_path: src, lt_format: 4)
+
+        phase2 = default_phase2_path(src)
+        data = JSON.parse(File.read(phase2))['data']
+        team_entry = data['teams'].find { |t| t['key'] == variant_name }
+
+        expect(team_entry).to be_present
+        # If fuzzy matching found the real team, it should be flagged as affiliated
+        fuzzy = team_entry['fuzzy_matches'] || []
+        affiliated_match = fuzzy.find { |m| m['id'] == team.id }
+        expect(affiliated_match['affiliated_this_season']).to be(true) if affiliated_match
+      end
+    end
+
+    it 'includes similar_affiliated flag in team entries' do
+      Dir.mktmpdir do |tmp|
+        src = write_json(tmp, 'meeting-l4.json', {
+                           'layoutType' => 4,
+                           'teams' => ['Completely Unknown Team ZZZZZ']
+                         })
+
+        described_class.new(season:).build!(source_path: src, lt_format: 4)
+
+        phase2 = default_phase2_path(src)
+        data = JSON.parse(File.read(phase2))['data']
+        team_entry = data['teams'].find { |t| t['key'] == 'Completely Unknown Team ZZZZZ' }
+
+        expect(team_entry).to be_present
+        expect(team_entry).to have_key('similar_affiliated')
+        expect(team_entry['similar_affiliated']).to be(false)
+      end
+    end
+  end
 end

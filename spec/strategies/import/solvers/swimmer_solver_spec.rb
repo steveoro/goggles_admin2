@@ -93,14 +93,16 @@ RSpec.describe Import::Solvers::SwimmerSolver do
     end
 
     it 'stores badge_id when badge exists' do # rubocop:disable RSpec/ExampleLength
-      # Use existing badge from test DB (with all required associations)
-      # Fallback to FactoryBot if no badges exist for this season
+      # Use existing badge from test DB; create one via FactoryBot if none exist for this season
       badge = GogglesDb::Badge.joins(:team, :swimmer)
                               .where(season_id: season.id)
                               .limit(100)
                               .sample
-
-      skip "No badges found for season #{season.id} in test DB. This test requires existing badge data." unless badge
+      unless badge
+        cat_type = GogglesDb::CategoryType.where(season_id: season.id).sample ||
+                   FactoryBot.create(:category_type, season: season)
+        badge = FactoryBot.create(:badge, category_type: cat_type)
+      end
 
       swimmer = badge.swimmer
       team = badge.team
@@ -301,6 +303,85 @@ RSpec.describe Import::Solvers::SwimmerSolver do
           expect(swimmer_entry['gender_guessed']).to be(false)
           expect(swimmer_entry['gender_type_code']).to be_blank
         end
+      end
+    end
+
+    it 'sets similar_on_team when a similar swimmer exists on the same team' do # rubocop:disable RSpec/ExampleLength
+      # Use existing badge from test DB; create one via FactoryBot if none exist for this season
+      badge = GogglesDb::Badge.joins(:team, :swimmer)
+                              .where(season_id: season.id)
+                              .limit(100)
+                              .sample
+      unless badge
+        cat_type = GogglesDb::CategoryType.where(season_id: season.id).sample ||
+                   FactoryBot.create(:category_type, season: season)
+        badge = FactoryBot.create(:badge, category_type: cat_type)
+      end
+
+      swimmer = badge.swimmer
+      team = badge.team
+
+      # Create a slightly misspelled version of the swimmer name
+      misspelled_last = swimmer.last_name.dup
+      misspelled_last[0] = misspelled_last[0] == 'A' ? 'B' : 'A' # Change first letter
+
+      Dir.mktmpdir do |tmp|
+        # Create phase2 with team_id so cross-ref can resolve the team
+        phase2_path = File.join(tmp, 'meeting-l4-phase2.json')
+        File.write(phase2_path, JSON.pretty_generate({
+                                                       '_meta' => {},
+                                                       'data' => {
+                                                         'teams' => [{ 'key' => team.name, 'team_id' => team.id }]
+                                                       }
+                                                     }))
+
+        phase1_path = File.join(tmp, 'meeting-l4-phase1.json')
+        File.write(phase1_path, JSON.pretty_generate({
+                                                       '_meta' => {},
+                                                       'data' => { 'header_date' => '2025-10-15' }
+                                                     }))
+
+        src = write_json(tmp, 'meeting-l4.json', {
+                           'layoutType' => 4,
+                           'swimmers' => [
+                             "#{swimmer.gender_type.code}|#{misspelled_last}|#{swimmer.first_name}|#{swimmer.year_of_birth}|#{team.name}"
+                           ]
+                         })
+
+        described_class.new(season:).build!(
+          source_path: src, lt_format: 4,
+          phase1_path: phase1_path, phase2_path: phase2_path
+        )
+
+        phase3 = default_phase3_path(src)
+        data = JSON.parse(File.read(phase3))['data']
+        expected_key = "#{swimmer.gender_type.code}|#{misspelled_last}|#{swimmer.first_name}|#{swimmer.year_of_birth}"
+        swimmer_entry = data['swimmers'].find { |s| s['key'] == expected_key }
+
+        expect(swimmer_entry).to be_present
+        # The similar_on_team flag should be set (the real swimmer is on the same team)
+        expect(swimmer_entry['similar_on_team']).to be(true)
+        expect(swimmer_entry['team_cross_ref']).to be_present
+        expect(swimmer_entry['team_cross_ref']['candidates']).to be_an(Array)
+        expect(swimmer_entry['team_cross_ref']['candidates'].map { |c| c['id'] }).to include(swimmer.id)
+      end
+    end
+
+    it 'does not set similar_on_team when no team is available' do
+      Dir.mktmpdir do |tmp|
+        src = write_json(tmp, 'meeting-l4.json', {
+                           'layoutType' => 4,
+                           'swimmers' => ['M|UNKNOWN|PERSON|1985']
+                         })
+
+        described_class.new(season:).build!(source_path: src, lt_format: 4)
+
+        phase3 = default_phase3_path(src)
+        data = JSON.parse(File.read(phase3))['data']
+        swimmer_entry = data['swimmers'].find { |s| s['key'] == 'M|UNKNOWN|PERSON|1985' }
+
+        expect(swimmer_entry).to be_present
+        expect(swimmer_entry['similar_on_team']).to be(false)
       end
     end
 

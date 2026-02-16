@@ -66,7 +66,7 @@ module Import
 
               # Always include leading pipe: |LAST|FIRST|YOB or GENDER|LAST|FIRST|YOB
               key = gcode.present? ? "#{gcode}|#{l}|#{f}|#{yob}" : "|#{l}|#{f}|#{yob}"
-              swimmer_entry = build_swimmer_entry(key, l, f, yob.to_i, gcode)
+              swimmer_entry = build_swimmer_entry(key, l, f, yob.to_i, gcode, team_name: team_name)
               swimmers << swimmer_entry
               next if team_name.blank?
 
@@ -86,7 +86,7 @@ module Import
 
               # Always include leading pipe: |LAST|FIRST|YOB or GENDER|LAST|FIRST|YOB
               key = gcode.present? ? "#{gcode}|#{l}|#{f}|#{yob}" : "|#{l}|#{f}|#{yob}"
-              swimmer_entry = build_swimmer_entry(key, l, f, yob.to_i, gcode)
+              swimmer_entry = build_swimmer_entry(key, l, f, yob.to_i, gcode, team_name: team_name)
               swimmers << swimmer_entry
               next if team_name.to_s.strip.empty?
 
@@ -124,7 +124,7 @@ module Import
                   # Always include leading pipe: |LAST|FIRST|YOB or GENDER|LAST|FIRST|YOB
                   key = gcode.present? ? "#{gcode}|#{last}|#{first}|#{yob}" : "|#{last}|#{first}|#{yob}"
 
-                  swimmer_entry = build_swimmer_entry(key, last, first, yob.to_i, gcode)
+                  swimmer_entry = build_swimmer_entry(key, last, first, yob.to_i, gcode, team_name: team_name)
                   swimmers << swimmer_entry
                   next if team_name.to_s.strip.empty?
 
@@ -140,9 +140,9 @@ module Import
                 gcode = gender_code || normalize_gender_code(row['gender'] || row['gender_type'] || row['gender_type_code'])
                 # Always include leading pipe: |LAST|FIRST|YOB or GENDER|LAST|FIRST|YOB
                 key = gcode.present? ? "#{gcode}|#{l}|#{f}|#{yob}" : "|#{l}|#{f}|#{yob}"
-                swimmer_entry = build_swimmer_entry(key, l, f, yob.to_i, gcode)
-                swimmers << swimmer_entry
                 team_name = row['team']
+                swimmer_entry = build_swimmer_entry(key, l, f, yob.to_i, gcode, team_name: team_name)
+                swimmers << swimmer_entry
                 next if team_name.to_s.strip.empty?
 
                 # Use swimmer entry's updated key/gender (may have been populated from DB match)
@@ -245,7 +245,7 @@ module Import
       # key: immutable reference key (LAST|FIRST|YOB)
       # last_name, first_name, year_of_birth, gender_type_code: swimmer attributes
       # Also computes individual category_type using CategoryComputer
-      def build_swimmer_entry(key, last_name, first_name, year_of_birth, gender_type_code)
+      def build_swimmer_entry(key, last_name, first_name, year_of_birth, gender_type_code, team_name: nil) # rubocop:disable Metrics/MethodLength
         complete_name = "#{last_name} #{first_name}".strip
         search_name = normalize_swimmer_name(complete_name)
         search_last = normalize_swimmer_name(last_name)
@@ -285,9 +285,24 @@ module Import
         matches = find_swimmer_matches(search_name, year_of_birth, search_last, gender_type_code)
         entry['fuzzy_matches'] = matches
         entry['gender_guessed'] = false
+        entry['similar_on_team'] = false
 
         # Store top match percentage for filtering (0 if no matches)
         entry['match_percentage'] = matches.first&.dig('percentage') || 0.0
+
+        # Team cross-reference: check if a similar swimmer already exists on the same team
+        team_id_for_xref = team_name.present? ? find_team_id_by_key(team_name) : nil
+        if team_id_for_xref.to_i.positive?
+          cross_ref = find_teammates_with_similar_name(complete_name, year_of_birth, gender_type_code, team_id_for_xref)
+          if cross_ref['has_similar']
+            entry['similar_on_team'] = true
+            entry['team_cross_ref'] = cross_ref
+            # Merge cross-ref candidates into fuzzy_matches (prepend, deduplicated by ID)
+            existing_ids = matches.map { |m| m['id'] }.compact
+            new_candidates = cross_ref['candidates'].reject { |c| existing_ids.include?(c['id']) }
+            entry['fuzzy_matches'] = new_candidates + matches if new_candidates.any?
+          end
+        end
 
         # Handle gender-unknown swimmers: only accept very high confidence matches (>=90%)
         # to infer gender safely. Lower matches could be wrong-gender swimmers with similar names.
@@ -332,8 +347,10 @@ module Import
         end
 
         # Auto-assign top match if confidence >= 60% (lower threshold for more auto-matching)
-        if matches.present? && auto_assignable?(matches.first, complete_name)
-          top_match = matches.first
+        # Use refreshed fuzzy_matches (may include cross-ref candidates)
+        current_matches = entry['fuzzy_matches'] || []
+        if current_matches.present? && auto_assignable?(current_matches.first, complete_name)
+          top_match = current_matches.first
           entry['swimmer_id'] = top_match['id']
           entry['complete_name'] = top_match['complete_name']
           entry['last_name'] = top_match['last_name']
@@ -432,6 +449,76 @@ module Import
         normalized = I18n.transliterate(base)
         normalized.gsub(/[`’]/, "'").squeeze(' ')
       end
+
+      # Find swimmers on the same team with similar names using Jaro-Winkler distance.
+      # This catches cases like "NUGNES GILEMMA" vs "NUNES GILEMMA" on the same team.
+      #
+      # Returns a hash: { 'has_similar' => bool, 'candidates' => [...] }
+      # Each candidate has the same format as fuzzy_matches entries plus 'from_team_cross_ref' flag.
+      #
+      # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/MethodLength
+      def find_teammates_with_similar_name(complete_name, year_of_birth, gender_type_code, team_id)
+        result = { 'has_similar' => false, 'candidates' => [] }
+        return result if complete_name.blank? || team_id.to_i.zero?
+
+        # Query all badges for this team in the current season to get teammate swimmer IDs
+        teammate_badges = GogglesDb::Badge.where(team_id: team_id.to_i, season_id: @season.id)
+                                          .includes(:swimmer)
+        return result if teammate_badges.empty?
+
+        metric = GogglesDb::DbFinders::BaseStrategy::METRIC
+        normalized_search = normalize_swimmer_name(complete_name).downcase
+
+        candidates = []
+        teammate_badges.each do |badge|
+          swimmer = badge.swimmer
+          next if swimmer.nil?
+          # Filter by YOB and gender if available
+          next if year_of_birth.to_i.positive? && swimmer.year_of_birth != year_of_birth.to_i
+          next if gender_type_code.present? && swimmer.gender_type&.code != gender_type_code
+
+          normalized_candidate = normalize_swimmer_name(swimmer.complete_name).downcase
+          similarity = metric.getDistance(normalized_search, normalized_candidate)
+
+          # Accept candidates with similarity >= 0.75 (catches typos/spacing differences)
+          # but skip perfect matches (already handled by standard fuzzy matching)
+          next if similarity < 0.75 || similarity >= 1.0
+
+          percentage = (similarity * 100).round(1)
+          color_class = case percentage
+                        when 90..100 then 'success'
+                        when 70...90 then 'warning'
+                        when 50...70 then 'danger'
+                        end
+          candidates << {
+            'id' => swimmer.id,
+            'complete_name' => swimmer.complete_name,
+            'last_name' => swimmer.last_name,
+            'first_name' => swimmer.first_name,
+            'year_of_birth' => swimmer.year_of_birth,
+            'gender_type_code' => swimmer.gender_type&.code,
+            'weight' => similarity.round(3),
+            'percentage' => percentage,
+            'color_class' => color_class,
+            'display_label' => "(Same team) #{swimmer.complete_name} (#{swimmer.year_of_birth}, ID: #{swimmer.id}, match: #{percentage}%)",
+            'from_team_cross_ref' => true
+          }
+        end
+
+        candidates.sort_by! { |c| -c['weight'] }
+        if candidates.any?
+          result['has_similar'] = true
+          result['candidates'] = candidates
+          @logger&.info("[SwimmerSolver] Team cross-ref found #{candidates.size} similar teammate(s) for '#{complete_name}': " \
+                        "#{candidates.map { |c| "#{c['complete_name']} (#{c['percentage']}%)" }.join(', ')}")
+        end
+
+        result
+      rescue StandardError => e
+        @logger&.warn("[SwimmerSolver] Error in team cross-ref for '#{complete_name}': #{e.message}")
+        result
+      end
+      # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/MethodLength
 
       # Build a badge entry using category data from swimmer entry when available.
       # Also attempts to match existing badge in DB if all required keys are available.

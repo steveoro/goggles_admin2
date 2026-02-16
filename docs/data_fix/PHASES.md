@@ -90,8 +90,10 @@ Phase 6: Commit → Production DB + SQL log
 
 ### What It Does
 - Fuzzy matches teams using Jaro-Winkler algorithm
-- Auto-assigns teams with ≥60% confidence
+- Auto-assigns teams with ≥81% confidence
 - **Pre-matches team affiliations** (v2.0 feature)
+- **Normalized name matching** (v2.1): strips common Italian abbreviations (A.S.D., S.S.D., etc.) for secondary fuzzy search
+- **Affiliation cross-reference** (v2.1): flags fuzzy match candidates already affiliated for the current season (`similar_affiliated` flag + "SIMILAR TEAM IN SEASON" UI badge)
 - Creates phase2.json with team_id and team_affiliation_id
 
 ### Pre-Matching Pattern
@@ -138,6 +140,8 @@ TeamAffiliation.create\!(...)  # Only create if missing
 - Matches swimmers by (last_name, first_name, year_of_birth)
 - **Pre-matches badges**
 - **Calculates category types** for Badges, using CategoriesCache; note that in some cases the category_types link cannot be finalized until the swimmer results are processed
+- **Team cross-reference** (v2.1): when a swimmer is not auto-assigned, checks if a similar name (Jaro-Winkler ≥0.75) already exists on the same team+season via Badge lookup (`similar_on_team` flag + "SIMILAR NAME ON SAME TEAM" UI badge)
+- Cross-ref candidates are prepended to the fuzzy matches dropdown for quick selection
 - Loads phase1 for meeting_date, phase2 for team_id
 
 ### Pre-Matching Pattern
@@ -589,9 +593,7 @@ See [plans/PHASE6_RELAY_COMPLETION_ROADMAP.md](./plans/PHASE6_RELAY_COMPLETION_R
 
 ### Future Enhancements
 - [ ] Performance optimization for large meetings (10,000+ results)
-- [ ] Background job processing for Phase 5 population
 - [ ] Real-time progress updates via ActionCable (partially done)
-- [ ] Batch commit capability (commit multiple meetings at once)
 
 ---
 

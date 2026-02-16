@@ -83,6 +83,7 @@
         swimmer_id = swimmer_hash['swimmer_id']
         has_match = swimmer_id.to_i.positive?
         gender_guessed = swimmer_hash['gender_guessed'] == true
+        similar_on_team = swimmer_hash['similar_on_team'] == true
         
         # Check for required data
         first_name = swimmer_hash['first_name']
@@ -118,6 +119,12 @@
           border_color = 'border-danger'
           icon_class = 'fa-exclamation-triangle text-danger'
           icon_title = 'Missing required data'
+        elsif similar_on_team
+          # New swimmer but similar name exists on same team
+          card_bg = 'bg-light-yellow'
+          border_color = 'border-warning'
+          icon_class = 'fa-exclamation-triangle text-warning'
+          icon_title = 'Similar name on same team'
         else
           # New swimmer with all required data
           card_bg = 'bg-light-yellow'
@@ -131,6 +138,7 @@
                locals: { file_path: @file_path, api_url: @api_url, swimmer_hash:, swimmer_index:,
                          swimmer_key:, swimmer_id:, has_match:, has_missing_data:, needs_optional_edit:,
                          missing_name:, missing_yob:, missing_gender:, gender_guessed:,
+                         similar_on_team:,
                          card_bg:, border_color:, border_width:, icon_class:, icon_title: })
 
   -# Pagination controls (bottom)

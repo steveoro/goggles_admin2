@@ -125,7 +125,7 @@ module Import
       # Build a team entry with fuzzy matches and auto-assignment
       # key: immutable reference key (original team name from source)
       # name: team name to search for
-      def build_team_entry(key, name)
+      def build_team_entry(key, name) # rubocop:disable Metrics/MethodLength
         entry = {
           'key' => key,
           'name' => name,
@@ -133,15 +133,34 @@ module Import
           'name_variations' => nil,
           'team_id' => nil,
           'city_id' => nil,
-          'match_percentage' => 0.0
+          'match_percentage' => 0.0,
+          'similar_affiliated' => false
         }
 
         # Find fuzzy matches
         matches = find_team_matches(name)
+
+        # Also try normalized name if different from original
+        normalized = normalize_team_name(name)
+        if normalized != name.to_s.strip && normalized.present?
+          normalized_matches = find_team_matches(normalized)
+          # Merge unique normalized matches (by ID) into main matches
+          existing_ids = matches.map { |m| m['id'] }.compact
+          normalized_matches.each do |nm|
+            matches << nm unless existing_ids.include?(nm['id'])
+          end
+          matches.sort_by! { |m| -m['weight'] }
+        end
+
+        # Enrich matches with affiliation status for this season
+        enrich_matches_with_affiliation_status!(matches)
         entry['fuzzy_matches'] = matches
 
         # Store top match percentage for filtering (0.0 if no matches)
         entry['match_percentage'] = matches.first&.dig('percentage') || 0.0
+
+        # Check if any non-auto-assigned match is already affiliated this season
+        entry['similar_affiliated'] = matches.any? { |m| m['affiliated_this_season'] == true }
 
         # Auto-assign top match if it's very good (exact match or close enough)
         if matches.present? && auto_assignable?(matches.first, name)
@@ -151,7 +170,13 @@ module Import
           entry['name'] = top_match['name']
           entry['name_variations'] = top_match['name_variations']
           entry['city_id'] = top_match['city_id']
+          # Clear similar_affiliated when auto-assigned (the match IS the team)
+          entry['similar_affiliated'] = false
           @logger&.info("[TeamSolver] Auto-assigned team '#{key}' -> ID #{top_match['id']}")
+        elsif entry['similar_affiliated']
+          affiliated = matches.select { |m| m['affiliated_this_season'] }
+          @logger&.info("[TeamSolver] Similar affiliated team(s) found for '#{key}': " \
+                        "#{affiliated.map { |m| "#{m['editable_name']} (ID: #{m['id']})" }.join(', ')}")
         end
 
         entry
@@ -246,6 +271,46 @@ module Import
       rescue StandardError => e
         @logger&.error("[TeamSolver] Error matching team affiliation for '#{team_key}': #{e.message}")
         affiliation # Return affiliation without ID on error
+      end
+
+      # Normalize team name by stripping common Italian association suffixes/prefixes.
+      # This helps match "Nuoto Master A.S.D." against "Asd Nuoto Master".
+      def normalize_team_name(name)
+        base = name.to_s.strip
+        return '' if base.empty?
+
+        # Remove dots first so "A.S.D." becomes "ASD", then upcase for consistent matching
+        normalized = I18n.transliterate(base).delete('.').upcase
+        # Remove common association abbreviations (order matters: longer patterns first)
+        abbreviations = %w[SSDRL SSD ASD APD SRL SS AS SD]
+        abbreviations.each do |abbr|
+          normalized = normalized.gsub(/\b#{abbr}\b/, '')
+        end
+        normalized.squeeze(' ').strip
+      end
+
+      # Enrich fuzzy match entries with affiliation status for the current season.
+      # Adds 'affiliated_this_season' boolean and updates display_label for affiliated teams.
+      def enrich_matches_with_affiliation_status!(matches)
+        return if matches.empty?
+
+        team_ids = matches.map { |m| m['id'] }.compact
+        return if team_ids.empty?
+
+        affiliated_ids = GogglesDb::TeamAffiliation.where(team_id: team_ids, season_id: @season.id)
+                                                   .pluck(:team_id)
+                                                   .to_set
+
+        matches.each do |match|
+          is_affiliated = affiliated_ids.include?(match['id'])
+          match['affiliated_this_season'] = is_affiliated
+          if is_affiliated
+            match['display_label'] = "(Affiliated) #{match['editable_name']} " \
+                                     "(ID: #{match['id']}, #{match['city_name'] || 'no city'}, match: #{match['percentage']}%)"
+          end
+        end
+      rescue StandardError => e
+        @logger&.warn("[TeamSolver] Error enriching affiliation status: #{e.message}")
       end
 
       # Broadcast progress updates via ActionCable for real-time UI feedback
