@@ -85,7 +85,7 @@ module Phase3
       value.is_a?(TrueClass) || value.to_s.casecmp('true').zero?
     end
 
-    def gather_swimmers(section, row) # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+    def gather_swimmers(section, row)
       swimmers = []
 
       1.upto(MAX_LEGS) do |idx|
@@ -120,7 +120,7 @@ module Phase3
       swimmers
     end
 
-    def build_leg(section, row, idx) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
+    def build_leg(section, row, idx)
       name = row["swimmer#{idx}"]
       return nil if name.to_s.strip.empty?
 
@@ -214,7 +214,7 @@ module Phase3
       laps[idx - 1]
     end
 
-    def parse_swimmer_reference(name, lap_reference) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+    def parse_swimmer_reference(name, lap_reference)
       if lap_reference && lap_reference['swimmer'].to_s.include?('|')
         tokens = lap_reference['swimmer'].split('|')
 
@@ -262,7 +262,7 @@ module Phase3
       }
     end
 
-    def phase3_match_for(parsed) # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+    def phase3_match_for(parsed)
       key = swimmer_key_for(parsed[:last_name], parsed[:first_name], parsed[:year_of_birth])
 
       # Try exact match first
@@ -307,7 +307,7 @@ module Phase3
     end
 
     # Detect orphan swimmers from Phase 3 dictionary that have issues but are not in results
-    def detect_orphan_swimmers_with_issues(existing_summary) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+    def detect_orphan_swimmers_with_issues(existing_summary)
       # Build set of swimmer keys already present in results summary
       keys_in_results = Set.new
       existing_summary.each do |relay|

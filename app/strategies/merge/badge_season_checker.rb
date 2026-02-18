@@ -390,7 +390,8 @@ module Merge
                 '(#diff_category_badges hash: <swimmer_id> => [badges_array])'
       end
       if @diff_team_badges.keys.present?
-        @log << "- #{@diff_team_badges.keys.size} swimmers with DIFFERENT team, including possible Team-merge candidates (all with SAME category) \033[1;33;33m⚠\033[0m " \
+        @log << "- #{@diff_team_badges.keys.size} swimmers with DIFFERENT team, including possible " \
+                "Team-merge candidates (all with SAME category) \033[1;33;33m⚠\033[0m " \
                 '(#diff_team_badges hash: <swimmer_id> => [badges_array])'
       end
       if @multi_badges.keys.present?

@@ -173,7 +173,7 @@ module Import
 
     # Populate MIR + Laps from source events array (LT4 format)
     # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
-    def populate_lt4_individual_results! # rubocop:disable Metrics/MethodLength
+    def populate_lt4_individual_results!
       events = source_data['events'] || []
 
       events.each_with_index do |event, _event_idx|
@@ -256,7 +256,7 @@ module Import
     end
 
     # Populate relay results from source events array (LT4 format)
-    def populate_lt4_relay_results! # rubocop:disable Metrics/MethodLength
+    def populate_lt4_relay_results!
       events = source_data['events'] || []
       relay_events = events.select { |e| e['relay'] == true }
       total_relay = relay_events.size
@@ -1145,7 +1145,7 @@ module Import
     # Register a program in the programs collection
     # Only stores program metadata (headers), NOT results (results stay in temp tables)
     # Groups by program_key (session + event + category + gender)
-    def add_to_programs(session_order:, event_key:, event_code:, category:, gender:, meeting_program_id:, relay: false)
+    def add_to_programs(session_order:, event_key:, event_code:, category:, gender:, meeting_program_id:, relay: false) # rubocop:disable Metrics/ParameterLists
       program_key = build_program_key(session_order, event_code, category, gender)
 
       # Initialize program header if not exists

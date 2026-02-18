@@ -362,13 +362,13 @@ module Merge
       else
         src_mrs_list.each do |src_mrs|
           dest_mrs = dest_mrs_list[src_mrs.relay_order]
-          next unless dest_mrs
-
-          set_clauses, = build_merge_set_clauses(src_mrs, dest_mrs, mrs_merge_columns, 'MRS')
-          @sql_log << "UPDATE meeting_relay_swimmers SET updated_at=NOW(), #{set_clauses.join(', ')} WHERE id=#{dest_mrs.id};" if set_clauses.any?
-          merge_relay_laps_for_mrs(src_mrs, dest_mrs)
+          if dest_mrs
+            set_clauses, = build_merge_set_clauses(src_mrs, dest_mrs, mrs_merge_columns, 'MRS')
+            @sql_log << "UPDATE meeting_relay_swimmers SET updated_at=NOW(), #{set_clauses.join(', ')} WHERE id=#{dest_mrs.id};" if set_clauses.any?
+            merge_relay_laps_for_mrs(src_mrs, dest_mrs)
+          end
+          @sql_log << "DELETE FROM relay_laps WHERE meeting_relay_swimmer_id=#{src_mrs.id};"
         end
-        src_mrs_list.each { |mrs| @sql_log << "DELETE FROM relay_laps WHERE meeting_relay_swimmer_id=#{mrs.id};" }
         @sql_log << "DELETE FROM meeting_relay_swimmers WHERE meeting_relay_result_id=#{src_mrr.id};"
       end
     end

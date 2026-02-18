@@ -1568,7 +1568,7 @@ module Import
                                swimmer:, swimmer_key:, badge:, team:, team_key:,
                                mr_model:, mr_key:, row:,
                                order:, max_order:, length_in_meters:, prev_lap_timing:,
-                               sublap_index: 0, sub_phases: 0)
+                               _sublap_index: 0, sub_phases: 0)
       lap_field_key = "lap#{length_in_meters}"
       delta_field_key = "delta#{length_in_meters}"
       # At least one of the two timing columns should be available in order to
@@ -1624,10 +1624,9 @@ module Import
 
       elsif mr_model.is_a?(GogglesDb::MeetingRelayResult)
         mrs_key = mrs_key_for(order, mr_key, swimmer_key)
-        # NOTE:
-        # 1. always create MRS first so that the binding in the relay lap can be set
-        # 2. restore MRS from cache when processing a relay lap (length < phase_length)
-        # 3. always process MRS & sub-laps in crescent order so that previous lap timing is available
+        # NOTE: always create MRS first so that the binding in the relay lap can be set;
+        # restore MRS from cache when processing a relay lap (length < phase_length);
+        # always process MRS & sub-laps in crescent order so that previous lap timing is available
 
         # *** MRR -> MRS ("last sub-lap") ***
         Rails.logger.debug { "    >> Relay Swimmer '#{swimmer_key}' @ #{length_in_meters}m: <#{lap_timing}>" } if @toggle_debug

@@ -194,7 +194,7 @@ module PdfResults
 
       # === Event loop: ===
       Rails.logger.debug { "\r\n-> Event loop rows: #{data_hash_rows.count}" }
-      data_hash_rows.each_with_index do |event_hash, _idx| # rubocop:disable Metrics/BlockLength
+      data_hash_rows.each_with_index do |event_hash, _idx|
         # Supported hierarchy for "event-type" depth level:
         #
         # [header]

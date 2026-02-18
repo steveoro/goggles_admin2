@@ -379,12 +379,12 @@ module Import
           end
         end
       end
-      # rubocop:enable Metrics/AbcSize
+      # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
       # -----------------------------------------------------------------------
 
       # Commit MeetingProgram and return its ID
       # For relays with unknown category/gender, attempts auto-computation from swimmer data.
-      def commit_meeting_program(meeting_event_id:, category_code:, gender_code:, is_relay: false, program_key: nil) # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+      def commit_meeting_program(meeting_event_id:, category_code:, gender_code:, is_relay: false, program_key: nil)
         category_type = resolve_category_type(category_code, is_relay: is_relay)
         gender_type = gender_type_instance_from_code(gender_code)
 
@@ -432,7 +432,7 @@ module Import
       # Relay categories in source data use simplified codes like "M100", "M120",
       # but DB stores them as age ranges like "100-119", "120-159".
       # For relays, we extract the age from the code and use find_category_for_age.
-      def resolve_category_type(category_code, is_relay: false) # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+      def resolve_category_type(category_code, is_relay: false)
         return nil if category_code.blank?
 
         if is_relay
@@ -502,7 +502,7 @@ module Import
       # -----------------------------------------------------------------------
 
       # Commit relay results (MRR + MRS + RelayLaps) for a given program
-      def commit_relay_results_for_program(program_key, program_id) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+      def commit_relay_results_for_program(program_key, program_id) # rubocop:disable Metrics/AbcSize
         # Retrieve MRRs bound to the program's key
         mrrs = GogglesDb::DataImportMeetingRelayResult.where(meeting_program_key: program_key)
                                                       .includes(data_import_meeting_relay_swimmers: :data_import_relay_laps)
@@ -768,7 +768,7 @@ module Import
       # =========================================================================
 
       # Build normalized meeting attributes matching DB schema
-      def normalize_meeting_attributes(raw_meeting)
+      def normalize_meeting_attributes(raw_meeting) # rubocop:disable Metrics/AbcSize
         meeting_hash = raw_meeting.deep_dup
 
         meeting_hash['description'] = meeting_hash['name']
@@ -924,7 +924,7 @@ module Import
       # == Returns:
       # GogglesDb::CategoryType instance or nil if computation fails
       #
-      def compute_relay_category_from_swimmers(program_key)
+      def compute_relay_category_from_swimmers(program_key) # rubocop:disable Metrics/AbcSize
         return nil unless @meeting && @categories_cache
 
         # Query MRRs for this program pattern (may have 'N/A' or other unknown category)

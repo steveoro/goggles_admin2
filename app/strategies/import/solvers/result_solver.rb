@@ -79,7 +79,8 @@ module Import
           sessions = sessions_map.values.map do |h|
             h['events'].sort_by! { |e| e['event_order'].to_i }
             h
-          end.sort_by { |s| s['session_order'].to_i }
+          end
+          sessions.sort_by! { |s| s['session_order'].to_i }
 
         # Priority 2: LT2 format (sections array) - Legacy/PDF parsed
         elsif data_hash['sections'].is_a?(Array) && data_hash['sections'].any?
@@ -229,8 +230,6 @@ module Import
         stroke_code = case title
                       when /misti|medley/i
                         'MI' # Mixed relay (backstroke, breaststroke, butterfly, freestyle) - stroke_type_id=10
-                      when /stile\s*libero|freestyle/i
-                        'SL' # Freestyle
                       when /dorso|backstroke/i
                         'DO' # Backstroke
                       when /rana|breaststroke/i
@@ -238,7 +237,7 @@ module Import
                       when /farfalla|delfino|butterfly/i
                         'FA' # Butterfly
                       else
-                        'SL' # Default to freestyle if unknown
+                        'SL' # Freestyle or unknown default
                       end
 
         # Determine mixed gender prefix: 'M' for mixed, 'S' for same gender

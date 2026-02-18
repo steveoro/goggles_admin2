@@ -56,8 +56,22 @@ Metrics/AbcSize:
     - 'app/controllers/pull_controller.rb'
     - 'app/controllers/api_users_controller.rb'
     - 'app/controllers/api_issues_controller.rb'
+    - 'app/controllers/data_fix_controller.rb'
+    - 'app/controllers/users/sessions_controller.rb'
     - 'app/strategies/pdf_results/context_def.rb'
     - 'app/strategies/merge/swimmer.rb'
+    - 'app/strategies/merge/duplicate_result_cleaner.rb'
+    - 'app/strategies/merge/meeting.rb'
+    - 'app/strategies/merge/meeting_checker.rb'
+    - 'app/strategies/import/committers/**/*'
+    - 'app/strategies/import/solvers/**/*'
+    - 'app/strategies/import/adapters/**/*'
+    - 'app/strategies/import/phase5_populator.rb'
+    - 'app/strategies/import/phase_commit_logger.rb'
+    - 'app/strategies/import/diff_calculator.rb'
+    - 'app/strategies/import/category_computer.rb'
+    - 'app/services/phase3/**/*'
+    - 'app/services/phase5/**/*'
 
 Metrics/BlockLength:
   Max: 40
@@ -68,7 +82,11 @@ Metrics/BlockLength:
     - 'db/schema.rb'
     - 'lib/tasks/fixtures_from_results.rake'
     - 'lib/tasks/pdfs_from_results.rake'
+    - 'lib/tasks/recompute.rake'
     - 'spec/**/*'
+    - 'app/strategies/import/phase5_populator.rb'
+    - 'app/strategies/import/phase_commit_logger.rb'
+    - 'app/strategies/pdf_results/l2_converter.rb'
 
 Metrics/ClassLength:
   Max: 120
@@ -78,6 +96,13 @@ Metrics/ClassLength:
     - 'app/strategies/import/macro_committer.rb'
     - 'app/strategies/import/macro_solver.rb'
     - 'app/controllers/api_issues_controller.rb'
+    - 'app/strategies/import/committers/badge.rb'
+    - 'app/strategies/import/committers/lap.rb'
+    - 'app/strategies/import/committers/meeting_relay_swimmer.rb'
+    - 'app/strategies/import/committers/relay_lap.rb'
+    - 'app/strategies/import/solvers/event_solver.rb'
+    - 'app/strategies/merge/meeting_checker.rb'
+    - 'app/strategies/merge/team_in_meeting.rb'
 
 Metrics/CyclomaticComplexity:
   Max: 8
@@ -85,26 +110,78 @@ Metrics/CyclomaticComplexity:
     - 'bin/bundle'
     - 'app/components/issue/status_buttons_component.rb'
     - 'app/controllers/api_issues_controller.rb'
+    - 'app/controllers/data_fix_controller.rb'
+    - 'app/controllers/users/sessions_controller.rb'
     - 'app/strategies/pdf_results/field_def.rb'
     - 'app/strategies/merge/swimmer_checker.rb'
-    - 'app/strategies/pdf_results/context_def.rb'
     - 'app/strategies/merge/swimmer.rb'
+    - 'app/strategies/merge/duplicate_result_cleaner.rb'
+    - 'app/strategies/merge/meeting.rb'
+    - 'app/strategies/merge/meeting_checker.rb'
+    - 'app/strategies/pdf_results/context_def.rb'
+    - 'app/strategies/import/committers/**/*'
+    - 'app/strategies/import/solvers/**/*'
+    - 'app/strategies/import/adapters/**/*'
+    - 'app/strategies/import/phase5_populator.rb'
+    - 'app/strategies/import/phase_commit_logger.rb'
+    - 'app/strategies/import/diff_calculator.rb'
+    - 'app/strategies/import/category_computer.rb'
+    - 'app/services/phase3/**/*'
+    - 'app/services/phase5/**/*'
 
 Metrics/MethodLength:
   Max: 35
   Exclude:
     - 'db/migrate/*'
     - 'app/controllers/api_issues_controller.rb'
+    - 'app/controllers/data_fix_controller.rb'
+    - 'app/strategies/merge/meeting_checker.rb'
+    - 'app/strategies/import/committers/**/*'
+    - 'app/strategies/import/solvers/**/*'
+    - 'app/strategies/import/adapters/**/*'
+    - 'app/strategies/import/phase5_populator.rb'
+    - 'app/strategies/import/phase_commit_logger.rb'
+    - 'app/services/phase3/**/*'
+    - 'app/services/phase5/**/*'
 
 Metrics/PerceivedComplexity:
   Exclude:
     - 'bin/bundle'
     - 'app/components/issue/status_buttons_component.rb'
     - 'app/controllers/api_issues_controller.rb'
+    - 'app/controllers/data_fix_controller.rb'
+    - 'app/controllers/users/sessions_controller.rb'
     - 'app/strategies/pdf_results/field_def.rb'
     - 'app/strategies/merge/swimmer_checker.rb'
-    - 'app/strategies/pdf_results/context_def.rb'
     - 'app/strategies/merge/swimmer.rb'
+    - 'app/strategies/merge/duplicate_result_cleaner.rb'
+    - 'app/strategies/merge/meeting.rb'
+    - 'app/strategies/merge/meeting_checker.rb'
+    - 'app/strategies/pdf_results/context_def.rb'
+    - 'app/strategies/import/committers/**/*'
+    - 'app/strategies/import/solvers/**/*'
+    - 'app/strategies/import/adapters/**/*'
+    - 'app/strategies/import/phase5_populator.rb'
+    - 'app/strategies/import/phase_commit_logger.rb'
+    - 'app/strategies/import/diff_calculator.rb'
+    - 'app/strategies/import/category_computer.rb'
+    - 'app/services/phase3/**/*'
+    - 'app/services/phase5/**/*'
+
+Metrics/BlockNesting:
+  Exclude:
+    - 'app/controllers/data_fix_controller.rb'
+    - 'app/strategies/import/solvers/event_solver.rb'
+
+Metrics/ParameterLists:
+  Exclude:
+    - 'app/components/page_links_for_array_component.rb'
+    - 'app/services/phase3/relay_enrichment_detector.rb'
+    - 'app/strategies/import/committers/main.rb'
+    - 'app/strategies/import/committers/relay_lap.rb'
+    - 'app/strategies/import/phase5_populator.rb'
+    - 'app/strategies/import/solvers/swimmer_solver.rb'
+    - 'app/strategies/pdf_results/context_def.rb'
 
 
 Rails/Output:

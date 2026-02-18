@@ -43,9 +43,10 @@ module DataFix
         # Each item, when sorting an hash, is an array having [key, value]:
         a = arr1.second&.fetch('row', {})
         b = arr2.second&.fetch('row', {})
-        Kernel.format('%<min>02d%<sec>02d%<hun>02d', min: a['minutes'].to_i, sec: a['seconds'].to_i,
-                                                     hun: a['hundredths'].to_i).to_i <=> Kernel.format('%<min>02d%<sec>02d%<hun>02d', min: b['minutes'].to_i,
-                                                                                                                                      sec: b['seconds'].to_i, hun: b['hundredths'].to_i).to_i
+        fmt = '%<min>02d%<sec>02d%<hun>02d'
+        a_t = Kernel.format(fmt, min: a['minutes'].to_i, sec: a['seconds'].to_i, hun: a['hundredths'].to_i).to_i
+        b_t = Kernel.format(fmt, min: b['minutes'].to_i, sec: b['seconds'].to_i, hun: b['hundredths'].to_i).to_i
+        a_t <=> b_t
       end
     end
 

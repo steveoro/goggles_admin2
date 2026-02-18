@@ -81,21 +81,19 @@ RSpec.describe Merge::TeamChecker do
     let(:dest_team) { dest_ta.team }
     let(:swimmer) { GogglesDb::Swimmer.limit(200).sample }
 
-    let!(:src_badge) do
-      FactoryBot.create(:badge, swimmer:, team: src_team, team_affiliation: src_ta,
-                                season:, category_type:)
-    end
-    let!(:dest_badge) do
-      FactoryBot.create(:badge, swimmer:, team: dest_team, team_affiliation: dest_ta,
-                                season:, category_type:)
-    end
     # An orphan badge on src_team (no counterpart on dest)
     let!(:orphan_badge) do
       FactoryBot.create(:badge, team: src_team, team_affiliation: src_ta,
                                 season:, category_type:)
     end
 
-    before(:each) { checker.run }
+    before(:each) do
+      FactoryBot.create(:badge, swimmer:, team: src_team, team_affiliation: src_ta,
+                                season:, category_type:)
+      FactoryBot.create(:badge, swimmer:, team: dest_team, team_affiliation: dest_ta,
+                                season:, category_type:)
+      checker.run
+    end
 
     describe '#shared_badge_couples_by_season' do
       it 'returns a Hash grouped by season_id' do

@@ -1259,7 +1259,7 @@ class DataFixController < ApplicationController
   # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
 
   # Delete a swimmer entry from Phase 3 and clear downstream phase data
-  def delete_swimmer
+  def delete_swimmer # rubocop:disable Metrics/AbcSize
     file_path = params[:file_path]
     swimmer_key = params[:swimmer_key]
 
@@ -1435,7 +1435,7 @@ class DataFixController < ApplicationController
   # rubocop:enable Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
 
   # Add a new blank event to Phase 4
-  # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
+  # rubocop:disable Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
   def add_event
     file_path = params[:file_path]
     session_index = params[:session_index].to_i
@@ -1541,10 +1541,10 @@ class DataFixController < ApplicationController
     redirect_to review_events_path(file_path:, phase4_v2: 1, new_event_index: flattened_index),
                 notice: I18n.t('data_import.messages.updated')
   end
-  # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
+  # rubocop:enable Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
 
   # Delete an event entry from Phase 4 and clear downstream phase data
-  def delete_event
+  def delete_event # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
     file_path = params[:file_path]
     session_index = params[:session_index]&.to_i
     event_index = params[:event_index]&.to_i
@@ -1589,7 +1589,7 @@ class DataFixController < ApplicationController
   end
 
   # Update Phase 1 meeting attributes in the phase file and redirect back to v2 view
-  # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
+  # rubocop:disable Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
   def update_phase1_meeting
     file_path = params[:file_path]
     if file_path.blank?
@@ -1679,10 +1679,10 @@ class DataFixController < ApplicationController
 
     redirect_to review_sessions_path(file_path:, phase_v2: 1), notice: I18n.t('data_import.messages.updated')
   end
-  # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
+  # rubocop:enable Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
 
   # Update a session entry in Phase 1 using service object
-  def update_phase1_session
+  def update_phase1_session # rubocop:disable Metrics/AbcSize
     file_path = params[:file_path]
     session_index = params[:session_index].to_i
 
@@ -1706,7 +1706,7 @@ class DataFixController < ApplicationController
 
   # Create a new blank session entry in Phase 1 and redirect back to v2 view
   # Mirrors legacy add_session semantics minimally for v2
-  def add_session
+  def add_session # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
     file_path = params[:file_path]
     if file_path.blank?
       flash[:warning] = I18n.t('data_import.errors.invalid_request')

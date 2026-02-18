@@ -128,16 +128,13 @@ RSpec.describe Merge::Team do
     let(:dest_team) { dest_ta.team }
     let(:swimmer) { GogglesDb::Swimmer.limit(200).sample }
 
-    let!(:src_badge) do
+    before(:each) do
       FactoryBot.create(:badge, swimmer:, team: src_team, team_affiliation: src_ta,
                                 season:, category_type:)
-    end
-    let!(:dest_badge) do
       FactoryBot.create(:badge, swimmer:, team: dest_team, team_affiliation: dest_ta,
                                 season:, category_type:)
+      merger.prepare
     end
-
-    before(:each) { merger.prepare }
 
     it 'includes badge sub-merge header' do
       sql = merger.sql_log.join("\n")

@@ -120,7 +120,7 @@ module Import
         hsh['poolLength']
       end
 
-      def set_dates!(out, hsh, layout_type) # rubocop:disable Metrics/AbcSize
+      def set_dates!(out, hsh, layout_type)
         if layout_type == 2
           # Preserve LT2 date fields as-is
           out['dateYear1'] = hsh['dateYear1']

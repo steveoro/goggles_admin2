@@ -516,10 +516,12 @@ module Merge
 
     # Assumes +ir+ is a valid IndividualRecord instance.
     def decorate_ir(ir) # rubocop:disable Metrics/AbcSize, Naming/MethodParameterName
+      mir = ir&.meeting_individual_result
+      mir_swimmer = mir&.swimmer
       "[IR  #{ir.id.to_s.rjust(7)}] Swimmer ID #{ir.swimmer_id.to_s.rjust(7)}) #{ir&.swimmer&.complete_name} #{ir&.swimmer&.year_of_birth}, Team ID #{ir.team_id}) #{ir&.team&.name}\r\n  " \
-        "[MIR #{ir.meeting_individual_result_id.to_s.rjust(7)}] Swimmer ID #{ir&.meeting_individual_result&.swimmer_id.to_s.rjust(7)}) " \
-        "#{ir&.meeting_individual_result&.swimmer&.complete_name} #{ir&.meeting_individual_result&.swimmer&.year_of_birth}, " \
-        "Team ID #{ir&.meeting_individual_result&.team_id}) #{ir&.meeting_individual_result&.team&.name}\r\n"
+        "[MIR #{ir.meeting_individual_result_id.to_s.rjust(7)}] Swimmer ID #{mir&.swimmer_id.to_s.rjust(7)}) " \
+        "#{mir_swimmer&.complete_name} #{mir_swimmer&.year_of_birth}, " \
+        "Team ID #{mir&.team_id}) #{mir&.team&.name}\r\n"
     end
 
     # Analizes source and destination IRs, enlisting any confliting IR ids.

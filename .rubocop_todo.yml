@@ -54,6 +54,17 @@ Rails/Present:
 Rails/SkipsModelValidations:
   Exclude:
     - 'app/controllers/users/sessions_controller.rb'
+    - 'spec/strategies/import/solvers/swimmer_solver_spec.rb'
+
+# Offense count: 1
+RSpec/MessageSpies:
+  Exclude:
+    - 'spec/requests/data_fix_controller_phase3_spec.rb'
+
+# Offense count: 1
+RSpec/SubjectStub:
+  Exclude:
+    - 'spec/strategies/import/phase5_populator_spec.rb'
 
 # Offense count: 28
 # Configuration parameters: Prefixes.

@@ -213,7 +213,9 @@ module Merge
             dup[:mirs].each do |mir|
               badge_exists = GogglesDb::Badge.exists?(id: mir.badge_id)
               badge_status = badge_exists ? '' : ' [BADGE MISSING!]'
-              puts "    - MIR #{mir.id}: #{mir.to_timing} => team #{mir.team_id} (#{mir.team&.editable_name}), badge #{mir.badge_id}#{badge_status} #{mir.badge&.decorate&.short_label}"
+              short_label = mir.badge&.decorate&.short_label
+              puts "    - MIR #{mir.id}: #{mir.to_timing} => team #{mir.team_id} " \
+                   "(#{mir.team&.editable_name}), badge #{mir.badge_id}#{badge_status} #{short_label}"
             end
           end
           total_dup_mirs += dup_mirs.size

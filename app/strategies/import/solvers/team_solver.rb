@@ -125,7 +125,7 @@ module Import
       # Build a team entry with fuzzy matches and auto-assignment
       # key: immutable reference key (original team name from source)
       # name: team name to search for
-      def build_team_entry(key, name) # rubocop:disable Metrics/MethodLength
+      def build_team_entry(key, name) # rubocop:disable Metrics/MethodLength, Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
         entry = {
           'key' => key,
           'name' => name,
@@ -145,7 +145,7 @@ module Import
         if normalized != name.to_s.strip && normalized.present?
           normalized_matches = find_team_matches(normalized)
           # Merge unique normalized matches (by ID) into main matches
-          existing_ids = matches.map { |m| m['id'] }.compact
+          existing_ids = matches.filter_map { |m| m['id'] }
           normalized_matches.each do |nm|
             matches << nm unless existing_ids.include?(nm['id'])
           end
@@ -160,7 +160,7 @@ module Import
         if xref_candidates.any?
           # Promote-or-prepend: move existing matches to top with cross-ref label,
           # or prepend truly new candidates
-          xref_ids = xref_candidates.map { |c| c['id'] }.to_set
+          xref_ids = xref_candidates.to_set { |c| c['id'] }
           promoted = []
           remaining = []
           matches.each do |m|
@@ -174,7 +174,7 @@ module Import
               remaining << m
             end
           end
-          existing_ids = matches.map { |m| m['id'] }.compact.to_set
+          existing_ids = matches.filter_map { |m| m['id'] }.to_set
           new_candidates = xref_candidates.reject { |c| existing_ids.include?(c['id']) }
           matches = new_candidates + promoted + remaining
         end
@@ -209,7 +209,7 @@ module Import
 
       # Find potential team matches using GogglesDb fuzzy finder with Jaro-Winkler distance
       # Returns array of hashes with team data (id, name, editable_name, etc.) sorted by match weight
-      def find_team_matches(name)
+      def find_team_matches(name) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
         return [] if name.blank?
 
         # Use CmdFindDbEntity with FuzzyTeam strategy (Jaro-Winkler distance)
@@ -268,7 +268,7 @@ module Import
       # Build a team affiliation entry with matching logic
       # Attempts to match existing TeamAffiliation if team_id is available
       # Returns hash with team_key, season_id, team_id, and team_affiliation_id (if matched)
-      def build_team_affiliation_entry(team_key, team_id)
+      def build_team_affiliation_entry(team_key, team_id) # rubocop:disable Metrics/PerceivedComplexity
         affiliation = {
           'team_key' => team_key,
           'season_id' => @season.id,
@@ -316,10 +316,10 @@ module Import
 
       # Enrich fuzzy match entries with affiliation status for the current season.
       # Adds 'affiliated_this_season' boolean and updates display_label for affiliated teams.
-      def enrich_matches_with_affiliation_status!(matches)
+      def enrich_matches_with_affiliation_status!(matches) # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
         return if matches.empty?
 
-        team_ids = matches.map { |m| m['id'] }.compact
+        team_ids = matches.filter_map { |m| m['id'] }
         return if team_ids.empty?
 
         affiliated_ids = GogglesDb::TeamAffiliation.where(team_id: team_ids, season_id: @season.id)

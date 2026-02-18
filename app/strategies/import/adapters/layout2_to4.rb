@@ -106,7 +106,7 @@ module Import
 
         # Build LT4-style lookup dictionaries for swimmers and teams
         # Extracts unique swimmers/teams from all sections/rows
-        def build_lookup_dictionaries!(src, out)
+        def build_lookup_dictionaries!(src, out) # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
           swimmers = {}
           teams = {}
 
@@ -153,7 +153,7 @@ module Import
         # LT2 sections group by (event, category, gender)
         # LT4 events group by event only, with results containing categories
         #
-        def normalize_events!(src, out)
+        def normalize_events!(src, out) # rubocop:disable Metrics/AbcSize
           out['events'] = []
           sections = src['sections'] || []
 
@@ -299,7 +299,7 @@ module Import
           result
         end
 
-        def normalize_relay_result(row, section)
+        def normalize_relay_result(row, section) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
           result = {
             'ranking' => row['pos'],
             'team' => row['team'],

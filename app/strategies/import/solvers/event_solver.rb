@@ -36,7 +36,7 @@ module Import
           arr = data_hash['events']
           sessions_map = Hash.new { |h, k| h[k] = { 'session_order' => k, 'events' => [], '__seen__' => {} } }
 
-          arr.each_with_index do |ev, idx_ev|
+          arr.each_with_index do |ev, idx_ev| # rubocop:disable Metrics/BlockLength
             # Distance / stroke support for LT4 (eventLength, eventStroke) and generic fields
             distance = ev['distance'] || ev['distanceInMeters'] || ev['eventLength']
             stroke = ev['stroke'] || ev['style'] || ev['eventStroke']
@@ -111,7 +111,8 @@ module Import
             h.delete('__seen__')
             h['events'].sort_by! { |e| e['event_order'].to_i }
             h
-          end.sort_by { |s| s['session_order'].to_i }
+          end
+          sessions.sort_by! { |s| s['session_order'].to_i }
 
         # Priority 2: LT2 format (sections array) - Legacy/PDF parsed
         elsif data_hash['sections'].is_a?(Array) && data_hash['sections'].any?
@@ -322,7 +323,7 @@ module Import
       # - distance: total event length (e.g., 200 for 4x50)
       # - stroke: stroke code (e.g., "MI" for mixed relay, "SL" for freestyle)
       # - event_code: full event type code (e.g., "S4X50MI" or "M4X50SL")
-      def parse_relay_event_from_title(title, fin_sesso)
+      def parse_relay_event_from_title(title, fin_sesso) # rubocop:disable Metrics/CyclomaticComplexity
         return [nil, nil, nil] if title.to_s.strip.empty?
 
         # Match pattern like "4x50 m" or "4X50m" from title
