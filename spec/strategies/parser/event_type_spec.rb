@@ -14,7 +14,7 @@ module Parser
           event_titles.sample(10).each do |section_title|
             # DEBUG
             # puts "Parsing '#{section_title}'"
-            event_type, category_type = described_class.from_l2_result(section_title, fixture_season)
+            event_type, category_type = described_class.from_l2_result(section_title, nil, fixture_season)
             expect(event_type).to be_a(GogglesDb::EventType) && be_valid
             expect(category_type).to be_a(GogglesDb::CategoryType) && be_valid
           end

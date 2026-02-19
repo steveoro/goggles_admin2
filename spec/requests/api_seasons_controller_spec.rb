@@ -20,8 +20,8 @@ RSpec.describe APISeasonsController do
         allow(APIProxy).to receive(:call).with(
           method: :get, url: 'seasons', jwt: admin_user.jwt,
           params: {
-            header_year: anything, begin_date: anything,
-            end_date: anything,
+            begin_date: anything, end_date: anything,
+            header_year: anything, season_type_id: anything,
             page: anything, per_page: anything
           }
         ).and_return(DummyResponse.new(body: GogglesDb::Season.first(25).to_json))

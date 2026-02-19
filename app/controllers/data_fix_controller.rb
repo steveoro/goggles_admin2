@@ -74,7 +74,7 @@ class DataFixController < ApplicationController
 
   # rubocop:disable Metrics/AbcSize
   def review_teams
-    return if params[:phase2_v2].blank?
+    redirect_to(review_teams_legacy_path(request.query_parameters)) && return if params[:phase2_v2].blank?
 
     @file_path = params[:file_path]
     if @file_path.blank?
@@ -151,7 +151,7 @@ class DataFixController < ApplicationController
   # ---------------------------------------------------------------------------
 
   def review_swimmers
-    return if params[:phase3_v2].blank?
+    redirect_to(review_swimmers_legacy_path(request.query_parameters)) && return if params[:phase3_v2].blank?
 
     @file_path = params[:file_path]
     if @file_path.blank?

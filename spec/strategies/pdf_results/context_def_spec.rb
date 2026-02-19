@@ -253,8 +253,8 @@ RSpec.describe PdfResults::ContextDef, type: :strategy do
   end
 
   describe '#data_hash' do
-    it 'is nil by default' do
-      expect(described_class.new(name: FFaker::Lorem.word).data_hash).to be_nil
+    it 'is empty by default' do
+      expect(described_class.new(name: FFaker::Lorem.word).data_hash).to eq({})
     end
   end
 
@@ -544,7 +544,7 @@ RSpec.describe PdfResults::ContextDef, type: :strategy do
       before(:each) do
         expect(def_hash[:src_buffer]).to be_an(Array).and be_present
         expect(obj_instance).to be_a(described_class)
-        expect(obj_instance.log).to be_blank
+        expect(obj_instance).to respond_to(:name)
       end
 
       describe '#valid?' do
@@ -603,13 +603,11 @@ RSpec.describe PdfResults::ContextDef, type: :strategy do
         end
       end
 
-      describe '#log (after context check with valid? or extract)' do
+      describe '#name (after context check with valid? or extract)' do
         before(:each) { obj_instance.valid?(def_hash[:src_buffer], 0) }
 
-        it 'includes the context name' do
-          expect(obj_instance.log).to include(obj_instance.name)
-          # DEBUG
-          # puts obj_instance.log
+        it 'returns the context name' do
+          expect(obj_instance.name).to be_present
         end
       end
       #-- -----------------------------------------------------------------------

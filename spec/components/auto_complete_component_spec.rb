@@ -37,53 +37,53 @@ RSpec.describe AutoCompleteComponent, type: :component do
     end
 
     it 'includes the link to the Stimulus JS controller' do
-      expect(rendered_node.css('.form-group').attr('data-controller')).to be_present
-      expect(rendered_node.css('.form-group').attr('data-controller').value).to eq('autocomplete')
+      expect(rendered_node.css('.row').attr('data-controller')).to be_present
+      expect(rendered_node.css('.row').attr('data-controller').value).to eq('autocomplete')
     end
 
     it 'includes the base-api-url controller value' do
-      expect(rendered_node.css('.form-group').attr('data-autocomplete-base-api-url-value')).to be_present
-      expect(rendered_node.css('.form-group').attr('data-autocomplete-base-api-url-value').value).to eq(base_api_url)
+      expect(rendered_node.css('.row').attr('data-autocomplete-base-api-url-value')).to be_present
+      expect(rendered_node.css('.row').attr('data-autocomplete-base-api-url-value').value).to eq(base_api_url)
     end
 
     it 'includes the search-endpoint controller value' do
-      expect(rendered_node.css('.form-group').attr('data-autocomplete-search-endpoint-value')).to be_present
+      expect(rendered_node.css('.row').attr('data-autocomplete-search-endpoint-value')).to be_present
       expect(
-        rendered_node.css('.form-group').attr('data-autocomplete-search-endpoint-value').value
+        rendered_node.css('.row').attr('data-autocomplete-search-endpoint-value').value
       ).to eq(search_endpoint)
     end
 
     it 'includes the detail-endpoint controller value' do
-      expect(rendered_node.css('.form-group').attr('data-autocomplete-detail-endpoint-value')).to be_present
+      expect(rendered_node.css('.row').attr('data-autocomplete-detail-endpoint-value')).to be_present
       expect(
-        rendered_node.css('.form-group').attr('data-autocomplete-detail-endpoint-value').value
+        rendered_node.css('.row').attr('data-autocomplete-detail-endpoint-value').value
       ).to eq(detail_endpoint)
     end
 
     it 'includes the search-column controller value' do
-      expect(rendered_node.css('.form-group').attr('data-autocomplete-search-column-value')).to be_present
+      expect(rendered_node.css('.row').attr('data-autocomplete-search-column-value')).to be_present
       expect(
-        rendered_node.css('.form-group').attr('data-autocomplete-search-column-value').value
+        rendered_node.css('.row').attr('data-autocomplete-search-column-value').value
       ).to eq(search_column)
     end
 
     it 'includes the label-column controller value' do
-      expect(rendered_node.css('.form-group').attr('data-autocomplete-label-column-value')).to be_present
+      expect(rendered_node.css('.row').attr('data-autocomplete-label-column-value')).to be_present
       expect(
-        rendered_node.css('.form-group').attr('data-autocomplete-label-column-value').value
+        rendered_node.css('.row').attr('data-autocomplete-label-column-value').value
       ).to eq(label_column)
     end
 
     it 'includes the label2-column controller value' do
-      expect(rendered_node.css('.form-group').attr('data-autocomplete-label2-column-value')).to be_present
+      expect(rendered_node.css('.row').attr('data-autocomplete-label2-column-value')).to be_present
       expect(
-        rendered_node.css('.form-group').attr('data-autocomplete-label2-column-value').value
+        rendered_node.css('.row').attr('data-autocomplete-label2-column-value').value
       ).to eq(label2_column)
     end
 
     it 'includes the jwt controller value' do
-      expect(rendered_node.css('.form-group').attr('data-autocomplete-jwt-value')).to be_present
-      expect(rendered_node.css('.form-group').attr('data-autocomplete-jwt-value').value).to eq(jwt)
+      expect(rendered_node.css('.row').attr('data-autocomplete-jwt-value')).to be_present
+      expect(rendered_node.css('.row').attr('data-autocomplete-jwt-value').value).to eq(jwt)
     end
 
     it 'includes the target field input text' do

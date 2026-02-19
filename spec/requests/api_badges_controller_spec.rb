@@ -20,8 +20,10 @@ RSpec.describe APIBadgesController do
         allow(APIProxy).to receive(:call).with(
           method: :get, url: 'badges', jwt: admin_user.jwt,
           params: {
-            swimmer_id: anything, team_id: anything,
+            team_id: anything, team_affiliation_id: anything,
             season_id: anything,
+            swimmer_id: anything,
+            off_gogglecup: anything,
             fees_due: anything,
             badge_due: anything,
             relays_due: anything,

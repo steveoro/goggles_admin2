@@ -198,14 +198,13 @@ RSpec.describe Import::Solvers::EventSolver do
     end
 
     before(:each) do
-      # Create phase1 file with meeting sessions
       phase1_path = File.join(temp_dir, 'sample-phase1.json')
       phase1_data = {
         '_meta' => {},
         'data' => {
-          'sessions' => [
-            { 'session_order' => 1, 'meeting_session_id' => session1.id },
-            { 'session_order' => 2, 'meeting_session_id' => session2.id }
+          'meeting_session' => [
+            { 'session_order' => 1, 'id' => session1.id },
+            { 'session_order' => 2, 'id' => session2.id }
           ]
         }
       }
@@ -236,7 +235,7 @@ RSpec.describe Import::Solvers::EventSolver do
       session1_events = data['sessions'].find { |s| s['session_order'] == 1 }['events']
       event_100sl = session1_events.find { |e| e['key'] == '100|SL' }
 
-      expect(event_100sl['meeting_event_id']).to eq(existing_event.id)
+      expect(event_100sl['id']).to eq(existing_event.id)
     end
 
     it 'sets meeting_event_id to nil for new events' do
@@ -247,8 +246,7 @@ RSpec.describe Import::Solvers::EventSolver do
       session2_events = data['sessions'].find { |s| s['session_order'] == 2 }['events']
       event_200do = session2_events.find { |e| e['key'] == '200|DO' }
 
-      # Assuming no existing 200DO event for session2
-      expect(event_200do['meeting_event_id']).to be_nil
+      expect(event_200do['id']).to be_nil
     end
   end
 

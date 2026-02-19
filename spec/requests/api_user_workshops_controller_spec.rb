@@ -13,7 +13,19 @@ RSpec.describe APIUserWorkshopsController do
 
     context 'with a logged-in user' do
       include AdminSignInHelpers
-      before(:each) { sign_in_admin(prepare_admin_user) }
+      before(:each) do
+        admin_user = prepare_admin_user
+        sign_in_admin(admin_user)
+        allow(APIProxy).to receive(:call).with(
+          method: :get, url: 'user_workshops', jwt: admin_user.jwt,
+          params: {
+            name: anything, date: anything,
+            header_year: anything, season_id: anything,
+            team_id: anything, user_id: anything,
+            page: anything, per_page: anything
+          }
+        ).and_return(DummyResponse.new(body: GogglesDb::UserWorkshop.first(25).to_json))
+      end
 
       it 'returns http success' do
         get(api_user_workshops_path)

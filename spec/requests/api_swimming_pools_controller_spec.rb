@@ -21,6 +21,7 @@ RSpec.describe APISwimmingPoolsController do
           method: :get, url: 'swimming_pools', jwt: admin_user.jwt,
           params: {
             name: anything, address: anything,
+            pool_type_id: anything, city_id: anything,
             page: anything, per_page: anything
           }
         ).and_return(DummyResponse.new(body: GogglesDb::SwimmingPool.first(25).to_json))

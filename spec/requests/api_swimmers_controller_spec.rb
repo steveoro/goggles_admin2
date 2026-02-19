@@ -21,7 +21,7 @@ RSpec.describe APISwimmersController do
           method: :get, url: 'swimmers', jwt: admin_user.jwt,
           params: {
             name: anything, year_of_birth: anything,
-            year_guessed: anything,
+            year_guessed: anything, gender_type_id: anything,
             page: anything, per_page: anything
           }
         ).and_return(DummyResponse.new(body: GogglesDb::Swimmer.first(25).to_json))

@@ -360,7 +360,7 @@ module PdfResults
       #                which should probably point as a parent directly to an 'event' instead if the 'rel_category' is
       #                known to be possibly missing.
       # DEBUG ----------------------------------------------------------------
-      binding.pry unless target_dao.is_a?(ContextDAO) # rubocop:disable Lint/Debugger
+      # binding.pry unless target_dao.is_a?(ContextDAO)
       # ----------------------------------------------------------------------
       raise 'Unable to find destination parent for source ContextDAO during merge!' unless target_dao.is_a?(ContextDAO)
 

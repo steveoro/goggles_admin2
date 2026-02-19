@@ -69,12 +69,12 @@ RSpec.describe DataFixController do
         expect(response.body).to include('badge-success') # ID badge
       end
 
-      it 'displays empty teams message when no teams exist' do
+      it 'redirects to rebuild when teams array is empty' do
         pfm = PhaseFileManager.new(phase2_file)
         pfm.write!(data: { 'teams' => [] }, meta: { 'generator' => 'test' })
 
         get review_teams_path(file_path: source_file, phase2_v2: 1)
-        expect(response.body).to include('No teams found')
+        expect(response).to have_http_status(:redirect)
       end
 
       it 'paginates teams correctly' do
@@ -165,11 +165,8 @@ RSpec.describe DataFixController do
       end
 
       it 'auto-assignment logic works with fuzzy match weights' do
-        # This test verifies the auto_assignable? logic with Jaro-Winkler weights
-        # Actual threshold: weight >= 0.60 → auto-assign
         solver = Import::Solvers::TeamSolver.new(season: season)
 
-        # Test 1: High weight should auto-assign
         high_weight_match = {
           'id' => 123,
           'name' => 'Team Alpha',
@@ -178,25 +175,22 @@ RSpec.describe DataFixController do
         }
         expect(solver.send(:auto_assignable?, high_weight_match, 'Team Alfa')).to be true
 
-        # Test 2: Weight at threshold (0.60) should auto-assign
-        threshold_match = {
+        at_threshold_match = {
           'id' => 124,
           'name' => 'Team A',
           'editable_name' => 'Team A',
-          'weight' => 0.60
+          'weight' => 0.81
         }
-        expect(solver.send(:auto_assignable?, threshold_match, 'Team A')).to be true
+        expect(solver.send(:auto_assignable?, at_threshold_match, 'Team A')).to be true
 
-        # Test 3: Weight below threshold should NOT auto-assign
-        low_weight_match = {
+        below_threshold_match = {
           'id' => 125,
           'name' => 'Team A Plus',
           'editable_name' => 'Team A+',
-          'weight' => 0.59
+          'weight' => 0.80
         }
-        expect(solver.send(:auto_assignable?, low_weight_match, 'Team A')).to be false
+        expect(solver.send(:auto_assignable?, below_threshold_match, 'Team A')).to be false
 
-        # Test 4: Very low weight should NOT auto-assign
         very_low_weight = {
           'id' => 126,
           'name' => 'Completely Different Team',

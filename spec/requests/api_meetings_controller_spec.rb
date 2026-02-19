@@ -20,7 +20,8 @@ RSpec.describe APIMeetingsController do
         allow(APIProxy).to receive(:call).with(
           method: :get, url: 'meetings', jwt: admin_user.jwt,
           params: {
-            name: anything, date: anything,
+            name: anything, description: anything,
+            header_date: anything, header_year: anything,
             season_id: anything,
             page: anything, per_page: anything
           }

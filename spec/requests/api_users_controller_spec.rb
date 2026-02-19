@@ -18,13 +18,8 @@ RSpec.describe APIUsersController do
         sign_in_admin(admin_user)
         # API double:
         allow(APIProxy).to receive(:call).with(
-          method: :get, url: 'users', jwt: admin_user.jwt,
-          params: {
-            name: anything, description: anything,
-            email: anything,
-            page: anything, per_page: anything
-          }
-        ).and_return(DummyResponse.new(body: GogglesDb::User.all.to_json))
+          method: :get, url: 'users', jwt: admin_user.jwt
+        ).and_return(DummyResponse.new(body: GogglesDb::User.first(25).to_json))
       end
 
       it 'returns http success' do

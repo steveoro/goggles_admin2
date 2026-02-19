@@ -155,8 +155,9 @@ DOC
       let(:context_props) do
         # layout_def = { format_name => array_of_context_def_hash_props }
         props = layout_def.values.first.find { |hsh| hsh['name'] == target_ctx_name }
-        # Clear out parent link so we can instantiate just 1 context:
+        # Clear out parent link & starts_at_row so we can test just this context in isolation:
         props['parent'] = nil
+        props.delete('starts_at_row')
         props
       end
 

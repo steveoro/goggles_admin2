@@ -4,7 +4,7 @@ require 'rails_helper'
 require GogglesDb::Engine.root.join('spec', 'support', 'shared_method_existence_examples')
 
 RSpec.describe PdfResults::ContextDAO, type: :strategy do
-  let(:fixture_name) { "#{FFaker::Lorem.word}-#{(rand * 100).to_i}" }
+  let(:fixture_name) { "#{FFaker::Lorem.word} #{FFaker::Lorem.word}" }
   let(:fixture_rows) do
     [
       PdfResults::ContextDef.new(name: "#{FFaker::Lorem.word}-0", optional_if_empty: true),
@@ -20,8 +20,8 @@ RSpec.describe PdfResults::ContextDAO, type: :strategy do
   let(:fixture_fields) do
     [
       { name: 'rank', format: '\\s?(\\d{1,2}|SQ|RT|NP|ES)\\s+' },
-      { name: 'swimmer_name', format: "\\s+(\\D+(?>['`\\-\\.\\s]\\s?\\D+){1,4})\\s+" },
-      { name: 'year_of_birth', format: '\\s+(\\d{4})\\s+' }
+      { name: 'swimmer_name', format: '\\s+([a-zA-Z]+\\s[a-zA-Z]+)\\s+' },
+      { name: 'year_of_birth', format: '\\s+(\\d{4})\\s*' }
     ]
   end
 
@@ -73,7 +73,7 @@ RSpec.describe PdfResults::ContextDAO, type: :strategy do
       it_behaves_like(
         'responding to a list of methods',
         %i[
-          name parent key rows fields_hash set_debug_mock_values collect_data
+          name parent key rows fields_hash collect_data
           find_existing add_row merge to_s
         ]
       )
@@ -151,9 +151,9 @@ RSpec.describe PdfResults::ContextDAO, type: :strategy do
   #-- -------------------------------------------------------------------------
   #++
 
-  describe '#data' do
+  describe '#collect_data' do
     context 'when called on an instance from a ContextDef with valid? true & called,' do
-      subject(:result) { new_instance.data }
+      subject(:result) { new_instance.collect_data }
 
       let(:new_instance) { described_class.new(fixture_ctx) }
 

@@ -19,7 +19,11 @@ RSpec.describe APIIssuesController do
         # API double:
         allow(APIProxy).to receive(:call).with(
           method: :get, url: 'issues', jwt: admin_user.jwt,
-          params: { page: anything, per_page: anything }
+          params: {
+            user_id: anything, code: anything, status: anything,
+            processable: anything, done: anything,
+            page: anything, per_page: anything
+          }
         ).and_return(DummyResponse.new(body: GogglesDb::Issue.all.to_json))
       end
 
