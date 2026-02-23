@@ -4,9 +4,9 @@ module Merge
   #
   # = Merge::Swimmer
   #
-  #   - version:  7-0.7.19
+  #   - version:  7-0.8.31
   #   - author:   Steve A.
-  #   - build:    20240930
+  #   - build:    20260223
   #
   class Swimmer
     attr_reader :sql_log, :checker, :source, :dest
@@ -47,10 +47,14 @@ module Merge
     # - <tt>:skip_columns</tt> => Force this to +true+ to avoid updating the destination row columns
     #   with the values stored in source; default: +false+.
     #
-    def initialize(source:, dest:, skip_columns: false)
+    # - <tt>:force</tt> => Force this to +true+ to proceed even when the checker reports errors
+    #   (e.g. conflicting MIRs in same meeting). Errors are logged as warnings. Default: +false+.
+    #
+    def initialize(source:, dest:, skip_columns: false, force: false)
       raise(ArgumentError, 'Both source and destination must be Swimmers!') unless source.is_a?(GogglesDb::Swimmer) && dest.is_a?(GogglesDb::Swimmer)
 
       @skip_columns = skip_columns
+      @force = force
       @checker = SwimmerChecker.new(source:, dest:)
       @source = @checker.source
       @dest = @checker.dest
@@ -62,9 +66,14 @@ module Merge
     # Prepares the merge script inside a single transaction.
     def prepare
       result_ok = @checker.run
-      @checker.display_report && return unless result_ok
+      unless result_ok
+        @checker.display_report
+        return unless @force
 
-      @checker.log << "\r\n\r\n- #{'Checker'.ljust(44, '.')}: OK"
+        @checker.log << "\r\n\r\n- #{'Checker'.ljust(44, '.')}: FORCED (errors treated as warnings)"
+      end
+
+      @checker.log << "\r\n\r\n- #{'Checker'.ljust(44, '.')}: OK" if result_ok
       @sql_log << "\r\n-- Merge swimmer (#{@source.id}) #{@source.display_label} |=> (#{@dest.id}) #{@dest.display_label}-- \r\n"
       # NOTE: uncommenting the following in the output SQL may yield nulls for created_at & updated_at if we don't provide values in the row
       @sql_log << '-- SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";'
@@ -74,6 +83,7 @@ module Merge
 
       prepare_script_for_badge_and_swimmer_links
       prepare_script_for_swimmer_only_links
+      prepare_script_for_duplicate_cleanup
 
       # Move any swimmer-only association too:
       @sql_log << "UPDATE individual_records SET updated_at=NOW(), swimmer_id=#{@dest.id} WHERE swimmer_id=#{@source.id};"
@@ -117,7 +127,8 @@ module Merge
     # Prepares the SQL text for the "Badge update" phase involving all entities that have a
     # foreign key to the source swimmer's Badge.
     def prepare_script_for_badge_and_swimmer_links
-      return if @checker.src_only_badges.blank? && @checker.shared_badges.blank?
+      all_src_only = @checker.src_only_badges + @checker.orphan_src_badges
+      return if all_src_only.blank? && @checker.shared_badges.blank?
 
       # Entities names implied in a badge IDs update (+ swimmer_id):
       tables_with_badge = %w[
@@ -125,8 +136,8 @@ module Merge
         meeting_relay_reservations meeting_relay_swimmers meeting_reservations
       ]
 
-      if @checker.src_only_badges.present?
-        @checker.log << "- #{'Updates for Badges (badge_id + swimmer_id)'.ljust(44, '.')}: #{@checker.src_only_badges.count}"
+      if all_src_only.present?
+        @checker.log << "- #{'Updates for Badges (badge_id + swimmer_id)'.ljust(44, '.')}: #{all_src_only.count}"
         @checker.log << "- #{'Updates for MeetingIndividualResults'.ljust(44, '.')}: #{@checker.src_only_mirs.count}" if @checker.src_only_mirs.present?
         @checker.log << "- #{'Updates for MeetingRelaySwimmers'.ljust(44, '.')}: #{@checker.src_only_mrss.count}" if @checker.src_only_mrss.present?
         @checker.log << "- #{'Updates for MeetingEntries'.ljust(44, '.')}: #{@checker.src_only_mes.count}" if @checker.src_only_mes.present?
@@ -136,31 +147,42 @@ module Merge
         @sql_log << '-- [Source-only badges updates:]'
         # Move ownership to dest.row:
         @sql_log << "UPDATE badges SET updated_at=NOW(), swimmer_id=#{@dest.id}"
-        @sql_log << "  WHERE id IN (#{@checker.src_only_badges.join(', ')});\r\n"
+        @sql_log << "  WHERE id IN (#{all_src_only.join(', ')});\r\n"
 
         # Update also swimmer_id in sub-entities:
         tables_with_badge.each do |sub_entity|
-          @sql_log << "UPDATE #{sub_entity} SET updated_at=NOW(), swimmer_id=#{@dest.id} WHERE badge_id IN (#{@checker.src_only_badges.join(', ')});"
+          @sql_log << "UPDATE #{sub_entity} SET updated_at=NOW(), swimmer_id=#{@dest.id} WHERE badge_id IN (#{all_src_only.join(', ')});"
         end
         @sql_log << '' # empty line separator every badge update
       end
+
+      prepare_script_for_badge_merges
+    end
+    #-- ------------------------------------------------------------------------
+    #++
+
+    # Composes Merge::Badge sub-merges for each shared badge pair.
+    # Each badge merger's sql_log is appended (without its own transaction wrapper).
+    def prepare_script_for_badge_merges
       return if @checker.shared_badges.blank?
 
-      @checker.log << "- #{'Badges to be updated and DELETED'.ljust(44, '.')}: #{@checker.shared_badges.count}"
-      @sql_log << '-- [Shared badges:]'
-      # For each sub-entity linked to a SHARED source badge (key), move it to the destination
-      # swimmer and badge ID (value):
+      @checker.log << "- #{'Badge sub-merges (shared badges)'.ljust(44, '.')}: #{@checker.shared_badges.count}"
+      @sql_log << '-- [Shared badges (via Merge::Badge sub-merges):]'
       @checker.shared_badges.each do |src_badge_id, dest_badge_id|
-        tables_with_badge.each do |sub_entity|
-          @sql_log << "UPDATE #{sub_entity} SET updated_at=NOW(), swimmer_id=#{@dest.id}, badge_id=#{dest_badge_id} " \
-                      "WHERE badge_id=#{src_badge_id};"
-        end
-        @sql_log << '' # empty line separator every badge update
-      end
-      @sql_log << ''
+        src_badge = GogglesDb::Badge.find_by(id: src_badge_id)
+        dest_badge = GogglesDb::Badge.find_by(id: dest_badge_id)
+        next if src_badge.blank? || dest_badge.blank?
 
-      # Delete source shared badges (keys) after sub-entity update:
-      @sql_log << "DELETE FROM badges WHERE id IN (#{@checker.shared_badges.keys.join(', ')});"
+        begin
+          badge_merger = Merge::Badge.new(source: src_badge, dest: dest_badge, force: true)
+          badge_merger.prepare
+          @sql_log.concat(badge_merger.sql_log)
+        rescue StandardError => e
+          @sql_log << "-- WARNING: Badge merge failed for badge #{src_badge_id} => #{dest_badge_id}: #{e.message}"
+          @sql_log << '-- (Manual merge may be needed for this badge couple)'
+        end
+        @sql_log << ''
+      end
     end
     #-- ------------------------------------------------------------------------
     #++
@@ -177,6 +199,26 @@ module Merge
 
         @checker.log << "- Updates for #{entity.name.split('::').last.ljust(32, '.')}: #{entity.where(swimmer_id: @source.id).count}"
         @sql_log << "UPDATE #{entity.table_name} SET updated_at=NOW(), swimmer_id=#{@dest.id} WHERE swimmer_id=#{@source.id};"
+      end
+    end
+    #-- ------------------------------------------------------------------------
+    #++
+
+    # Runs Merge::DuplicateResultCleaner for each shared season as a safety net.
+    def prepare_script_for_duplicate_cleanup
+      season_ids = @checker.shared_badge_seasons.map(&:id)
+      return if season_ids.blank?
+
+      @sql_log << "\r\n-- DuplicateResultCleaner safety net --"
+      season_ids.each do |season_id|
+        season = GogglesDb::Season.find_by(id: season_id)
+        next unless season
+
+        cleaner = Merge::DuplicateResultCleaner.new(season:, autofix: true)
+        cleaner.prepare
+        next if cleaner.sql_log.blank?
+
+        @sql_log.concat(cleaner.sql_log)
       end
     end
     #-- ------------------------------------------------------------------------

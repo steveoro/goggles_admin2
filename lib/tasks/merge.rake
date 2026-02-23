@@ -56,7 +56,7 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
              src=<source_swimmer_id>
              dest=<destination_swimmer_id>
              [index=<auto>] [simulate='0'|<'1'>]
-             [skip_columns=<'0'>|'1']
+             [skip_columns=<'0'>|'1'] [force=<'0'>|'1']
 
       - index: a progressive number for the generated file;
       - src: source Swimmer ID;
@@ -66,6 +66,9 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
 
       - skip_columns: when set to anything different from '0' will enable the "skip" & disable overwriting
         destination row columns with the source swimmer values (toggled on by default).
+
+      - force: when set to '1' will force the merge even when the checker reports errors
+        (e.g. conflicting MIRs in same meeting). Default: '0' (don't force).
 
   DESC
   task(swimmer: [:check_needed_dirs]) do
@@ -80,15 +83,17 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
     file_index = ENV['index'].present? ? ENV['index'].to_i : auto_index_from_script_output_dir
     simulate = ENV['simulate'] != '0' # Don't run locally the script unless explicitly requested
     skip_columns = ENV['skip_columns'] == '1' # Don't skip columns unless requested
+    force = ENV['force'] == '1' # Don't force unless explicitly requested
 
     puts("\r\nMerging '#{source&.complete_name}' (#{source&.id}) |=> '#{dest&.complete_name}' (#{dest&.id})")
     puts("\r\n- simulate.......: #{simulate}")
     puts("- skip_columns...: #{skip_columns}")
+    puts("- force..........: #{force}")
     puts("- dest. folder...: #{SCRIPT_OUTPUT_DIR}\r\n")
 
-    merger = Merge::Swimmer.new(source:, dest:, skip_columns:)
+    merger = Merge::Swimmer.new(source:, dest:, skip_columns:, force:)
     merger.prepare
-    puts('Aborted.') && break if merger.errors.present?
+    puts('Aborted.') && break if merger.errors.present? && !force
 
     puts("\r\n*** Log: ***\r\n")
     puts(merger.log.join("\r\n"))

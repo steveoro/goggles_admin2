@@ -43,7 +43,7 @@ module Merge
   #
   class SwimmerChecker # rubocop:disable Metrics/ClassLength
     attr_reader :log, :errors, :warnings, :source, :dest,
-                :src_only_badges, :shared_badges, :src_only_mirs,
+                :src_only_badges, :shared_badges, :orphan_src_badges, :src_only_mirs,
                 :src_only_mes, :src_only_mev_res, :src_only_mrel_res,
                 :src_only_mrss, :src_only_relay_laps, :src_only_mres,
                 :src_only_laps, :src_only_user_laps, :src_only_urs,
@@ -73,6 +73,8 @@ module Merge
       @src_only_badges = []
       # Deletable src badges (keys) after sub-entity reassignment to dest badges (values):
       @shared_badges = {} # format: { src_badge_id => dest_badge_id }
+      # Source badges in shared seasons that have no matching dest badge by team:
+      @orphan_src_badges = []
       # (The "shared badges" is the only case that is currently handled automatically; any other shared
       # entity implies the check failure and requires manual SQL creation.)
 
@@ -263,11 +265,19 @@ module Merge
       shared_badge_seasons.each { |season| @badge_analysis << decorate_3column_season_src_and_dest_badges_x_season(season) }
       @badge_analysis << "|------+#{'+'.center(147, '-')}|"
 
-      # Prepare a map of the shared destination badges:
-      # (all shared source badges shall become a destination badge)
-      src_badges = @source.badges.where(season_id: shared_badge_seasons.map(&:id)).map(&:id)
-      dest_badges = @dest.badges.where(season_id: shared_badge_seasons.map(&:id)).map(&:id)
-      src_badges.each_with_index { |k, idx| @shared_badges.merge!(k => dest_badges[idx]) }
+      # Prepare a map of the shared destination badges (paired by season + team_id):
+      shared_badge_seasons.each do |season|
+        src_badges_x_season = @source.badges.where(season_id: season.id)
+        dest_badges_x_season = @dest.badges.where(season_id: season.id)
+        src_badges_x_season.each do |src_badge|
+          dest_badge = dest_badges_x_season.find_by(team_id: src_badge.team_id)
+          if dest_badge
+            @shared_badges[src_badge.id] = dest_badge.id
+          else
+            @orphan_src_badges << src_badge.id
+          end
+        end
+      end
 
       dest_diff_badge_seasons.each { |season| @badge_analysis << decorate_3column_season_src_and_dest_badges_x_season(season) }
       @badge_analysis << "+#{''.center(154, '-')}+"
@@ -607,8 +617,9 @@ module Merge
     # checking also if the associated badge_id is set and existing.
     def decorate_mrs(mrs)
       mrs_season_id = mrs.season.id
-      badge = mrs.badge_id ? mrs.badge : GogglesDb::Badge.where(swimmer_id: mrs.swimmer_id, team_id: mrs.team_id, season_id: mrs_season_id).first
-      "[MRS #{mrs.id}, Meeting #{mrs.meeting.id}] swimmer_id: #{mrs.swimmer_id} (#{mrs.swimmer.complete_name}), team_id: #{mrs.team_id}, season: #{mrs_season_id} => Badge: #{badge.nil? ? '❌' : badge.id}"
+      mrs_team_id = mrs.badge&.team_id || mrs.meeting_relay_result&.team_id
+      badge = mrs.badge_id ? mrs.badge : GogglesDb::Badge.where(swimmer_id: mrs.swimmer_id, team_id: mrs_team_id, season_id: mrs_season_id).first
+      "[MRS #{mrs.id}, Meeting #{mrs.meeting.id}] swimmer_id: #{mrs.swimmer_id} (#{mrs.swimmer.complete_name}), team_id: #{mrs_team_id}, season: #{mrs_season_id} => Badge: #{badge.nil? ? '❌' : badge.id}"
     end
 
     # Analizes source and destination associations for conflicting MRSs (different source & destination MRSs inside same meeting),
