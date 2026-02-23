@@ -100,11 +100,11 @@ RSpec.describe Import::Solvers::TeamSolver do
         fuzzy = team_entry['fuzzy_matches'] || []
         affiliated_match = fuzzy.find { |m| m['id'] == team.id }
         if affiliated_match
-          # Affiliated match should have the flag and be promoted toward the top
+          # Affiliated match should have the flag
           expect(affiliated_match['affiliated_this_season']).to be(true)
-          aff_index = fuzzy.index(affiliated_match)
-          non_aff_indices = fuzzy.each_with_index.reject { |m, _| m['affiliated_this_season'] }.map(&:last)
-          expect(aff_index).to be < non_aff_indices.first if non_aff_indices.any?
+          # Fuzzy matches should be sorted by weight (highest first)
+          weights = fuzzy.map { |m| m['weight'] }
+          expect(weights).to eq(weights.sort.reverse)
         end
       end
     end
@@ -121,6 +121,34 @@ RSpec.describe Import::Solvers::TeamSolver do
 
       # Result should be an array (may or may not have candidates depending on name shuffle)
       expect(candidates).to be_an(Array)
+    end
+
+    it 'clears similar_affiliated when the only affiliated candidate matches the auto-assigned team' do
+      # Use existing affiliation from test DB
+      affiliation = GogglesDb::TeamAffiliation.where(season_id: season.id).limit(50).sample ||
+                    FactoryBot.create(:team_affiliation, season: season)
+
+      team = affiliation.team
+
+      Dir.mktmpdir do |tmp|
+        # Use the EXACT team name so it auto-assigns to this team
+        src = write_json(tmp, 'meeting-l4.json', {
+                           'layoutType' => 4,
+                           'teams' => [team.editable_name]
+                         })
+
+        described_class.new(season:).build!(source_path: src, lt_format: 4)
+
+        phase2 = default_phase2_path(src)
+        data = JSON.parse(File.read(phase2))['data']
+        team_entry = data['teams'].find { |t| t['key'] == team.editable_name }
+
+        expect(team_entry).to be_present
+        expect(team_entry['team_id']).to eq(team.id)
+        # Post-assignment filter should have cleared similar_affiliated since
+        # the only affiliated candidate IS the auto-assigned team
+        expect(team_entry['similar_affiliated']).to be(false)
+      end
     end
 
     it 'includes similar_affiliated flag in team entries' do

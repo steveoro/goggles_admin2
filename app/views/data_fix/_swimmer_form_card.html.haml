@@ -24,13 +24,16 @@
             %i.fa.fa-question-circle
             GENDER GUESSED
         - if defined?(similar_on_team) && similar_on_team
-          - xref_top = swimmer_hash.dig('team_cross_ref', 'candidates')&.first
+          - xref_top = (swimmer_hash.dig('team_cross_ref', 'candidates') || []).find { |c| c['id'] != swimmer_id }
+          - xref_badge = (selected_match&.dig('percentage').to_f >= 100.0) ? 'badge-light' : 'badge-warning'
           - if xref_top
-            %small.ml-1.badge.badge-warning{ title: 'A swimmer with a similar name exists on the same team - please verify' }
+            - xref_team_id = xref_top['matching_team_id']
+            - xref_title = xref_team_id ? "Similar swimmer on team ID #{xref_team_id} - please verify" : 'Similar swimmer on same team - please verify'
+            %small.ml-1.badge{ class: xref_badge, title: xref_title }
               %i.fa.fa-exclamation-triangle
               SIMILAR ROW FOUND: ID #{xref_top['id']} (#{xref_top['complete_name']})
           - else
-            %small.ml-1.badge.badge-warning{ title: 'A swimmer with a similar name exists on the same team - please verify' }
+            %small.ml-1.badge{ class: xref_badge, title: 'Similar swimmer detected but no alternative candidate - likely a false positive' }
               %i.fa.fa-exclamation-triangle
               SIMILAR NAME ON SAME TEAM
       - elsif has_missing_data
@@ -47,13 +50,15 @@
             No Gender
       - else
         - if defined?(similar_on_team) && similar_on_team
-          - xref_top = swimmer_hash.dig('team_cross_ref', 'candidates')&.first
+          - xref_top = (swimmer_hash.dig('team_cross_ref', 'candidates') || []).find { |c| c['id'] != swimmer_id }
           - if xref_top
-            %small.ml-2.badge.badge-warning{ title: 'A swimmer with a similar name exists on the same team - please verify' }
+            - xref_team_id = xref_top['matching_team_id']
+            - xref_title = xref_team_id ? "Similar swimmer on team ID #{xref_team_id} - please verify" : 'Similar swimmer on same team - please verify'
+            %small.ml-2.badge.badge-warning{ title: xref_title }
               %i.fa.fa-exclamation-triangle
               SIMILAR ROW FOUND: ID #{xref_top['id']} (#{xref_top['complete_name']})
           - else
-            %small.ml-2.badge.badge-warning{ title: 'A swimmer with a similar name exists on the same team - please verify' }
+            %small.ml-2.badge.badge-warning{ title: 'Similar swimmer detected but no alternative candidate - likely a false positive' }
               %i.fa.fa-exclamation-triangle
               SIMILAR NAME ON SAME TEAM
         - else

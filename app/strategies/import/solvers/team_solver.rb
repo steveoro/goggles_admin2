@@ -161,22 +161,17 @@ module Import
           # Promote-or-prepend: move existing matches to top with cross-ref label,
           # or prepend truly new candidates
           xref_ids = xref_candidates.to_set { |c| c['id'] }
-          promoted = []
-          remaining = []
           matches.each do |m|
-            if xref_ids.include?(m['id'])
-              xref_candidate = xref_candidates.find { |c| c['id'] == m['id'] }
-              m['display_label'] = xref_candidate['display_label'] if xref_candidate
-              m['affiliated_this_season'] = true
-              m['from_affiliation_cross_ref'] = true
-              promoted << m
-            else
-              remaining << m
-            end
+            next unless xref_ids.include?(m['id'])
+
+            xref_candidate = xref_candidates.find { |c| c['id'] == m['id'] }
+            m['display_label'] = xref_candidate['display_label'] if xref_candidate
+            m['affiliated_this_season'] = true
+            m['from_affiliation_cross_ref'] = true
           end
           existing_ids = matches.filter_map { |m| m['id'] }.to_set
           new_candidates = xref_candidates.reject { |c| existing_ids.include?(c['id']) }
-          matches = new_candidates + promoted + remaining
+          matches = (matches + new_candidates).sort_by { |m| -(m['weight'] || 0) }
         end
 
         entry['fuzzy_matches'] = matches
@@ -195,10 +190,20 @@ module Import
           entry['name'] = top_match['name']
           entry['name_variations'] = top_match['name_variations']
           entry['city_id'] = top_match['city_id']
-          # Clear similar_affiliated when auto-assigned (the match IS the team)
-          entry['similar_affiliated'] = false
           @logger&.info("[TeamSolver] Auto-assigned team '#{key}' -> ID #{top_match['id']}")
-        elsif entry['similar_affiliated']
+        end
+
+        # Post-assignment filter: remove affiliated candidates that match the assigned team_id.
+        # If no alternative candidates remain, clear the similar_affiliated warning.
+        if entry['team_id'].present? && entry['similar_affiliated']
+          alt_affiliated = matches.select { |m| m['affiliated_this_season'] == true && m['id'] != entry['team_id'] }
+          if alt_affiliated.empty?
+            entry['similar_affiliated'] = false
+            @logger&.info("[TeamSolver] Cleared similar_affiliated for '#{key}' (only self-match in cross-ref)")
+          end
+        end
+
+        if entry['similar_affiliated']
           affiliated = matches.select { |m| m['affiliated_this_season'] }
           @logger&.info("[TeamSolver] Similar affiliated team(s) found for '#{key}': " \
                         "#{affiliated.map { |m| "#{m['editable_name']} (ID: #{m['id']})" }.join(', ')}")
@@ -361,9 +366,10 @@ module Import
           next if normalized_candidate.blank?
 
           similarity = metric.getDistance(normalized_search.downcase, normalized_candidate.downcase)
-          # Accept candidates with similarity >= 0.75 but skip perfect matches
-          # (perfect matches are already handled by standard fuzzy matching)
-          next if similarity < 0.75 || similarity >= 1.0
+          # Accept candidates with similarity >= 0.85 (catches typos/spacing differences
+          # while filtering out false positives with unrelated names)
+          # Skip perfect matches (already handled by standard fuzzy matching)
+          next if similarity < 0.85 || similarity >= 1.0
 
           percentage = (similarity * 100).round(1)
           color_class = case percentage

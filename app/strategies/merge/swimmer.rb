@@ -25,8 +25,8 @@ module Merge
     #   [SOURCE] ------------------------> [DESTINATION]
     #   - to be purged (ID disappears)  /  - to be kept (ID remains)
     #   1. copies "master" column values into "slave" dest. values (overwritten)
-    #   2. copies source sub-enties which are totally missing from dest.
-    #   3. updates "shared" sub-enties which present some differences at any level of the hierarchy.
+    #   2. copies source sub-entities which are totally missing from dest.
+    #   3. updates "shared" sub-entities which present some differences at any level of the hierarchy.
     #
     # While the first step is pretty straightforward, both the second and third steps
     # involve defining what is a "shared" sub-entity and what may make two rows similar or

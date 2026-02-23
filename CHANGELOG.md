@@ -2,6 +2,7 @@
 
 _Please, add the latest build info on top of the list; use Version::MAJOR only after gold release; keep semantic versioning in line with framework's_
 
+- **0.8.31** [Steve A.] improved similarity detection: raised cross-ref threshold to 0.85, weight-sorted merge, post-assignment self-match filter, 2-season badge search, informative tooltips with team IDs
 - **0.8.30** [Steve A.] improved team and swimmer matching logic to prevent data duplication during repeated data-imports (1st import + subsequent updates)
 - **0.8.25** [Steve A.] added merge:meeting task & support classes (merger + checker)
 - **0.8.22** [Steve A.] auto-compute category & gender in phased data-fix for relays only; additional specs

@@ -306,29 +306,35 @@ RSpec.describe Import::Solvers::SwimmerSolver do
       end
     end
 
-    it 'sets similar_on_team when a similar swimmer exists on the same team' do # rubocop:disable RSpec/ExampleLength
-      # Use existing badge from test DB; create one via FactoryBot if none exist for this season
-      badge = GogglesDb::Badge.joins(:team, :swimmer)
-                              .where(season_id: season.id)
-                              .limit(100)
-                              .sample
-      unless badge
+    it 'sets similar_on_team when a different similar swimmer exists on the same team' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
+      # Use existing badge for swimmer A on team T
+      badge_a = GogglesDb::Badge.joins(:team, :swimmer)
+                                .where(season_id: season.id)
+                                .limit(100)
+                                .sample
+      unless badge_a
         cat_type = GogglesDb::CategoryType.where(season_id: season.id).sample ||
                    FactoryBot.create(:category_type, season: season)
-        badge = FactoryBot.create(:badge, category_type: cat_type)
-        # Factory appends random number to complete_name; clean it for Jaro-Winkler comparison
-        badge.swimmer.update_column(:complete_name, "#{badge.swimmer.last_name} #{badge.swimmer.first_name}")
+        badge_a = FactoryBot.create(:badge, category_type: cat_type)
+        badge_a.swimmer.update_column(:complete_name, "#{badge_a.swimmer.last_name} #{badge_a.swimmer.first_name}")
       end
 
-      swimmer = badge.swimmer
-      team = badge.team
+      swimmer_a = badge_a.swimmer
+      team = badge_a.team
 
-      # Create a slightly misspelled version of the swimmer name
-      misspelled_last = swimmer.last_name.dup
-      misspelled_last[0] = misspelled_last[0] == 'A' ? 'B' : 'A' # Change first letter
+      # Create swimmer B: same last name + similar first name, same YOB/gender, same team.
+      # JW distance between "LAST FIRST" and "LAST FIRSTX" is high (~0.95) but < 1.0.
+      swimmer_b = FactoryBot.create(:swimmer,
+                                    last_name: swimmer_a.last_name,
+                                    first_name: "#{swimmer_a.first_name}X",
+                                    year_of_birth: swimmer_a.year_of_birth,
+                                    gender_type: swimmer_a.gender_type)
+      swimmer_b.update_column(:complete_name, "#{swimmer_b.last_name} #{swimmer_b.first_name}")
+      FactoryBot.create(:badge,
+                        swimmer: swimmer_b, team: team,
+                        season: season, category_type: badge_a.category_type)
 
       Dir.mktmpdir do |tmp|
-        # Create phase2 with team_id so cross-ref can resolve the team
         phase2_path = File.join(tmp, 'meeting-l4-phase2.json')
         File.write(phase2_path, JSON.pretty_generate({
                                                        '_meta' => {},
@@ -343,10 +349,14 @@ RSpec.describe Import::Solvers::SwimmerSolver do
                                                        'data' => { 'header_date' => '2025-10-15' }
                                                      }))
 
+        # Import with swimmer A's exact name.
+        # - Fuzzy match auto-assigns to swimmer A (exact/near-exact match)
+        # - Cross-ref finds swimmer B on same team (JW ~0.95, different ID)
+        # - Post-filter keeps B (ID != A) → similar_on_team stays true
         src = write_json(tmp, 'meeting-l4.json', {
                            'layoutType' => 4,
                            'swimmers' => [
-                             "#{swimmer.gender_type.code}|#{misspelled_last}|#{swimmer.first_name}|#{swimmer.year_of_birth}|#{team.name}"
+                             "#{swimmer_a.gender_type.code}|#{swimmer_a.last_name}|#{swimmer_a.first_name}|#{swimmer_a.year_of_birth}|#{team.name}"
                            ]
                          })
 
@@ -357,25 +367,85 @@ RSpec.describe Import::Solvers::SwimmerSolver do
 
         phase3 = default_phase3_path(src)
         data = JSON.parse(File.read(phase3))['data']
-        expected_key = "#{swimmer.gender_type.code}|#{misspelled_last}|#{swimmer.first_name}|#{swimmer.year_of_birth}"
+        expected_key = "#{swimmer_a.gender_type.code}|#{swimmer_a.last_name}|#{swimmer_a.first_name}|#{swimmer_a.year_of_birth}"
         swimmer_entry = data['swimmers'].find { |s| s['key'] == expected_key }
 
         expect(swimmer_entry).to be_present
-        # The similar_on_team flag should be set (the real swimmer is on the same team)
+        expect(swimmer_entry['swimmer_id']).to eq(swimmer_a.id)
+        # similar_on_team should be true because swimmer B (different ID) is on the same team
         expect(swimmer_entry['similar_on_team']).to be(true)
         expect(swimmer_entry['team_cross_ref']).to be_present
         expect(swimmer_entry['team_cross_ref']['candidates']).to be_an(Array)
-        expect(swimmer_entry['team_cross_ref']['candidates'].map { |c| c['id'] }).to include(swimmer.id)
-
-        # Cross-ref candidate should appear in fuzzy_matches with from_team_cross_ref flag
+        # Cross-ref candidates should include swimmer B (not swimmer A, which was auto-assigned)
+        candidate_ids = swimmer_entry['team_cross_ref']['candidates'].map { |c| c['id'] }
+        expect(candidate_ids).to include(swimmer_b.id)
+        expect(candidate_ids).not_to include(swimmer_a.id)
+        # Cross-ref candidates should include matching_team_id for tooltip display
+        xref_candidate = swimmer_entry['team_cross_ref']['candidates'].find { |c| c['id'] == swimmer_b.id }
+        expect(xref_candidate['matching_team_id']).to eq(team.id)
+        # Fuzzy matches should be sorted by weight (highest first)
         fuzzy = swimmer_entry['fuzzy_matches'] || []
-        xref_in_fuzzy = fuzzy.find { |m| m['id'] == swimmer.id }
-        expect(xref_in_fuzzy).to be_present
-        expect(xref_in_fuzzy['from_team_cross_ref']).to be(true)
-        # Cross-ref candidate should be at or near the top (before non-cross-ref matches)
-        xref_index = fuzzy.index(xref_in_fuzzy)
-        non_xref_indices = fuzzy.each_with_index.reject { |m, _| m['from_team_cross_ref'] }.map(&:last)
-        expect(xref_index).to be < non_xref_indices.first if non_xref_indices.any?
+        weights = fuzzy.map { |m| m['weight'] }
+        expect(weights).to eq(weights.sort.reverse)
+      end
+    end
+
+    it 'clears similar_on_team when the only cross-ref candidate matches the auto-assigned swimmer' do # rubocop:disable RSpec/ExampleLength
+      # Use an existing swimmer with a badge for this season
+      badge = GogglesDb::Badge.joins(:team, :swimmer)
+                              .where(season_id: season.id)
+                              .limit(100)
+                              .sample
+      unless badge
+        cat_type = GogglesDb::CategoryType.where(season_id: season.id).sample ||
+                   FactoryBot.create(:category_type, season: season)
+        badge = FactoryBot.create(:badge, category_type: cat_type)
+        badge.swimmer.update_column(:complete_name, "#{badge.swimmer.last_name} #{badge.swimmer.first_name}")
+      end
+
+      swimmer = badge.swimmer
+      team = badge.team
+
+      Dir.mktmpdir do |tmp|
+        phase2_path = File.join(tmp, 'meeting-l4-phase2.json')
+        File.write(phase2_path, JSON.pretty_generate({
+                                                       '_meta' => {},
+                                                       'data' => {
+                                                         'teams' => [{ 'key' => team.name, 'team_id' => team.id }]
+                                                       }
+                                                     }))
+
+        phase1_path = File.join(tmp, 'meeting-l4-phase1.json')
+        File.write(phase1_path, JSON.pretty_generate({
+                                                       '_meta' => {},
+                                                       'data' => { 'header_date' => '2025-10-15' }
+                                                     }))
+
+        # Use the EXACT swimmer name (will auto-assign to this swimmer, and cross-ref
+        # should only find this same swimmer => post-filter clears similar_on_team)
+        src = write_json(tmp, 'meeting-l4.json', {
+                           'layoutType' => 4,
+                           'swimmers' => [
+                             "#{swimmer.gender_type.code}|#{swimmer.last_name}|#{swimmer.first_name}|#{swimmer.year_of_birth}|#{team.name}"
+                           ]
+                         })
+
+        described_class.new(season:).build!(
+          source_path: src, lt_format: 4,
+          phase1_path: phase1_path, phase2_path: phase2_path
+        )
+
+        phase3 = default_phase3_path(src)
+        data = JSON.parse(File.read(phase3))['data']
+        expected_key = "#{swimmer.gender_type.code}|#{swimmer.last_name}|#{swimmer.first_name}|#{swimmer.year_of_birth}"
+        swimmer_entry = data['swimmers'].find { |s| s['key'] == expected_key }
+
+        expect(swimmer_entry).to be_present
+        expect(swimmer_entry['swimmer_id']).to eq(swimmer.id)
+        # Post-assignment filter should have cleared similar_on_team since
+        # the only cross-ref candidate IS the auto-assigned swimmer
+        expect(swimmer_entry['similar_on_team']).to be(false)
+        expect(swimmer_entry['team_cross_ref']).to be_nil
       end
     end
 

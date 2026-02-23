@@ -297,27 +297,23 @@ module Import
           if cross_ref['has_similar']
             entry['similar_on_team'] = true
             entry['team_cross_ref'] = cross_ref
-            # Promote-or-prepend: move existing matches to top with cross-ref label,
-            # or prepend truly new candidates
+            # Merge cross-ref candidates into fuzzy_matches, sorted by weight.
+            # Cross-ref candidates keep their "(Same team)" label but don't override
+            # higher-scoring fuzzy matches for auto-assignment.
             current_matches = entry['fuzzy_matches'] || []
             cross_ref_ids = cross_ref['candidates'].to_set { |c| c['id'] }
-            promoted = []
-            remaining = []
             current_matches.each do |m|
-              if cross_ref_ids.include?(m['id'])
-                # Update existing match with cross-ref label and flag
-                xref_candidate = cross_ref['candidates'].find { |c| c['id'] == m['id'] }
-                m['display_label'] = xref_candidate['display_label'] if xref_candidate
-                m['from_team_cross_ref'] = true
-                promoted << m
-              else
-                remaining << m
-              end
+              next unless cross_ref_ids.include?(m['id'])
+
+              # Update existing match with cross-ref label and flag
+              xref_candidate = cross_ref['candidates'].find { |c| c['id'] == m['id'] }
+              m['display_label'] = xref_candidate['display_label'] if xref_candidate
+              m['from_team_cross_ref'] = true
             end
             # Add truly new candidates (not already in fuzzy_matches)
             existing_ids = current_matches.filter_map { |m| m['id'] }.to_set
             new_candidates = cross_ref['candidates'].reject { |c| existing_ids.include?(c['id']) }
-            entry['fuzzy_matches'] = new_candidates + promoted + remaining
+            entry['fuzzy_matches'] = (current_matches + new_candidates).sort_by { |m| -(m['weight'] || 0) }
           end
         end
 
@@ -374,6 +370,19 @@ module Import
           entry['first_name'] = top_match['first_name']
 
           @logger&.info("[SwimmerSolver] Auto-assigned swimmer '#{key}' -> ID #{top_match['id']} (#{(top_match['weight'] * 100).round(1)}%)")
+        end
+
+        # Post-assignment filter: remove cross-ref candidates that match the assigned swimmer_id.
+        # If no alternative candidates remain, clear the similar_on_team warning.
+        if entry['swimmer_id'].present? && entry['similar_on_team'] && entry['team_cross_ref']
+          alt_candidates = entry['team_cross_ref']['candidates'].reject { |c| c['id'] == entry['swimmer_id'] }
+          if alt_candidates.empty?
+            entry['similar_on_team'] = false
+            entry.delete('team_cross_ref')
+            @logger&.info("[SwimmerSolver] Cleared similar_on_team for '#{key}' (only self-match in cross-ref)")
+          else
+            entry['team_cross_ref']['candidates'] = alt_candidates
+          end
         end
 
         entry
@@ -478,8 +487,10 @@ module Import
         result = { 'has_similar' => false, 'candidates' => [] }
         return result if complete_name.blank? || team_id.to_i.zero?
 
-        # Query all badges for this team in the current season to get teammate swimmer IDs
-        teammate_badges = GogglesDb::Badge.where(team_id: team_id.to_i, season_id: @season.id)
+        # Query all badges for this team in the current + previous season (limit 2)
+        # to catch swimmers registered last season but not yet in the current one.
+        season_ids = recent_season_ids(limit: 2)
+        teammate_badges = GogglesDb::Badge.where(team_id: team_id.to_i, season_id: season_ids)
                                           .includes(:swimmer)
         return result if teammate_badges.empty?
 
@@ -497,9 +508,10 @@ module Import
           normalized_candidate = normalize_swimmer_name(swimmer.complete_name).downcase
           similarity = metric.getDistance(normalized_search, normalized_candidate)
 
-          # Accept candidates with similarity >= 0.75 (catches typos/spacing differences)
-          # but skip perfect matches (already handled by standard fuzzy matching)
-          next if similarity < 0.75 || similarity >= 1.0
+          # Accept candidates with similarity >= 0.85 (catches typos/spacing differences
+          # while filtering out false positives with unrelated names)
+          # Skip perfect matches (already handled by standard fuzzy matching)
+          next if similarity < 0.85 || similarity >= 1.0
 
           percentage = (similarity * 100).round(1)
           color_class = case percentage
@@ -518,11 +530,15 @@ module Import
             'percentage' => percentage,
             'color_class' => color_class,
             'display_label' => "(Same team) #{swimmer.complete_name} (#{swimmer.year_of_birth}, ID: #{swimmer.id}, match: #{percentage}%)",
-            'from_team_cross_ref' => true
+            'from_team_cross_ref' => true,
+            'matching_team_id' => team_id.to_i
           }
         end
 
-        candidates.sort_by! { |c| -c['weight'] }
+        # Deduplicate by swimmer ID (a swimmer with badges in multiple seasons
+        # would otherwise appear multiple times). Keep the highest-weight entry.
+        candidates = candidates.sort_by { |c| -c['weight'] }
+                               .uniq { |c| c['id'] }
         if candidates.any?
           result['has_similar'] = true
           result['candidates'] = candidates
@@ -536,6 +552,18 @@ module Import
         result
       end
       # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/MethodLength
+
+      # Return an array of season IDs for the current season and the N-1 preceding seasons
+      # of the same season_type (e.g., FIN Master). Used to broaden badge searches.
+      def recent_season_ids(limit: 2)
+        @recent_season_ids_cache ||= {}
+        @recent_season_ids_cache[limit] ||= GogglesDb::Season
+                                            .where(season_type_id: @season.season_type_id)
+                                            .where(seasons: { id: ..@season.id })
+                                            .order('seasons.id DESC')
+                                            .limit(limit)
+                                            .pluck(:id)
+      end
 
       # Build a badge entry using category data from swimmer entry when available.
       # Also attempts to match existing badge in DB if all required keys are available.

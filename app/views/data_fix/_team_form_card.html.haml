@@ -19,13 +19,14 @@
         %small.ml-2.badge{ class: "badge-#{color_class}" }
           ID: #{team_id}
         - if defined?(similar_affiliated) && similar_affiliated
-          - aff_top = (team_hash['fuzzy_matches'] || []).find { |m| m['affiliated_this_season'] }
+          - aff_top = (team_hash['fuzzy_matches'] || []).find { |m| m['affiliated_this_season'] && m['id'] != team_id }
+          - aff_badge = (selected_match&.dig('percentage').to_f >= 100.0) ? 'badge-light' : 'badge-warning'
           - if aff_top
-            %small.ml-1.badge.badge-warning{ title: 'A similar team is already affiliated for this season - please verify' }
+            %small.ml-1.badge{ class: aff_badge, title: "Similar affiliated team ID #{aff_top['id']} found in season - please verify" }
               %i.fa.fa-exclamation-triangle
               SIMILAR ROW FOUND: ID #{aff_top['id']} (#{aff_top['editable_name']})
           - else
-            %small.ml-1.badge.badge-warning{ title: 'A similar team is already affiliated for this season - please verify' }
+            %small.ml-1.badge{ class: aff_badge, title: 'Similar team detected but no alternative candidate - likely a false positive' }
               %i.fa.fa-exclamation-triangle
               SIMILAR TEAM IN SEASON
       - elsif has_missing_data
@@ -33,13 +34,13 @@
           MISSING DATA
       - else
         - if defined?(similar_affiliated) && similar_affiliated
-          - aff_top = (team_hash['fuzzy_matches'] || []).find { |m| m['affiliated_this_season'] }
+          - aff_top = (team_hash['fuzzy_matches'] || []).find { |m| m['affiliated_this_season'] && m['id'] != team_id }
           - if aff_top
-            %small.ml-2.badge.badge-warning{ title: 'A similar team is already affiliated for this season - please verify' }
+            %small.ml-2.badge.badge-warning{ title: "Similar affiliated team ID #{aff_top['id']} found in season - please verify" }
               %i.fa.fa-exclamation-triangle
               SIMILAR ROW FOUND: ID #{aff_top['id']} (#{aff_top['editable_name']})
           - else
-            %small.ml-2.badge.badge-warning{ title: 'A similar team is already affiliated for this season - please verify' }
+            %small.ml-2.badge.badge-warning{ title: 'Similar team detected but no alternative candidate - likely a false positive' }
               %i.fa.fa-exclamation-triangle
               SIMILAR TEAM IN SEASON
         - else
