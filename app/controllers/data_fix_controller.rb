@@ -120,8 +120,8 @@ class DataFixController < ApplicationController
     if @q.present?
       qd = @q.downcase
       teams = teams.select do |t|
-        name = (t['name'] || t['key']).to_s.downcase
-        name.include?(qd)
+        [t['name'], t['editable_name'], t['name_variations'], t['key']]
+          .compact.any? { |v| v.to_s.downcase.include?(qd) }
       end
     end
 
@@ -132,6 +132,15 @@ class DataFixController < ApplicationController
       teams = teams.select do |t|
         # WARNING: adding the 'similar_on_team' check will yield false positives and basically make the filtering useless
         t['team_id'].nil? || (t['match_percentage'] || 0.0) < 89.0 # || t['similar_affiliated'] == true
+      end
+    end
+
+    # Filter teams where the edited name differs from the original import key
+    if params[:name_differs].present?
+      teams = teams.select do |t|
+        editable = (t['editable_name'] || t['name']).to_s.strip.downcase
+        key = t['key'].to_s.strip.downcase
+        editable != key
       end
     end
 
@@ -238,10 +247,8 @@ class DataFixController < ApplicationController
     if @q.present?
       qd = @q.downcase
       swimmers = swimmers.select do |s|
-        last = s['last_name'].to_s.downcase
-        first = s['first_name'].to_s.downcase
-        key = s['key'].to_s.downcase
-        [last, first, key].any? { |v| v.include?(qd) }
+        [s['last_name'], s['first_name'], s['complete_name'], s['key']]
+          .compact.any? { |v| v.to_s.downcase.include?(qd) }
       end
     end
 
@@ -252,6 +259,16 @@ class DataFixController < ApplicationController
       swimmers = swimmers.select do |s|
         # WARNING: adding the 'similar_on_team' check will yield false positives and basically make the filtering useless
         s['swimmer_id'].nil? || (s['match_percentage'] || 0.0) < 89.0 # || s['similar_on_team'] == true
+      end
+    end
+
+    # Filter swimmers where the current name differs from the original import key
+    if params[:name_differs].present?
+      swimmers = swimmers.select do |s|
+        composed = "#{s['last_name']}|#{s['first_name']}".strip.downcase
+        # Strip gender prefix (e.g., "M|" or "F|") and trailing year from key for comparison
+        key_name = s['key'].to_s.sub(/^[MF]\|/i, '').sub(/\|\d{4}$/, '').strip.downcase
+        composed != key_name
       end
     end
 
@@ -441,6 +458,31 @@ class DataFixController < ApplicationController
       # Auto-activate filter if there are issues and no explicit filter param
       @filter_active = params[:filter_issues] == '1' || (@issue_count.positive? && !params[:filter_issues].to_i.zero?)
       all_programs = @programs_with_issues if @filter_active && @issue_count.positive?
+
+      # Filter to show only programs with new (will-be-created) results
+      @filter_new_active = params[:filter_new] == '1'
+      if @filter_new_active
+        all_programs = all_programs.select do |prog|
+          program_key = "#{prog['session_order']}-#{prog['event_code']}-#{prog['category_code']}-#{prog['gender_code']}"
+          if prog['relay']
+            GogglesDb::DataImportMeetingRelayResult
+              .where('import_key LIKE ?', "#{program_key}/%")
+              .where(meeting_relay_result_id: nil)
+              .exists?
+          else
+            GogglesDb::DataImportMeetingIndividualResult
+              .where('import_key LIKE ?', "#{program_key}/%")
+              .where(meeting_individual_result_id: nil)
+              .exists?
+          end
+        end
+      end
+
+      # Count new results for summary display
+      @new_result_count = GogglesDb::DataImportMeetingIndividualResult
+                          .where(phase_file_path: source_path, meeting_individual_result_id: nil).count +
+                          GogglesDb::DataImportMeetingRelayResult
+                          .where(phase_file_path: source_path, meeting_relay_result_id: nil).count
 
       # Sort programs by event order from phase4 (individual events first, then relays)
       phase4_path = default_phase_path_for(source_path, 4)
@@ -803,6 +845,144 @@ class DataFixController < ApplicationController
   end
   # ---------------------------------------------------------------------------
 
+  # AJAX endpoint: verify if a result already exists in the DB (duplicate detection)
+  # Returns JSON with duplicate info and swimmer's other badges in the season.
+  def verify_result # rubocop:disable Metrics/AbcSize
+    import_key = params[:import_key]
+    result_type = params[:result_type] || 'individual' # 'individual' or 'relay'
+
+    checker = Import::Verification::ResultDuplicateChecker.new
+
+    if result_type == 'relay'
+      data_import_row = GogglesDb::DataImportMeetingRelayResult.find_by(import_key: import_key)
+      unless data_import_row
+        render json: { error: 'Result not found' }, status: :not_found
+        return
+      end
+
+      result = checker.check_relay(
+        meeting_program_id: data_import_row.meeting_program_id,
+        team_id: data_import_row.team_id,
+        timing: { minutes: data_import_row.minutes, seconds: data_import_row.seconds,
+                  hundredths: data_import_row.hundredths }
+      )
+    else
+      data_import_row = GogglesDb::DataImportMeetingIndividualResult.find_by(import_key: import_key)
+      unless data_import_row
+        render json: { error: 'Result not found' }, status: :not_found
+        return
+      end
+
+      source_path = data_import_row.phase_file_path
+      season_id = detect_season_from_pathname(source_path)&.id if source_path.present?
+
+      result = checker.check_individual(
+        swimmer_id: data_import_row.swimmer_id,
+        meeting_program_id: data_import_row.meeting_program_id,
+        timing: { minutes: data_import_row.minutes, seconds: data_import_row.seconds,
+                  hundredths: data_import_row.hundredths },
+        team_id: data_import_row.team_id,
+        season_id: season_id
+      )
+    end
+
+    render json: result
+  end
+  # ---------------------------------------------------------------------------
+
+  # Confirm a result as a duplicate: set the existing DB row's ID on the DataImport* record
+  # and overwrite fields with existing DB values. This makes the committer see zero-diff on commit.
+  def confirm_result_duplicate # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
+    import_key = params[:import_key]
+    existing_id = params[:existing_id].to_i
+    result_type = params[:result_type] || 'individual'
+
+    unless existing_id.positive? && import_key.present?
+      render json: { error: 'Missing required params' }, status: :unprocessable_entity
+      return
+    end
+
+    if result_type == 'relay'
+      data_import_row = GogglesDb::DataImportMeetingRelayResult.find_by(import_key: import_key)
+      existing = GogglesDb::MeetingRelayResult.find_by(id: existing_id)
+      unless data_import_row && existing
+        render json: { error: 'Record not found' }, status: :not_found
+        return
+      end
+
+      data_import_row.update!(
+        meeting_relay_result_id: existing.id,
+        meeting_program_id: existing.meeting_program_id,
+        team_id: existing.team_id,
+        team_affiliation_id: existing.team_affiliation_id,
+        rank: existing.rank,
+        minutes: existing.minutes,
+        seconds: existing.seconds,
+        hundredths: existing.hundredths,
+        disqualified: existing.disqualified
+      )
+    else
+      data_import_row = GogglesDb::DataImportMeetingIndividualResult.find_by(import_key: import_key)
+      existing = GogglesDb::MeetingIndividualResult.find_by(id: existing_id)
+      unless data_import_row && existing
+        render json: { error: 'Record not found' }, status: :not_found
+        return
+      end
+
+      data_import_row.update!(
+        meeting_individual_result_id: existing.id,
+        meeting_program_id: existing.meeting_program_id,
+        swimmer_id: existing.swimmer_id,
+        team_id: existing.team_id,
+        badge_id: existing.badge_id,
+        rank: existing.rank,
+        minutes: existing.minutes,
+        seconds: existing.seconds,
+        hundredths: existing.hundredths,
+        disqualified: existing.disqualified,
+        standard_points: existing.standard_points,
+        meeting_points: existing.meeting_points,
+        goggle_cup_points: existing.goggle_cup_points
+      )
+    end
+
+    render json: { success: true, import_key: import_key, existing_id: existing_id }
+  rescue ActiveRecord::RecordInvalid => e
+    render json: { error: e.message }, status: :unprocessable_entity
+  end
+  # ---------------------------------------------------------------------------
+
+  # AJAX endpoint: cross-validate a Phase 2 team match using swimmer badges from Phase 3.
+  # Returns JSON with confidence score and swimmer badge details.
+  def verify_team # rubocop:disable Metrics/AbcSize
+    file_path = params[:file_path]
+    team_key = params[:team_key]
+    candidate_team_id = params[:candidate_team_id].to_i
+
+    unless file_path.present? && team_key.present? && candidate_team_id.positive?
+      render json: { error: 'Missing required params' }, status: :unprocessable_entity
+      return
+    end
+
+    source_path = resolve_source_path(file_path)
+    phase3_path = default_phase_path_for(source_path, 3)
+
+    unless File.exist?(phase3_path)
+      render json: { error: 'Phase 3 file not found. Please run Phase 3 (Swimmers) first.' }, status: :not_found
+      return
+    end
+
+    phase3_pfm = PhaseFileManager.new(phase3_path)
+    phase3_data = phase3_pfm.data || {}
+    season_id = phase3_data['season_id'] || detect_season_from_pathname(source_path)&.id
+
+    checker = Import::Verification::TeamSwimmerChecker.new(phase3_data: phase3_data, season_id: season_id)
+    result = checker.check(team_key: team_key, candidate_team_id: candidate_team_id)
+
+    render json: result
+  end
+  # ---------------------------------------------------------------------------
+
   # Shared read-only endpoints delegate to legacy for now
   def coded_name
     redirect_to controller: 'data_fix_legacy', action: 'coded_name', params: request.query_parameters
@@ -945,12 +1125,19 @@ class DataFixController < ApplicationController
     meta['generated_at'] = Time.now.utc.iso8601
     pfm.write!(data: data, meta: meta)
 
+    # Remind operator to rescan Phase 3 if it exists (team changes affect swimmer badge matching)
+    phase3_path = default_phase_path_for(source_path, 3)
+    if File.exist?(phase3_path)
+      flash[:info] = 'Team updated. Consider rescanning Phase 3 (Swimmers) to reflect team changes in badge matching.' # rubocop:disable Rails/I18nLocaleTexts
+    end
+
     # Preserve pagination and filter params
     redirect_params = { file_path:, phase2_v2: 1 }
     redirect_params[:teams_page] = params[:teams_page] if params[:teams_page].present?
     redirect_params[:teams_per_page] = params[:teams_per_page] if params[:teams_per_page].present?
     redirect_params[:q] = params[:q] if params[:q].present?
     redirect_params[:unmatched] = params[:unmatched] if params[:unmatched].present?
+    redirect_params[:name_differs] = params[:name_differs] if params[:name_differs].present?
 
     redirect_to review_teams_path(redirect_params), notice: I18n.t('data_import.messages.updated')
   end
@@ -1035,6 +1222,7 @@ class DataFixController < ApplicationController
     redirect_params[:teams_per_page] = params[:teams_per_page] if params[:teams_per_page].present?
     redirect_params[:q] = params[:q] if params[:q].present?
     redirect_params[:unmatched] = params[:unmatched] if params[:unmatched].present?
+    redirect_params[:name_differs] = params[:name_differs] if params[:name_differs].present?
 
     redirect_to review_teams_path(redirect_params), notice: I18n.t('data_import.messages.updated')
   end
@@ -1122,6 +1310,7 @@ class DataFixController < ApplicationController
     redirect_params[:swimmers_per_page] = params[:swimmers_per_page] if params[:swimmers_per_page].present?
     redirect_params[:q] = params[:q] if params[:q].present?
     redirect_params[:unmatched] = params[:unmatched] if params[:unmatched].present?
+    redirect_params[:name_differs] = params[:name_differs] if params[:name_differs].present?
 
     redirect_to review_swimmers_path(redirect_params), notice: I18n.t('data_import.messages.updated')
   end
@@ -1303,6 +1492,7 @@ class DataFixController < ApplicationController
     redirect_params[:swimmers_per_page] = params[:swimmers_per_page] if params[:swimmers_per_page].present?
     redirect_params[:q] = params[:q] if params[:q].present?
     redirect_params[:unmatched] = params[:unmatched] if params[:unmatched].present?
+    redirect_params[:name_differs] = params[:name_differs] if params[:name_differs].present?
 
     redirect_to review_swimmers_path(redirect_params), notice: I18n.t('data_import.messages.updated')
   end

@@ -34,6 +34,11 @@
             = check_box_tag :unmatched, '1', params[:unmatched].present?, class: 'custom-control-input', id: 'unmatched-filter'
             %label.custom-control-label{ for: 'unmatched-filter' } Show needing review
           %small.text-muted.ml-1 (unmatched + yellow/red matches)
+        .form-group.mr-2
+          .custom-control.custom-checkbox
+            = check_box_tag :name_differs, '1', params[:name_differs].present?, class: 'custom-control-input', id: 'name-differs-filter'
+            %label.custom-control-label{ for: 'name-differs-filter' } Name != Key
+          %small.text-muted.ml-1 (edited name differs from import key)
         = submit_tag 'Apply', class: 'btn btn-sm btn-primary mr-1'
         = link_to 'Clear', review_teams_path(file_path: @file_path, phase2_v2: 1), class: 'btn btn-sm btn-light'
     .card-body.py-0
@@ -60,6 +65,7 @@
             = hidden_field_tag :teams_per_page, params[:teams_per_page] if params[:teams_per_page].present?
             = hidden_field_tag :q, params[:q] if params[:q].present?
             = hidden_field_tag :unmatched, params[:unmatched] if params[:unmatched].present?
+            = hidden_field_tag :name_differs, params[:name_differs] if params[:name_differs].present?
             %button.btn.btn-sm.btn-success{ type: 'submit' }
               %i.fa.fa-plus
               Add Team
@@ -126,3 +132,55 @@
       = render(PageLinksForArrayComponent.new(data: @items, total_count: @total_count, page: @page,
                                               per_page: @per_page, param_name: :teams_page))
   .mb-4 &nbsp;
+
+:javascript
+  $(document).on('click', '.verify-team-btn', function(e) {
+    e.preventDefault();
+    var btn = $(this);
+    var filePath = btn.data('file_path');
+    var teamKey = btn.data('team_key');
+    var candidateTeamId = btn.data('candidate_team_id');
+    var targetSelector = btn.data('target');
+    var panel = $(targetSelector);
+    panel.collapse('show');
+
+    $.ajax({
+      url: '/data_fix/verify_team',
+      method: 'GET',
+      data: { file_path: filePath, team_key: teamKey, candidate_team_id: candidateTeamId },
+      dataType: 'json',
+      success: function(data) {
+        panel.find('> div').html(renderTeamVerifyPanel(data));
+      },
+      error: function(xhr) {
+        var msg = xhr.responseJSON ? xhr.responseJSON.error : 'Verification failed';
+        panel.find('> div').html('<div class="text-danger"><i class="fa fa-exclamation-triangle"></i> ' + msg + '</div>');
+      }
+    });
+  });
+
+  function renderTeamVerifyPanel(data) {
+    var html = '';
+    var confClass = { high: 'text-success', medium: 'text-warning', low: 'text-danger', none: 'text-muted' };
+    var confLabel = { high: 'HIGH', medium: 'MEDIUM', low: 'LOW', none: 'N/A' };
+    var cls = confClass[data.confidence] || 'text-muted';
+    var lbl = confLabel[data.confidence] || 'N/A';
+
+    html += '<div class="mb-2"><strong>Confidence: <span class="' + cls + '">' + lbl + '</span></strong>';
+    html += ' (' + data.confirmed + '/' + data.total + ' swimmers confirmed)</div>';
+
+    if (data.swimmers && data.swimmers.length > 0) {
+      html += '<table class="table table-sm table-bordered mb-0"><thead><tr><th>Swimmer</th><th>ID</th><th>Badge Teams</th><th>Match</th></tr></thead><tbody>';
+      data.swimmers.forEach(function(s) {
+        var matchIcon = s.matches_candidate
+          ? '<span class="text-success"><i class="fa fa-check-circle"></i> Yes</span>'
+          : '<span class="text-danger"><i class="fa fa-times-circle"></i> No</span>';
+        var teams = (s.badge_teams || []).map(function(bt) { return bt.team_name + ' (ID: ' + bt.team_id + ')'; }).join(', ') || '<em>No badges</em>';
+        html += '<tr><td>' + s.name + '</td><td>' + s.swimmer_id + '</td><td>' + teams + '</td><td>' + matchIcon + '</td></tr>';
+      });
+      html += '</tbody></table>';
+    } else {
+      html += '<div class="text-muted"><em>No matched swimmers found for this team in Phase 3.</em></div>';
+    }
+    return html;
+  }

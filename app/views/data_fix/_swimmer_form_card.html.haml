@@ -72,6 +72,7 @@
         = hidden_field_tag :swimmers_per_page, params[:swimmers_per_page] if params[:swimmers_per_page].present?
         = hidden_field_tag :q, params[:q] if params[:q].present?
         = hidden_field_tag :unmatched, params[:unmatched] if params[:unmatched].present?
+        = hidden_field_tag :name_differs, params[:name_differs] if params[:name_differs].present?
         %button.btn.btn-sm.btn-danger{ type: 'submit', 'aria-label' => 'Delete swimmer', onclick: 'event.stopPropagation();' }
           %i.fa.fa-trash
 
@@ -84,6 +85,7 @@
         = hidden_field_tag :swimmers_per_page, params[:swimmers_per_page] if params[:swimmers_per_page].present?
         = hidden_field_tag :q, params[:q] if params[:q].present?
         = hidden_field_tag :unmatched, params[:unmatched] if params[:unmatched].present?
+        = hidden_field_tag :name_differs, params[:name_differs] if params[:name_differs].present?
 
         .container-fluid
           -# Row 0: Fuzzy matches dropdown (quick selection)

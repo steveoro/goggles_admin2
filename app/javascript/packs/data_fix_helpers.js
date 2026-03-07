@@ -109,3 +109,127 @@ export function populateEventFromExisting(eventIndex, meetingEventId, existingEv
     $('#' + prefix + 'heat_type_code').val(event.heat_type_code);
   }
 }
+
+/**
+ * Initialize verify-result buttons for Phase 5 duplicate detection.
+ * Call this after the DOM is ready (e.g., in a DOMContentLoaded handler).
+ */
+export function initVerifyResultButtons() {
+  $(document).on('click', '.verify-result-btn', function(e) {
+    e.preventDefault();
+    var btn = $(this);
+    var importKey = btn.data('import_key');
+    var resultType = btn.data('result_type') || 'individual';
+    var targetSelector = btn.data('target');
+    var panel = $(targetSelector);
+
+    // Show the panel with spinner
+    panel.collapse('show');
+
+    $.ajax({
+      url: '/data_fix/verify_result',
+      method: 'GET',
+      data: { import_key: importKey, result_type: resultType },
+      dataType: 'json',
+      success: function(data) {
+        var html = renderVerifyPanel(data, importKey, resultType);
+        panel.find('td > div').html(html);
+      },
+      error: function(xhr) {
+        var msg = xhr.responseJSON ? xhr.responseJSON.error : 'Verification failed';
+        panel.find('td > div').html(
+          '<div class="text-danger"><i class="fa fa-exclamation-triangle"></i> ' + msg + '</div>'
+        );
+      }
+    });
+  });
+
+  // Confirm duplicate button handler (delegated)
+  $(document).on('click', '.confirm-duplicate-btn', function(e) {
+    e.preventDefault();
+    var btn = $(this);
+    var importKey = btn.data('import_key');
+    var existingId = btn.data('existing_id');
+    var resultType = btn.data('result_type') || 'individual';
+    var row = btn.closest('tr');
+
+    if (!confirm('Confirm this result as existing (ID: ' + existingId + ')? The import row will be overwritten with DB values.')) {
+      return;
+    }
+
+    btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Confirming...');
+
+    $.ajax({
+      url: '/data_fix/confirm_result_duplicate',
+      method: 'PATCH',
+      data: { import_key: importKey, existing_id: existingId, result_type: resultType },
+      headers: { 'X-CSRF-Token': $('meta[name="csrf-token"]').attr('content') },
+      dataType: 'json',
+      success: function() {
+        row.find('td > div').html(
+          '<div class="text-success"><i class="fa fa-check-circle"></i> ' +
+          'Confirmed as existing (ID: ' + existingId + '). ' +
+          'Reload page to see updated status.</div>'
+        );
+      },
+      error: function(xhr) {
+        var msg = xhr.responseJSON ? xhr.responseJSON.error : 'Failed to confirm';
+        btn.prop('disabled', false).html('<i class="fa fa-check"></i> Confirm');
+        alert('Error: ' + msg);
+      }
+    });
+  });
+}
+
+/**
+ * Render the verification panel HTML from the AJAX response data.
+ */
+function renderVerifyPanel(data, importKey, resultType) {
+  var html = '';
+
+  if (data.duplicates && data.duplicates.length > 0) {
+    html += '<div class="mb-2"><strong class="text-danger"><i class="fa fa-exclamation-triangle"></i> ' +
+            data.duplicates.length + ' potential duplicate(s) found:</strong></div>';
+    html += '<table class="table table-sm table-bordered mb-2">';
+    html += '<thead><tr><th>ID</th><th>Rank</th><th>Timing</th><th>Team</th><th>Match</th><th>Action</th></tr></thead><tbody>';
+
+    data.duplicates.forEach(function(dup) {
+      var timingClass = dup.timing_match ? 'text-success' : 'text-warning';
+      var teamClass = dup.team_mismatch ? 'text-danger' : 'text-success';
+      var teamLabel = dup.team_mismatch ? '!= MISMATCH' : 'OK';
+      html += '<tr>';
+      html += '<td>' + dup.id + '</td>';
+      html += '<td>' + (dup.disqualified ? 'DSQ' : dup.rank) + '</td>';
+      html += '<td class="' + timingClass + '">' + dup.timing;
+      if (!dup.timing_match) {
+        html += ' <small>(diff: ' + dup.timing_diff_hundredths + '/100)</small>';
+      }
+      html += '</td>';
+      html += '<td>' + (dup.team_name || 'N/A') + ' <span class="' + teamClass + '">(' + teamLabel + ')</span></td>';
+      html += '<td>' + (dup.timing_match ? '<span class="badge badge-success">Exact</span>' : '<span class="badge badge-warning">Diff</span>') + '</td>';
+      html += '<td><button class="btn btn-sm btn-outline-success confirm-duplicate-btn" ' +
+              'data-import_key="' + importKey + '" data-existing_id="' + dup.id + '" ' +
+              'data-result_type="' + resultType + '">' +
+              '<i class="fa fa-check"></i> Confirm as existing</button></td>';
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+  } else {
+    html += '<div class="text-success"><i class="fa fa-check-circle"></i> No duplicates found. This result will be created as new.</div>';
+  }
+
+  // Show swimmer badges (for individual results)
+  if (data.swimmer_badges && data.swimmer_badges.length > 0) {
+    html += '<div class="mt-2"><small><strong>Swimmer badges this season:</strong> ';
+    data.swimmer_badges.forEach(function(badge, idx) {
+      if (idx > 0) html += ', ';
+      html += badge.team_name + ' (ID: ' + badge.badge_id + ')';
+    });
+    if (data.swimmer_badges.length > 1) {
+      html += ' <span class="badge badge-danger">MULTIPLE BADGES</span>';
+    }
+    html += '</small></div>';
+  }
+
+  return html;
+}

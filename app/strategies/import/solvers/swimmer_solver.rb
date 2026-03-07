@@ -317,6 +317,29 @@ module Import
           end
         end
 
+        # Re-weight matches using team correlation: boost candidates whose badge team
+        # is a 100% Phase 2 match, demote candidates with badges but no Phase 2 team match
+        current_matches = entry['fuzzy_matches'] || []
+        if current_matches.size > 1 && team_name.present?
+          target_team_id = find_team_id_by_key(team_name)
+          current_matches.each do |m|
+            badges = m['badges'] || []
+            next if badges.empty?
+
+            has_matching_team = badges.any? { |b| b['phase2_match'] && b['team_id'] == target_team_id }
+            has_any_p2_match = badges.any? { |b| b['phase2_match'] }
+            if has_matching_team
+              m['weight'] = [(m['weight'] + 0.05).round(3), 1.0].min
+              m['team_match'] = true
+            elsif !has_any_p2_match
+              m['weight'] = [(m['weight'] - 0.05).round(3), 0.0].max
+            end
+            m['percentage'] = (m['weight'] * 100).round(1)
+          end
+          entry['fuzzy_matches'] = current_matches.sort_by { |m| -(m['weight'] || 0) }
+          entry['match_percentage'] = entry['fuzzy_matches'].first&.dig('percentage') || 0.0
+        end
+
         # Handle gender-unknown swimmers: only accept very high confidence matches (>=90%)
         # to infer gender safely. Lower matches could be wrong-gender swimmers with similar names.
         if gender_type_code.blank?
@@ -427,6 +450,17 @@ module Import
         # TODO: Fallback #2: we could try to do a 3rd run, using just the last_name parameter, but this
         # implies ranking any possible resulting match very low (red in color)
 
+        # Batch-load badges for all candidate swimmer IDs to avoid N+1 queries
+        candidate_ids = matches.map { |m| m.candidate.id }.compact.uniq
+        badges_by_swimmer = if candidate_ids.any?
+                              GogglesDb::Badge.where(swimmer_id: candidate_ids, season_id: recent_season_ids)
+                                              .includes(:team)
+                                              .group_by(&:swimmer_id)
+                            else
+                              {}
+                            end
+        p2_team_lookup = phase2_team_lookup_by_id
+
         # Convert all matches to our format with color-coded display labels
         matches.map do |match_struct|
           swimmer = match_struct.candidate
@@ -440,6 +474,32 @@ module Import
                         when 50...70 then 'danger'  # Red - questionable match
                           # else: no badge pill for very poor match
                         end
+
+          # Enrich with badge/team data from recent seasons
+          swimmer_badges = badges_by_swimmer[swimmer.id] || []
+          badge_entries = swimmer_badges.map do |badge|
+            team = badge.team
+            p2_info = p2_team_lookup[badge.team_id]
+            {
+              'team_id' => badge.team_id,
+              'team_name' => team&.editable_name || team&.name,
+              'season_id' => badge.season_id,
+              'badge_id' => badge.id,
+              'phase2_match' => p2_info.present?,
+              'phase2_match_percentage' => p2_info&.dig('match_percentage')
+            }
+          end
+
+          # Build display label with team info
+          team_suffix = if badge_entries.any?
+                          team_names = badge_entries.map { |b| b['team_name'] }.compact.uniq.first(2)
+                          p2_match = badge_entries.any? { |b| b['phase2_match'] }
+                          marker = p2_match ? ' *' : ''
+                          " [#{team_names.join(', ')}#{marker}]"
+                        else
+                          ''
+                        end
+
           {
             'id' => swimmer.id,
             'complete_name' => swimmer.complete_name,
@@ -450,7 +510,8 @@ module Import
             'weight' => weight,
             'percentage' => percentage,
             'color_class' => color_class,
-            'display_label' => "#{swimmer.complete_name} (#{swimmer.year_of_birth}, ID: #{swimmer.id}, match: #{percentage}%)"
+            'badges' => badge_entries,
+            'display_label' => "#{swimmer.complete_name} (#{swimmer.year_of_birth}, ID: #{swimmer.id}, match: #{percentage}%)#{team_suffix}"
           }
         end
       rescue StandardError => e
@@ -670,6 +731,25 @@ module Import
         teams = Array(@phase2_data.dig('data', 'teams'))
         team = teams.find { |t| t['key'] == team_key }
         team&.dig('team_id')
+      end
+
+      # Build a reverse lookup: team_id => { key, match_percentage } from Phase 2 data.
+      # Used to cross-reference badge teams with Phase 2 matched teams.
+      def phase2_team_lookup_by_id
+        @phase2_team_lookup_by_id ||= if @phase2_data
+                                        teams = Array(@phase2_data.dig('data', 'teams'))
+                                        teams.each_with_object({}) do |t, hash|
+                                          tid = t['team_id'].to_i
+                                          next unless tid.positive?
+
+                                          hash[tid] = {
+                                            'key' => t['key'],
+                                            'match_percentage' => t['match_percentage'] || 0.0
+                                          }
+                                        end
+                                      else
+                                        {}
+                                      end
       end
 
       # Add a badge to the array, replacing any existing partial-key badge for the same swimmer+team+season.

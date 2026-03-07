@@ -86,6 +86,8 @@
           team = teams_by_id[mrr.team_id]
           team_data = teams_by_key[mrr.import_key.split('/')[1]] if teams_by_key && team.nil?
           is_matched = team.present?
+          # Existing result = already has a matched DB ID (will not be inserted on commit)
+          is_existing_result = mrr.meeting_relay_result_id.to_i.positive?
           relay_swimmers = relay_swimmers_by_parent_key[mrr.import_key] || []
           relay_laps = relay_laps_by_parent_key[mrr.import_key] || []
           has_laps = relay_laps.any?
@@ -125,6 +127,13 @@
                         Unmatched
                     - else
                       %em.text-muted No team
+                    - if is_existing_result
+                      %small.ml-2.badge.badge-success{ title: "Existing relay result (ID: #{mrr.meeting_relay_result_id})" }
+                        %i.fa.fa-check-circle
+                        Existing
+                    - elsif !mrr.disqualified?
+                      %small.ml-2.badge.badge-primary{ title: 'New relay result (will be created on commit)' }
+                        NEW
                     -# Expand button for swimmers/laps
                     - if relay_swimmers.any? || relay_laps.any?
                       %button.btn.btn-sm.btn-outline-secondary.mt-2{ type: 'button', data: { toggle: 'collapse', target: "##{result_id}-details" } }

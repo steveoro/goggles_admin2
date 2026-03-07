@@ -54,6 +54,7 @@
         = hidden_field_tag :teams_per_page, params[:teams_per_page] if params[:teams_per_page].present?
         = hidden_field_tag :q, params[:q] if params[:q].present?
         = hidden_field_tag :unmatched, params[:unmatched] if params[:unmatched].present?
+        = hidden_field_tag :name_differs, params[:name_differs] if params[:name_differs].present?
         %button.btn.btn-sm.btn-danger{ type: 'submit', 'aria-label' => 'Delete team', onclick: 'event.stopPropagation();' }
           %i.fa.fa-trash
 
@@ -66,6 +67,7 @@
         = hidden_field_tag :teams_per_page, params[:teams_per_page] if params[:teams_per_page].present?
         = hidden_field_tag :q, params[:q] if params[:q].present?
         = hidden_field_tag :unmatched, params[:unmatched] if params[:unmatched].present?
+        = hidden_field_tag :name_differs, params[:name_differs] if params[:name_differs].present?
 
         .container-fluid
           -# Row 0: Fuzzy matches dropdown (quick selection)
@@ -130,8 +132,20 @@
                                                    target3_dom_id: "team_#{team_index}_city_id_field", target3_column: 'id',
                                                    jwt: current_user.jwt))
                 %small.form-text.text-muted.ml-3 Clear search to unmatch city
-                -# Save button
-                .form-group.mt-3
+                -# Save button + Verify button
+                .form-group.mt-3.d-flex.align-items-center
                   = submit_tag(t('data_import.generic_save_btn'),
                                class: 'btn btn-primary', 'aria-label': 'Save',
                                data: { confirm: t('data_import.btn_save_confirm') })
+                  - match_pct = team_hash.dig('match_percentage').to_f
+                  - if has_match && match_pct < 100.0
+                    %button.btn.btn-outline-info.btn-sm.ml-2.verify-team-btn{ type: 'button', title: 'Cross-validate team via swimmer badges from Phase 3', onclick: 'event.preventDefault();', data: { file_path: file_path, team_key: team_key, candidate_team_id: team_id, target: "#team-verify-#{team_index}" } }
+                      %i.fa.fa-search
+                      Verify via swimmers
+                -# Team verification panel (expanded via AJAX)
+                - if has_match
+                  .collapse{ id: "team-verify-#{team_index}" }
+                    .bg-light.border.border-info.p-2.mt-2
+                      .text-center.text-muted
+                        %i.fa.fa-spinner.fa-spin
+                        Checking swimmer badges...
