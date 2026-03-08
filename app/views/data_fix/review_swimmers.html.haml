@@ -82,9 +82,13 @@
     .alert.alert-info
       %em No swimmers found. Adjust filters or rescan to rebuild phase3 file.
   - else
+    -# Build swimmer_key => team_key lookup from badges (once, before loop)
+    - badges_data = Array(@phase3_data['badges'])
+    - team_key_by_swimmer_key = badges_data.each_with_object({}) { |b, h| h[b['swimmer_key']] = b['team_key'] if b['swimmer_key'] }
     - @items.each_with_index do |swimmer_hash, idx|
       :ruby
         swimmer_key = swimmer_hash['key']
+        swimmer_team_key = team_key_by_swimmer_key[swimmer_key]
         swimmer_index = ((@page - 1) * @per_page) + idx
         swimmer_id = swimmer_hash['swimmer_id']
         has_match = swimmer_id.to_i.positive?
@@ -142,7 +146,8 @@
 
       = render(partial: 'swimmer_form_card',
                locals: { file_path: @file_path, api_url: @api_url, swimmer_hash:, swimmer_index:,
-                         swimmer_key:, swimmer_id:, has_match:, has_missing_data:, needs_optional_edit:,
+                         swimmer_key:, swimmer_team_key:, swimmer_id:, has_match:, has_missing_data:,
+                         needs_optional_edit:,
                          missing_name:, missing_yob:, missing_gender:, gender_guessed:,
                          similar_on_team:,
                          card_bg:, border_color:, border_width:, icon_class:, icon_title: })

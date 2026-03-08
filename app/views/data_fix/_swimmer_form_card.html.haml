@@ -10,6 +10,10 @@
         &nbsp;
         .fa.fa-key.text-warning
         #{swimmer_key}
+        - if defined?(swimmer_team_key) && swimmer_team_key.present?
+          &nbsp;
+          %i.fa.fa-users.text-info{ title: 'Associated team key' }
+          = swimmer_team_key
       &nbsp;
       - if has_match
         - fuzzy_matches = swimmer_hash['fuzzy_matches'] || []

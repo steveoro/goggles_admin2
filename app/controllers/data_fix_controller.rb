@@ -138,9 +138,10 @@ class DataFixController < ApplicationController
     # Filter teams where the edited name differs from the original import key
     if params[:name_differs].present?
       teams = teams.select do |t|
-        editable = (t['editable_name'] || t['name']).to_s.strip.downcase
+        editable = t['editable_name'].to_s.strip.downcase
+        name = t['name'].to_s.strip.downcase
         key = t['key'].to_s.strip.downcase
-        editable != key
+        (editable.present? && editable != key) || (name.present? && name != key)
       end
     end
 
@@ -264,11 +265,11 @@ class DataFixController < ApplicationController
 
     # Filter swimmers where the current name differs from the original import key
     if params[:name_differs].present?
-      swimmers = swimmers.select do |s|
+      swimmers = swimmers.reject do |s|
         composed = "#{s['last_name']}|#{s['first_name']}".strip.downcase
         # Strip gender prefix (e.g., "M|" or "F|") and trailing year from key for comparison
         key_name = s['key'].to_s.sub(/^[MF]\|/i, '').sub(/\|\d{4}$/, '').strip.downcase
-        composed != key_name
+        composed == key_name
       end
     end
 
@@ -467,13 +468,11 @@ class DataFixController < ApplicationController
           if prog['relay']
             GogglesDb::DataImportMeetingRelayResult
               .where('import_key LIKE ?', "#{program_key}/%")
-              .where(meeting_relay_result_id: nil)
-              .exists?
+              .exists?(meeting_relay_result_id: nil)
           else
             GogglesDb::DataImportMeetingIndividualResult
               .where('import_key LIKE ?', "#{program_key}/%")
-              .where(meeting_individual_result_id: nil)
-              .exists?
+              .exists?(meeting_individual_result_id: nil)
           end
         end
       end

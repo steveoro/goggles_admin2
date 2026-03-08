@@ -28,7 +28,7 @@ module Import
       #   swimmers: Array of { name:, swimmer_id:, badge_teams: [...], matches_candidate: Boolean },
       #   confidence: String ('high', 'medium', 'low', 'none')
       # }
-      def check(team_key:, candidate_team_id:)
+      def check(team_key:, candidate_team_id:) # rubocop:disable Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/MethodLength,Metrics/PerceivedComplexity
         result = { confirmed: 0, total: 0, swimmers: [], confidence: 'none' }
         return result unless team_key.present? && candidate_team_id.to_i.positive?
 
@@ -52,7 +52,7 @@ module Import
         return result if reference_swimmers.empty?
 
         # Batch-load DB badges for all reference swimmers
-        swimmer_ids = reference_swimmers.map { |s| s[:swimmer_id] }
+        swimmer_ids = reference_swimmers.pluck(:swimmer_id)
         db_badges = GogglesDb::Badge.where(swimmer_id: swimmer_ids, season_id: @season_id)
                                     .includes(:team)
                                     .group_by(&:swimmer_id)
@@ -76,11 +76,14 @@ module Import
         end
 
         total = reference_swimmers.size
-        confidence = case
-                     when total >= 2 && confirmed == total then 'high'
-                     when confirmed >= 1 then 'medium'
-                     when total.positive? && confirmed.zero? then 'low'
-                     else 'none'
+        confidence = if total >= 2 && confirmed == total
+                       'high'
+                     elsif confirmed >= 1
+                       'medium'
+                     elsif total.positive? && confirmed.zero?
+                       'low'
+                     else
+                       'none'
                      end
 
         { confirmed: confirmed, total: total, swimmers: swimmer_details, confidence: confidence }

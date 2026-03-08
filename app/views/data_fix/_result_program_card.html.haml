@@ -111,8 +111,11 @@
               %td
                 - if team
                   = team.editable_name
+                  %small.text-muted= "(#{team.id})"
                 - elsif team_data
                   = team_data['editable_name'] || team_data['name']
+                  - if team_data['team_id']
+                    %small.text-muted= "(#{team_data['team_id']})"
                 - else
                   %span.text-muted N/A
               %td.text-right

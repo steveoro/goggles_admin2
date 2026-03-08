@@ -118,8 +118,8 @@ export function initVerifyResultButtons() {
   $(document).on('click', '.verify-result-btn', function(e) {
     e.preventDefault();
     var btn = $(this);
-    var importKey = btn.data('import_key');
-    var resultType = btn.data('result_type') || 'individual';
+    var importKey = btn.data('import-key');
+    var resultType = btn.data('result-type') || 'individual';
     var targetSelector = btn.data('target');
     var panel = $(targetSelector);
 
@@ -148,9 +148,9 @@ export function initVerifyResultButtons() {
   $(document).on('click', '.confirm-duplicate-btn', function(e) {
     e.preventDefault();
     var btn = $(this);
-    var importKey = btn.data('import_key');
-    var existingId = btn.data('existing_id');
-    var resultType = btn.data('result_type') || 'individual';
+    var importKey = btn.data('import-key');
+    var existingId = btn.data('existing-id');
+    var resultType = btn.data('result-type') || 'individual';
     var row = btn.closest('tr');
 
     if (!confirm('Confirm this result as existing (ID: ' + existingId + ')? The import row will be overwritten with DB values.')) {
@@ -208,8 +208,8 @@ function renderVerifyPanel(data, importKey, resultType) {
       html += '<td>' + (dup.team_name || 'N/A') + ' <span class="' + teamClass + '">(' + teamLabel + ')</span></td>';
       html += '<td>' + (dup.timing_match ? '<span class="badge badge-success">Exact</span>' : '<span class="badge badge-warning">Diff</span>') + '</td>';
       html += '<td><button class="btn btn-sm btn-outline-success confirm-duplicate-btn" ' +
-              'data-import_key="' + importKey + '" data-existing_id="' + dup.id + '" ' +
-              'data-result_type="' + resultType + '">' +
+              'data-import-key="' + importKey + '" data-existing-id="' + dup.id + '" ' +
+              'data-result-type="' + resultType + '">' +
               '<i class="fa fa-check"></i> Confirm as existing</button></td>';
       html += '</tr>';
     });

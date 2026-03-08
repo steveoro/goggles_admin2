@@ -451,7 +451,7 @@ module Import
         # implies ranking any possible resulting match very low (red in color)
 
         # Batch-load badges for all candidate swimmer IDs to avoid N+1 queries
-        candidate_ids = matches.map { |m| m.candidate.id }.compact.uniq
+        candidate_ids = matches.filter_map { |m| m.candidate.id }.uniq
         badges_by_swimmer = if candidate_ids.any?
                               GogglesDb::Badge.where(swimmer_id: candidate_ids, season_id: recent_season_ids)
                                               .includes(:team)
@@ -462,7 +462,7 @@ module Import
         p2_team_lookup = phase2_team_lookup_by_id
 
         # Convert all matches to our format with color-coded display labels
-        matches.map do |match_struct|
+        matches.map do |match_struct| # rubocop:disable Metrics/BlockLength
           swimmer = match_struct.candidate
           weight = match_struct.weight.round(3)
           percentage = (weight * 100).round(1)
@@ -492,7 +492,7 @@ module Import
 
           # Build display label with team info
           team_suffix = if badge_entries.any?
-                          team_names = badge_entries.map { |b| b['team_name'] }.compact.uniq.first(2)
+                          team_names = badge_entries.filter_map { |b| b['team_name'] }.uniq.first(2)
                           p2_match = badge_entries.any? { |b| b['phase2_match'] }
                           marker = p2_match ? ' *' : ''
                           " [#{team_names.join(', ')}#{marker}]"

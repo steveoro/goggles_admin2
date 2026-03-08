@@ -123,6 +123,8 @@
                         ID: #{team.id}
                     - elsif team_data
                       %strong= team_data['name']
+                      - if team_data['team_id']
+                        %small.ml-2.text-muted= "(#{team_data['team_id']})"
                       %small.ml-2.badge.badge-warning
                         Unmatched
                     - else

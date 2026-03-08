@@ -137,9 +137,9 @@
   $(document).on('click', '.verify-team-btn', function(e) {
     e.preventDefault();
     var btn = $(this);
-    var filePath = btn.data('file_path');
-    var teamKey = btn.data('team_key');
-    var candidateTeamId = btn.data('candidate_team_id');
+    var filePath = btn.data('file-path');
+    var teamKey = btn.data('team-key');
+    var candidateTeamId = btn.data('candidate-team-id');
     var targetSelector = btn.data('target');
     var panel = $(targetSelector);
     panel.collapse('show');
