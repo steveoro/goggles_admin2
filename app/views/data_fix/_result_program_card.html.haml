@@ -91,7 +91,7 @@
               laps = laps_by_parent_key[mir.import_key] || []
               has_laps = laps.any?
               result_id = "result-#{card_index}-#{idx}"
-            %tr{ id: "#{result_id}-row" }
+            %tr{ id: "#{result_id}-row", class: is_existing_result ? '' : 'bg-light-yellow' }
               %td.text-center
                 - if has_laps
                   %i.fa.fa-chevron-right{ style: 'cursor: pointer;', data: { toggle: 'collapse', target: "##{result_id}-laps" }, onclick: 'this.classList.toggle("fa-chevron-right"); this.classList.toggle("fa-chevron-down");' }
@@ -132,7 +132,8 @@
                   %i.fa.fa-plus-circle.text-warning{ title: 'New result (will be created on commit)' }
                   - if mir.swimmer_id.to_i.positive? && mir.meeting_program_id.to_i.positive?
                     %button.btn.btn-outline-secondary.btn-sm.ml-1{ type: 'button', title: 'Verify for duplicates', data: { action: 'click->verify-result#verify', verify_result_import_key_param: mir.import_key, verify_result_result_type_param: 'individual', verify_result_target_panel_param: "##{result_id}-verify" } }
-                      %i.fa.fa-search
+                      %i.fa.fa-search.mr-1
+                      Verify
                 - else
                   %i.fa.fa-exclamation-circle.text-warning{ title: 'New result with unmatched swimmer or team' }
             -# Verification panel (expanded via AJAX)

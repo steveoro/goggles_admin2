@@ -2,7 +2,11 @@ import { Controller } from "@hotwired/stimulus"
 
 /**
  * Verify Result Controller
- * Handles Phase 5 duplicate detection: verify buttons and confirm-as-existing actions.
+ * Handles Phase 5 duplicate detection with 4-tier classification:
+ *   - perfect_matches:  auto-fixed on verify click (same event + timing + team)
+ *   - partial_matches:  "Fix with this" buttons (same event + team, different timing)
+ *   - team_mismatches:  informational with red background (same event, different team)
+ *   - other_events:     informational (different events in same meeting)
  *
  * Usage:
  *   <div data-controller="verify-result">
@@ -13,20 +17,16 @@ import { Controller } from "@hotwired/stimulus"
  *       Verify
  *     </button>
  *   </div>
- *
- * The confirm buttons are rendered dynamically inside the AJAX panel.
- * We use a delegated click listener (bound once in connect) to handle them.
  */
 export default class extends Controller {
   connect() {
     this.csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
-    // Delegated handler for dynamically-rendered confirm buttons
-    this._handleConfirmClick = this._onConfirmClick.bind(this)
-    this.element.addEventListener('click', this._handleConfirmClick)
+    this._handleFixClick = this._onFixClick.bind(this)
+    this.element.addEventListener('click', this._handleFixClick)
   }
 
   disconnect() {
-    this.element.removeEventListener('click', this._handleConfirmClick)
+    this.element.removeEventListener('click', this._handleFixClick)
   }
 
   // --- Actions ---
@@ -40,7 +40,6 @@ export default class extends Controller {
     const panel = document.querySelector(targetSelector)
     if (!panel) return
 
-    // Show the panel (Bootstrap collapse)
     $(panel).collapse('show')
 
     const self = this
@@ -63,10 +62,10 @@ export default class extends Controller {
     })
   }
 
-  // --- Delegated confirm handler ---
+  // --- Delegated handler for dynamically-rendered "Fix with this" buttons ---
 
-  _onConfirmClick(event) {
-    const btn = event.target.closest('.confirm-duplicate-btn')
+  _onFixClick(event) {
+    const btn = event.target.closest('.fix-with-this-btn')
     if (!btn) return
 
     event.preventDefault()
@@ -75,97 +74,162 @@ export default class extends Controller {
     const importKey = btn.dataset.importKey
     const existingId = btn.dataset.existingId
     const resultType = btn.dataset.resultType || 'individual'
+    const mode = btn.dataset.mode || 'overwrite'
 
-    if (!confirm('Confirm this result as existing (ID: ' + existingId + ')? The import row will be overwritten with DB values.')) {
-      return
-    }
+    const modeLabel = mode === 'keep_timing'
+      ? 'Fix with IMPORT timing (UPDATE existing row ID: ' + existingId + ' on commit)?'
+      : 'Fix with EXISTING DB values (ID: ' + existingId + ', no change on commit)?'
+
+    if (!confirm(modeLabel)) return
 
     btn.disabled = true
-    btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Confirming...'
+    btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Fixing...'
 
     $.ajax({
       url: '/data_fix/confirm_result_duplicate',
       method: 'PATCH',
-      data: { import_key: importKey, existing_id: existingId, result_type: resultType },
+      data: { import_key: importKey, existing_id: existingId, result_type: resultType, mode: mode },
       headers: { 'X-CSRF-Token': this.csrfToken },
       dataType: 'json',
       success: function() {
-        const row = btn.closest('tr')
-        const container = row ? (row.querySelector('td > div') || row) : btn.parentElement
-        if (container) {
-          container.innerHTML =
-            '<div class="text-success"><i class="fa fa-check-circle"></i> ' +
-            'Confirmed as existing (ID: ' + existingId + '). Refreshing...</div>'
+        const row = btn.closest('tr') || btn.closest('div')
+        if (row) {
+          row.innerHTML =
+            '<td colspan="6"><div class="text-success"><i class="fa fa-check-circle"></i> ' +
+            'Fixed (ID: ' + existingId + ', mode: ' + mode + '). Refreshing...</div></td>'
         }
         setTimeout(function() { window.location.reload() }, 800)
       },
       error: function(xhr) {
-        const msg = xhr.responseJSON ? xhr.responseJSON.error : 'Failed to confirm'
+        const msg = xhr.responseJSON ? xhr.responseJSON.error : 'Failed to fix'
         btn.disabled = false
-        btn.innerHTML = '<i class="fa fa-check"></i> Confirm'
+        btn.innerHTML = '<i class="fa fa-wrench"></i> Fix with this'
         alert('Error: ' + msg)
       }
     })
   }
 
-  // --- Private: render verification panel HTML ---
+  // --- Private: render verification panel HTML (4-tier) ---
 
   _renderVerifyPanel(data, importKey, resultType) {
     let html = ''
 
-    // 1) Exact-program duplicates (with Confirm button)
-    if (data.duplicates && data.duplicates.length > 0) {
-      html += '<div class="mb-2"><strong class="text-danger"><i class="fa fa-exclamation-triangle"></i> ' +
-              data.duplicates.length + ' exact duplicate(s) (same program):</strong></div>'
-      html += '<table class="table table-sm table-bordered mb-2">' +
-              '<thead><tr><th>ID</th><th>Rank</th><th>Timing</th><th>Team</th><th>Match</th><th>Action</th></tr></thead><tbody>'
+    // --- TIER 0: Auto-fixed (perfect match applied by backend) ---
+    if (data.auto_fixed) {
+      const pm = (data.perfect_matches && data.perfect_matches[0]) || {}
+      html += '<div class="alert alert-success mb-2">'
+      html += '<i class="fa fa-check-circle"></i> <strong>Auto-fixed:</strong> '
+      html += 'matched existing result <strong>ID ' + data.auto_fixed_id + '</strong>'
+      if (pm.timing) html += ' (' + pm.timing + ', ' + (pm.team_name || 'N/A') + ')'
+      html += '<br><small>Refreshing in 3 seconds...</small>'
+      html += '</div>'
+      setTimeout(function() { window.location.reload() }, 3000)
+      // Still show other tiers below for reference
+    }
 
-      data.duplicates.forEach(function(dup) {
-        const timingCls = dup.timing_match ? 'text-success' : 'text-warning'
-        const teamCls = dup.team_mismatch ? 'text-danger' : 'text-success'
-        const teamLbl = dup.team_mismatch ? '!= MISMATCH' : 'OK'
-        html += '<tr><td>' + dup.id + '</td>'
-        html += '<td>' + (dup.disqualified ? 'DSQ' : dup.rank) + '</td>'
-        html += '<td class="' + timingCls + '">' + dup.timing
-        if (!dup.timing_match) html += ' <small>(diff: ' + dup.timing_diff_hundredths + '/100)</small>'
-        html += '</td>'
-        html += '<td>' + (dup.team_name || 'N/A') + ' (ID: ' + dup.team_id + ') <span class="' + teamCls + '">(' + teamLbl + ')</span></td>'
-        html += '<td>' + (dup.timing_match ? '<span class="badge badge-success">Exact</span>' : '<span class="badge badge-warning">Diff</span>') + '</td>'
-        html += '<td><button class="btn btn-sm btn-outline-success confirm-duplicate-btn" ' +
-                'data-import-key="' + importKey + '" data-existing-id="' + dup.id + '" ' +
-                'data-result-type="' + resultType + '">' +
-                '<i class="fa fa-check"></i> Confirm as existing</button></td></tr>'
+    // --- TIER 1: Perfect matches (already auto-fixed if exactly 1; show info if >1) ---
+    if (!data.auto_fixed && data.perfect_matches && data.perfect_matches.length > 1) {
+      html += '<div class="alert alert-danger mb-2">'
+      html += '<i class="fa fa-ban"></i> <strong>' + data.perfect_matches.length +
+              ' perfect matches found!</strong> This indicates DB duplicates — manual cleanup required.'
+      html += '</div>'
+      html += this._renderMatchTable(data.perfect_matches, importKey, resultType, 'disabled')
+    }
+
+    // --- TIER 2: Partial matches (same event + team, different timing) ---
+    if (data.partial_matches && data.partial_matches.length > 0) {
+      const multiplePartials = data.partial_matches.length > 1
+      if (multiplePartials) {
+        html += '<div class="alert alert-danger mb-2">'
+        html += '<i class="fa fa-ban"></i> <strong>' + data.partial_matches.length +
+                ' existing results found for same event + team!</strong><br>' +
+                'This indicates DB duplicates — manual cleanup required (use rake tasks to merge/fix).'
+        html += '</div>'
+      } else {
+        html += '<div class="mb-2"><strong class="text-warning">' +
+                '<i class="fa fa-exclamation-triangle"></i> Partial match found ' +
+                '(same event &amp; team, different timing):</strong></div>'
+      }
+
+      // Import row: "Fix with this" = keep_timing mode (UPDATE existing with import timing)
+      if (!multiplePartials && !data.auto_fixed) {
+        html += '<table class="table table-sm table-bordered mb-1"><tbody>'
+        html += '<tr class="table-info"><td><strong>Import row</strong> (this timing)</td>'
+        html += '<td class="text-right">'
+        html += '<button class="btn btn-sm btn-outline-primary fix-with-this-btn" ' +
+                'data-import-key="' + importKey + '" ' +
+                'data-existing-id="' + data.partial_matches[0].id + '" ' +
+                'data-result-type="' + resultType + '" data-mode="keep_timing">' +
+                '<i class="fa fa-wrench"></i> Fix with this</button>'
+        html += ' <small class="text-muted ml-1">→ UPDATE existing row with import timing</small>'
+        html += '</td></tr></tbody></table>'
+      }
+
+      // Existing rows
+      html += this._renderMatchTable(
+        data.partial_matches, importKey, resultType,
+        multiplePartials ? 'disabled' : 'overwrite'
+      )
+    }
+
+    // --- TIER 3: Team mismatches (same event, different team) — bg-light-red, no buttons ---
+    if (data.team_mismatches && data.team_mismatches.length > 0) {
+      html += '<div class="mb-2"><strong class="text-danger">' +
+              '<i class="fa fa-exclamation-triangle"></i> ' + data.team_mismatches.length +
+              ' result(s) with different team (same event):</strong></div>'
+      html += '<table class="table table-sm table-bordered mb-2">' +
+              '<thead><tr><th>ID</th><th>Rank</th><th>Timing</th><th>Team (ID)</th><th>Note</th></tr></thead><tbody>'
+
+      data.team_mismatches.forEach(function(tm) {
+        html += '<tr class="bg-light-red"><td>' + tm.id + '</td>'
+        html += '<td>' + (tm.disqualified ? 'DSQ' : tm.rank) + '</td>'
+        html += '<td>' + tm.timing + '</td>'
+        html += '<td>' + (tm.team_name || 'N/A') + ' (ID: ' + tm.team_id + ')</td>'
+        html += '<td><span class="badge badge-danger">TEAM MISMATCH</span></td></tr>'
       })
       html += '</tbody></table>'
     }
 
-    // 2) Meeting-wide results (informational only — NO Confirm button)
-    if (data.meeting_results && data.meeting_results.length > 0) {
+    // --- TIER 4: Other events (informational) ---
+    if (data.other_events && data.other_events.length > 0) {
       html += '<div class="mb-2"><strong class="text-info"><i class="fa fa-info-circle"></i> ' +
-              data.meeting_results.length + ' other result(s) for this swimmer in same meeting:</strong></div>'
+              data.other_events.length + ' other result(s) for this swimmer in same meeting:</strong></div>'
       html += '<table class="table table-sm table-bordered mb-2">' +
               '<thead><tr><th>ID</th><th>Event</th><th>Cat.</th><th>Rank</th><th>Timing</th><th>Team (ID)</th></tr></thead><tbody>'
 
-      data.meeting_results.forEach(function(mr) {
-        const teamCls = mr.team_mismatch ? 'text-danger fw-bold' : ''
-        html += '<tr><td>' + mr.id + '</td>'
-        html += '<td>' + (mr.event || 'N/A') + '</td>'
-        html += '<td>' + (mr.category || 'N/A') + '</td>'
-        html += '<td>' + (mr.disqualified ? 'DSQ' : mr.rank) + '</td>'
-        html += '<td>' + mr.timing + '</td>'
-        html += '<td class="' + teamCls + '">' + (mr.team_name || 'N/A') + ' (ID: ' + mr.team_id + ')'
-        if (mr.team_mismatch) html += ' <span class="badge badge-danger">TEAM MISMATCH</span>'
+      data.other_events.forEach(function(oe) {
+        const teamCls = oe.team_mismatch ? 'text-danger fw-bold' : ''
+        html += '<tr><td>' + oe.id + '</td>'
+        html += '<td>' + (oe.event || 'N/A') + '</td>'
+        html += '<td>' + (oe.category || 'N/A') + '</td>'
+        html += '<td>' + (oe.disqualified ? 'DSQ' : oe.rank) + '</td>'
+        html += '<td>' + oe.timing + '</td>'
+        html += '<td class="' + teamCls + '">' + (oe.team_name || 'N/A') + ' (ID: ' + oe.team_id + ')'
+        if (oe.team_mismatch) html += ' <span class="badge badge-danger">TEAM MISMATCH</span>'
         html += '</td></tr>'
       })
       html += '</tbody></table>'
     }
 
-    // 3) No results at all
-    if ((!data.duplicates || data.duplicates.length === 0) && (!data.meeting_results || data.meeting_results.length === 0)) {
-      html += '<div class="text-success"><i class="fa fa-check-circle"></i> No duplicates found. This result will be created as new.</div>'
+    // --- Relay duplicates (legacy format from check_relay) ---
+    if (data.duplicates && data.duplicates.length > 0) {
+      html += '<div class="mb-2"><strong class="text-danger"><i class="fa fa-exclamation-triangle"></i> ' +
+              data.duplicates.length + ' relay duplicate(s) found:</strong></div>'
+      html += this._renderMatchTable(data.duplicates, importKey, resultType, 'overwrite')
     }
 
-    // 4) Swimmer badges
+    // --- No matches at all ---
+    const hasAny = (data.auto_fixed) ||
+                   (data.perfect_matches && data.perfect_matches.length > 0) ||
+                   (data.partial_matches && data.partial_matches.length > 0) ||
+                   (data.team_mismatches && data.team_mismatches.length > 0) ||
+                   (data.other_events && data.other_events.length > 0) ||
+                   (data.duplicates && data.duplicates.length > 0)
+    if (!hasAny) {
+      html += '<div class="text-success"><i class="fa fa-check-circle"></i> No existing results found. This result will be created as new.</div>'
+    }
+
+    // --- Swimmer badges ---
     if (data.swimmer_badges && data.swimmer_badges.length > 0) {
       html += '<div class="mt-2"><small><strong>Swimmer badges this season:</strong> '
       data.swimmer_badges.forEach(function(b, i) {
@@ -176,6 +240,49 @@ export default class extends Controller {
       html += '</small></div>'
     }
 
+    return html
+  }
+
+  // --- Private: render a table of match rows with optional "Fix with this" buttons ---
+  // buttonMode: 'overwrite' | 'keep_timing' | 'disabled' | null (no button)
+
+  _renderMatchTable(matches, importKey, resultType, buttonMode) {
+    let html = '<table class="table table-sm table-bordered mb-2">' +
+               '<thead><tr><th>ID</th><th>Rank</th><th>Timing</th><th>Team (ID)</th>'
+    if (buttonMode) html += '<th>Action</th>'
+    html += '</tr></thead><tbody>'
+
+    matches.forEach(function(m) {
+      html += '<tr><td>' + m.id + '</td>'
+      html += '<td>' + (m.disqualified ? 'DSQ' : m.rank) + '</td>'
+      html += '<td>' + m.timing
+      if (m.timing_diff_hundredths) html += ' <small class="text-muted">(diff: ' + m.timing_diff_hundredths + '/100)</small>'
+      html += '</td>'
+      html += '<td>' + (m.team_name || 'N/A') + ' (ID: ' + m.team_id + ')</td>'
+      if (buttonMode) {
+        html += '<td>'
+        if (buttonMode === 'disabled') {
+          html += '<button class="btn btn-sm btn-outline-secondary" disabled>' +
+                  '<i class="fa fa-ban"></i> Manual fix required</button>'
+        } else {
+          const mode = buttonMode // 'overwrite' or 'keep_timing'
+          const label = mode === 'overwrite'
+            ? '<i class="fa fa-wrench"></i> Fix with this'
+            : '<i class="fa fa-wrench"></i> Fix (keep timing)'
+          const hint = mode === 'overwrite'
+            ? '→ Keep existing DB values (no change on commit)'
+            : '→ UPDATE existing row with import timing'
+          html += '<button class="btn btn-sm btn-outline-success fix-with-this-btn" ' +
+                  'data-import-key="' + importKey + '" data-existing-id="' + m.id + '" ' +
+                  'data-result-type="' + resultType + '" data-mode="' + mode + '">' +
+                  label + '</button>'
+          html += ' <small class="text-muted ml-1">' + hint + '</small>'
+        }
+        html += '</td>'
+      }
+      html += '</tr>'
+    })
+    html += '</tbody></table>'
     return html
   }
 }

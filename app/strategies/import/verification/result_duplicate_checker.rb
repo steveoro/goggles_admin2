@@ -6,25 +6,31 @@ module Import
     # Used by the Phase 5 verification UI to detect duplicates before commit.
     #
     # For individual results (MIR):
-    #   Looks up by meeting_program_id + swimmer_id.
-    #   Returns existing MIR(s) with timing comparison and team_id mismatch flag.
+    #   Queries all existing results for the same swimmer in the same meeting,
+    #   then classifies them into 4 tiers:
+    #     - perfect_matches:  same event + same timing + same team (auto-fixable)
+    #     - partial_matches:  same event + same team + different timing
+    #     - team_mismatches:  same event + different team
+    #     - other_events:     different event in the same meeting (informational)
     #
     # For relay results (MRR):
-    #   Looks up by meeting_program_id + team_id (+ overlapping swimmer group).
+    #   Looks up by meeting_program_id + team_id.
     #   Returns existing MRR(s) with timing comparison.
     #
     class ResultDuplicateChecker
-      # Check for duplicate individual results.
+      # Check for duplicate individual results using 4-tier classification.
       #
       # @param swimmer_id [Integer] resolved swimmer DB ID
       # @param meeting_program_id [Integer] resolved meeting program DB ID
       # @param timing [Hash] { minutes:, seconds:, hundredths: } from the import row
       # @param team_id [Integer, nil] team_id from the import row (for mismatch detection)
       # @param season_id [Integer, nil] season for badge lookup
-      # @return [Hash] { duplicates: [...], swimmer_badges: [...] }
+      # @return [Hash] { perfect_matches: [...], partial_matches: [...], team_mismatches: [...],
+      #                   other_events: [...], swimmer_badges: [...] }
       def check_individual(swimmer_id:, meeting_program_id:, timing: {}, team_id: nil, season_id: nil) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
-        result = { duplicates: [], meeting_results: [], swimmer_badges: [] }
-        return result unless swimmer_id.to_i.positive?
+        result = { perfect_matches: [], partial_matches: [], team_mismatches: [],
+                   other_events: [], swimmer_badges: [] }
+        return result unless swimmer_id.to_i.positive? && meeting_program_id.to_i.positive?
 
         import_timing = Timing.new(
           minutes: timing[:minutes].to_i,
@@ -32,69 +38,53 @@ module Import
           hundredths: timing[:hundredths].to_i
         )
 
-        # 1) Exact-program duplicates (same swimmer + same program)
-        if meeting_program_id.to_i.positive?
-          existing_mirs = GogglesDb::MeetingIndividualResult
-                          .where(meeting_program_id: meeting_program_id, swimmer_id: swimmer_id)
-                          .includes(:team, :badge, meeting_program: [meeting_event: :event_type])
+        # Resolve the import row's event_type and category from its meeting_program
+        meeting_program = GogglesDb::MeetingProgram
+                          .includes(meeting_event: [:event_type, :meeting_session])
+                          .find_by(id: meeting_program_id)
+        return result unless meeting_program
 
-          existing_mirs.each do |mir|
-            existing_timing = mir.to_timing
-            timing_match = import_timing.to_hundredths == existing_timing.to_hundredths
-            team_mismatch = team_id.to_i.positive? && mir.team_id != team_id.to_i
+        import_event_type_id = meeting_program.meeting_event&.event_type_id
+        import_category_type_id = meeting_program.category_type_id
+        meeting_id = meeting_program.meeting_event&.meeting_session&.meeting_id
+        return result unless meeting_id
 
-            result[:duplicates] << {
-              'id' => mir.id,
-              'rank' => mir.rank,
-              'timing' => existing_timing.to_s,
-              'timing_match' => timing_match,
-              'timing_diff_hundredths' => (import_timing.to_hundredths - existing_timing.to_hundredths).abs,
-              'team_id' => mir.team_id,
-              'team_name' => mir.team&.editable_name || mir.team&.name,
-              'team_mismatch' => team_mismatch,
-              'badge_id' => mir.badge_id,
-              'disqualified' => mir.disqualified?
-            }
-          end
+        # Query ALL existing MIRs for this swimmer in the same meeting
+        all_mirs = GogglesDb::MeetingIndividualResult
+                   .joins(meeting_program: { meeting_event: :meeting_session })
+                   .where(swimmer_id: swimmer_id, 'meeting_sessions.meeting_id': meeting_id)
+                   .includes(:team, :badge, meeting_program: [{ meeting_event: :event_type }, :category_type])
 
-          # 2) Meeting-wide search: find ALL results for this swimmer in the same meeting
-          # (different programs — catches wrong-team or wrong-event assignments)
-          meeting_program = GogglesDb::MeetingProgram.find_by(id: meeting_program_id)
-          if meeting_program
-            meeting_id = meeting_program.meeting_event&.meeting_session&.meeting_id
-            if meeting_id
-              duplicate_ids = result[:duplicates].pluck('id')
-              meeting_mirs = GogglesDb::MeetingIndividualResult
-                             .joins(meeting_program: { meeting_event: :meeting_session })
-                             .where(swimmer_id: swimmer_id, 'meeting_sessions.meeting_id': meeting_id)
-                             .where.not(id: duplicate_ids) # exclude already-found exact duplicates
-                             .includes(:team, meeting_program: [{ meeting_event: :event_type }, :category_type])
+        # Classify each existing result into a tier
+        all_mirs.each do |mir|
+          existing_timing = mir.to_timing
+          mir_event_type_id = mir.meeting_program&.meeting_event&.event_type_id
+          mir_category_type_id = mir.meeting_program&.category_type_id
+          same_event = (mir_event_type_id == import_event_type_id) &&
+                       (mir_category_type_id == import_category_type_id)
+          same_team = team_id.to_i.positive? && mir.team_id == team_id.to_i
+          timing_match = import_timing.to_hundredths == existing_timing.to_hundredths
 
-              meeting_mirs.each do |mir|
-                existing_timing = mir.to_timing
-                event_label = mir.meeting_program&.meeting_event&.event_type&.label || 'N/A' # rubocop:disable Style/SafeNavigationChainLength
-                category_code = mir.meeting_program&.category_type&.code || 'N/A'
-                team_mismatch = team_id.to_i.positive? && mir.team_id != team_id.to_i
+          row = build_mir_hash(mir, existing_timing, import_timing, team_id)
 
-                result[:meeting_results] << {
-                  'id' => mir.id,
-                  'rank' => mir.rank,
-                  'timing' => existing_timing.to_s,
-                  'event' => event_label,
-                  'category' => category_code,
-                  'meeting_program_id' => mir.meeting_program_id,
-                  'team_id' => mir.team_id,
-                  'team_name' => mir.team&.editable_name || mir.team&.name,
-                  'team_mismatch' => team_mismatch,
-                  'badge_id' => mir.badge_id,
-                  'disqualified' => mir.disqualified?
-                }
+          if same_event
+            if same_team
+              if timing_match
+                result[:perfect_matches] << row
+              else
+                result[:partial_matches] << row
               end
+            else
+              result[:team_mismatches] << row
             end
+          else
+            row['event'] = mir.meeting_program&.meeting_event&.event_type&.label || 'N/A' # rubocop:disable Style/SafeNavigationChainLength
+            row['category'] = mir.meeting_program&.category_type&.code || 'N/A'
+            result[:other_events] << row
           end
         end
 
-        # 3) Load swimmer's badges for the season (to detect multi-team enrollment)
+        # Load swimmer's badges for the season (to detect multi-team enrollment)
         if season_id.to_i.positive?
           badges = GogglesDb::Badge.where(swimmer_id: swimmer_id, season_id: season_id)
                                    .includes(:team)
@@ -111,6 +101,27 @@ module Import
 
         result
       end
+
+      private
+
+      # Build a standardized hash for an existing MIR.
+      def build_mir_hash(mir, existing_timing, import_timing, import_team_id)
+        {
+          'id' => mir.id,
+          'rank' => mir.rank,
+          'timing' => existing_timing.to_s,
+          'timing_match' => import_timing.to_hundredths == existing_timing.to_hundredths,
+          'timing_diff_hundredths' => (import_timing.to_hundredths - existing_timing.to_hundredths).abs,
+          'meeting_program_id' => mir.meeting_program_id,
+          'team_id' => mir.team_id,
+          'team_name' => mir.team&.editable_name || mir.team&.name,
+          'team_mismatch' => import_team_id.to_i.positive? && mir.team_id != import_team_id.to_i,
+          'badge_id' => mir.badge_id,
+          'disqualified' => mir.disqualified?
+        }
+      end
+
+      public
 
       # Check for duplicate relay results.
       #

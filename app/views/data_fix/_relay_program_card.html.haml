@@ -107,7 +107,7 @@
         
         .border-bottom{ class: bg_color, style: (result_has_issues ? 'border-left: 4px solid #dc3545 !important;' : '') }
           -# Main result row
-          .p-3
+          .p-3{ id: "#{result_id}-mrr", class: is_existing_result ? '' : 'bg-light-yellow' }
             .d-flex.justify-content-between.align-items-start
               .d-flex.align-items-center
                 - if mrr.disqualified?

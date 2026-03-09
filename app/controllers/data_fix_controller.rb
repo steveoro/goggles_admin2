@@ -878,9 +878,11 @@ class DataFixController < ApplicationController
   end
   # ---------------------------------------------------------------------------
 
-  # AJAX endpoint: verify if a result already exists in the DB (duplicate detection)
-  # Returns JSON with duplicate info and swimmer's other badges in the season.
-  def verify_result # rubocop:disable Metrics/AbcSize
+  # AJAX endpoint: verify if a result already exists in the DB (duplicate detection).
+  # For individual results, uses 4-tier classification (perfect/partial/team_mismatch/other_events).
+  # If a perfect match is found, auto-fixes the import row immediately.
+  # Returns JSON with match info and swimmer's other badges in the season.
+  def verify_result # rubocop:disable Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
     import_key = params[:import_key]
     result_type = params[:result_type] || 'individual' # 'individual' or 'relay'
 
@@ -917,18 +919,49 @@ class DataFixController < ApplicationController
         team_id: data_import_row.team_id,
         season_id: season_id
       )
+
+      # Auto-fix: if exactly 1 perfect match found, apply it immediately
+      if result[:perfect_matches]&.length == 1
+        perfect = result[:perfect_matches].first
+        existing = GogglesDb::MeetingIndividualResult.find_by(id: perfect['id'])
+        if existing
+          data_import_row.update!(
+            meeting_individual_result_id: existing.id,
+            meeting_program_id: existing.meeting_program_id,
+            swimmer_id: existing.swimmer_id,
+            team_id: existing.team_id,
+            badge_id: existing.badge_id,
+            rank: existing.rank,
+            minutes: existing.minutes,
+            seconds: existing.seconds,
+            hundredths: existing.hundredths,
+            disqualified: existing.disqualified,
+            standard_points: existing.standard_points,
+            meeting_points: existing.meeting_points,
+            goggle_cup_points: existing.goggle_cup_points
+          )
+          result[:auto_fixed] = true
+          result[:auto_fixed_id] = existing.id
+        end
+      end
     end
 
     render json: result
   end
   # ---------------------------------------------------------------------------
 
-  # Confirm a result as a duplicate: set the existing DB row's ID on the DataImport* record
-  # and overwrite fields with existing DB values. This makes the committer see zero-diff on commit.
-  def confirm_result_duplicate # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
+  # Fix a result duplicate: set the existing DB row's ID on the DataImport* record.
+  #
+  # Supports two modes via params[:mode]:
+  #   - "overwrite" (default): overwrite ALL fields from existing DB row → zero-diff on commit.
+  #   - "keep_timing": set existing ID + copy association IDs (meeting_program_id, swimmer_id,
+  #     team_id, badge_id) from the existing row, but KEEP the import row's timing/rank/points.
+  #     Phase 6 will then UPDATE the existing row with the import's timing.
+  def confirm_result_duplicate # rubocop:disable Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
     import_key = params[:import_key]
     existing_id = params[:existing_id].to_i
     result_type = params[:result_type] || 'individual'
+    mode = params[:mode] || 'overwrite' # 'overwrite' or 'keep_timing'
 
     unless existing_id.positive? && import_key.present?
       render json: { error: 'Missing required params' }, status: :unprocessable_entity
@@ -943,17 +976,26 @@ class DataFixController < ApplicationController
         return
       end
 
-      data_import_row.update!(
-        meeting_relay_result_id: existing.id,
-        meeting_program_id: existing.meeting_program_id,
-        team_id: existing.team_id,
-        team_affiliation_id: existing.team_affiliation_id,
-        rank: existing.rank,
-        minutes: existing.minutes,
-        seconds: existing.seconds,
-        hundredths: existing.hundredths,
-        disqualified: existing.disqualified
-      )
+      if mode == 'keep_timing'
+        data_import_row.update!(
+          meeting_relay_result_id: existing.id,
+          meeting_program_id: existing.meeting_program_id,
+          team_id: existing.team_id,
+          team_affiliation_id: existing.team_affiliation_id
+        )
+      else
+        data_import_row.update!(
+          meeting_relay_result_id: existing.id,
+          meeting_program_id: existing.meeting_program_id,
+          team_id: existing.team_id,
+          team_affiliation_id: existing.team_affiliation_id,
+          rank: existing.rank,
+          minutes: existing.minutes,
+          seconds: existing.seconds,
+          hundredths: existing.hundredths,
+          disqualified: existing.disqualified
+        )
+      end
     else
       data_import_row = GogglesDb::DataImportMeetingIndividualResult.find_by(import_key: import_key)
       existing = GogglesDb::MeetingIndividualResult.find_by(id: existing_id)
@@ -962,24 +1004,34 @@ class DataFixController < ApplicationController
         return
       end
 
-      data_import_row.update!(
-        meeting_individual_result_id: existing.id,
-        meeting_program_id: existing.meeting_program_id,
-        swimmer_id: existing.swimmer_id,
-        team_id: existing.team_id,
-        badge_id: existing.badge_id,
-        rank: existing.rank,
-        minutes: existing.minutes,
-        seconds: existing.seconds,
-        hundredths: existing.hundredths,
-        disqualified: existing.disqualified,
-        standard_points: existing.standard_points,
-        meeting_points: existing.meeting_points,
-        goggle_cup_points: existing.goggle_cup_points
-      )
+      if mode == 'keep_timing'
+        data_import_row.update!(
+          meeting_individual_result_id: existing.id,
+          meeting_program_id: existing.meeting_program_id,
+          swimmer_id: existing.swimmer_id,
+          team_id: existing.team_id,
+          badge_id: existing.badge_id
+        )
+      else
+        data_import_row.update!(
+          meeting_individual_result_id: existing.id,
+          meeting_program_id: existing.meeting_program_id,
+          swimmer_id: existing.swimmer_id,
+          team_id: existing.team_id,
+          badge_id: existing.badge_id,
+          rank: existing.rank,
+          minutes: existing.minutes,
+          seconds: existing.seconds,
+          hundredths: existing.hundredths,
+          disqualified: existing.disqualified,
+          standard_points: existing.standard_points,
+          meeting_points: existing.meeting_points,
+          goggle_cup_points: existing.goggle_cup_points
+        )
+      end
     end
 
-    render json: { success: true, import_key: import_key, existing_id: existing_id }
+    render json: { success: true, import_key: import_key, existing_id: existing_id, mode: mode }
   rescue ActiveRecord::RecordInvalid => e
     render json: { error: e.message }, status: :unprocessable_entity
   end
