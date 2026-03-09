@@ -1,6 +1,6 @@
 # Goggles Admin2 main TO-DOs
 
-## [ ] fix:team_in_badge (rake task + strategy + specs)
+## [~] fix:team_in_badge (rake task + strategy + specs)
 New rake task to fix a wrong `team_id` set to a specific Badge: updates all related results (only MIRs); delete meeting entries and reservations.
 As usual, we need to create an SQL script as all other merge/fix rake commands do. (Implement also a "simulate" option, default 1: no actual changes are made)
 For ref.: lib/tasks/check.rake, lib/tasks/merge.rake
@@ -30,3 +30,24 @@ Actual example from the current development DB:
 - Badges 162160 and 169628 in Season 222 are wrongly assigned to `team_id` 1204 ("RN Genova") when it should be instead `team_id` 193 ("RN Flegrea")
 - No duplicates or merge candidates exist => team fix is safe for both
 - The fix should keep the badges, update the team_id and update all related results (MIRs/MRSs/MRRs) with correct team_id links.
+
+---
+
+## Misc
+
+- [ ] Create fixture duplicate badges (test domain) for pending test:
+```bash
+Pending: (Failures listed here are expected and do not affect your suite's status)
+
+  1) Merge::TeamInBadge duplicate badge detection populates errors when duplicate badges exist
+     # No swimmer with multiple team badges found in test DB
+     # ./spec/strategies/merge/team_in_badge_spec.rb:279
+
+  2) Merge::TeamInBadge duplicate badge detection raises on prepare when duplicate badges exist
+     # No swimmer with multiple team badges found in test DB
+     # ./spec/strategies/merge/team_in_badge_spec.rb:297
+```
+
+- [ ] Improve coding in merge strategies
+
+- [ ] Check for very-slow specs and optimize them
