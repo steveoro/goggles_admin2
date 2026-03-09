@@ -460,9 +460,37 @@ class DataFixController < ApplicationController
       @filter_active = params[:filter_issues] == '1' || (@issue_count.positive? && !params[:filter_issues].to_i.zero?)
       all_programs = @programs_with_issues if @filter_active && @issue_count.positive?
 
-      # Filter to show only programs with new (will-be-created) results
+      # Filter to show only programs with any new (will-be-created) rows:
+      # unmatched parent MIR/MRR OR matched parents that have new child rows (laps, MRS, relay_laps)
       @filter_new_active = params[:filter_new] == '1'
       if @filter_new_active
+        all_programs = all_programs.select do |prog|
+          program_key = "#{prog['session_order']}-#{prog['event_code']}-#{prog['category_code']}-#{prog['gender_code']}"
+          if prog['relay']
+            GogglesDb::DataImportMeetingRelayResult
+              .where('import_key LIKE ?', "#{program_key}/%")
+              .exists?(meeting_relay_result_id: nil) ||
+              GogglesDb::DataImportMeetingRelaySwimmer
+                .where('import_key LIKE ?', "#{program_key}/%")
+                .exists?(meeting_relay_swimmer_id: nil) ||
+              GogglesDb::DataImportRelayLap
+                .where('import_key LIKE ?', "#{program_key}/%")
+                .exists?(relay_lap_id: nil)
+          else
+            GogglesDb::DataImportMeetingIndividualResult
+              .where('import_key LIKE ?', "#{program_key}/%")
+              .exists?(meeting_individual_result_id: nil) ||
+              GogglesDb::DataImportLap
+                .where('parent_import_key LIKE ?', "#{program_key}/%")
+                .exists?(lap_id: nil)
+          end
+        end
+      end
+
+      # Filter to show only programs with unmatched parent result rows (MIR/MRR with nil matched ID)
+      # This is stricter than filter_new: ignores child rows (laps, MRS, relay_laps)
+      @filter_unmatched_active = params[:filter_unmatched] == '1'
+      if @filter_unmatched_active
         all_programs = all_programs.select do |prog|
           program_key = "#{prog['session_order']}-#{prog['event_code']}-#{prog['category_code']}-#{prog['gender_code']}"
           if prog['relay']
@@ -482,6 +510,12 @@ class DataFixController < ApplicationController
                           .where(phase_file_path: source_path, meeting_individual_result_id: nil).count +
                           GogglesDb::DataImportMeetingRelayResult
                           .where(phase_file_path: source_path, meeting_relay_result_id: nil).count
+
+      # Count unmatched parent results (for the (+) filter banner)
+      @unmatched_parent_count = GogglesDb::DataImportMeetingIndividualResult
+                                .where(phase_file_path: source_path, meeting_individual_result_id: nil).count +
+                                GogglesDb::DataImportMeetingRelayResult
+                                .where(phase_file_path: source_path, meeting_relay_result_id: nil).count
 
       # Sort programs by event order from phase4 (individual events first, then relays)
       phase4_path = default_phase_path_for(source_path, 4)

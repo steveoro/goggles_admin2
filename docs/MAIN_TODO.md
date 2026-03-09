@@ -33,6 +33,24 @@ Actual example from the current development DB:
 
 ---
 
+## [~] Debug / Improve phase 5 verification
+1. Show only existing results of the same event (ex.: verifying a MIR on "100RA" shouldn't show existing results for "50RA" or "200RA"). For the same reason, the "Confirm existing" button makes sense only on an already existing MIR for the same meeting_program (not just the meeting_event).
+
+Gathering all existing results for the same swimmer in the current meeting is not totallu useless but it makes sense during phase 2, when checking/confirming that the matched team is actually corresponding to pre-existing results for the same team and swimmer. But in phase 5, verifying a specific result row (MIR or MRR) implies comparing the result timing with the parent meeting program as its main filter: if the meeting program is the same (meaning, same event and category), the timing is the same and the swimmer is the same, we have a possible duplicate, either due to a mismatched team during phase 2 or a mismatched swimmer during phase 3 (more rare, but possible).
+
+=> Show rows with the confirmation button only if the meeting program and the swimmer are equal. By pressing the confirmation button, the existing row will overwrite the current JSON data row being "confirmed" and the page should get refreshed.
+
+### Issues / additional improvements:
+2. Clicking on "confirm" doesn't refresh the page (but the JSON data gets updated): probably we just need a full page refresh for this
+
+3. The confirmation dialog gets displayed once for every "confirmation row" (definitely wrong), even if we just click on the correct row (3 + 1 confirmation dialog appears in sequence for a 3 row subsection, even if we click just to the second one; plus, the page doesn't refresh the contents)
+
+4. Add a filter to display only NEW results. More selective: show either NEW MIRs or NEW MRRs (with unmatched IDs); that is "yellow" badge rows.
+Currently the filter shows correctly any row that may generate an SQL INSERT: both "green" (ID/matched) results that have a new associated lap, plus any NEW/yellow (unmatched) results (with or without laps). This new filter should focus just on the main result row, ignoring the siblings (laps, MRS, relay_laps).
+This is because when we review the data being imported, focusing on the "parent" result row first allows the operator to find faster mismatches coming from earlier phases.
+
+---
+
 ## Misc
 
 - [ ] Create fixture duplicate badges (test domain) for pending test:

@@ -39,3 +39,6 @@ application.register("switch", SwitchController)
 
 import UnsavedChangesController from "./unsaved_changes_controller"
 application.register("unsaved-changes", UnsavedChangesController)
+
+import VerifyResultController from "./verify_result_controller"
+application.register("verify-result", VerifyResultController)

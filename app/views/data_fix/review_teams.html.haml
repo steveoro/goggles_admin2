@@ -175,7 +175,7 @@
         var matchIcon = s.matches_candidate
           ? '<span class="text-success"><i class="fa fa-check-circle"></i> Yes</span>'
           : '<span class="text-danger"><i class="fa fa-times-circle"></i> No</span>';
-        var teams = (s.badge_teams || []).map(function(bt) { return bt.team_name + ' (ID: ' + bt.team_id + ')'; }).join(', ') || '<em>No badges</em>';
+        var teams = (s.badge_teams || []).map(function(bt) { return bt.team_name + ' (ID: ' + bt.team_id + ' / Badge ID: ' + bt.badge_id + ')'; }).join(', ') || '<em>No badges</em>';
         html += '<tr><td>' + s.name + '</td><td>' + s.swimmer_id + '</td><td>' + teams + '</td><td>' + matchIcon + '</td></tr>';
       });
       html += '</tbody></table>';

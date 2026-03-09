@@ -37,7 +37,7 @@
     end
   end
 
-.card.mb-2{ class: "#{border_color} #{border_width}", id: "program-card-#{card_index}", data: { has_issues: has_issues } }
+.card.mb-2{ class: "#{border_color} #{border_width}", id: "program-card-#{card_index}", data: { has_issues: has_issues, controller: 'verify-result' } }
   .card-header.d-flex.justify-content-between.align-items-center{ id: "program-header-#{card_index}", style: 'cursor: pointer;', data: { toggle: 'collapse', target: "#program-panel-#{card_index}" } }
     .d-flex.align-items-center
       %span.mr-2
@@ -131,7 +131,7 @@
                 - elsif is_fully_matched
                   %i.fa.fa-plus-circle.text-warning{ title: 'New result (will be created on commit)' }
                   - if mir.swimmer_id.to_i.positive? && mir.meeting_program_id.to_i.positive?
-                    %button.btn.btn-outline-secondary.btn-sm.ml-1.verify-result-btn{ type: 'button', title: 'Verify for duplicates', data: { import_key: mir.import_key, result_type: 'individual', target: "##{result_id}-verify" } }
+                    %button.btn.btn-outline-secondary.btn-sm.ml-1{ type: 'button', title: 'Verify for duplicates', data: { action: 'click->verify-result#verify', verify_result_import_key_param: mir.import_key, verify_result_result_type_param: 'individual', verify_result_target_panel_param: "##{result_id}-verify" } }
                       %i.fa.fa-search
                 - else
                   %i.fa.fa-exclamation-circle.text-warning{ title: 'New result with unmatched swimmer or team' }

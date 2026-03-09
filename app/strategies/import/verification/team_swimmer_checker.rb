@@ -61,7 +61,7 @@ module Import
         swimmer_details = reference_swimmers.map do |ref|
           swimmer_badges = db_badges[ref[:swimmer_id]] || []
           badge_teams = swimmer_badges.map do |b|
-            { 'team_id' => b.team_id, 'team_name' => b.team&.editable_name || b.team&.name }
+            { 'badge_id' => b.id, 'team_id' => b.team_id, 'team_name' => b.team&.editable_name || b.team&.name }
           end
 
           matches_candidate = badge_teams.any? { |bt| bt['team_id'] == candidate_team_id }
