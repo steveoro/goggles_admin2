@@ -1153,6 +1153,7 @@ class DataFixController < ApplicationController
     end
 
     t = teams[team_index] || {}
+    old_team_id = t['team_id'] # Capture before update for cascade detection
 
     # Handle direct params from form (team[field])
     # Note: AutoComplete component adds extra fields (team, city, area) which we permit but ignore
@@ -1210,10 +1211,15 @@ class DataFixController < ApplicationController
     meta['generated_at'] = Time.now.utc.iso8601
     pfm.write!(data: data, meta: meta)
 
-    # Remind operator to rescan Phase 3 if it exists (team changes affect swimmer badge matching)
+    # Cascade team_id change to Phase 3 badges and Phase 5 DataImport rows
     phase3_path = default_phase_path_for(source_path, 3)
-    if File.exist?(phase3_path)
-      flash[:info] = 'Team updated. Consider rescanning Phase 3 (Swimmers) to reflect team changes in badge matching.' # rubocop:disable Rails/I18nLocaleTexts
+    new_team_id = t['team_id']
+    if File.exist?(phase3_path) && old_team_id != new_team_id
+      cascade_count = cascade_team_to_phase3(phase3_path, team_key, new_team_id, season_id)
+      cascade_count += cascade_team_to_data_import_rows(team_key, new_team_id)
+      flash[:info] = "Team updated. Cascaded team_id to #{cascade_count} downstream record(s)." if cascade_count.positive?
+    elsif File.exist?(phase3_path)
+      flash[:info] = 'Team updated (team_id unchanged, no cascade needed).' # rubocop:disable Rails/I18nLocaleTexts
     end
 
     # Preserve pagination and filter params
@@ -2268,6 +2274,70 @@ class DataFixController < ApplicationController
     dir = File.dirname(source_path)
     base = File.basename(source_path, File.extname(source_path))
     File.join(dir, "#{base}-phase#{phase_num}.json")
+  end
+
+  # Cascade a team_id change from Phase 2 into Phase 3 badges.
+  # Updates all badges matching team_key with the new team_id and re-resolves badge_id.
+  # Returns the number of badges updated.
+  def cascade_team_to_phase3(phase3_path, team_key, new_team_id, season_id) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity
+    pfm3 = PhaseFileManager.new(phase3_path)
+    data3 = pfm3.data || {}
+    badges = Array(data3['badges'])
+    count = 0
+
+    badges.each do |badge|
+      next unless badge['team_key'] == team_key
+      next if badge['team_id'] == new_team_id
+
+      badge['team_id'] = new_team_id
+      count += 1
+
+      # Re-resolve badge_id with updated team_id
+      next unless new_team_id.to_i.positive? && badge['swimmer_id'].to_i.positive? && season_id.to_i.positive?
+
+      existing_badge = GogglesDb::Badge.find_by(
+        season_id: season_id,
+        swimmer_id: badge['swimmer_id'],
+        team_id: new_team_id
+      )
+      badge['badge_id'] = existing_badge&.id
+      badge['number'] = existing_badge.number.presence || badge['number'] if existing_badge
+      badge['category_type_id'] ||= existing_badge.category_type_id if existing_badge
+      badge['category_type_code'] ||= existing_badge.category_type&.code if existing_badge
+    end
+
+    if count.positive?
+      data3['badges'] = badges
+      meta3 = pfm3.meta || {}
+      meta3['generated_at'] = Time.now.utc.iso8601
+      pfm3.write!(data: data3, meta: meta3)
+      Rails.logger.info("[DataFix] Cascaded team_id=#{new_team_id} to #{count} Phase 3 badge(s) for team_key='#{team_key}'")
+    end
+    count
+  rescue StandardError => e
+    Rails.logger.error("[DataFix] cascade_team_to_phase3 failed: #{e.message}")
+    0
+  end
+
+  # Cascade a team_id change to Phase 5 DataImport rows (MIR and MRR).
+  # Returns the number of rows updated.
+  def cascade_team_to_data_import_rows(team_key, new_team_id)
+    return 0 unless new_team_id.to_i.positive?
+
+    count = 0
+    count += GogglesDb::DataImportMeetingIndividualResult
+             .where(team_key: team_key)
+             .where.not(team_id: new_team_id)
+             .update_all(team_id: new_team_id)
+    count += GogglesDb::DataImportMeetingRelayResult
+             .where(team_key: team_key)
+             .where.not(team_id: new_team_id)
+             .update_all(team_id: new_team_id)
+    Rails.logger.info("[DataFix] Cascaded team_id=#{new_team_id} to #{count} DataImport row(s) for team_key='#{team_key}'") if count.positive?
+    count
+  rescue StandardError => e
+    Rails.logger.error("[DataFix] cascade_team_to_data_import_rows failed: #{e.message}")
+    0
   end
 
   # If file_path points to a phase file, resolve original source_path from its meta.

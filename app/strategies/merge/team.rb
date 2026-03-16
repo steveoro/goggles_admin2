@@ -94,6 +94,7 @@ module Merge
       end
 
       prepare_script_for_team_only_links
+      prepare_script_for_remaining_team_references
       prepare_script_for_duplicate_cleanup
       prepare_dest_column_updates
 
@@ -237,6 +238,44 @@ module Merge
       @sql_log << "UPDATE relay_laps SET updated_at=NOW(), team_id=#{@dest.id} WHERE team_id=#{@source.id};"
       @sql_log << "UPDATE team_lap_templates SET updated_at=NOW(), team_id=#{@dest.id} WHERE team_id=#{@source.id};"
       @sql_log << "UPDATE user_workshops SET updated_at=NOW(), team_id=#{@dest.id} WHERE team_id=#{@source.id};"
+    end
+
+    # Global safety net: catches badges (and other dual-FK entities) still referencing the
+    # source team_id after per-season TA processing. This covers badges in seasons where the
+    # source team has NO TeamAffiliation, or badges whose team_affiliation_id didn't match any
+    # source TA.
+    def prepare_script_for_remaining_team_references # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
+      remaining_badges = GogglesDb::Badge.where(team_id: @source.id)
+      if remaining_badges.exists?
+        @sql_log << "\r\n-- Global safety net: #{remaining_badges.count} badge(s) still referencing source team #{@source.id}"
+        remaining_badges.group_by(&:season_id).each do |season_id, badges|
+          dest_ta = GogglesDb::TeamAffiliation.find_by(season_id: season_id, team_id: @dest.id)
+          badge_ids = badges.map(&:id).join(', ')
+          if dest_ta
+            @sql_log << "UPDATE badges SET updated_at=NOW(), team_id=#{@dest.id}, " \
+                        "team_affiliation_id=#{dest_ta.id} WHERE id IN (#{badge_ids});"
+          else
+            # No dest TA for this season — create one, then update badges
+            @sql_log << "-- WARNING: creating dest TA for season #{season_id} (was missing)"
+            @sql_log << 'INSERT INTO team_affiliations (team_id, season_id, name, created_at, updated_at) ' \
+                        "VALUES (#{@dest.id}, #{season_id}, '#{@dest.editable_name}', NOW(), NOW());"
+            @sql_log << 'SET @new_ta_id = LAST_INSERT_ID();'
+            @sql_log << "UPDATE badges SET updated_at=NOW(), team_id=#{@dest.id}, " \
+                        "team_affiliation_id=@new_ta_id WHERE id IN (#{badge_ids});"
+          end
+        end
+      end
+
+      # Same pattern for other dual-FK entities that reference both team_id and team_affiliation_id
+      %w[meeting_individual_results meeting_relay_results meeting_entries meeting_team_scores].each do |table|
+        count = ActiveRecord::Base.connection.select_value(
+          "SELECT COUNT(*) FROM #{table} WHERE team_id=#{@source.id}"
+        ).to_i
+        next unless count.positive?
+
+        @sql_log << "-- Safety net: #{count} #{table} row(s) still referencing source team #{@source.id}"
+        @sql_log << "UPDATE #{table} SET updated_at=NOW(), team_id=#{@dest.id} WHERE team_id=#{@source.id};"
+      end
     end
 
     # Runs Merge::DuplicateResultCleaner for each shared season as a safety net.

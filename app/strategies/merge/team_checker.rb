@@ -65,8 +65,16 @@ module Merge
       @src_entities = {}  # format: { entity.to_s => [relation_of_entity_rows] }
       @dest_entities = {} # (format as above)
 
-      @src_season_ids = src_entities(GogglesDb::TeamAffiliation).pluck(:season_id).uniq.sort
-      @dest_season_ids = dest_entities(GogglesDb::TeamAffiliation).pluck(:season_id).uniq.sort
+      # Include badge season_ids alongside TA season_ids to cover seasons where the team
+      # has badges but no TeamAffiliation (e.g. badges created by data import without a TA).
+      @src_season_ids = (
+        src_entities(GogglesDb::TeamAffiliation).pluck(:season_id) +
+        src_entities(GogglesDb::Badge).pluck(:season_id)
+      ).uniq.sort
+      @dest_season_ids = (
+        dest_entities(GogglesDb::TeamAffiliation).pluck(:season_id) +
+        dest_entities(GogglesDb::Badge).pluck(:season_id)
+      ).uniq.sort
       @overall_season_ids = @src_season_ids.union(@dest_season_ids).sort
       @shared_season_ids = @src_season_ids.intersection(@dest_season_ids).sort
     end

@@ -188,13 +188,40 @@ module Import
       def normalize_attributes(badge_hash)
         normalized = badge_hash.deep_dup.with_indifferent_access
         swimmer_key = normalized['swimmer_key']
-        normalized['swimmer_id'] ||= @swimmer_committer.resolve_id(swimmer_key)
 
+        # Always prefer committer-resolved swimmer_id (from current phase 3 data) over
+        # possibly stale values in the data file:
+        resolved_swimmer_id = @swimmer_committer.resolve_id(swimmer_key)
+        if resolved_swimmer_id
+          if normalized['swimmer_id'].to_i.positive? && normalized['swimmer_id'].to_i != resolved_swimmer_id
+            Rails.logger.warn("[Badge] Overriding stale swimmer_id=#{normalized['swimmer_id']} " \
+                              "with resolved swimmer_id=#{resolved_swimmer_id} for swimmer_key='#{swimmer_key}'")
+          end
+          normalized['swimmer_id'] = resolved_swimmer_id
+        else
+          normalized['swimmer_id'] ||= nil
+        end
+
+        # Always prefer committer-resolved team_id (from current phase 2 data) over
+        # possibly stale values (e.g. team was merged/deleted since phase 3 was generated):
         team_key = normalized['team_key']
-        normalized['team_id'] ||= @team_committer.resolve_id(team_key)
+        resolved_team_id = @team_committer.resolve_id(team_key)
+        if resolved_team_id
+          if normalized['team_id'].to_i.positive? && normalized['team_id'].to_i != resolved_team_id
+            Rails.logger.warn("[Badge] Overriding stale team_id=#{normalized['team_id']} " \
+                              "with resolved team_id=#{resolved_team_id} for team_key='#{team_key}'")
+          end
+          normalized['team_id'] = resolved_team_id
+        else
+          normalized['team_id'] ||= nil
+        end
 
         normalized['category_type_id'] ||= resolve_category_type_id(swimmer_key)
-        normalized['team_affiliation_id'] ||= @team_affiliation_committer.resolve_id(team_key)
+
+        # Always re-resolve team_affiliation_id to stay consistent with the resolved team_id:
+        resolved_ta_id = @team_affiliation_committer.resolve_id(team_key)
+        normalized['team_affiliation_id'] = resolved_ta_id if resolved_ta_id
+        normalized['team_affiliation_id'] ||= nil
 
         normalized['season_id'] = @season_id
         normalized['entry_time_type_id'] ||= GogglesDb::EntryTimeType::LAST_RACE_ID

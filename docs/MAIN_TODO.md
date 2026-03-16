@@ -53,7 +53,7 @@ This is because when we review the data being imported, focusing on the "parent"
 
 ## Misc
 
-- [ ] Create fixture duplicate badges (test domain) for pending test:
+- [~] Create fixture duplicate badges (test domain) for pending test:
 ```bash
 Pending: (Failures listed here are expected and do not affect your suite's status)
 
