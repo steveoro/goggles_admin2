@@ -2279,7 +2279,7 @@ class DataFixController < ApplicationController
   # Cascade a team_id change from Phase 2 into Phase 3 badges.
   # Updates all badges matching team_key with the new team_id and re-resolves badge_id.
   # Returns the number of badges updated.
-  def cascade_team_to_phase3(phase3_path, team_key, new_team_id, season_id) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity
+  def cascade_team_to_phase3(phase3_path, team_key, new_team_id, season_id) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
     pfm3 = PhaseFileManager.new(phase3_path)
     data3 = pfm3.data || {}
     badges = Array(data3['badges'])

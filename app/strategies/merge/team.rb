@@ -244,7 +244,7 @@ module Merge
     # source team_id after per-season TA processing. This covers badges in seasons where the
     # source team has NO TeamAffiliation, or badges whose team_affiliation_id didn't match any
     # source TA.
-    def prepare_script_for_remaining_team_references # rubocop:disable Metrics/AbcSize
+    def prepare_script_for_remaining_team_references # rubocop:disable Metrics/AbcSize,Metrics/PerceivedComplexity
       remaining_badges = GogglesDb::Badge.where(team_id: @source.id)
       if remaining_badges.exists?
         @sql_log << "\r\n-- Global safety net: #{remaining_badges.count} badge(s) still referencing source team #{@source.id}"

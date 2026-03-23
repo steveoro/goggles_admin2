@@ -92,11 +92,24 @@ RSpec.describe Import::Solvers::Phase1Solver, type: :strategy do
       expect(data['season_id']).to eq(season.id)
     end
 
-    it 'initializes empty meeting_session array' do
+    it 'auto-fills meeting_session array from date fields' do
       solver.build!(source_path: source_file, lt_format: 2)
       phase_file = source_file.sub('.json', '-phase1.json')
       data = JSON.parse(File.read(phase_file))['data']
-      expect(data['meeting_session']).to eq([])
+      sessions = data['meeting_session']
+      expect(sessions).to be_an(Array)
+      expect(sessions.size).to eq(2)
+      expect(sessions[0]['session_order']).to eq(1)
+      expect(sessions[0]['scheduled_date']).to eq('2024-03-10')
+      expect(sessions[1]['session_order']).to eq(2)
+      expect(sessions[1]['scheduled_date']).to eq('2024-03-11')
+    end
+
+    it 'auto-fills header_date from first session date' do
+      solver.build!(source_path: source_file, lt_format: 2)
+      phase_file = source_file.sub('.json', '-phase1.json')
+      data = JSON.parse(File.read(phase_file))['data']
+      expect(data['header_date']).to eq('2024-03-10')
     end
 
     it 'writes metadata with generator, source_path, and parent_checksum' do

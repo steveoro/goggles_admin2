@@ -18,7 +18,9 @@ module Import
     # - <original>.phase1.json via PhaseFileManager, with only phase 1 payload
     #   and metadata (schema_version, created_at, source_path, checksums).
     #
-    class Phase1Solver
+    class Phase1Solver # rubocop:disable Metrics/ClassLength
+      include SessionHashBuilder
+
       def initialize(season:, logger: Rails.logger)
         @season = season
         @logger = logger
@@ -68,6 +70,9 @@ module Import
 
         # Find potential meeting matches
         payload['meeting_fuzzy_matches'] = find_meeting_matches(payload)
+
+        # Auto-fill sessions from DB match or from parsed date fields
+        auto_fill_sessions!(payload)
 
         # Write phase file
         phase_path = opts[:phase_path] || default_phase_path_for(source_path, 1)
@@ -154,6 +159,63 @@ module Import
 
       def month_name(i) # rubocop:disable Naming/MethodParameterName
         %w[Gennaio Febbraio Marzo Aprile Maggio Giugno Luglio Agosto Settembre Ottobre Novembre Dicembre][i - 1]
+      rescue StandardError
+        nil
+      end
+
+      # Auto-fills payload['meeting_session'] from the best fuzzy-matched meeting's
+      # existing DB sessions, or falls back to building sessions from the parsed date fields.
+      # Also sets payload['id'] when a DB match with sessions is found.
+      def auto_fill_sessions!(payload)
+        # Path A: DB match with existing sessions
+        best_match = payload['meeting_fuzzy_matches']&.first
+        if best_match
+          meeting = GogglesDb::Meeting.includes(meeting_sessions: { swimming_pool: :city })
+                                      .find_by(id: best_match['id'])
+          if meeting&.meeting_sessions&.any?
+            payload['id'] = meeting.id
+            payload['meeting_session'] = meeting.meeting_sessions.order(:session_order).map do |ms|
+              build_session_hash(ms)
+            end
+            return
+          end
+        end
+
+        # Path B: build sessions from parsed date fields
+        sessions = []
+        iso_date1 = parse_iso_date(payload['dateDay1'], payload['dateMonth1'], payload['dateYear1'])
+        if iso_date1
+          sessions << build_session_hash_from_fields(
+            session_order: 1,
+            scheduled_date: iso_date1,
+            pool_name: payload['venue1'],
+            address: payload['address1'],
+            pool_length: payload['poolLength']
+          )
+          # Also set header_date from first session date when not already set
+          payload['header_date'] ||= iso_date1
+        end
+
+        iso_date2 = parse_iso_date(payload['dateDay2'], payload['dateMonth2'], payload['dateYear2'])
+        if iso_date2
+          sessions << build_session_hash_from_fields(
+            session_order: 2,
+            scheduled_date: iso_date2,
+            pool_name: payload['venue1'],
+            address: payload['address1'],
+            pool_length: payload['poolLength']
+          )
+        end
+
+        payload['meeting_session'] = sessions
+      end
+
+      # Converts the legacy 3-field date (day, month-name, year) into an ISO string.
+      # Returns nil when any required component is blank.
+      def parse_iso_date(date_day, date_month, date_year)
+        return if date_day.blank? || date_month.blank? || date_year.blank?
+
+        Parser::SessionDate.from_l2_result(date_day, date_month, date_year)
       rescue StandardError
         nil
       end

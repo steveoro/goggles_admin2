@@ -55,7 +55,7 @@ module Merge
     # - <tt>:source</tt> => source Team row, *required*
     # - <tt>:dest</tt> => destination Team row, *required*
     #
-    def initialize(source:, dest:)
+    def initialize(source:, dest:) # rubocop:disable Metrics/AbcSize
       raise(ArgumentError, 'Both source and destination must be Teams!') unless source.is_a?(GogglesDb::Team) && dest.is_a?(GogglesDb::Team)
       raise(ArgumentError, 'Identical source and destination!') if source.id == dest.id
 
