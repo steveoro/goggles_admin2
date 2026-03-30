@@ -22,8 +22,20 @@
             %a.btn.btn-lg.btn-outline-primary.my-1{ href: push_index_path }
               %i.fa.fa-upload
               PUSH data
-        .row-fluid.mb-3
-          = link_to(home_latest_updates_path, class: 'btn btn-outline-primary',
-                    'data-turbolinks' => 'false') do
-            %i.fa.fa-search
-            Fetch Latest updates...
+        .row.mb-3
+          .col-lg-4.col-md-5.col-sm-6.py-2
+            = link_to(home_latest_updates_path, class: 'btn btn-outline-primary',
+                      'data-turbolinks' => 'false') do
+              %i.fa.fa-search
+              Fetch Latest updates...
+          .col-lg-4.col-md-5.col-sm-6.py-2
+            - session_count = @data_fix_session_count.to_i
+            %span.badge.badge-info
+              Data-Fix v2 sessions: #{session_count}
+            - if session_count.positive?
+              = button_to(data_fix_purge_path,
+                          method: :delete,
+                          class: 'btn btn-outline-danger ml-2',
+                          data: { confirm: 'This will delete all temporary data_import_* rows. Continue?' }) do
+                %i.fa.fa-trash
+                Clean slate

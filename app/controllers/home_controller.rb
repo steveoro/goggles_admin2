@@ -16,6 +16,10 @@ class HomeController < ApplicationController
     @iqs_count = count_remote_rows_for('import_queues')
     @issues_count = count_remote_rows_for('issues')
     @api_uses_count = count_remote_rows_for('api_daily_uses')
+    @data_fix_session_count = GogglesDb::DataImportMeetingIndividualResult
+                              .where.not(phase_file_path: [nil, ''])
+                              .distinct
+                              .count(:phase_file_path)
   end
 
   # [GET] Retrieve the latest updates from both production & staging servers endpoints

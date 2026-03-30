@@ -41,6 +41,97 @@ RSpec.describe Import::Solvers::SwimmerSolver do
     end
   end
 
+  it 'splits italian particle surnames in LT2 combined swimmer fields' do
+    Dir.mktmpdir do |tmp|
+      src = write_json(tmp, 'meeting-l2.json', {
+                         'layoutType' => 2,
+                         'sections' => [
+                           {
+                             'fin_sesso' => 'M',
+                             'rows' => [
+                               { 'swimmer' => 'DE ROSA GABRIELE', 'anno' => 1996, 'team' => 'Rari Nantes Saronno' }
+                             ]
+                           }
+                         ]
+                       })
+
+      described_class.new(season:).build!(source_path: src, lt_format: 2)
+
+      phase3 = default_phase3_path(src)
+      data = JSON.parse(File.read(phase3))['data']
+      swimmer_entry = data['swimmers'].find { |h| h['key'] == 'M|DE ROSA|GABRIELE|1996' }
+
+      expect(swimmer_entry).to be_present
+      expect(swimmer_entry['last_name']).to eq('DE ROSA')
+      expect(swimmer_entry['first_name']).to eq('GABRIELE')
+    end
+  end
+
+  it 'builds phase3 from LT4 swimmers hash with key-encoded identity/team' do
+    Dir.mktmpdir do |tmp|
+      src = write_json(tmp, 'meeting-l4.json', {
+                         'layoutType' => 4,
+                         'swimmers' => {
+                           'M|TOFFOLO|FRANCESCO|2005|ssd Stilelibero - Preganz' => {
+                             'complete_name' => 'TOFFOLO FRANCESCO',
+                             'year_of_birth' => '2005',
+                             'gender_type' => 'M'
+                           },
+                           'M|GARBIN|GABRIELE|2003|Sisport Spa ssd' => {
+                             'complete_name' => 'GARBIN GABRIELE',
+                             'year_of_birth' => '2003',
+                             'gender_type' => 'M'
+                           }
+                         }
+                       })
+
+      described_class.new(season:).build!(source_path: src, lt_format: 4)
+
+      phase3 = default_phase3_path(src)
+      expect(File).to exist(phase3)
+      data = JSON.parse(File.read(phase3))['data']
+
+      keys = data['swimmers'].map { |h| h['key'] }
+      expect(keys).to include('M|TOFFOLO|FRANCESCO|2005')
+      expect(keys).to include('M|GARBIN|GABRIELE|2003')
+
+      expect(data['badges']).to include(include('swimmer_key' => 'M|TOFFOLO|FRANCESCO|2005',
+                                                'team_key' => 'ssd Stilelibero - Preganz',
+                                                'season_id' => season.id))
+      expect(data['badges']).to include(include('swimmer_key' => 'M|GARBIN|GABRIELE|2003',
+                                                'team_key' => 'Sisport Spa ssd',
+                                                'season_id' => season.id))
+    end
+  end
+
+  it 'splits italian particle surnames from ambiguous LT4 key tokens' do
+    Dir.mktmpdir do |tmp|
+      src = write_json(tmp, 'meeting-l4.json', {
+                         'layoutType' => 4,
+                         'swimmers' => {
+                           'M|DE|ROSA GABRIELE|1996|Rari Nantes Saronno' => {
+                             'complete_name' => 'DE ROSA GABRIELE',
+                             'year_of_birth' => '1996',
+                             'gender_type' => 'M'
+                           }
+                         }
+                       })
+
+      described_class.new(season:).build!(source_path: src, lt_format: 4)
+
+      phase3 = default_phase3_path(src)
+      data = JSON.parse(File.read(phase3))['data']
+      swimmer_entry = data['swimmers'].find { |h| h['key'] == 'M|DE ROSA|GABRIELE|1996' }
+
+      expect(swimmer_entry).to be_present
+      expect(swimmer_entry['last_name']).to eq('DE ROSA')
+      expect(swimmer_entry['first_name']).to eq('GABRIELE')
+      expect(data['badges']).to include(include('swimmer_key' => 'M|DE ROSA|GABRIELE|1996',
+                                                'team_key' => 'Rari Nantes Saronno',
+                                                'season_id' => season.id))
+    end
+  end
+
   it 'builds phase3 from LT2 sections scan (fallback)' do
     Dir.mktmpdir do |tmp|
       src = write_json(tmp, 'meeting-l2.json', {
@@ -69,6 +160,29 @@ RSpec.describe Import::Solvers::SwimmerSolver do
   end
 
   describe 'pre-matching pattern (v2.0)' do
+    it 'collects fuzzy candidates case-insensitively for mixed-case imported names' do
+      swimmer = GogglesDb::Swimmer.where('last_name IS NOT NULL AND first_name IS NOT NULL AND year_of_birth IS NOT NULL').limit(100).sample
+
+      Dir.mktmpdir do |tmp|
+        src = write_json(tmp, 'meeting-l4.json', {
+                           'layoutType' => 4,
+                           'swimmers' => [
+                             "#{swimmer.gender_type.code}|#{swimmer.last_name.downcase}|#{swimmer.first_name.downcase}|#{swimmer.year_of_birth}|Team X"
+                           ]
+                         })
+
+        described_class.new(season:).build!(source_path: src, lt_format: 4)
+
+        phase3 = default_phase3_path(src)
+        data = JSON.parse(File.read(phase3))['data']
+        swimmer_entry = data['swimmers'].first
+
+        expect(swimmer_entry).to be_present
+        fuzzy_ids = Array(swimmer_entry['fuzzy_matches']).map { |m| m['id'] }
+        expect(fuzzy_ids).to include(swimmer.id)
+      end
+    end
+
     it 'stores swimmer_id when swimmer exists' do
       # Use existing swimmer from test DB
       swimmer = GogglesDb::Swimmer.limit(100).sample

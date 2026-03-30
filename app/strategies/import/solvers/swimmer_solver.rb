@@ -75,12 +75,8 @@ module Import
                                                              swimmer_entry['gender_type_code'], meeting_date))
             end
           else # Hash dictionary: key => swimmerKey, value => details
-            data_hash['swimmers'].each_with_index do |(_original_key, v), idx|
-              l = v['last_name'] || v['lastName']
-              f = v['first_name'] || v['firstName']
-              yob = v['year_of_birth'] || v['year']
-              gcode = normalize_gender_code(v['gender'] || v['gender_type_code'])
-              team_name = v['team']
+            data_hash['swimmers'].each_with_index do |(original_key, v), idx|
+              l, f, yob, gcode, team_name = extract_swimmer_parts_from_dict_entry(original_key, v)
               broadcast_progress('Map swimmers', idx + 1, total)
               next if l.blank? || f.blank? || yob.to_i.zero?
 
@@ -114,12 +110,9 @@ module Import
                   gtype = row["gender_type#{idx}"]
                   next if swimmer_name.blank? || yob.to_i.zero?
 
-                  # Parse swimmer name (usually "LAST FIRST" format)
-                  parts = swimmer_name.to_s.strip.split
-                  next if parts.size < 2
+                  last, first, = Import::SwimmerNameSplitter.split_complete_name(swimmer_name)
+                  next if last.blank? || first.blank?
 
-                  first = parts.pop
-                  last = parts.join(' ')
                   gcode = normalize_gender_code(gtype)
                   # Always include leading pipe: |LAST|FIRST|YOB or GENDER|LAST|FIRST|YOB
                   key = gcode.present? ? "#{gcode}|#{last}|#{first}|#{yob}" : "|#{last}|#{first}|#{yob}"
@@ -193,17 +186,99 @@ module Import
       # Accepts string (e.g., "F|LAST|FIRST|YYYY|TEAM") or hash-like objects
       def extract_swimmer_parts(s) # rubocop:disable Naming/MethodParameterName
         if s.is_a?(String)
-          parts = s.split('|')
-          gcode = parts[0].presence
-          last = parts[1]
-          first = parts[2]
-          yob = parts[3]
-          team = parts[4]
+          gcode, last, first, yob, team = parse_swimmer_identity_key(s)
+          last, first, = Import::SwimmerNameSplitter.resolve_parts(
+            last_name: last,
+            first_name: first,
+            complete_name: [last, first].compact.join(' ')
+          )
           return [last, first, yob, normalize_gender_code(gcode), team]
         elsif s.is_a?(Hash)
-          return [s['last_name'], s['first_name'], s['year_of_birth'], normalize_gender_code(s['gender']), s['team']]
+          last, first, = Import::SwimmerNameSplitter.resolve_parts(
+            last_name: s['last_name'],
+            first_name: s['first_name'],
+            complete_name: s['complete_name']
+          )
+          return [last, first, s['year_of_birth'], normalize_gender_code(s['gender']), s['team']]
         end
         [nil, nil, nil, nil, nil]
+      end
+
+      # Extract swimmer identity from LT4 dictionary entries where key can carry
+      # canonical data like: GENDER|LAST|FIRST|YOB|TEAM.
+      # Value hashes may only include complete_name/year/gender_type in some sources.
+      def extract_swimmer_parts_from_dict_entry(original_key, details)
+        details = extract_swimmer_details(details)
+
+        key_gcode, key_last, key_first, key_yob, key_team = parse_swimmer_identity_key(original_key)
+        resolved_last, resolved_first, = resolve_swimmer_name_parts(details, key_last, key_first)
+
+        [
+          resolved_last,
+          resolved_first,
+          details['year_of_birth'].presence || key_yob,
+          details['gender_type_code'] || key_gcode,
+          details['team_name'] || key_team
+        ]
+      end
+
+      def extract_swimmer_details(raw_details)
+        details = raw_details || {}
+        {
+          'last_name' => safe_str(fetch_first_present(details, 'last_name', 'lastName')),
+          'first_name' => safe_str(fetch_first_present(details, 'first_name', 'firstName')),
+          'year_of_birth' => fetch_first_present(details, 'year_of_birth', 'year'),
+          'gender_type_code' => normalize_gender_code(fetch_first_present(details, 'gender', 'gender_type', 'gender_type_code')),
+          'team_name' => safe_str(fetch_first_present(details, 'team', 'team_name')),
+          'complete_name' => fetch_first_present(details, 'complete_name', 'completeName')
+        }
+      end
+
+      def resolve_swimmer_name_parts(details, key_last, key_first)
+        resolved_last_name = details['last_name'] || key_last
+        resolved_first_name = details['first_name'] || key_first
+        full_name = details['complete_name'] || [resolved_last_name, resolved_first_name].compact.join(' ')
+
+        Import::SwimmerNameSplitter.resolve_parts(
+          last_name: resolved_last_name,
+          first_name: resolved_first_name,
+          complete_name: full_name
+        )
+      end
+
+      # Parse key formats:
+      # - GENDER|LAST|FIRST|YOB|TEAM
+      # - |LAST|FIRST|YOB|TEAM
+      # - LAST|FIRST|YOB|TEAM
+      def parse_swimmer_identity_key(swimmer_key)
+        parts = swimmer_key.to_s.split('|')
+        return [nil, nil, nil, nil, nil] if parts.empty?
+
+        if parts[0].to_s.match?(/\A[MF]\z/i)
+          build_swimmer_key_parts(parts, start_index: 1, gender_code: normalize_gender_code(parts[0]))
+        elsif parts[0].blank?
+          build_swimmer_key_parts(parts, start_index: 1)
+        else
+          build_swimmer_key_parts(parts, start_index: 0)
+        end
+      end
+
+      def build_swimmer_key_parts(parts, start_index:, gender_code: nil)
+        [
+          gender_code,
+          safe_str(parts[start_index]),
+          safe_str(parts[start_index + 1]),
+          safe_str(parts[start_index + 2]),
+          safe_str(parts[(start_index + 3)..]&.join('|'))
+        ]
+      end
+
+      def fetch_first_present(hash, *keys)
+        keys.each do |key|
+          value = hash[key]
+          return value if value.present?
+        end
+        nil
       end
 
       def normalize_gender_code(code)
@@ -216,7 +291,7 @@ module Import
 
       # Extracts [last_name, first_name, year_of_birth] from a LT2 row.
       # Prefers explicit fields; falls back to parsing 'swimmer' when necessary.
-      def extract_name_yob_from_row(row) # rubocop:disable Metrics/AbcSize, Metrics/PerceivedComplexity,Metrics/CyclomaticComplexity
+      def extract_name_yob_from_row(row) # rubocop:disable Metrics/PerceivedComplexity,Metrics/CyclomaticComplexity
         last = row['last_name'] || row['cognome']
         first = row['first_name'] || row['nome']
         yob = row['year_of_birth'] || row['anno'] || row['yob']
@@ -225,12 +300,9 @@ module Import
         # Fallbacks: try to parse combined swimmer field like "LAST FIRST"
         combined = row['swimmer'] || row['atleta']
         if combined.present?
-          parts = combined.to_s.split
-          # Heuristic: LAST FIRST (2 tokens)
-          if parts.size >= 2
-            last ||= parts[0]
-            first ||= parts[1]
-          end
+          split_last, split_first, = Import::SwimmerNameSplitter.split_complete_name(combined)
+          last ||= split_last
+          first ||= split_first
         end
         [safe_str(last), safe_str(first), yob.to_i]
       end
@@ -534,7 +606,7 @@ module Import
         return '' if base.empty?
 
         normalized = I18n.transliterate(base)
-        normalized.gsub(/[`’]/, "'").squeeze(' ')
+        normalized.gsub(/[`’]/, "'").squeeze(' ').upcase
       end
 
       # Find swimmers on the same team with similar names using Jaro-Winkler distance.

@@ -457,7 +457,7 @@ class DataFixController < ApplicationController
       # ALWAYS run server-side issue detection BEFORE pagination
       # This ensures we know about issues regardless of filtering or pagination
       filter_data = load_filter_data(source_path)
-      @programs_with_issues = detect_programs_with_issues(all_programs, filter_data)
+      @programs_with_issues = detect_programs_with_issues(all_programs, filter_data, source_path)
       @issue_count = @programs_with_issues.size
 
       # Server-side filtering: only show programs with issues if filter is active
@@ -473,19 +473,24 @@ class DataFixController < ApplicationController
           program_key = "#{prog['session_order']}-#{prog['event_code']}-#{prog['category_code']}-#{prog['gender_code']}"
           if prog['relay']
             GogglesDb::DataImportMeetingRelayResult
+              .where(phase_file_path: source_path)
               .where('import_key LIKE ?', "#{program_key}/%")
               .exists?(meeting_relay_result_id: nil) ||
               GogglesDb::DataImportMeetingRelaySwimmer
+                .where(phase_file_path: source_path)
                 .where('import_key LIKE ?', "#{program_key}/%")
                 .exists?(meeting_relay_swimmer_id: nil) ||
               GogglesDb::DataImportRelayLap
+                .where(phase_file_path: source_path)
                 .where('import_key LIKE ?', "#{program_key}/%")
                 .exists?(relay_lap_id: nil)
           else
             GogglesDb::DataImportMeetingIndividualResult
+              .where(phase_file_path: source_path)
               .where('import_key LIKE ?', "#{program_key}/%")
               .exists?(meeting_individual_result_id: nil) ||
               GogglesDb::DataImportLap
+                .where(phase_file_path: source_path)
                 .where('parent_import_key LIKE ?', "#{program_key}/%")
                 .exists?(lap_id: nil)
           end
@@ -500,10 +505,12 @@ class DataFixController < ApplicationController
           program_key = "#{prog['session_order']}-#{prog['event_code']}-#{prog['category_code']}-#{prog['gender_code']}"
           if prog['relay']
             GogglesDb::DataImportMeetingRelayResult
+              .where(phase_file_path: source_path)
               .where('import_key LIKE ?', "#{program_key}/%")
               .exists?(meeting_relay_result_id: nil)
           else
             GogglesDb::DataImportMeetingIndividualResult
+              .where(phase_file_path: source_path)
               .where('import_key LIKE ?', "#{program_key}/%")
               .exists?(meeting_individual_result_id: nil)
           end
@@ -528,7 +535,7 @@ class DataFixController < ApplicationController
 
       # Apply pagination to prevent UI slowdown
       @current_page = [params[:page].to_i, 1].max
-      @phase5_programs, @total_pages = paginate_phase5_programs(all_programs, @current_page)
+      @phase5_programs, @total_pages = paginate_phase5_programs(all_programs, @current_page, source_path)
     else
       @phase5_meta = {}
       @phase5_programs = []
@@ -882,6 +889,36 @@ class DataFixController < ApplicationController
     # Render the report view
     render 'data_fix/commit_phase6_report'
   end
+  # ---------------------------------------------------------------------------
+
+  # Deletes all Data-Fix v2 temporary rows from data_import_* tables.
+  # Intended as an operator "clean slate" action from dashboard.
+  # rubocop:disable Metrics/AbcSize
+  def purge
+    session_count = GogglesDb::DataImportMeetingIndividualResult
+                    .where.not(phase_file_path: [nil, ''])
+                    .distinct
+                    .count(:phase_file_path)
+
+    deleted = {}
+    ActiveRecord::Base.transaction do
+      deleted[:laps] = GogglesDb::DataImportLap.delete_all
+      deleted[:relay_laps] = GogglesDb::DataImportRelayLap.delete_all
+      deleted[:relay_swimmers] = GogglesDb::DataImportMeetingRelaySwimmer.delete_all
+      deleted[:relay_results] = GogglesDb::DataImportMeetingRelayResult.delete_all
+      deleted[:individual_results] = GogglesDb::DataImportMeetingIndividualResult.delete_all
+    end
+
+    total_deleted = deleted.values.sum
+    flash[:notice] =
+      "Clean slate completed: removed #{total_deleted} temp rows across #{deleted.size} tables " \
+      "(#{session_count} session(s) from phase_file_path)."
+  rescue StandardError => e
+    flash[:error] = "Clean slate failed: #{e.message}"
+  ensure
+    redirect_to(home_index_path)
+  end
+  # rubocop:enable Metrics/AbcSize
   # ---------------------------------------------------------------------------
 
   # AJAX endpoint: verify if a result already exists in the DB (duplicate detection).
@@ -2279,16 +2316,32 @@ class DataFixController < ApplicationController
   end
 
   def detect_layout_type(file_path)
-    # Cheap detection: scan first chunk for layoutType without parsing full JSON
+    return 4 if file_path.to_s.end_with?('-lt4.json')
+
+    # Fast detection: scan head/tail chunks for layoutType without parsing full JSON
     begin
-      chunk = File.open(file_path, 'rb') { |f| f.read(64 * 1024) }
-      if chunk && (m = chunk.match(/"layoutType"\s*:\s*(\d+)/))
-        return m[1].to_i
+      File.open(file_path, 'rb') do |f|
+        chunk = f.read(64 * 1024)
+        detected = detect_layout_type_in_chunk(chunk)
+        return detected if detected
+
+        if f.size > 64 * 1024
+          f.seek(-64 * 1024, IO::SEEK_END)
+          detected = detect_layout_type_in_chunk(f.read(64 * 1024))
+          return detected if detected
+        end
       end
     rescue StandardError
       # ignore
     end
     2
+  end
+
+  def detect_layout_type_in_chunk(chunk)
+    return if chunk.blank?
+
+    m = chunk.match(/"layoutType"\s*:\s*(\d+)/)
+    m && m[1].to_i
   end
 
   # Resolve the canonical source used by phased v2 processing.
@@ -2540,8 +2593,9 @@ class DataFixController < ApplicationController
   #
   # @param programs [Array<Hash>] all programs from phase5 JSON
   # @param page [Integer] current page number (1-indexed)
+  # @param source_path [String] canonical source file path
   # @return [Array<Array, Integer>] [programs_for_page, total_pages]
-  def paginate_phase5_programs(programs, page) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
+  def paginate_phase5_programs(programs, page, source_path) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
     return [programs, 1] if programs.empty?
 
     # Calculate row count for each program (results + laps)
@@ -2551,21 +2605,22 @@ class DataFixController < ApplicationController
       if prog['relay']
         # Count relay results and relay laps
         result_count = GogglesDb::DataImportMeetingRelayResult
+                       .where(phase_file_path: source_path)
                        .where('import_key LIKE ?', "#{program_key}/%")
                        .count
         lap_count = GogglesDb::DataImportRelayLap
-                    .joins('INNER JOIN data_import_meeting_relay_results ON data_import_relay_laps.parent_import_key = data_import_meeting_relay_results.import_key')
-                    .where('data_import_meeting_relay_results.import_key LIKE ?', "#{program_key}/%")
+                    .where(phase_file_path: source_path)
+                    .where('parent_import_key LIKE ?', "#{program_key}/%")
                     .count
       else
         # Count individual results and laps
         result_count = GogglesDb::DataImportMeetingIndividualResult
+                       .where(phase_file_path: source_path)
                        .where('import_key LIKE ?', "#{program_key}/%")
                        .count
         lap_count = GogglesDb::DataImportLap
-                    .joins('INNER JOIN data_import_meeting_individual_results ' \
-                           'ON data_import_laps.parent_import_key = data_import_meeting_individual_results.import_key')
-                    .where('data_import_meeting_individual_results.import_key LIKE ?', "#{program_key}/%")
+                    .where(phase_file_path: source_path)
+                    .where('parent_import_key LIKE ?', "#{program_key}/%")
                     .count
       end
 
@@ -2686,8 +2741,9 @@ class DataFixController < ApplicationController
   #
   # @param programs [Array<Hash>] all programs from phase5 JSON
   # @param filter_data [Hash] data needed for filtering
+  # @param source_path [String] canonical source file path
   # @return [Array<Hash>] programs with at least one result with issues
-  def detect_programs_with_issues(programs, filter_data)
+  def detect_programs_with_issues(programs, filter_data, source_path)
     relay_swimmers_by_parent_key = filter_data[:relay_swimmers_by_parent_key]
     swimmers_by_id = filter_data[:swimmers_by_id]
     swimmers_by_key = filter_data[:swimmers_by_key]
@@ -2698,6 +2754,7 @@ class DataFixController < ApplicationController
       if prog['relay']
         # Check if any relay results in this program have issues
         relay_results = GogglesDb::DataImportMeetingRelayResult
+                        .where(phase_file_path: source_path)
                         .where('import_key LIKE ?', "#{program_key}/%")
 
         relay_results.any? do |mrr|
@@ -2712,6 +2769,7 @@ class DataFixController < ApplicationController
       else
         # Check if any individual results in this program have issues
         individual_results = GogglesDb::DataImportMeetingIndividualResult
+                             .where(phase_file_path: source_path)
                              .where('import_key LIKE ?', "#{program_key}/%")
 
         individual_results.any? do |mir|

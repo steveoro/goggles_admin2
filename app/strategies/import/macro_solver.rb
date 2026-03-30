@@ -1055,26 +1055,7 @@ module Import
       # result = finder.matches.first&.candidate
       # return Import::Entity.new(row: result, matches: finder.matches&.map(&:candidate)) if result.present?
 
-      tokens = swimmer_name.upcase.split # ASSUMES: family name(s) first, given name(s) last
-      if tokens.size == 2
-        last_name = tokens.first
-        first_name = tokens.last
-      end
-      if tokens.size == 3
-        # Common italian double surname cases:
-        if %w[DA DAL DALLA DALLE DE DEI DEL DELLA DELLE DEGLI DI DO LA LE LI LO].include?(tokens.first)
-          last_name = tokens[0..1].join(' ')
-          first_name = tokens.last
-        else # Assume double name instead:
-          last_name = tokens.first
-          first_name = tokens[1..2].join(' ')
-        end
-      end
-      if tokens.size > 3
-        # Assume double surname by default:
-        last_name = tokens[0..1].join(' ')
-        first_name = tokens[2..].join(' ')
-      end
+      last_name, first_name, = Import::SwimmerNameSplitter.split_complete_name(swimmer_name.to_s.upcase)
       new_row = GogglesDb::Swimmer.new(
         complete_name: swimmer_name.upcase,
         first_name:,

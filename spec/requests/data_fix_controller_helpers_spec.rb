@@ -19,6 +19,28 @@ RSpec.describe DataFixController, type: :controller do
       end
     end
 
+    context 'with large LT4 file and layoutType near EOF' do
+      let(:temp_dir) { Dir.mktmpdir }
+      let(:file_path) { File.join(temp_dir, 'meeting-lt4.json') }
+
+      before(:each) do
+        payload = {
+          'meetingName' => 'Large LT4 Meeting',
+          'padding' => ('A' * 80_000),
+          'layoutType' => 4
+        }
+        File.write(file_path, JSON.pretty_generate(payload))
+      end
+
+      after(:each) do
+        FileUtils.rm_rf(temp_dir) if File.directory?(temp_dir)
+      end
+
+      it 'returns 4' do
+        expect(subject).to eq(4)
+      end
+    end
+
     context 'with LT2 format file (Saronno sample)' do
       let(:file_path) { 'spec/fixtures/results/season-192_Saronno_sample.json' }
 

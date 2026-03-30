@@ -4,6 +4,21 @@ require 'rails_helper'
 
 module Import
   RSpec.describe MacroSolver, type: :strategy do
+    describe '#find_or_prepare_swimmer()' do
+      it 'splits italian particle surnames when preparing a new swimmer' do
+        solver = described_class.new(season_id: 242, data_hash: { 'layoutType' => 2, 'sections' => [] })
+        allow(solver).to receive(:execute_swimmer_finder).and_return(nil)
+
+        entity = solver.find_or_prepare_swimmer('DE ROSA GABRIELE', 1996, 'M')
+
+        expect(entity).to be_a(Import::Entity)
+        expect(entity.row).to be_a(GogglesDb::Swimmer)
+        expect(entity.row.last_name).to eq('DE ROSA')
+        expect(entity.row.first_name).to eq('GABRIELE')
+        expect(entity.row.complete_name).to eq('DE ROSA GABRIELE')
+      end
+    end
+
     # TODO: mappers & solvers
 
     describe '#find_or_prepare_city()' do
