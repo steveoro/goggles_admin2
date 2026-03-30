@@ -134,15 +134,53 @@ module Import
         end
 
         # Build composite swimmer key in LT4 format: "GENDER|LAST|FIRST|YEAR|TEAM"
-        def build_swimmer_key(row)
-          name_parts = (row['name'] || '').split(' ', 2)
-          last_name = name_parts[0] || ''
-          first_name = name_parts[1] || ''
+        def build_swimmer_key(row) # rubocop:disable Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
+          last_name, first_name, = Import::SwimmerNameSplitter.split_complete_name(row['name'])
+          if last_name.blank? || first_name.blank?
+            fallback_parts = (row['name'] || '').split(' ', 2)
+            last_name = last_name.presence || fallback_parts[0] || ''
+            first_name = first_name.presence || fallback_parts[1] || ''
+          end
           gender = row['sex'] || 'M'
           year = row['year'] || ''
           team = row['team'] || ''
 
           "#{gender}|#{last_name}|#{first_name}|#{year}|#{team}"
+        end
+
+        def normalize_key_name_parts(last_name, first_name)
+          resolved_last, resolved_first, = Import::SwimmerNameSplitter.resolve_parts(
+            last_name: last_name,
+            first_name: first_name,
+            complete_name: [last_name, first_name].compact.join(' ')
+          )
+          [resolved_last || last_name, resolved_first || first_name]
+        end
+
+        # Normalizes LAST/FIRST segments in swimmer identity keys while preserving
+        # the original key shape (with gender prefix, without gender prefix, or leading pipe).
+        def normalize_swimmer_identity_key(swimmer_key, team_fallback: nil) # rubocop:disable Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
+          key = swimmer_key.to_s
+          parts = key.split('|')
+          return key if parts.size < 4
+
+          if parts[0].to_s.match?(/\A[MF]\z/i)
+            gender = parts[0]
+            last_name, first_name = normalize_key_name_parts(parts[1], parts[2])
+            year = parts[3]
+            team = parts[4].presence || team_fallback || ''
+            "#{gender}|#{last_name}|#{first_name}|#{year}|#{team}"
+          elsif parts[0].blank?
+            last_name, first_name = normalize_key_name_parts(parts[1], parts[2])
+            year = parts[3]
+            team = parts[4].presence || team_fallback || ''
+            "|#{last_name}|#{first_name}|#{year}|#{team}"
+          else
+            last_name, first_name = normalize_key_name_parts(parts[0], parts[1])
+            year = parts[2]
+            team = parts[3].presence || team_fallback || ''
+            "#{last_name}|#{first_name}|#{year}|#{team}"
+          end
         end
 
         def extract_gender_from_section(section)
@@ -323,7 +361,7 @@ module Import
           # Convert relay laps
           if row['laps'].is_a?(Array) && row['laps'].any?
             result['laps'] = row['laps'].map do |lap|
-              swimmer_key = lap['swimmer'] if lap['swimmer']
+              swimmer_key = normalize_swimmer_identity_key(lap['swimmer'], team_fallback: row['team']) if lap['swimmer']
               {
                 'distance' => "#{lap['distance']}m",
                 'timing' => lap['timing'],

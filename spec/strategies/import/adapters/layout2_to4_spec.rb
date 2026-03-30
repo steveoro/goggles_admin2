@@ -124,6 +124,35 @@ RSpec.describe Import::Adapters::Layout2To4 do
         expect(result['category']).to eq('M45')
       end
 
+      it 'uses splitter strategy for compound surnames in swimmer keys' do
+        data_with_compound_name = header.merge(
+          'sections' => [
+            {
+              'title' => '50 Stile Libero - M20',
+              'fin_sesso' => 'F',
+              'fin_sigla_categoria' => 'M20',
+              'rows' => [
+                {
+                  'pos' => '1',
+                  'name' => 'DE PIERI GIORGIA',
+                  'year' => '2003',
+                  'sex' => 'F',
+                  'team' => 'ssd Stilelibero - Preganz',
+                  'timing' => '27.04'
+                }
+              ]
+            }
+          ]
+        )
+
+        out = described_class.normalize(data_hash: data_with_compound_name)
+        swimmer_key = out['swimmers'].keys.first
+        result_key = out['events'].first['results'].first['swimmer']
+
+        expect(swimmer_key).to eq('F|DE PIERI|GIORGIA|2003|ssd Stilelibero - Preganz')
+        expect(result_key).to eq('F|DE PIERI|GIORGIA|2003|ssd Stilelibero - Preganz')
+      end
+
       it 'converts laps array to LT4 format' do
         out = described_class.normalize(data_hash: lt2_hash)
         result = out['events'].first['results'].first
@@ -249,6 +278,17 @@ RSpec.describe Import::Adapters::Layout2To4 do
                                 'delta' => '25.00',
                                 'swimmer' => 'M|ROSSI|Mario|1978|Mixed Team A'
                               })
+      end
+
+      it 'normalizes relay lap swimmer identity keys with splitter strategy' do
+        malformed_relay_lap_hash = Marshal.load(Marshal.dump(relay_lt2_hash))
+        malformed_relay_lap_hash['sections'][0]['rows'][0]['laps'][1]['swimmer'] =
+          'F|DE|PIERI GIORGIA|2003|Mixed Team A'
+
+        out = described_class.normalize(data_hash: malformed_relay_lap_hash)
+        normalized_swimmer_key = out['events'].first['results'].first['laps'][1]['swimmer']
+
+        expect(normalized_swimmer_key).to eq('F|DE PIERI|GIORGIA|2003|Mixed Team A')
       end
     end
 
