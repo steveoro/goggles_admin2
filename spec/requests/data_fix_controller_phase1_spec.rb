@@ -15,7 +15,7 @@ RSpec.describe DataFixController do
     before(:each) do
       sign_in_admin(admin_user)
       # Create a minimal source file
-      File.write(source_file, JSON.generate({ 'layoutType' => 2, 'name' => 'Test Meeting' }))
+      File.write(source_file, JSON.generate({ 'layoutType' => 4, 'name' => 'Test Meeting' }))
     end
 
     after(:each) do

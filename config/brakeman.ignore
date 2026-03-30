@@ -24,6 +24,29 @@
       "note": ""
     },
     {
+      "warning_type": "File Access",
+      "warning_code": 16,
+      "fingerprint": "1e68e5b5893f74d8bda6ff431c225dfa32dcaa271247ff2af95b43932472b71c",
+      "check_name": "FileAccess",
+      "message": "Parameter value used in file name",
+      "file": "app/controllers/data_fix_controller.rb",
+      "line": 749,
+      "link": "https://brakemanscanner.org/docs/warning_types/file_access/",
+      "code": "FileUtils.mv(resolve_working_source_path(params[:file_path]), File.join(File.dirname(resolve_working_source_path(params[:file_path])).gsub(\"results.new\", \"results.done\"), File.basename(resolve_working_source_path(params[:file_path]))))",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "DataFixController",
+        "method": "commit_phase6"
+      },
+      "user_input": "params[:file_path]",
+      "confidence": "Weak",
+      "cwe_id": [
+        22
+      ],
+      "note": ""
+    },
+    {
       "warning_type": "Mass Assignment",
       "warning_code": 70,
       "fingerprint": "21fcbc78f5b3b021382eecd9c2383f9fe6b36a097584f8ff6008cd07873fc1b3",
@@ -43,6 +66,75 @@
       "confidence": "Medium",
       "cwe_id": [
         915
+      ],
+      "note": ""
+    },
+    {
+      "warning_type": "File Access",
+      "warning_code": 16,
+      "fingerprint": "29b799aaae15db6601929169792453bc08826bd81387e2c329f2a50b8e7a09fd",
+      "check_name": "FileAccess",
+      "message": "Parameter value used in file name",
+      "file": "app/controllers/data_fix_controller.rb",
+      "line": 770,
+      "link": "https://brakemanscanner.org/docs/warning_types/file_access/",
+      "code": "File.open(File.join(File.dirname(resolve_working_source_path(params[:file_path])), \"#{File.basename(resolve_working_source_path(params[:file_path]), \".json\")}.log\"), \"a\")",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "DataFixController",
+        "method": "commit_phase6"
+      },
+      "user_input": "params[:file_path]",
+      "confidence": "Weak",
+      "cwe_id": [
+        22
+      ],
+      "note": ""
+    },
+    {
+      "warning_type": "File Access",
+      "warning_code": 16,
+      "fingerprint": "2a15b02fbafa4a4b2fc9a52de7fe3ab8325f37783ee3d0b378eaa54d49e15ab1",
+      "check_name": "FileAccess",
+      "message": "Parameter value used in file name",
+      "file": "app/controllers/data_fix_controller.rb",
+      "line": 587,
+      "link": "https://brakemanscanner.org/docs/warning_types/file_access/",
+      "code": "File.read(default_phase_path_for(resolve_working_source_path(params[:file_path]), 2))",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "DataFixController",
+        "method": "review_results"
+      },
+      "user_input": "params[:file_path]",
+      "confidence": "Weak",
+      "cwe_id": [
+        22
+      ],
+      "note": ""
+    },
+    {
+      "warning_type": "File Access",
+      "warning_code": 16,
+      "fingerprint": "46c4f9aed4f7a9db33ae300ca80ea1325d45e7d7206d501e20ca9de39365ffd1",
+      "check_name": "FileAccess",
+      "message": "Parameter value used in file name",
+      "file": "app/controllers/data_fix_controller.rb",
+      "line": 452,
+      "link": "https://brakemanscanner.org/docs/warning_types/file_access/",
+      "code": "File.read(default_phase_path_for(resolve_working_source_path(params[:file_path]), 5))",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "DataFixController",
+        "method": "review_results"
+      },
+      "user_input": "params[:file_path]",
+      "confidence": "Weak",
+      "cwe_id": [
+        22
       ],
       "note": ""
     },
@@ -76,7 +168,7 @@
       "check_name": "MassAssignment",
       "message": "Specify exact keys allowed for mass assignment instead of using `permit!` which allows any keys",
       "file": "app/controllers/api_meetings_controller.rb",
-      "line": 113,
+      "line": 140,
       "link": "https://brakemanscanner.org/docs/warning_types/mass_assignment/",
       "code": "params.fetch(:meetings_grid, {}).permit!",
       "render_path": null,
@@ -191,7 +283,7 @@
       "check_name": "MassAssignment",
       "message": "Specify exact keys allowed for mass assignment instead of using `permit!` which allows any keys",
       "file": "app/controllers/api_users_controller.rb",
-      "line": 114,
+      "line": 123,
       "link": "https://brakemanscanner.org/docs/warning_types/mass_assignment/",
       "code": "params.fetch(:users_grid, {}).permit!",
       "render_path": null,
@@ -237,7 +329,7 @@
       "check_name": "Execute",
       "message": "Possible command injection",
       "file": "app/controllers/pdf_controller.rb",
-      "line": 36,
+      "line": 23,
       "link": "https://brakemanscanner.org/docs/warning_types/command_injection/",
       "code": "system(\"pdftotext -layout #{process_params[:file_path]} #{process_params[:file_path].gsub(/\\.pdf|\\.txt/i, \".txt\")}\")",
       "render_path": null,
@@ -250,6 +342,29 @@
       "confidence": "Medium",
       "cwe_id": [
         77
+      ],
+      "note": ""
+    },
+    {
+      "warning_type": "File Access",
+      "warning_code": 16,
+      "fingerprint": "8edb366f86f487f1c2b82795cbcbe5501802f6f63a431bb7934f59d5563421a9",
+      "check_name": "FileAccess",
+      "message": "Parameter value used in file name",
+      "file": "app/controllers/data_fix_controller.rb",
+      "line": 2144,
+      "link": "https://brakemanscanner.org/docs/warning_types/file_access/",
+      "code": "File.read(resolve_working_source_path(params[:file_path]))",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "DataFixController",
+        "method": "results_chunk_v2"
+      },
+      "user_input": "params[:file_path]",
+      "confidence": "Weak",
+      "cwe_id": [
+        22
       ],
       "note": ""
     },
@@ -319,6 +434,29 @@
       "confidence": "Medium",
       "cwe_id": [
         915
+      ],
+      "note": ""
+    },
+    {
+      "warning_type": "File Access",
+      "warning_code": 16,
+      "fingerprint": "a0cbed002ab5e5176e68a672e76cbf168910a551adaa497c13648b2a0638df8b",
+      "check_name": "FileAccess",
+      "message": "Parameter value used in file name",
+      "file": "app/controllers/data_fix_controller.rb",
+      "line": 217,
+      "link": "https://brakemanscanner.org/docs/warning_types/file_access/",
+      "code": "File.read(default_phase_path_for(resolve_working_source_path(params[:file_path]), 1))",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "DataFixController",
+        "method": "review_swimmers"
+      },
+      "user_input": "params[:file_path]",
+      "confidence": "Weak",
+      "cwe_id": [
+        22
       ],
       "note": ""
     },
@@ -415,6 +553,25 @@
       "note": ""
     },
     {
+      "warning_type": "Unmaintained Dependency",
+      "warning_code": 120,
+      "fingerprint": "d84924377155b41e094acae7404ec2e521629d86f97b0ff628e3d1b263f8101c",
+      "check_name": "EOLRails",
+      "message": "Support for Rails 6.1.7.10 ended on 2024-10-01",
+      "file": "Gemfile.lock",
+      "line": 443,
+      "link": "https://brakemanscanner.org/docs/warning_types/unmaintained_dependency/",
+      "code": null,
+      "render_path": null,
+      "location": null,
+      "user_input": null,
+      "confidence": "High",
+      "cwe_id": [
+        1104
+      ],
+      "note": ""
+    },
+    {
       "warning_type": "Mass Assignment",
       "warning_code": 70,
       "fingerprint": "dc53d13f0a03dd11922567ef20fa0cdee2406dc6c1adee1cd36350bbd6553905",
@@ -507,6 +664,52 @@
       "note": ""
     },
     {
+      "warning_type": "File Access",
+      "warning_code": 16,
+      "fingerprint": "e5ef98fe49176aa7e24836126ec20a3f2f42716cc588b42329d5876fb8a865db",
+      "check_name": "FileAccess",
+      "message": "Parameter value used in file name",
+      "file": "app/controllers/data_fix_controller.rb",
+      "line": 745,
+      "link": "https://brakemanscanner.org/docs/warning_types/file_access/",
+      "code": "FileUtils.mkdir_p(File.dirname(resolve_working_source_path(params[:file_path])).gsub(\"results.new\", \"results.done\"))",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "DataFixController",
+        "method": "commit_phase6"
+      },
+      "user_input": "params[:file_path]",
+      "confidence": "Weak",
+      "cwe_id": [
+        22
+      ],
+      "note": ""
+    },
+    {
+      "warning_type": "File Access",
+      "warning_code": 16,
+      "fingerprint": "e78396f96ce4c46c83592f3de5ea5fdb11d66706f0f9e9bdd5d3b8e9a7e0be48",
+      "check_name": "FileAccess",
+      "message": "Parameter value used in file name",
+      "file": "app/controllers/data_fix_controller.rb",
+      "line": 588,
+      "link": "https://brakemanscanner.org/docs/warning_types/file_access/",
+      "code": "File.read(default_phase_path_for(resolve_working_source_path(params[:file_path]), 3))",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "DataFixController",
+        "method": "review_results"
+      },
+      "user_input": "params[:file_path]",
+      "confidence": "Weak",
+      "cwe_id": [
+        22
+      ],
+      "note": ""
+    },
+    {
       "warning_type": "Mass Assignment",
       "warning_code": 70,
       "fingerprint": "e8e8bcdfb9d9fce77a2c5f263636b8a2a34acec25776210d75dc0f846d8a7741",
@@ -528,8 +731,49 @@
         915
       ],
       "note": ""
+    },
+    {
+      "warning_type": "Unmaintained Dependency",
+      "warning_code": 121,
+      "fingerprint": "edf687f759ec9765bd5db185dbc615c80af77d6e7e19386fc42934e7a80307af",
+      "check_name": "EOLRuby",
+      "message": "Support for Ruby 3.1.4 ended on 2025-03-31",
+      "file": ".ruby-version",
+      "line": 1,
+      "link": "https://brakemanscanner.org/docs/warning_types/unmaintained_dependency/",
+      "code": null,
+      "render_path": null,
+      "location": null,
+      "user_input": null,
+      "confidence": "High",
+      "cwe_id": [
+        1104
+      ],
+      "note": ""
+    },
+    {
+      "warning_type": "SQL Injection",
+      "warning_code": 0,
+      "fingerprint": "f2f9c1c315d9a8473e9a27c03091ada067fed87e0b60b12900bb31ddf2ba7dfb",
+      "check_name": "SQL",
+      "message": "Possible SQL injection",
+      "file": "app/strategies/merge/duplicate_result_cleaner.rb",
+      "line": 175,
+      "link": "https://brakemanscanner.org/docs/warning_types/sql_injection/",
+      "code": "ActiveRecord::Base.connection.execute(\"SELECT sig1.id AS dup_id, sig2.id AS keep_id\\nFROM meeting_relay_results mrr1\\nINNER JOIN meeting_programs mp ON mrr1.meeting_program_id = mp.id\\nINNER JOIN meeting_events me ON mp.meeting_event_id = me.id\\nINNER JOIN meeting_sessions ms ON me.meeting_session_id = ms.id\\nINNER JOIN (\\n  SELECT mrr_inner.id, mrr_inner.meeting_program_id, mrr_inner.team_id,\\n         GROUP_CONCAT(mrs_inner.swimmer_id ORDER BY mrs_inner.swimmer_id) AS swimmer_sig\\n  FROM meeting_relay_results mrr_inner\\n  INNER JOIN meeting_relay_swimmers mrs_inner ON mrs_inner.meeting_relay_result_id = mrr_inner.id\\n  INNER JOIN meeting_programs mp_inner ON mrr_inner.meeting_program_id = mp_inner.id\\n  INNER JOIN meeting_events me_inner ON mp_inner.meeting_event_id = me_inner.id\\n  INNER JOIN meeting_sessions ms_inner ON me_inner.meeting_session_id = ms_inner.id\\n  WHERE ms_inner.meeting_id = #{meeting_id}\\n  GROUP BY mrr_inner.id\\n) AS sig1 ON mrr1.id = sig1.id\\nINNER JOIN (\\n  SELECT mrr_inner.id, mrr_inner.meeting_program_id, mrr_inner.team_id,\\n         GROUP_CONCAT(mrs_inner.swimmer_id ORDER BY mrs_inner.swimmer_id) AS swimmer_sig\\n  FROM meeting_relay_results mrr_inner\\n  INNER JOIN meeting_relay_swimmers mrs_inner ON mrs_inner.meeting_relay_result_id = mrr_inner.id\\n  INNER JOIN meeting_programs mp_inner ON mrr_inner.meeting_program_id = mp_inner.id\\n  INNER JOIN meeting_events me_inner ON mp_inner.meeting_event_id = me_inner.id\\n  INNER JOIN meeting_sessions ms_inner ON me_inner.meeting_session_id = ms_inner.id\\n  WHERE ms_inner.meeting_id = #{meeting_id}\\n  GROUP BY mrr_inner.id\\n) AS sig2 ON sig1.meeting_program_id = sig2.meeting_program_id\\n          AND sig1.team_id = sig2.team_id\\n          AND sig1.swimmer_sig = sig2.swimmer_sig\\n          AND sig1.id > sig2.id\\nWHERE ms.meeting_id = #{meeting_id}\\n\".squish)",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "Merge::DuplicateResultCleaner",
+        "method": "find_duplicate_mrrs"
+      },
+      "user_input": "meeting_id",
+      "confidence": "Medium",
+      "cwe_id": [
+        89
+      ],
+      "note": ""
     }
   ],
-  "updated": "2024-03-04 19:38:16 +0100",
-  "brakeman_version": "6.1.2"
+  "brakeman_version": "7.0.2"
 }

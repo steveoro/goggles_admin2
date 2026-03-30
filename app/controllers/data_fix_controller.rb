@@ -28,7 +28,8 @@ class DataFixController < ApplicationController
       redirect_to(pull_index_path) && return
     end
 
-    source_path = resolve_source_path(@file_path)
+    source_path = resolve_working_source_path(@file_path)
+    @file_path = source_path
     season = detect_season_from_pathname(source_path)
     lt_format = detect_layout_type(source_path)
     # Use existing phase file unless rescan is requested; build when missing or rescan
@@ -39,7 +40,7 @@ class DataFixController < ApplicationController
         lt_format: lt_format
       )&.dig('path') || phase_path
       # Redirect without rescan parameter to avoid triggering rescan on navigation
-      redirect_to(review_sessions_path(request.query_parameters.except(:rescan)),
+      redirect_to(review_sessions_path(request.query_parameters.except(:rescan).merge(file_path: @file_path)),
                   notice: I18n.t('data_import.messages.phase_rebuilt', phase: 1)) && return
     end
     pfm = PhaseFileManager.new(phase_path)
@@ -82,7 +83,8 @@ class DataFixController < ApplicationController
       redirect_to(pull_index_path) && return
     end
 
-    source_path = resolve_source_path(@file_path)
+    source_path = resolve_working_source_path(@file_path)
+    @file_path = source_path
     season = detect_season_from_pathname(source_path)
     lt_format = detect_layout_type(source_path)
     phase_path = default_phase_path_for(source_path, 2)
@@ -92,7 +94,7 @@ class DataFixController < ApplicationController
         lt_format: lt_format
       )
       # Redirect without rescan parameter to avoid triggering rescan on navigation
-      redirect_to(review_teams_path(request.query_parameters.except(:rescan)),
+      redirect_to(review_teams_path(request.query_parameters.except(:rescan).merge(file_path: @file_path)),
                   notice: I18n.t('data_import.messages.phase_rebuilt', phase: 2)) && return
     end
     pfm = PhaseFileManager.new(phase_path)
@@ -105,7 +107,7 @@ class DataFixController < ApplicationController
         source_path: source_path,
         lt_format: lt_format
       )
-      redirect_to(review_teams_path(request.query_parameters),
+      redirect_to(review_teams_path(request.query_parameters.merge(file_path: @file_path)),
                   notice: I18n.t('data_import.messages.phase_rebuilt', phase: 2)) && return
     end
 
@@ -170,7 +172,8 @@ class DataFixController < ApplicationController
       redirect_to(pull_index_path) && return
     end
 
-    source_path = resolve_source_path(@file_path)
+    source_path = resolve_working_source_path(@file_path)
+    @file_path = source_path
     season = detect_season_from_pathname(source_path)
     lt_format = detect_layout_type(source_path)
     phase_path = default_phase_path_for(source_path, 3)
@@ -184,7 +187,7 @@ class DataFixController < ApplicationController
         phase2_path: phase2_path
       )
       # Redirect without rescan parameter to avoid triggering rescan on navigation
-      redirect_to(review_swimmers_path(request.query_parameters.except(:rescan)),
+      redirect_to(review_swimmers_path(request.query_parameters.except(:rescan).merge(file_path: @file_path)),
                   notice: I18n.t('data_import.messages.phase_rebuilt', phase: 3)) && return
     end
     pfm = PhaseFileManager.new(phase_path)
@@ -201,7 +204,7 @@ class DataFixController < ApplicationController
         phase1_path: phase1_path,
         phase2_path: phase2_path
       )
-      redirect_to(review_swimmers_path(request.query_parameters),
+      redirect_to(review_swimmers_path(request.query_parameters.merge(file_path: @file_path)),
                   notice: I18n.t('data_import.messages.phase_rebuilt', phase: 3)) && return
     end
     @source_path = source_path
@@ -300,7 +303,8 @@ class DataFixController < ApplicationController
       redirect_to(pull_index_path) && return
     end
 
-    source_path = resolve_source_path(@file_path)
+    source_path = resolve_working_source_path(@file_path)
+    @file_path = source_path
     season = detect_season_from_pathname(source_path)
     lt_format = detect_layout_type(source_path)
     phase_path = default_phase_path_for(source_path, 4)
@@ -313,7 +317,7 @@ class DataFixController < ApplicationController
       )
       flash.now[:notice] = I18n.t('data_import.messages.phase_rebuilt', phase: 4)
       # Redirect without rescan parameter to avoid triggering rescan on navigation
-      redirect_to(review_events_path(request.query_parameters.except(:rescan)),
+      redirect_to(review_events_path(request.query_parameters.except(:rescan).merge(file_path: @file_path)),
                   notice: I18n.t('data_import.messages.phase_rebuilt', phase: 4)) && return
     end
     pfm = PhaseFileManager.new(phase_path)
@@ -409,7 +413,8 @@ class DataFixController < ApplicationController
       redirect_to(pull_index_path) && return
     end
 
-    source_path = resolve_source_path(@file_path)
+    source_path = resolve_working_source_path(@file_path)
+    @file_path = source_path
     season = detect_season_from_pathname(source_path)
     lt_format = detect_layout_type(source_path)
     phase_path = default_phase_path_for(source_path, 5)
@@ -438,7 +443,7 @@ class DataFixController < ApplicationController
       populate_stats = populator.populate!
 
       # Redirect without rescan parameter to avoid triggering rescan on navigation
-      redirect_to(review_results_path(request.query_parameters.except(:rescan)),
+      redirect_to(review_results_path(request.query_parameters.except(:rescan).merge(file_path: @file_path)),
                   notice: "Phase 5 rebuilt. Populated DB: #{populate_stats[:mir_created]} results, #{populate_stats[:laps_created]} laps") && return
     end
 
@@ -661,7 +666,8 @@ class DataFixController < ApplicationController
       redirect_to(pull_index_path) && return
     end
 
-    source_path = resolve_source_path(file_path)
+    source_path = resolve_working_source_path(file_path)
+    file_path = source_path
 
     # Gather all phase file paths
     phase1_path = default_phase_path_for(source_path, 1)
@@ -1049,7 +1055,7 @@ class DataFixController < ApplicationController
       return
     end
 
-    source_path = resolve_source_path(file_path)
+    source_path = resolve_working_source_path(file_path)
     phase3_path = default_phase_path_for(source_path, 3)
 
     unless File.exist?(phase3_path)
@@ -1139,7 +1145,8 @@ class DataFixController < ApplicationController
       redirect_to(pull_index_path) && return
     end
 
-    source_path = resolve_source_path(file_path)
+    source_path = resolve_working_source_path(file_path)
+    file_path = source_path
     phase_path = default_phase_path_for(source_path, 2)
     pfm = PhaseFileManager.new(phase_path)
     data = pfm.data || {}
@@ -1242,7 +1249,8 @@ class DataFixController < ApplicationController
       redirect_to(pull_index_path) && return
     end
 
-    source_path = resolve_source_path(file_path)
+    source_path = resolve_working_source_path(file_path)
+    file_path = source_path
     phase_path = default_phase_path_for(source_path, 2)
     pfm = PhaseFileManager.new(phase_path)
     data = pfm.data || {}
@@ -1278,7 +1286,8 @@ class DataFixController < ApplicationController
       redirect_to(pull_index_path) && return
     end
 
-    source_path = resolve_source_path(file_path)
+    source_path = resolve_working_source_path(file_path)
+    file_path = source_path
     phase_path = default_phase_path_for(source_path, 2)
     pfm = PhaseFileManager.new(phase_path)
     data = pfm.data || {}
@@ -1329,7 +1338,8 @@ class DataFixController < ApplicationController
       redirect_to(pull_index_path) && return
     end
 
-    source_path = resolve_source_path(file_path)
+    source_path = resolve_working_source_path(file_path)
+    file_path = source_path
     phase_path = default_phase_path_for(source_path, 3)
     pfm = PhaseFileManager.new(phase_path)
     data = pfm.data || {}
@@ -1416,7 +1426,8 @@ class DataFixController < ApplicationController
       redirect_to(pull_index_path) && return
     end
 
-    source_path = resolve_source_path(file_path)
+    source_path = resolve_working_source_path(file_path)
+    file_path = source_path
     phase_path = default_phase_path_for(source_path, 3)
     pfm = PhaseFileManager.new(phase_path)
     data = pfm.data || {}
@@ -1456,7 +1467,8 @@ class DataFixController < ApplicationController
       redirect_to(pull_index_path) && return
     end
 
-    source_path = resolve_source_path(file_path)
+    source_path = resolve_working_source_path(file_path)
+    file_path = source_path
     base_dir = File.dirname(source_path)
     phase_path = default_phase_path_for(source_path, 3)
 
@@ -1550,7 +1562,8 @@ class DataFixController < ApplicationController
       redirect_to(pull_index_path) && return
     end
 
-    source_path = resolve_source_path(file_path)
+    source_path = resolve_working_source_path(file_path)
+    file_path = source_path
     phase_path = default_phase_path_for(source_path, 3)
     pfm = PhaseFileManager.new(phase_path)
     data = pfm.data || {}
@@ -1602,7 +1615,8 @@ class DataFixController < ApplicationController
       redirect_to(pull_index_path) && return
     end
 
-    source_path = resolve_source_path(file_path)
+    source_path = resolve_working_source_path(file_path)
+    file_path = source_path
     phase_path = default_phase_path_for(source_path, 4)
     pfm = PhaseFileManager.new(phase_path)
     data = pfm.data || {}
@@ -1729,7 +1743,8 @@ class DataFixController < ApplicationController
       redirect_to(pull_index_path) && return
     end
 
-    source_path = resolve_source_path(file_path)
+    source_path = resolve_working_source_path(file_path)
+    file_path = source_path
     phase_path = default_phase_path_for(source_path, 4)
     pfm = PhaseFileManager.new(phase_path)
     data = pfm.data || {}
@@ -1837,7 +1852,8 @@ class DataFixController < ApplicationController
       redirect_to(pull_index_path) && return
     end
 
-    source_path = resolve_source_path(file_path)
+    source_path = resolve_working_source_path(file_path)
+    file_path = source_path
     phase_path = default_phase_path_for(source_path, 4)
     pfm = PhaseFileManager.new(phase_path)
     data = pfm.data || {}
@@ -1880,7 +1896,8 @@ class DataFixController < ApplicationController
       redirect_to(pull_index_path) && return
     end
 
-    source_path = resolve_source_path(file_path)
+    source_path = resolve_working_source_path(file_path)
+    file_path = source_path
     phase_path = default_phase_path_for(source_path, 1)
     pfm = PhaseFileManager.new(phase_path)
     data = pfm.data || {}
@@ -1974,7 +1991,8 @@ class DataFixController < ApplicationController
       redirect_to(pull_index_path) && return
     end
 
-    source_path = resolve_source_path(file_path)
+    source_path = resolve_working_source_path(file_path)
+    file_path = source_path
     phase_path = default_phase_path_for(source_path, 1)
     pfm = PhaseFileManager.new(phase_path)
 
@@ -1996,7 +2014,8 @@ class DataFixController < ApplicationController
       redirect_to(pull_index_path) && return
     end
 
-    source_path = resolve_source_path(file_path)
+    source_path = resolve_working_source_path(file_path)
+    file_path = source_path
     phase_path = default_phase_path_for(source_path, 1)
     pfm = PhaseFileManager.new(phase_path)
     data = pfm.data || {}
@@ -2053,7 +2072,8 @@ class DataFixController < ApplicationController
       redirect_to(pull_index_path) && return
     end
 
-    source_path = resolve_source_path(file_path)
+    source_path = resolve_working_source_path(file_path)
+    file_path = source_path
     phase_path = default_phase_path_for(source_path, 1)
     pfm = PhaseFileManager.new(phase_path)
     data = pfm.data || {}
@@ -2093,7 +2113,8 @@ class DataFixController < ApplicationController
       redirect_to(pull_index_path) && return
     end
 
-    source_path = resolve_source_path(file_path)
+    source_path = resolve_working_source_path(file_path)
+    file_path = source_path
     phase_path = default_phase_path_for(source_path, 1)
     pfm = PhaseFileManager.new(phase_path)
 
@@ -2118,7 +2139,7 @@ class DataFixController < ApplicationController
       return render plain: I18n.t('data_import.errors.invalid_request'), status: :bad_request
     end
 
-    source_path = resolve_source_path(file_path)
+    source_path = resolve_working_source_path(file_path)
     begin
       data_hash = JSON.parse(File.read(source_path))
     rescue StandardError => e
@@ -2270,6 +2291,61 @@ class DataFixController < ApplicationController
     2
   end
 
+  # Resolve the canonical source used by phased v2 processing.
+  # LT4 files are used as-is; LT2 files are mapped to sibling -lt4 working copies.
+  # Existing -lt4 copies are reused. Missing -lt4 copies are regenerated from the
+  # original LT2 source when available.
+  def resolve_working_source_path(file_path)
+    source_path = resolve_source_path(file_path)
+    return source_path if source_path.blank?
+    return resolve_lt4_working_copy_path(source_path) if source_path.end_with?('-lt4.json')
+    return source_path unless detect_layout_type(source_path) == 2
+
+    resolve_lt2_source_to_working_copy(source_path)
+  rescue StandardError => e
+    Rails.logger.error("[DataFixController] resolve_working_source_path failed: #{e.message}")
+    resolve_source_path(file_path)
+  end
+
+  def resolve_lt4_working_copy_path(source_path)
+    return source_path if File.exist?(source_path)
+
+    original_lt2_path = source_path.sub(/-lt4\.json\z/, '.json')
+    if File.exist?(original_lt2_path) && detect_layout_type(original_lt2_path) == 2
+      created_path = materialize_lt4_working_copy(
+        lt2_source_path: original_lt2_path,
+        lt4_source_path: source_path
+      )
+      return created_path if created_path.present?
+    end
+
+    Rails.logger.warn("[DataFixController] Missing LT4 working source: #{source_path}")
+    source_path
+  end
+
+  def resolve_lt2_source_to_working_copy(source_path)
+    lt4_source_path = source_path.sub(/\.json\z/, '-lt4.json')
+    return lt4_source_path if File.exist?(lt4_source_path)
+    return source_path unless File.exist?(source_path)
+
+    materialize_lt4_working_copy(
+      lt2_source_path: source_path,
+      lt4_source_path: lt4_source_path
+    ) || source_path
+  end
+
+  def materialize_lt4_working_copy(lt2_source_path:, lt4_source_path:)
+    data_hash = JSON.parse(File.read(lt2_source_path))
+    normalized = Import::Adapters::Layout2To4.normalize(data_hash: data_hash)
+    FileUtils.mkdir_p(File.dirname(lt4_source_path))
+    File.write(lt4_source_path, JSON.pretty_generate(normalized))
+    Rails.logger.info("[DataFixController] LT2=>LT4 working copy created: #{lt4_source_path}")
+    lt4_source_path
+  rescue StandardError => e
+    Rails.logger.error("[DataFixController] LT2=>LT4 materialization failed: #{e.message} (source: #{lt2_source_path})")
+    nil
+  end
+
   def default_phase_path_for(source_path, phase_num)
     dir = File.dirname(source_path)
     base = File.basename(source_path, File.extname(source_path))
@@ -2321,6 +2397,7 @@ class DataFixController < ApplicationController
 
   # Cascade a team_id change to Phase 5 DataImport rows (MIR and MRR).
   # Returns the number of rows updated.
+  # rubocop:disable Rails/SkipsModelValidations
   def cascade_team_to_data_import_rows(team_key, new_team_id)
     return 0 unless new_team_id.to_i.positive?
 
@@ -2339,6 +2416,7 @@ class DataFixController < ApplicationController
     Rails.logger.error("[DataFix] cascade_team_to_data_import_rows failed: #{e.message}")
     0
   end
+  # rubocop:enable Rails/SkipsModelValidations
 
   # If file_path points to a phase file, resolve original source_path from its meta.
   def resolve_source_path(file_path)

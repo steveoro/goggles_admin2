@@ -136,6 +136,53 @@ RSpec.describe DataFixController do
         get review_swimmers_path(file_path: source_file, phase3_v2: 1)
         expect(response.body).to include('Step 3') # Phase header
       end
+
+      it 'uses LT4 working phase file when opened from LT2 source' do
+        lt2_payload = {
+          'layoutType' => 2,
+          'name' => 'LT2 meeting',
+          'sections' => [
+            {
+              'title' => '50 SL M25',
+              'rows' => [
+                { 'name' => 'Alpha John', 'year' => 1985, 'team' => 'Team A', 'timing' => '00:31.00' }
+              ]
+            }
+          ]
+        }
+        File.write(source_file, JSON.pretty_generate(lt2_payload))
+
+        lt4_source = source_file.sub('.json', '-lt4.json')
+        File.write(lt4_source, JSON.pretty_generate({ 'layoutType' => 4, 'events' => [], 'swimmers' => {} }))
+
+        lt4_phase3_file = lt4_source.sub('.json', '-phase3.json')
+        lt4_phase3_data = {
+          'season_id' => season.id,
+          'swimmers' => [
+            {
+              'key' => 'ALPHA|JOHN|1985',
+              'last_name' => 'Alpha',
+              'first_name' => 'John',
+              'year_of_birth' => 1985,
+              'gender_type_code' => 'M',
+              'complete_name' => 'Alpha John',
+              'swimmer_id' => nil,
+              'fuzzy_matches' => []
+            }
+          ],
+          'badges' => []
+        }
+        PhaseFileManager.new(lt4_phase3_file).write!(
+          data: lt4_phase3_data,
+          meta: { 'generator' => 'test', 'source_path' => lt4_source }
+        )
+
+        get review_swimmers_path(file_path: source_file, phase3_v2: 1)
+
+        expect(response).to be_successful
+        expect(response.body).to include('Alpha John')
+        expect(response.body).to include(CGI.escape(lt4_source))
+      end
     end
 
     describe 'PATCH /data_fix/update_phase3_swimmer' do
