@@ -54,6 +54,8 @@ module Import
           mrrs_created: 0, mrrs_updated: 0,
           mrss_created: 0, mrss_updated: 0,
           relay_laps_created: 0, relay_laps_updated: 0,
+          team_links_auto_fixed: 0,
+          affiliation_links_auto_fixed: 0,
           errors: []
         }
         # Initialize logger
@@ -483,7 +485,11 @@ module Import
           # Resolve all bindings:
           data_import_mir.meeting_program_id ||= program_id
           data_import_mir.swimmer_id ||= swimmer_committer.resolve_id(data_import_mir.swimmer_key)
-          data_import_mir.team_id ||= team_committer.resolve_id(data_import_mir.team_key)
+          resolved_team_id = team_committer.resolve_id(data_import_mir.team_key)
+          if resolved_team_id.to_i.positive? && data_import_mir.team_id.to_i != resolved_team_id
+            data_import_mir.team_id = resolved_team_id
+            stats[:team_links_auto_fixed] += 1
+          end
           data_import_mir.badge_id ||= badge_committer.resolve_id(data_import_mir.swimmer_key, data_import_mir.team_key)
 
           # Pass resolved IDs explicitly to committer
@@ -509,8 +515,21 @@ module Import
                                                       .order(:import_key)
         mrrs.each do |data_import_mrr|
           # Resolve all bindings:
-          data_import_mrr.team_id ||= team_committer.resolve_id(data_import_mrr.team_key)
-          data_import_mrr.team_affiliation_id ||= team_affiliation_committer.resolve_id(data_import_mrr.team_key)
+          resolved_team_id = team_committer.resolve_id(data_import_mrr.team_key)
+          if resolved_team_id.to_i.positive? && data_import_mrr.team_id.to_i != resolved_team_id
+            data_import_mrr.team_id = resolved_team_id
+            stats[:team_links_auto_fixed] += 1
+          end
+
+          resolved_affiliation_id = team_affiliation_committer.resolve_id(
+            data_import_mrr.team_key,
+            team_id: data_import_mrr.team_id,
+            season_id: @season_id
+          )
+          if resolved_affiliation_id.to_i.positive? && data_import_mrr.team_affiliation_id.to_i != resolved_affiliation_id
+            data_import_mrr.team_affiliation_id = resolved_affiliation_id
+            stats[:affiliation_links_auto_fixed] += 1
+          end
 
           # Pass resolved IDs explicitly to committer
           mrr_id = mrr_committer.commit(data_import_mrr, program_id: program_id, season_id: @season_id)

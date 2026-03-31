@@ -90,6 +90,21 @@
               %td.text-center= total_created
               %td.text-center= total_updated
 
+    - auto_fix_rows = {
+      'Team links auto-fixed' => (@stats[:team_links_auto_fixed] || 0),
+      'Affiliation links auto-fixed' => (@stats[:affiliation_links_auto_fixed] || 0)
+    }.select { |_label, count| count.to_i.positive? }
+    - if auto_fix_rows.present?
+      .card.mt-3
+        .card-header.bg-warning
+          %strong Auto-Fix Summary
+        .card-body
+          %ul.mb-0
+            - auto_fix_rows.each do |label, count|
+              %li
+                %strong= count
+                = " #{label}"
+
   -# Errors list (if any)
   - if @stats && @stats[:errors].present?
     .card.mt-3

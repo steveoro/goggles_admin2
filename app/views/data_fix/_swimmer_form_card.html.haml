@@ -14,6 +14,9 @@
           &nbsp;
           %i.fa.fa-users.text-info{ title: 'Associated team key' }
           = swimmer_team_key
+      - if defined?(has_badge_duplicates) && has_badge_duplicates && defined?(badge_duplicate_summary) && badge_duplicate_summary.present?
+        %small.ml-2.text-muted
+          = badge_duplicate_summary
       &nbsp;
       - if has_match
         - fuzzy_matches = swimmer_hash['fuzzy_matches'] || []
@@ -40,6 +43,10 @@
             %small.ml-1.badge{ class: xref_badge, title: 'Similar swimmer detected but no alternative candidate - likely a false positive' }
               %i.fa.fa-exclamation-triangle
               SIMILAR NAME ON SAME TEAM
+      - if defined?(has_badge_duplicates) && has_badge_duplicates
+        %small.ml-1.badge.badge-danger{ title: 'Duplicate badges found for same swimmer+season on different teams - manual merge recommended' }
+          %i.fa.fa-clone
+          DUPLICATE BADGES
       - elsif has_missing_data
         %small.ml-2.badge.badge-danger
           MISSING DATA

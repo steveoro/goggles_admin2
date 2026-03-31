@@ -106,6 +106,43 @@ RSpec.describe DataFixController do
         expect(response.body).not_to include('Gamma Bob')
       end
 
+      it 'flags duplicate badges and keeps them in needing-review filter' do
+        duplicate_team_ids = [team.id, FactoryBot.create(:team).id]
+        duplicate_swimmer = {
+          'key' => 'DELTA|LUCY|1989',
+          'last_name' => 'Delta',
+          'first_name' => 'Lucy',
+          'year_of_birth' => 1989,
+          'gender_type_code' => 'F',
+          'complete_name' => 'Delta Lucy',
+          'swimmer_id' => swimmer.id,
+          'match_percentage' => 100.0,
+          'fuzzy_matches' => [
+            {
+              'id' => swimmer.id,
+              'display_label' => swimmer.complete_name,
+              'badges' => [
+                { 'team_id' => duplicate_team_ids[0], 'team_name' => 'Team One', 'season_id' => season.id, 'badge_id' => 111 },
+                { 'team_id' => duplicate_team_ids[1], 'team_name' => 'Team Two', 'season_id' => season.id, 'badge_id' => 222 }
+              ]
+            }
+          ]
+        }
+
+        pfm = PhaseFileManager.new(phase3_file)
+        data = pfm.data
+        data['swimmers'] << duplicate_swimmer
+        pfm.write!(data:, meta: { 'generator' => 'test' })
+
+        get review_swimmers_path(file_path: source_file, phase3_v2: 1, unmatched: 1)
+
+        expect(response).to be_successful
+        expect(response.body).to include('Delta Lucy')
+        expect(response.body).to include('DUPLICATE BADGES')
+        expect(response.body).to include("duplicate badges found in season #{season.id}")
+        expect(response.body).to include('bg-light-red')
+      end
+
       it 'displays phase metadata' do
         get review_swimmers_path(file_path: source_file, phase3_v2: 1)
         expect(response.body).to include('Phase 3 Metadata') # Metadata header in collapsed card

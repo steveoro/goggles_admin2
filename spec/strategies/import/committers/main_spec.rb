@@ -80,6 +80,8 @@ RSpec.describe Import::Committers::Main do
         expect(stats[:swimmers_created]).to eq(0)
         expect(stats[:badges_created]).to eq(0)
         expect(stats[:events_created]).to eq(0)
+        expect(stats[:team_links_auto_fixed]).to eq(0)
+        expect(stats[:affiliation_links_auto_fixed]).to eq(0)
         expect(stats[:errors]).to eq([])
       end
     end

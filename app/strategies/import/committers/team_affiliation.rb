@@ -11,7 +11,7 @@ module Import
     # Maintains an internal ID mapping (team_id → team_affiliation_id) for efficient
     # lookups during later phases, avoiding repeated DB queries within a transaction.
     #
-    class TeamAffiliation
+    class TeamAffiliation # rubocop:disable Metrics/ClassLength
       BOOLEAN_TYPE = ActiveModel::Type::Boolean.new
 
       attr_accessor :season_id
@@ -36,33 +36,52 @@ module Import
         @team_committer = opts[:team_committer]
         @season_id = opts[:season_id]
         @id_by_key = {} # "team_key" → team_affiliation_id mapping
+        @id_by_link = {} # "team_id|season_id" → team_affiliation_id mapping
       end
       # -----------------------------------------------------------------------
 
       # Store team_affiliation_id in mapping for later lookup
-      def store_id(team_key, team_affiliation_id)
-        return unless team_key && team_affiliation_id
+      def store_id(team_key, team_affiliation_id, team_id: nil, season_id: nil)
+        return unless team_affiliation_id
 
-        @id_by_key[team_key] = team_affiliation_id
+        @id_by_key[team_key] = team_affiliation_id if team_key.present?
+
+        team_id = team_id.to_i
+        season_id = season_id.to_i
+        return unless team_id.positive? && season_id.positive?
+
+        @id_by_link[link_key(team_id, season_id)] = team_affiliation_id
       end
       # -----------------------------------------------------------------------
 
       # Resolve team_affiliation_id from team_id
       # First checks mapping, then falls back to DB query
-      def resolve_id(team_key)
-        return nil unless team_key
+      def resolve_id(team_key, team_id: nil, season_id: nil)
+        resolved_team_id = team_id.to_i.positive? ? team_id.to_i : @team_committer.resolve_id(team_key)
+        resolved_season_id = season_id.to_i.positive? ? season_id.to_i : @season_id
+        return nil unless resolved_team_id.to_i.positive? && resolved_season_id.to_i.positive?
 
-        # 1. Check mapping first (populated during Phase 2)
-        cached_id = @id_by_key[team_key]
+        # 1. Check mapping by team+season first (canonical key)
+        cached_id = @id_by_link[link_key(resolved_team_id, resolved_season_id)]
         return cached_id if cached_id
 
-        # 2. Fallback to DB query (for pre-existing affiliations)
+        # 2. Check fallback mapping by team_key
+        cached_key_id = @id_by_key[team_key]
+        if cached_key_id
+          cached_row = GogglesDb::TeamAffiliation.find_by(id: cached_key_id)
+          if cached_row&.team_id == resolved_team_id && cached_row&.season_id == resolved_season_id
+            store_id(team_key, cached_key_id, team_id: resolved_team_id, season_id: resolved_season_id)
+            return cached_key_id
+          end
+        end
+
+        # 3. Fallback to DB query (for pre-existing affiliations)
         affiliation = GogglesDb::TeamAffiliation.find_by(
-          team_id: @team_committer.resolve_id(team_key),
-          season_id: @season_id
+          team_id: resolved_team_id,
+          season_id: resolved_season_id
         )
         if affiliation
-          store_id(team_key, affiliation.id)
+          store_id(team_key, affiliation.id, team_id: affiliation.team_id, season_id: affiliation.season_id)
           return affiliation.id
         end
 
@@ -77,14 +96,28 @@ module Import
         # Prevent invalid mappings due to nil key components:
         raise StandardError, 'Null team_key found in datafile object!' if affiliation_hash['team_key'].blank?
 
-        # If team_affiliation_id was resolved in previous phases, assume all dependencies are already set and fixed, so bail out:
-        if team_affiliation_id.present?
-          store_id(affiliation_hash['team_key'], team_affiliation_id.to_i)
-          Rails.logger.debug { "[TeamAffiliation] ID=#{team_affiliation_id} found in datafile, caching and skipping update" }
-          return team_affiliation_id.to_i
-        end
-
         attributes = normalize_attributes(affiliation_hash)
+
+        # If team_affiliation_id is provided and points to a valid DB row, treat DB links as canonical:
+        if team_affiliation_id.to_i.positive?
+          row_by_id = GogglesDb::TeamAffiliation.find_by(id: team_affiliation_id.to_i)
+          if row_by_id && stale_links?(row_by_id) == false
+            if row_by_id.team_id != attributes['team_id'].to_i || row_by_id.season_id != attributes['season_id'].to_i
+              increment_counter(:affiliation_links_auto_fixed)
+              logger.log_operation(
+                action: 'Canonicalized TeamAffiliation links from DB',
+                details: "team_key='#{attributes['team_key']}', id=#{row_by_id.id}, team_id=#{row_by_id.team_id}, season_id=#{row_by_id.season_id}"
+              )
+            end
+            store_id(attributes['team_key'], row_by_id.id, team_id: row_by_id.team_id, season_id: row_by_id.season_id)
+            Rails.logger.debug { "[TeamAffiliation] ID=#{row_by_id.id} confirmed from DB, links canonicalized" }
+            return row_by_id.id
+          end
+
+          # Keep going when the referenced row is missing or stale: we'll resolve/create by canonical links.
+          increment_counter(:affiliation_links_auto_fixed)
+          Rails.logger.warn("[TeamAffiliation] Incoming ID=#{team_affiliation_id} is missing or stale, re-resolving by team_id+season_id")
+        end
 
         # Reuse existing row even if not set/recognized during phase 2:
         existing_row = if attributes['team_id'].to_i.positive?
@@ -101,7 +134,8 @@ module Import
             stats[:affiliations_updated] += 1
             Rails.logger.info("[TeamAffiliation] Updated ID=#{existing_row.id}, team_id=#{attributes['team_id']}")
           end
-          store_id(attributes['team_key'], existing_row.id)
+          store_id(attributes['team_key'], existing_row.id,
+                   team_id: existing_row.team_id, season_id: existing_row.season_id)
           return existing_row.id
         end
 
@@ -126,7 +160,8 @@ module Import
         model_row.save!
         sql_log << SqlMaker.new(row: model_row).log_insert
         stats[:affiliations_created] += 1
-        store_id(attributes['team_key'], model_row.id)
+        store_id(attributes['team_key'], model_row.id,
+                 team_id: model_row.team_id, season_id: model_row.season_id)
         logger.log_success(entity_type: 'TeamAffiliation', entity_id: model_row.id, action: 'created')
         Rails.logger.info("[TeamAffiliation] Created ID=#{model_row.id}, team_id=#{model_row.team_id}")
         model_row.id
@@ -134,6 +169,25 @@ module Import
       # -----------------------------------------------------------------------
 
       private
+
+      def link_key(team_id, season_id)
+        "#{team_id}|#{season_id}"
+      end
+      # -----------------------------------------------------------------------
+
+      def stale_links?(affiliation_row)
+        return true unless affiliation_row
+
+        GogglesDb::Team.exists?(id: affiliation_row.team_id) == false ||
+          GogglesDb::Season.exists?(id: affiliation_row.season_id) == false
+      end
+      # -----------------------------------------------------------------------
+
+      def increment_counter(key)
+        stats[key] ||= 0
+        stats[key] += 1
+      end
+      # -----------------------------------------------------------------------
 
       def normalize_attributes(affiliation_hash)
         normalized = affiliation_hash.deep_dup.with_indifferent_access

@@ -40,7 +40,7 @@
           .custom-control.custom-checkbox
             = check_box_tag :unmatched, '1', params[:unmatched].present?, class: 'custom-control-input', id: 'unmatched-filter'
             %label.custom-control-label{ for: 'unmatched-filter' } Show needing review
-          %small.text-muted.ml-1 (unmatched + yellow/red matches)
+          %small.text-muted.ml-1 (unmatched + yellow/red matches + duplicate badges)
         .form-group.mr-2
           .custom-control.custom-checkbox
             = check_box_tag :name_differs, '1', params[:name_differs].present?, class: 'custom-control-input', id: 'name-differs-filter'
@@ -94,6 +94,8 @@
         has_match = swimmer_id.to_i.positive?
         gender_guessed = swimmer_hash['gender_guessed'] == true
         similar_on_team = swimmer_hash['similar_on_team'] == true
+        has_badge_duplicates = swimmer_hash['has_badge_duplicates'] == true
+        badge_duplicate_summary = swimmer_hash['badge_duplicate_summary']
         
         # Check for required data
         first_name = swimmer_hash['first_name']
@@ -111,7 +113,12 @@
         needs_optional_edit = has_match && (first_name.blank? || last_name.blank?)
         
         # Determine visual styling
-        if has_match && !needs_optional_edit
+        if has_badge_duplicates
+          card_bg = 'bg-light-red'
+          border_color = 'border-danger'
+          icon_class = 'fa-exclamation-circle text-danger'
+          icon_title = 'Duplicate badges found in recent seasons'
+        elsif has_match && !needs_optional_edit
           # Matched with complete data
           card_bg = 'bg-light'
           border_color = 'border-secondary'
@@ -150,6 +157,7 @@
                          needs_optional_edit:,
                          missing_name:, missing_yob:, missing_gender:, gender_guessed:,
                          similar_on_team:,
+                         has_badge_duplicates:, badge_duplicate_summary:,
                          card_bg:, border_color:, border_width:, icon_class:, icon_title: })
 
   -# Pagination controls (bottom)

@@ -219,8 +219,19 @@ module Import
         normalized['category_type_id'] ||= resolve_category_type_id(swimmer_key)
 
         # Always re-resolve team_affiliation_id to stay consistent with the resolved team_id:
-        resolved_ta_id = @team_affiliation_committer.resolve_id(team_key)
-        normalized['team_affiliation_id'] = resolved_ta_id if resolved_ta_id
+        resolved_ta_id = @team_affiliation_committer.resolve_id(
+          team_key,
+          team_id: normalized['team_id'],
+          season_id: @season_id
+        )
+        if resolved_ta_id
+          if normalized['team_affiliation_id'].to_i.positive? && normalized['team_affiliation_id'].to_i != resolved_ta_id
+            increment_counter(:affiliation_links_auto_fixed)
+            Rails.logger.warn("[Badge] Overriding stale team_affiliation_id=#{normalized['team_affiliation_id']} " \
+                              "with resolved team_affiliation_id=#{resolved_ta_id} for team_key='#{team_key}'")
+          end
+          normalized['team_affiliation_id'] = resolved_ta_id
+        end
         normalized['team_affiliation_id'] ||= nil
 
         normalized['season_id'] = @season_id
@@ -251,6 +262,12 @@ module Import
           end
           model_value != value
         end
+      end
+      # -----------------------------------------------------------------------
+
+      def increment_counter(key)
+        stats[key] ||= 0
+        stats[key] += 1
       end
       # -----------------------------------------------------------------------
     end

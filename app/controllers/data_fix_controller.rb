@@ -245,7 +245,25 @@ class DataFixController < ApplicationController
 
     # Optional filtering
     @q = params[:q].to_s.strip
+
+    consistency_stats = harmonize_phase2_phase3_team_links(source_path: source_path, season_id: season.id)
+    if consistency_stats.values.sum.positive?
+      phase3_reload = PhaseFileManager.new(phase_path)
+      @phase3_data = phase3_reload.data
+      summary = []
+      summary << "#{consistency_stats[:phase2_teams_fixed]} teams aligned" if consistency_stats[:phase2_teams_fixed].positive?
+      summary << "#{consistency_stats[:phase2_affiliations_fixed]} affiliations aligned" if consistency_stats[:phase2_affiliations_fixed].positive?
+      summary << "#{consistency_stats[:phase3_badges_fixed]} badges aligned" if consistency_stats[:phase3_badges_fixed].positive?
+      summary << "#{consistency_stats[:data_import_rows_fixed]} temp rows aligned" if consistency_stats[:data_import_rows_fixed].positive?
+      flash.now[:notice] = "Auto-consistency: #{summary.join(', ')}."
+    end
+
     swimmers = Array(@phase3_data['swimmers'])
+    duplicate_summary = annotate_swimmer_badge_duplicates!(swimmers)
+    if duplicate_summary[:swimmers_with_duplicates].positive?
+      flash.now[:warning] =
+        "#{duplicate_summary[:swimmers_with_duplicates]} swimmer(s) show duplicate badges in season(s): #{duplicate_summary[:duplicate_seasons].join(', ')}"
+    end
 
     # Filter by search query
     if @q.present?
@@ -258,11 +276,12 @@ class DataFixController < ApplicationController
 
     # Filter swimmers needing review: unmatched (no swimmer_id) OR match < 89% (yellow/red matches)
     # OR similar name found on same team (cross-ref warning)
+    # OR duplicate badges found in same season with different team_id (manual merge red flag)
     # This shows ALL swimmers that need manual verification at a glance
     if params[:unmatched].present?
       swimmers = swimmers.select do |s|
         # WARNING: adding the 'similar_on_team' check will yield false positives and basically make the filtering useless
-        s['swimmer_id'].nil? || (s['match_percentage'] || 0.0) < 89.0 # || s['similar_on_team'] == true
+        s['swimmer_id'].nil? || (s['match_percentage'] || 0.0) < 89.0 || s['has_badge_duplicates'] == true # || s['similar_on_team'] == true
       end
     end
 
@@ -2470,6 +2489,172 @@ class DataFixController < ApplicationController
     0
   end
   # rubocop:enable Rails/SkipsModelValidations
+
+  def harmonize_phase2_phase3_team_links(source_path:, season_id:) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+    phase2_path = default_phase_path_for(source_path, 2)
+    phase3_path = default_phase_path_for(source_path, 3)
+    return empty_phase3_consistency_stats unless File.exist?(phase2_path) && File.exist?(phase3_path)
+
+    pfm2 = PhaseFileManager.new(phase2_path)
+    data2 = pfm2.data || {}
+    pfm3 = PhaseFileManager.new(phase3_path)
+    data3 = pfm3.data || {}
+
+    teams = Array(data2['teams'])
+    affiliations = Array(data2['team_affiliations'])
+    swimmers = Array(data3['swimmers'])
+    badges = Array(data3['badges'])
+    swimmer_by_key = swimmers.index_by { |s| s['key'] }
+
+    stats = empty_phase3_consistency_stats
+    changed_team_keys = {}
+    phase2_changed = false
+    phase3_changed = false
+
+    badges.each do |badge|
+      team_key = badge['team_key']
+      next if team_key.blank?
+
+      canonical_team_id = badge['team_id'].to_i
+      if canonical_team_id <= 0
+        swimmer_entry = swimmer_by_key[badge['swimmer_key']]
+        canonical_team_id = resolve_team_id_from_swimmer_badges(swimmer_entry, team_key:, season_id:)
+        if canonical_team_id.to_i.positive?
+          badge['team_id'] = canonical_team_id
+          stats[:phase3_badges_fixed] += 1
+          phase3_changed = true
+        end
+      end
+      next unless canonical_team_id.to_i.positive?
+
+      phase2_team = teams.find { |team| team['key'] == team_key }
+      if phase2_team && phase2_team['team_id'].to_i != canonical_team_id
+        phase2_team['team_id'] = canonical_team_id
+        stats[:phase2_teams_fixed] += 1
+        phase2_changed = true
+        changed_team_keys[team_key] = canonical_team_id
+      end
+
+      phase2_affiliation = affiliations.find { |affiliation| affiliation['team_key'] == team_key }
+      next unless phase2_affiliation
+
+      if phase2_affiliation['team_id'].to_i != canonical_team_id
+        phase2_affiliation['team_id'] = canonical_team_id
+        stats[:phase2_affiliations_fixed] += 1
+        phase2_changed = true
+      end
+
+      canonical_affiliation = GogglesDb::TeamAffiliation.find_by(team_id: canonical_team_id, season_id: season_id)
+      if canonical_affiliation && phase2_affiliation['team_affiliation_id'].to_i != canonical_affiliation.id
+        phase2_affiliation['team_affiliation_id'] = canonical_affiliation.id
+        stats[:phase2_affiliations_fixed] += 1
+        stats[:team_affiliations_resolved] += 1
+        phase2_changed = true
+      end
+
+      next unless canonical_affiliation && badge['team_affiliation_id'].to_i != canonical_affiliation.id
+
+      badge['team_affiliation_id'] = canonical_affiliation.id
+      stats[:phase3_badges_fixed] += 1
+      phase3_changed = true
+    end
+
+    if phase2_changed
+      data2['teams'] = teams
+      data2['team_affiliations'] = affiliations
+      meta2 = pfm2.meta || {}
+      meta2['generated_at'] = Time.now.utc.iso8601
+      pfm2.write!(data: data2, meta: meta2)
+    end
+
+    if phase3_changed
+      data3['badges'] = badges
+      meta3 = pfm3.meta || {}
+      meta3['generated_at'] = Time.now.utc.iso8601
+      pfm3.write!(data: data3, meta: meta3)
+    end
+
+    changed_team_keys.each do |team_key, team_id|
+      stats[:data_import_rows_fixed] += cascade_team_to_data_import_rows(team_key, team_id)
+    end
+
+    stats
+  rescue StandardError => e
+    Rails.logger.error("[DataFix] harmonize_phase2_phase3_team_links failed: #{e.message}")
+    empty_phase3_consistency_stats
+  end
+
+  def empty_phase3_consistency_stats
+    {
+      phase2_teams_fixed: 0,
+      phase2_affiliations_fixed: 0,
+      phase3_badges_fixed: 0,
+      team_affiliations_resolved: 0,
+      data_import_rows_fixed: 0
+    }
+  end
+
+  def resolve_team_id_from_swimmer_badges(swimmer_entry, team_key:, season_id:)
+    return nil unless swimmer_entry.is_a?(Hash)
+
+    swimmer_id = swimmer_entry['swimmer_id'].to_i
+    matches = Array(swimmer_entry['fuzzy_matches'])
+    selected_match = matches.find { |match| match['id'].to_i == swimmer_id }
+    selected_match ||= matches.first
+    badges = Array(selected_match&.dig('badges'))
+    return nil if badges.empty?
+
+    normalized_team_key = normalize_team_label(team_key)
+    candidate = badges.find do |badge|
+      badge['season_id'].to_i == season_id.to_i &&
+        normalize_team_label(badge['team_name']) == normalized_team_key
+    end
+    candidate ||= badges.find { |badge| badge['season_id'].to_i == season_id.to_i }
+    candidate ||= badges.find { |badge| normalize_team_label(badge['team_name']) == normalized_team_key }
+    candidate ||= badges.first
+    candidate&.dig('team_id').to_i
+  end
+
+  def normalize_team_label(value)
+    value.to_s.downcase.gsub(/[^a-z0-9]/, '')
+  end
+
+  def annotate_swimmer_badge_duplicates!(swimmers)
+    summary = { swimmers_with_duplicates: 0, duplicate_seasons: [] }
+
+    swimmers.each do |swimmer|
+      swimmer['has_badge_duplicates'] = false
+      swimmer['badge_duplicate_summary'] = nil
+      swimmer['badge_duplicates'] = []
+
+      swimmer_id = swimmer['swimmer_id'].to_i
+      matches = Array(swimmer['fuzzy_matches'])
+      selected_match = matches.find { |match| match['id'].to_i == swimmer_id }
+      selected_match ||= matches.first
+      badges = Array(selected_match&.dig('badges'))
+      next if badges.empty?
+
+      duplicates = badges.group_by { |badge| badge['season_id'].to_i }
+                         .transform_values { |group| group.filter_map { |badge| badge['team_id'].to_i if badge['team_id'].to_i.positive? }.uniq }
+                         .select { |_season_id, team_ids| team_ids.size > 1 }
+      next if duplicates.empty?
+
+      swimmer['has_badge_duplicates'] = true
+      swimmer['badge_duplicates'] = duplicates.map do |dup_season_id, team_ids|
+        { 'season_id' => dup_season_id, 'team_ids' => team_ids }
+      end
+      swimmer['badge_duplicate_summary'] = swimmer['badge_duplicates'].map do |row|
+        team_list = row['team_ids'].join(', ')
+        "#{row['team_ids'].size} duplicate badges found in season #{row['season_id']}: team #{team_list}"
+      end.join(' · ')
+
+      summary[:swimmers_with_duplicates] += 1
+      summary[:duplicate_seasons].concat(duplicates.keys)
+    end
+
+    summary[:duplicate_seasons] = summary[:duplicate_seasons].uniq.sort
+    summary
+  end
 
   # If file_path points to a phase file, resolve original source_path from its meta.
   def resolve_source_path(file_path)
