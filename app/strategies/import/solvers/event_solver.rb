@@ -29,6 +29,7 @@ module Import
         # Load phase1 data for meeting_session_id lookups
         phase1_path = opts[:phase1_path] || default_phase_path_for_phase(source_path, 1)
         @phase1_data = File.exist?(phase1_path) ? JSON.parse(File.read(phase1_path)) : nil
+        load_existing_meeting_events!
 
         sessions = []
         # Priority 1: LT4 format (events array) - Microplus crawler output
@@ -85,9 +86,6 @@ module Import
               event_type_id = find_event_type_id(distance, stroke)
             end
 
-            bucket = sessions_map[session_order]
-            next if bucket['__seen__'][key]
-
             event_hash = {
               'key' => key,
               'distance' => distance,
@@ -103,19 +101,15 @@ module Import
             # Enhance with meeting_session_id and meeting_event_id matching
             enhance_event_with_matching!(event_hash, session_order)
 
-            bucket['events'] << event_hash
-            bucket['__seen__'][key] = true
+            add_event_to_sessions_map!(sessions_map, event_hash)
           end
 
-          sessions = sessions_map.values.map do |h|
-            h.delete('__seen__')
-            h['events'].sort_by! { |e| e['event_order'].to_i }
-            h
-          end
-          sessions.sort_by! { |s| s['session_order'].to_i }
+          sessions = sessions_array_from_map(sessions_map)
 
         # Priority 2: LT2 format (sections array) - Legacy/PDF parsed
         elsif data_hash['sections'].is_a?(Array) && data_hash['sections'].any?
+          sessions_map = Hash.new { |h, k| h[k] = { 'session_order' => k, 'events' => [], '__seen__' => {} } }
+
           # Check if this is a relay-only file (all sections are relays)
           all_relay = data_hash['sections'].all? do |sec|
             rows = sec['rows'] || []
@@ -125,7 +119,6 @@ module Import
           if all_relay
             # For relay files, group all sections into ONE session with events grouped by gender
             seen = {}
-            events = []
 
             data_hash['sections'].each_with_index do |sec, idx|
               rows = sec['rows'] || []
@@ -162,15 +155,9 @@ module Import
               # Enhance with meeting_session_id and meeting_event_id matching
               enhance_event_with_matching!(event_hash, session_order)
 
-              events << event_hash
+              add_event_to_sessions_map!(sessions_map, event_hash)
               seen[key] = true
             end
-
-            # All relay events go in the FIRST session
-            first_session_order = events.first&.dig('session_order') || 1
-            events.each { |e| e['session_order'] = first_session_order }
-            events.sort_by! { |e| e['event_order'].to_i }
-            sessions << { 'session_order' => first_session_order, 'events' => events }
           else
             # For individual/mixed files, process sections normally
             data_hash['sections'].each_with_index do |sec, idx|
@@ -180,7 +167,6 @@ module Import
 
               # Collect unique events within session
               seen = {}
-              events = []
               rows.each_with_index do |row, r_idx|
                 # Check if this is a relay row
                 is_relay = row['relay'] == true || sec['relay'] == true
@@ -226,15 +212,13 @@ module Import
                 # Enhance with meeting_session_id and meeting_event_id matching
                 enhance_event_with_matching!(event_hash, session_order)
 
-                events << event_hash
+                add_event_to_sessions_map!(sessions_map, event_hash)
                 seen[key] = true
               end
-
-              # Sort by event_order for stable UI display
-              events.sort_by! { |e| e['event_order'].to_i }
-              sessions << { 'session_order' => session_order, 'events' => events }
             end
           end
+
+          sessions = sessions_array_from_map(sessions_map)
         else
           # No recognizable structure found
           Rails.logger.warn("[EventSolver] No events[] or sections[] found in #{source_path}")
@@ -268,6 +252,65 @@ module Import
         File.join(dir, "#{base}-phase#{phase_num}.json")
       end
 
+      def sessions_array_from_map(sessions_map)
+        sessions = sessions_map.values.map do |h|
+          h.delete('__seen__')
+          h['events'].sort_by! { |e| e['event_order'].to_i }
+          h
+        end
+        sessions.sort_by { |s| s['session_order'].to_i }
+      end
+
+      def add_event_to_sessions_map!(sessions_map, event_hash)
+        session_order = event_hash['session_order'].to_i
+        session_order = 1 if session_order <= 0
+        event_hash['session_order'] = session_order
+
+        bucket = sessions_map[session_order]
+        event_key = event_hash['key'].to_s
+        if event_key.present? && bucket['__seen__'][event_key]
+          Rails.logger.debug { "[EventSolver] Skipping duplicate event '#{event_key}' in session_order=#{session_order}" }
+          return
+        end
+
+        bucket['events'] << event_hash
+        bucket['__seen__'][event_key] = true if event_key.present?
+      end
+
+      # rubocop:disable Metrics/AbcSize
+      def load_existing_meeting_events!
+        @meeting_events_by_session_and_type = {}
+        @meeting_events_by_type = Hash.new { |h, k| h[k] = [] }
+        @session_order_by_id = {}
+
+        return unless @phase1_data
+
+        sessions = Array(@phase1_data.dig('data', 'meeting_session'))
+        meeting_session_ids = sessions.filter_map do |session|
+          meeting_session_id = session['id'].to_i
+          next unless meeting_session_id.positive?
+
+          @session_order_by_id[meeting_session_id] = session['session_order'].to_i
+          meeting_session_id
+        end
+        return if meeting_session_ids.empty?
+
+        existing_events = GogglesDb::MeetingEvent
+                          .where(meeting_session_id: meeting_session_ids)
+                          .includes(:meeting_session)
+                          .order('meeting_sessions.session_order ASC, meeting_events.event_order ASC, meeting_events.id ASC')
+
+        existing_events.each do |meeting_event|
+          event_type_id = meeting_event.event_type_id.to_i
+          meeting_session_id = meeting_event.meeting_session_id.to_i
+          next unless event_type_id.positive? && meeting_session_id.positive?
+
+          @meeting_events_by_session_and_type[[meeting_session_id, event_type_id]] = meeting_event
+          @meeting_events_by_type[event_type_id] << meeting_event
+        end
+      end
+      # rubocop:enable Metrics/AbcSize
+
       # Find EventType ID for individual events by constructing the code from distance + stroke
       # Example: distance=200, stroke="RA" => code="200RA" => EventType.id=21
       def find_event_type_id(distance, stroke)
@@ -282,23 +325,38 @@ module Import
       # Modifies event_hash in place to add:
       # - meeting_session_id (from phase1 sessions by session_order)
       # - meeting_event_id (matched from DB if possible)
+      # rubocop:disable Metrics/AbcSize, Metrics/PerceivedComplexity
       def enhance_event_with_matching!(event_hash, session_order)
         # Find meeting_session_id from phase1 data
-        meeting_session_id = find_meeting_session_id_by_order(session_order)
+        source_session_order = session_order.to_i
+        source_session_order = 1 if source_session_order <= 0
+        meeting_session_id = find_meeting_session_id_by_order(source_session_order)
         event_hash['meeting_session_id'] = meeting_session_id
+        event_hash['session_order'] = source_session_order
 
-        # Guard clause: skip matching if we don't have both required keys
-        return unless meeting_session_id && event_hash['event_type_id']
+        # Guard clause: skip matching if we don't have event_type_id
+        return unless event_hash['event_type_id']
 
-        # Try to match existing MeetingEvent
-        existing = GogglesDb::MeetingEvent.find_by(
-          meeting_session_id: meeting_session_id,
+        # Try to match existing MeetingEvent:
+        # 1) same session + event type
+        # 2) any session for the same event type
+        existing = find_existing_meeting_event(
+          preferred_session_id: meeting_session_id,
           event_type_id: event_hash['event_type_id']
         )
 
         if existing
+          resolved_session_id = existing.meeting_session_id
+          resolved_session_order = existing.meeting_session&.session_order || @session_order_by_id[resolved_session_id.to_i]
+
           event_hash['id'] = existing.id
-          Rails.logger.info("[EventSolver] Matched existing MeetingEvent ID=#{existing.id} for #{event_hash['key']}")
+          event_hash['meeting_session_id'] = resolved_session_id
+          event_hash['session_order'] = resolved_session_order.to_i if resolved_session_order
+
+          Rails.logger.info(
+            "[EventSolver] Matched existing MeetingEvent ID=#{existing.id} for #{event_hash['key']} " \
+            "(session_order=#{event_hash['session_order']})"
+          )
         else
           event_hash['id'] = nil
           Rails.logger.debug { "[EventSolver] No existing event found for #{event_hash['key']} (will create new)" }
@@ -307,6 +365,7 @@ module Import
         Rails.logger.error("[EventSolver] Error matching event for #{event_hash['key']}: #{e.message}")
         event_hash['id'] = nil
       end
+      # rubocop:enable Metrics/AbcSize, Metrics/PerceivedComplexity
 
       # Find meeting_session_id from phase1 data by session_order
       def find_meeting_session_id_by_order(session_order)
@@ -315,6 +374,19 @@ module Import
         sessions = Array(@phase1_data.dig('data', 'meeting_session'))
         session = sessions.find { |s| s['session_order'].to_i == session_order.to_i }
         session&.dig('id')
+      end
+
+      def find_existing_meeting_event(preferred_session_id:, event_type_id:)
+        type_id = event_type_id.to_i
+        return nil unless type_id.positive?
+
+        preferred_id = preferred_session_id.to_i
+        if preferred_id.positive?
+          same_session = @meeting_events_by_session_and_type[[preferred_id, type_id]]
+          return same_session if same_session
+        end
+
+        Array(@meeting_events_by_type[type_id]).first
       end
 
       # Parse relay event details from section title

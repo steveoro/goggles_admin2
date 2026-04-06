@@ -248,6 +248,43 @@ RSpec.describe Import::Solvers::EventSolver do
 
       expect(event_200do['id']).to be_nil
     end
+
+    it 'matches existing events across all meeting sessions and rebinds session order' do
+      lt4_events_source = {
+        'layoutType' => 4,
+        'events' => [
+          { 'eventCode' => '400SL', 'sessionOrder' => 1, 'eventOrder' => 1 },
+          { 'eventCode' => '100SL', 'sessionOrder' => 1, 'eventOrder' => 2 },
+          { 'eventCode' => '50FA', 'sessionOrder' => 1, 'eventOrder' => 3 }
+        ]
+      }
+      File.write(source_file, JSON.generate(lt4_events_source))
+
+      event_type_400sl = GogglesDb::EventType.find_by(code: '400SL')
+      event_type_100sl = GogglesDb::EventType.find_by(code: '100SL')
+      existing_session1_event = FactoryBot.create(:meeting_event, meeting_session: session1, event_type: event_type_400sl)
+      existing_session2_event = FactoryBot.create(:meeting_event, meeting_session: session2, event_type: event_type_100sl)
+
+      described_class.new(season: season).build!(source_path: source_file, lt_format: 4)
+      phase_file = default_phase4_path(source_file)
+      data = JSON.parse(File.read(phase_file))['data']
+
+      session1_events = data['sessions'].find { |s| s['session_order'] == 1 }['events']
+      session2_events = data['sessions'].find { |s| s['session_order'] == 2 }['events']
+
+      event_400sl = session1_events.find { |e| e['key'] == '400SL' }
+      event_100sl = session2_events.find { |e| e['key'] == '100SL' }
+      event_50fa = session1_events.find { |e| e['key'] == '50FA' }
+
+      expect(event_400sl['id']).to eq(existing_session1_event.id)
+      expect(event_400sl['meeting_session_id']).to eq(session1.id)
+
+      expect(event_100sl['id']).to eq(existing_session2_event.id)
+      expect(event_100sl['meeting_session_id']).to eq(session2.id)
+      expect(event_100sl['session_order']).to eq(2)
+
+      expect(event_50fa['id']).to be_nil
+    end
   end
 
   describe 'metadata generation' do
