@@ -11,6 +11,8 @@ RSpec.describe Import::Committers::Main do
     GogglesDb::Season.for_season_type(GogglesDb::SeasonType.mas_fin).last(5).sample
   end
 
+  # Temp dummy source file base:
+  let(:source_path) { Rails.root.join('spec/fixtures/import/sample_meeting.json').to_s }
   # Use a new empty fake season if needed:
   let(:new_fin_season) do
     FactoryBot.create(:season,
@@ -19,8 +21,57 @@ RSpec.describe Import::Committers::Main do
                       timing_type_id: GogglesDb::TimingType::AUTOMATIC_ID)
   end
 
-  # Temp dummy source file base:
-  let(:source_path) { Rails.root.join('spec/fixtures/import/sample_meeting.json').to_s }
+  describe '#hydrate_phase2_team_links_from_affiliations!' do
+    let(:tmp_dir) { Dir.mktmpdir }
+    let(:src_path) { File.join(tmp_dir, 'test.json').tap { |p| File.write(p, '{}') } }
+    let(:committer) { create_committer(src_path) }
+
+    after(:each) { FileUtils.rm_rf(tmp_dir) }
+
+    it 'preserves explicit new-team intent by clearing stale affiliation links' do
+      canonical_team = FactoryBot.create(:team)
+      canonical_affiliation = FactoryBot.create(:team_affiliation, team: canonical_team, season: season)
+
+      teams_data = [{ 'key' => 'Sociale Sport ssd', 'team_id' => nil }]
+      affiliations_data = [{
+        'team_key' => 'Sociale Sport ssd',
+        'team_id' => nil,
+        'season_id' => season.id,
+        'team_affiliation_id' => canonical_affiliation.id
+      }]
+
+      committer.send(:hydrate_phase2_team_links_from_affiliations!, teams_data, affiliations_data)
+
+      expect(teams_data.first['team_id']).to be_nil
+      expect(affiliations_data.first['team_affiliation_id']).to be_nil
+      expect(affiliations_data.first['team_id']).to be_nil
+      expect(affiliations_data.first['season_id']).to eq(season.id)
+      expect(committer.stats[:affiliation_links_auto_fixed]).to be >= 1
+    end
+
+    it 'propagates canonical team_id when incoming team is explicitly linked to an existing row' do
+      canonical_team = FactoryBot.create(:team)
+      wrong_team = FactoryBot.create(:team)
+      canonical_affiliation = FactoryBot.create(:team_affiliation, team: canonical_team, season: season)
+
+      teams_data = [{ 'key' => 'Sociale Sport ssd', 'team_id' => wrong_team.id }]
+      affiliations_data = [{
+        'team_key' => 'Sociale Sport ssd',
+        'team_id' => wrong_team.id,
+        'season_id' => season.id,
+        'team_affiliation_id' => canonical_affiliation.id
+      }]
+
+      committer.send(:hydrate_phase2_team_links_from_affiliations!, teams_data, affiliations_data)
+
+      expect(teams_data.first['team_id']).to eq(canonical_team.id)
+      expect(affiliations_data.first['team_affiliation_id']).to eq(canonical_affiliation.id)
+      expect(affiliations_data.first['team_id']).to eq(canonical_team.id)
+      expect(affiliations_data.first['season_id']).to eq(season.id)
+      expect(committer.stats[:team_links_auto_fixed]).to be >= 1
+      expect(committer.stats[:affiliation_links_auto_fixed]).to be >= 1
+    end
+  end
 
   # Helper to generate phase paths from source
   def phase_path_for(source, phase_num)

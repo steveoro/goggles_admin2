@@ -92,9 +92,10 @@ module Import
       # Commit a TeamAffiliation entity from Phase 2 data and store ID in mapping.
       # Returns the committed row ID or raises an error.
       def commit(affiliation_hash)
+        team_key = affiliation_hash['team_key']
         team_affiliation_id = affiliation_hash['team_affiliation_id']
         # Prevent invalid mappings due to nil key components:
-        raise StandardError, 'Null team_key found in datafile object!' if affiliation_hash['team_key'].blank?
+        raise StandardError, 'Null team_key found in datafile object!' if team_key.blank?
 
         attributes = normalize_attributes(affiliation_hash)
 
@@ -103,19 +104,19 @@ module Import
           row_by_id = GogglesDb::TeamAffiliation.find_by(id: team_affiliation_id.to_i)
           if row_by_id && stale_links?(row_by_id) == false
             if row_by_id.team_id != attributes['team_id'].to_i || row_by_id.season_id != attributes['season_id'].to_i
-              increment_counter(:affiliation_links_auto_fixed)
+              increment_counter(:affiliation_links_auto_fixed) # rubocop:disable Rails/SkipsModelValidations
               logger.log_operation(
                 action: 'Canonicalized TeamAffiliation links from DB',
-                details: "team_key='#{attributes['team_key']}', id=#{row_by_id.id}, team_id=#{row_by_id.team_id}, season_id=#{row_by_id.season_id}"
+                details: "team_key='#{team_key}', id=#{row_by_id.id}, team_id=#{row_by_id.team_id}, season_id=#{row_by_id.season_id}"
               )
             end
-            store_id(attributes['team_key'], row_by_id.id, team_id: row_by_id.team_id, season_id: row_by_id.season_id)
+            store_id(team_key, row_by_id.id, team_id: row_by_id.team_id, season_id: row_by_id.season_id)
             Rails.logger.debug { "[TeamAffiliation] ID=#{row_by_id.id} confirmed from DB, links canonicalized" }
             return row_by_id.id
           end
 
           # Keep going when the referenced row is missing or stale: we'll resolve/create by canonical links.
-          increment_counter(:affiliation_links_auto_fixed)
+          increment_counter(:affiliation_links_auto_fixed) # rubocop:disable Rails/SkipsModelValidations
           Rails.logger.warn("[TeamAffiliation] Incoming ID=#{team_affiliation_id} is missing or stale, re-resolving by team_id+season_id")
         end
 
@@ -134,7 +135,7 @@ module Import
             stats[:affiliations_updated] += 1
             Rails.logger.info("[TeamAffiliation] Updated ID=#{existing_row.id}, team_id=#{attributes['team_id']}")
           end
-          store_id(attributes['team_key'], existing_row.id,
+          store_id(team_key, existing_row.id,
                    team_id: existing_row.team_id, season_id: existing_row.season_id)
           return existing_row.id
         end
@@ -145,10 +146,10 @@ module Import
         # Check validation before saving
         unless model_row.valid?
           error_details = GogglesDb::ValidationErrorTools.recursive_error_for(model_row)
-          stats[:errors] << "TeamAffiliation error (team_id=#{attributes['team_id']}, team_key=#{attributes['team_key']}): #{error_details}"
+          stats[:errors] << "TeamAffiliation error (team_id=#{attributes['team_id']}, team_key=#{team_key}): #{error_details}"
           logger.log_validation_error(
             entity_type: 'TeamAffiliation',
-            entity_key: "team_id=#{attributes['team_id']}, team_key=#{attributes['team_key']}",
+            entity_key: "team_id=#{attributes['team_id']}, team_key=#{team_key}",
             entity_id: model_row&.id,
             model_row: model_row,
             error: error_details
@@ -160,7 +161,7 @@ module Import
         model_row.save!
         sql_log << SqlMaker.new(row: model_row).log_insert
         stats[:affiliations_created] += 1
-        store_id(attributes['team_key'], model_row.id,
+        store_id(team_key, model_row.id,
                  team_id: model_row.team_id, season_id: model_row.season_id)
         logger.log_success(entity_type: 'TeamAffiliation', entity_id: model_row.id, action: 'created')
         Rails.logger.info("[TeamAffiliation] Created ID=#{model_row.id}, team_id=#{model_row.team_id}")

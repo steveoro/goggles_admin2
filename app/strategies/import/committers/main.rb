@@ -29,7 +29,7 @@ module Import
                   :phase1_data, :phase2_data, :phase3_data, :phase4_data, :phase5_data,
                   :sql_log, :stats, :logger
 
-      def initialize(phase1_path:, phase2_path:, phase3_path:, phase4_path:, phase5_path:, source_path:, log_path: nil)
+      def initialize(phase1_path:, phase2_path:, phase3_path:, phase4_path:, phase5_path:, source_path:, log_path: nil) # rubocop:disable Metrics/MethodLength
         @phase1_path = phase1_path
         @phase2_path = phase2_path
         @phase3_path = phase3_path
@@ -234,6 +234,8 @@ module Import
         teams_data = Array(phase2_data.dig('data', 'teams'))
         affiliations_data = Array(phase2_data.dig('data', 'team_affiliations'))
 
+        hydrate_phase2_team_links_from_affiliations!(teams_data, affiliations_data)
+
         # Commit all teams first (Team committer handles ID mapping internally)
         total = teams_data.size
         teams_data.each_with_index do |team_hash, idx|
@@ -249,6 +251,59 @@ module Import
           broadcast_progress('Committing Team Affiliations...', idx + 1, affiliations_total)
         end
         broadcast_progress('Committing Team Affiliations done.', affiliations_total, affiliations_total)
+      end
+      # -----------------------------------------------------------------------
+
+      # Keep phase2 team hashes consistent with canonical affiliation IDs found in DB.
+      # When an affiliation already points to an existing row, DB links are authoritative,
+      # but explicit manual review intent has priority:
+      # if a team hash has team_id=nil (new team), keep it and clear stale affiliation links.
+      def hydrate_phase2_team_links_from_affiliations!(teams_data, affiliations_data) # rubocop:disable Metrics/AbcSize,Metrics/MethodLength
+        teams_by_key = teams_data.index_by { |team| team['key'] }
+
+        affiliations_data.each do |affiliation_hash|
+          team_key = affiliation_hash['team_key']
+          next if team_key.blank?
+
+          team_hash = teams_by_key[team_key]
+          manual_new_team = team_hash&.key?('team_id') && team_hash['team_id'].blank?
+
+          if manual_new_team
+            if affiliation_hash['team_affiliation_id'].to_i.positive?
+              affiliation_hash['team_affiliation_id'] = nil
+              stats[:affiliation_links_auto_fixed] += 1
+            end
+
+            if affiliation_hash['team_id'].to_i.positive?
+              affiliation_hash['team_id'] = nil
+              stats[:affiliation_links_auto_fixed] += 1
+            end
+            next
+          end
+
+          canonical_id = affiliation_hash['team_affiliation_id'].to_i
+          next unless canonical_id.positive?
+
+          canonical_row = GogglesDb::TeamAffiliation.find_by(id: canonical_id)
+          next unless canonical_row
+
+          if canonical_row.team_id.to_i.positive? && GogglesDb::Team.exists?(id: canonical_row.team_id)
+            if team_hash && team_hash['team_id'].to_i != canonical_row.team_id
+              team_hash['team_id'] = canonical_row.team_id
+              stats[:team_links_auto_fixed] += 1
+            end
+
+            if affiliation_hash['team_id'].to_i != canonical_row.team_id
+              affiliation_hash['team_id'] = canonical_row.team_id
+              stats[:affiliation_links_auto_fixed] += 1
+            end
+          end
+
+          if canonical_row.season_id.to_i.positive? && affiliation_hash['season_id'].to_i != canonical_row.season_id
+            affiliation_hash['season_id'] = canonical_row.season_id
+            stats[:affiliation_links_auto_fixed] += 1
+          end
+        end
       end
       # -----------------------------------------------------------------------
 
@@ -508,7 +563,7 @@ module Import
       # -----------------------------------------------------------------------
 
       # Commit relay results (MRR + MRS + RelayLaps) for a given program
-      def commit_relay_results_for_program(program_key, program_id) # rubocop:disable Metrics/AbcSize
+      def commit_relay_results_for_program(program_key, program_id) # rubocop:disable Metrics/AbcSize,Metrics/MethodLength
         # Retrieve MRRs bound to the program's key
         mrrs = GogglesDb::DataImportMeetingRelayResult.where(meeting_program_key: program_key)
                                                       .includes(data_import_meeting_relay_swimmers: :data_import_relay_laps)

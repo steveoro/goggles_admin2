@@ -2594,6 +2594,7 @@ class DataFixController < ApplicationController
     }
   end
 
+  # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
   def resolve_team_id_from_swimmer_badges(swimmer_entry, team_key:, season_id:)
     return nil unless swimmer_entry.is_a?(Hash)
 
@@ -2655,6 +2656,7 @@ class DataFixController < ApplicationController
     summary[:duplicate_seasons] = summary[:duplicate_seasons].uniq.sort
     summary
   end
+  # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
 
   # If file_path points to a phase file, resolve original source_path from its meta.
   def resolve_source_path(file_path)

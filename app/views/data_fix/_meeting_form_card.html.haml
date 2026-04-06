@@ -72,7 +72,7 @@
                          include_blank: true, class: 'form-control form-control-sm', onchange: onchange_event)
             %small.form-text.text-muted Select to populate from existing meeting
           .form-group.col-md-6
-            = hidden_field_tag('id', meeting_data['id'], id: 'meeting_id_field')
+            -# = hidden_field_tag('id', meeting_data['id'], id: 'meeting_id_field')
             = render(AutoCompleteComponent.new(show_top_labels: true, base_dom_id: 'meeting',
                                                default_value: meeting_data['id'], base_api_url: api_url,
                                                detail_endpoint: 'meeting', base_name: 'meeting', label_column: 'description',
@@ -87,8 +87,8 @@
                                                target10_dom_id: 'meeting_timing_type_id', target10_column: 'timing_type_id',
                                                target11_dom_id: 'meeting_cancelled', target11_column: 'cancelled',
                                                target12_dom_id: 'meeting_confirmed', target12_column: 'confirmed',
-                                               target13_dom_id: 'meeting_id_field', target13_column: 'id',
                                                jwt: current_user.jwt))
+            -#  target13_dom_id: 'meeting_id_field', target13_column: 'id',
             %small.form-text.text-muted Or search manually by description. Clear search to create new meeting.
 
         -# Basic fields: description, code
@@ -228,12 +228,3 @@
                                placeholder: 'Street, number, ZIP')
 
         = submit_tag('Save Meeting', class: 'btn btn-primary', data: { confirm: 'Save meeting data?' })
-
-      -# Rescan form (separate from meeting form to avoid nesting)
-      = form_tag(rescan_phase1_sessions_path, method: :post, class: 'd-inline-block mt-2',
-                 onsubmit: "$('#rescan_meeting_id').val($('#meeting_meeting_id').val()); return confirm('Rescan sessions from selected meeting? This will replace current sessions.');") do
-        = hidden_field_tag(:file_path, file_path)
-        = hidden_field_tag(:meeting_id, nil, id: 'rescan_meeting_id')
-        %button.btn.btn-sm.btn-warning{ type: 'submit' }
-          %i.fa.fa-sync
-          Rescan sessions from meeting

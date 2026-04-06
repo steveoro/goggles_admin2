@@ -119,13 +119,15 @@ module Import
       # Uses TeamAffiliation committer's mapping for affiliation ID (no DB query).
       # Returns the committed row ID or raises an error.
       def commit(badge_hash)
+        swimmer_key = badge_hash['swimmer_key']
+        team_key = badge_hash['team_key']
         badge_id = badge_hash['badge_id']
         # Prevent invalid mappings due to nil key components:
-        raise StandardError, 'Null swimmer_key or team_key in datafile object!' if badge_hash['swimmer_key'].blank? || badge_hash['team_key'].blank?
+        raise StandardError, 'Null swimmer_key or team_key in datafile object!' if swimmer_key.blank? || team_key.blank?
 
         # If badge_id was resolved in previous phases, assume categories and other dependencies are already set and fixed, so bail out:
         if badge_id.present?
-          store_id(badge_hash['swimmer_key'], badge_hash['team_key'], badge_id.to_i)
+          store_id(swimmer_key, team_key, badge_id.to_i)
           Rails.logger.debug { "[Badge] ID=#{badge_id} found in datafile, caching and skipping update" }
           return badge_id.to_i
         end
@@ -149,7 +151,7 @@ module Import
             logger.log_success(entity_type: 'Badge', entity_id: existing_row.id, action: 'updated')
             Rails.logger.info("[Badge] Updated ID=#{existing_row.id}, swimmer_id=#{attributes['swimmer_id']}, team_id=#{attributes['team_id']}")
           end
-          store_id(attributes['swimmer_key'], attributes['team_key'], existing_row.id)
+          store_id(swimmer_key, team_key, existing_row.id)
           return existing_row.id
         end
 
@@ -159,12 +161,12 @@ module Import
         # Check validation before saving
         unless model_row.valid?
           error_details = GogglesDb::ValidationErrorTools.recursive_error_for(model_row)
-          stats[:errors] << "Badge error (swimmer_id=#{attributes['swimmer_id']}, swimmer_key=#{attributes['swimmer_key']}, " \
-                            "team_id=#{attributes['team_id']}, team_key=#{attributes['team_key']}): #{error_details}"
+          stats[:errors] << "Badge error (swimmer_id=#{attributes['swimmer_id']}, swimmer_key=#{swimmer_key}, " \
+                            "team_id=#{attributes['team_id']}, team_key=#{team_key}): #{error_details}"
           logger.log_validation_error(
             entity_type: 'Badge',
-            entity_key: "swimmer_id=#{attributes['swimmer_id']}, swimmer_key=#{attributes['swimmer_key']}, " \
-                        "team_id=#{attributes['team_id']}, team_key=#{attributes['team_key']}",
+            entity_key: "swimmer_id=#{attributes['swimmer_id']}, swimmer_key=#{swimmer_key}, " \
+                        "team_id=#{attributes['team_id']}, team_key=#{team_key}",
             entity_id: model_row&.id,
             model_row: model_row,
             error: error_details
@@ -176,7 +178,7 @@ module Import
         model_row.save!
         sql_log << SqlMaker.new(row: model_row).log_insert
         stats[:badges_created] += 1
-        store_id(attributes['swimmer_key'], attributes['team_key'], model_row.id)
+        store_id(swimmer_key, team_key, model_row.id)
         logger.log_success(entity_type: 'Badge', entity_id: model_row.id, action: 'created')
         Rails.logger.info("[Badge] Created ID=#{model_row.id}, swimmer_id=#{model_row.swimmer_id}, team_id=#{model_row.team_id}")
         model_row.id
@@ -226,7 +228,7 @@ module Import
         )
         if resolved_ta_id
           if normalized['team_affiliation_id'].to_i.positive? && normalized['team_affiliation_id'].to_i != resolved_ta_id
-            increment_counter(:affiliation_links_auto_fixed)
+            increment_counter(:affiliation_links_auto_fixed) # rubocop:disable Rails/SkipsModelValidations
             Rails.logger.warn("[Badge] Overriding stale team_affiliation_id=#{normalized['team_affiliation_id']} " \
                               "with resolved team_affiliation_id=#{resolved_ta_id} for team_key='#{team_key}'")
           end

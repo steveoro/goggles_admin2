@@ -49,6 +49,15 @@
           - sessions = @phase1_data['meeting_session'] || []
           = sessions.size
         %div
+          -# Rescan form (separate from meeting form to avoid nesting)
+          = form_tag(rescan_phase1_sessions_path, method: :post, class: 'd-inline-block mt-2',
+                      onsubmit: "$('#rescan_meeting_id').val($('#meeting_meeting_id').val()); return confirm('Rescan sessions from selected meeting? This will replace current sessions.');") do
+            = hidden_field_tag(:file_path, @file_path)
+            = hidden_field_tag(:meeting_id, nil, id: 'rescan_meeting_id')
+            %button.btn.btn-sm.btn-warning{ type: 'submit' }
+              %i.fa.fa-sync
+              Rescan sessions from meeting
+        %div
           = form_tag(data_fix_add_session_path, method: :post, class: 'd-inline') do
             = hidden_field_tag :file_path, @file_path
             %button.btn.btn-sm.btn-success{ type: 'submit', data: { confirm: 'Add a new session?' } }
