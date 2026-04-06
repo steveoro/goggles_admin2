@@ -116,10 +116,9 @@ module Import
         normalized = swimmer_hash.deep_dup.with_indifferent_access
         gender_code = normalized.delete('gender_type_code') || normalized.delete(:gender_type_code)
         normalized['gender_type_id'] ||= GogglesDb::GenderType.find_by(code: gender_code)&.id if gender_code.present?
-        # Store all swimmer names as uppercase:
-        normalized['complete_name'] ||= build_complete_name(normalized)
-        normalized['last_name'] ||= swimmer_hash['last_name']&.upcase
-        normalized['first_name'] ||= swimmer_hash['first_name']&.upcase
+        normalized['last_name'] = upcase_name(normalized['last_name'])
+        normalized['first_name'] = upcase_name(normalized['first_name'])
+        normalized['complete_name'] = build_complete_name(normalized)
         normalized['year_guessed'] = BOOLEAN_TYPE.cast(normalized['year_guessed']) if normalized.key?('year_guessed')
 
         sanitize_attributes(normalized, GogglesDb::Swimmer)
@@ -127,7 +126,15 @@ module Import
       # -----------------------------------------------------------------------
 
       def build_complete_name(swimmer_hash)
-        swimmer_hash['complete_name']&.upcase || [swimmer_hash['last_name']&.upcase, swimmer_hash['first_name']&.upcase].compact_blank.join(' ')
+        upcased_complete_name = upcase_name(swimmer_hash['complete_name'])
+        return upcased_complete_name if upcased_complete_name.present?
+
+        [swimmer_hash['last_name'], swimmer_hash['first_name']].compact_blank.join(' ')
+      end
+      # -----------------------------------------------------------------------
+
+      def upcase_name(value)
+        value&.mb_chars&.upcase&.to_s # rubocop:disable Style/SafeNavigationChainLength
       end
       # -----------------------------------------------------------------------
 
