@@ -30,9 +30,19 @@ RSpec.describe Import::Phase5Populator, type: :strategy do
       expect(result).to eq({ minutes: 0, seconds: 58, hundredths: 45 })
     end
 
+    it 'treats two-token dotted timings as seconds and hundredths' do
+      result = subject.send(:parse_timing_string, '1.03')
+      expect(result).to eq({ minutes: 0, seconds: 1, hundredths: 3 })
+    end
+
     it 'parses timing with apostrophe variants' do
       result = subject.send(:parse_timing_string, "1'30.50") # curly apostrophe
       expect(result).to eq({ minutes: 1, seconds: 30, hundredths: 50 })
+    end
+
+    it 'parses lt2 three-token format' do
+      result = subject.send(:parse_timing_string, '1:03:50')
+      expect(result).to eq({ minutes: 1, seconds: 3, hundredths: 50 })
     end
 
     it 'returns zero timing for blank input' do
@@ -40,9 +50,14 @@ RSpec.describe Import::Phase5Populator, type: :strategy do
       expect(result).to eq({ minutes: 0, seconds: 0, hundredths: 0 })
     end
 
-    it 'handles timing without hundredths' do
+    it 'handles M\'SS timing by appending .00 hundredths' do
       result = subject.send(:parse_timing_string, "2'15")
       expect(result).to eq({ minutes: 2, seconds: 15, hundredths: 0 })
+    end
+
+    it 'returns zero timing for unparseable min:sec format' do
+      result = subject.send(:parse_timing_string, '1:03')
+      expect(result).to eq({ minutes: 0, seconds: 0, hundredths: 0 })
     end
   end
 

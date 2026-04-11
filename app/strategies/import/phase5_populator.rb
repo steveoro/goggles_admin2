@@ -389,36 +389,27 @@ module Import
       "#{session_order}-#{event_code}-#{category}-#{gender}"
     end
 
-    # Parse timing string to hash
-    # Format: "M'SS.HH" or "SS.HH" → {minutes: M, seconds: SS, hundredths: HH}
-    # Examples: "5'05.84" → {minutes: 5, seconds: 5, hundredths: 84}
-    #           "58.45" → {minutes: 0, seconds: 58, hundredths: 45}
+    # Parse timing string to hash.
+    # Delegates parsing to Parser::Timing to support the same timing formats
+    # used across the import pipeline.
+    #
+    # Edge case: when timing is expressed as "M'SS" (no hundredths), we append
+    # ".00" before parsing.
     def parse_timing_string(timing_str)
       return { minutes: 0, seconds: 0, hundredths: 0 } if timing_str.blank?
 
-      # Remove spaces, normalize apostrophe (handles both ' and ')
+      # Remove spaces, normalize apostrophe.
       clean = timing_str.to_s.strip.gsub(/['`]/, "'")
+      clean = "#{clean}.00" if clean.match?(/\A\d+'\d{1,2}\z/)
 
-      minutes = 0
-      seconds = 0
-      hundredths = 0
+      parsed_timing = Parser::Timing.from_l2_result(clean)
+      return { minutes: 0, seconds: 0, hundredths: 0 } if parsed_timing.blank?
 
-      # Match: M'SS.HH or SS.HH
-      if clean.include?("'")
-        parts = clean.split("'")
-        minutes = parts[0].to_i
-        sec_parts = parts[1].to_s.split('.')
-        seconds = sec_parts[0].to_i
-        hundredths = sec_parts[1].to_i
-      elsif clean.include?('.')
-        parts = clean.split('.')
-        seconds = parts[0].to_i
-        hundredths = parts[1].to_i
-      else
-        seconds = clean.to_i
-      end
-
-      { minutes: minutes, seconds: seconds, hundredths: hundredths }
+      {
+        minutes: parsed_timing.minutes,
+        seconds: parsed_timing.seconds,
+        hundredths: parsed_timing.hundredths
+      }
     end
 
     # Build swimmer key from source result
