@@ -403,18 +403,22 @@ class DataFixController < ApplicationController
       end
     end
 
-    # Flatten all events across Phase 4 sessions with session tracking
-    # Sort by event_order within each session
-    # Use session_order as stable identifier instead of array index
+    # Flatten all events across Phase 4 sessions with session tracking.
+    # Display is sorted by session/event order, but we preserve original array indexes
+    # so update/delete actions point to the actual event stored in JSON.
     @all_events = []
-    phase4_sessions = Array(@phase4_data['sessions']).sort_by { |s| s['session_order'].to_i }
-    phase4_sessions.each_with_index do |session, session_idx|
-      events = Array(session['events']).sort_by { |e| e['event_order'].to_i }
-      session_order = session['session_order'] || (session_idx + 1)
-      events.each_with_index do |event, event_idx|
+    sessions_with_index = Array(@phase4_data['sessions']).each_with_index.to_a
+    sessions_with_index.sort_by! { |(session, _idx)| session['session_order'].to_i }
+
+    sessions_with_index.each do |session, original_session_idx|
+      session_order = session['session_order'] || (original_session_idx + 1)
+      events_with_index = Array(session['events']).each_with_index.to_a
+      events_with_index.sort_by! { |(event, original_event_idx)| [event['event_order'].to_i, original_event_idx] }
+
+      events_with_index.each do |event, original_event_idx|
         @all_events << event.merge(
-          '_session_index' => session_idx,
-          '_event_index' => event_idx,
+          '_session_index' => original_session_idx,
+          '_event_index' => original_event_idx,
           '_session_order' => session_order
         )
       end
