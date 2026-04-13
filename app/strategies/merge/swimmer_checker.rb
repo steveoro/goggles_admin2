@@ -157,8 +157,8 @@ module Merge
       @log += mev_res_analysis
       @log += mrel_res_analysis
 
-      @log += mes_analysis
-      @log += ir_analysis
+      @log += mes_analysis || []
+      @log += ir_analysis || []
 
       @errors.blank?
       # FUTUREDEV: (see #initialize_data above)

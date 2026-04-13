@@ -40,6 +40,7 @@
     end
   end
   has_issues = results_with_issues.any?
+  gender_display = gender.presence || '?'
   
   # Border color: red for issues, green for matched, yellow for new
   border_color = if has_issues
@@ -61,7 +62,7 @@
           %i.fa.fa-plus-circle.text-warning{ title: 'New MeetingProgram' }
       %i.fa.fa-users.mr-2
       %strong
-        = "#{event_code} • #{category} • #{gender}"
+        = "#{event_code} • #{category} • #{gender_display}"
       &nbsp;
       %small.ml-2.text-muted
         Session #{session_order}

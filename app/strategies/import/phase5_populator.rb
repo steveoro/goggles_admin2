@@ -192,13 +192,14 @@ module Import
 
         results_x_event_tot = results.count
         results.each_with_index do |result, res_idx|
-          gender = result['gender'] || event['eventGender'] || event['gender']
-          category = result['category'] || result['categoryTypeCode'] || result['category_code']
+          integrated = data_integrator.integrate_individual_result(result: result, event: event)
+          gender = integrated[:gender]
+          category = integrated[:category] || result['category'] || result['categoryTypeCode'] || result['category_code']
 
           # Broadcast progress every event:
           broadcast_progress("Processing MIRs for event #{event_code} #{category} #{gender} (#{res_idx + 1}/#{results_x_event_tot})...",
                              res_idx + 1, results_x_event_tot)
-          next if gender.blank? || category.blank?
+          next if category.blank?
 
           # Find swimmer data from Phase 3 (returns both ID and full key when matched)
           swimmer_data = find_swimmer_data(result)
@@ -212,7 +213,7 @@ module Import
 
           # Find team_id from phase files
           team_id = find_team_id(result)
-          meeting_program_id = find_meeting_program_id(session_order, event_code, category, gender)
+          meeting_program_id = gender.present? ? find_meeting_program_id(session_order, event_code, category, gender) : nil
           @stats[:programs_matched] += 1 if meeting_program_id
 
           # Find existing MIR if all IDs present
@@ -283,7 +284,7 @@ module Import
           integrated = data_integrator.integrate_relay_result(result: result, event: event)
 
           # Use integrated values (with fallbacks)
-          gender = integrated[:gender] || result['gender'] || event['eventGender'] || event['gender'] || 'X'
+          gender = integrated[:gender]
           category = integrated[:category] || result['category'] || result['categoryTypeCode'] || result['category_code']
           broadcast_progress("Processing MRR for #{event_code} #{category} #{gender} (#{relay_idx + 1}/#{total_relay}, #{res_idx + 1}/#{results_x_event_tot})...",
                              res_idx + 1, results_x_event_tot)
@@ -297,7 +298,7 @@ module Import
 
           # Find entity IDs from phase files
           team_id = find_team_id(result)
-          meeting_program_id = find_meeting_program_id(session_order, event_code, category, gender)
+          meeting_program_id = gender.present? ? find_meeting_program_id(session_order, event_code, category, gender) : nil
           @stats[:programs_matched] += 1 if meeting_program_id
 
           # Find existing MRR if all IDs present (for potential UPDATE)
@@ -1163,7 +1164,7 @@ module Import
 
       # Convert programs hash to sorted array
       programs_array = @programs.values.sort_by do |prog|
-        [prog['session_order'], prog['event_code'], prog['category_code'], prog['gender_code']]
+        [prog['session_order'].to_i, prog['event_code'].to_s, prog['category_code'].to_s, prog['gender_code'].to_s]
       end
 
       output_data = {

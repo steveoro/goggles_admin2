@@ -292,6 +292,93 @@ RSpec.describe Import::Phase5Populator, type: :strategy do
   # NOTE: Full integration tests (#populate!) require fixture files
   # These should be added once we have sample JSON files in spec/fixtures/
 
+  describe 'incomplete program routing for unknown gender' do
+    before(:each) do
+      subject.instance_variable_set(:@event_session_map, {})
+    end
+
+    it 'keeps individual results with unresolved gender in an incomplete program bucket' do
+      subject.instance_variable_set(
+        :@source_data,
+        {
+          'events' => [
+            {
+              'relay' => false,
+              'eventCode' => '50SL',
+              'eventLength' => '50',
+              'eventStroke' => 'SL',
+              'results' => [
+                { 'swimmer' => 'UNKNOWN|SWIMMER|1980|Team A', 'team' => 'Team A', 'timing' => '30.00' }
+              ]
+            }
+          ]
+        }
+      )
+
+      integrator = instance_double(Phase5::DataIntegrator)
+      allow(integrator).to receive(:integrate_individual_result).and_return({ gender: nil, category: 'M25', missing_data: ['individual_gender'] })
+      subject.instance_variable_set(:@data_integrator, integrator)
+
+      allow(subject).to receive_messages(
+        find_swimmer_data: { swimmer_id: nil, swimmer_key: 'UNKNOWN|SWIMMER|1980' },
+        build_team_key_from_result: 'Team A',
+        find_team_id: nil,
+        find_existing_mir: nil,
+        parse_timing_string: { minutes: 0, seconds: 30, hundredths: 0 },
+        create_mir_record: instance_double(GogglesDb::DataImportMeetingIndividualResult)
+      )
+      allow(subject).to receive(:create_lap_records)
+      allow(subject).to receive(:find_meeting_program_id)
+      allow(subject).to receive(:add_to_programs)
+
+      subject.send(:populate_lt4_individual_results!)
+
+      expect(subject).to have_received(:add_to_programs).with(hash_including(gender: nil, event_code: '50SL', category: 'M25'))
+      expect(subject).not_to have_received(:find_meeting_program_id)
+    end
+
+    it 'keeps relay results with unresolved gender in an incomplete program bucket' do
+      subject.instance_variable_set(
+        :@source_data,
+        {
+          'events' => [
+            {
+              'relay' => true,
+              'eventCode' => '4x50SL',
+              'eventGender' => 'X',
+              'eventLength' => '4x50',
+              'eventStroke' => 'SL',
+              'results' => [
+                { 'team' => 'Relay Team', 'timing' => '2\'00.00' }
+              ]
+            }
+          ]
+        }
+      )
+
+      integrator = instance_double(Phase5::DataIntegrator)
+      allow(integrator).to receive(:integrate_relay_result).and_return({ gender: nil, category: 'M120', missing_data: ['relay_gender'] })
+      subject.instance_variable_set(:@data_integrator, integrator)
+
+      allow(subject).to receive_messages(
+        build_team_key_from_result: 'Relay Team',
+        find_team_id: nil,
+        find_existing_mrr: nil,
+        parse_timing_string: { minutes: 2, seconds: 0, hundredths: 0 },
+        create_mrr_record: instance_double(GogglesDb::DataImportMeetingRelayResult)
+      )
+      allow(subject).to receive(:create_relay_swimmers)
+      allow(subject).to receive(:create_relay_laps)
+      allow(subject).to receive(:find_meeting_program_id)
+      allow(subject).to receive(:add_to_programs)
+
+      subject.send(:populate_lt4_relay_results!)
+
+      expect(subject).to have_received(:add_to_programs).with(hash_including(gender: nil, relay: true, category: 'M120'))
+      expect(subject).not_to have_received(:find_meeting_program_id)
+    end
+  end
+
   describe 'relay population' do
     let(:relay_fixture_path) { 'spec/fixtures/import/sample-relay-4x50sl-l4.json' }
     let(:source_path) { relay_fixture_path }

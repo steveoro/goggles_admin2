@@ -72,7 +72,7 @@
             %small.ml-2.badge.badge-warning{ title: 'Similar swimmer detected but no alternative candidate - likely a false positive' }
               %i.fa.fa-exclamation-triangle
               SIMILAR NAME ON SAME TEAM
-        - else
+        - elsif !swimmer_id # Show the "NEW" additional badge only for truly new swimmers (ones without a matched/selected ID)
           %small.ml-2.badge.badge-primary
             NEW
     .d-flex.align-items-center

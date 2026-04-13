@@ -2733,9 +2733,15 @@ class DataFixController < ApplicationController
   # @param swimmers_by_id [Hash] swimmers indexed by ID
   # @param swimmers_by_key [Hash] swimmers indexed by key (from phase3)
   # @return [Hash] { has_issues: bool, issue_count: int, issues: {...} }
-  def relay_result_has_issues?(relay_result, relay_swimmers_by_key:, swimmers_by_id:, swimmers_by_key: {}) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+  def relay_result_has_issues?(relay_result, relay_swimmers_by_key:, swimmers_by_id:, swimmers_by_key: {}) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/MethodLength
     relay_swimmers = relay_swimmers_by_key[relay_result.import_key] || []
     issues = {}
+
+    if program_key_missing_gender?(relay_result.meeting_program_key)
+      issues[:program_gender] = {
+        missing_program_gender: true
+      }
+    end
 
     relay_swimmers.each do |rs|
       # Check both matched swimmers (via swimmer_id) and unmatched (via swimmer_key in phase3)
@@ -2773,6 +2779,16 @@ class DataFixController < ApplicationController
       issue_count: issues.size,
       issues: issues
     }
+  end
+
+  # Returns true when a serialized program key has no gender segment.
+  # Examples:
+  # - "1-100SL-M25-M" => false
+  # - "1-100SL-M25-" => true
+  def program_key_missing_gender?(program_key)
+    return true if program_key.blank?
+
+    program_key.to_s.split('-').last.to_s.strip.blank?
   end
 
   # Paginate Phase 5 programs to prevent UI slowdown
@@ -2936,6 +2952,8 @@ class DataFixController < ApplicationController
     swimmers_by_key = filter_data[:swimmers_by_key]
 
     programs.select do |prog|
+      next true if prog['gender_code'].blank?
+
       program_key = "#{prog['session_order']}-#{prog['event_code']}-#{prog['category_code']}-#{prog['gender_code']}"
 
       if prog['relay']
@@ -2976,7 +2994,9 @@ class DataFixController < ApplicationController
   # @param swimmers_by_id [Hash] swimmers indexed by ID
   # @param swimmers_by_key [Hash] swimmers indexed by key (from phase3)
   # @return [Boolean] true if result has issues
-  def result_has_issues?(mir, swimmers_by_id:, swimmers_by_key:)
+  def result_has_issues?(mir, swimmers_by_id:, swimmers_by_key:) # rubocop:disable Metrics/PerceivedComplexity
+    return true if program_key_missing_gender?(mir.meeting_program_key)
+
     if mir.swimmer_id
       # Matched swimmer - check if missing gender or year
       swimmer = swimmers_by_id[mir.swimmer_id]

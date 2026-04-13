@@ -59,7 +59,7 @@
         %div
           %i.fa.fa-exclamation-triangle.me-2
           %strong= "#{@issue_count} program(s) with issues detected"
-          %span.text-muted.ms-2 (missing swimmer gender, year, or unmatched swimmers)
+          %span.text-muted.ms-2 (missing program gender, missing swimmer gender/year, or unmatched swimmers)
         %div
           - if @filter_active
             = link_to review_results_path(file_path: @file_path, phase5_v2: 1, filter_issues: '0'), class: 'btn btn-sm btn-outline-secondary' do
@@ -157,7 +157,7 @@
           - individual_programs.each_with_index do |program, idx|
             :ruby
               # Build program_key for compatibility with partials
-              program_key = "#{program['session_order']}-#{program['event_code']}-#{program['category_code']}-#{program['gender_code']}"
+              program_key = "#{program['session_order']}-#{program['event_code']}-#{program['category_code']}-#{program['gender_code'] || ''}"
               # Query temp tables for this program's results
               results = GogglesDb::DataImportMeetingIndividualResult.where(
                 phase_file_path: @file_path

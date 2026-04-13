@@ -35,6 +35,15 @@ RSpec.describe DataFixController do
               },
               {
                 'session_order' => 1,
+                'event_key' => '200RA',
+                'event_code' => '200RA',
+                'category_code' => 'M30',
+                'gender_code' => nil,
+                'relay' => false,
+                'result_count' => 1
+              },
+              {
+                'session_order' => 1,
                 'event_key' => '4X50SL',
                 'event_code' => '4X50SL',
                 'category_code' => 'M120',
@@ -61,6 +70,13 @@ RSpec.describe DataFixController do
           rank: 1
         )
         GogglesDb::DataImportMeetingIndividualResult.create!(
+          import_key: '1-200RA-M30-/UNK|NO_GENDER|1981',
+          meeting_program_key: '1-200RA-M30-',
+          phase_file_path: source_file_a,
+          swimmer_key: 'UNK|NO_GENDER|1981',
+          rank: 2
+        )
+        GogglesDb::DataImportMeetingIndividualResult.create!(
           import_key: '1-100SL-M25-M/LEAK|SWIMMER|1977',
           phase_file_path: source_file_b,
           swimmer_key: 'LEAK|SWIMMER|1977',
@@ -84,9 +100,18 @@ RSpec.describe DataFixController do
 
         expect(response).to be_successful
         expect(response.body).to include('AAA|SOURCE|1980')
+        expect(response.body).to include('UNK|NO_GENDER|1981')
         expect(response.body).not_to include('LEAK|SWIMMER|1977')
         expect(response.body).to include('1 relay results')
         expect(response.body).not_to include('2 relay results')
+      end
+
+      it 'flags unresolved program gender as an issue' do
+        get review_results_path(file_path: source_file_a, phase5_v2: 1)
+
+        expect(response).to be_successful
+        expect(response.body).to include('program(s) with issues detected')
+        expect(response.body).to include('missing program gender')
       end
     end
 

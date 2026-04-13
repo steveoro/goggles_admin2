@@ -82,15 +82,21 @@ module Phase5
     # == Returns:
     # Hash with integrated data:
     # {
+    #   gender: 'M' | 'F' | 'X' | nil,
     #   category: 'M45',
     #   missing_data: []
     # }
     #
     def integrate_individual_result(result:, event:)
       integrated = {
+        gender: nil,
         category: nil,
         missing_data: []
       }
+
+      # Extract or infer individual gender
+      integrated[:gender] = extract_individual_gender(result, event)
+      integrated[:missing_data] << 'individual_gender' if integrated[:gender].blank?
 
       # Extract or compute category from YOB
       integrated[:category] = extract_individual_category(result, event)
@@ -105,20 +111,21 @@ module Phase5
     #
     # Priority:
     # 1. result['gender'] (may contain fin_sesso from source)
-    # 2. event['gender'] or event['eventGender']
-    # 3. Infer from swimmer composition (all F → F, all M → M, mixed → X)
+    # 2. Infer from swimmer composition (all F → F, all M → M, mixed → X)
+    # 3. event['gender'] or event['eventGender']
     #
     def extract_relay_gender(result, event)
       # Check result first (may have fin_sesso from LT2 section)
       gender = result['gender'] || result['fin_sesso']
       return normalize_gender(gender) if gender.present?
 
-      # Check event
-      gender = event['gender'] || event['eventGender']
-      return normalize_gender(gender) if gender.present?
-
       # Fallback: infer from swimmers
-      infer_gender_from_swimmers(result)
+      inferred = infer_gender_from_swimmers(result)
+      return inferred if inferred.present?
+
+      # Last fallback: event-level gender
+      gender = event['gender'] || event['eventGender']
+      normalize_gender(gender)
     end
 
     # Infer relay gender from swimmer composition
@@ -130,13 +137,71 @@ module Phase5
     #
     def infer_gender_from_swimmers(result)
       swimmer_genders = extract_swimmer_genders_from_result(result)
-      return 'X' if swimmer_genders.empty?
+      return nil if swimmer_genders.empty?
 
       unique_genders = swimmer_genders.compact.uniq
       return 'F' if unique_genders == ['F']
       return 'M' if unique_genders == ['M']
 
       'X' # Mixed or indeterminate
+    end
+
+    # Extract individual gender from result/event with swimmer-based fallback.
+    #
+    # Priority:
+    # 1. result['gender']
+    # 2. Swimmer key / phase3 swimmer lookup
+    # 3. event['gender'] or event['eventGender']
+    def extract_individual_gender(result, event)
+      gender = result['gender'] || result['gender_type'] || result['gender_type_code'] || result['fin_sesso']
+      normalized = normalize_gender(gender)
+      return normalized if normalized.present?
+
+      inferred = infer_gender_from_individual_swimmer(result)
+      return inferred if inferred.present?
+
+      normalize_gender(event['gender'] || event['eventGender'])
+    end
+
+    # Infer individual gender from swimmer identity string and phase3 lookup.
+    def infer_gender_from_individual_swimmer(result)
+      swimmer_str = result['swimmer'] || result['swimmer_name'] || ''
+      return nil if swimmer_str.blank?
+
+      tokens = swimmer_str.split('|')
+
+      # 5-token format with explicit gender: "GENDER|LAST|FIRST|YEAR|TEAM"
+      if tokens.size >= 5
+        normalized = normalize_gender(tokens[0])
+        return normalized if normalized.present?
+      end
+
+      phase3_partial_key = partial_phase3_swimmer_key(tokens)
+      return nil if phase3_partial_key.blank?
+
+      lookup_swimmer_gender_from_phase3(phase3_partial_key)
+    end
+
+    # Build partial phase3 key format from swimmer tokens.
+    # Output format: "|LAST|FIRST|YEAR"
+    def partial_phase3_swimmer_key(tokens)
+      return nil if tokens.size < 3
+
+      if tokens[0].to_s.match?(/\A[MFX]?\z/i)
+        return nil if tokens.size < 4
+
+        last_name = tokens[1]
+        first_name = tokens[2]
+        yob = tokens[3]
+      else
+        last_name = tokens[0]
+        first_name = tokens[1]
+        yob = tokens[2]
+      end
+
+      return nil if last_name.blank? || first_name.blank? || yob.to_s.strip.empty?
+
+      "|#{last_name}|#{first_name}|#{yob}"
     end
 
     # Extract known swimmer genders from result laps

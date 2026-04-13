@@ -118,6 +118,7 @@ RSpec.describe Import::Adapters::Layout2To4 do
 
         expect(result['ranking']).to eq('1')
         expect(result['swimmer']).to match(/^M\|ROSSI\|Mario\|1978\|Sample Team$/)
+        expect(result['gender']).to eq('M')
         expect(result['team']).to eq('Sample Team')
         expect(result['timing']).to eq('1\'05.84')
         expect(result['score']).to eq('750.50')
@@ -134,7 +135,7 @@ RSpec.describe Import::Adapters::Layout2To4 do
               'rows' => [
                 {
                   'pos' => '1',
-                  'name' => 'DE PIERI GIORGIA',
+                  'name' => 'DE ROSSI GIORGIA',
                   'year' => '2003',
                   'sex' => 'F',
                   'team' => 'ssd Stilelibero - Preganz',
@@ -149,8 +150,8 @@ RSpec.describe Import::Adapters::Layout2To4 do
         swimmer_key = out['swimmers'].keys.first
         result_key = out['events'].first['results'].first['swimmer']
 
-        expect(swimmer_key).to eq('F|DE PIERI|GIORGIA|2003|ssd Stilelibero - Preganz')
-        expect(result_key).to eq('F|DE PIERI|GIORGIA|2003|ssd Stilelibero - Preganz')
+        expect(swimmer_key).to eq('F|DE ROSSI|GIORGIA|2003|ssd Stilelibero - Preganz')
+        expect(result_key).to eq('F|DE ROSSI|GIORGIA|2003|ssd Stilelibero - Preganz')
       end
 
       it 'converts laps array to LT4 format' do
@@ -283,12 +284,12 @@ RSpec.describe Import::Adapters::Layout2To4 do
       it 'normalizes relay lap swimmer identity keys with splitter strategy' do
         malformed_relay_lap_hash = Marshal.load(Marshal.dump(relay_lt2_hash))
         malformed_relay_lap_hash['sections'][0]['rows'][0]['laps'][1]['swimmer'] =
-          'F|DE|PIERI GIORGIA|2003|Mixed Team A'
+          'F|DE|ROSSI GIORGIA|2003|Mixed Team A'
 
         out = described_class.normalize(data_hash: malformed_relay_lap_hash)
         normalized_swimmer_key = out['events'].first['results'].first['laps'][1]['swimmer']
 
-        expect(normalized_swimmer_key).to eq('F|DE PIERI|GIORGIA|2003|Mixed Team A')
+        expect(normalized_swimmer_key).to eq('F|DE ROSSI|GIORGIA|2003|Mixed Team A')
       end
     end
 
@@ -327,6 +328,37 @@ RSpec.describe Import::Adapters::Layout2To4 do
         # Results should have their respective categories
         categories = event['results'].map { |r| r['category'] }
         expect(categories).to contain_exactly('M25', 'M45')
+      end
+
+      it 'splits same event code into distinct events when genders differ' do
+        mixed_gender_lt2 = header.merge(
+          'sections' => [
+            {
+              'title' => '50 Stile Libero - M25',
+              'fin_sesso' => 'M',
+              'fin_sigla_categoria' => 'M25',
+              'rows' => [
+                { 'pos' => '1', 'name' => 'MALE One', 'year' => '1999', 'sex' => 'M', 'team' => 'Team A', 'timing' => '25.00' }
+              ]
+            },
+            {
+              'title' => '50 Stile Libero - M25',
+              'fin_sesso' => 'F',
+              'fin_sigla_categoria' => 'M25',
+              'rows' => [
+                { 'pos' => '1', 'name' => 'FEMALE One', 'year' => '1999', 'sex' => 'F', 'team' => 'Team B', 'timing' => '27.00' }
+              ]
+            }
+          ]
+        )
+
+        out = described_class.normalize(data_hash: mixed_gender_lt2)
+
+        expect(out['events'].size).to eq(2)
+        expect(out['events'].map { |e| [e['eventCode'], e['eventGender']] }).to contain_exactly(
+          %w[50SL M],
+          %w[50SL F]
+        )
       end
     end
 

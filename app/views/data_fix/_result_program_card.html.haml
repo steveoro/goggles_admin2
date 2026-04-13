@@ -24,7 +24,6 @@
   sorted_results = non_dsq_results + dsq_results
   program_id = results.first&.meeting_program_id
   has_match = program_id.present?
-  border_color = has_match ? 'border-success' : 'border-warning'
   border_width = 'border-2'
   
   # Check if any result has missing swimmer data
@@ -37,6 +36,17 @@
     end
   end
 
+  has_issues ||= gender.to_s.strip.blank?
+  gender_display = gender.presence || '?'
+
+  border_color = if has_issues
+                   'border-danger'
+                 elsif has_match
+                   'border-success'
+                 else
+                   'border-warning'
+                 end
+
 .card.mb-2{ class: "#{border_color} #{border_width}", id: "program-card-#{card_index}", data: { has_issues: has_issues, controller: 'verify-result' } }
   .card-header.d-flex.justify-content-between.align-items-center{ id: "program-header-#{card_index}", style: 'cursor: pointer;', data: { toggle: 'collapse', target: "#program-panel-#{card_index}" } }
     .d-flex.align-items-center
@@ -46,7 +56,7 @@
         - else
           %i.fa.fa-plus-circle.text-warning{ title: 'New MeetingProgram' }
       %strong
-        = "#{event_code} • #{category} • #{gender}"
+        = "#{event_code} • #{category} • #{gender_display}"
       &nbsp;
       %small.ml-2.text-muted
         Session #{session_order}

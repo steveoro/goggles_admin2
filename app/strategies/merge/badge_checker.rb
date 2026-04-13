@@ -448,7 +448,7 @@ module Merge
 
       @mir_analysis = report_fill_for(
         result_array: [],
-        target_domain: GogglesDb::MeetingIndividualResult.joins(:meeting_event, :badge).includes(:meeting_event, :badge),
+        target_domain: GogglesDb::MeetingIndividualResult.joins(:meeting, :meeting_event, :badge).includes(:meeting, :meeting_event, :badge),
         target_decorator: :decorate_mir,
         where_condition: 'meeting_individual_results.badge_id = ? AND meeting_events.id = ?',
         src_hash: src_only_mevent_ids_from_mirs,
@@ -1025,7 +1025,9 @@ module Merge
         opts[:result_array] << "+#{'- Source-only parent rows: -'.center(154, ' ')}+"
         opts[:src_hash].each_key do |parent_id|
           row_ids = opts[:target_domain].where(opts[:where_condition], @source.id, parent_id).pluck(:id)
-          opts[:result_array] << "- Parent ID #{parent_id} => Domain row IDs: #{row_ids.inspect}" if row_ids.present?
+          meeting = opts[:target_domain].where(opts[:where_condition], @source.id, parent_id).first&.meeting
+          meeting_desc = ", Meeting #{meeting.id} '#{meeting.description}'" if row_ids.present? && meeting.present?
+          opts[:result_array] << "- Parent ID #{parent_id} => Domain row IDs: #{row_ids.inspect}#{meeting_desc}" if row_ids.present?
         end
         opts[:result_array] << "+#{''.center(154, '-')}+"
       else
@@ -1038,7 +1040,9 @@ module Merge
         opts[:result_array] << "+#{'- Dest.-only parent rows: -'.center(154, ' ')}+"
         opts[:dest_hash].each_key do |parent_id|
           row_ids = opts[:target_domain].where(opts[:where_condition], @dest.id, parent_id).pluck(:id)
-          opts[:result_array] << "- Parent ID #{parent_id} => Domain row IDs: #{row_ids.inspect}" if row_ids.present?
+          meeting = opts[:target_domain].where(opts[:where_condition], @dest.id, parent_id).first&.meeting
+          meeting_desc = ", Meeting #{meeting.id} '#{meeting.description}'" if row_ids.present? && meeting.present?
+          opts[:result_array] << "- Parent ID #{parent_id} => Domain row IDs: #{row_ids.inspect}#{meeting_desc}" if row_ids.present?
         end
         opts[:result_array] << "+#{''.center(154, '-')}+"
       else

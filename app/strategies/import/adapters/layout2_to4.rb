@@ -187,26 +187,30 @@ module Import
           section['fin_sesso'] || 'M'
         end
 
+        def normalize_gender_code(code)
+          value = code.to_s.strip.upcase
+          return 'M' if value.match?(/^M/)
+          return 'F' if value.match?(/^F/)
+          return 'X' if value.match?(/^X/)
+
+          nil
+        end
+
         # Convert sections array into LT4 events array
         # LT2 sections group by (event, category, gender)
         # LT4 events group by event only, with results containing categories
         #
-        def normalize_events!(src, out) # rubocop:disable Metrics/AbcSize
+        def normalize_events!(src, out)
           out['events'] = []
           sections = src['sections'] || []
 
-          # Group sections by event code to merge into single LT4 event
-          # For relays, keep separate events per gender (since that determines MeetingProgram)
+          # Group sections by event code + gender to preserve LT4 parity.
+          # This keeps F/M/X programs separated for both individual and relay events.
           events_map = {}
 
           sections.each do |section|
             event_info = extract_event_info(section)
-            # For relays, include gender in key to keep F/M/X separate
-            event_key = if event_info[:relay]
-                          "#{event_info[:code]}_#{event_info[:gender]}"
-                        else
-                          event_info[:code]
-                        end
+            event_key = "#{event_info[:code]}_#{event_info[:gender]}"
 
             events_map[event_key] ||= {
               'eventCode' => event_info[:code],
@@ -238,7 +242,7 @@ module Import
 
           {
             code: build_event_code(distance, stroke),
-            gender: section['fin_sesso'] || 'M',
+            gender: normalize_gender_code(section['fin_sesso']) || 'M',
             distance: distance,
             stroke: stroke,
             description: extract_description(title),
@@ -305,12 +309,14 @@ module Import
           end
         end
 
-        def normalize_individual_result(row, section)
+        def normalize_individual_result(row, section) # rubocop:disable Metrics/AbcSize
           swimmer_key = build_swimmer_key(row)
+          result_gender = normalize_gender_code(row['sex']) || normalize_gender_code(section['fin_sesso'])
 
           result = {
             'ranking' => row['pos'],
             'swimmer' => swimmer_key,
+            'gender' => result_gender,
             'team' => row['team'],
             'timing' => row['timing'],
             'score' => row['score'],
