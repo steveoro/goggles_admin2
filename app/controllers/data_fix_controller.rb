@@ -9,6 +9,8 @@ require 'json'
 # Delegates to the new phased solvers when an action-level flag is present; otherwise
 # redirects to legacy controller actions to preserve current behavior.
 #
+# THESE will be addressed in a future refactoring:
+# rubocop:disable Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/ParameterLists
 class DataFixController < ApplicationController
   before_action :set_api_url
 
@@ -18,7 +20,6 @@ class DataFixController < ApplicationController
   # Expose issue detection helpers to views
   helper_method :swimmer_has_missing_data?, :relay_result_has_issues?
 
-  # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
   def review_sessions
     return if params[:phase_v2].blank?
 
@@ -70,10 +71,8 @@ class DataFixController < ApplicationController
       }
     end
   end
-  # rubocop:enable Metrics/AbcSize
   # ---------------------------------------------------------------------------
 
-  # rubocop:disable Metrics/AbcSize
   def review_teams
     redirect_to(review_teams_legacy_path(request.query_parameters)) && return if params[:phase2_v2].blank?
 
@@ -310,7 +309,6 @@ class DataFixController < ApplicationController
     # Broadcast ready status to clear progress modal
     broadcast_progress('Review swimmers: ready', @total_count, @total_count)
   end
-  # rubocop:enable Metrics/AbcSize, Metrics/PerceivedComplexity, Metrics/MethodLength, Metrics/CyclomaticComplexity
   # ---------------------------------------------------------------------------
 
   def review_events # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/MethodLength
@@ -426,7 +424,7 @@ class DataFixController < ApplicationController
   end
   # ---------------------------------------------------------------------------
 
-  # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
+  # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
   def review_results
     return if params[:phase5_v2].blank?
 
@@ -684,11 +682,10 @@ class DataFixController < ApplicationController
     # Broadcast ready status to clear progress modal
     broadcast_progress('Review results: ready', 100, 100)
   end
-  # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
   # ---------------------------------------------------------------------------
 
   # Phase 6: Commit all entities to DB and generate SQL/log report
-  # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
+  # rubocop:disable Metrics/MethodLength
   def commit_phase6 # rubocop:disable Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
     file_path = params[:file_path]
     if file_path.blank?
@@ -882,7 +879,6 @@ class DataFixController < ApplicationController
     # Redirect to report page (POST-redirect-GET pattern)
     redirect_to data_fix_commit_phase6_report_path
   end
-  # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
   # ---------------------------------------------------------------------------
 
   # Phase 6: Display commit report (GET action after POST redirect)
@@ -941,7 +937,6 @@ class DataFixController < ApplicationController
   ensure
     redirect_to(home_index_path)
   end
-  # rubocop:enable Metrics/AbcSize
   # ---------------------------------------------------------------------------
 
   # AJAX endpoint: verify if a result already exists in the DB (duplicate detection).
@@ -1196,7 +1191,7 @@ class DataFixController < ApplicationController
   end
 
   # Update a single Phase 2 team entry by key
-  # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
+  # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
   def update_phase2_team
     file_path = params[:file_path]
     team_key = params[:team_key]
@@ -1299,7 +1294,6 @@ class DataFixController < ApplicationController
 
     redirect_to review_teams_path(redirect_params), notice: I18n.t('data_import.messages.updated')
   end
-  # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
 
   # Create a new blank team entry in Phase 2 and redirect back to v2 view
   def add_team # rubocop:disable Metrics/AbcSize
@@ -1388,7 +1382,7 @@ class DataFixController < ApplicationController
   end
 
   # Update a single Phase 3 swimmer entry by key
-  # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
+  # rubocop:disable Metrics/AbcSize
   def update_phase3_swimmer
     file_path = params[:file_path]
     swimmer_key = params[:swimmer_key]
@@ -1475,7 +1469,6 @@ class DataFixController < ApplicationController
 
     redirect_to review_swimmers_path(redirect_params), notice: I18n.t('data_import.messages.updated')
   end
-  # rubocop:enable Metrics/AbcSize
 
   # Add a new blank swimmer to Phase 3
   def add_swimmer # rubocop:disable Metrics/AbcSize
@@ -1610,7 +1603,6 @@ class DataFixController < ApplicationController
 
     redirect_to review_swimmers_path(file_path:, phase3_v2: 1)
   end
-  # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
 
   # Delete a swimmer entry from Phase 3 and clear downstream phase data
   def delete_swimmer # rubocop:disable Metrics/AbcSize
@@ -1663,7 +1655,7 @@ class DataFixController < ApplicationController
 
   # Update a single Phase 4 event entry by session and event index
   # Also handles moving events between sessions via target_session_order
-  # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
+  # rubocop:disable Metrics/AbcSize
   def update_phase4_event
     file_path = params[:file_path]
     session_index = params[:session_index]&.to_i
@@ -1789,10 +1781,8 @@ class DataFixController < ApplicationController
 
     redirect_to review_events_path(file_path:, phase4_v2: 1), notice: flash_msg
   end
-  # rubocop:enable Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
 
   # Add a new blank event to Phase 4
-  # rubocop:disable Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
   def add_event
     file_path = params[:file_path]
     session_index = params[:session_index].to_i
@@ -1899,7 +1889,6 @@ class DataFixController < ApplicationController
     redirect_to review_events_path(file_path:, phase4_v2: 1, new_event_index: flattened_index),
                 notice: I18n.t('data_import.messages.updated')
   end
-  # rubocop:enable Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
 
   # Delete an event entry from Phase 4 and clear downstream phase data
   def delete_event # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
@@ -2039,7 +2028,6 @@ class DataFixController < ApplicationController
 
     redirect_to review_sessions_path(file_path:, phase_v2: 1), notice: I18n.t('data_import.messages.updated')
   end
-  # rubocop:enable Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
 
   # Update a session entry in Phase 1 using service object
   def update_phase1_session # rubocop:disable Metrics/AbcSize
@@ -2240,7 +2228,6 @@ class DataFixController < ApplicationController
     @results = results
     render partial: 'data_fix/results_category_v2', formats: [:html]
   end
-  # rubocop:enable Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
 
   private
 
@@ -2660,7 +2647,6 @@ class DataFixController < ApplicationController
     summary[:duplicate_seasons] = summary[:duplicate_seasons].uniq.sort
     summary
   end
-  # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
 
   # If file_path points to a phase file, resolve original source_path from its meta.
   def resolve_source_path(file_path)
@@ -2737,7 +2723,8 @@ class DataFixController < ApplicationController
   # @param swimmers_by_id [Hash] swimmers indexed by ID
   # @param swimmers_by_key [Hash] swimmers indexed by key (from phase3)
   # @return [Hash] { has_issues: bool, issue_count: int, issues: {...} }
-  def relay_result_has_issues?(relay_result, relay_swimmers_by_key:, swimmers_by_id:, swimmers_by_key: {}) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/MethodLength
+  def relay_result_has_issues?(relay_result, relay_swimmers_by_key:, swimmers_by_id:, swimmers_by_key: {},
+                               badges_by_id: {}, affiliations_by_id: {}, season_id: nil)
     relay_swimmers = relay_swimmers_by_key[relay_result.import_key] || []
     issues = {}
 
@@ -2747,7 +2734,43 @@ class DataFixController < ApplicationController
       }
     end
 
+    if relay_result.meeting_program_id.to_i <= 0 || relay_result.team_id.to_i <= 0 || relay_result.team_affiliation_id.to_i <= 0
+      issues[:required_fks] = {
+        missing_meeting_program_id: relay_result.meeting_program_id.to_i <= 0,
+        missing_team_id: relay_result.team_id.to_i <= 0,
+        missing_team_affiliation_id: relay_result.team_affiliation_id.to_i <= 0
+      }
+    else
+      affiliation = affiliations_by_id[relay_result.team_affiliation_id] ||
+                    GogglesDb::TeamAffiliation.find_by(id: relay_result.team_affiliation_id)
+      if affiliation.nil? || affiliation.team_id != relay_result.team_id || (season_id.to_i.positive? && affiliation.season_id != season_id.to_i)
+        issues[:team_affiliation_mismatch] = {
+          team_id: relay_result.team_id,
+          team_affiliation_id: relay_result.team_affiliation_id,
+          season_id: season_id
+        }
+      end
+    end
+
     relay_swimmers.each do |rs|
+      if rs.swimmer_id.to_i <= 0 || rs.badge_id.to_i <= 0
+        issues[rs.relay_order] = {
+          swimmer_key: rs.swimmer_key,
+          missing_swimmer_id: rs.swimmer_id.to_i <= 0,
+          missing_badge_id: rs.badge_id.to_i <= 0
+        }
+        next
+      end
+
+      badge = badges_by_id[rs.badge_id] || GogglesDb::Badge.find_by(id: rs.badge_id)
+      if badge.nil? || badge.swimmer_id != rs.swimmer_id || badge.team_id != relay_result.team_id
+        issues[rs.relay_order] = {
+          swimmer_key: rs.swimmer_key,
+          badge_mismatch: true
+        }
+        next
+      end
+
       # Check both matched swimmers (via swimmer_id) and unmatched (via swimmer_key in phase3)
       if rs.swimmer_id
         swimmer = swimmers_by_id[rs.swimmer_id]
@@ -2899,7 +2922,7 @@ class DataFixController < ApplicationController
   # Loads only what's necessary to detect issues without loading full display data
   #
   # @param source_path [String] source file path
-  # @return [Hash] { relay_swimmers_by_parent_key:, swimmers_by_id:, swimmers_by_key: }
+  # @return [Hash] { relay_swimmers_by_parent_key:, swimmers_by_id:, swimmers_by_key:, badges_by_id:, affiliations_by_id:, season_id: }
   def load_filter_data(source_path) # rubocop:disable Metrics/AbcSize
     # Load phase3 data for unmatched swimmer lookup
     # Index by both full key AND partial key for flexible matching
@@ -2936,10 +2959,31 @@ class DataFixController < ApplicationController
     all_swimmer_ids = (individual_swimmer_ids + relay_swimmer_ids).uniq
     swimmers_by_id = GogglesDb::Swimmer.where(id: all_swimmer_ids).index_by(&:id)
 
+    badge_ids = GogglesDb::DataImportMeetingIndividualResult
+                .where(phase_file_path: source_path)
+                .pluck(:badge_id)
+                .compact +
+                GogglesDb::DataImportMeetingRelaySwimmer
+                .where(phase_file_path: source_path)
+                .pluck(:badge_id)
+                .compact
+    badges_by_id = GogglesDb::Badge.where(id: badge_ids.uniq).index_by(&:id)
+
+    affiliation_ids = GogglesDb::DataImportMeetingRelayResult
+                      .where(phase_file_path: source_path)
+                      .pluck(:team_affiliation_id)
+                      .compact
+    affiliations_by_id = GogglesDb::TeamAffiliation.where(id: affiliation_ids.uniq).index_by(&:id)
+
+    season_id = (JSON.parse(File.read(default_phase_path_for(source_path, 1))).dig('data', 'season_id') if File.exist?(default_phase_path_for(source_path, 1)))
+
     {
       relay_swimmers_by_parent_key: relay_swimmers_by_parent_key,
       swimmers_by_id: swimmers_by_id,
-      swimmers_by_key: swimmers_by_key
+      swimmers_by_key: swimmers_by_key,
+      badges_by_id: badges_by_id,
+      affiliations_by_id: affiliations_by_id,
+      season_id: season_id
     }
   end
 
@@ -2950,10 +2994,13 @@ class DataFixController < ApplicationController
   # @param filter_data [Hash] data needed for filtering
   # @param source_path [String] canonical source file path
   # @return [Array<Hash>] programs with at least one result with issues
-  def detect_programs_with_issues(programs, filter_data, source_path)
+  def detect_programs_with_issues(programs, filter_data, source_path) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength, Metrics/PerceivedComplexity
     relay_swimmers_by_parent_key = filter_data[:relay_swimmers_by_parent_key]
     swimmers_by_id = filter_data[:swimmers_by_id]
     swimmers_by_key = filter_data[:swimmers_by_key]
+    badges_by_id = filter_data[:badges_by_id] || {}
+    affiliations_by_id = filter_data[:affiliations_by_id] || {}
+    season_id = filter_data[:season_id]
 
     programs.select do |prog|
       next true if prog['gender_code'].blank?
@@ -2971,7 +3018,10 @@ class DataFixController < ApplicationController
             mrr,
             relay_swimmers_by_key: relay_swimmers_by_parent_key,
             swimmers_by_id: swimmers_by_id,
-            swimmers_by_key: swimmers_by_key
+            swimmers_by_key: swimmers_by_key,
+            badges_by_id: badges_by_id,
+            affiliations_by_id: affiliations_by_id,
+            season_id: season_id
           )
           issue_info[:has_issues]
         end
@@ -2982,7 +3032,13 @@ class DataFixController < ApplicationController
                              .where('import_key LIKE ?', "#{program_key}/%")
 
         individual_results.any? do |mir|
-          result_has_issues?(mir, swimmers_by_id: swimmers_by_id, swimmers_by_key: swimmers_by_key)
+          result_has_issues?(
+            mir,
+            swimmers_by_id: swimmers_by_id,
+            swimmers_by_key: swimmers_by_key,
+            badges_by_id: badges_by_id,
+            season_id: season_id
+          )
         end
       end
     end
@@ -2998,8 +3054,16 @@ class DataFixController < ApplicationController
   # @param swimmers_by_id [Hash] swimmers indexed by ID
   # @param swimmers_by_key [Hash] swimmers indexed by key (from phase3)
   # @return [Boolean] true if result has issues
-  def result_has_issues?(mir, swimmers_by_id:, swimmers_by_key:) # rubocop:disable Metrics/PerceivedComplexity
+  def result_has_issues?(mir, swimmers_by_id:, swimmers_by_key:, badges_by_id: {},
+                         season_id: nil)
     return true if program_key_missing_gender?(mir.meeting_program_key)
+
+    return true if mir.meeting_program_id.to_i <= 0 || mir.swimmer_id.to_i <= 0 || mir.team_id.to_i <= 0 || mir.badge_id.to_i <= 0
+
+    badge = badges_by_id[mir.badge_id] || GogglesDb::Badge.find_by(id: mir.badge_id)
+    return true unless badge && badge.swimmer_id == mir.swimmer_id && badge.team_id == mir.team_id
+
+    return true if season_id.to_i.positive? && GogglesDb::TeamAffiliation.exists?(team_id: mir.team_id, season_id: season_id.to_i) == false
 
     if mir.swimmer_id
       # Matched swimmer - check if missing gender or year
@@ -3064,3 +3128,4 @@ class DataFixController < ApplicationController
   #-- -------------------------------------------------------------------------
   #++
 end
+# rubocop:enable Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/ParameterLists

@@ -112,6 +112,7 @@ RSpec.describe DataFixController do
         expect(response).to be_successful
         expect(response.body).to include('program(s) with issues detected')
         expect(response.body).to include('missing program gender')
+        expect(response.body).to include('unresolved required links')
       end
     end
 

@@ -99,25 +99,25 @@ module Import
 
         attributes = normalize_attributes(affiliation_hash)
 
-        # If team_affiliation_id is provided and points to a valid DB row, treat DB links as canonical:
+        # Strict mode: if team_affiliation_id is provided, it must be valid and coherent
+        # with resolved team/season links (no silent canonical rewrites at commit-time).
         if team_affiliation_id.to_i.positive?
           row_by_id = GogglesDb::TeamAffiliation.find_by(id: team_affiliation_id.to_i)
-          if row_by_id && stale_links?(row_by_id) == false
-            if row_by_id.team_id != attributes['team_id'].to_i || row_by_id.season_id != attributes['season_id'].to_i
-              increment_counter(:affiliation_links_auto_fixed) # rubocop:disable Rails/SkipsModelValidations
-              logger.log_operation(
-                action: 'Canonicalized TeamAffiliation links from DB',
-                details: "team_key='#{team_key}', id=#{row_by_id.id}, team_id=#{row_by_id.team_id}, season_id=#{row_by_id.season_id}"
-              )
-            end
-            store_id(team_key, row_by_id.id, team_id: row_by_id.team_id, season_id: row_by_id.season_id)
-            Rails.logger.debug { "[TeamAffiliation] ID=#{row_by_id.id} confirmed from DB, links canonicalized" }
-            return row_by_id.id
+          unless row_by_id && stale_links?(row_by_id) == false
+            raise StandardError,
+                  "Invalid TeamAffiliation reference for team_key='#{team_key}': id=#{team_affiliation_id} is missing or stale"
           end
 
-          # Keep going when the referenced row is missing or stale: we'll resolve/create by canonical links.
-          increment_counter(:affiliation_links_auto_fixed) # rubocop:disable Rails/SkipsModelValidations
-          Rails.logger.warn("[TeamAffiliation] Incoming ID=#{team_affiliation_id} is missing or stale, re-resolving by team_id+season_id")
+          if row_by_id.team_id != attributes['team_id'].to_i || row_by_id.season_id != attributes['season_id'].to_i
+            raise StandardError,
+                  "Inconsistent TeamAffiliation links for team_key='#{team_key}': " \
+                  "id=#{row_by_id.id} points to team_id=#{row_by_id.team_id}, season_id=#{row_by_id.season_id}, " \
+                  "but payload resolves to team_id=#{attributes['team_id']}, season_id=#{attributes['season_id']}"
+          end
+
+          store_id(team_key, row_by_id.id, team_id: row_by_id.team_id, season_id: row_by_id.season_id)
+          Rails.logger.debug { "[TeamAffiliation] ID=#{row_by_id.id} confirmed from payload links" }
+          return row_by_id.id
         end
 
         # Reuse existing row even if not set/recognized during phase 2:
@@ -181,12 +181,6 @@ module Import
 
         GogglesDb::Team.exists?(id: affiliation_row.team_id) == false ||
           GogglesDb::Season.exists?(id: affiliation_row.season_id) == false
-      end
-      # -----------------------------------------------------------------------
-
-      def increment_counter(key)
-        stats[key] ||= 0
-        stats[key] += 1
       end
       # -----------------------------------------------------------------------
 

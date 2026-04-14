@@ -191,36 +191,37 @@ module Import
         normalized = badge_hash.deep_dup.with_indifferent_access
         swimmer_key = normalized['swimmer_key']
 
-        # Always prefer committer-resolved swimmer_id (from current phase 3 data) over
-        # possibly stale values in the data file:
+        # Strict mode: resolve from current mappings only when payload is blank;
+        # if payload is present and mismatched, fail fast.
         resolved_swimmer_id = @swimmer_committer.resolve_id(swimmer_key)
         if resolved_swimmer_id
           if normalized['swimmer_id'].to_i.positive? && normalized['swimmer_id'].to_i != resolved_swimmer_id
-            Rails.logger.warn("[Badge] Overriding stale swimmer_id=#{normalized['swimmer_id']} " \
-                              "with resolved swimmer_id=#{resolved_swimmer_id} for swimmer_key='#{swimmer_key}'")
+            raise StandardError,
+                  "Badge swimmer mismatch for swimmer_key='#{swimmer_key}': payload swimmer_id=#{normalized['swimmer_id']} " \
+                  "differs from resolved swimmer_id=#{resolved_swimmer_id}"
           end
-          normalized['swimmer_id'] = resolved_swimmer_id
+          normalized['swimmer_id'] ||= resolved_swimmer_id
         else
           normalized['swimmer_id'] ||= nil
         end
 
-        # Always prefer committer-resolved team_id (from current phase 2 data) over
-        # possibly stale values (e.g. team was merged/deleted since phase 3 was generated):
+        # Same strict rule for team links.
         team_key = normalized['team_key']
         resolved_team_id = @team_committer.resolve_id(team_key)
         if resolved_team_id
           if normalized['team_id'].to_i.positive? && normalized['team_id'].to_i != resolved_team_id
-            Rails.logger.warn("[Badge] Overriding stale team_id=#{normalized['team_id']} " \
-                              "with resolved team_id=#{resolved_team_id} for team_key='#{team_key}'")
+            raise StandardError,
+                  "Badge team mismatch for team_key='#{team_key}': payload team_id=#{normalized['team_id']} " \
+                  "differs from resolved team_id=#{resolved_team_id}"
           end
-          normalized['team_id'] = resolved_team_id
+          normalized['team_id'] ||= resolved_team_id
         else
           normalized['team_id'] ||= nil
         end
 
         normalized['category_type_id'] ||= resolve_category_type_id(swimmer_key)
 
-        # Always re-resolve team_affiliation_id to stay consistent with the resolved team_id:
+        # team_affiliation_id must be coherent with resolved team+season links.
         resolved_ta_id = @team_affiliation_committer.resolve_id(
           team_key,
           team_id: normalized['team_id'],
@@ -228,11 +229,11 @@ module Import
         )
         if resolved_ta_id
           if normalized['team_affiliation_id'].to_i.positive? && normalized['team_affiliation_id'].to_i != resolved_ta_id
-            increment_counter(:affiliation_links_auto_fixed) # rubocop:disable Rails/SkipsModelValidations
-            Rails.logger.warn("[Badge] Overriding stale team_affiliation_id=#{normalized['team_affiliation_id']} " \
-                              "with resolved team_affiliation_id=#{resolved_ta_id} for team_key='#{team_key}'")
+            raise StandardError,
+                  "Badge affiliation mismatch for team_key='#{team_key}': payload team_affiliation_id=#{normalized['team_affiliation_id']} " \
+                  "differs from resolved team_affiliation_id=#{resolved_ta_id}"
           end
-          normalized['team_affiliation_id'] = resolved_ta_id
+          normalized['team_affiliation_id'] ||= resolved_ta_id
         end
         normalized['team_affiliation_id'] ||= nil
 
@@ -264,12 +265,6 @@ module Import
           end
           model_value != value
         end
-      end
-      # -----------------------------------------------------------------------
-
-      def increment_counter(key)
-        stats[key] ||= 0
-        stats[key] += 1
       end
       # -----------------------------------------------------------------------
     end

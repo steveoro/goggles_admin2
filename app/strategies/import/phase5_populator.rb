@@ -213,6 +213,7 @@ module Import
 
           # Find team_id from phase files
           team_id = find_team_id(result)
+          badge_id = find_badge_id(swimmer_key: swimmer_key, team_key: team_key, team_id: team_id)
           meeting_program_id = gender.present? ? find_meeting_program_id(session_order, event_code, category, gender) : nil
           @stats[:programs_matched] += 1 if meeting_program_id
 
@@ -231,6 +232,7 @@ module Import
             swimmer_id: swimmer_id,
             swimmer_key: swimmer_key,
             team_id: team_id,
+            badge_id: badge_id,
             team_key: team_key,
             meeting_program_id: meeting_program_id,
             meeting_program_key: program_key,
@@ -298,6 +300,7 @@ module Import
 
           # Find entity IDs from phase files
           team_id = find_team_id(result)
+          team_affiliation_id = find_team_affiliation_id(team_id)
           meeting_program_id = gender.present? ? find_meeting_program_id(session_order, event_code, category, gender) : nil
           @stats[:programs_matched] += 1 if meeting_program_id
 
@@ -313,6 +316,7 @@ module Import
             result: result,
             timing_hash: timing_hash,
             team_id: team_id,
+            team_affiliation_id: team_affiliation_id,
             team_key: team_key,
             meeting_program_id: meeting_program_id,
             meeting_program_key: program_key,
@@ -324,7 +328,7 @@ module Import
           @stats[:relay_results_created] += 1
 
           # Create relay swimmers and laps
-          create_relay_swimmers(mrr, result, import_key)
+          create_relay_swimmers(mrr, result, import_key, team_key: team_key)
           create_relay_laps(mrr, result, import_key)
 
           # Register program in phase5 output (metadata only)
@@ -584,6 +588,44 @@ module Import
       badge&.dig('team_id')
     end
 
+    def find_badge_id(swimmer_key:, team_key:, team_id: nil) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+      return nil if swimmer_key.blank?
+
+      partial_key = normalize_to_partial_key(swimmer_key)
+      if phase3_data && partial_key
+        badges = phase3_data.dig('data', 'badges') || []
+        badge = badges.find do |b|
+          next false unless b['badge_id'].to_i.positive?
+          next false unless normalize_to_partial_key(b['swimmer_key']) == partial_key
+
+          if team_id.to_i.positive?
+            b['team_id'].to_i == team_id.to_i
+          else
+            b['team_key'].to_s.casecmp?(team_key.to_s)
+          end
+        end
+        return badge['badge_id'] if badge
+      end
+
+      resolved_swimmer_id = find_swimmer_id_by_key(swimmer_key)
+      resolved_team_id = team_id.to_i.positive? ? team_id.to_i : find_team_id_from_badges(swimmer_key, team_key)
+      season_id = phase1_data&.dig('data', 'season_id').to_i
+      return nil unless resolved_swimmer_id.to_i.positive? && resolved_team_id.to_i.positive? && season_id.to_i.positive?
+
+      GogglesDb::Badge.find_by(
+        swimmer_id: resolved_swimmer_id.to_i,
+        team_id: resolved_team_id.to_i,
+        season_id: season_id
+      )&.id
+    end
+
+    def find_team_affiliation_id(team_id)
+      season_id = phase1_data&.dig('data', 'season_id').to_i
+      return nil unless team_id.to_i.positive? && season_id.to_i.positive?
+
+      GogglesDb::TeamAffiliation.find_by(team_id: team_id.to_i, season_id: season_id)&.id
+    end
+
     # Find meeting_program_id by matching against existing database records
     # First tries to use existing event ID from phase4 data, then falls back to DB lookup
     # Matches: MeetingEvent (from phase4 ID or by session + event_type) → MeetingProgram (by event + category + gender)
@@ -749,7 +791,7 @@ module Import
 
     # Create MIR record
     # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/ParameterLists
-    def create_mir_record(import_key:, result:, timing:, swimmer_id:, swimmer_key:, team_id:, team_key:, meeting_program_id:, meeting_program_key:,
+    def create_mir_record(import_key:, result:, timing:, swimmer_id:, swimmer_key:, team_id:, badge_id:, team_key:, meeting_program_id:, meeting_program_key:,
                           meeting_individual_result_id:)
       # DEBUG logging
       Rails.logger.info("[Phase5Populator] Creating MIR: import_key=#{import_key}, swimmer_id=#{swimmer_id}, team_id=#{team_id}, program_id=#{meeting_program_id}")
@@ -769,6 +811,7 @@ module Import
         record.meeting_program_id = meeting_program_id
         record.swimmer_id = swimmer_id
         record.team_id = team_id
+        record.badge_id = badge_id
         record.meeting_individual_result_id = meeting_individual_result_id
         # String keys for referencing entities when IDs are nil
         record.swimmer_key = swimmer_key
@@ -921,7 +964,8 @@ module Import
     end
 
     # Create MRR record
-    def create_mrr_record(import_key:, result:, timing_hash:, team_id:, team_key:, meeting_program_id:, meeting_program_key:, meeting_relay_result_id:) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/ParameterLists
+    def create_mrr_record(import_key:, result:, timing_hash:, team_id:, team_affiliation_id:, # rubocop:disable Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity,Metrics/ParameterLists
+                          team_key:, meeting_program_id:, meeting_program_key:, meeting_relay_result_id:)
       raw_rank = result['ranking'] || result['rank'] || result['pos']
       rank_int = raw_rank.to_i
       rank_non_numeric = raw_rank.present? && raw_rank.to_s !~ /^\d+$/
@@ -937,6 +981,7 @@ module Import
         mrr.meeting_relay_result_id = meeting_relay_result_id
         mrr.meeting_program_id = meeting_program_id
         mrr.team_id = team_id
+        mrr.team_affiliation_id = team_affiliation_id
         # String keys for referencing entities when IDs are nil
         mrr.team_key = team_key
         mrr.meeting_program_key = meeting_program_key
@@ -956,7 +1001,7 @@ module Import
 
     # Create relay swimmer records for a given MRR
     # Uses lap data to extract swimmer info and timing
-    def create_relay_swimmers(_mrr, result, mrr_import_key) # rubocop:disable Metrics/AbcSize
+    def create_relay_swimmers(_mrr, result, mrr_import_key, team_key:) # rubocop:disable Metrics/AbcSize
       laps = result['laps'] || []
 
       laps.each_with_index do |lap, idx|
@@ -968,6 +1013,7 @@ module Import
         swimmer_data = find_swimmer_data(lap_result)
         swimmer_id = swimmer_data[:swimmer_id]
         swimmer_key = swimmer_data[:swimmer_key] # Full Phase 3 key if matched
+        badge_id = find_badge_id(swimmer_key: swimmer_key, team_key: team_key)
 
         # Parse lap timing for MRS (each lap is the swimmer's leg timing)
         delta = parse_timing_string(lap['delta'])
@@ -984,6 +1030,7 @@ module Import
           rs.phase_file_path = source_path
           # DB foreign keys (may be nil for unmatched entities)
           rs.swimmer_id = swimmer_id
+          rs.badge_id = badge_id
           # String keys for referencing entities when IDs are nil (Full Phase 3 key if matched)
           rs.swimmer_key = swimmer_key
           rs.meeting_relay_result_key = mrr_import_key
