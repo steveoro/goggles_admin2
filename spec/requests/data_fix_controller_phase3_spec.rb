@@ -263,6 +263,81 @@ RSpec.describe DataFixController do
         expect(data['swimmers'][0]['swimmer_id']).to eq(swimmer.id)
       end
 
+      it 'resolves badge_id when swimmer and team links are coherent' do
+        existing_badge = FactoryBot.create(:badge, season: season, swimmer: swimmer, team: team)
+
+        pfm = PhaseFileManager.new(phase3_file)
+        data = pfm.data
+        data['badges'] = [{
+          'swimmer_key' => 'DOE|JOHN|1985',
+          'team_key' => team.editable_name,
+          'team_id' => team.id,
+          'swimmer_id' => nil,
+          'badge_id' => nil
+        }]
+        pfm.write!(data: data, meta: pfm.meta)
+
+        patch update_phase3_swimmer_path,
+              params: { file_path: source_file, swimmer_key: 'DOE|JOHN|1985',
+                        swimmer: { id: swimmer.id, complete_name: swimmer.complete_name } }
+
+        pfm = PhaseFileManager.new(phase3_file)
+        badge_row = pfm.data.fetch('badges').find { |b| b['swimmer_key'] == 'DOE|JOHN|1985' }
+        expect(badge_row['swimmer_id']).to eq(swimmer.id)
+        expect(badge_row['badge_id']).to eq(existing_badge.id)
+      end
+
+      it 'clears stale badge_id when swimmer_id is cleared' do
+        stale_badge = FactoryBot.create(:badge, season: season, team: team)
+
+        pfm = PhaseFileManager.new(phase3_file)
+        data = pfm.data
+        data['swimmers'][0]['swimmer_id'] = swimmer.id
+        data['badges'] = [{
+          'swimmer_key' => 'DOE|JOHN|1985',
+          'team_key' => team.editable_name,
+          'team_id' => team.id,
+          'swimmer_id' => swimmer.id,
+          'badge_id' => stale_badge.id
+        }]
+        pfm.write!(data: data, meta: pfm.meta)
+
+        patch update_phase3_swimmer_path,
+              params: { file_path: source_file, swimmer_key: 'DOE|JOHN|1985',
+                        swimmer: { id: '', complete_name: 'Doe John' } }
+
+        pfm = PhaseFileManager.new(phase3_file)
+        updated_swimmer = pfm.data.fetch('swimmers').find { |s| s['key'] == 'DOE|JOHN|1985' }
+        badge_row = pfm.data.fetch('badges').find { |b| b['swimmer_key'] == 'DOE|JOHN|1985' }
+        expect(updated_swimmer['swimmer_id']).to be_nil
+        expect(badge_row['swimmer_id']).to be_nil
+        expect(badge_row['badge_id']).to be_nil
+      end
+
+      it 'clears badge_id when swimmer is set but no coherent badge exists' do
+        stale_badge = FactoryBot.create(:badge, season: season, team: team)
+
+        pfm = PhaseFileManager.new(phase3_file)
+        data = pfm.data
+        data['badges'] = [{
+          'swimmer_key' => 'DOE|JOHN|1985',
+          'team_key' => team.editable_name,
+          'team_id' => team.id,
+          'swimmer_id' => nil,
+          'badge_id' => stale_badge.id
+        }]
+        pfm.write!(data: data, meta: pfm.meta)
+
+        patch update_phase3_swimmer_path,
+              params: { file_path: source_file, swimmer_key: 'DOE|JOHN|1985',
+                        swimmer: { id: swimmer.id, complete_name: swimmer.complete_name } }
+
+        pfm = PhaseFileManager.new(phase3_file)
+        badge_row = pfm.data.fetch('badges').find { |b| b['swimmer_key'] == 'DOE|JOHN|1985' }
+        expect(badge_row['swimmer_id']).to eq(swimmer.id)
+        expect(badge_row['badge_id']).to be_nil
+      end
+
       it 'clears downstream phase data when swimmer is updated' do
         # Add downstream data
         pfm = PhaseFileManager.new(phase3_file)

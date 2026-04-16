@@ -214,6 +214,45 @@ RSpec.describe DataFixController do
         pfm.write!(data: phase2_data, meta: { 'generator' => 'test' })
       end
 
+      def seed_phase2_team_affiliation!(team_id:, team_affiliation_id:)
+        pfm = PhaseFileManager.new(phase2_file)
+        data = pfm.data
+        data['teams'][0]['team_id'] = team_id
+        data['team_affiliations'] = [{
+          'team_key' => 'Team Original',
+          'season_id' => season.id,
+          'team_id' => team_id,
+          'team_affiliation_id' => team_affiliation_id
+        }]
+        pfm.write!(data: data, meta: pfm.meta)
+      end
+
+      def seed_downstream_rows!(team_id:, team_affiliation_id:, source_file:)
+        mir = GogglesDb::DataImportMeetingIndividualResult.create!(
+          import_key: 'phase2-mir',
+          phase_file_path: source_file,
+          team_key: 'Team Original',
+          team_id: team_id,
+          badge_id: 1234,
+          swimmer_key: 'DOE|JOHN|1985'
+        )
+        mrr = GogglesDb::DataImportMeetingRelayResult.create!(
+          import_key: 'phase2-mrr',
+          phase_file_path: source_file,
+          team_key: 'Team Original',
+          team_id: team_id,
+          team_affiliation_id: team_affiliation_id
+        )
+        mrs = GogglesDb::DataImportMeetingRelaySwimmer.create!(
+          import_key: 'phase2-mrs',
+          parent_import_key: mrr.import_key,
+          phase_file_path: source_file,
+          badge_id: 5678,
+          relay_order: 1
+        )
+        [mir, mrr, mrs]
+      end
+
       it 'updates team name field' do
         patch update_phase2_team_path, params: {
           file_path: source_file,
@@ -265,6 +304,81 @@ RSpec.describe DataFixController do
 
         pfm = PhaseFileManager.new(phase2_file)
         expect(pfm.data['teams'][0]['team_id']).to eq(team.id)
+      end
+
+      it 'sets team_affiliation_id when matching affiliation exists' do
+        affiliation = FactoryBot.create(:team_affiliation, team: team, season: season)
+
+        patch update_phase2_team_path, params: {
+          file_path: source_file,
+          team_key: 'Team Original',
+          team: {
+            team_id: team.id.to_s
+          }
+        }
+
+        pfm = PhaseFileManager.new(phase2_file)
+        affiliation_row = pfm.data.fetch('team_affiliations').find { |row| row['team_key'] == 'Team Original' }
+        expect(affiliation_row['team_id']).to eq(team.id)
+        expect(affiliation_row['team_affiliation_id']).to eq(affiliation.id)
+      end
+
+      it 'clears team_affiliation_id when no affiliation exists for selected team' do
+        other_team = FactoryBot.create(:team)
+        stale_affiliation = FactoryBot.create(:team_affiliation, season: season)
+
+        pfm = PhaseFileManager.new(phase2_file)
+        data = pfm.data
+        data['team_affiliations'] = [{
+          'team_key' => 'Team Original',
+          'season_id' => season.id,
+          'team_id' => stale_affiliation.team_id,
+          'team_affiliation_id' => stale_affiliation.id
+        }]
+        pfm.write!(data: data, meta: pfm.meta)
+
+        patch update_phase2_team_path, params: {
+          file_path: source_file,
+          team_key: 'Team Original',
+          team: {
+            team_id: other_team.id.to_s
+          }
+        }
+
+        pfm = PhaseFileManager.new(phase2_file)
+        affiliation_row = pfm.data.fetch('team_affiliations').find { |row| row['team_key'] == 'Team Original' }
+        expect(affiliation_row['team_id']).to eq(other_team.id)
+        expect(affiliation_row['team_affiliation_id']).to be_nil
+      end
+
+      it 'clears stale team_affiliation_id when team_id is cleared' do
+        affiliation = FactoryBot.create(:team_affiliation, team: team, season: season)
+
+        pfm = PhaseFileManager.new(phase2_file)
+        data = pfm.data
+        data['teams'][0]['team_id'] = team.id
+        data['team_affiliations'] = [{
+          'team_key' => 'Team Original',
+          'season_id' => season.id,
+          'team_id' => team.id,
+          'team_affiliation_id' => affiliation.id
+        }]
+        pfm.write!(data: data, meta: pfm.meta)
+
+        patch update_phase2_team_path, params: {
+          file_path: source_file,
+          team_key: 'Team Original',
+          team: {
+            team_id: ''
+          }
+        }
+
+        pfm = PhaseFileManager.new(phase2_file)
+        updated_team = pfm.data['teams'][0]
+        affiliation_row = pfm.data.fetch('team_affiliations').find { |row| row['team_key'] == 'Team Original' }
+        expect(updated_team['team_id']).to be_nil
+        expect(affiliation_row['team_id']).to be_nil
+        expect(affiliation_row['team_affiliation_id']).to be_nil
       end
 
       it 'updates city_id field from City AutoComplete' do
@@ -320,6 +434,52 @@ RSpec.describe DataFixController do
 
         pfm = PhaseFileManager.new(phase2_file)
         expect(pfm.data['teams'][0]['city_id']).to be_nil
+      end
+
+      it 'clears city_id from namespaced city widget blank value' do
+        pfm = PhaseFileManager.new(phase2_file)
+        data = pfm.data
+        data['teams'][0]['city_id'] = city.id
+        pfm.write!(data: data, meta: pfm.meta)
+
+        patch update_phase2_team_path, params: {
+          file_path: source_file,
+          team_key: 'Team Original',
+          team: {
+            name: 'Team Original'
+          },
+          team_0_city: {
+            city_id: ''
+          }
+        }
+
+        pfm = PhaseFileManager.new(phase2_file)
+        expect(pfm.data['teams'][0]['city_id']).to be_nil
+      end
+
+      it 'cascades team clear to downstream data_import binding IDs' do
+        stale_affiliation = FactoryBot.create(:team_affiliation, team: team, season: season)
+
+        seed_phase2_team_affiliation!(team_id: team.id, team_affiliation_id: stale_affiliation.id)
+        mir, mrr, mrs = seed_downstream_rows!(
+          team_id: team.id,
+          team_affiliation_id: stale_affiliation.id,
+          source_file: source_file
+        )
+
+        patch update_phase2_team_path, params: {
+          file_path: source_file,
+          team_key: 'Team Original',
+          team: {
+            team_id: ''
+          }
+        }
+
+        expect(mir.reload.team_id).to be_nil
+        expect(mir.reload.badge_id).to be_nil
+        expect(mrr.reload.team_id).to be_nil
+        expect(mrr.reload.team_affiliation_id).to be_nil
+        expect(mrs.reload.badge_id).to be_nil
       end
 
       it 'sanitizes string inputs' do

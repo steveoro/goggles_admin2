@@ -204,7 +204,17 @@ export default class extends Controller {
       }
 
       $(`#${this.fieldTarget.id}`).on('change', (_eventObject) => {
+        if (($(`#${this.fieldTarget.id}`).val() || '').toString().trim().length === 0) {
+          this.clearLinkedBindingTargetsExceptMain()
+          return
+        }
         this.processUpdate()
+      })
+
+      $(this.searchTarget).on('input', (_eventObject) => {
+        if ((this.searchTarget.value || '').trim().length === 0) {
+          this.clearBindingTargetsOnSearchEmpty()
+        }
       })
 
       // *** NOTE: ***
@@ -214,6 +224,60 @@ export default class extends Controller {
 
       // this.processUpdate() // Use any available default data in the main target & update each linked field
     }
+  }
+  // ---------------------------------------------------------------------------
+
+  isBindingColumnName (columnName) {
+    return columnName === 'id' || (columnName && columnName.endsWith('_id'))
+  }
+
+  clearTargetByDomIdIfBinding (domId, columnName) {
+    if (!domId || !this.isBindingColumnName(columnName)) {
+      return
+    }
+
+    const selector = `#${domId}`
+    if ($(selector).length > 0) {
+      $(selector).val('')
+      $(selector).trigger('change')
+    }
+  }
+
+  clearLinkedBindingTargetsExceptMain () {
+    if (this.hasDescTarget) {
+      $(this.descTarget).html('')
+    }
+
+    if (this.hasField2Target && this.isBindingColumnName(this.target2ColumnValue)) {
+      $(this.field2Target).val('')
+      $(this.field2Target).trigger('change')
+    }
+
+    if (this.hasField3Target && this.isBindingColumnName(this.target3ColumnValue)) {
+      $(this.field3Target).val('')
+      $(this.field3Target).trigger('change')
+    }
+
+    this.clearTargetByDomIdIfBinding(this.target3DomIdValue, this.target3ColumnValue)
+    this.clearTargetByDomIdIfBinding(this.target4DomIdValue, this.target4ColumnValue)
+    this.clearTargetByDomIdIfBinding(this.target5DomIdValue, this.target5ColumnValue)
+    this.clearTargetByDomIdIfBinding(this.target6DomIdValue, this.target6ColumnValue)
+    this.clearTargetByDomIdIfBinding(this.target7DomIdValue, this.target7ColumnValue)
+    this.clearTargetByDomIdIfBinding(this.target8DomIdValue, this.target8ColumnValue)
+    this.clearTargetByDomIdIfBinding(this.target9DomIdValue, this.target9ColumnValue)
+    this.clearTargetByDomIdIfBinding(this.target10DomIdValue, this.target10ColumnValue)
+    this.clearTargetByDomIdIfBinding(this.target11DomIdValue, this.target11ColumnValue)
+    this.clearTargetByDomIdIfBinding(this.target12DomIdValue, this.target12ColumnValue)
+  }
+
+  clearBindingTargetsOnSearchEmpty () {
+    // Main bound ID field (always an *_id target for this component)
+    if (this.hasFieldTarget) {
+      $(this.fieldTarget).val('')
+      $(this.fieldTarget).trigger('change')
+    }
+
+    this.clearLinkedBindingTargetsExceptMain()
   }
   // ---------------------------------------------------------------------------
 

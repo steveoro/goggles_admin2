@@ -59,7 +59,7 @@
         %div
           %i.fa.fa-exclamation-triangle.me-2
           %strong= "#{@issue_count} program(s) with issues detected"
-          %span.text-muted.ms-2 (missing program gender, unresolved required links, or swimmer/team/badge/affiliation inconsistencies)
+          %span.text-muted.ms-2 (missing program gender, unresolved required links excluding NEW meeting programs, or swimmer/team/badge/affiliation inconsistencies)
         %div
           - if @filter_active
             = link_to review_results_path(file_path: @file_path, phase5_v2: 1, filter_issues: '0'), class: 'btn btn-sm btn-outline-secondary' do

@@ -311,7 +311,7 @@ class DataFixController < ApplicationController
   end
   # ---------------------------------------------------------------------------
 
-  def review_events # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/MethodLength
+  def review_events
     return if params[:phase4_v2].blank?
 
     @file_path = params[:file_path]
@@ -424,7 +424,6 @@ class DataFixController < ApplicationController
   end
   # ---------------------------------------------------------------------------
 
-  # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
   def review_results
     return if params[:phase5_v2].blank?
 
@@ -1220,6 +1219,7 @@ class DataFixController < ApplicationController
     # Handle direct params from form (team[field])
     # Note: AutoComplete component adds extra fields (team, city, area) which we permit but ignore
     team_params = params[:team]
+    permitted = ActionController::Parameters.new
     if team_params.is_a?(ActionController::Parameters)
       permitted = team_params.permit(:team_id, :editable_name, :name, :name_variations, :city_id,
                                      :team, :city, :area)
@@ -1230,16 +1230,25 @@ class DataFixController < ApplicationController
         t['team_id'] = team_num.positive? ? team_num : nil
       end
 
-      # Update city_id (from City AutoComplete)
-      if permitted.key?(:city_id)
-        city_num = permitted[:city_id].to_i
-        t['city_id'] = city_num.positive? ? city_num : nil
-      end
-
       # Update text fields
       t['editable_name'] = sanitize_str(permitted[:editable_name]) if permitted.key?(:editable_name)
       t['name'] = sanitize_str(permitted[:name]) if permitted.key?(:name)
       t['name_variations'] = sanitize_str(permitted[:name_variations]) if permitted.key?(:name_variations)
+    end
+
+    city_widget_params = params["team_#{team_index}_city"]
+    city_widget_value = (city_widget_params.permit(:city_id)[:city_id] if city_widget_params.is_a?(ActionController::Parameters))
+
+    # Update city_id (from hidden binding field or city widget fallback).
+    # Explicit blank from the city widget means user requested unmatch.
+    if city_widget_value.is_a?(String) && city_widget_value.strip.empty?
+      t['city_id'] = nil
+    elsif permitted.key?(:city_id)
+      city_num = permitted[:city_id].to_i
+      t['city_id'] = city_num.positive? ? city_num : nil
+    elsif city_widget_value.present?
+      city_num = city_widget_value.to_i
+      t['city_id'] = city_num.positive? ? city_num : nil
     end
 
     teams[team_index] = t
@@ -1260,11 +1269,13 @@ class DataFixController < ApplicationController
       aff_index = affiliations.size - 1
     end
 
-    # Try to resolve existing affiliation when team_id and season are present
+    aff_row = affiliations[aff_index]
+    resolved_affiliation_id = nil
     if t['team_id'].to_i.positive? && season_id.to_i.positive?
-      existing_aff = GogglesDb::TeamAffiliation.find_by(team_id: t['team_id'], season_id: season_id)
-      affiliations[aff_index]['team_affiliation_id'] = existing_aff&.id
+      resolved_affiliation_id = GogglesDb::TeamAffiliation.find_by(team_id: t['team_id'], season_id: season_id)&.id
     end
+    # Always overwrite with deterministic resolution (or nil) to avoid stale bindings.
+    aff_row['team_affiliation_id'] = resolved_affiliation_id
 
     data['team_affiliations'] = affiliations
     data['teams'] = teams
@@ -1273,15 +1284,16 @@ class DataFixController < ApplicationController
     meta['generated_at'] = Time.now.utc.iso8601
     pfm.write!(data: data, meta: meta)
 
-    # Cascade team_id change to Phase 3 badges and Phase 5 DataImport rows
+    # Cascade team binding updates to Phase 3 badges and Phase 5 DataImport rows
     phase3_path = default_phase_path_for(source_path, 3)
     new_team_id = t['team_id']
-    if File.exist?(phase3_path) && old_team_id != new_team_id
+    if File.exist?(phase3_path)
       cascade_count = cascade_team_to_phase3(phase3_path, team_key, new_team_id, season_id)
-      cascade_count += cascade_team_to_data_import_rows(team_key, new_team_id)
+      cascade_count += cascade_team_to_data_import_rows(team_key, new_team_id, season_id)
       flash[:info] = "Team updated. Cascaded team_id to #{cascade_count} downstream record(s)." if cascade_count.positive?
-    elsif File.exist?(phase3_path)
-      flash[:info] = 'Team updated (team_id unchanged, no cascade needed).' # rubocop:disable Rails/I18nLocaleTexts
+    elsif old_team_id != new_team_id
+      cascade_count = cascade_team_to_data_import_rows(team_key, new_team_id, season_id)
+      flash[:info] = "Team updated. Cascaded team_id to #{cascade_count} downstream record(s)." if cascade_count.positive?
     end
 
     # Preserve pagination and filter params
@@ -1432,20 +1444,17 @@ class DataFixController < ApplicationController
       next unless bkey == swimmer_key || bkey&.include?(base_key)
 
       badge['swimmer_id'] = swimmer['swimmer_id']
-      # Try to resolve existing badge when IDs are available
-      next unless swimmer['swimmer_id'].to_i.positive? && badge['team_id'].to_i.positive? && season_id.to_i.positive?
+      resolved_badge_id = nil
+      if swimmer['swimmer_id'].to_i.positive? && badge['team_id'].to_i.positive? && season_id.to_i.positive?
+        resolved_badge_id = GogglesDb::Badge.find_by(
+          season_id: season_id,
+          swimmer_id: swimmer['swimmer_id'],
+          team_id: badge['team_id']
+        )&.id
+      end
 
-      existing_badge = GogglesDb::Badge.find_by(
-        season_id: season_id,
-        swimmer_id: swimmer['swimmer_id'],
-        team_id: badge['team_id']
-      )
-      next unless existing_badge
-
-      badge['badge_id'] = existing_badge.id
-      badge['number'] ||= existing_badge.number
-      badge['category_type_id'] ||= existing_badge.category_type_id
-      badge['category_type_code'] ||= existing_badge.category_type&.code
+      # Always overwrite with deterministic resolution (or nil) to avoid stale bindings.
+      badge['badge_id'] = resolved_badge_id
     end
     data['badges'] = badges
 
@@ -2416,33 +2425,51 @@ class DataFixController < ApplicationController
   end
 
   # Cascade a team_id change from Phase 2 into Phase 3 badges.
-  # Updates all badges matching team_key with the new team_id and re-resolves badge_id.
+  # Updates all badges matching team_key and re-resolves binding IDs deterministically.
   # Returns the number of badges updated.
   def cascade_team_to_phase3(phase3_path, team_key, new_team_id, season_id) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
     pfm3 = PhaseFileManager.new(phase3_path)
     data3 = pfm3.data || {}
     badges = Array(data3['badges'])
     count = 0
+    normalized_team_id = new_team_id.to_i.positive? ? new_team_id.to_i : nil
+    normalized_season_id = season_id.to_i.positive? ? season_id.to_i : nil
+    resolved_team_affiliation_id = if normalized_team_id && normalized_season_id
+                                     GogglesDb::TeamAffiliation.find_by(team_id: normalized_team_id,
+                                                                        season_id: normalized_season_id)&.id
+                                   end
 
     badges.each do |badge|
       next unless badge['team_key'] == team_key
-      next if badge['team_id'] == new_team_id
 
-      badge['team_id'] = new_team_id
-      count += 1
+      changed = false
+      current_team_id = badge['team_id'].to_i.positive? ? badge['team_id'].to_i : nil
+      if current_team_id != normalized_team_id
+        badge['team_id'] = normalized_team_id
+        changed = true
+      end
 
-      # Re-resolve badge_id with updated team_id
-      next unless new_team_id.to_i.positive? && badge['swimmer_id'].to_i.positive? && season_id.to_i.positive?
+      resolved_badge_id = nil
+      if normalized_team_id && normalized_season_id && badge['swimmer_id'].to_i.positive?
+        resolved_badge_id = GogglesDb::Badge.find_by(
+          season_id: normalized_season_id,
+          swimmer_id: badge['swimmer_id'],
+          team_id: normalized_team_id
+        )&.id
+      end
+      current_badge_id = badge['badge_id'].to_i.positive? ? badge['badge_id'].to_i : nil
+      if current_badge_id != resolved_badge_id
+        badge['badge_id'] = resolved_badge_id
+        changed = true
+      end
 
-      existing_badge = GogglesDb::Badge.find_by(
-        season_id: season_id,
-        swimmer_id: badge['swimmer_id'],
-        team_id: new_team_id
-      )
-      badge['badge_id'] = existing_badge&.id
-      badge['number'] = existing_badge.number.presence || badge['number'] if existing_badge
-      badge['category_type_id'] ||= existing_badge.category_type_id if existing_badge
-      badge['category_type_code'] ||= existing_badge.category_type&.code if existing_badge
+      current_affiliation_id = badge['team_affiliation_id'].to_i.positive? ? badge['team_affiliation_id'].to_i : nil
+      if current_affiliation_id != resolved_team_affiliation_id
+        badge['team_affiliation_id'] = resolved_team_affiliation_id
+        changed = true
+      end
+
+      count += 1 if changed
     end
 
     if count.positive?
@@ -2450,7 +2477,7 @@ class DataFixController < ApplicationController
       meta3 = pfm3.meta || {}
       meta3['generated_at'] = Time.now.utc.iso8601
       pfm3.write!(data: data3, meta: meta3)
-      Rails.logger.info("[DataFix] Cascaded team_id=#{new_team_id} to #{count} Phase 3 badge(s) for team_key='#{team_key}'")
+      Rails.logger.info("[DataFix] Cascaded team_id=#{normalized_team_id.inspect} to #{count} Phase 3 badge(s) for team_key='#{team_key}'")
     end
     count
   rescue StandardError => e
@@ -2458,22 +2485,74 @@ class DataFixController < ApplicationController
     0
   end
 
-  # Cascade a team_id change to Phase 5 DataImport rows (MIR and MRR).
+  # Cascade a team_id change to Phase 5 DataImport rows (MIR, MRR and MRS).
   # Returns the number of rows updated.
   # rubocop:disable Rails/SkipsModelValidations
-  def cascade_team_to_data_import_rows(team_key, new_team_id)
-    return 0 unless new_team_id.to_i.positive?
+  def cascade_team_to_data_import_rows(team_key, new_team_id, season_id = nil)
+    normalized_team_id = new_team_id.to_i.positive? ? new_team_id.to_i : nil
+    normalized_season_id = season_id.to_i.positive? ? season_id.to_i : nil
+    resolved_team_affiliation_id = if normalized_team_id && normalized_season_id
+                                     GogglesDb::TeamAffiliation.find_by(team_id: normalized_team_id,
+                                                                        season_id: normalized_season_id)&.id
+                                   end
+
+    mir_scope = GogglesDb::DataImportMeetingIndividualResult.where(team_key: team_key)
+    mrr_scope = GogglesDb::DataImportMeetingRelayResult.where(team_key: team_key)
+    relay_parent_keys = mrr_scope.pluck(:import_key)
+    mrs_scope = if relay_parent_keys.present?
+                  GogglesDb::DataImportMeetingRelaySwimmer.where(parent_import_key: relay_parent_keys)
+                else
+                  GogglesDb::DataImportMeetingRelaySwimmer.none
+                end
+
+    badge_ids_by_swimmer = {}
+    if normalized_team_id && normalized_season_id
+      swimmer_ids = mir_scope.where.not(swimmer_id: nil).pluck(:swimmer_id).map(&:to_i)
+      swimmer_ids += mrs_scope.where.not(swimmer_id: nil).pluck(:swimmer_id).map(&:to_i)
+      swimmer_ids.select!(&:positive?)
+      swimmer_ids.uniq!
+      if swimmer_ids.present?
+        badge_ids_by_swimmer = GogglesDb::Badge.where(season_id: normalized_season_id,
+                                                      team_id: normalized_team_id,
+                                                      swimmer_id: swimmer_ids).pluck(:swimmer_id, :id).to_h
+      end
+    end
 
     count = 0
-    count += GogglesDb::DataImportMeetingIndividualResult
-             .where(team_key: team_key)
-             .where.not(team_id: new_team_id)
-             .update_all(team_id: new_team_id)
-    count += GogglesDb::DataImportMeetingRelayResult
-             .where(team_key: team_key)
-             .where.not(team_id: new_team_id)
-             .update_all(team_id: new_team_id)
-    Rails.logger.info("[DataFix] Cascaded team_id=#{new_team_id} to #{count} DataImport row(s) for team_key='#{team_key}'") if count.positive?
+
+    mir_scope.find_each do |row|
+      resolved_badge_id = nil
+      resolved_badge_id = badge_ids_by_swimmer[row.swimmer_id.to_i] if normalized_team_id && normalized_season_id && row.swimmer_id.to_i.positive?
+
+      attrs = {}
+      attrs[:team_id] = normalized_team_id if row.team_id != normalized_team_id
+      attrs[:badge_id] = resolved_badge_id if row.badge_id != resolved_badge_id
+      next if attrs.empty?
+
+      row.update_columns(attrs)
+      count += 1
+    end
+
+    mrr_scope.find_each do |row|
+      attrs = {}
+      attrs[:team_id] = normalized_team_id if row.team_id != normalized_team_id
+      attrs[:team_affiliation_id] = resolved_team_affiliation_id if row.team_affiliation_id != resolved_team_affiliation_id
+      next if attrs.empty?
+
+      row.update_columns(attrs)
+      count += 1
+    end
+
+    mrs_scope.find_each do |row|
+      resolved_badge_id = nil
+      resolved_badge_id = badge_ids_by_swimmer[row.swimmer_id.to_i] if normalized_team_id && normalized_season_id && row.swimmer_id.to_i.positive?
+      next if row.badge_id == resolved_badge_id
+
+      row.update_columns(badge_id: resolved_badge_id)
+      count += 1
+    end
+
+    Rails.logger.info("[DataFix] Cascaded team_id=#{normalized_team_id.inspect} to #{count} DataImport row(s) for team_key='#{team_key}'") if count.positive?
     count
   rescue StandardError => e
     Rails.logger.error("[DataFix] cascade_team_to_data_import_rows failed: #{e.message}")
@@ -2566,7 +2645,7 @@ class DataFixController < ApplicationController
     end
 
     changed_team_keys.each do |team_key, team_id|
-      stats[:data_import_rows_fixed] += cascade_team_to_data_import_rows(team_key, team_id)
+      stats[:data_import_rows_fixed] += cascade_team_to_data_import_rows(team_key, team_id, season_id)
     end
 
     stats
@@ -2728,19 +2807,26 @@ class DataFixController < ApplicationController
     relay_swimmers = relay_swimmers_by_key[relay_result.import_key] || []
     issues = {}
 
+    # meeting_program_id may be nil here for NEW programs to be created in phase 6;
+    # this is not an issue by itself as long as program key includes gender and all
+    # other required links/coherence checks pass.
+
     if program_key_missing_gender?(relay_result.meeting_program_key)
       issues[:program_gender] = {
         missing_program_gender: true
       }
     end
 
-    if relay_result.meeting_program_id.to_i <= 0 || relay_result.team_id.to_i <= 0 || relay_result.team_affiliation_id.to_i <= 0
+    team_resolvable = team_link_resolvable?(team_id: relay_result.team_id, team_key: relay_result.team_key)
+
+    unless team_resolvable
       issues[:required_fks] = {
-        missing_meeting_program_id: relay_result.meeting_program_id.to_i <= 0,
         missing_team_id: relay_result.team_id.to_i <= 0,
-        missing_team_affiliation_id: relay_result.team_affiliation_id.to_i <= 0
+        missing_team_key: relay_result.team_key.blank?
       }
-    else
+    end
+
+    if relay_result.team_affiliation_id.to_i.positive?
       affiliation = affiliations_by_id[relay_result.team_affiliation_id] ||
                     GogglesDb::TeamAffiliation.find_by(id: relay_result.team_affiliation_id)
       if affiliation.nil? || affiliation.team_id != relay_result.team_id || (season_id.to_i.positive? && affiliation.season_id != season_id.to_i)
@@ -2753,52 +2839,51 @@ class DataFixController < ApplicationController
     end
 
     relay_swimmers.each do |rs|
-      if rs.swimmer_id.to_i <= 0 || rs.badge_id.to_i <= 0
+      swimmer_resolvable = swimmer_link_resolvable?(
+        swimmer_id: rs.swimmer_id,
+        swimmer_key: rs.swimmer_key,
+        swimmers_by_key: swimmers_by_key
+      )
+      badge_resolvable = relay_swimmer_badge_link_resolvable?(
+        relay_swimmer: rs,
+        parent_team_id: relay_result.team_id,
+        team_key: relay_result.team_key,
+        swimmer_resolvable: swimmer_resolvable
+      )
+
+      unless swimmer_resolvable && badge_resolvable
         issues[rs.relay_order] = {
           swimmer_key: rs.swimmer_key,
-          missing_swimmer_id: rs.swimmer_id.to_i <= 0,
-          missing_badge_id: rs.badge_id.to_i <= 0
+          missing_swimmer_binding: !swimmer_resolvable,
+          missing_badge_binding: !badge_resolvable
         }
         next
       end
 
-      badge = badges_by_id[rs.badge_id] || GogglesDb::Badge.find_by(id: rs.badge_id)
-      if badge.nil? || badge.swimmer_id != rs.swimmer_id || badge.team_id != relay_result.team_id
-        issues[rs.relay_order] = {
-          swimmer_key: rs.swimmer_key,
-          badge_mismatch: true
-        }
-        next
-      end
-
-      # Check both matched swimmers (via swimmer_id) and unmatched (via swimmer_key in phase3)
-      if rs.swimmer_id
-        swimmer = swimmers_by_id[rs.swimmer_id]
-        next unless swimmer
-
-        missing_gender = swimmer.gender_type_id.blank?
-        missing_year = swimmer.year_of_birth.blank? || swimmer.year_of_birth.to_i.zero?
-
-        if missing_gender || missing_year
+      if rs.badge_id.to_i.positive?
+        badge = badges_by_id[rs.badge_id] || GogglesDb::Badge.find_by(id: rs.badge_id)
+        if badge.nil? || badge.swimmer_id != rs.swimmer_id || (relay_result.team_id.to_i.positive? && badge.team_id != relay_result.team_id)
           issues[rs.relay_order] = {
-            swimmer_key: "#{swimmer.last_name}|#{swimmer.first_name}|#{swimmer.year_of_birth}",
-            missing_gender: missing_gender,
-            missing_year: missing_year
+            swimmer_key: rs.swimmer_key,
+            badge_mismatch: true
           }
-        end
-      else
-        # Unmatched swimmer - check phase3 data via swimmer_key
-        swimmer_key = rs.swimmer_key
-        swimmer_issues = swimmer_has_missing_data?(swimmer_key, swimmers_by_key: swimmers_by_key)
-
-        if swimmer_issues[:missing_gender] || swimmer_issues[:missing_year]
-          issues[rs.relay_order] = {
-            swimmer_key: swimmer_key,
-            missing_gender: swimmer_issues[:missing_gender],
-            missing_year: swimmer_issues[:missing_year]
-          }
+          next
         end
       end
+
+      swimmer = swimmers_by_id[rs.swimmer_id]
+      next unless swimmer
+
+      missing_gender = swimmer.gender_type_id.blank?
+      missing_year = swimmer.year_of_birth.blank? || swimmer.year_of_birth.to_i.zero?
+
+      next unless missing_gender || missing_year
+
+      issues[rs.relay_order] = {
+        swimmer_key: "#{swimmer.last_name}|#{swimmer.first_name}|#{swimmer.year_of_birth}",
+        missing_gender: missing_gender,
+        missing_year: missing_year
+      }
     end
 
     {
@@ -2816,6 +2901,30 @@ class DataFixController < ApplicationController
     return true if program_key.blank?
 
     program_key.to_s.split('-').last.to_s.strip.blank?
+  end
+
+  def team_link_resolvable?(team_id:, team_key:)
+    team_id.to_i.positive? || team_key.present?
+  end
+
+  def swimmer_link_resolvable?(swimmer_id:, swimmer_key:, swimmers_by_key:)
+    return true if swimmer_id.to_i.positive?
+    return false if swimmer_key.blank?
+
+    swimmer_issues = swimmer_has_missing_data?(swimmer_key, swimmers_by_key: swimmers_by_key)
+    !swimmer_issues[:missing_gender] && !swimmer_issues[:missing_year] && !swimmer_issues[:not_found]
+  end
+
+  def individual_badge_link_resolvable?(mir, swimmer_resolvable:, team_resolvable:)
+    return true if mir.badge_id.to_i.positive?
+
+    swimmer_resolvable && team_resolvable
+  end
+
+  def relay_swimmer_badge_link_resolvable?(relay_swimmer:, parent_team_id:, team_key:, swimmer_resolvable:)
+    return true if relay_swimmer.badge_id.to_i.positive?
+
+    swimmer_resolvable && team_link_resolvable?(team_id: parent_team_id, team_key: team_key)
   end
 
   # Paginate Phase 5 programs to prevent UI slowdown
@@ -2994,7 +3103,7 @@ class DataFixController < ApplicationController
   # @param filter_data [Hash] data needed for filtering
   # @param source_path [String] canonical source file path
   # @return [Array<Hash>] programs with at least one result with issues
-  def detect_programs_with_issues(programs, filter_data, source_path) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength, Metrics/PerceivedComplexity
+  def detect_programs_with_issues(programs, filter_data, source_path)
     relay_swimmers_by_parent_key = filter_data[:relay_swimmers_by_parent_key]
     swimmers_by_id = filter_data[:swimmers_by_id]
     swimmers_by_key = filter_data[:swimmers_by_key]
@@ -3044,40 +3153,51 @@ class DataFixController < ApplicationController
     end
   end
 
-  # Check if an individual result has issues (missing swimmer data or unmatched swimmer)
+  # Check if an individual result has issues.
+  # meeting_program_id may be nil for NEW programs, but all other links must be resolved.
   # Issues include:
-  #   - swimmer_id is nil (unmatched swimmer)
+  #   - missing program gender in meeting_program_key
+  #   - missing swimmer/team/badge IDs
+  #   - badge/team/swimmer incoherence
+  #   - missing team affiliation for current season (when season is known)
   #   - matched swimmer missing gender or year of birth
-  #   - unmatched swimmer in Phase 3 missing gender
   #
   # @param mir [DataImportMeetingIndividualResult] the individual result to check
   # @param swimmers_by_id [Hash] swimmers indexed by ID
   # @param swimmers_by_key [Hash] swimmers indexed by key (from phase3)
   # @return [Boolean] true if result has issues
-  def result_has_issues?(mir, swimmers_by_id:, swimmers_by_key:, badges_by_id: {},
+  def result_has_issues?(mir, swimmers_by_id:, swimmers_by_key: {}, badges_by_id: {},
                          season_id: nil)
     return true if program_key_missing_gender?(mir.meeting_program_key)
 
-    return true if mir.meeting_program_id.to_i <= 0 || mir.swimmer_id.to_i <= 0 || mir.team_id.to_i <= 0 || mir.badge_id.to_i <= 0
+    # meeting_program_id may be nil for NEW programs; remaining links are valid
+    # when they are either already bound by ID or solvable via keys.
+    swimmer_resolvable = swimmer_link_resolvable?(
+      swimmer_id: mir.swimmer_id,
+      swimmer_key: mir.swimmer_key,
+      swimmers_by_key: swimmers_by_key
+    )
+    team_resolvable = team_link_resolvable?(team_id: mir.team_id, team_key: mir.team_key)
+    badge_resolvable = individual_badge_link_resolvable?(mir, swimmer_resolvable: swimmer_resolvable, team_resolvable: team_resolvable)
+    return true unless swimmer_resolvable && team_resolvable && badge_resolvable
 
-    badge = badges_by_id[mir.badge_id] || GogglesDb::Badge.find_by(id: mir.badge_id)
-    return true unless badge && badge.swimmer_id == mir.swimmer_id && badge.team_id == mir.team_id
-
-    return true if season_id.to_i.positive? && GogglesDb::TeamAffiliation.exists?(team_id: mir.team_id, season_id: season_id.to_i) == false
-
-    if mir.swimmer_id
-      # Matched swimmer - check if missing gender or year
-      swimmer = swimmers_by_id[mir.swimmer_id]
-      return false unless swimmer # If swimmer not found in lookup, skip (data loading issue)
-
-      swimmer.gender_type_id.nil? || swimmer.year_of_birth.nil?
-    else
-      # Unmatched swimmer - check Phase 3 data for missing gender
-      return true if mir.swimmer_key.blank? # No key = definite issue
-
-      swimmer_issues = swimmer_has_missing_data?(mir.swimmer_key, swimmers_by_key: swimmers_by_key)
-      swimmer_issues[:missing_gender] || swimmer_issues[:missing_year] || swimmer_issues[:not_found]
+    if mir.badge_id.to_i.positive?
+      badge = badges_by_id[mir.badge_id] || GogglesDb::Badge.find_by(id: mir.badge_id)
+      return true unless badge && badge.swimmer_id == mir.swimmer_id && badge.team_id == mir.team_id
     end
+
+    if season_id.to_i.positive? && mir.team_id.to_i.positive? && !(GogglesDb::TeamAffiliation.exists?(team_id: mir.team_id,
+                                                                                                      season_id: season_id.to_i) || team_resolvable)
+      # team_affiliation_id is not persisted on data_import MIR rows: if missing in DB,
+      # this is still considered solvable (new team affiliation) when team binding is solvable.
+      return true
+    end
+
+    # Matched swimmer - check if missing gender or year
+    swimmer = swimmers_by_id[mir.swimmer_id]
+    return false unless swimmer # If swimmer not found in lookup, skip (data loading issue)
+
+    swimmer.gender_type_id.nil? || swimmer.year_of_birth.nil?
   end
 
   # Broadcast progress updates via ActionCable for real-time UI feedback
