@@ -387,6 +387,86 @@ RSpec.describe DataFixController do
         updated_time = Time.zone.parse(meta['generated_at'])
         expect(updated_time).to be > original_time
       end
+
+      it 'cascades swimmer update to phase5 data_import rows with canonical key and lap links' do # rubocop:disable RSpec/ExampleLength,RSpec/MultipleExpectations
+        db_swimmer = FactoryBot.create(:swimmer)
+        db_team = FactoryBot.create(:team)
+        db_badge = FactoryBot.create(:badge, season: season, swimmer: db_swimmer, team: db_team)
+
+        pfm = PhaseFileManager.new(phase3_file)
+        data = pfm.data
+        data['swimmers'] = [{
+          'key' => 'M|DOE|JOHN|1985',
+          'last_name' => 'Doe',
+          'first_name' => 'John',
+          'year_of_birth' => 1985,
+          'gender_type_code' => 'M',
+          'complete_name' => 'Doe John',
+          'swimmer_id' => nil,
+          'fuzzy_matches' => []
+        }]
+        data['badges'] = [{
+          'swimmer_key' => 'M|DOE|JOHN|1985',
+          'team_key' => db_team.editable_name,
+          'season_id' => season.id,
+          'team_id' => db_team.id,
+          'swimmer_id' => db_swimmer.id,
+          'badge_id' => db_badge.id
+        }]
+        pfm.write!(data: data, meta: pfm.meta)
+
+        mir = GogglesDb::DataImportMeetingIndividualResult.create!(
+          import_key: '1-100SL-M25-M/DOE|JOHN|1985',
+          meeting_program_key: '1-100SL-M25-M',
+          phase_file_path: source_file,
+          swimmer_id: nil,
+          swimmer_key: 'DOE|JOHN|1985',
+          team_id: db_team.id,
+          team_key: db_team.editable_name,
+          badge_id: nil
+        )
+        lap = GogglesDb::DataImportLap.create!(
+          import_key: '1-100SL-M25-M/DOE|JOHN|1985-50',
+          parent_import_key: mir.import_key,
+          meeting_individual_result_key: mir.import_key,
+          phase_file_path: source_file,
+          length_in_meters: 50
+        )
+        mrr = GogglesDb::DataImportMeetingRelayResult.create!(
+          import_key: '1-S4X50SL-M120-M/Relay Team/02:00.00',
+          meeting_program_key: '1-S4X50SL-M120-M',
+          phase_file_path: source_file,
+          team_id: db_team.id,
+          team_key: db_team.editable_name
+        )
+        mrs = GogglesDb::DataImportMeetingRelaySwimmer.create!(
+          import_key: "#{mrr.import_key}-swimmer1",
+          parent_import_key: mrr.import_key,
+          phase_file_path: source_file,
+          swimmer_id: nil,
+          swimmer_key: 'DOE|JOHN|1985',
+          badge_id: nil,
+          relay_order: 1
+        )
+
+        patch update_phase3_swimmer_path,
+              params: { file_path: source_file, swimmer_key: 'M|DOE|JOHN|1985',
+                        swimmer: { id: db_swimmer.id, complete_name: db_swimmer.complete_name } }
+
+        mir.reload
+        lap.reload
+        mrs.reload
+
+        expect(mir.swimmer_id).to eq(db_swimmer.id)
+        expect(mir.badge_id).to eq(db_badge.id)
+        expect(mir.swimmer_key).to eq('M|DOE|JOHN|1985')
+        expect(mir.import_key).to eq('1-100SL-M25-M/M|DOE|JOHN|1985')
+        expect(lap.parent_import_key).to eq(mir.import_key)
+        expect(lap.meeting_individual_result_key).to eq(mir.import_key)
+        expect(mrs.swimmer_id).to eq(db_swimmer.id)
+        expect(mrs.badge_id).to eq(db_badge.id)
+        expect(mrs.swimmer_key).to eq('M|DOE|JOHN|1985')
+      end
     end
 
     describe 'POST /data_fix/add_swimmer' do

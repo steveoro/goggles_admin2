@@ -535,8 +535,9 @@ module Import
                                                            .includes(:data_import_laps)
                                                            .order(:import_key)
         mirs.each do |data_import_mir|
-          validate_individual_result_row!(data_import_mir, expected_program_id: program_id)
           data_import_mir.meeting_program_id ||= program_id
+          hydrate_individual_result_links!(data_import_mir)
+          validate_individual_result_row!(data_import_mir, expected_program_id: program_id)
 
           # Pass resolved IDs explicitly to committer
           mir_id = mir_committer.commit(data_import_mir, season_id: @season_id)
@@ -560,8 +561,9 @@ module Import
                                                       .includes(data_import_meeting_relay_swimmers: :data_import_relay_laps)
                                                       .order(:import_key)
         mrrs.each do |data_import_mrr|
-          validate_relay_result_row!(data_import_mrr, expected_program_id: program_id)
           data_import_mrr.meeting_program_id ||= program_id
+          hydrate_relay_result_links!(data_import_mrr)
+          validate_relay_result_row!(data_import_mrr, expected_program_id: program_id)
 
           # Pass resolved IDs explicitly to committer
           mrr_id = mrr_committer.commit(data_import_mrr, program_id: program_id, season_id: @season_id)
@@ -577,6 +579,8 @@ module Import
               )
             end
             data_import_mrs.meeting_relay_result_id = mrr_id
+            hydrate_relay_swimmer_links!(data_import_mrs, parent_mrr: data_import_mrr)
+            validate_relay_swimmer_row!(data_import_mrs, parent_mrr: data_import_mrr)
 
             # Fail fast if commit fails:
             mrs_id = mrs_committer.commit(data_import_mrs)
@@ -596,7 +600,7 @@ module Import
       end
       # -----------------------------------------------------------------------
 
-      def validate_individual_result_row!(data_import_mir, expected_program_id:) # rubocop:disable Metrics/AbcSize
+      def validate_individual_result_row!(data_import_mir, expected_program_id:) # rubocop:disable Metrics/AbcSize,Metrics/MethodLength
         if data_import_mir.meeting_program_id.to_i.positive? && data_import_mir.meeting_program_id.to_i != expected_program_id.to_i
           raise_phase5_binding_error!(
             entity_type: 'MeetingIndividualResult',
@@ -610,13 +614,20 @@ module Import
         missing << 'meeting_program_id' unless effective_program_id.positive?
         missing << 'swimmer_id' unless data_import_mir.swimmer_id.to_i.positive?
         missing << 'team_id' unless data_import_mir.team_id.to_i.positive?
-        missing << 'badge_id' unless data_import_mir.badge_id.to_i.positive?
 
         if missing.any?
           raise_phase5_binding_error!(
             entity_type: 'MeetingIndividualResult',
             import_key: data_import_mir.import_key,
             details: "missing required FK(s): #{missing.join(', ')}"
+          )
+        end
+
+        unless data_import_mir.badge_id.to_i.positive?
+          raise_phase5_binding_error!(
+            entity_type: 'MeetingIndividualResult',
+            import_key: data_import_mir.import_key,
+            details: "unresolvable badge for swimmer_id=#{data_import_mir.swimmer_id}, team_id=#{data_import_mir.team_id}, season_id=#{@season_id}"
           )
         end
 
@@ -653,13 +664,20 @@ module Import
         missing = []
         missing << 'meeting_program_id' unless effective_program_id.positive?
         missing << 'team_id' unless data_import_mrr.team_id.to_i.positive?
-        missing << 'team_affiliation_id' unless data_import_mrr.team_affiliation_id.to_i.positive?
 
         if missing.any?
           raise_phase5_binding_error!(
             entity_type: 'MeetingRelayResult',
             import_key: data_import_mrr.import_key,
             details: "missing required FK(s): #{missing.join(', ')}"
+          )
+        end
+
+        unless data_import_mrr.team_affiliation_id.to_i.positive?
+          raise_phase5_binding_error!(
+            entity_type: 'MeetingRelayResult',
+            import_key: data_import_mrr.import_key,
+            details: "unresolvable team_affiliation for team_id=#{data_import_mrr.team_id}, season_id=#{@season_id}"
           )
         end
 
@@ -686,13 +704,20 @@ module Import
 
         missing = []
         missing << 'swimmer_id' unless data_import_mrs.swimmer_id.to_i.positive?
-        missing << 'badge_id' unless data_import_mrs.badge_id.to_i.positive?
 
         if missing.any?
           raise_phase5_binding_error!(
             entity_type: 'MeetingRelaySwimmer',
             import_key: data_import_mrs.import_key,
             details: "missing required FK(s): #{missing.join(', ')}"
+          )
+        end
+
+        unless data_import_mrs.badge_id.to_i.positive?
+          raise_phase5_binding_error!(
+            entity_type: 'MeetingRelaySwimmer',
+            import_key: data_import_mrs.import_key,
+            details: "unresolvable badge for swimmer_id=#{data_import_mrs.swimmer_id}, parent_team_id=#{parent_mrr.team_id}, season_id=#{@season_id}"
           )
         end
 
@@ -713,6 +738,89 @@ module Import
         stats[:errors] << message
         logger.log_error(message: message)
         raise StandardError, message
+      end
+      # -----------------------------------------------------------------------
+
+      def hydrate_individual_result_links!(data_import_mir)
+        data_import_mir.swimmer_id ||= swimmer_committer.resolve_id(data_import_mir.swimmer_key)
+        data_import_mir.team_id ||= team_committer.resolve_id(data_import_mir.team_key)
+
+        return if data_import_mir.badge_id.to_i.positive?
+
+        resolved_badge_id = resolve_badge_id_for_result(
+          swimmer_id: data_import_mir.swimmer_id,
+          swimmer_key: data_import_mir.swimmer_key,
+          team_id: data_import_mir.team_id,
+          team_key: data_import_mir.team_key
+        )
+        data_import_mir.badge_id = resolved_badge_id if resolved_badge_id.to_i.positive?
+      end
+      # -----------------------------------------------------------------------
+
+      def hydrate_relay_result_links!(data_import_mrr)
+        data_import_mrr.team_id ||= team_committer.resolve_id(data_import_mrr.team_key)
+
+        return if data_import_mrr.team_affiliation_id.to_i.positive?
+
+        resolved_ta_id = resolve_team_affiliation_id_for_result(
+          team_id: data_import_mrr.team_id,
+          team_key: data_import_mrr.team_key
+        )
+        data_import_mrr.team_affiliation_id = resolved_ta_id if resolved_ta_id.to_i.positive?
+      end
+      # -----------------------------------------------------------------------
+
+      def hydrate_relay_swimmer_links!(data_import_mrs, parent_mrr:)
+        data_import_mrs.swimmer_id ||= swimmer_committer.resolve_id(data_import_mrs.swimmer_key)
+
+        return if data_import_mrs.badge_id.to_i.positive?
+
+        resolved_badge_id = resolve_badge_id_for_result(
+          swimmer_id: data_import_mrs.swimmer_id,
+          swimmer_key: data_import_mrs.swimmer_key,
+          team_id: parent_mrr.team_id,
+          team_key: parent_mrr.team_key
+        )
+        data_import_mrs.badge_id = resolved_badge_id if resolved_badge_id.to_i.positive?
+      end
+      # -----------------------------------------------------------------------
+
+      def resolve_badge_id_for_result(swimmer_id:, swimmer_key:, team_id:, team_key:) # rubocop:disable Metrics/AbcSize
+        resolved_swimmer_id = swimmer_id.to_i.positive? ? swimmer_id.to_i : swimmer_committer.resolve_id(swimmer_key)
+        resolved_team_id = team_id.to_i.positive? ? team_id.to_i : team_committer.resolve_id(team_key)
+        return nil unless resolved_swimmer_id.to_i.positive? && resolved_team_id.to_i.positive?
+
+        if swimmer_key.present? && team_key.present?
+          cached_badge_id = badge_committer.resolve_id(swimmer_key, team_key)
+          return cached_badge_id if cached_badge_id.to_i.positive?
+        end
+
+        badge = GogglesDb::Badge.find_by(
+          season_id: @season_id,
+          swimmer_id: resolved_swimmer_id,
+          team_id: resolved_team_id
+        )
+        return nil unless badge
+
+        badge_committer.store_id(swimmer_key, team_key, badge.id) if swimmer_key.present? && team_key.present?
+        badge.id
+      end
+      # -----------------------------------------------------------------------
+
+      def resolve_team_affiliation_id_for_result(team_id:, team_key:)
+        resolved_team_id = team_id.to_i.positive? ? team_id.to_i : team_committer.resolve_id(team_key)
+        return nil unless resolved_team_id.to_i.positive? && @season_id.to_i.positive?
+
+        if team_key.present?
+          cached_ta_id = team_affiliation_committer.resolve_id(team_key, team_id: resolved_team_id, season_id: @season_id)
+          return cached_ta_id if cached_ta_id.to_i.positive?
+        end
+
+        affiliation = GogglesDb::TeamAffiliation.find_by(team_id: resolved_team_id, season_id: @season_id)
+        return nil unless affiliation
+
+        team_affiliation_committer.store_id(team_key, affiliation.id, team_id: affiliation.team_id, season_id: affiliation.season_id)
+        affiliation.id
       end
       # -----------------------------------------------------------------------
 

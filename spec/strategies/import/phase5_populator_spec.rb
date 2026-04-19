@@ -13,11 +13,62 @@ RSpec.describe Import::Phase5Populator, type: :strategy do
     )
   end
 
-  let(:source_path) { 'spec/fixtures/results_sample.json' }
-  let(:phase1_path) { 'spec/fixtures/results_sample-phase1.json' }
-  let(:phase2_path) { 'spec/fixtures/results_sample-phase2.json' }
-  let(:phase3_path) { 'spec/fixtures/results_sample-phase3.json' }
   let(:phase4_path) { 'spec/fixtures/results_sample-phase4.json' }
+  let(:phase3_path) { 'spec/fixtures/results_sample-phase3.json' }
+  let(:phase2_path) { 'spec/fixtures/results_sample-phase2.json' }
+  let(:phase1_path) { 'spec/fixtures/results_sample-phase1.json' }
+  let(:source_path) { 'spec/fixtures/results_sample.json' }
+
+  describe 'phase-only FK lookup behavior' do
+    let(:season) { FactoryBot.create(:season) }
+    let(:team) { FactoryBot.create(:team) }
+    let(:team_affiliation) { FactoryBot.create(:team_affiliation, team: team, season: season) }
+    let(:swimmer) { FactoryBot.create(:swimmer) }
+    let(:badge) { FactoryBot.create(:badge, season: season, team: team, swimmer: swimmer) }
+
+    before(:each) do
+      subject.instance_variable_set(:@phase1_data, { 'data' => { 'season_id' => season.id } })
+      subject.instance_variable_set(:@phase2_data, {
+                                      'data' => {
+                                        'team_affiliations' => [
+                                          {
+                                            'team_key' => team.editable_name,
+                                            'season_id' => season.id,
+                                            'team_id' => team.id,
+                                            'team_affiliation_id' => team_affiliation.id
+                                          }
+                                        ]
+                                      }
+                                    })
+      subject.instance_variable_set(:@phase3_data, {
+                                      'data' => {
+                                        'swimmers' => [
+                                          {
+                                            'key' => "M|#{swimmer.last_name}|#{swimmer.first_name}|#{swimmer.year_of_birth}",
+                                            'swimmer_id' => swimmer.id
+                                          }
+                                        ],
+                                        'badges' => []
+                                      }
+                                    })
+    end
+
+    it 'does not fallback to DB when phase3 badge_id is missing' do
+      found_badge_id = subject.send(
+        :find_badge_id,
+        swimmer_key: "M|#{swimmer.last_name}|#{swimmer.first_name}|#{swimmer.year_of_birth}",
+        team_key: team.editable_name,
+        team_id: team.id
+      )
+      expect(found_badge_id).to be_nil
+      expect(badge).to be_present
+    end
+
+    it 'resolves team_affiliation_id from phase2 team_affiliations' do
+      found_affiliation_id = subject.send(:find_team_affiliation_id, team.id, team_key: team.editable_name)
+      expect(found_affiliation_id).to eq(team_affiliation.id)
+    end
+  end
 
   describe '#parse_timing_string' do
     it 'parses timing with minutes and seconds' do

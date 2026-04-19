@@ -55,6 +55,7 @@ module Import
 
         swimmers = []
         badges = []
+        @built_swimmer_id_by_key = {}
 
         if data_hash['swimmers'].is_a?(Array) || data_hash['swimmers'].is_a?(Hash)
           total = data_hash['swimmers'].size
@@ -68,11 +69,13 @@ module Import
               key = gcode.present? ? "#{gcode}|#{l}|#{f}|#{yob}" : "|#{l}|#{f}|#{yob}"
               swimmer_entry = build_swimmer_entry(key, l, f, yob.to_i, gcode, team_name: team_name)
               swimmers << swimmer_entry
+              register_built_swimmer_entry(swimmer_entry)
               next if team_name.blank?
 
               # Use swimmer entry's updated key/gender (may have been populated from DB match)
               add_or_replace_badge(badges, build_badge_entry(swimmer_entry['key'], team_name, yob.to_i,
-                                                             swimmer_entry['gender_type_code'], meeting_date))
+                                                             swimmer_entry['gender_type_code'], meeting_date,
+                                                             swimmer_id: swimmer_entry['swimmer_id']))
             end
           else # Hash dictionary: key => swimmerKey, value => details
             data_hash['swimmers'].each_with_index do |(original_key, v), idx|
@@ -84,11 +87,13 @@ module Import
               key = gcode.present? ? "#{gcode}|#{l}|#{f}|#{yob}" : "|#{l}|#{f}|#{yob}"
               swimmer_entry = build_swimmer_entry(key, l, f, yob.to_i, gcode, team_name: team_name)
               swimmers << swimmer_entry
+              register_built_swimmer_entry(swimmer_entry)
               next if team_name.to_s.strip.empty?
 
               # Use swimmer entry's updated key/gender (may have been populated from DB match)
               add_or_replace_badge(badges, build_badge_entry(swimmer_entry['key'], team_name, yob.to_i,
-                                                             swimmer_entry['gender_type_code'], meeting_date))
+                                                             swimmer_entry['gender_type_code'], meeting_date,
+                                                             swimmer_id: swimmer_entry['swimmer_id']))
             end
           end
 
@@ -119,11 +124,13 @@ module Import
 
                   swimmer_entry = build_swimmer_entry(key, last, first, yob.to_i, gcode, team_name: team_name)
                   swimmers << swimmer_entry
+                  register_built_swimmer_entry(swimmer_entry)
                   next if team_name.to_s.strip.empty?
 
                   # Use swimmer entry's updated key/gender (may have been populated from DB match)
                   add_or_replace_badge(badges, build_badge_entry(swimmer_entry['key'], team_name, yob.to_i,
-                                                                 swimmer_entry['gender_type_code'], meeting_date))
+                                                                 swimmer_entry['gender_type_code'], meeting_date,
+                                                                 swimmer_id: swimmer_entry['swimmer_id']))
                 end
               else
                 # Individual result row
@@ -136,11 +143,13 @@ module Import
                 team_name = row['team']
                 swimmer_entry = build_swimmer_entry(key, l, f, yob.to_i, gcode, team_name: team_name)
                 swimmers << swimmer_entry
+                register_built_swimmer_entry(swimmer_entry)
                 next if team_name.to_s.strip.empty?
 
                 # Use swimmer entry's updated key/gender (may have been populated from DB match)
                 add_or_replace_badge(badges, build_badge_entry(swimmer_entry['key'], team_name, yob.to_i,
-                                                               swimmer_entry['gender_type_code'], meeting_date))
+                                                               swimmer_entry['gender_type_code'], meeting_date,
+                                                               swimmer_id: swimmer_entry['swimmer_id']))
               end
             end
             broadcast_progress('Collect swimmers from sections', sec_idx + 1, total)
@@ -704,9 +713,9 @@ module Import
       # badge number and badge_id (if matched).
       #
       # NOTE: Category data is now computed at swimmer level, so we reuse it from there.
-      def build_badge_entry(swimmer_key, team_key, year_of_birth, gender_code, meeting_date) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
+      def build_badge_entry(swimmer_key, team_key, year_of_birth, gender_code, meeting_date, swimmer_id: nil) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
         # Resolve swimmer_id and team_id from phase data
-        swimmer_id = find_swimmer_id_by_key(swimmer_key)
+        swimmer_id = swimmer_id.to_i.positive? ? swimmer_id.to_i : find_swimmer_id_by_key(swimmer_key)
         team_id = find_team_id_by_key(team_key)
 
         badge = {
@@ -764,36 +773,44 @@ module Import
       # Find swimmer_id by swimmer_key from current swimmers being built
       # Note: This looks at swimmers array being built in this phase, not from saved phase3 file
       # Keys now have format: |LAST|FIRST|YOB or GENDER|LAST|FIRST|YOB
-      def find_swimmer_id_by_key(swimmer_key) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
-        # First check phase3 data if available (from previous build)
-        # Use include? for partial match to handle keys with/without gender prefix
-        if @phase1_data # Reusing phase data loaded at start
-          swimmers = Array(@phase3_data&.dig('data', 'swimmers'))
-          # Exact match first
-          swimmer = swimmers.find { |s| s['key'] == swimmer_key }
-          # Fallback: partial match if key contains the swimmer key (handles gender prefix variations)
-          swimmer ||= swimmers.find { |s| s['key'].include?(swimmer_key.sub(/^[MF]?\|?/, '|')) }
-          return swimmer&.dig('swimmer_id') if swimmer
-        end
+      def find_swimmer_id_by_key(swimmer_key)
+        return nil if swimmer_key.blank?
 
-        # Otherwise, try to find in DB by parsing key
-        # Remove leading empty part if present (|LAST|... format)
-        parts = swimmer_key.split('|').compact_blank
+        return @built_swimmer_id_by_key[swimmer_key] if @built_swimmer_id_by_key&.key?(swimmer_key)
+
+        partial_key = normalize_swimmer_key_for_lookup(swimmer_key)
+        return nil if partial_key.blank?
+
+        @built_swimmer_id_by_key&.[](partial_key)
+      end
+
+      def register_built_swimmer_entry(swimmer_entry)
+        return unless swimmer_entry.is_a?(Hash)
+
+        swimmer_key = swimmer_entry['key']
+        swimmer_id = swimmer_entry['swimmer_id']
+        return if swimmer_key.blank?
+
+        @built_swimmer_id_by_key ||= {}
+        @built_swimmer_id_by_key[swimmer_key] = swimmer_id if swimmer_id.to_i.positive?
+
+        partial_key = normalize_swimmer_key_for_lookup(swimmer_key)
+        @built_swimmer_id_by_key[partial_key] = swimmer_id if partial_key.present? && swimmer_id.to_i.positive?
+      end
+
+      def normalize_swimmer_key_for_lookup(swimmer_key)
+        return nil if swimmer_key.blank?
+
+        parts = swimmer_key.to_s.split('|').compact_blank
         return nil if parts.size < 3
 
-        # Handle both formats: GENDER|LAST|FIRST|YOB or LAST|FIRST|YOB
         offset = parts[0].length == 1 && parts[0].match?(/[MF]/) ? 1 : 0
         last_name = parts[offset]
         first_name = parts[offset + 1]
-        year_of_birth = parts[offset + 2].to_i
+        year_of_birth = parts[offset + 2]
+        return nil if [last_name, first_name, year_of_birth].any?(&:blank?)
 
-        # Quick lookup - exact match by name and YOB
-        swimmer = GogglesDb::Swimmer.find_by(
-          last_name: last_name,
-          first_name: first_name,
-          year_of_birth: year_of_birth
-        )
-        swimmer&.id
+        "|#{last_name}|#{first_name}|#{year_of_birth}"
       end
 
       # Find team_id by team_key from phase2 data

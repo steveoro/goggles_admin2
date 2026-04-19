@@ -160,6 +160,22 @@ RSpec.describe Import::Solvers::SwimmerSolver do
   end
 
   describe 'pre-matching pattern (v2.0)' do
+    it 'resolves swimmer_id from in-memory built map without DB fallback' do
+      solver = described_class.new(season: season)
+      solver.instance_variable_set(:@built_swimmer_id_by_key, {
+                                     'M|DOE|JOHN|1985' => 123,
+                                     '|DOE|JOHN|1985' => 123
+                                   })
+
+      allow(GogglesDb::Swimmer).to receive(:find_by)
+
+      expect(solver.send(:find_swimmer_id_by_key, 'M|DOE|JOHN|1985')).to eq(123)
+      expect(solver.send(:find_swimmer_id_by_key, 'DOE|JOHN|1985')).to eq(123)
+      expect(solver.send(:find_swimmer_id_by_key, 'M|UNKNOWN|PERSON|1980')).to be_nil
+
+      expect(GogglesDb::Swimmer).not_to have_received(:find_by)
+    end
+
     it 'collects fuzzy candidates case-insensitively for mixed-case imported names' do
       swimmer = GogglesDb::Swimmer.where('last_name IS NOT NULL AND first_name IS NOT NULL AND year_of_birth IS NOT NULL').limit(100).sample
 

@@ -300,7 +300,7 @@ module Import
 
           # Find entity IDs from phase files
           team_id = find_team_id(result)
-          team_affiliation_id = find_team_affiliation_id(team_id)
+          team_affiliation_id = find_team_affiliation_id(team_id, team_key: team_key)
           meeting_program_id = gender.present? ? find_meeting_program_id(session_order, event_code, category, gender) : nil
           @stats[:programs_matched] += 1 if meeting_program_id
 
@@ -588,7 +588,7 @@ module Import
       badge&.dig('team_id')
     end
 
-    def find_badge_id(swimmer_key:, team_key:, team_id: nil) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+    def find_badge_id(swimmer_key:, team_key:, team_id: nil) # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
       return nil if swimmer_key.blank?
 
       partial_key = normalize_to_partial_key(swimmer_key)
@@ -607,23 +607,29 @@ module Import
         return badge['badge_id'] if badge
       end
 
-      resolved_swimmer_id = find_swimmer_id_by_key(swimmer_key)
-      resolved_team_id = team_id.to_i.positive? ? team_id.to_i : find_team_id_from_badges(swimmer_key, team_key)
-      season_id = phase1_data&.dig('data', 'season_id').to_i
-      return nil unless resolved_swimmer_id.to_i.positive? && resolved_team_id.to_i.positive? && season_id.to_i.positive?
-
-      GogglesDb::Badge.find_by(
-        swimmer_id: resolved_swimmer_id.to_i,
-        team_id: resolved_team_id.to_i,
-        season_id: season_id
-      )&.id
+      nil
     end
 
-    def find_team_affiliation_id(team_id)
-      season_id = phase1_data&.dig('data', 'season_id').to_i
-      return nil unless team_id.to_i.positive? && season_id.to_i.positive?
+    def find_team_affiliation_id(team_id, team_key: nil) # rubocop:disable Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
+      return nil unless phase2_data
 
-      GogglesDb::TeamAffiliation.find_by(team_id: team_id.to_i, season_id: season_id)&.id
+      affiliations = phase2_data.dig('data', 'team_affiliations') || []
+      season_id = phase1_data&.dig('data', 'season_id').to_i
+
+      affiliation = affiliations.find do |row|
+        next false unless row['team_affiliation_id'].to_i.positive?
+        next false if season_id.to_i.positive? && row['season_id'].to_i.positive? && row['season_id'].to_i != season_id
+
+        if team_id.to_i.positive?
+          row['team_id'].to_i == team_id.to_i
+        elsif team_key.present?
+          row['team_key'].to_s.casecmp?(team_key.to_s)
+        else
+          false
+        end
+      end
+
+      affiliation&.dig('team_affiliation_id')
     end
 
     # Find meeting_program_id by matching against existing database records

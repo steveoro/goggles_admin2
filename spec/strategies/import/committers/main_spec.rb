@@ -270,6 +270,103 @@ RSpec.describe Import::Committers::Main do
     end
   end
 
+  describe 'phase 6 in-memory FK hydration' do
+    let(:tmp_dir) { Dir.mktmpdir }
+    let(:src_path) { File.join(tmp_dir, 'phase6-test.json').tap { |p| File.write(p, '{}') } }
+    let(:committer) { create_committer(src_path) }
+    let(:meeting) { FactoryBot.create(:meeting, season: season) }
+    let(:team) { FactoryBot.create(:team) }
+    let(:swimmer) { FactoryBot.create(:swimmer) }
+    let(:team_affiliation) { FactoryBot.create(:team_affiliation, team: team, season: season) }
+    let(:category_type) { season.category_types.where(relay: false).first || FactoryBot.create(:category_type, season: season) }
+    let(:badge) do
+      FactoryBot.create(
+        :badge,
+        swimmer: swimmer,
+        team: team,
+        team_affiliation: team_affiliation,
+        season: season,
+        category_type: category_type
+      )
+    end
+
+    before(:each) do
+      committer.instance_variable_set(:@meeting, meeting)
+      committer.instance_variable_set(:@season_id, season.id)
+      committer.instance_variable_set(:@categories_cache, PdfResults::CategoriesCache.new(season))
+      committer.send(:team_committer).store_id(team.editable_name, team.id)
+      committer.send(:swimmer_committer).store_id('M|DOE|JOHN|1985', swimmer.id)
+      committer.send(:team_affiliation_committer).store_id(
+        team.editable_name,
+        team_affiliation.id,
+        team_id: team.id,
+        season_id: season.id
+      )
+      committer.send(:badge_committer).store_id('M|DOE|JOHN|1985', team.editable_name, badge.id)
+    end
+
+    after(:each) { FileUtils.rm_rf(tmp_dir) }
+
+    it 'hydrates MIR badge_id from cache/lookup without creating duplicate badges' do
+      mir = GogglesDb::DataImportMeetingIndividualResult.new(
+        import_key: '1-100SL-M25-M/M|DOE|JOHN|1985',
+        swimmer_key: 'M|DOE|JOHN|1985',
+        team_key: team.editable_name,
+        badge_id: nil,
+        swimmer_id: nil,
+        team_id: nil
+      )
+
+      expect do
+        committer.send(:hydrate_individual_result_links!, mir)
+      end.not_to change(GogglesDb::Badge, :count)
+
+      expect(mir.swimmer_id).to eq(swimmer.id)
+      expect(mir.team_id).to eq(team.id)
+      expect(mir.badge_id).to eq(badge.id)
+    end
+
+    it 'hydrates MRR team_affiliation_id from cache/lookup without creating duplicate affiliations' do
+      mrr = GogglesDb::DataImportMeetingRelayResult.new(
+        import_key: '1-S4X50SL-M120-M/TEAM/02:00.00',
+        team_key: team.editable_name,
+        team_id: nil,
+        team_affiliation_id: nil
+      )
+
+      expect do
+        committer.send(:hydrate_relay_result_links!, mrr)
+      end.not_to change(GogglesDb::TeamAffiliation, :count)
+
+      expect(mrr.team_id).to eq(team.id)
+      expect(mrr.team_affiliation_id).to eq(team_affiliation.id)
+    end
+
+    it 'hydrates MRS badge_id from cache/lookup without creating duplicate badges' do
+      mrr = GogglesDb::DataImportMeetingRelayResult.new(
+        import_key: '1-S4X50SL-M120-M/TEAM/02:00.00',
+        team_key: team.editable_name,
+        team_id: team.id,
+        team_affiliation_id: team_affiliation.id
+      )
+      mrs = GogglesDb::DataImportMeetingRelaySwimmer.new(
+        import_key: '1-S4X50SL-M120-M/TEAM/02:00.00-swimmer1',
+        parent_import_key: mrr.import_key,
+        swimmer_key: 'M|DOE|JOHN|1985',
+        swimmer_id: nil,
+        badge_id: nil,
+        relay_order: 1
+      )
+
+      expect do
+        committer.send(:hydrate_relay_swimmer_links!, mrs, parent_mrr: mrr)
+      end.not_to change(GogglesDb::Badge, :count)
+
+      expect(mrs.swimmer_id).to eq(swimmer.id)
+      expect(mrs.badge_id).to eq(badge.id)
+    end
+  end
+
   describe 'relay category/gender auto-computation' do
     let(:season) { GogglesDb::Season.find(242) } # Use known season with relay categories
     let(:meeting) do

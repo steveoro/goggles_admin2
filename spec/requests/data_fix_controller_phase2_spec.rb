@@ -477,8 +477,10 @@ RSpec.describe DataFixController do
 
         expect(mir.reload.team_id).to be_nil
         expect(mir.reload.badge_id).to be_nil
+        expect(mir.reload.team_key).to eq('Team Original')
         expect(mrr.reload.team_id).to be_nil
         expect(mrr.reload.team_affiliation_id).to be_nil
+        expect(mrr.reload.team_key).to eq('Team Original')
         expect(mrs.reload.badge_id).to be_nil
       end
 
