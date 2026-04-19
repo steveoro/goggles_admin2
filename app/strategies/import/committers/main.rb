@@ -570,7 +570,6 @@ module Import
 
           # Commit relay swimmers and their laps
           data_import_mrr.data_import_meeting_relay_swimmers.each do |data_import_mrs|
-            validate_relay_swimmer_row!(data_import_mrs, parent_mrr: data_import_mrr)
             if data_import_mrs.meeting_relay_result_id.to_i.positive? && data_import_mrs.meeting_relay_result_id.to_i != mrr_id
               raise_phase5_binding_error!(
                 entity_type: 'MeetingRelaySwimmer',
@@ -758,20 +757,22 @@ module Import
       # -----------------------------------------------------------------------
 
       def hydrate_relay_result_links!(data_import_mrr)
-        data_import_mrr.team_id ||= team_committer.resolve_id(data_import_mrr.team_key)
+        data_import_mrr.team_id ||= resolve_team_id(data_import_mrr.team_id, data_import_mrr.team_key)
 
         return if data_import_mrr.team_affiliation_id.to_i.positive?
 
         resolved_ta_id = resolve_team_affiliation_id_for_result(
           team_id: data_import_mrr.team_id,
-          team_key: data_import_mrr.team_key
+          team_key: data_import_mrr.team_key,
+          create_missing: true
         )
         data_import_mrr.team_affiliation_id = resolved_ta_id if resolved_ta_id.to_i.positive?
       end
       # -----------------------------------------------------------------------
 
       def hydrate_relay_swimmer_links!(data_import_mrs, parent_mrr:)
-        data_import_mrs.swimmer_id ||= swimmer_committer.resolve_id(data_import_mrs.swimmer_key)
+        data_import_mrs.swimmer_id ||= resolve_swimmer_id(data_import_mrs.swimmer_id, data_import_mrs.swimmer_key)
+        parent_mrr.team_id ||= resolve_team_id(parent_mrr.team_id, parent_mrr.team_key)
 
         return if data_import_mrs.badge_id.to_i.positive?
 
@@ -779,15 +780,16 @@ module Import
           swimmer_id: data_import_mrs.swimmer_id,
           swimmer_key: data_import_mrs.swimmer_key,
           team_id: parent_mrr.team_id,
-          team_key: parent_mrr.team_key
+          team_key: parent_mrr.team_key,
+          create_missing: true
         )
         data_import_mrs.badge_id = resolved_badge_id if resolved_badge_id.to_i.positive?
       end
       # -----------------------------------------------------------------------
 
-      def resolve_badge_id_for_result(swimmer_id:, swimmer_key:, team_id:, team_key:) # rubocop:disable Metrics/AbcSize
-        resolved_swimmer_id = swimmer_id.to_i.positive? ? swimmer_id.to_i : swimmer_committer.resolve_id(swimmer_key)
-        resolved_team_id = team_id.to_i.positive? ? team_id.to_i : team_committer.resolve_id(team_key)
+      def resolve_badge_id_for_result(swimmer_id:, swimmer_key:, team_id:, team_key:, create_missing: false) # rubocop:disable Metrics/AbcSize,Metrics/MethodLength
+        resolved_swimmer_id = resolve_swimmer_id(swimmer_id, swimmer_key)
+        resolved_team_id = resolve_team_id(team_id, team_key)
         return nil unless resolved_swimmer_id.to_i.positive? && resolved_team_id.to_i.positive?
 
         if swimmer_key.present? && team_key.present?
@@ -800,15 +802,44 @@ module Import
           swimmer_id: resolved_swimmer_id,
           team_id: resolved_team_id
         )
-        return nil unless badge
+        if badge
+          badge_committer.store_id(swimmer_key, team_key, badge.id) if swimmer_key.present? && team_key.present?
+          return badge.id
+        end
 
-        badge_committer.store_id(swimmer_key, team_key, badge.id) if swimmer_key.present? && team_key.present?
-        badge.id
+        return nil unless create_missing
+
+        canonical_team_key = canonical_team_key_for(team_key, resolved_team_id)
+        return nil if swimmer_key.blank? || canonical_team_key.blank?
+
+        resolve_team_affiliation_id_for_result(
+          team_id: resolved_team_id,
+          team_key: canonical_team_key,
+          create_missing: true
+        )
+
+        created_badge_id = badge_committer.commit(
+          {
+            'swimmer_key' => swimmer_key,
+            'team_key' => canonical_team_key,
+            'swimmer_id' => resolved_swimmer_id,
+            'team_id' => resolved_team_id,
+            'season_id' => @season_id,
+            'category_type_id' => resolve_category_type_id_for_badge(swimmer_id: resolved_swimmer_id),
+            'number' => '?',
+            'badge_id' => nil
+          }
+        )
+        badge_committer.store_id(swimmer_key, canonical_team_key, created_badge_id) if created_badge_id.to_i.positive?
+        created_badge_id
+      rescue StandardError => e
+        Rails.logger.warn("[Main] Unable to derive badge for swimmer_key=#{swimmer_key}, team_key=#{team_key}: #{e.message}")
+        nil
       end
       # -----------------------------------------------------------------------
 
-      def resolve_team_affiliation_id_for_result(team_id:, team_key:)
-        resolved_team_id = team_id.to_i.positive? ? team_id.to_i : team_committer.resolve_id(team_key)
+      def resolve_team_affiliation_id_for_result(team_id:, team_key:, create_missing: false)
+        resolved_team_id = resolve_team_id(team_id, team_key)
         return nil unless resolved_team_id.to_i.positive? && @season_id.to_i.positive?
 
         if team_key.present?
@@ -817,10 +848,69 @@ module Import
         end
 
         affiliation = GogglesDb::TeamAffiliation.find_by(team_id: resolved_team_id, season_id: @season_id)
-        return nil unless affiliation
+        if affiliation
+          team_affiliation_committer.store_id(team_key, affiliation.id, team_id: affiliation.team_id, season_id: affiliation.season_id)
+          return affiliation.id
+        end
 
-        team_affiliation_committer.store_id(team_key, affiliation.id, team_id: affiliation.team_id, season_id: affiliation.season_id)
-        affiliation.id
+        return nil unless create_missing
+
+        canonical_team_key = canonical_team_key_for(team_key, resolved_team_id)
+        return nil if canonical_team_key.blank?
+
+        team_affiliation_committer.commit(
+          {
+            'team_key' => canonical_team_key,
+            'team_id' => resolved_team_id,
+            'season_id' => @season_id,
+            'team_affiliation_id' => nil
+          }
+        )
+      rescue StandardError => e
+        Rails.logger.warn("[Main] Unable to derive team affiliation for team_key=#{team_key}, team_id=#{resolved_team_id}: #{e.message}")
+        nil
+      end
+      # -----------------------------------------------------------------------
+
+      def resolve_team_id(team_id, team_key)
+        team_id.to_i.positive? ? team_id.to_i : team_committer.resolve_id(team_key)
+      end
+      # -----------------------------------------------------------------------
+
+      def resolve_swimmer_id(swimmer_id, swimmer_key)
+        swimmer_id.to_i.positive? ? swimmer_id.to_i : swimmer_committer.resolve_id(swimmer_key)
+      end
+      # -----------------------------------------------------------------------
+
+      def canonical_team_key_for(team_key, team_id)
+        return team_key if team_key.present?
+
+        team = GogglesDb::Team.find_by(id: team_id)
+        team&.editable_name || team&.name
+      end
+      # -----------------------------------------------------------------------
+
+      def resolve_category_type_id_for_badge(swimmer_id:) # rubocop:disable Metrics/AbcSize
+        swimmer = GogglesDb::Swimmer.find_by(id: swimmer_id)
+        return nil unless swimmer && @season_id.to_i.positive?
+
+        target_date = @meeting&.header_date || Time.zone.today
+        age = swimmer.age(target_date)
+        return nil unless age.to_i.positive?
+
+        season_match_id = GogglesDb::CategoryType.where(season_id: @season_id, relay: false)
+                                                 .where('age_begin <= ? AND age_end >= ?', age, age)
+                                                 .pick(:id)
+        return season_match_id if season_match_id.to_i.positive?
+
+        historical_category_id = swimmer.last_category_type_by_badge&.id
+        return historical_category_id if historical_category_id.to_i.positive?
+
+        season_type = GogglesDb::Season.find_by(id: @season_id)&.season_type
+        swimmer.latest_category_type(season_type)&.id
+      rescue StandardError => e
+        Rails.logger.debug { "[Main] Unable to resolve fallback category_type for swimmer_id=#{swimmer_id}: #{e.message}" }
+        nil
       end
       # -----------------------------------------------------------------------
 

@@ -365,6 +365,106 @@ RSpec.describe Import::Committers::Main do
       expect(mrs.swimmer_id).to eq(swimmer.id)
       expect(mrs.badge_id).to eq(badge.id)
     end
+
+    it 'creates missing team affiliation while hydrating MRR links' do
+      new_team = FactoryBot.create(:team)
+      committer.send(:team_committer).store_id(new_team.editable_name, new_team.id)
+
+      mrr = GogglesDb::DataImportMeetingRelayResult.new(
+        import_key: '2-S4X50SL-M160-M/NEWTEAM/02:10.00',
+        team_key: new_team.editable_name,
+        team_id: new_team.id,
+        team_affiliation_id: nil
+      )
+
+      expect do
+        committer.send(:hydrate_relay_result_links!, mrr)
+      end.to change(GogglesDb::TeamAffiliation, :count).by(1)
+
+      expect(mrr.team_affiliation_id).to be_present
+      created_affiliation = GogglesDb::TeamAffiliation.find(mrr.team_affiliation_id)
+      expect(created_affiliation.team_id).to eq(new_team.id)
+      expect(created_affiliation.season_id).to eq(season.id)
+    end
+
+    it 'creates missing badge while hydrating MRS links when swimmer and team are coherent' do
+      new_team = FactoryBot.create(:team)
+      eligible_swimmer = FactoryBot.create(
+        :swimmer,
+        first_name: 'JOHN',
+        last_name: 'DOE',
+        year_of_birth: 1975,
+        gender_type: GogglesDb::GenderType.male
+      )
+      swimmer_key = 'M|DOE|JOHN|1975'
+
+      committer.send(:team_committer).store_id(new_team.editable_name, new_team.id)
+      committer.send(:swimmer_committer).store_id(swimmer_key, eligible_swimmer.id)
+
+      mrr = GogglesDb::DataImportMeetingRelayResult.new(
+        import_key: '2-S4X50SL-M160-M/NEWTEAM/02:10.00',
+        team_key: new_team.editable_name,
+        team_id: new_team.id,
+        team_affiliation_id: nil
+      )
+      committer.send(:hydrate_relay_result_links!, mrr)
+
+      mrs = GogglesDb::DataImportMeetingRelaySwimmer.new(
+        import_key: '2-S4X50SL-M160-M/NEWTEAM/02:10.00-swimmer1',
+        parent_import_key: mrr.import_key,
+        swimmer_key: swimmer_key,
+        swimmer_id: eligible_swimmer.id,
+        badge_id: nil,
+        relay_order: 1
+      )
+
+      preexisting_badge = GogglesDb::Badge.find_by(
+        season_id: season.id,
+        swimmer_id: eligible_swimmer.id,
+        team_id: new_team.id
+      )
+
+      committer.send(:hydrate_relay_swimmer_links!, mrs, parent_mrr: mrr)
+
+      expect(mrs.badge_id).to be_present
+      created_badge = GogglesDb::Badge.find(mrs.badge_id)
+      expect(created_badge.swimmer_id).to eq(eligible_swimmer.id)
+      expect(created_badge.team_id).to eq(new_team.id)
+      expect(created_badge.season_id).to eq(season.id)
+      expect(created_badge.id).to eq(preexisting_badge.id) if preexisting_badge
+    end
+
+    it 'still raises preflight error on coherent-link mismatch after hydration' do
+      other_team = FactoryBot.create(:team)
+      other_affiliation = FactoryBot.create(:team_affiliation, team: other_team, season: season)
+      wrong_badge = FactoryBot.create(
+        :badge,
+        swimmer: swimmer,
+        team: other_team,
+        team_affiliation: other_affiliation,
+        season: season,
+        category_type: category_type
+      )
+
+      mrr = GogglesDb::DataImportMeetingRelayResult.new(
+        import_key: '1-S4X50SL-M120-M/TEAM/02:00.00',
+        team_key: team.editable_name,
+        team_id: team.id,
+        team_affiliation_id: team_affiliation.id
+      )
+      mrs = GogglesDb::DataImportMeetingRelaySwimmer.new(
+        import_key: '1-S4X50SL-M120-M/TEAM/02:00.00-swimmer1',
+        parent_import_key: mrr.import_key,
+        swimmer_key: 'M|DOE|JOHN|1985',
+        swimmer_id: swimmer.id,
+        badge_id: wrong_badge.id,
+        relay_order: 1
+      )
+
+      expect do
+        committer.send(:validate_relay_swimmer_row!, mrs, parent_mrr: mrr)
+      end.to raise_error(StandardError, %r{badge/team/swimmer mismatch})
+    end
   end
 
   describe 'relay category/gender auto-computation' do
