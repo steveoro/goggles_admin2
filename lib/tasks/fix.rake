@@ -79,7 +79,7 @@ namespace :fix do # rubocop:disable Metrics/BlockLength
     fixer.display_report
     fixer.prepare
 
-    file_name = "#{file_index}-fix_team_in_badge-#{badge_ids_label}"
+    file_name = "#{format('%04d', file_index)}-fix_team_in_badge-#{badge_ids_label}"
     process_sql_file(file_name:, sql_log_array: fixer.sql_log, simulate:)
 
     puts('Done.')
@@ -148,7 +148,7 @@ namespace :fix do # rubocop:disable Metrics/BlockLength
     fixer.display_report
     fixer.prepare
 
-    file_name = "#{file_index}-fix_swimmer_in_badge-#{badge_ids_label}"
+    file_name = "#{format('%04d', file_index)}-fix_swimmer_in_badge-#{badge_ids_label}"
     process_sql_file(file_name:, sql_log_array: fixer.sql_log, simulate:)
 
     puts('Done.')
