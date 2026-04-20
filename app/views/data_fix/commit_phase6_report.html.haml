@@ -106,6 +106,138 @@
                 %strong= count
                 = " #{label}"
 
+  - if @commit_success && @post_commit_checks.present?
+    .card.mt-3
+      .card-header
+        %strong Post-Commit Integrity Checks
+      .card-body
+        - if @post_commit_checks[:error].present?
+          .alert.alert-danger.mb-0
+            %strong Check runner error:
+            = @post_commit_checks[:error]
+        - else
+          :ruby
+            status_map = {
+              'ok' => { label: 'ALL GREEN', class_name: 'success' },
+              'warning' => { label: 'WARNING', class_name: 'warning' },
+              'error' => { label: 'ERROR', class_name: 'danger' }
+            }
+            overall_cfg = status_map.fetch(@post_commit_checks[:overall_status], status_map['warning'])
+            badge_check = @post_commit_checks[:badge_season_check] || {}
+            duplicate_check = @post_commit_checks[:duplicate_results_check] || {}
+            badge_cfg = status_map.fetch(badge_check[:status], status_map['warning'])
+            dup_cfg = status_map.fetch(duplicate_check[:status], status_map['warning'])
+
+          .alert{ class: "alert-#{overall_cfg[:class_name]}" }
+            %strong Overall status:
+            = overall_cfg[:label]
+            = " (Season #{@post_commit_checks[:season_id]})"
+
+          .row
+            .col-md-6.mb-3
+              .border.rounded.p-3
+                %h6.mb-2
+                  Badge Season Check
+                  %span.badge.ml-2{ class: "badge-#{badge_cfg[:class_name]}" }= badge_cfg[:label]
+                %ul.mb-0
+                  %li
+                    %strong Sure badge merges:
+                    = badge_check[:sure_badge_merges_count] || 0
+                  %li
+                    %strong Possible badge merges:
+                    = badge_check[:possible_badge_merges_count] || 0
+                  %li
+                    %strong Multi badges:
+                    = badge_check[:multi_badges_count] || 0
+                  %li
+                    %strong Possible team merges:
+                    = badge_check[:possible_team_merges_count] || 0
+                  %li
+                    %strong Relay badges:
+                    = badge_check[:relay_badges_count] || 0
+
+            .col-md-6.mb-3
+              .border.rounded.p-3
+                %h6.mb-2
+                  Duplicate Results Check
+                  %span.badge.ml-2{ class: "badge-#{dup_cfg[:class_name]}" }= dup_cfg[:label]
+                - dup_totals = duplicate_check[:totals] || {}
+                %ul.mb-0
+                  %li
+                    %strong Duplicate MIR groups:
+                    = dup_totals[:mirs] || 0
+                  %li
+                    %strong Duplicate lap groups:
+                    = dup_totals[:laps] || 0
+                  %li
+                    %strong Duplicate MRS groups:
+                    = dup_totals[:mrss] || 0
+                  %li
+                    %strong Duplicate relay_lap groups:
+                    = dup_totals[:relay_laps] || 0
+                  %li
+                    %strong Duplicate MRR pairs:
+                    = dup_totals[:mrrs] || 0
+
+          - if (badge_check[:sure_badge_merges_count] || 0).positive?
+            .card.mt-2.border-danger
+              .card-header.bg-danger.text-white
+                %strong Sure Badge Merge Candidates (Errors)
+              .card-body
+                - badge_check[:sure_badge_merges].each do |entry|
+                  %p.mb-1
+                    %strong= "Swimmer #{entry[:swimmer_id]}"
+                    = " - #{entry[:swimmer_name]}"
+                  %ul.small
+                    - entry[:badges].each do |badge|
+                      %li= "Badge #{badge[:id]} • Team #{badge[:team_id]} (#{badge[:team_name]}) • Cat #{badge[:category_code]}"
+
+          - if (badge_check[:possible_badge_merges_count] || 0).positive?
+            .card.mt-2.border-warning
+              .card-header.bg-warning
+                %strong Possible Badge Merge Candidates (Warnings)
+              .card-body
+                - badge_check[:possible_badge_merges].each do |entry|
+                  %p.mb-1
+                    %strong= "Swimmer #{entry[:swimmer_id]}"
+                    = " - #{entry[:swimmer_name]}"
+                  %ul.small
+                    - entry[:badges].each do |badge|
+                      %li= "Badge #{badge[:id]} • Team #{badge[:team_id]} (#{badge[:team_name]}) • Cat #{badge[:category_code]}"
+
+          - if (duplicate_check[:meetings_with_findings_count] || 0).positive?
+            .card.mt-2.border-danger
+              .card-header.bg-danger.text-white
+                %strong Duplicate Result Findings (Errors)
+              .card-body
+                - duplicate_check[:meetings_with_findings].each do |meeting_entry|
+                  %p.mb-1
+                    %strong= "Meeting #{meeting_entry[:meeting_id]}"
+                    = " - #{meeting_entry[:meeting_description]}"
+                  %ul.small
+                    %li= "Duplicate MIR groups: #{meeting_entry.dig(:counts, :mirs) || 0}"
+                    %li= "Duplicate lap groups: #{meeting_entry.dig(:counts, :laps) || 0}"
+                    %li= "Duplicate MRS groups: #{meeting_entry.dig(:counts, :mrss) || 0}"
+                    %li= "Duplicate relay_lap groups: #{meeting_entry.dig(:counts, :relay_laps) || 0}"
+                    %li= "Duplicate MRR pairs: #{meeting_entry.dig(:counts, :mrrs) || 0}"
+                  - next if meeting_entry[:duplicate_mirs].blank?
+                  %details.mb-2
+                    %summary.small Detailed MIR duplicate groups
+                    - meeting_entry[:duplicate_mirs].each do |dup_mir|
+                      %p.small.mb-1
+                        %strong= "Swimmer #{dup_mir[:swimmer_id]}"
+                        = " - #{dup_mir[:swimmer_name]} (#{dup_mir[:swimmer_year_of_birth]})"
+                        = " • Program #{dup_mir[:meeting_program_id]} • Timing match: #{dup_mir[:timing_match]}"
+                      %ul.small
+                        - dup_mir[:mirs].each do |mir|
+                          - badge_status = mir[:badge_missing] ? ' [BADGE MISSING]' : ''
+                          %li= "MIR #{mir[:id]}: #{mir[:timing]} • Team #{mir[:team_id]} (#{mir[:team_name]}) • Badge #{mir[:badge_id]}#{badge_status} #{mir[:badge_label]}"
+
+          - if badge_check[:status] == 'ok' && duplicate_check[:status] == 'ok'
+            .alert.alert-success.mt-2.mb-0
+              %strong All green.
+              No duplicates or merge candidates detected by post-commit checks.
+
   -# Errors list (if any)
   - if @stats && @stats[:errors].present?
     .card.mt-3
