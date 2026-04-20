@@ -109,12 +109,12 @@
         .form-row
           .form-group.col-md-3
             %label{ for: 'meeting_season_id' } Season ID
-            = number_field_tag(:season_id, meeting_data['season_id'],
+            = number_field_tag(:season_id, season&.id || meeting_data['season_id'],
                                id: 'meeting_season_id', class: 'form-control form-control-sm',
                                min: 1, step: 1, placeholder: 'e.g. 242')
           .form-group.col-md-3
             %label{ for: 'meeting_header_year' } Header Year
-            = text_field_tag(:header_year, meeting_data['header_year'],
+            = text_field_tag(:header_year, meeting_data['header_year'] || season&.header_year,
                              id: 'meeting_header_year', class: 'form-control form-control-sm',
                              placeholder: 'YYYY/YYYY+1')
           .form-group.col-md-3
@@ -138,14 +138,14 @@
             %label{ for: 'meeting_edition_type_id' } Edition Type
             = select_tag(:edition_type_id,
                          options_for_select(GogglesDb::EditionType.all.map { |t| [t.long_label, t.id] },
-                                            meeting_data['edition_type_id']),
+                                            meeting_data['edition_type_id'] || GogglesDb::EditionType::ORDINAL_ID),
                          include_blank: true, id: 'meeting_edition_type_id',
                          class: 'form-control form-control-sm')
           .form-group.col-md-3
             %label{ for: 'meeting_timing_type_id' } Timing Type
             = select_tag(:timing_type_id,
                          options_for_select(GogglesDb::TimingType.all.map { |t| [t.long_label, t.id] },
-                                            meeting_data['timing_type_id']),
+                                            meeting_data['timing_type_id'] || GogglesDb::TimingType::AUTOMATIC_ID),
                          include_blank: true, id: 'meeting_timing_type_id',
                          class: 'form-control form-control-sm')
           .form-group.col-md-2

@@ -27,15 +27,15 @@
     border_width = 'border-2'
     
     # Check if all required fields are filled to determine default collapse state
-    season_id = @phase1_data['season_id']
+    @season ||= GogglesDb::Season.find_by(id: @phase1_data['season_id'])
     name = @phase1_data['name']
     date_year1 = @phase1_data['dateYear1']
     date_month1 = @phase1_data['dateMonth1']
     date_day1 = @phase1_data['dateDay1']
-    all_required_filled = season_id.present? && name.present? && date_year1.present? && date_month1.present? && date_day1.present?
+    all_required_filled = @season.is_a?(GogglesDb::Season) && name.present? && date_year1.present? && date_month1.present? && date_day1.present?
     
   = render(partial: 'meeting_form_card',
-           locals: { file_path: @file_path, api_url: @api_url, meeting_data: @phase1_data,
+           locals: { file_path: @file_path, api_url: @api_url, meeting_data: @phase1_data, season: @season,
                      meeting_id:, has_match:, card_bg:, border_color:, border_width:, all_required_filled: })
 
   -# Sessions Section Header

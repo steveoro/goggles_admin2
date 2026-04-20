@@ -31,12 +31,12 @@ class DataFixController < ApplicationController
 
     source_path = resolve_working_source_path(@file_path)
     @file_path = source_path
-    season = detect_season_from_pathname(source_path)
+    @season = detect_season_from_pathname(source_path)
     lt_format = detect_layout_type(source_path)
     # Use existing phase file unless rescan is requested; build when missing or rescan
     phase_path = default_phase_path_for(source_path, 1)
     if params[:rescan].present? || !File.exist?(phase_path)
-      phase_path = Import::Solvers::Phase1Solver.new(season:).build!(
+      phase_path = Import::Solvers::Phase1Solver.new(season: @season).build!(
         source_path: source_path,
         lt_format: lt_format
       )&.dig('path') || phase_path
@@ -773,6 +773,13 @@ class DataFixController < ApplicationController
       # Move source JSON as backup
       done_source_path = File.join(done_dir, File.basename(source_path))
       FileUtils.mv(source_path, done_source_path)
+
+      # Move also LT2 source JSON if it exists and was converted to LT4 for the process
+      lt2_source_file = file_path.gsub('-lt4.json', '.json')
+      if File.exist?(lt2_source_file)
+        done_lt2_source_path = File.join(done_dir, File.basename(lt2_source_file))
+        FileUtils.mv(lt2_source_file, done_lt2_source_path)
+      end
 
       # Move phase files (keep them for audit trail)
       moved_files = [source_path]
