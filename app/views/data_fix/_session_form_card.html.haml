@@ -106,7 +106,7 @@
             .form-group.col-md-8
               %label Existing pools in selected city
               - pool_collection = GogglesDb::SwimmingPool.where(city_id: city_id)
-              - onclick_copy = "$('#pool_#{idx}_swimming_pool_id').val($('#search_pool_#{idx}').val()); $('#pool_#{idx}_swimming_pool_id').trigger('change');"
+              - onclick_copy = "$('#pool_#{idx}_swimming_pool_id').val($('#search_pool_#{idx}').val()); $('#pool_#{idx}_swimming_pool_id').trigger('change'); DataFix.rehydrateSessionPoolAndCity(#{idx}, $('#search_pool_#{idx}').val());"
               = select_tag "search_pool_#{idx}", options_for_select(pool_collection.map { |p| [p.name, p.id] }, pool_id), { include_blank: true, class: 'form-control form-control-sm', onclick: onclick_copy }
 
         .form-row
@@ -191,7 +191,7 @@
         %h6.text-info City
         .form-row
           .form-group.col-md-5
-            = hidden_field_tag('city[id]', city_id, id: "city_#{idx}_id_field")
+            = hidden_field_tag('city[id]', city_id, id: "city_#{idx}_id_field", onchange: "DataFix.rehydrateSessionCityFromId(#{idx}, this.value);")
             = render(AutoCompleteComponent.new(show_top_labels: true, base_dom_id: "city[#{idx}]", base_api_url: api_url,
                                                default_value: city_id, detail_endpoint: 'city', base_name: 'city',
                                                label_column: 'area', search_endpoint: 'cities', search_column: 'name',

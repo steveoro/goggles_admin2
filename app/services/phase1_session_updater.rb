@@ -3,7 +3,7 @@
 # Service object to update a session in Phase 1 data file
 # Extracts complex logic from DataFixController#update_phase1_session
 #
-class Phase1SessionUpdater
+class Phase1SessionUpdater # rubocop:disable Metrics/ClassLength
   # @param phase_file_manager [PhaseFileManager] The phase file manager instance
   # @param session_index [Integer] The index of the session to update
   # @param params [ActionController::Parameters] The request parameters
@@ -22,10 +22,17 @@ class Phase1SessionUpdater
     return false if @session_index.negative? || @session_index >= sessions.size
 
     sess = sessions[@session_index]
+    original_pool_id = normalized_id(sess.dig('swimming_pool', 'id'))
     update_session_fields(sess)
     update_pool_data(sess)
     update_city_data(sess)
-    enrich_city_from_db(sess)
+    current_pool_id = normalized_id(sess.dig('swimming_pool', 'id'))
+
+    if original_pool_id == current_pool_id
+      enrich_city_from_db(sess)
+    else
+      rehydrate_pool_and_city_from_db(sess, current_pool_id)
+    end
 
     data['meeting_session'] = sessions
     save_data(data)
@@ -153,6 +160,70 @@ class Phase1SessionUpdater
     city['country_code'] ||= db_city.country_code
     city['latitude'] ||= db_city.latitude&.to_s
     city['longitude'] ||= db_city.longitude&.to_s
+  end
+
+  def rehydrate_pool_and_city_from_db(sess, pool_id) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity,Metrics/MethodLength
+    sess['swimming_pool'] ||= {}
+    pool_hash = sess['swimming_pool']
+
+    unless pool_id.to_i.positive?
+      pool_hash['city_id'] = nil
+      clear_city_data(pool_hash)
+      return
+    end
+
+    db_pool = GogglesDb::SwimmingPool.includes(:city).find_by(id: pool_id)
+    return unless db_pool
+
+    pool_hash['id'] = db_pool.id
+    pool_hash['name'] = db_pool.name
+    pool_hash['nick_name'] = db_pool.nick_name
+    pool_hash['address'] = db_pool.address
+    pool_hash['pool_type_id'] = db_pool.pool_type_id
+    pool_hash['lanes_number'] = db_pool.lanes_number
+    pool_hash['maps_uri'] = db_pool.maps_uri
+    pool_hash['plus_code'] = db_pool.plus_code
+    pool_hash['latitude'] = db_pool.latitude&.to_s
+    pool_hash['longitude'] = db_pool.longitude&.to_s
+
+    db_city = db_pool.city
+    if db_city
+      pool_hash['city_id'] = db_city.id
+      pool_hash['city'] = {
+        'id' => db_city.id,
+        'city_id' => db_city.id,
+        'name' => db_city.name,
+        'area' => db_city.area,
+        'zip' => db_city.zip,
+        'country' => db_city.country,
+        'country_code' => db_city.country_code,
+        'latitude' => db_city.latitude&.to_s,
+        'longitude' => db_city.longitude&.to_s
+      }
+    else
+      pool_hash['city_id'] = nil
+      clear_city_data(pool_hash)
+    end
+  end
+
+  def clear_city_data(pool_hash)
+    pool_hash['city'] = {
+      'id' => nil,
+      'city_id' => nil,
+      'name' => nil,
+      'area' => nil,
+      'zip' => nil,
+      'country' => nil,
+      'country_code' => nil,
+      'latitude' => nil,
+      'longitude' => nil
+    }
+  end
+
+  def normalized_id(value)
+    raw = value.to_s.strip
+    int_value = raw.present? ? raw.to_i : nil
+    int_value.to_i.positive? ? int_value : nil
   end
 
   def save_data(data)

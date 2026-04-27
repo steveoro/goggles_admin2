@@ -217,6 +217,118 @@ RSpec.describe DataFixController do
         expect(city_data['longitude']).to eq('12.456')
       end
 
+      it 'rehydrates city fields from selected pool city when pool id changes' do
+        new_city = FactoryBot.create(:city, name: 'Hydrated City', area: 'HY', zip: '54321', country: 'Italy', country_code: 'IT')
+        new_pool = FactoryBot.create(:swimming_pool,
+                                     name: 'Hydrated Pool',
+                                     city: new_city,
+                                     pool_type: pool_type,
+                                     lanes_number: 10)
+
+        patch update_phase1_session_path, params: {
+          file_path: source_file,
+          session_index: 0,
+          pool: {
+            swimming_pool_id: new_pool.id
+          },
+          city: {
+            name: 'Manual stale value',
+            area: 'XX',
+            zip: '00000'
+          }
+        }
+
+        pfm = PhaseFileManager.new(phase1_file)
+        sess = pfm.data['meeting_session'][0]
+        expect(sess.dig('swimming_pool', 'id')).to eq(new_pool.id)
+        expect(sess.dig('swimming_pool', 'name')).to eq(new_pool.name)
+        expect(sess.dig('swimming_pool', 'city_id')).to eq(new_city.id)
+        expect(sess.dig('swimming_pool', 'city', 'id')).to eq(new_city.id)
+        expect(sess.dig('swimming_pool', 'city', 'name')).to eq('Hydrated City')
+        expect(sess.dig('swimming_pool', 'city', 'area')).to eq('HY')
+        expect(sess.dig('swimming_pool', 'city', 'zip')).to eq('54321')
+      end
+
+      it 'clears city fields when selected pool has no associated city' do
+        city_less_pool = FactoryBot.create(:swimming_pool,
+                                           name: 'NoCity Pool',
+                                           city: city,
+                                           pool_type: pool_type,
+                                           lanes_number: 6)
+        city_less_pool.update_column(:city_id, nil) # rubocop:disable Rails/SkipsModelValidations
+
+        patch update_phase1_session_path, params: {
+          file_path: source_file,
+          session_index: 0,
+          pool: {
+            swimming_pool_id: city_less_pool.id
+          },
+          city: {
+            name: 'Should be cleared',
+            area: 'YY',
+            zip: '11111'
+          }
+        }
+
+        pfm = PhaseFileManager.new(phase1_file)
+        sess = pfm.data['meeting_session'][0]
+        expect(sess.dig('swimming_pool', 'city_id')).to be_nil
+        expect(sess.dig('swimming_pool', 'city', 'id')).to be_nil
+        expect(sess.dig('swimming_pool', 'city', 'name')).to be_nil
+        expect(sess.dig('swimming_pool', 'city', 'area')).to be_nil
+        expect(sess.dig('swimming_pool', 'city', 'zip')).to be_nil
+      end
+
+      it 'overwrites stale manual city fields when pool id changes' do # rubocop:disable RSpec/ExampleLength
+        old_city = FactoryBot.create(:city, name: 'Old City', area: 'OC')
+        old_pool = FactoryBot.create(:swimming_pool,
+                                     name: 'Old Pool',
+                                     city: old_city,
+                                     pool_type: pool_type,
+                                     lanes_number: 8)
+        new_city = FactoryBot.create(:city, name: 'New Linked City', area: 'NC', zip: '99999', country: 'Italy', country_code: 'IT')
+        new_pool = FactoryBot.create(:swimming_pool,
+                                     name: 'New Pool',
+                                     city: new_city,
+                                     pool_type: pool_type,
+                                     lanes_number: 8)
+
+        pfm = PhaseFileManager.new(phase1_file)
+        data = pfm.data
+        data['meeting_session'][0]['swimming_pool'] = {
+          'id' => old_pool.id,
+          'name' => old_pool.name,
+          'city_id' => old_city.id,
+          'city' => {
+            'id' => old_city.id,
+            'name' => old_city.name,
+            'area' => old_city.area
+          }
+        }
+        pfm.write!(data: data, meta: pfm.meta)
+
+        patch update_phase1_session_path, params: {
+          file_path: source_file,
+          session_index: 0,
+          pool: {
+            swimming_pool_id: new_pool.id
+          },
+          city: {
+            id: old_city.id,
+            name: 'Manual stale city',
+            area: 'WRONG'
+          }
+        }
+
+        pfm = PhaseFileManager.new(phase1_file)
+        sess = pfm.data['meeting_session'][0]
+        expect(sess.dig('swimming_pool', 'id')).to eq(new_pool.id)
+        expect(sess.dig('swimming_pool', 'city_id')).to eq(new_city.id)
+        expect(sess.dig('swimming_pool', 'city', 'id')).to eq(new_city.id)
+        expect(sess.dig('swimming_pool', 'city', 'name')).to eq('New Linked City')
+        expect(sess.dig('swimming_pool', 'city', 'area')).to eq('NC')
+      end
+
       it 'ignores invalid scheduled_date format and logs warning' do
         patch update_phase1_session_path, params: {
           file_path: source_file,

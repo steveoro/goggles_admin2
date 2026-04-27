@@ -1,5 +1,144 @@
 // Data-Fix helper functions for populating forms from existing DB records
 
+function setFieldValue(fieldId, value, triggerChange = true) {
+  const field = $('#' + fieldId)
+  if (!field.length) {
+    return
+  }
+
+  field.val(value == null ? '' : value)
+  if (triggerChange) {
+    field.trigger('change')
+  }
+}
+
+function clearSessionCityFields(sessionIndex) {
+  setFieldValue('city_' + sessionIndex + '_id_field', '', false)
+  setFieldValue('city_' + sessionIndex + '_city_id', '', false)
+  setFieldValue('city_' + sessionIndex + '_name', '')
+  setFieldValue('city_' + sessionIndex + '_area', '')
+  setFieldValue('city_' + sessionIndex + '_zip', '')
+  setFieldValue('city_' + sessionIndex + '_country', '')
+  setFieldValue('city_' + sessionIndex + '_country_code', '')
+  setFieldValue('city_' + sessionIndex + '_latitude', '')
+  setFieldValue('city_' + sessionIndex + '_longitude', '')
+}
+
+function getAutocompleteContextForSession(sessionIndex) {
+  const poolIdField = document.querySelector('#pool_' + sessionIndex + '_swimming_pool_id')
+  if (!poolIdField) {
+    return null
+  }
+
+  const container = poolIdField.closest('[data-controller="autocomplete"]')
+  if (!container) {
+    return null
+  }
+
+  return {
+    baseApiUrl: container.dataset.autocompleteBaseApiUrlValue,
+    jwt: container.dataset.autocompleteJwtValue
+  }
+}
+
+async function fetchEntityDetails(baseApiUrl, endpoint, entityId, jwt) {
+  if (!baseApiUrl || !endpoint || !entityId) {
+    return null
+  }
+
+  const response = await fetch(baseApiUrl + '/' + endpoint + '/' + entityId, {
+    method: 'GET',
+    headers: {
+      Authorization: 'Bearer ' + jwt
+    },
+    credentials: 'same-origin'
+  })
+
+  if (!response.ok) {
+    return null
+  }
+
+  return response.json()
+}
+
+function applySessionPoolFields(sessionIndex, pool) {
+  setFieldValue('pool_' + sessionIndex + '_id_field', pool.id, false)
+  setFieldValue('pool_' + sessionIndex + '_swimming_pool_id', pool.id, false)
+  setFieldValue('pool_' + sessionIndex + '_name', pool.name)
+  setFieldValue('pool_' + sessionIndex + '_nick_name', pool.nick_name)
+  setFieldValue('pool_' + sessionIndex + '_address', pool.address)
+  setFieldValue('pool_' + sessionIndex + '_pool_type_id', pool.pool_type_id)
+  setFieldValue('pool_' + sessionIndex + '_lanes_number', pool.lanes_number)
+  setFieldValue('pool_' + sessionIndex + '_maps_uri', pool.maps_uri)
+  setFieldValue('pool_' + sessionIndex + '_plus_code', pool.plus_code)
+  setFieldValue('pool_' + sessionIndex + '_latitude', pool.latitude)
+  setFieldValue('pool_' + sessionIndex + '_longitude', pool.longitude)
+}
+
+function applySessionCityFields(sessionIndex, city) {
+  if (!city) {
+    clearSessionCityFields(sessionIndex)
+    return
+  }
+
+  setFieldValue('city_' + sessionIndex + '_id_field', city.id, false)
+  setFieldValue('city_' + sessionIndex + '_city_id', city.id, false)
+  setFieldValue('city_' + sessionIndex + '_name', city.name)
+  setFieldValue('city_' + sessionIndex + '_area', city.area)
+  setFieldValue('city_' + sessionIndex + '_zip', city.zip)
+  setFieldValue('city_' + sessionIndex + '_country', city.country)
+  setFieldValue('city_' + sessionIndex + '_country_code', city.country_code)
+  setFieldValue('city_' + sessionIndex + '_latitude', city.latitude)
+  setFieldValue('city_' + sessionIndex + '_longitude', city.longitude)
+}
+
+export async function rehydrateSessionPoolAndCity(sessionIndex, poolId) {
+  if (!poolId) {
+    clearSessionCityFields(sessionIndex)
+    return
+  }
+
+  const context = getAutocompleteContextForSession(sessionIndex)
+  if (!context || !context.baseApiUrl || !context.jwt) {
+    return
+  }
+
+  const pool = await fetchEntityDetails(context.baseApiUrl, 'swimming_pool', poolId, context.jwt)
+  if (!pool) {
+    return
+  }
+
+  applySessionPoolFields(sessionIndex, pool)
+
+  if (!pool.city_id) {
+    clearSessionCityFields(sessionIndex)
+    return
+  }
+
+  const city = await fetchEntityDetails(context.baseApiUrl, 'city', pool.city_id, context.jwt)
+  applySessionCityFields(sessionIndex, city)
+}
+
+export function rehydrateSessionCityFromId(sessionIndex, cityId) {
+  if (!cityId) {
+    clearSessionCityFields(sessionIndex)
+    return
+  }
+
+  const context = getAutocompleteContextForSession(sessionIndex)
+  if (!context || !context.baseApiUrl || !context.jwt) {
+    return
+  }
+
+  fetchEntityDetails(context.baseApiUrl, 'city', cityId, context.jwt)
+    .then((city) => {
+      applySessionCityFields(sessionIndex, city)
+    })
+    .catch(() => {
+      clearSessionCityFields(sessionIndex)
+    })
+}
+
 /**
  * Populate session form fields from existing meeting_session selection
  * @param {number} sessionIndex - The session card index
@@ -46,6 +185,7 @@ export function populateSessionFromExisting(sessionIndex, meetingSessionId, exis
     var poolIdField = $('#pool_' + sessionIndex + '_swimming_pool_id');
     if (poolIdField.length) {
       poolIdField.val(session.swimming_pool_id).trigger('change');
+      rehydrateSessionPoolAndCity(sessionIndex, session.swimming_pool_id)
     }
   }
 }
