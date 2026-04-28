@@ -65,8 +65,8 @@ module Import
         sql_log << SqlMaker.new(row: model_row).log_insert
         stats[:pools_created] += 1
         logger.log_success(entity_type: 'SwimmingPool', entity_id: model_row.id, action: 'created',
-                           entity_key: model_row.description)
-        Rails.logger.info("[SwimmingPool] Created ID=#{model_row.id}, #{model_row.description}")
+                           entity_key: model_row.name)
+        Rails.logger.info("[SwimmingPool] Created ID=#{model_row.id}, #{model_row.name}")
         model_row.id
       end
       # -----------------------------------------------------------------------
