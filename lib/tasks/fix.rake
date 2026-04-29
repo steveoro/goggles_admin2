@@ -14,7 +14,7 @@
 
 namespace :fix do # rubocop:disable Metrics/BlockLength
   desc <<~DESC
-      Fixes a wrongly-assigned team_id on one or more badges within a single season.
+      Fixes a wrongly-assigned team_id on one or more badges (also across multiple seasons).
 
     Updates all related results (MIRs, laps, MRRs, relay_laps) with the correct team_id
     and deletes meeting entries and reservations for the affected badges.
@@ -23,6 +23,7 @@ namespace :fix do # rubocop:disable Metrics/BlockLength
     automatically for data coherence.
 
     The task halts if any swimmer in the batch already has a badge on the destination team
+    for the same season
     (those are candidates for badge merge, not badge fix).
 
     The resulting script won't be applied (and no DB changes will be made) *unless*
@@ -37,7 +38,7 @@ namespace :fix do # rubocop:disable Metrics/BlockLength
              badge=<badge_id1[,badge_id2,...]> team=<correct_team_id>
              [index=<auto>] [simulate='0'|<'1'>]
 
-      - badge: comma-separated list of Badge IDs to fix (all must be in the same season);
+      - badge: comma-separated list of Badge IDs to fix (can span multiple seasons);
 
       - team: the correct (destination) Team ID;
 
@@ -86,12 +87,12 @@ namespace :fix do # rubocop:disable Metrics/BlockLength
   end
 
   desc <<~DESC
-      Fixes a wrongly-assigned swimmer_id on one or more badges within a single season.
+      Fixes a wrongly-assigned swimmer_id on one or more badges (also across multiple seasons).
 
     Updates all related badge-linked entities (MIRs, laps, MRSs, relay_laps,
     meeting entries and reservations) with the correct swimmer_id.
 
-    The task halts if any destination swimmer/team/season pair already has a badge
+    The task halts if any destination swimmer/team/season tuple already has a badge
     (those are candidates for badge merge, not badge fix).
 
     The resulting script won't be applied (and no DB changes will be made) *unless*
@@ -106,7 +107,7 @@ namespace :fix do # rubocop:disable Metrics/BlockLength
              badge=<badge_id1[,badge_id2,...]> swimmer=<correct_swimmer_id>
              [index=<auto>] [simulate='0'|<'1'>]
 
-      - badge: comma-separated list of Badge IDs to fix (all must be in the same season);
+      - badge: comma-separated list of Badge IDs to fix (can span multiple seasons);
 
       - swimmer: the correct (destination) Swimmer ID;
 

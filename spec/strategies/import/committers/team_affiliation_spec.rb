@@ -58,22 +58,27 @@ RSpec.describe Import::Committers::TeamAffiliation do
       expect(committer.resolve_id(team.name, team_id: team.id, season_id: season.id)).to eq(affiliation.id)
     end
 
-    it 're-resolves by team_id+season_id when incoming team_affiliation_id is stale' do
+    it 'raises when incoming team_affiliation_id is stale' do
       team = FactoryBot.create(:team)
       affiliation = FactoryBot.create(:team_affiliation, team:, season:)
       team_committer.store_id(team.name, team.id)
 
-      committed_id = committer.commit(
-        {
-          'team_key' => team.name,
-          'team_id' => team.id,
-          'season_id' => season.id,
-          'team_affiliation_id' => 9_999_999
-        }
+      expect do
+        committer.commit(
+          {
+            'team_key' => team.name,
+            'team_id' => team.id,
+            'season_id' => season.id,
+            'team_affiliation_id' => 9_999_999
+          }
+        )
+      end.to raise_error(
+        StandardError,
+        "Invalid TeamAffiliation reference for team_key='#{team.name}': id=9999999 is missing or stale"
       )
 
-      expect(committed_id).to eq(affiliation.id)
-      expect(stats[:affiliation_links_auto_fixed]).to be >= 1
+      expect(affiliation.id).to be_present
+      expect(stats[:affiliation_links_auto_fixed]).to eq(0)
     end
   end
 end

@@ -7,11 +7,11 @@ module Merge
   #   - author:   Steve A.
   #   - build:    20260406
   #
-  # Fixes a wrongly-assigned swimmer_id on one or more badges within a single season,
+  # Fixes a wrongly-assigned swimmer_id on one or more badges,
   # updating all related badge-linked entities.
   #
   # Before processing, it checks for duplicate badges (destination swimmer already
-  # having a badge in the same season/team). If duplicates are found, the task halts
+  # having a badge for the same season/team tuple). If duplicates are found, the task halts
   # so that a badge merge can be evaluated instead.
   #
   # == Usage:
@@ -24,7 +24,7 @@ module Merge
   #   # Then use the rake task helper to save/execute the SQL
   #
   class SwimmerInBadge # rubocop:disable Metrics/ClassLength
-    attr_reader :badges, :new_swimmer, :season, :badge_batch, :errors, :sql_log
+    attr_reader :badges, :new_swimmer, :seasons, :badge_batch, :errors, :sql_log
 
     # == Params:
     # - <tt>:badges</tt> => array of Badge instances to fix, *required*
@@ -33,16 +33,15 @@ module Merge
     def initialize(badges:, new_swimmer:)
       raise(ArgumentError, 'badges must be a non-empty Array of Badges!') unless valid_badges?(badges)
       raise(ArgumentError, 'new_swimmer must be a Swimmer!') unless new_swimmer.is_a?(GogglesDb::Swimmer)
-      raise(ArgumentError, 'All badges must belong to the same season!') unless badges.map(&:season_id).uniq.size == 1
       raise(ArgumentError, 'Some badges already belong to the destination swimmer!') if badges.any? { |b| b.swimmer_id == new_swimmer.id }
 
       @badges = badges
       @new_swimmer = new_swimmer
-      @season = badges.first.season
       @sql_log = []
       @errors = []
 
       @badge_batch = collect_badge_batch
+      @seasons = collect_seasons
       check_for_duplicates
     end
     #-- -----------------------------------------------------------------------
@@ -105,7 +104,7 @@ module Merge
       puts "\r\n#{'=' * 60}"
       puts 'Badge Swimmer Fix Preview'
       puts '=' * 60
-      puts "Season: #{@season.id} - #{@season.description}"
+      puts "Seasons: #{season_labels.join(', ')}"
       puts "New (correct) swimmer: (#{@new_swimmer.id}) \"#{@new_swimmer.complete_name}\""
 
       puts "\r\n--- Badges to update (#{badge_batch.size}) ---"
@@ -150,7 +149,7 @@ module Merge
       ids_list = badge_batch_ids.join(', ')
       @sql_log << "-- Fix swimmer_id in badges: [#{ids_list}]"
       @sql_log << "-- New swimmer: (#{@new_swimmer.id}) #{@new_swimmer.complete_name}"
-      @sql_log << "-- Season: #{@season.id}"
+      @sql_log << "-- Seasons: #{season_labels.join(', ')}"
       @sql_log << ''
       @sql_log << '-- SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";'
       @sql_log << 'SET AUTOCOMMIT = 0;'
@@ -184,12 +183,22 @@ module Merge
       @badge_batch_ids ||= @badge_batch.map(&:id)
     end
 
+    # Returns all involved seasons from the badge batch.
+    def collect_seasons
+      GogglesDb::Season.where(id: @badge_batch.map(&:season_id).uniq).index_by(&:id).values
+    end
+
+    # Returns all season labels for display/reporting.
+    def season_labels
+      @season_labels ||= @seasons.sort_by(&:id).map { |season| "#{season.id} - #{season.description}" }
+    end
+
     # Returns the array of MRS IDs linked to the badge batch.
     def affected_mrs_ids
       @affected_mrs_ids ||= affected_mrss.pluck(:id)
     end
 
-    # Returns the selected badges as an AR relation (single-season validated in initializer).
+    # Returns the selected badges as an AR relation.
     def collect_badge_batch
       GogglesDb::Badge.where(id: @badges.map(&:id))
     end
@@ -200,13 +209,13 @@ module Merge
       @badge_batch.each do |badge|
         dup = GogglesDb::Badge.find_by(
           swimmer_id: @new_swimmer.id,
-          season_id: @season.id,
+          season_id: badge.season_id,
           team_id: badge.team_id
         )
         next unless dup && dup.id != badge.id
 
         @errors << "Swimmer #{@new_swimmer.id} already has badge #{dup.id} for team #{badge.team_id} " \
-                   "in season #{@season.id} (conflicting with badge #{badge.id})"
+                   "in season #{badge.season_id} (conflicting with badge #{badge.id})"
       end
     end
     #-- -----------------------------------------------------------------------

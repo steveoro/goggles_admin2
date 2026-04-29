@@ -45,7 +45,7 @@ RSpec.describe Merge::SwimmerInBadge do
       end
 
       it 'derives the season from the badge' do
-        expect(fixer.season).to eq(season)
+        expect(fixer.seasons.map(&:id)).to contain_exactly(season.id)
       end
 
       it 'initializes empty sql_log' do
@@ -153,7 +153,7 @@ RSpec.describe Merge::SwimmerInBadge do
     end
 
     it 'includes season information in output' do
-      expect { fixer.display_report }.to output(/Season.*#{season.id}/).to_stdout
+      expect { fixer.display_report }.to output(/Seasons.*#{season.id}/).to_stdout
     end
 
     it 'includes new swimmer information in output' do
@@ -308,6 +308,37 @@ RSpec.describe Merge::SwimmerInBadge do
       two_badges_same_season.each do |badge|
         expect(fixer.badge_batch).to include(badge)
       end
+    end
+  end
+
+  describe 'mixed-season badges input' do
+    let(:multi_season_payload) do
+      badges = GogglesDb::Badge.limit(400).to_a
+
+      badges.combination(2).each do |badge_a, badge_b|
+        next if badge_a.season_id == badge_b.season_id
+
+        new_swimmer = GogglesDb::Swimmer
+                      .where.not(id: GogglesDb::Badge.where(season_id: badge_a.season_id, team_id: badge_a.team_id).select(:swimmer_id))
+                      .where.not(id: GogglesDb::Badge.where(season_id: badge_b.season_id, team_id: badge_b.team_id).select(:swimmer_id))
+                      .first
+        next unless new_swimmer
+        next if [badge_a.swimmer_id, badge_b.swimmer_id].include?(new_swimmer.id)
+
+        return { badges: [badge_a, badge_b], new_swimmer: }
+      end
+      nil
+    end
+
+    it 'accepts badges from different seasons when no per-season team collision exists' do
+      skip('No suitable mixed-season badge pair found in test DB') unless multi_season_payload
+
+      fixer = described_class.new(
+        badges: multi_season_payload[:badges],
+        new_swimmer: multi_season_payload[:new_swimmer]
+      )
+      expect(fixer.seasons.map(&:id).uniq.size).to be > 1
+      expect(fixer.errors).to be_empty
     end
   end
 end

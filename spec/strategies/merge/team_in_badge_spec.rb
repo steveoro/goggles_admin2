@@ -50,14 +50,14 @@ RSpec.describe Merge::TeamInBadge do
         expect(fixer.new_team).to eq(new_team)
       end
 
-      it 'derives the season from the badge' do
-        expect(fixer.season).to eq(season)
+      it 'derives the seasons from the badge batch' do
+        expect(fixer.seasons.map(&:id)).to contain_exactly(season.id)
       end
 
       it 'resolves the destination TeamAffiliation' do
-        expect(fixer.dest_ta).to be_a(GogglesDb::TeamAffiliation)
-        expect(fixer.dest_ta.team_id).to eq(new_team.id)
-        expect(fixer.dest_ta.season_id).to eq(season.id)
+        expect(fixer.dest_tas_by_season[season.id]).to be_a(GogglesDb::TeamAffiliation)
+        expect(fixer.dest_tas_by_season[season.id].team_id).to eq(new_team.id)
+        expect(fixer.dest_tas_by_season[season.id].season_id).to eq(season.id)
       end
 
       it 'initializes empty sql_log' do
@@ -181,7 +181,7 @@ RSpec.describe Merge::TeamInBadge do
     end
 
     it 'includes season information in output' do
-      expect { fixer.display_report }.to output(/Season.*#{season.id}/).to_stdout
+      expect { fixer.display_report }.to output(/Seasons.*#{season.id}/).to_stdout
     end
 
     it 'includes new team information in output' do
@@ -255,7 +255,7 @@ RSpec.describe Merge::TeamInBadge do
 
     it 'uses correct TeamAffiliation ID in SQL' do
       sql = fixer.sql_log.join("\n")
-      expect(sql).to include("team_affiliation_id = #{fixer.dest_ta.id}")
+      expect(sql).to include("team_affiliation_id = #{fixer.dest_tas_by_season[season.id].id}")
     end
 
     it 'prevents multiple runs' do
@@ -336,6 +336,75 @@ RSpec.describe Merge::TeamInBadge do
       two_badges_same_season.each do |badge|
         expect(fixer.badge_batch).to include(badge)
       end
+    end
+  end
+
+  describe 'mixed-season badges input' do
+    let(:multi_season_payload) do
+      badges = GogglesDb::Badge.limit(400).to_a
+      common_team_ids_cache = {}
+
+      badges.combination(2).each do |badge_a, badge_b|
+        next if badge_a.season_id == badge_b.season_id
+
+        seasons_key = [badge_a.season_id, badge_b.season_id].sort
+        common_team_ids_cache[seasons_key] ||= GogglesDb::TeamAffiliation
+                                               .where(season_id: seasons_key)
+                                               .group(:team_id)
+                                               .having('COUNT(DISTINCT season_id) = 2')
+                                               .pluck(:team_id)
+
+        new_team = common_team_ids_cache[seasons_key]
+                   .reject { |team_id| [badge_a.team_id, badge_b.team_id].include?(team_id) }
+                   .find do |team_id|
+          !GogglesDb::Badge.exists?(swimmer_id: badge_a.swimmer_id, season_id: badge_a.season_id, team_id:) &&
+            !GogglesDb::Badge.exists?(swimmer_id: badge_b.swimmer_id, season_id: badge_b.season_id, team_id:)
+        end
+        next unless new_team
+
+        return { badges: [badge_a, badge_b], new_team: GogglesDb::Team.find_by(id: new_team) }
+      end
+      nil
+    end
+
+    let(:missing_affiliation_payload) do
+      badges = GogglesDb::Badge.limit(400).to_a
+
+      badges.combination(2).each do |badge_a, badge_b|
+        next if badge_a.season_id == badge_b.season_id
+
+        destination_team = GogglesDb::TeamAffiliation
+                           .where(season_id: badge_a.season_id)
+                           .where.not(team_id: GogglesDb::TeamAffiliation.where(season_id: badge_b.season_id).select(:team_id))
+                           .pluck(:team_id)
+                           .find { |team_id| team_id != badge_a.team_id && team_id != badge_b.team_id }
+        next unless destination_team
+
+        return { badges: [badge_a, badge_b], new_team: GogglesDb::Team.find_by(id: destination_team) }
+      end
+      nil
+    end
+
+    it 'accepts badges from different seasons when destination team has affiliations for all seasons' do
+      skip('No suitable mixed-season badge pair found in test DB') unless multi_season_payload
+
+      fixer = described_class.new(
+        badges: multi_season_payload[:badges],
+        new_team: multi_season_payload[:new_team]
+      )
+      expect(fixer.seasons.map(&:id).uniq.size).to be > 1
+      expect(fixer.dest_tas_by_season.keys).to match_array(fixer.seasons.map(&:id))
+    end
+
+    it 'raises when destination team is missing TeamAffiliation for one involved season' do
+      skip('No mixed-season pair with missing destination affiliation found in test DB') unless missing_affiliation_payload
+
+      expect do
+        described_class.new(
+          badges: missing_affiliation_payload[:badges],
+          new_team: missing_affiliation_payload[:new_team]
+        )
+      end.to raise_error(ArgumentError, /has no TeamAffiliation for season/)
     end
   end
 end
