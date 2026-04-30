@@ -11,7 +11,7 @@
     => existing affiliations for the updated team should be reassigned to the target team (so we reuse the same ID)
     => missing affiliations should be created (rare, but could happen)
 
-  Real use-case: fix (wrong) team (1305, Cagliari) assigned to swimmers 45341, 52332, 48648: correct team (1634, Toscana)
+  [x] Real use-case: fix (wrong) team (1305, Cagliari) assigned to swimmers 45341, 52332, 48648: correct team (1634, Toscana)
   => fixed for seasons 252, 242 and 232, but in 222, 212 and 202 we need to change the team in the badges but the affiliation is missing. Check it with: `rails check:map_swimmer_mirs swimmer=<swimmer_id>` (reports the results for each season)
 
 - [x] preselect city_id (and all sub fields) when changing or setting a swimming_pool_id in phase 1 (city_id must come from associated SwimmingPool, if present)

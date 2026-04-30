@@ -68,6 +68,15 @@ RSpec.describe Merge::TeamInBadge do
         expect(fixer.badge_batch).to be_an(ActiveRecord::Relation)
         expect(fixer.badge_batch).to include(badge_with_mirs)
       end
+
+      it 'defaults nuke_team to false (surgical mode)' do
+        expect(fixer.nuke_team).to be(false)
+      end
+
+      it 'accepts nuke_team=true' do
+        nuke_fixer = described_class.new(badges: [badge_with_mirs], new_team:, nuke_team: true)
+        expect(nuke_fixer.nuke_team).to be(true)
+      end
     end
 
     context 'with invalid arguments' do
@@ -97,14 +106,14 @@ RSpec.describe Merge::TeamInBadge do
           .to raise_error(ArgumentError, /already belong to the destination team/)
       end
 
-      it 'raises ArgumentError when dest team has no TeamAffiliation for the season' do
+      it 'does not raise when dest team has no TeamAffiliation for the season (fallback mode)' do
         unaffiliated_team = GogglesDb::Team
                             .where.not(id: GogglesDb::TeamAffiliation.where(season_id: season.id).select(:team_id))
                             .first
         skip('No unaffiliated team found in test DB') unless unaffiliated_team
 
         expect { described_class.new(badges: [badge_with_mirs], new_team: unaffiliated_team) }
-          .to raise_error(ArgumentError, /has no TeamAffiliation/)
+          .not_to raise_error
       end
     end
   end
@@ -294,7 +303,7 @@ RSpec.describe Merge::TeamInBadge do
       expect(fixer.errors).not_to be_empty
     end
 
-    it 'raises on prepare when duplicate badges exist' do
+    it 'raises on prepare when duplicate badges exist and suggests merge:badge' do
       skip('No swimmer with multiple team badges found in test DB') unless swimmer_with_two_badges
 
       badges_for_swimmer = GogglesDb::Badge.where(
@@ -308,7 +317,77 @@ RSpec.describe Merge::TeamInBadge do
       skip('Destination team has no TA for season') unless ta
 
       fixer = described_class.new(badges: [src_badge], new_team: dest_team)
-      expect { fixer.prepare }.to raise_error(RuntimeError, /Duplicate badges detected/)
+      expect { fixer.prepare }.to raise_error(RuntimeError, /Please run merge:badge first/)
+    end
+  end
+
+  describe 'team affiliation fallback SQL generation' do
+    subject(:fixer) { described_class.new(badges: [badge_with_mirs], new_team:) }
+
+    let(:unaffiliated_team) do
+      GogglesDb::Team
+        .where.not(id: GogglesDb::TeamAffiliation.where(season_id: season.id).select(:team_id))
+        .first
+    end
+
+    it 'defaults to surgical mode and creates missing destination TeamAffiliation' do
+      skip('No unaffiliated team found in test DB') unless unaffiliated_team
+
+      surgical_fixer = described_class.new(badges: [badge_with_mirs], new_team: unaffiliated_team)
+      surgical_fixer.prepare
+
+      sql = surgical_fixer.sql_log.join("\n")
+      expect(sql).to include('Mode: nuke_team=0 (create missing TeamAffiliations)')
+      expect(sql).to include("creating missing TeamAffiliation for destination team #{unaffiliated_team.id}")
+      expect(sql).to include('INSERT INTO team_affiliations (team_id, season_id, name, created_at, updated_at)')
+      expect(sql).not_to include('reusing TeamAffiliation')
+    end
+
+    it 'reuses source TeamAffiliation when nuke_team=1' do
+      skip('No unaffiliated team found in test DB') unless unaffiliated_team
+
+      reused_ta_id = badge_with_mirs.team_affiliation_id
+      skip('Badge has no TeamAffiliation to reuse') if reused_ta_id.blank?
+
+      nuke_fixer = described_class.new(badges: [badge_with_mirs], new_team: unaffiliated_team, nuke_team: true)
+      nuke_fixer.prepare
+
+      sql = nuke_fixer.sql_log.join("\n")
+      expect(sql).to include('Mode: nuke_team=1 (reuse TeamAffiliations)')
+      expect(sql).to include("reusing TeamAffiliation #{reused_ta_id}")
+      expect(sql).to include("UPDATE team_affiliations SET team_id = #{unaffiliated_team.id}, updated_at = NOW() WHERE id = #{reused_ta_id};")
+    end
+
+    it 'emits recycle SQL when fallback mode is reuse' do
+      reused_ta_id = badge_with_mirs.team_affiliation_id
+      skip('Badge has no TeamAffiliation to reuse') if reused_ta_id.blank?
+
+      fixer.instance_variable_set(:@sql_log, [])
+      fixer.instance_variable_set(:@dest_ta_resolution_by_season, {
+                                    season.id => { mode: :recycle, ta_id: reused_ta_id, source_team_id: badge_with_mirs.team_id }
+                                  })
+      fixer.instance_variable_set(:@dest_ta_sql_ref_by_season, { season.id => reused_ta_id.to_s })
+
+      fixer.send(:prepare_team_affiliation_fallbacks)
+      sql = fixer.sql_log.join("\n")
+      expect(sql).to include('Step 0: Resolve missing destination TeamAffiliations')
+      expect(sql).to include("reusing TeamAffiliation #{reused_ta_id}")
+      expect(sql).to include("UPDATE team_affiliations SET team_id = #{new_team.id}, updated_at = NOW() WHERE id = #{reused_ta_id};")
+    end
+
+    it 'emits create SQL when fallback mode is create' do
+      sql_var = "@dest_ta_#{season.id}"
+      fixer.instance_variable_set(:@sql_log, [])
+      fixer.instance_variable_set(:@dest_ta_resolution_by_season, { season.id => { mode: :create, ta_id: nil } })
+      fixer.instance_variable_set(:@dest_ta_sql_ref_by_season, { season.id => sql_var })
+
+      fixer.send(:prepare_team_affiliation_fallbacks)
+      sql = fixer.sql_log.join("\n")
+      expect(sql).to include('Step 0: Resolve missing destination TeamAffiliations')
+      expect(sql).to include("creating missing TeamAffiliation for destination team #{new_team.id}")
+      expect(sql).to include('INSERT INTO team_affiliations (team_id, season_id, name, created_at, updated_at)')
+      expect(sql).to include("VALUES (#{new_team.id}, #{season.id}")
+      expect(sql).to include("SET #{sql_var} = LAST_INSERT_ID();")
     end
   end
 
@@ -396,15 +475,15 @@ RSpec.describe Merge::TeamInBadge do
       expect(fixer.dest_tas_by_season.keys).to match_array(fixer.seasons.map(&:id))
     end
 
-    it 'raises when destination team is missing TeamAffiliation for one involved season' do
+    it 'accepts mixed-season payload even when destination team is missing one season affiliation' do
       skip('No mixed-season pair with missing destination affiliation found in test DB') unless missing_affiliation_payload
 
-      expect do
-        described_class.new(
-          badges: missing_affiliation_payload[:badges],
-          new_team: missing_affiliation_payload[:new_team]
-        )
-      end.to raise_error(ArgumentError, /has no TeamAffiliation for season/)
+      fixer = described_class.new(
+        badges: missing_affiliation_payload[:badges],
+        new_team: missing_affiliation_payload[:new_team]
+      )
+      expect(fixer.seasons.map(&:id).uniq.size).to be > 1
+      expect(fixer.dest_tas_by_season.keys).to match_array(fixer.seasons.map(&:id))
     end
   end
 end

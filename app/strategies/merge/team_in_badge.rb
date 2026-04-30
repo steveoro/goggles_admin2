@@ -3,9 +3,9 @@
 module Merge
   # = Merge::TeamInBadge
   #
-  #   - version:  7-0.7.25
+  #   - version:  7-0.8.40
   #   - author:   Steve A.
-  #   - build:    20260308
+  #   - build:    20260501
   #
   # Fixes a wrongly-assigned team_id on one or more badges, including
   # mixed-season batches,
@@ -30,19 +30,21 @@ module Merge
   #
   class TeamInBadge # rubocop:disable Metrics/ClassLength
     attr_reader :badges, :new_team, :seasons, :dest_tas_by_season,
-                :badge_batch, :errors, :sql_log
+                :badge_batch, :errors, :sql_log, :nuke_team
 
     # == Params:
     # - <tt>:badges</tt> => array of Badge instances to fix, *required*
     # - <tt>:new_team</tt> => destination (correct) Team instance, *required*
+    # - <tt>:nuke_team</tt> => when true, allows TeamAffiliation reuse/remap (broad impact), optional
     #
-    def initialize(badges:, new_team:)
+    def initialize(badges:, new_team:, nuke_team: false)
       raise(ArgumentError, 'badges must be a non-empty Array of Badges!') unless valid_badges?(badges)
       raise(ArgumentError, 'new_team must be a Team!') unless new_team.is_a?(GogglesDb::Team)
       raise(ArgumentError, 'Some badges already belong to the destination team!') if badges.any? { |b| b.team_id == new_team.id }
 
       @badges = badges
       @new_team = new_team
+      @nuke_team = nuke_team == true || nuke_team.to_s == '1'
       @sql_log = []
       @errors = []
 
@@ -126,6 +128,7 @@ module Merge
       puts '=' * 60
       puts "Seasons: #{season_labels.join(', ')}"
       puts "New (correct) team: (#{@new_team.id}) \"#{@new_team.name}\""
+      puts "Mode: #{nuke_team ? 'NUKE TEAM-AFFILIATION REUSE' : 'SURGICAL (CREATE MISSING AFFILIATIONS ONLY)'}"
       puts "  -> TeamAffiliations by season: #{team_affiliation_labels.join(', ')}"
 
       puts "\r\n--- Badges to update (#{badge_batch.size}) ---"
@@ -166,19 +169,21 @@ module Merge
 
       if @errors.any?
         display_report
-        raise("Duplicate badges detected! Use badge merge instead. Errors: #{@errors.join('; ')}")
+        raise("Duplicate badges detected! Please run merge:badge first. Errors: #{@errors.join('; ')}")
       end
 
       ids_list = badge_batch_ids.join(', ')
       @sql_log << "-- Fix team_id in badges: [#{ids_list}]"
       @sql_log << "-- New team: (#{@new_team.id}) #{@new_team.name}"
       @sql_log << "-- Seasons: #{season_labels.join(', ')}"
+      @sql_log << "-- Mode: #{nuke_team ? 'nuke_team=1 (reuse TeamAffiliations)' : 'nuke_team=0 (create missing TeamAffiliations)'}"
       @sql_log << ''
       @sql_log << '-- SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";'
       @sql_log << 'SET AUTOCOMMIT = 0;'
       @sql_log << 'START TRANSACTION;'
       @sql_log << ''
 
+      prepare_team_affiliation_fallbacks
       prepare_badge_updates
       prepare_mir_updates
       prepare_lap_updates(ids_list)
@@ -202,14 +207,52 @@ module Merge
     end
 
     # Resolves TeamAffiliation for the destination team in each involved season.
-    def resolve_team_affiliations
+    def resolve_team_affiliations # rubocop:disable Metrics/AbcSize
+      @dest_ta_sql_ref_by_season = {}
+      @dest_ta_resolution_by_season = {}
       @dest_tas_by_season = @seasons.each_with_object({}) do |season, memo|
-        memo[season.id] = GogglesDb::TeamAffiliation.find_by(team_id: @new_team.id, season_id: season.id)
-      end
-      missing = @dest_tas_by_season.select { |_season_id, ta| ta.blank? }.keys
-      return if missing.empty?
+        season_id = season.id
+        dest_ta = GogglesDb::TeamAffiliation.find_by(team_id: @new_team.id, season_id:)
 
-      raise(ArgumentError, "Destination team #{@new_team.id} has no TeamAffiliation for season(s): #{missing.join(', ')}!")
+        if dest_ta.present?
+          memo[season_id] = dest_ta
+          @dest_ta_sql_ref_by_season[season_id] = dest_ta.id.to_s
+          @dest_ta_resolution_by_season[season_id] = { mode: :existing, ta_id: dest_ta.id }
+          next
+        end
+
+        source_ta = nuke_team ? find_reusable_source_ta_for_season(season_id) : nil
+        if source_ta.present?
+          memo[season_id] = source_ta
+          @dest_ta_sql_ref_by_season[season_id] = source_ta.id.to_s
+          @dest_ta_resolution_by_season[season_id] = {
+            mode: :recycle,
+            ta_id: source_ta.id,
+            source_team_id: source_ta.team_id
+          }
+          next
+        end
+
+        memo[season_id] = nil
+        @dest_ta_sql_ref_by_season[season_id] = "@dest_ta_#{season_id}"
+        @dest_ta_resolution_by_season[season_id] = { mode: :create, ta_id: nil }
+      end
+    end
+
+    # Returns the source team IDs seen in the badge batch, grouped by season.
+    # If multiple teams are present in the same season, the first badge by ID wins.
+    def source_team_ids_by_season
+      @source_team_ids_by_season ||= @badge_batch
+                                     .group_by(&:season_id)
+                                     .transform_values { |rows| rows.min_by(&:id)&.team_id }
+    end
+
+    # Finds a TeamAffiliation to reuse for the given season from the current (wrong) source team.
+    def find_reusable_source_ta_for_season(season_id)
+      source_team_id = source_team_ids_by_season[season_id]
+      return nil if source_team_id.blank?
+
+      GogglesDb::TeamAffiliation.where(team_id: source_team_id, season_id:).order(:id).first
     end
 
     # Returns the array of badge IDs in the batch.
@@ -235,7 +278,47 @@ module Merge
     # Returns destination TeamAffiliation labels grouped by season.
     def team_affiliation_labels
       @team_affiliation_labels ||= @dest_tas_by_season.sort_by { |season_id, _| season_id }
-                                                      .map { |season_id, ta| "#{season_id}:#{ta.id}" }
+                                                      .map do |season_id, ta|
+        mode = @dest_ta_resolution_by_season.dig(season_id, :mode)
+        suffix = case mode
+                 when :recycle then ' (reused)'
+                 when :create then ' (new)'
+                 else ''
+                 end
+        sql_ref = @dest_ta_sql_ref_by_season[season_id]
+        "#{season_id}:#{ta&.id || sql_ref}#{suffix}"
+      end
+    end
+
+    # Returns the SQL reference for the destination TeamAffiliation in the given season.
+    # Can be either a numeric ID or a SQL user variable (for rows created in-script).
+    def team_affiliation_sql_ref(season_id)
+      @dest_ta_sql_ref_by_season.fetch(season_id)
+    end
+
+    # Step 0: emits SQL for seasons where destination TeamAffiliation was missing.
+    def prepare_team_affiliation_fallbacks # rubocop:disable Metrics/AbcSize
+      fallback_rows = @dest_ta_resolution_by_season
+                      .sort_by { |season_id, _| season_id }
+                      .reject { |_season_id, row| row[:mode] == :existing }
+      return if fallback_rows.empty?
+
+      escaped_name = (@new_team.editable_name.presence || @new_team.name).to_s.gsub("'", "''")
+      @sql_log << '-- Step 0: Resolve missing destination TeamAffiliations'
+      fallback_rows.each do |season_id, row|
+        case row[:mode]
+        when :recycle
+          @sql_log << "-- Season #{season_id}: reusing TeamAffiliation #{row[:ta_id]} from team #{row[:source_team_id]}"
+          @sql_log << "UPDATE team_affiliations SET team_id = #{@new_team.id}, updated_at = NOW() WHERE id = #{row[:ta_id]};"
+        when :create
+          sql_var = @dest_ta_sql_ref_by_season[season_id]
+          @sql_log << "-- Season #{season_id}: creating missing TeamAffiliation for destination team #{@new_team.id}"
+          @sql_log << 'INSERT INTO team_affiliations (team_id, season_id, name, created_at, updated_at) ' \
+                      "VALUES (#{@new_team.id}, #{season_id}, '#{escaped_name}', NOW(), NOW());"
+          @sql_log << "SET #{sql_var} = LAST_INSERT_ID();"
+        end
+      end
+      @sql_log << ''
     end
 
     # Discovers the full batch of badges to fix via MRS → MRR cascade.
@@ -298,8 +381,9 @@ module Merge
     def prepare_badge_updates
       @sql_log << '-- Step 1: Update badges with correct team_id and season-specific team_affiliation_id'
       badge_ids_by_season.sort.each do |season_id, ids|
+        ta_ref = team_affiliation_sql_ref(season_id)
         @sql_log << "UPDATE badges SET team_id = #{@new_team.id}, " \
-                    "team_affiliation_id = #{@dest_tas_by_season[season_id].id}, " \
+                    "team_affiliation_id = #{ta_ref}, " \
                     'updated_at = NOW() ' \
                     "WHERE id IN (#{ids.join(', ')});"
       end
@@ -310,8 +394,9 @@ module Merge
     def prepare_mir_updates
       @sql_log << '-- Step 2: Update MIRs with correct team_id and season-specific team_affiliation_id'
       badge_ids_by_season.sort.each do |season_id, ids|
+        ta_ref = team_affiliation_sql_ref(season_id)
         @sql_log << "UPDATE meeting_individual_results SET team_id = #{@new_team.id}, " \
-                    "team_affiliation_id = #{@dest_tas_by_season[season_id].id}, " \
+                    "team_affiliation_id = #{ta_ref}, " \
                     'updated_at = NOW() ' \
                     "WHERE badge_id IN (#{ids.join(', ')});"
       end
@@ -336,11 +421,12 @@ module Merge
 
       @sql_log << '-- Step 4: Update MRRs with correct team_id and season-specific team_affiliation_id'
       badge_ids_by_season.sort.each do |season_id, ids|
+        ta_ref = team_affiliation_sql_ref(season_id)
         @sql_log << <<~SQL.squish
           UPDATE meeting_relay_results mrr
           INNER JOIN meeting_relay_swimmers mrs ON mrs.meeting_relay_result_id = mrr.id
           INNER JOIN badges b ON b.id = mrs.badge_id
-          SET mrr.team_id = #{@new_team.id}, mrr.team_affiliation_id = #{@dest_tas_by_season[season_id].id}, mrr.updated_at = NOW()
+          SET mrr.team_id = #{@new_team.id}, mrr.team_affiliation_id = #{ta_ref}, mrr.updated_at = NOW()
           WHERE b.season_id = #{season_id} AND mrs.badge_id IN (#{ids.join(', ')});
         SQL
       end

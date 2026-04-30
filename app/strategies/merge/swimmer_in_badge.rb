@@ -3,7 +3,7 @@
 module Merge
   # = Merge::SwimmerInBadge
   #
-  #   - version:  7-0.7.25
+  #   - version:  7-0.8.40
   #   - author:   Steve A.
   #   - build:    20260406
   #

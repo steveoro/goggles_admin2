@@ -36,7 +36,7 @@ namespace :fix do # rubocop:disable Metrics/BlockLength
 
     Options: [Rails.env=#{Rails.env}]
              badge=<badge_id1[,badge_id2,...]> team=<correct_team_id>
-             [index=<auto>] [simulate='0'|<'1'>]
+             [index=<auto>] [simulate='0'|<'1'>] [nuke_team='0'|<'1'>]
 
       - badge: comma-separated list of Badge IDs to fix (can span multiple seasons);
 
@@ -46,6 +46,10 @@ namespace :fix do # rubocop:disable Metrics/BlockLength
                (default: auto-detected from existing files in output dir);
 
       - simulate: when set to '0' will enable script execution on localhost (toggled off by default).
+
+      - nuke_team: when set to '1' allows reusing/remapping existing TeamAffiliations from the wrong team.
+                   WARNING: THIS MAY REASSIGN ALL ROWS LINKED TO THE REUSED TEAM_AFFILIATION IDS,
+                   NOT JUST THE SUPPLIED BADGES. USE ONLY WHEN YOU EXPLICITLY WANT THAT BROAD EFFECT.
 
   DESC
   task(team_in_badge: ['merge:check_needed_dirs']) do
@@ -68,15 +72,23 @@ namespace :fix do # rubocop:disable Metrics/BlockLength
     end
 
     simulate = ENV['simulate'] != '0'
+    nuke_team = ENV['nuke_team'] == '1'
     file_index = ENV['index'].present? ? ENV['index'].to_i : auto_index_from_script_output_dir
     badge_ids_label = badges.map(&:id).join('-')
 
     puts("\r\nFixing team_id in #{badges.size} badge(s): [#{badges.map(&:id).join(', ')}]")
     puts("New team: (#{new_team.id}) \"#{new_team.name}\"")
+    puts("Mode: #{nuke_team ? 'NUKE TEAM-AFFILIATION REUSE' : 'SURGICAL (CREATE MISSING AFFILIATIONS ONLY)'}")
+    if nuke_team
+      puts('WARNING: NUKE MODE ENABLED!')
+      puts('WARNING: THIS MAY REASSIGN ALL ROWS LINKED TO REUSED TEAM_AFFILIATION IDS,')
+      puts('WARNING: NOT JUST THE BADGES YOU PASSED ON THE COMMAND LINE.')
+    end
     puts("\r\n#{'- simulate'.ljust(50, '.')}: #{simulate}")
+    puts("#{'- nuke_team'.ljust(50, '.')}: #{nuke_team}")
     puts("#{'- destination folder'.ljust(50, '.')}: #{SCRIPT_OUTPUT_DIR}")
 
-    fixer = Merge::TeamInBadge.new(badges:, new_team:)
+    fixer = Merge::TeamInBadge.new(badges:, new_team:, nuke_team:)
     fixer.display_report
     fixer.prepare
 
