@@ -470,4 +470,39 @@ namespace :check do # rubocop:disable Metrics/BlockLength
   # rubocop:enable Layout/LineLength
   #-- -------------------------------------------------------------------------
   #++
+
+  desc <<~DESC
+      Checks for duplicated badges among all swimmers that have ever had a badge
+    associated to the specified team.
+
+    For each swimmer that has ever had a badge on the team, this task identifies
+    which swimmers have duplicate badges in any season (across any team).
+
+    For each flagged swimmer, the task reports all badge rows across all seasons
+    ordered by season_id, badge_id with the following columns:
+      season_id, badge_id, team_id, team_affiliation_id, team.name, mir_count
+
+    Options: [Rails.env=#{Rails.env}]
+             team=<team_id>
+
+      - team: Team ID to be checked (required)
+
+    Example:
+      rake check:dup_badges_for_team team=539
+
+  DESC
+  task(dup_badges_for_team: [:environment]) do
+    puts("\r\n*** Task: check:dup_badges_for_team - team #{ENV.fetch('team', nil)} ***")
+    team = GogglesDb::Team.find_by(id: ENV['team'].to_i)
+    if team.nil?
+      puts('You need a valid team ID to proceed.')
+      exit
+    end
+
+    checker = Merge::DupBadgesForTeamChecker.new(team:)
+    checker.run
+    checker.display_report
+  end
+  #-- -------------------------------------------------------------------------
+  #++
 end

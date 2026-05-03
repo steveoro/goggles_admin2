@@ -2,19 +2,16 @@
 
 [x] = DONE, [ ] = TODO, [~] = almost ok, additional testing needed
 
-- [ ] a more generic `fix:swimmer_in_badge` / `fix:team_in_badge`
-  Make it so that app/strategies/merge/swimmer_in_badge.rb can process badges from different seasons (probably must search for duplicates inside the season of the currently processed badge instead of assuming a single @season instance)
-  Current constraints:
-  - loop halts if badges are from different seasons
-    => we should be able to process any number of badges from any season
-  - loop halts if the target team has NO team_affiliation for the season in which the badge was issued
-    => existing affiliations for the updated team should be reassigned to the target team (so we reuse the same ID)
-    => missing affiliations should be created (rare, but could happen)
+- [ ] Error during `merge:team` (from team 889 to team 542):
 
-  [x] Real use-case: fix (wrong) team (1305, Cagliari) assigned to swimmers 45341, 52332, 48648: correct team (1634, Toscana)
-  => fixed for seasons 252, 242 and 232, but in 222, 212 and 202 we need to change the team in the badges but the affiliation is missing. Check it with: `rails check:map_swimmer_mirs swimmer=<swimmer_id>` (reports the results for each season)
+```bash
+--------------
+INSERT INTO team_affiliations (team_id, season_id, name, created_at, updated_at) VALUES (542, 152, 'ASD NUOTO CLUB CA', NOW(), NOW())
+--------------
 
-- [x] preselect city_id (and all sub fields) when changing or setting a swimming_pool_id in phase 1 (city_id must come from associated SwimmingPool, if present)
+ERROR 1062 (23000) at line 1410 in file: '/home/steve/Projects/goggles_admin2/crawler/data/results.new/0230-merge_teams-889-542.sql': Duplicate entry '152-542' for key 'uk_team_affiliations_seasons_teams'
+```
+  The error appears for all TAs apparently missing from target season; the rake task doesn't seem to take into account "recycled" TAs
 
 - [ ] if the Meeting commit fails in phase 6 because some of the required fields in phase 1 weren't properly set, the controller redirects to the file list instead of reporting the issue and allowing the operator to review the meeting data
 
