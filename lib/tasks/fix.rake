@@ -36,7 +36,7 @@ namespace :fix do # rubocop:disable Metrics/BlockLength
 
     Options: [Rails.env=#{Rails.env}]
              badge=<badge_id1[,badge_id2,...]> team=<correct_team_id>
-             [index=<auto>] [simulate='0'|<'1'>] [nuke_team='0'|<'1'>]
+             [index=<auto>] [simulate='0'|<'1'>] [nuke_team=<'0'>|'1']
 
       - badge: comma-separated list of Badge IDs to fix (can span multiple seasons);
 

@@ -156,4 +156,54 @@ RSpec.describe Merge::Team do
       expect(merger.log).to eq(merger.checker.log)
     end
   end
+
+  describe 'remaining team references safety net' do
+    subject(:merger) { described_class.new(source:, dest:) }
+
+    before(:each) do
+      allow(ActiveRecord::Base.connection).to receive(:select_value).and_return(0)
+    end
+
+    it 'reuses known destination TA SQL refs and does not emit create warning for same season' do
+      merger
+      season_id = 182
+      badge = instance_double(GogglesDb::Badge, id: 123_456, season_id:)
+      remaining_badges = instance_double(ActiveRecord::Relation)
+
+      allow(GogglesDb::Badge).to receive(:where).with(team_id: source.id).and_return(remaining_badges)
+      allow(remaining_badges).to receive_messages(exists?: true, count: 1, group_by: { season_id => [badge] })
+
+      merger.instance_variable_set(:@dest_ta_sql_ref_by_season, { season_id => '5578' })
+
+      merger.send(:prepare_script_for_remaining_team_references)
+      sql = merger.sql_log.join("\n")
+
+      expect(sql).to include('team_affiliation_id=5578 WHERE id IN (123456)')
+      expect(sql).not_to include("WARNING: creating dest TA for season #{season_id}")
+      expect(sql).not_to include('LAST_INSERT_ID')
+    end
+
+    it 'uses guarded insert/select for seasons with missing destination TA refs' do
+      merger
+      season_id = 252
+      badge = instance_double(GogglesDb::Badge, id: 654_321, season_id:)
+      remaining_badges = instance_double(ActiveRecord::Relation)
+
+      allow(GogglesDb::Badge).to receive(:where).with(team_id: source.id).and_return(remaining_badges)
+      allow(remaining_badges).to receive_messages(exists?: true, count: 1, group_by: { season_id => [badge] })
+
+      merger.instance_variable_set(:@dest_ta_sql_ref_by_season, {})
+
+      merger.send(:prepare_script_for_remaining_team_references)
+      sql = merger.sql_log.join("\n")
+
+      expect(sql).to include("WARNING: creating dest TA for season #{season_id}")
+      expect(sql).to include('INSERT INTO team_affiliations (team_id, season_id, name, created_at, updated_at)')
+      expect(sql).to include("SELECT #{dest.id}, #{season_id}")
+      expect(sql).to include("WHERE NOT EXISTS (SELECT 1 FROM team_affiliations WHERE season_id=#{season_id} AND team_id=#{dest.id})")
+      expect(sql).to include("SET @dest_ta_#{season_id} = (SELECT id FROM team_affiliations WHERE season_id=#{season_id} AND team_id=#{dest.id} LIMIT 1);")
+      expect(sql).to include("team_affiliation_id=@dest_ta_#{season_id} WHERE id IN (654321)")
+      expect(sql).not_to include('LAST_INSERT_ID')
+    end
+  end
 end

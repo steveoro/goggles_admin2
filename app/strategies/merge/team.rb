@@ -63,6 +63,7 @@ module Merge
       @source = @checker.source
       @dest = @checker.dest
       @sql_log = []
+      @dest_ta_sql_ref_by_season = {}
     end
     #-- ------------------------------------------------------------------------
     #++
@@ -86,6 +87,7 @@ module Merge
 
       prepare_script_header
       prepare_script_for_reservation_cleanup
+      seed_dest_ta_sql_refs
 
       # Per-season TeamAffiliation processing:
       GogglesDb::TeamAffiliation.where(team_id: @source.id).order(:season_id).each do |src_ta|
@@ -149,6 +151,7 @@ module Merge
     #
     # rubocop:disable Metrics/AbcSize
     def prepare_script_for_season_with_dest_ta(src_ta, dest_ta)
+      register_dest_ta_sql_ref(src_ta.season_id, dest_ta.id)
       @sql_log << "\r\n-- Season #{src_ta.season_id}, dest. TA found #{dest_ta.id}, processing source TA #{src_ta.id}:"
 
       # Badge sub-merges for shared badge couples:
@@ -172,6 +175,7 @@ module Merge
 
     # Processes a source TA when no dest TA exists — recycle the source TA by updating its team_id.
     def prepare_script_for_season_recycle_ta(src_ta)
+      register_dest_ta_sql_ref(src_ta.season_id, src_ta.id)
       @sql_log << "\r\n-- Season #{src_ta.season_id}, dest. TA MISSING, recycling source TA #{src_ta.id} (updating only team references):"
       @sql_log << "UPDATE badges SET updated_at=NOW(), team_id=#{@dest.id} WHERE team_affiliation_id=#{src_ta.id};"
       # (managed_affiliations table is already ok, as src will become "new dest")
@@ -244,25 +248,26 @@ module Merge
     # source team_id after per-season TA processing. This covers badges in seasons where the
     # source team has NO TeamAffiliation, or badges whose team_affiliation_id didn't match any
     # source TA.
-    def prepare_script_for_remaining_team_references # rubocop:disable Metrics/AbcSize,Metrics/PerceivedComplexity
+    def prepare_script_for_remaining_team_references # rubocop:disable Metrics/AbcSize
       remaining_badges = GogglesDb::Badge.where(team_id: @source.id)
       if remaining_badges.exists?
         @sql_log << "\r\n-- Global safety net: #{remaining_badges.count} badge(s) still referencing source team #{@source.id}"
         remaining_badges.group_by(&:season_id).each do |season_id, badges|
-          dest_ta = GogglesDb::TeamAffiliation.find_by(season_id: season_id, team_id: @dest.id)
           badge_ids = badges.map(&:id).join(', ')
-          if dest_ta
-            @sql_log << "UPDATE badges SET updated_at=NOW(), team_id=#{@dest.id}, " \
-                        "team_affiliation_id=#{dest_ta.id} WHERE id IN (#{badge_ids});"
-          else
-            # No dest TA for this season — create one, then update badges
+          ta_sql_ref = @dest_ta_sql_ref_by_season[season_id]
+          unless ta_sql_ref
+            # No known dest TA for this season — create one (if needed), then update badges
+            ta_sql_ref = "@dest_ta_#{season_id}"
             @sql_log << "-- WARNING: creating dest TA for season #{season_id} (was missing)"
             @sql_log << 'INSERT INTO team_affiliations (team_id, season_id, name, created_at, updated_at) ' \
-                        "VALUES (#{@dest.id}, #{season_id}, '#{@dest.editable_name}', NOW(), NOW());"
-            @sql_log << 'SET @new_ta_id = LAST_INSERT_ID();'
-            @sql_log << "UPDATE badges SET updated_at=NOW(), team_id=#{@dest.id}, " \
-                        "team_affiliation_id=@new_ta_id WHERE id IN (#{badge_ids});"
+                        "SELECT #{@dest.id}, #{season_id}, '#{escaped_dest_ta_name}', NOW(), NOW() " \
+                        "WHERE NOT EXISTS (SELECT 1 FROM team_affiliations WHERE season_id=#{season_id} AND team_id=#{@dest.id});"
+            @sql_log << "SET #{ta_sql_ref} = (SELECT id FROM team_affiliations WHERE season_id=#{season_id} AND team_id=#{@dest.id} LIMIT 1);"
+            register_dest_ta_sql_ref(season_id, ta_sql_ref)
           end
+
+          @sql_log << "UPDATE badges SET updated_at=NOW(), team_id=#{@dest.id}, " \
+                      "team_affiliation_id=#{ta_sql_ref} WHERE id IN (#{badge_ids});"
         end
       end
 
@@ -311,6 +316,20 @@ module Merge
         attrs << "city_id=#{@source.city_id}" if @source.city_id.present?
       end
       @sql_log << "\r\nUPDATE teams SET updated_at=NOW(), #{attrs.join(', ')} WHERE id=#{@dest.id};"
+    end
+
+    def seed_dest_ta_sql_refs
+      GogglesDb::TeamAffiliation.where(team_id: @dest.id).pluck(:season_id, :id).each do |season_id, ta_id|
+        register_dest_ta_sql_ref(season_id, ta_id)
+      end
+    end
+
+    def register_dest_ta_sql_ref(season_id, sql_ref)
+      @dest_ta_sql_ref_by_season[season_id] = sql_ref.to_s
+    end
+
+    def escaped_dest_ta_name
+      (@dest.editable_name.presence || @dest.name).to_s.gsub("'", "''")
     end
     #-- ------------------------------------------------------------------------
     #++
