@@ -44,6 +44,7 @@ class DataFixController < ApplicationController
       redirect_to(review_sessions_path(request.query_parameters.except(:rescan).merge(file_path: @file_path)),
                   notice: I18n.t('data_import.messages.phase_rebuilt', phase: 1)) && return
     end
+    @retry_needed = sync_phase_retry_flag!(phase_path: phase_path, source_path: source_path)
     pfm = PhaseFileManager.new(phase_path)
     @phase1_meta = pfm.meta
     @phase1_data = pfm.data
@@ -96,6 +97,7 @@ class DataFixController < ApplicationController
       redirect_to(review_teams_path(request.query_parameters.except(:rescan).merge(file_path: @file_path)),
                   notice: I18n.t('data_import.messages.phase_rebuilt', phase: 2)) && return
     end
+    @retry_needed = sync_phase_retry_flag!(phase_path: phase_path, source_path: source_path)
     pfm = PhaseFileManager.new(phase_path)
     @phase2_meta = pfm.meta
     @phase2_data = pfm.data
@@ -189,6 +191,7 @@ class DataFixController < ApplicationController
       redirect_to(review_swimmers_path(request.query_parameters.except(:rescan).merge(file_path: @file_path)),
                   notice: I18n.t('data_import.messages.phase_rebuilt', phase: 3)) && return
     end
+    @retry_needed = sync_phase_retry_flag!(phase_path: phase_path, source_path: source_path)
     pfm = PhaseFileManager.new(phase_path)
     @phase3_meta = pfm.meta
     @phase3_data = pfm.data
@@ -337,6 +340,7 @@ class DataFixController < ApplicationController
       redirect_to(review_events_path(request.query_parameters.except(:rescan).merge(file_path: @file_path)),
                   notice: I18n.t('data_import.messages.phase_rebuilt', phase: 4)) && return
     end
+    @retry_needed = sync_phase_retry_flag!(phase_path: phase_path, source_path: source_path)
     pfm = PhaseFileManager.new(phase_path)
     @phase4_meta = pfm.meta
     @phase4_data = pfm.data
@@ -467,10 +471,16 @@ class DataFixController < ApplicationController
                   notice: "Phase 5 rebuilt. Populated DB: #{populate_stats[:mir_created]} results, #{populate_stats[:laps_created]} laps") && return
     end
 
+    @retry_needed = sync_phase_retry_flag!(phase_path: phase_path, source_path: source_path)
+
     # Load phase5 JSON with program groups
     if File.exist?(phase_path)
       phase5_json = JSON.parse(File.read(phase_path))
-      @phase5_meta = { 'name' => phase5_json['name'], 'source_file' => phase5_json['source_file'] }
+      @phase5_meta = {
+        'name' => phase5_json['name'],
+        'source_file' => phase5_json['source_file'],
+        'retry_needed' => @retry_needed
+      }
       all_programs = phase5_json['programs'] || []
       @total_programs_count = all_programs.size # Track unfiltered count
 
@@ -2444,6 +2454,13 @@ class DataFixController < ApplicationController
   def materialize_lt4_working_copy(lt2_source_path:, lt4_source_path:)
     data_hash = JSON.parse(File.read(lt2_source_path))
     normalized = Import::Adapters::Layout2To4.normalize(data_hash: data_hash)
+
+    retry_needed = source_has_retry_section_in_hash?(data_hash)
+    normalized_meta = normalized['_meta']
+    normalized_meta = {} unless normalized_meta.is_a?(Hash)
+    normalized_meta['retry_needed'] = retry_needed
+    normalized['_meta'] = normalized_meta
+
     FileUtils.mkdir_p(File.dirname(lt4_source_path))
     File.write(lt4_source_path, JSON.pretty_generate(normalized))
     Rails.logger.info("[DataFixController] LT2=>LT4 working copy created: #{lt4_source_path}")
@@ -2457,6 +2474,61 @@ class DataFixController < ApplicationController
     dir = File.dirname(source_path)
     base = File.basename(source_path, File.extname(source_path))
     File.join(dir, "#{base}-phase#{phase_num}.json")
+  end
+
+  def source_has_retry_section?(source_path)
+    data_hash = JSON.parse(File.read(source_path))
+    return true if source_has_retry_section_in_hash?(data_hash)
+    return true if source_has_retry_meta_flag?(data_hash)
+
+    lt2_source_path = paired_lt2_source_path(source_path)
+    return false if lt2_source_path.blank?
+
+    lt2_data_hash = JSON.parse(File.read(lt2_source_path))
+    source_has_retry_section_in_hash?(lt2_data_hash)
+  rescue StandardError => e
+    Rails.logger.warn("[DataFixController] retry-section detection failed for #{source_path}: #{e.message}")
+    false
+  end
+
+  def source_has_retry_section_in_hash?(data_hash)
+    return false unless data_hash.is_a?(Hash)
+
+    Array(data_hash['sections']).any? { |sect| sect.is_a?(Hash) && sect.key?('retry') }
+  end
+
+  def source_has_retry_meta_flag?(data_hash)
+    return false unless data_hash.is_a?(Hash)
+
+    meta = data_hash['_meta']
+    meta.is_a?(Hash) && meta['retry_needed'] == true
+  end
+
+  def paired_lt2_source_path(source_path)
+    return nil if source_path.blank?
+    return nil unless source_path.end_with?('-lt4.json')
+
+    lt2_source_path = source_path.sub(/-lt4\.json\z/, '.json')
+    File.exist?(lt2_source_path) ? lt2_source_path : nil
+  end
+
+  def sync_phase_retry_flag!(phase_path:, source_path:)
+    retry_needed = source_has_retry_section?(source_path)
+    return retry_needed unless File.exist?(phase_path)
+
+    phase_payload = JSON.parse(File.read(phase_path))
+    return retry_needed unless phase_payload.is_a?(Hash)
+
+    phase_meta = phase_payload['_meta']
+    phase_meta = {} unless phase_meta.is_a?(Hash)
+    phase_meta['retry_needed'] = retry_needed
+    phase_payload['_meta'] = phase_meta
+
+    File.write(phase_path, JSON.pretty_generate(phase_payload))
+    retry_needed
+  rescue StandardError => e
+    Rails.logger.warn("[DataFixController] retry flag sync failed for #{phase_path}: #{e.message}")
+    retry_needed || false
   end
 
   def build_post_commit_checks_report(season_id)

@@ -174,6 +174,27 @@ RSpec.describe DataFixController do
         expect(response.body).to include('Step 3') # Phase header
       end
 
+      it 'shows retry warning and stores retry flag in metadata' do
+        File.write(
+          source_file,
+          JSON.generate(
+            {
+              'layoutType' => 4,
+              'sections' => [
+                {
+                  'retry' => { 'message' => 'temporary crawler error' }
+                }
+              ]
+            }
+          )
+        )
+
+        get review_swimmers_path(file_path: source_file, phase3_v2: 1)
+
+        expect(response.body).to include(ERB::Util.html_escape(I18n.t('data_import.data_fix.msg.warning_retry_needed')))
+        expect(PhaseFileManager.new(phase3_file).meta['retry_needed']).to be true
+      end
+
       it 'uses LT4 working phase file when opened from LT2 source' do
         lt2_payload = {
           'layoutType' => 2,

@@ -158,6 +158,30 @@ RSpec.describe DataFixController do
         expect(response.body).not_to include('2 relay results')
       end
 
+      it 'shows retry warning and stores retry flag in phase5 metadata' do
+        File.write(
+          source_file_a,
+          JSON.generate(
+            {
+              'layoutType' => 4,
+              'sections' => [
+                {
+                  'retry' => { 'message' => 'temporary crawler error' }
+                }
+              ]
+            }
+          )
+        )
+
+        get review_results_path(file_path: source_file_a, phase5_v2: 1)
+
+        expect(response).to be_successful
+        expect(response.body).to include(ERB::Util.html_escape(I18n.t('data_import.data_fix.msg.warning_retry_needed')))
+
+        phase5_payload = JSON.parse(File.read(phase5_file_a))
+        expect(phase5_payload.dig('_meta', 'retry_needed')).to be true
+      end
+
       it 'flags unresolved program gender as an issue' do
         get review_results_path(file_path: source_file_a, phase5_v2: 1)
 

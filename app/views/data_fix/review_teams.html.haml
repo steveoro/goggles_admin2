@@ -3,9 +3,11 @@
 = render(partial: 'data_fix_legacy/modal_progress')
 
 .container-fluid
-  %h2 Data-Fix V2 • Step 2: Teams (Phase 2)
-  .mb-2
-    = render(partial: 'data_fix/step_tabs', locals: { active_step: 2, file_path: @file_path })
+  = render(partial: 'data_fix/v2_phase_header',
+           locals: { title: 'Data-Fix V2 • Step 2: Teams (Phase 2)',
+                     active_step: 2,
+                     file_path: @file_path,
+                     retry_needed: @retry_needed })
 
   -# Phase Navigation buttons
   .d-flex.justify-content-between.my-2

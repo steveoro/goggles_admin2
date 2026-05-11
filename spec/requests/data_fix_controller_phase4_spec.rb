@@ -104,5 +104,27 @@ RSpec.describe DataFixController do
       expect(updated_events.any? { |e| e['key'] == '50RA' }).to be(false)
       expect(updated_events.any? { |e| e['key'] == '100DO' }).to be(true)
     end
+
+    it 'shows retry warning and stores retry flag in metadata' do
+      File.write(
+        source_file,
+        JSON.generate(
+          {
+            'layoutType' => 4,
+            'sections' => [
+              {
+                'retry' => { 'message' => 'temporary crawler error' }
+              }
+            ]
+          }
+        )
+      )
+
+      get review_events_path(file_path: source_file, phase4_v2: 1)
+
+      expect(response).to be_successful
+      expect(response.body).to include(ERB::Util.html_escape(I18n.t('data_import.data_fix.msg.warning_retry_needed')))
+      expect(PhaseFileManager.new(phase4_file).meta['retry_needed']).to be true
+    end
   end
 end

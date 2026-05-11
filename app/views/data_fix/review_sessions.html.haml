@@ -3,9 +3,11 @@
 = render(partial: 'data_fix_legacy/modal_progress')
 
 .container-fluid
-  %h2 Data-Fix V2 • Step 1: Meeting & Sessions (Phase 1)
-  .mb-2
-    = render(partial: 'data_fix/step_tabs', locals: { active_step: 1, file_path: @file_path })
+  = render(partial: 'data_fix/v2_phase_header',
+           locals: { title: 'Data-Fix V2 • Step 1: Meeting & Sessions (Phase 1)',
+                     active_step: 1,
+                     file_path: @file_path,
+                     retry_needed: @retry_needed })
 
   -# Phase Navigation buttons
   .d-flex.justify-content-between.my-2
@@ -35,7 +37,8 @@
     all_required_filled = @season.is_a?(GogglesDb::Season) && name.present? && date_year1.present? && date_month1.present? && date_day1.present?
     
   = render(partial: 'meeting_form_card',
-           locals: { file_path: @file_path, api_url: @api_url, meeting_data: @phase1_data, season: @season,
+           locals: { file_path: @file_path, api_url: @api_url, meeting_data: @phase1_data,
+                     original_meeting_data: @phase1_data, season: @season,
                      meeting_id:, has_match:, card_bg:, border_color:, border_width:, all_required_filled: })
 
   -# Sessions Section Header

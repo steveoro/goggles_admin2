@@ -12,6 +12,57 @@ function setFieldValue(fieldId, value, triggerChange = true) {
   }
 }
 
+function setCheckboxValue(fieldId, checked, triggerChange = false) {
+  const field = $('#' + fieldId)
+  if (!field.length) {
+    return
+  }
+
+  field.prop('checked', !!checked)
+  if (triggerChange) {
+    field.trigger('change')
+  }
+}
+
+export function resetMeetingFormToOriginal(originalMeetingData) {
+  if (!originalMeetingData || typeof originalMeetingData !== 'object') {
+    return
+  }
+
+  setFieldValue('meeting_meeting_id', '', false)
+  setFieldValue('meeting_meeting', '', false)
+  const desc = $('#meeting-desc')
+  if (desc.length) {
+    desc.html('')
+  }
+
+  setFieldValue('meeting_description', originalMeetingData.name, false)
+  setFieldValue('meeting_code', originalMeetingData.code, false)
+  setFieldValue('meeting_season_id', originalMeetingData.season_id, false)
+  setFieldValue('meeting_header_year', originalMeetingData.header_year, false)
+  setFieldValue('meeting_header_date', originalMeetingData.header_date, false)
+  setFieldValue('meetingURL', originalMeetingData.meetingURL, false)
+
+  setFieldValue('meeting_edition', originalMeetingData.edition, false)
+  setFieldValue('meeting_edition_type_id', originalMeetingData.edition_type_id, false)
+  setFieldValue('meeting_timing_type_id', originalMeetingData.timing_type_id, false)
+  setCheckboxValue('meeting_cancelled', originalMeetingData.cancelled)
+  setCheckboxValue('meeting_confirmed', originalMeetingData.confirmed == null ? true : originalMeetingData.confirmed)
+
+  setFieldValue('max_individual_events', originalMeetingData.max_individual_events, false)
+  setFieldValue('max_individual_events_per_session', originalMeetingData.max_individual_events_per_session, false)
+  setFieldValue('poolLength', originalMeetingData.poolLength, false)
+
+  setFieldValue('dateDay1', originalMeetingData.dateDay1, false)
+  setFieldValue('dateMonth1', originalMeetingData.dateMonth1, false)
+  setFieldValue('dateYear1', originalMeetingData.dateYear1, false)
+  setFieldValue('dateDay2', originalMeetingData.dateDay2, false)
+  setFieldValue('dateMonth2', originalMeetingData.dateMonth2, false)
+  setFieldValue('dateYear2', originalMeetingData.dateYear2, false)
+  setFieldValue('venue1', originalMeetingData.venue1, false)
+  setFieldValue('address1', originalMeetingData.address1, false)
+}
+
 function clearSessionCityFields(sessionIndex) {
   setFieldValue('city_' + sessionIndex + '_id_field', '', false)
   setFieldValue('city_' + sessionIndex + '_city_id', '', false)

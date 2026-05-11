@@ -1,0 +1,18 @@
+-# frozen_string_literal: true
+
+-# Locals:
+-# - title: String
+-# - active_step: Integer (1..5)
+-# - file_path: String
+-# - retry_needed: Boolean
+- title ||= ''
+- active_step ||= nil
+- file_path ||= @file_path
+- retry_needed ||= false
+
+%h2= title
+- if retry_needed
+  .row-fluid.text-center
+    %b.text-danger.animated.infinite.flash= t('data_import.data_fix.msg.warning_retry_needed')
+.mb-2
+  = render(partial: 'data_fix/step_tabs', locals: { active_step: active_step, file_path: file_path })

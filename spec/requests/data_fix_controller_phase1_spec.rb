@@ -45,6 +45,28 @@ RSpec.describe DataFixController do
         get review_sessions_path(file_path: source_file, phase_v2: 1)
         expect(response.body).to include('No sessions yet')
       end
+
+      it 'shows retry warning when source has a retry section' do
+        File.write(
+          source_file,
+          JSON.generate(
+            {
+              'layoutType' => 4,
+              'name' => 'Test Meeting',
+              'sections' => [
+                {
+                  'retry' => { 'message' => 'temporary crawler error' }
+                }
+              ]
+            }
+          )
+        )
+
+        get review_sessions_path(file_path: source_file, phase_v2: 1)
+
+        expect(response.body).to include(ERB::Util.html_escape(I18n.t('data_import.data_fix.msg.warning_retry_needed')))
+        expect(PhaseFileManager.new(phase1_file).meta['retry_needed']).to be true
+      end
     end
 
     describe 'PATCH /data_fix/update_phase1_meeting' do

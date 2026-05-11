@@ -157,6 +157,33 @@ RSpec.describe DataFixController, type: :controller do
         expect(data['events']).not_to be_empty
         expect(data['swimmers']).to be_present
       end
+
+      context 'when LT2 sections include retry info' do
+        before(:each) do
+          lt2_payload = {
+            'layoutType' => 2,
+            'name' => 'LT2 meeting with retry',
+            'sections' => [
+              {
+                'title' => '50 SL M25',
+                'retry' => { 'solr[id_settore]' => 1 },
+                'rows' => [
+                  { 'name' => 'Rossi Mario', 'year' => 1985, 'team' => 'Team A', 'timing' => '00:31.00' }
+                ]
+              }
+            ]
+          }
+          File.write(source_path, JSON.pretty_generate(lt2_payload))
+        end
+
+        it 'persists retry marker in LT4 metadata and remains detectable from LT4 path' do
+          expect(resolved_path).to eq(lt4_path)
+
+          data = JSON.parse(File.read(lt4_path))
+          expect(data.dig('_meta', 'retry_needed')).to be true
+          expect(controller.send(:source_has_retry_section?, lt4_path)).to be true
+        end
+      end
     end
 
     context 'with LT2 source file and existing LT4 working copy' do

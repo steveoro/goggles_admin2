@@ -456,14 +456,15 @@ namespace :check do # rubocop:disable Metrics/BlockLength
     mirs_page = Kaminari.paginate_array(mirs).page(page_idx).per(per_page)
     exit if mirs_page.empty?
 
+    puts("--> Swimmer: #{swimmer.decorate.display_label}")
     curr_season = 0
-    puts('MIR'.ljust(12) + ' | Season'.ljust(10) + ' | Badge'.ljust(12) + ' | Team'.ljust(12) + ' | Team Aff.'.ljust(12) + ' | Meeting'.ljust(50))
+    puts('MIR'.ljust(12) + ' | Season'.ljust(10) + ' | Badge'.ljust(12) + ' | Team'.ljust(12) + ' | Team Aff.'.ljust(12) + ' | Team Name'.ljust(38) + ' | Header Date'.ljust(12) + ' | Meeting'.ljust(50))
     mirs_page.map do |mir|
       if curr_season != mir.season.id
-        puts(''.center(120, '-'))
+        puts(''.center(154, '-'))
         curr_season = mir.season.id
       end
-      puts("#{mir.id.to_s.rjust(12)} | #{mir.season.id.to_s.rjust(7)} | #{mir.badge_id.to_s.rjust(9)} | #{mir.team_id.to_s.rjust(9)} | #{mir.team_affiliation_id.to_s.rjust(9)} | #{mir.meeting.description.ljust(50)}")
+      puts("#{mir.id.to_s.rjust(12)} | #{mir.season.id.to_s.rjust(7)} | #{mir.badge_id.to_s.rjust(9)} | #{mir.team_id.to_s.rjust(9)} | #{mir.team_affiliation_id.to_s.rjust(9)} | #{mir.team.name.truncate(35).ljust(35)} | #{mir.meeting.header_date.to_s.ljust(11)} | #{mir.meeting.description.ljust(50)}")
     end
     puts("\r\n")
   end

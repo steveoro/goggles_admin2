@@ -63,16 +63,42 @@
         .form-row
           .form-group.col-md-6
             %label{ for: 'meeting_search' } Fuzzy Matches (from solver)
-            - fuzzy_matches = meeting_data['meeting_fuzzy_matches'] || []
-            - src_dom = '#meeting_search'
-            - target_dom = '#meeting_meeting_id'
-            - onchange_event = "$('#{target_dom}').val($('#{src_dom}').val()); $('#{target_dom}').trigger('change')"
+            :ruby
+              fuzzy_matches = meeting_data['meeting_fuzzy_matches'] || []
+              baseline_data = {
+                id: nil,
+                name: meeting_data['name'],
+                code: meeting_data['code'],
+                season_id: season&.id || meeting_data['season_id'],
+                header_year: meeting_data['header_year'].presence || season&.header_year,
+                header_date: meeting_data['header_date'],
+                meetingURL: meeting_data['meetingURL'],
+                edition: meeting_data['edition'],
+                edition_type_id: meeting_data['edition_type_id'] || GogglesDb::EditionType::ORDINAL_ID,
+                timing_type_id: meeting_data['timing_type_id'] || GogglesDb::TimingType::AUTOMATIC_ID,
+                cancelled: meeting_data['cancelled'].present? && meeting_data['cancelled'],
+                confirmed: meeting_data['confirmed'].nil? ? true : meeting_data['confirmed'],
+                max_individual_events: meeting_data['max_individual_events'] || 3,
+                max_individual_events_per_session: meeting_data['max_individual_events_per_session'] || 3,
+                poolLength: meeting_data['poolLength'],
+                dateDay1: meeting_data['dateDay1'],
+                dateMonth1: meeting_data['dateMonth1'],
+                dateYear1: meeting_data['dateYear1'],
+                dateDay2: meeting_data['dateDay2'],
+                dateMonth2: meeting_data['dateMonth2'],
+                dateYear2: meeting_data['dateYear2'],
+                venue1: meeting_data['venue1'],
+                address1: meeting_data['address1']
+              }
+              src_dom = '#meeting_search'
+              target_dom = '#meeting_meeting_id'
+              baseline_data_json = json_escape(baseline_data.to_json)
+              onchange_event = "var selected = $('#{src_dom}').val(); if (selected && selected.toString().trim().length > 0) { $('#{target_dom}').val(selected); $('#{target_dom}').trigger('change'); } else { DataFix.resetMeetingFormToOriginal(#{baseline_data_json}); }"
             = select_tag('meeting_search',
                          options_for_select(fuzzy_matches.map { |m| [m['description'], m['id']] }, nil),
                          include_blank: true, class: 'form-control form-control-sm', onchange: onchange_event)
             %small.form-text.text-muted Select to populate from existing meeting
           .form-group.col-md-6
-            -# = hidden_field_tag('id', meeting_data['id'], id: 'meeting_id_field')
             = render(AutoCompleteComponent.new(show_top_labels: true, base_dom_id: 'meeting',
                                                default_value: meeting_data['id'], base_api_url: api_url,
                                                detail_endpoint: 'meeting', base_name: 'meeting', label_column: 'description',
@@ -88,7 +114,6 @@
                                                target11_dom_id: 'meeting_cancelled', target11_column: 'cancelled',
                                                target12_dom_id: 'meeting_confirmed', target12_column: 'confirmed',
                                                jwt: current_user.jwt))
-            -#  target13_dom_id: 'meeting_id_field', target13_column: 'id',
             %small.form-text.text-muted Or search manually by description. Clear search to create new meeting.
 
         -# Basic fields: description, code
