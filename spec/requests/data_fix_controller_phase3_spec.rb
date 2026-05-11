@@ -9,6 +9,7 @@ RSpec.describe DataFixController do
     let(:admin_user) { prepare_admin_user }
     let(:temp_dir) { Dir.mktmpdir }
     let(:source_file) { File.join(temp_dir, 'test_source.json') }
+    let(:phase2_file) { source_file.sub('.json', '-phase2.json') }
     let(:phase3_file) { source_file.sub('.json', '-phase3.json') }
     let(:season) { FactoryBot.create(:season) }
     let(:swimmer) { FactoryBot.create(:swimmer) }
@@ -193,6 +194,57 @@ RSpec.describe DataFixController do
 
         expect(response.body).to include(ERB::Util.html_escape(I18n.t('data_import.data_fix.msg.warning_retry_needed')))
         expect(PhaseFileManager.new(phase3_file).meta['retry_needed']).to be true
+      end
+
+      it 'adds phase2 conflict hint without rewriting selected IDs and shows sticky operator flash' do # rubocop:disable RSpec/ExampleLength
+        selected_team = FactoryBot.create(:team)
+        candidate_team = FactoryBot.create(:team)
+
+        PhaseFileManager.new(phase2_file).write!(
+          data: {
+            'season_id' => season.id,
+            'teams' => [{
+              'key' => 'Team A',
+              'name' => 'Team A',
+              'editable_name' => 'Team A',
+              'team_id' => selected_team.id,
+              'fuzzy_matches' => []
+            }],
+            'team_affiliations' => [{
+              'team_key' => 'Team A',
+              'season_id' => season.id,
+              'team_id' => selected_team.id,
+              'team_affiliation_id' => nil
+            }]
+          },
+          meta: { 'generator' => 'test' }
+        )
+
+        pfm3 = PhaseFileManager.new(phase3_file)
+        phase3_data = pfm3.data
+        phase3_data['badges'] = [{
+          'swimmer_key' => 'BETA|JANE|1990',
+          'team_key' => 'Team A',
+          'team_id' => candidate_team.id,
+          'season_id' => season.id
+        }]
+        pfm3.write!(data: phase3_data, meta: pfm3.meta)
+
+        get review_swimmers_path(file_path: source_file, phase3_v2: 1)
+
+        expect(response).to be_successful
+        expect(response.body).to include('Cross-phase review:')
+        expect(response.body).to include('flash-sticky')
+
+        phase2_team = PhaseFileManager.new(phase2_file).data.fetch('teams').first
+        expect(phase2_team['team_id']).to eq(selected_team.id)
+
+        hint_match = Array(phase2_team['fuzzy_matches']).find { |m| m['id'] == candidate_team.id }
+        expect(hint_match).to be_present
+        expect(hint_match['from_phase3_conflict_hint']).to be(true)
+
+        phase3_badge = PhaseFileManager.new(phase3_file).data.fetch('badges').first
+        expect(phase3_badge['team_id']).to eq(candidate_team.id)
       end
 
       it 'uses LT4 working phase file when opened from LT2 source' do

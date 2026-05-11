@@ -15,11 +15,13 @@ class FlashAlertComponent < ViewComponent::Base
   # - symbol: the flash symbol that will set the alert theme (:info, :notice, :alert, :warning, :error)
   # - title: an additional text title (can be +nil+)
   # - body: the actual text body of the message
-  def initialize(symbol:, body:, title: nil)
+  # - sticky: when true adds a CSS marker to skip JS auto-hide
+  def initialize(symbol:, body:, title: nil, sticky: false)
     super
     @symbol = symbol
     @title = title
     @body = body
+    @sticky = ActiveModel::Type::Boolean.new.cast(sticky)
   end
 
   # Skips rendering unless both :symbol & :body are valid
@@ -55,5 +57,9 @@ class FlashAlertComponent < ViewComponent::Base
     when :info, :notice
       'fa-info-circle text-success'
     end
+  end
+
+  def alert_css_classes
+    [alert_background_class, (@sticky ? 'flash-sticky' : nil)].compact.join(' ')
   end
 end

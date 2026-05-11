@@ -1,4 +1,13 @@
 #flash-messages
   - FlashAlertComponent::SUPPORTED_SYMS.each do |symbol|
     - if flash[symbol]
-      = render(FlashAlertComponent.new(symbol: symbol, body: flash[symbol]))
+      - payload = flash[symbol]
+      - if payload.is_a?(Hash)
+        - body = payload['body'] || payload[:body] || payload['message'] || payload[:message]
+        - title = payload['title'] || payload[:title]
+        - sticky = payload['sticky'] || payload[:sticky]
+      - else
+        - body = payload
+        - title = nil
+        - sticky = false
+      = render(FlashAlertComponent.new(symbol: symbol, body: body, title: title, sticky: sticky))

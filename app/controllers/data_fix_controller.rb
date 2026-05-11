@@ -18,7 +18,7 @@ class DataFixController < ApplicationController
   PHASE5_MAX_ROWS_PER_PAGE = 2500
 
   # Expose issue detection helpers to views
-  helper_method :swimmer_has_missing_data?, :relay_result_has_issues?
+  helper_method :swimmer_has_missing_data?, :relay_result_has_issues?, :phase3_conflict_hint?
 
   def review_sessions
     return if params[:phase_v2].blank?
@@ -130,11 +130,12 @@ class DataFixController < ApplicationController
 
     # Filter teams needing review: unmatched (no team_id) OR match < 89% (yellow/red matches)
     # OR similar affiliated team found in season (cross-ref warning)
+    # OR phase3-derived conflict hints found for this team
     # This shows ALL teams that need manual verification at a glance
     if params[:unmatched].present?
       teams = teams.select do |t|
         # WARNING: adding the 'similar_on_team' check will yield false positives and basically make the filtering useless
-        t['team_id'].nil? || (t['match_percentage'] || 0.0) < 89.0 # || t['similar_affiliated'] == true
+        t['team_id'].nil? || (t['match_percentage'] || 0.0) < 89.0 || phase3_conflict_hint?(t) # || t['similar_affiliated'] == true
       end
     end
 
@@ -250,21 +251,20 @@ class DataFixController < ApplicationController
 
     consistency_stats = harmonize_phase2_phase3_team_links(source_path: source_path, season_id: season.id)
     if consistency_stats.values.sum.positive?
-      phase3_reload = PhaseFileManager.new(phase_path)
-      @phase3_data = phase3_reload.data
       summary = []
-      summary << "#{consistency_stats[:phase2_teams_fixed]} teams aligned" if consistency_stats[:phase2_teams_fixed].positive?
-      summary << "#{consistency_stats[:phase2_affiliations_fixed]} affiliations aligned" if consistency_stats[:phase2_affiliations_fixed].positive?
-      summary << "#{consistency_stats[:phase3_badges_fixed]} badges aligned" if consistency_stats[:phase3_badges_fixed].positive?
-      summary << "#{consistency_stats[:data_import_rows_fixed]} temp rows aligned" if consistency_stats[:data_import_rows_fixed].positive?
-      flash.now[:notice] = "Auto-consistency: #{summary.join(', ')}."
+      summary << "#{consistency_stats[:phase2_conflicts_detected]} conflict(s) detected" if consistency_stats[:phase2_conflicts_detected].positive?
+      summary << "#{consistency_stats[:phase2_missing_links_detected]} missing link(s) detected" if consistency_stats[:phase2_missing_links_detected].positive?
+      summary << "#{consistency_stats[:phase2_conflict_hints_added]} hint candidate(s) added" if consistency_stats[:phase2_conflict_hints_added].positive?
+      flash.now[:notice] = { body: "Cross-phase review: #{summary.join(', ')}.", sticky: true }
     end
 
     swimmers = Array(@phase3_data['swimmers'])
     duplicate_summary = annotate_swimmer_badge_duplicates!(swimmers)
     if duplicate_summary[:swimmers_with_duplicates].positive?
-      flash.now[:warning] =
-        "#{duplicate_summary[:swimmers_with_duplicates]} swimmer(s) show duplicate badges in season(s): #{duplicate_summary[:duplicate_seasons].join(', ')}"
+      flash.now[:warning] = {
+        body: "#{duplicate_summary[:swimmers_with_duplicates]} swimmer(s) show duplicate badges in season(s): #{duplicate_summary[:duplicate_seasons].join(', ')}",
+        sticky: true
+      }
     end
 
     # Filter by search query
@@ -2910,88 +2910,52 @@ class DataFixController < ApplicationController
     data3 = pfm3.data || {}
 
     teams = Array(data2['teams'])
-    affiliations = Array(data2['team_affiliations'])
     swimmers = Array(data3['swimmers'])
     badges = Array(data3['badges'])
     swimmer_by_key = swimmers.index_by { |s| s['key'] }
 
     stats = empty_phase3_consistency_stats
-    changed_team_keys = {}
     phase2_changed = false
-    phase3_changed = false
 
     badges.each do |badge|
       team_key = badge['team_key']
       next if team_key.blank?
 
+      phase2_team = teams.find { |team| team['key'] == team_key }
+      next unless phase2_team
+
+      selected_team_id = phase2_team['team_id'].to_i
+
       canonical_team_id = badge['team_id'].to_i
       if canonical_team_id <= 0
         swimmer_entry = swimmer_by_key[badge['swimmer_key']]
         canonical_team_id = resolve_team_id_from_swimmer_badges(swimmer_entry, team_key:, season_id:)
-        if canonical_team_id.to_i.positive?
-          badge['team_id'] = canonical_team_id
-          stats[:phase3_badges_fixed] += 1
-          phase3_changed = true
-        end
       end
       next unless canonical_team_id.to_i.positive?
+      next if selected_team_id == canonical_team_id
 
-      phase2_team = teams.find { |team| team['key'] == team_key }
-      if phase2_team && phase2_team['team_id'].to_i != canonical_team_id
-        phase2_team['team_id'] = canonical_team_id
-        stats[:phase2_teams_fixed] += 1
-        phase2_changed = true
-        changed_team_keys[team_key] = canonical_team_id
+      if selected_team_id.positive?
+        stats[:phase2_conflicts_detected] += 1
+      else
+        stats[:phase2_missing_links_detected] += 1
       end
 
-      phase2_affiliation = affiliations.find { |affiliation| affiliation['team_key'] == team_key }
-      next unless phase2_affiliation
+      next unless append_phase2_team_conflict_hint!(
+        phase2_team: phase2_team,
+        candidate_team_id: canonical_team_id,
+        team_key: team_key,
+        current_team_id: selected_team_id
+      )
 
-      if phase2_affiliation['team_id'].to_i != canonical_team_id
-        phase2_affiliation['team_id'] = canonical_team_id
-        stats[:phase2_affiliations_fixed] += 1
-        phase2_changed = true
-      end
-
-      canonical_affiliation = GogglesDb::TeamAffiliation.find_by(team_id: canonical_team_id, season_id: season_id)
-      if canonical_affiliation && phase2_affiliation['team_affiliation_id'].to_i != canonical_affiliation.id
-        phase2_affiliation['team_affiliation_id'] = canonical_affiliation.id
-        stats[:phase2_affiliations_fixed] += 1
-        stats[:team_affiliations_resolved] += 1
-        phase2_changed = true
-      end
-
-      next unless canonical_affiliation && badge['team_affiliation_id'].to_i != canonical_affiliation.id
-
-      badge['team_affiliation_id'] = canonical_affiliation.id
-      stats[:phase3_badges_fixed] += 1
-      phase3_changed = true
+      stats[:phase2_conflict_hints_added] += 1
+      phase2_changed = true
     end
 
     if phase2_changed
       data2['teams'] = teams
-      data2['team_affiliations'] = affiliations
       meta2 = pfm2.meta || {}
       meta2['generated_at'] = Time.now.utc.iso8601
       pfm2.write!(data: data2, meta: meta2)
-    end
-
-    if phase3_changed
-      data3['badges'] = badges
-      meta3 = pfm3.meta || {}
-      meta3['generated_at'] = Time.now.utc.iso8601
-      pfm3.write!(data: data3, meta: meta3)
-    end
-
-    changed_team_keys.each do |team_key, team_id|
-      stats[:data_import_rows_fixed] += cascade_team_to_data_import_rows(
-        team_key,
-        team_id,
-        season_id,
-        phase_file_path: source_path,
-        phase2_affiliations: affiliations,
-        phase3_badges: badges
-      )
     end
 
     stats
@@ -3002,12 +2966,102 @@ class DataFixController < ApplicationController
 
   def empty_phase3_consistency_stats
     {
-      phase2_teams_fixed: 0,
-      phase2_affiliations_fixed: 0,
-      phase3_badges_fixed: 0,
-      team_affiliations_resolved: 0,
-      data_import_rows_fixed: 0
+      phase2_conflicts_detected: 0,
+      phase2_missing_links_detected: 0,
+      phase2_conflict_hints_added: 0
     }
+  end
+
+  def phase3_conflict_hint?(team_row)
+    Array(team_row&.dig('fuzzy_matches')).any? { |match| match['from_phase3_conflict_hint'] == true }
+  end
+
+  # rubocop:disable Metrics/PerceivedComplexity
+  def append_phase2_team_conflict_hint!(phase2_team:, candidate_team_id:, team_key:, current_team_id:)
+    return false unless phase2_team.is_a?(Hash) && candidate_team_id.to_i.positive?
+
+    candidate_team = GogglesDb::Team.find_by(id: candidate_team_id)
+    return false unless candidate_team
+
+    fuzzy_matches = Array(phase2_team['fuzzy_matches'])
+    hint_payload = build_phase2_team_conflict_hint(
+      phase2_team: phase2_team,
+      candidate_team: candidate_team,
+      team_key: team_key,
+      current_team_id: current_team_id
+    )
+
+    existing = fuzzy_matches.find { |match| match['id'].to_i == candidate_team_id.to_i }
+    if existing
+      merged = existing.merge(hint_payload)
+      return false if merged == existing
+
+      existing.replace(merged)
+    else
+      fuzzy_matches << hint_payload
+    end
+
+    fuzzy_matches.sort_by! { |match| -(match['weight'] || 0.0).to_f }
+    phase2_team['fuzzy_matches'] = fuzzy_matches
+    true
+  end
+  # rubocop:enable Metrics/PerceivedComplexity
+
+  # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+  def build_phase2_team_conflict_hint(phase2_team:, candidate_team:, team_key:, current_team_id:)
+    source_name = phase2_team['editable_name'].presence || phase2_team['name'].presence || team_key
+    similarity_weight = compute_team_hint_similarity(source_name, candidate_team.editable_name)
+    similarity_percentage = (similarity_weight * 100).round(1)
+    color_class = case similarity_percentage
+                  when 90..100 then 'success'
+                  when 70...90 then 'warning'
+                  when 50...70 then 'danger'
+                  end
+
+    reason = if current_team_id.to_i.positive?
+               "conflicts with selected team ID #{current_team_id}"
+             else
+               'fills missing team link from Phase 3 evidence'
+             end
+
+    {
+      'id' => candidate_team.id,
+      'name' => candidate_team.name,
+      'editable_name' => candidate_team.editable_name,
+      'name_variations' => candidate_team.name_variations,
+      'city_id' => candidate_team.city_id,
+      'city_name' => candidate_team.city&.name,
+      'weight' => similarity_weight,
+      'percentage' => similarity_percentage,
+      'color_class' => color_class,
+      'display_label' => "(Phase3 hint) #{candidate_team.editable_name} " \
+                         "(ID: #{candidate_team.id}, #{candidate_team.city&.name || 'no city'}, match: #{similarity_percentage}%)",
+      'from_phase3_conflict_hint' => true,
+      'phase3_conflict_reason' => reason
+    }
+  end
+  # rubocop:enable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+
+  def compute_team_hint_similarity(source_name, candidate_name)
+    normalized_source = normalize_team_label_for_similarity(source_name)
+    normalized_candidate = normalize_team_label_for_similarity(candidate_name)
+    return 0.0 if normalized_source.blank? || normalized_candidate.blank?
+
+    metric = GogglesDb::DbFinders::BaseStrategy::METRIC
+    metric.getDistance(normalized_source.downcase, normalized_candidate.downcase).round(3).clamp(0.0, 1.0)
+  rescue StandardError
+    0.0
+  end
+
+  def normalize_team_label_for_similarity(value)
+    base = value.to_s.strip
+    return '' if base.empty?
+
+    normalized = I18n.transliterate(base).delete('.').upcase
+    %w[SSDRL SSD ASD APD SRL SS AS SD].each do |abbreviation|
+      normalized = normalized.gsub(/\b#{abbreviation}\b/, '')
+    end
+    normalized.squeeze(' ').strip
   end
 
   # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity

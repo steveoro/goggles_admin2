@@ -51,8 +51,9 @@ export default class extends Controller {
     })
 
     // *** Alerts setup: ***
-    $('.flash-alert.alert').alert().fadeTo(500, 1).delay(2500).slideUp(250, function () {
-      $('.flash-alert.alert').alert('close')
+    $('.flash-alert.alert').alert()
+    $('.flash-alert.alert:not(.flash-sticky)').fadeTo(500, 1).delay(2500).slideUp(250, function () {
+      $(this).alert('close')
     })
 
     // *** Modals setup: **

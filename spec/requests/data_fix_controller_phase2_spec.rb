@@ -100,6 +100,30 @@ RSpec.describe DataFixController do
         expect(response.body).not_to include('Team Beta')
       end
 
+      it 'includes phase3 conflict-hinted rows in needing-review filter' do
+        hinted_team = FactoryBot.create(:team)
+
+        pfm = PhaseFileManager.new(phase2_file)
+        data = pfm.data
+        data['teams'][1]['fuzzy_matches'] << {
+          'id' => hinted_team.id,
+          'editable_name' => hinted_team.editable_name,
+          'name' => hinted_team.name,
+          'weight' => 0.72,
+          'percentage' => 72.0,
+          'display_label' => "(Phase3 hint) #{hinted_team.editable_name}",
+          'from_phase3_conflict_hint' => true,
+          'phase3_conflict_reason' => "conflicts with selected team ID #{team.id}"
+        }
+        pfm.write!(data: data, meta: pfm.meta)
+
+        get review_teams_path(file_path: source_file, phase2_v2: 1, unmatched: 1)
+
+        expect(response).to be_successful
+        expect(response.body).to include('Team Beta')
+        expect(response.body).to include('PHASE3 HINT')
+      end
+
       it 'rescans and rebuilds phase2 file when rescan param is present' do
         # Delete phase file to force rescan
         FileUtils.rm_f(phase2_file)
