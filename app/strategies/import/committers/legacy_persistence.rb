@@ -9,8 +9,6 @@ module Import
     # - update only changed columns
     # - special-case Calendar by keeping updated_at in the diff set
     module LegacyPersistence
-      private
-
       # Returns attributes that can be used for insertion, excluding lock_version, created_at, and updated_at.
       def insertable_attributes(model_row)
         excluded_columns = %w[lock_version created_at updated_at]
@@ -27,7 +25,23 @@ module Import
                            end
 
         new_attributes.stringify_keys.reject do |column, value|
-          value.blank? || excluded_columns.include?(column) || value == safe_read_attribute(db_row, column)
+          normalized_value = normalize_literal_value(value)
+          normalized_value.blank? || excluded_columns.include?(column) ||
+            cast_for_compare(db_row, column, normalized_value) == safe_read_attribute(db_row, column)
+        end
+      end
+
+      private
+
+      # Coerces common string literals from import payloads before type casting / comparison.
+      def normalize_literal_value(value)
+        return value unless value.is_a?(String)
+
+        case value.strip.downcase
+        when 'null', 'nil' then nil
+        when 'false' then false
+        when 'true' then true
+        else value
         end
       end
 
@@ -36,6 +50,16 @@ module Import
         model_row.public_send(column)
       rescue NoMethodError
         nil
+      end
+
+      # Casts a value to the appropriate type for comparison with a database row.
+      def cast_for_compare(model_row, column, value)
+        value = normalize_literal_value(value)
+        return value unless model_row.respond_to?(:has_attribute?) && model_row.has_attribute?(column)
+
+        model_row.class.type_for_attribute(column.to_s).cast(value)
+      rescue StandardError
+        value
       end
     end
   end

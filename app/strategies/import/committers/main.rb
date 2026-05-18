@@ -1178,6 +1178,7 @@ module Import
         normalized['session_order'] ||= index + 1
         normalized['autofilled'] = normalized.fetch('autofilled', true)
         normalized['description'] ||= "Session #{normalized['session_order']}"
+        normalized['day_part_type_id'] ||= GogglesDb::DayPartType::MORNING_ID
         normalized
       end
       # -----------------------------------------------------------------------
