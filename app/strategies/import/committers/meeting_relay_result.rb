@@ -9,6 +9,8 @@ module Import
     # Converts from DataImportMeetingRelayResult temporary records.
     #
     class MeetingRelayResult
+      include LegacyPersistence
+
       attr_reader :stats, :logger, :sql_log
 
       def initialize(stats:, logger:, sql_log:)
@@ -40,8 +42,10 @@ module Import
         if mrr_id.present? && mrr_id.to_i.positive?
           existing = GogglesDb::MeetingRelayResult.find_by(id: mrr_id)
           if existing
-            if attributes_changed?(existing, attributes)
-              existing.update!(attributes)
+            changes = changes_for_update(existing, attributes)
+            if changes.any?
+              existing.assign_attributes(changes)
+              existing.save!
               sql_log << SqlMaker.new(row: existing).log_update
               stats[:mrrs_updated] += 1
               logger.log_success(entity_type: 'MRR', entity_id: mrr_id, action: 'updated')
@@ -130,14 +134,7 @@ module Import
       end
 
       def attributes_changed?(model, new_attributes)
-        new_attributes.except('id', :id).any? do |key, value|
-          model_value = begin
-            model.send(key.to_sym)
-          rescue NoMethodError
-            nil
-          end
-          model_value != value
-        end
+        changes_for_update(model, new_attributes).any?
       end
       # -----------------------------------------------------------------------
     end

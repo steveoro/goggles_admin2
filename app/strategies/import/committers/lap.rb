@@ -9,6 +9,8 @@ module Import
     # Converts from DataImportLap temporary records.
     #
     class Lap
+      include LegacyPersistence
+
       attr_reader :stats, :logger, :sql_log
 
       def initialize(stats:, logger:, sql_log:)
@@ -45,8 +47,10 @@ module Import
         )
 
         if existing
-          if attributes_changed?(existing, attributes)
-            existing.update!(attributes)
+          changes = changes_for_update(existing, attributes)
+          if changes.any?
+            existing.assign_attributes(changes)
+            existing.save!
             sql_log << SqlMaker.new(row: existing).log_update
             stats[:laps_updated] += 1
             logger.log_success(entity_type: 'Lap', entity_id: existing.id, action: 'updated')
@@ -88,11 +92,7 @@ module Import
 
       # Check if any attribute values differ between existing record and new attributes
       def attributes_changed?(existing, attributes)
-        attributes.any? do |key, value|
-          existing_value = existing.send(key)
-          # Compare as strings to handle type differences (e.g., Integer vs String)
-          existing_value.to_s != value.to_s
-        end
+        changes_for_update(existing, attributes).any?
       end
 
       # Find the previous lap for timing computation

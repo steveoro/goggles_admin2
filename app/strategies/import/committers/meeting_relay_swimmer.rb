@@ -9,6 +9,8 @@ module Import
     # Converts from DataImportMeetingRelaySwimmer temporary records.
     #
     class MeetingRelaySwimmer
+      include LegacyPersistence
+
       attr_reader :stats, :logger, :sql_log
 
       # Stroke type order for medley relays (MI):
@@ -47,8 +49,10 @@ module Import
         if mrs_id.present? && mrs_id.to_i.positive?
           existing = GogglesDb::MeetingRelaySwimmer.find_by(id: mrs_id)
           if existing
-            if attributes_changed?(existing, attributes)
-              existing.update!(attributes)
+            changes = changes_for_update(existing, attributes)
+            if changes.any?
+              existing.assign_attributes(changes)
+              existing.save!
               sql_log << SqlMaker.new(row: existing).log_update
               stats[:mrss_updated] += 1
               logger.log_success(entity_type: 'MRS', entity_id: mrs_id, action: 'updated')
@@ -241,14 +245,7 @@ module Import
       # -----------------------------------------------------------------------
 
       def attributes_changed?(model, new_attributes)
-        new_attributes.except('id', :id).any? do |key, value|
-          model_value = begin
-            model.send(key.to_sym)
-          rescue NoMethodError
-            nil
-          end
-          model_value != value
-        end
+        changes_for_update(model, new_attributes).any?
       end
       # -----------------------------------------------------------------------
     end

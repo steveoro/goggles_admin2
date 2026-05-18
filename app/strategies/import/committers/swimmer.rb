@@ -13,6 +13,8 @@ module Import
     # lookups during Phase 5/6 commit, avoiding repeated DB queries.
     #
     class Swimmer
+      include LegacyPersistence
+
       BOOLEAN_TYPE = ActiveModel::Type::Boolean.new
 
       attr_reader :stats, :logger, :sql_log, :id_by_key
@@ -69,8 +71,10 @@ module Import
         existing_row = GogglesDb::Swimmer.find_by(id: swimmer_id) if swimmer_id.to_i.positive?
 
         if existing_row
-          if attributes_changed?(existing_row, attributes)
-            existing_row.update!(attributes)
+          changes = changes_for_update(existing_row, attributes)
+          if changes.any?
+            existing_row.assign_attributes(changes)
+            existing_row.save!
             sql_log << SqlMaker.new(row: existing_row).log_update
             stats[:swimmers_updated] += 1
             logger.log_success(entity_type: 'Swimmer', entity_id: swimmer_id, action: 'updated',
@@ -145,14 +149,7 @@ module Import
       # -----------------------------------------------------------------------
 
       def attributes_changed?(model, new_attributes)
-        new_attributes.except('id', :id).any? do |key, value|
-          model_value = begin
-            model.send(key.to_sym)
-          rescue NoMethodError
-            nil
-          end
-          model_value != value
-        end
+        changes_for_update(model, new_attributes).any?
       end
       # -----------------------------------------------------------------------
     end

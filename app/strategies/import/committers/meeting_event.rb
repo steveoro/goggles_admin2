@@ -9,6 +9,8 @@ module Import
     # MeetingEvents link MeetingSessions to EventTypes.
     #
     class MeetingEvent
+      include LegacyPersistence
+
       attr_reader :stats, :logger, :sql_log
 
       def initialize(stats:, logger:, sql_log:)
@@ -42,8 +44,10 @@ module Import
           existing = GogglesDb::MeetingEvent.find_by(id: meeting_event_id)
           if existing
             attributes = normalize_attributes(event_hash)
-            if attributes_changed?(existing, attributes)
-              existing.update!(attributes)
+            changes = changes_for_update(existing, attributes)
+            if changes.any?
+              existing.assign_attributes(changes)
+              existing.save!
               sql_log << SqlMaker.new(row: existing).log_update
               stats[:events_updated] += 1
               logger.log_success(entity_type: 'MeetingEvent', entity_id: existing.id, action: 'updated',
@@ -63,8 +67,10 @@ module Import
         )
 
         if existing
-          if attributes_changed?(existing, attributes)
-            existing.update!(attributes)
+          changes = changes_for_update(existing, attributes)
+          if changes.any?
+            existing.assign_attributes(changes)
+            existing.save!
             sql_log << SqlMaker.new(row: existing).log_update
             stats[:events_updated] += 1
             logger.log_success(entity_type: 'MeetingEvent', entity_id: existing.id, action: 'updated',
@@ -132,14 +138,7 @@ module Import
       end
 
       def attributes_changed?(model, new_attributes)
-        new_attributes.except('id', :id).any? do |key, value|
-          model_value = begin
-            model.send(key.to_sym)
-          rescue NoMethodError
-            nil
-          end
-          model_value != value
-        end
+        changes_for_update(model, new_attributes).any?
       end
     end
   end

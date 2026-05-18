@@ -11,6 +11,8 @@ module Import
     # #normalize_swimming_pool_attributes.
     #
     class SwimmingPool
+      include LegacyPersistence
+
       BOOLEAN_TYPE = ActiveModel::Type::Boolean.new
 
       attr_reader :stats, :logger, :sql_log
@@ -32,8 +34,10 @@ module Import
         attributes = normalize_attributes(pool_hash)
 
         if existing_row
-          if attributes_changed?(existing_row, attributes)
-            existing_row.update!(attributes)
+          changes = changes_for_update(existing_row, attributes)
+          if changes.any?
+            existing_row.assign_attributes(changes)
+            existing_row.save!
             sql_log << SqlMaker.new(row: existing_row).log_update
             stats[:pools_updated] += 1
             logger.log_success(entity_type: 'SwimmingPool', entity_id: pool_id, action: 'updated',
@@ -100,23 +104,7 @@ module Import
       # Checks if any attributes have changed, excluding the ID.
       # Returns false for nil/blank attributes if the ID is set
       def attributes_changed?(model, new_attributes)
-        has_id = model.id.present?
-        # Note that for nested entities like City or SwimmingPool, the attributes may
-        # have NOT been filled-in by the solvers strategy classes, so we'll prevent
-        # clearing out existing values if the id is present but the attribute is nil/blank.
-
-        new_attributes.except('id', :id).any? do |key, value|
-          # When updating an existing row, ignore nil/blank values to avoid
-          # unintentionally clearing columns when the input only carries an id.
-          next false if has_id && (value.nil? || value == '')
-
-          model_value = begin
-            model.send(key.to_sym)
-          rescue NoMethodError
-            nil
-          end
-          model_value != value
-        end
+        changes_for_update(model, new_attributes).any?
       end
       # -----------------------------------------------------------------------
     end

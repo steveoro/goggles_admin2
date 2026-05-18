@@ -2130,7 +2130,7 @@ class DataFixController < ApplicationController
       'description' => "Session #{new_index + 1}",
       'session_order' => new_index + 1,
       'scheduled_date' => nil,
-      'day_part_type_id' => nil,
+      'day_part_type_id' => GogglesDb::DayPartType.MORNING_ID,
       'swimming_pool' => {
         'id' => nil,
         'name' => nil,

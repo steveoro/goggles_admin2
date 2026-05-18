@@ -10,6 +10,8 @@ module Import
     # (minus the nested City/SwimmingPool logic, which is orchestrated by Main).
     #
     class MeetingSession
+      include LegacyPersistence
+
       attr_reader :stats, :logger, :sql_log
 
       def initialize(stats:, logger:, sql_log:)
@@ -33,8 +35,10 @@ module Import
         existing_row = GogglesDb::MeetingSession.find_by(id: session_id) if session_id.to_i.positive?
 
         if existing_row
-          if attributes_changed?(existing_row, attributes)
-            existing_row.update!(attributes)
+          changes = changes_for_update(existing_row, attributes)
+          if changes.any?
+            existing_row.assign_attributes(changes)
+            existing_row.save!
             sql_log << SqlMaker.new(row: existing_row).log_update
             stats[:sessions_updated] += 1
             logger.log_success(entity_type: 'MeetingSession', entity_id: session_id, action: 'updated',
@@ -92,14 +96,7 @@ module Import
       # -----------------------------------------------------------------------
 
       def attributes_changed?(model, new_attributes)
-        new_attributes.except('id', :id).any? do |key, value|
-          model_value = begin
-            model.send(key.to_sym)
-          rescue NoMethodError
-            nil
-          end
-          model_value != value
-        end
+        changes_for_update(model, new_attributes).any?
       end
       # -----------------------------------------------------------------------
     end
