@@ -51,7 +51,7 @@ module Import
           if changes.any?
             existing.assign_attributes(changes)
             existing.save!
-            sql_log << SqlMaker.new(row: existing).log_update
+            sql_log << SqlMaker.new(row: existing).log_update(changes)
             stats[:laps_updated] += 1
             logger.log_success(entity_type: 'Lap', entity_id: existing.id, action: 'updated')
             Rails.logger.info("[Lap] Updated ID=#{existing.id}")

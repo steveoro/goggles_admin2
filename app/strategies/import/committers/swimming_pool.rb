@@ -38,7 +38,7 @@ module Import
           if changes.any?
             existing_row.assign_attributes(changes)
             existing_row.save!
-            sql_log << SqlMaker.new(row: existing_row).log_update
+            sql_log << SqlMaker.new(row: existing_row).log_update(changes)
             stats[:pools_updated] += 1
             logger.log_success(entity_type: 'SwimmingPool', entity_id: pool_id, action: 'updated',
                                entity_key: existing_row.nick_name)

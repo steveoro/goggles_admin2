@@ -97,6 +97,41 @@ RSpec.describe SqlMaker, type: :strategy do
     it 'adds the returned result string to the internal #sql_log list' do
       expect(new_instance.sql_log).to include(result)
     end
+
+    context 'when changes parameter is provided' do
+      let(:changes) { { 'complete_name' => 'Updated Name', 'year_of_birth' => 1990 } }
+      let(:result) { new_instance.log_update(changes) }
+
+      it 'is a string containing an UPDATE statement based on the specified row' do
+        expect(result).to be_a(String) && include('UPDATE `swimmers`')
+      end
+
+      it 'includes only the changed attributes in the SET clause' do
+        expect(result).to include('`complete_name`=')
+        expect(result).to include('`year_of_birth`=')
+        expect(result).to include('Updated Name')
+        expect(result).to include('1990')
+      end
+
+      it 'does not include unchanged attributes in the SET clause' do
+        # The original row has many attributes, but we only provided 2 in changes
+        # Verify that some other columns are NOT in the SET clause
+        expect(result).not_to include('`gender_type_id`=')
+        expect(result).not_to include('`last_name`=')
+      end
+
+      it 'includes the id in the WHERE clause' do
+        expect(result).to include("WHERE `id`=#{fixture_row.id}")
+      end
+
+      it 'does not include id in the SET clause' do
+        expect(result).not_to match(/SET.*`id`=/)
+      end
+
+      it 'adds the returned result string to the internal #sql_log list' do
+        expect(new_instance.sql_log).to include(result)
+      end
+    end
   end
   #-- -------------------------------------------------------------------------
   #++

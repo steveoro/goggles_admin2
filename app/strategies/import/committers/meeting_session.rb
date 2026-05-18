@@ -39,7 +39,7 @@ module Import
           if changes.any?
             existing_row.assign_attributes(changes)
             existing_row.save!
-            sql_log << SqlMaker.new(row: existing_row).log_update
+            sql_log << SqlMaker.new(row: existing_row).log_update(changes)
             stats[:sessions_updated] += 1
             logger.log_success(entity_type: 'MeetingSession', entity_id: session_id, action: 'updated',
                                entity_key: "order #{existing_row.session_order}")

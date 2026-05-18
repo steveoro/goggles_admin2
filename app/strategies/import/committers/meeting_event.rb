@@ -71,7 +71,7 @@ module Import
           if changes.any?
             existing.assign_attributes(changes)
             existing.save!
-            sql_log << SqlMaker.new(row: existing).log_update
+            sql_log << SqlMaker.new(row: existing).log_update(changes)
             stats[:events_updated] += 1
             logger.log_success(entity_type: 'MeetingEvent', entity_id: existing.id, action: 'updated',
                                entity_key: existing.event_type&.code)

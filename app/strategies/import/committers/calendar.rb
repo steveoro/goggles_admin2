@@ -48,7 +48,7 @@ module Import
           if changes.any?
             existing_row.assign_attributes(changes)
             existing_row.save!
-            sql_log << SqlMaker.new(row: existing_row).log_update
+            sql_log << SqlMaker.new(row: existing_row).log_update(changes)
             stats[:calendars_updated] += 1
             logger.log_success(entity_type: 'Calendar', entity_id: existing_row.id, action: 'updated')
             Rails.logger.info("[Calendar] Updated ID=#{existing_row.id}, meeting=#{existing_row.meeting_code}/#{existing_row.meeting_id}")

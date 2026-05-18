@@ -150,7 +150,7 @@ module Import
           if changes.any?
             existing_row.assign_attributes(changes)
             existing_row.save!
-            sql_log << SqlMaker.new(row: existing_row).log_update
+            sql_log << SqlMaker.new(row: existing_row).log_update(changes)
             stats[:badges_updated] += 1
             logger.log_success(entity_type: 'Badge', entity_id: existing_row.id, action: 'updated')
             Rails.logger.info("[Badge] Updated ID=#{existing_row.id}, swimmer_id=#{attributes['swimmer_id']}, team_id=#{attributes['team_id']}")

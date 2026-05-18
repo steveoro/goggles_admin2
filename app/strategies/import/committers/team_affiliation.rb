@@ -135,7 +135,7 @@ module Import
           if changes.any?
             existing_row.assign_attributes(changes)
             existing_row.save!
-            sql_log << SqlMaker.new(row: existing_row).log_update
+            sql_log << SqlMaker.new(row: existing_row).log_update(changes)
             stats[:affiliations_updated] += 1
             Rails.logger.info("[TeamAffiliation] Updated ID=#{existing_row.id}, team_id=#{attributes['team_id']}")
           end

@@ -98,19 +98,25 @@ class SqlMaker
   # Adds a new SQL UPDATE statement to the result log using the latest <tt>@row</tt> set.
   # (The statement is not executed.)
   #
-  # == Returns
-  # The last SQL (String) stament added to the log.
+  # == Params
+  # - <tt>changes</tt>: optional hash of changed attributes; if provided, only these columns are included in the SET clause
   #
-  def log_update
+  # == Returns
+  # The last SQL (String) statement added to the log.
+  #
+  def log_update(changes = nil)
     klass = @row.class
     con = klass.connection
     sets = []
     skippable_columns = %w[id lock_version created_at]
 
-    # Write always all the attributes, unless the column name is "skippable" (& reject all non-columns):
-    @row.attributes
-        .keep_if { |col_name| klass.column_names.include?(col_name) }
-        .each do |key, value|
+    # Use provided changes hash if available, otherwise fall back to all row attributes
+    attributes = changes || @row.attributes
+
+    # Write attributes, unless the column name is "skippable" (& reject all non-columns):
+    attributes
+      .keep_if { |col_name| klass.column_names.include?(col_name) }
+      .each do |key, value|
       next if skippable_columns.include?(key)
 
       sets << if key == 'updated_at'
