@@ -106,7 +106,29 @@
             .form-group.col-md-8
               %label Existing pools in selected city
               - pool_collection = GogglesDb::SwimmingPool.where(city_id: city_id)
-              - onclick_copy = "$('#pool_#{idx}_swimming_pool_id').val($('#search_pool_#{idx}').val()); $('#pool_#{idx}_swimming_pool_id').trigger('change'); DataFix.rehydrateSessionPoolAndCity(#{idx}, $('#search_pool_#{idx}').val());"
+              :ruby
+                baseline_pool_data = {
+                  id: pool_id,
+                  name: pool_data['name'],
+                  nick_name: pool_data['nick_name'],
+                  address: pool_data['address'],
+                  pool_type_id: pool_data['pool_type_id'],
+                  lanes_number: pool_data['lanes_number'],
+                  maps_uri: pool_data['maps_uri'],
+                  plus_code: pool_data['plus_code'],
+                  latitude: pool_data['latitude'],
+                  longitude: pool_data['longitude'],
+                  city_id: city_id,
+                  city_name: city_data['name'],
+                  city_area: city_data['area'],
+                  city_zip: city_data['zip'],
+                  city_country: city_data['country'],
+                  city_country_code: city_data['country_code'],
+                  city_latitude: city_data['latitude'],
+                  city_longitude: city_data['longitude']
+                }
+                baseline_pool_data_json = json_escape(baseline_pool_data.to_json)
+                onclick_copy = "var poolId = $('#search_pool_#{idx}').val(); if (poolId && poolId.toString().trim().length > 0) { $('#pool_#{idx}_swimming_pool_id').val(poolId); $('#pool_#{idx}_swimming_pool_id').trigger('change'); DataFix.rehydrateSessionPoolAndCity(#{idx}, poolId); } else { DataFix.resetSessionPoolAndCityToOriginal(#{baseline_pool_data_json}, #{idx}); }"
               = select_tag "search_pool_#{idx}", options_for_select(pool_collection.map { |p| [p.name, p.id] }, pool_id), { include_blank: true, class: 'form-control form-control-sm', onclick: onclick_copy }
 
         .form-row

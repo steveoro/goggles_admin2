@@ -373,5 +373,42 @@ RSpec.describe Import::Solvers::Phase1Solver, type: :strategy do
 
       expect(matches.size).to be <= 10
     end
+
+    it 'does not auto-select first fuzzy match as meeting.id' do
+      solver.build!(source_path: source_file, lt_format: 2)
+      phase_file = source_file.sub('.json', '-phase1.json')
+      data = JSON.parse(File.read(phase_file))['data']
+
+      # meeting.id should remain nil even when fuzzy matches exist
+      expect(data['id']).to be_nil
+      expect(data['meeting_fuzzy_matches']).to be_an(Array).and be_present
+    end
+
+    it 'builds sessions from date fields when no meeting is selected' do
+      lt2_data_with_dates = {
+        'layoutType' => 2,
+        'name' => 'Regional Championship 2024',
+        'dateDay1' => '10',
+        'dateMonth1' => 'Marzo',
+        'dateYear1' => '2024',
+        'dateDay2' => '11',
+        'dateMonth2' => 'Marzo',
+        'dateYear2' => '2024',
+        'venue1' => 'Test Pool',
+        'address1' => 'Test Address',
+        'poolLength' => '25'
+      }
+      File.write(source_file, JSON.generate(lt2_data_with_dates))
+
+      solver.build!(source_path: source_file, lt_format: 2)
+      phase_file = source_file.sub('.json', '-phase1.json')
+      data = JSON.parse(File.read(phase_file))['data']
+
+      # Sessions should be built from parsed dates
+      expect(data['meeting_session']).to be_an(Array)
+      expect(data['meeting_session'].size).to eq(2)
+      expect(data['meeting_session'][0]['scheduled_date']).to eq('2024-03-10')
+      expect(data['meeting_session'][1]['scheduled_date']).to eq('2024-03-11')
+    end
   end
 end

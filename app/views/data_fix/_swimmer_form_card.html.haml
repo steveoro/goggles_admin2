@@ -106,10 +106,21 @@
               .col-12
                 .form-group
                   = label_tag("fuzzy_select_#{swimmer_index}", 'Quick match selection (fuzzy matches)')
+                  :ruby
+                    baseline_data = {
+                      id: nil,
+                      complete_name: swimmer_hash['complete_name'],
+                      last_name: swimmer_hash['last_name'],
+                      first_name: swimmer_hash['first_name'],
+                      year_of_birth: swimmer_hash['year_of_birth'],
+                      gender_type_code: swimmer_hash['gender_type_code']
+                    }
+                    baseline_data_json = json_escape(baseline_data.to_json)
+                    onchange_event = "var swimmerId = this.value; if (swimmerId && swimmerId.toString().trim().length > 0) { $('#swimmer_#{swimmer_index}_swimmer_id').val(swimmerId).trigger('change'); $('#swimmer_#{swimmer_index}_id_field').val(swimmerId); $('#swimmer[#{swimmer_index}]').val(swimmerId).trigger('change'); } else { DataFix.resetSwimmerFormToOriginal(#{baseline_data_json}, #{swimmer_index}); }"
                   = select_tag("fuzzy_select_#{swimmer_index}",
                                options_for_select([['-- Select a match --', '']] + fuzzy_matches.map { |m| [m['display_label'], m['id']] }, swimmer_id),
                                class: 'form-control', id: "fuzzy_select_#{swimmer_index}",
-                               onchange: "var swimmerId = this.value; $('#swimmer_#{swimmer_index}_swimmer_id').val(swimmerId).trigger('change'); $('#swimmer_#{swimmer_index}_id_field').val(swimmerId);")
+                               onchange: onchange_event)
                   %small.form-text.text-muted
                     Select a match from the list to quickly populate swimmer fields via AutoComplete.
 

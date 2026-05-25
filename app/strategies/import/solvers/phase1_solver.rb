@@ -163,25 +163,10 @@ module Import
         nil
       end
 
-      # Auto-fills payload['meeting_session'] from the best fuzzy-matched meeting's
-      # existing DB sessions, or falls back to building sessions from the parsed date fields.
-      # Also sets payload['id'] when a DB match with sessions is found.
+      # Builds payload['meeting_session'] from the parsed date fields.
+      # Fuzzy matches are stored as candidates only; meeting.id remains nil
+      # until the user explicitly selects a match in the UI.
       def auto_fill_sessions!(payload)
-        # Path A: DB match with existing sessions
-        best_match = payload['meeting_fuzzy_matches']&.first
-        if best_match
-          meeting = GogglesDb::Meeting.includes(meeting_sessions: { swimming_pool: :city })
-                                      .find_by(id: best_match['id'])
-          if meeting&.meeting_sessions&.any?
-            payload['id'] = meeting.id
-            payload['meeting_session'] = meeting.meeting_sessions.order(:session_order).map do |ms|
-              build_session_hash(ms)
-            end
-            return
-          end
-        end
-
-        # Path B: build sessions from parsed date fields
         sessions = []
         iso_date1 = parse_iso_date(payload['dateDay1'], payload['dateMonth1'], payload['dateYear1'])
         if iso_date1

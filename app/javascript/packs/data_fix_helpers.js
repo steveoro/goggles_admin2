@@ -63,6 +63,76 @@ export function resetMeetingFormToOriginal(originalMeetingData) {
   setFieldValue('address1', originalMeetingData.address1, false)
 }
 
+export function resetTeamFormToOriginal(originalTeamData, teamIndex) {
+  if (!originalTeamData || typeof originalTeamData !== 'object') {
+    return
+  }
+
+  const prefix = 'team_' + teamIndex + '_'
+
+  setFieldValue(prefix + 'id_field', '', false)
+  setFieldValue(prefix + 'team_id', '', false)
+  setFieldValue(prefix, '', false)
+
+  setFieldValue(prefix + 'editable_name', originalTeamData.editable_name, false)
+  setFieldValue(prefix + 'name', originalTeamData.name, false)
+  setFieldValue(prefix + 'name_variations', originalTeamData.name_variations, false)
+  setFieldValue(prefix + 'city_id_field', originalTeamData.city_id, false)
+}
+
+export function resetSwimmerFormToOriginal(originalSwimmerData, swimmerIndex) {
+  if (!originalSwimmerData || typeof originalSwimmerData !== 'object') {
+    return
+  }
+
+  const prefix = 'swimmer_' + swimmerIndex + '_'
+
+  setFieldValue(prefix + 'id_field', '', false)
+  setFieldValue(prefix + 'swimmer_id', '', false)
+  setFieldValue('swimmer[' + swimmerIndex + ']', '', false)
+
+  setFieldValue(prefix + 'complete_name', originalSwimmerData.complete_name, false)
+  setFieldValue(prefix + 'last_name', originalSwimmerData.last_name, false)
+  setFieldValue(prefix + 'first_name', originalSwimmerData.first_name, false)
+  setFieldValue(prefix + 'year_of_birth', originalSwimmerData.year_of_birth, false)
+  setFieldValue(prefix + 'gender_type_code', originalSwimmerData.gender_type_code, false)
+}
+
+export function resetSessionPoolAndCityToOriginal(originalData, sessionIndex) {
+  if (!originalData || typeof originalData !== 'object') {
+    return
+  }
+
+  const poolPrefix = 'pool_' + sessionIndex + '_'
+  const cityPrefix = 'city_' + sessionIndex + '_'
+
+  setFieldValue(poolPrefix + 'id_field', originalData.id, false)
+  setFieldValue(poolPrefix + 'swimming_pool_id', originalData.id, false)
+  setFieldValue('pool[' + sessionIndex + ']', originalData.id, false)
+
+  setFieldValue(poolPrefix + 'name', originalData.name, false)
+  setFieldValue(poolPrefix + 'nick_name', originalData.nick_name, false)
+  setFieldValue(poolPrefix + 'address', originalData.address, false)
+  setFieldValue(poolPrefix + 'pool_type_id', originalData.pool_type_id, false)
+  setFieldValue(poolPrefix + 'lanes_number', originalData.lanes_number, false)
+  setFieldValue(poolPrefix + 'maps_uri', originalData.maps_uri, false)
+  setFieldValue(poolPrefix + 'plus_code', originalData.plus_code, false)
+  setFieldValue(poolPrefix + 'latitude', originalData.latitude, false)
+  setFieldValue(poolPrefix + 'longitude', originalData.longitude, false)
+
+  setFieldValue(cityPrefix + 'id_field', originalData.city_id, false)
+  setFieldValue(cityPrefix + 'city_id', originalData.city_id, false)
+  setFieldValue('city[' + sessionIndex + ']', originalData.city_id, false)
+
+  setFieldValue(cityPrefix + 'name', originalData.city_name, false)
+  setFieldValue(cityPrefix + 'area', originalData.city_area, false)
+  setFieldValue(cityPrefix + 'zip', originalData.city_zip, false)
+  setFieldValue(cityPrefix + 'country', originalData.city_country, false)
+  setFieldValue(cityPrefix + 'country_code', originalData.city_country_code, false)
+  setFieldValue(cityPrefix + 'latitude', originalData.city_latitude, false)
+  setFieldValue(cityPrefix + 'longitude', originalData.city_longitude, false)
+}
+
 function clearSessionCityFields(sessionIndex) {
   setFieldValue('city_' + sessionIndex + '_id_field', '', false)
   setFieldValue('city_' + sessionIndex + '_city_id', '', false)

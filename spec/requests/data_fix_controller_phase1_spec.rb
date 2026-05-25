@@ -41,6 +41,68 @@ RSpec.describe DataFixController do
         expect(response.body).to include('Test Meeting')
       end
 
+      it 'wires the meeting fuzzy selector to the AutoComplete ID field' do
+        get review_sessions_path(file_path: source_file, phase_v2: 1)
+
+        selector = Nokogiri::HTML(response.body).css('#meeting_search')
+        onchange = selector.attr('onchange').value
+        expect(onchange).to include("$('#meeting_meeting_id').val(selected)")
+        expect(onchange).to include("$('#meeting_meeting_id').trigger('change')")
+        expect(onchange).not_to include("$('#meeting').trigger('change')")
+      end
+
+      it 'renders the AutoCompleteComponent with correct field target ID' do
+        get review_sessions_path(file_path: source_file, phase_v2: 1)
+
+        # Verify the AutoCompleteComponent field target exists with correct ID
+        field_input = Nokogiri::HTML(response.body).css('#meeting_meeting_id')
+        expect(field_input).to be_present
+        expect(field_input.attr('data-autocomplete-target').value).to eq('field')
+
+        # Verify the search target exists (base_dom_id 'meeting' + entity_name 'meeting' = meeting_meeting)
+        search_input = Nokogiri::HTML(response.body).css('#meeting_meeting')
+        expect(search_input).to be_present
+        expect(search_input.attr('data-autocomplete-target').value).to eq('search')
+
+        # Verify the description target exists
+        desc_target = Nokogiri::HTML(response.body).css('#meeting-desc')
+        expect(desc_target).to be_present
+        expect(desc_target.attr('data-autocomplete-target').value).to eq('desc')
+      end
+
+      it 'renders external target DOM IDs for meeting fields' do # rubocop:disable RSpec/MultipleExpectations
+        get review_sessions_path(file_path: source_file, phase_v2: 1)
+
+        # Verify all external target DOM IDs exist in the rendered HTML
+        expect(response.body).to include('id="meeting_description"')
+        expect(response.body).to include('id="meeting_code"')
+        expect(response.body).to include('id="meeting_season_id"')
+        expect(response.body).to include('id="meeting_header_year"')
+        expect(response.body).to include('id="meeting_header_date"')
+        expect(response.body).to include('id="meeting_edition"')
+        expect(response.body).to include('id="meeting_edition_type_id"')
+        expect(response.body).to include('id="meeting_timing_type_id"')
+        expect(response.body).to include('id="meeting_cancelled"')
+        expect(response.body).to include('id="meeting_confirmed"')
+      end
+
+      it 'renders AutoCompleteComponent with correct target column bindings' do # rubocop:disable RSpec/MultipleExpectations
+        get review_sessions_path(file_path: source_file, phase_v2: 1)
+
+        # Verify the component data attributes include the correct target column bindings
+        # The Stimulus controller expects these column values to read from the API response
+        expect(response.body).to include('target3-column-value')
+        expect(response.body).to include('target4-column-value')
+        expect(response.body).to include('target5-column-value')
+        expect(response.body).to include('target6-column-value')
+        expect(response.body).to include('target7-column-value')
+        expect(response.body).to include('target8-column-value')
+        expect(response.body).to include('target9-column-value')
+        expect(response.body).to include('target10-column-value')
+        expect(response.body).to include('target11-column-value')
+        expect(response.body).to include('target12-column-value')
+      end
+
       it 'displays empty sessions message when no sessions exist' do
         get review_sessions_path(file_path: source_file, phase_v2: 1)
         expect(response.body).to include('No sessions yet')
@@ -138,6 +200,145 @@ RSpec.describe DataFixController do
         }
         expect(response).to redirect_to(review_sessions_path(file_path: source_file, phase_v2: 1))
         expect(flash[:warning]).to be_present
+      end
+
+      it 'clears meeting_session when meeting ID changes' do
+        # Start with a meeting ID and existing sessions
+        phase1_data = {
+          'season_id' => season.id,
+          'name' => 'Original Meeting',
+          'id' => 123,
+          'poolLength' => '25',
+          'meeting_session' => [
+            { 'id' => 1, 'description' => 'Session 1' },
+            { 'id' => 2, 'description' => 'Session 2' }
+          ]
+        }
+        pfm = PhaseFileManager.new(phase1_file)
+        pfm.write!(data: phase1_data, meta: { 'generator' => 'test' })
+
+        # Change meeting ID
+        patch update_phase1_meeting_path, params: {
+          file_path: source_file,
+          season_id: season.id,
+          meeting: { meeting_id: '456' }
+        }
+
+        pfm = PhaseFileManager.new(phase1_file)
+        expect(pfm.data['id']).to eq(456)
+        expect(pfm.data['meeting_session']).to eq([])
+      end
+
+      it 'does not clear meeting_session when meeting ID is unchanged' do
+        # Start with a meeting ID and existing sessions
+        phase1_data = {
+          'season_id' => season.id,
+          'name' => 'Original Meeting',
+          'id' => 123,
+          'poolLength' => '25',
+          'meeting_session' => [
+            { 'id' => 1, 'description' => 'Session 1' },
+            { 'id' => 2, 'description' => 'Session 2' }
+          ]
+        }
+        pfm = PhaseFileManager.new(phase1_file)
+        pfm.write!(data: phase1_data, meta: { 'generator' => 'test' })
+
+        # Update without changing meeting ID
+        patch update_phase1_meeting_path, params: {
+          file_path: source_file,
+          season_id: season.id,
+          description: 'Updated Name',
+          meeting: { meeting_id: '123' }
+        }
+
+        pfm = PhaseFileManager.new(phase1_file)
+        expect(pfm.data['id']).to eq(123)
+        expect(pfm.data['meeting_session'].size).to eq(2)
+      end
+
+      it 'auto-generates code when not provided' do
+        # Start with a meeting but no code
+        phase1_data = {
+          'season_id' => season.id,
+          'name' => 'Test Meeting',
+          'address1' => 'Rome',
+          'poolLength' => '25'
+        }
+        pfm = PhaseFileManager.new(phase1_file)
+        pfm.write!(data: phase1_data, meta: { 'generator' => 'test' })
+
+        # Update without providing code
+        patch update_phase1_meeting_path, params: {
+          file_path: source_file,
+          season_id: season.id,
+          description: 'Test Meeting'
+        }
+
+        pfm = PhaseFileManager.new(phase1_file)
+        expect(pfm.data['code']).to be_present
+        expect(pfm.data['code']).not_to be_empty
+      end
+
+      it 'auto-generates code using session city when available' do
+        city = FactoryBot.create(:city, name: 'Milano')
+        pool = FactoryBot.create(:swimming_pool, city: city)
+
+        # Start with a meeting with a session that has a pool with a city
+        phase1_data = {
+          'season_id' => season.id,
+          'name' => 'Test Meeting',
+          'poolLength' => '25',
+          'meeting_session' => [
+            {
+              'id' => nil,
+              'description' => 'Session 1',
+              'swimming_pool' => {
+                'id' => pool.id,
+                'city' => { 'id' => city.id, 'name' => city.name }
+              }
+            }
+          ]
+        }
+        pfm = PhaseFileManager.new(phase1_file)
+        pfm.write!(data: phase1_data, meta: { 'generator' => 'test' })
+
+        # Update without providing code
+        patch update_phase1_meeting_path, params: {
+          file_path: source_file,
+          season_id: season.id,
+          description: 'Test Meeting'
+        }
+
+        pfm = PhaseFileManager.new(phase1_file)
+        expect(pfm.data['code']).to be_present
+        expect(pfm.data['code']).not_to be_empty
+      end
+
+      it 'clears meeting_session when meeting ID is set from nil to a value' do
+        # Start with no meeting ID and existing sessions
+        phase1_data = {
+          'season_id' => season.id,
+          'name' => 'Original Meeting',
+          'id' => nil,
+          'poolLength' => '25',
+          'meeting_session' => [
+            { 'id' => 1, 'description' => 'Session 1' }
+          ]
+        }
+        pfm = PhaseFileManager.new(phase1_file)
+        pfm.write!(data: phase1_data, meta: { 'generator' => 'test' })
+
+        # Set meeting ID
+        patch update_phase1_meeting_path, params: {
+          file_path: source_file,
+          season_id: season.id,
+          meeting: { meeting_id: '789' }
+        }
+
+        pfm = PhaseFileManager.new(phase1_file)
+        expect(pfm.data['id']).to eq(789)
+        expect(pfm.data['meeting_session']).to eq([])
       end
     end
 
@@ -650,7 +851,20 @@ RSpec.describe DataFixController do
         expect(city_data['name']).to eq('Rescan City')
       end
 
-      it 'clears sessions when meeting_id is blank' do
+      it 'rebuilds sessions from source fields when meeting_id is blank' do
+        pfm = PhaseFileManager.new(phase1_file)
+        data = pfm.data
+        data['dateDay1'] = '15'
+        data['dateMonth1'] = 'Dicembre'
+        data['dateYear1'] = '2024'
+        data['dateDay2'] = '16'
+        data['dateMonth2'] = 'Dicembre'
+        data['dateYear2'] = '2024'
+        data['venue1'] = 'JSON Pool'
+        data['address1'] = 'Via Test 1, Test City'
+        data['poolLength'] = '25'
+        pfm.write!(data: data, meta: pfm.meta)
+
         post rescan_phase1_sessions_path, params: {
           file_path: source_file,
           meeting_id: ''
@@ -658,14 +872,23 @@ RSpec.describe DataFixController do
 
         pfm = PhaseFileManager.new(phase1_file)
         sessions = pfm.data['meeting_session']
-        expect(sessions).to eq([])
+        expect(sessions.size).to eq(2)
+        expect(sessions[0]['id']).to be_nil
+        expect(sessions[0]['scheduled_date']).to eq('2024-12-15')
+        expect(sessions[0].dig('swimming_pool', 'name')).to eq('JSON Pool')
+        expect(sessions[1]['scheduled_date']).to eq('2024-12-16')
       end
 
-      it 'clears sessions when meeting_id is nil and no meeting in data' do
-        # Create phase1 file WITHOUT meeting id
+      it 'rebuilds sessions from source fields when meeting_id is nil and no meeting in data' do
         phase1_data = {
           'season_id' => season.id,
           'name' => 'Test Meeting',
+          'dateDay1' => '15',
+          'dateMonth1' => 'Dicembre',
+          'dateYear1' => '2024',
+          'venue1' => 'JSON Pool',
+          'address1' => 'Via Test 1, Test City',
+          'poolLength' => '25',
           'meeting_session' => [
             { 'id' => 999, 'description' => 'Old Session' }
           ]
@@ -680,18 +903,56 @@ RSpec.describe DataFixController do
 
         pfm = PhaseFileManager.new(phase1_file)
         sessions = pfm.data['meeting_session']
-        expect(sessions).to eq([])
+        expect(sessions.size).to eq(1)
+        expect(sessions[0]['id']).to be_nil
+        expect(sessions[0]['scheduled_date']).to eq('2024-12-15')
       end
 
-      it 'clears sessions when meeting not found' do
+      it 'rebuilds sessions from source fields when meeting not found' do
+        pfm = PhaseFileManager.new(phase1_file)
+        data = pfm.data
+        data['dateDay1'] = '15'
+        data['dateMonth1'] = 'Dicembre'
+        data['dateYear1'] = '2024'
+        data['venue1'] = 'JSON Pool'
+        data['address1'] = 'Via Test 1, Test City'
+        data['poolLength'] = '25'
+        pfm.write!(data: data, meta: pfm.meta)
+
         post rescan_phase1_sessions_path, params: {
           file_path: source_file,
-          meeting_id: 99_999 # Non-existent ID
+          meeting_id: 99_999
         }
 
         pfm = PhaseFileManager.new(phase1_file)
         sessions = pfm.data['meeting_session']
-        expect(sessions).to eq([])
+        expect(sessions.size).to eq(1)
+        expect(sessions[0]['id']).to be_nil
+        expect(sessions[0]['scheduled_date']).to eq('2024-12-15')
+      end
+
+      it 'rebuilds sessions from source fields when meeting has no sessions' do
+        meeting_without_sessions = FactoryBot.create(:meeting, season: season, description: 'No Sessions Meeting')
+        pfm = PhaseFileManager.new(phase1_file)
+        data = pfm.data
+        data['dateDay1'] = '15'
+        data['dateMonth1'] = 'Dicembre'
+        data['dateYear1'] = '2024'
+        data['venue1'] = 'JSON Pool'
+        data['address1'] = 'Via Test 1, Test City'
+        data['poolLength'] = '25'
+        pfm.write!(data: data, meta: pfm.meta)
+
+        post rescan_phase1_sessions_path, params: {
+          file_path: source_file,
+          meeting_id: meeting_without_sessions.id
+        }
+
+        pfm = PhaseFileManager.new(phase1_file)
+        sessions = pfm.data['meeting_session']
+        expect(sessions.size).to eq(1)
+        expect(sessions[0]['id']).to be_nil
+        expect(sessions[0]['scheduled_date']).to eq('2024-12-15')
       end
 
       it 'clears downstream phase data' do

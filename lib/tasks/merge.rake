@@ -93,10 +93,14 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
 
     merger = Merge::Swimmer.new(source:, dest:, skip_columns:, force:)
     merger.prepare
-    puts('Aborted.') && break if merger.errors.present? && !force
 
     puts("\r\n*** Log: ***\r\n")
     puts(merger.log.join("\r\n"))
+    if merger.errors.present? && !force
+      puts('Issues surfaced: use force=1 to proceed. Aborted.')
+      exit
+    end
+
     file_name = "#{format('%04d', file_index)}-merge_swimmers-#{merger.source.id}-#{merger.dest.id}"
     process_sql_file(file_name:, sql_log_array: merger.sql_log, simulate:)
     puts('Done.')
@@ -300,7 +304,7 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
         educated guesses (toggled off by default).
 
   DESC
-  task(badge: [:check_needed_dirs]) do
+  task(badge: [:check_needed_dirs]) do # rubocop:disable Metrics/BlockLength
     puts '*** Task: merge:badge ***'
     source = GogglesDb::Badge.find_by(id: ENV['src'].to_i)&.decorate
     dest = GogglesDb::Badge.find_by(id: ENV['dest'].to_i)&.decorate
@@ -338,10 +342,15 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
       keep_dest_team:, force:, autofix:
     )
     merger.prepare
-    puts('Aborted.') && break if merger.errors.present?
 
     puts("\r\n*** Log: ***\r\n")
     puts(merger.log.join("\r\n"))
+    # Must specify any override flag to proceed in case of errors
+    if merger.errors.present? && !(force || keep_dest_columns || keep_dest_category || keep_dest_team)
+      puts('Issues surfaced: use force=1 or any other "keep_" flag to proceed. Aborted.')
+      exit
+    end
+
     file_name = "#{format('%04d', file_index)}-merge_badges-#{merger.source.id}-#{merger.dest ? merger.dest.id : 'autofix'}"
     process_sql_file(file_name:, sql_log_array: merger.single_transaction_sql_log, simulate:)
     puts('Done.')

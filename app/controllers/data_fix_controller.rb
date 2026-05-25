@@ -2004,6 +2004,7 @@ class DataFixController < ApplicationController
     phase_path = default_phase_path_for(source_path, 1)
     pfm = PhaseFileManager.new(phase_path)
     data = pfm.data || {}
+    old_meeting_id = data['id']
 
     meeting_params = params.permit(:season_id, :description, :code, :name, :meetingURL,
                                    :header_year, :header_date, :edition,
@@ -2048,6 +2049,27 @@ class DataFixController < ApplicationController
     # Map 'description' to 'name' for phase file compatibility
     normalized['name'] = normalized.delete('description') if normalized.key?('description')
 
+    # Auto-generate code if not provided but description is present
+    if !normalized.key?('code') || normalized['code'].to_s.strip.empty?
+      if normalized['name'].present?
+        # Use the first session's city name if available, otherwise fall back to address1
+        city_name = nil
+        if data['meeting_session']&.first
+          first_session = data['meeting_session'].first
+          city_name = first_session.dig('swimming_pool', 'city', 'name') if first_session['swimming_pool']
+        end
+        city_name ||= data['address1'] if data['address1'].present?
+        city_name ||= ''
+
+        normalized['code'] = GogglesDb::Normalizers::CodedName.for_meeting(
+          normalized['name'],
+          city_name
+        )
+      else
+        normalized['code'] = ''
+      end
+    end
+
     # Assign normalized fields to data
     normalized.each { |k, v| data[k] = v }
 
@@ -2064,6 +2086,9 @@ class DataFixController < ApplicationController
         return redirect_to(review_sessions_path(file_path:, phase_v2: 1))
       end
     end
+
+    # Clear meeting_session if meeting ID changed to force session rebuild
+    data['meeting_session'] = [] if old_meeting_id != data['id']
 
     # If header_date is set, derive legacy LT2 month fields for compatibility
     if normalized.key?('header_date') && normalized['header_date'].present?
