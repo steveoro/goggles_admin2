@@ -94,6 +94,8 @@ en:
       status:
         matched: 'Matched (%{key})'
         unmatched: 'Unmatched'
+        auto_assigned_from_secondary: 'Auto-assigned from secondary match (team priority)'
+        team_mismatch_warning: 'Assigned from match with different team than source'
       table:
         headers:
           relay: 'Relay'

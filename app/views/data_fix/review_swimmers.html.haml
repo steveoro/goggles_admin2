@@ -40,9 +40,9 @@
           = select_tag :swimmers_per_page, options_for_select([50, 100, 150], @per_page), class: 'form-control form-control-sm'
         .form-group.mr-2
           .custom-control.custom-checkbox
-            = check_box_tag :unmatched, '1', params[:unmatched].present?, class: 'custom-control-input', id: 'unmatched-filter'
-            %label.custom-control-label{ for: 'unmatched-filter' } Show needing review
-          %small.text-muted.ml-1 (unmatched + yellow/red matches + duplicate badges)
+            = check_box_tag :needs_review, '1', params[:needs_review].present?, class: 'custom-control-input', id: 'needs-review-filter'
+            %label.custom-control-label{ for: 'needs-review-filter' } Show needing review
+          %small.text-muted.ml-1 (unmatched + yellow/red matches + duplicate badges + team-mismatch auto-assignments)
         .form-group.mr-2
           .custom-control.custom-checkbox
             = check_box_tag :name_differs, '1', params[:name_differs].present?, class: 'custom-control-input', id: 'name-differs-filter'
@@ -73,7 +73,7 @@
             = hidden_field_tag :swimmers_page, params[:swimmers_page] if params[:swimmers_page].present?
             = hidden_field_tag :swimmers_per_page, params[:swimmers_per_page] if params[:swimmers_per_page].present?
             = hidden_field_tag :q, params[:q] if params[:q].present?
-            = hidden_field_tag :unmatched, params[:unmatched] if params[:unmatched].present?
+            = hidden_field_tag :needs_review, params[:needs_review] if params[:needs_review].present?
             = hidden_field_tag :name_differs, params[:name_differs] if params[:name_differs].present?
             %button.btn.btn-sm.btn-success{ type: 'submit' }
               %i.fa.fa-plus

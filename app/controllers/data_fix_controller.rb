@@ -279,21 +279,22 @@ class DataFixController < ApplicationController
     # Filter swimmers needing review: unmatched (no swimmer_id) OR match < 89% (yellow/red matches)
     # OR similar name found on same team (cross-ref warning)
     # OR duplicate badges found in same season with different team_id (manual merge red flag)
+    # OR auto-assigned from secondary match due to team priority
     # This shows ALL swimmers that need manual verification at a glance
-    if params[:unmatched].present?
+    if params[:needs_review].present?
       swimmers = swimmers.select do |s|
         # WARNING: adding the 'similar_on_team' check will yield false positives and basically make the filtering useless
-        s['swimmer_id'].nil? || (s['match_percentage'] || 0.0) < 89.0 || s['has_badge_duplicates'] == true # || s['similar_on_team'] == true
+        s['swimmer_id'].nil? || (s['match_percentage'] || 0.0) < 89.0 || s['has_badge_duplicates'] == true || s['auto_assigned_from_secondary_match'] == true
       end
     end
 
     # Filter swimmers where the current name differs from the original import key
     if params[:name_differs].present?
       swimmers = swimmers.reject do |s|
-        composed = "#{s['last_name']}|#{s['first_name']}".strip.downcase
-        # Strip gender prefix (e.g., "M|" or "F|") and trailing year from key for comparison
-        key_name = s['key'].to_s.sub(/^[MF]\|/i, '').sub(/\|\d{4}$/, '').strip.downcase
-        composed == key_name
+        complete_name = s['complete_name'].to_s.strip.downcase
+        # Extract LAST|FIRST from key by stripping gender prefix, YOB, and team token
+        key_name = s['key'].to_s.sub(/^[MF]\|/i, '').split('|').first(2).join(' ').strip.downcase
+        complete_name == key_name
       end
     end
 
@@ -1334,6 +1335,7 @@ class DataFixController < ApplicationController
     redirect_params[:teams_per_page] = params[:teams_per_page] if params[:teams_per_page].present?
     redirect_params[:q] = params[:q] if params[:q].present?
     redirect_params[:unmatched] = params[:unmatched] if params[:unmatched].present?
+    redirect_params[:needs_review] = params[:needs_review] if params[:needs_review].present?
     redirect_params[:name_differs] = params[:name_differs] if params[:name_differs].present?
 
     redirect_to review_teams_path(redirect_params), notice: I18n.t('data_import.messages.updated')
@@ -1420,6 +1422,7 @@ class DataFixController < ApplicationController
     redirect_params[:teams_per_page] = params[:teams_per_page] if params[:teams_per_page].present?
     redirect_params[:q] = params[:q] if params[:q].present?
     redirect_params[:unmatched] = params[:unmatched] if params[:unmatched].present?
+    redirect_params[:needs_review] = params[:needs_review] if params[:needs_review].present?
     redirect_params[:name_differs] = params[:name_differs] if params[:name_differs].present?
 
     redirect_to review_teams_path(redirect_params), notice: I18n.t('data_import.messages.updated')
@@ -1519,6 +1522,7 @@ class DataFixController < ApplicationController
     redirect_params[:swimmers_per_page] = params[:swimmers_per_page] if params[:swimmers_per_page].present?
     redirect_params[:q] = params[:q] if params[:q].present?
     redirect_params[:unmatched] = params[:unmatched] if params[:unmatched].present?
+    redirect_params[:needs_review] = params[:needs_review] if params[:needs_review].present?
     redirect_params[:name_differs] = params[:name_differs] if params[:name_differs].present?
 
     redirect_to review_swimmers_path(redirect_params), notice: I18n.t('data_import.messages.updated')
@@ -1702,6 +1706,7 @@ class DataFixController < ApplicationController
     redirect_params[:swimmers_per_page] = params[:swimmers_per_page] if params[:swimmers_per_page].present?
     redirect_params[:q] = params[:q] if params[:q].present?
     redirect_params[:unmatched] = params[:unmatched] if params[:unmatched].present?
+    redirect_params[:needs_review] = params[:needs_review] if params[:needs_review].present?
     redirect_params[:name_differs] = params[:name_differs] if params[:name_differs].present?
 
     redirect_to review_swimmers_path(redirect_params), notice: I18n.t('data_import.messages.updated')

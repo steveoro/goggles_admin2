@@ -94,6 +94,8 @@ it:
       status:
         matched: 'Agganciato (%{key})'
         unmatched: 'Non agganciato'
+        auto_assigned_from_secondary: 'Auto-assegnato da corrispondenza secondaria (priorità squadra)'
+        team_mismatch_warning: 'Assegnato da corrispondenza con squadra diversa dalla sorgente'
       table:
         headers:
           relay: 'Staffetta'

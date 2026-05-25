@@ -465,15 +465,25 @@ module Import
 
         # Auto-assign top match if confidence >= 60% (lower threshold for more auto-matching)
         # Use refreshed fuzzy_matches (may include cross-ref candidates)
+        # Priority: team_match = true > no badge in current season > wrong team
         current_matches = entry['fuzzy_matches'] || []
         if current_matches.present? && auto_assignable?(current_matches.first, complete_name)
-          top_match = current_matches.first
-          entry['swimmer_id'] = top_match['id']
-          entry['complete_name'] = top_match['complete_name']
-          entry['last_name'] = top_match['last_name']
-          entry['first_name'] = top_match['first_name']
+          target_team_id = team_name.present? ? find_team_id_by_key(team_name) : nil
+          chosen_match = choose_best_match_by_team(current_matches, target_team_id)
 
-          @logger&.info("[SwimmerSolver] Auto-assigned swimmer '#{key}' -> ID #{top_match['id']} (#{(top_match['weight'] * 100).round(1)}%)")
+          if chosen_match != current_matches.first
+            # Secondary match was chosen due to team priority
+            entry['auto_assigned_from_secondary_match'] = true
+            entry['team_mismatch_warning'] = true if chosen_match['team_match'] != true
+            @logger&.info("[SwimmerSolver] Chose secondary match ID #{chosen_match['id']} over top match ID #{current_matches.first['id']} due to team priority")
+          end
+
+          entry['swimmer_id'] = chosen_match['id']
+          entry['complete_name'] = chosen_match['complete_name']
+          entry['last_name'] = chosen_match['last_name']
+          entry['first_name'] = chosen_match['first_name']
+
+          @logger&.info("[SwimmerSolver] Auto-assigned swimmer '#{key}' -> ID #{chosen_match['id']} (#{(chosen_match['weight'] * 100).round(1)}%)")
         end
 
         # Post-assignment filter: remove cross-ref candidates that match the assigned swimmer_id.
@@ -607,6 +617,21 @@ module Import
 
         weight = match['weight'].to_f
         weight >= 0.60
+      end
+
+      # Choose best match by team priority: team_match = true > no badge in current season > wrong team
+      def choose_best_match_by_team(matches, target_team_id)
+        return matches.first if matches.empty? || target_team_id.nil?
+
+        # Categorize matches by team relationship
+        team_match = matches.find { |m| m['team_match'] == true }
+        no_badge_match = matches.find { |m| (m['badges'] || []).empty? }
+
+        # Priority: team_match > no_badge > wrong_team
+        return team_match if team_match
+        return no_badge_match if no_badge_match
+
+        matches.first
       end
 
       # Normalize swimmer names for matching: remove accents, unify apostrophes and extra spaces
