@@ -447,21 +447,65 @@ module Import
       "#{last_name}|#{first_name}|#{year}"
     end
 
+    def build_full_swimmer_key(result) # rubocop:disable Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
+      swimmer_str = result['swimmer'] || result['swimmer_name'] || ''
+      parts = swimmer_str.split('|')
+      team_name = team_name_from_result(result)
+
+      return swimmer_str if parts.size >= 4 && team_name_from_key(swimmer_str).present?
+      return swimmer_str if parts.size < 3
+
+      if parts[0].match?(/\A[MF]?\z/i)
+        return swimmer_str if parts.size < 4
+
+        last_name = parts[1]
+        first_name = parts[2]
+        year = parts[3]
+        prefix = parts[0]
+      else
+        last_name = parts[0]
+        first_name = parts[1]
+        year = parts[2]
+        prefix = nil
+      end
+
+      key = prefix.present? || parts[0].blank? ? "#{prefix}|#{last_name}|#{first_name}|#{year}" : "#{last_name}|#{first_name}|#{year}"
+      team_name.present? ? "#{key}|#{team_name}" : key
+    end
+
+    def team_name_from_result(result)
+      team_name = result['team'] || result['team_name'] || result['teamName']
+      return team_name if team_name.present?
+
+      team_name_from_key(result['swimmer'] || result['swimmer_name'])
+    end
+
+    def team_name_from_key(swimmer_key)
+      parts = swimmer_key.to_s.split('|')
+      return nil if parts.size < 4
+
+      if parts[0].match?(/\A[MF]?\z/i)
+        parts[4..]&.join('|').presence
+      else
+        parts[3..]&.join('|').presence
+      end
+    end
+
     # Find swimmer data from phase 3: returns { swimmer_id:, swimmer_key: }
     # The returned swimmer_key is the FULL Phase 3 key (with gender prefix) when matched
     # This ensures stored keys are consistent with Phase 3 format
     def find_swimmer_data(result) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
-      return { swimmer_id: nil, swimmer_key: build_swimmer_key(result) } unless phase3_data
+      full_key = build_full_swimmer_key(result)
+      return { swimmer_id: nil, swimmer_key: full_key.presence || build_swimmer_key(result) } unless phase3_data
 
       partial_key = build_swimmer_key(result)
-      return { swimmer_id: nil, swimmer_key: partial_key } if partial_key.blank?
+      return { swimmer_id: nil, swimmer_key: full_key.presence || partial_key } if partial_key.blank?
 
       swimmers = phase3_data.dig('data', 'swimmers') || []
 
-      # First try exact match
-      swimmer = swimmers.find { |s| s['key'] == partial_key }
+      swimmer = swimmers.find { |s| s['key'] == full_key } || swimmers.find { |s| s['key'] == partial_key }
       if swimmer&.dig('swimmer_id')
-        Rails.logger.info("[Phase5Populator] Found swimmer_id=#{swimmer['swimmer_id']} for exact key=#{partial_key}")
+        Rails.logger.info("[Phase5Populator] Found swimmer_id=#{swimmer['swimmer_id']} for exact key=#{swimmer['key']}")
         return { swimmer_id: swimmer['swimmer_id'], swimmer_key: swimmer['key'] }
       end
 
@@ -471,14 +515,16 @@ module Import
         matching_swimmers = swimmers.select do |s|
           normalize_to_partial_key(s['key']) == normalized_partial
         end
+        team_name = team_name_from_result(result)
+        team_matches = matching_swimmers.select { |s| team_name.present? && team_name_from_key(s['key']).to_s.casecmp?(team_name.to_s) }
+        matching_swimmers = team_matches if team_matches.any?
 
         if matching_swimmers.size == 1
           matched = matching_swimmers.first
           Rails.logger.info("[Phase5Populator] Found swimmer_id=#{matched['swimmer_id']} via partial match, using Phase3 key=#{matched['key']}")
           return { swimmer_id: matched['swimmer_id'], swimmer_key: matched['key'] }
         elsif matching_swimmers.size > 1
-          # Multiple matches - find one with swimmer_id
-          with_id = matching_swimmers.find { |s| s['swimmer_id'].to_i.positive? }
+          with_id = matching_swimmers.one? { |s| s['swimmer_id'].to_i.positive? } ? matching_swimmers.find { |s| s['swimmer_id'].to_i.positive? } : nil
           if with_id
             Rails.logger.info("[Phase5Populator] Found swimmer_id=#{with_id['swimmer_id']} from multiple matches, using Phase3 key=#{with_id['key']}")
             return { swimmer_id: with_id['swimmer_id'], swimmer_key: with_id['key'] }
@@ -487,7 +533,7 @@ module Import
       end
 
       Rails.logger.warn("[Phase5Populator] No swimmer match found for key=#{partial_key}")
-      { swimmer_id: nil, swimmer_key: partial_key }
+      { swimmer_id: nil, swimmer_key: full_key.presence || partial_key }
     end
 
     # Find swimmer_id from phase 3 data using flexible key matching
@@ -550,7 +596,7 @@ module Import
       # Fallback: Try to find team_id from Phase 3 badges using swimmer key
       # This works even if team_name is blank - we match by swimmer
       if phase3_data
-        swimmer_key = build_swimmer_key(result)
+        swimmer_key = build_full_swimmer_key(result)
         badge_team_id = find_team_id_from_badges(swimmer_key, team_name)
 
         if badge_team_id
@@ -564,17 +610,24 @@ module Import
     end
 
     # Find team_id from Phase 3 badges using swimmer key or team key
-    def find_team_id_from_badges(swimmer_key, team_name) # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+    def find_team_id_from_badges(swimmer_key, team_name) # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity,Metrics/AbcSize
       return nil unless phase3_data
 
       badges = phase3_data.dig('data', 'badges') || []
 
-      # First try to find badge by swimmer key (partial matching)
+      badge = badges.find do |b|
+        b['swimmer_key'] == swimmer_key && b['team_id'].to_i.positive? &&
+          (team_name.blank? || b['team_key'].to_s.casecmp?(team_name.to_s))
+      end
+      return badge['team_id'] if badge
+
       partial_key = normalize_to_partial_key(swimmer_key)
       if partial_key
         badge = badges.find do |b|
           badge_partial = normalize_to_partial_key(b['swimmer_key'])
-          badge_partial == partial_key && b['team_id'].to_i.positive?
+          next false unless badge_partial == partial_key && b['team_id'].to_i.positive?
+
+          team_name.blank? || b['team_key'].to_s.casecmp?(team_name.to_s) || team_name_from_key(b['swimmer_key']).to_s.casecmp?(team_name.to_s)
         end
         return badge['team_id'] if badge
       end
@@ -588,15 +641,14 @@ module Import
       badge&.dig('team_id')
     end
 
-    def find_badge_id(swimmer_key:, team_key:, team_id: nil) # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+    def find_badge_id(swimmer_key:, team_key:, team_id: nil) # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity,Metrics/AbcSize
       return nil if swimmer_key.blank?
 
-      partial_key = normalize_to_partial_key(swimmer_key)
-      if phase3_data && partial_key
+      if phase3_data
         badges = phase3_data.dig('data', 'badges') || []
-        badge = badges.find do |b|
+        exact_badge = badges.find do |b|
           next false unless b['badge_id'].to_i.positive?
-          next false unless normalize_to_partial_key(b['swimmer_key']) == partial_key
+          next false unless b['swimmer_key'] == swimmer_key
 
           if team_id.to_i.positive?
             b['team_id'].to_i == team_id.to_i
@@ -604,7 +656,22 @@ module Import
             b['team_key'].to_s.casecmp?(team_key.to_s)
           end
         end
-        return badge['badge_id'] if badge
+        return exact_badge['badge_id'] if exact_badge
+
+        partial_key = normalize_to_partial_key(swimmer_key)
+        if partial_key
+          badge = badges.find do |b|
+            next false unless b['badge_id'].to_i.positive?
+            next false unless normalize_to_partial_key(b['swimmer_key']) == partial_key
+
+            if team_id.to_i.positive?
+              b['team_id'].to_i == team_id.to_i
+            else
+              b['team_key'].to_s.casecmp?(team_key.to_s)
+            end
+          end
+          return badge['badge_id'] if badge
+        end
       end
 
       nil

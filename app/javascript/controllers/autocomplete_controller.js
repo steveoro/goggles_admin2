@@ -366,7 +366,7 @@ export default class extends Controller {
         $(this.field3Target).val(entityRow[this.target3ColumnValue])
       }
       // Target3 alternative binding using just its DOM ID, when provided:
-      if (this.hasTarget4DomIdValue && (this.target3DomIdValue.length > 0)) {
+      if (this.hasTarget3DomIdValue && (this.target3DomIdValue.length > 0)) {
         // DEBUG
         // console.log('updateFieldAndDesc: external target3 found.')
         $(`#${this.target3DomIdValue}`).val(entityRow[this.target3ColumnValue])

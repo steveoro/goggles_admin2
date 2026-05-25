@@ -171,7 +171,8 @@ module Phase5
       tokens = swimmer_str.split('|')
 
       # 5-token format with explicit gender: "GENDER|LAST|FIRST|YEAR|TEAM"
-      if tokens.size >= 5
+      # 4-token format with team: "GENDER|LAST|FIRST|YEAR|TEAM" (team optional)
+      if tokens.size >= 4 && tokens[0].to_s.match?(/\A[MF]\z/i)
         normalized = normalize_gender(tokens[0])
         return normalized if normalized.present?
       end
@@ -184,20 +185,15 @@ module Phase5
 
     # Build partial phase3 key format from swimmer tokens.
     # Output format: "|LAST|FIRST|YEAR"
+    # Handles optional trailing team token
     def partial_phase3_swimmer_key(tokens)
       return nil if tokens.size < 3
 
-      if tokens[0].to_s.match?(/\A[MFX]?\z/i)
-        return nil if tokens.size < 4
+      offset = tokens[0].to_s.match?(/\A[MF]\z/i) ? 1 : 0
 
-        last_name = tokens[1]
-        first_name = tokens[2]
-        yob = tokens[3]
-      else
-        last_name = tokens[0]
-        first_name = tokens[1]
-        yob = tokens[2]
-      end
+      last_name = tokens[offset]
+      first_name = tokens[offset + 1]
+      yob = tokens[offset + 2]
 
       return nil if last_name.blank? || first_name.blank? || yob.to_s.strip.empty?
 
@@ -218,13 +214,14 @@ module Phase5
 
         # Parse gender from 5-token format: "GENDER|LAST|FIRST|YEAR|TEAM"
         tokens = swimmer_key.split('|')
-        if tokens.size >= 5
+        if tokens.size >= 4 && tokens[0].to_s.match?(/\A[MF]\z/i)
           gender_code = tokens[0].to_s.strip.upcase
           genders << gender_code if %w[M F].include?(gender_code) # rubocop:disable Performance/CollectionLiteralInLoop
         else
           # 4-token format has no gender: "LAST|FIRST|YEAR|TEAM"
           # Try to lookup from phase3 data
-          phase3_key = tokens.size >= 3 ? "#{tokens[0]}|#{tokens[1]}|#{tokens[2]}" : nil
+          offset = tokens[0].to_s.match?(/\A[MF]\z/i) ? 1 : 0
+          phase3_key = tokens.size >= (offset + 3) ? "#{tokens[offset]}|#{tokens[offset + 1]}|#{tokens[offset + 2]}" : nil
           gender = lookup_swimmer_gender_from_phase3(phase3_key) if phase3_key
           genders << gender if gender.present?
         end
@@ -293,7 +290,8 @@ module Phase5
 
         # Extract YOB from swimmer key
         tokens = swimmer_key.split('|')
-        yob_idx = tokens.size >= 5 ? 3 : 2 # Account for optional gender prefix
+        offset = tokens[0].to_s.match?(/\A[MF]\z/i) ? 1 : 0
+        yob_idx = offset + 2
         yob = tokens[yob_idx].to_i
         next if yob.zero?
 

@@ -406,38 +406,37 @@ module Phase3
       end
     end
 
-    # Extract |LAST|FIRST|YOB key (ignoring gender prefix)
-    # Input: "M|ANGELINI|Mario|2001" or "|ANGELINI|Mario|2001"
+    # Extract |LAST|FIRST|YOB key (ignoring gender prefix and optional team token)
+    # Input: "M|ANGELINI|Mario|2001" or "|ANGELINI|Mario|2001" or "M|ANGELINI|Mario|2001|Team"
     # Output: "|ANGELINI|Mario|2001"
     def extract_name_yob_key(key)
       return nil if key.blank?
 
       parts = key.split('|')
-      return nil if parts.size < 4
+      return nil if parts.size < 3
 
-      # Key format: G|LAST|FIRST|YOB or |LAST|FIRST|YOB
-      # Normalize: always start with pipe, then LAST|FIRST|YOB
-      return nil unless parts[0].match?(/\A[MF]?\z/i)
+      # Key format: G|LAST|FIRST|YOB or |LAST|FIRST|YOB (team token optional)
+      # Skip first token if it's empty (leading pipe with no gender) OR if it's a gender code
+      offset = parts[0].blank? || parts[0].match?(/\A[MF]\z/i) ? 1 : 0
+      return nil if parts.size < (offset + 3)
 
-      # First part is gender or empty - take remaining parts
-      last = parts[1]
-      first = parts[2]
-      yob = parts[3]
+      last = parts[offset]
+      first = parts[offset + 1]
+      yob = parts[offset + 2]
 
-      # No leading pipe/gender - unusual format
       return nil if last.blank? || first.blank? || yob.to_s.strip.empty?
 
       "|#{last}|#{first}|#{yob}"
     end
 
-    # Extract G|LAST|FIRST| key (ignoring YOB suffix)
-    # Input: "M|ANGELINI|Mario|2001"
+    # Extract G|LAST|FIRST| key (ignoring YOB suffix and optional team token)
+    # Input: "M|ANGELINI|Mario|2001" or "M|ANGELINI|Mario|2001|Team"
     # Output: "M|ANGELINI|Mario|"
     def extract_gender_name_key(key)
       return nil if key.blank?
 
       parts = key.split('|')
-      return nil if parts.size < 4
+      return nil if parts.size < 3
 
       gender = parts[0].to_s.strip.upcase
       return nil unless gender.match?(/\A[MF]\z/)

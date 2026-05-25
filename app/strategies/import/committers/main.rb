@@ -1374,8 +1374,8 @@ module Import
       # -----------------------------------------------------------------------
 
       # Extracts year of birth from swimmer_key.
-      # Handles any composition of tokens for the key ("LAST|FIRST|YEAR" or "GENDER|LAST|FIRST|YEAR"),
-      # as long as the last token field in the key is the year of birth (YoB).
+      # Handles optional trailing team token: "GENDER|LAST|FIRST|YOB|TEAM" or "|LAST|FIRST|YOB|TEAM".
+      # YOB is always at offset 2 (after LAST, FIRST), regardless of gender prefix.
       #
       # == Returns:
       # Integer year of birth or nil
@@ -1386,14 +1386,17 @@ module Import
         tokens = swimmer_key.split('|')
         return nil if tokens.size < 3
 
-        yob = tokens.last.to_i
+        offset = tokens[0].to_s.match?(/\A[MF]\z/i) ? 1 : 0
+        yob_idx = offset + 2
+        return nil if tokens.size <= yob_idx
+
+        yob = tokens[yob_idx].to_i
         yob.positive? && yob > 1900 && yob < 2100 ? yob : nil
       end
       # -----------------------------------------------------------------------
 
-      # Extracts gender code from swimmer_key if present in a 4+ token format.
-      # Assumes the gender code is the first token only if there are at least 4 tokens.
-      # ("GENDER|LAST|FIRST|YEAR")
+      # Extracts gender code from swimmer_key if present as first token.
+      # Handles optional trailing team token: "GENDER|LAST|FIRST|YOB|TEAM".
       #
       # == Returns:
       # 'M' or 'F' if found, nil otherwise
@@ -1402,7 +1405,7 @@ module Import
         return nil if swimmer_key.blank?
 
         tokens = swimmer_key.split('|')
-        return nil unless tokens.size >= 4
+        return nil if tokens.size < 3
 
         gender_code = tokens[0].to_s.strip.upcase
         %w[M F].include?(gender_code) ? gender_code : nil

@@ -65,8 +65,7 @@ module Import
               broadcast_progress('Map swimmers', idx + 1, total)
               next if l.blank? || f.blank? || yob.to_i.zero?
 
-              # Always include leading pipe: |LAST|FIRST|YOB or GENDER|LAST|FIRST|YOB
-              key = gcode.present? ? "#{gcode}|#{l}|#{f}|#{yob}" : "|#{l}|#{f}|#{yob}"
+              key = build_swimmer_key(gcode, l, f, yob, team_name)
               swimmer_entry = build_swimmer_entry(key, l, f, yob.to_i, gcode, team_name: team_name)
               swimmers << swimmer_entry
               register_built_swimmer_entry(swimmer_entry)
@@ -83,8 +82,7 @@ module Import
               broadcast_progress('Map swimmers', idx + 1, total)
               next if l.blank? || f.blank? || yob.to_i.zero?
 
-              # Always include leading pipe: |LAST|FIRST|YOB or GENDER|LAST|FIRST|YOB
-              key = gcode.present? ? "#{gcode}|#{l}|#{f}|#{yob}" : "|#{l}|#{f}|#{yob}"
+              key = build_swimmer_key(gcode, l, f, yob, team_name)
               swimmer_entry = build_swimmer_entry(key, l, f, yob.to_i, gcode, team_name: team_name)
               swimmers << swimmer_entry
               register_built_swimmer_entry(swimmer_entry)
@@ -119,8 +117,7 @@ module Import
                   next if last.blank? || first.blank?
 
                   gcode = normalize_gender_code(gtype)
-                  # Always include leading pipe: |LAST|FIRST|YOB or GENDER|LAST|FIRST|YOB
-                  key = gcode.present? ? "#{gcode}|#{last}|#{first}|#{yob}" : "|#{last}|#{first}|#{yob}"
+                  key = build_swimmer_key(gcode, last, first, yob, team_name)
 
                   swimmer_entry = build_swimmer_entry(key, last, first, yob.to_i, gcode, team_name: team_name)
                   swimmers << swimmer_entry
@@ -138,9 +135,8 @@ module Import
                 next if l.blank? || f.blank? || yob.to_i.zero?
 
                 gcode = gender_code || normalize_gender_code(row['gender'] || row['gender_type'] || row['gender_type_code'])
-                # Always include leading pipe: |LAST|FIRST|YOB or GENDER|LAST|FIRST|YOB
-                key = gcode.present? ? "#{gcode}|#{l}|#{f}|#{yob}" : "|#{l}|#{f}|#{yob}"
                 team_name = row['team']
+                key = build_swimmer_key(gcode, l, f, yob, team_name)
                 swimmer_entry = build_swimmer_entry(key, l, f, yob.to_i, gcode, team_name: team_name)
                 swimmers << swimmer_entry
                 register_built_swimmer_entry(swimmer_entry)
@@ -282,6 +278,11 @@ module Import
         ]
       end
 
+      def build_swimmer_key(gender_code, last_name, first_name, year_of_birth, team_name = nil)
+        key = gender_code.present? ? "#{gender_code}|#{last_name}|#{first_name}|#{year_of_birth}" : "|#{last_name}|#{first_name}|#{year_of_birth}"
+        team_name.present? ? "#{key}|#{team_name}" : key
+      end
+
       def fetch_first_present(hash, *keys)
         keys.each do |key|
           value = hash[key]
@@ -407,7 +408,7 @@ module Import
             badges = m['badges'] || []
             next if badges.empty?
 
-            has_matching_team = badges.any? { |b| b['phase2_match'] && b['team_id'] == target_team_id }
+            has_matching_team = badges.any? { |b| b['team_id'] == target_team_id }
             has_any_p2_match = badges.any? { |b| b['phase2_match'] }
             if has_matching_team
               m['weight'] = [(m['weight'] + 0.05).round(3), 1.0].min
@@ -417,7 +418,7 @@ module Import
             end
             m['percentage'] = (m['weight'] * 100).round(1)
           end
-          entry['fuzzy_matches'] = current_matches.sort_by { |m| -(m['weight'] || 0) }
+          entry['fuzzy_matches'] = current_matches.sort_by { |m| [m['team_match'] ? 0 : 1, -(m['weight'] || 0)] }
           entry['match_percentage'] = entry['fuzzy_matches'].first&.dig('percentage') || 0.0
         end
 
@@ -434,9 +435,8 @@ module Import
             entry['last_name'] = top_match['last_name']
             entry['first_name'] = top_match['first_name']
 
-            # Update key to include inferred gender prefix
-            parts = key.split('|').compact_blank
-            entry['key'] = "#{entry['gender_type_code']}|#{parts[0]}|#{parts[1]}|#{parts[2]}"
+            _key_gcode, key_last, key_first, key_yob, key_team = parse_swimmer_identity_key(key)
+            entry['key'] = build_swimmer_key(entry['gender_type_code'], key_last, key_first, key_yob, key_team)
 
             # Recompute category now that we have gender
             meeting_date = @phase1_data&.dig('data', 'header_date')
@@ -773,10 +773,13 @@ module Import
       # Find swimmer_id by swimmer_key from current swimmers being built
       # Note: This looks at swimmers array being built in this phase, not from saved phase3 file
       # Keys now have format: |LAST|FIRST|YOB or GENDER|LAST|FIRST|YOB
-      def find_swimmer_id_by_key(swimmer_key)
+      def find_swimmer_id_by_key(swimmer_key) # rubocop:disable Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
         return nil if swimmer_key.blank?
 
         return @built_swimmer_id_by_key[swimmer_key] if @built_swimmer_id_by_key&.key?(swimmer_key)
+
+        team_key = normalize_swimmer_key_for_lookup(swimmer_key, include_team: true)
+        return @built_swimmer_id_by_key[team_key] if team_key.present? && @built_swimmer_id_by_key&.key?(team_key)
 
         partial_key = normalize_swimmer_key_for_lookup(swimmer_key)
         return nil if partial_key.blank?
@@ -784,7 +787,7 @@ module Import
         @built_swimmer_id_by_key&.[](partial_key)
       end
 
-      def register_built_swimmer_entry(swimmer_entry)
+      def register_built_swimmer_entry(swimmer_entry) # rubocop:disable Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
         return unless swimmer_entry.is_a?(Hash)
 
         swimmer_key = swimmer_entry['key']
@@ -796,9 +799,11 @@ module Import
 
         partial_key = normalize_swimmer_key_for_lookup(swimmer_key)
         @built_swimmer_id_by_key[partial_key] = swimmer_id if partial_key.present? && swimmer_id.to_i.positive?
+        team_key = normalize_swimmer_key_for_lookup(swimmer_key, include_team: true)
+        @built_swimmer_id_by_key[team_key] = swimmer_id if team_key.present? && swimmer_id.to_i.positive?
       end
 
-      def normalize_swimmer_key_for_lookup(swimmer_key)
+      def normalize_swimmer_key_for_lookup(swimmer_key, include_team: false) # rubocop:disable Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
         return nil if swimmer_key.blank?
 
         parts = swimmer_key.to_s.split('|').compact_blank
@@ -808,9 +813,11 @@ module Import
         last_name = parts[offset]
         first_name = parts[offset + 1]
         year_of_birth = parts[offset + 2]
+        team_name = parts[(offset + 3)..]&.join('|')
         return nil if [last_name, first_name, year_of_birth].any?(&:blank?)
 
-        "|#{last_name}|#{first_name}|#{year_of_birth}"
+        key = "|#{last_name}|#{first_name}|#{year_of_birth}"
+        include_team && team_name.present? ? "#{key}|#{team_name}" : key
       end
 
       # Find team_id by team_key from phase2 data
