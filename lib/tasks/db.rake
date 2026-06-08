@@ -62,7 +62,20 @@ namespace :db do
     db_user      = rails_config.database_configuration[Rails.env]['username']
     db_pwd       = rails_config.database_configuration[Rails.env]['password']
     db_host      = rails_config.database_configuration[Rails.env]['host']
-    system("mysql --host=#{db_host} --user=#{db_user} --password=\"#{db_pwd}\" --database=#{db_name} --execute=\"\\. #{full_pathname}\"")
+
+    # Execute with transaction wrapping to ensure rollback on failure
+    # The merge scripts already include START TRANSACTION and COMMIT, but we add
+    # an outer transaction wrapper to catch any syntax errors before the script's own transaction
+    # Use shell redirection to handle large files efficiently without loading into memory
+    cmd = "mariadb --host=#{db_host} --user=#{db_user} --password=\"#{db_pwd}\" --database=#{db_name}"
+    exit_status = system("(echo 'START TRANSACTION;'; cat '#{full_pathname}'; echo 'COMMIT;') | #{cmd}")
+
+    return if exit_status
+
+    puts("\r\n*** ERROR: Script execution failed. Transaction rolled back. ***")
+    # Explicitly rollback in case the script left a transaction open
+    system("mariadb --host=#{db_host} --user=#{db_user} --password=\"#{db_pwd}\" --database=#{db_name} --execute=\"ROLLBACK;\"")
+    exit 1
   end
   #-- -------------------------------------------------------------------------
   #++

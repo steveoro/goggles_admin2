@@ -411,7 +411,7 @@ module Merge
 
         sql_val = case col_type
                   when :boolean then src_val ? 1 : 0
-                  when :string then "'#{src_val.to_s.gsub("'", "''")}'"
+                  when :string then quote_value(src_val)
                   else src_val
                   end
 
@@ -535,6 +535,12 @@ module Merge
 
     def log_progress(entity_name, entity_id, action)
       @warning_log << "[#{entity_name} ##{entity_id}] #{action}"
+    end
+
+    # Returns a properly SQL-quoted string value using ActiveRecord's connection quoting.
+    # This handles both single and double quotes correctly.
+    def quote_value(value)
+      ActiveRecord::Base.connection.quote(value.to_s)
     end
 
     #-- ------------------------------------------------------------------------

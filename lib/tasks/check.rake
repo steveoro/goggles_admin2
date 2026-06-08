@@ -421,7 +421,7 @@ namespace :check do # rubocop:disable Metrics/BlockLength
 
   desc <<~DESC
       Loops upon all MIRs found for a specific swimmer and reports a mapping
-    of all involved teams x swimmer badge for the 5 latest seasons.
+    of all involved teams x swimmer badge for the last 7 seasons.
 
     The output is divided into pages of 50 MIRs maximum using Kaminari.
 
@@ -442,7 +442,7 @@ namespace :check do # rubocop:disable Metrics/BlockLength
       exit
     end
 
-    min_season_id = GogglesDb::LastSeasonId.first.id - 50 # (season IDs are fixed and increased by 10 each championship)
+    min_season_id = GogglesDb::LastSeasonId.first.id - 70 # (season IDs are fixed and increased by 10 each championship)
     per_page = 50
     page_idx = ENV['page'].to_i
 

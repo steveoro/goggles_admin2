@@ -12,20 +12,19 @@ class APIUsersController < ApplicationController
   # - <tt>@domain</tt>: list of all instance rows
   # - <tt>@grid</tt>: the customized Datagrid instance
   #
-  def index
+  def index # rubocop:disable Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
     index_params # prepare @index_params memoized member
-    result = if grid_filter_params.present? || params[:page].present? || params[:per_page].present?
-               APIProxy.call(
-                 method: :get, url: 'users', jwt: current_user.jwt,
-                 params: {
-                   name: grid_filter_params[:name], description: grid_filter_params[:description],
-                   email: grid_filter_params[:email],
-                   page: index_params[:page], per_page: index_params[:per_page]
-                 }
-               )
-             else
-               APIProxy.call(method: :get, url: 'users', jwt: current_user.jwt)
-             end
+    api_params = {
+      page: index_params[:page] || 1, per_page: index_params[:per_page] || 25
+    }
+    api_params[:name] = grid_filter_params[:name] if grid_filter_params[:name].present?
+    api_params[:description] = grid_filter_params[:description] if grid_filter_params[:description].present?
+    api_params[:email] = grid_filter_params[:email] if grid_filter_params[:email].present?
+
+    result = APIProxy.call(
+      method: :get, url: 'users', jwt: current_user.jwt,
+      params: api_params
+    )
     parsed_response = result.body.present? ? JSON.parse(result.body) : { 'error' => "Error #{result.code}" }
     unless result.code == 200
       flash[:error] = I18n.t('dashboard.api_proxy_error', error_code: result.code, error_msg: parsed_response['error'])
@@ -98,9 +97,9 @@ class APIUsersController < ApplicationController
   def destroy
     row_ids = delete_params[:ids].present? ? delete_params[:ids].split(',') : []
     row_ids << delete_params[:id] if delete_params[:id].present?
-    row_ids.reject! { |id| id.to_i < 4 }
+    # Also, ignore required IDs (<= 4):
+    row_ids.reject! { |id| id.to_i <= 4 }
 
-    # Also, ignore required IDs (< 4):
     error_ids = delete_rows!('user', row_ids)
 
     if row_ids.present? && error_ids.empty?

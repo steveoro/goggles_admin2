@@ -38,11 +38,6 @@ class APIProxy
     whitelisted = params.respond_to?(:permit!) ? params.permit!.to_h : params&.to_h
     hdrs = whitelisted.present? ? { params: whitelisted } : {}
     hdrs['Authorization'] = "Bearer #{jwt}" if jwt.present?
-    # DEBUG
-    # Rails.logger.debug("\r\n-- APIProxy, headers:")
-    # Rails.logger.debug(hdrs.inspect)
-    # Rails.logger.debug("\r\n-- APIProxy, payload:")
-    # Rails.logger.debug(payload.inspect)
 
     RestClient::Request.execute(
       method:,

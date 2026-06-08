@@ -94,8 +94,8 @@ module Merge
       # Overwrite all commonly used columns at the end, if requested (this will update the index too):
       # rubocop:disable Layout/LineLength
       unless @skip_columns
-        @sql_log << "UPDATE swimmers SET updated_at=NOW(), last_name=\"#{@source.last_name}\", first_name=\"#{@source.first_name}\", year_of_birth=#{@source.year_of_birth},"
-        @sql_log << "  complete_name=\"#{@source.complete_name}\", nickname=\"#{@source.nickname || 'NULL'}\","
+        @sql_log << "UPDATE swimmers SET updated_at=NOW(), last_name=#{quote_value(@source.last_name)}, first_name=#{quote_value(@source.first_name)}, year_of_birth=#{@source.year_of_birth},"
+        @sql_log << "  complete_name=#{quote_value(@source.complete_name)}, nickname=#{quote_value(@source.nickname) || 'NULL'},"
         @sql_log << "  associated_user_id=#{@source.associated_user_id || 'NULL'}, gender_type_id=#{@source.gender_type_id}, year_guessed=#{@source.year_guessed} WHERE id=#{@dest.id};\r\n"
       end
       # rubocop:enable Layout/LineLength
@@ -123,6 +123,12 @@ module Merge
     #++
 
     private
+
+    # Returns a properly SQL-quoted string value using ActiveRecord's connection quoting.
+    # This handles both single and double quotes correctly.
+    def quote_value(value)
+      ActiveRecord::Base.connection.quote(value.to_s)
+    end
 
     # Prepares the SQL text for the "Badge update" phase involving all entities that have a
     # foreign key to the source swimmer's Badge.

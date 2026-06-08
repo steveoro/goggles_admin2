@@ -372,6 +372,12 @@ module Merge
 
     private
 
+    # Returns a properly SQL-quoted string value using ActiveRecord's connection quoting.
+    # This handles both single and double quotes correctly.
+    def quote_value(value)
+      ActiveRecord::Base.connection.quote(value.to_s)
+    end
+
     # Computes the CategoryType to use for the badge after merging.
     #
     # Given the swimmer year of birth and the season begin date, it finds the

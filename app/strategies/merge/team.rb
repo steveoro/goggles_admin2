@@ -301,18 +301,18 @@ module Merge
     end
 
     # Overwrites commonly used destination team columns at the end.
-    def prepare_dest_column_updates
+    def prepare_dest_column_updates # rubocop:disable Metrics/AbcSize
       attrs = []
       if @skip_columns
         # Update just the name variations:
         dest_variations = @dest.name_variations.to_s
         name_variations = dest_variations.include?(@source.name) ? dest_variations : "#{dest_variations};#{@source.name}"
-        attrs << "name_variations=\"#{name_variations}\""
+        attrs << "name_variations=#{quote_value(name_variations)}"
       else
         # Update only attributes with values (don't overwrite existing with nulls):
-        attrs << "name=\"#{@source.name}\""
-        attrs << "editable_name=\"#{@source.editable_name}\"" if @source.editable_name.present?
-        attrs << "name_variations=\"#{@source.name_variations}\"" if @source.name_variations.present?
+        attrs << "name=#{quote_value(@source.name)}"
+        attrs << "editable_name=#{quote_value(@source.editable_name)}" if @source.editable_name.present?
+        attrs << "name_variations=#{quote_value(@source.name_variations)}" if @source.name_variations.present?
         attrs << "city_id=#{@source.city_id}" if @source.city_id.present?
       end
       @sql_log << "\r\nUPDATE teams SET updated_at=NOW(), #{attrs.join(', ')} WHERE id=#{@dest.id};"
@@ -328,8 +328,14 @@ module Merge
       @dest_ta_sql_ref_by_season[season_id] = sql_ref.to_s
     end
 
+    # Returns a properly SQL-quoted string value using ActiveRecord's connection quoting.
+    # This handles both single and double quotes correctly.
+    def quote_value(value)
+      ActiveRecord::Base.connection.quote(value.to_s)
+    end
+
     def escaped_dest_ta_name
-      (@dest.editable_name.presence || @dest.name).to_s.gsub("'", "''")
+      quote_value(@dest.editable_name.presence || @dest.name)
     end
     #-- ------------------------------------------------------------------------
     #++
