@@ -1,5 +1,5 @@
 import { Controller } from '@hotwired/stimulus'
-import $ from 'jquery'
+
 
 /**
  * = StimulusJS simple remote partial update controller =

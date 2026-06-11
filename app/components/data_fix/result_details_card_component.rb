@@ -19,7 +19,7 @@ module DataFix
   #
   class ResultDetailsCardComponent < ViewComponent::Base
     def initialize(res_key:, res_row:, laps_rowset:)
-      super
+      super()
       @res_key = res_key
       @model_row = res_row&.fetch('row', nil)
       # The following hack will be ok even for relays as we just need to

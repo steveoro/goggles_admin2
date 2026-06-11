@@ -12,7 +12,7 @@ class RankingPosComponent < ViewComponent::Base
   # == Params:
   # - rank: the ranking position
   def initialize(rank:)
-    super
+    super()
     @rank = rank
   end
 

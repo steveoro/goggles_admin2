@@ -23,7 +23,7 @@ module Grid
     # - <tt>controller_name</tt>: Rails controller name for the <tt>:destroy</tt> action
     # - <tt>label_method</tt>: display method invoked on the row while asking confirmation (default: 'id')
     def initialize(asset_row:, controller_name:, label_method: 'id')
-      super
+      super()
       @asset_row = asset_row
       @controller_name = controller_name
       @label_method = label_method

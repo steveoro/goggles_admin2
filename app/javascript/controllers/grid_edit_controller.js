@@ -1,7 +1,5 @@
 import { Controller } from '@hotwired/stimulus'
 import JSONEditor from 'jsoneditor'
-import 'jsoneditor/dist/jsoneditor.css'
-import 'jsoneditor/dist/img/jsoneditor-icons.svg'
 
 /**
  * = grid-edit - StimulusJS controller =
@@ -123,7 +121,7 @@ export default class extends Controller {
       // Fix form target URL:
       $(`#frm-${this.baseModalIdValue}`).prop('action', this.urlValue)
 
-      // Make sure Turbolinks doesn't mess with the actual CSRF token of the form partial:
+      // Make sure Turbo doesn't mess with the actual CSRF token of the form partial:
       if ($(`#frm-${this.baseModalIdValue} input[name='authenticity_token']`).val() != $("meta[name='csrf-token']").prop('content')) {
         $(`#frm-${this.baseModalIdValue} input[name='authenticity_token']`).val($("meta[name='csrf-token']").prop('content'))
       }

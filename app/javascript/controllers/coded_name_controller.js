@@ -1,5 +1,5 @@
 import { Controller } from '@hotwired/stimulus'
-import $ from 'jquery'
+
 
 /**
  * = CodedName 'internal API' StimulusJS controller =

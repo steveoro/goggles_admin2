@@ -1,0 +1,12 @@
+// tom-select customizations for Bootstrap 4 integration
+// The base tom-select bootstrap4 CSS is loaded via CDN in the layout.
+
+.ts-wrapper {
+  width: 100%;
+}
+
+.ts-wrapper.multi .ts-control [data-value] {
+  background-color: #007bff;
+  border-color: #007bff;
+  color: #fff;
+}

@@ -21,7 +21,7 @@ module Grid
     # == Params
     # - <tt>controller_name</tt>: Rails controller name bound to this action
     def initialize(controller_name:, request_params:)
-      super
+      super()
       @controller_name = controller_name
       @request_params = request_params
     end

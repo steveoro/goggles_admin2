@@ -34,7 +34,7 @@ module ComboBox
     # - required: false   => sets the HTML5 'required' attribute for the select field
     #
     def initialize(options = {})
-      super
+      super()
       @api_endpoint = 'cities'
       @jwt = options[:jwt] || nil
       @free_text = options[:free_text] || false

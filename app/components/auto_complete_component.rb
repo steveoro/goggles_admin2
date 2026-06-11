@@ -25,7 +25,7 @@
 # API call can be configured to retrieve all the detail fields using the currently selected entity ID.
 #
 # Allows direct edit of both the ID and its search value; includes
-# a descriptive label text that remains visibile after the search/lookup.
+# a descriptive label text that remains visible after the search/lookup.
 #
 # Works even on Bootstrap modals (the Select2-based DBLookup custom component doesn't).
 #
@@ -144,7 +144,7 @@ class AutoCompleteComponent < ViewComponent::Base
   #
   # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
   def initialize(options = {})
-    super
+    super()
     @show_top_labels = options[:show_top_labels] || false
     @base_dom_id = options[:base_dom_id] || 'grid-edit'
     @base_api_url = options[:base_api_url]

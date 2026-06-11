@@ -12,7 +12,7 @@
 # See: https://github.com/steveoro/goggles_db/wiki/HOWTO-dev-code_coverage_setup
 
 require 'simplecov'
-SimpleCov.start 'rails'
+SimpleCov.start('rails') unless SimpleCov.running
 puts 'SimpleCov required and started.'
 
 unless ENV['CODECOV_TOKEN'].to_s.empty?
@@ -72,13 +72,12 @@ require 'view_component/test_helpers'
 
 RSpec.configure do |config|
   # Remove this line if you're not using ActiveRecord or ActiveRecord fixtures
-  config.fixture_path = "#{Rails.root}/spec/fixtures"
+  config.fixture_paths = ["#{Rails.root}/spec/fixtures"]
 
   # Add custom request spec path for Grape APIs: (for a standard Rails API test suite these are expected to be in /spec/requests/)
   config.include(RSpec::Rails::RequestExampleGroup, type: :request, file_path: %r{spec/api})
 
   # Add helpers to get Devise working with RSpec:
-  config.include(Devise::TestHelpers, type: :features)
   config.include(Devise::Test::ControllerHelpers, type: :view) # (<-- these helpers include the Devise.mappings)
   config.include(Devise::Test::IntegrationHelpers, type: :view) # (<-- whereas, these do not)
   config.include(Devise::Test::IntegrationHelpers, type: :request)

@@ -3,8 +3,8 @@
 Rails.application.configure do
   # Settings specified here will take precedence over those in config/application.rb.
 
-  # Code is not reloaded between requests.
-  config.cache_classes = true
+  # Do not reload code between requests.
+  config.enable_reloading = false
 
   # Eager load code on boot. This eager loads most of Rails and
   # your application in memory, allowing both threaded web servers
@@ -25,16 +25,7 @@ Rails.application.configure do
   # Apache or NGINX already handles this.
   # [Steve A.] In case we run directly from Puma (i.e., inside a Docker container
   # reached from a reverse proxy) the public file server must remain enabled:
-  config.public_file_server.enabled = true # ENV['RAILS_SERVE_STATIC_FILES'].present?
-  config.serve_static_assets = true
-  # false = Disable Rails's static (precompiled) asset server
-  # (must be false when running under Apache or Nginx)
-
-  # Compress CSS using a preprocessor.
-  # config.assets.css_compressor = :sass
-
-  # Do not fallback to assets pipeline if a precompiled asset is missed.
-  config.assets.compile = false
+  config.public_file_server.enabled = true
 
   # Enable serving of images, stylesheets, and JavaScripts from an asset server.
   # config.action_controller.asset_host = 'http://assets.example.com'
@@ -79,7 +70,7 @@ Rails.application.configure do
   config.i18n.fallbacks = true
 
   # Send deprecation notices to registered listeners.
-  config.active_support.deprecation = :notify
+  config.active_support.report_deprecations = false
 
   # Use default logging formatter so that PID and timestamp are not suppressed.
   config.log_formatter = Logger::Formatter.new

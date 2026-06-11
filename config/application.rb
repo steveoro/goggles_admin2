@@ -11,7 +11,7 @@ Bundler.require(*Rails.groups)
 module GogglesAdmin2
   class Application < Rails::Application
     # Initialize configuration defaults for originally generated Rails version.
-    config.load_defaults 6.0
+    config.load_defaults 8.1
 
     # Settings in config/environments/* take precedence over those specified here.
     # Application configuration can go into files in config/initializers
@@ -19,6 +19,7 @@ module GogglesAdmin2
     # the framework and any gems in your application.
 
     config.active_record.schema_format :sql
+    config.assets.paths << Rails.root.join('app', 'javascript')
 
     # Add load paths for this specific Engine:
     # (Prefer eager_load_paths over autoload_paths, since eager_load_paths are

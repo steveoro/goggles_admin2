@@ -1,13 +1,10 @@
 import { Controller } from '@hotwired/stimulus'
-import $ from 'jquery'
-
-window.$ = window.jQuery = $
-require('easy-autocomplete')
+import TomSelect from 'tom-select'
 
 /**
- * = Easy-Autocomplete StimulusJS controller =
+ * = TomSelect-based Autocomplete StimulusJS controller =
  *
- * ==> NOT CURRENTLY USED by Goggles Main (Admin2-specific) <==
+ * ==> Admin2-specific <==
  *
  * Allows to update values in up to 3 "+1" target fields, searched using a search field,
  * while updating also another external description field upon selection.
@@ -16,8 +13,7 @@ require('easy-autocomplete')
  * If the remote search is enabled (by setting the base API URL value), a second optional
  * API call can be configured to retrieve all the detail fields using the currently selected entity ID.
  *
- * This controller assumes the search target field needs to be configured using the
- * Easy-Autocomplete library (which is a jQuery plugin).
+ * This controller uses TomSelect (replaces easyAutocomplete).
  *
  * The 3rd additional update target can be set and referenced by either a proper target binding
  * or even just its DOM ID string (when it's present on the page but outside the scope of the parent
@@ -28,10 +24,10 @@ require('easy-autocomplete')
  * can be also defined as explained above.
  *
  * For library documentation:
- * - @see http://www.easyautocomplete.com/
+ * - @see https://tom-select.js.org/
  *
- * For our in-house Select2-based approach:
- * - @see 'app/javascript/controllers/lookup_controller.js' (both in Main & Admin2)
+ * For our in-house TomSelect-based approach:
+ * - @see 'app/javascript/controllers/lookup_controller.js' (Admin2)
  *
  * == Targets ==
  * @param {String} 'data-autocomplete-target': 'field'
@@ -188,41 +184,33 @@ export default class extends Controller {
    * (Called whenever the controller instance connects to the DOM)
    */
   connect () {
-    // DEBUG
-    // console.log('Connecting autocomplete_controller...')
-
     if (this.hasFieldTarget && this.hasSearchTarget) {
-      // DEBUG
-      // console.log('autocomplete_controller: targets found.')
-
       if (this.hasPayloadValue) {
-        // DEBUG
-        // console.log('autocomplete_controller => widgetSetupWithInlineData()')
         this.widgetSetupWithInlineData()
       } else if (this.hasBaseApiUrlValue && this.hasJwtValue) {
         this.widgetSetupWithRemoteData()
       }
 
-      $(`#${this.fieldTarget.id}`).on('change', (_eventObject) => {
-        if (($(`#${this.fieldTarget.id}`).val() || '').toString().trim().length === 0) {
+      this.fieldTarget.addEventListener('change', (_e) => {
+        if ((this.fieldTarget.value || '').toString().trim().length === 0) {
           this.clearLinkedBindingTargetsExceptMain()
           return
         }
         this.processUpdate()
       })
 
-      $(this.searchTarget).on('input', (_eventObject) => {
+      this.searchTarget.addEventListener('input', (_e) => {
         if ((this.searchTarget.value || '').trim().length === 0) {
           this.clearBindingTargetsOnSearchEmpty()
         }
       })
+    }
+  }
 
-      // *** NOTE: ***
-      // Uncommenting the processUpdate() below will overwrite any default data that has been
-      // set into the form using the default values!
-      // If this is indeed a needed feature, add an another option flag to the setup
-
-      // this.processUpdate() // Use any available default data in the main target & update each linked field
+  disconnect () {
+    if (this._tomSelect) {
+      this._tomSelect.destroy()
+      this._tomSelect = null
     }
   }
   // ---------------------------------------------------------------------------
@@ -232,32 +220,22 @@ export default class extends Controller {
   }
 
   clearTargetByDomIdIfBinding (domId, columnName) {
-    if (!domId || !this.isBindingColumnName(columnName)) {
-      return
-    }
-
-    const selector = `#${domId}`
-    if ($(selector).length > 0) {
-      $(selector).val('')
-      $(selector).trigger('change')
-    }
+    if (!domId || !this.isBindingColumnName(columnName)) return
+    const el = document.querySelector(`#${domId}`)
+    if (el) { el.value = ''; el.dispatchEvent(new Event('change')) }
   }
 
   clearLinkedBindingTargetsExceptMain () {
-    if (this.hasDescTarget) {
-      $(this.descTarget).html('')
-    }
+    if (this.hasDescTarget) this.descTarget.innerHTML = ''
 
     if (this.hasField2Target && this.isBindingColumnName(this.target2ColumnValue)) {
-      $(this.field2Target).val('')
-      $(this.field2Target).trigger('change')
+      this.field2Target.value = ''
+      this.field2Target.dispatchEvent(new Event('change'))
     }
-
     if (this.hasField3Target && this.isBindingColumnName(this.target3ColumnValue)) {
-      $(this.field3Target).val('')
-      $(this.field3Target).trigger('change')
+      this.field3Target.value = ''
+      this.field3Target.dispatchEvent(new Event('change'))
     }
-
     this.clearTargetByDomIdIfBinding(this.target3DomIdValue, this.target3ColumnValue)
     this.clearTargetByDomIdIfBinding(this.target4DomIdValue, this.target4ColumnValue)
     this.clearTargetByDomIdIfBinding(this.target5DomIdValue, this.target5ColumnValue)
@@ -271,12 +249,10 @@ export default class extends Controller {
   }
 
   clearBindingTargetsOnSearchEmpty () {
-    // Main bound ID field (always an *_id target for this component)
     if (this.hasFieldTarget) {
-      $(this.fieldTarget).val('')
-      $(this.fieldTarget).trigger('change')
+      this.fieldTarget.value = ''
+      this.fieldTarget.dispatchEvent(new Event('change'))
     }
-
     this.clearLinkedBindingTargetsExceptMain()
   }
   // ---------------------------------------------------------------------------
@@ -288,31 +264,16 @@ export default class extends Controller {
    * Field details => search + desc update
    */
   processUpdate() {
-    const fieldTargetDomId = `#${this.fieldTarget.id}`,
-          searchTargetDomId = `#${this.searchTarget.id}`
-
-    // Skip updates when no API detail endpoint or static payload are set:
+    const targetValue = this.fieldTarget.value
     if (this.hasDetailEndpointValue) {
-      this.fetchAndUpdateDetails(this.detailEndpointValue, $(fieldTargetDomId).val())
-    }
-    else if (this.hasPayloadValue) {
-      // DEBUG
-      // console.log('onchange(), with payload', payLoad)
-      var targetValue = $(fieldTargetDomId).val()
-      var row = this.payloadValue.find(element => element['id'] == targetValue)
-      // (The hard-coded 'id' above is because that's a constant column for all data sources)
-
-      // Manually update for the searchTarget if the ID (fieldTarget) is manually changed:
+      this.fetchAndUpdateDetails(this.detailEndpointValue, targetValue)
+    } else if (this.hasPayloadValue) {
+      const row = this.payloadValue.find(element => element['id'] == targetValue)
       if (row) {
-        // Update description below search target & reset search box when done
         this.updateFieldAndDesc(row)
-        $(searchTargetDomId).val('') // clear the search box
+        this.searchTarget.value = ''
       }
     }
-    // DEBUG
-    // else {
-    //   console.log('widgetSetup(): no detailEndpointValue or payloadValue')
-    // }
   }
   // ---------------------------------------------------------------------------
 
@@ -343,77 +304,40 @@ export default class extends Controller {
    *
    * @param {Object} entityRow the object storing the row details
    */
+  setDomValue (domId, value) {
+    const el = document.querySelector(`#${domId}`)
+    if (el) { el.value = value; el.dispatchEvent(new Event('change')) }
+  }
+
   updateFieldAndDesc (entityRow) {
-    // DEBUG
-    // console.log('updateFieldAndDesc(): entityRow:', entityRow)
     if (this.hasFieldTarget && entityRow) {
       const descValue = this.computeLabelDescription(this, entityRow)
-      // DEBUG
-      // console.log(`computed description = "${descValue}"`)
-      $(this.fieldTarget).val(entityRow.id)
+      this.fieldTarget.value = entityRow.id
       if (this.hasDescTarget) {
-        $(this.descTarget).html(`<b>${entityRow[this.searchColumnValue || 'name']}</b> - ${descValue}`)
+        this.descTarget.innerHTML = `<b>${entityRow[this.searchColumnValue || 'name']}</b> - ${descValue}`
       }
-      // Overwrite also the optional secondary filtering field (when set) with the new details:
       if (this.hasSearch2ColumnValue && this.hasSearch2DomIdValue) {
-        $(`#${this.search2DomIdValue}`).val(entityRow[this.search2ColumnValue])
+        this.setDomValue(this.search2DomIdValue, entityRow[this.search2ColumnValue])
       }
-
-      if (this.hasField2Target) {
-        $(this.field2Target).val(entityRow[this.target2ColumnValue])
+      if (this.hasField2Target) this.field2Target.value = entityRow[this.target2ColumnValue]
+      if (this.hasField3Target) this.field3Target.value = entityRow[this.target3ColumnValue]
+      if (this.hasTarget3DomIdValue && this.target3DomIdValue.length > 0) {
+        this.setDomValue(this.target3DomIdValue, entityRow[this.target3ColumnValue])
       }
-      if (this.hasField3Target) {
-        $(this.field3Target).val(entityRow[this.target3ColumnValue])
-      }
-      // Target3 alternative binding using just its DOM ID, when provided:
-      if (this.hasTarget3DomIdValue && (this.target3DomIdValue.length > 0)) {
-        // DEBUG
-        // console.log('updateFieldAndDesc: external target3 found.')
-        $(`#${this.target3DomIdValue}`).val(entityRow[this.target3ColumnValue])
-        $(`#${this.target3DomIdValue}`).trigger('change')
-      }
-      // "External" targets:
-      if (this.hasTarget4DomIdValue && (this.target4DomIdValue.length > 0) && this.hasTarget4ColumnValue) {
-        // DEBUG
-        // console.log('updateFieldAndDesc: external target4 found.')
-        $(`#${this.target4DomIdValue}`).val(entityRow[this.target4ColumnValue])
-        $(`#${this.target4DomIdValue}`).trigger('change')
-      }
-      if (this.hasTarget5DomIdValue && (this.target5DomIdValue.length > 0) && this.hasTarget5ColumnValue) {
-        $(`#${this.target5DomIdValue}`).val(entityRow[this.target5ColumnValue])
-        $(`#${this.target5DomIdValue}`).trigger('change')
-      }
-      if (this.hasTarget6DomIdValue && (this.target6DomIdValue.length > 0) && this.hasTarget6ColumnValue) {
-        $(`#${this.target6DomIdValue}`).val(entityRow[this.target6ColumnValue])
-        $(`#${this.target6DomIdValue}`).trigger('change')
-      }
-      if (this.hasTarget7DomIdValue && (this.target7DomIdValue.length > 0) && this.hasTarget7ColumnValue) {
-        $(`#${this.target7DomIdValue}`).val(entityRow[this.target7ColumnValue])
-        $(`#${this.target7DomIdValue}`).trigger('change')
-      }
-      if (this.hasTarget8DomIdValue && (this.target8DomIdValue.length > 0) && this.hasTarget8ColumnValue) {
-        $(`#${this.target8DomIdValue}`).val(entityRow[this.target8ColumnValue])
-        $(`#${this.target8DomIdValue}`).trigger('change')
-      }
-      if (this.hasTarget9DomIdValue && (this.target9DomIdValue.length > 0) && this.hasTarget9ColumnValue) {
-        $(`#${this.target9DomIdValue}`).val(entityRow[this.target9ColumnValue])
-        $(`#${this.target9DomIdValue}`).trigger('change')
-      }
-      if (this.hasTarget10DomIdValue && (this.target10DomIdValue.length > 0) && this.hasTarget10ColumnValue) {
-        $(`#${this.target10DomIdValue}`).val(entityRow[this.target10ColumnValue])
-        $(`#${this.target10DomIdValue}`).trigger('change')
-      }
-      if (this.hasTarget11DomIdValue && (this.target11DomIdValue.length > 0) && this.hasTarget11ColumnValue) {
-        $(`#${this.target11DomIdValue}`).val(entityRow[this.target11ColumnValue])
-        $(`#${this.target11DomIdValue}`).trigger('change')
-      }
-      if (this.hasTarget12DomIdValue && (this.target12DomIdValue.length > 0) && this.hasTarget12ColumnValue) {
-        $(`#${this.target12DomIdValue}`).val(entityRow[this.target12ColumnValue])
-        $(`#${this.target12DomIdValue}`).trigger('change')
-      }
-    } else {
-      // DEBUG
-      // console.log('updateFieldAndDesc: no main fieldTarget found or result entityRow null.')
+      const extTargets = [
+        [this.target4DomIdValue, this.target4ColumnValue],
+        [this.target5DomIdValue, this.target5ColumnValue],
+        [this.target6DomIdValue, this.target6ColumnValue],
+        [this.target7DomIdValue, this.target7ColumnValue],
+        [this.target8DomIdValue, this.target8ColumnValue],
+        [this.target9DomIdValue, this.target9ColumnValue],
+        [this.target10DomIdValue, this.target10ColumnValue],
+        [this.target11DomIdValue, this.target11ColumnValue],
+        [this.target12DomIdValue, this.target12ColumnValue]
+      ]
+      extTargets.forEach(([domId, col]) => {
+        if (domId && domId.length > 0 && col) this.setDomValue(domId, entityRow[col])
+      })
     }
   }
 
@@ -425,160 +349,113 @@ export default class extends Controller {
    * @returns the 'fetch' Promise that resolves to the an object mapping all entity row details
    */
   fetchAndUpdateDetails (detailEndpointName, entityId) {
-    // DEBUG
-    // console.log(`fetchAndUpdateDetails(${detailEndpointName}, ${entityId})`)
-
     if (this.hasBaseApiUrlValue && this.hasJwtValue && entityId) {
-      $.ajax({
+      fetch(`${this.baseApiUrlValue}/${detailEndpointName}/${entityId}`, {
         method: 'GET',
-        dataType: 'json',
-        crossDomain: true, // Allow CORS
-        xhrFields: {
-          withCredentials: true
-        },
-        headers: { Authorization: `Bearer ${this.jwtValue}` },
-        url: `${this.baseApiUrlValue}/${detailEndpointName}/${entityId}`,
-        error: (_xhr, _textStatus, errorThrown) => {
-          if (errorThrown === 'Unauthorized') {
-            // Force user sign-in & local JWT refresh on JWT expiration:
-            document.location.reload()
-          } else if (errorThrown !== 'abort') {
-            console.error(errorThrown)
-          }
-        },
-        success: (entityRow, _xhr, _textStatus) => {
-          // DEBUG
-          // console.log(entityRow);
-          this.updateFieldAndDesc(entityRow)
-        }
+        headers: { Authorization: `Bearer ${this.jwtValue}`, 'Content-Type': 'application/json' },
+        credentials: 'same-origin'
       })
+        .then(r => {
+          if (!r.ok) { if (r.status === 401) { document.location.reload() } return null }
+          return r.json()
+        })
+        .then(entityRow => { if (entityRow) this.updateFieldAndDesc(entityRow) })
+        .catch(err => console.error(err))
     }
-    // DEBUG
-    // else {
-    //   console.warn('fetchAndUpdateDetails: missing baseApiUrlValue or jwtValue or entityId')
-    // }
   }
   // ---------------------------------------------------------------------------
 
   /**
-   * Sets up the autocomplete widget for inline data domain search.
+   * Sets up the TomSelect widget for inline data domain search.
    */
   widgetSetupWithInlineData () {
-    // DEBUG
-    // console.log('autocomplete: widgetSetupWithInlineData()')
-    const computeDesc = this.computeLabelDescription
-    const searchTargetDomId = `#${this.searchTarget.id}`
-    const searchColumn = this.searchColumnValue
-    // DEBUG
-    // console.log("searchTargetDomId:", searchTargetDomId)
-    // console.log("searchColumn:", searchColumn)
+    const searchColumn = this.searchColumnValue || 'name'
+    const items = this.payloadValue.map(row => ({
+      value: String(row.id),
+      text: row[searchColumn] || String(row.id),
+      _row: row
+    }))
 
-    $(searchTargetDomId).easyAutocomplete({
-      data: this.payloadValue,
-      getValue: searchColumn || 'name',
-      template: {
-        type: 'custom',
-        method: (value, entityRow) => {
-          const descValue = computeDesc(this, entityRow)
-          return `${value} - <small class="text-muted">${descValue}</small>`
+    this._tomSelect = new TomSelect(this.searchTarget, {
+      options: items,
+      valueField: 'value',
+      labelField: 'text',
+      searchField: ['text'],
+      maxItems: 1,
+      create: false,
+      render: {
+        option: (data, escape) => {
+          const row = data._row || {}
+          const descValue = this.computeLabelDescription(this, row)
+          return `<div class="option">${escape(data.text)} - <small class="text-muted">${escape(descValue)}</small></div>`
         }
       },
-      list: {
-        match: { enabled: true },
-        maxNumberOfElements: 8,
-        onSelectItemEvent: () => {
-          // DEBUG
-          // console.log("onSelectItemEvent: activeElement ID:", document.activeElement.id)
-          // DEBUG
-          // console.log("onSelectItemEvent: searchTargetDomId:", searchTargetDomId)
-          this.updateFieldAndDesc($(searchTargetDomId).getSelectedItemData())
-          $(searchTargetDomId).val('') // Reset search box when done
-        },
-        onHideListEvent: () => {
-          // (no-op)
+      onItemAdd: (value) => {
+        const opt = this._tomSelect.options[value]
+        if (opt && opt._row) {
+          this.updateFieldAndDesc(opt._row)
+          this._tomSelect.clear(true)
+          this._tomSelect.setTextboxValue('')
         }
-      },
-      theme: 'round'
+      }
     })
   }
   // ---------------------------------------------------------------------------
 
   /**
-   * Sets up the autocomplete widget for dynamic data retrieval using the set JWT value.
+   * Sets up the TomSelect widget for remote API data retrieval.
    */
   widgetSetupWithRemoteData () {
-    // DEBUG
-    // console.log('autocomplete: widgetSetupWithRemoteData()')
     const jwt = this.jwtValue
-    const computeDesc = this.computeLabelDescription
-    const searchTargetDomId = `#${this.searchTarget.id}`
-    const searchColumnValue = this.searchColumnValue
-    // DEBUG
-    // console.log("searchTargetDomId:", searchTargetDomId)
+    const searchColumnValue = this.searchColumnValue || 'name'
 
-    $(searchTargetDomId).easyAutocomplete({
-      url: (queryText) => {
-        const baseQueryURI = `${this.baseApiUrlValue}/${this.searchEndpointValue}?${this.searchColumnValue}=${queryText}`
-        const search2DomID = `#${this.search2DomIdValue}`
-        // Fetch using a secondary filtering query (if present):
-        if (this.hasSearch2ColumnValue && this.hasSearch2DomIdValue && $(search2DomID).val().length > 0) {
-          return `${baseQueryURI}&${this.search2ColumnValue}=${$(search2DomID).val()}`
+    this._tomSelect = new TomSelect(this.searchTarget, {
+      valueField: 'value',
+      labelField: 'text',
+      searchField: ['text'],
+      maxItems: 1,
+      create: false,
+      load: (query, callback) => {
+        if (!query || query.length < 2) return callback()
+        const search2El = this.hasSearch2DomIdValue ? document.querySelector(`#${this.search2DomIdValue}`) : null
+        let url = `${this.baseApiUrlValue}/${this.searchEndpointValue}?${searchColumnValue}=${encodeURIComponent(query)}`
+        if (this.hasSearch2ColumnValue && search2El && search2El.value.length > 0) {
+          url += `&${this.search2ColumnValue}=${encodeURIComponent(search2El.value)}`
         }
-        return baseQueryURI
+        fetch(url, {
+          method: 'GET',
+          headers: { Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' },
+          credentials: 'same-origin'
+        })
+          .then(r => {
+            if (!r.ok) { if (r.status === 401) document.location.reload(); return [] }
+            return r.json()
+          })
+          .then(data => {
+            const rows = Array.isArray(data) ? data : (data.results || [])
+            callback(rows.map(row => ({
+              value: String(row.id),
+              text: row[searchColumnValue] || String(row.id),
+              _row: row
+            })))
+          })
+          .catch(err => { console.error(err); callback() })
       },
-      ajaxSettings: {
-        dataType: 'json',
-        method: 'GET',
-        delay: 250,
-        crossDomain: true, // Allow CORS
-        xhrFields: {
-          withCredentials: true
-        },
-        headers: { Authorization: `Bearer ${jwt}` },
-        // Handle JWT expiration:
-        error: (_xhr, _textStatus, errorThrown) => {
-          if (errorThrown === 'Unauthorized') {
-            // Force user sign-in & local JWT refresh on JWT expiration:
-            document.location.reload()
-          } else if (errorThrown !== 'abort') {
-            console.error(errorThrown)
-          }
-        }
-      },
-      getValue: searchColumnValue || 'name',
-      // (element) => {
-      //   // DEBUG
-      //   console.log("getValue(element)")
-      //   console.log("element => ", element[searchColumnValue || 'name'])
-      //   return element[searchColumnValue || 'name']
-      // },
-      template: {
-        type: 'custom',
-        method: (value, entityRow) => {
-          const descValue = computeDesc(this, entityRow)
-          return `${value} - <small class="text-muted">${descValue}</small>`
+      render: {
+        option: (data, escape) => {
+          const row = data._row || {}
+          const descValue = this.computeLabelDescription(this, row)
+          return `<div class="option">${escape(data.text)} - <small class="text-muted">${escape(descValue)}</small></div>`
         }
       },
-      list: {
-        match: { enabled: true },
-        maxNumberOfElements: 10,
-        // onLoadEvent: () => {
-        //   // DEBUG
-        //   // console.log("onLoadEvent", this)
-        // },
-        onSelectItemEvent: () => {
-          // DEBUG
-          // console.log("onSelectItemEvent: activeElement ID:", document.activeElement.id)
-          // DEBUG
-          // console.log("onSelectItemEvent: searchTargetDomId:", searchTargetDomId)
-          this.updateFieldAndDesc($(searchTargetDomId).getSelectedItemData())
-          $(searchTargetDomId).val('') // Reset search box when done
-        },
-        onHideListEvent: () => {
-          // (no-op)
+      onItemAdd: (value) => {
+        const opt = this._tomSelect.options[value]
+        if (opt && opt._row) {
+          this.updateFieldAndDesc(opt._row)
+          this._tomSelect.clear(true)
+          this._tomSelect.setTextboxValue('')
         }
-      },
-      theme: 'round'
+      }
     })
   }
   // ---------------------------------------------------------------------------

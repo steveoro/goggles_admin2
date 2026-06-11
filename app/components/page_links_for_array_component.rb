@@ -31,7 +31,7 @@ class PageLinksForArrayComponent < ViewComponent::Base
   #   param will overwrite the one passed in the URL.)
   #
   def initialize(data:, total_count:, page:, per_page:, param_name: nil, per_page_param: nil)
-    super
+    super()
     @data = data
     @total_count = total_count.to_i
     @page = page.to_i

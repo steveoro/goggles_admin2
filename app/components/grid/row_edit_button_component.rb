@@ -23,7 +23,7 @@ module Grid
     # - <tt>controller_name</tt>: Rails controller name for the <tt>:update</tt> action
     # - <tt>base_modal_id</tt>: base DOM ID used inside the associated modal dialog; defaults to "grid-edit".
     def initialize(asset_row:, controller_name:, base_modal_id: 'grid-edit')
-      super
+      super()
       @asset_row = asset_row
       @controller_name = controller_name
       @base_modal_id = base_modal_id || 'grid-edit'

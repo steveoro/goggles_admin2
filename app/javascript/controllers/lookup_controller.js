@@ -1,7 +1,5 @@
 import { Controller } from '@hotwired/stimulus'
-import $ from 'jquery'
-
-require('select2')
+import TomSelect from 'tom-select'
 
 /**
  * = StimulusJS generic Lookup controller =
@@ -17,7 +15,7 @@ require('select2')
  * 2. makes async calls to retrieve lookup data from API endpoints
  * 3. auto-renews JWT on API request 'unauthorized' response
  *
- * Base widget: @see https://select2.org/
+ * Base widget: @see https://tom-select.js.org/
  *
  *
  * == Targets ==
@@ -67,8 +65,8 @@ require('select2')
  *                 current_user.jwt (assumes 'current_user' is currently logged-in and valid)
  *
  * == Assumptions:
- * @assert the widget can use '.select2' CSS to customize width
- * @assert 'data-lookup-target' must be a parent node the actual '.select2' widget
+ * @assert the widget can use '.ts-wrapper' CSS to customize width
+ * @assert 'data-lookup-target' must be the actual select element tom-select attaches to
  *
  * == About the 2nd API call feature:
  * By enabling the second API call, the current row ID is used as key for retrieving all row details, including most associated entities,
@@ -98,32 +96,38 @@ export default class extends Controller {
   }
 
   /**
-   * Sets up the Select2 widget used for the lookup-combo box to which this
+   * Sets up the TomSelect widget used for the lookup-combo box to which this
    * controller instance connects.
    */
   connect () {
-    // DEBUG
-    // console.log('lookup_controller: connect')
     if (this.hasFieldTarget) {
-      // DEBUG
-      console.log('lookup_controller: target found.')
       this.refreshWidgetSetup()
     }
   }
 
   /**
-   * Sets up the Select2 widget either for dynamic data retrieval using the set JWT value
+   * Destroys the TomSelect instance on disconnect to avoid duplicate instances.
+   */
+  disconnect () {
+    if (this._tomSelect) {
+      this._tomSelect.destroy()
+      this._tomSelect = null
+    }
+  }
+
+  /**
+   * Sets up the TomSelect widget either for dynamic data retrieval using the set JWT value
    * or for static data handling otherwise.
    */
   refreshWidgetSetup () {
-    // DEBUG
-    console.log('refreshWidgetSetup()')
+    if (this._tomSelect) {
+      this._tomSelect.destroy()
+      this._tomSelect = null
+    }
     if (this.hasApiUrlValue && this.hasJwtValue) {
-      // DEBUG
-      console.log('refreshWidgetSetup(): JWT found.')
-      this.initSelect2Widget(this.fieldTarget, this.jwtValue)
+      this.initTomSelectWidget(this.fieldTarget, this.jwtValue)
     } else {
-      this.initSelect2Widget(this.fieldTarget, null)
+      this.initTomSelectWidget(this.fieldTarget, null)
     }
   }
 
@@ -154,60 +158,6 @@ export default class extends Controller {
       .catch(error => console.error('fetchEntityDetails error:', error))
   }
 
-  /**
-   * Returns the Select2 AJAX options for data retrieval for the lookup options
-   * if the apiUrlValue has been set up.
-   *
-   * @param {String} jwt a valid JWT
-   */
-  chooseSelect2AjaxOptions (jwt) {
-    let ajaxOptions = null
-    if (this.hasApiUrlValue) {
-      // DEBUG
-      // console.log('Preparing for AJAX...')
-      // console.log(this.apiUrlValue)
-
-      ajaxOptions = {
-        url: this.apiUrlValue,
-        dataType: 'json',
-        method: 'GET',
-        crossDomain: true, // Allow CORS
-        xhrFields: {
-          withCredentials: true
-        },
-        delay: 250,
-
-        // Compose payload:
-        data: (params) => this.prepareAPIPayload(params),
-
-        // Set authorization header:
-        beforeSend: (xhr) => {
-          try {
-            if (jwt == null) {
-              console.error('Null JWT before setting header!')
-            }
-          } catch {
-            console.error('Undefined JWT before setting header!')
-          }
-          xhr.setRequestHeader('Authorization', `Bearer ${jwt}`)
-        },
-
-        // Handle JWT expiration:
-        error: (_xhr, _textStatus, errorThrown) => {
-          if (errorThrown === 'Unauthorized') {
-            console.warn('Session expired, refreshing...')
-            this.refreshWidgetSetup()
-          } else if (errorThrown !== 'abort') {
-            console.error(errorThrown)
-          }
-        },
-
-        // Parse results into Select2 data format:
-        processResults: (data, params) => this.processAPIResults(data, params)
-      }
-    }
-    return ajaxOptions
-  }
   // ---------------------------------------------------------------------------
 
   /**
@@ -245,55 +195,32 @@ export default class extends Controller {
   // ---------------------------------------------------------------------------
 
   /**
-   * Parses the API result data into the Select2 widget data format.
-   * @param {Object} data resulting array of data objects
-   * @param {Object} params parameters used for the API query
+   * Parses the API result data into the TomSelect options format.
+   * @param {Array|Object} data resulting array of data objects from the API
+   * @returns {Array} array of { value, text, ...extra } objects for TomSelect
    */
-  processAPIResults (data, params) {
-    params.page = params.page || 1 // ('page': support for infinite scrolling)
-    // DEBUG
-    // console.log('results from API call:')
-    // console.log(data)
-
-    if (data.results) { // Already formatted in simplified select2 format? ('results' array)
-      return data
-    } else { // Prepare the bespoke select2 format:
-      return {
-        results: data.map((row) => {
-          // Recognize Swimmer from defined data attributes:
-          if (row.complete_name && row.year_of_birth) {
-            return this.setDataMembersForSwimmer(row)
-          }
-          // Recognize SwimmingPool:
-          if (row.pool_type_id && row.name) {
-            return this.setDataMembersForSwimmingPool(row)
-          }
-          // Recognize Meeting/Workshop:
-          if (row.code && row.description && row.header_date && row.header_year && row.edition) {
-            return this.setDataMembersForMeetings(row)
-          }
-          // Recognize City:
-          if ((row.region || row.area) && row.name) {
-            const area = row.region || row.area
-            return { id: row.id, text: row.name, area: area }
-          }
-
-          // Generic Lookup entity support by checking for long_label or label:
-          if (row.long_label) {
-            return { id: row.id, text: row.long_label }
-          }
-          if (row.label) {
-            return { id: row.id, text: row.label }
-          }
-
-          // Any other default case (just id, text):
-          return { id: row.id, text: row.text }
-        }),
-        pagination: {
-          more: (params.page * 30) < data.total_count
-        }
+  parseAPIResults (data) {
+    const rows = data.results || data
+    return rows.map((row) => {
+      if (row.complete_name && row.year_of_birth) {
+        const r = this.setDataMembersForSwimmer(row)
+        return { value: String(r.id), text: r.text, ...r }
       }
-    }
+      if (row.pool_type_id && row.name) {
+        const r = this.setDataMembersForSwimmingPool(row)
+        return { value: String(r.id), text: r.text, ...r }
+      }
+      if (row.code && row.description && row.header_date && row.header_year && row.edition) {
+        const r = this.setDataMembersForMeetings(row)
+        return { value: String(r.id), text: r.text, ...r }
+      }
+      if ((row.region || row.area) && row.name) {
+        return { value: String(row.id), text: row.name, area: row.region || row.area }
+      }
+      if (row.long_label) { return { value: String(row.id), text: row.long_label } }
+      if (row.label) { return { value: String(row.id), text: row.label } }
+      return { value: String(row.id), text: row.text || row.name || String(row.id) }
+    })
   }
   // ---------------------------------------------------------------------------
 
@@ -373,23 +300,20 @@ export default class extends Controller {
   // ---------------------------------------------------------------------------
 
   /**
-   * Returns a new Map extracted from the selection data of the specified Select2 widget.
-   * @param {Object} targetWidget the Select2 target widget
+   * Returns a new Map extracted from the current TomSelect selection.
+   * @param {TomSelect} ts the TomSelect instance
    */
-  prepareMapDataFromCurrentSelection (targetWidget) {
-    // DEBUG
-    // console.log('prepareMapDataFromCurrentSelection()')
-    // console.log("=> $(targetWidget).find(':selected').first().data()")
-    // console.log($(targetWidget).find(':selected').first().data())
-    // console.log("=> $(targetWidget).select2('data')")
-    // console.log($(targetWidget).select2('data'))
-
+  prepareMapDataFromCurrentSelection (ts) {
     const mapData = new Map()
-    mapData.set('id', $(targetWidget).find(':selected').first().val())
-    mapData.set('label', $(targetWidget).find(':selected').first().text())
-    if ($(targetWidget).find(':selected').first().data()) {
-      this.copyObjectToMap($(targetWidget).find(':selected').first().data(), mapData)
-    }
+    if (!ts || !ts.getValue()) return mapData
+    const selectedValue = ts.getValue()
+    const item = ts.options[selectedValue]
+    if (!item) return mapData
+    mapData.set('id', selectedValue)
+    mapData.set('label', item.text || '')
+    Object.entries(item).forEach(([k, v]) => {
+      if (k !== 'value' && k !== 'text') mapData.set(k, v)
+    })
     return mapData
   }
   // ---------------------------------------------------------------------------
@@ -564,37 +488,34 @@ export default class extends Controller {
   // ---------------------------------------------------------------------------
 
   /**
-   * Selects a specific key value among the available options.
-   * If the option is not available, it will be added programmatically.
+   * Selects a specific key value in a bound TomSelect widget.
+   * Adds the option if not already present.
    *
-   * @param {String} boundSelectBaseName  the DOM ID base name for all the widget bound to the current target
-   * @param {String} value the key value for the selection in the bound widget
-   * @param {String} label the label text for the selection in the bound widget;
-   *                       if not defined, the current data selection will be used instead (if available)
+   * @param {String} boundSelectBaseName  the DOM ID base name
+   * @param {String} value the key value
+   * @param {String} label the label text; if null, uses existing option text
    */
-  setOrCreateSelect2Option (boundSelectBaseName, value, label) {
-    const boundSelectID = `#${boundSelectBaseName}_select`
-    // Set the value, creating a new option if necessary:
-    if ($(boundSelectID).find("option[value='" + value + "']").length) {
-      $(boundSelectID).val(value).trigger('change')
-    } else if (label) { // Otherwise, create a new Option and pre-select it by default:
-      const newOption = new Option(label, value, true, true)
-      // Append it to the select
-      $(boundSelectID).append(newOption).trigger('change')
+  setOrCreateTomSelectOption (boundSelectBaseName, value, label) {
+    const boundSelectEl = document.querySelector(`#${boundSelectBaseName}_select`)
+    if (!boundSelectEl) return
+    const ts = boundSelectEl.tomselect
+    if (!ts) return
+
+    const strValue = String(value)
+    if (!ts.options[strValue] && label) {
+      ts.addOption({ value: strValue, text: label })
     }
+    ts.setValue(strValue, true)
 
     // Set also the related hidden fields:
-    $(`#${boundSelectBaseName}_id`).val(value)
-    if (label) {
-      $(`#${boundSelectBaseName}_label`).val(label)
-    } else if ($(boundSelectID).select2('data').length > 0) {
-      // Set the label from the Option if possible and the label parameter was not set:
-      $(`#${boundSelectBaseName}_label`).val(
-        $(boundSelectID).select2('data')[0].text
-      )
+    const idEl = document.querySelector(`#${boundSelectBaseName}_id`)
+    if (idEl) idEl.value = strValue
+    const labelEl = document.querySelector(`#${boundSelectBaseName}_label`)
+    if (labelEl) {
+      const resolvedLabel = label || (ts.options[strValue] && ts.options[strValue].text) || ''
+      labelEl.value = resolvedLabel
+      this.presenceLedUpdate(boundSelectBaseName, resolvedLabel.length > 0)
     }
-    // Update the correlated presence "status led":
-    this.presenceLedUpdate(boundSelectBaseName, $(`#${boundSelectBaseName}_label`).val().length > 0)
   }
 
   /**
@@ -619,13 +540,17 @@ export default class extends Controller {
     if (mapData.get('year_of_birth') && document.querySelector('#category_type_select')) {
       const age = (new Date().getFullYear() - mapData.get('year_of_birth'))
       const code = Math.floor(age / 5) * 5
-      // Find the ID value looking for the displayed code:
-      const valueId = $('#category_type_select').find(`option:contains('M${code}')`).first().val()
-      $('#category_type_select').val(valueId)
-      $('#category_type_select').trigger('change')
-      // Programmatically set also any related fields:
-      $('#category_type_id').val(valueId)
-      $('#category_type_label').val($('#category_type_select').select2('data')[0].text)
+      const catTs = document.querySelector('#category_type_select').tomselect
+      if (catTs) {
+        const matchingOpt = Object.values(catTs.options).find(o => o.text && o.text.includes(`M${code}`))
+        if (matchingOpt) {
+          catTs.setValue(String(matchingOpt.value), true)
+          const idEl = document.querySelector('#category_type_id')
+          if (idEl) idEl.value = matchingOpt.value
+          const lblEl = document.querySelector('#category_type_label')
+          if (lblEl) lblEl.value = matchingOpt.text
+        }
+      }
     }
     /*
      * Special case #2:
@@ -633,9 +558,9 @@ export default class extends Controller {
      * (selection dataset assumed to be already present)
      */
     if (mapData.get('gender_type_id') && document.querySelector('#gender_type_id')) {
-      const valueId = mapData.get('gender_type_id')
-      $('#gender_type_id').val(valueId)
-      $('#gender_type_id').trigger('change')
+      const genderEl = document.querySelector('#gender_type_id')
+      genderEl.value = mapData.get('gender_type_id')
+      genderEl.dispatchEvent(new Event('change'))
     }
 
     /*
@@ -643,13 +568,11 @@ export default class extends Controller {
      * (selection dataset will be created if missing)
      */
     if (mapData.get('city_id') && mapData.get('city') && document.querySelector('#city_select')) {
-      // DEBUG
-      // console.log('city details:')
-      // console.log(mapData.get('city'))
-      this.setOrCreateSelect2Option('city', mapData.get('city_id'), mapData.get('city').name)
-      // Programmatically set also any other related fields:
-      $('#city_country_code').val(mapData.get('city').country_code)
-      $('#city_area').val(mapData.get('city').area)
+      this.setOrCreateTomSelectOption('city', mapData.get('city_id'), mapData.get('city').name)
+      const ccEl = document.querySelector('#city_country_code')
+      if (ccEl) ccEl.value = mapData.get('city').country_code
+      const areaEl = document.querySelector('#city_area')
+      if (areaEl) areaEl.value = mapData.get('city').area
     }
 
     /*
@@ -657,37 +580,25 @@ export default class extends Controller {
      * (selection dataset will be created if missing)
      */
     if (mapData.get('pool_type_id') && mapData.get('pool_type') && document.querySelector('#pool_type_select')) {
-      // DEBUG
-      console.log('pool type details:')
-      console.log(mapData.get('pool_type'))
       const valueId = mapData.get('pool_type_id')
-      $('#pool_type_id').val(valueId)
-      $('#pool_type_id').trigger('change')
+      const ptEl = document.querySelector('#pool_type_id')
+      if (ptEl) { ptEl.value = valueId; ptEl.dispatchEvent(new Event('change')) }
     }
   }
   // ---------------------------------------------------------------------------
 
   /**
-   * Tries to resolve the current selected row details with all its details by using the secondary API
-   * endpoint (with the fieldBaseNameValue as the single-row fetch endpoint).
-   *
-   * In any case, when mapData is defined the hidden fields are updated with the values of the
-   * defined attributes.
+   * Enriches mapData with full entity details from the secondary API endpoint and then
+   * updates all hidden fields.
    *
    * @param {String} jwt a valid JWT
    * @param {Object} mapData a Map including all attribute names for the current selection
    */
   async enrichMapDataWithDetails (jwt, mapData) {
-    // DEBUG
-    // console.log('enrichMapDataWithDetails')
     if (this.hasApiUrl2Value && this.hasFieldBaseNameValue && (mapData.get('id') > 0)) {
       return this.fetchEntityDetails(jwt, this.fieldBaseNameValue, mapData.get('id'))
         .then((json) => {
-          // Add or replace the display label into the JSON result:
           json.label = mapData.get('label')
-          // DEBUG
-          // console.log('enrichMapDataWithDetails result:')
-          // console.log(json)
           this.copyObjectToMap(json, mapData)
           this.setHiddenFieldsValue(this.hasFieldBaseNameValue ? this.fieldBaseNameValue : '', mapData)
         })
@@ -698,55 +609,78 @@ export default class extends Controller {
   // ---------------------------------------------------------------------------
 
   /**
-   * Resolves internally the JWT value and then initializes the specified Select2 widget.
-   * (This needs to be called each time the JWT expires or changes.)
+   * Initializes a TomSelect widget on the given target element.
+   * Replaces the former initSelect2Widget.
    *
-   * @param {Object} target the target widget for Select2 setup
-   * @param {String} jwt    a yet-to-be-resolved JWT for the current API sessions
+   * @param {HTMLElement} target  the <select> element
+   * @param {String|null} jwt     current API JWT, or null for static data
    */
-  initSelect2Widget (target, jwt) {
-    // DEBUG
-    console.log(`initSelect2Widget(): jwt = '${jwt}'`)
+  initTomSelectWidget (target, jwt) {
+    const self = this
     const currJWT = jwt
-    $(target).select2({
-      placeholder: this.placeholderValue,
-      minimumInputLength: 3,
-      width: 'style',
-      theme: 'bootstrap4',
-      tags: this.freeTextValue, // (the 'tags' option will enable free-text input)
-      ajax: this.chooseSelect2AjaxOptions(currJWT),
-      cache: true
-    })
+    const isRemote = this.hasApiUrlValue && currJWT
 
-    // Preset target hidden fields if there's a pre-selection already:
-    if ($(target).find(':selected').val()) {
-      // DEBUG
-      // console.log('select2 => :selected')
-      const mapData = this.prepareMapDataFromCurrentSelection(target)
+    const options = {
+      placeholder: this.placeholderValue || '',
+      create: this.freeTextValue,
+      maxItems: 1,
+      valueField: 'value',
+      labelField: 'text',
+      searchField: ['text'],
+      // Persist the selection even when the search term doesn't match the displayed text:
+      persist: false,
+      // Remote load callback (only when apiUrl is set):
+      load: isRemote ? (query, callback) => {
+        if (query.length < 3) return callback()
+        const params = new URLSearchParams(self.prepareAPIPayload({ term: query, page: 1 }))
+        fetch(`${self.apiUrlValue}?${params}`, {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${currJWT}`,
+            'Content-Type': 'application/json'
+          },
+          credentials: 'same-origin'
+        })
+          .then(r => r.json())
+          .then(data => callback(self.parseAPIResults(data)))
+          .catch(() => {
+            console.warn('Lookup API error; attempting JWT refresh...')
+            self.refreshWidgetSetup()
+            callback()
+          })
+      } : null,
+      onItemAdd: (value, item) => {
+        const ts = self._tomSelect
+        if (!ts) return
+        const opt = ts.options[value]
+        if (!opt) return
+        const mapData = new Map()
+        mapData.set('id', value)
+        mapData.set('label', opt.text || '')
+        Object.entries(opt).forEach(([k, v]) => {
+          if (k !== 'value' && k !== 'text') mapData.set(k, v)
+        })
+        self.enrichMapDataWithDetails(currJWT, mapData)
+      }
+    }
+
+    this._tomSelect = new TomSelect(target, options)
+
+    // Preset hidden fields if there is already a pre-selected value:
+    const preSelected = this._tomSelect.getValue()
+    if (preSelected) {
+      const mapData = this.prepareMapDataFromCurrentSelection(this._tomSelect)
       this.setHiddenFieldsValue(this.hasFieldBaseNameValue ? this.fieldBaseNameValue : '', mapData)
     }
-    // Update target hidden fields also when the drop-down menu is closing.
-    // Note: 'change' & 'select2:select' events) may not always be triggered due to AJAX delay,
-    // especially if the "free-text" tag option is set - in which case we need to consider
-    // as a valid selection any value that is written in the input box.
-    $(target).on('select2:closing', (_event) => {
-      // DEBUG
-      // console.log('select2 => select2:closing')
-      const mapData = this.prepareMapDataFromCurrentSelection(target)
-      this.setHiddenFieldsValue(this.hasFieldBaseNameValue ? this.fieldBaseNameValue : '', mapData)
-    })
+  }
+  // ---------------------------------------------------------------------------
 
-    // Update target hidden fields when the actual selection occurs:
-    // (To limit the total of API calls, this should be the only place where the secondary call occurs)
-    $(target).on('select2:select', (event) => {
-      // DEBUG
-      // console.log('select2 => select2:select')
-      // const mapData = this.prepareMapDataFromCurrentSelection(target)
-      const mapData = new Map()
-      mapData.set('label', event.params.data.text)
-      this.copyObjectToMap(event.params.data, mapData)
-      this.enrichMapDataWithDetails(currJWT, mapData)
-    })
+  /**
+   * Also update the select2-style reference for bound sub-widgets.
+   * Kept as a facade over setOrCreateTomSelectOption for backward compat.
+   */
+  setOrCreateSelect2Option (boundSelectBaseName, value, label) {
+    this.setOrCreateTomSelectOption(boundSelectBaseName, value, label)
   }
   // ---------------------------------------------------------------------------
 }

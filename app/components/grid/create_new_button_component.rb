@@ -28,7 +28,7 @@ module Grid
     # - <tt>btn_label</tt>: additional label for the button; default: nil
     #
     def initialize(asset_row:, controller_name:, base_modal_id: 'grid-edit', btn_label: nil)
-      super
+      super()
       @asset_row = asset_row
       @controller_name = controller_name
       @base_modal_id = base_modal_id

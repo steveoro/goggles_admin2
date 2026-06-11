@@ -44,7 +44,7 @@ module Grid
     #   Display method invoked on the row while asking confirmation
     #   (default: 'id')
     def initialize(options = { edit: true, clone: false, destroy: true, expand: false, label_method: 'id' })
-      super
+      super()
       @asset_row = options[:asset_row]
       @controller_name = options[:controller_name]
       @base_modal_id = options[:edit] if options[:edit].is_a?(String)

@@ -22,7 +22,7 @@ module Grid
     #  (*required*)
     #
     def initialize(filter_params:)
-      super
+      super()
       @filter_params = filter_params
     end
 

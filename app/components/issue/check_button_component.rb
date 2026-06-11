@@ -22,7 +22,7 @@ module Issue
     #  (*required*)
     #
     def initialize(asset_row:)
-      super
+      super()
       @asset_row = asset_row
     end
 

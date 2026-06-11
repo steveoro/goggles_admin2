@@ -22,7 +22,7 @@ module Grid
     # - <tt>asset_row</tt>: valid ActiveRecord Model instance to which this button component will be linked to
     # - <tt>controller_name</tt>: Rails controller name for the <tt>:expand</tt> action
     def initialize(asset_row:, controller_name:)
-      super
+      super()
       @asset_row = asset_row
       @controller_name = controller_name
     end

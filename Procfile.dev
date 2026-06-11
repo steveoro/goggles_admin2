@@ -1,0 +1,2 @@
+web: env -u DATABASE_URL RAILS_ENV=development bin/rails server -p 3001
+css: RAILS_ENV=development bin/rails dartsass:watch

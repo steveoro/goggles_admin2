@@ -17,7 +17,7 @@ class FlashAlertComponent < ViewComponent::Base
   # - body: the actual text body of the message
   # - sticky: when true adds a CSS marker to skip JS auto-hide
   def initialize(symbol:, body:, title: nil, sticky: false)
-    super
+    super()
     @symbol = symbol
     @title = title
     @body = body

@@ -21,7 +21,7 @@ module ComboBox
     # - base_name: 'team' => base name for the form fields (team_id, team_label)
     #
     def initialize(default_row: nil, free_text: false, required: false, base_name: 'team')
-      super
+      super()
       # Define component attributes based on initialization parameters
       @api_url     = 'teams' # Relative API path (base is assumed '/api/v3')
       @label       = I18n.t('best_results.list.team')

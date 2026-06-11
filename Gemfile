@@ -3,36 +3,44 @@
 source 'https://rubygems.org'
 git_source(:github) { |repo| "https://github.com/#{repo}.git" }
 
-ruby '3.4.7'
+ruby '>= 3.4.7'
 
-# Bundle edge Rails instead: gem 'rails', github: 'rails/rails'
-# [20210128] ActiveRecord 6.1 introduces too many changes for the current version
-gem 'rails', '>= 6.1.7', '< 7' # Restore original range
-# gem 'rails', '~> 6.1.7.8' # Pinning to 6.1.7.8 for testing (didn't downgrade)
-# gem 'rails', '6.1.7.8' # Force exact version 6.1.7.8 (commented out)
-gem 'rails-i18n', '~> 6'
-# Use mysql as the database for Active Record
-gem 'mysql2', '>= 0.4.4'
+gem 'csv'     # removed from Ruby 3.4 stdlib
+gem 'mysql2'  # main DB
+gem 'rails', '>= 8.1', '< 9'
+gem 'rails-i18n', '~> 8'
+gem 'sqlite3' # for SolidQueue, SolidCache and SolidCable
+
 # Use Puma as the app server
-gem 'puma', '>= 5.3.1'
-# Use SCSS for stylesheets
-gem 'sass-rails', '>= 6'
-# Transpile app-like JavaScript. Read more: https://github.com/rails/webpacker
-gem 'webpacker'
+gem 'puma'
+# Use JavaScript with ESM import maps
+gem 'importmap-rails'
+# Hotwire's SPA-like page accelerator
+gem 'dartsass-rails'
+gem 'propshaft'
+gem 'turbo-rails'
 
-# Build JSON APIs with ease. Read more: https://github.com/rails/jbuilder
-# gem 'jbuilder', '~> 2.7'
 # Use Redis adapter to run Action Cable in production
 # gem 'redis', '~> 4.0'
 # Use Active Model has_secure_password
 # gem 'bcrypt', '~> 3.1.7'
+# Use Active Storage variant
+# gem 'image_processing', '~> 1.2'
+
+# OLD:
+# gem 'rails', '>= 6.1.7', '< 7' # Restore original range
+# gem 'rails-i18n', '~> 6'
+# gem 'mysql2', '>= 0.4.4'
+# gem 'puma', '>= 5.3.1'
+# gem 'sass-rails', '>= 6'
+# gem 'webpacker'
 
 # Use Active Storage variant
 # gem 'image_processing', '~> 1.2'
 
 gem 'activerecord-session_store'
 # Reduces boot times through caching; required in config/boot.rb
-gem 'bootsnap', '>= 1.4.2', require: false
+gem 'bootsnap', require: false
 gem 'browser' # detect request.variant type depending on request.user_agent
 gem 'datagrid'
 gem 'devise'
@@ -45,14 +53,13 @@ gem 'font-awesome-rails'
 gem 'goggles_db', git: 'https://github.com/steveoro/goggles_db'
 gem 'haml-rails'
 gem 'kaminari'
-gem 'kiba'
 gem 'nokogiri' # (used explicitly in view specs)
-# [Steve A.] CORS support shouldn't be needed here for the moment, so keep this commented out:
-# Use Rack CORS for handling Cross-Origin Resource Sharing (CORS), making cross-origin AJAX possible
-# gem 'rack-cors'
 gem 'rest-client'
 gem 'scenic'
 gem 'scenic-mysql_adapter'
+gem 'solid_cable'
+gem 'solid_cache'
+gem 'solid_queue'
 gem 'stimulus-rails'
 gem 'terminal'
 gem 'view_component'
@@ -76,10 +83,10 @@ group :development do
   gem 'guard-rspec'
   gem 'guard-rubocop'
   gem 'guard-shell'
-  gem 'guard-spring'
+  # gem 'guard-spring' # REMOVED: Spring no longer needed with Rails 8.1 + bootsnap
   gem 'haml_lint', require: false
   gem 'inch', require: false # grades source documentation
-  gem 'listen', '>= 3.2'
+  gem 'listen'
   gem 'rubocop'
   gem 'rubocop-capybara'
   gem 'rubocop-factory_bot', require: false
@@ -88,12 +95,8 @@ group :development do
   gem 'rubocop-rake'
   gem 'rubocop-rspec'
   gem 'rubocop-rspec_rails'
-  gem 'spring'
-  gem 'spring-commands-rspec'
-  gem 'spring-commands-rubocop'
-  gem 'spring-watcher-listen'
   # Access an interactive console on exception pages or by calling 'console' anywhere in the code.
-  gem 'web-console', '>= 3.3.0'
+  gem 'web-console'
 end
 
 group :development, :test do
@@ -110,7 +113,7 @@ end
 
 group :test do
   # Adds support for Capybara system testing and selenium driver
-  gem 'capybara', '>= 2.15'
+  gem 'capybara'
   # For CodeClimate: use the stand-alone 'cc-test-reporter' from the command line.
   gem 'codecov', require: false
   gem 'coveralls', require: false
@@ -121,8 +124,8 @@ group :test do
   # Example:
   #          expect { get :index }.to perform_constant_number_of_queries"
   gem 'rspec_junit_formatter' # required by new Semaphore test reports
-  gem 'selenium-webdriver', '>= 4.11'
-  gem 'simplecov', '= 0.13.0', require: false
+  gem 'selenium-webdriver'
+  gem 'simplecov', require: false
   gem 'webmock'
 end
 

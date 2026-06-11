@@ -19,7 +19,7 @@ module Icon
     # == Params
     # - value: a Boolean +true+/+false+ for the check mark (default: +false+)
     def initialize(value:)
-      super
+      super()
       @value = value
     end
 

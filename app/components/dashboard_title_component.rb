@@ -12,7 +12,7 @@ class DashboardTitleComponent < ViewComponent::Base
   # - title: text title
   # - row_count: value of the row counter to display
   def initialize(title:, row_count:)
-    super
+    super()
     @title = title
     @row_count = row_count
   end

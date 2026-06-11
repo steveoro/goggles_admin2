@@ -30,7 +30,7 @@ module Grid
     #   the range of accepted values.
     #
     def initialize(asset_row:, controller_name:, column_name:, value_range:)
-      super
+      super()
       @asset_row = asset_row
       @controller_name = controller_name
       @column_name = column_name

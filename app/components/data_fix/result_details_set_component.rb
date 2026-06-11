@@ -25,7 +25,7 @@ module DataFix
   #
   class ResultDetailsSetComponent < ViewComponent::Base
     def initialize(res_rows:, res_laps:)
-      super
+      super()
       @res_rows = res_rows
       @res_laps = res_laps
     end

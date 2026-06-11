@@ -1,6 +1,6 @@
 import consumer from "./node_consumer"
 
-$(document).on('turbolinks:load', () => {
+document.addEventListener('turbo:load', () => {
   // Subscribe to the channels only when the page is loaded &
   // the URL matches the crawler server controller:
   if (document.location.href.includes('/pull')) {

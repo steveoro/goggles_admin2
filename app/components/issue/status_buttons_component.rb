@@ -28,7 +28,7 @@ module Issue
     #  (*required*)
     #
     def initialize(asset_id:, asset_status:)
-      super
+      super()
       @asset_id = asset_id
       @asset_status = asset_status
     end

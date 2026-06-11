@@ -45,7 +45,7 @@ module Grid
     # - <tt>:csv</tt>:
     #   <tt>true</tt> to show the CSV export button (default: true)
     def initialize(options = { select: true, filter: true, create: true, destroy: true, csv: true })
-      super
+      super()
       @asset_row = options[:asset_row]
       @controller_name = options[:controller_name]
       @request_params = options[:request_params]

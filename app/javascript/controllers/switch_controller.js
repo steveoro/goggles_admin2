@@ -1,5 +1,5 @@
 import { Controller } from '@hotwired/stimulus'
-import $ from 'jquery'
+
 
 /**
  * = Switch::XorComponent StimulusJS controller =
