@@ -1,0 +1,13 @@
+<%# Replaces the flash messages and the whole file-list section (which also %>
+<%# wipes any open modal, since #file-modal lives inside #file-list). %>
+<%= turbo_stream.update "flash-messages-container" do %>
+  <%= render partial: "goggles/flash_messages" %>
+<% end %>
+
+<%= turbo_stream.update "file-list" do %>
+  <%= render(
+        partial: "file_list/file_table",
+        locals: { dirnames: @dirnames, curr_dir: @curr_dir, files: @files,
+                  parent_folder: @parent_folder, filter: @filter }
+      ) %>
+<% end %>

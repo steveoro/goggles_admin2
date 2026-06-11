@@ -23,7 +23,7 @@
             .col-12.mt-2.mb-3.text-right
               = submit_tag(t('dashboard.settings.connection.save_btn'), id: 'btn-save-config',
                            class: 'btn btn-sm btn-outline-danger', 'aria-label' => 'Save', type: 'submit',
-                           data: { confirm: t('dashboard.settings.connection.save_confirmation') })
+                           data: { turbo_confirm: t('dashboard.settings.connection.save_confirmation') })
 
     %section.my-4#data-grid
       = render(Grid::ToolbarComponent.new(asset_row: Setting.new, filter: true, create: false,

@@ -32,7 +32,7 @@ class PdfController < ApplicationController
   # detect which format family is best applicable.
   #
   def scan # rubocop:disable Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
-    unless request.xhr? && request.put? && @file_path.present?
+    unless request.format.turbo_stream? && request.put? && @file_path.present?
       flash[:warning] = I18n.t('search_view.errors.invalid_request')
       redirect_to(root_path) && return
     end
@@ -89,7 +89,7 @@ class PdfController < ApplicationController
   # [XHR PUT] Retrieves the log contents specified in params[:file_path].
   #
   def log_contents
-    unless request.xhr? && request.put? && @file_path.present?
+    unless request.format.turbo_stream? && request.put? && @file_path.present?
       flash[:warning] = I18n.t('search_view.errors.invalid_request')
       redirect_to(root_path) && return
     end

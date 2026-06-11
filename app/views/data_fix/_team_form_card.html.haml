@@ -157,7 +157,7 @@
                 .form-group.mt-3.d-flex.align-items-center
                   = submit_tag(t('data_import.generic_save_btn'),
                                class: 'btn btn-primary', 'aria-label': 'Save',
-                               data: { confirm: t('data_import.btn_save_confirm') })
+                               data: { turbo_confirm: t('data_import.btn_save_confirm') })
                   - match_pct = team_hash.dig('match_percentage').to_f
                   - if has_match && match_pct < 100.0
                     %button.btn.btn-outline-info.btn-sm.ml-2.verify-team-btn{ type: 'button', title: 'Cross-validate team via swimmer badges from Phase 3', onclick: 'event.preventDefault();', data: { file_path: file_path, team_key: team_key, candidate_team_id: team_id, target: "#team-verify-#{team_index}" } }

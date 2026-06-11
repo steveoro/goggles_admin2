@@ -37,7 +37,7 @@ class FileListController < ApplicationController
                      .map { |name| name.to_s.split('crawler/').last }
                      .sort
 
-    if request.xhr? && request.put? && file_params[:curr_dir].present?
+    if request.put? && request.format.turbo_stream? && file_params[:curr_dir].present?
       @curr_dir = file_params[:curr_dir]
       @files = Rails.root.glob("crawler/#{@curr_dir}/**/#{@filter}").sort
       render('file_table_update') && return
@@ -60,7 +60,7 @@ class FileListController < ApplicationController
   # - <tt>file_path</tt>: the path to the file to be renamed
   #
   def edit_name
-    unless request.xhr? && file_params[:file_path].present?
+    unless request.format.turbo_stream? && file_params[:file_path].present?
       flash[:warning] = I18n.t('data_import.errors.invalid_request')
       redirect_to(root_path) && return
     end
@@ -75,7 +75,7 @@ class FileListController < ApplicationController
   # - <tt>new_name</tt>: new filename
   #
   def file_rename
-    unless request.xhr? && file_params[:file_path].present? && file_params[:new_name].present?
+    unless request.format.turbo_stream? && file_params[:file_path].present? && file_params[:new_name].present?
       flash.now[:warning] = I18n.t('data_import.errors.invalid_request')
       redirect_to(root_path) && return
     end
@@ -92,7 +92,7 @@ class FileListController < ApplicationController
   # - <tt>file_path</tt>: the path to the file to be renamed
   #
   def edit_file
-    unless request.xhr? && file_params[:file_path].present?
+    unless request.format.turbo_stream? && file_params[:file_path].present?
       flash[:warning] = I18n.t('data_import.errors.invalid_request')
       redirect_to(root_path) && return
     end
@@ -113,7 +113,7 @@ class FileListController < ApplicationController
   # - <tt>new_content</tt>: new file contents
   #
   def file_edit
-    unless request.xhr? && file_params[:file_path].present? && file_params[:new_content].present?
+    unless request.format.turbo_stream? && file_params[:file_path].present? && file_params[:new_content].present?
       flash.now[:warning] = I18n.t('data_import.errors.invalid_request')
       redirect_to(root_path) && return
     end
@@ -131,7 +131,7 @@ class FileListController < ApplicationController
   # - <tt>file_path</tt>: the path to the file to be deleted
   #
   def file_delete
-    unless request.xhr? || file_params[:file_path].present?
+    unless request.format.turbo_stream? && file_params[:file_path].present?
       flash.now[:warning] = I18n.t('data_import.errors.invalid_request')
       redirect_to(root_path) && return
     end

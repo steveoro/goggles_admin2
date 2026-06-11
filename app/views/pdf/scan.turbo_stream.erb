@@ -1,0 +1,29 @@
+<%# Re-hide the global loading indicator shown by the form's onsubmit handler: %>
+<%= turbo_stream.replace "loading-indicator" do %>
+  <div id="loading-indicator" class="fixed-top text-center mt-2 d-none">
+    <div class="spinner-border text-primary" role="status" aria-hidden="true"></div>
+  </div>
+<% end %>
+
+<%= turbo_stream.update "flash-messages-container" do %>
+  <%= render partial: "goggles/flash_messages" %>
+<% end %>
+
+<%= turbo_stream.update "scan-result" do %>
+  <%= render(
+        partial: "result_card",
+        locals: {
+          json_pathname: @json_pathname,
+          checked_formats: @checked_formats,
+          last_valid_scan: @last_valid_scan,
+          page_count: @page_count,
+          limit_pages: @limit_pages,
+          last_index: @last_index,
+          last_result_fmt_name: @last_result_fmt_name
+        }
+      ) %>
+<% end %>
+
+<%= turbo_stream.update "log-panel" do %>
+  <%= render partial: "log_card", locals: { log_pathname: @log_pathname } %>
+<% end %>

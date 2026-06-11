@@ -4,10 +4,10 @@
     .container
       .row.justify-content-left.ml-0.mb-2
         .btn-group.mx-1.my-0#push-all-btn
-          = link_to(push_upload_path(file_path: File.join(curr_dir, '*.sql')), method: :post,
-                                     class: 'btn btn-sm btn-outline-warning mb-1', data: { toggle: 'tooltip',
-                                     title: t('data_import.push.btn_all_sql_files_tooltip'),
-                                     confirm: t('data_import.push.btn_all_sql_files_confirm') }) do
+          = link_to(push_upload_path(file_path: File.join(curr_dir, '*.sql')),
+                                     class: 'btn btn-sm btn-outline-warning mb-1', data: { turbo_method: :post,
+                                     toggle: 'tooltip', title: t('data_import.push.btn_all_sql_files_tooltip'),
+                                     turbo_confirm: t('data_import.push.btn_all_sql_files_confirm') }) do
             %span
               = t('data_import.push.btn_all_sql_files')
               %i.fa.fa-upload
@@ -16,7 +16,7 @@
   .container
     - if curr_dir.present? && dirnames.present?
       = form_tag(update_result_files_path(filter: filter, parent_folder: parent_folder), id: 'frm-dir-filter',
-                 method: :put, remote: true) do
+                 method: :put) do
         .row
           .col
             .form-group
@@ -44,28 +44,28 @@
             %td
               = File.basename(full_pathname)
             %td.text-left
-              = link_to(pull_file_delete_path(file_path: full_pathname), method: :delete, remote: true,
+              = link_to(pull_file_delete_path(file_path: full_pathname),
                         class: 'btn btn-sm btn-outline-danger mb-1',
-                        data: { toggle: 'tooltip', title: t('data_import.file.btn_delete_tooltip'),
-                        confirm: t('data_import.file.confirm_delete') }) do
+                        data: { turbo_method: :delete, toggle: 'tooltip', title: t('data_import.file.btn_delete_tooltip'),
+                        turbo_confirm: t('data_import.file.confirm_delete') }) do
                 %i.fa.fa-trash-o
               &nbsp;
-              = link_to(pull_edit_name_path(file_path: full_pathname), remote: true,
-                        class: 'btn btn-sm btn-outline-primary mb-1', data: { toggle: 'tooltip',
+              = link_to(pull_edit_name_path(file_path: full_pathname),
+                        class: 'btn btn-sm btn-outline-primary mb-1', data: { turbo_stream: true, toggle: 'tooltip',
                         title: t('data_import.file.btn_rename_tooltip') }) do
                 %i.fa.fa-text-width
               &nbsp;
               - if extname != '.pdf'
-                = link_to(pull_edit_file_path(file_path: full_pathname), remote: true,
-                          class: 'btn btn-sm btn-outline-success mb-1', data: { toggle: 'tooltip',
+                = link_to(pull_edit_file_path(file_path: full_pathname),
+                          class: 'btn btn-sm btn-outline-success mb-1', data: { turbo_stream: true, toggle: 'tooltip',
                           title: t('data_import.file.btn_edit_tooltip') }) do
                   %i.fa.fa-pencil-square-o
 
               - case extname
               - when '.csv'
                 &nbsp;
-                = link_to(process_calendar_file_path(file_path: full_pathname), method: :post,
-                          class: 'btn btn-sm btn-outline-warning mb-1', data: { toggle: 'tooltip',
+                = link_to(process_calendar_file_path(file_path: full_pathname),
+                          class: 'btn btn-sm btn-outline-warning mb-1', data: { turbo_method: :post, toggle: 'tooltip',
                           title: t('data_import.file.btn_process_csv_tooltip') }) do
                   %i.fa.fa-bolt
               - when '.json'
@@ -93,10 +93,10 @@
                   %small JSON✔
               - when '.sql'
                 &nbsp;
-                = link_to(push_upload_path(file_path: full_pathname), method: :post,
-                          class: 'btn btn-sm btn-outline-warning mb-1', data: { toggle: 'tooltip',
+                = link_to(push_upload_path(file_path: full_pathname),
+                          class: 'btn btn-sm btn-outline-warning mb-1', data: { turbo_method: :post, toggle: 'tooltip',
                           title: t('data_import.file.btn_process_sql_tooltip'),
-                          confirm: t('data_import.file.confirm_push') }) do
+                          turbo_confirm: t('data_import.file.confirm_push') }) do
                   %i.fa.fa-upload
 - if files && files.empty?
   .row-fluid.my-4

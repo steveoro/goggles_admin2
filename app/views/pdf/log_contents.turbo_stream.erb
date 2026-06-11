@@ -1,0 +1,7 @@
+<%= turbo_stream.update "flash-messages-container" do %>
+  <%= render partial: "goggles/flash_messages" %>
+<% end %>
+
+<%= turbo_stream.update "log-result" do %>
+  <%= render partial: "log_output", locals: { log_contents: @log_contents } %>
+<% end %>

@@ -16,7 +16,7 @@
         = button_to commit_phase6_path(file_path: @file_path),
                                        method: :post, class: 'btn btn-success',
                                        disabled: @issue_count.to_i.positive?,
-                                       data: { confirm: I18n.t('data_import.data_fix.btn_start_sql_batch_confirm') } do
+                                       data: { turbo_confirm: I18n.t('data_import.data_fix.btn_start_sql_batch_confirm') } do
           %i.fa.fa-database
           = I18n.t('data_import.data_fix.btn_start_sql_batch')
     %div

@@ -25,8 +25,7 @@
               = select_tag('session_index', options_for_select(session_option_list), class: 'custom-select')
             .col-auto
               %button.btn.btn-sm.btn-outline-success#btn-add-event{ type: 'submit', method: :delete,
-                'aria-label' => 'Add event', data: { confirm: t('data_import.data_fix.confirm_add_event'),
-                disable_with: t('home.please_wait') } }
+                'aria-label' => 'Add event', data: { turbo_confirm: t('data_import.data_fix.confirm_add_event') } }
                 %i.fa.fa-plus
                 = t('data_import.data_fix.btn_add_event')
 
@@ -71,8 +70,7 @@
                           = hidden_field_tag('file_path', @file_path)
                           %button.btn.btn-sm.btn-outline-danger{ id: "btn-purge-#{index}", type: 'submit', method: :delete,
                               'aria-label' => 'Purge',
-                              data: { confirm: t('data_import.data_fix.confirm_purge', key: event_key),
-                              disable_with: t('home.please_wait') } }
+                              data: { turbo_confirm: t('data_import.data_fix.confirm_purge', key: event_key) } }
                             %i.fa.fa-trash-o
 
                 .collapse{ id: "event-panel-#{index}", 'aria-labelledby' => "event-header-#{index}",

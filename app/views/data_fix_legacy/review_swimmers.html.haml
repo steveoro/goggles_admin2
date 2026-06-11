@@ -53,8 +53,8 @@
                             &nbsp;
                             ❓
                           &nbsp;
-                          = link_to(data_fix_teams_for_swimmer_legacy_path(swimmer.id), method: :get, remote: true,
-                                    data: { toggle: 'tooltip',
+                          = link_to(data_fix_teams_for_swimmer_legacy_path(swimmer.id),
+                                    data: { turbo_stream: true, toggle: 'tooltip',
                                     title: t('data_import.data_fix.btn_teams_for_swimmer_tooltip') }) do
                             %small
                               %i.fa.fa-search-plus
@@ -69,8 +69,7 @@
                               = hidden_field_tag('file_path', @file_path)
                               %button.btn.btn-sm.btn-outline-danger{ id: "btn-purge-#{swimmer_key}", type: 'submit', method: :delete,
                                   'aria-label' => 'Purge',
-                                  data: { confirm: t('data_import.data_fix.confirm_purge', key: swimmer_key),
-                                  disable_with: t('home.please_wait') } }
+                                  data: { turbo_confirm: t('data_import.data_fix.confirm_purge', key: swimmer_key) } }
                                 %i.fa.fa-trash-o
                                 = t('data_import.data_fix.btn_purge_duplicate')
                       - if swimmer.id.present?

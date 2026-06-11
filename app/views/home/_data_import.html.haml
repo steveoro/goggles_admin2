@@ -36,6 +36,6 @@
               = button_to(data_fix_purge_path,
                           method: :delete,
                           class: 'btn btn-outline-danger ml-2',
-                          data: { confirm: 'This will delete all temporary data_import_* rows. Continue?' }) do
+                          data: { turbo_confirm: 'This will delete all temporary data_import_* rows. Continue?' }) do
                 %i.fa.fa-trash
                 Clean slate

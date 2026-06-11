@@ -13,7 +13,7 @@
     - if active_step == 1
       .nav-link.active.d-flex.align-items-center
         %span Step 1 • Sessions
-        = link_to review_sessions_path(s1.merge(rescan: 1)), class: 'btn btn-link btn-sm ml-2', data: { confirm: 'Rebuild Phase 1 from source? Local edits in phase1.json may be overwritten.' } do
+        = link_to review_sessions_path(s1.merge(rescan: 1)), class: 'btn btn-link btn-sm ml-2', data: { turbo_confirm: 'Rebuild Phase 1 from source? Local edits in phase1.json may be overwritten.' } do
           %i.fa.fa-refresh.text-warning{ 'aria-hidden': 'true' }
     - else
       = link_to 'Step 1 • Sessions', review_sessions_path(s1), class: 'nav-link'
@@ -21,7 +21,7 @@
     - if active_step == 2
       .nav-link.active.d-flex.align-items-center
         %span Step 2 • Teams
-        = link_to review_teams_path(s2.merge(rescan: 1)), class: 'btn btn-link btn-sm ml-2', data: { confirm: 'Rebuild Phase 2 from source? Local edits in phase2.json may be overwritten.' } do
+        = link_to review_teams_path(s2.merge(rescan: 1)), class: 'btn btn-link btn-sm ml-2', data: { turbo_confirm: 'Rebuild Phase 2 from source? Local edits in phase2.json may be overwritten.' } do
           %i.fa.fa-refresh.text-warning{ 'aria-hidden': 'true' }
     - else
       = link_to 'Step 2 • Teams', review_teams_path(s2), class: 'nav-link'
@@ -29,7 +29,7 @@
     - if active_step == 3
       .nav-link.active.d-flex.align-items-center
         %span Step 3 • Swimmers
-        = link_to review_swimmers_path(s3.merge(rescan: 1)), class: 'btn btn-link btn-sm ml-2', data: { confirm: 'Rebuild Phase 3 from source? Local edits in phase3.json may be overwritten.' } do
+        = link_to review_swimmers_path(s3.merge(rescan: 1)), class: 'btn btn-link btn-sm ml-2', data: { turbo_confirm: 'Rebuild Phase 3 from source? Local edits in phase3.json may be overwritten.' } do
           %i.fa.fa-refresh.text-warning{ 'aria-hidden': 'true' }
     - else
       = link_to 'Step 3 • Swimmers', review_swimmers_path(s3), class: 'nav-link'
@@ -37,7 +37,7 @@
     - if active_step == 4
       .nav-link.active.d-flex.align-items-center
         %span Step 4 • Events
-        = link_to review_events_path(s4.merge(rescan: 1)), class: 'btn btn-link btn-sm ml-2', data: { confirm: 'Rebuild Phase 4 from source? Local edits in phase4.json may be overwritten.' } do
+        = link_to review_events_path(s4.merge(rescan: 1)), class: 'btn btn-link btn-sm ml-2', data: { turbo_confirm: 'Rebuild Phase 4 from source? Local edits in phase4.json may be overwritten.' } do
           %i.fa.fa-refresh.text-warning{ 'aria-hidden': 'true' }
     - else
       = link_to 'Step 4 • Events', review_events_path(s4), class: 'nav-link'
@@ -45,7 +45,7 @@
     - if active_step == 5
       .nav-link.active.d-flex.align-items-center
         %span Step 5 • Results
-        = link_to review_results_path(s5.merge(rescan: 1)), class: 'btn btn-link btn-sm ml-2', data: { confirm: 'Rebuild Phase 5 from source? Local edits in phase5.json may be overwritten.' } do
+        = link_to review_results_path(s5.merge(rescan: 1)), class: 'btn btn-link btn-sm ml-2', data: { turbo_confirm: 'Rebuild Phase 5 from source? Local edits in phase5.json may be overwritten.' } do
           %i.fa.fa-refresh.text-warning{ 'aria-hidden': 'true' }
     - else
       = link_to 'Step 5 • Results', review_results_path(s5), class: 'nav-link'

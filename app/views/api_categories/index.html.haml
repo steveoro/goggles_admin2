@@ -42,7 +42,7 @@
                 .form-group
                   = submit_tag(t('datagrid.clone_form.clone_button'), id: 'btn-clone', class: 'btn btn-primary',
                             'aria-label': 'Clone', type: 'submit',
-                            data: { confirm: t('datagrid.clone_form.confirm_msg') })
+                            data: { turbo_confirm: t('datagrid.clone_form.confirm_msg') })
 
       = render(PageLinksForArrayComponent.new(data: @grid&.assets, total_count: @domain_count,
                page: @domain_page, per_page: @domain_per_page))

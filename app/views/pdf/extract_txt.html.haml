@@ -5,7 +5,7 @@
         .container{ data: { controller: 'remote-partial', 'remote-partial-url' => pdf_scan_path } }
           - if @format_families.present?
             = form_tag(pdf_scan_path(file_path: @txt_pathname), id: 'frm-format-scan', method: :put,
-                       remote: true, onsubmit: "document.querySelector('#loading-indicator').classList.remove('d-none');") do
+                       onsubmit: "document.querySelector('#loading-indicator').classList.remove('d-none');") do
               .row
                 .col
                   .form-group

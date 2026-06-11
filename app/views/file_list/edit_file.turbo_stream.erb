@@ -1,0 +1,9 @@
+<%= turbo_stream.update "flash-messages-container" do %>
+  <%= render partial: "goggles/flash_messages" %>
+<% end %>
+
+<%= turbo_stream.update "file-modal" do %>
+  <%= render partial: "file_modal",
+             locals: { file_path: @file_path, file_content: @file_content,
+                       parsed_json: @parsed_json, rename: false } %>
+<% end %>

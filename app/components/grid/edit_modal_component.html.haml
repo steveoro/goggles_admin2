@@ -65,7 +65,7 @@
           %button.btn.btn-sm.btn-outline-secondary{ 'aria-label' => I18n.t('datagrid.edit_modal.close_btn'),
                                                     'data-dismiss' => 'modal', type: 'button' }
             = I18n.t('datagrid.edit_modal.close_btn')
-          %button.btn.btn-sm.btn-outline-danger{ id: "btn-#{@base_dom_id}-submit-save", type: 'submit', method: :put,
+          %button.btn.btn-sm.btn-outline-danger{ id: "btn-#{@base_dom_id}-submit-save", type: 'submit',
                 'aria-label' => I18n.t('datagrid.edit_modal.save_btn'),
-                data: { confirm: I18n.t('datagrid.edit_modal.save_changes_msg') } }
+                data: { turbo_confirm: I18n.t('datagrid.edit_modal.save_changes_msg') } }
             = I18n.t('datagrid.edit_modal.save_btn')

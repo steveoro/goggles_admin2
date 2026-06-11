@@ -40,7 +40,7 @@
       /  = link_to('Shortcut TODO', '#', class: 'nav-link')
       - if user_signed_in?
         %li.nav-item= link_to(t('home.log_out'), destroy_user_session_path,
-                              method: :delete, class: 'nav-link')
+                              data: { turbo_method: :delete }, class: 'nav-link')
       - else
         %li.nav-item= link_to(t('home.log_in'), new_user_session_path,
                               class: 'nav-link text-primary')

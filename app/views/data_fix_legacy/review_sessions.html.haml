@@ -66,8 +66,7 @@
               = check_box_tag('use_default_pool_key', false)
               %button.btn.btn-sm.btn-outline-success#btn-add-session{ type: 'submit',
                   method: :delete, 'aria-label' => 'Add session',
-                  data: { confirm: t('data_import.data_fix.confirm_add_session'),
-                          disable_with: t('home.please_wait') } }
+                  data: { turbo_confirm: t('data_import.data_fix.confirm_add_session') } }
                 %i.fa.fa-plus
                 = t('data_import.data_fix.btn_add_session')
 
@@ -103,8 +102,7 @@
                           = hidden_field_tag('file_path', @file_path)
                           %button.btn.btn-sm.btn-outline-danger{ id: "btn-purge-#{index}", type: 'submit', method: :delete,
                               'aria-label' => 'Purge',
-                              data: { confirm: t('data_import.data_fix.confirm_purge', key: index),
-                              disable_with: t('home.please_wait') } }
+                              data: { turbo_confirm: t('data_import.data_fix.confirm_purge', key: index) } }
                             %i.fa.fa-trash-o
                 .collapse{ id: "meeting-session-panel-#{index}", 'aria-labelledby' => "meeting-session-header-#{index}",
                            'data-parent' => "#meeting-session-card-#{index}" }

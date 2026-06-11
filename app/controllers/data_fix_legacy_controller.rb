@@ -684,7 +684,7 @@ class DataFixLegacyController < ApplicationController
   # <tt>:swimmer_id</tt> => target Swimmer id (required)
   #
   def teams_for_swimmer
-    unless request.xhr?
+    unless request.format.turbo_stream?
       flash[:warning] = I18n.t('search_view.errors.invalid_request')
       redirect_to root_path
       return
@@ -708,7 +708,7 @@ class DataFixLegacyController < ApplicationController
   # <tt>:row_key</tt> => string key for the row stored inside @solver.data
   #
   def result_details # rubocop:disable Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
-    unless request.xhr?
+    unless request.format.turbo_stream?
       flash[:warning] = I18n.t('search_view.errors.invalid_request')
       redirect_to root_path
       return

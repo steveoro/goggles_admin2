@@ -78,7 +78,7 @@
 
                             = link_to(data_fix_result_details_legacy_path(prg_key: prg_key, file_path: @file_path,
                                       relay: event.relay?, target_dom_id: collapse_dom_id),
-                                      id: "frm-#{collapse_dom_id}", method: :get, remote: true) do
+                                      id: "frm-#{collapse_dom_id}", data: { turbo_stream: true }) do
                               = render(Switch::RotatingComponent.new(target_id: collapse_dom_id))
 
                             .collapse.my-2{ id: collapse_dom_id, 'aria-labelledby' => "#{collapse_dom_id}",
@@ -97,11 +97,10 @@
 
 
       .row-fluid.my-3.text-center
-        = link_to(push_prepare_path(file_path: @file_path), method: :post,
+        = link_to(push_prepare_path(file_path: @file_path),
                   class: 'btn btn-warning mb-1',
-                  data: { toggle: 'tooltip', title: t('data_import.data_fix.btn_start_sql_batch_tooltip'),
-                  confirm: t('data_import.data_fix.btn_start_sql_batch_confirm'),
-                  disable_with: t('data_import.data_fix.btn_start_sql_batch_disable') }) do
+                  data: { turbo_method: :post, toggle: 'tooltip', title: t('data_import.data_fix.btn_start_sql_batch_tooltip'),
+                  turbo_confirm: t('data_import.data_fix.btn_start_sql_batch_confirm') }) do
           %span
             %i.fa.fa-bolt
             = t('data_import.data_fix.btn_start_sql_batch')

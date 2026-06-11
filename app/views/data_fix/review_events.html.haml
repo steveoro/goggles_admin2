@@ -40,7 +40,7 @@
           = select_tag('session_index', options_for_select(session_option_list), class: 'custom-select')
         %button.btn.btn-sm.btn-success#btn-add-event{ type: 'submit',
           'aria-label' => 'Add event',
-          data: { confirm: 'Add a new event?', disable_with: 'Please wait...' } }
+          data: { turbo_confirm: 'Add a new event?', disable_with: 'Please wait...' } }
           %i.fa.fa-plus
           Add Event
 

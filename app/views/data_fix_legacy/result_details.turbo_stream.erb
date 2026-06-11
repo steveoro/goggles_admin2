@@ -1,0 +1,7 @@
+<%= turbo_stream.update "flash-messages-container" do %>
+  <%= render partial: "goggles/flash_messages" %>
+<% end %>
+
+<%= turbo_stream.update @target_dom_id do %>
+  <%= render DataFix::ResultDetailsSetComponent.new(res_rows: @res_rows, res_laps: @res_laps) %>
+<% end %>

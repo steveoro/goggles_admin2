@@ -63,7 +63,7 @@
         %div
           = form_tag(data_fix_add_session_path, method: :post, class: 'd-inline') do
             = hidden_field_tag :file_path, @file_path
-            %button.btn.btn-sm.btn-success{ type: 'submit', data: { confirm: 'Add a new session?' } }
+            %button.btn.btn-sm.btn-success{ type: 'submit', data: { turbo_confirm: 'Add a new session?' } }
               %i.fa.fa-plus
               Add Session
 

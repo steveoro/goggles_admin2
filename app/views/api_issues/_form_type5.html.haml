@@ -17,4 +17,4 @@
               - btn_enabled = processable && !active
               = submit_tag(t('issues.grid.buttons.fix_label'), id: 'btn-solve',
                           class: "btn btn-sm btn-success #{btn_enabled ? '' : 'disabled'}", disabled: !btn_enabled,
-                          data: { confirm: t('issues.ask_confirmation') })
+                          data: { turbo_confirm: t('issues.ask_confirmation') })

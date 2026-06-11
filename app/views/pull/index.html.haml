@@ -67,12 +67,11 @@
             .col-6.mt-2.mb-3.text-left
               = submit_tag(t('data_import.calendar.btn_run_crawler'), id: 'btn-run-calendar-crawler',
                            class: 'btn btn-sm btn-outline-primary', 'aria-label' => 'run calendar crawler',
-                           type: 'submit', data: { confirm: t('data_import.calendar.btn_run_crawler_confirm') })
+                           type: 'submit', data: { turbo_confirm: t('data_import.calendar.btn_run_crawler_confirm') })
             .col-6.mt-2.mb-3.text-right
               = link_to('#', id: 'btn-clear-log',
                         class: 'btn btn-sm btn-outline-danger', 'aria-label' => 'clear log',
-                        onclick: '$("#crawler_log").html(""); return false;',
-                        data: { confirm: t('data_import.calendar.btn_clear_log_confirm') }) do
+                        onclick: "if (confirm('#{j t('data_import.calendar.btn_clear_log_confirm')}')) { $('#crawler_log').html(''); } return false;") do
                 %i.fa.fa-trash-o
                 &nbsp;
                 = t('data_import.calendar.btn_clear_log')

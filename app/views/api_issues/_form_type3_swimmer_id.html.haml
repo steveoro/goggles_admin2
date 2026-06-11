@@ -8,4 +8,4 @@
     .row-fluid.py-3
       = submit_tag(t('issues.grid.buttons.fix_label'), id: 'btn-solve',
                   class: "btn btn-sm btn-success #{processable ? '' : 'disabled'}", disabled: !processable,
-                  data: { confirm: t('issues.ask_confirmation') })
+                  data: { turbo_confirm: t('issues.ask_confirmation') })

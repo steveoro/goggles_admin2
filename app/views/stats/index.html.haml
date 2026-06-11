@@ -43,7 +43,7 @@
                 .form-group
                   = submit_tag(t('datagrid.clear_stats.clear_button'), id: 'btn-clear', class: 'btn btn-danger',
                                  'aria-label': 'Clear', type: 'submit',
-                                 data: { confirm: t('datagrid.clear_stats.confirm_msg') })
+                                 data: { turbo_confirm: t('datagrid.clear_stats.confirm_msg') })
 
       = render(PageLinksForArrayComponent.new(data: @grid&.assets, total_count: @domain_count,
                page: @domain_page, per_page: @domain_per_page))

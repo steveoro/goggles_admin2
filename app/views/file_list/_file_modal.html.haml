@@ -1,9 +1,9 @@
 .modal.fade{ id: 'file-actions-modal', 'aria-hidden' => 'true', role: 'dialog', tabindex: '-1',
-             'aria-labelledby' => 'generic file actions modal' }
+             'data-controller' => 'modal', 'aria-labelledby' => 'generic file actions modal' }
   .modal-dialog.modal-lg{ role: 'document' }
     - dest_path = rename ? pull_file_rename_path : pull_file_edit_path
 
-    = form_tag(dest_path, id: 'frm-file-actions', method: :put, remote: true) do
+    = form_tag(dest_path, id: 'frm-file-actions', method: :put) do
       = hidden_field_tag('file_path', file_path)
       .modal-content
         .modal-header
@@ -26,7 +26,7 @@
                                                     'data-dismiss' => 'modal', type: 'button' }
             = I18n.t('datagrid.edit_modal.close_btn')
 
-          %button.btn.btn-sm.btn-outline-danger{ id: 'btn-submit-save', type: 'submit', method: :put,
+          %button.btn.btn-sm.btn-outline-danger{ id: 'btn-submit-save', type: 'submit',
                   'aria-label' => I18n.t('datagrid.edit_modal.save_btn'),
-                  data: { confirm: I18n.t('datagrid.edit_modal.save_changes_msg') } }
+                  data: { turbo_confirm: I18n.t('datagrid.edit_modal.save_changes_msg') } }
             = I18n.t('datagrid.edit_modal.save_btn')

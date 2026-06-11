@@ -3,7 +3,7 @@
     #log-header
       .row.mb-0
         .col-3
-          = form_tag(pdf_log_contents_path(file_path: log_pathname), id: 'frm-log-contents', method: :put, remote: true) do
+          = form_tag(pdf_log_contents_path(file_path: log_pathname), id: 'frm-log-contents', method: :put) do
             = submit_tag('Log file', id: 'btn-log-contents', class: 'btn btn-sm btn-outline-primary m-1',
                         'aria-label' => 'Load log file', type: 'submit', data: { toggle: 'collapse',
                   target: '#log-body', 'aria-expanded' => false, 'aria-controls' => 'log-body' })
