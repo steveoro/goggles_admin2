@@ -2,6 +2,7 @@
 
 _Please, add the latest build info on top of the list; use Version::MAJOR only after gold release; keep semantic versioning in line with framework's_
 
+- **0.8.46** [Steve A.] updated ruby version to 3.4.7; several bugfixes in phased data fix procedure; updated dependencies
 - **0.8.45** [Steve A.] several additional fixes for phased data fix procedure: phase 6
 - **0.8.37** [Steve A.] several fixes for phased data fix procedure: phases 1..5
 - **0.8.35** [Steve A.] phased data-import: improved multiple badge detection, event matching across sections; added fix:swimmer_in_badges
