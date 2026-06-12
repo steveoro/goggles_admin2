@@ -72,7 +72,7 @@ RSpec.describe Import::Solvers::EventSolver do
       session1_events = data['sessions'].find { |s| s['session_order'] == 1 }['events']
       # Should have 2 unique events (100SL and 200DO), not 3
       expect(session1_events.size).to eq(2)
-      expect(session1_events.map { |e| e['key'] }).to include('100|SL', '200|DO')
+      expect(session1_events.pluck('key')).to include('100|SL', '200|DO')
     end
 
     it 'stores event attributes correctly' do
@@ -110,7 +110,7 @@ RSpec.describe Import::Solvers::EventSolver do
       data = JSON.parse(File.read(phase_file))['data']
 
       session1_events = data['sessions'].find { |s| s['session_order'] == 1 }['events']
-      event_orders = session1_events.map { |e| e['event_order'] }
+      event_orders = session1_events.pluck('event_order')
 
       expect(event_orders).to eq(event_orders.sort)
     end

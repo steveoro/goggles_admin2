@@ -106,7 +106,7 @@ RSpec.describe Import::Adapters::Layout4To2 do
         out = described_class.normalize(data_hash: relay_lt4_hash)
         expect(out['layoutType']).to eq(2)
         expect(out['sections'].size).to eq(2)
-        cats = out['sections'].map { |s| s['fin_sigla_categoria'] }
+        cats = out['sections'].pluck('fin_sigla_categoria')
         expect(cats).to contain_exactly('60-79', '160-199')
 
         mixed_section = out['sections'].find { |s| s['fin_sigla_categoria'] == '60-79' }

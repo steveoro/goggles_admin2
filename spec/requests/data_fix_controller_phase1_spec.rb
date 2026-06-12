@@ -44,7 +44,7 @@ RSpec.describe DataFixController do
       it 'wires the meeting fuzzy selector to the AutoComplete ID field' do
         get review_sessions_path(file_path: source_file, phase_v2: 1)
 
-        selector = Nokogiri::HTML(response.body).css('#meeting_search')
+        selector = response.parsed_body.css('#meeting_search')
         onchange = selector.attr('onchange').value
         expect(onchange).to include("$('#meeting_meeting_id').val(selected)")
         expect(onchange).to include("$('#meeting_meeting_id').trigger('change')")
@@ -55,17 +55,17 @@ RSpec.describe DataFixController do
         get review_sessions_path(file_path: source_file, phase_v2: 1)
 
         # Verify the AutoCompleteComponent field target exists with correct ID
-        field_input = Nokogiri::HTML(response.body).css('#meeting_meeting_id')
+        field_input = response.parsed_body.css('#meeting_meeting_id')
         expect(field_input).to be_present
         expect(field_input.attr('data-autocomplete-target').value).to eq('field')
 
         # Verify the search target exists (base_dom_id 'meeting' + entity_name 'meeting' = meeting_meeting)
-        search_input = Nokogiri::HTML(response.body).css('#meeting_meeting')
+        search_input = response.parsed_body.css('#meeting_meeting')
         expect(search_input).to be_present
         expect(search_input.attr('data-autocomplete-target').value).to eq('search')
 
         # Verify the description target exists
-        desc_target = Nokogiri::HTML(response.body).css('#meeting-desc')
+        desc_target = response.parsed_body.css('#meeting-desc')
         expect(desc_target).to be_present
         expect(desc_target.attr('data-autocomplete-target').value).to eq('desc')
       end

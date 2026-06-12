@@ -1317,7 +1317,7 @@ module PdfResults
 
         row_hash[:fields].each { |fname, fvalue| result_value += " #{fvalue&.squeeze(' ')}" if alt_field_names.include?(fname) }
       end
-      result_value.present? ? result_value.strip : nil
+      result_value.presence&.strip
     end
     #-- -----------------------------------------------------------------------
     #++

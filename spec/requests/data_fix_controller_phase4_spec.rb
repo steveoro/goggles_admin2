@@ -48,7 +48,7 @@ RSpec.describe DataFixController do
       get review_events_path(file_path: source_file, phase4_v2: 1)
       expect(response).to be_successful
 
-      doc = Nokogiri::HTML(response.body)
+      doc = response.parsed_body
       target_card = doc.css('div[id^="event-card-"]').find { |node| node.text.include?('100DO') }
 
       expect(target_card).to be_present
@@ -79,7 +79,7 @@ RSpec.describe DataFixController do
       get review_events_path(file_path: source_file, phase4_v2: 1)
       expect(response).to be_successful
 
-      doc = Nokogiri::HTML(response.body)
+      doc = response.parsed_body
       target_card = doc.css('div[id^="event-card-"]').find { |node| node.text.include?('50RA') }
 
       expect(target_card).to be_present

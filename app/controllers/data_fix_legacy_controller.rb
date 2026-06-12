@@ -559,7 +559,7 @@ class DataFixLegacyController < ApplicationController
     # ----------------------------------------------------------------------
 
     # Fall back to step 1 (sessions) in case the referrer is not available:
-    redirect_back(fallback_location: review_sessions_legacy_path(file_path: file_path_from_params, reparse: false))
+    redirect_back_or_to(review_sessions_legacy_path(file_path: file_path_from_params, reparse: false))
   end
   # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
   #-- -------------------------------------------------------------------------
@@ -627,7 +627,7 @@ class DataFixLegacyController < ApplicationController
     request.headers['HTTP_REFERER'].gsub!(/&reparse=(true|sessions)/i, '')
 
     # Fall back to step 1 (sessions) in case the referrer is not available:
-    redirect_back(fallback_location: review_sessions_legacy_path(file_path: file_path_from_params, reparse: false))
+    redirect_back_or_to(review_sessions_legacy_path(file_path: file_path_from_params, reparse: false))
   end
   #-- -------------------------------------------------------------------------
   #++

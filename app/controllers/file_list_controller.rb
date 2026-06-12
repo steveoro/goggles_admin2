@@ -63,7 +63,7 @@ class FileListController < ApplicationController
   # - <tt>file_path</tt>: the path to the file to be renamed
   #
   def edit_name
-    unless file_params[:file_path].present?
+    if file_params[:file_path].blank?
       flash[:warning] = I18n.t('data_import.errors.invalid_request')
       redirect_to(root_path) && return
     end
@@ -102,7 +102,7 @@ class FileListController < ApplicationController
   # - <tt>file_path</tt>: the path to the file to be renamed
   #
   def edit_file
-    unless file_params[:file_path].present?
+    if file_params[:file_path].blank?
       flash[:warning] = I18n.t('data_import.errors.invalid_request')
       redirect_to(root_path) && return
     end

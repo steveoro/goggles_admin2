@@ -79,7 +79,7 @@ class ApplicationController < ActionController::Base
   # (NOTE: memoizazion is needed because the member variable is used in the view.)
   def index_params_for(datagrid_name)
     @index_params = params.permit(:page, :per_page, datagrid_name)
-    return @index_params.merge(params.fetch(datagrid_name, {}).permit!) if params[datagrid_name].respond_to?(:fetch)
+    return @index_params.merge(params.fetch(datagrid_name, {}).permit!) if params.expect(datagrid_name).respond_to?(:fetch)
 
     # Assuming the pass-through filtering parameters for the grid are a valid JSONified
     # string, we'll parse them to rebuild the grid filters:

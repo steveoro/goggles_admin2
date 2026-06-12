@@ -187,7 +187,7 @@ class AutoCompleteComponent < ViewComponent::Base
     @target12_dom_id = options[:target12_dom_id]
     @target12_column = options[:target12_column]
 
-    @payload = options[:payload].present? ? options[:payload].to_json : nil
+    @payload = options[:payload].presence&.to_json
     @jwt = options[:jwt]
   end
   # rubocop:enable Metrics/AbcSize, Metrics/MethodLength

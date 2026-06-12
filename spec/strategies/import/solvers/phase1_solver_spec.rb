@@ -319,7 +319,7 @@ RSpec.describe Import::Solvers::Phase1Solver, type: :strategy do
       phase_file = source_file.sub('.json', '-phase1.json')
       matches = JSON.parse(File.read(phase_file))['data']['meeting_fuzzy_matches']
 
-      match_ids = matches.map { |m| m['id'] }
+      match_ids = matches.pluck('id')
       expect(match_ids).to include(meeting1.id)
       expect(match_ids).to include(meeting2.id)
     end
@@ -329,7 +329,7 @@ RSpec.describe Import::Solvers::Phase1Solver, type: :strategy do
       phase_file = source_file.sub('.json', '-phase1.json')
       matches = JSON.parse(File.read(phase_file))['data']['meeting_fuzzy_matches']
 
-      match_ids = matches.map { |m| m['id'] }
+      match_ids = matches.pluck('id')
       expect(match_ids).not_to include(meeting_other_season.id)
     end
 

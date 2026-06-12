@@ -9,5 +9,5 @@ Rails.application.config.session_store(
   same_site: 'Lax',
   # This shouldn't be necessary atm:
   # secure: !(Rails.env.development? || Rails.env.test?),
-  key: Rails.env.development? || Rails.env.test? ? '_goggles_admin2_session' : '__Host-goggles_admin2_session'
+  key: Rails.env.local? ? '_goggles_admin2_session' : '__Host-goggles_admin2_session'
 )

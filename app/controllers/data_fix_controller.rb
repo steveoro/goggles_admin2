@@ -400,7 +400,7 @@ class DataFixController < ApplicationController
             'heat_type_code' => me.heat_type&.code,
             'stroke_type_code' => me.event_type&.stroke_type&.code,
             'distance' => me.event_type&.length_in_meters,
-            'begin_time' => me.begin_time&.to_s(:time)
+            'begin_time' => me.begin_time&.to_fs(:time)
           }
         end
       end
@@ -1043,7 +1043,7 @@ class DataFixController < ApplicationController
     mode = params[:mode] || 'overwrite' # 'overwrite' or 'keep_timing'
 
     unless existing_id.positive? && import_key.present?
-      render json: { error: 'Missing required params' }, status: :unprocessable_entity
+      render json: { error: 'Missing required params' }, status: :unprocessable_content
       return
     end
 
@@ -1112,7 +1112,7 @@ class DataFixController < ApplicationController
 
     render json: { success: true, import_key: import_key, existing_id: existing_id, mode: mode }
   rescue ActiveRecord::RecordInvalid => e
-    render json: { error: e.message }, status: :unprocessable_entity
+    render json: { error: e.message }, status: :unprocessable_content
   end
   # ---------------------------------------------------------------------------
 
@@ -1124,7 +1124,7 @@ class DataFixController < ApplicationController
     candidate_team_id = params[:candidate_team_id].to_i
 
     unless file_path.present? && team_key.present? && candidate_team_id.positive?
-      render json: { error: 'Missing required params' }, status: :unprocessable_entity
+      render json: { error: 'Missing required params' }, status: :unprocessable_content
       return
     end
 
@@ -1772,14 +1772,14 @@ class DataFixController < ApplicationController
     raw_id = event_params[:meeting_event_id]
     unless raw_id.nil?
       str = raw_id.to_s.strip
-      event['id'] = str.blank? ? nil : str.to_i
+      event['id'] = str.presence&.to_i
     end
 
     # Handle event_type_id from AutoComplete
     raw_event_type_id = event_params[:event_type_id]
     unless raw_event_type_id.nil?
       str = raw_event_type_id.to_s.strip
-      event['event_type_id'] = str.blank? ? nil : str.to_i
+      event['event_type_id'] = str.presence&.to_i
     end
 
     # Handle heat_type_id from dropdown
@@ -2038,7 +2038,7 @@ class DataFixController < ApplicationController
       when 'season_id', 'edition', 'edition_type_id', 'timing_type_id',
            'max_individual_events', 'max_individual_events_per_session',
            'dateDay1', 'dateMonth1', 'dateYear1', 'dateDay2', 'dateMonth2', 'dateYear2'
-        normalized[key] = val.present? ? val.to_i : nil
+        normalized[key] = val.presence&.to_i
       when 'cancelled', 'confirmed'
         normalized[key] = val.present? && val != '0'
       when 'header_date'
@@ -2275,7 +2275,7 @@ class DataFixController < ApplicationController
     begin
       data_hash = JSON.parse(File.read(source_path))
     rescue StandardError => e
-      return render plain: e.message, status: :unprocessable_entity
+      return render plain: e.message, status: :unprocessable_content
     end
 
     events = Array(data_hash['events'])

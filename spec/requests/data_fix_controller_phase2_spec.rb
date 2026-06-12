@@ -668,7 +668,7 @@ RSpec.describe DataFixController do
         pfm = PhaseFileManager.new(phase2_file)
         teams = pfm.data['teams']
         expect(teams.size).to eq(2)
-        expect(teams.map { |t| t['name'] }).to eq(['Team 1', 'Team 3'])
+        expect(teams.pluck('name')).to eq(['Team 1', 'Team 3'])
       end
 
       it 'clears downstream swimmers data' do

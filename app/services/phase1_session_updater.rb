@@ -45,7 +45,7 @@ class Phase1SessionUpdater # rubocop:disable Metrics/ClassLength
     # Basic session fields
     if @params.key?(:meeting_session_id)
       raw = @params[:meeting_session_id].to_s.strip
-      sess_id = raw.present? ? raw.to_i : nil
+      sess_id = raw.presence&.to_i
       sess['id'] = sess_id.to_i.positive? ? sess_id : nil
     end
     sess['description'] = sanitize_str(@params[:description]) if @params[:description].present?
@@ -74,7 +74,7 @@ class Phase1SessionUpdater # rubocop:disable Metrics/ClassLength
     # IDs first
     if pool_data.key?('id')
       raw = pool_data['id'].to_s.strip
-      pool_id = raw.present? ? raw.to_i : nil
+      pool_id = raw.presence&.to_i
       sess['swimming_pool']['id'] = pool_id.to_i.positive? ? pool_id : nil
     end
     if pool_data.key?('swimming_pool_id')
@@ -84,7 +84,7 @@ class Phase1SessionUpdater # rubocop:disable Metrics/ClassLength
     end
     if pool_data.key?('city_id')
       raw = pool_data['city_id'].to_s.strip
-      city_id = raw.present? ? raw.to_i : nil
+      city_id = raw.presence&.to_i
       sess['swimming_pool']['city_id'] = city_id.to_i.positive? ? city_id : nil
     end
 
@@ -116,7 +116,7 @@ class Phase1SessionUpdater # rubocop:disable Metrics/ClassLength
     # IDs first (support either id or city_id)
     if city_data.key?('id')
       raw = city_data['id'].to_s.strip
-      city_id = raw.present? ? raw.to_i : nil
+      city_id = raw.presence&.to_i
       sess['swimming_pool']['city']['id'] = city_id.to_i.positive? ? city_id : nil
     end
     if city_data.key?('city_id')
@@ -222,7 +222,7 @@ class Phase1SessionUpdater # rubocop:disable Metrics/ClassLength
 
   def normalized_id(value)
     raw = value.to_s.strip
-    int_value = raw.present? ? raw.to_i : nil
+    int_value = raw.presence&.to_i
     int_value.to_i.positive? ? int_value : nil
   end
 

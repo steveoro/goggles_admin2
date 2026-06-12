@@ -326,7 +326,7 @@ RSpec.describe Import::Adapters::Layout2To4 do
         expect(event['results'].size).to eq(2)
 
         # Results should have their respective categories
-        categories = event['results'].map { |r| r['category'] }
+        categories = event['results'].pluck('category')
         expect(categories).to contain_exactly('M25', 'M45')
       end
 

@@ -21,7 +21,7 @@ document.addEventListener('turbo:load', () => {
       // Called when there's incoming data on the websocket for this channel
       received(data) {
         // DEBUG:
-        // console.log('ImportStatusChannel received: ', data);
+        console.log('ImportStatusChannel received: ', data);
 
         // Make sure async msgs do not repeat or get processed twice out of sequence
         // (it may happen using the async adapter as ActionCable backend in dev env).
