@@ -1,5 +1,11 @@
 import { Controller } from '@hotwired/stimulus'
-import JSONEditor from 'jsoneditor'
+import { EditorView, keymap, highlightSpecialChars, drawSelection, rectangularSelection, crosshairCursor, lineNumbers, highlightActiveLineGutter } from '@codemirror/view'
+import { EditorState } from '@codemirror/state'
+import { defaultKeymap, history, historyKeymap } from '@codemirror/commands'
+import { highlightSelectionMatches } from '@codemirror/search'
+import { bracketMatching, foldGutter, foldKeymap } from '@codemirror/language'
+import { autocompletion } from '@codemirror/autocomplete'
+import { json } from '@codemirror/lang-json'
 
 /**
  * = grid-edit - StimulusJS controller =
@@ -61,7 +67,8 @@ import JSONEditor from 'jsoneditor'
  *      ("data-grid-edit-modal-edit-title-value" or "data-grid-edit-modal-create-title-value").
  *
  * == Dependencies:
- * - jsoneditor: https://github.com/josdejong/jsoneditor
+ * - CodeMirror 6: https://codemirror.net/
+ * - @codemirror/lang-json: JSON language support
  *
  * @author Steve A.
  */
@@ -161,40 +168,54 @@ export default class extends Controller {
               $(`#${namespacedFieldDomId}-chk`).prop('checked', initialValue).trigger('change')
             }
 
-            // ** JSONEditor fields: **
+            // ** CodeMirror JSON editor fields: **
             // (use specific & unique DOM containers, inside modal form)
             else if (document.querySelector(`#json-editor-${namespacedFieldDomId}`)) {
               // DEBUG
               // console.log('Possible JSON-editor field found')
               var container = document.querySelector(`#json-editor-${namespacedFieldDomId}`)
-              $(`#${namespacedFieldDomId}`).val(value) // Set initial value into hiden field
+              $(`#${namespacedFieldDomId}`).val(value) // Set initial value into hidden field
               // Editor already created? Initialize its contents (from the row payload):
-              if (container.jsoneditor) {
+              if (container.codemirrorView) {
                 // DEBUG
-                // console.log(`JSON editor instance found for "#${namespacedFieldDomId}": setting field value...`)
-                container.jsoneditor.set(JSON.parse(value))
+                // console.log(`CodeMirror instance found for "#${namespacedFieldDomId}": setting field value...`)
+                container.codemirrorView.dispatch({
+                  changes: { from: 0, to: container.codemirrorView.state.doc.length },
+                  insert: JSON.stringify(JSON.parse(value), null, 2)
+                })
               }
               else {
                 // DEBUG
-                // console.log(`Creating JSON editor instance for "#${namespacedFieldDomId}"...`)
-                container.jsoneditor = new JSONEditor(
-                  container,
-                  {
-                    mode: 'tree',
-                    modes: ['code', 'tree'],
-                    onChangeText: (jsonText) => {
-                      // DEBUG
-                      // console.log(`JSON editor for "#${namespacedFieldDomId}" changed...`)
-                      // Update both the row payload & the form's actual hidden field value:
-                      this.payloadValue[key] = jsonText
-                      $(`#${namespacedFieldDomId}`).val(jsonText).trigger('change')
-                    },
-                    onError: (err) => {
-                      console.error(err)
-                    }
-                  },
-                  JSON.parse(value)
-                )
+                // console.log(`Creating CodeMirror instance for "#${namespacedFieldDomId}"...`)
+                container.codemirrorView = new EditorView({
+                  doc: JSON.stringify(JSON.parse(value), null, 2),
+                  extensions: [
+                    lineNumbers(),
+                    highlightActiveLineGutter(),
+                    highlightSpecialChars(),
+                    history(),
+                    foldGutter(),
+                    drawSelection(),
+                    keymap.of([defaultKeymap, historyKeymap, foldKeymap]),
+                    autocompletion(),
+                    rectangularSelection(),
+                    crosshairCursor(),
+                    highlightSelectionMatches(),
+                    bracketMatching(),
+                    EditorView.updateListener.of((update) => {
+                      if (update.docChanged) {
+                        const jsonText = update.state.doc.toString()
+                        // DEBUG
+                        // console.log(`CodeMirror for "#${namespacedFieldDomId}" changed...`)
+                        // Update both the row payload & the form's actual hidden field value:
+                        this.payloadValue[key] = jsonText
+                        $(`#${namespacedFieldDomId}`).val(jsonText).trigger('change')
+                      }
+                    }),
+                    json()
+                  ],
+                  parent: container
+                })
               }
             }
 

@@ -46,7 +46,7 @@
             %td.text-left
               = link_to(pull_file_delete_path(file_path: full_pathname),
                         class: 'btn btn-sm btn-outline-danger mb-1',
-                        data: { turbo_method: :delete, toggle: 'tooltip', title: t('data_import.file.btn_delete_tooltip'),
+                        data: { turbo_method: :delete, turbo_stream: true, toggle: 'tooltip', title: t('data_import.file.btn_delete_tooltip'),
                         turbo_confirm: t('data_import.file.confirm_delete') }) do
                 %i.fa.fa-trash-o
               &nbsp;
@@ -70,18 +70,18 @@
                   %i.fa.fa-bolt
               - when '.json'
                 &nbsp;
-                = link_to(review_sessions_legacy_path(file_path: full_pathname), method: :get,
+                = link_to(review_sessions_legacy_path(file_path: full_pathname),
                           class: 'btn btn-sm btn-outline-warning mb-1', data: { toggle: 'tooltip',
                           title: t('data_import.file.btn_process_json_tooltip') }) do
                   %i.fa.fa-cogs
                 &nbsp;
-                = link_to(review_sessions_path(file_path: full_pathname, phase_v2: 1), method: :get,
+                = link_to(review_sessions_path(file_path: full_pathname, phase_v2: 1),
                           class: 'btn btn-sm btn-outline-primary mb-1', data: { toggle: 'tooltip',
                           title: t('data_import.file.btn_process_json_v2_tooltip') }) do
                   %i.fa.fa-bolt
               - when '.pdf'
                 &nbsp;
-                = link_to(pdf_extract_txt_path(file_path: full_pathname), method: :get,
+                = link_to(pdf_extract_txt_path(file_path: full_pathname),
                           class: 'btn btn-sm btn-outline-warning mb-1', data: { toggle: 'tooltip',
                           title: t('data_import.file.btn_process_pdf_tooltip') }) do
                   %i.fa.fa-cogs

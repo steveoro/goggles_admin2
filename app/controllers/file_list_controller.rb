@@ -37,10 +37,13 @@ class FileListController < ApplicationController
                      .map { |name| name.to_s.split('crawler/').last }
                      .sort
 
-    if request.put? && request.format.turbo_stream? && file_params[:curr_dir].present?
+    if request.put? && file_params[:curr_dir].present?
       @curr_dir = file_params[:curr_dir]
       @files = Rails.root.glob("crawler/#{@curr_dir}/**/#{@filter}").sort
-      render('file_table_update') && return
+      respond_to do |format|
+        format.turbo_stream { render('file_table_update') }
+        format.html { redirect_to(root_path) }
+      end && return
 
     elsif request.put?
       flash[:warning] = I18n.t('data_import.errors.invalid_request')
@@ -60,12 +63,16 @@ class FileListController < ApplicationController
   # - <tt>file_path</tt>: the path to the file to be renamed
   #
   def edit_name
-    unless request.format.turbo_stream? && file_params[:file_path].present?
+    unless file_params[:file_path].present?
       flash[:warning] = I18n.t('data_import.errors.invalid_request')
       redirect_to(root_path) && return
     end
 
     @file_path = file_params[:file_path]
+    respond_to do |format|
+      format.turbo_stream
+      format.html { redirect_to(root_path) }
+    end
   end
 
   # [AJAX PUT] Renames the file specified by the given <tt>file_path</tt> parameter.
@@ -75,7 +82,7 @@ class FileListController < ApplicationController
   # - <tt>new_name</tt>: new filename
   #
   def file_rename
-    unless request.format.turbo_stream? && file_params[:file_path].present? && file_params[:new_name].present?
+    unless request.put? && file_params[:file_path].present? && file_params[:new_name].present?
       flash.now[:warning] = I18n.t('data_import.errors.invalid_request')
       redirect_to(root_path) && return
     end
@@ -83,7 +90,10 @@ class FileListController < ApplicationController
     FileUtils.mkdir_p(File.dirname(file_params[:new_name])) # Ensure existence of the destination path
     File.rename(file_params[:file_path], file_params[:new_name])
     prepare_file_and_dir_list
-    render('file_table_update')
+    respond_to do |format|
+      format.turbo_stream { render('file_table_update') }
+      format.html { redirect_to(root_path) }
+    end
   end
 
   # [AJAX GET] Displays the file editing modal.
@@ -92,13 +102,17 @@ class FileListController < ApplicationController
   # - <tt>file_path</tt>: the path to the file to be renamed
   #
   def edit_file
-    unless request.format.turbo_stream? && file_params[:file_path].present?
+    unless file_params[:file_path].present?
       flash[:warning] = I18n.t('data_import.errors.invalid_request')
       redirect_to(root_path) && return
     end
 
     @file_path = file_params[:file_path]
     @file_content = File.read(file_params[:file_path])
+    respond_to do |format|
+      format.turbo_stream
+      format.html { redirect_to(root_path) }
+    end
     # Currently unused: (using custom editors is too much work for now)
     # @parsed_json = JSON.parse(@file_content) if file_params[:file_path].end_with?('.json')
     # rescue StandardError
@@ -113,14 +127,17 @@ class FileListController < ApplicationController
   # - <tt>new_content</tt>: new file contents
   #
   def file_edit
-    unless request.format.turbo_stream? && file_params[:file_path].present? && file_params[:new_content].present?
+    unless request.put? && file_params[:file_path].present? && file_params[:new_content].present?
       flash.now[:warning] = I18n.t('data_import.errors.invalid_request')
       redirect_to(root_path) && return
     end
 
     File.write(file_params[:file_path], file_params[:new_content])
     prepare_file_and_dir_list
-    render('file_table_update')
+    respond_to do |format|
+      format.turbo_stream { render('file_table_update') }
+      format.html { redirect_to(root_path) }
+    end
   end
 
   # [AJAX DELETE] Deletes the file specified by the given <tt>file_path</tt> parameter.
@@ -131,14 +148,17 @@ class FileListController < ApplicationController
   # - <tt>file_path</tt>: the path to the file to be deleted
   #
   def file_delete
-    unless request.format.turbo_stream? && file_params[:file_path].present?
+    unless request.delete? && file_params[:file_path].present?
       flash.now[:warning] = I18n.t('data_import.errors.invalid_request')
       redirect_to(root_path) && return
     end
 
     File.delete(file_params[:file_path])
     prepare_file_and_dir_list
-    render('file_table_update')
+    respond_to do |format|
+      format.turbo_stream { render('file_table_update') }
+      format.html { redirect_to(root_path) }
+    end
   end
 
   private

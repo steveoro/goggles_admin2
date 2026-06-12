@@ -1,4 +1,4 @@
-import consumer from "./node_consumer"
+import consumer from "channels/node_consumer"
 
 document.addEventListener('turbo:load', () => {
   // Subscribe to the channels only when the page is loaded &
