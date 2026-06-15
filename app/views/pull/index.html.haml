@@ -1,5 +1,7 @@
 .wrapper-body
   .main-content
+    = render(partial: 'data_fix_legacy/modal_progress')
+
     %section.my-2#status-box
       = render(partial: 'crawler_status_box')
 
@@ -71,7 +73,7 @@
             .col-6.mt-2.mb-3.text-right
               = link_to('#', id: 'btn-clear-log',
                         class: 'btn btn-sm btn-outline-danger', 'aria-label' => 'clear log',
-                        onclick: "if (confirm('#{j t('data_import.calendar.btn_clear_log_confirm')}')) { $('#crawler_log').html(''); } return false;") do
+                        onclick: "if (confirm('#{j t('data_import.calendar.btn_clear_log_confirm')}')) { document.getElementById('crawler_log').innerHTML = ''; } return false;") do
                 %i.fa.fa-trash-o
                 &nbsp;
                 = t('data_import.calendar.btn_clear_log')

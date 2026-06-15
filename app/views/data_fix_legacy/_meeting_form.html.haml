@@ -1,7 +1,7 @@
 :ruby
   src_dom = '#meeting_search'
   target_dom = '#meeting_meeting_id'
-  onchange_event = "$('#{target_dom}').val($('#{src_dom}').val()); $('#{target_dom}').trigger('change')"
+  onchange_event = "document.getElementById('meeting_meeting_id').value = document.getElementById('meeting_search').value; document.getElementById('meeting_meeting_id').dispatchEvent(new Event('change', { bubbles: true }))"
   meeting = meeting_entity.row
 
 = form_for(meeting, url: data_fix_update_legacy_path(meeting.attributes.merge(model: 'meeting')), method: :patch) do |f|

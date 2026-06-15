@@ -93,7 +93,7 @@
               src_dom = '#meeting_search'
               target_dom = '#meeting_meeting_id'
               baseline_data_json = json_escape(baseline_data.to_json)
-              onchange_event = "var selected = $('#{src_dom}').val(); if (selected && selected.toString().trim().length > 0) { $('#{target_dom}').val(selected); $('#{target_dom}').trigger('change'); } else { DataFix.resetMeetingFormToOriginal(#{baseline_data_json}); }"
+              onchange_event = "var selected = document.getElementById('meeting_search').value; if (selected && selected.toString().trim().length > 0) { document.getElementById('meeting_meeting_id').value = selected; document.getElementById('meeting_meeting_id').dispatchEvent(new Event('change', { bubbles: true })); } else { DataFix.resetMeetingFormToOriginal(#{baseline_data_json}); }"
             = select_tag('meeting_search',
                          options_for_select(fuzzy_matches.map { |m| [m['description'], m['id']] }, meeting_data['id']),
                          include_blank: true, class: 'form-control form-control-sm', onchange: onchange_event)

@@ -5,9 +5,6 @@ it:
         "yes": "✅"
         "no": "❌"
     table:
-      order:
-        asc: "<i class='fa fa-sort-amount-asc'></i>"
-        desc: "<i class='fa fa-sort-amount-desc'></i>"
       no_columns: "Nessuna colonna"
     form:
       search: "Cerca"

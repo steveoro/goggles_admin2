@@ -78,14 +78,28 @@ class ApplicationController < ActionController::Base
   #
   # (NOTE: memoizazion is needed because the member variable is used in the view.)
   def index_params_for(datagrid_name)
-    @index_params = params.permit(:page, :per_page, datagrid_name)
-    return @index_params.merge(params.fetch(datagrid_name, {}).permit!) if params.expect(datagrid_name).respond_to?(:fetch)
+    base_params = params.permit(:page, :per_page).to_h
+    grid_params = normalized_grid_params_for(datagrid_name)
+    @index_params = ActionController::Parameters.new(
+      base_params.merge(grid_params).merge(datagrid_name => grid_params)
+    ).permit!
+  end
 
-    # Assuming the pass-through filtering parameters for the grid are a valid JSONified
-    # string, we'll parse them to rebuild the grid filters:
-    # (both boxed & unboxed params are currently needed)
-    pass_through = @index_params[datagrid_name].is_a?(String) ? JSON.parse(@index_params[datagrid_name]) : {}
-    @index_params.merge(pass_through).merge(datagrid_name => pass_through).permit!
+  def normalized_grid_params_for(datagrid_name)
+    raw_params = params[datagrid_name]
+    normalized = case raw_params
+                 when ActionController::Parameters
+                   raw_params.permit!.to_h
+                 when Hash
+                   raw_params
+                 when String
+                   JSON.parse(raw_params)
+                 else
+                   {}
+                 end
+    normalized.with_indifferent_access
+  rescue JSON::ParserError
+    {}.with_indifferent_access
   end
 
   # Returns the sub-hash of namespaced params according to the specified <tt>namespace</tt>

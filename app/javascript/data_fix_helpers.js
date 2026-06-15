@@ -1,26 +1,26 @@
 // Data-Fix helper functions for populating forms from existing DB records
 
 function setFieldValue(fieldId, value, triggerChange = true) {
-  const field = $('#' + fieldId)
-  if (!field.length) {
+  const field = document.getElementById(fieldId)
+  if (!field) {
     return
   }
 
-  field.val(value == null ? '' : value)
+  field.value = value == null ? '' : value
   if (triggerChange) {
-    field.trigger('change')
+    field.dispatchEvent(new Event('change', { bubbles: true }))
   }
 }
 
 function setCheckboxValue(fieldId, checked, triggerChange = false) {
-  const field = $('#' + fieldId)
-  if (!field.length) {
+  const field = document.getElementById(fieldId)
+  if (!field) {
     return
   }
 
-  field.prop('checked', !!checked)
+  field.checked = !!checked
   if (triggerChange) {
-    field.trigger('change')
+    field.dispatchEvent(new Event('change', { bubbles: true }))
   }
 }
 
@@ -31,9 +31,9 @@ export function resetMeetingFormToOriginal(originalMeetingData) {
 
   setFieldValue('meeting_meeting_id', '', false)
   setFieldValue('meeting_meeting', '', false)
-  const desc = $('#meeting-desc')
-  if (desc.length) {
-    desc.html('')
+  const desc = document.getElementById('meeting-desc')
+  if (desc) {
+    desc.innerHTML = ''
   }
 
   setFieldValue('meeting_description', originalMeetingData.name, false)
@@ -284,28 +284,33 @@ export function populateSessionFromExisting(sessionIndex, meetingSessionId, exis
 
   // Populate form fields
   var prefix = 'session_' + sessionIndex + '_';
-  
+
   if (session.description) {
-    $('#' + prefix + 'description').val(session.description);
+    const field = document.getElementById(prefix + 'description');
+    if (field) field.value = session.description;
   }
-  
+
   if (session.session_order) {
-    $('#' + prefix + 'order').val(session.session_order);
+    const field = document.getElementById(prefix + 'order');
+    if (field) field.value = session.session_order;
   }
-  
+
   if (session.scheduled_date) {
-    $('#' + prefix + 'scheduled_date').val(session.scheduled_date);
+    const field = document.getElementById(prefix + 'scheduled_date');
+    if (field) field.value = session.scheduled_date;
   }
-  
+
   if (session.day_part_type_id) {
-    $('#' + prefix + 'day_part_type_id').val(session.day_part_type_id);
+    const field = document.getElementById(prefix + 'day_part_type_id');
+    if (field) field.value = session.day_part_type_id;
   }
 
   // If swimming_pool_id is available, trigger the pool autocomplete
   if (session.swimming_pool_id) {
-    var poolIdField = $('#pool_' + sessionIndex + '_swimming_pool_id');
-    if (poolIdField.length) {
-      poolIdField.val(session.swimming_pool_id).trigger('change');
+    var poolIdField = document.getElementById('pool_' + sessionIndex + '_swimming_pool_id');
+    if (poolIdField) {
+      poolIdField.value = session.swimming_pool_id;
+      poolIdField.dispatchEvent(new Event('change', { bubbles: true }));
       rehydrateSessionPoolAndCity(sessionIndex, session.swimming_pool_id)
     }
   }
@@ -335,39 +340,46 @@ export function populateEventFromExisting(eventIndex, meetingEventId, existingEv
 
   // Populate form fields
   var prefix = 'event_' + eventIndex + '_';
-  
+
   if (event.event_order) {
-    $('#' + prefix + 'order').val(event.event_order);
+    const field = document.getElementById(prefix + 'order');
+    if (field) field.value = event.event_order;
   }
-  
+
   if (event.begin_time) {
-    $('#' + prefix + 'begin_time').val(event.begin_time);
+    const field = document.getElementById(prefix + 'begin_time');
+    if (field) field.value = event.begin_time;
   }
-  
+
   if (event.heat_type_id) {
-    $('#' + prefix + 'heat_type_id').val(event.heat_type_id);
+    const field = document.getElementById(prefix + 'heat_type_id');
+    if (field) field.value = event.heat_type_id;
   }
 
   // If event_type_id is available, trigger the event_type autocomplete
   if (event.event_type_id) {
-    var eventTypeIdField = $('#meeting_event_' + eventIndex + '_event_type_id');
-    if (eventTypeIdField.length) {
-      eventTypeIdField.val(event.event_type_id).trigger('change');
+    var eventTypeIdField = document.getElementById('meeting_event_' + eventIndex + '_event_type_id');
+    if (eventTypeIdField) {
+      eventTypeIdField.value = event.event_type_id;
+      eventTypeIdField.dispatchEvent(new Event('change', { bubbles: true }));
     }
   }
 
   // Populate legacy fields for backward compatibility
   // These fields are used by the phase file format and are derived from event_type/heat_type
   if (event.distance) {
-    $('#' + prefix + 'distance').val(event.distance);
+    const field = document.getElementById(prefix + 'distance');
+    if (field) field.value = event.distance;
   }
-  
+
   if (event.stroke_type_code) {
-    $('#' + prefix + 'stroke').val(event.stroke_type_code);
+    const field = document.getElementById(prefix + 'stroke');
+    if (field) field.value = event.stroke_type_code;
   }
-  
+
   if (event.heat_type_code) {
-    $('#' + prefix + 'heat_type_code').val(event.heat_type_code);
+    const field = document.getElementById(prefix + 'heat_type_code');
+    if (field) field.value = event.heat_type_code;
   }
 }
 

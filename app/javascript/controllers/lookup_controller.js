@@ -353,12 +353,13 @@ export default class extends Controller {
       // Make sure the "status led" is green when there's a selection and vice-versa:
       // Given that setHiddenFieldsValue() may be invoked twice on some occasions,
       // we'll do an explicit check instead of relying on the simple outcome of toggleClass():
+      const element = document.querySelector(`#${baseName}-presence`)
       if (hasLabel) {
-        $(`#${baseName}-presence`).addClass('text-success')
-        $(`#${baseName}-presence`).removeClass('text-danger')
+        element.classList.add('text-success')
+        element.classList.remove('text-danger')
       } else {
-        $(`#${baseName}-presence`).addClass('text-danger')
-        $(`#${baseName}-presence`).removeClass('text-success')
+        element.classList.add('text-danger')
+        element.classList.remove('text-success')
       }
     }
   }
@@ -370,10 +371,11 @@ export default class extends Controller {
    */
   newLedUpdate(baseName, visible) {
     if (document.querySelector(`#${baseName}-new`)) {
+      const element = document.querySelector(`#${baseName}-new`)
       if (visible) {
-        $(`#${baseName}-new`).removeClass('d-none')
+        element.classList.remove('d-none')
       } else {
-        $(`#${baseName}-new`).addClass('d-none')
+        element.classList.add('d-none')
       }
     }
   }

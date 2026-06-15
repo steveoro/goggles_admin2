@@ -93,9 +93,9 @@
           search_engine = 'https://www.google.com/maps/search/'
           initial_query = "?q=#{pool_data['name']}, #{pool_data['address']}".gsub(' ', '%20')
           initial_maps_href = "#{search_engine}#{initial_query}"
-          name_part = "${$('#pool_#{idx}_name').val()}"
-          addr_part = "${$('#pool_#{idx}_address').val()}"
-          search_query = "?q=#{name_part}, #{addr_part}, ${$('#city_#{idx}_name').val()}"
+          name_part = "${document.getElementById('pool_#{idx}_name').value}"
+          addr_part = "${document.getElementById('pool_#{idx}_address').value}"
+          search_query = "?q=#{name_part}, #{addr_part}, ${document.getElementById('city_#{idx}_name').value}"
           onchange_event = "document.querySelector('#maps-uri-search-#{idx}').href = `#{search_engine}#{search_query}`;"
 
         %h6.text-secondary Swimming Pool
@@ -128,7 +128,7 @@
                   city_longitude: city_data['longitude']
                 }
                 baseline_pool_data_json = json_escape(baseline_pool_data.to_json)
-                onclick_copy = "var poolId = $('#search_pool_#{idx}').val(); if (poolId && poolId.toString().trim().length > 0) { $('#pool_#{idx}_swimming_pool_id').val(poolId); $('#pool_#{idx}_swimming_pool_id').trigger('change'); DataFix.rehydrateSessionPoolAndCity(#{idx}, poolId); } else { DataFix.resetSessionPoolAndCityToOriginal(#{baseline_pool_data_json}, #{idx}); }"
+                onclick_copy = "var poolId = document.getElementById('search_pool_#{idx}').value; if (poolId && poolId.toString().trim().length > 0) { document.getElementById('pool_#{idx}_swimming_pool_id').value = poolId; document.getElementById('pool_#{idx}_swimming_pool_id').dispatchEvent(new Event('change', { bubbles: true })); DataFix.rehydrateSessionPoolAndCity(#{idx}, poolId); } else { DataFix.resetSessionPoolAndCityToOriginal(#{baseline_pool_data_json}, #{idx}); }"
               = select_tag "search_pool_#{idx}", options_for_select(pool_collection.map { |p| [p.name, p.id] }, pool_id), { include_blank: true, class: 'form-control form-control-sm', onclick: onclick_copy }
 
         .form-row

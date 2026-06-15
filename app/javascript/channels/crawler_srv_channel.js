@@ -23,39 +23,53 @@ document.addEventListener('turbo:load', () => {
         console.log(`CrawlerSrvChannel received: ${data}`);
         const parsedMessage = JSON.parse(data);
 
+        const statusIcon = document.getElementById('crawler-status-icon')
+        const statusText = document.getElementById('crawler-status')
+        const detailText = document.getElementById('crawler-detail')
+        const crawlerLog = document.getElementById('crawler_log')
+        const progressBar = document.getElementById('crawler-progress')
+        const progressRow = document.getElementById('crawler-progress-row')
+
         // ** STATUS received **
         if (parsedMessage.status) {
           // Status icon + terse state message update:
-          $('#crawler-status-icon').removeClass('fa-question-circle-o')
-          $('#crawler-status-icon').addClass('fa-cog')
-          $('#crawler-status').html(parsedMessage.status)
+          if (statusIcon) {
+            statusIcon.classList.remove('fa-question-circle-o')
+            statusIcon.classList.add('fa-cog')
+          }
+          if (statusText) {
+            statusText.innerHTML = parsedMessage.status
+          }
 
           // Log display update (1-liner status + full log increase):
           if (parsedMessage.timestamp && parsedMessage.detail) {
             let logLine = `[${parsedMessage.timestamp}] ${parsedMessage.detail}`
-            $('#crawler-detail').html(logLine)
+            if (detailText) {
+              detailText.innerHTML = logLine
+            }
             // Full log container found?
-            if ($('#crawler_log').parent().html()) {
-              let log = $('#crawler_log').html().split('\n')
+            if (crawlerLog && crawlerLog.parentElement) {
+              let log = crawlerLog.innerHTML.split('\n')
               if (log.length < 2 || (log.length >= 2 && log[log.length - 2] != logLine)) {
-                $('#crawler_log').append(`${logLine}\n`)
+                crawlerLog.innerHTML += `${logLine}\n`
               }
             }
-            if (parsedMessage.progress) {
+            if (parsedMessage.progress && progressBar) {
               var percent = (parsedMessage.progress * 100 / parsedMessage.total).toFixed(1)
-              $('#crawler-progress').attr('aria-valuenow', percent)
-              $('#crawler-progress').attr('style', `width: ${percent}%`)
-              $('#crawler-progress').text(`${percent}%`)
-              $('#crawler-progress-row').removeClass('d-none')
-
+              progressBar.setAttribute('aria-valuenow', percent)
+              progressBar.style.width = `${percent}%`
+              progressBar.textContent = `${percent}%`
+              if (progressRow) {
+                progressRow.classList.remove('d-none')
+              }
             }
-            else {
-              $('#crawler-progress-row').addClass('d-none')
+            else if (progressRow) {
+              progressRow.classList.add('d-none')
             }
           }
           // Clear the log display whenever you receive either an null timestamp or an empty status detail:
-          else {
-            $('#crawler-detail').html('');
+          else if (detailText) {
+            detailText.innerHTML = ''
           }
 
           // ** STATUS: DONE ** => update the list of retrieved calendars:
@@ -66,10 +80,16 @@ document.addEventListener('turbo:load', () => {
 
         // Status not yet received:
         else {
-          $('#crawler-status-icon').removeClass('fa-cog')
-          $('#crawler-status-icon').addClass('fa-question-circle-o')
-          $('#crawler-status').html('connecting...');
-          $('#crawler-detail').html('');
+          if (statusIcon) {
+            statusIcon.classList.remove('fa-cog')
+            statusIcon.classList.add('fa-question-circle-o')
+          }
+          if (statusText) {
+            statusText.innerHTML = 'connecting...'
+          }
+          if (detailText) {
+            detailText.innerHTML = ''
+          }
         }
       },
     });

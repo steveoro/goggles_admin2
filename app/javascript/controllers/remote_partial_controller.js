@@ -73,7 +73,7 @@ export default class extends Controller {
       {
         method: 'PUT',
         headers: {
-          'X-CSRF-Token': $('meta[name=csrf-token]').attr('content'),
+          'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'),
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(payload)
@@ -98,7 +98,7 @@ export default class extends Controller {
    * @returns the object payload composed for the PUT request.
    */
   buildPayload () {
-    const payloadNodes = $('[data-remote-partial-payload="true"]').toArray()
+    const payloadNodes = Array.from(document.querySelectorAll('[data-remote-partial-payload="true"]'))
     const modelObjName = payloadNodes[0].name.split(/\[(.+)\]/)[0] // get just the 'model' part
     const attributesObj = {}
     let attrObjName = ''

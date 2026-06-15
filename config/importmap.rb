@@ -16,7 +16,7 @@ pin 'data_fix_helpers', to: 'data_fix_helpers.js'
 # Third-party libraries used by Stimulus controllers.
 # chart.js — used by chart_api_controller
 pin 'chart.js', to: 'https://cdn.jsdelivr.net/npm/chart.js@4.4.4/+esm'
-pin 'chart.js/auto', to: 'https://cdn.jsdelivr.net/npm/chart.js@4.4.4/+esm'
+pin 'chart.js/auto', to: 'https://cdn.jsdelivr.net/npm/chart.js@4.4.4/auto/+esm'
 
 # tom-select — replaces select2 and easyAutocomplete
 pin 'tom-select', to: 'https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/esm/tom-select.complete.min.js'

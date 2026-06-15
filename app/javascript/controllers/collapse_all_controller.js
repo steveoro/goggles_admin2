@@ -38,11 +38,10 @@ export default class extends Controller {
     collapseElements.forEach(element => {
       // DEBUG
       // console.log('Processing element:', element.id)
-      const $element = $(element)
       if (this.collapsedValue) {
-        $element.collapse('hide')
+        element.classList.remove('show')
       } else {
-        $element.collapse('show')
+        element.classList.add('show')
       }
     })
     

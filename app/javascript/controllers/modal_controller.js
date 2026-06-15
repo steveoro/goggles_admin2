@@ -27,10 +27,16 @@ export default class extends Controller {
    */
   connect () {
     // eslint-disable-next-line no-undef
-    $(this.element).modal('show')
-    // Re-init tooltips for freshly injected modal content:
-    // eslint-disable-next-line no-undef
-    $(this.element).find('[data-toggle="tooltip"]').tooltip()
+    if (typeof $ !== 'undefined' && $(this.element).modal) {
+      $(this.element).modal('show')
+      // Re-init tooltips for freshly injected modal content:
+      // eslint-disable-next-line no-undef
+      $(this.element).find('[data-toggle="tooltip"]').tooltip()
+    } else {
+      // Fallback: use classList to show modal if jQuery/Bootstrap not available
+      this.element.classList.add('show')
+      this.element.style.display = 'block'
+    }
   }
 
   /**
@@ -39,12 +45,23 @@ export default class extends Controller {
    */
   disconnect () {
     // eslint-disable-next-line no-undef
-    $(this.element).modal('hide')
-    // Clean up any orphaned Bootstrap backdrop/body state left behind when the
-    // modal element is detached by a subsequent Turbo Stream replacement:
-    // eslint-disable-next-line no-undef
-    $('.modal-backdrop').remove()
-    // eslint-disable-next-line no-undef
-    $('body').removeClass('modal-open').css('padding-right', '')
+    if (typeof $ !== 'undefined' && $(this.element).modal) {
+      $(this.element).modal('hide')
+      // Clean up any orphaned Bootstrap backdrop/body state left behind when the
+      // modal element is detached by a subsequent Turbo Stream replacement:
+      // eslint-disable-next-line no-undef
+      $('.modal-backdrop').remove()
+      // eslint-disable-next-line no-undef
+      $('body').removeClass('modal-open').css('padding-right', '')
+    } else {
+      // Fallback: use classList to hide modal
+      this.element.classList.remove('show')
+      this.element.style.display = 'none'
+      // Clean up backdrop
+      const backdrop = document.querySelector('.modal-backdrop')
+      if (backdrop) backdrop.remove()
+      document.body.classList.remove('modal-open')
+      document.body.style.paddingRight = ''
+    }
   }
 }

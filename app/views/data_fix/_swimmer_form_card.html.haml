@@ -118,7 +118,7 @@
                       gender_type_code: swimmer_hash['gender_type_code']
                     }
                     baseline_data_json = json_escape(baseline_data.to_json)
-                    onchange_event = "var swimmerId = this.value; if (swimmerId && swimmerId.toString().trim().length > 0) { $('#swimmer_#{swimmer_index}_swimmer_id').val(swimmerId).trigger('change'); $('#swimmer_#{swimmer_index}_id_field').val(swimmerId); $('#swimmer[#{swimmer_index}]').val(swimmerId).trigger('change'); } else { DataFix.resetSwimmerFormToOriginal(#{baseline_data_json}, #{swimmer_index}); }"
+                    onchange_event = "var swimmerId = this.value; if (swimmerId && swimmerId.toString().trim().length > 0) { document.getElementById('swimmer_#{swimmer_index}_swimmer_id').value = swimmerId; document.getElementById('swimmer_#{swimmer_index}_swimmer_id').dispatchEvent(new Event('change', { bubbles: true })); document.getElementById('swimmer_#{swimmer_index}_id_field').value = swimmerId; document.getElementById('swimmer[#{swimmer_index}]').value = swimmerId; document.getElementById('swimmer[#{swimmer_index}]').dispatchEvent(new Event('change', { bubbles: true })); } else { DataFix.resetSwimmerFormToOriginal(#{baseline_data_json}, #{swimmer_index}); }"
                   = select_tag("fuzzy_select_#{swimmer_index}",
                                options_for_select([['-- Select a match --', '']] + fuzzy_matches.map { |m| [m['display_label'], m['id']] }, swimmer_id),
                                class: 'form-control', id: "fuzzy_select_#{swimmer_index}",

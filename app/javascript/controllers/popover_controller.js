@@ -37,6 +37,13 @@ export default class extends Controller {
     // DEBUG
     // console.log('Connecting popover controller...')
 
+    // Bootstrap 4.6.2 requires jQuery for popovers, tooltips, and modals
+    // If jQuery is not available, these features won't work
+    if (typeof $ === 'undefined') {
+      console.warn('jQuery not available - Bootstrap popovers, tooltips, and modals require jQuery')
+      return
+    }
+
     // *** Popovers setup: ***
     $('[data-toggle="popover"]').popover()
 

@@ -11,7 +11,7 @@
             %i.btn.btn-sm.btn-outline-warning.fa.fa-refresh
       - else
         %a.nav-link{ href: review_sessions_legacy_path(file_path: file_path),
-                     onclick: "$('#loading-indicator').removeClass('d-none');" }
+                     onclick: "document.getElementById('loading-indicator').classList.remove('d-none');" }
           1: Meeting & Session
 
     %li.nav-item
@@ -25,7 +25,7 @@
             %i.btn.btn-sm.btn-outline-warning.fa.fa-refresh
       - else
         %a.nav-link{ href: review_teams_legacy_path(file_path: file_path),
-                     onclick: "$('#loading-indicator').removeClass('d-none');" }
+                     onclick: "document.getElementById('loading-indicator').classList.remove('d-none');" }
           2: Teams
 
     %li.nav-item
@@ -39,7 +39,7 @@
             %i.btn.btn-sm.btn-outline-warning.fa.fa-refresh
       - else
         %a.nav-link{ href: review_swimmers_legacy_path(file_path: file_path),
-                     onclick: "$('#loading-indicator').removeClass('d-none');" }
+                     onclick: "document.getElementById('loading-indicator').classList.remove('d-none');" }
           3: Swimmers
 
     %li.nav-item
@@ -53,7 +53,7 @@
             %i.btn.btn-sm.btn-outline-warning.fa.fa-refresh
       - else
         %a.nav-link{ href: review_events_legacy_path(file_path: file_path),
-                     onclick: "$('#loading-indicator').removeClass('d-none');" }
+                     onclick: "document.getElementById('loading-indicator').classList.remove('d-none');" }
           4: Events
 
     %li.nav-item
@@ -67,5 +67,5 @@
             %i.btn.btn-sm.btn-outline-warning.fa.fa-refresh
       - else
         %a.nav-link{ href: review_results_legacy_path(file_path: file_path),
-                     onclick: "$('#loading-indicator').removeClass('d-none');" }
+                     onclick: "document.getElementById('loading-indicator').classList.remove('d-none');" }
           5: Results

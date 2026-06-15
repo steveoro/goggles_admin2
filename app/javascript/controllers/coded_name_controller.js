@@ -55,16 +55,16 @@ export default class extends Controller {
       // console.log('coded_name_controller: main target found.')
 
       if (this.hasNameTarget) {
-        $(this.nameTarget).on('change', (_ev) => { this.fetchAndUpdateCodedName() })
+        this.nameTarget.addEventListener('change', (_ev) => { this.fetchAndUpdateCodedName() })
       }
       if (this.hasDescTarget) {
-        $(this.descTarget).on('change', (_ev) => { this.fetchAndUpdateCodedName() })
+        this.descTarget.addEventListener('change', (_ev) => { this.fetchAndUpdateCodedName() })
       }
       if (this.hasCityTarget) {
-        $(this.cityTarget).on('change', (_ev) => { this.fetchAndUpdateCodedName() })
+        this.cityTarget.addEventListener('change', (_ev) => { this.fetchAndUpdateCodedName() })
       }
       if (this.hasPoolTarget) {
-        $(this.poolTarget).on('change', (_ev) => { this.fetchAndUpdateCodedName() })
+        this.poolTarget.addEventListener('change', (_ev) => { this.fetchAndUpdateCodedName() })
       }
       // Dry run at start:
       this.fetchAndUpdateCodedName()
@@ -96,7 +96,7 @@ export default class extends Controller {
         // if the target is not set directly, assume we have a nested meeting session
         // form for which we can rely to get a possible city name (only the first session
         // is looked for):
-        let cityName = this.hasCityTarget ? this.cityTarget.value : $('#city_0_name').val()
+        let cityName = this.hasCityTarget ? this.cityTarget.value : (document.getElementById('city_0_name')?.value || '')
         dataParams = {
           target: this.resultTypeValue,
           description: this.descTarget.value,
@@ -104,24 +104,32 @@ export default class extends Controller {
         }
       }
 
-      $.ajax({
+      const url = new URL(apiURL, window.location.origin)
+      Object.keys(dataParams).forEach(key => url.searchParams.append(key, dataParams[key]))
+
+      fetch(url, {
         method: 'GET',
-        dataType: 'json',
-        headers: { Authorization: `Bearer ${this.jwtValue}` },
-        url: apiURL,
-        data: dataParams,
-        error: (_xhr, _textStatus, errorThrown) => {
-          if (errorThrown === 'Unauthorized') {
-            // Force user sign-in & local JWT refresh on JWT expiration:
-            document.location.reload()
-          } else if (errorThrown !== 'abort') {
-            console.error(errorThrown)
-          }
-        },
-        success: (result, _xhr, _textStatus) => {
-          // DEBUG
-          // console.log(result);
-          this.fieldTarget.value = result[this.resultTypeValue]
+        headers: {
+          'Authorization': `Bearer ${this.jwtValue}`,
+          'Accept': 'application/json'
+        }
+      })
+      .then(response => {
+        if (response.status === 401) {
+          // Force user sign-in & local JWT refresh on JWT expiration:
+          document.location.reload()
+          throw new Error('Unauthorized')
+        }
+        return response.json()
+      })
+      .then(result => {
+        // DEBUG
+        // console.log(result);
+        this.fieldTarget.value = result[this.resultTypeValue]
+      })
+      .catch(error => {
+        if (error.message !== 'Unauthorized') {
+          console.error(error)
         }
       })
     }

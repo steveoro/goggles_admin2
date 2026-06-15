@@ -1,5 +1,5 @@
 import { Controller } from '@hotwired/stimulus'
-import Chart from 'chart.js/auto'
+import { Chart } from 'chart.js/auto'
 
 /**
  * = Chart.js setup for API calls report - StimulusJS controller =

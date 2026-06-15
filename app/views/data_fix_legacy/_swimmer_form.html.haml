@@ -4,7 +4,7 @@
   subkey_for_dom_id = swimmer_key.gsub(/[\s`'^?&%$!"<>:;,.*àèéìòù]/, '_')
   src_dom = "#swimmer_#{subkey_for_dom_id}_id"
   target_dom = "#swimmer_#{subkey_for_dom_id}_swimmer_id"
-  onchange_event = "$('#{target_dom}').val($('#{src_dom}').val()); $('#{target_dom}').trigger('change')"
+  onchange_event = "document.getElementById('#{target_dom.gsub('#', '')}').value = document.getElementById('#{src_dom.gsub('#', '')}').value; document.getElementById('#{target_dom.gsub('#', '')}').dispatchEvent(new Event('change', { bubbles: true }))"
   gender_type_opts = options_from_collection_for_select(GogglesDb::GenderType.all, 'id', 'label',
                                                         swimmer&.gender_type_id)
 

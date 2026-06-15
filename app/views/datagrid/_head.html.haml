@@ -1,5 +1,14 @@
 %tr.text-center
   - grid.html_columns(*options[:columns]).each do |column|
-    %th{ class: datagrid_column_classes(grid, column).to_s }
+    - tag_options = column.respond_to?(:tag_options) ? column.tag_options : {}
+    - css_classes = Array(tag_options[:class])
+    - css_classes << 'datagrid-order-active-asc' if grid.ordered_by?(column, false)
+    - css_classes << 'datagrid-order-active-desc' if grid.ordered_by?(column, true)
+    %th{ tag_options.merge('data-column': column.name, class: css_classes) }
       = column.header
-      = datagrid_order_for(grid, column, options) if column.supports_order? && options[:order]
+      - if column.supports_order? && options[:order]
+        .datagrid-order
+          = link_to(datagrid_order_path(grid, column, false), class: 'datagrid-order-control-asc') do
+            %i.fa.fa-sort-amount-asc
+          = link_to(datagrid_order_path(grid, column, true), class: 'datagrid-order-control-desc') do
+            %i.fa.fa-sort-amount-desc

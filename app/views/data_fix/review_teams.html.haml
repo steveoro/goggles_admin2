@@ -143,29 +143,37 @@
   .mb-4 &nbsp;
 
 :javascript
-  $(document).on('click', '.verify-team-btn', function(e) {
-    e.preventDefault();
-    var btn = $(this);
-    var filePath = btn.data('file-path');
-    var teamKey = btn.data('team-key');
-    var candidateTeamId = btn.data('candidate-team-id');
-    var targetSelector = btn.data('target');
-    var panel = $(targetSelector);
-    panel.collapse('show');
+  document.addEventListener('click', function(e) {
+    if (e.target.closest('.verify-team-btn')) {
+      e.preventDefault();
+      var btn = e.target.closest('.verify-team-btn');
+      var filePath = btn.dataset.filePath;
+      var teamKey = btn.dataset.teamKey;
+      var candidateTeamId = btn.dataset.candidateTeamId;
+      var targetSelector = btn.dataset.target;
+      var panel = document.querySelector(targetSelector);
+      panel.classList.add('show');
 
-    $.ajax({
-      url: '/data_fix/verify_team',
-      method: 'GET',
-      data: { file_path: filePath, team_key: teamKey, candidate_team_id: candidateTeamId },
-      dataType: 'json',
-      success: function(data) {
-        panel.find('> div').html(renderTeamVerifyPanel(data));
-      },
-      error: function(xhr) {
-        var msg = xhr.responseJSON ? xhr.responseJSON.error : 'Verification failed';
-        panel.find('> div').html('<div class="text-danger"><i class="fa fa-exclamation-triangle"></i> ' + msg + '</div>');
-      }
-    });
+      var url = '/data_fix/verify_team?file_path=' + encodeURIComponent(filePath) + '&team_key=' + encodeURIComponent(teamKey) + '&candidate_team_id=' + encodeURIComponent(candidateTeamId);
+      fetch(url, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json'
+        }
+      })
+      .then(function(response) {
+        return response.json();
+      })
+      .then(function(data) {
+        const container = panel.querySelector('div');
+        if (container) container.innerHTML = renderTeamVerifyPanel(data);
+      })
+      .catch(function(xhr) {
+        var msg = 'Verification failed';
+        const container = panel.querySelector('div');
+        if (container) container.innerHTML = '<div class="text-danger"><i class="fa fa-exclamation-triangle"></i> ' + msg + '</div>';
+      });
+    }
   });
 
   function renderTeamVerifyPanel(data) {

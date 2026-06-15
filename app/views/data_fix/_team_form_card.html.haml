@@ -97,7 +97,7 @@
                       city_id: city_id
                     }
                     baseline_data_json = json_escape(baseline_data.to_json)
-                    onchange_event = "var teamId = this.value; if (teamId && teamId.toString().trim().length > 0) { $('#team_#{team_index}_team_id').val(teamId).trigger('change'); $('#team_#{team_index}_id_field').val(teamId); $('#team_#{team_index}').val(teamId).trigger('change'); } else { DataFix.resetTeamFormToOriginal(#{baseline_data_json}, #{team_index}); }"
+                    onchange_event = "var teamId = this.value; if (teamId && teamId.toString().trim().length > 0) { document.getElementById('team_#{team_index}_team_id').value = teamId; document.getElementById('team_#{team_index}_team_id').dispatchEvent(new Event('change', { bubbles: true })); document.getElementById('team_#{team_index}_id_field').value = teamId; document.getElementById('team_#{team_index}').value = teamId; document.getElementById('team_#{team_index}').dispatchEvent(new Event('change', { bubbles: true })); } else { DataFix.resetTeamFormToOriginal(#{baseline_data_json}, #{team_index}); }"
                   = select_tag "fuzzy_select_#{team_index}", options_for_select([['-- Select a match --', '']] + fuzzy_matches.map { |m| [m['display_label'], m['id']] }, team_id), class: 'form-control', id: "fuzzy_select_#{team_index}", onchange: onchange_event
                   %small.form-text.text-muted
                     Select a match from the list to quickly populate team fields via AutoComplete.

@@ -3,26 +3,17 @@
 // a relevant structure within app/javascript and only use these pack files to reference
 // that code so it'll be compiled.
 
-import jQuery from 'jquery'
-import 'popper.js'
-import 'bootstrap'
-import 'select2'
-import 'select2/dist/css/select2.css'
-
 import '../controllers/index'
 
 import Chart from 'chart.js/auto'
 window.Chart = Chart
 
 // Import DataFix helpers and expose to window for inline event handlers
-import * as DataFixHelpers from './data_fix_helpers'
+import * as DataFixHelpers from '../data_fix_helpers'
 window.DataFix = DataFixHelpers
-// import { Chart, registerables } from 'chart.js';
-// Chart.register(...registerables);
 
 // Styles:
 import '../stylesheets/application'
-window.$ = window.jQuery = jQuery
 
 require("@rails/ujs").start()
 require("turbolinks").start()

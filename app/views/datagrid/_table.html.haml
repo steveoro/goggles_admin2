@@ -1,12 +1,14 @@
 - if grid.html_columns(*options[:columns]).any?
-  = content_tag(:table, options[:html]) do
+  - html_options = options.fetch(:html, {})
+  - table_classes = ['datagrid-table', html_options[:class]].compact
+  = tag.table(**html_options.merge(class: table_classes)) do
     %thead
-      = datagrid_header(grid, options)
+      = datagrid_header(grid, **options)
     %tbody
       - if assets&.any?
         = datagrid_rows(grid, assets, **options)
       - else
         %tr
-          %td.text-center.py-4.noresults{ colspan: '100%' }= I18n.t('datagrid.no_results').html_safe
+          %td.text-center.py-4.datagrid-no-results{ colspan: '100%' }= I18n.t('datagrid.no_results')
 - else
-  .text-center.py-4= I18n.t('datagrid.table.no_columns').html_safe
+  .text-center.py-4= I18n.t('datagrid.table.no_columns')

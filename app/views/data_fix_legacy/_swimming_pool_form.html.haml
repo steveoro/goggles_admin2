@@ -17,7 +17,7 @@
   city_id = swimming_pool&.city_id || city&.id
   src_dom = '#search_pool_id'
   target_dom = "#swimming_pool_#{index}_swimming_pool_id"
-  onclick_event = "$('#{target_dom}').val($('#{src_dom}').val()); $('#{target_dom}').trigger('change')"
+  onclick_event = "document.getElementById('#{target_dom.gsub('#', '')}').value = document.getElementById('#{src_dom.gsub('#', '')}').value; document.getElementById('#{target_dom.gsub('#', '')}').dispatchEvent(new Event('change', { bubbles: true }))"
 
 .row
   - if city_id.present?

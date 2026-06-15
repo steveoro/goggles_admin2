@@ -1,10 +1,14 @@
+.modal-backdrop#modal-progress-backdrop{ style: 'display: none; background-color: rgba(0, 0, 0, 0.5);' }
 .modal#modal-progress{ 'aria-hidden': 'true', 'aria-labelledby': 'modal-progress',
-                       role: 'dialog', tabindex: '-1' }
+                       role: 'dialog', tabindex: '-1',
+                       data: { controller: 'progress-modal',
+                               progress_modal_target: 'modal' } }
   .modal-dialog.modal-dialog-centered.modal-lg
     .modal-content
-      .m-2#progress-msg
+      .m-2#progress-msg{ data: { progress_modal_target: 'message' } }
         Loading...
       .progress
         .progress-bar#di-progress{ role: 'progressbar', 'aria-valuenow': '0',
                                    'aria-valuemin': '0', 'aria-valuemax': '100',
-                                   style: 'width: 0%', data: { value: 0, total: 100 } } 0%
+                                   style: 'width: 0%', data: { value: 0, total: 100,
+                                                               progress_modal_target: 'progress' } } 0%

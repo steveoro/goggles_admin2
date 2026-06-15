@@ -13,12 +13,13 @@ RSpec.describe APIUsersController do
 
     context 'with a logged-in user' do
       include AdminSignInHelpers
+
       before(:each) do
         admin_user = prepare_admin_user
         sign_in_admin(admin_user)
         # API double:
         allow(APIProxy).to receive(:call).with(
-          method: :get, url: 'users', jwt: admin_user.jwt
+          method: :get, url: 'users', jwt: admin_user.jwt, params: { page: 1, per_page: 25 }
         ).and_return(DummyResponse.new(body: GogglesDb::User.first(25).to_json))
       end
 
@@ -44,6 +45,7 @@ RSpec.describe APIUsersController do
 
     context 'with a logged-in user' do
       include AdminSignInHelpers
+
       before(:each) do
         admin_user = prepare_admin_user
         sign_in_admin(admin_user)
@@ -84,6 +86,7 @@ RSpec.describe APIUsersController do
 
     context 'with a logged-in user,' do
       include AdminSignInHelpers
+
       context 'when destroying a single row,' do
         before(:each) do
           admin_user = prepare_admin_user

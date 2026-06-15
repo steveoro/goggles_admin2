@@ -20,6 +20,8 @@
     = stylesheet_link_tag('application', media: 'all', 'data-turbo-track': 'reload')
     = javascript_include_tag('https://code.jquery.com/jquery-3.7.1.min.js',
                              defer: true, 'data-turbo-track': 'reload')
+    -# jQuery still required by Bootstrap 4.6.2 for popovers, tooltips, and modals
+    -# To fully remove jQuery, upgrade to Bootstrap 5 or replace Bootstrap with vanilla JS alternatives
     = javascript_include_tag('https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js',
                              defer: true, 'data-turbo-track': 'reload')
     = javascript_importmap_tags

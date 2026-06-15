@@ -46,9 +46,9 @@
       search_engine = 'https://www.google.com/maps/search/'
       initial_query = "?q=#{swimming_pool&.name}, #{swimming_pool&.address}".gsub(' ', '%20')
       initial_maps_href = "#{search_engine}#{initial_query}"
-      name_part = "${$('#swimming_pool_#{index}_name').val()}"
-      addr_part = "${$('#swimming_pool_#{index}_address').val()}"
-      search_query = "?q=#{name_part}, #{addr_part}, ${$('#city_#{index}_name').val()}"
+      name_part = "${document.getElementById('swimming_pool_#{index}_name').value}"
+      addr_part = "${document.getElementById('swimming_pool_#{index}_address').value}"
+      search_query = "?q=#{name_part}, #{addr_part}, ${document.getElementById('city_#{index}_name').value}"
       onchange_event = "document.querySelector('#maps-uri-search-#{index}').href = `#{search_engine}#{search_query}`;"
 
     = render(partial: 'swimming_pool_form', locals: { meeting_session: meeting_session,

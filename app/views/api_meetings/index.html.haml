@@ -18,7 +18,7 @@
             CSV localhost 0-MIRs
             %i.fa.fa-download
         &nbsp;
-      = datagrid_form_for(@grid, method: :get,
+      = datagrid_form_with(model: @grid, method: :get,
                           url: url_for(controller: controller_name, action: :index, params: @index_params))
       = render(Grid::FilterLabelsComponent.new(filter_params: @grid_filter_params))
 

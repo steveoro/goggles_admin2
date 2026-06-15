@@ -40,24 +40,28 @@ export default class extends Controller {
     const panel = document.querySelector(targetSelector)
     if (!panel) return
 
-    $(panel).collapse('show')
+    panel.classList.add('show')
 
     const self = this
-    $.ajax({
-      url: '/data_fix/verify_result',
+    const url = '/data_fix/verify_result?import_key=' + encodeURIComponent(importKey) + '&result_type=' + encodeURIComponent(resultType)
+    fetch(url, {
       method: 'GET',
-      data: { import_key: importKey, result_type: resultType },
-      dataType: 'json',
-      success: function(data) {
-        const container = panel.querySelector('td > div') || panel.querySelector('div')
-        if (container) container.innerHTML = self._renderVerifyPanel(data, importKey, resultType)
-      },
-      error: function(xhr) {
-        const msg = xhr.responseJSON ? xhr.responseJSON.error : 'Verification failed'
-        const container = panel.querySelector('td > div') || panel.querySelector('div')
-        if (container) {
-          container.innerHTML = '<div class="text-danger"><i class="fa fa-exclamation-triangle"></i> ' + msg + '</div>'
-        }
+      headers: {
+        'Accept': 'application/json'
+      }
+    })
+    .then(function(response) {
+      return response.json()
+    })
+    .then(function(data) {
+      const container = panel.querySelector('td > div') || panel.querySelector('div')
+      if (container) container.innerHTML = self._renderVerifyPanel(data, importKey, resultType)
+    })
+    .catch(function(xhr) {
+      const msg = 'Verification failed'
+      const container = panel.querySelector('td > div') || panel.querySelector('div')
+      if (container) {
+        container.innerHTML = '<div class="text-danger"><i class="fa fa-exclamation-triangle"></i> ' + msg + '</div>'
       }
     })
   }
@@ -85,27 +89,36 @@ export default class extends Controller {
     btn.disabled = true
     btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Fixing...'
 
-    $.ajax({
-      url: '/data_fix/confirm_result_duplicate',
+    const formData = new FormData()
+    formData.append('import_key', importKey)
+    formData.append('existing_id', existingId)
+    formData.append('result_type', resultType)
+    formData.append('mode', mode)
+
+    fetch('/data_fix/confirm_result_duplicate', {
       method: 'PATCH',
-      data: { import_key: importKey, existing_id: existingId, result_type: resultType, mode: mode },
-      headers: { 'X-CSRF-Token': this.csrfToken },
-      dataType: 'json',
-      success: function() {
-        const row = btn.closest('tr') || btn.closest('div')
-        if (row) {
-          row.innerHTML =
-            '<td colspan="6"><div class="text-success"><i class="fa fa-check-circle"></i> ' +
-            'Fixed (ID: ' + existingId + ', mode: ' + mode + '). Refreshing...</div></td>'
-        }
-        setTimeout(function() { window.location.reload() }, 800)
+      headers: {
+        'X-CSRF-Token': this.csrfToken
       },
-      error: function(xhr) {
-        const msg = xhr.responseJSON ? xhr.responseJSON.error : 'Failed to fix'
-        btn.disabled = false
-        btn.innerHTML = '<i class="fa fa-wrench"></i> Fix with this'
-        alert('Error: ' + msg)
+      body: formData
+    })
+    .then(function(response) {
+      return response.json()
+    })
+    .then(function() {
+      const row = btn.closest('tr') || btn.closest('div')
+      if (row) {
+        row.innerHTML =
+          '<td colspan="6"><div class="text-success"><i class="fa fa-check-circle"></i> ' +
+          'Fixed (ID: ' + existingId + ', mode: ' + mode + '). Refreshing...</div></td>'
       }
+      setTimeout(function() { window.location.reload() }, 800)
+    })
+    .catch(function(xhr) {
+      const msg = 'Failed to fix'
+      btn.disabled = false
+      btn.innerHTML = '<i class="fa fa-wrench"></i> Fix with this'
+      alert('Error: ' + msg)
     })
   }
 

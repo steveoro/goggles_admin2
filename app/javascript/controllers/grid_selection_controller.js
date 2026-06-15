@@ -52,14 +52,13 @@ export default class extends Controller {
     // console.log('handlePost() action')
     event.preventDefault()
     // Collect payload: (assumes each checkbox value is set with row ID)
-    const idList = $("input[type='checkbox'].grid-selector:checked")
-      .toArray()
+    const idList = Array.from(document.querySelectorAll("input[type='checkbox'].grid-selector:checked"))
       .map((node) => { return node.value })
 
     if (idList.length > 0 && confirm(this.data.get('confirm')) && this.hasFormTarget && this.hasPayloadTarget) {
-      $(this.payloadTarget).val(idList)
+      this.payloadTarget.value = idList
       // Post data (with hidden payload):
-      $(this.formTarget).trigger('submit')
+      this.formTarget.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
       return true
     }
     return false

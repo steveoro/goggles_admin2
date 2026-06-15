@@ -4,9 +4,7 @@
 #
 # Common DataGrid base.
 #
-class BaseGrid
-  include Datagrid
-
+class BaseGrid < Datagrid::Base
   self.cached = true
 
   # Common data domain for all subclasses.

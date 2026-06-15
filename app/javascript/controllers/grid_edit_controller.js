@@ -116,21 +116,30 @@ export default class extends Controller {
 
       // Fix defaults for modal: (title, hidden _method & submit button method)
       if (this.payloadValue['id'] == null) {
-        $(`#${this.baseModalIdValue}-modal-title`).text(this.modalCreateTitleValue)
-        $(`#frm-${this.baseModalIdValue} input[name='_method']`).val('post')
-        $(`#btn-${this.baseModalIdValue}-submit-save`).attr('method', 'post')
+        const modalTitle = document.getElementById(`${this.baseModalIdValue}-modal-title`)
+        if (modalTitle) modalTitle.textContent = this.modalCreateTitleValue
+        const methodInput = document.querySelector(`#frm-${this.baseModalIdValue} input[name='_method']`)
+        if (methodInput) methodInput.value = 'post'
+        const submitBtn = document.getElementById(`btn-${this.baseModalIdValue}-submit-save`)
+        if (submitBtn) submitBtn.setAttribute('method', 'post')
       }
       else {
-        $(`#${this.baseModalIdValue}-modal-title`).text(this.modalEditTitleValue)
-        $(`#frm-${this.baseModalIdValue} input[name='_method']`).val('patch')
-        $(`#btn-${this.baseModalIdValue}-submit-save`).attr('method', 'put')
+        const modalTitle = document.getElementById(`${this.baseModalIdValue}-modal-title`)
+        if (modalTitle) modalTitle.textContent = this.modalEditTitleValue
+        const methodInput = document.querySelector(`#frm-${this.baseModalIdValue} input[name='_method']`)
+        if (methodInput) methodInput.value = 'patch'
+        const submitBtn = document.getElementById(`btn-${this.baseModalIdValue}-submit-save`)
+        if (submitBtn) submitBtn.setAttribute('method', 'put')
       }
       // Fix form target URL:
-      $(`#frm-${this.baseModalIdValue}`).prop('action', this.urlValue)
+      const form = document.getElementById(`frm-${this.baseModalIdValue}`)
+      if (form) form.action = this.urlValue
 
       // Make sure Turbo doesn't mess with the actual CSRF token of the form partial:
-      if ($(`#frm-${this.baseModalIdValue} input[name='authenticity_token']`).val() != $("meta[name='csrf-token']").prop('content')) {
-        $(`#frm-${this.baseModalIdValue} input[name='authenticity_token']`).val($("meta[name='csrf-token']").prop('content'))
+      const csrfInput = document.querySelector(`#frm-${this.baseModalIdValue} input[name='authenticity_token']`)
+      const csrfMeta = document.querySelector("meta[name='csrf-token']")
+      if (csrfInput && csrfMeta && csrfInput.value !== csrfMeta.getAttribute('content')) {
+        csrfInput.value = csrfMeta.getAttribute('content')
       }
 
       // DEBUG
@@ -150,22 +159,25 @@ export default class extends Controller {
 
             // ** Checkbox fields: **
             // (use specific & unique DOM input fields, inside modal form)
-            if ($(`#${namespacedFieldDomId}-chk`).prop('type') == 'checkbox') {
+            const checkbox = document.getElementById(`${namespacedFieldDomId}-chk`)
+            if (checkbox && checkbox.type === 'checkbox') {
               // DEBUG
               // console.log('Checkbox field found')
               // Hidden field also available? Add a toggle/change event handler:
-              if ($(`#${namespacedFieldDomId}`).prop('type') == 'hidden') {
-                $(`#${namespacedFieldDomId}-chk`)
-                  .on('change', (event) => {
-                    const currState = $(event.target).prop('checked')
-                    const newValue = (currState == true) || (currState == 'true') ? '1' : '0'
-                    $(`#${namespacedFieldDomId}`).val(newValue).trigger('change')
-                    $(`#${namespacedFieldDomId}-chk`).val(newValue)
-                  })
+              const hiddenField = document.getElementById(namespacedFieldDomId)
+              if (hiddenField && hiddenField.type === 'hidden') {
+                checkbox.addEventListener('change', (event) => {
+                  const currState = event.target.checked
+                  const newValue = (currState == true) || (currState == 'true') ? '1' : '0'
+                  hiddenField.value = newValue
+                  hiddenField.dispatchEvent(new Event('change', { bubbles: true }))
+                  checkbox.value = newValue
+                })
               }
               // Setup initial hidden field & checkbox value
               const initialValue = (value == true) || (value == 'true')
-              $(`#${namespacedFieldDomId}-chk`).prop('checked', initialValue).trigger('change')
+              checkbox.checked = initialValue
+              checkbox.dispatchEvent(new Event('change', { bubbles: true }))
             }
 
             // ** CodeMirror JSON editor fields: **
@@ -174,7 +186,8 @@ export default class extends Controller {
               // DEBUG
               // console.log('Possible JSON-editor field found')
               var container = document.querySelector(`#json-editor-${namespacedFieldDomId}`)
-              $(`#${namespacedFieldDomId}`).val(value) // Set initial value into hidden field
+              const hiddenField = document.getElementById(namespacedFieldDomId)
+              if (hiddenField) hiddenField.value = value // Set initial value into hidden field
               // Editor already created? Initialize its contents (from the row payload):
               if (container.codemirrorView) {
                 // DEBUG
@@ -209,7 +222,11 @@ export default class extends Controller {
                         // console.log(`CodeMirror for "#${namespacedFieldDomId}" changed...`)
                         // Update both the row payload & the form's actual hidden field value:
                         this.payloadValue[key] = jsonText
-                        $(`#${namespacedFieldDomId}`).val(jsonText).trigger('change')
+                        const field = document.getElementById(namespacedFieldDomId)
+                        if (field) {
+                          field.value = jsonText
+                          field.dispatchEvent(new Event('change', { bubbles: true }))
+                        }
                       }
                     }),
                     json()
@@ -224,7 +241,11 @@ export default class extends Controller {
             else {
               // DEBUG
               // console.log(`Processing "#${namespacedFieldDomId}" standard input field...`)
-              $(`#${namespacedFieldDomId}`).val(value).trigger('change')
+              const field = document.getElementById(namespacedFieldDomId)
+              if (field) {
+                field.value = value
+                field.dispatchEvent(new Event('change', { bubbles: true }))
+              }
             }
           }
         )

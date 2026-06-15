@@ -19,7 +19,7 @@ class StatsController < ApplicationController
     result = APIProxy.call(
       method: :get, url: 'api_daily_uses', jwt: current_user.jwt,
       params: {
-        route: index_params[:route], day: index_params[:day]&.first,
+        route: index_params[:route], day: day_filter_value,
         page: index_params[:page], per_page: index_params[:per_page]
       }
     )
@@ -141,6 +141,14 @@ class StatsController < ApplicationController
   # (NOTE: memoizazion is needed because the member variable is used in the view.)
   def index_params
     index_params_for(:stats_grid)
+  end
+
+  def day_filter_value
+    value = index_params[:day]
+    return value[:from].presence || value[:to].presence if value.respond_to?(:key?) && (value.key?(:from) || value.key?('from'))
+    return value.begin if value.respond_to?(:begin)
+
+    value&.first
   end
 
   #

@@ -42,7 +42,7 @@ gem 'activerecord-session_store'
 # Reduces boot times through caching; required in config/boot.rb
 gem 'bootsnap', require: false
 gem 'browser' # detect request.variant type depending on request.user_agent
-gem 'datagrid'
+gem 'datagrid', '~> 2.0'
 gem 'devise'
 gem 'devise-i18n'
 # Inherited data factories from DB engine, published also on production/staging

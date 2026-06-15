@@ -12,4 +12,4 @@
   - rel_value = page.next? ? 'next' : prev_value
   .page-link
     = link_to_unless(page.current?, page, url, { remote: remote, rel: rel_value,
-                     onclick: "$('#loading-indicator').removeClass('d-none');" })
+                     onclick: "document.getElementById('loading-indicator').classList.remove('d-none');" })
