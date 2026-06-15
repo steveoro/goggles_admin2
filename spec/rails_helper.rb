@@ -13,12 +13,11 @@
 
 require 'simplecov'
 SimpleCov.start('rails') unless SimpleCov.running
-puts 'SimpleCov required and started.'
 
 unless ENV['CODECOV_TOKEN'].to_s.empty?
   require 'codecov'
   SimpleCov.formatter = SimpleCov::Formatter::Codecov
-  puts 'CodeCov.io selected for reporting output.'
+
 end
 
 # Add DSL for "N+1 query" issues directly inside RSpec:
@@ -63,8 +62,7 @@ Rails.root.glob('spec/support/**/*.rb').each { |f| require f }
 # If you are not using ActiveRecord, you can remove these lines.
 begin
   ActiveRecord::Migration.maintain_test_schema!
-rescue ActiveRecord::PendingMigrationError => e
-  puts e.to_s.strip
+rescue ActiveRecord::PendingMigrationError
   exit 1
 end
 

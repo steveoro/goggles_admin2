@@ -30,7 +30,7 @@
       "check_name": "FileAccess",
       "message": "Parameter value used in file name",
       "file": "app/controllers/data_fix_controller.rb",
-      "line": 786,
+      "line": 785,
       "link": "https://brakemanscanner.org/docs/warning_types/file_access/",
       "code": "FileUtils.mv(resolve_working_source_path(params[:file_path]), File.join(File.dirname(resolve_working_source_path(params[:file_path])).gsub(\"results.new\", \"results.done\"), File.basename(resolve_working_source_path(params[:file_path]))))",
       "render_path": null,
@@ -76,7 +76,7 @@
       "check_name": "FileAccess",
       "message": "Parameter value used in file name",
       "file": "app/controllers/data_fix_controller.rb",
-      "line": 814,
+      "line": 813,
       "link": "https://brakemanscanner.org/docs/warning_types/file_access/",
       "code": "File.open(File.join(File.dirname(resolve_working_source_path(params[:file_path])), \"#{File.basename(resolve_working_source_path(params[:file_path]), \".json\")}.log\"), \"a\")",
       "render_path": null,
@@ -283,7 +283,7 @@
       "check_name": "MassAssignment",
       "message": "Specify exact keys allowed for mass assignment instead of using `permit!` which allows any keys",
       "file": "app/controllers/api_users_controller.rb",
-      "line": 123,
+      "line": 122,
       "link": "https://brakemanscanner.org/docs/warning_types/mass_assignment/",
       "code": "params.fetch(:users_grid, {}).permit!",
       "render_path": null,
@@ -291,29 +291,6 @@
         "type": "method",
         "class": "APIUsersController",
         "method": "grid_filter_params"
-      },
-      "user_input": null,
-      "confidence": "Medium",
-      "cwe_id": [
-        915
-      ],
-      "note": ""
-    },
-    {
-      "warning_type": "Mass Assignment",
-      "warning_code": 70,
-      "fingerprint": "85163388b6ea6a58baae220e4257824418a161a8360f332edcb52e62e0fd6d8a",
-      "check_name": "MassAssignment",
-      "message": "Specify exact keys allowed for mass assignment instead of using `permit!` which allows any keys",
-      "file": "app/controllers/application_controller.rb",
-      "line": 88,
-      "link": "https://brakemanscanner.org/docs/warning_types/mass_assignment/",
-      "code": "params.permit(:page, :per_page, datagrid_name).merge((JSON.parse(params.permit(:page, :per_page, datagrid_name)[datagrid_name]) or {})).merge(datagrid_name => ((JSON.parse(params.permit(:page, :per_page, datagrid_name)[datagrid_name]) or {}))).permit!",
-      "render_path": null,
-      "location": {
-        "type": "method",
-        "class": "ApplicationController",
-        "method": "index_params_for"
       },
       "user_input": null,
       "confidence": "Medium",
@@ -352,7 +329,7 @@
       "check_name": "FileAccess",
       "message": "Parameter value used in file name",
       "file": "app/controllers/data_fix_controller.rb",
-      "line": 2276,
+      "line": 2268,
       "link": "https://brakemanscanner.org/docs/warning_types/file_access/",
       "code": "File.read(resolve_working_source_path(params[:file_path]))",
       "render_path": null,
@@ -375,7 +352,7 @@
       "check_name": "FileAccess",
       "message": "Parameter value used in file name",
       "file": "app/controllers/data_fix_controller.rb",
-      "line": 792,
+      "line": 791,
       "link": "https://brakemanscanner.org/docs/warning_types/file_access/",
       "code": "FileUtils.mv(resolve_working_source_path(params[:file_path]).gsub(\"-lt4.json\", \".json\"), File.join(File.dirname(resolve_working_source_path(params[:file_path])).gsub(\"results.new\", \"results.done\"), File.basename(resolve_working_source_path(params[:file_path]).gsub(\"-lt4.json\", \".json\"))))",
       "render_path": null,
@@ -576,25 +553,6 @@
       "note": ""
     },
     {
-      "warning_type": "Unmaintained Dependency",
-      "warning_code": 120,
-      "fingerprint": "d84924377155b41e094acae7404ec2e521629d86f97b0ff628e3d1b263f8101c",
-      "check_name": "EOLRails",
-      "message": "Support for Rails 6.1.7.10 ended on 2024-10-01",
-      "file": "Gemfile.lock",
-      "line": 443,
-      "link": "https://brakemanscanner.org/docs/warning_types/unmaintained_dependency/",
-      "code": null,
-      "render_path": null,
-      "location": null,
-      "user_input": null,
-      "confidence": "High",
-      "cwe_id": [
-        1104
-      ],
-      "note": ""
-    },
-    {
       "warning_type": "Mass Assignment",
       "warning_code": 70,
       "fingerprint": "dc53d13f0a03dd11922567ef20fa0cdee2406dc6c1adee1cd36350bbd6553905",
@@ -643,29 +601,6 @@
     {
       "warning_type": "Mass Assignment",
       "warning_code": 70,
-      "fingerprint": "e3a154b6d5cc8c6e1c57462fa2e7b991d1de4bc6fa8cdd0733f68db82c83ba33",
-      "check_name": "MassAssignment",
-      "message": "Specify exact keys allowed for mass assignment instead of using `permit!` which allows any keys",
-      "file": "app/controllers/application_controller.rb",
-      "line": 82,
-      "link": "https://brakemanscanner.org/docs/warning_types/mass_assignment/",
-      "code": "params.fetch(datagrid_name, {}).permit!",
-      "render_path": null,
-      "location": {
-        "type": "method",
-        "class": "ApplicationController",
-        "method": "index_params_for"
-      },
-      "user_input": null,
-      "confidence": "Medium",
-      "cwe_id": [
-        915
-      ],
-      "note": ""
-    },
-    {
-      "warning_type": "Mass Assignment",
-      "warning_code": 70,
       "fingerprint": "e566fd54716a128d5bac277e6aed19b3afd50a0ddfc4d3074e6e872c13073f33",
       "check_name": "MassAssignment",
       "message": "Specify exact keys allowed for mass assignment instead of using `permit!` which allows any keys",
@@ -693,7 +628,7 @@
       "check_name": "FileAccess",
       "message": "Parameter value used in file name",
       "file": "app/controllers/data_fix_controller.rb",
-      "line": 782,
+      "line": 781,
       "link": "https://brakemanscanner.org/docs/warning_types/file_access/",
       "code": "FileUtils.mkdir_p(File.dirname(resolve_working_source_path(params[:file_path])).gsub(\"results.new\", \"results.done\"))",
       "render_path": null,
@@ -756,25 +691,6 @@
       "note": ""
     },
     {
-      "warning_type": "Unmaintained Dependency",
-      "warning_code": 121,
-      "fingerprint": "edf687f759ec9765bd5db185dbc615c80af77d6e7e19386fc42934e7a80307af",
-      "check_name": "EOLRuby",
-      "message": "Support for Ruby 3.1.4 ended on 2025-03-31",
-      "file": ".ruby-version",
-      "line": 1,
-      "link": "https://brakemanscanner.org/docs/warning_types/unmaintained_dependency/",
-      "code": null,
-      "render_path": null,
-      "location": null,
-      "user_input": null,
-      "confidence": "High",
-      "cwe_id": [
-        1104
-      ],
-      "note": ""
-    },
-    {
       "warning_type": "SQL Injection",
       "warning_code": 0,
       "fingerprint": "f2f9c1c315d9a8473e9a27c03091ada067fed87e0b60b12900bb31ddf2ba7dfb",
@@ -798,5 +714,5 @@
       "note": ""
     }
   ],
-  "brakeman_version": "7.0.2"
+  "brakeman_version": "8.0.5"
 }

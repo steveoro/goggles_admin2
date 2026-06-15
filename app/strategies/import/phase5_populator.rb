@@ -81,7 +81,7 @@ module Import
     end
 
     # Load all phase JSON files and normalize source to LT4 format
-    def load_phase_files! # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+    def load_phase_files!
       @source_data = JSON.parse(File.read(source_path))
 
       # Detect format before loading other phases
@@ -172,7 +172,6 @@ module Import
     end
 
     # Populate MIR + Laps from source events array (LT4 format)
-    # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
     def populate_lt4_individual_results!
       events = source_data['events'] || []
 
@@ -344,7 +343,6 @@ module Import
         end
       end
     end
-    # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
 
     # Extract distance from event hash
     def extract_distance(event)
@@ -447,7 +445,7 @@ module Import
       "#{last_name}|#{first_name}|#{year}"
     end
 
-    def build_full_swimmer_key(result) # rubocop:disable Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
+    def build_full_swimmer_key(result)
       swimmer_str = result['swimmer'] || result['swimmer_name'] || ''
       parts = swimmer_str.split('|')
       team_name = team_name_from_result(result)
@@ -494,7 +492,7 @@ module Import
     # Find swimmer data from phase 3: returns { swimmer_id:, swimmer_key: }
     # The returned swimmer_key is the FULL Phase 3 key (with gender prefix) when matched
     # This ensures stored keys are consistent with Phase 3 format
-    def find_swimmer_data(result) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+    def find_swimmer_data(result)
       full_key = build_full_swimmer_key(result)
       return { swimmer_id: nil, swimmer_key: full_key.presence || build_swimmer_key(result) } unless phase3_data
 
@@ -561,7 +559,7 @@ module Import
     # Handles TWO source formats:
     #   - WITH gender prefix: "F|LAST|FIRST|YOB|TeamName" (5 parts)
     #   - WITHOUT gender prefix: "LAST|FIRST|YOB|TeamName" (4 parts)
-    def find_team_id(result) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+    def find_team_id(result)
       team_name = result['team'] || result['team_name'] || result['teamName']
 
       # If no explicit team field, try to extract from swimmer string
@@ -610,7 +608,7 @@ module Import
     end
 
     # Find team_id from Phase 3 badges using swimmer key or team key
-    def find_team_id_from_badges(swimmer_key, team_name) # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity,Metrics/AbcSize
+    def find_team_id_from_badges(swimmer_key, team_name)
       return nil unless phase3_data
 
       badges = phase3_data.dig('data', 'badges') || []
@@ -641,7 +639,7 @@ module Import
       badge&.dig('team_id')
     end
 
-    def find_badge_id(swimmer_key:, team_key:, team_id: nil) # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity,Metrics/AbcSize
+    def find_badge_id(swimmer_key:, team_key:, team_id: nil)
       return nil if swimmer_key.blank?
 
       if phase3_data
@@ -677,7 +675,7 @@ module Import
       nil
     end
 
-    def find_team_affiliation_id(team_id, team_key: nil) # rubocop:disable Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
+    def find_team_affiliation_id(team_id, team_key: nil)
       return nil unless phase2_data
 
       affiliations = phase2_data.dig('data', 'team_affiliations') || []
@@ -702,7 +700,7 @@ module Import
     # Find meeting_program_id by matching against existing database records
     # First tries to use existing event ID from phase4 data, then falls back to DB lookup
     # Matches: MeetingEvent (from phase4 ID or by session + event_type) → MeetingProgram (by event + category + gender)
-    def find_meeting_program_id(session_order, event_code, category, gender) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+    def find_meeting_program_id(session_order, event_code, category, gender)
       return nil unless phase1_data && phase4_data
 
       # Step 1: Try to find existing meeting_event_id from phase4 data first
@@ -748,7 +746,7 @@ module Import
     end
 
     # Find meeting_event_id from phase4 data by session_order and event_code
-    def find_meeting_event_id_from_phase4(session_order, event_code) # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+    def find_meeting_event_id_from_phase4(session_order, event_code)
       return nil unless phase4_data
 
       sessions = Array(phase4_data.dig('data', 'sessions'))
@@ -863,7 +861,6 @@ module Import
     end
 
     # Create MIR record
-    # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/ParameterLists
     def create_mir_record(import_key:, result:, timing:, swimmer_id:, swimmer_key:, team_id:, badge_id:, team_key:, meeting_program_id:, meeting_program_key:,
                           meeting_individual_result_id:)
       # DEBUG logging
@@ -910,9 +907,7 @@ module Import
 
     # Create lap records for a given MIR
     # Computes both delta timing and from_start timing
-    # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/ParameterLists
-
-    def create_lap_records(_mir, result, mir_import_key) # rubocop:disable Metrics/AbcSize
+    def create_lap_records(_mir, result, mir_import_key)
       laps = result['laps'] || []
       previous_from_start = { minutes: 0, seconds: 0, hundredths: 0 }
 
@@ -1004,7 +999,7 @@ module Import
     # Handles TWO source formats:
     #   - WITH gender prefix: "F|LAST|FIRST|YOB|TeamName" (5 parts, team at index 4)
     #   - WITHOUT gender prefix: "LAST|FIRST|YOB|TeamName" (4 parts, team at index 3)
-    def build_team_key_from_result(result) # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+    def build_team_key_from_result(result)
       team_name = result['team'] || result['team_name'] || result['teamName']
 
       # If no explicit team field, try to extract from swimmer string
@@ -1037,7 +1032,7 @@ module Import
     end
 
     # Create MRR record
-    def create_mrr_record(import_key:, result:, timing_hash:, team_id:, team_affiliation_id:, # rubocop:disable Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity,Metrics/ParameterLists
+    def create_mrr_record(import_key:, result:, timing_hash:, team_id:, team_affiliation_id:,
                           team_key:, meeting_program_id:, meeting_program_key:, meeting_relay_result_id:)
       raw_rank = result['ranking'] || result['rank'] || result['pos']
       rank_int = raw_rank.to_i
@@ -1074,7 +1069,7 @@ module Import
 
     # Create relay swimmer records for a given MRR
     # Uses lap data to extract swimmer info and timing
-    def create_relay_swimmers(_mrr, result, mrr_import_key, team_key:) # rubocop:disable Metrics/AbcSize
+    def create_relay_swimmers(_mrr, result, mrr_import_key, team_key:)
       laps = result['laps'] || []
 
       laps.each_with_index do |lap, idx|
@@ -1122,7 +1117,7 @@ module Import
     end
 
     # Create relay lap records for a given MRR
-    def create_relay_laps(_mrr, result, mrr_import_key) # rubocop:disable Metrics/AbcSize
+    def create_relay_laps(_mrr, result, mrr_import_key)
       laps = result['laps'] || []
       previous_from_start = { minutes: 0, seconds: 0, hundredths: 0 }
 
@@ -1172,7 +1167,7 @@ module Import
     # Supports matching by partial key (ignoring gender prefix)
     # Phase 3 keys: "F|ANTONIOLI|Manuela|1983" or "|ANGELINI|Giulio|2002"
     # Lookup keys: "ANTONIOLI|Manuela|1983" (without gender)
-    def find_swimmer_id_by_key(swimmer_key) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+    def find_swimmer_id_by_key(swimmer_key)
       return nil if swimmer_key.blank?
 
       swimmers = phase3_data&.dig('data', 'swimmers') || []
@@ -1257,7 +1252,7 @@ module Import
     # Register a program in the programs collection
     # Only stores program metadata (headers), NOT results (results stay in temp tables)
     # Groups by program_key (session + event + category + gender)
-    def add_to_programs(session_order:, event_key:, event_code:, category:, gender:, meeting_program_id:, relay: false) # rubocop:disable Metrics/ParameterLists
+    def add_to_programs(session_order:, event_key:, event_code:, category:, gender:, meeting_program_id:, relay: false)
       program_key = build_program_key(session_order, event_code, category, gender)
 
       # Initialize program header if not exists

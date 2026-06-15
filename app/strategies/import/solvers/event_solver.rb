@@ -19,7 +19,6 @@ module Import
       # - :lt_format (Integer, 2 or 4)
       # - :phase_path (String, optional custom output path)
       # - :phase1_path (String, optional, for meeting_session_id lookups)
-      # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
       def build!(opts = {})
         source_path = opts.fetch(:source_path)
         lt_format = opts.fetch(:lt_format, 2).to_i
@@ -236,7 +235,6 @@ module Import
         }
         pfm.write!(data: payload, meta: meta)
       end
-      # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
 
       private
 
@@ -277,7 +275,6 @@ module Import
         bucket['__seen__'][event_key] = true if event_key.present?
       end
 
-      # rubocop:disable Metrics/AbcSize
       def load_existing_meeting_events!
         @meeting_events_by_session_and_type = {}
         @meeting_events_by_type = Hash.new { |h, k| h[k] = [] }
@@ -309,7 +306,6 @@ module Import
           @meeting_events_by_type[event_type_id] << meeting_event
         end
       end
-      # rubocop:enable Metrics/AbcSize
 
       # Find EventType ID for individual events by constructing the code from distance + stroke
       # Example: distance=200, stroke="RA" => code="200RA" => EventType.id=21
@@ -325,7 +321,6 @@ module Import
       # Modifies event_hash in place to add:
       # - meeting_session_id (from phase1 sessions by session_order)
       # - meeting_event_id (matched from DB if possible)
-      # rubocop:disable Metrics/AbcSize, Metrics/PerceivedComplexity
       def enhance_event_with_matching!(event_hash, session_order)
         # Find meeting_session_id from phase1 data
         source_session_order = session_order.to_i
@@ -365,7 +360,6 @@ module Import
         Rails.logger.error("[EventSolver] Error matching event for #{event_hash['key']}: #{e.message}")
         event_hash['id'] = nil
       end
-      # rubocop:enable Metrics/AbcSize, Metrics/PerceivedComplexity
 
       # Find meeting_session_id from phase1 data by session_order
       def find_meeting_session_id_by_order(session_order)
@@ -395,7 +389,7 @@ module Import
       # - distance: total event length (e.g., 200 for 4x50)
       # - stroke: stroke code (e.g., "MI" for mixed relay, "SL" for freestyle)
       # - event_code: full event type code (e.g., "S4X50MI" or "M4X50SL")
-      def parse_relay_event_from_title(title, fin_sesso) # rubocop:disable Metrics/CyclomaticComplexity
+      def parse_relay_event_from_title(title, fin_sesso)
         return [nil, nil, nil] if title.to_s.strip.empty?
 
         # Match pattern like "4x50 m" or "4X50m" from title

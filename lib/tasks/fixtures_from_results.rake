@@ -29,7 +29,7 @@ namespace :fixtures do
 
     limit = ENV.include?('limit') ? ENV['limit'].to_i : -1
     files = Rails.root.glob("crawler/data/results.new/#{season_id}/*.json").sort
-    puts "--> Found #{files.count} files#{limit >= 0 ? ". Limit: #{limit}" : ''}. Processing..."
+    puts "--> Found #{files.count} files#{". Limit: #{limit}" if limit >= 0}. Processing..."
     puts "\r\n"
 
     descriptions = []

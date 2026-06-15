@@ -383,7 +383,7 @@ module PdfResults
     #
     # Assumes #extract() has already been called (or the keys/values will be blank).
     # +False+ otherwise.
-    def has_key_values? # rubocop:disable Naming/PredicateName
+    def has_key_values?
       key_attributes_from_fields.present? || key_attributes_from_rows.present?
     end
 
@@ -794,9 +794,9 @@ module PdfResults
                  ('  ' * depth) << output
                end
       output << ('  ' * (depth + 1)) <<
-        "+-- #{ctx.name}#{ctx.has_key_values? ? '🔑' : ''}" \
-        "#{ctx.required? ? '🔒' : ''}" \
-        "#{ctx.repeat? ? '🌀' : ''}\r\n"
+        "+-- #{ctx.name}#{'🔑' if ctx.has_key_values?}" \
+        "#{'🔒' if ctx.required?}" \
+        "#{'🌀' if ctx.repeat?}\r\n"
 
       if ctx.rows.present?
         output << ('  ' * (depth + 2)) << "  [:rows]\r\n"
@@ -836,7 +836,7 @@ module PdfResults
                      "#{raw_val}\r\n"
                    # Map any other list into a collated string:
                    elsif raw_val.is_a?(Array) && raw_val.present?
-                     raw_val.map(&:to_s).join
+                     raw_val.join
                    # Default output (raw value with carriage return):
                    else # rubocop:disable Lint/DuplicateBranch
                      "#{raw_val}\r\n"

@@ -58,7 +58,7 @@ namespace :pdf_files do
   # 'type_name' is used to discriminate between the type of content to which the URLs in the destination file
   # refer to. (Namely: 'manifest' & 'results'.)
   def save_array_of_lines_on_file(array_of_lines, base_path, type_name)
-    if array_of_lines.count.positive?
+    if array_of_lines.any?
       puts "\r\n--> Extracted #{array_of_lines.count} #{type_name} PDF URLs."
       dest_file = "#{base_path}/#{type_name}_urls.txt"
       File.write(dest_file, array_of_lines.join("\r\n"))

@@ -12,7 +12,7 @@ module PdfResults
   # rubocop:disable Metrics/ClassLength, Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
   class L2Converter
     # RegExp used to detect a possible timing value, with optional minutes
-    POSSIBLE_TIMING_REGEXP = /\d{0,2}['\"\s:.]?\d{2}[\"\s:.,]\d{2}/i
+    POSSIBLE_TIMING_REGEXP = /\d{0,2}['"\s:.]?\d{2}["\s:.,]\d{2}/i
 
     # Supported "parent" section names for *individual results*. Laps & delta timings are
     # automatically detected and collected as long as their name has the format
@@ -356,7 +356,7 @@ module PdfResults
             #
             sub_rows = row_hash.fetch(:rows, [{}])
 
-            if sub_rows.count.positive? # process each sub-row at current depth + 1 into same section:
+            if sub_rows.any? # process each sub-row at current depth + 1 into same section:
               sub_rows.each do |result_data_hash|
                 # Get best parent section keys (at 3 possible depths, supporting latest values):
                 curr_cat_code, curr_cat_gender = fetch_best_category_and_gender_codes_from_any_depth(event: event_hash, category: row_hash, result: result_data_hash,
@@ -662,7 +662,7 @@ module PdfResults
           swimmer_name = result.complete_name
         else
           # As a very last resort, make an educated guess for the gender from the name, using common locale-IT exceptions:
-          gender_code = if swimmer_name.match?(/\w+[nosl\-]\s?maria|andrea?$|one$|riele$|pasquale|fele$|oele$|luca|nicola$|\w+[gkcnos]'?$/ui)
+          gender_code = if swimmer_name.match?(/\w+[nosl-]\s?maria|andrea?$|one$|riele$|pasquale|fele$|oele$|luca|nicola$|\w+[gkcnos]'?$/ui)
                           'M'
                         else
                           # DEBUG ----------------------------------------------------------------

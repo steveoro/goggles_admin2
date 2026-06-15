@@ -2585,7 +2585,7 @@ module Import
       gender_ids = gender_ids.compact.uniq
       return if gender_ids.blank?
 
-      gender_ids.count > 1 ? GogglesDb::GenderType.intermixed : GogglesDb::GenderType.find(gender_ids.first)
+      gender_ids.many? ? GogglesDb::GenderType.intermixed : GogglesDb::GenderType.find(gender_ids.first)
     end
     #-- -----------------------------------------------------------------------
     #++

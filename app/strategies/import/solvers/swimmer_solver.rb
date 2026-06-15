@@ -37,7 +37,6 @@ module Import
       # - :phase1_path (String, optional, for meeting date extraction and category calculation)
       # - :phase2_path (String, optional, for team_id lookups when matching badges)
       #
-      # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
       def build!(opts = {})
         source_path = opts.fetch(:source_path)
         lt_format = opts.fetch(:lt_format, 2).to_i
@@ -178,7 +177,6 @@ module Import
         }
         pfm.write!(data: payload, meta: meta)
       end
-      # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
 
       private
 
@@ -301,7 +299,7 @@ module Import
 
       # Extracts [last_name, first_name, year_of_birth] from a LT2 row.
       # Prefers explicit fields; falls back to parsing 'swimmer' when necessary.
-      def extract_name_yob_from_row(row) # rubocop:disable Metrics/PerceivedComplexity,Metrics/CyclomaticComplexity
+      def extract_name_yob_from_row(row)
         last = row['last_name'] || row['cognome']
         first = row['first_name'] || row['nome']
         yob = row['year_of_birth'] || row['anno'] || row['yob']
@@ -327,7 +325,7 @@ module Import
       # key: immutable reference key (LAST|FIRST|YOB)
       # last_name, first_name, year_of_birth, gender_type_code: swimmer attributes
       # Also computes individual category_type using CategoryComputer
-      def build_swimmer_entry(key, last_name, first_name, year_of_birth, gender_type_code, team_name: nil) # rubocop:disable Metrics/MethodLength, Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+      def build_swimmer_entry(key, last_name, first_name, year_of_birth, gender_type_code, team_name: nil)
         complete_name = "#{last_name} #{first_name}".strip
         search_name = normalize_swimmer_name(complete_name)
         search_last = normalize_swimmer_name(last_name)
@@ -505,7 +503,7 @@ module Import
       # Find potential swimmer matches using GogglesDb fuzzy finder with Jaro-Winkler distance
       # Returns array of hashes with swimmer data sorted by match weight
       # Implements fallback matching by last_name + gender + year_of_birth when no matches found
-      def find_swimmer_matches(complete_name, year_of_birth, _last_name = nil, gender_code = nil) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
+      def find_swimmer_matches(complete_name, year_of_birth, _last_name = nil, gender_code = nil)
         return [] if complete_name.blank?
 
         # Primary search: Use CmdFindDbEntity with FuzzySwimmer strategy (full name)
@@ -649,7 +647,6 @@ module Import
       # Returns a hash: { 'has_similar' => bool, 'candidates' => [...] }
       # Each candidate has the same format as fuzzy_matches entries plus 'from_team_cross_ref' flag.
       #
-      # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/MethodLength
       def find_teammates_with_similar_name(complete_name, year_of_birth, gender_type_code, team_id)
         result = { 'has_similar' => false, 'candidates' => [] }
         return result if complete_name.blank? || team_id.to_i.zero?
@@ -718,7 +715,6 @@ module Import
         @logger&.warn("[SwimmerSolver] Error in team cross-ref for '#{complete_name}': #{e.message}")
         result
       end
-      # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/MethodLength
 
       # Return an array of season IDs for the current season and the N-1 preceding seasons
       # of the same season_type (e.g., FIN Master). Used to broaden badge searches.
@@ -738,7 +734,7 @@ module Import
       # badge number and badge_id (if matched).
       #
       # NOTE: Category data is now computed at swimmer level, so we reuse it from there.
-      def build_badge_entry(swimmer_key, team_key, year_of_birth, gender_code, meeting_date, swimmer_id: nil) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
+      def build_badge_entry(swimmer_key, team_key, year_of_birth, gender_code, meeting_date, swimmer_id: nil)
         # Resolve swimmer_id and team_id from phase data
         swimmer_id = swimmer_id.to_i.positive? ? swimmer_id.to_i : find_swimmer_id_by_key(swimmer_key)
         team_id = find_team_id_by_key(team_key)
@@ -798,7 +794,7 @@ module Import
       # Find swimmer_id by swimmer_key from current swimmers being built
       # Note: This looks at swimmers array being built in this phase, not from saved phase3 file
       # Keys now have format: |LAST|FIRST|YOB or GENDER|LAST|FIRST|YOB
-      def find_swimmer_id_by_key(swimmer_key) # rubocop:disable Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
+      def find_swimmer_id_by_key(swimmer_key)
         return nil if swimmer_key.blank?
 
         return @built_swimmer_id_by_key[swimmer_key] if @built_swimmer_id_by_key&.key?(swimmer_key)
@@ -812,7 +808,7 @@ module Import
         @built_swimmer_id_by_key&.[](partial_key)
       end
 
-      def register_built_swimmer_entry(swimmer_entry) # rubocop:disable Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
+      def register_built_swimmer_entry(swimmer_entry)
         return unless swimmer_entry.is_a?(Hash)
 
         swimmer_key = swimmer_entry['key']
@@ -828,7 +824,7 @@ module Import
         @built_swimmer_id_by_key[team_key] = swimmer_id if team_key.present? && swimmer_id.to_i.positive?
       end
 
-      def normalize_swimmer_key_for_lookup(swimmer_key, include_team: false) # rubocop:disable Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
+      def normalize_swimmer_key_for_lookup(swimmer_key, include_team: false)
         return nil if swimmer_key.blank?
 
         parts = swimmer_key.to_s.split('|').compact_blank
@@ -876,7 +872,7 @@ module Import
       # Add a badge to the array, replacing any existing partial-key badge for the same swimmer+team+season.
       # This ensures that when a full-key badge (F|LAST|FIRST|YOB) is added, any existing partial-key
       # badge (|LAST|FIRST|YOB) for the same swimmer is removed to prevent duplicate commits.
-      def add_or_replace_badge(badges, new_badge) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+      def add_or_replace_badge(badges, new_badge)
         new_key = new_badge['swimmer_key']
         new_parts = new_key.to_s.split('|').compact_blank
 
@@ -920,7 +916,7 @@ module Import
       # Deduplicate badges by normalized swimmer identity (last_name+first_name+yob) + team_key + season
       # When both partial-key (|LAST|FIRST|YOB) and full-key (F|LAST|FIRST|YOB) badges exist,
       # keep only the most complete one (with gender prefix and category data)
-      def deduplicate_badges(badges) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+      def deduplicate_badges(badges)
         # Group by normalized identity: extract last|first|yob from swimmer_key
         grouped = badges.group_by do |badge|
           key = badge['swimmer_key']

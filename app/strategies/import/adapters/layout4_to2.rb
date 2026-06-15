@@ -40,7 +40,6 @@ module Import
         # LT4 sample keys: title, dates, place, meetingName, competitionType,
         #                  layoutType, seasonId, meetingURL
         #
-        # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
         def normalize_header!(src, out)
           out['name'] = src['meetingName'].presence || src['title']
           out['meetingURL'] = src['meetingURL']
@@ -68,7 +67,6 @@ module Import
           # The DataFix controller extracts season_id from the file path; we keep the info if present
           out['season_id'] = src['seasonId'] if src['seasonId'].present?
         end
-        # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
 
         def assign_date_parts(out, idx, y, m, d) # rubocop:disable Naming/MethodParameterName
           return unless y && m && d
@@ -89,7 +87,7 @@ module Import
         # Expected LT4 event keys:
         #   eventCode, eventGender, eventLength, eventStroke, eventDescription, relay, results[]
         # Each result may contain laps[] and either a swimmer key or, for relays, multiple legs.
-        def normalize_sections!(src, out) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+        def normalize_sections!(src, out)
           out['sections'] = []
           return unless src['events'].is_a?(Array)
 
@@ -131,7 +129,7 @@ module Import
 
         # Normalize an individual result row into LT2-like row fields
         # LT4 fields seen: ranking, swimmer (composite key), team, timing, category, heat_position, lane, laps[]
-        def normalize_individual_row(res) # rubocop:disable Metrics/AbcSize
+        def normalize_individual_row(res)
           swimmer_key = res['swimmer']
           last_name, first_name, year, team = extract_from_swimmer_key(swimmer_key)
 
@@ -171,7 +169,7 @@ module Import
 
         # Normalize a relay result row. LT4 typically includes per-leg laps with swimmer keys.
         # We map swimmers to swimmer1..N (name only) and attach relay laps preserving swimmer association.
-        def normalize_relay_row(res) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+        def normalize_relay_row(res)
           row = {
             'pos' => res['ranking'],
             'relay' => true,

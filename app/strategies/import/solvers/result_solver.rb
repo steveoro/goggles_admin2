@@ -17,7 +17,6 @@ module Import
       # - :source_path (String)
       # - :lt_format (Integer, 2 or 4)
       # - :phase_path (String, optional custom output path)
-      # rubocop:disable Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
       def build!(opts = {})
         source_path = opts.fetch(:source_path)
         lt_format = opts.fetch(:lt_format, 2).to_i
@@ -202,7 +201,6 @@ module Import
         }
         pfm.write!(data: payload, meta: meta)
       end
-      # rubocop:enable Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
 
       private
 

@@ -487,7 +487,7 @@ module PdfResults
           row_index = 0
           ctx_index = 0
           ctx_name  = @curr_layout.format_order.first
-          msg = if @rows.count.positive?
+          msg = if @rows.any?
                   Kernel.format("\r\n  EOP found (%s): new page %d/%d", context_def.name, @page_index, @pages&.count.to_i)
                 else
                   Kernel.format("\r\n  EOF found (%s): no more rows.", context_def.name)

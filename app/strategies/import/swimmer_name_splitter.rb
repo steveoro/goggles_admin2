@@ -64,7 +64,7 @@ module Import
         value = name.to_s.strip
         return nil if value.blank?
 
-        value.tr('`', "'").gsub(/[’]/, "'").squeeze(' ')
+        value.tr('`', "'").gsub(/’/, "'").squeeze(' ')
       end
     end
   end

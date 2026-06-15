@@ -178,7 +178,7 @@ module Merge
     #++
 
     # Displays a report of all duplicates found.
-    # rubocop:disable Rails/Output, Metrics/AbcSize, Metrics/MethodLength
+    # rubocop:disable Rails/Output, Metrics/MethodLength
     def display_report
       puts "\r\n#{'=' * 60}"
       puts 'Duplicate Result Cleaner Report'
@@ -246,7 +246,7 @@ module Merge
       puts "  Duplicate MRR pairs: #{total_dup_mrrs}"
       puts "#{'=' * 60}\r\n"
     end
-    # rubocop:enable Rails/Output, Metrics/AbcSize, Metrics/MethodLength
+    # rubocop:enable Rails/Output, Metrics/MethodLength
     #-- -----------------------------------------------------------------------
     #++
 
@@ -292,7 +292,6 @@ module Merge
     end
 
     # Generates deletion SQL for a specific meeting.
-    # rubocop:disable Metrics/AbcSize
     def prepare_deletions_for_meeting(mtg)
       dup_mirs = find_duplicate_mirs(mtg.id)
       dup_laps = find_duplicate_laps(mtg.id)
@@ -323,7 +322,6 @@ module Merge
 
       @sql_log << ''
     end
-    # rubocop:enable Metrics/AbcSize
 
     def prepare_lap_deletions(meeting_id)
       @sql_log << '-- Delete duplicate laps (same swimmer + MIR + length_in_meters, keep lowest ID)'

@@ -13,6 +13,7 @@ RSpec.describe PullController do
 
     context 'with a logged-in user' do
       include AdminSignInHelpers
+
       before(:each) do
         admin_user = prepare_admin_user
         sign_in_admin(admin_user)

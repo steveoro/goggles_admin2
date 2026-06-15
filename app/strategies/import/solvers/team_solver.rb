@@ -34,7 +34,6 @@ module Import
       # - :lt_format (Integer, 2 or 4)
       # - :phase_path (String, optional custom output path)
       #
-      # rubocop:disable Metrics/AbcSize, Metrics/PerceivedComplexity, Metrics/CyclomaticComplexity, Metrics/MethodLength
       def build!(opts = {})
         source_path = opts.fetch(:source_path)
         lt_format = opts.fetch(:lt_format, 2).to_i
@@ -105,7 +104,6 @@ module Import
         }
         pfm.write!(data: payload, meta: meta)
       end
-      # rubocop:enable Metrics/AbcSize, Metrics/PerceivedComplexity, Metrics/CyclomaticComplexity, Metrics/MethodLength
 
       private
 
@@ -125,7 +123,7 @@ module Import
       # Build a team entry with fuzzy matches and auto-assignment
       # key: immutable reference key (original team name from source)
       # name: team name to search for
-      def build_team_entry(key, name) # rubocop:disable Metrics/MethodLength, Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+      def build_team_entry(key, name)
         entry = {
           'key' => key,
           'name' => name,
@@ -214,7 +212,7 @@ module Import
 
       # Find potential team matches using GogglesDb fuzzy finder with Jaro-Winkler distance
       # Returns array of hashes with team data (id, name, editable_name, etc.) sorted by match weight
-      def find_team_matches(name) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+      def find_team_matches(name)
         return [] if name.blank?
 
         # Use CmdFindDbEntity with FuzzyTeam strategy (Jaro-Winkler distance)
@@ -273,7 +271,7 @@ module Import
       # Build a team affiliation entry with matching logic
       # Attempts to match existing TeamAffiliation if team_id is available
       # Returns hash with team_key, season_id, team_id, and team_affiliation_id (if matched)
-      def build_team_affiliation_entry(team_key, team_id) # rubocop:disable Metrics/PerceivedComplexity
+      def build_team_affiliation_entry(team_key, team_id)
         affiliation = {
           'team_key' => team_key,
           'season_id' => @season.id,
@@ -321,7 +319,7 @@ module Import
 
       # Enrich fuzzy match entries with affiliation status for the current season.
       # Adds 'affiliated_this_season' boolean and updates display_label for affiliated teams.
-      def enrich_matches_with_affiliation_status!(matches) # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+      def enrich_matches_with_affiliation_status!(matches)
         return if matches.empty?
 
         team_ids = matches.filter_map { |m| m['id'] }
@@ -347,7 +345,6 @@ module Import
       # This catches cases where fuzzy search missed an affiliated team entirely.
       # Returns array of candidate hashes compatible with fuzzy_matches format.
       #
-      # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/MethodLength
       def find_similar_affiliated_teams(name)
         return [] if name.blank?
 
@@ -404,7 +401,6 @@ module Import
         @logger&.warn("[TeamSolver] Error in affiliation cross-ref for '#{name}': #{e.message}")
         []
       end
-      # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/MethodLength
 
       # Broadcast progress updates via ActionCable for real-time UI feedback
       def broadcast_progress(message, current, total)

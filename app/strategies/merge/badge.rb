@@ -493,7 +493,7 @@ module Merge
                       target_domain.first
                     end
 
-      if target_domain.count > 1
+      if target_domain.many?
         @sql_log << "-- duplicates detected (same badge & event): removing all but keeping just ID #{choosen_row.id}"
         @checker.log << "- #{'Duplicates removed'.ljust(44, '.')}: #{target_domain.count - 1}"
       end

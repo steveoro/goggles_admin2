@@ -4,7 +4,6 @@
 #
 # DataGrid used to manage GogglesDb::Season rows.
 #
-# rubocop:disable Rails/OutputSafety
 class SeasonsGrid < BaseGrid
   # Returns the scope for the grid. (#assets is the filtered version of it)
   scope { data_domain }
@@ -42,4 +41,3 @@ class SeasonsGrid < BaseGrid
 
   actions_column(edit: true, destroy: false, mandatory: true)
 end
-# rubocop:enable Rails/OutputSafety

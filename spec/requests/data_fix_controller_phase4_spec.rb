@@ -71,7 +71,7 @@ RSpec.describe DataFixController do
 
       updated_data = PhaseFileManager.new(phase4_file).data
       updated_event = updated_data.fetch('sessions').find { |s| s['session_order'] == 2 }
-                                  .fetch('events').find { |e| e['key'] == '100DO' }
+                                                    .fetch('events').find { |e| e['key'] == '100DO' }
       expect(updated_event['event_order']).to eq(3)
     end
 

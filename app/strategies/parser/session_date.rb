@@ -19,7 +19,7 @@ module Parser
     MONTH_NAMES = %w[gen feb mar apr mag giu lug ago set ott nov dic].freeze
 
     # RegExp for text date matching:
-    REGEXP_DATE = %r{(?>\w{3,},?\s?)?(?<day>\d{1,2})[\-\.\/\s\b](?<month>\d{1,2}|[a-z]{3,})[\-\.\/\s\b](?<year>\d{2,4})}ui
+    REGEXP_DATE = %r{(?>\w{3,},?\s?)?(?<day>\d{1,2})[-./\s\b](?<month>\d{1,2}|[a-z]{3,})[-./\s\b](?<year>\d{2,4})}ui
     #-- -------------------------------------------------------------------------
     #++
 

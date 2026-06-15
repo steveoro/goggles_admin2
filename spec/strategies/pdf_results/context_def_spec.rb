@@ -550,7 +550,7 @@ RSpec.describe PdfResults::ContextDef, type: :strategy do
       describe '#valid?' do
         it 'is true when the scan is aligned at the proper starting index' do
           # DEBUG
-          puts "=> #{obj_instance.name}"
+
           expect(obj_instance.valid?(def_hash[:src_buffer], 0)).to be true
         end
 

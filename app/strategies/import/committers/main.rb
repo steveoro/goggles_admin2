@@ -29,7 +29,7 @@ module Import
                   :phase1_data, :phase2_data, :phase3_data, :phase4_data, :phase5_data,
                   :sql_log, :stats, :logger
 
-      def initialize(phase1_path:, phase2_path:, phase3_path:, phase4_path:, phase5_path:, source_path:, log_path: nil) # rubocop:disable Metrics/MethodLength
+      def initialize(phase1_path:, phase2_path:, phase3_path:, phase4_path:, phase5_path:, source_path:, log_path: nil)
         @phase1_path = phase1_path
         @phase2_path = phase2_path
         @phase3_path = phase3_path
@@ -77,7 +77,7 @@ module Import
       # -----------------------------------------------------------------------
 
       # Main entry point: commits all entities in dependency order within a transaction
-      def commit_all # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
+      def commit_all
         load_phase_files!
         broadcast_progress('Loading phase files', 0, 6)
 
@@ -160,7 +160,7 @@ module Import
       private
 
       # Load all phase JSON files
-      def load_phase_files! # rubocop:disable Metrics/AbcSize
+      def load_phase_files!
         @phase1_data = JSON.parse(File.read(phase1_path)) if File.exist?(phase1_path)
         @phase2_data = JSON.parse(File.read(phase2_path)) if File.exist?(phase2_path)
         @phase3_data = JSON.parse(File.read(phase3_path)) if File.exist?(phase3_path)
@@ -173,7 +173,7 @@ module Import
 
       # Phase 1: Cities, SwimmingPools, Meetings, MeetingSessions
       # Dependency order: City → SwimmingPool → Meeting → MeetingSession
-      def commit_phase1_entities # rubocop:disable Metrics/AbcSize
+      def commit_phase1_entities
         raise StandardError, 'Null phase 1 data object!' if phase1_data.blank?
 
         Rails.logger.info('[Main] Committing Phase 1: Meeting, SwimmingPools, Cities & Sessions')
@@ -256,7 +256,7 @@ module Import
       # When an affiliation already points to an existing row, DB links are authoritative,
       # but explicit manual review intent has priority:
       # if a team hash has team_id=nil (new team), keep it and clear stale affiliation links.
-      def hydrate_phase2_team_links_from_affiliations!(teams_data, affiliations_data) # rubocop:disable Metrics/AbcSize,Metrics/MethodLength
+      def hydrate_phase2_team_links_from_affiliations!(teams_data, affiliations_data)
         teams_by_key = teams_data.index_by { |team| team['key'] }
 
         affiliations_data.each do |affiliation_hash|
@@ -334,7 +334,7 @@ module Import
 
       # Phase 4: MeetingEvents
       # MeetingPrograms deferred to Phase 5 (created when committing results)
-      def commit_phase4_entities # rubocop:disable Metrics/AbcSize
+      def commit_phase4_entities
         Rails.logger.info('[Main] Committing Phase 4: Events')
         return unless phase4_data
 
@@ -380,7 +380,6 @@ module Import
       # Phase 5: MeetingPrograms, MeetingIndividualResults, Laps, MeetingRelayResults, etc.
       # Iterates over programs from phase5 JSON, then queries data_import_* tables for results
       # Dependency order: MeetingProgram → (MIR → Lap) or (MRR → MRS → RelayLap)
-      # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
       def commit_phase5_entities
         Rails.logger.info('[Main] Committing Phase 5: Programs and Results')
         return unless phase5_data
@@ -434,7 +433,6 @@ module Import
           end
         end
       end
-      # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
       # -----------------------------------------------------------------------
 
       # Commit MeetingProgram and return its ID
@@ -555,7 +553,7 @@ module Import
       # -----------------------------------------------------------------------
 
       # Commit relay results (MRR + MRS + RelayLaps) for a given program
-      def commit_relay_results_for_program(program_key, program_id) # rubocop:disable Metrics/AbcSize
+      def commit_relay_results_for_program(program_key, program_id)
         # Retrieve MRRs bound to the program's key
         mrrs = GogglesDb::DataImportMeetingRelayResult.where(phase_file_path: source_path, meeting_program_key: program_key)
                                                       .includes(data_import_meeting_relay_swimmers: :data_import_relay_laps)
@@ -599,7 +597,7 @@ module Import
       end
       # -----------------------------------------------------------------------
 
-      def validate_individual_result_row!(data_import_mir, expected_program_id:) # rubocop:disable Metrics/AbcSize,Metrics/MethodLength
+      def validate_individual_result_row!(data_import_mir, expected_program_id:)
         if data_import_mir.meeting_program_id.to_i.positive? && data_import_mir.meeting_program_id.to_i != expected_program_id.to_i
           raise_phase5_binding_error!(
             entity_type: 'MeetingIndividualResult',
@@ -650,7 +648,7 @@ module Import
       end
       # -----------------------------------------------------------------------
 
-      def validate_relay_result_row!(data_import_mrr, expected_program_id:) # rubocop:disable Metrics/AbcSize
+      def validate_relay_result_row!(data_import_mrr, expected_program_id:)
         if data_import_mrr.meeting_program_id.to_i.positive? && data_import_mrr.meeting_program_id.to_i != expected_program_id.to_i
           raise_phase5_binding_error!(
             entity_type: 'MeetingRelayResult',
@@ -692,7 +690,7 @@ module Import
       end
       # -----------------------------------------------------------------------
 
-      def validate_relay_swimmer_row!(data_import_mrs, parent_mrr:) # rubocop:disable Metrics/AbcSize
+      def validate_relay_swimmer_row!(data_import_mrs, parent_mrr:)
         unless parent_mrr&.team_id.to_i.positive?
           raise_phase5_binding_error!(
             entity_type: 'MeetingRelaySwimmer',
@@ -787,7 +785,7 @@ module Import
       end
       # -----------------------------------------------------------------------
 
-      def resolve_badge_id_for_result(swimmer_id:, swimmer_key:, team_id:, team_key:, create_missing: false) # rubocop:disable Metrics/AbcSize,Metrics/MethodLength
+      def resolve_badge_id_for_result(swimmer_id:, swimmer_key:, team_id:, team_key:, create_missing: false)
         resolved_swimmer_id = resolve_swimmer_id(swimmer_id, swimmer_key)
         resolved_team_id = resolve_team_id(team_id, team_key)
         return nil unless resolved_swimmer_id.to_i.positive? && resolved_team_id.to_i.positive?
@@ -890,7 +888,7 @@ module Import
       end
       # -----------------------------------------------------------------------
 
-      def resolve_category_type_id_for_badge(swimmer_id:) # rubocop:disable Metrics/AbcSize
+      def resolve_category_type_id_for_badge(swimmer_id:)
         swimmer = GogglesDb::Swimmer.find_by(id: swimmer_id)
         return nil unless swimmer && @season_id.to_i.positive?
 
@@ -1141,7 +1139,7 @@ module Import
       # =========================================================================
 
       # Build normalized meeting attributes matching DB schema
-      def normalize_meeting_attributes(raw_meeting) # rubocop:disable Metrics/AbcSize
+      def normalize_meeting_attributes(raw_meeting)
         meeting_hash = raw_meeting.deep_dup
 
         meeting_hash['description'] = meeting_hash['name']
@@ -1298,7 +1296,7 @@ module Import
       # == Returns:
       # GogglesDb::CategoryType instance or nil if computation fails
       #
-      def compute_relay_category_from_swimmers(program_key) # rubocop:disable Metrics/AbcSize
+      def compute_relay_category_from_swimmers(program_key)
         return nil unless @meeting && @categories_cache
 
         # Query MRRs for this program pattern (may have 'N/A' or other unknown category)

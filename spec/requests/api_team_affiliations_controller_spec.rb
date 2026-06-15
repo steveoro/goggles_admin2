@@ -13,6 +13,7 @@ RSpec.describe APITeamAffiliationsController do
 
     context 'with a logged-in user' do
       include AdminSignInHelpers
+
       before(:each) do
         admin_user = prepare_admin_user
         sign_in_admin(admin_user)
@@ -49,6 +50,7 @@ RSpec.describe APITeamAffiliationsController do
 
     context 'with a logged-in user' do
       include AdminSignInHelpers
+
       before(:each) do
         admin_user = prepare_admin_user
         sign_in_admin(admin_user)
@@ -89,6 +91,7 @@ RSpec.describe APITeamAffiliationsController do
 
     context 'with a logged-in user' do
       include AdminSignInHelpers
+
       before(:each) do
         admin_user = prepare_admin_user
         sign_in_admin(admin_user)
@@ -129,6 +132,7 @@ RSpec.describe APITeamAffiliationsController do
 
     context 'with a logged-in user' do
       include AdminSignInHelpers
+
       context 'when destroying a single row,' do
         before(:each) do
           admin_user = prepare_admin_user

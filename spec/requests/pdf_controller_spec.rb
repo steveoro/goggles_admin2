@@ -13,6 +13,7 @@ RSpec.describe PdfController do
 
     context 'with a logged-in user but no file_path' do
       include AdminSignInHelpers
+
       before(:each) do
         admin_user = prepare_admin_user
         sign_in_admin(admin_user)

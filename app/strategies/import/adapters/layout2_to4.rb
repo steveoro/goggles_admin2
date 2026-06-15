@@ -47,7 +47,6 @@ module Import
         #                  venue1, poolLength, season_id, etc.
         # LT4 expected: meetingName, meetingURL, dates (ISO format), place, seasonId, poolLength
         #
-        # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
         def normalize_header!(src, out)
           out['meetingName'] = src['name']
           out['meetingURL'] = src['meetingURL']
@@ -78,7 +77,6 @@ module Import
           # Competition type (not usually in LT2, but pass if present)
           out['competitionType'] = src['competitionType'] if src['competitionType'].present?
         end
-        # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
 
         def format_iso_date(year, month, day)
           return nil unless year && month && day
@@ -106,7 +104,7 @@ module Import
 
         # Build LT4-style lookup dictionaries for swimmers and teams
         # Extracts unique swimmers/teams from all sections/rows
-        def build_lookup_dictionaries!(src, out) # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+        def build_lookup_dictionaries!(src, out)
           swimmers = {}
           teams = {}
 
@@ -134,7 +132,7 @@ module Import
         end
 
         # Build composite swimmer key in LT4 format: "GENDER|LAST|FIRST|YEAR|TEAM"
-        def build_swimmer_key(row) # rubocop:disable Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
+        def build_swimmer_key(row)
           last_name, first_name, = Import::SwimmerNameSplitter.split_complete_name(row['name'])
           if last_name.blank? || first_name.blank?
             fallback_parts = (row['name'] || '').split(' ', 2)
@@ -159,7 +157,7 @@ module Import
 
         # Normalizes LAST/FIRST segments in swimmer identity keys while preserving
         # the original key shape (with gender prefix, without gender prefix, or leading pipe).
-        def normalize_swimmer_identity_key(swimmer_key, team_fallback: nil) # rubocop:disable Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
+        def normalize_swimmer_identity_key(swimmer_key, team_fallback: nil)
           key = swimmer_key.to_s
           parts = key.split('|')
           return key if parts.size < 4
@@ -309,7 +307,7 @@ module Import
           end
         end
 
-        def normalize_individual_result(row, section) # rubocop:disable Metrics/AbcSize
+        def normalize_individual_result(row, section)
           swimmer_key = build_swimmer_key(row)
           result_gender = normalize_gender_code(row['sex']) || normalize_gender_code(section['fin_sesso'])
 
@@ -343,7 +341,7 @@ module Import
           result
         end
 
-        def normalize_relay_result(row, section) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+        def normalize_relay_result(row, section)
           result = {
             'ranking' => row['pos'],
             'team' => row['team'],
