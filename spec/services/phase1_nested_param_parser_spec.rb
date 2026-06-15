@@ -172,9 +172,9 @@ RSpec.describe Phase1NestedParamParser do
       end
     end
 
-    context 'with real-world AutoComplete + form scenario' do
-      it 'handles AutoComplete ID field + manual form fields' do
-        # AutoComplete sends: pool[0][swimming_pool_id] = "22"
+    context 'with real-world LegacyAutoComplete + form scenario' do
+      it 'handles LegacyAutoComplete ID field + manual form fields' do
+        # LegacyAutoComplete sends: pool[0][swimming_pool_id] = "22"
         # Form fields send: pool[name], pool[address], etc.
         params = ActionController::Parameters.new({
                                                     '0' => { 'swimming_pool_id' => '22' },
@@ -195,7 +195,7 @@ RSpec.describe Phase1NestedParamParser do
         expect(result['longitude']).to eq('11.654321')
       end
 
-      it 'handles city AutoComplete + form fields' do
+      it 'handles city LegacyAutoComplete + form fields' do
         params = ActionController::Parameters.new({
                                                     '1' => { 'id' => '789' },
                                                     'name' => 'Bologna',

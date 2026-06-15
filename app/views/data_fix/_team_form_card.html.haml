@@ -106,8 +106,9 @@
                 -# Note: base_dom_id uses index for unique DOM IDs; hidden field uses flat name for form submission
                 .row
                   .col-6
+                    / -- TEAM FORM CARD --
                     = hidden_field_tag 'team[team_id]', team_id, id: "team_#{team_index}_id_field"
-                    = render(AutoCompleteComponent.new(show_top_labels: true,
+                    = render(LegacyAutoCompleteComponent.new(show_top_labels: true,
                                                        base_dom_id: "team_#{team_index}", base_api_url: api_url,
                                                        default_value: team_id,
                                                        detail_endpoint: 'team', base_name: 'team', label_column: 'editable_name',
@@ -143,7 +144,7 @@
                 
                 -# Row 3: City AutoComplete + hidden city_id field
                 = hidden_field_tag 'team[city_id]', city_id, id: "team_#{team_index}_city_id_field"
-                = render(AutoCompleteComponent.new(show_top_labels: true,
+                = render(LegacyAutoCompleteComponent.new(show_top_labels: true,
                                                    base_dom_id: "team_#{team_index}_city", base_api_url: api_url,
                                                    default_value: city_id,
                                                    detail_endpoint: 'city', base_name: 'city', label_column: 'area',

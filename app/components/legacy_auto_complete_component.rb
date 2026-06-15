@@ -1,10 +1,12 @@
 # frozen_string_literal: true
 
 #
-# = Auto-complete (DB-lookup) component
+# = Legacy Auto-complete (DB-lookup) component
 #
 #   - version:  7-0.5.02
 #   - author:   Steve A.
+#
+# NOTE: This is the legacy component. Use ComboBox::AutocompleteComponent for new code.
 #
 # Allows a search query on any lookup entity by any field in order to retrieve its ID plus its associated
 # details in order to compose and display a full descriptive label and, possibly,
@@ -32,7 +34,7 @@
 # When used inside a form, same-named fields can be isolated within a namespace just by setting
 # a custom value to the <tt>base_dom_id</tt> parameter.
 #
-class AutoCompleteComponent < ViewComponent::Base
+class LegacyAutoCompleteComponent < ViewComponent::Base
   # Creates a new ViewComponent
   #
   # == Options

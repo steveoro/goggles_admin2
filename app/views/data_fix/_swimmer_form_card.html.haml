@@ -130,7 +130,7 @@
           .row
             .col
               = hidden_field_tag('swimmer[id]', swimmer_id, id: "swimmer_#{swimmer_index}_id_field")
-              = render(AutoCompleteComponent.new(show_top_labels: true,
+              = render(LegacyAutoCompleteComponent.new(show_top_labels: true,
                                                  base_dom_id: "swimmer[#{swimmer_index}]", base_api_url: api_url,
                                                  default_value: swimmer_id,
                                                  detail_endpoint: 'swimmer', base_name: 'swimmer', label_column: 'complete_name',

@@ -27,7 +27,7 @@
       = select_tag('search_pool_id', options_from_collection_for_select(pool_collection, 'id', 'name',
                    swimming_pool_id), include_blank: true, class: 'form-control', onclick: onclick_event)
   .col-lg-5.col-md-6
-    = render(AutoCompleteComponent.new(show_top_labels: true,
+    = render(LegacyAutoCompleteComponent.new(show_top_labels: true,
             base_dom_id: "swimming_pool[#{index}]", base_api_url: api_url,
             default_value: swimming_pool_id,
             detail_endpoint: 'swimming_pool', base_name: 'swimming_pool', label_column: 'name',

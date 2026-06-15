@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe AutoCompleteComponent, type: :component do
+RSpec.describe LegacyAutoCompleteComponent, type: :component do
   let(:base_api_url) { "#{GogglesDb::AppParameter.config.settings(:framework_urls).api}/api/v3" }
   let(:search_endpoint) { 'users' }
   let(:detail_endpoint) { 'user' }
@@ -38,81 +38,81 @@ RSpec.describe AutoCompleteComponent, type: :component do
 
     it 'includes the link to the Stimulus JS controller' do
       expect(rendered_node.css('.row').attr('data-controller')).to be_present
-      expect(rendered_node.css('.row').attr('data-controller').value).to eq('autocomplete')
+      expect(rendered_node.css('.row').attr('data-controller').value).to eq('legacy-autocomplete')
     end
 
     it 'includes the base-api-url controller value' do
-      expect(rendered_node.css('.row').attr('data-autocomplete-base-api-url-value')).to be_present
-      expect(rendered_node.css('.row').attr('data-autocomplete-base-api-url-value').value).to eq(base_api_url)
+      expect(rendered_node.css('.row').attr('data-legacy-autocomplete-base-api-url-value')).to be_present
+      expect(rendered_node.css('.row').attr('data-legacy-autocomplete-base-api-url-value').value).to eq(base_api_url)
     end
 
     it 'includes the search-endpoint controller value' do
-      expect(rendered_node.css('.row').attr('data-autocomplete-search-endpoint-value')).to be_present
+      expect(rendered_node.css('.row').attr('data-legacy-autocomplete-search-endpoint-value')).to be_present
       expect(
-        rendered_node.css('.row').attr('data-autocomplete-search-endpoint-value').value
+        rendered_node.css('.row').attr('data-legacy-autocomplete-search-endpoint-value').value
       ).to eq(search_endpoint)
     end
 
     it 'includes the detail-endpoint controller value' do
-      expect(rendered_node.css('.row').attr('data-autocomplete-detail-endpoint-value')).to be_present
+      expect(rendered_node.css('.row').attr('data-legacy-autocomplete-detail-endpoint-value')).to be_present
       expect(
-        rendered_node.css('.row').attr('data-autocomplete-detail-endpoint-value').value
+        rendered_node.css('.row').attr('data-legacy-autocomplete-detail-endpoint-value').value
       ).to eq(detail_endpoint)
     end
 
     it 'includes the search-column controller value' do
-      expect(rendered_node.css('.row').attr('data-autocomplete-search-column-value')).to be_present
+      expect(rendered_node.css('.row').attr('data-legacy-autocomplete-search-column-value')).to be_present
       expect(
-        rendered_node.css('.row').attr('data-autocomplete-search-column-value').value
+        rendered_node.css('.row').attr('data-legacy-autocomplete-search-column-value').value
       ).to eq(search_column)
     end
 
     it 'includes the label-column controller value' do
-      expect(rendered_node.css('.row').attr('data-autocomplete-label-column-value')).to be_present
+      expect(rendered_node.css('.row').attr('data-legacy-autocomplete-label-column-value')).to be_present
       expect(
-        rendered_node.css('.row').attr('data-autocomplete-label-column-value').value
+        rendered_node.css('.row').attr('data-legacy-autocomplete-label-column-value').value
       ).to eq(label_column)
     end
 
     it 'includes the label2-column controller value' do
-      expect(rendered_node.css('.row').attr('data-autocomplete-label2-column-value')).to be_present
+      expect(rendered_node.css('.row').attr('data-legacy-autocomplete-label2-column-value')).to be_present
       expect(
-        rendered_node.css('.row').attr('data-autocomplete-label2-column-value').value
+        rendered_node.css('.row').attr('data-legacy-autocomplete-label2-column-value').value
       ).to eq(label2_column)
     end
 
     it 'includes the jwt controller value' do
-      expect(rendered_node.css('.row').attr('data-autocomplete-jwt-value')).to be_present
-      expect(rendered_node.css('.row').attr('data-autocomplete-jwt-value').value).to eq(jwt)
+      expect(rendered_node.css('.row').attr('data-legacy-autocomplete-jwt-value')).to be_present
+      expect(rendered_node.css('.row').attr('data-legacy-autocomplete-jwt-value').value).to eq(jwt)
     end
 
     it 'includes the target field input text' do
       expect(rendered_node.css("input.form-control##{detail_endpoint}_id")).to be_present
       expect(
-        rendered_node.css("input.form-control##{detail_endpoint}_id").attr('data-autocomplete-target')
+        rendered_node.css("input.form-control##{detail_endpoint}_id").attr('data-legacy-autocomplete-target')
       ).to be_present
       expect(
-        rendered_node.css("input.form-control##{detail_endpoint}_id").attr('data-autocomplete-target').value
+        rendered_node.css("input.form-control##{detail_endpoint}_id").attr('data-legacy-autocomplete-target').value
       ).to eq('field')
     end
 
     it 'includes the search field input text' do
       expect(rendered_node.css("input.form-control##{detail_endpoint}")).to be_present
       expect(
-        rendered_node.css("input.form-control##{detail_endpoint}").attr('data-autocomplete-target')
+        rendered_node.css("input.form-control##{detail_endpoint}").attr('data-legacy-autocomplete-target')
       ).to be_present
       expect(
-        rendered_node.css("input.form-control##{detail_endpoint}").attr('data-autocomplete-target').value
+        rendered_node.css("input.form-control##{detail_endpoint}").attr('data-legacy-autocomplete-target').value
       ).to eq('search')
     end
 
     it 'includes the label description text' do
       expect(rendered_node.css("i.form-text##{detail_endpoint}-desc")).to be_present
       expect(
-        rendered_node.css("i.form-text##{detail_endpoint}-desc").attr('data-autocomplete-target')
+        rendered_node.css("i.form-text##{detail_endpoint}-desc").attr('data-legacy-autocomplete-target')
       ).to be_present
       expect(
-        rendered_node.css("i.form-text##{detail_endpoint}-desc").attr('data-autocomplete-target').value
+        rendered_node.css("i.form-text##{detail_endpoint}-desc").attr('data-legacy-autocomplete-target').value
       ).to eq('desc')
     end
   end

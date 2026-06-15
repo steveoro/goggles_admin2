@@ -20,7 +20,7 @@ document.addEventListener('turbo:load', () => {
       // Called when there's incoming data on the websocket for this channel
       received(data) {
         // DEBUG:
-        console.log(`CrawlerSrvChannel received: ${data}`);
+        // console.log(`CrawlerSrvChannel received: ${data}`);
         const parsedMessage = JSON.parse(data);
 
         const statusIcon = document.getElementById('crawler-status-icon')

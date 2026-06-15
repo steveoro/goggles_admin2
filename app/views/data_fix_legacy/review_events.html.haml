@@ -19,8 +19,8 @@
           - @meeting_sessions&.each_with_index { |mses, idx| session_option_list << [mses.description, idx] }
           .row.align-items-center.mb-3
             .col-sm-5.col-md-3
-              = render(ComboBox::DbLookupComponent.new(nil, nil, 'event_type', required: true,
-                                                       values: event_option_list))
+              = render(ComboBox::AutocompleteComponent.new(api_url: nil, label: nil, base_name: 'event_type', required: true,
+                                                       values: event_option_list, jwt: current_user&.jwt))
             .col-sm-5.col-md-3
               = select_tag('session_index', options_for_select(session_option_list), class: 'custom-select')
             .col-auto

@@ -82,7 +82,7 @@
           .row.mt-2.p-0
             .col.mr-4
               %label Event Type
-              = render(AutoCompleteComponent.new(base_dom_id: "event",
+              = render(LegacyAutoCompleteComponent.new(base_dom_id: "event",
                                                  payload: event_types_payload, base_name: 'event_type',
                                                  search_column: 'label_column', label_column: 'long_label',
                                                  default_value: event['event_type_id']))

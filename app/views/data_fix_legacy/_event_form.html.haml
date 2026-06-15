@@ -32,7 +32,7 @@
                              min: '07:30', step: '00:15', autofocus: true, class: 'form-control')
     .row
       .col-auto
-        = render(AutoCompleteComponent.new(base_dom_id: "meeting_event[#{event_key}]",
+        = render(LegacyAutoCompleteComponent.new(base_dom_id: "meeting_event[#{event_key}]",
                  payload: event_types_payload, base_name: 'event_type',
                  search_column: 'label_column', label_column: 'long_label',
                  default_value: event.event_type_id))

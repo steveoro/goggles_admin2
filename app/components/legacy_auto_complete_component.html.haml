@@ -1,0 +1,52 @@
+- entity_name = @detail_endpoint || @base_name
+.row{ data: { controller: 'legacy-autocomplete',
+  'legacy-autocomplete-base-api-url-value' => @base_api_url,
+  'legacy-autocomplete-detail-endpoint-value' => @detail_endpoint,
+  'legacy-autocomplete-search-endpoint-value' => @search_endpoint,
+  'legacy-autocomplete-search-column-value' => @search_column,
+  'legacy-autocomplete-search2-column-value' => @search2_column,
+  'legacy-autocomplete-search2-dom-id-value' => @search2_dom_id,
+  'legacy-autocomplete-label-column-value' => @label_column, 'legacy-autocomplete-label2-column-value' => @label2_column,
+  'legacy-autocomplete-target2-column-value' => @target2_column,
+  'legacy-autocomplete-target3-column-value' => @target3_column, 'legacy-autocomplete-target3-dom-id-value' => @target3_dom_id,
+  'legacy-autocomplete-target4-dom-id-value' => @target4_dom_id, 'legacy-autocomplete-target4-column-value' => @target4_column,
+  'legacy-autocomplete-target5-dom-id-value' => @target5_dom_id, 'legacy-autocomplete-target5-column-value' => @target5_column,
+  'legacy-autocomplete-target6-dom-id-value' => @target6_dom_id, 'legacy-autocomplete-target6-column-value' => @target6_column,
+  'legacy-autocomplete-target7-dom-id-value' => @target7_dom_id, 'legacy-autocomplete-target7-column-value' => @target7_column,
+  'legacy-autocomplete-target8-dom-id-value' => @target8_dom_id, 'legacy-autocomplete-target8-column-value' => @target8_column,
+  'legacy-autocomplete-target9-dom-id-value' => @target9_dom_id, 'legacy-autocomplete-target9-column-value' => @target9_column,
+  'legacy-autocomplete-target10-dom-id-value' => @target10_dom_id, 'legacy-autocomplete-target10-column-value' => @target10_column,
+  'legacy-autocomplete-target11-dom-id-value' => @target11_dom_id, 'legacy-autocomplete-target11-column-value' => @target11_column,
+  'legacy-autocomplete-target12-dom-id-value' => @target12_dom_id, 'legacy-autocomplete-target12-column-value' => @target12_column,
+  'legacy-autocomplete-payload-value' => @payload,
+  'legacy-autocomplete-jwt-value' => @jwt } }
+  .col-4.my-1
+    - if @show_top_labels
+      = label_tag(namespaced_attr_name("#{entity_name}_id"), 'id')
+    .input-group
+      = text_field_tag(namespaced_attr_name("#{entity_name}_id"), @default_value, class: 'form-control',
+                        data: { 'legacy-autocomplete-target' => 'field' })
+      .input-group-append
+        %i.fa.fa-search.btn.btn-sm.btn-outline-secondary.pt-2{ data: { action: 'click->legacy-autocomplete#processUpdate',
+          toggle: 'tooltip', title: I18n.t('dashboard.search_tooltip') } }
+  .col.my-1
+    - if @show_top_labels
+      = label_tag(namespaced_attr_name(entity_name), I18n.t('dashboard.search_field', field: '...'))
+    = text_field_tag(namespaced_attr_name(entity_name), nil, class: 'form-control',
+                     placeholder: I18n.t('dashboard.search_field', field: entity_name),
+                     data: { 'legacy-autocomplete-target' => 'search' })
+  - if @target2_field
+    %div{ class: @target2_class }
+      - if @show_top_labels
+        = label_tag(namespaced_attr_name(@target2_field), @target2_field)
+      = text_field_tag(namespaced_attr_name(@target2_field), nil, class: 'form-control',
+                       data: { 'legacy-autocomplete-target' => 'field2' })
+    - if @target3_field
+      %div{ class: @target3_class }
+        - if @show_top_labels
+          = label_tag(namespaced_attr_name(@target3_field), @target3_field)
+        = text_field_tag(namespaced_attr_name(@target3_field), nil, class: 'form-control',
+                         data: { 'legacy-autocomplete-target' => 'field3' })
+  .col-12
+    %small
+      %i.form-text.text-muted{ id: "#{entity_name}-desc", data: { 'legacy-autocomplete-target' => 'desc' } }

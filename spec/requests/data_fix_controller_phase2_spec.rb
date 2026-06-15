@@ -338,7 +338,7 @@ RSpec.describe DataFixController do
         expect(pfm.data['teams'][0]['name_variations']).to eq('Variation1|Variation2|Variation3')
       end
 
-      it 'updates team_id field from AutoComplete' do
+      it 'updates team_id field from LegacyAutoComplete' do
         patch update_phase2_team_path, params: {
           file_path: source_file,
           team_key: 'Team Original',
@@ -426,7 +426,7 @@ RSpec.describe DataFixController do
         expect(affiliation_row['team_affiliation_id']).to be_nil
       end
 
-      it 'updates city_id field from City AutoComplete' do
+      it 'updates city_id field from City LegacyAutoComplete' do
         patch update_phase2_team_path, params: {
           file_path: source_file,
           team_key: 'Team Original',

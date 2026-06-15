@@ -5,8 +5,22 @@
   width: 100%;
 }
 
+.form-group .ts-wrapper {
+  flex-grow: 1;
+}
+
 .ts-wrapper.multi .ts-control [data-value] {
   background-color: #007bff;
   border-color: #007bff;
   color: #fff;
+}
+
+// Ensure dropdown renders above other elements
+.ts-dropdown {
+  z-index: 9999;
+}
+
+// Legacy widgets, upgraded to TomSelect, that were originally designed with Select2:
+.select2 {
+  width: 100%;
 }

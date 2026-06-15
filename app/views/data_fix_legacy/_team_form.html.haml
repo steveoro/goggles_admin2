@@ -1,6 +1,6 @@
 :ruby
   # "Subkey" is the actual team key (with spaces) translated to a node name to a node ID (with underscores)
-  # (it's needed to reference the DOM IDs from the AutoCompleteComponent)
+  # (it's needed to reference the DOM IDs from the LegacyAutoCompleteComponent)
   subkey_for_dom_id = team_key.gsub(/[\s`'^?&%$!"<>:;,.*àèéìòù]/, '_')
   src_dom = "#team_#{subkey_for_dom_id}_id"
   target_dom = "#team_#{subkey_for_dom_id}_team_id"
@@ -18,7 +18,7 @@
                      'display_label', team&.id), include_blank: true, class: 'form-control', onchange: onchange_event)
     .row
       .col-6
-        = render(AutoCompleteComponent.new(show_top_labels: true,
+        = render(LegacyAutoCompleteComponent.new(show_top_labels: true,
                 base_dom_id: "team[#{subkey_for_dom_id}]", base_api_url: api_url,
                 detail_endpoint: 'team', base_name: 'team', label_column: 'editable_name',
                 default_value: team&.id,
@@ -48,7 +48,7 @@
             = text_field_tag("team[#{subkey_for_dom_id}][name_variations]", team&.name_variations,
                               class: 'form-control', placeholder: 'name_variations')
 
-    = render(AutoCompleteComponent.new(show_top_labels: true,
+    = render(LegacyAutoCompleteComponent.new(show_top_labels: true,
             base_dom_id: "team[#{subkey_for_dom_id}]", base_api_url: api_url,
             default_value: team&.city_id,
             detail_endpoint: 'city', base_name: 'city', label_column: 'area',

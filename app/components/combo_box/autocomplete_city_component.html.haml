@@ -1,7 +1,17 @@
-= render(ComboBox::DbLookupComponent.new(@api_endpoint, t('swimming_pools.city'), 'city',
-         required: @required, free_text: @free_text, bound_query_param: 'country_code',
-         jwt: @jwt, values: value_options))
-.col-auto
+= render(ComboBox::AutocompleteComponent.new(
+     api_url: 'cities',
+     label: t('swimming_pools.city'),
+     base_name: 'city',
+     free_text: @free_text,
+     required: @required,
+     wrapper_class: @wrapper_class,
+     bound_query_param: 'country_code',
+     jwt: @jwt,
+     values: value_options(@default_row),
+     selected_id: @default_row&.id,
+     selected_label: @default_row&.name
+   ))
+.col
   .form-group
     .field
       = label_tag(:city_area, t('swimming_pools.area_code'))

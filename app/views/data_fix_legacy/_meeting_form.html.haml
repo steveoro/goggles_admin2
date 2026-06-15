@@ -15,7 +15,7 @@
         = select_tag('meeting_search', options_from_collection_for_select(meeting_entity.matches || [], 'id',
                      'description', meeting&.id), include_blank: true, class: 'form-control', onchange: onchange_event)
       .col-auto
-        = render(AutoCompleteComponent.new(show_top_labels: true,
+        = render(LegacyAutoCompleteComponent.new(show_top_labels: true,
                 base_dom_id: 'meeting', base_api_url: api_url,
                 default_value: meeting&.id,
                 detail_endpoint: 'meeting', base_name: 'meeting', label_column: 'description',

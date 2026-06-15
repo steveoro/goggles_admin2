@@ -1,6 +1,6 @@
 :ruby
   # "Subkey" is the actual swimmer key (with spaces) translated to to a node ID (with underscores)
-  # (it's needed to reference the DOM IDs from the AutoCompleteComponent)
+  # (it's needed to reference the DOM IDs from the LegacyAutoCompleteComponent)
   subkey_for_dom_id = swimmer_key.gsub(/[\s`'^?&%$!"<>:;,.*àèéìòù]/, '_')
   src_dom = "#swimmer_#{subkey_for_dom_id}_id"
   target_dom = "#swimmer_#{subkey_for_dom_id}_swimmer_id"
@@ -25,7 +25,7 @@
                      onchange: onchange_event)
     .row
       .col-auto
-        = render(AutoCompleteComponent.new(show_top_labels: true,
+        = render(LegacyAutoCompleteComponent.new(show_top_labels: true,
                 base_dom_id: "swimmer[#{subkey_for_dom_id}]", base_api_url: api_url,
                 default_value: swimmer&.id,
                 detail_endpoint: 'swimmer', base_name: 'swimmer', label_column: 'complete_name',

@@ -127,7 +127,7 @@ class PullController < FileListController
   end
 
   # Prepares the <tt>@season_list</tt> member variable for the view, as an Array of Hash objects
-  # having the required keys for setting up the <tt>AutoCompleteComponent</tt> data payload.
+  # having the required keys for setting up the <tt>LegacyAutoCompleteComponent</tt> data payload.
   #
   # == Params
   # - <tt>seasons</tt>: the AR list of rows to be processed
@@ -170,7 +170,7 @@ class PullController < FileListController
   end
 
   # Similar to the one above, prepares the <tt>@url_base_list</tt> member variable for the view,
-  # as an Array of Hash objects having the required keys for setting up the <tt>AutoCompleteComponent</tt> data payload.
+  # as an Array of Hash objects having the required keys for setting up the <tt>LegacyAutoCompleteComponent</tt> data payload.
   #
   def prepare_url_base_list
     @url_base_list = [

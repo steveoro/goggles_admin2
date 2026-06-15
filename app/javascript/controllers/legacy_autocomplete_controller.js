@@ -2,9 +2,10 @@ import { Controller } from '@hotwired/stimulus'
 import TomSelect from 'tom-select'
 
 /**
- * = TomSelect-based Autocomplete StimulusJS controller =
+ * = TomSelect-based Legacy Autocomplete StimulusJS controller =
  *
  * ==> Admin2-specific <==
+ * NOTE: This is the legacy controller. Use autocomplete-lookup for new code.
  *
  * Allows to update values in up to 3 "+1" target fields, searched using a search field,
  * while updating also another external description field upon selection.
@@ -30,29 +31,29 @@ import TomSelect from 'tom-select'
  * - @see 'app/javascript/controllers/lookup_controller.js' (Admin2)
  *
  * == Targets ==
- * @param {String} 'data-autocomplete-target': 'field'
+ * @param {String} 'data-legacy-autocomplete-target': 'field'
  *                 target field for the result value of the search; typically, a form field storing an ID value:
  *
  *                 => targetField.val( searched & chosen row['id'] )
  *
- * @param {String} 'data-autocomplete-target': 'field2' (optional)
+ * @param {String} 'data-legacy-autocomplete-target': 'field2' (optional)
  *                 secondary target field for the result value of the search; as above, a form field storing an ID value.
  *                 Totally optional: skipped when not set (default: null).
  *                 Used as above for a secondary field that gets updated upon selection:
  *
  *                 => targetField2.val( searched & chosen row[target2Column value] )
  *
- * @param {String} 'data-autocomplete-target': 'field3' (optional)
+ * @param {String} 'data-legacy-autocomplete-target': 'field3' (optional)
  *                 tertiary target field for the result value of the search.
  *                 Totally optional: skipped when not set (default: null).
  *                 Used as above for a tertiary field that gets updated upon selection:
  *
  *                 => targetField3.val( searched & chosen row[target3Column value] )
  *
- * @param {String} 'data-autocomplete-target': 'search'
+ * @param {String} 'data-legacy-autocomplete-target': 'search'
  *                 target for the easy-autocomplete search field, where the user can enter the query text.
  *
- * @param {String} 'data-autocomplete-target': 'desc'
+ * @param {String} 'data-legacy-autocomplete-target': 'desc'
  *                 target for a static description and an additional optional description (label2),
  *                 updated after each list item selection.
  *
@@ -60,14 +61,14 @@ import TomSelect from 'tom-select'
  *
  * == Values ==
  * (Put values directly on controller elements)
- * @param {String} 'data-autocomplete-base-api-url-value' (optional, not needed for inline data)
+ * @param {String} 'data-legacy-autocomplete-base-api-url-value' (optional, not needed for inline data)
  *                 base API URL for data request (w/o endpoint or params).
  *                 Set this to null to disable *all* API requests and use the supplied data array of Objects as base domain
  *                 for the autocomplete search.
- *                 (Optional & skipped when not set -- but, when not set, requires the 'data-autocomplete-data-value'
+ *                 (Optional & skipped when not set -- but, when not set, requires the 'data-legacy-autocomplete-data-value'
  *                 attribute containing the Array of Objects that define the.)
  *
- * @param {String} 'data-autocomplete-detail-endpoint-value' (optional)
+ * @param {String} 'data-legacy-autocomplete-detail-endpoint-value' (optional)
  *                 API endpoint name used to retrieve additional or initial Entity details;
  *                 Default: null.
  *                 Set this only if an additional AJAX API call is needed for detail retrieval.
@@ -75,58 +76,58 @@ import TomSelect from 'tom-select'
  *                 no additional detail query is possible. For any other case, the detail endpoint should be set if needed.
  *                 (I.e.: model 'SwimmingPool' => detail API: 'swimming_pool' => resulting endpoint: '<baseApiUrlValue>/swimming_pool/<ID>')
  *
- * @param {String} 'data-autocomplete-search-endpoint-value' (optional, not needed for inline data)
+ * @param {String} 'data-legacy-autocomplete-search-endpoint-value' (optional, not needed for inline data)
  *                 API endpoint name for the actual autocomplete search
  *                 (i.e.: model 'User' => search API: 'users' => resulting endpoint: '<baseApiUrlValue>/users?<SEARCH_QUERY>')
  *
- * @param {String} 'data-autocomplete-search-column-value' (optional, default: 'name')
+ * @param {String} 'data-legacy-autocomplete-search-column-value' (optional, default: 'name')
  *                 query field name used in the API search call; defaults to 'name'
  *
- * @param {String} 'data-autocomplete-search2-column-value' (optional)
+ * @param {String} 'data-legacy-autocomplete-search2-column-value' (optional)
  *                 secondary filter/query field name used in the API search call;
  *                 this affects only the list filtering for the search endpoint (can be used to better refine the rows found);
  *                 defaults to null
  *
- * @param {String} 'data-autocomplete-search2-dom-id-value' (optional)
+ * @param {String} 'data-legacy-autocomplete-search2-dom-id-value' (optional)
  *                 DOM ID for the secondary search field value; the referred node should contain the secondary filter/query value,
  *                 if the search2 column is defined (defaults to null).
  *
- * @param {String} 'data-autocomplete-label-column-value' (optional, default: 'description')
+ * @param {String} 'data-legacy-autocomplete-label-column-value' (optional, default: 'description')
  *                 field name used to retrieve additional label/description for the results;
  *                 this is also used to compose the label description stored into 'descTarget'.
  *
- * @param {String} 'data-autocomplete-label2-column-value' (optional)
+ * @param {String} 'data-legacy-autocomplete-label2-column-value' (optional)
  *                 additional field name used as description (#2) appended to the above;
  *                 (totally optional, skipped when not set)
  *
- * @param {String} 'data-autocomplete-target2-column-value' (optional)
+ * @param {String} 'data-legacy-autocomplete-target2-column-value' (optional)
  *                 column or property name used as to set the value of the secondary target field;
  *                 (totally optional, skipped when not set)
   *
- * @param {String} 'data-autocomplete-target3-dom-id-value' (optional)
+ * @param {String} 'data-legacy-autocomplete-target3-dom-id-value' (optional)
  *                 DOM ID for the 4th optional update target field value; the referred DOM node is assumed to store
  *                 the update target column value (defaults to null).
  *                 Typically used only for binding together 2 different auto-complete components as in the case
  *                 of a SwimmingPool associated to a City (both should be searchable & storable).
 *
- * @param {String} 'data-autocomplete-target3-column-value' (optional)
+ * @param {String} 'data-legacy-autocomplete-target3-column-value' (optional)
  *                 column or property name used as to set the value of the tertiary target field;
  *                 (totally optional, skipped when not set)
  *
- * @param {String} 'data-autocomplete-target4-dom-id-value' (optional)
+ * @param {String} 'data-legacy-autocomplete-target4-dom-id-value' (optional)
  *                 DOM ID for the 4th "external" update target field value;
  *                 the referred DOM node is assumed to store the update target column value (defaults to null).
  *                 Typically used only for binding together 2 different auto-complete components as in the case
  *                 of a SwimmingPool associated to a City (both should be searchable & storable).
  *
- * @param {String} 'data-autocomplete-target4-column-value' (optional)
+ * @param {String} 'data-legacy-autocomplete-target4-column-value' (optional)
  *                 column name used to retrieve the target field value during auto-updates; defaults to null.
  *                 In the example of a SwimmingPool bound to a City, this would be (SwimmingPool's) 'city_id'.
  *
  * All target fields 4..12 work similarly: using a DOM ID plus a column name which points to
  * the value from the detailed result of the selection from the drop-down field.
  *
- * @param {Array} 'data-autocomplete-payload-value' (optional)
+ * @param {Array} 'data-legacy-autocomplete-payload-value' (optional)
  *                 Array of objects specifying the inline data payload for the search domain.
  *
  *                 Each item in the payload Array shall at least respond to:
@@ -140,17 +141,17 @@ import TomSelect from 'tom-select'
  *                 - <tt>target3Column.value</tt> as property name => field updating the tertiary target;
  *                 (and so on, for all possible defined targets)
  *
- * @param {String} 'data-autocomplete-jwt-value' (optional, not needed for inline data)
+ * @param {String} 'data-legacy-autocomplete-jwt-value' (optional, not needed for inline data)
  *                 current_user.jwt (assumes 'current_user' is currently logged-in and valid)
  *
  * == Actions:
  * To force an update of all the linked fields:
  *
  * - Edit fields should bind to: (for example)
- *    - 'change->autocomplete#processUpdate'
+ *    - 'change->legacy-autocomplete#processUpdate'
  *
  * - Any external "Search" button should bind to: (action: "<bind_string>")
- *    - 'autocomplete#processUpdate' => refreshes all linked fields with the results from any
+ *    - 'legacy-autocomplete#processUpdate' => refreshes all linked fields with the results from any
  *                                      filled-in search criteria.
  *
  * @author Steve A.

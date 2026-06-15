@@ -151,14 +151,14 @@ function getAutocompleteContextForSession(sessionIndex) {
     return null
   }
 
-  const container = poolIdField.closest('[data-controller="autocomplete"]')
+  const container = poolIdField.closest('[data-controller="legacy-autocomplete"]')
   if (!container) {
     return null
   }
 
   return {
-    baseApiUrl: container.dataset.autocompleteBaseApiUrlValue,
-    jwt: container.dataset.autocompleteJwtValue
+    baseApiUrl: container.dataset.legacyAutocompleteBaseApiUrlValue,
+    jwt: container.dataset.legacyAutocompleteJwtValue
   }
 }
 

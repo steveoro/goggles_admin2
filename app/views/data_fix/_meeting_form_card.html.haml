@@ -99,7 +99,7 @@
                          include_blank: true, class: 'form-control form-control-sm', onchange: onchange_event)
             %small.form-text.text-muted Select to populate from existing meeting
           .form-group.col-md-6
-            = render(AutoCompleteComponent.new(show_top_labels: true, base_dom_id: 'meeting',
+            = render(LegacyAutoCompleteComponent.new(show_top_labels: true, base_dom_id: 'meeting',
                                                default_value: meeting_data['id'], base_api_url: api_url,
                                                detail_endpoint: 'meeting', base_name: 'meeting', label_column: 'description',
                                                search_endpoint: 'meetings', search_column: 'description',

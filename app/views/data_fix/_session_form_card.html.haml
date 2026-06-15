@@ -134,7 +134,7 @@
         .form-row
           .form-group.col-md-6
             = hidden_field_tag('pool[id]', pool_id, id: "pool_#{idx}_id_field")
-            = render(AutoCompleteComponent.new(show_top_labels: true, base_dom_id: "pool[#{idx}]", base_api_url: api_url,
+            = render(LegacyAutoCompleteComponent.new(show_top_labels: true, base_dom_id: "pool[#{idx}]", base_api_url: api_url,
                                                default_value: pool_id, detail_endpoint: 'swimming_pool', base_name: 'swimming_pool',
                                                label_column: 'name', search_endpoint: 'swimming_pools', search_column: 'name',
                                                target3_dom_id: "pool_#{idx}_name", target3_column: 'name',
@@ -214,7 +214,7 @@
         .form-row
           .form-group.col-md-5
             = hidden_field_tag('city[id]', city_id, id: "city_#{idx}_id_field", onchange: "DataFix.rehydrateSessionCityFromId(#{idx}, this.value);")
-            = render(AutoCompleteComponent.new(show_top_labels: true, base_dom_id: "city[#{idx}]", base_api_url: api_url,
+            = render(LegacyAutoCompleteComponent.new(show_top_labels: true, base_dom_id: "city[#{idx}]", base_api_url: api_url,
                                                default_value: city_id, detail_endpoint: 'city', base_name: 'city',
                                                label_column: 'area', search_endpoint: 'cities', search_column: 'name',
                                                target3_dom_id: "city_#{idx}_name", target3_column: 'name',

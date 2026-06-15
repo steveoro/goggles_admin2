@@ -2,7 +2,7 @@
 - city_id = swimming_pool&.city_id || city&.id
 .row
   .col-lg-5.col-md-6
-    = render(AutoCompleteComponent.new(show_top_labels: true,
+    = render(LegacyAutoCompleteComponent.new(show_top_labels: true,
             base_dom_id: "city[#{index}]", base_api_url: api_url,
             default_value: city_id,
             detail_endpoint: 'city', base_name: 'city', label_column: 'area',

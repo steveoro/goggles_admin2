@@ -9,19 +9,19 @@ document.addEventListener('turbo:load', () => {
       // Called when the subscription is ready for use on the server
       connected() {
         // DEBUG:
-        console.log(`ImportStatusChannel connected()`);
+        // console.log(`ImportStatusChannel connected()`);
       },
 
       // Called when the subscription has been terminated by the server
       disconnected() {
         // DEBUG:
-        console.log(`ImportStatusChannel disconnected()`);
+        // console.log(`ImportStatusChannel disconnected()`);
       },
 
       // Called when there's incoming data on the websocket for this channel
       received(data) {
         // DEBUG:
-        console.log('ImportStatusChannel received: ', data);
+        // console.log('ImportStatusChannel received: ', data);
 
         // Make sure async msgs do not repeat or get processed twice out of sequence
         // (it may happen using the async adapter as ActionCable backend in dev env).

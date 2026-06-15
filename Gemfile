@@ -27,14 +27,6 @@ gem 'turbo-rails'
 # Use Active Storage variant
 # gem 'image_processing', '~> 1.2'
 
-# OLD:
-# gem 'rails', '>= 6.1.7', '< 7' # Restore original range
-# gem 'rails-i18n', '~> 6'
-# gem 'mysql2', '>= 0.4.4'
-# gem 'puma', '>= 5.3.1'
-# gem 'sass-rails', '>= 6'
-# gem 'webpacker'
-
 # Use Active Storage variant
 # gem 'image_processing', '~> 1.2'
 

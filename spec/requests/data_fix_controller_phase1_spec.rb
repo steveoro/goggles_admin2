@@ -41,7 +41,7 @@ RSpec.describe DataFixController do
         expect(response.body).to include('Test Meeting')
       end
 
-      it 'wires the meeting fuzzy selector to the AutoComplete ID field' do
+      it 'wires the meeting fuzzy selector to the LegacyAutoComplete ID field' do
         get review_sessions_path(file_path: source_file, phase_v2: 1)
 
         selector = response.parsed_body.css('#meeting_search')
@@ -51,23 +51,23 @@ RSpec.describe DataFixController do
         expect(onchange).not_to include("$('#meeting').trigger('change')")
       end
 
-      it 'renders the AutoCompleteComponent with correct field target ID' do
+      it 'renders the LegacyAutoCompleteComponent with correct field target ID' do
         get review_sessions_path(file_path: source_file, phase_v2: 1)
 
-        # Verify the AutoCompleteComponent field target exists with correct ID
+        # Verify the LegacyAutoCompleteComponent field target exists with correct ID
         field_input = response.parsed_body.css('#meeting_meeting_id')
         expect(field_input).to be_present
-        expect(field_input.attr('data-autocomplete-target').value).to eq('field')
+        expect(field_input.attr('data-legacy-autocomplete-target').value).to eq('field')
 
         # Verify the search target exists (base_dom_id 'meeting' + entity_name 'meeting' = meeting_meeting)
         search_input = response.parsed_body.css('#meeting_meeting')
         expect(search_input).to be_present
-        expect(search_input.attr('data-autocomplete-target').value).to eq('search')
+        expect(search_input.attr('data-legacy-autocomplete-target').value).to eq('search')
 
         # Verify the description target exists
         desc_target = response.parsed_body.css('#meeting-desc')
         expect(desc_target).to be_present
-        expect(desc_target.attr('data-autocomplete-target').value).to eq('desc')
+        expect(desc_target.attr('data-legacy-autocomplete-target').value).to eq('desc')
       end
 
       it 'renders external target DOM IDs for meeting fields' do # rubocop:disable RSpec/MultipleExpectations
@@ -86,21 +86,21 @@ RSpec.describe DataFixController do
         expect(response.body).to include('id="meeting_confirmed"')
       end
 
-      it 'renders AutoCompleteComponent with correct target column bindings' do # rubocop:disable RSpec/MultipleExpectations
+      it 'renders LegacyAutoCompleteComponent with correct target column bindings' do # rubocop:disable RSpec/MultipleExpectations
         get review_sessions_path(file_path: source_file, phase_v2: 1)
 
         # Verify the component data attributes include the correct target column bindings
         # The Stimulus controller expects these column values to read from the API response
-        expect(response.body).to include('target3-column-value')
-        expect(response.body).to include('target4-column-value')
-        expect(response.body).to include('target5-column-value')
-        expect(response.body).to include('target6-column-value')
-        expect(response.body).to include('target7-column-value')
-        expect(response.body).to include('target8-column-value')
-        expect(response.body).to include('target9-column-value')
-        expect(response.body).to include('target10-column-value')
-        expect(response.body).to include('target11-column-value')
-        expect(response.body).to include('target12-column-value')
+        expect(response.body).to include('legacy-autocomplete-target3-column-value')
+        expect(response.body).to include('legacy-autocomplete-target4-column-value')
+        expect(response.body).to include('legacy-autocomplete-target5-column-value')
+        expect(response.body).to include('legacy-autocomplete-target6-column-value')
+        expect(response.body).to include('legacy-autocomplete-target7-column-value')
+        expect(response.body).to include('legacy-autocomplete-target8-column-value')
+        expect(response.body).to include('legacy-autocomplete-target9-column-value')
+        expect(response.body).to include('legacy-autocomplete-target10-column-value')
+        expect(response.body).to include('legacy-autocomplete-target11-column-value')
+        expect(response.body).to include('legacy-autocomplete-target12-column-value')
       end
 
       it 'displays empty sessions message when no sessions exist' do

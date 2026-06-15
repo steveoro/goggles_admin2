@@ -32,17 +32,23 @@
           - label = "Session #{sess['session_order']}"
           - label += " - #{sess['description']}" if sess['description'].present?
           - session_option_list << [label, idx]
-        .form-group.mr-2
-          = label_tag 'event_type_id', 'Event Type', class: 'mr-1'
-          = render(ComboBox::DbLookupComponent.new(nil, nil, 'event_type', required: true, values: event_option_list))
-        .form-group.mr-2
-          = label_tag 'session_index', 'Target Session', class: 'mr-1'
-          = select_tag('session_index', options_for_select(session_option_list), class: 'custom-select')
-        %button.btn.btn-sm.btn-success#btn-add-event{ type: 'submit',
-          'aria-label' => 'Add event',
-          data: { turbo_confirm: 'Add a new event?', disable_with: 'Please wait...' } }
-          %i.fa.fa-plus
-          Add Event
+        .container.row
+          .col-5
+            .form-group.mr-2
+              = label_tag 'event_type_id', 'Event Type', class: 'mr-1'
+              = render(ComboBox::AutocompleteComponent.new(api_url: nil, label: nil, base_name: 'event_type',
+                                                          required: true, values: event_option_list,
+                                                          jwt: current_user&.jwt))
+          .col-5
+            .form-group.mr-2
+              = label_tag 'session_index', 'Target Session', class: 'mr-1'
+              = select_tag('session_index', options_for_select(session_option_list), class: 'custom-select')
+          .col-md-2
+            %button.btn.btn-sm.btn-success#btn-add-event{ type: 'submit',
+              'aria-label' => 'Add event',
+              data: { turbo_confirm: 'Add a new event?', disable_with: 'Please wait...' } }
+              %i.fa.fa-plus
+              Add Event
 
   -# Events grouped by session
   - if @all_events.empty?

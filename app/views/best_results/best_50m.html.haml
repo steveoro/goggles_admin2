@@ -14,7 +14,7 @@
         .container-fluid
           .row.mb-3.my-4
             .col-md-4.my-2
-              = render(ComboBox::DbTeamComponent.new(default_row: @team, required: true))
+              = render(ComboBox::AutocompleteTeamComponent.new(default_row: @team, required: true, jwt: current_user&.jwt))
             .col-md-1.mt-2.ml-3.d-flex.align-items-end
               .btn-group.w-100{ role: 'group' }
                 = f.submit t('datagrid.form.search'), class: 'btn btn-primary'

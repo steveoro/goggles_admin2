@@ -149,9 +149,9 @@ RSpec.describe DataFixController do
         expect(response.body).to include('Phase 3 Metadata') # Metadata header in collapsed card
       end
 
-      it 'shows AutoComplete component for swimmer lookup' do
+      it 'shows LegacyAutoComplete component for swimmer lookup' do
         get review_swimmers_path(file_path: source_file, phase3_v2: 1)
-        expect(response.body).to include('autocomplete') # AutoComplete component present
+        expect(response.body).to include('legacy-autocomplete') # LegacyAutoComplete component present
       end
 
       it 'displays fuzzy matches dropdown when matches exist' do

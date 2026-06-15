@@ -25,7 +25,7 @@
                     %i.text-secondary Target Season (ID 242, 252, ...)
                   .row
                     .col-9
-                      = render(AutoCompleteComponent.new(show_top_labels: true, base_name: 'season',
+                      = render(LegacyAutoCompleteComponent.new(show_top_labels: true, base_name: 'season',
                                search_column: 'season_label',
                                target2_field: 'year_text', target2_column: 'year_text', target2_class: 'col-auto my-1',
                                label_column: 'description',
@@ -48,7 +48,7 @@
                     %i.text-secondary Target Layout (ID 4, 5, ...; ID 0 = calendar auto-detect) + URL
                   .row.my-4
                     .col-5
-                      = render(AutoCompleteComponent.new(show_top_labels: true, base_name: 'layout',
+                      = render(LegacyAutoCompleteComponent.new(show_top_labels: true, base_name: 'layout',
                               search_column: 'label', label_column: 'label',
                               target4_dom_id: 'target_url', target4_column: 'base_url',
                               payload: @url_base_list))
