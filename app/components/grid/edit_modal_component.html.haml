@@ -44,7 +44,7 @@
                   = render(Switch::SliderComponent.new(field_name: namespaced_attr_name(attr_name),
                                                        option_classes: 'round'))
               - elsif attr_name.ends_with?('_id')
-                .col-sm-9= render(AutoCompleteComponent.new(base_dom_id: @base_dom_id,
+                .col-sm-9= render(ComboBox::AutocompleteComponent.new(base_dom_id: @base_dom_id,
                                   base_api_url: base_api_url, detail_endpoint: detail_endpoint_name(attr_name),
                                   base_name: base_entity_name(attr_name),
                                   search_endpoint: search_endpoint_name(attr_name),

@@ -11,3 +11,22 @@
 .lap-timings {
   font-size: 0.6rem;
 }
+
+// Phase 4 add-event row: align TomSelect, session select, and submit button on one baseline
+#frm-add-event .add-event-controls-row {
+  .field > label:not(.invisible) {
+    display: block;
+    margin-bottom: 0.5rem;
+  }
+
+  .autocomplete-lookup .field > label {
+    display: inline-block;
+    margin-bottom: 0.5rem;
+  }
+
+  #btn-add-event {
+    height: calc(1.5em + 0.75rem + 2px);
+    line-height: 1.5;
+    white-space: nowrap;
+  }
+}

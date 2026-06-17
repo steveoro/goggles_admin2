@@ -7,7 +7,7 @@ module ComboBox
   # --> Admin2 bespoke version <--
   #
   # Based on goggles_main AutocompleteSwimmingPoolComponent with the following differences:
-  # - Renders AutocompleteComponent internally (not inheritance)
+  # - Renders ComboBox::AutocompleteComponent internally (not inheritance)
   # - Adds server-side JWT support (jwt parameter)
   # - Preserves additional hidden fields (name, nick_name, city_id, pool_type_id) in template
   #

@@ -7,7 +7,7 @@ module ComboBox
   # --> Admin2 bespoke version <--
   #
   # Based on goggles_main AutocompleteCityComponent with the following differences:
-  # - Renders AutocompleteComponent internally (not inheritance)
+  # - Renders ComboBox::AutocompleteComponent internally (not inheritance)
   # - Adds server-side JWT support (jwt parameter)
   # - Preserves additional hidden fields (city_area, city_country_code) in template
   # - Uses bound_query_param for country_code filtering

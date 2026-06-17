@@ -67,7 +67,7 @@ document.addEventListener('turbo:load', () => {
                   backdrop.style.display = 'none'
                 }
                 document.body.classList.remove('modal-open')
-              }, 1000) // Wait 1 second before hiding
+              }, 2000) // Wait 1 second before hiding
             }
           }
         }

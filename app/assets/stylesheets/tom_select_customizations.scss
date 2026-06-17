@@ -3,10 +3,39 @@
 
 .ts-wrapper {
   width: 100%;
+  box-sizing: border-box;
 }
 
 .form-group .ts-wrapper {
   flex-grow: 1;
+  min-width: 0;
+}
+
+// ComboBox::AutocompleteComponent — fill parent column from first paint (before dropdown open)
+.autocomplete-lookup,
+.autocomplete-lookup-fixed {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+
+  .field {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .ts-wrapper,
+  .ts-control,
+  select.autocomplete-lookup__select {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  .ts-control {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }
 
 .ts-wrapper.multi .ts-control [data-value] {

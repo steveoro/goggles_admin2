@@ -67,7 +67,6 @@ group :development do
   gem 'better_errors'
   gem 'binding_of_caller'
   gem 'guard'
-  gem 'guard-brakeman'
   gem 'guard-bundler', require: false
   gem 'guard-cucumber'
   gem 'guard-haml_lint'
@@ -93,7 +92,8 @@ end
 
 group :development, :test do
   gem 'awesome_print' # color output formatter for Ruby objects
-  gem 'brakeman'
+  # brakeman-lib uses Gemfile deps (e.g. csv) instead of vendoring them inside brakeman
+  gem 'brakeman-lib', require: false
   gem 'bullet'
   # gem 'byebug' # Uncomment and call 'byebug' anywhere in the code to stop execution and get a debugger console
   gem 'letter_opener'

@@ -7,7 +7,7 @@ module ComboBox
   # --> Admin2 bespoke version <--
   #
   # Based on goggles_main pattern (no direct equivalent) with the following differences:
-  # - Renders AutocompleteComponent internally
+  # - Renders ComboBox::AutocompleteComponent internally
   # - Adds server-side JWT support (jwt parameter, required)
   # - Simplified version for Admin2 team lookup usage
   #
@@ -30,7 +30,7 @@ module ComboBox
       @jwt = jwt
     end
 
-    # Render the underlying AutocompleteComponent with configured options
+    # Render ComboBox::AutocompleteComponent with configured options
     def call
       render(ComboBox::AutocompleteComponent.new(
                api_url: 'teams',

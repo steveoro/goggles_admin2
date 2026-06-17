@@ -24,7 +24,7 @@
     .card-header
       %strong Add New Event
     .card-body.py-2
-      = form_tag(data_fix_add_event_path, id: 'frm-add-event', method: :post, class: 'form-inline') do
+      = form_tag(data_fix_add_event_path, id: 'frm-add-event', method: :post) do
         = hidden_field_tag 'file_path', @file_path
         - event_option_list = options_from_collection_for_select(GogglesDb::EventType.all_eventable, 'id', 'long_label')
         - session_option_list = []
@@ -32,23 +32,26 @@
           - label = "Session #{sess['session_order']}"
           - label += " - #{sess['description']}" if sess['description'].present?
           - session_option_list << [label, idx]
-        .container.row
-          .col-5
-            .form-group.mr-2
-              = label_tag 'event_type_id', 'Event Type', class: 'mr-1'
-              = render(ComboBox::AutocompleteComponent.new(api_url: nil, label: nil, base_name: 'event_type',
-                                                          required: true, values: event_option_list,
-                                                          jwt: current_user&.jwt))
-          .col-5
-            .form-group.mr-2
-              = label_tag 'session_index', 'Target Session', class: 'mr-1'
-              = select_tag('session_index', options_for_select(session_option_list), class: 'custom-select')
-          .col-md-2
-            %button.btn.btn-sm.btn-success#btn-add-event{ type: 'submit',
-              'aria-label' => 'Add event',
-              data: { turbo_confirm: 'Add a new event?', disable_with: 'Please wait...' } }
-              %i.fa.fa-plus
-              Add Event
+        .row.align-items-end.mb-3.add-event-controls-row
+          .col-sm-5.col-md-4
+            = render(ComboBox::AutocompleteComponent.new(api_url: nil, label: 'Event Type', base_name: 'event_type',
+                                                        required: true, values: event_option_list,
+                                                        wrapper_class: 'w-100 autocomplete-lookup-fixed',
+                                                        jwt: current_user&.jwt))
+          .col-sm-5.col-md-4
+            .form-group.mb-0
+              .field
+                = label_tag 'session_index', 'Target Session'
+                = select_tag('session_index', options_for_select(session_option_list), class: 'custom-select w-100')
+          .col-auto
+            .form-group.mb-0
+              .field
+                %label.invisible.d-block.mb-0{ 'aria-hidden' => 'true' } &nbsp;
+                %button.btn.btn-success#btn-add-event{ type: 'submit',
+                  'aria-label' => 'Add event',
+                  data: { turbo_confirm: 'Add a new event?', disable_with: 'Please wait...' } }
+                  %i.fa.fa-plus
+                  Add Event
 
   -# Events grouped by session
   - if @all_events.empty?

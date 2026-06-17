@@ -126,5 +126,18 @@ RSpec.describe DataFixController do
       expect(response.body).to include(ERB::Util.html_escape(I18n.t('data_import.data_fix.msg.warning_retry_needed')))
       expect(PhaseFileManager.new(phase4_file).meta['retry_needed']).to be true
     end
+
+    it 'renders the add-event form with a width-scoped autocomplete wrapper' do
+      get review_events_path(file_path: source_file, phase4_v2: 1)
+
+      expect(response).to be_successful
+
+      doc = response.parsed_body
+      add_event_form = doc.at_css('form#frm-add-event')
+      expect(add_event_form).to be_present
+      expect(add_event_form.at_css('.row.align-items-end.add-event-controls-row')).to be_present
+      expect(add_event_form.at_css('div.w-100.autocomplete-lookup-fixed.autocomplete-lookup')).to be_present
+      expect(add_event_form.at_css('select#event_type_select.autocomplete-lookup__select')).to be_present
+    end
   end
 end

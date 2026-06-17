@@ -48,19 +48,15 @@ end
 #++
 
 # == Brakeman ==
+# Shell out to the CLI so we use brakeman-lib (shared csv gem) instead of the
+# vendored brakeman gem pulled in by guard-brakeman.
 
-brakeman_options = {
-  cmd: 'bundle exec brakeman',
-  cli: '-A',
-  run_on_start: true,
-  quiet: true,
-  chatty: true
-}
-guard :brakeman, brakeman_options do
-  watch(%r{^app/.+\.(erb|haml|rhtml|rb)$})
-  watch(%r{^config/.+\.rb$})
-  watch(%r{^lib/.+\.rb$})
-  watch('Gemfile')
+brakeman_cmd = 'bundle exec brakeman -A -q'
+guard :shell, name: 'brakeman' do
+  watch(%r{^app/.+\.(erb|haml|rhtml|rb)$}) { `#{brakeman_cmd}` }
+  watch(%r{^config/.+\.rb$}) { `#{brakeman_cmd}` }
+  watch(%r{^lib/.+\.rb$}) { `#{brakeman_cmd}` }
+  watch('Gemfile') { `#{brakeman_cmd}` }
 end
 #-- ---------------------------------------------------------------------------
 #++

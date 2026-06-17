@@ -59,7 +59,7 @@
                          'coded-name-jwt-value' => current_user.jwt }) do
         = hidden_field_tag(:file_path, file_path)
 
-        -# Fuzzy matches dropdown + AutoCompleteComponent
+        -# Fuzzy matches dropdown + LegacyAutoCompleteComponent
         .form-row
           .form-group.col-md-6
             %label{ for: 'meeting_search' } Fuzzy Matches (from solver)
