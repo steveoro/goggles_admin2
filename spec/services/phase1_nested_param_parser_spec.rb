@@ -59,7 +59,7 @@ RSpec.describe Phase1NestedParamParser do
 
       it 'handles integer index key' do
         params = ActionController::Parameters.new({
-                                                    0 => { 'name' => 'Integer Index' }
+                                                    '0' => { 'name' => 'Integer Index' }
                                                   })
 
         result = described_class.parse(params, allowed_keys, 0)

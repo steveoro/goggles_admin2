@@ -146,13 +146,19 @@ class SqlMaker
   # == Returns
   # The last SQL (String) script added to the log.
   #
-  def log_destroy
-    @row.class.connection.class.class_eval do
+  def log_destroy # rubocop:disable Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
+    table_name = @row.class.table_name
+    primary_key = @row.class.primary_key
+    row_id = @row.id
+    connection = @row.class.connection
+
+    connection.class.class_eval do
       attr_accessor :captured_sql
+
       # Alias the adapter's execute for later use
-      alias_method :old_execute, :execute
+      alias_method :old_execute, :execute unless method_defined?(:old_execute)
       # Re-define the execute method:
-      def execute(sql, name = nil)
+      def execute(sql, ...)
         @captured_sql ||= []
         # DEBUG
         # puts "\r\n---- SQL ----"
@@ -161,21 +167,28 @@ class SqlMaker
         # Intercept/log only the statement that we want and log it to the internal text:
         (@captured_sql << "#{sql};") if /^(delete)/i.match?(sql)
         # Always execute the SQL statement afterwards:
-        old_execute(sql, name)
+        old_execute(sql, ...)
       end
     end
 
-    # Issue the destroy upon the record:
-    @row.destroy
-    sql_text = @row.class.connection.captured_sql.join("\r\n")
-    @row.class.connection.captured_sql = nil
+    sql_text = nil
+    begin
+      # Issue the destroy upon the record:
+      @row.destroy
+      sql_text = Array(connection.captured_sql).join("\r\n")
+    ensure
+      connection.captured_sql = nil
 
-    # Double Monkey-patch to stop the interception and restore original behaviour
-    # (since it's almost safe)
-    @row.class.connection.class.class_eval do
-      # Restore original implementation of execute:
-      alias_method :execute, :old_execute
+      # Double Monkey-patch to stop the interception and restore original behaviour
+      # (since it's almost safe)
+      connection.class.class_eval do
+        # Restore original implementation of execute:
+        alias_method :execute, :old_execute
+      end
     end
+
+    sql_text = "DELETE FROM `#{table_name}` WHERE `#{table_name}`.`#{primary_key}` = #{row_id};" if @row.destroyed? && sql_text.blank? && row_id.present?
+
     return nil unless @row.destroyed? && sql_text.present?
 
     @sql_log << sql_text

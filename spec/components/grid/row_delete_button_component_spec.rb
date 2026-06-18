@@ -30,9 +30,9 @@ RSpec.describe Grid::RowDeleteButtonComponent, type: :component do
       expect(component.css("a##{expected_link_id}")).to be_present
     end
     it 'has a confirmation message setup' do
-      expect(component.css('a').attr('data-confirm').value).to eq(
-        I18n.t('dashboard.confirm_row_delete', label: fixture_asset_row.email)
-      )
+      confirm_attr = component.css('a').attr('data-turbo-confirm') || component.css('a').attr('data-confirm')
+      expected_message = I18n.t('dashboard.confirm_row_delete', label: fixture_asset_row.email).gsub("\r\n", "\n")
+      expect(confirm_attr.value.gsub("\r\n", "\n")).to eq(expected_message)
     end
   end
 end

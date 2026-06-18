@@ -223,8 +223,10 @@ module Import
 
         # Extract matches (sorted by weight descending) and convert to our format
         matches = cmd.matches.respond_to?(:map) ? cmd.matches : []
+        team_ids = matches.filter_map { |match_struct| match_struct.candidate&.id }
+        teams_by_id = GogglesDb::Team.includes(:city).where(id: team_ids).index_by(&:id)
         matches.map do |match_struct|
-          team = match_struct.candidate
+          team = teams_by_id[match_struct.candidate.id] || match_struct.candidate
           weight = match_struct.weight.round(3)
           percentage = (weight * 100).round(1)
 

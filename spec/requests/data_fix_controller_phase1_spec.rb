@@ -46,8 +46,8 @@ RSpec.describe DataFixController do
 
         selector = response.parsed_body.css('#meeting_search')
         onchange = selector.attr('onchange').value
-        expect(onchange).to include("$('#meeting_meeting_id').val(selected)")
-        expect(onchange).to include("$('#meeting_meeting_id').trigger('change')")
+        expect(onchange).to include("document.getElementById('meeting_meeting_id').value = selected")
+        expect(onchange).to include("document.getElementById('meeting_meeting_id').dispatchEvent(new Event('change', { bubbles: true }))")
         expect(onchange).not_to include("$('#meeting').trigger('change')")
       end
 

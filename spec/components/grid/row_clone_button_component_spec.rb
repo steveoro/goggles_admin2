@@ -34,9 +34,9 @@ RSpec.describe Grid::RowCloneButtonComponent, type: :component do
     end
 
     it 'has a confirmation message setup' do
-      expect(component.css('a').attr('data-confirm').value).to eq(
-        I18n.t('dashboard.confirm_row_clone', label: fixture_asset_row.description)
-      )
+      confirm_attr = component.css('a').attr('data-turbo-confirm') || component.css('a').attr('data-confirm')
+      expected_message = I18n.t('dashboard.confirm_row_clone', label: fixture_asset_row.description).gsub("\r\n", "\n")
+      expect(confirm_attr.value.gsub("\r\n", "\n")).to eq(expected_message)
     end
   end
 end
