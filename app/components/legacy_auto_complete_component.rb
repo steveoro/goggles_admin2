@@ -188,6 +188,8 @@ class LegacyAutoCompleteComponent < ViewComponent::Base
     @target11_column = options[:target11_column]
     @target12_dom_id = options[:target12_dom_id]
     @target12_column = options[:target12_column]
+    @target13_dom_id = options[:target13_dom_id]
+    @target13_column = options[:target13_column]
 
     @payload = options[:payload].presence&.to_json
     @jwt = options[:jwt]

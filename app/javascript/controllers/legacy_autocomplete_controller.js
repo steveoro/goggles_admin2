@@ -20,7 +20,7 @@ import TomSelect from 'tom-select'
  * or even just its DOM ID string (when it's present on the page but outside the scope of the parent
  * node of this controller).
  *
- * Additional "external" targets (from "target4" to "target12") can be set using just a DOM ID and a
+ * Additional "external" targets (from "target4" to "target13") can be set using just a DOM ID and a
  * corresponding column name for the target value, similarly to the way the search target(s) or the 3rd update field target
  * can be also defined as explained above.
  *
@@ -176,9 +176,12 @@ export default class extends Controller {
     target10DomId: String, target10Column: String,
     target11DomId: String, target11Column: String,
     target12DomId: String, target12Column: String,
+    target13DomId: String, target13Column: String,
     payload: Array,
     jwt: String
   }
+
+  _isProgrammaticClear = false
 
   /**
    * Sets up the controller.
@@ -201,6 +204,10 @@ export default class extends Controller {
       })
 
       this.searchTarget.addEventListener('input', (_e) => {
+        if (this._isProgrammaticClear) {
+          this._isProgrammaticClear = false
+          return
+        }
         if ((this.searchTarget.value || '').trim().length === 0) {
           this.clearBindingTargetsOnSearchEmpty()
         }
@@ -247,6 +254,7 @@ export default class extends Controller {
     this.clearTargetByDomIdIfBinding(this.target10DomIdValue, this.target10ColumnValue)
     this.clearTargetByDomIdIfBinding(this.target11DomIdValue, this.target11ColumnValue)
     this.clearTargetByDomIdIfBinding(this.target12DomIdValue, this.target12ColumnValue)
+    this.clearTargetByDomIdIfBinding(this.target13DomIdValue, this.target13ColumnValue)
   }
 
   clearBindingTargetsOnSearchEmpty () {
@@ -334,7 +342,8 @@ export default class extends Controller {
         [this.target9DomIdValue, this.target9ColumnValue],
         [this.target10DomIdValue, this.target10ColumnValue],
         [this.target11DomIdValue, this.target11ColumnValue],
-        [this.target12DomIdValue, this.target12ColumnValue]
+        [this.target12DomIdValue, this.target12ColumnValue],
+        [this.target13DomIdValue, this.target13ColumnValue]
       ]
       extTargets.forEach(([domId, col]) => {
         if (domId && domId.length > 0 && col) this.setDomValue(domId, entityRow[col])
@@ -395,6 +404,7 @@ export default class extends Controller {
         const opt = this._tomSelect.options[value]
         if (opt && opt._row) {
           this.updateFieldAndDesc(opt._row)
+          this._isProgrammaticClear = true
           this._tomSelect.clear(true)
           this._tomSelect.setTextboxValue('')
         }
@@ -453,6 +463,7 @@ export default class extends Controller {
         const opt = this._tomSelect.options[value]
         if (opt && opt._row) {
           this.updateFieldAndDesc(opt._row)
+          this._isProgrammaticClear = true
           this._tomSelect.clear(true)
           this._tomSelect.setTextboxValue('')
         }
