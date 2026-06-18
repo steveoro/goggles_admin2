@@ -197,7 +197,7 @@ module Merge
     # Keep in mind that usually older (smaller ID) badges tend to have the correct category assigned
     # either because imported from a web page stating the correct category or because already fixed
     # in the past.
-    def run # rubocop:disable Metrics/AbcSize,Metrics/PerceivedComplexity,Metrics/CyclomaticComplexity
+    def run # rubocop:disable Metrics/AbcSize,Metrics/PerceivedComplexity,Metrics/CyclomaticComplexity,Naming/PredicateMethod
       initialize_data if @log.present?
 
       @log += badge_analysis

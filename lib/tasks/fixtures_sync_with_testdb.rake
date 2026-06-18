@@ -348,7 +348,7 @@ namespace :fixtures do
   end
 
   # Phase 5: MeetingIndividualResults, Laps (via DataImport models)
-  def process_phase5(_data, _stats) # rubocop:disable Rake/MethodDefinitionInTask
+  def process_phase5(_data, _stats) # rubocop:disable Rake/MethodDefinitionInTask,Naming/PredicateMethod
     # Phase 5 uses DataImport models which don't have direct DB IDs yet
     # This phase is typically generated fresh, so no sync needed
     puts '  Phase 5 processing: skipped (uses DataImport models)'

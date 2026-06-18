@@ -43,7 +43,7 @@ module Grid
     #   its input form (<tt>"frm-<BASE_MODAL_DOM_ID>"</tt>), its title label (<tt>"<BASE_MODAL_DOM_ID>-modal-title"</tt>)
     #   and its own POST button (<tt>"btn-<BASE_MODAL_DOM_ID>-submit-save"</tt>); defaults to "grid-edit".
     #
-    def initialize(controller_name:, asset_row:, api_url: nil, jwt: nil, base_dom_id: 'grid-edit')
+    def initialize(controller_name:, asset_row:, jwt: nil, base_dom_id: 'grid-edit')
       super()
       @controller_name = controller_name
       @asset_row = asset_row

@@ -120,7 +120,7 @@ module Merge
     #
     # Returns +true+ if the merge seems feasible, +false+ otherwise.
     # Check the #log & #errors members for details and error messages.
-    def run # rubocop:disable Metrics/AbcSize
+    def run # rubocop:disable Metrics/AbcSize,Naming/PredicateMethod
       @log << "\r\n[src: '#{@source.complete_name}', id #{@source.id}] |=> [dest: '#{@dest.complete_name}', id #{@dest.id}]"
       @source_badges = GogglesDb::BadgeDecorator.decorate_collection(@source.badges)
       @dest_badges = GogglesDb::BadgeDecorator.decorate_collection(@dest.badges)

@@ -2919,7 +2919,7 @@ class DataFixController < ApplicationController
     Rails.logger.error("[DataFix] cascade_swimmer_to_data_import_rows failed: #{e.message}")
     0
   end
-  # rubocop:enable, Rails/SkipsModelValidations
+  # rubocop:enable Rails/SkipsModelValidations
 
   def harmonize_phase2_phase3_team_links(source_path:, season_id:)
     phase2_path = default_phase_path_for(source_path, 2)
@@ -2998,7 +2998,7 @@ class DataFixController < ApplicationController
     Array(team_row&.dig('fuzzy_matches')).any? { |match| match['from_phase3_conflict_hint'] == true }
   end
 
-  def append_phase2_team_conflict_hint!(phase2_team:, candidate_team_id:, team_key:, current_team_id:)
+  def append_phase2_team_conflict_hint!(phase2_team:, candidate_team_id:, team_key:, current_team_id:) # rubocop:disable Naming/PredicateMethod
     return false unless phase2_team.is_a?(Hash) && candidate_team_id.to_i.positive?
 
     candidate_team = GogglesDb::Team.find_by(id: candidate_team_id)
@@ -3163,7 +3163,7 @@ class DataFixController < ApplicationController
   # @param swimmer_key [String] the swimmer key to check
   # @param swimmers_by_key [Hash] swimmers indexed by key (from phase3)
   # @return [Hash] { missing_gender: bool, missing_year: bool, not_found: bool }
-  def swimmer_has_missing_data?(swimmer_key, swimmers_by_key: {})
+  def swimmer_has_missing_data?(swimmer_key, swimmers_by_key: {}) # rubocop:disable Naming/PredicateMethod
     return { missing_gender: false, missing_year: false, not_found: true } unless swimmers_by_key.present? && swimmer_key
 
     # First try exact match
@@ -3227,7 +3227,7 @@ class DataFixController < ApplicationController
     swimmer_key_match?(row_swimmer_key, old_swimmer_key, canonical_swimmer_key)
   end
 
-  def rewrite_mir_import_key_if_needed!(mir_row, canonical_swimmer_key)
+  def rewrite_mir_import_key_if_needed!(mir_row, canonical_swimmer_key) # rubocop:disable Naming/PredicateMethod
     return false if canonical_swimmer_key.blank? || mir_row.meeting_program_key.blank?
 
     current_import_key = mir_row.import_key
@@ -3302,7 +3302,7 @@ class DataFixController < ApplicationController
   # @param swimmers_by_id [Hash] swimmers indexed by ID
   # @param swimmers_by_key [Hash] swimmers indexed by key (from phase3)
   # @return [Hash] { has_issues: bool, issue_count: int, issues: {...} }
-  def relay_result_has_issues?(relay_result, relay_swimmers_by_key:, swimmers_by_id:, swimmers_by_key: {},
+  def relay_result_has_issues?(relay_result, relay_swimmers_by_key:, swimmers_by_id:, swimmers_by_key: {}, # rubocop:disable Naming/PredicateMethod
                                badges_by_id: {}, affiliations_by_id: {}, season_id: nil)
     relay_swimmers = relay_swimmers_by_key[relay_result.import_key] || []
     issues = {}
@@ -3748,4 +3748,4 @@ class DataFixController < ApplicationController
   #-- -------------------------------------------------------------------------
   #++
 end
-# rubocop:enable, Metrics/ParameterLists
+# rubocop:enable Metrics/ParameterLists

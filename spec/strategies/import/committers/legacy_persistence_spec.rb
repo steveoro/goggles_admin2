@@ -144,9 +144,8 @@ RSpec.describe Import::Committers::LegacyPersistence do
   end
 
   ENTITY_CONFIGS.each do |model_class, factory_name|
-    literal_columns = ENTITY_LITERAL_COLUMNS.fetch(model_class)
-
     context "with #{model_class.name}" do
+      let(:literal_columns) { ENTITY_LITERAL_COLUMNS.fetch(model_class) }
       let(:existing_row) { model_class.limit(300).sample }
       let(:changed_setup) { resolve_changed_setup(model_class, existing_row, factory_name) }
       let(:factory_row) { changed_setup.first }

@@ -44,7 +44,7 @@ module PdfResults
     # (E.g.: "SUPADUP Space Pool & Fit" vs. "SUPADUP Space Pool & Fitness ssd")
     #
     # Both parameters must be strings.
-    def self.team_names_are_almost_equal(team_name1, team_name2)
+    def self.team_names_are_almost_equal?(team_name1, team_name2)
       shorter_name = team_name1.length <= team_name2.length ? team_name1.upcase : team_name2.upcase
       longer_name = team_name1.length > team_name2.length ? team_name1.upcase : team_name2.upcase
 
@@ -112,7 +112,7 @@ module PdfResults
       @rows.each do |existing_row|
         # ASSUMES: *all* the fields listed in the check below are either present or missing in both rows
         # (compare all key-source fields vs key-dest fields in all existing rows)
-        next unless PdfResults::L2EventSection.team_names_are_almost_equal(existing_row['team'].to_s, fields_hash['team'].to_s) &&
+        next unless PdfResults::L2EventSection.team_names_are_almost_equal?(existing_row['team'].to_s, fields_hash['team'].to_s) &&
                     existing_row['timing'] == fields_hash['timing'] &&
                     existing_row['relay'] == fields_hash['relay'] &&
                     existing_row['name'].to_s.upcase == fields_hash['name'].to_s.upcase &&

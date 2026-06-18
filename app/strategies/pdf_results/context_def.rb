@@ -383,7 +383,7 @@ module PdfResults
     #
     # Assumes #extract() has already been called (or the keys/values will be blank).
     # +False+ otherwise.
-    def has_key_values?
+    def key_values?
       key_attributes_from_fields.present? || key_attributes_from_rows.present?
     end
 

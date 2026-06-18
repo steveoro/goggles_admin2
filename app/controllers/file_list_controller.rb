@@ -82,18 +82,11 @@ class FileListController < ApplicationController
   # - <tt>new_name</tt>: new filename
   #
   def file_rename
-    unless request.put? && file_params[:file_path].present? && file_params[:new_name].present?
-      flash.now[:warning] = I18n.t('data_import.errors.invalid_request')
-      redirect_to(root_path) && return
-    end
+    return handle_invalid_request unless valid_put_request_with?(:file_path, :new_name)
 
     FileUtils.mkdir_p(File.dirname(file_params[:new_name])) # Ensure existence of the destination path
     File.rename(file_params[:file_path], file_params[:new_name])
-    prepare_file_and_dir_list
-    respond_to do |format|
-      format.turbo_stream { render('file_table_update') }
-      format.html { redirect_to(root_path) }
-    end
+    respond_with_file_table_update
   end
 
   # [AJAX GET] Displays the file editing modal.
@@ -127,17 +120,10 @@ class FileListController < ApplicationController
   # - <tt>new_content</tt>: new file contents
   #
   def file_edit
-    unless request.put? && file_params[:file_path].present? && file_params[:new_content].present?
-      flash.now[:warning] = I18n.t('data_import.errors.invalid_request')
-      redirect_to(root_path) && return
-    end
+    return handle_invalid_request unless valid_put_request_with?(:file_path, :new_content)
 
     File.write(file_params[:file_path], file_params[:new_content])
-    prepare_file_and_dir_list
-    respond_to do |format|
-      format.turbo_stream { render('file_table_update') }
-      format.html { redirect_to(root_path) }
-    end
+    respond_with_file_table_update
   end
 
   # [AJAX DELETE] Deletes the file specified by the given <tt>file_path</tt> parameter.
@@ -183,5 +169,22 @@ class FileListController < ApplicationController
     # Filter file list based on current extension:
     filter ||= "*#{file_ext}"
     @files = Rails.root.glob("crawler/#{@curr_dir}/**/#{filter}").sort
+  end
+
+  def valid_put_request_with?(*required_keys)
+    request.put? && required_keys.all? { |key| file_params[key].present? }
+  end
+
+  def handle_invalid_request
+    flash.now[:warning] = I18n.t('data_import.errors.invalid_request')
+    redirect_to(root_path) && return
+  end
+
+  def respond_with_file_table_update
+    prepare_file_and_dir_list
+    respond_to do |format|
+      format.turbo_stream { render('file_table_update') }
+      format.html { redirect_to(root_path) }
+    end
   end
 end

@@ -33,23 +33,34 @@ module ComboBox
     #
     def initialize(label, base_name, options = {})
       super()
-      @api_endpoint = options[:values].present? ? nil : 'swimmers'
       @label = label
       @base_name = base_name
-      @free_text = options[:free_text] || false
-      @required = options[:required] || false
-      @disabled = options[:disabled] || false
-      @use_2_api = options[:use_2_api] || false
-      @query_column = options[:query_column] || 'name'
-      @wrapper_class = options[:wrapper_class] || 'col'
-      @jwt = options[:jwt]
-
-      @gender_types = [GogglesDb::GenderType.male, GogglesDb::GenderType.female]
-      @default_row = SwimmerDecorator.decorate(options[:default_row]) if options[:default_row].instance_of?(GogglesDb::Swimmer)
-      @values = GogglesDb::SwimmerDecorator.decorate_collection(options[:values]) if options[:values]
+      assign_options(options)
+      assign_data_sources(options)
     end
 
     protected
+
+    def assign_options(options)
+      values = options[:values]
+      @api_endpoint = values.present? ? nil : 'swimmers'
+      @free_text = options.fetch(:free_text, false)
+      @required = options.fetch(:required, false)
+      @disabled = options.fetch(:disabled, false)
+      @use_2_api = options.fetch(:use_2_api, false)
+      @query_column = options.fetch(:query_column, 'name')
+      @wrapper_class = options.fetch(:wrapper_class, 'col')
+      @jwt = options[:jwt]
+    end
+
+    def assign_data_sources(options)
+      values = options[:values]
+      default_row = options[:default_row]
+
+      @gender_types = [GogglesDb::GenderType.male, GogglesDb::GenderType.female]
+      @default_row = SwimmerDecorator.decorate(default_row) if default_row.instance_of?(GogglesDb::Swimmer)
+      @values = GogglesDb::SwimmerDecorator.decorate_collection(values) if values
+    end
 
     # rubocop:disable Rails/OutputSafety
     def select_options_with_preselection

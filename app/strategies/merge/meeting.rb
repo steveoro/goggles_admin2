@@ -60,7 +60,7 @@ module Merge
     # Runs the checker first, then generates SQL for each hierarchy level.
     #
     # Returns true if preparation was successful, false otherwise.
-    def prepare
+    def prepare # rubocop:disable Naming/PredicateMethod
       return false if @sql_log.present? # Don't allow a second run
 
       result_ok = @checker.run

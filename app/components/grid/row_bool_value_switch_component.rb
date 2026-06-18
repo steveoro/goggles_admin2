@@ -76,7 +76,7 @@ module Grid
     end
 
     # Returns +true+ if the <tt>@asset_row#column_name</tt> is +present?+; +false+ otherwise.
-    def turned_on
+    def turned_on?
       @asset_row.send(@column_name).present?
     end
 

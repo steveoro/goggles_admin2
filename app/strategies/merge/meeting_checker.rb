@@ -59,7 +59,7 @@ module Merge
     #
     # Returns +true+ if the merge seems feasible, +false+ otherwise.
     # Check the #log & #errors members for details and error messages.
-    def run
+    def run # rubocop:disable Naming/PredicateMethod
       initialize_data if @log.present?
 
       # Validate same season (critical requirement)

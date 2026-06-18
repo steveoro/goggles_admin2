@@ -220,28 +220,28 @@ module Phase3
       changed
     end
 
-    def copy_if_blank(target, source, field)
+    def copy_if_blank(target, source, field) # rubocop:disable Naming/PredicateMethod
       return false unless target[field].blank? && source[field].present?
 
       target[field] = source[field]
       true
     end
 
-    def copy_year_if_missing(target, source)
+    def copy_year_if_missing(target, source) # rubocop:disable Naming/PredicateMethod
       return false unless missing_year?(target['year_of_birth']) && present_year?(source['year_of_birth'])
 
       target['year_of_birth'] = source['year_of_birth'].to_i
       true
     end
 
-    def copy_gender_if_missing(target, source)
+    def copy_gender_if_missing(target, source) # rubocop:disable Naming/PredicateMethod
       return false unless target['gender_type_code'].to_s.strip.empty? && source['gender_type_code'].present?
 
       target['gender_type_code'] = source['gender_type_code']
       true
     end
 
-    def copy_swimmer_id_if_missing(target, source)
+    def copy_swimmer_id_if_missing(target, source) # rubocop:disable Naming/PredicateMethod
       current_id = target['swimmer_id'].to_i
       source_id = source['swimmer_id'].to_i
       return false if current_id.positive? || source_id <= 0
