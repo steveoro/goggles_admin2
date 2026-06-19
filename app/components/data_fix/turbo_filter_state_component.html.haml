@@ -1,0 +1,60 @@
+= form_tag(@target_url,
+           method: :get,
+           class: @form_class,
+           data: { controller: 'data-fix-filter-state',
+                   'data-fix-filter-state-q-min-length-value': @q_min_length,
+                   'data-fix-filter-state-debounce-ms-value': @debounce_ms,
+                   'data-fix-filter-state-target': 'form' }) do
+  - @hidden_params.each do |key, value|
+    = hidden_field_tag key, value
+
+  .form-group.mr-2
+    %label.mr-1{ for: "#{@dom_id_prefix}-q" } #{@filter_label}
+    = text_field_tag :q,
+                     @q,
+                     id: "#{@dom_id_prefix}-q",
+                     class: 'form-control form-control-sm',
+                     placeholder: @q_placeholder,
+                     data: { action: 'input->data-fix-filter-state#handleQInput',
+                             'data-fix-filter-state-target': 'q' }
+
+  .form-group.mr-2
+    %label.mr-1{ for: "#{@dom_id_prefix}-per-page" } Per page
+    = select_tag @per_page_param_name,
+                 options_for_select(@per_page_options, @per_page_value),
+                 id: "#{@dom_id_prefix}-per-page",
+                 class: 'form-control form-control-sm',
+                 data: { action: 'change->data-fix-filter-state#handlePerPageChange',
+                         'data-fix-filter-state-target': 'perPage' }
+
+  .form-group.mr-2
+    .btn-group.btn-group-toggle{ 'data-toggle': 'buttons' }
+      %label.btn.btn-outline-secondary{ class: ('active' if checked_filter_state?('none')) }
+        = radio_button_tag :filter_state,
+                           'none',
+                           checked_filter_state?('none'),
+                           id: "#{@dom_id_prefix}-none",
+                           data: { action: 'change->data-fix-filter-state#handleStateChange',
+                                   'data-fix-filter-state-target': 'state' }
+        Unfiltered
+
+      %label.btn.btn-outline-secondary{ class: ('active' if checked_filter_state?('review')) }
+        = radio_button_tag :filter_state,
+                           'review',
+                           checked_filter_state?('review'),
+                           id: "#{@dom_id_prefix}-review",
+                           data: { action: 'change->data-fix-filter-state#handleStateChange',
+                                   'data-fix-filter-state-target': 'state' }
+        Review
+
+      %label.btn.btn-outline-secondary{ class: ('active' if checked_filter_state?('diff_key')) }
+        = radio_button_tag :filter_state,
+                           'diff_key',
+                           checked_filter_state?('diff_key'),
+                           id: "#{@dom_id_prefix}-diff-key",
+                           data: { action: 'change->data-fix-filter-state#handleStateChange',
+                                   'data-fix-filter-state-target': 'state' }
+        Diff. Key
+
+  - if @review_help_text.present?
+    %small.text-muted.ml-1= @review_help_text

@@ -94,13 +94,13 @@ RSpec.describe DataFixController do
       end
 
       it 'filters teams by search query' do
-        get review_teams_path(file_path: source_file, phase2_v2: 1, q: 'Alpha')
+        get review_teams_path(file_path: source_file, phase2_v2: 1, filter_state: 'review', q: 'Alpha')
         expect(response).to be_successful
         expect(response.body).to include('Team Alpha')
         expect(response.body).not_to include('Team Beta')
       end
 
-      it 'includes phase3 conflict-hinted rows in needing-review filter' do
+      it 'includes phase3 conflict-hinted rows in review filter_state' do
         hinted_team = FactoryBot.create(:team)
 
         pfm = PhaseFileManager.new(phase2_file)
@@ -117,11 +117,20 @@ RSpec.describe DataFixController do
         }
         pfm.write!(data: data, meta: pfm.meta)
 
-        get review_teams_path(file_path: source_file, phase2_v2: 1, unmatched: 1)
+        get review_teams_path(file_path: source_file, phase2_v2: 1, filter_state: 'review')
 
         expect(response).to be_successful
         expect(response.body).to include('Team Beta')
         expect(response.body).to include('PHASE3 HINT')
+      end
+
+      it 'ignores q shorter than 3 characters' do
+        get review_teams_path(file_path: source_file, phase2_v2: 1, q: 'Te')
+
+        expect(response).to be_successful
+        expect(response.body).to include('Team Alpha')
+        expect(response.body).to include('Team Beta')
+        expect(response.body).to include('Team Gamma')
       end
 
       it 'rescans and rebuilds phase2 file when rescan param is present' do

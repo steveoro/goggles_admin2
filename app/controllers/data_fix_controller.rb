@@ -16,6 +16,7 @@ class DataFixController < ApplicationController
 
   # Phase 5 pagination constant: max rows (results + laps) per page
   PHASE5_MAX_ROWS_PER_PAGE = 2500
+  TURBO_FILTER_MIN_QUERY_LENGTH = 3
 
   # Expose issue detection helpers to views
   helper_method :swimmer_has_missing_data?, :relay_result_has_issues?, :phase3_conflict_hint?
@@ -116,11 +117,13 @@ class DataFixController < ApplicationController
     set_api_url
 
     # Optional filtering
+    @filter_state = params[:filter_state].to_s
+    @filter_state = 'none' unless %w[none review diff_key].include?(@filter_state)
     @q = params[:q].to_s.strip
     teams = Array(@phase2_data['teams'])
 
-    # Filter by search query
-    if @q.present?
+    # Filter by search query (ignore if shorter than min chars)
+    if @q.present? && @q.length >= TURBO_FILTER_MIN_QUERY_LENGTH
       qd = @q.downcase
       teams = teams.select do |t|
         [t['name'], t['editable_name'], t['name_variations'], t['key']]
@@ -132,7 +135,7 @@ class DataFixController < ApplicationController
     # OR similar affiliated team found in season (cross-ref warning)
     # OR phase3-derived conflict hints found for this team
     # This shows ALL teams that need manual verification at a glance
-    if params[:unmatched].present?
+    if @filter_state == 'review'
       teams = teams.select do |t|
         # WARNING: adding the 'similar_on_team' check will yield false positives and basically make the filtering useless
         t['team_id'].nil? || (t['match_percentage'] || 0.0) < 89.0 || phase3_conflict_hint?(t) # || t['similar_affiliated'] == true
@@ -140,7 +143,7 @@ class DataFixController < ApplicationController
     end
 
     # Filter teams where the edited name differs from the original import key
-    if params[:name_differs].present?
+    if @filter_state == 'diff_key'
       teams = teams.select do |t|
         editable = t['editable_name'].to_s.strip.downcase
         name = t['name'].to_s.strip.downcase
@@ -247,6 +250,8 @@ class DataFixController < ApplicationController
     set_api_url
 
     # Optional filtering
+    @filter_state = params[:filter_state].to_s
+    @filter_state = 'none' unless %w[none review diff_key].include?(@filter_state)
     @q = params[:q].to_s.strip
 
     consistency_stats = harmonize_phase2_phase3_team_links(source_path: source_path, season_id: season.id)
@@ -267,8 +272,8 @@ class DataFixController < ApplicationController
       }
     end
 
-    # Filter by search query
-    if @q.present?
+    # Filter by search query (ignore if shorter than min chars)
+    if @q.present? && @q.length >= TURBO_FILTER_MIN_QUERY_LENGTH
       qd = @q.downcase
       swimmers = swimmers.select do |s|
         [s['last_name'], s['first_name'], s['complete_name'], s['key']]
@@ -281,7 +286,7 @@ class DataFixController < ApplicationController
     # OR duplicate badges found in same season with different team_id (manual merge red flag)
     # OR auto-assigned from secondary match due to team priority
     # This shows ALL swimmers that need manual verification at a glance
-    if params[:needs_review].present?
+    if @filter_state == 'review'
       swimmers = swimmers.select do |s|
         # WARNING: adding the 'similar_on_team' check will yield false positives and basically make the filtering useless
         s['swimmer_id'].nil? || (s['match_percentage'] || 0.0) < 89.0 || s['has_badge_duplicates'] == true || s['auto_assigned_from_secondary_match'] == true
@@ -289,7 +294,7 @@ class DataFixController < ApplicationController
     end
 
     # Filter swimmers where the current name differs from the original import key
-    if params[:name_differs].present?
+    if @filter_state == 'diff_key'
       swimmers = swimmers.reject do |s|
         complete_name = s['complete_name'].to_s.strip.downcase
         # Extract LAST|FIRST from key by stripping gender prefix, YOB, and team token
@@ -1331,9 +1336,7 @@ class DataFixController < ApplicationController
     redirect_params[:teams_page] = params[:teams_page] if params[:teams_page].present?
     redirect_params[:teams_per_page] = params[:teams_per_page] if params[:teams_per_page].present?
     redirect_params[:q] = params[:q] if params[:q].present?
-    redirect_params[:unmatched] = params[:unmatched] if params[:unmatched].present?
-    redirect_params[:needs_review] = params[:needs_review] if params[:needs_review].present?
-    redirect_params[:name_differs] = params[:name_differs] if params[:name_differs].present?
+    redirect_params[:filter_state] = params[:filter_state] if params[:filter_state].present?
 
     redirect_to review_teams_path(redirect_params), notice: I18n.t('data_import.messages.updated')
   end
@@ -1370,7 +1373,13 @@ class DataFixController < ApplicationController
     meta['generated_at'] = Time.now.utc.iso8601
     pfm.write!(data: data, meta: meta)
 
-    redirect_to review_teams_path(file_path:, phase2_v2: 1), notice: I18n.t('data_import.messages.updated')
+    redirect_params = { file_path:, phase2_v2: 1 }
+    redirect_params[:teams_page] = params[:teams_page] if params[:teams_page].present?
+    redirect_params[:teams_per_page] = params[:teams_per_page] if params[:teams_per_page].present?
+    redirect_params[:q] = params[:q] if params[:q].present?
+    redirect_params[:filter_state] = params[:filter_state] if params[:filter_state].present?
+
+    redirect_to review_teams_path(redirect_params), notice: I18n.t('data_import.messages.updated')
   end
 
   # Delete a team entry from Phase 2 and clear downstream phase data
@@ -1418,9 +1427,7 @@ class DataFixController < ApplicationController
     redirect_params[:teams_page] = params[:teams_page] if params[:teams_page].present?
     redirect_params[:teams_per_page] = params[:teams_per_page] if params[:teams_per_page].present?
     redirect_params[:q] = params[:q] if params[:q].present?
-    redirect_params[:unmatched] = params[:unmatched] if params[:unmatched].present?
-    redirect_params[:needs_review] = params[:needs_review] if params[:needs_review].present?
-    redirect_params[:name_differs] = params[:name_differs] if params[:name_differs].present?
+    redirect_params[:filter_state] = params[:filter_state] if params[:filter_state].present?
 
     redirect_to review_teams_path(redirect_params), notice: I18n.t('data_import.messages.updated')
   end
@@ -1517,9 +1524,7 @@ class DataFixController < ApplicationController
     redirect_params[:swimmers_page] = params[:swimmers_page] if params[:swimmers_page].present?
     redirect_params[:swimmers_per_page] = params[:swimmers_per_page] if params[:swimmers_per_page].present?
     redirect_params[:q] = params[:q] if params[:q].present?
-    redirect_params[:unmatched] = params[:unmatched] if params[:unmatched].present?
-    redirect_params[:needs_review] = params[:needs_review] if params[:needs_review].present?
-    redirect_params[:name_differs] = params[:name_differs] if params[:name_differs].present?
+    redirect_params[:filter_state] = params[:filter_state] if params[:filter_state].present?
 
     redirect_to review_swimmers_path(redirect_params), notice: I18n.t('data_import.messages.updated')
   end
@@ -1560,7 +1565,13 @@ class DataFixController < ApplicationController
     meta['generated_at'] = Time.now.utc.iso8601
     pfm.write!(data: data, meta: meta)
 
-    redirect_to review_swimmers_path(file_path:, phase3_v2: 1), notice: 'Swimmer added' # rubocop:disable Rails/I18nLocaleTexts
+    redirect_params = { file_path:, phase3_v2: 1 }
+    redirect_params[:swimmers_page] = params[:swimmers_page] if params[:swimmers_page].present?
+    redirect_params[:swimmers_per_page] = params[:swimmers_per_page] if params[:swimmers_per_page].present?
+    redirect_params[:q] = params[:q] if params[:q].present?
+    redirect_params[:filter_state] = params[:filter_state] if params[:filter_state].present?
+
+    redirect_to review_swimmers_path(redirect_params), notice: 'Swimmer added' # rubocop:disable Rails/I18nLocaleTexts
   end
 
   # Merge auxiliary Phase 3 files to enrich relay swimmers
@@ -1700,9 +1711,7 @@ class DataFixController < ApplicationController
     redirect_params[:swimmers_page] = params[:swimmers_page] if params[:swimmers_page].present?
     redirect_params[:swimmers_per_page] = params[:swimmers_per_page] if params[:swimmers_per_page].present?
     redirect_params[:q] = params[:q] if params[:q].present?
-    redirect_params[:unmatched] = params[:unmatched] if params[:unmatched].present?
-    redirect_params[:needs_review] = params[:needs_review] if params[:needs_review].present?
-    redirect_params[:name_differs] = params[:name_differs] if params[:name_differs].present?
+    redirect_params[:filter_state] = params[:filter_state] if params[:filter_state].present?
 
     redirect_to review_swimmers_path(redirect_params), notice: I18n.t('data_import.messages.updated')
   end

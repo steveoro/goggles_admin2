@@ -101,13 +101,13 @@ RSpec.describe DataFixController do
       end
 
       it 'filters swimmers by name' do
-        get review_swimmers_path(file_path: source_file, phase3_v2: 1, q: 'Beta')
+        get review_swimmers_path(file_path: source_file, phase3_v2: 1, filter_state: 'review', q: 'Beta')
         expect(response.body).to include('Beta Jane')
         expect(response.body).not_to include('Alpha John')
         expect(response.body).not_to include('Gamma Bob')
       end
 
-      it 'flags duplicate badges and keeps them in needing-review filter' do
+      it 'flags duplicate badges and keeps them in review filter_state' do
         duplicate_team_ids = [team.id, FactoryBot.create(:team).id]
         duplicate_swimmer = {
           'key' => 'DELTA|LUCY|1989',
@@ -135,13 +135,22 @@ RSpec.describe DataFixController do
         data['swimmers'] << duplicate_swimmer
         pfm.write!(data:, meta: { 'generator' => 'test' })
 
-        get review_swimmers_path(file_path: source_file, phase3_v2: 1, unmatched: 1)
+        get review_swimmers_path(file_path: source_file, phase3_v2: 1, filter_state: 'review')
 
         expect(response).to be_successful
         expect(response.body).to include('Delta Lucy')
         expect(response.body).to include('DUPLICATE BADGES')
         expect(response.body).to include("duplicate badges found in season #{season.id}")
         expect(response.body).to include('bg-light-red')
+      end
+
+      it 'ignores q shorter than 3 characters' do
+        get review_swimmers_path(file_path: source_file, phase3_v2: 1, q: 'Be')
+
+        expect(response).to be_successful
+        expect(response.body).to include('Alpha John')
+        expect(response.body).to include('Beta Jane')
+        expect(response.body).to include('Gamma Bob')
       end
 
       it 'displays phase metadata' do
