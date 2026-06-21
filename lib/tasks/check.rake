@@ -421,20 +421,22 @@ namespace :check do # rubocop:disable Metrics/BlockLength
 
   desc <<~DESC
       Loops upon all MIRs found for a specific swimmer and reports a mapping
-    of all involved teams x swimmer badge for the last 7 seasons.
+    of all involved teams x swimmer badge for all seasons or the latest 7 seasons.
 
     The output is divided into pages of 50 MIRs maximum using Kaminari.
 
     Options: [Rails.env=#{Rails.env}]
              swimmer=<swimmer_id>
-             page=<0>|N
+             [last7=<'0'>|'1'|'true'|'false']
+             [page=<0>|N]
 
       - swimmer: Swimmer ID to be checked out;
-      - page: page number to display.
+      - last7: when set to '1' or 'true' will limit output to latest 7 seasons;
+      - page: optional page number to display (0-based); when missing, outputs all rows.
 
   DESC
   # rubocop:disable Layout/LineLength
-  task(map_swimmer_mirs: [:environment]) do
+  task(map_swimmer_mirs: [:environment]) do # rubocop:disable Metrics/BlockLength
     puts("\r\n*** Task: check:map_swimmer_mirs - swimmer #{ENV.fetch('swimmer', nil)} ***")
     swimmer = GogglesDb::Swimmer.find_by(id: ENV['swimmer'].to_i)
     if swimmer.nil?
@@ -442,19 +444,34 @@ namespace :check do # rubocop:disable Metrics/BlockLength
       exit
     end
 
-    min_season_id = GogglesDb::LastSeasonId.first.id - 70 # (season IDs are fixed and increased by 10 each championship)
+    last7 = %w[1 true].include?(ENV.fetch('last7', '').to_s.downcase)
     per_page = 50
+    paginate = ENV['page'].present?
     page_idx = ENV['page'].to_i
+    page_number = page_idx + 1
 
     mirs = GogglesDb::MeetingIndividualResult.includes(:meeting, :season)
-                                             .joins(:season)
-                                             .where('swimmer_id = ? AND seasons.id >= ?', swimmer.id, min_season_id)
+                                             .joins(:season, :meeting)
+                                             .where(swimmer_id: swimmer.id)
+
+    if last7
+      min_season_id = GogglesDb::LastSeasonId.last.id - 70 # (season IDs are fixed and increased by 10 each championship)
+      mirs = mirs.where('seasons.id >= ?', min_season_id) # rubocop:disable Rails/WhereRange
+    end
+
+    mirs = mirs.order('seasons.id ASC, meetings.header_date ASC, meeting_individual_results.id ASC')
+    mirs_count = mirs.count
+    max_page_idx = [(mirs_count.to_f / per_page).ceil - 1, 0].max
     puts("\r\n--> Swimmer ID #{swimmer.id}")
-    puts("--> Found #{mirs.size} MIRs => showing page #{page_idx} (/#{(mirs.size / per_page) - 1})")
+    if paginate
+      puts("--> Found #{mirs_count} MIRs => showing page #{page_idx} (/#{max_page_idx})")
+    else
+      puts("--> Found #{mirs_count} MIRs => showing all rows")
+    end
     exit if mirs.empty?
 
-    mirs_page = Kaminari.paginate_array(mirs).page(page_idx).per(per_page)
-    exit if mirs_page.empty?
+    mirs_page = paginate ? mirs.page(page_number).per(per_page) : mirs
+    exit if paginate && mirs_page.empty?
 
     puts("--> Swimmer: #{swimmer.decorate.display_label}")
     curr_season = 0
