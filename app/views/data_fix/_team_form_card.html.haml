@@ -64,6 +64,7 @@
         = hidden_field_tag :teams_page, params[:teams_page] if params[:teams_page].present?
         = hidden_field_tag :teams_per_page, params[:teams_per_page] if params[:teams_per_page].present?
         = hidden_field_tag :q, params[:q] if params[:q].present?
+        = hidden_field_tag :filter_state, params[:filter_state] if params[:filter_state].present?
         = hidden_field_tag :unmatched, params[:unmatched] if params[:unmatched].present?
         = hidden_field_tag :name_differs, params[:name_differs] if params[:name_differs].present?
         %button.btn.btn-sm.btn-danger{ type: 'submit', 'aria-label' => 'Delete team', onclick: 'event.stopPropagation();' }
@@ -77,6 +78,7 @@
         = hidden_field_tag :teams_page, params[:teams_page] if params[:teams_page].present?
         = hidden_field_tag :teams_per_page, params[:teams_per_page] if params[:teams_per_page].present?
         = hidden_field_tag :q, params[:q] if params[:q].present?
+        = hidden_field_tag :filter_state, params[:filter_state] if params[:filter_state].present?
         = hidden_field_tag :unmatched, params[:unmatched] if params[:unmatched].present?
         = hidden_field_tag :name_differs, params[:name_differs] if params[:name_differs].present?
 

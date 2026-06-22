@@ -93,6 +93,43 @@ RSpec.describe DataFixController do
         expect(response.body).not_to include('Team 26') # Should not show items from page 2
       end
 
+      it 'restores filter and pagination state from cookies when params are omitted' do
+        teams = (1..80).map do |i|
+          {
+            'key' => format('PERSIST-%03d', i),
+            'name' => format('Persist Team %03d', i),
+            'editable_name' => format('Persist Team %03d', i),
+            'team_id' => nil,
+            'fuzzy_matches' => []
+          }
+        end
+        pfm = PhaseFileManager.new(phase2_file)
+        pfm.write!(data: { 'season_id' => season.id, 'teams' => teams }, meta: { 'generator' => 'test' })
+
+        get review_teams_path(
+          file_path: source_file,
+          phase2_v2: 1,
+          filter_state: 'none',
+          q: 'Persist Team',
+          teams_per_page: 50,
+          teams_page: 2
+        )
+        expect(response).to be_successful
+        set_cookie_header = Array(response.headers['Set-Cookie']).join("\n")
+        expect(set_cookie_header).to include('data_fix_teams_test_source_filter_state=none')
+        expect(set_cookie_header).to include('data_fix_teams_test_source_q=Persist+Team')
+        expect(set_cookie_header).to include('data_fix_teams_test_source_teams_page=2')
+        expect(set_cookie_header).to include('data_fix_teams_test_source_teams_per_page=50')
+        expect(response.body).to include('Persist Team 051')
+        expect(response.body).not_to include('Persist Team 001')
+
+        get review_teams_path(file_path: source_file, phase2_v2: 1)
+        expect(response).to be_successful
+        expect(response.body).to include('Persist Team 051')
+        expect(response.body).not_to include('Persist Team 001')
+        expect(response.body).to include('value="Persist Team"')
+      end
+
       it 'filters teams by search query' do
         get review_teams_path(file_path: source_file, phase2_v2: 1, filter_state: 'review', q: 'Alpha')
         expect(response).to be_successful

@@ -116,10 +116,12 @@ class DataFixController < ApplicationController
     # Set API URL for AutoComplete components
     set_api_url
 
+    teams_state_cookie_scope = data_fix_review_cookie_scope(prefix: 'teams', file_path: @file_path)
+
     # Optional filtering
-    @filter_state = params[:filter_state].to_s
+    @filter_state = data_fix_review_param_or_cookie(param_key: :filter_state, cookie_scope: teams_state_cookie_scope).to_s
     @filter_state = 'none' unless %w[none review diff_key].include?(@filter_state)
-    @q = params[:q].to_s.strip
+    @q = data_fix_review_param_or_cookie(param_key: :q, cookie_scope: teams_state_cookie_scope).to_s.strip
     teams = Array(@phase2_data['teams'])
 
     # Filter by search query (ignore if shorter than min chars)
@@ -153,15 +155,25 @@ class DataFixController < ApplicationController
     end
 
     # Pagination (phase-specific params to avoid cross-phase interference)
-    @page = params[:teams_page].to_i
+    @page = data_fix_review_param_or_cookie(param_key: :teams_page, cookie_scope: teams_state_cookie_scope).to_i
     @page = 1 if @page < 1
-    @per_page = params[:teams_per_page].to_i
-    @per_page = 50 if @per_page <= 0 || !params.key?(:teams_per_page)
+    @per_page = data_fix_review_param_or_cookie(param_key: :teams_per_page, cookie_scope: teams_state_cookie_scope).to_i
+    @per_page = 50 if @per_page <= 0
     @total_count = teams.size
     @total_pages = (@total_count.to_f / @per_page).ceil
     @row_range = "#{(@page * @per_page) - @per_page + 1}-#{@page * @per_page}"
     # Use Kaminari for pagination
     @items = Kaminari.paginate_array(teams, total_count: @total_count).page(@page).per(@per_page)
+
+    persist_data_fix_review_state(
+      cookie_scope: teams_state_cookie_scope,
+      state: {
+        filter_state: @filter_state,
+        q: @q,
+        teams_page: @page,
+        teams_per_page: @per_page
+      }
+    )
 
     # Broadcast ready status to clear progress modal
     broadcast_progress('Review teams: ready', @total_count, @total_count)
@@ -249,10 +261,12 @@ class DataFixController < ApplicationController
     # Set API URL for AutoComplete components
     set_api_url
 
+    swimmers_state_cookie_scope = data_fix_review_cookie_scope(prefix: 'swimmers', file_path: @file_path)
+
     # Optional filtering
-    @filter_state = params[:filter_state].to_s
+    @filter_state = data_fix_review_param_or_cookie(param_key: :filter_state, cookie_scope: swimmers_state_cookie_scope).to_s
     @filter_state = 'none' unless %w[none review diff_key].include?(@filter_state)
-    @q = params[:q].to_s.strip
+    @q = data_fix_review_param_or_cookie(param_key: :q, cookie_scope: swimmers_state_cookie_scope).to_s.strip
 
     consistency_stats = harmonize_phase2_phase3_team_links(source_path: source_path, season_id: season.id)
     if consistency_stats.values.sum.positive?
@@ -305,15 +319,25 @@ class DataFixController < ApplicationController
 
     # Pagination (phase-specific params to avoid cross-phase interference)
     # Swimmers typically have more entries, default to 100
-    @page = params[:swimmers_page].to_i
+    @page = data_fix_review_param_or_cookie(param_key: :swimmers_page, cookie_scope: swimmers_state_cookie_scope).to_i
     @page = 1 if @page < 1
-    @per_page = params[:swimmers_per_page].to_i
-    @per_page = 100 if @per_page <= 0 || !params.key?(:swimmers_per_page)
+    @per_page = data_fix_review_param_or_cookie(param_key: :swimmers_per_page, cookie_scope: swimmers_state_cookie_scope).to_i
+    @per_page = 100 if @per_page <= 0
     @total_count = swimmers.size
     @total_pages = (@total_count.to_f / @per_page).ceil
     @row_range = "#{(@page * @per_page) - @per_page + 1}-#{@page * @per_page}"
     # Use Kaminari for pagination
     @items = Kaminari.paginate_array(swimmers, total_count: @total_count).page(@page).per(@per_page)
+
+    persist_data_fix_review_state(
+      cookie_scope: swimmers_state_cookie_scope,
+      state: {
+        filter_state: @filter_state,
+        q: @q,
+        swimmers_page: @page,
+        swimmers_per_page: @per_page
+      }
+    )
 
     # Broadcast ready status to clear progress modal
     broadcast_progress('Review swimmers: ready', @total_count, @total_count)
@@ -2315,6 +2339,29 @@ class DataFixController < ApplicationController
   end
 
   private
+
+  def data_fix_review_cookie_scope(prefix:, file_path:)
+    basename = File.basename(file_path.to_s, File.extname(file_path.to_s))
+    sanitized = basename.gsub(/[^a-zA-Z0-9_-]/, '_').slice(0, 60)
+    "data_fix_#{prefix}_#{sanitized}"
+  end
+
+  def data_fix_review_param_or_cookie(param_key:, cookie_scope:)
+    return params[param_key] if params.key?(param_key)
+
+    cookies["#{cookie_scope}_#{param_key}"]
+  end
+
+  def persist_data_fix_review_state(cookie_scope:, state:)
+    expires_at = 12.hours.from_now
+    state.each do |key, value|
+      cookies["#{cookie_scope}_#{key}"] = {
+        value: value.to_s,
+        expires: expires_at,
+        same_site: :lax
+      }
+    end
+  end
 
   # Setter for @api_url
   def set_api_url

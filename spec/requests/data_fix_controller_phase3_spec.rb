@@ -100,6 +100,47 @@ RSpec.describe DataFixController do
         expect(response.body).not_to include('Swimmer101 Test') # First on page 2
       end
 
+      it 'restores filter and pagination state from cookies when params are omitted' do
+        swimmers = (1..120).map do |i|
+          {
+            'key' => format('PERSISTSWIM%03d|TEST|1990', i),
+            'last_name' => format('PersistSwimmer%03d', i),
+            'first_name' => 'Test',
+            'year_of_birth' => 1990,
+            'gender_type_code' => 'M',
+            'complete_name' => format('PersistSwimmer%03d Test', i),
+            'swimmer_id' => nil,
+            'fuzzy_matches' => []
+          }
+        end
+        pfm = PhaseFileManager.new(phase3_file)
+        pfm.write!(data: { 'season_id' => season.id, 'swimmers' => swimmers, 'badges' => [] },
+                   meta: { 'generator' => 'test' })
+
+        get review_swimmers_path(
+          file_path: source_file,
+          phase3_v2: 1,
+          filter_state: 'none',
+          q: 'PersistSwimmer',
+          swimmers_per_page: 50,
+          swimmers_page: 2
+        )
+        expect(response).to be_successful
+        set_cookie_header = Array(response.headers['Set-Cookie']).join("\n")
+        expect(set_cookie_header).to include('data_fix_swimmers_test_source_filter_state=none')
+        expect(set_cookie_header).to include('data_fix_swimmers_test_source_q=PersistSwimmer')
+        expect(set_cookie_header).to include('data_fix_swimmers_test_source_swimmers_page=2')
+        expect(set_cookie_header).to include('data_fix_swimmers_test_source_swimmers_per_page=50')
+        expect(response.body).to include('PersistSwimmer051 Test')
+        expect(response.body).not_to include('PersistSwimmer001 Test')
+
+        get review_swimmers_path(file_path: source_file, phase3_v2: 1)
+        expect(response).to be_successful
+        expect(response.body).to include('PersistSwimmer051 Test')
+        expect(response.body).not_to include('PersistSwimmer001 Test')
+        expect(response.body).to include('value="PersistSwimmer"')
+      end
+
       it 'filters swimmers by name' do
         get review_swimmers_path(file_path: source_file, phase3_v2: 1, filter_state: 'review', q: 'Beta')
         expect(response.body).to include('Beta Jane')
