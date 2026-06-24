@@ -2,12 +2,13 @@
 
 module DataFix
   # Reusable Turbo GET filter component with 3-state radio button group and search query input.
-  # Auto-submits on filter state change, per-page change, and debounced q input.
+  # Auto-submits on filter state change and per-page change.
+  # Search query submit is explicit via Enter key or search button.
   # Preserves q input exactly as typed (no trimming). Deselects "none" when q is present.
   class TurboFilterStateComponent < ViewComponent::Base
     FILTER_STATES = %w[none review diff_key].freeze
 
-    def initialize(options = {}) # rubocop:disable Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
+    def initialize(options = {})
       super()
       @target_url = options[:target_url]
       @hidden_params = options[:hidden_params] || {}
@@ -20,7 +21,6 @@ module DataFix
       @review_help_text = options[:review_help_text]
       @per_page_options = options[:per_page_options] || [50, 100, 150]
       @q_min_length = options[:q_min_length] || 3
-      @debounce_ms = options[:debounce_ms] || 300
       @form_class = options[:form_class] || 'form-inline'
       @dom_id_prefix = "turbo-filter-state-#{@per_page_param_name.to_s.dasherize}"
     end

@@ -38,6 +38,17 @@ RSpec.describe DataFix::TurboFilterStateComponent, type: :component do
     expect(rendered_node.css("input[type='text'][name='q'][value='Alpha']")).to be_present
   end
 
+  it 'renders q input wired only for local input handling (no auto-submit action)' do
+    q_input = rendered_node.css("input[type='text'][name='q']").first
+    expect(q_input.attr('data-action')).to eq('input->data-fix-filter-state#handleQInput')
+  end
+
+  it 'renders a search submit button next to q input' do
+    search_button = rendered_node.css("button[type='submit'][aria-label='Search']")
+    expect(search_button).to be_present
+    expect(search_button.css('i.fa.fa-search')).to be_present
+  end
+
   it 'renders q_min_length as data attribute' do
     form = rendered_node.css("form[data-controller='data-fix-filter-state']")
     expect(form.attr('data-data-fix-filter-state-q-min-length-value').value).to eq('3')
@@ -45,7 +56,7 @@ RSpec.describe DataFix::TurboFilterStateComponent, type: :component do
 
   it 'renders Bootstrap button group for filter states' do
     expect(rendered_node.css('.btn-group.btn-group-toggle')).to be_present
-    expect(rendered_node.css('.btn.btn-outline-secondary').count).to eq(3)
+    expect(rendered_node.css('.btn-group.btn-group-toggle .btn.btn-outline-secondary').count).to eq(3)
   end
 
   it 'renders the 3-state radio group with current state selected' do

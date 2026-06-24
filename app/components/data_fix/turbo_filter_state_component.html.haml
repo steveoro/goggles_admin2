@@ -3,20 +3,23 @@
            class: @form_class,
            data: { controller: 'data-fix-filter-state',
                    'data-fix-filter-state-q-min-length-value': @q_min_length,
-                   'data-fix-filter-state-debounce-ms-value': @debounce_ms,
                    'data-fix-filter-state-target': 'form' }) do
   - @hidden_params.each do |key, value|
     = hidden_field_tag key, value
 
   .form-group.mr-2
     %label.mr-1{ for: "#{@dom_id_prefix}-q" } #{@filter_label}
-    = text_field_tag :q,
-                     @q,
-                     id: "#{@dom_id_prefix}-q",
-                     class: 'form-control form-control-sm',
-                     placeholder: @q_placeholder,
-                     data: { action: 'input->data-fix-filter-state#handleQInput',
-                             'data-fix-filter-state-target': 'q' }
+    .input-group.input-group-sm
+      = text_field_tag :q,
+                       @q,
+                       id: "#{@dom_id_prefix}-q",
+                       class: 'form-control',
+                       placeholder: @q_placeholder,
+                       data: { action: 'input->data-fix-filter-state#handleQInput',
+                               'data-fix-filter-state-target': 'q' }
+      .input-group-append
+        %button.btn.btn-outline-secondary{ type: 'submit', title: 'Search', 'aria-label': 'Search' }
+          %i.fa.fa-search
 
   .form-group.mr-2
     %label.mr-1{ for: "#{@dom_id_prefix}-per-page" } Per page

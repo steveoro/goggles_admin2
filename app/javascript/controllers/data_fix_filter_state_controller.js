@@ -3,26 +3,14 @@ import { Controller } from '@hotwired/stimulus'
 /**
  * Stimulus controller for TurboFilterStateComponent.
  * Handles auto-submit GET requests for filter state changes, per-page changes,
- * and debounced search query input. Preserves q input exactly as typed (no trimming).
+ * and explicit search submission (Enter or search button). Preserves q input exactly as typed (no trimming).
  * Deselects "none" radio when q is present to allow explicit clearing.
  */
 export default class extends Controller {
   static targets = ['form', 'q', 'perPage', 'state']
 
   static values = {
-    qMinLength: { type: Number, default: 3 },
-    debounceMs: { type: Number, default: 300 }
-  }
-
-  connect () {
-    this._debounceTimer = null
-  }
-
-  disconnect () {
-    if (this._debounceTimer) {
-      clearTimeout(this._debounceTimer)
-      this._debounceTimer = null
-    }
+    qMinLength: { type: Number, default: 3 }
   }
 
   handleStateChange () {
@@ -46,14 +34,6 @@ export default class extends Controller {
         noneRadio.checked = false
       }
     }
-
-    if (this._debounceTimer) {
-      clearTimeout(this._debounceTimer)
-    }
-
-    this._debounceTimer = setTimeout(() => {
-      this.submitForm()
-    }, this.debounceMsValue)
   }
 
   submitForm () {

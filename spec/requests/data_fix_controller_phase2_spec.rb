@@ -93,7 +93,7 @@ RSpec.describe DataFixController do
         expect(response.body).not_to include('Team 26') # Should not show items from page 2
       end
 
-      it 'restores filter and pagination state from cookies when params are omitted' do
+      it 'restores filter and pagination state from cookies when params are omitted' do # rubocop:disable RSpec/MultipleExpectations
         teams = (1..80).map do |i|
           {
             'key' => format('PERSIST-%03d', i),

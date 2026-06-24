@@ -100,7 +100,7 @@ RSpec.describe DataFixController do
         expect(response.body).not_to include('Swimmer101 Test') # First on page 2
       end
 
-      it 'restores filter and pagination state from cookies when params are omitted' do
+      it 'restores filter and pagination state from cookies when params are omitted' do # rubocop:disable RSpec/MultipleExpectations
         swimmers = (1..120).map do |i|
           {
             'key' => format('PERSISTSWIM%03d|TEST|1990', i),
