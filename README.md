@@ -5,23 +5,18 @@
 [![CodeCov](https://codecov.io/gh/steveoro/goggles_admin2/branch/main/graph/badge.svg?token=JT5MIDU5PU)](https://codecov.io/gh/steveoro/goggles_admin2)
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fsteveoro%2Fgoggles_admin2.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fsteveoro%2Fgoggles_admin2?ref=badge_shield)
 
-
 Administration client UI app for version 7 and onward.
-
 
 ## Wiki & HOW-TOs
 
 - [Official Framework Wiki :link:](https://github.com/steveoro/goggles_db/wiki) (v. 7+)
 - [API docs  :link:](https://github.com/steveoro/goggles_api#goggles-api-readme)
 
-
-
 ## Requires
 
-- Ruby 2.7.2
-- Rails 6.1.7+
-- MariaDb 10.3.25+ or any other MySql equivalent version
-
+- Ruby 3.4.7
+- Rails 8.1.3+
+- MariaDb 11.8.8
 
 ## Configuration
 
@@ -34,7 +29,6 @@ You can use each project in the framework:
 - as a full-blown, stand-alone, local installation (by cloning the source repo on `localhost`)
 - as a service composed from individual containers (either by rebuilding the individual containers from scratch or by pulling the images from their DockerHub repository)
 - in any other mixed way, be it the application running on `localhost` while accessing the DB inside a container or vice-versa.
-
 
 ## Quick-start as a running container
 
@@ -64,7 +58,6 @@ Then point your browser to `http://127.0.0.1:8080/`.
 
 Done! :+1:
 
-
 ### Nothing installed on `localhost` (except `docker`)
 
 First thing first, you'll need to recreate this shared folder structure:
@@ -87,8 +80,6 @@ Check out our [credentials Wiki page](https://github.com/steveoro/goggles_db/wik
 Then, you'll need to run and connect all 3 services: `db`, `api` & `app`.
 Refer to the dedicated [Wiki page](https://github.com/steveoro/goggles_db/wiki/HOWTO-dev-docker_usage_for_GogglesApi#how-to-docker-usage-with-gogglesapi-as-example) for details.
 
-
-
 ## More information
 
 Check out our [Wiki :link:](https://github.com/steveoro/goggles_db/wiki) and the README files from each subproject for more information. In particular:
@@ -101,9 +92,7 @@ Check out our [Wiki :link:](https://github.com/steveoro/goggles_db/wiki) and the
 - [Dev workflow](https://github.com/steveoro/goggles_api#dev-workflow-for-contributors)
 - [Getting started: GogglesAPI & container usage](https://github.com/steveoro/goggles_db/wiki/HOWTO-dev-docker_usage_for_GogglesApi#getting-started-setup-and-usage-as-a-composed-docker-service) (can be applied to `goggles_admin2` as well)
 
-
 * * *
-
 
 ## Deployment
 
@@ -117,23 +106,21 @@ Any pushed & untagged commit will yield the rebuild of the `staging` image, whil
 
 See the [Wiki page about the build pipeline](https://github.com/steveoro/goggles_db/wiki/HOWTO-devops-build_pipeline_setup) for more details.
 
-
 * * *
 
-
 ## Contributing
+
 1. Clone the project.
 2. Make a new custom branch for your changes, naming the branch accordingly (i.e. use prefixes like: `feature-`, `fix-`, `upgrade-`, ...).
 3. When you think you're done, make sure you type `guard` (+`Enter`) and wait for the whole spec suite to end.
 4. Make sure your branch is locally green (:green_heart:) before submitting the pull request.
 5. Await the PR's review by the maintainers.
 
-
 ## License
+
 The application is available as open source under the terms of the [LGPL-3.0 License](https://opensource.org/licenses/LGPL-3.0).
 
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fsteveoro%2Fgoggles_admin2.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Fsteveoro%2Fgoggles_admin2?ref=badge_large)
-
 
 ## Supporting
 
