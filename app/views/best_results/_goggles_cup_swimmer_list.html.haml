@@ -1,0 +1,44 @@
+%section.my-2#select-swimmers
+  .row
+    .col-12
+      %h5.text-center.my-4= t('goggles_cup.swimmers_for_team', team: team.name)
+
+  = form_with(url: goggles_cup_preview_path, method: :post, local: true,
+              data: { turbo: false }) do |f|
+    = hidden_field_tag :team_id, team.id
+
+    .row.mb-3
+      .col-12
+        %button.btn.btn-sm.btn-outline-secondary{ type: 'button', onclick: 'toggleAllSwimmers(true)' }
+          = t('goggles_cup.select_all')
+        %button.btn.btn-sm.btn-outline-secondary{ type: 'button', onclick: 'toggleAllSwimmers(false)' }
+          = t('goggles_cup.deselect_all')
+
+    .row
+      .col-12
+        .table-responsive
+          %table.table.table-striped.table-hover.table-sm
+            %thead
+              %tr
+                %th{ width: '50' }= t('goggles_cup.select')
+                %th= t('goggles_cup.swimmer_name')
+                %th= t('goggles_cup.year_of_birth')
+            %tbody
+              - swimmers.each do |swimmer|
+                %tr
+                  %td.text-center
+                    = check_box_tag 'swimmer_ids[]', swimmer.swimmer_id, false, id: "swimmer_#{swimmer.swimmer_id}"
+                  %td= swimmer.swimmer_name
+                  %td= swimmer.swimmer_year_of_birth
+
+    .row.my-4
+      .col-12.text-center
+        = f.submit t('goggles_cup.compute'), class: 'btn btn-primary btn-lg'
+
+:javascript
+  function toggleAllSwimmers(select) {
+    var checkboxes = document.querySelectorAll('input[name="swimmer_ids[]"]');
+    checkboxes.forEach(function(checkbox) {
+      checkbox.checked = select;
+    });
+  }

@@ -24,7 +24,6 @@ it:
       button_label: "All-time best"
       title: "Migliori risultati di sempre, per ogni evento e nuotatore"
       description: "Seleziona una squadra e stagione per vedere i migliori risultati (SL, DO, RA, FA, MI) per ogni nuotatore appartenente alla squadra."
-
     list:
       results_for_team: "Risultati per %{team}"
       team: "Squadra"
@@ -37,5 +36,39 @@ it:
       team_not_found: "Squadra gestita non trovata per l'utente corrente."
       season_not_found: "Impossibile determinare la stagione corrente."
       invalid_selection: "Squadra selezionata non valida."
+    info:
+      select_team: "Seleziona una squadra."
+
+  goggles_cup:
+    button_label: "Anteprima GogglesCup"
+    title: "Anteprima GogglesCup"
+    description: "Seleziona una squadra e i nuotatori per calcolare la classifica GogglesCup basata sui miglioramenti dei tempi."
+    select_team: "Seleziona una squadra."
+    select_swimmers: "Seleziona nuotatori per la classifica"
+    compute: "Calcola Classifica"
+    ranking: "Classifica"
+    overall_score: "Punteggio totale: %{score}"
+    computation_details: "Dettagli calcolo (migliori 5 miglioramenti)"
+    select_all: "Seleziona Tutto"
+    deselect_all: "Deseleziona Tutto"
+    swimmers_for_team: "Nuotatori per %{team}"
+    select: "Seleziona"
+    swimmer_name: "Nuotatore"
+    year_of_birth: "Anno di Nascita"
+    ranking_for_team: "Classifica GogglesCup per %{team}"
+    meeting_name: "Gara"
+    meeting_name_and_date: "Gara / Data"
+    meeting_date: "Data"
+    event_type: "Evento"
+    pool_type: "Vasca"
+    total_hundredths: "Attuale (1/100s)"
+    old_meeting_name: "Vecchia Gara"
+    old_meeting_date: "Vecchia Data"
+    old_total_hundredths: "Vecchio (1/100s)"
+    row_score: "Punteggio Riga"
+    back_to_selection: "Torna alla selezione nuotatori"
+    errors:
+      invalid_selection: "Seleziona una squadra e almeno un nuotatore."
+      invalid_selection_or_data: "Impossibile esportare senza dati validi."
     info:
       select_team: "Seleziona una squadra."

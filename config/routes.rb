@@ -20,6 +20,7 @@ Rails.application.routes.draw do
   get 'best_results/best_in_3y', to: 'best_results#best_in_3y', as: 'best_in_3y_results'
   get 'best_results/best_in_5y', to: 'best_results#best_in_5y', as: 'best_in_5y_results'
   get 'best_results/all_time_best', to: 'best_results#all_time_best', as: 'all_time_best_results'
+  match 'best_results/goggles_cup_preview', to: 'best_results#goggles_cup_preview', as: 'goggles_cup_preview', via: %i[get post]
 
   get 'pull/index'
   get 'pull/calendar_files'
