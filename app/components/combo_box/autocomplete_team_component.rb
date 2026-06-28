@@ -19,22 +19,24 @@ module ComboBox
     # - free_text: false  => allows/disables free text as input
     # - required: false   => sets the HTML5 'required' attribute for the select field
     # - base_name: 'team' => base name for the form fields (team_id, team_label)
-    # - jwt: nil         => server-side JWT for API authentication (required)
+    # - label: nil        => custom label text; defaults to I18n.t('best_results.list.team')
+    # - jwt: nil          => server-side JWT for API authentication (required)
     #
-    def initialize(default_row: nil, free_text: false, required: false, base_name: 'team', jwt: nil)
+    def initialize(options = {})
       super()
-      @base_name = base_name
-      @default_row = default_row
-      @free_text = free_text
-      @required = required
-      @jwt = jwt
+      @base_name = options[:base_name] || 'team'
+      @default_row = options[:default_row]
+      @free_text = options[:free_text] || false
+      @required = options[:required] || false
+      @label = options[:label]
+      @jwt = options[:jwt]
     end
 
     # Render ComboBox::AutocompleteComponent with configured options
     def call
       render(ComboBox::AutocompleteComponent.new(
                api_url: 'teams',
-               label: I18n.t('best_results.list.team'),
+               label: @label || I18n.t('best_results.list.team'),
                base_name: @base_name,
                free_text: @free_text,
                required: @required,

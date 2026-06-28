@@ -7,13 +7,17 @@
         .row.mb-3
           .col-12.text-center
             = link_to(compute_goggles_cup_preview_path(format: :csv, team_id: team.id, secondary_team_id: secondary_team_id, swimmer_ids: selected_swimmer_ids, no_duplicated_events: no_duplicated_events),
-                      class: 'btn btn-outline-secondary', 'data-turbo': false) do
+                      class: 'btn btn-outline-secondary mx-2', 'data-turbo': false) do
               %i.fa.fa-file-text-o
               CSV
             = link_to(compute_goggles_cup_preview_path(format: :xlsx, team_id: team.id, secondary_team_id: secondary_team_id, swimmer_ids: selected_swimmer_ids, no_duplicated_events: no_duplicated_events),
-                      class: 'btn btn-outline-secondary', 'data-turbo': false) do
+                      class: 'btn btn-outline-secondary mx-2', 'data-turbo': false) do
               %i.fa.fa-file-excel-o
               XLSX
+            = link_to(compute_goggles_cup_preview_path(format: :pdf, team_id: team.id, secondary_team_id: secondary_team_id, swimmer_ids: selected_swimmer_ids, no_duplicated_events: no_duplicated_events),
+                      class: 'btn btn-outline-secondary mx-2', 'data-turbo': false) do
+              %i.fa.fa-file-pdf-o
+              PDF
 
         - ranking_data.each_with_index do |data, index|
           .card.mb-3
@@ -23,7 +27,7 @@
                   %span.badge.badge-primary.mr-2 ##{index + 1}
                   = data[:swimmer_name]
                   %small.ml-2 (#{data[:swimmer_year_of_birth]})
-                %strong.ml-3= t('goggles_cup.overall_score', score: data[:overall_score])
+                %strong.ml-3= t('goggles_cup.overall_score', score: sprintf('%.2f', data[:overall_score]))
               %small.text-muted ID #{data[:swimmer_id]}
 
             .card-body
@@ -45,11 +49,30 @@
                       %tr
                         %td= row.event_type_code
                         %td= row.pool_type_code
-                        %td.small-text= "#{row.meeting_date}, #{row.meeting_name} (#{row.meeting_id})"
-                        %td= row.total_hundredths
-                        %td.small-text= row.old_meeting_date.present? ? "#{row.old_meeting_date}, #{row.old_meeting_name} (#{row.old_meeting_id})" : '-'
-                        %td= row.old_total_hundredths
-                        %td.text-end
-                          %strong= top_row[:row_score]
+                        %td.small-text
+                          = "#{row.meeting_date}, #{row.meeting_name}"
+                          %br
+                          = "Meeting ID #{row.meeting_id}, MIR #{row.meeting_individual_result_id}"
+                        %td.text-right.pr-4
+                          = row.total_hundredths
+                          %p.small-text
+                            = Timing.new.from_hundredths(row.total_hundredths).to_s
+                        %td.small-text
+                          - if row.old_meeting_date.present?
+                            = "#{row.old_meeting_date}, #{row.old_meeting_name}"
+                            %br
+                            = "Meeting ID #{row.old_meeting_id}, MIR #{row.old_meeting_individual_result_id}"
+                          - else
+                            = '-'
+                        %td.text-right.pr-4
+                          - if row.old_total_hundredths.present?
+                            = row.old_total_hundredths
+                            %p.small-text
+                              = Timing.new.from_hundredths(row.old_total_hundredths).to_s
+                          - else
+                            = '-'
+
+                        %td.text-right.pr-4
+                          %strong= sprintf('%.2f', top_row[:row_score])
       - else
         .alert.alert-info.text-center= t('goggles_cup.info.no_ranking_data')

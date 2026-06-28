@@ -1,7 +1,7 @@
 import { Controller } from '@hotwired/stimulus'
 
 export default class extends Controller {
-  static targets = ['form', 'noDuplicatedEventsField', 'swimmerCheckbox', 'swimmerPanel', 'rankingContainer', 'computeButton']
+  static targets = ['form', 'noDuplicatedEventsField', 'swimmerCheckbox', 'swimmerPanel', 'rankingContainer', 'computeButton', 'overlay']
   static values = { smartSelectionUrl: String }
 
   connect() {
@@ -102,6 +102,10 @@ export default class extends Controller {
 
     this.computeButtonTarget.disabled = loading
     this.computeButtonTarget.classList.toggle('disabled', loading)
+
+    if (this.hasOverlayTarget) {
+      this.overlayTarget.classList.toggle('d-none', !loading)
+    }
   }
 
   collapseSwimmerPanel() {

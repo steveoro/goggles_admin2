@@ -2,6 +2,9 @@
 
 require 'csv'
 require 'axlsx'
+require 'prawn'
+require 'prawn/table'
+Prawn::Fonts::AFM.hide_m17n_warning = true
 
 # = GogglesCupController
 class GogglesCupController < ApplicationController
@@ -31,6 +34,7 @@ class GogglesCupController < ApplicationController
       format.json { render json: { html: ranking_html } }
       format.csv { send_csv_data }
       format.xlsx { send_xlsx_data }
+      format.pdf { send_pdf_data }
     end
   end
 
@@ -102,6 +106,14 @@ class GogglesCupController < ApplicationController
               type: Mime[:xlsx], disposition: 'attachment')
   end
 
+  def send_pdf_data
+    return redirect_invalid_export unless @team && @ranking_data.present?
+
+    send_data(generate_pdf_data,
+              filename: "goggles_cup_#{@team.name.parameterize}.pdf",
+              type: 'application/pdf', disposition: 'attachment')
+  end
+
   def redirect_invalid_export
     flash[:alert] = I18n.t('goggles_cup.errors.invalid_selection_or_data')
     redirect_to(goggles_cup_preview_path(team_id: @team_id))
@@ -138,6 +150,71 @@ class GogglesCupController < ApplicationController
   end
 
   def export_row_for(data, index)
-    [index + 1, data[:swimmer_name], data[:swimmer_year_of_birth], data[:overall_score], data[:swimmer_id]]
+    [index + 1, data[:swimmer_name], data[:swimmer_year_of_birth], format('%.2f', data[:overall_score]), data[:swimmer_id]]
+  end
+
+  def generate_pdf_data # rubocop:disable Metrics/AbcSize
+    Prawn::Document.new(page_layout: :portrait, margin: 25) do |pdf|
+      pdf.font_size 10
+      pdf.text(t('goggles_cup.ranking_for_team', team: @team.name), size: 16, style: :bold, align: :center)
+      pdf.move_down 4
+      pdf.text("#{t('goggles_cup.computation_details')}, #{t('goggles_cup.formula')}", size: 8, align: :center)
+      pdf.move_down 8
+
+      @ranking_data.each_with_index do |data, index|
+        pdf.start_new_page if pdf.cursor < 150
+
+        pdf.text("##{index + 1}  #{data[:swimmer_name]}  (#{data[:swimmer_year_of_birth]})",
+                 size: 12, style: :bold)
+        pdf.move_up 10
+        pdf.text("#{t('goggles_cup.overall_score', score: format('%.2f', data[:overall_score]))}  —  ID #{data[:swimmer_id]}",
+                 size: 9, color: '000088', style: :bold, align: :right)
+        pdf.move_down 4
+
+        table_data = pdf_ranking_table_data(data[:top_rows])
+        pdf.table(table_data, header: true, row_colors: %w[F0F0F0 FFFFFF],
+                              width: pdf.bounds.width, cell_style: { size: 7, padding: [2, 3] }) do |table|
+          table.row(0).font_style = :bold
+          table.column(2).align = :right
+          table.column(4).align = :right
+          table.column(5).align = :right
+        end
+        pdf.move_down 20
+      end
+    end.render
+  end
+
+  def pdf_ranking_table_data(top_rows) # rubocop:disable Metrics/AbcSize
+    header = [
+      t('goggles_cup.event_type'),
+      t('goggles_cup.meeting_name'),
+      t('goggles_cup.total_hundredths'),
+      t('goggles_cup.old_meeting_name'),
+      t('goggles_cup.old_total_hundredths'),
+      t('goggles_cup.row_score')
+    ]
+    rows = top_rows.map do |top_row|
+      row = top_row[:row]
+      meeting_info = "#{row.meeting_date}, #{row.meeting_name}\nMeeting ID #{row.meeting_id}, MIR #{row.meeting_individual_result_id}"
+      current_timing = "#{row.total_hundredths}\n#{Timing.new.from_hundredths(row.total_hundredths)}"
+
+      if row.old_meeting_date.present?
+        old_meeting_info = "#{row.old_meeting_date}, #{row.old_meeting_name}\nMeeting ID #{row.old_meeting_id}, MIR #{row.old_meeting_individual_result_id}"
+        old_timing = "#{row.old_total_hundredths}\n#{Timing.new.from_hundredths(row.old_total_hundredths)}"
+      else
+        old_meeting_info = '-'
+        old_timing = '-'
+      end
+
+      [
+        "#{row.event_type_code} #{row.pool_type_code}m",
+        meeting_info,
+        current_timing,
+        old_meeting_info,
+        old_timing,
+        format('%.2f', top_row[:row_score])
+      ]
+    end
+    [header] + rows
   end
 end

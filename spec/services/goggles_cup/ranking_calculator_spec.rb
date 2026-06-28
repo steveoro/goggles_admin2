@@ -14,25 +14,25 @@ RSpec.describe GogglesCup::RankingCalculator do
   end
 
   def row(attributes = {})
-    double('ViewRow', **base_row, **attributes)
+    instance_double(GogglesDb::BestSwimmerCurrentVsPreviousResult, **base_row, **attributes)
   end
 
   it 'sets row_score to 1000 when old_total_hundredths is nil' do
     result = described_class.new(team_id: 1, swimmer_ids: [1], rows: [row(old_total_hundredths: nil)]).call
 
-    expect(result.first[:top_rows].first[:row_score]).to eq(1000)
+    expect(result.first[:top_rows].first[:row_score]).to eq(1000.0)
   end
 
   it 'sets row_score to 1000 when old_total_hundredths is zero' do
     result = described_class.new(team_id: 1, swimmer_ids: [1], rows: [row(old_total_hundredths: 0)]).call
 
-    expect(result.first[:top_rows].first[:row_score]).to eq(1000)
+    expect(result.first[:top_rows].first[:row_score]).to eq(1000.0)
   end
 
   it 'adds the improved timing delta when old_total_hundredths is positive' do
     result = described_class.new(team_id: 1, swimmer_ids: [1], rows: [row(old_total_hundredths: 3200)]).call
 
-    expect(result.first[:top_rows].first[:row_score]).to eq(1200)
+    expect(result.first[:top_rows].first[:row_score]).to eq(1001.07)
   end
 
   it 'sums fewer than five rows when fewer are available' do
@@ -40,7 +40,7 @@ RSpec.describe GogglesCup::RankingCalculator do
 
     result = described_class.new(team_id: 1, swimmer_ids: [1], rows: rows).call
 
-    expect(result.first[:overall_score]).to eq(2200)
+    expect(result.first[:overall_score]).to eq(2001.07)
   end
 
   it 'sums only the top five row scores' do
@@ -48,7 +48,7 @@ RSpec.describe GogglesCup::RankingCalculator do
 
     result = described_class.new(team_id: 1, swimmer_ids: [1], rows: rows).call
 
-    expect(result.first[:overall_score]).to eq(7000)
+    expect(result.first[:overall_score]).to eq(5005.67)
   end
 
   it 'keeps only the highest scoring row for each event when no duplicated events is enabled' do
@@ -60,6 +60,6 @@ RSpec.describe GogglesCup::RankingCalculator do
 
     result = described_class.new(team_id: 1, swimmer_ids: [1], rows: rows, no_duplicated_events: true).call
 
-    expect(result.first[:top_rows].pluck(:row_score)).to eq([1500, 1200])
+    expect(result.first[:top_rows].pluck(:row_score)).to eq([1001.17, 1001.07])
   end
 end

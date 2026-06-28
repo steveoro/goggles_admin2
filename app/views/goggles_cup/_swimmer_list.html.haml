@@ -28,6 +28,10 @@
                     - swimmer_id = swimmer[:swimmer_id]
                     %tr
                       %td.text-center
-                        = check_box_tag 'swimmer_ids[]', swimmer_id, selected_swimmer_ids.map(&:to_s).include?(swimmer_id.to_s), id: "swimmer_#{swimmer_id}", data: { 'goggles-cup-target': 'swimmerCheckbox', swimmer_id: swimmer_id }
+                        %label.switch.round
+                          = check_box_tag('swimmer_ids[]', swimmer_id, selected_swimmer_ids.map(&:to_s).include?(swimmer_id.to_s),
+                                          id: "swimmer_#{swimmer_id}",
+                                          data: { 'goggles-cup-target': 'swimmerCheckbox', swimmer_id: swimmer_id })
+                          %span.slider.round
                       %td= swimmer[:swimmer_name]
                       %td= swimmer[:swimmer_year_of_birth]

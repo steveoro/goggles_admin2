@@ -18,7 +18,7 @@ module GogglesCup
           swimmer_id: swimmer_id,
           swimmer_name: swimmer_rows.first.swimmer_name,
           swimmer_year_of_birth: swimmer_rows.first.swimmer_year_of_birth,
-          overall_score: top_rows.sum { |scored_row| scored_row[:row_score] },
+          overall_score: top_rows.sum { |scored_row| scored_row[:row_score] }.round(2),
           top_rows: top_rows
         }
       end
@@ -44,9 +44,9 @@ module GogglesCup
     end
 
     def row_score_for(row)
-      return 1000 unless row.old_total_hundredths.present? && row.old_total_hundredths.positive?
+      return 1000.0 unless row.old_total_hundredths.present? && row.old_total_hundredths.positive?
 
-      1000 + (row.old_total_hundredths - row.total_hundredths)
+      (1000.0 * (row.old_total_hundredths.to_f / row.total_hundredths)).round(2)
     end
 
     def best_rows_for(scored_rows)

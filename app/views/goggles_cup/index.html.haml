@@ -2,13 +2,22 @@
   .spacer-left
 
   .main-content{ data: { controller: 'goggles-cup', 'goggles-cup-smart-selection-url-value': smart_selection_goggles_cup_preview_path } }
+    -# Loading overlay shown during ranking computation
+    #goggles-cup-overlay.goggles-cup-overlay.d-none{ data: { 'goggles-cup-target': 'overlay' } }
+      .spinner-border.text-light{ style: 'width: 3rem; height: 3rem;', role: 'status' }
+        %span.visually-hidden.sr-only= t('goggles_cup.computing')
     - provide(:title, t('goggles_cup.title'))
     .row-fluid.text-center
       %h4
         %i.fa.fa-trophy
         = t('goggles_cup.title')
-      %p= t('goggles_cup.description')
+      %p
+        %i= t('goggles_cup.description')
+        %br
+        %code
+          = t('goggles_cup.formula')
 
+    -# Phase 1: Team selection
     %section.my-2#select-team
       .card
         .card-header.bg-light-blue
@@ -18,9 +27,9 @@
                       data: { controller: 'form-utils', action: 'submit->form-utils#disableSubmit', turbo: false }) do |f|
             .container-fluid
               .row.mb-3
-                .col-md-5.my-2
+                .col-md-6.my-2
                   = render(ComboBox::AutocompleteTeamComponent.new(default_row: @team, required: true, jwt: current_user&.jwt))
-                .col-md-2.mt-2.d-flex.align-items-end
+                .col-md-2.my-2.d-flex.align-items-end
                   = f.submit t('goggles_cup.load_team'), class: 'btn btn-primary'
 
           - if @team
@@ -29,18 +38,27 @@
                         data: { action: 'submit->goggles-cup#compute', 'goggles-cup-target': 'form' }) do |f|
               = hidden_field_tag :team_id, @team.id
               .container-fluid
+                .row
+                  .col-6
+                    = render(ComboBox::AutocompleteTeamComponent.new(default_row: @secondary_team, label: t('goggles_cup.secondary_team'),
+                                                                     required: false, base_name: 'secondary_team', jwt: current_user&.jwt))
+                .container.mb-3
+                  %small.text-muted= t('goggles_cup.secondary_team_explanation')
+                .container.mb-3
+                  %label.switch.round
+                    = check_box_tag(:no_duplicated_events, '1', @no_duplicated_events,
+                                    id: 'no_duplicated_events',
+                                    data: { 'goggles-cup-target': 'noDuplicatedEventsField' })
+                    %span.slider.round
+                  = label_tag(:no_duplicated_events, t('goggles_cup.no_duplicated_events'), class: 'form-check-label mb-0')
                 .row.mb-3
-                  .col-md-5.my-2
-                    = render(ComboBox::AutocompleteTeamComponent.new(default_row: @secondary_team, required: false, base_name: 'secondary_team', jwt: current_user&.jwt))
-                  .col-md-4.my-2.d-flex.align-items-end
-                    .form-check
-                      = check_box_tag :no_duplicated_events, '1', @no_duplicated_events, id: 'no_duplicated_events', class: 'form-check-input', data: { 'goggles-cup-target': 'noDuplicatedEventsField' }
-                      = label_tag :no_duplicated_events, t('goggles_cup.no_duplicated_events'), class: 'form-check-label'
-                  .col-md-3.my-2.d-flex.align-items-end
+                  .offset-4.col-4
                     = f.submit t('goggles_cup.compute'), class: 'btn btn-success btn-lg w-100', data: { 'goggles-cup-target': 'computeButton' }
 
+              -# Phase 2: Swimmer selection
               = render partial: 'swimmer_list', locals: { team: @team, swimmers: @swimmers_for_team, selected_swimmer_ids: @selected_swimmer_ids || [] }
 
+              -# Phase 3: Ranking display (shown after POST)
               #goggles-cup-ranking-container{ data: { 'goggles-cup-target': 'rankingContainer' } }
                 - if @ranking_data.present?
                   = render partial: 'ranking', locals: { team: @team, ranking_data: @ranking_data, selected_swimmer_ids: @selected_swimmer_ids || [], secondary_team_id: @secondary_team_id, no_duplicated_events: @no_duplicated_events }
