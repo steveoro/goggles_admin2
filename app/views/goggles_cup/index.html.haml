@@ -1,0 +1,48 @@
+.wrapper-body
+  .spacer-left
+
+  .main-content{ data: { controller: 'goggles-cup', 'goggles-cup-smart-selection-url-value': smart_selection_goggles_cup_preview_path } }
+    - provide(:title, t('goggles_cup.title'))
+    .row-fluid.text-center
+      %h4
+        %i.fa.fa-trophy
+        = t('goggles_cup.title')
+      %p= t('goggles_cup.description')
+
+    %section.my-2#select-team
+      .card
+        .card-header.bg-light-blue
+          %strong= t('goggles_cup.rules_header')
+        .card-body
+          = form_with(url: goggles_cup_preview_path, method: :get, local: true,
+                      data: { controller: 'form-utils', action: 'submit->form-utils#disableSubmit', turbo: false }) do |f|
+            .container-fluid
+              .row.mb-3
+                .col-md-5.my-2
+                  = render(ComboBox::AutocompleteTeamComponent.new(default_row: @team, required: true, jwt: current_user&.jwt))
+                .col-md-2.mt-2.d-flex.align-items-end
+                  = f.submit t('goggles_cup.load_team'), class: 'btn btn-primary'
+
+          - if @team
+            = form_with(url: compute_goggles_cup_preview_path, method: :post, local: true,
+                        html: { id: 'goggles-cup-form' },
+                        data: { action: 'submit->goggles-cup#compute', 'goggles-cup-target': 'form' }) do |f|
+              = hidden_field_tag :team_id, @team.id
+              .container-fluid
+                .row.mb-3
+                  .col-md-5.my-2
+                    = render(ComboBox::AutocompleteTeamComponent.new(default_row: @secondary_team, required: false, base_name: 'secondary_team', jwt: current_user&.jwt))
+                  .col-md-4.my-2.d-flex.align-items-end
+                    .form-check
+                      = check_box_tag :no_duplicated_events, '1', @no_duplicated_events, id: 'no_duplicated_events', class: 'form-check-input', data: { 'goggles-cup-target': 'noDuplicatedEventsField' }
+                      = label_tag :no_duplicated_events, t('goggles_cup.no_duplicated_events'), class: 'form-check-label'
+                  .col-md-3.my-2.d-flex.align-items-end
+                    = f.submit t('goggles_cup.compute'), class: 'btn btn-success btn-lg w-100', data: { 'goggles-cup-target': 'computeButton' }
+
+              = render partial: 'swimmer_list', locals: { team: @team, swimmers: @swimmers_for_team, selected_swimmer_ids: @selected_swimmer_ids || [] }
+
+              #goggles-cup-ranking-container{ data: { 'goggles-cup-target': 'rankingContainer' } }
+                - if @ranking_data.present?
+                  = render partial: 'ranking', locals: { team: @team, ranking_data: @ranking_data, selected_swimmer_ids: @selected_swimmer_ids || [], secondary_team_id: @secondary_team_id, no_duplicated_events: @no_duplicated_events }
+
+  .spacer-left

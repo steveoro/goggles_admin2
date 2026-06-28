@@ -43,8 +43,11 @@ en:
     button_label: "GogglesCup Preview"
     title: "GogglesCup Preview"
     description: "Select a team and swimmers to compute the GogglesCup ranking based on timing improvements."
+    rules_header: "GogglesCup rules"
+    load_team: "Load Team"
     select_team: "Please select a team."
     select_swimmers: "Select swimmers for ranking"
+    no_duplicated_events: "No duplicated events per swimmer"
     compute: "Compute Ranking"
     ranking: "Ranking"
     overall_score: "Overall score: %{score}"
@@ -72,3 +75,4 @@ en:
       invalid_selection_or_data: "Cannot export without valid data."
     info:
       select_team: "Please select a team."
+      no_ranking_data: "No ranking data available. Select at least one swimmer and compute the ranking."

@@ -43,8 +43,11 @@ it:
     button_label: "Anteprima GogglesCup"
     title: "Anteprima GogglesCup"
     description: "Seleziona una squadra e i nuotatori per calcolare la classifica GogglesCup basata sui miglioramenti dei tempi."
+    rules_header: "Regole GogglesCup"
+    load_team: "Carica Squadra"
     select_team: "Seleziona una squadra."
     select_swimmers: "Seleziona nuotatori per la classifica"
+    no_duplicated_events: "Nessun evento duplicato per nuotatore"
     compute: "Calcola Classifica"
     ranking: "Classifica"
     overall_score: "Punteggio totale: %{score}"
@@ -72,3 +75,4 @@ it:
       invalid_selection_or_data: "Impossibile esportare senza dati validi."
     info:
       select_team: "Seleziona una squadra."
+      no_ranking_data: "Nessun dato classifica disponibile. Seleziona almeno un nuotatore e calcola la classifica."

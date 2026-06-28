@@ -1,0 +1,33 @@
+%section.my-2#select-swimmers
+  .card
+    .card-header.d-flex.justify-content-between.align-items-center{ id: 'swimmer-list-header' }
+      %h5.mb-0= t('goggles_cup.swimmers_for_team', team: team.name)
+      %button.btn.btn-sm.btn-outline-primary{ type: 'button', data: { toggle: 'collapse', target: '#swimmer-list-body' }, 'aria-expanded' => 'true', 'aria-controls' => 'swimmer-list-body' }
+        %i.fa.fa-list
+        = t('goggles_cup.select_swimmers')
+    #swimmer-list-body.collapse.show{ 'aria-labelledby' => 'swimmer-list-header', data: { 'goggles-cup-target': 'swimmerPanel' } }
+      .card-body
+        .row.mb-3
+          .col-12
+            %button.btn.btn-sm.btn-outline-secondary{ type: 'button', data: { action: 'goggles-cup#selectAll' } }
+              = t('goggles_cup.select_all')
+            %button.btn.btn-sm.btn-outline-secondary{ type: 'button', data: { action: 'goggles-cup#deselectAll' } }
+              = t('goggles_cup.deselect_all')
+
+        .row
+          .col-12
+            .table-responsive
+              %table.table.table-striped.table-hover.table-sm
+                %thead
+                  %tr
+                    %th{ width: '50' }= t('goggles_cup.select')
+                    %th= t('goggles_cup.swimmer_name')
+                    %th= t('goggles_cup.year_of_birth')
+                %tbody
+                  - swimmers.each do |swimmer|
+                    - swimmer_id = swimmer[:swimmer_id]
+                    %tr
+                      %td.text-center
+                        = check_box_tag 'swimmer_ids[]', swimmer_id, selected_swimmer_ids.map(&:to_s).include?(swimmer_id.to_s), id: "swimmer_#{swimmer_id}", data: { 'goggles-cup-target': 'swimmerCheckbox', swimmer_id: swimmer_id }
+                      %td= swimmer[:swimmer_name]
+                      %td= swimmer[:swimmer_year_of_birth]
