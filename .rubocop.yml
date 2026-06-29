@@ -72,6 +72,7 @@ Metrics/AbcSize:
     - 'app/strategies/import/category_computer.rb'
     - 'app/services/phase3/**/*'
     - 'app/services/phase5/**/*'
+    - 'crawler/scripts/*'
 
 Metrics/BlockLength:
   Max: 40
@@ -87,11 +88,13 @@ Metrics/BlockLength:
     - 'app/strategies/import/phase5_populator.rb'
     - 'app/strategies/import/phase_commit_logger.rb'
     - 'app/strategies/pdf_results/l2_converter.rb'
+    - 'crawler/scripts/*'
 
 Metrics/ClassLength:
   Max: 120
   Exclude:
     - 'app/controllers/data_fix_controller.rb'
+    - 'app/controllers/goggles_cup_controller.rb'
     - 'app/controllers/pull_controller.rb'
     - 'app/strategies/import/macro_committer.rb'
     - 'app/strategies/import/macro_solver.rb'
@@ -103,6 +106,7 @@ Metrics/ClassLength:
     - 'app/strategies/import/solvers/event_solver.rb'
     - 'app/strategies/merge/meeting_checker.rb'
     - 'app/strategies/merge/team_in_meeting.rb'
+    - 'crawler/scripts/*'
 
 Metrics/CyclomaticComplexity:
   Max: 8
@@ -128,6 +132,7 @@ Metrics/CyclomaticComplexity:
     - 'app/strategies/import/category_computer.rb'
     - 'app/services/phase3/**/*'
     - 'app/services/phase5/**/*'
+    - 'crawler/scripts/*'
 
 Metrics/MethodLength:
   Max: 35
@@ -143,6 +148,7 @@ Metrics/MethodLength:
     - 'app/strategies/import/phase_commit_logger.rb'
     - 'app/services/phase3/**/*'
     - 'app/services/phase5/**/*'
+    - 'crawler/scripts/*'
 
 Metrics/PerceivedComplexity:
   Exclude:
@@ -167,11 +173,13 @@ Metrics/PerceivedComplexity:
     - 'app/strategies/import/category_computer.rb'
     - 'app/services/phase3/**/*'
     - 'app/services/phase5/**/*'
+    - 'crawler/scripts/*'
 
 Metrics/BlockNesting:
   Exclude:
     - 'app/controllers/data_fix_controller.rb'
     - 'app/strategies/import/solvers/event_solver.rb'
+    - 'crawler/scripts/*'
 
 Metrics/ParameterLists:
   Exclude:

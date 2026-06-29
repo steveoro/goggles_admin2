@@ -164,6 +164,7 @@ export default class extends Controller {
     detailEndpoint: String,
     searchEndpoint: String, searchColumn: String,
     search2DomId: String, search2Column: String,
+    search3DomId: String, search3Column: String,
     labelColumn: String, label2Column: String,
     target2Column: String,
     target3DomId: String, target3Column: String,
@@ -430,8 +431,12 @@ export default class extends Controller {
         if (!query || query.length < 2) return callback()
         const search2El = this.hasSearch2DomIdValue ? document.querySelector(`#${this.search2DomIdValue}`) : null
         let url = `${this.baseApiUrlValue}/${this.searchEndpointValue}?${searchColumnValue}=${encodeURIComponent(query)}`
-        if (this.hasSearch2ColumnValue && search2El && search2El.value.length > 0) {
+        if (this.hasSearch2ColumnValue && search2El && search2El.value.length > 0 && search2El.value !== '0') {
           url += `&${this.search2ColumnValue}=${encodeURIComponent(search2El.value)}`
+        }
+        const search3El = this.hasSearch3DomIdValue ? document.querySelector(`#${this.search3DomIdValue}`) : null
+        if (this.hasSearch3ColumnValue && search3El && search3El.value.length > 0) {
+          url += `&${this.search3ColumnValue}=${encodeURIComponent(search3El.value)}`
         }
         fetch(url, {
           method: 'GET',

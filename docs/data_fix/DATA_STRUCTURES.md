@@ -7,7 +7,6 @@ Comprehensive reference for most data structures used in the Data-Fix pipeline, 
 
 ---
 
-
 ## Source Data Formats
 
 ### Layout Type 4 (LT4) - Microplus Format
@@ -136,9 +135,7 @@ $ bin/json_tree_viewer.py crawler/data/results.new/242/2025-06-24-Campionati_Ita
      +--- title
 ```
 
-
 ---
-
 
 ### Layout Type 2 (LT2) - FIN result crawler
 
@@ -148,8 +145,7 @@ Note that the legacy data-fix process usually handles the following raw structur
 
 (Example: step 2 will add to the root object the "team" key - note the singular - pointing to the dictionary of serialized team entities reviewed by the operator; step 3 will add the "swimmer" dictionary, and so on...)
 
-
-#### Individual Result Structure
+#### LT2 - Individual Result Structure
 
 - sections[] -> 1 section per event, section header with event details, gender and category
 - rows[] -> 1 row per result, usually lap data is missing
@@ -167,10 +163,10 @@ Note that the legacy data-fix process usually handles the following raw structur
         {
           "pos": "1",
           "name": "ROSSI MARIO",
-          "year_of_birth": "1978",
+          "year": "1978",
           "team": "CSI OBER FERRARI",
           "timing": "2'05.45",
-          "std_score": "812,45",
+          "score": "812,45",
           "laps": [
             {"distance": "50m", "timing": "28.45"},
             {"distance": "100m", "timing": "30.12"},
@@ -185,18 +181,22 @@ Note that the legacy data-fix process usually handles the following raw structur
 ```
 
 **Field Reference**:
+
 - `title`: Event description (Italian format)
 - `fin_sigla_categoria`: FIN category code (e.g., "M45", "U25")
 - `fin_sesso`: Gender code ("M", "F", "X" for mixed)
 - `pos`: Ranking position or status ("SQ", "RT", "NP")
 - `name`: Swimmer full name (UPPERCASE)
-- `year_of_birth`: 4-digit year
+- `year`: 4-digit year of birth; on some sub-formats, this field might be missing or even called "year_of_birth"
 - `team`: Team name (as appears on results)
 - `timing`: Final time in format "M'SS.hh" or "SS.hh"
-- `std_score`: FIN standard points (optional)
+- `score`: FIN standard points (optional); on some sub-formats this field might be called "std_score"
 - `laps`: Array of split times
 
-#### Relay Result Structure
+Each swimmer result "row" can have an optional "sex" field, which is usually inherited from the parent section header ("fin_sesso")
+
+#### LT2 - Relay Result Structure
+
 ```json
 {
   "sections": [
@@ -252,6 +252,7 @@ Note that the legacy data-fix process usually handles the following raw structur
 ```
 
 **Relay-Specific Fields**:
+
 - `relay`: Boolean flag (always `true` for relay rows)
 - `swimmer1` through `swimmer8`: Relay leg swimmer names
 - `year_of_birth1` through `year_of_birth8`: Birth years for each leg
@@ -262,20 +263,21 @@ Note that the legacy data-fix process usually handles the following raw structur
 - `laps[].delta`: Lap time (not cumulative)
 
 **Important Notes**:
+
 - Gender in lap data may be prefixed (e.g., `"F|PAGLI|Linda..."`) or missing
 - The system handles both 4-token and 5-token lap swimmer formats
 - Relay category codes like "M320" represent sum of ages (4 swimmers × ~80 years avg)
 
-
 ---
 
-
 **Event Codes**:
+
 - Individual: `"<distance><stroke>"` (e.g., "200SL", "100DO")
 - Relay (same-gender): `"S4X<leg_distance><stroke>"` (e.g., "S4X50MI")
 - Relay (mixed): `"M4X<leg_distance><stroke>"` (e.g., "M4X50SL")
 
 **Stroke Codes**:
+
 - `SL`: Freestyle (Stile Libero)
 - `DO`: Backstroke (Dorso)
 - `RA`: Breaststroke (Rana)
@@ -283,9 +285,9 @@ Note that the legacy data-fix process usually handles the following raw structur
 - `MI`: Medley (Misti)
 
 **Pre-Matched Fields**:
+
 - `event_type_id`: Matched EventType record
 - `meeting_event_id`: Pre-matched MeetingEvent (if exists)
-
 
 ---
 
@@ -340,6 +342,7 @@ Phase 5 populates temporary tables for review. These tables are defined in `gogg
 ```
 
 **Key Fields**:
+
 - `import_key`: Unique identifier for O(1) lookups
 - `meeting_program_id`: Links to specific event+category+gender combination
 - `swimmer_id` + `badge_id`: Fully resolved swimmer identity
@@ -375,11 +378,13 @@ Phase 5 populates temporary tables for review. These tables are defined in `gogg
 ```
 
 **Lap Order**:
+
 - Starts at 1
 - Increments for each lap
 - Length typically 50m or 100m depending on pool
 
 **Timing Fields**:
+
 - Individual lap time: `minutes`, `seconds`, `hundredths`
 - Cumulative time: `minutes_from_start`, `seconds_from_start`, `hundredths_from_start`
 
@@ -427,6 +432,7 @@ Phase 5 populates temporary tables for review. These tables are defined in `gogg
 ```
 
 **Key Differences from Individual**:
+
 - Team-based (no swimmer_id/badge_id)
 - Multiple swimmers linked via separate table
 - Category code represents sum of ages
@@ -466,10 +472,12 @@ Phase 5 populates temporary tables for review. These tables are defined in `gogg
 ```
 
 **Relay Order**:
+
 - 1-4 for 4x50m, 4x100m, 4x200m relays
 - Determines leg sequence
 
 **Stroke Type ID**:
+
 - For medley relays, each leg has different stroke
 - For freestyle relays, all legs use same stroke
 
@@ -536,19 +544,22 @@ Meeting
 
 Import keys provide O(1) lookups in temporary tables. Format:
 
-### Individual Results
+### Text keys - Individual Results
+
 ```
 "<meeting_code>-<session_order>-<event_code>-<swimmer_key>"
 Example: "regit-1-200SL-ROSSI|MARIO|1978"
 ```
 
-### Relay Results
+### Text keys - Relay Results
+
 ```
 "<meeting_code>-<session_order>-<event_code>-<team_name>-<gender>"
 Example: "regit-1-S4X50MI-DLF Nuoto Livorno-F"
 ```
 
-### Relay Swimmers
+### Text keys - Relay Swimmers
+
 ```
 "<relay_import_key>-<relay_order>"
 Example: "regit-1-S4X50MI-DLF Nuoto Livorno-F-1"
@@ -559,6 +570,7 @@ Example: "regit-1-S4X50MI-DLF Nuoto Livorno-F-1"
 ## Quick Reference
 
 ### File Paths
+
 ```
 Source JSON:     crawler/data/results.new/<season_id>/<filename>.json
 Phase 1:         crawler/data/results.new/<season_id>/<filename>-phase1.json

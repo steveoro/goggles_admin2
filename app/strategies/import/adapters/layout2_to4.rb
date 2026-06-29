@@ -112,12 +112,12 @@ module Import
           sections.each do |section|
             rows = section['rows'] || []
             rows.each do |row|
-              # Extract swimmer info
-              if row['name'] && row['year']
+              # Extract swimmer info (include even when YOB is null)
+              if row['name']
                 swimmer_key = build_swimmer_key(row)
                 swimmers[swimmer_key] = {
                   'complete_name' => row['name'],
-                  'year_of_birth' => row['year'],
+                  'year_of_birth' => row['year'] || row['year_of_birth'],
                   'gender_type' => row['sex'] || extract_gender_from_section(section)
                 }
               end
@@ -140,7 +140,7 @@ module Import
             first_name = first_name.presence || fallback_parts[1] || ''
           end
           gender = row['sex'] || 'M'
-          year = row['year'] || ''
+          year = row['year'] || row['year_of_birth'] || ''
           team = row['team'] || ''
 
           "#{gender}|#{last_name}|#{first_name}|#{year}|#{team}"
@@ -317,7 +317,7 @@ module Import
             'gender' => result_gender,
             'team' => row['team'],
             'timing' => row['timing'],
-            'score' => row['score'],
+            'score' => row['score'] || row['std_score'],
             'category' => section['fin_sigla_categoria'] || row['fin_sigla_categoria'],
             'heat_position' => row['heat_position'],
             'lane' => row['lane']

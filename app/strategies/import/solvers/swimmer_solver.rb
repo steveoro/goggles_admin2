@@ -62,7 +62,7 @@ module Import
             data_hash['swimmers'].each_with_index do |s, idx|
               l, f, yob, gcode, team_name = extract_swimmer_parts(s)
               broadcast_progress('Map swimmers', idx + 1, total)
-              next if l.blank? || f.blank? || yob.to_i.zero?
+              next if l.blank? || f.blank?
 
               key = build_swimmer_key(gcode, l, f, yob, team_name)
               swimmer_entry = build_swimmer_entry(key, l, f, yob.to_i, gcode, team_name: team_name)
@@ -79,7 +79,7 @@ module Import
             data_hash['swimmers'].each_with_index do |(original_key, v), idx|
               l, f, yob, gcode, team_name = extract_swimmer_parts_from_dict_entry(original_key, v)
               broadcast_progress('Map swimmers', idx + 1, total)
-              next if l.blank? || f.blank? || yob.to_i.zero?
+              next if l.blank? || f.blank?
 
               key = build_swimmer_key(gcode, l, f, yob, team_name)
               swimmer_entry = build_swimmer_entry(key, l, f, yob.to_i, gcode, team_name: team_name)
@@ -110,7 +110,7 @@ module Import
 
                   yob = row["year_of_birth#{idx}"]
                   gtype = row["gender_type#{idx}"]
-                  next if swimmer_name.blank? || yob.to_i.zero?
+                  next if swimmer_name.blank?
 
                   last, first, = Import::SwimmerNameSplitter.split_complete_name(swimmer_name)
                   next if last.blank? || first.blank?
@@ -131,7 +131,7 @@ module Import
               else
                 # Individual result row
                 l, f, yob = extract_name_yob_from_row(row)
-                next if l.blank? || f.blank? || yob.to_i.zero?
+                next if l.blank? || f.blank?
 
                 gcode = gender_code || normalize_gender_code(row['gender'] || row['gender_type'] || row['gender_type_code'])
                 team_name = row['team']
@@ -302,8 +302,8 @@ module Import
       def extract_name_yob_from_row(row)
         last = row['last_name'] || row['cognome']
         first = row['first_name'] || row['nome']
-        yob = row['year_of_birth'] || row['anno'] || row['yob']
-        return [safe_str(last), safe_str(first), yob.to_i] if last.present? && first.present? && yob.to_i.positive?
+        yob = row['year_of_birth'] || row['anno'] || row['yob'] || row['year']
+        return [safe_str(last), safe_str(first), yob.to_i] if last.present? && first.present?
 
         # Fallbacks: try to parse combined swimmer field like "LAST FIRST"
         combined = row['swimmer'] || row['atleta']
@@ -506,11 +506,13 @@ module Import
       def find_swimmer_matches(complete_name, year_of_birth, _last_name = nil, gender_code = nil)
         return [] if complete_name.blank?
 
+        # Build search terms — skip year_of_birth when zero/blank so it doesn't act as
+        # an exact-match filter that excludes all candidates.
+        search_terms = { complete_name: complete_name.to_s.strip }
+        search_terms[:year_of_birth] = year_of_birth.to_i if year_of_birth.to_i.positive?
+
         # Primary search: Use CmdFindDbEntity with FuzzySwimmer strategy (full name)
-        cmd = GogglesDb::CmdFindDbEntity.call(
-          GogglesDb::Swimmer,
-          { complete_name: complete_name.to_s.strip, year_of_birth: year_of_birth.to_i }
-        )
+        cmd = GogglesDb::CmdFindDbEntity.call(GogglesDb::Swimmer, search_terms)
 
         # Extract matches (sorted by weight descending)
         matches = cmd.matches.respond_to?(:map) ? cmd.matches : []
@@ -520,8 +522,7 @@ module Import
         if matches.empty?
           @logger&.info("[SwimmerSolver] No matches for '#{complete_name}', trying fallback with lower bias")
           fallback_cmd = GogglesDb::CmdFindDbEntity.call(
-            GogglesDb::Swimmer,
-            { complete_name: complete_name.to_s.strip, year_of_birth: year_of_birth.to_i },
+            GogglesDb::Swimmer, search_terms,
             0.80 # More permissive bias for fallback matching (default is 0.89)
           )
 
@@ -827,18 +828,30 @@ module Import
       def normalize_swimmer_key_for_lookup(swimmer_key, include_team: false)
         return nil if swimmer_key.blank?
 
-        parts = swimmer_key.to_s.split('|').compact_blank
+        parts = swimmer_key.to_s.split('|')
         return nil if parts.size < 3
 
-        offset = parts[0].length == 1 && parts[0].match?(/[MF]/) ? 1 : 0
+        offset = swimmer_key_offset(parts)
         last_name = parts[offset]
         first_name = parts[offset + 1]
         year_of_birth = parts[offset + 2]
         team_name = parts[(offset + 3)..]&.join('|')
-        return nil if [last_name, first_name, year_of_birth].any?(&:blank?)
+        return nil if last_name.blank? || first_name.blank?
 
         key = "|#{last_name}|#{first_name}|#{year_of_birth}"
         include_team && team_name.present? ? "#{key}|#{team_name}" : key
+      end
+
+      # Determine the offset into split key parts based on the first element:
+      # - Single-char gender code (M/F) → offset 1
+      # - Empty string (partial key starting with '|') → offset 1
+      # - Otherwise (no prefix) → offset 0
+      def swimmer_key_offset(parts)
+        first = parts[0].to_s
+        return 1 if first.match?(/\A[MF]\z/i)
+        return 1 if first.blank?
+
+        0
       end
 
       # Find team_id by team_key from phase2 data
@@ -874,10 +887,10 @@ module Import
       # badge (|LAST|FIRST|YOB) for the same swimmer is removed to prevent duplicate commits.
       def add_or_replace_badge(badges, new_badge)
         new_key = new_badge['swimmer_key']
-        new_parts = new_key.to_s.split('|').compact_blank
+        new_parts = new_key.to_s.split('|')
 
         # Extract normalized identity (last|first|yob without gender)
-        new_offset = new_parts[0]&.length == 1 && new_parts[0]&.match?(/[MF]/) ? 1 : 0
+        new_offset = swimmer_key_offset(new_parts)
         new_last = new_parts[new_offset]&.upcase
         new_first = new_parts[new_offset + 1]&.upcase
         new_yob = new_parts[new_offset + 2]
@@ -891,8 +904,8 @@ module Import
           # Remove any existing partial-key badge for the same swimmer+team+season
           badges.reject! do |existing|
             existing_key = existing['swimmer_key']
-            existing_parts = existing_key.to_s.split('|').compact_blank
-            existing_offset = existing_parts[0]&.length == 1 && existing_parts[0]&.match?(/[MF]/) ? 1 : 0
+            existing_parts = existing_key.to_s.split('|')
+            existing_offset = swimmer_key_offset(existing_parts)
             existing_last = existing_parts[existing_offset]&.upcase
             existing_first = existing_parts[existing_offset + 1]&.upcase
             existing_yob = existing_parts[existing_offset + 2]
@@ -920,9 +933,9 @@ module Import
         # Group by normalized identity: extract last|first|yob from swimmer_key
         grouped = badges.group_by do |badge|
           key = badge['swimmer_key']
-          parts = key.to_s.split('|').compact_blank
-          # Handle both formats: GENDER|LAST|FIRST|YOB or LAST|FIRST|YOB
-          offset = parts[0]&.length == 1 && parts[0]&.match?(/[MF]/) ? 1 : 0
+          parts = key.to_s.split('|')
+          # Handle both formats: GENDER|LAST|FIRST|YOB or |LAST|FIRST|YOB or LAST|FIRST|YOB
+          offset = swimmer_key_offset(parts)
           last = parts[offset]
           first = parts[offset + 1]
           yob = parts[offset + 2]

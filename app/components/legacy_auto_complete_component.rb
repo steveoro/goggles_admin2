@@ -158,6 +158,8 @@ class LegacyAutoCompleteComponent < ViewComponent::Base
     @search_column = options[:search_column]
     @search2_column = options[:search2_column]
     @search2_dom_id = options[:search2_dom_id]
+    @search3_column = options[:search3_column]
+    @search3_dom_id = options[:search3_dom_id]
     @label_column = options[:label_column]
     @label2_column = options[:label2_column]
 

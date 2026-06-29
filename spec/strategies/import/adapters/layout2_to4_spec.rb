@@ -396,6 +396,116 @@ RSpec.describe Import::Adapters::Layout2To4 do
       end
     end
 
+    context 'with null year of birth' do
+      let(:null_yob_lt2) do
+        header.merge(
+          'sections' => [
+            {
+              'title' => '50 Stile Libero - M25',
+              'fin_sesso' => 'M',
+              'fin_sigla_categoria' => 'M25',
+              'rows' => [
+                {
+                  'pos' => '41',
+                  'name' => 'MOTTA Dennis',
+                  'team' => 'RARI NANTES SARONNO',
+                  'timing' => '25.62',
+                  'score' => '897',
+                  'year' => nil
+                },
+                {
+                  'pos' => '82',
+                  'name' => 'ROMEO Roberto',
+                  'team' => 'RARI NANTES SARONNO',
+                  'timing' => '27.12',
+                  'score' => '847',
+                  'year' => nil
+                }
+              ]
+            }
+          ]
+        )
+      end
+
+      it 'includes swimmers with null year in the swimmers dictionary' do
+        out = described_class.normalize(data_hash: null_yob_lt2)
+        expect(out['swimmers']).to be_a(Hash)
+        expect(out['swimmers'].size).to eq(2)
+      end
+
+      it 'builds swimmer keys with empty year field' do
+        out = described_class.normalize(data_hash: null_yob_lt2)
+        swimmer_keys = out['swimmers'].keys
+
+        expect(swimmer_keys).to include('M|MOTTA|Dennis||RARI NANTES SARONNO')
+        expect(swimmer_keys).to include('M|ROMEO|Roberto||RARI NANTES SARONNO')
+      end
+
+      it 'stores null year_of_birth in swimmer dictionary values' do
+        out = described_class.normalize(data_hash: null_yob_lt2)
+        swimmer = out['swimmers']['M|MOTTA|Dennis||RARI NANTES SARONNO']
+
+        expect(swimmer['complete_name']).to eq('MOTTA Dennis')
+        expect(swimmer['year_of_birth']).to be_nil
+        expect(swimmer['gender_type']).to eq('M')
+      end
+
+      it 'inherits gender from section fin_sesso when sex is missing' do
+        out = described_class.normalize(data_hash: null_yob_lt2)
+        swimmer = out['swimmers']['M|MOTTA|Dennis||RARI NANTES SARONNO']
+
+        expect(swimmer['gender_type']).to eq('M')
+      end
+
+      it 'references correct swimmer keys in results' do
+        out = described_class.normalize(data_hash: null_yob_lt2)
+        result = out['events'].first['results'].first
+
+        expect(result['swimmer']).to eq('M|MOTTA|Dennis||RARI NANTES SARONNO')
+        expect(result['gender']).to eq('M')
+        expect(result['score']).to eq('897')
+      end
+    end
+
+    context 'with non-standard field name fallbacks' do
+      let(:alt_field_lt2) do
+        header.merge(
+          'sections' => [
+            {
+              'title' => '50 Stile Libero - M25',
+              'fin_sesso' => 'M',
+              'fin_sigla_categoria' => 'M25',
+              'rows' => [
+                {
+                  'pos' => '1',
+                  'name' => 'ROSSI Mario',
+                  'team' => 'Sample Team',
+                  'timing' => '25.00',
+                  'std_score' => '800',
+                  'year_of_birth' => '1990'
+                }
+              ]
+            }
+          ]
+        )
+      end
+
+      it 'uses year_of_birth as fallback for year' do
+        out = described_class.normalize(data_hash: alt_field_lt2)
+        swimmer_key = out['swimmers'].keys.first
+
+        expect(swimmer_key).to eq('M|ROSSI|Mario|1990|Sample Team')
+        expect(out['swimmers'][swimmer_key]['year_of_birth']).to eq('1990')
+      end
+
+      it 'uses std_score as fallback for score in results' do
+        out = described_class.normalize(data_hash: alt_field_lt2)
+        result = out['events'].first['results'].first
+
+        expect(result['score']).to eq('800')
+      end
+    end
+
     context 'with edge cases' do
       it 'raises ArgumentError if input is not a Hash' do
         expect { described_class.normalize(data_hash: 'not a hash') }.to raise_error(ArgumentError, /must be a Hash/)
