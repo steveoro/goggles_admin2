@@ -124,19 +124,16 @@ RSpec.describe 'GogglesCupPreview' do
   end
 
   def ranking_row_with_top_rows
-    row = OpenStruct.new(
-      event_type_code: '100SL',
-      pool_type_code: '25',
-      meeting_date: '2025-01-15',
-      meeting_name: 'Test Meeting',
-      meeting_id: 42,
-      meeting_individual_result_id: 99,
-      total_hundredths: 6500,
-      old_meeting_date: '2024-01-10',
-      old_meeting_name: 'Old Meeting',
-      old_meeting_id: 30,
-      old_meeting_individual_result_id: 88,
-      old_total_hundredths: 7000
+    row = Struct.new(
+      :event_type_code, :pool_type_code, :meeting_date, :meeting_name, :meeting_id,
+      :meeting_individual_result_id, :total_hundredths,
+      :old_meeting_date, :old_meeting_name, :old_meeting_id,
+      :old_meeting_individual_result_id, :old_total_hundredths
+    ).new(
+      '100SL', '25', '2025-01-15', 'Test Meeting', 42,
+      99, 6500,
+      '2024-01-10', 'Old Meeting', 30,
+      88, 7000
     )
     {
       swimmer_id: 1,

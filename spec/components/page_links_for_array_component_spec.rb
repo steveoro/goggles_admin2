@@ -33,6 +33,25 @@ RSpec.describe PageLinksForArrayComponent, type: :component do
       )
       expect(component).to be_present
     end
+
+    it 'accepts optional extra_params parameter defaulting to empty hash' do
+      component = described_class.new(
+        data: [1, 2, 3],
+        total_count: 10,
+        page: 1,
+        per_page: 3
+      )
+      expect(component.instance_variable_get(:@extra_params)).to eq({})
+
+      component_with_params = described_class.new(
+        data: [1, 2, 3],
+        total_count: 10,
+        page: 1,
+        per_page: 3,
+        extra_params: { filter_state: 'review', q: 'Alpha' }
+      )
+      expect(component_with_params.instance_variable_get(:@extra_params)).to eq(filter_state: 'review', q: 'Alpha')
+    end
   end
 
   describe '#render?' do

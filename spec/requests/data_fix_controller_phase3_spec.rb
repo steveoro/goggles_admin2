@@ -908,6 +908,65 @@ RSpec.describe DataFixController do
       end
     end
 
+    describe 'pagination and filter state interaction' do
+      before(:each) do
+        swimmers = (1..120).map do |i|
+          { 'key' => "SWIMMER#{i}|TEST|1990", 'last_name' => "Swimmer#{i}", 'first_name' => 'Test',
+            'year_of_birth' => 1990, 'gender_type_code' => 'M', 'complete_name' => "Swimmer#{i} Test",
+            'swimmer_id' => nil, 'fuzzy_matches' => [] }
+        end
+        pfm = PhaseFileManager.new(phase3_file)
+        pfm.write!(data: { 'season_id' => season.id, 'swimmers' => swimmers, 'badges' => [] },
+                   meta: { 'generator' => 'test' })
+      end
+
+      it 'resets page to 1 when filter_state changes without explicit swimmers_page' do
+        # First, navigate to page 2 to store it in cookie
+        get review_swimmers_path(file_path: source_file, phase3_v2: 1, swimmers_per_page: 50, swimmers_page: 2)
+        expect(response.body).to include('Swimmer51 Test')
+
+        # Now submit filter form (filter_state=none) without swimmers_page — should reset to page 1
+        get review_swimmers_path(file_path: source_file, phase3_v2: 1, filter_state: 'none', swimmers_per_page: 50)
+        expect(response.body).to include('Swimmer1 Test')
+        expect(response.body).to include('Swimmer50 Test')
+        expect(response.body).not_to include('Swimmer51 Test')
+      end
+
+      it 'resets page to 1 when swimmers_per_page changes without explicit swimmers_page' do
+        # Navigate to page 2 with per_page=50
+        get review_swimmers_path(file_path: source_file, phase3_v2: 1, swimmers_per_page: 50, swimmers_page: 2)
+        expect(response.body).to include('Swimmer51 Test')
+
+        # Change per_page to 100 without swimmers_page — should reset to page 1
+        get review_swimmers_path(file_path: source_file, phase3_v2: 1, swimmers_per_page: 100)
+        expect(response.body).to include('Swimmer1 Test')
+        expect(response.body).to include('Swimmer100 Test')
+        expect(response.body).not_to include('Swimmer101 Test')
+      end
+
+      it 'clamps stale page cookie to total_pages instead of showing empty results' do
+        # Store page 3 in cookie (with per_page=50, 120 swimmers = 3 pages)
+        get review_swimmers_path(file_path: source_file, phase3_v2: 1, swimmers_per_page: 50, swimmers_page: 3)
+        expect(response.body).to include('Swimmer101 Test')
+
+        # Request page 3 with per_page=100 (120 swimmers / 100 = 2 pages) — should clamp to page 2
+        get review_swimmers_path(file_path: source_file, phase3_v2: 1, filter_state: 'none',
+                                 swimmers_per_page: 100, swimmers_page: 3)
+        expect(response.body).not_to include('No swimmers found')
+        expect(response.body).to include('Swimmer101 Test')
+      end
+
+      it 'includes filter_state and swimmers_per_page in pagination link URLs' do
+        get review_swimmers_path(file_path: source_file, phase3_v2: 1, filter_state: 'review', swimmers_per_page: 50)
+
+        expect(response.body).to include('filter_state=review')
+        pagination_links = response.body.scan(/href="[^"]*swimmers_page=2[^"]*"/)
+        expect(pagination_links).to be_present
+        expect(pagination_links.first).to include('filter_state=review')
+        expect(pagination_links.first).to include('swimmers_per_page=50')
+      end
+    end
+
     describe 'Fallback to legacy controller' do
       it 'redirects to legacy controller when phase3_v2 is not present' do
         get review_swimmers_path(file_path: source_file)

@@ -114,7 +114,7 @@ module Import
             rows.each do |row|
               # Extract swimmer info (include even when YOB is null)
               if row['name']
-                swimmer_key = build_swimmer_key(row)
+                swimmer_key = build_swimmer_key(row, section)
                 swimmers[swimmer_key] = {
                   'complete_name' => row['name'],
                   'year_of_birth' => row['year'] || row['year_of_birth'],
@@ -132,14 +132,14 @@ module Import
         end
 
         # Build composite swimmer key in LT4 format: "GENDER|LAST|FIRST|YEAR|TEAM"
-        def build_swimmer_key(row)
+        def build_swimmer_key(row, section = nil)
           last_name, first_name, = Import::SwimmerNameSplitter.split_complete_name(row['name'])
           if last_name.blank? || first_name.blank?
             fallback_parts = (row['name'] || '').split(' ', 2)
             last_name = last_name.presence || fallback_parts[0] || ''
             first_name = first_name.presence || fallback_parts[1] || ''
           end
-          gender = row['sex'] || 'M'
+          gender = row['sex'] || extract_gender_from_section(section)
           year = row['year'] || row['year_of_birth'] || ''
           team = row['team'] || ''
 
@@ -308,7 +308,7 @@ module Import
         end
 
         def normalize_individual_result(row, section)
-          swimmer_key = build_swimmer_key(row)
+          swimmer_key = build_swimmer_key(row, section)
           result_gender = normalize_gender_code(row['sex']) || normalize_gender_code(section['fin_sesso'])
 
           result = {

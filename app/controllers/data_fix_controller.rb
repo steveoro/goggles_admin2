@@ -155,12 +155,18 @@ class DataFixController < ApplicationController
     end
 
     # Pagination (phase-specific params to avoid cross-phase interference)
-    @page = data_fix_review_param_or_cookie(param_key: :teams_page, cookie_scope: teams_state_cookie_scope).to_i
-    @page = 1 if @page < 1
+    # Reset page to 1 when filter form is submitted (filter_state or per_page changed without explicit page)
+    if (params.key?(:filter_state) || params.key?(:teams_per_page)) && !params.key?(:teams_page)
+      @page = 1
+    else
+      @page = data_fix_review_param_or_cookie(param_key: :teams_page, cookie_scope: teams_state_cookie_scope).to_i
+      @page = 1 if @page < 1
+    end
     @per_page = data_fix_review_param_or_cookie(param_key: :teams_per_page, cookie_scope: teams_state_cookie_scope).to_i
     @per_page = 50 if @per_page <= 0
     @total_count = teams.size
     @total_pages = (@total_count.to_f / @per_page).ceil
+    @page = @total_pages if @page > @total_pages && @total_pages.positive?
     @row_range = "#{(@page * @per_page) - @per_page + 1}-#{@page * @per_page}"
     # Use Kaminari for pagination
     @items = Kaminari.paginate_array(teams, total_count: @total_count).page(@page).per(@per_page)
@@ -319,12 +325,18 @@ class DataFixController < ApplicationController
 
     # Pagination (phase-specific params to avoid cross-phase interference)
     # Swimmers typically have more entries, default to 100
-    @page = data_fix_review_param_or_cookie(param_key: :swimmers_page, cookie_scope: swimmers_state_cookie_scope).to_i
-    @page = 1 if @page < 1
+    # Reset page to 1 when filter form is submitted (filter_state or per_page changed without explicit page)
+    if (params.key?(:filter_state) || params.key?(:swimmers_per_page)) && !params.key?(:swimmers_page)
+      @page = 1
+    else
+      @page = data_fix_review_param_or_cookie(param_key: :swimmers_page, cookie_scope: swimmers_state_cookie_scope).to_i
+      @page = 1 if @page < 1
+    end
     @per_page = data_fix_review_param_or_cookie(param_key: :swimmers_per_page, cookie_scope: swimmers_state_cookie_scope).to_i
     @per_page = 100 if @per_page <= 0
     @total_count = swimmers.size
     @total_pages = (@total_count.to_f / @per_page).ceil
+    @page = @total_pages if @page > @total_pages && @total_pages.positive?
     @row_range = "#{(@page * @per_page) - @per_page + 1}-#{@page * @per_page}"
     # Use Kaminari for pagination
     @items = Kaminari.paginate_array(swimmers, total_count: @total_count).page(@page).per(@per_page)

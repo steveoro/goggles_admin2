@@ -47,7 +47,10 @@
         .flex-grow-1.pt-3
           - if @items.present?
             = render(PageLinksForArrayComponent.new(data: @items, total_count: @total_count, page: @page,
-                                                    per_page: @per_page, param_name: :teams_page))
+                                                    per_page: @per_page, param_name: :teams_page,
+                                                    extra_params: { filter_state: @filter_state, q: @q,
+                                                                    teams_per_page: @per_page,
+                                                                    file_path: @file_path, phase2_v2: 1 }))
         %div
           = form_tag(data_fix_add_team_path, method: :post, class: 'd-inline', onsubmit: "return confirm('Add a new blank team?');") do
             = hidden_field_tag :file_path, @file_path
@@ -126,7 +129,10 @@
   .mt-3
     - if @items.present?
       = render(PageLinksForArrayComponent.new(data: @items, total_count: @total_count, page: @page,
-                                              per_page: @per_page, param_name: :teams_page))
+                                              per_page: @per_page, param_name: :teams_page,
+                                              extra_params: { filter_state: @filter_state, q: @q,
+                                                              teams_per_page: @per_page,
+                                                              file_path: @file_path, phase2_v2: 1 }))
   .mb-4 &nbsp;
 
 :javascript
@@ -171,16 +177,26 @@
     var lbl = confLabel[data.confidence] || 'N/A';
 
     html += '<div class="mb-2"><strong>Confidence: <span class="' + cls + '">' + lbl + '</span></strong>';
-    html += ' (' + data.confirmed + '/' + data.total + ' swimmers confirmed)</div>';
+    html += ' (' + data.confirmed + '/' + data.total + ' swimmers confirmed';
+    if (data.confirmed_other_seasons && data.confirmed_other_seasons > 0) {
+      html += ' +' + data.confirmed_other_seasons + ' via other seasons';
+    }
+    html += ')</div>';
 
     if (data.swimmers && data.swimmers.length > 0) {
-      html += '<table class="table table-sm table-bordered mb-0"><thead><tr><th>Swimmer</th><th>ID</th><th>Badge Teams</th><th>Match</th></tr></thead><tbody>';
+      html += '<table class="table table-sm table-bordered mb-0"><thead><tr><th>Swimmer</th><th>ID</th><th>Badge Teams (target season)</th><th>Other Season Badges</th><th>Match</th></tr></thead><tbody>';
       data.swimmers.forEach(function(s) {
-        var matchIcon = s.matches_candidate
-          ? '<span class="text-success"><i class="fa fa-check-circle"></i> Yes</span>'
-          : '<span class="text-danger"><i class="fa fa-times-circle"></i> No</span>';
-        var teams = (s.badge_teams || []).map(function(bt) { return bt.team_name + ' (ID: ' + bt.team_id + ' / Badge ID: ' + bt.badge_id + ')'; }).join(', ') || '<em>No badges</em>';
-        html += '<tr><td>' + s.name + '</td><td>' + s.swimmer_id + '</td><td>' + teams + '</td><td>' + matchIcon + '</td></tr>';
+        var matchIcon;
+        if (s.matches_candidate) {
+          matchIcon = '<span class="text-success"><i class="fa fa-check-circle"></i> Yes</span>';
+        } else if (s.matches_candidate_other_seasons) {
+          matchIcon = '<span class="text-warning"><i class="fa fa-check-circle"></i> Other season</span>';
+        } else {
+          matchIcon = '<span class="text-danger"><i class="fa fa-times-circle"></i> No</span>';
+        }
+        var teams = (s.badge_teams || []).map(function(bt) { return bt.team_name + ' (ID: ' + bt.team_id + ' / Badge ID: ' + bt.badge_id + ')'; }).join(', ') || '<strong class="text-danger">NO BADGE</strong>';
+        var otherTeams = (s.other_season_badges || []).map(function(ob) { return ob.team_name + ' (ID: ' + ob.team_id + ' / S: ' + ob.season_id + ' / B: ' + ob.badge_id + ')'; }).join('<br>') || '<em>None</em>';
+        html += '<tr><td>' + s.name + '</td><td>' + s.swimmer_id + '</td><td>' + teams + '</td><td><small>' + otherTeams + '</small></td><td>' + matchIcon + '</td></tr>';
       });
       html += '</tbody></table>';
     } else {

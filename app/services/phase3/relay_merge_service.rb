@@ -108,7 +108,6 @@ module Phase3
 
         if genders_found.size == 1
           swimmer['gender_type_code'] = genders_found.first
-          update_swimmer_key_with_gender(swimmer)
           @stats[:swimmers_updated] += 1
         elsif genders_found.size > 1
           @stats[:partial_matches_ambiguous] << {
@@ -166,7 +165,6 @@ module Phase3
             if unique_genders.size == 1
               # Single unique gender found - use it
               swimmer['gender_type_code'] = unique_genders.first
-              update_swimmer_key_with_gender(swimmer)
               @stats[:swimmers_updated] += 1
             elsif unique_genders.size > 1
               # Multiple genders found - ambiguous, record for UI warning
@@ -192,7 +190,6 @@ module Phase3
         if unique_yobs.size == 1
           # Single unique YOB found - use it
           swimmer['year_of_birth'] = unique_yobs.first
-          update_swimmer_key_with_yob(swimmer)
           @stats[:swimmers_updated] += 1
         elsif unique_yobs.size > 1
           # Multiple YOBs found - ambiguous, record for UI warning
@@ -449,43 +446,7 @@ module Phase3
       "#{gender}|#{last}|#{first}|"
     end
 
-    # Update swimmer key to include gender prefix when gender is newly set
-    def update_swimmer_key_with_gender(swimmer)
-      key = swimmer[SWIMMER_KEY].to_s
-      gender = swimmer['gender_type_code'].to_s.strip.upcase
-      return if key.blank? || gender.blank?
-
-      # Only update if key currently has no gender prefix
-      return unless key.start_with?('|')
-
-      # Key format: |LAST|FIRST|YOB -> G|LAST|FIRST|YOB
-      new_key = "#{gender}#{key}"
-      swimmer[SWIMMER_KEY] = new_key
-
-      # Update index
-      @swimmers_by_key.delete(key)
-      @swimmers_by_key[new_key] = swimmer
-    end
-
-    # Update swimmer key to include YOB when YOB is newly set
-    def update_swimmer_key_with_yob(swimmer)
-      key = swimmer[SWIMMER_KEY].to_s
-      yob = swimmer['year_of_birth'].to_i
-      return if key.blank? || yob <= 0
-
-      parts = key.split('|')
-      return if parts.size < 4
-
-      # Update YOB in key if it was empty/zero
-      return unless parts[3].to_s.strip.empty? || parts[3].to_i <= 0
-
-      parts[3] = yob.to_s
-      new_key = parts.join('|')
-      swimmer[SWIMMER_KEY] = new_key
-
-      # Update index
-      @swimmers_by_key.delete(key)
-      @swimmers_by_key[new_key] = swimmer
-    end
+    # Swimmer keys are immutable — gender and YOB are stored as separate fields,
+    # never injected into the key after enrichment.
   end
 end

@@ -30,7 +30,7 @@ class PageLinksForArrayComponent < ViewComponent::Base
   #   (and the selected page doesn't get lost during browsing; otherwise using a same-named "per_page"
   #   param will overwrite the one passed in the URL.)
   #
-  def initialize(data:, total_count:, page:, per_page:, param_name: nil, per_page_param: nil)
+  def initialize(data:, total_count:, page:, per_page:, param_name: nil, per_page_param: nil, extra_params: nil)
     super()
     @data = data
     @total_count = total_count.to_i
@@ -38,6 +38,7 @@ class PageLinksForArrayComponent < ViewComponent::Base
     @per_page = per_page.to_i
     @param_name = param_name
     @per_page_param = per_page_param
+    @extra_params = extra_params || {}
   end
 
   # Skips rendering unless the constructor parameters are valid.

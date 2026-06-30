@@ -71,7 +71,7 @@ module Import
               next if team_name.blank?
 
               # Use swimmer entry's updated key/gender (may have been populated from DB match)
-              add_or_replace_badge(badges, build_badge_entry(swimmer_entry['key'], team_name, yob.to_i,
+              add_or_replace_badge(badges, build_badge_entry(swimmer_entry['key'], team_name, swimmer_entry['year_of_birth'],
                                                              swimmer_entry['gender_type_code'], meeting_date,
                                                              swimmer_id: swimmer_entry['swimmer_id']))
             end
@@ -88,7 +88,7 @@ module Import
               next if team_name.to_s.strip.empty?
 
               # Use swimmer entry's updated key/gender (may have been populated from DB match)
-              add_or_replace_badge(badges, build_badge_entry(swimmer_entry['key'], team_name, yob.to_i,
+              add_or_replace_badge(badges, build_badge_entry(swimmer_entry['key'], team_name, swimmer_entry['year_of_birth'],
                                                              swimmer_entry['gender_type_code'], meeting_date,
                                                              swimmer_id: swimmer_entry['swimmer_id']))
             end
@@ -124,7 +124,7 @@ module Import
                   next if team_name.to_s.strip.empty?
 
                   # Use swimmer entry's updated key/gender (may have been populated from DB match)
-                  add_or_replace_badge(badges, build_badge_entry(swimmer_entry['key'], team_name, yob.to_i,
+                  add_or_replace_badge(badges, build_badge_entry(swimmer_entry['key'], team_name, swimmer_entry['year_of_birth'],
                                                                  swimmer_entry['gender_type_code'], meeting_date,
                                                                  swimmer_id: swimmer_entry['swimmer_id']))
                 end
@@ -142,7 +142,7 @@ module Import
                 next if team_name.to_s.strip.empty?
 
                 # Use swimmer entry's updated key/gender (may have been populated from DB match)
-                add_or_replace_badge(badges, build_badge_entry(swimmer_entry['key'], team_name, yob.to_i,
+                add_or_replace_badge(badges, build_badge_entry(swimmer_entry['key'], team_name, swimmer_entry['year_of_birth'],
                                                                swimmer_entry['gender_type_code'], meeting_date,
                                                                swimmer_id: swimmer_entry['swimmer_id']))
               end
@@ -433,8 +433,7 @@ module Import
             entry['last_name'] = top_match['last_name']
             entry['first_name'] = top_match['first_name']
 
-            _key_gcode, key_last, key_first, key_yob, key_team = parse_swimmer_identity_key(key)
-            entry['key'] = build_swimmer_key(entry['gender_type_code'], key_last, key_first, key_yob, key_team)
+            # Key remains immutable — gender is stored as a separate field
 
             # Recompute category now that we have gender
             meeting_date = @phase1_data&.dig('data', 'header_date')
@@ -480,6 +479,30 @@ module Import
           entry['complete_name'] = chosen_match['complete_name']
           entry['last_name'] = chosen_match['last_name']
           entry['first_name'] = chosen_match['first_name']
+
+          # Populate year_of_birth from the matched swimmer when it was zero
+          if entry['year_of_birth'].to_i.zero? && chosen_match['year_of_birth'].present?
+            entry['year_of_birth'] = chosen_match['year_of_birth']
+
+            # Key remains immutable — YOB is stored as a separate field
+
+            # Recompute category with the discovered year_of_birth
+            meeting_date = @phase1_data&.dig('data', 'header_date')
+            if meeting_date.present? && @categories_cache
+              cat_id, cat_code = Import::CategoryComputer.compute_category(
+                year_of_birth: chosen_match['year_of_birth'],
+                gender_code: entry['gender_type_code'],
+                meeting_date: meeting_date,
+                season: @season,
+                categories_cache: @categories_cache
+              )
+              entry['category_type_id'] = cat_id
+              entry['category_type_code'] = cat_code
+            end
+
+            @logger&.info("[SwimmerSolver] Year of birth populated from match for '#{key}' -> " \
+                          "#{chosen_match['year_of_birth']} from match ID #{chosen_match['id']}")
+          end
 
           @logger&.info("[SwimmerSolver] Auto-assigned swimmer '#{key}' -> ID #{chosen_match['id']} (#{(chosen_match['weight'] * 100).round(1)}%)")
         end

@@ -772,6 +772,69 @@ RSpec.describe DataFixController do
       end
     end
 
+    describe 'pagination and filter state interaction' do
+      before(:each) do
+        teams = (1..55).map do |i|
+          { 'key' => "Team #{i}", 'name' => "Team #{i}", 'editable_name' => "Team #{i}", 'team_id' => nil }
+        end
+        pfm = PhaseFileManager.new(phase2_file)
+        pfm.write!(data: { 'season_id' => season.id, 'teams' => teams }, meta: { 'generator' => 'test' })
+      end
+
+      it 'resets page to 1 when filter_state changes without explicit teams_page' do
+        # First, navigate to page 2 to store it in cookie
+        get review_teams_path(file_path: source_file, phase2_v2: 1, teams_per_page: 25, teams_page: 2)
+        expect(response.body).to include('Team 26')
+
+        # Now submit filter form (filter_state=none) without teams_page — should reset to page 1
+        get review_teams_path(file_path: source_file, phase2_v2: 1, filter_state: 'none', teams_per_page: 25)
+        expect(response.body).to include('Team 1')
+        expect(response.body).to include('Team 25')
+        expect(response.body).not_to include('Team 26')
+      end
+
+      it 'resets page to 1 when teams_per_page changes without explicit teams_page' do
+        # Navigate to page 2 with per_page=25
+        get review_teams_path(file_path: source_file, phase2_v2: 1, teams_per_page: 25, teams_page: 2)
+        expect(response.body).to include('Team 26')
+
+        # Change per_page to 50 without teams_page — should reset to page 1
+        get review_teams_path(file_path: source_file, phase2_v2: 1, teams_per_page: 50)
+        expect(response.body).to include('Team 1')
+        expect(response.body).to include('Team 50')
+        expect(response.body).not_to include('Team 51')
+      end
+
+      it 'clamps stale page cookie to total_pages instead of showing empty results' do
+        # Store page 3 in cookie (with per_page=25, 55 teams = 3 pages)
+        get review_teams_path(file_path: source_file, phase2_v2: 1, teams_per_page: 25, teams_page: 3)
+        expect(response.body).to include('Team 51')
+
+        # Now request without teams_page but with filter that reduces results
+        # filter_state=review with no team_id matches — only unmatched teams
+        # All teams have team_id=nil, so 'review' filter shows only those without team_id
+        # With per_page=25 and fewer results, page 3 may be out of range
+        get review_teams_path(file_path: source_file, phase2_v2: 1, filter_state: 'review',
+                              teams_per_page: 50, teams_page: 3)
+        # 55 teams, all with team_id=nil → review filter shows all 55, per_page=50 → 2 pages
+        # Page 3 is out of range → should clamp to page 2
+        expect(response.body).not_to include('No teams found')
+        expect(response.body).to include('Team 51')
+      end
+
+      it 'includes filter_state and teams_per_page in pagination link URLs' do
+        get review_teams_path(file_path: source_file, phase2_v2: 1, filter_state: 'review', teams_per_page: 25)
+
+        # Pagination links should include filter_state and teams_per_page
+        expect(response.body).to include('filter_state=review')
+        # Check that pagination links contain teams_per_page
+        pagination_links = response.body.scan(/href="[^"]*teams_page=2[^"]*"/)
+        expect(pagination_links).to be_present
+        expect(pagination_links.first).to include('filter_state=review')
+        expect(pagination_links.first).to include('teams_per_page=25')
+      end
+    end
+
     describe 'Phase 2 redirect to legacy' do
       it 'redirects to legacy controller when phase2_v2 param is absent' do
         get review_teams_path(file_path: source_file)

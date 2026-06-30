@@ -55,7 +55,10 @@
         .flex-grow-1.pt-3
           - if @items.present?
             = render(PageLinksForArrayComponent.new(data: @items, total_count: @total_count,
-                                                    page: @page, per_page: @per_page, param_name: :swimmers_page))
+                                                    page: @page, per_page: @per_page, param_name: :swimmers_page,
+                                                    extra_params: { filter_state: @filter_state, q: @q,
+                                                                    swimmers_per_page: @per_page,
+                                                                    file_path: @file_path, phase3_v2: 1 }))
         %div
           = form_tag(data_fix_add_swimmer_path, method: :post, class: 'd-inline', onsubmit: "return confirm('Add a new blank swimmer?');") do
             = hidden_field_tag :file_path, @file_path
@@ -154,5 +157,8 @@
   .mt-3
     - if @items.present?
       = render(PageLinksForArrayComponent.new(data: @items, total_count: @total_count,
-                                              page: @page, per_page: @per_page, param_name: :swimmers_page))
+                                              page: @page, per_page: @per_page, param_name: :swimmers_page,
+                                              extra_params: { filter_state: @filter_state, q: @q,
+                                                              swimmers_per_page: @per_page,
+                                                              file_path: @file_path, phase3_v2: 1 }))
   .mb-4 &nbsp;
