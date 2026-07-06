@@ -1,8 +1,8 @@
 GIT
   remote: https://github.com/steveoro/goggles_db
-  revision: 87eb186873aa1f6864c09c370492bf95837739d6
+  revision: 83a22c8aebdb1d5b32478f6aeecdbe0a5336fd6a
   specs:
-    goggles_db (0.9.14)
+    goggles_db (0.9.16)
       acts-as-taggable-on
       acts_as_votable
       cities
@@ -402,7 +402,7 @@ GEM
       crass (~> 1.0.2)
       nokogiri (>= 1.12.0)
     lumberjack (1.4.2)
-    mail (2.9.0)
+    mail (2.9.1)
       logger
       mini_mime (>= 0.1.1)
       net-imap
