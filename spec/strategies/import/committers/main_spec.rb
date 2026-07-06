@@ -784,6 +784,54 @@ RSpec.describe Import::Committers::Main do
         end
       end
     end
+
+    describe '#resolve_category_type' do
+      it 'resolves relay age-range codes via direct cache lookup' do
+        relay_cat = season.category_types.where(relay: true).first
+        skip('No relay categories in season 242') unless relay_cat
+
+        result = committer.send(:resolve_category_type, relay_cat.code, is_relay: true)
+        expect(result).to eq(relay_cat)
+      end
+
+      it 'resolves relay age-range codes via DB lookup when not in cache' do
+        relay_cat = season.category_types.where(relay: true).first
+        skip('No relay categories in season 242') unless relay_cat
+
+        committer.instance_variable_set(:@categories_cache, nil)
+        result = committer.send(:resolve_category_type, relay_cat.code, is_relay: true)
+        expect(result).to eq(relay_cat)
+      end
+
+      it 'resolves simplified relay codes (e.g., "M100") via age extraction fallback' do
+        # Find a non-undivided relay category and derive a simplified code from its age_begin
+        relay_cat = season.category_types.where(relay: true, undivided: false).first
+        skip('No non-undivided relay categories in season 242') unless relay_cat
+
+        simplified_code = "M#{relay_cat.age_begin}"
+        result = committer.send(:resolve_category_type, simplified_code, is_relay: true)
+        expect(result).to be_a(GogglesDb::CategoryType)
+        expect(result.relay?).to be true
+      end
+
+      it 'resolves individual category codes via direct cache lookup' do
+        indiv_cat = season.category_types.where(relay: false).first
+        skip('No individual categories in season 242') unless indiv_cat
+
+        result = committer.send(:resolve_category_type, indiv_cat.code, is_relay: false)
+        expect(result).to eq(indiv_cat)
+      end
+
+      it 'returns nil for unknown relay category codes' do
+        result = committer.send(:resolve_category_type, '999-999', is_relay: true)
+        expect(result).to be_nil
+      end
+
+      it 'returns nil for blank category codes' do
+        expect(committer.send(:resolve_category_type, nil, is_relay: true)).to be_nil
+        expect(committer.send(:resolve_category_type, '', is_relay: true)).to be_nil
+      end
+    end
   end
 end
 # rubocop:enable RSpec/InstanceVariable

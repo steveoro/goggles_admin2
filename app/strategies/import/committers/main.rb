@@ -488,29 +488,33 @@ module Import
       def resolve_category_type(category_code, is_relay: false)
         return nil if category_code.blank?
 
-        if is_relay
-          # For relays: extract age from code (e.g., "M100" → 100) and find by age range
-          age = extract_relay_age_from_code(category_code)
-          if age && @categories_cache
-            _category_code, category_type = @categories_cache.find_category_for_age(age, relay: true)
-            return category_type
-          end
+        # Direct cache lookup first (handles DB-format codes like "100-119")
+        category_type = @categories_cache&.[](category_code)
+        return category_type if category_type
 
-          # Fallback: try direct DB lookup with age-range pattern
-          if age
-            category = GogglesDb::CategoryType.where(season_id: @season_id, relay: true)
-                                              .where('age_begin <= ? AND age_end >= ?', age, age)
-                                              .first
-            return category if category
-          end
-        else
-          # For individual categories: direct code lookup
-          category_type = @categories_cache&.[](category_code)
-          return category_type if category_type
+        # IND. RESULTS:
+        return GogglesDb::CategoryType.find_by(code: category_code, season_id: @season_id) unless is_relay
 
-          # Fallback to DB query
-          return GogglesDb::CategoryType.find_by(code: category_code, season_id: @season_id)
+        # RELAYS: Direct DB lookup by code
+        category_type = GogglesDb::CategoryType.find_by(code: category_code, season_id: @season_id, relay: true)
+        return category_type if category_type
+
+        # Fallback: extract age from simplified code (e.g., "M100" → 100) and find by age range
+        age = extract_relay_age_from_code(category_code)
+        if age && @categories_cache
+          _category_code, category_type = @categories_cache.find_category_for_age(age, relay: true)
+          return category_type
         end
+
+        # Fallback: try direct DB lookup with age-range pattern
+        if age
+          category = GogglesDb::CategoryType.where(season_id: @season_id, relay: true)
+                                            .where('age_begin <= ? AND age_end >= ?', age, age)
+                                            .first
+          return category if category
+        end
+
+        # Fallback to DB query
 
         nil
       end
