@@ -2,8 +2,9 @@
 
 _Please, add the latest build info on top of the list; use Version::MAJOR only after gold release; keep semantic versioning in line with framework's_
 
+- **0.9.20** [Steve A.] re-sync w/ base engine; bundle update; DB vers. 2.09.11, rel. 0.9.20
 - **0.9.18** [Steve A.] re-sync w/ base engine; bundle updates
-- **0.9.15** [Steve A.] re-sync w/ base engine; bundle updates; one-shot script to handle FINA 2025 data; improvements to LegacyAutoCompleteComponent
+- **0.9.15** [Steve A.] re-sync w/ base engine; bundle updates; one-shot script to handle FINA 2025 data; improveme\nts to LegacyAutoCompleteComponent
 - **0.9.14** [Steve A.] re-sync w/ base engine; bundle updates
 - **0.9.08** [Steve A.] bugfixes + bundle update
 - **0.9.07** [Steve A.] more Rails 8.1 + importmap fixes
