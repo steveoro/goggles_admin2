@@ -13,8 +13,8 @@ def dbg(msg)
 end
 
 BASE_DIR = File.expand_path('../data/pdfs/fina', __dir__)
-TXT_PATH = File.join(BASE_DIR, 'mst_ita_singapore_2025.txt')
-JSON_PATH = File.join(BASE_DIR, 'mst_ita_singapore_2025.json')
+TXT_PATH = File.join(BASE_DIR, 'mst_ita_singapore_2025-edited.txt')
+JSON_PATH = File.join(BASE_DIR, 'mst_ita_singapore_2025-edited.json')
 
 STROKE_MAP = {
   /freestyle/i => 'Stile Libero',
