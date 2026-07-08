@@ -196,6 +196,7 @@ Rails/Output:
   Exclude:
     - 'app/strategies/pdf_results/context_dao.rb'
     - 'app/strategies/pdf_results/format_detector.rb'
+    - 'app/strategies/purge/meeting.rb'
 
 Rails/OutputSafety:
   Exclude:

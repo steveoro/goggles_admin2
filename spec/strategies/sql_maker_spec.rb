@@ -136,6 +136,33 @@ RSpec.describe SqlMaker, type: :strategy do
   #-- -------------------------------------------------------------------------
   #++
 
+  describe '#log_delete()' do
+    subject(:new_instance) { described_class.new(row: fixture_row) }
+
+    let(:fixture_row) { GogglesDb::Swimmer.first(100).sample }
+    let(:result) { new_instance.log_delete }
+
+    describe 'result' do
+      it 'is a string containing a DELETE statement based on the specified row' do
+        expect(result).to be_a(String) && include('DELETE FROM `swimmers`')
+      end
+
+      it 'includes the primary key in the WHERE clause' do
+        expect(result).to match(/WHERE `id` = #{fixture_row.id}/)
+      end
+    end
+
+    it 'adds the returned result string to the internal #sql_log list' do
+      expect(new_instance.sql_log).to include(result)
+    end
+
+    it 'does not destroy or delete the row from the database' do
+      expect { new_instance.log_delete }.not_to change(GogglesDb::Swimmer, :count)
+    end
+  end
+  #-- -------------------------------------------------------------------------
+  #++
+
   describe '#log_destroy()' do
     subject(:new_instance) { described_class.new(row: fixture_row) }
 

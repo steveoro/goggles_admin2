@@ -135,6 +135,23 @@ class SqlMaker
   #-- -------------------------------------------------------------------------
   #++
 
+  # Adds a new SQL DELETE statement to the result log using the latest <tt>@row</tt> set.
+  # (The statement is not executed — unlike <tt>#log_destroy</tt>, which performs an actual destroy.)
+  #
+  # == Returns
+  # The last SQL (String) statement added to the log.
+  #
+  def log_delete
+    klass = @row.class
+    con = klass.connection
+    sql_text = "DELETE FROM #{con.quote_column_name(klass.table_name)} " \
+               "WHERE #{con.quote_column_name(klass.primary_key)} = #{@row.id};"
+    @sql_log << sql_text
+    sql_text
+  end
+  #-- -------------------------------------------------------------------------
+  #++
+
   # Adds a *captured* ActiveRecord _destroy_ statement to the result log after executing it on the
   # latest <tt>@row</tt> set.
   # In other words, this method will actually *destroy* the <tt>@row</tt>, capturing the
