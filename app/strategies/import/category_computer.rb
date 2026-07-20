@@ -24,7 +24,7 @@ module Import
       return [nil, nil] unless year_of_birth && gender_code && meeting_date && season
 
       # Build cache if not provided
-      cache = categories_cache || PdfResults::CategoriesCache.new(season)
+      cache = categories_cache || PdfResults::CategoriesCache.cached_for(season)
 
       # Parse meeting date to get year
       meeting_year = begin

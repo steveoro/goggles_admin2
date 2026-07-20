@@ -27,15 +27,17 @@ module Import
 
       attr_reader :phase1_path, :phase2_path, :phase3_path, :phase4_path, :phase5_path, :source_path,
                   :phase1_data, :phase2_data, :phase3_data, :phase4_data, :phase5_data,
-                  :sql_log, :stats, :logger
+                  :sql_log, :stats, :logger, :categories_cache
 
-      def initialize(phase1_path:, phase2_path:, phase3_path:, phase4_path:, phase5_path:, source_path:, log_path: nil)
+      def initialize(phase1_path:, phase2_path:, phase3_path:, phase4_path:, phase5_path:, source_path:, log_path: nil,
+                     categories_cache: nil)
         @phase1_path = phase1_path
         @phase2_path = phase2_path
         @phase3_path = phase3_path
         @phase4_path = phase4_path
         @phase5_path = phase5_path
         @source_path = source_path
+        @categories_cache = categories_cache
         @sql_log = []
         @stats = {
           cities_created: 0, cities_updated: 0,
@@ -190,7 +192,7 @@ module Import
         @season_id = @meeting.season_id # Link to the actual season ID from the committed meeting
 
         # Initialize categories cache for efficient category lookups
-        @categories_cache = PdfResults::CategoriesCache.new(@meeting.season)
+        @categories_cache ||= PdfResults::CategoriesCache.cached_for(@meeting.season)
 
         calendar_committer.commit(meeting_data.merge('meeting_id' => @meeting.id))
 

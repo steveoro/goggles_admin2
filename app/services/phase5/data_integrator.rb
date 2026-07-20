@@ -21,12 +21,12 @@ module Phase5
     # - phase3_data: Hash from phase 3 JSON (swimmer matching results)
     # - season: GogglesDb::Season instance for category computation
     #
-    def initialize(source_data:, phase3_data: nil, season: nil)
+    def initialize(source_data:, phase3_data: nil, season: nil, categories_cache: nil)
       @source_data = source_data
       @phase3_data = phase3_data
       @season = season
       # Initialize categories cache if season available
-      @categories_cache = season ? PdfResults::CategoriesCache.new(season) : nil
+      @categories_cache = season ? (categories_cache || PdfResults::CategoriesCache.cached_for(season)) : nil
     end
 
     # Integrate relay result data: infer missing gender and category

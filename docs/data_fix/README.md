@@ -72,6 +72,8 @@ The pipeline is divided in stages so that each phase consolidates the data neede
 - `<filename>-phase4.json` - Events
 - Phase 5 uses DB tables (`data_import_*`)
 
+**Phase 1 category recomputation**: The Phase 1 review page can recompute individual categories from the canonical LT4 source. The action requires a non-empty `swimmers` array, uses the reviewed Phase 1 season/date, broadcasts swimmer-by-swimmer progress, creates numbered `.orig.json` backups, and invalidates only Phases 3–5 plus source-tied temporary import rows. Phase 1/2 files remain intact.
+
 **Import Keys**: Unique identifiers for matching
 - Format: `"PARENT_ENTITY_KEY-CHILD_ENTITY_KEY"` or similar, depending on hierarchy level (each child entity should have a unique key in any case)
 - Used for O(1) lookups in temporary tables

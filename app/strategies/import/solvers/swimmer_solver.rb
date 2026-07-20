@@ -24,9 +24,10 @@ module Import
     # NOTE: badge_id will be nil for new badges that don't exist in DB yet
     #
     class SwimmerSolver # rubocop:disable Metrics/ClassLength
-      def initialize(season:, logger: Rails.logger)
+      def initialize(season:, logger: Rails.logger, categories_cache: nil)
         @season = season
         @logger = logger
+        @categories_cache = categories_cache || PdfResults::CategoriesCache.cached_for(@season)
       end
 
       # Build and persist phase3 file
@@ -50,7 +51,7 @@ module Import
         meeting_date = @phase1_data&.dig('data', 'header_date')
 
         # Initialize CategoriesCache for season-aware category lookups
-        @categories_cache = PdfResults::CategoriesCache.new(@season)
+        @categories_cache ||= PdfResults::CategoriesCache.cached_for(@season)
 
         swimmers = []
         badges = []

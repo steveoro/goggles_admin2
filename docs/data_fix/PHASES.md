@@ -45,6 +45,11 @@ Phase 6: Commit → Production DB + SQL log
 - Meeting matching by (code, header_date, season_id)
 - Session matching by (meeting_id, session_order)
 - Venue/city cascading creation
+- Optional source category recomputation from the reviewed Phase 1 page
+
+### Source Category Recompute
+
+The Phase 1 action reads the canonical LT4 source `swimmers` array and recalculates individual categories using the reviewed `season_id` and `header_date`. It emits per-swimmer progress through `ImportStatusChannel`, creates a numbered immutable `.orig.json` backup, and removes only Phase 3–5 artifacts and source-scoped `data_import_*` rows after a successful rewrite. Phase 1 and Phase 2 files are preserved.
 
 ### Output Structure
 

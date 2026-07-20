@@ -61,6 +61,9 @@ it:
       msg:
         warning_retry_needed: "ERRORE 'RETRY' TROVATO! Questo file risultati può essere elaborato lo stesso ma deve essere riscaricato per essere completo."
       btn_expand_scan_details: "Dettagli scansione"
+      category_recompute_button: "Ricalcola categorie nuotatori"
+      category_recompute_confirm: "Ricalcolare le categorie individuali dal file LT4? Le fasi 3–5 verranno eliminate e dovranno essere ricostruite."
+      proceed_to_teams: "Procedi alla Fase 2 (Squadre)"
     push:
       msg_prepare_batch_ok: 'File batch SQL creato con successo.'
       msg_send_batch_ok: "File batch inviato con successo."
@@ -77,9 +80,13 @@ it:
       crawler_unreachable: 'Crawler server non raggiungibile'
       crawler_connecting: 'In connessione...'
       unsupported_layout_or_incomplete_url: 'Layout non supportato o target URL incompleta!'
+      category_recompute_missing_inputs: 'Impossibile ricalcolare le categorie: la Fase 1 deve contenere stagione e data del meeting.'
+      category_recompute_failed: 'Ricalcolo categorie fallito. Nessun risultato completo è stato applicato.'
     messages:
       updated: 'Aggiornato con successo.'
       phase_rebuilt: "Fase %{phase} ricostruita dall'origine."
+      category_recompute_success: 'Ricalcolo categorie: %{swimmers_processed} nuotatori elaborati, %{swimmer_categories_changed} categorie nuotatore e %{result_categories_changed} categorie risultati modificate; %{skipped_categories} ignorate. Backup: %{backup_path}.'
+      category_recompute_no_backup: 'nessuna modifica'
     relay_enrichment:
       title: 'Arricchimento staffette (Phase 3)'
       description_html: 'Trovate <strong>%{count}</strong> staffette con dati nuotatori incompleti. Unisci i file Phase 3 ausiliari per completare le informazioni mancanti.'

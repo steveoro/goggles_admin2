@@ -38,6 +38,12 @@ def commit_badge(badge_hash)
 end
 ```
 
+### Phase 1 Source Category Recompute
+
+The Phase 1 category action is implemented as a service boundary rather than controller-level JSON mutation. It validates a non-empty LT4 `swimmers` array, computes individual categories with the reviewed Phase 1 date/season, and traverses non-relay result references. `PdfResults::CategoriesCache` stores plain season-scoped snapshots in `Rails.cache`; all in-scope import callers accept an injected cache and reuse the same object when provided.
+
+Progress is emitted through `ImportStatusChannel` with `{ msg, progress, total }` for each swimmer. The source is first written to a temporary sibling, then the current working file is renamed to a never-overwritten `.orig.json`/numbered backup before the temporary file is atomically moved into place. Only after a successful replacement are Phase 3–5 JSON files and source-scoped temporary import rows deleted; Phase 1/2 remain available.
+
 ### 2. Hybrid Storage Strategy
 
 **Problem**: Phase 5 can have 10,000+ results with 50,000+ laps - JSON files would be 10-50 MB.

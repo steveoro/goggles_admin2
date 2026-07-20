@@ -33,8 +33,9 @@ module Import
                 :source_data, :phase1_data, :phase2_data, :phase3_data, :phase4_data,
                 :stats, :data_integrator, :programs
 
-    def initialize(source_path:, phase1_path:, phase2_path:, phase3_path:, phase4_path:)
+    def initialize(source_path:, phase1_path:, phase2_path:, phase3_path:, phase4_path:, categories_cache: nil)
       @source_path = source_path
+      @categories_cache = categories_cache
       @phase1_path = phase1_path
       @phase2_path = phase2_path
       @phase3_path = phase3_path
@@ -97,7 +98,8 @@ module Import
       @data_integrator = Phase5::DataIntegrator.new(
         source_data: @source_data,
         phase3_data: @phase3_data,
-        season: season
+        season: season,
+        categories_cache: @categories_cache
       )
 
       # Normalize LT2 files to LT4 format for unified processing

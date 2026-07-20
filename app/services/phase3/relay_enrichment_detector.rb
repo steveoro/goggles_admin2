@@ -10,12 +10,12 @@ module Phase3
   class RelayEnrichmentDetector # rubocop:disable Metrics/ClassLength
     MAX_LEGS = 8
 
-    def initialize(source_path:, phase3_swimmers: [], season: nil, meeting_date: nil)
+    def initialize(source_path:, phase3_swimmers: [], season: nil, meeting_date: nil, categories_cache: nil)
       @source_path = source_path
       @phase3_swimmers = Array(phase3_swimmers)
       @season = season
       @meeting_date = meeting_date
-      @categories_cache = season ? PdfResults::CategoriesCache.new(season) : nil
+      @categories_cache = season ? (categories_cache || PdfResults::CategoriesCache.cached_for(season)) : nil
       index_phase3_swimmers
     end
 

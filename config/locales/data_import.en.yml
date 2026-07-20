@@ -61,6 +61,9 @@ en:
       msg:
         warning_retry_needed: "RETRY ERROR SECTION FOUND! This result file can still be processed but needs to be re-downloaded to be complete."
       btn_expand_scan_details: "Scan details"
+      category_recompute_button: "Recompute swimmer categories"
+      category_recompute_confirm: "Recompute individual swimmer categories from this LT4 source? Phases 3–5 will be discarded and need to be rebuilt."
+      proceed_to_teams: "Proceed to Step 2 (Teams)"
     push:
       msg_prepare_batch_ok: 'SQL batch file created.'
       msg_send_batch_ok: "SQL batch file successfully sent."
@@ -77,9 +80,13 @@ en:
       crawler_unreachable: 'Crawler server unreachable'
       crawler_connecting: 'connecting...'
       unsupported_layout_or_incomplete_url: 'Unsupported layout type or incomplete target URL: make sure insert the whole page on the URL placeholder.'
+      category_recompute_missing_inputs: 'Unable to recompute categories: Phase 1 must contain a season and meeting date.'
+      category_recompute_failed: 'Category recomputation failed. No complete result was applied.'
     messages:
       updated: 'Updated successfully.'
       phase_rebuilt: 'Phase %{phase} rebuilt from source.'
+      category_recompute_success: 'Category recomputation processed %{swimmers_processed} swimmers: %{swimmer_categories_changed} swimmer categories and %{result_categories_changed} result categories changed; %{skipped_categories} skipped. Backup: %{backup_path}.'
+      category_recompute_no_backup: 'no changes'
     relay_enrichment:
       title: 'Relay swimmer enrichment'
       description_html: 'Detected <strong>%{count}</strong> relays with incomplete swimmer data. Merge auxiliary Phase 3 files to fill in missing attributes.'

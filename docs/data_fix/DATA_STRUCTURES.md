@@ -76,6 +76,12 @@ $ bin/json_tree_viewer.py crawler/data/results.new/242/2025-06-24-Campionati_Ita
 
 ---
 
+#### Category Recompute Source Rules
+
+The Phase 1 recomputation action requires the LT4 root `swimmers` value to be a non-empty array of swimmer hashes. It recalculates each individual `category` from `year_of_birth`, gender, reviewed Phase 1 `header_date`, and season, then updates uniquely matched non-relay `events[].results[].category` values. Relay/aggregate categories and ambiguous or incomplete matches are left unchanged.
+
+Before writing changes, the current working source is preserved as `<basename>.orig.json`; subsequent runs use `<basename>.orig-2.json`, `<basename>.orig-3.json`, and so on without overwriting earlier backups. Successful rewrites remove only Phase 3–5 files and source-scoped `data_import_*` rows.
+
 #### Relay Result Structure
 
 Same hierarchical structure as LT4 individual results, with the only major difference being that the swimmer key may not have the leading gender when only relay results are crawled (i.e., the gender prefix field is omitted from the swimmer key).

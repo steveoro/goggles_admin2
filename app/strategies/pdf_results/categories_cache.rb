@@ -3,12 +3,23 @@
 module PdfResults
   # = PdfResults::CategoriesCache
   #
-  #   - version:  7-0.7.25
+  #   - version:  7-0.9.20
   #   - author:   Steve A.
   #
   # Cache helper class for CategoryType rows of a specified season.
   #
   class CategoriesCache
+    CACHE_VERSION = 1
+    CategoryTypeSnapshot = Struct.new(:id, :code, :age_begin, :age_end, :relay, :undivided, keyword_init: true) do
+      def relay?
+        relay == true
+      end
+
+      def undivided?
+        undivided == true
+      end
+    end
+
     attr_reader :season
 
     # Creates a new instance.
@@ -16,13 +27,49 @@ module PdfResults
     # == Params
     # - <tt>season</tt> => GogglesDb::Season instance for which the CategoryType data must be cached.
     #
-    def initialize(season)
+    def initialize(season, category_types: nil)
       raise 'Invalid season specified!' unless season.is_a?(GogglesDb::Season)
 
       @season = season
       # Collect the list of associated CategoryTypes to avoid hitting the DB for category code checking:
       @categories_cache = {}
-      @season.category_types.each { |cat| @categories_cache[cat.code] = cat }
+      category_types ||= @season.category_types
+      Array(category_types).each do |cat|
+        category = cat.is_a?(Hash) ? self.class.snapshot_from_hash(cat) : cat
+        @categories_cache[category.code] = category
+      end
+    end
+
+    def self.cached_for(season)
+      payload = Rails.cache.fetch(cache_key(season)) do
+        Array(season.category_types).map do |category|
+          {
+            'id' => category.id,
+            'code' => category.code,
+            'age_begin' => category.age_begin,
+            'age_end' => category.age_end,
+            'relay' => category.relay?,
+            'undivided' => category.undivided?
+          }
+        end
+      end
+
+      new(season, category_types: payload)
+    end
+
+    def self.cache_key(season)
+      ['pdf-results-categories', CACHE_VERSION, season.id]
+    end
+
+    def self.snapshot_from_hash(category)
+      CategoryTypeSnapshot.new(
+        id: category['id'] || category[:id],
+        code: category['code'] || category[:code],
+        age_begin: (category['age_begin'] || category[:age_begin]).to_i,
+        age_end: (category['age_end'] || category[:age_end]).to_i,
+        relay: category['relay'].nil? ? category[:relay] == true : category['relay'] == true,
+        undivided: category['undivided'].nil? ? category[:undivided] == true : category['undivided'] == true
+      )
     end
     #-- -----------------------------------------------------------------------
     #++

@@ -38,13 +38,13 @@ module Import
     # - <tt>:toggle_debug</tt> => when true, additional debug output will be generated (default: +false+)
     #                             set it to 2 to output the DB search commands output to STDOUT
     #
-    def initialize(season_id:, data_hash:, toggle_debug: false)
+    def initialize(season_id:, data_hash:, toggle_debug: false, categories_cache: nil)
       raise(ArgumentError, 'Invalid season_id') unless GogglesDb::Season.exists?(season_id)
       raise(ArgumentError, 'Invalid or unknown data_hash type') unless data_hash.is_a?(Hash) && data_hash.key?('layoutType')
 
       @season = GogglesDb::Season.find(season_id)
       # Collect the list of associated CategoryTypes to avoid hitting the DB on each section:
-      @categories_cache = PdfResults::CategoriesCache.new(@season)
+      @categories_cache = categories_cache || PdfResults::CategoriesCache.cached_for(@season)
       @data = data_hash || {}
       @toggle_debug = toggle_debug
       @retry_needed = @data['sections']&.any? { |sect| sect['retry'].present? }

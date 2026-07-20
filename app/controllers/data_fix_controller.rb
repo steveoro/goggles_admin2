@@ -75,6 +75,51 @@ class DataFixController < ApplicationController
   end
   # ---------------------------------------------------------------------------
 
+  def recompute_source_categories
+    file_path = params[:file_path]
+    if file_path.blank?
+      flash[:error] = I18n.t('data_import.errors.invalid_request')
+      redirect_to(pull_index_path) && return
+    end
+
+    source_path = resolve_working_source_path(file_path)
+    phase1_path = default_phase_path_for(source_path, 1)
+    phase1_data = PhaseFileManager.new(phase1_path).data
+    season_id = phase1_data['season_id'] || detect_season_from_pathname(source_path)&.id
+    season = GogglesDb::Season.find_by(id: season_id)
+    meeting_date = phase1_data['header_date'].presence || source_meeting_date(source_path)
+
+    unless season && meeting_date.present?
+      flash[:error] = I18n.t('data_import.errors.category_recompute_missing_inputs')
+      redirect_to(review_sessions_path(file_path: source_path, phase_v2: 1)) && return
+    end
+
+    cache = PdfResults::CategoriesCache.cached_for(season)
+    result = DataFix::CategoryRecomputer.new(
+      source_path: source_path,
+      season: season,
+      meeting_date: meeting_date,
+      categories_cache: cache,
+      progress: ->(message, current, total) { broadcast_progress(message, current, total) }
+    ).call
+
+    invalidated = result[:backup_path].present? ? invalidate_category_dependent_artifacts(source_path) : []
+    result[:invalidated_artifacts] = invalidated
+    flash[:notice] = {
+      body: category_recompute_summary(result),
+      sticky: true
+    }
+    redirect_to(review_sessions_path(file_path: source_path, phase_v2: 1))
+  rescue DataFix::CategoryRecomputer::InvalidSource => e
+    flash[:error] = e.message
+    redirect_to(review_sessions_path(file_path: source_path || file_path, phase_v2: 1))
+  rescue StandardError => e
+    Rails.logger.error("[DataFixController] category recomputation failed: #{e.class}: #{e.message}")
+    flash[:error] = I18n.t('data_import.errors.category_recompute_failed')
+    redirect_to(review_sessions_path(file_path: source_path || file_path, phase_v2: 1))
+  end
+  # ---------------------------------------------------------------------------
+
   def review_teams
     redirect_to(review_teams_legacy_path(request.query_parameters)) && return if params[:phase2_v2].blank?
 
@@ -198,12 +243,13 @@ class DataFixController < ApplicationController
     source_path = resolve_working_source_path(@file_path)
     @file_path = source_path
     season = detect_season_from_pathname(source_path)
+    categories_cache = PdfResults::CategoriesCache.cached_for(season)
     lt_format = detect_layout_type(source_path)
     phase_path = default_phase_path_for(source_path, 3)
     if params[:rescan].present? || !File.exist?(phase_path)
       phase1_path = default_phase_path_for(source_path, 1)
       phase2_path = default_phase_path_for(source_path, 2)
-      Import::Solvers::SwimmerSolver.new(season:).build!(
+      Import::Solvers::SwimmerSolver.new(season:, categories_cache:).build!(
         source_path: source_path,
         lt_format: lt_format,
         phase1_path: phase1_path,
@@ -222,7 +268,7 @@ class DataFixController < ApplicationController
     if @phase3_data['swimmers'].nil?
       phase1_path = default_phase_path_for(source_path, 1)
       phase2_path = default_phase_path_for(source_path, 2)
-      Import::Solvers::SwimmerSolver.new(season:).build!(
+      Import::Solvers::SwimmerSolver.new(season:, categories_cache:).build!(
         source_path: source_path,
         lt_format: lt_format,
         phase1_path: phase1_path,
@@ -246,7 +292,8 @@ class DataFixController < ApplicationController
       source_path: source_path,
       phase3_swimmers: @phase3_data.fetch('swimmers', []),
       season: season,
-      meeting_date: meeting_date
+      meeting_date: meeting_date,
+      categories_cache:
     )
     @show_new_relay_swimmers = params[:show_new_relay_swimmers].present?
     @relay_enrichment_summary = filter_relay_enrichment_summary(detector.detect, @show_new_relay_swimmers)
@@ -3766,6 +3813,41 @@ class DataFixController < ApplicationController
     return false unless swimmer # If swimmer not found in lookup, skip (data loading issue)
 
     swimmer.gender_type_id.nil? || swimmer.year_of_birth.nil?
+  end
+
+  def source_meeting_date(source_path)
+    source_data = JSON.parse(File.read(source_path))
+    raw_date = source_data['dates'].to_s.split(',').first.presence || source_data['meeting_date']
+    Date.parse(raw_date.to_s).iso8601 if raw_date.present?
+  rescue StandardError
+    nil
+  end
+
+  def invalidate_category_dependent_artifacts(source_path)
+    phase_paths = [3, 4, 5].map { |phase| default_phase_path_for(source_path, phase) }
+    phase_paths.each { |path| FileUtils.rm_f(path) }
+
+    tables = [
+      GogglesDb::DataImportMeetingIndividualResult,
+      GogglesDb::DataImportLap,
+      GogglesDb::DataImportMeetingRelayResult,
+      GogglesDb::DataImportMeetingRelaySwimmer,
+      GogglesDb::DataImportRelayLap
+    ]
+    deleted_rows = tables.sum { |table| table.where(phase_file_path: source_path).delete_all }
+
+    { phase_files: phase_paths, deleted_temp_rows: deleted_rows }
+  end
+
+  def category_recompute_summary(result)
+    I18n.t(
+      'data_import.messages.category_recompute_success',
+      swimmers_processed: result[:swimmers_processed],
+      swimmer_categories_changed: result[:swimmer_categories_changed],
+      result_categories_changed: result[:result_categories_changed],
+      skipped_categories: result[:skipped_categories].size,
+      backup_path: result[:backup_path] || I18n.t('data_import.messages.category_recompute_no_backup')
+    )
   end
 
   # Broadcast progress updates via ActionCable for real-time UI feedback

@@ -43,6 +43,7 @@ Rails.application.routes.draw do
 
   get 'data_fix/commit_phase6_report'
   get 'data_fix/review_sessions', to: 'data_fix#review_sessions', as: 'review_sessions'
+  post 'data_fix/recompute_source_categories', to: 'data_fix#recompute_source_categories', as: 'recompute_source_categories'
   get 'data_fix/review_teams', to: 'data_fix#review_teams', as: 'review_teams'
   get 'data_fix/review_swimmers', to: 'data_fix#review_swimmers', as: 'review_swimmers'
   get 'data_fix/review_events', to: 'data_fix#review_events', as: 'review_events'
