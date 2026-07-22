@@ -27,7 +27,8 @@ module DataFix
 
       swimmer_index = {
         exact: {},
-        normalized: Hash.new { |hash, key| hash[key] = [] }
+        normalized: Hash.new { |hash, key| hash[key] = [] },
+        name_only: Hash.new { |hash, key| hash[key] = [] }
       }
       stats = {
         swimmers_processed: 0,
@@ -121,15 +122,21 @@ module DataFix
       index[:exact][identity[:key]] = swimmer if identity[:key].present?
       index[:normalized][identity[:normalized_key]] ||= []
       index[:normalized][identity[:normalized_key]] << swimmer if identity[:normalized_key].present?
+      name_key = normalized_identity(identity[:last_name], identity[:first_name], nil)
+      index[:name_only][name_key] << swimmer if name_key.present?
     end
 
-    def walk_results(node, swimmer_index, stats, relay_context: false) # rubocop:disable Metrics/CyclomaticComplexity
+    def walk_results(node, swimmer_index, stats, relay_context: false) # rubocop:disable Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
       case node
       when Array
         node.each { |child| walk_results(child, swimmer_index, stats, relay_context:) }
       when Hash
         current_relay = relay_context || node['relay'] == true
-        update_result_category(node, swimmer_index, stats) if node['category'].present? && !current_relay && node['swimmer'].present?
+        if node['category'].present? && !current_relay && node['swimmer'].present?
+          update_result_category(node, swimmer_index, stats)
+        elsif node['category'].present? && current_relay && node['laps'].present?
+          update_relay_result_category(node, swimmer_index, stats)
+        end
         node.each_value { |child| walk_results(child, swimmer_index, stats, relay_context: current_relay) }
       end
     end
@@ -156,18 +163,83 @@ module DataFix
       end
     end
 
+    def update_relay_result_category(result, swimmer_index, stats) # rubocop:disable Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity,Metrics/AbcSize,Metrics/MethodLength
+      laps = result['laps'] || []
+      swimmer_keys = laps.filter_map { |lap| lap['swimmer'].presence }
+      if swimmer_keys.empty?
+        stats[:skipped_categories] << { scope: 'relay_result', reason: 'no_swimmer_keys_in_laps' }
+        return
+      end
+
+      # Fallback: resolve missing YOBs from the swimmer index
+      resolved_keys = swimmer_keys.map do |key|
+        yob = Import::CategoryComputer.extract_yob_from_key(key)
+        next key if yob&.positive?
+
+        indexed = find_swimmer(key, swimmer_index)
+        next unless indexed
+
+        identity = swimmer_identity(indexed)
+        next if identity[:year_of_birth].blank? || !identity[:year_of_birth].positive?
+
+        # Reconstruct a key with YOB from the indexed swimmer, preserving gender prefix
+        prefix = key.to_s.split('|').first if key.to_s.split('|').first.to_s.match?(/\A[MF]\z/i)
+        parts = [prefix, identity[:last_name], identity[:first_name], identity[:year_of_birth]].compact
+        parts.join('|')
+      end
+
+      if resolved_keys.any?(&:nil?)
+        stats[:skipped_categories] << { scope: 'relay_result', reason: 'unresolved_swimmer_yob', swimmers: swimmer_keys }
+        return
+      end
+
+      _category_id, category_code = Import::CategoryComputer.compute_relay_category(
+        swimmer_keys: resolved_keys,
+        meeting_date: meeting_date,
+        season: season,
+        categories_cache: categories_cache
+      )
+      if category_code.blank?
+        stats[:skipped_categories] << { scope: 'relay_result', reason: 'missing_ages_or_meeting_date', swimmers: swimmer_keys }
+        return
+      end
+
+      if result['category'].to_s == category_code
+        stats[:unchanged_categories] += 1
+      else
+        result['category'] = category_code
+        stats[:result_categories_changed] += 1
+      end
+    end
+
     def find_swimmer(key, index)
       return index[:exact][key] if index[:exact].key?(key)
 
       normalized = normalized_identity_from_key(key)
       candidates = index[:normalized][normalized]
-      candidates&.one? ? candidates.first : nil
+      return candidates.first if candidates&.one?
+
+      # Fallback: try name-only match (without YOB) for keys with missing YOB
+      name_only = normalized_name_from_key(key)
+      name_candidates = index[:name_only][name_only]
+      name_candidates&.one? ? name_candidates.first : nil
+    end
+
+    def key_offset(key)
+      parts = key.to_s.split('|')
+      parts.first.to_s.match?(/\A[MF]\z/i) || parts.first.to_s.empty? ? 1 : 0
     end
 
     def normalized_identity_from_key(key)
       parts = key.to_s.split('|')
-      offset = parts.first.to_s.match?(/\A[MF]\z/i) ? 1 : 0
+      offset = key_offset(key)
       normalized_identity(parts[offset], parts[offset + 1], parts[offset + 2])
+    end
+
+    def normalized_name_from_key(key)
+      parts = key.to_s.split('|')
+      offset = key_offset(key)
+      normalized_identity(parts[offset], parts[offset + 1], nil)
     end
 
     def normalized_identity(last_name, first_name, year_of_birth)

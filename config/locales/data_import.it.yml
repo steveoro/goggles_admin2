@@ -61,8 +61,8 @@ it:
       msg:
         warning_retry_needed: "ERRORE 'RETRY' TROVATO! Questo file risultati può essere elaborato lo stesso ma deve essere riscaricato per essere completo."
       btn_expand_scan_details: "Dettagli scansione"
-      category_recompute_button: "Ricalcola categorie nuotatori"
-      category_recompute_confirm: "Ricalcolare le categorie individuali dal file LT4? Le fasi 3–5 verranno eliminate e dovranno essere ricostruite."
+      category_recompute_button: "Ricalcola categorie"
+      category_recompute_confirm: "Ricalcolare le categorie individuali e staffette dal file LT4? Le fasi 3–5 verranno eliminate e dovranno essere ricostruite."
       proceed_to_teams: "Procedi alla Fase 2 (Squadre)"
     push:
       msg_prepare_batch_ok: 'File batch SQL creato con successo.'

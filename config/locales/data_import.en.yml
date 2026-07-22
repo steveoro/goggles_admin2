@@ -61,8 +61,8 @@ en:
       msg:
         warning_retry_needed: "RETRY ERROR SECTION FOUND! This result file can still be processed but needs to be re-downloaded to be complete."
       btn_expand_scan_details: "Scan details"
-      category_recompute_button: "Recompute swimmer categories"
-      category_recompute_confirm: "Recompute individual swimmer categories from this LT4 source? Phases 3–5 will be discarded and need to be rebuilt."
+      category_recompute_button: "Recompute categories"
+      category_recompute_confirm: "Recompute individual and relay categories from this LT4 source? Phases 3–5 will be discarded and need to be rebuilt."
       proceed_to_teams: "Proceed to Step 2 (Teams)"
     push:
       msg_prepare_batch_ok: 'SQL batch file created.'

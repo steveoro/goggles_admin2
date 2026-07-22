@@ -17,9 +17,9 @@ RSpec.describe DataFix::CategoryRecomputer do
     File.write(source_path, JSON.pretty_generate(payload))
   end
 
-  it 'recomputes swimmer and individual result categories and preserves a numbered backup' do
+  it 'recomputes swimmer, individual and relay result categories and preserves a numbered backup' do
     write_source(recompute_payload)
-    allow(Import::CategoryComputer).to receive(:compute_category).and_return([70, 'M70'])
+    allow(Import::CategoryComputer).to receive_messages(compute_category: [70, 'M70'], compute_relay_category: [1772, '80-99'])
 
     result = described_class.new(
       source_path: source_path,
@@ -34,10 +34,10 @@ RSpec.describe DataFix::CategoryRecomputer do
 
     expect(updated['swimmers'].first['category']).to eq('M70')
     expect(updated['events'].first['results'].first['category']).to eq('M70')
-    expect(updated['events'].last['results'].first['category']).to eq('100-119')
+    expect(updated['events'].last['results'].first['category']).to eq('80-99')
     expect(backup['swimmers'].first['category']).to eq('M65')
     expect(result[:swimmer_categories_changed]).to eq(1)
-    expect(result[:result_categories_changed]).to eq(1)
+    expect(result[:result_categories_changed]).to eq(2) # individual + relay
     expect(progress).to eq([['Recomputing swimmer categories', 1, 1]])
   end
 
@@ -56,7 +56,14 @@ RSpec.describe DataFix::CategoryRecomputer do
       ],
       'events' => [
         { 'relay' => false, 'results' => [{ 'swimmer' => 'F|DOE|JANE|1956|TEAM', 'category' => 'M65' }] },
-        { 'relay' => true, 'results' => [{ 'swimmer' => 'F|DOE|JANE|1956|TEAM', 'category' => '100-119' }] }
+        { 'relay' => true, 'results' => [{
+          'relay' => true, 'category' => 'M60', 'laps' => [
+            { 'distance' => '50m', 'swimmer' => 'F|DOE|JANE|1956|TEAM' },
+            { 'distance' => '100m', 'swimmer' => 'M|ROSSI|MARIO|1950|TEAM' },
+            { 'distance' => '150m', 'swimmer' => 'F|SMITH|ANN|1955|TEAM' },
+            { 'distance' => '200m', 'swimmer' => 'M|BROWN|BOB|1960|TEAM' }
+          ]
+        }] }
       ]
     }
   end
@@ -81,6 +88,85 @@ RSpec.describe DataFix::CategoryRecomputer do
 
     expect(JSON.parse(File.read(source_path)).dig('swimmers', 'F|DOE|JANE|1956|TEAM', 'category')).to eq('M70')
     expect(result[:swimmers_processed]).to eq(1)
+  end
+
+  it 'recomputes relay category using swimmer index fallback when lap key lacks YOB' do
+    write_source(
+      'layoutType' => 4,
+      'swimmers' => [
+        {
+          'key' => '|SALA|LUCA|2003|TEAM',
+          'last_name' => 'SALA',
+          'first_name' => 'LUCA',
+          'year_of_birth' => 2003,
+          'gender_type_code' => 'M',
+          'category' => 'M25'
+        }
+      ],
+      'events' => [
+        { 'relay' => true, 'results' => [{
+          'relay' => true, 'category' => 'M60', 'laps' => [
+            { 'distance' => '50m', 'swimmer' => 'F|MARGIOTTA|ALICE|2004|TEAM' },
+            { 'distance' => '100m', 'swimmer' => '|SALA|LUCA||TEAM' },
+            { 'distance' => '150m', 'swimmer' => 'M|SEMPRINI|TOMMASO|2003|TEAM' },
+            { 'distance' => '200m', 'swimmer' => 'F|CAMPORINI|ELISA|2004|TEAM' }
+          ]
+        }] }
+      ]
+    )
+    allow(Import::CategoryComputer).to receive_messages(compute_category: [70, 'M70'], compute_relay_category: [1772, '80-99'])
+
+    result = described_class.new(
+      source_path: source_path,
+      season: season,
+      meeting_date: '2026-06-29',
+      categories_cache: categories_cache
+    ).call
+
+    updated = JSON.parse(File.read(source_path))
+    expect(updated['events'].first['results'].first['category']).to eq('80-99')
+    expect(result[:result_categories_changed]).to eq(1)
+    expect(result[:skipped_categories]).to be_empty
+  end
+
+  it 'skips relay result recomputation when YOB cannot be resolved from lap key or swimmer index' do
+    write_source(
+      'layoutType' => 4,
+      'swimmers' => [
+        {
+          'key' => 'F|DOE|JANE|1956|TEAM',
+          'last_name' => 'DOE',
+          'first_name' => 'JANE',
+          'year_of_birth' => 1956,
+          'gender_type_code' => 'F',
+          'category' => 'M65'
+        }
+      ],
+      'events' => [
+        { 'relay' => true, 'results' => [{
+          'relay' => true, 'category' => 'M60', 'laps' => [
+            { 'distance' => '50m', 'swimmer' => 'F|UNKNOWN|PERSON||TEAM' },
+            { 'distance' => '100m', 'swimmer' => '|MISSING|YOB||TEAM' },
+            { 'distance' => '150m', 'swimmer' => 'M|SEMPRINI|TOMMASO|2003|TEAM' },
+            { 'distance' => '200m', 'swimmer' => 'F|CAMPORINI|ELISA|2004|TEAM' }
+          ]
+        }] }
+      ]
+    )
+    allow(Import::CategoryComputer).to receive(:compute_category).and_return([70, 'M70'])
+
+    result = described_class.new(
+      source_path: source_path,
+      season: season,
+      meeting_date: '2026-06-29',
+      categories_cache: categories_cache
+    ).call
+
+    updated = JSON.parse(File.read(source_path))
+    expect(updated['events'].first['results'].first['category']).to eq('M60')
+    expect(result[:result_categories_changed]).to eq(0)
+    expect(result[:skipped_categories].size).to eq(1)
+    expect(result[:skipped_categories].first[:reason]).to eq('unresolved_swimmer_yob')
   end
 
   it 'rejects a missing or empty swimmers array before creating a backup' do
