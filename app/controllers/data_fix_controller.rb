@@ -728,7 +728,7 @@ class DataFixController < ApplicationController
         team_key = badge['team_key']
         # Index by full key
         hash[swimmer_key] = team_key
-        # Also index by partial key (|LAST|FIRST|YOB or LAST|FIRST|YOB)
+        # Also index by partial key (gender stripped, team preserved)
         partial_key = normalize_swimmer_key_for_lookup(swimmer_key)
         next unless partial_key
 
@@ -3304,22 +3304,38 @@ class DataFixController < ApplicationController
     }
   end
 
-  # Normalize swimmer key to partial format for matching
-  # Input: "M|LIGABUE|Marco|1971" or "LIGABUE|Marco|1971"
-  # Output: "|LIGABUE|Marco|1971"
+  # Normalize swimmer key to partial format for matching, preserving the team token.
+  # Team is an immutable part of the swimmer key — it must never be stripped during
+  # normalization, otherwise same-name swimmers on different teams cross-match.
+  # Input:  "M|LIGABUE|Marco|1971|Asd Caserta Nuoto" or "|LIGABUE|Marco|1971|Swimprove ssd"
+  # Output: "|LIGABUE|Marco|1971|Asd Caserta Nuoto" (gender stripped, team preserved)
   def normalize_swimmer_key_for_lookup(key)
     return nil if key.blank?
 
     parts = key.to_s.split('|')
     return nil if parts.size < 3
 
-    if parts[0].match?(/\A[MF]?\z/i)
-      # Format: G|LAST|FIRST|YOB or |LAST|FIRST|YOB
-      "|#{parts[1]}|#{parts[2]}|#{parts[3]}"
-    else
-      # Format: LAST|FIRST|YOB (no gender prefix)
-      "|#{parts[0]}|#{parts[1]}|#{parts[2]}"
-    end
+    offset = swimmer_key_offset(parts)
+    last_name = parts[offset]
+    first_name = parts[offset + 1]
+    year_of_birth = parts[offset + 2]
+    team_name = parts[(offset + 3)..]&.join('|')
+    return nil if last_name.blank? || first_name.blank?
+
+    normalized = "|#{last_name}|#{first_name}|#{year_of_birth}"
+    team_name.present? ? "#{normalized}|#{team_name}" : normalized
+  end
+
+  # Determine the offset into split key parts based on the first element:
+  # - Single-char gender code (M/F) → offset 1
+  # - Empty string (partial key starting with '|') → offset 1
+  # - Otherwise (no prefix) → offset 0
+  def swimmer_key_offset(parts)
+    first = parts[0].to_s
+    return 1 if first.match?(/\A[MF]\z/i)
+    return 1 if first.blank?
+
+    0
   end
 
   def swimmer_key_match?(candidate_key, key_a, key_b)
@@ -3658,7 +3674,7 @@ class DataFixController < ApplicationController
       swimmers.each do |s|
         # Index by full key
         swimmers_by_key[s['key']] = s
-        # Also index by partial key (without leading pipe) for flexible lookup
+        # Also index by partial key (gender stripped, team preserved) for flexible lookup
         partial_key = normalize_swimmer_key_for_lookup(s['key'])
         next unless partial_key
 

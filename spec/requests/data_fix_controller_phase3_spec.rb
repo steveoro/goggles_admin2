@@ -590,6 +590,50 @@ RSpec.describe DataFixController do
         expect(mrs.badge_id).to eq(db_badge.id)
         expect(mrs.swimmer_key).to eq('M|DOE|JOHN|1985')
       end
+
+      it 'does not cross-match badges when two swimmers share name+YOB on different teams' do
+        team_a = FactoryBot.create(:team, editable_name: 'Asd Caserta Nuoto')
+        team_b = FactoryBot.create(:team, editable_name: 'Swimprove ssd')
+        swimmer_a = FactoryBot.create(:swimmer)
+        swimmer_b = FactoryBot.create(:swimmer)
+        badge_a = FactoryBot.create(:badge, season: season, swimmer: swimmer_a, team: team_a)
+
+        pfm = PhaseFileManager.new(phase3_file)
+        data = pfm.data
+        data['swimmers'] = [
+          { 'key' => "M|ROSSI|Marco|1998|#{team_a.editable_name}", 'last_name' => 'Rossi', 'first_name' => 'Marco',
+            'year_of_birth' => 1998, 'gender_type_code' => 'M', 'complete_name' => 'Rossi Marco',
+            'swimmer_id' => swimmer_a.id, 'fuzzy_matches' => [] },
+          { 'key' => "|ROSSI|Marco|1998|#{team_b.editable_name}", 'last_name' => 'Rossi', 'first_name' => 'Marco',
+            'year_of_birth' => 1998, 'gender_type_code' => nil, 'complete_name' => 'Rossi Marco',
+            'swimmer_id' => nil, 'fuzzy_matches' => [] }
+        ]
+        data['badges'] = [
+          { 'swimmer_key' => "M|ROSSI|Marco|1998|#{team_a.editable_name}", 'team_key' => team_a.editable_name,
+            'team_id' => team_a.id, 'season_id' => season.id, 'swimmer_id' => swimmer_a.id, 'badge_id' => badge_a.id },
+          { 'swimmer_key' => "|ROSSI|Marco|1998|#{team_b.editable_name}", 'team_key' => team_b.editable_name,
+            'team_id' => team_b.id, 'season_id' => season.id, 'swimmer_id' => nil, 'badge_id' => nil }
+        ]
+        pfm.write!(data: data, meta: pfm.meta)
+
+        patch update_phase3_swimmer_path,
+              params: { file_path: source_file, swimmer_key: "|ROSSI|Marco|1998|#{team_b.editable_name}",
+                        swimmer: { id: swimmer_b.id, complete_name: swimmer_b.complete_name } }
+
+        pfm = PhaseFileManager.new(phase3_file)
+        badges = pfm.data.fetch('badges')
+        badge_a_row = badges.find { |b| b['team_key'] == team_a.editable_name }
+        badge_b_row = badges.find { |b| b['team_key'] == team_b.editable_name }
+
+        # Badge A (team_a) must be untouched — no cross-team overwrite
+        expect(badge_a_row['swimmer_id']).to eq(swimmer_a.id)
+        expect(badge_a_row['swimmer_key']).to eq("M|ROSSI|Marco|1998|#{team_a.editable_name}")
+        expect(badge_a_row['badge_id']).to eq(badge_a.id)
+
+        # Badge B (team_b) should be updated with the new swimmer_id
+        expect(badge_b_row['swimmer_id']).to eq(swimmer_b.id)
+        expect(badge_b_row['swimmer_key']).to eq("|ROSSI|Marco|1998|#{team_b.editable_name}")
+      end
     end
 
     describe 'POST /data_fix/add_swimmer' do

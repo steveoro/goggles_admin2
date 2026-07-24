@@ -108,6 +108,7 @@ module Phase3
 
         if genders_found.size == 1
           swimmer['gender_type_code'] = genders_found.first
+          swimmer[SWIMMER_KEY] = rebuild_key_with_gender(swimmer[SWIMMER_KEY], genders_found.first)
           @stats[:swimmers_updated] += 1
         elsif genders_found.size > 1
           @stats[:partial_matches_ambiguous] << {
@@ -165,6 +166,7 @@ module Phase3
             if unique_genders.size == 1
               # Single unique gender found - use it
               swimmer['gender_type_code'] = unique_genders.first
+              swimmer[SWIMMER_KEY] = rebuild_key_with_gender(swimmer[SWIMMER_KEY], unique_genders.first)
               @stats[:swimmers_updated] += 1
             elsif unique_genders.size > 1
               # Multiple genders found - ambiguous, record for UI warning
@@ -446,7 +448,25 @@ module Phase3
       "#{gender}|#{last}|#{first}|"
     end
 
-    # Swimmer keys are immutable — gender and YOB are stored as separate fields,
-    # never injected into the key after enrichment.
+    # Rebuild a swimmer key to include the gender prefix.
+    # Input key formats: |LAST|FIRST|YOB or |LAST|FIRST|YOB|TEAM or LAST|FIRST|YOB
+    # Output: G|LAST|FIRST|YOB or G|LAST|FIRST|YOB|TEAM
+    def rebuild_key_with_gender(key, gender_code)
+      return key if key.blank? || gender_code.blank?
+
+      parts = key.to_s.split('|')
+      return key if parts.size < 3
+
+      offset = parts[0].blank? || parts[0].match?(/\A[MF]\z/i) ? 1 : 0
+      return key if parts.size < (offset + 3)
+
+      last = parts[offset]
+      first = parts[offset + 1]
+      yob = parts[offset + 2]
+      team = parts[(offset + 3)..]&.join('|')
+
+      new_key = "#{gender_code}|#{last}|#{first}|#{yob}"
+      team.present? ? "#{new_key}|#{team}" : new_key
+    end
   end
 end

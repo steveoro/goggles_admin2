@@ -98,7 +98,7 @@ module Import
 
         total = reference_swimmers.size
         total_confirmed = confirmed + confirmed_other_seasons
-        confidence = if total >= 2 && total_confirmed == total
+        confidence = if total >= 2 && total_confirmed == total && (confirmed == total || confirmed_other_seasons == total)
                        'high'
                      elsif total_confirmed >= 1
                        'medium'
@@ -122,12 +122,9 @@ module Import
       def load_other_season_badges(swimmer_ids)
         return {} if swimmer_ids.blank?
 
-        recent_season_ids = (GogglesDb::LastSeasonId.pluck(:id) +
-                             GogglesDb::Season.order(begin_date: :desc).limit(5).pluck(:id)).uniq - [@season_id]
-        return {} if recent_season_ids.blank?
-
         GogglesDb::Badge.unscoped
-                        .where(swimmer_id: swimmer_ids, season_id: recent_season_ids)
+                        .where(swimmer_id: swimmer_ids)
+                        .where.not(season_id: @season_id)
                         .includes(:team, :season)
                         .order(id: :desc)
                         .group_by(&:swimmer_id)

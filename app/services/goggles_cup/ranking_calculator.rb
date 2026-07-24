@@ -46,7 +46,7 @@ module GogglesCup
     def row_score_for(row)
       return 1000.0 unless row.old_total_hundredths.present? && row.old_total_hundredths.positive?
 
-      (1000.0 * (row.old_total_hundredths.to_f / row.total_hundredths)).round(2)
+      (1000.0 + (row.old_total_hundredths.to_f / row.total_hundredths)).round(2)
     end
 
     def best_rows_for(scored_rows)

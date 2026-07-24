@@ -434,7 +434,8 @@ module Import
             entry['last_name'] = top_match['last_name']
             entry['first_name'] = top_match['first_name']
 
-            # Key remains immutable — gender is stored as a separate field
+            # Update key to include the discovered gender prefix
+            entry['key'] = rebuild_key_with_gender(entry['key'], entry['gender_type_code'])
 
             # Recompute category now that we have gender
             meeting_date = @phase1_data&.dig('data', 'header_date')
@@ -831,6 +832,27 @@ module Import
         return nil if partial_key.blank?
 
         @built_swimmer_id_by_key&.[](partial_key)
+      end
+
+      # Rebuild a swimmer key to include the gender prefix.
+      # Input key formats: |LAST|FIRST|YOB or |LAST|FIRST|YOB|TEAM or LAST|FIRST|YOB
+      # Output: G|LAST|FIRST|YOB or G|LAST|FIRST|YOB|TEAM
+      def rebuild_key_with_gender(key, gender_code)
+        return key if key.blank? || gender_code.blank?
+
+        parts = key.to_s.split('|')
+        return key if parts.size < 3
+
+        offset = swimmer_key_offset(parts)
+        return key if parts.size < (offset + 3)
+
+        last = parts[offset]
+        first = parts[offset + 1]
+        yob = parts[offset + 2]
+        team = parts[(offset + 3)..]&.join('|')
+
+        new_key = "#{gender_code}|#{last}|#{first}|#{yob}"
+        team.present? ? "#{new_key}|#{team}" : new_key
       end
 
       def register_built_swimmer_entry(swimmer_entry)
