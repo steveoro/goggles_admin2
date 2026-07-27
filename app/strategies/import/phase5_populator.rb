@@ -1033,6 +1033,31 @@ module Import
       mrr&.id
     end
 
+    # Find an existing relay swimmer by its stable parent, swimmer, and order identity.
+    def find_existing_mrs(meeting_relay_result_id, swimmer_id, relay_order)
+      return nil unless meeting_relay_result_id.to_i.positive? && swimmer_id.to_i.positive?
+
+      GogglesDb::MeetingRelaySwimmer
+        .where(
+          meeting_relay_result_id: meeting_relay_result_id,
+          swimmer_id: swimmer_id,
+          relay_order: relay_order
+        )
+        .pick(:id)
+    end
+
+    # Find an existing sub-fractional relay lap by its stable parent and distance identity.
+    def find_existing_relay_lap(meeting_relay_swimmer_id, length_in_meters)
+      return nil unless meeting_relay_swimmer_id.to_i.positive? && length_in_meters.to_i.positive?
+
+      GogglesDb::RelayLap
+        .where(
+          meeting_relay_swimmer_id: meeting_relay_swimmer_id,
+          length_in_meters: length_in_meters
+        )
+        .pick(:id)
+    end
+
     # Create MRR record
     def create_mrr_record(import_key:, result:, timing_hash:, team_id:, team_affiliation_id:,
                           team_key:, meeting_program_id:, meeting_program_key:, meeting_relay_result_id:)
@@ -1071,8 +1096,9 @@ module Import
 
     # Create relay swimmer records for a given MRR
     # Uses lap data to extract swimmer info and timing
-    def create_relay_swimmers(_mrr, result, mrr_import_key, team_key:)
+    def create_relay_swimmers(mrr, result, mrr_import_key, team_key:)
       laps = result['laps'] || []
+      existing_mrr_id = mrr.meeting_relay_result_id
 
       laps.each_with_index do |lap, idx|
         relay_order = idx + 1
@@ -1084,6 +1110,7 @@ module Import
         swimmer_id = swimmer_data[:swimmer_id]
         swimmer_key = swimmer_data[:swimmer_key] # Full Phase 3 key if matched
         badge_id = find_badge_id(swimmer_key: swimmer_key, team_key: team_key)
+        existing_mrs_id = find_existing_mrs(existing_mrr_id, swimmer_id, relay_order)
 
         # Parse lap timing for MRS (each lap is the swimmer's leg timing)
         delta = parse_timing_string(lap['delta'])
@@ -1099,6 +1126,8 @@ module Import
           rs.parent_import_key = mrr_import_key
           rs.phase_file_path = source_path
           # DB foreign keys (may be nil for unmatched entities)
+          rs.meeting_relay_result_id = existing_mrr_id
+          rs.meeting_relay_swimmer_id = existing_mrs_id
           rs.swimmer_id = swimmer_id
           rs.badge_id = badge_id
           # String keys for referencing entities when IDs are nil (Full Phase 3 key if matched)
@@ -1119,7 +1148,7 @@ module Import
     end
 
     # Create relay lap records for a given MRR
-    def create_relay_laps(_mrr, result, mrr_import_key)
+    def create_relay_laps(mrr, result, mrr_import_key)
       laps = result['laps'] || []
       previous_from_start = { minutes: 0, seconds: 0, hundredths: 0 }
 
@@ -1142,10 +1171,22 @@ module Import
         # Reference the relay swimmer for this leg
         relay_swimmer_import_key = "#{mrr_import_key}-swimmer#{relay_order}"
 
+        relay_swimmer = GogglesDb::DataImportMeetingRelaySwimmer.find_by(
+          import_key: relay_swimmer_import_key,
+          phase_file_path: source_path
+        )
+        existing_relay_lap_id = find_existing_relay_lap(
+          relay_swimmer&.meeting_relay_swimmer_id,
+          length
+        )
+
         # Use find_or_create to handle potential duplicates gracefully
         GogglesDb::DataImportRelayLap.find_or_create_by!(import_key: lap_import_key) do |record|
           record.parent_import_key = mrr_import_key
           record.phase_file_path = source_path
+          # DB foreign keys (may be nil for unmatched entities)
+          record.meeting_relay_result_id = mrr.meeting_relay_result_id
+          record.relay_lap_id = existing_relay_lap_id
           # String key for referencing parent relay swimmer
           record.meeting_relay_swimmer_key = relay_swimmer_import_key
           # Lap data

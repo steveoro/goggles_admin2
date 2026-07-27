@@ -567,5 +567,84 @@ RSpec.describe Import::Phase5Populator, type: :strategy do
         expect(mrr.import_key).to match(/[MS]?4X50/i)
       end
     end
+
+    describe 'existing relay child matching' do
+      let(:mrr) { instance_double(GogglesDb::DataImportMeetingRelayResult, meeting_relay_result_id: 321) }
+      let(:result) do
+        {
+          'laps' => [
+            {
+              'distance' => '100m',
+              'delta' => "1'08.84",
+              'swimmer' => 'F|SESENA|Barbara|1971|Coopernuoto'
+            }
+          ]
+        }
+      end
+
+      before(:each) do
+        GogglesDb::DataImportMeetingRelaySwimmer.where(phase_file_path: source_path).delete_all
+        GogglesDb::DataImportRelayLap.where(phase_file_path: source_path).delete_all
+        allow(subject).to receive_messages(
+          find_swimmer_data: {
+            swimmer_id: 98,
+            swimmer_key: 'F|SESENA|Barbara|1971|Coopernuoto'
+          },
+          find_badge_id: 211_318,
+          parse_timing_string: { minutes: 1, seconds: 8, hundredths: 84 },
+          find_existing_mrs: 456,
+          find_existing_relay_lap: 789
+        )
+      end
+
+      it 'matches MRS by parent, swimmer, and relay order' do
+        allow(subject).to receive(:find_existing_mrs).and_call_original
+        relation = instance_double(ActiveRecord::Relation, pick: 456)
+        allow(GogglesDb::MeetingRelaySwimmer).to receive(:where).with(
+          meeting_relay_result_id: 321,
+          swimmer_id: 98,
+          relay_order: 1
+        ).and_return(relation)
+
+        expect(subject.send(:find_existing_mrs, 321, 98, 1)).to eq(456)
+        expect(GogglesDb::MeetingRelaySwimmer).to have_received(:where).with(
+          meeting_relay_result_id: 321,
+          swimmer_id: 98,
+          relay_order: 1
+        )
+      end
+
+      it 'matches RelayLap by MRS and lap distance' do
+        allow(subject).to receive(:find_existing_relay_lap).and_call_original
+        relation = instance_double(ActiveRecord::Relation, pick: 789)
+        allow(GogglesDb::RelayLap).to receive(:where).with(
+          meeting_relay_swimmer_id: 456,
+          length_in_meters: 50
+        ).and_return(relation)
+
+        expect(subject.send(:find_existing_relay_lap, 456, 50)).to eq(789)
+        expect(GogglesDb::RelayLap).to have_received(:where).with(
+          meeting_relay_swimmer_id: 456,
+          length_in_meters: 50
+        )
+      end
+
+      it 'stores the existing MRS ID in the temporary row' do
+        subject.send(:create_relay_swimmers, mrr, result, 'mrr-key', team_key: 'Coopernuoto')
+
+        row = GogglesDb::DataImportMeetingRelaySwimmer.find_by!(import_key: 'mrr-key-swimmer1')
+        expect(row.meeting_relay_result_id).to eq(321)
+        expect(row.meeting_relay_swimmer_id).to eq(456)
+      end
+
+      it 'stores the existing RelayLap ID after the MRS is matched' do
+        subject.send(:create_relay_swimmers, mrr, result, 'mrr-key', team_key: 'Coopernuoto')
+        subject.send(:create_relay_laps, mrr, result, 'mrr-key')
+
+        row = GogglesDb::DataImportRelayLap.find_by!(import_key: 'mrr-key-lap1')
+        expect(row.meeting_relay_result_id).to eq(321)
+        expect(row.relay_lap_id).to eq(789)
+      end
+    end
   end
 end
