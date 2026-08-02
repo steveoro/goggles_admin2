@@ -1,7 +1,7 @@
 .wrapper-body
   .spacer-left
 
-  .main-content{ data: { controller: 'goggles-cup', 'goggles-cup-smart-selection-url-value': smart_selection_goggles_cup_preview_path } }
+  .main-content{ data: { controller: 'goggles-cup', 'goggles-cup-smart-selection-url-value': smart_selection_goggles_cup_preview_path, 'goggles-cup-cup-data-url-value': cup_data_goggles_cup_preview_path } }
     -# Loading overlay shown during ranking computation
     #goggles-cup-overlay.goggles-cup-overlay.d-none{ data: { 'goggles-cup-target': 'overlay' } }
       .spinner-border.text-light{ style: 'width: 3rem; height: 3rem;', role: 'status' }
@@ -37,7 +37,30 @@
                         html: { id: 'goggles-cup-form' },
                         data: { action: 'submit->goggles-cup#compute', 'goggles-cup-target': 'form' }) do |f|
               = hidden_field_tag :team_id, @team.id
+              = hidden_field_tag :goggle_cup_id, @goggle_cup&.id, data: { 'goggles-cup-target': 'goggleCupIdField' }
               .container-fluid
+                -# Cup configuration section
+                .row.mb-3
+                  .col-md-8
+                    %label.form-label{ for: 'goggle_cup_select' }= t('goggles_cup.select_cup')
+                    = select_tag :goggle_cup_select,
+                                 options_for_select([['', '']] + @goggle_cups.map { |c| ["#{c.season_year} — #{c.description}", c.id] }, @goggle_cup&.id),
+                                 id: 'goggle_cup_select',
+                                 class: 'form-select',
+                                 data: { 'goggles-cup-target': 'cupSelect', action: 'change->goggles-cup#selectCup' }
+                .row.mb-3
+                  .col-md-6
+                    .mb-2
+                      = label_tag :description, t('goggles_cup.description_label'), class: 'form-label'
+                      = text_field_tag :description, @goggle_cup&.description, id: 'description', class: 'form-control', required: true, data: { 'goggles-cup-target': 'descriptionField' }
+                  .col-md-2
+                    .mb-2
+                      = label_tag :season_year, t('goggles_cup.season_year_label'), class: 'form-label'
+                      = number_field_tag :season_year, @goggle_cup&.season_year, id: 'season_year', class: 'form-control', required: true, min: 2001, data: { 'goggles-cup-target': 'seasonYearField' }
+                  .col-md-2
+                    .mb-2
+                      = label_tag :end_date, t('goggles_cup.end_date_label'), class: 'form-label'
+                      = date_field_tag :end_date, @goggle_cup&.end_date&.iso8601, id: 'end_date', class: 'form-control', required: true, data: { 'goggles-cup-target': 'endDateField' }
                 .row
                   .col-6
                     = render(ComboBox::AutocompleteTeamComponent.new(default_row: @secondary_team, label: t('goggles_cup.secondary_team'),
@@ -52,11 +75,14 @@
                     %span.slider.round
                   = label_tag(:no_duplicated_events, t('goggles_cup.no_duplicated_events'), class: 'form-check-label mb-0')
                 .row.mb-3
+                  .col-4
+                    = f.submit t('goggles_cup.save_config'), formaction: save_goggles_cup_preview_path, formmethod: :post,
+                                class: 'btn btn-primary btn-lg w-100', data: { 'goggles-cup-target': 'saveButton' }
                   .offset-4.col-4
                     = f.submit t('goggles_cup.compute'), class: 'btn btn-success btn-lg w-100', data: { 'goggles-cup-target': 'computeButton' }
 
               -# Phase 2: Swimmer selection
-              = render partial: 'swimmer_list', locals: { team: @team, swimmers: @swimmers_for_team, selected_swimmer_ids: @selected_swimmer_ids || [] }
+              = render partial: 'swimmer_list', locals: { team: @team, swimmers: @swimmers_for_team, selected_swimmer_ids: @selected_swimmer_ids || [], external_swimmers: @external_swimmers || [] }
 
               -# Phase 3: Ranking display (shown after POST)
               #goggles-cup-ranking-container{ data: { 'goggles-cup-target': 'rankingContainer' } }

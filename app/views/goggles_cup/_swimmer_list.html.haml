@@ -35,3 +35,28 @@
                           %span.slider.round
                       %td= swimmer[:swimmer_name]
                       %td= swimmer[:swimmer_year_of_birth]
+
+        -# External swimmers (not belonging to the primary team but included in the cup config)
+        - if external_swimmers.present?
+          .row.mt-4
+            .col-12
+              %h6.text-muted= t('goggles_cup.external_swimmers')
+              .table-responsive{ data: { 'goggles-cup-target': 'externalSwimmersContainer' } }
+                %table.table.table-sm.table-bordered
+                  %thead
+                    %tr
+                      %th{ width: '50' }= t('goggles_cup.select')
+                      %th= t('goggles_cup.swimmer_name')
+                      %th= t('goggles_cup.year_of_birth')
+                  %tbody
+                    - external_swimmers.each do |swimmer|
+                      - swimmer_id = swimmer[:swimmer_id]
+                      %tr
+                        %td.text-center
+                          %label.switch.round
+                            = check_box_tag('swimmer_ids[]', swimmer_id, selected_swimmer_ids.map(&:to_s).include?(swimmer_id.to_s),
+                                            id: "external_swimmer_#{swimmer_id}",
+                                            data: { 'goggles-cup-target': 'swimmerCheckbox', swimmer_id: swimmer_id })
+                            %span.slider.round
+                        %td= swimmer[:swimmer_name]
+                        %td= swimmer[:swimmer_year_of_birth]

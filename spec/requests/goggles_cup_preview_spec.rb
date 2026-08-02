@@ -143,4 +143,107 @@ RSpec.describe 'GogglesCupPreview' do
       top_rows: [{ row: row, row_score: 1076.92 }]
     }
   end
+
+  describe 'GET /best_results/goggles_cup_preview/cup_data' do
+    include AdminSignInHelpers
+
+    before(:each) do
+      admin_user = prepare_admin_user
+      sign_in_admin(admin_user)
+    end
+
+    it 'returns cup configuration as JSON' do
+      team = FactoryBot.create(:team)
+      cup = FactoryBot.create(:goggle_cup, team: team, description: 'Test Cup', season_year: 2025,
+                                           end_date: Date.new(2026, 7, 31), swimmers_ids: '1,2,3')
+      query = instance_double(GogglesCup::SwimmerOptionsQuery, call: [swimmer_option])
+      allow(GogglesCup::SwimmerOptionsQuery).to receive(:new).with(team_id: team.id.to_s).and_return(query)
+
+      get cup_data_goggles_cup_preview_path, params: { team_id: team.id, goggle_cup_id: cup.id }
+
+      expect(response).to have_http_status(:success)
+      body = response.parsed_body
+      expect(body['goggle_cup_id']).to eq(cup.id)
+      expect(body['description']).to eq('Test Cup')
+      expect(body['season_year']).to eq(2025)
+      expect(body['swimmer_ids']).to eq([1, 2, 3])
+    end
+
+    it 'returns not found for a non-existent cup' do
+      team = FactoryBot.create(:team)
+
+      get cup_data_goggles_cup_preview_path, params: { team_id: team.id, goggle_cup_id: 9999 }
+
+      expect(response).to have_http_status(:not_found)
+    end
+  end
+
+  describe 'POST /best_results/goggles_cup_preview/save' do
+    include AdminSignInHelpers
+
+    before(:each) do
+      admin_user = prepare_admin_user
+      sign_in_admin(admin_user)
+    end
+
+    it 'creates a new GoggleCup and redirects' do
+      team = FactoryBot.create(:team)
+
+      expect do
+        post save_goggles_cup_preview_path, params: {
+          team_id: team.id,
+          description: 'New Cup',
+          season_year: 2025,
+          end_date: '2026-07-31',
+          swimmer_ids: %w[1 2 3]
+        }
+      end.to change(GogglesDb::GoggleCup, :count).by(1)
+
+      expect(response).to redirect_to(goggles_cup_preview_path(team_id: team.id.to_s, goggle_cup_id: GogglesDb::GoggleCup.last.id))
+      cup = GogglesDb::GoggleCup.last
+      expect(cup.description).to eq('New Cup')
+      expect(cup.swimmers_ids).to eq('1,2,3')
+    end
+
+    it 'updates an existing GoggleCup' do
+      team = FactoryBot.create(:team)
+      cup = FactoryBot.create(:goggle_cup, team: team, description: 'Old', season_year: 2025, swimmers_ids: '1')
+
+      post save_goggles_cup_preview_path, params: {
+        team_id: team.id,
+        goggle_cup_id: cup.id,
+        description: 'Updated',
+        season_year: 2025,
+        end_date: '2026-07-31',
+        swimmer_ids: %w[1 2]
+      }
+
+      expect(response).to redirect_to(goggles_cup_preview_path(team_id: team.id.to_s, goggle_cup_id: cup.id))
+      cup.reload
+      expect(cup.description).to eq('Updated')
+      expect(cup.swimmers_ids).to eq('1,2')
+    end
+  end
+
+  describe 'POST /best_results/goggles_cup_preview/compute with goggle_cup_id' do
+    include AdminSignInHelpers
+
+    before(:each) do
+      admin_user = prepare_admin_user
+      sign_in_admin(admin_user)
+    end
+
+    it 'persists ranking_data JSON on the GoggleCup when computing with a cup id' do
+      team = FactoryBot.create(:team)
+      cup = FactoryBot.create(:goggle_cup, team: team, description: 'Test Cup', season_year: 2025, swimmers_ids: '1')
+      allow(GogglesCup::SwimmerOptionsQuery).to receive(:new).and_return(instance_double(GogglesCup::SwimmerOptionsQuery, call: []))
+      allow(GogglesCup::RankingCalculator).to receive(:new).and_return(instance_double(GogglesCup::RankingCalculator, call: [ranking_row]))
+      allow(GogglesCup::RankingDataSerializer).to receive(:new).and_return(instance_double(GogglesCup::RankingDataSerializer, call: { data: { scores: {} } }))
+
+      post compute_goggles_cup_preview_path(format: :json), params: { team_id: team.id, goggle_cup_id: cup.id, swimmer_ids: ['1'] }
+
+      expect(response).to have_http_status(:success)
+      expect(cup.reload.ranking_data).not_to be_nil
+    end
+  end
 end
