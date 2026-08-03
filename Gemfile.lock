@@ -1,8 +1,8 @@
 GIT
   remote: https://github.com/steveoro/goggles_db
-  revision: 7af39874ebab2e30af8d7190024b714533dbc57a
+  revision: 93e3c6cc9da1a0f5c0e7b485fb0cb3b5712257ef
   specs:
-    goggles_db (0.9.26)
+    goggles_db (0.9.27)
       acts-as-taggable-on
       acts_as_votable
       cities
@@ -553,7 +553,7 @@ GEM
     rb-fsevent (0.11.2)
     rb-inotify (0.11.1)
       ffi (~> 1.0)
-    rbs (4.1.1)
+    rbs (4.1.2)
       logger
       prism (>= 1.6.0)
       tsort
