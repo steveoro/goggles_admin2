@@ -1,7 +1,7 @@
 .wrapper-body
   .spacer-left
 
-  .main-content{ data: { controller: 'goggles-cup', 'goggles-cup-smart-selection-url-value': smart_selection_goggles_cup_preview_path, 'goggles-cup-cup-data-url-value': cup_data_goggles_cup_preview_path } }
+  .main-content{ data: { controller: 'goggles-cup', 'goggles-cup-smart-selection-url-value': smart_selection_goggles_cup_preview_path, 'goggles-cup-cup-data-url-value': cup_data_goggles_cup_preview_path, 'goggles-cup-load-ranking-url-value': load_ranking_goggles_cup_preview_path, 'goggles-cup-has-ranking-data-value': @goggle_cup&.ranking_data.present? || false, 'goggles-cup-confirm-overwrite-message': t('goggles_cup.confirm_overwrite') } }
     -# Loading overlay shown during ranking computation
     #goggles-cup-overlay.goggles-cup-overlay.d-none{ data: { 'goggles-cup-target': 'overlay' } }
       .spinner-border.text-light{ style: 'width: 3rem; height: 3rem;', role: 'status' }
@@ -29,8 +29,11 @@
               .row.mb-3
                 .col-md-6.my-2
                   = render(ComboBox::AutocompleteTeamComponent.new(default_row: @team, required: true, jwt: current_user&.jwt))
-                .col-md-2.my-2.d-flex.align-items-end
-                  = f.submit t('goggles_cup.load_team'), class: 'btn btn-primary'
+                .col-md-3.my-2.d-flex.align-items-end
+                  = button_tag(type: 'submit', class: 'btn btn-primary',
+                              data: { toggle: 'tooltip', placement: 'top', title: t('goggles_cup.load_team_tooltip') }) do
+                    %i.fa.fa-download.me-2
+                    = t('goggles_cup.load_team')
 
           - if @team
             = form_with(url: compute_goggles_cup_preview_path, method: :post, local: true,
@@ -39,47 +42,68 @@
               = hidden_field_tag :team_id, @team.id
               = hidden_field_tag :goggle_cup_id, @goggle_cup&.id, data: { 'goggles-cup-target': 'goggleCupIdField' }
               .container-fluid
-                -# Cup configuration section
-                .row.mb-3
-                  .col-md-8
-                    %label.form-label{ for: 'goggle_cup_select' }= t('goggles_cup.select_cup')
-                    = select_tag :goggle_cup_select,
-                                 options_for_select([['', '']] + @goggle_cups.map { |c| ["#{c.season_year} — #{c.description}", c.id] }, @goggle_cup&.id),
-                                 id: 'goggle_cup_select',
-                                 class: 'form-select',
-                                 data: { 'goggles-cup-target': 'cupSelect', action: 'change->goggles-cup#selectCup' }
-                .row.mb-3
-                  .col-md-6
-                    .mb-2
-                      = label_tag :description, t('goggles_cup.description_label'), class: 'form-label'
-                      = text_field_tag :description, @goggle_cup&.description, id: 'description', class: 'form-control', required: true, data: { 'goggles-cup-target': 'descriptionField' }
-                  .col-md-2
-                    .mb-2
-                      = label_tag :season_year, t('goggles_cup.season_year_label'), class: 'form-label'
-                      = number_field_tag :season_year, @goggle_cup&.season_year, id: 'season_year', class: 'form-control', required: true, min: 2001, data: { 'goggles-cup-target': 'seasonYearField' }
-                  .col-md-2
-                    .mb-2
-                      = label_tag :end_date, t('goggles_cup.end_date_label'), class: 'form-label'
-                      = date_field_tag :end_date, @goggle_cup&.end_date&.iso8601, id: 'end_date', class: 'form-control', required: true, data: { 'goggles-cup-target': 'endDateField' }
-                .row
-                  .col-6
-                    = render(ComboBox::AutocompleteTeamComponent.new(default_row: @secondary_team, label: t('goggles_cup.secondary_team'),
-                                                                     required: false, base_name: 'secondary_team', jwt: current_user&.jwt))
-                .container.mb-3
-                  %small.text-muted= t('goggles_cup.secondary_team_explanation')
-                .container.mb-3
-                  %label.switch.round
-                    = check_box_tag(:no_duplicated_events, '1', @no_duplicated_events,
-                                    id: 'no_duplicated_events',
-                                    data: { 'goggles-cup-target': 'noDuplicatedEventsField' })
-                    %span.slider.round
-                  = label_tag(:no_duplicated_events, t('goggles_cup.no_duplicated_events'), class: 'form-check-label mb-0')
+                %section.my-2#cup-selection
+                  -# Cup configuration section
+                  .card
+                    .card-header
+                      .row
+                        .col
+                          %label.form-label{ for: 'goggle_cup_select' }= t('goggles_cup.select_cup')
+                          = select_tag(:goggle_cup_select,
+                                      options_for_select([['--- (New) ---', '']] + @goggle_cups.map { |c| ["#{c.season_year} — #{c.description}", c.id] }, @goggle_cup&.id),
+                                      id: 'goggle_cup_select', class: 'form-control',
+                                      data: { 'goggles-cup-target': 'cupSelect', action: 'change->goggles-cup#selectCup' })
+                        .col-md-3
+                          = label_tag :id, 'ID', class: 'form-label'
+                          = text_field_tag :id, @goggle_cup&.id, id: 'id', class: 'form-control', disabled: true,
+                              data: { 'goggles-cup-target': 'cupIdDisplay' }
+                    .card-body
+                      .row
+                        .col-md-6
+                          .mb-2
+                            = label_tag :description, t('goggles_cup.description_label'), class: 'form-label'
+                            = text_field_tag :description, @goggle_cup&.description, id: 'description', class: 'form-control', required: true, data: { 'goggles-cup-target': 'descriptionField' }
+                        .col-md-3
+                          .mb-2
+                            = label_tag :season_year, t('goggles_cup.season_year_label'), class: 'form-label'
+                            = number_field_tag :season_year, @goggle_cup&.season_year, id: 'season_year', class: 'form-control', required: true, min: 2001, data: { 'goggles-cup-target': 'seasonYearField' }
+                        .col-md-3
+                          .mb-2
+                            = label_tag :end_date, t('goggles_cup.end_date_label'), class: 'form-label'
+                            = date_field_tag :end_date, @goggle_cup&.end_date&.iso8601, id: 'end_date', class: 'form-control', required: true, data: { 'goggles-cup-target': 'endDateField' }
+                      .row
+                        = render(ComboBox::AutocompleteTeamComponent.new(default_row: @secondary_team, label: t('goggles_cup.secondary_team'),
+                                                                        required: false, base_name: 'secondary_team', jwt: current_user&.jwt))
+                      .row-fluid.mb-3
+                        %small.text-muted= t('goggles_cup.secondary_team_explanation')
+
+                      .row-fluid.mb-3
+                        %label.switch.round
+                          = check_box_tag(:no_duplicated_events, '1', @no_duplicated_events,
+                                          id: 'no_duplicated_events',
+                                          data: { 'goggles-cup-target': 'noDuplicatedEventsField' })
+                          %span.slider.round
+                        = label_tag(:no_duplicated_events, t('goggles_cup.no_duplicated_events'), class: 'form-check-label mb-0')
+
+                      -# Save/overwrite current configuration
+                      .d-flex.justify-content-center.align-items-center
+                        .col-auto
+                          = button_tag(type: 'submit', formaction: save_goggles_cup_preview_path, formmethod: :post,
+                                      class: 'btn btn-sm btn-primary btn-lg w-100',
+                                      data: { 'goggles-cup-target': 'saveButton', toggle: 'tooltip', placement: 'top', title: t('goggles_cup.save_config_tooltip') }) do
+                            %i.fa.fa-floppy-o.me-2
+                            = t('goggles_cup.save_config')
                 .row.mb-3
                   .col-4
-                    = f.submit t('goggles_cup.save_config'), formaction: save_goggles_cup_preview_path, formmethod: :post,
-                                class: 'btn btn-primary btn-lg w-100', data: { 'goggles-cup-target': 'saveButton' }
-                  .offset-4.col-4
-                    = f.submit t('goggles_cup.compute'), class: 'btn btn-success btn-lg w-100', data: { 'goggles-cup-target': 'computeButton' }
+                    %button.btn.btn-info.btn-lg.w-100.d-none{ type: 'button',
+                        data: { 'goggles-cup-target': 'loadExistingButton', action: 'click->goggles-cup#loadExisting' } }
+                      %i.fa.fa-download.me-2
+                      = t('goggles_cup.load_existing')
+                  .col-4
+                    = button_tag(type: 'submit', class: 'btn btn-success btn-lg w-100',
+                                data: { 'goggles-cup-target': 'computeButton', toggle: 'tooltip', placement: 'top', title: t('goggles_cup.compute_tooltip') }) do
+                      %i.fa.fa-calculator.me-2
+                      = t('goggles_cup.compute')
 
               -# Phase 2: Swimmer selection
               = render partial: 'swimmer_list', locals: { team: @team, swimmers: @swimmers_for_team, selected_swimmer_ids: @selected_swimmer_ids || [], external_swimmers: @external_swimmers || [] }
@@ -87,6 +111,6 @@
               -# Phase 3: Ranking display (shown after POST)
               #goggles-cup-ranking-container{ data: { 'goggles-cup-target': 'rankingContainer' } }
                 - if @ranking_data.present?
-                  = render partial: 'ranking', locals: { team: @team, ranking_data: @ranking_data, selected_swimmer_ids: @selected_swimmer_ids || [], secondary_team_id: @secondary_team_id, no_duplicated_events: @no_duplicated_events }
+                  = render partial: 'ranking', locals: { team: @team, ranking_data: @ranking_data, selected_swimmer_ids: @selected_swimmer_ids || [], secondary_team_id: @secondary_team_id, no_duplicated_events: @no_duplicated_events, goggle_cup_id: @goggle_cup&.id }
 
   .spacer-left

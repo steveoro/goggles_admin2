@@ -9,7 +9,7 @@ Prawn::Fonts::AFM.hide_m17n_warning = true
 # = GogglesCupController
 class GogglesCupController < ApplicationController
   before_action :authenticate_user!
-  before_action :set_team, only: %i[index smart_selection compute cup_data save]
+  before_action :set_team, only: %i[index smart_selection compute cup_data save load_ranking]
   before_action :set_secondary_team, only: %i[index compute]
   before_action :set_selected_swimmer_ids, only: %i[compute]
   before_action :set_no_duplicated_events, only: %i[compute]
@@ -32,24 +32,9 @@ class GogglesCupController < ApplicationController
     cup = GogglesDb::GoggleCup.find_by(id: params[:goggle_cup_id], team_id: @team_id)
     return render json: { error: 'Not found' }, status: :not_found unless cup
 
-    team_swimmer_ids = swimmer_options_query.call.map { |s| s[:swimmer_id] }
+    team_swimmer_ids = swimmer_options_query.call.pluck(:swimmer_id)
     cup_swimmer_ids = cup.swimmer_ids_array
     external_ids = cup_swimmer_ids - team_swimmer_ids
-    external_swimmers = if external_ids.present?
-                          GogglesDb::Swimmer.where(id: external_ids).pluck(:id, :complete_name, :year_of_birth).map { |r| { swimmer_id: r[0], swimmer_name: r[1], swimmer_year_of_birth: r[2] } }
-                        else
-                          []
-                        end
-
-    no_duplicated = if cup.ranking_data.present?
-                      begin
-                        cup.ranking_data['no_duplicated_events']
-                      rescue StandardError
-                        false
-                      end
-                    else
-                      false
-                    end
 
     render json: {
       goggle_cup_id: cup.id,
@@ -57,8 +42,9 @@ class GogglesCupController < ApplicationController
       season_year: cup.season_year,
       end_date: cup.end_date&.iso8601,
       swimmer_ids: cup_swimmer_ids,
-      no_duplicated_events: no_duplicated,
-      external_swimmers: external_swimmers
+      no_duplicated_events: no_duplicated_from(cup),
+      external_swimmers: external_swimmers_for_ids(external_ids),
+      has_ranking_data: cup.ranking_data.present?
     }
   end
 
@@ -81,13 +67,23 @@ class GogglesCupController < ApplicationController
     redirect_to(goggles_cup_preview_path(team_id: @team_id, goggle_cup_id: cup.id))
   end
 
+  def load_ranking
+    cup = GogglesDb::GoggleCup.find_by(id: params[:goggle_cup_id], team_id: @team_id)
+    return render json: { error: 'Not found' }, status: :not_found if cup&.ranking_data.blank?
+
+    @goggle_cup = cup
+    @ranking_data = GogglesCup::RankingDataDeserializer.new(cup).call
+    instance_vars_from_stored_data(cup)
+    render json: { html: ranking_html }
+  end
+
   def compute
     @swimmers_for_team = swimmers_for_team
     @ranking_data = ranking_data
     @goggle_cups = @team ? GogglesDb::GoggleCup.where(team_id: @team.id).order(:season_year, :description) : []
     @external_swimmers = external_swimmers_for(@goggle_cup)
 
-    persist_ranking_data if @goggle_cup && @ranking_data.present?
+    persist_ranking_data if @goggle_cup && @ranking_data.present? && @selected_swimmer_ids.present?
 
     respond_to do |format|
       format.html { render(:index) }
@@ -134,13 +130,19 @@ class GogglesCupController < ApplicationController
   end
 
   def ranking_data
-    return [] unless @team && @selected_swimmer_ids.present?
+    return [] unless @team
 
-    GogglesCup::RankingCalculator.new(
-      team_id: @team_id,
-      swimmer_ids: @selected_swimmer_ids,
-      no_duplicated_events: @no_duplicated_events
-    ).call
+    if @selected_swimmer_ids.present?
+      GogglesCup::RankingCalculator.new(
+        team_id: @team_id,
+        swimmer_ids: @selected_swimmer_ids,
+        no_duplicated_events: @no_duplicated_events
+      ).call
+    elsif @goggle_cup&.ranking_data.present?
+      GogglesCup::RankingDataDeserializer.new(@goggle_cup).call
+    else
+      []
+    end
   end
 
   def persist_ranking_data
@@ -160,7 +162,7 @@ class GogglesCupController < ApplicationController
   def external_swimmers_for(cup)
     return [] unless cup && cup.swimmers_ids.present?
 
-    team_swimmer_ids = swimmer_options_query.call.map { |s| s[:swimmer_id] }
+    team_swimmer_ids = swimmer_options_query.call.pluck(:swimmer_id)
     cup_ids = cup.swimmer_ids_array
     external_ids = cup_ids - team_swimmer_ids
     return [] if external_ids.blank?
@@ -168,6 +170,33 @@ class GogglesCupController < ApplicationController
     GogglesDb::Swimmer.where(id: external_ids)
                       .pluck(:id, :complete_name, :year_of_birth)
                       .map { |r| { swimmer_id: r[0], swimmer_name: r[1], swimmer_year_of_birth: r[2] } }
+  end
+
+  def external_swimmers_for_ids(external_ids)
+    return [] if external_ids.blank?
+
+    GogglesDb::Swimmer.where(id: external_ids)
+                      .pluck(:id, :complete_name, :year_of_birth)
+                      .map { |r| { swimmer_id: r[0], swimmer_name: r[1], swimmer_year_of_birth: r[2] } }
+  end
+
+  def no_duplicated_from(cup)
+    return false if cup.ranking_data.blank?
+
+    data = cup.ranking_data.is_a?(String) ? JSON.parse(cup.ranking_data) : cup.ranking_data
+    value = data['no_duplicated_events']
+    value.nil? ? false : value
+  rescue StandardError
+    false
+  end
+
+  def instance_vars_from_stored_data(cup)
+    data = cup.ranking_data.is_a?(String) ? JSON.parse(cup.ranking_data) : cup.ranking_data
+    @selected_swimmer_ids = Array(data['swimmer_ids']).map(&:to_s)
+    @no_duplicated_events = ActiveModel::Type::Boolean.new.cast(data['no_duplicated_events'])
+  rescue StandardError
+    @selected_swimmer_ids = []
+    @no_duplicated_events = false
   end
 
   def ranking_html
@@ -179,7 +208,8 @@ class GogglesCupController < ApplicationController
         ranking_data: @ranking_data,
         selected_swimmer_ids: @selected_swimmer_ids,
         secondary_team_id: @secondary_team_id,
-        no_duplicated_events: @no_duplicated_events
+        no_duplicated_events: @no_duplicated_events,
+        goggle_cup_id: @goggle_cup&.id
       }
     )
   end
@@ -187,14 +217,14 @@ class GogglesCupController < ApplicationController
   def send_csv_data
     return redirect_invalid_export unless @team && @ranking_data.present?
 
-    send_data(generate_csv_data, filename: "goggles_cup_#{@team.name.parameterize}.csv", type: 'text/csv', disposition: 'attachment')
+    send_data(generate_csv_data, filename: "#{export_filename}.csv", type: 'text/csv', disposition: 'attachment')
   end
 
   def send_xlsx_data
     return redirect_invalid_export unless @team && @ranking_data.present?
 
     send_data(generate_xlsx_package.to_stream.read,
-              filename: "goggles_cup_#{@team.name.parameterize}.xlsx",
+              filename: "#{export_filename}.xlsx",
               type: Mime[:xlsx], disposition: 'attachment')
   end
 
@@ -202,8 +232,14 @@ class GogglesCupController < ApplicationController
     return redirect_invalid_export unless @team && @ranking_data.present?
 
     send_data(generate_pdf_data,
-              filename: "goggles_cup_#{@team.name.parameterize}.pdf",
+              filename: "#{export_filename}.pdf",
               type: 'application/pdf', disposition: 'attachment')
+  end
+
+  def export_filename
+    season = @goggle_cup&.season_year || params[:season_year] || Date.current.year
+    desc = @goggle_cup&.description || params[:description] || @team.name
+    "goggles_cup-#{season}-#{desc.parameterize}"
   end
 
   def redirect_invalid_export
@@ -245,11 +281,25 @@ class GogglesCupController < ApplicationController
     [index + 1, data[:swimmer_name], data[:swimmer_year_of_birth], format('%.2f', data[:overall_score]), data[:swimmer_id]]
   end
 
-  def generate_pdf_data # rubocop:disable Metrics/AbcSize
+  def generate_pdf_data # rubocop:disable Metrics/AbcSize,Metrics/MethodLength
     Prawn::Document.new(page_layout: :portrait, margin: 25) do |pdf|
       pdf.font_size 10
       pdf.text(t('goggles_cup.ranking_for_team', team: @team.name), size: 16, style: :bold, align: :center)
       pdf.move_down 4
+      if @goggle_cup
+        pdf.text("#{@goggle_cup.season_year} — #{@goggle_cup.description}", size: 12, style: :bold, align: :center)
+        pdf.move_down 2
+      end
+      pdf.text(t('goggles_cup.no_duplicated_events'), size: 8, align: :center)
+      pdf.move_up 10
+      checkbox_x = (pdf.bounds.width / 2) + (pdf.width_of(t('goggles_cup.no_duplicated_events'), size: 8) / 2) + 4
+      checkbox_y = pdf.cursor
+      pdf.stroke_rectangle([checkbox_x, checkbox_y], 8, 8)
+      if @no_duplicated_events
+        pdf.fill_color '000000'
+        pdf.text_box('X', at: [checkbox_x + 1.5, checkbox_y - 1], size: 7)
+      end
+      pdf.move_down 12
       pdf.text("#{t('goggles_cup.computation_details')}, #{t('goggles_cup.formula')}", size: 8, align: :center)
       pdf.move_down 8
 

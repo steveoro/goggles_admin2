@@ -6,15 +6,15 @@
 
         .row.mb-3
           .col-12.text-center
-            = link_to(compute_goggles_cup_preview_path(format: :csv, team_id: team.id, secondary_team_id: secondary_team_id, swimmer_ids: selected_swimmer_ids, no_duplicated_events: no_duplicated_events),
+            = link_to(compute_goggles_cup_preview_path(format: :csv, team_id: team.id, goggle_cup_id: goggle_cup_id, secondary_team_id: secondary_team_id, swimmer_ids: selected_swimmer_ids, no_duplicated_events: no_duplicated_events),
                       class: 'btn btn-outline-secondary mx-2', 'data-turbo': false) do
               %i.fa.fa-file-text-o
               CSV
-            = link_to(compute_goggles_cup_preview_path(format: :xlsx, team_id: team.id, secondary_team_id: secondary_team_id, swimmer_ids: selected_swimmer_ids, no_duplicated_events: no_duplicated_events),
+            = link_to(compute_goggles_cup_preview_path(format: :xlsx, team_id: team.id, goggle_cup_id: goggle_cup_id, secondary_team_id: secondary_team_id, swimmer_ids: selected_swimmer_ids, no_duplicated_events: no_duplicated_events),
                       class: 'btn btn-outline-secondary mx-2', 'data-turbo': false) do
               %i.fa.fa-file-excel-o
               XLSX
-            = link_to(compute_goggles_cup_preview_path(format: :pdf, team_id: team.id, secondary_team_id: secondary_team_id, swimmer_ids: selected_swimmer_ids, no_duplicated_events: no_duplicated_events),
+            = link_to(compute_goggles_cup_preview_path(format: :pdf, team_id: team.id, goggle_cup_id: goggle_cup_id, secondary_team_id: secondary_team_id, swimmer_ids: selected_swimmer_ids, no_duplicated_events: no_duplicated_events),
                       class: 'btn btn-outline-secondary mx-2', 'data-turbo': false) do
               %i.fa.fa-file-pdf-o
               PDF

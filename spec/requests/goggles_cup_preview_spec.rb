@@ -167,12 +167,59 @@ RSpec.describe 'GogglesCupPreview' do
       expect(body['description']).to eq('Test Cup')
       expect(body['season_year']).to eq(2025)
       expect(body['swimmer_ids']).to eq([1, 2, 3])
+      expect(body['has_ranking_data']).to be(false)
     end
 
     it 'returns not found for a non-existent cup' do
       team = FactoryBot.create(:team)
 
       get cup_data_goggles_cup_preview_path, params: { team_id: team.id, goggle_cup_id: 9999 }
+
+      expect(response).to have_http_status(:not_found)
+    end
+  end
+
+  describe 'GET /best_results/goggles_cup_preview/load_ranking' do
+    include AdminSignInHelpers
+
+    before(:each) do
+      admin_user = prepare_admin_user
+      sign_in_admin(admin_user)
+    end
+
+    it 'returns rendered ranking HTML as JSON from stored ranking_data' do
+      team = FactoryBot.create(:team)
+      swimmer = FactoryBot.create(:swimmer, complete_name: 'TEST SWIMMER', year_of_birth: 1980)
+      cup = FactoryBot.create(:goggle_cup, team: team, description: 'Test Cup', season_year: 2025, swimmers_ids: swimmer.id.to_s)
+      cup.update!(ranking_data: {
+        description: 'Test Cup', season_year: 2025, max_points: 1000, team_id: team.id,
+        end_date: '2026-07-31', swimmer_ids: [swimmer.id], no_duplicated_events: false,
+        data: {
+          base_timings: {},
+          scores: {
+            swimmer.id.to_s => [
+              { 'event_type_code' => '50SL', 'pool_type_code' => '25', 'total_hundredths' => 3000,
+                'meeting_date' => '2025-01-15', 'meeting_name' => 'Test Meeting', 'meeting_id' => 42,
+                'meeting_individual_result_id' => 99, 'team_id' => team.id, 'team_name' => 'TEST',
+                'old_total_hundredths' => 3200, 'old_meeting_date' => '2024-01-10',
+                'old_meeting_name' => 'Old Meeting', 'old_meeting_id' => 30,
+                'old_meeting_individual_result_id' => 88, 'row_score' => 1066.67 }
+            ]
+          }
+        }
+      }.to_json)
+
+      get load_ranking_goggles_cup_preview_path, params: { team_id: team.id, goggle_cup_id: cup.id }
+
+      expect(response).to have_http_status(:success)
+      expect(response.parsed_body['html']).to include('TEST SWIMMER')
+    end
+
+    it 'returns not found when cup has no ranking_data' do
+      team = FactoryBot.create(:team)
+      cup = FactoryBot.create(:goggle_cup, team: team, description: 'Empty Cup', season_year: 2025)
+
+      get load_ranking_goggles_cup_preview_path, params: { team_id: team.id, goggle_cup_id: cup.id }
 
       expect(response).to have_http_status(:not_found)
     end

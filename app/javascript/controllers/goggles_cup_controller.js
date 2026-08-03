@@ -2,8 +2,9 @@ import { Controller } from '@hotwired/stimulus'
 
 export default class extends Controller {
   static targets = ['form', 'noDuplicatedEventsField', 'swimmerCheckbox', 'swimmerPanel', 'rankingContainer', 'computeButton', 'overlay',
-                   'cupSelect', 'goggleCupIdField', 'descriptionField', 'seasonYearField', 'endDateField', 'externalSwimmersContainer']
-  static values = { smartSelectionUrl: String, cupDataUrl: String }
+                   'cupSelect', 'goggleCupIdField', 'descriptionField', 'seasonYearField', 'endDateField', 'externalSwimmersContainer',
+                   'selectionCounter', 'loadExistingButton', 'cupIdDisplay']
+  static values = { smartSelectionUrl: String, cupDataUrl: String, loadRankingUrl: String, hasRankingData: Boolean }
 
   connect() {
     this.csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
@@ -12,6 +13,20 @@ export default class extends Controller {
     if (this.secondaryTeamSelect) {
       this.secondaryTeamSelect.addEventListener('change', this.boundSmartSelectWithDelay)
     }
+    this.updateSelectionCounter()
+    this.toggleLoadExistingButton()
+  }
+
+  hasRankingDataValueChanged() {
+    this.toggleLoadExistingButton()
+  }
+
+  toggleLoadExistingButton() {
+    if (!this.hasLoadExistingButtonTarget) {
+      return
+    }
+
+    this.loadExistingButtonTarget.classList.toggle('d-none', !this.hasRankingDataValue)
   }
 
   disconnect() {
@@ -23,11 +38,13 @@ export default class extends Controller {
   selectAll(event) {
     event.preventDefault()
     this.swimmerCheckboxTargets.forEach((checkbox) => { checkbox.checked = true })
+    this.updateSelectionCounter()
   }
 
   deselectAll(event) {
     event.preventDefault()
     this.swimmerCheckboxTargets.forEach((checkbox) => { checkbox.checked = false })
+    this.updateSelectionCounter()
   }
 
   smartSelectWithDelay() {
@@ -61,6 +78,7 @@ export default class extends Controller {
     this.swimmerCheckboxTargets.forEach((checkbox) => {
       checkbox.checked = selectedIds.includes(`${checkbox.dataset.swimmerId}`)
     })
+    this.updateSelectionCounter()
   }
 
   async selectCup(event) {
@@ -70,49 +88,64 @@ export default class extends Controller {
       return
     }
 
+    this.setLoading(true)
+
     const teamId = this.fieldValue('team_id')
     const url = new URL(this.cupDataUrlValue, window.location.origin)
     url.searchParams.append('team_id', teamId)
     url.searchParams.append('goggle_cup_id', cupId)
 
-    const response = await fetch(url.toString(), {
-      method: 'GET',
-      headers: { Accept: 'application/json' }
-    })
+    try {
+      const response = await fetch(url.toString(), {
+        method: 'GET',
+        headers: { Accept: 'application/json' }
+      })
 
-    if (!response.ok) {
-      return
-    }
+      if (!response.ok) {
+        return
+      }
 
-    const data = await response.json()
+      const data = await response.json()
 
-    if (this.hasGoggleCupIdFieldTarget) {
-      this.goggleCupIdFieldTarget.value = data.goggle_cup_id || ''
-    }
-    if (this.hasDescriptionFieldTarget) {
-      this.descriptionFieldTarget.value = data.description || ''
-    }
-    if (this.hasSeasonYearFieldTarget) {
-      this.seasonYearFieldTarget.value = data.season_year || ''
-    }
-    if (this.hasEndDateFieldTarget) {
-      this.endDateFieldTarget.value = data.end_date || ''
-    }
-    if (this.hasNoDuplicatedEventsFieldTarget) {
-      this.noDuplicatedEventsFieldTarget.checked = !!data.no_duplicated_events
-    }
+      if (this.hasGoggleCupIdFieldTarget) {
+        this.goggleCupIdFieldTarget.value = data.goggle_cup_id || ''
+      }
+      if (this.hasCupIdDisplayTarget) {
+        this.cupIdDisplayTarget.value = data.goggle_cup_id || ''
+      }
+      if (this.hasDescriptionFieldTarget) {
+        this.descriptionFieldTarget.value = data.description || ''
+      }
+      if (this.hasSeasonYearFieldTarget) {
+        this.seasonYearFieldTarget.value = data.season_year || ''
+      }
+      if (this.hasEndDateFieldTarget) {
+        this.endDateFieldTarget.value = data.end_date || ''
+      }
+      if (this.hasNoDuplicatedEventsFieldTarget) {
+        this.noDuplicatedEventsFieldTarget.checked = !!data.no_duplicated_events
+      }
 
-    const selectedIds = (data.swimmer_ids || []).map((id) => `${id}`)
-    this.swimmerCheckboxTargets.forEach((checkbox) => {
-      checkbox.checked = selectedIds.includes(`${checkbox.dataset.swimmerId}`)
-    })
+      this.hasRankingDataValue = !!data.has_ranking_data
 
-    this.renderExternalSwimmers(data.external_swimmers || [], selectedIds)
+      const selectedIds = (data.swimmer_ids || []).map((id) => `${id}`)
+      this.swimmerCheckboxTargets.forEach((checkbox) => {
+        checkbox.checked = selectedIds.includes(`${checkbox.dataset.swimmerId}`)
+      })
+
+      this.renderExternalSwimmers(data.external_swimmers || [], selectedIds)
+      this.updateSelectionCounter()
+    } finally {
+      this.setLoading(false)
+    }
   }
 
   clearCupFields() {
     if (this.hasGoggleCupIdFieldTarget) {
       this.goggleCupIdFieldTarget.value = ''
+    }
+    if (this.hasCupIdDisplayTarget) {
+      this.cupIdDisplayTarget.value = ''
     }
     if (this.hasDescriptionFieldTarget) {
       this.descriptionFieldTarget.value = ''
@@ -123,8 +156,8 @@ export default class extends Controller {
     if (this.hasEndDateFieldTarget) {
       this.endDateFieldTarget.value = ''
     }
-    this.swimmerCheckboxTargets.forEach((checkbox) => { checkbox.checked = false })
-    this.renderExternalSwimmers([], [])
+    this.hasRankingDataValue = false
+    this.updateSelectionCounter()
   }
 
   renderExternalSwimmers(externalSwimmers, selectedIds) {
@@ -168,6 +201,45 @@ export default class extends Controller {
       </table>`
   }
 
+  updateSelectionCounter() {
+    if (!this.hasSelectionCounterTarget) {
+      return
+    }
+
+    const total = this.swimmerCheckboxTargets.length
+    const selected = this.swimmerCheckboxTargets.filter((cb) => cb.checked).length
+    this.selectionCounterTarget.textContent = `(${selected} / ${total})`
+  }
+
+  async loadExisting(event) {
+    event.preventDefault()
+    const cupId = this.goggleCupIdFieldTarget?.value
+    if (!cupId) {
+      return
+    }
+
+    this.setLoading(true)
+
+    const url = new URL(this.loadRankingUrlValue, window.location.origin)
+    url.searchParams.append('team_id', this.fieldValue('team_id'))
+    url.searchParams.append('goggle_cup_id', cupId)
+
+    try {
+      const response = await fetch(url.toString(), {
+        method: 'GET',
+        headers: { Accept: 'application/json' }
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        this.rankingContainerTarget.innerHTML = data.html || ''
+        this.collapseSwimmerPanel()
+      }
+    } finally {
+      this.setLoading(false)
+    }
+  }
+
   async compute(event) {
     // If the Save button triggered this submit, let the browser handle it
     // natively (formaction → save route). Only intercept Compute submits.
@@ -179,6 +251,15 @@ export default class extends Controller {
 
     if (!this.hasFormTarget) {
       return
+    }
+
+    // Confirm before overwriting precomputed ranking data
+    if (this.hasRankingDataValue && this.hasRankingDataValue === true) {
+      const message = this.element.dataset.gogglesCupConfirmOverwriteMessage ||
+        'A precomputed ranking exists for this cup. Computing will overwrite it. Continue?'
+      if (!window.confirm(message)) {
+        return
+      }
     }
 
     this.setLoading(true)

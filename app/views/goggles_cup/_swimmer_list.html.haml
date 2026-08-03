@@ -8,11 +8,14 @@
     #swimmer-list-body.collapse.show{ 'aria-labelledby' => 'swimmer-list-header', data: { 'goggles-cup-target': 'swimmerPanel' } }
       .card-body
         .row.mb-3
-          .col-12
-            %button.btn.btn-sm.btn-outline-secondary{ type: 'button', data: { action: 'goggles-cup#selectAll' } }
-              = t('goggles_cup.select_all')
-            %button.btn.btn-sm.btn-outline-secondary{ type: 'button', data: { action: 'goggles-cup#deselectAll' } }
-              = t('goggles_cup.deselect_all')
+          .col-12.d-flex.justify-content-between.align-items-center
+            %div
+              %button.btn.btn-sm.btn-outline-secondary{ type: 'button', data: { action: 'goggles-cup#selectAll' } }
+                = t('goggles_cup.select_all')
+              %button.btn.btn-sm.btn-outline-secondary{ type: 'button', data: { action: 'goggles-cup#deselectAll' } }
+                = t('goggles_cup.deselect_all')
+            %span.text-muted.font-weight-bold{ data: { 'goggles-cup-target': 'selectionCounter' } }
+              (0 / 0)
 
         .row
           .col-12
@@ -31,7 +34,7 @@
                         %label.switch.round
                           = check_box_tag('swimmer_ids[]', swimmer_id, selected_swimmer_ids.map(&:to_s).include?(swimmer_id.to_s),
                                           id: "swimmer_#{swimmer_id}",
-                                          data: { 'goggles-cup-target': 'swimmerCheckbox', swimmer_id: swimmer_id })
+                                          data: { 'goggles-cup-target': 'swimmerCheckbox', swimmer_id: swimmer_id, action: 'change->goggles-cup#updateSelectionCounter' })
                           %span.slider.round
                       %td= swimmer[:swimmer_name]
                       %td= swimmer[:swimmer_year_of_birth]
@@ -56,7 +59,7 @@
                           %label.switch.round
                             = check_box_tag('swimmer_ids[]', swimmer_id, selected_swimmer_ids.map(&:to_s).include?(swimmer_id.to_s),
                                             id: "external_swimmer_#{swimmer_id}",
-                                            data: { 'goggles-cup-target': 'swimmerCheckbox', swimmer_id: swimmer_id })
+                                            data: { 'goggles-cup-target': 'swimmerCheckbox', swimmer_id: swimmer_id, action: 'change->goggles-cup#updateSelectionCounter' })
                             %span.slider.round
                         %td= swimmer[:swimmer_name]
                         %td= swimmer[:swimmer_year_of_birth]
