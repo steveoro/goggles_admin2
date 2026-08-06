@@ -51,6 +51,19 @@ it:
       title: "Tempi standard (base)"
     stats:
       title: "API stats"
+      summary:
+        title: "Riepilogo"
+        top_routes: "Route più richieste"
+        top_ips: "IP più attivi"
+        top_agents: "Agent più utilizzati"
+        totals: "Totali"
+        route: "Rotta"
+        ip: "IP"
+        user_agent: "User agent"
+        total_count: "Conteggio"
+        requests: "Richieste"
+        ip_requests: "IP reqs"
+        route_requests: "Route reqs"
     swimmers:
       title: "Nuotatori (Swimmers)"
     swimming_pools:

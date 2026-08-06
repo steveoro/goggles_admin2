@@ -4,6 +4,7 @@
 #
 # Manage Stats via API.
 #
+# rubocop:disable Metrics/ClassLength
 class StatsController < ApplicationController
   # GET /stats
   # Show the API daily uses dashboard.
@@ -31,6 +32,7 @@ class StatsController < ApplicationController
 
     set_grid_domain_for(StatsGrid, GogglesDb::APIDailyUse, result.headers, parsed_response)
     prepare_chart_domain(@domain)
+    prepare_summary_domain
 
     respond_to do |format|
       @grid = StatsGrid.new(grid_filter_params)
@@ -134,7 +136,7 @@ class StatsController < ApplicationController
   # Default whitelist for datagrid filtering parameters
   # (NOTE: memoizazion is needed because the member variable is used in the view.)
   def grid_filter_params
-    @grid_filter_params = params.fetch(:stats_grid, {}).permit!
+    @grid_filter_params ||= params.fetch(:stats_grid, {}).permit!
   end
 
   # Strong parameters checking for /index, including pass-through from modal editors.
@@ -219,6 +221,63 @@ class StatsController < ApplicationController
   end
   # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
 
+  # Fetches the API usage summary from the API for the current date filter period.
+  #
+  # == Assigns:
+  # - <tt>@summary_top_routes</tt>: most requested routes
+  # - <tt>@summary_top_ips</tt>: most abusive IP addresses
+  # - <tt>@summary_top_agents</tt>: most used user agents
+  # - <tt>@summary_totals</tt>: daily aggregate totals
+  def prepare_summary_domain
+    parsed = fetch_summary
+    @summary = build_summary(parsed)
+  rescue JSON::ParserError
+    @summary = default_summary
+  ensure
+    @summary_top_routes, @summary_top_ips, @summary_top_agents, @summary_totals =
+      @summary.values_at(:summary_top_routes, :summary_top_ips, :summary_top_agents, :summary_totals)
+  end
+
+  # Fetches the API usage summary from the remote API for the current date filter period.
+  def fetch_summary
+    day_to = summary_day_to
+    day_from = day_to - 6.days
+
+    result = APIProxy.call(
+      method: :get, url: 'api_daily_uses/summary', jwt: current_user.jwt,
+      params: { start_date: day_from.to_s, end_date: day_to.to_s, threshold: 500, limit: 10 }
+    )
+
+    return {} unless result.code == 200 && result.body.present?
+
+    JSON.parse(result.body)
+  end
+
+  # Returns the summary period end date from the current grid filter, defaulting to today.
+  def summary_day_to
+    day_filter_value.presence&.to_date || Time.zone.today
+  end
+
+  # Builds the summary locals hash from the parsed API response.
+  def build_summary(parsed)
+    {
+      summary_top_routes: parsed.fetch('top_routes', []),
+      summary_top_ips: parsed.fetch('top_ips', []),
+      summary_top_agents: parsed.fetch('top_agents', []),
+      summary_totals: parsed.fetch('totals', {})
+    }
+  end
+
+  # Returns the default empty summary hash.
+  def default_summary
+    {
+      summary_top_routes: [],
+      summary_top_ips: [],
+      summary_top_agents: [],
+      summary_totals: {}
+    }
+  end
+
   # Updates the X & Y values for @day_hash & @url_hash by looping on the base domain of the chart
   # while setting on the X-axis the individual values and on Y-axis their count.
   #
@@ -239,3 +298,4 @@ class StatsController < ApplicationController
     end
   end
 end
+# rubocop:enable Metrics/ClassLength

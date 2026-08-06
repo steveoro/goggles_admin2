@@ -13,6 +13,8 @@
 
     %canvas#api-chart{ data: { 'chart-api-target' => 'chart' } }
 
+    = render(partial: 'summary', locals: @summary)
+
     %section.my-4#data-grid
       / (Toolbar defaults: all buttons shown)
       = render(Grid::ToolbarComponent.new(asset_row: GogglesDb::APIDailyUse.new, create: false,

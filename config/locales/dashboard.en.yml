@@ -51,6 +51,19 @@ en:
       title: "Standard (base) timings"
     stats:
       title: "API stats"
+      summary:
+        title: "Summary"
+        top_routes: "Top routes"
+        top_ips: "Top IPs"
+        top_agents: "Top agents"
+        totals: "Totals"
+        route: "Route"
+        ip: "IP"
+        user_agent: "User agent"
+        total_count: "Count"
+        requests: "Requests"
+        ip_requests: "IP requests"
+        route_requests: "Route requests"
     swimmers:
       title: "Swimmers"
     swimming_pools:
