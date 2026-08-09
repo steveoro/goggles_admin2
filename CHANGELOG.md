@@ -2,6 +2,7 @@
 
 _Please, add the latest build info on top of the list; use Version::MAJOR only after gold release; keep semantic versioning in line with framework's_
 
+- **0.9.29** [Steve A.] added goggle_cup SQL export functionality
 - **0.9.27** [Steve A.] support for new 'max_anonymous_req' setting in app group from base engine; bundle updates
 - **0.9.26** [Steve A.] goggle_cup configuration & serialization management
 - **0.9.25** [Steve A.] re-sync w/ base engine; bundle updates
