@@ -8,12 +8,14 @@ Prawn::Fonts::AFM.hide_m17n_warning = true
 
 # = GogglesCupController
 class GogglesCupController < ApplicationController
+  include FileCounter
+
   before_action :authenticate_user!
-  before_action :set_team, only: %i[index smart_selection compute cup_data save load_ranking]
+  before_action :set_team, only: %i[index smart_selection compute cup_data save load_ranking export_sql]
   before_action :set_secondary_team, only: %i[index compute]
   before_action :set_selected_swimmer_ids, only: %i[compute]
   before_action :set_no_duplicated_events, only: %i[compute]
-  before_action :set_goggle_cup, only: %i[index compute]
+  before_action :set_goggle_cup, only: %i[index compute export_sql]
 
   def index
     @swimmers_for_team = swimmers_for_team
@@ -75,6 +77,30 @@ class GogglesCupController < ApplicationController
     @ranking_data = GogglesCup::RankingDataDeserializer.new(cup).call
     instance_vars_from_stored_data(cup)
     render json: { html: ranking_html }
+  end
+
+  def export_sql
+    cup = @goggle_cup
+    unless cup&.ranking_data.present?
+      flash[:alert] = t('goggles_cup.export_sql_error', message: t('goggles_cup.info.no_ranking_data'))
+      redirect_to(goggles_cup_preview_path(team_id: @team_id, goggle_cup_id: cup&.id)) && return
+    end
+
+    source_dir = Rails.root.join('crawler/data/results.new/goggle_cups')
+    sent_dir = source_dir.to_s.gsub('results.new', 'results.sent')
+    FileUtils.mkdir_p(source_dir)
+    last_counter = compute_file_counter(source_dir, sent_dir)
+    dest_file = "#{format('%04d', last_counter + 1)}-goggle_cup-#{cup.id}-#{cup.season_year}.sql"
+    sql_full_path = source_dir.join(dest_file)
+
+    sql_content = build_goggle_cup_sql(cup)
+    File.write(sql_full_path, sql_content)
+
+    flash[:notice] = t('goggles_cup.export_sql_success', file: dest_file)
+    redirect_to(goggles_cup_preview_path(team_id: @team_id, goggle_cup_id: cup.id))
+  rescue StandardError => e
+    flash[:alert] = t('goggles_cup.export_sql_error', message: e.message)
+    redirect_to(goggles_cup_preview_path(team_id: @team_id, goggle_cup_id: @goggle_cup&.id))
   end
 
   def compute
@@ -358,5 +384,35 @@ class GogglesCupController < ApplicationController
       ]
     end
     [header] + rows
+  end
+
+  def build_goggle_cup_sql(cup)
+    klass = cup.class
+    con = klass.connection
+    columns = []
+    values = []
+    updates = []
+    excluded_from_update = %w[id created_at lock_version]
+
+    klass.column_names.each do |col|
+      next if %w[id lock_version].include?(col)
+
+      columns << con.quote_column_name(col)
+      values << if %w[created_at updated_at].include?(col)
+                  'NOW()'
+                else
+                  con.quote(cup[col])
+                end
+      updates << "#{con.quote_column_name(col)}=VALUES(#{con.quote_column_name(col)})" unless excluded_from_update.include?(col)
+    end
+
+    insert_sql = "INSERT INTO #{con.quote_column_name(klass.table_name)} (#{columns.join(', ')})\r\n  " \
+                 "VALUES (#{values.join(', ')})\r\n  " \
+                 "ON DUPLICATE KEY UPDATE #{updates.join(', ')};"
+    wrap_sql_in_transaction(insert_sql)
+  end
+
+  def wrap_sql_in_transaction(statement)
+    "SET AUTOCOMMIT = 0;\r\nSTART TRANSACTION;\r\n\r\n#{statement}\r\n\r\nCOMMIT;"
   end
 end

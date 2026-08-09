@@ -100,6 +100,13 @@
                       %i.fa.fa-download.me-2
                       = t('goggles_cup.load_existing')
                   .col-4
+                    - if @goggle_cup&.ranking_data.present?
+                      = button_tag(type: 'submit', formaction: export_sql_goggles_cup_preview_path, formmethod: :post,
+                                   class: 'btn btn-warning btn-lg w-100',
+                                   data: { toggle: 'tooltip', placement: 'top', title: t('goggles_cup.export_sql_tooltip'), turbo_confirm: t('goggles_cup.confirm_export') }) do
+                        %i.fa.fa-file-code-o.me-2
+                        = t('goggles_cup.export_sql')
+                  .col-4
                     = button_tag(type: 'submit', class: 'btn btn-success btn-lg w-100',
                                 data: { 'goggles-cup-target': 'computeButton', toggle: 'tooltip', placement: 'top', title: t('goggles_cup.compute_tooltip') }) do
                       %i.fa.fa-calculator.me-2

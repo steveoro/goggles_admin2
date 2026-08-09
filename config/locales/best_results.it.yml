@@ -88,6 +88,11 @@ it:
     load_team_tooltip: "Carica e elenca tutti i nuotatori con risultati nell'anno in corso per la squadra selezionata"
     save_config_tooltip: "Sovrascrivi la configurazione della coppa attualmente selezionata (ID mostrato sopra)"
     compute_tooltip: "Calcola la classifica e salva il risultato sulla configurazione attuale per recupero successivo"
+    export_sql: "Esporta SQL"
+    export_sql_tooltip: "Genera uno script SQL inviabile per questa coppa"
+    confirm_export: "Generare uno script SQL per questa coppa?"
+    export_sql_success: "Esportazione SQL salvata: %{file}"
+    export_sql_error: "Esportazione SQL fallita: %{message}"
     confirm_overwrite: "Esiste già una classifica precalcolata per questa coppa. Il calcolo la sovrascriverà. Continuare?"
     errors:
       invalid_selection: "Seleziona una squadra e almeno un nuotatore."

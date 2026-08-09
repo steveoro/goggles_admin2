@@ -26,6 +26,7 @@ Rails.application.routes.draw do
   get 'best_results/goggles_cup_preview/cup_data', to: 'goggles_cup#cup_data', as: 'cup_data_goggles_cup_preview'
   post 'best_results/goggles_cup_preview/save', to: 'goggles_cup#save', as: 'save_goggles_cup_preview'
   get 'best_results/goggles_cup_preview/load_ranking', to: 'goggles_cup#load_ranking', as: 'load_ranking_goggles_cup_preview'
+  post 'best_results/goggles_cup_preview/export_sql', to: 'goggles_cup#export_sql', as: 'export_sql_goggles_cup_preview'
 
   get 'pull/index'
   get 'pull/calendar_files'

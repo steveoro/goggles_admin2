@@ -293,4 +293,64 @@ RSpec.describe 'GogglesCupPreview' do
       expect(cup.reload.ranking_data).not_to be_nil
     end
   end
+
+  describe 'POST /best_results/goggles_cup_preview/export_sql' do
+    include AdminSignInHelpers
+
+    before(:each) do
+      admin_user = prepare_admin_user
+      sign_in_admin(admin_user)
+    end
+
+    after(:each) do
+      Dir[Rails.root.join('crawler/data/results.new/goggle_cups/*-goggle_cup-*.sql')].each { |f| File.delete(f) }
+    end
+
+    it 'redirects with an error when the cup has no ranking_data' do
+      team = FactoryBot.create(:team)
+      cup = FactoryBot.create(:goggle_cup, team: team, description: 'No Data', season_year: 2025, swimmers_ids: '1')
+
+      post export_sql_goggles_cup_preview_path, params: { team_id: team.id, goggle_cup_id: cup.id }
+
+      expect(response).to redirect_to(goggles_cup_preview_path(team_id: team.id.to_s, goggle_cup_id: cup.id))
+      expect(flash[:alert]).to be_present
+    end
+
+    it 'creates a pushable SQL file when the cup has ranking_data' do
+      team = FactoryBot.create(:team)
+      cup = FactoryBot.create(:goggle_cup, team: team, description: 'Test Cup', season_year: 2025, swimmers_ids: '1,2,3')
+      cup.update!(ranking_data: { test: 'data' }.to_json)
+
+      post export_sql_goggles_cup_preview_path, params: { team_id: team.id, goggle_cup_id: cup.id }
+
+      expect(response).to redirect_to(goggles_cup_preview_path(team_id: team.id.to_s, goggle_cup_id: cup.id))
+      expect(flash[:notice]).to be_present
+
+      generated_files = Dir[Rails.root.join('crawler/data/results.new/goggle_cups/*-goggle_cup-*.sql')]
+      expect(generated_files).not_to be_empty
+
+      sql = File.read(generated_files.first)
+      expect(sql).to include('SET AUTOCOMMIT = 0;')
+      expect(sql).to include('START TRANSACTION;')
+      expect(sql).to include('INSERT INTO `goggle_cups`')
+      expect(sql).to include('ON DUPLICATE KEY UPDATE')
+      expect(sql).to include(cup.description)
+      expect(sql).to include(cup.swimmers_ids)
+      expect(sql).to include(GogglesDb::GoggleCup.connection.quote(cup.ranking_data))
+      expect(sql).to include('COMMIT;')
+    end
+
+    it 'only shows the export SQL button when ranking_data is present' do
+      team = FactoryBot.create(:team)
+      cup_without = FactoryBot.create(:goggle_cup, team: team, description: 'Empty', season_year: 2025, swimmers_ids: '1')
+      cup_with = FactoryBot.create(:goggle_cup, team: team, description: 'Ready', season_year: 2026, swimmers_ids: '1')
+      cup_with.update!(ranking_data: { test: 'data' }.to_json)
+
+      get goggles_cup_preview_path, params: { team_id: team.id, goggle_cup_id: cup_without.id }
+      expect(response.body).not_to include(I18n.t('goggles_cup.export_sql'))
+
+      get goggles_cup_preview_path, params: { team_id: team.id, goggle_cup_id: cup_with.id }
+      expect(response.body).to include(I18n.t('goggles_cup.export_sql'))
+    end
+  end
 end
