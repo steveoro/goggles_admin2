@@ -12,6 +12,9 @@ class StatsGrid < BaseGrid
   filter(:day, :date, range: true, input_options: {
            maxlength: 10, placeholder: 'YYYY-MM-DD'
          })
+  filter(:count, :integer, header: 'Count (>=)') do |value, scope|
+    scope.select { |row| row.count >= value }
+  end
 
   # Customizes row background color
   def row_class(row)

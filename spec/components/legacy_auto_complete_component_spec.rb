@@ -41,6 +41,10 @@ RSpec.describe LegacyAutoCompleteComponent, type: :component do
       expect(rendered_node.css('.row').attr('data-controller').value).to eq('legacy-autocomplete')
     end
 
+    it 'renders the component root with the legacy-auto-complete CSS class' do
+      expect(rendered_node.css('.row').attr('class').value).to include('legacy-auto-complete')
+    end
+
     it 'includes the base-api-url controller value' do
       expect(rendered_node.css('.row').attr('data-legacy-autocomplete-base-api-url-value')).to be_present
       expect(rendered_node.css('.row').attr('data-legacy-autocomplete-base-api-url-value').value).to eq(base_api_url)

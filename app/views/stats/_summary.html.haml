@@ -1,7 +1,7 @@
 %section.my-4#summary-panels
   %h4= t('dashboard.stats.summary.title')
-  .row
-    .col-md-3
+  .row.mb-4
+    .col
       .card
         .card-header= t('dashboard.stats.summary.top_routes')
         .card-body.p-0
@@ -16,7 +16,7 @@
                   %td= row['route']
                   %td.text-right= row['total_count']
 
-    .col-md-3
+    .col
       .card
         .card-header= t('dashboard.stats.summary.top_ips')
         .card-body.p-0
@@ -30,23 +30,7 @@
                 %tr
                   %td= row['ip']
                   %td.text-right= row['total_count']
-
-    .col-md-3
-      .card
-        .card-header= t('dashboard.stats.summary.top_agents')
-        .card-body.p-0
-          %table.table.table-sm.table-hover
-            %thead
-              %tr
-                %th= t('dashboard.stats.summary.user_agent')
-                %th.text-right= t('dashboard.stats.summary.total_count')
-            %tbody
-              - summary_top_agents.each do |row|
-                %tr
-                  %td= row['user_agent']
-                  %td.text-right= row['total_count']
-
-    .col-md-3
+    .col
       .card
         .card-header= t('dashboard.stats.summary.totals')
         .card-body.p-0
@@ -61,3 +45,17 @@
               %tr
                 %th= t('dashboard.stats.summary.route_requests')
                 %td.text-right= summary_totals['route_requests']
+  .container.row
+    .card
+      .card-header= t('dashboard.stats.summary.top_agents')
+      .card-body.p-0
+        %table.table.table-sm.table-hover
+          %thead
+            %tr
+              %th= t('dashboard.stats.summary.user_agent')
+              %th.text-right= t('dashboard.stats.summary.total_count')
+          %tbody
+            - summary_top_agents.each do |row|
+              %tr
+                %td= row['user_agent']
+                %td.text-right= row['total_count']

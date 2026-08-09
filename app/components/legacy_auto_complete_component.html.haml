@@ -1,5 +1,5 @@
 - entity_name = @detail_endpoint || @base_name
-.row{ data: { controller: 'legacy-autocomplete',
+.row.legacy-auto-complete{ data: { controller: 'legacy-autocomplete',
   'legacy-autocomplete-base-api-url-value' => @base_api_url,
   'legacy-autocomplete-detail-endpoint-value' => @detail_endpoint,
   'legacy-autocomplete-search-endpoint-value' => @search_endpoint,
@@ -23,7 +23,7 @@
   'legacy-autocomplete-target13-dom-id-value' => @target13_dom_id, 'legacy-autocomplete-target13-column-value' => @target13_column,
   'legacy-autocomplete-payload-value' => @payload,
   'legacy-autocomplete-jwt-value' => @jwt } }
-  .col-4.my-1
+  .col-md-3.my-1
     - if @show_top_labels
       = label_tag(namespaced_attr_name("#{entity_name}_id"), 'id')
     .input-group

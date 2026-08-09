@@ -388,6 +388,8 @@ export default class extends Controller {
     }))
 
     this._tomSelect = new TomSelect(this.searchTarget, {
+      dropdownParent: 'body',
+      dropdownClass: 'ts-dropdown legacy-auto-complete__dropdown',
       options: items,
       valueField: 'value',
       labelField: 'text',
@@ -422,6 +424,8 @@ export default class extends Controller {
     const searchColumnValue = this.searchColumnValue || 'name'
 
     this._tomSelect = new TomSelect(this.searchTarget, {
+      dropdownParent: 'body',
+      dropdownClass: 'ts-dropdown legacy-auto-complete__dropdown',
       valueField: 'value',
       labelField: 'text',
       searchField: ['text'],

@@ -1,0 +1,17 @@
+// LegacyAutoCompleteComponent styles
+//
+// The dropdown is appended to document.body by the Stimulus controller
+// (dropdownParent: 'body') so it is not clipped by .card { overflow: hidden; }
+// and can overlay the lower edges of Bootstrap cards.
+
+.legacy-auto-complete {
+  // Ensure the TomSelect wrapper fills its containing column.
+  .ts-wrapper {
+    width: 100%;
+  }
+}
+
+.ts-dropdown.legacy-auto-complete__dropdown {
+  // Keep the detached dropdown above Bootstrap cards, headers, modals, etc.
+  z-index: 9999;
+}
