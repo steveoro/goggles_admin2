@@ -333,6 +333,7 @@ RSpec.describe 'GogglesCupPreview' do
       expect(sql).to include('SET AUTOCOMMIT = 0;')
       expect(sql).to include('START TRANSACTION;')
       expect(sql).to include('INSERT INTO `goggle_cups`')
+      expect(sql).to include(cup.id.to_s)
       expect(sql).to include('ON DUPLICATE KEY UPDATE')
       expect(sql).to include(cup.description)
       expect(sql).to include(cup.swimmers_ids)

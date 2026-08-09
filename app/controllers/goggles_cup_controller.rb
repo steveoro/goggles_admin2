@@ -17,6 +17,7 @@ class GogglesCupController < ApplicationController
   before_action :set_no_duplicated_events, only: %i[compute]
   before_action :set_goggle_cup, only: %i[index compute export_sql]
 
+  # [GET] Renders the GogglesCup preview/selection page for the selected team.
   def index
     @swimmers_for_team = swimmers_for_team
     @ranking_data = []
@@ -24,12 +25,14 @@ class GogglesCupController < ApplicationController
     @external_swimmers = external_swimmers_for(@goggle_cup)
   end
 
+  # [GET] Returns smart-selected swimmer ids for the secondary team filter.
   def smart_selection
     selected_ids = @team ? swimmer_options_query.smart_selected_ids_for(params[:secondary_team_id]) : []
 
     render json: { swimmer_ids: selected_ids }
   end
 
+  # [GET] Returns the selected cup attributes and swimmer lists as JSON.
   def cup_data
     cup = GogglesDb::GoggleCup.find_by(id: params[:goggle_cup_id], team_id: @team_id)
     return render json: { error: 'Not found' }, status: :not_found unless cup
@@ -50,6 +53,7 @@ class GogglesCupController < ApplicationController
     }
   end
 
+  # [POST] Creates or updates the current cup configuration.
   def save # rubocop:disable Metrics/AbcSize
     cup = find_or_initialize_cup
     cup.assign_attributes(
@@ -69,6 +73,7 @@ class GogglesCupController < ApplicationController
     redirect_to(goggles_cup_preview_path(team_id: @team_id, goggle_cup_id: cup.id))
   end
 
+  # [GET] Renders the stored ranking HTML for the selected cup as JSON.
   def load_ranking
     cup = GogglesDb::GoggleCup.find_by(id: params[:goggle_cup_id], team_id: @team_id)
     return render json: { error: 'Not found' }, status: :not_found if cup&.ranking_data.blank?
@@ -79,9 +84,11 @@ class GogglesCupController < ApplicationController
     render json: { html: ranking_html }
   end
 
-  def export_sql
+  # [POST] Generates a pushable SQL script for the current cup and stores it in
+  # `crawler/data/results.new/goggle_cups/` for later production push.
+  def export_sql # rubocop:disable Metrics/AbcSize
     cup = @goggle_cup
-    unless cup&.ranking_data.present?
+    if cup&.ranking_data.blank?
       flash[:alert] = t('goggles_cup.export_sql_error', message: t('goggles_cup.info.no_ranking_data'))
       redirect_to(goggles_cup_preview_path(team_id: @team_id, goggle_cup_id: cup&.id)) && return
     end
@@ -103,6 +110,8 @@ class GogglesCupController < ApplicationController
     redirect_to(goggles_cup_preview_path(team_id: @team_id, goggle_cup_id: @goggle_cup&.id))
   end
 
+  # [POST/GET] Computes the GogglesCup ranking for the selected swimmers and renders
+  # it in HTML, JSON, CSV, XLSX or PDF formats.
   def compute
     @swimmers_for_team = swimmers_for_team
     @ranking_data = ranking_data
@@ -386,6 +395,11 @@ class GogglesCupController < ApplicationController
     [header] + rows
   end
 
+  # Builds a single MariaDB `INSERT ... ON DUPLICATE KEY UPDATE` statement for the
+  # given +cup+, including the current primary key (+id+) so the remote row stays in
+  # sync with the local one. The +lock_version+ column is intentionally left out: it
+  # defaults to 0 on new rows and is not overwritten on existing ones. The result is
+  # wrapped in a transaction by #wrap_sql_in_transaction.
   def build_goggle_cup_sql(cup)
     klass = cup.class
     con = klass.connection
@@ -395,7 +409,7 @@ class GogglesCupController < ApplicationController
     excluded_from_update = %w[id created_at lock_version]
 
     klass.column_names.each do |col|
-      next if %w[id lock_version].include?(col)
+      next if col == 'lock_version' # Handled separately / not part of the export
 
       columns << con.quote_column_name(col)
       values << if %w[created_at updated_at].include?(col)
@@ -412,6 +426,9 @@ class GogglesCupController < ApplicationController
     wrap_sql_in_transaction(insert_sql)
   end
 
+  # Wraps a single SQL statement in a simple transaction block, mirroring the pattern
+  # used by Import::CategoryCloner. This ensures the statement runs atomically on the
+  # remote production server when pushed through the batch_sql pipeline.
   def wrap_sql_in_transaction(statement)
     "SET AUTOCOMMIT = 0;\r\nSTART TRANSACTION;\r\n\r\n#{statement}\r\n\r\nCOMMIT;"
   end

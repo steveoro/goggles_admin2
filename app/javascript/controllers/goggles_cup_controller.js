@@ -6,6 +6,8 @@ export default class extends Controller {
                    'selectionCounter', 'loadExistingButton', 'exportSqlButton', 'cupIdDisplay']
   static values = { smartSelectionUrl: String, cupDataUrl: String, loadRankingUrl: String, hasRankingData: Boolean }
 
+  // Called when the controller is connected to the DOM. Sets up secondary team
+  // listener and initial UI state.
   connect() {
     this.csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
     this.secondaryTeamSelect = document.querySelector('#secondary_team_select')
@@ -18,11 +20,14 @@ export default class extends Controller {
     this.toggleExportSqlButton()
   }
 
+  // Stimulus value callback: toggles the load-existing and export-sql buttons
+  // whenever the selected cup's ranking_data presence changes.
   hasRankingDataValueChanged() {
     this.toggleLoadExistingButton()
     this.toggleExportSqlButton()
   }
 
+  // Shows or hides the "Show precomputed" button based on ranking_data availability.
   toggleLoadExistingButton() {
     if (!this.hasLoadExistingButtonTarget) {
       return
@@ -31,6 +36,7 @@ export default class extends Controller {
     this.loadExistingButtonTarget.classList.toggle('d-none', !this.hasRankingDataValue)
   }
 
+  // Shows or hides the "Export SQL" button based on ranking_data availability.
   toggleExportSqlButton() {
     if (!this.hasExportSqlButtonTarget) {
       return
@@ -91,6 +97,8 @@ export default class extends Controller {
     this.updateSelectionCounter()
   }
 
+  // Fetches the selected cup configuration via cup_data and updates the form fields,
+  // swimmer selection, external swimmers and ranking-data related buttons.
   async selectCup(event) {
     const cupId = event.target.value
     if (!cupId) {
@@ -150,6 +158,7 @@ export default class extends Controller {
     }
   }
 
+  // Resets the cup form fields and UI state when the "(New)" option is selected.
   clearCupFields() {
     if (this.hasGoggleCupIdFieldTarget) {
       this.goggleCupIdFieldTarget.value = ''
@@ -221,6 +230,7 @@ export default class extends Controller {
     this.selectionCounterTarget.textContent = `(${selected} / ${total})`
   }
 
+  // Loads and displays the precomputed ranking HTML for the selected cup.
   async loadExisting(event) {
     event.preventDefault()
     const cupId = this.goggleCupIdFieldTarget?.value
@@ -250,6 +260,8 @@ export default class extends Controller {
     }
   }
 
+  // Computes the GogglesCup ranking via AJAX. Ignores save and export-sql submitters
+  // so their formaction attributes are handled by the browser as normal form posts.
   async compute(event) {
     // If the Save or Export SQL buttons triggered this submit, let the browser
     // handle it natively (formaction → save/export route). Only intercept Compute submits.
