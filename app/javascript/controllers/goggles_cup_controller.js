@@ -3,7 +3,7 @@ import { Controller } from '@hotwired/stimulus'
 export default class extends Controller {
   static targets = ['form', 'noDuplicatedEventsField', 'swimmerCheckbox', 'swimmerPanel', 'rankingContainer', 'computeButton', 'overlay',
                    'cupSelect', 'goggleCupIdField', 'descriptionField', 'seasonYearField', 'endDateField', 'externalSwimmersContainer',
-                   'selectionCounter', 'loadExistingButton', 'cupIdDisplay']
+                   'selectionCounter', 'loadExistingButton', 'exportSqlButton', 'cupIdDisplay']
   static values = { smartSelectionUrl: String, cupDataUrl: String, loadRankingUrl: String, hasRankingData: Boolean }
 
   connect() {
@@ -15,10 +15,12 @@ export default class extends Controller {
     }
     this.updateSelectionCounter()
     this.toggleLoadExistingButton()
+    this.toggleExportSqlButton()
   }
 
   hasRankingDataValueChanged() {
     this.toggleLoadExistingButton()
+    this.toggleExportSqlButton()
   }
 
   toggleLoadExistingButton() {
@@ -27,6 +29,14 @@ export default class extends Controller {
     }
 
     this.loadExistingButtonTarget.classList.toggle('d-none', !this.hasRankingDataValue)
+  }
+
+  toggleExportSqlButton() {
+    if (!this.hasExportSqlButtonTarget) {
+      return
+    }
+
+    this.exportSqlButtonTarget.classList.toggle('d-none', !this.hasRankingDataValue)
   }
 
   disconnect() {

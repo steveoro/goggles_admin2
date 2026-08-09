@@ -340,17 +340,19 @@ RSpec.describe 'GogglesCupPreview' do
       expect(sql).to include('COMMIT;')
     end
 
-    it 'only shows the export SQL button when ranking_data is present' do
+    it 'shows the export SQL button only when ranking_data is present' do
       team = FactoryBot.create(:team)
       cup_without = FactoryBot.create(:goggle_cup, team: team, description: 'Empty', season_year: 2025, swimmers_ids: '1')
       cup_with = FactoryBot.create(:goggle_cup, team: team, description: 'Ready', season_year: 2026, swimmers_ids: '1')
       cup_with.update!(ranking_data: { test: 'data' }.to_json)
 
       get goggles_cup_preview_path, params: { team_id: team.id, goggle_cup_id: cup_without.id }
-      expect(response.body).not_to include(I18n.t('goggles_cup.export_sql'))
+      expect(response.body).to include(I18n.t('goggles_cup.export_sql'))
+      expect(response.body).to include('btn btn-warning btn-lg w-100 d-none')
 
       get goggles_cup_preview_path, params: { team_id: team.id, goggle_cup_id: cup_with.id }
       expect(response.body).to include(I18n.t('goggles_cup.export_sql'))
+      expect(response.body).not_to include('btn btn-warning btn-lg w-100 d-none')
     end
   end
 end
