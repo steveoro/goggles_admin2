@@ -251,9 +251,10 @@ export default class extends Controller {
   }
 
   async compute(event) {
-    // If the Save button triggered this submit, let the browser handle it
-    // natively (formaction → save route). Only intercept Compute submits.
-    if (event.submitter && event.submitter.dataset.gogglesCupTarget === 'saveButton') {
+    // If the Save or Export SQL buttons triggered this submit, let the browser
+    // handle it natively (formaction → save/export route). Only intercept Compute submits.
+    if (event.submitter && (event.submitter.dataset.gogglesCupTarget === 'saveButton' ||
+                            event.submitter.dataset.gogglesCupTarget === 'exportSqlButton')) {
       return
     }
 
