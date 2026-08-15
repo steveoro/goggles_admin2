@@ -79,7 +79,7 @@ class GogglesCupController < ApplicationController
     return render json: { error: 'Not found' }, status: :not_found if cup&.ranking_data.blank?
 
     @goggle_cup = cup
-    @ranking_data = GogglesCup::RankingDataDeserializer.new(cup).call
+    @ranking_data = GogglesDb::GoggleCupRanking::DataDeserializer.new(cup).call
     instance_vars_from_stored_data(cup)
     render json: { html: ranking_html }
   end
@@ -174,14 +174,14 @@ class GogglesCupController < ApplicationController
         no_duplicated_events: @no_duplicated_events
       ).call
     elsif @goggle_cup&.ranking_data.present?
-      GogglesCup::RankingDataDeserializer.new(@goggle_cup).call
+      GogglesDb::GoggleCupRanking::DataDeserializer.new(@goggle_cup).call
     else
       []
     end
   end
 
   def persist_ranking_data
-    serialized = GogglesCup::RankingDataSerializer.new(
+    serialized = GogglesDb::GoggleCupRanking::DataSerializer.new(
       cup: @goggle_cup,
       ranking_data: @ranking_data,
       no_duplicated_events: @no_duplicated_events
@@ -236,7 +236,7 @@ class GogglesCupController < ApplicationController
 
   def ranking_html
     render_to_string(
-      partial: 'goggles_cup/ranking',
+      partial: 'goggles_db/goggle_cups/ranking',
       formats: [:html],
       locals: {
         team: @team,
@@ -244,7 +244,8 @@ class GogglesCupController < ApplicationController
         selected_swimmer_ids: @selected_swimmer_ids,
         secondary_team_id: @secondary_team_id,
         no_duplicated_events: @no_duplicated_events,
-        goggle_cup_id: @goggle_cup&.id
+        goggle_cup: @goggle_cup,
+        show_exports: true
       }
     )
   end
@@ -407,12 +408,13 @@ class GogglesCupController < ApplicationController
     values = []
     updates = []
     excluded_from_update = %w[id created_at lock_version]
+    timestamp_columns = %w[created_at updated_at]
 
     klass.column_names.each do |col|
       next if col == 'lock_version' # Handled separately / not part of the export
 
       columns << con.quote_column_name(col)
-      values << if %w[created_at updated_at].include?(col)
+      values << if timestamp_columns.include?(col)
                   'NOW()'
                 else
                   con.quote(cup[col])

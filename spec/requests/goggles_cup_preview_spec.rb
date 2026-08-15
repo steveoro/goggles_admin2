@@ -285,7 +285,8 @@ RSpec.describe 'GogglesCupPreview' do
       cup = FactoryBot.create(:goggle_cup, team: team, description: 'Test Cup', season_year: 2025, swimmers_ids: '1')
       allow(GogglesCup::SwimmerOptionsQuery).to receive(:new).and_return(instance_double(GogglesCup::SwimmerOptionsQuery, call: []))
       allow(GogglesCup::RankingCalculator).to receive(:new).and_return(instance_double(GogglesCup::RankingCalculator, call: [ranking_row]))
-      allow(GogglesCup::RankingDataSerializer).to receive(:new).and_return(instance_double(GogglesCup::RankingDataSerializer, call: { data: { scores: {} } }))
+      allow(GogglesDb::GoggleCupRanking::DataSerializer).to receive(:new).and_return(instance_double(GogglesDb::GoggleCupRanking::DataSerializer,
+                                                                                                     call: { data: { scores: {} } }))
 
       post compute_goggles_cup_preview_path(format: :json), params: { team_id: team.id, goggle_cup_id: cup.id, swimmer_ids: ['1'] }
 
@@ -303,7 +304,7 @@ RSpec.describe 'GogglesCupPreview' do
     end
 
     after(:each) do
-      Dir[Rails.root.join('crawler/data/results.new/goggle_cups/*-goggle_cup-*.sql')].each { |f| File.delete(f) }
+      Rails.root.glob('crawler/data/results.new/goggle_cups/*-goggle_cup-*.sql').each { |f| File.delete(f) }
     end
 
     it 'redirects with an error when the cup has no ranking_data' do
@@ -316,6 +317,7 @@ RSpec.describe 'GogglesCupPreview' do
       expect(flash[:alert]).to be_present
     end
 
+    # rubocop:disable RSpec/MultipleExpectations
     it 'creates a pushable SQL file when the cup has ranking_data' do
       team = FactoryBot.create(:team)
       cup = FactoryBot.create(:goggle_cup, team: team, description: 'Test Cup', season_year: 2025, swimmers_ids: '1,2,3')
@@ -326,7 +328,7 @@ RSpec.describe 'GogglesCupPreview' do
       expect(response).to redirect_to(goggles_cup_preview_path(team_id: team.id.to_s, goggle_cup_id: cup.id))
       expect(flash[:notice]).to be_present
 
-      generated_files = Dir[Rails.root.join('crawler/data/results.new/goggle_cups/*-goggle_cup-*.sql')]
+      generated_files = Rails.root.glob('crawler/data/results.new/goggle_cups/*-goggle_cup-*.sql')
       expect(generated_files).not_to be_empty
 
       sql = File.read(generated_files.first)
@@ -340,6 +342,7 @@ RSpec.describe 'GogglesCupPreview' do
       expect(sql).to include(GogglesDb::GoggleCup.connection.quote(cup.ranking_data))
       expect(sql).to include('COMMIT;')
     end
+    # rubocop:enable RSpec/MultipleExpectations
 
     it 'shows the export SQL button only when ranking_data is present' do
       team = FactoryBot.create(:team)

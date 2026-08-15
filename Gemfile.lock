@@ -1,8 +1,9 @@
 GIT
-  remote: https://github.com/steveoro/goggles_db
-  revision: 6716ee638e74085c5da2904afed7c2a1cb3dce37
+  remote: https://github.com/steveoro/goggles_db.git
+  revision: 1d2ef006e40059c64366a99d0995e6c4f430f382
+  branch: devin/extract-goggle-cup-ranking
   specs:
-    goggles_db (0.10.0)
+    goggles_db (0.10.1)
       acts-as-taggable-on
       acts_as_votable
       cities
