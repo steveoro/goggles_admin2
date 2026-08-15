@@ -42,7 +42,7 @@ gem 'devise-i18n'
 gem 'factory_bot_rails'
 gem 'ffaker'
 gem 'font-awesome-rails'
-gem 'goggles_db', git: 'https://github.com/steveoro/goggles_db.git', branch: 'devin/extract-goggle-cup-ranking'
+gem 'goggles_db', git: 'https://github.com/steveoro/goggles_db.git'
 gem 'haml-rails'
 gem 'kaminari'
 gem 'nokogiri' # (used explicitly in view specs)
