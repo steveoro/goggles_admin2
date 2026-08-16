@@ -117,6 +117,6 @@
               -# Phase 3: Ranking display (shown after POST)
               #goggles-cup-ranking-container{ data: { 'goggles-cup-target': 'rankingContainer' } }
                 - if @ranking_data.present?
-                  = render partial: 'ranking', locals: { team: @team, ranking_data: @ranking_data, selected_swimmer_ids: @selected_swimmer_ids || [], secondary_team_id: @secondary_team_id, no_duplicated_events: @no_duplicated_events, goggle_cup_id: @goggle_cup&.id }
+                  = render partial: 'ranking', locals: { team: @team, ranking_data: @ranking_data, selected_swimmer_ids: @selected_swimmer_ids || [], secondary_team_id: @secondary_team_id, no_duplicated_events: @no_duplicated_events, goggle_cup: @goggle_cup, show_exports: true }
 
   .spacer-left
