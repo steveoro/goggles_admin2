@@ -100,7 +100,7 @@ class APIImportQueuesController < ApplicationController
   # - <tt>id</tt>: single row ID, to be used for single row deletion
   # - <tt>ids</tt>: array of row IDs, to be used for multiple rows deletion
   #
-  # rubocop:disable Metrics/AbcSize
+  # rubocop:disable-next Metrics/AbcSize
   def destroy
     row_ids = delete_params[:ids].present? ? delete_params[:ids].split(',') : []
     row_ids << delete_params[:id] if delete_params[:id].present?
@@ -116,7 +116,6 @@ class APIImportQueuesController < ApplicationController
     end
     redirect_to(api_import_queues_path(index_params))
   end
-  # rubocop:enable Metrics/AbcSize
   #-- -------------------------------------------------------------------------
   #++
 

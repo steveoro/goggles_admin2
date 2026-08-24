@@ -268,7 +268,7 @@ module Merge
     #++
 
     # Outputs a detailed report of the merge preview to stdout.
-    # rubocop:disable Rails/Output, Metrics/AbcSize
+    # rubocop:disable-next Rails/Output, Metrics/AbcSize
     def display_report # rubocop:disable Metrics/MethodLength,Metrics/PerceivedComplexity,Metrics/CyclomaticComplexity
       puts "\r\n#{'=' * 60}"
       puts "Team Merge Preview: Meeting #{@meeting.id}"
@@ -315,10 +315,9 @@ module Merge
 
       puts "\r\n#{'=' * 60}\r\n"
     end
-    # rubocop:enable Rails/Output, Metrics/AbcSize
 
     # Outputs badge merge pairs for post-merge badge consolidation.
-    # rubocop:disable Rails/Output
+    # rubocop:disable-next Rails/Output
     def display_badge_merge_pairs
       puts "\r\n--- Badge Merge Pairs (for post-merge consolidation) ---"
       puts 'These badge pairs share the same swimmer and need to be merged:'
@@ -334,14 +333,13 @@ module Merge
         cmd_index += 1
       end
     end
-    # rubocop:enable Rails/Output
     #-- -----------------------------------------------------------------------
     #++
 
     # Generates the SQL statements for the merge and stores them in @sql_log.
     # This method should only be called once.
     #
-    # rubocop:disable Metrics/AbcSize
+    # rubocop:disable-next Metrics/AbcSize
     def prepare
       return if @sql_log.present?
 
@@ -369,7 +367,6 @@ module Merge
       @sql_log << ''
       @sql_log << 'COMMIT;'
     end
-    # rubocop:enable Metrics/AbcSize
     #-- -----------------------------------------------------------------------
     #++
 

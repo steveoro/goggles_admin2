@@ -435,7 +435,7 @@ namespace :check do # rubocop:disable Metrics/BlockLength
       - page: optional page number to display (0-based); when missing, outputs all rows.
 
   DESC
-  # rubocop:disable Layout/LineLength
+  # rubocop:disable-next Layout/LineLength
   task(map_swimmer_mirs: [:environment]) do # rubocop:disable Metrics/BlockLength
     puts("\r\n*** Task: check:map_swimmer_mirs - swimmer #{ENV.fetch('swimmer', nil)} ***")
     swimmer = GogglesDb::Swimmer.find_by(id: ENV['swimmer'].to_i)
@@ -485,7 +485,6 @@ namespace :check do # rubocop:disable Metrics/BlockLength
     end
     puts("\r\n")
   end
-  # rubocop:enable Layout/LineLength
   #-- -------------------------------------------------------------------------
   #++
 

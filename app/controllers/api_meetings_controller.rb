@@ -12,7 +12,7 @@ class APIMeetingsController < ApplicationController
   # - <tt>@domain</tt>: list of all instance rows
   # - <tt>@grid</tt>: the customized Datagrid instance
   #
-  # rubocop:disable Metrics/AbcSize
+  # rubocop:disable-next Metrics/AbcSize
   def index
     result = APIProxy.call(
       method: :get, url: 'meetings', jwt: current_user.jwt,
@@ -50,7 +50,6 @@ class APIMeetingsController < ApplicationController
       end
     end
   end
-  # rubocop:enable Metrics/AbcSize
   #-- -------------------------------------------------------------------------
   #++
 

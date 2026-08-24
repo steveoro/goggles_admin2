@@ -27,7 +27,7 @@ module Grid
   #
   # (@see app/javascript/controllers/grid_edit_controller.js)
   #
-  # rubocop:disable Metrics/ClassLength
+  # rubocop:disable-next Metrics/ClassLength
   class EditModalComponent < ViewComponent::Base
     # Creates a new ViewComponent
     #
@@ -190,7 +190,7 @@ module Grid
 
     # With the same premise as <tt>base_entity_name()</tt>, this returns the column name used for
     # the "label #1" function; defaults to 'description'. Returns +nil+ otherwise.
-    # rubocop:disable Metrics/CyclomaticComplexity
+    # rubocop:disable-next Metrics/CyclomaticComplexity
     def label_column_name(attribute_name)
       return nil unless attribute_name.ends_with?('_id')
       return 'label' if lookup_entity?(attribute_name)
@@ -220,11 +220,10 @@ module Grid
         'short_label'
       end
     end
-    # rubocop:enable Metrics/CyclomaticComplexity
 
     # With the same premise as <tt>base_entity_name()</tt>, this returns the column name used for
     # the "label #2" function. Defaults & returns +nil+ otherwise.
-    # rubocop:disable Metrics/CyclomaticComplexity
+    # rubocop:disable-next Metrics/CyclomaticComplexity
     def label2_column_name(attribute_name)
       return nil unless attribute_name.ends_with?('_id')
       return 'code' if lookup_entity?(attribute_name)
@@ -254,9 +253,7 @@ module Grid
         'short_label'
       end
     end
-    # rubocop:enable Metrics/CyclomaticComplexity
     #-- -----------------------------------------------------------------------
     #++
   end
-  # rubocop:enable Metrics/ClassLength
 end

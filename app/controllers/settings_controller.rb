@@ -90,7 +90,7 @@ class SettingsController < ApplicationController
   # - <tt>id</tt>: single row ID, to be used for single row deletion
   # - <tt>ids</tt>: array of row IDs, to be used for multiple rows deletion
   #
-  # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+  # rubocop:disable-next Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
   def destroy
     row_ids = delete_params[:ids].present? ? delete_params[:ids].split(',') : []
     row_ids << delete_params[:id] if delete_params[:id].present?
@@ -121,7 +121,6 @@ class SettingsController < ApplicationController
     end
     redirect_to(settings_path(index_params))
   end
-  # rubocop:enable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
   #-- -------------------------------------------------------------------------
   #++
 

@@ -124,7 +124,7 @@ module Merge
     end
 
     # Outputs the report to stdout as a table grouped by swimmer.
-    # rubocop:disable Rails/Output, Metrics/AbcSize
+    # rubocop:disable-next Rails/Output, Metrics/AbcSize
     def display_report
       puts @log.join("\n")
       puts ''
@@ -166,6 +166,5 @@ module Merge
       puts "Total swimmers with duplicates: #{@report_data.size}"
       nil
     end
-    # rubocop:enable Rails/Output, Metrics/AbcSize
   end
 end

@@ -99,7 +99,7 @@ module Merge
     #++
 
     # Outputs a detailed report of the fix preview to stdout.
-    # rubocop:disable Rails/Output, Metrics/AbcSize
+    # rubocop:disable-next Rails/Output, Metrics/AbcSize
     def display_report
       puts "\r\n#{'=' * 60}"
       puts 'Badge Swimmer Fix Preview'
@@ -131,13 +131,12 @@ module Merge
 
       puts "\r\n#{'=' * 60}\r\n"
     end
-    # rubocop:enable Rails/Output, Metrics/AbcSize
 
     # Generates the SQL statements for the fix and stores them in @sql_log.
     # This method should only be called once.
     # Raises if duplicate badges were detected during initialization.
     #
-    # rubocop:disable Metrics/AbcSize
+    # rubocop:disable-next Metrics/AbcSize
     def prepare
       return if @sql_log.present?
 
@@ -167,7 +166,6 @@ module Merge
       @sql_log << ''
       @sql_log << 'COMMIT;'
     end
-    # rubocop:enable Metrics/AbcSize
     #-- -----------------------------------------------------------------------
     #++
 

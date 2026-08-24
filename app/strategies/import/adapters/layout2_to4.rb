@@ -21,7 +21,7 @@ module Import
     # - We set layoutType to 4 on the returned hash
     # - Relay support included for LT2 relay files (rare but exist from PDF parser)
     #
-    # rubocop:disable Metrics/ClassLength
+    # rubocop:disable-next Metrics/ClassLength
     class Layout2To4
       class << self
         def normalize(data_hash:)
@@ -401,6 +401,5 @@ module Import
         end
       end
     end
-    # rubocop:enable Metrics/ClassLength
   end
 end

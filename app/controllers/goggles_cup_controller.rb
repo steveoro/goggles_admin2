@@ -243,7 +243,7 @@ class GogglesCupController < ApplicationController
     )
   end
 
-  # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+  # rubocop:disable-next Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
   def send_ranking_export(format:)
     return redirect_invalid_export unless @team && @ranking_data.present?
 
@@ -258,7 +258,6 @@ class GogglesCupController < ApplicationController
 
     send_data(result[:data], filename: result[:filename], type: result[:mime_type], disposition: 'attachment')
   end
-  # rubocop:enable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
 
   def redirect_invalid_export
     flash[:alert] = I18n.t('goggles_cup.errors.invalid_selection_or_data')

@@ -183,7 +183,7 @@ module PdfResults
     #   will also be redirected to the system console as an addition to the default log file
     #   created using the same basename as the source document.
     #
-    # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+    # rubocop:disable-next Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
     def scan(ffamily_filter: '', limit_pages: nil, debug: @debug) # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
       @debug = debug
       @logger.reopen
@@ -272,7 +272,6 @@ module PdfResults
       # Return last valid & used format type name:
       @result_format_type
     end
-    # rubocop:enable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
     #-- -----------------------------------------------------------------------
     #++
 

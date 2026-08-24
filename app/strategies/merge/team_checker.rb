@@ -103,12 +103,11 @@ module Merge
 
     # Creates and outputs to stdout a detailed report of the entities involved in merging
     # the source into the destination as an ASCII table for quick reference.
-    # rubocop:disable Rails/Output
+    # rubocop:disable-next Rails/Output
     def display_report
       puts(@log.join("\r\n"))
       nil
     end
-    # rubocop:enable Rails/Output
     #-- ------------------------------------------------------------------------
     #++
 

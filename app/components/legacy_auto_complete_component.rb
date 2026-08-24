@@ -144,7 +144,7 @@ class LegacyAutoCompleteComponent < ViewComponent::Base
   #   column or property name used to set the value of the Nth "external" target field;
   #   As above, totally optional: skipped when not set (default: null).
   #
-  # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
+  # rubocop:disable-next Metrics/AbcSize, Metrics/MethodLength
   def initialize(options = {})
     super()
     @show_top_labels = options[:show_top_labels] || false
@@ -196,7 +196,6 @@ class LegacyAutoCompleteComponent < ViewComponent::Base
     @payload = options[:payload].presence&.to_json
     @jwt = options[:jwt]
   end
-  # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
 
   # Skips rendering unless the required parameters are set
   def render?

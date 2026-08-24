@@ -3,7 +3,7 @@
 require 'goggles_db'
 require 'ffaker'
 
-# rubocop:disable Metrics/BlockLength
+# rubocop:disable-next Metrics/BlockLength
 namespace :fixtures do
   desc <<~DESC
     Anonymizes swimmer keys in phase fixture files for privacy compliance.
@@ -181,4 +181,3 @@ namespace :fixtures do
     "#{new_last_name.upcase}|#{first_name}|#{year}"
   end
 end
-# rubocop:enable Metrics/BlockLength

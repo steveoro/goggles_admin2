@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-# rubocop:disable Layout/IndentationWidth
+# rubocop:disable-next Layout/IndentationWidth
 RSpec.describe PdfResults::ContextDef, type: :integration do
   let(:format_filepath) { 'app/strategies/pdf_results/formats/1-ficr2.4x050m.yml' }
   let(:layout_def) { YAML.load_file(format_filepath) }
@@ -106,4 +106,3 @@ DOC
   #-- -------------------------------------------------------------------------
   #++
 end
-# rubocop:enable Layout/IndentationWidth

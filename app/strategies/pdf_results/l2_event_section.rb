@@ -155,10 +155,9 @@ module PdfResults
     #++
 
     # Debug helper: converts this EventSection instance to a String.
-    # rubocop:disable Layout/LineLength
+    # rubocop:disable-next Layout/LineLength
     def to_s
       "[#{self.class}] title: '#{@event_title}', category: '#{@category_code}', gender: '#{@gender_code}', rows tot: #{@rows.count} additional fields: #{@additional_fields.keys}"
     end
-    # rubocop:enable Layout/LineLength
   end
 end

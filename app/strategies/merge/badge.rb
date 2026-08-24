@@ -821,13 +821,12 @@ module Merge
       return if mevent_ids.blank?
 
       # Handling of relay category changes is currently UNSUPPORTED: (updating it involves potentially changing multiple badges)
-      # rubocop:disable Layout/LineLength
+      # rubocop:disable-next Layout/LineLength
       if change_in_category_type_id?
         @checker.warnings << "WARNING: UNSUPPORTED category_type_id change that involves #{subset_title} relays!"
         @checker.warnings << "======== Final 'fixed' category_type_id (ID #{final_category_type_id}) different from original destination (ID #{actual_dest_badge.category_type_id});"
         @checker.warnings << "         involving MRS in events: #{mevent_ids.join(', ')}"
       end
-      # rubocop:enable Layout/LineLength
 
       # Implied updates for MRSs:
       # 1. MRR...... => meeting_program_id (no change), team_id, team_affiliation_id, meeting_relay_swimmers_count (no change unless duplicate)
@@ -934,13 +933,12 @@ module Merge
       return if @checker.shared_mevent_ids_from_mrss.keys.blank?
 
       # Handling of relay category changes is currently UNSUPPORTED: (updating it involves potentially changing multiple badges)
-      # rubocop:disable Layout/LineLength
+      # rubocop:disable-next Layout/LineLength
       if change_in_category_type_id?
         @checker.warnings << 'WARNING: UNSUPPORTED category_type_id change that involves relays (with shared events)!'
         @checker.warnings << "======== Final 'fixed' category_type_id (ID #{final_category_type_id}) different from original destination (ID #{actual_dest_badge.category_type_id});"
         @checker.warnings << "         involving MRS in events: #{mevent_ids.join(', ')}"
       end
-      # rubocop:enable Layout/LineLength
 
       # Implied updates for MRSs:
       # 1. MRR...... => meeting_program_id (no change), team_id, team_affiliation_id, meeting_relay_swimmers_count (no change unless duplicate)

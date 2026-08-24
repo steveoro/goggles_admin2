@@ -93,10 +93,9 @@ class BaseGrid < Datagrid::Base
   #   => true/[false] to always show column
   #      (@see https://github.com/bogdan/datagrid/wiki/Columns#columns-visibility)
   #
-  # rubocop:disable Metrics/ParameterLists
+  # rubocop:disable-next Metrics/ParameterLists
   def self.actions_column(edit:, destroy:, clone: false, expand: false, label_method: nil, mandatory: false)
     column(:actions, html: true, order: false, edit:, destroy:,
                      clone:, expand:, label_method:, mandatory:)
   end
-  # rubocop:enable Metrics/ParameterLists
 end

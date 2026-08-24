@@ -149,7 +149,7 @@ module Merge
     # 3. Catch-all for remaining TA-linked entities
     # 4. Delete source TA
     #
-    # rubocop:disable Metrics/AbcSize
+    # rubocop:disable-next Metrics/AbcSize
     def prepare_script_for_season_with_dest_ta(src_ta, dest_ta)
       register_dest_ta_sql_ref(src_ta.season_id, dest_ta.id)
       @sql_log << "\r\n-- Season #{src_ta.season_id}, dest. TA found #{dest_ta.id}, processing source TA #{src_ta.id}:"
@@ -171,7 +171,6 @@ module Merge
       @sql_log << "UPDATE meeting_team_scores SET updated_at=NOW(), team_id=#{@dest.id}, team_affiliation_id=#{dest_ta.id} WHERE team_affiliation_id=#{src_ta.id};"
       @sql_log << "DELETE FROM team_affiliations WHERE id=#{src_ta.id};"
     end
-    # rubocop:enable Metrics/AbcSize
 
     # Processes a source TA when no dest TA exists — recycle the source TA by updating its team_id.
     def prepare_script_for_season_recycle_ta(src_ta)

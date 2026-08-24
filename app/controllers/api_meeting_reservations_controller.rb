@@ -4,7 +4,7 @@
 #
 # Manage MeetingReservations via API.
 #
-# rubocop:disable Metrics/ClassLength, Metrics/MethodLength, Metrics/AbcSize
+# rubocop:disable-next Metrics/ClassLength, Metrics/MethodLength, Metrics/AbcSize
 class APIMeetingReservationsController < ApplicationController
   # GET /api_meeting_reservations
   # Show the MeetingReservations dashboard.
@@ -68,7 +68,7 @@ class APIMeetingReservationsController < ApplicationController
   # == Route param:
   # - <tt>id</tt>: ID of the master instance row for which the details have to be displayed
   #
-  # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+  # rubocop:disable-next Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
   def expand
     result = APIProxy.call(
       method: :get,
@@ -117,7 +117,6 @@ class APIMeetingReservationsController < ApplicationController
       end
     end
   end
-  # rubocop:enable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
 
   # POST /api_meeting_reservations
   # Creates a new GogglesDb::MeetingReservation row.
@@ -166,7 +165,7 @@ class APIMeetingReservationsController < ApplicationController
   # == Route param:
   # - <tt>id</tt>: ID of the instance row to be updated
   #
-  # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+  # rubocop:disable-next Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
   def update
     # Prepare the API payload using the proper key (namespace) & params for the sub-entity:
     details_key = if params['_model']&.include?('EventReservation')
@@ -214,7 +213,6 @@ class APIMeetingReservationsController < ApplicationController
       )
     end
   end
-  # rubocop:enable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
 
   # DELETE /api_meeting_reservations
   # Removes GogglesDb::MeetingReservation rows. Accepts single (:id) or multiple (:ids) IDs for the deletion.
@@ -265,4 +263,3 @@ class APIMeetingReservationsController < ApplicationController
     # ).merge(params.fetch(:meeting_reservations_grid, {}).permit!)
   end
 end
-# rubocop:enable Metrics/ClassLength, Metrics/MethodLength, Metrics/AbcSize

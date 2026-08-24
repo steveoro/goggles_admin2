@@ -26,7 +26,7 @@ module Import
   # The premise for having an actual SQL batch file that can be executed remotely is to have the localhost database
   # replica perfectly cloned from the remote one. (THE 2 DBs MUST BE IN SYNC!)
   #
-  # rubocop:disable Metrics/AbcSize, Metrics/PerceivedComplexity, Metrics/MethodLength, Metrics/CyclomaticComplexity
+  # rubocop:disable-next Metrics/AbcSize, Metrics/PerceivedComplexity, Metrics/MethodLength, Metrics/CyclomaticComplexity
   class MacroSolver
     MAX_SWIMMERS_X_RELAY = 8 # Considering only this max number of relay swimmers foreach row
 
@@ -423,7 +423,7 @@ module Import
     #
     # FUTUREDEV: obtain manifest + parse it to get the actual session information.
     #
-    # rubocop:disable Metrics/BlockLength
+    # rubocop:disable-next Metrics/BlockLength
     def map_events_and_results
       # Clear the internal entity mappings:
       @data['meeting_event'] = {}
@@ -556,7 +556,6 @@ module Import
       map_events_from_db
       map_programs_from_db
     end
-    # rubocop:enable Metrics/BlockLength
     #-- ------------------------------------------------------------------------
     #++
 
@@ -772,7 +771,7 @@ module Import
     # - <tt>#matches<tt> => Array of possible or alternative row candidates, including the first/best;
     # - <tt>#bindings<tt> => Hash of associations needed especially when the association row is new.
     #
-    # rubocop:disable Metrics/ParameterLists
+    # rubocop:disable-next Metrics/ParameterLists
     def find_or_prepare_pool(id, pool_name, address, pool_length, lanes_number = '8', phone_number = nil)
       # Already existing & found?
       existing_row = GogglesDb::SwimmingPool.find_by(id:) if id.to_i.positive?
@@ -819,7 +818,6 @@ module Import
       new_entity = Import::Entity.new(row: new_row, matches: [new_row], bindings:)
       add_entity_with_key('swimming_pool', pool_name, new_entity)
     end
-    # rubocop:enable Metrics/ParameterLists
 
     # Finds or prepares the creation of a MeetingSession instance given all of the following parameters.
     #
@@ -851,7 +849,7 @@ module Import
     # - <tt>#matches<tt> => Array of possible or alternative row candidates, including the first/best;
     # - <tt>#bindings<tt> => Hash of keys pointing to the correct association rows stored at root level in the #data hash member.
     #
-    # rubocop:disable Metrics/ParameterLists
+    # rubocop:disable-next Metrics/ParameterLists
     def find_or_prepare_session(meeting:, date_day:, date_month:, date_year:, pool_name:, address:,
                                 scheduled_date: nil, session_order: 1, pool_length: '25',
                                 day_part_type: GogglesDb::DayPartType.morning)
@@ -880,7 +878,6 @@ module Import
       # Add the bindings to the new entity row (even if pool_entity.row has an ID):
       Import::Entity.new(row: new_row, matches: [new_row], bindings:)
     end
-    # rubocop:enable Metrics/ParameterLists
 
     # Finds or prepares the creation of a MeetingEvent instance given all of the following parameters.
     # == Context:
@@ -902,7 +899,7 @@ module Import
     # == Returns:
     # An Import::Entity wrapping the target row together with a list of all possible candidates, when found.
     #
-    # rubocop:disable Metrics/ParameterLists
+    # rubocop:disable-next Metrics/ParameterLists
     def find_or_prepare_mevent(meeting:, meeting_session:, session_index:, event_type:, event_order:, heat_type: GogglesDb::HeatType.finals)
       # Prioritize any existing meeting events:
       if meeting.present? && meeting.id.present? &&
@@ -931,7 +928,6 @@ module Import
       )
       Import::Entity.new(row: new_row, matches: [new_row], bindings: { 'meeting_session' => session_index })
     end
-    # rubocop:enable Metrics/ParameterLists
 
     # Finds or prepares the creation of a MeetingProgram instance given all of the following parameters.
     #
@@ -946,7 +942,7 @@ module Import
     # == Returns:
     # An Import::Entity wrapping the target row together with a list of all possible candidates, when found.
     #
-    # rubocop:disable Metrics/ParameterLists
+    # rubocop:disable-next Metrics/ParameterLists
     def find_or_prepare_mprogram(meeting_event:, event_key:, pool_type:, category_type:, gender_type:, event_order:)
       bindings = { 'meeting_event' => event_key }
       domain = GogglesDb::MeetingProgram.where(
@@ -962,7 +958,6 @@ module Import
       )
       Import::Entity.new(row: new_row, matches: [new_row], bindings:)
     end
-    # rubocop:enable Metrics/ParameterLists
 
     # Finds or prepares the creation of a Team instance given its name returning also its possible
     # alternative matches (when found).
@@ -1127,7 +1122,7 @@ module Import
     # == Returns:
     # An Import::Entity wrapping the target row together with a list of all possible candidates, when found.
     #
-    # rubocop:disable Metrics/ParameterLists
+    # rubocop:disable-next Metrics/ParameterLists
     def find_or_prepare_badge(swimmer:, swimmer_key:, team:, team_key:, team_affiliation:, category_type:,
                               badge_code: '?', entry_time_type: GogglesDb::EntryTimeType.last_race)
       # Swimmer & TA can be new, so we add them to the bindings Hash here:
@@ -1152,7 +1147,6 @@ module Import
       )
       Import::Entity.new(row: new_row, matches: [new_row], bindings:)
     end
-    # rubocop:enable Metrics/ParameterLists
 
     # Finds or prepares the creation of a MeetingIndividualResult row given all of the following parameters.
     #
@@ -1177,7 +1171,7 @@ module Import
     # == Returns:
     # An Import::Entity wrapping the target row together with a list of all possible candidates, when found.
     #
-    # rubocop:disable Metrics/ParameterLists
+    # rubocop:disable-next Metrics/ParameterLists
     def find_or_prepare_mir(meeting_program:, mprogram_key:, swimmer:, swimmer_key:, team:, team_key:,
                             team_affiliation:, badge:, rank:, timing:, score:, disqualify_type: '')
       bindings = {
@@ -1223,7 +1217,6 @@ module Import
       )
       Import::Entity.new(row: new_row, matches: [new_row], bindings:)
     end
-    # rubocop:enable Metrics/ParameterLists
 
     # Finds or prepares the creation of a Lap row given all of the following parameters.
     #
@@ -1249,7 +1242,7 @@ module Import
     # == Returns:
     # An Import::Entity wrapping the target row together with a list of all possible candidates, when found.
     #
-    # rubocop:disable Metrics/ParameterLists
+    # rubocop:disable-next Metrics/ParameterLists
     def find_or_prepare_lap(meeting_program:, mprogram_key:, swimmer:, swimmer_key:, team:, team_key:,
                             mir:, mir_key:, length_in_meters:, abs_timing:, delta_timing:)
       bindings = {
@@ -1279,7 +1272,6 @@ module Import
       )
       Import::Entity.new(row: new_row, matches: [new_row], bindings:)
     end
-    # rubocop:enable Metrics/ParameterLists
     #-- -------------------------------------------------------------------------
     #++
 
@@ -1307,7 +1299,7 @@ module Import
     # In other words, the result shall be the last created MRR row found satisfying
     # the same parameter values as constraints.
     #
-    # rubocop:disable Metrics/ParameterLists
+    # rubocop:disable-next Metrics/ParameterLists
     def find_or_prepare_mrr(meeting_program:, mprogram_key:, team:, team_key:,
                             team_affiliation:, rank:, timing:, score:, disqualify_type: '')
       bindings = {
@@ -1347,7 +1339,6 @@ module Import
       )
       Import::Entity.new(row: new_row, matches: [new_row], bindings:)
     end
-    # rubocop:enable Metrics/ParameterLists
 
     # Finds or prepares the creation of a MeetingRelaySwimmer row given all of the following parameters.
     #
@@ -1377,7 +1368,7 @@ module Import
     # == Returns:
     # An Import::Entity wrapping the target row together with a list of all possible candidates, when found.
     #
-    # rubocop:disable Metrics/ParameterLists
+    # rubocop:disable-next Metrics/ParameterLists
     def find_or_prepare_rel_swimmer(meeting_program:, mprogram_key:, event_type:,
                                     swimmer:, swimmer_key:, team:, team_key:,
                                     mrr:, mrr_key:, badge:, relay_order:, length_in_meters:,
@@ -1427,7 +1418,6 @@ module Import
       )
       Import::Entity.new(row: new_row, matches: [new_row], bindings:)
     end
-    # rubocop:enable Metrics/ParameterLists
     #-- -------------------------------------------------------------------------
     #++
 
@@ -1457,7 +1447,7 @@ module Import
     # == Returns:
     # An Import::Entity wrapping the target row together with a list of all possible candidates, when found.
     #
-    # rubocop:disable Metrics/ParameterLists
+    # rubocop:disable-next Metrics/ParameterLists
     def find_or_prepare_relay_lap(swimmer:, swimmer_key:, team:, team_key:,
                                   mrr:, mrr_key:, mrs:, mrs_key:,
                                   length_in_meters:, abs_timing:, delta_timing:)
@@ -1486,7 +1476,6 @@ module Import
       )
       Import::Entity.new(row: new_row, matches: [new_row], bindings:)
     end
-    # rubocop:enable Metrics/ParameterLists
     #-- -------------------------------------------------------------------------
     #++
 
@@ -1727,13 +1716,12 @@ module Import
     # The first key found for the specified <tt>model_name</tt> matching <tt>key_or_regexp</tt>,
     # or +nil+ if not found.
     def search_key_for(model_name, key_or_regexp)
-      # rubocop:disable Style/SafeNavigationChainLength
+      # rubocop:disable-next Style/SafeNavigationChainLength
       if key_or_regexp.is_a?(Regexp)
         @data&.fetch(model_name, {})&.keys&.find { |key| key.to_s.match?(key_or_regexp) }
       else
         @data&.fetch(model_name, {})&.keys&.find { |key| key.to_s.starts_with?(key_or_regexp) }
       end
-      # rubocop:enable Style/SafeNavigationChainLength
     end
 
     # Scans the cached @data for the specified <tt>model_name</tt> and replaces each binding key found
@@ -2684,5 +2672,4 @@ module Import
       replace_key_in_bindings_for('relay_lap', partial_key, swimmer_key, 'swimmer')
     end
   end
-  # rubocop:enable Metrics/AbcSize, Metrics/PerceivedComplexity, Metrics/MethodLength, Metrics/CyclomaticComplexity
 end

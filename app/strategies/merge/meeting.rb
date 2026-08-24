@@ -119,12 +119,11 @@ module Merge
     end
 
     # Creates and outputs to stdout a detailed report of the merge operation.
-    # rubocop:disable Rails/Output
+    # rubocop:disable-next Rails/Output
     def display_report
       @checker.display_report
       puts("\r\n*** WARNING LOG: ***\r\n#{@warning_log.join("\r\n")}") if @warning_log.present?
     end
-    # rubocop:enable Rails/Output
 
     # Returns a Hash with the expected final counts for the destination meeting
     # after the merge operation has completed.
@@ -134,7 +133,7 @@ module Merge
 
     # Verifies the actual counts against expected counts after merge execution.
     # Returns true if all counts match, false otherwise.
-    # rubocop:disable Rails/Output
+    # rubocop:disable-next Rails/Output
     def verify_merge_result
       puts("\r\n=== POST-MERGE VERIFICATION ===")
 
@@ -169,7 +168,6 @@ module Merge
 
       all_ok
     end
-    # rubocop:enable Rails/Output
 
     private
 
@@ -298,7 +296,7 @@ module Merge
       src_laps = GogglesDb::Lap.where(meeting_individual_result_id: src_mir.id)
       return if src_laps.empty?
 
-      # rubocop:disable Layout/LineLength
+      # rubocop:disable-next Layout/LineLength
       if dest_laps.empty?
         @sql_log << "UPDATE laps SET updated_at=NOW(), meeting_program_id=#{dest_mir.meeting_program_id}, meeting_individual_result_id=#{dest_mir.id} WHERE meeting_individual_result_id=#{src_mir.id};"
       else
@@ -313,7 +311,6 @@ module Merge
         end
         @sql_log << "DELETE FROM laps WHERE meeting_individual_result_id=#{src_mir.id};"
       end
-      # rubocop:enable Layout/LineLength
     end
 
     def prepare_script_for_relay_results

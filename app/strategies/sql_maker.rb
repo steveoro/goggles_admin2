@@ -66,7 +66,7 @@ class SqlMaker
   # == Returns
   # The last SQL (String) stament added to the log.
   #
-  # rubocop:disable Metrics/PerceivedComplexity
+  # rubocop:disable-next Metrics/PerceivedComplexity
   def log_insert
     klass = @row.class
     con = klass.connection
@@ -93,7 +93,6 @@ class SqlMaker
     @sql_log << sql_text
     sql_text
   end
-  # rubocop:enable Metrics/PerceivedComplexity
 
   # Adds a new SQL UPDATE statement to the result log using the latest <tt>@row</tt> set.
   # (The statement is not executed.)

@@ -3,7 +3,7 @@
 require 'rails_helper'
 require 'bigdecimal'
 
-# rubocop:disable RSpec/InstanceVariable
+# rubocop:disable-next RSpec/InstanceVariable
 RSpec.describe Import::Committers::Main do
   let(:season) do
     # Random FIN-type season from the last available ones:
@@ -834,4 +834,3 @@ RSpec.describe Import::Committers::Main do
     end
   end
 end
-# rubocop:enable RSpec/InstanceVariable

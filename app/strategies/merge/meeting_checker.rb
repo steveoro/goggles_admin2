@@ -404,7 +404,7 @@ module Merge
 
     # Detects MIRs with different timings for the same swimmer in shared programs.
     # Returns an array of conflict descriptions.
-    # rubocop:disable Rails/Output
+    # rubocop:disable-next Rails/Output
     def detect_timing_conflicts
       conflicts = []
 
@@ -452,6 +452,5 @@ module Merge
 
       conflicts
     end
-    # rubocop:enable Rails/Output
   end
 end

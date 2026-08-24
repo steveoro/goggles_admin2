@@ -365,7 +365,7 @@ RSpec.describe 'GogglesCupPreview' do
       expect(flash[:alert]).to be_present
     end
 
-    # rubocop:disable RSpec/MultipleExpectations
+    # rubocop:disable-next RSpec/MultipleExpectations
     it 'creates a pushable SQL file when the cup has ranking_data' do
       team = FactoryBot.create(:team)
       cup = FactoryBot.create(:goggle_cup, team: team, description: 'Test Cup', season_year: 2025, swimmers_ids: '1,2,3')
@@ -390,7 +390,6 @@ RSpec.describe 'GogglesCupPreview' do
       expect(sql).to include(GogglesDb::GoggleCup.connection.quote(cup.ranking_data))
       expect(sql).to include('COMMIT;')
     end
-    # rubocop:enable RSpec/MultipleExpectations
 
     it 'shows the export SQL button only when ranking_data is present' do
       team = FactoryBot.create(:team)

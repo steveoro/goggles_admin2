@@ -29,7 +29,7 @@ class FileListController < ApplicationController
   # - :filter => override for the same-named internal member
   # - :parent_folder => as above
   #
-  # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+  # rubocop:disable-next Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
   def result_files
     @filter ||= file_params[:filter] || '*.json'
     @parent_folder ||= file_params[:parent_folder] || 'results.new'
@@ -53,7 +53,6 @@ class FileListController < ApplicationController
     @curr_dir = @dirnames.first || "data/#{@parent_folder}/" # use default parent folder for empty dir lists
     @files = Rails.root.glob("crawler/#{@curr_dir}/**/#{@filter}").sort
   end
-  # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
   #-- -------------------------------------------------------------------------
   #++
 

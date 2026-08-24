@@ -4,7 +4,7 @@
 #
 # Manage Stats via API.
 #
-# rubocop:disable Metrics/ClassLength
+# rubocop:disable-next Metrics/ClassLength
 class StatsController < ApplicationController
   # GET /stats
   # Show the API daily uses dashboard.
@@ -15,7 +15,7 @@ class StatsController < ApplicationController
   # - <tt>@day_hash</tt>: overall daily uses for all routes (group keys used to draw chart)
   # - <tt>@url_hash</tt>: daily uses for each route, a different line for each key (group keys used to draw chart)
   #
-  # rubocop:disable Metrics/AbcSize
+  # rubocop:disable-next Metrics/AbcSize
   def index
     result = APIProxy.call(
       method: :get, url: 'api_daily_uses', jwt: current_user.jwt,
@@ -49,7 +49,6 @@ class StatsController < ApplicationController
       end
     end
   end
-  # rubocop:enable Metrics/AbcSize
   #-- -------------------------------------------------------------------------
   #++
 
@@ -85,7 +84,7 @@ class StatsController < ApplicationController
   # - <tt>id</tt>: to be used for single row deletion
   # - <tt>ids</tt>: to be used for multiple rows deletion
   #
-  # rubocop:disable Metrics/AbcSize
+  # rubocop:disable-next Metrics/AbcSize
   def destroy
     row_ids = delete_params[:ids].present? ? delete_params[:ids].split(',') : []
     row_ids << delete_params[:id] if delete_params[:id].present?
@@ -101,7 +100,6 @@ class StatsController < ApplicationController
     end
     redirect_to(stats_path(index_params))
   end
-  # rubocop:enable Metrics/AbcSize
   #-- -------------------------------------------------------------------------
   #++
 
@@ -193,7 +191,7 @@ class StatsController < ApplicationController
   # - <tt>@day_hash</tt>: overall daily uses for all routes (group keys used to draw chart)
   # - <tt>@url_hash</tt>: daily uses for each route, a different line for each key (group keys used to draw chart)
   #
-  # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+  # rubocop:disable-next Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
   def prepare_chart_domain(domain)
     # Prepare a list of records for better handling:
     day_keys = domain.map { |row| row.day.to_s }.uniq
@@ -219,7 +217,6 @@ class StatsController < ApplicationController
 
     group_chart_domain_for_day_and_url(domain)
   end
-  # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
 
   # Fetches the API usage summary from the API for the current date filter period.
   #
@@ -298,4 +295,3 @@ class StatsController < ApplicationController
     end
   end
 end
-# rubocop:enable Metrics/ClassLength

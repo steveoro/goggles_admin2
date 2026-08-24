@@ -29,7 +29,7 @@ module Import
   # > committer.commit_all
   # ```
   #
-  # rubocop:disable Metrics/AbcSize, Metrics/PerceivedComplexity, Metrics/CyclomaticComplexity
+  # rubocop:disable-next Metrics/AbcSize, Metrics/PerceivedComplexity, Metrics/CyclomaticComplexity
   class MacroCommitter
     # Creates a new MacroCommitter instance.
     #
@@ -868,5 +868,4 @@ module Import
       model_row
     end
   end
-  # rubocop:enable Metrics/AbcSize, Metrics/PerceivedComplexity, Metrics/CyclomaticComplexity
 end

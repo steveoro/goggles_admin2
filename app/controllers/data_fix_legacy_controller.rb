@@ -650,7 +650,7 @@ class DataFixLegacyController < ApplicationController
   #
   #    { coded_name: <internal_coded_name> }
   #
-  # rubocop:disable Metrics/AbcSize
+  # rubocop:disable-next Metrics/AbcSize
   def coded_name
     unless request.format.json? && %w[code nick_name].include?(coded_name_params[:target])
       flash[:warning] = I18n.t('search_view.errors.invalid_request')
@@ -673,7 +673,6 @@ class DataFixLegacyController < ApplicationController
 
     render(json: { coded_name_params[:target] => result })
   end
-  # rubocop:enable Metrics/AbcSize
 
   # [GET /teams_for_swimmer] (AJAX only)
   # Computes and returns the rendered text displaying the list of unique team names

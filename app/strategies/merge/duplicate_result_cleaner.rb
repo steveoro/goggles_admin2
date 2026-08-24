@@ -178,7 +178,7 @@ module Merge
     #++
 
     # Displays a report of all duplicates found.
-    # rubocop:disable Rails/Output, Metrics/MethodLength
+    # rubocop:disable-next Rails/Output, Metrics/MethodLength
     def display_report
       puts "\r\n#{'=' * 60}"
       puts 'Duplicate Result Cleaner Report'
@@ -246,7 +246,6 @@ module Merge
       puts "  Duplicate MRR pairs: #{total_dup_mrrs}"
       puts "#{'=' * 60}\r\n"
     end
-    # rubocop:enable Rails/Output, Metrics/MethodLength
     #-- -----------------------------------------------------------------------
     #++
 

@@ -16,7 +16,7 @@ module Import
     # - We set layoutType to 2 on the returned hash (as per Option A), without touching
     #   the original input hash.
     #
-    # rubocop:disable Metrics/ClassLength
+    # rubocop:disable-next Metrics/ClassLength
     class Layout4To2
       class << self
         def normalize(data_hash:)
@@ -298,6 +298,5 @@ module Import
         end
       end
     end
-    # rubocop:enable Metrics/ClassLength
   end
 end

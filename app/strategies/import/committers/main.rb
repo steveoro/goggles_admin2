@@ -464,13 +464,12 @@ module Import
           end
         end
 
-        # rubocop:disable Layout/LineLength
+        # rubocop:disable-next Layout/LineLength
         unless category_type && gender_type
           @stats[:errors] << "MeetingProgram error: category=#{category_code} or gender=#{gender_code} not found (season=#{@season_id}, relay=#{is_relay}, meeting_event_id=#{meeting_event_id})"
           Rails.logger.warn("[Main] MeetingProgram lookup failed: category=#{category_code}, gender=#{gender_code}, season=#{@season_id}, relay=#{is_relay}, meeting_event_id=#{meeting_event_id}")
           return nil
         end
-        # rubocop:enable Layout/LineLength
 
         program_hash = {
           'meeting_event_id' => meeting_event_id,

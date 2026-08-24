@@ -10,7 +10,7 @@ require 'json'
 # redirects to legacy controller actions to preserve current behavior.
 #
 # THESE will be addressed in a future refactoring:
-# rubocop:disable Metrics/ParameterLists
+# rubocop:disable-next Metrics/ParameterLists
 class DataFixController < ApplicationController
   include FileCounter
 
@@ -2873,7 +2873,7 @@ class DataFixController < ApplicationController
 
   # Cascade a team_id change to Phase 5 DataImport rows (MIR, MRR and MRS).
   # Returns the number of rows updated.
-  # rubocop:disable Rails/SkipsModelValidations
+  # rubocop:disable-next Rails/SkipsModelValidations
   def cascade_team_to_data_import_rows(team_key, new_team_id, season_id = nil, phase_file_path: nil,
                                        phase2_affiliations: [], phase3_badges: [])
     normalized_team_id = new_team_id.to_i.positive? ? new_team_id.to_i : nil
@@ -2950,11 +2950,10 @@ class DataFixController < ApplicationController
     Rails.logger.error("[DataFix] cascade_team_to_data_import_rows failed: #{e.message}")
     0
   end
-  # rubocop:enable Rails/SkipsModelValidations
 
   # Cascade a swimmer update from Phase 3 to Phase 5 DataImport rows (MIR + MRS).
   # Returns the number of rows updated.
-  # rubocop:disable Rails/SkipsModelValidations
+  # rubocop:disable-next Rails/SkipsModelValidations
   def cascade_swimmer_to_data_import_rows(source_path:, old_swimmer_key:, canonical_swimmer_key:, old_swimmer_id:, new_swimmer_id:, season_id:, phase3_badges:)
     count = 0
     normalized_season_id = season_id.to_i.positive? ? season_id.to_i : nil
@@ -3036,7 +3035,6 @@ class DataFixController < ApplicationController
     Rails.logger.error("[DataFix] cascade_swimmer_to_data_import_rows failed: #{e.message}")
     0
   end
-  # rubocop:enable Rails/SkipsModelValidations
 
   def harmonize_phase2_phase3_team_links(source_path:, season_id:)
     phase2_path = default_phase_path_for(source_path, 2)
@@ -3881,4 +3879,3 @@ class DataFixController < ApplicationController
   #-- -------------------------------------------------------------------------
   #++
 end
-# rubocop:enable Metrics/ParameterLists
