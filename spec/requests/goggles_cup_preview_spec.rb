@@ -295,6 +295,54 @@ RSpec.describe 'GogglesCupPreview' do
     end
   end
 
+  describe 'GET /best_results/goggles_cup_preview/compute (base timings CSV)' do
+    include AdminSignInHelpers
+
+    before(:each) do
+      admin_user = prepare_admin_user
+      sign_in_admin(admin_user)
+    end
+
+    it 'exports base timings from a stored cup as CSV' do
+      team = FactoryBot.create(:team)
+      swimmer = FactoryBot.create(:swimmer, complete_name: 'TEST SWIMMER', year_of_birth: 1980)
+      cup = FactoryBot.create(:goggle_cup, team: team, description: 'Test Cup', season_year: 2025, swimmers_ids: swimmer.id.to_s)
+      cup.update!(ranking_data: {
+        description: 'Test Cup', season_year: 2025, max_points: 1000, team_id: team.id,
+        end_date: '2026-07-31', swimmer_ids: [swimmer.id], no_duplicated_events: false,
+        data: {
+          base_timings: {
+            swimmer.id.to_s => [
+              { 'event_type_code' => '50SL', 'pool_type_code' => '25',
+                'season_header_year' => 2022, 'total_hundredths' => 3100,
+                'meeting_date' => '2022-02-01', 'meeting_name' => 'Base Meeting',
+                'meeting_id' => 7, 'meeting_individual_result_id' => 777 }
+            ]
+          },
+          scores: {
+            swimmer.id.to_s => [
+              { 'event_type_code' => '50SL', 'pool_type_code' => '25',
+                'total_hundredths' => 3000, 'meeting_date' => '2025-01-15',
+                'meeting_name' => 'Test Meeting', 'meeting_id' => 42,
+                'meeting_individual_result_id' => 99, 'team_id' => team.id,
+                'team_name' => 'TEST', 'old_total_hundredths' => 3200,
+                'old_meeting_date' => '2024-01-10', 'old_meeting_name' => 'Old Meeting',
+                'old_meeting_id' => 30, 'old_meeting_individual_result_id' => 88,
+                'row_score' => 1066.67 }
+            ]
+          }
+        }
+      }.to_json)
+
+      get compute_goggles_cup_preview_path(format: :csv), params: { team_id: team.id, goggle_cup_id: cup.id, export_type: 'base_timings' }
+
+      expect(response).to have_http_status(:success)
+      expect(response.media_type).to eq('text/csv')
+      expect(response.body).to include('TEST SWIMMER')
+      expect(response.body).to include('50SL')
+    end
+  end
+
   describe 'POST /best_results/goggles_cup_preview/export_sql' do
     include AdminSignInHelpers
 

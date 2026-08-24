@@ -1,13 +1,15 @@
 GIT
   remote: https://github.com/steveoro/goggles_db.git
-  revision: 96b3a49956e0eb849f3238ddbdb6a986fb87e151
+  revision: 2dde47413d2f24de34da548fa041ea8af8899bba
   specs:
-    goggles_db (0.10.35)
+    goggles_db (0.10.36)
       acts-as-taggable-on
       acts_as_votable
+      caxlsx
       cities
       countries
       country_select
+      csv
       devise
       devise-i18n
       draper
@@ -19,11 +21,14 @@ GIT
       jwt
       ledermann-rails-settings
       loofah
+      matrix
       mini_magick
       nokogiri
       omniauth-facebook
       omniauth-rails_csrf_protection
       plus_codes
+      prawn
+      prawn-table
       rails (>= 8.1, < 9)
       rails-i18n (~> 8)
       scenic

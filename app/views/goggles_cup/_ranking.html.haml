@@ -1,3 +1,11 @@
--# Delegates to the shared engine ranking partial. The engine partial expects
--# :ranking_data, :team, :goggle_cup, :no_duplicated_events and optional :show_exports.
-= render partial: 'goggles_db/goggle_cups/ranking', locals: local_assigns
+-# Builds the export URL builder for the shared engine ranking partial and delegates to it.
+- export_path = ->(format:, export_type: 'ranking') do
+  - goggle_cup_id = local_assigns[:goggle_cup]&.id
+  - compute_goggles_cup_preview_path(format: format,
+                                     team_id: local_assigns[:team]&.id,
+                                     goggle_cup_id: goggle_cup_id,
+                                     secondary_team_id: local_assigns[:secondary_team_id],
+                                     swimmer_ids: local_assigns[:selected_swimmer_ids],
+                                     no_duplicated_events: local_assigns[:no_duplicated_events],
+                                     export_type: export_type)
+= render partial: 'goggles_db/goggle_cups/ranking', locals: local_assigns.merge(export_path: export_path)

@@ -1,11 +1,5 @@
 # frozen_string_literal: true
 
-require 'csv'
-require 'axlsx'
-require 'prawn'
-require 'prawn/table'
-Prawn::Fonts::AFM.hide_m17n_warning = true
-
 # = GogglesCupController
 class GogglesCupController < ApplicationController
   include FileCounter
@@ -123,9 +117,9 @@ class GogglesCupController < ApplicationController
     respond_to do |format|
       format.html { render(:index) }
       format.json { render json: { html: ranking_html } }
-      format.csv { send_csv_data }
-      format.xlsx { send_xlsx_data }
-      format.pdf { send_pdf_data }
+      format.csv { send_ranking_export(format: :csv) }
+      format.xlsx { send_ranking_export(format: :xlsx) }
+      format.pdf { send_ranking_export(format: :pdf) }
     end
   end
 
@@ -236,7 +230,7 @@ class GogglesCupController < ApplicationController
 
   def ranking_html
     render_to_string(
-      partial: 'goggles_db/goggle_cups/ranking',
+      partial: 'goggles_cup/ranking',
       formats: [:html],
       locals: {
         team: @team,
@@ -244,156 +238,31 @@ class GogglesCupController < ApplicationController
         selected_swimmer_ids: @selected_swimmer_ids,
         secondary_team_id: @secondary_team_id,
         no_duplicated_events: @no_duplicated_events,
-        goggle_cup: @goggle_cup,
-        show_exports: true
+        goggle_cup: @goggle_cup
       }
     )
   end
 
-  def send_csv_data
+  # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+  def send_ranking_export(format:)
     return redirect_invalid_export unless @team && @ranking_data.present?
 
-    send_data(generate_csv_data, filename: "#{export_filename}.csv", type: 'text/csv', disposition: 'attachment')
+    result = GogglesDb::GoggleCupRanking::Exporter.new(
+      cup: @goggle_cup, team: @team, ranking_data: @ranking_data,
+      no_duplicated_events: @no_duplicated_events,
+      description: @goggle_cup&.description.presence || params[:description],
+      season_year: @goggle_cup&.season_year || params[:season_year]&.to_i
+    ).export(format_name: format, export_type: params[:export_type])
+
+    return redirect_invalid_export if result.blank?
+
+    send_data(result[:data], filename: result[:filename], type: result[:mime_type], disposition: 'attachment')
   end
-
-  def send_xlsx_data
-    return redirect_invalid_export unless @team && @ranking_data.present?
-
-    send_data(generate_xlsx_package.to_stream.read,
-              filename: "#{export_filename}.xlsx",
-              type: Mime[:xlsx], disposition: 'attachment')
-  end
-
-  def send_pdf_data
-    return redirect_invalid_export unless @team && @ranking_data.present?
-
-    send_data(generate_pdf_data,
-              filename: "#{export_filename}.pdf",
-              type: 'application/pdf', disposition: 'attachment')
-  end
-
-  def export_filename
-    season = @goggle_cup&.season_year || params[:season_year] || Date.current.year
-    desc = @goggle_cup&.description || params[:description] || @team.name
-    "goggles_cup-#{season}-#{desc.parameterize}"
-  end
+  # rubocop:enable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
 
   def redirect_invalid_export
     flash[:alert] = I18n.t('goggles_cup.errors.invalid_selection_or_data')
     redirect_to(goggles_cup_preview_path(team_id: @team_id))
-  end
-
-  def generate_csv_data
-    CSV.generate(headers: true) do |csv|
-      csv << %w[Rank Swimmer Year_of_Birth Overall_Score Swimmer_ID]
-      @ranking_data.each_with_index do |data, index|
-        csv << export_row_for(data, index)
-      end
-    end
-  end
-
-  def generate_xlsx_package
-    package = Axlsx::Package.new
-    workbook = package.workbook
-    header_style = workbook.styles.add_style(b: true, sz: 12, bg_color: 'DDDDDD', alignment: { horizontal: :center })
-    data_style = workbook.styles.add_style(sz: 11)
-    right_style = workbook.styles.add_style(sz: 11, alignment: { horizontal: :right })
-
-    workbook.add_worksheet(name: "GogglesCup-#{@team.name.truncate(20)}") do |sheet|
-      sheet.add_row ["GogglesCup #{@team.name}"], style: header_style
-      sheet.merge_cells 'A1:E1'
-      sheet.add_row
-      sheet.add_row %w[Rank Swimmer Year_of_Birth Overall_Score Swimmer_ID], style: header_style
-      @ranking_data.each_with_index do |data, index|
-        sheet.add_row export_row_for(data, index), style: [right_style, data_style, right_style, right_style, right_style]
-      end
-      sheet.column_widths 6, 40, 10, 12, 8
-    end
-
-    package
-  end
-
-  def export_row_for(data, index)
-    [index + 1, data[:swimmer_name], data[:swimmer_year_of_birth], format('%.2f', data[:overall_score]), data[:swimmer_id]]
-  end
-
-  def generate_pdf_data # rubocop:disable Metrics/AbcSize,Metrics/MethodLength
-    Prawn::Document.new(page_layout: :portrait, margin: 25) do |pdf|
-      pdf.font_size 10
-      pdf.text(t('goggles_cup.ranking_for_team', team: @team.name), size: 16, style: :bold, align: :center)
-      pdf.move_down 4
-      if @goggle_cup
-        pdf.text("#{@goggle_cup.season_year} — #{@goggle_cup.description}", size: 12, style: :bold, align: :center)
-        pdf.move_down 2
-      end
-      pdf.text(t('goggles_cup.no_duplicated_events'), size: 8, align: :center)
-      pdf.move_up 10
-      checkbox_x = (pdf.bounds.width / 2) + (pdf.width_of(t('goggles_cup.no_duplicated_events'), size: 8) / 2) + 4
-      checkbox_y = pdf.cursor
-      pdf.stroke_rectangle([checkbox_x, checkbox_y], 8, 8)
-      if @no_duplicated_events
-        pdf.fill_color '000000'
-        pdf.text_box('X', at: [checkbox_x + 1.5, checkbox_y - 1], size: 7)
-      end
-      pdf.move_down 12
-      pdf.text("#{t('goggles_cup.computation_details')}, #{t('goggles_cup.formula')}", size: 8, align: :center)
-      pdf.move_down 8
-
-      @ranking_data.each_with_index do |data, index|
-        pdf.start_new_page if pdf.cursor < 150
-
-        pdf.text("##{index + 1}  #{data[:swimmer_name]}  (#{data[:swimmer_year_of_birth]})",
-                 size: 12, style: :bold)
-        pdf.move_up 10
-        pdf.text("#{t('goggles_cup.overall_score', score: format('%.2f', data[:overall_score]))}  —  ID #{data[:swimmer_id]}",
-                 size: 9, color: '000088', style: :bold, align: :right)
-        pdf.move_down 4
-
-        table_data = pdf_ranking_table_data(data[:top_rows])
-        pdf.table(table_data, header: true, row_colors: %w[F0F0F0 FFFFFF],
-                              width: pdf.bounds.width, cell_style: { size: 7, padding: [2, 3] }) do |table|
-          table.row(0).font_style = :bold
-          table.column(2).align = :right
-          table.column(4).align = :right
-          table.column(5).align = :right
-        end
-        pdf.move_down 20
-      end
-    end.render
-  end
-
-  def pdf_ranking_table_data(top_rows) # rubocop:disable Metrics/AbcSize
-    header = [
-      t('goggles_cup.event_type'),
-      t('goggles_cup.meeting_name'),
-      t('goggles_cup.total_hundredths'),
-      t('goggles_cup.old_meeting_name'),
-      t('goggles_cup.old_total_hundredths'),
-      t('goggles_cup.row_score')
-    ]
-    rows = top_rows.map do |top_row|
-      row = top_row[:row]
-      meeting_info = "#{row.meeting_date}, #{row.meeting_name}\nMeeting ID #{row.meeting_id}, MIR #{row.meeting_individual_result_id}"
-      current_timing = "#{row.total_hundredths}\n#{Timing.new.from_hundredths(row.total_hundredths)}"
-
-      if row.old_meeting_date.present?
-        old_meeting_info = "#{row.old_meeting_date}, #{row.old_meeting_name}\nMeeting ID #{row.old_meeting_id}, MIR #{row.old_meeting_individual_result_id}"
-        old_timing = "#{row.old_total_hundredths}\n#{Timing.new.from_hundredths(row.old_total_hundredths)}"
-      else
-        old_meeting_info = '-'
-        old_timing = '-'
-      end
-
-      [
-        "#{row.event_type_code} #{row.pool_type_code}m",
-        meeting_info,
-        current_timing,
-        old_meeting_info,
-        old_timing,
-        format('%.2f', top_row[:row_score])
-      ]
-    end
-    [header] + rows
   end
 
   # Builds a single MariaDB `INSERT ... ON DUPLICATE KEY UPDATE` statement for the
