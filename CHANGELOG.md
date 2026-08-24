@@ -2,6 +2,7 @@
 
 _Please, add the latest build info on top of the list; use Version::MAJOR only after gold release; keep semantic versioning in line with framework's_
 
+- **0.10.35** [Steve A.] security bundle updates & re-sync w/ base engine;
 - **0.10.32** [Steve A.] delegated Goggle Cup ranking serializer/deserializer and shared partial to engine (goggles_db v0.10.32); aligned framework versioning across all goggles_* projects; bundle updates
 - **0.10.30** [Steve A.] re-sync w/ base engine v0.10.0 (base_year parameter for best-result views); bundle updates
 - **0.9.29** [Steve A.] added goggle_cup SQL export functionality
