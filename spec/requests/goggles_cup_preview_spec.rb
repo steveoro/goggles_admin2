@@ -406,4 +406,72 @@ RSpec.describe 'GogglesCupPreview' do
       expect(response.body).not_to include('btn btn-warning btn-lg w-100 d-none')
     end
   end
+
+  describe 'GET /best_results/goggles_cup_preview/base_timings' do
+    include AdminSignInHelpers
+
+    before(:each) do
+      admin_user = prepare_admin_user
+      sign_in_admin(admin_user)
+    end
+
+    it 'renders the base timings page for a cup with stored ranking data' do
+      team = FactoryBot.create(:team)
+      swimmer = FactoryBot.create(:swimmer, complete_name: 'TEST SWIMMER', year_of_birth: 1980)
+      cup = FactoryBot.create(:goggle_cup, team: team, description: 'Test Cup', season_year: 2025, swimmers_ids: swimmer.id.to_s)
+      cup.update!(ranking_data: {
+        description: 'Test Cup', season_year: 2025, max_points: 1000, team_id: team.id,
+        end_date: '2026-07-31', swimmer_ids: [swimmer.id], no_duplicated_events: false,
+        data: {
+          base_timings: {
+            swimmer.id.to_s => [
+              { 'event_type_code' => '50SL', 'pool_type_code' => '25',
+                'season_header_year' => 2022, 'total_hundredths' => 3100,
+                'meeting_date' => '2022-02-01', 'meeting_name' => 'Base Meeting',
+                'meeting_id' => 7, 'meeting_individual_result_id' => 777 }
+            ]
+          },
+          scores: {
+            swimmer.id.to_s => [
+              { 'event_type_code' => '50SL', 'pool_type_code' => '25',
+                'total_hundredths' => 3000, 'meeting_date' => '2025-01-15',
+                'meeting_name' => 'Test Meeting', 'meeting_id' => 42,
+                'meeting_individual_result_id' => 99, 'team_id' => team.id,
+                'team_name' => 'TEST', 'old_total_hundredths' => 3200,
+                'old_meeting_date' => '2024-01-10', 'old_meeting_name' => 'Old Meeting',
+                'old_meeting_id' => 30, 'old_meeting_individual_result_id' => 88,
+                'row_score' => 1066.67 }
+            ]
+          }
+        }
+      }.to_json)
+
+      get base_timings_goggles_cup_preview_path, params: { team_id: team.id, goggle_cup_id: cup.id }
+
+      expect(response).to have_http_status(:success)
+      expect(response.body).to include(I18n.t('goggles_cup.base_timings.title'))
+      expect(response.body).to include('TEST SWIMMER')
+      expect(response.body).to include('50SL')
+      expect(response.body).to include(I18n.t('goggles_cup.base_timings.back_to_ranking'))
+    end
+
+    it 'redirects when the cup has no ranking data' do
+      team = FactoryBot.create(:team)
+      cup = FactoryBot.create(:goggle_cup, team: team, description: 'Empty Cup', season_year: 2025, swimmers_ids: '1')
+
+      get base_timings_goggles_cup_preview_path, params: { team_id: team.id, goggle_cup_id: cup.id }
+
+      expect(response).to redirect_to(goggles_cup_preview_path(team_id: team.id.to_s, goggle_cup_id: cup.id))
+      expect(flash[:alert]).to be_present
+    end
+
+    it 'redirects when the cup is missing' do
+      team = FactoryBot.create(:team)
+
+      get base_timings_goggles_cup_preview_path, params: { team_id: team.id, goggle_cup_id: 0 }
+
+      expect(response).to redirect_to(goggles_cup_preview_path(team_id: team.id.to_s, goggle_cup_id: nil))
+      expect(flash[:alert]).to be_present
+    end
+  end
 end

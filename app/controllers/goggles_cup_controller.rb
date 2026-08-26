@@ -5,11 +5,11 @@ class GogglesCupController < ApplicationController
   include FileCounter
 
   before_action :authenticate_user!
-  before_action :set_team, only: %i[index smart_selection compute cup_data save load_ranking export_sql]
+  before_action :set_team, only: %i[index smart_selection compute cup_data save load_ranking export_sql base_timings]
   before_action :set_secondary_team, only: %i[index compute]
   before_action :set_selected_swimmer_ids, only: %i[compute]
   before_action :set_no_duplicated_events, only: %i[compute]
-  before_action :set_goggle_cup, only: %i[index compute export_sql]
+  before_action :set_goggle_cup, only: %i[index compute export_sql base_timings]
 
   # [GET] Renders the GogglesCup preview/selection page for the selected team.
   def index
@@ -121,6 +121,14 @@ class GogglesCupController < ApplicationController
       format.xlsx { send_ranking_export(format: :xlsx) }
       format.pdf { send_ranking_export(format: :pdf) }
     end
+  end
+
+  # [GET] Renders a dedicated HTML page with the base timings for a stored cup.
+  def base_timings
+    return redirect_invalid_export if @team.blank? || @goggle_cup.blank? || @goggle_cup.ranking_data.blank?
+
+    @ranking_data = GogglesDb::GoggleCupRanking::DataDeserializer.new(@goggle_cup).call
+    @no_duplicated_events = no_duplicated_from(@goggle_cup)
   end
 
   private
@@ -261,7 +269,7 @@ class GogglesCupController < ApplicationController
 
   def redirect_invalid_export
     flash[:alert] = I18n.t('goggles_cup.errors.invalid_selection_or_data')
-    redirect_to(goggles_cup_preview_path(team_id: @team_id))
+    redirect_to(goggles_cup_preview_path(team_id: @team_id, goggle_cup_id: @goggle_cup&.id))
   end
 
   # Builds a single MariaDB `INSERT ... ON DUPLICATE KEY UPDATE` statement for the

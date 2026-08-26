@@ -23,6 +23,7 @@ Rails.application.routes.draw do
   get 'best_results/goggles_cup_preview', to: 'goggles_cup#index', as: 'goggles_cup_preview'
   get 'best_results/goggles_cup_preview/smart_selection', to: 'goggles_cup#smart_selection', as: 'smart_selection_goggles_cup_preview'
   match 'best_results/goggles_cup_preview/compute', to: 'goggles_cup#compute', as: 'compute_goggles_cup_preview', via: %i[get post]
+  get 'best_results/goggles_cup_preview/base_timings', to: 'goggles_cup#base_timings', as: 'base_timings_goggles_cup_preview'
   get 'best_results/goggles_cup_preview/cup_data', to: 'goggles_cup#cup_data', as: 'cup_data_goggles_cup_preview'
   post 'best_results/goggles_cup_preview/save', to: 'goggles_cup#save', as: 'save_goggles_cup_preview'
   get 'best_results/goggles_cup_preview/load_ranking', to: 'goggles_cup#load_ranking', as: 'load_ranking_goggles_cup_preview'
