@@ -2,6 +2,7 @@
 
 _Please, add the latest build info on top of the list; use Version::MAJOR only after gold release; keep semantic versioning in line with framework's_
 
+- **0.10.43** [Steve A.] re-sync w/ base engine v0.10.43; DB vers. 2.10.07
 - **0.10.42** [Steve A.] re-sync w/ base engine v0.10.42; aligned framework versioning
 - **0.10.40** [Steve A.] re-sync w/ base engine v0.10.40; added dedicated Goggle Cup base-timings HTML preview page; delegated RankingPosComponent to shared engine; aligned framework versioning
 - **0.10.37** [Steve A.] security bundle updates & re-sync w/ base engine; fix rendering of goggle cup rule on PDF layout
