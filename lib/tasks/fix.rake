@@ -12,6 +12,8 @@
 #-- ---------------------------------------------------------------------------
 #++
 
+SCRIPT_OUTPUT_DIR = Rails.root.join('crawler/data/results.new').freeze unless defined? SCRIPT_OUTPUT_DIR
+
 namespace :fix do # rubocop:disable Metrics/BlockLength
   desc <<~DESC
       Fixes a wrongly-assigned team_id on one or more badges (also across multiple seasons).
@@ -164,6 +166,125 @@ namespace :fix do # rubocop:disable Metrics/BlockLength
     file_name = "#{format('%04d', file_index)}-fix_swimmer_in_badge-#{badge_ids_label}"
     process_sql_file(file_name:, sql_log_array: fixer.sql_log, simulate:)
 
+    puts('Done.')
+  end
+  #-- -------------------------------------------------------------------------
+  #++
+
+  desc <<~DESC
+      Scans a Meeting or all Meetings in a Season for MIRs and MRSs
+    with a null +swimmer_id+ and, whenever a valid badge with a swimmer is present,
+    generates an SQL script that restores the correct swimmer from the badge.
+
+    The fix is cascaded to child Lap rows (when +laps.swimmer_id+ IS NULL) and to
+    child RelayLap rows of affected MRSs, so they stay in sync with the fixed result.
+
+    Rows that cannot be fixed (no badge, missing badge, or badge with null swimmer)
+    are reported at the end.
+
+    The resulting script won't be applied (and no DB changes will be made) *unless*
+    the 'simulate' option is set explicitly to '0'. (Default: DO NOT MAKE DB CHANGES.)
+
+    The Rails.env will set the destination DB for script execution on localhost.
+    The resulting file will be stored under:
+
+      - '#{SCRIPT_OUTPUT_DIR}/<index>-fix_nil_swimmers-<meeting_id|season_<season_id>>.sql'
+
+    Options: [Rails.env=#{Rails.env}]
+             meeting_id=<meeting_id> | season_id=<season_id>
+             [index=<auto>] [simulate='0'|<'1'>]
+
+      - meeting_id: process a single meeting (mutually exclusive with season_id);
+      - season_id:  process all meetings in a season (mutually exclusive with meeting_id);
+      - index:      override for a progressive number appended to the name of the generated file
+                   (default: auto-detected from existing files in output dir);
+      - simulate:   when set to '0' will enable script execution on localhost (toggled off by default).
+
+  DESC
+  task(nil_swimmers_in_results: ['merge:check_needed_dirs']) do # rubocop:disable Metrics/BlockLength
+    puts '*** Task: fix:nil_swimmers_in_results ***'
+
+    meeting_id = ENV.fetch('meeting_id', nil)
+    season_id = ENV.fetch('season_id', nil)
+
+    if meeting_id.present? && season_id.present?
+      puts("You cannot specify both 'meeting_id' and 'season_id'.")
+      exit
+    end
+
+    meeting = GogglesDb::Meeting.find_by(id: meeting_id.to_i) if meeting_id.present?
+    season = GogglesDb::Season.find_by(id: season_id.to_i) if season_id.present?
+
+    if meeting.nil? && season.nil?
+      puts("You need a valid 'meeting_id' or 'season_id' to proceed.")
+      puts('  meeting_id: process a single meeting')
+      puts('  season_id:  process all meetings in a season')
+      exit
+    end
+
+    simulate = ENV['simulate'] != '0'
+    file_index = ENV['index'].present? ? ENV['index'].to_i : auto_index_from_script_output_dir
+
+    meetings = if meeting
+                 [meeting]
+               else
+                 GogglesDb::Meeting.for_season(season).order(:id)
+               end
+
+    puts("\r\n- Scope..........: #{meeting ? "Meeting #{meeting.id}" : "Season #{season.id} (#{season.description})"}")
+    puts("- Meetings.......: #{meetings.count}")
+    puts("- simulate.......: #{simulate}")
+    puts("- dest. folder...: #{SCRIPT_OUTPUT_DIR}\r\n")
+
+    sql_log = []
+    totals = { mirs: 0, mrss: 0, laps: 0, relay_laps: 0, unfixable_mirs: 0, unfixable_mrss: 0 }
+
+    meetings.each do |mtg|
+      fixer = Fix::NullSwimmersInMeeting.new(meeting: mtg)
+      fixer.scan
+      fixer.display_report
+
+      sql_log.concat(fixer.prepare)
+      print '.' if !simulate && fixer.fixable?
+
+      report = fixer.report
+      totals[:mirs]        += report[:mirs][:fixable]
+      totals[:mrss]        += report[:mrss][:fixable]
+      totals[:laps]        += report[:laps][:fixable]
+      totals[:relay_laps]  += report[:relay_laps][:fixable]
+      totals[:unfixable_mirs]  += report[:mirs][:unfixable]
+      totals[:unfixable_mrss]  += report[:mrss][:unfixable]
+    end
+    puts("\r\n") unless simulate
+
+    puts("\r\n*** Totals ***")
+    puts("MIRs fixed: #{totals[:mirs]}")
+    puts("MRSs fixed: #{totals[:mrss]}")
+    puts("Laps updated: #{totals[:laps]}")
+    puts("Relay laps updated: #{totals[:relay_laps]}")
+    puts("Unfixable MIRs: #{totals[:unfixable_mirs]}") if totals[:unfixable_mirs].positive?
+    puts("Unfixable MRSs: #{totals[:unfixable_mrss]}") if totals[:unfixable_mrss].positive?
+
+    if sql_log.empty?
+      puts("\r\nNo fixable null swimmers found. No SQL generated.")
+      puts('Done.')
+      next
+    end
+
+    full_sql_log = []
+    full_sql_log << "-- Fix null swimmers - #{meeting ? "Meeting #{meeting.id}" : "Season #{season.id}"}"
+    full_sql_log << "-- Generated: #{Time.zone.now}"
+    full_sql_log << ''
+    full_sql_log << 'SET AUTOCOMMIT = 0;'
+    full_sql_log << 'START TRANSACTION;'
+    full_sql_log << ''
+    full_sql_log.concat(sql_log)
+    full_sql_log << ''
+    full_sql_log << 'COMMIT;'
+
+    target_id = meeting&.id || "season_#{season.id}"
+    file_name = "#{format('%04d', file_index)}-fix_nil_swimmers-#{target_id}"
+    process_sql_file(file_name:, sql_log_array: full_sql_log, simulate:)
     puts('Done.')
   end
 end
