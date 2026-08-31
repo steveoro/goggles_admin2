@@ -92,6 +92,34 @@ RSpec.describe Merge::Swimmer do
         sql = merger.sql_log.join("\n")
         expect(sql).to include("WHERE id=#{dest_swimmer.id}")
       end
+
+      it 'overwrites destination columns with source values' do
+        sql = merger.sql_log.join("\n")
+        expect(sql).to include("last_name=#{ActiveRecord::Base.connection.quote(src_swimmer.last_name)}")
+        expect(sql).to include("first_name=#{ActiveRecord::Base.connection.quote(src_swimmer.first_name)}")
+        expect(sql).to include("year_of_birth=#{src_swimmer.year_of_birth}")
+        expect(sql).to include("gender_type_id=#{src_swimmer.gender_type_id}")
+      end
+    end
+
+    context 'when skip_columns is true' do
+      subject(:merger) { described_class.new(source: src_swimmer, dest: dest_swimmer, skip_columns: true) }
+
+      let(:src_swimmer) { FactoryBot.create(:swimmer) }
+      let(:dest_swimmer) { FactoryBot.create(:swimmer, gender_type: src_swimmer.gender_type) }
+
+      before(:each) { merger.prepare }
+
+      it 'keeps the destination swimmer row and deletes the source row' do
+        sql = merger.sql_log.join("\n")
+        expect(sql).to include("DELETE FROM swimmers WHERE id=#{src_swimmer.id}")
+        expect(sql).not_to include("last_name=#{ActiveRecord::Base.connection.quote(src_swimmer.last_name)}")
+      end
+
+      it 'does not overwrite destination columns with source values' do
+        sql = merger.sql_log.join("\n")
+        expect(sql).not_to include('UPDATE swimmers SET')
+      end
     end
 
     context 'when the checker fails and force is false' do

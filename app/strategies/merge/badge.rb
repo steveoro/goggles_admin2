@@ -43,7 +43,9 @@ module Merge
     #
     #   [SOURCE] ------------------------> [DESTINATION]
     #   - to be purged (ID disappears)  /  - to be kept (ID remains)
-    #   1. copies "master" column values into "slave" dest. values (overwritten)
+    #   1. copies "master" column values into "slave" dest. values (overwritten);
+    #      the destination row ID always survives and only team_id, team_affiliation_id and
+    #      category_type_id are overwritten when there are actual differences.
     #   2. copies source sub-entities which are totally missing from dest.
     #   3. updates "shared" sub-entities which present some differences at any level of the hierarchy.
     #
@@ -83,9 +85,9 @@ module Merge
     #   => Forces merge from source to destination even in case of category or team conflict, but all
     #      key values from destination will act as "masters" (mainly category & team/affiliation).
     #
-    #      Set this to +true+ to avoid updating *all* destination row columns
-    #      with the values stored in source ("it keeps destination intact" and uses both its
-    #      category and team/affiliation); default: +false+.
+    #      Set this to +true+ to avoid updating the destination row's team_id, team_affiliation_id
+    #      and category_type_id with the values stored in source ("it keeps destination intact" and
+    #      uses both its category and team/affiliation); default: +false+.
     #      This will only skip updating the destination row, not any sub-entities that will need updating.
     #      E.g.:
     #      - keep_dest_columns: true, dest. category 'M30', source category 'M25'

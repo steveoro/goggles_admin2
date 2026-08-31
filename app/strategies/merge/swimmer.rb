@@ -46,6 +46,9 @@ module Merge
     #
     # - <tt>:skip_columns</tt> => Force this to +true+ to avoid updating the destination row columns
     #   with the values stored in source; default: +false+.
+    #   When +false+, the destination row ID is kept and the following source columns overwrite
+    #   the destination: last_name, first_name, year_of_birth, complete_name, nickname,
+    #   associated_user_id, gender_type_id, year_guessed.
     #
     # - <tt>:force</tt> => Force this to +true+ to proceed even when the checker reports errors
     #   (e.g. conflicting MIRs in same meeting). Errors are logged as warnings. Default: +false+.

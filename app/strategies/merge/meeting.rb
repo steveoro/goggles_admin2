@@ -37,8 +37,10 @@ module Merge
     #
     # == Params:
     # - <tt>:source</tt> => source Meeting row, *required*
-    # - <tt>:dest</tt> => destination Meeting row, *required*
-    # - <tt>:skip_columns</tt> => when true, don't overwrite destination meeting columns with source values
+    # - <tt>:dest</tt> => destination Meeting row, *required* (its ID will survive)
+    # - <tt>:skip_columns</tt> => when true, don't overwrite the three destination meeting flags
+    #   (results_acquired, manifest, startlist) with source values. When false, each flag is set
+    #   to 1 if the source has it true and the destination does not (OR logic).
     # - <tt>:console_output</tt> => when +true+ (default) a simple progress status will be printed on stdout
     #
     def initialize(source:, dest:, skip_columns: false, console_output: true)

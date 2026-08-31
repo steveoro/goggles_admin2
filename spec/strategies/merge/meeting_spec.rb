@@ -76,6 +76,10 @@ RSpec.describe Merge::Meeting do
     subject(:merger) { described_class.new(source: source_meeting, dest: dest_meeting) }
 
     context 'with meetings in the same season' do
+      let(:season) { FactoryBot.create(:season) }
+      let(:source_meeting) { FactoryBot.create(:meeting, season:, results_acquired: true, manifest: true, startlist: true) }
+      let(:dest_meeting) { FactoryBot.create(:meeting, season:, results_acquired: false, manifest: false, startlist: false) }
+
       it 'returns true' do
         expect(merger.prepare).to be true
       end
@@ -143,7 +147,55 @@ RSpec.describe Merge::Meeting do
       it 'includes source deletion SQL' do
         merger.prepare
         sql = merger.sql_log.join("\n")
-        expect(sql).to include('DELETE FROM meetings WHERE id=')
+        expect(sql).to include("DELETE FROM meetings WHERE id=#{source_meeting.id}")
+      end
+
+      it 'updates the destination row with source flag values and deletes the source row' do
+        merger.prepare
+        sql = merger.sql_log.join("\n")
+        expect(sql).to include('UPDATE meetings SET updated_at=NOW(),')
+        expect(sql).to include('results_acquired=1')
+        expect(sql).to include('manifest=1')
+        expect(sql).to include('startlist=1')
+        expect(sql).to include("WHERE id=#{dest_meeting.id}")
+        expect(sql).to include("DELETE FROM meetings WHERE id=#{source_meeting.id}")
+      end
+
+      context 'when skip_columns is true' do
+        subject(:merger) { described_class.new(source: source_meeting, dest: dest_meeting, skip_columns: true) }
+
+        it 'does not update destination meeting columns' do
+          merger.prepare
+          sql = merger.sql_log.join("\n")
+          expect(sql).not_to include('UPDATE meetings SET')
+        end
+
+        it 'still deletes the source meeting' do
+          merger.prepare
+          sql = merger.sql_log.join("\n")
+          expect(sql).to include("DELETE FROM meetings WHERE id=#{source_meeting.id}")
+        end
+      end
+
+      context 'when the source meeting has flags the destination does not' do
+        subject(:merger) { described_class.new(source: source_meeting, dest: dest_meeting) }
+
+        let(:season) { FactoryBot.create(:season) }
+        let(:source_meeting) { FactoryBot.create(:meeting, season:, results_acquired: true, manifest: true, startlist: false) }
+        let(:dest_meeting) { FactoryBot.create(:meeting, season:, results_acquired: false, manifest: false, startlist: true) }
+
+        it 'sets flags that are true in the source but not in the destination' do
+          merger.prepare
+          sql = merger.sql_log.join("\n")
+          expect(sql).to include('results_acquired=1')
+          expect(sql).to include('manifest=1')
+        end
+
+        it 'keeps the existing true flag on the destination' do
+          merger.prepare
+          sql = merger.sql_log.join("\n")
+          expect(sql).not_to include('startlist=0')
+        end
       end
 
       it 'does not allow a second run' do

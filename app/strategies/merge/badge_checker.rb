@@ -463,7 +463,13 @@ module Merge
       if all_mirs_with_nil_badge.present?
         @warnings << "#{all_mirs_with_nil_badge.count} (possibly unrelated) MIRs with nil badge_id" if all_mirs_with_nil_badge.present?
         @mir_analysis << "\r\n>> WARNING: #{all_mirs_with_nil_badge.count} MIRs with nil badge_id are present:"
-        all_mirs_with_nil_badge.each { |mir| @mir_analysis << "- #{decorate_mir(mir)}" }
+        all_mirs_with_nil_badge.each do |mir|
+          @mir_analysis << if mir.meeting_program
+                             "- #{decorate_mir(mir.meeting_program.meeting_event_id, mir, nil)}"
+                           else
+                             "- {MIR #{mir.id}} missing meeting program"
+                           end
+        end
       end
 
       @mir_analysis

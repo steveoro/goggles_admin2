@@ -70,3 +70,4 @@ Output: `crawler/data/results.new/<index>-merge_teams-<src>-<dest>.sql`
 - `lib/tasks/merge.rake`
 - `spec/strategies/merge/team_spec.rb`
 - `spec/strategies/merge/team_checker_spec.rb`
+- `docs/merge/MERGE_SEMANTICS.md`

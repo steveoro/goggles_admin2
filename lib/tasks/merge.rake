@@ -64,8 +64,10 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
 
       - simulate: when set to '0' will enable script execution on localhost (toggled off by default);
 
-      - skip_columns: when set to anything different from '0' will enable the "skip" & disable overwriting
-        destination row columns with the source swimmer values (toggled on by default).
+      - skip_columns: when set to anything different from '0' will enable the "skip" & disable
+        overwriting the destination row columns with the source swimmer values. When not skipped,
+        the following columns are overwritten: last_name, first_name, year_of_birth, complete_name,
+        nickname, associated_user_id, gender_type_id, year_guessed.
 
       - force: when set to '1' will force the merge even when the checker reports errors
         (e.g. conflicting MIRs in same meeting). Default: '0' (don't force).
@@ -214,8 +216,10 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
       - simulate: when set to '0' will enable script execution on localhost (toggled off by default);
 
       - skip_columns: when set to anything different from '0' will disable overwriting
-        destination meeting flag columns with the source values (toggled off by default).
-        Note that only meeting flags are carried over from source to destination: description,
+        the destination meeting flag columns (results_acquired, manifest, startlist) with the
+        source values (toggled off by default). When not skipped, each flag is set to 1 if the
+        source has it true and the destination does not (OR logic).
+        Note that only these three flags are carried over from source to destination: description,
         notes and all other columns are NOT copied over by design.
 
   DESC
@@ -278,8 +282,8 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
     the 'simulate' option is set explicitly to '0'. (Default: DO NOT MAKE DB CHANGES.)
 
     The resulting script will merge all linked sub-entities under the single destination row,
-    also overwriting the destination columns with the corresponding source badge column
-    values. (Default: OVERWRITE DEST WITH SRC IN SCRIPT.)
+    also overwriting the destination's team_id, team_affiliation_id and category_type_id with
+    the corresponding source badge values when they differ. (Default: OVERWRITE DEST WITH SRC IN SCRIPT.)
 
     The Rails.env will set the destination DB for script execution on localhost.
     The resulting file will be stored under:
@@ -301,8 +305,8 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
 
       - simulate: when set to '0' will enable script execution on localhost (toggled off by default);
 
-      - keep_dest_columns: when set to anything different from '0' will make all destination
-        columns values be kept instead of being overridden by source's.
+      - keep_dest_columns: when set to anything different from '0' will make the destination
+        team_id, team_affiliation_id and category_type_id be kept instead of being overridden by source.
 
       - keep_dest_category: same as above, but just for category_type_id.
 
