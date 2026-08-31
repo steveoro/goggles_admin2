@@ -333,8 +333,10 @@ module Merge
           # Use the kept team's own main columns:
           attrs << "name=#{quote_value(@kept_team.name)}"
           attrs << "editable_name=#{quote_value(@kept_team.editable_name)}" if @kept_team.editable_name.present?
-          attrs << "city_id=#{@kept_team.city_id}" if @kept_team.city_id.present?
         end
+
+        # Always preserve the main/kept team's city on the target row:
+        attrs << "city_id=#{@kept_team.city_id}" if @kept_team.city_id.present?
       elsif @skip_columns
         # Legacy: update just the name variations, appending the merged team's name:
         kept_variations = @kept_team.name_variations.to_s
