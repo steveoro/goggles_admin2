@@ -337,9 +337,13 @@ module Merge
           attrs << "editable_name=#{quote_value(@merged_team.editable_name)}" if @merged_team.editable_name.present?
         end
 
-        # Preserve the kept/destination team's city_id when present, otherwise fall back
-        # to the source (merged) team's city_id so no location information is lost:
-        city_id = @kept_team.city_id.presence || @merged_team.city_id
+        # Use the main team city_id (source by default, destination when skip_columns)
+        # and fall back to the other team so no location information is lost:
+        city_id = if @skip_columns
+                    @kept_team.city_id.presence || @merged_team.city_id
+                  else
+                    @merged_team.city_id.presence || @kept_team.city_id
+                  end
         attrs << "city_id=#{city_id}" if city_id.present?
       elsif @skip_columns
         # Legacy: update just the name variations, appending the merged team's name:
@@ -401,19 +405,24 @@ module Merge
       quote_value(@kept_team.editable_name.presence || @kept_team.name)
     end
 
-    # Builds a deduplicated, semicolon-separated alias list for the kept team from
-    # both the kept and the merged team names, name_variations and team_aliases.
+    # Builds a deduplicated, semicolon-separated alias list for the resulting team.
+    # The team whose values will be used as the main "name"/"editable_name" (the
+    # source unless skip_columns is enabled, otherwise the destination) goes first,
+    # followed by the other team's names and variations. Source team_aliases are
+    # also folded in when keep_as_alias is enabled.
     # rubocop:disable-next Metrics/AbcSize
     def build_name_variations
+      # The main team is the one whose name overwrites the target row:
+      main_team, alias_team = @skip_columns ? [@kept_team, @merged_team] : [@merged_team, @kept_team]
       tokens = []
 
-      tokens << @kept_team.name
-      tokens << @kept_team.editable_name if @kept_team.editable_name.present? && @kept_team.editable_name != @kept_team.name
-      tokens.concat tokenize(@kept_team.name_variations)
+      tokens << main_team.name
+      tokens << main_team.editable_name if main_team.editable_name.present? && main_team.editable_name != main_team.name
+      tokens.concat tokenize(main_team.name_variations)
 
-      tokens << @merged_team.name
-      tokens << @merged_team.editable_name if @merged_team.editable_name.present? && @merged_team.editable_name != @merged_team.name
-      tokens.concat tokenize(@merged_team.name_variations)
+      tokens << alias_team.name
+      tokens << alias_team.editable_name if alias_team.editable_name.present? && alias_team.editable_name != alias_team.name
+      tokens.concat tokenize(alias_team.name_variations)
 
       if @keep_as_alias
         merged_alias_names = GogglesDb::TeamAlias.where(team_id: @merged_team.id).pluck(:name)
