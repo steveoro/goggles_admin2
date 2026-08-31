@@ -146,10 +146,10 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
       - skip_columns: when set to anything different from '0' will enable the "skip" & disable overwriting
         the kept team row columns with the source team values (toggled on by default).
 
-      - keep_as_alias: when set to '1', the overwritten team is kept as an alias of the resulting team.
-        With skip_columns=0 (default), source is the resulting/kept team and destination is the alias.
-        With skip_columns=1, destination is the resulting/kept team and source is the alias.
-        Default: '0' (legacy behaviour: always keep the destination team and delete the source).
+      - keep_as_alias: when set to '1', the source team is kept as an alias of the destination team.
+        The destination row always survives; the source row is deleted. Names and aliases from both
+        teams are folded into the destination's name_variations and the source's team_aliases are moved.
+        Default: '0' (legacy behaviour: keep destination, overwrite with source, delete source aliases).
 
   DESC
   task(team: [:check_needed_dirs]) do

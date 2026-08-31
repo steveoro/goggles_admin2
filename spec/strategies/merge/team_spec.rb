@@ -164,35 +164,40 @@ RSpec.describe Merge::Team do
                                 season:, category_type:)
     end
 
-    context 'when skip_columns is false (source kept)' do
+    context 'when keep_as_alias is true (destination kept, source name used by default)' do
       subject(:merger) { described_class.new(source: src_team, dest: dest_team, keep_as_alias: true) }
 
       before(:each) do
-        FactoryBot.create(:team_alias, team: dest_team, name: "alias-#{dest_team.id}")
+        FactoryBot.create(:team_alias, team: src_team, name: "alias-#{src_team.id}")
         merger.prepare
       end
 
-      it 'keeps the source team row and deletes the destination team' do
+      it 'keeps the destination team row and deletes the source team' do
         sql = merger.sql_log.join("\n")
         expect(sql).to include('UPDATE teams SET updated_at=NOW()')
-        expect(sql).to include("WHERE id=#{src_team.id}")
-        expect(sql).to include("DELETE FROM teams WHERE id=#{dest_team.id}")
+        expect(sql).to include("WHERE id=#{dest_team.id}")
+        expect(sql).to include("DELETE FROM teams WHERE id=#{src_team.id}")
       end
 
-      it 'overwrites source columns with its own values' do
+      it 'overwrites destination name with the source team name' do
         sql = merger.sql_log.join("\n")
         expect(sql).to include("name=#{ActiveRecord::Base.connection.quote(src_team.name)}")
       end
 
-      it 'folds destination team names into name_variations' do
+      it 'preserves the destination team city_id on the target row' do
         sql = merger.sql_log.join("\n")
-        expect(sql).to include('name_variations=')
-        expect(sql).to include(dest_team.name)
+        expect(sql).to include("city_id=#{dest_team.city_id}") if dest_team.city_id.present?
       end
 
-      it 'moves destination team_aliases to the source team' do
+      it 'folds source team names into name_variations' do
         sql = merger.sql_log.join("\n")
-        expect(sql).to match(/UPDATE team_aliases SET team_id=#{src_team.id}, updated_at=NOW\(\) WHERE id=\d+/)
+        expect(sql).to include('name_variations=')
+        expect(sql).to include(src_team.name)
+      end
+
+      it 'moves source team_aliases to the destination team' do
+        sql = merger.sql_log.join("\n")
+        expect(sql).to match(/UPDATE team_aliases SET team_id=#{dest_team.id}, updated_at=NOW\(\) WHERE id=\d+/)
       end
 
       it 'processes the shared swimmer with a badge sub-merge' do
@@ -201,7 +206,7 @@ RSpec.describe Merge::Team do
       end
     end
 
-    context 'when skip_columns is true (destination kept)' do
+    context 'when keep_as_alias and skip_columns are both true' do
       subject(:merger) { described_class.new(source: src_team, dest: dest_team, skip_columns: true, keep_as_alias: true) }
 
       before(:each) do
@@ -219,6 +224,11 @@ RSpec.describe Merge::Team do
       it 'does not overwrite destination name columns' do
         sql = merger.sql_log.join("\n")
         expect(sql).not_to include("name=#{ActiveRecord::Base.connection.quote(src_team.name)}")
+      end
+
+      it 'preserves the destination team city_id on the target row' do
+        sql = merger.sql_log.join("\n")
+        expect(sql).to include("city_id=#{dest_team.city_id}") if dest_team.city_id.present?
       end
 
       it 'folds source team names into name_variations' do
@@ -242,10 +252,10 @@ RSpec.describe Merge::Team do
       subject(:merger) { described_class.new(source: src_team, dest: dest_team, keep_as_alias: true) }
 
       before(:each) do
-        existing_alias = FactoryBot.create(:team_alias, team: src_team, name: "shared-#{src_team.id}")
+        existing_alias = FactoryBot.create(:team_alias, team: dest_team, name: "shared-#{dest_team.id}")
         # Bypass the (incorrect) global AR uniqueness validation to simulate a real DB
         # where the same alias name exists for both teams:
-        duplicate = GogglesDb::TeamAlias.new(team: dest_team, name: existing_alias.name)
+        duplicate = GogglesDb::TeamAlias.new(team: src_team, name: existing_alias.name)
         duplicate.save(validate: false)
         merger.prepare
       end

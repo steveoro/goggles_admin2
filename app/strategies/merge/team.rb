@@ -56,10 +56,15 @@ module Merge
     #   with the values stored in source; default: +false+.
     #
     # - <tt>:keep_as_alias</tt> => Set to +true+ to keep the overwritten team as an alias of the
-    #   resulting team. The surviving "main" team is selected by <tt>skip_columns</tt>:
-    #   when +false+, <tt>source</tt> is kept and <tt>dest</tt> is deleted;
-    #   when +true+, <tt>dest</tt> is kept and <tt>source</tt> is deleted.
-    #   Default: +false+ (legacy behaviour).
+    #   resulting team. The destination team (<tt>dest</tt>) always remains as the target row;
+    #   the source team (<tt>source</tt>) is deleted. The combined names and aliases are folded
+    #   into <tt>dest</tt>'s <tt>name_variations</tt> and the source's <tt>team_aliases</tt>
+    #   rows are moved to <tt>dest</tt>.
+    #
+    # - <tt>:skip_columns</tt> => In legacy mode it skips overwriting the destination row
+    #   columns with the source team values. With <tt>keep_as_alias</tt>, it also skips
+    #   overwriting <tt>dest</tt>'s <tt>name</tt>/<tt>editable_name</tt>; the main team's
+    #   <tt>city_id</tt> is always preserved when present.
     #
     def initialize(source:, dest:, skip_columns: false, keep_as_alias: false)
       raise(ArgumentError, 'Both source and destination must be Teams!') unless source.is_a?(GogglesDb::Team) && dest.is_a?(GogglesDb::Team)
@@ -69,14 +74,11 @@ module Merge
       @skip_columns = skip_columns
       @keep_as_alias = keep_as_alias
 
-      # Determine which team survives (kept) and which is deleted (merged):
-      if @keep_as_alias
-        @kept_team = @skip_columns ? @dest : @source
-        @merged_team = @skip_columns ? @source : @dest
-      else
-        @kept_team = @dest
-        @merged_team = @source
-      end
+      # Determine which team survives (kept) and which is deleted (merged).
+      # In both legacy and keep_as_alias modes, the destination row is the one kept;
+      # keep_as_alias only changes how the names and aliases are merged.
+      @kept_team = @dest
+      @merged_team = @source
 
       @checker = TeamChecker.new(source: @merged_team.object, dest: @kept_team.object)
       @sql_log = []
@@ -330,13 +332,15 @@ module Merge
         attrs << "name_variations=#{quote_value(build_name_variations)}"
 
         unless @skip_columns
-          # Use the kept team's own main columns:
-          attrs << "name=#{quote_value(@kept_team.name)}"
-          attrs << "editable_name=#{quote_value(@kept_team.editable_name)}" if @kept_team.editable_name.present?
+          # Overwrite the destination row with the source team main columns:
+          attrs << "name=#{quote_value(@merged_team.name)}"
+          attrs << "editable_name=#{quote_value(@merged_team.editable_name)}" if @merged_team.editable_name.present?
         end
 
-        # Always preserve the main/kept team's city on the target row:
-        attrs << "city_id=#{@kept_team.city_id}" if @kept_team.city_id.present?
+        # Preserve the kept/destination team's city_id when present, otherwise fall back
+        # to the source (merged) team's city_id so no location information is lost:
+        city_id = @kept_team.city_id.presence || @merged_team.city_id
+        attrs << "city_id=#{city_id}" if city_id.present?
       elsif @skip_columns
         # Legacy: update just the name variations, appending the merged team's name:
         kept_variations = @kept_team.name_variations.to_s

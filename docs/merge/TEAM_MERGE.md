@@ -49,18 +49,14 @@ bundle exec rake merge:team src=<source_team_id> dest=<dest_team_id> simulate=0
 # Skip overwriting destination columns:
 bundle exec rake merge:team src=<source_team_id> dest=<dest_team_id> skip_columns=1
 
-# Keep the overwritten team as an alias (source kept by default, see keep_as_alias):
+# Keep the source team as an alias of the destination:
 bundle exec rake merge:team src=<source_team_id> dest=<dest_team_id> keep_as_alias=1
 
-# Keep destination columns AND keep the source as an alias:
+# Keep the destination team and its own name/city, but fold in source aliases:
 bundle exec rake merge:team src=<source_team_id> dest=<dest_team_id> skip_columns=1 keep_as_alias=1
 ```
 
-When `keep_as_alias=1`, the surviving "main" team is chosen by `skip_columns`:
-- `skip_columns=0` (or omitted) → source is kept, destination becomes an alias.
-- `skip_columns=1` → destination is kept, source becomes an alias.
-
-The merged team's `name`, `editable_name`, `name_variations` and `team_aliases` rows are folded into the main team's `name_variations`, and conflicting aliases are removed to respect the unique `(team_id, name)` index.
+When `keep_as_alias=1`, the `dest` team row is always kept and the `src` team is deleted. The combined names and the source's `team_aliases` rows are folded into `dest`'s `name_variations`. With `skip_columns=0` (default), `dest`'s `name` and `editable_name` are overwritten with the `src` values; with `skip_columns=1`, `dest`'s own `name`/`editable_name` are preserved. The kept/destination team's `city_id` is always written to the target row (falling back to the source `city_id` if the destination has none). Conflicting aliases are removed to respect the unique `(team_id, name)` index.
 
 Output: `crawler/data/results.new/<index>-merge_teams-<src>-<dest>.sql`
 
