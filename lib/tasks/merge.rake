@@ -117,12 +117,13 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
     the 'simulate' option is set explicitly to '0'. (Default: DO NOT MAKE DB CHANGES.)
 
     The resulting script will:
-      1. Delete deprecated reservation entities for the source team
+      1. Delete deprecated reservation entities for the merged team
       2. Merge shared badge couples inline (via Merge::Badge per couple)
-      3. Update orphan source badges and remaining TA-linked entities
+      3. Update orphan merged badges and remaining TA-linked entities
       4. Update team-only links
       5. Run DuplicateResultCleaner as safety net per shared season
-      6. Overwrite destination team columns and delete the source team
+      6. Update the kept team columns and delete the merged team
+      7. When keep_as_alias=1, move the merged team's aliases to the kept team
 
     The Rails.env will set the destination DB for script execution on localhost.
     The resulting file will be stored under:
@@ -134,6 +135,7 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
              dest=<destination_team_id>
              [index=<auto>] [simulate='0'|<'1'>]
              [skip_columns=<'0'>|'1']
+             [keep_as_alias=<'0'>|'1']
 
       - index: override for a progressive number appended to the name of the generated file;
       - src: source Team ID;
@@ -142,7 +144,12 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
       - simulate: when set to '0' will enable script execution on localhost (toggled off by default);
 
       - skip_columns: when set to anything different from '0' will enable the "skip" & disable overwriting
-        destination row columns with the source team values (toggled on by default).
+        the kept team row columns with the source team values (toggled on by default).
+
+      - keep_as_alias: when set to '1', the overwritten team is kept as an alias of the resulting team.
+        With skip_columns=0 (default), source is the resulting/kept team and destination is the alias.
+        With skip_columns=1, destination is the resulting/kept team and source is the alias.
+        Default: '0' (legacy behaviour: always keep the destination team and delete the source).
 
   DESC
   task(team: [:check_needed_dirs]) do
@@ -157,13 +164,15 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
     file_index = ENV['index'].present? ? ENV['index'].to_i : auto_index_from_script_output_dir
     simulate = ENV['simulate'] != '0' # Don't run locally the script unless explicitly requested
     skip_columns = ENV['skip_columns'] == '1' # Don't skip columns unless requested
+    keep_as_alias = ENV['keep_as_alias'] == '1' # Don't keep as alias unless requested
 
     puts("\r\nMerging '#{source&.name}' (#{source&.id}) |=> '#{dest&.name}' (#{dest&.id})")
     puts("\r\n- simulate.......: #{simulate}")
     puts("- skip_columns...: #{skip_columns}")
+    puts("- keep_as_alias..: #{keep_as_alias}")
     puts("- dest. folder...: #{SCRIPT_OUTPUT_DIR}\r\n")
 
-    merger = Merge::Team.new(source:, dest:, skip_columns:)
+    merger = Merge::Team.new(source:, dest:, skip_columns:, keep_as_alias:)
     puts("\r\n*** Log: ***\r\n")
     merger.prepare # (no need to diplay the log here, as the merger already does it with #prepare())
 

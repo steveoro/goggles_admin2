@@ -16,7 +16,7 @@ This replaces the old multi-step workflow (`check:team` → `merge:badge` × N �
    - DELETE or recycle source TA
 3. **Team-only links** — UPDATE `computed_season_rankings`, `goggle_cups`, `individual_records`, `laps`, `meetings`, `relay_laps`, `team_lap_templates`, `user_workshops`
 4. **DuplicateResultCleaner** — Safety net per shared season
-5. **Destination update** — Overwrite dest team columns, DELETE source team + aliases
+5. **Kept-team update / alias handling** — Overwrite kept-team columns, fold the merged team's names and `team_aliases` into `name_variations` when `keep_as_alias=1`, then DELETE the merged team
 
 ## Badge Sub-Merge Options
 
@@ -48,7 +48,19 @@ bundle exec rake merge:team src=<source_team_id> dest=<dest_team_id> simulate=0
 
 # Skip overwriting destination columns:
 bundle exec rake merge:team src=<source_team_id> dest=<dest_team_id> skip_columns=1
+
+# Keep the overwritten team as an alias (source kept by default, see keep_as_alias):
+bundle exec rake merge:team src=<source_team_id> dest=<dest_team_id> keep_as_alias=1
+
+# Keep destination columns AND keep the source as an alias:
+bundle exec rake merge:team src=<source_team_id> dest=<dest_team_id> skip_columns=1 keep_as_alias=1
 ```
+
+When `keep_as_alias=1`, the surviving "main" team is chosen by `skip_columns`:
+- `skip_columns=0` (or omitted) → source is kept, destination becomes an alias.
+- `skip_columns=1` → destination is kept, source becomes an alias.
+
+The merged team's `name`, `editable_name`, `name_variations` and `team_aliases` rows are folded into the main team's `name_variations`, and conflicting aliases are removed to respect the unique `(team_id, name)` index.
 
 Output: `crawler/data/results.new/<index>-merge_teams-<src>-<dest>.sql`
 

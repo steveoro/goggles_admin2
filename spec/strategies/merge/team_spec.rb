@@ -148,6 +148,115 @@ RSpec.describe Merge::Team do
     end
   end
 
+  describe 'with keep_as_alias: true (FactoryBot data)' do
+    let(:season) { GogglesDb::Season.find(192) }
+    let(:category_type) { season.category_types.where(relay: false).first }
+    let(:src_ta) { FactoryBot.create(:team_affiliation, season:) }
+    let(:dest_ta) { FactoryBot.create(:team_affiliation, season:) }
+    let(:src_team) { src_ta.team }
+    let(:dest_team) { dest_ta.team }
+    let(:swimmer) { GogglesDb::Swimmer.limit(200).sample }
+
+    before(:each) do
+      FactoryBot.create(:badge, swimmer:, team: src_team, team_affiliation: src_ta,
+                                season:, category_type:)
+      FactoryBot.create(:badge, swimmer:, team: dest_team, team_affiliation: dest_ta,
+                                season:, category_type:)
+    end
+
+    context 'when skip_columns is false (source kept)' do
+      subject(:merger) { described_class.new(source: src_team, dest: dest_team, keep_as_alias: true) }
+
+      before(:each) do
+        FactoryBot.create(:team_alias, team: dest_team, name: "alias-#{dest_team.id}")
+        merger.prepare
+      end
+
+      it 'keeps the source team row and deletes the destination team' do
+        sql = merger.sql_log.join("\n")
+        expect(sql).to include('UPDATE teams SET updated_at=NOW()')
+        expect(sql).to include("WHERE id=#{src_team.id}")
+        expect(sql).to include("DELETE FROM teams WHERE id=#{dest_team.id}")
+      end
+
+      it 'overwrites source columns with its own values' do
+        sql = merger.sql_log.join("\n")
+        expect(sql).to include("name=#{ActiveRecord::Base.connection.quote(src_team.name)}")
+      end
+
+      it 'folds destination team names into name_variations' do
+        sql = merger.sql_log.join("\n")
+        expect(sql).to include('name_variations=')
+        expect(sql).to include(dest_team.name)
+      end
+
+      it 'moves destination team_aliases to the source team' do
+        sql = merger.sql_log.join("\n")
+        expect(sql).to match(/UPDATE team_aliases SET team_id=#{src_team.id}, updated_at=NOW\(\) WHERE id=\d+/)
+      end
+
+      it 'processes the shared swimmer with a badge sub-merge' do
+        sql = merger.sql_log.join("\n")
+        expect(sql).to include('Badge sub-merges')
+      end
+    end
+
+    context 'when skip_columns is true (destination kept)' do
+      subject(:merger) { described_class.new(source: src_team, dest: dest_team, skip_columns: true, keep_as_alias: true) }
+
+      before(:each) do
+        FactoryBot.create(:team_alias, team: src_team, name: "alias-#{src_team.id}")
+        merger.prepare
+      end
+
+      it 'keeps the destination team row and deletes the source team' do
+        sql = merger.sql_log.join("\n")
+        expect(sql).to include('UPDATE teams SET updated_at=NOW()')
+        expect(sql).to include("WHERE id=#{dest_team.id}")
+        expect(sql).to include("DELETE FROM teams WHERE id=#{src_team.id}")
+      end
+
+      it 'does not overwrite destination name columns' do
+        sql = merger.sql_log.join("\n")
+        expect(sql).not_to include("name=#{ActiveRecord::Base.connection.quote(src_team.name)}")
+      end
+
+      it 'folds source team names into name_variations' do
+        sql = merger.sql_log.join("\n")
+        expect(sql).to include('name_variations=')
+        expect(sql).to include(src_team.name)
+      end
+
+      it 'moves source team_aliases to the destination team' do
+        sql = merger.sql_log.join("\n")
+        expect(sql).to match(/UPDATE team_aliases SET team_id=#{dest_team.id}, updated_at=NOW\(\) WHERE id=\d+/)
+      end
+
+      it 'processes the shared swimmer with a badge sub-merge' do
+        sql = merger.sql_log.join("\n")
+        expect(sql).to include('Badge sub-merges')
+      end
+    end
+
+    context 'when a team_alias already exists on the kept team' do
+      subject(:merger) { described_class.new(source: src_team, dest: dest_team, keep_as_alias: true) }
+
+      before(:each) do
+        existing_alias = FactoryBot.create(:team_alias, team: src_team, name: "shared-#{src_team.id}")
+        # Bypass the (incorrect) global AR uniqueness validation to simulate a real DB
+        # where the same alias name exists for both teams:
+        duplicate = GogglesDb::TeamAlias.new(team: dest_team, name: existing_alias.name)
+        duplicate.save(validate: false)
+        merger.prepare
+      end
+
+      it 'deletes the duplicate alias from the merged team' do
+        sql = merger.sql_log.join("\n")
+        expect(sql).to match(/DELETE FROM team_aliases WHERE id=\d+; -- duplicate of kept team alias/)
+      end
+    end
+  end
+
   describe '#log' do
     subject(:merger) { described_class.new(source:, dest:) }
 
@@ -179,7 +288,7 @@ RSpec.describe Merge::Team do
       sql = merger.sql_log.join("\n")
 
       expect(sql).to include('team_affiliation_id=5578 WHERE id IN (123456)')
-      expect(sql).not_to include("WARNING: creating dest TA for season #{season_id}")
+      expect(sql).not_to include("WARNING: creating kept TA for season #{season_id}")
       expect(sql).not_to include('LAST_INSERT_ID')
     end
 
@@ -197,7 +306,7 @@ RSpec.describe Merge::Team do
       merger.send(:prepare_script_for_remaining_team_references)
       sql = merger.sql_log.join("\n")
 
-      expect(sql).to include("WARNING: creating dest TA for season #{season_id}")
+      expect(sql).to include("WARNING: creating kept TA for season #{season_id}")
       expect(sql).to include('INSERT INTO team_affiliations (team_id, season_id, name, created_at, updated_at)')
       expect(sql).to include("SELECT #{dest.id}, #{season_id}")
       expect(sql).to include("WHERE NOT EXISTS (SELECT 1 FROM team_affiliations WHERE season_id=#{season_id} AND team_id=#{dest.id})")
