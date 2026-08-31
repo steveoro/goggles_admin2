@@ -292,6 +292,83 @@ RSpec.describe DataFixController do
       end
     end
 
+    describe 'POST /data_fix/toggle_individual_result_overwrite' do
+      it 'persists enabled overwrite metadata and clears it when disabled' do
+        season = GogglesDb::Season.first || FactoryBot.create(:season)
+        File.write(phase1_file_a, JSON.pretty_generate({ 'data' => { 'season_id' => season.id } }))
+        post toggle_individual_result_overwrite_path(file_path: source_file_a, enabled: '1')
+
+        expect(response).to redirect_to(review_results_path(file_path: source_file_a, phase5_v2: 1))
+        enabled_payload = JSON.parse(File.read(phase5_file_a))
+        expect(enabled_payload.dig('_meta', 'individual_result_overwrite', 'enabled')).to be true
+        expect(enabled_payload.dig('_meta', 'individual_result_overwrite', 'snapshot', 'candidates')).to eq([])
+
+        post toggle_individual_result_overwrite_path(file_path: source_file_a, enabled: '0')
+
+        disabled_payload = JSON.parse(File.read(phase5_file_a))
+        expect(disabled_payload.dig('_meta', 'individual_result_overwrite', 'enabled')).to be false
+        expect(disabled_payload.dig('_meta', 'individual_result_overwrite', 'snapshot', 'candidates')).to eq([])
+      end
+
+      it 'renders deletion-only programs and full candidate details' do
+        payload = JSON.parse(File.read(phase5_file_a))
+        payload['_meta'] = {
+          'individual_result_overwrite' => {
+            'enabled' => true,
+            'snapshot' => {
+              'version' => 1,
+              'candidates' => [{
+                'id' => 900,
+                'meeting_program_id' => 200,
+                'swimmer_id' => 39_198,
+                'team_id' => 42,
+                'session_order' => 1,
+                'event_code' => '50SL',
+                'category_code' => 'M55',
+                'gender_code' => 'M',
+                'rank' => 3,
+                'timing' => '36.05',
+                'lap_count' => 2,
+                'swimmer_name' => 'Guerra Cristiano',
+                'swimmer_year_of_birth' => 1970,
+                'team_name' => 'SAN MARINO MASTER',
+                'reason' => 'Not present in imported source'
+              }]
+            }
+          }
+        }
+        File.write(phase5_file_a, JSON.pretty_generate(payload))
+
+        get review_results_path(file_path: source_file_a, phase5_v2: 1)
+
+        expect(response).to be_successful
+        expect(response.body).to include('50SL')
+        expect(response.body).to include('Guerra Cristiano')
+        expect(response.body).to include('SAN MARINO MASTER')
+        expect(response.body).to include('Not present in imported source')
+        expect(response.body).to include('DELETE')
+      end
+
+      it 'requires deletion confirmation before Phase 6 when candidates are stored' do
+        payload = JSON.parse(File.read(phase5_file_a))
+        payload['_meta'] = {
+          'individual_result_overwrite' => {
+            'enabled' => true,
+            'snapshot' => {
+              'version' => 1,
+              'candidates' => [{ 'id' => 123, 'meeting_program_id' => 1, 'swimmer_id' => 2, 'team_id' => 3 }]
+            }
+          }
+        }
+        File.write(phase5_file_a, JSON.pretty_generate(payload))
+
+        post commit_phase6_path(file_path: source_file_a)
+
+        expect(response).to redirect_to(review_results_path(file_path: source_file_a, phase5_v2: 1))
+        expect(flash[:alert]).to include('Conferma l\'avviso di eliminazione')
+      end
+    end
+
     describe 'DELETE /data_fix/purge' do
       before(:each) do
         GogglesDb::DataImportMeetingIndividualResult.create!(

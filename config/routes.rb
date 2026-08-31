@@ -53,6 +53,7 @@ Rails.application.routes.draw do
   get 'data_fix/review_swimmers', to: 'data_fix#review_swimmers', as: 'review_swimmers'
   get 'data_fix/review_events', to: 'data_fix#review_events', as: 'review_events'
   get 'data_fix/review_results', to: 'data_fix#review_results', as: 'review_results'
+  post 'data_fix/toggle_individual_result_overwrite', to: 'data_fix#toggle_individual_result_overwrite', as: 'toggle_individual_result_overwrite'
   get 'data_fix/results_chunk_v2', to: 'data_fix#results_chunk_v2', as: 'results_chunk_v2'
   post 'data_fix/commit_phase6', to: 'data_fix#commit_phase6', as: 'commit_phase6'
   patch 'data_fix/update_phase1_meeting', to: 'data_fix#update_phase1_meeting', as: 'update_phase1_meeting'

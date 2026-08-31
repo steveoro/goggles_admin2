@@ -11,18 +11,40 @@
 
   .d-flex.justify-content-between.my-2
     = link_to '< Back to file list', pull_result_files_path, class: 'btn btn-outline-secondary mr-2'
-    - if @all_results.present? || @has_relay_results
+    - if @all_results.present? || @has_relay_results || @overwrite_candidates.present?
       %div
         = button_to commit_phase6_path(file_path: @file_path),
                                        method: :post, class: 'btn btn-success',
                                        disabled: @issue_count.to_i.positive?,
-                                       data: { turbo_confirm: I18n.t('data_import.data_fix.btn_start_sql_batch_confirm') } do
+                                       params: { confirm_overwrite: (@overwrite_candidates.present? ? '1' : '0') },
+                                       data: { turbo_confirm: I18n.t('data_import.data_fix.btn_start_sql_batch_confirm'),
+                                               turbo_method: :post },
+                                       form: { onsubmit: (@overwrite_candidates.present? ? "return confirm('#{j I18n.t('data_import.data_fix.confirm_individual_result_overwrite', count: @overwrite_candidates.size)}');" : nil) } do
           %i.fa.fa-database
           = I18n.t('data_import.data_fix.btn_start_sql_batch')
     %div
       %button.btn.btn-outline-primary.ml-2{ type: 'button', data: { action: 'collapse-all#toggle', collapse_all_target: 'button' } }
         %i.fa.fa-compress
         Collapse All Results
+
+  .card.mb-3.border-warning
+    .card-body.py-2.d-flex.justify-content-between.align-items-center
+      %div
+        %strong= t('data_import.data_fix.individual_result_overwrite_label')
+        %small.d-block.text-muted
+          = t('data_import.data_fix.individual_result_overwrite_help')
+        - if @overwrite_existing_results && @overwrite_candidates.present?
+          %span.badge.badge-danger.mt-1= "#{@overwrite_candidates.size} deletion candidate(s)"
+      = form_with url: toggle_individual_result_overwrite_path, method: :post, local: true, class: 'mb-0' do |form|
+        = form.hidden_field :file_path, value: @file_path
+        = form.hidden_field :enabled, value: (@overwrite_existing_results ? '0' : '1')
+        = form.submit(@overwrite_existing_results ? t('data_import.data_fix.disable_individual_result_overwrite') : t('data_import.data_fix.enable_individual_result_overwrite'),
+                      class: @overwrite_existing_results ? 'btn btn-outline-danger' : 'btn btn-warning')
+
+  - if @overwrite_existing_results && @overwrite_candidates.present?
+    .alert.alert-danger
+      %strong= t('data_import.data_fix.individual_result_overwrite_summary', count: @overwrite_candidates.size)
+      %span.ml-1 Candidates are shown in red in their individual program sections.
 
   - basename = File.basename(@file_path).split('.json').first
   = render(partial: 'data_fix/phase_metadata', locals: { phase_number: 5, metadata: @phase5_meta,
@@ -165,9 +187,11 @@
               ).where(
                 "import_key LIKE ?", "#{program_key}/%"
               ).order(:rank)
+              deletion_candidates = @overwrite_candidates_by_program_key.fetch(program_key, [])
             .col-12.col-lg-6
               = render(partial: 'data_fix/result_program_card',
-                       locals: { program_key: program_key, results: results, swimmers_by_id: @swimmers_by_id,
+                       locals: { program_key: program_key, results: results, deletion_candidates: deletion_candidates,
+                                 swimmers_by_id: @swimmers_by_id,
                                  swimmers_by_key: @swimmers_by_key, teams_by_id: @teams_by_id, teams_by_key: @teams_by_key,
                                  team_key_by_swimmer_key: @team_key_by_swimmer_key,
                                  laps_by_parent_key: @laps_by_parent_key, card_index: idx })

@@ -567,12 +567,44 @@ class DataFixController < ApplicationController
     # Load phase5 JSON with program groups
     if File.exist?(phase_path)
       phase5_json = JSON.parse(File.read(phase_path))
+      overwrite_meta = phase5_json.dig('_meta', 'individual_result_overwrite')
+      overwrite_meta = {} unless overwrite_meta.is_a?(Hash)
+      overwrite_snapshot = overwrite_meta['snapshot']
+      overwrite_snapshot = {} unless overwrite_snapshot.is_a?(Hash)
+      @overwrite_existing_results = overwrite_meta['enabled'] == true
+      @overwrite_candidates = if @overwrite_existing_results
+                                Array(overwrite_snapshot['candidates'])
+                              else
+                                []
+                              end
+      @overwrite_candidates_by_program_key = @overwrite_candidates.group_by do |candidate|
+        [candidate['session_order'], candidate['event_code'], candidate['category_code'], candidate['gender_code']].join('-')
+      end
       @phase5_meta = {
         'name' => phase5_json['name'],
         'source_file' => phase5_json['source_file'],
-        'retry_needed' => @retry_needed
+        'retry_needed' => @retry_needed,
+        'individual_result_overwrite' => overwrite_meta
       }
       all_programs = phase5_json['programs'] || []
+      existing_program_keys = all_programs.to_set do |program|
+        [program['session_order'], program['event_code'], program['category_code'], program['gender_code']].join('-')
+      end
+      @overwrite_candidates_by_program_key.each do |program_key, candidates|
+        next if existing_program_keys.include?(program_key)
+
+        candidate = candidates.first
+        all_programs << {
+          'session_order' => candidate['session_order'],
+          'event_key' => candidate['event_code'],
+          'event_code' => candidate['event_code'],
+          'category_code' => candidate['category_code'],
+          'gender_code' => candidate['gender_code'],
+          'relay' => false,
+          'result_count' => 0,
+          'deletion_count' => candidates.size
+        }
+      end
       @total_programs_count = all_programs.size # Track unfiltered count
 
       # ALWAYS run server-side issue detection BEFORE pagination
@@ -784,6 +816,50 @@ class DataFixController < ApplicationController
   end
   # ---------------------------------------------------------------------------
 
+  # Toggle the opt-in Phase 5 individual-result overwrite reconciliation.
+  def toggle_individual_result_overwrite
+    file_path = params[:file_path]
+    redirect_to(pull_index_path, alert: I18n.t('data_import.errors.invalid_request')) && return if file_path.blank?
+
+    source_path = resolve_working_source_path(file_path)
+    phase5_path = default_phase_path_for(source_path, 5)
+    phase1_path = default_phase_path_for(source_path, 1)
+    unless File.exist?(phase5_path) && File.exist?(phase1_path)
+      redirect_to(review_results_path(file_path: source_path, phase5_v2: 1),
+                  alert: I18n.t('data_import.data_fix.individual_result_overwrite_phases_missing')) && return
+    end
+
+    payload = JSON.parse(File.read(phase5_path))
+    phase_meta = payload['_meta'] = payload['_meta'].is_a?(Hash) ? payload['_meta'] : {}
+    enabled = ActiveModel::Type::Boolean.new.cast(params[:enabled])
+
+    if enabled
+      phase1_data = JSON.parse(File.read(phase1_path))
+      meeting_id = phase1_data.dig('data', 'id') || phase1_data.dig('data', 'meeting_id')
+      import_rows = GogglesDb::DataImportMeetingIndividualResult.where(phase_file_path: source_path).to_a
+      candidates = DataFix::IndividualResultOverwriteReconciler.new(
+        meeting_id: meeting_id,
+        import_rows: import_rows
+      ).discover
+      phase_meta['individual_result_overwrite'] = {
+        'enabled' => true,
+        'snapshot' => DataFix::IndividualResultOverwriteReconciler.snapshot(candidates)
+      }
+      notice = I18n.t('data_import.data_fix.individual_result_overwrite_enabled', count: candidates.size)
+    else
+      phase_meta['individual_result_overwrite'] = {
+        'enabled' => false,
+        'snapshot' => DataFix::IndividualResultOverwriteReconciler.snapshot([])
+      }
+      notice = I18n.t('data_import.data_fix.individual_result_overwrite_disabled')
+    end
+
+    File.write(phase5_path, JSON.pretty_generate(payload))
+    redirect_to(review_results_path(file_path: source_path, phase5_v2: 1), notice: notice)
+  rescue JSON::ParserError => e
+    redirect_to(review_results_path(file_path: file_path, phase5_v2: 1), alert: "Invalid Phase 5 metadata: #{e.message}")
+  end
+
   # Phase 6: Commit all entities to DB and generate SQL/log report
   def commit_phase6
     file_path = params[:file_path]
@@ -794,6 +870,14 @@ class DataFixController < ApplicationController
 
     source_path = resolve_working_source_path(file_path)
     file_path = source_path
+
+    phase5_path = default_phase_path_for(source_path, 5)
+    overwrite_meta = (JSON.parse(File.read(phase5_path)).dig('_meta', 'individual_result_overwrite') if File.exist?(phase5_path))
+    overwrite_candidates = overwrite_meta&.dig('snapshot', 'candidates')
+    if overwrite_meta&.dig('enabled') == true && Array(overwrite_candidates).present? && params[:confirm_overwrite].to_s != '1'
+      flash[:alert] = I18n.t('data_import.data_fix.individual_result_overwrite_confirmation_required')
+      redirect_to(review_results_path(file_path: source_path, phase5_v2: 1)) && return
+    end
 
     # Gather all phase file paths
     phase1_path = default_phase_path_for(source_path, 1)

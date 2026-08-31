@@ -145,6 +145,31 @@ RSpec.describe Import::Committers::Main do
   # The Main committer now delegates to these classes via commit_phase2_entities,
   # commit_phase3_entities, commit_phase4_entities methods.
 
+  describe '#delete_overwrite_candidates!' do
+    let(:tmp_dir) { Dir.mktmpdir }
+    let(:src_path) { File.join(tmp_dir, 'test.json').tap { |p| File.write(p, '{}') } }
+    let(:committer) { create_committer(src_path) }
+
+    after(:each) { FileUtils.rm_rf(tmp_dir) }
+
+    it 'deletes laps before MIRs and records deletion statistics' do
+      lap_scope = instance_double(ActiveRecord::Relation, count: 2, delete_all: 2)
+      mir_scope = instance_double(ActiveRecord::Relation, delete_all: 2)
+      allow(GogglesDb::Lap).to receive(:where).with(meeting_individual_result_id: [10, 11]).and_return(lap_scope)
+      allow(GogglesDb::MeetingIndividualResult).to receive(:where).with(id: [10, 11]).and_return(mir_scope)
+      committer.instance_variable_set(:@overwrite_candidate_ids, [10, 11])
+
+      committer.send(:delete_overwrite_candidates!)
+
+      expect(committer.stats[:laps_deleted]).to eq(2)
+      expect(committer.stats[:mirs_deleted]).to eq(2)
+      expect(committer.sql_log).to eq([
+                                        'DELETE FROM laps WHERE meeting_individual_result_id IN (10, 11);',
+                                        'DELETE FROM meeting_individual_results WHERE id IN (10, 11);'
+                                      ])
+    end
+  end
+
   describe '#sql_log_content' do
     let(:tmp_dir) { Dir.mktmpdir }
     let(:src_path) { File.join(tmp_dir, 'test.json').tap { |p| File.write(p, '{}') } }

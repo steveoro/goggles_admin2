@@ -347,6 +347,12 @@ Created in goggles_db gem v0.8.11+:
 - UI partials not yet created
 - See [RELAY_IMPLEMENTATION.md](./RELAY_IMPLEMENTATION.md)
 
+### Individual-result overwrite mode
+
+Phase 5 offers an opt-in overwrite mode for authoritative re-imports of an already imported meeting. For every swimmer/team pair with at least one resolved imported individual result, existing individual MIRs in the same meeting are compared by `(meeting_program_id, swimmer_id, team_id)`. Existing rows absent from the imported set are shown as deletion candidates, including rows in programs absent from the new source. Rows attached to another team, unresolved imported rows, and all relay entities are protected.
+
+The toggle stores the candidate snapshot in Phase 5 metadata. Candidates are displayed in their individual program cards with their MIR ID, timing, rank, lap count, and deletion reason. Phase 6 requires the normal commit confirmation plus a deletion-specific confirmation, revalidates the snapshot, and fails closed if the database no longer matches the preview. SQL deletes dependent laps before MIRs inside the existing transaction.
+
 ---
 
 ## Phase 6: Commit & SQL Generation

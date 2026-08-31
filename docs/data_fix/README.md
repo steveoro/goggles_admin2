@@ -74,6 +74,8 @@ The pipeline is divided in stages so that each phase consolidates the data neede
 
 **Phase 1 category recomputation**: The Phase 1 review page can recompute individual categories from the canonical LT4 source. The action requires a non-empty `swimmers` array, uses the reviewed Phase 1 season/date, broadcasts swimmer-by-swimmer progress, creates numbered `.orig.json` backups, and invalidates only Phases 3–5 plus source-tied temporary import rows. Phase 1/2 files remain intact.
 
+**Phase 5 overwrite mode**: The Results review page can opt into authoritative re-import reconciliation. For represented swimmer/team pairs, existing individual MIRs absent from the imported meeting-wide set are previewed in their program cards and can be deleted during Phase 6. The mode excludes relays, requires two confirmations, persists a candidate snapshot, and aborts if that snapshot becomes stale.
+
 **Import Keys**: Unique identifiers for matching
 - Format: `"PARENT_ENTITY_KEY-CHILD_ENTITY_KEY"` or similar, depending on hierarchy level (each child entity should have a unique key in any case)
 - Used for O(1) lookups in temporary tables

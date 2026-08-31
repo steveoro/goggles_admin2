@@ -51,8 +51,8 @@ module Import
           badges_created: 0, badges_updated: 0,
           events_created: 0, events_updated: 0,
           programs_created: 0, programs_updated: 0,
-          mirs_created: 0, mirs_updated: 0,
-          laps_created: 0, laps_updated: 0,
+          mirs_created: 0, mirs_updated: 0, mirs_deleted: 0,
+          laps_created: 0, laps_updated: 0, laps_deleted: 0,
           mrrs_created: 0, mrrs_updated: 0,
           mrss_created: 0, mrss_updated: 0,
           relay_laps_created: 0, relay_laps_updated: 0,
@@ -99,6 +99,7 @@ module Import
 
         begin
           ActiveRecord::Base.transaction do
+            prepare_overwrite_deletions!
             broadcast_progress('Committing Phase 1', 1, 6)
             commit_phase1_entities  # Meeting, Sessions, Pools, Cities
 
@@ -111,6 +112,7 @@ module Import
             broadcast_progress('Committing Phase 4', 4, 6)
             commit_phase4_entities  # MeetingEvents
 
+            delete_overwrite_candidates!
             broadcast_progress('Committing Phase 5', 5, 6)
             commit_phase5_entities  # MeetingPrograms, MIRs, Laps (from DB tables)
 
@@ -375,6 +377,43 @@ module Import
             broadcast_progress("Committing Events for session #{sess_idx + 1}", evt_idx + 1, session_total)
           end
           broadcast_progress("Committing Events for session #{sess_idx + 1} done.", session_total, session_total)
+        end
+      end
+      # -----------------------------------------------------------------------
+
+      # Validate and delete stale individual results selected during Phase 5.
+      def prepare_overwrite_deletions!
+        overwrite = phase5_data&.dig('_meta', 'individual_result_overwrite')
+        unless overwrite.is_a?(Hash) && overwrite['enabled'] == true
+          @overwrite_candidate_ids = []
+          return
+        end
+
+        import_rows = GogglesDb::DataImportMeetingIndividualResult.where(phase_file_path: source_path).to_a
+        meeting_id = phase1_data&.dig('data', 'id') || phase1_data&.dig('data', 'meeting_id')
+        @overwrite_candidate_ids = DataFix::IndividualResultOverwriteReconciler.validate_snapshot!(
+          meeting_id: meeting_id,
+          import_rows: import_rows,
+          snapshot: overwrite['snapshot']
+        )
+      end
+
+      def delete_overwrite_candidates!
+        return if @overwrite_candidate_ids.blank?
+
+        ids = @overwrite_candidate_ids
+        lap_scope = GogglesDb::Lap.where(meeting_individual_result_id: ids)
+        lap_count = lap_scope.count
+        lap_scope.delete_all
+        mir_count = GogglesDb::MeetingIndividualResult.where(id: ids).delete_all
+
+        @stats[:laps_deleted] += lap_count
+        @stats[:mirs_deleted] += mir_count
+        where_clause = ids.size == 1 ? "= #{ids.first}" : "IN (#{ids.join(', ')})"
+        @sql_log << "DELETE FROM laps WHERE meeting_individual_result_id #{where_clause};" if lap_count.positive?
+        @sql_log << "DELETE FROM meeting_individual_results WHERE id #{where_clause};" if mir_count.positive?
+        ids.each do |id|
+          @logger.log_success(entity_type: 'MIR', entity_id: id, action: 'deleted')
         end
       end
       # -----------------------------------------------------------------------

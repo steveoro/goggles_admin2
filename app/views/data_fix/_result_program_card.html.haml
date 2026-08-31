@@ -13,6 +13,8 @@
   # - team_key_by_swimmer_key: Hash mapping swimmer_key => team_key (from phase 3 badges)
   # - laps_by_parent_key: Hash of DataImportLap arrays by parent_import_key
   # - card_index: Integer, for unique IDs
+  # - deletion_candidates: Array<Hash>, existing MIRs absent from the imported set
+  deletion_candidates ||= []
   parts = program_key.split('-')
   session_order = parts[0]
   event_code = parts[1]
@@ -22,10 +24,10 @@
   non_dsq_results = results.reject(&:disqualified?).sort_by(&:rank)
   dsq_results = results.select(&:disqualified?)
   sorted_results = non_dsq_results + dsq_results
-  program_id = results.first&.meeting_program_id
+  program_id = results.first&.meeting_program_id || deletion_candidates.first&.fetch('meeting_program_id', nil)
   has_match = program_id.present?
   border_width = 'border-2'
-  
+
   # Check if any result has missing swimmer data
   has_issues = sorted_results.any? do |mir|
     if mir.swimmer_id
@@ -41,6 +43,8 @@
 
   border_color = if has_issues
                    'border-danger'
+                 elsif deletion_candidates.present?
+                   'border-danger'
                  elsif has_match
                    'border-success'
                  else
@@ -51,7 +55,9 @@
   .card-header.d-flex.justify-content-between.align-items-center{ id: "program-header-#{card_index}", style: 'cursor: pointer;', data: { toggle: 'collapse', target: "#program-panel-#{card_index}" } }
     .d-flex.align-items-center
       %span.mr-2
-        - if has_match
+        - if deletion_candidates.present?
+          %i.fa.fa-trash.text-danger{ title: 'Existing results marked for deletion' }
+        - elsif has_match
           %i.fa.fa-check-circle.text-success{ title: 'Matched MeetingProgram' }
         - else
           %i.fa.fa-plus-circle.text-warning{ title: 'New MeetingProgram' }
@@ -69,6 +75,8 @@
     .d-flex.align-items-center
       %span.badge.badge-info
         = "#{sorted_results.size} results"
+      - if deletion_candidates.present?
+        %span.badge.badge-danger.ml-1= "#{deletion_candidates.size} to delete"
 
   .collapse.show{ id: "program-panel-#{card_index}", 'aria-labelledby' => "program-header-#{card_index}" }
     .card-body.p-0
@@ -194,3 +202,25 @@
                                   ID: #{lap_match_id}
                               - else
                                 %small.badge.badge-primary NEW
+          - deletion_candidates.each do |candidate|
+            %tr.bg-danger.text-white
+              %td.text-center
+                %i.fa.fa-trash{ title: 'Will be deleted on commit' }
+              %td.text-center
+                - if candidate['disqualified']
+                  %span -
+                - else
+                  = candidate['rank']
+              %td
+                %strong= candidate['swimmer_name'].presence || "Swimmer #{candidate['swimmer_id']}"
+                %small.ml-1= "(#{candidate['swimmer_year_of_birth']})" if candidate['swimmer_year_of_birth']
+                %small.ml-1= "ID: #{candidate['swimmer_id']}"
+              %td
+                = candidate['team_name'].presence || "Team #{candidate['team_id']}"
+                %small.ml-1= "(ID: #{candidate['team_id']})"
+              %td.text-right
+                %strong= candidate['timing']
+                %small.d-block= "#{candidate['lap_count']} lap(s)"
+              %td.text-center
+                %span.badge.badge-light.text-danger DELETE
+                %small.d-block= t('data_import.data_fix.individual_result_overwrite_reason')
