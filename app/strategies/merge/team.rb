@@ -337,14 +337,10 @@ module Merge
           attrs << "editable_name=#{quote_value(@merged_team.editable_name)}" if @merged_team.editable_name.present?
         end
 
-        # Use the main team city_id (source by default, destination when skip_columns)
-        # and fall back to the other team so no location information is lost:
-        city_id = if @skip_columns
-                    @kept_team.city_id.presence || @merged_team.city_id
-                  else
-                    @merged_team.city_id.presence || @kept_team.city_id
-                  end
-        attrs << "city_id=#{city_id}" if city_id.present?
+        # Overwrite city_id with the main team's value (source by default,
+        # destination when skip_columns), using NULL when the main team has none:
+        city_id = @skip_columns ? @kept_team.city_id : @merged_team.city_id
+        attrs << "city_id=#{city_id.presence || 'NULL'}"
       elsif @skip_columns
         # Legacy: update just the name variations, appending the merged team's name:
         kept_variations = @kept_team.name_variations.to_s

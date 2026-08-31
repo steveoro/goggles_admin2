@@ -184,10 +184,10 @@ RSpec.describe Merge::Team do
         expect(sql).to include("name=#{ActiveRecord::Base.connection.quote(src_team.name)}")
       end
 
-      it 'uses the source team city_id, falling back to the destination' do
+      it 'overwrites city_id with the source team city_id, using NULL when absent' do
         sql = merger.sql_log.join("\n")
-        expected_city = src_team.city_id.presence || dest_team.city_id
-        expect(sql).to include("city_id=#{expected_city}") if expected_city.present?
+        expected_city = src_team.city_id.presence ? src_team.city_id.to_s : 'NULL'
+        expect(sql).to include("city_id=#{expected_city}")
       end
 
       it 'puts the source team names first in name_variations, followed by the destination' do
@@ -228,10 +228,10 @@ RSpec.describe Merge::Team do
         expect(sql).not_to include("name=#{ActiveRecord::Base.connection.quote(src_team.name)}")
       end
 
-      it 'uses the destination team city_id, falling back to the source' do
+      it 'keeps the destination team city_id, using NULL when absent' do
         sql = merger.sql_log.join("\n")
-        expected_city = dest_team.city_id.presence || src_team.city_id
-        expect(sql).to include("city_id=#{expected_city}") if expected_city.present?
+        expected_city = dest_team.city_id.presence ? dest_team.city_id.to_s : 'NULL'
+        expect(sql).to include("city_id=#{expected_city}")
       end
 
       it 'puts the destination team names first in name_variations, followed by the source' do

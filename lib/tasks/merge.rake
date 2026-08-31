@@ -149,6 +149,8 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
       - keep_as_alias: when set to '1', the source team is kept as an alias of the destination team.
         The destination row always survives; the source row is deleted. Names and aliases from both
         teams are folded into the destination's name_variations and the source's team_aliases are moved.
+        With skip_columns=0, all destination columns (name, editable_name, city_id) are overwritten
+        with the source values; with skip_columns=1, the destination keeps its own column values.
         Default: '0' (legacy behaviour: keep destination, overwrite with source, delete source aliases).
 
   DESC

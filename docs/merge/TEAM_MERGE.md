@@ -56,7 +56,7 @@ bundle exec rake merge:team src=<source_team_id> dest=<dest_team_id> keep_as_ali
 bundle exec rake merge:team src=<source_team_id> dest=<dest_team_id> skip_columns=1 keep_as_alias=1
 ```
 
-When `keep_as_alias=1`, the `dest` team row is always kept and the `src` team is deleted. The combined names and the source's `team_aliases` rows are folded into `dest`'s `name_variations`. With `skip_columns=0` (default), `dest`'s `name` and `editable_name` are overwritten with the `src` values and `city_id` is taken from `src` (falling back to `dest`); with `skip_columns=1`, `dest`'s own `name`/`editable_name`/`city_id` are preserved (with `city_id` falling back to `src` if `dest` has none). Conflicting aliases are removed to respect the unique `(team_id, name)` index.
+When `keep_as_alias=1`, the `dest` team row is always kept and the `src` team is deleted. The combined names and the source's `team_aliases` rows are folded into `dest`'s `name_variations`. With `skip_columns=0` (default), `dest`'s `name`/`editable_name`/`city_id` are overwritten with the `src` values (`city_id` set to `NULL` when `src` has none); with `skip_columns=1`, `dest`'s own `name`/`editable_name`/`city_id` are preserved. Conflicting aliases are removed to respect the unique `(team_id, name)` index.
 
 Output: `crawler/data/results.new/<index>-merge_teams-<src>-<dest>.sql`
 
