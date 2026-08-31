@@ -577,6 +577,7 @@ class DataFixController < ApplicationController
                               else
                                 []
                               end
+      @overwrite_selected_count = @overwrite_candidates.count { |candidate| candidate['selected'] == true }
       @overwrite_candidates_by_program_key = @overwrite_candidates.group_by do |candidate|
         [candidate['session_order'], candidate['event_code'], candidate['category_code'], candidate['gender_code']].join('-')
       end
@@ -860,6 +861,59 @@ class DataFixController < ApplicationController
     redirect_to(review_results_path(file_path: file_path, phase5_v2: 1), alert: "Invalid Phase 5 metadata: #{e.message}")
   end
 
+  def update_individual_result_overwrite_candidate
+    phase5_path = overwrite_phase5_path_for(params[:file_path])
+    payload, overwrite = read_overwrite_metadata!(phase5_path)
+    raise ArgumentError, 'Individual-result overwrite mode is disabled' unless overwrite['enabled'] == true
+
+    snapshot = DataFix::IndividualResultOverwriteReconciler.update_selection(
+      snapshot: overwrite['snapshot'],
+      candidate_id: params[:candidate_id],
+      selected: params[:selected]
+    )
+    overwrite['snapshot'] = snapshot
+    write_phase5_payload!(phase5_path, payload)
+    render json: overwrite_counts(snapshot).merge(success: true, candidate_id: params[:candidate_id].to_i,
+                                                  selected: snapshot['candidates'].find { |entry| entry['id'].to_i == params[:candidate_id].to_i }['selected'])
+  rescue ArgumentError => e
+    render json: { success: false, error: e.message }, status: :unprocessable_content
+  rescue JSON::ParserError => e
+    render json: { success: false, error: "Invalid Phase 5 metadata: #{e.message}" }, status: :unprocessable_content
+  end
+
+  def bulk_update_individual_result_overwrite
+    phase5_path = overwrite_phase5_path_for(params[:file_path])
+    payload, overwrite = read_overwrite_metadata!(phase5_path)
+    raise ArgumentError, 'Individual-result overwrite mode is disabled' unless overwrite['enabled'] == true
+
+    snapshot = overwrite['snapshot']
+    DataFix::IndividualResultOverwriteReconciler.validate_snapshot_shape!(snapshot)
+    operation = params[:operation].to_s
+    candidates = Array(snapshot['candidates'])
+    case operation
+    when 'select_all'
+      candidates.each { |candidate| candidate['selected'] = true }
+    when 'deselect_all'
+      candidates.each { |candidate| candidate['selected'] = false }
+    when 'deselect_zero_timing'
+      candidates.each do |candidate|
+        next unless candidate['minutes'].to_i.zero? && candidate['seconds'].to_i.zero? && candidate['hundredths'].to_i.zero?
+
+        candidate['selected'] = false
+      end
+    else
+      raise ArgumentError, "Unknown overwrite selection operation: #{operation}"
+    end
+
+    overwrite['snapshot'] = snapshot
+    write_phase5_payload!(phase5_path, payload)
+    render json: overwrite_counts(snapshot).merge(success: true)
+  rescue ArgumentError => e
+    render json: { success: false, error: e.message }, status: :unprocessable_content
+  rescue JSON::ParserError => e
+    render json: { success: false, error: "Invalid Phase 5 metadata: #{e.message}" }, status: :unprocessable_content
+  end
+
   # Phase 6: Commit all entities to DB and generate SQL/log report
   def commit_phase6
     file_path = params[:file_path]
@@ -873,8 +927,9 @@ class DataFixController < ApplicationController
 
     phase5_path = default_phase_path_for(source_path, 5)
     overwrite_meta = (JSON.parse(File.read(phase5_path)).dig('_meta', 'individual_result_overwrite') if File.exist?(phase5_path))
-    overwrite_candidates = overwrite_meta&.dig('snapshot', 'candidates')
-    if overwrite_meta&.dig('enabled') == true && Array(overwrite_candidates).present? && params[:confirm_overwrite].to_s != '1'
+    overwrite_candidates = Array(overwrite_meta&.dig('snapshot', 'candidates'))
+    overwrite_selected_count = overwrite_candidates.count { |candidate| candidate['selected'] == true }
+    if overwrite_meta&.dig('enabled') == true && overwrite_selected_count.positive? && params[:confirm_overwrite].to_s != '1'
       flash[:alert] = I18n.t('data_import.data_fix.individual_result_overwrite_confirmation_required')
       redirect_to(review_results_path(file_path: source_path, phase5_v2: 1)) && return
     end
@@ -2484,6 +2539,41 @@ class DataFixController < ApplicationController
   end
 
   private
+
+  def overwrite_phase5_path_for(file_path)
+    raise ArgumentError, 'Missing file path' if file_path.blank?
+
+    source_path = resolve_working_source_path(file_path)
+    phase5_path = default_phase_path_for(source_path, 5)
+    raise ArgumentError, 'Phase 5 file not found' unless File.exist?(phase5_path)
+
+    phase5_path
+  end
+
+  def read_overwrite_metadata!(phase5_path)
+    payload = JSON.parse(File.read(phase5_path))
+    meta = payload['_meta']
+    overwrite = meta.is_a?(Hash) ? meta['individual_result_overwrite'] : nil
+    raise ArgumentError, 'Individual-result overwrite metadata not found' unless overwrite.is_a?(Hash)
+
+    [payload, overwrite]
+  end
+
+  def write_phase5_payload!(phase5_path, payload)
+    temporary_path = "#{phase5_path}.tmp-#{Process.pid}-#{SecureRandom.hex(6)}"
+    File.write(temporary_path, JSON.pretty_generate(payload))
+    File.rename(temporary_path, phase5_path)
+  ensure
+    FileUtils.rm_f(temporary_path) if temporary_path
+  end
+
+  def overwrite_counts(snapshot)
+    candidates = Array(snapshot['candidates'])
+    {
+      selected_count: candidates.count { |candidate| candidate['selected'] == true },
+      total_count: candidates.size
+    }
+  end
 
   def data_fix_review_cookie_scope(prefix:, file_path:)
     basename = File.basename(file_path.to_s, File.extname(file_path.to_s))

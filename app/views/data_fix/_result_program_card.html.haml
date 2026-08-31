@@ -203,9 +203,12 @@
                               - else
                                 %small.badge.badge-primary NEW
           - deletion_candidates.each do |candidate|
-            %tr.bg-danger.text-white
+            :ruby
+              selected = candidate['selected'] == true
+              candidate_row_class = selected ? 'bg-danger text-white' : 'bg-light text-muted'
+            %tr{ class: candidate_row_class, data: { candidate_id: candidate['id'] } }
               %td.text-center
-                %i.fa.fa-trash{ title: 'Will be deleted on commit' }
+                %input.form-check-input{ type: 'checkbox', checked: selected, aria: { label: "Select MIR #{candidate['id']} for deletion" }, title: t('data_import.data_fix.individual_result_overwrite_zero_timing_help'), data: { action: 'change->data-fix-overwrite#toggle', data_fix_overwrite_target: 'candidate', candidate_id: candidate['id'], minutes: candidate['minutes'], seconds: candidate['seconds'], hundredths: candidate['hundredths'] } }
               %td.text-center
                 - if candidate['disqualified']
                   %span -
@@ -222,5 +225,8 @@
                 %strong= candidate['timing']
                 %small.d-block= "#{candidate['lap_count']} lap(s)"
               %td.text-center
-                %span.badge.badge-light.text-danger DELETE
+                - if selected
+                  %span.badge.badge-light.text-danger{ data: { data_fix_overwrite_status: 'selected' } }= t('data_import.data_fix.individual_result_overwrite_selected')
+                - else
+                  %span.badge.badge-secondary{ data: { data_fix_overwrite_status: 'ignored' } }= t('data_import.data_fix.individual_result_overwrite_ignored')
                 %small.d-block= t('data_import.data_fix.individual_result_overwrite_reason')

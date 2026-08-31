@@ -2,7 +2,14 @@
 
 = render(partial: 'data_fix_legacy/modal_progress')
 
-.container-fluid{ data: { controller: 'collapse-all', collapse_all_selector_value: '[id^="program-panel-"], [id^="relay-program-panel-"]' } }
+.container-fluid{ data: { controller: 'collapse-all data-fix-overwrite', collapse_all_selector_value: '[id^="program-panel-"], [id^="relay-program-panel-"]',
+                                      data_fix_overwrite_update_url_value: update_individual_result_overwrite_candidate_path,
+                                      data_fix_overwrite_bulk_url_value: bulk_update_individual_result_overwrite_path,
+                                      data_fix_overwrite_file_path_value: @file_path,
+                                      data_fix_overwrite_confirmation_value: I18n.t('data_import.data_fix.confirm_individual_result_overwrite', count: '%{count}'),
+                                      data_fix_overwrite_selected_label_value: t('data_import.data_fix.individual_result_overwrite_selected'),
+                                      data_fix_overwrite_ignored_label_value: t('data_import.data_fix.individual_result_overwrite_ignored'),
+                                      data_fix_overwrite_update_failed_message_value: t('data_import.data_fix.individual_result_overwrite_update_failed') } }
   = render(partial: 'data_fix/v2_phase_header',
            locals: { title: 'Data-Fix V2 • Step 5: Results (Phase 5)',
                      active_step: 5,
@@ -16,10 +23,10 @@
         = button_to commit_phase6_path(file_path: @file_path),
                                        method: :post, class: 'btn btn-success',
                                        disabled: @issue_count.to_i.positive?,
-                                       params: { confirm_overwrite: (@overwrite_candidates.present? ? '1' : '0') },
+                                       params: { confirm_overwrite: '1' },
                                        data: { turbo_confirm: I18n.t('data_import.data_fix.btn_start_sql_batch_confirm'),
                                                turbo_method: :post },
-                                       form: { onsubmit: (@overwrite_candidates.present? ? "return confirm('#{j I18n.t('data_import.data_fix.confirm_individual_result_overwrite', count: @overwrite_candidates.size)}');" : nil) } do
+                                       form: { data: { action: 'submit->data-fix-overwrite#confirmCommit' } } do
           %i.fa.fa-database
           = I18n.t('data_import.data_fix.btn_start_sql_batch')
     %div
@@ -43,8 +50,23 @@
 
   - if @overwrite_existing_results && @overwrite_candidates.present?
     .alert.alert-danger
-      %strong= t('data_import.data_fix.individual_result_overwrite_summary', count: @overwrite_candidates.size)
-      %span.ml-1 Candidates are shown in red in their individual program sections.
+      %strong= t('data_import.data_fix.individual_result_overwrite_summary', count: @overwrite_selected_count)
+      %span.ml-1 Candidates are shown in red in their individual program sections; ignored rows remain visible.
+      %small.d-block.mt-1= t('data_import.data_fix.individual_result_overwrite_zero_timing_help')
+
+    .card.mb-3{ data: { data_fix_overwrite_target: 'toolbar' } }
+      .card-body.py-2.d-flex.justify-content-between.align-items-center
+        %span
+          %strong= t('data_import.data_fix.individual_result_overwrite_active_count')
+          = ": "
+          %span{ data: { data_fix_overwrite_target: 'selectedCount' } }= @overwrite_selected_count
+          = "/ "
+          %span{ data: { overwrite_total_count: true } }= @overwrite_candidates.size
+          = " #{t('data_import.data_fix.individual_result_overwrite_candidate_count')}"
+        .btn-group.btn-group-sm
+          %button.btn.btn-outline-danger{ type: 'button', data: { action: 'click->data-fix-overwrite#bulk', operation: 'select_all' } }= t('data_import.data_fix.individual_result_overwrite_select_all')
+          %button.btn.btn-outline-secondary{ type: 'button', data: { action: 'click->data-fix-overwrite#bulk', operation: 'deselect_all' } }= t('data_import.data_fix.individual_result_overwrite_deselect_all')
+          %button.btn.btn-outline-warning{ type: 'button', data: { action: 'click->data-fix-overwrite#bulk', operation: 'deselect_zero_timing' } }= t('data_import.data_fix.individual_result_overwrite_deselect_zero_timing')
 
   - basename = File.basename(@file_path).split('.json').first
   = render(partial: 'data_fix/phase_metadata', locals: { phase_number: 5, metadata: @phase5_meta,

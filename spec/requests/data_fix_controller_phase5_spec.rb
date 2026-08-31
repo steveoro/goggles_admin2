@@ -293,6 +293,17 @@ RSpec.describe DataFixController do
     end
 
     describe 'POST /data_fix/toggle_individual_result_overwrite' do
+      def write_overwrite_metadata!(candidates)
+        payload = JSON.parse(File.read(phase5_file_a))
+        payload['_meta'] = {
+          'individual_result_overwrite' => {
+            'enabled' => true,
+            'snapshot' => { 'version' => 2, 'candidates' => candidates }
+          }
+        }
+        File.write(phase5_file_a, JSON.pretty_generate(payload))
+      end
+
       it 'persists enabled overwrite metadata and clears it when disabled' do
         season = GogglesDb::Season.first || FactoryBot.create(:season)
         File.write(phase1_file_a, JSON.pretty_generate({ 'data' => { 'season_id' => season.id } }))
@@ -310,13 +321,35 @@ RSpec.describe DataFixController do
         expect(disabled_payload.dig('_meta', 'individual_result_overwrite', 'snapshot', 'candidates')).to eq([])
       end
 
-      it 'renders deletion-only programs and full candidate details' do
+      it 'autosaves individual selection and applies bulk selection operations' do
+        write_overwrite_metadata!([
+                                    { 'id' => 900, 'meeting_program_id' => 200, 'swimmer_id' => 1, 'team_id' => 2,
+                                      'minutes' => 0, 'seconds' => 36, 'hundredths' => 5, 'selected' => true },
+                                    { 'id' => 901, 'meeting_program_id' => 201, 'swimmer_id' => 1, 'team_id' => 2,
+                                      'minutes' => 0, 'seconds' => 0, 'hundredths' => 0, 'selected' => false }
+                                  ])
+
+        post update_individual_result_overwrite_candidate_path(
+          file_path: source_file_a, candidate_id: 900, selected: '0'
+        )
+
+        expect(response).to be_successful
+        expect(response.parsed_body).to include('success' => true, 'selected' => false, 'selected_count' => 0, 'total_count' => 2)
+
+        post bulk_update_individual_result_overwrite_path(file_path: source_file_a, operation: 'select_all')
+        expect(response.parsed_body).to include('success' => true, 'selected_count' => 2, 'total_count' => 2)
+
+        post bulk_update_individual_result_overwrite_path(file_path: source_file_a, operation: 'deselect_zero_timing')
+        expect(response.parsed_body).to include('success' => true, 'selected_count' => 1, 'total_count' => 2)
+      end
+
+      it 'renders ignored candidates with full details' do
         payload = JSON.parse(File.read(phase5_file_a))
         payload['_meta'] = {
           'individual_result_overwrite' => {
             'enabled' => true,
             'snapshot' => {
-              'version' => 1,
+              'version' => 2,
               'candidates' => [{
                 'id' => 900,
                 'meeting_program_id' => 200,
@@ -332,7 +365,8 @@ RSpec.describe DataFixController do
                 'swimmer_name' => 'Guerra Cristiano',
                 'swimmer_year_of_birth' => 1970,
                 'team_name' => 'SAN MARINO MASTER',
-                'reason' => 'Not present in imported source'
+                'reason' => 'Not present in imported source',
+                'selected' => false
               }]
             }
           }
@@ -346,7 +380,8 @@ RSpec.describe DataFixController do
         expect(response.body).to include('Guerra Cristiano')
         expect(response.body).to include('SAN MARINO MASTER')
         expect(response.body).to include('Not present in imported source')
-        expect(response.body).to include('DELETE')
+        expect(response.body).to include('IGNORA')
+        expect(response.body).not_to include('>DELETE<')
       end
 
       it 'requires deletion confirmation before Phase 6 when candidates are stored' do
@@ -355,8 +390,8 @@ RSpec.describe DataFixController do
           'individual_result_overwrite' => {
             'enabled' => true,
             'snapshot' => {
-              'version' => 1,
-              'candidates' => [{ 'id' => 123, 'meeting_program_id' => 1, 'swimmer_id' => 2, 'team_id' => 3 }]
+              'version' => 2,
+              'candidates' => [{ 'id' => 123, 'meeting_program_id' => 1, 'swimmer_id' => 2, 'team_id' => 3, 'selected' => true }]
             }
           }
         }

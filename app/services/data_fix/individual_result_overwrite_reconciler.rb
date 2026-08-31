@@ -5,8 +5,8 @@ require 'set'
 module DataFix
   # Finds individual results that are present for a represented swimmer/team in
   # the database but absent from the imported meeting result set.
-  class IndividualResultOverwriteReconciler
-    SNAPSHOT_VERSION = 1
+  class IndividualResultOverwriteReconciler # rubocop:disable Metrics/ClassLength
+    SNAPSHOT_VERSION = 2
 
     attr_reader :meeting_id, :import_rows
 
@@ -32,12 +32,26 @@ module DataFix
     def self.snapshot(candidates)
       {
         'version' => SNAPSHOT_VERSION,
-        'candidates' => Array(candidates).map { |candidate| stringify_keys(candidate) }
+        'candidates' => Array(candidates).map do |candidate|
+          stringify_keys(candidate).tap do |entry|
+            entry['selected'] = default_selected?(entry) unless entry.key?('selected')
+          end
+        end
       }
     end
 
+    def self.update_selection(snapshot:, candidate_id:, selected:)
+      validate_snapshot_shape!(snapshot)
+      candidates = Array(snapshot['candidates']).map(&:dup)
+      candidate = candidates.find { |entry| entry['id'].to_i == candidate_id.to_i }
+      raise ArgumentError, "Unknown individual-result overwrite candidate #{candidate_id}" unless candidate
+
+      candidate['selected'] = ActiveModel::Type::Boolean.new.cast(selected)
+      snapshot.merge('candidates' => candidates)
+    end
+
     def self.validate_snapshot!(meeting_id:, import_rows:, snapshot:)
-      raise ArgumentError, 'Invalid individual-result overwrite snapshot' unless snapshot.is_a?(Hash) && snapshot['version'].to_i == SNAPSHOT_VERSION
+      validate_snapshot_shape!(snapshot)
 
       reconciler = new(meeting_id:, import_rows:)
       expected = reconciler.discover.index_by { |candidate| candidate['id'].to_i }
@@ -51,7 +65,17 @@ module DataFix
         raise ArgumentError, "Stale individual-result overwrite snapshot for MIR #{id}"
       end
 
-      stored.map { |candidate| candidate['id'].to_i }.uniq
+      stored.filter_map { |candidate| candidate['id'].to_i if candidate['selected'] == true }.uniq
+    end
+
+    def self.default_selected?(candidate)
+      candidate['minutes'].to_i.positive? || candidate['seconds'].to_i.positive? || candidate['hundredths'].to_i.positive?
+    end
+
+    def self.validate_snapshot_shape!(snapshot)
+      return if snapshot.is_a?(Hash) && snapshot['version'].to_i == SNAPSHOT_VERSION && snapshot['candidates'].is_a?(Array)
+
+      raise ArgumentError, 'Invalid individual-result overwrite snapshot'
     end
 
     def self.stringify_keys(hash)
@@ -97,7 +121,7 @@ module DataFix
       mir_attributes(mir).merge(program_attributes(mir))
     end
 
-    def mir_attributes(mir)
+    def mir_attributes(mir) # rubocop:disable Metrics/AbcSize
       {
         'id' => mir.id,
         'meeting_program_id' => mir.meeting_program_id,
@@ -113,6 +137,7 @@ module DataFix
         'swimmer_name' => mir.swimmer&.complete_name,
         'swimmer_year_of_birth' => mir.swimmer&.year_of_birth,
         'team_name' => mir.team&.editable_name || mir.team&.name,
+        'selected' => self.class.default_selected?('minutes' => mir.minutes, 'seconds' => mir.seconds, 'hundredths' => mir.hundredths),
         'reason' => 'Not present in imported source'
       }
     end

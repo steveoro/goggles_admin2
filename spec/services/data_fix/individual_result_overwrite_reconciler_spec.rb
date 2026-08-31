@@ -69,6 +69,20 @@ RSpec.describe DataFix::IndividualResultOverwriteReconciler do
                                 ))
     end
 
+    it 'selects non-zero timing candidates by default' do
+      result = described_class.new(meeting_id: 19_854, import_rows:).discover
+
+      expect(result.first['selected']).to be true
+    end
+
+    it 'deselects zero timing candidates by default' do
+      allow(candidate).to receive_messages(seconds: 0, hundredths: 0)
+
+      result = described_class.new(meeting_id: 19_854, import_rows:).discover
+
+      expect(result.first['selected']).to be false
+    end
+
     it 'does not select an existing result whose program is imported' do
       allow(candidate).to receive(:meeting_program_id).and_return(100)
 
@@ -93,6 +107,24 @@ RSpec.describe DataFix::IndividualResultOverwriteReconciler do
       snapshot = described_class.snapshot(candidates)
 
       expect(described_class.validate_snapshot!(meeting_id: 19_854, import_rows:, snapshot:)).to eq([900])
+    end
+
+    it 'returns no IDs for an ignored candidate' do
+      candidates = described_class.new(meeting_id: 19_854, import_rows:).discover
+      candidates.first['selected'] = false
+      snapshot = described_class.snapshot(candidates)
+
+      expect(described_class.validate_snapshot!(meeting_id: 19_854, import_rows:, snapshot:)).to eq([])
+    end
+
+    it 'updates one candidate selection without rediscovery' do
+      candidates = described_class.new(meeting_id: 19_854, import_rows:).discover
+      snapshot = described_class.snapshot(candidates)
+
+      updated = described_class.update_selection(snapshot:, candidate_id: 900, selected: false)
+
+      expect(updated['candidates'].first['selected']).to be false
+      expect(snapshot['candidates'].first['selected']).to be true
     end
 
     it 'rejects a candidate that is no longer present in the current discovery set' do
