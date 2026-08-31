@@ -37,8 +37,36 @@ apiRouter.get("/pull_results", (req, res) => {
   console.log('GET /pull_results');
   console.log('- season_id:', req.query.season_id)
   console.log('- file_path:', req.query.file_path)
+  console.log('- meeting_url:', req.query.meeting_url)
   console.log('- layout:', req.query.layout)
-  const resCrawler = new ResultsCrawler(req.query.season_id, req.query.file_path, req.query.layout);
+
+  const seasonId = req.query.season_id
+  const filePath = req.query.file_path
+  const meetingUrl = req.query.meeting_url
+  const layout = req.query.layout
+
+  if (!seasonId) {
+    return res.status(400).json({ error: 'Missing season_id' })
+  }
+
+  if (meetingUrl) {
+    // Direct single-meeting mode (layout 2 only):
+    if (Number(layout) !== 2) {
+      return res.status(400).json({ error: 'Direct meeting_url mode requires layout=2' })
+    }
+    if (filePath) {
+      return res.status(400).json({ error: 'Cannot specify both file_path and meeting_url' })
+    }
+    const resCrawler = new ResultsCrawler(seasonId, null, layout, meetingUrl);
+    resCrawler.run();
+    return res.send(CrawlUtil.readStatus());
+  }
+
+  if (!filePath) {
+    return res.status(400).json({ error: 'Missing file_path or meeting_url' })
+  }
+
+  const resCrawler = new ResultsCrawler(seasonId, filePath, layout);
   resCrawler.run();
   res.send(CrawlUtil.readStatus());
 });

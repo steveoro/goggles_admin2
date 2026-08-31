@@ -69,11 +69,11 @@ class PullController < FileListController
       api_params = if layout == 4
                      api_params.merge(meeting_url: crawler_params['target_url'],
                                       target_event: crawler_params['target_event'])
+                   elsif layout == 2
+                     # Direct FIN layout-2 single meeting URL:
+                     api_params.merge(meeting_url: crawler_params['target_url'])
                    else
-                     # TODO: support actual target_url in 'pull_results' implementation instead of just 'file_path'.
-                     #       Current implementation: runs the crawler for layout 3 iterating on each row of the CSV calendar file, where each row has a target URL.
-                     #       If the 'file_path' parameter is a URL instead of a local file, it should run the results crawler directly on the specified parameter,
-                     #       instead of parsing the CSV and looping on each row.
+                     # Legacy result modes using a local calendar CSV file (layout 1/3):
                      api_params.merge(file_path: crawler_params['target_url'])
                    end
       call_crawler_api(api_endpoint, get_params: api_params)
@@ -180,6 +180,14 @@ class PullController < FileListController
         id: 0,
         label: I18n.t('data_import.config.crawler_fin_calendar'),
         base_url: FIN_CALENDAR_BASE_URL
+      },
+
+      # FIN direct meeting result URL (layout 2, results-crawler.js):
+      # https://www.federnuoto.it/home/master/circuito-supermaster/eventi-circuito-supermaster.html#/risultati/<sub_page_url>
+      {
+        id: 2,
+        label: I18n.t('data_import.config.crawler_fin_results_lt2'),
+        base_url: "#{FIN_RESULTS_BASE_URL} (+<LINK>)"
       },
 
       # FIN "current season" meeting base URL (layout 3, results-crawler.js):

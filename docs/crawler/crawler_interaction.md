@@ -21,6 +21,13 @@ The crawler is triggered via specific actions in the `PullController`:
         *   If results are available directly on the web page, the crawler parses them and saves them as a standardized `.json` file locally under `crawler/data/results.new/<season_id>/`.
         *   If a PDF link for results is found, the crawler downloads the `.pdf` file, saving it under `crawler/data/results.new/<season_id>/`.
 
+3.  **Direct FIN Layout-2 Result Crawling (`PullController#run_crawler_api` with layout ID 2):**
+    *   Triggered from the main crawler dashboard (`/pull/index`).
+    *   The user selects a target season and the "FIN results direct (layout 2)" option, then enters the meeting result URL.
+    *   The controller calls the crawler's `/pull_results` endpoint with `meeting_url` and `layout=2`.
+    *   The crawler processes the single URL, extracts the meeting header and event results, and writes one standardized layout-2 `.json` file (plus any available PDF/manifest artifacts) to `crawler/data/results.new/<season_id>/`.
+    *   No calendar file is consumed and no skipped-rows CSV is produced.
+
 ## Data Storage
 
 The crawler saves the fetched/generated files locally within the `goggles_admin2` project structure:

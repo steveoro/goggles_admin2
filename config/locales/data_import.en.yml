@@ -10,6 +10,7 @@ en:
       target_url: 'Target URL (results only, ignored for calendars)'
       crawler_type: 'Crawler type'
       crawler_fin_calendar: 'FIN calendar (auto-layout)'
+      crawler_fin_results_lt2: 'FIN results direct (layout 2)'
       crawler_fin_results: 'FIN results (layout ~3)'
       crawler_microplus: 'Microplus results (layout 4)'
       target_event: 'Target event title (as shown on page; empty = all)'

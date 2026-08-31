@@ -10,6 +10,7 @@ it:
       target_url: 'URL target (solo risultati, ignorata per calendari)'
       crawler_type: 'Tipo Crawler'
       crawler_fin_calendar: 'FIN calendar (auto-layout)'
+      crawler_fin_results_lt2: 'FIN risultati diretti (layout 2)'
       crawler_fin_results: 'FIN results (layout ~3)'
       crawler_microplus: 'Microplus results (layout 4)'
       target_event: 'Titolo evento da scaricare (così come sulla pagina; vuoto = tutti)'

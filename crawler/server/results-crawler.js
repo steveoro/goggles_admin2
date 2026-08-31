@@ -28,35 +28,35 @@ class ResultsCrawler {
    * Constructs a new ResultsCrawler instance.
    *
    * @param {Integer} seasonId - the season ID of the calendar to crawl; defaults to 212 (FIN 2021/2022)
-   * @param {String} calendarFilePath - the path to the calendar file to process
+   * @param {String} calendarFilePath - the path to the calendar file to process (CSV mode)
    * @param {Integer} layoutType - code for the layout type of the result page; defaults to 3 (FIN current season)
    *                               typically this is bound to the format layout of the calendar page.
+   * @param {String} meetingUrl - optional direct FIN meeting URL for single-meeting mode
+   *                              (when set, the crawler skips the CSV and processes just this URL)
    */
-  constructor(seasonId = 242, calendarFilePath, layoutType = 3) {
+  constructor(seasonId = 242, calendarFilePath, layoutType = 3, meetingUrl = null) {
     this.seasonId = seasonId
     this.calendarFilePath = calendarFilePath
     this.layoutType = layoutType
+    this.meetingUrl = meetingUrl
   }
   //---------------------------------------------------------------------------
 
   /**
    * Runs the results crawler.
    *
-   * Loops on the specified CSV file, assuming each line contains at least the URL to crawl
-   * to get to its results page.
+   * Loops on the specified CSV file or, when a direct meetingUrl is supplied, on a single
+   * synthetic row. When each `meetingUrl` is crawled, the results are extracted from the page
+   * as a single JSON object, and saved in a file named after the meeting URL, in a subdirectory
+   * named after the specified Season ID.
    *
-   * Expected CSV format:
+   * Expected CSV format (CSV mode):
    * ----8<----
    * sourceURL,date,isCancelled,name,place,meetingUrl,year
    * <ignoredURL>,dd(-dd)/mm,['canc*'],Meeting Name,City (or Cities separated by ;),urlWithResultsList,YYYY
    * ----8<----
    *
-   * When each `meetingUrl` is crawled, the results are extracted from the page as a single JSON
-   * object, and saved in a file named after the meeting URL, in a subdirectory named after the
-   * specified Season ID.
-   *
-   * At the end of the loop, the calendar file is moved into the processed files data directory
-   * ('calendar.done').
+   * In direct mode no calendar file is consumed and no skipped-rows CSV is produced.
    *
    * Later on, each JSON file can be processed for the actual data-importing.
    */
@@ -75,9 +75,10 @@ class ResultsCrawler {
       })
       .then(async browser => {
         console.log("\r\n*** FIN Results Crawler ***\r\n")
-        CrawlUtil.updateStatus(`Season ${this.seasonId} => layout: ${this.layoutType} - reading ${this.calendarFilePath}...`)
+        const modeLabel = this.meetingUrl ? `URL: ${this.meetingUrl}` : `reading ${this.calendarFilePath}`
+        CrawlUtil.updateStatus(`Season ${this.seasonId} => layout: ${this.layoutType} - ${modeLabel}...`)
         const layout = this.layoutType
-        const csvList = await CrawlUtil.readCSVData(this.calendarFilePath)
+        const csvList = await this.buildInputRows()
         var skippedRows = new Array()
         // DEBUG ----------------------------------------------------------------------------------------
         // For debugging uncomment the 'debugger' below and:
@@ -95,8 +96,9 @@ class ResultsCrawler {
           console.log("\r\n--------------------------------[ calendarRow ]---------------------------------");
           console.log(calendarRow);
           const cancelled = calendarRow.cancelled
-          console.log(`=> Processing URL ${i + 1}/${csvList.length} - layout: ${layout}, "${calendarRow.name}" ${cancelled ? '-CANC-' : ''}`)
-          CrawlUtil.updateStatus(`Processing "${calendarRow.name}"`, `OK, processing ${i + 1}/${csvList.length}`, i + 1, csvList.length)
+          const rowLabel = calendarRow.name || calendarRow.url || 'direct URL'
+          console.log(`=> Processing URL ${i + 1}/${csvList.length} - layout: ${layout}, "${rowLabel}" ${cancelled ? '-CANC-' : ''}`)
+          CrawlUtil.updateStatus(`Processing "${rowLabel}"`, `OK, processing ${i + 1}/${csvList.length}`, i + 1, csvList.length)
 
           if (calendarRow.url && !cancelled && calendarRow.url != 'undefined' && calendarRow.url != 'null' && calendarRow.url != ' ') {
             if (layout == 1) {
@@ -115,17 +117,22 @@ class ResultsCrawler {
 
         await browser.close()
         console.log(`\r\n\r\n--------------------------------------------------------------------------------\r\n`)
-        // "Consume" the calendar file & create the skipped rows output file in its place:
-        CrawlUtil.updateStatus(`Moving processed calendar`, 'OK, postprocessing')
-        this.moveCalendarFileToDone()
 
-        if (skippedRows.length > 0) {
-          CrawlUtil.updateStatus(`Saving skipped rows`, 'OK, postprocessing')
-          const skipFilePath = this.calendarFilePath.replace('.csv', '-skip.csv')
-          CrawlUtil.writeCSVData(skipFilePath, skippedRows)
+        if (!this.meetingUrl) {
+          // "Consume" the calendar file & create the skipped rows output file in its place:
+          CrawlUtil.updateStatus(`Moving processed calendar`, 'OK, postprocessing')
+          this.moveCalendarFileToDone()
+
+          if (skippedRows.length > 0) {
+            CrawlUtil.updateStatus(`Saving skipped rows`, 'OK, postprocessing')
+            const skipFilePath = this.calendarFilePath.replace('.csv', '-skip.csv')
+            CrawlUtil.writeCSVData(skipFilePath, skippedRows)
+          }
+
+          CrawlUtil.updateStatus(`Calendar processing done`, 'OK, done, idle')
+        } else {
+          CrawlUtil.updateStatus(`Direct URL processing done`, 'OK, done, idle')
         }
-
-        CrawlUtil.updateStatus(`Calendar processing done`, 'OK, done, idle')
         return true
       })
       .catch((error) => {
@@ -133,6 +140,75 @@ class ResultsCrawler {
         return false
       });
   }
+  //---------------------------------------------------------------------------
+
+  /**
+   * Returns the input row list for the crawl.
+   *
+   * In direct mode (meetingUrl is set) it returns a single synthetic row.
+   * In CSV mode it reads and parses the calendar CSV file.
+   *
+   * @returns {Promise<Array>} the list of rows to process
+   */
+  async buildInputRows() {
+    if (this.meetingUrl) {
+      return [{
+        url: this.meetingUrl,
+        name: '',
+        dates: [],
+        year: '',
+        places: [],
+        cancelled: false
+      }]
+    }
+    return await CrawlUtil.readCSVData(this.calendarFilePath)
+  }
+
+  /**
+   * Normalizes a FIN month string (Italian name or number) to a two-digit string.
+   *
+   * @param {String} monthText - the raw month value from the layout-2 page header
+   * @returns {String|null} the two-digit month number, or null when unparseable
+   */
+  normalizeMonth(monthText) {
+    if (!monthText) return null
+    const normalized = monthText.toString().trim().toLowerCase()
+    if (/^\d+$/.test(normalized)) {
+      const num = parseInt(normalized, 10)
+      return (num >= 1 && num <= 12) ? num.toString().padStart(2, '0') : null
+    }
+    const months = ['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto','settembre','ottobre','novembre','dicembre']
+    const idx = months.findIndex(m => m.startsWith(normalized))
+    return idx >= 0 ? (idx + 1).toString().padStart(2, '0') : null
+  }
+
+  /**
+   * Builds a synthetic output row for direct mode from the extracted layout-2 header.
+   *
+   * The returned row matches the shape expected by getOutputJSONFilename and saveResultOutputFile
+   * while leaving the L2 meeting payload unchanged.
+   *
+   * @param {Object} meetingResult - the object returned by extractMeetingInfoFromLayout2
+   * @returns {Object} a row with url, name, dates, year, places and cancelled fields
+   */
+  buildDirectOutputRow(meetingResult) {
+    const rawDay = (meetingResult.dateDay1 || '').toString().trim()
+    const day = rawDay ? rawDay.padStart(2, '0') : null
+    const month = this.normalizeMonth(meetingResult.dateMonth1)
+    const rawYear = (meetingResult.dateYear1 || '').toString().trim()
+    const year = rawYear.length === 2 ? rawYear.padStart(4, '20') : (rawYear.length === 4 ? rawYear : null)
+    const firstDate = (day && month && year) ? `${year}-${month}-${day}` : 'xxx'
+    const name = CrawlUtil.normalizeText(meetingResult.name || '').trim() || 'unknown'
+    return {
+      url: meetingResult.meetingURL,
+      name,
+      dates: [firstDate],
+      year: year || '',
+      places: [],
+      cancelled: false
+    }
+  }
+
   //---------------------------------------------------------------------------
 
   /**
@@ -299,12 +375,15 @@ class ResultsCrawler {
 
     // Merge the result section rows with the Meeting header info and store the result:
     meetingResult['sections'] = sectionData
+    // Direct mode derives the output filename from the extracted page header
+    // while CSV mode keeps using the original calendar row metadata:
+    const outputRow = this.meetingUrl ? this.buildDirectOutputRow(meetingResult) : calendarRow
     // DEBUG
     // console.log("\r\n------------------------------[ meetingResult ]--------------------------------");
     // console.log(meetingResult);
-    this.saveResultOutputFile(calendarRow, meetingResult)
+    this.saveResultOutputFile(outputRow, meetingResult)
     if (arrayOfParams.length < 1) { // Add current calendar row to skipped ones if no nodes were available:
-      skippedRows.push(calendarRow)
+      skippedRows.push(outputRow)
     }
     // [20241231] Not using a separate browserContext anymore, for now: (see browser.newPage() above)
     // console.log('   Closing context...')
