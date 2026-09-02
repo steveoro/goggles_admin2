@@ -205,10 +205,16 @@
           - deletion_candidates.each do |candidate|
             :ruby
               selected = candidate['selected'] == true
-              candidate_row_class = selected ? 'bg-danger text-white' : 'bg-light text-muted'
+              merge = selected && candidate['merge'] == true
+              merge_available = candidate['merge_available'] == true
+              merge_ambiguous = candidate['merge_ambiguous'] == true
+              candidate_row_class = selected ? (merge ? 'bg-info text-white' : 'bg-danger text-white') : 'bg-light text-muted'
             %tr{ class: candidate_row_class, data: { candidate_id: candidate['id'] } }
-              %td.text-center
-                %input.form-check-input{ type: 'checkbox', checked: selected, aria: { label: "Select MIR #{candidate['id']} for deletion" }, title: t('data_import.data_fix.individual_result_overwrite_zero_timing_help'), data: { action: 'change->data-fix-overwrite#toggle', data_fix_overwrite_target: 'candidate', candidate_id: candidate['id'], minutes: candidate['minutes'], seconds: candidate['seconds'], hundredths: candidate['hundredths'] } }
+              %td.text-right.align-middle
+                .d-flex.flex-column.align-items-end.gap-1
+                  %input.form-check-input{ type: 'checkbox', checked: selected, aria: { label: "Select MIR #{candidate['id']} for deletion" }, title: t('data_import.data_fix.individual_result_overwrite_zero_timing_help'), data: { action: 'change->data-fix-overwrite#toggle', data_fix_overwrite_target: 'candidate', candidate_id: candidate['id'], minutes: candidate['minutes'], seconds: candidate['seconds'], hundredths: candidate['hundredths'] } }
+                  - if merge_available
+                    %input.form-check-input{ type: 'checkbox', checked: merge, disabled: !selected, aria: { label: "Merge laps of MIR #{candidate['id']} into target result" }, title: t('data_import.data_fix.individual_result_overwrite_merge_label'), data: { action: 'change->data-fix-overwrite#toggleMerge', data_fix_overwrite_target: 'merge', candidate_id: candidate['id'] } }
               %td.text-center
                 - if candidate['disqualified']
                   %span -
@@ -225,8 +231,17 @@
                 %strong= candidate['timing']
                 %small.d-block= "#{candidate['lap_count']} lap(s)"
               %td.text-center
-                - if selected
+                - if merge_available && merge
+                  %span.badge.badge-light.text-info{ data: { data_fix_overwrite_status: 'merge' } }= t('data_import.data_fix.individual_result_overwrite_merged')
+                - elsif selected
                   %span.badge.badge-light.text-danger{ data: { data_fix_overwrite_status: 'selected' } }= t('data_import.data_fix.individual_result_overwrite_selected')
                 - else
                   %span.badge.badge-secondary{ data: { data_fix_overwrite_status: 'ignored' } }= t('data_import.data_fix.individual_result_overwrite_ignored')
                 %small.d-block= t('data_import.data_fix.individual_result_overwrite_reason')
+                - if merge_ambiguous
+                  %small.d-block.text-warning= t('data_import.data_fix.individual_result_overwrite_merge_ambiguous')
+                - elsif merge_available && selected
+                  %small.d-block.text-info{ data: { data_fix_overwrite_target: 'mergeTarget' } }
+                    = t('data_import.data_fix.individual_result_overwrite_merge_target', program_key: candidate['merge_target_program_key'])
+                - elsif selected
+                  %small.d-block.text-muted= t('data_import.data_fix.individual_result_overwrite_no_merge_target')

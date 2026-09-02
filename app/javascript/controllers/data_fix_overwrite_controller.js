@@ -1,14 +1,16 @@
 import { Controller } from '@hotwired/stimulus'
 
 export default class extends Controller {
-  static targets = ['candidate', 'selectedCount', 'toolbar']
+  static targets = ['candidate', 'merge', 'selectedCount', 'mergeCount', 'toolbar']
 
   static values = {
     updateUrl: String,
+    mergeUrl: String,
     bulkUrl: String,
     filePath: String,
     confirmation: String,
     selectedLabel: String,
+    mergedLabel: String,
     ignoredLabel: String,
     updateFailedMessage: String
   }
@@ -46,7 +48,23 @@ export default class extends Controller {
         candidate_id: checkbox.dataset.candidateId,
         selected: checkbox.checked ? '1' : '0'
       },
-      checkbox
+      checkbox,
+      isMerge: false
+    })
+  }
+
+  async toggleMerge (event) {
+    event.preventDefault()
+    const checkbox = event.currentTarget
+    await this.requestSelection({
+      url: this.mergeUrlValue,
+      body: {
+        file_path: this.filePathValue,
+        candidate_id: checkbox.dataset.candidateId,
+        merge: checkbox.checked ? '1' : '0'
+      },
+      checkbox,
+      isMerge: true
     })
   }
 
@@ -62,7 +80,7 @@ export default class extends Controller {
     })
   }
 
-  async requestSelection ({ url, body, checkbox, operation }) {
+  async requestSelection ({ url, body, checkbox, operation, isMerge = false }) {
     if (this.busy) return
 
     this.busy = true
@@ -81,9 +99,10 @@ export default class extends Controller {
       const data = await response.json()
       if (!response.ok || !data.success) throw new Error(data.error || 'Selection update failed')
 
-      if (checkbox) this.updateCandidateRow(checkbox, data.selected, true)
+      if (checkbox && isMerge) this.updateMergeRow(checkbox, data.merge)
+      if (checkbox && !isMerge) this.updateCandidateRow(checkbox, data.selected, data.merge, true)
       if (operation) this.updateBulkRows(operation)
-      this.updateCount(data.selected_count, data.total_count)
+      this.updateCount(data.selected_count, data.total_count, data.merge_count)
     } catch (error) {
       if (checkbox) checkbox.checked = !checkbox.checked
       window.alert(this.updateFailedMessageValue || error.message)
@@ -106,30 +125,73 @@ export default class extends Controller {
     if (pending.length === 0) return
 
     window.requestAnimationFrame(() => {
-      pending.forEach(([checkbox, selected]) => this.updateCandidateRow(checkbox, selected, true))
+      pending.forEach(([checkbox, selected]) => this.updateCandidateRow(checkbox, selected, null, true))
     })
   }
 
-  updateCandidateRow (checkbox, selected, force = false) {
+  updateCandidateRow (checkbox, selected, merge = null, force = false) {
     if (!force && checkbox.checked === selected) return
 
     checkbox.checked = selected
-    const { row, status } = this.rowStateFor(checkbox)
+    const { row, status, merge: mergeCheckbox, mergeTarget } = this.rowStateFor(checkbox)
     if (!row) return
 
-    row.classList.toggle('bg-danger', selected)
+    // Default merge to ON for newly selected rows that have an available target.
+    const isMerge = merge === true || (selected && merge === null && mergeCheckbox && !mergeCheckbox.disabled)
+
+    if (mergeCheckbox) {
+      mergeCheckbox.disabled = !selected
+      mergeCheckbox.checked = isMerge
+    }
+
+    row.classList.toggle('bg-info', selected && isMerge)
     row.classList.toggle('text-white', selected)
+    row.classList.toggle('bg-danger', selected && !isMerge)
     row.classList.toggle('bg-light', !selected)
     row.classList.toggle('text-muted', !selected)
+
+    if (mergeTarget) {
+      mergeTarget.style.display = (selected && isMerge) ? '' : 'none'
+    }
+
     if (status) {
-      status.textContent = selected ? this.selectedLabelValue : this.ignoredLabelValue
-      status.classList.toggle('badge-light', selected)
-      status.classList.toggle('text-danger', selected)
-      status.classList.toggle('badge-secondary', !selected)
+      if (selected && isMerge) {
+        status.textContent = this.mergedLabelValue
+        status.className = 'badge badge-light text-info'
+      } else if (selected) {
+        status.textContent = this.selectedLabelValue
+        status.className = 'badge badge-light text-danger'
+      } else {
+        status.textContent = this.ignoredLabelValue
+        status.className = 'badge badge-secondary'
+      }
     }
   }
 
-  // Memoizes the row/status nodes and the zero-timing flag for a candidate checkbox
+  updateMergeRow (checkbox, merge) {
+    checkbox.checked = merge
+    const { row, status, merge: mergeCheckbox } = this.rowStateFor(checkbox)
+    if (!row) return
+
+    // merge is only valid when selected; the selected row toggles between delete and merge
+    row.classList.toggle('bg-info', merge)
+    row.classList.toggle('bg-danger', !merge)
+    row.classList.toggle('text-white', true)
+
+    if (mergeCheckbox) mergeCheckbox.checked = merge
+
+    if (status) {
+      if (merge) {
+        status.textContent = this.mergedLabelValue
+        status.className = 'badge badge-light text-info'
+      } else {
+        status.textContent = this.selectedLabelValue
+        status.className = 'badge badge-light text-danger'
+      }
+    }
+  }
+
+  // Memoizes the row/status/merge nodes and the zero-timing flag for a candidate checkbox
   rowStateFor (checkbox) {
     let state = this.rowCache.get(checkbox)
     if (state) return state
@@ -138,15 +200,23 @@ export default class extends Controller {
     state = {
       row,
       status: row?.querySelector('[data-data-fix-overwrite-status]') || null,
+      merge: row?.querySelector('input[data-data-fix-overwrite-target="merge"]') || null,
+      mergeTarget: row?.querySelector('[data-data-fix-overwrite-target="mergeTarget"]') || null,
       zeroTiming: ['minutes', 'seconds', 'hundredths'].every((field) => Number(checkbox.dataset[field] || 0) === 0)
     }
     this.rowCache.set(checkbox, state)
     return state
   }
 
-  updateCount (selectedCount, totalCount) {
+  updateCount (selectedCount, totalCount, mergeCount = null) {
     this.selectedCountTargets.forEach((target) => { target.textContent = selectedCount })
     this.totalCountNodes.forEach((target) => { target.textContent = totalCount })
+    if (mergeCount !== null) {
+      this.mergeCountTargets.forEach((target) => {
+        target.textContent = mergeCount
+        target.style.display = mergeCount > 0 ? '' : 'none'
+      })
+    }
   }
 
   setBulkButtonsDisabled (disabled) {

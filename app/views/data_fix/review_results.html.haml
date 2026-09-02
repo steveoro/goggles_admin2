@@ -4,11 +4,13 @@
 
 .container-fluid{ data: { controller: 'collapse-all data-fix-overwrite', collapse_all_selector_value: '[id^="program-panel-"], [id^="relay-program-panel-"]',
                                       data_fix_overwrite_update_url_value: update_individual_result_overwrite_candidate_path,
+                                      data_fix_overwrite_merge_url_value: update_individual_result_merge_candidate_path,
                                       data_fix_overwrite_bulk_url_value: bulk_update_individual_result_overwrite_path,
                                       data_fix_overwrite_file_path_value: @file_path,
                                       data_fix_overwrite_confirmation_value: I18n.t('data_import.data_fix.confirm_individual_result_overwrite', count: '%{count}'),
                                       data_fix_overwrite_selected_label_value: t('data_import.data_fix.individual_result_overwrite_selected'),
                                       data_fix_overwrite_ignored_label_value: t('data_import.data_fix.individual_result_overwrite_ignored'),
+                                      data_fix_overwrite_merged_label_value: t('data_import.data_fix.individual_result_overwrite_merged'),
                                       data_fix_overwrite_update_failed_message_value: t('data_import.data_fix.individual_result_overwrite_update_failed') } }
   = render(partial: 'data_fix/v2_phase_header',
            locals: { title: 'Data-Fix V2 • Step 5: Results (Phase 5)',
@@ -50,8 +52,8 @@
 
   - if @overwrite_existing_results && @overwrite_candidates.present?
     .alert.alert-danger
-      %strong= t('data_import.data_fix.individual_result_overwrite_summary', count: @overwrite_selected_count)
-      %span.ml-1 Candidates are shown in red in their individual program sections; ignored rows remain visible.
+      %strong= t('data_import.data_fix.individual_result_overwrite_summary', count: @overwrite_selected_count, merge_count: @overwrite_merge_count)
+      %span.ml-1= t('data_import.data_fix.individual_result_overwrite_merge_hint')
       %small.d-block.mt-1= t('data_import.data_fix.individual_result_overwrite_zero_timing_help')
 
     .card.mb-3{ data: { data_fix_overwrite_target: 'toolbar' } }
@@ -63,6 +65,8 @@
           = "/ "
           %span{ data: { overwrite_total_count: true } }= @overwrite_candidates.size
           = " #{t('data_import.data_fix.individual_result_overwrite_candidate_count')}"
+          %span.ms-2.text-info{ data: { data_fix_overwrite_target: 'mergeCount' }, style: (@overwrite_merge_count.to_i.positive? ? '' : 'display: none;') }
+            = t('data_import.data_fix.individual_result_overwrite_merge_count', count: @overwrite_merge_count)
         .btn-group.btn-group-sm
           %button.btn.btn-outline-danger{ type: 'button', data: { action: 'click->data-fix-overwrite#bulk', operation: 'select_all' } }= t('data_import.data_fix.individual_result_overwrite_select_all')
           %button.btn.btn-outline-secondary{ type: 'button', data: { action: 'click->data-fix-overwrite#bulk', operation: 'deselect_all' } }= t('data_import.data_fix.individual_result_overwrite_deselect_all')

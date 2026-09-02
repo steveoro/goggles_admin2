@@ -157,7 +157,7 @@ RSpec.describe Import::Committers::Main do
       mir_scope = instance_double(ActiveRecord::Relation, delete_all: 2)
       allow(GogglesDb::Lap).to receive(:where).with(meeting_individual_result_id: [10, 11]).and_return(lap_scope)
       allow(GogglesDb::MeetingIndividualResult).to receive(:where).with(id: [10, 11]).and_return(mir_scope)
-      committer.instance_variable_set(:@overwrite_candidate_ids, [10, 11])
+      committer.instance_variable_set(:@overwrite_deletion_ids, [10, 11])
 
       committer.send(:delete_overwrite_candidates!)
 
@@ -167,6 +167,89 @@ RSpec.describe Import::Committers::Main do
                                         'DELETE FROM laps WHERE meeting_individual_result_id IN (10, 11);',
                                         'DELETE FROM meeting_individual_results WHERE id IN (10, 11);'
                                       ])
+    end
+  end
+
+  describe '#merge_overwrite_candidates!' do
+    let(:tmp_dir) { Dir.mktmpdir }
+    let(:src_path) { File.join(tmp_dir, 'test.json').tap { |p| File.write(p, '{}') } }
+    let(:committer) { create_committer(src_path) }
+    let(:source_mir) { FactoryBot.create(:meeting_individual_result) }
+    let(:target_mir) { FactoryBot.create(:meeting_individual_result, badge: source_mir.badge) }
+
+    after(:each) { FileUtils.rm_rf(tmp_dir) }
+
+    it 'moves source laps to the target and deletes the source MIR' do
+      source_lap = FactoryBot.create(:lap, meeting_individual_result: source_mir, length_in_meters: 50)
+      FactoryBot.create(:lap, meeting_individual_result: target_mir, length_in_meters: 100)
+
+      committer.instance_variable_set(:@overwrite_merge_targets, {
+                                        source_mir.id => {
+                                          'import_key' => 'import-target',
+                                          'program_key' => '1-50SL-M55-M',
+                                          'meeting_program_id' => target_mir.meeting_program_id,
+                                          'swimmer_id' => target_mir.swimmer_id,
+                                          'team_id' => target_mir.team_id,
+                                          'timing' => target_mir.to_timing.to_s
+                                        }
+                                      })
+      committer.instance_variable_set(:@mir_id_by_import_key, { 'import-target' => target_mir.id })
+
+      committer.send(:merge_overwrite_candidates!)
+
+      expect(GogglesDb::Lap.exists?(source_lap.id)).to be true
+      source_lap.reload
+      expect(source_lap.meeting_individual_result_id).to eq(target_mir.id)
+      expect(source_lap.meeting_program_id).to eq(target_mir.meeting_program_id)
+      expect(GogglesDb::MeetingIndividualResult.exists?(source_mir.id)).to be false
+      expect(committer.stats[:laps_merged]).to eq(1)
+      expect(committer.stats[:mirs_merged]).to eq(1)
+    end
+
+    it 'skips laps whose length already exists on the target' do
+      source_lap = FactoryBot.create(:lap, meeting_individual_result: source_mir, length_in_meters: 50)
+      target_lap = FactoryBot.create(:lap, meeting_individual_result: target_mir, length_in_meters: 50)
+
+      committer.instance_variable_set(:@overwrite_merge_targets, {
+                                        source_mir.id => {
+                                          'import_key' => 'import-target',
+                                          'program_key' => '1-50SL-M55-M',
+                                          'meeting_program_id' => target_mir.meeting_program_id,
+                                          'swimmer_id' => target_mir.swimmer_id,
+                                          'team_id' => target_mir.team_id,
+                                          'timing' => target_mir.to_timing.to_s
+                                        }
+                                      })
+      committer.instance_variable_set(:@mir_id_by_import_key, { 'import-target' => target_mir.id })
+
+      committer.send(:merge_overwrite_candidates!)
+
+      expect(GogglesDb::Lap.exists?(source_lap.id)).to be false
+      expect(GogglesDb::Lap.exists?(target_lap.id)).to be true
+      expect(committer.stats[:laps_merged]).to eq(0)
+      expect(committer.stats[:laps_deleted]).to eq(1)
+      expect(committer.stats[:mirs_merged]).to eq(1)
+    end
+
+    it 'falls back to plain deletion when the target cannot be resolved' do
+      FactoryBot.create(:lap, meeting_individual_result: source_mir, length_in_meters: 50)
+
+      committer.instance_variable_set(:@overwrite_merge_targets, {
+                                        source_mir.id => {
+                                          'import_key' => 'missing-target',
+                                          'program_key' => '1-50SL-M55-M',
+                                          'meeting_program_id' => nil,
+                                          'swimmer_id' => nil,
+                                          'team_id' => nil,
+                                          'timing' => nil
+                                        }
+                                      })
+
+      committer.send(:merge_overwrite_candidates!)
+
+      expect(GogglesDb::MeetingIndividualResult.exists?(source_mir.id)).to be false
+      expect(committer.stats[:mirs_deleted]).to eq(1)
+      expect(committer.stats[:laps_deleted]).to be >= 1
     end
   end
 

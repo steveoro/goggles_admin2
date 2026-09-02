@@ -108,6 +108,22 @@
                 %strong= count
                 = " #{label}"
 
+    :ruby
+      merge_rows = {
+        'Individual results merged' => (@stats[:mirs_merged] || 0),
+        'Laps moved by merge' => (@stats[:laps_merged] || 0)
+      }.select { |_label, count| count.to_i.positive? }
+    - if merge_rows.present?
+      .card.mt-3
+        .card-header.bg-info
+          %strong Merge Summary
+        .card-body
+          %ul.mb-0
+            - merge_rows.each do |label, count|
+              %li
+                %strong= count
+                = " #{label}"
+
   - if @commit_success && @post_commit_checks.present?
     .card.mt-3
       .card-header

@@ -51,8 +51,8 @@ module Import
           badges_created: 0, badges_updated: 0,
           events_created: 0, events_updated: 0,
           programs_created: 0, programs_updated: 0,
-          mirs_created: 0, mirs_updated: 0, mirs_deleted: 0,
-          laps_created: 0, laps_updated: 0, laps_deleted: 0,
+          mirs_created: 0, mirs_updated: 0, mirs_deleted: 0, mirs_merged: 0,
+          laps_created: 0, laps_updated: 0, laps_deleted: 0, laps_merged: 0,
           mrrs_created: 0, mrrs_updated: 0,
           mrss_created: 0, mrss_updated: 0,
           relay_laps_created: 0, relay_laps_updated: 0,
@@ -70,6 +70,14 @@ module Import
         @session_id_by_order = {}
         # Event key → meeting_event_id mapping (populated in Phase 4, used in Phase 5)
         @event_id_by_key = {}
+        # Program key → meeting_program_id mapping (populated in Phase 5, used by merge)
+        @program_id_by_key = {}
+        # DataImport MIR import_key → committed MIR ID / program ID mapping (populated in Phase 5, used by merge)
+        @mir_id_by_import_key = {}
+        @mir_program_id_by_import_key = {}
+        # Overwrite deletion/merge plan populated by prepare_overwrite_deletions!
+        @overwrite_deletion_ids = []
+        @overwrite_merge_targets = {}
         # Meeting and season IDs (populated in Phase 1, passed to child committers)
         @meeting = nil
         @season_id = nil
@@ -115,6 +123,9 @@ module Import
             delete_overwrite_candidates!
             broadcast_progress('Committing Phase 5', 5, 6)
             commit_phase5_entities  # MeetingPrograms, MIRs, Laps (from DB tables)
+
+            broadcast_progress('Merging overwrite candidates', 5, 6)
+            merge_overwrite_candidates! # Move laps from wrong source MIRs to imported targets
 
             # CRITICAL: Check for any errors collected during commit phases.
             # If any errors occurred, raise an exception to trigger transaction rollback.
@@ -385,23 +396,26 @@ module Import
       def prepare_overwrite_deletions!
         overwrite = phase5_data&.dig('_meta', 'individual_result_overwrite')
         unless overwrite.is_a?(Hash) && overwrite['enabled'] == true
-          @overwrite_candidate_ids = []
+          @overwrite_deletion_ids = []
+          @overwrite_merge_targets = {}
           return
         end
 
         import_rows = GogglesDb::DataImportMeetingIndividualResult.where(phase_file_path: source_path).to_a
         meeting_id = phase1_data&.dig('data', 'id') || phase1_data&.dig('data', 'meeting_id')
-        @overwrite_candidate_ids = DataFix::IndividualResultOverwriteReconciler.validate_snapshot!(
+        plan = DataFix::IndividualResultOverwriteReconciler.commit_plan_for(
           meeting_id: meeting_id,
           import_rows: import_rows,
           snapshot: overwrite['snapshot']
         )
+        @overwrite_deletion_ids = plan['delete_ids']
+        @overwrite_merge_targets = plan['merge_targets']
       end
 
       def delete_overwrite_candidates!
-        return if @overwrite_candidate_ids.blank?
+        return if @overwrite_deletion_ids.blank?
 
-        ids = @overwrite_candidate_ids
+        ids = @overwrite_deletion_ids
         lap_scope = GogglesDb::Lap.where(meeting_individual_result_id: ids)
         lap_count = lap_scope.count
         lap_scope.delete_all
@@ -416,6 +430,118 @@ module Import
           @logger.log_success(entity_type: 'MIR', entity_id: id, action: 'deleted')
         end
       end
+      # -----------------------------------------------------------------------
+
+      # Merge selected overwrite candidates into their matching imported targets.
+      # This runs after commit_phase5_entities so target MIRs and programs exist.
+      def merge_overwrite_candidates!
+        return if @overwrite_merge_targets.blank?
+
+        @overwrite_merge_targets.each do |source_id, target|
+          source_mir = GogglesDb::MeetingIndividualResult.find_by(id: source_id)
+          unless source_mir
+            Rails.logger.warn("[Main] Merge source MIR #{source_id} not found, skipping")
+            next
+          end
+
+          target_mir = resolve_target_mir(target)
+          unless target_mir
+            Rails.logger.warn("[Main] Merge target for source MIR #{source_id} not found, falling back to deletion")
+            delete_source_mir_and_laps!(source_mir)
+            next
+          end
+
+          moved_lap_ids = move_laps_to_target(source_mir, target_mir)
+          delete_remaining_source_laps!(source_mir, moved_lap_ids)
+          delete_source_mir!(source_mir, merged: true)
+        end
+      end
+
+      def resolve_target_mir(target)
+        import_key = target['import_key']
+
+        # Prefer the in-memory mapping populated by commit_individual_results_for_program
+        target_mir_id = @mir_id_by_import_key[import_key]
+        if target_mir_id.to_i.positive?
+          target_mir = GogglesDb::MeetingIndividualResult.find_by(id: target_mir_id)
+          return target_mir if target_mir
+        end
+
+        # Fallback: the DataImport row may have been pre-linked to an existing MIR
+        data_import_target = GogglesDb::DataImportMeetingIndividualResult.find_by(phase_file_path: source_path, import_key: import_key)
+        if data_import_target&.meeting_individual_result_id.to_i.positive?
+          target_mir = GogglesDb::MeetingIndividualResult.find_by(id: data_import_target.meeting_individual_result_id)
+          return target_mir if target_mir
+        end
+
+        # Last resort: locate the MIR by its committed program and stable key data
+        target_program_id = @program_id_by_key[target['program_key']] || target['meeting_program_id'].to_i
+        return nil unless target_program_id.to_i.positive? && data_import_target
+
+        GogglesDb::MeetingIndividualResult.find_by(
+          meeting_program_id: target_program_id,
+          swimmer_id: data_import_target.swimmer_id,
+          team_id: data_import_target.team_id,
+          minutes: data_import_target.minutes,
+          seconds: data_import_target.seconds,
+          hundredths: data_import_target.hundredths
+        )
+      end
+
+      def move_laps_to_target(source_mir, target_mir)
+        moved_lap_ids = []
+        GogglesDb::Lap.where(meeting_individual_result_id: source_mir.id).find_each do |lap|
+          next if GogglesDb::Lap.exists?(meeting_individual_result_id: target_mir.id, length_in_meters: lap.length_in_meters)
+
+          changes = {
+            meeting_individual_result_id: target_mir.id,
+            meeting_program_id: target_mir.meeting_program_id,
+            swimmer_id: target_mir.swimmer_id,
+            team_id: target_mir.team_id
+          }
+          lap.assign_attributes(changes)
+          lap.save!
+          sql_log << SqlMaker.new(row: lap).log_update(changes)
+
+          moved_lap_ids << lap.id
+          stats[:laps_merged] += 1
+          logger.log_success(entity_type: 'Lap', entity_id: lap.id, action: 'merged')
+        end
+        moved_lap_ids
+      end
+
+      def delete_remaining_source_laps!(source_mir, moved_lap_ids)
+        remaining_scope = GogglesDb::Lap.where(meeting_individual_result_id: source_mir.id)
+        remaining_scope = remaining_scope.where.not(id: moved_lap_ids) if moved_lap_ids.any?
+        remaining_ids = remaining_scope.pluck(:id)
+        return if remaining_ids.empty?
+
+        remaining_scope.delete_all
+        stats[:laps_deleted] += remaining_ids.size
+
+        where_clause = remaining_ids.size == 1 ? "id = #{remaining_ids.first}" : "id IN (#{remaining_ids.join(', ')})"
+        sql_log << "DELETE FROM laps WHERE #{where_clause};"
+      end
+
+      def delete_source_mir!(source_mir, merged: false)
+        GogglesDb::MeetingIndividualResult.where(id: source_mir.id).delete_all
+        action = merged ? 'merged (laps moved, source deleted)' : 'deleted'
+        stats_key = merged ? :mirs_merged : :mirs_deleted
+        stats[stats_key] += 1
+        sql_log << "DELETE FROM meeting_individual_results WHERE id = #{source_mir.id};"
+        logger.log_success(entity_type: 'MIR', entity_id: source_mir.id, action: action)
+      end
+
+      def delete_source_mir_and_laps!(source_mir)
+        lap_scope = GogglesDb::Lap.where(meeting_individual_result_id: source_mir.id)
+        lap_count = lap_scope.count
+        lap_scope.delete_all
+        stats[:laps_deleted] += lap_count
+        where_clause = "= #{source_mir.id}"
+        sql_log << "DELETE FROM laps WHERE meeting_individual_result_id #{where_clause};" if lap_count.positive?
+        delete_source_mir!(source_mir)
+      end
+
       # -----------------------------------------------------------------------
 
       # Phase 5: MeetingPrograms, MeetingIndividualResults, Laps, MeetingRelayResults, etc.
@@ -462,6 +588,8 @@ module Import
             Rails.logger.error("[Main] Failed to create MeetingProgram for #{program_key}")
             next
           end
+
+          @program_id_by_key[program_key] = program_id
 
           broadcast_progress("Committing Program #{event_code} #{category_code}-#{gender_code}", prog_idx + 1, programs.size)
 
@@ -584,6 +712,8 @@ module Import
           # Pass resolved IDs explicitly to committer
           mir_id = mir_committer.commit(data_import_mir, season_id: @season_id)
           data_import_mir.meeting_individual_result_id = mir_id
+          @mir_id_by_import_key[data_import_mir.import_key] = mir_id
+          @mir_program_id_by_import_key[data_import_mir.import_key] = program_id
 
           # Retrieve laps bound to the parent MIR
           data_import_laps = GogglesDb::DataImportLap.where(parent_import_key: data_import_mir.import_key)

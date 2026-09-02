@@ -578,6 +578,7 @@ class DataFixController < ApplicationController
                                 []
                               end
       @overwrite_selected_count = @overwrite_candidates.count { |candidate| candidate['selected'] == true }
+      @overwrite_merge_count = @overwrite_candidates.count { |candidate| candidate['selected'] == true && candidate['merge'] == true }
       @overwrite_candidates_by_program_key = @overwrite_candidates.group_by do |candidate|
         [candidate['session_order'], candidate['event_code'], candidate['category_code'], candidate['gender_code']].join('-')
       end
@@ -873,8 +874,34 @@ class DataFixController < ApplicationController
     )
     overwrite['snapshot'] = snapshot
     write_phase5_payload!(phase5_path, payload)
+    candidate = snapshot['candidates'].find { |entry| entry['id'].to_i == params[:candidate_id].to_i }
     render json: overwrite_counts(snapshot).merge(success: true, candidate_id: params[:candidate_id].to_i,
-                                                  selected: snapshot['candidates'].find { |entry| entry['id'].to_i == params[:candidate_id].to_i }['selected'])
+                                                  selected: candidate['selected'],
+                                                  merge: candidate['merge'])
+  rescue ArgumentError => e
+    render json: { success: false, error: e.message }, status: :unprocessable_content
+  rescue JSON::ParserError => e
+    render json: { success: false, error: "Invalid Phase 5 metadata: #{e.message}" }, status: :unprocessable_content
+  end
+
+  def update_individual_result_merge_candidate
+    phase5_path = overwrite_phase5_path_for(params[:file_path])
+    payload, overwrite = read_overwrite_metadata!(phase5_path)
+    raise ArgumentError, 'Individual-result overwrite mode is disabled' unless overwrite['enabled'] == true
+
+    snapshot = DataFix::IndividualResultOverwriteReconciler.update_merge_selection(
+      snapshot: overwrite['snapshot'],
+      candidate_id: params[:candidate_id],
+      merge: params[:merge]
+    )
+    overwrite['snapshot'] = snapshot
+    write_phase5_payload!(phase5_path, payload)
+    candidate = snapshot['candidates'].find { |entry| entry['id'].to_i == params[:candidate_id].to_i }
+    render json: overwrite_counts(snapshot).merge(
+      success: true,
+      candidate_id: params[:candidate_id].to_i,
+      merge: candidate['merge']
+    )
   rescue ArgumentError => e
     render json: { success: false, error: e.message }, status: :unprocessable_content
   rescue JSON::ParserError => e
@@ -892,14 +919,21 @@ class DataFixController < ApplicationController
     candidates = Array(snapshot['candidates'])
     case operation
     when 'select_all'
-      candidates.each { |candidate| candidate['selected'] = true }
+      candidates.each do |candidate|
+        candidate['selected'] = true
+        candidate['merge'] = DataFix::IndividualResultOverwriteReconciler.default_merge?(candidate)
+      end
     when 'deselect_all'
-      candidates.each { |candidate| candidate['selected'] = false }
+      candidates.each do |candidate|
+        candidate['selected'] = false
+        candidate['merge'] = false
+      end
     when 'deselect_zero_timing'
       candidates.each do |candidate|
         next unless candidate['minutes'].to_i.zero? && candidate['seconds'].to_i.zero? && candidate['hundredths'].to_i.zero?
 
         candidate['selected'] = false
+        candidate['merge'] = false
       end
     else
       raise ArgumentError, "Unknown overwrite selection operation: #{operation}"
@@ -2569,8 +2603,10 @@ class DataFixController < ApplicationController
 
   def overwrite_counts(snapshot)
     candidates = Array(snapshot['candidates'])
+    selected = candidates.select { |candidate| candidate['selected'] == true }
     {
-      selected_count: candidates.count { |candidate| candidate['selected'] == true },
+      selected_count: selected.size,
+      merge_count: selected.count { |candidate| candidate['merge'] == true },
       total_count: candidates.size
     }
   end

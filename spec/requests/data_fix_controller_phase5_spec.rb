@@ -384,6 +384,40 @@ RSpec.describe DataFixController do
         expect(response.body).not_to include('>DELETE<')
       end
 
+      it 'autosaves merge toggle state and updates the merge count' do
+        write_overwrite_metadata!([
+                                    { 'id' => 900, 'meeting_program_id' => 200, 'swimmer_id' => 1, 'team_id' => 2,
+                                      'minutes' => 0, 'seconds' => 36, 'hundredths' => 5, 'selected' => true,
+                                      'merge_available' => true, 'merge_target_import_key' => 'import-target',
+                                      'merge' => true },
+                                    { 'id' => 901, 'meeting_program_id' => 201, 'swimmer_id' => 1, 'team_id' => 2,
+                                      'minutes' => 0, 'seconds' => 0, 'hundredths' => 0, 'selected' => true,
+                                      'merge_available' => false, 'merge' => false }
+                                  ])
+
+        post update_individual_result_merge_candidate_path(
+          file_path: source_file_a, candidate_id: 900, merge: '0'
+        )
+
+        expect(response).to be_successful
+        expect(response.parsed_body).to include('success' => true, 'candidate_id' => 900, 'merge' => false,
+                                                'selected_count' => 2, 'merge_count' => 0, 'total_count' => 2)
+      end
+
+      it 'rejects merge toggle when the candidate has no merge target' do
+        write_overwrite_metadata!([
+                                    { 'id' => 900, 'meeting_program_id' => 200, 'swimmer_id' => 1, 'team_id' => 2,
+                                      'minutes' => 0, 'seconds' => 36, 'hundredths' => 5, 'selected' => true }
+                                  ])
+
+        post update_individual_result_merge_candidate_path(
+          file_path: source_file_a, candidate_id: 900, merge: '1'
+        )
+
+        expect(response).to be_unprocessable
+        expect(response.parsed_body).to include('success' => false)
+      end
+
       it 'requires deletion confirmation before Phase 6 when candidates are stored' do
         payload = JSON.parse(File.read(phase5_file_a))
         payload['_meta'] = {
