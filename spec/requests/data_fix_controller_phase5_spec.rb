@@ -573,6 +573,7 @@ RSpec.describe DataFixController do
         expect(response.body).to include('100SL')
         expect(response.body).to include('M25')
         expect(response.body).to include('M')
+        expect(response.body).to include('#program-card-0')
       end
     end
   end

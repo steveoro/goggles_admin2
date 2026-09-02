@@ -201,6 +201,12 @@
           %span.text-muted.ml-2
             (#{individual_programs.sum { |p| p['result_count']&.to_i || 0 }} results)
 
+        -# Build a lookup from program key to card index for merge target links
+        :ruby
+          program_card_index_by_key = individual_programs.each_with_index.each_with_object({}) do |(program, card_idx), hash|
+            hash["#{program['session_order']}-#{program['event_code']}-#{program['category_code']}-#{program['gender_code'] || ''}"] = card_idx
+          end
+
         -# Responsive grid: 2 columns on large displays
         .row
           - individual_programs.each_with_index do |program, idx|
@@ -220,7 +226,8 @@
                                  swimmers_by_id: @swimmers_by_id,
                                  swimmers_by_key: @swimmers_by_key, teams_by_id: @teams_by_id, teams_by_key: @teams_by_key,
                                  team_key_by_swimmer_key: @team_key_by_swimmer_key,
-                                 laps_by_parent_key: @laps_by_parent_key, card_index: idx })
+                                 laps_by_parent_key: @laps_by_parent_key, card_index: idx,
+                                 program_card_index_by_key: program_card_index_by_key })
 
       -# Relay Results Section
       - if relay_programs.any?

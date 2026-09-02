@@ -14,7 +14,9 @@
   # - laps_by_parent_key: Hash of DataImportLap arrays by parent_import_key
   # - card_index: Integer, for unique IDs
   # - deletion_candidates: Array<Hash>, existing MIRs absent from the imported set
+  # - program_card_index_by_key: Hash, program key => card index for merge target links
   deletion_candidates ||= []
+  program_card_index_by_key ||= {}
   parts = program_key.split('-')
   session_order = parts[0]
   event_code = parts[1]
@@ -247,16 +249,27 @@
                   %small.d-block.text-muted= t('data_import.data_fix.individual_result_overwrite_no_merge_target')
             - if candidate['merge_target_import_key'].present?
               - target_parts = candidate['merge_target_program_key'].to_s.split('-')
+              - target_card_index = program_card_index_by_key[candidate['merge_target_program_key']]
+              - link_text_color = candidate_row_class.include?('text-white') ? 'text-white' : 'text-dark'
               %tr{ class: candidate_row_class, data: { candidate_id: candidate['id'] } }
                 %td
                 %td
                 %td{ colspan: 2 }
                   %span.badge.badge-light
                     = t('data_import.data_fix.merge_target_line_badge', mir_id: candidate['id'])
-                  %span.ml-1
-                    = t('data_import.data_fix.merge_target_line_arrow',
-                        event_code: target_parts[1] || 'N/A',
-                        category_code: target_parts[2] || 'N/A',
-                        gender_code: target_parts[3] || 'N/A')
+                  - if target_card_index
+                    %a.ml-1{ href: "#program-card-#{target_card_index}",
+                             title: t('data_import.data_fix.individual_result_overwrite_merge_target', program_key: candidate['merge_target_program_key']),
+                             class: "#{link_text_color} text-decoration-underline" }
+                      = t('data_import.data_fix.merge_target_line_arrow',
+                          event_code: target_parts[1] || 'N/A',
+                          category_code: target_parts[2] || 'N/A',
+                          gender_code: target_parts[3] || 'N/A')
+                  - else
+                    %span.ml-1
+                      = t('data_import.data_fix.merge_target_line_arrow',
+                          event_code: target_parts[1] || 'N/A',
+                          category_code: target_parts[2] || 'N/A',
+                          gender_code: target_parts[3] || 'N/A')
                 %td
                 %td
