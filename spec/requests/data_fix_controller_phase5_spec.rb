@@ -481,5 +481,99 @@ RSpec.describe DataFixController do
         expect(GogglesDb::DataImportRelayLap.count).to eq(0)
       end
     end
+
+    describe 'merge target verification guards' do
+      def write_overwrite_metadata!(candidates)
+        payload = JSON.parse(File.read(phase5_file_a))
+        payload['_meta'] = {
+          'individual_result_overwrite' => {
+            'enabled' => true,
+            'snapshot' => { 'version' => 2, 'candidates' => candidates }
+          }
+        }
+        File.write(phase5_file_a, JSON.pretty_generate(payload))
+      end
+
+      def setup_merge_target! # rubocop:disable Metrics/AbcSize
+        season = GogglesDb::Season.first || FactoryBot.create(:season)
+        File.write(phase1_file_a, JSON.pretty_generate({ 'data' => { 'season_id' => season.id } }))
+        meeting = FactoryBot.create(:meeting, season: season)
+        session = FactoryBot.create(:meeting_session, meeting: meeting)
+        event_type = GogglesDb::EventType.where(code: '100SL').first || FactoryBot.create(:event_type, code: '100SL')
+        event = FactoryBot.create(:meeting_event, meeting_session: session, event_type: event_type)
+        category = season.category_types.where(relay: false).first || FactoryBot.create(:category_type, season: season)
+        program_male = FactoryBot.create(:meeting_program_individual, meeting_event: event, category_type: category,
+                                                                      gender_type: GogglesDb::GenderType.male)
+        program_female = FactoryBot.create(:meeting_program_individual, meeting_event: event, category_type: category,
+                                                                        gender_type: GogglesDb::GenderType.female)
+
+        source_mir = FactoryBot.create(
+          :meeting_individual_result,
+          meeting_program: program_female,
+          minutes: 0, seconds: 36, hundredths: 5
+        )
+
+        target_row = GogglesDb::DataImportMeetingIndividualResult.create!(
+          import_key: 'target-1-100SL-M25-M',
+          phase_file_path: source_file_a,
+          meeting_program_id: program_male.id,
+          meeting_program_key: '1-100SL-M25-M',
+          swimmer_id: source_mir.swimmer_id,
+          team_id: source_mir.team_id,
+          minutes: 0, seconds: 36, hundredths: 5
+        )
+
+        write_overwrite_metadata!([
+                                    { 'id' => source_mir.id, 'meeting_program_id' => program_female.id,
+                                      'swimmer_id' => source_mir.swimmer_id, 'team_id' => source_mir.team_id,
+                                      'minutes' => 0, 'seconds' => 36, 'hundredths' => 5, 'selected' => true,
+                                      'merge' => true, 'merge_available' => true,
+                                      'merge_target_import_key' => 'target-1-100SL-M25-M',
+                                      'merge_target_program_key' => '1-100SL-M25-M' }
+                                  ])
+
+        [source_mir, target_row]
+      end
+
+      it 'GET /data_fix/verify_result skips auto-fix and reports the merge target' do
+        source_mir, target_row = setup_merge_target!
+
+        get data_fix_verify_result_path(import_key: 'target-1-100SL-M25-M')
+
+        expect(response).to be_successful
+        result = response.parsed_body
+        expect(result['merge_target']).to be true
+        expect(result['merge_source_mir_id']).to eq(source_mir.id)
+        expect(result['merge_message']).to include("MIR #{source_mir.id}")
+        expect(result['auto_fixed']).to be_falsey
+        target_row.reload
+        expect(target_row.meeting_individual_result_id).to be_nil
+      end
+
+      it 'PATCH /data_fix/confirm_result_duplicate rejects manual fixes for a merge target' do
+        source_mir, target_row = setup_merge_target!
+
+        patch data_fix_confirm_result_duplicate_path(
+          import_key: 'target-1-100SL-M25-M', existing_id: source_mir.id
+        )
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(response.parsed_body).to include('error')
+        target_row.reload
+        expect(target_row.meeting_individual_result_id).to be_nil
+      end
+
+      it 'renders the merge target detail line on review_results' do
+        source_mir, _target_row = setup_merge_target!
+
+        get review_results_path(file_path: source_file_a, phase5_v2: 1)
+
+        expect(response).to be_successful
+        expect(response.body).to include("MIR #{source_mir.id}")
+        expect(response.body).to include('100SL')
+        expect(response.body).to include('M25')
+        expect(response.body).to include('M')
+      end
+    end
   end
 end

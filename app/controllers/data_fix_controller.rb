@@ -1248,40 +1248,55 @@ class DataFixController < ApplicationController
         return
       end
 
-      source_path = data_import_row.phase_file_path
-      season_id = detect_season_from_pathname(source_path)&.id if source_path.present?
+      merge_source = merge_target_for(data_import_row)
+      if merge_source
+        result = checker.check_individual(
+          swimmer_id: data_import_row.swimmer_id,
+          meeting_program_id: data_import_row.meeting_program_id,
+          timing: { minutes: data_import_row.minutes, seconds: data_import_row.seconds,
+                    hundredths: data_import_row.hundredths },
+          team_id: data_import_row.team_id,
+          season_id: detect_season_from_pathname(data_import_row.phase_file_path)&.id
+        )
+        result[:merge_target] = true
+        result[:merge_source_mir_id] = merge_source['id']
+        result[:merge_message] = I18n.t('data_import.data_fix.merge_target_no_autofix', mir_id: merge_source['id'])
+      else
+        source_path = data_import_row.phase_file_path
+        season_id = detect_season_from_pathname(source_path)&.id if source_path.present?
 
-      result = checker.check_individual(
-        swimmer_id: data_import_row.swimmer_id,
-        meeting_program_id: data_import_row.meeting_program_id,
-        timing: { minutes: data_import_row.minutes, seconds: data_import_row.seconds,
-                  hundredths: data_import_row.hundredths },
-        team_id: data_import_row.team_id,
-        season_id: season_id
-      )
+        result = checker.check_individual(
+          swimmer_id: data_import_row.swimmer_id,
+          meeting_program_id: data_import_row.meeting_program_id,
+          timing: { minutes: data_import_row.minutes, seconds: data_import_row.seconds,
+                    hundredths: data_import_row.hundredths },
+          team_id: data_import_row.team_id,
+          season_id: season_id
+        )
 
-      # Auto-fix: if exactly 1 perfect match found, apply it immediately
-      if result[:perfect_matches]&.length == 1
-        perfect = result[:perfect_matches].first
-        existing = GogglesDb::MeetingIndividualResult.find_by(id: perfect['id'])
-        if existing
-          data_import_row.update!(
-            meeting_individual_result_id: existing.id,
-            meeting_program_id: existing.meeting_program_id,
-            swimmer_id: existing.swimmer_id,
-            team_id: existing.team_id,
-            badge_id: existing.badge_id,
-            rank: existing.rank,
-            minutes: existing.minutes,
-            seconds: existing.seconds,
-            hundredths: existing.hundredths,
-            disqualified: existing.disqualified,
-            standard_points: existing.standard_points,
-            meeting_points: existing.meeting_points,
-            goggle_cup_points: existing.goggle_cup_points
-          )
-          result[:auto_fixed] = true
-          result[:auto_fixed_id] = existing.id
+        # Auto-fix: if exactly 1 perfect match found, apply it immediately
+        if result[:perfect_matches]&.length == 1
+          perfect = result[:perfect_matches].first
+          existing = GogglesDb::MeetingIndividualResult.find_by(id: perfect['id'])
+          if existing
+            data_import_row.update!(
+              meeting_individual_result_id: existing.id,
+              meeting_program_id: existing.meeting_program_id,
+              swimmer_id: existing.swimmer_id,
+              team_id: existing.team_id,
+              badge_id: existing.badge_id,
+              rank: existing.rank,
+              minutes: existing.minutes,
+              seconds: existing.seconds,
+              hundredths: existing.hundredths,
+              disqualified: existing.disqualified,
+              standard_points: existing.standard_points,
+              meeting_points: existing.meeting_points,
+              goggle_cup_points: existing.goggle_cup_points
+            )
+            result[:auto_fixed] = true
+            result[:auto_fixed_id] = existing.id
+          end
         end
       end
     end
@@ -1306,6 +1321,16 @@ class DataFixController < ApplicationController
     unless existing_id.positive? && import_key.present?
       render json: { error: 'Missing required params' }, status: :unprocessable_content
       return
+    end
+
+    if result_type != 'relay'
+      data_import_row = GogglesDb::DataImportMeetingIndividualResult.find_by(import_key: import_key)
+      merge_source = merge_target_for(data_import_row)
+      if merge_source
+        render json: { error: I18n.t('data_import.data_fix.merge_target_no_manual_fix', mir_id: merge_source['id']) },
+               status: :unprocessable_content
+        return
+      end
     end
 
     if result_type == 'relay'
@@ -2591,6 +2616,29 @@ class DataFixController < ApplicationController
     raise ArgumentError, 'Individual-result overwrite metadata not found' unless overwrite.is_a?(Hash)
 
     [payload, overwrite]
+  end
+
+  # Returns the overwrite candidate (with 'id' as source MIR id) that has this
+  # data_import_row as its merge target, or nil when no active merge points here.
+  def merge_target_for(data_import_row)
+    return nil unless data_import_row.is_a?(GogglesDb::DataImportMeetingIndividualResult) &&
+                      data_import_row.phase_file_path.present? &&
+                      data_import_row.import_key.present?
+
+    phase5_path = overwrite_phase5_path_for(data_import_row.phase_file_path)
+    return nil unless File.exist?(phase5_path)
+
+    _payload, overwrite = read_overwrite_metadata!(phase5_path)
+    return nil unless overwrite['enabled'] == true
+
+    candidates = Array(overwrite.dig('snapshot', 'candidates'))
+    merge_candidate = candidates.find do |c|
+      c['merge'] == true && c['merge_target_import_key'] == data_import_row.import_key
+    end
+    merge_candidate&.slice('id')
+  rescue StandardError => e
+    Rails.logger.warn("[DataFixController] merge_target_for failed: #{e.message}")
+    nil
   end
 
   def write_phase5_payload!(phase5_path, payload)

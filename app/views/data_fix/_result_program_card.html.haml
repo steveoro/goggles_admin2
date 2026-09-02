@@ -245,3 +245,18 @@
                     = t('data_import.data_fix.individual_result_overwrite_merge_target', program_key: candidate['merge_target_program_key'])
                 - elsif selected
                   %small.d-block.text-muted= t('data_import.data_fix.individual_result_overwrite_no_merge_target')
+            - if candidate['merge_target_import_key'].present?
+              - target_parts = candidate['merge_target_program_key'].to_s.split('-')
+              %tr{ class: candidate_row_class, data: { candidate_id: candidate['id'] } }
+                %td
+                %td
+                %td{ colspan: 2 }
+                  %span.badge.badge-light
+                    = t('data_import.data_fix.merge_target_line_badge', mir_id: candidate['id'])
+                  %span.ml-1
+                    = t('data_import.data_fix.merge_target_line_arrow',
+                        event_code: target_parts[1] || 'N/A',
+                        category_code: target_parts[2] || 'N/A',
+                        gender_code: target_parts[3] || 'N/A')
+                %td
+                %td

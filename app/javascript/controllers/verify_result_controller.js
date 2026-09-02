@@ -127,6 +127,14 @@ export default class extends Controller {
   _renderVerifyPanel(data, importKey, resultType) {
     let html = ''
 
+    // --- MERGE TARGET GUARD ---
+    if (data.merge_target) {
+      html += '<div class="alert alert-warning mb-2">'
+      html += '<i class="fa fa-exclamation-triangle"></i> <strong>Merge target:</strong> '
+      html += this._escapeHtml(data.merge_message || 'This result is assigned to a merge.')
+      html += '</div>'
+    }
+
     // --- TIER 0: Auto-fixed (perfect match applied by backend) ---
     if (data.auto_fixed) {
       const pm = (data.perfect_matches && data.perfect_matches[0]) || {}
@@ -141,7 +149,7 @@ export default class extends Controller {
     }
 
     // --- TIER 1: Perfect matches (already auto-fixed if exactly 1; show info if >1) ---
-    if (!data.auto_fixed && data.perfect_matches && data.perfect_matches.length > 1) {
+    if (!data.auto_fixed && !data.merge_target && data.perfect_matches && data.perfect_matches.length > 1) {
       html += '<div class="alert alert-danger mb-2">'
       html += '<i class="fa fa-ban"></i> <strong>' + data.perfect_matches.length +
               ' perfect matches found!</strong> This indicates DB duplicates — manual cleanup required.'
@@ -165,7 +173,7 @@ export default class extends Controller {
       }
 
       // Import row: "Fix with this" = keep_timing mode (UPDATE existing with import timing)
-      if (!multiplePartials && !data.auto_fixed) {
+      if (!multiplePartials && !data.auto_fixed && !data.merge_target) {
         html += '<table class="table table-sm table-bordered mb-1"><tbody>'
         html += '<tr class="table-info"><td><strong>Import row</strong> (this timing)</td>'
         html += '<td class="text-right">'
@@ -181,7 +189,7 @@ export default class extends Controller {
       // Existing rows
       html += this._renderMatchTable(
         data.partial_matches, importKey, resultType,
-        multiplePartials ? 'disabled' : 'overwrite'
+        (data.merge_target || multiplePartials) ? 'disabled' : 'overwrite'
       )
     }
 
@@ -228,11 +236,12 @@ export default class extends Controller {
     if (data.duplicates && data.duplicates.length > 0) {
       html += '<div class="mb-2"><strong class="text-danger"><i class="fa fa-exclamation-triangle"></i> ' +
               data.duplicates.length + ' relay duplicate(s) found:</strong></div>'
-      html += this._renderMatchTable(data.duplicates, importKey, resultType, 'overwrite')
+      html += this._renderMatchTable(data.duplicates, importKey, resultType, data.merge_target ? 'disabled' : 'overwrite')
     }
 
     // --- No matches at all ---
     const hasAny = (data.auto_fixed) ||
+                   (data.merge_target) ||
                    (data.perfect_matches && data.perfect_matches.length > 0) ||
                    (data.partial_matches && data.partial_matches.length > 0) ||
                    (data.team_mismatches && data.team_mismatches.length > 0) ||
@@ -297,5 +306,11 @@ export default class extends Controller {
     })
     html += '</tbody></table>'
     return html
+  }
+
+  _escapeHtml(str) {
+    const div = document.createElement('div')
+    div.appendChild(document.createTextNode(str))
+    return div.innerHTML
   }
 }
