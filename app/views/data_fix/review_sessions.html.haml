@@ -63,14 +63,14 @@
             = hidden_field_tag(:file_path, @file_path)
             = hidden_field_tag(:meeting_id, nil, id: 'rescan_meeting_id')
             %button.btn.btn-sm.btn-warning{ type: 'submit' }
-              %i.fa.fa-sync
-              Rescan sessions from meeting
+              %i.fa.fa-refresh
+              = t('data_import.data_fix.btn_reparse_session_label')
         %div
           = form_tag(data_fix_add_session_path, method: :post, class: 'd-inline') do
             = hidden_field_tag :file_path, @file_path
-            %button.btn.btn-sm.btn-success{ type: 'submit', data: { turbo_confirm: 'Add a new session?' } }
+            %button.btn.btn-sm.btn-success{ type: 'submit', data: { turbo_confirm: t('data_import.data_fix.confirm_add_session') } }
               %i.fa.fa-plus
-              Add Session
+              = t('data_import.data_fix.btn_add_session')
 
   -# Sessions as collapsible cards
   - if sessions.empty?
