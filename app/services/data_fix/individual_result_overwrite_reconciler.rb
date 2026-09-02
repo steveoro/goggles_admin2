@@ -137,7 +137,14 @@ module DataFix
     end
 
     def self.default_selected?(candidate)
+      return false if disqualified?(candidate) || candidate['disqualification_notes'].to_s.strip.present?
+
       candidate['minutes'].to_i.positive? || candidate['seconds'].to_i.positive? || candidate['hundredths'].to_i.positive?
+    end
+
+    def self.disqualified?(candidate)
+      value = candidate['disqualified']
+      !!ActiveModel::Type::Boolean.new.cast(value)
     end
 
     def self.default_merge?(candidate)
@@ -242,12 +249,19 @@ module DataFix
         'seconds' => mir.seconds,
         'hundredths' => mir.hundredths,
         'disqualified' => mir.disqualified,
+        'disqualification_notes' => mir.disqualification_notes,
         'timing' => mir.to_timing.to_s,
         'lap_count' => mir.laps.size,
         'swimmer_name' => mir.swimmer&.complete_name,
         'swimmer_year_of_birth' => mir.swimmer&.year_of_birth,
         'team_name' => mir.team&.editable_name || mir.team&.name,
-        'selected' => self.class.default_selected?('minutes' => mir.minutes, 'seconds' => mir.seconds, 'hundredths' => mir.hundredths),
+        'selected' => self.class.default_selected?(
+          'minutes' => mir.minutes,
+          'seconds' => mir.seconds,
+          'hundredths' => mir.hundredths,
+          'disqualified' => mir.disqualified,
+          'disqualification_notes' => mir.disqualification_notes
+        ),
         'reason' => 'Not present in imported source'
       }
     end

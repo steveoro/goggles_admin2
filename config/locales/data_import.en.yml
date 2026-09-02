@@ -65,7 +65,7 @@ en:
       individual_result_overwrite_deselect_zero_timing: "Deselect Zero-Timing"
       individual_result_overwrite_active_count: "Active deletions"
       individual_result_overwrite_candidate_count: "candidates"
-      individual_result_overwrite_zero_timing_help: "Zero-timing candidates start ignored because they may be DSQ results omitted from the source; you can re-enable them manually."
+      individual_result_overwrite_zero_timing_help: "Zero-timing or DSQ candidates start ignored because they may be omitted from the source; you can re-enable them manually."
       individual_result_overwrite_merge_label: "Merge laps"
       individual_result_overwrite_merge_hint: "Merge-enabled rows will move their existing laps to the matching imported result before the source is deleted."
       individual_result_overwrite_merged: "DELETE (merge laps)"

@@ -52,6 +52,7 @@ RSpec.describe DataFix::IndividualResultOverwriteReconciler do
       seconds: 36,
       hundredths: 5,
       disqualified: false,
+      disqualification_notes: nil,
       swimmer: swimmer,
       team: team,
       meeting_program: program,
@@ -129,6 +130,24 @@ RSpec.describe DataFix::IndividualResultOverwriteReconciler do
 
     it 'deselects zero timing candidates by default' do
       allow(candidate).to receive_messages(seconds: 0, hundredths: 0)
+
+      result = described_class.new(meeting_id: 19_854, import_rows:).discover
+
+      expect(result.first['selected']).to be false
+      expect(result.first['merge']).to be false
+    end
+
+    it 'deselects disqualified candidates by default' do
+      allow(candidate).to receive_messages(disqualified: true)
+
+      result = described_class.new(meeting_id: 19_854, import_rows:).discover
+
+      expect(result.first['selected']).to be false
+      expect(result.first['merge']).to be false
+    end
+
+    it 'deselects candidates with disqualification notes by default' do
+      allow(candidate).to receive_messages(disqualification_notes: 'DSQ - false start')
 
       result = described_class.new(meeting_id: 19_854, import_rows:).discover
 
