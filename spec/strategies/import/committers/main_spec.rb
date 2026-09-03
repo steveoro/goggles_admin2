@@ -179,9 +179,10 @@ RSpec.describe Import::Committers::Main do
 
     after(:each) { FileUtils.rm_rf(tmp_dir) }
 
-    it 'moves source laps to the target and deletes the source MIR' do
-      source_lap = FactoryBot.create(:lap, meeting_individual_result: source_mir, length_in_meters: 50)
-      FactoryBot.create(:lap, meeting_individual_result: target_mir, length_in_meters: 100)
+    it 'moves source laps to the target with one bulk update and deletes the source MIR', :aggregate_failures do
+      source_laps = [50, 100, 150].map do |length|
+        FactoryBot.create(:lap, meeting_individual_result: source_mir, length_in_meters: length)
+      end
 
       committer.instance_variable_set(:@overwrite_merge_targets, {
                                         source_mir.id => {
@@ -197,17 +198,29 @@ RSpec.describe Import::Committers::Main do
 
       committer.send(:merge_overwrite_candidates!)
 
-      expect(GogglesDb::Lap.exists?(source_lap.id)).to be true
-      source_lap.reload
-      expect(source_lap.meeting_individual_result_id).to eq(target_mir.id)
-      expect(source_lap.meeting_program_id).to eq(target_mir.meeting_program_id)
+      source_laps.each do |source_lap|
+        source_lap.reload
+        expect(source_lap).to have_attributes(
+          meeting_individual_result_id: target_mir.id,
+          meeting_program_id: target_mir.meeting_program_id,
+          swimmer_id: target_mir.swimmer_id,
+          team_id: target_mir.team_id
+        )
+      end
+      merge_sql = committer.sql_log.grep(/UPDATE `laps`/)
+      expect(merge_sql.size).to eq(1)
+      expect(merge_sql.first).to include("SET `meeting_individual_result_id`=#{target_mir.id}")
+      expect(merge_sql.first).to include("`meeting_program_id`=#{target_mir.meeting_program_id}")
+      expect(merge_sql.first).to include("WHERE `meeting_individual_result_id`=#{source_mir.id}")
+      expect(merge_sql.first).not_to match(/SET\s+WHERE/)
       expect(GogglesDb::MeetingIndividualResult.exists?(source_mir.id)).to be false
-      expect(committer.stats[:laps_merged]).to eq(1)
+      expect(committer.stats[:laps_merged]).to eq(3)
       expect(committer.stats[:mirs_merged]).to eq(1)
     end
 
-    it 'skips laps whose length already exists on the target' do
-      source_lap = FactoryBot.create(:lap, meeting_individual_result: source_mir, length_in_meters: 50)
+    it 'bulk-moves non-conflicting laps and deletes source laps whose length exists on the target' do
+      conflicting_lap = FactoryBot.create(:lap, meeting_individual_result: source_mir, length_in_meters: 50)
+      movable_lap = FactoryBot.create(:lap, meeting_individual_result: source_mir, length_in_meters: 100)
       target_lap = FactoryBot.create(:lap, meeting_individual_result: target_mir, length_in_meters: 50)
 
       committer.instance_variable_set(:@overwrite_merge_targets, {
@@ -224,9 +237,13 @@ RSpec.describe Import::Committers::Main do
 
       committer.send(:merge_overwrite_candidates!)
 
-      expect(GogglesDb::Lap.exists?(source_lap.id)).to be false
+      expect(GogglesDb::Lap.exists?(conflicting_lap.id)).to be false
       expect(GogglesDb::Lap.exists?(target_lap.id)).to be true
-      expect(committer.stats[:laps_merged]).to eq(0)
+      expect(movable_lap.reload.meeting_individual_result_id).to eq(target_mir.id)
+      merge_sql = committer.sql_log.grep(/UPDATE `laps`/)
+      expect(merge_sql.size).to eq(1)
+      expect(merge_sql.first).to include('`length_in_meters` NOT IN (50)')
+      expect(committer.stats[:laps_merged]).to eq(1)
       expect(committer.stats[:laps_deleted]).to eq(1)
       expect(committer.stats[:mirs_merged]).to eq(1)
     end

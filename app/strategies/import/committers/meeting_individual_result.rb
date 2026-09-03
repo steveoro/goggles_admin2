@@ -117,8 +117,9 @@ module Import
           'minutes' => integer_or_nil(data_import_mir.minutes),
           'seconds' => integer_or_nil(data_import_mir.seconds),
           'hundredths' => integer_or_nil(data_import_mir.hundredths),
-          'standard_points' => decimal_or_nil(data_import_mir.standard_points),
-          'meeting_points' => decimal_or_nil(data_import_mir.meeting_points),
+          'standard_points' => positive_decimal_or_nil(data_import_mir.standard_points),
+          'meeting_points' => positive_decimal_or_nil(data_import_mir.meeting_points),
+          'goggle_cup_points' => positive_decimal_or_nil(data_import_mir.goggle_cup_points),
           'out_of_race' => data_import_mir.out_of_race || false,
           'disqualified' => data_import_mir.disqualified || false,
           'disqualification_code_type_id' => data_import_mir.disqualification_code_type_id,
@@ -137,6 +138,13 @@ module Import
         return nil if value.blank?
 
         value.to_d
+      end
+
+      def positive_decimal_or_nil(value)
+        decimal = decimal_or_nil(value)
+        return nil unless decimal&.positive?
+
+        decimal
       end
       # -----------------------------------------------------------------------
 

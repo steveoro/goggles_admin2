@@ -489,25 +489,42 @@ module Import
       end
 
       def move_laps_to_target(source_mir, target_mir)
-        moved_lap_ids = []
-        GogglesDb::Lap.where(meeting_individual_result_id: source_mir.id).find_each do |lap|
-          next if GogglesDb::Lap.exists?(meeting_individual_result_id: target_mir.id, length_in_meters: lap.length_in_meters)
+        target_lengths = GogglesDb::Lap.where(meeting_individual_result_id: target_mir.id).distinct.pluck(:length_in_meters)
+        movable_scope = GogglesDb::Lap.where(meeting_individual_result_id: source_mir.id)
+        movable_scope = movable_scope.where.not(length_in_meters: target_lengths) if target_lengths.any?
+        moved_lap_ids = movable_scope.pluck(:id)
+        return moved_lap_ids if moved_lap_ids.empty?
 
-          changes = {
-            meeting_individual_result_id: target_mir.id,
-            meeting_program_id: target_mir.meeting_program_id,
-            swimmer_id: target_mir.swimmer_id,
-            team_id: target_mir.team_id
-          }
-          lap.assign_attributes(changes)
-          lap.save!
-          sql_log << SqlMaker.new(row: lap).log_update(changes)
+        changes = {
+          meeting_individual_result_id: target_mir.id,
+          meeting_program_id: target_mir.meeting_program_id,
+          swimmer_id: target_mir.swimmer_id,
+          team_id: target_mir.team_id
+        }
+        merge_sql = bulk_lap_merge_sql(source_mir.id, target_lengths, changes)
+        sql_log << merge_sql
+        GogglesDb::Lap.connection.update(merge_sql)
 
-          moved_lap_ids << lap.id
-          stats[:laps_merged] += 1
-          logger.log_success(entity_type: 'Lap', entity_id: lap.id, action: 'merged')
+        stats[:laps_merged] += moved_lap_ids.size
+        moved_lap_ids.each do |lap_id|
+          logger.log_success(entity_type: 'Lap', entity_id: lap_id, action: 'merged')
         end
         moved_lap_ids
+      end
+
+      def bulk_lap_merge_sql(source_mir_id, target_lengths, changes)
+        connection = GogglesDb::Lap.connection
+        set_clause = changes.map do |column, value|
+          "#{connection.quote_column_name(column)}=#{connection.quote(value)}"
+        end.join(', ')
+        conditions = ["#{connection.quote_column_name('meeting_individual_result_id')}=#{connection.quote(source_mir_id)}"]
+        if target_lengths.any?
+          quoted_lengths = target_lengths.map { |length| connection.quote(length) }.join(', ')
+          conditions << "#{connection.quote_column_name('length_in_meters')} NOT IN (#{quoted_lengths})"
+        end
+
+        "UPDATE #{connection.quote_table_name(GogglesDb::Lap.table_name)}\r\n  " \
+          "SET #{set_clause}\r\n  WHERE #{conditions.join(' AND ')};"
       end
 
       def delete_remaining_source_laps!(source_mir, moved_lap_ids)
