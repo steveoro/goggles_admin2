@@ -27,6 +27,21 @@ RSpec.describe APIUsersController do
         get(api_users_path)
         expect(response).to have_http_status(:success)
       end
+
+      it 'renders the Devise tracking columns' do
+        get(api_users_path)
+        expect(response.body).to include('Sign-in count', 'Last sign-in at', 'Failed attempts')
+      end
+
+      it 'sorts by last_sign_in_at even when only some values are nil' do
+        users = GogglesDb::User.first(25)
+        users.first.last_sign_in_at = Time.zone.now
+        users.last.last_sign_in_at = nil
+        # (Same serialization as the API: Devise strips tracking fields from plain #as_json)
+        allow(APIProxy).to receive(:call).and_return(DummyResponse.new(body: users.map(&:to_hash).to_json))
+        get(api_users_path, params: { users_grid: { order: 'last_sign_in_at', descending: false } })
+        expect(response).to have_http_status(:success)
+      end
     end
   end
   #-- -------------------------------------------------------------------------

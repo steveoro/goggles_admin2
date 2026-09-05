@@ -18,6 +18,10 @@ class UsersGrid < BaseGrid
   column(:id, align: :right, mandatory: true)
   column(:name, mandatory: true)
   column(:description, mandatory: true)
+  column(:sign_in_count, header: 'Sign-in count', align: :right, mandatory: true)
+  column(:last_sign_in_at, header: 'Last sign-in at', mandatory: true,
+                           order_by_value: ->(user) { user.last_sign_in_at || Time.zone.at(0) })
+  column(:failed_attempts, header: 'Failed attempts', align: :right, mandatory: true)
 
   column(:locked, header: 'Locked?', html: true, mandatory: true, order: false) do |asset|
     render(Grid::RowBoolValueSwitchComponent.new(asset_row: asset, controller_name: 'api_users',
