@@ -13,6 +13,7 @@ it:
       crawler_fin_results_lt2: 'FIN risultati diretti (layout 2)'
       crawler_fin_results: 'FIN results (layout ~3)'
       crawler_microplus: 'Microplus results (layout 4)'
+      crawler_ficr_results: 'FICR results (layout 5, output LT4)'
       target_event: 'Titolo evento da scaricare (così come sulla pagina; vuoto = tutti)'
     calendar:
       crawler_status_page_title: 'Crawler API'

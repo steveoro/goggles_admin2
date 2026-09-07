@@ -15,6 +15,7 @@ const CrawlUtil = require('./utility') // Crawler utility functions
 const CalendarCrawler = require('./calendar-crawler');
 const ResultsCrawler = require('./results-crawler.js');
 const MicroplusCrawler = require('./microplus-crawler.js');
+const FicrCrawler = require('./ficr-crawler.js');
 //-----------------------------------------------------------------------------
 
 apiRouter.get("/pull_calendar", (req, res) => {
@@ -88,6 +89,23 @@ apiRouter.get("/pull_results_microplus", (req, res) => {
   }
 
   const crawler = new MicroplusCrawler(seasonId, meetingUrl, targetEventTitle);
+  crawler.run();
+  res.json(CrawlUtil.readStatus());
+});
+
+apiRouter.get("/pull_results_ficr", (req, res) => {
+  const seasonId = req.query.season_id;
+  const meetingUrl = req.query.meeting_url;
+
+  console.log('GET /pull_results_ficr');
+  console.log(`- season_id: ${seasonId}`);
+  console.log(`- meeting_url: ${meetingUrl}`);
+
+  if (!seasonId || !meetingUrl) {
+    return res.status(400).json({ error: 'Missing season_id or meeting_url' });
+  }
+
+  const crawler = new FicrCrawler(seasonId, meetingUrl);
   crawler.run();
   res.json(CrawlUtil.readStatus());
 });

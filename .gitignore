@@ -38,6 +38,10 @@ pickle-email-*.html
 !/crawler/data/results.done/.keep
 !/crawler/data/results.sent/.keep
 !/crawler/data/debug/.keep
+!/crawler/data/
+!/crawler/data/samples/
+!/crawler/data/samples/ficr/
+!/crawler/data/samples/ficr/ficr-brescia.json
 
 
 # Ignore uploaded files in development.

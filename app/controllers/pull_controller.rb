@@ -18,6 +18,9 @@ class PullController < FileListController
 
   # Base URL for Microplus results:
   MICROPLUS_RESULTS_BASE_URL = 'https://fin2025.microplustiming.com/'
+
+  # Base URL for FICR results:
+  FICR_RESULTS_BASE_URL = 'https://nuoto.ficr.it/'
   #-- -------------------------------------------------------------------------
   #++
 
@@ -65,10 +68,18 @@ class PullController < FileListController
     elsif target_url_valid
       layout = crawler_params['layout_id'].to_i
       api_params = { season_id: crawler_params['season_id'], layout: }
-      api_endpoint = layout == 4 ? 'pull_results_microplus' : 'pull_results'
+      api_endpoint = if layout == 4
+                       'pull_results_microplus'
+                     elsif layout == 5
+                       'pull_results_ficr'
+                     else
+                       'pull_results'
+                     end
       api_params = if layout == 4
                      api_params.merge(meeting_url: crawler_params['target_url'],
                                       target_event: crawler_params['target_event'])
+                   elsif layout == 5
+                     api_params.merge(meeting_url: crawler_params['target_url'])
                    elsif layout == 2
                      # Direct FIN layout-2 single meeting URL:
                      api_params.merge(meeting_url: crawler_params['target_url'])
@@ -212,6 +223,14 @@ class PullController < FileListController
         id: 4,
         label: I18n.t('data_import.config.crawler_microplus'),
         base_url: "#{MICROPLUS_RESULTS_BASE_URL} (+<PAGE>.php)"
+      },
+
+      # FICR direct meeting result URL (layout 5, LT4 output):
+      # https://nuoto.ficr.it/#/NUO/tempi/<meeting>/<year>/<eqCode>/<meetingId>/<category>/<event>
+      {
+        id: 5,
+        label: I18n.t('data_import.config.crawler_ficr_results'),
+        base_url: "#{FICR_RESULTS_BASE_URL} (+<LINK>)"
       }
     ]
   end

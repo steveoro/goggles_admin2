@@ -1,0 +1,203 @@
+{
+  "description": {
+    "code": 200,
+    "status": true,
+    "data": [
+      {
+        "ma_Descrizione": "25' TROFEO ACSI CITTA' DI BRESCIA",
+        "ma_LuogoData": "BRESCIA, Dal 29/01/2023 al 29/01/2023",
+        "ma_DataRiferimento": "2023-01-29T00:00:00.000Z"
+      }
+    ]
+  },
+  "categories": {
+    "code": 200,
+    "status": true,
+    "data": [
+      { "ct_Categoria": "AAF", "ct_Descrizione": "Master Femminili", "ct_Sesso": "F" },
+      { "ct_Categoria": "AAX", "ct_Descrizione": "Master Misti", "ct_Sesso": "X" }
+    ]
+  },
+  "events": {
+    "AAF": {
+      "code": 200,
+      "status": true,
+      "data": [
+        {
+          "tg_TipoGara": 4,
+          "tg_Descrizione": "200m Stile Libero",
+          "tg_Sigla": "200SL",
+          "tg_AStaffetta": false,
+          "tg_Distanza": 200,
+          "tg_Stile": "L"
+        }
+      ]
+    },
+    "AAX": {
+      "code": 200,
+      "status": true,
+      "data": [
+        {
+          "tg_TipoGara": 1,
+          "tg_Descrizione": "4X50m Stile Libero",
+          "tg_Sigla": "4X50SL",
+          "tg_AStaffetta": true,
+          "tg_NumeroFrazionisti": 4,
+          "tg_Distanza": 200,
+          "tg_Stile": "L"
+        }
+      ]
+    }
+  },
+  "subcategories": {
+    "AAF/4": {
+      "code": 200,
+      "status": true,
+      "data": [
+        { "ct_Categoria": "25F", "ct_Descrizione": "M25 Master Femmine 25 - 29" },
+        { "ct_Categoria": "UNF", "ct_Descrizione": "A20 Under Femmine" }
+      ]
+    },
+    "AAX/1": {
+      "code": 200,
+      "status": true,
+      "data": [
+        { "ct_Categoria": "10X", "ct_Descrizione": "Master Misti 100 - 119" }
+      ]
+    }
+  },
+  "results": {
+    "AAF/4/25F": {
+      "code": 200,
+      "status": true,
+      "data": {
+        "results": [
+          {
+            "Conc": 1001,
+            "Nome": "CHRISTIN",
+            "Cognome": "BARTON",
+            "Codice": "396545",
+            "Naz": "ITA",
+            "Sex": "F",
+            "Anno": 1997,
+            "Numero": 49,
+            "Soc": "NUOTO MASTER BRESCIA ASD",
+            "Sq": "NUOTO MASTER BRESCIA ASD",
+            "Tempo": "29.83",
+            "PuntiAss": 812,
+            "PuntiSottoCat": 3,
+            "PuntiP": 7,
+            "Corsia": 5,
+            "Batteria": 5,
+            "Causa": null
+          }
+        ],
+        "staffetta": false
+      }
+    },
+    "AAF/4/UNF": {
+      "code": 200,
+      "status": true,
+      "data": { "results": [], "staffetta": false }
+    },
+    "AAX/1/10X": {
+      "code": 200,
+      "status": true,
+      "data": { "results": [], "staffetta": true }
+    },
+    "AAX/1/*": {
+      "code": 200,
+      "status": true,
+      "data": {
+        "results": [
+          {
+            "Conc": 2001,
+            "Nome": null,
+            "Cognome": null,
+            "Codice": null,
+            "Naz": null,
+            "Sex": null,
+            "Anno": null,
+            "Numero": null,
+            "Soc": "NUOTO MASTER BRESCIA ASD",
+            "Sq": "NUOTO MASTER BRESCIA ASD",
+            "Tempo": "1'52.50",
+            "PuntiAss": 0,
+            "PuntiSottoCat": 0,
+            "PuntiP": 0,
+            "Corsia": 5,
+            "Batteria": 2,
+            "Causa": null
+          }
+        ],
+        "staffetta": true
+      }
+    }
+  },
+  "athletes": {
+    "49": {
+      "code": 200,
+      "status": true,
+      "data": {
+        "atleta": {
+          "Nome": "CHRISTIN",
+          "Cognome": "BARTON",
+          "Codice": "396545",
+          "Sex": "F",
+          "Anno": 1997,
+          "Soc": "NUOTO MASTER BRESCIA ASD"
+        },
+        "tempi": [
+          {
+            "DescrGara": "200m Stile Libero",
+            "Squadra": "NUOTO MASTER BRESCIA ASD",
+            "NumConc": 1001,
+            "Metri": 50,
+            "Tempo": "32.37",
+            "PuntiA": 812,
+            "PuntiS": 3,
+            "Punti": 7,
+            "Corsia": 5,
+            "Batteria": 5,
+            "Categoria": "AAF",
+            "TipoGara": 4,
+            "Staffetta": false,
+            "Pos": 8
+          },
+          {
+            "DescrGara": "200m Stile Libero",
+            "Squadra": "NUOTO MASTER BRESCIA ASD",
+            "NumConc": 1001,
+            "Metri": 100,
+            "Tempo": "1'10.27",
+            "PuntiA": 812,
+            "PuntiS": 3,
+            "Punti": 7,
+            "Corsia": 5,
+            "Batteria": 5,
+            "Categoria": "AAF",
+            "TipoGara": 4,
+            "Staffetta": false,
+            "Pos": 8
+          },
+          {
+            "DescrGara": "200m Stile Libero",
+            "Squadra": "NUOTO MASTER BRESCIA ASD",
+            "NumConc": 1001,
+            "Metri": 200,
+            "Tempo": "2'27.82",
+            "PuntiA": 812,
+            "PuntiS": 3,
+            "Punti": 7,
+            "Corsia": 5,
+            "Batteria": 5,
+            "Categoria": "AAF",
+            "TipoGara": 4,
+            "Staffetta": false,
+            "Pos": 8
+          }
+        ]
+      }
+    }
+  }
+}

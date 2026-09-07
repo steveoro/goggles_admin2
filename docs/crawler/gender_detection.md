@@ -10,10 +10,10 @@ This document describes how the Microplus crawler handles gender detection for e
 
 Swimmer keys are pipe-delimited identifiers used throughout the crawler output:
 
-| Scenario | Format | Example |
-|----------|--------|---------|
-| **Known gender** | `G\|LAST\|FIRST\|YOB\|TEAM` | `F\|ROSSI\|Maria\|1980\|TeamA` |
-| **Unknown gender** | `\|LAST\|FIRST\|YOB\|TEAM` | `\|VERDI\|Anna\|1990\|TeamC` |
+| Scenario             | Format                               | Example                                  |
+| -------------------- | ------------------------------------ | ---------------------------------------- |
+| **Known gender**     | `G\|LAST\|FIRST\|YOB\|TEAM`          | `F\|ROSSI\|Maria\|1980\|TeamA`           |
+| **Unknown gender**   | `\|LAST\|FIRST\|YOB\|TEAM`           | `\|VERDI\|Anna\|1990\|TeamC`             |
 
 ### Key Properties
 
@@ -33,7 +33,7 @@ const key = `${gender}|${lastName}|${firstName}|${year}|${team}`;
 ## Gender Values by Context
 
 | Context | Valid Values | Notes |
-|---------|--------------|-------|
+| -------- | ------------ | ----- |
 | **Event gender** (`eventGender`) | `'M'`, `'F'`, `'X'`, `''` | `'X'` only valid for relay events |
 | **Swimmer gender** (in object) | `'M'`, `'F'`, `null` | Never `'X'`; stored as `null` if unknown |
 | **Swimmer key** (prefix) | `'M'`, `'F'`, `''` | Empty string (leading pipe) if unknown |
@@ -45,6 +45,7 @@ The crawler uses a multi-level fallback strategy:
 ### 1. Event List Page (Primary)
 
 Extracts gender from `td.GaraRound.aCenter` cells in the event calendar:
+
 - `"FEMMINE"` → `'F'`
 - `"MASCHI"` → `'M'`
 - `"MISTO"` / `"MISTI"` → `'X'` (relays only)
@@ -52,12 +53,14 @@ Extracts gender from `td.GaraRound.aCenter` cells in the event calendar:
 ### 2. Event Header Fallback
 
 If event list detection fails, extracts from `#tdGaraRound` in RISULTATI/RIEPILOGO pages:
+
 - `"FEMMINE - 50 M STILE LIBERO"` → `'F'`
 - `"MASCHI - 100 M RANA"` → `'M'`
 
 ### 3. Category Header Fallback
 
 If still unknown, infers from RIEPILOGO category headers:
+
 - `"MASTER 80F"` → `'F'`
 - `"MASTER 95M"` → `'M'`
 
@@ -98,6 +101,12 @@ The `SwimmerSolver` in Rails (Phase 4/5) handles unknown genders:
 - High-confidence matches (≥90%) can infer gender from database
 - Sets `gender_guessed: true` flag when gender is inferred
 
+## FICR category handling
+
+The FICR crawler reads the meeting category list from the FICR JSON service and keeps the source sex values (`F`, `M`, and `X`) as event gender. Individual subcategory identifiers such as `25F`, `30M`, and `UNF` are normalized to the corresponding Goggles category codes (`M25`, `M30`, and `A20`). Relay descriptions are normalized to age ranges such as `100-119`, while the relay event retains `eventGender: 'X'` for mixed teams.
+
+FICR's athlete-history endpoint can expose an overall position that is not category-bound. The crawler therefore uses the position from the category-filtered event response and treats athlete history only as an enrichment source for same-meeting events and lap timings.
+
 ## Debugging
 
 Set `MICROPLUS_DEBUG=1` to enable verbose gender detection logging:
@@ -107,6 +116,7 @@ MICROPLUS_DEBUG=1 node crawler/server/index.js
 ```
 
 Logs include:
+
 - Original and normalized gender strings
 - Fallback detection attempts
 - Final resolved gender values

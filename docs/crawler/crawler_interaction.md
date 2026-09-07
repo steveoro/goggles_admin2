@@ -28,6 +28,14 @@ The crawler is triggered via specific actions in the `PullController`:
     * The crawler processes the single URL, extracts the meeting header and event results, and writes one standardized layout-2 `.json` file (plus any available PDF/manifest artifacts) to `crawler/data/results.new/<season_id>/`.
     * No calendar file is consumed and no skipped-rows CSV is produced.
 
+4. **Direct FICR Result Crawling (layout ID 5, LT4 output):**
+    * Triggered from the main crawler dashboard (`/pull/index`).
+    * The user selects `FICR results`, enters a full `https://nuoto.ficr.it/#/NUO/tempi/...` meeting URL, and submits the form.
+    * `PullController` calls the local crawler server's `/pull_results_ficr` endpoint.
+    * The FICR crawler reads the public FICR JSON services, enumerates all available gender/category/event combinations, and enriches individual rows from the swimmer history endpoint. A browser/network fallback is used when direct API acquisition fails.
+    * The optional target-event field is ignored for FICR; the crawler processes the complete meeting.
+    * Output is a single LT4 JSON file under `crawler/data/results.new/<season_id>/`. The UI target ID is 5, while the JSON `layoutType` remains 4 so the existing DataFix V2 pipeline can consume it.
+
 ## Data Storage
 
 The crawler saves the fetched/generated files locally within the `goggles_admin2` project structure:
@@ -42,30 +50,31 @@ These files are then listed and managed using the `FileListController` actions a
 
 The standardized results JSON produced by the crawler has the following structure:
 
-- __Top-level metadata__:
-  - `title`, `dates`, `place`, `meetingName`, `competitionType`, `layoutType`, `seasonId`, `meetingURL`.
+* **Top-level metadata**:
+  * `title`, `dates`, `place`, `meetingName`, `competitionType`, `layoutType`, `seasonId`, `meetingURL`.
 
-- __`swimmers`__ (map):
-  - Keys are stable identifiers:
-    - Known gender: `"G|LASTNAME|First|YYYY|Team Name"` (e.g., `"F|ROSSI|Maria|1980|TeamA"`)
-    - Unknown gender: `"|LASTNAME|First|YYYY|Team Name"` (leading pipe indicates unknown)
-  - Values include: `lastName`, `firstName`, `gender` (`'M'`, `'F'`, or `null`), `year`, `team`, `category`.
+* **`swimmers`** (map):
+  * Keys are stable identifiers:
+    * Known gender: `"G|LASTNAME|First|YYYY|Team Name"` (e.g., `"F|ROSSI|Maria|1980|TeamA"`)
+    * Unknown gender: `"|LASTNAME|First|YYYY|Team Name"` (leading pipe indicates unknown)
+  * Values include: `lastName`, `firstName`, `gender` (`'M'`, `'F'`, or `null`), `year`, `team`, `category`.
 
-- __`teams`__ (map):
-  - Keys are team names. Values: `{ name }`.
+* **`teams`** (map):
+  * Keys are team names. Values: `{ name }`.
 
-- __`events`__ (array):
-  - Each event has: `eventCode` (e.g., `800SL`), `eventGender`, `eventLength` (meters), `eventStroke`, `eventDescription`, `relay` (boolean), and `results` (array).
+* **`events`** (array):
+  * Each event has: `eventCode` (e.g., `800SL`), `eventGender`, `eventLength` (meters), `eventStroke`, `eventDescription`, `relay` (boolean), and `results` (array).
 
-- __`results`__ (array within each event):
-  - Each result has: `ranking`, `swimmer` (key into `swimmers`), `team`, `timing`, `category`, `heat_position`, `lane`, `nation`, and optionally `laps`.
+* **`results`** (array within each event):
+  * Each result has: `ranking`, `swimmer` (key into `swimmers`), `team`, `timing`, `category`, `heat_position`, `lane`, `nation`, and optionally `laps`.
 
-- __`laps`__ (array within each result, when available):
-  - Each lap: `{ distance: "<meters>m", timing: "..", position?: "..", delta?: ".." }`.
-  - Distances are normalized to the strict `"<meters>m"` format (e.g., `450m`).
+* **`laps`** (array within each result, when available):
+  * Each lap: `{ distance: "<meters>m", timing: "..", position?: "..", delta?: ".." }`.
+  * Distances are normalized to the strict `"<meters>m"` format (e.g., `450m`).
 
 Notes:
-- Older/alternative sources may provide a legacy `heats` structure (`heats[].results[]`). The crawler and tools support both `events[].results[]` and `heats[].results[]`.
+
+* Older/alternative sources may provide a legacy `heats` structure (`heats[].results[]`). The crawler and tools support both `events[].results[]` and `heats[].results[]`.
 
 ## Gender Detection
 
@@ -81,31 +90,31 @@ The crawler uses a multi-level fallback strategy for detecting event and swimmer
 
 ### Gender Values
 
-| Context | Valid Values | Notes |
-|---------|--------------|-------|
-| **Event gender** (`eventGender`) | `'M'`, `'F'`, `'X'`, `''` | `'X'` only valid for relay events; individual events use `''` if unknown |
-| **Swimmer gender** (`gender`) | `'M'`, `'F'`, `null` | Never `'X'`; mixed relay swimmers get `null` |
+| Context                              | Valid Values                    | Notes                                                                         |
+|--------------------------------------|---------------------------------|-------------------------------------------------------------------------------|
+| **Event gender** (`eventGender`)     | `'M'`, `'F'`, `'X'`, `''`       | `'X'` only valid for relay events; individual events use `''` if unknown      |
+| **Swimmer gender** (`gender`)        | `'M'`, `'F'`, `null`            | Never `'X'`; mixed relay swimmers get `null`                                  |
 
 ### Helper Functions (utility.js)
 
-- `extractGenderFromEventHeader(headerText)`: Parses "FEMMINE - 50 M STILE LIBERO" → `'F'`
-- `extractGenderFromCategoryHeader(categoryText)`: Parses "MASTER 80F" → `'F'`
+* `extractGenderFromEventHeader(headerText)`: Parses "FEMMINE - 50 M STILE LIBERO" → `'F'`
+* `extractGenderFromCategoryHeader(categoryText)`: Parses "MASTER 80F" → `'F'`
 
 ## Microplus Timing (layout 4) specifics
 
 The new Microplus result pages sometimes render long-distance events (e.g., 800m) across two adjacent rows per athlete: the first row with regular splits (≤400m) and a continuation row with additional splits (≥450m).
 
-- **Continuation mapping (≥450m):**
-  - Continuation cells are mapped to distances starting from 450m in +50m steps.
-  - If headers are partially missing in the continuation row, mapping is right-aligned and synthesized so the last cells still map to the last distances present (e.g., 700m, 750m), even if intermediate cells (e.g., 650m) are blank.
+* **Continuation mapping (≥450m):**
+  * Continuation cells are mapped to distances starting from 450m in +50m steps.
+  * If headers are partially missing in the continuation row, mapping is right-aligned and synthesized so the last cells still map to the last distances present (e.g., 700m, 750m), even if intermediate cells (e.g., 650m) are blank.
 
-- **Distance label normalization:**
-  - All split distance labels are normalized to the strict format `"<meters>m"` (e.g., `450m`, `700m`).
-  - This avoids space/case variance from the source (e.g., `"450 m"`).
+* **Distance label normalization:**
+  * All split distance labels are normalized to the strict format `"<meters>m"` (e.g., `450m`, `700m`).
+  * This avoids space/case variance from the source (e.g., `"450 m"`).
 
-- **Debugging continuation parsing:**
-  - Set environment variable `MICROPLUS_DEBUG=1` to enable verbose logs for continuation detection and the list of appended split distances.
-  - Example: `MICROPLUS_DEBUG=1 npm test` (for the unit tests) or set it in the crawler process environment.
+* **Debugging continuation parsing:**
+  * Set environment variable `MICROPLUS_DEBUG=1` to enable verbose logs for continuation detection and the list of appended split distances.
+  * Example: `MICROPLUS_DEBUG=1 npm test` (for the unit tests) or set it in the crawler process environment.
 
-- **Test coverage:**
-  - Unit tests cover continuation mapping and a scenario with a missing `650m` continuation cell to ensure tail distances (e.g., `700m`, `750m`) are still appended in order.
+* **Test coverage:**
+  * Unit tests cover continuation mapping and a scenario with a missing `650m` continuation cell to ensure tail distances (e.g., `700m`, `750m`) are still appended in order.

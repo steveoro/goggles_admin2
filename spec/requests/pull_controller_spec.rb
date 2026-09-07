@@ -19,9 +19,10 @@ RSpec.describe PullController do
         sign_in_admin(admin_user)
       end
 
-      it 'returns http success' do
+      it 'returns http success and exposes the FICR crawler target' do
         get '/pull/index'
         expect(response).to have_http_status(:success)
+        expect(response.body).to include('FICR results')
       end
     end
   end
@@ -70,6 +71,32 @@ RSpec.describe PullController do
 
       expect(RestClient::Request).to have_received(:execute).with(
         hash_including(url: 'http://localhost:7000/pull_results_microplus')
+      )
+      expect(response).to redirect_to(pull_index_path)
+    end
+
+    it 'routes a layout-5 FICR URL to the dedicated FICR endpoint' do
+      ficr_url = "https://nuoto.ficr.it/#/NUO/tempi/25'%20TROFEO%20ACSI%20CITTA'%20DI%20BRESCIA/2023/29/5/AAF/3"
+      post '/pull/run_crawler_api', params: {
+        season_id: 242,
+        layout_id: 5,
+        target_url: ficr_url,
+        sub_menu_type: 'Eventi',
+        target_event: 'ignored for FICR'
+      }
+
+      expect(RestClient::Request).to have_received(:execute).with(
+        hash_including(
+          url: 'http://localhost:7000/pull_results_ficr',
+          headers: hash_including(
+            'params' => hash_including(
+              'season_id' => '242',
+              'layout' => 5,
+              'meeting_url' => ficr_url
+            ),
+            'Content-Type' => 'application/json'
+          )
+        )
       )
       expect(response).to redirect_to(pull_index_path)
     end
