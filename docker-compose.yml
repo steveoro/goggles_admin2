@@ -56,7 +56,3 @@ services:
 networks:
   default:
     name: prod
-
-volumes:
-  gem_cache:
-  node_modules:

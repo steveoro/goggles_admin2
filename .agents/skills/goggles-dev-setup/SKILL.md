@@ -27,7 +27,7 @@ Default target environment is `development`; use `test` if the user asks to run 
 - Ruby 3.4.7 active (see `.ruby-version`). Install with `rbenv`/`ruby-build` or your version manager if missing.
 - MariaDB 11.8 server & client packages (`mariadb-server`, `mariadb-client`, `libmariadb-dev` or `default-libmysqlclient-dev`) running and reachable.
 - `bunzip2`, `git`, `curl`.
-- Node.js and Yarn only for `goggles_admin2` (and optionally for `goggles_main` JS linting).
+- Node.js and Yarn only for `goggles_main` JS linting (optional; `goggles_admin2` uses importmap-rails, but the embedded crawler in `crawler/` needs npm only if you are running it directly).
 
 ## 2. Clone/check `goggles_db`
 
@@ -44,7 +44,7 @@ All apps use `goggles_db` as a git-sourced gem and need its `test.sql.bz2` dump.
 
 ## 4. Install JS dependencies
 
-- `goggles_admin2`: `yarn install --check-files`.
+- `goggles_admin2`: none (Rails 8.1 uses importmap-rails; the embedded crawler has its own `crawler/package.json` for local development).
 - `goggles_main`: `yarn install` (optional; only needed for JS linting with `standard`).
 - `goggles_api`: none.
 
@@ -132,4 +132,4 @@ Use `http://host.docker.internal:8081` or the Docker service name (`http://goggl
 - The dump contains no `USE`/`CREATE database` or explicit definer clauses, so it can be restored to any database name.
 - The app's `bin/setup` scripts are generic Rails stubs; do not rely on them for the Goggles DB restore.
 - For production-like environments, precompile assets for `goggles_main`/`goggles_admin2`:
-  `RAILS_ENV=production NODE_ENV=production bin/rails dartsass:build assets:precompile`.
+  `RAILS_ENV=production bin/rails dartsass:build assets:precompile`.

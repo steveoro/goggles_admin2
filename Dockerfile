@@ -1,6 +1,6 @@
 # --- Common stuff:
-FROM ruby:3.1.4-alpine3.18 AS common_builder
-ENV BUNDLER_VERSION=2.4.15 \
+FROM ruby:3.4.7-alpine3.22 AS common_builder
+ENV BUNDLER_VERSION=2.6.9 \
     INSTALL_PATH=/app
 
 RUN mkdir -p $INSTALL_PATH
@@ -12,6 +12,7 @@ RUN apk add --update --no-cache \
     g++ \
     gcc \
     git \
+    iproute2 \
     less \
     libstdc++ \
     libffi-dev \
@@ -24,14 +25,15 @@ RUN apk add --update --no-cache \
     mariadb-client \
     mariadb-dev \
     netcat-openbsd \
-    nodejs \
     openssl \
     pkgconfig \
     shadow \
     shared-mime-info \
+    sqlite-dev \
+    sqlite-libs \
     ssmtp \
     tzdata \
-    yarn
+    yaml-dev
 
 # Run as a specific user: (WIP: yarn requires more privileges)
 # ARG USER_ID
@@ -50,7 +52,6 @@ RUN gem install bundler -v $BUNDLER_VERSION
 # --- Image-specific stuff:
 FROM common_builder
 ENV RAILS_ENV=production \
-    NODE_ENV=production \
     DATABASE_NAME=goggles \
     DATABASE_HOST=goggles-db \
     DATABASE_PORT=3306 \
@@ -64,11 +65,13 @@ ENV RAILS_ENV=production \
 
 WORKDIR $INSTALL_PATH
 COPY . ./
-RUN bundle config build.nokogiri --use-system-libraries
+RUN bundle config set --local build.nokogiri --use-system-libraries
 COPY ./config/database.docker.yml ./config/database.yml
 
 RUN bundle check || bundle install
-RUN yarn install --check-files
+
+# Public assets are precompiled at container start because the Rails master key
+# is only available at runtime (see entrypoints/docker.sh).
 
 # Keep the version argument at the end to avoid early cache miss during builds:
 ARG TAG

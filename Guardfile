@@ -157,10 +157,11 @@ guard :haml_lint do
 end
 
 # == ESLint / StandardJS ==
-
-guard :shell do
-  watch(%r{app/(components|javascript)/.+\.js$}) { |m| `yarn lint #{m[0]}` }
-end
+# (Disabled after Rails 8.1 importmap migration removed the root package.json / yarn setup.)
+#
+# guard :shell do
+#   watch(%r{app/(components|javascript)/.+\.js$}) { |m| `yarn lint #{m[0]}` }
+# end
 #-- ---------------------------------------------------------------------------
 #++
 

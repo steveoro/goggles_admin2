@@ -38,3 +38,11 @@ send_coverage.sh
 # Ignore DB dumps uploaded in development
 /db/dump/*.sql
 /db/dump/*.bz2
+
+# Ignore generated/precompiled assets
+/public/packs
+/public/packs-test
+/public/assets
+
+# Ignore crawler node_modules (installed on demand)
+/crawler/node_modules

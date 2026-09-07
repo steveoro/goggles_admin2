@@ -24,6 +24,13 @@ if [ -f tmp/pids/server.pid ]; then
   rm tmp/pids/server.pid
 fi
 
+# Precompile static assets when the manifest is missing.
+# This requires the Rails master key, which is mounted at runtime.
+if [ ! -f public/assets/.manifest.json ]; then
+  bundle exec rails dartsass:build
+  bundle exec rails assets:precompile
+fi
+
 # Apply pending migrations just for Main UI
 bundle exec rails db:migrate
 
