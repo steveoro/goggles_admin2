@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { expect } = require('chai');
 const FicrCrawler = require('../server/ficr-crawler');
+const FicrUtil = require('../server/ficr-crawler-utils');
 
 const fixture = JSON.parse(fs.readFileSync(
   path.resolve(__dirname, '../data/samples/ficr/ficr-brescia.json'),
@@ -47,6 +48,16 @@ describe('FicrCrawler', () => {
     expect(crawler.normalizeCategory('10X', [
       { ct_Categoria: '10X', ct_Descrizione: 'Master Misti 100 - 119' }
     ], true)).to.equal('100-119');
+    expect(FicrUtil.normalizeEventCode('200MX')).to.equal('200MI');
+    expect(FicrUtil.normalizeEventCode('4X50MX')).to.equal('4X50MI');
+    expect(FicrUtil.normalizeMeetingName("25' TROFEO ACSI")).to.equal('25° TROFEO ACSI');
+    expect(crawler.buildEventDefinition(
+      { tg_Sigla: '200MX', tg_Stile: 'M', tg_Distanza: 200, tg_AStaffetta: false, tg_TipoGara: 16 },
+      { ct_Categoria: 'AAF', ct_Sesso: 'F' },
+      source
+    )).to.include({ eventCode: '200MI', eventStroke: 'MI', eventLength: '200' });
+    expect(crawler.outputFilename({ dates: '2023-01-29', meetingName: 'Brescia Meeting' }))
+      .to.equal('2023-01-29-Brescia_Meeting-lt4.json');
   });
 
   it('builds LT4 events, category-bound ranks, points, and laps from API payloads', async () => {
@@ -54,7 +65,7 @@ describe('FicrCrawler', () => {
     const output = await crawler.crawlFromApi(crawler.parseMeetingUrl());
 
     expect(output.layoutType).to.equal(4);
-    expect(output.meetingName).to.equal("25' TROFEO ACSI CITTA' DI BRESCIA");
+    expect(output.meetingName).to.equal("25° TROFEO ACSI CITTA' DI BRESCIA");
     expect(output.dates).to.equal('2023-01-29');
     expect(output.place).to.equal('BRESCIA');
     expect(output.events).to.have.lengthOf(2);

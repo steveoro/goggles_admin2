@@ -1,0 +1,67 @@
+{
+  "layoutType": 2,
+  "name": "FICR Fixture Meeting",
+  "meetingURL": "https://nuoto.ficr.it/#/NUO/tempi/fixture/2023/29/5/AAF/3",
+  "dateYear1": "2023",
+  "dateMonth1": "Gennaio",
+  "dateDay1": "29",
+  "venue1": "BRESCIA",
+  "address1": "BRESCIA",
+  "poolLength": "25",
+  "sections": [
+    {
+      "title": "50m Stile Libero - M25",
+      "fin_sesso": "F",
+      "fin_sigla_categoria": "M25",
+      "sessionOrder": 1,
+      "rows": [
+        {
+          "pos": "1",
+          "name": "ANONYMIZED SWIMMER",
+          "year": "1997",
+          "sex": "F",
+          "team": "ANONYMIZED TEAM",
+          "timing": "29.83",
+          "laps": [
+            { "distance": "50m", "timing": "29.83", "delta": "29.83", "position": 2 }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "200m Misti - M25",
+      "fin_sesso": "F",
+      "fin_sigla_categoria": "M25",
+      "sessionOrder": 1,
+      "rows": [
+        {
+          "pos": "1",
+          "name": "SECOND ANONYMIZED",
+          "year": "1998",
+          "sex": "F",
+          "team": "ANONYMIZED TEAM",
+          "timing": "2'10.00",
+          "laps": [
+            { "distance": "50m", "timing": "32.00", "delta": "32.00" },
+            { "distance": "200m", "timing": "2'10.00", "delta": "1'38.00" }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "4X50m Stile Libero - 000-999",
+      "fin_sesso": "X",
+      "fin_sigla_categoria": "000-999",
+      "sessionOrder": 1,
+      "rows": [
+        {
+          "pos": "1",
+          "relay": true,
+          "team": "ANONYMIZED TEAM",
+          "timing": "1'40.00",
+          "laps": []
+        }
+      ]
+    }
+  ]
+}

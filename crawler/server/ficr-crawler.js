@@ -15,11 +15,11 @@ const FicrUtil = require('./ficr-crawler-utils');
 const {
   clean,
   cleanNullable,
-  delay,
   deltaTiming,
-  encodeSegment,
   groupHistory,
+  normalizeEventCode,
   normalizeGender,
+  normalizeMeetingName,
   nullable,
   parseHeaderDates,
   positiveOrNull,
@@ -230,11 +230,12 @@ class FicrCrawler {
 
   createOutput(source, header) {
     const dateInfo = parseHeaderDates(header.ma_LuogoData, header.ma_DataRiferimento);
+    const meetingName = normalizeMeetingName(header.ma_Descrizione || source.description);
     return {
-      title: header.ma_Descrizione || source.description,
+      title: meetingName,
       dates: dateInfo.dates,
       place: dateInfo.place,
-      meetingName: header.ma_Descrizione || source.description,
+      meetingName,
       competitionType: 'Master',
       layoutType: this.layoutType,
       seasonId: this.seasonId,
@@ -246,11 +247,13 @@ class FicrCrawler {
   }
 
   buildEventDefinition(event, category, source) {
-    const eventCode = String(event.tg_Sigla || event.tg_MappaturaImportazione || '').toUpperCase();
-    const eventStroke = strokeCode(event.tg_Stile, eventCode);
+    const sourceEventCode = String(event.tg_Sigla || event.tg_MappaturaImportazione || '').toUpperCase();
+    const eventStroke = strokeCode(event.tg_Stile, sourceEventCode);
+    const eventCode = normalizeEventCode(sourceEventCode);
     const relay = event.tg_AStaffetta === true || Number(event.tg_NumeroFrazionisti) > 0 || /^\d+X\d+/i.test(eventCode);
     return {
       eventCode,
+      sourceEventCode,
       eventGender: normalizeGender(category.ct_Sesso) || 'X',
       eventLength: relay ? relayDistance(eventCode, event.tg_Distanza) : String(event.tg_Distanza || eventCode.match(/^\d+/)?.[0] || ''),
       eventStroke,
@@ -485,10 +488,14 @@ class FicrCrawler {
     if (this.warnings.length) output.crawlerWarnings = this.warnings;
   }
 
-  writeOutput(output) {
+  outputFilename(output) {
     const date = CrawlUtil.parseFirstMeetingDate(output.dates) || 'xxxx-xx-xx';
     const name = CrawlUtil.sanitizeForFilename(output.meetingName || 'ficr-results');
-    const filename = `${date}-${name}-l${this.layoutType}.json`;
+    return `${date}-${name}-lt${this.layoutType}.json`;
+  }
+
+  writeOutput(output) {
+    const filename = this.outputFilename(output);
     const folder = CrawlUtil.assertDestFolder('data/results.new', this.seasonId);
     const outputPath = path.join(folder, filename);
     fs.writeFileSync(outputPath, JSON.stringify(output, null, 2), 'utf8');

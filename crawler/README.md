@@ -151,7 +151,7 @@ The optional `target_event` field used for Microplus debugging is ignored by FIC
 
 FICR writes a single LT4 JSON file to:
 
-`crawler/data/results.new/<season_id>/<date>-<meeting>-l4.json`
+`crawler/data/results.new/<season_id>/<date>-<meeting>-lt4.json`
 
 The file contains LT4 root fields, `swimmers` and `teams` lookup dictionaries, normalized `events[].results[]` entries, relay rows, points, and lap timings. The Rails UI target is ID 5, but the emitted JSON `layoutType` is 4 so it enters the existing DataFix V2 Phase 1–6 pipeline.
 

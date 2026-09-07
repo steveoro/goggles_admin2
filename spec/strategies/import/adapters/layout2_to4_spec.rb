@@ -191,6 +191,79 @@ RSpec.describe Import::Adapters::Layout2To4 do
       end
     end
 
+    context 'with FICR titles and string lap distances' do
+      let(:ficr_hash) do
+        header.merge(
+          'sections' => [
+            {
+              'title' => '50m Stile Libero - M25',
+              'fin_sesso' => 'F',
+              'fin_sigla_categoria' => 'M25',
+              'rows' => [
+                {
+                  'pos' => '1',
+                  'name' => 'ROSSI Mario',
+                  'year' => '1978',
+                  'sex' => 'F',
+                  'team' => 'FICR Team',
+                  'timing' => '29.00',
+                  'laps' => [{ 'distance' => '50m', 'timing' => '29.00', 'delta' => '29.00' }]
+                }
+              ]
+            },
+            {
+              'title' => '200m Misti - M25',
+              'fin_sesso' => 'F',
+              'fin_sigla_categoria' => 'M25',
+              'rows' => [
+                {
+                  'pos' => '1',
+                  'name' => 'BIANCHI Luca',
+                  'year' => '1980',
+                  'sex' => 'F',
+                  'team' => 'FICR Team',
+                  'timing' => "2'10.00",
+                  'laps' => [{ 'distance' => '50m', 'timing' => '32.00', 'delta' => '32.00' }]
+                }
+              ]
+            },
+            {
+              'title' => '4X50m Stile Libero - 000-999',
+              'fin_sesso' => 'X',
+              'fin_sigla_categoria' => '000-999',
+              'rows' => [
+                {
+                  'pos' => '1',
+                  'relay' => true,
+                  'team' => 'FICR Team',
+                  'timing' => "1'40.00",
+                  'laps' => []
+                }
+              ]
+            }
+          ]
+        )
+      end
+
+      it 'normalizes FICR event titles and avoids double lap suffixes' do
+        out = described_class.normalize(data_hash: ficr_hash)
+
+        expect(out['events'].map { |event| event['eventCode'] }).to contain_exactly('50SL', '200MI', '4X50SL')
+        expect(out['events'].find { |event| event['eventCode'] == '50SL' }).to include(
+          'eventGender' => 'F', 'eventLength' => '50', 'eventStroke' => 'SL'
+        )
+        expect(out['events'].find { |event| event['eventCode'] == '200MI' }).to include(
+          'eventGender' => 'F', 'eventLength' => '200', 'eventStroke' => 'MI'
+        )
+        expect(out['events'].find { |event| event['eventCode'] == '4X50SL' }).to include(
+          'eventGender' => 'X', 'relay' => true
+        )
+        expect(out['events'].first['results'].first['laps'].first['distance']).to eq('50m')
+        expect(described_class.normalize(data_hash: ficr_hash.merge('name' => "25' TROFEO ACSI"))['meetingName'])
+          .to eq('25° TROFEO ACSI')
+      end
+    end
+
     context 'with relay event' do
       let(:relay_lt2_hash) do
         header.merge(

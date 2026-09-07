@@ -35,6 +35,14 @@ function strokeCode(stroke, eventCode) {
   return eventCode.match(/[A-Z]+$/)?.[0] || value;
 }
 
+function normalizeEventCode(sourceCode) {
+  return clean(sourceCode).toUpperCase().replace(/MX$/i, 'MI');
+}
+
+function normalizeMeetingName(value) {
+  return clean(value).replace(/^(\d+)'(?=\s)/, '$1°');
+}
+
 function relayDistance(eventCode, distance) {
   const match = eventCode.match(/^(\d+X\d+)/i);
   return match ? match[1].toUpperCase() : String(distance || '');
@@ -98,7 +106,9 @@ module.exports = {
   deltaTiming,
   encodeSegment,
   groupHistory,
+  normalizeEventCode,
   normalizeGender,
+  normalizeMeetingName,
   nullable,
   parseHeaderDates,
   positiveOrNull,

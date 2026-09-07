@@ -55,6 +55,19 @@ RSpec.describe Import::Solvers::EventSolver do
       expect(File).to exist(phase_file)
     end
 
+    it 'reconstructs normalized FICR titles into valid event keys' do
+      ficr_fixture = JSON.parse(File.read('spec/fixtures/import/ficr-lt2-sections.json'))
+      normalized_fixture = Import::Adapters::Layout2To4.normalize(data_hash: ficr_fixture)
+      File.write(source_file, JSON.generate(normalized_fixture))
+
+      described_class.new(season: season).build!(source_path: source_file, lt_format: 4)
+      events = JSON.parse(File.read(default_phase4_path(source_file)))['data']['sessions']
+                   .flat_map { |session| session['events'] }
+
+      expect(events.map { |event| event['key'] }).to include('50SL', '200MI', 'M4X50SL')
+      expect(events.map { |event| event['key'] }).not_to include('EVENT')
+    end
+
     it 'groups events by sessions' do
       described_class.new(season: season).build!(source_path: source_file, lt_format: 4)
       phase_file = default_phase4_path(source_file)

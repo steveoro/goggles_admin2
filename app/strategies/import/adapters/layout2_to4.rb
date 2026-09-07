@@ -48,7 +48,7 @@ module Import
         # LT4 expected: meetingName, meetingURL, dates (ISO format), place, seasonId, poolLength
         #
         def normalize_header!(src, out)
-          out['meetingName'] = src['name']
+          out['meetingName'] = normalize_meeting_name(src['name'])
           out['meetingURL'] = src['meetingURL']
           out['manifestURL'] = src['manifestURL']
           out['resultsPdfURL'] = src['resultsPdfURL']
@@ -76,6 +76,10 @@ module Import
 
           # Competition type (not usually in LT2, but pass if present)
           out['competitionType'] = src['competitionType'] if src['competitionType'].present?
+        end
+
+        def normalize_meeting_name(name)
+          name.to_s.sub(/\A(\d+)'(?=\s)/, '\\1°')
         end
 
         def format_iso_date(year, month, day)
@@ -257,16 +261,16 @@ module Import
           # Try relay format first: "4x50 Mista", "4x50 Stile Libero"
           # Then individual with category: "100 Stile Libero - M20"
           # Finally fallback without category: "100 Stile Libero"
-          m = title.match(/(\d+x\d+|4x\d+)\s+([^-]+?)\s*-/i) ||
-              title.match(/(\d+)\s+([^-]+?)\s*-/i) ||
-              title.match(/(\d+)\s+(.+)$/i)
+          m = title.match(/(\d+\s*[xX]\s*\d+)\s*m?\s+([^-]+?)\s*-/i) ||
+              title.match(/(\d+)\s*m?\s+([^-]+?)\s*-/i) ||
+              title.match(/(\d+)\s*m?\s+(.+)$/i)
           if m
-            distance = m[1]
+            distance = m[1].gsub(/\s+/, '')
             stroke = normalize_stroke_name(m[2]&.strip || '')
           end
 
           # Extract category from end of title
-          category = title.match(/-\s*([MF]?\d+[-\d]*)\s*$/i)&.captures&.first
+          category = title.match(/-\s*([A-Z]?\d+[-\d]*)\s*$/i)&.captures&.first
 
           [distance, stroke, category]
         end
@@ -295,7 +299,7 @@ module Import
 
         def extract_description(title)
           # Remove category suffix
-          title.sub(/-\s*[MF]?\d+[-\d]*\s*$/i, '').strip
+          title.sub(/-\s*[A-Z]?\d+[-\d]*\s*$/i, '').strip
         end
 
         # Convert a single LT2 row into LT4 result format
@@ -327,7 +331,7 @@ module Import
           if row['laps'].is_a?(Array) && row['laps'].any?
             result['laps'] = row['laps'].map do |lap|
               {
-                'distance' => "#{lap['distance']}m",
+                'distance' => normalize_distance_label(lap['distance']),
                 'timing' => lap['timing'],
                 'delta' => lap['delta'],
                 'position' => lap['position']
@@ -367,7 +371,7 @@ module Import
             result['laps'] = row['laps'].map do |lap|
               swimmer_key = normalize_swimmer_identity_key(lap['swimmer'], team_fallback: row['team']) if lap['swimmer']
               {
-                'distance' => "#{lap['distance']}m",
+                'distance' => normalize_distance_label(lap['distance']),
                 'timing' => lap['timing'],
                 'delta' => lap['delta'],
                 'swimmer' => swimmer_key
@@ -376,6 +380,14 @@ module Import
           end
 
           result
+        end
+
+        def normalize_distance_label(distance)
+          normalized = distance.to_s.gsub(/\s+/, '').strip
+          return nil if normalized.blank?
+          return "#{normalized}m" if normalized.match?(/\A\d+\z/)
+
+          normalized.sub(/m+\z/i, 'm')
         end
 
         def inline_laps?(row)
