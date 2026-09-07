@@ -1,11 +1,16 @@
-# Goggles Admin2 main TO-DOs
+# Goggles Admin2 one-shot data-import TO-DOs
 
 [x] = DONE, [ ] = TODO, [~] = almost ok, additional testing needed
 
-- [ ] 
+- [ ] LEN Madeira 2023, from pdf/len
+- [ ] LEN Belgrado 2024, from pdf/len
+- [ ] FINA Doha 2024, from pdf/fina
+- [x] FINA Singapore 2025
+- [ ] LEN Bulgaria 2026, MISSING RESULTS
 
 ---8<---
-[Data Import question]
+
+[Data Import question for Singapore 2025]
 We need to create a one-shot ruby script that will process this <file@mst_ita_singapore_2025.txt>, filling @mst_ita_singapore_2025.json, which is a "LayoutType 2" standard goggles datafile for results of a Meeting. For more reference, see @DATA_STRUCTURES.md#L139-268 .
 The structure of the source text file seems constant enough to be parsed with a loop, albeit the overall layout is misaligned when compared with the source PDF file from which it was extracted: @mst_ita_singapore_2025.pdf .
 
