@@ -32,7 +32,16 @@ RSpec.describe StatsController do
         ).and_return(DummyResponse.new(body: {
           'top_routes' => [{ 'route' => 'GET /api/v3/test', 'total_count' => 10 }],
           'top_ips' => [{ 'ip' => '10.0.0.1', 'total_count' => 100 }],
-          'top_agents' => [{ 'user_agent' => 'TestAgent', 'total_count' => 50 }],
+          'top_agents' => [
+            { 'user_agent' => 'TestAgent', 'total_count' => 50 },
+            { 'user_agent' => 'OtherAgent', 'total_count' => 40 }
+          ],
+          'daily_agents' => [
+            { 'user_agent' => 'TestAgent', 'day' => '2026-09-12', 'total_count' => 20 },
+            { 'user_agent' => 'OtherAgent', 'day' => '2026-09-12', 'total_count' => 30 },
+            { 'user_agent' => 'TestAgent', 'day' => '2026-09-13', 'total_count' => 40 },
+            { 'user_agent' => 'OtherAgent', 'day' => '2026-09-13', 'total_count' => 50 }
+          ],
           'totals' => { 'requests' => 1, 'ip_requests' => 2, 'route_requests' => 3 }
         }.to_json))
       end
@@ -48,6 +57,23 @@ RSpec.describe StatsController do
         expect(response.body).to include('GET /api/v3/test')
         expect(response.body).to include('10.0.0.1')
         expect(response.body).to include('TestAgent')
+      end
+
+      it 'renders daily agent columns and counts' do
+        get(stats_path)
+        expect(response.body).to include('2026-09-12', '2026-09-13', '20', '30', '40', '50')
+      end
+
+      it 'renders when the API response omits daily agents' do
+        allow(APIProxy).to receive(:call).with(
+          method: :get, url: 'api_daily_uses/summary', jwt: anything, params: anything
+        ).and_return(DummyResponse.new(body: {
+          'top_routes' => [], 'top_ips' => [], 'top_agents' => [],
+          'totals' => {}
+        }.to_json))
+
+        get(stats_path)
+        expect(response).to have_http_status(:success)
       end
     end
   end
