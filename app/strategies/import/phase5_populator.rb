@@ -394,6 +394,10 @@ module Import
       "#{session_order}-#{event_code}-#{category}-#{gender}"
     end
 
+    def result_disqualified?(result, rank_non_numeric:, timing_zero:)
+      ActiveModel::Type::Boolean.new.cast(result['disqualified']) || rank_non_numeric || timing_zero
+    end
+
     # Parse timing string to hash.
     # Delegates parsing to Parser::Timing to support the same timing formats
     # used across the import pipeline.
@@ -874,7 +878,7 @@ module Import
 
       timing_zero = timing[:minutes].to_i.zero? && timing[:seconds].to_i.zero? && timing[:hundredths].to_i.zero?
 
-      disqualified_flag = !result['disqualified'].nil? || rank_non_numeric || timing_zero
+      disqualified_flag = result_disqualified?(result, rank_non_numeric:, timing_zero:)
 
       # Use find_or_create to handle potential duplicates gracefully
       mir = GogglesDb::DataImportMeetingIndividualResult.find_or_create_by!(import_key: import_key) do |record|
@@ -1067,7 +1071,7 @@ module Import
 
       timing_zero = timing_hash[:minutes].to_i.zero? && timing_hash[:seconds].to_i.zero? && timing_hash[:hundredths].to_i.zero?
 
-      disqualified_flag = !result['disqualified'].nil? || rank_non_numeric || timing_zero
+      disqualified_flag = result_disqualified?(result, rank_non_numeric:, timing_zero:)
 
       # Use find_or_create to handle potential duplicates gracefully
       GogglesDb::DataImportMeetingRelayResult.find_or_create_by!(import_key: import_key) do |mrr|

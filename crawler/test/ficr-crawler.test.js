@@ -76,7 +76,7 @@ describe('FicrCrawler', () => {
     expect(individual.standard_points).to.equal(812);
     expect(individual.team_points).to.equal(3);
     expect(individual.meeting_points).to.equal(7);
-    expect(individual.laps.map((lap) => lap.distance)).to.deep.equal(['50m', '100m', '200m']);
+    expect(individual.laps.map((lap) => lap.distance)).to.deep.equal(['50m', '100m']);
     expect(individual.laps[1].delta).to.equal("37.90");
     expect(output.swimmers[individual.swimmer]).to.include({ gender: 'F', year: 1997 });
 
@@ -85,6 +85,31 @@ describe('FicrCrawler', () => {
     expect(relayEvent.eventGender).to.equal('X');
     expect(relayEvent.results[0]).to.include({ ranking: 1, category: '100-119', relay: true });
     expect(relayEvent.results[0].standard_points).to.equal(null);
+  });
+
+  it('does not create a final-only lap for a 50m event', () => {
+    const crawler = new FicrCrawler(242, meetingUrl, { fetchImpl: fixtureFetch });
+    const source = crawler.parseMeetingUrl();
+    const definition = crawler.buildEventDefinition(
+      { tg_Sigla: '50SL', tg_Stile: 'L', tg_Distanza: 50, tg_AStaffetta: false, tg_TipoGara: 3 },
+      { ct_Categoria: 'AAF', ct_Sesso: 'F' },
+      source
+    );
+    const swimmerKey = 'F|ANON|SWIMMER|1990|TEAM';
+    const output = {
+      events: [{ ...definition, results: [{ swimmer: swimmerKey, category: 'M25', timing: '29.83' }] }],
+      swimmers: { [swimmerKey]: { gender: 'F' } },
+      teams: {}
+    };
+
+    crawler.eventDefinitions.set(crawler.eventKey(definition), definition);
+    crawler.rankIndex.set(crawler.rankKey(definition, 'M25', 1, 'AAF'), 1);
+    crawler.mergeAthlete(output, swimmerKey, {
+      atleta: { Nome: 'ANON', Cognome: 'SWIMMER', Sex: 'F', Anno: 1990 },
+      tempi: [{ TipoGara: 3, Categoria: 'AAF', Metri: 50, Tempo: '29.83', Batteria: 1, Corsia: 1 }]
+    }, 1);
+
+    expect(output.events[0].results[0].laps).to.deep.equal([]);
   });
 
   it('continues with a fallback loader when direct API acquisition fails', async () => {

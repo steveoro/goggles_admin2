@@ -112,6 +112,18 @@ RSpec.describe Import::Phase5Populator, type: :strategy do
     end
   end
 
+  describe '#result_disqualified?' do
+    it 'does not mark an explicitly false source flag as disqualified' do
+      expect(subject.send(:result_disqualified?, { 'disqualified' => false }, rank_non_numeric: false, timing_zero: false)).to be(false)
+    end
+
+    it 'keeps explicit true and invalid timing/rank flags' do
+      expect(subject.send(:result_disqualified?, { 'disqualified' => true }, rank_non_numeric: false, timing_zero: false)).to be(true)
+      expect(subject.send(:result_disqualified?, { 'disqualified' => false }, rank_non_numeric: true, timing_zero: false)).to be(true)
+      expect(subject.send(:result_disqualified?, { 'disqualified' => false }, rank_non_numeric: false, timing_zero: true)).to be(true)
+    end
+  end
+
   describe '#compute_timing_delta' do
     it 'computes delta between two timings' do
       current = { minutes: 1, seconds: 18, hundredths: 56 }

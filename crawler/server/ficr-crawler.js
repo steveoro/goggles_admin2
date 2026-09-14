@@ -360,20 +360,25 @@ class FicrCrawler {
       const existing = eventOutput.results.find((result) =>
         result.swimmer === swimmerKey && result.category === category
       );
-      const laps = rows
+      const orderedRows = rows
         .filter((row) => Number(row.Metri) > 0)
-        .sort((a, b) => Number(a.Metri) - Number(b.Metri))
-        .map((row, index, all) => ({
-          distance: `${Number(row.Metri)}m`,
-          timing: cleanNullable(row.Tempo),
-          delta: deltaTiming(cleanNullable(row.Tempo), index > 0 ? all[index - 1].Tempo : null),
-          position: nullable(row.Pos)
-        }));
+        .sort((a, b) => Number(a.Metri) - Number(b.Metri));
+      const eventLength = Number(String(definition.eventLength).replace(/\D/g, ''));
+      const intermediateRows = eventLength > 50
+        ? orderedRows.filter((row) => Number(row.Metri) < eventLength)
+        : [];
+      const laps = intermediateRows.map((row, index, all) => ({
+        distance: `${Number(row.Metri)}m`,
+        timing: cleanNullable(row.Tempo),
+        delta: deltaTiming(cleanNullable(row.Tempo), index > 0 ? all[index - 1].Tempo : null),
+        position: nullable(row.Pos)
+      }));
+      const finalTiming = cleanNullable(orderedRows[orderedRows.length - 1]?.Tempo);
       const result = existing || {
         ranking: this.rankIndex.get(this.rankKey(definition, category, athleteId, sourceCategory)) ?? null,
         swimmer: swimmerKey,
         team: this.addTeam(output, clean(first.Squadra)),
-        timing: cleanNullable(rows[rows.length - 1].Tempo),
+        timing: finalTiming,
         category,
         gender: swimmer?.gender || normalizeGender(athlete.Sex) || '',
         heat: nullable(first.Batteria),
@@ -384,7 +389,7 @@ class FicrCrawler {
         source_athlete_id: athleteId
       };
       result.laps = laps;
-      result.timing = result.timing || cleanNullable(rows[rows.length - 1].Tempo);
+      result.timing = result.timing || finalTiming;
       if (!existing) this.addResult(eventOutput, result);
     });
   }
