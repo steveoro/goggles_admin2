@@ -59,3 +59,23 @@
               %tr
                 %td= row['user_agent']
                 %td.text-right= row['total_count']
+
+- daily_agents = daily_agents_matrix(summary_daily_agents, agents: summary_top_agents)
+- unless daily_agents[:days].empty?
+  .container.row
+    .card
+      .card-header= t('dashboard.stats.summary.daily_agents')
+      .card-body.p-0
+        .table-responsive
+          %table.table.table-sm.table-hover
+            %thead
+              %tr
+                %th= t('dashboard.stats.summary.user_agent')
+                - daily_agents[:days].each do |day|
+                  %th.text-right= day
+            %tbody
+              - daily_agents[:agents].each do |agent|
+                %tr
+                  %td= agent
+                  - daily_agents[:days].each do |day|
+                    %td.text-right= daily_agents[:counts][[agent, day]]

@@ -2,6 +2,7 @@
 
 _Please, add the latest build info on top of the list; use Version::MAJOR only after gold release; keep semantic versioning in line with framework's_
 
+- **0.10.46** [Steve A.] re-sync w/ base engine v0.10.46; added daily user-agent matrix to stats dashboard
 - **0.10.45** [Steve A.] re-sync w/ base engine v0.10.45; DB vers. 2.10.08
 - **0.10.43** [Steve A.] re-sync w/ base engine v0.10.43; DB vers. 2.10.07
 - **0.10.42** [Steve A.] re-sync w/ base engine v0.10.42; aligned framework versioning

@@ -224,6 +224,7 @@ class StatsController < ApplicationController
   # - <tt>@summary_top_routes</tt>: most requested routes
   # - <tt>@summary_top_ips</tt>: most abusive IP addresses
   # - <tt>@summary_top_agents</tt>: most used user agents
+  # - <tt>@summary_daily_agents</tt>: per-day counts for the most used user agents
   # - <tt>@summary_totals</tt>: daily aggregate totals
   def prepare_summary_domain
     parsed = fetch_summary
@@ -231,8 +232,9 @@ class StatsController < ApplicationController
   rescue JSON::ParserError
     @summary = default_summary
   ensure
-    @summary_top_routes, @summary_top_ips, @summary_top_agents, @summary_totals =
-      @summary.values_at(:summary_top_routes, :summary_top_ips, :summary_top_agents, :summary_totals)
+    @summary_top_routes, @summary_top_ips, @summary_top_agents, @summary_daily_agents, @summary_totals =
+      @summary.values_at(:summary_top_routes, :summary_top_ips, :summary_top_agents, :summary_daily_agents,
+                         :summary_totals)
   end
 
   # Fetches the API usage summary from the remote API for the current date filter period.
@@ -261,6 +263,7 @@ class StatsController < ApplicationController
       summary_top_routes: parsed.fetch('top_routes', []),
       summary_top_ips: parsed.fetch('top_ips', []),
       summary_top_agents: parsed.fetch('top_agents', []),
+      summary_daily_agents: parsed.fetch('daily_agents', []),
       summary_totals: parsed.fetch('totals', {})
     }
   end
@@ -271,6 +274,7 @@ class StatsController < ApplicationController
       summary_top_routes: [],
       summary_top_ips: [],
       summary_top_agents: [],
+      summary_daily_agents: [],
       summary_totals: {}
     }
   end
