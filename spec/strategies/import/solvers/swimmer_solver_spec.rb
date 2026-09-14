@@ -159,6 +159,33 @@ RSpec.describe Import::Solvers::SwimmerSolver do
     end
   end
 
+  it 'builds phase3 from LT2 crawler rows using the name field (FICR/FIN row shape)' do
+    Dir.mktmpdir do |tmp|
+      src = write_json(tmp, 'meeting-l2.json', {
+                         'layoutType' => 2,
+                         'sections' => [
+                           { 'fin_sesso' => 'F', 'fin_sigla_categoria' => 'M25', 'rows' => [
+                             { 'pos' => 1, 'name' => 'FEROLDI ALESSIA', 'year' => '1997', 'sex' => 'F',
+                               'team' => 'NUOTO MASTER BRESCIA ASD', 'timing' => '29.83', 'laps' => [] }
+                           ] },
+                           { 'fin_sesso' => 'M', 'fin_sigla_categoria' => 'M30', 'rows' => [
+                             { 'pos' => 1, 'name' => 'DE ROSA GABRIELE', 'year' => '1996', 'sex' => 'M',
+                               'team' => 'Rari Nantes Saronno', 'timing' => '28.10', 'laps' => [] }
+                           ] }
+                         ]
+                       })
+
+      described_class.new(season:).build!(source_path: src, lt_format: 2)
+
+      phase3 = default_phase3_path(src)
+      data = JSON.parse(File.read(phase3))['data']
+      keys = data['swimmers'].map { |h| h['key'] }
+      expect(keys).to include('F|FEROLDI|ALESSIA|1997|NUOTO MASTER BRESCIA ASD')
+      expect(keys).to include('M|DE ROSA|GABRIELE|1996|Rari Nantes Saronno')
+      expect(data['badges'].size).to eq(2)
+    end
+  end
+
   describe 'pre-matching pattern (v2.0)' do
     it 'resolves swimmer_id from in-memory built map without DB fallback' do
       solver = described_class.new(season: season)

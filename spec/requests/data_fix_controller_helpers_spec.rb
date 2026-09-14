@@ -201,6 +201,42 @@ RSpec.describe DataFixController, type: :controller do
       end
     end
 
+    context 'with a -lt4.json file that actually contains LT2 data' do
+      let(:file_path) { lt4_path }
+
+      before(:each) do
+        lt2_payload = {
+          'layoutType' => 2,
+          'name' => 'LT2 content under lt4 name',
+          'sections' => [
+            {
+              'title' => '50 SL M25',
+              'rows' => [
+                { 'name' => 'Rossi Mario', 'year' => 1985, 'team' => 'Team A', 'timing' => '00:31.00' }
+              ]
+            }
+          ]
+        }
+        File.write(lt4_path, JSON.pretty_generate(lt2_payload))
+      end
+
+      it 're-materializes the working copy in place as LT4' do
+        expect(resolved_path).to eq(lt4_path)
+
+        data = JSON.parse(File.read(lt4_path))
+        expect(data['layoutType']).to eq(4)
+        expect(data['events']).to be_an(Array)
+        expect(data['swimmers']).to be_present
+      end
+
+      it 'keeps a .orig.json backup of the LT2 content' do
+        resolved_path
+        backup_path = File.join(temp_dir, 'meeting-lt4.orig.json')
+        expect(File.exist?(backup_path)).to be true
+        expect(JSON.parse(File.read(backup_path))['layoutType']).to eq(2)
+      end
+    end
+
     context 'with phase file that points to LT2 source' do
       let(:phase3_path) { File.join(temp_dir, 'meeting-phase3.json') }
       let(:file_path) { phase3_path }

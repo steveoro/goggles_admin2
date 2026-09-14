@@ -2779,7 +2779,13 @@ class DataFixController < ApplicationController
   def detect_layout_type(file_path)
     return 4 if file_path.to_s.end_with?('-lt4.json')
 
-    # Fast detection: scan head/tail chunks for layoutType without parsing full JSON
+    detect_layout_type_from_content(file_path)
+  end
+
+  # Content-based layout detection: scans head/tail chunks for the layoutType
+  # field without parsing full JSON. Unlike #detect_layout_type, this ignores
+  # the -lt4.json filename convention so mislabeled working copies can be found.
+  def detect_layout_type_from_content(file_path)
     begin
       File.open(file_path, 'rb') do |f|
         chunk = f.read(64 * 1024)
@@ -2822,7 +2828,13 @@ class DataFixController < ApplicationController
   end
 
   def resolve_lt4_working_copy_path(source_path)
-    return source_path if File.exist?(source_path)
+    if File.exist?(source_path)
+      # A -lt4.json working copy must hold LT4 data; if it actually contains
+      # LT2 (e.g. a renamed legacy source), re-materialize it in place.
+      return source_path unless detect_layout_type_from_content(source_path) == 2
+
+      return materialize_lt4_in_place(source_path) || source_path
+    end
 
     original_lt2_path = source_path.sub(/-lt4\.json\z/, '.json')
     if File.exist?(original_lt2_path) && detect_layout_type(original_lt2_path) == 2
@@ -2837,9 +2849,33 @@ class DataFixController < ApplicationController
     source_path
   end
 
+  # Rewrites an existing -lt4.json file that contains LT2 data into a proper
+  # LT4 working copy, keeping a .orig.json backup of the previous content.
+  def materialize_lt4_in_place(source_path)
+    backup_path = next_backup_path_for(source_path)
+    FileUtils.cp(source_path, backup_path)
+    materialize_lt4_working_copy(lt2_source_path: source_path, lt4_source_path: source_path)
+  end
+
+  def next_backup_path_for(source_path)
+    base = source_path.delete_suffix('.json')
+    candidate = "#{base}.orig.json"
+    return candidate unless File.exist?(candidate)
+
+    index = 2
+    index += 1 while File.exist?("#{base}.orig-#{index}.json")
+    "#{base}.orig-#{index}.json"
+  end
+
   def resolve_lt2_source_to_working_copy(source_path)
     lt4_source_path = source_path.sub(/\.json\z/, '-lt4.json')
-    return lt4_source_path if File.exist?(lt4_source_path)
+    if File.exist?(lt4_source_path)
+      # Reuse the existing working copy only if it really holds LT4 data;
+      # an LT2 payload under the -lt4 name is re-materialized in place.
+      return lt4_source_path unless detect_layout_type_from_content(lt4_source_path) == 2
+
+      return materialize_lt4_in_place(lt4_source_path) || lt4_source_path
+    end
     return source_path unless File.exist?(source_path)
 
     materialize_lt4_working_copy(

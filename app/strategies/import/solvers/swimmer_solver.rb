@@ -134,7 +134,7 @@ module Import
                 l, f, yob = extract_name_yob_from_row(row)
                 next if l.blank? || f.blank?
 
-                gcode = gender_code || normalize_gender_code(row['gender'] || row['gender_type'] || row['gender_type_code'])
+                gcode = gender_code || normalize_gender_code(row['gender'] || row['gender_type'] || row['gender_type_code'] || row['sex'])
                 team_name = row['team']
                 key = build_swimmer_key(gcode, l, f, yob, team_name)
                 swimmer_entry = build_swimmer_entry(key, l, f, yob.to_i, gcode, team_name: team_name)
@@ -307,7 +307,8 @@ module Import
         return [safe_str(last), safe_str(first), yob.to_i] if last.present? && first.present?
 
         # Fallbacks: try to parse combined swimmer field like "LAST FIRST"
-        combined = row['swimmer'] || row['atleta']
+        # ('name' is the standard field used by crawler-produced LT2 rows)
+        combined = row['swimmer'] || row['atleta'] || row['name']
         if combined.present?
           split_last, split_first, = Import::SwimmerNameSplitter.split_complete_name(combined)
           last ||= split_last
