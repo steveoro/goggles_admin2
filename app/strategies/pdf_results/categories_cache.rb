@@ -129,6 +129,19 @@ module PdfResults
       @categories_cache.find { |_code, cat| (cat.relay? == relay) && (cat.id == id) && !cat.undivided? }
     end
 
+    # Finder for the "undivided" (absolute/catch-all) category code inside the cache.
+    #
+    # == Params:
+    # - <tt>relay</tt>: +true+ for relay codes; default: +false+
+    #
+    # == Returns:
+    # The category code (e.g., '000-999' for relays) or +nil+ when not found.
+    def find_undivided_category(relay: false)
+      @categories_cache.find { |_code, cat| cat.relay? == relay && cat.undivided? }&.first
+    end
+    #-- -----------------------------------------------------------------------
+    #++
+
     # Finder for a category code & type inside the internal cache.
     # Only categories divided by gender are considered (not the "absolute" ones).
     #

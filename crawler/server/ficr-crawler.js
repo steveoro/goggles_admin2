@@ -470,7 +470,9 @@ class FicrCrawler {
     const range = description.match(/(\d{2,3})\s*[-–]\s*(\d{2,3})/);
     if (relay && range) return `${range[1]}-${range[2]}`;
     if (range && /master/i.test(description)) return `M${range[1]}`;
-    if (/under|assolut/i.test(description) || /^UN/i.test(raw)) return 'A20';
+    // "Under"/"assoluti"-style categories have season-dependent codes (e.g., U25);
+    // keep the raw source code here and let the DataFix pipeline resolve it.
+    if (/under|assolut/i.test(description) || /^UN/i.test(raw)) return raw || null;
     const age = raw.match(/^(?:M)?(\d{2,3})[FMX]?$/i);
     if (age) return `M${age[1]}`;
     if (relay && /^\d{2,3}[FMX]?$/i.test(raw)) {

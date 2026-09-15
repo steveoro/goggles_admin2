@@ -248,7 +248,7 @@ RSpec.describe Import::Adapters::Layout2To4 do
       it 'normalizes FICR event titles and avoids double lap suffixes' do
         out = described_class.normalize(data_hash: ficr_hash)
 
-        expect(out['events'].map { |event| event['eventCode'] }).to contain_exactly('50SL', '200MI', '4X50SL')
+        expect(out['events'].pluck('eventCode')).to contain_exactly('50SL', '200MI', '4X50SL')
         expect(out['events'].find { |event| event['eventCode'] == '50SL' }).to include(
           'eventGender' => 'F', 'eventLength' => '50', 'eventStroke' => 'SL'
         )

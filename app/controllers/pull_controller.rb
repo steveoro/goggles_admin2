@@ -45,7 +45,7 @@ class PullController < FileListController
   # Uses the #crawler_params for the API call.
   # The layout type of the calendar is auto-detected by the crawler itself.
   #
-  def run_crawler_api # rubocop:disable Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
+  def run_crawler_api # rubocop:disable Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity,Metrics/MethodLength
     unless crawler_params['sub_menu_type'].present? && crawler_params['season_id'].present?
       flash[:warning] = I18n.t('data_import.errors.missing_url_or_season_id')
       redirect_to(pull_index_path) && return
@@ -75,13 +75,12 @@ class PullController < FileListController
                      else
                        'pull_results'
                      end
-      api_params = if layout == 4
+      api_params = case layout
+                   when 4
                      api_params.merge(meeting_url: crawler_params['target_url'],
                                       target_event: crawler_params['target_event'])
-                   elsif layout == 5
-                     api_params.merge(meeting_url: crawler_params['target_url'])
-                   elsif layout == 2
-                     # Direct FIN layout-2 single meeting URL:
+                   when 2, 5
+                     # Direct FICR (LT4) or FIN (LT2) single meeting URL:
                      api_params.merge(meeting_url: crawler_params['target_url'])
                    else
                      # Legacy result modes using a local calendar CSV file (layout 1/3):

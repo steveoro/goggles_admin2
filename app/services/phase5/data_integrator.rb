@@ -233,30 +233,67 @@ module Phase5
     # Lookup swimmer gender from phase 3 data
     # Handles partial matching for backward compatibility with old/new key formats
     def lookup_swimmer_gender_from_phase3(swimmer_key)
-      return nil unless phase3_data
+      normalize_gender(find_swimmer_in_phase3(swimmer_key)&.dig('gender_type_code'))
+    end
+
+    # Lookup the Phase-3 resolved category_type_code for the result's swimmer.
+    # Phase 3 category codes are computed from YOB + gender using the actual meeting
+    # date and are authoritative over raw source category codes.
+    def lookup_swimmer_category_from_phase3(result)
+      swimmer_str = result['swimmer'] || result['swimmer_name'] || ''
+      tokens = swimmer_str.split('|')
+      phase3_key = partial_phase3_swimmer_key(tokens)
+      return nil if phase3_key.blank?
+
+      find_swimmer_in_phase3(phase3_key)&.dig('category_type_code').presence
+    end
+
+    # Finds the phase-3 swimmer matching the given (possibly partial) key.
+    # Tries exact match first, then a partial match handling keys with/without
+    # the gender prefix.
+    def find_swimmer_in_phase3(swimmer_key)
+      return nil if swimmer_key.blank? || phase3_data.nil?
 
       swimmers = phase3_data.dig('data', 'swimmers') || []
       # Try exact match first
-      swimmer = swimmers.find { |s| s['key'] == swimmer_key }
-      # Fallback: partial match (handles keys with/without gender prefix)
-      swimmer ||= swimmers.find { |s| s['key'].include?(swimmer_key.sub(/^[MF]?\|?/, '|')) }
-      normalize_gender(swimmer&.dig('gender_type_code'))
+      swimmers.find { |s| s['key'] == swimmer_key } ||
+        # Fallback: partial match (handles keys with/without gender prefix)
+        swimmers.find { |s| s['key'].include?(swimmer_key.sub(/^[MF]?\|?/, '|')) }
+    end
+
+    # TRUE when the category code resolves to a CategoryType defined for the
+    # current season (or when it cannot be verified due to a missing season).
+    # Source files may carry codes that are valid in other seasons or not valid
+    # at all (e.g., 'A20', 'UNF', '*' summary tokens); those must be re-resolved.
+    def valid_category_code?(category_code)
+      return true unless categories_cache
+
+      categories_cache.key?(category_code.to_s.strip.upcase)
+    end
+
+    # Undivided "catch-all" relay category code for the season (e.g., '000-999'),
+    # used when a relay result carries an unresolvable category code.
+    def undivided_relay_category_code
+      categories_cache&.find_undivided_category(relay: true)
     end
 
     # Extract or compute relay category
     #
     # Priority:
-    # 1. result['category']
-    # 2. result['categoryTypeCode']
-    # 3. Compute from swimmer ages if all YOBs present
+    # 1. result['category'] when it resolves to a CategoryType for the season
+    # 2. Compute from swimmer ages if all YOBs present
+    # 3. Undivided "catch-all" relay category for the season (e.g., '000-999')
+    # 4. Raw source value (lets the commit surface a lookup error)
     #
     def extract_relay_category(result, _event, relay_gender)
       # Check explicit category
       category = result['category'] || result['categoryTypeCode'] || result['category_code']
-      return category if category.present?
+      return category if category.present? && valid_category_code?(category)
 
       # Compute from swimmer ages
-      compute_relay_category_from_ages(result, relay_gender)
+      compute_relay_category_from_ages(result, relay_gender) ||
+        undivided_relay_category_code ||
+        category
     end
 
     # Compute relay category code from sum of swimmer ages
@@ -393,16 +430,21 @@ module Phase5
     # Extract or compute individual category
     #
     # Priority:
-    # 1. result['category']
-    # 2. Compute from YOB using CategoriesCache
+    # 1. result['category'] when it resolves to a CategoryType for the season
+    # 2. Phase-3 resolved category_type_code for the swimmer
+    # 3. Compute from YOB using CategoriesCache
+    # 4. Raw source value (lets the commit surface a lookup error)
     #
     def extract_individual_category(result, _event)
       # Check explicit category
       category = result['category'] || result['categoryTypeCode'] || result['category_code']
-      return category if category.present?
+      return category if category.present? && valid_category_code?(category)
 
-      # Compute from YOB
-      compute_individual_category_from_yob(result)
+      # Prefer the Phase-3 resolved category (computed with the actual meeting date),
+      # then fall back to YOB-based computation
+      lookup_swimmer_category_from_phase3(result) ||
+        compute_individual_category_from_yob(result) ||
+        category
     end
 
     # Compute individual category code from year of birth
@@ -437,6 +479,10 @@ module Phase5
       # Check source header
       header_date_str = source_data.dig('header', 'date') || source_data['meeting_date']
       return Date.parse(header_date_str) if header_date_str.present?
+
+      # LT4 sources may expose a free-text 'dates' field (e.g., "2023-01-29" or "2023-01-29 - 2023-01-30")
+      iso_match = source_data['dates'].to_s.match(/\d{4}-\d{2}-\d{2}/)
+      return Date.parse(iso_match[0]) if iso_match
 
       # Fallback to season if available
       season&.begin_date

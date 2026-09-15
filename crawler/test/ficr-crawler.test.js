@@ -48,6 +48,11 @@ describe('FicrCrawler', () => {
     expect(crawler.normalizeCategory('10X', [
       { ct_Categoria: '10X', ct_Descrizione: 'Master Misti 100 - 119' }
     ], true)).to.equal('100-119');
+    // "Under"-type codes are season-dependent: pass the raw code through and
+    // let the DataFix pipeline resolve it against the season's CategoryTypes
+    expect(crawler.normalizeCategory('UNF', [
+      { ct_Categoria: 'UNF', ct_Descrizione: 'Under 25' }
+    ], false)).to.equal('UNF');
     expect(FicrUtil.normalizeEventCode('200MX')).to.equal('200MI');
     expect(FicrUtil.normalizeEventCode('4X50MX')).to.equal('4X50MI');
     expect(FicrUtil.normalizeMeetingName("25' TROFEO ACSI")).to.equal('25° TROFEO ACSI');

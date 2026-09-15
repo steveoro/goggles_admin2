@@ -2815,13 +2815,22 @@ class DataFixController < ApplicationController
   # LT4 files are used as-is; LT2 files are mapped to sibling -lt4 working copies.
   # Existing -lt4 copies are reused. Missing -lt4 copies are regenerated from the
   # original LT2 source when available.
+  # Result categories that don't resolve to a CategoryType of the target season
+  # (e.g., FICR 'UNF' or '*' summary codes) are normalized in place.
   def resolve_working_source_path(file_path)
     source_path = resolve_source_path(file_path)
     return source_path if source_path.blank?
-    return resolve_lt4_working_copy_path(source_path) if source_path.end_with?('-lt4.json')
-    return source_path unless detect_layout_type(source_path) == 2
 
-    resolve_lt2_source_to_working_copy(source_path)
+    working_path =
+      if source_path.end_with?('-lt4.json') # Assume the suffix coincides with actual layoutType
+        resolve_lt4_working_copy_path(source_path)
+      elsif detect_layout_type(source_path) == 2
+        resolve_lt2_source_to_working_copy(source_path)
+      else
+        source_path
+      end
+    normalize_lt4_result_categories(working_path)
+    working_path
   rescue StandardError => e
     Rails.logger.error("[DataFixController] resolve_working_source_path failed: #{e.message}")
     resolve_source_path(file_path)
@@ -2882,6 +2891,60 @@ class DataFixController < ApplicationController
       lt2_source_path: source_path,
       lt4_source_path: lt4_source_path
     ) || source_path
+  end
+
+  # Rewrites LT4 result categories that don't resolve to a CategoryType defined
+  # for the season encoded in the file path (e.g., FICR 'UNF'/'*' codes), using
+  # the same CategoryComputer-backed logic as the manual recompute action.
+  # Dependent phase files and temp rows are invalidated when the file changes.
+  # No-ops when the file is not LT4, the season/meeting date can't be determined,
+  # or every result category already resolves.
+  def normalize_lt4_result_categories(source_path)
+    return if source_path.blank? || !File.exist?(source_path)
+    return unless detect_layout_type_from_content(source_path) == 4
+
+    season_id = File.dirname(source_path).split('/').last.to_i
+    return unless season_id.positive?
+
+    season = GogglesDb::Season.find_by(id: season_id)
+    return unless season
+
+    data_hash = JSON.parse(File.read(source_path))
+    categories_cache = PdfResults::CategoriesCache.cached_for(season)
+    return unless lt4_result_categories_need_normalization?(data_hash, categories_cache)
+
+    raw_date = data_hash['dates'].to_s.split(',').first.presence || data_hash['meeting_date']
+    meeting_date = raw_date.present? ? Date.parse(raw_date.to_s) : nil
+    return if meeting_date.blank?
+
+    result = DataFix::CategoryRecomputer.new(
+      source_path: source_path,
+      season: season,
+      meeting_date: meeting_date,
+      categories_cache: categories_cache
+    ).call
+    return if result[:backup_path].blank?
+
+    invalidated = invalidate_category_dependent_artifacts(source_path)
+    Rails.logger.info(
+      "[DataFixController] Normalized result categories in #{source_path} " \
+      "(#{result[:result_categories_changed]} results, #{result[:swimmer_categories_changed]} swimmers; " \
+      "backup=#{result[:backup_path]}; invalidated=#{invalidated.inspect})"
+    )
+  rescue StandardError => e
+    Rails.logger.warn("[DataFixController] LT4 category normalization skipped for #{source_path}: #{e.message}")
+    nil
+  end
+
+  # TRUE when any result category in the LT4 source does not resolve to a
+  # CategoryType defined for the given season.
+  def lt4_result_categories_need_normalization?(data_hash, categories_cache)
+    Array(data_hash['events']).any? do |event|
+      Array(event['results']).any? do |result|
+        code = result['category'].to_s.strip.upcase
+        code.present? && !categories_cache.key?(code)
+      end
+    end
   end
 
   def materialize_lt4_working_copy(lt2_source_path:, lt4_source_path:)

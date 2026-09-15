@@ -134,7 +134,7 @@ module DataFix
         current_relay = relay_context || node['relay'] == true
         if node['category'].present? && !current_relay && node['swimmer'].present?
           update_result_category(node, swimmer_index, stats)
-        elsif node['category'].present? && current_relay && node['laps'].present?
+        elsif node['category'].present? && current_relay
           update_relay_result_category(node, swimmer_index, stats)
         end
         node.each_value { |child| walk_results(child, swimmer_index, stats, relay_context: current_relay) }
@@ -167,7 +167,20 @@ module DataFix
       laps = result['laps'] || []
       swimmer_keys = laps.filter_map { |lap| lap['swimmer'].presence }
       if swimmer_keys.empty?
-        stats[:skipped_categories] << { scope: 'relay_result', reason: 'no_swimmer_keys_in_laps' }
+        # Without member keys the age-sum category can't be computed; keep valid
+        # codes, but remap unresolvable ones (e.g., FICR '*' summaries) to the
+        # season's undivided catch-all relay category (e.g., '000-999').
+        catch_all = categories_cache.find_undivided_category(relay: true)
+        if catch_all.present? && !categories_cache.key?(result['category'].to_s.strip.upcase)
+          if result['category'].to_s == catch_all
+            stats[:unchanged_categories] += 1
+          else
+            result['category'] = catch_all
+            stats[:result_categories_changed] += 1
+          end
+        else
+          stats[:skipped_categories] << { scope: 'relay_result', reason: 'no_swimmer_keys_in_laps' }
+        end
         return
       end
 

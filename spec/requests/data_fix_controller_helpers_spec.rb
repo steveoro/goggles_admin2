@@ -237,6 +237,70 @@ RSpec.describe DataFixController, type: :controller do
       end
     end
 
+    context 'with LT4 results carrying season-invalid category codes' do
+      let(:season) { FactoryBot.create(:season) }
+      let(:season_dir) { File.join(temp_dir, season.id.to_s) }
+      let(:lt4_path) { File.join(season_dir, 'meeting-lt4.json') }
+      let(:file_path) { lt4_path }
+
+      before(:each) do
+        FactoryBot.create(:category_type, season: season, code: 'U25', age_begin: 16, age_end: 24)
+        FactoryBot.create(:category_type, season: season, code: 'M25', age_begin: 25, age_end: 29)
+        FactoryBot.create(:category_type, season: season, code: '000-999',
+                                          age_begin: 1, age_end: 999, relay: true, undivided: true)
+        FileUtils.mkdir_p(season_dir)
+        File.write(lt4_path, JSON.pretty_generate({
+                                                    'layoutType' => 4,
+                                                    'dates' => '2023-01-29',
+                                                    'swimmers' => {
+                                                      'F|INVENTATO|ANNA|2002|TEAM X' => {
+                                                        'lastName' => 'INVENTATO', 'firstName' => 'ANNA',
+                                                        'gender' => 'F', 'year' => 2002, 'team' => 'TEAM X'
+                                                      },
+                                                      'F|FANTASIOSO|GIORGIA|1995|TEAM Y' => {
+                                                        'lastName' => 'FANTASIOSO', 'firstName' => 'GIORGIA',
+                                                        'gender' => 'F', 'year' => 1995, 'team' => 'TEAM Y'
+                                                      }
+                                                    },
+                                                    'events' => [
+                                                      {
+                                                        'eventCode' => '50SL', 'eventGender' => 'F', 'relay' => false,
+                                                        'results' => [
+                                                          { 'category' => 'UNF', 'gender' => 'F', 'timing' => '27.87',
+                                                            'swimmer' => 'F|INVENTATO|ANNA|2002|TEAM X', 'team' => 'TEAM X' },
+                                                          { 'category' => 'M25', 'gender' => 'F', 'timing' => '30.00',
+                                                            'swimmer' => 'F|FANTASIOSO|GIORGIA|1995|TEAM Y', 'team' => 'TEAM Y' }
+                                                        ]
+                                                      },
+                                                      {
+                                                        'eventCode' => 'S4X50SL', 'eventGender' => 'M', 'relay' => true,
+                                                        'results' => [
+                                                          { 'category' => '*', 'gender' => 'M', 'timing' => "1'50.00",
+                                                            'team' => 'TEAM X', 'laps' => [] }
+                                                        ]
+                                                      }
+                                                    ]
+                                                  }))
+      end
+
+      it 'normalizes unresolvable categories to the season category codes' do
+        resolved_path
+
+        data = JSON.parse(File.read(lt4_path))
+        categories = data['events'].flat_map { |e| e['results'].map { |r| r['category'] } }
+        expect(categories).to include('U25', 'M25', '000-999')
+        expect(categories).not_to include('UNF', '*')
+      end
+
+      it 'keeps a backup of the pre-normalization content' do
+        resolved_path
+
+        backup_path = File.join(season_dir, 'meeting-lt4.orig.json')
+        expect(File.exist?(backup_path)).to be true
+        expect(JSON.parse(File.read(backup_path)).dig('events', 0, 'results', 0, 'category')).to eq('UNF')
+      end
+    end
+
     context 'with phase file that points to LT2 source' do
       let(:phase3_path) { File.join(temp_dir, 'meeting-phase3.json') }
       let(:file_path) { phase3_path }

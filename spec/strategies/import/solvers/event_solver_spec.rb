@@ -64,8 +64,8 @@ RSpec.describe Import::Solvers::EventSolver do
       events = JSON.parse(File.read(default_phase4_path(source_file)))['data']['sessions']
                    .flat_map { |session| session['events'] }
 
-      expect(events.map { |event| event['key'] }).to include('50SL', '200MI', 'M4X50SL')
-      expect(events.map { |event| event['key'] }).not_to include('EVENT')
+      expect(events.pluck('key')).to include('50SL', '200MI', 'M4X50SL')
+      expect(events.pluck('key')).not_to include('EVENT')
     end
 
     it 'groups events by sessions' do

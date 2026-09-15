@@ -25,10 +25,10 @@ pickle-email-*.html
 !/tmp/pids/.keep
 
 # Ignore all datafiles.
+crawler-status.json
 /crawler/data/**/*
 /crawler/crawler-status.json
 /crawler/server.log
-/crawler/crawler-status.json
 !/crawler/server/*.js
 !/crawler/test/*.js
 !/crawler/data/.keep
