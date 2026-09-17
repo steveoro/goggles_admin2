@@ -1,11 +1,19 @@
 import { Controller } from '@hotwired/stimulus'
-import { EditorView, keymap, highlightSpecialChars, drawSelection, rectangularSelection, crosshairCursor, lineNumbers, highlightActiveLineGutter } from '@codemirror/view'
-import { EditorState } from '@codemirror/state'
-import { defaultKeymap, history, historyKeymap } from '@codemirror/commands'
-import { highlightSelectionMatches } from '@codemirror/search'
-import { bracketMatching, foldGutter, foldKeymap } from '@codemirror/language'
-import { autocompletion } from '@codemirror/autocomplete'
-import { json } from '@codemirror/lang-json'
+// NOTE: CodeMirror modules come from the single vendored 'codemirror-json' bundle
+// (vendor/javascript/codemirror-json.js — esbuild of @codemirror/view, state, commands,
+// search, language, autocomplete + lang-json). Separate CDN pins load duplicate
+// @codemirror/state instances, which break extension instanceof checks
+// ("Unrecognized extension value in extension set") — do NOT re-split these imports.
+import {
+  EditorView, keymap, highlightSpecialChars, drawSelection, rectangularSelection,
+  crosshairCursor, lineNumbers, highlightActiveLineGutter,
+  EditorState,
+  defaultKeymap, history, historyKeymap,
+  highlightSelectionMatches,
+  bracketMatching, foldGutter, foldKeymap,
+  autocompletion,
+  json
+} from 'codemirror-json'
 
 /**
  * = grid-edit - StimulusJS controller =
