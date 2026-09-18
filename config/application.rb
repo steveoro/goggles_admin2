@@ -20,6 +20,7 @@ module GogglesAdmin2
 
     config.active_record.schema_format :sql
     config.assets.paths << Rails.root.join('app', 'javascript')
+    config.assets.paths << Rails.root.join('vendor', 'javascript')
 
     # Add load paths for this specific Engine:
     # (Prefer eager_load_paths over autoload_paths, since eager_load_paths are
