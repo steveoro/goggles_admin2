@@ -254,11 +254,38 @@ module Phase5
     def find_swimmer_in_phase3(swimmer_key)
       return nil if swimmer_key.blank? || phase3_data.nil?
 
-      swimmers = phase3_data.dig('data', 'swimmers') || []
-      # Try exact match first
-      swimmers.find { |s| s['key'] == swimmer_key } ||
-        # Fallback: partial match (handles keys with/without gender prefix)
-        swimmers.find { |s| s['key'].include?(swimmer_key.sub(/^[MF]?\|?/, '|')) }
+      phase3_swimmers_by_key[swimmer_key] ||
+        phase3_swimmers_by_partial_key[swimmer_key.sub(/^[MF]?\|?/, '|')]
+    end
+
+    # Exact key => phase-3 swimmer hash (first occurrence wins).
+    def phase3_swimmers_by_key
+      @phase3_swimmers_by_key ||= phase3_swimmers.each_with_object({}) do |swimmer, index|
+        key = swimmer['key']
+        index[key] = swimmer if key && !index.key?(key)
+      end
+    end
+
+    # Every pipe-delimited token-sequence of each phase-3 key that starts with a
+    # '|' (e.g. "|LAST|FIRST|YOB", "|LAST|FIRST|YOB|TEAM", "|FIRST|YOB") => swimmer.
+    # Lets gender-stripped partial keys resolve without scanning (first occurrence wins).
+    def phase3_swimmers_by_partial_key
+      @phase3_swimmers_by_partial_key ||= phase3_swimmers.each_with_object({}) do |swimmer, index|
+        partial_keys_for(swimmer['key'].to_s).each do |partial|
+          index[partial] = swimmer unless index.key?(partial)
+        end
+      end
+    end
+
+    def partial_keys_for(key)
+      tokens = key.split('|', -1)
+      (1...tokens.size).flat_map do |from|
+        (from...tokens.size).map { |to| "|#{tokens[from..to].join('|')}" }
+      end
+    end
+
+    def phase3_swimmers
+      phase3_data&.dig('data', 'swimmers') || []
     end
 
     # TRUE when the category code resolves to a CategoryType defined for the

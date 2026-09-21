@@ -84,6 +84,35 @@ RSpec.describe Phase5::DataIntegrator, type: :service do
     end
   end
 
+  describe '#find_swimmer_in_phase3' do
+    let(:anna) { phase3_data['data']['swimmers'].first }
+
+    it 'matches the exact phase-3 key' do
+      expect(integrator.send(:find_swimmer_in_phase3, anna['key'])).to eq(anna)
+    end
+
+    it 'matches a partial key without gender prefix and team token' do
+      expect(integrator.send(:find_swimmer_in_phase3, 'PARALUPPI|ANNA|2002')).to eq(anna)
+      expect(integrator.send(:find_swimmer_in_phase3, '|PARALUPPI|ANNA|2002')).to eq(anna)
+    end
+
+    it 'matches a partial key carrying a different gender prefix' do
+      expect(integrator.send(:find_swimmer_in_phase3, 'M|PARALUPPI|ANNA|2002')).to eq(anna)
+    end
+
+    it 'returns nil for unknown or blank keys' do
+      expect(integrator.send(:find_swimmer_in_phase3, 'ROSSI|MARIO|1970')).to be_nil
+      expect(integrator.send(:find_swimmer_in_phase3, '')).to be_nil
+    end
+
+    it 'builds the swimmer indexes only once' do
+      swimmers = phase3_data['data']['swimmers']
+      allow(swimmers).to receive(:each_with_object).and_call_original
+      3.times { integrator.send(:find_swimmer_in_phase3, 'PARALUPPI|ANNA|2002') }
+      expect(swimmers).to have_received(:each_with_object).twice
+    end
+  end
+
   describe '#integrate_relay_result' do
     let(:event) { { 'eventCode' => 'S4X50SL', 'eventGender' => 'M', 'relay' => true } }
 
