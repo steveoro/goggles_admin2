@@ -183,6 +183,7 @@ export default class extends Controller {
   }
 
   _isProgrammaticClear = false
+  _isPresetting = false
 
   /**
    * Sets up the controller.
@@ -236,6 +237,10 @@ export default class extends Controller {
 
   clearLinkedBindingTargetsExceptMain () {
     if (this.hasDescTarget) this.descTarget.innerHTML = ''
+    if (this._tomSelect) {
+      this._tomSelect.clear(true)
+      this._tomSelect.setTextboxValue('')
+    }
 
     if (this.hasField2Target && this.isBindingColumnName(this.target2ColumnValue)) {
       this.field2Target.value = ''
@@ -279,10 +284,10 @@ export default class extends Controller {
       this.fetchAndUpdateDetails(this.detailEndpointValue, targetValue)
     } else if (this.hasPayloadValue) {
       const row = this.payloadValue.find(element => element['id'] == targetValue)
-      if (row) {
-        this.updateFieldAndDesc(row)
-        this.searchTarget.value = ''
-      }
+      if (row) this.updateFieldAndDesc(row)
+    } else {
+      // Lookup entities have no detail endpoint: fetch the (small) unfiltered search list once and find the row by ID
+      this.fetchLookupDetails(targetValue)
     }
   }
   // ---------------------------------------------------------------------------
@@ -349,6 +354,18 @@ export default class extends Controller {
       extTargets.forEach(([domId, col]) => {
         if (domId && domId.length > 0 && col) this.setDomValue(domId, entityRow[col])
       })
+
+      // Preset the TomSelect dropdown with the current selection so the widget shows the existing value:
+      if (this._tomSelect && entityRow.id != null) {
+        const presetValue = `${entityRow.id}`
+        const presetText = entityRow[this.searchColumnValue || 'name'] || presetValue
+        if (!this._tomSelect.options[presetValue]) {
+          this._tomSelect.addOption({ value: presetValue, text: presetText, _row: entityRow })
+        }
+        this._isPresetting = true
+        this._tomSelect.setValue(presetValue, true)
+        this._isPresetting = false
+      }
     }
   }
 
@@ -371,6 +388,32 @@ export default class extends Controller {
           return r.json()
         })
         .then(entityRow => { if (entityRow) this.updateFieldAndDesc(entityRow) })
+        .catch(err => console.error(err))
+    }
+  }
+
+  /**
+   * Retrieves the full (small) list for lookup entities having no dedicated detail endpoint,
+   * then updates target nodes with the row matching the current ID value.
+   *
+   * @param {String} entityId the desired row ID
+   */
+  fetchLookupDetails (entityId) {
+    if (this.hasBaseApiUrlValue && this.hasJwtValue && this.hasSearchEndpointValue && entityId) {
+      fetch(`${this.baseApiUrlValue}/${this.searchEndpointValue}`, {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${this.jwtValue}`, 'Content-Type': 'application/json' },
+        credentials: 'same-origin'
+      })
+        .then(r => {
+          if (!r.ok) { if (r.status === 401) { document.location.reload() } return null }
+          return r.json()
+        })
+        .then(data => {
+          const rows = Array.isArray(data) ? data : (data.results || [])
+          const row = rows.find(element => `${element['id']}` === `${entityId}`)
+          if (row) this.updateFieldAndDesc(row)
+        })
         .catch(err => console.error(err))
     }
   }
@@ -404,6 +447,7 @@ export default class extends Controller {
         }
       },
       onItemAdd: (value) => {
+        if (this._isPresetting) return
         const opt = this._tomSelect.options[value]
         if (opt && opt._row) {
           this.updateFieldAndDesc(opt._row)
@@ -469,6 +513,7 @@ export default class extends Controller {
         }
       },
       onItemAdd: (value) => {
+        if (this._isPresetting) return
         const opt = this._tomSelect.options[value]
         if (opt && opt._row) {
           this.updateFieldAndDesc(opt._row)

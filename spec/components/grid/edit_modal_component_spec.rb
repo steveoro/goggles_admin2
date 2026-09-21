@@ -165,4 +165,36 @@ RSpec.describe Grid::EditModalComponent, type: :component do
       end
     end
   end
+
+  context 'with an asset row using a renamed association attribute (a GogglesDb::Swimmer),' do
+    let(:fixture_asset_row) { GogglesDb::Swimmer.new }
+    # The payload carries the raw attribute name (e.g. 'associated_user_id'), while the rendered
+    # field uses the endpoint entity name ('user_id'); grid_edit_controller.js mirrors this map
+    # in its RENAMED_ID_FIELD_KEYS constant to preload the existing value.
+    let(:renamed_id_attributes) { { 'associated_user_id' => 'user_id', 'home_team_id' => 'team_id' } }
+    subject(:result) do
+      render_inline(
+        described_class.new(
+          controller_name: 'api_swimmers',
+          asset_row: fixture_asset_row,
+          jwt: '<fake_jwt_token>'
+        )
+      )
+    end
+
+    it 'renders the ID target input for associated_user_id under the user_id DOM id' do
+      field = result.css('input#user_id')
+      expect(field).to be_present
+      expect(field.attr('name').value).to eq('user_id')
+      expect(field.attr('data-legacy-autocomplete-target').value).to eq('field')
+    end
+
+    it 'renders a fillable field DOM id for each payload key (direct or renamed)' do
+      fixture_asset_row.attributes.each_key do |attr_name|
+        expected_dom_id = renamed_id_attributes[attr_name] || attr_name
+        expect(result.css("input##{expected_dom_id}")).to be_present,
+                                                          "missing input field for payload key '#{attr_name}' (expected DOM id: '#{expected_dom_id}')"
+      end
+    end
+  end
 end
