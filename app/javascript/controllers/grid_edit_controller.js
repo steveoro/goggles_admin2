@@ -4,16 +4,18 @@ import { Controller } from '@hotwired/stimulus'
 // search, language, autocomplete + lang-json). Separate CDN pins load duplicate
 // @codemirror/state instances, which break extension instanceof checks
 // ("Unrecognized extension value in extension set") — do NOT re-split these imports.
-import {
-  EditorView, keymap, highlightSpecialChars, drawSelection, rectangularSelection,
-  crosshairCursor, lineNumbers, highlightActiveLineGutter,
-  EditorState,
-  defaultKeymap, history, historyKeymap,
-  highlightSelectionMatches,
-  bracketMatching, foldGutter, foldKeymap,
-  autocompletion,
-  json
-} from 'codemirror-json'
+// The bundle is loaded lazily on first use (dynamic import) so that a failure to
+// resolve/load it cannot prevent this whole controller from registering: without it
+// the edit modal would still open (Bootstrap data-toggle) but stay empty.
+let _codemirrorJsonPromise = null
+const loadCodeMirrorJson = () => {
+  if (!_codemirrorJsonPromise) _codemirrorJsonPromise = import('codemirror-json')
+  return _codemirrorJsonPromise
+}
+
+// Some association attributes are rendered under a different base entity name
+// (mirrors Grid::EditModalComponent#detail_endpoint_name / #base_entity_name):
+const RENAMED_ID_FIELD_KEYS = { associated_user_id: 'user_id', home_team_id: 'team_id' }
 
 /**
  * = grid-edit - StimulusJS controller =
@@ -164,102 +166,129 @@ export default class extends Controller {
             const namespacedFieldDomId = `${nameSpaceBase}${key}`
             // DEBUG
             // console.log(`Processing key: ${key} => Field DOM ID: #${namespacedFieldDomId}`)
-
-            // ** Checkbox fields: **
-            // (use specific & unique DOM input fields, inside modal form)
-            const checkbox = document.getElementById(`${namespacedFieldDomId}-chk`)
-            if (checkbox && checkbox.type === 'checkbox') {
-              // DEBUG
-              // console.log('Checkbox field found')
-              // Hidden field also available? Add a toggle/change event handler:
-              const hiddenField = document.getElementById(namespacedFieldDomId)
-              if (hiddenField && hiddenField.type === 'hidden') {
-                checkbox.addEventListener('change', (event) => {
-                  const currState = event.target.checked
-                  const newValue = (currState == true) || (currState == 'true') ? '1' : '0'
-                  hiddenField.value = newValue
-                  hiddenField.dispatchEvent(new Event('change', { bubbles: true }))
-                  checkbox.value = newValue
-                })
-              }
-              // Setup initial hidden field & checkbox value
-              const initialValue = (value == true) || (value == 'true')
-              checkbox.checked = initialValue
-              checkbox.dispatchEvent(new Event('change', { bubbles: true }))
-            }
-
-            // ** CodeMirror JSON editor fields: **
-            // (use specific & unique DOM containers, inside modal form)
-            else if (document.querySelector(`#json-editor-${namespacedFieldDomId}`)) {
-              // DEBUG
-              // console.log('Possible JSON-editor field found')
-              var container = document.querySelector(`#json-editor-${namespacedFieldDomId}`)
-              const hiddenField = document.getElementById(namespacedFieldDomId)
-              if (hiddenField) hiddenField.value = value // Set initial value into hidden field
-              // Editor already created? Initialize its contents (from the row payload):
-              if (container.codemirrorView) {
-                // DEBUG
-                // console.log(`CodeMirror instance found for "#${namespacedFieldDomId}": setting field value...`)
-                container.codemirrorView.dispatch({
-                  changes: { from: 0, to: container.codemirrorView.state.doc.length },
-                  insert: JSON.stringify(JSON.parse(value), null, 2)
-                })
-              }
-              else {
-                // DEBUG
-                // console.log(`Creating CodeMirror instance for "#${namespacedFieldDomId}"...`)
-                container.codemirrorView = new EditorView({
-                  doc: JSON.stringify(JSON.parse(value), null, 2),
-                  extensions: [
-                    lineNumbers(),
-                    highlightActiveLineGutter(),
-                    highlightSpecialChars(),
-                    history(),
-                    foldGutter(),
-                    drawSelection(),
-                    keymap.of([defaultKeymap, historyKeymap, foldKeymap]),
-                    autocompletion(),
-                    rectangularSelection(),
-                    crosshairCursor(),
-                    highlightSelectionMatches(),
-                    bracketMatching(),
-                    EditorView.updateListener.of((update) => {
-                      if (update.docChanged) {
-                        const jsonText = update.state.doc.toString()
-                        // DEBUG
-                        // console.log(`CodeMirror for "#${namespacedFieldDomId}" changed...`)
-                        // Update both the row payload & the form's actual hidden field value:
-                        this.payloadValue[key] = jsonText
-                        const field = document.getElementById(namespacedFieldDomId)
-                        if (field) {
-                          field.value = jsonText
-                          field.dispatchEvent(new Event('change', { bubbles: true }))
-                        }
-                      }
-                    }),
-                    json()
-                  ],
-                  parent: container
-                })
-              }
-            }
-
-            // ** "Standard" input fields: **
-            // (any other input field using attribute "key" as DOM Id)
-            else {
-              // DEBUG
-              // console.log(`Processing "#${namespacedFieldDomId}" standard input field...`)
-              const field = document.getElementById(namespacedFieldDomId)
-              if (field) {
-                field.value = value
-                field.dispatchEvent(new Event('change', { bubbles: true }))
-              }
+            try {
+              this._fillModalField(nameSpaceBase, namespacedFieldDomId, key, value)
+            } catch (err) {
+              // A single bad key/value must not prevent the remaining fields from being filled:
+              console.error(`grid-edit: error filling field "${key}"`, err)
             }
           }
         )
       return true
     }
     return false
+  }
+
+  // Resolves the DOM id of the input that should hold the value for the given payload key.
+  _fieldDomIdForKey (nameSpaceBase, key) {
+    const mappedKey = RENAMED_ID_FIELD_KEYS[key] || key
+    return `${nameSpaceBase}${mappedKey}`
+  }
+
+  _fillModalField (nameSpaceBase, namespacedFieldDomId, key, value) {
+    // ** Checkbox fields: **
+    // (use specific & unique DOM input fields, inside modal form)
+    const checkbox = document.getElementById(`${namespacedFieldDomId}-chk`)
+    if (checkbox && checkbox.type === 'checkbox') {
+      // DEBUG
+      // console.log('Checkbox field found')
+      // Hidden field also available? Add a toggle/change event handler:
+      const hiddenField = document.getElementById(namespacedFieldDomId)
+      if (hiddenField && hiddenField.type === 'hidden') {
+        checkbox.addEventListener('change', (event) => {
+          const currState = event.target.checked
+          const newValue = (currState == true) || (currState == 'true') ? '1' : '0'
+          hiddenField.value = newValue
+          hiddenField.dispatchEvent(new Event('change', { bubbles: true }))
+          checkbox.value = newValue
+        })
+      }
+      // Setup initial hidden field & checkbox value
+      const initialValue = (value == true) || (value == 'true')
+      checkbox.checked = initialValue
+      checkbox.dispatchEvent(new Event('change', { bubbles: true }))
+      return
+    }
+
+    // ** CodeMirror JSON editor fields: **
+    // (use specific & unique DOM containers, inside modal form)
+    const container = document.querySelector(`#json-editor-${namespacedFieldDomId}`)
+    if (container) {
+      // DEBUG
+      // console.log('Possible JSON-editor field found')
+      const hiddenField = document.getElementById(namespacedFieldDomId)
+      if (hiddenField) hiddenField.value = value // Set initial value into hidden field
+
+      let jsonDoc
+      try {
+        jsonDoc = JSON.stringify(JSON.parse(value), null, 2)
+      } catch (_err) {
+        // Not valid JSON (e.g. null/empty/plain text): still open the editor with the raw content
+        jsonDoc = (value == null) ? '' : `${value}`
+      }
+
+      // Editor already created? Initialize its contents (from the row payload):
+      if (container.codemirrorView) {
+        // DEBUG
+        // console.log(`CodeMirror instance found for "#${namespacedFieldDomId}": setting field value...`)
+        container.codemirrorView.dispatch({
+          changes: { from: 0, to: container.codemirrorView.state.doc.length },
+          insert: jsonDoc
+        })
+      }
+      else {
+        // DEBUG
+        // console.log(`Creating CodeMirror instance for "#${namespacedFieldDomId}"...`)
+        const payloadKey = key
+        loadCodeMirrorJson().then(cm => {
+          container.codemirrorView = new cm.EditorView({
+            doc: jsonDoc,
+            extensions: [
+              cm.lineNumbers(),
+              cm.highlightActiveLineGutter(),
+              cm.highlightSpecialChars(),
+              cm.history(),
+              cm.foldGutter(),
+              cm.drawSelection(),
+              cm.keymap.of([cm.defaultKeymap, cm.historyKeymap, cm.foldKeymap]),
+              cm.autocompletion(),
+              cm.rectangularSelection(),
+              cm.crosshairCursor(),
+              cm.highlightSelectionMatches(),
+              cm.bracketMatching(),
+              cm.EditorView.updateListener.of((update) => {
+                if (update.docChanged) {
+                  const jsonText = update.state.doc.toString()
+                  // DEBUG
+                  // console.log(`CodeMirror for "#${namespacedFieldDomId}" changed...`)
+                  // Update both the row payload & the form's actual hidden field value:
+                  this.payloadValue[payloadKey] = jsonText
+                  const field = document.getElementById(namespacedFieldDomId)
+                  if (field) {
+                    field.value = jsonText
+                    field.dispatchEvent(new Event('change', { bubbles: true }))
+                  }
+                }
+              }),
+              cm.json()
+            ],
+            parent: container
+          })
+        }).catch(err => console.error(`grid-edit: unable to load the JSON editor for "${namespacedFieldDomId}"`, err))
+      }
+      return
+    }
+
+    // ** "Standard" input fields: **
+    // (any other input field using attribute "key" as DOM Id)
+    // DEBUG
+    // console.log(`Processing "#${namespacedFieldDomId}" standard input field...`)
+    const field = document.getElementById(namespacedFieldDomId) ||
+                  document.getElementById(this._fieldDomIdForKey(nameSpaceBase, key))
+    if (field) {
+      field.value = value
+      field.dispatchEvent(new Event('change', { bubbles: true }))
+    }
   }
   // ---------------------------------------------------------------------------
 }
