@@ -13,3 +13,9 @@
 - `_session_form_card.html.haml` wires the existing-pool dropdown and city hidden-id `onchange` to trigger refresh.
 - `Phase1SessionUpdater` detects `swimming_pool.id` changes and overwrites pool/city fields from the DB pool/city, clearing city fields when the selected pool has no city.
 - Request specs for rehydrate, city-clear, and stale-city overwrite are in `spec/requests/data_fix_controller_phase1_spec.rb`.
+
+## Grid toolbar bespoke content & local lookups
+
+- `Grid::ToolbarComponent` accepts a content block rendered at the end of the toolbar row — use it for page-specific buttons (see `api_team_managers/index.html.haml`).
+- `GET /lookup/:domain[/:id]` (`LookupController`) serves whitelisted localhost-DB JSON lookups (seasons/teams/users) for `LegacyAutoCompleteComponent` widgets; the remote API cannot search seasons by description.
+- `TeamManagerSqlCreate` (`POST /api_team_managers/sql_create`) creates `team_affiliations`/`managed_affiliations` on localhost inside a transaction that also writes the `SqlMaker` batch file into `crawler/data/results.new/<season_id>/` — a file-write failure rolls back the local rows.

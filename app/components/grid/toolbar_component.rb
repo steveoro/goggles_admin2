@@ -44,6 +44,17 @@ module Grid
     #
     # - <tt>:csv</tt>:
     #   <tt>true</tt> to show the CSV export button (default: true)
+    #
+    # == Additional content:
+    # Any block given to the component will be rendered at the end of the toolbar row,
+    # allowing bespoke per-page buttons or widgets to be added after the default ones.
+    # (Wrap any additional content inside your own '.btn-group' container, as needed.)
+    #
+    # == Example:
+    #   = render(Grid::ToolbarComponent.new(asset_row: Model.new, controller_name: 'ctrl')) do
+    #     .btn-group.mx-1.my-0#my-custom-btn
+    #       = link_to('#my-modal', ...)
+    #
     def initialize(options = { select: true, filter: true, create: true, destroy: true, csv: true })
       super()
       @asset_row = options[:asset_row]

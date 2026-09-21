@@ -143,6 +143,7 @@ Rails.application.routes.draw do
 
   resources :api_team_managers, only: %i[index create update]
   delete 'api_team_managers', to: 'api_team_managers#destroy', as: 'api_team_managers_destroy'
+  post 'api_team_managers/sql_create', to: 'api_team_managers#sql_create', as: 'api_team_managers_sql_create'
 
   resources :api_teams, only: %i[index create update]
 
@@ -151,6 +152,10 @@ Rails.application.routes.draw do
 
   resources :api_users, only: %i[index update]
   delete 'api_users', to: 'api_users#destroy', as: 'api_users_destroy'
+
+  # Localhost-DB JSON lookups for autocomplete widgets (e.g. the SQL-create modal):
+  get 'lookup/:domain', to: 'lookup#index', as: 'lookup'
+  get 'lookup/:domain/:id', to: 'lookup#show', as: 'lookup_detail'
 
   resources :settings, only: %i[index update]
   post 'settings/api_config', to: 'settings#api_config', as: 'settings_api_config'

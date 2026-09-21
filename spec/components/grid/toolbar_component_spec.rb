@@ -151,4 +151,25 @@ RSpec.describe Grid::ToolbarComponent, type: :component do
       end
     end
   end
+
+  context 'with valid parameters + additional content yielded as a block,' do
+    subject do
+      render_inline(
+        described_class.new(asset_row: fixture_asset_row, controller_name: fixture_controller_name)
+      ) do
+        '<div id="bespoke-btn" class="btn-group">EXTRA</div>'.html_safe
+      end
+    end
+
+    it 'renders the additional block content' do
+      expect(subject.css('#bespoke-btn')).to be_present
+      expect(subject.css('#bespoke-btn').text).to eq('EXTRA')
+    end
+
+    it 'still renders all the default button groups' do
+      %w[filter-show-btn sel-toggle-btn new-btn delete-btn csv-btn].each do |dom_id|
+        expect(subject.css("##{dom_id}")).to be_present
+      end
+    end
+  end
 end

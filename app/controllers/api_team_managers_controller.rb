@@ -125,6 +125,38 @@ class APITeamManagersController < ApplicationController
   #-- -------------------------------------------------------------------------
   #++
 
+  # POST /api_team_managers/sql_create
+  # Creates the managed_affiliations row (and the team_affiliations row, when missing)
+  # directly on the *localhost* DB, generating also a replayable single-transaction
+  # SQL batch file under <tt>crawler/data/results.new/<season_id>/</tt> for the
+  # push-to-remote pipeline.
+  #
+  # Feasibility is checked against the localhost DB (assumed in-sync with production):
+  # the action fails when any of the 3 entities is missing or when the resulting
+  # (team_affiliation_id, user_id) ManagedAffiliation already exists.
+  #
+  # == Params (namespaced under 'sql-create'):
+  # - <tt>season_id</tt>: Season row ID
+  # - <tt>team_id</tt>: Team row ID
+  # - <tt>user_id</tt>: User (manager) row ID
+  #
+  def sql_create
+    creator = TeamManagerSqlCreate.new(
+      season_id: sql_create_params[:season_id],
+      team_id: sql_create_params[:team_id],
+      user_id: sql_create_params[:user_id]
+    )
+
+    if creator.call
+      flash[:info] = I18n.t('datagrid.sql_create.create_ok', file: File.basename(creator.file_path.to_s))
+    else
+      flash[:error] = I18n.t('datagrid.sql_create.create_failed', error: creator.errors.join(', '))
+    end
+    redirect_to(api_team_managers_path(index_params))
+  end
+  #-- -------------------------------------------------------------------------
+  #++
+
   protected
 
   # Default whitelist for datagrid parameters
@@ -137,5 +169,13 @@ class APITeamManagersController < ApplicationController
   # (NOTE: memoizazion is needed because the member variable is used in the view.)
   def index_params
     index_params_for(:team_managers_grid)
+  end
+
+  # Strong parameters checking for /sql_create.
+  # (Field names are namespaced under 'sql-create' to avoid clashes with the
+  # flat-named fields of the generic edit modal on the same page.)
+  def sql_create_params
+    params.fetch(:'sql-create', ActionController::Parameters.new)
+          .permit(:season_id, :team_id, :user_id)
   end
 end

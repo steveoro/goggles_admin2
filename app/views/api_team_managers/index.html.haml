@@ -6,10 +6,17 @@
     = render(DashboardTitleComponent.new(title: t('dashboard.team_managers.title'), row_count: @domain_count))
     = render(Grid::EditModalComponent.new(controller_name: controller_name,
              asset_row: GogglesDb::ManagedAffiliation.new, jwt: current_user.jwt))
+    = render(Grid::SqlCreateModalComponent.new(controller_name: controller_name,
+             jwt: current_user.jwt))
 
     %section.my-4#data-grid
       = render(Grid::ToolbarComponent.new(asset_row: GogglesDb::ManagedAffiliation.new,
-               controller_name: controller_name, request_params: @grid_filter_params))
+               controller_name: controller_name, request_params: @grid_filter_params)) do
+        .btn-group.mx-1.my-0#sql-create-btn
+          = link_to('#sql-create-modal', class: 'btn btn-sm btn-outline-success', role: 'button',
+                    data: { toggle: 'modal', tooltip: '', title: t('datagrid.sql_create.btn_tooltip') }) do
+            %i.fa.fa-plus
+            = t('datagrid.sql_create.btn_label')
       = datagrid_form_with(model: @grid, method: :get,
                           url: url_for(controller: controller_name, action: :index, params: @index_params))
       = render(Grid::FilterLabelsComponent.new(filter_params: @grid_filter_params))
