@@ -14,7 +14,9 @@ RSpec.describe Phase5::DataIntegrator, type: :service do
             'key' => 'F|PARALUPPI|ANNA|2002|CLOROMANIA SSD - MANTOVA',
             'gender_type_code' => 'F',
             'category_type_code' => 'U25'
-          }
+          },
+          { 'key' => 'M|ROSSI|MARIO|1970|Team A', 'gender_type_code' => 'M', 'category_type_code' => 'M50' },
+          { 'key' => '|ROSSI|MARIO|1970|Team B', 'gender_type_code' => 'F', 'category_type_code' => 'M45' }
         ]
       }
     }
@@ -56,6 +58,13 @@ RSpec.describe Phase5::DataIntegrator, type: :service do
       result = { 'category' => 'UNF', 'gender' => 'F',
                  'swimmer' => 'F|PARALUPPI|ANNA|2002|CLOROMANIA SSD - MANTOVA' }
       expect(integrator.integrate_individual_result(result: result, event: event)[:category]).to eq('U25')
+    end
+
+    it 'disambiguates same-named swimmers of different teams through the team token' do
+      result = { 'category' => 'A20', 'swimmer' => 'ROSSI|MARIO|1970|Team B' }
+      integrated = integrator.integrate_individual_result(result: result, event: event)
+      expect(integrated[:category]).to eq('M45')
+      expect(integrated[:gender]).to eq('F')
     end
 
     it 'uses the Phase-3 category also when the source category is missing' do
@@ -100,8 +109,25 @@ RSpec.describe Phase5::DataIntegrator, type: :service do
       expect(integrator.send(:find_swimmer_in_phase3, 'M|PARALUPPI|ANNA|2002')).to eq(anna)
     end
 
+    it 'prefers the most complete match when two swimmers share name and YOB' do
+      team_a, team_b = phase3_data['data']['swimmers'].last(2)
+      expect(integrator.send(:find_swimmer_in_phase3, 'ROSSI|MARIO|1970|Team B')).to eq(team_b)
+      expect(integrator.send(:find_swimmer_in_phase3, 'F|ROSSI|MARIO|1970|Team A')).to eq(team_a)
+      expect(integrator.send(:find_swimmer_in_phase3, '|ROSSI|MARIO|1970|Team A')).to eq(team_a)
+    end
+
+    it 'falls back to the first name/YOB match when the team is missing or unknown' do
+      team_a = phase3_data['data']['swimmers'][1]
+      expect(integrator.send(:find_swimmer_in_phase3, 'ROSSI|MARIO|1970')).to eq(team_a)
+      expect(integrator.send(:find_swimmer_in_phase3, 'ROSSI|MARIO|1970|Team C')).to eq(team_a)
+    end
+
+    it 'does not strip a last name starting with M or F as if it were a gender prefix' do
+      expect(integrator.send(:find_swimmer_in_phase3, 'MARIO|ROSSI|1970')).to be_nil
+    end
+
     it 'returns nil for unknown or blank keys' do
-      expect(integrator.send(:find_swimmer_in_phase3, 'ROSSI|MARIO|1970')).to be_nil
+      expect(integrator.send(:find_swimmer_in_phase3, 'BIANCHI|LUCA|1980')).to be_nil
       expect(integrator.send(:find_swimmer_in_phase3, '')).to be_nil
     end
 
