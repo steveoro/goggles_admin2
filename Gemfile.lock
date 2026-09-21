@@ -1,8 +1,8 @@
 GIT
   remote: https://github.com/steveoro/goggles_db.git
-  revision: f0c1ea4dac13301f08ed974f3f895409eb28e8d3
+  revision: 5dd7afb0023c0a970731124e80bbce3d38a45ef2
   specs:
-    goggles_db (0.10.46)
+    goggles_db (0.10.48)
       acts-as-taggable-on
       acts_as_votable
       caxlsx
@@ -18,6 +18,7 @@ GIT
       fuzzy-string-match
       haml
       haml-rails
+      json (< 3)
       jwt
       ledermann-rails-settings
       loofah
@@ -148,7 +149,7 @@ GEM
     bindex (0.8.1)
     binding_of_caller (2.0.0)
       debug_inspector (>= 1.2.0)
-    bootsnap (1.25.0)
+    bootsnap (1.26.0)
       msgpack (~> 1.5)
     brakeman-lib (8.0.6)
       csv
@@ -167,7 +168,7 @@ GEM
       terminal-table (< 5.0)
     browser (6.2.0)
     builder (3.3.0)
-    bullet (8.1.3)
+    bullet (8.2.0)
       activesupport (>= 3.0.0)
       uniform_notifier (~> 1.11)
     capybara (3.40.0)
@@ -252,12 +253,12 @@ GEM
       railties (>= 7.0)
       responders
       warden (~> 1.2.3)
-    devise-i18n (1.16.0)
+    devise-i18n (1.16.1)
       devise (>= 5.0.0)
       rails-i18n
     diff-lcs (1.6.2)
     docile (1.4.1)
-    domain_name (0.6.20240107)
+    domain_name (0.6.20260907)
     draper (4.0.6)
       actionpack (>= 5.0)
       activemodel (>= 5.0)
@@ -269,14 +270,14 @@ GEM
     erb (6.0.7)
     erubi (1.13.1)
     escape_utils (1.3.0)
-    et-orbi (1.4.1)
+    et-orbi (1.4.2)
       tzinfo
     factory_bot (6.6.0)
       activesupport (>= 6.1.0)
     factory_bot_rails (6.5.1)
       factory_bot (~> 6.5)
       railties (>= 6.1.0)
-    faraday (2.14.3)
+    faraday (2.14.4)
       faraday-net_http (>= 2.0, < 3.5)
       json
       logger
@@ -288,14 +289,14 @@ GEM
       railties (>= 3.2, < 9.0)
     formatador (1.2.3)
       reline
-    fugit (1.13.0)
+    fugit (1.14.0)
       et-orbi (~> 1.4)
       raabro (~> 1.4)
     fuzzy-string-match (1.0.1)
       RubyInline (>= 3.8.6)
     globalid (1.4.0)
       activesupport (>= 6.1)
-    google-protobuf (4.36.0-x86_64-linux-gnu)
+    google-protobuf (4.36.2-x86_64-linux-gnu)
       bigdecimal
       rake (~> 13.3)
     guard (2.20.2)
@@ -368,7 +369,7 @@ GEM
       sparkr (>= 0.2.0)
       term-ansicolor
       yard (~> 0.9.12)
-    io-console (0.9.3)
+    io-console (0.9.4)
     irb (1.18.0)
       pp (>= 0.6.0)
       prism (>= 1.3.0)
@@ -421,7 +422,7 @@ GEM
     mime-types (3.7.0)
       logger
       mime-types-data (~> 3.2025, >= 3.2025.0507)
-    mime-types-data (3.2026.0701)
+    mime-types-data (3.2026.0921)
     mini_magick (5.4.0)
       logger
     mini_mime (1.1.5)
@@ -429,7 +430,7 @@ GEM
       drb (~> 2.0)
       prism (~> 1.5)
     mize (0.6.1)
-    msgpack (1.8.4)
+    msgpack (1.8.5)
     multi_json (1.21.2)
     multi_test (1.1.0)
     multi_xml (0.9.1)
@@ -445,7 +446,7 @@ GEM
       net-protocol
     net-pop (0.1.2)
       net-protocol
-    net-protocol (0.3.0)
+    net-protocol (0.4.0)
       timeout
     net-smtp (0.5.1)
       net-protocol
@@ -612,7 +613,7 @@ GEM
     rspec_pacman_formatter (0.1.7)
       colorize
       rspec
-    rubocop (1.90.0)
+    rubocop (1.91.0)
       json (>= 2.3)
       language_server-protocol (~> 3.17.0.2)
       lint_roller (~> 1.1.0)
@@ -636,7 +637,7 @@ GEM
       lint_roller (~> 1.1)
       rubocop (>= 1.89.0, < 2.0)
       rubocop-ast (>= 1.47.1, < 2.0)
-    rubocop-rails (2.37.0)
+    rubocop-rails (2.38.0)
       activesupport (>= 4.2.0)
       lint_roller (~> 1.1)
       rack (>= 1.1)
@@ -661,8 +662,8 @@ GEM
     ruby_parser (3.22.0)
       racc (~> 1.5)
       sexp_processor (~> 4.16)
-    rubyzip (3.6.0)
-    sass-embedded (1.103.1-x86_64-linux-gnu)
+    rubyzip (3.7.0)
+    sass-embedded (1.104.1-x86_64-linux-gnu)
       google-protobuf (~> 4.31)
     scenic (1.9.0)
       activerecord (>= 4.0.0)
@@ -670,13 +671,13 @@ GEM
     scenic-mysql_adapter (1.1.0)
       scenic (>= 1.4.0)
     securerandom (0.4.1)
-    selenium-webdriver (4.47.0)
+    selenium-webdriver (4.49.0)
       base64 (~> 0.2)
       logger (~> 1.4)
       rexml (~> 3.2, >= 3.2.5)
       rubyzip (>= 1.2.2, < 4.0)
       websocket (~> 1.0)
-    sexp_processor (4.17.5)
+    sexp_processor (4.17.6)
     shellany (0.0.1)
     simple_command (1.0.1)
     simplecov (0.21.2)
@@ -727,7 +728,7 @@ GEM
     thor (1.5.0)
     tilt (2.9.0)
     timeout (0.6.1)
-    tins (1.56.0)
+    tins (1.57.0)
       bigdecimal
       irb
       mize (~> 0.6)
@@ -741,9 +742,9 @@ GEM
     tzinfo (2.0.6)
       concurrent-ruby (~> 1.0)
     unaccent (0.4.0)
-    unicode-display_width (3.2.0)
-      unicode-emoji (~> 4.1)
-    unicode-emoji (4.2.0)
+    unicode-display_width (3.3.0)
+      unicode-emoji (~> 4.3)
+    unicode-emoji (4.3.0)
     uniform_notifier (1.18.0)
     uri (1.1.1)
     useragent (0.16.11)
@@ -758,7 +759,7 @@ GEM
       actionview (>= 8.0.0)
       bindex (>= 0.4.0)
       railties (>= 8.0.0)
-    webmock (3.26.3)
+    webmock (3.26.4)
       addressable (>= 2.8.0)
       crack (>= 0.3.2)
       hashdiff (>= 0.4.0, < 2.0.0)
