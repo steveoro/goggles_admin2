@@ -14,6 +14,9 @@ module Phase5
   class DataIntegrator # rubocop:disable Metrics/ClassLength
     attr_reader :source_data, :phase3_data, :season, :categories_cache
 
+    # Shortest partial phase-3 key tried during lookup: "|LAST|FIRST|YEAR"
+    MIN_PARTIAL_KEY_TOKENS = 3
+
     # Initialize with source data and phase 3 data for swimmer lookup
     #
     # == Params:
@@ -183,9 +186,8 @@ module Phase5
       lookup_swimmer_gender_from_phase3(phase3_partial_key)
     end
 
-    # Build partial phase3 key format from swimmer tokens.
-    # Output format: "|LAST|FIRST|YEAR"
-    # Handles optional trailing team token
+    # Build the gender-stripped phase3 key from swimmer tokens.
+    # Output format: "|LAST|FIRST|YEAR" or "|LAST|FIRST|YEAR|TEAM" when a team token is present.
     def partial_phase3_swimmer_key(tokens)
       return nil if tokens.size < 3
 
@@ -194,10 +196,12 @@ module Phase5
       last_name = tokens[offset]
       first_name = tokens[offset + 1]
       yob = tokens[offset + 2]
+      team = tokens[offset + 3]
 
       return nil if last_name.blank? || first_name.blank? || yob.to_s.strip.empty?
 
-      "|#{last_name}|#{first_name}|#{yob}"
+      key = "|#{last_name}|#{first_name}|#{yob}"
+      team.present? ? "#{key}|#{team}" : key
     end
 
     # Extract known swimmer genders from result laps
@@ -220,8 +224,7 @@ module Phase5
         else
           # 4-token format has no gender: "LAST|FIRST|YEAR|TEAM"
           # Try to lookup from phase3 data
-          offset = tokens[0].to_s.match?(/\A[MF]\z/i) ? 1 : 0
-          phase3_key = tokens.size >= (offset + 3) ? "#{tokens[offset]}|#{tokens[offset + 1]}|#{tokens[offset + 2]}" : nil
+          phase3_key = partial_phase3_swimmer_key(tokens)
           gender = lookup_swimmer_gender_from_phase3(phase3_key) if phase3_key
           genders << gender if gender.present?
         end
@@ -249,16 +252,51 @@ module Phase5
     end
 
     # Finds the phase-3 swimmer matching the given (possibly partial) key.
-    # Tries exact match first, then a partial match handling keys with/without
-    # the gender prefix.
+    # Tries the exact key first, then the gender-stripped key, then progressively
+    # shorter keys (dropping trailing tokens such as the team) down to
+    # "|LAST|FIRST|YEAR", so that the most complete match always wins.
     def find_swimmer_in_phase3(swimmer_key)
       return nil if swimmer_key.blank? || phase3_data.nil?
 
-      swimmers = phase3_data.dig('data', 'swimmers') || []
-      # Try exact match first
-      swimmers.find { |s| s['key'] == swimmer_key } ||
-        # Fallback: partial match (handles keys with/without gender prefix)
-        swimmers.find { |s| s['key'].include?(swimmer_key.sub(/^[MF]?\|?/, '|')) }
+      exact = phase3_swimmers_by_key[swimmer_key]
+      return exact if exact
+
+      tokens = swimmer_key.sub(/\A(?:[MF]?\|)?/i, '').split('|')
+      tokens.size.downto(MIN_PARTIAL_KEY_TOKENS) do |size|
+        found = phase3_swimmers_by_partial_key["|#{tokens.first(size).join('|')}"]
+        return found if found
+      end
+      nil
+    end
+
+    # Exact key => phase-3 swimmer hash (first occurrence wins).
+    def phase3_swimmers_by_key
+      @phase3_swimmers_by_key ||= phase3_swimmers.each_with_object({}) do |swimmer, index|
+        key = swimmer['key']
+        index[key] = swimmer if key && !index.key?(key)
+      end
+    end
+
+    # Every pipe-delimited token-sequence of each phase-3 key that starts with a
+    # '|' (e.g. "|LAST|FIRST|YOB", "|LAST|FIRST|YOB|TEAM", "|FIRST|YOB") => swimmer.
+    # Lets gender-stripped partial keys resolve without scanning (first occurrence wins).
+    def phase3_swimmers_by_partial_key
+      @phase3_swimmers_by_partial_key ||= phase3_swimmers.each_with_object({}) do |swimmer, index|
+        partial_keys_for(swimmer['key'].to_s).each do |partial|
+          index[partial] = swimmer unless index.key?(partial)
+        end
+      end
+    end
+
+    def partial_keys_for(key)
+      tokens = key.split('|', -1)
+      (1...tokens.size).flat_map do |from|
+        (from...tokens.size).map { |to| "|#{tokens[from..to].join('|')}" }
+      end
+    end
+
+    def phase3_swimmers
+      phase3_data&.dig('data', 'swimmers') || []
     end
 
     # TRUE when the category code resolves to a CategoryType defined for the
