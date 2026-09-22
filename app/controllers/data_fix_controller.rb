@@ -609,10 +609,14 @@ class DataFixController < ApplicationController
       end
       @total_programs_count = all_programs.size # Track unfiltered count
 
+      # Load all staging rows once: issue detection, filters, pagination counts
+      # and the view all reuse these buckets instead of per-program LIKE queries.
+      staging = load_staging_rows(source_path)
+
       # ALWAYS run server-side issue detection BEFORE pagination
       # This ensures we know about issues regardless of filtering or pagination
-      filter_data = load_filter_data(source_path)
-      @programs_with_issues = detect_programs_with_issues(all_programs, filter_data, source_path)
+      filter_data = load_filter_data(source_path, staging)
+      @programs_with_issues = detect_programs_with_issues(all_programs, filter_data, staging)
       @issue_count = @programs_with_issues.size
 
       # Server-side filtering: only show programs with issues if filter is active
@@ -627,27 +631,12 @@ class DataFixController < ApplicationController
         all_programs = all_programs.select do |prog|
           program_key = "#{prog['session_order']}-#{prog['event_code']}-#{prog['category_code']}-#{prog['gender_code']}"
           if prog['relay']
-            GogglesDb::DataImportMeetingRelayResult
-              .where(phase_file_path: source_path)
-              .where('import_key LIKE ?', "#{program_key}/%")
-              .exists?(meeting_relay_result_id: nil) ||
-              GogglesDb::DataImportMeetingRelaySwimmer
-                .where(phase_file_path: source_path)
-                .where('import_key LIKE ?', "#{program_key}/%")
-                .exists?(meeting_relay_swimmer_id: nil) ||
-              GogglesDb::DataImportRelayLap
-                .where(phase_file_path: source_path)
-                .where('import_key LIKE ?', "#{program_key}/%")
-                .exists?(relay_lap_id: nil)
+            (staging[:mrrs_by_program][program_key] || []).any? { |row| row.meeting_relay_result_id.nil? } ||
+              (staging[:relay_swimmers_by_program][program_key] || []).any? { |row| row.meeting_relay_swimmer_id.nil? } ||
+              (staging[:relay_laps_by_program][program_key] || []).any? { |row| row.relay_lap_id.nil? }
           else
-            GogglesDb::DataImportMeetingIndividualResult
-              .where(phase_file_path: source_path)
-              .where('import_key LIKE ?', "#{program_key}/%")
-              .exists?(meeting_individual_result_id: nil) ||
-              GogglesDb::DataImportLap
-                .where(phase_file_path: source_path)
-                .where('parent_import_key LIKE ?', "#{program_key}/%")
-                .exists?(lap_id: nil)
+            (staging[:mirs_by_program][program_key] || []).any? { |row| row.meeting_individual_result_id.nil? } ||
+              (staging[:laps_by_program][program_key] || []).any? { |row| row.lap_id.nil? }
           end
         end
       end
@@ -659,30 +648,19 @@ class DataFixController < ApplicationController
         all_programs = all_programs.select do |prog|
           program_key = "#{prog['session_order']}-#{prog['event_code']}-#{prog['category_code']}-#{prog['gender_code']}"
           if prog['relay']
-            GogglesDb::DataImportMeetingRelayResult
-              .where(phase_file_path: source_path)
-              .where('import_key LIKE ?', "#{program_key}/%")
-              .exists?(meeting_relay_result_id: nil)
+            (staging[:mrrs_by_program][program_key] || []).any? { |row| row.meeting_relay_result_id.nil? }
           else
-            GogglesDb::DataImportMeetingIndividualResult
-              .where(phase_file_path: source_path)
-              .where('import_key LIKE ?', "#{program_key}/%")
-              .exists?(meeting_individual_result_id: nil)
+            (staging[:mirs_by_program][program_key] || []).any? { |row| row.meeting_individual_result_id.nil? }
           end
         end
       end
 
       # Count new results for summary display
-      @new_result_count = GogglesDb::DataImportMeetingIndividualResult
-                          .where(phase_file_path: source_path, meeting_individual_result_id: nil).count +
-                          GogglesDb::DataImportMeetingRelayResult
-                          .where(phase_file_path: source_path, meeting_relay_result_id: nil).count
+      @new_result_count = staging[:mirs].count { |row| row.meeting_individual_result_id.nil? } +
+                          staging[:mrrs].count { |row| row.meeting_relay_result_id.nil? }
 
       # Count unmatched parent results (for the (+) filter banner)
-      @unmatched_parent_count = GogglesDb::DataImportMeetingIndividualResult
-                                .where(phase_file_path: source_path, meeting_individual_result_id: nil).count +
-                                GogglesDb::DataImportMeetingRelayResult
-                                .where(phase_file_path: source_path, meeting_relay_result_id: nil).count
+      @unmatched_parent_count = @new_result_count
 
       # Sort programs by event order from phase4 (individual events first, then relays)
       phase4_path = default_phase_path_for(source_path, 4)
@@ -690,7 +668,7 @@ class DataFixController < ApplicationController
 
       # Apply pagination to prevent UI slowdown
       @current_page = [params[:page].to_i, 1].max
-      @phase5_programs, @total_pages = paginate_phase5_programs(all_programs, @current_page, source_path)
+      @phase5_programs, @total_pages = paginate_phase5_programs(all_programs, @current_page, staging)
     else
       @phase5_meta = {}
       @phase5_programs = []
@@ -719,27 +697,25 @@ class DataFixController < ApplicationController
         "Populated DB: #{@populate_stats[:mir_created]} results, #{@populate_stats[:laps_created]} laps, " \
         "#{@populate_stats[:relay_results_created]} relay results, #{@populate_stats[:relay_swimmers_created]} relay swimmers, " \
         "#{@populate_stats[:relay_laps_created]} relay laps, #{@populate_stats[:programs_matched]} programs matched"
+
+      # populate! rewrote the staging tables: reload before rendering
+      staging = load_staging_rows(source_path)
     end
 
-    # Query data_import tables for display (no limit needed - view re-queries per program)
-    @all_results = GogglesDb::DataImportMeetingIndividualResult
-                   .where(phase_file_path: source_path)
-                   .order(:import_key)
+    # Query data_import tables for display (loaded once, reused per program bucket)
+    staging ||= load_staging_rows(source_path)
+    @mirs_by_program = staging[:mirs_by_program]
+    @mrrs_by_program = staging[:mrrs_by_program]
+    @all_results = staging[:mirs]
 
     # Also check for relay results to determine if commit button should be visible
-    @has_relay_results = GogglesDb::DataImportMeetingRelayResult.exists?(phase_file_path: source_path)
+    @has_relay_results = staging[:mrrs].any?
 
     # Eager-load swimmers and teams to avoid N+1 queries
     # NOTE: Load ALL swimmer/team IDs from source file, not just from @all_results (which is limited)
     # This ensures the view can find swimmers for any program displayed via pagination
-    swimmer_ids = GogglesDb::DataImportMeetingIndividualResult
-                  .where(phase_file_path: source_path)
-                  .pluck(:swimmer_id)
-                  .compact.uniq
-    team_ids = GogglesDb::DataImportMeetingIndividualResult
-               .where(phase_file_path: source_path)
-               .pluck(:team_id)
-               .compact.uniq
+    swimmer_ids = staging[:mirs].filter_map(&:swimmer_id).uniq
+    team_ids = staging[:mirs].filter_map(&:team_id).uniq
     @swimmers_by_id = GogglesDb::Swimmer.where(id: swimmer_ids).index_by(&:id)
     @teams_by_id = GogglesDb::Team.includes(:city).where(id: team_ids).index_by(&:id)
 
@@ -778,30 +754,19 @@ class DataFixController < ApplicationController
     end
 
     # Eager-load laps for ALL individual results in this source file
-    all_laps = GogglesDb::DataImportLap.where(phase_file_path: source_path).order(:length_in_meters)
-    @laps_by_parent_key = all_laps.group_by(&:parent_import_key)
+    @laps_by_parent_key = staging[:laps].group_by(&:parent_import_key)
 
-    # Query ALL relay results for display (no limit - relay swimmers need all parent keys)
-    @all_relay_results = GogglesDb::DataImportMeetingRelayResult
-                         .where(phase_file_path: source_path)
-                         .order(:import_key)
+    # All relay results for display (relay swimmers need all parent keys)
+    @all_relay_results = staging[:mrrs]
 
     # Eager-load relay teams (add to existing team query)
-    relay_team_ids = @all_relay_results.pluck(:team_id).compact.uniq
+    relay_team_ids = @all_relay_results.filter_map(&:team_id).uniq
     additional_teams = GogglesDb::Team.includes(:city).where(id: relay_team_ids - team_ids).index_by(&:id)
     @teams_by_id.merge!(additional_teams)
 
     # Eager-load relay swimmers and laps for ALL relay results in this source file
-    # (No limit - must load all to avoid missing swimmers when view re-queries results)
-    @relay_swimmers_by_parent_key = GogglesDb::DataImportMeetingRelaySwimmer
-                                    .where(phase_file_path: source_path)
-                                    .order(:relay_order)
-                                    .group_by(&:parent_import_key)
-    @relay_laps_by_parent_key = GogglesDb::DataImportRelayLap
-                                .includes(:data_import_meeting_relay_swimmer)
-                                .where(phase_file_path: source_path)
-                                .order(:length_in_meters)
-                                .group_by(&:parent_import_key)
+    @relay_swimmers_by_parent_key = staging[:relay_swimmers].group_by(&:parent_import_key)
+    @relay_laps_by_parent_key = staging[:relay_laps].group_by(&:parent_import_key)
 
     # Build swimmer lookup for relay swimmers (add to existing swimmer query if needed)
     relay_swimmer_ids = @relay_swimmers_by_parent_key.values.flatten.filter_map(&:swimmer_id).uniq
@@ -810,7 +775,7 @@ class DataFixController < ApplicationController
 
     # Build relay swimmer name lookup from source data for unmatched swimmers
     # Maps: {mrr_import_key => {relay_order => {name, key}}}
-    relay_import_keys = @all_relay_results.pluck(:import_key)
+    relay_import_keys = @all_relay_results.map(&:import_key)
     @relay_swimmer_names = build_relay_swimmer_names_from_source(source_path, relay_import_keys)
 
     # Broadcast ready status to clear progress modal
@@ -2557,7 +2522,7 @@ class DataFixController < ApplicationController
 
     source_path = resolve_working_source_path(file_path)
     begin
-      data_hash = JSON.parse(File.read(source_path))
+      data_hash = parsed_source_json(source_path)
     rescue StandardError => e
       return render plain: e.message, status: :unprocessable_content
     end
@@ -2702,7 +2667,7 @@ class DataFixController < ApplicationController
     return {} unless File.exist?(source_path)
     return {} if relay_import_keys.blank?
 
-    source_data = JSON.parse(File.read(source_path))
+    source_data = parsed_source_json(source_path)
     result = {}
 
     # Parse sections for relay results
@@ -2909,7 +2874,7 @@ class DataFixController < ApplicationController
     season = GogglesDb::Season.find_by(id: season_id)
     return unless season
 
-    data_hash = JSON.parse(File.read(source_path))
+    data_hash = parsed_source_json(source_path)
     categories_cache = PdfResults::CategoriesCache.cached_for(season)
     return unless lt4_result_categories_need_normalization?(data_hash, categories_cache)
 
@@ -2925,6 +2890,7 @@ class DataFixController < ApplicationController
     ).call
     return if result[:backup_path].blank?
 
+    invalidate_parsed_source_json(source_path)
     invalidated = invalidate_category_dependent_artifacts(source_path)
     Rails.logger.info(
       "[DataFixController] Normalized result categories in #{source_path} " \
@@ -2947,8 +2913,20 @@ class DataFixController < ApplicationController
     end
   end
 
+  # Per-request memo of parsed source JSON files. Several review actions read &
+  # JSON.parse the same source file multiple times per request; sharing one hash
+  # avoids the redundant parses. Invalidate explicitly wherever a source file is
+  # rewritten within the same request (LT4 materialization, category recompute).
+  def parsed_source_json(source_path)
+    (@parsed_source_json ||= {})[source_path] ||= JSON.parse(File.read(source_path))
+  end
+
+  def invalidate_parsed_source_json(source_path)
+    @parsed_source_json&.delete(source_path)
+  end
+
   def materialize_lt4_working_copy(lt2_source_path:, lt4_source_path:)
-    data_hash = JSON.parse(File.read(lt2_source_path))
+    data_hash = parsed_source_json(lt2_source_path)
     normalized = Import::Adapters::Layout2To4.normalize(data_hash: data_hash)
 
     retry_needed = source_has_retry_section_in_hash?(data_hash)
@@ -2959,6 +2937,7 @@ class DataFixController < ApplicationController
 
     FileUtils.mkdir_p(File.dirname(lt4_source_path))
     File.write(lt4_source_path, JSON.pretty_generate(normalized))
+    invalidate_parsed_source_json(lt4_source_path)
     Rails.logger.info("[DataFixController] LT2=>LT4 working copy created: #{lt4_source_path}")
     lt4_source_path
   rescue StandardError => e
@@ -2973,14 +2952,14 @@ class DataFixController < ApplicationController
   end
 
   def source_has_retry_section?(source_path)
-    data_hash = JSON.parse(File.read(source_path))
+    data_hash = parsed_source_json(source_path)
     return true if source_has_retry_section_in_hash?(data_hash)
     return true if source_has_retry_meta_flag?(data_hash)
 
     lt2_source_path = paired_lt2_source_path(source_path)
     return false if lt2_source_path.blank?
 
-    lt2_data_hash = JSON.parse(File.read(lt2_source_path))
+    lt2_data_hash = parsed_source_json(lt2_source_path)
     source_has_retry_section_in_hash?(lt2_data_hash)
   rescue StandardError => e
     Rails.logger.warn("[DataFixController] retry-section detection failed for #{source_path}: #{e.message}")
@@ -3915,14 +3894,54 @@ class DataFixController < ApplicationController
     swimmer_resolvable && team_link_resolvable?(team_id: parent_team_id, team_key: team_key)
   end
 
+  # Program key of an import/parent key: the "session-event-category-gender"
+  # segment before the first '/'. Same partition an `import_key LIKE 'key/%'`
+  # query selects, computed without hitting the DB.
+  def program_key_of(import_key)
+    import_key.to_s.split('/', 2).first
+  end
+
+  # Load every data_import_* staging row for the source file once and bucket them
+  # by program key. Detection, filters, pagination counts and card rendering all
+  # reuse these buckets instead of issuing per-program LIKE queries.
+  #
+  # @param source_path [String] canonical source file path
+  # @return [Hash] raw row arrays plus *_by_program buckets
+  def load_staging_rows(source_path)
+    mirs = GogglesDb::DataImportMeetingIndividualResult
+           .where(phase_file_path: source_path).order(:import_key).to_a
+    mrrs = GogglesDb::DataImportMeetingRelayResult
+           .where(phase_file_path: source_path).order(:import_key).to_a
+    laps = GogglesDb::DataImportLap
+           .where(phase_file_path: source_path).order(:length_in_meters).to_a
+    relay_swimmers = GogglesDb::DataImportMeetingRelaySwimmer
+                     .where(phase_file_path: source_path).order(:relay_order).to_a
+    relay_laps = GogglesDb::DataImportRelayLap
+                 .includes(:data_import_meeting_relay_swimmer)
+                 .where(phase_file_path: source_path).order(:length_in_meters).to_a
+
+    {
+      mirs: mirs,
+      mrrs: mrrs,
+      laps: laps,
+      relay_swimmers: relay_swimmers,
+      relay_laps: relay_laps,
+      mirs_by_program: mirs.group_by { |row| program_key_of(row.import_key) },
+      mrrs_by_program: mrrs.group_by { |row| program_key_of(row.import_key) },
+      laps_by_program: laps.group_by { |row| program_key_of(row.parent_import_key) },
+      relay_swimmers_by_program: relay_swimmers.group_by { |row| program_key_of(row.import_key) },
+      relay_laps_by_program: relay_laps.group_by { |row| program_key_of(row.parent_import_key) }
+    }
+  end
+
   # Paginate Phase 5 programs to prevent UI slowdown
   # Splits programs across pages when total rows (results + laps) exceed limit
   #
   # @param programs [Array<Hash>] all programs from phase5 JSON
   # @param page [Integer] current page number (1-indexed)
-  # @param source_path [String] canonical source file path
+  # @param staging [Hash] buckets from load_staging_rows
   # @return [Array<Array, Integer>] [programs_for_page, total_pages]
-  def paginate_phase5_programs(programs, page, source_path)
+  def paginate_phase5_programs(programs, page, staging)
     return [programs, 1] if programs.empty?
 
     # Calculate row count for each program (results + laps)
@@ -3931,24 +3950,12 @@ class DataFixController < ApplicationController
 
       if prog['relay']
         # Count relay results and relay laps
-        result_count = GogglesDb::DataImportMeetingRelayResult
-                       .where(phase_file_path: source_path)
-                       .where('import_key LIKE ?', "#{program_key}/%")
-                       .count
-        lap_count = GogglesDb::DataImportRelayLap
-                    .where(phase_file_path: source_path)
-                    .where('parent_import_key LIKE ?', "#{program_key}/%")
-                    .count
+        result_count = (staging[:mrrs_by_program][program_key] || []).size
+        lap_count = (staging[:relay_laps_by_program][program_key] || []).size
       else
         # Count individual results and laps
-        result_count = GogglesDb::DataImportMeetingIndividualResult
-                       .where(phase_file_path: source_path)
-                       .where('import_key LIKE ?', "#{program_key}/%")
-                       .count
-        lap_count = GogglesDb::DataImportLap
-                    .where(phase_file_path: source_path)
-                    .where('parent_import_key LIKE ?', "#{program_key}/%")
-                    .count
+        result_count = (staging[:mirs_by_program][program_key] || []).size
+        lap_count = (staging[:laps_by_program][program_key] || []).size
       end
 
       { program: prog, row_count: result_count + lap_count }
@@ -4020,7 +4027,7 @@ class DataFixController < ApplicationController
   #
   # @param source_path [String] source file path
   # @return [Hash] { relay_swimmers_by_parent_key:, swimmers_by_id:, swimmers_by_key:, badges_by_id:, affiliations_by_id:, season_id: }
-  def load_filter_data(source_path)
+  def load_filter_data(source_path, staging)
     # Load phase3 data for unmatched swimmer lookup
     # Index by both full key AND partial key for flexible matching
     phase3_path = default_phase_path_for(source_path, 3)
@@ -4041,46 +4048,27 @@ class DataFixController < ApplicationController
       end
     end
 
-    # Load relay swimmers grouped by parent key
-    relay_swimmers_by_parent_key = GogglesDb::DataImportMeetingRelaySwimmer
-                                   .where(phase_file_path: source_path)
-                                   .order(:relay_order)
-                                   .group_by(&:parent_import_key)
+    # Relay swimmers grouped by parent key (from the shared staging rows)
+    relay_swimmers_by_parent_key = staging[:relay_swimmers].group_by(&:parent_import_key)
 
     # Load swimmers by ID for BOTH individual AND relay results
-    individual_swimmer_ids = GogglesDb::DataImportMeetingIndividualResult
-                             .where(phase_file_path: source_path)
-                             .pluck(:swimmer_id)
-                             .compact.uniq
-    relay_swimmer_ids = relay_swimmers_by_parent_key.values.flatten.filter_map(&:swimmer_id).uniq
+    individual_swimmer_ids = staging[:mirs].filter_map(&:swimmer_id).uniq
+    relay_swimmer_ids = staging[:relay_swimmers].filter_map(&:swimmer_id).uniq
     all_swimmer_ids = (individual_swimmer_ids + relay_swimmer_ids).uniq
     swimmers_by_id = GogglesDb::Swimmer.where(id: all_swimmer_ids).index_by(&:id)
 
-    badge_ids = GogglesDb::DataImportMeetingIndividualResult
-                .where(phase_file_path: source_path)
-                .pluck(:badge_id)
-                .compact +
-                GogglesDb::DataImportMeetingRelaySwimmer
-                .where(phase_file_path: source_path)
-                .pluck(:badge_id)
-                .compact
+    badge_ids = staging[:mirs].filter_map(&:badge_id) +
+                staging[:relay_swimmers].filter_map(&:badge_id)
     badges_by_id = GogglesDb::Badge.where(id: badge_ids.uniq).index_by(&:id)
 
-    affiliation_ids = GogglesDb::DataImportMeetingRelayResult
-                      .where(phase_file_path: source_path)
-                      .pluck(:team_affiliation_id)
-                      .compact
+    affiliation_ids = staging[:mrrs].filter_map(&:team_affiliation_id)
     affiliations_by_id = GogglesDb::TeamAffiliation.where(id: affiliation_ids.uniq).index_by(&:id)
 
     season_id = (JSON.parse(File.read(default_phase_path_for(source_path, 1))).dig('data', 'season_id') if File.exist?(default_phase_path_for(source_path, 1)))
 
     # Team IDs that already have a TeamAffiliation in the current season,
     # preloaded once so result_has_issues? doesn't run an EXISTS? per result.
-    mir_team_ids = GogglesDb::DataImportMeetingIndividualResult
-                   .where(phase_file_path: source_path)
-                   .pluck(:team_id)
-                   .compact
-                   .uniq
+    mir_team_ids = staging[:mirs].filter_map(&:team_id).uniq
     team_ids_with_affiliation =
       if season_id.to_i.positive? && mir_team_ids.any?
         GogglesDb::TeamAffiliation
@@ -4108,9 +4096,9 @@ class DataFixController < ApplicationController
   #
   # @param programs [Array<Hash>] all programs from phase5 JSON
   # @param filter_data [Hash] data needed for filtering
-  # @param source_path [String] canonical source file path
+  # @param staging [Hash] buckets from load_staging_rows
   # @return [Array<Hash>] programs with at least one result with issues
-  def detect_programs_with_issues(programs, filter_data, source_path)
+  def detect_programs_with_issues(programs, filter_data, staging)
     relay_swimmers_by_parent_key = filter_data[:relay_swimmers_by_parent_key]
     swimmers_by_id = filter_data[:swimmers_by_id]
     swimmers_by_key = filter_data[:swimmers_by_key]
@@ -4126,9 +4114,7 @@ class DataFixController < ApplicationController
 
       if prog['relay']
         # Check if any relay results in this program have issues
-        relay_results = GogglesDb::DataImportMeetingRelayResult
-                        .where(phase_file_path: source_path)
-                        .where('import_key LIKE ?', "#{program_key}/%")
+        relay_results = staging[:mrrs_by_program][program_key] || []
 
         relay_results.any? do |mrr|
           issue_info = relay_result_has_issues?(
@@ -4144,9 +4130,7 @@ class DataFixController < ApplicationController
         end
       else
         # Check if any individual results in this program have issues
-        individual_results = GogglesDb::DataImportMeetingIndividualResult
-                             .where(phase_file_path: source_path)
-                             .where('import_key LIKE ?', "#{program_key}/%")
+        individual_results = staging[:mirs_by_program][program_key] || []
 
         individual_results.any? do |mir|
           result_has_issues?(
@@ -4215,7 +4199,7 @@ class DataFixController < ApplicationController
   end
 
   def source_meeting_date(source_path)
-    source_data = JSON.parse(File.read(source_path))
+    source_data = parsed_source_json(source_path)
     raw_date = source_data['dates'].to_s.split(',').first.presence || source_data['meeting_date']
     Date.parse(raw_date.to_s).iso8601 if raw_date.present?
   rescue StandardError
