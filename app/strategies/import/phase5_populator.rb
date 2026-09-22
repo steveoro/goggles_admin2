@@ -703,10 +703,20 @@ module Import
       affiliation&.dig('team_affiliation_id')
     end
 
-    # Find meeting_program_id by matching against existing database records
+    # Find meeting_program_id by matching against existing database records.
+    # Memoized per (session, event, category, gender): every result in a program
+    # shares the same key, so each program resolves at most once per populate! run.
+    def find_meeting_program_id(session_order, event_code, category, gender)
+      @meeting_program_ids ||= {}
+      key = [session_order.to_i, event_code, category, gender]
+      @meeting_program_ids.fetch(key) do
+        @meeting_program_ids[key] = resolve_meeting_program_id(session_order, event_code, category, gender)
+      end
+    end
+
     # First tries to use existing event ID from phase4 data, then falls back to DB lookup
     # Matches: MeetingEvent (from phase4 ID or by session + event_type) → MeetingProgram (by event + category + gender)
-    def find_meeting_program_id(session_order, event_code, category, gender)
+    def resolve_meeting_program_id(session_order, event_code, category, gender)
       return nil unless phase1_data && phase4_data
 
       # Step 1: Try to find existing meeting_event_id from phase4 data first
@@ -836,18 +846,36 @@ module Import
       # Category format: "M75", "M45", "U25", etc.
       code = category.to_s.strip
       if season_id
-        GogglesDb::CategoryType.find_by(code: code, season_id: season_id)
+        category_types_by_code(season_id)[code.upcase]
       else
-        GogglesDb::CategoryType.find_by(code: code)
+        # Rare path when the season is unknown: memoize the per-code query
+        @category_types_without_season ||= {}
+        @category_types_without_season.fetch(code) do
+          @category_types_without_season[code] = GogglesDb::CategoryType.find_by(code: code)
+        end
       end
+    end
+
+    # CategoryTypes are a small per-season reference table: preload once per
+    # season instead of hitting the DB for every result.
+    # Indexed by upcased code to match the DB's case-insensitive lookup.
+    def category_types_by_code(season_id)
+      @category_types_by_code ||= {}
+      @category_types_by_code[season_id] ||=
+        GogglesDb::CategoryType.where(season_id: season_id).index_by { |category_type| category_type.code.to_s.upcase }
     end
 
     # Parse gender code to GenderType (e.g., "F" → Female, "M" → Male)
     def parse_gender_type(gender)
       return nil if gender.blank?
 
-      code = gender.to_s.strip.upcase
-      GogglesDb::GenderType.find_by(code: code)
+      gender_types_by_code[gender.to_s.strip.upcase]
+    end
+
+    # GenderTypes are a tiny reference table: preload once.
+    def gender_types_by_code
+      @gender_types_by_code ||=
+        GogglesDb::GenderType.all.index_by { |gender_type| gender_type.code.to_s.upcase }
     end
 
     # Find existing MeetingIndividualResult for UPDATE operations
@@ -855,15 +883,22 @@ module Import
     def find_existing_mir(meeting_program_id, swimmer_id, team_id)
       return nil if meeting_program_id.nil? || swimmer_id.nil? || team_id.nil?
 
-      mir = GogglesDb::MeetingIndividualResult
-            .where(
-              meeting_program_id: meeting_program_id,
-              swimmer_id: swimmer_id,
-              team_id: team_id
-            )
-            .first
+      existing_mirs_for_program(meeting_program_id)[[swimmer_id, team_id]]
+    end
 
-      mir&.id
+    # Lazily preloads the existing MIRs of a program as
+    # { [swimmer_id, team_id] => mir_id }: one query per program instead of one
+    # per result. (Data imported by populate! never adds real MIR rows, so the
+    # map stays coherent for the whole run.)
+    def existing_mirs_for_program(meeting_program_id)
+      @existing_mirs_for_program ||= {}
+      @existing_mirs_for_program[meeting_program_id] ||= GogglesDb::MeetingIndividualResult
+                                                         .where(meeting_program_id: meeting_program_id)
+                                                         .order(:id)
+                                                         .pluck(:swimmer_id, :team_id, :id)
+                                                         .each_with_object({}) do |(swimmer_id, team_id, id), index|
+                                                           index[[swimmer_id, team_id]] ||= id
+                                                         end
     end
 
     # Create MIR record
@@ -1030,11 +1065,20 @@ module Import
     def find_existing_mrr(meeting_program_id, team_id)
       return nil unless meeting_program_id && team_id
 
-      mrr = GogglesDb::MeetingRelayResult
-            .where(meeting_program_id: meeting_program_id, team_id: team_id)
-            .first
+      existing_mrrs_for_program(meeting_program_id)[team_id]
+    end
 
-      mrr&.id
+    # Lazily preloads the existing MRRs of a program as { team_id => mrr_id }:
+    # one query per program instead of one per result.
+    def existing_mrrs_for_program(meeting_program_id)
+      @existing_mrrs_for_program ||= {}
+      @existing_mrrs_for_program[meeting_program_id] ||= GogglesDb::MeetingRelayResult
+                                                         .where(meeting_program_id: meeting_program_id)
+                                                         .order(:id)
+                                                         .pluck(:team_id, :id)
+                                                         .each_with_object({}) do |(team_id, id), index|
+                                                           index[team_id] ||= id
+                                                         end
     end
 
     # Find an existing relay swimmer by its stable parent, swimmer, and order identity.

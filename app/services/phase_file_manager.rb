@@ -29,16 +29,22 @@ class PhaseFileManager
 
   attr_reader :path
 
+  # Parsed payload for the file at +path+, memoized so #data/#meta don't
+  # re-read and re-parse the same JSON on every call.
   def read
-    return { META_KEY => {}, DATA_KEY => {} } unless File.exist?(path)
-
-    JSON.parse(File.read(path))
+    @read ||=
+      if File.exist?(path)
+        JSON.parse(File.read(path))
+      else
+        { META_KEY => {}, DATA_KEY => {} }
+      end
   end
 
   def write!(data:, meta: {})
     payload = { META_KEY => default_meta.merge(meta), DATA_KEY => data }
     FileUtils.mkdir_p(File.dirname(path))
     File.write(path, JSON.pretty_generate(payload))
+    @read = nil
     payload
   end
 
