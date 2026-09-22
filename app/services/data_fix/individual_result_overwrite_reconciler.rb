@@ -12,6 +12,7 @@ module DataFix
   # deleted.
   class IndividualResultOverwriteReconciler # rubocop:disable Metrics/ClassLength
     SNAPSHOT_VERSION = 2
+    EMPTY_SET = Set.new.freeze
 
     attr_reader :meeting_id, :import_rows
 
@@ -24,8 +25,8 @@ module DataFix
       return [] unless meeting_id.positive?
 
       candidates = represented_pairs.each_with_object([]) do |(swimmer_id, team_id), result|
-        imported_program_ids = imported_program_ids_for(swimmer_id, team_id)
-        existing_results_for(swimmer_id, team_id).each do |mir|
+        imported_program_ids = imported_program_ids_by_pair[[swimmer_id, team_id]] || EMPTY_SET
+        (existing_results_by_pair[[swimmer_id, team_id]] || []).each do |mir|
           next if imported_program_ids.include?(mir.meeting_program_id.to_i)
 
           result << candidate_attributes(mir)
@@ -180,20 +181,47 @@ module DataFix
       end.uniq
     end
 
-    def imported_program_ids_for(swimmer_id, team_id)
-      import_rows.filter_map do |row|
-        next unless row.swimmer_id.to_i == swimmer_id && row.team_id.to_i == team_id
+    # Imported meeting_program_ids per (swimmer_id, team_id), indexed once.
+    # Replaces the full import_rows scan that used to run per represented pair.
+    def imported_program_ids_by_pair
+      @imported_program_ids_by_pair ||= import_rows.each_with_object({}) do |row, index|
         next unless row.meeting_program_id.to_i.positive?
 
-        row.meeting_program_id.to_i
-      end.to_set
+        key = [row.swimmer_id.to_i, row.team_id.to_i]
+        (index[key] ||= Set.new) << row.meeting_program_id.to_i
+      end
     end
 
-    def existing_results_for(swimmer_id, team_id)
-      GogglesDb::MeetingIndividualResult
-        .joins(meeting_program: { meeting_event: :meeting_session })
-        .where(meeting_sessions: { meeting_id: meeting_id }, swimmer_id:, team_id:)
-        .includes(:swimmer, :team, :laps, meeting_program: [:category_type, :gender_type, { meeting_event: %i[event_type meeting_session] }])
+    # All existing MIRs of the meeting for the represented swimmers/teams,
+    # loaded in one query and grouped by (swimmer_id, team_id) instead of one
+    # query per pair. The where clause may over-fetch unused pair combinations;
+    # they simply land in buckets that are never read.
+    def existing_results_by_pair
+      @existing_results_by_pair ||= GogglesDb::MeetingIndividualResult
+                                    .joins(meeting_program: { meeting_event: :meeting_session })
+                                    .where(
+                                      meeting_sessions: { meeting_id: meeting_id },
+                                      swimmer_id: represented_pairs.map(&:first),
+                                      team_id: represented_pairs.map(&:last)
+                                    )
+                                    .includes(:swimmer, :team, :laps, meeting_program: [:category_type, :gender_type,
+                                                                                        { meeting_event: %i[event_type meeting_session] }])
+                                    .group_by { |mir| [mir.swimmer_id.to_i, mir.team_id.to_i] }
+    end
+
+    # Import rows indexed by (swimmer_id, timing in hundredths) for merge-target
+    # lookup. Replaces the full import_rows scan per candidate.
+    def import_rows_by_swimmer_and_timing
+      @import_rows_by_swimmer_and_timing ||= import_rows.group_by do |row|
+        [row.swimmer_id.to_i, row.to_timing.to_hundredths]
+      end
+    end
+
+    # Lap count per merge target, memoized by import_key so repeated candidates
+    # sharing a target don't each issue their own COUNT query.
+    def lap_count_for(import_key)
+      (@lap_count_by_import_key ||= {})[import_key] ||=
+        GogglesDb::DataImportLap.where(parent_import_key: import_key).count
     end
 
     def candidate_attributes(mir)
@@ -220,7 +248,7 @@ module DataFix
         'merge_target_swimmer_id' => target.swimmer_id,
         'merge_target_team_id' => target.team_id,
         'merge_target_timing' => target.to_timing.to_s,
-        'merge_target_lap_count' => GogglesDb::DataImportLap.where(parent_import_key: target.import_key).count
+        'merge_target_lap_count' => lap_count_for(target.import_key)
       }
     end
 
@@ -284,14 +312,15 @@ module DataFix
       }
     end
 
-    def find_merge_targets(candidate, import_rows)
+    def find_merge_targets(candidate, _import_rows)
       candidate_timing = Timing.new(
         minutes: candidate['minutes'].to_i,
         seconds: candidate['seconds'].to_i,
         hundredths: candidate['hundredths'].to_i
       ).to_hundredths
 
-      matches = import_rows.select { |row| merge_match?(row, candidate, candidate_timing) }
+      bucket = import_rows_by_swimmer_and_timing[[candidate['swimmer_id'].to_i, candidate_timing]] || []
+      matches = bucket.select { |row| merge_match?(row, candidate, candidate_timing) }
       matches.sort_by { |row| row.import_key.to_s }
     end
 

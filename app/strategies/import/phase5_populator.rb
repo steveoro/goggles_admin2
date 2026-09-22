@@ -74,6 +74,7 @@ module Import
     # Clear existing data_import_* records for the current source file only
     # This allows working on multiple files simultaneously without data loss
     def truncate_tables!
+      @created_import_records = {}
       GogglesDb::DataImportMeetingIndividualResult.where(phase_file_path: source_path).delete_all
       GogglesDb::DataImportLap.where(phase_file_path: source_path).delete_all
       GogglesDb::DataImportMeetingRelayResult.where(phase_file_path: source_path).delete_all
@@ -971,6 +972,20 @@ module Import
                                                          end
     end
 
+    # Returns the DataImport record for import_key: the one already created in
+    # this run when the key repeats, otherwise a fresh create! (the tables were
+    # just truncated, so the old find_or_create_by! SELECT almost always missed).
+    # A RecordNotUnique from a cross-source import_key collision falls back to
+    # the existing row, matching find_or_create_by! semantics.
+    def create_import_record!(klass, import_key, &)
+      created = (@created_import_records ||= {})[klass.name] ||= {}
+      return created[import_key] if created.key?(import_key)
+
+      created[import_key] = klass.create!(import_key: import_key, &)
+    rescue ActiveRecord::RecordNotUnique
+      created[import_key] ||= klass.find_by(import_key: import_key)
+    end
+
     # Create MIR record
     def create_mir_record(import_key:, result:, timing:, swimmer_id:, swimmer_key:, team_id:, badge_id:, team_key:, meeting_program_id:, meeting_program_key:,
                           meeting_individual_result_id:)
@@ -985,8 +1000,9 @@ module Import
 
       disqualified_flag = result_disqualified?(result, rank_non_numeric:, timing_zero:)
 
-      # Use find_or_create to handle potential duplicates gracefully
-      mir = GogglesDb::DataImportMeetingIndividualResult.find_or_create_by!(import_key: import_key) do |record|
+      # create! directly (table was just truncated); create_import_record!
+      # keeps find_or_create semantics for duplicate keys without a per-row SELECT
+      mir = create_import_record!(GogglesDb::DataImportMeetingIndividualResult, import_key) do |record|
         record.phase_file_path = source_path
         # DB foreign keys (may be nil for unmatched entities)
         record.meeting_program_id = meeting_program_id
@@ -1036,8 +1052,8 @@ module Import
 
         lap_import_key = GogglesDb::DataImportLap.build_import_key(mir_import_key, length)
 
-        # Use find_or_create to handle potential duplicates gracefully
-        GogglesDb::DataImportLap.find_or_create_by!(import_key: lap_import_key) do |record|
+        # create! directly (table was just truncated); see create_import_record!
+        create_import_record!(GogglesDb::DataImportLap, lap_import_key) do |record|
           record.parent_import_key = mir_import_key
           record.meeting_individual_result_key = mir_import_key # Parent MIR reference
           record.phase_file_path = source_path
@@ -1187,8 +1203,8 @@ module Import
 
       disqualified_flag = result_disqualified?(result, rank_non_numeric:, timing_zero:)
 
-      # Use find_or_create to handle potential duplicates gracefully
-      GogglesDb::DataImportMeetingRelayResult.find_or_create_by!(import_key: import_key) do |mrr|
+      # create! directly (table was just truncated); see create_import_record!
+      create_import_record!(GogglesDb::DataImportMeetingRelayResult, import_key) do |mrr|
         mrr.phase_file_path = source_path
         # DB foreign keys (may be nil for unmatched entities)
         mrr.meeting_relay_result_id = meeting_relay_result_id
@@ -1240,8 +1256,8 @@ module Import
 
         rs_import_key = "#{mrr_import_key}-swimmer#{relay_order}"
 
-        # Use find_or_create to handle potential duplicates gracefully
-        relay_swimmers_by_key[rs_import_key] = GogglesDb::DataImportMeetingRelaySwimmer.find_or_create_by!(import_key: rs_import_key) do |rs|
+        # create! directly (table was just truncated); see create_import_record!
+        relay_swimmers_by_key[rs_import_key] = create_import_record!(GogglesDb::DataImportMeetingRelaySwimmer, rs_import_key) do |rs|
           rs.parent_import_key = mrr_import_key
           rs.phase_file_path = source_path
           # DB foreign keys (may be nil for unmatched entities)
@@ -1303,8 +1319,8 @@ module Import
           length
         )
 
-        # Use find_or_create to handle potential duplicates gracefully
-        GogglesDb::DataImportRelayLap.find_or_create_by!(import_key: lap_import_key) do |record|
+        # create! directly (table was just truncated); see create_import_record!
+        create_import_record!(GogglesDb::DataImportRelayLap, lap_import_key) do |record|
           record.parent_import_key = mrr_import_key
           record.phase_file_path = source_path
           # DB foreign keys (may be nil for unmatched entities)

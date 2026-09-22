@@ -23,6 +23,13 @@ module Phase3
       deduplicate_initial_badges!
 
       @badge_signatures = build_badge_signatures(@badges)
+      # Index normalized identity -> position in @badges so merge_badges can do
+      # O(1) lookups instead of scanning the array per auxiliary badge.
+      @badge_identity_index = {}
+      @badges.each_with_index do |badge, i|
+        identity = normalized_badge_identity(badge)
+        @badge_identity_index[identity] ||= i if identity
+      end
       @stats = {
         swimmers_updated: 0,
         badges_added: 0,
@@ -289,9 +296,7 @@ module Phase3
         next unless swimmer_exists_in_main?(swimmer_key)
 
         # Check if we already have a badge for this swimmer+team+season (by normalized identity)
-        existing_idx = @badges.find_index do |existing|
-          normalized_badge_identity(existing) == normalized_id
-        end
+        existing_idx = @badge_identity_index[normalized_id]
 
         if existing_idx
           existing = @badges[existing_idx]
@@ -309,6 +314,7 @@ module Phase3
         else
           # No existing badge with this normalized identity - add new
           @badges << deep_dup(badge)
+          @badge_identity_index[normalized_id] = @badges.size - 1
           @badge_signatures << signature
           @stats[:badges_added] += 1
         end

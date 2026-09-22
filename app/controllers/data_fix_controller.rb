@@ -3234,6 +3234,8 @@ class DataFixController < ApplicationController
                   GogglesDb::DataImportMeetingRelaySwimmer.none
                 end
 
+    # Index phase3 badges once instead of scanning the array per DataImport row
+    badge_index = phase3_badge_index(phase3_badges)
     count = 0
 
     mir_scope.find_each do |row|
@@ -3243,7 +3245,8 @@ class DataFixController < ApplicationController
         team_key: row.team_key,
         team_id: normalized_team_id,
         season_id: normalized_season_id,
-        phase3_badges: phase3_badges
+        phase3_badges: phase3_badges,
+        badge_index: badge_index
       )
 
       attrs = {}
@@ -3272,7 +3275,8 @@ class DataFixController < ApplicationController
         team_key: team_key,
         team_id: normalized_team_id,
         season_id: normalized_season_id,
-        phase3_badges: phase3_badges
+        phase3_badges: phase3_badges,
+        badge_index: badge_index
       )
       next if row.badge_id == resolved_badge_id
 
@@ -3296,6 +3300,9 @@ class DataFixController < ApplicationController
     normalized_new_swimmer_id = new_swimmer_id.to_i.positive? ? new_swimmer_id.to_i : nil
     normalized_old_swimmer_id = old_swimmer_id.to_i.positive? ? old_swimmer_id.to_i : nil
 
+    # Index phase3 badges once instead of scanning the array per DataImport row
+    badge_index = phase3_badge_index(phase3_badges)
+
     mir_scope = GogglesDb::DataImportMeetingIndividualResult.where(phase_file_path: source_path)
     mir_scope.find_each do |row|
       next unless swimmer_row_matches?(
@@ -3313,7 +3320,8 @@ class DataFixController < ApplicationController
         team_key: row.team_key,
         team_id: row.team_id,
         season_id: normalized_season_id,
-        phase3_badges: phase3_badges
+        phase3_badges: phase3_badges,
+        badge_index: badge_index
       )
 
       attrs = {}
@@ -3335,6 +3343,10 @@ class DataFixController < ApplicationController
     end
 
     mrs_scope = GogglesDb::DataImportMeetingRelaySwimmer.where(phase_file_path: source_path)
+    # Batch-load parent MRRs once instead of a find_by per relay-swimmer row
+    parent_mrrs_by_key = GogglesDb::DataImportMeetingRelayResult
+                         .where(import_key: mrs_scope.distinct.pluck(:parent_import_key))
+                         .index_by(&:import_key)
     mrs_scope.find_each do |row|
       next unless swimmer_row_matches?(
         row_swimmer_key: row.swimmer_key,
@@ -3345,14 +3357,15 @@ class DataFixController < ApplicationController
         new_swimmer_id: normalized_new_swimmer_id
       )
 
-      parent_mrr = GogglesDb::DataImportMeetingRelayResult.find_by(import_key: row.parent_import_key)
+      parent_mrr = parent_mrrs_by_key[row.parent_import_key]
       resolved_badge_id = resolve_phase3_badge_id(
         swimmer_key: canonical_swimmer_key.presence || old_swimmer_key,
         swimmer_id: normalized_new_swimmer_id,
         team_key: parent_mrr&.team_key,
         team_id: parent_mrr&.team_id,
         season_id: normalized_season_id,
-        phase3_badges: phase3_badges
+        phase3_badges: phase3_badges,
+        badge_index: badge_index
       )
 
       attrs = {}
@@ -3386,6 +3399,8 @@ class DataFixController < ApplicationController
     swimmers = Array(data3['swimmers'])
     badges = Array(data3['badges'])
     swimmer_by_key = swimmers.index_by { |s| s['key'] }
+    # First-match semantics preserved: ||= keeps the earliest entry per key
+    teams_by_key = teams.each_with_object({}) { |team, index| index[team['key']] ||= team }
 
     stats = empty_phase3_consistency_stats
     phase2_changed = false
@@ -3394,7 +3409,7 @@ class DataFixController < ApplicationController
       team_key = badge['team_key']
       next if team_key.blank?
 
-      phase2_team = teams.find { |team| team['key'] == team_key }
+      phase2_team = teams_by_key[team_key]
       next unless phase2_team
 
       selected_team_id = phase2_team['team_id'].to_i
@@ -3727,14 +3742,11 @@ class DataFixController < ApplicationController
     candidate_id.positive? ? candidate_id : nil
   end
 
-  def resolve_phase3_badge_id(swimmer_key:, swimmer_id:, team_key:, team_id:, season_id:, phase3_badges:)
+  def resolve_phase3_badge_id(swimmer_key:, swimmer_id:, team_key:, team_id:, season_id:, phase3_badges:, badge_index: nil)
     return nil if swimmer_key.blank?
 
-    badges = Array(phase3_badges)
-    return nil if badges.empty?
-
-    matching = badges.select do |badge|
-      next false unless swimmer_key_match?(badge['swimmer_key'], swimmer_key, swimmer_key)
+    badge_index ||= phase3_badge_index(phase3_badges)
+    matching = phase3_badge_candidates(badge_index, swimmer_key).select do |badge|
       next false if season_id.to_i.positive? && badge['season_id'].to_i.positive? && badge['season_id'].to_i != season_id.to_i
 
       if team_id.to_i.positive?
@@ -3755,6 +3767,30 @@ class DataFixController < ApplicationController
 
     candidate = matching.find { |badge| badge['badge_id'].to_i.positive? }
     candidate&.dig('badge_id').to_i.positive? ? candidate['badge_id'].to_i : nil
+  end
+
+  # Index phase3 badges by swimmer key for O(1) lookup in resolve_phase3_badge_id.
+  # Each badge is stored under both its raw key and its normalized partial key
+  # (exact + partial matching semantics of swimmer_key_match?), as [position, badge]
+  # pairs so candidates keep the original array order.
+  def phase3_badge_index(phase3_badges)
+    Array(phase3_badges).each_with_index.with_object(Hash.new { |h, k| h[k] = [] }) do |(badge, i), index|
+      raw_key = badge['swimmer_key'].to_s
+      next if raw_key.blank?
+
+      index[raw_key] << [i, badge]
+      normalized_key = normalize_swimmer_key_for_lookup(raw_key)
+      index[normalized_key] << [i, badge] if normalized_key.present? && normalized_key != raw_key
+    end
+  end
+
+  # Returns phase3 badges matching swimmer_key (exact or normalized key),
+  # deduplicated and in original array order.
+  def phase3_badge_candidates(badge_index, swimmer_key)
+    raw_key = swimmer_key.to_s
+    normalized_key = normalize_swimmer_key_for_lookup(raw_key)
+    tuples = badge_index[raw_key] | (normalized_key.present? ? badge_index[normalized_key] : [])
+    tuples.sort_by(&:first).map(&:last)
   end
 
   # NOTE: build_phase3_category_issues_summary was removed.
