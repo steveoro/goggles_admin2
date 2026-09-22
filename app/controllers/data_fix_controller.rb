@@ -4074,12 +4074,31 @@ class DataFixController < ApplicationController
 
     season_id = (JSON.parse(File.read(default_phase_path_for(source_path, 1))).dig('data', 'season_id') if File.exist?(default_phase_path_for(source_path, 1)))
 
+    # Team IDs that already have a TeamAffiliation in the current season,
+    # preloaded once so result_has_issues? doesn't run an EXISTS? per result.
+    mir_team_ids = GogglesDb::DataImportMeetingIndividualResult
+                   .where(phase_file_path: source_path)
+                   .pluck(:team_id)
+                   .compact
+                   .uniq
+    team_ids_with_affiliation =
+      if season_id.to_i.positive? && mir_team_ids.any?
+        GogglesDb::TeamAffiliation
+          .where(team_id: mir_team_ids, season_id: season_id.to_i)
+          .distinct
+          .pluck(:team_id)
+          .to_set
+      else
+        Set.new
+      end
+
     {
       relay_swimmers_by_parent_key: relay_swimmers_by_parent_key,
       swimmers_by_id: swimmers_by_id,
       swimmers_by_key: swimmers_by_key,
       badges_by_id: badges_by_id,
       affiliations_by_id: affiliations_by_id,
+      team_ids_with_affiliation: team_ids_with_affiliation,
       season_id: season_id
     }
   end
@@ -4097,6 +4116,7 @@ class DataFixController < ApplicationController
     swimmers_by_key = filter_data[:swimmers_by_key]
     badges_by_id = filter_data[:badges_by_id] || {}
     affiliations_by_id = filter_data[:affiliations_by_id] || {}
+    team_ids_with_affiliation = filter_data[:team_ids_with_affiliation]
     season_id = filter_data[:season_id]
 
     programs.select do |prog|
@@ -4134,7 +4154,8 @@ class DataFixController < ApplicationController
             swimmers_by_id: swimmers_by_id,
             swimmers_by_key: swimmers_by_key,
             badges_by_id: badges_by_id,
-            season_id: season_id
+            season_id: season_id,
+            team_ids_with_affiliation: team_ids_with_affiliation
           )
         end
       end
@@ -4155,7 +4176,7 @@ class DataFixController < ApplicationController
   # @param swimmers_by_key [Hash] swimmers indexed by key (from phase3)
   # @return [Boolean] true if result has issues
   def result_has_issues?(mir, swimmers_by_id:, swimmers_by_key: {}, badges_by_id: {},
-                         season_id: nil)
+                         season_id: nil, team_ids_with_affiliation: nil)
     return true if program_key_missing_gender?(mir.meeting_program_key)
 
     # meeting_program_id may be nil for NEW programs; remaining links are valid
@@ -4170,15 +4191,20 @@ class DataFixController < ApplicationController
     return true unless swimmer_resolvable && team_resolvable && badge_resolvable
 
     if mir.badge_id.to_i.positive?
-      badge = badges_by_id[mir.badge_id] || GogglesDb::Badge.find_by(id: mir.badge_id)
+      badge = badges_by_id[mir.badge_id]
       return true unless badge && badge.swimmer_id == mir.swimmer_id && badge.team_id == mir.team_id
     end
 
-    if season_id.to_i.positive? && mir.team_id.to_i.positive? && !(GogglesDb::TeamAffiliation.exists?(team_id: mir.team_id,
-                                                                                                      season_id: season_id.to_i) || team_resolvable)
+    if season_id.to_i.positive? && mir.team_id.to_i.positive?
+      affiliation_exists =
+        if team_ids_with_affiliation
+          team_ids_with_affiliation.include?(mir.team_id)
+        else
+          GogglesDb::TeamAffiliation.exists?(team_id: mir.team_id, season_id: season_id.to_i)
+        end
       # team_affiliation_id is not persisted on data_import MIR rows: if missing in DB,
       # this is still considered solvable (new team affiliation) when team binding is solvable.
-      return true
+      return true unless affiliation_exists || team_resolvable
     end
 
     # Matched swimmer - check if missing gender or year
