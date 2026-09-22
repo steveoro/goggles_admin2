@@ -213,12 +213,8 @@
             :ruby
               # Build program_key for compatibility with partials
               program_key = "#{program['session_order']}-#{program['event_code']}-#{program['category_code']}-#{program['gender_code'] || ''}"
-              # Query temp tables for this program's results
-              results = GogglesDb::DataImportMeetingIndividualResult.where(
-                phase_file_path: @file_path
-              ).where(
-                "import_key LIKE ?", "#{program_key}/%"
-              ).order(:rank)
+              # Program results from the staging rows bucketed in the controller
+              results = (@mirs_by_program[program_key] || []).sort_by { |row| row.rank.to_i }
               deletion_candidates = @overwrite_candidates_by_program_key.fetch(program_key, [])
             .col-12.col-lg-6
               = render(partial: 'data_fix/result_program_card',
@@ -248,12 +244,8 @@
               :ruby
                 # Build program_key for compatibility with partials
                 program_key = "#{program['session_order']}-#{program['event_code']}-#{program['category_code']}-#{program['gender_code']}"
-                # Query temp tables for this program's relay results
-                relay_results = GogglesDb::DataImportMeetingRelayResult.where(
-                  phase_file_path: @file_path
-                ).where(
-                  "import_key LIKE ?", "#{program_key}/%"
-                ).order(:rank)
+                # Program relay results from the staging rows bucketed in the controller
+                relay_results = (@mrrs_by_program[program_key] || []).sort_by { |row| row.rank.to_i }
               .col-12.col-lg-6
                 = render(partial: 'data_fix/relay_program_card',
                          locals: { program_key: program_key, relay_results: relay_results,

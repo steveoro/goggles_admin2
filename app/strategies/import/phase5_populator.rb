@@ -329,8 +329,8 @@ module Import
           @stats[:relay_results_created] += 1
 
           # Create relay swimmers and laps
-          create_relay_swimmers(mrr, result, import_key, team_key: team_key)
-          create_relay_laps(mrr, result, import_key)
+          relay_swimmers_by_key = create_relay_swimmers(mrr, result, import_key, team_key: team_key)
+          create_relay_laps(mrr, result, import_key, relay_swimmers_by_key: relay_swimmers_by_key)
 
           # Register program in phase5 output (metadata only)
           add_to_programs(
@@ -495,6 +495,80 @@ module Import
       end
     end
 
+    # -------------------------------------------------------------------
+    # Phase 2/3 lookup indexes (lazily built once per populate! run).
+    # The finders below used to linear-scan these arrays per result, which is
+    # O(results × entities); hash lookups keep the same first-match semantics.
+    # -------------------------------------------------------------------
+
+    def phase3_swimmers
+      @phase3_swimmers ||= phase3_data&.dig('data', 'swimmers') || []
+    end
+
+    def phase3_swimmers_by_key
+      @phase3_swimmers_by_key ||= phase3_swimmers.each_with_object({}) do |swimmer, index|
+        index[swimmer['key']] ||= swimmer # first-wins, same as Enumerable#find
+      end
+    end
+
+    def phase3_swimmers_by_partial_key
+      @phase3_swimmers_by_partial_key ||= phase3_swimmers.each_with_object({}) do |swimmer, index|
+        partial = normalize_to_partial_key(swimmer['key'])
+        (index[partial] ||= []) << swimmer if partial
+      end
+    end
+
+    def phase3_badges
+      @phase3_badges ||= phase3_data&.dig('data', 'badges') || []
+    end
+
+    def phase3_badges_by_swimmer_key
+      @phase3_badges_by_swimmer_key ||= phase3_badges.group_by { |badge| badge['swimmer_key'] }
+    end
+
+    def phase3_badges_by_swimmer_partial_key
+      @phase3_badges_by_swimmer_partial_key ||= phase3_badges.each_with_object({}) do |badge, index|
+        partial = normalize_to_partial_key(badge['swimmer_key'])
+        (index[partial] ||= []) << badge if partial
+      end
+    end
+
+    def phase3_badges_by_team_key
+      @phase3_badges_by_team_key ||= phase3_badges.group_by { |badge| badge['team_key'].to_s.downcase }
+    end
+
+    def phase2_teams
+      @phase2_teams ||= phase2_data&.dig('data', 'teams') || []
+    end
+
+    def phase2_teams_by_key
+      @phase2_teams_by_key ||= phase2_teams.each_with_object({}) do |team, index|
+        index[team['key']] ||= team
+      end
+    end
+
+    # Combined name/editable_name index preserving the first-match order of
+    # `teams.find { |t| t['name'] == name || t['editable_name'] == name }`
+    def phase2_teams_by_name_or_editable_name
+      @phase2_teams_by_name_or_editable_name ||= phase2_teams.each_with_object({}) do |team, index|
+        index[team['name']] ||= team
+        index[team['editable_name']] ||= team
+      end
+    end
+
+    def phase2_affiliations
+      @phase2_affiliations ||= phase2_data&.dig('data', 'team_affiliations') || []
+    end
+
+    def phase2_affiliations_by_team_id
+      @phase2_affiliations_by_team_id ||= phase2_affiliations.group_by { |row| row['team_id'].to_i }
+    end
+
+    def phase2_affiliations_by_team_key
+      @phase2_affiliations_by_team_key ||= phase2_affiliations.group_by { |row| row['team_key'].to_s.downcase }
+    end
+    # -------------------------------------------------------------------
+
     # Find swimmer data from phase 3: returns { swimmer_id:, swimmer_key: }
     # The returned swimmer_key is the FULL Phase 3 key (with gender prefix) when matched
     # This ensures stored keys are consistent with Phase 3 format
@@ -505,9 +579,7 @@ module Import
       partial_key = build_swimmer_key(result)
       return { swimmer_id: nil, swimmer_key: full_key.presence || partial_key } if partial_key.blank?
 
-      swimmers = phase3_data.dig('data', 'swimmers') || []
-
-      swimmer = swimmers.find { |s| s['key'] == full_key } || swimmers.find { |s| s['key'] == partial_key }
+      swimmer = phase3_swimmers_by_key[full_key] || phase3_swimmers_by_key[partial_key]
       if swimmer&.dig('swimmer_id')
         Rails.logger.info("[Phase5Populator] Found swimmer_id=#{swimmer['swimmer_id']} for exact key=#{swimmer['key']}")
         return { swimmer_id: swimmer['swimmer_id'], swimmer_key: swimmer['key'] }
@@ -516,9 +588,7 @@ module Import
       # Try partial key matching (ignoring gender prefix)
       normalized_partial = normalize_to_partial_key(partial_key)
       if normalized_partial
-        matching_swimmers = swimmers.select do |s|
-          normalize_to_partial_key(s['key']) == normalized_partial
-        end
+        matching_swimmers = phase3_swimmers_by_partial_key[normalized_partial] || []
         team_name = team_name_from_result(result)
         team_matches = matching_swimmers.select { |s| team_name.present? && team_name_from_key(s['key']).to_s.casecmp?(team_name.to_s) }
         matching_swimmers = team_matches if team_matches.any?
@@ -585,10 +655,9 @@ module Import
 
       # Try Phase 2 team lookup first (if we have a team_name)
       if team_name.present? && phase2_data
-        teams = phase2_data.dig('data', 'teams') || []
         # Match by key first (exact match), then try name/editable_name
-        team = teams.find { |t| t['key'] == team_name } ||
-               teams.find { |t| t['name'] == team_name || t['editable_name'] == team_name }
+        team = phase2_teams_by_key[team_name] ||
+               phase2_teams_by_name_or_editable_name[team_name]
         team_id = team&.dig('team_id')
 
         if team_id
@@ -617,19 +686,16 @@ module Import
     def find_team_id_from_badges(swimmer_key, team_name)
       return nil unless phase3_data
 
-      badges = phase3_data.dig('data', 'badges') || []
-
-      badge = badges.find do |b|
-        b['swimmer_key'] == swimmer_key && b['team_id'].to_i.positive? &&
+      badge = (phase3_badges_by_swimmer_key[swimmer_key] || []).find do |b|
+        b['team_id'].to_i.positive? &&
           (team_name.blank? || b['team_key'].to_s.casecmp?(team_name.to_s))
       end
       return badge['team_id'] if badge
 
       partial_key = normalize_to_partial_key(swimmer_key)
       if partial_key
-        badge = badges.find do |b|
-          badge_partial = normalize_to_partial_key(b['swimmer_key'])
-          next false unless badge_partial == partial_key && b['team_id'].to_i.positive?
+        badge = (phase3_badges_by_swimmer_partial_key[partial_key] || []).find do |b|
+          next false unless b['team_id'].to_i.positive?
 
           team_name.blank? || b['team_key'].to_s.casecmp?(team_name.to_s) || team_name_from_key(b['swimmer_key']).to_s.casecmp?(team_name.to_s)
         end
@@ -637,7 +703,7 @@ module Import
       end
 
       # Fallback: find by team_key matching team_name
-      badge = badges.find do |b|
+      badge = (phase3_badges_by_team_key[team_name.to_s.downcase] || []).find do |b|
         (b['team_key'] == team_name || b['team_key']&.downcase == team_name&.downcase) &&
           b['team_id'].to_i.positive?
       end
@@ -649,10 +715,8 @@ module Import
       return nil if swimmer_key.blank?
 
       if phase3_data
-        badges = phase3_data.dig('data', 'badges') || []
-        exact_badge = badges.find do |b|
+        exact_badge = (phase3_badges_by_swimmer_key[swimmer_key] || []).find do |b|
           next false unless b['badge_id'].to_i.positive?
-          next false unless b['swimmer_key'] == swimmer_key
 
           if team_id.to_i.positive?
             b['team_id'].to_i == team_id.to_i
@@ -664,9 +728,8 @@ module Import
 
         partial_key = normalize_to_partial_key(swimmer_key)
         if partial_key
-          badge = badges.find do |b|
+          badge = (phase3_badges_by_swimmer_partial_key[partial_key] || []).find do |b|
             next false unless b['badge_id'].to_i.positive?
-            next false unless normalize_to_partial_key(b['swimmer_key']) == partial_key
 
             if team_id.to_i.positive?
               b['team_id'].to_i == team_id.to_i
@@ -684,10 +747,17 @@ module Import
     def find_team_affiliation_id(team_id, team_key: nil)
       return nil unless phase2_data
 
-      affiliations = phase2_data.dig('data', 'team_affiliations') || []
       season_id = phase1_data&.dig('data', 'season_id').to_i
+      candidates =
+        if team_id.to_i.positive?
+          phase2_affiliations_by_team_id[team_id.to_i] || []
+        elsif team_key.present?
+          phase2_affiliations_by_team_key[team_key.to_s.downcase] || []
+        else
+          []
+        end
 
-      affiliation = affiliations.find do |row|
+      affiliation = candidates.find do |row|
         next false unless row['team_affiliation_id'].to_i.positive?
         next false if season_id.to_i.positive? && row['season_id'].to_i.positive? && row['season_id'].to_i != season_id
 
@@ -1147,6 +1217,7 @@ module Import
     def create_relay_swimmers(mrr, result, mrr_import_key, team_key:)
       laps = result['laps'] || []
       existing_mrr_id = mrr.meeting_relay_result_id
+      relay_swimmers_by_key = {}
 
       laps.each_with_index do |lap, idx|
         relay_order = idx + 1
@@ -1170,7 +1241,7 @@ module Import
         rs_import_key = "#{mrr_import_key}-swimmer#{relay_order}"
 
         # Use find_or_create to handle potential duplicates gracefully
-        GogglesDb::DataImportMeetingRelaySwimmer.find_or_create_by!(import_key: rs_import_key) do |rs|
+        relay_swimmers_by_key[rs_import_key] = GogglesDb::DataImportMeetingRelaySwimmer.find_or_create_by!(import_key: rs_import_key) do |rs|
           rs.parent_import_key = mrr_import_key
           rs.phase_file_path = source_path
           # DB foreign keys (may be nil for unmatched entities)
@@ -1193,10 +1264,13 @@ module Import
       rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
         @stats[:errors] << "RelaySwimmer error for #{rs_import_key}: #{e.message}"
       end
+
+      relay_swimmers_by_key
     end
 
     # Create relay lap records for a given MRR
-    def create_relay_laps(mrr, result, mrr_import_key)
+    # relay_swimmers_by_key reuses the just-created MRS rows instead of re-querying per leg
+    def create_relay_laps(mrr, result, mrr_import_key, relay_swimmers_by_key: nil)
       laps = result['laps'] || []
       previous_from_start = { minutes: 0, seconds: 0, hundredths: 0 }
 
@@ -1219,10 +1293,11 @@ module Import
         # Reference the relay swimmer for this leg
         relay_swimmer_import_key = "#{mrr_import_key}-swimmer#{relay_order}"
 
-        relay_swimmer = GogglesDb::DataImportMeetingRelaySwimmer.find_by(
-          import_key: relay_swimmer_import_key,
-          phase_file_path: source_path
-        )
+        relay_swimmer = relay_swimmers_by_key&.[](relay_swimmer_import_key) ||
+                        GogglesDb::DataImportMeetingRelaySwimmer.find_by(
+                          import_key: relay_swimmer_import_key,
+                          phase_file_path: source_path
+                        )
         existing_relay_lap_id = find_existing_relay_lap(
           relay_swimmer&.meeting_relay_swimmer_id,
           length
@@ -1261,10 +1336,8 @@ module Import
     def find_swimmer_id_by_key(swimmer_key)
       return nil if swimmer_key.blank?
 
-      swimmers = phase3_data&.dig('data', 'swimmers') || []
-
       # First try exact match
-      swimmer = swimmers.find { |s| s['key'] == swimmer_key }
+      swimmer = phase3_swimmers_by_key[swimmer_key]
       return swimmer['swimmer_id'] if swimmer&.dig('swimmer_id')
 
       # Build partial key for matching (|LAST|FIRST|YOB)
@@ -1272,10 +1345,7 @@ module Import
       return nil if partial_key.blank?
 
       # Find swimmers with matching partial key (ignoring gender prefix)
-      matching_swimmers = swimmers.select do |s|
-        phase3_partial = normalize_to_partial_key(s['key'])
-        phase3_partial == partial_key
-      end
+      matching_swimmers = phase3_swimmers_by_partial_key[partial_key] || []
 
       # Return swimmer_id if exactly one match found
       if matching_swimmers.size == 1
