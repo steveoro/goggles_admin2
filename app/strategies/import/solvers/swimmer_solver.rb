@@ -54,8 +54,11 @@ module Import
         @categories_cache ||= PdfResults::CategoriesCache.cached_for(@season)
 
         swimmers = []
-        badges = []
         @built_swimmer_id_by_key = {}
+        # Per-build badge bookkeeping: exact key => badge, plus an index of
+        # partial-key badges by normalized identity for O(1) add/replace.
+        @badges_by_exact_key = {}
+        @partial_badge_keys = Hash.new { |h, k| h[k] = [] }
 
         if data_hash['swimmers'].is_a?(Array) || data_hash['swimmers'].is_a?(Hash)
           total = data_hash['swimmers'].size
@@ -72,9 +75,9 @@ module Import
               next if team_name.blank?
 
               # Use swimmer entry's updated key/gender (may have been populated from DB match)
-              add_or_replace_badge(badges, build_badge_entry(swimmer_entry['key'], team_name, swimmer_entry['year_of_birth'],
-                                                             swimmer_entry['gender_type_code'], meeting_date,
-                                                             swimmer_id: swimmer_entry['swimmer_id']))
+              add_or_replace_badge(build_badge_entry(swimmer_entry['key'], team_name, swimmer_entry['year_of_birth'],
+                                                     swimmer_entry['gender_type_code'], meeting_date,
+                                                     swimmer_id: swimmer_entry['swimmer_id']))
             end
           else # Hash dictionary: key => swimmerKey, value => details
             data_hash['swimmers'].each_with_index do |(original_key, v), idx|
@@ -89,9 +92,9 @@ module Import
               next if team_name.to_s.strip.empty?
 
               # Use swimmer entry's updated key/gender (may have been populated from DB match)
-              add_or_replace_badge(badges, build_badge_entry(swimmer_entry['key'], team_name, swimmer_entry['year_of_birth'],
-                                                             swimmer_entry['gender_type_code'], meeting_date,
-                                                             swimmer_id: swimmer_entry['swimmer_id']))
+              add_or_replace_badge(build_badge_entry(swimmer_entry['key'], team_name, swimmer_entry['year_of_birth'],
+                                                     swimmer_entry['gender_type_code'], meeting_date,
+                                                     swimmer_id: swimmer_entry['swimmer_id']))
             end
           end
 
@@ -125,9 +128,9 @@ module Import
                   next if team_name.to_s.strip.empty?
 
                   # Use swimmer entry's updated key/gender (may have been populated from DB match)
-                  add_or_replace_badge(badges, build_badge_entry(swimmer_entry['key'], team_name, swimmer_entry['year_of_birth'],
-                                                                 swimmer_entry['gender_type_code'], meeting_date,
-                                                                 swimmer_id: swimmer_entry['swimmer_id']))
+                  add_or_replace_badge(build_badge_entry(swimmer_entry['key'], team_name, swimmer_entry['year_of_birth'],
+                                                         swimmer_entry['gender_type_code'], meeting_date,
+                                                         swimmer_id: swimmer_entry['swimmer_id']))
                 end
               else
                 # Individual result row
@@ -143,9 +146,9 @@ module Import
                 next if team_name.to_s.strip.empty?
 
                 # Use swimmer entry's updated key/gender (may have been populated from DB match)
-                add_or_replace_badge(badges, build_badge_entry(swimmer_entry['key'], team_name, swimmer_entry['year_of_birth'],
-                                                               swimmer_entry['gender_type_code'], meeting_date,
-                                                               swimmer_id: swimmer_entry['swimmer_id']))
+                add_or_replace_badge(build_badge_entry(swimmer_entry['key'], team_name, swimmer_entry['year_of_birth'],
+                                                       swimmer_entry['gender_type_code'], meeting_date,
+                                                       swimmer_id: swimmer_entry['swimmer_id']))
               end
             end
             broadcast_progress('Collect swimmers from sections', sec_idx + 1, total)
@@ -157,7 +160,7 @@ module Import
         # Deduplicate badges: when both partial-key (|LAST|FIRST|YOB) and full-key (F|LAST|FIRST|YOB)
         # badges exist for the same swimmer+team+season, keep only the full-key one to prevent
         # duplicate badge commits (same swimmer_id+team_id+season_id would fail unique constraint)
-        deduplicated_badges = deduplicate_badges(badges)
+        deduplicated_badges = deduplicate_badges(@badges_by_exact_key.values)
 
         payload = {
           'season_id' => @season.id,
@@ -555,7 +558,7 @@ module Import
           fallback_matches = fallback_cmd.matches.respond_to?(:map) ? fallback_cmd.matches : []
           # Filter by gender if available to reduce false positives
           if gender_code.present?
-            gender_type = GogglesDb::GenderType.find_by(code: gender_code)
+            gender_type = gender_type_by_code(gender_code)
             fallback_matches = fallback_matches.select { |m| m.candidate.gender_type_id == gender_type&.id } if gender_type
           end
 
@@ -622,7 +625,7 @@ module Import
             'last_name' => swimmer.last_name,
             'first_name' => swimmer.first_name,
             'year_of_birth' => swimmer.year_of_birth,
-            'gender_type_code' => swimmer.gender_type&.code,
+            'gender_type_code' => gender_type_code_of(swimmer),
             'weight' => weight,
             'percentage' => percentage,
             'color_class' => color_class,
@@ -680,9 +683,8 @@ module Import
 
         # Query all badges for this team in the current + previous season (limit 2)
         # to catch swimmers registered last season but not yet in the current one.
-        season_ids = recent_season_ids(limit: 2)
-        teammate_badges = GogglesDb::Badge.where(team_id: team_id.to_i, season_id: season_ids)
-                                          .includes(:swimmer)
+        # Memoized per team_id: swimmers of the same team reuse the same badge set.
+        teammate_badges = teammate_badges_for(team_id)
         return result if teammate_badges.empty?
 
         metric = GogglesDb::DbFinders::BaseStrategy::METRIC
@@ -694,7 +696,7 @@ module Import
           next if swimmer.nil?
           # Filter by YOB and gender if available
           next if year_of_birth.to_i.positive? && swimmer.year_of_birth != year_of_birth.to_i
-          next if gender_type_code.present? && swimmer.gender_type&.code != gender_type_code
+          next if gender_type_code.present? && gender_type_code_of(swimmer) != gender_type_code
 
           normalized_candidate = normalize_swimmer_name(swimmer.complete_name).downcase
           similarity = metric.getDistance(normalized_search, normalized_candidate)
@@ -716,7 +718,7 @@ module Import
             'last_name' => swimmer.last_name,
             'first_name' => swimmer.first_name,
             'year_of_birth' => swimmer.year_of_birth,
-            'gender_type_code' => swimmer.gender_type&.code,
+            'gender_type_code' => gender_type_code_of(swimmer),
             'weight' => similarity.round(3),
             'percentage' => percentage,
             'color_class' => color_class,
@@ -796,11 +798,7 @@ module Import
         # Guard clause: skip matching if any key is missing
         return badge unless swimmer_id && team_id && @season.id
 
-        existing_badge = GogglesDb::Badge.find_by(
-          season_id: @season.id,
-          swimmer_id: swimmer_id,
-          team_id: team_id
-        )
+        existing_badge = season_badges_by_swimmer_team[[swimmer_id, team_id]]
 
         if existing_badge
           badge['badge_id'] = existing_badge.id
@@ -901,13 +899,56 @@ module Import
         0
       end
 
-      # Find team_id by team_key from phase2 data
+      # Find team_id by team_key from phase2 data (indexed once per build)
       def find_team_id_by_key(team_key)
-        return nil unless @phase2_data
+        phase2_team_id_by_key[team_key]
+      end
 
-        teams = Array(@phase2_data.dig('data', 'teams'))
-        team = teams.find { |t| t['key'] == team_key }
-        team&.dig('team_id')
+      def phase2_team_id_by_key
+        @phase2_team_id_by_key ||= if @phase2_data
+                                     Array(@phase2_data.dig('data', 'teams')).each_with_object({}) do |t, index|
+                                       index[t['key']] ||= t['team_id']
+                                     end
+                                   else
+                                     {}
+                                   end
+      end
+
+      # Badges of the current season indexed by [swimmer_id, team_id].
+      # Loaded once per build instead of a find_by per badge entry; the pair is
+      # unique per season (duplicate commits would fail the unique constraint).
+      def season_badges_by_swimmer_team
+        @season_badges_by_swimmer_team ||= GogglesDb::Badge
+                                           .where(season_id: @season.id)
+                                           .includes(:category_type)
+                                           .each_with_object({}) do |badge, index|
+                                             index[[badge.swimmer_id, badge.team_id]] ||= badge
+                                           end
+      end
+
+      # Teammate badge set memoized per team (current + previous season).
+      def teammate_badges_for(team_id)
+        (@teammate_badges ||= {})[team_id.to_i] ||= GogglesDb::Badge
+                                                    .where(team_id: team_id.to_i, season_id: recent_season_ids(limit: 2))
+                                                    .includes(:swimmer)
+                                                    .to_a
+      end
+
+      # Tiny immutable lookup tables, loaded once per build.
+      def gender_types_by_id
+        @gender_types_by_id ||= GogglesDb::GenderType.all.index_by(&:id)
+      end
+
+      def gender_type_by_code(code)
+        @gender_type_by_code ||= {}
+        key = code.to_s
+        return @gender_type_by_code[key] if @gender_type_by_code.key?(key)
+
+        @gender_type_by_code[key] = GogglesDb::GenderType.find_by(code: code)
+      end
+
+      def gender_type_code_of(swimmer)
+        gender_types_by_id[swimmer.gender_type_id]&.code
       end
 
       # Build a reverse lookup: team_id => { key, match_percentage } from Phase 2 data.
@@ -929,48 +970,39 @@ module Import
                                       end
       end
 
-      # Add a badge to the array, replacing any existing partial-key badge for the same swimmer+team+season.
+      # Add a badge, replacing any existing partial-key badge for the same swimmer+team+season.
       # This ensures that when a full-key badge (F|LAST|FIRST|YOB) is added, any existing partial-key
       # badge (|LAST|FIRST|YOB) for the same swimmer is removed to prevent duplicate commits.
-      def add_or_replace_badge(badges, new_badge)
+      # Keeps O(1) bookkeeping per badge instead of scanning the array per add.
+      def add_or_replace_badge(new_badge)
         new_key = new_badge['swimmer_key']
         new_parts = new_key.to_s.split('|')
 
-        # Extract normalized identity (last|first|yob without gender)
+        # Extract normalized identity (last|first|yob without gender) + team + season
         new_offset = swimmer_key_offset(new_parts)
         new_last = new_parts[new_offset]&.upcase
         new_first = new_parts[new_offset + 1]&.upcase
         new_yob = new_parts[new_offset + 2]
         new_team = new_badge['team_key']
         new_season = new_badge['season_id']
+        identity = [new_last, new_first, new_yob, new_team, new_season]
+        exact_key = [new_key, new_team, new_season]
 
         # Check if this is a full-key badge (has gender prefix)
         has_gender_prefix = new_key.to_s.match?(/^[MF]\|/)
 
         if has_gender_prefix
           # Remove any existing partial-key badge for the same swimmer+team+season
-          badges.reject! do |existing|
-            existing_key = existing['swimmer_key']
-            existing_parts = existing_key.to_s.split('|')
-            existing_offset = swimmer_key_offset(existing_parts)
-            existing_last = existing_parts[existing_offset]&.upcase
-            existing_first = existing_parts[existing_offset + 1]&.upcase
-            existing_yob = existing_parts[existing_offset + 2]
-
-            # Match by identity + team + season, but only remove partial-key badges
-            !existing_key.to_s.match?(/^[MF]\|/) &&
-              existing_last == new_last &&
-              existing_first == new_first &&
-              existing_yob == new_yob &&
-              existing['team_key'] == new_team &&
-              existing['season_id'] == new_season
+          @partial_badge_keys.delete(identity)&.each do |key|
+            @badges_by_exact_key.delete(key)
           end
         end
 
         # Add the new badge (unless exact duplicate already exists)
-        return if badges.any? { |b| b['swimmer_key'] == new_key && b['team_key'] == new_team && b['season_id'] == new_season }
+        return if @badges_by_exact_key.key?(exact_key)
 
-        badges << new_badge
+        @badges_by_exact_key[exact_key] = new_badge
+        @partial_badge_keys[identity] << exact_key unless has_gender_prefix
       end
 
       # Deduplicate badges by normalized swimmer identity (last_name+first_name+yob) + team_key + season

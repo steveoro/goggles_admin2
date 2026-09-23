@@ -88,10 +88,16 @@ module Import
 
       private
 
-      # Resolve team_affiliation_id from team_id and season_id
-      # Must be called after badge_id is resolved (badge has season reference)
+      # Resolve team_affiliation_id from team_id and season_id.
+      # Must be called after badge_id is resolved (badge has season reference).
+      # Memoized per (team_id, season_id): the same pair repeats for every
+      # result of the same team on the commit path.
       def resolve_team_affiliation_id(team_id, season_id)
         return nil unless team_id && season_id
+
+        key = [team_id.to_i, season_id.to_i]
+        @team_affiliation_id_by_key ||= {}
+        return @team_affiliation_id_by_key[key] if @team_affiliation_id_by_key.key?(key)
 
         affiliation = GogglesDb::TeamAffiliation.find_by(
           team_id: team_id,
@@ -99,7 +105,7 @@ module Import
         )
         raise StandardError, "Unable to resolve team_affiliation for team_id: #{team_id}, season_id: #{season_id}." if affiliation.blank?
 
-        affiliation.id
+        @team_affiliation_id_by_key[key] = affiliation.id
       end
       # -----------------------------------------------------------------------
 
