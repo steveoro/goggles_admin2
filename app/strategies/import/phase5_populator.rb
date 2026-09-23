@@ -266,11 +266,8 @@ module Import
       relay_events = events.select { |e| e['relay'] == true }
       total_relay = relay_events.size
 
-      events.each_with_index do |event, _event_idx|
-        next unless event['relay'] == true # Only process relay events
-
+      relay_events.each_with_index do |event, relay_idx|
         # Broadcast progress every relay event
-        relay_idx = relay_events.index(event) || 0
         distance = extract_distance(event)
         stroke = extract_stroke(event)
         next if distance.blank? || stroke.blank?

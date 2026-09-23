@@ -1321,8 +1321,8 @@ module Import
         if event_key.present?
           # Normalize: 4x50MI -> 4X50MI
           normalized_key = event_key.to_s.gsub(/(\d)x(\d)/i, '\1X\2').upcase
-          event_type = GogglesDb::EventType.find_by(code: normalized_key)
-          return event_type.id if event_type
+          event_type_id = event_type_id_by_code(normalized_key)
+          return event_type_id if event_type_id
         end
 
         # Fallback: build from distance + stroke
@@ -1332,11 +1332,29 @@ module Import
         return nil unless distance.to_i.positive? && stroke.present?
 
         event_code = "#{distance}#{stroke}".upcase
-        event_type = GogglesDb::EventType.find_by(code: event_code)
-        return event_type.id if event_type
+        event_type_id = event_type_id_by_code(event_code)
+        return event_type_id if event_type_id
 
         Rails.logger.warn("[Main] Could not resolve event_type_id for event: #{event_hash.inspect}")
         nil
+      end
+      # -----------------------------------------------------------------------
+
+      # Tiny immutable reference tables, memoized per committer run (nil-cached for unknown codes)
+      def event_type_id_by_code(code)
+        cached_lookup(@event_type_id_by_code ||= {}, code) { GogglesDb::EventType.find_by(code:)&.id }
+      end
+
+      def pool_type_id_by_code(code)
+        cached_lookup(@pool_type_id_by_code ||= {}, code) { GogglesDb::PoolType.find_by(code:)&.id }
+      end
+
+      def heat_type_id_by_code(code)
+        cached_lookup(@heat_type_id_by_code ||= {}, code) { GogglesDb::HeatType.find_by(code:)&.id }
+      end
+
+      def cached_lookup(cache, key, &)
+        cache.fetch(key) { cache[key] = yield }
       end
       # -----------------------------------------------------------------------
 
@@ -1426,7 +1444,7 @@ module Import
         normalized['city_id'] ||= city_id if city_id
 
         pool_type_code = normalized.delete('pool_type_code')
-        normalized['pool_type_id'] = GogglesDb::PoolType.find_by(code: pool_type_code)&.id if normalized['pool_type_id'].blank? && pool_type_code.present?
+        normalized['pool_type_id'] = pool_type_id_by_code(pool_type_code) if normalized['pool_type_id'].blank? && pool_type_code.present?
 
         %w[multiple_pools garden bar restaurant gym child_area read_only].each do |flag|
           next unless normalized.key?(flag)
@@ -1444,7 +1462,7 @@ module Import
         normalized['event_type_id'] ||= event_type_id
 
         heat_type_code = normalized.delete('heat_type') || normalized.delete(:heat_type)
-        normalized['heat_type_id'] = GogglesDb::HeatType.find_by(code: heat_type_code)&.id if normalized['heat_type_id'].blank? && heat_type_code.present?
+        normalized['heat_type_id'] = heat_type_id_by_code(heat_type_code) if normalized['heat_type_id'].blank? && heat_type_code.present?
 
         %w[out_of_race autofilled split_gender_start_list split_category_start_list].each do |flag|
           next unless normalized.key?(flag)

@@ -47,7 +47,8 @@ module Import
 
         # If MRS already has a DB ID (matched), update if needed
         if mrs_id.present? && mrs_id.to_i.positive?
-          existing = GogglesDb::MeetingRelaySwimmer.find_by(id: mrs_id)
+          existing = mrs_rows_for(mrr_id).find { |row| row.id == mrs_id.to_i } ||
+                     GogglesDb::MeetingRelaySwimmer.find_by(id: mrs_id)
           if existing
             changes = changes_for_update(existing, attributes)
             if changes.any?
@@ -58,6 +59,7 @@ module Import
               logger.log_success(entity_type: 'MRS', entity_id: mrs_id, action: 'updated')
               Rails.logger.info("[MRS] Updated ID=#{mrs_id}")
             end
+            mrs_rows_for(mrr_id) << existing unless mrs_rows_for(mrr_id).include?(existing)
             return mrs_id
           end
         end
@@ -65,6 +67,7 @@ module Import
         # Create new MRS
         model = GogglesDb::MeetingRelaySwimmer.new(attributes)
         model.save!
+        mrs_rows_for(mrr_id) << model
         sql_log << SqlMaker.new(row: model).log_insert
         stats[:mrss_created] += 1
         logger.log_success(entity_type: 'MRS', entity_id: model.id, action: 'created')
@@ -114,6 +117,13 @@ module Import
       end
       # -----------------------------------------------------------------------
 
+      # Lazily-preloaded MRS rows per MRR (one query per relay); rows committed
+      # during this run are appended so previous-leg lookups see them in-transaction.
+      def mrs_rows_for(mrr_id)
+        (@mrs_rows_by_mrr ||= {})[mrr_id] ||=
+          GogglesDb::MeetingRelaySwimmer.where(meeting_relay_result_id: mrr_id).to_a
+      end
+
       # Find the previous relay swimmer for timing computation
       # @param mrr_id [Integer] meeting_relay_result_id
       # @param current_order [Integer] current swimmer's relay_order
@@ -121,11 +131,9 @@ module Import
       def find_previous_relay_swimmer(mrr_id, current_order)
         return nil unless mrr_id && current_order.to_i > 1
 
-        GogglesDb::MeetingRelaySwimmer
-          .where(meeting_relay_result_id: mrr_id)
-          .where(relay_order: ...current_order.to_i)
-          .order(relay_order: :desc)
-          .first
+        mrs_rows_for(mrr_id)
+          .select { |row| row.relay_order.to_i < current_order.to_i }
+          .max_by { |row| row.relay_order.to_i }
       end
 
       # Check if timing components are present in attributes

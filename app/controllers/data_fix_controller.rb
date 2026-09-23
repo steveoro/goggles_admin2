@@ -468,6 +468,9 @@ class DataFixController < ApplicationController
       }
     end
 
+    # Heat types for the per-event card select (tiny immutable table; loaded once)
+    @heat_types = GogglesDb::HeatType.all
+
     # Fetch existing meeting events from Phase 1 sessions (if meeting_id is set)
     meeting_id = phase1_data&.dig('id')
     @existing_meeting_events = []
@@ -775,7 +778,7 @@ class DataFixController < ApplicationController
 
     # Build relay swimmer name lookup from source data for unmatched swimmers
     # Maps: {mrr_import_key => {relay_order => {name, key}}}
-    relay_import_keys = @all_relay_results.map(&:import_key)
+    relay_import_keys = @all_relay_results.to_set(&:import_key)
     @relay_swimmer_names = build_relay_swimmer_names_from_source(source_path, relay_import_keys)
 
     # Broadcast ready status to clear progress modal
