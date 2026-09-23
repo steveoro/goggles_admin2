@@ -313,8 +313,14 @@ module Import
         return nil if distance.to_s.strip.empty? || stroke.to_s.strip.empty?
 
         code = "#{distance}#{stroke}".upcase
-        event_type = GogglesDb::EventType.find_by(code: code, relay: false)
-        event_type&.id
+        event_type_id_by_code(code, relay: false)
+      end
+
+      # Tiny immutable lookup table: [code, relay] => event_type_id (nil-cached for unknown codes)
+      def event_type_id_by_code(code, relay:)
+        map = (@event_type_id_by_code ||= {})
+        key = [code, relay]
+        map.fetch(key) { map[key] = GogglesDb::EventType.find_by(code:, relay:)&.id }
       end
 
       # Enhance event hash with meeting_session_id and matching meeting_event_id
@@ -430,8 +436,7 @@ module Import
       def find_relay_event_type_id(event_code)
         return nil if event_code.to_s.strip.empty?
 
-        event_type = GogglesDb::EventType.find_by(code: event_code, relay: true)
-        event_type&.id
+        event_type_id_by_code(event_code, relay: true)
       end
     end
   end
