@@ -2,6 +2,7 @@
 
 _Please, add the latest build info on top of the list; use Version::MAJOR only after gold release; keep semantic versioning in line with framework's_
 
+- **0.10.51** [Devin] re-sync w/ base engine v0.10.51 (team_records scope for fast team-scoped record queries)
 - **0.10.49** [Devin] re-sync w/ base engine v0.10.49; DB vers. 2.10.10; new best_team_results_for_season Scenic view
 - **0.10.46** [Steve A.] re-sync w/ base engine v0.10.46; added daily user-agent matrix to stats dashboard
 - **0.10.45** [Steve A.] re-sync w/ base engine v0.10.45; DB vers. 2.10.08
