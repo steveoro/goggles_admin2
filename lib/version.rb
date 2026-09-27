@@ -27,13 +27,13 @@ module Version
   MINOR = '10'
 
   # Patch version.
-  PATCH = '48'
+  PATCH = '52'
 
   # Current build version.
-  BUILD = '20260921'
+  BUILD = '20260927'
 
   # Full versioning for the current release.
-  FULL = "#{MAJOR}.#{MINOR}.#{PATCH} (#{CORE}-#{BUILD})".freeze
+  FULL = "#{CORE}-#{MAJOR}.#{MINOR}.#{PATCH}-#{BUILD}".freeze
 
   # Compact semantic versioning label for the current framework release.
   SEMANTIC = "#{MAJOR}.#{MINOR}.#{PATCH}".freeze

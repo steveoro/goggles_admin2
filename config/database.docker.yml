@@ -7,6 +7,8 @@ development:
   port: <%= ENV.fetch("DATABASE_PORT") { 3306 } %>
   pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
   database: goggles_development
+  structure_dump_flags: ["--skip-ssl"]
+  structure_load_flags: ["--skip-ssl"]
 
 test:
   adapter: mysql2
@@ -17,6 +19,8 @@ test:
   port: <%= ENV.fetch("DATABASE_PORT") { 3306 } %>
   pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
   database: goggles_test
+  structure_dump_flags: ["--skip-ssl"]
+  structure_load_flags: ["--skip-ssl"]
 
 production:
   adapter: mysql2
@@ -27,6 +31,8 @@ production:
   port: <%= ENV.fetch("DATABASE_PORT") { 3306 } %>
   pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
   database: goggles
+  structure_dump_flags: ["--skip-ssl"]
+  structure_load_flags: ["--skip-ssl"]
 
 # [Steve A.]
 # Staging will use the production environment together with the database
@@ -52,3 +58,5 @@ staging:
   port: <%= ENV.fetch("DATABASE_PORT") { 3306 } %>
   pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
   database: goggles
+  structure_dump_flags: ["--skip-ssl"]
+  structure_load_flags: ["--skip-ssl"]
