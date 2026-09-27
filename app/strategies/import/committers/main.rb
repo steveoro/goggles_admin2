@@ -571,6 +571,10 @@ module Import
         programs = Array(phase5_data['programs'])
         Rails.logger.info("[Main] Processing #{programs.size} programs from phase5 data")
 
+        # Preload badges/affiliations referenced by the staging rows once:
+        # per-row validations below reuse these maps instead of N+1 lookups.
+        preload_phase5_validation_data!
+
         programs.each_with_index do |program, prog_idx|
           session_order = program['session_order']
           event_key = program['event_key']     # e.g., "50SL", "S4X50MI"
@@ -719,8 +723,10 @@ module Import
       def commit_individual_results_for_program(program_key, program_id)
         # Retrieve MIRs bound to the program's key
         mirs = GogglesDb::DataImportMeetingIndividualResult.where(phase_file_path: source_path, meeting_program_key: program_key)
-                                                           .includes(:data_import_laps)
-                                                           .order(:import_key)
+                                                           .order(:import_key).to_a
+        # Retrieve all laps bound to these MIRs in one query, bucketed by parent key
+        laps_by_parent_key = GogglesDb::DataImportLap.where(parent_import_key: mirs.map(&:import_key))
+                                                     .order(:import_key).group_by(&:parent_import_key)
         mirs.each do |data_import_mir|
           data_import_mir.meeting_program_id ||= program_id
           hydrate_individual_result_links!(data_import_mir)
@@ -732,11 +738,8 @@ module Import
           @mir_id_by_import_key[data_import_mir.import_key] = mir_id
           @mir_program_id_by_import_key[data_import_mir.import_key] = program_id
 
-          # Retrieve laps bound to the parent MIR
-          data_import_laps = GogglesDb::DataImportLap.where(parent_import_key: data_import_mir.import_key)
-                                                     .order(:import_key)
           # Commit laps
-          data_import_laps.each do |data_import_lap|
+          (laps_by_parent_key[data_import_mir.import_key] || []).each do |data_import_lap|
             lap_committer.commit(data_import_lap, data_import_mir:)
           end
         end
@@ -819,7 +822,7 @@ module Import
           )
         end
 
-        badge = GogglesDb::Badge.find_by(id: data_import_mir.badge_id)
+        badge = badge_for_validation(data_import_mir.badge_id)
         unless badge && badge.swimmer_id == data_import_mir.swimmer_id && badge.team_id == data_import_mir.team_id
           raise_phase5_binding_error!(
             entity_type: 'MeetingIndividualResult',
@@ -829,7 +832,7 @@ module Import
           )
         end
 
-        return if GogglesDb::TeamAffiliation.exists?(team_id: data_import_mir.team_id, season_id: @season_id)
+        return if team_affiliation_for_team_id(data_import_mir.team_id)
 
         raise_phase5_binding_error!(
           entity_type: 'MeetingIndividualResult',
@@ -869,7 +872,7 @@ module Import
           )
         end
 
-        affiliation = GogglesDb::TeamAffiliation.find_by(id: data_import_mrr.team_affiliation_id)
+        affiliation = team_affiliation_by_id(data_import_mrr.team_affiliation_id)
         return if affiliation && affiliation.team_id == data_import_mrr.team_id && affiliation.season_id == @season_id
 
         raise_phase5_binding_error!(
@@ -909,7 +912,7 @@ module Import
           )
         end
 
-        badge = GogglesDb::Badge.find_by(id: data_import_mrs.badge_id)
+        badge = badge_for_validation(data_import_mrs.badge_id)
         return if badge && badge.swimmer_id == data_import_mrs.swimmer_id && badge.team_id == parent_mrr.team_id
 
         raise_phase5_binding_error!(
@@ -920,6 +923,52 @@ module Import
         )
       end
       # -----------------------------------------------------------------------
+
+      # Preload per-meeting validation data referenced by the staging rows:
+      # badge IDs from MIRs/MRSs and team affiliations for MIR/MRR teams in this season.
+      # Maps are read-through (misses fall back to a query and are cached), so badges
+      # or affiliations created later in the same commit still resolve correctly.
+      def preload_phase5_validation_data!
+        badge_ids = GogglesDb::DataImportMeetingIndividualResult.where(phase_file_path: source_path).distinct.pluck(:badge_id) |
+                    GogglesDb::DataImportMeetingRelaySwimmer.where(phase_file_path: source_path).distinct.pluck(:badge_id)
+        @validation_badges_by_id = GogglesDb::Badge.where(id: badge_ids).index_by(&:id)
+
+        team_ids = GogglesDb::DataImportMeetingIndividualResult.where(phase_file_path: source_path).distinct.pluck(:team_id) |
+                   GogglesDb::DataImportMeetingRelayResult.where(phase_file_path: source_path).distinct.pluck(:team_id)
+        affiliations = GogglesDb::TeamAffiliation.where(team_id: team_ids.compact, season_id: @season_id).to_a
+        @validation_affiliations_by_team_id = affiliations.index_by(&:team_id)
+        @validation_affiliations_by_id = affiliations.index_by(&:id)
+      end
+
+      def badge_for_validation(badge_id)
+        key = badge_id.to_i
+        return nil unless key.positive?
+
+        @validation_badges_by_id ||= {}
+        return @validation_badges_by_id[key] if @validation_badges_by_id.key?(key)
+
+        @validation_badges_by_id[key] = GogglesDb::Badge.find_by(id: key)
+      end
+
+      def team_affiliation_for_team_id(team_id)
+        key = team_id.to_i
+        return nil unless key.positive?
+
+        @validation_affiliations_by_team_id ||= {}
+        return @validation_affiliations_by_team_id[key] if @validation_affiliations_by_team_id.key?(key)
+
+        @validation_affiliations_by_team_id[key] = GogglesDb::TeamAffiliation.find_by(team_id: key, season_id: @season_id)
+      end
+
+      def team_affiliation_by_id(team_affiliation_id)
+        key = team_affiliation_id.to_i
+        return nil unless key.positive?
+
+        @validation_affiliations_by_id ||= {}
+        return @validation_affiliations_by_id[key] if @validation_affiliations_by_id.key?(key)
+
+        @validation_affiliations_by_id[key] = GogglesDb::TeamAffiliation.find_by(id: key)
+      end
 
       def raise_phase5_binding_error!(entity_type:, import_key:, details:)
         message = "#{entity_type} preflight error (#{import_key}): #{details}"
@@ -1272,8 +1321,8 @@ module Import
         if event_key.present?
           # Normalize: 4x50MI -> 4X50MI
           normalized_key = event_key.to_s.gsub(/(\d)x(\d)/i, '\1X\2').upcase
-          event_type = GogglesDb::EventType.find_by(code: normalized_key)
-          return event_type.id if event_type
+          event_type_id = event_type_id_by_code(normalized_key)
+          return event_type_id if event_type_id
         end
 
         # Fallback: build from distance + stroke
@@ -1283,11 +1332,29 @@ module Import
         return nil unless distance.to_i.positive? && stroke.present?
 
         event_code = "#{distance}#{stroke}".upcase
-        event_type = GogglesDb::EventType.find_by(code: event_code)
-        return event_type.id if event_type
+        event_type_id = event_type_id_by_code(event_code)
+        return event_type_id if event_type_id
 
         Rails.logger.warn("[Main] Could not resolve event_type_id for event: #{event_hash.inspect}")
         nil
+      end
+      # -----------------------------------------------------------------------
+
+      # Tiny immutable reference tables, memoized per committer run (nil-cached for unknown codes)
+      def event_type_id_by_code(code)
+        cached_lookup(@event_type_id_by_code ||= {}, code) { GogglesDb::EventType.find_by(code:)&.id }
+      end
+
+      def pool_type_id_by_code(code)
+        cached_lookup(@pool_type_id_by_code ||= {}, code) { GogglesDb::PoolType.find_by(code:)&.id }
+      end
+
+      def heat_type_id_by_code(code)
+        cached_lookup(@heat_type_id_by_code ||= {}, code) { GogglesDb::HeatType.find_by(code:)&.id }
+      end
+
+      def cached_lookup(cache, key, &)
+        cache.fetch(key) { cache[key] = yield }
       end
       # -----------------------------------------------------------------------
 
@@ -1377,7 +1444,7 @@ module Import
         normalized['city_id'] ||= city_id if city_id
 
         pool_type_code = normalized.delete('pool_type_code')
-        normalized['pool_type_id'] = GogglesDb::PoolType.find_by(code: pool_type_code)&.id if normalized['pool_type_id'].blank? && pool_type_code.present?
+        normalized['pool_type_id'] = pool_type_id_by_code(pool_type_code) if normalized['pool_type_id'].blank? && pool_type_code.present?
 
         %w[multiple_pools garden bar restaurant gym child_area read_only].each do |flag|
           next unless normalized.key?(flag)
@@ -1395,7 +1462,7 @@ module Import
         normalized['event_type_id'] ||= event_type_id
 
         heat_type_code = normalized.delete('heat_type') || normalized.delete(:heat_type)
-        normalized['heat_type_id'] = GogglesDb::HeatType.find_by(code: heat_type_code)&.id if normalized['heat_type_id'].blank? && heat_type_code.present?
+        normalized['heat_type_id'] = heat_type_id_by_code(heat_type_code) if normalized['heat_type_id'].blank? && heat_type_code.present?
 
         %w[out_of_race autofilled split_gender_start_list split_category_start_list].each do |flag|
           next unless normalized.key?(flag)

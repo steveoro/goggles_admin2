@@ -1184,7 +1184,7 @@ module Import
       )
       # Compromise: assume anything else beside "Falsa partenza" (code: 'GA') gets a nil code:
       # (will need to show the actual DSQ notes to get a label in the UI)
-      dsq_code_type_id = GogglesDb::DisqualificationCodeType.find_by(code: 'GA').id if /falsa/i.match?(disqualify_type)
+      dsq_code_type_id = disqualification_code_type('GA').id if /falsa/i.match?(disqualify_type)
       if domain.present?
         mir_row = domain.first
         # Overwrite DSQ fields only when previously unknown:
@@ -1310,7 +1310,7 @@ module Import
       )
       # Compromise: assume generic "Nuotata irregolare" refers to 1st swimmer only:
       # (not true, but most of the times the label isn't more specific)
-      dsq_code_type_id = GogglesDb::DisqualificationCodeType.find_by(code: 'RE1').id if /irregolare/i.match?(disqualify_type)
+      dsq_code_type_id = disqualification_code_type('RE1').id if /irregolare/i.match?(disqualify_type)
       if domain.present?
         mrr_row = domain.last
         # Overwrite DSQ fields only when previously unknown:
@@ -2114,6 +2114,12 @@ module Import
     #++
 
     private
+
+    # Tiny immutable reference table, memoized per solver run (nil-cached for unknown codes)
+    def disqualification_code_type(code)
+      map = (@disqualification_code_type_by_code ||= {})
+      map.fetch(code) { map[code] = GogglesDb::DisqualificationCodeType.find_by(code:) }
+    end
 
     # Prepares the Team model given the specified data or simply returns it if
     # it has been already mapped.

@@ -119,13 +119,21 @@ module Import
       def normalize_attributes(swimmer_hash)
         normalized = swimmer_hash.deep_dup.with_indifferent_access
         gender_code = normalized.delete('gender_type_code') || normalized.delete(:gender_type_code)
-        normalized['gender_type_id'] ||= GogglesDb::GenderType.find_by(code: gender_code)&.id if gender_code.present?
+        normalized['gender_type_id'] ||= gender_type_id_by_code[gender_code] if gender_code.present?
         normalized['last_name'] = upcase_name(normalized['last_name'])
         normalized['first_name'] = upcase_name(normalized['first_name'])
         normalized['complete_name'] = build_complete_name(normalized)
         normalized['year_guessed'] = BOOLEAN_TYPE.cast(normalized['year_guessed']) if normalized.key?('year_guessed')
 
         sanitize_attributes(normalized, GogglesDb::Swimmer)
+      end
+      # -----------------------------------------------------------------------
+
+      # Tiny immutable lookup table: code => gender_type_id (nil-cached for unknown codes)
+      def gender_type_id_by_code
+        @gender_type_id_by_code ||= GogglesDb::GenderType.all.to_h do |gender_type|
+          [gender_type.code, gender_type.id]
+        end
       end
       # -----------------------------------------------------------------------
 

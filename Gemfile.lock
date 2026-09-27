@@ -145,7 +145,7 @@ GEM
       erubi (>= 1.0.0)
       rack (>= 0.9.0)
       rouge (>= 1.0.0)
-    bigdecimal (4.1.3)
+    bigdecimal (3.3.1)
     bindex (0.8.1)
     binding_of_caller (2.0.0)
       debug_inspector (>= 1.2.0)
@@ -486,13 +486,14 @@ GEM
     parser (3.3.12.0)
       ast (~> 2.4.1)
       racc
-    pdf-core (0.9.0)
+    pdf-core (0.10.0)
     plus_codes (0.2.1)
     pp (0.6.4)
       prettyprint
-    prawn (2.4.0)
-      pdf-core (~> 0.9.0)
-      ttfunk (~> 1.7)
+    prawn (2.5.0)
+      matrix (~> 0.4)
+      pdf-core (~> 0.10.0)
+      ttfunk (~> 1.8)
     prawn-table (0.2.2)
       prawn (>= 1.3.0, < 3.0.0)
     prettyprint (0.2.0)
@@ -735,7 +736,8 @@ GEM
       readline
       sync
     tsort (0.2.0)
-    ttfunk (1.7.0)
+    ttfunk (1.8.0)
+      bigdecimal (~> 3.1)
     turbo-rails (2.0.23)
       actionpack (>= 7.1.0)
       railties (>= 7.1.0)
@@ -853,7 +855,7 @@ DEPENDENCIES
   webmock
 
 RUBY VERSION
-  ruby 3.4.7p58
+   ruby 3.4.7p58
 
 BUNDLED WITH
-  4.0.18
+   2.6.9

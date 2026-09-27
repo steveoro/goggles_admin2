@@ -105,9 +105,9 @@ module Import
       # Uses the categories cache to find the appropriate category type.
       def resolve_category_type_id(swimmer_key)
         swimmer_id = @swimmer_committer.resolve_id(swimmer_key)
-        raise "Swimmer not found for key '#{swimmer_key}'" unless GogglesDb::Swimmer.exists?(id: swimmer_id)
+        swimmer = GogglesDb::Swimmer.find_by(id: swimmer_id)
+        raise "Swimmer not found for key '#{swimmer_key}'" unless swimmer
 
-        swimmer = GogglesDb::Swimmer.find(swimmer_id)
         age = swimmer.age(@meeting.header_date)
 
         _category_code, category_type = @categories_cache.find_category_for_age(age, relay: false)

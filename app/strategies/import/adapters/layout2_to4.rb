@@ -31,8 +31,7 @@ module Import
           out = {}
 
           normalize_header!(data_hash, out)
-          build_lookup_dictionaries!(data_hash, out)
-          normalize_events!(data_hash, out)
+          build_dictionaries_and_events!(data_hash, out)
 
           # Force LT4 layoutType in memory:
           out['layoutType'] = 4
@@ -106,16 +105,31 @@ module Import
           months[month_name.to_s.downcase]
         end
 
-        # Build LT4-style lookup dictionaries for swimmers and teams
-        # Extracts unique swimmers/teams from all sections/rows
-        def build_lookup_dictionaries!(src, out)
+        # Build LT4-style lookup dictionaries (swimmers/teams) and the events
+        # array in a single traversal of all sections/rows.
+        # LT2 sections group by (event, category, gender); LT4 events group by
+        # event code + gender, with results containing categories.
+        def build_dictionaries_and_events!(src, out)
           swimmers = {}
           teams = {}
+          events_map = {}
 
           sections = src['sections'] || []
           sections.each do |section|
-            rows = section['rows'] || []
-            rows.each do |row|
+            event_info = extract_event_info(section)
+            event_key = "#{event_info[:code]}_#{event_info[:gender]}"
+
+            events_map[event_key] ||= {
+              'eventCode' => event_info[:code],
+              'eventGender' => event_info[:gender],
+              'eventLength' => event_info[:distance],
+              'eventStroke' => event_info[:stroke],
+              'eventDescription' => event_info[:description],
+              'relay' => event_info[:relay],
+              'results' => []
+            }
+
+            (section['rows'] || []).each do |row|
               # Extract swimmer info (include even when YOB is null)
               if row['name']
                 swimmer_key = build_swimmer_key(row, section)
@@ -128,11 +142,14 @@ module Import
 
               # Extract team info
               teams[row['team']] = { 'name' => row['team'] } if row['team']
+
+              events_map[event_key]['results'] << normalize_result(row, section, event_info[:relay])
             end
           end
 
           out['swimmers'] = swimmers
           out['teams'] = teams
+          out['events'] = events_map.values
         end
 
         # Build composite swimmer key in LT4 format: "GENDER|LAST|FIRST|YEAR|TEAM"
@@ -196,42 +213,6 @@ module Import
           return 'X' if value.match?(/^X/)
 
           nil
-        end
-
-        # Convert sections array into LT4 events array
-        # LT2 sections group by (event, category, gender)
-        # LT4 events group by event only, with results containing categories
-        #
-        def normalize_events!(src, out)
-          out['events'] = []
-          sections = src['sections'] || []
-
-          # Group sections by event code + gender to preserve LT4 parity.
-          # This keeps F/M/X programs separated for both individual and relay events.
-          events_map = {}
-
-          sections.each do |section|
-            event_info = extract_event_info(section)
-            event_key = "#{event_info[:code]}_#{event_info[:gender]}"
-
-            events_map[event_key] ||= {
-              'eventCode' => event_info[:code],
-              'eventGender' => event_info[:gender],
-              'eventLength' => event_info[:distance],
-              'eventStroke' => event_info[:stroke],
-              'eventDescription' => event_info[:description],
-              'relay' => event_info[:relay],
-              'results' => []
-            }
-
-            # Add all rows as results
-            (section['rows'] || []).each do |row|
-              result = normalize_result(row, section, event_info[:relay])
-              events_map[event_key]['results'] << result
-            end
-          end
-
-          out['events'] = events_map.values
         end
 
         # Extract event information from section title and metadata

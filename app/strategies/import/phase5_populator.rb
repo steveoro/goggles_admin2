@@ -74,6 +74,7 @@ module Import
     # Clear existing data_import_* records for the current source file only
     # This allows working on multiple files simultaneously without data loss
     def truncate_tables!
+      @created_import_records = {}
       GogglesDb::DataImportMeetingIndividualResult.where(phase_file_path: source_path).delete_all
       GogglesDb::DataImportLap.where(phase_file_path: source_path).delete_all
       GogglesDb::DataImportMeetingRelayResult.where(phase_file_path: source_path).delete_all
@@ -265,11 +266,8 @@ module Import
       relay_events = events.select { |e| e['relay'] == true }
       total_relay = relay_events.size
 
-      events.each_with_index do |event, _event_idx|
-        next unless event['relay'] == true # Only process relay events
-
+      relay_events.each_with_index do |event, relay_idx|
         # Broadcast progress every relay event
-        relay_idx = relay_events.index(event) || 0
         distance = extract_distance(event)
         stroke = extract_stroke(event)
         next if distance.blank? || stroke.blank?
@@ -329,8 +327,8 @@ module Import
           @stats[:relay_results_created] += 1
 
           # Create relay swimmers and laps
-          create_relay_swimmers(mrr, result, import_key, team_key: team_key)
-          create_relay_laps(mrr, result, import_key)
+          relay_swimmers_by_key = create_relay_swimmers(mrr, result, import_key, team_key: team_key)
+          create_relay_laps(mrr, result, import_key, relay_swimmers_by_key: relay_swimmers_by_key)
 
           # Register program in phase5 output (metadata only)
           add_to_programs(
@@ -495,6 +493,80 @@ module Import
       end
     end
 
+    # -------------------------------------------------------------------
+    # Phase 2/3 lookup indexes (lazily built once per populate! run).
+    # The finders below used to linear-scan these arrays per result, which is
+    # O(results × entities); hash lookups keep the same first-match semantics.
+    # -------------------------------------------------------------------
+
+    def phase3_swimmers
+      @phase3_swimmers ||= phase3_data&.dig('data', 'swimmers') || []
+    end
+
+    def phase3_swimmers_by_key
+      @phase3_swimmers_by_key ||= phase3_swimmers.each_with_object({}) do |swimmer, index|
+        index[swimmer['key']] ||= swimmer # first-wins, same as Enumerable#find
+      end
+    end
+
+    def phase3_swimmers_by_partial_key
+      @phase3_swimmers_by_partial_key ||= phase3_swimmers.each_with_object({}) do |swimmer, index|
+        partial = normalize_to_partial_key(swimmer['key'])
+        (index[partial] ||= []) << swimmer if partial
+      end
+    end
+
+    def phase3_badges
+      @phase3_badges ||= phase3_data&.dig('data', 'badges') || []
+    end
+
+    def phase3_badges_by_swimmer_key
+      @phase3_badges_by_swimmer_key ||= phase3_badges.group_by { |badge| badge['swimmer_key'] }
+    end
+
+    def phase3_badges_by_swimmer_partial_key
+      @phase3_badges_by_swimmer_partial_key ||= phase3_badges.each_with_object({}) do |badge, index|
+        partial = normalize_to_partial_key(badge['swimmer_key'])
+        (index[partial] ||= []) << badge if partial
+      end
+    end
+
+    def phase3_badges_by_team_key
+      @phase3_badges_by_team_key ||= phase3_badges.group_by { |badge| badge['team_key'].to_s.downcase }
+    end
+
+    def phase2_teams
+      @phase2_teams ||= phase2_data&.dig('data', 'teams') || []
+    end
+
+    def phase2_teams_by_key
+      @phase2_teams_by_key ||= phase2_teams.each_with_object({}) do |team, index|
+        index[team['key']] ||= team
+      end
+    end
+
+    # Combined name/editable_name index preserving the first-match order of
+    # `teams.find { |t| t['name'] == name || t['editable_name'] == name }`
+    def phase2_teams_by_name_or_editable_name
+      @phase2_teams_by_name_or_editable_name ||= phase2_teams.each_with_object({}) do |team, index|
+        index[team['name']] ||= team
+        index[team['editable_name']] ||= team
+      end
+    end
+
+    def phase2_affiliations
+      @phase2_affiliations ||= phase2_data&.dig('data', 'team_affiliations') || []
+    end
+
+    def phase2_affiliations_by_team_id
+      @phase2_affiliations_by_team_id ||= phase2_affiliations.group_by { |row| row['team_id'].to_i }
+    end
+
+    def phase2_affiliations_by_team_key
+      @phase2_affiliations_by_team_key ||= phase2_affiliations.group_by { |row| row['team_key'].to_s.downcase }
+    end
+    # -------------------------------------------------------------------
+
     # Find swimmer data from phase 3: returns { swimmer_id:, swimmer_key: }
     # The returned swimmer_key is the FULL Phase 3 key (with gender prefix) when matched
     # This ensures stored keys are consistent with Phase 3 format
@@ -505,9 +577,7 @@ module Import
       partial_key = build_swimmer_key(result)
       return { swimmer_id: nil, swimmer_key: full_key.presence || partial_key } if partial_key.blank?
 
-      swimmers = phase3_data.dig('data', 'swimmers') || []
-
-      swimmer = swimmers.find { |s| s['key'] == full_key } || swimmers.find { |s| s['key'] == partial_key }
+      swimmer = phase3_swimmers_by_key[full_key] || phase3_swimmers_by_key[partial_key]
       if swimmer&.dig('swimmer_id')
         Rails.logger.info("[Phase5Populator] Found swimmer_id=#{swimmer['swimmer_id']} for exact key=#{swimmer['key']}")
         return { swimmer_id: swimmer['swimmer_id'], swimmer_key: swimmer['key'] }
@@ -516,9 +586,7 @@ module Import
       # Try partial key matching (ignoring gender prefix)
       normalized_partial = normalize_to_partial_key(partial_key)
       if normalized_partial
-        matching_swimmers = swimmers.select do |s|
-          normalize_to_partial_key(s['key']) == normalized_partial
-        end
+        matching_swimmers = phase3_swimmers_by_partial_key[normalized_partial] || []
         team_name = team_name_from_result(result)
         team_matches = matching_swimmers.select { |s| team_name.present? && team_name_from_key(s['key']).to_s.casecmp?(team_name.to_s) }
         matching_swimmers = team_matches if team_matches.any?
@@ -585,10 +653,9 @@ module Import
 
       # Try Phase 2 team lookup first (if we have a team_name)
       if team_name.present? && phase2_data
-        teams = phase2_data.dig('data', 'teams') || []
         # Match by key first (exact match), then try name/editable_name
-        team = teams.find { |t| t['key'] == team_name } ||
-               teams.find { |t| t['name'] == team_name || t['editable_name'] == team_name }
+        team = phase2_teams_by_key[team_name] ||
+               phase2_teams_by_name_or_editable_name[team_name]
         team_id = team&.dig('team_id')
 
         if team_id
@@ -617,19 +684,16 @@ module Import
     def find_team_id_from_badges(swimmer_key, team_name)
       return nil unless phase3_data
 
-      badges = phase3_data.dig('data', 'badges') || []
-
-      badge = badges.find do |b|
-        b['swimmer_key'] == swimmer_key && b['team_id'].to_i.positive? &&
+      badge = (phase3_badges_by_swimmer_key[swimmer_key] || []).find do |b|
+        b['team_id'].to_i.positive? &&
           (team_name.blank? || b['team_key'].to_s.casecmp?(team_name.to_s))
       end
       return badge['team_id'] if badge
 
       partial_key = normalize_to_partial_key(swimmer_key)
       if partial_key
-        badge = badges.find do |b|
-          badge_partial = normalize_to_partial_key(b['swimmer_key'])
-          next false unless badge_partial == partial_key && b['team_id'].to_i.positive?
+        badge = (phase3_badges_by_swimmer_partial_key[partial_key] || []).find do |b|
+          next false unless b['team_id'].to_i.positive?
 
           team_name.blank? || b['team_key'].to_s.casecmp?(team_name.to_s) || team_name_from_key(b['swimmer_key']).to_s.casecmp?(team_name.to_s)
         end
@@ -637,7 +701,7 @@ module Import
       end
 
       # Fallback: find by team_key matching team_name
-      badge = badges.find do |b|
+      badge = (phase3_badges_by_team_key[team_name.to_s.downcase] || []).find do |b|
         (b['team_key'] == team_name || b['team_key']&.downcase == team_name&.downcase) &&
           b['team_id'].to_i.positive?
       end
@@ -649,10 +713,8 @@ module Import
       return nil if swimmer_key.blank?
 
       if phase3_data
-        badges = phase3_data.dig('data', 'badges') || []
-        exact_badge = badges.find do |b|
+        exact_badge = (phase3_badges_by_swimmer_key[swimmer_key] || []).find do |b|
           next false unless b['badge_id'].to_i.positive?
-          next false unless b['swimmer_key'] == swimmer_key
 
           if team_id.to_i.positive?
             b['team_id'].to_i == team_id.to_i
@@ -664,9 +726,8 @@ module Import
 
         partial_key = normalize_to_partial_key(swimmer_key)
         if partial_key
-          badge = badges.find do |b|
+          badge = (phase3_badges_by_swimmer_partial_key[partial_key] || []).find do |b|
             next false unless b['badge_id'].to_i.positive?
-            next false unless normalize_to_partial_key(b['swimmer_key']) == partial_key
 
             if team_id.to_i.positive?
               b['team_id'].to_i == team_id.to_i
@@ -684,10 +745,17 @@ module Import
     def find_team_affiliation_id(team_id, team_key: nil)
       return nil unless phase2_data
 
-      affiliations = phase2_data.dig('data', 'team_affiliations') || []
       season_id = phase1_data&.dig('data', 'season_id').to_i
+      candidates =
+        if team_id.to_i.positive?
+          phase2_affiliations_by_team_id[team_id.to_i] || []
+        elsif team_key.present?
+          phase2_affiliations_by_team_key[team_key.to_s.downcase] || []
+        else
+          []
+        end
 
-      affiliation = affiliations.find do |row|
+      affiliation = candidates.find do |row|
         next false unless row['team_affiliation_id'].to_i.positive?
         next false if season_id.to_i.positive? && row['season_id'].to_i.positive? && row['season_id'].to_i != season_id
 
@@ -703,10 +771,20 @@ module Import
       affiliation&.dig('team_affiliation_id')
     end
 
-    # Find meeting_program_id by matching against existing database records
+    # Find meeting_program_id by matching against existing database records.
+    # Memoized per (session, event, category, gender): every result in a program
+    # shares the same key, so each program resolves at most once per populate! run.
+    def find_meeting_program_id(session_order, event_code, category, gender)
+      @meeting_program_ids ||= {}
+      key = [session_order.to_i, event_code, category, gender]
+      @meeting_program_ids.fetch(key) do
+        @meeting_program_ids[key] = resolve_meeting_program_id(session_order, event_code, category, gender)
+      end
+    end
+
     # First tries to use existing event ID from phase4 data, then falls back to DB lookup
     # Matches: MeetingEvent (from phase4 ID or by session + event_type) → MeetingProgram (by event + category + gender)
-    def find_meeting_program_id(session_order, event_code, category, gender)
+    def resolve_meeting_program_id(session_order, event_code, category, gender)
       return nil unless phase1_data && phase4_data
 
       # Step 1: Try to find existing meeting_event_id from phase4 data first
@@ -836,18 +914,36 @@ module Import
       # Category format: "M75", "M45", "U25", etc.
       code = category.to_s.strip
       if season_id
-        GogglesDb::CategoryType.find_by(code: code, season_id: season_id)
+        category_types_by_code(season_id)[code.upcase]
       else
-        GogglesDb::CategoryType.find_by(code: code)
+        # Rare path when the season is unknown: memoize the per-code query
+        @category_types_without_season ||= {}
+        @category_types_without_season.fetch(code) do
+          @category_types_without_season[code] = GogglesDb::CategoryType.find_by(code: code)
+        end
       end
+    end
+
+    # CategoryTypes are a small per-season reference table: preload once per
+    # season instead of hitting the DB for every result.
+    # Indexed by upcased code to match the DB's case-insensitive lookup.
+    def category_types_by_code(season_id)
+      @category_types_by_code ||= {}
+      @category_types_by_code[season_id] ||=
+        GogglesDb::CategoryType.where(season_id: season_id).index_by { |category_type| category_type.code.to_s.upcase }
     end
 
     # Parse gender code to GenderType (e.g., "F" → Female, "M" → Male)
     def parse_gender_type(gender)
       return nil if gender.blank?
 
-      code = gender.to_s.strip.upcase
-      GogglesDb::GenderType.find_by(code: code)
+      gender_types_by_code[gender.to_s.strip.upcase]
+    end
+
+    # GenderTypes are a tiny reference table: preload once.
+    def gender_types_by_code
+      @gender_types_by_code ||=
+        GogglesDb::GenderType.all.index_by { |gender_type| gender_type.code.to_s.upcase }
     end
 
     # Find existing MeetingIndividualResult for UPDATE operations
@@ -855,15 +951,36 @@ module Import
     def find_existing_mir(meeting_program_id, swimmer_id, team_id)
       return nil if meeting_program_id.nil? || swimmer_id.nil? || team_id.nil?
 
-      mir = GogglesDb::MeetingIndividualResult
-            .where(
-              meeting_program_id: meeting_program_id,
-              swimmer_id: swimmer_id,
-              team_id: team_id
-            )
-            .first
+      existing_mirs_for_program(meeting_program_id)[[swimmer_id, team_id]]
+    end
 
-      mir&.id
+    # Lazily preloads the existing MIRs of a program as
+    # { [swimmer_id, team_id] => mir_id }: one query per program instead of one
+    # per result. (Data imported by populate! never adds real MIR rows, so the
+    # map stays coherent for the whole run.)
+    def existing_mirs_for_program(meeting_program_id)
+      @existing_mirs_for_program ||= {}
+      @existing_mirs_for_program[meeting_program_id] ||= GogglesDb::MeetingIndividualResult
+                                                         .where(meeting_program_id: meeting_program_id)
+                                                         .order(:id)
+                                                         .pluck(:swimmer_id, :team_id, :id)
+                                                         .each_with_object({}) do |(swimmer_id, team_id, id), index|
+                                                           index[[swimmer_id, team_id]] ||= id
+                                                         end
+    end
+
+    # Returns the DataImport record for import_key: the one already created in
+    # this run when the key repeats, otherwise a fresh create! (the tables were
+    # just truncated, so the old find_or_create_by! SELECT almost always missed).
+    # A RecordNotUnique from a cross-source import_key collision falls back to
+    # the existing row, matching find_or_create_by! semantics.
+    def create_import_record!(klass, import_key, &)
+      created = (@created_import_records ||= {})[klass.name] ||= {}
+      return created[import_key] if created.key?(import_key)
+
+      created[import_key] = klass.create!(import_key: import_key, &)
+    rescue ActiveRecord::RecordNotUnique
+      created[import_key] ||= klass.find_by(import_key: import_key)
     end
 
     # Create MIR record
@@ -880,8 +997,9 @@ module Import
 
       disqualified_flag = result_disqualified?(result, rank_non_numeric:, timing_zero:)
 
-      # Use find_or_create to handle potential duplicates gracefully
-      mir = GogglesDb::DataImportMeetingIndividualResult.find_or_create_by!(import_key: import_key) do |record|
+      # create! directly (table was just truncated); create_import_record!
+      # keeps find_or_create semantics for duplicate keys without a per-row SELECT
+      mir = create_import_record!(GogglesDb::DataImportMeetingIndividualResult, import_key) do |record|
         record.phase_file_path = source_path
         # DB foreign keys (may be nil for unmatched entities)
         record.meeting_program_id = meeting_program_id
@@ -931,8 +1049,8 @@ module Import
 
         lap_import_key = GogglesDb::DataImportLap.build_import_key(mir_import_key, length)
 
-        # Use find_or_create to handle potential duplicates gracefully
-        GogglesDb::DataImportLap.find_or_create_by!(import_key: lap_import_key) do |record|
+        # create! directly (table was just truncated); see create_import_record!
+        create_import_record!(GogglesDb::DataImportLap, lap_import_key) do |record|
           record.parent_import_key = mir_import_key
           record.meeting_individual_result_key = mir_import_key # Parent MIR reference
           record.phase_file_path = source_path
@@ -1030,11 +1148,20 @@ module Import
     def find_existing_mrr(meeting_program_id, team_id)
       return nil unless meeting_program_id && team_id
 
-      mrr = GogglesDb::MeetingRelayResult
-            .where(meeting_program_id: meeting_program_id, team_id: team_id)
-            .first
+      existing_mrrs_for_program(meeting_program_id)[team_id]
+    end
 
-      mrr&.id
+    # Lazily preloads the existing MRRs of a program as { team_id => mrr_id }:
+    # one query per program instead of one per result.
+    def existing_mrrs_for_program(meeting_program_id)
+      @existing_mrrs_for_program ||= {}
+      @existing_mrrs_for_program[meeting_program_id] ||= GogglesDb::MeetingRelayResult
+                                                         .where(meeting_program_id: meeting_program_id)
+                                                         .order(:id)
+                                                         .pluck(:team_id, :id)
+                                                         .each_with_object({}) do |(team_id, id), index|
+                                                           index[team_id] ||= id
+                                                         end
     end
 
     # Find an existing relay swimmer by its stable parent, swimmer, and order identity.
@@ -1073,8 +1200,8 @@ module Import
 
       disqualified_flag = result_disqualified?(result, rank_non_numeric:, timing_zero:)
 
-      # Use find_or_create to handle potential duplicates gracefully
-      GogglesDb::DataImportMeetingRelayResult.find_or_create_by!(import_key: import_key) do |mrr|
+      # create! directly (table was just truncated); see create_import_record!
+      create_import_record!(GogglesDb::DataImportMeetingRelayResult, import_key) do |mrr|
         mrr.phase_file_path = source_path
         # DB foreign keys (may be nil for unmatched entities)
         mrr.meeting_relay_result_id = meeting_relay_result_id
@@ -1103,6 +1230,7 @@ module Import
     def create_relay_swimmers(mrr, result, mrr_import_key, team_key:)
       laps = result['laps'] || []
       existing_mrr_id = mrr.meeting_relay_result_id
+      relay_swimmers_by_key = {}
 
       laps.each_with_index do |lap, idx|
         relay_order = idx + 1
@@ -1125,8 +1253,8 @@ module Import
 
         rs_import_key = "#{mrr_import_key}-swimmer#{relay_order}"
 
-        # Use find_or_create to handle potential duplicates gracefully
-        GogglesDb::DataImportMeetingRelaySwimmer.find_or_create_by!(import_key: rs_import_key) do |rs|
+        # create! directly (table was just truncated); see create_import_record!
+        relay_swimmers_by_key[rs_import_key] = create_import_record!(GogglesDb::DataImportMeetingRelaySwimmer, rs_import_key) do |rs|
           rs.parent_import_key = mrr_import_key
           rs.phase_file_path = source_path
           # DB foreign keys (may be nil for unmatched entities)
@@ -1149,10 +1277,13 @@ module Import
       rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
         @stats[:errors] << "RelaySwimmer error for #{rs_import_key}: #{e.message}"
       end
+
+      relay_swimmers_by_key
     end
 
     # Create relay lap records for a given MRR
-    def create_relay_laps(mrr, result, mrr_import_key)
+    # relay_swimmers_by_key reuses the just-created MRS rows instead of re-querying per leg
+    def create_relay_laps(mrr, result, mrr_import_key, relay_swimmers_by_key: nil)
       laps = result['laps'] || []
       previous_from_start = { minutes: 0, seconds: 0, hundredths: 0 }
 
@@ -1175,17 +1306,18 @@ module Import
         # Reference the relay swimmer for this leg
         relay_swimmer_import_key = "#{mrr_import_key}-swimmer#{relay_order}"
 
-        relay_swimmer = GogglesDb::DataImportMeetingRelaySwimmer.find_by(
-          import_key: relay_swimmer_import_key,
-          phase_file_path: source_path
-        )
+        relay_swimmer = relay_swimmers_by_key&.[](relay_swimmer_import_key) ||
+                        GogglesDb::DataImportMeetingRelaySwimmer.find_by(
+                          import_key: relay_swimmer_import_key,
+                          phase_file_path: source_path
+                        )
         existing_relay_lap_id = find_existing_relay_lap(
           relay_swimmer&.meeting_relay_swimmer_id,
           length
         )
 
-        # Use find_or_create to handle potential duplicates gracefully
-        GogglesDb::DataImportRelayLap.find_or_create_by!(import_key: lap_import_key) do |record|
+        # create! directly (table was just truncated); see create_import_record!
+        create_import_record!(GogglesDb::DataImportRelayLap, lap_import_key) do |record|
           record.parent_import_key = mrr_import_key
           record.phase_file_path = source_path
           # DB foreign keys (may be nil for unmatched entities)
@@ -1217,10 +1349,8 @@ module Import
     def find_swimmer_id_by_key(swimmer_key)
       return nil if swimmer_key.blank?
 
-      swimmers = phase3_data&.dig('data', 'swimmers') || []
-
       # First try exact match
-      swimmer = swimmers.find { |s| s['key'] == swimmer_key }
+      swimmer = phase3_swimmers_by_key[swimmer_key]
       return swimmer['swimmer_id'] if swimmer&.dig('swimmer_id')
 
       # Build partial key for matching (|LAST|FIRST|YOB)
@@ -1228,10 +1358,7 @@ module Import
       return nil if partial_key.blank?
 
       # Find swimmers with matching partial key (ignoring gender prefix)
-      matching_swimmers = swimmers.select do |s|
-        phase3_partial = normalize_to_partial_key(s['key'])
-        phase3_partial == partial_key
-      end
+      matching_swimmers = phase3_swimmers_by_partial_key[partial_key] || []
 
       # Return swimmer_id if exactly one match found
       if matching_swimmers.size == 1

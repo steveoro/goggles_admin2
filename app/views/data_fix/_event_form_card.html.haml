@@ -90,7 +90,7 @@
             .col-auto
               %label Heat Type
               = select_tag('event[heat_type_id]',
-                           options_from_collection_for_select(GogglesDb::HeatType.all, 'id', 'long_label', event['heat_type_id']),
+                           options_from_collection_for_select(heat_types, 'id', 'long_label', event['heat_type_id']),
                            class: 'form-control',
                            id: "event_#{event_index}_heat_type_id")
             .col-auto.ml-4

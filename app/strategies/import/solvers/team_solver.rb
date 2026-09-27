@@ -67,14 +67,18 @@ module Import
           end
 
         elsif data_hash['sections'].is_a?(Array)
-          # LT2 fallback: scan sections/rows for team names
+          # LT2 fallback: scan sections/rows for team names.
+          # Build each unique team only once (rows repeat teams heavily); the
+          # final uniq/sort below yields the same payload either way.
+          seen_team_names = {}
           total = data_hash['sections'].size
           data_hash['sections'].each_with_index do |sec, idx|
             rows = sec['rows'] || []
             rows.each do |row|
               team_name = row['team']
-              next if team_name.to_s.strip.empty?
+              next if team_name.to_s.strip.empty? || seen_team_names.key?(team_name)
 
+              seen_team_names[team_name] = true
               team_entry = build_team_entry(team_name, team_name)
               teams << team_entry
               ta << build_team_affiliation_entry(team_name, team_entry['team_id'])
@@ -284,11 +288,8 @@ module Import
         # Guard clause: skip matching if team_id is missing
         return affiliation unless team_id && @season.id
 
-        # Try to match existing team affiliation
-        existing = GogglesDb::TeamAffiliation.find_by(
-          season_id: @season.id,
-          team_id: team_id
-        )
+        # Try to match existing team affiliation (season set loaded once per build)
+        existing = season_affiliations_by_team_id[team_id]
 
         if existing
           affiliation['team_affiliation_id'] = existing.id
@@ -319,6 +320,19 @@ module Import
         normalized.squeeze(' ').strip
       end
 
+      # Season affiliations loaded once per build (with :team) instead of being
+      # re-queried per team; all affiliation lookups below read from this set.
+      def season_affiliations
+        @season_affiliations ||= GogglesDb::TeamAffiliation.where(season_id: @season.id).includes(team: :city).to_a
+      end
+
+      # team_id => TeamAffiliation, first match wins (same as find_by).
+      def season_affiliations_by_team_id
+        @season_affiliations_by_team_id ||= season_affiliations.each_with_object({}) do |aff, index|
+          index[aff.team_id] ||= aff
+        end
+      end
+
       # Enrich fuzzy match entries with affiliation status for the current season.
       # Adds 'affiliated_this_season' boolean and updates display_label for affiliated teams.
       def enrich_matches_with_affiliation_status!(matches)
@@ -327,9 +341,7 @@ module Import
         team_ids = matches.filter_map { |m| m['id'] }
         return if team_ids.empty?
 
-        affiliated_ids = GogglesDb::TeamAffiliation.where(team_id: team_ids, season_id: @season.id)
-                                                   .pluck(:team_id)
-                                                   .to_set
+        affiliated_ids = season_affiliations.to_set(&:team_id)
 
         matches.each do |match|
           is_affiliated = affiliated_ids.include?(match['id'])
@@ -354,10 +366,9 @@ module Import
         return [] if normalized_search.blank?
 
         metric = GogglesDb::DbFinders::BaseStrategy::METRIC
-        affiliations = GogglesDb::TeamAffiliation.where(season_id: @season.id).includes(:team)
         candidates = []
 
-        affiliations.each do |aff|
+        season_affiliations.each do |aff|
           team = aff.team
           next if team.nil?
 

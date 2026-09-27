@@ -41,10 +41,7 @@ module Import
         attributes = compute_missing_timing(attributes, previous_lap)
 
         # Match by parent MIR ID + lap distance
-        existing = GogglesDb::Lap.find_by(
-          meeting_individual_result_id: mir_id,
-          length_in_meters: lap_length
-        )
+        existing = laps_for_mir(mir_id).find { |lap| lap.length_in_meters.to_i == lap_length.to_i }
 
         if existing
           changes = changes_for_update(existing, attributes)
@@ -62,6 +59,12 @@ module Import
         # Create new lap
         model = GogglesDb::Lap.new(attributes)
         model.save!
+        # Keep the per-MIR cache sorted so subsequent laps see this row
+        cache = @laps_by_mir&.[](mir_id)
+        if cache
+          cache << model
+          cache.sort_by! { |lap| lap.length_in_meters.to_i }
+        end
         sql_log << SqlMaker.new(row: model).log_insert
         stats[:laps_created] += 1
         logger.log_success(entity_type: 'Lap', entity_id: model.id, action: 'created')
@@ -95,16 +98,22 @@ module Import
         changes_for_update(existing, attributes).any?
       end
 
+      # Laps of a MIR, loaded once per MIR and kept updated as new laps are
+      # committed, so the per-lap existence check and previous-lap search stay
+      # in-memory instead of two SELECTs per lap.
+      def laps_for_mir(mir_id)
+        (@laps_by_mir ||= {})[mir_id] ||= GogglesDb::Lap
+                                          .where(meeting_individual_result_id: mir_id)
+                                          .order(:length_in_meters)
+                                          .to_a
+      end
+
       # Find the previous lap for timing computation
       # @param mir_id [Integer] meeting_individual_result_id
       # @param current_length [Integer] current lap's length_in_meters
       # @return [GogglesDb::Lap, nil] previous lap or nil if not found
       def find_previous_lap(mir_id, current_length)
-        GogglesDb::Lap
-          .where(meeting_individual_result_id: mir_id)
-          .where(length_in_meters: ...current_length.to_i)
-          .order(length_in_meters: :desc)
-          .first
+        laps_for_mir(mir_id).reverse.find { |lap| lap.length_in_meters.to_i < current_length.to_i }
       end
 
       # Check if timing components are present in attributes
