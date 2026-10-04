@@ -1,8 +1,8 @@
 GIT
   remote: https://github.com/steveoro/goggles_db.git
-  revision: da697c75f046d1207c7dac6a26ba2ec3c13ba66e
+  revision: 073ded24047f5634878e04f53f5552f35e867aec
   specs:
-    goggles_db (0.10.52)
+    goggles_db (0.10.53)
       acts-as-taggable-on
       acts_as_votable
       caxlsx
@@ -448,7 +448,7 @@ GEM
       net-protocol
     net-protocol (0.4.0)
       timeout
-    net-smtp (0.5.1)
+    net-smtp (0.5.2)
       net-protocol
     netrc (0.11.0)
     nio4r (2.7.5)
@@ -565,7 +565,7 @@ GEM
       logger
       prism (>= 1.6.0)
       tsort
-    rdoc (8.0.0)
+    rdoc (8.1.0)
       erb
       prism (>= 1.6.0)
       rbs (>= 4.0.0)
