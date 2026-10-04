@@ -147,6 +147,8 @@ Rails.application.routes.draw do
 
   resources :api_teams, only: %i[index create update]
 
+  resources :api_trainings, only: %i[index new create edit update destroy]
+
   resources :api_user_workshops, only: %i[index create update]
   delete 'api_user_workshops', to: 'api_user_workshops#destroy', as: 'api_user_workshops_destroy'
 
