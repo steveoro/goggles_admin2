@@ -24,9 +24,8 @@ class APITrainingsController < ApplicationController
       params: { page: index_params[:page] || 1, per_page: index_params[:per_page] || 25 }
     )
     unless result.code == 200
-      parsed_response = result.body.present? ? JSON.parse(result.body) : {}
       flash[:error] = I18n.t('dashboard.api_proxy_error', error_code: result.code,
-                                                          error_msg: parsed_response['error'])
+                                                          error_msg: error_detail_for(result))
       redirect_to(root_path) && return
     end
 
@@ -161,9 +160,18 @@ class APITrainingsController < ApplicationController
   end
 
   # Extracts the most useful error detail from an API result.
+  # The API reports the actual rejection reason in the 'X-Error-Detail' header,
+  # so that's preferred over the generic JSON 'error' body field; anything
+  # non-JSON falls back to the raw body or the status code.
   def error_detail_for(result)
-    JSON.parse(result.body)['error']
-  rescue StandardError
-    result.body.presence || result.code
+    detail = result.headers[:x_error_detail] if result.respond_to?(:headers)
+    if detail.blank?
+      detail = begin
+        JSON.parse(result.body)['error']
+      rescue StandardError
+        nil
+      end
+    end
+    detail.presence || result.body.presence || result.code
   end
 end

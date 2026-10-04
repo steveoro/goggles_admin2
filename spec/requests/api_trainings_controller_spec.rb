@@ -47,6 +47,26 @@ RSpec.describe APITrainingsController do
         expect(response.body).to include(I18n.t('api_trainings.image_missing'))
       end
     end
+
+    context 'when the API fails with a non-JSON error body' do
+      include AdminSignInHelpers
+
+      before(:each) do
+        admin_user = prepare_admin_user
+        sign_in_admin(admin_user)
+        fake_result = double(code: 503, body: 'Service Unavailable', headers: {})
+        allow(APIProxy).to receive(:call).with(
+          method: :get, url: 'trainings', jwt: admin_user.jwt,
+          params: { page: 1, per_page: 25 }
+        ).and_return(fake_result)
+        get(api_trainings_path)
+      end
+
+      it 'redirects to the dashboard with an error flash instead of raising' do
+        expect(response).to redirect_to(root_path)
+        expect(flash[:error]).to be_present
+      end
+    end
   end
   #-- -------------------------------------------------------------------------
   #++
@@ -130,6 +150,50 @@ RSpec.describe APITrainingsController do
 
         it 'redirects back to /new' do
           expect(response).to redirect_to(new_api_training_path)
+        end
+      end
+
+      context 'when an image file is attached to the form,' do
+        before(:each) do
+          admin_user = prepare_admin_user
+          sign_in_admin(admin_user)
+          allow(APIProxy).to receive(:call).and_return(
+            DummyResponse.new(body: { msg: 'OK', new: { id: 44 } }.to_json)
+          )
+          post(
+            api_trainings_path,
+            params: form_params.deep_merge(
+              training: {
+                image: Rack::Test::UploadedFile.new(
+                  Rails.root.join('spec/fixtures/files/test_training.png'), 'image/png'
+                )
+              }
+            )
+          )
+        end
+
+        it 'forwards the uploaded file inside the API payload' do
+          expect(APIProxy).to have_received(:call).with(
+            method: :post, url: 'training', jwt: anything,
+            payload: hash_including('image' => a_kind_of(ActionDispatch::Http::UploadedFile))
+          )
+        end
+      end
+
+      context 'when the API rejection carries an X-Error-Detail header,' do
+        before(:each) do
+          admin_user = prepare_admin_user
+          sign_in_admin(admin_user)
+          fake_result = double(
+            code: 422, body: { error: 'generic' }.to_json,
+            headers: { x_error_detail: ":image content type 'text/plain' not allowed" }
+          )
+          allow(APIProxy).to receive(:call).and_return(fake_result)
+          post(api_trainings_path, params: form_params)
+        end
+
+        it 'shows the detailed reason in the flash error' do
+          expect(flash[:error]).to include('content type')
         end
       end
     end
