@@ -101,5 +101,3 @@ yarn-debug.log*
 /config/credentials/development.key
 crawler/server.log
 
-# Local test-env credentials (generated for spec runs without a master.key)
-/config/credentials/test.yml.enc
