@@ -57,6 +57,9 @@ module Import
           'header_date' => nil, # TODO: meeting.header_date field, ISO date from dateYear1, dateMonth1, dateDay1
           'code' => nil, # TODO: generate
           'header_year' => nil, # TODO: dateYear1
+          'edition' => data_hash['edition'],
+          'max_individual_events' => data_hash['maxIndividualEvents'],
+          'max_individual_events_per_session' => data_hash['maxIndividualEventsPerSession'],
 
           # Pool fields and sessions:
           'venue1' => extract_venue(data_hash, lt_format),
@@ -72,7 +75,7 @@ module Import
         payload['meeting_fuzzy_matches'] = find_meeting_matches(payload)
 
         # Auto-fill sessions from DB match or from parsed date fields
-        auto_fill_sessions!(payload)
+        auto_fill_sessions!(payload, data_hash)
 
         # Write phase file
         phase_path = opts[:phase_path] || default_phase_path_for(source_path, 1)
@@ -112,13 +115,13 @@ module Import
       def extract_venue(hsh, layout_type)
         return hsh['venue1'] if layout_type == 2
 
-        hsh['place']
+        hsh['venueName'].presence || hsh['place']
       end
 
       def extract_address(hsh, layout_type)
         return hsh['address1'] if layout_type == 2
 
-        hsh['place']
+        hsh['venueAddress'].presence || hsh['place']
       end
 
       def extract_pool_length(hsh, _lt) # rubocop:disable Naming/MethodParameterName
@@ -164,9 +167,28 @@ module Import
       end
 
       # Builds payload['meeting_session'] from the parsed date fields.
+      # When the source carries an explicit 'manifestSessions' list (extracted
+      # manifest pipeline), builds one session per listed date instead - this
+      # also supports meetings spanning more than 2 days.
       # Fuzzy matches are stored as candidates only; meeting.id remains nil
       # until the user explicitly selects a match in the UI.
-      def auto_fill_sessions!(payload)
+      def auto_fill_sessions!(payload, data_hash = nil)
+        manifest_sessions = data_hash.is_a?(Hash) ? data_hash['manifestSessions'] : nil
+        if manifest_sessions.is_a?(Array) && manifest_sessions.any?
+          payload['meeting_session'] = manifest_sessions.map.with_index do |sess, idx|
+            build_session_hash_from_fields(
+              session_order: sess['session_order'].to_i.positive? ? sess['session_order'].to_i : idx + 1,
+              scheduled_date: sess['date'],
+              pool_name: payload['venue1'],
+              address: payload['address1'],
+              pool_length: payload['poolLength'],
+              city_name: data_hash['cityName']
+            )
+          end
+          payload['header_date'] ||= payload['meeting_session'].first['scheduled_date']
+          return
+        end
+
         sessions = []
         iso_date1 = parse_iso_date(payload['dateDay1'], payload['dateMonth1'], payload['dateYear1'])
         if iso_date1

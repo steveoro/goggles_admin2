@@ -200,6 +200,76 @@ RSpec.describe Import::Solvers::Phase1Solver, type: :strategy do
     end
   end
 
+  describe '#build! with manifest-extracted LT4 input' do
+    let(:lt4_data) do
+      {
+        'layoutType' => 4,
+        'meetingName' => '17° TROFEO MASTER "CITTÀ DI TEST"',
+        'edition' => 17,
+        'dates' => '2026-11-07,2026-11-08',
+        'place' => 'Piscina Comunale di Test, Via Cesare Miola 5, Test (TS)',
+        'venueName' => 'Piscina Comunale di Test',
+        'venueAddress' => 'Via Cesare Miola 5, Test (TS)',
+        'cityName' => 'Test',
+        'poolLength' => '25',
+        'maxIndividualEvents' => 2,
+        'manifestSessions' => [
+          { 'date' => '2026-11-07', 'session_order' => 1 },
+          { 'date' => '2026-11-08', 'session_order' => 2 }
+        ],
+        'events' => [
+          { 'eventCode' => '100SL', 'eventLength' => '100', 'eventStroke' => 'SL', 'relay' => false }
+        ]
+      }
+    end
+
+    before(:each) do
+      File.write(source_file, JSON.generate(lt4_data))
+    end
+
+    it 'prefers venueName over place for venue1' do
+      solver.build!(source_path: source_file, lt_format: 4)
+      data = JSON.parse(File.read(source_file.sub('.json', '-phase1.json')))['data']
+      expect(data['venue1']).to eq('Piscina Comunale di Test')
+    end
+
+    it 'prefers venueAddress over place for address1' do
+      solver.build!(source_path: source_file, lt_format: 4)
+      data = JSON.parse(File.read(source_file.sub('.json', '-phase1.json')))['data']
+      expect(data['address1']).to eq('Via Cesare Miola 5, Test (TS)')
+    end
+
+    it 'carries edition and max_individual_events into the payload' do
+      solver.build!(source_path: source_file, lt_format: 4)
+      data = JSON.parse(File.read(source_file.sub('.json', '-phase1.json')))['data']
+      expect(data['edition']).to eq(17)
+      expect(data['max_individual_events']).to eq(2)
+    end
+
+    it 'builds one session per manifestSessions entry' do
+      solver.build!(source_path: source_file, lt_format: 4)
+      data = JSON.parse(File.read(source_file.sub('.json', '-phase1.json')))['data']
+      sessions = data['meeting_session']
+      expect(sessions.size).to eq(2)
+      expect(sessions.pluck('scheduled_date')).to eq(%w[2026-11-07 2026-11-08])
+      expect(sessions.first['swimming_pool']['name']).to eq('Piscina Comunale di Test')
+    end
+
+    it 'supports meetings spanning more than 2 days' do
+      lt4_data['dates'] = '2026-11-06,2026-11-07,2026-11-08'
+      lt4_data['manifestSessions'] = [
+        { 'date' => '2026-11-06', 'session_order' => 1 },
+        { 'date' => '2026-11-07', 'session_order' => 2 },
+        { 'date' => '2026-11-08', 'session_order' => 3 }
+      ]
+      File.write(source_file, JSON.generate(lt4_data))
+      solver.build!(source_path: source_file, lt_format: 4)
+      data = JSON.parse(File.read(source_file.sub('.json', '-phase1.json')))['data']
+      expect(data['meeting_session'].size).to eq(3)
+      expect(data['meeting_session'].last['scheduled_date']).to eq('2026-11-08')
+    end
+  end
+
   describe '#build! with custom phase_path' do
     let(:lt2_data) { { 'layoutType' => 2, 'name' => 'Test Meeting', 'poolLength' => '25' } }
     let(:custom_path) { File.join(temp_dir, 'custom-phase1.json') }

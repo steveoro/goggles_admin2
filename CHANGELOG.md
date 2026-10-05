@@ -2,6 +2,7 @@
 
 _Please, add the latest build info on top of the list; use Version::MAJOR only after gold release; keep semantic versioning in line with framework's_
 
+- **0.10.55** [Devin] automatic meeting-data extraction from PDF manifests: `rake manifests:extract` converts `crawler/data/manifests/<season>/` PDFs into `layoutType: 4` source files under `crawler/data/results.new/<season>/` (name, dates, venue/pool/city, event program) via a local Ollama LLM (default `gemma4:e4b`), prefilling Phases 1 & 4 of the data-import wizard; scanned PDFs use the model's vision capability when available, otherwise they are skipped
 - **0.10.54** [Devin] standard_timings SQL import reads official XLSX files directly (Parser::StandardTimingXlsx + auto-discovery under crawler/data/standard_timings/<season_id>/, category/gender normalization, preflight validation); added roo gem
 - **0.10.53** [Devin] added Creative Trainings pictures management (upload/edit/delete via APIProxy, linked from Tools dashboard); re-sync w/ base engine v0.10.53; DB vers. 2.10.11
 - **0.10.51** [Devin] re-sync w/ base engine v0.10.51 (team_records scope for fast team-scoped record queries)

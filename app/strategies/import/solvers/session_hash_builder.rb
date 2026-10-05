@@ -5,7 +5,7 @@ module Import
     # Shared helper methods for building Phase 1 session/pool/city hash structures.
     # Used by Phase1Solver (auto-fill on build) and Phase1SessionRescanner (rescan from meeting).
     #
-    module SessionHashBuilder
+    module SessionHashBuilder # rubocop:disable Metrics/ModuleLength
       # Builds a Phase 1 session hash from a GogglesDb::MeetingSession instance.
       def build_session_hash(meeting_session)
         pool = meeting_session.swimming_pool
@@ -66,9 +66,10 @@ module Import
       # - pool_name: String (venue name)
       # - address: String (venue address)
       # - pool_length: String ("25" or "50")
+      # - city_name: String (optional) explicit city name overriding address tokenization
       #
-      def build_session_hash_from_fields(session_order:, scheduled_date:, pool_name:, address:, pool_length:)
-        pool_hash = find_and_build_pool_hash(pool_name, address, pool_length)
+      def build_session_hash_from_fields(session_order:, scheduled_date:, pool_name:, address:, pool_length:, city_name: nil) # rubocop:disable Metrics/ParameterLists
+        pool_hash = find_and_build_pool_hash(pool_name, address, pool_length, city_name)
 
         {
           'id' => nil,
@@ -84,7 +85,7 @@ module Import
 
       # Attempts a DB lookup for the pool by name; falls back to a blank hash populated
       # with the raw fields extracted from the source data.
-      def find_and_build_pool_hash(pool_name, address, pool_length)
+      def find_and_build_pool_hash(pool_name, address, pool_length, city_name = nil)
         pool_type_id = pool_length.to_s.include?('50') ? GogglesDb::PoolType::MT_50_ID : GogglesDb::PoolType::MT_25_ID
 
         # Try to find an existing pool
@@ -98,7 +99,7 @@ module Import
         end
 
         # Fallback: build a blank pool hash with whatever info we have
-        city_hash = find_and_build_city_hash(address)
+        city_hash = find_and_build_city_hash(address, city_name)
         {
           'id' => nil,
           'name' => pool_name,
@@ -116,10 +117,15 @@ module Import
       end
 
       # Attempts to extract a city name from the address and find it in the DB.
-      def find_and_build_city_hash(address)
-        return {} if address.blank?
+      # An explicit city_name (e.g. from extracted manifest data) wins over
+      # address tokenization when present.
+      def find_and_build_city_hash(address, explicit_city_name = nil)
+        city_name = explicit_city_name.presence
+        if city_name.blank?
+          return {} if address.blank?
 
-        city_name, _area, _remainder = Parser::CityName.tokenize_address(address)
+          city_name, _area, _remainder = Parser::CityName.tokenize_address(address)
+        end
         return {} if city_name.blank?
 
         cmd = GogglesDb::CmdFindDbEntity.call(GogglesDb::City, { name: city_name })
