@@ -56,6 +56,11 @@ class DataFixController < ApplicationController
     # required fields in the meeting & session cards below.
     @structure_report = Import::StructureValidator.new(phase1_data: @phase1_data)
 
+    # Extraction-time warnings carried in the LT4 source _meta (e.g. unknown
+    # event codes, suspicious dates) - visible here so the operator reviews
+    # them before committing anything.
+    @source_warnings = Array(parsed_source_json(source_path).dig('_meta', 'warnings'))
+
     # Set API URL for AutoComplete components
     set_api_url
 

@@ -33,7 +33,17 @@ module PdfManifests
     VALID_DISTANCES = [25, 50, 100, 200, 400, 800, 1500, 3000, 5000].freeze
     VALID_POOL_LENGTHS = %w[25 33 50].freeze
 
-    attr_reader :lt4_hash, :warnings
+    # Stroke words scanned inside raw labels. 'mix' is intentionally absent:
+    # the labels use it only inside 'mista/mix mista' relay wordings.
+    LABEL_STROKE_RE = /\b(stile libero|stile|libero|dorso|rana|farfalla|delfino|misti|misto|mista|mx|sl|do|ra|fa|mi)\b/i
+
+    # Structured validation issue. `retriable` marks problems the model can
+    # plausibly fix on a corrective pass by re-reading the source text
+    # (unknown event codes, dropped/mangled events, missing dates); advisory
+    # issues stay as operator-facing warnings only.
+    Issue = Struct.new(:message, :retriable, :context, keyword_init: true)
+
+    attr_reader :lt4_hash, :warnings, :issues
 
     # == Params
     # - extracted: Hash decoded from the LLM response
@@ -47,10 +57,17 @@ module PdfManifests
       @season_id = season_id
       @model = model
       @warnings = []
+      @issues = []
       @lt4_hash = build
     end
 
     private
+
+    # Records a warning message plus its structured Issue counterpart.
+    def warn_issue(message, retriable: false, **context)
+      @warnings << message
+      @issues << Issue.new(message: message, retriable: retriable, context: context)
+    end
 
     def build
       dates = normalized_dates
@@ -81,7 +98,7 @@ module PdfManifests
 
     def normalized_name
       name = @src['meeting_name'].to_s.strip
-      @warnings << 'meeting_name missing' if name.blank?
+      warn_issue('meeting_name missing') if name.blank?
       name.presence
     end
 
@@ -97,10 +114,10 @@ module PdfManifests
       dates = Array(@src['dates']).filter_map do |d|
         Date.iso8601(d.to_s.strip)
       rescue StandardError
-        @warnings << "unparseable date '#{d}'"
+        warn_issue("unparseable date '#{d}'", retriable: true, field: 'dates', value: d)
         nil
       end.uniq.sort
-      @warnings << 'no meeting dates extracted' if dates.empty?
+      warn_issue('no meeting dates extracted', retriable: true, field: 'dates') if dates.empty?
       dates.map(&:iso8601)
     end
 
@@ -110,7 +127,8 @@ module PdfManifests
       fname_date = File.basename(@pdf_path)[/manifest-(\d{4}-\d{2}-\d{2})/, 1]
       return if fname_date.blank? || first_date.blank? || fname_date == first_date
 
-      @warnings << "first extracted date (#{first_date}) != filename date (#{fname_date})"
+      warn_issue("first extracted date (#{first_date}) != filename date (#{fname_date})",
+                 field: 'dates', extracted: first_date, filename: fname_date)
     end
 
     def normalized_pool_length
@@ -118,7 +136,7 @@ module PdfManifests
       return nil if len.blank?
       return len if VALID_POOL_LENGTHS.include?(len)
 
-      @warnings << "unusual pool length '#{len}'"
+      warn_issue("unusual pool length '#{len}'", retriable: true, field: 'pool_length_meters', value: len)
       len
     end
 
@@ -159,12 +177,13 @@ module PdfManifests
         session_date = ev['session_date'].to_s.strip
         session_order = session_order_by_date[session_date] || 1
         if session_date.present? && session_order_by_date[session_date].nil?
-          @warnings << "event '#{ev['raw_label']}' has unknown session date '#{session_date}', assigned to session 1"
+          warn_issue("event '#{ev['raw_label']}' has unknown session date '#{session_date}', assigned to session 1",
+                     retriable: true, raw_label: ev['raw_label'], session_date: session_date)
         end
 
-        [session_order, event_hash['eventCode']]
         if seen[session_order].include?(event_hash['eventCode'])
-          @warnings << "duplicate event '#{event_hash['eventCode']}' in session #{session_order} skipped"
+          warn_issue("duplicate event '#{event_hash['eventCode']}' in session #{session_order} skipped",
+                     retriable: true, code: event_hash['eventCode'], session_order: session_order)
           next
         end
         seen[session_order] << event_hash['eventCode']
@@ -194,14 +213,15 @@ module PdfManifests
 
       distance = item['distance'].to_i
       unless VALID_DISTANCES.include?(distance)
-        @warnings << "event '#{raw_label}' has invalid distance '#{item['distance']}' - skipped"
+        warn_issue("event '#{raw_label}' has invalid distance '#{item['distance']}' - skipped",
+                   retriable: true, raw_label: raw_label, value: item['distance'])
         return nil
       end
       stroke = normalize_stroke(item['stroke'], raw_label)
       return nil if stroke.nil?
 
       code = "#{distance}#{stroke}"
-      warn_unknown_event_type(code, relay: false)
+      warn_unknown_event_type(code, relay: false, raw_label: raw_label)
       {
         'eventCode' => code,
         'eventLength' => distance.to_s,
@@ -218,7 +238,8 @@ module PdfManifests
       style = item['relay_style'].to_s.presence ||
               raw_label[/(\d+)\s*[xX]\s*(\d+)/, 0]&.gsub(/\s+/, '') # e.g. "4x50"
       if style.blank?
-        @warnings << "relay '#{raw_label}' has no detectable style (NxM) - skipped"
+        warn_issue("relay '#{raw_label}' has no detectable style (NxM) - skipped",
+                   retriable: true, raw_label: raw_label)
         return nil
       end
       style = style.upcase
@@ -231,7 +252,7 @@ module PdfManifests
       mixed = item['gender'].to_s.upcase == 'X' || raw_label.match?(/mistaf/i)
       prefix = mixed ? 'M' : 'S'
       code = "#{prefix}#{style}#{stroke}"
-      warn_unknown_event_type(code, relay: true)
+      warn_unknown_event_type(code, relay: true, raw_label: raw_label)
 
       {
         'eventCode' => code,
@@ -245,18 +266,42 @@ module PdfManifests
 
     # Resolves the stroke code, falling back to scanning the raw label when the
     # LLM field is missing (e.g. 'mistaffetta 4x50 stile libero' => SL).
+    # When both are present but disagree (model filled the field with a stroke
+    # from a neighbouring program line), emits a retriable mismatch issue.
     def normalize_stroke(value, raw_label, default: nil)
-      normalized = STROKE_CODES[value.to_s.strip.upcase]
-      return normalized if normalized
+      field_stroke = STROKE_CODES[value.to_s.strip.upcase]
+      label_stroke, check_stroke = label_strokes(raw_label)
 
-      label_hit = raw_label.upcase.scan(/\b(stile libero|stile|libero|dorso|rana|farfalla|delfino|misti|misto|mista|mx|sl|do|ra|fa|mi)\b/i)
-                           .flatten.first
-      mapped = STROKE_CODES[label_hit.to_s.upcase] if label_hit
-      return mapped if mapped
+      if field_stroke
+        warn_stroke_mismatch(raw_label, field_stroke, check_stroke) if check_stroke && check_stroke != field_stroke
+        return field_stroke
+      end
+      return label_stroke if label_stroke
       return default if default
 
-      @warnings << "event '#{raw_label}' has unknown stroke '#{value}' - skipped"
+      warn_issue("event '#{raw_label}' has unknown stroke '#{value}' - skipped",
+                 retriable: true, raw_label: raw_label, value: value)
       nil
+    end
+
+    # Stroke words found inside the raw label => [fallback_stroke, check_stroke].
+    # Trailing 'mista/misto' mixed-gender markers are dropped when a real stroke
+    # word is present; a lone gender word stays usable as fallback but is too
+    # ambiguous for the field cross-check (check_stroke = nil).
+    def label_strokes(raw_label)
+      hits = raw_label.upcase.scan(LABEL_STROKE_RE).flatten
+      hits = hits.grep_v(/\AMIST[AO]\z/) if hits.size > 1
+      return [nil, nil] if hits.empty?
+
+      label_stroke = STROKE_CODES[hits.first]
+      check = hits.size == 1 && hits.first.match?(/\AMIST[AO]\z/) ? nil : label_stroke
+      [label_stroke, check]
+    end
+
+    def warn_stroke_mismatch(raw_label, field_stroke, check_stroke)
+      warn_issue("event '#{raw_label}' label suggests stroke '#{check_stroke}' but field says '#{field_stroke}'",
+                 retriable: true, raw_label: raw_label, field: 'stroke',
+                 field_value: field_stroke, label_value: check_stroke)
     end
 
     def normalize_day_part(value)
@@ -267,10 +312,11 @@ module PdfManifests
       nil
     end
 
-    def warn_unknown_event_type(code, relay:)
+    def warn_unknown_event_type(code, relay:, raw_label: nil)
       return if GogglesDb::EventType.exists?(code: code, relay: relay)
 
-      @warnings << "event code '#{code}' (relay=#{relay}) not found in event_types"
+      warn_issue("event code '#{code}' (relay=#{relay}) not found in event_types",
+                 retriable: true, code: code, relay: relay, raw_label: raw_label)
     end
 
     def build_meta

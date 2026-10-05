@@ -41,6 +41,28 @@ RSpec.describe DataFixController do
         expect(response.body).to include('Test Meeting')
       end
 
+      context 'when the source carries extraction warnings' do
+        before(:each) do
+          File.write(source_file, JSON.generate(
+                                    'layoutType' => 4, 'name' => 'Test Meeting',
+                                    '_meta' => { 'warnings' => ["event code 'M4X50DO' (relay=true) not found in event_types"] }
+                                  ))
+        end
+
+        it 'renders the _meta warnings banner without blocking the page' do
+          get review_sessions_path(file_path: source_file, phase_v2: 1)
+          expect(response).to be_successful
+          expect(response.body).to include(I18n.t('data_import.data_fix.extraction_warnings_title'))
+          expect(response.body).to include('M4X50DO')
+        end
+
+        it 'omits the banner when no warnings are present' do
+          File.write(source_file, JSON.generate('layoutType' => 4, 'name' => 'Test Meeting'))
+          get review_sessions_path(file_path: source_file, phase_v2: 1)
+          expect(response.body).not_to include(I18n.t('data_import.data_fix.extraction_warnings_title'))
+        end
+      end
+
       it 'wires the meeting fuzzy selector to the LegacyAutoComplete ID field' do
         get review_sessions_path(file_path: source_file, phase_v2: 1)
 

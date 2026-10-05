@@ -103,6 +103,7 @@ it:
       btn_commit_structure_confirm: "Eseguo il commit della struttura del meeting (meeting, sessioni, eventi)? I risultati possono essere importati con un passaggio successivo."
       structure_only_title: "Nessun risultato in questo file"
       structure_only_hint: "Questa sorgente non contiene righe di risultati: verrà committata solo la struttura del meeting (meeting, sessioni, eventi)."
+      extraction_warnings_title: "Avvisi di estrazione dal manifesto (verificare prima del commit)"
       structure_invalid_title: "La struttura del meeting non è valida"
       structure_invalid_hint: "Correggi i campi evidenziati nella Fase 1 e salva i form, poi riprova il commit."
       fields_with_issues:

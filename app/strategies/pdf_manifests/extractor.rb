@@ -48,20 +48,15 @@ module PdfManifests
       return Result.new(pdf_path: pdf_path, skipped_reason: "output already exists: #{out_path}") if File.exist?(out_path) && !force
 
       text = TextExtractor.new(pdf_path).extract
-      extracted = nil
-      used_model = nil
-
-      if text.gsub(/\s+/, '').length >= 100
-        extracted = extract_from_text(text)
-        used_model = @client.model
-      else
-        warnings << 'no text layer found in PDF'
-        extracted, used_model = extract_from_images(pdf_path, warnings)
-      end
+      extracted, used_model = extract_payload(text, pdf_path, warnings)
 
       return Result.new(pdf_path: pdf_path, warnings: warnings, skipped_reason: 'extraction failed') if extracted.nil?
 
       builder = Lt4Builder.new(extracted: extracted, pdf_path: pdf_path, season_id: season_id, model: used_model)
+      # Retriable issues trigger a single corrective pass with the detected
+      # problems fed back to the model (text path only: the completeness
+      # heuristic and the feedback prompt both need the manifest text).
+      builder = improved_lt4_builder(builder, text:, pdf_path:, season_id:, model: used_model) if text_payload?(text)
       FileUtils.mkdir_p(File.dirname(out_path))
       File.write(out_path, JSON.pretty_generate(builder.lt4_hash))
 
@@ -95,6 +90,59 @@ module PdfManifests
     def extract_from_text(text)
       prompt = ExtractionPrompt.build(text)
       @client.generate(prompt: prompt)
+    end
+
+    # Returns [extracted_hash, model_used]; falls back to page images when the
+    # PDF has no usable text layer.
+    def extract_payload(text, pdf_path, warnings)
+      return [extract_from_text(text), @client.model] if text_payload?(text)
+
+      warnings << 'no text layer found in PDF'
+      extract_from_images(pdf_path, warnings)
+    end
+
+    def text_payload?(text)
+      text.gsub(/\s+/, '').length >= 100
+    end
+
+    # One corrective extraction pass when the normalized build surfaced
+    # retriable issues (unknown event codes, dropped/missing program events,
+    # bad dates). Keeps the retry output only when it is strictly better:
+    # fewer retriable lines and at least as many extracted events.
+    def improved_lt4_builder(builder, text:, pdf_path:, season_id:, model:)
+      issue_lines = retriable_issue_lines(builder, text)
+      return builder if issue_lines.empty?
+
+      corrected = @client.generate(prompt: ExtractionPrompt.build_correction(text, issue_lines, valid_event_codes))
+      retry_builder = Lt4Builder.new(extracted: corrected, pdf_path: pdf_path, season_id: season_id, model:)
+      if retry_improved?(retry_builder, builder, text, issue_lines)
+        retry_builder.warnings << "corrective pass applied: #{issue_lines.size} issue(s) reported"
+        retry_builder
+      else
+        builder.warnings << 'corrective extraction pass did not improve the output'
+        builder
+      end
+    rescue OllamaClient::Error => e
+      builder.warnings << "corrective extraction pass failed: #{e.message}"
+      builder
+    end
+
+    def retry_improved?(retry_builder, builder, text, issue_lines)
+      retriable_issue_lines(retry_builder, text).size < issue_lines.size &&
+        Array(retry_builder.lt4_hash['events']).size >= Array(builder.lt4_hash['events']).size
+    end
+
+    # Human-readable retriable lines fed to the corrective prompt: builder
+    # issues plus the deterministic program-completeness hints.
+    def retriable_issue_lines(builder, text)
+      lines = builder.issues.select(&:retriable).map(&:message)
+      missing = ProgramScanner.new.missing_mentions(text, builder.lt4_hash['events'])
+      lines << "possible missing program events not extracted: #{missing.join(', ')}" if missing.any?
+      lines
+    end
+
+    def valid_event_codes
+      @valid_event_codes ||= GogglesDb::EventType.distinct.pluck(:code).sort
     end
 
     # Returns [extracted_hash, model_used] or [nil, nil] updating warnings.

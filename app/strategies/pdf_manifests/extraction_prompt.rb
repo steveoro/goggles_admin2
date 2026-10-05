@@ -54,6 +54,32 @@ module PdfManifests
       "#{PROMPT_HEADER}\nMANIFEST TEXT:\n#{manifest_text}"
     end
 
+    # Builds the corrective prompt used after a first extraction produced
+    # retriable validation issues (unknown event codes, dropped or missing
+    # events, bad dates). The model is given the detected problems plus the
+    # valid event-type catalog and asked to re-read the manifest text.
+    # IMPORTANT for correctness: reported codes must be re-verified against
+    # the text and kept when genuinely present - never "fixed" to a similar
+    # catalog code just to silence the report.
+    def self.build_correction(manifest_text, issue_lines, valid_codes)
+      <<~TEXT
+        #{PROMPT_HEADER}
+        A previous extraction of this manifest was checked and produced these problems:
+        #{issue_lines.map { |line| "- #{line}" }.join("\n")}
+
+        Re-read the manifest text and output a corrected JSON (same schema). Rules:
+        - Fix what is actually wrong, re-checking each reported item against the text.
+        - Re-list EVERY race line in the program (individual and relays): the events
+          array must contain one entry per race, matching each line's own stroke
+          and distance exactly as written (e.g. "sl" => SL, "mix"/"misti" => MI).
+        - If a reported event code is truly written in the manifest, keep it as is.
+        - Valid event code catalog: #{valid_codes.join(', ')}
+
+        MANIFEST TEXT:
+        #{manifest_text}
+      TEXT
+    end
+
     # Builds the prompt variant used with page images (scanned PDFs).
     def self.build_for_images
       "#{PROMPT_HEADER}\nThe manifest content is provided as page images. Read them and output the same JSON.\nMANIFEST IMAGES ATTACHED."

@@ -125,6 +125,24 @@ RSpec.describe PdfManifests::Lt4Builder, type: :strategy do
       expect(build(src).lt4_hash['events'].first['eventCode']).to eq('S4X50SL')
     end
 
+    it 'flags a stroke field contradicting the raw label as a retriable issue' do
+      src = base_extraction.deep_dup
+      src['events'] = [{ 'distance' => 100, 'stroke' => 'DO', 'relay' => false, 'raw_label' => '100 m stile libero' }]
+      b = build(src)
+      expect(b.lt4_hash['events'].first['eventCode']).to eq('100DO') # field still wins - never auto-remapped
+      issue = b.issues.find { |i| i.message.include?('label suggests stroke') }
+      expect(issue).to be_present
+      expect(issue.retriable).to be(true)
+    end
+
+    it 'does not flag a lone "mista" label word as a stroke mismatch' do
+      src = base_extraction.deep_dup
+      src['events'] = [{ 'stroke' => 'SL', 'relay' => true, 'relay_style' => '4x50', 'gender' => 'X',
+                         'raw_label' => 'STAFFETTA 4x50 m mista' }]
+      b = build(src)
+      expect(b.issues.map(&:message).join).not_to include('label suggests stroke')
+    end
+
     it 'detects mistaffetta as mixed relay' do
       src = base_extraction.deep_dup
       src['events'] = [{ 'stroke' => nil, 'relay' => true, 'relay_style' => '4x50',
@@ -160,6 +178,42 @@ RSpec.describe PdfManifests::Lt4Builder, type: :strategy do
       src = base_extraction.deep_dup
       src['events'].first['day_part'] = 'morning'
       expect(build(src).lt4_hash['events'].first['dayPart']).to eq('morning')
+    end
+  end
+
+  describe 'structured issues' do
+    it 'marks unknown event codes as retriable with context' do
+      src = base_extraction.deep_dup
+      src['events'] = [{ 'stroke' => 'DO', 'relay' => true, 'relay_style' => '4x50', 'gender' => 'X',
+                         'raw_label' => 'STAFFETTA 4x50 m Dorso (mista)' }]
+      b = build(src)
+      issue = b.issues.find { |i| i.message.include?('M4X50DO') }
+      expect(issue).to be_present
+      expect(issue.retriable).to be(true)
+      expect(issue.context[:code]).to eq('M4X50DO')
+      expect(issue.context[:raw_label]).to include('Dorso')
+      expect(b.warnings.join).to include('M4X50DO')
+    end
+
+    it 'marks unparseable/missing dates as retriable' do
+      src = base_extraction.deep_dup
+      src['dates'] = ['not-a-date']
+      issue = build(src).issues.find { |i| i.message.include?('unparseable date') }
+      expect(issue.retriable).to be(true)
+    end
+
+    it 'keeps the filename/date mismatch advisory' do
+      src = base_extraction.deep_dup
+      src['dates'] = ['2026-12-25']
+      issue = build(src).issues.find { |i| i.message.include?('!= filename date') }
+      expect(issue.retriable).to be(false)
+    end
+
+    it 'keeps a missing meeting name advisory' do
+      src = base_extraction.deep_dup
+      src['meeting_name'] = nil
+      issue = build(src).issues.find { |i| i.message == 'meeting_name missing' }
+      expect(issue.retriable).to be(false)
     end
   end
 

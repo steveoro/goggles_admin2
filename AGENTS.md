@@ -19,6 +19,8 @@
 - `rake manifests:extract season=<id>` turns `crawler/data/manifests/<season>/manifest-*.pdf` into `layoutType: 4` sources under `crawler/data/results.new/<season>/` via `PdfManifests::Extractor` (pdftotext + local Ollama LLM, default `gemma4:e4b`; vision fallback for scanned PDFs only when the model advertises `vision`).
 - Manifest LT4 files carry extra prefill keys: `venueName`, `venueAddress`, `cityName`, `poolLength`, `edition`, `maxIndividualEvents`, `manifestSessions` (one per meeting day) — `Phase1Solver` prefers them over `place`.
 - Manifest files are meeting-only (no results): they can be committed as a bare meeting structure after Phase 1 (`Import::StructureValidator` gates the commit; new meetings get `manifest: true`). Results are added with a second data-fix pass on the published-results source — select the existing meeting in Step 1 and rescan sessions to avoid duplicates.
+- `Lt4Builder` emits structured `issues` (retriable vs advisory) alongside `_meta.warnings`; `ProgramScanner` adds a completeness hint (program mentions vs extracted events). Retriable issues trigger ONE corrective extraction pass (`ExtractionPrompt.build_correction` feeds issues + valid event codes back to the model); the retry is kept only when strictly better. Never auto-remap unknown event codes.
+- `_meta.warnings` from the LT4 source render as an info banner on the Phase 1 review page.
 - Ollama calling conventions/gotchas (must set `num_ctx`, `think:false`, `format:'json'`): `docs/pdf_processing/ollama_extraction_notes.md`.
 
 ## Grid toolbar bespoke content & local lookups

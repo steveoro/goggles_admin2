@@ -103,6 +103,7 @@ en:
       btn_commit_structure_confirm: "Commit the meeting structure (meeting, sessions, events)? Results can be imported with a later pass."
       structure_only_title: "No results in this source"
       structure_only_hint: "This source contains no result rows: only the meeting structure (meeting, sessions, events) will be committed."
+      extraction_warnings_title: "Manifest extraction warnings (verify before committing)"
       structure_invalid_title: "Meeting structure is invalid"
       structure_invalid_hint: "Fix the highlighted fields in Step 1 and save the forms, then retry the commit."
       fields_with_issues:

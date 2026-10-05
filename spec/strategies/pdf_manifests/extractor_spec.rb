@@ -64,6 +64,66 @@ RSpec.describe PdfManifests::Extractor, type: :strategy do
         third = extractor.call(pdf_path, force: true)
         expect(third).to be_success
       end
+
+      it 'does not run a corrective pass when the extraction is clean' do
+        allow(client).to receive(:generate).and_return(extracted)
+        extractor.call(pdf_path)
+        expect(client).to have_received(:generate).once
+      end
+
+      context 'with retriable issues in the first extraction' do
+        # 'M4X50DO' does not exist in event_types -> retriable issue.
+        let(:bad_extraction) do
+          extracted.merge(
+            'events' => [{ 'stroke' => 'DO', 'relay' => true, 'relay_style' => '4x50', 'gender' => 'X',
+                           'raw_label' => 'STAFFETTA 4x50 m Dorso (mista)' }]
+          )
+        end
+
+        it 'runs exactly one corrective pass and writes the corrected result' do
+          allow(client).to receive(:generate).and_return(bad_extraction, extracted)
+          result = extractor.call(pdf_path)
+          expect(client).to have_received(:generate).twice
+          lt4 = JSON.parse(File.read(result.out_path))
+          expect(lt4['events'].pluck('eventCode')).to eq(['100SL'])
+          expect(result.warnings.join).to include('corrective pass applied')
+          expect(result.warnings.join).not_to include('M4X50DO')
+        end
+
+        it 'feeds the detected issues and valid codes back into the retry prompt' do
+          prompts = []
+          allow(client).to receive(:generate) do |prompt:, **_opts|
+            prompts << prompt
+            prompts.size == 1 ? bad_extraction : extracted
+          end
+          extractor.call(pdf_path)
+          expect(prompts.size).to eq(2)
+          expect(prompts.last).to include('M4X50DO')
+          expect(prompts.last).to include('Valid event code catalog')
+          expect(prompts.last).to include('MANIFEST TEXT')
+        end
+
+        it 'keeps the original output when the retry is no better' do
+          allow(client).to receive(:generate).and_return(bad_extraction, bad_extraction)
+          result = extractor.call(pdf_path)
+          expect(result).to be_success
+          expect(result.warnings.join).to include('M4X50DO')
+          expect(result.warnings.join).to include('did not improve')
+        end
+
+        it 'keeps the original output when the corrective call fails' do
+          calls = 0
+          allow(client).to receive(:generate) do
+            calls += 1
+            raise(PdfManifests::OllamaClient::Error, 'correction boom') if calls > 1
+
+            bad_extraction
+          end
+          result = extractor.call(pdf_path)
+          expect(result).to be_success
+          expect(result.warnings.join).to include('corrective extraction pass failed: correction boom')
+        end
+      end
     end
 
     context 'when the PDF has no text layer' do

@@ -27,6 +27,18 @@
   = render(partial: 'data_fix/phase_metadata', locals: { phase_number: 1, metadata: @phase1_meta,
                                                          extra_info: extra_info })
 
+  -# Extraction warnings recorded in the LT4 source _meta (e.g. unknown event
+  -# codes, date mismatches): shown early so they can be verified before commit.
+  - if @source_warnings.present?
+    .alert.alert-info.py-2
+      %i.fa.fa-info-circle.me-2
+      %strong= t('data_import.data_fix.extraction_warnings_title')
+      %ul.mb-0.mt-1
+        - @source_warnings.first(8).each do |warning|
+          %li= warning
+        - if @source_warnings.size > 8
+          %li … (+#{@source_warnings.size - 8})
+
   -# Non-blocking structure validation summary (missing required fields are
   -# flagged inline in the cards below; saving partial data stays allowed).
   - if @structure_report && !@structure_report.valid?
