@@ -25,11 +25,11 @@ class APITrainingsController < ApplicationController
     )
     unless result.code == 200
       flash[:error] = I18n.t('dashboard.api_proxy_error', error_code: result.code,
-                                                          error_msg: error_detail_for(result))
+                                                          error_msg: result.error_detail)
       redirect_to(root_path) && return
     end
 
-    @rows = JSON.parse(result.body)
+    @rows = result.json
     @domain_page = result.headers[:page].to_i
     @domain_per_page = result.headers[:per_page].to_i
     @domain_count = result.headers[:total].to_i
@@ -70,7 +70,7 @@ class APITrainingsController < ApplicationController
       flash[:info] = I18n.t('datagrid.edit_modal.create_ok', id: json['new']['id'])
       redirect_to(api_trainings_path)
     else
-      flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: error_detail_for(result))
+      flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: result.error_detail)
       redirect_to(new_api_training_path)
     end
   end
@@ -85,15 +85,11 @@ class APITrainingsController < ApplicationController
       payload: training_payload
     )
 
-    parsed_response = begin
-      (result.body.present? ? JSON.parse(result.body) : {})
-    rescue StandardError
-      {}
-    end
+    parsed_response = result.json.is_a?(Hash) ? result.json : {}
     if result.code == 200 && parsed_response['id'].present?
       flash[:info] = I18n.t('datagrid.edit_modal.edit_ok')
     else
-      flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: error_detail_for(result))
+      flash[:error] = I18n.t('datagrid.edit_modal.edit_failed', error: result.error_detail)
     end
     redirect_to(api_trainings_path)
   end
@@ -126,9 +122,9 @@ class APITrainingsController < ApplicationController
     result = APIProxy.call(
       method: :get, url: "training/#{row_id}", jwt: current_user.jwt
     )
-    return unless result.code == 200 && result.body.present?
+    return unless result.code == 200 && result.json.is_a?(Hash)
 
-    JSON.parse(result.body).presence
+    result.json['id'].present? ? result.json : nil
   end
 
   # Fetches the display label for a Swimmer (used to preselect the autocomplete).
@@ -136,9 +132,9 @@ class APITrainingsController < ApplicationController
     result = APIProxy.call(
       method: :get, url: "swimmer/#{swimmer_id}", jwt: current_user.jwt
     )
-    return unless result.code == 200 && result.body.present?
+    return unless result.code == 200
 
-    JSON.parse(result.body)['complete_name']
+    result.json['complete_name'] if result.json.is_a?(Hash)
   end
 
   # Whitelisted params for create/update; the picture file is sent as 'image'.
@@ -157,21 +153,5 @@ class APITrainingsController < ApplicationController
   # Strong parameters checking for /index.
   def index_params
     params.permit(:page, :per_page)
-  end
-
-  # Extracts the most useful error detail from an API result.
-  # The API reports the actual rejection reason in the 'X-Error-Detail' header,
-  # so that's preferred over the generic JSON 'error' body field; anything
-  # non-JSON falls back to the raw body or the status code.
-  def error_detail_for(result)
-    detail = result.headers[:x_error_detail] if result.respond_to?(:headers)
-    if detail.blank?
-      detail = begin
-        JSON.parse(result.body)['error']
-      rescue StandardError
-        nil
-      end
-    end
-    detail.presence || result.body.presence || result.code
   end
 end

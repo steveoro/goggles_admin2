@@ -159,13 +159,14 @@ class ApplicationController < ActionController::Base
   #-- -------------------------------------------------------------------------
   #++
 
-  # Checks the <tt>result.code</tt> and returns the <tt>result.body</tt> assuming it's a valid JSON string.
-  # Returns an empty Hash otherwise.
+  # Checks the <tt>result.code</tt> and returns the parsed JSON body.
+  # Returns an empty Hash on errors or non-Hash bodies.
+  # (APIProxy::Result#json never raises and normalizes non-JSON bodies.)
   def parse_json_result_from_create(result)
-    return {} unless result.respond_to?(:code) && result.respond_to?(:body) &&
-                     result.code >= 200 && result.code < 300 && result.body.present?
+    return {} unless result.respond_to?(:code) && result.respond_to?(:json) &&
+                     result.code >= 200 && result.code < 300 && result.json.is_a?(Hash)
 
-    JSON.parse(result.body)
+    result.json
   end
   #-- -------------------------------------------------------------------------
   #++

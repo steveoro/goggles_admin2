@@ -13,6 +13,47 @@ require 'singleton'
 class APIProxy
   include Singleton
 
+  # == APIProxy::Result
+  #
+  # Normalized result wrapper for API calls. Delegates everything to the
+  # wrapped RestClient::Response, but guarantees that the body is always
+  # valid JSON: non-JSON or blank bodies (Rails error pages, proxy 503s,
+  # plain text responses) are normalized into an <tt>{ 'error' => <detail> }</tt>
+  # Hash so callers can always safely parse the result.
+  #
+  # (JSON primitives like 'true' keep passing through untouched, so
+  # `result.body == 'true'` checks keep working.)
+  #
+  class Result < SimpleDelegator
+    # The response body as a valid JSON string (see #json for the parsed value).
+    def body
+      json.to_json
+    end
+
+    # The parsed response body; never raises.
+    # Blank/malformed bodies on a successful response are normalized into
+    # an empty Hash ("no content"), while non-JSON error bodies become an
+    # 'error' Hash — so callers can always parse, and 'body.present?'
+    # semantics stay unchanged (a blank 2xx still yields no domain rows).
+    def json
+      return @json if defined?(@json)
+
+      @json = begin
+        JSON.parse(__getobj__.body.to_s)
+      rescue StandardError
+        (200..299).cover?(code) ? {} : { 'error' => __getobj__.body.presence || "Error #{code}" }
+      end
+    end
+
+    # Most useful human-readable detail for a failed call:
+    # X-Error-Detail header > JSON 'error' field > raw body > status code.
+    def error_detail
+      detail = headers[:x_error_detail].presence
+      detail ||= json['error'] if json.is_a?(Hash)
+      detail.presence || __getobj__.body.presence || "Error #{code}"
+    end
+  end
+
   # Generic call helper
   #
   # == Options:
@@ -24,9 +65,11 @@ class APIProxy
   # - :port_override  => Port number override for the API base URL; when +nil+, uses the default found from the settings
   #
   # == Returns
-  # A RestClient Response object, even in case of errors.
+  # An APIProxy::Result wrapping the RestClient Response, even in case of errors.
+  # The result's #body is always a valid JSON string; #json is its parsed value
+  # and #error_detail the best human-readable rejection reason.
   #
-  def self.call(options = {})
+  def self.call(options = {}) # rubocop:disable Metrics/AbcSize
     method = options[:method]
     url = options[:url]
     payload = options[:payload]
@@ -39,14 +82,16 @@ class APIProxy
     hdrs = whitelisted.present? ? { params: whitelisted } : {}
     hdrs['Authorization'] = "Bearer #{jwt}" if jwt.present?
 
-    RestClient::Request.execute(
-      method:,
-      url: "#{api_base_url}/api/v3/#{url}",
-      payload: payload.to_h,
-      headers: hdrs
+    Result.new(
+      RestClient::Request.execute(
+        method:,
+        url: "#{api_base_url}/api/v3/#{url}",
+        payload: payload.to_h,
+        headers: hdrs
+      )
     )
   rescue RestClient::ExceptionWithResponse => e
-    e.response
+    Result.new(e.response)
   end
   #-- -------------------------------------------------------------------------
   #++

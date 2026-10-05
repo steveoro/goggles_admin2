@@ -93,4 +93,84 @@ RSpec.describe APIProxy, type: :strategy do
     #-- -----------------------------------------------------------------------
     #++
   end
+
+  describe 'Result' do
+    let(:fake_response) do
+      double(code: response_code, body: response_body, headers: response_headers)
+    end
+    let(:response_code) { 200 }
+    let(:response_headers) { {} }
+    subject { APIProxy::Result.new(fake_response) }
+
+    context 'with a JSON object body,' do
+      let(:response_body) { { 'id' => 7, 'name' => 'test' }.to_json }
+
+      it 'returns the body as a valid JSON string' do
+        expect(JSON.parse(subject.body)).to eq('id' => 7, 'name' => 'test')
+      end
+      it 'exposes the parsed body through #json' do
+        expect(subject.json['id']).to eq(7)
+      end
+      it 'delegates code & headers' do
+        expect(subject.code).to eq(200)
+        expect(subject.headers).to eq({})
+      end
+    end
+
+    context 'with a JSON primitive body,' do
+      let(:response_body) { 'true' }
+
+      it 'keeps the primitive body as-is' do
+        expect(subject.body).to eq('true')
+      end
+      it 'exposes the primitive through #json' do
+        expect(subject.json).to be(true)
+      end
+    end
+
+    context 'with a non-JSON error body,' do
+      let(:response_code) { 503 }
+      let(:response_body) { 'Service Unavailable' }
+
+      it 'normalizes the body into an error JSON' do
+        expect(JSON.parse(subject.body)).to eq('error' => 'Service Unavailable')
+      end
+      it 'exposes the body text as #error_detail' do
+        expect(subject.error_detail).to eq('Service Unavailable')
+      end
+    end
+
+    context 'with a blank body,' do
+      let(:response_code) { 500 }
+      let(:response_body) { '' }
+
+      it 'normalizes the body into an error JSON with the status code' do
+        expect(JSON.parse(subject.body)).to eq('error' => 'Error 500')
+      end
+      it 'falls back to the status code for #error_detail' do
+        expect(subject.error_detail).to eq('Error 500')
+      end
+    end
+
+    context 'with a blank body on a successful response,' do
+      let(:response_body) { '' }
+
+      it 'normalizes the body into an empty JSON object (no content)' do
+        expect(JSON.parse(subject.body)).to eq({})
+        expect(subject.json).to eq({})
+      end
+    end
+
+    context 'with an X-Error-Detail header,' do
+      let(:response_code) { 422 }
+      let(:response_body) { { error: 'generic' }.to_json }
+      let(:response_headers) { { x_error_detail: 'the real reason' } }
+
+      it 'prefers the header for #error_detail' do
+        expect(subject.error_detail).to eq('the real reason')
+      end
+    end
+  end
+  #-- -----------------------------------------------------------------------
+  #++
 end
