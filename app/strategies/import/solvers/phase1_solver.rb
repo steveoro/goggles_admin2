@@ -68,6 +68,9 @@ module Import
           'meeting_session' => [] # UI will add sessions/pools/cities
         }
 
+        # Manifest-extracted sources create manifest-only meetings on commit:
+        payload['manifest'] = true if data_hash.dig('_meta', 'meeting_only') == true
+
         # Dates
         set_dates!(payload, data_hash, lt_format)
 

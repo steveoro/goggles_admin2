@@ -21,6 +21,23 @@ module Import
       end
       # -----------------------------------------------------------------------
 
+      # Builds the City model (existing row with updated attributes or new draft)
+      # without persisting, mirroring the lookup/normalize logic used by #commit.
+      # Used by Import::StructureValidator for preflight validation.
+      def prepare_model(city_hash)
+        city_id = city_hash['city_id'] || city_hash['id']
+        attributes = normalize_attributes(city_hash)
+
+        existing_row = GogglesDb::City.find_by(id: city_id) if city_id.to_i.positive?
+        if existing_row
+          existing_row.assign_attributes(attributes.except('id'))
+          return existing_row
+        end
+
+        GogglesDb::City.new(attributes.except('id'))
+      end
+      # -----------------------------------------------------------------------
+
       # Commit a City entity (nested within swimming pool data).
       # Returns the committed row ID or raises an error.
       def commit(city_hash)

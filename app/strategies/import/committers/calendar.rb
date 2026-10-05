@@ -22,9 +22,8 @@ module Import
       end
       # -----------------------------------------------------------------------
 
-      def prepare_model(meeting_hash)
-        meeting_id = meeting_hash['meeting_id']
-        meeting = GogglesDb::Meeting.find(meeting_id) # Fail fast
+      def prepare_model(meeting_hash, meeting: nil)
+        meeting ||= GogglesDb::Meeting.find(meeting_hash['meeting_id']) # Fail fast
 
         attributes = build_calendar_attributes(meeting_hash, meeting)
         GogglesDb::Calendar.new(attributes.except('id'))

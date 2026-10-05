@@ -21,6 +21,23 @@ module Import
       end
       # -----------------------------------------------------------------------
 
+      # Builds the MeetingSession model (existing row with updated attributes or new draft)
+      # without persisting, mirroring the lookup/normalize logic used by #commit.
+      # Used by Import::StructureValidator for preflight validation.
+      def prepare_model(session_hash)
+        session_id = session_hash['meeting_session_id'] || session_hash['id']
+        attributes = normalize_attributes(session_hash)
+
+        existing_row = GogglesDb::MeetingSession.find_by(id: session_id) if session_id.to_i.positive?
+        if existing_row
+          existing_row.assign_attributes(attributes.except('id'))
+          return existing_row
+        end
+
+        GogglesDb::MeetingSession.new(attributes.except('id'))
+      end
+      # -----------------------------------------------------------------------
+
       # Commit a MeetingSession entity.
       # Expects session_hash to already include meeting_id and (optionally) swimming_pool_id.
       # Returns the committed row ID or raises an error.

@@ -99,6 +99,16 @@ it:
       category_recompute_button: "Ricalcola categorie"
       category_recompute_confirm: "Ricalcolare le categorie individuali e staffette dal file LT4? Le fasi 3–5 verranno eliminate e dovranno essere ricostruite."
       proceed_to_teams: "Procedi alla Fase 2 (Squadre)"
+      btn_commit_structure: "Commit struttura meeting"
+      btn_commit_structure_confirm: "Eseguo il commit della struttura del meeting (meeting, sessioni, eventi)? I risultati possono essere importati con un passaggio successivo."
+      structure_only_title: "Nessun risultato in questo file"
+      structure_only_hint: "Questa sorgente non contiene righe di risultati: verrà committata solo la struttura del meeting (meeting, sessioni, eventi)."
+      structure_invalid_title: "La struttura del meeting non è valida"
+      structure_invalid_hint: "Correggi i campi evidenziati nella Fase 1 e salva i form, poi riprova il commit."
+      fields_with_issues:
+        one: "1 campo richiede attenzione"
+        other: "%{count} campi richiedono attenzione"
+      code_autocomputed_hint: "il codice è autocalcolato ma viene serializzato solo cliccando \"Salva Meeting\""
     push:
       msg_prepare_batch_ok: 'File batch SQL creato con successo.'
       msg_send_batch_ok: "File batch inviato con successo."

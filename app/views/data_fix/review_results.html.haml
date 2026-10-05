@@ -20,7 +20,17 @@
 
   .d-flex.justify-content-between.my-2
     = link_to '< Back to file list', pull_result_files_path, class: 'btn btn-outline-secondary mr-2'
-    - if @all_results.present? || @has_relay_results || @overwrite_candidates.present?
+    - if @result_free
+      -# Structure-only commit: enabled only when meeting + sessions are valid
+      %div
+        = button_to commit_phase6_path(file_path: @file_path),
+                                       method: :post, class: 'btn btn-success',
+                                       disabled: !@structure_report&.valid?,
+                                       data: { turbo_confirm: I18n.t('data_import.data_fix.btn_commit_structure_confirm'),
+                                               turbo_method: :post } do
+          %i.fa.fa-database
+          = I18n.t('data_import.data_fix.btn_commit_structure')
+    - elsif @all_results.present? || @has_relay_results || @overwrite_candidates.present?
       %div
         = button_to commit_phase6_path(file_path: @file_path),
                                        method: :post, class: 'btn btn-success',
@@ -96,7 +106,19 @@
         %span.text-danger.ms-2
           (#{@populate_stats[:errors].size} errors)
 
-  - if @total_programs_count.to_i.zero?
+  - if @result_free
+    .alert.alert-info
+      %i.fa.fa-info-circle.me-2
+      %strong= t('data_import.data_fix.structure_only_title')
+      %span.ms-1= t('data_import.data_fix.structure_only_hint')
+    - if @structure_errors.present?
+      .alert.alert-danger
+        %strong= t('data_import.data_fix.structure_invalid_title')
+        %ul.mb-1
+          - @structure_errors.each do |error_message|
+            %li= error_message
+        %small= t('data_import.data_fix.structure_invalid_hint')
+  - elsif @total_programs_count.to_i.zero?
     .alert.alert-warning
       %p No results loaded from phase5 JSON yet.
       %p

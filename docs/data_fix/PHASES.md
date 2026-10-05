@@ -27,6 +27,36 @@ Phase 6: Commit → Production DB + SQL log
 
 **Key Principle**: "Solve Early, Commit Later" - All matching and calculations happen during phase building, not at commit time.
 
+### Structure-only (result-free) sources
+
+Sources without any result rows — typically manifest-extracted files carrying
+`_meta.meeting_only: true`, empty `teams`/`swimmers` arrays, and `events` with
+empty `results` — follow a shortened chain:
+
+```
+Phase 1: Meeting → phase1.json (must be valid: meeting + ≥1 session)
+    ↓ (phases 2-5 optional)
+Phase 6: Commit → Production DB + SQL log
+```
+
+- Step 2 accepts `teams: []` without rebuilding; Steps 3/4 render empty lists.
+- Step 5 detects the result-free source and shows a **"Commit meeting structure"**
+  button instead of the results commit. It is disabled while the structure is
+  invalid; the blocking errors are listed in a banner.
+- Phase 6 requires only `phase1.json` and runs `Import::StructureValidator`
+  before committing. Events are optional and may be committed when resolvable;
+  an event that cannot resolve its `event_type_id` still fails the commit.
+- When `_meta.meeting_only` is set and a **new** meeting is created, Phase 6
+  writes `manifest: true` into the Phase 1 data so the committed `Meeting` row
+  is flagged as manifest-only. Existing meetings keep their current flag.
+
+This enables a two-pass workflow: create the meeting structure from the
+manifest first, then run a second data-fix pass on the published-results
+source. On the second pass the operator must select the existing meeting in
+Step 1 and rescan the sessions so `meeting_session` ids resolve and duplicate
+sessions are not created; Phases 2-5 then add teams, swimmers, badges, events,
+programs, results and laps against the existing structure.
+
 ---
 
 ## Phase 1: Meeting & Sessions
@@ -46,6 +76,10 @@ Phase 6: Commit → Production DB + SQL log
 - Session matching by (meeting_id, session_order)
 - Venue/city cascading creation
 - Optional source category recomputation from the reviewed Phase 1 page
+- Required-field validation cues (`is-invalid` highlights + inline messages) on
+  meeting, session, pool and city fields via `Import::StructureValidator` —
+  display-only, partial saves stay allowed. A missing auto-computed `code`
+  reminds the operator to hit "Save Meeting" to serialize the generated value.
 
 ### Source Category Recompute
 
@@ -367,6 +401,17 @@ The toggle stores the candidate snapshot in Phase 5 metadata. Candidates are dis
 - Generates SQL log for remote sync
 - All operations in single transaction (rollback on error)
 - Moves source files to `results.done/` folder
+
+### Structure-only commits
+
+For result-free sources (see *Structure-only (result-free) sources* above):
+- Only `phase1.json` is required (phases 2-5 may be missing or empty).
+- The MIR/MRR staging-row check is skipped.
+- `Import::StructureValidator` runs before committing: the commit is rejected
+  and redirected to Step 1 when the meeting or any session is invalid.
+- Events present in `phase4.json` are committed when resolvable; an
+  unresolvable `event_type_id` aborts the transaction (nothing is persisted).
+- New meetings created from `_meta.meeting_only` sources get `manifest: true`.
 
 ### Dependency-Aware Commit Order
 ```

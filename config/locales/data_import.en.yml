@@ -99,6 +99,16 @@ en:
       category_recompute_button: "Recompute categories"
       category_recompute_confirm: "Recompute individual and relay categories from this LT4 source? Phases 3–5 will be discarded and need to be rebuilt."
       proceed_to_teams: "Proceed to Step 2 (Teams)"
+      btn_commit_structure: "Commit meeting structure"
+      btn_commit_structure_confirm: "Commit the meeting structure (meeting, sessions, events)? Results can be imported with a later pass."
+      structure_only_title: "No results in this source"
+      structure_only_hint: "This source contains no result rows: only the meeting structure (meeting, sessions, events) will be committed."
+      structure_invalid_title: "Meeting structure is invalid"
+      structure_invalid_hint: "Fix the highlighted fields in Step 1 and save the forms, then retry the commit."
+      fields_with_issues:
+        one: "1 field needs attention"
+        other: "%{count} fields need attention"
+      code_autocomputed_hint: "the code is autocomputed but is serialized only when you click \"Save Meeting\""
     push:
       msg_prepare_batch_ok: 'SQL batch file created.'
       msg_send_batch_ok: "SQL batch file successfully sent."

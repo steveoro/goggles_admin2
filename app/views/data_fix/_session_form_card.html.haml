@@ -1,3 +1,10 @@
+:ruby
+  # Field-level validation cues (from Import::StructureValidator), keyed by attribute
+  session_field_errors = (local_assigns.dig(:session_errors, 'fields') || {}).with_indifferent_access
+  pool_field_errors = (local_assigns.dig(:session_errors, 'swimming_pool') || {}).with_indifferent_access
+  city_field_errors = (local_assigns.dig(:session_errors, 'city') || {}).with_indifferent_access
+  session_invalid = session_field_errors.present? || pool_field_errors.present? || city_field_errors.present?
+  invalid_cls = ->(errors_hash, attribute) { errors_hash[attribute].present? ? 'is-invalid' : nil }
 .card.mb-2{ class: "#{card_bg} #{border_color} #{border_width}", id: "session-card-#{idx}" }
   .card-header.d-flex.justify-content-between.align-items-center{ id: "session-header-#{idx}", style: 'cursor: pointer;', data: { toggle: 'collapse', target: "#session-collapse-#{idx}" } }
     .d-flex.align-items-center
@@ -20,6 +27,9 @@
       - else
         %small.ml-2.badge.badge-primary
           NEW
+      - if session_invalid
+        %small.ml-2.badge.badge-danger
+          = t('data_import.data_fix.fields_with_issues', count: session_field_errors.size + pool_field_errors.size + city_field_errors.size)
     .d-flex.align-items-center
       = form_tag(data_fix_delete_session_path, method: :delete,
                  class: 'd-inline',
@@ -29,7 +39,7 @@
         %button.btn.btn-sm.btn-danger{ type: 'submit', 'aria-label' => 'Delete session', onclick: 'event.stopPropagation();' }
           %i.fa.fa-trash
 
-  .collapse{ class: (is_new_session ? 'show' : ''), id: "session-collapse-#{idx}",
+  .collapse{ class: (is_new_session || session_invalid ? 'show' : ''), id: "session-collapse-#{idx}",
              'aria-labelledby' => "session-header-#{idx}",
              'data-parent' => "#session-card-#{idx}" }
     .card-body.border-bottom.border-secondary
@@ -59,22 +69,28 @@
           .form-group.col-md-4
             %label Description
             = text_field_tag(:description, sess_hash['description'],
-                             required: true, class: 'form-control form-control-sm',
+                             required: true, class: ['form-control form-control-sm', invalid_cls.call(session_field_errors, 'description')],
                              id: "session_#{idx}_description",
                              placeholder: 'Session description')
+            - if session_field_errors['description'].present?
+              .invalid-feedback= Array(session_field_errors['description']).join(', ')
           .form-group.col-md-2
             %label Order
             = number_field_tag(:session_order, sess_hash['session_order'] || (idx + 1),
-                               required: true, class: 'form-control form-control-sm', min: 1,
+                               required: true, class: ['form-control form-control-sm', invalid_cls.call(session_field_errors, 'session_order')], min: 1,
                                id: "session_#{idx}_order")
+            - if session_field_errors['session_order'].present?
+              .invalid-feedback= Array(session_field_errors['session_order']).join(', ')
           .form-group.col-md-3
             %label Scheduled Date
             - if sess_hash['scheduled_date'].blank?
               %span
                 %i.fa.fa-exclamation.text-danger
             = date_field_tag(:scheduled_date, sess_hash['scheduled_date'],
-                             required: true, class: 'form-control form-control-sm',
+                             required: true, class: ['form-control form-control-sm', invalid_cls.call(session_field_errors, 'scheduled_date')],
                              id: "session_#{idx}_scheduled_date")
+            - if session_field_errors['scheduled_date'].present?
+              .invalid-feedback= Array(session_field_errors['scheduled_date']).join(', ')
           .form-group.col-md-1
             %label Day Part
             = select_tag(:day_part_type_id,
@@ -153,14 +169,18 @@
           .form-group.col-md-4
             %label{ for: "pool_#{idx}_name" } Pool Name
             = text_field_tag('pool[name]', pool_data['name'],
-                             id: "pool_#{idx}_name", required: true, class: 'form-control form-control-sm',
+                             id: "pool_#{idx}_name", required: true, class: ['form-control form-control-sm', invalid_cls.call(pool_field_errors, 'name')],
                              placeholder: 'Pool name', onchange: onchange_event,
                              data: { 'coded-name-target' => 'name' })
+            - if pool_field_errors['name'].present?
+              .invalid-feedback= Array(pool_field_errors['name']).join(', ')
           .form-group.col-md-2
             %label{ for: "pool_#{idx}_nick_name" } Nick Name
             = text_field_tag('pool[nick_name]', pool_data['nick_name'],
-                             id: "pool_#{idx}_nick_name", class: 'form-control form-control-sm',
+                             id: "pool_#{idx}_nick_name", class: ['form-control form-control-sm', invalid_cls.call(pool_field_errors, 'nick_name')],
                              placeholder: 'Coded', data: { 'coded-name-target' => 'field' })
+            - if pool_field_errors['nick_name'].present?
+              .invalid-feedback= Array(pool_field_errors['nick_name']).join(', ')
 
         .form-row
           .form-group.col-md-5
@@ -173,12 +193,16 @@
             - pool_type_opts = options_for_select(GogglesDb::PoolType.all.map { |t| [t.long_label, t.id] },
                                                   pool_data['pool_type_id'])
             = select_tag('pool[pool_type_id]', pool_type_opts,
-                          { id: "pool_#{idx}_pool_type_id", class: 'form-control form-control-sm',
+                          { id: "pool_#{idx}_pool_type_id", class: ['form-control form-control-sm', invalid_cls.call(pool_field_errors, 'pool_type')],
                             data: { 'autocomplete-target' => 'field2', 'coded-name-target' => 'pool' } })
+            - if pool_field_errors['pool_type'].present?
+              .invalid-feedback.d-block= Array(pool_field_errors['pool_type']).join(', ')
           .form-group.col-md-1
             %label Lanes
             = number_field_tag('pool[lanes_number]', pool_data['lanes_number'],
-                               id: "pool_#{idx}_lanes_number", class: 'form-control form-control-sm', min: 1, max: 10)
+                               id: "pool_#{idx}_lanes_number", class: ['form-control form-control-sm', invalid_cls.call(pool_field_errors, 'lanes_number')], min: 1, max: 10)
+            - if pool_field_errors['lanes_number'].present?
+              .invalid-feedback= Array(pool_field_errors['lanes_number']).join(', ')
           .form-group.col-md-4
             %label
               Maps URI
@@ -230,30 +254,40 @@
           .form-group.col-md-3
             %label City Name
             = text_field_tag('city[name]', city_data['name'],
-                             id: "city_#{idx}_name", class: 'form-control form-control-sm',
+                             id: "city_#{idx}_name", class: ['form-control form-control-sm', invalid_cls.call(city_field_errors, 'name')],
                              placeholder: 'City name', onchange: onchange_event,
                              data: { 'coded-name-target' => 'city' })
+            - if city_field_errors['name'].present?
+              .invalid-feedback= Array(city_field_errors['name']).join(', ')
           .form-group.col-md-2
             %label Area
             = text_field_tag('city[area]', city_data['area'],
-                             id: "city_#{idx}_area", class: 'form-control form-control-sm',
+                             id: "city_#{idx}_area", class: ['form-control form-control-sm', invalid_cls.call(city_field_errors, 'area')],
                              placeholder: 'Province/State')
+            - if city_field_errors['area'].present?
+              .invalid-feedback= Array(city_field_errors['area']).join(', ')
           .form-group.col-md-2
             %label ZIP
             = text_field_tag('city[zip]', city_data['zip'],
-                             id: "city_#{idx}_zip", class: 'form-control form-control-sm',
+                             id: "city_#{idx}_zip", class: ['form-control form-control-sm', invalid_cls.call(city_field_errors, 'zip')],
                              placeholder: 'ZIP')
+            - if city_field_errors['zip'].present?
+              .invalid-feedback= Array(city_field_errors['zip']).join(', ')
 
         .form-row
           .form-group.col-md-3
             %label Country
             = text_field_tag('city[country]', city_data['country'], id: "city_#{idx}_country",
-                             class: 'form-control form-control-sm', placeholder: 'Country')
+                             class: ['form-control form-control-sm', invalid_cls.call(city_field_errors, 'country')], placeholder: 'Country')
+            - if city_field_errors['country'].present?
+              .invalid-feedback= Array(city_field_errors['country']).join(', ')
           .form-group.col-md-1
             %label Code
             = text_field_tag('city[country_code]', city_data['country_code'],
                              id: "city_#{idx}_country_code",
-                             class: 'form-control form-control-sm', placeholder: 'IT')
+                             class: ['form-control form-control-sm', invalid_cls.call(city_field_errors, 'country_code')], placeholder: 'IT')
+            - if city_field_errors['country_code'].present?
+              .invalid-feedback= Array(city_field_errors['country_code']).join(', ')
           .form-group.col-md-2
             %label Latitude
             = text_field_tag('city[latitude]', city_data['latitude'],

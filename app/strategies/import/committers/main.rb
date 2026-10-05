@@ -222,18 +222,21 @@ module Import
       # -----------------------------------------------------------------------
 
       # Commit bindings for MeetingSession (SwimmingPool, City)
+      # Pool/city are optional on MeetingSession: blank nested hashes are skipped.
       def commit_bindings_for_meeting_session(session_hash)
         meeting_id = session_hash['meeting_id'] || @meeting.id
         raise StandardError, 'Null meeting_id in meeting session hash!' if meeting_id.to_i.zero?
 
-        # Commit nested city first (if new)
-        city_hash = session_hash.dig('swimming_pool', 'city')
-        city_id = city_committer.commit(city_hash)
-
-        # Commit nested swimming pool (may reference city)
         pool_hash = session_hash['swimming_pool']
-        pool_hash = pool_hash.merge('city_id' => city_id) if pool_hash && city_id
-        swimming_pool_id = swimming_pool_committer.commit(pool_hash)
+        swimming_pool_id = nil
+
+        if pool_hash.present?
+          # Commit nested city first (if new)
+          city_hash = pool_hash['city']
+          city_id = city_committer.commit(city_hash) if city_hash.present?
+          pool_hash = pool_hash.merge('city_id' => city_id) if city_id
+          swimming_pool_id = swimming_pool_committer.commit(pool_hash)
+        end
 
         normalized_session = session_hash.merge('swimming_pool_id' => swimming_pool_id)
         meeting_session_committer.commit(normalized_session)

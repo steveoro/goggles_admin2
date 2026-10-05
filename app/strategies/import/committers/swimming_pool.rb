@@ -24,6 +24,23 @@ module Import
       end
       # -----------------------------------------------------------------------
 
+      # Builds the SwimmingPool model (existing row with updated attributes or new draft)
+      # without persisting, mirroring the lookup/normalize logic used by #commit.
+      # Used by Import::StructureValidator for preflight validation.
+      def prepare_model(pool_hash)
+        pool_id = pool_hash['swimming_pool_id'] || pool_hash['id']
+        attributes = normalize_attributes(pool_hash)
+
+        existing_row = GogglesDb::SwimmingPool.find_by(id: pool_id) if pool_id.to_i.positive?
+        if existing_row
+          existing_row.assign_attributes(attributes.except('id'))
+          return existing_row
+        end
+
+        GogglesDb::SwimmingPool.new(attributes.except('id'))
+      end
+      # -----------------------------------------------------------------------
+
       # Commit a SwimmingPool entity (nested within session data).
       # Returns the committed row ID or raises an error.
       def commit(pool_hash)

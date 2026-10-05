@@ -74,6 +74,8 @@ The pipeline is divided in stages so that each phase consolidates the data neede
 
 **Phase 1 category recomputation**: The Phase 1 review page can recompute individual categories from the canonical LT4 source. The action requires a non-empty `swimmers` array, uses the reviewed Phase 1 season/date, broadcasts swimmer-by-swimmer progress, creates numbered `.orig.json` backups, and invalidates only Phases 3–5 plus source-tied temporary import rows. Phase 1/2 files remain intact.
 
+**Structure-only commits**: Sources without result rows (e.g. manifest-extracted `_meta.meeting_only` files) can be committed after Phase 1 alone: Step 5 shows a "Commit meeting structure" action gated by `Import::StructureValidator` (valid meeting + at least one valid session; events optional). The meeting row is created with `manifest: true`, and results/teams/swimmers can be added later with a second data-fix pass on the published-results source — select the existing meeting in Step 1 and rescan sessions so existing session ids resolve instead of creating duplicates.
+
 **Phase 5 overwrite mode**: The Results review page can opt into authoritative re-import reconciliation. For represented swimmer/team pairs, existing individual MIRs absent from the imported meeting-wide set are previewed in their program cards and can be deleted during Phase 6. Each candidate has an autosaved selection toggle; selected rows are deleted, while ignored rows remain visible for audit. Select All, Deselect All, and Deselect Zero-Timing controls are available. Zero-timing rows start ignored because they may be DSQs omitted from the source, but can be re-enabled manually. The mode excludes relays, requires two confirmations when active deletions exist, persists a candidate snapshot, and aborts if that snapshot becomes stale.
 
 **Import Keys**: Unique identifiers for matching
@@ -97,8 +99,8 @@ Source JSON (LT4 Microplus format)
 └───────────┬─────────────────────────┘
             ↓
 ┌─────────────────────────────────────┐
-│ Phase 2: Teams                      │
-│ → phase2.json (team_id, affil_id)   │
+│ Phase 2: Teams & TeamAffiliations   │
+│ → phase2.json (team_id, t.affil.id) │
 └───────────┬─────────────────────────┘
             ↓
 ┌─────────────────────────────────────┐

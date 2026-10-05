@@ -52,6 +52,10 @@ class DataFixController < ApplicationController
     @phase1_meta = pfm.meta
     @phase1_data = pfm.data
 
+    # Field-level validation cues (non-blocking): highlight missing/invalid
+    # required fields in the meeting & session cards below.
+    @structure_report = Import::StructureValidator.new(phase1_data: @phase1_data)
+
     # Set API URL for AutoComplete components
     set_api_url
 
@@ -150,8 +154,9 @@ class DataFixController < ApplicationController
     @phase2_meta = pfm.meta
     @phase2_data = pfm.data
 
-    # Safety: rebuild Phase 2 file if teams dictionary is missing (older generator or corrupted file)
-    if @phase2_data['teams'].blank?
+    # Safety: rebuild Phase 2 file if teams dictionary is missing (older generator or corrupted file).
+    # NOTE: an empty array is a valid result for meeting-only sources - only a missing key triggers the rebuild.
+    if @phase2_data['teams'].nil?
       Import::Solvers::TeamSolver.new(season:).build!(
         source_path: source_path,
         lt_format: lt_format
@@ -714,6 +719,19 @@ class DataFixController < ApplicationController
     # Also check for relay results to determine if commit button should be visible
     @has_relay_results = staging[:mrrs].any?
 
+    # Result-free sources (e.g. manifest-only files) can still commit the bare
+    # meeting structure: in that case the commit gate requires a valid meeting
+    # with valid sessions instead of staged result rows. When staging rows are
+    # already present the source is treated as result-bearing and the regular
+    # results review UI is rendered.
+    @result_free = source_result_free?(source_path) && staging[:mirs].empty? && staging[:mrrs].empty?
+    if @result_free
+      phase1_path = default_phase_path_for(source_path, 1)
+      phase1_data = File.exist?(phase1_path) ? PhaseFileManager.new(phase1_path).data : {}
+      @structure_report = Import::StructureValidator.new(phase1_data: phase1_data)
+      @structure_errors = @structure_report.error_messages
+    end
+
     # Eager-load swimmers and teams to avoid N+1 queries
     # NOTE: Load ALL swimmer/team IDs from source file, not just from @all_results (which is limited)
     # This ensures the view can find swimmers for any program displayed via pagination
@@ -943,26 +961,47 @@ class DataFixController < ApplicationController
     phase4_path = default_phase_path_for(source_path, 4)
     phase5_path = default_phase_path_for(source_path, 5)
 
-    # Validate all phase files exist
+    # Result-free sources (e.g. manifest-only files) commit a bare meeting
+    # structure: only Phase 1 is required and no staged result rows are expected.
+    # If staging rows exist anyway, the import is treated as result-bearing.
+    mir_count = GogglesDb::DataImportMeetingIndividualResult.where(phase_file_path: source_path).count
+    mrr_count = GogglesDb::DataImportMeetingRelayResult.where(phase_file_path: source_path).count
+    result_free = source_result_free?(source_path) && mir_count.zero? && mrr_count.zero?
+
+    # Validate required phase files exist
     missing_phases = []
     missing_phases << 1 unless File.exist?(phase1_path)
-    missing_phases << 2 unless File.exist?(phase2_path)
-    missing_phases << 3 unless File.exist?(phase3_path)
-    missing_phases << 4 unless File.exist?(phase4_path)
-    missing_phases << 5 unless File.exist?(phase5_path)
+    unless result_free
+      missing_phases << 2 unless File.exist?(phase2_path)
+      missing_phases << 3 unless File.exist?(phase3_path)
+      missing_phases << 4 unless File.exist?(phase4_path)
+      missing_phases << 5 unless File.exist?(phase5_path)
+    end
 
     if missing_phases.any?
-      flash.now[:error] = "Missing phase files: #{missing_phases.join(', ')}. Please complete all phases first."
+      flash[:error] = "Missing phase files: #{missing_phases.join(', ')}. Please complete all phases first."
       redirect_to(review_results_path(file_path: file_path, phase5_v2: 1)) && return
     end
 
-    # Validate Phase 5 data exists in data_import_* tables
-    mir_count = GogglesDb::DataImportMeetingIndividualResult.where(phase_file_path: source_path).count
-    mrr_count = GogglesDb::DataImportMeetingRelayResult.where(phase_file_path: source_path).count
+    if result_free
+      # Structure-only commit: meeting & sessions must be valid; results are not required.
+      structure_report = Import::StructureValidator.new(phase1_data: PhaseFileManager.new(phase1_path).data)
+      unless structure_report.valid?
+        flash[:error] = "Invalid meeting structure: #{structure_report.error_messages.first(3).join(' • ')}" \
+                        "#{" (+#{structure_report.error_messages.size - 3} more)" if structure_report.error_messages.size > 3} " \
+                        'Fix the highlighted fields and save the Step 1 forms before committing.'
+        redirect_to(review_sessions_path(file_path: file_path, phase_v2: 1)) && return
+      end
 
-    if mir_count.zero? && mrr_count.zero?
-      flash[:error] = 'No Phase 5 data found. Please rescan Phase 5 (Results) before committing.' # rubocop:disable Rails/I18nLocaleTexts
-      redirect_to(review_results_path(file_path: file_path, phase5_v2: 1, rescan: 1)) && return
+      # Manifest-extracted sources flag the committed Meeting as manifest-only
+      # (applies to new meetings only; existing meetings keep their current flag).
+      mark_phase1_manifest_flag!(phase1_path) if parsed_source_json(source_path).dig('_meta', 'meeting_only') == true
+    else
+      # Validate Phase 5 data exists in data_import_* tables
+      if mir_count.zero? && mrr_count.zero?
+        flash[:error] = 'No Phase 5 data found. Please rescan Phase 5 (Results) before committing.' # rubocop:disable Rails/I18nLocaleTexts
+        redirect_to(review_results_path(file_path: file_path, phase5_v2: 1, rescan: 1)) && return
+      end
     end
 
     # Generate paths for output files
@@ -2343,6 +2382,10 @@ class DataFixController < ApplicationController
         flash[:warning] = I18n.t('data_import.errors.invalid_request')
         return redirect_to(review_sessions_path(file_path:, phase_v2: 1))
       end
+      # An existing meeting keeps its own manifest flag: the solver-emitted
+      # marker applies to newly created meetings only (re-added at commit time
+      # by commit_phase6 when no meeting id is selected).
+      data.delete('manifest') if data['id'].present?
     end
 
     # Clear meeting_session if meeting ID changed to force session rebuild
@@ -2926,6 +2969,39 @@ class DataFixController < ApplicationController
 
   def invalidate_parsed_source_json(source_path)
     @parsed_source_json&.delete(source_path)
+  end
+
+  # TRUE when the source JSON carries no result rows at all (e.g. manifest-extracted
+  # meeting-only files). Such sources can be committed as a bare meeting structure
+  # (meeting + sessions + optional events) and updated by a later results pass.
+  def source_result_free?(source_path)
+    data_hash = parsed_source_json(source_path)
+    return false unless data_hash.is_a?(Hash)
+
+    return true if data_hash.dig('_meta', 'meeting_only') == true
+
+    events = data_hash['events']
+    return events.none? { |event| Array(event['results']).any? } if events.is_a?(Array)
+
+    sections = data_hash['sections']
+    return sections.none? { |section| Array(section['rows']).any? } if sections.is_a?(Array)
+
+    false
+  rescue StandardError => e
+    Rails.logger.warn("[DataFixController] result-free detection failed for #{source_path}: #{e.message}")
+    false
+  end
+
+  # Sets the `manifest` flag in the Phase 1 datafile so the committed Meeting row
+  # is marked as manifest-only. Applies only when a NEW meeting will be created
+  # (no meeting id selected); existing meetings keep their current flag.
+  def mark_phase1_manifest_flag!(phase1_path)
+    pfm = PhaseFileManager.new(phase1_path)
+    data = pfm.data
+    return if data['id'].present?
+
+    data['manifest'] = true
+    pfm.write!(data: data, meta: pfm.meta)
   end
 
   def materialize_lt4_working_copy(lt2_source_path:, lt4_source_path:)

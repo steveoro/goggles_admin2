@@ -26,6 +26,19 @@
     extra_info = [meeting_id, meeting_name].compact.join(': ').presence
   = render(partial: 'data_fix/phase_metadata', locals: { phase_number: 1, metadata: @phase1_meta,
                                                          extra_info: extra_info })
+
+  -# Non-blocking structure validation summary (missing required fields are
+  -# flagged inline in the cards below; saving partial data stays allowed).
+  - if @structure_report && !@structure_report.valid?
+    .alert.alert-warning.py-2
+      %i.fa.fa-exclamation-triangle.me-2
+      %strong= t('data_import.data_fix.structure_invalid_title')
+      %ul.mb-0.mt-1
+        - @structure_report.error_messages.first(8).each do |message|
+          %li= message
+        - if @structure_report.error_messages.size > 8
+          %li= "… (+#{@structure_report.error_messages.size - 8})"
+      %small.d-block.mt-1= t('data_import.data_fix.structure_invalid_hint')
   -# Meeting card with consistent styling
   :ruby
     has_match = meeting_id.to_i.positive?
@@ -44,7 +57,8 @@
   = render(partial: 'meeting_form_card',
            locals: { file_path: @file_path, api_url: @api_url, meeting_data: @phase1_data,
                      original_meeting_data: @phase1_data, season: @season,
-                     meeting_id:, has_match:, card_bg:, border_color:, border_width:, all_required_filled: })
+                     meeting_id:, has_match:, card_bg:, border_color:, border_width:, all_required_filled:,
+                     meeting_errors: @structure_report.meeting_errors })
 
   -# Sessions Section Header
   .card.mb-2
@@ -90,5 +104,6 @@
       = render(partial: 'session_form_card',
                locals: { file_path: @file_path, api_url: @api_url, sess_hash:, idx:,
                          is_new_session:, session_id:, has_match:, card_bg:, border_color:, border_width:,
-                         existing_meeting_sessions: @existing_meeting_sessions })
+                         existing_meeting_sessions: @existing_meeting_sessions,
+                         session_errors: @structure_report.session_errors[idx] || {} })
   .mb-4 &nbsp;

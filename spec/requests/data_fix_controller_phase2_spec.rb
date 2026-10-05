@@ -69,9 +69,18 @@ RSpec.describe DataFixController do
         expect(response.body).to include('badge-success') # ID badge
       end
 
-      it 'redirects to rebuild when teams array is empty' do
+      it 'renders successfully when teams array is empty (meeting-only sources)' do
         pfm = PhaseFileManager.new(phase2_file)
-        pfm.write!(data: { 'teams' => [] }, meta: { 'generator' => 'test' })
+        pfm.write!(data: { 'season_id' => season.id, 'teams' => [], 'team_affiliations' => [] }, meta: { 'generator' => 'test' })
+
+        get review_teams_path(file_path: source_file, phase2_v2: 1)
+        expect(response).to be_successful
+        expect(response.body).to include('No teams found')
+      end
+
+      it 'redirects to rebuild when teams key is missing entirely' do
+        pfm = PhaseFileManager.new(phase2_file)
+        pfm.write!(data: { 'season_id' => season.id }, meta: { 'generator' => 'test' })
 
         get review_teams_path(file_path: source_file, phase2_v2: 1)
         expect(response).to have_http_status(:redirect)

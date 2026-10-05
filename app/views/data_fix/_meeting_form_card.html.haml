@@ -1,3 +1,12 @@
+:ruby
+  # Field-level validation cues (from Import::StructureValidator): attribute => [messages]
+  field_errors = (local_assigns[:meeting_errors] || {}).with_indifferent_access
+  invalid_cls = ->(attribute) { field_errors[attribute].present? ? 'is-invalid' : nil }
+  # Attributes rendered by inputs in this form
+  rendered_attrs = %w[description code season season_id header_year header_date edition edition_type
+                      edition_type_id timing_type timing_type_id dateYear1 dateMonth1 dateDay1
+                      dateYear2 dateMonth2 dateDay2 venue1 address1]
+  extra_errors = field_errors.except(*rendered_attrs)
 .card.my-2{ class: "#{card_bg} #{border_color} #{border_width}", id: 'meeting-card' }
   .card-header.d-flex.justify-content-between.align-items-center{ id: 'meeting-header', style: 'cursor: pointer;', data: { toggle: 'collapse', target: '#meeting-collapse' } }
     .d-flex.align-items-center
@@ -18,10 +27,17 @@
       - else
         %small.ml-2.badge.badge-primary
           NEW
+      - if field_errors.present?
+        %small.ml-2.badge.badge-danger
+          = t('data_import.data_fix.fields_with_issues', count: field_errors.size)
 
-  .collapse{ class: (all_required_filled ? '' : 'show'), id: 'meeting-collapse',
+  .collapse{ class: (all_required_filled && field_errors.blank? ? '' : 'show'), id: 'meeting-collapse',
              'aria-labelledby' => 'meeting-header', 'data-parent' => '#meeting-card' }
     .card-body.border-bottom.border-secondary
+      - if extra_errors.present?
+        .alert.alert-warning.py-1.mb-2
+          - extra_errors.each do |attribute, msgs|
+            %small.d-block= "#{attribute.to_s.humanize}: #{Array(msgs).join(', ')}"
       -# Read-only summary
       %dl.row
         %dt.col-sm-3 Season ID
@@ -121,34 +137,45 @@
           .form-group.col-md-8
             %label{ for: 'meeting_description' } Description
             = text_field_tag(:description, meeting_data['name'],
-                             id: 'meeting_description', class: 'form-control form-control-sm',
+                             id: 'meeting_description', class: ['form-control form-control-sm', invalid_cls.call('description')],
                              required: true, maxlength: 200, placeholder: 'Meeting description',
                              data: { 'coded-name-target' => 'desc' })
+            - if field_errors['description'].present?
+              .invalid-feedback= Array(field_errors['description']).join(', ')
           .form-group.col-md-4
             %label{ for: 'meeting_code' } Code
             = text_field_tag(:code, meeting_data['code'],
-                             id: 'meeting_code', class: 'form-control form-control-sm',
+                             id: 'meeting_code', class: ['form-control form-control-sm', invalid_cls.call('code')],
                              placeholder: 'Auto-generated', data: { 'coded-name-target' => 'field' })
+            - if field_errors['code'].present?
+              .invalid-feedback
+                = "#{Array(field_errors['code']).join(', ')} — #{t('data_import.data_fix.code_autocomputed_hint')}"
 
         -# Season, header_year, header_date
         .form-row
           .form-group.col-md-3
             %label{ for: 'meeting_season_id' } Season ID
             = number_field_tag(:season_id, season&.id || meeting_data['season_id'],
-                               id: 'meeting_season_id', class: 'form-control form-control-sm',
+                               id: 'meeting_season_id', class: ['form-control form-control-sm', invalid_cls.call('season')],
                                min: 1, step: 1, placeholder: 'e.g. 242')
+            - if field_errors['season'].present?
+              .invalid-feedback= Array(field_errors['season']).join(', ')
           .form-group.col-md-3
             %label{ for: 'meeting_header_year' } Header Year
             = text_field_tag(:header_year, meeting_data['header_year'] || season&.header_year,
-                             id: 'meeting_header_year', class: 'form-control form-control-sm',
+                             id: 'meeting_header_year', class: ['form-control form-control-sm', invalid_cls.call('header_year')],
                              placeholder: 'YYYY/YYYY+1')
+            - if field_errors['header_year'].present?
+              .invalid-feedback= Array(field_errors['header_year']).join(', ')
           .form-group.col-md-3
             %label{ for: 'meeting_header_date' } Header Date
             = date_field_tag(:header_date, meeting_data['header_date'],
-                             id: 'meeting_header_date', class: 'form-control form-control-sm')
+                             id: 'meeting_header_date', class: ['form-control form-control-sm', invalid_cls.call('header_date')])
+            - if field_errors['header_date'].present?
+              .invalid-feedback= Array(field_errors['header_date']).join(', ')
           .form-group.col-md-3
             %label{ for: 'meeting_meetingURL' } Meeting URL
-            = text_field_tag(:meetingURL, meeting_data['meetingURL'],
+            = text_field_tag('meetingURL', meeting_data['meetingURL'],
                              class: 'form-control form-control-sm',
                              pattern: 'https?://.*', placeholder: 'https://...')
 
@@ -157,22 +184,28 @@
           .form-group.col-md-2
             %label{ for: 'meeting_edition' } Edition
             = number_field_tag(:edition, meeting_data['edition'],
-                               id: 'meeting_edition', class: 'form-control form-control-sm',
+                               id: 'meeting_edition', class: ['form-control form-control-sm', invalid_cls.call('edition')],
                                placeholder: 'edition #')
+            - if field_errors['edition'].present?
+              .invalid-feedback= Array(field_errors['edition']).join(', ')
           .form-group.col-md-3
             %label{ for: 'meeting_edition_type_id' } Edition Type
             = select_tag(:edition_type_id,
                          options_for_select(GogglesDb::EditionType.all.map { |t| [t.long_label, t.id] },
                                             meeting_data['edition_type_id'] || GogglesDb::EditionType::ORDINAL_ID),
                          include_blank: true, id: 'meeting_edition_type_id',
-                         class: 'form-control form-control-sm')
+                         class: ['form-control form-control-sm', invalid_cls.call('edition_type')])
+            - if field_errors['edition_type'].present?
+              .invalid-feedback.d-block= Array(field_errors['edition_type']).join(', ')
           .form-group.col-md-3
             %label{ for: 'meeting_timing_type_id' } Timing Type
             = select_tag(:timing_type_id,
                          options_for_select(GogglesDb::TimingType.all.map { |t| [t.long_label, t.id] },
                                             meeting_data['timing_type_id'] || GogglesDb::TimingType::AUTOMATIC_ID),
                          include_blank: true, id: 'meeting_timing_type_id',
-                         class: 'form-control form-control-sm')
+                         class: ['form-control form-control-sm', invalid_cls.call('timing_type')])
+            - if field_errors['timing_type'].present?
+              .invalid-feedback.d-block= Array(field_errors['timing_type']).join(', ')
           .form-group.col-md-2
             .form-check.mt-4
               = check_box_tag(:cancelled, '1',
@@ -218,12 +251,12 @@
             .form-group.col-md-2
               %label Date Month 1
               = number_field_tag(:dateMonth1, meeting_data['dateMonth1'],
-                                 class: 'form-control form-control-sm',
+                                 class: ['form-control form-control-sm', invalid_cls.call('dateMonth1')],
                                  min: 1, max: 12, step: 1, placeholder: 'MM')
             .form-group.col-md-2
               %label Date Year 1
               = number_field_tag(:dateYear1, meeting_data['dateYear1'],
-                                 class: 'form-control form-control-sm',
+                                 class: ['form-control form-control-sm', invalid_cls.call('dateYear1')],
                                  min: 1900, max: 2100, step: 1, placeholder: 'YYYY')
             .form-group.col-md-2
               %label Date Day 2
