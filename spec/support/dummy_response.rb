@@ -31,6 +31,18 @@ class DummyResponse
     200
   end
 
+  # Normalized JSON body, mirroring APIProxy::Result#json.
+  def json
+    @proxy_result ||= APIProxy::Result.new(self)
+    @proxy_result.json
+  end
+
+  # Normalized error detail, mirroring APIProxy::Result#error_detail.
+  def error_detail
+    @proxy_result ||= APIProxy::Result.new(self)
+    @proxy_result.error_detail
+  end
+
   # Overridden helper
   delegate :to_s, to: :@body
 end

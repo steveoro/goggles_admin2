@@ -54,7 +54,9 @@ RSpec.describe APITrainingsController do
       before(:each) do
         admin_user = prepare_admin_user
         sign_in_admin(admin_user)
-        fake_result = double(code: 503, body: 'Service Unavailable', headers: {})
+        fake_result = APIProxy::Result.new(
+          double(code: 503, body: 'Service Unavailable', headers: {})
+        )
         allow(APIProxy).to receive(:call).with(
           method: :get, url: 'trainings', jwt: admin_user.jwt,
           params: { page: 1, per_page: 25 }
@@ -184,9 +186,11 @@ RSpec.describe APITrainingsController do
         before(:each) do
           admin_user = prepare_admin_user
           sign_in_admin(admin_user)
-          fake_result = double(
-            code: 422, body: { error: 'generic' }.to_json,
-            headers: { x_error_detail: ":image content type 'text/plain' not allowed" }
+          fake_result = APIProxy::Result.new(
+            double(
+              code: 422, body: { error: 'generic' }.to_json,
+              headers: { x_error_detail: ":image content type 'text/plain' not allowed" }
+            )
           )
           allow(APIProxy).to receive(:call).and_return(fake_result)
           post(api_trainings_path, params: form_params)
