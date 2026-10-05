@@ -1,0 +1,22 @@
+.wrapper-body
+  .spacer-left
+
+  .main-content
+    = render(DashboardTitleComponent.new(title: t('api_trainings.edit_title', id: @training['id']),
+             row_count: nil))
+
+    - if @training['image_thumb_path'].present? && !@training['image_missing']
+      .text-center.my-3
+        %a{ href: "#{@api_base_url}#{@training['image_path']}", target: '_blank', rel: 'noopener' }
+          %img.img-thumbnail{ src: "#{@api_base_url}#{@training['image_thumb_path']}", alt: @training['title'],
+                              style: 'max-width: 160px; max-height: 160px;' }
+        .small.text-muted= @training['picture_filename']
+    - elsif @training['image_missing']
+      .alert.alert-warning.text-center
+        = t('api_trainings.image_missing_hint', filename: @training['picture_filename'])
+
+    = render(partial: 'form', locals: { form_url: api_training_path(@training['id']), form_method: :put,
+             training: @training, image_required: false, swimmer_label: @swimmer_label,
+             submit_label: t('api_trainings.form.update') })
+
+  .spacer-right

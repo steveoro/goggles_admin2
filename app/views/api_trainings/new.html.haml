@@ -1,0 +1,11 @@
+.wrapper-body
+  .spacer-left
+
+  .main-content
+    = render(DashboardTitleComponent.new(title: t('api_trainings.new_title'), row_count: nil))
+
+    = render(partial: 'form', locals: { form_url: api_trainings_path, form_method: :post,
+             training: @training, image_required: true, swimmer_label: nil,
+             submit_label: t('api_trainings.form.upload') })
+
+  .spacer-right

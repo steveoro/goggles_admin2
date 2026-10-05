@@ -1,0 +1,57 @@
+.wrapper-body
+  .spacer-left
+
+  .main-content
+    = render(DashboardTitleComponent.new(title: t('api_trainings.title'), row_count: @domain_count))
+
+    .row.my-2
+      .col.text-center
+        %a.btn.btn-lg.btn-outline-success{ href: new_api_training_path }
+          %i.fa.fa-camera
+          = t('api_trainings.upload_new')
+
+    %section.my-4#data-list
+      = render(PageLinksForArrayComponent.new(data: @rows, total_count: @domain_count,
+               page: @domain_page, per_page: @domain_per_page))
+      %table.table.table-hover.table-sm
+        %thead
+          %tr
+            %th= t('api_trainings.picture')
+            %th= t('api_trainings.training_date')
+            %th= t('api_trainings.training_by')
+            %th= t('api_trainings.created_by')
+            %th= t('api_trainings.swimmer')
+            %th= t('api_trainings.filename')
+            %th
+        %tbody
+          - @rows.each do |row|
+            %tr{ class: (row['image_missing'] ? 'table-danger' : nil) }
+              %td
+                - if row['image_thumb_path'].present? && !row['image_missing']
+                  %a{ href: "#{@api_base_url}#{row['image_path']}", target: '_blank', rel: 'noopener' }
+                    %img.img-thumbnail{ src: "#{@api_base_url}#{row['image_thumb_path']}", alt: row['title'],
+                                        style: 'max-width: 96px; max-height: 96px;' }
+                - else
+                  %span.badge.badge-warning= t('api_trainings.image_missing')
+              %td
+                = row['training_date']&.to_datetime&.strftime('%Y-%m-%d %H:%M')
+                .small.text-muted= row['title']
+              %td= row['training_by']
+              %td= row['created_by']
+              %td= row['swimmer_id']
+              %td.small= row['picture_filename']
+              %td.text-nowrap
+                %a.btn.btn-sm.btn-outline-primary{ href: edit_api_training_path(row['id']),
+                                                  title: t('api_trainings.edit_row') }
+                  %i.fa.fa-pencil
+                = form_tag(api_training_path(row['id']), method: :delete, class: 'd-inline',
+                           onsubmit: "return confirm('#{t('api_trainings.confirm_delete')}');") do
+                  %button.btn.btn-sm.btn-outline-danger{ type: 'submit', title: t('api_trainings.delete_row') }
+                    %i.fa.fa-trash
+      = render(PageLinksForArrayComponent.new(data: @rows, total_count: @domain_count,
+               page: @domain_page, per_page: @domain_per_page))
+
+    %section.text-center.fixed-bottom#footer
+      &nbsp;
+
+  .spacer-right

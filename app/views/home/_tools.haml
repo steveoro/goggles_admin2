@@ -10,6 +10,10 @@
             %i.fa.fa-question-circle{ data: { toggle: 'tooltip', title: t('dashboard.tools_helper') } }
         .row.mb-3
           .col.py-2
+            %a.btn.btn-sm.btn-outline-primary.py-2{ href: api_trainings_path }
+              %i.fa.fa-camera
+              = t('api_trainings.button_label')
+          .col.py-2
             %a.btn.btn-sm.btn-outline-primary.py-2{ href: best_50m_results_path }
               %i.fa.fa-search
               = t('best_results.best_50m.button_label')
