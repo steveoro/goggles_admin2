@@ -58,6 +58,8 @@ gem 'view_component'
 
 # For XLSX export
 gem 'caxlsx' # Core XLSX generation library (formerly axlsx)
+# For XLSX import (e.g. official standard timings data files)
+gem 'roo', '~> 3.0'
 # For PDF export
 gem 'prawn'
 gem 'prawn-table'

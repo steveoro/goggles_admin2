@@ -17,7 +17,7 @@ require 'kaminari'
 
 namespace :check do # rubocop:disable Metrics/BlockLength
   # Default Goggles::Season#id value for most tasks
-  DEFAULT_SEASON_ID = 242 unless defined? DEFAULT_SEASON_ID
+  DEFAULT_SEASON_ID = 262 unless defined? DEFAULT_SEASON_ID
   #-- ---------------------------------------------------------------------------
   #++
 

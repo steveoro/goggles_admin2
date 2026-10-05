@@ -586,6 +586,12 @@ GEM
       mime-types (>= 1.16, < 4.0)
       netrc (~> 0.8)
     rexml (3.4.4)
+    roo (3.0.0)
+      base64 (~> 0.2)
+      csv (~> 3)
+      logger (~> 1)
+      nokogiri (~> 1)
+      rubyzip (>= 3.0.0, < 4.0.0)
     rouge (5.1.0)
       strscan (~> 3.1)
     rspec (3.13.2)
@@ -827,6 +833,7 @@ DEPENDENCIES
   rails (>= 8.1, < 9)
   rails-i18n (~> 8)
   rest-client
+  roo (~> 3.0)
   rspec
   rspec-rails
   rspec_junit_formatter
