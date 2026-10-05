@@ -31,11 +31,18 @@ class APIProxy
     end
 
     # The parsed response body; never raises.
-    # Non-JSON or blank bodies are normalized into an 'error' Hash.
+    # Blank/malformed bodies on a successful response are normalized into
+    # an empty Hash ("no content"), while non-JSON error bodies become an
+    # 'error' Hash — so callers can always parse, and 'body.present?'
+    # semantics stay unchanged (a blank 2xx still yields no domain rows).
     def json
-      @json ||= JSON.parse(__getobj__.body.to_s)
-    rescue StandardError
-      { 'error' => __getobj__.body.presence || "Error #{code}" }
+      return @json if defined?(@json)
+
+      @json = begin
+        JSON.parse(__getobj__.body.to_s)
+      rescue StandardError
+        (200..299).cover?(code) ? {} : { 'error' => __getobj__.body.presence || "Error #{code}" }
+      end
     end
 
     # Most useful human-readable detail for a failed call:

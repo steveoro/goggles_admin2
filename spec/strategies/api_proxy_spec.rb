@@ -152,6 +152,15 @@ RSpec.describe APIProxy, type: :strategy do
       end
     end
 
+    context 'with a blank body on a successful response,' do
+      let(:response_body) { '' }
+
+      it 'normalizes the body into an empty JSON object (no content)' do
+        expect(JSON.parse(subject.body)).to eq({})
+        expect(subject.json).to eq({})
+      end
+    end
+
     context 'with an X-Error-Detail header,' do
       let(:response_code) { 422 }
       let(:response_body) { { error: 'generic' }.to_json }
