@@ -227,9 +227,8 @@ class Phase1SessionUpdater # rubocop:disable Metrics/ClassLength
   end
 
   def save_data(data)
-    meta = @pfm.meta || {}
-    meta['generated_at'] = Time.now.utc.iso8601
-    @pfm.write!(data: data, meta: meta)
+    # PhaseFileManager#write! refreshes _meta.generated_at on every write.
+    @pfm.write!(data: data, meta: @pfm.meta || {})
   end
 
   def sanitize_str(value)

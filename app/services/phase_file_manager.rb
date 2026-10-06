@@ -41,7 +41,10 @@ class PhaseFileManager
   end
 
   def write!(data:, meta: {})
-    payload = { META_KEY => default_meta.merge(meta), DATA_KEY => data }
+    # generated_at is always refreshed on write (applied after the merge so a
+    # stale value carried over in +meta+ can't survive).
+    payload = { META_KEY => default_meta.merge(meta).merge('generated_at' => Time.now.utc.iso8601),
+                DATA_KEY => data }
     FileUtils.mkdir_p(File.dirname(path))
     File.write(path, JSON.pretty_generate(payload))
     @read = nil

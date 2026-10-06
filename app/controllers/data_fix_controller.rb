@@ -14,7 +14,18 @@ require 'json'
 class DataFixController < ApplicationController
   include FileCounter
 
-  before_action :set_api_url
+  # @api_url is only needed by actions that render review views.
+  before_action :set_api_url, only: %i[review_sessions review_teams review_swimmers review_events
+                                       review_results commit_phase6_report]
+
+  # Resolves @file_path → @source_path for every action taking a file_path param.
+  # (Actions with different params or custom error handling manage their own checks.)
+  before_action :set_source_path, except: %i[commit_phase6_report purge coded_name teams_for_swimmer
+                                             verify_result confirm_result_duplicate verify_team
+                                             results_chunk_v2
+                                             update_individual_result_overwrite_candidate
+                                             update_individual_result_merge_candidate
+                                             bulk_update_individual_result_overwrite]
 
   # Phase 5 pagination constant: max rows (results + laps) per page
   PHASE5_MAX_ROWS_PER_PAGE = 2500
@@ -26,26 +37,17 @@ class DataFixController < ApplicationController
   def review_sessions
     return if params[:phase_v2].blank?
 
-    @file_path = params[:file_path]
-    if @file_path.blank?
-      flash.now[:warning] = I18n.t('data_import.errors.invalid_request')
-      redirect_to(pull_index_path) && return
-    end
-
-    source_path = resolve_working_source_path(@file_path)
-    @file_path = source_path
+    source_path = @source_path
     @season = detect_season_from_pathname(source_path)
     lt_format = detect_layout_type(source_path)
     # Use existing phase file unless rescan is requested; build when missing or rescan
     phase_path = default_phase_path_for(source_path, 1)
-    if params[:rescan].present? || !File.exist?(phase_path)
-      phase_path = Import::Solvers::Phase1Solver.new(season: @season).build!(
+    return unless ensure_phase_file!(phase_path: phase_path, phase: 1,
+                                     review_path: method(:review_sessions_path)) do
+      Import::Solvers::Phase1Solver.new(season: @season).build!(
         source_path: source_path,
         lt_format: lt_format
-      )&.dig('path') || phase_path
-      # Redirect without rescan parameter to avoid triggering rescan on navigation
-      redirect_to(review_sessions_path(request.query_parameters.except(:rescan).merge(file_path: @file_path)),
-                  notice: I18n.t('data_import.messages.phase_rebuilt', phase: 1)) && return
+      )
     end
     @retry_needed = sync_phase_retry_flag!(phase_path: phase_path, source_path: source_path)
     pfm = PhaseFileManager.new(phase_path)
@@ -60,9 +62,6 @@ class DataFixController < ApplicationController
     # event codes, suspicious dates) - visible here so the operator reviews
     # them before committing anything.
     @source_warnings = Array(parsed_source_json(source_path).dig('_meta', 'warnings'))
-
-    # Set API URL for AutoComplete components
-    set_api_url
 
     # Fetch existing meeting sessions if meeting_id is present
     meeting_id = @phase1_data['id']
@@ -87,13 +86,8 @@ class DataFixController < ApplicationController
   # ---------------------------------------------------------------------------
 
   def recompute_source_categories
-    file_path = params[:file_path]
-    if file_path.blank?
-      flash[:error] = I18n.t('data_import.errors.invalid_request')
-      redirect_to(pull_index_path) && return
-    end
-
-    source_path = resolve_working_source_path(file_path)
+    file_path = @file_path
+    source_path = @source_path
     phase1_path = default_phase_path_for(source_path, 1)
     phase1_data = PhaseFileManager.new(phase1_path).data
     season_id = phase1_data['season_id'] || detect_season_from_pathname(source_path)&.id
@@ -134,25 +128,16 @@ class DataFixController < ApplicationController
   def review_teams
     redirect_to(review_teams_legacy_path(request.query_parameters)) && return if params[:phase2_v2].blank?
 
-    @file_path = params[:file_path]
-    if @file_path.blank?
-      flash.now[:warning] = I18n.t('data_import.errors.invalid_request')
-      redirect_to(pull_index_path) && return
-    end
-
-    source_path = resolve_working_source_path(@file_path)
-    @file_path = source_path
+    source_path = @source_path
     season = detect_season_from_pathname(source_path)
     lt_format = detect_layout_type(source_path)
     phase_path = default_phase_path_for(source_path, 2)
-    if params[:rescan].present? || !File.exist?(phase_path)
+    return unless ensure_phase_file!(phase_path: phase_path, phase: 2,
+                                     review_path: method(:review_teams_path)) do
       Import::Solvers::TeamSolver.new(season:).build!(
         source_path: source_path,
         lt_format: lt_format
       )
-      # Redirect without rescan parameter to avoid triggering rescan on navigation
-      redirect_to(review_teams_path(request.query_parameters.except(:rescan).merge(file_path: @file_path)),
-                  notice: I18n.t('data_import.messages.phase_rebuilt', phase: 2)) && return
     end
     @retry_needed = sync_phase_retry_flag!(phase_path: phase_path, source_path: source_path)
     pfm = PhaseFileManager.new(phase_path)
@@ -170,73 +155,38 @@ class DataFixController < ApplicationController
                   notice: I18n.t('data_import.messages.phase_rebuilt', phase: 2)) && return
     end
 
-    # Set API URL for AutoComplete components
-    set_api_url
-
     teams_state_cookie_scope = data_fix_review_cookie_scope(prefix: 'teams', file_path: @file_path)
 
-    # Optional filtering
-    @filter_state = data_fix_review_param_or_cookie(param_key: :filter_state, cookie_scope: teams_state_cookie_scope).to_s
-    @filter_state = 'none' unless %w[none review diff_key].include?(@filter_state)
-    @q = data_fix_review_param_or_cookie(param_key: :q, cookie_scope: teams_state_cookie_scope).to_s.strip
     teams = Array(@phase2_data['teams'])
-
-    # Filter by search query (ignore if shorter than min chars)
-    if @q.present? && @q.length >= TURBO_FILTER_MIN_QUERY_LENGTH
-      qd = @q.downcase
-      teams = teams.select do |t|
-        [t['name'], t['editable_name'], t['name_variations'], t['key']]
-          .compact.any? { |v| v.to_s.downcase.include?(qd) }
-      end
-    end
-
-    # Filter teams needing review: unmatched (no team_id) OR match < 89% (yellow/red matches)
-    # OR similar affiliated team found in season (cross-ref warning)
-    # OR phase3-derived conflict hints found for this team
-    # This shows ALL teams that need manual verification at a glance
-    if @filter_state == 'review'
-      teams = teams.select do |t|
-        # WARNING: adding the 'similar_on_team' check will yield false positives and basically make the filtering useless
-        t['team_id'].nil? || (t['match_percentage'] || 0.0) < 89.0 || phase3_conflict_hint?(t) # || t['similar_affiliated'] == true
-      end
-    end
-
-    # Filter teams where the edited name differs from the original import key
-    if @filter_state == 'diff_key'
-      teams = teams.select do |t|
-        editable = t['editable_name'].to_s.strip.downcase
-        name = t['name'].to_s.strip.downcase
-        key = t['key'].to_s.strip.downcase
-        (editable.present? && editable != key) || (name.present? && name != key)
-      end
-    end
-
-    # Pagination (phase-specific params to avoid cross-phase interference)
-    # Reset page to 1 when filter form is submitted (filter_state or per_page changed without explicit page)
-    if (params.key?(:filter_state) || params.key?(:teams_per_page)) && !params.key?(:teams_page)
-      @page = 1
-    else
-      @page = data_fix_review_param_or_cookie(param_key: :teams_page, cookie_scope: teams_state_cookie_scope).to_i
-      @page = 1 if @page < 1
-    end
-    @per_page = data_fix_review_param_or_cookie(param_key: :teams_per_page, cookie_scope: teams_state_cookie_scope).to_i
-    @per_page = 50 if @per_page <= 0
-    @total_count = teams.size
-    @total_pages = (@total_count.to_f / @per_page).ceil
-    @page = @total_pages if @page > @total_pages && @total_pages.positive?
-    @row_range = "#{(@page * @per_page) - @per_page + 1}-#{@page * @per_page}"
-    # Use Kaminari for pagination
-    @items = Kaminari.paginate_array(teams, total_count: @total_count).page(@page).per(@per_page)
-
-    persist_data_fix_review_state(
+    apply_review_filters(
+      collection: teams,
+      prefix: 'teams',
       cookie_scope: teams_state_cookie_scope,
-      state: {
-        filter_state: @filter_state,
-        q: @q,
-        teams_page: @page,
-        teams_per_page: @per_page
-      }
-    )
+      default_per_page: 50,
+      text_fields: %w[name editable_name name_variations key]
+    ) do |list, state|
+      case state
+      # Filter teams needing review: unmatched (no team_id) OR match < 89% (yellow/red matches)
+      # OR similar affiliated team found in season (cross-ref warning)
+      # OR phase3-derived conflict hints found for this team
+      # This shows ALL teams that need manual verification at a glance
+      when 'review'
+        list.select do |t|
+          # WARNING: adding the 'similar_on_team' check will yield false positives and basically make the filtering useless
+          t['team_id'].nil? || (t['match_percentage'] || 0.0) < 89.0 || phase3_conflict_hint?(t) # || t['similar_affiliated'] == true
+        end
+      # Filter teams where the edited name differs from the original import key
+      when 'diff_key'
+        list.select do |t|
+          editable = t['editable_name'].to_s.strip.downcase
+          name = t['name'].to_s.strip.downcase
+          key = t['key'].to_s.strip.downcase
+          (editable.present? && editable != key) || (name.present? && name != key)
+        end
+      else
+        list
+      end
+    end
 
     # Broadcast ready status to clear progress modal
     broadcast_progress('Review teams: ready', @total_count, @total_count)
@@ -246,30 +196,19 @@ class DataFixController < ApplicationController
   def review_swimmers
     redirect_to(review_swimmers_legacy_path(request.query_parameters)) && return if params[:phase3_v2].blank?
 
-    @file_path = params[:file_path]
-    if @file_path.blank?
-      flash.now[:warning] = I18n.t('data_import.errors.invalid_request')
-      redirect_to(pull_index_path) && return
-    end
-
-    source_path = resolve_working_source_path(@file_path)
-    @file_path = source_path
+    source_path = @source_path
     season = detect_season_from_pathname(source_path)
     categories_cache = PdfResults::CategoriesCache.cached_for(season)
     lt_format = detect_layout_type(source_path)
     phase_path = default_phase_path_for(source_path, 3)
-    if params[:rescan].present? || !File.exist?(phase_path)
-      phase1_path = default_phase_path_for(source_path, 1)
-      phase2_path = default_phase_path_for(source_path, 2)
+    return unless ensure_phase_file!(phase_path: phase_path, phase: 3,
+                                     review_path: method(:review_swimmers_path)) do
       Import::Solvers::SwimmerSolver.new(season:, categories_cache:).build!(
         source_path: source_path,
         lt_format: lt_format,
-        phase1_path: phase1_path,
-        phase2_path: phase2_path
+        phase1_path: default_phase_path_for(source_path, 1),
+        phase2_path: default_phase_path_for(source_path, 2)
       )
-      # Redirect without rescan parameter to avoid triggering rescan on navigation
-      redirect_to(review_swimmers_path(request.query_parameters.except(:rescan).merge(file_path: @file_path)),
-                  notice: I18n.t('data_import.messages.phase_rebuilt', phase: 3)) && return
     end
     @retry_needed = sync_phase_retry_flag!(phase_path: phase_path, source_path: source_path)
     pfm = PhaseFileManager.new(phase_path)
@@ -296,8 +235,7 @@ class DataFixController < ApplicationController
     season = detect_season_from_pathname(source_path)
     phase1_path = default_phase_path_for(source_path, 1)
     meeting_date = if File.exist?(phase1_path)
-                     phase1_data = JSON.parse(File.read(phase1_path))
-                     phase1_data.dig('data', 'meeting', 'header_date')
+                     PhaseFileManager.new(phase1_path).data&.dig('meeting', 'header_date')
                    end
 
     detector = Phase3::RelayEnrichmentDetector.new(
@@ -323,15 +261,7 @@ class DataFixController < ApplicationController
     end
     @selected_auxiliary_phase3_files = stored_auxiliary & @auxiliary_phase3_files
 
-    # Set API URL for AutoComplete components
-    set_api_url
-
     swimmers_state_cookie_scope = data_fix_review_cookie_scope(prefix: 'swimmers', file_path: @file_path)
-
-    # Optional filtering
-    @filter_state = data_fix_review_param_or_cookie(param_key: :filter_state, cookie_scope: swimmers_state_cookie_scope).to_s
-    @filter_state = 'none' unless %w[none review diff_key].include?(@filter_state)
-    @q = data_fix_review_param_or_cookie(param_key: :q, cookie_scope: swimmers_state_cookie_scope).to_s.strip
 
     consistency_stats = harmonize_phase2_phase3_team_links(source_path: source_path, season_id: season.id)
     if consistency_stats.values.sum.positive?
@@ -351,64 +281,36 @@ class DataFixController < ApplicationController
       }
     end
 
-    # Filter by search query (ignore if shorter than min chars)
-    if @q.present? && @q.length >= TURBO_FILTER_MIN_QUERY_LENGTH
-      qd = @q.downcase
-      swimmers = swimmers.select do |s|
-        [s['last_name'], s['first_name'], s['complete_name'], s['key']]
-          .compact.any? { |v| v.to_s.downcase.include?(qd) }
-      end
-    end
-
-    # Filter swimmers needing review: unmatched (no swimmer_id) OR match < 89% (yellow/red matches)
-    # OR similar name found on same team (cross-ref warning)
-    # OR duplicate badges found in same season with different team_id (manual merge red flag)
-    # OR auto-assigned from secondary match due to team priority
-    # This shows ALL swimmers that need manual verification at a glance
-    if @filter_state == 'review'
-      swimmers = swimmers.select do |s|
-        # WARNING: adding the 'similar_on_team' check will yield false positives and basically make the filtering useless
-        s['swimmer_id'].nil? || (s['match_percentage'] || 0.0) < 89.0 || s['has_badge_duplicates'] == true || s['auto_assigned_from_secondary_match'] == true
-      end
-    end
-
-    # Filter swimmers where the current name differs from the original import key
-    if @filter_state == 'diff_key'
-      swimmers = swimmers.reject do |s|
-        complete_name = s['complete_name'].to_s.strip.downcase
-        # Extract LAST|FIRST from key by stripping gender prefix, YOB, and team token
-        key_name = s['key'].to_s.sub(/^[MF]\|/i, '').split('|').first(2).join(' ').strip.downcase
-        complete_name == key_name
-      end
-    end
-
-    # Pagination (phase-specific params to avoid cross-phase interference)
-    # Swimmers typically have more entries, default to 100
-    # Reset page to 1 when filter form is submitted (filter_state or per_page changed without explicit page)
-    if (params.key?(:filter_state) || params.key?(:swimmers_per_page)) && !params.key?(:swimmers_page)
-      @page = 1
-    else
-      @page = data_fix_review_param_or_cookie(param_key: :swimmers_page, cookie_scope: swimmers_state_cookie_scope).to_i
-      @page = 1 if @page < 1
-    end
-    @per_page = data_fix_review_param_or_cookie(param_key: :swimmers_per_page, cookie_scope: swimmers_state_cookie_scope).to_i
-    @per_page = 100 if @per_page <= 0
-    @total_count = swimmers.size
-    @total_pages = (@total_count.to_f / @per_page).ceil
-    @page = @total_pages if @page > @total_pages && @total_pages.positive?
-    @row_range = "#{(@page * @per_page) - @per_page + 1}-#{@page * @per_page}"
-    # Use Kaminari for pagination
-    @items = Kaminari.paginate_array(swimmers, total_count: @total_count).page(@page).per(@per_page)
-
-    persist_data_fix_review_state(
+    apply_review_filters(
+      collection: swimmers,
+      prefix: 'swimmers',
       cookie_scope: swimmers_state_cookie_scope,
-      state: {
-        filter_state: @filter_state,
-        q: @q,
-        swimmers_page: @page,
-        swimmers_per_page: @per_page
-      }
-    )
+      default_per_page: 100,
+      text_fields: %w[last_name first_name complete_name key]
+    ) do |list, state|
+      case state
+      # Filter swimmers needing review: unmatched (no swimmer_id) OR match < 89% (yellow/red matches)
+      # OR similar name found on same team (cross-ref warning)
+      # OR duplicate badges found in same season with different team_id (manual merge red flag)
+      # OR auto-assigned from secondary match due to team priority
+      # This shows ALL swimmers that need manual verification at a glance
+      when 'review'
+        list.select do |s|
+          # WARNING: adding the 'similar_on_team' check will yield false positives and basically make the filtering useless
+          s['swimmer_id'].nil? || (s['match_percentage'] || 0.0) < 89.0 || s['has_badge_duplicates'] == true || s['auto_assigned_from_secondary_match'] == true
+        end
+      # Filter swimmers where the current name differs from the original import key
+      when 'diff_key'
+        list.reject do |s|
+          complete_name = s['complete_name'].to_s.strip.downcase
+          # Extract LAST|FIRST from key by stripping gender prefix, YOB, and team token
+          key_name = s['key'].to_s.sub(/^[MF]\|/i, '').split('|').first(2).join(' ').strip.downcase
+          complete_name == key_name
+        end
+      else
+        list
+      end
+    end
 
     # Broadcast ready status to clear progress modal
     broadcast_progress('Review swimmers: ready', @total_count, @total_count)
@@ -418,36 +320,22 @@ class DataFixController < ApplicationController
   def review_events
     return if params[:phase4_v2].blank?
 
-    @file_path = params[:file_path]
-    if @file_path.blank?
-      flash.now[:warning] = I18n.t('data_import.errors.invalid_request')
-      redirect_to(pull_index_path) && return
-    end
-
-    source_path = resolve_working_source_path(@file_path)
-    @file_path = source_path
+    source_path = @source_path
     season = detect_season_from_pathname(source_path)
     lt_format = detect_layout_type(source_path)
     phase_path = default_phase_path_for(source_path, 4)
-    if params[:rescan].present? || !File.exist?(phase_path)
-      phase1_path = default_phase_path_for(source_path, 1)
+    return unless ensure_phase_file!(phase_path: phase_path, phase: 4,
+                                     review_path: method(:review_events_path)) do
       Import::Solvers::EventSolver.new(season:).build!(
         source_path: source_path,
         lt_format: lt_format,
-        phase1_path: phase1_path
+        phase1_path: default_phase_path_for(source_path, 1)
       )
-      flash.now[:notice] = I18n.t('data_import.messages.phase_rebuilt', phase: 4)
-      # Redirect without rescan parameter to avoid triggering rescan on navigation
-      redirect_to(review_events_path(request.query_parameters.except(:rescan).merge(file_path: @file_path)),
-                  notice: I18n.t('data_import.messages.phase_rebuilt', phase: 4)) && return
     end
     @retry_needed = sync_phase_retry_flag!(phase_path: phase_path, source_path: source_path)
     pfm = PhaseFileManager.new(phase_path)
     @phase4_meta = pfm.meta
     @phase4_data = pfm.data
-
-    # Set API URL for AutoComplete components
-    set_api_url
 
     # Build sessions list for dropdown from Phase 1 (edited sessions) or fallback to Phase 4
     phase1_path = default_phase_path_for(source_path, 1)
@@ -535,44 +423,30 @@ class DataFixController < ApplicationController
   def review_results
     return if params[:phase5_v2].blank?
 
-    @file_path = params[:file_path]
-    if @file_path.blank?
-      flash.now[:warning] = I18n.t('data_import.errors.invalid_request')
-      redirect_to(pull_index_path) && return
-    end
-
-    source_path = resolve_working_source_path(@file_path)
-    @file_path = source_path
+    source_path = @source_path
     season = detect_season_from_pathname(source_path)
     lt_format = detect_layout_type(source_path)
     phase_path = default_phase_path_for(source_path, 5)
 
     # Build/rebuild phase 5 JSON scaffold (for summary display)
-    if params[:rescan].present? || !File.exist?(phase_path)
+    return unless ensure_phase_file!(phase_path: phase_path, phase: 5,
+                                     review_path: method(:review_results_path)) do
       Import::Solvers::ResultSolver.new(season:).build!(
         source_path: source_path,
         lt_format: lt_format
       )
 
       # Populate data_import_* tables immediately after rescan (before redirect)
-      phase1_path = default_phase_path_for(source_path, 1)
-      phase2_path = default_phase_path_for(source_path, 2)
-      phase3_path = default_phase_path_for(source_path, 3)
-      phase4_path = default_phase_path_for(source_path, 4)
-
       populator = Import::Phase5Populator.new(
         source_path: source_path,
-        phase1_path: phase1_path,
-        phase2_path: phase2_path,
-        phase3_path: phase3_path,
-        phase4_path: phase4_path
+        phase1_path: default_phase_path_for(source_path, 1),
+        phase2_path: default_phase_path_for(source_path, 2),
+        phase3_path: default_phase_path_for(source_path, 3),
+        phase4_path: default_phase_path_for(source_path, 4)
       )
       broadcast_progress('Populating phase 5...', 0, 100)
       populate_stats = populator.populate!
-
-      # Redirect without rescan parameter to avoid triggering rescan on navigation
-      redirect_to(review_results_path(request.query_parameters.except(:rescan).merge(file_path: @file_path)),
-                  notice: "Phase 5 rebuilt. Populated DB: #{populate_stats[:mir_created]} results, #{populate_stats[:laps_created]} laps") && return
+      "Phase 5 rebuilt. Populated DB: #{populate_stats[:mir_created]} results, #{populate_stats[:laps_created]} laps"
     end
 
     @retry_needed = sync_phase_retry_flag!(phase_path: phase_path, source_path: source_path)
@@ -811,10 +685,8 @@ class DataFixController < ApplicationController
 
   # Toggle the opt-in Phase 5 individual-result overwrite reconciliation.
   def toggle_individual_result_overwrite
-    file_path = params[:file_path]
-    redirect_to(pull_index_path, alert: I18n.t('data_import.errors.invalid_request')) && return if file_path.blank?
-
-    source_path = resolve_working_source_path(file_path)
+    file_path = @file_path
+    source_path = @source_path
     phase5_path = default_phase_path_for(source_path, 5)
     phase1_path = default_phase_path_for(source_path, 1)
     unless File.exist?(phase5_path) && File.exist?(phase1_path)
@@ -827,8 +699,8 @@ class DataFixController < ApplicationController
     enabled = ActiveModel::Type::Boolean.new.cast(params[:enabled])
 
     if enabled
-      phase1_data = JSON.parse(File.read(phase1_path))
-      meeting_id = phase1_data.dig('data', 'id') || phase1_data.dig('data', 'meeting_id')
+      phase1_data = PhaseFileManager.new(phase1_path).data
+      meeting_id = phase1_data['id'] || phase1_data['meeting_id']
       import_rows = GogglesDb::DataImportMeetingIndividualResult.where(phase_file_path: source_path).to_a
       candidates = DataFix::IndividualResultOverwriteReconciler.new(
         meeting_id: meeting_id,
@@ -941,17 +813,11 @@ class DataFixController < ApplicationController
 
   # Phase 6: Commit all entities to DB and generate SQL/log report
   def commit_phase6
-    file_path = params[:file_path]
-    if file_path.blank?
-      flash.now[:warning] = I18n.t('data_import.errors.invalid_request')
-      redirect_to(pull_index_path) && return
-    end
-
-    source_path = resolve_working_source_path(file_path)
-    file_path = source_path
+    file_path = @file_path
+    source_path = @source_path
 
     phase5_path = default_phase_path_for(source_path, 5)
-    overwrite_meta = (JSON.parse(File.read(phase5_path)).dig('_meta', 'individual_result_overwrite') if File.exist?(phase5_path))
+    overwrite_meta = (PhaseFileManager.new(phase5_path).meta&.dig('individual_result_overwrite') if File.exist?(phase5_path))
     overwrite_candidates = Array(overwrite_meta&.dig('snapshot', 'candidates'))
     overwrite_selected_count = overwrite_candidates.count { |candidate| candidate['selected'] == true }
     if overwrite_meta&.dig('enabled') == true && overwrite_selected_count.positive? && params[:confirm_overwrite].to_s != '1'
@@ -1049,7 +915,7 @@ class DataFixController < ApplicationController
       File.write(sql_full_path, committer.sql_log_content)
 
       # Get season_id for organized archiving
-      season_id = JSON.parse(File.read(phase1_path))&.dig('data', 'season_id') || 'unknown'
+      season_id = PhaseFileManager.new(phase1_path).data['season_id'] || 'unknown'
 
       # Move source JSON and ALL phase files to 'crawler/data/results.done/<season_id>/'
       done_dir = source_dir.gsub('results.new', 'results.done')
@@ -1456,67 +1322,16 @@ class DataFixController < ApplicationController
   end
   # ---------------------------------------------------------------------------
 
-  # Filter relay enrichment summary based on swimmer ID and issues.
-  # - Always removes legs already matched to a swimmer_id > 0
-  # - When show_new is false, hides legs whose only issue is missing_swimmer_id
-  def filter_relay_enrichment_summary(summary, show_new)
-    # Build swimmer_id lookup from Phase 3 data for double-checking (case-insensitive)
-    swimmers_with_id = Set.new
-    if @phase3_data
-      Array(@phase3_data['swimmers']).each do |s|
-        key = s['key']
-        sid = s['swimmer_id'].to_i
-        if key.present? && sid.positive?
-          swimmers_with_id.add(key.downcase) # Normalize to lowercase
-        end
-      end
-    end
-
-    Array(summary).filter_map do |relay|
-      swimmers = Array(relay['swimmers'])
-
-      filtered_swimmers = swimmers.reject do |leg|
-        issues = leg['issues'] || {}
-        phase3_swimmer = leg['phase3_swimmer'] || {}
-        swimmer_id = phase3_swimmer['swimmer_id'].to_i
-        phase3_key = leg['phase3_key']
-
-        # Matched swimmers are never part of enrichment list
-        # Check both the swimmer_id from phase3_swimmer AND the key lookup (case-insensitive)
-        key_matched = phase3_key.present? && swimmers_with_id.include?(phase3_key.downcase)
-        matched = swimmer_id.positive? || key_matched
-
-        # New swimmers with only missing_swimmer_id (no other blocking issue)
-        only_missing_id = issues['missing_swimmer_id'] && !issues['missing_year_of_birth'] && !issues['missing_gender']
-        new_non_blocking = !matched && only_missing_id && !show_new
-
-        matched || new_non_blocking
-      end
-
-      next if filtered_swimmers.empty?
-
-      # Recompute missing_counts for the filtered swimmers
-      missing_counts = filtered_swimmers.each_with_object(Hash.new(0)) do |leg, acc|
-        (leg['issues'] || {}).each do |issue_key, flag|
-          acc[issue_key] += 1 if flag
-        end
-      end
-
-      relay.merge('swimmers' => filtered_swimmers, 'missing_counts' => missing_counts)
-    end
-  end
-
   # Update a single Phase 2 team entry by key
   def update_phase2_team
-    file_path = params[:file_path]
+    file_path = @file_path
+    source_path = @source_path
     team_key = params[:team_key]
-    if file_path.blank? || team_key.blank?
+    if team_key.blank?
       flash[:warning] = I18n.t('data_import.errors.invalid_request')
       redirect_to(pull_index_path) && return
     end
 
-    source_path = resolve_working_source_path(file_path)
-    file_path = source_path
     phase_path = default_phase_path_for(source_path, 2)
     pfm = PhaseFileManager.new(phase_path)
     data = pfm.data || {}
@@ -1597,7 +1412,6 @@ class DataFixController < ApplicationController
     data['teams'] = teams
 
     meta = pfm.meta || {}
-    meta['generated_at'] = Time.now.utc.iso8601
     pfm.write!(data: data, meta: meta)
 
     # Cascade team binding updates to Phase 3 badges and Phase 5 DataImport rows
@@ -1627,25 +1441,16 @@ class DataFixController < ApplicationController
     end
 
     # Preserve pagination and filter params
-    redirect_params = { file_path:, phase2_v2: 1 }
-    redirect_params[:teams_page] = params[:teams_page] if params[:teams_page].present?
-    redirect_params[:teams_per_page] = params[:teams_per_page] if params[:teams_per_page].present?
-    redirect_params[:q] = params[:q] if params[:q].present?
-    redirect_params[:filter_state] = params[:filter_state] if params[:filter_state].present?
+    redirect_params = review_redirect_params(v2_flag: :phase2_v2,
+                                             keep: %i[teams_page teams_per_page q filter_state])
 
     redirect_to review_teams_path(redirect_params), notice: I18n.t('data_import.messages.updated')
   end
 
   # Create a new blank team entry in Phase 2 and redirect back to v2 view
   def add_team
-    file_path = params[:file_path]
-    if file_path.blank?
-      flash[:warning] = I18n.t('data_import.errors.invalid_request')
-      redirect_to(pull_index_path) && return
-    end
-
-    source_path = resolve_working_source_path(file_path)
-    file_path = source_path
+    file_path = @file_path
+    source_path = @source_path
     phase_path = default_phase_path_for(source_path, 2)
     pfm = PhaseFileManager.new(phase_path)
     data = pfm.data || {}
@@ -1665,30 +1470,25 @@ class DataFixController < ApplicationController
     data['teams'] = teams
 
     meta = pfm.meta || {}
-    meta['generated_at'] = Time.now.utc.iso8601
     pfm.write!(data: data, meta: meta)
 
-    redirect_params = { file_path:, phase2_v2: 1 }
-    redirect_params[:teams_page] = params[:teams_page] if params[:teams_page].present?
-    redirect_params[:teams_per_page] = params[:teams_per_page] if params[:teams_per_page].present?
-    redirect_params[:q] = params[:q] if params[:q].present?
-    redirect_params[:filter_state] = params[:filter_state] if params[:filter_state].present?
+    redirect_params = review_redirect_params(v2_flag: :phase2_v2,
+                                             keep: %i[teams_page teams_per_page q filter_state])
 
     redirect_to review_teams_path(redirect_params), notice: I18n.t('data_import.messages.updated')
   end
 
   # Delete a team entry from Phase 2 and clear downstream phase data
   def delete_team
-    file_path = params[:file_path]
+    file_path = @file_path
+    source_path = @source_path
     team_key = params[:team_key]
 
-    if file_path.blank? || team_key.blank?
+    if team_key.blank?
       flash[:warning] = I18n.t('data_import.errors.invalid_request')
       redirect_to(pull_index_path) && return
     end
 
-    source_path = resolve_working_source_path(file_path)
-    file_path = source_path
     phase_path = default_phase_path_for(source_path, 2)
     pfm = PhaseFileManager.new(phase_path)
     data = pfm.data || {}
@@ -1714,31 +1514,26 @@ class DataFixController < ApplicationController
     data['meeting_relay_result'] = [] if data.key?('meeting_relay_result')
 
     meta = pfm.meta || {}
-    meta['generated_at'] = Time.now.utc.iso8601
     pfm.write!(data: data, meta: meta)
 
     # Preserve pagination and filter params
-    redirect_params = { file_path:, phase2_v2: 1 }
-    redirect_params[:teams_page] = params[:teams_page] if params[:teams_page].present?
-    redirect_params[:teams_per_page] = params[:teams_per_page] if params[:teams_per_page].present?
-    redirect_params[:q] = params[:q] if params[:q].present?
-    redirect_params[:filter_state] = params[:filter_state] if params[:filter_state].present?
+    redirect_params = review_redirect_params(v2_flag: :phase2_v2,
+                                             keep: %i[teams_page teams_per_page q filter_state])
 
     redirect_to review_teams_path(redirect_params), notice: I18n.t('data_import.messages.updated')
   end
 
   # Update a single Phase 3 swimmer entry by key
   def update_phase3_swimmer
-    file_path = params[:file_path]
+    file_path = @file_path
+    source_path = @source_path
     swimmer_key = params[:swimmer_key]
 
-    if file_path.blank? || swimmer_key.blank?
+    if swimmer_key.blank?
       flash[:warning] = I18n.t('data_import.errors.invalid_request')
       redirect_to(pull_index_path) && return
     end
 
-    source_path = resolve_working_source_path(file_path)
-    file_path = source_path
     phase_path = default_phase_path_for(source_path, 3)
     pfm = PhaseFileManager.new(phase_path)
     data = pfm.data || {}
@@ -1800,7 +1595,6 @@ class DataFixController < ApplicationController
     data['meeting_relay_result'] = [] if data.key?('meeting_relay_result')
 
     meta = pfm.meta || {}
-    meta['generated_at'] = Time.now.utc.iso8601
     pfm.write!(data: data, meta: meta)
 
     cascade_count = cascade_swimmer_to_data_import_rows(
@@ -1815,26 +1609,16 @@ class DataFixController < ApplicationController
     flash[:info] = "Swimmer updated. Cascaded swimmer links to #{cascade_count} downstream record(s)." if cascade_count.positive?
 
     # Preserve pagination and filter params
-    redirect_params = { file_path:, phase3_v2: 1 }
-    redirect_params[:swimmers_page] = params[:swimmers_page] if params[:swimmers_page].present?
-    redirect_params[:swimmers_per_page] = params[:swimmers_per_page] if params[:swimmers_per_page].present?
-    redirect_params[:q] = params[:q] if params[:q].present?
-    redirect_params[:filter_state] = params[:filter_state] if params[:filter_state].present?
+    redirect_params = review_redirect_params(v2_flag: :phase3_v2,
+                                             keep: %i[swimmers_page swimmers_per_page q filter_state])
 
     redirect_to review_swimmers_path(redirect_params), notice: I18n.t('data_import.messages.updated')
   end
 
   # Add a new blank swimmer to Phase 3
   def add_swimmer
-    file_path = params[:file_path]
-
-    if file_path.blank?
-      flash[:warning] = I18n.t('data_import.errors.invalid_request')
-      redirect_to(pull_index_path) && return
-    end
-
-    source_path = resolve_working_source_path(file_path)
-    file_path = source_path
+    file_path = @file_path
+    source_path = @source_path
     phase_path = default_phase_path_for(source_path, 3)
     pfm = PhaseFileManager.new(phase_path)
     data = pfm.data || {}
@@ -1857,30 +1641,19 @@ class DataFixController < ApplicationController
     data['swimmers'] = swimmers
 
     meta = pfm.meta || {}
-    meta['generated_at'] = Time.now.utc.iso8601
     pfm.write!(data: data, meta: meta)
 
-    redirect_params = { file_path:, phase3_v2: 1 }
-    redirect_params[:swimmers_page] = params[:swimmers_page] if params[:swimmers_page].present?
-    redirect_params[:swimmers_per_page] = params[:swimmers_per_page] if params[:swimmers_per_page].present?
-    redirect_params[:q] = params[:q] if params[:q].present?
-    redirect_params[:filter_state] = params[:filter_state] if params[:filter_state].present?
+    redirect_params = review_redirect_params(v2_flag: :phase3_v2,
+                                             keep: %i[swimmers_page swimmers_per_page q filter_state])
 
     redirect_to review_swimmers_path(redirect_params), notice: 'Swimmer added' # rubocop:disable Rails/I18nLocaleTexts
   end
 
   # Merge auxiliary Phase 3 files to enrich relay swimmers
   def merge_phase3_swimmers
-    file_path = params[:file_path]
+    file_path = @file_path
+    source_path = @source_path
     selected_paths = Array(params[:auxiliary_paths]).compact_blank
-
-    if file_path.blank?
-      flash[:warning] = I18n.t('data_import.errors.invalid_request')
-      redirect_to(pull_index_path) && return
-    end
-
-    source_path = resolve_working_source_path(file_path)
-    file_path = source_path
     base_dir = File.dirname(source_path)
     phase_path = default_phase_path_for(source_path, 3)
 
@@ -1942,7 +1715,6 @@ class DataFixController < ApplicationController
     end
 
     meta['auxiliary_phase3_paths'] = relative_aux_paths
-    meta['generated_at'] = Time.now.utc.iso8601
 
     pfm.write!(data: merged_data, meta: meta)
 
@@ -1965,16 +1737,15 @@ class DataFixController < ApplicationController
 
   # Delete a swimmer entry from Phase 3 and clear downstream phase data
   def delete_swimmer
-    file_path = params[:file_path]
+    file_path = @file_path
+    source_path = @source_path
     swimmer_key = params[:swimmer_key]
 
-    if file_path.blank? || swimmer_key.blank?
+    if swimmer_key.blank?
       flash[:warning] = I18n.t('data_import.errors.invalid_request')
       redirect_to(pull_index_path) && return
     end
 
-    source_path = resolve_working_source_path(file_path)
-    file_path = source_path
     phase_path = default_phase_path_for(source_path, 3)
     pfm = PhaseFileManager.new(phase_path)
     data = pfm.data || {}
@@ -1998,15 +1769,11 @@ class DataFixController < ApplicationController
     data['meeting_relay_result'] = [] if data.key?('meeting_relay_result')
 
     meta = pfm.meta || {}
-    meta['generated_at'] = Time.now.utc.iso8601
     pfm.write!(data: data, meta: meta)
 
     # Preserve pagination and filter params
-    redirect_params = { file_path:, phase3_v2: 1 }
-    redirect_params[:swimmers_page] = params[:swimmers_page] if params[:swimmers_page].present?
-    redirect_params[:swimmers_per_page] = params[:swimmers_per_page] if params[:swimmers_per_page].present?
-    redirect_params[:q] = params[:q] if params[:q].present?
-    redirect_params[:filter_state] = params[:filter_state] if params[:filter_state].present?
+    redirect_params = review_redirect_params(v2_flag: :phase3_v2,
+                                             keep: %i[swimmers_page swimmers_per_page q filter_state])
 
     redirect_to review_swimmers_path(redirect_params), notice: I18n.t('data_import.messages.updated')
   end
@@ -2014,18 +1781,17 @@ class DataFixController < ApplicationController
   # Update a single Phase 4 event entry by session and event index
   # Also handles moving events between sessions via target_session_order
   def update_phase4_event
-    file_path = params[:file_path]
+    file_path = @file_path
+    source_path = @source_path
     session_index = params[:session_index]&.to_i
     event_index = params[:event_index]&.to_i
     target_session_order = params[:target_session_order]&.to_i
 
-    if file_path.blank? || session_index.nil? || event_index.nil?
+    if session_index.nil? || event_index.nil?
       flash[:warning] = I18n.t('data_import.errors.invalid_request')
       redirect_to(pull_index_path) && return
     end
 
-    source_path = resolve_working_source_path(file_path)
-    file_path = source_path
     phase_path = default_phase_path_for(source_path, 4)
     pfm = PhaseFileManager.new(phase_path)
     data = pfm.data || {}
@@ -2133,7 +1899,6 @@ class DataFixController < ApplicationController
     data['sessions'] = sessions
 
     meta = pfm.meta || {}
-    meta['generated_at'] = Time.now.utc.iso8601
     pfm.write!(data: data, meta: meta)
 
     redirect_to review_events_path(file_path:, phase4_v2: 1), notice: flash_msg
@@ -2141,17 +1906,11 @@ class DataFixController < ApplicationController
 
   # Add a new blank event to Phase 4
   def add_event
-    file_path = params[:file_path]
+    file_path = @file_path
+    source_path = @source_path
     session_index = params[:session_index].to_i
     event_type_id = params[:event_type_id]&.to_i
 
-    if file_path.blank?
-      flash[:warning] = I18n.t('data_import.errors.invalid_request')
-      redirect_to(pull_index_path) && return
-    end
-
-    source_path = resolve_working_source_path(file_path)
-    file_path = source_path
     phase_path = default_phase_path_for(source_path, 4)
     pfm = PhaseFileManager.new(phase_path)
     data = pfm.data || {}
@@ -2233,7 +1992,6 @@ class DataFixController < ApplicationController
     data['sessions'] = sessions
 
     meta = pfm.meta || {}
-    meta['generated_at'] = Time.now.utc.iso8601
     pfm.write!(data: data, meta: meta)
 
     # Calculate the flattened event index for highlighting
@@ -2249,17 +2007,16 @@ class DataFixController < ApplicationController
 
   # Delete an event entry from Phase 4 and clear downstream phase data
   def delete_event
-    file_path = params[:file_path]
+    file_path = @file_path
+    source_path = @source_path
     session_index = params[:session_index]&.to_i
     event_index = params[:event_index]&.to_i
 
-    if file_path.blank? || session_index.nil? || event_index.nil?
+    if session_index.nil? || event_index.nil?
       flash[:warning] = I18n.t('data_import.errors.invalid_request')
       redirect_to(pull_index_path) && return
     end
 
-    source_path = resolve_working_source_path(file_path)
-    file_path = source_path
     phase_path = default_phase_path_for(source_path, 4)
     pfm = PhaseFileManager.new(phase_path)
     data = pfm.data || {}
@@ -2287,7 +2044,6 @@ class DataFixController < ApplicationController
     data['meeting_relay_result'] = [] if data.key?('meeting_relay_result')
 
     meta = pfm.meta || {}
-    meta['generated_at'] = Time.now.utc.iso8601
     pfm.write!(data: data, meta: meta)
 
     redirect_to review_events_path(file_path:, phase4_v2: 1), notice: I18n.t('data_import.messages.updated')
@@ -2295,14 +2051,8 @@ class DataFixController < ApplicationController
 
   # Update Phase 1 meeting attributes in the phase file and redirect back to v2 view
   def update_phase1_meeting
-    file_path = params[:file_path]
-    if file_path.blank?
-      flash[:warning] = I18n.t('data_import.errors.invalid_request')
-      redirect_to(pull_index_path) && return
-    end
-
-    source_path = resolve_working_source_path(file_path)
-    file_path = source_path
+    file_path = @file_path
+    source_path = @source_path
     phase_path = default_phase_path_for(source_path, 1)
     pfm = PhaseFileManager.new(phase_path)
     data = pfm.data || {}
@@ -2408,7 +2158,6 @@ class DataFixController < ApplicationController
     end
 
     meta = pfm.meta || {}
-    meta['generated_at'] = Time.now.utc.iso8601
     pfm.write!(data: data, meta: meta)
 
     redirect_to review_sessions_path(file_path:, phase_v2: 1), notice: I18n.t('data_import.messages.updated')
@@ -2416,16 +2165,15 @@ class DataFixController < ApplicationController
 
   # Update a session entry in Phase 1 using service object
   def update_phase1_session
-    file_path = params[:file_path]
+    file_path = @file_path
+    source_path = @source_path
     session_index = params[:session_index].to_i
 
-    if file_path.blank? || session_index.negative?
+    if session_index.negative?
       flash[:warning] = I18n.t('data_import.errors.invalid_request')
       redirect_to(pull_index_path) && return
     end
 
-    source_path = resolve_working_source_path(file_path)
-    file_path = source_path
     phase_path = default_phase_path_for(source_path, 1)
     pfm = PhaseFileManager.new(phase_path)
 
@@ -2441,14 +2189,8 @@ class DataFixController < ApplicationController
   # Create a new blank session entry in Phase 1 and redirect back to v2 view
   # Mirrors legacy add_session semantics minimally for v2
   def add_session
-    file_path = params[:file_path]
-    if file_path.blank?
-      flash[:warning] = I18n.t('data_import.errors.invalid_request')
-      redirect_to(pull_index_path) && return
-    end
-
-    source_path = resolve_working_source_path(file_path)
-    file_path = source_path
+    file_path = @file_path
+    source_path = @source_path
     phase_path = default_phase_path_for(source_path, 1)
     pfm = PhaseFileManager.new(phase_path)
     data = pfm.data || {}
@@ -2489,7 +2231,6 @@ class DataFixController < ApplicationController
     data['meeting_session'] = sessions
 
     meta = pfm.meta || {}
-    meta['generated_at'] = Time.now.utc.iso8601
     pfm.write!(data: data, meta: meta)
 
     redirect_to review_sessions_path(file_path:, phase_v2: 1, new_session_index: new_index), notice: I18n.t('data_import.messages.updated')
@@ -2497,16 +2238,15 @@ class DataFixController < ApplicationController
 
   # Delete a session entry from Phase 1 and redirect back to v2 view
   def delete_session
-    file_path = params[:file_path]
+    file_path = @file_path
+    source_path = @source_path
     session_index = params[:session_index]&.to_i
 
-    if file_path.blank? || session_index.nil?
+    if session_index.nil?
       flash[:warning] = I18n.t('data_import.errors.invalid_request')
       redirect_to(pull_index_path) && return
     end
 
-    source_path = resolve_working_source_path(file_path)
-    file_path = source_path
     phase_path = default_phase_path_for(source_path, 1)
     pfm = PhaseFileManager.new(phase_path)
     data = pfm.data || {}
@@ -2532,7 +2272,6 @@ class DataFixController < ApplicationController
     data['meeting_relay_swimmer'] = []
 
     meta = pfm.meta || {}
-    meta['generated_at'] = Time.now.utc.iso8601
     pfm.write!(data: data, meta: meta)
 
     redirect_to review_sessions_path(file_path:, phase_v2: 1), notice: I18n.t('data_import.messages.deleted')
@@ -2540,14 +2279,8 @@ class DataFixController < ApplicationController
 
   # Rebuild meeting_session array from selected meeting using service object
   def rescan_phase1_sessions
-    file_path = params[:file_path]
-    if file_path.blank?
-      flash[:warning] = I18n.t('data_import.errors.invalid_request')
-      redirect_to(pull_index_path) && return
-    end
-
-    source_path = resolve_working_source_path(file_path)
-    file_path = source_path
+    file_path = @file_path
+    source_path = @source_path
     phase_path = default_phase_path_for(source_path, 1)
     pfm = PhaseFileManager.new(phase_path)
 
@@ -2614,6 +2347,151 @@ class DataFixController < ApplicationController
   end
 
   private
+
+  # Resolves @file_path → @source_path (canonical LT4 working copy) for every
+  # action taking a file_path param; redirects to the file list when missing.
+  def set_source_path
+    @file_path = params[:file_path]
+    if @file_path.blank?
+      flash[:warning] = I18n.t('data_import.errors.invalid_request')
+      redirect_to(pull_index_path) && return
+    end
+
+    @source_path = resolve_working_source_path(@file_path)
+    @file_path = @source_path
+  end
+
+  # Params hash for redirects back to a phase-review page: the canonical file
+  # path + the v2 flag + the preserved pagination/filter params listed in +keep+.
+  def review_redirect_params(v2_flag:, keep: [])
+    keep.each_with_object({ file_path: @file_path, v2_flag => 1 }) do |key, hash|
+      hash[key] = params[key] if params[key].present?
+    end
+  end
+
+  # Guard for phase-review actions: rebuilds the phase file (via the +rebuild+
+  # block) when missing or when a rescan is requested, then redirects back to
+  # the same review page minus :rescan. Returns false when a redirect was
+  # issued — the caller must return immediately in that case.
+  def ensure_phase_file!(phase_path:, phase:, review_path:, &rebuild)
+    return true unless params[:rescan].present? || !File.exist?(phase_path)
+
+    rebuild_phase_and_redirect!(phase: phase, review_path: review_path, &rebuild)
+    false
+  end
+
+  # Runs +rebuild+, then redirects to +review_path+ (a callable returning the
+  # review URL for given query params) minus the :rescan flag so that
+  # subsequent navigation doesn't trigger another rebuild. The block may
+  # return a String to override the default "phase rebuilt" notice.
+  def rebuild_phase_and_redirect!(phase:, review_path:, notice: nil)
+    built_notice = yield
+    notice ||= built_notice if built_notice.is_a?(String)
+    query = request.query_parameters.except(:rescan).merge(file_path: @file_path)
+    redirect_to(review_path.call(query),
+                notice: notice.presence || I18n.t('data_import.messages.phase_rebuilt', phase: phase))
+  end
+
+  # Shared filter + pagination block for the phase 2/3 review pages.
+  # Sets @filter_state, @q, @page, @per_page, @total_count, @total_pages,
+  # @row_range, @items; persists them into the per-file review-state cookie.
+  # The block receives (collection, @filter_state) and must return the
+  # phase-specific filtered collection (the 'review'/'diff_key' predicates
+  # differ per phase); without a block only the text-query filter applies.
+  def apply_review_filters(collection:, prefix:, cookie_scope:, default_per_page:, text_fields:)
+    @filter_state = data_fix_review_param_or_cookie(param_key: :filter_state, cookie_scope: cookie_scope).to_s
+    @filter_state = 'none' unless %w[none review diff_key].include?(@filter_state)
+    @q = data_fix_review_param_or_cookie(param_key: :q, cookie_scope: cookie_scope).to_s.strip
+
+    # Filter by search query (ignore if shorter than min chars)
+    if @q.present? && @q.length >= TURBO_FILTER_MIN_QUERY_LENGTH
+      qd = @q.downcase
+      collection = collection.select do |item|
+        text_fields.map { |field| item[field] }.compact.any? { |v| v.to_s.downcase.include?(qd) }
+      end
+    end
+
+    collection = yield(collection, @filter_state) if block_given?
+
+    page_key = "#{prefix}_page".to_sym
+    per_page_key = "#{prefix}_per_page".to_sym
+
+    # Reset page to 1 when the filter form is submitted (filter_state or
+    # per_page changed without an explicit page param)
+    if (params.key?(:filter_state) || params.key?(per_page_key)) && !params.key?(page_key)
+      @page = 1
+    else
+      @page = data_fix_review_param_or_cookie(param_key: page_key, cookie_scope: cookie_scope).to_i
+      @page = 1 if @page < 1
+    end
+    @per_page = data_fix_review_param_or_cookie(param_key: per_page_key, cookie_scope: cookie_scope).to_i
+    @per_page = default_per_page if @per_page <= 0
+    @total_count = collection.size
+    @total_pages = (@total_count.to_f / @per_page).ceil
+    @page = @total_pages if @page > @total_pages && @total_pages.positive?
+    @row_range = "#{(@page * @per_page) - @per_page + 1}-#{@page * @per_page}"
+    @items = Kaminari.paginate_array(collection, total_count: @total_count).page(@page).per(@per_page)
+
+    persist_data_fix_review_state(
+      cookie_scope: cookie_scope,
+      state: {
+        filter_state: @filter_state,
+        q: @q,
+        page_key => @page,
+        per_page_key => @per_page
+      }
+    )
+  end
+
+  # Filter relay enrichment summary based on swimmer ID and issues.
+  # - Always removes legs already matched to a swimmer_id > 0
+  # - When show_new is false, hides legs whose only issue is missing_swimmer_id
+  def filter_relay_enrichment_summary(summary, show_new)
+    # Build swimmer_id lookup from Phase 3 data for double-checking (case-insensitive)
+    swimmers_with_id = Set.new
+    if @phase3_data
+      Array(@phase3_data['swimmers']).each do |s|
+        key = s['key']
+        sid = s['swimmer_id'].to_i
+        if key.present? && sid.positive?
+          swimmers_with_id.add(key.downcase) # Normalize to lowercase
+        end
+      end
+    end
+
+    Array(summary).filter_map do |relay|
+      swimmers = Array(relay['swimmers'])
+
+      filtered_swimmers = swimmers.reject do |leg|
+        issues = leg['issues'] || {}
+        phase3_swimmer = leg['phase3_swimmer'] || {}
+        swimmer_id = phase3_swimmer['swimmer_id'].to_i
+        phase3_key = leg['phase3_key']
+
+        # Matched swimmers are never part of enrichment list
+        # Check both the swimmer_id from phase3_swimmer AND the key lookup (case-insensitive)
+        key_matched = phase3_key.present? && swimmers_with_id.include?(phase3_key.downcase)
+        matched = swimmer_id.positive? || key_matched
+
+        # New swimmers with only missing_swimmer_id (no other blocking issue)
+        only_missing_id = issues['missing_swimmer_id'] && !issues['missing_year_of_birth'] && !issues['missing_gender']
+        new_non_blocking = !matched && only_missing_id && !show_new
+
+        matched || new_non_blocking
+      end
+
+      next if filtered_swimmers.empty?
+
+      # Recompute missing_counts for the filtered swimmers
+      missing_counts = filtered_swimmers.each_with_object(Hash.new(0)) do |leg, acc|
+        (leg['issues'] || {}).each do |issue_key, flag|
+          acc[issue_key] += 1 if flag
+        end
+      end
+
+      relay.merge('swimmers' => filtered_swimmers, 'missing_counts' => missing_counts)
+    end
+  end
 
   def overwrite_phase5_path_for(file_path)
     raise ArgumentError, 'Missing file path' if file_path.blank?
@@ -4117,8 +3995,7 @@ class DataFixController < ApplicationController
     return programs unless File.exist?(phase4_path)
 
     # Build event order map: {session_order => {event_key => event_order}}
-    phase4_json = JSON.parse(File.read(phase4_path))
-    sessions = phase4_json.dig('data', 'sessions') || []
+    sessions = PhaseFileManager.new(phase4_path).data['sessions'] || []
 
     event_order_map = {}
     sessions.each do |session|
@@ -4153,8 +4030,7 @@ class DataFixController < ApplicationController
     phase3_path = default_phase_path_for(source_path, 3)
     swimmers_by_key = {}
     if File.exist?(phase3_path)
-      phase3_data = JSON.parse(File.read(phase3_path))
-      swimmers = phase3_data.dig('data', 'swimmers') || []
+      swimmers = PhaseFileManager.new(phase3_path).data['swimmers'] || []
       swimmers.each do |s|
         # Index by full key
         swimmers_by_key[s['key']] = s
@@ -4184,7 +4060,7 @@ class DataFixController < ApplicationController
     affiliation_ids = staging[:mrrs].filter_map(&:team_affiliation_id)
     affiliations_by_id = GogglesDb::TeamAffiliation.where(id: affiliation_ids.uniq).index_by(&:id)
 
-    season_id = (JSON.parse(File.read(default_phase_path_for(source_path, 1))).dig('data', 'season_id') if File.exist?(default_phase_path_for(source_path, 1)))
+    season_id = (PhaseFileManager.new(default_phase_path_for(source_path, 1)).data['season_id'] if File.exist?(default_phase_path_for(source_path, 1)))
 
     # Team IDs that already have a TeamAffiliation in the current season,
     # preloaded once so result_has_issues? doesn't run an EXISTS? per result.

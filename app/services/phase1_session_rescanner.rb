@@ -86,8 +86,7 @@ class Phase1SessionRescanner
   end
 
   def save_data(data)
-    meta = @pfm.meta || {}
-    meta['generated_at'] = Time.now.utc.iso8601
-    @pfm.write!(data: data, meta: meta)
+    # PhaseFileManager#write! refreshes _meta.generated_at on every write.
+    @pfm.write!(data: data, meta: @pfm.meta || {})
   end
 end

@@ -79,11 +79,9 @@ Rails.application.routes.draw do
   get 'data_fix/verify_result', to: 'data_fix#verify_result', as: 'data_fix_verify_result'
   patch 'data_fix/confirm_result_duplicate', to: 'data_fix#confirm_result_duplicate', as: 'data_fix_confirm_result_duplicate'
   get 'data_fix/verify_team', to: 'data_fix#verify_team', as: 'data_fix_verify_team'
-  patch 'data_fix/update', to: 'data_fix#update', as: 'data_fix_update'
   get 'data_fix/coded_name', to: 'data_fix#coded_name'
   get 'data_fix/teams_for_swimmer/:swimmer_id', to: 'data_fix#teams_for_swimmer', as: 'data_fix_teams_for_swimmer'
   delete 'data_fix/purge', to: 'data_fix#purge', as: 'data_fix_purge'
-  get 'data_fix/result_details/:prg_key', to: 'data_fix#result_details', as: 'data_fix_result_details'
 
   # Explicit legacy routes (directly targeting DataFixLegacyController)
   get 'data_fix_legacy/review_sessions', to: 'data_fix_legacy#review_sessions', as: 'review_sessions_legacy'
