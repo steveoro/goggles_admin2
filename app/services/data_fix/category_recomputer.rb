@@ -6,7 +6,7 @@ require 'json'
 require 'securerandom'
 
 module DataFix
-  class CategoryRecomputer # rubocop:disable Metrics/ClassLength, Style/Documentation
+  class CategoryRecomputer # rubocop:disable Style/Documentation
     class InvalidSource < StandardError; end
 
     attr_reader :source_path, :season, :meeting_date, :categories_cache
@@ -19,7 +19,7 @@ module DataFix
       @progress = progress || ->(_message, _current, _total) {}
     end
 
-    def call # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
+    def call
       source_data = JSON.parse(File.read(source_path))
       swimmers = source_data['swimmers']
       validate_source!(swimmers)
@@ -79,7 +79,7 @@ module DataFix
       swimmers.map { |source_key, swimmer| [swimmer, source_key] }
     end
 
-    def swimmer_identity(swimmer, source_key: nil) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+    def swimmer_identity(swimmer, source_key: nil)
       key = (source_key || swimmer['key']).to_s
       parts = key.split('|')
       gender = swimmer['gender_type_code'] || swimmer['gender']
@@ -126,7 +126,7 @@ module DataFix
       index[:name_only][name_key] << swimmer if name_key.present?
     end
 
-    def walk_results(node, swimmer_index, stats, relay_context: false) # rubocop:disable Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
+    def walk_results(node, swimmer_index, stats, relay_context: false)
       case node
       when Array
         node.each { |child| walk_results(child, swimmer_index, stats, relay_context:) }
@@ -163,7 +163,7 @@ module DataFix
       end
     end
 
-    def update_relay_result_category(result, swimmer_index, stats) # rubocop:disable Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity,Metrics/AbcSize,Metrics/MethodLength
+    def update_relay_result_category(result, swimmer_index, stats)
       laps = result['laps'] || []
       swimmer_keys = laps.filter_map { |lap| lap['swimmer'].presence }
       if swimmer_keys.empty?

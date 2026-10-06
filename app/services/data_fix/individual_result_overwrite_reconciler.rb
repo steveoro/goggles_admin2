@@ -10,7 +10,7 @@ module DataFix
   # imported result with the same swimmer and the exact same timing exists, the
   # source's laps can be moved to that imported result before the source is
   # deleted.
-  class IndividualResultOverwriteReconciler # rubocop:disable Metrics/ClassLength
+  class IndividualResultOverwriteReconciler
     SNAPSHOT_VERSION = 2
     EMPTY_SET = Set.new.freeze
 
@@ -266,7 +266,7 @@ module DataFix
       }
     end
 
-    def mir_attributes(mir) # rubocop:disable Metrics/AbcSize
+    def mir_attributes(mir)
       {
         'id' => mir.id,
         'meeting_program_id' => mir.meeting_program_id,

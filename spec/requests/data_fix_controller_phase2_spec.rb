@@ -598,10 +598,13 @@ RSpec.describe DataFixController do
       end
 
       it 'updates metadata timestamp' do
-        original_pfm = PhaseFileManager.new(phase2_file)
-        original_time = original_pfm.meta['generated_at']
-
-        sleep 0.01 # Ensure timestamp difference
+        # Backdate the stamp: generated_at has 1s granularity, so sleeping a
+        # short while can't guarantee a different value. Any rewrite must
+        # refresh the backdated stamp deterministically.
+        payload = PhaseFileManager.new(phase2_file).read
+        old_stamp = 1.hour.ago.utc.iso8601
+        payload['_meta']['generated_at'] = old_stamp
+        File.write(phase2_file, JSON.pretty_generate(payload))
 
         patch update_phase2_team_path, params: {
           file_path: source_file,
@@ -612,7 +615,7 @@ RSpec.describe DataFixController do
         }
 
         new_pfm = PhaseFileManager.new(phase2_file)
-        expect(new_pfm.meta['generated_at']).not_to eq(original_time)
+        expect(new_pfm.meta['generated_at']).not_to eq(old_stamp)
       end
 
       it 'rejects invalid team_key' do
@@ -850,6 +853,16 @@ RSpec.describe DataFixController do
 
         expect(response).to have_http_status(:redirect)
         expect(response.location).to include('/data_fix_legacy/review_teams')
+      end
+
+      it 'redirects without resolving the source path (no category normalization side effects)' do
+        allow(DataFix::SourceResolver).to receive(:new).and_call_original
+
+        get review_teams_path(file_path: source_file)
+
+        expect(response).to have_http_status(:redirect)
+        expect(response.location).to include('/data_fix_legacy/review_teams')
+        expect(DataFix::SourceResolver).not_to have_received(:new)
       end
     end
   end

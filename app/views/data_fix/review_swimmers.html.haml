@@ -34,7 +34,7 @@
                                                                   per_page_param_name: :swimmers_per_page,
                                                                   per_page_value: @per_page, filter_state: @filter_state, q: @q,
                                                                   filter_label: 'Filter',
-                                                                  q_min_length: DataFixController::TURBO_FILTER_MIN_QUERY_LENGTH,
+                                                                  q_min_length: DataFix::BaseController::TURBO_FILTER_MIN_QUERY_LENGTH,
                                                                   q_placeholder: 'Search name...',
                                                                   review_help_text: '(review: unmatched + yellow/red matches + duplicate badges + team-mismatch auto-assignments)')
       = render(filter_component)

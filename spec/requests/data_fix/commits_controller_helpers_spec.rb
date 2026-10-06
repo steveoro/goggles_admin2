@@ -2,11 +2,13 @@
 
 require 'rails_helper'
 
-RSpec.describe DataFixController, type: :controller do
+RSpec.describe DataFix::CommitsController, type: :controller do
   include AdminSignInHelpers
 
-  describe '#detect_layout_type' do
-    subject { controller.send(:detect_layout_type, file_path) }
+  describe 'DataFix::SourceResolver#detect_layout_type' do
+    subject { resolver.detect_layout_type(file_path) }
+
+    let(:resolver) { DataFix::SourceResolver.new }
 
     context 'with LT2 format file (Molinella sample)' do
       let(:file_path) { 'spec/fixtures/results/season-182_Molinella_sample.json' }
@@ -105,9 +107,10 @@ RSpec.describe DataFixController, type: :controller do
     end
   end
 
-  describe '#resolve_working_source_path' do
-    subject(:resolved_path) { controller.send(:resolve_working_source_path, file_path) }
+  describe 'DataFix::SourceResolver#resolve_working_source_path' do
+    subject(:resolved_path) { resolver.resolve_working_source_path(file_path) }
 
+    let(:resolver) { DataFix::SourceResolver.new }
     let(:temp_dir) { Dir.mktmpdir }
     let(:source_path) { File.join(temp_dir, 'meeting.json') }
     let(:lt4_path) { File.join(temp_dir, 'meeting-lt4.json') }
@@ -181,7 +184,7 @@ RSpec.describe DataFixController, type: :controller do
 
           data = JSON.parse(File.read(lt4_path))
           expect(data.dig('_meta', 'retry_needed')).to be true
-          expect(controller.send(:source_has_retry_section?, lt4_path)).to be true
+          expect(resolver.source_has_retry_section?(lt4_path)).to be true
         end
       end
     end
@@ -319,7 +322,7 @@ RSpec.describe DataFixController, type: :controller do
     end
   end
 
-  describe '#build_badge_season_check_report' do
+  describe 'DataFix::PostCommitChecks.build_badge_season_check_report' do
     let(:season) { instance_double(GogglesDb::Season) }
     let(:checker) do
       instance_double(
@@ -338,13 +341,13 @@ RSpec.describe DataFixController, type: :controller do
 
     before(:each) do
       allow(Merge::BadgeSeasonChecker).to receive(:new).with(season: season).and_return(checker)
-      allow(controller).to receive(:serialize_badge_merges).and_return([])
+      allow(DataFix::PostCommitChecks).to receive(:serialize_badge_merges).and_return([])
     end
 
     it 'returns error status when sure merges are present' do
       allow(checker).to receive(:sure_badge_merges).and_return({ 101 => [instance_double(GogglesDb::Badge)] })
 
-      result = controller.send(:build_badge_season_check_report, season)
+      result = DataFix::PostCommitChecks.build_badge_season_check_report(season)
       expect(result[:status]).to eq('error')
       expect(result[:sure_badge_merges_count]).to eq(1)
     end
@@ -352,20 +355,20 @@ RSpec.describe DataFixController, type: :controller do
     it 'returns warning status when only possible merges are present' do
       allow(checker).to receive(:possible_badge_merges).and_return({ 202 => [instance_double(GogglesDb::Badge)] })
 
-      result = controller.send(:build_badge_season_check_report, season)
+      result = DataFix::PostCommitChecks.build_badge_season_check_report(season)
       expect(result[:status]).to eq('warning')
       expect(result[:possible_badge_merges_count]).to eq(1)
     end
 
     it 'returns ok status when no merges are present' do
-      result = controller.send(:build_badge_season_check_report, season)
+      result = DataFix::PostCommitChecks.build_badge_season_check_report(season)
       expect(result[:status]).to eq('ok')
       expect(result[:sure_badge_merges_count]).to eq(0)
       expect(result[:possible_badge_merges_count]).to eq(0)
     end
   end
 
-  describe '#build_duplicate_results_check_report' do
+  describe 'DataFix::PostCommitChecks.build_duplicate_results_check_report' do
     let(:season) { instance_double(GogglesDb::Season) }
     let(:meeting) { instance_double(GogglesDb::Meeting, id: 77, description: 'Test Meeting') }
     let(:cleaner) { instance_double(Merge::DuplicateResultCleaner) }
@@ -378,11 +381,11 @@ RSpec.describe DataFixController, type: :controller do
       allow(cleaner).to receive(:find_duplicate_mrss).with(meeting.id).and_return([])
       allow(cleaner).to receive(:find_duplicate_relay_laps).with(meeting.id).and_return([])
       allow(cleaner).to receive(:find_duplicate_mrrs).with(meeting.id).and_return([])
-      allow(controller).to receive(:serialize_duplicate_mirs).and_return([])
+      allow(DataFix::PostCommitChecks).to receive(:serialize_duplicate_mirs).and_return([])
     end
 
     it 'returns ok status when all duplicate counts are zero' do
-      result = controller.send(:build_duplicate_results_check_report, season)
+      result = DataFix::PostCommitChecks.build_duplicate_results_check_report(season)
       expect(result[:status]).to eq('ok')
       expect(result[:totals]).to eq({ mirs: 0, laps: 0, mrss: 0, relay_laps: 0, mrrs: 0 })
     end
@@ -390,7 +393,7 @@ RSpec.describe DataFixController, type: :controller do
     it 'returns error status when duplicates are found' do
       allow(cleaner).to receive(:find_duplicate_mirs).with(meeting.id).and_return([instance_double(GogglesDb::MeetingIndividualResult)])
 
-      result = controller.send(:build_duplicate_results_check_report, season)
+      result = DataFix::PostCommitChecks.build_duplicate_results_check_report(season)
       expect(result[:status]).to eq('error')
       expect(result[:totals][:mirs]).to eq(1)
       expect(result[:meetings_with_findings_count]).to eq(1)
@@ -440,7 +443,7 @@ RSpec.describe DataFixController, type: :controller do
           meetings_with_findings: []
         }
       }
-      allow(controller).to receive(:build_post_commit_checks_report).and_return(check_payload)
+      allow(DataFix::PostCommitChecks).to receive(:build_post_commit_checks_report).and_return(check_payload)
 
       get :commit_phase6_report
 
@@ -453,7 +456,7 @@ RSpec.describe DataFixController, type: :controller do
     it 'shows warning and error details when findings exist' do
       session[:commit_report] = base_report_data
       check_payload = sample_check_payload_with_findings
-      allow(controller).to receive(:build_post_commit_checks_report).and_return(check_payload)
+      allow(DataFix::PostCommitChecks).to receive(:build_post_commit_checks_report).and_return(check_payload)
 
       get :commit_phase6_report
 
@@ -465,11 +468,11 @@ RSpec.describe DataFixController, type: :controller do
 
     it 'does not run post-commit checks when commit failed' do
       session[:commit_report] = base_report_data.merge(commit_success: false)
-      allow(controller).to receive(:build_post_commit_checks_report).and_call_original
+      allow(DataFix::PostCommitChecks).to receive(:build_post_commit_checks_report).and_call_original
 
       get :commit_phase6_report
 
-      expect(controller).not_to have_received(:build_post_commit_checks_report)
+      expect(DataFix::PostCommitChecks).not_to have_received(:build_post_commit_checks_report)
 
       expect(response).to be_successful
       expect(response.body).not_to include('Post-Commit Integrity Checks')

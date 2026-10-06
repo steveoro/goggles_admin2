@@ -62,6 +62,28 @@ Fixture gaps to sanitize in /tmp copies (all in unchanged code — payload ids p
 - MIR preflight requires `swimmer_id`/`badge_id`/`team_id` on the staging row (badge must match swimmer+team, `team_affiliation` for (team,season) must exist). To get real MIR+lap commits, prefill inside the same transaction: create dangling `Team`s by explicit id, `find_or_create_by!` swimmers from the `G|LAST|First|YOB|Team` swimmer_key, create `TeamAffiliation` + `Badge` (needs `team_affiliation_id`, `category_type_id`, `entry_time_type_id`) and `row.update!(swimmer_id:, badge_id:)`. GenderType ids in the dump: M=1, F=2.
 - Relay commit needs `team_affiliations` to exist for its teams @ season — synthesize them in the phase2 copy (`team_key`,`team_id`,`season_id`,`team_affiliation_id:null`) and the committer creates them.
 
+## Browser quirks in Devin Chrome
+
+- **Login CSRF race**: if `POST /users/sign_in` returns 401/"Not an Admin!" despite valid credentials, the session cookie from the GET response was not stored before submit. Fix: `ctrl+shift+r` on the sign-in page, then fill email+password and submit immediately.
+- **Omnibox drops characters** when typing long URLs. Prefer `location.href = '...'` via `browser_console`, or click in-page step-tab links instead of typing URLs.
+- **Click coordinates can land ~50px below** where screenshots suggest — zoom into a region to verify a control's real position before clicking.
+
+## Team edit form is gated on fuzzy_matches (pre-existing view behavior)
+
+`app/views/data_fix/_team_form_card.html.haml` wraps the ENTIRE edit form (all fields + save button) in `- if fuzzy_matches.present?`. Teams already matched to a `team_id` (`fuzzy_matches` = 0) render an EMPTY expandable panel — long-standing behavior, not a bug. To exercise `update_phase2_team`, pick a team whose phase2 entry has `fuzzy_matches` > 0 (check `d['data']['teams'][i]['fuzzy_matches']`). `_swimmer_form_card` does NOT have this gate — only its fuzzy-select dropdown row is conditional.
+
+## Commit button is issue-gated (UI-only check)
+
+On `review_results`, "Start SQL batch creation" renders with `disabled: @issue_count.to_i.positive?`; server-side `commit_phase6` does NOT re-check. On a test-DB dump most fixture links won't resolve, so the button is always disabled — enable it in the console (`btn.disabled = false`) and click to exercise the real route. Expect the commit to proceed and possibly fail partway (e.g. `TeamAffiliation ... team: deve esistere`) when a phase2 `fuzzy_matches` entry references a `team_id` absent from the test DB — the report page renders the error cleanly, and the commit is not atomic (partial persistence possible).
+
+## coded_name / teams_for_swimmer are format-gated AJAX endpoints
+
+The thin `DataFixController` actions 302 to `data_fix_legacy`, which requires a specific format or bounces to `/` (500 without goggles_api): `coded_name` needs `Accept: application/json` + `target` in `code|nick_name`; `teams_for_swimmer/:id` needs `Accept: text/vnd.turbo-stream.html`. Exercise them with `fetch(url, {headers: {Accept: ...}})` from `browser_console`.
+
+## Phase timings
+
+First `review_results` visit auto-runs the phase5 build synchronously inside the GET (~8 s for 298 results) then 302s back — expect a slow first load with a client-side progress modal. `commit_phase6` for ~300 results finishes in ~1.2 s and lands on `commit_phase6_report`.
+
 ## Query-count evidence
 
 Instrument `sql.active_record` inside the same runner (subscribe → regex counters → unsubscribe) around `commit_all`: memoized lap lookups show **one** `FROM laps WHERE meeting_individual_result_id = N ORDER` per MIR (298 for the 200RA fixture) vs ~2 per lap row unmemoized (1786). Pair-keyed `team_affiliations` SELECTs drop accordingly. Total SELECTs printed too for a gross comparison.
