@@ -854,6 +854,16 @@ RSpec.describe DataFixController do
         expect(response).to have_http_status(:redirect)
         expect(response.location).to include('/data_fix_legacy/review_teams')
       end
+
+      it 'redirects without resolving the source path (no category normalization side effects)' do
+        allow(DataFix::SourceResolver).to receive(:new).and_call_original
+
+        get review_teams_path(file_path: source_file)
+
+        expect(response).to have_http_status(:redirect)
+        expect(response.location).to include('/data_fix_legacy/review_teams')
+        expect(DataFix::SourceResolver).not_to have_received(:new)
+      end
     end
   end
 end
