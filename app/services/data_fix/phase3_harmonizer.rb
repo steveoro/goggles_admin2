@@ -6,7 +6,7 @@ module DataFix
   # conflict-hint candidates, and flags swimmers holding duplicate badges in
   # the same season under different teams.
   module Phase3Harmonizer
-    extend self
+    module_function
 
     def harmonize_phase2_phase3_team_links(source_path:, season_id:)
       phase2_path = SourceResolver.new.default_phase_path_for(source_path, 2)

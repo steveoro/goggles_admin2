@@ -6,7 +6,7 @@ module DataFix
   # card rendering all reuse these buckets instead of issuing per-program LIKE
   # queries.
   module StagingRows
-    extend self
+    module_function
 
     # @param source_path [String] canonical source file path
     # @return [Hash] raw row arrays plus *_by_program buckets

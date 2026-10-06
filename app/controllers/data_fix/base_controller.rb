@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+# rubocop:disable Rails/LexicallyScopedActionFilter -- filters here apply to actions defined on the per-phase subclasses
+
 require 'date'
 require 'pathname'
 require 'json'
@@ -67,7 +69,7 @@ module DataFix
     # block) when missing or when a rescan is requested, then redirects back to
     # the same review page minus :rescan. Returns false when a redirect was
     # issued — the caller must return immediately in that case.
-    def ensure_phase_file!(phase_path:, phase:, review_path:, &rebuild)
+    def ensure_phase_file!(phase_path:, phase:, review_path:, &rebuild) # rubocop:disable Naming/PredicateMethod
       return true unless params[:rescan].present? || !File.exist?(phase_path)
 
       rebuild_phase_and_redirect!(phase: phase, review_path: review_path, &rebuild)
@@ -101,14 +103,14 @@ module DataFix
       if @q.present? && @q.length >= TURBO_FILTER_MIN_QUERY_LENGTH
         qd = @q.downcase
         collection = collection.select do |item|
-          text_fields.map { |field| item[field] }.compact.any? { |v| v.to_s.downcase.include?(qd) }
+          text_fields.filter_map { |field| item[field] }.any? { |v| v.to_s.downcase.include?(qd) }
         end
       end
 
       collection = yield(collection, @filter_state) if block_given?
 
-      page_key = "#{prefix}_page".to_sym
-      per_page_key = "#{prefix}_per_page".to_sym
+      page_key = :"#{prefix}_page"
+      per_page_key = :"#{prefix}_per_page"
 
       # Reset page to 1 when the filter form is submitted (filter_state or
       # per_page changed without an explicit page param)
@@ -136,6 +138,7 @@ module DataFix
         }
       )
     end
+
     def data_fix_review_cookie_scope(prefix:, file_path:)
       basename = File.basename(file_path.to_s, File.extname(file_path.to_s))
       sanitized = basename.gsub(/[^a-zA-Z0-9_-]/, '_').slice(0, 60)
@@ -172,12 +175,14 @@ module DataFix
 
       val
     end
+
     # Delegates to DataFix::Phase3Harmonizer (exposed to views via helper_method)
     def phase3_conflict_hint?(team_row)
       DataFix::Phase3Harmonizer.phase3_conflict_hint?(team_row)
     end
+
     # Delegates to DataFix::IssueDetector (exposed to views via helper_method)
-    def swimmer_has_missing_data?(swimmer_key, swimmers_by_key: {}) # rubocop:disable Naming/PredicateMethod
+    def swimmer_has_missing_data?(swimmer_key, swimmers_by_key: {})
       DataFix::IssueDetector.swimmer_has_missing_data?(swimmer_key, swimmers_by_key: swimmers_by_key)
     end
     # NOTE: build_phase3_category_issues_summary was removed.
@@ -185,9 +190,10 @@ module DataFix
     # which includes missing_category in its issue detection.
 
     # Delegates to DataFix::IssueDetector (exposed to views via helper_method)
-    def relay_result_has_issues?(relay_result, **kwargs) # rubocop:disable Naming/PredicateMethod
+    def relay_result_has_issues?(relay_result, **kwargs)
       DataFix::IssueDetector.relay_result_has_issues?(relay_result, **kwargs)
     end
+
     # Broadcast progress updates via ActionCable for real-time UI feedback
     # Used during long-running operations (team/swimmer/result processing)
     def broadcast_progress(message, current, total)
@@ -202,3 +208,5 @@ module DataFix
     #++
   end
 end
+
+# rubocop:enable Rails/LexicallyScopedActionFilter

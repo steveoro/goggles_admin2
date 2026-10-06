@@ -5,7 +5,7 @@ module DataFix
   # commit and shown on the commit report — badge-per-season merge candidates
   # and duplicate result rows.
   module PostCommitChecks
-    extend self
+    module_function
 
     def build_post_commit_checks_report(season_id)
       season = GogglesDb::Season.find_by(id: season_id.to_i)

@@ -6,9 +6,9 @@ RSpec.describe DataFix::CommitsController, type: :controller do
   include AdminSignInHelpers
 
   describe 'DataFix::SourceResolver#detect_layout_type' do
-    let(:resolver) { DataFix::SourceResolver.new }
-
     subject { resolver.detect_layout_type(file_path) }
+
+    let(:resolver) { DataFix::SourceResolver.new }
 
     context 'with LT2 format file (Molinella sample)' do
       let(:file_path) { 'spec/fixtures/results/season-182_Molinella_sample.json' }
@@ -108,10 +108,9 @@ RSpec.describe DataFix::CommitsController, type: :controller do
   end
 
   describe 'DataFix::SourceResolver#resolve_working_source_path' do
-    let(:resolver) { DataFix::SourceResolver.new }
-
     subject(:resolved_path) { resolver.resolve_working_source_path(file_path) }
 
+    let(:resolver) { DataFix::SourceResolver.new }
     let(:temp_dir) { Dir.mktmpdir }
     let(:source_path) { File.join(temp_dir, 'meeting.json') }
     let(:lt4_path) { File.join(temp_dir, 'meeting-lt4.json') }

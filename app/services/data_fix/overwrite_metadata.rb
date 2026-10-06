@@ -5,7 +5,7 @@ module DataFix
   # metadata block used by the three overwrite actions and by verify/confirm
   # result-duplicate lookups (merge targets).
   module OverwriteMetadata
-    extend self
+    module_function
 
     def overwrite_phase5_path_for(file_path)
       raise ArgumentError, 'Missing file path' if file_path.blank?

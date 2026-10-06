@@ -6,7 +6,7 @@ module DataFix
   # from the phase files, plus program-level aggregation used by the filters
   # and the per-card warning badges.
   module IssueDetector
-    extend self
+    module_function
 
     # Check if a swimmer (from phase3) has missing critical data
     # Returns hash with { missing_gender: bool, missing_year: bool, not_found: bool }
@@ -249,7 +249,12 @@ module DataFix
       affiliation_ids = staging[:mrrs].filter_map(&:team_affiliation_id)
       affiliations_by_id = GogglesDb::TeamAffiliation.where(id: affiliation_ids.uniq).index_by(&:id)
 
-      season_id = (PhaseFileManager.new(SourceResolver.new.default_phase_path_for(source_path, 1)).data['season_id'] if File.exist?(SourceResolver.new.default_phase_path_for(source_path, 1)))
+      season_id = (if File.exist?(SourceResolver.new.default_phase_path_for(
+                                    source_path, 1
+                                  ))
+                     PhaseFileManager.new(SourceResolver.new.default_phase_path_for(source_path,
+                                                                                    1)).data['season_id']
+                   end)
 
       # Team IDs that already have a TeamAffiliation in the current season,
       # preloaded once so result_has_issues? doesn't run an EXISTS? per result.

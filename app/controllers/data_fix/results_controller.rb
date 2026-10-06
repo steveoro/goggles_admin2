@@ -3,7 +3,6 @@
 module DataFix
   # ResultsController: Phase 5 (results) review, per-row overwrite metadata and result verification endpoints.
   class ResultsController < BaseController
-
     def review_results
       return if params[:phase5_v2].blank?
 
@@ -322,8 +321,8 @@ module DataFix
       DataFix::OverwriteMetadata.write_phase5_payload!(phase5_path, payload)
       candidate = snapshot['candidates'].find { |entry| entry['id'].to_i == params[:candidate_id].to_i }
       render json: DataFix::OverwriteMetadata.overwrite_counts(snapshot).merge(success: true, candidate_id: params[:candidate_id].to_i,
-                                                    selected: candidate['selected'],
-                                                    merge: candidate['merge'])
+                                                                               selected: candidate['selected'],
+                                                                               merge: candidate['merge'])
     rescue ArgumentError => e
       render json: { success: false, error: e.message }, status: :unprocessable_content
     rescue JSON::ParserError => e

@@ -3,7 +3,6 @@
 module DataFix
   # TeamsController: Phase 2 (teams) review & edit actions, plus team verification.
   class TeamsController < BaseController
-
     def review_teams
       redirect_to(review_teams_legacy_path(request.query_parameters)) && return if params[:phase2_v2].blank?
 
@@ -18,6 +17,7 @@ module DataFix
           lt_format: lt_format
         )
       end
+
       @retry_needed = source_resolver.sync_phase_retry_flag!(phase_path: phase_path, source_path: source_path)
       pfm = PhaseFileManager.new(phase_path)
       @phase2_meta = pfm.meta
@@ -228,7 +228,6 @@ module DataFix
 
     # Create a new blank team entry in Phase 2 and redirect back to v2 view
     def add_team
-      file_path = @file_path
       source_path = @source_path
       phase_path = source_resolver.default_phase_path_for(source_path, 2)
       pfm = PhaseFileManager.new(phase_path)

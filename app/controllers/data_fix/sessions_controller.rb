@@ -3,7 +3,6 @@
 module DataFix
   # SessionsController: Phase 1 (meeting + sessions) review & edit actions.
   class SessionsController < BaseController
-
     def review_sessions
       return if params[:phase_v2].blank?
 
@@ -19,6 +18,7 @@ module DataFix
           lt_format: lt_format
         )
       end
+
       @retry_needed = source_resolver.sync_phase_retry_flag!(phase_path: phase_path, source_path: source_path)
       pfm = PhaseFileManager.new(phase_path)
       @phase1_meta = pfm.meta

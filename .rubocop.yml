@@ -57,6 +57,8 @@ Metrics/AbcSize:
     - 'app/controllers/api_users_controller.rb'
     - 'app/controllers/api_issues_controller.rb'
     - 'app/controllers/data_fix_controller.rb'
+    - 'app/controllers/data_fix/*.rb'
+    - 'app/services/data_fix/*.rb'
     - 'app/controllers/users/sessions_controller.rb'
     - 'app/strategies/pdf_results/context_def.rb'
     - 'app/strategies/merge/swimmer.rb'
@@ -94,6 +96,8 @@ Metrics/ClassLength:
   Max: 120
   Exclude:
     - 'app/controllers/data_fix_controller.rb'
+    - 'app/controllers/data_fix/*.rb'
+    - 'app/services/data_fix/*.rb'
     - 'app/controllers/goggles_cup_controller.rb'
     - 'app/controllers/pull_controller.rb'
     - 'app/strategies/import/macro_committer.rb'
@@ -115,6 +119,8 @@ Metrics/CyclomaticComplexity:
     - 'app/components/issue/status_buttons_component.rb'
     - 'app/controllers/api_issues_controller.rb'
     - 'app/controllers/data_fix_controller.rb'
+    - 'app/controllers/data_fix/*.rb'
+    - 'app/services/data_fix/*.rb'
     - 'app/controllers/users/sessions_controller.rb'
     - 'app/strategies/pdf_results/field_def.rb'
     - 'app/strategies/merge/swimmer_checker.rb'
@@ -140,6 +146,8 @@ Metrics/MethodLength:
     - 'db/migrate/*'
     - 'app/controllers/api_issues_controller.rb'
     - 'app/controllers/data_fix_controller.rb'
+    - 'app/controllers/data_fix/*.rb'
+    - 'app/services/data_fix/*.rb'
     - 'app/strategies/merge/meeting_checker.rb'
     - 'app/strategies/import/committers/**/*'
     - 'app/strategies/import/solvers/**/*'
@@ -156,6 +164,8 @@ Metrics/PerceivedComplexity:
     - 'app/components/issue/status_buttons_component.rb'
     - 'app/controllers/api_issues_controller.rb'
     - 'app/controllers/data_fix_controller.rb'
+    - 'app/controllers/data_fix/*.rb'
+    - 'app/services/data_fix/*.rb'
     - 'app/controllers/users/sessions_controller.rb'
     - 'app/strategies/pdf_results/field_def.rb'
     - 'app/strategies/merge/swimmer_checker.rb'
@@ -178,11 +188,19 @@ Metrics/PerceivedComplexity:
 Metrics/BlockNesting:
   Exclude:
     - 'app/controllers/data_fix_controller.rb'
+    - 'app/controllers/data_fix/*.rb'
+    - 'app/services/data_fix/*.rb'
     - 'app/strategies/import/solvers/event_solver.rb'
     - 'crawler/scripts/*'
 
+Metrics/ModuleLength:
+  Exclude:
+    - 'app/services/data_fix/*.rb'
+
 Metrics/ParameterLists:
   Exclude:
+    - 'app/controllers/data_fix/*.rb'
+    - 'app/services/data_fix/*.rb'
     - 'app/components/page_links_for_array_component.rb'
     - 'app/services/phase3/relay_enrichment_detector.rb'
     - 'app/strategies/import/committers/main.rb'

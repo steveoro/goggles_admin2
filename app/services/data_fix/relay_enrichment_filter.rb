@@ -3,7 +3,7 @@
 module DataFix
   # RelayEnrichmentFilter: trims the relay enrichment summary for display.
   module RelayEnrichmentFilter
-    extend self
+    module_function
 
     # Filter relay enrichment summary based on swimmer ID and issues.
     # - Always removes legs already matched to a swimmer_id > 0

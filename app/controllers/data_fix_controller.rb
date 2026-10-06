@@ -10,7 +10,6 @@ require 'json'
 # A->B->C1 refactor; this class keeps only the cross-phase utility endpoints
 # that delegate to the legacy controller or wipe the staging tables.
 class DataFixController < ApplicationController
-
   # Deletes all Data-Fix v2 temporary rows from data_import_* tables.
   # Intended as an operator "clean slate" action from dashboard.
   def purge

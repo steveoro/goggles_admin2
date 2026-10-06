@@ -3,7 +3,6 @@
 module DataFix
   # EventsController: Phase 4 (events) review & edit actions, plus the results chunk endpoint.
   class EventsController < BaseController
-
     def review_events
       return if params[:phase4_v2].blank?
 
@@ -19,6 +18,7 @@ module DataFix
           phase1_path: source_resolver.default_phase_path_for(source_path, 1)
         )
       end
+
       @retry_needed = source_resolver.sync_phase_retry_flag!(phase_path: phase_path, source_path: source_path)
       pfm = PhaseFileManager.new(phase_path)
       @phase4_meta = pfm.meta

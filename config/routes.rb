@@ -58,7 +58,8 @@ Rails.application.routes.draw do
                                                                 as: 'update_individual_result_overwrite_candidate'
   post 'data_fix/update_individual_result_merge_candidate', to: 'data_fix/results#update_individual_result_merge_candidate',
                                                             as: 'update_individual_result_merge_candidate'
-  post 'data_fix/bulk_update_individual_result_overwrite', to: 'data_fix/results#bulk_update_individual_result_overwrite', as: 'bulk_update_individual_result_overwrite'
+  post 'data_fix/bulk_update_individual_result_overwrite', to: 'data_fix/results#bulk_update_individual_result_overwrite',
+                                                           as: 'bulk_update_individual_result_overwrite'
   get 'data_fix/results_chunk_v2', to: 'data_fix/events#results_chunk_v2', as: 'results_chunk_v2'
   post 'data_fix/commit_phase6', to: 'data_fix/commits#commit_phase6', as: 'commit_phase6'
   patch 'data_fix/update_phase1_meeting', to: 'data_fix/sessions#update_phase1_meeting', as: 'update_phase1_meeting'

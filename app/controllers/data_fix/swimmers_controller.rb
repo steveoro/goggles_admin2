@@ -3,7 +3,6 @@
 module DataFix
   # SwimmersController: Phase 3 (swimmers) review, edit and merge actions.
   class SwimmersController < BaseController
-
     def review_swimmers
       redirect_to(review_swimmers_legacy_path(request.query_parameters)) && return if params[:phase3_v2].blank?
 
@@ -21,6 +20,7 @@ module DataFix
           phase2_path: source_resolver.default_phase_path_for(source_path, 2)
         )
       end
+
       @retry_needed = source_resolver.sync_phase_retry_flag!(phase_path: phase_path, source_path: source_path)
       pfm = PhaseFileManager.new(phase_path)
       @phase3_meta = pfm.meta
@@ -45,9 +45,7 @@ module DataFix
       # Extract season and meeting date for category computation
       season = source_resolver.detect_season_from_pathname(source_path)
       phase1_path = source_resolver.default_phase_path_for(source_path, 1)
-      meeting_date = if File.exist?(phase1_path)
-                       PhaseFileManager.new(phase1_path).data&.dig('meeting', 'header_date')
-                     end
+      meeting_date = (PhaseFileManager.new(phase1_path).data&.dig('meeting', 'header_date') if File.exist?(phase1_path))
 
       detector = Phase3::RelayEnrichmentDetector.new(
         source_path: source_path,
@@ -221,7 +219,6 @@ module DataFix
 
     # Add a new blank swimmer to Phase 3
     def add_swimmer
-      file_path = @file_path
       source_path = @source_path
       phase_path = source_resolver.default_phase_path_for(source_path, 3)
       pfm = PhaseFileManager.new(phase_path)

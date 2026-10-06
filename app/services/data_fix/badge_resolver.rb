@@ -5,7 +5,7 @@ module DataFix
   # in the Phase 3 badges array (indexed once per cascade run instead of being
   # scanned per row).
   module BadgeResolver
-    extend self
+    module_function
 
     def resolve_phase3_badge_id(swimmer_key:, swimmer_id:, team_key:, team_id:, season_id:, phase3_badges:, badge_index: nil)
       return nil if swimmer_key.blank?

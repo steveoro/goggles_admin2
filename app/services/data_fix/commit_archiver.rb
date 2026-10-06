@@ -6,7 +6,7 @@ module DataFix
   # counterpart and all phase files) into results.done/<season>/, deletes the
   # data_import_* staging rows and appends the post-commit log section.
   module CommitArchiver
-    extend self
+    module_function
 
     # @param source_path [String] canonical LT4 source path (moved to results.done)
     # @param lt2_source_path [String] optional original LT2 source path (moved when present)

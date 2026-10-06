@@ -4,7 +4,7 @@ module DataFix
   # SwimmerKey: stateless helpers for parsing and matching swimmer keys in the
   # "G|LAST|First|YOB|Team" format used by phase 3 files and data_import rows.
   module SwimmerKey
-    extend self
+    module_function
 
     # Normalize swimmer key to partial format for matching, preserving the team token.
     # Team is an immutable part of the swimmer key — it must never be stripped during
