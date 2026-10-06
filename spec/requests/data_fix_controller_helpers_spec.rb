@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe DataFixController, type: :controller do
+RSpec.describe DataFix::CommitsController, type: :controller do
   include AdminSignInHelpers
 
   describe 'DataFix::SourceResolver#detect_layout_type' do

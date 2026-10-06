@@ -26,7 +26,7 @@
                                                                   hidden_params: { file_path: @file_path, phase2_v2: 1 },
                                                                   per_page_param_name: :teams_per_page, per_page_value: @per_page,
                                                                   filter_state: @filter_state, q: @q, filter_label: 'Filter',
-                                                                  q_min_length: DataFixController::TURBO_FILTER_MIN_QUERY_LENGTH,
+                                                                  q_min_length: DataFix::BaseController::TURBO_FILTER_MIN_QUERY_LENGTH,
                                                                   q_placeholder: 'Search teams...',
                                                                   review_help_text: '(review: unmatched + yellow/red matches + phase3 hints)')
       = render(filter_component)
