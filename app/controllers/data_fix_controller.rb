@@ -27,8 +27,6 @@ class DataFixController < ApplicationController
                                              update_individual_result_merge_candidate
                                              bulk_update_individual_result_overwrite]
 
-  # Phase 5 pagination constant: max rows (results + laps) per page
-  PHASE5_MAX_ROWS_PER_PAGE = 2500
   TURBO_FILTER_MIN_QUERY_LENGTH = 3
 
   # Expose issue detection helpers to views
@@ -38,10 +36,10 @@ class DataFixController < ApplicationController
     return if params[:phase_v2].blank?
 
     source_path = @source_path
-    @season = detect_season_from_pathname(source_path)
-    lt_format = detect_layout_type(source_path)
+    @season = source_resolver.detect_season_from_pathname(source_path)
+    lt_format = source_resolver.detect_layout_type(source_path)
     # Use existing phase file unless rescan is requested; build when missing or rescan
-    phase_path = default_phase_path_for(source_path, 1)
+    phase_path = source_resolver.default_phase_path_for(source_path, 1)
     return unless ensure_phase_file!(phase_path: phase_path, phase: 1,
                                      review_path: method(:review_sessions_path)) do
       Import::Solvers::Phase1Solver.new(season: @season).build!(
@@ -49,7 +47,7 @@ class DataFixController < ApplicationController
         lt_format: lt_format
       )
     end
-    @retry_needed = sync_phase_retry_flag!(phase_path: phase_path, source_path: source_path)
+    @retry_needed = source_resolver.sync_phase_retry_flag!(phase_path: phase_path, source_path: source_path)
     pfm = PhaseFileManager.new(phase_path)
     @phase1_meta = pfm.meta
     @phase1_data = pfm.data
@@ -61,7 +59,7 @@ class DataFixController < ApplicationController
     # Extraction-time warnings carried in the LT4 source _meta (e.g. unknown
     # event codes, suspicious dates) - visible here so the operator reviews
     # them before committing anything.
-    @source_warnings = Array(parsed_source_json(source_path).dig('_meta', 'warnings'))
+    @source_warnings = Array(source_resolver.parsed_source_json(source_path).dig('_meta', 'warnings'))
 
     # Fetch existing meeting sessions if meeting_id is present
     meeting_id = @phase1_data['id']
@@ -88,11 +86,11 @@ class DataFixController < ApplicationController
   def recompute_source_categories
     file_path = @file_path
     source_path = @source_path
-    phase1_path = default_phase_path_for(source_path, 1)
+    phase1_path = source_resolver.default_phase_path_for(source_path, 1)
     phase1_data = PhaseFileManager.new(phase1_path).data
-    season_id = phase1_data['season_id'] || detect_season_from_pathname(source_path)&.id
+    season_id = phase1_data['season_id'] || source_resolver.detect_season_from_pathname(source_path)&.id
     season = GogglesDb::Season.find_by(id: season_id)
-    meeting_date = phase1_data['header_date'].presence || source_meeting_date(source_path)
+    meeting_date = phase1_data['header_date'].presence || source_resolver.source_meeting_date(source_path)
 
     unless season && meeting_date.present?
       flash[:error] = I18n.t('data_import.errors.category_recompute_missing_inputs')
@@ -108,10 +106,10 @@ class DataFixController < ApplicationController
       progress: ->(message, current, total) { broadcast_progress(message, current, total) }
     ).call
 
-    invalidated = result[:backup_path].present? ? invalidate_category_dependent_artifacts(source_path) : []
+    invalidated = result[:backup_path].present? ? source_resolver.invalidate_category_dependent_artifacts(source_path) : []
     result[:invalidated_artifacts] = invalidated
     flash[:notice] = {
-      body: category_recompute_summary(result),
+      body: source_resolver.category_recompute_summary(result),
       sticky: true
     }
     redirect_to(review_sessions_path(file_path: source_path, phase_v2: 1))
@@ -129,9 +127,9 @@ class DataFixController < ApplicationController
     redirect_to(review_teams_legacy_path(request.query_parameters)) && return if params[:phase2_v2].blank?
 
     source_path = @source_path
-    season = detect_season_from_pathname(source_path)
-    lt_format = detect_layout_type(source_path)
-    phase_path = default_phase_path_for(source_path, 2)
+    season = source_resolver.detect_season_from_pathname(source_path)
+    lt_format = source_resolver.detect_layout_type(source_path)
+    phase_path = source_resolver.default_phase_path_for(source_path, 2)
     return unless ensure_phase_file!(phase_path: phase_path, phase: 2,
                                      review_path: method(:review_teams_path)) do
       Import::Solvers::TeamSolver.new(season:).build!(
@@ -139,7 +137,7 @@ class DataFixController < ApplicationController
         lt_format: lt_format
       )
     end
-    @retry_needed = sync_phase_retry_flag!(phase_path: phase_path, source_path: source_path)
+    @retry_needed = source_resolver.sync_phase_retry_flag!(phase_path: phase_path, source_path: source_path)
     pfm = PhaseFileManager.new(phase_path)
     @phase2_meta = pfm.meta
     @phase2_data = pfm.data
@@ -197,28 +195,28 @@ class DataFixController < ApplicationController
     redirect_to(review_swimmers_legacy_path(request.query_parameters)) && return if params[:phase3_v2].blank?
 
     source_path = @source_path
-    season = detect_season_from_pathname(source_path)
+    season = source_resolver.detect_season_from_pathname(source_path)
     categories_cache = PdfResults::CategoriesCache.cached_for(season)
-    lt_format = detect_layout_type(source_path)
-    phase_path = default_phase_path_for(source_path, 3)
+    lt_format = source_resolver.detect_layout_type(source_path)
+    phase_path = source_resolver.default_phase_path_for(source_path, 3)
     return unless ensure_phase_file!(phase_path: phase_path, phase: 3,
                                      review_path: method(:review_swimmers_path)) do
       Import::Solvers::SwimmerSolver.new(season:, categories_cache:).build!(
         source_path: source_path,
         lt_format: lt_format,
-        phase1_path: default_phase_path_for(source_path, 1),
-        phase2_path: default_phase_path_for(source_path, 2)
+        phase1_path: source_resolver.default_phase_path_for(source_path, 1),
+        phase2_path: source_resolver.default_phase_path_for(source_path, 2)
       )
     end
-    @retry_needed = sync_phase_retry_flag!(phase_path: phase_path, source_path: source_path)
+    @retry_needed = source_resolver.sync_phase_retry_flag!(phase_path: phase_path, source_path: source_path)
     pfm = PhaseFileManager.new(phase_path)
     @phase3_meta = pfm.meta
     @phase3_data = pfm.data
 
     # Safety: rebuild Phase 3 file if swimmers dictionary is missing (older generator or corrupted file)
     if @phase3_data['swimmers'].nil?
-      phase1_path = default_phase_path_for(source_path, 1)
-      phase2_path = default_phase_path_for(source_path, 2)
+      phase1_path = source_resolver.default_phase_path_for(source_path, 1)
+      phase2_path = source_resolver.default_phase_path_for(source_path, 2)
       Import::Solvers::SwimmerSolver.new(season:, categories_cache:).build!(
         source_path: source_path,
         lt_format: lt_format,
@@ -232,8 +230,8 @@ class DataFixController < ApplicationController
     base_dir = File.dirname(source_path)
 
     # Extract season and meeting date for category computation
-    season = detect_season_from_pathname(source_path)
-    phase1_path = default_phase_path_for(source_path, 1)
+    season = source_resolver.detect_season_from_pathname(source_path)
+    phase1_path = source_resolver.default_phase_path_for(source_path, 1)
     meeting_date = if File.exist?(phase1_path)
                      PhaseFileManager.new(phase1_path).data&.dig('meeting', 'header_date')
                    end
@@ -246,7 +244,7 @@ class DataFixController < ApplicationController
       categories_cache:
     )
     @show_new_relay_swimmers = params[:show_new_relay_swimmers].present?
-    @relay_enrichment_summary = filter_relay_enrichment_summary(detector.detect, @show_new_relay_swimmers)
+    @relay_enrichment_summary = DataFix::RelayEnrichmentFilter.filter_relay_enrichment_summary(detector.detect, @show_new_relay_swimmers, @phase3_data)
     @auxiliary_phase3_files = Dir.glob(File.join(base_dir, '*-phase3*.json'))
                                  .reject { |path| path == phase_path }
                                  .sort
@@ -263,7 +261,7 @@ class DataFixController < ApplicationController
 
     swimmers_state_cookie_scope = data_fix_review_cookie_scope(prefix: 'swimmers', file_path: @file_path)
 
-    consistency_stats = harmonize_phase2_phase3_team_links(source_path: source_path, season_id: season.id)
+    consistency_stats = DataFix::Phase3Harmonizer.harmonize_phase2_phase3_team_links(source_path: source_path, season_id: season.id)
     if consistency_stats.values.sum.positive?
       summary = []
       summary << "#{consistency_stats[:phase2_conflicts_detected]} conflict(s) detected" if consistency_stats[:phase2_conflicts_detected].positive?
@@ -273,7 +271,7 @@ class DataFixController < ApplicationController
     end
 
     swimmers = Array(@phase3_data['swimmers'])
-    duplicate_summary = annotate_swimmer_badge_duplicates!(swimmers)
+    duplicate_summary = DataFix::Phase3Harmonizer.annotate_swimmer_badge_duplicates!(swimmers)
     if duplicate_summary[:swimmers_with_duplicates].positive?
       flash.now[:warning] = {
         body: "#{duplicate_summary[:swimmers_with_duplicates]} swimmer(s) show duplicate badges in season(s): #{duplicate_summary[:duplicate_seasons].join(', ')}",
@@ -321,24 +319,24 @@ class DataFixController < ApplicationController
     return if params[:phase4_v2].blank?
 
     source_path = @source_path
-    season = detect_season_from_pathname(source_path)
-    lt_format = detect_layout_type(source_path)
-    phase_path = default_phase_path_for(source_path, 4)
+    season = source_resolver.detect_season_from_pathname(source_path)
+    lt_format = source_resolver.detect_layout_type(source_path)
+    phase_path = source_resolver.default_phase_path_for(source_path, 4)
     return unless ensure_phase_file!(phase_path: phase_path, phase: 4,
                                      review_path: method(:review_events_path)) do
       Import::Solvers::EventSolver.new(season:).build!(
         source_path: source_path,
         lt_format: lt_format,
-        phase1_path: default_phase_path_for(source_path, 1)
+        phase1_path: source_resolver.default_phase_path_for(source_path, 1)
       )
     end
-    @retry_needed = sync_phase_retry_flag!(phase_path: phase_path, source_path: source_path)
+    @retry_needed = source_resolver.sync_phase_retry_flag!(phase_path: phase_path, source_path: source_path)
     pfm = PhaseFileManager.new(phase_path)
     @phase4_meta = pfm.meta
     @phase4_data = pfm.data
 
     # Build sessions list for dropdown from Phase 1 (edited sessions) or fallback to Phase 4
-    phase1_path = default_phase_path_for(source_path, 1)
+    phase1_path = source_resolver.default_phase_path_for(source_path, 1)
     if File.exist?(phase1_path)
       phase1_pfm = PhaseFileManager.new(phase1_path)
       phase1_data = phase1_pfm.data || {}
@@ -424,9 +422,9 @@ class DataFixController < ApplicationController
     return if params[:phase5_v2].blank?
 
     source_path = @source_path
-    season = detect_season_from_pathname(source_path)
-    lt_format = detect_layout_type(source_path)
-    phase_path = default_phase_path_for(source_path, 5)
+    season = source_resolver.detect_season_from_pathname(source_path)
+    lt_format = source_resolver.detect_layout_type(source_path)
+    phase_path = source_resolver.default_phase_path_for(source_path, 5)
 
     # Build/rebuild phase 5 JSON scaffold (for summary display)
     return unless ensure_phase_file!(phase_path: phase_path, phase: 5,
@@ -439,17 +437,17 @@ class DataFixController < ApplicationController
       # Populate data_import_* tables immediately after rescan (before redirect)
       populator = Import::Phase5Populator.new(
         source_path: source_path,
-        phase1_path: default_phase_path_for(source_path, 1),
-        phase2_path: default_phase_path_for(source_path, 2),
-        phase3_path: default_phase_path_for(source_path, 3),
-        phase4_path: default_phase_path_for(source_path, 4)
+        phase1_path: source_resolver.default_phase_path_for(source_path, 1),
+        phase2_path: source_resolver.default_phase_path_for(source_path, 2),
+        phase3_path: source_resolver.default_phase_path_for(source_path, 3),
+        phase4_path: source_resolver.default_phase_path_for(source_path, 4)
       )
       broadcast_progress('Populating phase 5...', 0, 100)
       populate_stats = populator.populate!
       "Phase 5 rebuilt. Populated DB: #{populate_stats[:mir_created]} results, #{populate_stats[:laps_created]} laps"
     end
 
-    @retry_needed = sync_phase_retry_flag!(phase_path: phase_path, source_path: source_path)
+    @retry_needed = source_resolver.sync_phase_retry_flag!(phase_path: phase_path, source_path: source_path)
 
     # Load phase5 JSON with program groups
     if File.exist?(phase_path)
@@ -498,12 +496,12 @@ class DataFixController < ApplicationController
 
       # Load all staging rows once: issue detection, filters, pagination counts
       # and the view all reuse these buckets instead of per-program LIKE queries.
-      staging = load_staging_rows(source_path)
+      staging = DataFix::StagingRows.load_staging_rows(source_path)
 
       # ALWAYS run server-side issue detection BEFORE pagination
       # This ensures we know about issues regardless of filtering or pagination
-      filter_data = load_filter_data(source_path, staging)
-      @programs_with_issues = detect_programs_with_issues(all_programs, filter_data, staging)
+      filter_data = DataFix::IssueDetector.load_filter_data(source_path, staging)
+      @programs_with_issues = DataFix::IssueDetector.detect_programs_with_issues(all_programs, filter_data, staging)
       @issue_count = @programs_with_issues.size
 
       # Server-side filtering: only show programs with issues if filter is active
@@ -550,12 +548,12 @@ class DataFixController < ApplicationController
       @unmatched_parent_count = @new_result_count
 
       # Sort programs by event order from phase4 (individual events first, then relays)
-      phase4_path = default_phase_path_for(source_path, 4)
-      all_programs = sort_programs_by_event_order(all_programs, phase4_path)
+      phase4_path = source_resolver.default_phase_path_for(source_path, 4)
+      all_programs = Phase5::Paginator.sort_by_event_order(all_programs, phase4_path)
 
       # Apply pagination to prevent UI slowdown
       @current_page = [params[:page].to_i, 1].max
-      @phase5_programs, @total_pages = paginate_phase5_programs(all_programs, @current_page, staging)
+      @phase5_programs, @total_pages = Phase5::Paginator.paginate(all_programs, @current_page, staging)
     else
       @phase5_meta = {}
       @phase5_programs = []
@@ -566,10 +564,10 @@ class DataFixController < ApplicationController
 
     # Populate data_import_* tables for detailed review (triggered by populate_db only)
     if params[:populate_db].present?
-      phase1_path = default_phase_path_for(source_path, 1)
-      phase2_path = default_phase_path_for(source_path, 2)
-      phase3_path = default_phase_path_for(source_path, 3)
-      phase4_path = default_phase_path_for(source_path, 4)
+      phase1_path = source_resolver.default_phase_path_for(source_path, 1)
+      phase2_path = source_resolver.default_phase_path_for(source_path, 2)
+      phase3_path = source_resolver.default_phase_path_for(source_path, 3)
+      phase4_path = source_resolver.default_phase_path_for(source_path, 4)
 
       populator = Import::Phase5Populator.new(
         source_path: source_path,
@@ -586,11 +584,11 @@ class DataFixController < ApplicationController
         "#{@populate_stats[:relay_laps_created]} relay laps, #{@populate_stats[:programs_matched]} programs matched"
 
       # populate! rewrote the staging tables: reload before rendering
-      staging = load_staging_rows(source_path)
+      staging = DataFix::StagingRows.load_staging_rows(source_path)
     end
 
     # Query data_import tables for display (loaded once, reused per program bucket)
-    staging ||= load_staging_rows(source_path)
+    staging ||= DataFix::StagingRows.load_staging_rows(source_path)
     @mirs_by_program = staging[:mirs_by_program]
     @mrrs_by_program = staging[:mrrs_by_program]
     @all_results = staging[:mirs]
@@ -603,9 +601,9 @@ class DataFixController < ApplicationController
     # with valid sessions instead of staged result rows. When staging rows are
     # already present the source is treated as result-bearing and the regular
     # results review UI is rendered.
-    @result_free = source_result_free?(source_path) && staging[:mirs].empty? && staging[:mrrs].empty?
+    @result_free = source_resolver.source_result_free?(source_path) && staging[:mirs].empty? && staging[:mrrs].empty?
     if @result_free
-      phase1_path = default_phase_path_for(source_path, 1)
+      phase1_path = source_resolver.default_phase_path_for(source_path, 1)
       phase1_data = File.exist?(phase1_path) ? PhaseFileManager.new(phase1_path).data : {}
       @structure_report = Import::StructureValidator.new(phase1_data: phase1_data)
       @structure_errors = @structure_report.error_messages
@@ -620,8 +618,8 @@ class DataFixController < ApplicationController
     @teams_by_id = GogglesDb::Team.includes(:city).where(id: team_ids).index_by(&:id)
 
     # Load phase 2 and phase 3 data for team/badge lookup by key
-    phase2_path = default_phase_path_for(source_path, 2)
-    phase3_path = default_phase_path_for(source_path, 3)
+    phase2_path = source_resolver.default_phase_path_for(source_path, 2)
+    phase3_path = source_resolver.default_phase_path_for(source_path, 3)
     @phase2_data = JSON.parse(File.read(phase2_path)) if File.exist?(phase2_path)
     @phase3_data = JSON.parse(File.read(phase3_path)) if File.exist?(phase3_path)
 
@@ -641,7 +639,7 @@ class DataFixController < ApplicationController
         # Index by full key
         hash[swimmer_key] = team_key
         # Also index by partial key (gender stripped, team preserved)
-        partial_key = normalize_swimmer_key_for_lookup(swimmer_key)
+        partial_key = DataFix::SwimmerKey.normalize_swimmer_key_for_lookup(swimmer_key)
         next unless partial_key
 
         # Store both with and without leading pipe for flexible lookup
@@ -676,7 +674,7 @@ class DataFixController < ApplicationController
     # Build relay swimmer name lookup from source data for unmatched swimmers
     # Maps: {mrr_import_key => {relay_order => {name, key}}}
     relay_import_keys = @all_relay_results.to_set(&:import_key)
-    @relay_swimmer_names = build_relay_swimmer_names_from_source(source_path, relay_import_keys)
+    @relay_swimmer_names = DataFix::RelayNamesBuilder.new(source_resolver).build_from_source(source_path, relay_import_keys)
 
     # Broadcast ready status to clear progress modal
     broadcast_progress('Review results: ready', 100, 100)
@@ -687,8 +685,8 @@ class DataFixController < ApplicationController
   def toggle_individual_result_overwrite
     file_path = @file_path
     source_path = @source_path
-    phase5_path = default_phase_path_for(source_path, 5)
-    phase1_path = default_phase_path_for(source_path, 1)
+    phase5_path = source_resolver.default_phase_path_for(source_path, 5)
+    phase1_path = source_resolver.default_phase_path_for(source_path, 1)
     unless File.exist?(phase5_path) && File.exist?(phase1_path)
       redirect_to(review_results_path(file_path: source_path, phase5_v2: 1),
                   alert: I18n.t('data_import.data_fix.individual_result_overwrite_phases_missing')) && return
@@ -726,8 +724,8 @@ class DataFixController < ApplicationController
   end
 
   def update_individual_result_overwrite_candidate
-    phase5_path = overwrite_phase5_path_for(params[:file_path])
-    payload, overwrite = read_overwrite_metadata!(phase5_path)
+    phase5_path = DataFix::OverwriteMetadata.overwrite_phase5_path_for(params[:file_path])
+    payload, overwrite = DataFix::OverwriteMetadata.read_overwrite_metadata!(phase5_path)
     raise ArgumentError, 'Individual-result overwrite mode is disabled' unless overwrite['enabled'] == true
 
     snapshot = DataFix::IndividualResultOverwriteReconciler.update_selection(
@@ -736,9 +734,9 @@ class DataFixController < ApplicationController
       selected: params[:selected]
     )
     overwrite['snapshot'] = snapshot
-    write_phase5_payload!(phase5_path, payload)
+    DataFix::OverwriteMetadata.write_phase5_payload!(phase5_path, payload)
     candidate = snapshot['candidates'].find { |entry| entry['id'].to_i == params[:candidate_id].to_i }
-    render json: overwrite_counts(snapshot).merge(success: true, candidate_id: params[:candidate_id].to_i,
+    render json: DataFix::OverwriteMetadata.overwrite_counts(snapshot).merge(success: true, candidate_id: params[:candidate_id].to_i,
                                                   selected: candidate['selected'],
                                                   merge: candidate['merge'])
   rescue ArgumentError => e
@@ -748,8 +746,8 @@ class DataFixController < ApplicationController
   end
 
   def update_individual_result_merge_candidate
-    phase5_path = overwrite_phase5_path_for(params[:file_path])
-    payload, overwrite = read_overwrite_metadata!(phase5_path)
+    phase5_path = DataFix::OverwriteMetadata.overwrite_phase5_path_for(params[:file_path])
+    payload, overwrite = DataFix::OverwriteMetadata.read_overwrite_metadata!(phase5_path)
     raise ArgumentError, 'Individual-result overwrite mode is disabled' unless overwrite['enabled'] == true
 
     snapshot = DataFix::IndividualResultOverwriteReconciler.update_merge_selection(
@@ -758,9 +756,9 @@ class DataFixController < ApplicationController
       merge: params[:merge]
     )
     overwrite['snapshot'] = snapshot
-    write_phase5_payload!(phase5_path, payload)
+    DataFix::OverwriteMetadata.write_phase5_payload!(phase5_path, payload)
     candidate = snapshot['candidates'].find { |entry| entry['id'].to_i == params[:candidate_id].to_i }
-    render json: overwrite_counts(snapshot).merge(
+    render json: DataFix::OverwriteMetadata.overwrite_counts(snapshot).merge(
       success: true,
       candidate_id: params[:candidate_id].to_i,
       merge: candidate['merge']
@@ -772,8 +770,8 @@ class DataFixController < ApplicationController
   end
 
   def bulk_update_individual_result_overwrite
-    phase5_path = overwrite_phase5_path_for(params[:file_path])
-    payload, overwrite = read_overwrite_metadata!(phase5_path)
+    phase5_path = DataFix::OverwriteMetadata.overwrite_phase5_path_for(params[:file_path])
+    payload, overwrite = DataFix::OverwriteMetadata.read_overwrite_metadata!(phase5_path)
     raise ArgumentError, 'Individual-result overwrite mode is disabled' unless overwrite['enabled'] == true
 
     snapshot = overwrite['snapshot']
@@ -803,8 +801,8 @@ class DataFixController < ApplicationController
     end
 
     overwrite['snapshot'] = snapshot
-    write_phase5_payload!(phase5_path, payload)
-    render json: overwrite_counts(snapshot).merge(success: true)
+    DataFix::OverwriteMetadata.write_phase5_payload!(phase5_path, payload)
+    render json: DataFix::OverwriteMetadata.overwrite_counts(snapshot).merge(success: true)
   rescue ArgumentError => e
     render json: { success: false, error: e.message }, status: :unprocessable_content
   rescue JSON::ParserError => e
@@ -816,7 +814,7 @@ class DataFixController < ApplicationController
     file_path = @file_path
     source_path = @source_path
 
-    phase5_path = default_phase_path_for(source_path, 5)
+    phase5_path = source_resolver.default_phase_path_for(source_path, 5)
     overwrite_meta = (PhaseFileManager.new(phase5_path).meta&.dig('individual_result_overwrite') if File.exist?(phase5_path))
     overwrite_candidates = Array(overwrite_meta&.dig('snapshot', 'candidates'))
     overwrite_selected_count = overwrite_candidates.count { |candidate| candidate['selected'] == true }
@@ -826,18 +824,18 @@ class DataFixController < ApplicationController
     end
 
     # Gather all phase file paths
-    phase1_path = default_phase_path_for(source_path, 1)
-    phase2_path = default_phase_path_for(source_path, 2)
-    phase3_path = default_phase_path_for(source_path, 3)
-    phase4_path = default_phase_path_for(source_path, 4)
-    phase5_path = default_phase_path_for(source_path, 5)
+    phase1_path = source_resolver.default_phase_path_for(source_path, 1)
+    phase2_path = source_resolver.default_phase_path_for(source_path, 2)
+    phase3_path = source_resolver.default_phase_path_for(source_path, 3)
+    phase4_path = source_resolver.default_phase_path_for(source_path, 4)
+    phase5_path = source_resolver.default_phase_path_for(source_path, 5)
 
     # Result-free sources (e.g. manifest-only files) commit a bare meeting
     # structure: only Phase 1 is required and no staged result rows are expected.
     # If staging rows exist anyway, the import is treated as result-bearing.
     mir_count = GogglesDb::DataImportMeetingIndividualResult.where(phase_file_path: source_path).count
     mrr_count = GogglesDb::DataImportMeetingRelayResult.where(phase_file_path: source_path).count
-    result_free = source_result_free?(source_path) && mir_count.zero? && mrr_count.zero?
+    result_free = source_resolver.source_result_free?(source_path) && mir_count.zero? && mrr_count.zero?
 
     # Validate required phase files exist
     missing_phases = []
@@ -866,7 +864,7 @@ class DataFixController < ApplicationController
 
       # Manifest-extracted sources flag the committed Meeting as manifest-only
       # (applies to new meetings only; existing meetings keep their current flag).
-      mark_phase1_manifest_flag!(phase1_path) if parsed_source_json(source_path).dig('_meta', 'meeting_only') == true
+      source_resolver.mark_phase1_manifest_flag!(phase1_path) if source_resolver.parsed_source_json(source_path).dig('_meta', 'meeting_only') == true
     else
       # Validate Phase 5 data exists in data_import_* tables
       if mir_count.zero? && mrr_count.zero?
@@ -911,58 +909,20 @@ class DataFixController < ApplicationController
       # Guard: if any errors were accumulated, treat as failure even if transaction did not raise
       raise StandardError, "Commit completed with #{stats[:errors].count} errors. Check #{log_full_path} for details." if stats[:errors].any?
 
-      # Generate SQL file in results.new directory
-      File.write(sql_full_path, committer.sql_log_content)
-
-      # Get season_id for organized archiving
-      season_id = PhaseFileManager.new(phase1_path).data['season_id'] || 'unknown'
-
-      # Move source JSON and ALL phase files to 'crawler/data/results.done/<season_id>/'
-      done_dir = source_dir.gsub('results.new', 'results.done')
-      FileUtils.mkdir_p(done_dir)
-
-      # Move source JSON as backup
-      done_source_path = File.join(done_dir, File.basename(source_path))
-      FileUtils.mv(source_path, done_source_path)
-
-      # Move also LT2 source JSON if it exists and was converted to LT4 for the process
-      lt2_source_file = file_path.gsub('-lt4.json', '.json')
-      if File.exist?(lt2_source_file)
-        done_lt2_source_path = File.join(done_dir, File.basename(lt2_source_file))
-        FileUtils.mv(lt2_source_file, done_lt2_source_path)
-      end
-
-      # Move phase files (keep them for audit trail)
-      moved_files = [source_path]
-      [phase1_path, phase2_path, phase3_path, phase4_path, phase5_path].each do |path|
-        next unless File.exist?(path)
-
-        done_phase_path = File.join(done_dir, File.basename(path))
-        FileUtils.mv(path, done_phase_path)
-        moved_files << path
-      end
-
-      # Clean up data_import_* tables for this source (use source_path as reference - before move!)
-      mir_deleted = GogglesDb::DataImportMeetingIndividualResult.where(phase_file_path: source_path).delete_all
-      lap_deleted = GogglesDb::DataImportLap.where(phase_file_path: source_path).delete_all
-      mrr_deleted = GogglesDb::DataImportMeetingRelayResult.where(phase_file_path: source_path).delete_all
-      mrs_deleted = GogglesDb::DataImportMeetingRelaySwimmer.where(phase_file_path: source_path).delete_all
-      relay_lap_deleted = GogglesDb::DataImportRelayLap.where(phase_file_path: source_path).delete_all
-      total_deleted = mir_deleted + lap_deleted + mrr_deleted + mrs_deleted + relay_lap_deleted
-
-      # Append post-commit operations to log file
-      File.open(log_full_path, 'a') do |f|
-        f.puts
-        f.puts '=== POST-COMMIT OPERATIONS ==='
-        f.puts "[#{Time.current.strftime('%H:%M:%S')}] moved #{moved_files.size} files to #{done_dir}"
-        moved_files.each { |path| f.puts "  - #{File.basename(path)}" }
-        f.puts "[#{Time.current.strftime('%H:%M:%S')}] cleaned up #{total_deleted} data_import_* temp records"
-        f.puts "  - DataImportMeetingIndividualResult: #{mir_deleted}"
-        f.puts "  - DataImportLap: #{lap_deleted}"
-        f.puts "  - DataImportMeetingRelayResult: #{mrr_deleted}"
-        f.puts "  - DataImportMeetingRelaySwimmer: #{mrs_deleted}"
-        f.puts "  - DataImportRelayLap: #{relay_lap_deleted}"
-      end
+      # Write the SQL batch file, move source+phase files to results.done/,
+      # clean the staging tables and append the post-commit log section.
+      # (LT2 source moved too when this run converted one to LT4.)
+      archive = DataFix::CommitArchiver.finalize(
+        source_path: source_path,
+        lt2_source_path: file_path.gsub('-lt4.json', '.json'),
+        phase1_path: phase1_path,
+        phase_paths: [phase1_path, phase2_path, phase3_path, phase4_path, phase5_path],
+        sql_full_path: sql_full_path,
+        log_full_path: log_full_path,
+        sql_content: committer.sql_log_content
+      )
+      season_id = archive[:season_id]
+      done_dir = archive[:done_dir]
 
       commit_success = true
     rescue StandardError => e
@@ -1061,7 +1021,7 @@ class DataFixController < ApplicationController
     @season_id = report_data[:season_id]
     @done_dir = report_data[:done_dir]
     @first_error_step_label = report_data[:first_error_step_label]
-    @post_commit_checks = build_post_commit_checks_report(@season_id) if @commit_success && @season_id.present?
+    @post_commit_checks = DataFix::PostCommitChecks.build_post_commit_checks_report(@season_id) if @commit_success && @season_id.present?
 
     # Render the report view
     render 'data_fix/commit_phase6_report'
@@ -1126,7 +1086,7 @@ class DataFixController < ApplicationController
         return
       end
 
-      merge_source = merge_target_for(data_import_row)
+      merge_source = DataFix::OverwriteMetadata.merge_target_for(data_import_row)
       if merge_source
         result = checker.check_individual(
           swimmer_id: data_import_row.swimmer_id,
@@ -1134,14 +1094,14 @@ class DataFixController < ApplicationController
           timing: { minutes: data_import_row.minutes, seconds: data_import_row.seconds,
                     hundredths: data_import_row.hundredths },
           team_id: data_import_row.team_id,
-          season_id: detect_season_from_pathname(data_import_row.phase_file_path)&.id
+          season_id: source_resolver.detect_season_from_pathname(data_import_row.phase_file_path)&.id
         )
         result[:merge_target] = true
         result[:merge_source_mir_id] = merge_source['id']
         result[:merge_message] = I18n.t('data_import.data_fix.merge_target_no_autofix', mir_id: merge_source['id'])
       else
         source_path = data_import_row.phase_file_path
-        season_id = detect_season_from_pathname(source_path)&.id if source_path.present?
+        season_id = source_resolver.detect_season_from_pathname(source_path)&.id if source_path.present?
 
         result = checker.check_individual(
           swimmer_id: data_import_row.swimmer_id,
@@ -1203,7 +1163,7 @@ class DataFixController < ApplicationController
 
     if result_type != 'relay'
       data_import_row = GogglesDb::DataImportMeetingIndividualResult.find_by(import_key: import_key)
-      merge_source = merge_target_for(data_import_row)
+      merge_source = DataFix::OverwriteMetadata.merge_target_for(data_import_row)
       if merge_source
         render json: { error: I18n.t('data_import.data_fix.merge_target_no_manual_fix', mir_id: merge_source['id']) },
                status: :unprocessable_content
@@ -1292,8 +1252,8 @@ class DataFixController < ApplicationController
       return
     end
 
-    source_path = resolve_working_source_path(file_path)
-    phase3_path = default_phase_path_for(source_path, 3)
+    source_path = source_resolver.resolve_working_source_path(file_path)
+    phase3_path = source_resolver.default_phase_path_for(source_path, 3)
 
     unless File.exist?(phase3_path)
       render json: { error: 'Phase 3 file not found. Please run Phase 3 (Swimmers) first.' }, status: :not_found
@@ -1302,7 +1262,7 @@ class DataFixController < ApplicationController
 
     phase3_pfm = PhaseFileManager.new(phase3_path)
     phase3_data = phase3_pfm.data || {}
-    season_id = phase3_data['season_id'] || detect_season_from_pathname(source_path)&.id
+    season_id = phase3_data['season_id'] || source_resolver.detect_season_from_pathname(source_path)&.id
 
     checker = Import::Verification::TeamSwimmerChecker.new(phase3_data: phase3_data, season_id: season_id)
     result = checker.check(team_key: team_key, candidate_team_id: candidate_team_id)
@@ -1332,7 +1292,7 @@ class DataFixController < ApplicationController
       redirect_to(pull_index_path) && return
     end
 
-    phase_path = default_phase_path_for(source_path, 2)
+    phase_path = source_resolver.default_phase_path_for(source_path, 2)
     pfm = PhaseFileManager.new(phase_path)
     data = pfm.data || {}
     teams = Array(data['teams'])
@@ -1415,12 +1375,12 @@ class DataFixController < ApplicationController
     pfm.write!(data: data, meta: meta)
 
     # Cascade team binding updates to Phase 3 badges and Phase 5 DataImport rows
-    phase3_path = default_phase_path_for(source_path, 3)
+    phase3_path = source_resolver.default_phase_path_for(source_path, 3)
     new_team_id = t['team_id']
     if File.exist?(phase3_path)
-      cascade_count = cascade_team_to_phase3(phase3_path, team_key, new_team_id, season_id)
+      cascade_count = DataFix::TeamCascade.cascade_team_to_phase3(phase3_path, team_key, new_team_id, season_id)
       phase3_badges = Array(PhaseFileManager.new(phase3_path).data&.dig('badges'))
-      cascade_count += cascade_team_to_data_import_rows(
+      cascade_count += DataFix::TeamCascade.cascade_team_to_data_import_rows(
         team_key,
         new_team_id,
         season_id,
@@ -1430,7 +1390,7 @@ class DataFixController < ApplicationController
       )
       flash[:info] = "Team updated. Cascaded team_id to #{cascade_count} downstream record(s)." if cascade_count.positive?
     elsif old_team_id != new_team_id
-      cascade_count = cascade_team_to_data_import_rows(
+      cascade_count = DataFix::TeamCascade.cascade_team_to_data_import_rows(
         team_key,
         new_team_id,
         season_id,
@@ -1451,7 +1411,7 @@ class DataFixController < ApplicationController
   def add_team
     file_path = @file_path
     source_path = @source_path
-    phase_path = default_phase_path_for(source_path, 2)
+    phase_path = source_resolver.default_phase_path_for(source_path, 2)
     pfm = PhaseFileManager.new(phase_path)
     data = pfm.data || {}
     teams = Array(data['teams'])
@@ -1489,7 +1449,7 @@ class DataFixController < ApplicationController
       redirect_to(pull_index_path) && return
     end
 
-    phase_path = default_phase_path_for(source_path, 2)
+    phase_path = source_resolver.default_phase_path_for(source_path, 2)
     pfm = PhaseFileManager.new(phase_path)
     data = pfm.data || {}
     teams = Array(data['teams'])
@@ -1534,7 +1494,7 @@ class DataFixController < ApplicationController
       redirect_to(pull_index_path) && return
     end
 
-    phase_path = default_phase_path_for(source_path, 3)
+    phase_path = source_resolver.default_phase_path_for(source_path, 3)
     pfm = PhaseFileManager.new(phase_path)
     data = pfm.data || {}
     swimmers = Array(data['swimmers'])
@@ -1570,7 +1530,7 @@ class DataFixController < ApplicationController
     canonical_swimmer_key = swimmer['key']
     badges.each do |badge|
       bkey = badge['swimmer_key']
-      next unless swimmer_key_match?(bkey, swimmer_key, canonical_swimmer_key)
+      next unless DataFix::SwimmerKey.swimmer_key_match?(bkey, swimmer_key, canonical_swimmer_key)
 
       badge['swimmer_id'] = swimmer['swimmer_id']
       badge['swimmer_key'] = canonical_swimmer_key if canonical_swimmer_key.present?
@@ -1597,7 +1557,7 @@ class DataFixController < ApplicationController
     meta = pfm.meta || {}
     pfm.write!(data: data, meta: meta)
 
-    cascade_count = cascade_swimmer_to_data_import_rows(
+    cascade_count = DataFix::SwimmerCascade.cascade_swimmer_to_data_import_rows(
       source_path: source_path,
       old_swimmer_key: swimmer_key,
       canonical_swimmer_key: canonical_swimmer_key,
@@ -1619,7 +1579,7 @@ class DataFixController < ApplicationController
   def add_swimmer
     file_path = @file_path
     source_path = @source_path
-    phase_path = default_phase_path_for(source_path, 3)
+    phase_path = source_resolver.default_phase_path_for(source_path, 3)
     pfm = PhaseFileManager.new(phase_path)
     data = pfm.data || {}
     swimmers = Array(data['swimmers'])
@@ -1655,7 +1615,7 @@ class DataFixController < ApplicationController
     source_path = @source_path
     selected_paths = Array(params[:auxiliary_paths]).compact_blank
     base_dir = File.dirname(source_path)
-    phase_path = default_phase_path_for(source_path, 3)
+    phase_path = source_resolver.default_phase_path_for(source_path, 3)
 
     unless File.exist?(phase_path)
       flash[:warning] = I18n.t('data_import.relay_enrichment.errors.missing_phase_file')
@@ -1746,7 +1706,7 @@ class DataFixController < ApplicationController
       redirect_to(pull_index_path) && return
     end
 
-    phase_path = default_phase_path_for(source_path, 3)
+    phase_path = source_resolver.default_phase_path_for(source_path, 3)
     pfm = PhaseFileManager.new(phase_path)
     data = pfm.data || {}
     swimmers = Array(data['swimmers'])
@@ -1792,13 +1752,13 @@ class DataFixController < ApplicationController
       redirect_to(pull_index_path) && return
     end
 
-    phase_path = default_phase_path_for(source_path, 4)
+    phase_path = source_resolver.default_phase_path_for(source_path, 4)
     pfm = PhaseFileManager.new(phase_path)
     data = pfm.data || {}
     sessions = Array(data['sessions'])
 
     # Load Phase 1 data to get session structure (for creating missing sessions)
-    phase1_path = default_phase_path_for(source_path, 1)
+    phase1_path = source_resolver.default_phase_path_for(source_path, 1)
     phase1_sessions = []
     if File.exist?(phase1_path)
       phase1_pfm = PhaseFileManager.new(phase1_path)
@@ -1911,13 +1871,13 @@ class DataFixController < ApplicationController
     session_index = params[:session_index].to_i
     event_type_id = params[:event_type_id]&.to_i
 
-    phase_path = default_phase_path_for(source_path, 4)
+    phase_path = source_resolver.default_phase_path_for(source_path, 4)
     pfm = PhaseFileManager.new(phase_path)
     data = pfm.data || {}
     sessions = Array(data['sessions'])
 
     # Load Phase 1 data to get session structure
-    phase1_path = default_phase_path_for(source_path, 1)
+    phase1_path = source_resolver.default_phase_path_for(source_path, 1)
     phase1_sessions = []
     if File.exist?(phase1_path)
       phase1_pfm = PhaseFileManager.new(phase1_path)
@@ -2017,7 +1977,7 @@ class DataFixController < ApplicationController
       redirect_to(pull_index_path) && return
     end
 
-    phase_path = default_phase_path_for(source_path, 4)
+    phase_path = source_resolver.default_phase_path_for(source_path, 4)
     pfm = PhaseFileManager.new(phase_path)
     data = pfm.data || {}
     sessions = Array(data['sessions'])
@@ -2053,7 +2013,7 @@ class DataFixController < ApplicationController
   def update_phase1_meeting
     file_path = @file_path
     source_path = @source_path
-    phase_path = default_phase_path_for(source_path, 1)
+    phase_path = source_resolver.default_phase_path_for(source_path, 1)
     pfm = PhaseFileManager.new(phase_path)
     data = pfm.data || {}
     old_meeting_id = data['id']
@@ -2174,7 +2134,7 @@ class DataFixController < ApplicationController
       redirect_to(pull_index_path) && return
     end
 
-    phase_path = default_phase_path_for(source_path, 1)
+    phase_path = source_resolver.default_phase_path_for(source_path, 1)
     pfm = PhaseFileManager.new(phase_path)
 
     updater = Phase1SessionUpdater.new(pfm, session_index, params)
@@ -2191,7 +2151,7 @@ class DataFixController < ApplicationController
   def add_session
     file_path = @file_path
     source_path = @source_path
-    phase_path = default_phase_path_for(source_path, 1)
+    phase_path = source_resolver.default_phase_path_for(source_path, 1)
     pfm = PhaseFileManager.new(phase_path)
     data = pfm.data || {}
     sessions = Array(data['meeting_session'])
@@ -2247,7 +2207,7 @@ class DataFixController < ApplicationController
       redirect_to(pull_index_path) && return
     end
 
-    phase_path = default_phase_path_for(source_path, 1)
+    phase_path = source_resolver.default_phase_path_for(source_path, 1)
     pfm = PhaseFileManager.new(phase_path)
     data = pfm.data || {}
     sessions = Array(data['meeting_session'])
@@ -2281,7 +2241,7 @@ class DataFixController < ApplicationController
   def rescan_phase1_sessions
     file_path = @file_path
     source_path = @source_path
-    phase_path = default_phase_path_for(source_path, 1)
+    phase_path = source_resolver.default_phase_path_for(source_path, 1)
     pfm = PhaseFileManager.new(phase_path)
 
     # Determine meeting id from params or current data
@@ -2304,9 +2264,9 @@ class DataFixController < ApplicationController
       return render plain: I18n.t('data_import.errors.invalid_request'), status: :bad_request
     end
 
-    source_path = resolve_working_source_path(file_path)
+    source_path = source_resolver.resolve_working_source_path(file_path)
     begin
-      data_hash = parsed_source_json(source_path)
+      data_hash = source_resolver.parsed_source_json(source_path)
     rescue StandardError => e
       return render plain: e.message, status: :unprocessable_content
     end
@@ -2348,6 +2308,11 @@ class DataFixController < ApplicationController
 
   private
 
+  # Shared resolver for this request (keeps the parsed_source_json memo hot)
+  def source_resolver
+    @source_resolver ||= DataFix::SourceResolver.new
+  end
+
   # Resolves @file_path → @source_path (canonical LT4 working copy) for every
   # action taking a file_path param; redirects to the file list when missing.
   def set_source_path
@@ -2357,7 +2322,7 @@ class DataFixController < ApplicationController
       redirect_to(pull_index_path) && return
     end
 
-    @source_path = resolve_working_source_path(@file_path)
+    @source_path = source_resolver.resolve_working_source_path(@file_path)
     @file_path = @source_path
   end
 
@@ -2442,117 +2407,6 @@ class DataFixController < ApplicationController
       }
     )
   end
-
-  # Filter relay enrichment summary based on swimmer ID and issues.
-  # - Always removes legs already matched to a swimmer_id > 0
-  # - When show_new is false, hides legs whose only issue is missing_swimmer_id
-  def filter_relay_enrichment_summary(summary, show_new)
-    # Build swimmer_id lookup from Phase 3 data for double-checking (case-insensitive)
-    swimmers_with_id = Set.new
-    if @phase3_data
-      Array(@phase3_data['swimmers']).each do |s|
-        key = s['key']
-        sid = s['swimmer_id'].to_i
-        if key.present? && sid.positive?
-          swimmers_with_id.add(key.downcase) # Normalize to lowercase
-        end
-      end
-    end
-
-    Array(summary).filter_map do |relay|
-      swimmers = Array(relay['swimmers'])
-
-      filtered_swimmers = swimmers.reject do |leg|
-        issues = leg['issues'] || {}
-        phase3_swimmer = leg['phase3_swimmer'] || {}
-        swimmer_id = phase3_swimmer['swimmer_id'].to_i
-        phase3_key = leg['phase3_key']
-
-        # Matched swimmers are never part of enrichment list
-        # Check both the swimmer_id from phase3_swimmer AND the key lookup (case-insensitive)
-        key_matched = phase3_key.present? && swimmers_with_id.include?(phase3_key.downcase)
-        matched = swimmer_id.positive? || key_matched
-
-        # New swimmers with only missing_swimmer_id (no other blocking issue)
-        only_missing_id = issues['missing_swimmer_id'] && !issues['missing_year_of_birth'] && !issues['missing_gender']
-        new_non_blocking = !matched && only_missing_id && !show_new
-
-        matched || new_non_blocking
-      end
-
-      next if filtered_swimmers.empty?
-
-      # Recompute missing_counts for the filtered swimmers
-      missing_counts = filtered_swimmers.each_with_object(Hash.new(0)) do |leg, acc|
-        (leg['issues'] || {}).each do |issue_key, flag|
-          acc[issue_key] += 1 if flag
-        end
-      end
-
-      relay.merge('swimmers' => filtered_swimmers, 'missing_counts' => missing_counts)
-    end
-  end
-
-  def overwrite_phase5_path_for(file_path)
-    raise ArgumentError, 'Missing file path' if file_path.blank?
-
-    source_path = resolve_working_source_path(file_path)
-    phase5_path = default_phase_path_for(source_path, 5)
-    raise ArgumentError, 'Phase 5 file not found' unless File.exist?(phase5_path)
-
-    phase5_path
-  end
-
-  def read_overwrite_metadata!(phase5_path)
-    payload = JSON.parse(File.read(phase5_path))
-    meta = payload['_meta']
-    overwrite = meta.is_a?(Hash) ? meta['individual_result_overwrite'] : nil
-    raise ArgumentError, 'Individual-result overwrite metadata not found' unless overwrite.is_a?(Hash)
-
-    [payload, overwrite]
-  end
-
-  # Returns the overwrite candidate (with 'id' as source MIR id) that has this
-  # data_import_row as its merge target, or nil when no active merge points here.
-  def merge_target_for(data_import_row)
-    return nil unless data_import_row.is_a?(GogglesDb::DataImportMeetingIndividualResult) &&
-                      data_import_row.phase_file_path.present? &&
-                      data_import_row.import_key.present?
-
-    phase5_path = overwrite_phase5_path_for(data_import_row.phase_file_path)
-    return nil unless File.exist?(phase5_path)
-
-    _payload, overwrite = read_overwrite_metadata!(phase5_path)
-    return nil unless overwrite['enabled'] == true
-
-    candidates = Array(overwrite.dig('snapshot', 'candidates'))
-    merge_candidate = candidates.find do |c|
-      c['merge'] == true && c['merge_target_import_key'] == data_import_row.import_key
-    end
-    merge_candidate&.slice('id')
-  rescue StandardError => e
-    Rails.logger.warn("[DataFixController] merge_target_for failed: #{e.message}")
-    nil
-  end
-
-  def write_phase5_payload!(phase5_path, payload)
-    temporary_path = "#{phase5_path}.tmp-#{Process.pid}-#{SecureRandom.hex(6)}"
-    File.write(temporary_path, JSON.pretty_generate(payload))
-    File.rename(temporary_path, phase5_path)
-  ensure
-    FileUtils.rm_f(temporary_path) if temporary_path
-  end
-
-  def overwrite_counts(snapshot)
-    candidates = Array(snapshot['candidates'])
-    selected = candidates.select { |candidate| candidate['selected'] == true }
-    {
-      selected_count: selected.size,
-      merge_count: selected.count { |candidate| candidate['merge'] == true },
-      total_count: candidates.size
-    }
-  end
-
   def data_fix_review_cookie_scope(prefix:, file_path:)
     basename = File.basename(file_path.to_s, File.extname(file_path.to_s))
     sanitized = basename.gsub(/[^a-zA-Z0-9_-]/, '_').slice(0, 60)
@@ -2589,1646 +2443,22 @@ class DataFixController < ApplicationController
 
     val
   end
-
-  # Build relay swimmer name lookup from source data
-  # Returns: {mrr_import_key => {relay_order => {name: ..., key: ...}}}
-  def build_relay_swimmer_names_from_source(source_path, relay_import_keys)
-    return {} unless File.exist?(source_path)
-    return {} if relay_import_keys.blank?
-
-    source_data = parsed_source_json(source_path)
-    result = {}
-
-    # Parse sections for relay results
-    sections = source_data['sections'] || []
-    sections.each do |section|
-      rows = section['rows'] || []
-      rows.each do |row|
-        next unless row['relay']
-
-        # Build import key for this row (matches Phase5Populator logic)
-        session_order = section['session_order'] || 1
-        distance = section['event_length'] || section['distance']
-        stroke = section['event_stroke'] || section['stroke']
-        next if distance.blank? || stroke.blank?
-
-        event_code = "#{distance}#{stroke}"
-        category = section['fin_sigla_categoria']
-        gender = section['fin_sesso'] || 'X'
-        team_key = row['team']
-        timing_string = row['timing'] || '0'
-
-        program_key = "#{session_order}-#{event_code}-#{category}-#{gender}"
-        # Use same format as GogglesDb::DataImportMeetingRelayResult.build_import_key
-        mrr_import_key = "#{program_key}/#{team_key}-#{timing_string}"
-
-        # Only process if this import_key is in our relay results
-        next unless relay_import_keys.include?(mrr_import_key)
-
-        # Extract swimmer names from laps
-        laps = row['laps'] || []
-        result[mrr_import_key] = {}
-
-        laps.each_with_index do |lap, idx|
-          relay_order = idx + 1
-          swimmer_key_raw = lap['swimmer'] || ''
-          swimmer_parts = swimmer_key_raw.split('|')
-
-          # Parse composite key to extract name and build Phase 3 key
-          if swimmer_parts.size >= 5
-            last_name = swimmer_parts[1]
-            first_name = swimmer_parts[2]
-            year = swimmer_parts[3]
-          elsif swimmer_parts.size >= 4
-            last_name = swimmer_parts[0]
-            first_name = swimmer_parts[1]
-            year = swimmer_parts[2]
-          else
-            next
-          end
-
-          swimmer_key = "#{last_name}|#{first_name}|#{year}"
-          swimmer_name = "#{first_name} #{last_name}".strip
-
-          result[mrr_import_key][relay_order] = {
-            'name' => swimmer_name,
-            'key' => swimmer_key
-          }
-        end
-      end
-    end
-
-    result
-  rescue StandardError => e
-    Rails.logger.error("[DataFixController] Error building relay swimmer names: #{e.message}")
-    {}
-  end
-
-  def detect_season_from_pathname(file_path)
-    season_id = File.dirname(file_path).split('/').last.to_i
-    season_id = 212 unless season_id.positive?
-    GogglesDb::Season.find(season_id)
-  end
-
-  def detect_layout_type(file_path)
-    return 4 if file_path.to_s.end_with?('-lt4.json')
-
-    detect_layout_type_from_content(file_path)
-  end
-
-  # Content-based layout detection: scans head/tail chunks for the layoutType
-  # field without parsing full JSON. Unlike #detect_layout_type, this ignores
-  # the -lt4.json filename convention so mislabeled working copies can be found.
-  def detect_layout_type_from_content(file_path)
-    begin
-      File.open(file_path, 'rb') do |f|
-        chunk = f.read(64 * 1024)
-        detected = detect_layout_type_in_chunk(chunk)
-        return detected if detected
-
-        if f.size > 64 * 1024
-          f.seek(-64 * 1024, IO::SEEK_END)
-          detected = detect_layout_type_in_chunk(f.read(64 * 1024))
-          return detected if detected
-        end
-      end
-    rescue StandardError
-      # ignore
-    end
-    2
-  end
-
-  def detect_layout_type_in_chunk(chunk)
-    return if chunk.blank?
-
-    m = chunk.match(/"layoutType"\s*:\s*(\d+)/)
-    m && m[1].to_i
-  end
-
-  # Resolve the canonical source used by phased v2 processing.
-  # LT4 files are used as-is; LT2 files are mapped to sibling -lt4 working copies.
-  # Existing -lt4 copies are reused. Missing -lt4 copies are regenerated from the
-  # original LT2 source when available.
-  # Result categories that don't resolve to a CategoryType of the target season
-  # (e.g., FICR 'UNF' or '*' summary codes) are normalized in place.
-  def resolve_working_source_path(file_path)
-    source_path = resolve_source_path(file_path)
-    return source_path if source_path.blank?
-
-    working_path =
-      if source_path.end_with?('-lt4.json') # Assume the suffix coincides with actual layoutType
-        resolve_lt4_working_copy_path(source_path)
-      elsif detect_layout_type(source_path) == 2
-        resolve_lt2_source_to_working_copy(source_path)
-      else
-        source_path
-      end
-    normalize_lt4_result_categories(working_path)
-    working_path
-  rescue StandardError => e
-    Rails.logger.error("[DataFixController] resolve_working_source_path failed: #{e.message}")
-    resolve_source_path(file_path)
-  end
-
-  def resolve_lt4_working_copy_path(source_path)
-    if File.exist?(source_path)
-      # A -lt4.json working copy must hold LT4 data; if it actually contains
-      # LT2 (e.g. a renamed legacy source), re-materialize it in place.
-      return source_path unless detect_layout_type_from_content(source_path) == 2
-
-      return materialize_lt4_in_place(source_path) || source_path
-    end
-
-    original_lt2_path = source_path.sub(/-lt4\.json\z/, '.json')
-    if File.exist?(original_lt2_path) && detect_layout_type(original_lt2_path) == 2
-      created_path = materialize_lt4_working_copy(
-        lt2_source_path: original_lt2_path,
-        lt4_source_path: source_path
-      )
-      return created_path if created_path.present?
-    end
-
-    Rails.logger.warn("[DataFixController] Missing LT4 working source: #{source_path}")
-    source_path
-  end
-
-  # Rewrites an existing -lt4.json file that contains LT2 data into a proper
-  # LT4 working copy, keeping a .orig.json backup of the previous content.
-  def materialize_lt4_in_place(source_path)
-    backup_path = next_backup_path_for(source_path)
-    FileUtils.cp(source_path, backup_path)
-    materialize_lt4_working_copy(lt2_source_path: source_path, lt4_source_path: source_path)
-  end
-
-  def next_backup_path_for(source_path)
-    base = source_path.delete_suffix('.json')
-    candidate = "#{base}.orig.json"
-    return candidate unless File.exist?(candidate)
-
-    index = 2
-    index += 1 while File.exist?("#{base}.orig-#{index}.json")
-    "#{base}.orig-#{index}.json"
-  end
-
-  def resolve_lt2_source_to_working_copy(source_path)
-    lt4_source_path = source_path.sub(/\.json\z/, '-lt4.json')
-    if File.exist?(lt4_source_path)
-      # Reuse the existing working copy only if it really holds LT4 data;
-      # an LT2 payload under the -lt4 name is re-materialized in place.
-      return lt4_source_path unless detect_layout_type_from_content(lt4_source_path) == 2
-
-      return materialize_lt4_in_place(lt4_source_path) || lt4_source_path
-    end
-    return source_path unless File.exist?(source_path)
-
-    materialize_lt4_working_copy(
-      lt2_source_path: source_path,
-      lt4_source_path: lt4_source_path
-    ) || source_path
-  end
-
-  # Rewrites LT4 result categories that don't resolve to a CategoryType defined
-  # for the season encoded in the file path (e.g., FICR 'UNF'/'*' codes), using
-  # the same CategoryComputer-backed logic as the manual recompute action.
-  # Dependent phase files and temp rows are invalidated when the file changes.
-  # No-ops when the file is not LT4, the season/meeting date can't be determined,
-  # or every result category already resolves.
-  def normalize_lt4_result_categories(source_path)
-    return if source_path.blank? || !File.exist?(source_path)
-    return unless detect_layout_type_from_content(source_path) == 4
-
-    season_id = File.dirname(source_path).split('/').last.to_i
-    return unless season_id.positive?
-
-    season = GogglesDb::Season.find_by(id: season_id)
-    return unless season
-
-    data_hash = parsed_source_json(source_path)
-    categories_cache = PdfResults::CategoriesCache.cached_for(season)
-    return unless lt4_result_categories_need_normalization?(data_hash, categories_cache)
-
-    raw_date = data_hash['dates'].to_s.split(',').first.presence || data_hash['meeting_date']
-    meeting_date = raw_date.present? ? Date.parse(raw_date.to_s) : nil
-    return if meeting_date.blank?
-
-    result = DataFix::CategoryRecomputer.new(
-      source_path: source_path,
-      season: season,
-      meeting_date: meeting_date,
-      categories_cache: categories_cache
-    ).call
-    return if result[:backup_path].blank?
-
-    invalidate_parsed_source_json(source_path)
-    invalidated = invalidate_category_dependent_artifacts(source_path)
-    Rails.logger.info(
-      "[DataFixController] Normalized result categories in #{source_path} " \
-      "(#{result[:result_categories_changed]} results, #{result[:swimmer_categories_changed]} swimmers; " \
-      "backup=#{result[:backup_path]}; invalidated=#{invalidated.inspect})"
-    )
-  rescue StandardError => e
-    Rails.logger.warn("[DataFixController] LT4 category normalization skipped for #{source_path}: #{e.message}")
-    nil
-  end
-
-  # TRUE when any result category in the LT4 source does not resolve to a
-  # CategoryType defined for the given season.
-  def lt4_result_categories_need_normalization?(data_hash, categories_cache)
-    Array(data_hash['events']).any? do |event|
-      Array(event['results']).any? do |result|
-        code = result['category'].to_s.strip.upcase
-        code.present? && !categories_cache.key?(code)
-      end
-    end
-  end
-
-  # Per-request memo of parsed source JSON files. Several review actions read &
-  # JSON.parse the same source file multiple times per request; sharing one hash
-  # avoids the redundant parses. Invalidate explicitly wherever a source file is
-  # rewritten within the same request (LT4 materialization, category recompute).
-  def parsed_source_json(source_path)
-    (@parsed_source_json ||= {})[source_path] ||= JSON.parse(File.read(source_path))
-  end
-
-  def invalidate_parsed_source_json(source_path)
-    @parsed_source_json&.delete(source_path)
-  end
-
-  # TRUE when the source JSON carries no result rows at all (e.g. manifest-extracted
-  # meeting-only files). Such sources can be committed as a bare meeting structure
-  # (meeting + sessions + optional events) and updated by a later results pass.
-  def source_result_free?(source_path)
-    data_hash = parsed_source_json(source_path)
-    return false unless data_hash.is_a?(Hash)
-
-    return true if data_hash.dig('_meta', 'meeting_only') == true
-
-    events = data_hash['events']
-    return events.none? { |event| Array(event['results']).any? } if events.is_a?(Array)
-
-    sections = data_hash['sections']
-    return sections.none? { |section| Array(section['rows']).any? } if sections.is_a?(Array)
-
-    false
-  rescue StandardError => e
-    Rails.logger.warn("[DataFixController] result-free detection failed for #{source_path}: #{e.message}")
-    false
-  end
-
-  # Sets the `manifest` flag in the Phase 1 datafile so the committed Meeting row
-  # is marked as manifest-only. Applies only when a NEW meeting will be created
-  # (no meeting id selected); existing meetings keep their current flag.
-  def mark_phase1_manifest_flag!(phase1_path)
-    pfm = PhaseFileManager.new(phase1_path)
-    data = pfm.data
-    return if data['id'].present?
-
-    data['manifest'] = true
-    pfm.write!(data: data, meta: pfm.meta)
-  end
-
-  def materialize_lt4_working_copy(lt2_source_path:, lt4_source_path:)
-    data_hash = parsed_source_json(lt2_source_path)
-    normalized = Import::Adapters::Layout2To4.normalize(data_hash: data_hash)
-
-    retry_needed = source_has_retry_section_in_hash?(data_hash)
-    normalized_meta = normalized['_meta']
-    normalized_meta = {} unless normalized_meta.is_a?(Hash)
-    normalized_meta['retry_needed'] = retry_needed
-    normalized['_meta'] = normalized_meta
-
-    FileUtils.mkdir_p(File.dirname(lt4_source_path))
-    File.write(lt4_source_path, JSON.pretty_generate(normalized))
-    invalidate_parsed_source_json(lt4_source_path)
-    Rails.logger.info("[DataFixController] LT2=>LT4 working copy created: #{lt4_source_path}")
-    lt4_source_path
-  rescue StandardError => e
-    Rails.logger.error("[DataFixController] LT2=>LT4 materialization failed: #{e.message} (source: #{lt2_source_path})")
-    nil
-  end
-
-  def default_phase_path_for(source_path, phase_num)
-    dir = File.dirname(source_path)
-    base = File.basename(source_path, File.extname(source_path))
-    File.join(dir, "#{base}-phase#{phase_num}.json")
-  end
-
-  def source_has_retry_section?(source_path)
-    data_hash = parsed_source_json(source_path)
-    return true if source_has_retry_section_in_hash?(data_hash)
-    return true if source_has_retry_meta_flag?(data_hash)
-
-    lt2_source_path = paired_lt2_source_path(source_path)
-    return false if lt2_source_path.blank?
-
-    lt2_data_hash = parsed_source_json(lt2_source_path)
-    source_has_retry_section_in_hash?(lt2_data_hash)
-  rescue StandardError => e
-    Rails.logger.warn("[DataFixController] retry-section detection failed for #{source_path}: #{e.message}")
-    false
-  end
-
-  def source_has_retry_section_in_hash?(data_hash)
-    return false unless data_hash.is_a?(Hash)
-
-    Array(data_hash['sections']).any? { |sect| sect.is_a?(Hash) && sect.key?('retry') }
-  end
-
-  def source_has_retry_meta_flag?(data_hash)
-    return false unless data_hash.is_a?(Hash)
-
-    meta = data_hash['_meta']
-    meta.is_a?(Hash) && meta['retry_needed'] == true
-  end
-
-  def paired_lt2_source_path(source_path)
-    return nil if source_path.blank?
-    return nil unless source_path.end_with?('-lt4.json')
-
-    lt2_source_path = source_path.sub(/-lt4\.json\z/, '.json')
-    File.exist?(lt2_source_path) ? lt2_source_path : nil
-  end
-
-  def sync_phase_retry_flag!(phase_path:, source_path:)
-    retry_needed = source_has_retry_section?(source_path)
-    return retry_needed unless File.exist?(phase_path)
-
-    phase_payload = JSON.parse(File.read(phase_path))
-    return retry_needed unless phase_payload.is_a?(Hash)
-
-    phase_meta = phase_payload['_meta']
-    phase_meta = {} unless phase_meta.is_a?(Hash)
-    phase_meta['retry_needed'] = retry_needed
-    phase_payload['_meta'] = phase_meta
-
-    File.write(phase_path, JSON.pretty_generate(phase_payload))
-    retry_needed
-  rescue StandardError => e
-    Rails.logger.warn("[DataFixController] retry flag sync failed for #{phase_path}: #{e.message}")
-    retry_needed || false
-  end
-
-  def build_post_commit_checks_report(season_id)
-    season = GogglesDb::Season.find_by(id: season_id.to_i)
-    return { error: "Unable to run post-commit checks: invalid season '#{season_id}'." } unless season
-
-    badge_check = build_badge_season_check_report(season)
-    duplicate_check = build_duplicate_results_check_report(season)
-    overall_status = if badge_check[:status] == 'error' || duplicate_check[:status] == 'error'
-                       'error'
-                     elsif badge_check[:status] == 'warning'
-                       'warning'
-                     else
-                       'ok'
-                     end
-
-    {
-      season_id: season.id,
-      overall_status: overall_status,
-      badge_season_check: badge_check,
-      duplicate_results_check: duplicate_check
-    }
-  rescue StandardError => e
-    Rails.logger.error("[DataFixController] Post-commit checks failed: #{e.message}")
-    { error: "Post-commit checks failed: #{e.message}" }
-  end
-
-  def build_badge_season_check_report(season)
-    checker = Merge::BadgeSeasonChecker.new(season: season)
-    checker.run
-
-    sure_count = checker.sure_badge_merges.keys.size
-    possible_count = checker.possible_badge_merges.keys.size
-    status = if sure_count.positive?
-               'error'
-             elsif possible_count.positive?
-               'warning'
-             else
-               'ok'
-             end
-
-    {
-      status: status,
-      sure_badge_merges_count: sure_count,
-      possible_badge_merges_count: possible_count,
-      multi_badges_count: checker.multi_badges.keys.size,
-      possible_team_merges_count: checker.possible_team_merges.size,
-      relay_badges_count: checker.relay_badges.size,
-      relay_only_badges_count: checker.relay_only_badges.size,
-      sure_badge_merges: serialize_badge_merges(checker.sure_badge_merges),
-      possible_badge_merges: serialize_badge_merges(checker.possible_badge_merges)
-    }
-  end
-
-  def serialize_badge_merges(merges_hash)
-    swimmer_ids = merges_hash.keys
-    swimmers_by_id = GogglesDb::Swimmer.where(id: swimmer_ids).index_by(&:id)
-
-    entries = merges_hash.map do |swimmer_id, badge_list|
-      {
-        swimmer_id: swimmer_id,
-        swimmer_name: swimmers_by_id[swimmer_id]&.complete_name,
-        badges: badge_list.map do |badge|
-          {
-            id: badge.id,
-            team_id: badge.team_id,
-            team_name: badge.team&.name,
-            category_code: badge.category_type&.code
-          }
-        end
-      }
-    end
-    entries.sort_by { |entry| entry[:swimmer_id] }
-  end
-
-  def build_duplicate_results_check_report(season)
-    cleaner = Merge::DuplicateResultCleaner.new(season: season, autofix: false)
-    totals = {
-      mirs: 0,
-      laps: 0,
-      mrss: 0,
-      relay_laps: 0,
-      mrrs: 0
-    }
-    meetings_with_findings = []
-
-    cleaner.meetings_to_process.each do |meeting|
-      dup_mirs = cleaner.find_duplicate_mirs(meeting.id)
-      dup_laps = cleaner.find_duplicate_laps(meeting.id)
-      dup_mrss = cleaner.find_duplicate_mrss(meeting.id)
-      dup_relay_laps = cleaner.find_duplicate_relay_laps(meeting.id)
-      dup_mrrs = cleaner.find_duplicate_mrrs(meeting.id)
-      next if dup_mirs.empty? && dup_laps.empty? && dup_mrss.empty? && dup_relay_laps.empty? && dup_mrrs.empty?
-
-      counts = {
-        mirs: dup_mirs.size,
-        laps: dup_laps.size,
-        mrss: dup_mrss.size,
-        relay_laps: dup_relay_laps.size,
-        mrrs: dup_mrrs.size
-      }
-      totals.each_key { |key| totals[key] += counts[key] }
-
-      meetings_with_findings << {
-        meeting_id: meeting.id,
-        meeting_description: meeting.description,
-        counts: counts,
-        duplicate_mirs: serialize_duplicate_mirs(dup_mirs)
-      }
-    end
-
-    {
-      status: totals.values.sum.positive? ? 'error' : 'ok',
-      totals: totals,
-      meetings_with_findings_count: meetings_with_findings.size,
-      meetings_with_findings: meetings_with_findings
-    }
-  end
-
-  def serialize_duplicate_mirs(dup_mirs)
-    dup_mirs.map do |dup|
-      {
-        swimmer_id: dup[:swimmer].id,
-        swimmer_name: dup[:swimmer].complete_name,
-        swimmer_year_of_birth: dup[:swimmer].year_of_birth,
-        meeting_program_id: dup[:meeting_program_id],
-        timing_match: dup[:timing_match],
-        mirs: dup[:mirs].map do |mir|
-          {
-            id: mir.id,
-            timing: mir.to_timing.to_s,
-            team_id: mir.team_id,
-            team_name: mir.team&.editable_name,
-            badge_id: mir.badge_id,
-            badge_missing: !GogglesDb::Badge.exists?(id: mir.badge_id),
-            badge_label: mir.badge&.decorate&.short_label
-          }
-        end
-      }
-    end
-  end
-
-  # Cascade a team_id change from Phase 2 into Phase 3 badges.
-  # Updates all badges matching team_key and re-resolves binding IDs deterministically.
-  # Returns the number of badges updated.
-  def cascade_team_to_phase3(phase3_path, team_key, new_team_id, season_id)
-    pfm3 = PhaseFileManager.new(phase3_path)
-    data3 = pfm3.data || {}
-    badges = Array(data3['badges'])
-    count = 0
-    normalized_team_id = new_team_id.to_i.positive? ? new_team_id.to_i : nil
-    normalized_season_id = season_id.to_i.positive? ? season_id.to_i : nil
-    resolved_team_affiliation_id = if normalized_team_id && normalized_season_id
-                                     GogglesDb::TeamAffiliation.find_by(team_id: normalized_team_id,
-                                                                        season_id: normalized_season_id)&.id
-                                   end
-
-    badges.each do |badge|
-      next unless badge['team_key'] == team_key
-
-      changed = false
-      current_team_id = badge['team_id'].to_i.positive? ? badge['team_id'].to_i : nil
-      if current_team_id != normalized_team_id
-        badge['team_id'] = normalized_team_id
-        changed = true
-      end
-
-      resolved_badge_id = nil
-      if normalized_team_id && normalized_season_id && badge['swimmer_id'].to_i.positive?
-        resolved_badge_id = GogglesDb::Badge.find_by(
-          season_id: normalized_season_id,
-          swimmer_id: badge['swimmer_id'],
-          team_id: normalized_team_id
-        )&.id
-      end
-      current_badge_id = badge['badge_id'].to_i.positive? ? badge['badge_id'].to_i : nil
-      if current_badge_id != resolved_badge_id
-        badge['badge_id'] = resolved_badge_id
-        changed = true
-      end
-
-      current_affiliation_id = badge['team_affiliation_id'].to_i.positive? ? badge['team_affiliation_id'].to_i : nil
-      if current_affiliation_id != resolved_team_affiliation_id
-        badge['team_affiliation_id'] = resolved_team_affiliation_id
-        changed = true
-      end
-
-      count += 1 if changed
-    end
-
-    if count.positive?
-      data3['badges'] = badges
-      meta3 = pfm3.meta || {}
-      meta3['generated_at'] = Time.now.utc.iso8601
-      pfm3.write!(data: data3, meta: meta3)
-      Rails.logger.info("[DataFix] Cascaded team_id=#{normalized_team_id.inspect} to #{count} Phase 3 badge(s) for team_key='#{team_key}'")
-    end
-    count
-  rescue StandardError => e
-    Rails.logger.error("[DataFix] cascade_team_to_phase3 failed: #{e.message}")
-    0
-  end
-
-  # Cascade a team_id change to Phase 5 DataImport rows (MIR, MRR and MRS).
-  # Returns the number of rows updated.
-  # rubocop:disable-next Rails/SkipsModelValidations
-  def cascade_team_to_data_import_rows(team_key, new_team_id, season_id = nil, phase_file_path: nil,
-                                       phase2_affiliations: [], phase3_badges: [])
-    normalized_team_id = new_team_id.to_i.positive? ? new_team_id.to_i : nil
-    normalized_season_id = season_id.to_i.positive? ? season_id.to_i : nil
-    resolved_team_affiliation_id = find_phase2_team_affiliation_id(
-      team_key: team_key,
-      team_id: normalized_team_id,
-      season_id: normalized_season_id,
-      phase2_affiliations: phase2_affiliations
-    )
-
-    mir_scope = GogglesDb::DataImportMeetingIndividualResult.where(team_key: team_key)
-    mrr_scope = GogglesDb::DataImportMeetingRelayResult.where(team_key: team_key)
-    if phase_file_path.present?
-      mir_scope = mir_scope.where(phase_file_path: phase_file_path)
-      mrr_scope = mrr_scope.where(phase_file_path: phase_file_path)
-    end
-    relay_parent_keys = mrr_scope.pluck(:import_key)
-    mrs_scope = if relay_parent_keys.present?
-                  GogglesDb::DataImportMeetingRelaySwimmer.where(parent_import_key: relay_parent_keys)
-                else
-                  GogglesDb::DataImportMeetingRelaySwimmer.none
-                end
-
-    # Index phase3 badges once instead of scanning the array per DataImport row
-    badge_index = phase3_badge_index(phase3_badges)
-    count = 0
-
-    mir_scope.find_each do |row|
-      resolved_badge_id = resolve_phase3_badge_id(
-        swimmer_key: row.swimmer_key,
-        swimmer_id: row.swimmer_id,
-        team_key: row.team_key,
-        team_id: normalized_team_id,
-        season_id: normalized_season_id,
-        phase3_badges: phase3_badges,
-        badge_index: badge_index
-      )
-
-      attrs = {}
-      attrs[:team_id] = normalized_team_id if row.team_id != normalized_team_id
-      attrs[:badge_id] = resolved_badge_id if row.badge_id != resolved_badge_id
-      next if attrs.empty?
-
-      row.update_columns(attrs)
-      count += 1
-    end
-
-    mrr_scope.find_each do |row|
-      attrs = {}
-      attrs[:team_id] = normalized_team_id if row.team_id != normalized_team_id
-      attrs[:team_affiliation_id] = resolved_team_affiliation_id if row.team_affiliation_id != resolved_team_affiliation_id
-      next if attrs.empty?
-
-      row.update_columns(attrs)
-      count += 1
-    end
-
-    mrs_scope.find_each do |row|
-      resolved_badge_id = resolve_phase3_badge_id(
-        swimmer_key: row.swimmer_key,
-        swimmer_id: row.swimmer_id,
-        team_key: team_key,
-        team_id: normalized_team_id,
-        season_id: normalized_season_id,
-        phase3_badges: phase3_badges,
-        badge_index: badge_index
-      )
-      next if row.badge_id == resolved_badge_id
-
-      row.update_columns(badge_id: resolved_badge_id)
-      count += 1
-    end
-
-    Rails.logger.info("[DataFix] Cascaded team_id=#{normalized_team_id.inspect} to #{count} DataImport row(s) for team_key='#{team_key}'") if count.positive?
-    count
-  rescue StandardError => e
-    Rails.logger.error("[DataFix] cascade_team_to_data_import_rows failed: #{e.message}")
-    0
-  end
-
-  # Cascade a swimmer update from Phase 3 to Phase 5 DataImport rows (MIR + MRS).
-  # Returns the number of rows updated.
-  # rubocop:disable-next Rails/SkipsModelValidations
-  def cascade_swimmer_to_data_import_rows(source_path:, old_swimmer_key:, canonical_swimmer_key:, old_swimmer_id:, new_swimmer_id:, season_id:, phase3_badges:)
-    count = 0
-    normalized_season_id = season_id.to_i.positive? ? season_id.to_i : nil
-    normalized_new_swimmer_id = new_swimmer_id.to_i.positive? ? new_swimmer_id.to_i : nil
-    normalized_old_swimmer_id = old_swimmer_id.to_i.positive? ? old_swimmer_id.to_i : nil
-
-    # Index phase3 badges once instead of scanning the array per DataImport row
-    badge_index = phase3_badge_index(phase3_badges)
-
-    mir_scope = GogglesDb::DataImportMeetingIndividualResult.where(phase_file_path: source_path)
-    mir_scope.find_each do |row|
-      next unless swimmer_row_matches?(
-        row_swimmer_key: row.swimmer_key,
-        row_swimmer_id: row.swimmer_id,
-        old_swimmer_key: old_swimmer_key,
-        canonical_swimmer_key: canonical_swimmer_key,
-        old_swimmer_id: normalized_old_swimmer_id,
-        new_swimmer_id: normalized_new_swimmer_id
-      )
-
-      resolved_badge_id = resolve_phase3_badge_id(
-        swimmer_key: canonical_swimmer_key.presence || old_swimmer_key,
-        swimmer_id: normalized_new_swimmer_id,
-        team_key: row.team_key,
-        team_id: row.team_id,
-        season_id: normalized_season_id,
-        phase3_badges: phase3_badges,
-        badge_index: badge_index
-      )
-
-      attrs = {}
-      attrs[:swimmer_id] = normalized_new_swimmer_id if row.swimmer_id != normalized_new_swimmer_id
-      attrs[:badge_id] = resolved_badge_id if row.badge_id != resolved_badge_id
-      attrs[:swimmer_key] = canonical_swimmer_key if canonical_swimmer_key.present? && row.swimmer_key != canonical_swimmer_key
-      old_import_key = row.import_key
-      if attrs.any?
-        row.update_columns(attrs)
-        import_key_changed = rewrite_mir_import_key_if_needed!(row, canonical_swimmer_key)
-        if import_key_changed
-          GogglesDb::DataImportLap.where(parent_import_key: old_import_key).update_all(
-            parent_import_key: row.import_key,
-            meeting_individual_result_key: row.import_key
-          )
-        end
-        count += 1
-      end
-    end
-
-    mrs_scope = GogglesDb::DataImportMeetingRelaySwimmer.where(phase_file_path: source_path)
-    # Batch-load parent MRRs once instead of a find_by per relay-swimmer row
-    parent_mrrs_by_key = GogglesDb::DataImportMeetingRelayResult
-                         .where(import_key: mrs_scope.distinct.pluck(:parent_import_key))
-                         .index_by(&:import_key)
-    mrs_scope.find_each do |row|
-      next unless swimmer_row_matches?(
-        row_swimmer_key: row.swimmer_key,
-        row_swimmer_id: row.swimmer_id,
-        old_swimmer_key: old_swimmer_key,
-        canonical_swimmer_key: canonical_swimmer_key,
-        old_swimmer_id: normalized_old_swimmer_id,
-        new_swimmer_id: normalized_new_swimmer_id
-      )
-
-      parent_mrr = parent_mrrs_by_key[row.parent_import_key]
-      resolved_badge_id = resolve_phase3_badge_id(
-        swimmer_key: canonical_swimmer_key.presence || old_swimmer_key,
-        swimmer_id: normalized_new_swimmer_id,
-        team_key: parent_mrr&.team_key,
-        team_id: parent_mrr&.team_id,
-        season_id: normalized_season_id,
-        phase3_badges: phase3_badges,
-        badge_index: badge_index
-      )
-
-      attrs = {}
-      attrs[:swimmer_id] = normalized_new_swimmer_id if row.swimmer_id != normalized_new_swimmer_id
-      attrs[:badge_id] = resolved_badge_id if row.badge_id != resolved_badge_id
-      attrs[:swimmer_key] = canonical_swimmer_key if canonical_swimmer_key.present? && row.swimmer_key != canonical_swimmer_key
-      next if attrs.empty?
-
-      row.update_columns(attrs)
-      count += 1
-    end
-
-    Rails.logger.info("[DataFix] Cascaded swimmer update to #{count} DataImport row(s) for swimmer_key='#{old_swimmer_key}'") if count.positive?
-    count
-  rescue StandardError => e
-    Rails.logger.error("[DataFix] cascade_swimmer_to_data_import_rows failed: #{e.message}")
-    0
-  end
-
-  def harmonize_phase2_phase3_team_links(source_path:, season_id:)
-    phase2_path = default_phase_path_for(source_path, 2)
-    phase3_path = default_phase_path_for(source_path, 3)
-    return empty_phase3_consistency_stats unless File.exist?(phase2_path) && File.exist?(phase3_path)
-
-    pfm2 = PhaseFileManager.new(phase2_path)
-    data2 = pfm2.data || {}
-    pfm3 = PhaseFileManager.new(phase3_path)
-    data3 = pfm3.data || {}
-
-    teams = Array(data2['teams'])
-    swimmers = Array(data3['swimmers'])
-    badges = Array(data3['badges'])
-    swimmer_by_key = swimmers.index_by { |s| s['key'] }
-    # First-match semantics preserved: ||= keeps the earliest entry per key
-    teams_by_key = teams.each_with_object({}) { |team, index| index[team['key']] ||= team }
-
-    stats = empty_phase3_consistency_stats
-    phase2_changed = false
-
-    badges.each do |badge|
-      team_key = badge['team_key']
-      next if team_key.blank?
-
-      phase2_team = teams_by_key[team_key]
-      next unless phase2_team
-
-      selected_team_id = phase2_team['team_id'].to_i
-
-      canonical_team_id = badge['team_id'].to_i
-      if canonical_team_id <= 0
-        swimmer_entry = swimmer_by_key[badge['swimmer_key']]
-        canonical_team_id = resolve_team_id_from_swimmer_badges(swimmer_entry, team_key:, season_id:)
-      end
-      next unless canonical_team_id.to_i.positive?
-      next if selected_team_id == canonical_team_id
-
-      if selected_team_id.positive?
-        stats[:phase2_conflicts_detected] += 1
-      else
-        stats[:phase2_missing_links_detected] += 1
-      end
-
-      next unless append_phase2_team_conflict_hint!(
-        phase2_team: phase2_team,
-        candidate_team_id: canonical_team_id,
-        team_key: team_key,
-        current_team_id: selected_team_id
-      )
-
-      stats[:phase2_conflict_hints_added] += 1
-      phase2_changed = true
-    end
-
-    if phase2_changed
-      data2['teams'] = teams
-      meta2 = pfm2.meta || {}
-      meta2['generated_at'] = Time.now.utc.iso8601
-      pfm2.write!(data: data2, meta: meta2)
-    end
-
-    stats
-  rescue StandardError => e
-    Rails.logger.error("[DataFix] harmonize_phase2_phase3_team_links failed: #{e.message}")
-    empty_phase3_consistency_stats
-  end
-
-  def empty_phase3_consistency_stats
-    {
-      phase2_conflicts_detected: 0,
-      phase2_missing_links_detected: 0,
-      phase2_conflict_hints_added: 0
-    }
-  end
-
+  # Delegates to DataFix::Phase3Harmonizer (exposed to views via helper_method)
   def phase3_conflict_hint?(team_row)
-    Array(team_row&.dig('fuzzy_matches')).any? { |match| match['from_phase3_conflict_hint'] == true }
+    DataFix::Phase3Harmonizer.phase3_conflict_hint?(team_row)
   end
-
-  def append_phase2_team_conflict_hint!(phase2_team:, candidate_team_id:, team_key:, current_team_id:) # rubocop:disable Naming/PredicateMethod
-    return false unless phase2_team.is_a?(Hash) && candidate_team_id.to_i.positive?
-
-    candidate_team = GogglesDb::Team.find_by(id: candidate_team_id)
-    return false unless candidate_team
-
-    fuzzy_matches = Array(phase2_team['fuzzy_matches'])
-    hint_payload = build_phase2_team_conflict_hint(
-      phase2_team: phase2_team,
-      candidate_team: candidate_team,
-      team_key: team_key,
-      current_team_id: current_team_id
-    )
-
-    existing = fuzzy_matches.find { |match| match['id'].to_i == candidate_team_id.to_i }
-    if existing
-      merged = existing.merge(hint_payload)
-      return false if merged == existing
-
-      existing.replace(merged)
-    else
-      fuzzy_matches << hint_payload
-    end
-
-    fuzzy_matches.sort_by! { |match| -(match['weight'] || 0.0).to_f }
-    phase2_team['fuzzy_matches'] = fuzzy_matches
-    true
-  end
-
-  def build_phase2_team_conflict_hint(phase2_team:, candidate_team:, team_key:, current_team_id:)
-    source_name = phase2_team['editable_name'].presence || phase2_team['name'].presence || team_key
-    similarity_weight = compute_team_hint_similarity(source_name, candidate_team.editable_name)
-    similarity_percentage = (similarity_weight * 100).round(1)
-    color_class = case similarity_percentage
-                  when 90..100 then 'success'
-                  when 70...90 then 'warning'
-                  when 50...70 then 'danger'
-                  end
-
-    reason = if current_team_id.to_i.positive?
-               "conflicts with selected team ID #{current_team_id}"
-             else
-               'fills missing team link from Phase 3 evidence'
-             end
-
-    {
-      'id' => candidate_team.id,
-      'name' => candidate_team.name,
-      'editable_name' => candidate_team.editable_name,
-      'name_variations' => candidate_team.name_variations,
-      'city_id' => candidate_team.city_id,
-      'city_name' => candidate_team.city&.name,
-      'weight' => similarity_weight,
-      'percentage' => similarity_percentage,
-      'color_class' => color_class,
-      'display_label' => "(Phase3 hint) #{candidate_team.editable_name} " \
-                         "(ID: #{candidate_team.id}, #{candidate_team.city&.name || 'no city'}, match: #{similarity_percentage}%)",
-      'from_phase3_conflict_hint' => true,
-      'phase3_conflict_reason' => reason
-    }
-  end
-
-  def compute_team_hint_similarity(source_name, candidate_name)
-    normalized_source = normalize_team_label_for_similarity(source_name)
-    normalized_candidate = normalize_team_label_for_similarity(candidate_name)
-    return 0.0 if normalized_source.blank? || normalized_candidate.blank?
-
-    metric = GogglesDb::DbFinders::BaseStrategy::METRIC
-    metric.getDistance(normalized_source.downcase, normalized_candidate.downcase).round(3).clamp(0.0, 1.0)
-  rescue StandardError
-    0.0
-  end
-
-  def normalize_team_label_for_similarity(value)
-    base = value.to_s.strip
-    return '' if base.empty?
-
-    normalized = I18n.transliterate(base).delete('.').upcase
-    %w[SSDRL SSD ASD APD SRL SS AS SD].each do |abbreviation|
-      normalized = normalized.gsub(/\b#{abbreviation}\b/, '')
-    end
-    normalized.squeeze(' ').strip
-  end
-
-  def resolve_team_id_from_swimmer_badges(swimmer_entry, team_key:, season_id:)
-    return nil unless swimmer_entry.is_a?(Hash)
-
-    swimmer_id = swimmer_entry['swimmer_id'].to_i
-    matches = Array(swimmer_entry['fuzzy_matches'])
-    selected_match = matches.find { |match| match['id'].to_i == swimmer_id }
-    selected_match ||= matches.first
-    badges = Array(selected_match&.dig('badges'))
-    return nil if badges.empty?
-
-    normalized_team_key = normalize_team_label(team_key)
-    candidate = badges.find do |badge|
-      badge['season_id'].to_i == season_id.to_i &&
-        normalize_team_label(badge['team_name']) == normalized_team_key
-    end
-    candidate ||= badges.find { |badge| badge['season_id'].to_i == season_id.to_i }
-    candidate ||= badges.find { |badge| normalize_team_label(badge['team_name']) == normalized_team_key }
-    candidate ||= badges.first
-    candidate&.dig('team_id').to_i
-  end
-
-  def normalize_team_label(value)
-    value.to_s.downcase.gsub(/[^a-z0-9]/, '')
-  end
-
-  def annotate_swimmer_badge_duplicates!(swimmers)
-    summary = { swimmers_with_duplicates: 0, duplicate_seasons: [] }
-
-    swimmers.each do |swimmer|
-      swimmer['has_badge_duplicates'] = false
-      swimmer['badge_duplicate_summary'] = nil
-      swimmer['badge_duplicates'] = []
-
-      swimmer_id = swimmer['swimmer_id'].to_i
-      matches = Array(swimmer['fuzzy_matches'])
-      selected_match = matches.find { |match| match['id'].to_i == swimmer_id }
-      selected_match ||= matches.first
-      badges = Array(selected_match&.dig('badges'))
-      next if badges.empty?
-
-      duplicates = badges.group_by { |badge| badge['season_id'].to_i }
-                         .transform_values { |group| group.filter_map { |badge| badge['team_id'].to_i if badge['team_id'].to_i.positive? }.uniq }
-                         .select { |_season_id, team_ids| team_ids.size > 1 }
-      next if duplicates.empty?
-
-      swimmer['has_badge_duplicates'] = true
-      swimmer['badge_duplicates'] = duplicates.map do |dup_season_id, team_ids|
-        { 'season_id' => dup_season_id, 'team_ids' => team_ids }
-      end
-      swimmer['badge_duplicate_summary'] = swimmer['badge_duplicates'].map do |row|
-        team_list = row['team_ids'].join(', ')
-        "#{row['team_ids'].size} duplicate badges found in season #{row['season_id']}: team #{team_list}"
-      end.join(' · ')
-
-      summary[:swimmers_with_duplicates] += 1
-      summary[:duplicate_seasons].concat(duplicates.keys)
-    end
-
-    summary[:duplicate_seasons] = summary[:duplicate_seasons].uniq.sort
-    summary
-  end
-
-  # If file_path points to a phase file, resolve original source_path from its meta.
-  def resolve_source_path(file_path)
-    return file_path if file_path.blank?
-    return file_path unless /-phase\d+\.json\z/.match?(file_path)
-
-    pfm = PhaseFileManager.new(file_path)
-    meta = pfm.meta
-    meta['source_path'].presence || file_path
-  rescue StandardError
-    file_path
-  end
-
-  # Check if a swimmer (from phase3) has missing critical data
-  # Returns hash with { missing_gender: bool, missing_year: bool, not_found: bool }
-  # Uses partial key matching to handle different key formats
-  #
-  # @param swimmer_key [String] the swimmer key to check
-  # @param swimmers_by_key [Hash] swimmers indexed by key (from phase3)
-  # @return [Hash] { missing_gender: bool, missing_year: bool, not_found: bool }
+  # Delegates to DataFix::IssueDetector (exposed to views via helper_method)
   def swimmer_has_missing_data?(swimmer_key, swimmers_by_key: {}) # rubocop:disable Naming/PredicateMethod
-    return { missing_gender: false, missing_year: false, not_found: true } unless swimmers_by_key.present? && swimmer_key
-
-    # First try exact match
-    swimmer = swimmers_by_key[swimmer_key]
-
-    # If not found, try partial key matching (ignoring gender prefix)
-    unless swimmer
-      partial_key = normalize_swimmer_key_for_lookup(swimmer_key)
-      if partial_key
-        swimmer = swimmers_by_key.values.find do |s|
-          normalize_swimmer_key_for_lookup(s['key']) == partial_key
-        end
-      end
-    end
-
-    # If swimmer not found in Phase 3, this is an issue
-    return { missing_gender: true, missing_year: false, not_found: true } unless swimmer
-
-    {
-      missing_gender: swimmer['gender_type_code'].blank?,
-      missing_year: swimmer['year_of_birth'].blank? || swimmer['year_of_birth'].to_i.zero?,
-      not_found: false
-    }
+    DataFix::IssueDetector.swimmer_has_missing_data?(swimmer_key, swimmers_by_key: swimmers_by_key)
   end
-
-  # Normalize swimmer key to partial format for matching, preserving the team token.
-  # Team is an immutable part of the swimmer key — it must never be stripped during
-  # normalization, otherwise same-name swimmers on different teams cross-match.
-  # Input:  "M|LIGABUE|Marco|1971|Asd Caserta Nuoto" or "|LIGABUE|Marco|1971|Swimprove ssd"
-  # Output: "|LIGABUE|Marco|1971|Asd Caserta Nuoto" (gender stripped, team preserved)
-  def normalize_swimmer_key_for_lookup(key)
-    return nil if key.blank?
-
-    parts = key.to_s.split('|')
-    return nil if parts.size < 3
-
-    offset = swimmer_key_offset(parts)
-    last_name = parts[offset]
-    first_name = parts[offset + 1]
-    year_of_birth = parts[offset + 2]
-    team_name = parts[(offset + 3)..]&.join('|')
-    return nil if last_name.blank? || first_name.blank?
-
-    normalized = "|#{last_name}|#{first_name}|#{year_of_birth}"
-    team_name.present? ? "#{normalized}|#{team_name}" : normalized
-  end
-
-  # Determine the offset into split key parts based on the first element:
-  # - Single-char gender code (M/F) → offset 1
-  # - Empty string (partial key starting with '|') → offset 1
-  # - Otherwise (no prefix) → offset 0
-  def swimmer_key_offset(parts)
-    first = parts[0].to_s
-    return 1 if first.match?(/\A[MF]\z/i)
-    return 1 if first.blank?
-
-    0
-  end
-
-  def swimmer_key_match?(candidate_key, key_a, key_b)
-    return false if candidate_key.blank?
-
-    [key_a, key_b].compact.any? { |key| key.present? && candidate_key == key } ||
-      begin
-        candidate_partial = normalize_swimmer_key_for_lookup(candidate_key)
-        target_partials = [key_a, key_b].compact.filter_map { |key| normalize_swimmer_key_for_lookup(key) }
-        candidate_partial.present? && target_partials.include?(candidate_partial)
-      end
-  end
-
-  def swimmer_row_matches?(row_swimmer_key:, row_swimmer_id:, old_swimmer_key:, canonical_swimmer_key:, old_swimmer_id:, new_swimmer_id:)
-    id_match = [old_swimmer_id, new_swimmer_id].compact.any? do |target_id|
-      target_id.to_i.positive? && row_swimmer_id.to_i == target_id.to_i
-    end
-    return true if id_match
-
-    swimmer_key_match?(row_swimmer_key, old_swimmer_key, canonical_swimmer_key)
-  end
-
-  def rewrite_mir_import_key_if_needed!(mir_row, canonical_swimmer_key) # rubocop:disable Naming/PredicateMethod
-    return false if canonical_swimmer_key.blank? || mir_row.meeting_program_key.blank?
-
-    current_import_key = mir_row.import_key
-    new_import_key = GogglesDb::DataImportMeetingIndividualResult.build_import_key(mir_row.meeting_program_key, canonical_swimmer_key)
-    return false if new_import_key == current_import_key
-
-    duplicate = GogglesDb::DataImportMeetingIndividualResult.where(import_key: new_import_key).where.not(id: mir_row.id).exists?
-    return false if duplicate
-
-    mir_row.update_columns(import_key: new_import_key) # rubocop:disable Rails/SkipsModelValidations
-    true
-  end
-
-  def find_phase2_team_affiliation_id(team_key:, team_id:, season_id:, phase2_affiliations:)
-    affiliations = Array(phase2_affiliations)
-    return nil if affiliations.empty?
-
-    by_team_key = affiliations.find do |row|
-      row['team_key'].to_s == team_key.to_s &&
-        (!season_id.to_i.positive? || row['season_id'].to_i == season_id.to_i)
-    end
-
-    by_team_id = affiliations.find do |row|
-      team_id.to_i.positive? && row['team_id'].to_i == team_id.to_i &&
-        (!season_id.to_i.positive? || row['season_id'].to_i == season_id.to_i)
-    end
-
-    candidate = by_team_key || by_team_id
-    candidate_id = candidate&.dig('team_affiliation_id').to_i
-    candidate_id.positive? ? candidate_id : nil
-  end
-
-  def resolve_phase3_badge_id(swimmer_key:, swimmer_id:, team_key:, team_id:, season_id:, phase3_badges:, badge_index: nil)
-    return nil if swimmer_key.blank?
-
-    badge_index ||= phase3_badge_index(phase3_badges)
-    matching = phase3_badge_candidates(badge_index, swimmer_key).select do |badge|
-      next false if season_id.to_i.positive? && badge['season_id'].to_i.positive? && badge['season_id'].to_i != season_id.to_i
-
-      if team_id.to_i.positive?
-        badge['team_id'].to_i == team_id.to_i
-      elsif team_key.present?
-        badge['team_key'].to_s.casecmp?(team_key.to_s)
-      else
-        true
-      end
-    end
-
-    if swimmer_id.to_i.positive?
-      matching = matching.select do |badge|
-        badge_swimmer_id = badge['swimmer_id'].to_i
-        badge_swimmer_id.zero? || badge_swimmer_id == swimmer_id.to_i
-      end
-    end
-
-    candidate = matching.find { |badge| badge['badge_id'].to_i.positive? }
-    candidate&.dig('badge_id').to_i.positive? ? candidate['badge_id'].to_i : nil
-  end
-
-  # Index phase3 badges by swimmer key for O(1) lookup in resolve_phase3_badge_id.
-  # Each badge is stored under both its raw key and its normalized partial key
-  # (exact + partial matching semantics of swimmer_key_match?), as [position, badge]
-  # pairs so candidates keep the original array order.
-  def phase3_badge_index(phase3_badges)
-    Array(phase3_badges).each_with_index.with_object(Hash.new { |h, k| h[k] = [] }) do |(badge, i), index|
-      raw_key = badge['swimmer_key'].to_s
-      next if raw_key.blank?
-
-      index[raw_key] << [i, badge]
-      normalized_key = normalize_swimmer_key_for_lookup(raw_key)
-      index[normalized_key] << [i, badge] if normalized_key.present? && normalized_key != raw_key
-    end
-  end
-
-  # Returns phase3 badges matching swimmer_key (exact or normalized key),
-  # deduplicated and in original array order.
-  def phase3_badge_candidates(badge_index, swimmer_key)
-    raw_key = swimmer_key.to_s
-    normalized_key = normalize_swimmer_key_for_lookup(raw_key)
-    tuples = badge_index[raw_key] | (normalized_key.present? ? badge_index[normalized_key] : [])
-    tuples.sort_by(&:first).map(&:last)
-  end
-
   # NOTE: build_phase3_category_issues_summary was removed.
   # Category issues are now detected and shown via RelayEnrichmentDetector
   # which includes missing_category in its issue detection.
 
-  # Check if a relay result has any swimmers with missing data
-  # Returns { has_issues: bool, issue_count: int, issues: { swimmer_key => {...} } }
-  #
-  # @param relay_result [DataImportMeetingRelayResult] the relay result to check
-  # @param relay_swimmers_by_key [Hash] relay swimmers grouped by parent import_key
-  # @param swimmers_by_id [Hash] swimmers indexed by ID
-  # @param swimmers_by_key [Hash] swimmers indexed by key (from phase3)
-  # @return [Hash] { has_issues: bool, issue_count: int, issues: {...} }
-  def relay_result_has_issues?(relay_result, relay_swimmers_by_key:, swimmers_by_id:, swimmers_by_key: {}, # rubocop:disable Naming/PredicateMethod
-                               badges_by_id: {}, affiliations_by_id: {}, season_id: nil)
-    relay_swimmers = relay_swimmers_by_key[relay_result.import_key] || []
-    issues = {}
-
-    # meeting_program_id may be nil here for NEW programs to be created in phase 6;
-    # this is not an issue by itself as long as program key includes gender and all
-    # other required links/coherence checks pass.
-
-    if program_key_missing_gender?(relay_result.meeting_program_key)
-      issues[:program_gender] = {
-        missing_program_gender: true
-      }
-    end
-
-    team_resolvable = team_link_resolvable?(team_id: relay_result.team_id, team_key: relay_result.team_key)
-
-    unless team_resolvable
-      issues[:required_fks] = {
-        missing_team_id: relay_result.team_id.to_i <= 0,
-        missing_team_key: relay_result.team_key.blank?
-      }
-    end
-
-    if relay_result.team_affiliation_id.to_i.positive?
-      affiliation = affiliations_by_id[relay_result.team_affiliation_id] ||
-                    GogglesDb::TeamAffiliation.find_by(id: relay_result.team_affiliation_id)
-      if affiliation.nil? || affiliation.team_id != relay_result.team_id || (season_id.to_i.positive? && affiliation.season_id != season_id.to_i)
-        issues[:team_affiliation_mismatch] = {
-          team_id: relay_result.team_id,
-          team_affiliation_id: relay_result.team_affiliation_id,
-          season_id: season_id
-        }
-      end
-    end
-
-    relay_swimmers.each do |rs|
-      swimmer_resolvable = swimmer_link_resolvable?(
-        swimmer_id: rs.swimmer_id,
-        swimmer_key: rs.swimmer_key,
-        swimmers_by_key: swimmers_by_key
-      )
-      badge_resolvable = relay_swimmer_badge_link_resolvable?(
-        relay_swimmer: rs,
-        parent_team_id: relay_result.team_id,
-        team_key: relay_result.team_key,
-        swimmer_resolvable: swimmer_resolvable
-      )
-
-      unless swimmer_resolvable && badge_resolvable
-        issues[rs.relay_order] = {
-          swimmer_key: rs.swimmer_key,
-          missing_swimmer_binding: !swimmer_resolvable,
-          missing_badge_binding: !badge_resolvable
-        }
-        next
-      end
-
-      if rs.badge_id.to_i.positive?
-        badge = badges_by_id[rs.badge_id] || GogglesDb::Badge.find_by(id: rs.badge_id)
-        if badge.nil? || badge.swimmer_id != rs.swimmer_id || (relay_result.team_id.to_i.positive? && badge.team_id != relay_result.team_id)
-          issues[rs.relay_order] = {
-            swimmer_key: rs.swimmer_key,
-            badge_mismatch: true
-          }
-          next
-        end
-      end
-
-      swimmer = swimmers_by_id[rs.swimmer_id]
-      next unless swimmer
-
-      missing_gender = swimmer.gender_type_id.blank?
-      missing_year = swimmer.year_of_birth.blank? || swimmer.year_of_birth.to_i.zero?
-
-      next unless missing_gender || missing_year
-
-      issues[rs.relay_order] = {
-        swimmer_key: "#{swimmer.last_name}|#{swimmer.first_name}|#{swimmer.year_of_birth}",
-        missing_gender: missing_gender,
-        missing_year: missing_year
-      }
-    end
-
-    {
-      has_issues: issues.any?,
-      issue_count: issues.size,
-      issues: issues
-    }
+  # Delegates to DataFix::IssueDetector (exposed to views via helper_method)
+  def relay_result_has_issues?(relay_result, **kwargs) # rubocop:disable Naming/PredicateMethod
+    DataFix::IssueDetector.relay_result_has_issues?(relay_result, **kwargs)
   end
-
-  # Returns true when a serialized program key has no gender segment.
-  # Examples:
-  # - "1-100SL-M25-M" => false
-  # - "1-100SL-M25-" => true
-  def program_key_missing_gender?(program_key)
-    return true if program_key.blank?
-
-    program_key.to_s.split('-').last.to_s.strip.blank?
-  end
-
-  def team_link_resolvable?(team_id:, team_key:)
-    team_id.to_i.positive? || team_key.present?
-  end
-
-  def swimmer_link_resolvable?(swimmer_id:, swimmer_key:, swimmers_by_key:)
-    return true if swimmer_id.to_i.positive?
-    return false if swimmer_key.blank?
-
-    swimmer_issues = swimmer_has_missing_data?(swimmer_key, swimmers_by_key: swimmers_by_key)
-    !swimmer_issues[:missing_gender] && !swimmer_issues[:missing_year] && !swimmer_issues[:not_found]
-  end
-
-  def individual_badge_link_resolvable?(mir, swimmer_resolvable:, team_resolvable:)
-    return true if mir.badge_id.to_i.positive?
-
-    swimmer_resolvable && team_resolvable
-  end
-
-  def relay_swimmer_badge_link_resolvable?(relay_swimmer:, parent_team_id:, team_key:, swimmer_resolvable:)
-    return true if relay_swimmer.badge_id.to_i.positive?
-
-    swimmer_resolvable && team_link_resolvable?(team_id: parent_team_id, team_key: team_key)
-  end
-
-  # Program key of an import/parent key: the "session-event-category-gender"
-  # segment before the first '/'. Same partition an `import_key LIKE 'key/%'`
-  # query selects, computed without hitting the DB.
-  def program_key_of(import_key)
-    import_key.to_s.split('/', 2).first
-  end
-
-  # Load every data_import_* staging row for the source file once and bucket them
-  # by program key. Detection, filters, pagination counts and card rendering all
-  # reuse these buckets instead of issuing per-program LIKE queries.
-  #
-  # @param source_path [String] canonical source file path
-  # @return [Hash] raw row arrays plus *_by_program buckets
-  def load_staging_rows(source_path)
-    mirs = GogglesDb::DataImportMeetingIndividualResult
-           .where(phase_file_path: source_path).order(:import_key).to_a
-    mrrs = GogglesDb::DataImportMeetingRelayResult
-           .where(phase_file_path: source_path).order(:import_key).to_a
-    laps = GogglesDb::DataImportLap
-           .where(phase_file_path: source_path).order(:length_in_meters).to_a
-    relay_swimmers = GogglesDb::DataImportMeetingRelaySwimmer
-                     .where(phase_file_path: source_path).order(:relay_order).to_a
-    relay_laps = GogglesDb::DataImportRelayLap
-                 .includes(:data_import_meeting_relay_swimmer)
-                 .where(phase_file_path: source_path).order(:length_in_meters).to_a
-
-    {
-      mirs: mirs,
-      mrrs: mrrs,
-      laps: laps,
-      relay_swimmers: relay_swimmers,
-      relay_laps: relay_laps,
-      mirs_by_program: mirs.group_by { |row| program_key_of(row.import_key) },
-      mrrs_by_program: mrrs.group_by { |row| program_key_of(row.import_key) },
-      laps_by_program: laps.group_by { |row| program_key_of(row.parent_import_key) },
-      relay_swimmers_by_program: relay_swimmers.group_by { |row| program_key_of(row.import_key) },
-      relay_laps_by_program: relay_laps.group_by { |row| program_key_of(row.parent_import_key) }
-    }
-  end
-
-  # Paginate Phase 5 programs to prevent UI slowdown
-  # Splits programs across pages when total rows (results + laps) exceed limit
-  #
-  # @param programs [Array<Hash>] all programs from phase5 JSON
-  # @param page [Integer] current page number (1-indexed)
-  # @param staging [Hash] buckets from load_staging_rows
-  # @return [Array<Array, Integer>] [programs_for_page, total_pages]
-  def paginate_phase5_programs(programs, page, staging)
-    return [programs, 1] if programs.empty?
-
-    # Calculate row count for each program (results + laps)
-    programs_with_counts = programs.map do |prog|
-      program_key = "#{prog['session_order']}-#{prog['event_code']}-#{prog['category_code']}-#{prog['gender_code']}"
-
-      if prog['relay']
-        # Count relay results and relay laps
-        result_count = (staging[:mrrs_by_program][program_key] || []).size
-        lap_count = (staging[:relay_laps_by_program][program_key] || []).size
-      else
-        # Count individual results and laps
-        result_count = (staging[:mirs_by_program][program_key] || []).size
-        lap_count = (staging[:laps_by_program][program_key] || []).size
-      end
-
-      { program: prog, row_count: result_count + lap_count }
-    end
-
-    # Split programs into pages based on PHASE5_MAX_ROWS_PER_PAGE
-    pages = []
-    current_page_programs = []
-    current_page_rows = 0
-
-    programs_with_counts.each do |prog_data|
-      # If adding this program exceeds limit, start new page
-      if current_page_rows.positive? && (current_page_rows + prog_data[:row_count]) > PHASE5_MAX_ROWS_PER_PAGE
-        pages << current_page_programs
-        current_page_programs = []
-        current_page_rows = 0
-      end
-
-      current_page_programs << prog_data[:program]
-      current_page_rows += prog_data[:row_count]
-    end
-
-    # Add last page if not empty
-    pages << current_page_programs unless current_page_programs.empty?
-
-    # Return programs for requested page
-    total_pages = [pages.size, 1].max
-    page_index = (page - 1).clamp(0, total_pages - 1)
-    [pages[page_index] || [], total_pages]
-  end
-
-  # Sort programs by event order from phase4
-  # Individual events come first (sorted by session_order, event_order), then relays
-  #
-  # @param programs [Array<Hash>] programs from phase5 JSON
-  # @param phase4_path [String] path to phase4 JSON file
-  # @return [Array<Hash>] sorted programs
-  def sort_programs_by_event_order(programs, phase4_path)
-    return programs unless File.exist?(phase4_path)
-
-    # Build event order map: {session_order => {event_key => event_order}}
-    sessions = PhaseFileManager.new(phase4_path).data['sessions'] || []
-
-    event_order_map = {}
-    sessions.each do |session|
-      session_order = session['session_order'].to_i
-      event_order_map[session_order] ||= {}
-      (session['events'] || []).each do |event|
-        event_order_map[session_order][event['key']] = event['event_order'].to_i
-      end
-    end
-
-    # Sort programs: individual first, then relay; within each group by session_order and event_order
-    programs.sort_by do |prog|
-      session_order = prog['session_order'].to_i
-      event_code = prog['event_code'].to_s
-      event_order = event_order_map.dig(session_order, event_code) || 9999
-      is_relay = prog['relay'] ? 1 : 0
-
-      [is_relay, session_order, event_order, prog['category_code'].to_s, prog['gender_code'].to_s]
-    end
-  rescue JSON::ParserError
-    programs
-  end
-
-  # Load minimal data needed for filtering programs
-  # Loads only what's necessary to detect issues without loading full display data
-  #
-  # @param source_path [String] source file path
-  # @return [Hash] { relay_swimmers_by_parent_key:, swimmers_by_id:, swimmers_by_key:, badges_by_id:, affiliations_by_id:, season_id: }
-  def load_filter_data(source_path, staging)
-    # Load phase3 data for unmatched swimmer lookup
-    # Index by both full key AND partial key for flexible matching
-    phase3_path = default_phase_path_for(source_path, 3)
-    swimmers_by_key = {}
-    if File.exist?(phase3_path)
-      swimmers = PhaseFileManager.new(phase3_path).data['swimmers'] || []
-      swimmers.each do |s|
-        # Index by full key
-        swimmers_by_key[s['key']] = s
-        # Also index by partial key (gender stripped, team preserved) for flexible lookup
-        partial_key = normalize_swimmer_key_for_lookup(s['key'])
-        next unless partial_key
-
-        swimmers_by_key[partial_key] = s
-        # And without leading pipe
-        swimmers_by_key[partial_key.sub(/^\|/, '')] = s
-      end
-    end
-
-    # Relay swimmers grouped by parent key (from the shared staging rows)
-    relay_swimmers_by_parent_key = staging[:relay_swimmers].group_by(&:parent_import_key)
-
-    # Load swimmers by ID for BOTH individual AND relay results
-    individual_swimmer_ids = staging[:mirs].filter_map(&:swimmer_id).uniq
-    relay_swimmer_ids = staging[:relay_swimmers].filter_map(&:swimmer_id).uniq
-    all_swimmer_ids = (individual_swimmer_ids + relay_swimmer_ids).uniq
-    swimmers_by_id = GogglesDb::Swimmer.where(id: all_swimmer_ids).index_by(&:id)
-
-    badge_ids = staging[:mirs].filter_map(&:badge_id) +
-                staging[:relay_swimmers].filter_map(&:badge_id)
-    badges_by_id = GogglesDb::Badge.where(id: badge_ids.uniq).index_by(&:id)
-
-    affiliation_ids = staging[:mrrs].filter_map(&:team_affiliation_id)
-    affiliations_by_id = GogglesDb::TeamAffiliation.where(id: affiliation_ids.uniq).index_by(&:id)
-
-    season_id = (PhaseFileManager.new(default_phase_path_for(source_path, 1)).data['season_id'] if File.exist?(default_phase_path_for(source_path, 1)))
-
-    # Team IDs that already have a TeamAffiliation in the current season,
-    # preloaded once so result_has_issues? doesn't run an EXISTS? per result.
-    mir_team_ids = staging[:mirs].filter_map(&:team_id).uniq
-    team_ids_with_affiliation =
-      if season_id.to_i.positive? && mir_team_ids.any?
-        GogglesDb::TeamAffiliation
-          .where(team_id: mir_team_ids, season_id: season_id.to_i)
-          .distinct
-          .pluck(:team_id)
-          .to_set
-      else
-        Set.new
-      end
-
-    {
-      relay_swimmers_by_parent_key: relay_swimmers_by_parent_key,
-      swimmers_by_id: swimmers_by_id,
-      swimmers_by_key: swimmers_by_key,
-      badges_by_id: badges_by_id,
-      affiliations_by_id: affiliations_by_id,
-      team_ids_with_affiliation: team_ids_with_affiliation,
-      season_id: season_id
-    }
-  end
-
-  # Detect programs with issues (missing swimmer data, unmatched swimmers, etc.)
-  # Run server-side BEFORE pagination to provide accurate issue counts
-  #
-  # @param programs [Array<Hash>] all programs from phase5 JSON
-  # @param filter_data [Hash] data needed for filtering
-  # @param staging [Hash] buckets from load_staging_rows
-  # @return [Array<Hash>] programs with at least one result with issues
-  def detect_programs_with_issues(programs, filter_data, staging)
-    relay_swimmers_by_parent_key = filter_data[:relay_swimmers_by_parent_key]
-    swimmers_by_id = filter_data[:swimmers_by_id]
-    swimmers_by_key = filter_data[:swimmers_by_key]
-    badges_by_id = filter_data[:badges_by_id] || {}
-    affiliations_by_id = filter_data[:affiliations_by_id] || {}
-    team_ids_with_affiliation = filter_data[:team_ids_with_affiliation]
-    season_id = filter_data[:season_id]
-
-    programs.select do |prog|
-      next true if prog['gender_code'].blank?
-
-      program_key = "#{prog['session_order']}-#{prog['event_code']}-#{prog['category_code']}-#{prog['gender_code']}"
-
-      if prog['relay']
-        # Check if any relay results in this program have issues
-        relay_results = staging[:mrrs_by_program][program_key] || []
-
-        relay_results.any? do |mrr|
-          issue_info = relay_result_has_issues?(
-            mrr,
-            relay_swimmers_by_key: relay_swimmers_by_parent_key,
-            swimmers_by_id: swimmers_by_id,
-            swimmers_by_key: swimmers_by_key,
-            badges_by_id: badges_by_id,
-            affiliations_by_id: affiliations_by_id,
-            season_id: season_id
-          )
-          issue_info[:has_issues]
-        end
-      else
-        # Check if any individual results in this program have issues
-        individual_results = staging[:mirs_by_program][program_key] || []
-
-        individual_results.any? do |mir|
-          result_has_issues?(
-            mir,
-            swimmers_by_id: swimmers_by_id,
-            swimmers_by_key: swimmers_by_key,
-            badges_by_id: badges_by_id,
-            season_id: season_id,
-            team_ids_with_affiliation: team_ids_with_affiliation
-          )
-        end
-      end
-    end
-  end
-
-  # Check if an individual result has issues.
-  # meeting_program_id may be nil for NEW programs, but all other links must be resolved.
-  # Issues include:
-  #   - missing program gender in meeting_program_key
-  #   - missing swimmer/team/badge IDs
-  #   - badge/team/swimmer incoherence
-  #   - missing team affiliation for current season (when season is known)
-  #   - matched swimmer missing gender or year of birth
-  #
-  # @param mir [DataImportMeetingIndividualResult] the individual result to check
-  # @param swimmers_by_id [Hash] swimmers indexed by ID
-  # @param swimmers_by_key [Hash] swimmers indexed by key (from phase3)
-  # @return [Boolean] true if result has issues
-  def result_has_issues?(mir, swimmers_by_id:, swimmers_by_key: {}, badges_by_id: {},
-                         season_id: nil, team_ids_with_affiliation: nil)
-    return true if program_key_missing_gender?(mir.meeting_program_key)
-
-    # meeting_program_id may be nil for NEW programs; remaining links are valid
-    # when they are either already bound by ID or solvable via keys.
-    swimmer_resolvable = swimmer_link_resolvable?(
-      swimmer_id: mir.swimmer_id,
-      swimmer_key: mir.swimmer_key,
-      swimmers_by_key: swimmers_by_key
-    )
-    team_resolvable = team_link_resolvable?(team_id: mir.team_id, team_key: mir.team_key)
-    badge_resolvable = individual_badge_link_resolvable?(mir, swimmer_resolvable: swimmer_resolvable, team_resolvable: team_resolvable)
-    return true unless swimmer_resolvable && team_resolvable && badge_resolvable
-
-    if mir.badge_id.to_i.positive?
-      badge = badges_by_id[mir.badge_id]
-      return true unless badge && badge.swimmer_id == mir.swimmer_id && badge.team_id == mir.team_id
-    end
-
-    if season_id.to_i.positive? && mir.team_id.to_i.positive?
-      affiliation_exists =
-        if team_ids_with_affiliation
-          team_ids_with_affiliation.include?(mir.team_id)
-        else
-          GogglesDb::TeamAffiliation.exists?(team_id: mir.team_id, season_id: season_id.to_i)
-        end
-      # team_affiliation_id is not persisted on data_import MIR rows: if missing in DB,
-      # this is still considered solvable (new team affiliation) when team binding is solvable.
-      return true unless affiliation_exists || team_resolvable
-    end
-
-    # Matched swimmer - check if missing gender or year
-    swimmer = swimmers_by_id[mir.swimmer_id]
-    return false unless swimmer # If swimmer not found in lookup, skip (data loading issue)
-
-    swimmer.gender_type_id.nil? || swimmer.year_of_birth.nil?
-  end
-
-  def source_meeting_date(source_path)
-    source_data = parsed_source_json(source_path)
-    raw_date = source_data['dates'].to_s.split(',').first.presence || source_data['meeting_date']
-    Date.parse(raw_date.to_s).iso8601 if raw_date.present?
-  rescue StandardError
-    nil
-  end
-
-  def invalidate_category_dependent_artifacts(source_path)
-    phase_paths = [3, 4, 5].map { |phase| default_phase_path_for(source_path, phase) }
-    phase_paths.each { |path| FileUtils.rm_f(path) }
-
-    tables = [
-      GogglesDb::DataImportMeetingIndividualResult,
-      GogglesDb::DataImportLap,
-      GogglesDb::DataImportMeetingRelayResult,
-      GogglesDb::DataImportMeetingRelaySwimmer,
-      GogglesDb::DataImportRelayLap
-    ]
-    deleted_rows = tables.sum { |table| table.where(phase_file_path: source_path).delete_all }
-
-    { phase_files: phase_paths, deleted_temp_rows: deleted_rows }
-  end
-
-  def category_recompute_summary(result)
-    I18n.t(
-      'data_import.messages.category_recompute_success',
-      swimmers_processed: result[:swimmers_processed],
-      swimmer_categories_changed: result[:swimmer_categories_changed],
-      result_categories_changed: result[:result_categories_changed],
-      skipped_categories: result[:skipped_categories].size,
-      backup_path: result[:backup_path] || I18n.t('data_import.messages.category_recompute_no_backup')
-    )
-  end
-
   # Broadcast progress updates via ActionCable for real-time UI feedback
   # Used during long-running operations (team/swimmer/result processing)
   def broadcast_progress(message, current, total)
