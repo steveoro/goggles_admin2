@@ -193,7 +193,7 @@ RSpec.describe DataFixController do
         post commit_phase6_path(file_path: source_file)
 
         expect(response).to redirect_to(review_sessions_path(file_path: source_file, phase_v2: 1))
-        expect(flash[:error]).to include('Invalid meeting structure')
+        expect(flash[:error]).to include(I18n.t('data_import.data_fix.invalid_meeting_structure', errors: '', more: '').split(':').first)
         expect(GogglesDb::Meeting.find_by(description: 'Manifest Spec Meeting')).to be_nil
       end
 

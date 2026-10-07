@@ -156,19 +156,19 @@
             %span.ms-2.text-muted= "(#{@unmatched_parent_count} unmatched parent rows)"
         %div.d-flex.gap-2
           - if @filter_new_active
-            = link_to review_results_path(file_path: @file_path, phase5_v2: 1), class: 'btn btn-sm btn-outline-secondary' do
+            = link_to review_results_path(file_path: @file_path, phase5_v2: 1, filter_issues: @filter_active ? '1' : '0'), class: 'btn btn-sm btn-outline-secondary' do
               %i.fa.fa-times
               Show All
           - elsif !@filter_unmatched_active
-            = link_to review_results_path(file_path: @file_path, phase5_v2: 1, filter_new: '1'), class: 'btn btn-sm btn-info' do
+            = link_to review_results_path(file_path: @file_path, phase5_v2: 1, filter_new: '1', filter_issues: @filter_active ? '1' : '0'), class: 'btn btn-sm btn-info' do
               %i.fa.fa-filter
               Show New Only
           - if @filter_unmatched_active
-            = link_to review_results_path(file_path: @file_path, phase5_v2: 1), class: 'btn btn-sm btn-outline-secondary' do
+            = link_to review_results_path(file_path: @file_path, phase5_v2: 1, filter_issues: @filter_active ? '1' : '0'), class: 'btn btn-sm btn-outline-secondary' do
               %i.fa.fa-times
               Show All
           - elsif !@filter_new_active
-            = link_to review_results_path(file_path: @file_path, phase5_v2: 1, filter_unmatched: '1'), class: 'btn btn-sm btn-warning' do
+            = link_to review_results_path(file_path: @file_path, phase5_v2: 1, filter_unmatched: '1', filter_issues: @filter_active ? '1' : '0'), class: 'btn btn-sm btn-warning' do
               %i.fa.fa-plus-circle
               Show Only (+) Rows
 

@@ -113,7 +113,7 @@ class PullController < FileListController
     end
 
     season_id = File.dirname(file_params['file_path']).split('/').last.to_i
-    season_id = 212 unless season_id.positive?
+    season_id = SeasonDefaults.default_season_id unless season_id.positive?
 
     call_crawler_api(
       'pull_results',

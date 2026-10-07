@@ -44,7 +44,7 @@ module DataFix
       end
 
       if missing_phases.any?
-        flash[:error] = "Missing phase files: #{missing_phases.join(', ')}. Please complete all phases first."
+        flash[:error] = I18n.t('data_import.data_fix.missing_phase_files', list: missing_phases.join(', '))
         redirect_to(review_results_path(file_path: file_path, phase5_v2: 1)) && return
       end
 
@@ -52,9 +52,10 @@ module DataFix
         # Structure-only commit: meeting & sessions must be valid; results are not required.
         structure_report = Import::StructureValidator.new(phase1_data: PhaseFileManager.new(phase1_path).data)
         unless structure_report.valid?
-          flash[:error] = "Invalid meeting structure: #{structure_report.error_messages.first(3).join(' • ')}" \
-                          "#{" (+#{structure_report.error_messages.size - 3} more)" if structure_report.error_messages.size > 3} " \
-                          'Fix the highlighted fields and save the Step 1 forms before committing.'
+          error_count = structure_report.error_messages.size
+          flash[:error] = I18n.t('data_import.data_fix.invalid_meeting_structure',
+                                 errors: structure_report.error_messages.first(3).join(' • '),
+                                 more: error_count > 3 ? " (+#{error_count - 3} more)" : '')
           redirect_to(review_sessions_path(file_path: file_path, phase_v2: 1)) && return
         end
 
@@ -64,7 +65,7 @@ module DataFix
       else
         # Validate Phase 5 data exists in data_import_* tables
         if mir_count.zero? && mrr_count.zero?
-          flash[:error] = 'No Phase 5 data found. Please rescan Phase 5 (Results) before committing.' # rubocop:disable Rails/I18nLocaleTexts
+          flash[:error] = I18n.t('data_import.data_fix.no_phase5_data')
           redirect_to(review_results_path(file_path: file_path, phase5_v2: 1, rescan: 1)) && return
         end
       end

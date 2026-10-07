@@ -38,7 +38,10 @@ module DataFix
     # absent. Resolution must be skipped for them: resolve_working_source_path
     # can run category normalization (deleting staged phase files and
     # data_import rows), and the legacy redirect must fire without side effects.
-    LEGACY_REDIRECT_FLAGS = { 'review_teams' => 'phase2_v2', 'review_swimmers' => 'phase3_v2' }.freeze
+    LEGACY_REDIRECT_FLAGS = {
+      'review_sessions' => 'phase_v2', 'review_teams' => 'phase2_v2', 'review_swimmers' => 'phase3_v2',
+      'review_events' => 'phase4_v2', 'review_results' => 'phase5_v2'
+    }.freeze
 
     # Expose issue detection helpers to views
     helper_method :swimmer_has_missing_data?, :relay_result_has_issues?, :phase3_conflict_hint?
@@ -148,9 +151,12 @@ module DataFix
       )
     end
 
+    # Cookies are scoped by season directory + file basename so that same-named
+    # sources staged under different seasons keep separate filter/page state.
     def data_fix_review_cookie_scope(prefix:, file_path:)
+      season_dir = File.basename(File.dirname(file_path.to_s))
       basename = File.basename(file_path.to_s, File.extname(file_path.to_s))
-      sanitized = basename.gsub(/[^a-zA-Z0-9_-]/, '_').slice(0, 60)
+      sanitized = "#{season_dir}-#{basename}".gsub(/[^a-zA-Z0-9_-]/, '_').slice(0, 60)
       "data_fix_#{prefix}_#{sanitized}"
     end
 

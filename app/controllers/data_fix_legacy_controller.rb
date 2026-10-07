@@ -850,11 +850,11 @@ class DataFixLegacyController < ApplicationController
 
   # Returns a valid Season assuming current +@file_path+ contains the season ID as
   # last folder of the path (i.e.: "any/path/:season_id/any_file_name.ext")
-  # Defaults to season ID 212 if no valid integer was found in the last folder of the path.
+  # Defaults to the latest MASFIN season if no valid integer was found in the last folder of the path.
   # Sets @season with the specific Season retrieved.
   def detect_season_from_pathname
     season_id = File.dirname(@file_path).split('/').last.to_i
-    season_id = 212 unless season_id.positive?
+    season_id = SeasonDefaults.default_season_id unless season_id.positive?
     @season = GogglesDb::Season.find(season_id)
   end
 

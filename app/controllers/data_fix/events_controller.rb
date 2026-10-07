@@ -4,7 +4,7 @@ module DataFix
   # EventsController: Phase 4 (events) review & edit actions, plus the results chunk endpoint.
   class EventsController < BaseController
     def review_events
-      return if params[:phase4_v2].blank?
+      redirect_to(review_events_legacy_path(request.query_parameters)) && return if params[:phase4_v2].blank?
 
       source_path = @source_path
       season = source_resolver.detect_season_from_pathname(source_path)
@@ -135,7 +135,7 @@ module DataFix
       end
 
       if session_index.negative? || session_index >= sessions.size
-        flash[:warning] = "Invalid session index: #{session_index}"
+        flash[:warning] = I18n.t('data_import.data_fix.invalid_session_index', index: session_index)
         redirect_to(review_events_path(file_path:, phase4_v2: 1)) && return
       end
 
@@ -145,7 +145,7 @@ module DataFix
 
       events = Array(source_session['events'])
       if event_index.negative? || event_index >= events.size
-        flash[:warning] = "Invalid event index: #{event_index}"
+        flash[:warning] = I18n.t('data_import.data_fix.invalid_event_index', index: event_index)
         redirect_to(review_events_path(file_path:, phase4_v2: 1)) && return
       end
 
@@ -186,7 +186,7 @@ module DataFix
         # Validate target session exists in Phase 1 by session_order
         target_phase1_session = phase1_sessions.find { |s| s['session_order'].to_i == target_session_order }
         unless target_phase1_session
-          flash[:warning] = "Invalid target session order: #{target_session_order}"
+          flash[:warning] = I18n.t('data_import.data_fix.invalid_target_session_order', order: target_session_order)
           redirect_to(review_events_path(file_path:, phase4_v2: 1)) && return
         end
 
@@ -255,7 +255,7 @@ module DataFix
 
       # Get the target session from Phase 1 by index
       if session_index.negative? || session_index >= phase1_sessions.size
-        flash[:warning] = "Invalid session index: #{session_index}"
+        flash[:warning] = I18n.t('data_import.data_fix.invalid_session_index', index: session_index)
         redirect_to(review_events_path(file_path:, phase4_v2: 1)) && return
       end
 
@@ -351,13 +351,13 @@ module DataFix
       sessions = Array(data['sessions'])
 
       if session_index.negative? || session_index >= sessions.size
-        flash[:warning] = "Invalid session index: #{session_index}"
+        flash[:warning] = I18n.t('data_import.data_fix.invalid_session_index', index: session_index)
         redirect_to(review_events_path(file_path:, phase4_v2: 1)) && return
       end
 
       events = Array(sessions[session_index]['events'])
       if event_index.negative? || event_index >= events.size
-        flash[:warning] = "Invalid event index: #{event_index}"
+        flash[:warning] = I18n.t('data_import.data_fix.invalid_event_index', index: event_index)
         redirect_to(review_events_path(file_path:, phase4_v2: 1)) && return
       end
 

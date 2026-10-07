@@ -4,7 +4,7 @@ module DataFix
   # ResultsController: Phase 5 (results) review, per-row overwrite metadata and result verification endpoints.
   class ResultsController < BaseController
     def review_results
-      return if params[:phase5_v2].blank?
+      redirect_to(review_results_legacy_path(request.query_parameters)) && return if params[:phase5_v2].blank?
 
       source_path = @source_path
       season = source_resolver.detect_season_from_pathname(source_path)
@@ -89,9 +89,11 @@ module DataFix
         @programs_with_issues = DataFix::IssueDetector.detect_programs_with_issues(all_programs, filter_data, staging)
         @issue_count = @programs_with_issues.size
 
-        # Server-side filtering: only show programs with issues if filter is active
-        # Auto-activate filter if there are issues and no explicit filter param
-        @filter_active = params[:filter_issues] == '1' || (@issue_count.positive? && !params[:filter_issues].to_i.zero?)
+        # Server-side filtering: only show programs with issues if filter is active.
+        # An explicit filter_issues param always wins; when absent, the filter
+        # auto-activates on first render whenever issues are detected (the
+        # operator can still toggle it off with filter_issues=0).
+        @filter_active = params[:filter_issues].present? ? params[:filter_issues] == '1' : @issue_count.positive?
         all_programs = @programs_with_issues if @filter_active && @issue_count.positive?
 
         # Filter to show only programs with any new (will-be-created) rows:

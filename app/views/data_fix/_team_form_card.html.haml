@@ -104,73 +104,73 @@
                   %small.form-text.text-muted
                     Select a match from the list to quickly populate team fields via AutoComplete.
 
-                -# Row 1: Team AutoComplete + editable_name + hidden ID field
-                -# Note: base_dom_id uses index for unique DOM IDs; hidden field uses flat name for form submission
-                .row
-                  .col-6
-                    / -- TEAM FORM CARD --
-                    = hidden_field_tag 'team[team_id]', team_id, id: "team_#{team_index}_id_field"
-                    = render(LegacyAutoCompleteComponent.new(show_top_labels: true,
-                                                       base_dom_id: "team_#{team_index}", base_api_url: api_url,
-                                                       default_value: team_id,
-                                                       detail_endpoint: 'team', base_name: 'team', label_column: 'editable_name',
-                                                       search_endpoint: 'teams', search_column: 'name',
-                                                       target3_dom_id: "team_#{team_index}_editable_name", target3_column: 'editable_name',
-                                                       target4_dom_id: "team_#{team_index}_city_id_field", target4_column: 'city_id',
-                                                       target5_dom_id: "team_#{team_index}_name", target5_column: 'name',
-                                                       target6_dom_id: "team_#{team_index}_name_variations", target6_column: 'name_variations',
-                                                       target7_dom_id: "team_#{team_index}_id_field", target7_column: 'id',
-                                                       jwt: current_user.jwt))
-                    %small.form-text.text-muted Clear search to unmatch team
-                  .col-6
-                    .form-group
-                      = label_tag "team_#{team_index}_editable_name", 'editable_name'
-                      = text_field_tag 'team[editable_name]', editable_name,
-                                      id: "team_#{team_index}_editable_name",
-                                      class: 'form-control', required: true, placeholder: 'editable_name'
+          -# Row 1: Team AutoComplete + editable_name + hidden ID field
+          -# Note: base_dom_id uses index for unique DOM IDs; hidden field uses flat name for form submission
+          .row
+            .col-6
+              / -- TEAM FORM CARD --
+              = hidden_field_tag 'team[team_id]', team_id, id: "team_#{team_index}_id_field"
+              = render(LegacyAutoCompleteComponent.new(show_top_labels: true,
+                                                 base_dom_id: "team_#{team_index}", base_api_url: api_url,
+                                                 default_value: team_id,
+                                                 detail_endpoint: 'team', base_name: 'team', label_column: 'editable_name',
+                                                 search_endpoint: 'teams', search_column: 'name',
+                                                 target3_dom_id: "team_#{team_index}_editable_name", target3_column: 'editable_name',
+                                                 target4_dom_id: "team_#{team_index}_city_id_field", target4_column: 'city_id',
+                                                 target5_dom_id: "team_#{team_index}_name", target5_column: 'name',
+                                                 target6_dom_id: "team_#{team_index}_name_variations", target6_column: 'name_variations',
+                                                 target7_dom_id: "team_#{team_index}_id_field", target7_column: 'id',
+                                                 jwt: current_user.jwt))
+              %small.form-text.text-muted Clear search to unmatch team
+            .col-6
+              .form-group
+                = label_tag "team_#{team_index}_editable_name", 'editable_name'
+                = text_field_tag 'team[editable_name]', editable_name,
+                                id: "team_#{team_index}_editable_name",
+                                class: 'form-control', required: true, placeholder: 'editable_name'
 
-                -# Row 2: name + name_variations
-                .row
-                  .col-5
-                    .form-group
-                      = label_tag "team_#{team_index}_name", 'name'
-                      = text_field_tag 'team[name]', team_name,
-                                      id: "team_#{team_index}_name",
-                                      class: 'form-control', required: true, placeholder: 'name'
-                  .col-7
-                    .form-group
-                      = label_tag "team_#{team_index}_name_variations", 'name_variations'
-                      = text_field_tag 'team[name_variations]', name_variations,
-                                      id: "team_#{team_index}_name_variations",
-                                      class: 'form-control', placeholder: 'name_variations (pipe-separated)'
-                
-                -# Row 3: City AutoComplete + hidden city_id field
-                = hidden_field_tag 'team[city_id]', city_id, id: "team_#{team_index}_city_id_field"
-                = render(LegacyAutoCompleteComponent.new(show_top_labels: true,
-                                                   base_dom_id: "team_#{team_index}_city", base_api_url: api_url,
-                                                   default_value: city_id,
-                                                   detail_endpoint: 'city', base_name: 'city', label_column: 'area',
-                                                   search_endpoint: 'cities', search_column: 'name',
-                                                   target2_field: 'area', target2_column: 'area',
-                                                   target2_class: 'offset-lg-2 offset-md-3 offset-sm-3 col-md-4 col-sm-4 my-1',
-                                                   target3_dom_id: "team_#{team_index}_city_id_field", target3_column: 'id',
-                                                   jwt: current_user.jwt))
-                %small.form-text.text-muted.ml-3 Clear search to unmatch city
-                -# Save button + Verify button
-                .form-group.mt-3.d-flex.align-items-center
-                  = submit_tag(t('data_import.generic_save_btn'),
-                               class: 'btn btn-primary', 'aria-label': 'Save',
-                               data: { turbo_confirm: t('data_import.btn_save_confirm') })
-                  - if has_match
-                    %button.btn.btn-outline-info.btn-sm.ml-2.verify-team-btn{ type: 'button', title: 'Cross-validate team via swimmer badges from Phase 3',
-                                                                              onclick: 'event.preventDefault();',
-                                                                              data: { file_path: file_path, team_key: team_key, candidate_team_id: team_id, target: "#team-verify-#{team_index}" } }
-                      %i.fa.fa-search
-                      Verify via swimmers
-                -# Team verification panel (expanded via AJAX)
-                - if has_match
-                  .collapse{ id: "team-verify-#{team_index}" }
-                    .bg-light.border.border-info.p-2.mt-2
-                      .text-center.text-muted
-                        %i.fa.fa-spinner.fa-spin
-                        Checking swimmer badges...
+          -# Row 2: name + name_variations
+          .row
+            .col-5
+              .form-group
+                = label_tag "team_#{team_index}_name", 'name'
+                = text_field_tag 'team[name]', team_name,
+                                id: "team_#{team_index}_name",
+                                class: 'form-control', required: true, placeholder: 'name'
+            .col-7
+              .form-group
+                = label_tag "team_#{team_index}_name_variations", 'name_variations'
+                = text_field_tag 'team[name_variations]', name_variations,
+                                id: "team_#{team_index}_name_variations",
+                                class: 'form-control', placeholder: 'name_variations (pipe-separated)'
+          
+          -# Row 3: City AutoComplete + hidden city_id field
+          = hidden_field_tag 'team[city_id]', city_id, id: "team_#{team_index}_city_id_field"
+          = render(LegacyAutoCompleteComponent.new(show_top_labels: true,
+                                             base_dom_id: "team_#{team_index}_city", base_api_url: api_url,
+                                             default_value: city_id,
+                                             detail_endpoint: 'city', base_name: 'city', label_column: 'area',
+                                             search_endpoint: 'cities', search_column: 'name',
+                                             target2_field: 'area', target2_column: 'area',
+                                             target2_class: 'offset-lg-2 offset-md-3 offset-sm-3 col-md-4 col-sm-4 my-1',
+                                             target3_dom_id: "team_#{team_index}_city_id_field", target3_column: 'id',
+                                             jwt: current_user.jwt))
+          %small.form-text.text-muted.ml-3 Clear search to unmatch city
+          -# Save button + Verify button
+          .form-group.mt-3.d-flex.align-items-center
+            = submit_tag(t('data_import.generic_save_btn'),
+                         class: 'btn btn-primary', 'aria-label': 'Save',
+                         data: { turbo_confirm: t('data_import.btn_save_confirm') })
+            - if has_match
+              %button.btn.btn-outline-info.btn-sm.ml-2.verify-team-btn{ type: 'button', title: 'Cross-validate team via swimmer badges from Phase 3',
+                                                                        onclick: 'event.preventDefault();',
+                                                                        data: { file_path: file_path, team_key: team_key, candidate_team_id: team_id, target: "#team-verify-#{team_index}" } }
+                %i.fa.fa-search
+                Verify via swimmers
+          -# Team verification panel (expanded via AJAX)
+          - if has_match
+            .collapse{ id: "team-verify-#{team_index}" }
+              .bg-light.border.border-info.p-2.mt-2
+                .text-center.text-muted
+                  %i.fa.fa-spinner.fa-spin
+                  Checking swimmer badges...

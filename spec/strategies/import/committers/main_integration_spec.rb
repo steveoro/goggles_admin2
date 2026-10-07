@@ -179,6 +179,32 @@ RSpec.describe Import::Committers::Main, type: :strategy do
     end
   end
 
+  describe 'commit atomicity' do
+    # A failure inside any commit phase must roll back every entity written by
+    # the earlier phases, leaving the DB exactly as it was before commit_all.
+    it 'rolls back all entity writes when a mid-commit phase raises' do
+      # tmp log path keeps the fixture directory clean (the logger always writes in `ensure`)
+      atomic_committer = described_class.new(
+        source_path:, phase1_path:, phase2_path:, phase3_path:, phase4_path:, phase5_path:,
+        log_path: File.join(Dir.mktmpdir, 'commit.log')
+      )
+      allow(atomic_committer).to receive(:commit_phase2_entities)
+        .and_raise(StandardError, 'forced mid-commit failure')
+
+      counts_before = [GogglesDb::Meeting, GogglesDb::MeetingSession,
+                       GogglesDb::SwimmingPool, GogglesDb::City,
+                       GogglesDb::Team, GogglesDb::TeamAffiliation].map(&:count)
+
+      expect { atomic_committer.commit_all }.to raise_error('forced mid-commit failure')
+
+      counts_after = [GogglesDb::Meeting, GogglesDb::MeetingSession,
+                      GogglesDb::SwimmingPool, GogglesDb::City,
+                      GogglesDb::Team, GogglesDb::TeamAffiliation].map(&:count)
+      expect(counts_after).to eq(counts_before)
+      expect(atomic_committer.sql_log.join).to include('ROLLBACK;')
+    end
+  end
+
   describe 'stats tracking' do
     it 'maintains stats counters' do
       # Verify stats hash exists and has expected keys

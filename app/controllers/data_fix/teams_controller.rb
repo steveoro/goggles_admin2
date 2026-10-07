@@ -275,7 +275,7 @@ module DataFix
       # Find and remove team by key (not index, since filtering changes indices)
       team_index = teams.find_index { |t| t['key'] == team_key }
       if team_index.nil?
-        flash[:warning] = "Team not found: #{team_key}"
+        flash[:warning] = I18n.t('data_import.data_fix.team_not_found', key: team_key)
         redirect_to(review_teams_path(file_path:, phase2_v2: 1)) && return
       end
 

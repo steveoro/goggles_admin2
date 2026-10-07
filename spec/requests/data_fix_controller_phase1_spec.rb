@@ -1045,5 +1045,24 @@ RSpec.describe DataFixController do
         expect(matches.first['description']).to eq(existing_meeting.description)
       end
     end
+
+    describe 'Phase 1 redirect to legacy' do
+      it 'redirects to legacy controller when phase_v2 param is absent' do
+        get review_sessions_path(file_path: source_file)
+
+        expect(response).to have_http_status(:redirect)
+        expect(response.location).to include('/data_fix_legacy/review_sessions')
+      end
+
+      it 'redirects without resolving the source path (no category normalization side effects)' do
+        allow(DataFix::SourceResolver).to receive(:new).and_call_original
+
+        get review_sessions_path(file_path: source_file)
+
+        expect(response).to have_http_status(:redirect)
+        expect(response.location).to include('/data_fix_legacy/review_sessions')
+        expect(DataFix::SourceResolver).not_to have_received(:new)
+      end
+    end
   end
 end
