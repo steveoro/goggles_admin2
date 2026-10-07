@@ -4,12 +4,12 @@ require 'rails_helper'
 
 RSpec.describe Import::Committers::Main, type: :strategy do
   let(:fixture_base) { 'sample-200RA-l4' }
-  let(:source_path) { Rails.root.join('spec', 'fixtures', 'import', "#{fixture_base}.json").to_s }
-  let(:phase1_path) { Rails.root.join('spec', 'fixtures', 'import', "#{fixture_base}-phase1.json").to_s }
-  let(:phase2_path) { Rails.root.join('spec', 'fixtures', 'import', "#{fixture_base}-phase2.json").to_s }
-  let(:phase3_path) { Rails.root.join('spec', 'fixtures', 'import', "#{fixture_base}-phase3.json").to_s }
-  let(:phase4_path) { Rails.root.join('spec', 'fixtures', 'import', "#{fixture_base}-phase4.json").to_s }
-  let(:phase5_path) { Rails.root.join('spec', 'fixtures', 'import', "#{fixture_base}-phase5.json").to_s }
+  let(:source_path) { file_fixture("import/#{fixture_base}.json").to_s }
+  let(:phase1_path) { file_fixture("import/#{fixture_base}-phase1.json").to_s }
+  let(:phase2_path) { file_fixture("import/#{fixture_base}-phase2.json").to_s }
+  let(:phase3_path) { file_fixture("import/#{fixture_base}-phase3.json").to_s }
+  let(:phase4_path) { file_fixture("import/#{fixture_base}-phase4.json").to_s }
+  let(:phase5_path) { file_fixture("import/#{fixture_base}-phase5.json").to_s }
 
   let(:committer) do
     described_class.new(
