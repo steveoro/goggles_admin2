@@ -473,7 +473,7 @@ RSpec.describe DataFixController do
         delete data_fix_purge_path
 
         expect(response).to redirect_to(home_index_path)
-        expect(flash[:notice]).to include('Clean slate completed')
+        expect(flash[:notice]).to include(I18n.t('data_import.data_fix.clean_slate_done', total: 0, tables: 0, sessions: 0).split(':').first)
         expect(GogglesDb::DataImportMeetingIndividualResult.count).to eq(0)
         expect(GogglesDb::DataImportLap.count).to eq(0)
         expect(GogglesDb::DataImportMeetingRelayResult.count).to eq(0)
@@ -566,7 +566,7 @@ RSpec.describe DataFixController do
       it 'renders the merge target detail line on review_results' do
         source_mir, _target_row = setup_merge_target!
 
-        get review_results_path(file_path: source_file_a, phase5_v2: 1)
+        get review_results_path(file_path: source_file_a, phase5_v2: 1, filter_issues: 0)
 
         expect(response).to be_successful
         expect(response.body).to include("MIR #{source_mir.id}")
@@ -574,6 +574,45 @@ RSpec.describe DataFixController do
         expect(response.body).to include('M25')
         expect(response.body).to include('M')
         expect(response.body).to include('#program-card-0')
+      end
+
+      it 'auto-activates the issue filter on first render when issues are detected' do
+        setup_merge_target!
+
+        get review_results_path(file_path: source_file_a, phase5_v2: 1)
+
+        expect(response).to be_successful
+        expect(response.body).to include('program(s) with issues detected')
+        expect(response.body).to include('Show All Programs')
+      end
+
+      it 'keeps the issue filter off when explicitly disabled' do
+        setup_merge_target!
+
+        get review_results_path(file_path: source_file_a, phase5_v2: 1, filter_issues: 0)
+
+        expect(response).to be_successful
+        expect(response.body).to include('Show Only Issues')
+        expect(response.body).not_to include('Show All Programs')
+      end
+    end
+
+    describe 'Phase 5 redirect to legacy' do
+      it 'redirects to legacy controller when phase5_v2 param is absent' do
+        get review_results_path(file_path: source_file_a)
+
+        expect(response).to have_http_status(:redirect)
+        expect(response.location).to include('/data_fix_legacy/review_results')
+      end
+
+      it 'redirects without resolving the source path (no category normalization side effects)' do
+        allow(DataFix::SourceResolver).to receive(:new).and_call_original
+
+        get review_results_path(file_path: source_file_a)
+
+        expect(response).to have_http_status(:redirect)
+        expect(response.location).to include('/data_fix_legacy/review_results')
+        expect(DataFix::SourceResolver).not_to have_received(:new)
       end
     end
   end

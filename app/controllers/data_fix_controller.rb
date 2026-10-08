@@ -28,11 +28,10 @@ class DataFixController < ApplicationController
     end
 
     total_deleted = deleted.values.sum
-    flash[:notice] =
-      "Clean slate completed: removed #{total_deleted} temp rows across #{deleted.size} tables " \
-      "(#{session_count} session(s) from phase_file_path)."
+    flash[:notice] = I18n.t('data_import.data_fix.clean_slate_done',
+                           total: total_deleted, tables: deleted.size, sessions: session_count)
   rescue StandardError => e
-    flash[:error] = "Clean slate failed: #{e.message}"
+    flash[:error] = I18n.t('data_import.data_fix.clean_slate_failed', message: e.message)
   ensure
     redirect_to(home_index_path)
   end

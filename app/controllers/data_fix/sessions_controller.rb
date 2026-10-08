@@ -4,7 +4,7 @@ module DataFix
   # SessionsController: Phase 1 (meeting + sessions) review & edit actions.
   class SessionsController < BaseController
     def review_sessions
-      return if params[:phase_v2].blank?
+      redirect_to(review_sessions_legacy_path(request.query_parameters)) && return if params[:phase_v2].blank?
 
       source_path = @source_path
       @season = source_resolver.detect_season_from_pathname(source_path)
@@ -298,7 +298,7 @@ module DataFix
 
       # Validate session_index
       if session_index.negative? || session_index >= sessions.size
-        flash[:warning] = "Invalid session index: #{session_index}"
+        flash[:warning] = I18n.t('data_import.data_fix.invalid_session_index', index: session_index)
         redirect_to(review_sessions_path(file_path:, phase_v2: 1)) && return
       end
 

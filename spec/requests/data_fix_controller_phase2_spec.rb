@@ -125,10 +125,11 @@ RSpec.describe DataFixController do
         )
         expect(response).to be_successful
         set_cookie_header = Array(response.headers['Set-Cookie']).join("\n")
-        expect(set_cookie_header).to include('data_fix_teams_test_source_filter_state=none')
-        expect(set_cookie_header).to include('data_fix_teams_test_source_q=Persist+Team')
-        expect(set_cookie_header).to include('data_fix_teams_test_source_teams_page=2')
-        expect(set_cookie_header).to include('data_fix_teams_test_source_teams_per_page=50')
+        scope = "#{File.basename(File.dirname(source_file))}-test_source"
+        expect(set_cookie_header).to include("data_fix_teams_#{scope}_filter_state=none")
+        expect(set_cookie_header).to include("data_fix_teams_#{scope}_q=Persist+Team")
+        expect(set_cookie_header).to include("data_fix_teams_#{scope}_teams_page=2")
+        expect(set_cookie_header).to include("data_fix_teams_#{scope}_teams_per_page=50")
         expect(response.body).to include('Persist Team 051')
         expect(response.body).not_to include('Persist Team 001')
 

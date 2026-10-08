@@ -144,7 +144,7 @@ module DataFix
       # Find swimmer by key (not index, since filtering changes indices)
       swimmer_index = swimmers.find_index { |s| s['key'] == swimmer_key }
       if swimmer_index.nil?
-        flash[:warning] = "Swimmer not found: #{swimmer_key}"
+        flash[:warning] = I18n.t('data_import.data_fix.swimmer_not_found', key: swimmer_key)
         redirect_to(review_swimmers_path(file_path:, phase3_v2: 1)) && return
       end
 
@@ -355,7 +355,7 @@ module DataFix
       # Find and remove swimmer by key (not index, since filtering changes indices)
       swimmer_index = swimmers.find_index { |s| s['key'] == swimmer_key }
       if swimmer_index.nil?
-        flash[:warning] = "Swimmer not found: #{swimmer_key}"
+        flash[:warning] = I18n.t('data_import.data_fix.swimmer_not_found', key: swimmer_key)
         redirect_to(review_swimmers_path(file_path:, phase3_v2: 1)) && return
       end
 

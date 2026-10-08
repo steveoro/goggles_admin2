@@ -127,10 +127,11 @@ RSpec.describe DataFixController do
         )
         expect(response).to be_successful
         set_cookie_header = Array(response.headers['Set-Cookie']).join("\n")
-        expect(set_cookie_header).to include('data_fix_swimmers_test_source_filter_state=none')
-        expect(set_cookie_header).to include('data_fix_swimmers_test_source_q=PersistSwimmer')
-        expect(set_cookie_header).to include('data_fix_swimmers_test_source_swimmers_page=2')
-        expect(set_cookie_header).to include('data_fix_swimmers_test_source_swimmers_per_page=50')
+        scope = "#{File.basename(File.dirname(source_file))}-test_source"
+        expect(set_cookie_header).to include("data_fix_swimmers_#{scope}_filter_state=none")
+        expect(set_cookie_header).to include("data_fix_swimmers_#{scope}_q=PersistSwimmer")
+        expect(set_cookie_header).to include("data_fix_swimmers_#{scope}_swimmers_page=2")
+        expect(set_cookie_header).to include("data_fix_swimmers_#{scope}_swimmers_per_page=50")
         expect(response.body).to include('PersistSwimmer051 Test')
         expect(response.body).not_to include('PersistSwimmer001 Test')
 
@@ -485,7 +486,7 @@ RSpec.describe DataFixController do
                         swimmer: { complete_name: 'Test' } }
 
         expect(response).to redirect_to(review_swimmers_path(file_path: source_file, phase3_v2: 1))
-        expect(flash[:warning]).to include('Swimmer not found')
+        expect(flash[:warning]).to include(I18n.t('data_import.data_fix.swimmer_not_found', key: 'UNKNOWN|KEY|999'))
       end
 
       it 'returns error for missing file_path' do
@@ -755,7 +756,7 @@ RSpec.describe DataFixController do
         delete data_fix_delete_swimmer_path, params: { file_path: source_file, swimmer_key: 'UNKNOWN|KEY|999' }
 
         expect(response).to redirect_to(review_swimmers_path(file_path: source_file, phase3_v2: 1))
-        expect(flash[:warning]).to include('Swimmer not found')
+        expect(flash[:warning]).to include(I18n.t('data_import.data_fix.swimmer_not_found', key: 'UNKNOWN|KEY|999'))
       end
 
       it 'returns error for missing file_path' do

@@ -12,8 +12,9 @@ module DataFix
   class SourceResolver
     def detect_season_from_pathname(file_path)
       season_id = File.dirname(file_path).split('/').last.to_i
-      season_id = 212 unless season_id.positive?
-      GogglesDb::Season.find(season_id)
+      return GogglesDb::Season.find(season_id) if season_id.positive?
+
+      SeasonDefaults.default_season
     end
 
     def detect_layout_type(file_path)

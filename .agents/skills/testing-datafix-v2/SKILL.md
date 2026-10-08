@@ -46,8 +46,8 @@ Then log in via `/users/sign_in` in the browser.
 
 ## Pitfalls when hand-writing URLs
 
-- Steps 2-5 require their own `phaseN_v2=1` param (`review_teams?…&phase2_v2=1`, `review_swimmers?…&phase3_v2=1`, `review_results?…&phase5_v2=1`); `phase_v2=1` alone is only for step 1. A bare URL **redirects to `data_fix_legacy`**, whose LT2 pipeline can rewrite the staged source file to `layoutType:2` and materialize `-lt4` working copies — afterwards the v2 wizard silently reads the `-lt4-*` phase set instead of `<src>-phaseN`. If that happens, restore the LT4 source + `rm *-lt4*.json`.
-- `review_teams`/`review_swimmers` have a safety rebuild: if the phase file's `teams`/`swimmers` array is empty, they rebuild and redirect — a source yielding 0 teams/0 swimmers (e.g. a relay-only LT4 source, since those solvers only read individual results) loops forever (`ERR_TOO_MANY_REDIRECTS`). Exercise solvers via runner `build!` instead of the step-tab refresh on such fixtures.
+- Steps 2-5 require their own `phaseN_v2=1` param (`review_teams?…&phase2_v2=1`, `review_swimmers?…&phase3_v2=1`, `review_results?…&phase5_v2=1`); `phase_v2=1` alone is only for step 1. A bare URL **redirects to `data_fix_legacy`** (all 5 review actions, query preserved, resolution skipped — the redirect itself is side-effect-free). Actually LANDING on the legacy page runs its `prepare_solver`, which rewrites the staged source in place (lt4→lt2 + `-lt4` working copies) — afterwards the v2 wizard silently reads the `-lt4-*` phase set instead of `<src>-phaseN`. To verify the redirect without the rewrite, use `curl -i -b cookies.txt` so the legacy page never renders; if it does land, restore the pristine file from `spec/fixtures/import/` + `rm *-lt4*.json`.
+- `review_teams`/`review_swimmers` have a safety rebuild: they rebuild + redirect only when the phase file's `teams`/`swimmers` key is **missing** — an **empty array is valid** (meeting-only/structure-only LT4 sources walk the wizard fine; see `spec/requests/data_fix_controller_structure_commit_spec.rb` "end-to-end walk"). First visit to each step always rebuilds when the phase file is absent and redirects back once — that is normal, not a loop; a loop only happens if the rebuilt file still lacks the key.
 
 ## Driving `Committers::Main` end-to-end on the fixtures
 
@@ -68,17 +68,22 @@ Fixture gaps to sanitize in /tmp copies (all in unchanged code — payload ids p
 - **Omnibox drops characters** when typing long URLs. Prefer `location.href = '...'` via `browser_console`, or click in-page step-tab links instead of typing URLs.
 - **Click coordinates can land ~50px below** where screenshots suggest — zoom into a region to verify a control's real position before clicking.
 
-## Team edit form is gated on fuzzy_matches (pre-existing view behavior)
+## Team edit form fuzzy_matches gate — FIXED (PR21+)
 
-`app/views/data_fix/_team_form_card.html.haml` wraps the ENTIRE edit form (all fields + save button) in `- if fuzzy_matches.present?`. Teams already matched to a `team_id` (`fuzzy_matches` = 0) render an EMPTY expandable panel — long-standing behavior, not a bug. To exercise `update_phase2_team`, pick a team whose phase2 entry has `fuzzy_matches` > 0 (check `d['data']['teams'][i]['fuzzy_matches']`). `_swimmer_form_card` does NOT have this gate — only its fuzzy-select dropdown row is conditional.
+Pre-PR21, `app/views/data_fix/_team_form_card.html.haml` wrapped the ENTIRE edit form in `- if fuzzy_matches.present?`, so matched teams rendered an EMPTY expandable panel. The gate is removed now: only the fuzzy-select row stays conditional and every card renders fields + save button. If you still see an empty panel, check which branch you're on. `_swimmer_form_card` never had this gate — only its fuzzy-select dropdown row is conditional.
 
 ## Commit button is issue-gated (UI-only check)
 
-On `review_results`, "Start SQL batch creation" renders with `disabled: @issue_count.to_i.positive?`; server-side `commit_phase6` does NOT re-check. On a test-DB dump most fixture links won't resolve, so the button is always disabled — enable it in the console (`btn.disabled = false`) and click to exercise the real route. Expect the commit to proceed and possibly fail partway (e.g. `TeamAffiliation ... team: deve esistere`) when a phase2 `fuzzy_matches` entry references a `team_id` absent from the test DB — the report page renders the error cleanly, and the commit is not atomic (partial persistence possible).
+On `review_results`, "Start SQL batch creation" renders with `disabled: @issue_count.to_i.positive?`; server-side `commit_phase6` does NOT re-check. On a test-DB dump most fixture links won't resolve, so the button is always disabled — enable it in the console (`btn.disabled = false`) and click to exercise the real route. Expect the commit to proceed and possibly fail partway (e.g. `TeamAffiliation ... team: deve esistere`) when a phase2 `fuzzy_matches` entry references a `team_id` absent from the test DB — the report page renders the error cleanly. Commit IS atomic: `commit_all` wraps all entity phases in one transaction and rolls back on any error — the INSERT/UPDATE statements visible in the generated `.sql` log are batch-file output, not persisted rows (regression-tested by a forced mid-commit raise spec).
 
 ## coded_name / teams_for_swimmer are format-gated AJAX endpoints
 
 The thin `DataFixController` actions 302 to `data_fix_legacy`, which requires a specific format or bounces to `/` (500 without goggles_api): `coded_name` needs `Accept: application/json` + `target` in `code|nick_name`; `teams_for_swimmer/:id` needs `Accept: text/vnd.turbo-stream.html`. Exercise them with `fetch(url, {headers: {Accept: ...}})` from `browser_console`.
+
+## Shell / DB access notes
+
+- Every fresh `exec` shell needs `export PATH="$HOME/.ruby-3.4.7/bin:$PATH"` or `gem`, `foreman`, `bin/dev`, `bin/rails` fail with `gem: not found`.
+- No local mysql client — use `docker exec goggles_mariadb mariadb -uroot goggles_development -e "..."` (dev DB name is `goggles_development`; test suite uses `goggles_test`).
 
 ## Phase timings
 
