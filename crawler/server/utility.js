@@ -382,12 +382,26 @@ const safeFindHTMLContent = (htmlElement, parentSelector, textSelector, searchTe
  * @param {String} url full URL for retrieving the file
  * @param {String} fileName the absolute full pathname for the stored file (assumed to be existing)
  */
-const downloadFile = (async (url, fileName) => {
-  const res = await fetch(url);
-  // DEBUG:
-  // console.log(`downloadFile('${url}', '${fileName}')`)
-  const fileStream = Fs.createWriteStream(fileName, { flags: 'w+' });
-  await finished(Readable.fromWeb(res.body).pipe(fileStream));
+const downloadFile = (async (url, fileName, retries = 2) => {
+  var lastError = null
+  for (var attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const res = await fetch(url, { signal: AbortSignal.timeout(30000) });
+      if (!res.ok) throw new Error(`HTTP ${res.status} fetching '${url}'`)
+      if (!res.body) throw new Error(`Empty response body fetching '${url}'`)
+      // DEBUG:
+      // console.log(`downloadFile('${url}', '${fileName}')`)
+      const fileStream = Fs.createWriteStream(fileName, { flags: 'w+' });
+      await finished(Readable.fromWeb(res.body).pipe(fileStream));
+      return true
+    } catch (err) {
+      lastError = err
+      if (attempt < retries) { // simple linear backoff between attempts
+        await new Promise(resolve => setTimeout(resolve, 2000 * (attempt + 1)))
+      }
+    }
+  }
+  throw lastError
 });
 //-----------------------------------------------------------------------------
 
