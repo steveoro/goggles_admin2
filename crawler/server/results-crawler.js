@@ -312,7 +312,7 @@ class ResultsCrawler {
     // console.log(meetingResult);
 
     console.log(`   Extracted data for '${meetingResult.name}' with ${meetingResult.sections ? meetingResult.sections.length : 0} sections/events.`)
-    this.saveResultOutputFile(calendarRow, meetingResult)
+    await this.saveResultOutputFile(calendarRow, meetingResult)
     if (totRowCount < 1) { // Add current calendar row to skipped ones if no nodes were available:
       skippedRows.push(calendarRow)
     }
@@ -381,7 +381,7 @@ class ResultsCrawler {
     // DEBUG
     // console.log("\r\n------------------------------[ meetingResult ]--------------------------------");
     // console.log(meetingResult);
-    this.saveResultOutputFile(outputRow, meetingResult)
+    await this.saveResultOutputFile(outputRow, meetingResult)
     if (arrayOfParams.length < 1) { // Add current calendar row to skipped ones if no nodes were available:
       skippedRows.push(outputRow)
     }
@@ -572,7 +572,7 @@ class ResultsCrawler {
    * @param {Object} calendarRow - the currently processed row from the CSV file
    * @param {Object} meetingObject - the object storing the whole meeting data
    */
-  saveResultOutputFile(calendarRow, meetingObject) {
+  async saveResultOutputFile(calendarRow, meetingObject) {
     const outFileName = this.getOutputJSONFilename(calendarRow)
     const destResultFolder = CrawlUtil.assertDestFolder(CrawlUtil.resultsNewFolder, this.seasonId)
     const destResultFilePath = `${destResultFolder}/${outFileName}.json`
@@ -590,13 +590,16 @@ class ResultsCrawler {
     CrawlUtil.updateStatus(`Saved "${outFileName}.json"`)
 
     // Fetch & safe resultsPdfURL + manifestURL when present:
+    // (download failures are logged and non-fatal, so a flaky CDN can't kill the whole run)
     if (meetingObject.resultsPdfURL) {
       console.log(`=> Saving PDF results '${destPDFFilePath}'`)
-      CrawlUtil.downloadFile(meetingObject.resultsPdfURL, destPDFFilePath)
+      await CrawlUtil.downloadFile(meetingObject.resultsPdfURL, destPDFFilePath)
+        .catch(err => console.error(`   *WARNING* results PDF fetch failed: ${err}`))
     }
     if (meetingObject.manifestURL) {
       console.log(`=> Saving PDF manifest '${destManifestFilePath}'`)
-      CrawlUtil.downloadFile(meetingObject.manifestURL, destManifestFilePath)
+      await CrawlUtil.downloadFile(meetingObject.manifestURL, destManifestFilePath)
+        .catch(err => console.error(`   *WARNING* manifest PDF fetch failed: ${err}`))
     }
   }
 }
