@@ -156,7 +156,9 @@ module DataFix
     def data_fix_review_cookie_scope(prefix:, file_path:)
       season_dir = File.basename(File.dirname(file_path.to_s))
       basename = File.basename(file_path.to_s, File.extname(file_path.to_s))
-      sanitized = "#{season_dir}-#{basename}".gsub(/[^a-zA-Z0-9_-]/, '_').slice(0, 60)
+      # no length cap: truncating would re-merge scopes for same-season files
+      # sharing a >60-char basename prefix (cookie names just need sanitizing)
+      sanitized = "#{season_dir}-#{basename}".gsub(/[^a-zA-Z0-9_-]/, '_')
       "data_fix_#{prefix}_#{sanitized}"
     end
 
