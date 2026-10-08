@@ -213,6 +213,123 @@ RSpec.describe DataFixController do
       end
     end
 
+    # Real LT4 sources carrying only meeting/venue data (e.g. manifest-extracted
+    # fixtures) must walk the whole wizard without loops: phase 2/3 solvers write
+    # empty `teams`/`swimmers` arrays and the review actions render instead of
+    # rebuilding+redirecting forever.
+    describe 'end-to-end walk of an empty-results LT4 source' do
+      let(:verolanuova_dir) { File.join(temp_dir, 'results.new', '262').tap { |dir| FileUtils.mkdir_p(dir) } }
+      let(:source_file) { File.join(verolanuova_dir, '2026-10-25-verolanuova-lt4.json') }
+      let(:season262) { GogglesDb::Season.find(262) }
+      # The pool must resolve by name (+25m type) for the session to validate,
+      # like the production DB where the venue is already registered.
+      let(:verolanuova_pool) do
+        FactoryBot.create(:swimming_pool, city: city, name: 'PISCINA COMUNALE VEROLANUOVA',
+                                          pool_type_id: GogglesDb::PoolType::MT_25_ID)
+      end
+
+      before(:each) do
+        verolanuova_pool
+        FileUtils.cp(file_fixture('import/2026-10-25-verolanuova-lt4.json'), source_file)
+      end
+
+      # Replicates the operator's Step-1 save: description + meeting fields posted,
+      # `code` left blank so update_phase1_meeting auto-generates it.
+      def save_meeting_form(extra_params = {})
+        patch update_phase1_meeting_path(file_path: source_file), params: {
+          season_id: season262.id,
+          description: '25° Trofeo Città di Verolanuova',
+          name: '25° Trofeo Città di Verolanuova',
+          code: '',
+          header_year: '2026/2027',
+          header_date: '2026-10-25',
+          edition: 25,
+          edition_type_id: GogglesDb::EditionType::ORDINAL_ID,
+          timing_type_id: GogglesDb::TimingType::AUTOMATIC_ID,
+          dateYear1: 2026, dateMonth1: 10, dateDay1: 25,
+          venue1: 'PISCINA COMUNALE VEROLANUOVA',
+          address1: 'PISCINA COMUNALE VEROLANUOVA',
+          poolLength: '25'
+        }.merge(extra_params)
+      end
+
+      # First visit to each step builds the phase file and redirects back to the
+      # same URL; a missing `teams`/`swimmers`/... key would keep that rebuild
+      # alive forever (browser-level ERR_TOO_MANY_REDIRECTS), so a redirect that
+      # does not settle into a 200 is the regression this checks.
+      def visit_step!(path)
+        get path
+        5.times do
+          break unless response.redirect?
+
+          follow_redirect!
+        end
+        expect(response).to be_successful
+      end
+
+      def walk_review_steps!
+        visit_step!(review_teams_path(file_path: source_file, phase2_v2: 1))
+        visit_step!(review_swimmers_path(file_path: source_file, phase3_v2: 1))
+        visit_step!(review_events_path(file_path: source_file, phase4_v2: 1))
+        visit_step!(review_results_path(file_path: source_file, phase5_v2: 1))
+      end
+
+      it 'walks all steps without a rebuild loop and commits meeting + session only' do
+        expect(season262).to be_present
+
+        visit_step!(review_sessions_path(file_path: source_file, phase_v2: 1))
+        save_meeting_form
+        walk_review_steps!
+
+        # Phase 2/3 files exist with explicit empty arrays (missing keys would loop)
+        phase2_data = PhaseFileManager.new(source_file.sub('.json', '-phase2.json')).data
+        phase3_data = PhaseFileManager.new(source_file.sub('.json', '-phase3.json')).data
+        expect([phase2_data['teams'], phase3_data['swimmers']]).to eq([[], []])
+
+        counts_before = [GogglesDb::Swimmer, GogglesDb::Team, GogglesDb::MeetingIndividualResult,
+                         GogglesDb::MeetingRelayResult, GogglesDb::MeetingEvent, GogglesDb::MeetingProgram].map(&:count)
+        meetings_before = GogglesDb::Meeting.count
+
+        post commit_phase6_path(file_path: source_file)
+
+        expect(response).to redirect_to(data_fix_commit_phase6_report_path)
+        expect(session[:commit_report][:commit_success]).to be true
+        meeting = GogglesDb::Meeting.find_by(season_id: season262.id, description: '25° Trofeo Città di Verolanuova')
+        expect(meeting&.meeting_sessions&.count).to eq(1)
+        # Only structure rows added: no athletes, teams, events or results
+        expect(GogglesDb::Meeting.count).to eq(meetings_before + 1)
+        counts_after = [GogglesDb::Swimmer, GogglesDb::Team, GogglesDb::MeetingIndividualResult,
+                        GogglesDb::MeetingRelayResult, GogglesDb::MeetingEvent, GogglesDb::MeetingProgram].map(&:count)
+        expect(counts_after).to eq(counts_before)
+      end
+
+      it 'recognizes an already-imported meeting and leaves entity counts unchanged' do
+        # First pass: create the meeting through the wizard
+        visit_step!(review_sessions_path(file_path: source_file, phase_v2: 1))
+        save_meeting_form
+        post commit_phase6_path(file_path: source_file)
+        meeting = GogglesDb::Meeting.find_by(season_id: season262.id, description: '25° Trofeo Città di Verolanuova')
+        expect(meeting).to be_present
+
+        # Second pass over a copy of the same source: operator selects the existing meeting
+        FileUtils.rm_rf(Dir.glob(File.join(verolanuova_dir, '*')))
+        FileUtils.cp(file_fixture('import/2026-10-25-verolanuova-lt4.json'), source_file)
+        visit_step!(review_sessions_path(file_path: source_file, phase_v2: 1))
+        save_meeting_form(meeting: { meeting_id: meeting.id })
+        walk_review_steps!
+
+        counts_before = [GogglesDb::Meeting, GogglesDb::MeetingSession, GogglesDb::SwimmingPool,
+                         GogglesDb::City, GogglesDb::Swimmer, GogglesDb::Team].map(&:count)
+
+        post commit_phase6_path(file_path: source_file)
+
+        expect(session[:commit_report][:commit_success]).to be true
+        counts_after = [GogglesDb::Meeting, GogglesDb::MeetingSession, GogglesDb::SwimmingPool,
+                        GogglesDb::City, GogglesDb::Swimmer, GogglesDb::Team].map(&:count)
+        expect(counts_after).to eq(counts_before)
+      end
+    end
+
     describe 'GET /data_fix/review_sessions (Step 1 validation cues)' do
       it 'highlights missing required meeting fields with is-invalid without blocking the page' do
         write_phase1(valid_phase1_data.merge('code' => nil, 'header_year' => nil))
