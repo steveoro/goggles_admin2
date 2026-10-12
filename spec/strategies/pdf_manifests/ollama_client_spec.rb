@@ -54,6 +54,30 @@ RSpec.describe PdfManifests::OllamaClient, type: :strategy do
     end
   end
 
+  describe '#model_available?' do
+    it 'is true when the configured model tag is installed' do
+      stub_tags(tags_body)
+      expect(client).to be_model_available
+    end
+
+    it 'matches the family name against installed tags' do
+      stub_tags(tags_body)
+      family_client = described_class.new(base_url: 'http://test:11434', model: 'gemma4')
+      expect(family_client).to be_model_available
+    end
+
+    it 'is false when the configured model is not pulled' do
+      stub_tags(tags_body)
+      missing = described_class.new(base_url: 'http://test:11434', model: 'qwen3.5:4b')
+      expect(missing).not_to be_model_available
+    end
+
+    it 'is false when the API is unreachable' do
+      allow(RestClient::Request).to receive(:execute).and_raise(SocketError)
+      expect(client).not_to be_model_available
+    end
+  end
+
   describe '#generate' do
     let(:generate_response) do
       { 'response' => { 'meeting_name' => 'TEST', 'events' => [] }.to_json }.to_json

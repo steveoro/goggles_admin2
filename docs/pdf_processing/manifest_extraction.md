@@ -35,6 +35,10 @@ bundle exec rake manifests:extract season=262 force=1 model=qwen3.5:4b
 
 Each PDF is processed independently; failures are reported at the end and do not abort the batch. Existing `-lt4.json` outputs are skipped unless `force=1`.
 
+Processed manifests are then archived: the source `.pdf` and its extracted `.txt` sibling are moved from `crawler/data/manifests/<season_id>/` to `crawler/data/manifests.done/<season_id>/` (the same lifecycle used by `results.new` → `results.done`). This applies to files extracted during the run as well as files skipped because their `-lt4.json` output already existed; only failed extractions keep their sources in place for a retry.
+
+The task aborts early when Ollama is not reachable **or** the configured extraction model is not pulled on the local server — the warning lists the pulled models and the `ollama pull <model>` command to run.
+
 ## Pipeline
 
 1. **`PdfManifests::TextExtractor`** runs `pdftotext -layout` (reusing the `.txt` sibling when present, which also powers the TXT badge in the file list).

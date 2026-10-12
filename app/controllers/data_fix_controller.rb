@@ -29,7 +29,7 @@ class DataFixController < ApplicationController
 
     total_deleted = deleted.values.sum
     flash[:notice] = I18n.t('data_import.data_fix.clean_slate_done',
-                           total: total_deleted, tables: deleted.size, sessions: session_count)
+                            total: total_deleted, tables: deleted.size, sessions: session_count)
   rescue StandardError => e
     flash[:error] = I18n.t('data_import.data_fix.clean_slate_failed', message: e.message)
   ensure

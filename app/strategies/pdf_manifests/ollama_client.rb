@@ -68,9 +68,15 @@ module PdfManifests
     # (e.g. 'completion', 'vision'). Matches on the exact tag first, then on the
     # family name so 'gemma4' also matches an installed 'gemma4:e4b' tag.
     def model_supports?(model_name, capability)
-      entry = models[model_name] || models.find { |name, _| name.to_s.start_with?("#{model_name}:") }&.last
-      capabilities = entry.is_a?(Hash) ? Array(entry['capabilities']) : []
+      capabilities = Array(model_entry(model_name)&.dig('capabilities'))
       capabilities.map(&:to_s).include?(capability.to_s)
+    end
+
+    # TRUE when the given model (default: the configured text model) is pulled
+    # on the local server. Same matching as #model_supports? but without any
+    # capability requirement.
+    def model_available?(model_name = @model)
+      model_entry(model_name).present?
     end
 
     # TRUE when the configured vision model is usable for image extraction.
@@ -110,6 +116,12 @@ module PdfManifests
     end
 
     private
+
+    # Details Hash for the given model, matching the exact tag first and then
+    # the family name ('gemma4' => 'gemma4:e4b'). nil when not pulled.
+    def model_entry(model_name)
+      models[model_name] || models.find { |name, _| name.to_s.start_with?("#{model_name}:") }&.last
+    end
 
     def execute_generate(body)
       res = RestClient::Request.execute(
