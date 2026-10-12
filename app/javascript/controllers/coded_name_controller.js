@@ -78,6 +78,12 @@ export default class extends Controller {
   fetchAndUpdateCodedName() {
     // DEBUG
     // console.log(`fetchAndUpdateCodedName()`)
+
+    // Auto-fill only when the target field is actually blank:
+    // never overwrite a user-supplied or DB-populated value.
+    if (this.fieldTarget.value.trim() !== '') {
+      return
+    }
     const apiURL = '/data_fix/coded_name'
 
     if (this.hasJwtValue) {
@@ -125,7 +131,10 @@ export default class extends Controller {
       .then(result => {
         // DEBUG
         // console.log(result);
-        this.fieldTarget.value = result[this.resultTypeValue]
+        // Skip overwriting when the field has been filled in the meantime:
+        if (this.fieldTarget.value.trim() === '') {
+          this.fieldTarget.value = result[this.resultTypeValue]
+        }
       })
       .catch(error => {
         if (error.message !== 'Unauthorized') {

@@ -33,6 +33,7 @@ class Phase1SessionUpdater # rubocop:disable Metrics/ClassLength
     else
       rehydrate_pool_and_city_from_db(sess, current_pool_id)
     end
+    ensure_pool_nick_name(sess)
 
     data['meeting_session'] = sessions
     save_data(data)
@@ -204,6 +205,25 @@ class Phase1SessionUpdater # rubocop:disable Metrics/ClassLength
       pool_hash['city_id'] = nil
       clear_city_data(pool_hash)
     end
+  end
+
+  # Computes a coded nick_name for the session pool when still blank after all
+  # updates (mirrors the meeting 'code' auto-generation fallback in
+  # DataFix::SessionsController#update_phase1_meeting). Never overwrites an
+  # existing value; requires at least a pool name and a pool type.
+  def ensure_pool_nick_name(sess) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+    pool_hash = sess['swimming_pool']
+    return unless pool_hash.is_a?(Hash)
+    return if pool_hash['nick_name'].to_s.strip.present?
+
+    pool_type_code = GogglesDb::PoolType.find_by(id: pool_hash['pool_type_id'].to_i)&.code
+    return if pool_hash['name'].to_s.strip.blank? || pool_type_code.blank?
+
+    city_name = pool_hash.dig('city', 'name').presence
+    city_name ||= GogglesDb::City.find_by(id: pool_hash['city_id'].to_i)&.name if pool_hash['city_id'].to_i.positive?
+    pool_hash['nick_name'] = GogglesDb::Normalizers::CodedName.for_pool(
+      pool_hash['name'], city_name.to_s, pool_type_code
+    )
   end
 
   def clear_city_data(pool_hash)

@@ -436,6 +436,21 @@ RSpec.describe DataFixController do
         expect(pool['longitude']).to eq('12.456')
       end
 
+      it 'auto-generates a blank pool nick_name from pool data' do
+        patch update_phase1_session_path, params: {
+          file_path: source_file,
+          session_index: 0,
+          pool: { name: 'Test Pool', nick_name: '', pool_type_id: pool_type.id },
+          city: { name: 'Test City' }
+        }
+
+        pfm = PhaseFileManager.new(phase1_file)
+        pool = pfm.data['meeting_session'][0]['swimming_pool']
+        expect(pool['nick_name']).to eq(
+          GogglesDb::Normalizers::CodedName.for_pool('Test Pool', 'Test City', pool_type.code)
+        )
+      end
+
       it 'updates nested city data' do
         patch update_phase1_session_path, params: {
           file_path: source_file,
