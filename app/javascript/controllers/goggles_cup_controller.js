@@ -46,14 +46,12 @@ export default class extends Controller {
     this.toggleRankingButtons()
   }
 
-  // Enables or disables "Show precomputed" & "Export SQL" (both need stored data).
+  // Enables or disables "Show precomputed" (needs stored ranking data). The
+  // "Export SQL" button is server-rendered for any persisted cup, since the
+  // export can also carry just base timings + the swimmer selection.
   toggleRankingButtons() {
     if (this.hasPrecomputedButtonTarget) {
       this.precomputedButtonTarget.disabled = !this.hasRankingDataValue
-    }
-    if (this.hasExportSqlButtonTarget) {
-      this.exportSqlButtonTarget.disabled = !this.hasRankingDataValue
-      this.exportSqlButtonTarget.classList.toggle('d-none', !this.hasRankingDataValue)
     }
   }
 

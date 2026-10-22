@@ -461,9 +461,9 @@ RSpec.describe 'GogglesCupPreview' do
       Rails.root.glob('crawler/data/results.new/goggle_cups/*-goggle_cup-*.sql').each { |f| File.delete(f) }
     end
 
-    it 'redirects with an error when the cup has no ranking_data' do
+    it 'redirects with an error when the cup has no swimmer selection' do
       team = FactoryBot.create(:team)
-      cup = FactoryBot.create(:goggle_cup, team: team, description: 'No Data', season_year: 2025, swimmers_ids: '1')
+      cup = FactoryBot.create(:goggle_cup, team: team, description: 'No Data', season_year: 2025, swimmers_ids: nil)
 
       post export_sql_goggles_cup_preview_path, params: { team_id: team.id, goggle_cup_id: cup.id }
 
@@ -497,19 +497,48 @@ RSpec.describe 'GogglesCupPreview' do
       expect(sql).to include('COMMIT;')
     end
 
-    it 'shows the export SQL button only when ranking_data is present' do
+    it 'embeds a base-timings payload when the cup has no ranking_data' do
       team = FactoryBot.create(:team)
-      cup_without = FactoryBot.create(:goggle_cup, team: team, description: 'Empty', season_year: 2025, swimmers_ids: '1')
+      cup = FactoryBot.create(:goggle_cup, team: team, description: 'Config Only', season_year: 2025, swimmers_ids: '1,2,3')
+
+      post export_sql_goggles_cup_preview_path, params: { team_id: team.id, goggle_cup_id: cup.id }
+
+      expect(response).to redirect_to(goggles_cup_preview_path(goggle_cup_id: cup.id, team_id: team.id.to_s))
+      expect(flash[:notice]).to be_present
+
+      generated_files = Rails.root.glob('crawler/data/results.new/goggle_cups/*-goggle_cup-*.sql')
+      expect(generated_files).not_to be_empty
+
+      sql = File.read(generated_files.first)
+      expect(sql).to include('INSERT INTO `goggle_cups`')
+      expect(sql).to include('base_timings')
+      expect(sql).to include('swimmer_ids')
+      # The synthesized payload is embedded only in the export, not persisted:
+      expect(cup.reload.ranking_data).to be_blank
+    end
+
+    it 'shows the export SQL button for any saved cup with swimmers' do
+      team = FactoryBot.create(:team)
+      cup_without = FactoryBot.create(:goggle_cup, team: team, description: 'Config Only', season_year: 2025, swimmers_ids: '1')
       cup_with = FactoryBot.create(:goggle_cup, team: team, description: 'Ready', season_year: 2026, swimmers_ids: '1')
       cup_with.update!(ranking_data: { test: 'data' }.to_json)
 
       get goggles_cup_preview_path, params: { team_id: team.id, goggle_cup_id: cup_without.id }
       expect(response.body).to include(I18n.t('goggles_cup.export_sql'))
-      expect(response.body).to include('btn btn-outline-secondary btn-lg w-100 d-none')
+      expect(response.body).not_to include('btn btn-outline-secondary btn-lg w-100 d-none')
 
       get goggles_cup_preview_path, params: { team_id: team.id, goggle_cup_id: cup_with.id }
       expect(response.body).to include(I18n.t('goggles_cup.export_sql'))
       expect(response.body).not_to include('btn btn-outline-secondary btn-lg w-100 d-none')
+    end
+
+    it 'hides the export SQL button when the cup has no swimmers' do
+      team = FactoryBot.create(:team)
+      cup = FactoryBot.create(:goggle_cup, team: team, description: 'No Swimmers', season_year: 2025, swimmers_ids: nil)
+
+      get goggles_cup_preview_path, params: { team_id: team.id, goggle_cup_id: cup.id }
+      expect(response.body).to include(I18n.t('goggles_cup.export_sql'))
+      expect(response.body).to include('btn btn-outline-secondary btn-lg w-100 d-none')
     end
   end
 

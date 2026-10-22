@@ -114,3 +114,4 @@ it:
     info:
       select_team: "Seleziona una squadra."
       no_ranking_data: "Nessun dato classifica disponibile. Seleziona almeno un nuotatore e calcola la classifica."
+      nothing_to_export: "Nulla da esportare. Salva prima una coppa con almeno un nuotatore selezionato."

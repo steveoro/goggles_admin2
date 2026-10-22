@@ -27,7 +27,7 @@ class GogglesCupController < ApplicationController
   before_action :set_secondary_team, only: %i[index compute]
   before_action :set_selected_swimmer_ids, only: %i[compute]
   before_action :set_no_duplicated_events, only: %i[compute]
-  around_action :with_base_year, only: %i[index smart_selection compute]
+  around_action :with_base_year, only: %i[index smart_selection compute export_sql]
 
   # [GET] Renders the GogglesCup selection/configuration page.
   def index
@@ -71,13 +71,17 @@ class GogglesCupController < ApplicationController
 
   # [POST] Generates a pushable SQL script for the current cup and stores it in
   # `crawler/data/results.new/goggle_cups/` for later production push.
+  # Exportable for any persisted cup with a swimmer selection: when no stored
+  # ranking exists, a base-timings-only payload is embedded (in-memory, not
+  # saved) so the pushed row can still show base timings & the swimmer list.
   def export_sql # rubocop:disable Metrics/AbcSize
     cup = @goggle_cup
-    if cup&.ranking_data.blank?
-      flash[:alert] = t('goggles_cup.export_sql_error', message: t('goggles_cup.info.no_ranking_data'))
+    if cup.blank? || cup.swimmers_ids.blank?
+      flash[:alert] = t('goggles_cup.export_sql_error', message: t('goggles_cup.info.nothing_to_export'))
       redirect_to(goggles_cup_preview_path(goggle_cup_id: cup&.id, season_year: params[:season_year],
                                            team_id: params[:team_id])) && return
     end
+    embed_base_timings_payload(cup) if cup.ranking_data.blank?
 
     source_dir = Rails.root.join('crawler/data/results.new/goggle_cups')
     sent_dir = source_dir.to_s.gsub('results.new', 'results.sent')
@@ -197,6 +201,7 @@ class GogglesCupController < ApplicationController
     @swimmers_for_team = swimmers_for_team
     @external_swimmers = external_swimmers_for(@goggle_cup)
     @readonly = @goggle_cup&.ranking_data.present?
+    @exportable = @goggle_cup&.persisted? && @goggle_cup.swimmers_ids.present?
     @selected_swimmer_ids = effective_swimmer_ids
     @no_duplicated_events = effective_no_duplicated_events
     @ranking_visible = false if @ranking_visible.nil?
@@ -264,6 +269,18 @@ class GogglesCupController < ApplicationController
       no_duplicated_events: @no_duplicated_events
     ).call
     @goggle_cup.update!(ranking_data: serialized.to_json)
+  end
+
+  # Sets an in-memory, base-timings-only ranking payload on +cup+ (never saved)
+  # so the exported row lets goggles_main show the cup's base timings and its
+  # swimmer list even when no ranking was precomputed. One empty score key per
+  # selected swimmer is required by the DataDeserializer to emit an entry.
+  def embed_base_timings_payload(cup)
+    cup.ranking_data = GogglesDb::GoggleCupRanking::DataSerializer.new(
+      cup: cup,
+      ranking_data: cup.swimmer_ids_array.map { |swimmer_id| { swimmer_id: swimmer_id, top_rows: [] } },
+      no_duplicated_events: false
+    ).call.to_json
   end
 
   def find_or_initialize_cup

@@ -125,7 +125,7 @@
                       = t('goggles_cup.load_existing')
                   .col-md-3.my-1.d-flex.flex-fill
                     = button_tag(type: 'submit', formaction: export_sql_goggles_cup_preview_path, formmethod: :post,
-                                 class: "btn btn-outline-secondary btn-lg w-100#{@readonly ? '' : ' d-none'}", disabled: !@readonly,
+                                 class: "btn btn-outline-secondary btn-lg w-100#{@exportable ? '' : ' d-none'}", disabled: !@exportable,
                                  data: { 'goggles-cup-target': 'exportSqlButton', toggle: 'tooltip', placement: 'top', title: t('goggles_cup.export_sql_tooltip'), turbo_confirm: t('goggles_cup.confirm_export') }) do
                       %i.fa.fa-file-code-o.me-2
                       = t('goggles_cup.export_sql')

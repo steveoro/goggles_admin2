@@ -114,3 +114,4 @@ en:
     info:
       select_team: "Please select a team."
       no_ranking_data: "No ranking data available. Select at least one swimmer and compute the ranking."
+      nothing_to_export: "Nothing to export. Save a cup with at least one selected swimmer first."
