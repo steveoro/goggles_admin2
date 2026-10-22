@@ -20,6 +20,7 @@ class HomeController < ApplicationController
                               .where.not(phase_file_path: [nil, ''])
                               .distinct
                               .count(:phase_file_path)
+    @goggle_cups_count = count_remote_rows_for('goggle_cups')
   end
 
   # [GET] Retrieve the latest updates from both production & staging servers endpoints
