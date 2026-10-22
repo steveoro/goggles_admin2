@@ -1,22 +1,38 @@
 # frozen_string_literal: true
 
 # = GogglesCupController
+#
+# Season-first GogglesCup configuration & management UI:
+#
+# - GET index: pick a championship year (seasons having a cup + current year),
+#   a primary team (defaulted from the user's managed affiliations / badge) and
+#   an existing cup for that team & year, or start a new one.
+# - The swimmer list is always rendered when a team is resolved; it merges the
+#   result rows of the shown championship year with the MASFIN badges of the
+#   current & previous championship year (GogglesCup::SwimmerOptionsQuery).
+# - When the selected cup has a stored ranking (ranking_data present), the list
+#   is rendered read-only and an edit button (POST clear_ranking) allows
+#   clearing the stored values to change the selection.
+# - Compute/serialization honor the cup's season_year as the ranking base year
+#   (the +@base_year+ session variable driving the Scenic views is set around
+#   the action and always reset afterwards).
+#
 class GogglesCupController < ApplicationController
   include FileCounter
 
   before_action :authenticate_user!
-  before_action :set_team, only: %i[index smart_selection compute cup_data save load_ranking export_sql base_timings]
+  before_action :set_goggle_cup, only: %i[index compute export_sql base_timings clear_ranking]
+  before_action :set_season_year, only: %i[index]
+  before_action :set_team, only: %i[index smart_selection compute save clear_ranking export_sql base_timings]
   before_action :set_secondary_team, only: %i[index compute]
   before_action :set_selected_swimmer_ids, only: %i[compute]
   before_action :set_no_duplicated_events, only: %i[compute]
-  before_action :set_goggle_cup, only: %i[index compute export_sql base_timings]
+  around_action :with_base_year, only: %i[index smart_selection compute]
 
-  # [GET] Renders the GogglesCup preview/selection page for the selected team.
+  # [GET] Renders the GogglesCup selection/configuration page.
   def index
-    @swimmers_for_team = swimmers_for_team
-    @ranking_data = []
-    @goggle_cups = @team ? GogglesDb::GoggleCup.where(team_id: @team.id).order(:season_year, :description) : []
-    @external_swimmers = external_swimmers_for(@goggle_cup)
+    prepare_page_context
+    @ranking_data = @readonly ? GogglesDb::GoggleCupRanking::DataDeserializer.new(@goggle_cup).call : []
   end
 
   # [GET] Returns smart-selected swimmer ids for the secondary team filter.
@@ -26,37 +42,11 @@ class GogglesCupController < ApplicationController
     render json: { swimmer_ids: selected_ids }
   end
 
-  # [GET] Returns the selected cup attributes and swimmer lists as JSON.
-  def cup_data
-    cup = GogglesDb::GoggleCup.find_by(id: params[:goggle_cup_id], team_id: @team_id)
-    return render json: { error: 'Not found' }, status: :not_found unless cup
-
-    team_swimmer_ids = swimmer_options_query.call.pluck(:swimmer_id)
-    cup_swimmer_ids = cup.swimmer_ids_array
-    external_ids = cup_swimmer_ids - team_swimmer_ids
-
-    render json: {
-      goggle_cup_id: cup.id,
-      description: cup.description,
-      season_year: cup.season_year,
-      end_date: cup.end_date&.iso8601,
-      swimmer_ids: cup_swimmer_ids,
-      no_duplicated_events: no_duplicated_from(cup),
-      external_swimmers: external_swimmers_for_ids(external_ids),
-      has_ranking_data: cup.ranking_data.present?
-    }
-  end
-
   # [POST] Creates or updates the current cup configuration.
-  def save # rubocop:disable Metrics/AbcSize
+  # Clears the stored ranking_data when the swimmer selection actually changed.
+  def save
     cup = find_or_initialize_cup
-    cup.assign_attributes(
-      team_id: @team_id,
-      description: params[:description],
-      season_year: params[:season_year],
-      end_date: params[:end_date],
-      swimmers_ids: Array(params[:swimmer_ids]).compact_blank.map(&:to_i).join(',')
-    )
+    assign_cup_attributes(cup)
 
     if cup.save
       flash[:notice] = t('goggles_cup.cup_saved')
@@ -64,18 +54,19 @@ class GogglesCupController < ApplicationController
       flash[:alert] = t('goggles_cup.cup_save_error', errors: cup.errors.full_messages.join(', '))
     end
 
-    redirect_to(goggles_cup_preview_path(team_id: @team_id, goggle_cup_id: cup.id))
+    redirect_to(goggles_cup_preview_path(goggle_cup_id: cup.id, season_year: params[:season_year], team_id: params[:team_id]))
   end
 
-  # [GET] Renders the stored ranking HTML for the selected cup as JSON.
-  def load_ranking
-    cup = GogglesDb::GoggleCup.find_by(id: params[:goggle_cup_id], team_id: @team_id)
-    return render json: { error: 'Not found' }, status: :not_found if cup&.ranking_data.blank?
+  # [POST] Clears the stored ranking_data of the selected cup so its swimmer
+  # selection becomes editable again. Redirects back to the (editable) page.
+  def clear_ranking
+    if @goggle_cup&.ranking_data.present?
+      @goggle_cup.update!(ranking_data: nil)
+      flash[:notice] = t('goggles_cup.ranking_cleared')
+    end
 
-    @goggle_cup = cup
-    @ranking_data = GogglesDb::GoggleCupRanking::DataDeserializer.new(cup).call
-    instance_vars_from_stored_data(cup)
-    render json: { html: ranking_html }
+    redirect_to(goggles_cup_preview_path(goggle_cup_id: @goggle_cup&.id, season_year: params[:season_year],
+                                         team_id: params[:team_id]))
   end
 
   # [POST] Generates a pushable SQL script for the current cup and stores it in
@@ -84,7 +75,8 @@ class GogglesCupController < ApplicationController
     cup = @goggle_cup
     if cup&.ranking_data.blank?
       flash[:alert] = t('goggles_cup.export_sql_error', message: t('goggles_cup.info.no_ranking_data'))
-      redirect_to(goggles_cup_preview_path(team_id: @team_id, goggle_cup_id: cup&.id)) && return
+      redirect_to(goggles_cup_preview_path(goggle_cup_id: cup&.id, season_year: params[:season_year],
+                                           team_id: params[:team_id])) && return
     end
 
     source_dir = Rails.root.join('crawler/data/results.new/goggle_cups')
@@ -98,19 +90,20 @@ class GogglesCupController < ApplicationController
     File.write(sql_full_path, sql_content)
 
     flash[:notice] = t('goggles_cup.export_sql_success', file: dest_file)
-    redirect_to(goggles_cup_preview_path(team_id: @team_id, goggle_cup_id: cup.id))
+    redirect_to(goggles_cup_preview_path(goggle_cup_id: cup.id, season_year: params[:season_year],
+                                         team_id: params[:team_id]))
   rescue StandardError => e
     flash[:alert] = t('goggles_cup.export_sql_error', message: e.message)
-    redirect_to(goggles_cup_preview_path(team_id: @team_id, goggle_cup_id: @goggle_cup&.id))
+    redirect_to(goggles_cup_preview_path(goggle_cup_id: @goggle_cup&.id, season_year: params[:season_year],
+                                         team_id: params[:team_id]))
   end
 
   # [POST/GET] Computes the GogglesCup ranking for the selected swimmers and renders
   # it in HTML, JSON, CSV, XLSX or PDF formats.
   def compute
-    @swimmers_for_team = swimmers_for_team
+    prepare_page_context
     @ranking_data = ranking_data
-    @goggle_cups = @team ? GogglesDb::GoggleCup.where(team_id: @team.id).order(:season_year, :description) : []
-    @external_swimmers = external_swimmers_for(@goggle_cup)
+    @ranking_visible = true
 
     persist_ranking_data if @goggle_cup && @ranking_data.present? && @selected_swimmer_ids.present?
 
@@ -133,9 +126,33 @@ class GogglesCupController < ApplicationController
 
   private
 
+  # Sets @goggle_cup from :goggle_cup_id. The cup, when present, is authoritative
+  # for both the team and the season year of the page.
+  def set_goggle_cup
+    @goggle_cup ||= GogglesDb::GoggleCup.find_by(id: params[:goggle_cup_id]) if params[:goggle_cup_id].present?
+  end
+
+  # Sets @season_year: the selected cup's year, the explicit parameter, or the
+  # current championship year as fallback.
+  def set_season_year
+    return if @season_year.present?
+
+    @season_year = @goggle_cup&.season_year ||
+                   params[:season_year].presence&.to_i ||
+                   GogglesDb::Season.current_championship_year
+  end
+
+  # Sets @team: the cup's team, the explicit :team_id parameter, or (on the index
+  # page only) the default team resolved for the current user.
   def set_team
-    @team_id = params[:team_id]
-    @team = GogglesDb::Team.find_by(id: @team_id) if @team_id.present?
+    @team = @goggle_cup&.team
+    @team ||= GogglesDb::Team.find_by(id: params[:team_id]) if params[:team_id].present?
+    @team ||= team_resolver.default_team if action_name == 'index'
+    @team_id = @team&.id || params[:team_id]
+  end
+
+  def team_resolver
+    @team_resolver ||= GogglesCup::ManagedTeamResolver.new(user: current_user, season_year: @season_year)
   end
 
   def set_secondary_team
@@ -151,9 +168,59 @@ class GogglesCupController < ApplicationController
     @no_duplicated_events = ActiveModel::Type::Boolean.new.cast(params[:no_duplicated_events])
   end
 
-  def set_goggle_cup
-    goggle_cup_id = params[:goggle_cup_id]
-    @goggle_cup = GogglesDb::GoggleCup.find_by(id: goggle_cup_id) if goggle_cup_id.present? && @team.present?
+  # Sets the +@base_year+ session variable used by the parameterized Scenic views
+  # to the championship year being displayed, then always resets it so the
+  # override cannot leak into other requests on the same pooled connection.
+  # NOTE: around filters wrap the whole action chain, so the cup/season context
+  # must be resolved here (the declared before_actions will then no-op inside).
+  def with_base_year
+    set_goggle_cup
+    set_season_year
+    GogglesDb::AbstractBestResult.with_base_year(@season_year)
+    yield
+  ensure
+    GogglesDb::AbstractBestResult.with_base_year(nil)
+  end
+
+  # Prepares all the shared instance variables used by the index view (also
+  # reused by the HTML format of #compute).
+  def prepare_page_context
+    @team_resolver = team_resolver
+    @season_years = available_season_years
+    @goggle_cups = @team ? GogglesDb::GoggleCup.where(team_id: @team.id, season_year: @season_year).order(:description) : []
+    @swimmers_for_team = swimmers_for_team
+    @external_swimmers = external_swimmers_for(@goggle_cup)
+    @readonly = @goggle_cup&.ranking_data.present?
+    @selected_swimmer_ids = effective_swimmer_ids
+    @no_duplicated_events = effective_no_duplicated_events
+    @ranking_visible = false if @ranking_visible.nil?
+  end
+
+  # On #compute the ivar is always defined (empty => user unchecked everything);
+  # on #index it is read back from the stored configuration instead.
+  def effective_swimmer_ids
+    return Array(@selected_swimmer_ids) if instance_variable_defined?(:@selected_swimmer_ids)
+
+    (@goggle_cup&.swimmer_ids_array || []).map(&:to_s)
+  end
+
+  # On #compute the flag ivar is always defined (nil => user unchecked it);
+  # on #index it is read back from the stored ranking_data instead.
+  def effective_no_duplicated_events
+    return @no_duplicated_events == true if instance_variable_defined?(:@no_duplicated_events)
+
+    no_duplicated_from(@goggle_cup)
+  end
+
+  # Distinct championship years having at least one cup for the manageable team
+  # domain (all cups for admins), always including the currently shown year.
+  def available_season_years
+    scope = if team_resolver.can_choose_any_team?
+              GogglesDb::GoggleCup.all
+            else
+              GogglesDb::GoggleCup.where(team_id: team_resolver.managed_team_ids)
+            end
+    (scope.distinct.pluck(:season_year) + [@season_year]).compact.uniq.sort.reverse
   end
 
   def swimmers_for_team
@@ -163,7 +230,7 @@ class GogglesCupController < ApplicationController
   end
 
   def swimmer_options_query
-    @swimmer_options_query ||= GogglesCup::SwimmerOptionsQuery.new(team_id: @team_id)
+    @swimmer_options_query ||= GogglesCup::SwimmerOptionsQuery.new(team_id: @team_id, base_year: @season_year)
   end
 
   def ranking_data
@@ -196,6 +263,20 @@ class GogglesCupController < ApplicationController
     id.present? ? GogglesDb::GoggleCup.find_by(id: id) : GogglesDb::GoggleCup.new
   end
 
+  # Assigns the submitted configuration to +cup+, clearing its stored
+  # ranking_data whenever the swimmer selection actually changed.
+  def assign_cup_attributes(cup)
+    previous_swimmer_ids = cup.swimmer_ids_array
+    cup.assign_attributes(
+      team_id: @team_id,
+      description: params[:description],
+      season_year: params[:season_year],
+      end_date: params[:end_date],
+      swimmers_ids: Array(params[:swimmer_ids]).compact_blank.map(&:to_i).join(',')
+    )
+    cup.ranking_data = nil if cup.ranking_data.present? && cup.swimmer_ids_array.sort != previous_swimmer_ids.sort
+  end
+
   def external_swimmers_for(cup)
     return [] unless cup && cup.swimmers_ids.present?
 
@@ -209,31 +290,14 @@ class GogglesCupController < ApplicationController
                       .map { |r| { swimmer_id: r[0], swimmer_name: r[1], swimmer_year_of_birth: r[2] } }
   end
 
-  def external_swimmers_for_ids(external_ids)
-    return [] if external_ids.blank?
-
-    GogglesDb::Swimmer.where(id: external_ids)
-                      .pluck(:id, :complete_name, :year_of_birth)
-                      .map { |r| { swimmer_id: r[0], swimmer_name: r[1], swimmer_year_of_birth: r[2] } }
-  end
-
   def no_duplicated_from(cup)
-    return false if cup.ranking_data.blank?
+    return false if cup&.ranking_data.blank?
 
     data = cup.ranking_data.is_a?(String) ? JSON.parse(cup.ranking_data) : cup.ranking_data
     value = data['no_duplicated_events']
     value.nil? ? false : value
   rescue StandardError
     false
-  end
-
-  def instance_vars_from_stored_data(cup)
-    data = cup.ranking_data.is_a?(String) ? JSON.parse(cup.ranking_data) : cup.ranking_data
-    @selected_swimmer_ids = Array(data['swimmer_ids']).map(&:to_s)
-    @no_duplicated_events = ActiveModel::Type::Boolean.new.cast(data['no_duplicated_events'])
-  rescue StandardError
-    @selected_swimmer_ids = []
-    @no_duplicated_events = false
   end
 
   def ranking_html
@@ -269,7 +333,8 @@ class GogglesCupController < ApplicationController
 
   def redirect_invalid_export
     flash[:alert] = I18n.t('goggles_cup.errors.invalid_selection_or_data')
-    redirect_to(goggles_cup_preview_path(team_id: @team_id, goggle_cup_id: @goggle_cup&.id))
+    redirect_to(goggles_cup_preview_path(goggle_cup_id: @goggle_cup&.id, season_year: params[:season_year],
+                                         team_id: params[:team_id]))
   end
 
   # Builds a single MariaDB `INSERT ... ON DUPLICATE KEY UPDATE` statement for the

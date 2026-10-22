@@ -28,12 +28,35 @@ RSpec.describe 'GogglesCupPreview' do
       it 'renders the swimmer list when a team is selected' do
         team = FactoryBot.create(:team)
         query = instance_double(GogglesCup::SwimmerOptionsQuery, call: [swimmer_option])
-        allow(GogglesCup::SwimmerOptionsQuery).to receive(:new).with(team_id: team.id.to_s).and_return(query)
+        allow(GogglesCup::SwimmerOptionsQuery).to receive(:new).and_return(query)
 
         get goggles_cup_preview_path, params: { team_id: team.id }
 
         expect(response).to have_http_status(:success)
         expect(response.body).to include('TEST SWIMMER')
+      end
+
+      it 'renders the season year selector including the current cup years' do
+        team = FactoryBot.create(:team)
+        FactoryBot.create(:goggle_cup, team: team, description: 'Old Cup', season_year: 2020)
+        allow(GogglesCup::SwimmerOptionsQuery).to receive(:new).and_return(instance_double(GogglesCup::SwimmerOptionsQuery, call: []))
+
+        get goggles_cup_preview_path, params: { team_id: team.id, season_year: 2020 }
+
+        expect(response.body).to include('id="season_year_select"')
+        expect(response.body).to include('>2020</option>')
+      end
+
+      it 'limits the cup selector to the cups of the shown season year' do
+        team = FactoryBot.create(:team)
+        FactoryBot.create(:goggle_cup, team: team, description: 'Cup 2020', season_year: 2020)
+        FactoryBot.create(:goggle_cup, team: team, description: 'Cup 2021', season_year: 2021)
+        allow(GogglesCup::SwimmerOptionsQuery).to receive(:new).and_return(instance_double(GogglesCup::SwimmerOptionsQuery, call: []))
+
+        get goggles_cup_preview_path, params: { team_id: team.id, season_year: 2020 }
+
+        expect(response.body).to include('Cup 2020')
+        expect(response.body).not_to include('Cup 2021')
       end
     end
   end
@@ -49,7 +72,7 @@ RSpec.describe 'GogglesCupPreview' do
     it 'returns smart-selected swimmer ids as JSON' do
       team = FactoryBot.create(:team)
       query = instance_double(GogglesCup::SwimmerOptionsQuery, smart_selected_ids_for: [10, 20])
-      allow(GogglesCup::SwimmerOptionsQuery).to receive(:new).with(team_id: team.id.to_s).and_return(query)
+      allow(GogglesCup::SwimmerOptionsQuery).to receive(:new).and_return(query)
 
       get smart_selection_goggles_cup_preview_path, params: { team_id: team.id, secondary_team_id: 99 }
 
@@ -144,7 +167,7 @@ RSpec.describe 'GogglesCupPreview' do
     }
   end
 
-  describe 'GET /best_results/goggles_cup_preview/cup_data' do
+  describe 'GET /best_results/goggles_cup_preview with a stored cup' do
     include AdminSignInHelpers
 
     before(:each) do
@@ -152,34 +175,68 @@ RSpec.describe 'GogglesCupPreview' do
       sign_in_admin(admin_user)
     end
 
-    it 'returns cup configuration as JSON' do
-      team = FactoryBot.create(:team)
-      cup = FactoryBot.create(:goggle_cup, team: team, description: 'Test Cup', season_year: 2025,
-                                           end_date: Date.new(2026, 7, 31), swimmers_ids: '1,2,3')
-      query = instance_double(GogglesCup::SwimmerOptionsQuery, call: [swimmer_option])
-      allow(GogglesCup::SwimmerOptionsQuery).to receive(:new).with(team_id: team.id.to_s).and_return(query)
-
-      get cup_data_goggles_cup_preview_path, params: { team_id: team.id, goggle_cup_id: cup.id }
-
-      expect(response).to have_http_status(:success)
-      body = response.parsed_body
-      expect(body['goggle_cup_id']).to eq(cup.id)
-      expect(body['description']).to eq('Test Cup')
-      expect(body['season_year']).to eq(2025)
-      expect(body['swimmer_ids']).to eq([1, 2, 3])
-      expect(body['has_ranking_data']).to be(false)
+    def stored_cup(swimmer, team, ranking_data: nil)
+      FactoryBot.create(:goggle_cup, team: team, description: 'Test Cup', season_year: 2025,
+                                     swimmers_ids: swimmer.id.to_s).tap do |cup|
+        cup.update!(ranking_data: ranking_data || {
+          description: 'Test Cup', season_year: 2025, max_points: 1000, team_id: team.id,
+          end_date: '2026-07-31', swimmer_ids: [swimmer.id], no_duplicated_events: false,
+          data: {
+            base_timings: {},
+            scores: {
+              swimmer.id.to_s => [
+                { 'event_type_code' => '50SL', 'pool_type_code' => '25', 'total_hundredths' => 3000,
+                  'meeting_date' => '2025-01-15', 'meeting_name' => 'Test Meeting', 'meeting_id' => 42,
+                  'meeting_individual_result_id' => 99, 'team_id' => team.id, 'team_name' => 'TEST',
+                  'old_total_hundredths' => 3200, 'old_meeting_date' => '2024-01-10',
+                  'old_meeting_name' => 'Old Meeting', 'old_meeting_id' => 30,
+                  'old_meeting_individual_result_id' => 88, 'row_score' => 1066.67 }
+              ]
+            }
+          }
+        }.to_json)
+      end
     end
 
-    it 'returns not found for a non-existent cup' do
+    it 'renders the stored ranking and a read-only swimmer selection' do
       team = FactoryBot.create(:team)
+      swimmer = FactoryBot.create(:swimmer, complete_name: 'TEST SWIMMER', year_of_birth: 1980)
+      cup = stored_cup(swimmer, team)
+      query = instance_double(GogglesCup::SwimmerOptionsQuery,
+                              call: [{ swimmer_id: swimmer.id, swimmer_name: 'TEST SWIMMER', swimmer_year_of_birth: 1980 }])
+      allow(GogglesCup::SwimmerOptionsQuery).to receive(:new).and_return(query)
 
-      get cup_data_goggles_cup_preview_path, params: { team_id: team.id, goggle_cup_id: 9999 }
+      get goggles_cup_preview_path, params: { goggle_cup_id: cup.id }
 
-      expect(response).to have_http_status(:not_found)
+      expect(response).to have_http_status(:success)
+      expect(response.body).to include('TEST SWIMMER')
+      # read-only markers: hint, badge & edit-selection button (checkboxes are disabled)
+      expect(response.body).to include("id='swimmer-list-readonly-hint'")
+      expect(response.body).to include("id='badge-readonly'")
+      expect(response.body).to include('id="btn-edit-swimmers"')
+      expect(response.body).to include('disabled="disabled" data-goggles-cup-target="swimmerCheckbox"')
+    end
+
+    it 'renders an editable swimmer selection when the cup has no ranking_data' do
+      team = FactoryBot.create(:team)
+      swimmer = FactoryBot.create(:swimmer, complete_name: 'TEST SWIMMER', year_of_birth: 1980)
+      cup = FactoryBot.create(:goggle_cup, team: team, description: 'Empty Cup', season_year: 2025,
+                                           swimmers_ids: swimmer.id.to_s)
+      query = instance_double(GogglesCup::SwimmerOptionsQuery,
+                              call: [{ swimmer_id: swimmer.id, swimmer_name: 'TEST SWIMMER', swimmer_year_of_birth: 1980 }])
+      allow(GogglesCup::SwimmerOptionsQuery).to receive(:new).and_return(query)
+
+      get goggles_cup_preview_path, params: { goggle_cup_id: cup.id }
+
+      expect(response).to have_http_status(:success)
+      expect(response.body).not_to include('id="btn-edit-swimmers"')
+      expect(response.body).not_to include("id='swimmer-list-readonly-hint'")
+      expect(response.body).not_to include("id='badge-readonly'")
+      expect(response.body).not_to include('disabled="disabled" data-goggles-cup-target="swimmerCheckbox"')
     end
   end
 
-  describe 'GET /best_results/goggles_cup_preview/load_ranking' do
+  describe 'POST /best_results/goggles_cup_preview/clear_ranking' do
     include AdminSignInHelpers
 
     before(:each) do
@@ -187,41 +244,26 @@ RSpec.describe 'GogglesCupPreview' do
       sign_in_admin(admin_user)
     end
 
-    it 'returns rendered ranking HTML as JSON from stored ranking_data' do
+    it 'clears the stored ranking_data and redirects back to the cup page' do
       team = FactoryBot.create(:team)
-      swimmer = FactoryBot.create(:swimmer, complete_name: 'TEST SWIMMER', year_of_birth: 1980)
-      cup = FactoryBot.create(:goggle_cup, team: team, description: 'Test Cup', season_year: 2025, swimmers_ids: swimmer.id.to_s)
-      cup.update!(ranking_data: {
-        description: 'Test Cup', season_year: 2025, max_points: 1000, team_id: team.id,
-        end_date: '2026-07-31', swimmer_ids: [swimmer.id], no_duplicated_events: false,
-        data: {
-          base_timings: {},
-          scores: {
-            swimmer.id.to_s => [
-              { 'event_type_code' => '50SL', 'pool_type_code' => '25', 'total_hundredths' => 3000,
-                'meeting_date' => '2025-01-15', 'meeting_name' => 'Test Meeting', 'meeting_id' => 42,
-                'meeting_individual_result_id' => 99, 'team_id' => team.id, 'team_name' => 'TEST',
-                'old_total_hundredths' => 3200, 'old_meeting_date' => '2024-01-10',
-                'old_meeting_name' => 'Old Meeting', 'old_meeting_id' => 30,
-                'old_meeting_individual_result_id' => 88, 'row_score' => 1066.67 }
-            ]
-          }
-        }
-      }.to_json)
+      cup = FactoryBot.create(:goggle_cup, team: team, description: 'Test Cup', season_year: 2025, swimmers_ids: '1')
+      cup.update!(ranking_data: { test: 'data' }.to_json)
 
-      get load_ranking_goggles_cup_preview_path, params: { team_id: team.id, goggle_cup_id: cup.id }
+      post clear_ranking_goggles_cup_preview_path, params: { goggle_cup_id: cup.id }
 
-      expect(response).to have_http_status(:success)
-      expect(response.parsed_body['html']).to include('TEST SWIMMER')
+      expect(response).to redirect_to(goggles_cup_preview_path(goggle_cup_id: cup.id))
+      expect(cup.reload.ranking_data).to be_nil
+      expect(flash[:notice]).to be_present
     end
 
-    it 'returns not found when cup has no ranking_data' do
+    it 'redirects without changes when the cup has no ranking_data' do
       team = FactoryBot.create(:team)
-      cup = FactoryBot.create(:goggle_cup, team: team, description: 'Empty Cup', season_year: 2025)
+      cup = FactoryBot.create(:goggle_cup, team: team, description: 'Empty Cup', season_year: 2025, swimmers_ids: '1')
 
-      get load_ranking_goggles_cup_preview_path, params: { team_id: team.id, goggle_cup_id: cup.id }
+      post clear_ranking_goggles_cup_preview_path, params: { goggle_cup_id: cup.id }
 
-      expect(response).to have_http_status(:not_found)
+      expect(response).to redirect_to(goggles_cup_preview_path(goggle_cup_id: cup.id))
+      expect(flash[:notice]).to be_blank
     end
   end
 
@@ -246,7 +288,8 @@ RSpec.describe 'GogglesCupPreview' do
         }
       end.to change(GogglesDb::GoggleCup, :count).by(1)
 
-      expect(response).to redirect_to(goggles_cup_preview_path(team_id: team.id.to_s, goggle_cup_id: GogglesDb::GoggleCup.last.id))
+      expect(response).to redirect_to(goggles_cup_preview_path(goggle_cup_id: GogglesDb::GoggleCup.last.id,
+                                                               season_year: '2025', team_id: team.id.to_s))
       cup = GogglesDb::GoggleCup.last
       expect(cup.description).to eq('New Cup')
       expect(cup.swimmers_ids).to eq('1,2,3')
@@ -265,10 +308,50 @@ RSpec.describe 'GogglesCupPreview' do
         swimmer_ids: %w[1 2]
       }
 
-      expect(response).to redirect_to(goggles_cup_preview_path(team_id: team.id.to_s, goggle_cup_id: cup.id))
+      expect(response).to redirect_to(goggles_cup_preview_path(goggle_cup_id: cup.id,
+                                                               season_year: '2025', team_id: team.id.to_s))
       cup.reload
       expect(cup.description).to eq('Updated')
       expect(cup.swimmers_ids).to eq('1,2')
+    end
+
+    it 'clears the stored ranking_data when the swimmer selection changes' do
+      team = FactoryBot.create(:team)
+      cup = FactoryBot.create(:goggle_cup, team: team, description: 'Test Cup', season_year: 2025, swimmers_ids: '1,2')
+      cup.update!(ranking_data: { test: 'data' }.to_json)
+
+      post save_goggles_cup_preview_path, params: {
+        team_id: team.id,
+        goggle_cup_id: cup.id,
+        description: 'Test Cup',
+        season_year: 2025,
+        end_date: '2026-07-31',
+        swimmer_ids: %w[1]
+      }
+
+      cup.reload
+      expect(cup.swimmers_ids).to eq('1')
+      expect(cup.ranking_data).to be_nil
+    end
+
+    it 'keeps the stored ranking_data when the swimmer selection is unchanged' do
+      team = FactoryBot.create(:team)
+      cup = FactoryBot.create(:goggle_cup, team: team, description: 'Test Cup', season_year: 2025, swimmers_ids: '1,2')
+      stored_data = { test: 'data' }.to_json
+      cup.update!(ranking_data: stored_data)
+
+      post save_goggles_cup_preview_path, params: {
+        team_id: team.id,
+        goggle_cup_id: cup.id,
+        description: 'Renamed Cup',
+        season_year: 2025,
+        end_date: '2026-07-31',
+        swimmer_ids: %w[2 1]
+      }
+
+      cup.reload
+      expect(cup.description).to eq('Renamed Cup')
+      expect(cup.ranking_data).to eq(stored_data)
     end
   end
 
@@ -361,7 +444,7 @@ RSpec.describe 'GogglesCupPreview' do
 
       post export_sql_goggles_cup_preview_path, params: { team_id: team.id, goggle_cup_id: cup.id }
 
-      expect(response).to redirect_to(goggles_cup_preview_path(team_id: team.id.to_s, goggle_cup_id: cup.id))
+      expect(response).to redirect_to(goggles_cup_preview_path(goggle_cup_id: cup.id, team_id: team.id.to_s))
       expect(flash[:alert]).to be_present
     end
 
@@ -373,7 +456,7 @@ RSpec.describe 'GogglesCupPreview' do
 
       post export_sql_goggles_cup_preview_path, params: { team_id: team.id, goggle_cup_id: cup.id }
 
-      expect(response).to redirect_to(goggles_cup_preview_path(team_id: team.id.to_s, goggle_cup_id: cup.id))
+      expect(response).to redirect_to(goggles_cup_preview_path(goggle_cup_id: cup.id, team_id: team.id.to_s))
       expect(flash[:notice]).to be_present
 
       generated_files = Rails.root.glob('crawler/data/results.new/goggle_cups/*-goggle_cup-*.sql')
@@ -461,7 +544,7 @@ RSpec.describe 'GogglesCupPreview' do
 
       get base_timings_goggles_cup_preview_path, params: { team_id: team.id, goggle_cup_id: cup.id }
 
-      expect(response).to redirect_to(goggles_cup_preview_path(team_id: team.id.to_s, goggle_cup_id: cup.id))
+      expect(response).to redirect_to(goggles_cup_preview_path(goggle_cup_id: cup.id, team_id: team.id.to_s))
       expect(flash[:alert]).to be_present
     end
 
@@ -470,7 +553,7 @@ RSpec.describe 'GogglesCupPreview' do
 
       get base_timings_goggles_cup_preview_path, params: { team_id: team.id, goggle_cup_id: 0 }
 
-      expect(response).to redirect_to(goggles_cup_preview_path(team_id: team.id.to_s, goggle_cup_id: nil))
+      expect(response).to redirect_to(goggles_cup_preview_path(team_id: team.id.to_s))
       expect(flash[:alert]).to be_present
     end
   end

@@ -1,65 +1,113 @@
 import { Controller } from '@hotwired/stimulus'
 
+// Handles the GogglesCup season/team/cup selection page:
+// - submits the GET selection form when the season or managed-team changes;
+// - navigates to the selected cup (or to a "new cup" page) via the cup selector;
+// - smart-selects swimmers belonging to a secondary team;
+// - computes the ranking via AJAX and shows it in the collapsible ranking panel.
 export default class extends Controller {
-  static targets = ['form', 'noDuplicatedEventsField', 'swimmerCheckbox', 'swimmerPanel', 'rankingContainer', 'computeButton', 'overlay',
-                   'cupSelect', 'goggleCupIdField', 'descriptionField', 'seasonYearField', 'endDateField', 'externalSwimmersContainer',
-                   'selectionCounter', 'loadExistingButton', 'exportSqlButton', 'cupIdDisplay']
-  static values = { smartSelectionUrl: String, cupDataUrl: String, loadRankingUrl: String, hasRankingData: Boolean }
+  static targets = ['form', 'selectionForm', 'noDuplicatedEventsField', 'swimmerCheckbox', 'swimmerPanel',
+                    'rankingContainer', 'computeButton', 'overlay', 'cupSelect', 'goggleCupIdField',
+                    'descriptionField', 'seasonYearField', 'endDateField', 'externalSwimmersContainer',
+                    'selectionCounter', 'precomputedButton', 'exportSqlButton']
+  static values = { smartSelectionUrl: String, indexUrl: String, hasRankingData: Boolean }
 
-  // Called when the controller is connected to the DOM. Sets up secondary team
-  // listener and initial UI state.
+  // Called when the controller is connected to the DOM. Sets up the team &
+  // secondary-team autocomplete listeners and the initial UI state.
   connect() {
     this.csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+    this.teamSelect = document.querySelector('#team_select')
     this.secondaryTeamSelect = document.querySelector('#secondary_team_select')
     this.boundSmartSelectWithDelay = this.smartSelectWithDelay.bind(this)
+    this.boundSubmitSelectionFormWithDelay = this.submitSelectionFormWithDelay.bind(this)
     if (this.secondaryTeamSelect) {
       this.secondaryTeamSelect.addEventListener('change', this.boundSmartSelectWithDelay)
     }
+    if (this.teamSelect) {
+      // The autocomplete updates the hidden team_id field on change; the small
+      // delay lets that happen before the selection form is submitted.
+      this.teamSelect.addEventListener('change', this.boundSubmitSelectionFormWithDelay)
+    }
     this.updateSelectionCounter()
-    this.toggleLoadExistingButton()
-    this.toggleExportSqlButton()
-  }
-
-  // Stimulus value callback: toggles the load-existing and export-sql buttons
-  // whenever the selected cup's ranking_data presence changes.
-  hasRankingDataValueChanged() {
-    this.toggleLoadExistingButton()
-    this.toggleExportSqlButton()
-  }
-
-  // Shows or hides the "Show precomputed" button based on ranking_data availability.
-  toggleLoadExistingButton() {
-    if (!this.hasLoadExistingButtonTarget) {
-      return
-    }
-
-    this.loadExistingButtonTarget.classList.toggle('d-none', !this.hasRankingDataValue)
-  }
-
-  // Shows or hides the "Export SQL" button based on ranking_data availability.
-  toggleExportSqlButton() {
-    if (!this.hasExportSqlButtonTarget) {
-      return
-    }
-
-    this.exportSqlButtonTarget.classList.toggle('d-none', !this.hasRankingDataValue)
+    this.toggleRankingButtons()
   }
 
   disconnect() {
     if (this.secondaryTeamSelect) {
       this.secondaryTeamSelect.removeEventListener('change', this.boundSmartSelectWithDelay)
     }
+    if (this.teamSelect) {
+      this.teamSelect.removeEventListener('change', this.boundSubmitSelectionFormWithDelay)
+    }
+  }
+
+  // Stimulus value callback: enables/disables the stored-ranking related buttons.
+  hasRankingDataValueChanged() {
+    this.toggleRankingButtons()
+  }
+
+  // Enables or disables "Show precomputed" & "Export SQL" (both need stored data).
+  toggleRankingButtons() {
+    if (this.hasPrecomputedButtonTarget) {
+      this.precomputedButtonTarget.disabled = !this.hasRankingDataValue
+    }
+    if (this.hasExportSqlButtonTarget) {
+      this.exportSqlButtonTarget.disabled = !this.hasRankingDataValue
+      this.exportSqlButtonTarget.classList.toggle('d-none', !this.hasRankingDataValue)
+    }
+  }
+
+  // Submits the GET selection form (season / managed-team changes).
+  submitSelectionForm(event) {
+    if (event) {
+      event.preventDefault()
+    }
+    if (this.hasSelectionFormTarget) {
+      this.selectionFormTarget.requestSubmit()
+    }
+  }
+
+  submitSelectionFormWithDelay() {
+    window.setTimeout(() => this.submitSelectionForm(), 150)
+  }
+
+  // Navigates to the chosen cup, or back to a clean "new cup" page when the
+  // empty option is picked.
+  selectCup(event) {
+    const cupId = event.target.value
+    const url = new URL(this.indexUrlValue, window.location.origin)
+    if (cupId) {
+      url.searchParams.append('goggle_cup_id', cupId)
+    } else {
+      const seasonYear = this.fieldValue('season_year')
+      const teamId = this.fieldValue('team_id')
+      if (seasonYear) {
+        url.searchParams.append('season_year', seasonYear)
+      }
+      if (teamId) {
+        url.searchParams.append('team_id', teamId)
+      }
+    }
+    window.location.href = url.toString()
   }
 
   selectAll(event) {
     event.preventDefault()
-    this.swimmerCheckboxTargets.forEach((checkbox) => { checkbox.checked = true })
+    this.swimmerCheckboxTargets.forEach((checkbox) => {
+      if (!checkbox.disabled) {
+        checkbox.checked = true
+      }
+    })
     this.updateSelectionCounter()
   }
 
   deselectAll(event) {
     event.preventDefault()
-    this.swimmerCheckboxTargets.forEach((checkbox) => { checkbox.checked = false })
+    this.swimmerCheckboxTargets.forEach((checkbox) => {
+      if (!checkbox.disabled) {
+        checkbox.checked = false
+      }
+    })
     this.updateSelectionCounter()
   }
 
@@ -67,6 +115,8 @@ export default class extends Controller {
     window.setTimeout(() => this.smartSelect(), 150)
   }
 
+  // Checks the swimmer checkboxes matching the swimmers holding a badge for the
+  // chosen secondary team (via the smart_selection endpoint).
   async smartSelect() {
     const teamId = this.fieldValue('team_id')
     const secondaryTeamId = this.fieldValue('secondary_team_id')
@@ -78,6 +128,7 @@ export default class extends Controller {
     const url = new URL(this.smartSelectionUrlValue, window.location.origin)
     url.searchParams.append('team_id', teamId)
     url.searchParams.append('secondary_team_id', secondaryTeamId)
+    url.searchParams.append('season_year', this.fieldValue('season_year'))
 
     const response = await fetch(url.toString(), {
       method: 'GET',
@@ -92,132 +143,11 @@ export default class extends Controller {
     const selectedIds = (data.swimmer_ids || []).map((id) => `${id}`)
 
     this.swimmerCheckboxTargets.forEach((checkbox) => {
-      checkbox.checked = selectedIds.includes(`${checkbox.dataset.swimmerId}`)
+      if (!checkbox.disabled) {
+        checkbox.checked = selectedIds.includes(`${checkbox.dataset.swimmerId}`)
+      }
     })
     this.updateSelectionCounter()
-  }
-
-  // Fetches the selected cup configuration via cup_data and updates the form fields,
-  // swimmer selection, external swimmers and ranking-data related buttons.
-  async selectCup(event) {
-    const cupId = event.target.value
-    if (!cupId) {
-      this.clearCupFields()
-      return
-    }
-
-    this.setLoading(true)
-
-    const teamId = this.fieldValue('team_id')
-    const url = new URL(this.cupDataUrlValue, window.location.origin)
-    url.searchParams.append('team_id', teamId)
-    url.searchParams.append('goggle_cup_id', cupId)
-
-    try {
-      const response = await fetch(url.toString(), {
-        method: 'GET',
-        headers: { Accept: 'application/json' }
-      })
-
-      if (!response.ok) {
-        return
-      }
-
-      const data = await response.json()
-
-      if (this.hasGoggleCupIdFieldTarget) {
-        this.goggleCupIdFieldTarget.value = data.goggle_cup_id || ''
-      }
-      if (this.hasCupIdDisplayTarget) {
-        this.cupIdDisplayTarget.value = data.goggle_cup_id || ''
-      }
-      if (this.hasDescriptionFieldTarget) {
-        this.descriptionFieldTarget.value = data.description || ''
-      }
-      if (this.hasSeasonYearFieldTarget) {
-        this.seasonYearFieldTarget.value = data.season_year || ''
-      }
-      if (this.hasEndDateFieldTarget) {
-        this.endDateFieldTarget.value = data.end_date || ''
-      }
-      if (this.hasNoDuplicatedEventsFieldTarget) {
-        this.noDuplicatedEventsFieldTarget.checked = !!data.no_duplicated_events
-      }
-
-      this.hasRankingDataValue = !!data.has_ranking_data
-
-      const selectedIds = (data.swimmer_ids || []).map((id) => `${id}`)
-      this.swimmerCheckboxTargets.forEach((checkbox) => {
-        checkbox.checked = selectedIds.includes(`${checkbox.dataset.swimmerId}`)
-      })
-
-      this.renderExternalSwimmers(data.external_swimmers || [], selectedIds)
-      this.updateSelectionCounter()
-    } finally {
-      this.setLoading(false)
-    }
-  }
-
-  // Resets the cup form fields and UI state when the "(New)" option is selected.
-  clearCupFields() {
-    if (this.hasGoggleCupIdFieldTarget) {
-      this.goggleCupIdFieldTarget.value = ''
-    }
-    if (this.hasCupIdDisplayTarget) {
-      this.cupIdDisplayTarget.value = ''
-    }
-    if (this.hasDescriptionFieldTarget) {
-      this.descriptionFieldTarget.value = ''
-    }
-    if (this.hasSeasonYearFieldTarget) {
-      this.seasonYearFieldTarget.value = ''
-    }
-    if (this.hasEndDateFieldTarget) {
-      this.endDateFieldTarget.value = ''
-    }
-    this.hasRankingDataValue = false
-    this.updateSelectionCounter()
-  }
-
-  renderExternalSwimmers(externalSwimmers, selectedIds) {
-    if (!this.hasExternalSwimmersContainerTarget) {
-      return
-    }
-
-    const container = this.externalSwimmersContainerTarget
-    if (!externalSwimmers || externalSwimmers.length === 0) {
-      container.innerHTML = ''
-      return
-    }
-
-    const rows = externalSwimmers.map((swimmer) => {
-      const id = swimmer.swimmer_id
-      const checked = selectedIds.includes(`${id}`) ? 'checked' : ''
-      return `
-        <tr>
-          <td class="text-center">
-            <label class="switch round">
-              <input type="checkbox" name="swimmer_ids[]" value="${id}" id="external_swimmer_${id}" ${checked}
-                     data-goggles-cup-target="swimmerCheckbox" data-swimmer-id="${id}">
-              <span class="slider round"></span>
-            </label>
-          </td>
-          <td>${swimmer.swimmer_name}</td>
-          <td>${swimmer.swimmer_year_of_birth}</td>
-        </tr>`
-    }).join('')
-
-    container.innerHTML = `
-      <table class="table table-sm table-bordered">
-        <thead>
-          <tr>
-            <th width="50">${container.dataset.selectLabel || 'Select'}</th>
-            <th>${container.dataset.nameLabel || 'Swimmer'}</th>
-            <th>${container.dataset.yearLabel || 'Year of Birth'}</th>
-          </tr>
-        </thead>
-        <tbody>${rows}</tbody>
-      </table>`
   }
 
   updateSelectionCounter() {
@@ -230,38 +160,9 @@ export default class extends Controller {
     this.selectionCounterTarget.textContent = `(${selected} / ${total})`
   }
 
-  // Loads and displays the precomputed ranking HTML for the selected cup.
-  async loadExisting(event) {
-    event.preventDefault()
-    const cupId = this.goggleCupIdFieldTarget?.value
-    if (!cupId) {
-      return
-    }
-
-    this.setLoading(true)
-
-    const url = new URL(this.loadRankingUrlValue, window.location.origin)
-    url.searchParams.append('team_id', this.fieldValue('team_id'))
-    url.searchParams.append('goggle_cup_id', cupId)
-
-    try {
-      const response = await fetch(url.toString(), {
-        method: 'GET',
-        headers: { Accept: 'application/json' }
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        this.rankingContainerTarget.innerHTML = data.html || ''
-        this.collapseSwimmerPanel()
-      }
-    } finally {
-      this.setLoading(false)
-    }
-  }
-
-  // Computes the GogglesCup ranking via AJAX. Ignores save and export-sql submitters
-  // so their formaction attributes are handled by the browser as normal form posts.
+  // Computes the GogglesCup ranking via AJAX. Ignores save and export-sql
+  // submitters so their formaction attributes are handled by the browser as
+  // normal form posts.
   async compute(event) {
     // If the Save or Export SQL buttons triggered this submit, let the browser
     // handle it natively (formaction → save/export route). Only intercept Compute submits.
@@ -299,36 +200,45 @@ export default class extends Controller {
 
     if (response.ok) {
       const data = await response.json()
-      this.rankingContainerTarget.innerHTML = data.html || ''
-      this.collapseSwimmerPanel()
+      if (this.hasRankingContainerTarget) {
+        this.rankingContainerTarget.innerHTML = data.html || ''
+      }
+      // The compute action persists ranking_data when a cup is selected, so the
+      // stored-data buttons can be enabled right away.
+      if (this.hasGoggleCupIdFieldTarget && this.goggleCupIdFieldTarget.value) {
+        this.hasRankingDataValue = true
+      }
+      this.showRankingPanel()
     }
 
     this.setLoading(false)
   }
 
+  // Expands the ranking panel and scrolls it into view.
+  showRankingPanel() {
+    const panel = document.querySelector('#ranking-panel')
+    if (!panel) {
+      return
+    }
+    panel.classList.add('show')
+    panel.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
   fieldValue(fieldName) {
-    const field = this.formTarget.querySelector(`[name="${fieldName}"]`) || document.querySelector(`[name="${fieldName}"]`)
+    const field = (this.hasFormTarget && this.formTarget.querySelector(`[name="${fieldName}"]`)) ||
+      (this.hasSelectionFormTarget && this.selectionFormTarget.querySelector(`[name="${fieldName}"]`)) ||
+      document.querySelector(`[name="${fieldName}"]`)
     return field ? field.value : ''
   }
 
   setLoading(loading) {
-    if (!this.hasComputeButtonTarget) {
-      return
+    if (this.hasComputeButtonTarget) {
+      this.computeButtonTarget.disabled = loading
+      this.computeButtonTarget.classList.toggle('disabled', loading)
     }
-
-    this.computeButtonTarget.disabled = loading
-    this.computeButtonTarget.classList.toggle('disabled', loading)
 
     if (this.hasOverlayTarget) {
       this.overlayTarget.classList.toggle('d-none', !loading)
     }
-  }
-
-  collapseSwimmerPanel() {
-    if (!this.hasSwimmerPanelTarget) {
-      return
-    }
-
-    this.swimmerPanelTarget.classList.remove('show')
   }
 }

@@ -2,9 +2,22 @@
 
 module GogglesCup
   # Lists swimmers for the GogglesCup primary-team domain.
+  #
+  # The list merges two sources:
+  # - swimmers having a valid result for the team in the reference championship
+  #   year (from the best_swimmer_current_vs_previous_results Scenic view, which
+  #   honors the +@base_year+ session variable set by the caller);
+  # - swimmers holding a Badge for the same team in the current OR in the
+  #   previous MASFIN championship year, so that the list is populated also at
+  #   the start of a new season, when no badges or results exist yet.
   class SwimmerOptionsQuery
-    def initialize(team_id:)
+    # == Params:
+    # - team_id:   the primary Team id (required)
+    # - base_year: the reference championship year for the badge lookup;
+    #              defaults to the current championship year
+    def initialize(team_id:, base_year: nil)
       @team_id = team_id
+      @base_year = base_year.presence&.to_i || GogglesDb::Season.current_championship_year
     end
 
     def call
@@ -29,11 +42,27 @@ module GogglesCup
     private
 
     def rows
-      @rows ||= GogglesDb::BestSwimmerCurrentVsPreviousResult
-                .where(team_id: @team_id)
-                .distinct
-                .order(:swimmer_name)
-                .pluck(:swimmer_id, :swimmer_name, :swimmer_year_of_birth)
+      @rows ||= (result_rows + badge_rows).uniq(&:first).sort_by { |row| row[1].to_s }
+    end
+
+    def result_rows
+      GogglesDb::BestSwimmerCurrentVsPreviousResult
+        .where(team_id: @team_id)
+        .distinct
+        .pluck(:swimmer_id, :swimmer_name, :swimmer_year_of_birth)
+    end
+
+    def badge_rows
+      GogglesDb::Badge
+        .joins(:season, :swimmer)
+        .where(team_id: @team_id)
+        .merge(
+          GogglesDb::Season
+            .for_season_type(GogglesDb::SeasonType.mas_fin)
+            .for_championship_year(@base_year, @base_year - 1)
+        )
+        .distinct
+        .pluck('swimmers.id', 'swimmers.complete_name', 'swimmers.year_of_birth')
     end
   end
 end
