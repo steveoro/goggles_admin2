@@ -1,9 +1,9 @@
 GIT
   remote: https://github.com/steveoro/goggles_db.git
-  revision: e3e9603869177ea68c9838c74aad2293cb20b6c0
+  revision: 5f6914b4fb35ed1ab41d13003b25789b11bbf59e
   branch: master
   specs:
-    goggles_db (0.10.61)
+    goggles_db (0.10.62)
       acts-as-taggable-on
       acts_as_votable
       caxlsx
@@ -469,11 +469,11 @@ GEM
       rack (>= 1.2, < 4)
       snaky_hash (~> 2.0, >= 2.0.7)
       version_gem (~> 1.1, >= 1.1.14)
-    omniauth (2.1.4)
-      hashie (>= 3.4.6)
+    omniauth (2.3.0)
+      hashie (>= 3.5.2)
       logger
-      rack (>= 2.2.3)
-      rack-protection
+      rack (>= 2.2.8)
+      rack-protection (>= 2.2.0)
     omniauth-facebook (11.0.0)
       bigdecimal
       omniauth-oauth2 (>= 1.2, < 3)
@@ -758,7 +758,7 @@ GEM
     uri (1.1.2)
     useragent (0.16.11)
     version_gem (1.1.15)
-    view_component (4.17.0)
+    view_component (4.18.0)
       actionview (>= 7.1.0)
       activesupport (>= 7.1.0)
       concurrent-ruby (~> 1)

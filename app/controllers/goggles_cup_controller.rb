@@ -133,13 +133,19 @@ class GogglesCupController < ApplicationController
   end
 
   # Sets @season_year: the selected cup's year, the explicit parameter, or the
-  # current championship year as fallback.
+  # current MASFIN championship year as fallback.
   def set_season_year
     return if @season_year.present?
 
     @season_year = @goggle_cup&.season_year ||
                    params[:season_year].presence&.to_i ||
-                   GogglesDb::Season.current_championship_year
+                   default_season_year
+  end
+
+  # Returns the championship year of the ongoing (or latest upcoming) MASFIN
+  # season -- the domain reference year for GoggleCups.
+  def default_season_year
+    @default_season_year ||= GogglesDb::Season.current_championship_year(GogglesDb::SeasonType.mas_fin)
   end
 
   # Sets @team: the cup's team, the explicit :team_id parameter, or (on the index
@@ -213,14 +219,16 @@ class GogglesCupController < ApplicationController
   end
 
   # Distinct championship years having at least one cup for the manageable team
-  # domain (all cups for admins), always including the currently shown year.
+  # domain (all cups for admins), always including the currently shown year and
+  # the current MASFIN championship year (so a new cup can be started for it
+  # even while browsing another year).
   def available_season_years
     scope = if team_resolver.can_choose_any_team?
               GogglesDb::GoggleCup.all
             else
               GogglesDb::GoggleCup.where(team_id: team_resolver.managed_team_ids)
             end
-    (scope.distinct.pluck(:season_year) + [@season_year]).compact.uniq.sort.reverse
+    (scope.distinct.pluck(:season_year) + [@season_year, default_season_year]).compact.uniq.sort.reverse
   end
 
   def swimmers_for_team

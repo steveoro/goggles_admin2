@@ -17,7 +17,7 @@ module GogglesCup
     #              defaults to the current championship year
     def initialize(team_id:, base_year: nil)
       @team_id = team_id
-      @base_year = base_year.presence&.to_i || GogglesDb::Season.current_championship_year
+      @base_year = base_year.presence&.to_i || GogglesDb::Season.current_championship_year(GogglesDb::SeasonType.mas_fin)
     end
 
     def call

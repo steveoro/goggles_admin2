@@ -58,6 +58,29 @@ RSpec.describe 'GogglesCupPreview' do
         expect(response.body).to include('Cup 2020')
         expect(response.body).not_to include('Cup 2021')
       end
+
+      it 'always lists the current MASFIN championship year in the selector' do
+        team = FactoryBot.create(:team)
+        FactoryBot.create(:goggle_cup, team: team, description: 'Cup 2020', season_year: 2020)
+        allow(GogglesDb::Season).to receive(:current_championship_year).and_return(2035)
+        allow(GogglesCup::SwimmerOptionsQuery).to receive(:new).and_return(instance_double(GogglesCup::SwimmerOptionsQuery, call: []))
+
+        get goggles_cup_preview_path, params: { team_id: team.id, season_year: 2020 }
+
+        expect(response.body).to include('>2035</option>')
+        expect(response.body).to include('>2020</option>')
+      end
+
+      it 'resolves the default shown year from the ongoing MASFIN season' do
+        team = FactoryBot.create(:team)
+        allow(GogglesDb::Season).to receive(:current_championship_year).and_return(2035)
+        allow(GogglesCup::SwimmerOptionsQuery).to receive(:new).and_return(instance_double(GogglesCup::SwimmerOptionsQuery, call: []))
+
+        get goggles_cup_preview_path, params: { team_id: team.id }
+
+        expect(GogglesDb::Season).to have_received(:current_championship_year).with(GogglesDb::SeasonType.mas_fin)
+        expect(response.body).to include('>2035</option>')
+      end
     end
   end
 
@@ -482,11 +505,11 @@ RSpec.describe 'GogglesCupPreview' do
 
       get goggles_cup_preview_path, params: { team_id: team.id, goggle_cup_id: cup_without.id }
       expect(response.body).to include(I18n.t('goggles_cup.export_sql'))
-      expect(response.body).to include('btn btn-warning btn-lg w-100 d-none')
+      expect(response.body).to include('btn btn-outline-secondary btn-lg w-100 d-none')
 
       get goggles_cup_preview_path, params: { team_id: team.id, goggle_cup_id: cup_with.id }
       expect(response.body).to include(I18n.t('goggles_cup.export_sql'))
-      expect(response.body).not_to include('btn btn-warning btn-lg w-100 d-none')
+      expect(response.body).not_to include('btn btn-outline-secondary btn-lg w-100 d-none')
     end
   end
 

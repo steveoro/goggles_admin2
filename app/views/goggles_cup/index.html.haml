@@ -29,6 +29,7 @@
             .container-fluid
               .row.mb-3
                 .col-md-3.my-2
+                  #{@season_year}
                   = label_tag :season_year, t('goggles_cup.select_season'), class: 'form-label'
                   = select_tag(:season_year,
                                options_for_select(@season_years.map { |year| [year, year] }, @season_year),
@@ -68,7 +69,7 @@
                     %i.fa.fa-plus.me-2
                     = t('goggles_cup.new_cup')
                 .col-md-3.my-2.d-flex.align-items-end
-                  = label_tag :id, 'ID', class: 'form-label me-2'
+                  = label_tag :id, 'ID', class: 'form-label mx-2'
                   = text_field_tag :id, @goggle_cup&.id, id: 'id', class: 'form-control', disabled: true
 
     - if @team
@@ -111,25 +112,25 @@
                   = label_tag(:no_duplicated_events, t('goggles_cup.no_duplicated_events'), class: 'form-check-label mb-0')
 
                 .row.mb-1
-                  .col-md-3.my-1
+                  .col-md-3.my-1.d-flex.flex-fill
                     = button_tag(type: 'submit', formaction: save_goggles_cup_preview_path, formmethod: :post,
-                                class: 'btn btn-primary btn-lg w-100',
+                                class: 'btn btn-outline-primary btn-lg w-100',
                                 data: { 'goggles-cup-target': 'saveButton', toggle: 'tooltip', placement: 'top', title: t('goggles_cup.save_config_tooltip') }) do
                       %i.fa.fa-floppy-o.me-2
                       = t('goggles_cup.save_config')
-                  .col-md-3.my-1
-                    %button.btn.btn-info.btn-lg.w-100{ type: 'button', id: 'btn-show-precomputed', disabled: !@readonly,
+                  .col-md-3.my-1.d-flex.flex-fill
+                    %button.btn.btn-outline-secondary.btn-lg.w-100{ type: 'button', id: 'btn-show-precomputed', disabled: !@readonly,
                         data: { 'goggles-cup-target': 'precomputedButton', toggle: 'collapse', target: '#ranking-panel', 'aria-expanded' => 'false', 'aria-controls' => 'ranking-panel' } }
                       %i.fa.fa-download.me-2
                       = t('goggles_cup.load_existing')
-                  .col-md-3.my-1
+                  .col-md-3.my-1.d-flex.flex-fill
                     = button_tag(type: 'submit', formaction: export_sql_goggles_cup_preview_path, formmethod: :post,
-                                 class: "btn btn-warning btn-lg w-100#{@readonly ? '' : ' d-none'}", disabled: !@readonly,
+                                 class: "btn btn-outline-secondary btn-lg w-100#{@readonly ? '' : ' d-none'}", disabled: !@readonly,
                                  data: { 'goggles-cup-target': 'exportSqlButton', toggle: 'tooltip', placement: 'top', title: t('goggles_cup.export_sql_tooltip'), turbo_confirm: t('goggles_cup.confirm_export') }) do
                       %i.fa.fa-file-code-o.me-2
                       = t('goggles_cup.export_sql')
-                  .col-md-3.my-1
-                    = button_tag(type: 'submit', class: 'btn btn-success btn-lg w-100', disabled: @readonly,
+                  .col-md-3.my-1.d-flex.flex-fill
+                    = button_tag(type: 'submit', class: 'btn btn-outline-success btn-lg w-100', disabled: @readonly,
                                 data: { 'goggles-cup-target': 'computeButton', toggle: 'tooltip', placement: 'top', title: t('goggles_cup.compute_tooltip') }) do
                       %i.fa.fa-calculator.me-2
                       = t('goggles_cup.compute')

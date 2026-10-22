@@ -5,7 +5,7 @@
       .d-flex.align-items-center
         - if readonly && goggle_cup
           = link_to(clear_ranking_goggles_cup_preview_path(goggle_cup_id: goggle_cup.id),
-                    class: 'btn btn-sm btn-outline-warning me-2', id: 'btn-edit-swimmers',
+                    class: 'btn btn-sm btn-outline-warning mx-2', id: 'btn-edit-swimmers',
                     data: { turbo_method: :post, turbo_confirm: t('goggles_cup.confirm_clear_ranking'),
                             toggle: 'tooltip', placement: 'left', title: t('goggles_cup.edit_selection_tooltip') }) do
             %i.fa.fa-pencil

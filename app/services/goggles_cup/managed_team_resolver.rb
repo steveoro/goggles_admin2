@@ -21,7 +21,7 @@ module GogglesCup
     #                current championship year)
     def initialize(user:, season_year: nil)
       @user = user
-      @season_year = season_year.presence&.to_i || GogglesDb::Season.current_championship_year
+      @season_year = season_year.presence&.to_i || GogglesDb::Season.current_championship_year(GogglesDb::SeasonType.mas_fin)
     end
 
     # Returns true when the user can pick any team (admin grants).
