@@ -224,6 +224,18 @@ export default class extends Controller {
     panel.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
+  // Smooth-scrolls back to the cup selection card without navigating, so the
+  // current swimmer selection is preserved.
+  goToTop(event) {
+    event.preventDefault()
+    const target = document.querySelector('#select-cup')
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+  }
+
   fieldValue(fieldName) {
     const field = (this.hasFormTarget && this.formTarget.querySelector(`[name="${fieldName}"]`)) ||
       (this.hasSelectionFormTarget && this.selectionFormTarget.querySelector(`[name="${fieldName}"]`)) ||

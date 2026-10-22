@@ -87,6 +87,7 @@
 
         .row.mt-3
           .col-12.text-end
-            %a.btn.btn-sm.btn-outline-secondary#btn-go-to-top{ href: '#select-cup' }
+            %button.btn.btn-sm.btn-outline-secondary#btn-go-to-top{ type: 'button',
+                    data: { action: 'click->goggles-cup#goToTop' } }
               %i.fa.fa-arrow-up.me-1
               = t('goggles_cup.go_to_top')
