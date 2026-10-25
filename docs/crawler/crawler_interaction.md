@@ -13,13 +13,18 @@ The crawler is triggered via specific actions in the `PullController`:
     * The crawler navigates the FIN website for the specified season.
     * **Output:** The crawler generates a `.csv` file containing a list of meetings found for that season (calendar). This file is saved locally within `goggles_admin2` under `crawler/data/calendar.new/<season_id>/`.
 
-2. **Result Crawling (`PullController#process_calendar_file`):**
-    * Triggered by selecting a specific `.csv` calendar file from the file list view (`/pull/calendar_files`).
-    * The controller calls the crawler's `/pull_results` API endpoint, passing the path to the selected `.csv` file.
+2. **Result Crawling — meeting selection page (`PullController#calendar_meetings` → `#process_selected_meetings`):**
+    * Triggered by clicking the checkbox icon on a `.csv` calendar file from `/pull/calendar_files`.
+    * A dedicated page lists one row per CSV meeting with the derived state: raw `date`/`year`/`name`/`place`, a `meetingUrl` presence flag, the manifest status (none / pending download in `manifests/<season>/` / already extracted in `manifests.done/<season>/`) and the source-file status (`results.new`/`.done`). The manifest path prediction reuses a Ruby port of the crawler's naming rules (`CrawlerCalendar::Sheet`/`Row`), so it matches `manifest-<first_iso_date>-<normalized_name>.pdf` byte-for-byte.
+    * Toolbar presets auto-select rows (all/none, with meetingUrl only, only rows without a manifest on disk); cancelled or URL-less rows are disabled. A "hide extracted" toggle collapses already-processed meetings.
+    * On submit, `POST /pull/process_selected_meetings` writes a new `<base>-sel-<timestamp>.csv` next to the source file containing only the selected rows (same headers, verbatim field values) and calls `/pull_results` on it. The original CSV is left untouched; the generated file inherits the normal consume lifecycle (moved to `calendar.done` after the run, leftovers appended as a `-skip.csv` sibling).
+    * The page also shows a manifest-extraction button when `manifests/<season>/` contains pending PDFs (see below).
+    * The ⚡ bolt icon still triggers the legacy whole-file path (`PullController#process_calendar_file`), which calls `/pull_results` directly on the original `.csv` — useful when every row should be crawled without review.
     * The crawler reads the `.csv`, visits the result links for each meeting listed within it.
     * **Outputs:**
         * If results are available directly on the web page, the crawler parses them and saves them as a standardized `.json` file locally under `crawler/data/results.new/<season_id>/`.
         * If a PDF link for results is found, the crawler downloads the `.pdf` file, saving it under `crawler/data/results.new/<season_id>/`.
+        * Meeting manifests (when present on the meeting page) are downloaded under `crawler/data/manifests/<season_id>/manifest-<first_date>-<normalized_name>.pdf`.
 
 3. **Direct FIN Layout-2 Result Crawling (`PullController#run_crawler_api` with layout ID 2):**
     * Triggered from the main crawler dashboard (`/pull/index`).

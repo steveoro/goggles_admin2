@@ -63,6 +63,12 @@
 
               - case extname
               - when '.csv'
+                - if full_pathname.to_s.include?('/calendar.')
+                  &nbsp;
+                  = link_to(pull_calendar_meetings_path(file_path: full_pathname),
+                            class: 'btn btn-sm btn-outline-info mb-1', data: { toggle: 'tooltip',
+                            title: t('data_import.file.btn_select_csv_tooltip') }) do
+                    %i.fa.fa-check-square-o
                 &nbsp;
                 = link_to(process_calendar_file_path(file_path: full_pathname),
                           class: 'btn btn-sm btn-outline-warning mb-1', data: { turbo_method: :post, toggle: 'tooltip',

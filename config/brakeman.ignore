@@ -24,29 +24,6 @@
       "note": ""
     },
     {
-      "warning_type": "File Access",
-      "warning_code": 16,
-      "fingerprint": "1e68e5b5893f74d8bda6ff431c225dfa32dcaa271247ff2af95b43932472b71c",
-      "check_name": "FileAccess",
-      "message": "Parameter value used in file name",
-      "file": "app/controllers/data_fix_controller.rb",
-      "line": 1016,
-      "link": "https://brakemanscanner.org/docs/warning_types/file_access/",
-      "code": "FileUtils.mv(resolve_working_source_path(params[:file_path]), File.join(File.dirname(resolve_working_source_path(params[:file_path])).gsub(\"results.new\", \"results.done\"), File.basename(resolve_working_source_path(params[:file_path]))))",
-      "render_path": null,
-      "location": {
-        "type": "method",
-        "class": "DataFixController",
-        "method": "commit_phase6"
-      },
-      "user_input": "params[:file_path]",
-      "confidence": "Weak",
-      "cwe_id": [
-        22
-      ],
-      "note": ""
-    },
-    {
       "warning_type": "Mass Assignment",
       "warning_code": 70,
       "fingerprint": "21fcbc78f5b3b021382eecd9c2383f9fe6b36a097584f8ff6008cd07873fc1b3",
@@ -66,98 +43,6 @@
       "confidence": "Medium",
       "cwe_id": [
         915
-      ],
-      "note": ""
-    },
-    {
-      "warning_type": "File Access",
-      "warning_code": 16,
-      "fingerprint": "29b799aaae15db6601929169792453bc08826bd81387e2c329f2a50b8e7a09fd",
-      "check_name": "FileAccess",
-      "message": "Parameter value used in file name",
-      "file": "app/controllers/data_fix_controller.rb",
-      "line": 1044,
-      "link": "https://brakemanscanner.org/docs/warning_types/file_access/",
-      "code": "File.open(File.join(File.dirname(resolve_working_source_path(params[:file_path])), \"#{File.basename(resolve_working_source_path(params[:file_path]), \".json\")}.log\"), \"a\")",
-      "render_path": null,
-      "location": {
-        "type": "method",
-        "class": "DataFixController",
-        "method": "commit_phase6"
-      },
-      "user_input": "params[:file_path]",
-      "confidence": "Weak",
-      "cwe_id": [
-        22
-      ],
-      "note": ""
-    },
-    {
-      "warning_type": "File Access",
-      "warning_code": 16,
-      "fingerprint": "2a15b02fbafa4a4b2fc9a52de7fe3ab8325f37783ee3d0b378eaa54d49e15ab1",
-      "check_name": "FileAccess",
-      "message": "Parameter value used in file name",
-      "file": "app/controllers/data_fix_controller.rb",
-      "line": 728,
-      "link": "https://brakemanscanner.org/docs/warning_types/file_access/",
-      "code": "File.read(default_phase_path_for(resolve_working_source_path(params[:file_path]), 2))",
-      "render_path": null,
-      "location": {
-        "type": "method",
-        "class": "DataFixController",
-        "method": "review_results"
-      },
-      "user_input": "params[:file_path]",
-      "confidence": "Weak",
-      "cwe_id": [
-        22
-      ],
-      "note": ""
-    },
-    {
-      "warning_type": "File Access",
-      "warning_code": 16,
-      "fingerprint": "423e822903943a1605e2b7dfea15186a5a12990d7f39a8d8d320cebc63132237",
-      "check_name": "FileAccess",
-      "message": "Parameter value used in file name",
-      "file": "app/controllers/data_fix_controller.rb",
-      "line": 802,
-      "link": "https://brakemanscanner.org/docs/warning_types/file_access/",
-      "code": "File.read(default_phase_path_for(resolve_working_source_path(params[:file_path]), 5))",
-      "render_path": null,
-      "location": {
-        "type": "method",
-        "class": "DataFixController",
-        "method": "toggle_individual_result_overwrite"
-      },
-      "user_input": "params[:file_path]",
-      "confidence": "Weak",
-      "cwe_id": [
-        22
-      ],
-      "note": ""
-    },
-    {
-      "warning_type": "File Access",
-      "warning_code": 16,
-      "fingerprint": "46c4f9aed4f7a9db33ae300ca80ea1325d45e7d7206d501e20ca9de39365ffd1",
-      "check_name": "FileAccess",
-      "message": "Parameter value used in file name",
-      "file": "app/controllers/data_fix_controller.rb",
-      "line": 572,
-      "link": "https://brakemanscanner.org/docs/warning_types/file_access/",
-      "code": "File.read(default_phase_path_for(resolve_working_source_path(params[:file_path]), 5))",
-      "render_path": null,
-      "location": {
-        "type": "method",
-        "class": "DataFixController",
-        "method": "review_results"
-      },
-      "user_input": "params[:file_path]",
-      "confidence": "Weak",
-      "cwe_id": [
-        22
       ],
       "note": ""
     },
@@ -346,29 +231,6 @@
       "note": ""
     },
     {
-      "warning_type": "File Access",
-      "warning_code": 16,
-      "fingerprint": "92f924e6db73a3eb3ee4600225ffcea87480055a6d8c5f8f04d9e64e2dbd7ce9",
-      "check_name": "FileAccess",
-      "message": "Parameter value used in file name",
-      "file": "app/controllers/data_fix_controller.rb",
-      "line": 1022,
-      "link": "https://brakemanscanner.org/docs/warning_types/file_access/",
-      "code": "FileUtils.mv(resolve_working_source_path(params[:file_path]).gsub(\"-lt4.json\", \".json\"), File.join(File.dirname(resolve_working_source_path(params[:file_path])).gsub(\"results.new\", \"results.done\"), File.basename(resolve_working_source_path(params[:file_path]).gsub(\"-lt4.json\", \".json\"))))",
-      "render_path": null,
-      "location": {
-        "type": "method",
-        "class": "DataFixController",
-        "method": "commit_phase6"
-      },
-      "user_input": "params[:file_path]",
-      "confidence": "Weak",
-      "cwe_id": [
-        22
-      ],
-      "note": ""
-    },
-    {
       "warning_type": "Mass Assignment",
       "warning_code": 70,
       "fingerprint": "956293dc4e901efc9364d89275b28c7e0caf10183debfea627f8ca469c5eab7d",
@@ -434,52 +296,6 @@
       "confidence": "Medium",
       "cwe_id": [
         915
-      ],
-      "note": ""
-    },
-    {
-      "warning_type": "File Access",
-      "warning_code": 16,
-      "fingerprint": "a0cbed002ab5e5176e68a672e76cbf168910a551adaa497c13648b2a0638df8b",
-      "check_name": "FileAccess",
-      "message": "Parameter value used in file name",
-      "file": "app/controllers/data_fix_controller.rb",
-      "line": 289,
-      "link": "https://brakemanscanner.org/docs/warning_types/file_access/",
-      "code": "File.read(default_phase_path_for(resolve_working_source_path(params[:file_path]), 1))",
-      "render_path": null,
-      "location": {
-        "type": "method",
-        "class": "DataFixController",
-        "method": "review_swimmers"
-      },
-      "user_input": "params[:file_path]",
-      "confidence": "Weak",
-      "cwe_id": [
-        22
-      ],
-      "note": ""
-    },
-    {
-      "warning_type": "File Access",
-      "warning_code": 16,
-      "fingerprint": "a407dc4a17b80c249a46b5c0574322b3d62bcdaf4f0c7f94fa9d171be5219ed7",
-      "check_name": "FileAccess",
-      "message": "Parameter value used in file name",
-      "file": "app/controllers/data_fix_controller.rb",
-      "line": 807,
-      "link": "https://brakemanscanner.org/docs/warning_types/file_access/",
-      "code": "File.read(default_phase_path_for(resolve_working_source_path(params[:file_path]), 1))",
-      "render_path": null,
-      "location": {
-        "type": "method",
-        "class": "DataFixController",
-        "method": "toggle_individual_result_overwrite"
-      },
-      "user_input": "params[:file_path]",
-      "confidence": "Weak",
-      "cwe_id": [
-        22
       ],
       "note": ""
     },
@@ -645,52 +461,6 @@
       "note": ""
     },
     {
-      "warning_type": "File Access",
-      "warning_code": 16,
-      "fingerprint": "e5ef98fe49176aa7e24836126ec20a3f2f42716cc588b42329d5876fb8a865db",
-      "check_name": "FileAccess",
-      "message": "Parameter value used in file name",
-      "file": "app/controllers/data_fix_controller.rb",
-      "line": 1012,
-      "link": "https://brakemanscanner.org/docs/warning_types/file_access/",
-      "code": "FileUtils.mkdir_p(File.dirname(resolve_working_source_path(params[:file_path])).gsub(\"results.new\", \"results.done\"))",
-      "render_path": null,
-      "location": {
-        "type": "method",
-        "class": "DataFixController",
-        "method": "commit_phase6"
-      },
-      "user_input": "params[:file_path]",
-      "confidence": "Weak",
-      "cwe_id": [
-        22
-      ],
-      "note": ""
-    },
-    {
-      "warning_type": "File Access",
-      "warning_code": 16,
-      "fingerprint": "e78396f96ce4c46c83592f3de5ea5fdb11d66706f0f9e9bdd5d3b8e9a7e0be48",
-      "check_name": "FileAccess",
-      "message": "Parameter value used in file name",
-      "file": "app/controllers/data_fix_controller.rb",
-      "line": 729,
-      "link": "https://brakemanscanner.org/docs/warning_types/file_access/",
-      "code": "File.read(default_phase_path_for(resolve_working_source_path(params[:file_path]), 3))",
-      "render_path": null,
-      "location": {
-        "type": "method",
-        "class": "DataFixController",
-        "method": "review_results"
-      },
-      "user_input": "params[:file_path]",
-      "confidence": "Weak",
-      "cwe_id": [
-        22
-      ],
-      "note": ""
-    },
-    {
       "warning_type": "Mass Assignment",
       "warning_code": 70,
       "fingerprint": "e8e8bcdfb9d9fce77a2c5f263636b8a2a34acec25776210d75dc0f846d8a7741",
@@ -737,5 +507,5 @@
       "note": ""
     }
   ],
-  "brakeman_version": "8.0.6"
+  "brakeman_version": "8.1.0"
 }

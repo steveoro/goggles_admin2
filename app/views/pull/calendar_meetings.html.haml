@@ -1,0 +1,141 @@
+.wrapper-body
+  .main-content
+    %section.my-2#status-box
+      = render(partial: 'crawler_status_box')
+
+    %section.my-2#crawler-tabs
+      = render(partial: 'crawler_tabs', locals: { active_tab: 'calendar' })
+
+    %section#meeting-selection
+      .container.shadow-box.pt-2.pb-3
+        .row-fluid.text-center
+          %h5= t('data_import.selection.title')
+        .row-fluid.text-center.pb-2
+          %small.text-secondary
+            = File.basename(@file_path)
+            &nbsp;·&nbsp;
+            = t('data_import.selection.season_label', id: @season_id)
+            &nbsp;·&nbsp;
+            = t('data_import.selection.rows_count', count: @sheet.row_count)
+
+        = form_tag(process_selected_meetings_path, method: :post, id: 'frm-selected-meetings',
+                   data: { controller: 'calendar-selection',
+                           turbo_confirm: t('data_import.selection.btn_crawl_selected_confirm') }) do
+          = hidden_field_tag(:file_path, @file_path)
+          = hidden_field_tag(:rows_count, @sheet.row_count)
+
+          .row.my-2
+            .col-12.text-center
+              .btn-group
+                %button.btn.btn-sm.btn-outline-secondary{ type: 'button',
+                                                          data: { action: 'calendar-selection#toggleAll',
+                                                                  toggle: 'tooltip',
+                                                                  title: t('data_import.selection.btn_all_none_tooltip') } }
+                  = t('data_import.selection.btn_all_none')
+                %button.btn.btn-sm.btn-outline-secondary{ type: 'button',
+                                                          data: { action: 'calendar-selection#selectWithUrl',
+                                                                  toggle: 'tooltip',
+                                                                  title: t('data_import.selection.btn_with_url_tooltip') } }
+                  = t('data_import.selection.btn_with_url')
+                %button.btn.btn-sm.btn-outline-secondary{ type: 'button',
+                                                          data: { action: 'calendar-selection#selectNewManifests',
+                                                                  toggle: 'tooltip',
+                                                                  title: t('data_import.selection.btn_new_manifests_tooltip') } }
+                  = t('data_import.selection.btn_new_manifests')
+              .form-check.form-check-inline.ml-3
+                %input.form-check-input#hide-done{ type: 'checkbox',
+                                                   data: { action: 'calendar-selection#toggleDoneVisibility' } }
+                %label.form-check-label{ for: 'hide-done' }
+                  %small= t('data_import.selection.hide_done')
+
+          %table.table.table-striped.table-hover.table-sm
+            %thead
+              %tr.bg-light-blue
+                %th.text-center{ scope: 'col' }
+                  %i= t('data_import.selection.col_select')
+                %th.text-center{ scope: 'col' }
+                  %i= t('data_import.selection.col_date')
+                %th.text-center{ scope: 'col' }
+                  %i= t('data_import.selection.col_year')
+                %th{ scope: 'col' }
+                  %i= t('data_import.selection.col_name')
+                %th{ scope: 'col' }
+                  %i= t('data_import.selection.col_place')
+                %th.text-center{ scope: 'col' }
+                  %i= t('data_import.selection.col_url')
+                %th.text-center{ scope: 'col' }
+                  %i= t('data_import.selection.col_manifest')
+                %th.text-center{ scope: 'col' }
+                  %i= t('data_import.selection.col_source')
+            %tbody
+              - @sheet.rows.each do |row|
+                %tr{ class: (row.crawlable? ? nil : 'text-muted'),
+                     data: { calendar_selection_target: 'row', manifest_state: row.manifest_state } }
+                  %td.text-center
+                    = check_box_tag('selected_rows[]', row.index, false,
+                                    disabled: !row.crawlable?, class: 'row-selector',
+                                    data: { calendar_selection_target: 'selector',
+                                            has_url: row.url?, manifest_state: row.manifest_state,
+                                            action: 'change->calendar-selection#onChange' })
+                  %td= row.date
+                  %td= row.year
+                  %td
+                    = row.name
+                    - if row.cancelled?
+                      %span.badge.badge-danger.ml-1 CANC
+                    - elsif row.raw_cancelled.present?
+                      %small.text-muted.ml-1= row.raw_cancelled
+                  %td= row.place
+                  %td.text-center
+                    - if row.url?
+                      = link_to(row.url, target: '_blank', rel: 'noopener',
+                                data: { toggle: 'tooltip', title: t('data_import.selection.url_tooltip') }) do
+                        %i.fa.fa-external-link.text-success
+                    - else
+                      %i.fa.fa-minus.text-muted
+                  %td.text-center
+                    - case row.manifest_state
+                    - when :done
+                      %i.fa.fa-check-circle.text-success{ data: { toggle: 'tooltip',
+                                                          title: t('data_import.selection.manifest_done_tooltip', file: row.manifest_filename) } }
+                    - when :pending
+                      %i.fa.fa-clock-o.text-warning{ data: { toggle: 'tooltip',
+                                                     title: t('data_import.selection.manifest_pending_tooltip', file: row.manifest_filename) } }
+                    - else
+                      %i.fa.fa-minus.text-muted{ data: { toggle: 'tooltip',
+                                                 title: t('data_import.selection.manifest_none_tooltip', file: row.manifest_filename) } }
+                  %td.text-center
+                    - case row.source_state
+                    - when :lt4
+                      %span.badge.badge-info{ data: { toggle: 'tooltip',
+                                              title: t('data_import.selection.source_lt4_tooltip') } } LT4
+                    - when :json
+                      %span.badge.badge-info{ data: { toggle: 'tooltip',
+                                              title: t('data_import.selection.source_json_tooltip') } } JSON
+                    - when :done
+                      %i.fa.fa-check-circle.text-secondary{ data: { toggle: 'tooltip',
+                                                            title: t('data_import.selection.source_done_tooltip') } }
+                    - else
+                      %i.fa.fa-minus.text-muted
+
+          .row.mt-3
+            .col-12.text-center
+              %span.badge.badge-info.mr-2#selected-counter{ data: { calendar_selection_target: 'counter' } } 0
+              = submit_tag(t('data_import.selection.btn_crawl_selected'), id: 'btn-crawl-selected',
+                           class: 'btn btn-sm btn-primary', disabled: true,
+                           data: { calendar_selection_target: 'submit' })
+
+        .row.mt-3.border-top.pt-3{ data: { controller: 'manifest-extraction',
+                                           manifest_extraction_url_value: extraction_status_path,
+                                           manifest_extraction_season_id_value: @season_id,
+                                           manifest_extraction_running_value: @extraction_running } }
+          .col-12.text-center
+            = button_to(extract_manifests_path, method: :post,
+                        params: { season_id: @season_id, file_path: @file_path },
+                        class: 'btn btn-sm btn-outline-warning',
+                        disabled: @extraction_running || @pending_manifests.zero?,
+                        data: { toggle: 'tooltip', title: t('data_import.selection.btn_extract_manifests_tooltip') }) do
+              %i.fa.fa-magic
+              &nbsp;
+              = t('data_import.selection.btn_extract_manifests', count: @pending_manifests)
+            %small#extraction-status.text-secondary.d-block.mt-1{ data: { manifest_extraction_target: 'status' } }

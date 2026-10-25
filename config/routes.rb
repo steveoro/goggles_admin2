@@ -40,6 +40,10 @@ Rails.application.routes.draw do
   put 'pull/file_edit'
   delete 'pull/file_delete'
   post 'pull/process_calendar_file', to: 'pull#process_calendar_file', as: 'process_calendar_file'
+  get 'pull/calendar_meetings'
+  post 'pull/process_selected_meetings', to: 'pull#process_selected_meetings', as: 'process_selected_meetings'
+  post 'pull/extract_manifests', to: 'pull#extract_manifests', as: 'extract_manifests'
+  get 'pull/extraction_status', to: 'pull#extraction_status', as: 'extraction_status'
 
   get 'pdf/extract_txt', to: 'pdf#extract_txt', as: 'pdf_extract_txt'
   put 'pdf/scan'

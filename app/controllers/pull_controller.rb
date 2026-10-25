@@ -120,10 +120,120 @@ class PullController < FileListController
       get_params: {
         season_id:,
         file_path: file_params['file_path'],
-        layout: season_id < 182 ? 1 : 2 # layouts 2 & 3 are equivalent for result pages
+        layout: result_layout_for(season_id)
       }
     )
     redirect_to(pull_index_path) && return
+  end
+  #-- -------------------------------------------------------------------------
+  #++
+
+  # [GET] Meeting selection page for a calendar CSV file.
+  #
+  # Shows one row per meeting listed in the CSV, with the derived crawler state
+  # (result URL present, manifest already downloaded/extracted, source file
+  # already generated) so the operator can pick which meetings to crawl.
+  #
+  # == Params:
+  # - <tt>file_path</tt>: the path to the calendar file to be displayed
+  #
+  def calendar_meetings
+    unless valid_calendar_csv_path?(selection_params[:file_path])
+      flash[:warning] = I18n.t('data_import.selection.errors.invalid_calendar_file')
+      redirect_to(pull_calendar_files_path) && return
+    end
+
+    @file_path = selection_params[:file_path]
+    @season_id = season_id_from_path(@file_path)
+    @sheet = safe_sheet(@file_path, @season_id)
+    unless @sheet
+      flash[:warning] = I18n.t('data_import.selection.errors.invalid_calendar_file')
+      redirect_to(pull_calendar_files_path) && return
+    end
+    @pending_manifests = pending_manifest_count(@season_id)
+    @extraction_running = PdfManifests::BatchRunner.running?
+  end
+  #-- -------------------------------------------------------------------------
+  #++
+
+  # [POST] Runs the result crawler on a bespoke subset of the specified calendar
+  # CSV file, containing only the meeting rows selected on the selection page.
+  #
+  # == Params:
+  # - <tt>file_path</tt>: the path to the source calendar file
+  # - <tt>rows_count</tt>: total rows at render time (integrity guard)
+  # - <tt>selected_rows[]</tt>: indexes of the rows to be crawled
+  #
+  def process_selected_meetings
+    file_path = selection_params[:file_path]
+    season_id = season_id_from_path(file_path)
+    indexes = Array(selection_params[:selected_rows]).map(&:to_i)
+    sheet = valid_calendar_csv_path?(file_path) && safe_sheet(file_path, season_id)
+
+    if (reason = selection_rejection(sheet, indexes))
+      flash[:warning] = I18n.t("data_import.selection.errors.#{reason}")
+      redirect_to(selection_redirect_path(reason, file_path)) && return
+    end
+
+    subset_path = sheet.write_subset(indexes)
+    call_crawler_api(
+      'pull_results',
+      get_params: {
+        season_id:,
+        file_path: subset_path,
+        layout: result_layout_for(season_id)
+      }
+    )
+    redirect_to(pull_index_path) && return
+  end
+  #-- -------------------------------------------------------------------------
+  #++
+
+  # [POST] Starts a background manifest-extraction batch for the specified season.
+  #
+  # Runs the same pipeline as 'rake manifests:extract' inside a daemon thread;
+  # progress is reported on a status file polled through #extraction_status.
+  #
+  # == Params:
+  # - <tt>season_id</tt>: the target season
+  # - <tt>file_path</tt>: optional calendar file path used for the redirect back
+  #
+  def extract_manifests
+    redirect_path = selection_params[:file_path].present? ? pull_calendar_meetings_path(file_path: selection_params[:file_path]) : pull_index_path
+
+    if PdfManifests::BatchRunner.running?
+      flash[:warning] = I18n.t('data_import.selection.extraction.already_running')
+      redirect_to(redirect_path) && return
+    end
+
+    runner = PdfManifests::BatchRunner.new(season_id: selection_params[:season_id].to_i)
+    case runner.preflight_error
+    when :ollama_unavailable
+      flash[:warning] = I18n.t('data_import.selection.extraction.ollama_unavailable')
+    when :model_missing
+      flash[:warning] = I18n.t('data_import.selection.extraction.model_missing', model: runner.client.model)
+    when :no_manifests
+      flash[:warning] = I18n.t('data_import.selection.extraction.no_manifests')
+    else
+      runner.start_in_thread! # daemon thread; UI polls #extraction_status for progress
+      flash[:info] = I18n.t('data_import.selection.extraction.started', count: runner.pdf_list.size)
+    end
+    redirect_to(redirect_path) && return
+  end
+  #-- -------------------------------------------------------------------------
+  #++
+
+  # [GET] JSON status of the manifest-extraction batch (polled by the UI).
+  #
+  # == Params:
+  # - <tt>season_id</tt>: the target season (for the pending manifests count)
+  #
+  def extraction_status
+    render json: {
+      running: PdfManifests::BatchRunner.running?,
+      pending: pending_manifest_count(params[:season_id].to_i),
+      status: PdfManifests::BatchRunner.read_status
+    }
   end
   #-- -------------------------------------------------------------------------
   #++
@@ -134,6 +244,67 @@ class PullController < FileListController
   def crawler_params
     params.permit(:start_url, :season_id, :sub_menu_type, :year_text,
                   :layout, :layout_id, :target_url, :target_event)
+  end
+
+  # Strong parameters checking for calendar meeting-selection actions.
+  def selection_params
+    params.permit(:file_path, :season_id, :rows_count, selected_rows: [])
+  end
+
+  # Symbol naming the i18n error key blocking the given selection, or nil when
+  # the selected rows can be crawled. 'sheet' is expected to be already loaded
+  # (or nil/false when the path validation or the CSV parsing failed).
+  def selection_rejection(sheet, indexes)
+    return :invalid_calendar_file unless sheet
+    return :no_selection if indexes.empty?
+    return :file_changed if sheet.row_count != selection_params[:rows_count].to_i
+
+    nil
+  end
+
+  # Redirect target for a rejected selection: calendar file list for unusable
+  # files, back to the selection page otherwise.
+  def selection_redirect_path(reason, file_path)
+    return pull_calendar_files_path if reason == :invalid_calendar_file
+
+    pull_calendar_meetings_path(file_path: file_path)
+  end
+
+  # Parsed calendar Sheet, or nil when the file can't be read as a CSV.
+  def safe_sheet(file_path, season_id)
+    CrawlerCalendar::Sheet.new(file_path, season_id: season_id)
+  rescue StandardError => e
+    Rails.logger.warn("[PullController] unreadable calendar file #{file_path}: #{e.message}")
+    nil
+  end
+
+  # TRUE when file_path points to an existing .csv file under crawler/data/.
+  def valid_calendar_csv_path?(file_path)
+    return false if file_path.blank?
+
+    expanded = File.expand_path(file_path.to_s)
+    expanded.start_with?("#{Rails.root.join('crawler/data')}#{File::SEPARATOR}") &&
+      File.extname(expanded) == '.csv' && File.exist?(expanded)
+  end
+
+  # Season ID encoded in the parent dir name (calendar.*<season>/file.csv),
+  # falling back to the latest MASFIN season.
+  def season_id_from_path(file_path)
+    season_id = File.dirname(file_path.to_s).split('/').last.to_i
+    season_id.positive? ? season_id : SeasonDefaults.default_season_id
+  end
+
+  # Result-page layout bound to the season (layouts 2 & 3 are equivalent for
+  # result pages, so season_id >= 182 uses layout 2).
+  def result_layout_for(season_id)
+    season_id < 182 ? 1 : 2
+  end
+
+  # Number of PDF manifests still pending extraction for the season.
+  def pending_manifest_count(season_id)
+    return 0 unless season_id.to_i.positive?
+
+    Rails.root.glob("crawler/data/manifests/#{season_id.to_i}/*.pdf").size
   end
 
   # Prepares the <tt>@season_list</tt> member variable for the view, as an Array of Hash objects

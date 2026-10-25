@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'fileutils'
-
 #
 # = Manifest extraction tasks
 #
@@ -82,11 +80,11 @@ namespace :manifests do # rubocop:disable Metrics/BlockLength
       if result.success?
         stats[:extracted] += 1
         puts "OK (#{result.events_count} events) -> #{File.basename(result.out_path)}"
-        move_manifest_to_done(pdf_path)
+        PdfManifests::BatchRunner.archive(pdf_path)
       elsif result.skipped_reason.to_s.start_with?('output already exists')
         stats[:skipped] += 1
         puts 'skipped (already extracted)'
-        move_manifest_to_done(pdf_path)
+        PdfManifests::BatchRunner.archive(pdf_path)
       else
         stats[:failed] += 1
         puts "FAILED: #{result.skipped_reason}"
@@ -95,19 +93,5 @@ namespace :manifests do # rubocop:disable Metrics/BlockLength
     end
 
     puts "\r\n== Done: #{stats[:extracted]} extracted, #{stats[:skipped]} skipped, #{stats[:failed]} failed =="
-  end
-end
-
-# Moves a processed manifest PDF and its '.txt' sibling into the
-# 'manifests.done' counterpart dir, keeping the season sub-folder.
-# No-op for source files stored outside a 'manifests/' directory.
-def move_manifest_to_done(pdf_path)
-  src_dir = File.dirname(pdf_path.to_s)
-  done_dir = src_dir.sub(%r{/manifests(/|\z)}, '/manifests.done\1')
-  return if done_dir == src_dir
-
-  FileUtils.mkdir_p(done_dir)
-  [pdf_path.to_s, pdf_path.to_s.sub(/\.pdf\z/i, '.txt')].each do |src_path|
-    FileUtils.mv(src_path, File.join(done_dir, File.basename(src_path))) if File.exist?(src_path)
   end
 end

@@ -39,6 +39,14 @@ Processed manifests are then archived: the source `.pdf` and its extracted `.txt
 
 The task aborts early when Ollama is not reachable **or** the configured extraction model is not pulled on the local server — the warning lists the pulled models and the `ollama pull <model>` command to run.
 
+## UI-triggered extraction (`PdfManifests::BatchRunner`)
+
+The same batch can also be launched from the web UI: the meeting-selection page (`/pull/calendar_meetings?file_path=…`, reachable from the checkbox icon on calendar CSVs in `/pull/calendar_files`) shows an "Extract manifests" button when `crawler/data/manifests/<season>/` holds pending PDFs, and posts to `POST /pull/extract_manifests`.
+
+`PullController#extract_manifests` runs `PdfManifests::BatchRunner` inside a Puma thread (fire-and-forget, like the crawler API) after the same preflight checks as the rake task (`OllamaClient#available?`, `#model_available?`, non-empty pdf list). `BatchRunner.archive` — shared with `manifests:extract` — performs the `.pdf` + `.txt` move to `manifests.done`.
+
+Progress is persisted to `crawler/data/manifests-extract-status.json` (gitignored) and polled by the page through `GET /pull/extraction_status` (`manifest_extraction_controller.js`, 3s interval); when the run finishes, the page reloads so the per-meeting manifest ticks flip to "extracted". `BatchRunner.running?` combines a process-local flag with a 10-minute staleness window on the status heartbeat, so a killed run doesn't lock the button forever and a parallel `rake manifests:extract` run writing the same file is detected as busy.
+
 ## Pipeline
 
 1. **`PdfManifests::TextExtractor`** runs `pdftotext -layout` (reusing the `.txt` sibling when present, which also powers the TXT badge in the file list).

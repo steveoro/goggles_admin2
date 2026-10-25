@@ -34,11 +34,54 @@ it:
       btn_process_json_v2_tooltip: 'Elabora con pipeline phased (v2)'
       btn_download_tooltip: 'Scarica file'
       btn_process_csv_tooltip: 'Elabora questo file calendario, scaricando i risultati disponibili'
+      btn_select_csv_tooltip: 'Apri la pagina di selezione meeting per questo file calendario'
       btn_process_pdf_tooltip: 'Converti questo file risultati da PDF al formato JSON che può essere importato'
       btn_process_json_tooltip: "Elabora questo file risultati, preparandolo per l'importazione dati"
       btn_reparse_json_tooltip: "Riesegui la scasione forzata di questo file risultati usando i dati originali presenti"
       btn_process_sql_tooltip: "Esegue l'upload di questo file di importazione dati sul server remoto"
       confirm_push: "Sicuri di voler fare l'upload di questo file?"
+    selection:
+      title: 'Seleziona i meeting da scaricare'
+      season_label: 'Season ID %{id}'
+      rows_count:
+        one: '1 meeting in lista'
+        other: '%{count} meeting in lista'
+      col_select: '⦿'
+      col_date: 'Data'
+      col_year: 'Anno'
+      col_name: 'Meeting'
+      col_place: 'Luogo'
+      col_url: 'URL'
+      col_manifest: 'Manifest'
+      col_source: 'Sorgente'
+      btn_all_none: 'Tutti/nessuno'
+      btn_all_none_tooltip: 'Seleziona/deseleziona tutte le righe selezionabili'
+      btn_with_url: 'Con meetingUrl'
+      btn_with_url_tooltip: 'Seleziona solo le righe con URL meeting'
+      btn_new_manifests: 'Nuovi manifest'
+      btn_new_manifests_tooltip: 'Seleziona solo le righe con URL meeting e nessun manifest su disco'
+      hide_done: 'Nascondi estratti'
+      url_tooltip: 'Apri la pagina meeting FIN'
+      manifest_done_tooltip: 'Manifest già estratto: %{file}'
+      manifest_pending_tooltip: 'Manifest scaricato, in attesa di estrazione: %{file}'
+      manifest_none_tooltip: 'Nessun manifest su disco (verrebbe salvato come: %{file})'
+      source_lt4_tooltip: 'Sorgente manifest già estratta in results.new'
+      source_json_tooltip: 'Sorgente risultati già scaricata in results.new'
+      source_done_tooltip: 'Una sorgente per questo meeting è già in results.done'
+      btn_crawl_selected: '🕷 Crawl selezionati'
+      btn_crawl_selected_confirm: 'Scarico i meeting selezionati?'
+      btn_extract_manifests: 'Estrai manifest (%{count} in attesa)'
+      btn_extract_manifests_tooltip: 'Estrai i dati meeting dai manifest in attesa (in background, Ollama locale)'
+      extraction:
+        already_running: 'Una estrazione manifest è già in corso'
+        ollama_unavailable: 'Ollama non è installato o non è in esecuzione. Avvialo con `ollama serve` e riprova.'
+        model_missing: "Il modello '%{model}' non è presente sul server Ollama locale. Scaricalo prima con `ollama pull %{model}` e riprova."
+        no_manifests: 'Nessun manifest PDF in attesa di estrazione per questa stagione'
+        started: 'Estrazione manifest avviata in background (%{count} file)'
+      errors:
+        invalid_calendar_file: 'File calendario non valido'
+        no_selection: 'Nessun meeting selezionato'
+        file_changed: 'Il file calendario è cambiato da quando questa pagina è stata generata; la ricarico'
     data_fix:
       link_to_manifest_download: "Scarica locandina"
       link_to_results_pdf_download: "Scarica risultati su PDF"
