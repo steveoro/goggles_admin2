@@ -145,6 +145,17 @@ RSpec.describe PdfManifests::BatchRunner, type: :strategy do
       expect(described_class.running?(data_root: data_root)).to be(false)
     end
 
+    it 'persists an ERROR status with finished_at when the batch aborts' do
+      make_pdf
+      allow(PdfManifests::Extractor).to receive(:new).and_raise(StandardError, 'boom')
+
+      expect { make_runner.call }.to raise_error(StandardError, 'boom')
+      status = described_class.read_status(data_root: data_root)
+      expect(status).to include('running' => false, 'status' => 'ERROR', 'detail' => 'boom')
+      expect(status['finished_at']).to be_present
+      expect(described_class.running?(data_root: data_root)).to be(false)
+    end
+
     it 'does nothing when preflight fails' do
       allow(client).to receive(:available?).and_return(false)
       allow(extractor).to receive(:call)

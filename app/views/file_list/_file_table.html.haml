@@ -63,7 +63,7 @@
 
               - case extname
               - when '.csv'
-                - if full_pathname.to_s.include?('/calendar.')
+                - if full_pathname.to_s.include?('/calendar.new/')
                   &nbsp;
                   = link_to(pull_calendar_meetings_path(file_path: full_pathname),
                             class: 'btn btn-sm btn-outline-info mb-1', data: { toggle: 'tooltip',

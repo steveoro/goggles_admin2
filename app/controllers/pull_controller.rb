@@ -278,13 +278,17 @@ class PullController < FileListController
     nil
   end
 
-  # TRUE when file_path points to an existing .csv file under crawler/data/.
+  # TRUE when file_path points to an existing .csv file under crawler/data/calendar.new/
+  # (the only folder consumed by the results crawler lifecycle). Symlinks are resolved
+  # so a link pointing outside the folder is rejected.
   def valid_calendar_csv_path?(file_path)
-    return false if file_path.blank?
+    return false if file_path.blank? || !File.file?(file_path.to_s)
 
-    expanded = File.expand_path(file_path.to_s)
-    expanded.start_with?("#{Rails.root.join('crawler/data')}#{File::SEPARATOR}") &&
-      File.extname(expanded) == '.csv' && File.exist?(expanded)
+    root = Rails.root.join('crawler/data/calendar.new').realpath
+    File.realpath(file_path.to_s).start_with?("#{root}#{File::SEPARATOR}") &&
+      File.extname(file_path.to_s).casecmp?('.csv')
+  rescue SystemCallError
+    false
   end
 
   # Season ID encoded in the parent dir name (calendar.*<season>/file.csv),

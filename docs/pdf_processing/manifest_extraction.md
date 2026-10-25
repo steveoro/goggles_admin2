@@ -45,7 +45,7 @@ The same batch can also be launched from the web UI: the meeting-selection page 
 
 `PullController#extract_manifests` runs `PdfManifests::BatchRunner` inside a Puma thread (fire-and-forget, like the crawler API) after the same preflight checks as the rake task (`OllamaClient#available?`, `#model_available?`, non-empty pdf list). `BatchRunner.archive` — shared with `manifests:extract` — performs the `.pdf` + `.txt` move to `manifests.done`.
 
-Progress is persisted to `crawler/data/manifests-extract-status.json` (gitignored) and polled by the page through `GET /pull/extraction_status` (`manifest_extraction_controller.js`, 3s interval); when the run finishes, the page reloads so the per-meeting manifest ticks flip to "extracted". `BatchRunner.running?` combines a process-local flag with a 10-minute staleness window on the status heartbeat, so a killed run doesn't lock the button forever and a parallel `rake manifests:extract` run writing the same file is detected as busy.
+Progress is persisted to `crawler/data/manifests-extract-status.json` (gitignored) and polled by the page through `GET /pull/extraction_status` (`manifest_extraction_controller.js`, 3s interval); when the run finishes, the page reloads so the per-meeting manifest ticks flip to "extracted". `BatchRunner.running?` combines a process-local flag with a 10-minute staleness window on the status heartbeat, so a killed run doesn't lock the button forever. Note that `rake manifests:extract` does **not** write the status file: avoid launching the rake task and a UI batch on the same season at the same time. A batch aborted by an unexpected error is reported on the status line (`status: 'ERROR'`).
 
 ## Pipeline
 

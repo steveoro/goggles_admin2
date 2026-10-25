@@ -87,10 +87,12 @@
                       %small.text-muted.ml-1= row.raw_cancelled
                   %td= row.place
                   %td.text-center
-                    - if row.url?
+                    - if row.url? && row.url.match?(%r{\Ahttps?://}i)
                       = link_to(row.url, target: '_blank', rel: 'noopener',
                                 data: { toggle: 'tooltip', title: t('data_import.selection.url_tooltip') }) do
                         %i.fa.fa-external-link.text-success
+                    - elsif row.url?
+                      %i.fa.fa-check.text-success{ data: { toggle: 'tooltip', title: row.url } }
                     - else
                       %i.fa.fa-minus.text-muted
                   %td.text-center

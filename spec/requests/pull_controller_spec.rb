@@ -156,6 +156,39 @@ RSpec.describe PullController do
       expect(response).to redirect_to(pull_calendar_files_path)
       expect(flash[:warning]).to be_present
     end
+
+    it 'rejects a symlinked CSV pointing outside calendar.new' do
+      outside = Rails.root.join('tmp', "outside-#{SecureRandom.hex(4)}.csv")
+      FileUtils.cp(file_fixture('files/calendar_sample.csv'), outside)
+      link = File.join(csv_dir, 'linked.csv')
+      File.symlink(outside, link)
+
+      get '/pull/calendar_meetings', params: { file_path: link }
+      expect(response).to redirect_to(pull_calendar_files_path)
+    ensure
+      FileUtils.rm_f(outside)
+    end
+
+    it 'rejects calendar files already moved to calendar.done' do
+      done_dir = Rails.root.join('crawler/data/calendar.done/9999')
+      FileUtils.mkdir_p(done_dir)
+      done_csv = done_dir.join('test-cal.csv')
+      FileUtils.cp(file_fixture('files/calendar_sample.csv'), done_csv)
+
+      get '/pull/calendar_meetings', params: { file_path: done_csv.to_s }
+      expect(response).to redirect_to(pull_calendar_files_path)
+    ensure
+      FileUtils.rm_rf(done_dir)
+    end
+
+    it 'does not render non-http meeting URLs as links' do
+      File.write(csv_path, "startURL,date,isCancelled,name,place,meetingUrl,year\r\n" \
+                           "\"\",\"24/10\",,\"Evil\",\"X\",\"javascript:alert(1)\",2026\r\n")
+
+      get '/pull/calendar_meetings', params: { file_path: csv_path }
+      expect(response).to have_http_status(:success)
+      expect(response.body).not_to include('href="javascript:')
+    end
   end
 
   describe 'POST /pull/process_selected_meetings' do

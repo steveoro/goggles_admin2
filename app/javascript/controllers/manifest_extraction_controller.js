@@ -53,6 +53,9 @@ export default class extends Controller {
     try {
       const res = await fetch(`${this.urlValue}?season_id=${this.seasonIdValue}`,
                               { headers: { 'Accept': 'application/json' } })
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`)
+      }
       const data = await res.json()
       this.renderStatus(data)
       if (!data.running) {
@@ -64,8 +67,11 @@ export default class extends Controller {
           window.location.reload()
         }
       }
-    } catch (_err) {
+    } catch (err) {
       this.stopPolling()
+      if (this.hasStatusTarget) {
+        this.statusTarget.textContent = `status polling failed: ${err.message}`
+      }
     }
   }
 
@@ -77,6 +83,8 @@ export default class extends Controller {
     const status = data.status || {}
     if (data.running) {
       this.statusTarget.textContent = `extracting ${status.progress || 0}/${status.total || 0}: ${status.detail || ''}`
+    } else if (status.status === 'ERROR') {
+      this.statusTarget.textContent = `extraction aborted: ${status.detail || 'unknown error'}`
     } else if (status.finished_at) {
       const summary = `done: ${status.extracted || 0} extracted, ${status.skipped || 0} skipped, ${status.failed || 0} failed`
       this.statusTarget.textContent = `${summary} — pending: ${data.pending}`

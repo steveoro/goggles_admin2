@@ -22,7 +22,7 @@ module PdfManifests
   # == Usage:
   #   runner = PdfManifests::BatchRunner.new(season_id: 262)
   #   if runner.preflight_error.nil? && !PdfManifests::BatchRunner.running?
-  #     Thread.new { runner.call }
+  #     runner.start_in_thread!
   #   end
   #
   class BatchRunner
@@ -85,7 +85,7 @@ module PdfManifests
                    failed: stats[:failed], errors: errors, finished: true)
       stats
     rescue StandardError => e
-      write_status(running: false, status: 'ERROR', detail: e.message, errors: errors || [])
+      write_status(running: false, status: 'ERROR', detail: e.message, errors: errors || [], finished: true)
       raise
     ensure
       self.class.mark_inactive!
@@ -109,8 +109,9 @@ module PdfManifests
       end
 
       # TRUE while a batch is running in this process, or the status file shows
-      # a recent (non-stale) running flag (e.g. a parallel `rake manifests:extract`
-      # run reporting through the same file).
+      # a recent (non-stale) running flag written by another BatchRunner process
+      # (e.g. after a Puma worker restart). NOTE: `rake manifests:extract` does
+      # not write the status file, so a parallel rake run is NOT detected.
       def running?(data_root: Rails.root.join('crawler/data'))
         return true if @active_mutex.synchronize { @active }
 
