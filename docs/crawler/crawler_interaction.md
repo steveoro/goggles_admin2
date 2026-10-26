@@ -35,7 +35,7 @@ The crawler is triggered via specific actions in the `PullController`:
 
 4. **Direct FICR Result Crawling (layout ID 5, LT4 output):**
     * Triggered from the main crawler dashboard (`/pull/index`).
-    * The user selects `FICR results`, enters a full `https://nuoto.ficr.it/#/NUO/tempi/...` meeting URL, and submits the form.
+    * The user selects `FICR results`, enters a full `https://nuoto.ficr.it/#/NUO/<page>/...` meeting URL, and submits the form. Any FICR meeting page works (`tempi`, `programma`, `iscritti`, `resultatleta`): they all share the same `<description>/<year>/<eqCode>/<meeting>` URL layout the crawler needs. Special characters in the meeting name (encoded UTF-8, `escape()`-style bytes, or FICR's double-encoded "mojibake" descriptions) are tolerated and repaired.
     * `PullController` calls the local crawler server's `/pull_results_ficr` endpoint.
     * The FICR crawler reads the public FICR JSON services, enumerates all available gender/category/event combinations, and enriches individual rows from the swimmer history endpoint. A browser/network fallback is used when direct API acquisition fails.
     * The optional target-event field is ignored for FICR; the crawler processes the complete meeting.

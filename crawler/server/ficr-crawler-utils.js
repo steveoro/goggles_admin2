@@ -1,5 +1,45 @@
+const utf8Decoder = new TextDecoder('utf-8', { fatal: true });
+const latin1Decoder = new TextDecoder('windows-1252');
+
 function encodeSegment(value) {
   return encodeURIComponent(String(value)).replace(/%2A/g, '*');
+}
+
+// Tolerant counterpart of encodeSegment: decodes anything decodeURIComponent
+// accepts, plus escape()-style single-byte sequences (%B0), %uXXXX, and stray
+// '%' characters, without ever throwing.
+function decodeSegment(value) {
+  const text = String(value);
+  try {
+    return decodeURIComponent(text);
+  } catch (error) {
+    // Fall through to the byte-tolerant decode below.
+  }
+  return text.replace(/%u([0-9A-Fa-f]{4})|((?:%[0-9A-Fa-f]{2})+)|%/g,
+    (match, unicode, bytes) => {
+      if (unicode) return String.fromCharCode(parseInt(unicode, 16));
+      if (!bytes) return match;
+      const buffer = Buffer.from(bytes.replace(/%/g, ''), 'hex');
+      try {
+        return utf8Decoder.decode(buffer);
+      } catch (error) {
+        return latin1Decoder.decode(buffer);
+      }
+    });
+}
+
+// Repairs double-encoded UTF-8 read as Latin-1 (e.g. "CittÃ " for "Città"),
+// as stored in some FICR meeting descriptions. Candidates must be pure
+// Latin-1 text containing typical mojibake lead bytes, and the repair is
+// kept only when the whole string re-decodes cleanly as UTF-8.
+// NOTE: the raw string is inspected on purpose — NBSP (U+00A0) is itself a
+// frequent mojibake continuation byte ("Ã " = "à"), so whitespace must not
+// be normalized before the repair.
+function fixMojibake(value) {
+  const text = String(value || '');
+  if (/[^\x00-\xFF]/.test(text) || !/[ÂÃâ]/.test(text)) return text;
+  const repaired = Buffer.from(text, 'latin1').toString('utf8');
+  return repaired.includes('�') ? text : repaired;
 }
 
 function clean(value) {
@@ -102,9 +142,11 @@ const delay = (milliseconds) => new Promise((resolve) => setTimeout(resolve, mil
 module.exports = {
   clean,
   cleanNullable,
+  decodeSegment,
   delay,
   deltaTiming,
   encodeSegment,
+  fixMojibake,
   groupHistory,
   normalizeEventCode,
   normalizeGender,

@@ -65,6 +65,51 @@ describe('FicrCrawler', () => {
       .to.equal('2023-01-29-Brescia_Meeting-lt4.json');
   });
 
+  it('parses FICR page-URL variants and tolerates special characters in names', () => {
+    const crawler = new FicrCrawler(262, null, { fetchImpl: fixtureFetch });
+    const parse = (url) => crawler.parseMeetingUrl(url);
+
+    // Actual reported URL: same meeting shown by the "programma" page.
+    const source = parse('https://nuoto.ficr.it/#/NUO/programma/25%C3%82%C2%B0Trofeo%20Master%20Citt%C3%83%C2%A0%20di%20Verolanuova/2026/29/27');
+    expect(source).to.include({ page: 'programma', year: '2026', eqCode: '29', meeting: '27' });
+    expect(source.description).to.equal('25°Trofeo Master Città di Verolanuova');
+
+    // Other meeting pages share the same identifier layout.
+    expect(parse('https://nuoto.ficr.it/#/NUO/iscritti/x/2026/29/27/AAF/3'))
+      .to.include({ page: 'iscritti', meeting: '27', category: 'AAF', event: '3' });
+    expect(parse('https://nuoto.ficr.it/#/NUO/resultatleta/x/2026/29/27/AAF'))
+      .to.include({ page: 'resultatleta', meeting: '27' });
+    // Path-style URLs (no fragment) parse as well.
+    expect(parse('https://nuoto.ficr.it/NUO/tempi/desc/2026/29/5'))
+      .to.include({ page: 'tempi', meeting: '5' });
+
+    // Unsupported pages keep failing.
+    expect(() => parse('https://nuoto.ficr.it/#/NUO/generalschedule/2026/29/x'))
+      .to.throw(/Unsupported FICR URL/);
+    expect(() => parse('https://nuoto.ficr.it/#/NUO/pdf/desc/2026/29/27'))
+      .to.throw(/Unsupported FICR URL/);
+
+    // Encoded names never break decoding.
+    expect(FicrUtil.decodeSegment('25%C2%B0Trofeo')).to.equal('25°Trofeo');
+    expect(FicrUtil.decodeSegment('25%B0Trofeo')).to.equal('25°Trofeo'); // escape()-style
+    expect(FicrUtil.decodeSegment('Citt%E0')).to.equal('Città');
+    expect(FicrUtil.decodeSegment('%u00B0ed.')).to.equal('°ed.');
+    expect(FicrUtil.decodeSegment('50% off')).to.equal('50% off');
+
+    // Double-encoded (mojibake) descriptions are repaired; clean names pass through.
+    // ('Ã ' here is really Ã + NBSP, i.e. the mis-decoded UTF-8 pair for 'à')
+    expect(FicrUtil.fixMojibake('25Â°Trofeo Master CittÃ  di Verolanuova'))
+      .to.equal('25°Trofeo Master Città di Verolanuova');
+    expect(FicrUtil.fixMojibake("CITTA' DI BRESCIA")).to.equal("CITTA' DI BRESCIA");
+    expect(FicrUtil.fixMojibake('SÃO PAULO')).to.equal('SÃO PAULO');
+
+    const output = crawler.createOutput(source, {
+      ma_Descrizione: '25Â°Trofeo Master CittÃ  di Verolanuova',
+      ma_LuogoData: 'Verolanuova, Dal 25/10/2026 al 25/10/2026'
+    });
+    expect(output.meetingName).to.equal('25°Trofeo Master Città di Verolanuova');
+  });
+
   it('builds LT4 events, category-bound ranks, points, and laps from API payloads', async () => {
     const crawler = new FicrCrawler(242, meetingUrl, { fetchImpl: fixtureFetch, maxRetries: 0 });
     const output = await crawler.crawlFromApi(crawler.parseMeetingUrl());

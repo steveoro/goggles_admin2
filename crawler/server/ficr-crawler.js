@@ -15,7 +15,9 @@ const FicrUtil = require('./ficr-crawler-utils');
 const {
   clean,
   cleanNullable,
+  decodeSegment,
   deltaTiming,
+  fixMojibake,
   groupHistory,
   normalizeEventCode,
   normalizeGender,
@@ -90,16 +92,19 @@ class FicrCrawler {
     }
 
     const parsed = new URL(meetingUrl);
-    const hash = parsed.hash.replace(/^#\/?/, '');
-    const parts = hash.split('/').map((value) => decodeURIComponent(value));
-    if (parts[0] !== 'NUO' || parts[1] !== 'tempi' || parts.length < 6) {
-      throw new Error('Unsupported FICR URL; expected #/NUO/tempi/<description>/<year>/<eqCode>/<meeting>');
+    const route = (parsed.hash || parsed.pathname).replace(/^#?\/?/, '');
+    const parts = route.split('/').map(decodeSegment);
+    // All meeting pages share the same <description>/<year>/<eqCode>/<meeting>
+    // layout; the crawler only needs the identifiers, so any of them works.
+    const supportedPages = ['tempi', 'programma', 'iscritti', 'resultatleta'];
+    if (parts[0] !== 'NUO' || !supportedPages.includes(parts[1]) || parts.length < 6) {
+      throw new Error(`Unsupported FICR URL; expected #/NUO/{${supportedPages.join('|')}}/<description>/<year>/<eqCode>/<meeting>`);
     }
 
     const source = {
       sport: parts[0],
       page: parts[1],
-      description: parts[2],
+      description: fixMojibake(parts[2]),
       year: parts[3],
       eqCode: parts[4],
       meeting: parts[5],
@@ -230,7 +235,7 @@ class FicrCrawler {
 
   createOutput(source, header) {
     const dateInfo = parseHeaderDates(header.ma_LuogoData, header.ma_DataRiferimento);
-    const meetingName = normalizeMeetingName(header.ma_Descrizione || source.description);
+    const meetingName = normalizeMeetingName(fixMojibake(header.ma_Descrizione || source.description));
     return {
       title: meetingName,
       dates: dateInfo.dates,

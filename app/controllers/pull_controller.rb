@@ -400,7 +400,7 @@ class PullController < FileListController
       },
 
       # FICR direct meeting result URL (layout 5, LT4 output):
-      # https://nuoto.ficr.it/#/NUO/tempi/<meeting>/<year>/<eqCode>/<meetingId>/<category>/<event>
+      # https://nuoto.ficr.it/#/NUO/<tempi|programma|iscritti|resultatleta>/<meeting>/<year>/<eqCode>/<meetingId>/...
       {
         id: 5,
         label: I18n.t('data_import.config.crawler_ficr_results'),
