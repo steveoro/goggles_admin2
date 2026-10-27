@@ -158,14 +158,11 @@ export default class extends Controller {
     this.selectionCounterTarget.textContent = `(${selected} / ${total})`
   }
 
-  // Computes the GogglesCup ranking via AJAX. Ignores save and export-sql
-  // submitters so their formaction attributes are handled by the browser as
-  // normal form posts.
+  // Computes the GogglesCup ranking via AJAX. Submitters carrying a
+  // `formaction` (save, apply locally, resync, publish/unpublish) are left to
+  // the browser as normal form posts to their own routes.
   async compute(event) {
-    // If the Save or Export SQL buttons triggered this submit, let the browser
-    // handle it natively (formaction → save/export route). Only intercept Compute submits.
-    if (event.submitter && (event.submitter.dataset.gogglesCupTarget === 'saveButton' ||
-                            event.submitter.dataset.gogglesCupTarget === 'exportSqlButton')) {
+    if (event.submitter && event.submitter.getAttribute('formaction')) {
       return
     }
 
@@ -186,18 +183,23 @@ export default class extends Controller {
 
     this.setLoading(true)
 
-    const formData = new FormData(this.formTarget)
-    const response = await fetch(this.formTarget.action, {
-      method: this.formTarget.method.toUpperCase(),
-      headers: {
-        Accept: 'application/json',
-        'X-CSRF-Token': this.csrfToken
-      },
-      body: formData
-    })
+    try {
+      const formData = new FormData(this.formTarget)
+      const response = await fetch(this.formTarget.action, {
+        method: this.formTarget.method.toUpperCase(),
+        headers: {
+          Accept: 'application/json',
+          'X-CSRF-Token': this.csrfToken
+        },
+        body: formData
+      })
+      const data = await response.json().catch(() => ({}))
 
-    if (response.ok) {
-      const data = await response.json()
+      if (!response.ok) {
+        this.showComputeError(data.error)
+        return
+      }
+
       if (this.hasRankingContainerTarget) {
         this.rankingContainerTarget.innerHTML = data.html || ''
       }
@@ -207,9 +209,28 @@ export default class extends Controller {
         this.hasRankingDataValue = true
       }
       this.showRankingPanel()
+    } catch (_error) {
+      this.showComputeError()
+    } finally {
+      this.setLoading(false)
+    }
+  }
+
+  // Shows a compute failure (API error detail or generic message) inside the
+  // ranking panel, as plain text.
+  showComputeError(message) {
+    const text = message || 'Unable to compute the ranking.'
+    if (!this.hasRankingContainerTarget) {
+      window.alert(text)
+      return
     }
 
-    this.setLoading(false)
+    const alertBox = document.createElement('div')
+    alertBox.className = 'alert alert-danger my-2'
+    alertBox.setAttribute('role', 'alert')
+    alertBox.textContent = text
+    this.rankingContainerTarget.replaceChildren(alertBox)
+    this.showRankingPanel()
   }
 
   // Expands the ranking panel and scrolls it into view.

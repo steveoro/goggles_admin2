@@ -1134,10 +1134,15 @@ CREATE TABLE `goggle_cups` (
   `career_bonus` decimal(10,2) DEFAULT 0.00,
   `swimmers_ids` text DEFAULT NULL,
   `ranking_data` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`ranking_data`)),
+  `published` tinyint(1) NOT NULL DEFAULT 0,
+  `name` varchar(60) NOT NULL,
+  `published_key` varchar(255) GENERATED ALWAYS AS (if(`published`,concat(`team_id`,'-',`season_year`),NULL)) STORED,
   PRIMARY KEY (`id`),
   UNIQUE KEY `idx_goggle_cups_team_year_desc` (`team_id`,`season_year`,`description`),
+  UNIQUE KEY `index_goggle_cups_on_published_key` (`published_key`),
   KEY `idx_season_year` (`season_year`),
   KEY `fk_goggle_cups_teams` (`team_id`),
+  KEY `index_goggle_cups_on_team_id_and_season_year_and_published` (`team_id`,`season_year`,`published`),
   CONSTRAINT `fk_goggle_cups_teams` FOREIGN KEY (`team_id`) REFERENCES `teams` (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=107 DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;

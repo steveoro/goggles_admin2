@@ -1,9 +1,9 @@
 GIT
   remote: https://github.com/steveoro/goggles_db.git
-  revision: 5f6914b4fb35ed1ab41d13003b25789b11bbf59e
+  revision: 359a506a4aa821dbf4d39c98e33e0371cf028743
   branch: master
   specs:
-    goggles_db (0.10.62)
+    goggles_db (0.10.63)
       acts-as-taggable-on
       acts_as_votable
       caxlsx
