@@ -42,7 +42,8 @@ gem 'devise-i18n'
 gem 'factory_bot_rails'
 gem 'ffaker'
 gem 'font-awesome-rails'
-gem 'goggles_db', git: 'https://github.com/steveoro/goggles_db.git', branch: 'master'
+# TODO: back to 'master' once goggles_db#56 lands
+gem 'goggles_db', git: 'https://github.com/steveoro/goggles_db.git', branch: 'devin/1793102642-goggle-cup-publish'
 gem 'haml-rails'
 gem 'kaminari'
 gem 'nokogiri' # (used explicitly in view specs)

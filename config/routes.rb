@@ -26,7 +26,10 @@ Rails.application.routes.draw do
   get 'best_results/goggles_cup_preview/base_timings', to: 'goggles_cup#base_timings', as: 'base_timings_goggles_cup_preview'
   post 'best_results/goggles_cup_preview/save', to: 'goggles_cup#save', as: 'save_goggles_cup_preview'
   post 'best_results/goggles_cup_preview/clear_ranking', to: 'goggles_cup#clear_ranking', as: 'clear_ranking_goggles_cup_preview'
-  post 'best_results/goggles_cup_preview/export_sql', to: 'goggles_cup#export_sql', as: 'export_sql_goggles_cup_preview'
+  post 'best_results/goggles_cup_preview/apply_local', to: 'goggles_cup#apply_local', as: 'apply_local_goggles_cup_preview'
+  post 'best_results/goggles_cup_preview/resync', to: 'goggles_cup#resync', as: 'resync_goggles_cup_preview'
+  post 'best_results/goggles_cup_preview/publish', to: 'goggles_cup#publish', as: 'publish_goggles_cup_preview'
+  post 'best_results/goggles_cup_preview/unpublish', to: 'goggles_cup#unpublish', as: 'unpublish_goggles_cup_preview'
 
   get 'pull/index'
   get 'pull/calendar_files'

@@ -9,7 +9,7 @@
 #   an existing cup for that team & year, or start a new one.
 # - The swimmer list is always rendered when a team is resolved; it merges the
 #   result rows of the shown championship year with the MASFIN badges of the
-#   current & previous championship year (GogglesCup::SwimmerOptionsQuery).
+#   current & previous championship year (GogglesDb::GogglesCup::SwimmerOptionsQuery).
 # - When the selected cup has a stored ranking (ranking_data present), the list
 #   is rendered read-only and an edit button (POST clear_ranking) allows
 #   clearing the stored values to change the selection.
@@ -18,16 +18,15 @@
 #   the action and always reset afterwards).
 #
 class GogglesCupController < ApplicationController
-  include FileCounter
-
   before_action :authenticate_user!
-  before_action :set_goggle_cup, only: %i[index compute export_sql base_timings clear_ranking]
+  before_action :set_goggle_cup, only: %i[index compute save clear_ranking apply_local resync publish unpublish base_timings]
   before_action :set_season_year, only: %i[index]
-  before_action :set_team, only: %i[index smart_selection compute save clear_ranking export_sql base_timings]
+  before_action :set_team,
+                only: %i[index smart_selection compute save clear_ranking apply_local resync publish unpublish base_timings]
   before_action :set_secondary_team, only: %i[index compute]
   before_action :set_selected_swimmer_ids, only: %i[compute]
   before_action :set_no_duplicated_events, only: %i[compute]
-  around_action :with_base_year, only: %i[index smart_selection compute export_sql]
+  around_action :with_base_year, only: %i[index smart_selection compute]
 
   # [GET] Renders the GogglesCup selection/configuration page.
   def index
@@ -42,74 +41,82 @@ class GogglesCupController < ApplicationController
     render json: { swimmer_ids: selected_ids }
   end
 
-  # [POST] Creates or updates the current cup configuration.
-  # Clears the stored ranking_data when the swimmer selection actually changed.
+  # [POST] Creates or updates the cup configuration on the REMOTE database via
+  # the GoggleCupManage API (missing badges are provisioned remotely as well),
+  # then mirrors the returned row (+ badges + affiliation) into the local DB.
   def save
-    cup = find_or_initialize_cup
-    assign_cup_attributes(cup)
-
-    if cup.save
-      flash[:notice] = t('goggles_cup.cup_saved')
-    else
-      flash[:alert] = t('goggles_cup.cup_save_error', errors: cup.errors.full_messages.join(', '))
+    result = remote_save
+    unless api_success?(result)
+      flash[:alert] = t('goggles_cup.cup_save_error', errors: result.error_detail)
+      return redirect_to(goggles_cup_preview_path(back_params))
     end
 
-    redirect_to(goggles_cup_preview_path(goggle_cup_id: cup.id, season_year: params[:season_year], team_id: params[:team_id]))
+    cup = SyncCupToLocal.call(result.json['sync'])
+    flash[:notice] = saved_notice(result.json['badges_report'])
+    redirect_to(goggles_cup_preview_path(back_params(goggle_cup_id: cup&.id)))
   end
 
-  # [POST] Clears the stored ranking_data of the selected cup so its swimmer
-  # selection becomes editable again. Redirects back to the (editable) page.
+  # [POST] Clears the stored ranking_data of the selected cup on the remote DB
+  # (then resyncs the local mirror) so its swimmer selection becomes editable
+  # again. Redirects back to the (editable) page.
   def clear_ranking
-    if @goggle_cup&.ranking_data.present?
-      @goggle_cup.update!(ranking_data: nil)
-      flash[:notice] = t('goggles_cup.ranking_cleared')
+    return redirect_cup_required if @goggle_cup.blank?
+
+    if @goggle_cup.ranking_data.present?
+      result = cup_api_call(:post, "goggle_cup_manage/#{@goggle_cup.id}/clear_ranking")
+      if api_success?(result)
+        SyncCupToLocal.call(result.json['sync'] || result.json)
+        flash[:notice] = t('goggles_cup.ranking_cleared')
+      else
+        flash[:alert] = t('goggles_cup.api_error', message: result.error_detail)
+      end
     end
 
-    redirect_to(goggles_cup_preview_path(goggle_cup_id: @goggle_cup&.id, season_year: params[:season_year],
-                                         team_id: params[:team_id]))
+    redirect_to(goggles_cup_preview_path(back_params))
   end
 
-  # [POST] Generates a pushable SQL script for the current cup and stores it in
-  # `crawler/data/results.new/goggle_cups/` for later production push.
-  # Exportable for any persisted cup with a swimmer selection: when no stored
-  # ranking exists, a base-timings-only payload is embedded (in-memory, not
-  # saved) so the pushed row can still show base timings & the swimmer list.
-  def export_sql # rubocop:disable Metrics/AbcSize
-    cup = @goggle_cup
-    if cup.blank? || cup.swimmers_ids.blank?
-      flash[:alert] = t('goggles_cup.export_sql_error', message: t('goggles_cup.info.nothing_to_export'))
-      redirect_to(goggles_cup_preview_path(goggle_cup_id: cup&.id, season_year: params[:season_year],
-                                           team_id: params[:team_id])) && return
-    end
-    embed_base_timings_payload(cup) if cup.ranking_data.blank?
+  # [POST] "Apply changes locally": pulls the remote cup row (+ provisioned
+  # badges) via GET /goggle_cup_manage/:id/sync and overwrites the local mirror.
+  def apply_local
+    return if sync_from_remote!(t('goggles_cup.apply_local_success')) == :cup_required
 
-    source_dir = Rails.root.join('crawler/data/results.new/goggle_cups')
-    sent_dir = source_dir.to_s.gsub('results.new', 'results.sent')
-    FileUtils.mkdir_p(source_dir)
-    last_counter = compute_file_counter(source_dir, sent_dir)
-    dest_file = "#{format('%04d', last_counter + 1)}-goggle_cup-#{cup.id}-#{cup.season_year}.sql"
-    sql_full_path = source_dir.join(dest_file)
+    redirect_to(goggles_cup_preview_path(back_params))
+  end
 
-    sql_content = build_goggle_cup_sql(cup)
-    File.write(sql_full_path, sql_content)
+  # [POST] Manual resync of the local mirror before edits (same pull as
+  # #apply_local): lets the operator refresh the row a remote team manager may
+  # have changed in the meantime.
+  def resync
+    return if sync_from_remote!(t('goggles_cup.resync_success')) == :cup_required
 
-    flash[:notice] = t('goggles_cup.export_sql_success', file: dest_file)
-    redirect_to(goggles_cup_preview_path(goggle_cup_id: cup.id, season_year: params[:season_year],
-                                         team_id: params[:team_id]))
-  rescue StandardError => e
-    flash[:alert] = t('goggles_cup.export_sql_error', message: e.message)
-    redirect_to(goggles_cup_preview_path(goggle_cup_id: @goggle_cup&.id, season_year: params[:season_year],
-                                         team_id: params[:team_id]))
+    redirect_to(goggles_cup_preview_path(back_params))
+  end
+
+  # [POST] Publishes the cup on the remote DB (resetting any other published
+  # cup for the same team & year), then resyncs the local mirror.
+  def publish
+    remote_toggle(:publish)
+  end
+
+  # [POST] Un-publishes the cup on the remote DB, then resyncs the local mirror.
+  def unpublish
+    remote_toggle(:unpublish)
   end
 
   # [POST/GET] Computes the GogglesCup ranking for the selected swimmers and renders
   # it in HTML, JSON, CSV, XLSX or PDF formats.
+  # When the cup exists remotely, the computation runs on the API (persisted
+  # path) and the local mirror is resynced; for a not-yet-saved cup the ranking
+  # is computed locally as a plain preview.
   def compute
     prepare_page_context
-    @ranking_data = ranking_data
     @ranking_visible = true
 
-    persist_ranking_data if @goggle_cup && @ranking_data.present? && @selected_swimmer_ids.present?
+    if @goggle_cup&.persisted?
+      return unless compute_remotely?
+    else
+      @ranking_data = ranking_data
+    end
 
     respond_to do |format|
       format.html { render(:index) }
@@ -162,7 +169,7 @@ class GogglesCupController < ApplicationController
   end
 
   def team_resolver
-    @team_resolver ||= GogglesCup::ManagedTeamResolver.new(user: current_user, season_year: @season_year)
+    @team_resolver ||= GogglesDb::GogglesCup::ManagedTeamResolver.new(user: current_user, season_year: @season_year)
   end
 
   def set_secondary_team
@@ -243,14 +250,14 @@ class GogglesCupController < ApplicationController
   end
 
   def swimmer_options_query
-    @swimmer_options_query ||= GogglesCup::SwimmerOptionsQuery.new(team_id: @team_id, base_year: @season_year)
+    @swimmer_options_query ||= GogglesDb::GogglesCup::SwimmerOptionsQuery.new(team_id: @team_id, base_year: @season_year)
   end
 
   def ranking_data
     return [] unless @team
 
     if @selected_swimmer_ids.present?
-      GogglesCup::RankingCalculator.new(
+      GogglesDb::GogglesCup::RankingCalculator.new(
         team_id: @team_id,
         swimmer_ids: @selected_swimmer_ids,
         no_duplicated_events: @no_duplicated_events
@@ -262,44 +269,110 @@ class GogglesCupController < ApplicationController
     end
   end
 
-  def persist_ranking_data
-    serialized = GogglesDb::GoggleCupRanking::DataSerializer.new(
-      cup: @goggle_cup,
-      ranking_data: @ranking_data,
-      no_duplicated_events: @no_duplicated_events
-    ).call
-    @goggle_cup.update!(ranking_data: serialized.to_json)
+  # === Remote write path (GoggleCupManage API) ==============================
+
+  # Wraps APIProxy with the current admin's JWT; +path+ is the endpoint suffix
+  # inside /api/v3 (e.g. "goggle_cup_manage/12/sync").
+  def cup_api_call(method, path, payload: nil)
+    APIProxy.call(method:, url: path, payload:, jwt: current_user.jwt)
   end
 
-  # Sets an in-memory, base-timings-only ranking payload on +cup+ (never saved)
-  # so the exported row lets goggles_main show the cup's base timings and its
-  # swimmer list even when no ranking was precomputed. One empty score key per
-  # selected swimmer is required by the DataDeserializer to emit an entry.
-  def embed_base_timings_payload(cup)
-    cup.ranking_data = GogglesDb::GoggleCupRanking::DataSerializer.new(
-      cup: cup,
-      ranking_data: cup.swimmer_ids_array.map { |swimmer_id| { swimmer_id: swimmer_id, top_rows: [] } },
-      no_duplicated_events: false
-    ).call.to_json
+  def api_success?(result)
+    (200..299).cover?(result.code)
   end
 
-  def find_or_initialize_cup
-    id = params[:goggle_cup_id]
-    id.present? ? GogglesDb::GoggleCup.find_by(id: id) : GogglesDb::GoggleCup.new
+  # Remote save: PUT for an existing cup (falling back to POST when the remote
+  # row doesn't exist -- e.g. a cup created locally before the API path), POST
+  # for a new one.
+  def remote_save
+    return cup_api_call(:post, 'goggle_cup_manage', payload: cup_save_payload) if @goggle_cup.blank?
+
+    result = cup_api_call(:put, "goggle_cup_manage/#{@goggle_cup.id}", payload: cup_save_payload)
+    result = cup_api_call(:post, 'goggle_cup_manage', payload: cup_save_payload) if result.code == 404
+    result
   end
 
-  # Assigns the submitted configuration to +cup+, clearing its stored
-  # ranking_data whenever the swimmer selection actually changed.
-  def assign_cup_attributes(cup)
-    previous_swimmer_ids = cup.swimmer_ids_array
-    cup.assign_attributes(
-      team_id: @team_id,
-      description: params[:description],
+  def cup_save_payload
+    {
+      team_id: @team_id || params[:team_id],
       season_year: params[:season_year],
+      description: params[:description],
+      name: params[:name].presence,
       end_date: params[:end_date],
-      swimmers_ids: Array(params[:swimmer_ids]).compact_blank.map(&:to_i).join(',')
+      swimmer_ids: Array(params[:swimmer_ids]).compact_blank.map(&:to_i)
+    }
+  end
+
+  # Pulls the remote row (+ badges) and overwrites the local mirror.
+  # Returns :cup_required when no cup is selected (redirect already sent).
+  def sync_from_remote!(success_notice)
+    if @goggle_cup.blank?
+      redirect_cup_required
+      return :cup_required
+    end
+
+    result = cup_api_call(:get, "goggle_cup_manage/#{@goggle_cup.id}/sync")
+    if api_success?(result)
+      SyncCupToLocal.call(result.json['sync'] || result.json)
+      flash[:notice] = success_notice
+    else
+      flash[:alert] = t('goggles_cup.api_error', message: result.error_detail)
+    end
+  end
+
+  def remote_toggle(action)
+    return redirect_cup_required if @goggle_cup.blank?
+
+    result = cup_api_call(:post, "goggle_cup_manage/#{@goggle_cup.id}/#{action}")
+    if api_success?(result)
+      SyncCupToLocal.call(result.json['sync'] || result.json)
+      flash[:notice] = t("goggles_cup.#{action}_success")
+    else
+      flash[:alert] = t('goggles_cup.api_error', message: result.error_detail)
+    end
+
+    redirect_to(goggles_cup_preview_path(back_params))
+  end
+
+  # Remote compute: persists the ranking on the API, resyncs the local mirror
+  # and exposes the deserialized entries for rendering/export.
+  def compute_remotely?
+    result = cup_api_call(
+      :post, "goggle_cup_manage/#{@goggle_cup.id}/compute",
+      payload: { swimmer_ids: @selected_swimmer_ids.map(&:to_i), no_duplicated_events: @no_duplicated_events }
     )
-    cup.ranking_data = nil if cup.ranking_data.present? && cup.swimmer_ids_array.sort != previous_swimmer_ids.sort
+    unless api_success?(result)
+      flash[:alert] = t('goggles_cup.compute_error', message: result.error_detail)
+      redirect_to(goggles_cup_preview_path(back_params))
+      return false
+    end
+
+    SyncCupToLocal.call(result.json['sync'] || result.json)
+    @goggle_cup.reload
+    @ranking_data = GogglesDb::GoggleCupRanking::DataDeserializer.new(@goggle_cup).call
+    true
+  end
+
+  # Saved-flash text, extended with the remote badge-provisioning counts.
+  def saved_notice(report)
+    base = t('goggles_cup.cup_saved')
+    return base unless report.is_a?(Hash)
+
+    created = report['created'].is_a?(Array) ? report['created'].size : 0
+    skipped = report['skipped'].is_a?(Array) ? report['skipped'].size : 0
+    return base if (created + skipped).zero?
+
+    "#{base} #{t('goggles_cup.badges_report', created:, skipped:)}"
+  end
+
+  def redirect_cup_required
+    flash[:alert] = t('goggles_cup.errors.cup_required')
+    redirect_to(goggles_cup_preview_path(back_params))
+  end
+
+  def back_params(overrides = {})
+    { goggle_cup_id: @goggle_cup&.id, season_year: params[:season_year],
+      team_id: params[:team_id] }.merge(overrides)
   end
 
   def external_swimmers_for(cup)
@@ -360,44 +433,5 @@ class GogglesCupController < ApplicationController
     flash[:alert] = I18n.t('goggles_cup.errors.invalid_selection_or_data')
     redirect_to(goggles_cup_preview_path(goggle_cup_id: @goggle_cup&.id, season_year: params[:season_year],
                                          team_id: params[:team_id]))
-  end
-
-  # Builds a single MariaDB `INSERT ... ON DUPLICATE KEY UPDATE` statement for the
-  # given +cup+, including the current primary key (+id+) so the remote row stays in
-  # sync with the local one. The +lock_version+ column is intentionally left out: it
-  # defaults to 0 on new rows and is not overwritten on existing ones. The result is
-  # wrapped in a transaction by #wrap_sql_in_transaction.
-  def build_goggle_cup_sql(cup)
-    klass = cup.class
-    con = klass.connection
-    columns = []
-    values = []
-    updates = []
-    excluded_from_update = %w[id created_at lock_version]
-    timestamp_columns = %w[created_at updated_at]
-
-    klass.column_names.each do |col|
-      next if col == 'lock_version' # Handled separately / not part of the export
-
-      columns << con.quote_column_name(col)
-      values << if timestamp_columns.include?(col)
-                  'NOW()'
-                else
-                  con.quote(cup[col])
-                end
-      updates << "#{con.quote_column_name(col)}=VALUES(#{con.quote_column_name(col)})" unless excluded_from_update.include?(col)
-    end
-
-    insert_sql = "INSERT INTO #{con.quote_column_name(klass.table_name)} (#{columns.join(', ')})\r\n  " \
-                 "VALUES (#{values.join(', ')})\r\n  " \
-                 "ON DUPLICATE KEY UPDATE #{updates.join(', ')};"
-    wrap_sql_in_transaction(insert_sql)
-  end
-
-  # Wraps a single SQL statement in a simple transaction block, mirroring the pattern
-  # used by Import::CategoryCloner. This ensures the statement runs atomically on the
-  # remote production server when pushed through the batch_sql pipeline.
-  def wrap_sql_in_transaction(statement)
-    "SET AUTOCOMMIT = 0;\r\nSTART TRANSACTION;\r\n\r\n#{statement}\r\n\r\nCOMMIT;"
   end
 end

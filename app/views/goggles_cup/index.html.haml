@@ -73,6 +73,9 @@
                   = text_field_tag :id, @goggle_cup&.id, id: 'id', class: 'form-control', disabled: true
 
     - if @team
+      .alert.alert-info.d-flex.align-items-center{ role: 'alert' }
+        %i.fa.fa-cloud-upload.me-2
+        = t('goggles_cup.remote_edit_notice')
       = form_with(url: compute_goggles_cup_preview_path, method: :post, local: true,
                   html: { id: 'goggles-cup-form' },
                   data: { action: 'submit->goggles-cup#compute', 'goggles-cup-target': 'form' }) do |f|
@@ -84,13 +87,36 @@
             .card
               .card-header.d-flex.justify-content-between.align-items-center
                 %strong= t('goggles_cup.cup_configuration', team: @team.name)
-                - if @readonly
-                  %span.badge.bg-secondary#badge-readonly
-                    %i.fa.fa-lock.me-1
-                    = t('goggles_cup.readonly_badge')
+                .d-flex.align-items-center
+                  - if @goggle_cup&.persisted?
+                    - if @goggle_cup.published?
+                      = button_tag(type: 'submit', formaction: unpublish_goggles_cup_preview_path, formmethod: :post,
+                                   class: 'btn btn-sm btn-warning me-1',
+                                   data: { toggle: 'tooltip', placement: 'top', title: t('goggles_cup.unpublish_tooltip'), turbo_confirm: t('goggles_cup.confirm_unpublish') }) do
+                        %i.fa.fa-eye-slash.me-1
+                        = t('goggles_cup.unpublish')
+                    - else
+                      = button_tag(type: 'submit', formaction: publish_goggles_cup_preview_path, formmethod: :post,
+                                   class: 'btn btn-sm btn-outline-success me-1',
+                                   data: { toggle: 'tooltip', placement: 'top', title: t('goggles_cup.publish_tooltip'), turbo_confirm: t('goggles_cup.confirm_publish') }) do
+                        %i.fa.fa-eye.me-1
+                        = t('goggles_cup.publish')
+                    = button_tag(type: 'submit', formaction: resync_goggles_cup_preview_path, formmethod: :post,
+                                 class: 'btn btn-sm btn-outline-secondary me-1',
+                                 data: { toggle: 'tooltip', placement: 'top', title: t('goggles_cup.resync_tooltip'), turbo_confirm: t('goggles_cup.confirm_resync') }) do
+                      %i.fa.fa-refresh.me-1
+                      = t('goggles_cup.resync')
+                  - if @readonly
+                    %span.badge.bg-secondary#badge-readonly
+                      %i.fa.fa-lock.me-1
+                      = t('goggles_cup.readonly_badge')
               .card-body
                 .row
-                  .col-md-6
+                  .col-md-3
+                    .mb-2
+                      = label_tag :name, t('goggles_cup.name_label'), class: 'form-label'
+                      = text_field_tag :name, @goggle_cup&.name, id: 'name', class: 'form-control', placeholder: t('goggles_cup.name_placeholder'), data: { 'goggles-cup-target': 'nameField' }
+                  .col-md-3
                     .mb-2
                       = label_tag :description, t('goggles_cup.description_label'), class: 'form-label'
                       = text_field_tag :description, @goggle_cup&.description, id: 'description', class: 'form-control', required: true, data: { 'goggles-cup-target': 'descriptionField' }
@@ -124,11 +150,11 @@
                       %i.fa.fa-download.me-2
                       = t('goggles_cup.load_existing')
                   .col-md-3.my-1.d-flex.flex-fill
-                    = button_tag(type: 'submit', formaction: export_sql_goggles_cup_preview_path, formmethod: :post,
+                    = button_tag(type: 'submit', formaction: apply_local_goggles_cup_preview_path, formmethod: :post,
                                  class: "btn btn-outline-secondary btn-lg w-100#{@exportable ? '' : ' d-none'}", disabled: !@exportable,
-                                 data: { 'goggles-cup-target': 'exportSqlButton', toggle: 'tooltip', placement: 'top', title: t('goggles_cup.export_sql_tooltip'), turbo_confirm: t('goggles_cup.confirm_export') }) do
-                      %i.fa.fa-file-code-o.me-2
-                      = t('goggles_cup.export_sql')
+                                 data: { 'goggles-cup-target': 'exportSqlButton', toggle: 'tooltip', placement: 'top', title: t('goggles_cup.apply_local_tooltip'), turbo_confirm: t('goggles_cup.confirm_apply_local') }) do
+                      %i.fa.fa-download.me-2
+                      = t('goggles_cup.apply_local')
                   .col-md-3.my-1.d-flex.flex-fill
                     = button_tag(type: 'submit', class: 'btn btn-outline-success btn-lg w-100', disabled: @readonly,
                                 data: { 'goggles-cup-target': 'computeButton', toggle: 'tooltip', placement: 'top', title: t('goggles_cup.compute_tooltip') }) do
