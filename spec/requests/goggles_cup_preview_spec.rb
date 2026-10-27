@@ -425,6 +425,24 @@ RSpec.describe 'GogglesCupPreview' do
       expect(response).to redirect_to(goggles_cup_preview_path(season_year: '2025', team_id: team.id.to_s))
       expect(flash[:alert]).to include('remote rejected')
     end
+
+    it 'creates the cup remotely (POST) when the PUT finds no remote row' do
+      team = FactoryBot.create(:team)
+      local_cup = FactoryBot.create(:goggle_cup, team: team, description: 'Local Cup', season_year: 2025)
+      remote_attrs = local_cup.attributes.merge('id' => GogglesDb::GoggleCup.maximum(:id).to_i + 100)
+      not_found = APIProxy::Result.new(instance_double(RestClient::Response, code: 404, body: '{}', headers: {}))
+      created = APIProxy::Result.new(instance_double(RestClient::Response, code: 201, headers: {},
+                                                                           body: { 'sync' => { 'goggle_cup' => remote_attrs } }.to_json))
+      allow(APIProxy).to receive(:call).and_return(not_found, created)
+
+      post save_goggles_cup_preview_path, params: { team_id: team.id, goggle_cup_id: local_cup.id, description: 'Local Cup',
+                                                    season_year: 2025, end_date: '2026-07-31' }
+
+      expect(APIProxy).to have_received(:call).with(hash_including(method: :put)).ordered
+      expect(APIProxy).to have_received(:call).with(hash_including(method: :post, url: 'goggle_cup_manage')).ordered
+      expect(flash[:notice]).to be_present
+      expect(GogglesDb::GoggleCup.find_by(id: remote_attrs['id'])).to be_present
+    end
   end
 
   describe 'POST /best_results/goggles_cup_preview/compute with goggle_cup_id' do
@@ -462,6 +480,43 @@ RSpec.describe 'GogglesCupPreview' do
 
       expect(response).to redirect_to(goggles_cup_preview_path(goggle_cup_id: cup.id, team_id: team.id.to_s))
       expect(flash[:alert]).to include('compute broke')
+    end
+
+    it 'returns a JSON error (not a redirect) when the AJAX remote compute fails' do
+      team = FactoryBot.create(:team)
+      cup = FactoryBot.create(:goggle_cup, team: team, description: 'Test Cup', season_year: 2025, swimmers_ids: '1')
+      allow(GogglesDb::GogglesCup::SwimmerOptionsQuery).to receive(:new).and_return(instance_double(GogglesDb::GogglesCup::SwimmerOptionsQuery, call: []))
+      stub_cup_api(json: { 'error' => 'compute broke' }, code: 422)
+
+      post compute_goggles_cup_preview_path(format: :json), params: { team_id: team.id, goggle_cup_id: cup.id, swimmer_ids: ['1'] }
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(response.parsed_body['error']).to include('compute broke')
+    end
+
+    it 'returns a JSON error when the API is unreachable' do
+      team = FactoryBot.create(:team)
+      cup = FactoryBot.create(:goggle_cup, team: team, description: 'Test Cup', season_year: 2025, swimmers_ids: '1')
+      allow(GogglesDb::GogglesCup::SwimmerOptionsQuery).to receive(:new).and_return(instance_double(GogglesDb::GogglesCup::SwimmerOptionsQuery, call: []))
+      allow(RestClient::Request).to receive(:execute).and_raise(Errno::ECONNREFUSED)
+
+      post compute_goggles_cup_preview_path(format: :json), params: { team_id: team.id, goggle_cup_id: cup.id, swimmer_ids: ['1'] }
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(response.parsed_body['error']).to include(I18n.t('goggles_cup.api_unreachable', detail: '').strip)
+    end
+
+    it 'never calls the API for an export of a stored cup' do
+      team = FactoryBot.create(:team)
+      cup = FactoryBot.create(:goggle_cup, team: team, description: 'Test Cup', season_year: 2025, swimmers_ids: '1',
+                                           ranking_data: { 'no_duplicated_events' => false,
+                                                           'data' => { 'base_timings' => {}, 'scores' => {} } }.to_json)
+      allow(GogglesDb::GogglesCup::SwimmerOptionsQuery).to receive(:new).and_return(instance_double(GogglesDb::GogglesCup::SwimmerOptionsQuery, call: []))
+      allow(APIProxy).to receive(:call)
+
+      get compute_goggles_cup_preview_path(format: :csv), params: { team_id: team.id, goggle_cup_id: cup.id, swimmer_ids: ['1'] }
+
+      expect(APIProxy).not_to have_received(:call)
     end
   end
 
@@ -632,6 +687,32 @@ RSpec.describe 'GogglesCupPreview' do
 
       expect(response).to redirect_to(goggles_cup_preview_path(goggle_cup_id: cup.id, team_id: team.id.to_s))
       expect(cup.reload.published).to be(false)
+    end
+
+    it 'unpublishes the local sibling cup when mirroring a remote publish' do
+      team = FactoryBot.create(:team)
+      sibling = FactoryBot.create(:goggle_cup, team: team, description: 'Old Cup', season_year: 2025, published: true)
+      cup = FactoryBot.create(:goggle_cup, team: team, description: 'New Cup', season_year: 2025, swimmers_ids: '1')
+      stub_cup_api(json: { 'sync' => sync_block_for(cup, 'published' => true) })
+
+      post publish_goggles_cup_preview_path, params: { team_id: team.id, goggle_cup_id: cup.id }
+
+      expect(flash[:notice]).to be_present
+      expect(cup.reload.published).to be(true)
+      expect(sibling.reload.published).to be(false)
+    end
+
+    it 'flashes an alert instead of failing when the local mirror cannot be updated' do
+      team = FactoryBot.create(:team)
+      cup = FactoryBot.create(:goggle_cup, team: team, description: 'Test Cup', season_year: 2025, swimmers_ids: '1')
+      stub_cup_api(json: { 'sync' => sync_block_for(cup, 'published' => true) })
+      allow(SyncCupToLocal).to receive(:call).and_raise(ActiveRecord::RecordInvalid)
+
+      post publish_goggles_cup_preview_path, params: { team_id: team.id, goggle_cup_id: cup.id }
+
+      expect(response).to redirect_to(goggles_cup_preview_path(goggle_cup_id: cup.id, team_id: team.id.to_s))
+      expect(flash[:notice]).to be_nil
+      expect(flash[:alert]).to be_present
     end
   end
 

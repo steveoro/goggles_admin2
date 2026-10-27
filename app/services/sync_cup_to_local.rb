@@ -56,7 +56,17 @@ class SyncCupToLocal
             attrs.slice('team_id', 'season_year', 'description')
           )
     cup.assign_attributes(attrs.except(*READ_ONLY_COLUMNS))
+    unpublish_local_siblings(cup) if cup.published?
     cup.save!
     cup
+  end
+
+  # The remote publish! already reset the sibling cups of the same (team, year),
+  # but the payload carries only this cup: mirror the reset locally first, or
+  # the unique published_key index rejects the save.
+  def unpublish_local_siblings(cup)
+    siblings = GogglesDb::GoggleCup.where(team_id: cup.team_id, season_year: cup.season_year, published: true)
+    siblings = siblings.where.not(id: cup.id_in_database) if cup.persisted?
+    siblings.update_all(published: false) # rubocop:disable Rails/SkipsModelValidations
   end
 end

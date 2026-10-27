@@ -51,9 +51,9 @@ class GogglesCupController < ApplicationController
       return redirect_to(goggles_cup_preview_path(back_params))
     end
 
-    cup = SyncCupToLocal.call(result.json['sync'])
-    flash[:notice] = saved_notice(result.json['badges_report'])
-    redirect_to(goggles_cup_preview_path(back_params(goggle_cup_id: cup&.id)))
+    cup = sync_to_local(result)
+    flash[:notice] = saved_notice(result.json['badges_report']) if cup
+    redirect_to(goggles_cup_preview_path(back_params(goggle_cup_id: cup&.id || result.json.dig('cup', 'id'))))
   end
 
   # [POST] Clears the stored ranking_data of the selected cup on the remote DB
@@ -65,8 +65,7 @@ class GogglesCupController < ApplicationController
     if @goggle_cup.ranking_data.present?
       result = cup_api_call(:post, "goggle_cup_manage/#{@goggle_cup.id}/clear_ranking")
       if api_success?(result)
-        SyncCupToLocal.call(result.json['sync'] || result.json)
-        flash[:notice] = t('goggles_cup.ranking_cleared')
+        flash[:notice] = t('goggles_cup.ranking_cleared') if sync_to_local(result)
       else
         flash[:alert] = t('goggles_cup.api_error', message: result.error_detail)
       end
@@ -105,15 +104,19 @@ class GogglesCupController < ApplicationController
 
   # [POST/GET] Computes the GogglesCup ranking for the selected swimmers and renders
   # it in HTML, JSON, CSV, XLSX or PDF formats.
-  # When the cup exists remotely, the computation runs on the API (persisted
-  # path) and the local mirror is resynced; for a not-yet-saved cup the ranking
-  # is computed locally as a plain preview.
+  # Only a POST (the Compute button) on a saved cup runs the persisted remote
+  # computation (then resyncs the local mirror). Exports (GET csv/xlsx/pdf links)
+  # never write remotely: they use the stored ranking of a read-only cup, or a
+  # local preview computation otherwise. Unsaved cups always get a local preview.
   def compute
     prepare_page_context
     @ranking_visible = true
 
-    if @goggle_cup&.persisted?
-      return unless compute_remotely?
+    if export_request?
+      @ranking_data = export_ranking_data
+    elsif request.post? && @goggle_cup&.persisted?
+      error = compute_remotely
+      return respond_with_compute_error(error) if error
     else
       @ranking_data = ranking_data
     end
@@ -273,12 +276,37 @@ class GogglesCupController < ApplicationController
 
   # Wraps APIProxy with the current admin's JWT; +path+ is the endpoint suffix
   # inside /api/v3 (e.g. "goggle_cup_manage/12/sync").
+  # Network failures (API down, timeouts) yield a failed result instead of raising.
   def cup_api_call(method, path, payload: nil)
-    APIProxy.call(method:, url: path, payload:, jwt: current_user.jwt)
+    result = APIProxy.call(method:, url: path, payload:, jwt: current_user.jwt)
+    # (APIProxy wraps timeouts, which carry no response, into an empty Result)
+    result.__getobj__.nil? ? unreachable_api_result : result
+  rescue Errno::ECONNREFUSED, Errno::EHOSTUNREACH, SocketError, RestClient::Exception => e
+    unreachable_api_result(e.message)
+  end
+
+  UnreachableApiResult = Struct.new(:error_detail) do
+    def code = 0
+    def json = { 'error' => error_detail }
+  end
+
+  def unreachable_api_result(detail = nil)
+    UnreachableApiResult.new(t('goggles_cup.api_unreachable', detail: detail.to_s))
   end
 
   def api_success?(result)
     (200..299).cover?(result.code)
+  end
+
+  # Mirrors the +sync+ block of a successful API response into the local DB.
+  # The remote change is already applied at this point: on a local failure the
+  # admin gets an alert suggesting a resync instead of a 500.
+  # Returns the local cup, or +nil+ on failure.
+  def sync_to_local(result)
+    SyncCupToLocal.call(result.json['sync'] || result.json)
+  rescue ActiveRecord::ActiveRecordError => e
+    flash[:alert] = t('goggles_cup.local_sync_error', message: e.message.truncate(200))
+    nil
   end
 
   # Remote save: PUT for an existing cup (falling back to POST when the remote
@@ -313,8 +341,7 @@ class GogglesCupController < ApplicationController
 
     result = cup_api_call(:get, "goggle_cup_manage/#{@goggle_cup.id}/sync")
     if api_success?(result)
-      SyncCupToLocal.call(result.json['sync'] || result.json)
-      flash[:notice] = success_notice
+      flash[:notice] = success_notice if sync_to_local(result)
     else
       flash[:alert] = t('goggles_cup.api_error', message: result.error_detail)
     end
@@ -325,8 +352,7 @@ class GogglesCupController < ApplicationController
 
     result = cup_api_call(:post, "goggle_cup_manage/#{@goggle_cup.id}/#{action}")
     if api_success?(result)
-      SyncCupToLocal.call(result.json['sync'] || result.json)
-      flash[:notice] = t("goggles_cup.#{action}_success")
+      flash[:notice] = t("goggles_cup.#{action}_success") if sync_to_local(result)
     else
       flash[:alert] = t('goggles_cup.api_error', message: result.error_detail)
     end
@@ -335,22 +361,43 @@ class GogglesCupController < ApplicationController
   end
 
   # Remote compute: persists the ranking on the API, resyncs the local mirror
-  # and exposes the deserialized entries for rendering/export.
-  def compute_remotely?
+  # and exposes the deserialized entries for rendering.
+  # Returns +nil+ on success, or the error message.
+  def compute_remotely
     result = cup_api_call(
       :post, "goggle_cup_manage/#{@goggle_cup.id}/compute",
       payload: { swimmer_ids: @selected_swimmer_ids.map(&:to_i), no_duplicated_events: @no_duplicated_events }
     )
-    unless api_success?(result)
-      flash[:alert] = t('goggles_cup.compute_error', message: result.error_detail)
-      redirect_to(goggles_cup_preview_path(back_params))
-      return false
-    end
+    return t('goggles_cup.compute_error', message: result.error_detail) unless api_success?(result)
+    return flash.delete(:alert) unless sync_to_local(result)
 
-    SyncCupToLocal.call(result.json['sync'] || result.json)
     @goggle_cup.reload
     @ranking_data = GogglesDb::GoggleCupRanking::DataDeserializer.new(@goggle_cup).call
-    true
+    nil
+  end
+
+  # JSON error for the AJAX Compute button, flash + redirect otherwise.
+  def respond_with_compute_error(message)
+    respond_to do |format|
+      format.json { render json: { error: message }, status: :unprocessable_content }
+      format.any do
+        flash[:alert] = message
+        redirect_to(goggles_cup_preview_path(back_params))
+      end
+    end
+  end
+
+  def export_request?
+    %i[csv xlsx pdf].include?(request.format.symbol)
+  end
+
+  # Ranking for exports: the stored one for a read-only cup (with its own
+  # no_duplicated_events flag), a local preview computation otherwise.
+  def export_ranking_data
+    return ranking_data unless @readonly
+
+    @no_duplicated_events = no_duplicated_from(@goggle_cup)
+    GogglesDb::GoggleCupRanking::DataDeserializer.new(@goggle_cup).call
   end
 
   # Saved-flash text, extended with the remote badge-provisioning counts.

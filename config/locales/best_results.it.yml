@@ -109,6 +109,8 @@ it:
     name_placeholder: "come la descrizione, se vuoto"
     compute_error: "Calcolo remoto fallito: %{message}"
     api_error: "Errore API: %{message}"
+    api_unreachable: "Impossibile raggiungere l'API (la modifica potrebbe non essere stata applicata in remoto; risincronizza per verificare). %{detail}"
+    local_sync_error: "Modifica remota applicata, ma la copia locale non è stata aggiornata: %{message}. Usa \"Risincronizza\" per riprovare."
     badges_report: "Badge creati: %{created}; saltati: %{skipped}."
     confirm_overwrite: "Esiste già una classifica precalcolata per questa coppa. Il calcolo la sovrascriverà. Continuare?"
     selection_header: "Selezione stagione / squadra / coppa"

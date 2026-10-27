@@ -109,6 +109,8 @@ en:
     name_placeholder: "same as description if blank"
     compute_error: "Remote compute failed: %{message}"
     api_error: "API error: %{message}"
+    api_unreachable: "Unable to reach the API (the change may not have been applied remotely; resync to check). %{detail}"
+    local_sync_error: "Remote change applied, but the local mirror could not be updated: %{message}. Use \"Resync\" to retry."
     badges_report: "Badges created: %{created}; skipped: %{skipped}."
     confirm_overwrite: "A precomputed ranking exists for this cup. Computing will overwrite it. Continue?"
     selection_header: "Season / team / cup selection"
