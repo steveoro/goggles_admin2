@@ -279,10 +279,19 @@ RSpec.describe PullController do
 
       post '/pull/extract_manifests', params: { season_id: 9999 }
 
-      expect(PdfManifests::BatchRunner).to have_received(:new).with(season_id: 9999)
+      expect(PdfManifests::BatchRunner).to have_received(:new).with(season_id: 9999, engine: nil)
       expect(runner).to have_received(:start_in_thread!)
       expect(flash[:info]).to be_present
       expect(response).to redirect_to(pull_index_path)
+    end
+
+    it 'passes the chosen extraction engine to the batch runner' do
+      allow(PdfManifests::BatchRunner).to receive_messages(running?: false, new: runner)
+
+      post '/pull/extract_manifests', params: { season_id: 9999, engine: 'devin' }
+
+      expect(PdfManifests::BatchRunner).to have_received(:new).with(season_id: 9999, engine: 'devin')
+      expect(runner).to have_received(:start_in_thread!)
     end
 
     it 'refuses to start when a batch is already running' do

@@ -261,6 +261,62 @@ export function rehydrateSessionCityFromId(sessionIndex, cityId) {
 }
 
 /**
+ * Copies all swimming pool and city fields verbatim from a sibling session card
+ * into the target session card, including hidden/autocomplete id fields and any
+ * unsaved edits. Values are set silently: dispatching 'change' on the id fields
+ * would trigger DB rehydration / autocomplete detail fetches that would clobber
+ * the copied values.
+ * @param {number} targetIndex - The session card index receiving the values
+ * @param {string|number} sourceIndex - The session card index to copy from
+ */
+export function copySessionPoolAndCity(targetIndex, sourceIndex) {
+  if (sourceIndex === null || sourceIndex === undefined || sourceIndex === '' ||
+      String(targetIndex) === String(sourceIndex)) {
+    return
+  }
+
+  const poolFieldIds = [
+    'swimming_pool_id', 'swimming_pool', 'id_field', 'name', 'nick_name', 'address',
+    'pool_type_id', 'lanes_number', 'maps_uri', 'plus_code', 'latitude', 'longitude'
+  ]
+  const cityFieldIds = [
+    'city_id', 'city', 'id_field', 'name', 'area', 'zip', 'country',
+    'country_code', 'latitude', 'longitude'
+  ]
+
+  const copyField = function (sourceId, targetId) {
+    const sourceField = document.getElementById(sourceId)
+    if (sourceField) {
+      setFieldValue(targetId, sourceField.value, false)
+    }
+  }
+
+  poolFieldIds.forEach(function (field) {
+    copyField('pool_' + sourceIndex + '_' + field, 'pool_' + targetIndex + '_' + field)
+  })
+  cityFieldIds.forEach(function (field) {
+    copyField('city_' + sourceIndex + '_' + field, 'city_' + targetIndex + '_' + field)
+  })
+
+  // Sync the city-filtered pool dropdown too, when present
+  copyField('search_pool_' + sourceIndex, 'search_pool_' + targetIndex)
+
+  // Fire 'change' only on fields whose inline handler just rebuilds the
+  // maps-search href (name, address, city name): no rehydration triggered.
+  const mapsRefreshFields = [
+    'pool_' + targetIndex + '_name',
+    'pool_' + targetIndex + '_address',
+    'city_' + targetIndex + '_name'
+  ]
+  mapsRefreshFields.forEach(function (fieldId) {
+    const field = document.getElementById(fieldId)
+    if (field) {
+      field.dispatchEvent(new Event('change', { bubbles: true }))
+    }
+  })
+}
+
+/**
  * Populate session form fields from existing meeting_session selection
  * @param {number} sessionIndex - The session card index
  * @param {string} meetingSessionId - The selected meeting_session ID

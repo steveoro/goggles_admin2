@@ -28,7 +28,7 @@ module Import
         city_id = city_hash['city_id'] || city_hash['id']
         attributes = normalize_attributes(city_hash)
 
-        existing_row = GogglesDb::City.find_by(id: city_id) if city_id.to_i.positive?
+        existing_row = find_existing_row(city_id, attributes)
         if existing_row
           existing_row.assign_attributes(attributes.except('id'))
           return existing_row
@@ -42,10 +42,12 @@ module Import
       # Returns the committed row ID or raises an error.
       def commit(city_hash)
         city_id = city_hash['city_id'] || city_hash['id']
-
-        # Reuse existing row:
-        existing_row = GogglesDb::City.find_by(id: city_id) if city_id.to_i.positive?
         attributes = normalize_attributes(city_hash)
+
+        # Reuse existing row (by id, or by the unique (country_code, area, name)
+        # tuple so that sessions sharing the same new city don't attempt a
+        # second INSERT):
+        existing_row = find_existing_row(city_id, attributes)
 
         if existing_row
           changes = changes_for_update(existing_row, attributes)
@@ -54,11 +56,14 @@ module Import
             existing_row.save!
             sql_log << SqlMaker.new(row: existing_row).log_update(changes)
             stats[:cities_updated] += 1
-            logger.log_success(entity_type: 'City', entity_id: city_id, action: 'updated',
+            logger.log_success(entity_type: 'City', entity_id: existing_row.id, action: 'updated',
                                entity_key: existing_row.name)
-            Rails.logger.info("[City] Updated ID=#{city_id}")
+            Rails.logger.info("[City] Updated ID=#{existing_row.id}")
+          else
+            logger.log_success(entity_type: 'City', entity_id: existing_row.id, action: 'reused',
+                               entity_key: existing_row.name)
           end
-          return city_id.to_i
+          return existing_row.id
         end
 
         # Create new row:
@@ -90,6 +95,20 @@ module Import
       # -----------------------------------------------------------------------
 
       private
+
+      # Finds a reusable existing row by id, falling back to the unique
+      # (country_code, area, name) index so that duplicate submissions of the
+      # same new city resolve to the row already committed in this same
+      # transaction. (Requires a name; other tuple components may be NULL.)
+      def find_existing_row(city_id, attributes)
+        row = GogglesDb::City.find_by(id: city_id) if city_id.to_i.positive?
+        if row.nil? && attributes['name'].present?
+          row = GogglesDb::City.find_by(country_code: attributes['country_code'],
+                                        area: attributes['area'], name: attributes['name'])
+        end
+        row
+      end
+      # -----------------------------------------------------------------------
 
       def normalize_attributes(city_hash)
         normalized = city_hash.deep_dup.with_indifferent_access

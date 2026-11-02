@@ -152,6 +152,7 @@ class PullController < FileListController
     end
     @pending_manifests = pending_manifest_count(@season_id)
     @extraction_running = PdfManifests::BatchRunner.running?
+    @extraction_engine = selection_params[:engine].presence || PdfManifests::ClientFactory.default_engine
   end
   #-- -------------------------------------------------------------------------
   #++
@@ -197,21 +198,30 @@ class PullController < FileListController
   # == Params:
   # - <tt>season_id</tt>: the target season
   # - <tt>file_path</tt>: optional calendar file path used for the redirect back
+  # - <tt>engine</tt>: optional extraction engine ('devin'|'ollama')
   #
   def extract_manifests
-    redirect_path = selection_params[:file_path].present? ? pull_calendar_meetings_path(file_path: selection_params[:file_path]) : pull_index_path
+    engine = selection_params[:engine]
+    redirect_path = if selection_params[:file_path].present?
+                      pull_calendar_meetings_path(file_path: selection_params[:file_path], engine: engine)
+                    else
+                      pull_index_path
+                    end
 
     if PdfManifests::BatchRunner.running?
       flash[:warning] = I18n.t('data_import.selection.extraction.already_running')
       redirect_to(redirect_path) && return
     end
 
-    runner = PdfManifests::BatchRunner.new(season_id: selection_params[:season_id].to_i)
+    runner = PdfManifests::BatchRunner.new(season_id: selection_params[:season_id].to_i, engine: engine)
     case runner.preflight_error
-    when :ollama_unavailable
-      flash[:warning] = I18n.t('data_import.selection.extraction.ollama_unavailable')
+    when :engine_unavailable
+      flash[:warning] = I18n.t('data_import.selection.extraction.engine_unavailable',
+                               engine: runner.client.engine_name, hint: runner.client.unavailable_hint)
     when :model_missing
-      flash[:warning] = I18n.t('data_import.selection.extraction.model_missing', model: runner.client.model)
+      flash[:warning] = I18n.t('data_import.selection.extraction.model_missing',
+                               model: runner.client.model, engine: runner.client.engine_name,
+                               hint: runner.client.model_missing_hint)
     when :no_manifests
       flash[:warning] = I18n.t('data_import.selection.extraction.no_manifests')
     else
@@ -248,7 +258,7 @@ class PullController < FileListController
 
   # Strong parameters checking for calendar meeting-selection actions.
   def selection_params
-    params.permit(:file_path, :season_id, :rows_count, selected_rows: [])
+    params.permit(:file_path, :season_id, :rows_count, :engine, selected_rows: [])
   end
 
   # Symbol naming the i18n error key blocking the given selection, or nil when

@@ -175,6 +175,17 @@ RSpec.describe PdfManifests::Extractor, type: :strategy do
         expect(result).not_to be_success
         expect(result.skipped_reason).to eq('boom')
       end
+
+      it 'returns DevinClient errors as skipped_reason too' do
+        text_extractor = instance_double(PdfManifests::TextExtractor)
+        allow(PdfManifests::TextExtractor).to receive(:new).with(pdf_path).and_return(text_extractor)
+        allow(text_extractor).to receive(:extract).and_return('x' * 200)
+        allow(client).to receive(:generate).and_raise(PdfManifests::DevinClient::Error, 'devin boom')
+
+        result = extractor.call(pdf_path)
+        expect(result).not_to be_success
+        expect(result.skipped_reason).to eq('devin boom')
+      end
     end
   end
 end

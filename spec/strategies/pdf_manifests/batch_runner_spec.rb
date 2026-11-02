@@ -8,13 +8,13 @@ RSpec.describe PdfManifests::BatchRunner, type: :strategy do
   let(:manifests_dir) { data_root.join('manifests/262') }
   let(:done_dir) { data_root.join('manifests.done/262') }
   let(:client) do
-    instance_double(PdfManifests::OllamaClient, model: 'test-model',
+    instance_double(PdfManifests::OllamaClient, model: 'test-model', engine_name: 'Ollama',
                                                 available?: true, model_available?: true)
   end
   let(:extractor) { instance_double(PdfManifests::Extractor) }
 
   before(:each) do
-    allow(PdfManifests::OllamaClient).to receive(:new).and_return(client)
+    allow(PdfManifests::ClientFactory).to receive(:build).and_return(client)
     allow(PdfManifests::Extractor).to receive(:new).and_return(extractor)
   end
 
@@ -58,9 +58,9 @@ RSpec.describe PdfManifests::BatchRunner, type: :strategy do
   end
 
   describe '#preflight_error' do
-    it 'reports :ollama_unavailable when the client is down' do
+    it 'reports :engine_unavailable when the client is down' do
       allow(client).to receive(:available?).and_return(false)
-      expect(make_runner.preflight_error).to eq(:ollama_unavailable)
+      expect(make_runner.preflight_error).to eq(:engine_unavailable)
     end
 
     it 'reports :model_missing when the model is not pulled' do
@@ -105,6 +105,19 @@ RSpec.describe PdfManifests::BatchRunner, type: :strategy do
       allow(runner).to receive(:call)
       runner.start_in_thread!
       expect(described_class.running?(data_root: data_root)).to be(true)
+    end
+  end
+
+  describe '#initialize' do
+    it 'builds the client through ClientFactory with the default engine' do
+      allow(PdfManifests::ClientFactory).to receive(:default_engine).and_return('devin')
+      make_runner
+      expect(PdfManifests::ClientFactory).to have_received(:build).with(engine: 'devin', model: nil)
+    end
+
+    it 'passes an explicit engine choice to the factory' do
+      described_class.new(season_id: 262, engine: 'ollama', data_root: data_root)
+      expect(PdfManifests::ClientFactory).to have_received(:build).with(engine: 'ollama', model: nil)
     end
   end
 

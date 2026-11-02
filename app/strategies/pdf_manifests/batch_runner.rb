@@ -3,7 +3,7 @@
 module PdfManifests
   # = PdfManifests::BatchRunner
   #
-  #   - version:  7-0.10.63
+  #   - version:  7-0.10.66
   #   - author:   Devin
   #
   # Runs the manifest-extraction pipeline over every PDF found under
@@ -32,21 +32,22 @@ module PdfManifests
     # A status file older than this is considered stale (dead run).
     RUNNING_STALE_AFTER = 600 # seconds
 
-    attr_reader :season_id, :model, :data_root, :client, :pdf_list
+    attr_reader :season_id, :model, :engine, :data_root, :client, :pdf_list
 
-    def initialize(season_id:, model: nil, force: false, data_root: Rails.root.join('crawler/data'))
+    def initialize(season_id:, model: nil, force: false, engine: nil, data_root: Rails.root.join('crawler/data'))
       @season_id = season_id
       @model = model
       @force = force
+      @engine = engine.presence || ClientFactory.default_engine
       @data_root = Pathname(data_root)
-      @client = OllamaClient.new(model: model)
+      @client = ClientFactory.build(engine: @engine, model: model)
       @pdf_list = @data_root.glob("manifests/#{season_id}/*.pdf").sort
     end
 
     # Nil when the batch can start; otherwise a Symbol describing the blocker:
-    #   :ollama_unavailable | :model_missing | :no_manifests
+    #   :engine_unavailable | :model_missing | :no_manifests
     def preflight_error
-      return :ollama_unavailable unless client.available?
+      return :engine_unavailable unless client.available?
       return :model_missing unless client.model_available?
       return :no_manifests if pdf_list.empty?
 
@@ -182,6 +183,7 @@ module PdfManifests
       status = payload.merge(
         timestamp: now,
         season_id: season_id,
+        engine: client.engine_name,
         model: client.model,
         total: pdf_list.size,
         updated_at: now,

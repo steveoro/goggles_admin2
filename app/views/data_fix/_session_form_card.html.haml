@@ -114,7 +114,28 @@
           search_query = "?q=#{name_part}, #{addr_part}, ${document.getElementById('city_#{idx}_name').value}"
           onchange_event = "document.querySelector('#maps-uri-search-#{idx}').href = `#{search_engine}#{search_query}`;"
 
-        %h6.text-secondary Swimming Pool
+        .d-flex.justify-content-between.align-items-center
+          %h6.text-secondary Swimming Pool
+          - if all_sessions.size > 1
+            :ruby
+              sibling_options = all_sessions.each_with_index.filter_map do |s, i|
+                next if i == idx
+                label = "Session #{s['session_order'] || (i + 1)}"
+                label += " (#{s['scheduled_date']})" if s['scheduled_date'].present?
+                label += " — #{s.dig('swimming_pool', 'name')}" if s.dig('swimming_pool', 'name').present?
+                [label, i]
+              end
+            .form-inline.mb-2
+              %label.mr-2.mb-0{ for: "copy_from_session_#{idx}" }
+                %small= t('data_import.data_fix.copy_from_session_label')
+              = select_tag("copy_from_session_#{idx}",
+                           options_for_select([['—', '']] + sibling_options),
+                           class: 'form-control form-control-sm mr-2',
+                           id: "copy_from_session_#{idx}")
+              %button.btn.btn-sm.btn-outline-secondary{ type: 'button',
+                  onclick: "DataFix.copySessionPoolAndCity(#{idx}, document.getElementById('copy_from_session_#{idx}').value); this.blur();" }
+                %i.fa.fa-copy
+                = t('data_import.data_fix.btn_copy_session_pool')
 
         -# City-filtered pool dropdown (when city is selected)
         - if city_id.present?

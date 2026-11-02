@@ -130,6 +130,53 @@ RSpec.describe DataFixController do
         expect(response.body).to include('No sessions yet')
       end
 
+      context 'when two or more sessions exist' do
+        before(:each) do
+          shared_pool = { 'id' => nil, 'name' => 'Shared Pool', 'nick_name' => 'sharedpool' }
+          phase1_data = {
+            'season_id' => season.id,
+            'name' => 'Test Meeting',
+            'meeting_session' => [
+              { 'id' => nil, 'session_order' => 1, 'scheduled_date' => '2026-12-12',
+                'day_part_type_id' => 1, 'swimming_pool' => shared_pool.deep_dup },
+              { 'id' => nil, 'session_order' => 2, 'scheduled_date' => '2026-12-13',
+                'day_part_type_id' => 1, 'swimming_pool' => shared_pool.deep_dup }
+            ]
+          }
+          PhaseFileManager.new(phase1_file).write!(data: phase1_data, meta: { 'generator' => 'test' })
+        end
+
+        it 'renders the copy pool & city selector on each session card' do
+          get review_sessions_path(file_path: source_file, phase_v2: 1)
+
+          expect(response).to be_successful
+          expect(response.body).to include('copy_from_session_0')
+          expect(response.body).to include('copy_from_session_1')
+          expect(response.body).to include('copySessionPoolAndCity')
+        end
+      end
+
+      context 'when only one session exists' do
+        before(:each) do
+          phase1_data = {
+            'season_id' => season.id,
+            'name' => 'Test Meeting',
+            'meeting_session' => [
+              { 'id' => nil, 'session_order' => 1, 'scheduled_date' => '2026-12-12',
+                'day_part_type_id' => 1, 'swimming_pool' => { 'id' => nil, 'name' => 'Pool', 'nick_name' => 'pool' } }
+            ]
+          }
+          PhaseFileManager.new(phase1_file).write!(data: phase1_data, meta: { 'generator' => 'test' })
+        end
+
+        it 'does not render the copy selector' do
+          get review_sessions_path(file_path: source_file, phase_v2: 1)
+
+          expect(response).to be_successful
+          expect(response.body).not_to include('copy_from_session_')
+        end
+      end
+
       it 'shows retry warning when source has a retry section' do
         File.write(
           source_file,

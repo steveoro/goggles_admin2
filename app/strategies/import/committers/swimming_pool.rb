@@ -31,7 +31,7 @@ module Import
         pool_id = pool_hash['swimming_pool_id'] || pool_hash['id']
         attributes = normalize_attributes(pool_hash)
 
-        existing_row = GogglesDb::SwimmingPool.find_by(id: pool_id) if pool_id.to_i.positive?
+        existing_row = find_existing_row(pool_id, attributes)
         if existing_row
           existing_row.assign_attributes(attributes.except('id'))
           return existing_row
@@ -45,10 +45,11 @@ module Import
       # Returns the committed row ID or raises an error.
       def commit(pool_hash)
         pool_id = pool_hash['swimming_pool_id'] || pool_hash['id']
-
-        # Reuse existing row:
-        existing_row = GogglesDb::SwimmingPool.find_by(id: pool_id) if pool_id.to_i.positive?
         attributes = normalize_attributes(pool_hash)
+
+        # Reuse existing row (by id, or by the unique nick_name so that
+        # sessions sharing the same new pool don't attempt a second INSERT):
+        existing_row = find_existing_row(pool_id, attributes)
 
         if existing_row
           changes = changes_for_update(existing_row, attributes)
@@ -57,11 +58,14 @@ module Import
             existing_row.save!
             sql_log << SqlMaker.new(row: existing_row).log_update(changes)
             stats[:pools_updated] += 1
-            logger.log_success(entity_type: 'SwimmingPool', entity_id: pool_id, action: 'updated',
+            logger.log_success(entity_type: 'SwimmingPool', entity_id: existing_row.id, action: 'updated',
                                entity_key: existing_row.nick_name)
             Rails.logger.info("[SwimmingPool] Updated ID=#{existing_row.id}")
+          else
+            logger.log_success(entity_type: 'SwimmingPool', entity_id: existing_row.id, action: 'reused',
+                               entity_key: existing_row.nick_name)
           end
-          return pool_id.to_i
+          return existing_row.id
         end
 
         # Create new row:
@@ -93,6 +97,17 @@ module Import
       # -----------------------------------------------------------------------
 
       private
+
+      # Finds a reusable existing row by id, falling back to the unique
+      # nick_name index so that duplicate submissions of the same new pool
+      # (e.g. multiple sessions bound to a not-yet-created pool) resolve to
+      # the row already committed in this same transaction.
+      def find_existing_row(pool_id, attributes)
+        row = GogglesDb::SwimmingPool.find_by(id: pool_id) if pool_id.to_i.positive?
+        row ||= GogglesDb::SwimmingPool.find_by(nick_name: attributes['nick_name']) if attributes['nick_name'].present?
+        row
+      end
+      # -----------------------------------------------------------------------
 
       # Normalizes pool attributes, mirroring Main#normalize_swimming_pool_attributes.
       def normalize_attributes(pool_hash)

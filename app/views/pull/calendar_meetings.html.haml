@@ -132,12 +132,17 @@
                                            manifest_extraction_season_id_value: @season_id,
                                            manifest_extraction_running_value: @extraction_running } }
           .col-12.text-center
-            = button_to(extract_manifests_path, method: :post,
-                        params: { season_id: @season_id, file_path: @file_path },
-                        class: 'btn btn-sm btn-outline-warning',
-                        disabled: @extraction_running || @pending_manifests.zero?,
-                        data: { toggle: 'tooltip', title: t('data_import.selection.btn_extract_manifests_tooltip') }) do
+            = form_tag(extract_manifests_path, method: :post, class: 'form-inline justify-content-center') do
+              = hidden_field_tag(:season_id, @season_id)
+              = hidden_field_tag(:file_path, @file_path)
               %i.fa.fa-magic
-              &nbsp;
-              = t('data_import.selection.btn_extract_manifests', count: @pending_manifests)
+              = select_tag(:engine,
+                           options_for_select([['Devin CLI', 'devin'], ['Ollama', 'ollama']], @extraction_engine),
+                           class: 'form-select form-select-sm d-inline-block w-auto mx-1',
+                           disabled: @extraction_running || @pending_manifests.zero?,
+                           data: { toggle: 'tooltip', title: t('data_import.selection.engine_tooltip') })
+              = submit_tag(t('data_import.selection.btn_extract_manifests', count: @pending_manifests),
+                           class: 'btn btn-sm btn-outline-warning',
+                           disabled: @extraction_running || @pending_manifests.zero?,
+                           data: { toggle: 'tooltip', title: t('data_import.selection.btn_extract_manifests_tooltip') })
             %small#extraction-status.text-secondary.d-block.mt-1{ data: { manifest_extraction_target: 'status' } }

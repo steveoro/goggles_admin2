@@ -3,7 +3,7 @@
 module PdfManifests
   # = PdfManifests::OllamaClient
   #
-  #   - version:  7-0.10.55
+  #   - version:  7-0.10.66
   #   - author:   Devin
   #
   # Thin wrapper around a locally-running Ollama server API.
@@ -82,6 +82,21 @@ module PdfManifests
     # TRUE when the configured vision model is usable for image extraction.
     def vision_available?
       available? && model_supports?(@vision_model, 'vision')
+    end
+
+    # Human-readable engine label used by callers for preflight/status lines.
+    def engine_name
+      'Ollama'
+    end
+
+    # Hint shown by callers when #available? is false.
+    def unavailable_hint
+      'start it with `ollama serve` and retry'
+    end
+
+    # Hint shown by callers when #model_available? is false.
+    def model_missing_hint
+      "pull it first with `ollama pull #{@model}` and retry"
     end
 
     # Sends a generation request. Returns the parsed JSON response body (as Hash)

@@ -71,11 +71,12 @@ en:
       btn_crawl_selected: '🕷 Crawl selected'
       btn_crawl_selected_confirm: 'Crawl the selected meetings?'
       btn_extract_manifests: 'Extract manifests (%{count} pending)'
-      btn_extract_manifests_tooltip: 'Extract meeting data from pending manifests (background, local Ollama)'
+      btn_extract_manifests_tooltip: 'Extract meeting data from pending manifests (background batch)'
+      engine_tooltip: 'Extraction engine: Devin CLI (`devin -p` sessions) or local Ollama server'
       extraction:
         already_running: 'A manifest extraction is already running'
-        ollama_unavailable: 'Ollama is not installed or not running. Start it with `ollama serve` and retry.'
-        model_missing: "Model '%{model}' is not pulled on the local Ollama server. Pull it first with `ollama pull %{model}` and retry."
+        engine_unavailable: '%{engine} engine not available: %{hint}'
+        model_missing: "Model '%{model}' not available for %{engine}: %{hint}"
         no_manifests: 'No manifest PDFs pending extraction for this season'
         started: 'Manifest extraction started in background (%{count} file(s))'
       errors:
@@ -142,6 +143,8 @@ en:
       confirm_purge: "Are you sure you want to PURGE the possible duplicate row indexed by '%{key}'? (NOTE: this should be done AFTER mapping or rescanning the meeting events to avoid re-mapping already deleted duplicates form the original data sections, thus forcing you to re-delete ALL the duplicates one-by-one.)"
       btn_add_session: "Add session"
       confirm_add_session: "Are you sure you want to add a new session to the data file?"
+      copy_from_session_label: "Copy pool & city from:"
+      btn_copy_session_pool: "Copy"
       add_session_with_shared_place: "Add session with the same shared place"
       notice_for_add_session: "WARNING: If you add a new session with the same shared place after editing the existing one (not yet committed to the DB), the new session will restore both the swimming pool and its city from the values found on the DB. Edit the details of the sessions after you're done adding them if you want to save time."
       btn_add_event: "Add event"

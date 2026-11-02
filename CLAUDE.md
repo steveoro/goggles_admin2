@@ -37,7 +37,7 @@ Six phases turning a results source file into production data; docs in `docs/dat
 - Source files: crawler output lands in `crawler/data/results.new/<season>/`; layoutType 4 (LT4) is the canonical format (see AGENTS.md for LT2→LT4 working-copy rules). Result-free (manifest) sources follow a shortened Phase 1 → Phase 6 chain.
 
 ### Other subsystems
-- `app/strategies/pdf_manifests/` and `pdf_results/`: PDF → LT4 extraction (pdftotext + local Ollama; notes in `docs/pdf_processing/ollama_extraction_notes.md`).
+- `app/strategies/pdf_manifests/` and `pdf_results/`: PDF → LT4 extraction (pdftotext + LLM engine — `devin` CLI default, local Ollama optional; notes in `docs/pdf_processing/`).
 - `app/strategies/merge/` + `docs/merge/`: swimmer/team/badge/meeting merge checkers and semantics.
 - `crawler/`: standalone Node server (FIN, Microplus, FICR crawlers) writing artifacts under `crawler/data/` and progress to `crawler-status.json` (broadcast to the UI via ActionCable). Docs: `crawler/README.md`, `docs/crawler/`. `crawler/crawler-status.json` changes constantly at runtime — don't commit it incidentally.
 - `app/grids/` (DataGrid-based list pages, `Grid::ToolbarComponent`), `app/components/` (ViewComponents), views are HAML, Stimulus controllers in `app/javascript/controllers/`, JS helpers in `app/javascript/*.js`.

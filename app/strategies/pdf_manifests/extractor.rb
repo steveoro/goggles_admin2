@@ -3,7 +3,7 @@
 module PdfManifests
   # = PdfManifests::Extractor
   #
-  #   - version:  7-0.10.55
+  #   - version:  7-0.10.66
   #   - author:   Devin
   #
   # Orchestrates the extraction of meeting data from a manifest PDF:
@@ -28,7 +28,7 @@ module PdfManifests
       end
     end
 
-    def initialize(client: OllamaClient.new)
+    def initialize(client: ClientFactory.build)
       @client = client
     end
 
@@ -66,7 +66,7 @@ module PdfManifests
         warnings: warnings + builder.warnings,
         events_count: Array(builder.lt4_hash['events']).size
       )
-    rescue TextExtractor::Error, VisionExtractor::Error, OllamaClient::Error => e
+    rescue TextExtractor::Error, VisionExtractor::Error, OllamaClient::Error, DevinClient::Error => e
       Result.new(pdf_path: pdf_path, warnings: warnings, skipped_reason: e.message)
     end
 
@@ -122,7 +122,7 @@ module PdfManifests
         builder.warnings << 'corrective extraction pass did not improve the output'
         builder
       end
-    rescue OllamaClient::Error => e
+    rescue OllamaClient::Error, DevinClient::Error => e
       builder.warnings << "corrective extraction pass failed: #{e.message}"
       builder
     end

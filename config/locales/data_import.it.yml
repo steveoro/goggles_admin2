@@ -71,11 +71,12 @@ it:
       btn_crawl_selected: '🕷 Crawl selezionati'
       btn_crawl_selected_confirm: 'Scarico i meeting selezionati?'
       btn_extract_manifests: 'Estrai manifest (%{count} in attesa)'
-      btn_extract_manifests_tooltip: 'Estrai i dati meeting dai manifest in attesa (in background, Ollama locale)'
+      btn_extract_manifests_tooltip: 'Estrai i dati meeting dai manifest in attesa (in background)'
+      engine_tooltip: 'Motore di estrazione: Devin CLI (sessioni `devin -p`) oppure server Ollama locale'
       extraction:
         already_running: 'Una estrazione manifest è già in corso'
-        ollama_unavailable: 'Ollama non è installato o non è in esecuzione. Avvialo con `ollama serve` e riprova.'
-        model_missing: "Il modello '%{model}' non è presente sul server Ollama locale. Scaricalo prima con `ollama pull %{model}` e riprova."
+        engine_unavailable: 'Motore %{engine} non disponibile: %{hint}'
+        model_missing: "Il modello '%{model}' non è disponibile per %{engine}: %{hint}"
         no_manifests: 'Nessun manifest PDF in attesa di estrazione per questa stagione'
         started: 'Estrazione manifest avviata in background (%{count} file)'
       errors:
@@ -142,6 +143,8 @@ it:
       confirm_purge: "Siamo sicuri di volere ELIMINARE il possible duplicato indicizzato da '%{key}'? (NOTA: questo dovrebbe essere fatto DOPO il mapping degli eventi o un suo re-scan per evitare di ripescare nuovamente nomi già eliminati dalle righe di sezione originali ritrovandosi, quindi, a doverli eliminare TUTTI di nuovo uno dopo l'altro.)"
       btn_add_session: "Aggiungi sessione"
       confirm_add_session: "Siamo sicuri di volere aggiungere una nuova sessione al file di dati?"
+      copy_from_session_label: "Copia piscina e città da:"
+      btn_copy_session_pool: "Copia"
       add_session_with_shared_place: "Aggiungi sessione con stessa piscina di default"
       notice_for_add_session: "ATTENZIONE: sessioni anche diverse ma associate alla stessa chiave dati piscina condividono i dati luogo nella cache. Se aggiungi una nuova sessione con la stessa chiave dati di default dopo aver modificato una di quelle esistenti (e non ancora committata su DB), la nuova sessione ripristinerà nel mapping i valori originali di SwimmingPool & City per tutte le sessioni con la stessa chiave sessione. Edita i dettagli di sessione solo dopo aver finito di aggiungerle tutte, se vuoi risparmiare tempo."
       btn_add_event: "Aggiungi evento"

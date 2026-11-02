@@ -12,10 +12,11 @@
 #   are then moved to 'crawler/data/manifests.done/<season_id>/', much like the
 #   result datafiles under 'results.new' => 'results.done'.
 #
-#   The extraction uses a locally-running Ollama server (default model:
-#   'gemma4:e4b'). Scanned/image-only PDFs are processed through the vision
-#   capabilities of the model only when both Ollama and the vision model are
-#   actually installed and serving; those files are skipped otherwise.
+#   The extraction uses a pluggable LLM engine ('devin' by default: the Devin
+#   CLI in `devin -p` non-interactive mode; 'ollama': a locally-running Ollama
+#   server). Scanned/image-only PDFs are processed through the engine's vision
+#   capabilities only when actually available; those files are skipped
+#   otherwise.
 #
 #   (ASSUMES TO BE rakeD inside Rails.root)
 #
@@ -33,7 +34,9 @@ namespace :manifests do # rubocop:disable Metrics/BlockLength
     Options: [season=<season#id>|#{DEFAULT_SEASON_ID}]
              [file=<path/to/manifest.pdf>]  (single file, overrides 'season')
              [force=1]                      (regenerate existing -lt4.json outputs)
-             [model=<ollama_model>]         (default: OLLAMA_MANIFEST_MODEL or 'gemma4:e4b')
+             [engine=devin|ollama]          (default: MANIFEST_ENGINE or 'devin')
+             [model=<model_id>]             (default: DEVIN_MANIFEST_MODEL 'swe-2-high' /
+                                             OLLAMA_MANIFEST_MODEL 'gemma4:e4b')
   DESC
   task extract: :environment do # rubocop:disable Metrics/BlockLength
     season_id = ENV.fetch('season', DEFAULT_SEASON_ID).to_i
@@ -42,19 +45,20 @@ namespace :manifests do # rubocop:disable Metrics/BlockLength
 
     puts("\r\n*** Task: manifests:extract - season: #{season_id} ***")
 
-    client = PdfManifests::OllamaClient.new(model: model)
+    client = PdfManifests::ClientFactory.build(engine: ENV.fetch('engine', nil), model: model)
     unless client.available?
-      puts 'ABORTED: Ollama is not installed or not running. ' \
-           'Start it with `ollama serve` and retry.'
+      puts "ABORTED: #{client.engine_name} engine not available - #{client.unavailable_hint}"
       next
     end
     unless client.model_available?
-      puts "ABORTED: model '#{client.model}' is not pulled on the local Ollama server.\r\n     " \
-           "Pulled models: #{client.models.keys.sort.join(', ')}\r\n     " \
-           "Pull it first with `ollama pull #{client.model}` and retry."
+      model_ids = client.models.keys.sort
+      listed = model_ids.first(20).join(', ')
+      listed += ", ... (#{model_ids.size} total)" if model_ids.size > 20
+      puts "ABORTED: model '#{client.model}' not available for #{client.engine_name} - #{client.model_missing_hint}\r\n     " \
+           "Available models: #{listed}"
       next
     end
-    puts "--> Ollama OK - text model: #{client.model}" \
+    puts "--> #{client.engine_name} OK - text model: #{client.model}" \
          "#{client.vision_available? ? " | vision model: #{client.vision_model}" : ' | (no vision model - scanned PDFs will be skipped)'}"
 
     pdf_list =

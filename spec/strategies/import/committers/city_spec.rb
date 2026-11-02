@@ -102,6 +102,61 @@ RSpec.describe Import::Committers::City do
       end
     end
 
+    context 'when two sessions reference the same new city (duplicate submission)' do
+      let(:twin_city_attrs) do
+        {
+          'id' => nil,
+          'name' => "City-#{SecureRandom.hex(4)}",
+          'area' => "Area-#{SecureRandom.hex(4)}",
+          'country_code' => 'IT',
+          'country' => 'Italia'
+        }
+      end
+
+      it 'commits the city once and reuses the same row for the second session' do
+        first_id = committer.commit(twin_city_attrs.deep_dup)
+        second_id = committer.commit(twin_city_attrs.deep_dup)
+
+        expect(first_id).to be_positive
+        expect(second_id).to eq(first_id)
+        expect(stats[:cities_created]).to eq(1)
+        expect(stats[:cities_updated]).to eq(0)
+        expect(stats[:errors]).to be_empty
+        expect(
+          GogglesDb::City.where(country_code: 'IT', area: twin_city_attrs['area'],
+                                name: twin_city_attrs['name']).count
+        ).to eq(1)
+      ensure
+        GogglesDb::City.find_by(id: first_id)&.destroy
+      end
+    end
+
+    context 'when the (country_code, area, name) tuple already exists in DB but the payload has a null id' do
+      let!(:existing_city) { FactoryBot.create(:city) }
+
+      it 'reuses and updates the existing row instead of attempting a duplicate INSERT' do
+        new_zip = '00123'
+        update_hash = {
+          'id' => nil,
+          'name' => existing_city.name,
+          'area' => existing_city.area,
+          'country_code' => existing_city.country_code,
+          'country' => existing_city.country,
+          'zip' => new_zip
+        }
+
+        result = committer.commit(update_hash)
+
+        expect(result).to eq(existing_city.id)
+        expect(stats[:cities_updated]).to eq(1)
+        expect(stats[:cities_created]).to eq(0)
+        expect(stats[:errors]).to be_empty
+        expect(existing_city.reload.zip).to eq(new_zip)
+      ensure
+        existing_city.destroy
+      end
+    end
+
     context 'when creating a new city without explicit country fields' do
       let(:minimal_attrs) do
         {
