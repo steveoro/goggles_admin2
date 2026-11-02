@@ -74,7 +74,7 @@
 
     - if @team
       .alert.alert-info.d-flex.align-items-center{ role: 'alert' }
-        %i.fa.fa-cloud-upload.me-2
+        %i.fa.fa-cloud-upload.p-2.m-1
         = t('goggles_cup.remote_edit_notice')
       = form_with(url: compute_goggles_cup_preview_path, method: :post, local: true,
                   html: { id: 'goggles-cup-form' },
