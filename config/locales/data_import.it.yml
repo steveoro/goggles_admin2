@@ -41,7 +41,7 @@ it:
       btn_process_sql_tooltip: "Esegue l'upload di questo file di importazione dati sul server remoto"
       confirm_push: "Sicuri di voler fare l'upload di questo file?"
     selection:
-      title: 'Seleziona i meeting da scaricare'
+      title: '1. Seleziona i meeting da scaricare'
       season_label: 'Season ID %{id}'
       rows_count:
         one: '1 meeting in lista'
@@ -61,6 +61,7 @@ it:
       btn_new_manifests: 'Nuovi manifest'
       btn_new_manifests_tooltip: 'Seleziona solo le righe con URL meeting e nessun manifest su disco'
       hide_done: 'Nascondi estratti'
+      hide_uncrawlable: 'Nascondi non scaricabili'
       url_tooltip: 'Apri la pagina meeting FIN'
       manifest_done_tooltip: 'Manifest già estratto: %{file}'
       manifest_pending_tooltip: 'Manifest scaricato, in attesa di estrazione: %{file}'
@@ -175,6 +176,8 @@ it:
       btn_all_sql_files_tooltip: "Esegue l'upload sul server remoto di TUTTI i file batch presenti in elenco qui sotto"
       btn_all_sql_files_confirm: "Sicuri di voler caricare TUTTI i file in elenco?"
       all_sql_files_ok: "Tutti i file batch sono stati inviati con successo."
+    manifest_extraction:
+      title: "2. Estrazione automatica locandine già presenti"
     errors:
       invalid_request: 'Richiesta non valida'
       invalid_file_content: 'Contenuto del file non valido rispetto alla sua estensione'

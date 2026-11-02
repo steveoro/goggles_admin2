@@ -41,7 +41,7 @@ en:
       btn_process_sql_tooltip: 'Upload this data-import batch file to the remote server'
       confirm_purge: "Are you sure you want to PURGE the possible duplicate '%{key}'? (NOTE: this can be done ONLY BEFORE starting reviewing results to avoid data corruption!)"
     selection:
-      title: 'Select meetings to crawl'
+      title: '1. Select meetings to crawl'
       season_label: 'Season ID %{id}'
       rows_count:
         one: '1 meeting listed'
@@ -61,6 +61,7 @@ en:
       btn_new_manifests: 'New manifests'
       btn_new_manifests_tooltip: 'Select only rows with a meeting URL and no manifest on disk'
       hide_done: 'Hide extracted'
+      hide_uncrawlable: 'Hide uncrawlable'
       url_tooltip: 'Open the FIN meeting page'
       manifest_done_tooltip: 'Manifest already extracted: %{file}'
       manifest_pending_tooltip: 'Manifest downloaded, pending extraction: %{file}'
@@ -175,6 +176,8 @@ en:
       btn_all_sql_files_tooltip: "Uploads to the remote server ALL SQL batch files from the list below"
       btn_all_sql_files_confirm: "Are you sure you want to upload ALL SQL batch files?"
       all_sql_files_ok: "All SQL batch files have been successfully sent."
+    manifest_extraction:
+      title: "2. Automatic Manifest data extraction from existing files"
     errors:
       invalid_request: 'Invalid request'
       invalid_file_content: 'Invalid file contents for the given file extension'

@@ -47,6 +47,11 @@
                                                    data: { action: 'calendar-selection#toggleDoneVisibility' } }
                 %label.form-check-label{ for: 'hide-done' }
                   %small= t('data_import.selection.hide_done')
+              .form-check.form-check-inline.ml-2
+                %input.form-check-input#hide-uncrawlable{ type: 'checkbox',
+                                                          data: { action: 'calendar-selection#toggleUncrawlableVisibility' } }
+                %label.form-check-label{ for: 'hide-uncrawlable' }
+                  %small= t('data_import.selection.hide_uncrawlable')
 
           %table.table.table-striped.table-hover.table-sm
             %thead
@@ -70,7 +75,8 @@
             %tbody
               - @sheet.rows.each do |row|
                 %tr{ class: (row.crawlable? ? nil : 'text-muted'),
-                     data: { calendar_selection_target: 'row', manifest_state: row.manifest_state } }
+                     data: { calendar_selection_target: 'row', manifest_state: row.manifest_state,
+                             crawlable: row.crawlable?.to_s } }
                   %td.text-center
                     = check_box_tag('selected_rows[]', row.index, false,
                                     disabled: !row.crawlable?, class: 'row-selector',
@@ -132,15 +138,17 @@
                                            manifest_extraction_season_id_value: @season_id,
                                            manifest_extraction_running_value: @extraction_running } }
           .col-12.text-center
+            %h5= t('data_import.manifest_extraction.title')
+          .col-12.text-center
             = form_tag(extract_manifests_path, method: :post, class: 'form-inline justify-content-center') do
               = hidden_field_tag(:season_id, @season_id)
               = hidden_field_tag(:file_path, @file_path)
               %i.fa.fa-magic
               = select_tag(:engine,
-                           options_for_select([['Devin CLI', 'devin'], ['Ollama', 'ollama']], @extraction_engine),
-                           class: 'form-select form-select-sm d-inline-block w-auto mx-1',
-                           disabled: @extraction_running || @pending_manifests.zero?,
-                           data: { toggle: 'tooltip', title: t('data_import.selection.engine_tooltip') })
+                          options_for_select([['Devin CLI', 'devin'], ['Ollama', 'ollama']], @extraction_engine),
+                          class: 'form-control form-control-sm d-inline-block w-auto mx-1',
+                          disabled: @extraction_running || @pending_manifests.zero?,
+                          data: { toggle: 'tooltip', title: t('data_import.selection.engine_tooltip') })
               = submit_tag(t('data_import.selection.btn_extract_manifests', count: @pending_manifests),
                            class: 'btn btn-sm btn-outline-warning',
                            disabled: @extraction_running || @pending_manifests.zero?,
