@@ -1,0 +1,40 @@
+en:
+  federnuoto_watch:
+    title: 'FIN "Riepilogo Eventi" watcher'
+    alert:
+      title: 'FIN "Riepilogo Eventi" page has changed'
+      detected_at: 'Detected: %{time}'
+      first_detected_at: '(first change: %{time})'
+      open_page: 'open FIN page'
+      dismiss: 'Dismiss (mark as seen)'
+      text_only: 'The page text changed, but no meeting rows were affected.'
+      more: '...and %{count} more'
+      pull_calendar: 'Pull calendar'
+      pull_calendar_tooltip: 'Starts the crawler server if needed and opens the Pull dashboard'
+      sections:
+        with_results:
+          one: 'Results published (1)'
+          other: 'Results published (%{count})'
+        added:
+          one: 'New meeting (1)'
+          other: 'New meetings (%{count})'
+        updated:
+          one: 'Updated meeting (1)'
+          other: 'Updated meetings (%{count})'
+        removed:
+          one: 'Removed meeting (1)'
+          other: 'Removed meetings (%{count})'
+    check:
+      now: 'Check now'
+      started: 'FIN page check started: the outcome will be shown here in a few seconds.'
+      no_changes: 'No changes on the FIN "Riepilogo Eventi" page (%{count} meetings listed).'
+      failed: 'FIN page check failed: %{error}'
+    status:
+      last_checked: 'Last check: %{time}'
+      never_checked: 'Never checked yet'
+    crawler:
+      start: 'Start crawler'
+      start_tooltip: 'Runs "npm start" in the crawler folder unless the server is already up'
+      started: 'Crawler server started.'
+      already_running: 'Crawler server already running.'
+      failed: 'Unable to start the crawler server (check %{log}).'

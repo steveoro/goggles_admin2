@@ -1,0 +1,40 @@
+it:
+  federnuoto_watch:
+    title: 'Monitor pagina FIN "Riepilogo Eventi"'
+    alert:
+      title: 'La pagina FIN "Riepilogo Eventi" è cambiata'
+      detected_at: 'Rilevato: %{time}'
+      first_detected_at: '(prima modifica: %{time})'
+      open_page: 'apri pagina FIN'
+      dismiss: 'Chiudi (segna come visto)'
+      text_only: 'Il testo della pagina è cambiato, ma nessuna riga del calendario è stata modificata.'
+      more: '...e altri %{count}'
+      pull_calendar: 'Scarica calendario'
+      pull_calendar_tooltip: 'Avvia il crawler se necessario e apre la pagina Pull'
+      sections:
+        with_results:
+          one: 'Risultati pubblicati (1)'
+          other: 'Risultati pubblicati (%{count})'
+        added:
+          one: 'Nuovo meeting (1)'
+          other: 'Nuovi meeting (%{count})'
+        updated:
+          one: 'Meeting modificato (1)'
+          other: 'Meeting modificati (%{count})'
+        removed:
+          one: 'Meeting rimosso (1)'
+          other: 'Meeting rimossi (%{count})'
+    check:
+      now: 'Controlla ora'
+      started: "Controllo pagina FIN avviato: l'esito comparirà qui tra qualche secondo."
+      no_changes: 'Nessuna modifica sulla pagina FIN "Riepilogo Eventi" (%{count} meeting elencati).'
+      failed: 'Controllo pagina FIN fallito: %{error}'
+    status:
+      last_checked: 'Ultimo controllo: %{time}'
+      never_checked: 'Mai controllato'
+    crawler:
+      start: 'Avvia crawler'
+      start_tooltip: 'Esegue "npm start" nella cartella crawler, se il server non è già attivo'
+      started: 'Crawler server avviato.'
+      already_running: 'Crawler server già attivo.'
+      failed: 'Impossibile avviare il crawler server (vedi %{log}).'

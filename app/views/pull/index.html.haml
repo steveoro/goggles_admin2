@@ -36,7 +36,7 @@
                         .field
                           = label_tag('sub_menu_type', t('data_import.config.sub_menu_type'))
                           -# Left non-localized as these are the actual target labels on the sub-menu items:
-                          = select_tag('sub_menu_type', options_for_select(['Eventi', 'Riepilogo Eventi', 'Archivio 2012-']),
+                          = select_tag('sub_menu_type', options_for_select(['Eventi', 'Riepilogo Eventi', 'Archivio 2012-'], params[:sub_menu_type]),
                                       class: 'form-control')
             .card.pb-4.mb-4#results-crawler-box
               .card-header#results-header

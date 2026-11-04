@@ -1,14 +1,33 @@
 development:
-  adapter: mysql2
-  encoding: utf8mb4
-  username: <%= ENV.fetch("DATABASE_USER") { 'root' } %>
-  password: <%= ENV.fetch("MYSQL_ROOT_PASSWORD") { '' } %>
-  host: <%= ENV.fetch("DATABASE_HOST") { 'localhost' } %>
-  port: <%= ENV.fetch("DATABASE_PORT") { 3306 } %>
-  pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
-  database: goggles_development
-  structure_dump_flags: ["--skip-ssl"]
-  structure_load_flags: ["--skip-ssl"]
+  primary:
+    adapter: mysql2
+    encoding: utf8mb4
+    username: <%= ENV.fetch("DATABASE_USER") { 'root' } %>
+    password: <%= ENV.fetch("MYSQL_ROOT_PASSWORD") { '' } %>
+    host: <%= ENV.fetch("DATABASE_HOST") { 'localhost' } %>
+    port: <%= ENV.fetch("DATABASE_PORT") { 3306 } %>
+    pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+    database: goggles_development
+    structure_dump_flags: ["--skip-ssl"]
+    structure_load_flags: ["--skip-ssl"]
+  # Local SQLite DBs for Solid Queue (background/recurring jobs) and Solid Cable
+  # (cross-process ActionCable broadcasts); they never touch the shared MySQL schema.
+  queue:
+    adapter: sqlite3
+    pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+    timeout: 5000
+    database: storage/queue_development.sqlite3
+    migrations_paths: db/queue_migrate
+    schema_format: ruby
+    schema_dump: queue_schema.rb
+  cable:
+    adapter: sqlite3
+    pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+    timeout: 5000
+    database: storage/cable_development.sqlite3
+    migrations_paths: db/cable_migrate
+    schema_format: ruby
+    schema_dump: cable_schema.rb
 
 test:
   adapter: mysql2
@@ -23,16 +42,35 @@ test:
   structure_load_flags: ["--skip-ssl"]
 
 production:
-  adapter: mysql2
-  encoding: utf8mb4
-  username: <%= ENV.fetch("DATABASE_USER") { 'root' } %>
-  password: <%= ENV.fetch("MYSQL_ROOT_PASSWORD") { '' } %>
-  host: <%= ENV.fetch("DATABASE_HOST") { 'localhost' } %>
-  port: <%= ENV.fetch("DATABASE_PORT") { 3306 } %>
-  pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
-  database: goggles
-  structure_dump_flags: ["--skip-ssl"]
-  structure_load_flags: ["--skip-ssl"]
+  primary:
+    adapter: mysql2
+    encoding: utf8mb4
+    username: <%= ENV.fetch("DATABASE_USER") { 'root' } %>
+    password: <%= ENV.fetch("MYSQL_ROOT_PASSWORD") { '' } %>
+    host: <%= ENV.fetch("DATABASE_HOST") { 'localhost' } %>
+    port: <%= ENV.fetch("DATABASE_PORT") { 3306 } %>
+    pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+    database: goggles
+    structure_dump_flags: ["--skip-ssl"]
+    structure_load_flags: ["--skip-ssl"]
+  # Local SQLite DBs for Solid Queue (background/recurring jobs) and Solid Cable
+  # (cross-process ActionCable broadcasts); they never touch the shared MySQL schema.
+  queue:
+    adapter: sqlite3
+    pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+    timeout: 5000
+    database: storage/queue_production.sqlite3
+    migrations_paths: db/queue_migrate
+    schema_format: ruby
+    schema_dump: queue_schema.rb
+  cable:
+    adapter: sqlite3
+    pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+    timeout: 5000
+    database: storage/cable_production.sqlite3
+    migrations_paths: db/cable_migrate
+    schema_format: ruby
+    schema_dump: cable_schema.rb
 
 # [Steve A.]
 # Staging will use the production environment together with the database
@@ -50,13 +88,32 @@ production:
 #   $> RAILS_ENV=staging rails db:rebuild from=test to=staging
 #
 staging:
-  adapter: mysql2
-  encoding: utf8mb4
-  username: <%= ENV.fetch("DATABASE_USER") { 'root' } %>
-  password: <%= ENV.fetch("MYSQL_ROOT_PASSWORD") { '' } %>
-  host: <%= ENV.fetch("DATABASE_HOST") { 'localhost' } %>
-  port: <%= ENV.fetch("DATABASE_PORT") { 3306 } %>
-  pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
-  database: goggles
-  structure_dump_flags: ["--skip-ssl"]
-  structure_load_flags: ["--skip-ssl"]
+  primary:
+    adapter: mysql2
+    encoding: utf8mb4
+    username: <%= ENV.fetch("DATABASE_USER") { 'root' } %>
+    password: <%= ENV.fetch("MYSQL_ROOT_PASSWORD") { '' } %>
+    host: <%= ENV.fetch("DATABASE_HOST") { 'localhost' } %>
+    port: <%= ENV.fetch("DATABASE_PORT") { 3306 } %>
+    pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+    database: goggles
+    structure_dump_flags: ["--skip-ssl"]
+    structure_load_flags: ["--skip-ssl"]
+  # Local SQLite DBs for Solid Queue (background/recurring jobs) and Solid Cable
+  # (cross-process ActionCable broadcasts); they never touch the shared MySQL schema.
+  queue:
+    adapter: sqlite3
+    pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+    timeout: 5000
+    database: storage/queue_staging.sqlite3
+    migrations_paths: db/queue_migrate
+    schema_format: ruby
+    schema_dump: queue_schema.rb
+  cable:
+    adapter: sqlite3
+    pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+    timeout: 5000
+    database: storage/cable_staging.sqlite3
+    migrations_paths: db/cable_migrate
+    schema_format: ruby
+    schema_dump: cable_schema.rb

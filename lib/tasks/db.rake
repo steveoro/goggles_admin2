@@ -57,11 +57,13 @@ namespace :db do
     # NOTE: for security reasons, ActiveRecord::Base.connection.execute() executes just the first
     # command when passed multiple staments. This is somewhat overlooked and not properly documented
     # in the docs as of this writing. We'll use the MySql client for this one:
-    rails_config = Rails.configuration
-    db_name      = rails_config.database_configuration[Rails.env]['database']
-    db_user      = rails_config.database_configuration[Rails.env]['username']
-    db_pwd       = rails_config.database_configuration[Rails.env]['password']
-    db_host      = rails_config.database_configuration[Rails.env]['host']
+    # (Supports both single & multi-db configs: in the latter, the 'primary' entry is the MySQL one)
+    env_config = Rails.configuration.database_configuration[Rails.env]
+    env_config = env_config['primary'] if env_config.key?('primary')
+    db_name      = env_config['database']
+    db_user      = env_config['username']
+    db_pwd       = env_config['password']
+    db_host      = env_config['host']
 
     # Execute with transaction wrapping to ensure rollback on failure
     # The merge scripts already include START TRANSACTION and COMMIT, but we add

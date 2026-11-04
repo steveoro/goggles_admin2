@@ -20,9 +20,28 @@ default: &default
   # port: <%= ENV.fetch("DATABASE_PORT") { 3306 } %>
 
 development:
-  <<: *default
-  database: goggles_development
-  password: MY_AWESOME_PASSWORD!
+  primary:
+    <<: *default
+    database: goggles_development
+    password: MY_AWESOME_PASSWORD!
+  # Local SQLite DBs for Solid Queue (background/recurring jobs) and Solid Cable
+  # (cross-process ActionCable broadcasts); they never touch the shared MySQL schema.
+  queue:
+    adapter: sqlite3
+    pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+    timeout: 5000
+    database: storage/queue_development.sqlite3
+    migrations_paths: db/queue_migrate
+    schema_format: ruby
+    schema_dump: queue_schema.rb
+  cable:
+    adapter: sqlite3
+    pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+    timeout: 5000
+    database: storage/cable_development.sqlite3
+    migrations_paths: db/cable_migrate
+    schema_format: ruby
+    schema_dump: cable_schema.rb
 
 # Warning: The database defined as "test" will be erased and
 # re-generated from your development database when you run "rake".
@@ -52,9 +71,28 @@ test:
 #     url: <%= ENV['DATABASE_URL'] %>
 #
 production:
-  <<: *default
-  database: goggles
-  password: <%= ENV.fetch("MYSQL_ROOT_PASSWORD") { '' } %>
+  primary:
+    <<: *default
+    database: goggles
+    password: <%= ENV.fetch("MYSQL_ROOT_PASSWORD") { '' } %>
+  # Local SQLite DBs for Solid Queue (background/recurring jobs) and Solid Cable
+  # (cross-process ActionCable broadcasts); they never touch the shared MySQL schema.
+  queue:
+    adapter: sqlite3
+    pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+    timeout: 5000
+    database: storage/queue_production.sqlite3
+    migrations_paths: db/queue_migrate
+    schema_format: ruby
+    schema_dump: queue_schema.rb
+  cable:
+    adapter: sqlite3
+    pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+    timeout: 5000
+    database: storage/cable_production.sqlite3
+    migrations_paths: db/cable_migrate
+    schema_format: ruby
+    schema_dump: cable_schema.rb
 
 # [Steve A.]
 # Staging will use the production environment together with the database
@@ -72,8 +110,27 @@ production:
 #   $> RAILS_ENV=staging rails db:rebuild from=test to=staging
 #
 staging:
-  <<: *default
-  database: goggles
-  password: <%= ENV.fetch("MYSQL_ROOT_PASSWORD") { '' } %>
-  host: <%= ENV.fetch("DATABASE_HOST") { 'localhost' } %>
-  port: <%= ENV.fetch("DATABASE_PORT") { 33060 } %>
+  primary:
+    <<: *default
+    database: goggles
+    password: <%= ENV.fetch("MYSQL_ROOT_PASSWORD") { '' } %>
+    host: <%= ENV.fetch("DATABASE_HOST") { 'localhost' } %>
+    port: <%= ENV.fetch("DATABASE_PORT") { 33060 } %>
+  # Local SQLite DBs for Solid Queue (background/recurring jobs) and Solid Cable
+  # (cross-process ActionCable broadcasts); they never touch the shared MySQL schema.
+  queue:
+    adapter: sqlite3
+    pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+    timeout: 5000
+    database: storage/queue_staging.sqlite3
+    migrations_paths: db/queue_migrate
+    schema_format: ruby
+    schema_dump: queue_schema.rb
+  cable:
+    adapter: sqlite3
+    pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+    timeout: 5000
+    database: storage/cable_staging.sqlite3
+    migrations_paths: db/cable_migrate
+    schema_format: ruby
+    schema_dump: cable_schema.rb

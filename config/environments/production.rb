@@ -56,6 +56,7 @@ Rails.application.configure do
   # config.cache_store = :mem_cache_store
 
   # Use a real queuing backend for Active Job (and separate queues per environment).
+  # (see bottom of file for the Solid Queue adapter setup)
   # config.active_job.queue_adapter     = :resque
   # config.active_job.queue_name_prefix = "goggles_main_production"
 
@@ -114,4 +115,9 @@ Rails.application.configure do
   # config.active_record.database_selector = { delay: 2.seconds }
   # config.active_record.database_resolver = ActiveRecord::Middleware::DatabaseSelector::Resolver
   # config.active_record.database_resolver_context = ActiveRecord::Middleware::DatabaseSelector::Resolver::Session
+
+  # Background & recurring jobs: Solid Queue on its own local SQLite DB (see config/database.yml,
+  # config/queue.yml & config/recurring.yml):
+  config.active_job.queue_adapter = :solid_queue
+  config.solid_queue.connects_to = { database: { writing: :queue } }
 end

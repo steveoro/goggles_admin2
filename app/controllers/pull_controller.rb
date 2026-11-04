@@ -40,6 +40,15 @@ class PullController < FileListController
   #-- -------------------------------------------------------------------------
   #++
 
+  # [POST] Starts the local crawler server (`npm start` in crawler/) unless it's already running.
+  def start_crawler
+    flash_symbol, message = CrawlerLauncher.flash_for(CrawlerLauncher.new.ensure_running!)
+    flash[flash_symbol] = message
+    redirect_to(pull_index_path)
+  end
+  #-- -------------------------------------------------------------------------
+  #++
+
   # [POST] Run the Meeting Calendar crawler through an API call.
   #
   # Uses the #crawler_params for the API call.

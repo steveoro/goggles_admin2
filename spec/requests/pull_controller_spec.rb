@@ -333,4 +333,23 @@ RSpec.describe PullController do
       expect(payload).to have_key('pending')
     end
   end
+
+  describe 'POST /start_crawler' do
+    include AdminSignInHelpers
+
+    let(:launcher) { instance_double(CrawlerLauncher, ensure_running!: :already_running) }
+
+    before(:each) do
+      admin_user = prepare_admin_user
+      sign_in_admin(admin_user)
+      allow(CrawlerLauncher).to receive(:new).and_return(launcher)
+    end
+
+    it 'ensures the crawler server is running and redirects to the dashboard' do
+      post '/pull/start_crawler'
+      expect(launcher).to have_received(:ensure_running!)
+      expect(response).to redirect_to(pull_index_path)
+      expect(flash[:notice]).to eq(I18n.t('federnuoto_watch.crawler.already_running'))
+    end
+  end
 end

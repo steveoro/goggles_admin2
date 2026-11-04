@@ -135,4 +135,9 @@ Rails.application.configure do
     # Detect unnecessary COUNT queries which could be avoided with a counter_cache:
     # Bullet.counter_cache_enable        = false
   end
+
+  # Background & recurring jobs: Solid Queue on its own local SQLite DB (see config/database.yml,
+  # config/queue.yml & config/recurring.yml):
+  config.active_job.queue_adapter = :solid_queue
+  config.solid_queue.connects_to = { database: { writing: :queue } }
 end

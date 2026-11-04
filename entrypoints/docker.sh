@@ -31,6 +31,9 @@ if [ ! -f public/assets/.manifest.json ]; then
   bundle exec rails assets:precompile
 fi
 
+# Create the local SQLite DBs for Solid Queue & Solid Cable when missing (idempotent):
+bundle exec rails solid:prepare
+
 # Apply pending migrations just for Main UI
 bundle exec rails db:migrate
 

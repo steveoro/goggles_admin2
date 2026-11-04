@@ -1,6 +1,6 @@
 GIT
   remote: https://github.com/steveoro/goggles_db.git
-  revision: 5154b8393878416490a699d792217f68fea21837
+  revision: d14e6d705d985e6182b73e3ba69bae33a24be8f2
   branch: master
   specs:
     goggles_db (0.10.66)

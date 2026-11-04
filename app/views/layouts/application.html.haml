@@ -36,6 +36,8 @@
         .main-content
           #flash-messages-container
             = render(partial: 'goggles/flash_messages')
+            -# Pending FIN "Riepilogo Eventi" change alert (live updates via AppNotificationsChannel):
+            = render(FedernuotoWatchAlertComponent.from_store) if user_signed_in?
         .spacer-right
 
     %section#content

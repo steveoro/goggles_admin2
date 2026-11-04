@@ -1,0 +1,42 @@
+.flash-alert.alert.alert-warning.flash-sticky{ id: FedernuotoWatch::ALERT_DOM_ID, role: 'alert',
+                                               data: { controller: 'federnuoto-watch',
+                                                       'federnuoto-watch-ack-url-value': federnuoto_watch_acknowledge_path } }
+  %button.close{ type: 'button', 'aria-label' => t('federnuoto_watch.alert.dismiss'),
+                 title: t('federnuoto_watch.alert.dismiss'), data: { action: 'federnuoto-watch#dismiss' } }
+    %span{ 'aria-hidden' => 'true' } ×
+  %h5.alert-heading
+    %i.fa.fa-2x.fa-bell.text-warning{ 'aria-hidden' => 'true' }
+    = t('federnuoto_watch.alert.title')
+  %p.mb-2
+    %small
+      = t('federnuoto_watch.alert.detected_at', time: detected_at)
+      = t('federnuoto_watch.alert.first_detected_at', time: first_detected_at) if first_detected_at
+      ·
+      = link_to(t('federnuoto_watch.alert.open_page'), FedernuotoWatch::URL, target: '_blank', rel: 'noopener')
+  - if page_text_only_change?
+    %p.mb-2
+      %em= t('federnuoto_watch.alert.text_only')
+  - sections.each do |key, css_class, rows|
+    .mb-2
+      %b{ class: css_class }= t("federnuoto_watch.alert.sections.#{key}", count: rows.size)
+      %ul.mb-0.small
+        - rows.first(MAX_ITEMS).each do |row|
+          %li
+            - if row['url'].present?
+              = link_to(row_label(row), row['url'], target: '_blank', rel: 'noopener')
+            - else
+              = row_label(row)
+        - if rows.size > MAX_ITEMS
+          %li
+            %em= t('federnuoto_watch.alert.more', count: rows.size - MAX_ITEMS)
+  .d-flex.flex-wrap.mt-2
+    = form_with(url: federnuoto_watch_pull_calendar_path, method: :post, authenticity_token: false,
+                class: 'mr-2 mb-1', data: { turbo: false }) do
+      %button.btn.btn-sm.btn-primary{ type: 'submit', title: t('federnuoto_watch.alert.pull_calendar_tooltip') }
+        %i.fa.fa-calendar{ 'aria-hidden' => 'true' }
+        = t('federnuoto_watch.alert.pull_calendar')
+    = form_with(url: federnuoto_watch_check_path, method: :post, authenticity_token: false,
+                class: 'mr-2 mb-1', data: { turbo: false }) do
+      %button.btn.btn-sm.btn-outline-secondary{ type: 'submit' }
+        %i.fa.fa-refresh{ 'aria-hidden' => 'true' }
+        = t('federnuoto_watch.check.now')

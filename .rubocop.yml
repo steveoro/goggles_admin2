@@ -25,6 +25,8 @@ AllCops:
   TargetRubyVersion: 3.1.4
   Exclude:
     - 'db/schema.rb'
+    - 'db/queue_schema.rb'
+    - 'db/cable_schema.rb'
     - 'vendor/**/*'
     - 'node_modules/**/*'
 

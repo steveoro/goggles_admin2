@@ -1,12 +1,25 @@
+# [Steve A.] This app runs only on localhost, so no Redis instance is needed.
+# Solid Cable (SQLite-backed, see config/database.yml) is used instead of the in-process 'async' adapter
+# so that broadcasts made by background jobs (running in the Solid Queue worker process) reach
+# the browser clients connected to the Puma process.
+default: &default
+  adapter: solid_cable
+  connects_to:
+    database:
+      writing: cable
+  polling_interval: 0.1.seconds
+  message_retention: 1.day
+
 development:
-  adapter: async
+  <<: *default
 
 test:
   adapter: test
 
+staging:
+  <<: *default
+  channel_prefix: admin2_staging
+
 production:
-  # [Steve A.] This must be run only on localhost, so no Redis instance is needed:
-  adapter: async
+  <<: *default
   channel_prefix: admin2_production
-  # adapter: redis
-  # url: <%= ENV.fetch("REDIS_URL") { "redis://localhost:6379/1" } %>

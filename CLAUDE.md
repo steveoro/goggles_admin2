@@ -20,10 +20,15 @@ bundle exec rspec spec/requests/data_fix_controller_phase1_spec.rb:42       # on
 bundle exec rubocop [path]          # lint (rubocop-rails/rspec/performance/rake configured in .rubocop.yml)
 bundle exec guard                   # watcher the README expects green before PRs
 
-# Crawler (separate Node service, port 7000; the Rails Pull dashboard expects it running)
+# Crawler (separate Node service, port 7000; the Rails Pull dashboard expects it running —
+# it can also be auto-started from the UI via CrawlerLauncher: "Start crawler" / "Pull calendar")
 cd crawler && npm install && npm start
 cd crawler && npm test              # mocha
+
+bin/rails solid:prepare             # create/load the local SQLite queue & cable DBs (idempotent, never touches MySQL)
 ```
+
+Background jobs use **Solid Queue**; the supervisor runs inside Puma (`plugin :solid_queue` in `config/puma.rb`; set `SOLID_QUEUE_IN_PUMA=false` to opt out and run `bin/jobs` separately). ActionCable uses **Solid Cable** so job broadcasts reach the browsers. Both live on local SQLite DBs (`queue:`/`cable:` entries in the gitignored `config/database.yml` — see `config/database.yml.example`; files under `storage/`). Don't run a bare `bin/rails db:prepare`/`db:migrate` just for these: it would also act on the shared MySQL primary — use `solid:prepare`.
 
 Maintenance rake tasks live in `lib/tasks/` (`manifests`, `normalize`, `merge`, `purge`, `recompute`, `check`, `fix`, `db`, fixtures tasks). List with `bin/rails -T`; read each task's `desc` for its env-style args (e.g. `rake manifests:extract season=<id>`). Some (e.g. `normalize:coded_names`) emit a SQL script instead of touching the DB directly.
 
@@ -39,6 +44,7 @@ Six phases turning a results source file into production data; docs in `docs/dat
 ### Other subsystems
 - `app/strategies/pdf_manifests/` and `pdf_results/`: PDF → LT4 extraction (pdftotext + LLM engine — `devin` CLI default, local Ollama optional; notes in `docs/pdf_processing/`).
 - `app/strategies/merge/` + `docs/merge/`: swimmer/team/badge/meeting merge checkers and semantics.
+- `app/services/federnuoto_watch/` + `FedernuotoWatchJob` (recurring, `config/recurring.yml`): watches the FIN "Riepilogo Eventi" page via headless Chrome (`CHROME_BIN`), stores snapshots in `crawler/data/federnuoto-watch.json`, and pushes a sticky alert to every open page through `AppNotificationsChannel` (app-wide; the broadcast HTML carries no CSRF tokens — `federnuoto_watch_controller.js` injects them).
 - `crawler/`: standalone Node server (FIN, Microplus, FICR crawlers) writing artifacts under `crawler/data/` and progress to `crawler-status.json` (broadcast to the UI via ActionCable). Docs: `crawler/README.md`, `docs/crawler/`. `crawler/crawler-status.json` changes constantly at runtime — don't commit it incidentally.
 - `app/grids/` (DataGrid-based list pages, `Grid::ToolbarComponent`), `app/components/` (ViewComponents), views are HAML, Stimulus controllers in `app/javascript/controllers/`, JS helpers in `app/javascript/*.js`.
 - `app/strategies` and `app/grids` plus `app/etls/{sources,transforms,destinations}` are explicit eager-load roots (`config/application.rb`), so files there define top-level constants.

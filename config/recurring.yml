@@ -1,0 +1,19 @@
+# Solid Queue recurring tasks (scheduled by the Solid Queue supervisor; see config/queue.yml).
+#
+# federnuoto_watch: checks the FIN "Riepilogo Eventi" (Supermaster calendar summary) page for changes
+# and pushes an alert to any open page of the app. Offset at minute 30 so that it doesn't overlap
+# with the stand-alone Python cron watcher (~/Projects/federnuoto_watcher), which runs at minute 0.
+default: &default
+  federnuoto_watch:
+    class: FedernuotoWatchJob
+    queue: default
+    schedule: every hour at minute 30
+
+development:
+  <<: *default
+
+staging:
+  <<: *default
+
+production:
+  <<: *default

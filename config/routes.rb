@@ -31,12 +31,18 @@ Rails.application.routes.draw do
   post 'best_results/goggles_cup_preview/publish', to: 'goggles_cup#publish', as: 'publish_goggles_cup_preview'
   post 'best_results/goggles_cup_preview/unpublish', to: 'goggles_cup#unpublish', as: 'unpublish_goggles_cup_preview'
 
+  # FIN "Riepilogo Eventi" page watcher (see FedernuotoWatchJob):
+  post 'federnuoto_watch/check', to: 'federnuoto_watch#check', as: 'federnuoto_watch_check'
+  post 'federnuoto_watch/acknowledge', to: 'federnuoto_watch#acknowledge', as: 'federnuoto_watch_acknowledge'
+  post 'federnuoto_watch/pull_calendar', to: 'federnuoto_watch#pull_calendar', as: 'federnuoto_watch_pull_calendar'
+
   get 'pull/index'
   get 'pull/calendar_files'
   get 'pull/result_files'
   put 'pull/result_files', to: 'pull#result_files', as: 'update_result_files'
 
   post 'pull/run_crawler_api', to: 'pull#run_crawler_api', as: 'run_crawler_api'
+  post 'pull/start_crawler', to: 'pull#start_crawler', as: 'start_crawler'
   get 'pull/edit_name'
   get 'pull/edit_file'
   put 'pull/file_rename'

@@ -38,3 +38,8 @@ pidfile ENV.fetch('PIDFILE', 'tmp/pids/server.pid')
 
 # Allow puma to be restarted by `rails restart` command.
 plugin :tmp_restart
+
+# Run the Solid Queue supervisor (workers, dispatcher & recurring-task scheduler) inside Puma,
+# so that background & recurring jobs (e.g. FedernuotoWatchJob) run whenever the server is up.
+# Set SOLID_QUEUE_IN_PUMA=false to opt out (and run `bin/jobs` separately, if needed).
+plugin :solid_queue unless ENV['SOLID_QUEUE_IN_PUMA'] == 'false'
