@@ -1,0 +1,13 @@
+en:
+  api_offline:
+    title: "API offline: local session"
+    banner: "Signed in using just the local DB: the API server at %{url} couldn't release a valid session token, so only Settings and Home are available."
+    go_to_settings: "Fix the API connection in Settings »"
+    signed_in_offline: "API server %{url} unreachable or not authorizing (%{reason}). Signed in using the local DB only: set the correct API URL below, save it and sign in again."
+    settings_help: "The API server at %{url} couldn't release a valid session token. Enter the correct API URL (protocol, host & port) below and save it: you'll be signed out, and the next sign-in will connect to the new server."
+    redirected: "This page needs a working API connection: fix the API URL in Settings first."
+    read_only: "API offline: the settings can't be changed until a working API connection is configured."
+    local_settings: "(LOCAL '%{db}' DB settings: read-only, the API server is unreachable)"
+    probe_ok: "API server %{url} is reachable (v. %{version}). Sign in again to connect to it."
+    probe_failed: "API URL saved, but %{url} doesn't answer yet (%{reason}). Signing in from localhost will still work in API-offline mode."
+    remote_denied: "Unable to get a valid API session (%{reason}). Sign-in without a working API is allowed only from localhost."

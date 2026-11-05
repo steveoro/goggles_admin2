@@ -26,6 +26,15 @@ class Setting
     }
   end
 
+  # Returns the list of Setting rows stored in the local DB: all the base setting groups
+  # (GogglesDb::AppParameter::SETTINGS_GROUPS) plus the specified user's :prefs.
+  def self.local_domain(user)
+    (GogglesDb::AppParameter::SETTINGS_GROUPS + [:prefs]).flat_map do |group_key|
+      cfg_row = group_key.to_sym == :prefs ? user : GogglesDb::AppParameter.config
+      (cfg_row.settings(group_key).value || {}).map { |key, value| new(group_key:, key:, value:) }
+    end
+  end
+
   # Pseudo-id (String) used to uniquely associate instance <=> rows inside the Datagrid
   def id
     "#{@group_key}#{SPLIT_ID_CHAR}#{@key}"

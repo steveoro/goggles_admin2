@@ -43,6 +43,13 @@ class HomeController < ApplicationController
     @staging_updates = {}
   end
 
+  protected
+
+  # The landing page is reachable from API-offline sessions (remote counters will be zero).
+  def api_offline_allowed?
+    action_name == 'index'
+  end
+
   private
 
   # Retrieves the remote row total for a specified endpoint.

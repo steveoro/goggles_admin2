@@ -7,6 +7,8 @@ require 'version'
 # Common parent controller
 class ApplicationController < ActionController::Base
   protect_from_forgery with: :null_session
+  include APISession
+
   before_action :app_settings_row, :set_locale, :detect_device_variant,
                 :check_jwt_session, :authenticate_user!
 
@@ -18,21 +20,26 @@ class ApplicationController < ActionController::Base
   end
 
   # Checks JWT validity and forces a new sign-in otherwise.
+  #
+  # Exception: "API-offline" sessions (see Users::SessionsController), created when the
+  # API server couldn't release a JWT during a sign-in from localhost, are allowed to reach
+  # only the actions that don't need the API (see #api_offline_allowed?), so that the API
+  # connection URL can be fixed from the Settings page.
   def check_jwt_session
-    unless current_user && GogglesDb::GrantChecker.admin?(current_user)
-      logger.debug('* Not an Admin!')
-      sign_out(current_user)
-      flash[:error] = I18n.t('dashboard.not_admin_error')
-      redirect_to new_user_session_path && return
+    # Anonymous visitors are handled by #authenticate_user!; Devise actions must stay reachable:
+    return if current_user.nil? || devise_controller?
+
+    return force_new_sign_in(I18n.t('dashboard.not_admin_error')) unless GogglesDb::GrantChecker.admin?(current_user)
+
+    if valid_jwt?(current_user)
+      session.delete(:api_offline)
+      return
     end
+    return handle_api_offline_session if api_offline_session?
 
     # JWT expired? Force a new log-in to get a fresh one:
-    decoded_jwt = GogglesDb::JWTManager.decode(current_user.jwt, Rails.application.credentials.api_static_key)
-    return unless decoded_jwt.nil?
-
     logger.debug('* JWT expired: forcing new sign-in...')
-    sign_out(current_user)
-    redirect_to new_user_session_path && return
+    force_new_sign_in
   end
   #-- -------------------------------------------------------------------------
   #++

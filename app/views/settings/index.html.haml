@@ -4,8 +4,20 @@
 
   .main-content
     = render(DashboardTitleComponent.new(title: t('dashboard.settings.title'), row_count: @domain_count))
-    = render(Grid::EditModalComponent.new(controller_name: controller_name,
-             asset_row: Setting.new, jwt: current_user.jwt))
+    - if @remote
+      = render(Grid::EditModalComponent.new(controller_name: controller_name,
+               asset_row: Setting.new, jwt: current_user.jwt))
+
+    - if api_offline_session?
+      %section.my-4#api-offline-help
+        .alert.alert-warning.shadow-box
+          %h5.alert-heading
+            %i.fa.fa-exclamation-circle.text-warning
+            = t('api_offline.title')
+          %p.mb-1= t('api_offline.settings_help', url: api_offline_info['url'])
+          %p.mb-0
+            %small
+              %code= api_offline_info['reason']
 
     %section.my-4#curr-config
       = form_tag(settings_api_config_path, id: 'frm-curr-config', method: :post) do
@@ -26,15 +38,19 @@
                            data: { turbo_confirm: t('dashboard.settings.connection.save_confirmation') })
 
     %section.my-4#data-grid
-      = render(Grid::ToolbarComponent.new(asset_row: Setting.new, filter: true, create: false,
-               controller_name: controller_name, request_params: @grid_filter_params))
-      = datagrid_form_with(model: @grid, method: :get,
-                          url: url_for(controller: controller_name, action: :index, params: @grid_filter_params))
-      = render(Grid::FilterLabelsComponent.new(filter_params: @grid_filter_params))
+      - if @remote
+        = render(Grid::ToolbarComponent.new(asset_row: Setting.new, filter: true, create: false,
+                 controller_name: controller_name, request_params: @grid_filter_params))
+        = datagrid_form_with(model: @grid, method: :get,
+                            url: url_for(controller: controller_name, action: :index, params: @grid_filter_params))
+        = render(Grid::FilterLabelsComponent.new(filter_params: @grid_filter_params))
 
-      .row-fluid.text-center
+      .row-fluid.text-center#settings-source
         %i
-          %small.text-muted (REMOTE #{@connection_url} settings)
+          - if @remote
+            %small.text-muted (REMOTE #{@connection_url} settings)
+          - else
+            %small.text-danger= t('api_offline.local_settings', db: GogglesDb::AppParameter.connection_db_config.database)
       = datagrid_table(@grid, html: { class: 'table table-hover table-sm' })
 
     %section.text-center.fixed-bottom#footer

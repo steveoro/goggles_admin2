@@ -171,6 +171,54 @@ RSpec.describe APIProxy, type: :strategy do
       end
     end
   end
+
   #-- -----------------------------------------------------------------------
   #++
+  describe 'self.call with an unreachable API server' do
+    let(:base_url) { 'http://unreachable-api.test:8085' }
+
+    {
+      'connection refused' => Errno::ECONNREFUSED,
+      'unknown host' => SocketError,
+      'open timeout' => RestClient::Exceptions::OpenTimeout
+    }.each do |label, error_class|
+      context "when the connection fails (#{label})" do
+        subject { APIProxy.call(method: :get, url: 'users', jwt: 'fake-jwt', base_url:) }
+
+        before(:each) { WebMock.stub_request(:get, "#{base_url}/api/v3/users").to_raise(error_class) }
+
+        it 'does not raise and returns an unreachable result' do
+          expect(subject).to be_unreachable
+          expect(subject.code).to eq(APIProxy::UnreachableResponse::CODE)
+        end
+
+        it 'has a parsable JSON body and an error detail including the base URL' do
+          expect(JSON.parse(subject.body)['error']).to include(base_url)
+          expect(subject.error_detail).to include(base_url, error_class.name)
+        end
+      end
+    end
+
+    context 'when the request times out after connecting' do
+      subject { APIProxy.call(method: :get, url: 'users', base_url:) }
+
+      before(:each) { WebMock.stub_request(:get, "#{base_url}/api/v3/users").to_timeout }
+
+      it 'returns an unreachable result' do
+        expect(subject).to be_unreachable
+      end
+    end
+  end
+
+  describe 'self.ping' do
+    let(:base_url) { 'http://ping-api.test:8085' }
+
+    it 'calls the public status endpoint of the given server' do
+      WebMock.stub_request(:get, "#{base_url}/api/v3/status").to_return(status: 200, body: { msg: 'OK', version: '7' }.to_json)
+      result = APIProxy.ping("#{base_url}/")
+      expect(result.code).to eq(200)
+      expect(result).not_to be_unreachable
+      expect(result.json['version']).to eq('7')
+    end
+  end
 end

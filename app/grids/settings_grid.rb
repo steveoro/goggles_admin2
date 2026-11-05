@@ -12,18 +12,17 @@ class SettingsGrid < BaseGrid
     scope.select { |row| (row.group_key =~ /#{value}/i) || (row.key =~ /#{value}/i) }
   end
 
+  # Row background colors by setting group
+  GROUP_ROW_CLASSES = {
+    'app' => 'bg-light-green',
+    'social_urls' => 'bg-light-blue',
+    'framework_emails' => 'bg-light-yellow',
+    'framework_urls' => 'bg-light-red'
+  }.freeze
+
   # Customizes row background color
   def row_class(row)
-    group = row&.group_key
-    if group.to_s == 'app'
-      'bg-light-green'
-    elsif group.to_s == 'social_urls'
-      'bg-light-blue'
-    elsif group.to_s == 'framework_emails'
-      'bg-light-yellow'
-    elsif group.to_s == 'framework_urls'
-      'bg-light-red'
-    end
+    GROUP_ROW_CLASSES[row&.group_key.to_s]
   end
 
   selection_column

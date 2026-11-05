@@ -1,0 +1,13 @@
+it:
+  api_offline:
+    title: "API offline: sessione locale"
+    banner: "Accesso effettuato usando solo il DB locale: il server API su %{url} non ha rilasciato un token di sessione valido, per cui sono disponibili solo Impostazioni e Home."
+    go_to_settings: "Correggi la connessione API nelle Impostazioni »"
+    signed_in_offline: "Server API %{url} non raggiungibile o non autorizzante (%{reason}). Accesso effettuato usando solo il DB locale: imposta qui sotto l'URL API corretto, salvalo e rientra."
+    settings_help: "Il server API su %{url} non ha rilasciato un token di sessione valido. Inserisci qui sotto l'URL API corretto (protocollo, host e porta) e salvalo: verrai disconnesso e al prossimo accesso ti collegherai al nuovo server."
+    redirected: "Questa pagina richiede una connessione API funzionante: correggi prima l'URL API nelle Impostazioni."
+    read_only: "API offline: le impostazioni non sono modificabili finché non viene configurata una connessione API funzionante."
+    local_settings: "(Impostazioni del DB LOCALE '%{db}': sola lettura, il server API non è raggiungibile)"
+    probe_ok: "Il server API %{url} è raggiungibile (v. %{version}). Rientra per collegarti."
+    probe_failed: "URL API salvato, ma %{url} non risponde ancora (%{reason}). L'accesso da localhost funzionerà comunque in modalità API offline."
+    remote_denied: "Impossibile ottenere una sessione API valida (%{reason}). L'accesso senza API funzionante è consentito solo da localhost."

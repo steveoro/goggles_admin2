@@ -276,13 +276,11 @@ class GogglesCupController < ApplicationController
 
   # Wraps APIProxy with the current admin's JWT; +path+ is the endpoint suffix
   # inside /api/v3 (e.g. "goggle_cup_manage/12/sync").
-  # Network failures (API down, timeouts) yield a failed result instead of raising.
+  # Network failures (API down, timeouts) yield a failed result instead of raising
+  # (APIProxy never raises on those: see APIProxy::Result#unreachable?).
   def cup_api_call(method, path, payload: nil)
     result = APIProxy.call(method:, url: path, payload:, jwt: current_user.jwt)
-    # (APIProxy wraps timeouts, which carry no response, into an empty Result)
-    result.__getobj__.nil? ? unreachable_api_result : result
-  rescue Errno::ECONNREFUSED, Errno::EHOSTUNREACH, SocketError, RestClient::Exception => e
-    unreachable_api_result(e.message)
+    result.unreachable? ? unreachable_api_result(result.error_detail) : result
   end
 
   UnreachableApiResult = Struct.new(:error_detail) do

@@ -48,6 +48,7 @@ Six phases turning a results source file into production data; docs in `docs/dat
 - `crawler/`: standalone Node server (FIN, Microplus, FICR crawlers) writing artifacts under `crawler/data/` and progress to `crawler-status.json` (broadcast to the UI via ActionCable). Docs: `crawler/README.md`, `docs/crawler/`. `crawler/crawler-status.json` changes constantly at runtime — don't commit it incidentally.
 - `app/grids/` (DataGrid-based list pages, `Grid::ToolbarComponent`), `app/components/` (ViewComponents), views are HAML, Stimulus controllers in `app/javascript/controllers/`, JS helpers in `app/javascript/*.js`.
 - `app/strategies` and `app/grids` plus `app/etls/{sources,transforms,destinations}` are explicit eager-load roots (`config/application.rb`), so files there define top-level constants.
+- API sessions: credentials are checked against the local DB (Devise), then a JWT is fetched from the API configured in the local `AppParameter` row (`framework_urls.api`). `APIProxy` never raises on connection failures (`Result#unreachable?`). If no JWT can be obtained, a localhost sign-in becomes an "API-offline" session (`session[:api_offline]`, `app/controllers/concerns/api_session.rb`) allowed only where `api_offline_allowed?` is true (Settings, Home#index) so the API URL can be fixed.
 - `API` is registered as an inflection acronym (`config/initializers/inflections.rb`), e.g. `APIProxy` lives in `api_proxy.rb`.
 
 ## Conventions

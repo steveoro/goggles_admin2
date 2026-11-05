@@ -1,0 +1,8 @@
+-# Sticky banner shown on every page while the current session is "API-offline" (see APISession)
+.flash-alert.alert.alert-warning.flash-sticky#api-offline-banner{ role: 'alert' }
+  %h5.alert-heading
+    %i.fa.fa-2x.fa-exclamation-circle.text-warning{ 'aria-hidden' => 'true' }
+    = t('api_offline.title')
+  %p.flash-body.mb-0
+    = t('api_offline.banner', url: api_offline_info['url'])
+    = link_to(t('api_offline.go_to_settings'), settings_path, class: 'alert-link')

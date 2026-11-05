@@ -36,6 +36,9 @@
         .main-content
           #flash-messages-container
             = render(partial: 'goggles/flash_messages')
+            -# Local session without a valid API JWT (API server unreachable at sign-in; Settings has its own box):
+            - if user_signed_in? && api_offline_session? && controller_name != 'settings'
+              = render(partial: 'goggles/api_offline_banner')
             -# Pending FIN "Riepilogo Eventi" change alert (live updates via AppNotificationsChannel):
             = render(FedernuotoWatchAlertComponent.from_store) if user_signed_in?
         .spacer-right

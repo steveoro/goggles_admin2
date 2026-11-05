@@ -31,6 +31,11 @@ class DummyResponse
     200
   end
 
+  # Fake reachability flag (mirroring APIProxy::Result#unreachable?): returns always false.
+  def unreachable?
+    false
+  end
+
   # Normalized JSON body, mirroring APIProxy::Result#json.
   def json
     @proxy_result ||= APIProxy::Result.new(self)
