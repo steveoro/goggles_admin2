@@ -1,9 +1,9 @@
 GIT
   remote: https://github.com/steveoro/goggles_db.git
-  revision: 6b86e83b178e32be0ada76621f959657bba947c6
+  revision: 62edabde0809e8ea39cac9fb0f64d38994e97359
   branch: master
   specs:
-    goggles_db (0.10.66)
+    goggles_db (0.10.72)
       acts-as-taggable-on
       acts_as_votable
       caxlsx
@@ -633,9 +633,9 @@ GEM
       rubocop-ast (>= 1.49.0, < 2.0)
       ruby-progressbar (~> 1.7)
       unicode-display_width (>= 2.4.0, < 4.0)
-    rubocop-ast (1.50.0)
+    rubocop-ast (1.51.0)
       parser (>= 3.3.7.2)
-      prism (~> 1.7)
+      prism (>= 1.7)
     rubocop-capybara (3.1.0)
       lint_roller (~> 1.1)
       rubocop (~> 1.89)
@@ -672,7 +672,7 @@ GEM
       racc (~> 1.5)
       sexp_processor (~> 4.16)
     rubyzip (3.7.0)
-    sass-embedded (1.108.1-x86_64-linux-gnu)
+    sass-embedded (1.108.2-x86_64-linux-gnu)
       google-protobuf (~> 4.31)
     scenic (1.9.0)
       activerecord (>= 4.0.0)
