@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+# rubocop:disable-next Metrics/AbcSize
 class AddBatchesToSolidQueue < ActiveRecord::Migration[7.1]
   def change
     # Fresh installs create all of this with the base schema, so skip
