@@ -270,6 +270,77 @@ RSpec.describe Import::Committers::Main do
     end
   end
 
+  describe '#commit_all (meetings.results_acquired)' do
+    let(:tmp_dir) { Dir.mktmpdir }
+    let(:src_path) { File.join(tmp_dir, 'test.json').tap { |p| File.write(p, '{}') } }
+    let(:committer) { create_committer(src_path) }
+
+    # Runs commit_all with the phase commits stubbed out, binding the committer to +meeting+;
+    # +results_block+, when given, runs in place of the phase 5 commit (inside the transaction).
+    def run_commit_all_for(meeting, &results_block)
+      allow(committer).to receive(:commit_phase1_entities) { committer.instance_variable_set(:@meeting, meeting) }
+      allow(committer).to receive_messages(commit_phase2_entities: nil, commit_phase3_entities: nil,
+                                           commit_phase4_entities: nil)
+      allow(committer).to receive(:commit_phase5_entities) { results_block&.call }
+      committer.commit_all
+    end
+
+    after(:each) { FileUtils.rm_rf(tmp_dir) }
+
+    it 'sets results_acquired and logs the UPDATE when the committed meeting has individual results', :aggregate_failures do
+      mir = FactoryBot.create(:meeting_individual_result)
+      meeting = GogglesDb::Meeting.find(mir.meeting.id)
+      meeting.update_columns(results_acquired: false, manifest: true) # rubocop:disable Rails/SkipsModelValidations
+
+      run_commit_all_for(meeting)
+
+      meeting.reload
+      expect(meeting.results_acquired).to be true
+      expect(meeting.manifest).to be true
+      update_sql = committer.sql_log.grep(/UPDATE `meetings`/)
+      expect(update_sql.size).to eq(1)
+      expect(update_sql.first).to match(/`results_acquired`=(TRUE|1)/)
+      expect(update_sql.first).to include("WHERE `id`=#{meeting.id};")
+      expect(update_sql.first).not_to include('manifest')
+      expect(committer.stats[:meetings_updated]).to eq(1)
+      expect(committer.sql_log.index(update_sql.first)).to be < committer.sql_log.index('COMMIT;')
+    end
+
+    it 'sets results_acquired when the results are relays committed during phase 5' do
+      mrr = FactoryBot.create(:meeting_relay_result)
+      meeting = GogglesDb::Meeting.find(mrr.meeting.id)
+      meeting.update_columns(results_acquired: false) # rubocop:disable Rails/SkipsModelValidations
+      mrr_attrs = mrr.attributes.except('id', 'lock_version', 'created_at', 'updated_at')
+      mrr.destroy!
+
+      run_commit_all_for(meeting) { GogglesDb::MeetingRelayResult.create!(mrr_attrs) }
+
+      expect(meeting.reload.results_acquired).to be true
+      expect(committer.sql_log.grep(/UPDATE `meetings`/).size).to eq(1)
+    end
+
+    it 'leaves results_acquired false on a structure-only (result-free) commit' do
+      meeting = FactoryBot.create(:meeting, manifest: true, results_acquired: false)
+
+      run_commit_all_for(meeting)
+
+      expect(meeting.reload.results_acquired).to be false
+      expect(committer.sql_log.grep(/UPDATE `meetings`/)).to be_empty
+      expect(committer.stats[:meetings_updated]).to eq(0)
+    end
+
+    it 'does not log anything when results_acquired is already set' do
+      mir = FactoryBot.create(:meeting_individual_result)
+      meeting = GogglesDb::Meeting.find(mir.meeting.id)
+      meeting.update_columns(results_acquired: true) # rubocop:disable Rails/SkipsModelValidations
+
+      run_commit_all_for(meeting)
+
+      expect(committer.sql_log.grep(/UPDATE `meetings`/)).to be_empty
+      expect(committer.stats[:meetings_updated]).to eq(0)
+    end
+  end
+
   describe '#sql_log_content' do
     let(:tmp_dir) { Dir.mktmpdir }
     let(:src_path) { File.join(tmp_dir, 'test.json').tap { |p| File.write(p, '{}') } }

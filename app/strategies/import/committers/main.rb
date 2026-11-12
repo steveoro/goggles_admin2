@@ -126,6 +126,7 @@ module Import
 
             broadcast_progress('Merging overwrite candidates', 5, 6)
             merge_overwrite_candidates! # Move laps from wrong source MIRs to imported targets
+            mark_results_acquired! # Flag the meeting as having results (no-op for result-free commits)
 
             # CRITICAL: Check for any errors collected during commit phases.
             # If any errors occurred, raise an exception to trigger transaction rollback.
@@ -392,6 +393,22 @@ module Import
           end
           broadcast_progress("Committing Events for session #{sess_idx + 1} done.", session_total, session_total)
         end
+      end
+      # -----------------------------------------------------------------------
+
+      # Sets meetings.results_acquired once the committed meeting has at least one
+      # individual or relay result, logging the UPDATE in the SQL script.
+      # Structure-only (result-free) commits leave the flag untouched; meetings.manifest is never changed.
+      def mark_results_acquired!
+        return if @meeting.nil? || @meeting.results_acquired?
+        return unless @meeting.meeting_individual_results.exists? || @meeting.meeting_relay_results.exists?
+
+        changes = { 'results_acquired' => true }
+        @meeting.update!(changes)
+        @sql_log << SqlMaker.new(row: @meeting).log_update(changes)
+        @stats[:meetings_updated] += 1
+        @logger.log_success(entity_type: 'Meeting', entity_id: @meeting.id, action: 'updated (results_acquired)')
+        Rails.logger.info("[Main] Meeting ID=#{@meeting.id} marked with results_acquired")
       end
       # -----------------------------------------------------------------------
 

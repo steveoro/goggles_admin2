@@ -38,12 +38,12 @@ module Import
 
         meeting = GogglesDb::Meeting.find(meeting_id) # Always fail fast
 
-        # Prefer an existing calendar matched by meeting code/season (or meeting_id)
-        existing_row = find_existing_calendar(meeting)
-        attributes = build_calendar_attributes(meeting_hash, meeting)
+        # Prefer an existing calendar matched by FIN event ID, then by meeting code/season (or meeting_id)
+        existing_row = find_existing_calendar(meeting, fin_event_id_for(meeting_hash))
+        attributes = build_calendar_attributes(meeting_hash, meeting, existing: existing_row)
 
         if existing_row
-          changes = changes_for_update(existing_row, attributes)
+          changes = changes_for_update(existing_row, protect_existing_values(existing_row, attributes))
           if changes.any?
             existing_row.assign_attributes(changes)
             existing_row.save!
@@ -55,12 +55,7 @@ module Import
           return existing_row.id
         end
 
-        # Create new row but do also an additional search by meeting_code and season_id if possible:
-        model_row = prepare_model(meeting_hash)
-        if model_row.meeting_code.present? && model_row.season_id.present?
-          GogglesDb::Calendar.find_by(meeting_code: model_row.meeting_code,
-                                      season_id: model_row.season_id)
-        end
+        model_row = GogglesDb::Calendar.new(attributes.except('id'))
 
         # Check validation before saving
         unless model_row.valid?
@@ -96,8 +91,18 @@ module Import
 
       private
 
-      def build_calendar_attributes(meeting_hash, meeting)
-        existing = find_existing_calendar(meeting)
+      # Returns the FIN event ID carried by the results or manifest URL of the meeting hash, or +nil+.
+      def fin_event_id_for(meeting_hash)
+        FINEventId.parse_any(meeting_hash['meetingURL'], meeting_hash['results_link'],
+                             meeting_hash['manifestURL'], meeting_hash['manifest_link'])
+      end
+      # -----------------------------------------------------------------------
+
+      # Builds the full attribute hash for the calendar row (blank values are compacted away).
+      # When +existing+ is not given, it's looked up (FIN event ID first, then code & meeting_id).
+      def build_calendar_attributes(meeting_hash, meeting, existing: :lookup)
+        fin_event_id = fin_event_id_for(meeting_hash)
+        existing = find_existing_calendar(meeting, fin_event_id) if existing == :lookup
         scheduled_date = meeting.header_date || meeting_hash['scheduled_date']
 
         {
@@ -112,6 +117,7 @@ module Import
           'month' => meeting_hash['dateMonth1'] || scheduled_date&.strftime('%m'),
           'results_link' => meeting_hash['meetingURL'] || meeting_hash['results_link'],
           'manifest_link' => meeting_hash['manifestURL'] || meeting_hash['manifest_link'],
+          'results_code' => fin_event_id,
           'organization_import_text' => meeting_hash['organization'],
           'cancelled' => meeting_hash.key?('cancelled') ? BOOLEAN_TYPE.cast(meeting_hash['cancelled']) : meeting.cancelled,
           'updated_at' => Time.zone.now
@@ -119,7 +125,16 @@ module Import
       end
       # -----------------------------------------------------------------------
 
-      def find_existing_calendar(meeting)
+      # Finds the existing calendar row for the meeting, trying in order:
+      # 1. same season & same FIN event ID (+results_code+), when the ID is known;
+      # 2. same season & same meeting code;
+      # 3. same season & same meeting_id.
+      def find_existing_calendar(meeting, fin_event_id = nil)
+        if fin_event_id.present? && meeting.season_id.present?
+          by_fin_id = GogglesDb::Calendar.where(season_id: meeting.season_id, results_code: fin_event_id).first
+          return by_fin_id if by_fin_id
+        end
+
         season = meeting.season || GogglesDb::Season.find_by(id: meeting.season_id)
         scopes = if season
                    GogglesDb::Calendar.for_season(season)
@@ -130,21 +145,26 @@ module Import
       end
       # -----------------------------------------------------------------------
 
+      # Drops from the update attributes the values that must not replace the ones already stored:
+      # - a FIN +results_link+ is never replaced by a non-FIN URL (e.g. a FICR results page);
+      # - a stored +results_code+ (FIN event ID) is never replaced by a different one.
+      # (Blank values never overwrite anything, since #changes_for_update skips them.)
+      def protect_existing_values(existing_row, attributes)
+        protected_keys = []
+        protected_keys << 'results_link' if FINEventId.fin_url?(existing_row.results_link) &&
+                                            !FINEventId.fin_url?(attributes['results_link'])
+        if existing_row.results_code.present? && attributes['results_code'].present? &&
+           existing_row.results_code != attributes['results_code']
+          Rails.logger.warn("[Calendar] ID=#{existing_row.id}: keeping results_code=#{existing_row.results_code} " \
+                            "(incoming FIN event ID #{attributes['results_code']} ignored)")
+          protected_keys << 'results_code'
+        end
+        attributes.except(*protected_keys)
+      end
+      # -----------------------------------------------------------------------
+
       def build_meeting_place(meeting_hash)
         [meeting_hash['venue1'], meeting_hash['address1']].compact_blank.join(', ')
-      end
-      # -----------------------------------------------------------------------
-
-      # These helpers mirror the ones in Main and are scoped here so the
-      # behavior remains identical while we incrementally refactor.
-      def sanitize_attributes(attributes, model_class)
-        column_names = model_class.column_names.map(&:to_s)
-        attributes.slice(*column_names).except('id').stringify_keys
-      end
-      # -----------------------------------------------------------------------
-
-      def attributes_changed?(model, new_attributes)
-        changes_for_update(model, new_attributes).any?
       end
       # -----------------------------------------------------------------------
     end
