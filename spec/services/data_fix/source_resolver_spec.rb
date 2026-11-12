@@ -90,6 +90,15 @@ RSpec.describe DataFix::SourceResolver, type: :service do
           phase_paths.each { |path| expect(File).not_to exist(path) }
         end
 
+        it 'keeps a .orig.json backup of each existing phase file before removing it' do
+          resolved
+          phase_paths.each do |path|
+            backup = path.sub(/\.json\z/, '.orig.json')
+            expect(File).to exist(backup)
+            expect(JSON.parse(File.read(backup))).to eq('data' => {}, '_meta' => {})
+          end
+        end
+
         it 'clears the data_import_* rows bound to the LT4 source' do
           allow(GogglesDb::DataImportMeetingIndividualResult).to receive(:where).and_call_original
           resolved

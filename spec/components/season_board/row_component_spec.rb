@@ -63,6 +63,14 @@ RSpec.describe SeasonBoard::RowComponent, type: :component do
     end
   end
 
+  it 'renders :possible_unlinked_meeting as a warning badge' do
+    page = render_row(build_row(next_action: action(:crawl), flags: [:possible_unlinked_meeting]))
+    badge = page.css('[data-flag="possible_unlinked_meeting"]').first
+    expect(badge['class']).to include('badge-warning')
+    expect(badge.text.strip).to eq('a local meeting on this date is not linked yet')
+    expect(badge['title']).to be_present
+  end
+
   describe 'actions' do
     it 'posts the FIN id only, with the token, for :crawl' do
       page = render_row(build_row(next_action: action(:crawl, url: 'https://x')))
@@ -114,6 +122,12 @@ RSpec.describe SeasonBoard::RowComponent, type: :component do
       expect(form['action']).to eq('/season_board/link')
       expect(form.css('option').map(&:text)).to include('Select a calendar row...', '9 - code-9 - 2026-11-08 - Orphan 9')
       expect(page.css('details')).to be_empty
+    end
+
+    it 'renders a muted note instead of an empty select for :link without link candidates' do
+      page = render_row(build_row(state: :archived_unlinked, next_action: action(:link, bases: ['a'])))
+      expect(page.css('form, select')).to be_empty
+      expect(page.css('small.text-muted').map(&:text)).to include('no unlinked calendar to link to')
     end
 
     it 'offers the secondary link control only to unmatched rows when orphans exist' do

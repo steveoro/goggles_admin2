@@ -7,13 +7,17 @@ Developer notes (state rules, jobs, files): `AGENTS.md`, section "Season board".
 ## Weekly routine
 
 1. Open the board. The header shows when the FIN calendar was last checked; if a "FIN calendar changed" alert is pending, its button leads here. Rows for past meetings already done and rows without a FIN link are hidden by default (use the filter toggles to show them; the state chips filter by state).
-2. Rows in **Not crawled** are normally crawled automatically when the watcher sees the link appear. If you want it now, press **Crawl**.
+2. Rows in **Not crawled** are normally crawled automatically when the watcher sees the link appear. If you want it now, press **Crawl**. A row with the badge **a local meeting on this date is not linked yet** is never crawled automatically: a season calendar row without FIN id falls on its dates, so the meeting may already exist (e.g. imported from FICR/Microplus). Link it with **Link to meeting...** if it is the same meeting, otherwise press **Crawl**.
 3. **Manifest to extract**: press **Extract manifest** (a manifest PDF was downloaded; the LLM engine creates the meeting structure).
 4. **Structure ready** / **Results ready** / **Header only**: press **Review structure** / **Review results** / **Review header** to open the Data-Fix wizard (Phase 1 preselects the existing meeting and its sessions by FIN event id when the meeting was committed before). Go through the steps and commit in Step 5/6. An unfinished session shows **In review (step N)**: **Resume step N** continues it.
 5. **SQL to push**: press **Push** (push dashboard) to send the commit SQL to the production API.
 6. **Structure committed** (meeting exists, no results yet): once the meeting date is past, **Check for results** crawls the FIN page again. This also runs automatically every day (see below).
-7. **Archived, unlinked** / orphan rows: local files or calendar rows that no FIN row points to. Use **Link to meeting...** (select the calendar row) to link a FIN row to an existing calendar; a SQL script for the change is written for the push dashboard.
+7. **Archived, unlinked** / orphan rows: local files or calendar rows that no FIN row points to. Use **Link to meeting...** (select the calendar row) to link a FIN row to an existing calendar; a SQL script for the change is written for the push dashboard (the header shows how many such scripts await push, with a link to the Push page). Only calendar rows without FIN id and not cancelled can be selected; orphans whose FIN id is not on the current FIN calendar are marked and cannot be link targets (a row with nothing to link to says so).
 8. **Done** rows (meeting has results) need nothing more.
+
+A Phase 6 commit fails (and nothing is written) when the source's FIN event id is already linked, through a calendar row, to a different meeting than the one selected in Phase 1: the error names the calendar, the FIN event and both meetings. Fix the link or select that meeting in Phase 1.
+
+When results appear for a meeting whose structure came from the manifest, the manifest-derived source and its Data-Fix phase files are replaced; copies are kept next to them as `*.orig.json` (`*-phaseN.orig.json`).
 
 ## States
 
@@ -39,10 +43,12 @@ While a crawl or extraction is queued or running for a row, its button is disabl
 | What | When | Queue |
 |---|---|---|
 | Watcher check (`FedernuotoWatchJob`) | hourly at minute 30; on a detected change it queues a crawl (`MeetingCrawlJob`) for every changed row still "Not crawled" and not tried before for the same URL | `default` |
-| Daily re-check (`SeasonRecheckJob`, `season_board_recheck`) | every day at 5:15am: queues crawls for past meetings still without results and past "Not crawled" rows, most recent first, at most 15 per run, skipping rows crawled in the last 20 hours | `background` |
+| Daily re-check (`SeasonRecheckJob`, `season_board_recheck`) | every day at 5:15am: queues crawls for past meetings still without results and past "Not crawled" rows, most recent first, then retries the failed automatic crawls of any date; at most 15 per run, skipping rows crawled in the last 20 hours and rows with a not-yet-linked local meeting on their dates | `background` |
 | Crawls / extractions (`MeetingCrawlJob`, `ManifestExtractJob`) | when queued by the above or by the board buttons | `background` |
 
-The `background` queue has a single worker thread: crawls and extractions run strictly one at a time (a crawl is given up after 30 minutes). Jobs are not retried; a failure is shown on the row (press the button again to retry).
+The `background` queue has a single worker thread: crawls and extractions run strictly one at a time (a crawl is given up after 30 minutes). A failure is shown on the row (press the button again to retry; failed automatic crawls are also retried by the daily re-check). If a job could not even be queued, the board shows the error in a flash message. A queued or running job with no progress for too long shows **seems stuck** and its button is enabled again.
+
+While a board crawl is running, the manual crawl buttons of the Pull page are refused with a warning (the two would share the crawler status file); queued board crawls do not block them.
 
 Both the watcher and the jobs need the Solid Queue supervisor running (inside Puma by default, see `CLAUDE.md`).
 

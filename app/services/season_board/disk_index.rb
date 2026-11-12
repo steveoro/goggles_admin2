@@ -16,6 +16,8 @@ module SeasonBoard
   #   - '<base>-lt4.json'           => LT4 working copy, or manifest-derived source ('_meta.meeting_only')
   #   - '<base>-lt4-phaseN.json'    => Data-Fix phase files
   #   - 'NNNN-<base>-lt4.sql'       => commit SQL batch waiting to be pushed
+  #   - 'NNNN-season_board_backfill-<season>.sql' / 'NNNN-calendar_link-<cal>-<fin>.sql'
+  #                                 => board SQL scripts waiting to be pushed (see #board_sql_paths)
   # - <data_dir>/results.done/<season>/ => archived (committed) sources & phase files
   # - <data_dir>/results.sent/<season>/ => pushed SQL batches ('NNNN-<base>-lt4.sql')
   # - <data_dir>/manifests/<season>/'manifest-<base>.pdf'      => manifest pending extraction
@@ -24,10 +26,12 @@ module SeasonBoard
   # results.new files are probed in full (when small enough), results.done files with
   # bounded head/tail reads only. Nothing is cached: build a new instance to rescan.
   #
-  class DiskIndex
+  class DiskIndex # rubocop:disable Metrics/ClassLength
     PHASE_REGEXP = /\A(?<stem>.+)-phase(?<phase>\d+)\.json\z/
     SQL_REGEXP = /\A\d+-(?<base>.+?)(?:-lt4)?\.sql\z/
     SKIPPED_JSON_REGEXP = /\.(orig(-\d+)?|committed)\.json\z/
+    # SQL scripts written by SeasonBoard::Backfill & SeasonBoard::CalendarLinker (not sources).
+    BOARD_SQL_REGEXP = /\A\d+-(season_board_backfill-\d+|calendar_link-\d+-\d+)\.sql\z/
 
     attr_reader :season_id, :data_dir
 
@@ -64,6 +68,12 @@ module SeasonBoard
       @unmatched
     end
 
+    # Board SQL scripts (backfill & calendar link) in results.new, waiting to be pushed.
+    def board_sql_paths
+      build! unless @board_sql_paths
+      @board_sql_paths
+    end
+
     # FIN event id read for a base name (or nil).
     def fin_event_id_for_base(base)
       build! unless @fin_ids_by_base
@@ -80,6 +90,7 @@ module SeasonBoard
 
     # Raw scan per base: { new: { lt2:, lt4:, phases: {N => path} }, done: {...}, sql_new: [], sql_sent: [], pdf: [], pdf_done: [] }
     def build!
+      @board_sql_paths = []
       @scan = Hash.new do |hash, base|
         hash[base] = { new: { phases: {} }, done: { phases: {} }, sql_new: [], sql_sent: [], pdf: [], pdf_done: [] }
       end
@@ -161,6 +172,11 @@ module SeasonBoard
 
     def scan_sql_dir(dir, key)
       each_file(dir) do |name, path|
+        if BOARD_SQL_REGEXP.match?(name)
+          @board_sql_paths << path if key == :sql_new
+          next
+        end
+
         match = SQL_REGEXP.match(name)
         @scan[match[:base]][key] << path if match
       end

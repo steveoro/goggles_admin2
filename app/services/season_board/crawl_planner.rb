@@ -7,7 +7,8 @@ module SeasonBoard
   # Turns a FIN calendar change detected by the watcher (FedernuotoWatch::Checker diff, stored
   # as the pending 'change') into automatic crawls: every changed row ('added', 'with_results',
   # 'updated') having a FIN id whose board state is :link_not_crawled gets a
-  # Scheduler.crawl!(origin: :auto).
+  # Scheduler.crawl!(origin: :auto), unless flagged :possible_unlinked_meeting (a local calendar not
+  # linked yet falls within its dates: left to the operator, as in SeasonRecheckJob).
   #
   # The pending change is cumulative until acknowledged (the same rows show up at every hourly
   # check), so a row is skipped when the ActivityLog already holds a crawl attempt for the
@@ -45,6 +46,7 @@ module SeasonBoard
 
     def plan(row)
       return unless row.state == :link_not_crawled && row.url.present?
+      return if row.flag?(:possible_unlinked_meeting)
       return if @activity_log.entry(row.fin_event_id, :crawl)&.url == row.url
 
       row.fin_event_id if Scheduler.crawl!(season_id: @season.id, fin_event_id: row.fin_event_id, url: row.url, origin: :auto)

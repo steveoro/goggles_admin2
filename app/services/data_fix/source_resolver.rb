@@ -149,12 +149,25 @@ module DataFix
       FileUtils.cp(lt4_path, backup_path)
       return lt4_path if materialize_lt4_working_copy(lt2_source_path: lt2_path, lt4_source_path: lt4_path).blank?
 
+      phase_backups = backup_phase_files(lt4_path, 1..5)
       invalidated = invalidate_category_dependent_artifacts(lt4_path, phases: 1..5)
       Rails.logger.info(
         "[DataFix::SourceResolver] Manifest copy superseded by results: #{lt4_path} " \
-        "(backup=#{backup_path}; invalidated=#{invalidated.inspect})"
+        "(backup=#{backup_path}; phase backups=#{phase_backups.inspect}; invalidated=#{invalidated.inspect})"
       )
       lt4_path
+    end
+
+    # Copies each existing phase file of the source next to itself ('-phaseN.orig.json',
+    # numbered when taken) before it gets invalidated; returns the backup paths.
+    # (The '.orig' names are skipped by every phase-file scan: SeasonBoard::DiskIndex, Backfill.)
+    def backup_phase_files(source_path, phases)
+      phases.filter_map do |phase|
+        phase_path = default_phase_path_for(source_path, phase)
+        next unless File.exist?(phase_path)
+
+        next_backup_path_for(phase_path).tap { |backup| FileUtils.cp(phase_path, backup) }
+      end
     end
 
     def resolve_lt2_source_to_working_copy(source_path)

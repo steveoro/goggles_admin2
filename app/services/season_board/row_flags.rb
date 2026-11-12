@@ -17,11 +17,14 @@ module SeasonBoard
   # - :pushed                       at least one SQL batch for the FIN id is in results.sent
   # - :outside_season               the row dates fall outside the season begin/end dates
   # - :unparsable_date              the row date text couldn't be parsed
+  # - :possible_unlinked_meeting    :link_not_crawled row whose dates include the date of a link candidate
+  #                                 calendar (no FIN id yet): a local meeting (e.g. imported from FICR) may
+  #                                 just need linking; automatic crawls skip these rows
   #
   class RowFlags
     FLAGS = %i[
       busy crawl_failed extract_failed manifest_pdf_pending redundant_result_free_source missing_meeting
-      duplicate_calendar multiple_sources pushed outside_season unparsable_date
+      duplicate_calendar multiple_sources pushed outside_season unparsable_date possible_unlinked_meeting
     ].freeze
 
     def initialize(season:, db_index:)
@@ -36,9 +39,11 @@ module SeasonBoard
 
     # Returns the Array of flags (Symbols, in FLAGS order) for the row facts
     # (StateResolver::Facts), its resolved state, its activity Hash & busy overlay.
-    def call(facts, state, activity, busy)
+    # +unlinked_dates+: dates (Date) of the season link candidate calendars (Builder.link_candidates).
+    def call(facts, state, activity, busy, unlinked_dates: [])
       flags = {
         busy: busy,
+        possible_unlinked_meeting: state == :link_not_crawled && unlinked_date_within?(facts.row_date, unlinked_dates),
         crawl_failed: activity[:crawl]&.failed?,
         extract_failed: activity[:extract]&.failed?,
         unparsable_date: !facts.row_date.valid?,
@@ -65,6 +70,10 @@ module SeasonBoard
         multiple_sources: disk.sources.many?(&:files?),
         pushed: disk.sql_sent_paths.any?
       }
+    end
+
+    def unlinked_date_within?(row_date, dates)
+      row_date.valid? && dates.any? { |date| date.between?(row_date.first_date, row_date.last_date) }
     end
 
     def within_season?(row_date)

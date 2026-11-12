@@ -74,6 +74,46 @@ RSpec.describe PdfManifests::Extractor, type: :strategy do
         expect(third).to be_success
       end
 
+      it 'backs up the previous manifest output when force: true replaces it' do
+        allow(client).to receive(:generate).and_return(extracted)
+        extractor.call(pdf_path)
+        previous = JSON.parse(File.read(out_path))
+
+        result = extractor.call(pdf_path, force: true)
+        expect(result).to be_success
+        expect(JSON.parse(File.read(File.join(out_dir, '2026-11-08-test-lt4.orig.json')))).to eq(previous)
+        expect(result.warnings).to include(a_string_matching(/previous manifest output replaced/))
+      end
+
+      context 'when the output path changes while the LLM runs' do
+        let(:results_copy) do
+          { 'layoutType' => 4, 'events' => [{ 'eventCode' => '50SL', 'results' => [{ 'ranking' => 1 }] }] }
+        end
+
+        it 'skips (without writing) when a results source appeared meanwhile' do
+          allow(client).to receive(:generate) do
+            write_json(out_path, results_copy)
+            extracted
+          end
+          result = extractor.call(pdf_path)
+          expect(result).not_to be_success
+          expect(result.skipped_reason).to start_with('results source already present')
+          expect(JSON.parse(File.read(out_path))).to eq(results_copy)
+          expect(Dir.glob(File.join(out_dir, '*.orig*.json'))).to be_empty
+        end
+
+        it 'skips when another extraction wrote the output meanwhile' do
+          other_manifest = { 'layoutType' => 4, 'events' => [], '_meta' => { 'meeting_only' => true, 'by' => 'other' } }
+          allow(client).to receive(:generate) do
+            write_json(out_path, other_manifest)
+            extracted
+          end
+          result = extractor.call(pdf_path)
+          expect(result.skipped_reason).to start_with('output already exists')
+          expect(JSON.parse(File.read(out_path))).to eq(other_manifest)
+        end
+      end
+
       it 'writes under results.new/<season>/ using the manifest base name' do
         allow(client).to receive(:generate).and_return(extracted)
         expect(extractor.call(pdf_path).out_path).to eq(out_path)

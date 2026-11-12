@@ -153,6 +153,13 @@ RSpec.describe SeasonBoard::Backfill do
       expect(row).to include(meeting_id: meeting_d.id, fin_event_id: '150093', fin_source: :snapshot)
     end
 
+    it 'drops a predicted file name shared by two snapshot rows (the calendar stays unresolved)' do
+      snapshot_rows << { 'year' => '2026', 'date' => '08/11', 'name' => 'Memorial Lalla Cecchi', 'place' => 'Trieste',
+                         'url' => results_url(150_094) }
+      expect(resolved_for(result, calendar_d)).to be_nil
+      expect(result.unresolved.pluck(:calendar_id)).to include(calendar_d.id)
+    end
+
     it 'reports the calendar rows left unresolved, with same-date snapshot candidates' do
       calendar_e.update!(scheduled_date: '2026-11-15')
       expect(result.unresolved.pluck(:calendar_id)).to eq([calendar_e.id])

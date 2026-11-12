@@ -8,7 +8,7 @@ module Import
     # Commits Calendar entities related to a Meeting, mirroring the behavior
     # previously implemented inside Import::Committers::Main.
     #
-    class Calendar
+    class Calendar # rubocop:disable Metrics/ClassLength
       include LegacyPersistence
 
       BOOLEAN_TYPE = ActiveModel::Type::Boolean.new
@@ -37,9 +37,11 @@ module Import
         raise StandardError, 'Null meeting_id in datafile object!' if meeting_id.blank?
 
         meeting = GogglesDb::Meeting.find(meeting_id) # Always fail fast
+        fin_event_id = fin_event_id_for(meeting_hash)
+        check_fin_event_link!(meeting, fin_event_id)
 
         # Prefer an existing calendar matched by FIN event ID, then by meeting code/season (or meeting_id)
-        existing_row = find_existing_calendar(meeting, fin_event_id_for(meeting_hash))
+        existing_row = find_existing_calendar(meeting, fin_event_id)
         attributes = build_calendar_attributes(meeting_hash, meeting, existing: existing_row)
 
         if existing_row
@@ -125,15 +127,40 @@ module Import
       end
       # -----------------------------------------------------------------------
 
+      # Returns the calendar row of the same season carrying +fin_event_id+ as +results_code+, or +nil+.
+      def calendar_for_fin_event(meeting, fin_event_id)
+        return if fin_event_id.blank? || meeting.season_id.blank?
+
+        GogglesDb::Calendar.where(season_id: meeting.season_id, results_code: fin_event_id).first
+      end
+      # -----------------------------------------------------------------------
+
+      # Raises (after recording the error in +stats+) when the FIN event ID is already linked to
+      # a calendar row of ANOTHER meeting: re-pointing that row would silently move the link
+      # (also on the remote DB), so the whole commit must halt instead.
+      def check_fin_event_link!(meeting, fin_event_id)
+        row = calendar_for_fin_event(meeting, fin_event_id)
+        return if row.nil? || row.meeting_id.nil? || row.meeting_id == meeting.id
+
+        message = "Calendar error: FIN event #{fin_event_id} is already linked to meeting #{row.meeting_id} " \
+                  "through calendar #{row.id} (committing meeting #{meeting.id}); " \
+                  "fix the link or select meeting #{row.meeting_id} in Phase 1"
+        stats[:errors] << message
+        logger&.log_error(message: message, entity_type: 'Calendar', entity_key: row.id)
+        Rails.logger.error("[Calendar] #{message}")
+        raise StandardError, message
+      end
+      # -----------------------------------------------------------------------
+
       # Finds the existing calendar row for the meeting, trying in order:
-      # 1. same season & same FIN event ID (+results_code+), when the ID is known;
+      # 1. same season & same FIN event ID (+results_code+), when the ID is known and that row
+      #    is unassigned or already belongs to this meeting (rows of another meeting are skipped
+      #    here: #commit refuses them beforehand through #check_fin_event_link!);
       # 2. same season & same meeting code;
       # 3. same season & same meeting_id.
       def find_existing_calendar(meeting, fin_event_id = nil)
-        if fin_event_id.present? && meeting.season_id.present?
-          by_fin_id = GogglesDb::Calendar.where(season_id: meeting.season_id, results_code: fin_event_id).first
-          return by_fin_id if by_fin_id
-        end
+        by_fin_id = calendar_for_fin_event(meeting, fin_event_id)
+        return by_fin_id if by_fin_id && (by_fin_id.meeting_id.nil? || by_fin_id.meeting_id == meeting.id)
 
         season = meeting.season || GogglesDb::Season.find_by(id: meeting.season_id)
         scopes = if season
@@ -147,7 +174,8 @@ module Import
 
       # Drops from the update attributes the values that must not replace the ones already stored:
       # - a FIN +results_link+ is never replaced by a non-FIN URL (e.g. a FICR results page);
-      # - a stored +results_code+ (FIN event ID) is never replaced by a different one.
+      # - a stored +results_code+ (FIN event ID) is never replaced by a different one; in that case
+      #   +results_link+ and +manifest_link+ are kept as well, so the row never mixes two FIN events.
       # (Blank values never overwrite anything, since #changes_for_update skips them.)
       def protect_existing_values(existing_row, attributes)
         protected_keys = []
@@ -157,9 +185,9 @@ module Import
            existing_row.results_code != attributes['results_code']
           Rails.logger.warn("[Calendar] ID=#{existing_row.id}: keeping results_code=#{existing_row.results_code} " \
                             "(incoming FIN event ID #{attributes['results_code']} ignored)")
-          protected_keys << 'results_code'
+          protected_keys.push('results_code', 'results_link', 'manifest_link')
         end
-        attributes.except(*protected_keys)
+        attributes.except(*protected_keys.uniq)
       end
       # -----------------------------------------------------------------------
 

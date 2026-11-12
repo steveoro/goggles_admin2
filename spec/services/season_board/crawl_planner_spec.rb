@@ -41,6 +41,12 @@ RSpec.describe SeasonBoard::CrawlPlanner do
     expect(SeasonBoard::Scheduler).to have_received(:crawl!).twice
   end
 
+  it 'skips the rows whose date matches a local calendar not linked yet' do
+    rows[1] = board_row(fin_event_id: '2', state: :link_not_crawled, action: :crawl, flags: [:possible_unlinked_meeting])
+    expect(plan(change_for('1', '2'))).to eq(%w[1])
+    expect(SeasonBoard::Scheduler).to have_received(:crawl!).once
+  end
+
   it 'considers the updated rows too' do
     expect(plan(change_for('4', key: 'updated'))).to eq(%w[4])
   end

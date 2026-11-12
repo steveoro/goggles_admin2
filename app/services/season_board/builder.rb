@@ -24,13 +24,30 @@ module SeasonBoard
     # - snapshot_checked_at: Time of the last watcher check (or nil)
     # - warnings: Array of Strings
     # - active_activities: Array of ActivityLog::Entry (queued/running, for the page strip)
-    Result = Data.define(:season, :rows, :orphans, :unmatched_sources, :snapshot_checked_at, :warnings, :active_activities) do
-      # Orphans that can be targets of the manual "Link to meeting" action: only the calendars
-      # without a FIN id yet (CalendarLinker refuses to overwrite a different results_code).
-      # Orphans with a FIN id absent from the snapshot stay listed among the orphans only.
+    # - pending_board_sql_paths: board SQL scripts (backfill/calendar link) awaiting push (optional, default [])
+    Result = Data.define(:season, :rows, :orphans, :unmatched_sources, :snapshot_checked_at, :warnings, :active_activities,
+                         :pending_board_sql_paths) do
+      def initialize(pending_board_sql_paths: [], **) = super
+
+      # Orphans that can be targets of the manual "Link to meeting" action (see Builder.link_candidates).
       def link_candidates
-        orphans.reject(&:fin_event_id)
+        Builder.link_candidates(orphans)
       end
+    end
+
+    # Orphans that can be targets of the manual "Link to meeting" action: only the calendars
+    # without a FIN id yet (CalendarLinker refuses to overwrite a different results_code) and not
+    # cancelled. Orphans with a FIN id absent from the snapshot stay listed among the orphans only.
+    def self.link_candidates(orphans)
+      orphans.reject { |cal| cal.fin_event_id || cal.cancelled? || cal.meeting&.cancelled? }
+    end
+
+    # Date of a calendar (DbIndex::CalendarInfo): its ISO 'scheduled_date' (a varchar), else the
+    # header date of its meeting, else nil (legacy rows store only the day number there).
+    def self.calendar_date(calendar)
+      Date.iso8601(calendar.scheduled_date.to_s)
+    rescue Date::Error
+      calendar.meeting&.header_date
     end
 
     # Latest MASFIN season (the board target).
@@ -61,13 +78,16 @@ module SeasonBoard
     # Returns a Result.
     def call
       snapshot_rows = load_snapshot_rows
+      fin_ids = snapshot_rows.filter_map { |row| FINEventId.parse(row['url']) }
+      orphans = @db_index.orphans(fin_ids)
+      @unlinked_dates = self.class.link_candidates(orphans).filter_map { |cal| self.class.calendar_date(cal) }
       board_rows = snapshot_rows.map { |row| build_row(row) }
-      fin_ids = board_rows.filter_map(&:fin_event_id)
 
       Result.new(
-        season: @season, rows: board_rows, orphans: @db_index.orphans(fin_ids),
+        season: @season, rows: board_rows, orphans:,
         unmatched_sources: @disk_index.unmatched, snapshot_checked_at: @snapshot_checked_at,
-        warnings: warnings_for(snapshot_rows, board_rows, fin_ids), active_activities: @activity_log.active
+        warnings: warnings_for(snapshot_rows, board_rows, fin_ids), active_activities: @activity_log.active,
+        pending_board_sql_paths: @disk_index.board_sql_paths
       )
     end
 
@@ -97,7 +117,7 @@ module SeasonBoard
       Row.new(
         **snapshot_attributes(facts), **meeting_attributes(facts.calendar, facts.meeting),
         state: outcome.state, state_detail: outcome.detail, next_action: outcome.next_action,
-        activity:, busy:, flags: @row_flags.call(facts, outcome.state, activity, busy), disk_entry: facts.disk
+        activity:, busy:, flags: @row_flags.call(facts, outcome.state, activity, busy, unlinked_dates: @unlinked_dates), disk_entry: facts.disk
       )
     end
 

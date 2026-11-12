@@ -20,6 +20,9 @@ module SeasonBoard
       archived_unlinked: 'badge-warning', link_not_crawled: 'badge-light border', not_linked: 'badge-light border'
     }.freeze
 
+    # Flags rendered as warning badges
+    WARNING_FLAGS = %i[possible_unlinked_meeting].freeze
+
     # Actions run through a POST of the FIN event ID: kind => path helper
     POST_ACTIONS = { crawl: :season_board_crawl_path, check_results: :season_board_crawl_path,
                      extract_manifest: :season_board_extract_path }.freeze
@@ -71,6 +74,11 @@ module SeasonBoard
     # Flags displayed as badges (:busy is shown by the activity badges, so it's skipped here)
     def shown_flags
       row.flags - [:busy]
+    end
+
+    # Badge class of a flag (warning flags stand out)
+    def flag_css(flag)
+      WARNING_FLAGS.include?(flag) ? 'badge-warning' : 'badge-secondary'
     end
 
     def action_label

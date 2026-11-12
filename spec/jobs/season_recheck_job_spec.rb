@@ -102,6 +102,28 @@ RSpec.describe SeasonRecheckJob do
     end
   end
 
+  context 'with rows whose date matches a local calendar not linked yet' do
+    let(:rows) do
+      [
+        board_row(fin_event_id: '1', state: :link_not_crawled, action: :crawl, last_date: Date.current - 1,
+                  flags: [:possible_unlinked_meeting]),
+        board_row(fin_event_id: '2', state: :link_not_crawled, action: :crawl, last_date: Date.current - 2),
+        board_row(fin_event_id: '3', state: :link_not_crawled, action: :crawl, last_date: Date.current + 4,
+                  flags: [:possible_unlinked_meeting]),
+        board_row(fin_event_id: '4', state: :structure_committed, action: :check_results, last_date: Date.current - 3,
+                  flags: [:possible_unlinked_meeting])
+      ]
+    end
+
+    it 'leaves them to the operator (no auto-crawl, not even as a failed retry), structure_committed rows unaffected' do
+      travel_to(21.hours.ago) do
+        activity_log.queue!('3', kind: :crawl, origin: :auto, url: rows[2].url)
+        activity_log.finish!('3', kind: :crawl, status: :failed)
+      end
+      expect(described_class.perform_now).to eq(%w[2 4])
+    end
+  end
+
   context 'when an enqueue fails' do
     let(:rows) do
       [

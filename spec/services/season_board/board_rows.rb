@@ -2,7 +2,7 @@
 
 # Helper building SeasonBoard::Row instances for the automation specs.
 module SeasonBoardRows
-  # options: action (NextAction kind), url, last_date, busy
+  # options: action (NextAction kind), url, last_date, busy, flags
   def board_row(fin_event_id:, state:, **options)
     action = options[:action]
     last_date = options.fetch(:last_date, Date.current - 3)
@@ -13,7 +13,7 @@ module SeasonBoardRows
       name: "Meeting #{fin_event_id}", place: 'X', url:, info: nil, calendar_id: nil, meeting_id: nil, meeting_description: nil,
       meeting_header_date: nil, mir_count: 0, mrr_count: 0, results_acquired: false, state:, state_detail: {},
       next_action: action && SeasonBoard::NextAction.new(kind: action, params: { fin_event_id:, url: }),
-      activity: { crawl: nil, extract: nil }, busy:, flags: [], calendar: nil, disk_entry: nil
+      activity: { crawl: nil, extract: nil }, busy:, flags: options.fetch(:flags, []), calendar: nil, disk_entry: nil
     )
   end
 

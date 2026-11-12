@@ -221,15 +221,10 @@ module SeasonBoard
     end
 
     # Fills the bases still lacking a FIN ID (and having a commit SQL) through the predicted
-    # snapshot basenames.
+    # snapshot basenames. A basename predicted by snapshot rows with different FIN IDs is
+    # ambiguous and dropped (its calendar stays unresolved and gets reported).
     def collect_snapshot_urls(bases)
-      snapshot_by_base = snapshot_rows.each_with_object({}) do |row, memo|
-        next unless FINEventId.parse(row['url'])
-
-        csv_row = row.slice('year', 'date', 'name', 'place').merge('meetingUrl' => row['url'])
-        predicted = CrawlerCalendar::Row.new(csv_row:, index: 0, season_id: season.id, data_root:).manifest_basename
-        memo[predicted] ||= row
-      end
+      snapshot_by_base = unambiguous_snapshot_rows_by_base
 
       bases.each do |base, info|
         next if info[:fin_event_id] || info[:meeting_id].nil?
@@ -237,6 +232,23 @@ module SeasonBoard
         row = snapshot_by_base[base]
         assign_urls(info, row['url'], nil, :snapshot) if row
       end
+    end
+
+    # Hash of predicted basename => snapshot row (with a FIN ID), dropping the names predicted
+    # by rows with different FIN IDs.
+    def unambiguous_snapshot_rows_by_base
+      rows_by_base = snapshot_rows.each_with_object(Hash.new { |h, k| h[k] = [] }) do |row, memo|
+        memo[predicted_basename(row)] << row if FINEventId.parse(row['url'])
+      end
+      rows_by_base.filter_map do |predicted, rows|
+        [predicted, rows.first] if rows.map { |row| FINEventId.parse(row['url']) }.uniq.one?
+      end.to_h
+    end
+
+    # Source basename the crawler would give the snapshot row (CrawlerCalendar::Row naming rules).
+    def predicted_basename(row)
+      csv_row = row.slice('year', 'date', 'name', 'place').merge('meetingUrl' => row['url'])
+      CrawlerCalendar::Row.new(csv_row:, index: 0, season_id: season.id, data_root:).manifest_basename
     end
 
     def snapshot_rows

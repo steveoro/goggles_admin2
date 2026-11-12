@@ -29,7 +29,7 @@
   %td
     %span.badge{ class: state_css, title: state_tooltip }= state_label
     - shown_flags.each do |flag|
-      %span.badge.badge-secondary{ title: t("season_board.flag_tooltips.#{flag}"), data: { flag: flag } }
+      %span.badge{ class: flag_css(flag), title: t("season_board.flag_tooltips.#{flag}"), data: { flag: flag } }
         = t("season_board.flags.#{flag}")
   %td
     - activity_items.each do |item|
@@ -56,6 +56,8 @@
         %button.btn.btn-sm.btn-primary{ type: 'submit' }= action_label
     - elsif link_action?
       = link_to(action_label, link_action_path, class: 'btn btn-sm btn-primary', data: { turbo_frame: '_top' })
+    - elsif action_kind == :link && orphans.empty?
+      %small.text-muted.season-board-no-link-candidates= t('season_board.actions.no_link_candidates')
     - elsif action_kind == :link
       = form_with(url: season_board_link_path, method: :post, authenticity_token: false,
                   class: 'form-inline', data: { turbo_frame: '_top' }) do

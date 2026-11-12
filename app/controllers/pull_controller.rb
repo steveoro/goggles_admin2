@@ -21,6 +21,9 @@ class PullController < FileListController
 
   # Base URL for FICR results:
   FICR_RESULTS_BASE_URL = 'https://nuoto.ficr.it/'
+
+  # The manual crawls share the crawler (and its status file) with the Season board crawls:
+  before_action :refuse_while_board_crawl_runs, only: %i[run_crawler_api process_calendar_file process_selected_meetings]
   #-- -------------------------------------------------------------------------
   #++
 
@@ -258,6 +261,23 @@ class PullController < FileListController
   #++
 
   private
+
+  # Redirects with a warning when a Season board crawl is RUNNING (queued ones don't block).
+  def refuse_while_board_crawl_runs
+    running = board_running_crawls
+    return if running.empty?
+
+    names = running.map { |entry| SeasonBoard::ActivityStripComponent.entry_name(entry) }.join(', ')
+    flash[:warning] = I18n.t('season_board.crawler_refused', names:)
+    redirect_to(pull_index_path)
+  end
+
+  def board_running_crawls
+    SeasonBoard::ActivityLog.new.active.select { |entry| entry.kind == :crawl && entry.running? }
+  rescue StandardError => e
+    Rails.logger.warn("[PullController] cannot read the Season board activity log: #{e.message}")
+    []
+  end
 
   # Strong parameters checking for crawler API calls.
   def crawler_params

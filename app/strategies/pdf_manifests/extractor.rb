@@ -67,6 +67,8 @@ module PdfManifests
     # - result-free plain working copy with no phase files: backed up and
     #   replaced (the manifest carries the meeting structure, the empty copy doesn't);
     #   with phase files it is skipped unless force (backed up when forced).
+    # A previous manifest output replaced with force is backed up as well. The checks run
+    # again right before writing, since the LLM extraction may take minutes.
     def call(pdf_path, force: false) # rubocop:disable Metrics/AbcSize
       pdf_path = pdf_path.to_s
       warnings = []
@@ -88,7 +90,11 @@ module PdfManifests
       # problems fed back to the model (text path only: the completeness
       # heuristic and the feedback prompt both need the manifest text).
       builder = improved_lt4_builder(builder, text:, pdf_path:, season_id:, model: used_model, urls:) if text_payload?(text)
-      backup_replaced_output(out_path, warnings)
+      # The LLM call may take minutes: re-check the output path right before writing it
+      skip_reason = existing_output_skip_reason(out_path, force:)
+      return Result.new(pdf_path: pdf_path, warnings: warnings, skipped_reason: skip_reason) if skip_reason
+
+      backup_replaced_output(out_path, warnings, force:)
       FileUtils.mkdir_p(File.dirname(out_path))
       File.write(out_path, JSON.pretty_generate(builder.lt4_hash))
 
@@ -154,17 +160,18 @@ module PdfManifests
       (1..5).map { |n| source_resolver.default_phase_path_for(out_path, n) }.select { |path| File.exist?(path) }
     end
 
-    # Any existing output that is not a previous manifest extraction is kept
-    # as a '.orig.json' backup before being replaced.
-    def backup_replaced_output(out_path, warnings)
+    # Any existing output is kept as a '.orig.json' backup before being replaced
+    # (a previous manifest extraction gets replaced only with force).
+    def backup_replaced_output(out_path, warnings, force: false)
       return unless File.exist?(out_path)
 
-      data = existing_output_data(out_path)
-      return if data&.dig('_meta', 'meeting_only') == true
+      previous_manifest = existing_output_data(out_path)&.dig('_meta', 'meeting_only') == true
+      return if previous_manifest && !force
 
       backup_path = source_resolver.next_backup_path_for(out_path)
       FileUtils.cp(out_path, backup_path)
-      warnings << "existing result-free source replaced (backup: #{File.basename(backup_path)})"
+      replaced = previous_manifest ? 'previous manifest output' : 'existing result-free source'
+      warnings << "#{replaced} replaced (backup: #{File.basename(backup_path)})"
     end
 
     # meetingURL / manifestURL from the crawled LT2 sibling '<base>.json' found

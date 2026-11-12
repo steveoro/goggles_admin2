@@ -105,6 +105,42 @@ RSpec.describe SeasonBoard::Builder do
       expect(row.flags).to include(:missing_meeting, :pushed, :multiple_sources, :outside_season)
     end
 
+    describe ':possible_unlinked_meeting' do
+      def orphan(scheduled_date:, fin_event_id: nil, cancelled: false)
+        SeasonBoard::DbIndex::CalendarInfo.new(
+          id: 1800, fin_event_id:, meeting_id: nil, meeting_code: 'x', meeting_name: 'X', meeting_place: nil,
+          scheduled_date:, year: '2026', month: '11', cancelled:, results_link: nil, meeting: nil
+        )
+      end
+
+      it 'flags a :link_not_crawled row having a link candidate calendar within its dates (no extra DB query)' do
+        allow(db_index).to receive(:orphans).and_return([orphan(scheduled_date: '2026-11-09')])
+        row = board_row(fin_row(date: '08-09/11'))
+        expect(row.state).to eq(:link_not_crawled)
+        expect(row.flags).to include(:possible_unlinked_meeting)
+        expect(db_index).to have_received(:orphans).once
+      end
+
+      it 'ignores candidates on other dates, cancelled ones and orphans already carrying a FIN id' do
+        allow(db_index).to receive(:orphans).and_return(
+          [orphan(scheduled_date: '2026-11-10'), orphan(scheduled_date: '2026-11-08', cancelled: true),
+           orphan(scheduled_date: '2026-11-08', fin_event_id: '150999'), orphan(scheduled_date: '8')]
+        )
+        expect(board_row(fin_row(date: '08/11')).flags).not_to include(:possible_unlinked_meeting)
+      end
+
+      it 'does not flag rows in other states' do
+        allow(db_index).to receive(:orphans).and_return([orphan(scheduled_date: '2026-11-08')])
+        link!
+        expect(board_row.flags).not_to include(:possible_unlinked_meeting)
+      end
+    end
+
+    it 'exposes the board SQL scripts awaiting push' do
+      sql = write_file('results.new', '0007-calendar_link-1700-150091.sql')
+      expect(build.pending_board_sql_paths).to eq([sql])
+    end
+
     it 'flags unparsable dates' do
       expect(board_row(fin_row(date: 'TBD')).flags).to include(:unparsable_date)
     end
@@ -166,7 +202,7 @@ RSpec.describe SeasonBoard::Builder do
     end
 
     it 'passes the orphans (computed on the snapshot FIN ids) & the unmatched disk sources' do
-      orphan = instance_double(SeasonBoard::DbIndex::CalendarInfo)
+      orphan = instance_double(SeasonBoard::DbIndex::CalendarInfo, fin_event_id: '150500')
       allow(db_index).to receive(:orphans).with([fin_id]).and_return([orphan])
       write_json('results.new', 'ficr-lt4.json', lt4_hash(results: true))
       result = build([fin_row, fin_row(url: '')])
@@ -191,12 +227,13 @@ RSpec.describe SeasonBoard::Builder do
       expect(result.orphans.map(&:id)).to eq([orphan.id])
     end
 
-    it 'offers as link candidates only the orphans without a FIN id (results_code)' do
+    it 'offers as link candidates only the orphans without a FIN id (results_code), never the cancelled ones' do
       blank = FactoryBot.create(:calendar_with_blank_meeting, season: real_season, results_code: nil)
       off_snapshot = FactoryBot.create(:calendar_with_blank_meeting, season: real_season, results_code: '150999')
+      cancelled = FactoryBot.create(:calendar_with_blank_meeting, season: real_season, results_code: nil, cancelled: true)
 
       result = described_class.new(season: real_season, rows: [fin_row], disk_index:, activity_log:, today:).call
-      expect(result.orphans.map(&:id)).to contain_exactly(blank.id, off_snapshot.id)
+      expect(result.orphans.map(&:id)).to contain_exactly(blank.id, off_snapshot.id, cancelled.id)
       expect(result.link_candidates.map(&:id)).to eq([blank.id])
     end
   end

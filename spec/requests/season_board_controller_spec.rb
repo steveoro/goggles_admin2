@@ -103,6 +103,25 @@ RSpec.describe SeasonBoardController do
         expect(response.body).to include('FIN calendar last checked')
       end
 
+      it 'shows no pending board SQL notice when there is none' do
+        expect(page.at_css('#season-board-sql-pending')).to be_nil
+      end
+
+      context 'with board SQL scripts awaiting push' do
+        let(:result) do
+          SeasonBoard::Builder::Result.new(
+            season:, rows:, orphans:, unmatched_sources: [], snapshot_checked_at: nil, warnings: [], active_activities: [],
+            pending_board_sql_paths: ['/d/0001-calendar_link-1-2.sql', '/d/0002-season_board_backfill-262.sql']
+          )
+        end
+
+        it 'shows their count in the header with a link to the Push page' do
+          notice = page.at_css('#season-board-sql-pending')
+          expect(notice.text).to include('2 SQL scripts awaiting push')
+          expect(notice.at_css('a')['href']).to eq(push_index_path)
+        end
+      end
+
       it 'renders the right action control for each state' do
         crawl_form = page.at_css('#season-board-row-1 form[action="/season_board/crawl"]')
         expect(crawl_form.at_css('input[name=fin_event_id]')['value']).to eq('1')

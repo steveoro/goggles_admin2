@@ -57,7 +57,7 @@ module DataFix
       @show_new_relay_swimmers = params[:show_new_relay_swimmers].present?
       @relay_enrichment_summary = DataFix::RelayEnrichmentFilter.filter_relay_enrichment_summary(detector.detect, @show_new_relay_swimmers, @phase3_data)
       @auxiliary_phase3_files = Dir.glob(File.join(base_dir, '*-phase3*.json'))
-                                   .reject { |path| path == phase_path }
+                                   .reject { |path| path == phase_path || path.match?(/\.orig(-\d+)?\.json\z/) }
                                    .sort
       stored_auxiliary = Array(@phase3_meta['auxiliary_phase3_paths']).filter_map do |stored_path|
         next if stored_path.blank?

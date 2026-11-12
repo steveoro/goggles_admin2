@@ -17,6 +17,11 @@
                   = t('season_board.header.last_checked', time: l(checked_at.in_time_zone, format: :short))
                 - else
                   = t('season_board.header.never_checked')
+              - if @board.pending_board_sql_paths.any?
+                %br
+                %small#season-board-sql-pending{ title: t('season_board.header.board_sql_pending_tooltip') }
+                  %span.badge.badge-danger= t('season_board.header.board_sql_pending', count: @board.pending_board_sql_paths.size)
+                  = link_to(t('season_board.header.board_sql_pending_link'), push_index_path)
           %div
             = button_to(federnuoto_watch_check_path, method: :post, class: 'btn btn-sm btn-outline-secondary',
                         form_class: 'd-inline', id: 'btn-season-board-check') do

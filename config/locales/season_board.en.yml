@@ -10,8 +10,12 @@ en:
       last_checked: 'FIN calendar last checked: %{time}'
       never_checked: 'FIN calendar never checked yet'
       warnings: 'Warnings'
+      board_sql_pending:
+        one: '1 SQL script awaiting push'
+        other: '%{count} SQL scripts awaiting push'
+      board_sql_pending_tooltip: 'Calendar link / backfill scripts written by the Season board'
+      board_sql_pending_link: 'Open the Push page'
     empty:
-      no_season: 'No MASFIN season found.'
       no_rows: 'The FIN calendar snapshot is empty: the watcher has not stored any meeting row yet.'
       check_now: 'Check now'
     filters:
@@ -72,6 +76,7 @@ en:
       pushed: 'pushed'
       outside_season: 'outside season'
       unparsable_date: 'bad date'
+      possible_unlinked_meeting: 'a local meeting on this date is not linked yet'
     flag_tooltips:
       busy: 'A crawl or an extraction is queued or running'
       crawl_failed: 'The latest crawl attempt failed'
@@ -84,6 +89,7 @@ en:
       pushed: 'At least one SQL batch for this FIN id was already pushed'
       outside_season: 'The row dates fall outside the season dates'
       unparsable_date: 'The row date could not be parsed'
+      possible_unlinked_meeting: 'A season calendar row without FIN id falls on these dates: the meeting may already exist (e.g. imported from FICR/Microplus). Link it instead of crawling; automatic crawls skip this row.'
     counts:
       mir: 'MIR'
       mrr: 'MRR'
@@ -117,6 +123,7 @@ en:
       link: 'Link'
       link_secondary: 'Link to meeting...'
       link_select_prompt: 'Select a calendar row...'
+      no_link_candidates: 'no unlinked calendar to link to'
       busy_tooltip: 'A crawl or extraction is already queued or running for this meeting'
       no_url: 'No FIN link available'
     orphans:
@@ -144,6 +151,7 @@ en:
     crawler_confirm:
       running: 'An automatic crawl is running (%{names}). Running another crawl now may overlap with it. Continue anyway?'
       queued: 'Automatic crawls are queued (%{count}). Running another crawl now may overlap with them. Continue anyway?'
+    crawler_refused: 'A Season board crawl is running (%{names}). Running another crawl now would overlap with it (both use the same crawler status file): wait for it to finish, then retry.'
     flash:
       no_season: 'No MASFIN season found.'
       unknown_row: 'FIN event %{fin_event_id} is not on the current calendar snapshot (or has no link).'

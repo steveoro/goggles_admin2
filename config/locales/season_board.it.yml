@@ -10,8 +10,12 @@ it:
       last_checked: 'Calendario FIN controllato: %{time}'
       never_checked: 'Calendario FIN mai controllato'
       warnings: 'Avvisi'
+      board_sql_pending:
+        one: '1 script SQL in attesa di invio'
+        other: '%{count} script SQL in attesa di invio'
+      board_sql_pending_tooltip: 'Script di collegamento calendario / backfill scritti dalla Plancia stagione'
+      board_sql_pending_link: 'Apri la pagina di invio'
     empty:
-      no_season: 'Nessuna stagione MASFIN trovata.'
       no_rows: 'Lo snapshot del calendario FIN è vuoto: il monitor non ha ancora salvato nessun meeting.'
       check_now: 'Controlla ora'
     filters:
@@ -72,6 +76,7 @@ it:
       pushed: 'inviato'
       outside_season: 'fuori stagione'
       unparsable_date: 'data errata'
+      possible_unlinked_meeting: 'un meeting locale in questa data non è ancora collegato'
     flag_tooltips:
       busy: 'Un crawl o un''estrazione è in coda o in corso'
       crawl_failed: "L'ultimo tentativo di crawl è fallito"
@@ -84,6 +89,7 @@ it:
       pushed: 'Almeno un SQL per questo ID FIN è già stato inviato'
       outside_season: 'Le date della riga cadono fuori dalle date della stagione'
       unparsable_date: 'La data della riga non è stata interpretata'
+      possible_unlinked_meeting: 'Una riga del calendario della stagione senza ID FIN cade in queste date: il meeting potrebbe già esistere (es. importato da FICR/Microplus). Collegalo invece di scaricarlo; i crawl automatici saltano questa riga.'
     counts:
       mir: 'MIR'
       mrr: 'MRR'
@@ -117,6 +123,7 @@ it:
       link: 'Collega'
       link_secondary: 'Collega a meeting...'
       link_select_prompt: 'Scegli una riga del calendario...'
+      no_link_candidates: 'nessun calendario non collegato a cui collegarsi'
       busy_tooltip: 'Per questo meeting un crawl o un''estrazione è già in coda o in corso'
       no_url: 'Nessun link FIN disponibile'
     orphans:
@@ -144,6 +151,7 @@ it:
     crawler_confirm:
       running: "Un crawl automatico è in corso (%{names}). Lanciarne un altro ora potrebbe sovrapporsi. Procedo comunque?"
       queued: 'Ci sono crawl automatici in coda (%{count}). Lanciarne un altro ora potrebbe sovrapporsi. Procedo comunque?'
+    crawler_refused: 'È in corso un crawl della Plancia stagione (%{names}). Eseguire ora un altro crawl si sovrapporrebbe (usano lo stesso file di stato del crawler): attendi che finisca, poi riprova.'
     flash:
       no_season: 'Nessuna stagione MASFIN trovata.'
       unknown_row: "L'evento FIN %{fin_event_id} non è nello snapshot corrente del calendario (o non ha link)."

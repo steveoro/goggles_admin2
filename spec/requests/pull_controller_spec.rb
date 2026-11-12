@@ -126,6 +126,60 @@ RSpec.describe PullController do
     end
   end
 
+  describe 'manual crawls while a Season board crawl is active' do
+    include AdminSignInHelpers
+
+    def activity(status, kind: :crawl)
+      SeasonBoard::ActivityLog::Entry.new(
+        fin_event_id: '150091', kind:, origin: :auto, status:, queued_at: 5.minutes.ago,
+        started_at: (2.minutes.ago if status == :running), finished_at: nil, url: nil, message: nil
+      )
+    end
+
+    let(:active) { [] }
+    let(:fin_url) { 'https://www.federnuoto.it/home/master/circuito-supermaster/eventi-circuito-supermaster.html#/risultati/123' }
+
+    before(:each) do
+      sign_in_admin(prepare_admin_user)
+      allow(RestClient::Request).to receive(:execute).and_return(double(body: '{}'))
+      allow(SeasonBoard::ActivityLog).to receive(:new).and_return(instance_double(SeasonBoard::ActivityLog, active:))
+    end
+
+    context 'with a running board crawl' do
+      let(:active) { [activity(:running)] }
+
+      it 'refuses POST /pull/run_crawler_api' do
+        post '/pull/run_crawler_api', params: { season_id: 242, layout_id: 2, target_url: fin_url, sub_menu_type: 'Eventi' }
+        expect(RestClient::Request).not_to have_received(:execute)
+        expect(response).to redirect_to(pull_index_path)
+        expect(flash[:warning]).to eq(I18n.t('season_board.crawler_refused', names: 'FIN #150091'))
+      end
+
+      it 'refuses POST /pull/process_calendar_file' do
+        post '/pull/process_calendar_file', params: { file_path: '/nowhere/242/cal.csv' }
+        expect(RestClient::Request).not_to have_received(:execute)
+        expect(flash[:warning]).to include('FIN #150091')
+      end
+
+      it 'refuses POST /pull/process_selected_meetings' do
+        post '/pull/process_selected_meetings', params: { file_path: '/nowhere/242/cal.csv', rows_count: 1, selected_rows: %w[0] }
+        expect(RestClient::Request).not_to have_received(:execute)
+        expect(response).to redirect_to(pull_index_path)
+        expect(flash[:warning]).to include('FIN #150091')
+      end
+    end
+
+    context 'with queued board crawls or a running extraction only' do
+      let(:active) { [activity(:queued), activity(:running, kind: :extract)] }
+
+      it 'lets the manual crawl run' do
+        post '/pull/run_crawler_api', params: { season_id: 242, layout_id: 2, target_url: fin_url, sub_menu_type: 'Eventi' }
+        expect(RestClient::Request).to have_received(:execute)
+        expect(flash[:warning]).to be_nil
+      end
+    end
+  end
+
   describe 'GET /pull/calendar_meetings' do
     include AdminSignInHelpers
 

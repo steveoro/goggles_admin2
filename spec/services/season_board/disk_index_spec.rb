@@ -87,6 +87,18 @@ RSpec.describe SeasonBoard::DiskIndex do
       expect(index.entries).to eq({})
     end
 
+    it 'ignores the phase-file backups kept when a manifest copy is superseded' do
+      write_json('results.new', 'm.json', lt2_hash(fin_id: 150_099, results: true))
+      phase1 = write_json('results.new', 'm-lt4-phase1.json', {})
+      write_json('results.new', 'm-lt4-phase1.orig.json', {})
+      write_json('results.new', 'm-lt4-phase2.orig.json', {})
+      write_json('results.new', 'm-lt4-phase3.orig-2.json', {})
+      entry = index.for('150099')
+      expect(entry.bases).to eq(['m'])
+      expect(entry.review_source.phase_paths).to eq(1 => phase1)
+      expect(index.unmatched).to eq([])
+    end
+
     it 'groups several bases sharing the same FIN id' do
       write_json('results.new', 'a.json', lt2_hash(fin_id: 150_100, results: true))
       write_json('results.done', 'b-lt4.json', lt4_hash(fin_id: 150_100, meeting_only: true))
@@ -145,6 +157,15 @@ RSpec.describe SeasonBoard::DiskIndex do
       expect(index.unmatched.find { |e| e.bases == ['ficr'] }.results_source.lt4_path).to eq(ficr)
       expect(index.unmatched.find { |e| e.bases == ['20261108-LAquila'] }.manifest_pdf_path).to eq(pdf)
       expect(index.fin_event_id_for_base('ficr')).to be_nil
+    end
+
+    it 'excludes the board SQL scripts (backfill & calendar link) awaiting push, counting them apart' do
+      backfill = write_file('results.new', '0420-season_board_backfill-262.sql')
+      link = write_file('results.new', '0421-calendar_link-12345-150091.sql')
+      write_file('results.sent', '0419-season_board_backfill-262.sql')
+      expect(index.unmatched).to eq([])
+      expect(index.entries).to eq({})
+      expect(index.board_sql_paths).to eq([backfill, link])
     end
   end
 
