@@ -10,11 +10,13 @@ it:
       text_only: 'Il testo della pagina è cambiato, ma nessuna riga del calendario è stata modificata.'
       more: '...e altri %{count}'
       pull_calendar: 'Scarica calendario'
+      open_board: 'Apri Plancia stagione'
+      open_board_tooltip: "Apre la Plancia stagione per l'ultima stagione MASFIN"
       pull_calendar_tooltip: 'Avvia il crawler se necessario e apre la pagina Pull'
       sections:
         with_results:
-          one: 'Risultati pubblicati (1)'
-          other: 'Risultati pubblicati (%{count})'
+          one: 'Link pubblicato (1)'
+          other: 'Link pubblicati (%{count})'
         added:
           one: 'Nuovo meeting (1)'
           other: 'Nuovi meeting (%{count})'

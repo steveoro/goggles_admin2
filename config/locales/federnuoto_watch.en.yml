@@ -10,11 +10,13 @@ en:
       text_only: 'The page text changed, but no meeting rows were affected.'
       more: '...and %{count} more'
       pull_calendar: 'Pull calendar'
+      open_board: 'Open Season board'
+      open_board_tooltip: 'Opens the Season board for the latest MASFIN season'
       pull_calendar_tooltip: 'Starts the crawler server if needed and opens the Pull dashboard'
       sections:
         with_results:
-          one: 'Results published (1)'
-          other: 'Results published (%{count})'
+          one: 'Link published (1)'
+          other: 'Link published (%{count})'
         added:
           one: 'New meeting (1)'
           other: 'New meetings (%{count})'

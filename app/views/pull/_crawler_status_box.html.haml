@@ -26,6 +26,9 @@
                   id: 'btn-start-crawler', title: t('federnuoto_watch.crawler.start_tooltip')) do
         %i.fa.fa-play{ 'aria-hidden' => 'true' }
         = t('federnuoto_watch.crawler.start')
+  .row.pb-2.border-top.pt-2#season-board-activity-row
+    .col-12
+      = render(SeasonBoard::ActivityStripComponent.new)
   - watch_state = FedernuotoWatch::StateStore.new.read
   .row.pb-2.border-top.pt-2#federnuoto-watch-status
     .col-12

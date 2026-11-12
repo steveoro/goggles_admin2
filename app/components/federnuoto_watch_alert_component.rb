@@ -5,7 +5,7 @@
 #
 # Sticky alert shown on any page when the FIN "Riepilogo Eventi" page has changed since it was
 # last acknowledged (see FedernuotoWatch). Lists the meetings added, removed, updated or with newly
-# published results, plus quick actions (pull calendar w/ crawler auto-start, check again).
+# published results, plus quick actions (open the Season board, check again).
 #
 # Rendered both by the layout (pending change from the state store) and by
 # FedernuotoWatch::Notifier for live broadcasts: in the latter case there's no user session,

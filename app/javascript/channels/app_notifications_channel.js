@@ -10,7 +10,10 @@ import consumer from 'channels/rails_consumer'
  * Payload: { dom_id: String, html: String }
  * - the element with the same DOM ID gets replaced (or removed, when html is empty);
  * - otherwise the alert is prepended to the flash messages container;
- * - non-sticky alerts fade out automatically.
+ * - non-sticky alerts fade out automatically;
+ * - every payload is also dispatched as an "app-notification" document event (detail: the payload),
+ *   so that page controllers can react to it (e.g. the Season board "season-board-ping", which has
+ *   an empty html and no matching element, so it's a no-op here).
  */
 const AUTO_HIDE_DELAY = 8000
 
@@ -45,6 +48,7 @@ function scheduleAutoHide(element) {
 
 consumer.subscriptions.create('AppNotificationsChannel', {
   received(data) {
+    document.dispatchEvent(new CustomEvent('app-notification', { detail: data }))
     if (!data || !data.dom_id) return
 
     const existing = document.getElementById(data.dom_id)

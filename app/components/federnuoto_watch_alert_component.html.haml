@@ -30,11 +30,10 @@
           %li
             %em= t('federnuoto_watch.alert.more', count: rows.size - MAX_ITEMS)
   .d-flex.flex-wrap.mt-2
-    = form_with(url: federnuoto_watch_pull_calendar_path, method: :post, authenticity_token: false,
-                class: 'mr-2 mb-1', data: { turbo: false }) do
-      %button.btn.btn-sm.btn-primary{ type: 'submit', title: t('federnuoto_watch.alert.pull_calendar_tooltip') }
-        %i.fa.fa-calendar{ 'aria-hidden' => 'true' }
-        = t('federnuoto_watch.alert.pull_calendar')
+    = link_to(season_board_path, class: 'btn btn-sm btn-primary mr-2 mb-1', data: { turbo: false },
+              title: t('federnuoto_watch.alert.open_board_tooltip')) do
+      %i.fa.fa-th-list{ 'aria-hidden' => 'true' }
+      = t('federnuoto_watch.alert.open_board')
     = form_with(url: federnuoto_watch_check_path, method: :post, authenticity_token: false,
                 class: 'mr-2 mb-1', data: { turbo: false }) do
       %button.btn.btn-sm.btn-outline-secondary{ type: 'submit' }

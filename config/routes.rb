@@ -36,6 +36,11 @@ Rails.application.routes.draw do
   post 'federnuoto_watch/acknowledge', to: 'federnuoto_watch#acknowledge', as: 'federnuoto_watch_acknowledge'
   post 'federnuoto_watch/pull_calendar', to: 'federnuoto_watch#pull_calendar', as: 'federnuoto_watch_pull_calendar'
 
+  get 'season_board', to: 'season_board#index', as: 'season_board'
+  post 'season_board/crawl', to: 'season_board#crawl', as: 'season_board_crawl'
+  post 'season_board/extract', to: 'season_board#extract', as: 'season_board_extract'
+  post 'season_board/link', to: 'season_board#link', as: 'season_board_link'
+
   get 'pull/index'
   get 'pull/calendar_files'
   get 'pull/result_files'

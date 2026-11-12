@@ -10,6 +10,12 @@
             %sup
               %i.fa.fa-question-circle{ data: { toggle: 'tooltip', title: t('dashboard.data_import_helper') } }
         .row.mb-3
+          .col-12.py-2
+            = link_to(season_board_path, class: 'btn btn-lg btn-primary my-1', id: 'btn-season-board',
+                      title: t('season_board.home_button_tooltip')) do
+              %i.fa.fa-th-list
+              = t('season_board.home_button')
+        .row.mb-3
           .col.py-2
             %a.btn.btn-lg.btn-outline-primary.my-1{ href: pull_index_path }
               %i.fa.fa-download

@@ -1,0 +1,21 @@
+.season-board-activity.border.rounded.bg-light.px-3.py-2.mb-2#season-board-activity
+  %small
+    %b
+      %i.fa.fa-cogs{ 'aria-hidden' => 'true' }
+      = t('season_board.strip.title')
+    - if running.empty? && queued.empty?
+      %span.text-muted.ml-2= t('season_board.strip.idle')
+    - else
+      - if running.any?
+        %div.mt-1
+          %b= t('season_board.strip.running')
+          %ul.mb-0
+            - running.each do |entry|
+              %li
+                %i.fa.fa-spin.fa-refresh.text-primary{ 'aria-hidden' => 'true' }
+                = t('season_board.strip.running_item', name: entry_label(entry), kind: kind_label(entry),
+                    time: time_label(entry.started_at || entry.queued_at), origin: origin_label(entry))
+      - if queued.any?
+        %div.mt-1= t('season_board.strip.queued', count: queued.size)
+    - next_runs.each do |label_key, time|
+      %div.text-muted= t("season_board.strip.#{label_key}", time: format_next_run(time))

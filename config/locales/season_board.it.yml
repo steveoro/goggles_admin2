@@ -1,0 +1,151 @@
+it:
+  season_board:
+    title: 'Plancia stagione'
+    nav: 'Plancia stagione'
+    home_button: 'Plancia stagione'
+    home_button_tooltip: "Flusso settimanale per l'ultima stagione MASFIN: controllo, crawl, revisione e push, una riga per meeting FIN"
+    back_to_board: 'Torna alla Plancia stagione'
+    header:
+      season: 'Stagione %{description}'
+      last_checked: 'Calendario FIN controllato: %{time}'
+      never_checked: 'Calendario FIN mai controllato'
+      warnings: 'Avvisi'
+    empty:
+      no_season: 'Nessuna stagione MASFIN trovata.'
+      no_rows: 'Lo snapshot del calendario FIN è vuoto: il monitor non ha ancora salvato nessun meeting.'
+      check_now: 'Controlla ora'
+    filters:
+      all: 'Tutti (%{count})'
+      show_unlinked: 'Mostra le righe senza link (%{count})'
+      hide_unlinked: 'Nascondi le righe senza link'
+      show_done: 'Mostra i meeting passati con risultati (%{count})'
+      hide_done: 'Nascondi i meeting passati con risultati'
+      none_visible: 'Nessuna riga corrisponde ai filtri correnti.'
+    columns:
+      date: 'Data'
+      name: 'Meeting'
+      place: 'Luogo'
+      local: 'Meeting locale'
+      state: 'Stato'
+      activity: 'Attività'
+      action: 'Azione'
+      id: 'ID'
+      code: 'Codice'
+      meeting_id: 'ID meeting'
+    states:
+      cancelled: 'Annullato'
+      sql_pending: 'SQL da inviare'
+      in_review_chip: 'In revisione'
+      in_review: 'In revisione (passo %{phase})'
+      results_ready: 'Risultati pronti'
+      structure_ready: 'Struttura pronta'
+      manifest_pending: 'Manifesto da estrarre'
+      committed_with_results: 'Completato'
+      structure_committed: 'Struttura registrata'
+      crawled_no_manifest: 'Solo intestazione'
+      archived_unlinked: 'Archiviato, non collegato'
+      link_not_crawled: 'Non scaricato'
+      not_linked: 'Nessun link'
+    state_tooltips:
+      cancelled: 'Il meeting è stato annullato o rinviato'
+      sql_pending: "L'SQL del commit è in results.new: va inviato"
+      in_review: 'Per questo meeting è in corso una sessione di Data-Fix'
+      results_ready: 'I risultati sono stati scaricati e attendono la revisione Data-Fix'
+      structure_ready: 'La struttura del meeting è stata estratta dal manifesto e attende la revisione'
+      manifest_pending: 'Il PDF del manifesto è disponibile: estrailo per creare la struttura del meeting'
+      committed_with_results: 'Il meeting locale ha già i suoi risultati'
+      structure_committed: 'Il meeting locale esiste ma non ha ancora risultati'
+      crawled_no_manifest: 'È stata scaricata una pagina senza risultati, ma manca il manifesto'
+      archived_unlinked: 'Esistono file locali ma nessun meeting è collegato a questo ID FIN'
+      link_not_crawled: 'Link FIN disponibile, nulla è stato ancora scaricato'
+      not_linked: 'La riga FIN non ha ancora un link'
+    flags:
+      busy: 'occupato'
+      crawl_failed: 'crawl fallito'
+      extract_failed: 'estrazione fallita'
+      manifest_pdf_pending: 'PDF in attesa'
+      redundant_result_free_source: 'file ridondante'
+      missing_meeting: 'meeting mancante'
+      duplicate_calendar: 'calendario doppio'
+      multiple_sources: 'più sorgenti'
+      pushed: 'inviato'
+      outside_season: 'fuori stagione'
+      unparsable_date: 'data errata'
+    flag_tooltips:
+      busy: 'Un crawl o un''estrazione è in coda o in corso'
+      crawl_failed: "L'ultimo tentativo di crawl è fallito"
+      extract_failed: "L'ultima estrazione del manifesto è fallita"
+      manifest_pdf_pending: 'Un PDF di manifesto è in attesa, anche se lo stato non ne chiede l''estrazione'
+      redundant_result_free_source: 'Un file senza risultati è in results.new per un meeting già collegato'
+      missing_meeting: 'La riga del calendario punta a un meeting che non esiste'
+      duplicate_calendar: 'Più righe del calendario della stagione usano questo ID FIN'
+      multiple_sources: 'Più insiemi di file sorgente sono in attesa in results.new'
+      pushed: 'Almeno un SQL per questo ID FIN è già stato inviato'
+      outside_season: 'Le date della riga cadono fuori dalle date della stagione'
+      unparsable_date: 'La data della riga non è stata interpretata'
+    counts:
+      mir: 'MIR'
+      mrr: 'MRR'
+      mir_tooltip: 'Risultati individuali'
+      mrr_tooltip: 'Risultati staffette'
+    activity:
+      crawl_auto_queued: 'Auto-crawl in coda'
+      crawl_manual_queued: 'Crawl in coda'
+      crawl_auto_running: 'Auto-crawl in corso dalle %{time}'
+      crawl_manual_running: 'Crawl in corso dalle %{time}'
+      extract_queued: 'Estrazione in coda'
+      extract_running: 'Estrazione in corso dalle %{time}'
+      failed: 'Fallito %{time}: %{message}'
+      failed_no_message: 'Fallito %{time}'
+      last_success: '%{kind} riuscito %{time}'
+      kinds:
+        crawl: 'ultimo crawl'
+        extract: 'ultima estrazione'
+    actions:
+      crawl: 'Scarica'
+      check_results: 'Cerca risultati'
+      extract_manifest: 'Estrai manifesto'
+      review_results: 'Rivedi risultati'
+      review_structure: 'Rivedi struttura'
+      review_header: 'Rivedi intestazione'
+      resume_review: 'Riprendi passo %{phase}'
+      push: 'Invia'
+      link: 'Collega'
+      link_secondary: 'Collega a meeting...'
+      link_select_prompt: 'Scegli una riga del calendario...'
+      busy_tooltip: 'Per questo meeting un crawl o un''estrazione è già in coda o in corso'
+      no_url: 'Nessun link FIN disponibile'
+    orphans:
+      title: 'Righe di calendario non presenti nella lista FIN (%{count})'
+      empty: 'Nessuna.'
+    unmatched:
+      text: '%{count} file sorgente in attesa senza ID FIN.'
+      link: 'Apri la pagina dei file dei risultati'
+    strip:
+      title: 'Attività in background'
+      running: 'In corso'
+      running_item: '%{name}: %{kind} dalle %{time} (%{origin})'
+      queued: 'In coda: %{count}'
+      idle: 'Niente in coda né in corso.'
+      next_check: 'Prossimo controllo pagina FIN: %{time}'
+      next_recheck: 'Prossimo ricontrollo giornaliero: %{time}'
+      origin:
+        auto: 'automatico'
+        manual: 'manuale'
+      kinds:
+        crawl: 'crawl'
+        extract: 'estrazione'
+    crawler_confirm:
+      running: "Un crawl automatico è in corso (%{names}). Lanciarne un altro ora potrebbe sovrapporsi. Procedo comunque?"
+      queued: 'Ci sono crawl automatici in coda (%{count}). Lanciarne un altro ora potrebbe sovrapporsi. Procedo comunque?'
+    flash:
+      no_season: 'Nessuna stagione MASFIN trovata.'
+      unknown_row: "L'evento FIN %{fin_event_id} non è nello snapshot corrente del calendario (o non ha link)."
+      crawl_queued: 'Crawl messo in coda per l''evento FIN %{fin_event_id}.'
+      extract_queued: 'Estrazione del manifesto messa in coda per l''evento FIN %{fin_event_id}.'
+      busy: "Per l'evento FIN %{fin_event_id} un crawl o un'estrazione è già in coda o in corso."
+      invalid_engine: 'Motore di estrazione non supportato: %{engine}.'
+      linked: "Evento FIN %{fin_event_id} collegato al calendario %{calendar_id}. File SQL: %{file}"
+      linked_no_changes: "L'evento FIN %{fin_event_id} era già collegato al calendario %{calendar_id}."
+      link_failed: 'Collegamento fallito: %{error}'
+      link_missing_params: 'Scegli una riga del calendario da collegare.'

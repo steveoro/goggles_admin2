@@ -18,6 +18,11 @@
               = image_tag(current_user.avatar_url, class: 'round-avatar')
             - else
               %i.fa.fa.fa-cog
+      - if user_signed_in?
+        %li.nav-item
+          = link_to(season_board_path, class: 'nav-link', id: 'navbar-season-board') do
+            %i.fa.fa-th-list{ 'aria-hidden' => 'true' }
+            = t('season_board.nav')
       %li.nav-item.dropdown
         %a.nav-link.dropdown-toggle#navbar-dropdown{ 'aria-expanded' => 'false',
                                                      'aria-haspopup' => 'true',

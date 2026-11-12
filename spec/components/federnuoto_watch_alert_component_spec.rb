@@ -39,8 +39,9 @@ RSpec.describe FedernuotoWatchAlertComponent, type: :component do
       expect(html).to include('href="https://www.federnuoto.it/results/1.html"')
     end
 
-    it 'renders the quick action forms without CSRF tokens' do
-      expect(html).to include('action="/federnuoto_watch/pull_calendar"', 'action="/federnuoto_watch/check"')
+    it 'renders the check form without CSRF tokens and a link to the Season board' do
+      expect(html).to include('action="/federnuoto_watch/check"', 'href="/season_board"')
+      expect(html).not_to include('action="/federnuoto_watch/pull_calendar"')
       expect(html).not_to include('authenticity_token')
     end
   end
