@@ -167,6 +167,7 @@ en:
         one: "1 field needs attention"
         other: "%{count} fields need attention"
       code_autocomputed_hint: "the code is autocomputed but is serialized only when you click \"Save Meeting\""
+      matched_by_fin_event_id: "Matched by FIN event ID %{id}"
     push:
       msg_prepare_batch_ok: 'SQL batch file created.'
       msg_send_batch_ok: "SQL batch file successfully sent."

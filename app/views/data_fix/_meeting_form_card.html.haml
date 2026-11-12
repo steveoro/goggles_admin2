@@ -24,6 +24,11 @@
       - if has_match
         %small.ml-2.badge.badge-success
           ID: #{meeting_id}
+        - meeting_match = meeting_data['meeting_match'] || {}
+        - if meeting_match['source'] == 'fin_event_id' && meeting_match['meeting_id'].to_s == meeting_id.to_s
+          %small.ml-2.badge.badge-info{ id: 'meeting-fin-event-id-match' }
+            %i.fa.fa-link
+            = t('data_import.data_fix.matched_by_fin_event_id', id: meeting_match['fin_event_id'])
       - else
         %small.ml-2.badge.badge-primary
           NEW

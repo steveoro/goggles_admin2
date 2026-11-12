@@ -167,6 +167,7 @@ it:
         one: "1 campo richiede attenzione"
         other: "%{count} campi richiedono attenzione"
       code_autocomputed_hint: "il codice è autocalcolato ma viene serializzato solo cliccando \"Salva Meeting\""
+      matched_by_fin_event_id: "Abbinato tramite ID evento FIN %{id}"
     push:
       msg_prepare_batch_ok: 'File batch SQL creato con successo.'
       msg_send_batch_ok: "File batch inviato con successo."

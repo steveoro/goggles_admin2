@@ -1108,6 +1108,53 @@ RSpec.describe DataFixController do
       end
     end
 
+    describe 'Phase1Solver preselection by FIN event ID' do
+      let(:fin_id) { '987652' }
+      let(:existing_meeting) do
+        FactoryBot.create(:meeting, season: season, description: 'Curated Manifest Meeting')
+      end
+      let!(:db_session) do
+        FactoryBot.create(:meeting_session, meeting: existing_meeting, session_order: 1,
+                                            description: 'Curated DB session',
+                                            swimming_pool: FactoryBot.create(:swimming_pool),
+                                            day_part_type: GogglesDb::DayPartType.first)
+      end
+      let(:results_url) do
+        "https://www.federnuoto.it/home/master/eventi-circuito-supermaster.html#/risultati/#{fin_id}:test-meeting.html"
+      end
+
+      before(:each) do
+        calendar = FactoryBot.create(:calendar, meeting: existing_meeting, season: season)
+        calendar.update_columns(results_code: fin_id) # rubocop:disable Rails/SkipsModelValidations
+        Import::Solvers::Phase1Solver.new(season: season).build!(
+          source_path: source_file, lt_format: 4,
+          data_hash: { 'layoutType' => 4, 'meetingName' => 'Crawled page title', 'meetingURL' => results_url }
+        )
+      end
+
+      it 'renders the FIN-ID badge and the preselected meeting with its DB sessions' do
+        get review_sessions_path(file_path: source_file, phase_v2: 1)
+
+        expect(response).to be_successful
+        expect(response.body).to include(I18n.t('data_import.data_fix.matched_by_fin_event_id', id: fin_id))
+        expect(response.body).to include("ID: #{existing_meeting.id}")
+        expect(response.parsed_body.css('#meeting_description').attr('value').value).to eq('Curated Manifest Meeting')
+        selected = response.parsed_body.css('#meeting_search option[selected]')
+        expect(selected.attr('value').value).to eq(existing_meeting.id.to_s)
+        expect(response.body).to include(db_session.description)
+      end
+
+      it 'drops the match marker (and the badge) when another meeting is chosen in the form' do
+        patch update_phase1_meeting_path, params: {
+          file_path: source_file, season_id: season.id, meeting: { meeting_id: '456' }
+        }
+        expect(PhaseFileManager.new(phase1_file).data).not_to have_key('meeting_match')
+
+        get review_sessions_path(file_path: source_file, phase_v2: 1)
+        expect(response.body).not_to include(I18n.t('data_import.data_fix.matched_by_fin_event_id', id: fin_id))
+      end
+    end
+
     describe 'Phase 1 redirect to legacy' do
       it 'redirects to legacy controller when phase_v2 param is absent' do
         get review_sessions_path(file_path: source_file)

@@ -481,4 +481,161 @@ RSpec.describe Import::Solvers::Phase1Solver, type: :strategy do
       expect(data['meeting_session'][1]['scheduled_date']).to eq('2024-03-11')
     end
   end
+
+  describe 'meeting preselection by FIN event ID' do
+    let(:fin_id) { '987651' }
+    let(:results_url) do
+      "https://www.federnuoto.it/home/master/circuito-supermaster/eventi-circuito-supermaster.html#/risultati/#{fin_id}:trofeo-test.html"
+    end
+    let(:manifest_url) do
+      encoded = Base64.strict_encode64("/var/www/fin_files/eventi/0000#{fin_id}.pdf")
+      "https://www.federnuoto.it/component/solrconnect/download.html?file=#{encoded}"
+    end
+    let(:existing_meeting) do
+      FactoryBot.create(:meeting, season: season, description: 'Curated Trofeo Test',
+                                  code: 'curatedtrofeo', edition: 7,
+                                  max_individual_events: 4, max_individual_events_per_session: 2,
+                                  cancelled: false, confirmed: true, notes: 'curated note')
+    end
+    let(:pool) { FactoryBot.create(:swimming_pool) }
+    let(:day_part_type) { GogglesDb::DayPartType.first }
+    let!(:db_sessions) do
+      [2, 1].map do |order|
+        FactoryBot.create(:meeting_session, meeting: existing_meeting, session_order: order,
+                                            description: "DB session #{order}",
+                                            scheduled_date: Date.new(2024, 3, 9 + order),
+                                            swimming_pool: pool, day_part_type: day_part_type)
+      end
+    end
+    let(:lt4_data) do
+      {
+        'layoutType' => 4,
+        'meetingName' => 'Trofeo Test (crawled page title)',
+        'meetingURL' => results_url,
+        'manifestURL' => manifest_url,
+        'dates' => '2024-03-10,2024-03-11',
+        'place' => 'Somewhere',
+        'poolLength' => '25'
+      }
+    end
+
+    def build_and_read(data_hash)
+      File.write(source_file, JSON.generate(data_hash))
+      solver.build!(source_path: source_file, lt_format: data_hash['layoutType'])
+      JSON.parse(File.read(source_file.sub('.json', '-phase1.json')))['data']
+    end
+
+    def create_calendar(meeting:, season_row: season, code: fin_id)
+      calendar = FactoryBot.create(:calendar, meeting: existing_meeting, season: season_row)
+      calendar.update_columns(meeting_id: meeting&.id, results_code: code) # rubocop:disable Rails/SkipsModelValidations
+      calendar
+    end
+
+    it 'keeps manifestURL next to meetingURL in the payload' do
+      data = build_and_read(lt4_data)
+      expect(data['manifestURL']).to eq(manifest_url)
+      expect(data['meetingURL']).to eq(results_url)
+    end
+
+    context 'without a calendar row for the FIN event ID' do
+      it 'leaves the meeting unselected and auto-fills sessions from the dates' do
+        data = build_and_read(lt4_data)
+        expect(data['id']).to be_nil
+        expect(data['name']).to eq('Trofeo Test (crawled page title)')
+        expect(data).not_to have_key('meeting_match')
+        expect(data['meeting_session'].pluck('scheduled_date')).to eq(%w[2024-03-10 2024-03-11])
+        expect(data['meeting_session'].pluck('id')).to all(be_nil)
+      end
+    end
+
+    context 'with a same-season calendar row linked to a meeting' do
+      before(:each) { create_calendar(meeting: existing_meeting) }
+
+      it 'selects the DB meeting and hydrates its curated fields' do # rubocop:disable RSpec/MultipleExpectations
+        data = build_and_read(lt4_data.merge('edition' => 99, 'maxIndividualEvents' => 9))
+        expect(data['id']).to eq(existing_meeting.id)
+        expect(data['name']).to eq('Curated Trofeo Test')
+        expect(data['description']).to eq('Curated Trofeo Test')
+        expect(data['code']).to eq('curatedtrofeo')
+        expect(data['header_date']).to eq(existing_meeting.header_date.iso8601)
+        expect(data['header_year']).to eq(existing_meeting.header_year)
+        expect(data['edition']).to eq(7)
+        expect(data['edition_type_id']).to eq(existing_meeting.edition_type_id)
+        expect(data['timing_type_id']).to eq(existing_meeting.timing_type_id)
+        expect(data['cancelled']).to be(false)
+        expect(data['confirmed']).to be(true)
+        expect(data['max_individual_events']).to eq(4)
+        expect(data['max_individual_events_per_session']).to eq(2)
+        expect(data['notes']).to eq('curated note')
+        expect(data['manifestURL']).to eq(manifest_url)
+      end
+
+      it 'builds meeting_session from the DB sessions, ordered by session_order' do
+        data = build_and_read(lt4_data)
+        expect(data['meeting_session'].pluck('id')).to eq(db_sessions.reverse.map(&:id))
+        expect(data['meeting_session'].first['description']).to eq('DB session 1')
+        expect(data['meeting_session'].first.dig('swimming_pool', 'id')).to eq(pool.id)
+      end
+
+      it 'puts the matched meeting first in the fuzzy matches, without duplicates' do
+        data = build_and_read(lt4_data.merge('meetingName' => 'Curated Trofeo'))
+        ids = data['meeting_fuzzy_matches'].pluck('id')
+        expect(ids.first).to eq(existing_meeting.id)
+        expect(ids.count(existing_meeting.id)).to eq(1)
+      end
+
+      it 'records the meeting_match marker' do
+        data = build_and_read(lt4_data)
+        expect(data['meeting_match']).to include('source' => 'fin_event_id', 'fin_event_id' => fin_id,
+                                                 'meeting_id' => existing_meeting.id)
+      end
+
+      it 'drops the manifest flag of a manifest-only source' do
+        data = build_and_read(lt4_data.merge('_meta' => { 'meeting_only' => true }))
+        expect(data['id']).to eq(existing_meeting.id)
+        expect(data).not_to have_key('manifest')
+      end
+
+      it 'matches through the manifestURL alone' do
+        data = build_and_read(lt4_data.except('meetingURL'))
+        expect(data['id']).to eq(existing_meeting.id)
+        expect(data['meeting_match']['fin_event_id']).to eq(fin_id)
+      end
+
+      it 'picks the highest calendar id when several rows match' do
+        other_meeting = FactoryBot.create(:meeting, season: season, description: 'Newer link')
+        create_calendar(meeting: other_meeting)
+        data = build_and_read(lt4_data)
+        expect(data['id']).to eq(other_meeting.id)
+      end
+    end
+
+    context 'when the DB meeting has no sessions' do
+      before(:each) do
+        GogglesDb::MeetingSession.where(meeting_id: existing_meeting.id).delete_all
+        create_calendar(meeting: existing_meeting)
+      end
+
+      it 'selects the meeting but auto-fills sessions from the source dates' do
+        data = build_and_read(lt4_data)
+        expect(data['id']).to eq(existing_meeting.id)
+        expect(data['meeting_session'].pluck('scheduled_date')).to eq(%w[2024-03-10 2024-03-11])
+      end
+    end
+
+    it 'ignores a matching calendar row without meeting_id' do
+      create_calendar(meeting: nil)
+      data = build_and_read(lt4_data)
+      expect(data['id']).to be_nil
+      expect(data).not_to have_key('meeting_match')
+    end
+
+    it 'ignores a matching calendar row of another season' do
+      other_season = FactoryBot.create(:season)
+      create_calendar(meeting: existing_meeting, season_row: other_season)
+      data = build_and_read(lt4_data)
+      expect(data['id']).to be_nil
+      expect(data).not_to have_key('meeting_match')
+    end
+  end
 end

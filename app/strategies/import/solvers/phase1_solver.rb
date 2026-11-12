@@ -46,6 +46,7 @@ module Import
           'name' => meeting_name, # Form input
           'description' => meeting_name, # meeting.description field
           'meetingURL' => extract_meeting_url(data_hash, lt_format),
+          'manifestURL' => data_hash['manifestURL'],
           'dateYear1' => nil,
           'dateMonth1' => nil,
           'dateDay1' => nil,
@@ -74,11 +75,19 @@ module Import
         # Dates
         set_dates!(payload, data_hash, lt_format)
 
+        # Meeting already linked to the same FIN event (e.g. committed earlier from its
+        # manifest): select it and reuse its curated data and sessions.
+        fin_id = FINEventId.parse_any(payload['meetingURL'], payload['manifestURL'])
+        linked_meeting = find_meeting_by_fin_event_id(fin_id)
+        hydrate_from_meeting!(payload, linked_meeting, fin_id) if linked_meeting
+
         # Find potential meeting matches
         payload['meeting_fuzzy_matches'] = find_meeting_matches(payload)
+        prepend_fuzzy_match!(payload, linked_meeting) if linked_meeting
 
-        # Auto-fill sessions from DB match or from parsed date fields
-        auto_fill_sessions!(payload, data_hash)
+        # Sessions from the linked DB meeting, or auto-filled from parsed date fields
+        fill_sessions_from_meeting!(payload, linked_meeting) if linked_meeting
+        auto_fill_sessions!(payload, data_hash) if payload['meeting_session'].blank?
 
         # Write phase file
         phase_path = opts[:phase_path] || default_phase_path_for(source_path, 1)
@@ -228,6 +237,62 @@ module Import
         Parser::SessionDate.from_l2_result(date_day, date_month, date_year)
       rescue StandardError
         nil
+      end
+
+      # Returns the Meeting linked to the most recent calendar row of the current season
+      # having the given FIN event ID as results_code, or nil.
+      def find_meeting_by_fin_event_id(fin_id)
+        return if fin_id.blank?
+
+        meeting_id = GogglesDb::Calendar.unscoped
+                                        .where(season_id: @season.id, results_code: fin_id)
+                                        .where.not(meeting_id: nil)
+                                        .order(id: :desc)
+                                        .pick(:meeting_id)
+        return unless meeting_id
+
+        GogglesDb::Meeting.includes(meeting_sessions: { swimming_pool: :city }).find_by(id: meeting_id)
+      rescue StandardError => e
+        @logger&.warn("Phase1Solver: error finding meeting by FIN event ID #{fin_id}: #{e.message}")
+        nil
+      end
+
+      # Overwrites the crawled meeting header with the DB values, so that the commit
+      # does not replace curated columns with the page text (mirrors the fields filled
+      # by the meeting autocomplete in the Phase 1 form, plus the columns that
+      # Import::Committers::Meeting would otherwise default: notes, autofilled, allows_under25).
+      def hydrate_from_meeting!(payload, meeting, fin_id)
+        payload.merge!(
+          'id' => meeting.id,
+          'name' => meeting.description,
+          'description' => meeting.description,
+          'code' => meeting.code,
+          'header_date' => meeting.header_date&.iso8601,
+          'header_year' => meeting.header_year,
+          'edition' => meeting.edition,
+          'edition_type_id' => meeting.edition_type_id,
+          'timing_type_id' => meeting.timing_type_id,
+          'cancelled' => meeting.cancelled,
+          'confirmed' => meeting.confirmed,
+          'max_individual_events' => meeting.max_individual_events,
+          'max_individual_events_per_session' => meeting.max_individual_events_per_session,
+          'notes' => meeting.notes,
+          'autofilled' => meeting.autofilled,
+          'allows_under25' => meeting.allows_under25,
+          'meeting_match' => { 'source' => 'fin_event_id', 'fin_event_id' => fin_id, 'meeting_id' => meeting.id }
+        )
+        # An existing meeting keeps its own manifest flag (same as selecting it in the form):
+        payload.delete('manifest')
+      end
+
+      def prepend_fuzzy_match!(payload, meeting)
+        others = payload['meeting_fuzzy_matches'].reject { |match| match['id'] == meeting.id }
+        payload['meeting_fuzzy_matches'] = [{ 'id' => meeting.id, 'description' => meeting.description }] + others
+      end
+
+      # Same as Phase1SessionRescanner#rebuild_sessions_from_meeting.
+      def fill_sessions_from_meeting!(payload, meeting)
+        payload['meeting_session'] = meeting.meeting_sessions.order(:session_order).map { |ms| build_session_hash(ms) }
       end
 
       # Find potential meeting matches by searching for meetings with similar description in the same season

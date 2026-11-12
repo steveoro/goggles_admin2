@@ -189,6 +189,7 @@ module DataFix
 
       # Clear meeting_session if meeting ID changed to force session rebuild
       data['meeting_session'] = [] if old_meeting_id != data['id']
+      data.delete('meeting_match') if old_meeting_id != data['id']
 
       # If header_date is set, derive legacy LT2 month fields for compatibility
       if normalized.key?('header_date') && normalized['header_date'].present?
