@@ -190,5 +190,14 @@ RSpec.describe SeasonBoard::Builder do
       )
       expect(result.orphans.map(&:id)).to eq([orphan.id])
     end
+
+    it 'offers as link candidates only the orphans without a FIN id (results_code)' do
+      blank = FactoryBot.create(:calendar_with_blank_meeting, season: real_season, results_code: nil)
+      off_snapshot = FactoryBot.create(:calendar_with_blank_meeting, season: real_season, results_code: '150999')
+
+      result = described_class.new(season: real_season, rows: [fin_row], disk_index:, activity_log:, today:).call
+      expect(result.orphans.map(&:id)).to contain_exactly(blank.id, off_snapshot.id)
+      expect(result.link_candidates.map(&:id)).to eq([blank.id])
+    end
   end
 end

@@ -57,6 +57,13 @@ RSpec.describe SeasonBoard::CrawlPlanner do
     expect(plan(change_for('1'))).to eq(%w[1])
   end
 
+  it 'logs a failed enqueue and goes on with the remaining rows' do
+    allow(SeasonBoard::Scheduler).to receive(:crawl!).with(hash_including(fin_event_id: '1')).and_raise(StandardError, 'queue DB missing')
+    allow(Rails.logger).to receive(:error)
+    expect(plan(change_for('1', '2'))).to eq(%w[2])
+    expect(Rails.logger).to have_received(:error).with(/FIN 1.*queue DB missing/)
+  end
+
   it 'omits rows refused by the Scheduler (busy)' do
     allow(SeasonBoard::Scheduler).to receive(:crawl!).and_return(false)
     expect(plan(change_for('1'))).to eq([])

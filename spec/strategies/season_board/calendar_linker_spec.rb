@@ -82,6 +82,18 @@ RSpec.describe SeasonBoard::CalendarLinker do
     end
   end
 
+  context 'when the calendar already has a different results_code' do
+    before(:each) { calendar.update!(results_code: '150555') }
+
+    it 'fails without changes nor files' do
+      result = link
+      expect(result).not_to be_success
+      expect(result.error).to include('150555')
+      expect(calendar.reload.results_code).to eq('150555')
+      expect(Dir.glob(File.join(data_root, '**', '*.sql'))).to be_empty
+    end
+  end
+
   context 'with an invalid FIN event id' do
     it 'fails' do
       result = described_class.new(season:, calendar_id: calendar.id, fin_event_id: 'abc', data_root:).call

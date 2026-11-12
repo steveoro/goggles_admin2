@@ -48,6 +48,10 @@ module SeasonBoard
       return if @activity_log.entry(row.fin_event_id, :crawl)&.url == row.url
 
       row.fin_event_id if Scheduler.crawl!(season_id: @season.id, fin_event_id: row.fin_event_id, url: row.url, origin: :auto)
+    rescue StandardError => e
+      # (the Scheduler has already closed the log entry as failed: go on with the other rows)
+      Rails.logger.error("[SeasonBoard::CrawlPlanner] enqueue failed for FIN #{row.fin_event_id}: #{e.class}: #{e.message}")
+      nil
     end
   end
 end

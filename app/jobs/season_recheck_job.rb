@@ -7,8 +7,11 @@
 # enqueues an automatic crawl (SeasonBoard::Scheduler.crawl!, origin :auto) for
 # - :structure_committed rows asking for :check_results (past meeting, linked, no results yet);
 # - :link_not_crawled rows whose last date is past;
-# skipping busy rows and rows crawled less than MIN_RECRAWL_INTERVAL ago, most recent meetings
-# first, at most MAX_CRAWLS_PER_RUN per run (the crawls then run one at a time).
+# - :link_not_crawled rows of any date (e.g. future meetings) whose last crawl attempt failed
+#   (CrawlPlanner never retries an URL already attempted);
+# skipping busy rows and rows crawled less than MIN_RECRAWL_INTERVAL ago, past meetings first (most
+# recent first), then the failed retries (soonest first), at most MAX_CRAWLS_PER_RUN per run (the
+# crawls then run one at a time). A failed enqueue is logged and doesn't stop the other rows.
 #
 class SeasonRecheckJob < ApplicationJob
   queue_as :background
@@ -24,18 +27,28 @@ class SeasonRecheckJob < ApplicationJob
 
     activity_log = SeasonBoard::ActivityLog.new
     rows = SeasonBoard::Builder.new(season:, activity_log:).call.rows
-    candidates(rows, activity_log).first(MAX_CRAWLS_PER_RUN).select do |row|
-      SeasonBoard::Scheduler.crawl!(season_id: season.id, fin_event_id: row.fin_event_id, url: row.url, origin: :auto)
-    end.map(&:fin_event_id)
+    candidates(rows, activity_log).first(MAX_CRAWLS_PER_RUN).select { |row| enqueue_crawl(season, row) }.map(&:fin_event_id)
   end
 
   private
 
+  def enqueue_crawl(season, row)
+    SeasonBoard::Scheduler.crawl!(season_id: season.id, fin_event_id: row.fin_event_id, url: row.url, origin: :auto)
+  rescue StandardError => e
+    Rails.logger.error("[SeasonRecheckJob] enqueue failed for FIN #{row.fin_event_id}: #{e.class}: #{e.message}")
+    false
+  end
+
   def candidates(rows, activity_log)
     today = Date.current
-    rows.select { |row| recheck?(row, today) && !row.busy? && !recently_crawled?(row, activity_log) }
-        .uniq(&:fin_event_id)
-        .sort_by { |row| -row.last_date.jd }
+    rechecks = rows.select { |row| recheck?(row, today) }.sort_by { |row| -row.last_date.jd }
+    retries = (rows.select { |row| retry_failed?(row, activity_log) } - rechecks).sort_by { |row| retry_order(row) }
+    (rechecks + retries).reject { |row| row.busy? || recently_crawled?(row, activity_log) }.uniq(&:fin_event_id)
+  end
+
+  # Soonest meeting first, undated rows last
+  def retry_order(row)
+    row.last_date ? row.last_date.jd : Float::INFINITY
   end
 
   def recheck?(row, today)
@@ -43,6 +56,13 @@ class SeasonRecheckJob < ApplicationJob
 
     (row.state == :structure_committed && row.action?(:check_results)) ||
       (row.state == :link_not_crawled && row.last_date < today)
+  end
+
+  # Not crawled yet, whatever the date, with a failed last crawl attempt
+  def retry_failed?(row, activity_log)
+    return false if row.fin_event_id.blank? || row.url.blank? || row.state != :link_not_crawled
+
+    activity_log.entry(row.fin_event_id, :crawl)&.failed? || false
   end
 
   def recently_crawled?(row, activity_log)

@@ -81,7 +81,7 @@
                       %th= t('season_board.columns.action')
                   %tbody
                     - @rows.each do |row|
-                      = render(SeasonBoard::RowComponent.new(row:, orphans: @board.orphans, csrf_token: form_authenticity_token))
+                      = render(SeasonBoard::RowComponent.new(row:, orphans: @board.link_candidates, csrf_token: form_authenticity_token))
                     - if @rows.empty?
                       %tr
                         %td.text-center.text-muted{ colspan: 7 }= t('season_board.filters.none_visible')
@@ -103,14 +103,20 @@
                         %th= t('season_board.columns.name')
                         %th= t('season_board.columns.date')
                         %th= t('season_board.columns.meeting_id')
+                        %th= t('season_board.columns.fin_event_id')
                     %tbody
                       - @board.orphans.each do |orphan|
-                        %tr
+                        %tr{ data: { orphan_id: orphan.id } }
                           %td= orphan.id
                           %td= orphan.meeting_code
                           %td= orphan.meeting_name
                           %td= orphan.scheduled_date
                           %td= orphan.meeting_id
+                          %td
+                            - if orphan.fin_event_id
+                              = orphan.fin_event_id
+                              %span.badge.badge-warning{ title: t('season_board.orphans.not_on_calendar_tooltip') }
+                                = t('season_board.orphans.not_on_calendar')
 
             - if @board.unmatched_sources.any?
               %p.small.text-muted.mb-0#season-board-unmatched

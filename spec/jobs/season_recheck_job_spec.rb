@@ -68,6 +68,56 @@ RSpec.describe SeasonRecheckJob do
     end
   end
 
+  context 'with future rows whose automatic crawl failed' do
+    let(:rows) do
+      [
+        board_row(fin_event_id: '1', state: :link_not_crawled, action: :crawl, last_date: Date.current + 5),
+        board_row(fin_event_id: '2', state: :link_not_crawled, action: :crawl, last_date: Date.current + 9),
+        board_row(fin_event_id: '3', state: :link_not_crawled, action: :crawl, last_date: Date.current + 2),
+        board_row(fin_event_id: '4', state: :link_not_crawled, action: :crawl, last_date: Date.current - 1),
+        board_row(fin_event_id: '5', state: :link_not_crawled, action: :crawl, last_date: nil)
+      ]
+    end
+
+    def attempt(fin_id, status, at:)
+      travel_to(at) do
+        activity_log.queue!(fin_id, kind: :crawl, origin: :auto, url: rows.find { |row| row.fin_event_id == fin_id }.url)
+        activity_log.finish!(fin_id, kind: :crawl, status:)
+      end
+    end
+
+    it 'retries the failed crawls older than 20 hours regardless of the date, after the past rows' do
+      attempt('1', :failed, at: 21.hours.ago)
+      attempt('2', :done, at: 21.hours.ago)
+      attempt('3', :failed, at: 2.hours.ago)
+      attempt('5', :failed, at: 2.days.ago)
+      expect(described_class.perform_now).to eq(%w[4 1 5])
+    end
+
+    it 'counts the retries within the per-run cap' do
+      stub_const("#{described_class}::MAX_CRAWLS_PER_RUN", 2)
+      attempt('1', :failed, at: 21.hours.ago)
+      attempt('5', :failed, at: 21.hours.ago)
+      expect(described_class.perform_now).to eq(%w[4 1])
+    end
+  end
+
+  context 'when an enqueue fails' do
+    let(:rows) do
+      [
+        board_row(fin_event_id: '1', state: :link_not_crawled, action: :crawl, last_date: Date.current - 1),
+        board_row(fin_event_id: '2', state: :link_not_crawled, action: :crawl, last_date: Date.current - 2)
+      ]
+    end
+
+    it 'logs the error and goes on with the remaining rows' do
+      allow(SeasonBoard::Scheduler).to receive(:crawl!).with(hash_including(fin_event_id: '1')).and_raise(StandardError, 'queue DB missing')
+      allow(Rails.logger).to receive(:error)
+      expect(described_class.perform_now).to eq(%w[2])
+      expect(Rails.logger).to have_received(:error).with(/FIN 1.*queue DB missing/)
+    end
+  end
+
   context 'with many candidates' do
     let(:rows) do
       (1..20).map { |idx| board_row(fin_event_id: idx.to_s, state: :link_not_crawled, action: :crawl, last_date: Date.current - idx) }

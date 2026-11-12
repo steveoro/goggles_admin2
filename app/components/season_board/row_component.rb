@@ -33,7 +33,8 @@ module SeasonBoard
 
     # == Params:
     # - row: SeasonBoard::Row
-    # - orphans: Array of SeasonBoard::DbIndex::CalendarInfo (targets of the "link" action)
+    # - orphans: Array of SeasonBoard::DbIndex::CalendarInfo, targets of the "link" action
+    #   (pass Builder::Result#link_candidates: the calendars without a FIN id yet)
     # - csrf_token: form authenticity token (the forms are rendered inside a component, which
     #   can't build it by itself); when +nil+ the forms are rendered without it
     def initialize(row:, orphans: [], csrf_token: nil)
@@ -127,15 +128,14 @@ module SeasonBoard
 
     def activity_item(kind, entry)
       return unless entry
+      return { css: entry.running? ? 'badge-primary' : 'badge-info', text: busy_text(kind, entry), spin: entry.running? } if entry.busy?
+      return { css: 'badge-warning', text: stuck_text(kind, entry), tooltip: I18n.t('season_board.activity.stuck_tooltip') } if entry.stale?
+      return { css: 'text-danger', text: failed_text(entry), tooltip: entry.message } if entry.failed?
 
-      if entry.busy?
-        { css: entry.running? ? 'badge-primary' : 'badge-info', text: busy_text(kind, entry), spin: entry.running? }
-      elsif entry.failed?
-        { css: 'text-danger', text: failed_text(entry), tooltip: entry.message }
-      elsif entry.done? && entry.finished_at
-        { css: 'text-muted', text: I18n.t('season_board.activity.last_success', time: day_time(entry.finished_at),
-                                                                                kind: I18n.t("season_board.activity.kinds.#{kind}")) }
-      end
+      return unless entry.done? && entry.finished_at
+
+      { css: 'text-muted', text: I18n.t('season_board.activity.last_success', time: day_time(entry.finished_at),
+                                                                              kind: I18n.t("season_board.activity.kinds.#{kind}")) }
     end
 
     def busy_text(kind, entry)
@@ -143,6 +143,13 @@ module SeasonBoard
       return I18n.t("season_board.activity.extract_#{entry.status}", time: hour(entry.started_at || entry.queued_at)) if kind == :extract
 
       I18n.t("season_board.activity.crawl_#{origin}_#{entry.status}", time: hour(entry.started_at || entry.queued_at))
+    end
+
+    # A queued/running entry past its staleness threshold (no longer busy, so the action is enabled again)
+    def stuck_text(kind, entry)
+      since = entry.started_at || entry.queued_at
+      time = since && since.in_time_zone.to_date == Time.zone.today ? hour(since) : day_time(since)
+      I18n.t("season_board.activity.#{kind}_stuck", time:)
     end
 
     def failed_text(entry)

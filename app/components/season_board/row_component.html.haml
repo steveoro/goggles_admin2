@@ -35,7 +35,7 @@
     - activity_items.each do |item|
       %div
         - if item[:css].start_with?('badge')
-          %span.badge{ class: item[:css] }
+          %span.badge{ class: item[:css], title: item[:tooltip] }
             - if item[:spin]
               %i.fa.fa-spin.fa-refresh{ 'aria-hidden' => 'true' }
             = item[:text]

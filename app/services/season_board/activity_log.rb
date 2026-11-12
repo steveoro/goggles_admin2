@@ -28,7 +28,9 @@ module SeasonBoard
 
     # Above MeetingCrawlJob's 30-minute hard timeout:
     RUNNING_STALE_AFTER = 40.minutes
-    QUEUED_STALE_AFTER = 2.hours
+    # The background worker runs one job at a time and a daily re-check can queue up to
+    # SeasonRecheckJob::MAX_CRAWLS_PER_RUN crawls of up to ~36 minutes each (~9 hours in all):
+    QUEUED_STALE_AFTER = 12.hours
 
     attr_reader :path
 

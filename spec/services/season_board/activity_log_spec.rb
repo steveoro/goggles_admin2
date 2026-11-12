@@ -132,7 +132,16 @@ RSpec.describe SeasonBoard::ActivityLog do
 
     it 'uses thresholds compatible with the 30-minute crawl timeout' do
       expect(described_class::RUNNING_STALE_AFTER).to eq(40.minutes)
-      expect(described_class::QUEUED_STALE_AFTER).to eq(2.hours)
+    end
+
+    it 'keeps queued entries busy while a full daily re-check batch waits on the single background worker' do
+      # (SeasonRecheckJob::MAX_CRAWLS_PER_RUN crawls of up to ~36 minutes each, run one at a time)
+      worst_wait = SeasonRecheckJob::MAX_CRAWLS_PER_RUN * (MeetingCrawlJob::CRAWL_TIMEOUT + MeetingCrawlJob::IDLE_WAIT_TIMEOUT +
+                                                           MeetingCrawlJob::PAUSE_AFTER_CRAWL)
+      expect(described_class::QUEUED_STALE_AFTER).to eq(12.hours)
+      expect(described_class::QUEUED_STALE_AFTER).to be > worst_wait
+      travel_to(now) { log.queue!('150091', kind: :crawl, origin: :auto) }
+      travel_to(now + 9.hours) { expect(log.busy?('150091')).to be true }
     end
   end
 

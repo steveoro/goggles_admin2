@@ -32,6 +32,7 @@ en:
       id: 'ID'
       code: 'Code'
       meeting_id: 'Meeting ID'
+      fin_event_id: 'FIN id'
     states:
       cancelled: 'Cancelled'
       sql_pending: 'SQL to push'
@@ -98,6 +99,9 @@ en:
       failed: 'Failed %{time}: %{message}'
       failed_no_message: 'Failed %{time}'
       last_success: 'last %{kind} OK %{time}'
+      crawl_stuck: 'Crawl seems stuck since %{time}'
+      extract_stuck: 'Extraction seems stuck since %{time}'
+      stuck_tooltip: 'No progress recorded for too long: the job may have died. The action is enabled again, so it can be retried.'
       kinds:
         crawl: 'crawl'
         extract: 'extraction'
@@ -118,6 +122,8 @@ en:
     orphans:
       title: 'Calendar rows not on the FIN list (%{count})'
       empty: 'None.'
+      not_on_calendar: 'FIN id not on the current calendar'
+      not_on_calendar_tooltip: 'This calendar row already has a FIN id, which is not on the current FIN calendar: it cannot be a link target'
     unmatched:
       text: '%{count} pending source file(s) have no FIN id.'
       link: 'Open the Results files page'
@@ -149,3 +155,4 @@ en:
       linked_no_changes: 'FIN event %{fin_event_id} was already linked to calendar %{calendar_id}.'
       link_failed: 'Link failed: %{error}'
       link_missing_params: 'Select a calendar row to link.'
+      enqueue_failed: 'Could not queue the job for FIN event %{fin_event_id}: %{error}'

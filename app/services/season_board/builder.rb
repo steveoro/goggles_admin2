@@ -24,7 +24,14 @@ module SeasonBoard
     # - snapshot_checked_at: Time of the last watcher check (or nil)
     # - warnings: Array of Strings
     # - active_activities: Array of ActivityLog::Entry (queued/running, for the page strip)
-    Result = Data.define(:season, :rows, :orphans, :unmatched_sources, :snapshot_checked_at, :warnings, :active_activities)
+    Result = Data.define(:season, :rows, :orphans, :unmatched_sources, :snapshot_checked_at, :warnings, :active_activities) do
+      # Orphans that can be targets of the manual "Link to meeting" action: only the calendars
+      # without a FIN id yet (CalendarLinker refuses to overwrite a different results_code).
+      # Orphans with a FIN id absent from the snapshot stay listed among the orphans only.
+      def link_candidates
+        orphans.reject(&:fin_event_id)
+      end
+    end
 
     # Latest MASFIN season (the board target).
     def self.latest_season

@@ -11,7 +11,8 @@ module SeasonBoard
   #
   # Sets <tt>calendars.results_code</tt> to the FIN event ID (plus +results_link+ / +manifest_link+
   # when given: an existing FIN +results_link+ is never replaced by a non-FIN URL; +manifest_link+
-  # is set only when blank) on the localhost DB inside a transaction, writing at the same time the
+  # is set only when blank; a calendar already carrying a different FIN event ID is refused) on the
+  # localhost DB inside a transaction, writing at the same time the
   # replayable SQL script to <tt>results.new/<season>/</tt> with the standard progressive numbering
   # (same pattern as TeamManagerSqlCreate).
   #
@@ -80,6 +81,15 @@ module SeasonBoard
       @calendar = GogglesDb::Calendar.unscoped.find_by(id: calendar_id)
       return "Calendar #{calendar_id} not found" unless @calendar
       return "Calendar #{calendar_id} does not belong to season #{season.id}" unless @calendar.season_id == season.id
+
+      link_conflict_error
+    end
+
+    # Error message when the calendar already carries another FIN event id (never overwritten) or
+    # another season calendar already uses this FIN event id; nil otherwise.
+    def link_conflict_error
+      current_code = @calendar.results_code.to_s.strip.sub(/\A0+/, '')
+      return "Calendar #{calendar_id} is already linked to FIN event id #{current_code}" if current_code.present? && current_code != fin_event_id
 
       duplicate = GogglesDb::Calendar.unscoped.where(season_id: season.id, results_code: fin_event_id)
                                      .where.not(id: calendar_id).pick(:id)

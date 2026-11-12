@@ -27,9 +27,7 @@ class SeasonBoardController < ApplicationController
 
     @season = season
     @board = SeasonBoard::Builder.new(season:).call
-    @state_counts = @board.rows.map(&:state).tally
-    @unlinked_count = @state_counts.fetch(:not_linked, 0)
-    @done_count = @board.rows.count { |row| hidden_as_done?(row) }
+    assign_counts
     @state_filter = params[:state].to_s.presence_in(SeasonBoard::Builder::STATES.map(&:to_s))
     @show_unlinked = params[:show_unlinked].present?
     @show_done = params[:show_done].present?
@@ -41,10 +39,8 @@ class SeasonBoardController < ApplicationController
     row = find_row
     redirect_to(season_board_path) && return unless row
 
-    if SeasonBoard::Scheduler.crawl!(season_id: @season.id, fin_event_id: row.fin_event_id, url: row.url, origin: :manual)
-      flash[:info] = I18n.t('season_board.flash.crawl_queued', fin_event_id: row.fin_event_id)
-    else
-      flash[:warning] = I18n.t('season_board.flash.busy', fin_event_id: row.fin_event_id)
+    enqueue(row, :crawl_queued) do
+      SeasonBoard::Scheduler.crawl!(season_id: @season.id, fin_event_id: row.fin_event_id, url: row.url, origin: :manual)
     end
     redirect_to(season_board_path)
   end
@@ -57,10 +53,8 @@ class SeasonBoardController < ApplicationController
     engine = params[:engine].presence
     if engine && ENGINES.exclude?(engine)
       flash[:error] = I18n.t('season_board.flash.invalid_engine', engine:)
-    elsif SeasonBoard::Scheduler.extract!(season_id: @season.id, fin_event_id: row.fin_event_id, engine:)
-      flash[:info] = I18n.t('season_board.flash.extract_queued', fin_event_id: row.fin_event_id)
     else
-      flash[:warning] = I18n.t('season_board.flash.busy', fin_event_id: row.fin_event_id)
+      enqueue(row, :extract_queued) { SeasonBoard::Scheduler.extract!(season_id: @season.id, fin_event_id: row.fin_event_id, engine:) }
     end
     redirect_to(season_board_path)
   end
@@ -104,6 +98,21 @@ class SeasonBoardController < ApplicationController
     row
   end
 
+  # Runs the Scheduler call in the block, setting the flash for its outcome (block result true: queued,
+  # false: busy). The Scheduler re-raises when the enqueue itself fails (e.g. missing queue database):
+  # the error is shown in the flash instead of a 500.
+  def enqueue(row, queued_key)
+    fin_event_id = row.fin_event_id
+    if yield
+      flash[:info] = I18n.t("season_board.flash.#{queued_key}", fin_event_id:)
+    else
+      flash[:warning] = I18n.t('season_board.flash.busy', fin_event_id:)
+    end
+  rescue StandardError => e
+    Rails.logger.error("[SeasonBoardController] enqueue failed for FIN #{fin_event_id}: #{e.class}: #{e.message}")
+    flash[:error] = I18n.t('season_board.flash.enqueue_failed', fin_event_id:, error: e.message)
+  end
+
   def flash_link_result(result, row, calendar_id)
     if !result.success?
       flash[:error] = I18n.t('season_board.flash.link_failed', error: result.error)
@@ -113,6 +122,12 @@ class SeasonBoardController < ApplicationController
     else
       flash[:info] = I18n.t('season_board.flash.linked_no_changes', fin_event_id: row.fin_event_id, calendar_id:)
     end
+  end
+
+  def assign_counts
+    @state_counts = @board.rows.map(&:state).tally
+    @unlinked_count = @state_counts.fetch(:not_linked, 0)
+    @done_count = @board.rows.count { |row| hidden_as_done?(row) }
   end
 
   # Past rows already committed with results: hidden by default

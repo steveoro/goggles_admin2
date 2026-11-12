@@ -172,6 +172,22 @@ RSpec.describe SeasonBoard::RowComponent, type: :component do
       expect(page.css('.text-muted').map(&:text).join).to include('last crawl OK 08/11 10:00')
     end
 
+    it 'shows a stale running crawl as a "seems stuck" warning, keeping the action enabled' do
+      stuck = entry(status: :running, origin: :auto, started_at: Time.zone.local(2026, 11, 8, 8, 40))
+      expect(stuck).to be_stale
+      page = render_row(build_row(next_action: action(:crawl), activity: { crawl: stuck, extract: nil }))
+      expect(page.css('span.badge-warning').map(&:text).join).to include('Crawl seems stuck since 08:40')
+      expect(page.css('form[action="/season_board/crawl"] button[type=submit]')).not_to be_empty
+      expect(page.css('button[disabled]')).to be_empty
+    end
+
+    it 'shows a stale queued extraction as stuck, with the day when not today' do
+      stuck = entry(kind: :extract, status: :queued, queued_at: Time.zone.local(2026, 11, 7, 18, 0))
+      expect(stuck).to be_stale
+      text = render_row(build_row(next_action: action(:extract_manifest), activity: { crawl: nil, extract: stuck })).text
+      expect(text).to include('Extraction seems stuck since 07/11 18:00')
+    end
+
     it 'shows nothing when idle' do
       expect(render_row(build_row).css('td')[5].text.strip).to be_empty
     end

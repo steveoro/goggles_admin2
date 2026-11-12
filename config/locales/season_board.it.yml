@@ -32,6 +32,7 @@ it:
       id: 'ID'
       code: 'Codice'
       meeting_id: 'ID meeting'
+      fin_event_id: 'ID FIN'
     states:
       cancelled: 'Annullato'
       sql_pending: 'SQL da inviare'
@@ -98,6 +99,9 @@ it:
       failed: 'Fallito %{time}: %{message}'
       failed_no_message: 'Fallito %{time}'
       last_success: '%{kind} riuscito %{time}'
+      crawl_stuck: 'Crawl apparentemente bloccato dalle %{time}'
+      extract_stuck: 'Estrazione apparentemente bloccata dalle %{time}'
+      stuck_tooltip: "Nessun avanzamento registrato da troppo tempo: il job potrebbe essersi interrotto. L'azione è di nuovo disponibile per riprovare."
       kinds:
         crawl: 'ultimo crawl'
         extract: 'ultima estrazione'
@@ -118,6 +122,8 @@ it:
     orphans:
       title: 'Righe di calendario non presenti nella lista FIN (%{count})'
       empty: 'Nessuna.'
+      not_on_calendar: 'ID FIN non presente nel calendario attuale'
+      not_on_calendar_tooltip: 'Questa riga del calendario ha già un ID FIN, assente dal calendario FIN attuale: non può essere collegata'
     unmatched:
       text: '%{count} file sorgente in attesa senza ID FIN.'
       link: 'Apri la pagina dei file dei risultati'
@@ -149,3 +155,4 @@ it:
       linked_no_changes: "L'evento FIN %{fin_event_id} era già collegato al calendario %{calendar_id}."
       link_failed: 'Collegamento fallito: %{error}'
       link_missing_params: 'Scegli una riga del calendario da collegare.'
+      enqueue_failed: 'Impossibile accodare il job per l''evento FIN %{fin_event_id}: %{error}'

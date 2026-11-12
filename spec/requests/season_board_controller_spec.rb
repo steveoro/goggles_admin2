@@ -40,10 +40,16 @@ RSpec.describe SeasonBoardController do
     ]
   end
   let(:orphans) do
-    [SeasonBoard::DbIndex::CalendarInfo.new(
-      id: 321, fin_event_id: nil, meeting_id: 55, meeting_code: 'orph-code', meeting_name: 'Orphan meeting', meeting_place: nil,
-      scheduled_date: Date.new(2026, 10, 1), year: 2026, month: 10, cancelled: false, results_link: nil, meeting: nil
-    )]
+    [
+      SeasonBoard::DbIndex::CalendarInfo.new(
+        id: 321, fin_event_id: nil, meeting_id: 55, meeting_code: 'orph-code', meeting_name: 'Orphan meeting', meeting_place: nil,
+        scheduled_date: Date.new(2026, 10, 1), year: 2026, month: 10, cancelled: false, results_link: nil, meeting: nil
+      ),
+      SeasonBoard::DbIndex::CalendarInfo.new(
+        id: 654, fin_event_id: '150999', meeting_id: 66, meeting_code: 'gone-code', meeting_name: 'Gone from FIN', meeting_place: nil,
+        scheduled_date: Date.new(2026, 10, 2), year: 2026, month: 10, cancelled: false, results_link: nil, meeting: nil
+      )
+    ]
   end
   let(:result) do
     SeasonBoard::Builder::Result.new(
@@ -115,6 +121,19 @@ RSpec.describe SeasonBoardController do
 
       it 'lists the orphan calendar rows in the collapsible table' do
         expect(page.at_css('#orphans-collapse').text).to include('321', 'orph-code', 'Orphan meeting', '55')
+      end
+
+      it 'marks the orphans whose FIN id is not on the current calendar' do
+        gone = page.at_css('#orphans-collapse tr[data-orphan-id="654"]')
+        expect(gone.text).to include('150999', 'FIN id not on the current calendar')
+        expect(page.at_css('#orphans-collapse tr[data-orphan-id="321"]').text).not_to include('FIN id not on the current calendar')
+      end
+
+      it 'offers only the orphans without FIN id as link targets' do
+        options = page.css('#season-board-row-6 form[action="/season_board/link"] option').filter_map { |opt| opt['value'].presence }
+        expect(options).to eq(['321'])
+        secondary = page.css('#season-board-row-1 details option').filter_map { |opt| opt['value'].presence }
+        expect(secondary).to eq(['321'])
       end
 
       it 'shows a chip with the count for each state' do
@@ -202,6 +221,13 @@ RSpec.describe SeasonBoardController do
         expect(response).to redirect_to(season_board_path)
         expect(flash[:warning]).to eq(I18n.t('season_board.flash.busy', fin_event_id: '1'))
       end
+
+      it 'flashes the error when the job cannot be enqueued' do
+        allow(SeasonBoard::Scheduler).to receive(:crawl!).and_raise(ActiveRecord::StatementInvalid, 'no such table: solid_queue_jobs')
+        post(season_board_crawl_path, params: { fin_event_id: '1' })
+        expect(response).to redirect_to(season_board_path)
+        expect(flash[:error]).to eq(I18n.t('season_board.flash.enqueue_failed', fin_event_id: '1', error: 'no such table: solid_queue_jobs'))
+      end
     end
 
     describe 'POST /season_board/extract' do
@@ -237,6 +263,13 @@ RSpec.describe SeasonBoardController do
         allow(SeasonBoard::Scheduler).to receive(:extract!).and_return(false)
         post(season_board_extract_path, params: { fin_event_id: '2' })
         expect(flash[:warning]).to eq(I18n.t('season_board.flash.busy', fin_event_id: '2'))
+      end
+
+      it 'flashes the error when the job cannot be enqueued' do
+        allow(SeasonBoard::Scheduler).to receive(:extract!).and_raise(StandardError, 'queue DB missing')
+        post(season_board_extract_path, params: { fin_event_id: '2' })
+        expect(response).to redirect_to(season_board_path)
+        expect(flash[:error]).to eq(I18n.t('season_board.flash.enqueue_failed', fin_event_id: '2', error: 'queue DB missing'))
       end
     end
 
