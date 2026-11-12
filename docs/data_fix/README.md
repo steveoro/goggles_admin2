@@ -10,6 +10,8 @@ docs/data_fix/
 ├── DATA_STRUCTURES.md              ← Data format reference (source → DB)
 ├── TECHNICAL.md                    ← Architecture patterns & technical details
 └── legacy_version/                 ← Historical v1.0 docs (reference only)
+
+docs/season_board.md                ← Operator guide of the Season board (weekly flow driving the pipeline)
 ```
 
 ### 📖 What Each File Contains

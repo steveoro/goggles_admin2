@@ -7,7 +7,7 @@ Two engines are supported, sharing the same pipeline (`Extractor` + `Lt4Builder`
 - **`devin`** (default): shells out to the Devin CLI — each generation is a fresh `devin -p` non-interactive session (default model `swe-2-high`). Requires `devin` on PATH and `devin auth login` once. Scanned PDFs are handled by writing the rendered page PNGs into the session working dir for the agent to read.
 - **`ollama`**: a locally-running Ollama server (default `gemma4:e4b`, vision-capable); scanned PDFs are submitted as base64 images to the configured vision model.
 
-The generated files land in `crawler/data/results.new/<season_id>/<date>-<name>-lt4.json` — the same folder scanned by the phased data-import wizard — so opening them prefills **Phase 1** (meeting, sessions, pool, city) and **Phase 4** (event program). The operator reviews and corrects the data before any import; manifest-derived files contain **no results** and are not meant to be committed end-to-end.
+The generated files land in `crawler/data/results.new/<season_id>/<date>-<name>-lt4.json` — the same folder scanned by the phased data-import wizard — so opening them prefills **Phase 1** (meeting, sessions, pool, city) and **Phase 4** (event program). The operator reviews and corrects the data before any import; manifest-derived files contain **no results**: they can be committed as a bare meeting structure (shortened Phase 1 → Phase 6 chain, new meetings get `manifest: true`), and the results are added later by a second data-fix pass on the published-results source, which preselects the existing meeting by its FIN event id (see `docs/data_fix/PHASES.md`).
 
 ## Requirements
 
@@ -44,9 +44,15 @@ bundle exec rake manifests:extract file=crawler/data/manifests/262/manifest-....
 bundle exec rake manifests:extract season=262 force=1 engine=ollama model=qwen3.5:4b
 ```
 
-Each PDF is processed independently; failures are reported at the end and do not abort the batch. Existing `-lt4.json` outputs are skipped unless `force=1`.
+Each PDF is processed independently; failures are reported at the end and do not abort the batch. When the output `-lt4.json` already exists (it shares the name of the Data-Fix LT4 working copy of the crawled `<base>.json`):
 
-Processed manifests are then archived: the source `.pdf` and its extracted `.txt` sibling are moved from `crawler/data/manifests/<season_id>/` to `crawler/data/manifests.done/<season_id>/` (the same lifecycle used by `results.new` → `results.done`). This applies to files extracted during the run as well as files skipped because their `-lt4.json` output already existed; only failed extractions keep their sources in place for a retry.
+- a **results source** (any result row) is never touched, not even with `force=1` (skip reason `results source already present`);
+- a **previous manifest output** (`_meta.meeting_only`) is skipped unless `force=1` (`output already exists`);
+- a **result-free plain working copy** with no phase files is backed up as `<base>-lt4.orig[-N].json` and replaced by the manifest LT4 (a warning records it); if phase files exist it is skipped unless `force=1`, in which case it is backed up and replaced.
+
+The other direction is handled by `DataFix::SourceResolver`: when the crawled results later arrive, the manifest copy is backed up and rebuilt from the results (see AGENTS.md, exception 2 of the canonical source handling).
+
+Processed manifests are then archived: the source `.pdf` and its extracted `.txt` sibling are moved from `crawler/data/manifests/<season_id>/` to `crawler/data/manifests.done/<season_id>/` (the same lifecycle used by `results.new` → `results.done`). This applies to files extracted during the run as well as files skipped with `output already exists` or `results source already present` (`BatchRunner` lists them under `skips` in the status file; the rake task prints the skip reason); only failed extractions keep their sources in place for a retry.
 
 The task aborts early when the selected engine is not available (Devin CLI not installed/logged in, Ollama not reachable) **or** the configured model is not usable — the warning names the engine, the fix hint and the available models.
 
@@ -76,6 +82,9 @@ In addition to the standard LT4 keys (`layoutType`, `meetingName`, `title`, `dat
 - `venueName`, `venueAddress`, `cityName`, `poolLength`
 - `edition`, `maxIndividualEvents`
 - `manifestSessions`: `[{date, session_order}]` — one entry per meeting day (supports >2-day meetings)
+- `meetingURL`, `manifestURL`: carried over from the crawled sibling `<base>.json` (when present and non-blank), right after `layoutType`; the FIN event id parsed from them (`FINEventId`) is the key that links the meeting to its FIN calendar row (`calendars.results_code`)
 - `_meta`: provenance (model, source PDF, timestamp, warnings)
 
 `Phase1Solver` prefers `venueName`/`venueAddress` over `place`, carries `edition`/`maxIndividualEvents` into the phase-1 payload and builds one session per `manifestSessions` entry.
+
+Extractions can also be started per meeting from the Season board (`ManifestExtractJob`, see `docs/season_board.md`).

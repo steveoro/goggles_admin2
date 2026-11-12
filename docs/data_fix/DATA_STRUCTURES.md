@@ -56,6 +56,7 @@ $ bin/json_tree_viewer.py crawler/data/results.new/242/2025-06-24-Campionati_Ita
      |               +--- team
      |               +--- timing
      +--- layoutType
+     +--- manifestURL (optional)
      +--- meetingName
      +--- meetingURL
      +--- place
@@ -118,6 +119,7 @@ $ bin/json_tree_viewer.py crawler/data/results.new/242/2025-06-24-Campionati_Ita
      |               +--- team
      |               +--- timing
      +--- layoutType
+     +--- manifestURL (optional)
      +--- meetingName
      +--- meetingURL
      +--- place
@@ -584,7 +586,7 @@ Phase 2:         crawler/data/results.new/<season_id>/<filename>-phase2.json
 Phase 3:         crawler/data/results.new/<season_id>/<filename>-phase3.json
 Phase 4:         crawler/data/results.new/<season_id>/<filename>-phase4.json
 Phase 5:         data_import_* DB tables
-SQL Log:         crawler/data/sql.new/<season_id>/<filename>.sql
+SQL Log:         crawler/data/results.new/<season_id>/<index>-<filename>.sql
 Completed:       crawler/data/results.done/<season_id>/<filename>.json
 ```
 

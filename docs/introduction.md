@@ -28,3 +28,8 @@ This application is intended for users who are responsible for maintaining the d
 *   **`goggles_db.wiki`:** Contains supplementary documentation, though it might be outdated. This project aims to consolidate and update relevant administrative documentation within `goggles_admin2/docs`.
 
 Essentially, `goggles_admin2` acts as the central hub for managing the data that powers the entire Goggles suite.
+
+## Further reading
+
+*   [Season board](season_board.md): the weekly flow for the latest MASFIN season (check, crawl, review, push).
+*   [Data-Fix pipeline](data_fix/README.md) and [PDF processing](pdf_processing/pdf_processing.md).

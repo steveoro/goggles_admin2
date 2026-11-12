@@ -52,10 +52,18 @@ Phase 6: Commit → Production DB + SQL log
 
 This enables a two-pass workflow: create the meeting structure from the
 manifest first, then run a second data-fix pass on the published-results
-source. On the second pass the operator must select the existing meeting in
-Step 1 and rescan the sessions so `meeting_session` ids resolve and duplicate
-sessions are not created; Phases 2-5 then add teams, swimmers, badges, events,
-programs, results and laps against the existing structure.
+source. On the second pass Phase 1 preselects the existing meeting and loads
+its sessions automatically (FIN event id stored in `calendars.results_code` at
+the first commit, see Phase 1), so `meeting_session` ids resolve and duplicate
+sessions are not created; the operator only has to check Step 1. If no FIN id
+is available the meeting can still be picked and its sessions rescanned by
+hand. Phases 2-5 then add teams, swimmers, badges, events, programs, results
+and laps against the existing structure.
+
+When the results LT2 `<base>.json` arrives after the manifest, the manifest
+LT4 copy (`<base>-lt4.json`) is superseded by the LT4 rebuilt from the results
+(see AGENTS.md, *DataFix V2 canonical source handling*, exception 2).
+The whole weekly flow is driven from the Season board (`docs/season_board.md`).
 
 ---
 
@@ -72,7 +80,7 @@ programs, results and laps against the existing structure.
 - Stores all IDs in phase1.json
 
 ### Key Features
-- Meeting matching by (code, header_date, season_id)
+- Meeting matching: the Phase 1 payload carries a list of fuzzy candidates (`meeting_fuzzy_matches`: same-season meetings whose description matches the first words of the name); they are only suggestions, `id` stays `nil` until the operator picks one. The exception is the **FIN event id preselection**: the FIN event id parsed from the source `meetingURL`/`manifestURL` (`FINEventId`) is looked up in `calendars.results_code` (same season, latest calendar with a meeting); when found, that meeting is selected automatically (`meeting_match: { source: 'fin_event_id', fin_event_id, meeting_id }`, shown as a badge in the meeting card, first among the candidates), its curated header data (name, code, header date, edition, timing type, notes, ...) replaces the crawled one and its existing sessions are loaded into `meeting_session` (same as selecting it in the form and rescanning). Changing the meeting in the form drops `meeting_match`.
 - Session matching by (meeting_id, session_order)
 - Venue/city cascading creation
 - Optional source category recomputation from the reviewed Phase 1 page
@@ -103,6 +111,9 @@ The Phase 1 action reads the canonical LT4 source `swimmers` array and recalcula
     "season_id": 232,
     "code": "italianoinvernale",
     "header_date": "2023-12-08",
+    "meetingURL": "https://www.federnuoto.it/...#/risultati/150091:italiano-invernale.html",
+    "manifestURL": null,
+    "meeting_match": { "source": "fin_event_id", "fin_event_id": "150091", "meeting_id": 19766 },
     "meeting_session": [
       {
         "id": 3878,
@@ -412,6 +423,10 @@ For result-free sources (see *Structure-only (result-free) sources* above):
 - Events present in `phase4.json` are committed when resolvable; an
   unresolvable `event_type_id` aborts the transaction (nothing is persisted).
 - New meetings created from `_meta.meeting_only` sources get `manifest: true`.
+
+### Calendar link & results flag
+- The calendar committer stores the FIN event id (from `meetingURL`/`manifestURL`) in `calendars.results_code`, and finds an existing calendar by it first (then by meeting code / meeting id). A FIN `results_link` is never overwritten by a non-FIN URL, and a stored `results_code` is never replaced by a different id.
+- When the committed meeting has at least one individual or relay result, `meetings.results_acquired` is set to `true` (and logged in the SQL script). Result-free commits leave it untouched.
 
 ### Dependency-Aware Commit Order
 ```
