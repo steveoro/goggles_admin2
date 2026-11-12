@@ -458,5 +458,7 @@ class PullController < FileListController
     logger.debug("\r\n*** response: #{res.body}")
   rescue RestClient::ExceptionWithResponse => e
     flash[:error] = e.message
+  rescue *CrawlerClient::CONNECTION_ERRORS => e
+    flash[:error] = "#{I18n.t('data_import.errors.crawler_unreachable')} (#{e.message})"
   end
 end

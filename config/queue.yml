@@ -1,14 +1,24 @@
 # Solid Queue processes (run inside Puma via `plugin :solid_queue`, or stand-alone with `bin/jobs`).
-# A single worker/thread is plenty for this localhost-only admin app.
+#
+# Two workers, so that long-running jobs never delay the hourly FIN watcher:
+# - 'default': quick jobs (FedernuotoWatchJob, mailers, ...);
+# - 'background': Season board crawls & manifest extractions (MeetingCrawlJob, ManifestExtractJob,
+#   SeasonRecheckJob) with a single thread & process, so that they run strictly one at a time
+#   (gentle with the FIN server & the LLM engine). Keep it at 1 thread / 1 process.
+# NOTE: jobs on any other queue name are not picked up: add the queue to the 'default' worker.
 default: &default
   dispatchers:
     - polling_interval: 1
       batch_size: 500
   workers:
-    - queues: "*"
+    - queues: default
       threads: 1
       processes: <%= ENV.fetch("JOB_CONCURRENCY", 1) %>
       polling_interval: 1
+    - queues: background
+      threads: 1
+      processes: 1
+      polling_interval: 2
 
 development:
   <<: *default

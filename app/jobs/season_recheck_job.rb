@@ -1,0 +1,52 @@
+# frozen_string_literal: true
+
+#
+# = SeasonRecheckJob
+#
+# Daily re-check of the Season board (recurring task 'season_board_recheck', config/recurring.yml):
+# enqueues an automatic crawl (SeasonBoard::Scheduler.crawl!, origin :auto) for
+# - :structure_committed rows asking for :check_results (past meeting, linked, no results yet);
+# - :link_not_crawled rows whose last date is past;
+# skipping busy rows and rows crawled less than MIN_RECRAWL_INTERVAL ago, most recent meetings
+# first, at most MAX_CRAWLS_PER_RUN per run (the crawls then run one at a time).
+#
+class SeasonRecheckJob < ApplicationJob
+  queue_as :background
+
+  MAX_CRAWLS_PER_RUN = 15
+  MIN_RECRAWL_INTERVAL = 20.hours
+
+  # - season_id: board season (default: SeasonBoard::Builder.latest_season)
+  # Returns the Array of FIN ids enqueued.
+  def perform(season_id: nil)
+    season = season_id ? GogglesDb::Season.find_by(id: season_id) : SeasonBoard::Builder.latest_season
+    return [] unless season
+
+    activity_log = SeasonBoard::ActivityLog.new
+    rows = SeasonBoard::Builder.new(season:, activity_log:).call.rows
+    candidates(rows, activity_log).first(MAX_CRAWLS_PER_RUN).select do |row|
+      SeasonBoard::Scheduler.crawl!(season_id: season.id, fin_event_id: row.fin_event_id, url: row.url, origin: :auto)
+    end.map(&:fin_event_id)
+  end
+
+  private
+
+  def candidates(rows, activity_log)
+    today = Date.current
+    rows.select { |row| recheck?(row, today) && !row.busy? && !recently_crawled?(row, activity_log) }
+        .uniq(&:fin_event_id)
+        .sort_by { |row| -row.last_date.jd }
+  end
+
+  def recheck?(row, today)
+    return false if row.fin_event_id.blank? || row.url.blank? || row.last_date.nil?
+
+    (row.state == :structure_committed && row.action?(:check_results)) ||
+      (row.state == :link_not_crawled && row.last_date < today)
+  end
+
+  def recently_crawled?(row, activity_log)
+    last = activity_log.last_attempt_at(row.fin_event_id, :crawl)
+    last.present? && last > MIN_RECRAWL_INTERVAL.ago
+  end
+end

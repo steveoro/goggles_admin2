@@ -13,8 +13,9 @@ RSpec.describe SeasonBoard::ActivityLog do
 
   after(:each) { FileUtils.rm_rf(tmp_dir) }
 
-  it 'defaults to crawler/data/season-board.json' do
-    expect(described_class.new.path).to eq(Rails.root.join('crawler/data/season-board.json'))
+  it 'defaults to crawler/data/season-board.json (overridden in the test env)' do
+    expect(described_class::DEFAULT_PATH).to eq(Rails.root.join('crawler/data/season-board.json'))
+    expect(described_class.new.path).to eq(Rails.root.join('tmp/season-board.test.json'))
   end
 
   it 'returns empty results when the file is missing' do

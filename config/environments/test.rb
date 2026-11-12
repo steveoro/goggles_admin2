@@ -46,6 +46,7 @@ Rails.application.configure do
   config.active_job.queue_adapter = :test
   # Keep the FIN page watcher state separate from the development one (see FedernuotoWatch::StateStore):
   config.x.federnuoto_watch.state_path = Rails.root.join('tmp/federnuoto-watch.test.json')
+  config.x.season_board.activity_log_path = Rails.root.join('tmp/season-board.test.json')
   # Action Mailer default URL, required by Devise:
   config.action_mailer.default_url_options = { host: 'localhost', port: 3000 }
 

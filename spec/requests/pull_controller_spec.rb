@@ -113,6 +113,17 @@ RSpec.describe PullController do
       expect(response).to redirect_to(pull_index_path)
       expect(flash[:warning]).to be_present
     end
+
+    it 'flashes an error (no 500) when the crawler server is not running' do
+      allow(RestClient::Request).to receive(:execute).and_raise(Errno::ECONNREFUSED)
+      post '/pull/run_crawler_api', params: {
+        season_id: 242, layout_id: 2, sub_menu_type: 'Eventi',
+        target_url: 'https://www.federnuoto.it/home/master/circuito-supermaster/eventi-circuito-supermaster.html#/risultati/123'
+      }
+
+      expect(response).to redirect_to(pull_index_path)
+      expect(flash[:error]).to include(I18n.t('data_import.errors.crawler_unreachable'))
+    end
   end
 
   describe 'GET /pull/calendar_meetings' do

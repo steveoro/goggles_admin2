@@ -8,6 +8,12 @@ default: &default
     class: FedernuotoWatchJob
     queue: default
     schedule: every hour at minute 30
+  # Season board: daily automatic re-crawl of past meetings still without results
+  # (see SeasonRecheckJob; runs on the single-thread 'background' worker)
+  season_board_recheck:
+    class: SeasonRecheckJob
+    queue: background
+    schedule: every day at 5:15am
 
 development:
   <<: *default
