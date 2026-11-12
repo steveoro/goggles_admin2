@@ -150,6 +150,42 @@ RSpec.describe PdfManifests::BatchRunner, type: :strategy do
       expect(status['errors'].first).to include('manifest-bad.pdf')
     end
 
+    it 'archives the manifest and reports the reason for both archivable skip kinds' do
+      pdf_dup = make_pdf('manifest-dup.pdf')
+      pdf_res = make_pdf('manifest-res.pdf')
+      File.write(pdf_res.to_s.sub('.pdf', '.txt'), 'text layer')
+
+      result_klass = PdfManifests::Extractor::Result
+      allow(extractor).to receive(:call).with(pdf_dup, force: false)
+                                        .and_return(result_klass.new(pdf_path: pdf_dup.to_s,
+                                                                     skipped_reason: 'output already exists: dup-lt4.json'))
+      allow(extractor).to receive(:call).with(pdf_res, force: false)
+                                        .and_return(result_klass.new(pdf_path: pdf_res.to_s,
+                                                                     skipped_reason: 'results source already present: res-lt4.json'))
+
+      stats = make_runner.call
+
+      expect(stats).to eq(extracted: 0, skipped: 2, failed: 0)
+      %w[manifest-dup.pdf manifest-res.pdf manifest-res.txt].each do |name|
+        expect(File).to exist(done_dir.join(name))
+      end
+
+      status = described_class.read_status(data_root: data_root)
+      expect(status['errors']).to be_empty
+      expect(status['skips']).to contain_exactly(
+        'manifest-dup.pdf: output already exists: dup-lt4.json',
+        'manifest-res.pdf: results source already present: res-lt4.json'
+      )
+    end
+
+    it 'builds the extractor on the results.new folder of its data_root' do
+      make_pdf
+      allow(extractor).to receive(:call).and_return(PdfManifests::Extractor::Result.new(out_path: 'x.json'))
+      make_runner.call
+      expect(PdfManifests::Extractor).to have_received(:new)
+        .with(client: client, results_root: data_root.join('results.new'))
+    end
+
     it 'marks the runner as inactive after completion' do
       make_pdf
       allow(extractor).to receive(:call)

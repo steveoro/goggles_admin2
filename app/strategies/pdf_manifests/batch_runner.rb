@@ -25,7 +25,7 @@ module PdfManifests
   #     runner.start_in_thread!
   #   end
   #
-  class BatchRunner
+  class BatchRunner # rubocop:disable Metrics/ClassLength
     # Status file lives under crawler/data (already gitignored).
     STATUS_FILENAME = 'manifests-extract-status.json'
 
@@ -72,9 +72,10 @@ module PdfManifests
 
       stats = { extracted: 0, skipped: 0, failed: 0 }
       errors = []
+      @skips = []
       self.class.mark_active!
       write_status(running: true, status: 'OK, extracting', detail: 'starting', progress: 0)
-      extractor = Extractor.new(client: client)
+      extractor = Extractor.new(client: client, results_root: data_root.join('results.new'))
 
       pdf_list.each_with_index do |pdf_path, idx|
         process_one(extractor, pdf_path, idx, stats, errors)
@@ -83,7 +84,7 @@ module PdfManifests
       write_status(running: false, status: 'OK, done', detail: 'extraction finished',
                    progress: pdf_list.size,
                    extracted: stats[:extracted], skipped: stats[:skipped],
-                   failed: stats[:failed], errors: errors, finished: true)
+                   failed: stats[:failed], errors: errors, skips: @skips, finished: true)
       stats
     rescue StandardError => e
       write_status(running: false, status: 'ERROR', detail: e.message, errors: errors || [], finished: true)
@@ -154,15 +155,18 @@ module PdfManifests
 
     # Extracts a single PDF, updating stats/errors in place and persisting the
     # 'currently processing' status beforehand. Failures never raise.
+    # Archivable skips (already extracted / results source already present)
+    # still move the manifest to 'manifests.done' and are listed under 'skips'.
     def process_one(extractor, pdf_path, idx, stats, errors)
       base = File.basename(pdf_path)
       write_status(running: true, status: 'OK, extracting', detail: base,
                    progress: idx, extracted: stats[:extracted], skipped: stats[:skipped],
-                   failed: stats[:failed], errors: errors)
+                   failed: stats[:failed], errors: errors, skips: @skips)
 
       result = extractor.call(pdf_path, force: @force)
-      if result.success? || result.skipped_reason.to_s.start_with?('output already exists')
+      if result.archivable?
         stats[result.success? ? :extracted : :skipped] += 1
+        @skips << "#{base}: #{result.skipped_reason}" unless result.success?
         self.class.archive(pdf_path)
       else
         stats[:failed] += 1

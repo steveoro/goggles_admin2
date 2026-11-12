@@ -74,6 +74,33 @@ RSpec.describe PdfManifests::Lt4Builder, type: :strategy do
     end
   end
 
+  describe 'meeting/manifest URL keys' do
+    let(:meeting_url) { 'https://www.federnuoto.it/risultati?id=150094' }
+    let(:manifest_url) { 'https://www.federnuoto.it/manifest?file=YWJj' }
+
+    it 'emits meetingURL and manifestURL right after layoutType when given' do
+      lt4 = described_class.new(extracted: base_extraction, pdf_path: pdf_path, season_id: 999,
+                                meeting_url: meeting_url, manifest_url: manifest_url).lt4_hash
+      expect(lt4.keys.first(3)).to eq(%w[layoutType meetingURL manifestURL])
+      expect(lt4['meetingURL']).to eq(meeting_url)
+      expect(lt4['manifestURL']).to eq(manifest_url)
+    end
+
+    it 'places them within the first bytes of the generated JSON' do
+      lt4 = described_class.new(extracted: base_extraction, pdf_path: pdf_path, season_id: 999,
+                                meeting_url: meeting_url).lt4_hash
+      expect(JSON.pretty_generate(lt4)[0, 200]).to include(meeting_url)
+    end
+
+    it 'omits the keys when not given or blank' do
+      lt4 = described_class.new(extracted: base_extraction, pdf_path: pdf_path, season_id: 999,
+                                meeting_url: '', manifest_url: nil).lt4_hash
+      expect(lt4).not_to have_key('meetingURL')
+      expect(lt4).not_to have_key('manifestURL')
+      expect(build(base_extraction).lt4_hash.keys).not_to include('meetingURL', 'manifestURL')
+    end
+  end
+
   describe 'event normalization' do
     subject(:events) { build(base_extraction).lt4_hash['events'] }
 

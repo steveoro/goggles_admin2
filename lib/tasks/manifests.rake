@@ -85,9 +85,9 @@ namespace :manifests do # rubocop:disable Metrics/BlockLength
         stats[:extracted] += 1
         puts "OK (#{result.events_count} events) -> #{File.basename(result.out_path)}"
         PdfManifests::BatchRunner.archive(pdf_path)
-      elsif result.skipped_reason.to_s.start_with?('output already exists')
+      elsif result.archivable_skip?
         stats[:skipped] += 1
-        puts 'skipped (already extracted)'
+        puts "skipped (#{result.skipped_reason})"
         PdfManifests::BatchRunner.archive(pdf_path)
       else
         stats[:failed] += 1

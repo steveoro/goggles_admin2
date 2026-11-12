@@ -5,8 +5,9 @@ require 'tmpdir'
 
 RSpec.describe PdfManifests::Extractor, type: :strategy do
   let(:client) { instance_double(PdfManifests::OllamaClient, model: 'test-model', vision_model: 'vision-model') }
-  let(:extractor) { described_class.new(client: client) }
   let(:temp_dir) { Dir.mktmpdir('manifest_spec') }
+  let(:results_root) { File.join(temp_dir, 'results.new') }
+  let(:extractor) { described_class.new(client: client, results_root: results_root) }
   let(:season_dir) { File.join(temp_dir, 'manifests', '9999') }
   let(:pdf_path) { File.join(season_dir, 'manifest-2026-11-08-test.pdf') }
 
@@ -21,7 +22,9 @@ RSpec.describe PdfManifests::Extractor, type: :strategy do
     }
   end
 
-  let(:out_dir) { Rails.root.join('crawler/data/results.new/9999') }
+  let(:out_dir) { File.join(results_root, '9999') }
+  let(:out_path) { File.join(out_dir, '2026-11-08-test-lt4.json') }
+  let(:lt2_sibling_path) { File.join(out_dir, '2026-11-08-test.json') }
 
   before(:each) do
     FileUtils.mkdir_p(season_dir)
@@ -30,7 +33,11 @@ RSpec.describe PdfManifests::Extractor, type: :strategy do
 
   after(:each) do
     FileUtils.rm_rf(temp_dir)
-    FileUtils.rm_rf(out_dir)
+  end
+
+  def write_json(path, payload)
+    FileUtils.mkdir_p(File.dirname(path))
+    File.write(path, JSON.pretty_generate(payload))
   end
 
   describe '#call' do
@@ -59,10 +66,96 @@ RSpec.describe PdfManifests::Extractor, type: :strategy do
 
         second = extractor.call(pdf_path)
         expect(second).not_to be_success
-        expect(second.skipped_reason).to include('already exists')
+        expect(second.skipped_reason).to start_with('output already exists')
+        expect(second).to be_archivable
+        expect(Dir.glob(File.join(out_dir, '*.orig*.json'))).to be_empty
 
         third = extractor.call(pdf_path, force: true)
         expect(third).to be_success
+      end
+
+      it 'writes under results.new/<season>/ using the manifest base name' do
+        allow(client).to receive(:generate).and_return(extracted)
+        expect(extractor.call(pdf_path).out_path).to eq(out_path)
+      end
+
+      context 'with a crawled LT2 sibling in the output folder' do
+        let(:meeting_url) { 'https://www.federnuoto.it/risultati?id=150094' }
+        let(:manifest_url) { 'https://www.federnuoto.it/manifest?file=YWJj' }
+
+        before(:each) { allow(client).to receive(:generate).and_return(extracted) }
+
+        it 'carries meetingURL and manifestURL right after layoutType' do
+          write_json(lt2_sibling_path, 'layoutType' => 2, 'meetingURL' => meeting_url,
+                                       'manifestURL' => manifest_url, 'sections' => [])
+          lt4 = JSON.parse(File.read(extractor.call(pdf_path).out_path))
+          expect(lt4.keys.first(3)).to eq(%w[layoutType meetingURL manifestURL])
+          expect(lt4['meetingURL']).to eq(meeting_url)
+          expect(lt4['manifestURL']).to eq(manifest_url)
+        end
+
+        it 'omits blank URLs' do
+          write_json(lt2_sibling_path, 'layoutType' => 2, 'meetingURL' => meeting_url,
+                                       'manifestURL' => '', 'sections' => [])
+          lt4 = JSON.parse(File.read(extractor.call(pdf_path).out_path))
+          expect(lt4['meetingURL']).to eq(meeting_url)
+          expect(lt4).not_to have_key('manifestURL')
+        end
+      end
+
+      it 'omits the URL keys when there is no LT2 sibling' do
+        allow(client).to receive(:generate).and_return(extracted)
+        lt4 = JSON.parse(File.read(extractor.call(pdf_path).out_path))
+        expect(lt4.keys).not_to include('meetingURL', 'manifestURL')
+      end
+
+      context 'when a non-manifest, result-free working copy already exists' do
+        let(:empty_copy) { { 'layoutType' => 4, 'meetingName' => 'X', 'events' => [], '_meta' => { 'retry_needed' => false } } }
+
+        before(:each) do
+          allow(client).to receive(:generate).and_return(extracted)
+          write_json(out_path, empty_copy)
+        end
+
+        it 'backs it up and overwrites it with the manifest LT4' do
+          result = extractor.call(pdf_path)
+          expect(result).to be_success
+          expect(JSON.parse(File.read(out_path)).dig('_meta', 'meeting_only')).to be(true)
+          expect(JSON.parse(File.read(File.join(out_dir, '2026-11-08-test-lt4.orig.json')))).to eq(empty_copy)
+        end
+
+        it 'skips as already existing when phase files were built on it' do
+          write_json(File.join(out_dir, '2026-11-08-test-lt4-phase1.json'), 'data' => {})
+          result = extractor.call(pdf_path)
+          expect(result).not_to be_success
+          expect(result.skipped_reason).to start_with('output already exists')
+          expect(result).to be_archivable
+          expect(JSON.parse(File.read(out_path))).to eq(empty_copy)
+          expect(client).not_to have_received(:generate)
+        end
+      end
+
+      context 'when a results source already exists at the output path' do
+        let(:results_copy) do
+          { 'layoutType' => 4, 'events' => [{ 'eventCode' => '50SL', 'results' => [{ 'ranking' => 1 }] }] }
+        end
+
+        before(:each) do
+          allow(client).to receive(:generate).and_return(extracted)
+          write_json(out_path, results_copy)
+        end
+
+        it 'skips with a distinct reason, even with force: true' do
+          [false, true].each do |force|
+            result = extractor.call(pdf_path, force: force)
+            expect(result).not_to be_success
+            expect(result.skipped_reason).to start_with('results source already present')
+            expect(result).to be_archivable
+          end
+          expect(JSON.parse(File.read(out_path))).to eq(results_copy)
+          expect(Dir.glob(File.join(out_dir, '*.orig*.json'))).to be_empty
+          expect(client).not_to have_received(:generate)
+        end
       end
 
       it 'does not run a corrective pass when the extraction is clean' do

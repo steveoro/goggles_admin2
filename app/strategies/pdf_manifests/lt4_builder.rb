@@ -50,12 +50,17 @@ module PdfManifests
     # - pdf_path: source manifest pathname (used for filename/date cross-check)
     # - season_id: season ID (from the parent folder name)
     # - model: LLM model name (recorded in _meta)
+    # - meeting_url / manifest_url: URLs carried over from the crawled LT2
+    #   sibling ('meetingURL' / 'manifestURL'); emitted right after
+    #   'layoutType' so a head-only reader finds them. Omitted when blank.
     #
-    def initialize(extracted:, pdf_path:, season_id:, model: nil)
+    def initialize(extracted:, pdf_path:, season_id:, model: nil, meeting_url: nil, manifest_url: nil) # rubocop:disable Metrics/ParameterLists
       @src = extracted || {}
       @pdf_path = pdf_path.to_s
       @season_id = season_id
       @model = model
+      @meeting_url = meeting_url.to_s.strip.presence
+      @manifest_url = manifest_url.to_s.strip.presence
       @warnings = []
       @issues = []
       @lt4_hash = build
@@ -75,6 +80,8 @@ module PdfManifests
 
       out = {
         'layoutType' => 4,
+        'meetingURL' => @meeting_url,
+        'manifestURL' => @manifest_url,
         'meetingName' => normalized_name,
         'title' => normalized_name,
         'edition' => normalized_edition,

@@ -10,6 +10,7 @@ module DataFix
   # A new instance is meant to be used per request: the parsed-source memo
   # would otherwise leak stale JSON across writes performed by other requests.
   class SourceResolver
+    MEETING_ONLY_RE = /"meeting_only"\s*:\s*true/
     def detect_season_from_pathname(file_path)
       season_id = File.dirname(file_path).split('/').last.to_i
       return GogglesDb::Season.find(season_id) if season_id.positive?
@@ -81,9 +82,12 @@ module DataFix
       if File.exist?(source_path)
         # A -lt4.json working copy must hold LT4 data; if it actually contains
         # LT2 (e.g. a renamed legacy source), re-materialize it in place.
-        return source_path unless detect_layout_type_from_content(source_path) == 2
+        return materialize_lt4_in_place(source_path) || source_path if detect_layout_type_from_content(source_path) == 2
 
-        return materialize_lt4_in_place(source_path) || source_path
+        lt2_path = paired_lt2_source_path(source_path)
+        return supersede_manifest_copy!(source_path, lt2_path) if manifest_copy_superseded?(source_path, lt2_path)
+
+        return source_path
       end
 
       original_lt2_path = source_path.sub(/-lt4\.json\z/, '.json')
@@ -117,14 +121,51 @@ module DataFix
       "#{base}.orig-#{index}.json"
     end
 
+    # TRUE when the LT4 file at lt4_path is a manifest-derived, meeting-only copy
+    # (PdfManifests::Extractor output, `_meta.meeting_only`) while its LT2 sibling
+    # at lt2_path now carries actual result rows: the manifest copy shares the
+    # working-copy file name but must give way to the published results.
+    # The cheap head/tail scan for the meeting_only flag runs first, so regular
+    # (possibly large) working copies never trigger a full parse of the LT2.
+    def manifest_copy_superseded?(lt4_path, lt2_path)
+      return false if lt4_path.blank? || lt2_path.blank?
+      return false unless File.exist?(lt4_path) && File.exist?(lt2_path)
+      return false unless file_mentions_meeting_only?(lt4_path)
+      return false unless parsed_source_json(lt4_path).dig('_meta', 'meeting_only') == true
+      return false unless detect_layout_type_from_content(lt2_path) == 2
+
+      source_has_result_rows?(lt2_path)
+    rescue StandardError => e
+      Rails.logger.warn("[DataFix::SourceResolver] manifest-copy check failed for #{lt4_path}: #{e.message}")
+      false
+    end
+
+    # Replaces a manifest-derived LT4 copy with a fresh LT2=>LT4 working copy,
+    # keeping a .orig.json backup of the manifest file and dropping the phase
+    # 1..5 files (plus their data_import_* rows) built from the manifest data.
+    # Leaves everything untouched when the materialization fails.
+    def supersede_manifest_copy!(lt4_path, lt2_path)
+      backup_path = next_backup_path_for(lt4_path)
+      FileUtils.cp(lt4_path, backup_path)
+      return lt4_path if materialize_lt4_working_copy(lt2_source_path: lt2_path, lt4_source_path: lt4_path).blank?
+
+      invalidated = invalidate_category_dependent_artifacts(lt4_path, phases: 1..5)
+      Rails.logger.info(
+        "[DataFix::SourceResolver] Manifest copy superseded by results: #{lt4_path} " \
+        "(backup=#{backup_path}; invalidated=#{invalidated.inspect})"
+      )
+      lt4_path
+    end
+
     def resolve_lt2_source_to_working_copy(source_path)
       lt4_source_path = source_path.sub(/\.json\z/, '-lt4.json')
       if File.exist?(lt4_source_path)
         # Reuse the existing working copy only if it really holds LT4 data;
         # an LT2 payload under the -lt4 name is re-materialized in place.
-        return lt4_source_path unless detect_layout_type_from_content(lt4_source_path) == 2
+        return materialize_lt4_in_place(lt4_source_path) || lt4_source_path if detect_layout_type_from_content(lt4_source_path) == 2
+        return supersede_manifest_copy!(lt4_source_path, source_path) if manifest_copy_superseded?(lt4_source_path, source_path)
 
-        return materialize_lt4_in_place(lt4_source_path) || lt4_source_path
+        return lt4_source_path
       end
       return source_path unless File.exist?(source_path)
 
@@ -187,6 +228,35 @@ module DataFix
           code.present? && !categories_cache.key?(code)
         end
       end
+    end
+
+    # TRUE when the head or tail chunk of the file mentions a truthy
+    # `meeting_only` flag (pre-filter only: the caller confirms on parsed JSON).
+    def file_mentions_meeting_only?(file_path)
+      File.open(file_path, 'rb') do |f|
+        return true if f.read(64 * 1024).to_s.match?(MEETING_ONLY_RE)
+        return false unless f.size > 64 * 1024
+
+        f.seek(-64 * 1024, IO::SEEK_END)
+        f.read(64 * 1024).to_s.match?(MEETING_ONLY_RE)
+      end
+    rescue StandardError
+      false
+    end
+
+    # TRUE when the source JSON carries at least one actual result row
+    # (LT4 `events[].results` or LT2 `sections[].rows`). Meeting-only sources
+    # never count, consistently with #source_result_free?.
+    def source_has_result_rows?(source_path)
+      data_hash = parsed_source_json(source_path)
+      return false unless data_hash.is_a?(Hash)
+      return false if data_hash.dig('_meta', 'meeting_only') == true
+
+      Array(data_hash['events']).any? { |event| event.is_a?(Hash) && Array(event['results']).any? } ||
+        Array(data_hash['sections']).any? { |section| section.is_a?(Hash) && Array(section['rows']).any? }
+    rescue StandardError => e
+      Rails.logger.warn("[DataFix::SourceResolver] result-rows detection failed for #{source_path}: #{e.message}")
+      false
     end
 
     # Per-request memo of parsed source JSON files. Several review actions read &
@@ -335,8 +405,11 @@ module DataFix
       nil
     end
 
-    def invalidate_category_dependent_artifacts(source_path)
-      phase_paths = [3, 4, 5].map { |phase| default_phase_path_for(source_path, phase) }
+    # Removes the phase files built on top of source_path (phases 3..5 by
+    # default, i.e. the ones depending on result categories) and the
+    # data_import_* temp rows bound to it.
+    def invalidate_category_dependent_artifacts(source_path, phases: [3, 4, 5])
+      phase_paths = phases.map { |phase| default_phase_path_for(source_path, phase) }
       phase_paths.each { |path| FileUtils.rm_f(path) }
 
       tables = [
