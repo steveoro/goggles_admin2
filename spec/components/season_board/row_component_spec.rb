@@ -120,6 +120,8 @@ RSpec.describe SeasonBoard::RowComponent, type: :component do
       page = render_row(build_row(state: :archived_unlinked, next_action: action(:link, bases: ['a'])), orphans: [orphan(9), orphan(10)])
       form = page.css('form').first
       expect(form['action']).to eq('/season_board/link')
+      expect(form['class']).to include('d-flex', 'flex-nowrap')
+      expect(form.at_css('select')['style']).to include('min-width: 0')
       expect(form.css('option').map(&:text)).to include('Select a calendar row...', '9 - code-9 - 2026-11-08 - Orphan 9')
       expect(page.css('details')).to be_empty
     end
@@ -132,7 +134,9 @@ RSpec.describe SeasonBoard::RowComponent, type: :component do
 
     it 'offers the secondary link control only to unmatched rows when orphans exist' do
       row = build_row(next_action: action(:crawl))
-      expect(render_row(row, orphans: [orphan(9)]).css('details form[action="/season_board/link"]').size).to eq(1)
+      form = render_row(row, orphans: [orphan(9)]).at_css('details form[action="/season_board/link"]')
+      expect(form['class']).to include('d-flex', 'flex-nowrap')
+      expect(form.at_css('select')['style']).to include('min-width: 0')
       expect(render_row(row).css('details')).to be_empty
       expect(render_row(build_row(calendar_id: 5, next_action: action(:crawl)), orphans: [orphan(9)]).css('details')).to be_empty
     end

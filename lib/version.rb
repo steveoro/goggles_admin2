@@ -27,7 +27,7 @@ module Version
   MINOR = '10'
 
   # Patch version.
-  PATCH = '73'
+  PATCH = '74'
 
   # Current build version.
   BUILD = '20261112'
