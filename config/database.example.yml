@@ -28,6 +28,10 @@ development:
     <<: *default_sqlt3
     database: storage/development_queue.sqlite3
     migrations_paths: db/queue_migrate
+  cable:
+    <<: *default_sqlt3
+    database: storage/development_cable.sqlite3
+    migrations_paths: db/cable_migrate
 
 test:
   primary:
@@ -77,7 +81,8 @@ staging:
   primary:
     <<: *default
     database: goggles
-    host: <%= ENV.fetch("DATABASE_HOST") { 'localhost' } %>
+    socket:
+    host: <%= ENV.fetch("DATABASE_HOST") { '127.0.0.1' } %>
     port: <%= ENV.fetch("DATABASE_PORT") { 33060 } %>
   cache:
     <<: *default_sqlt3
