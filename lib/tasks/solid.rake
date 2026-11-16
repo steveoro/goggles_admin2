@@ -21,6 +21,10 @@ namespace :solid do
     Loads db/queue_schema.rb and db/cable_schema.rb only when their tables are missing;
     never touches the primary (MySQL) database. Safe to run at every boot.
 
+    Keep 'schema_dump: false' on the queue & cable entries of config/database.yml: without it,
+    any db:migrate / db:prepare / db:schema:dump run rewrites db/<name>_schema.rb from the
+    current SQLite file, and an empty file yields an empty schema (losing the table definitions).
+
     Usage:
       > bin/rails solid:prepare
 
@@ -38,7 +42,10 @@ namespace :solid do
         if pool.with_connection { |conn| conn.table_exists?(sentinel_table) }
           puts("- '#{db_name}' DB already prepared.")
         else
-          ActiveRecord::Tasks::DatabaseTasks.load_schema(db_config)
+          # The schema file is given explicitly: with 'schema_dump: false' in database.yml
+          # (recommended, see the task description) load_schema would otherwise return without loading anything.
+          schema_file = Rails.root.join('db', "#{db_name}_schema.rb").to_s
+          ActiveRecord::Tasks::DatabaseTasks.load_schema(db_config, :ruby, schema_file)
           puts("- '#{db_name}' DB schema loaded.")
         end
       end
