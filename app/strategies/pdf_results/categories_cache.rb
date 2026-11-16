@@ -10,6 +10,7 @@ module PdfResults
   #
   class CategoriesCache
     CACHE_VERSION = 1
+    CACHE_EXPIRY = 12.hours
     CategoryTypeSnapshot = Struct.new(:id, :code, :age_begin, :age_end, :relay, :undivided, keyword_init: true) do
       def relay?
         relay == true
@@ -41,8 +42,17 @@ module PdfResults
     end
 
     def self.cached_for(season)
-      payload = Rails.cache.fetch(cache_key(season)) do
-        Array(season.category_types).map do |category|
+      new(season, category_types: cached_payload(season))
+    end
+
+    # Returns the cached list of category attributes for the season, or +nil+ when there's
+    # nothing to cache or the cache store can't be used (the caller then reads the DB rows).
+    #
+    # Empty lists are never cached (skip_nil), so that a season whose category types
+    # get created later on (new-season setup) isn't stuck with an empty cache entry.
+    def self.cached_payload(season)
+      Rails.cache.fetch(cache_key(season), expires_in: CACHE_EXPIRY, skip_nil: true) do
+        rows = Array(season.category_types).map do |category|
           {
             'id' => category.id,
             'code' => category.code,
@@ -52,9 +62,12 @@ module PdfResults
             'undivided' => category.undivided?
           }
         end
+        rows.presence
       end
-
-      new(season, category_types: payload)
+    rescue ActiveRecord::ActiveRecordError => e
+      # E.g. the local Solid Cache DB hasn't been prepared yet (`bin/rails solid:prepare`):
+      Rails.logger.warn("[CategoriesCache] cache store unavailable, reading from DB: #{e.message}")
+      nil
     end
 
     def self.cache_key(season)

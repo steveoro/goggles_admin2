@@ -1,0 +1,11 @@
+# [Steve A.] Solid Cache (SQLite-backed, see the 'cache:' entry in config/database.yml).
+# Used in development only as the low-level Rails.cache store (e.g. PdfResults::CategoriesCache),
+# so that cached values are shared between the Puma process and the Solid Queue workers.
+# Create the DB with `bin/rails solid:prepare`.
+# (Test uses the null store and production the memory store: no entries needed here.)
+development:
+  database: cache
+  store_options:
+    max_age: <%= 30.days.to_i %>
+    max_size: <%= 64.megabytes %>
+    namespace: <%= Rails.env %>

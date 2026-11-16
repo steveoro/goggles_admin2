@@ -20,14 +20,17 @@ Rails.application.configure do
     config.action_controller.perform_caching = true
     config.action_controller.enable_fragment_cache_logging = true
 
-    config.cache_store = :memory_store
     config.public_file_server.headers = {
       'Cache-Control' => "public, max-age=#{2.days.to_i}"
     }
   else
     config.action_controller.perform_caching = false
-    config.cache_store = :null_store
   end
+
+  # Low-level Rails.cache store: Solid Cache on the local SQLite 'cache' DB (config/cache.yml),
+  # shared by Puma & the Solid Queue workers. Needs `bin/rails solid:prepare`.
+  # (View/fragment caching stays off unless toggled with `rails dev:cache`.)
+  config.cache_store = :solid_cache_store
 
   # Store uploaded files on the local file system (see config/storage.yml for options).
   config.active_storage.service = :local

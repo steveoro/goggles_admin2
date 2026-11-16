@@ -24,6 +24,7 @@ development:
     <<: *default_sqlt3
     database: storage/development_cache.sqlite3
     migrations_paths: db/cache_migrate
+    schema_dump: false
   queue:
     <<: *default_sqlt3
     database: storage/development_queue.sqlite3
@@ -43,6 +44,7 @@ test:
     <<: *default_sqlt3
     database: storage/test_cache.sqlite3
     migrations_paths: db/cache_migrate
+    schema_dump: false
   queue:
     <<: *default_sqlt3
     database: storage/test_queue.sqlite3
@@ -57,6 +59,7 @@ production:
     <<: *default_sqlt3
     database: storage/production_cache.sqlite3
     migrations_paths: db/cache_migrate
+    schema_dump: false
   queue:
     <<: *default_sqlt3
     database: storage/production_queue.sqlite3
@@ -93,6 +96,7 @@ staging:
     <<: *default_sqlt3
     database: storage/staging_cache.sqlite3
     migrations_paths: db/cache_migrate
+    schema_dump: false
   queue:
     <<: *default_sqlt3
     database: storage/staging_queue.sqlite3

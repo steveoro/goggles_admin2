@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 #
-# = Solid Queue / Solid Cable local DB helper tasks
+# = Solid Queue / Solid Cable / Solid Cache local DB helper tasks
 #
 #   - for Goggles framework vers.: 7+
 #   - author: Steve A.
@@ -13,15 +13,21 @@
 
 namespace :solid do
   # Local SQLite DB names (see config/database.yml) => sentinel table checked for existence
-  SOLID_DBS = { 'queue' => 'solid_queue_jobs', 'cable' => 'solid_cable_messages' }.freeze unless defined? SOLID_DBS
+  unless defined? SOLID_DBS
+    SOLID_DBS = {
+      'queue' => 'solid_queue_jobs',
+      'cable' => 'solid_cable_messages',
+      'cache' => 'solid_cache_entries'
+    }.freeze
+  end
 
   desc <<~DESC
-    Idempotent setup for the local SQLite DBs used by Solid Queue & Solid Cable.
+    Idempotent setup for the local SQLite DBs used by Solid Queue, Solid Cable & Solid Cache.
 
-    Loads db/queue_schema.rb and db/cable_schema.rb only when their tables are missing;
+    Loads db/queue_schema.rb, db/cable_schema.rb and db/cache_schema.rb only when their tables are missing;
     never touches the primary (MySQL) database. Safe to run at every boot.
 
-    Keep 'schema_dump: false' on the queue & cable entries of config/database.yml: without it,
+    Keep 'schema_dump: false' on the queue, cable & cache entries of config/database.yml: without it,
     any db:migrate / db:prepare / db:schema:dump run rewrites db/<name>_schema.rb from the
     current SQLite file, and an empty file yields an empty schema (losing the table definitions).
 

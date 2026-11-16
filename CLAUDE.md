@@ -25,10 +25,10 @@ bundle exec guard                   # watcher the README expects green before PR
 cd crawler && npm install && npm start
 cd crawler && npm test              # mocha
 
-bin/rails solid:prepare             # create/load the local SQLite queue & cable DBs (idempotent, never touches MySQL)
+bin/rails solid:prepare             # create/load the local SQLite queue, cable & cache DBs (idempotent, never touches MySQL)
 ```
 
-Background jobs use **Solid Queue** (two workers in `config/queue.yml`: `default`, and a single-thread `background` queue for the Season board crawl/extract jobs); the supervisor runs inside Puma (`plugin :solid_queue` in `config/puma.rb`; set `SOLID_QUEUE_IN_PUMA=false` to opt out and run `bin/jobs` separately). ActionCable uses **Solid Cable** so job broadcasts reach the browsers. Both live on local SQLite DBs (`queue:`/`cable:` entries in the gitignored `config/database.yml` — see `config/database.example.yml`; files under `storage/`). Don't run a bare `bin/rails db:prepare`/`db:migrate` just for these: it would also act on the shared MySQL primary — use `solid:prepare`.
+Background jobs use **Solid Queue** (two workers in `config/queue.yml`: `default`, and a single-thread `background` queue for the Season board crawl/extract jobs); the supervisor runs inside Puma (`plugin :solid_queue` in `config/puma.rb`; set `SOLID_QUEUE_IN_PUMA=false` to opt out and run `bin/jobs` separately). ActionCable uses **Solid Cable** so job broadcasts reach the browsers. In development `Rails.cache` is **Solid Cache** (`config/cache.yml`; low-level cache only, e.g. `PdfResults::CategoriesCache` — test uses the null store). All three live on local SQLite DBs (`queue:`/`cable:`/`cache:` entries in the gitignored `config/database.yml` — see `config/database.example.yml`; files under `storage/`), each with `schema_dump: false` so a schema dump can't overwrite `db/{queue,cable,cache}_schema.rb`. Don't run a bare `bin/rails db:prepare`/`db:migrate` just for these: it would also act on the shared MySQL primary — use `solid:prepare`.
 
 Maintenance rake tasks live in `lib/tasks/` (`manifests`, `normalize`, `merge`, `purge`, `recompute`, `check`, `fix`, `db`, fixtures tasks). List with `bin/rails -T`; read each task's `desc` for its env-style args (e.g. `rake manifests:extract season=<id>`). Some (e.g. `normalize:coded_names`) emit a SQL script instead of touching the DB directly.
 

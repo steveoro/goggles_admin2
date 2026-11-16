@@ -27,6 +27,7 @@ AllCops:
     - 'db/schema.rb'
     - 'db/queue_schema.rb'
     - 'db/cable_schema.rb'
+    - 'db/cache_schema.rb'
     - 'vendor/**/*'
     - 'node_modules/**/*'
 
