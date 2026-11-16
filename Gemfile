@@ -31,6 +31,7 @@ gem 'turbo-rails'
 # gem 'image_processing', '~> 1.2'
 
 gem 'activerecord-session_store'
+gem 'benchmark' # needed after Ruby 3.5.0 because it won't be part of SDL anymore
 # Reduces boot times through caching; required in config/boot.rb
 gem 'bootsnap', require: false
 gem 'browser' # detect request.variant type depending on request.user_agent
