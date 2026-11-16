@@ -101,6 +101,31 @@ RSpec.describe PullController do
       expect(response).to redirect_to(pull_index_path)
     end
 
+    it 'routes a layout-6 Go&Swim URL to the dedicated Go&Swim endpoint' do
+      goandswim_url = 'https://risultati.goandswim.it/evento/5ce2d74fd05d4a659b511251caec6132'
+      post '/pull/run_crawler_api', params: {
+        season_id: 242,
+        layout_id: 6,
+        target_url: goandswim_url,
+        sub_menu_type: 'Eventi'
+      }
+
+      expect(RestClient::Request).to have_received(:execute).with(
+        hash_including(
+          url: 'http://localhost:7000/pull_results_goandswim',
+          headers: hash_including(
+            'params' => hash_including(
+              'season_id' => '242',
+              'layout' => 6,
+              'meeting_url' => goandswim_url
+            ),
+            'Content-Type' => 'application/json'
+          )
+        )
+      )
+      expect(response).to redirect_to(pull_index_path)
+    end
+
     it 'rejects a layout-2 request with the placeholder still in target_url' do
       post '/pull/run_crawler_api', params: {
         season_id: 242,

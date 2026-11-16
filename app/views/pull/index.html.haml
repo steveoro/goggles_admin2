@@ -46,7 +46,7 @@
               #results-collapse.collapse{'aria-labelledby' => 'results-header', 'data-parent' => '#crawler-accordion'}
                 .card-body
                   .row-fluid
-                    %i.text-secondary Target Layout (ID 4, 5, ...; ID 0 = calendar auto-detect) + URL
+                    %i.text-secondary Target Layout (ID 4, 5, 6, ...; ID 0 = calendar auto-detect) + URL
                   .row.my-4
                     .col-5
                       = render(LegacyAutoCompleteComponent.new(show_top_labels: true, base_name: 'layout',
@@ -60,7 +60,7 @@
                           = text_field_tag('target_url', nil, class: 'form-control')
                       .row-fluid
                         %small
-                          %i.form-text.text-muted (<a href="https://www.federnuoto.it/home/master.html">FIN Master</a>,&nbsp; <a href="https://microplus.it/events/">Microplus events</a>,&nbsp; <a href="https://nuoto.ficr.it/">FICR results</a>)
+                          %i.form-text.text-muted (<a href="https://www.federnuoto.it/home/master.html">FIN Master</a>,&nbsp; <a href="https://microplus.it/events/">Microplus events</a>,&nbsp; <a href="https://nuoto.ficr.it/">FICR results</a>,&nbsp; <a href="https://risultati.goandswim.it/">Go&amp;Swim results</a>)
                     .offset-5.col-7
                       .form-group
                         .field

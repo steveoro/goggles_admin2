@@ -22,6 +22,9 @@ class PullController < FileListController
   # Base URL for FICR results:
   FICR_RESULTS_BASE_URL = 'https://nuoto.ficr.it/'
 
+  # Base URL for Go&Swim results:
+  GOANDSWIM_RESULTS_BASE_URL = 'https://risultati.goandswim.it/'
+
   # The manual crawls share the crawler (and its status file) with the Season board crawls:
   before_action :refuse_while_board_crawl_runs, only: %i[run_crawler_api process_calendar_file process_selected_meetings]
   #-- -------------------------------------------------------------------------
@@ -80,19 +83,18 @@ class PullController < FileListController
     elsif target_url_valid
       layout = crawler_params['layout_id'].to_i
       api_params = { season_id: crawler_params['season_id'], layout: }
-      api_endpoint = if layout == 4
-                       'pull_results_microplus'
-                     elsif layout == 5
-                       'pull_results_ficr'
-                     else
-                       'pull_results'
+      api_endpoint = case layout
+                     when 4 then 'pull_results_microplus'
+                     when 5 then 'pull_results_ficr'
+                     when 6 then 'pull_results_goandswim'
+                     else 'pull_results'
                      end
       api_params = case layout
                    when 4
                      api_params.merge(meeting_url: crawler_params['target_url'],
                                       target_event: crawler_params['target_event'])
-                   when 2, 5
-                     # Direct FICR (LT4) or FIN (LT2) single meeting URL:
+                   when 2, 5, 6
+                     # Direct FIN (LT2), FICR (LT4) or Go&Swim (LT4) single meeting URL:
                      api_params.merge(meeting_url: crawler_params['target_url'])
                    else
                      # Legacy result modes using a local calendar CSV file (layout 1/3):
@@ -444,6 +446,14 @@ class PullController < FileListController
         id: 5,
         label: I18n.t('data_import.config.crawler_ficr_results'),
         base_url: "#{FICR_RESULTS_BASE_URL} (+<LINK>)"
+      },
+
+      # Go&Swim direct meeting result URL (layout 6, LT4 output):
+      # https://risultati.goandswim.it/evento/<meeting_id>
+      {
+        id: 6,
+        label: I18n.t('data_import.config.crawler_goandswim_results'),
+        base_url: "#{GOANDSWIM_RESULTS_BASE_URL}evento/ (+<EVENT_ID>)"
       }
     ]
   end
