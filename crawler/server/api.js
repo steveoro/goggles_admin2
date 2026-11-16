@@ -16,6 +16,7 @@ const CalendarCrawler = require('./calendar-crawler');
 const ResultsCrawler = require('./results-crawler.js');
 const MicroplusCrawler = require('./microplus-crawler.js');
 const FicrCrawler = require('./ficr-crawler.js');
+const GoAndSwimCrawler = require('./goandswim-crawler.js');
 //-----------------------------------------------------------------------------
 
 apiRouter.get("/pull_calendar", (req, res) => {
@@ -107,6 +108,24 @@ apiRouter.get("/pull_results_ficr", (req, res) => {
 
   const crawler = new FicrCrawler(seasonId, meetingUrl);
   crawler.run();
+  res.json(CrawlUtil.readStatus());
+});
+
+apiRouter.get("/pull_results_goandswim", (req, res) => {
+  const seasonId = req.query.season_id;
+  const meetingUrl = req.query.meeting_url;
+
+  console.log('GET /pull_results_goandswim');
+  console.log(`- season_id: ${seasonId}`);
+  console.log(`- meeting_url: ${meetingUrl}`);
+
+  if (!seasonId || !meetingUrl) {
+    return res.status(400).json({ error: 'Missing season_id or meeting_url' });
+  }
+
+  // Fire-and-forget: run() already records the failure in the status file.
+  const crawler = new GoAndSwimCrawler(seasonId, meetingUrl);
+  crawler.run().catch((error) => console.error(`[goandswim-crawler] ${error.message}`));
   res.json(CrawlUtil.readStatus());
 });
 

@@ -147,6 +147,7 @@ module.exports = {
   deltaTiming,
   encodeSegment,
   fixMojibake,
+  formatTiming,
   groupHistory,
   normalizeEventCode,
   normalizeGender,
@@ -155,5 +156,6 @@ module.exports = {
   parseHeaderDates,
   positiveOrNull,
   relayDistance,
-  strokeCode
+  strokeCode,
+  timingToHundredths
 };
