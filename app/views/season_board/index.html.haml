@@ -1,6 +1,8 @@
 - toggles = { show_unlinked: (1 if @show_unlinked), show_done: (1 if @show_done) }.compact
 - checked_at = @board.snapshot_checked_at
 .wrapper-body
+  .spacer-left
+
   .main-content
     %section.my-2#season-board
       .container-fluid.pt-3.shadow-box
@@ -127,3 +129,7 @@
               %p.small.text-muted.mb-0#season-board-unmatched
                 = t('season_board.unmatched.text', count: @board.unmatched_sources.size)
                 = link_to(t('season_board.unmatched.link'), pull_result_files_path, data: { turbo_frame: '_top' })
+    .row.mb-3
+      &nbsp;
+
+  .spacer-right
