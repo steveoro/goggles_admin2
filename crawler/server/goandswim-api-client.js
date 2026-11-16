@@ -39,13 +39,15 @@ class GoAndSwimApiClient {
     return Array.isArray(payload) ? payload : [];
   }
 
+  // A 404, an empty body or invalid JSON mean "no splits" (null), not an error.
   async loadSplits(eventRaceMemberId) {
-    const payload = await this.request(this.endpoint(ENDPOINTS.splits, eventRaceMemberId));
+    const payload = await this.request(this.endpoint(ENDPOINTS.splits, eventRaceMemberId), {}, { lenient: true });
     if (!payload || typeof payload !== 'object' || !payload.splitDetails) return null;
     return payload;
   }
 
-  async request(url, init = {}) {
+  // With `lenient`, a 404 or an unparseable body returns null without retrying.
+  async request(url, init = {}, { lenient = false } = {}) {
     let lastError;
     for (let attempt = 0; attempt <= this.maxRetries; attempt += 1) {
       try {
@@ -58,14 +60,24 @@ class GoAndSwimApiClient {
             ...(init.headers || {})
           }
         });
+        if (lenient && response.status === 404) return null;
         if (!response.ok) throw new Error(`HTTP ${response.status} from ${url}`);
-        return await response.json();
+        return await this.parseJson(response, lenient);
       } catch (error) {
         lastError = error;
         if (attempt < this.maxRetries) await delay(250 * (attempt + 1));
       }
     }
     throw lastError;
+  }
+
+  async parseJson(response, lenient) {
+    try {
+      return await response.json();
+    } catch (error) {
+      if (lenient) return null;
+      throw error;
+    }
   }
 
   endpoint(name, id) {

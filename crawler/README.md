@@ -7,6 +7,7 @@ The results crawlers currently support:
 - **FIN results** — legacy FIN result pages and calendar-file processing, layouts 1–3.
 - **Microplus Timing** — AJAX-driven MicroplusTiming pages, layout 4.
 - **FICR results** — FICR JSON services with LT4 JSON output, UI target layout 5.
+- **Go&Swim results** — Go&Swim public JSON API with LT4 JSON output, UI target layout 6.
 
 All crawlers write artifacts under `crawler/data/` and report asynchronous progress through `crawler-status.json`, which is broadcast to the Rails UI over the crawler WebSocket channel.
 
@@ -28,6 +29,7 @@ Available API endpoints:
 | `/pull_results` | FIN results crawler | Process a calendar CSV or a direct FIN layout-2 URL. |
 | `/pull_results_microplus` | Microplus crawler | Crawl a MicroplusTiming meeting URL. |
 | `/pull_results_ficr` | FICR crawler | Crawl a complete FICR meeting URL. |
+| `/pull_results_goandswim` | Go&Swim crawler | Crawl a complete Go&Swim meeting URL. |
 | `/status` | Server | Read the current crawler status. |
 
 ## FIN results crawler
@@ -155,6 +157,53 @@ FICR writes a single LT4 JSON file to:
 
 The file contains LT4 root fields, `swimmers` and `teams` lookup dictionaries, normalized `events[].results[]` entries, relay rows, points, and lap timings. The Rails UI target is ID 5, but the emitted JSON `layoutType` is 4 so it enters the existing DataFix V2 Phase 1–6 pipeline.
 
+## Go&Swim results crawler
+
+The Go&Swim crawler is implemented in `server/goandswim-crawler.js`, with pure payload helpers in `server/goandswim-crawler-utils.js` and the JSON client in `server/goandswim-api-client.js`. It processes a complete meeting (`risultati.goandswim.it`) and writes one LT4 file shaped like the FICR output.
+
+### Go&Swim API endpoint
+
+`GET /pull_results_goandswim`
+
+Required query parameters:
+
+| Parameter | Description |
+| --- | --- |
+| `season_id` | Goggles season ID used for the output directory. |
+| `meeting_url` | Go&Swim meeting URL: `https://risultati.goandswim.it/evento/<eventId>` or `https://risultati.goandswim.it/gara/<eventRaceId>`. |
+
+Example:
+
+```bash
+curl "http://localhost:7000/pull_results_goandswim?season_id=262&meeting_url=https://risultati.goandswim.it/evento/5ce2d74fd05d4a659b511251caec6132"
+```
+
+The endpoint replies at once with the current status, while the crawl runs in the background.
+
+### Go&Swim flow
+
+- The site is a single-page app: the crawler calls its public JSON API (`https://risultati.goandswim.it/GasRestApi/`) directly, with no browser.
+- Accepted URLs are `/evento/<id>` (the whole meeting) and `/gara/<id>` (resolved to its meeting), also on `www.risultati.goandswim.it`; path segments and ids are case-insensitive.
+- Races are processed in programme order (race date, then programme number) and merged into one event per event code and gender (relays included, flagged with `relay`); each result keeps its category.
+- Overall individual races (category `A` or any category other than `M<age>`, e.g. "800 STILE LIBERO ASSOLUTI MISTI") are skipped with one warning when per-category master races with results cover the same length and stroke, because they repeat the same swims. Otherwise they are crawled, and the gender of each swimmer of a mixed (`X`) race comes from the same athlete in an M/F race of the meeting; when none is found the row keeps `gender: null` and a warning is added.
+- Swimmer names are normalised like `Import::SwimmerNameSplitter` on the Rails side (backtick and `’` become `'`) before the split and the keys. One-word names are kept with a warning, because Phase 3 skips swimmers without a first name.
+- Lap distances are deduced from the number of splits (race length / split count). Only 25, 50 or 100 m intervals are accepted, because the distance published by the site is unreliable. A last split within 0.50 s of the final time counts as the final time. Splits are requested for relays and races of 100 m or more, and for 50 m races only when the probed results carry 25 m splits.
+- When the split count does not fit, no laps are written, the raw split string is kept in `source_splits`, and a warning is added to `crawlerWarnings`. A failed split request (or an empty, invalid or 404 reply) only adds a warning and the result is kept without laps; a failed results request for a race stops the crawl, naming the race.
+- Disqualified rows are kept without timing. No-show rows (status `N`) are dropped and counted in a single warning.
+- Relay results carry the event gender (`M`, `F` or `X`). Splits are folded into one lap per leg, using the leg count of the event (`4X50` → 4).
+- Relay members come as names only (no year of birth). Each leg is attached to an individual swimmer of the same meeting when name and team match exactly once (that swimmer must have a year of birth and, for M/F races, the same gender); otherwise a year-less swimmer is registered. When the number of members differs from the number of legs, the laps are written without swimmers and a warning is added.
+- Relays without usable splits, and disqualified relays, keep their members: one lap per leg with a blank `delta` (as in the Microplus output), so Data-Fix still imports the relay swimmers.
+- Pool length is not published by the site and must be set in Data-Fix Phase 1.
+- Requests are sequential, with a 150 ms default delay between them and up to 2 retries.
+
+### Go&Swim output
+
+Go&Swim writes a single LT4 JSON file to:
+
+`crawler/data/results.new/<season_id>/<date>-<meeting>-lt4.json`
+
+The Rails UI target is ID 6, while the emitted JSON `layoutType` is 4 so the existing DataFix V2 Phase 1–6 pipeline can consume it.
+
 ## Result JSON conventions
 
 The standardized LT4 result structure uses:
@@ -176,4 +225,4 @@ cd /home/steve/Projects/goggles_admin2/crawler
 npm test
 ```
 
-The crawler tests cover FIN direct-input behavior, Microplus HTML/relay/continuation parsing, and FICR API normalization using captured payloads under `crawler/data/samples/ficr/`. Tests do not call the live FIN, Microplus, or FICR services.
+The crawler tests cover FIN direct-input behavior, Microplus HTML/relay/continuation parsing, FICR API normalization using captured payloads under `crawler/data/samples/ficr/`, and Go&Swim API client and crawler normalization using the captured fixture `crawler/data/samples/goandswim/goandswim-sample.json` (tests: `crawler/test/goandswim-api-client.test.js`, `crawler/test/goandswim-crawler.test.js`). Tests do not call the live FIN, Microplus, FICR, or Go&Swim services.

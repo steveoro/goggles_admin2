@@ -183,6 +183,37 @@ RSpec.describe Import::Phase5Populator, type: :strategy do
     end
   end
 
+  describe '#find_swimmer_data' do
+    let(:phase3_swimmers) do
+      [{ 'key' => 'F|ROSSI|ANNA||TEAM ONE', 'swimmer_id' => 42 }]
+    end
+
+    before(:each) do
+      subject.instance_variable_set(:@phase3_data, { 'data' => { 'swimmers' => phase3_swimmers, 'badges' => [] } })
+    end
+
+    context 'with a gender-less, year-less relay member key whose gender was inferred in Phase 3' do
+      it 'finds the swimmer through the gender-prefixed Phase 3 key' do
+        data = subject.send(:find_swimmer_data, { 'swimmer' => '|ROSSI|ANNA||TEAM ONE' })
+        expect(data).to eq(swimmer_id: 42, swimmer_key: 'F|ROSSI|ANNA||TEAM ONE')
+      end
+    end
+
+    context 'when both the M and F prefixed keys exist in Phase 3' do
+      let(:phase3_swimmers) do
+        [
+          { 'key' => 'F|ROSSI|ANDREA||TEAM ONE', 'swimmer_id' => 42 },
+          { 'key' => 'M|ROSSI|ANDREA||TEAM ONE', 'swimmer_id' => 43 }
+        ]
+      end
+
+      it 'does not pick either of them' do
+        data = subject.send(:find_swimmer_data, { 'swimmer' => '|ROSSI|ANDREA||TEAM ONE' })
+        expect(data).to eq(swimmer_id: nil, swimmer_key: '|ROSSI|ANDREA||TEAM ONE')
+      end
+    end
+  end
+
   describe '#parse_event_type' do
     it 'parses 200m breaststroke event code' do
       event_type = subject.send(:parse_event_type, '200RA')

@@ -89,6 +89,14 @@ describe('GoAndSwim crawler utils', () => {
     expect(() => GasUtil.parseMeetingUrl(null)).to.throw();
   });
 
+  it('accepts a www. host and case-insensitive path segments, and rejects malformed escapes', () => {
+    expect(GasUtil.parseMeetingUrl(`https://www.risultati.goandswim.it/Evento/${MEETING_A.toUpperCase()}`))
+      .to.deep.equal({ type: 'event', eventId: MEETING_A });
+    expect(GasUtil.parseMeetingUrl(`https://risultati.goandswim.it/#/GARA/${RACE_800_M35.toUpperCase()}/Split`))
+      .to.deep.equal({ type: 'race', eventRaceId: RACE_800_M35, mode: 'split' });
+    expect(() => GasUtil.parseMeetingUrl('https://risultati.goandswim.it/evento/%E0%A4%A')).to.throw(/Unsupported/);
+  });
+
   it('converts Go&Swim timings to the FICR format', () => {
     expect(GasUtil.convertTiming('12\'01"84')).to.equal('12\'01.84');
     expect(GasUtil.convertTiming('01\'21"11')).to.equal('1\'21.11');
@@ -123,6 +131,27 @@ describe('GoAndSwim crawler utils', () => {
     expect(GasUtil.splitAthleteName('ROSSI MARIA GRAZIA')).to.deep.equal({ lastName: 'ROSSI', firstName: 'MARIA GRAZIA' });
     expect(GasUtil.splitAthleteName('DE LA CRUZ ANNA MARIA')).to.deep.equal({ lastName: 'DE LA', firstName: 'CRUZ ANNA MARIA' });
     expect(GasUtil.splitAthleteName('CHER')).to.deep.equal({ lastName: 'CHER', firstName: '' });
+  });
+
+  it('normalises names like Import::SwimmerNameSplitter.normalize before splitting', () => {
+    expect(GasUtil.normalizeAthleteName("  D`ANGELO   MARIA ")).to.equal("D'ANGELO MARIA");
+    expect(GasUtil.normalizeAthleteName('DELL\u2019ACQUA LUCA')).to.equal("DELL'ACQUA LUCA");
+    expect(GasUtil.splitAthleteName('D\u2019ANGELO  MARIA')).to.deep.equal({ lastName: "D'ANGELO", firstName: 'MARIA' });
+    expect(GasUtil.splitRelayMembers('D`ANGELO MARIA<br/>ROSSI ANNA')).to.deep.equal(["D'ANGELO MARIA", 'ROSSI ANNA']);
+  });
+
+  it('treats a last split within 50 hundredths of the final time as the final time', () => {
+    const individual = GasUtil.buildLaps({ length: 200, splits: ['30.00', '1\'00.00', '1\'30.00', '2\'00.40'], finalTiming: '2\'00.00' });
+    expect(individual.warning).to.equal(null);
+    expect(individual.laps.map((lap) => lap.distance)).to.deep.equal(['50m', '100m', '150m']);
+
+    const relay = GasUtil.buildRelayLaps({ legLength: 50, legCount: 4, splits: ['30.00', '1\'00.00', '1\'30.00', '1\'59.50'], finalTiming: '2\'00.00' });
+    expect(relay.warning).to.equal(null);
+    expect(relay.laps.map((lap) => lap.delta)).to.deep.equal(['30.00', '30.00', '30.00', '30.00']);
+
+    // Beyond the tolerance the last split stays a lap of its own
+    const far = GasUtil.buildLaps({ length: 200, splits: ['50.00', '1\'40.00', '1\'59.00'], finalTiming: '2\'00.00' });
+    expect(far.laps.map((lap) => lap.distance)).to.deep.equal(['50m', '100m', '150m']);
   });
 
   it('builds 100 m laps from the real 800 m splits, ignoring the step field', () => {
@@ -218,14 +247,14 @@ describe('GoAndSwimCrawler', () => {
     expect(output.crawlerWarnings).to.equal(undefined);
     expect(progress).to.deep.equal([[1, 4], [2, 4], [3, 4], [4, 4]]);
 
-    // The two 800 SL F races (M35 and M30) are merged into one event
+    // Programme order (prgNr); the two 800 SL F races (M30 and M35) are merged into one event
     expect(output.events.map((event) => `${event.eventCode}|${event.eventGender}|${event.relay}`))
-      .to.deep.equal(['800SL|F|false', '50SL|F|false', '100DO|F|false']);
-    const event800 = output.events[0];
+      .to.deep.equal(['50SL|F|false', '100DO|F|false', '800SL|F|false']);
+    const event800 = output.events[2];
     expect(event800).to.include({ eventLength: '800', eventStroke: 'SL', eventDescription: '800m Stile Libero' });
-    expect(event800.results.map((result) => result.category)).to.deep.equal(['M35', 'M35', 'M30']);
+    expect(event800.results.map((result) => result.category)).to.deep.equal(['M30', 'M35', 'M35']);
 
-    const panzetti = event800.results[1];
+    const panzetti = event800.results[2];
     expect(panzetti).to.include({
       ranking: 2,
       swimmer: 'F|PANZETTI|NAILA|1990|COOPERNUOTO',
@@ -249,10 +278,10 @@ describe('GoAndSwimCrawler', () => {
     expect(panzetti).not.to.have.property('source_calculation_flag');
     expect(panzetti.laps).to.have.length(7);
     expect(panzetti.laps[0]).to.deep.equal({ distance: '100m', timing: '1\'21.11', delta: '1\'21.11', position: null });
-    expect(event800.results[2].laps).to.deep.equal([]); // LONARDINI: no splits published
+    expect(event800.results[0].laps).to.deep.equal([]); // LONARDINI: no splits published
 
-    expect(output.events[1].results[0]).to.include({ timing: '37.54', ranking: 1 });
-    expect(output.events[1].results[0].laps).to.deep.equal([]);
+    expect(output.events[0].results[0]).to.include({ timing: '37.54', ranking: 1 });
+    expect(output.events[0].results[0].laps).to.deep.equal([]);
 
     expect(Object.keys(output.swimmers)).to.have.members([
       'F|CHERICI|ARIANNA|1991|SO.GE.SE SOC. COOP',
@@ -295,6 +324,7 @@ describe('GoAndSwimCrawler', () => {
     const [first, second, third] = relayEvent.results;
     expect(first).to.include({
       relay: true,
+      gender: 'X',
       ranking: 1,
       team: 'AQUATIC TEAM RAVENNA',
       relay_name: 'AQUATIC TEAM RAVENNA',
@@ -319,7 +349,14 @@ describe('GoAndSwimCrawler', () => {
     ]);
     expect(second.lane).to.equal(0);
     expect(second.laps).to.have.length(4);
-    expect(third.laps).to.deep.equal([]);
+    expect(relayEvent.results.map((result) => result.gender)).to.deep.equal(['X', 'X', 'X']);
+    // RICCIONE: no splits published, members kept with one blank-delta lap per leg
+    expect(third.laps).to.deep.equal([
+      { distance: '50m', delta: '', swimmer: '|MAIOLI|VIOLA||ASD POLISPORTIVA RICCIONE APS' },
+      { distance: '100m', delta: '', swimmer: '|MAZZONI|SAMANTA||ASD POLISPORTIVA RICCIONE APS' },
+      { distance: '150m', delta: '', swimmer: '|COLONNA|MATTIA||ASD POLISPORTIVA RICCIONE APS' },
+      { distance: '200m', delta: '', swimmer: '|COCCO|FILIPPO||ASD POLISPORTIVA RICCIONE APS' }
+    ]);
 
     // Relay members are registered only when referenced by laps (no year, gender unknown on X races)
     expect(output.swimmers['|BRIGLIADORI|ANDREA||AQUATIC TEAM RAVENNA']).to.deep.equal({
@@ -330,7 +367,7 @@ describe('GoAndSwimCrawler', () => {
       year: null,
       team: 'AQUATIC TEAM RAVENNA'
     });
-    expect(Object.keys(output.swimmers).filter((key) => key.includes('RICCIONE'))).to.deep.equal([]);
+    expect(Object.keys(output.swimmers).filter((key) => key.includes('RICCIONE'))).to.have.length(4);
     expect(output.teams).to.have.property('ASD POLISPORTIVA RICCIONE APS');
 
     const individual = output.events[1];
@@ -354,6 +391,7 @@ describe('GoAndSwimCrawler', () => {
     });
 
     const output = await crawler.crawlFromApi({ eventId: 'E1' });
+    expect(output.events[0].results[0].gender).to.equal('X');
     const laps = output.events[0].results[0].laps;
     expect(laps[0].swimmer).to.equal('M|BRIGLIADORI|ANDREA|1998|AQUATIC TEAM RAVENNA');
     expect(laps[1].swimmer).to.equal('|ZANETTI|FEDERICO||AQUATIC TEAM RAVENNA');
@@ -377,7 +415,7 @@ describe('GoAndSwimCrawler', () => {
     const output = await crawler.crawlFromApi({ eventId: 'E1' });
     const result = output.events[0].results[0];
     expect(output.events[0]).to.include({ eventCode: '4X50SL', eventGender: 'F', eventLength: '4X50' });
-    expect(result).to.include({ category: '80-99', standard_points: 800 });
+    expect(result).to.include({ category: '80-99', standard_points: 800, gender: 'F' });
     expect(result.laps[1].swimmer).to.equal('F|DE LUCA|MARIA||TEAM ONE');
     expect(output.swimmers['F|DE LUCA|MARIA||TEAM ONE']).to.include({ gender: 'F', year: null });
   });
@@ -442,6 +480,149 @@ describe('GoAndSwimCrawler', () => {
     expect(oddResult).to.include({ disqualified: false, timing: null, ranking: null, source_calculation_flag: 'F' });
     expect(output.crawlerWarnings.join('\n')).to.match(/status "R"/);
     expect(output.crawlerWarnings.join('\n')).to.match(/1 no-show row/);
+  });
+
+  it('keeps the crawl going when the splits of one swimmer cannot be loaded', async () => {
+    const { crawler, apiClient } = stubCrawler({
+      races: [race({ eventRaceId: 'R100', length: 100, eventRaceDescription: '100 STILE LIBERO MASTER 35 FEMMINILE' })],
+      results: {
+        R100: [
+          row({ eventRaceMemberId: 'c1', raceTime: '01\'20"00' }),
+          row({ eventRaceMemberId: 'c2', athleteName: 'NERI LIA', clubName: 'TEAM TWO', raceTime: '01\'21"00' })
+        ]
+      },
+      splits: { c2: '00\'40"00-01\'21"00-' }
+    });
+    apiClient.loadSplits = async (id) => {
+      apiClient.calls.loadSplits.push(id);
+      if (id === 'c1') throw new Error('HTTP 500 from splits');
+      return { splitDetails: '00\'40"00-01\'21"00-' };
+    };
+
+    const output = await crawler.crawlFromApi({ eventId: 'E1' });
+    expect(apiClient.calls.loadSplits).to.deep.equal(['c1', 'c2']);
+    const [rossi, neri] = output.events[0].results;
+    expect(rossi.laps).to.deep.equal([]);
+    expect(neri.laps).to.have.length(1);
+    const warning = output.crawlerWarnings.find((text) => text.includes('ROSSI ANNA'));
+    expect(warning).to.include('TEAM ONE').and.include('100SL').and.include('HTTP 500');
+  });
+
+  it('fails with the race description and id when the results of a race cannot be loaded', async () => {
+    const { crawler, apiClient } = stubCrawler({ races: [race({ eventRaceId: 'R1' })] });
+    apiClient.loadResults = async () => { throw new Error('HTTP 502 from results'); };
+    let error;
+    try { await crawler.crawlFromApi({ eventId: 'E1' }); } catch (caught) { error = caught; }
+    expect(error).to.be.an('error');
+    expect(error.message).to.include('50 STILE LIBERO MASTER 35 FEMMINILE').and.include('R1').and.include('HTTP 502');
+  });
+
+  it('folds relay splits by the event leg count and detaches mismatching members', async () => {
+    const { crawler } = stubCrawler({
+      races: [race({ eventRaceId: 'REL', eventRaceDescription: '4X50 STILE LIBERO STAFFETTA MASTER FEMMINILE', categoryId: 'M80S', length: 50 })],
+      results: {
+        REL: [row({
+          eventRaceMemberId: 'RR1', athleteName: 'TEAM ONE', categoryId: 'M80S', raceTime: '02\'00"00',
+          relayTeamMembers: 'ROSSI ANNA<br/>BIANCHI LUCA<br/><br/>'
+        })]
+      },
+      splits: { RR1: '00\'30"00-01\'00"00-01\'30"00-02\'00"00-' }
+    });
+
+    const output = await crawler.crawlFromApi({ eventId: 'E1' });
+    const result = output.events[0].results[0];
+    expect(result.laps).to.deep.equal([
+      { distance: '50m', delta: '30.00', swimmer: null },
+      { distance: '100m', delta: '30.00', swimmer: null },
+      { distance: '150m', delta: '30.00', swimmer: null },
+      { distance: '200m', delta: '30.00', swimmer: null }
+    ]);
+    expect(output.swimmers).to.deep.equal({});
+    expect(output.crawlerWarnings.join('\n')).to.match(/2 relay member\(s\) listed for 4 legs/);
+  });
+
+  it('keeps relay members with blank-delta legs for disqualified relays', async () => {
+    const { crawler, apiClient } = stubCrawler({
+      races: [race({ eventRaceId: 'REL', eventRaceDescription: '4X50 STILE LIBERO STAFFETTA MASTER FEMMINILE', categoryId: 'M80S', length: 50 })],
+      results: {
+        REL: [row({
+          eventRaceMemberId: 'RR1', athleteName: 'TEAM ONE', categoryId: 'M80S', raceTime: 'Squalif.', raceStatus: 'S', finalPosition: 1000,
+          relayTeamMembers: 'ROSSI ANNA<br/>DE LUCA MARIA<br/>BIANCHI EVA<br/>VERDI IDA'
+        })]
+      }
+    });
+
+    const output = await crawler.crawlFromApi({ eventId: 'E1' });
+    const result = output.events[0].results[0];
+    expect(apiClient.calls.loadSplits).to.deep.equal([]);
+    expect(result).to.include({ disqualified: true, timing: null, gender: 'F' });
+    expect(result.laps.map((lap) => [lap.distance, lap.delta, lap.swimmer])).to.deep.equal([
+      ['50m', '', 'F|ROSSI|ANNA||TEAM ONE'],
+      ['100m', '', 'F|DE LUCA|MARIA||TEAM ONE'],
+      ['150m', '', 'F|BIANCHI|EVA||TEAM ONE'],
+      ['200m', '', 'F|VERDI|IDA||TEAM ONE']
+    ]);
+  });
+
+  it('skips an overall ("A") individual race repeating the per-category master races', async () => {
+    const { crawler, apiClient } = stubCrawler({
+      races: [
+        race({ eventRaceId: 'M35', length: 800, eventRaceDescription: '800 STILE LIBERO MASTER 35 FEMMINILE' }),
+        race({ eventRaceId: 'ALL', length: 800, categoryId: 'A', sex: 'X', eventRaceDescription: '800 STILE LIBERO ASSOLUTI MISTI' })
+      ],
+      results: {
+        M35: [row({ eventRaceMemberId: 'm1', raceTime: '12\'00"00' })],
+        ALL: [row({ eventRaceMemberId: 'a1', raceTime: '12\'00"00', categoryId: 'A' })]
+      }
+    });
+
+    const output = await crawler.crawlFromApi({ eventId: 'E1' });
+    expect(output.events.map((event) => `${event.eventCode}|${event.eventGender}`)).to.deep.equal(['800SL|F']);
+    expect(output.events[0].results).to.have.length(1);
+    expect(apiClient.calls.loadResults).not.to.include('ALL');
+    const skipped = output.crawlerWarnings.filter((text) => text.includes('800 STILE LIBERO ASSOLUTI MISTI'));
+    expect(skipped).to.have.length(1);
+  });
+
+  it('crawls a mixed individual race taking each gender from the same athlete in M/F races', async () => {
+    const { crawler } = stubCrawler({
+      races: [
+        race({ eventRaceId: 'ALL', prgNr: 1, length: 800, categoryId: 'A', sex: 'X', eventRaceDescription: '800 STILE LIBERO ASSOLUTI MISTI' }),
+        race({ eventRaceId: 'F50', prgNr: 2, eventRaceDescription: '50 STILE LIBERO MASTER 35 FEMMINILE' })
+      ],
+      results: {
+        ALL: [
+          row({ eventRaceMemberId: 'a1', athleteId: 'A1', raceTime: '12\'00"00', categoryId: 'A' }),
+          row({ eventRaceMemberId: 'a2', athleteId: 'A2', athleteName: 'NERI LIA', raceTime: '12\'10"00', categoryId: 'A' })
+        ],
+        F50: [row({ eventRaceMemberId: 'f1', athleteId: 'A1' })]
+      }
+    });
+
+    const output = await crawler.crawlFromApi({ eventId: 'E1' });
+    expect(output.events.map((event) => `${event.eventCode}|${event.eventGender}`)).to.deep.equal(['800SL|X', '50SL|F']);
+    const [rossi, neri] = output.events[0].results;
+    expect(rossi).to.include({ gender: 'F', swimmer: 'F|ROSSI|ANNA|1990|TEAM ONE' });
+    expect(neri).to.include({ gender: null, swimmer: '|NERI|LIA|1990|TEAM ONE' });
+    expect(output.crawlerWarnings.join('\n')).to.match(/NERI LIA/);
+  });
+
+  it('keeps one-word athletes with a warning and normalises apostrophes in keys', async () => {
+    const { crawler } = stubCrawler({
+      races: [race({ eventRaceId: 'R1' })],
+      results: {
+        R1: [
+          row({ eventRaceMemberId: 'r1', athleteName: 'CHER' }),
+          row({ eventRaceMemberId: 'r2', athleteId: 'A2', athleteName: 'D`ANGELO MARIA' })
+        ]
+      }
+    });
+
+    const output = await crawler.crawlFromApi({ eventId: 'E1' });
+    expect(output.events[0].results.map((result) => result.swimmer))
+      .to.deep.equal(['F|CHER||1990|TEAM ONE', "F|D'ANGELO|MARIA|1990|TEAM ONE"]);
+    expect(output.swimmers["F|D'ANGELO|MARIA|1990|TEAM ONE"]).to.include({ complete_name: "D'ANGELO MARIA" });
+    expect(output.crawlerWarnings.join('\n')).to.match(/one-word name.*CHER/);
   });
 
   it('fails when the meeting has no published results', async () => {

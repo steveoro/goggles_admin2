@@ -7,13 +7,19 @@
 const { clean, deltaTiming, formatTiming, timingToHundredths } = require('./ficr-crawler-utils');
 
 const HOST = 'risultati.goandswim.it';
+const HOST_PATTERN = /^(www\.)?risultati\.goandswim\.it$/i;
+// A last split this close to the final time (hundredths) is the final time itself.
+const FINAL_SPLIT_TOLERANCE = 50;
 const STROKES = { S: 'SL', D: 'DO', R: 'RA', F: 'FA', M: 'MI' };
 const STROKE_NAMES = { SL: 'Stile Libero', DO: 'Dorso', RA: 'Rana', FA: 'Farfalla', MI: 'Misti' };
 const LAP_INTERVALS = [25, 50, 100];
 // Same particles as Import::SwimmerNameSplitter on the Rails side.
 const SURNAME_PARTICLES = ['DA', 'DAL', 'DALLA', 'DALLE', 'DE', 'DEI', 'DEL', 'DELLA', 'DELLE', 'DEGLI', 'DI', 'DO', 'LA', 'LE', 'LI', 'LO'];
 
-// Accepts "/evento/<eventId>" and "/gara/<eventRaceId>[/<mode>]" (path or hash route).
+const UNSUPPORTED_URL = 'Unsupported Go&Swim URL; expected /evento/<id> or /gara/<id>[/<mode>]';
+
+// Accepts "/evento/<eventId>" and "/gara/<eventRaceId>[/<mode>]" (path or hash route),
+// on an optional "www." host; segments and ids are case-insensitive (ids lowercased).
 function parseMeetingUrl(meetingUrl) {
   let parsed;
   try {
@@ -21,14 +27,19 @@ function parseMeetingUrl(meetingUrl) {
   } catch (error) {
     throw new Error(`meeting_url must be a ${HOST} URL`);
   }
-  if (parsed.hostname.toLowerCase() !== HOST) throw new Error(`meeting_url must be a ${HOST} URL`);
+  if (!HOST_PATTERN.test(parsed.hostname)) throw new Error(`meeting_url must be a ${HOST} URL`);
 
   const route = parsed.hash && parsed.hash.length > 2 ? parsed.hash.replace(/^#/, '') : parsed.pathname;
-  const parts = route.split('/').filter(Boolean).map(decodeURIComponent);
+  let parts;
+  try {
+    parts = route.split('/').filter(Boolean).map((part) => decodeURIComponent(part).toLowerCase());
+  } catch (error) {
+    throw new Error(UNSUPPORTED_URL);
+  }
   const id = parts[1];
   if (parts[0] === 'evento' && id) return { type: 'event', eventId: id };
   if (parts[0] === 'gara' && id) return { type: 'race', eventRaceId: id, mode: parts[2] || null };
-  throw new Error('Unsupported Go&Swim URL; expected /evento/<id> or /gara/<id>[/<mode>]');
+  throw new Error(UNSUPPORTED_URL);
 }
 
 // "MM'SS\"CC" → hundredths, or null for zero, out-of-range or textual values.
@@ -81,15 +92,21 @@ function relayCategory(description, categoryId) {
 function splitRelayMembers(value) {
   return String(value || '')
     .split(/<br\s*\/?>/i)
-    .map(clean)
+    .map(normalizeAthleteName)
     .filter(Boolean);
+}
+
+// Mirrors Import::SwimmerNameSplitter.normalize (Rails): trimmed, squeezed
+// spaces, backtick and typographic apostrophe turned into "'".
+function normalizeAthleteName(value) {
+  return clean(value).replace(/[`\u2019]/g, "'");
 }
 
 // "LAST FIRST" split mirroring Import::SwimmerNameSplitter (Rails), so that the
 // swimmer keys built here survive the Phase 3 name resolution unchanged:
 // 2 tokens → 1+1; 3 tokens → 2+1 after a surname particle, else 1+2; 4+ → 2+rest.
 function splitAthleteName(fullName) {
-  const tokens = clean(fullName).split(' ').filter(Boolean);
+  const tokens = normalizeAthleteName(fullName).split(' ').filter(Boolean);
   if (tokens.length === 0) return { lastName: '', firstName: '' };
   if (tokens.length === 1) return { lastName: tokens[0], firstName: '' };
   if (tokens.length === 2) return { lastName: tokens[0], firstName: tokens[1] };
@@ -110,16 +127,18 @@ function parseSplits(splitDetails) {
 }
 
 // Splits as a cumulative list that always ends with the final time
-// (the API usually includes it; when it does not, it is appended).
+// (the API usually includes it; when it does not, it is appended). A last split
+// within FINAL_SPLIT_TOLERANCE of the final time is replaced by the final time.
 function withFinal(splits, finalTiming) {
-  const last = splits[splits.length - 1];
-  if (!finalTiming || sameTiming(last, finalTiming)) return [...splits];
+  if (!finalTiming) return [...splits];
+  if (closeTiming(splits[splits.length - 1], finalTiming)) return [...splits.slice(0, -1), finalTiming];
   return [...splits, finalTiming];
 }
 
-function sameTiming(left, right) {
+function closeTiming(left, right) {
   const a = timingToHundredths(left);
-  return a !== null && a === timingToHundredths(right);
+  const b = timingToHundredths(right);
+  return a !== null && b !== null && Math.abs(a - b) <= FINAL_SPLIT_TOLERANCE;
 }
 
 function isIncreasing(timings) {
@@ -203,6 +222,7 @@ module.exports = {
   formatHundredths: formatTiming,
   isRelay,
   isoDate,
+  normalizeAthleteName,
   parseMeetingUrl,
   parseSplits,
   relayCategory,

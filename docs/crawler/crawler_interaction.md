@@ -41,6 +41,14 @@ The crawler is triggered via specific actions in the `PullController`:
     * The optional target-event field is ignored for FICR; the crawler processes the complete meeting.
     * Output is a single LT4 JSON file under `crawler/data/results.new/<season_id>/`. The UI target ID is 5, while the JSON `layoutType` remains 4 so the existing DataFix V2 pipeline can consume it.
 
+5. **Direct Go&Swim Result Crawling (layout ID 6, LT4 output):**
+    * Triggered from the main crawler dashboard (`/pull/index`).
+    * The user selects `Go&Swim results`, enters a `https://risultati.goandswim.it/evento/<id>` (or `/gara/<id>`) meeting URL, and submits the form.
+    * `PullController` calls the local crawler server's `/pull_results_goandswim` endpoint.
+    * The Go&Swim crawler reads the site's public JSON API directly (no browser) and processes the whole meeting.
+    * The optional target-event field is ignored for Go&Swim; the crawler processes the complete meeting.
+    * Output is a single LT4 JSON file under `crawler/data/results.new/<season_id>/`. The UI target ID is 6, while the JSON `layoutType` remains 4 so the existing DataFix V2 pipeline can consume it.
+
 ## Data Storage
 
 The crawler saves the fetched/generated files locally within the `goggles_admin2` project structure:

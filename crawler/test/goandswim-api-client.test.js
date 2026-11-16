@@ -108,4 +108,26 @@ describe('GoAndSwimApiClient', () => {
     const noDetails = new GoAndSwimApiClient({ fetchImpl: async () => response({ splitDetails: '' }), requestDelayMs: 0 });
     expect(await noDetails.loadSplits(MEMBER_ID)).to.equal(null);
   });
+
+  it('returns null splits for a 404, an empty body or invalid JSON without retrying', async () => {
+    const invalid = () => ({ ok: true, status: 200, json: async () => { throw new SyntaxError('Unexpected end of JSON input'); } });
+    for (const reply of [() => response(null, { ok: false, status: 404 }), invalid]) {
+      let attempts = 0;
+      const client = new GoAndSwimApiClient({
+        fetchImpl: async () => { attempts += 1; return reply(); },
+        requestDelayMs: 0,
+        maxRetries: 2
+      });
+      expect(await client.loadSplits(MEMBER_ID)).to.equal(null);
+      expect(attempts).to.equal(1);
+    }
+  });
+
+  it('still throws on a 404 for the other endpoints', async () => {
+    const client = new GoAndSwimApiClient({ fetchImpl: async () => response(null, { ok: false, status: 404 }), requestDelayMs: 0, maxRetries: 0 });
+    let error;
+    try { await client.loadResults(RACE_ID); } catch (caught) { error = caught; }
+    expect(error).to.be.instanceOf(Error);
+    expect(error.message).to.match(/HTTP 404/);
+  });
 });

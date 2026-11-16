@@ -577,7 +577,8 @@ module Import
       partial_key = build_swimmer_key(result)
       return { swimmer_id: nil, swimmer_key: full_key.presence || partial_key } if partial_key.blank?
 
-      swimmer = phase3_swimmers_by_key[full_key] || phase3_swimmers_by_key[partial_key]
+      swimmer = phase3_swimmers_by_key[full_key] || phase3_swimmers_by_key[partial_key] ||
+                find_gender_inferred_swimmer(full_key)
       if swimmer&.dig('swimmer_id')
         Rails.logger.info("[Phase5Populator] Found swimmer_id=#{swimmer['swimmer_id']} for exact key=#{swimmer['key']}")
         return { swimmer_id: swimmer['swimmer_id'], swimmer_key: swimmer['key'] }
@@ -606,6 +607,16 @@ module Import
 
       Rails.logger.warn("[Phase5Populator] No swimmer match found for key=#{partial_key}")
       { swimmer_id: nil, swimmer_key: full_key.presence || partial_key }
+    end
+
+    # A gender-less source key ("|LAST|FIRST||TEAM", e.g. a mixed relay member)
+    # may have been rebuilt by Phase 3 with the inferred gender ("F|LAST|FIRST||TEAM").
+    # Returns the Phase 3 swimmer only when exactly one of the M/F variants exists.
+    def find_gender_inferred_swimmer(full_key)
+      return nil unless full_key.to_s.start_with?('|')
+
+      candidates = %w[M F].filter_map { |gender| phase3_swimmers_by_key["#{gender}#{full_key}"] }
+      candidates.one? ? candidates.first : nil
     end
 
     # Find swimmer_id from phase 3 data using flexible key matching

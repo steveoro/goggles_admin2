@@ -17,6 +17,7 @@ const {
   dateRange,
   isRelay,
   isoDate,
+  normalizeAthleteName,
   parseMeetingUrl,
   parseSplits,
   relayCategory,
@@ -68,6 +69,7 @@ class GoAndSwimCrawler {
     this.fiftyProbes = 0;
     this.fiftySplits = null; // null = undecided; true/false after probing
     this.relayResults = [];
+    this.athleteGenders = new Map();
   }
 
   parseMeetingUrl(meetingUrl = this.meetingUrl) {
@@ -87,13 +89,14 @@ class GoAndSwimCrawler {
     this.resetCrawlState();
     const eventId = typeof source === 'string' ? source : source.eventId;
     const header = await this.apiClient.loadEvent(eventId);
-    const races = (await this.apiClient.loadRaces(eventId)).filter((race) => Number(race.raceStatus) >= 2);
+    const races = this.sortRaces((await this.apiClient.loadRaces(eventId)).filter((race) => Number(race.raceStatus) >= 2));
     const output = this.createOutput(eventId, header);
+    const rowsByRace = await this.loadAllResults(races, onProgress);
+    this.athleteGenders = this.indexAthleteGenders(races, rowsByRace);
     const crawledRaces = [];
 
-    for (const [index, race] of races.entries()) {
-      onProgress(`Go&Swim race ${clean(race.eventRaceDescription)}`, index + 1, races.length);
-      const rows = await this.apiClient.loadResults(race.eventRaceId);
+    for (const race of races) {
+      const rows = rowsByRace.get(race) || [];
       if (!rows.length) continue;
 
       crawledRaces.push(race);
@@ -111,6 +114,72 @@ class GoAndSwimCrawler {
     if (this.noShowCount) this.warn(`${this.noShowCount} no-show row(s) (status N) skipped`);
     this.stripInternalFields(output);
     return output;
+  }
+
+  // Programme order: race date, then programme number, then API order.
+  sortRaces(races) {
+    const programme = (race) => {
+      const value = clean(race.prgNr);
+      return value && Number.isFinite(Number(value)) ? Number(value) : Number.MAX_SAFE_INTEGER;
+    };
+    return races
+      .map((race, index) => ({ race, index, date: isoDate(race.raceDate) || '' }))
+      .sort((a, b) => a.date.localeCompare(b.date) || programme(a.race) - programme(b.race) || a.index - b.index)
+      .map(({ race }) => race);
+  }
+
+  // Loads the rows of every race (Map race → rows). Overall (non "M<age>")
+  // individual races are loaded last and skipped when per-category master races
+  // with results cover the same length and stroke: they repeat the same swims.
+  async loadAllResults(races, onProgress) {
+    const rowsByRace = new Map();
+    const overall = races.filter((race) => this.isOverallIndividualRace(race));
+    const ordered = [...races.filter((race) => !overall.includes(race)), ...overall];
+    const masterSwims = new Set();
+
+    for (const [index, race] of ordered.entries()) {
+      onProgress(`Go&Swim race ${clean(race.eventRaceDescription)}`, index + 1, ordered.length);
+      if (overall.includes(race) && masterSwims.has(this.swimKey(race))) {
+        this.warn(`Skipped overall race "${clean(race.eventRaceDescription)}" (${race.eventRaceId}): it repeats the per-category master races`);
+        continue;
+      }
+      const rows = await this.loadRaceResults(race);
+      rowsByRace.set(race, rows);
+      if (rows.length && !overall.includes(race) && !isRelay(race.eventRaceDescription)) masterSwims.add(this.swimKey(race));
+    }
+    return rowsByRace;
+  }
+
+  // A missing race would silently drop results: a failure here stays fatal.
+  async loadRaceResults(race) {
+    try {
+      return await this.apiClient.loadResults(race.eventRaceId);
+    } catch (error) {
+      throw new Error(`Go&Swim results for race "${clean(race.eventRaceDescription)}" (${race.eventRaceId}) could not be loaded: ${error.message}`);
+    }
+  }
+
+  isOverallIndividualRace(race) {
+    return !isRelay(race.eventRaceDescription) && !/^M\d+/i.test(clean(race.categoryId));
+  }
+
+  swimKey(race) {
+    return `${Number(race.length) || 0}|${strokeCode(race.styleId)}`;
+  }
+
+  // athleteId → M/F from the individual M/F races of the meeting (null when ambiguous).
+  indexAthleteGenders(races, rowsByRace) {
+    const genders = new Map();
+    races.forEach((race) => {
+      const gender = normalizeGender(race.sex);
+      if (isRelay(race.eventRaceDescription) || !['M', 'F'].includes(gender)) return;
+      (rowsByRace.get(race) || []).forEach((row) => {
+        const athleteId = clean(row.athleteId);
+        if (!athleteId) return;
+        genders.set(athleteId, genders.has(athleteId) && genders.get(athleteId) !== gender ? null : gender);
+      });
+    });
+    return genders;
   }
 
   createOutput(eventId, header) {
@@ -169,7 +238,7 @@ class GoAndSwimCrawler {
       return null;
     }
 
-    const name = clean(row.athleteName);
+    const name = normalizeAthleteName(row.athleteName);
     const disqualified = status === 'S';
     let timing = disqualified ? null : convertTiming(row.raceTime);
     if (!disqualified && timing === null) {
@@ -199,35 +268,46 @@ class GoAndSwimCrawler {
     };
     if (clean(row.calculationFlag)) sourceFields.source_calculation_flag = clean(row.calculationFlag);
 
-    const splitDetails = timing && this.shouldLoadSplits(definition)
-      ? await this.loadSplitDetails(row.eventRaceMemberId, definition)
-      : null;
+    const splits = timing && this.shouldLoadSplits(definition)
+      ? await this.loadSplitDetails(row, definition, name, teamName)
+      : { splitDetails: null, failed: false };
+    const { splitDetails } = splits;
 
     if (definition.relay) {
       const members = splitRelayMembers(row.relayTeamMembers);
+      const { legCount, legLength } = definition;
+      const attachMembers = members.length === legCount;
       const result = {
         relay: true,
         ...common,
         relay_name: name || teamName,
+        gender: definition.eventGender,
         category: relayCategory(race.eventRaceDescription, row.categoryId || race.categoryId),
         standard_points: positiveOrNull(row.point2) ?? positiveOrNull(row.point),
         laps: [],
         ...sourceFields,
         source_relay_members: members
       };
-      if (timing) {
-        const { laps, warning } = buildRelayLaps({
-          legLength: definition.legLength,
-          legCount: members.length || definition.legCount,
-          splits: parseSplits(splitDetails),
-          finalTiming: timing
-        });
+      if (timing && !splits.failed) {
+        const { laps, warning } = buildRelayLaps({ legLength, legCount, splits: parseSplits(splitDetails), finalTiming: timing });
         result.laps = laps;
-        if (warning) this.splitWarning(result, splitDetails, `${warning}; relay members not attached`, name, definition, row);
+        if (warning) {
+          const kept = attachMembers ? '; relay members kept with blank leg times' : '';
+          this.splitWarning(result, splitDetails, `No split times for ${name} (${this.label(definition, row)}): ${warning}${kept}`);
+        }
+      }
+      // Rails builds the relay swimmers from the laps only: without usable
+      // splits (or for DSQ relays) one blank-delta lap per leg keeps the members.
+      if (!result.laps.length && attachMembers) {
+        result.laps = Array.from({ length: legCount }, (_, index) => ({ distance: `${legLength * (index + 1)}m`, delta: '' }));
+      }
+      if (!attachMembers) {
+        this.warn(`${members.length} relay member(s) listed for ${legCount} legs: members not attached to ${name} (${this.label(definition, row)})`);
       }
       if (result.laps.length) {
-        result.__members = members;
+        result.__members = attachMembers ? members : [];
         result.__teamName = teamName;
+        result.__label = this.label(definition, row);
         this.relayResults.push({ result, gender: definition.eventGender });
       }
       return result;
@@ -235,7 +315,8 @@ class GoAndSwimCrawler {
 
     const { lastName, firstName } = splitAthleteName(name);
     if (!lastName) return null;
-    const gender = ['M', 'F'].includes(definition.eventGender) ? definition.eventGender : null;
+    if (!firstName) this.warnOneWordName(name, this.label(definition, row));
+    const gender = this.individualGender(definition, row, name);
     const year = positiveOrNull(row.birthYear);
     const swimmer = this.addSwimmer(output, {
       gender, lastName, firstName, completeName: name, year, teamName, sourceId: nullable(row.athleteId)
@@ -252,9 +333,22 @@ class GoAndSwimCrawler {
     if (splitDetails) {
       const { laps, warning } = buildLaps({ length: definition.legLength, splits: parseSplits(splitDetails), finalTiming: timing });
       result.laps = laps;
-      if (warning) this.splitWarning(result, splitDetails, warning, name, definition, row);
+      if (warning) this.splitWarning(result, splitDetails, `No laps for ${name} (${this.label(definition, row)}): ${warning}`);
     }
     return result;
+  }
+
+  // M/F races give the gender; mixed ("X") races take it from the same athlete
+  // in an M/F race of the meeting, else keep the row with a null gender.
+  individualGender(definition, row, name) {
+    if (['M', 'F'].includes(definition.eventGender)) return definition.eventGender;
+    const gender = this.athleteGenders.get(clean(row.athleteId)) || null;
+    if (!gender) this.warn(`No gender found for ${name} (${this.label(definition, row)}): no M/F race of the meeting lists this athlete`);
+    return gender;
+  }
+
+  warnOneWordName(name, label) {
+    this.warn(`Swimmer with a one-word name kept (Phase 3 skips swimmers without a first name): ${name} (${label})`);
   }
 
   // Splits are requested for every relay and every race of 100 m or more;
@@ -266,20 +360,27 @@ class GoAndSwimCrawler {
     return this.fiftySplits !== false;
   }
 
-  async loadSplitDetails(eventRaceMemberId, definition) {
-    const payload = await this.apiClient.loadSplits(eventRaceMemberId);
+  // A failure degrades to a warning: the result is kept without laps.
+  async loadSplitDetails(row, definition, name, teamName) {
+    let payload;
+    try {
+      payload = await this.apiClient.loadSplits(row.eventRaceMemberId);
+    } catch (error) {
+      this.warn(`Splits not loaded for ${name} (${teamName}) in ${this.label(definition, row)}: ${error.message}; kept without laps`);
+      return { splitDetails: null, failed: true };
+    }
     const splitDetails = payload ? clean(payload.splitDetails) || null : null;
     if (!definition.relay && definition.legLength === 50 && this.fiftySplits === null) {
       this.fiftyProbes += 1;
       if (parseSplits(splitDetails).length >= 2) this.fiftySplits = true;
       else if (this.fiftyProbes >= FIFTY_METERS_PROBES) this.fiftySplits = false;
     }
-    return splitDetails;
+    return { splitDetails, failed: false };
   }
 
-  splitWarning(result, splitDetails, reason, name, definition, row) {
+  splitWarning(result, splitDetails, message) {
     if (splitDetails) result.source_splits = splitDetails;
-    this.warn(`No laps for ${name} (${this.label(definition, row)}): ${reason}`);
+    this.warn(message);
   }
 
   label(definition, row) {
@@ -307,6 +408,7 @@ class GoAndSwimCrawler {
           return;
         }
         const { lastName, firstName } = splitAthleteName(fullName);
+        if (!firstName) this.warnOneWordName(fullName, result.__label);
         const candidates = (index.get(this.memberLookupKey(lastName, firstName, teamName)) || [])
           .filter(({ swimmer }) => swimmer.year && (!raceGender || swimmer.gender === raceGender));
         lap.swimmer = candidates.length === 1
