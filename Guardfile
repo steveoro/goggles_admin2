@@ -116,21 +116,6 @@ guard :rspec, rspec_options do
 
   # Watch controller specs directly as requests:
   watch(rails.app_controller)  { "#{rspec.spec_dir}/requests" }
-
-  # Capybara features specs
-  watch(rails.view_dirs)     { |m| rspec.spec.call("features/#{m[1]}") }
-  watch(rails.layouts)       { |m| rspec.spec.call("features/#{m[1]}") }
-end
-#-- ---------------------------------------------------------------------------
-#++
-
-# == Spring ==
-
-guard 'spring', bundler: true do
-  watch('Gemfile.lock')
-  watch(%r{^config/})
-  watch(%r{^spec/(support|factories)/})
-  watch(%r{^spec/factory.rb})
 end
 #-- ---------------------------------------------------------------------------
 #++
@@ -164,30 +149,3 @@ end
 # end
 #-- ---------------------------------------------------------------------------
 #++
-
-# == Cucumber ==
-
-cucumber_options = {
-  cmd: 'AUTO_ARTIFACTS=1 cucumber',
-  cmd_additional_args: '--profile guard',
-  notification: false, all_after_pass: false, all_on_start: false
-}
-
-# Watch everything Cucumber-related and run it:
-guard :cucumber, cucumber_options do
-  # Watch for feature updates:
-  watch(%r{^features/(.+/)?(.+)\.feature$}) do |m|
-    puts "'#{m[0]}' modified..."
-    m[0]
-  end
-  # Watch for support file updates (will trigger a re-run of all features):
-  watch(%r{^features/support/.+$}) do |m|
-    puts "'#{m[0]}' support file modified..."
-    Dir[File.join('features/**/*.feature')]
-  end
-  # Watch for step definition updates (will trigger a re-run of a whole feature):
-  watch(%r{^features/step_definitions/(.+/)?(.+)_steps\.rb$}) do |m|
-    puts "'#{m[1]}' steps file modified..."
-    Dir[File.join("features/**/*#{m[1]}*.feature")]
-  end
-end

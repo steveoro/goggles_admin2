@@ -779,22 +779,6 @@ RSpec.describe DataFixController do
         expect(sessions[1]['description']).to eq('Session 3')
       end
 
-      it 'clears downstream phase data' do
-        delete data_fix_delete_session_path, params: {
-          file_path: source_file,
-          session_index: 0
-        }
-
-        pfm = PhaseFileManager.new(phase1_file)
-        data = pfm.data
-        expect(data['meeting_event']).to eq([])
-        expect(data['meeting_program']).to eq([])
-        expect(data['meeting_individual_result']).to eq([])
-        expect(data['lap']).to eq([])
-        expect(data['relay_lap']).to eq([])
-        expect(data['meeting_relay_swimmer']).to eq([])
-      end
-
       it 'rejects negative session_index' do
         delete data_fix_delete_session_path, params: {
           file_path: source_file,

@@ -118,6 +118,26 @@ RSpec.describe PushController do
         expect(flash[:error]).to be_blank
       end
 
+      it 'moves a pushed file from results.new to results.sent only' do
+        allow(File).to receive(:open).with(anything) { StringIO.new('') }
+
+        post '/push/upload', params: { file_path: 'data/results.new/242/a/0001-a.sql' }
+
+        expect(File).to have_received(:rename)
+          .with('data/results.new/242/a/0001-a.sql', 'data/results.sent/242/a/0001-a.sql')
+      end
+
+      it 'refuses a results.sent path (single file or glob) with the already_sent warning' do
+        ['data/results.sent/242/a/0001-a.sql', 'data/results.sent/242/*.sql'].each do |sent_path|
+          post '/push/upload', params: { file_path: sent_path }
+
+          expect(response).to redirect_to(push_index_path)
+          expect(flash[:warning]).to eq(I18n.t('data_import.push.already_sent'))
+        end
+        expect(APIProxy).not_to have_received(:call)
+        expect(File).not_to have_received(:rename)
+      end
+
       it 'refuses any path outside crawler/data' do
         ['/etc/passwd', 'data/../../config/*.sql', Rails.root.join('config/database.yml').to_s].each do |bad_path|
           post '/push/upload', params: { file_path: bad_path }

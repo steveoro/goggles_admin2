@@ -81,12 +81,10 @@ class PushController < FileListController
 
   # [POST] Data-import push/send.
   #
-  # Allows single batch file push.
-  # "Consumes" the local batch file afterwards by moving it to either to the 'sent' or 'done' folder
-  # depending if this is the first upload or the sencond. (The target folder includes the season code as subfolder).
-  #
-  # Having 3 steps until "done" allows us a double results upload: 1° staging, 2° production.
-  # (Currently, a manual configuration change is required in between.)
+  # Allows single batch file push (or all the files of a 'results.new' folder).
+  # "Consumes" the local batch file afterwards by moving it from 'results.new' to 'results.sent'
+  # (the target folder includes the season code as subfolder).
+  # Files outside 'results.new' are refused.
   #
   # === Params:
   # - :file_path => path to the SQL file storing the data-import transaction.
@@ -97,7 +95,7 @@ class PushController < FileListController
   #
   # rubocop:disable-next Metrics/AbcSize
   def upload
-    return unless file_path_allowed?
+    return unless file_path_allowed? && file_path_pending?
 
     # Handle file globs (same recursive listing & sorting as FileListController#result_files):
     if @file_path.ends_with?('*.sql')
@@ -141,6 +139,15 @@ class PushController < FileListController
 
     flash[:warning] = I18n.t('data_import.errors.invalid_request')
     redirect_to(push_index_path)
+    false
+  end
+
+  # True only when @file_path lies in 'results.new'; files already moved to 'results.sent'
+  # (or beyond) are never pushed again: flashes a warning and redirects otherwise.
+  def file_path_pending?
+    return true if "#{resolve_crawler_path(@file_path)}/".include?('/results.new/')
+
+    redirect_to(push_index_path, flash: { warning: I18n.t('data_import.push.already_sent') })
     false
   end
 
@@ -207,11 +214,7 @@ class PushController < FileListController
   # Assuming it's a single, valid SQL batch file, using the dedicated API endpoint,
   # this uploads <tt>file_path</tt> to the currently set remote API server.
   #
-  # If successful, the file will be moved to the destination folder according to
-  # our "double-step" (first staging, then production) archival strategy:
-  #
-  # 1. if in '.new', move it to '.sent', so that we can re-push it to another server;
-  # 2. if in '.sent', move it to '.done' so that we know we're done.
+  # If successful, the file will be moved from 'results.new' to 'results.sent'.
   #
   # In case of error, flash[:error] will be non-blank.
   #
@@ -230,16 +233,7 @@ class PushController < FileListController
     result = JSON.parse(res.body)
 
     if result.respond_to?(:fetch) && result['new'].present? && result['new']['id'].to_i.positive?
-      # Move strategy to allow testing data-import on localhost first:
-      # 1. 'results.new/*'
-      #    2. => 'results.sent/*'
-      #        3. => 'results.done/*'
-      from_folder, to_folder = if file_path.to_s.include?('results.new')
-                                 %w[results.new results.sent]
-                               else
-                                 %w[results.sent results.done]
-                               end
-      dest_file = file_path.to_s.gsub(from_folder, to_folder)
+      dest_file = file_path.to_s.gsub('results.new', 'results.sent')
       FileUtils.mkdir_p(File.dirname(dest_file)) # Ensure the destination path is there
       File.rename(file_path, dest_file)
       flash[:info] = I18n.t('data_import.push.msg_send_batch_ok')

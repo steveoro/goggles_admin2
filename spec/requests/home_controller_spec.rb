@@ -28,6 +28,19 @@ RSpec.describe HomeController do
         expect(response).to have_http_status(:success)
       end
 
+      it 'never labels the API server as STAGING' do
+        %w[446 447 9999].each do |port|
+          allow(GogglesDb::AppParameter.config).to receive(:settings).with(:framework_urls)
+                                                                     .and_return(double(api: "http://localhost:#{port}"))
+          get(home_index_path)
+          expect(response.body).not_to include('STAGING')
+        end
+      end
+
+      it 'does not route home/latest_updates any more' do
+        expect { get('/home/latest_updates') }.to raise_error(ActionController::RoutingError)
+      end
+
       it 'shows data-fix session count from distinct phase_file_path values' do
         GogglesDb::DataImportMeetingIndividualResult.delete_all
         GogglesDb::DataImportMeetingIndividualResult.create!(import_key: 'home-a-1', phase_file_path: '/tmp/a.json')

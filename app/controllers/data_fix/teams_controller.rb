@@ -283,14 +283,6 @@ module DataFix
       teams.delete_at(team_index)
       data['teams'] = teams
 
-      # Clear downstream phase data (phase3+) when teams are modified
-      # This ensures data consistency across phases
-      data['swimmers'] = [] if data.key?('swimmers')
-      data['meeting_event'] = [] if data.key?('meeting_event')
-      data['meeting_program'] = [] if data.key?('meeting_program')
-      data['meeting_individual_result'] = [] if data.key?('meeting_individual_result')
-      data['meeting_relay_result'] = [] if data.key?('meeting_relay_result')
-
       meta = pfm.meta || {}
       pfm.write!(data: data, meta: meta)
 

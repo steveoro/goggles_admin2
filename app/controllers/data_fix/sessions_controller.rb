@@ -307,15 +307,6 @@ module DataFix
       sessions.delete_at(session_index)
       data['meeting_session'] = sessions
 
-      # Clear downstream phase data when sessions are modified
-      data['meeting_event'] = []
-      data['meeting_program'] = []
-      data['meeting_individual_result'] = []
-      data['meeting_relay_result'] = []
-      data['lap'] = []
-      data['relay_lap'] = []
-      data['meeting_relay_swimmer'] = []
-
       meta = pfm.meta || {}
       pfm.write!(data: data, meta: meta)
 

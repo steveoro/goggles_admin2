@@ -173,6 +173,15 @@ en:
         other: "%{count} fields need attention"
       code_autocomputed_hint: "the code is autocomputed but is serialized only when you click \"Save Meeting\""
       matched_by_fin_event_id: "Matched by FIN event ID %{id}"
+      team_scores:
+        title: "Team rankings"
+        rank: "Rank"
+        team: "Team (source key)"
+        matched_team: "Matched team"
+        ind_points: "Individual points"
+        overall_points: "Overall points"
+        missing_team: "missing or new team"
+        skipped: "Team scores skipped (unresolved team)"
     push:
       msg_prepare_batch_ok: 'SQL batch file created.'
       msg_send_batch_ok: "SQL batch file successfully sent."
@@ -182,6 +191,7 @@ en:
       btn_all_sql_files_tooltip: "Uploads to the remote server ALL SQL batch files from the list below"
       btn_all_sql_files_confirm: "Are you sure you want to upload ALL SQL batch files?"
       all_sql_files_ok: "All SQL batch files have been successfully sent."
+      already_sent: "This file was already sent: it will not be pushed again."
     manifest_extraction:
       title: "2. Automatic Manifest data extraction from existing files"
     errors:

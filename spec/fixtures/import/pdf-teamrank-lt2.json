@@ -1,0 +1,229 @@
+{
+  "layoutType": 2,
+  "name": "7° Trofeo Roma Nuoto Master",
+  "meetingURL": "",
+  "manifestURL": "",
+  "dateDay1": "24",
+  "dateMonth1": "11",
+  "dateYear1": "2019",
+  "venue1": "Piscina Comunale",
+  "address1": "Roma",
+  "poolLength": "25",
+  "sections": [
+    {
+      "title": "200 SL",
+      "fin_sigla_categoria": "M25",
+      "fin_sesso": "M",
+      "rows": [
+        {
+          "pos": 1,
+          "name": "ARGENTI DORIANO",
+          "year": 1992,
+          "sex": "M",
+          "team": "Port Karimamouth Swimming Club ASD",
+          "timing": "2'02\"07",
+          "score": "889.82",
+          "nation": "ITA",
+          "rows": [],
+          "lap50": "28\"36",
+          "lap100": "58\"54",
+          "delta100": "30\"18",
+          "lap150": "1'30\"18",
+          "delta150": "31\"64",
+          "delta200": "31\"89"
+        },
+        {
+          "pos": 2,
+          "name": "BRONZINI ELIO",
+          "year": 1993,
+          "sex": "M",
+          "team": "Walshville Swimming Club ASD",
+          "timing": "2'04\"33",
+          "score": "873.64",
+          "nation": "ITA",
+          "rows": [],
+          "lap50": "28\"49",
+          "lap100": "59\"53",
+          "delta100": "31\"04",
+          "lap150": "1'31\"79",
+          "delta150": "32\"26",
+          "delta200": "32\"54"
+        },
+        {
+          "pos": 3,
+          "name": "CALCEDONI FULVIO",
+          "year": 1993,
+          "sex": "M",
+          "team": "Port Karimamouth Swimming Club ASD",
+          "timing": "2'04\"50",
+          "score": "872.45",
+          "nation": "ITA",
+          "rows": [],
+          "lap50": "29\"29",
+          "lap100": "1'00\"68",
+          "delta100": "31\"39",
+          "lap150": "1'32\"35",
+          "delta150": "31\"67",
+          "delta200": "32\"15"
+        }
+      ]
+    },
+    {
+      "title": "200 SL",
+      "fin_sigla_categoria": "M30",
+      "fin_sesso": "M",
+      "rows": [
+        {
+          "pos": 1,
+          "name": "DIASPRI GILDO",
+          "year": 1987,
+          "sex": "M",
+          "team": "Bayerberg Swimming Club ASD",
+          "timing": "2'04\"07",
+          "score": "877.65",
+          "nation": "ITA",
+          "rows": [],
+          "lap50": "29\"77",
+          "lap100": "1'01\"13",
+          "delta100": "31\"36",
+          "lap150": "1'32\"45",
+          "delta150": "31\"32",
+          "delta200": "31\"62"
+        },
+        {
+          "pos": 2,
+          "name": "ERMELLINI IVO",
+          "year": 1987,
+          "sex": "M",
+          "team": "Carlastad Swimming Club ASD",
+          "timing": "2'06\"50",
+          "score": "860.79",
+          "nation": "ITA",
+          "rows": [],
+          "lap50": "29\"75",
+          "lap100": "1'01\"43",
+          "delta100": "31\"68",
+          "lap150": "1'33\"86",
+          "delta150": "32\"43",
+          "delta200": "32\"64"
+        },
+        {
+          "pos": 3,
+          "name": "FERRITI LANDO",
+          "year": 1987,
+          "sex": "M",
+          "team": "Port Karimamouth Swimming Club ASD",
+          "timing": "2'36\"50",
+          "score": "695.78",
+          "nation": "ITA",
+          "rows": [],
+          "lap50": "34\"41",
+          "lap100": "1'12\"93",
+          "delta100": "38\"52",
+          "lap150": "1'54\"85",
+          "delta150": "41\"92",
+          "delta200": "41\"65"
+        }
+      ]
+    },
+    {
+      "title": "50 DO",
+      "fin_sigla_categoria": "M30",
+      "fin_sesso": "F",
+      "rows": [
+        {
+          "pos": 1,
+          "name": "GIADINI ORNELLA",
+          "year": 1989,
+          "sex": "F",
+          "team": "Walshville Swimming Club ASD",
+          "timing": "33\"32",
+          "score": "870.95",
+          "nation": "ITA",
+          "rows": []
+        },
+        {
+          "pos": 2,
+          "name": "LAPISLAZZI PIERA",
+          "year": 1989,
+          "sex": "F",
+          "team": "Carlastad Swimming Club ASD",
+          "timing": "39\"77",
+          "score": "729.70",
+          "nation": "ITA",
+          "rows": []
+        },
+        {
+          "pos": 3,
+          "name": "MALACHITI RINA",
+          "year": 1989,
+          "sex": "F",
+          "team": "Bayerberg Swimming Club ASD",
+          "timing": "48\"51",
+          "score": "598.23",
+          "nation": "ITA",
+          "rows": []
+        }
+      ]
+    },
+    {
+      "title": "Overall Team Ranking",
+      "ranking": true,
+      "rows": [
+        {
+          "pos": "1",
+          "team": "Carlastad Swimming Club ASD",
+          "ind_score": "35209.930",
+          "overall_score": "35209.930"
+        },
+        {
+          "pos": "2",
+          "team": "Shizukoborough Swimming Club ASD",
+          "ind_score": "35004.290",
+          "overall_score": "35004.290"
+        },
+        {
+          "pos": "3",
+          "team": "Walshville Swimming Club ASD",
+          "ind_score": "32368.920",
+          "overall_score": "33118.920"
+        },
+        {
+          "pos": "4",
+          "team": "Bayerberg Swimming Club ASD",
+          "ind_score": "32255.310",
+          "overall_score": "32255.310"
+        },
+        {
+          "pos": "5",
+          "team": "Funkhaven Swimming Club ASD",
+          "ind_score": null,
+          "overall_score": "30981.850"
+        }
+      ]
+    },
+    {
+      "title": "Overall Stats",
+      "stats": true,
+      "rows": [
+        {
+          "stats_label": "Numero di società iscritte",
+          "stats_value": "47"
+        },
+        {
+          "stats_label": "Numero di società venete iscritte",
+          "stats_value": "37"
+        },
+        {
+          "stats_label": "Numero di società extraregione iscritte",
+          "stats_value": "10"
+        },
+        {
+          "stats_label": "Numero di società partecipanti",
+          "stats_value": "47"
+        }
+      ]
+    }
+  ],
+  "season_id": 192
+}

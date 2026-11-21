@@ -173,6 +173,15 @@ it:
         other: "%{count} campi richiedono attenzione"
       code_autocomputed_hint: "il codice è autocalcolato ma viene serializzato solo cliccando \"Salva Meeting\""
       matched_by_fin_event_id: "Abbinato tramite ID evento FIN %{id}"
+      team_scores:
+        title: "Classifica società"
+        rank: "Pos."
+        team: "Squadra (chiave sorgente)"
+        matched_team: "Squadra abbinata"
+        ind_points: "Punti individuali"
+        overall_points: "Punti totali"
+        missing_team: "squadra mancante o nuova"
+        skipped: "Punteggi società saltati (squadra non risolta)"
     push:
       msg_prepare_batch_ok: 'File batch SQL creato con successo.'
       msg_send_batch_ok: "File batch inviato con successo."
@@ -182,6 +191,7 @@ it:
       btn_all_sql_files_tooltip: "Esegue l'upload sul server remoto di TUTTI i file batch presenti in elenco qui sotto"
       btn_all_sql_files_confirm: "Sicuri di voler caricare TUTTI i file in elenco?"
       all_sql_files_ok: "Tutti i file batch sono stati inviati con successo."
+      already_sent: "Questo file è già stato inviato: non verrà inviato di nuovo."
     manifest_extraction:
       title: "2. Estrazione automatica locandine già presenti"
     errors:

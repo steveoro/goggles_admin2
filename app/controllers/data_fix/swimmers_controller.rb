@@ -191,12 +191,6 @@ module DataFix
       end
       data['badges'] = badges
 
-      # Clear downstream phase data (phase4+) when swimmers are modified
-      data['meeting_event'] = [] if data.key?('meeting_event')
-      data['meeting_program'] = [] if data.key?('meeting_program')
-      data['meeting_individual_result'] = [] if data.key?('meeting_individual_result')
-      data['meeting_relay_result'] = [] if data.key?('meeting_relay_result')
-
       meta = pfm.meta || {}
       pfm.write!(data: data, meta: meta)
 
@@ -363,12 +357,6 @@ module DataFix
       # Remove the swimmer at the found index
       swimmers.delete_at(swimmer_index)
       data['swimmers'] = swimmers
-
-      # Clear downstream phase data (phase4+) when swimmers are modified
-      data['meeting_event'] = [] if data.key?('meeting_event')
-      data['meeting_program'] = [] if data.key?('meeting_program')
-      data['meeting_individual_result'] = [] if data.key?('meeting_individual_result')
-      data['meeting_relay_result'] = [] if data.key?('meeting_relay_result')
 
       meta = pfm.meta || {}
       pfm.write!(data: data, meta: meta)

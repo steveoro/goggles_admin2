@@ -57,6 +57,57 @@ RSpec.describe Import::Solvers::TeamSolver do
     end
   end
 
+  describe 'team scores (overall team ranking)' do
+    let(:ranking_rows) do
+      [
+        { 'pos' => '2', 'team' => 'Ranked Only ZZZ', 'ind_score' => '100.50', 'overall_score' => '120.50' },
+        { 'pos' => '1', 'team' => 'Team A', 'ind_score' => '200', 'overall_score' => '200' }
+      ]
+    end
+
+    it 'adds team_scores to the payload and a team entry for each ranked team missing from the teams dict' do
+      Dir.mktmpdir do |tmp|
+        src = write_json(tmp, 'meeting-lt4.json', { 'layoutType' => 4, 'teams' => ['Team A'], 'teamRankings' => ranking_rows })
+
+        described_class.new(season:).build!(source_path: src, lt_format: 4)
+
+        data = JSON.parse(File.read(default_phase2_path(src)))['data']
+        expect(data['team_scores']).to eq(
+          [
+            { 'team_key' => 'Team A', 'rank' => 1, 'ind_score' => 200.0, 'overall_score' => 200.0 },
+            { 'team_key' => 'Ranked Only ZZZ', 'rank' => 2, 'ind_score' => 100.5, 'overall_score' => 120.5 }
+          ]
+        )
+        expect(data['teams'].pluck('key')).to contain_exactly('Team A', 'Ranked Only ZZZ')
+        expect(data['teams'].find { |team| team['key'] == 'Ranked Only ZZZ' }).to include('name' => 'Ranked Only ZZZ', 'fuzzy_matches' => be_an(Array))
+        expect(data['team_affiliations'].pluck('team_key')).to contain_exactly('Team A', 'Ranked Only ZZZ')
+      end
+    end
+
+    it 'reads the scores from the LT2 sibling of an older LT4 working copy' do
+      Dir.mktmpdir do |tmp|
+        write_json(tmp, 'meeting.json', { 'layoutType' => 2, 'sections' => [{ 'ranking' => true, 'rows' => ranking_rows }] })
+        src = write_json(tmp, 'meeting-lt4.json', { 'layoutType' => 4, 'teams' => ['Team A'], 'events' => [] })
+
+        described_class.new(season:).build!(source_path: src, lt_format: 4)
+
+        data = JSON.parse(File.read(default_phase2_path(src)))['data']
+        expect(data['team_scores'].pluck('team_key')).to eq(['Team A', 'Ranked Only ZZZ'])
+        expect(data['teams'].pluck('key')).to include('Ranked Only ZZZ')
+      end
+    end
+
+    it 'omits team_scores when the source carries no ranking' do
+      Dir.mktmpdir do |tmp|
+        src = write_json(tmp, 'meeting-l4.json', { 'layoutType' => 4, 'teams' => ['Team A'] })
+
+        described_class.new(season:).build!(source_path: src, lt_format: 4)
+
+        expect(JSON.parse(File.read(default_phase2_path(src)))['data']).not_to have_key('team_scores')
+      end
+    end
+  end
+
   describe 'team name normalization' do
     subject(:solver) { described_class.new(season:) }
 

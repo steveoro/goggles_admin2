@@ -42,7 +42,6 @@ gem 'devise-i18n'
 # to allow fixture creation for testing purposes when using production structure dumps:
 gem 'factory_bot_rails'
 gem 'ffaker'
-gem 'font-awesome-rails'
 gem 'goggles_db', git: 'https://github.com/steveoro/goggles_db.git', branch: 'master'
 gem 'haml-rails'
 gem 'kaminari'
@@ -74,7 +73,6 @@ group :development do
   gem 'binding_of_caller'
   gem 'guard'
   gem 'guard-bundler', require: false
-  gem 'guard-cucumber'
   gem 'guard-haml_lint'
   gem 'guard-inch'
   gem 'guard-rspec'
@@ -115,7 +113,6 @@ group :test do
   # For CodeClimate: use the stand-alone 'cc-test-reporter' from the command line.
   gem 'codecov', require: false
   gem 'coveralls', require: false
-  gem 'cucumber-rails', require: false
   gem 'n_plus_one_control'
   # n_plus_one_control adds a DSL to check for "N+1 queries" directly in test environment.
   # (Bullet works best just on development). Do not use memoized values for testing.

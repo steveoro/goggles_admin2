@@ -730,26 +730,6 @@ RSpec.describe DataFixController do
         expect(teams.pluck('name')).to eq(['Team 1', 'Team 3'])
       end
 
-      it 'clears downstream swimmers data' do
-        delete data_fix_delete_team_path, params: {
-          file_path: source_file,
-          team_key: 'Team 1'
-        }
-
-        pfm = PhaseFileManager.new(phase2_file)
-        expect(pfm.data['swimmers']).to eq([])
-      end
-
-      it 'clears downstream event data' do
-        delete data_fix_delete_team_path, params: {
-          file_path: source_file,
-          team_key: 'Team 1'
-        }
-
-        pfm = PhaseFileManager.new(phase2_file)
-        expect(pfm.data['meeting_event']).to eq([])
-      end
-
       it 'updates metadata timestamp' do
         delete data_fix_delete_team_path, params: {
           file_path: source_file,

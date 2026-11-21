@@ -145,6 +145,11 @@ The Phase 1 action reads the canonical LT4 source `swimmers` array and recalcula
 - **Normalized name matching** (v2.1): strips common Italian abbreviations (A.S.D., S.S.D., etc.) for secondary fuzzy search
 - **Affiliation cross-reference** (v2.1): flags fuzzy match candidates already affiliated for the current season (`similar_affiliated` flag + "SIMILAR TEAM IN SEASON" UI badge)
 - Creates phase2.json with team_id and team_affiliation_id
+- **Team rankings** (PDF-derived sources only): `Import::TeamScoreExtractor` copies the overall team ranking
+  (LT4 `teamRankings`, or the LT2 `ranking` sections; an older LT4 working copy without `teamRankings` falls back
+  to its LT2 sibling) into `data.team_scores`. Every ranked team gets a team entry, even when it has no results.
+  The review page shows a collapsed "Team rankings (N)" card (rank, source key, matched team, points) with a
+  warning badge on keys whose team entry is missing or new. Rebuilding Phase 2 rebuilds the list from the source.
 
 ### Pre-Matching Pattern
 **Match Key**: `(season_id, team_id)`  
@@ -174,9 +179,18 @@ TeamAffiliation.create\!(...)  # Only create if missing
     "team_id": 123,
     "season_id": 242,
     "team_affiliation_id": 456  // Pre-matched\!
+  }],
+  "team_scores": [{             // only when the source carries an overall team ranking
+    "team_key": "CSI OBER FERRARI",
+    "rank": 1,
+    "ind_score": 35209.93,      // Float (Parser::Score), 0.0 when missing
+    "overall_score": 35209.93
   }]
 }
 ```
+
+`team_scores` is deduplicated on the legacy key `"<rank>-<team_key>"` (first row wins) and sorted by rank.
+Phase 2 files without the key are valid: Phase 6 simply commits no team scores.
 
 ---
 
@@ -450,6 +464,18 @@ For result-free sources (see *Structure-only (result-free) sources* above):
 14. MeetingRelaySwimmer (requires meeting_relay_result_id, swimmer_id)
 15. RelayLap (requires meeting_relay_swimmer_id)
 ```
+
+**Team scores** (last, after the overwrite merge and before the `results_acquired` flag):
+```
+16. MeetingTeamScore (requires meeting_id, team_id, team_affiliation_id, season_id) - from phase2 `team_scores`
+```
+`Import::Committers::MeetingTeamScore` maps each score as the legacy solver did: `sum_individual_points` =
+`meeting_points` = `ind_score`; `sum_relay_points` = `meeting_relay_points` = `overall_score - ind_score`;
+`sum_team_points` = `meeting_team_points` = `overall_score`; `season_*` = 0.0. An existing row is found by
+`(meeting_id, team_id)` and updated (changed columns only), otherwise inserted; both are logged in the SQL script.
+A score whose team has no Phase 2 entry (or whose team/affiliation can't be resolved) is skipped: counted in
+`team_scores_skipped`, logged as `team_score_skipped`, and the commit goes on. The report lists
+"Team Scores" (created / updated) and, when any, "Team scores skipped".
 
 ### Relay Category/Gender Auto-Computation (v3.0)
 

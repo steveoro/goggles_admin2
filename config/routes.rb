@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 Rails.application.routes.draw do
-  get 'best50m_results/index'
   devise_for :users, class_name: 'GogglesDb::User',
                      controllers: {
                        sessions: 'users/sessions'
@@ -12,7 +11,6 @@ Rails.application.routes.draw do
   mount GogglesDb::Engine => '/'
 
   get 'home/index'
-  get 'home/latest_updates'
 
   get 'best_results/best_50m', to: 'best_results#best_50m', as: 'best_50m_results'
   get 'best_results/best_50_and_100', to: 'best_results#best_50_and_100', as: 'best_50_and_100_results'
@@ -77,7 +75,6 @@ Rails.application.routes.draw do
                                                             as: 'update_individual_result_merge_candidate'
   post 'data_fix/bulk_update_individual_result_overwrite', to: 'data_fix/results#bulk_update_individual_result_overwrite',
                                                            as: 'bulk_update_individual_result_overwrite'
-  get 'data_fix/results_chunk_v2', to: 'data_fix/events#results_chunk_v2', as: 'results_chunk_v2'
   post 'data_fix/commit_phase6', to: 'data_fix/commits#commit_phase6', as: 'commit_phase6'
   patch 'data_fix/update_phase1_meeting', to: 'data_fix/sessions#update_phase1_meeting', as: 'update_phase1_meeting'
   patch 'data_fix/update_phase1_session', to: 'data_fix/sessions#update_phase1_session', as: 'update_phase1_session'

@@ -74,7 +74,8 @@
                 'Laps Deleted' => [:laps_deleted, nil],
                 'Relay Results' => [:mrrs_created, :mrrs_updated],
                 'Relay Swimmers' => [:mrss_created, :mrss_updated],
-                'Relay Laps' => [:relay_laps_created, :relay_laps_updated]
+                'Relay Laps' => [:relay_laps_created, :relay_laps_updated],
+                'Team Scores' => [:team_scores_created, :team_scores_updated]
               }
             - entity_groups.each do |name, keys|
               - created_key, updated_key = keys
@@ -96,7 +97,8 @@
     :ruby
       auto_fix_rows = {
         'Team links auto-fixed' => (@stats[:team_links_auto_fixed] || 0),
-        'Affiliation links auto-fixed' => (@stats[:affiliation_links_auto_fixed] || 0)
+        'Affiliation links auto-fixed' => (@stats[:affiliation_links_auto_fixed] || 0),
+        t('data_import.data_fix.team_scores.skipped') => (@stats[:team_scores_skipped] || 0)
       }.select { |_label, count| count.to_i.positive? }
     - if auto_fix_rows.present?
       .card.mt-3

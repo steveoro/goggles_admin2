@@ -27,7 +27,6 @@ module DataFix
     # (Actions with different params or custom error handling manage their own checks.)
     before_action :set_source_path, except: %i[commit_phase6_report purge coded_name teams_for_swimmer
                                                verify_result confirm_result_duplicate verify_team
-                                               results_chunk_v2
                                                update_individual_result_overwrite_candidate
                                                update_individual_result_merge_candidate
                                                bulk_update_individual_result_overwrite]

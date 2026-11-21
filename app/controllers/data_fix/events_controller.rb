@@ -366,68 +366,10 @@ module DataFix
       sessions[session_index]['events'] = events
       data['sessions'] = sessions
 
-      # Clear downstream phase data (phase5) when events are modified
-      data['meeting_program'] = [] if data.key?('meeting_program')
-      data['meeting_individual_result'] = [] if data.key?('meeting_individual_result')
-      data['meeting_relay_result'] = [] if data.key?('meeting_relay_result')
-
       meta = pfm.meta || {}
       pfm.write!(data: data, meta: meta)
 
       redirect_to review_events_path(file_path:, phase4_v2: 1), notice: I18n.t('data_import.messages.updated')
-    end
-
-    # Returns an HTML partial with the detailed results for a specific (event_key, gender, category)
-    # in Step 5 v2. This reads from the original source JSON (LT4 expected).
-    def results_chunk_v2
-      file_path = params[:file_path]
-      event_key = params[:event_key].to_s
-      gender = params[:gender].to_s
-      category = params[:category].to_s
-      if file_path.blank? || event_key.blank? || gender.blank? || category.blank?
-        return render plain: I18n.t('data_import.errors.invalid_request'), status: :bad_request
-      end
-
-      source_path = source_resolver.resolve_working_source_path(file_path)
-      begin
-        data_hash = source_resolver.parsed_source_json(source_path)
-      rescue StandardError => e
-        return render plain: e.message, status: :unprocessable_content
-      end
-
-      events = Array(data_hash['events'])
-      # Match by eventCode if possible, else fallback to distance|stroke key
-      dist_key = nil
-      stroke_key = nil
-      dist_key, stroke_key = event_key.split('|', 2) if event_key.include?('|')
-      matched = events.select do |ev|
-        code = ev['eventCode'].to_s
-        if code.present?
-          code == event_key
-        else
-          d = ev['distance'] || ev['distanceInMeters'] || ev['eventLength']
-          s = ev['stroke'] || ev['style'] || ev['eventStroke']
-          d.to_s == dist_key.to_s && s.to_s == stroke_key.to_s
-        end
-      end
-
-      # Collect results for the requested gender and category
-      results = []
-      matched.each do |ev|
-        Array(ev['results']).each do |res|
-          g = (res['gender'] || ev['eventGender']).to_s
-          c = res['category'] || res['categoryTypeCode'] || res['category_code'] || res['cat'] || res['category_type_code']
-          next unless g == gender && c.to_s == category.to_s
-
-          results << res
-        end
-      end
-
-      @event_key = event_key
-      @gender = gender
-      @category = category
-      @results = results
-      render partial: 'data_fix/results_category_v2', formats: [:html]
     end
   end
 end

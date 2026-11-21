@@ -266,7 +266,7 @@ module DataFix
       return false if data_hash.dig('_meta', 'meeting_only') == true
 
       Array(data_hash['events']).any? { |event| event.is_a?(Hash) && Array(event['results']).any? } ||
-        Array(data_hash['sections']).any? { |section| section.is_a?(Hash) && Array(section['rows']).any? }
+        Array(data_hash['sections']).any? { |section| result_section?(section) }
     rescue StandardError => e
       Rails.logger.warn("[DataFix::SourceResolver] result-rows detection failed for #{source_path}: #{e.message}")
       false
@@ -297,12 +297,18 @@ module DataFix
       return events.none? { |event| Array(event['results']).any? } if events.is_a?(Array)
 
       sections = data_hash['sections']
-      return sections.none? { |section| Array(section['rows']).any? } if sections.is_a?(Array)
+      return sections.none? { |section| result_section?(section) } if sections.is_a?(Array)
 
       false
     rescue StandardError => e
       Rails.logger.warn("[DataFix::SourceResolver] result-free detection failed for #{source_path}: #{e.message}")
       false
+    end
+
+    # TRUE for an LT2 section holding result rows. PDF-derived overall team-ranking
+    # ('ranking') and meeting statistics ('stats') sections never count as results.
+    def result_section?(section)
+      section.is_a?(Hash) && section['ranking'].blank? && section['stats'].blank? && Array(section['rows']).any?
     end
 
     # Sets the `manifest` flag in the Phase 1 datafile so the committed Meeting row

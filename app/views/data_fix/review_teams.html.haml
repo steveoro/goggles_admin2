@@ -19,6 +19,41 @@
   - basename = File.basename(@file_path).split('.json').first
   = render(partial: 'data_fix/phase_metadata', locals: { phase_number: 2, metadata: @phase2_meta,
                                                          extra_info: basename })
+  -# Overall team ranking (PDF-derived sources only), committed in Phase 6 as MeetingTeamScore rows
+  - team_scores = Array(@phase2_data['team_scores'])
+  - if team_scores.any?
+    - phase2_teams_by_key = Array(@phase2_data['teams']).index_by { |team| team['key'] }
+    .card.my-2#phase2-team-scores-card
+      .card-header{ style: 'cursor: pointer;', data: { toggle: 'collapse', target: '#phase2-team-scores-collapse' },
+                    'aria-expanded' => 'false', 'aria-controls' => 'phase2-team-scores-collapse' }
+        %strong #{t('data_import.data_fix.team_scores.title')} (#{team_scores.size})
+        %i.fa.fa-chevron-down.float-right.mt-1
+      .collapse#phase2-team-scores-collapse
+        .card-body.p-0
+          %table.table.table-sm.table-striped.mb-0
+            %thead.thead-light
+              %tr
+                %th.text-center= t('data_import.data_fix.team_scores.rank')
+                %th= t('data_import.data_fix.team_scores.team')
+                %th= t('data_import.data_fix.team_scores.matched_team')
+                %th.text-right= t('data_import.data_fix.team_scores.ind_points')
+                %th.text-right= t('data_import.data_fix.team_scores.overall_points')
+            %tbody
+              - team_scores.each do |score|
+                - team_entry = phase2_teams_by_key[score['team_key']]
+                %tr
+                  %td.text-center= score['rank']
+                  %td
+                    = score['team_key']
+                    - if team_entry.nil? || team_entry['team_id'].blank?
+                      %span.badge.badge-warning.ml-1= t('data_import.data_fix.team_scores.missing_team')
+                  %td
+                    - if team_entry && team_entry['team_id'].present?
+                      #{team_entry['editable_name'].presence || team_entry['name']} (ID: #{team_entry['team_id']})
+                    - else
+                      %span.text-muted -
+                  %td.text-right= format('%.2f', score['ind_score'].to_f)
+                  %td.text-right= format('%.2f', score['overall_score'].to_f)
   -# Search and filter controls
   .card.my-2
     .card-header

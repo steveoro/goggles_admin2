@@ -462,24 +462,6 @@ RSpec.describe DataFixController do
         expect(badge_row['badge_id']).to be_nil
       end
 
-      it 'clears downstream phase data when swimmer is updated' do
-        # Add downstream data
-        pfm = PhaseFileManager.new(phase3_file)
-        data = pfm.data
-        data['meeting_event'] = [{ 'some' => 'data' }]
-        data['meeting_program'] = [{ 'some' => 'data' }]
-        pfm.write!(data: data, meta: { 'generator' => 'test' })
-
-        patch update_phase3_swimmer_path,
-              params: { file_path: source_file, swimmer_key: 'DOE|JOHN|1985',
-                        swimmer: { complete_name: 'Updated Name' } }
-
-        pfm = PhaseFileManager.new(phase3_file)
-        data = pfm.data
-        expect(data['meeting_event']).to eq([])
-        expect(data['meeting_program']).to eq([])
-      end
-
       it 'returns error for invalid swimmer key' do
         patch update_phase3_swimmer_path,
               params: { file_path: source_file, swimmer_key: 'UNKNOWN|KEY|999',
@@ -734,22 +716,6 @@ RSpec.describe DataFixController do
         data = pfm.data
         expect(data['swimmers'].size).to eq(1)
         expect(data['swimmers'][0]['complete_name']).to eq('Beta Jane')
-      end
-
-      it 'clears downstream phase data when swimmer is deleted' do
-        # Add downstream data
-        pfm = PhaseFileManager.new(phase3_file)
-        data = pfm.data
-        data['meeting_event'] = [{ 'some' => 'data' }]
-        data['meeting_individual_result'] = [{ 'some' => 'data' }]
-        pfm.write!(data: data, meta: { 'generator' => 'test' })
-
-        delete data_fix_delete_swimmer_path, params: { file_path: source_file, swimmer_key: 'ALPHA|JOHN|1985' }
-
-        pfm = PhaseFileManager.new(phase3_file)
-        data = pfm.data
-        expect(data['meeting_event']).to eq([])
-        expect(data['meeting_individual_result']).to eq([])
       end
 
       it 'returns error for invalid swimmer key' do

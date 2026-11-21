@@ -175,4 +175,28 @@ RSpec.describe DataFix::SourceResolver, type: :service do
       end
     end
   end
+
+  describe '#source_result_free? / #source_has_result_rows? with PDF ranking & stats sections' do
+    let(:ranking_and_stats_sections) do
+      [
+        { 'title' => 'Overall Team Ranking', 'ranking' => true,
+          'rows' => [{ 'pos' => '1', 'team' => 'Team A', 'ind_score' => '10', 'overall_score' => '10' }] },
+        { 'title' => 'Overall Stats', 'stats' => true, 'rows' => [{ 'stats_label' => 'Teams', 'stats_value' => '1' }] }
+      ]
+    end
+
+    it 'ignores the ranking & stats rows of an LT2 source' do
+      write_json(lt2_path, lt2_header.merge('sections' => ranking_and_stats_sections))
+
+      expect(resolver.source_result_free?(lt2_path)).to be true
+      expect(resolver.source_has_result_rows?(lt2_path)).to be false
+    end
+
+    it 'still counts the actual result sections' do
+      write_json(lt2_path, lt2_with_results.merge('sections' => lt2_with_results['sections'] + ranking_and_stats_sections))
+
+      expect(resolver.source_result_free?(lt2_path)).to be false
+      expect(resolver.source_has_result_rows?(lt2_path)).to be true
+    end
+  end
 end
