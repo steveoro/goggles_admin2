@@ -89,6 +89,7 @@ Check out our [Wiki :link:](https://github.com/steveoro/goggles_db/wiki) and the
 - [How to update the GogglesDb gem](https://github.com/steveoro/goggles_api#source-dependencies--how-to-update-gogglesdb)
 - [DB setup](https://github.com/steveoro/goggles_db#database-setup)
 - [How to run the test suite](https://github.com/steveoro/goggles_api#how-to-run-the-test-suite) (can be applied to `goggles_main` as well)
+- **System specs** (`spec/system`, browser smoke suite): run `bin/rails dartsass:build` before the first run; they need network access and Chrome (set `CHROME_BIN` if it is not on the default path). `SKIP_SYSTEM=1 bundle exec rspec` skips them.
 - [Dev workflow](https://github.com/steveoro/goggles_api#dev-workflow-for-contributors)
 - [Getting started: GogglesAPI & container usage](https://github.com/steveoro/goggles_db/wiki/HOWTO-dev-docker_usage_for_GogglesApi#getting-started-setup-and-usage-as-a-composed-docker-service) (can be applied to `goggles_admin2` as well)
 

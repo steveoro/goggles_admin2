@@ -20,7 +20,7 @@ class PdfController < ApplicationController
   # All supported formats are listed in 'app/strategies/pdf_results/formats/*.yml'
   #
   def extract_txt
-    system("pdftotext -layout #{@file_path} #{@txt_pathname}") unless File.exist?(@txt_pathname)
+    system('pdftotext', '-layout', @file_path.to_s, @txt_pathname.to_s) unless File.exist?(@txt_pathname)
 
     file_contents = File.read(@txt_pathname)
     @page1 = file_contents.split("\f").first

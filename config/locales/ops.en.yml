@@ -1,0 +1,25 @@
+en:
+  ops:
+    setup_notice:
+      title: "Local ops DB not ready"
+      body: "Run '%{command}' in the project folder (or 'bin/rails solid:prepare'), then reload the page."
+      states:
+        not_configured: "The 'ops:' entry is missing from config/database.yml: copy it from config/database.example.yml (the event log and the other local tools stay disabled until then)."
+        missing: "The local ops DB file (db/ops/) doesn't exist yet."
+        needs_migration: "The local ops DB has pending migrations."
+    events:
+      datafix:
+        committed: "Data-Fix commit done"
+        commit_failed: "Data-Fix commit failed"
+        purged: "Data-Fix staging data purged"
+      push:
+        uploaded: "SQL script pushed to the API"
+        failed: "SQL script push failed"
+      board:
+        crawl_finished: "Meeting crawl finished"
+        crawl_failed: "Meeting crawl failed"
+        extract_finished: "Manifest extraction finished"
+        extract_failed: "Manifest extraction failed"
+        calendar_linked: "Calendar linked to a FIN event"
+      fin:
+        watch_changed: "FIN events page changed"

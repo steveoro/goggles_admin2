@@ -73,8 +73,8 @@ end
 #  * 'just' rspec: 'rspec'
 rspec_options = {
   cmd: 'bin/rspec',
-  # Exclude performance tests; to make it fail-fast, add option "--fail-fast":
-  cmd_additional_args: ' --color --profile 10 --order rand -f RspecPacmanFormatter::Pacman -t ~type:performance -t ~tag:performance',
+  # Exclude performance tests & browser-level system specs (run those on demand: `bin/rspec spec/system`); to make it fail-fast, add option "--fail-fast":
+  cmd_additional_args: ' --color --profile 10 --order rand -f RspecPacmanFormatter::Pacman -t ~type:performance -t ~tag:performance -t ~type:system',
   all_after_pass: false,
   failed_mode: :focus
 }

@@ -21,6 +21,7 @@ it:
     type0:
       existing_tms: "Team Manager esistenti"
     msgs:
+      api_error_with_action: "API: errore durante %{action_desc}! Controlla il file di log degli errori."
       update_ok: "Riga aggiornata!"
     type2b1:
       filtered_swimmers_list: "Nuotatori per '%{name}'"

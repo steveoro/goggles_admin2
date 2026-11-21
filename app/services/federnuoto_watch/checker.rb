@@ -40,6 +40,7 @@ module FedernuotoWatch
         current
       end
       notify(outcome, state)
+      record_change_event(state) if outcome == :changed
       outcome
     rescue StandardError => e
       handle_error(e)
@@ -99,6 +100,18 @@ module FedernuotoWatch
         'first_detected_at' => state.dig('change', 'first_detected_at') || now
       )
       :changed
+    end
+
+    # Appends 'fin.watch_changed' to the ops event log (never raises).
+    def record_change_event(state)
+      Ops.safely do
+        change = state['change'] || {}
+        counts = %w[added removed with_results updated].index_with { |key| Array(change[key]).size }
+        Ops.record_event!(
+          kind: 'fin.watch_changed', level: 'warning', actor: @manual ? 'operator' : 'job',
+          subject_type: 'fin_watch', subject_key: state['digest'], data: counts.merge('url' => state['url'])
+        )
+      end
     end
 
     def record_baseline(state, snapshot)

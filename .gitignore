@@ -12,6 +12,8 @@ capybara-*.html
 /db/*.sqlite3
 /db/*.sqlite3-journal
 /db/*.sqlite3-[0-9]*
+# Local ops DB (SQLite, see Ops::Database):
+/db/ops/
 /public/system
 /coverage/
 /spec/tmp

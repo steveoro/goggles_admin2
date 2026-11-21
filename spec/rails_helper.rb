@@ -58,6 +58,10 @@ FactoryBot.reload
 # Dir[GogglesDb::Engine.root.join('spec', 'support', '**', '*.rb')].sort.each { |f| require f }
 Rails.root.glob('spec/support/**/*.rb').each { |f| require f }
 
+# Creates/migrates the local SQLite ops DB (db/ops/test.sqlite3): its 'ops:' entry has
+# 'database_tasks: false', so maintain_test_schema! below never sees it.
+Ops::Database.prepare!
+
 # Checks for pending migrations and applies them before tests are run.
 # If you are not using ActiveRecord, you can remove these lines.
 begin

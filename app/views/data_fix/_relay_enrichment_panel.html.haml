@@ -57,7 +57,7 @@
             = select_tag 'auxiliary_paths[]', options_for_select(aux_list.map { |path| [File.basename(path), path] }, selected_auxiliary), multiple: true, size: select_size, id: "#{panel_id}-aux-files", class: 'form-control'
             %small.form-text.text-muted= t('data_import.relay_enrichment.fields.auxiliary_hint')
           %button.btn.btn-sm.btn-primary{ type: 'submit', data: { turbo_confirm: t('data_import.relay_enrichment.confirm_merge') } }
-            %i.fa.fa-sync-alt
+            %i.fa.fa-refresh
             = t('data_import.relay_enrichment.actions.scan_and_merge')
       - else
         .alert.alert-warning

@@ -40,7 +40,7 @@ en:
       btn_process_json_tooltip: 'Process this result file, preparing a batch data import transaction'
       btn_reparse_json_tooltip: 'Forced re-parse of this result file using the available source data in it'
       btn_process_sql_tooltip: 'Upload this data-import batch file to the remote server'
-      confirm_purge: "Are you sure you want to PURGE the possible duplicate '%{key}'? (NOTE: this can be done ONLY BEFORE starting reviewing results to avoid data corruption!)"
+      confirm_push: "Are you sure you want to upload this file?"
     selection:
       title: '1. Select meetings to crawl'
       season_label: 'Season ID %{id}'
@@ -138,6 +138,10 @@ en:
       swimmer_not_found: "Swimmer not found: %{key}"
       clean_slate_done: "Clean slate completed: removed %{total} temp rows across %{tables} tables (%{sessions} session(s) from phase_file_path)."
       clean_slate_failed: "Clean slate failed: %{message}"
+      discard_source_done: "Discarded %{total} temp rows of source %{source}."
+      discard_source_unknown: "Nothing to discard: unknown or blank source."
+      btn_discard_source: "Discard"
+      confirm_discard_source: "Delete the temporary data_import_* rows of this source only (%{source})?"
       btn_reparse_session_label: "Reparse sessions"
       btn_reparse_session_tooltip: "Make a forced reparse of this result file but JUST for the Meeting sessions (useful if you change and save the Meeting ID)"
       reparse_notice_for_events: "If you have run a forced 'reparse' for the Meeting or its sessions, you'll need to run a forced 'reparse' for the events too in order to search for any existing event or program on the DB."
@@ -191,6 +195,7 @@ en:
       category_recompute_failed: 'Category recomputation failed. No complete result was applied.'
     messages:
       updated: 'Updated successfully.'
+      deleted: 'Deleted successfully.'
       phase_rebuilt: 'Phase %{phase} rebuilt from source.'
       category_recompute_success: 'Category recomputation processed %{swimmers_processed} swimmers: %{swimmer_categories_changed} swimmer categories and %{result_categories_changed} result categories changed; %{skipped_categories} skipped. Backup: %{backup_path}.'
       category_recompute_no_backup: 'no changes'

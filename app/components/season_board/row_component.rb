@@ -102,8 +102,17 @@ module SeasonBoard
         helper, key = PHASE_STEPS.fetch(action[:phase].to_i, PHASE_STEPS[1])
         public_send(helper, { file_path: action[:file_path], key => 1 })
       when :push
-        push_index_path
+        push_index_path(push_folder_params)
       end
+    end
+
+    # Push list params: lands on the folder of the pending script (path relative to crawler/)
+    def push_folder_params
+      sql_path = action[:sql_path].to_s
+      relative = sql_path.include?('crawler/') ? sql_path.split('crawler/').last : sql_path
+      return {} if relative.blank? || relative.start_with?('/')
+
+      { curr_dir: File.dirname(relative) }
     end
 
     def link_action?

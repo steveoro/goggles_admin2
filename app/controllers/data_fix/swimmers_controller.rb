@@ -45,7 +45,8 @@ module DataFix
       # Extract season and meeting date for category computation
       season = source_resolver.detect_season_from_pathname(source_path)
       phase1_path = source_resolver.default_phase_path_for(source_path, 1)
-      meeting_date = (PhaseFileManager.new(phase1_path).data&.dig('meeting', 'header_date') if File.exist?(phase1_path))
+      phase1_header_date = (PhaseFileManager.new(phase1_path).data['header_date'] if File.exist?(phase1_path))
+      meeting_date = phase1_header_date.presence || source_resolver.source_meeting_date(source_path)
 
       detector = Phase3::RelayEnrichmentDetector.new(
         source_path: source_path,

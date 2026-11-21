@@ -67,6 +67,7 @@ module SeasonBoard
         # Written inside the transaction: on failure no script exists without its local change.
         sql_path = write_sql_file(sql)
       end
+      record_link_event(changes, sql_path)
       Result.new(success: true, sql_path:)
     rescue StandardError => e
       Result.new(success: false, error: e.message)
@@ -111,6 +112,18 @@ module SeasonBoard
       return true if @calendar.results_link.blank? || FINEventId.fin_url?(results_link)
 
       !FINEventId.fin_url?(@calendar.results_link)
+    end
+
+    # Appends 'board.calendar_linked' to the ops event log (never raises).
+    def record_link_event(changes, sql_path)
+      Ops.safely do
+        Ops.record_event!(
+          kind: 'board.calendar_linked', level: 'success', actor: 'operator', season_id: season.id,
+          subject_type: 'fin_event', subject_key: fin_event_id,
+          data: { 'calendar_id' => @calendar.id, 'changes' => changes.keys, 'sql_filename' => File.basename(sql_path.to_s) },
+          link_path: Rails.application.routes.url_helpers.season_board_path
+        )
+      end
     end
 
     def write_sql_file(sql)

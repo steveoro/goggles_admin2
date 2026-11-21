@@ -16,10 +16,12 @@ class HomeController < ApplicationController
     @iqs_count = count_remote_rows_for('import_queues')
     @issues_count = count_remote_rows_for('issues')
     @api_uses_count = count_remote_rows_for('api_daily_uses')
-    @data_fix_session_count = GogglesDb::DataImportMeetingIndividualResult
-                              .where.not(phase_file_path: [nil, ''])
-                              .distinct
-                              .count(:phase_file_path)
+    @data_fix_sources = GogglesDb::DataImportMeetingIndividualResult
+                        .where.not(phase_file_path: [nil, ''])
+                        .distinct
+                        .order(:phase_file_path)
+                        .pluck(:phase_file_path)
+    @data_fix_session_count = @data_fix_sources.size
     @goggle_cups_count = count_remote_rows_for('goggle_cups')
   end
 

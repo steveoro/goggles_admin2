@@ -138,6 +138,10 @@ it:
       swimmer_not_found: "Nuotatore non trovato: %{key}"
       clean_slate_done: "Pulizia completata: rimosse %{total} righe temporanee in %{tables} tabelle (%{sessions} sessione/i da phase_file_path)."
       clean_slate_failed: "Pulizia fallita: %{message}"
+      discard_source_done: "Scartate %{total} righe temporanee della sorgente %{source}."
+      discard_source_unknown: "Niente da scartare: sorgente sconosciuta o vuota."
+      btn_discard_source: "Scarta"
+      confirm_discard_source: "Eliminare solo le righe temporanee data_import_* di questa sorgente (%{source})?"
       btn_reparse_session_label: "Riscasiona sessioni"
       btn_reparse_session_tooltip: "Riesegui la scasione forzata di questo file risultati SOLO per le sessioni Meeting (utile se si cambia e salva l'ID del Meeting)"
       reparse_notice_for_events: "Se hai eseguito il 'rescan' forzato del meeting o delle sue sessioni, devi ri-eseguire il 'rescan' per gli eventi affinché vengano integrati con quelli eventualmente già presenti su DB!"
@@ -191,6 +195,7 @@ it:
       category_recompute_failed: 'Ricalcolo categorie fallito. Nessun risultato completo è stato applicato.'
     messages:
       updated: 'Aggiornato con successo.'
+      deleted: 'Eliminato con successo.'
       phase_rebuilt: "Fase %{phase} ricostruita dall'origine."
       category_recompute_success: 'Ricalcolo categorie: %{swimmers_processed} nuotatori elaborati, %{swimmer_categories_changed} categorie nuotatore e %{result_categories_changed} categorie risultati modificate; %{skipped_categories} ignorate. Backup: %{backup_path}.'
       category_recompute_no_backup: 'nessuna modifica'

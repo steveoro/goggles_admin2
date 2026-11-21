@@ -828,6 +828,25 @@ RSpec.describe DataFixController do
         expect(response.body).to include(I18n.t('data_import.relay_enrichment.no_auxiliary_files'))
       end
 
+      it 'passes the Phase 1 header date to the relay enrichment detector' do
+        File.write(source_file, JSON.pretty_generate(relay_payload))
+        PhaseFileManager.new(source_file.sub('.json', '-phase1.json')).write!(
+          data: { 'name' => 'Test meeting', 'header_date' => '2025-03-01' },
+          meta: { 'generator' => 'test' }
+        )
+        PhaseFileManager.new(phase3_file).write!(
+          data: { 'swimmers' => [incomplete_swimmer], 'badges' => [] },
+          meta: { 'generator' => 'test' }
+        )
+
+        expect(Phase3::RelayEnrichmentDetector).to receive(:new)
+          .with(hash_including(meeting_date: '2025-03-01')).and_call_original
+
+        get review_swimmers_path(file_path: source_file, phase3_v2: 1)
+
+        expect(response).to be_successful
+      end
+
       it 'does not render relay enrichment panel when no relay issues are found' do
         complete_payload = JSON.parse(relay_payload.to_json)
         complete_payload['sections'][0]['rows'][0]['year_of_birth1'] = 1985

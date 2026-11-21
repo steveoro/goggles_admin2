@@ -24,6 +24,43 @@ RSpec.describe PullController do
         expect(response).to have_http_status(:success)
         expect(response.body).to include('FICR results')
       end
+
+      context 'when choosing the default folder' do
+        let(:dirnames) { %w[data/results.new/212 data/results.new/242 data/results.new/252] }
+
+        before(:each) do
+          allow(Rails.root).to receive(:glob).and_call_original
+          allow(Rails.root).to receive(:glob).with('crawler/data/results.new/*')
+                                             .and_return(dirnames.map { |dir| Rails.root.join('crawler', dir) })
+          allow(SeasonDefaults).to receive(:default_season_id).and_return(242)
+        end
+
+        def selected_dir
+          response.body[/<option selected="selected" value="([^"]+)"/, 1]
+        end
+
+        it 'opens the current season folder instead of the first one' do
+          get '/pull/result_files'
+          expect(response).to have_http_status(:success)
+          expect(selected_dir).to eq('data/results.new/242')
+        end
+
+        it 'honours a listed curr_dir param' do
+          get '/pull/result_files', params: { curr_dir: 'data/results.new/252' }
+          expect(selected_dir).to eq('data/results.new/252')
+        end
+
+        it 'ignores an unlisted curr_dir param' do
+          get '/pull/result_files', params: { curr_dir: 'data/results.new/999' }
+          expect(selected_dir).to eq('data/results.new/242')
+        end
+
+        it 'falls back to the first folder when the default season has none' do
+          allow(SeasonDefaults).to receive(:default_season_id).and_return(1)
+          get '/pull/result_files'
+          expect(selected_dir).to eq('data/results.new/212')
+        end
+      end
     end
   end
 

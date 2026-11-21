@@ -39,6 +39,9 @@
             -# Local session without a valid API JWT (API server unreachable at sign-in; Settings has its own box):
             - if user_signed_in? && api_offline_session? && controller_name != 'settings'
               = render(partial: 'goggles/api_offline_banner')
+            -# Local ops DB not configured, missing or not migrated (see Ops::Database):
+            - if user_signed_in? && (ops_state = Ops.state) != :ready
+              = render(partial: 'goggles/ops_setup_notice', locals: { state: ops_state })
             -# Pending FIN "Riepilogo Eventi" change alert (live updates via AppNotificationsChannel):
             = render(FedernuotoWatchAlertComponent.from_store) if user_signed_in?
         .spacer-right

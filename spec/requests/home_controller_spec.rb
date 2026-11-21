@@ -49,6 +49,21 @@ RSpec.describe HomeController do
         expect(response.body).to include('Clean slate')
       end
 
+      it 'shows one discard button per distinct phase_file_path' do
+        GogglesDb::DataImportMeetingIndividualResult.delete_all
+        %w[/tmp/9/d1.json /tmp/9/d1.json /tmp/9/d2.json].each_with_index do |path, idx|
+          GogglesDb::DataImportMeetingIndividualResult.create!(import_key: "home-d-#{idx}", phase_file_path: path)
+        end
+
+        get(home_index_path)
+
+        html = response.parsed_body
+        discard_forms = html.css('form').select { |form| form['action'].to_s.include?('source_path=') }
+        expect(discard_forms.size).to eq(2)
+        expect(discard_forms.map { |form| Rack::Utils.parse_query(URI(form['action']).query)['source_path'] })
+          .to match_array(%w[/tmp/9/d1.json /tmp/9/d2.json])
+      end
+
       it 'hides clean-slate button when no sessions exist' do
         GogglesDb::DataImportMeetingIndividualResult.delete_all
 

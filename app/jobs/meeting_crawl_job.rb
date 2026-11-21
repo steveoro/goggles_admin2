@@ -47,6 +47,7 @@ class MeetingCrawlJob < ApplicationJob
   class Failure < StandardError; end
 
   def perform(season_id:, fin_event_id:, url:)
+    @season_id = season_id
     @fin_event_id = fin_event_id.to_s
     @finished = false
     @pulled = false
@@ -151,9 +152,22 @@ class MeetingCrawlJob < ApplicationJob
     return if @finished || @fin_event_id.blank?
 
     @finished = true
+    record_finish_event(status, message)
     activity_log.finish!(@fin_event_id, kind: :crawl, status:, message:)
   rescue StandardError => e
     Rails.logger.error("[MeetingCrawlJob] cannot update the activity log: #{e.class}: #{e.message}")
+  end
+
+  # Appends 'board.crawl_finished' / 'board.crawl_failed' to the ops event log (never raises).
+  def record_finish_event(status, message)
+    Ops.safely do
+      done = status.to_s == 'done'
+      Ops.record_event!(
+        kind: done ? 'board.crawl_finished' : 'board.crawl_failed', level: done ? 'success' : 'error', actor: 'job',
+        season_id: Integer(@season_id, exception: false), subject_type: 'fin_event', subject_key: @fin_event_id,
+        data: { 'status' => status.to_s, 'message' => message }, link_path: Rails.application.routes.url_helpers.season_board_path
+      )
+    end
   end
 
   def activity_log

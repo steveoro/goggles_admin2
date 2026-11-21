@@ -116,6 +116,14 @@ RSpec.describe SeasonBoard::RowComponent, type: :component do
       expect(page.css('a.btn').first['href']).to eq('/push/index')
     end
 
+    it 'carries the season folder in the Push link, for absolute and relative script paths' do
+      ['/home/x/goggles_admin2/crawler/data/results.new/242/0001-a-lt4.sql', 'crawler/data/results.new/242/0001-a-lt4.sql',
+       'data/results.new/242/0001-a-lt4.sql'].each do |sql_path|
+        page = render_row(build_row(state: :sql_pending, next_action: action(:push, sql_path:, sql_paths: [sql_path])))
+        expect(page.css('a.btn').first['href']).to eq('/push/index?curr_dir=data%2Fresults.new%2F242')
+      end
+    end
+
     it 'renders the inline link form with the orphans for :link' do
       page = render_row(build_row(state: :archived_unlinked, next_action: action(:link, bases: ['a'])), orphans: [orphan(9), orphan(10)])
       form = page.css('form').first

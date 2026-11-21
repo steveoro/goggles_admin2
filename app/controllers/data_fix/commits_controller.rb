@@ -189,6 +189,8 @@ module DataFix
         done_dir: done_dir,
         first_error_step_label: first_error_step_label
       }
+      record_commit_event(source_path:, sql_filename: File.basename(sql_full_path), commit_success:,
+                          season_id:, error_message:, stats:)
 
       # Redirect to report page (POST-redirect-GET pattern)
       redirect_to data_fix_commit_phase6_report_path
@@ -221,6 +223,24 @@ module DataFix
 
       # Render the report view
       render 'data_fix/commit_phase6_report'
+    end
+
+    private
+
+    # Appends the 'datafix.committed' / 'datafix.commit_failed' event to the ops log (never raises).
+    def record_commit_event(source_path:, sql_filename:, commit_success:, season_id:, error_message:, stats:)
+      Ops.safely do
+        first_error = error_message || Array(stats&.dig(:errors)).first
+        Ops.record_event!(
+          kind: commit_success ? 'datafix.committed' : 'datafix.commit_failed',
+          level: commit_success ? 'success' : 'error',
+          actor: 'operator',
+          season_id: season_id || Integer(File.basename(File.dirname(source_path.to_s)), exception: false),
+          subject_type: 'source',
+          subject_key: source_path.to_s,
+          data: { 'sql_filename' => sql_filename, 'first_error' => first_error&.to_s&.truncate(500) }.compact
+        )
+      end
     end
   end
 end

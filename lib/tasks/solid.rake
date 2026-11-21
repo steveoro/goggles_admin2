@@ -24,8 +24,8 @@ namespace :solid do
   desc <<~DESC
     Idempotent setup for the local SQLite DBs used by Solid Queue, Solid Cable & Solid Cache.
 
-    Loads db/queue_schema.rb, db/cable_schema.rb and db/cache_schema.rb only when their tables are missing;
-    never touches the primary (MySQL) database. Safe to run at every boot.
+    Loads db/queue_schema.rb, db/cable_schema.rb and db/cache_schema.rb only when their tables are missing,
+    then runs 'ops:prepare' (local ops DB); never touches the primary (MySQL) database. Safe to run at every boot.
 
     Keep 'schema_dump: false' on the queue, cable & cache entries of config/database.yml: without it,
     any db:migrate / db:prepare / db:schema:dump run rewrites db/<name>_schema.rb from the
@@ -56,5 +56,8 @@ namespace :solid do
         end
       end
     end
+
+    # Last, the local ops DB (see lib/tasks/ops.rake):
+    Rake::Task['ops:prepare'].invoke
   end
 end

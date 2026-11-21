@@ -24,7 +24,7 @@ en:
       create_ok: "New row created! (ID: %{id})"
     clone_form:
       clone_title: "Clone"
-      clone_tooltip: "Clone ALL rows from a season to another one"
+      btn_tooltip: "Clone ALL rows from a season to another one"
       clone_button: "Clone"
       source_season: "From Season ID"
       target_season: "To Season ID"

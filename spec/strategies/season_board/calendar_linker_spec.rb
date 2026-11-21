@@ -110,4 +110,29 @@ RSpec.describe SeasonBoard::CalendarLinker do
       expect(result.sql_path).to be_nil
     end
   end
+
+  describe 'ops event log' do
+    it 'records one board.calendar_linked event when the calendar changes' do
+      result = nil
+      expect { result = link(results_link: fin_url) }.to change(Ops::Event, :count).by(1)
+      event = Ops::Event.last
+      expect(event).to have_attributes(kind: 'board.calendar_linked', level: 'success', actor: 'operator', season_id: season.id,
+                                       subject_type: 'fin_event', subject_key: '150100')
+      expect(event.data).to eq('calendar_id' => calendar.id, 'changes' => %w[results_code results_link],
+                               'sql_filename' => File.basename(result.sql_path.to_s))
+    end
+
+    it 'records nothing when nothing changes or the link fails' do
+      calendar.update!(results_code: '150100')
+      expect { link }.not_to change(Ops::Event, :count)
+      expect { described_class.new(season:, calendar_id: calendar.id, fin_event_id: 'abc', data_root:).call }
+        .not_to change(Ops::Event, :count)
+    end
+
+    it 'links all the same when the event write fails' do
+      allow(Ops::Event).to receive(:create!).and_raise(ArgumentError, 'kaboom')
+      expect(link).to be_success
+      expect(calendar.reload.results_code).to eq('150100')
+    end
+  end
 end

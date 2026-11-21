@@ -1,7 +1,5 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
 See also `AGENTS.md` (checked in) for detailed notes on DataFix V2 canonical-source handling, Phase 1 pool/city rehydration, PDF manifest extraction, and the grid toolbar / lookup endpoints. Don't duplicate it here.
 
 ## What this is
@@ -14,10 +12,6 @@ Rails 8.1 / Ruby 3.4 admin UI for the Goggles framework (v7+), designed to run *
 bin/rails server -p 3000            # or: foreman start -f Procfile.dev (web + dartsass:watch)
 bin/rails dartsass:watch            # CSS (dartsass), needed in dev
 
-bundle exec rspec                                   # full suite
-bundle exec rspec spec/requests/data_fix_controller_phase1_spec.rb          # one file
-bundle exec rspec spec/requests/data_fix_controller_phase1_spec.rb:42       # one example
-bundle exec rubocop [path]          # lint (rubocop-rails/rspec/performance/rake configured in .rubocop.yml)
 bundle exec guard                   # watcher the README expects green before PRs
 
 # Crawler (separate Node service, port 7000; the Rails Pull dashboard expects it running —
@@ -29,6 +23,8 @@ bin/rails solid:prepare             # create/load the local SQLite queue, cable 
 ```
 
 Background jobs use **Solid Queue** (two workers in `config/queue.yml`: `default`, and a single-thread `background` queue for the Season board crawl/extract jobs); the supervisor runs inside Puma (`plugin :solid_queue` in `config/puma.rb`; set `SOLID_QUEUE_IN_PUMA=false` to opt out and run `bin/jobs` separately). ActionCable uses **Solid Cable** so job broadcasts reach the browsers. In development `Rails.cache` is **Solid Cache** (`config/cache.yml`; low-level cache only, e.g. `PdfResults::CategoriesCache` — test uses the null store). All three live on local SQLite DBs (`queue:`/`cable:`/`cache:` entries in the gitignored `config/database.yml` — see `config/database.example.yml`; files under `storage/`), each with `schema_dump: false` so a schema dump can't overwrite `db/{queue,cable,cache}_schema.rb`. Don't run a bare `bin/rails db:prepare`/`db:migrate` just for these: it would also act on the shared MySQL primary — use `solid:prepare`.
+
+A fifth local SQLite DB, **ops** (`db/ops/<env>.sqlite3`, gitignored; `ops:` entry with `database_tasks: false` + `schema_dump: false`, so no Rails DB task ever sees it), holds the admin2-only tables (`events`, `settings`, `snapshots`, later more; models under `app/models/ops/`, hand-written migrations in `db/ops_migrate/`). It is created/migrated only by `bin/rails ops:prepare` (run last by `solid:prepare`, and by `spec/rails_helper.rb` at suite boot); see also `ops:status`, `ops:backup`, `ops:reset confirm=<env>`, `ops:rebuild`. Manual step: paste the `ops:` blocks from `config/database.example.yml` into the local `config/database.yml`; without them the app still boots and shows a setup notice. Callers go through `Ops.available?` / `Ops.safely { }` / `Ops.record_event!(kind:, ...)` (i18n `ops.events.<kind>`): an event write never fails a commit, push or job. System specs (`spec/system`) need Chrome + network; `SKIP_SYSTEM=1` skips them.
 
 Maintenance rake tasks live in `lib/tasks/` (`manifests`, `normalize`, `merge`, `purge`, `recompute`, `check`, `fix`, `db`, fixtures tasks). List with `bin/rails -T`; read each task's `desc` for its env-style args (e.g. `rake manifests:extract season=<id>`). Some (e.g. `normalize:coded_names`) emit a SQL script instead of touching the DB directly.
 
@@ -47,7 +43,6 @@ Six phases turning a results source file into production data; docs in `docs/dat
 - Season board (`/season_board`, `docs/season_board.md`): `SeasonBoardController`, `app/services/season_board/**` (state resolver, disk/DB indexes, `Scheduler`, `CrawlPlanner`), `app/strategies/season_board/` (backfill, calendar linker), jobs `MeetingCrawlJob`/`ManifestExtractJob`/`SeasonRecheckJob` on the `background` queue, activity log `crawler/data/season-board.json`; links rows to local calendars by FIN event id (`calendars.results_code`); `rake season_board:backfill`.
 - `app/services/federnuoto_watch/` + `FedernuotoWatchJob` (recurring, `config/recurring.yml`): watches the FIN "Riepilogo Eventi" page via headless Chrome (`CHROME_BIN`), stores snapshots in `crawler/data/federnuoto-watch.json`, and pushes a sticky alert to every open page through `AppNotificationsChannel` (app-wide; the broadcast HTML carries no CSRF tokens — `federnuoto_watch_controller.js` injects them).
 - `crawler/`: standalone Node server (FIN, Microplus, FICR crawlers) writing artifacts under `crawler/data/` and progress to `crawler-status.json` (broadcast to the UI via ActionCable). Docs: `crawler/README.md`, `docs/crawler/`. `crawler/crawler-status.json` changes constantly at runtime — don't commit it incidentally.
-- `app/grids/` (DataGrid-based list pages, `Grid::ToolbarComponent`), `app/components/` (ViewComponents), views are HAML, Stimulus controllers in `app/javascript/controllers/`, JS helpers in `app/javascript/*.js`.
 - `app/strategies` and `app/grids` plus `app/etls/{sources,transforms,destinations}` are explicit eager-load roots (`config/application.rb`), so files there define top-level constants.
 - API sessions: credentials are checked against the local DB (Devise), then a JWT is fetched from the API configured in the local `AppParameter` row (`framework_urls.api`). `APIProxy` never raises on connection failures (`Result#unreachable?`). If no JWT can be obtained, a localhost sign-in becomes an "API-offline" session (`session[:api_offline]`, `app/controllers/concerns/api_session.rb`) allowed only where `api_offline_allowed?` is true (Settings, Home#index) so the API URL can be fixed.
 - `API` is registered as an inflection acronym (`config/initializers/inflections.rb`), e.g. `APIProxy` lives in `api_proxy.rb`.

@@ -50,7 +50,7 @@ class FileListController < ApplicationController
       redirect_to(root_path) && return
     end
 
-    @curr_dir = @dirnames.first || "data/#{@parent_folder}/" # use default parent folder for empty dir lists
+    @curr_dir = default_curr_dir
     @files = Rails.root.glob("crawler/#{@curr_dir}/**/#{@filter}").sort
   end
   #-- -------------------------------------------------------------------------
@@ -147,6 +147,18 @@ class FileListController < ApplicationController
   end
 
   private
+
+  # Picks the folder to be listed on a GET: the requested one (when listed), else the
+  # current default season folder (when present), else the first one.
+  def default_curr_dir
+    requested = file_params[:curr_dir].to_s
+    return requested if requested.present? && @dirnames.include?(requested)
+
+    default_dir = "data/#{@parent_folder}/#{SeasonDefaults.default_season_id}"
+    return default_dir if @dirnames.include?(default_dir)
+
+    @dirnames.first || "data/#{@parent_folder}/" # use default parent folder for empty dir lists
+  end
 
   # Strong parameters checking for file-related actions.
   def file_params

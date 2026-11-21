@@ -104,4 +104,26 @@ RSpec.describe ManifestExtractJob do
     expect(extract_entry).to have_attributes(status: :failed, message: 'error: RuntimeError: kaboom')
     expect(File).to exist(pdf_path)
   end
+
+  describe 'ops event log' do
+    def last_event = Ops::Event.where(subject_type: 'fin_event', subject_key: fin_id).recent.first
+
+    it 'records board.extract_finished when the extraction ends' do
+      expect { perform }.to change(Ops::Event, :count).by(1)
+      expect(last_event).to have_attributes(kind: 'board.extract_finished', level: 'success', actor: 'job', season_id: 262)
+      expect(last_event.data).to eq('status' => 'done', 'message' => 'extracted (12 events)')
+    end
+
+    it 'records board.extract_failed when the extraction fails' do
+      allow(PdfManifests::BatchRunner).to receive(:running?).and_return(true)
+      expect { perform }.to change(Ops::Event, :count).by(1)
+      expect(last_event).to have_attributes(kind: 'board.extract_failed', level: 'error')
+    end
+
+    it 'still closes the activity when the ops DB is not available' do
+      allow(Ops::Database).to receive(:state).and_return(:not_configured)
+      expect { perform }.not_to change(Ops::Event, :count)
+      expect(extract_entry).to have_attributes(status: :done)
+    end
+  end
 end

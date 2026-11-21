@@ -30,6 +30,7 @@ class ManifestExtractJob < ApplicationJob
 
   # - engine: LLM engine name (nil for PdfManifests::ClientFactory.default_engine)
   def perform(season_id:, fin_event_id:, engine: nil)
+    @season_id = season_id
     @fin_event_id = fin_event_id.to_s
     @finished = false
     activity_log.start!(@fin_event_id, kind: :extract)
@@ -74,9 +75,22 @@ class ManifestExtractJob < ApplicationJob
     return if @finished || @fin_event_id.blank?
 
     @finished = true
+    record_finish_event(status, message)
     activity_log.finish!(@fin_event_id, kind: :extract, status:, message:)
   rescue StandardError => e
     Rails.logger.error("[ManifestExtractJob] cannot update the activity log: #{e.class}: #{e.message}")
+  end
+
+  # Appends 'board.extract_finished' / 'board.extract_failed' to the ops event log (never raises).
+  def record_finish_event(status, message)
+    Ops.safely do
+      done = status.to_s == 'done'
+      Ops.record_event!(
+        kind: done ? 'board.extract_finished' : 'board.extract_failed', level: done ? 'success' : 'error', actor: 'job',
+        season_id: Integer(@season_id, exception: false), subject_type: 'fin_event', subject_key: @fin_event_id,
+        data: { 'status' => status.to_s, 'message' => message }, link_path: Rails.application.routes.url_helpers.season_board_path
+      )
+    end
   end
 
   def activity_log

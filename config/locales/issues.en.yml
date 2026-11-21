@@ -3,7 +3,7 @@ en:
     ask_confirmation: "Really? ...Are you sure to proceed?"
     from_title: "From"
     what_title: "For"
-    requested_fix: "Requested fix"
+    possible_fix: "Requested fix"
     current_result: "Current result"
     result_to_be_edited: "Result to be edited"
     existing_results: "Existing results for %{event_label} (ID: %{event_type_id}), gender: %{gender_type_id}, cat.: %{category_type_id}"
