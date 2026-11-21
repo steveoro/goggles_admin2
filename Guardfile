@@ -115,7 +115,7 @@ guard :rspec, rspec_options do
   watch('app/strategies/solver/lookup_entity.rb') { Dir.glob('spec/strategies/solver/lookup_entity*_spec.rb') }
 
   # Watch controller specs directly as requests:
-  watch(rails.app_controller)  { "#{rspec.spec_dir}/requests" }
+  watch(rails.app_controller) { "#{rspec.spec_dir}/requests" }
 end
 #-- ---------------------------------------------------------------------------
 #++

@@ -344,6 +344,24 @@ RSpec.describe DataFixController do
         expect(response.body).to include('Alpha John')
         expect(response.body).to include(CGI.escape(lt4_source))
       end
+
+      describe 'Phase 3 without the phase3_v2 flag' do
+        it 'renders the v2 review page (the phase3_v2 flag is optional)' do
+          get review_swimmers_path(file_path: source_file)
+
+          expect(response).to be_successful
+          expect(response.body).to include('Step 3: Swimmers')
+        end
+
+        it 'resolves the canonical source path like the flagged request' do
+          allow(DataFix::SourceResolver).to receive(:new).and_call_original
+
+          get review_swimmers_path(file_path: source_file)
+
+          expect(response).to be_successful
+          expect(DataFix::SourceResolver).to have_received(:new).at_least(:once)
+        end
+      end
     end
 
     describe 'PATCH /data_fix/update_phase3_swimmer' do
@@ -994,23 +1012,6 @@ RSpec.describe DataFixController do
         expect(pagination_links).to be_present
         expect(pagination_links.first).to include('filter_state=review')
         expect(pagination_links.first).to include('swimmers_per_page=50')
-      end
-    end
-
-    describe 'Fallback to legacy controller' do
-      it 'redirects to legacy controller when phase3_v2 is not present' do
-        get review_swimmers_path(file_path: source_file)
-
-        expect(response).to redirect_to(review_swimmers_legacy_path(file_path: source_file))
-      end
-
-      it 'redirects without resolving the source path (no category normalization side effects)' do
-        allow(DataFix::SourceResolver).to receive(:new).and_call_original
-
-        get review_swimmers_path(file_path: source_file)
-
-        expect(response).to redirect_to(review_swimmers_legacy_path(file_path: source_file))
-        expect(DataFix::SourceResolver).not_to have_received(:new)
       end
     end
   end

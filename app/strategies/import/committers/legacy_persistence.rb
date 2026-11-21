@@ -4,7 +4,7 @@ module Import
   module Committers
     # Legacy-compatible persistence helpers used by phased committers.
     #
-    # Mirrors MacroCommitter.difference_with_db semantics:
+    # Mirrors the retired legacy committer's difference_with_db semantics:
     # - never overwrite DB values with blank/nil payload values on updates
     # - update only changed columns
     # - special-case Calendar by keeping updated_at in the diff set

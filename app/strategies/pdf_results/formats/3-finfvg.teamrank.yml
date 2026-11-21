@@ -50,7 +50,7 @@
     rows:
       # Format:
       # <rank>  <team_code>  <team_name>   (<tot_swimmers>)  <indiv_score>  (<relay_swimmers>)  <relay_score>  <overall_score>
-      # NOTE: skipping relay scores as they will be computed by the MacroSolver like this: (overall_score - ind_score)
+      # NOTE: skipping relay scores as they will be computed by Import::Committers::MeetingTeamScore like this: (overall_score - ind_score)
       - name: team_ranking1
         fields:
           - name: rank

@@ -198,6 +198,24 @@ RSpec.describe DataFixController do
         expect(response.body).to include(ERB::Util.html_escape(I18n.t('data_import.data_fix.msg.warning_retry_needed')))
         expect(PhaseFileManager.new(phase1_file).meta['retry_needed']).to be true
       end
+
+      describe 'Phase 1 without the phase_v2 flag' do
+        it 'renders the v2 review page (the phase_v2 flag is optional)' do
+          get review_sessions_path(file_path: source_file)
+
+          expect(response).to be_successful
+          expect(response.body).to include('Test Meeting')
+        end
+
+        it 'resolves the canonical source path like the flagged request' do
+          allow(DataFix::SourceResolver).to receive(:new).and_call_original
+
+          get review_sessions_path(file_path: source_file)
+
+          expect(response).to be_successful
+          expect(DataFix::SourceResolver).to have_received(:new).at_least(:once)
+        end
+      end
     end
 
     describe 'PATCH /data_fix/update_phase1_meeting' do
@@ -1136,25 +1154,6 @@ RSpec.describe DataFixController do
 
         get review_sessions_path(file_path: source_file, phase_v2: 1)
         expect(response.body).not_to include(I18n.t('data_import.data_fix.matched_by_fin_event_id', id: fin_id))
-      end
-    end
-
-    describe 'Phase 1 redirect to legacy' do
-      it 'redirects to legacy controller when phase_v2 param is absent' do
-        get review_sessions_path(file_path: source_file)
-
-        expect(response).to have_http_status(:redirect)
-        expect(response.location).to include('/data_fix_legacy/review_sessions')
-      end
-
-      it 'redirects without resolving the source path (no category normalization side effects)' do
-        allow(DataFix::SourceResolver).to receive(:new).and_call_original
-
-        get review_sessions_path(file_path: source_file)
-
-        expect(response).to have_http_status(:redirect)
-        expect(response.location).to include('/data_fix_legacy/review_sessions')
-        expect(DataFix::SourceResolver).not_to have_received(:new)
       end
     end
   end

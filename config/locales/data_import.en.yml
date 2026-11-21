@@ -38,7 +38,6 @@ en:
       btn_select_csv_tooltip: 'Open the meeting selection page for this calendar file'
       btn_process_pdf_tooltip: 'Parse this PDF result file into a processable JSON results file'
       btn_process_json_tooltip: 'Process this result file, preparing a batch data import transaction'
-      btn_reparse_json_tooltip: 'Forced re-parse of this result file using the available source data in it'
       btn_process_sql_tooltip: 'Upload this data-import batch file to the remote server'
       confirm_push: "Are you sure you want to upload this file?"
     selection:
@@ -86,13 +85,7 @@ en:
         no_selection: 'No meetings selected'
         file_changed: 'The calendar file changed since this page was rendered; reloading it'
     data_fix:
-      link_to_manifest_download: "Download manifest"
-      link_to_results_pdf_download: "Download results on PDF"
-      btn_maps_search: 'Search'
-      btn_maps_search_tooltip: 'Search on Maps for the name & address to get the Plus code and/or the URI to be copied here'
-      btn_teams_for_swimmer_tooltip: 'Get the list of Teams this swimmer belongs to'
       btn_start_sql_batch: "Start SQL batch creation"
-      btn_start_sql_batch_tooltip: "Ends the data-review phase and starts the commit phase (commits on local DB only); the remote DB will need a manual 'push' to receive the changes."
       btn_start_sql_batch_confirm: "Commit changes?"
       individual_result_overwrite_label: "Individual-result overwrite mode"
       individual_result_overwrite_help: "Delete existing individual results absent from this source for represented swimmer/team pairs."
@@ -143,18 +136,10 @@ en:
       btn_discard_source: "Discard"
       confirm_discard_source: "Delete the temporary data_import_* rows of this source only (%{source})?"
       btn_reparse_session_label: "Reparse sessions"
-      btn_reparse_session_tooltip: "Make a forced reparse of this result file but JUST for the Meeting sessions (useful if you change and save the Meeting ID)"
-      reparse_notice_for_events: "If you have run a forced 'reparse' for the Meeting or its sessions, you'll need to run a forced 'reparse' for the events too in order to search for any existing event or program on the DB."
-      btn_purge_duplicate: "Purge duplicate"
-      confirm_purge: "Are you sure you want to PURGE the possible duplicate row indexed by '%{key}'? (NOTE: this should be done AFTER mapping or rescanning the meeting events to avoid re-mapping already deleted duplicates form the original data sections, thus forcing you to re-delete ALL the duplicates one-by-one.)"
       btn_add_session: "Add session"
       confirm_add_session: "Are you sure you want to add a new session to the data file?"
       copy_from_session_label: "Copy pool & city from:"
       btn_copy_session_pool: "Copy"
-      add_session_with_shared_place: "Add session with the same shared place"
-      notice_for_add_session: "WARNING: If you add a new session with the same shared place after editing the existing one (not yet committed to the DB), the new session will restore both the swimming pool and its city from the values found on the DB. Edit the details of the sessions after you're done adding them if you want to save time."
-      btn_add_event: "Add event"
-      confirm_add_event: "Are you sure you want to add a new event to the data file?"
       msg:
         warning_retry_needed: "RETRY ERROR SECTION FOUND! This result file can still be processed but needs to be re-downloaded to be complete."
       btn_expand_scan_details: "Scan details"
@@ -183,7 +168,6 @@ en:
         missing_team: "missing or new team"
         skipped: "Team scores skipped (unresolved team)"
     push:
-      msg_prepare_batch_ok: 'SQL batch file created.'
       msg_send_batch_ok: "SQL batch file successfully sent."
       new_results_tab_name: "New"
       sent_results_tab_name: "Sent"

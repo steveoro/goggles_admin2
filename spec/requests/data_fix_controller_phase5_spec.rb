@@ -597,22 +597,21 @@ RSpec.describe DataFixController do
       end
     end
 
-    describe 'Phase 5 redirect to legacy' do
-      it 'redirects to legacy controller when phase5_v2 param is absent' do
+    describe 'Phase 5 without the phase5_v2 flag' do
+      it 'renders the v2 review page (the phase5_v2 flag is optional)' do
         get review_results_path(file_path: source_file_a)
 
-        expect(response).to have_http_status(:redirect)
-        expect(response.location).to include('/data_fix_legacy/review_results')
+        expect(response).to be_successful
+        expect(response.body).to include('Step 5: Results')
       end
 
-      it 'redirects without resolving the source path (no category normalization side effects)' do
+      it 'resolves the canonical source path like the flagged request' do
         allow(DataFix::SourceResolver).to receive(:new).and_call_original
 
         get review_results_path(file_path: source_file_a)
 
-        expect(response).to have_http_status(:redirect)
-        expect(response.location).to include('/data_fix_legacy/review_results')
-        expect(DataFix::SourceResolver).not_to have_received(:new)
+        expect(response).to be_successful
+        expect(DataFix::SourceResolver).to have_received(:new).at_least(:once)
       end
     end
   end

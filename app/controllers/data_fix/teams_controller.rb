@@ -4,8 +4,6 @@ module DataFix
   # TeamsController: Phase 2 (teams) review & edit actions, plus team verification.
   class TeamsController < BaseController
     def review_teams
-      redirect_to(review_teams_legacy_path(request.query_parameters)) && return if params[:phase2_v2].blank?
-
       source_path = @source_path
       season = source_resolver.detect_season_from_pathname(source_path)
       lt_format = source_resolver.detect_layout_type(source_path)

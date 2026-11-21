@@ -33,15 +33,6 @@ module DataFix
 
     TURBO_FILTER_MIN_QUERY_LENGTH = 3
 
-    # Review actions that redirect to the legacy wizard when their v2 flag is
-    # absent. Resolution must be skipped for them: resolve_working_source_path
-    # can run category normalization (deleting staged phase files and
-    # data_import rows), and the legacy redirect must fire without side effects.
-    LEGACY_REDIRECT_FLAGS = {
-      'review_sessions' => 'phase_v2', 'review_teams' => 'phase2_v2', 'review_swimmers' => 'phase3_v2',
-      'review_events' => 'phase4_v2', 'review_results' => 'phase5_v2'
-    }.freeze
-
     # Expose issue detection helpers to views
     helper_method :swimmer_has_missing_data?, :relay_result_has_issues?, :phase3_conflict_hint?
 
@@ -55,9 +46,6 @@ module DataFix
     # Resolves @file_path → @source_path (canonical LT4 working copy) for every
     # action taking a file_path param; redirects to the file list when missing.
     def set_source_path
-      legacy_flag = LEGACY_REDIRECT_FLAGS[action_name]
-      return if legacy_flag && params[legacy_flag].blank?
-
       @file_path = params[:file_path]
       if @file_path.blank?
         flash[:warning] = I18n.t('data_import.errors.invalid_request')

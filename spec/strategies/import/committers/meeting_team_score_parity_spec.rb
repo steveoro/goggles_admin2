@@ -10,7 +10,7 @@ require 'tmpdir'
 # the legacy baseline (spec/fixtures/import/pdf-teamrank-lt2.json, copied into a temporary
 # "<season_id>/" folder), commits them with Import::Committers::Main#commit_all inside the
 # example transaction and compares the resulting meeting_team_scores with
-# spec/fixtures/import/team_scores_legacy_expected.json (MacroSolver + MacroCommitter output).
+# spec/fixtures/import/team_scores_legacy_expected.json (frozen output of the retired legacy wizard).
 #
 RSpec.describe Import::Committers::MeetingTeamScore, type: :strategy do
   let(:fixture_path) { Rails.root.join('spec/fixtures/import/pdf-teamrank-lt2.json') }

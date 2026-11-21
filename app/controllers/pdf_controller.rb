@@ -33,7 +33,7 @@ class PdfController < ApplicationController
   #
   def scan # rubocop:disable Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
     unless request.format.turbo_stream? && request.put? && @file_path.present?
-      flash[:warning] = I18n.t('search_view.errors.invalid_request')
+      flash[:warning] = I18n.t('data_import.errors.invalid_request')
       redirect_to(root_path) && return
     end
 
@@ -90,7 +90,7 @@ class PdfController < ApplicationController
   #
   def log_contents
     unless request.format.turbo_stream? && request.put? && @file_path.present?
-      flash[:warning] = I18n.t('search_view.errors.invalid_request')
+      flash[:warning] = I18n.t('data_import.errors.invalid_request')
       redirect_to(root_path) && return
     end
 
@@ -162,7 +162,7 @@ class PdfController < ApplicationController
   # result with a non-blank team name. These scans are performed only on the data structure itself,
   # without any DB involvement.
   #
-  # Note that an actual DB scan to correct null team names can only be performed later on by the MacroSolver,
+  # Note that an actual DB scan to correct null team names can only be performed later on by the Data-Fix solvers,
   # once all bindings with actual database-stored entities have been processed (namely, the Meeting, all Swimmers,
   # all Teams and all related MIRs).
   #

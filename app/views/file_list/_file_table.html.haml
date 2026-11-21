@@ -76,11 +76,6 @@
                   %i.fa.fa-bolt
               - when '.json'
                 &nbsp;
-                = link_to(review_sessions_legacy_path(file_path: full_pathname),
-                          class: 'btn btn-sm btn-outline-warning mb-1', data: { toggle: 'tooltip',
-                          title: t('data_import.file.btn_process_json_tooltip') }) do
-                  %i.fa.fa-cogs
-                &nbsp;
                 = link_to(review_sessions_path(file_path: full_pathname, phase_v2: 1),
                           class: 'btn btn-sm btn-outline-primary mb-1', data: { toggle: 'tooltip',
                           title: t('data_import.file.btn_process_json_v2_tooltip') }) do

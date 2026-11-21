@@ -8,7 +8,7 @@ require 'json'
 #
 # Split into per-phase controllers under app/controllers/data_fix/* in the
 # A->B->C1 refactor; this class keeps only the cross-phase utility endpoints
-# that delegate to the legacy controller or wipe the staging tables.
+# (coded-name and swimmer-teams lookups) and the staging-tables purge.
 class DataFixController < ApplicationController
   PURGE_TABLES = {
     laps: GogglesDb::DataImportLap,
@@ -55,16 +55,77 @@ class DataFixController < ApplicationController
     redirect_to(home_index_path)
   end
 
-  # Shared read-only endpoints delegate to legacy for now
+  # [GET /data_fix/coded_name] (JSON only)
+  # Computes the internal coded name for a Meeting ('code' target) or a SwimmingPool
+  # ('nick_name' target). Used by +coded_name_controller.js+ in the Phase 1 forms.
+  #
+  # === Required options for Meeting's 'code' target:
+  # - 'description' & 'city_name'
+  #
+  # === Required options for SwimmingPool's 'nick_name' target:
+  # - 'name', 'city_name' & 'pool_type_code'
+  #
+  # == Returns:
+  # A JSON response having format:
+  #
+  #    { <target> => <internal_coded_name> }
+  #
   def coded_name
-    redirect_to controller: 'data_fix_legacy', action: 'coded_name', params: request.query_parameters
+    unless request.format.json? && %w[code nick_name].include?(coded_name_params[:target])
+      flash[:warning] = I18n.t('data_import.errors.invalid_request')
+      redirect_to root_path
+      return
+    end
+
+    result = if coded_name_params[:target] == 'nick_name'
+               GogglesDb::Normalizers::CodedName.for_pool(
+                 coded_name_params[:name],
+                 coded_name_params[:city_name],
+                 coded_name_params[:pool_type_code]
+               )
+             else
+               GogglesDb::Normalizers::CodedName.for_meeting(
+                 coded_name_params[:description],
+                 coded_name_params[:city_name]
+               )
+             end
+
+    render(json: { coded_name_params[:target] => result })
   end
 
+  # [GET /data_fix/teams_for_swimmer/:swimmer_id] (Turbo Stream only)
+  # Renders the list of unique team names for which the specified swimmer has a badge,
+  # updating the "team-list-for-<swimmer_id>" DOM target (empty text when none).
+  #
+  # == Params:
+  # <tt>:swimmer_id</tt> => target Swimmer id (required)
+  #
   def teams_for_swimmer
-    redirect_to controller: 'data_fix_legacy', action: 'teams_for_swimmer', params: request.query_parameters
+    unless request.format.turbo_stream?
+      flash[:warning] = I18n.t('data_import.errors.invalid_request')
+      redirect_to root_path
+      return
+    end
+
+    @swimmer_id = teams_for_swimmer_params[:swimmer_id]
+    @team_names = GogglesDb::Badge.where(swimmer_id: @swimmer_id)
+                                  .includes(:team).joins(:team)
+                                  .map { |row| "#{row.team.editable_name} (#{row.team_id})" }
+                                  .uniq
+                                  .join(', ')
   end
 
   private
+
+  # Strong parameters checking for coded name retrieval.
+  def coded_name_params
+    params.permit(:target, :name, :city_name, :pool_type_code, :description)
+  end
+
+  # Strong parameters checking for team names list retrieval.
+  def teams_for_swimmer_params
+    params.permit(:swimmer_id)
+  end
 
   # Appends the 'datafix.purged' event to the ops log (never raises).
   def record_purge_event(source_path, deleted)

@@ -228,6 +228,24 @@ RSpec.describe DataFixController do
         expect(response.body).to include(ERB::Util.html_escape(I18n.t('data_import.data_fix.msg.warning_retry_needed')))
         expect(PhaseFileManager.new(phase2_file).meta['retry_needed']).to be true
       end
+
+      describe 'Phase 2 without the phase2_v2 flag' do
+        it 'renders the v2 review page (the phase2_v2 flag is optional)' do
+          get review_teams_path(file_path: source_file)
+
+          expect(response).to be_successful
+          expect(response.body).to include('Step 2: Teams')
+        end
+
+        it 'resolves the canonical source path like the flagged request' do
+          allow(DataFix::SourceResolver).to receive(:new).and_call_original
+
+          get review_teams_path(file_path: source_file)
+
+          expect(response).to be_successful
+          expect(DataFix::SourceResolver).to have_received(:new).at_least(:once)
+        end
+      end
     end
 
     describe 'TeamSolver fuzzy matching' do
@@ -825,25 +843,6 @@ RSpec.describe DataFixController do
         expect(pagination_links).to be_present
         expect(pagination_links.first).to include('filter_state=review')
         expect(pagination_links.first).to include('teams_per_page=25')
-      end
-    end
-
-    describe 'Phase 2 redirect to legacy' do
-      it 'redirects to legacy controller when phase2_v2 param is absent' do
-        get review_teams_path(file_path: source_file)
-
-        expect(response).to have_http_status(:redirect)
-        expect(response.location).to include('/data_fix_legacy/review_teams')
-      end
-
-      it 'redirects without resolving the source path (no category normalization side effects)' do
-        allow(DataFix::SourceResolver).to receive(:new).and_call_original
-
-        get review_teams_path(file_path: source_file)
-
-        expect(response).to have_http_status(:redirect)
-        expect(response.location).to include('/data_fix_legacy/review_teams')
-        expect(DataFix::SourceResolver).not_to have_received(:new)
       end
     end
   end

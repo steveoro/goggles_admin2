@@ -48,7 +48,7 @@ end
 #   *data* section of each rebuilt phase file; plus the number of staged data_import_* rows.
 # - warm start (all phase files already there): each GET renders (200) and re-writes only the
 #   phase file of its own step (metadata only: the data digest is unchanged); nothing is staged.
-# - no v2 flag: the GET redirects to the legacy wizard without touching the file system.
+# - no v2 flag: the v2 flags are optional, so the GET behaves exactly like the warm-start one.
 #
 # NOTE: the cold-start digests & row counts depend on the (anonymized) test DB content the fixtures
 # are synchronized with (see spec/fixtures/import/README.md).
@@ -154,15 +154,16 @@ RSpec.describe 'Data-Fix phase orchestration (characterization)' do
   context 'without the v2 flag' do
     before(:each) { copy_fixture_phase_files }
 
-    PhaseChar::STEPS.each do |action, _flag, _phase|
-      it "GET #{action} redirects to the legacy wizard without touching any file" do
+    PhaseChar::STEPS.each do |action, _flag, phase|
+      it "GET #{action} renders the v2 page like the flagged request (the v2 flag is optional)" do
+        digests_before = (1..5).index_with { |n| data_digest(phase_path(n)) }
         mark_files!
 
         get(send(:"#{action}_path", file_path: source_path))
 
-        expect(response).to have_http_status(:found)
-        expect(response.location).to include('data_fix_legacy')
-        expect(files_written_since_mark).to be_empty
+        expect(response).to have_http_status(:ok)
+        expect(files_written_since_mark).to eq(["#{PhaseChar::BASENAME}-phase#{phase}.json"])
+        expect((1..5).index_with { |n| data_digest(phase_path(n)) }).to eq(digests_before)
         expect(staging_counts).to eq([0, 0, 0, 0, 0])
       end
     end

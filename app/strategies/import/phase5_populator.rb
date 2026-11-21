@@ -5,7 +5,7 @@ module Import
   # = Phase5Populator
   #
   # Populates temporary data_import_* tables from source result file.
-  # Reads phases 1-4 JSON for entity IDs, generates import_keys using MacroSolver patterns,
+  # Reads phases 1-4 JSON for entity IDs, generates import_keys using the legacy import-key patterns,
   # and inserts individual results + laps into GogglesDb data_import tables.
   #
   # Supports both LT2 and LT4 source formats through automatic normalization:

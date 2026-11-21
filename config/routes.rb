@@ -98,22 +98,7 @@ Rails.application.routes.draw do
   get 'data_fix/teams_for_swimmer/:swimmer_id', to: 'data_fix#teams_for_swimmer', as: 'data_fix_teams_for_swimmer'
   delete 'data_fix/purge', to: 'data_fix#purge', as: 'data_fix_purge'
 
-  # Explicit legacy routes (directly targeting DataFixLegacyController)
-  get 'data_fix_legacy/review_sessions', to: 'data_fix_legacy#review_sessions', as: 'review_sessions_legacy'
-  get 'data_fix_legacy/review_teams', to: 'data_fix_legacy#review_teams', as: 'review_teams_legacy'
-  get 'data_fix_legacy/review_swimmers', to: 'data_fix_legacy#review_swimmers', as: 'review_swimmers_legacy'
-  get 'data_fix_legacy/review_events', to: 'data_fix_legacy#review_events', as: 'review_events_legacy'
-  get 'data_fix_legacy/review_results', to: 'data_fix_legacy#review_results', as: 'review_results_legacy'
-  patch 'data_fix_legacy/update', to: 'data_fix_legacy#update', as: 'data_fix_update_legacy'
-  get 'data_fix_legacy/coded_name', to: 'data_fix_legacy#coded_name', as: 'data_fix_coded_name_legacy'
-  get 'data_fix_legacy/teams_for_swimmer/:swimmer_id', to: 'data_fix_legacy#teams_for_swimmer', as: 'data_fix_teams_for_swimmer_legacy'
-  delete 'data_fix_legacy/purge', to: 'data_fix_legacy#purge', as: 'data_fix_purge_legacy'
-  get 'data_fix_legacy/result_details/:prg_key', to: 'data_fix_legacy#result_details', as: 'data_fix_result_details_legacy'
-  post 'data_fix_legacy/add_session', to: 'data_fix_legacy#add_session', as: 'data_fix_add_session_legacy'
-  post 'data_fix_legacy/add_event', to: 'data_fix_legacy#add_event', as: 'data_fix_add_event_legacy'
-
   get 'push/index'
-  post 'push/prepare'
   post 'push/upload'
 
   # Datagrid-actioned routes: (use prefix to avoid clashing w/ Engine resource routes)

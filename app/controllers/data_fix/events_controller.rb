@@ -4,8 +4,6 @@ module DataFix
   # EventsController: Phase 4 (events) review & edit actions, plus the results chunk endpoint.
   class EventsController < BaseController
     def review_events
-      redirect_to(review_events_legacy_path(request.query_parameters)) && return if params[:phase4_v2].blank?
-
       source_path = @source_path
       season = source_resolver.detect_season_from_pathname(source_path)
       lt_format = source_resolver.detect_layout_type(source_path)

@@ -38,7 +38,6 @@ it:
       btn_select_csv_tooltip: 'Apri la pagina di selezione meeting per questo file calendario'
       btn_process_pdf_tooltip: 'Converti questo file risultati da PDF al formato JSON che può essere importato'
       btn_process_json_tooltip: "Elabora questo file risultati, preparandolo per l'importazione dati"
-      btn_reparse_json_tooltip: "Riesegui la scasione forzata di questo file risultati usando i dati originali presenti"
       btn_process_sql_tooltip: "Esegue l'upload di questo file di importazione dati sul server remoto"
       confirm_push: "Sicuri di voler fare l'upload di questo file?"
     selection:
@@ -86,13 +85,7 @@ it:
         no_selection: 'Nessun meeting selezionato'
         file_changed: 'Il file calendario è cambiato da quando questa pagina è stata generata; la ricarico'
     data_fix:
-      link_to_manifest_download: "Scarica locandina"
-      link_to_results_pdf_download: "Scarica risultati su PDF"
-      btn_maps_search: 'Cerca'
-      btn_maps_search_tooltip: "Cerca su Maps il nome & indirizzo per ottenere il Plus code e/o l'URI da incollare qui"
-      btn_teams_for_swimmer_tooltip: 'Trova la lista di squadre a cui appartiene questo nuotatore'
       btn_start_sql_batch: "Start SQL batch creation"
-      btn_start_sql_batch_tooltip: "Finisce la fase di data-review e comincia il 'commit' esclusivamente su DB locale (è poi possibile inviare il batch sul server di destinazione col 'push')"
       btn_start_sql_batch_confirm: "Eseguo il commit di tutti i cambiamenti?"
       individual_result_overwrite_label: "Modalità sovrascrittura risultati individuali"
       individual_result_overwrite_help: "Elimina i risultati individuali esistenti assenti dalla fonte per i nuotatori/squadre rappresentati."
@@ -143,18 +136,10 @@ it:
       btn_discard_source: "Scarta"
       confirm_discard_source: "Eliminare solo le righe temporanee data_import_* di questa sorgente (%{source})?"
       btn_reparse_session_label: "Riscasiona sessioni"
-      btn_reparse_session_tooltip: "Riesegui la scasione forzata di questo file risultati SOLO per le sessioni Meeting (utile se si cambia e salva l'ID del Meeting)"
-      reparse_notice_for_events: "Se hai eseguito il 'rescan' forzato del meeting o delle sue sessioni, devi ri-eseguire il 'rescan' per gli eventi affinché vengano integrati con quelli eventualmente già presenti su DB!"
-      btn_purge_duplicate: "Elimina duplicato"
-      confirm_purge: "Siamo sicuri di volere ELIMINARE il possible duplicato indicizzato da '%{key}'? (NOTA: questo dovrebbe essere fatto DOPO il mapping degli eventi o un suo re-scan per evitare di ripescare nuovamente nomi già eliminati dalle righe di sezione originali ritrovandosi, quindi, a doverli eliminare TUTTI di nuovo uno dopo l'altro.)"
       btn_add_session: "Aggiungi sessione"
       confirm_add_session: "Siamo sicuri di volere aggiungere una nuova sessione al file di dati?"
       copy_from_session_label: "Copia piscina e città da:"
       btn_copy_session_pool: "Copia"
-      add_session_with_shared_place: "Aggiungi sessione con stessa piscina di default"
-      notice_for_add_session: "ATTENZIONE: sessioni anche diverse ma associate alla stessa chiave dati piscina condividono i dati luogo nella cache. Se aggiungi una nuova sessione con la stessa chiave dati di default dopo aver modificato una di quelle esistenti (e non ancora committata su DB), la nuova sessione ripristinerà nel mapping i valori originali di SwimmingPool & City per tutte le sessioni con la stessa chiave sessione. Edita i dettagli di sessione solo dopo aver finito di aggiungerle tutte, se vuoi risparmiare tempo."
-      btn_add_event: "Aggiungi evento"
-      confirm_add_event: "Siamo sicuri di volere aggiungere un nuovo evento al file di dati?"
       msg:
         warning_retry_needed: "ERRORE 'RETRY' TROVATO! Questo file risultati può essere elaborato lo stesso ma deve essere riscaricato per essere completo."
       btn_expand_scan_details: "Dettagli scansione"
@@ -183,7 +168,6 @@ it:
         missing_team: "squadra mancante o nuova"
         skipped: "Punteggi società saltati (squadra non risolta)"
     push:
-      msg_prepare_batch_ok: 'File batch SQL creato con successo.'
       msg_send_batch_ok: "File batch inviato con successo."
       new_results_tab_name: "Nuovi"
       sent_results_tab_name: "Inviati"

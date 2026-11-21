@@ -4,8 +4,6 @@ module DataFix
   # SessionsController: Phase 1 (meeting + sessions) review & edit actions.
   class SessionsController < BaseController
     def review_sessions
-      redirect_to(review_sessions_legacy_path(request.query_parameters)) && return if params[:phase_v2].blank?
-
       source_path = @source_path
       @season = source_resolver.detect_season_from_pathname(source_path)
       lt_format = source_resolver.detect_layout_type(source_path)

@@ -103,8 +103,6 @@ Metrics/ClassLength:
     - 'app/services/data_fix/*.rb'
     - 'app/controllers/goggles_cup_controller.rb'
     - 'app/controllers/pull_controller.rb'
-    - 'app/strategies/import/macro_committer.rb'
-    - 'app/strategies/import/macro_solver.rb'
     - 'app/controllers/api_issues_controller.rb'
     - 'app/strategies/import/committers/badge.rb'
     - 'app/strategies/import/committers/lap.rb'

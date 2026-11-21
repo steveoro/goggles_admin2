@@ -82,7 +82,7 @@
 -# Enable subsequent data-fix step only on a full parse:
 - if last_index >= page_count && last_result_fmt_name.present?
   .row-fluid.my-4.text-center
-    = link_to(review_sessions_path(file_path: json_pathname), method: :get,
+    = link_to(review_sessions_path(file_path: json_pathname, phase_v2: 1), method: :get,
               class: 'btn btn-outline-primary mb-1', data: { toggle: 'tooltip',
               title: t('data_import.file.btn_process_json_tooltip') }) do
       %i.fa.fa-edit

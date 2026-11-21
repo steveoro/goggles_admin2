@@ -29,11 +29,11 @@ This directory contains real, reviewed phase files from a small event (200RA) **
   fictional, team names are anonymized `goggles_test` teams affiliated in season 192 (so both the legacy and the v2
   solvers match them exactly), dates and years of birth are shifted into season 192. Two ranking rows were edited
   to cover the score mapping: rank 3 has 750 relay points (overall > individual), rank 5 has a `null` individual score.
-- **team_scores_legacy_expected.json** - the `meeting_team_scores` committed by the legacy
-  `Import::MacroSolver` + `Import::MacroCommitter` on the fixture above (frozen; `meeting_id` omitted).
-  Parity reference for `spec/strategies/import/committers/meeting_team_score_parity_spec.rb`; regenerated (only
-  while the legacy classes exist) with `UPDATE_LEGACY_BASELINE=1` and
-  `spec/strategies/import/team_scores_legacy_baseline_spec.rb`.
+- **team_scores_legacy_expected.json** - the `meeting_team_scores` committed by the legacy Data-Fix wizard
+  (macro solver + macro committer) on the fixture above (frozen; `meeting_id` omitted).
+  Parity reference for `spec/strategies/import/committers/meeting_team_score_parity_spec.rb`. The legacy wizard and
+  its baseline spec were removed in 0.10.78, so this file can no longer be regenerated: edit it by hand only if the
+  fixture above changes in a way that does not affect the expected scores.
 
 ## ⚠️ Critical: Database Synchronization
 

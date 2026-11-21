@@ -4,8 +4,6 @@ module DataFix
   # SwimmersController: Phase 3 (swimmers) review, edit and merge actions.
   class SwimmersController < BaseController
     def review_swimmers
-      redirect_to(review_swimmers_legacy_path(request.query_parameters)) && return if params[:phase3_v2].blank?
-
       source_path = @source_path
       season = source_resolver.detect_season_from_pathname(source_path)
       categories_cache = PdfResults::CategoriesCache.cached_for(season)

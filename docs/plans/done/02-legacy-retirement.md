@@ -189,6 +189,20 @@ Manual: one PDF-derived source with a ranking (e.g. a copy of the Trofeo Roma 20
 - `staging:` entries in `config/database*.yml` and other staging config files.
 - Converting Data-Fix views to Bootstrap 5 (12); the persistent commit report (09).
 
+## Outcome (done, 0.10.78, 2026-11-21)
+
+Delivered as two commits on `feature/modernize-admin-console-ux` (steps 1-2 + 5-6, then 3-4). Decisions 1-5 confirmed with their defaults. Full suite green (2939 examples, system specs included), rubocop clean, grep gate empty. Notes for later phases:
+
+- Parity: v2 rows match the frozen legacy output exactly (`spec/fixtures/import/team_scores_legacy_expected.json`, season 192 fixture). The legacy committer could not commit team scores for a brand-new meeting (no meeting binding); v2 can.
+- `phase2.json` gets `data.team_scores` only when the source has a ranking (keeps the 01 characterization digests). A score with no Phase 2 team entry is skipped directly (no `Team.for_name` fallback, which matched unrelated teams).
+- `Parser::Score` reads `"1.234,50"` as 1.234 despite its doc comment; `TeamScoreExtractor` normalises the value itself. `Parser::Score` is unchanged (candidate fix).
+- The v2 Phase 1 solver leaves meeting `code`, `header_year`, `edition`, `edition_type_id`, `timing_type_id` and the pool `nick_name` / `lanes_number` blank; Phase 6 fails without them. The parity spec fills them as an operator would. Relevant to the "ready to commit" rule in 09/10.
+- LT4 working copies made before 0.10.78 keep their junk `EVENT` events from ranking sections until re-materialised; their scores are read from the LT2 sibling.
+- `app/services/phase1_session_rescanner.rb:79-85` still writes empty downstream keys into Phase 1 data (not in the delete list).
+- `coded_name` / `teams_for_swimmer` now flash `data_import.errors.invalid_request`; `pdf_controller.rb` was switched to the same key (the old `search_view.errors.invalid_request` has no `it` translation).
+- For 15: `Import::DiffCalculator` still unused; docs under `docs/data_fix/legacy_version/` kept as history.
+- Operator checklist still open: delete the untracked `send_coverage.sh` and rotate its tokens; run the routine gate by hand for one FIN and one PDF-derived source.
+
 ## Rollback note
 
 Steps 2 to 6 are separate commits. Step 4 (deletion) reverts cleanly with `git revert`, and the routes, views and controller come back unchanged because step 3 kept the v2 flags accepted. Phase 2 files written with `team_scores` stay valid for older code, which ignores the extra key. Committed `meeting_team_scores` rows are ordinary rows and do not need undoing.
