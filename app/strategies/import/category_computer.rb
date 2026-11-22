@@ -16,7 +16,8 @@ module Import
     #
     # @param year_of_birth [Integer] swimmer's year of birth
     # @param gender_code [String] 'M' or 'F'
-    # @param meeting_date [String,Date] meeting date to calculate age
+    # @param meeting_date [String,Date] meeting date; its year is the age reference
+    #   for non-FIN season types (see +individual_age+)
     # @param season [GogglesDb::Season] current season for CategoriesCache
     # @param categories_cache [PdfResults::CategoriesCache,nil] optional pre-built cache
     # @return [Array<Integer,String>] [category_type_id, category_type_code] or [nil, nil]
@@ -25,17 +26,8 @@ module Import
 
       # Build cache if not provided
       cache = categories_cache || PdfResults::CategoriesCache.cached_for(season)
-
-      # Parse meeting date to get year
-      meeting_year = begin
-        Date.parse(meeting_date.to_s).year
-      rescue StandardError
-        nil
-      end
-      return [nil, nil] unless meeting_year
-
-      # Calculate swimmer's age at meeting
-      age = meeting_year - year_of_birth.to_i
+      age = individual_age(year_of_birth:, meeting_date:, season:)
+      return [nil, nil] unless age
 
       # Use CategoriesCache to find the correct category for this season
       result = cache.find_category_for_age(age, relay: false)
@@ -46,6 +38,27 @@ module Import
       # NOTE: Individual categories are gender-independent (M25, M30, etc. for both genders)
       # Gender is only used for relay categories
       [category_type.id, category_type.code]
+    end
+
+    # Computes the reference age for individual category lookup.
+    #
+    # FIN Master individual categories are fixed for the whole season, so their
+    # reference year is the second calendar year of the season (+season.end_date.year+)
+    # and early-season meetings get the same category as spring ones.
+    # Other season types retain the meeting-year age rule.
+    #
+    # @param year_of_birth [Integer] swimmer's year of birth
+    # @param meeting_date [String,Date] meeting date
+    # @param season [GogglesDb::Season] current season
+    # @return [Integer,nil] the reference age for the category lookup, or nil when unresolvable
+    def self.individual_age(year_of_birth:, meeting_date:, season:)
+      return nil unless year_of_birth && meeting_date && season
+
+      meeting_year = Date.parse(meeting_date.to_s).year
+      reference_year = season.season_type_id == GogglesDb::SeasonType::MAS_FIN_ID ? season.end_date&.year : meeting_year
+      reference_year - year_of_birth.to_i if reference_year
+    rescue ArgumentError
+      nil
     end
 
     # Compute relay CategoryType from the sum of swimmer ages in a relay team.

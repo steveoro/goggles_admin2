@@ -52,6 +52,7 @@ crawler-status.json
 /storage/*
 !/storage/.keep
 /db/dump/*
+/db/ops/*
 !/db/dump/.keep
 /coverage/*
 # if using bower-rails ignore default bower_components path bower.json files

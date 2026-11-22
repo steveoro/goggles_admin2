@@ -504,12 +504,16 @@ module Phase5
       gender = normalize_gender(tokens[0])
       return nil if gender.blank?
 
-      # Use CategoriesCache to find category
-      return nil unless categories_cache
+      return nil unless season && categories_cache
 
-      age = meeting_date.year - yob
-      _code, category_type = categories_cache.find_category_for_age(age, relay: false)
-      category_type&.code
+      _category_id, category_code = Import::CategoryComputer.compute_category(
+        year_of_birth: yob,
+        gender_code: gender,
+        meeting_date: meeting_date,
+        season: season,
+        categories_cache: categories_cache
+      )
+      category_code
     end
 
     # Extract meeting date from source data for age calculations

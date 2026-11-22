@@ -78,6 +78,25 @@ RSpec.describe Phase5::DataIntegrator, type: :service do
       expect(integrator.integrate_individual_result(result: result, event: event)[:category]).to eq('M25')
     end
 
+    context 'with a 2026-27 FIN Master season' do
+      let(:season) do
+        FactoryBot.create(:season, season_type_id: GogglesDb::SeasonType::MAS_FIN_ID,
+                                   begin_date: Date.new(2026, 10, 1), end_date: Date.new(2027, 9, 30))
+      end
+      let(:source_data) { { 'dates' => '2026-11-22' } }
+      let(:phase3_data) { nil }
+
+      before(:each) do
+        FactoryBot.create(:category_type, season:, code: 'M60', age_begin: 60, age_end: 64)
+      end
+
+      it 'uses the season reference year when an invalid category falls back to YOB' do
+        result = { 'category' => 'UNF', 'gender' => 'M', 'swimmer' => 'M|RICCHI|MATTEO|1967|TEAM' }
+
+        expect(integrator.integrate_individual_result(result:, event:)[:category]).to eq('M60')
+      end
+    end
+
     it 'keeps the raw source value when nothing can resolve it' do
       result = { 'category' => 'BOGUS', 'gender' => 'M', 'swimmer' => 'M||0|TEAM Y' }
       expect(integrator.integrate_individual_result(result: result, event: event)[:category]).to eq('BOGUS')
