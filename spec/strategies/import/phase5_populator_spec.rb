@@ -566,6 +566,33 @@ RSpec.describe Import::Phase5Populator, type: :strategy do
         expect(swimmers.map(&:relay_order)).to eq([1, 2, 3, 4])
       end
 
+      it 'stages all six swimmers and laps of a non-standard relay' do
+        event = subject.source_data['events'].first
+        event['eventCode'] = '6X50SL'
+        event['eventLength'] = '6X50'
+        event['results'] = [event['results'].first]
+        subject.source_data['events'] = [event]
+
+        extra_keys = ['M|TONNI|MARCO|1980|Sample Team A', 'F|MANERBA|FRANCESCA|1976|Sample Team A']
+        event['results'].first['laps'].concat(extra_keys.each_with_index.map do |key, index|
+          { 'distance' => "#{250 + (index * 50)}m", 'delta' => '25.00', 'swimmer' => key }
+        end)
+        subject.phase3_data['data']['swimmers'].concat(extra_keys.each_with_index.map do |key, index|
+          { 'key' => key, 'swimmer_id' => 213 + index }
+        end)
+
+        subject.send(:populate_lt4_relay_results!)
+
+        mrr = GogglesDb::DataImportMeetingRelayResult.find_by!(phase_file_path: source_path)
+        swimmers = GogglesDb::DataImportMeetingRelaySwimmer.where(parent_import_key: mrr.import_key).order(:relay_order)
+        laps = GogglesDb::DataImportRelayLap.where(parent_import_key: mrr.import_key).order(:length_in_meters)
+        expect(swimmers.map(&:relay_order)).to eq((1..6).to_a)
+        expect(swimmers.last(2).map(&:swimmer_key)).to eq(extra_keys)
+        expect(swimmers.last(2).map(&:swimmer_id)).to eq([213, 214])
+        expect(laps.map(&:meeting_relay_swimmer_key)).to eq((1..6).map { |order| "#{mrr.import_key}-swimmer#{order}" })
+        expect(subject.stats[:errors]).to be_empty
+      end
+
       it 'stores lap distances correctly' do
         subject.send(:populate_lt4_relay_results!)
         mrr = GogglesDb::DataImportMeetingRelayResult.first
