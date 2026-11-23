@@ -56,12 +56,17 @@ module SystemTestHelpers
     %r{WebSocket connection to 'ws://localhost:7000/cable' failed}
   ].freeze
 
-  # Signs-in through the actual form, using the default factory password.
+  # Signs-in through the actual form, using the default factory password, and waits until the
+  # sign-in page is gone. The form is submitted through Turbo, which swaps the whole <body> only
+  # when the post-sign-in page arrives, and the sign-in page renders the same navbar (dropdown
+  # included): without this wait, a journey could act on the sign-in page's elements and see them
+  # go stale (or an open dropdown close) as soon as the landing page renders.
   def sign_in_through_form(user, password: 'Password123!')
     visit(new_user_session_path)
     fill_in('user_email', with: user.email)
     fill_in('user_password', with: password)
     click_button('login-btn')
+    expect(page).to have_no_css('#login-btn')
   end
 
   # Returns the SEVERE browser console entries (messages only) collected so far, minus the ignored ones.
