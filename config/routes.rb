@@ -5,12 +5,26 @@ Rails.application.routes.draw do
                      controllers: {
                        sessions: 'users/sessions'
                      }
-  root to: 'home#index'
+  root to: 'dashboard#index'
 
   # Mounting and usage of the Engine:
   mount GogglesDb::Engine => '/'
 
-  get 'home/index'
+  # Old landing page URL (kept for bookmarks and the locale switch of non-GET pages):
+  get 'home/index', to: 'dashboard#index', as: 'home_index'
+
+  # Dashboard zones (lazy Turbo frames, see DashboardController) and actions:
+  get 'dashboard/needs_you', to: 'dashboard#needs_you', as: 'dashboard_needs_you'
+  get 'dashboard/in_progress', to: 'dashboard#in_progress', as: 'dashboard_in_progress'
+  get 'dashboard/season_progress', to: 'dashboard#season_progress', as: 'dashboard_season_progress'
+  get 'dashboard/system', to: 'dashboard#system_status', as: 'dashboard_system'
+  get 'dashboard/activity', to: 'dashboard#activity_feed', as: 'dashboard_activity'
+  get 'dashboard/kpis', to: 'dashboard#kpis', as: 'dashboard_kpis'
+  post 'dashboard/refresh_kpis', to: 'dashboard#refresh_kpis', as: 'dashboard_refresh_kpis'
+  post 'dashboard/discard_failed_job', to: 'dashboard#discard_failed_job', as: 'dashboard_discard_failed_job'
+  post 'dashboard/retry_failed_job', to: 'dashboard#retry_failed_job', as: 'dashboard_retry_failed_job'
+  # Event log (ops DB), paginated:
+  get 'activity', to: 'dashboard#activity_log', as: 'activity'
 
   # Top bar status pills (lazy turbo-frame; see Shell::StatusController):
   get 'shell/status', to: 'shell/status#show', as: 'shell_status'
@@ -101,7 +115,6 @@ Rails.application.routes.draw do
   get 'data_fix/verify_team', to: 'data_fix/teams#verify_team', as: 'data_fix_verify_team'
   get 'data_fix/coded_name', to: 'data_fix#coded_name'
   get 'data_fix/teams_for_swimmer/:swimmer_id', to: 'data_fix#teams_for_swimmer', as: 'data_fix_teams_for_swimmer'
-  delete 'data_fix/purge', to: 'data_fix#purge', as: 'data_fix_purge'
 
   get 'push/index'
   post 'push/upload'

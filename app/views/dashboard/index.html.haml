@@ -1,0 +1,67 @@
+-#
+  Dashboard (DashboardController): the page layout only. Each zone is a Turbo frame loaded on its own from the
+  dashboard_* frame actions, reloaded by live_frames_controller.js on an AppNotificationsChannel ping, or every
+  20 s while one of them shows something running ([data-live-busy="true"]).
+- refresh_options = { method: :post, class: 'btn btn-sm btn-outline-secondary', form_class: 'd-inline', id: 'btn-refresh-kpis',
+                      title: t('dashboard.kpis.refresh_tooltip') }
+-# (each zone frame is a target of the live-frames controller)
+- frame_data = { 'live-frames-target': 'frame' }
+= render(Shell::PageHeaderComponent.new(title: t('dashboard.title'), subtitle: t('dashboard.subtitle'), crumbs: [])) do |header|
+  - header.with_actions do
+    = button_to(dashboard_refresh_kpis_path, **refresh_options) do
+      %i.fa-solid.fa-rotate{ 'aria-hidden' => 'true' }
+      = t('dashboard.kpis.refresh')
+
+- loading = capture do
+  .small.text-body-secondary.py-2
+    %i.fa-solid.fa-circle-notch.fa-spin{ 'aria-hidden' => 'true' }
+    = t('dashboard.zones.loading')
+
+#dashboard{ data: { controller: 'live-frames', 'live-frames-interval-value': 20_000 } }
+  = turbo_frame_tag('dashboard-kpis', src: dashboard_kpis_path, target: '_top', class: 'd-block mb-3', data: frame_data) do
+    = loading
+
+  .row.g-3
+    .col-12.col-xl-8.d-flex.flex-column.gap-3
+      %section.card#dashboard-needs-you-card
+        .card-header.d-flex.align-items-center.gap-2
+          %i.fa-solid.fa-inbox{ 'aria-hidden' => 'true' }
+          %h2.h6.mb-0= t('dashboard.zones.needs_you')
+          - help = t('dashboard.zones.needs_you_help')
+          %i.fa-solid.fa-circle-question.text-body-secondary{ tabindex: '0', role: 'img', 'aria-label' => help,
+                                                              data: { bs_toggle: 'tooltip', bs_title: help } }
+        .card-body.py-2
+          = turbo_frame_tag('dashboard-needs-you', src: dashboard_needs_you_path, target: '_top', data: frame_data) do
+            = loading
+
+      %section.card#dashboard-in-progress-card
+        .card-header.d-flex.align-items-center.gap-2
+          %i.fa-solid.fa-person-running{ 'aria-hidden' => 'true' }
+          %h2.h6.mb-0= t('dashboard.zones.in_progress')
+        .card-body.py-2
+          = turbo_frame_tag('dashboard-in-progress', src: dashboard_in_progress_path, target: '_top', data: frame_data) do
+            = loading
+
+      %section.card#dashboard-season-progress-card
+        .card-header.d-flex.align-items-center.gap-2
+          %i.fa-solid.fa-flag-checkered{ 'aria-hidden' => 'true' }
+          %h2.h6.mb-0= t('dashboard.zones.season_progress')
+        .card-body.py-2
+          = turbo_frame_tag('dashboard-season-progress', src: dashboard_season_progress_path, target: '_top', data: frame_data) do
+            = loading
+
+    .col-12.col-xl-4.d-flex.flex-column.gap-3
+      %section.card#dashboard-system
+        .card-header.d-flex.align-items-center.gap-2
+          %i.fa-solid.fa-server{ 'aria-hidden' => 'true' }
+          %h2.h6.mb-0= t('dashboard.zones.system')
+        = turbo_frame_tag('dashboard-system-frame', src: dashboard_system_path, target: '_top', data: frame_data) do
+          .card-body= loading
+
+      %section.card#dashboard-activity-card
+        .card-header.d-flex.align-items-center.gap-2
+          %i.fa-solid.fa-timeline{ 'aria-hidden' => 'true' }
+          %h2.h6.mb-0= t('dashboard.zones.activity')
+        .card-body.py-2
+          = turbo_frame_tag('dashboard-activity', src: dashboard_activity_path, target: '_top', data: frame_data) do
+            = loading

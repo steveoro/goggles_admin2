@@ -32,8 +32,8 @@ RSpec.describe Shell::StatusController do
       get(shell_status_path)
       expect(response).to have_http_status(:success)
       expect(response.parsed_body.at('html body .app-shell')).to be_nil
-      expect(frame.css('.app-status-pill').pluck('id')).to eq(%w[status-pill-api status-pill-crawler status-pill-queue
-                                                                 status-pill-fin_watch status-pill-drift_v0])
+      expect(frame.css('.app-status-pill').pluck('id')).to eq(%w[status-pill-api status-pill-crawler status-pill-queue status-pill-cable
+                                                                 status-pill-fin_watch status-pill-ops_db status-pill-drift_v0])
       expect(APIProxy).not_to have_received(:call)
       expect(APIProxy).not_to have_received(:ping)
       expect(CrawlerClient).not_to have_received(:new)
@@ -66,10 +66,11 @@ RSpec.describe Shell::StatusController do
       allow(APIProxy).to receive(:call).with(hash_excluding(url: 'session'))
     end
 
-    it 'renders (no redirect to Settings) with the API pill in error, without any API call' do
+    it 'renders (no redirect to Settings) with the API pill unknown (linking to Settings), without any API call' do
       get(shell_status_path)
       expect(response).to have_http_status(:success)
-      expect(frame.at_css('#status-pill-api')['data-status-level']).to eq('error')
+      expect(frame.at_css('#status-pill-api')['data-status-level']).to eq('unknown')
+      expect(frame.at_css('a#status-pill-api')['href']).to eq(settings_path)
       expect(APIProxy).not_to have_received(:call).with(hash_excluding(url: 'session'))
       expect(APIProxy).not_to have_received(:ping)
     end

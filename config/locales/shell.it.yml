@@ -59,34 +59,52 @@ it:
         crawler: 'Apri la pagina del crawler'
         season_board: 'Apri la plancia stagione'
         remote_writes: 'Rivedi le scritture remote'
+        start_crawler: 'Avvia il crawler'
+        check_fin: 'Verifica ora'
+      on_dashboard: '%{action} (nella dashboard)'
       api:
         label: 'API'
-        offline: 'Sessione API offline: nessun JWT valido per questa API'
+        offline: 'Sessione API offline: nessun JWT valido per questa API, quindi qui il suo stato è sconosciuto'
         never: 'Non ancora verificata'
-        stale: "Nessuna verifica recente (l'ultima: %{time})"
+        stale: "Raggiungibile all'ultima verifica (%{time}), nessuna da allora: i job in background sono attivi?"
         ok: 'Raggiungibile (v. %{version})'
         reachable: 'Raggiungibile'
         answered: 'Ha risposto con il codice %{code}: %{error}'
         unreachable: 'Non raggiungibile: %{error}'
       crawler:
         label: 'Crawler'
-        never: 'Non ancora verificato'
-        stale: "Nessuna verifica recente (l'ultima: %{time})"
-        'off': 'Non avviato (parte su richiesta dalla pagina Pull o dalla plancia stagione)'
+        never: 'Non avviato da admin2 e non verificato di recente'
+        'off': 'Non avviato (i crawl dalla plancia stagione lo avviano da soli)'
         idle: 'Avviato, inattivo'
-        running: 'In esecuzione: %{status}'
+        running: 'Occupato: %{status}'
+        busy_progress: 'Occupato %{progress}/%{total}: %{status}'
+        running_unknown: 'Avviato (ancora nessun file di stato)'
+        stuck: 'Risulta un lavoro in corso, ma il suo stato non cambia dal %{time}'
         failed: 'Ultima esecuzione fallita: %{detail}'
       queue:
         label: 'Job'
         not_in_use: 'Solid Queue non è il gestore dei job in questo ambiente'
-        ok: 'Processi job attivi: %{count}'
-        dead: 'Nessun processo job attivo: riavvia il server (plugin Solid Queue) o lancia bin/jobs'
+        ok: 'Processi job attivi: %{count} (ultimo battito %{ago} s fa)'
+        missing_workers: 'Nessun worker attivo per le code: %{queues} (i loro job restano in attesa)'
+        dead: 'Nessun supervisore attivo: riavvia il server (plugin Solid Queue) o lancia bin/jobs'
+        dead_outside_puma: 'Nessun supervisore attivo: SOLID_QUEUE_IN_PUMA=false, quindi lancia bin/jobs'
+      cable:
+        label: 'Live'
+        ok: 'Aggiornamenti live pronti (Solid Cable)'
+        not_configured: "Nessun database 'cable:' in config/database.yml: aggiornamenti solo a intervalli"
+        not_prepared: 'Il database di Solid Cable non è pronto (lancia bin/rails solid:prepare): aggiornamenti solo a intervalli'
+        other_adapter: "Gli aggiornamenti live usano l'adapter %{adapter} (nessun invio tra processi): solo a intervalli"
       fin_watch:
         label: 'FIN'
         never: 'Nessuna verifica ancora'
         ok: 'Ultima verifica: %{time}, nessuna modifica in sospeso'
+        stale: "Ultima verifica: %{time}, oltre 75 minuti fa: il job orario è attivo?"
         pending: 'Modifica al calendario FIN rilevata il %{time}, da confermare'
         failed: 'Ultima verifica fallita: %{error}'
+      ops_db:
+        label: 'DB ops'
+        ok: 'DB ops locale pronto'
+        not_ready: '%{state} Lancia bin/rails ops:prepare.'
       drift_v0:
         label: 'Sync DB'
         ok: 'Gli ultimi aggiornamenti remoti sono tutti nel DB locale (v0, verifica parziale)'

@@ -1,0 +1,4 @@
+= turbo_frame_tag('dashboard-system-frame', target: '_top') do
+  %ul.list-group.list-group-flush#dashboard-status-rows
+    - @results.each do |result|
+      = render(Dashboard::StatusRowComponent.new(result:))

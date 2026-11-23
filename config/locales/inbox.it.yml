@@ -1,0 +1,82 @@
+it:
+  inbox:
+    empty: "Niente da fare al momento."
+    more: "altre %{count}: %{source}"
+    waiting: "in attesa da %{ago}"
+    bands:
+      blocked: "Bloccato"
+      failed: "Fallito"
+      push: "Da inviare"
+      review: "Da rivedere"
+      acquire: "Da acquisire"
+      notice: "Avviso"
+    sources:
+      blockers: "blocchi"
+      failed_jobs: "job falliti"
+      pending_sql: "script SQL da inviare"
+      board_rows: "plancia stagione"
+      unmatched_sources: "file senza id FIN"
+      data_fix_sessions: "sessioni Data-Fix"
+      fin_change: "calendario FIN"
+      drift: "sync DB"
+    builder:
+      source_failed: "La sorgente '%{source}' non ha funzionato: %{error}"
+      reload: "Ricarica"
+    blockers:
+      api_offline:
+        title: "API offline: nessun JWT valido per questa sessione"
+        detail: "URL API: %{url}. Correggilo nelle Impostazioni (o avvia l'API), poi accedi di nuovo."
+        action: "Apri le Impostazioni"
+      credentials:
+        title: "I job in background non hanno credenziali API valide"
+        missing: "Nessun JWT di amministratore da usare: contatori e controllo sync DB non chiamano l'API finché qualcuno non accede."
+        expired: "L'ultimo JWT di amministratore è scaduto (dura 10 ore): contatori e controllo sync DB sono in pausa."
+        action: "Accedi di nuovo"
+      ops_db:
+        title: "DB ops locale non pronto"
+        detail: "%{state} Lancia bin/rails ops:prepare."
+        action: "Come prepararlo"
+      queue:
+        title: "Nessun job in background può partire"
+        action: "Come avviare i job"
+    failed_jobs:
+      board:
+        crawl_failed: "Crawl fallito: %{name}"
+        crawl_stuck: "Crawl apparentemente bloccato: %{name}"
+        extract_failed: "Estrazione del manifesto fallita: %{name}"
+        extract_stuck: "Estrazione del manifesto apparentemente bloccata: %{name}"
+      job_title: "Job fallito: %{job}"
+      retry: "Riprova"
+      discard: "Scarta"
+      discard_confirm: "Scartare il job %{job} fallito? Non verrà più eseguito."
+    pending_sql:
+      title:
+        one: "1 script da inviare (%{number})"
+        other: "%{count} script da inviare, il più vecchio %{number}"
+      push: "Invia"
+    unmatched_sources:
+      titles:
+        resume_review: "In revisione, senza id FIN: %{name}"
+        review_source: "Sorgente senza id FIN: %{name}"
+        manifest: "Manifesto senza id FIN: %{name}"
+      detail: "Non presente nel calendario FIN della plancia stagione"
+      actions:
+        review: "Apri in Data-Fix"
+        result_files: "Apri i file dei risultati"
+    data_fix_sessions:
+      idle_title: "Ferma da %{days} giorni: %{name}"
+      idle_detail: "Stagione %{season}, passo %{phase}, ultima modifica %{time}"
+      orphan_title:
+        one: "1 riga di staging senza più sorgente: %{name}"
+        other: "%{count} righe di staging senza più sorgente: %{name}"
+      orphan_detail: "File sorgente: %{path}"
+      purge: "Elimina le righe di staging"
+    fin_change:
+      title:
+        zero: "La pagina del calendario FIN è cambiata"
+        one: "Calendario FIN cambiato (1 riga)"
+        other: "Calendario FIN cambiato (%{count} righe)"
+      open_board: "Apri la plancia"
+    drift:
+      title: "Sync DB v0: il DB remoto ha modifiche che quello locale non ha"
+      review: "Rivedi le modifiche solo remote"

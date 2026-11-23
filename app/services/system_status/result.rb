@@ -9,7 +9,9 @@ module SystemStatus
   # - level: one of LEVELS (:ok, :warn, :error, :unknown);
   # - detail: translated one-line detail (tooltip), or nil;
   # - checked_at: time of the underlying data (snapshot time for snapshot probes), or nil when never checked;
-  # - action: optional Hash { label:, path: } suggesting where to go to fix or inspect the issue.
+  # - action: optional Hash { label:, path:, http_method: } suggesting where to go (or what to run) to fix or inspect
+  #   the issue; http_method is :get (default, a link) or :post (a button, e.g. "Start crawler": the top bar pill
+  #   then links to the dashboard System zone instead, where the button is).
   #
   class Result < Data.define(:key, :label, :level, :detail, :checked_at, :action)
     # Supported levels, best first.
@@ -24,5 +26,15 @@ module SystemStatus
 
     def ok? = level == :ok
     def unknown? = level == :unknown
+
+    # Path of the action (nil without one).
+    def action_path
+      action.is_a?(Hash) ? action[:path].presence : nil
+    end
+
+    # True when the action is run with a POST (a button), false for a link or without action.
+    def post_action?
+      action_path.present? && action[:http_method].to_s == 'post'
+    end
   end
 end

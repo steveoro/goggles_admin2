@@ -1,0 +1,2 @@
+= turbo_frame_tag('dashboard-in-progress', target: '_top') do
+  = render(Dashboard::InProgressComponent.new(activities: @activities, names: @names, queue: @queue, next_runs: @next_runs))

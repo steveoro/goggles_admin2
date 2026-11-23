@@ -1,0 +1,31 @@
+%section#in-progress
+  %span.d-none{ data: { live_busy: busy?.to_s } }
+  - if busy?
+    %ul.list-unstyled.mb-2#in-progress-items
+      - activity_rows.each do |row|
+        %li.d-flex.flex-wrap.align-items-center.gap-2.py-1{ data: { activity_status: row[:status] } }
+          - if row[:status] == :running
+            %span.badge.text-bg-primary
+              %i.fa-solid.fa-rotate.fa-spin{ 'aria-hidden' => 'true' }
+              = t('dashboard.in_progress.running')
+          - else
+            %span.badge.text-bg-info= t('dashboard.in_progress.queued')
+          %span.fw-semibold= row[:name]
+          %span.small.text-body-secondary= [row[:kind], t('dashboard.in_progress.since', time: hour(row[:time])), row[:origin]].join(' · ')
+      - @queue.running.each do |job|
+        %li.d-flex.flex-wrap.align-items-center.gap-2.py-1{ data: { job_class: job.class_name } }
+          %span.badge.text-bg-primary
+            %i.fa-solid.fa-gear.fa-spin{ 'aria-hidden' => 'true' }
+            = t('dashboard.in_progress.running')
+          %span.fw-semibold= job.class_name
+          %span.small.text-body-secondary= [job.queue_name, t('dashboard.in_progress.since', time: hour(job.since))].join(' · ')
+      - if queued_text
+        %li.small.text-body-secondary.py-1#in-progress-queued= queued_text
+  - else
+    %p.text-body-secondary.mb-2#in-progress-idle= t('dashboard.in_progress.idle')
+  - unless @queue.available?
+    %p.small.text-body-secondary.mb-1#in-progress-no-queue= t('dashboard.in_progress.queue_unavailable')
+  - if @next_runs.any?
+    %ul.list-unstyled.small.text-body-secondary.mb-0#in-progress-next
+      - @next_runs.each do |label_key, time|
+        %li= next_run_text(label_key, time)

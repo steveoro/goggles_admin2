@@ -1,8 +1,8 @@
 - if action_path
   %a{ html_attributes.merge(href: action_path) }
     %i.fa-solid{ class: LEVEL_ICON.fetch(result.level), 'aria-hidden' => 'true' }
-    %span.app-status-label.d-none.d-xl-inline= result.label
+    %span.app-status-label= result.label
 - else
   %span{ html_attributes.merge(tabindex: '0') }
     %i.fa-solid{ class: LEVEL_ICON.fetch(result.level), 'aria-hidden' => 'true' }
-    %span.app-status-label.d-none.d-xl-inline= result.label
+    %span.app-status-label= result.label

@@ -1,0 +1,21 @@
+%section#season-progress
+  - if season.nil?
+    %p.text-body-secondary.mb-0= t('dashboard.season_progress.no_season')
+  - elsif summary.nil? || total.zero?
+    %p.text-body-secondary.mb-0
+      = t('dashboard.season_progress.no_data')
+      = link_to(t('dashboard.season_progress.open_board'), helpers.season_board_path, data: { turbo_frame: '_top' })
+  - else
+    .d-flex.flex-wrap.justify-content-between.align-items-baseline.gap-2.mb-2
+      %span.fw-semibold= t('dashboard.season_progress.title', description: season.description)
+      %span.small.text-body-secondary
+        = [t('dashboard.season_progress.total', count: total), as_of_text].compact.join(' · ')
+    .progress-stacked.season-progress-bar.mb-2{ 'aria-hidden' => 'true' }
+      - segments.each do |state, count|
+        %a.progress{ href: board_path(state), style: "width: #{width(count)}%", title: segment_title(state, count),
+                     tabindex: '-1', data: { turbo_frame: '_top', state_segment: state } }
+          .progress-bar{ class: state_css(state) }= count
+    %ul.list-inline.mb-0.season-progress-legend
+      - segments.each do |state, count|
+        %li.list-inline-item.mb-1
+          = link_to(segment_title(state, count), board_path(state), **chip_options(state))

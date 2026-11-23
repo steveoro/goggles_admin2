@@ -101,7 +101,7 @@ RSpec.describe 'App shell' do
                                count: Shell::Navigation::ITEMS.count(&:sidebar?) - offline_ok)
       expect(page).to have_css('.app-sidebar a.nav-link:not(.disabled)', count: offline_ok)
       expect(page).to have_css('#api-target-badge[data-api-reachability="unreachable"]')
-      expect(page).to have_css('turbo-frame#shell-status #status-pill-api[data-status-level="error"]')
+      expect(page).to have_css('turbo-frame#shell-status #status-pill-api[data-status-level="unknown"]')
       expect(page).to have_no_css('#api-offline-banner')
 
       fill_in('api-target-label', with: 'Broken local API')

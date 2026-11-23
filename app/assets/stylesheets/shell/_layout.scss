@@ -92,6 +92,18 @@ a.app-status-pill:hover {
   filter: brightness(0.92);
 }
 
+// Pill labels only on wide screens (icon + tooltip below): seven labelled pills don't fit next to the API target
+// and the user menu under ~1600px.
+.app-status-label {
+  display: none;
+}
+
+@media (min-width: 1600px) {
+  .app-status-label {
+    display: inline;
+  }
+}
+
 .app-user-name {
   max-width: 8rem;
 }

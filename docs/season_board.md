@@ -1,6 +1,6 @@
 # Season board
 
-Operator guide of `/season_board` (navbar "Season board", Home button, "Back to Season board" button on the Phase 6 report). The board shows the latest MASFIN season, one row per row of the FIN "Riepilogo Eventi" page (as last stored by the hourly watcher), with the linked local meeting (individual/relay result counts), the pipeline **state** and **one next action**.
+Operator guide of `/season_board` (sidebar "Season board", the dashboard's "Season progress" chips and inbox items, "Back to Season board" button on the Phase 6 report). The board shows the latest MASFIN season, one row per row of the FIN "Riepilogo Eventi" page (as last stored by the hourly watcher), with the linked local meeting (individual/relay result counts), the pipeline **state** and **one next action**.
 
 Developer notes (state rules, jobs, files): `AGENTS.md`, section "Season board".
 
@@ -66,6 +66,20 @@ bin/rails season_board:backfill season=<season id> simulate=0   # apply (also wr
 ```
 
 It reads the FIN ids from the archived crawl files and the meeting ids from the commit SQL files; whatever it can't resolve is listed in the report (with same-date FIN rows as hints) and can be linked by hand with **Link to meeting...**. Re-running it is harmless.
+
+## The dashboard summary
+
+The dashboard (`/`, see [dashboard.md](dashboard.md)) shows the board without opening it: one "Needs you" item per row with a next action (the same button as on the row; busy rows and pushes are left out), the queued and running work, and the state counts as "Season progress" (each chip opens the board filtered on that state).
+
+It reads a **stored summary** of the board instead of building it on every landing:
+
+- `SeasonBoard::Snapshot` keeps the summary of the last full build in the ops DB (`Ops::Snapshot` key `season_board:<season_id>`): state counts, the rows (FIN id, name, dates, URL, state, next action, busy, flags), the files without FIN id, the board SQL waiting, warnings.
+- `Snapshot.fetch(season)` serves the stored summary while its **fingerprint** still matches and it is less than 10 minutes old, else it rebuilds the board and stores the new one. The fingerprint covers the watcher and activity-log files, the five season folders scanned by `DiskIndex`, the season's calendars and meetings (count and last update) and the last commit / purge / calendar-link event. An in-place edit of a phase file changes none of these: the 10-minute limit covers it.
+- Every full build stores its summary: the board page (always built live on GET), `CrawlPlanner`, `SeasonRecheckJob`. The crawl and extraction jobs (queued, started, finished) drop it (`Snapshot.invalidate!`, next to their `SeasonBoard::Notifier.ping`); a commit, a staging purge or a calendar link changes its fingerprint.
+- The board's POST buttons (crawl, extract, link) look the row up in `Snapshot.fetch` (URLs come from the stored row, never from the request), so a click runs no build while the summary is fresh.
+- Without the ops DB everything still works: `fetch` builds live and stores nothing.
+
+The target of a row's next action (Data-Fix review step, Push page, a POST to the board, or the board row itself for **Link**) comes from `SeasonBoard::ActionPaths.target_for(row.next_action)`, shared by the board rows and the dashboard inbox: `http_method` (`:get` or `:post`), `path` and the POST `params` (the FIN event id only). `ActionPaths.board_row_path(fin_event_id, state:)` opens the board on one row.
 
 ## Live updates
 

@@ -5,13 +5,19 @@ module SystemStatus
   # = SystemStatus::APIProbe
   #
   # Reachability of the configured API server, from the 'api.status:<base_url>' snapshot
-  # (SystemStatus::APISnapshot). In an API-offline session the result is :error from the session alone.
-  # #refresh! (RefreshJob only) pings the server's public 'status' endpoint.
+  # (SystemStatus::APISnapshot). #refresh! (RefreshJob only) pings the server's public 'status' endpoint.
+  #
+  # Levels: :ok reachable, checked less than FRESH_FOR ago; :warn reachable but checked longer ago (the refresh job
+  # is not running), or a 5xx answer; :error unreachable; :unknown never checked, or an API-offline session (the
+  # session alone can't tell whether the server is up: the inbox reports the session itself as a blocker).
   #
   class APIProbe < Probe
     # Ping timeouts (seconds): RefreshJob runs on the single-thread 'default' worker, so a hung API
     # must not hold it for RestClient's default 60 s.
     PING_TIMEOUTS = { open_timeout: 3, timeout: 5 }.freeze
+
+    # A reachable answer older than this is reported as :warn (RefreshJob pings every 5 minutes).
+    FRESH_FOR = 10.minutes
 
     def self.mode
       :snapshot
@@ -37,12 +43,10 @@ module SystemStatus
     protected
 
     def evaluate
-      return result(:error, detail: detail_text(:offline), action: settings_action) if offline
+      return result(:unknown, detail: detail_text(:offline), action: settings_action) if offline
       return result(:unknown, detail: detail_text(:never)) if snapshot.nil?
 
       checked_at = snapshot.taken_at
-      return result(:unknown, detail: detail_text(:stale, time: format_time(checked_at)), checked_at:) if stale?(checked_at)
-
       payload = snapshot.payload.is_a?(Hash) ? snapshot.payload : {}
       payload['reachable'] ? reachable_result(payload, checked_at) : unreachable_result(payload, checked_at)
     end
@@ -52,6 +56,7 @@ module SystemStatus
     # Any answer below 500 means the server is up (e.g. a 401 for rejected sign-in credentials).
     def reachable_result(payload, checked_at)
       return result(:warn, detail: detail_text(:answered, code: payload['code'], error: payload['error']), checked_at:) if payload['code'].to_i >= 500
+      return result(:warn, detail: detail_text(:stale, time: format_time(checked_at)), checked_at:) if checked_at < now - FRESH_FOR
 
       detail = payload['version'].present? ? detail_text(:ok, version: payload['version']) : detail_text(:reachable)
       result(:ok, detail:, checked_at:)
@@ -66,7 +71,7 @@ module SystemStatus
     end
 
     def settings_action
-      { label: I18n.t('shell.status.actions.settings'), path: url_helpers.settings_path }
+      action_for(:settings, url_helpers.settings_path)
     end
   end
 end

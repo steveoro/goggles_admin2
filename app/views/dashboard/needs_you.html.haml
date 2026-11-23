@@ -1,0 +1,2 @@
+= turbo_frame_tag('dashboard-needs-you', target: '_top') do
+  = render(Inbox::ListComponent.new(result: @inbox, now: @now))

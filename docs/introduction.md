@@ -31,5 +31,6 @@ Essentially, `goggles_admin2` acts as the central hub for managing the data that
 
 ## Further reading
 
+*   [Dashboard](dashboard.md): the landing page (what needs you, what is running, season progress, system status, counters) and how later phases add inbox sources and status probes.
 *   [Season board](season_board.md): the weekly flow for the latest MASFIN season (check, crawl, review, push).
 *   [Data-Fix pipeline](data_fix/README.md) and [PDF processing](pdf_processing/pdf_processing.md).

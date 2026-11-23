@@ -42,7 +42,9 @@ module Shell
     BEST_RESULTS_ACTIONS = %i[best_50m best_50_and_100 best_50_and_100_5y best_in_3y best_in_5y all_time_best].freeze # rubocop:disable Naming/VariableNumber
 
     ITEMS = [
-      item(:dashboard, :dashboard, 'fa-gauge', 'dashboard.title', -> { root_path }, match: %w[home], offline_ok: true),
+      item(:dashboard, :dashboard, 'fa-gauge', 'dashboard.title', -> { root_path }, match: %w[dashboard], offline_ok: true),
+      item(:activity, :dashboard, 'fa-timeline', 'dashboard.activity.title', -> { activity_path },
+           match: %w[dashboard#activity_log], parent: :dashboard, offline_ok: true, sidebar: false, keywords: %w[events log history]),
       # Import
       item(:season_board, :import, 'fa-table-list', 'season_board.nav', -> { season_board_path }, match: %w[season_board]),
       item(:crawler, :import, 'fa-spider', 'data_import.calendar.crawler_status_page_title', -> { pull_index_path },

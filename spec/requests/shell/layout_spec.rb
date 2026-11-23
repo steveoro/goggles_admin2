@@ -99,7 +99,7 @@ RSpec.describe 'Application shell' do
   context 'with an API-offline session' do
     before(:each) do
       sign_in_api_offline(admin_user)
-      # (home still asks the API for its KPI counters: the shell itself makes no call, see the component specs)
+      # (neither the dashboard nor the shell call the API: see dashboard_controller_spec and the component specs)
       allow(APIProxy).to receive_messages(call: unreachable_api_result, ping: unreachable_api_result)
     end
 

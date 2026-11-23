@@ -13,15 +13,15 @@ RSpec.describe SystemStatus::Registry do
 
   after(:each) { Ops::Database.reset_state! }
 
-  it 'lists the API, crawler, queue, FIN watcher and drift v0 probes, in order' do
-    expect(described_class.probes.map(&:key)).to eq(%i[api crawler queue fin_watch drift_v0])
+  it 'lists the API, crawler, queue, live updates, FIN watcher, ops DB and drift v0 probes, in order' do
+    expect(described_class.probes.map(&:key)).to eq(%i[api crawler queue cable fin_watch ops_db drift_v0])
     expect(described_class.snapshot_probes.map(&:key)).to eq(%i[api crawler drift_v0])
   end
 
   describe '.results' do
     it 'returns one Result per probe without any network call' do
       results = described_class.results(api_url:)
-      expect(results.map(&:key)).to eq(%i[api crawler queue fin_watch drift_v0])
+      expect(results.map(&:key)).to eq(%i[api crawler queue cable fin_watch ops_db drift_v0])
       expect(results).to all(be_a(SystemStatus::Result))
       expect(results.map(&:level)).to all(be_in(SystemStatus::Result::LEVELS))
       expect(APIProxy).not_to have_received(:call)

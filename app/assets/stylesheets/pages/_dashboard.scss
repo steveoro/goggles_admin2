@@ -1,0 +1,54 @@
+// = Dashboard (app/views/dashboard, app/components/{dashboard,inbox,kpi}) =
+//
+// Native Bootstrap 5 markup; only a few layout details live here (colors come from the theme-aware
+// Bootstrap utilities, so the page reads the same in light and dark mode).
+
+// Flex children holding long texts (file names, error messages) must be allowed to shrink (and the item body must
+// stay next to its icon when the row wraps on phones):
+.inbox-item-body,
+.dashboard-status-body {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+// Action buttons: below the text on phones (indented like it), on its right from sm up (never wrapped there).
+.inbox-item-actions {
+  flex-basis: 100%;
+  padding-left: calc(1.25em + 1rem);
+}
+
+@media (min-width: 576px) {
+  .inbox-item-actions {
+    flex-basis: auto;
+    padding-left: 0;
+
+    .btn {
+      white-space: nowrap;
+    }
+  }
+}
+
+// KPI tiles: the whole card is the link to the counter's grid.
+a.kpi-tile {
+  color: inherit;
+  transition: border-color 0.15s ease-in-out;
+
+  &:hover,
+  &:focus-visible {
+    border-color: var(--bs-primary);
+  }
+}
+
+.kpi-value {
+  font-variant-numeric: tabular-nums;
+}
+
+// Season progress: a taller stacked bar whose segments are links to the filtered board.
+.season-progress-bar {
+  height: 1.5rem;
+
+  .progress-bar {
+    font-size: 0.75rem;
+    overflow: hidden;
+  }
+}

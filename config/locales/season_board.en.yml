@@ -2,8 +2,6 @@ en:
   season_board:
     title: 'Season board'
     nav: 'Season board'
-    home_button: 'Season board'
-    home_button_tooltip: 'Weekly flow for the latest MASFIN season: check, crawl, review and push, one row per FIN meeting'
     back_to_board: 'Back to Season board'
     header:
       season: 'Season %{description}'

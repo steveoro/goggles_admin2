@@ -25,7 +25,7 @@ RSpec.describe 'Bootstrap 4 leftovers' do
              app/views/api_team_affiliations app/views/api_team_managers app/views/api_teams app/views/api_trainings
              app/views/api_user_workshops app/views/api_users app/views/datagrid app/views/kaminari
              app/components/grid app/components/issue app/components/switch app/components/combo_box
-             app/views/remote_writes].freeze
+             app/views/remote_writes app/views/dashboard app/components/dashboard app/components/inbox app/components/kpi].freeze
 
   # Current number of tokens per folder (see #folder_key for the grouping):
   BASELINE = {
@@ -35,7 +35,6 @@ RSpec.describe 'Bootstrap 4 leftovers' do
     'app/views/file_list' => 15,
     'app/components/data_fix' => 11,
     'app/views/pdf' => 11,
-    'app/views/home' => 6,
     'app/components' => 2
   }.freeze
 

@@ -14,7 +14,7 @@ RSpec.describe 'API-offline sessions' do
       allow(APIProxy).to receive_messages(call: unreachable_api_result, ping: unreachable_api_result)
     end
 
-    it 'allows the home page, showing the offline banner' do
+    it 'allows the dashboard, showing the offline banner' do
       get(root_path)
       expect(response).to have_http_status(:success)
       expect(response.body).to include('api-offline-banner')

@@ -2,10 +2,12 @@
 
 require 'rails_helper'
 
-RSpec.describe DataFixController do
+# Per-source purge of the Data-Fix import staging rows (moved here from the removed DataFixController#purge,
+# whose "Clean slate" full wipe is gone: DataFix::StagingPurger.purge_all! is kept for phase 14's restore steps).
+RSpec.describe DataFix::SessionsListController do
   include AdminSignInHelpers
 
-  describe 'DELETE /data_fix/purge' do
+  describe 'DELETE /data_fix/sessions/purge' do
     let(:source_a) { 'crawler/data/results.new/9999/purge-a-lt4.json' }
     let(:source_b) { 'crawler/data/results.new/9999/purge-b-lt4.json' }
     let(:tables) do
@@ -37,19 +39,30 @@ RSpec.describe DataFixController do
 
     context 'with a known source_path' do
       it 'deletes only the rows of that source in all five tables' do
-        delete data_fix_purge_path, params: { source_path: source_a }
+        delete data_fix_sessions_purge_path, params: { source_path: source_a }
 
-        expect(response).to redirect_to(home_index_path)
+        expect(response).to redirect_to(data_fix_sessions_path)
+        expect(flash[:notice]).to eq(I18n.t('data_import.data_fix.discard_source_done', total: 5, source: source_a))
         tables.each do |table|
           expect(table.where(phase_file_path: source_a).count).to eq(0)
           expect(table.where(phase_file_path: source_b).count).to eq(1)
         end
       end
+
+      it 'purges a source with relay rows only' do
+        GogglesDb::DataImportMeetingIndividualResult.where(phase_file_path: source_a).delete_all
+        GogglesDb::DataImportLap.where(phase_file_path: source_a).delete_all
+
+        delete data_fix_sessions_purge_path, params: { source_path: source_a }
+
+        expect(flash[:notice]).to be_present
+        tables.each { |table| expect(table.where(phase_file_path: source_a).count).to eq(0) }
+      end
     end
 
     describe 'ops event log' do
       it 'records one scoped datafix.purged event per purge' do
-        expect { delete data_fix_purge_path, params: { source_path: source_a } }.to change(Ops::Event, :count).by(1)
+        expect { delete data_fix_sessions_purge_path, params: { source_path: source_a } }.to change(Ops::Event, :count).by(1)
 
         event = Ops::Event.of_kind('datafix.purged').recent.first
         expect(event.actor).to eq('operator')
@@ -59,52 +72,37 @@ RSpec.describe DataFixController do
         expect(event.data['deleted'].values.sum).to eq(5)
       end
 
-      it 'records one datafix.purged event with scope "all" for a full wipe' do
-        expect { delete data_fix_purge_path }.to change(Ops::Event, :count).by(1)
-
-        event = Ops::Event.of_kind('datafix.purged').recent.first
-        expect(event.data['scope']).to eq('all')
-        expect(event.subject_type).to be_nil
-        expect(event.data['deleted'].values.sum).to eq(10)
-      end
-
       it 'records nothing for a refused purge' do
-        expect { delete data_fix_purge_path, params: { source_path: 'crawler/data/nope.json' } }
+        expect { delete data_fix_sessions_purge_path, params: { source_path: 'crawler/data/nope.json' } }
           .not_to change(Ops::Event, :count)
       end
 
       it 'does not change the response when the ops write fails' do
         allow(Ops).to receive(:record_event!).and_raise(StandardError, 'ops down')
 
-        delete data_fix_purge_path
+        delete data_fix_sessions_purge_path, params: { source_path: source_a }
 
-        expect(response).to redirect_to(home_index_path)
+        expect(response).to redirect_to(data_fix_sessions_path)
         expect(flash[:notice]).to be_present
         expect(flash[:error]).to be_blank
-        tables.each { |table| expect(table.count).to eq(0) }
+        tables.each { |table| expect(table.where(phase_file_path: source_a).count).to eq(0) }
       end
     end
 
-    context 'with a blank or unknown source_path' do
+    context 'with a blank, missing or unknown source_path' do
       it 'refuses politely and deletes nothing' do
-        ['', 'crawler/data/nope.json'].each do |bad_path|
-          delete data_fix_purge_path, params: { source_path: bad_path }
+        [{ source_path: '' }, {}, { source_path: 'crawler/data/nope.json' }].each do |params|
+          delete(data_fix_sessions_purge_path, params:)
 
-          expect(response).to redirect_to(home_index_path)
+          expect(response).to redirect_to(data_fix_sessions_path)
           expect(flash[:warning]).to be_present
           tables.each { |table| expect(table.count).to eq(2) }
         end
       end
     end
 
-    context 'without source_path' do
-      it 'wipes every staging row (unchanged behaviour)' do
-        delete data_fix_purge_path
-
-        expect(response).to redirect_to(home_index_path)
-        expect(flash[:notice]).to be_present
-        tables.each { |table| expect(table.count).to eq(0) }
-      end
+    it 'has no global "Clean slate" route any more' do
+      expect { delete('/data_fix/purge') }.to raise_error(ActionController::RoutingError)
     end
   end
 end

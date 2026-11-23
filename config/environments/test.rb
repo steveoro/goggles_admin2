@@ -47,6 +47,9 @@ Rails.application.configure do
   # Keep the FIN page watcher state separate from the development one (see FedernuotoWatch::StateStore):
   config.x.federnuoto_watch.state_path = Rails.root.join('tmp/federnuoto-watch.test.json')
   config.x.season_board.activity_log_path = Rails.root.join('tmp/season-board.test.json')
+  # Local crawler status & PID files read by SystemStatus::CrawlerProbe (never the developer's real ones):
+  config.x.crawler.status_path = Rails.root.join('tmp/crawler-status.test.json')
+  config.x.crawler.pid_path = Rails.root.join('tmp/pids/crawler.test.pid')
   # Action Mailer default URL, required by Devise:
   config.action_mailer.default_url_options = { host: 'localhost', port: 3000 }
 

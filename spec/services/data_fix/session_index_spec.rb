@@ -12,10 +12,12 @@ RSpec.describe DataFix::SessionIndex do
   before(:each) do
     FileUtils.mkdir_p(season_dir)
     GogglesDb::DataImportMeetingIndividualResult.where('phase_file_path LIKE ?', '%9998%').delete_all
+    GogglesDb::DataImportMeetingRelayResult.where('phase_file_path LIKE ?', '%9998%').delete_all
   end
 
   after(:each) do
     GogglesDb::DataImportMeetingIndividualResult.where('phase_file_path LIKE ?', '%9998%').delete_all
+    GogglesDb::DataImportMeetingRelayResult.where('phase_file_path LIKE ?', '%9998%').delete_all
     FileUtils.remove_entry(data_dir)
   end
 
@@ -70,6 +72,22 @@ RSpec.describe DataFix::SessionIndex do
     expect(gone.mtime).to be_nil
     expect(gone.source_exists?).to be false
     expect(gone).to be_orphan
+  end
+
+  it 'counts the relay results too, so that a relay-only source is staged (and purgeable)' do
+    relay_path = 'crawler/data/results.new/9998/relays-lt4.json'
+    meet_path = season_dir.join('meet-lt4.json').to_s
+    touch_file('meet-lt4-phase5.json')
+    GogglesDb::DataImportMeetingRelayResult.create!(import_key: 'si-relay-1', phase_file_path: relay_path, rank: 1)
+    GogglesDb::DataImportMeetingRelayResult.create!(import_key: 'si-relay-2', phase_file_path: relay_path, rank: 2)
+    GogglesDb::DataImportMeetingIndividualResult.create!(import_key: 'si-mix-mir', phase_file_path: meet_path, rank: 1)
+    GogglesDb::DataImportMeetingRelayResult.create!(import_key: 'si-mix-mrr', phase_file_path: meet_path, rank: 1)
+
+    relays = index.for(relay_path)
+    expect(relays.staging_rows).to eq(2)
+    expect(relays).to be_staging
+    expect(relays).to be_orphan
+    expect(index.for(meet_path).staging_rows).to eq(2)
   end
 
   it 'selects the sessions idle for the given days' do

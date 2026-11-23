@@ -8,38 +8,9 @@ require 'json'
 #
 # Split into per-phase controllers under app/controllers/data_fix/* in the
 # A->B->C1 refactor; this class keeps only the cross-phase utility endpoints
-# (coded-name and swimmer-teams lookups) and the staging-tables purge.
+# (coded-name and swimmer-teams lookups). The staging rows are purged per source from the
+# Data-Fix sessions list (DataFix::SessionsListController, DataFix::StagingPurger).
 class DataFixController < ApplicationController
-  # Deletes the Data-Fix v2 temporary rows from data_import_* tables.
-  # Intended as an operator "clean slate" action from dashboard.
-  #
-  # === Params:
-  # - :source_path => (optional) when given, deletes only the rows having that same
-  #   +phase_file_path+; when missing, wipes everything.
-  def purge
-    source_path = params.key?(:source_path) ? params[:source_path].to_s : nil
-    return unknown_source_path if source_path && !known_source_path?(source_path)
-
-    session_count = GogglesDb::DataImportMeetingIndividualResult
-                    .where.not(phase_file_path: [nil, ''])
-                    .distinct
-                    .count(:phase_file_path)
-
-    deleted = source_path ? DataFix::StagingPurger.purge!(source_path) : DataFix::StagingPurger.purge_all!
-
-    total_deleted = deleted.values.sum
-    flash[:notice] = if source_path
-                       I18n.t('data_import.data_fix.discard_source_done', total: total_deleted, source: source_path)
-                     else
-                       I18n.t('data_import.data_fix.clean_slate_done',
-                              total: total_deleted, tables: deleted.size, sessions: session_count)
-                     end
-  rescue StandardError => e
-    flash[:error] = I18n.t('data_import.data_fix.clean_slate_failed', message: e.message)
-  ensure
-    redirect_to(home_index_path)
-  end
-
   # [GET /data_fix/coded_name] (JSON only)
   # Computes the internal coded name for a Meeting ('code' target) or a SwimmingPool
   # ('nick_name' target). Used by +coded_name_controller.js+ in the Phase 1 forms.
@@ -110,16 +81,5 @@ class DataFixController < ApplicationController
   # Strong parameters checking for team names list retrieval.
   def teams_for_swimmer_params
     params.permit(:swimmer_id)
-  end
-
-  # True when at least one staging row is bound to the given +phase_file_path+.
-  def known_source_path?(source_path)
-    DataFix::StagingPurger.known_source?(source_path)
-  end
-
-  # Polite refusal for a blank or unknown +source_path+.
-  def unknown_source_path
-    # (the redirect in #purge's ensure clause follows, so no flash.now)
-    flash[:warning] = I18n.t('data_import.data_fix.discard_source_unknown') # rubocop:disable Rails/ActionControllerFlashBeforeRender
   end
 end

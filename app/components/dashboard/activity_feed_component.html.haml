@@ -1,0 +1,24 @@
+%section#activity-feed
+  - if !@ops_available
+    %p.small.text-body-secondary.mb-0#activity-feed-unavailable= t('dashboard.activity.ops_unavailable')
+  - elsif @events.empty?
+    %p.small.text-body-secondary.mb-0#activity-feed-empty= t('dashboard.activity.empty')
+  - else
+    %ul.list-unstyled.mb-2.small
+      - @events.each do |event|
+        - icon, css = self.class.level_style(event.level)
+        %li.d-flex.gap-2.py-1.activity-feed-event{ data: { event_kind: event.kind } }
+          %span.text-body-secondary.font-monospace.flex-shrink-0{ title: l(event.occurred_at.localtime, format: :long) }
+            = time_label(event.occurred_at)
+          %i.fa-solid.fa-fw.pt-1{ class: [icon, css], 'aria-hidden' => 'true' }
+          %span.text-break
+            - if event.link_path.present?
+              = link_to(event.title, event.link_path, data: { turbo_frame: '_top' })
+            - else
+              = event.title
+            - if event.subject_key.present?
+              %span.text-body-secondary= self.class.subject_label(event)
+  - if @ops_available
+    = link_to(helpers.activity_path, class: 'small', id: 'activity-feed-all', data: { turbo_frame: '_top' }) do
+      = t('dashboard.activity.all')
+      %i.fa-solid.fa-arrow-right{ 'aria-hidden' => 'true' }

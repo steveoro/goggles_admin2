@@ -20,6 +20,6 @@
 // the pages still on the compat layer, which rely on it: e.g. the Data-Fix result cards clip their tables,
 // wider than the cards, instead of spilling them over the next column. Swept pages don't need it (and it
 // clipped dropdowns): each later phase drops its pages from this list when it rewrites them.
-.app-content:is([data-page='home'], [data-page='push'], [data-page='pull'], [data-page='pdf'], [data-page^='data_fix']) .card {
+.app-content:is([data-page='push'], [data-page='pull'], [data-page='pdf'], [data-page^='data_fix']) .card {
   overflow: hidden;
 }

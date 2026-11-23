@@ -9,11 +9,15 @@ module DataFix
   class SessionIndex
     PHASE_GLOB = '*-phase[1-5].json'
 
+    # Staging tables whose rows make a source "staged" (laps & relay swimmers always belong to one of these results).
+    STAGING_RESULT_TABLES = [GogglesDb::DataImportMeetingIndividualResult, GogglesDb::DataImportMeetingRelayResult].freeze
+
     # One source/session.
     # - source_path: path as stored in the staging rows when present, else the canonical
     #   '<dir>/<stem>.json' relative to Rails.root (this is the +file_path+ for the review pages);
     # - season_id: Integer or nil; highest_phase: Integer (0 when no phase file);
-    # - mtime: Time of the newest phase file, or nil; staging_rows: Integer (individual results count);
+    # - mtime: Time of the newest phase file, or nil;
+    # - staging_rows: Integer (individual + relay results staged for the source);
     # - source_exists: true when the source file is still on disk.
     Row = Data.define(:source_path, :season_id, :highest_phase, :mtime, :staging_rows, :source_exists) do
       def source_exists? = source_exists
@@ -73,10 +77,12 @@ module DataFix
       end
     end
 
-    # One grouped count: Hash of phase_file_path => rows count.
+    # Staged result rows per source: one grouped count on each results table (individual and relay results,
+    # so that a relay-only source is listed too). Hash of phase_file_path => rows count.
     def staging_counts
-      GogglesDb::DataImportMeetingIndividualResult.where.not(phase_file_path: [nil, ''])
-                                                  .group(:phase_file_path).count
+      STAGING_RESULT_TABLES.each_with_object(Hash.new(0)) do |table, memo|
+        table.where.not(phase_file_path: [nil, '']).group(:phase_file_path).count.each { |path, count| memo[path] += count }
+      end
     end
 
     def build_row(key, disk_entry, staging_entries)

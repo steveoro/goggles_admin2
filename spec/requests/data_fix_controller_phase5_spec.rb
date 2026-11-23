@@ -438,7 +438,7 @@ RSpec.describe DataFixController do
       end
     end
 
-    describe 'DELETE /data_fix/purge' do
+    describe 'DELETE /data_fix/sessions/purge (per source)' do
       before(:each) do
         GogglesDb::DataImportMeetingIndividualResult.create!(
           import_key: 'purge-mir',
@@ -469,16 +469,15 @@ RSpec.describe DataFixController do
         )
       end
 
-      it 'clears all temp tables and redirects with a notice' do
-        delete data_fix_purge_path
+      it "clears the source's rows from all five temp tables and redirects to the sessions list with a notice" do
+        delete data_fix_sessions_purge_path, params: { source_path: source_file_a }
 
-        expect(response).to redirect_to(home_index_path)
-        expect(flash[:notice]).to include(I18n.t('data_import.data_fix.clean_slate_done', total: 0, tables: 0, sessions: 0).split(':').first)
-        expect(GogglesDb::DataImportMeetingIndividualResult.count).to eq(0)
-        expect(GogglesDb::DataImportLap.count).to eq(0)
-        expect(GogglesDb::DataImportMeetingRelayResult.count).to eq(0)
-        expect(GogglesDb::DataImportMeetingRelaySwimmer.count).to eq(0)
-        expect(GogglesDb::DataImportRelayLap.count).to eq(0)
+        expect(response).to redirect_to(data_fix_sessions_path)
+        expect(flash[:notice]).to eq(I18n.t('data_import.data_fix.discard_source_done', total: 5, source: source_file_a))
+        [
+          GogglesDb::DataImportMeetingIndividualResult, GogglesDb::DataImportLap, GogglesDb::DataImportMeetingRelayResult,
+          GogglesDb::DataImportMeetingRelaySwimmer, GogglesDb::DataImportRelayLap
+        ].each { |table| expect(table.where(phase_file_path: source_file_a).count).to eq(0) }
       end
     end
 

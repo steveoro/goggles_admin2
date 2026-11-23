@@ -49,6 +49,15 @@ module SeasonBoard
       warning ? "#{warning}\n\n#{default_text}" : default_text
     end
 
+    # Returns the Array of [label_key, Time] for the scheduled tasks found & parsable
+    # (also shown by the dashboard "In progress" zone).
+    def next_runs
+      SCHEDULED_TASKS.filter_map do |task_key, label_key|
+        time = next_run_for(task_key)
+        [label_key, time] if time
+      end
+    end
+
     protected
 
     def running
@@ -73,14 +82,6 @@ module SeasonBoard
 
     def time_label(time)
       time ? time.in_time_zone.strftime('%H:%M') : '?'
-    end
-
-    # Returns the Array of [label_key, Time] for the scheduled tasks found & parsable.
-    def next_runs
-      SCHEDULED_TASKS.filter_map do |task_key, label_key|
-        time = next_run_for(task_key)
-        [label_key, time] if time
-      end
     end
 
     def format_next_run(time)

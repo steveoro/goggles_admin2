@@ -2,8 +2,6 @@ it:
   season_board:
     title: 'Plancia stagione'
     nav: 'Plancia stagione'
-    home_button: 'Plancia stagione'
-    home_button_tooltip: "Flusso settimanale per l'ultima stagione MASFIN: controllo, crawl, revisione e push, una riga per meeting FIN"
     back_to_board: 'Torna alla Plancia stagione'
     header:
       season: 'Stagione %{description}'

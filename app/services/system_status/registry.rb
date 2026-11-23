@@ -4,14 +4,15 @@ module SystemStatus
   #
   # = SystemStatus::Registry
   #
-  # Ordered list of the status probes shown as pills in the top bar (Shell::StatusController) and
-  # refreshed by SystemStatus::RefreshJob. Phase 05 extends PROBES (cable, ops DB, watcher age, ...).
+  # Ordered list of the status probes shown as pills in the top bar (Shell::StatusController) and as rows in the
+  # dashboard System zone; the snapshot ones are refreshed by SystemStatus::RefreshJob. Later phases add their
+  # probe class names to PROBES (see docs/dashboard.md).
   #
   class Registry
     # Probe class names, in display order:
     PROBES = %w[
-      SystemStatus::APIProbe SystemStatus::CrawlerProbe SystemStatus::QueueProbe SystemStatus::FINWatchProbe
-      SystemStatus::DriftV0Probe
+      SystemStatus::APIProbe SystemStatus::CrawlerProbe SystemStatus::QueueProbe SystemStatus::CableProbe
+      SystemStatus::FINWatchProbe SystemStatus::OpsDbProbe SystemStatus::DriftV0Probe
     ].freeze
 
     # The status frame asks for a refresh when a snapshot is older than this:

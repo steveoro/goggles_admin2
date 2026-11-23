@@ -75,17 +75,24 @@ RSpec.describe 'SystemStatus probes' do # rubocop:disable RSpec/DescribeClass
       expect(described_class.new(api_url:).call.level).to eq(:warn)
     end
 
-    it 'is :unknown for a stale snapshot' do
+    it 'is :warn for a reachable server not checked for over 10 minutes (still :error when unreachable)' do
       Ops::Snapshot.write!("api.status:#{api_url}", { 'reachable' => true, 'code' => 200 })
-      Ops::Snapshot.find_by(key: "api.status:#{api_url}").update!(taken_at: 1.hour.ago)
-      expect(described_class.new(api_url:).call.level).to eq(:unknown)
+      Ops::Snapshot.find_by(key: "api.status:#{api_url}").update!(taken_at: 11.minutes.ago)
+      expect(described_class.new(api_url:).call.level).to eq(:warn)
+      Ops::Snapshot.find_by(key: "api.status:#{api_url}").update!(taken_at: 9.minutes.ago)
+      expect(described_class.new(api_url:).call.level).to eq(:ok)
+
+      Ops::Snapshot.write!("api.status:#{api_url}", { 'reachable' => false, 'code' => 503, 'error' => 'refused' })
+      Ops::Snapshot.find_by(key: "api.status:#{api_url}").update!(taken_at: 2.hours.ago)
+      expect(described_class.new(api_url:).call.level).to eq(:error)
     end
 
-    it 'is :error in an API-offline session, whatever the snapshot says' do
+    it 'is :unknown in an API-offline session, whatever the snapshot says, linking to Settings' do
       Ops::Snapshot.write!("api.status:#{api_url}", { 'reachable' => true, 'code' => 200 })
       result = described_class.new(api_url:, offline: true).call
-      expect(result.level).to eq(:error)
+      expect(result.level).to eq(:unknown)
       expect(result.detail).to eq(I18n.t('shell.status.api.offline'))
+      expect(result.action[:path]).to eq('/settings')
     end
 
     describe '#refresh!' do
@@ -103,24 +110,73 @@ RSpec.describe 'SystemStatus probes' do # rubocop:disable RSpec/DescribeClass
   describe SystemStatus::CrawlerProbe do
     let(:probe_class) { described_class }
 
+    let(:pid_path) { described_class.pid_path }
+    let(:status_path) { described_class.status_path }
+
+    after(:each) { FileUtils.rm_f([status_path, pid_path]) }
+    before(:each) { FileUtils.rm_f([status_path, pid_path]) }
+
     it_behaves_like 'a probe that never raises'
     it_behaves_like 'a snapshot probe that never touches the network while evaluated'
 
-    it 'reports a crawler that is not running as :unknown ("off"), with a link to the crawler page' do
-      Ops::Snapshot.write!('system_status.crawler', { 'reachable' => false })
-      result = described_class.new.call
-      expect(result.level).to eq(:unknown)
-      expect(result.detail).to eq(I18n.t('shell.status.crawler.off'))
-      expect(result.action[:path]).to eq('/pull/index')
+    def write_status(status, detail: '', timestamp: Time.now.utc, progress: 0, total: 0)
+      File.write(status_path, { status:, detail:, timestamp: timestamp.strftime('%Y%m%d-%H%M%S'), progress:, total: }.to_json)
     end
 
-    it 'reports an idle crawler as :ok and a failed run as :warn' do
-      Ops::Snapshot.write!('system_status.crawler', { 'reachable' => true, 'status' => 'OK, idle', 'detail' => '' })
+    def running!
+      FileUtils.mkdir_p(pid_path.dirname)
+      File.write(pid_path, Process.pid.to_s) # (this very process: alive)
+    end
+
+    it 'reads its status and PID files from the test paths' do
+      expect(status_path.to_s).to end_with('tmp/crawler-status.test.json')
+      expect(pid_path.to_s).to end_with('tmp/pids/crawler.test.pid')
+    end
+
+    it 'is :error ("not running", with the Start crawler button) when the PID process is gone or the last check found nothing' do
+      FileUtils.mkdir_p(pid_path.dirname)
+      File.write(pid_path, '999999999')
+      result = described_class.new.call
+      expect(result.level).to eq(:error)
+      expect(result.detail).to eq(I18n.t('shell.status.crawler.off'))
+      expect(result.action).to include(path: '/pull/start_crawler', http_method: :post)
+      expect(result).to be_post_action
+
+      FileUtils.rm_f(pid_path)
+      Ops::Snapshot.write!('system_status.crawler', { 'reachable' => false })
+      expect(described_class.new.call.level).to eq(:error)
+    end
+
+    it 'is :unknown without a PID process nor a recent check' do
+      result = described_class.new.call
+      expect(result.level).to eq(:unknown)
+      expect(result.action[:path]).to eq('/pull/start_crawler')
+    end
+
+    it 'reads the status file while running: idle :ok, busy :ok with its progress, failed or stuck :warn' do
+      running!
+      write_status('OK, idle')
       expect(described_class.new.call.level).to eq(:ok)
-      Ops::Snapshot.write!('system_status.crawler', { 'reachable' => true, 'status' => 'ERROR', 'detail' => 'Timeout' })
+
+      write_status('OK, processing', progress: 2, total: 5)
+      result = described_class.new.call
+      expect(result.level).to eq(:ok)
+      expect(result.detail).to eq(I18n.t('shell.status.crawler.busy_progress', status: 'OK, processing', progress: 2, total: 5))
+
+      write_status('OK, running', timestamp: 40.minutes.ago.utc)
+      expect(described_class.new.call.level).to eq(:warn)
+
+      write_status('ERROR', detail: 'Timeout')
       result = described_class.new.call
       expect(result.level).to eq(:warn)
       expect(result.detail).to include('Timeout')
+    end
+
+    it 'trusts a recent HTTP check for a crawler started by hand (no PID file)' do
+      Ops::Snapshot.write!('system_status.crawler', { 'reachable' => true, 'status' => 'OK, idle' })
+      expect(described_class.new.call.level).to eq(:ok)
+      Ops::Snapshot.find_by(key: 'system_status.crawler').update!(taken_at: 1.hour.ago)
+      expect(described_class.new.call.level).to eq(:unknown)
     end
 
     describe '#refresh!' do
@@ -160,21 +216,42 @@ RSpec.describe 'SystemStatus probes' do # rubocop:disable RSpec/DescribeClass
         allow(Rails.application.config.active_job).to receive(:queue_adapter).and_return(:solid_queue)
       end
 
-      it 'is :ok when a process sent a recent heartbeat' do
-        allow(described_class).to receive(:live_process_count).and_return(3)
-        result = described_class.new.call
-        expect(result.level).to eq(:ok)
-        expect(result.detail).to include('3')
-        expect(described_class).to have_received(:live_process_count).with(since: be_within(5.seconds).of(5.minutes.ago))
+      def live(kind, queues = nil, beat: 30.seconds.ago)
+        SystemStatus::QueueProbe::LiveProcess.new(kind:, queues: Array(queues), last_heartbeat_at: beat)
       end
 
-      it 'is :error when no process is alive' do
-        allow(described_class).to receive(:live_process_count).and_return(0)
-        expect(described_class.new.call.level).to eq(:error)
+      it 'is :ok with a supervisor and a worker for each queue of config/queue.yml' do
+        allow(described_class).to receive(:live_processes)
+          .and_return([live('Supervisor(fork)'), live('Dispatcher'), live('Worker', 'default'), live('Worker', 'background')])
+        result = described_class.new.call
+        expect(result.level).to eq(:ok)
+        expect(result.detail).to include('4')
+        expect(described_class).to have_received(:live_processes).with(since: be_within(5.seconds).of(5.minutes.ago))
+      end
+
+      it 'is :warn when a configured queue has no live worker' do
+        allow(described_class).to receive(:live_processes).and_return([live('Supervisor(fork)'), live('Worker', 'default')])
+        result = described_class.new.call
+        expect(result.level).to eq(:warn)
+        expect(result.detail).to include('background')
+      end
+
+      it 'is :error without a live supervisor, telling to run bin/jobs when outside Puma' do
+        allow(described_class).to receive_messages(live_processes: [live('Worker', 'default')], outside_puma?: false)
+        result = described_class.new.call
+        expect(result.level).to eq(:error)
+        expect(result.detail).to eq(I18n.t('shell.status.queue.dead'))
+
+        allow(described_class).to receive(:outside_puma?).and_return(true)
+        expect(described_class.new.call.detail).to eq(I18n.t('shell.status.queue.dead_outside_puma'))
+      end
+
+      it 'reads the configured queues from config/queue.yml' do
+        expect(described_class.configured_queues).to contain_exactly('default', 'background')
       end
 
       it 'is :unknown when the queue DB/tables are missing (no exception)' do
-        allow(described_class).to receive(:live_process_count).and_raise(ActiveRecord::StatementInvalid, 'no such table')
+        allow(described_class).to receive(:live_processes).and_raise(ActiveRecord::StatementInvalid, 'no such table')
         expect { described_class.new.call }.not_to raise_error
         expect(described_class.new.call.level).to eq(:unknown)
       end
@@ -214,11 +291,72 @@ RSpec.describe 'SystemStatus probes' do # rubocop:disable RSpec/DescribeClass
       expect(result.action[:path]).to eq('/season_board')
     end
 
-    it 'is :warn when the last check failed' do
+    it 'is :error when the last check failed, offering "Check now"' do
       store.update { |state| state.merge('last_checked' => Time.current.iso8601, 'last_error' => 'FetchError: 503') }
       result = described_class.new.call
-      expect(result.level).to eq(:warn)
+      expect(result.level).to eq(:error)
       expect(result.detail).to include('503')
+      expect(result.action).to include(path: '/federnuoto_watch/check', http_method: :post)
+    end
+
+    it 'is :warn when the last check is older than 75 minutes (the hourly job is not running)' do
+      store.update { |state| state.merge('last_checked' => 80.minutes.ago.iso8601) }
+      result = described_class.new.call
+      expect(result.level).to eq(:warn)
+      expect(result.action[:path]).to eq('/federnuoto_watch/check')
+    end
+  end
+
+  describe SystemStatus::CableProbe do
+    let(:probe_class) { described_class }
+
+    it_behaves_like 'a probe that never raises'
+
+    it 'has key :cable, inline' do
+      expect(described_class.key).to eq(:cable)
+      expect(described_class.mode).to eq(:inline)
+    end
+
+    it 'is :warn with the in-process test adapter (no broadcast across processes)' do
+      result = described_class.new.call
+      expect(result.level).to eq(:warn)
+      expect(result.detail).to eq(I18n.t('shell.status.cable.other_adapter', adapter: 'test'))
+    end
+
+    context 'with the solid_cable adapter' do
+      before(:each) { allow(ActionCable.server.config).to receive(:cable).and_return({ 'adapter' => 'solid_cable' }) }
+
+      it 'is :warn without a cable database in config/database.yml (the test environment has none)' do
+        expect(described_class.new.call.detail).to eq(I18n.t('shell.status.cable.not_configured'))
+      end
+
+      it 'is :warn when its SQLite file is missing, without creating it, and :ok once prepared' do
+        config = ActiveRecord::DatabaseConfigurations::HashConfig.new('test', 'cable', { adapter: 'sqlite3', database: 'tmp/no-such-cable.sqlite3' })
+        allow(ActiveRecord::Base.configurations).to receive(:configs_for).and_call_original
+        allow(ActiveRecord::Base.configurations).to receive(:configs_for).with(env_name: 'test', name: 'cable').and_return(config)
+        expect(described_class.new.call.detail).to eq(I18n.t('shell.status.cable.not_prepared'))
+        expect(Rails.root.join('tmp/no-such-cable.sqlite3')).not_to exist
+
+        allow(Rails.root).to receive(:join).and_call_original
+        allow(Rails.root).to receive(:join).with('tmp/no-such-cable.sqlite3').and_return(instance_double(Pathname, exist?: true))
+        allow(described_class).to receive(:messages_table?).and_return(true)
+        expect(described_class.new.call.level).to eq(:ok)
+      end
+    end
+  end
+
+  describe SystemStatus::OpsDbProbe do
+    let(:probe_class) { described_class }
+
+    it_behaves_like 'a probe that never raises'
+
+    it 'is :ok when the ops DB is ready, :error with the ops:prepare hint otherwise' do
+      expect(described_class.key).to eq(:ops_db)
+      expect(described_class.new.call.level).to eq(:ok)
+      allow(Ops::Database).to receive(:state).and_return(:needs_migration)
+      result = described_class.new.call
+      expect(result.level).to eq(:error)
+      expect(result.detail).to include(I18n.t('ops.setup_notice.states.needs_migration'), 'ops:prepare')
     end
   end
 

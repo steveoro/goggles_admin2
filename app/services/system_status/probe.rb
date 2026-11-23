@@ -121,5 +121,10 @@ module SystemStatus
     def url_helpers
       Rails.application.routes.url_helpers
     end
+
+    # Action Hash for a Result (see SystemStatus::Result#action): a link (:get) or a button (:post).
+    def action_for(label_key, path, http_method: :get)
+      { label: I18n.t("shell.status.actions.#{label_key}"), path:, http_method: }
+    end
   end
 end

@@ -1,0 +1,3 @@
+= turbo_frame_tag('dashboard-kpis', target: '_top', class: 'd-block mb-3') do
+  %span.d-none{ data: { live_busy: @refreshing.to_s } }
+  = render(Kpi::StripComponent.new(snapshot: @snapshot, url: @api_url, offline: api_offline_session?))

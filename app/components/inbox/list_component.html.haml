@@ -1,0 +1,17 @@
+- if result.empty?
+  .d-flex.align-items-center.gap-2.text-body-secondary.py-2#inbox-empty
+    %i.fa-solid.fa-circle-check.text-success{ 'aria-hidden' => 'true' }
+    = t('inbox.empty')
+- else
+  %ul.list-group.list-group-flush#inbox-items
+    - result.items.each do |item|
+      = render(Inbox::ItemComponent.new(item:, now: @now))
+  - if result.hidden.any?
+    %ul.list-unstyled.small.text-body-secondary.mt-2.mb-0#inbox-more
+      - more_lines.each do |label, count, path|
+        %li
+          - text = t('inbox.more', count:, source: label)
+          - if path
+            = link_to(text, path, data: { turbo_frame: '_top' })
+          - else
+            = text

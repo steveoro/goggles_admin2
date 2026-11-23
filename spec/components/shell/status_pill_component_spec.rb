@@ -34,6 +34,14 @@ RSpec.describe Shell::StatusPillComponent, type: :component do
     expect(pill['data-bs-title']).to include('Open Settings')
   end
 
+  it 'never runs a POST action from the top bar: links to the dashboard System zone instead' do
+    action = { label: 'Start crawler', path: '/pull/start_crawler', http_method: :post }
+    pill = render_inline(described_class.new(result: result(:error, action:))).at_css('a#status-pill-api')
+    expect(pill['href']).to eq('/#dashboard-system')
+    expect(pill['data-bs-title']).to include(I18n.t('shell.status.on_dashboard', action: 'Start crawler'))
+    expect(page).to have_no_css('form')
+  end
+
   it 'refuses an unsupported level' do
     expect { result(:bogus) }.to raise_error(ArgumentError)
   end

@@ -22,7 +22,7 @@ RSpec.describe 'Layout assets' do
     )
   end
 
-  { 'home#index' => :root_path, 'settings#index' => :settings_path }.each do |action, path_helper|
+  { 'dashboard#index' => :root_path, 'settings#index' => :settings_path }.each do |action, path_helper|
     context "when rendering #{action}" do
       before(:each) { get(public_send(path_helper)) }
 
