@@ -53,4 +53,29 @@ RSpec.describe PdfController do
       end
     end
   end
+
+  describe 'PUT /pdf/log_contents (turbo stream flash update)' do
+    include AdminSignInHelpers
+
+    let(:temp_dir) { Dir.mktmpdir }
+    let(:txt_path) { File.join(temp_dir, 'sample.txt') }
+
+    before(:each) do
+      sign_in_admin(prepare_admin_user)
+      File.write(txt_path.sub('.txt', '.log'), 'some log')
+    end
+
+    after(:each) { FileUtils.rm_rf(temp_dir) }
+
+    it 'updates only the flash toasts container, leaving the sticky alerts alone' do
+      put pdf_log_contents_path(file_path: txt_path), as: :turbo_stream
+
+      expect(response).to have_http_status(:ok)
+      streams = Nokogiri::HTML.fragment(response.body).css('turbo-stream')
+      targets = streams.pluck('target')
+      expect(targets).to include('flash-messages-container', 'log-result')
+      expect(targets).not_to include('sticky-alerts', 'api-offline-banner')
+      expect(response.body).not_to include('sticky-alerts')
+    end
+  end
 end

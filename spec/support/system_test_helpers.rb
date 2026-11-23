@@ -84,6 +84,21 @@ module SystemTestHelpers
                                      }.to_json))
   end
 
+  # Color mode of the run: ENV['SYSTEM_THEME'] ('light' by default; e.g. <tt>SYSTEM_THEME=dark</tt>).
+  def system_theme
+    ApplicationHelper::THEMES.include?(ENV['SYSTEM_THEME'].to_s) ? ENV.fetch('SYSTEM_THEME') : 'light'
+  end
+
+  # Sets the 'theme' cookie before the first visit (through CDP, which needs no prior page load),
+  # only when running in dark mode: light is the default.
+  def set_system_theme_cookie
+    return if system_theme == 'light'
+
+    port = Capybara.current_session.server.port
+    page.driver.browser.execute_cdp('Network.setCookie', name: 'theme', value: system_theme,
+                                                         url: "http://127.0.0.1:#{port}/")
+  end
+
   # Fails when the browser console reported any SEVERE message since the last check.
   def expect_no_js_errors
     expect(severe_js_log_messages).to be_empty
@@ -104,6 +119,7 @@ RSpec.configure do |config|
 
   config.before(:each, type: :system) do
     driven_by(:goggles_headless_chrome)
+    set_system_theme_cookie
     # Default API double (individual journeys override it as needed):
     allow(APIProxy).to receive(:call).and_return(DummyResponse.new(body: '[]'))
     stub_stats_api

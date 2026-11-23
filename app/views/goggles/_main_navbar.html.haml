@@ -1,4 +1,4 @@
-%nav.navbar.navbar-expand-lg.navbar-light.bg-light
+%nav.navbar.navbar-expand-lg.bg-body-tertiary
   .container-fluid
     %a.navbar-brand{ href: root_path }
       Goggles Admin2
@@ -44,6 +44,13 @@
         .dropdown-divider
         / %li.nav-item
         /  = link_to('Shortcut TODO', '#', class: 'nav-link')
+        %li.nav-item{ data: { controller: 'theme' } }
+          %button.nav-link.btn.btn-link#theme-toggle{ type: 'button', title: t('theme.toggle'),
+                                                      'aria-label' => t('theme.toggle'),
+                                                      'aria-pressed' => (current_theme == 'dark').to_s,
+                                                      data: { action: 'theme#toggle' } }
+            %i.fa{ class: (current_theme == 'dark' ? 'fa-sun' : 'fa-moon'), 'aria-hidden' => 'true',
+                   data: { theme_target: 'icon' } }
         - if user_signed_in?
           %li.nav-item= link_to(t('home.log_out'), destroy_user_session_path,
                                 data: { turbo_method: :delete }, class: 'nav-link')

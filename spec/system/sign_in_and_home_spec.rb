@@ -78,14 +78,15 @@ RSpec.describe 'Sign-in & home dashboard' do
 
       expect(page).to have_current_path(settings_path)
       expect(page).to have_css('#api-offline-help')
-      # The transient (non-sticky) sign-in flash fades away by itself:
-      expect(page).to have_no_css('.flash-alert:not(.flash-sticky)', wait: 8)
+      # The transient (non-sticky) sign-in flash is a toast that auto-hides after 5 seconds
+      # (errors and sticky alerts never do) and gets removed from the DOM:
+      expect(page).to have_no_css('.toast.flash-alert:not(.flash-sticky)', wait: 12)
 
       visit(root_path)
       expect(page).to have_css('#api-offline-banner')
       sleep(4)
       expect(page).to have_css('#api-offline-banner')
-      expect(page).to have_no_css('.flash-alert:not(.flash-sticky)')
+      expect(page).to have_no_css('.toast.flash-alert:not(.flash-sticky)')
       expect_no_js_errors
     end
   end

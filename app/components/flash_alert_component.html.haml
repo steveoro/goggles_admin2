@@ -1,6 +1,10 @@
-.flash-alert.alert{ role: 'alert', class: alert_css_classes }
-  %button.btn-close.float-end{ 'aria-label' => 'Close', 'data-bs-dismiss' => 'alert', type: 'button' }
-  %h5.alert-heading
-    %i.fa.fa-2x{ class: alert_title_class, 'aria-hidden' => 'true' }
-    = @title
-  %p.flash-body= @body
+.toast.border-0{ role: 'alert', 'aria-live' => 'assertive', 'aria-atomic' => 'true', class: alert_css_classes,
+                 data: { controller: 'toast', toast_autohide_value: autohide?.to_s } }
+  .d-flex
+    .toast-body
+      - if @title.present?
+        %strong.d-block
+          %i.fa{ class: alert_title_class, 'aria-hidden' => 'true' }
+          = @title
+      %span.flash-body= @body
+    %button.btn-close.me-2.m-auto{ 'aria-label' => 'Close', 'data-bs-dismiss' => 'toast', type: 'button' }

@@ -1,0 +1,5 @@
+en:
+  theme:
+    toggle: 'Toggle light/dark mode'
+    light: 'Light'
+    dark: 'Dark'

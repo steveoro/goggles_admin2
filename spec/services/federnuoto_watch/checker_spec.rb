@@ -79,7 +79,7 @@ RSpec.describe FedernuotoWatch::Checker do
 
       it 'broadcasts a transient info message for manual checks' do
         expect { run_check(manual: true) }.to have_broadcasted_to(stream).with(
-          a_hash_including(dom_id: FedernuotoWatch::INFO_DOM_ID, html: a_string_including('alert-info', '10 meeting'))
+          a_hash_including(dom_id: FedernuotoWatch::INFO_DOM_ID, html: a_string_including('text-bg-info', '10 meeting'))
         )
       end
     end
@@ -151,7 +151,7 @@ RSpec.describe FedernuotoWatch::Checker do
 
       it 'broadcasts an error message for manual checks' do
         expect { run_check(manual: true) }.to have_broadcasted_to(stream).with(
-          a_hash_including(dom_id: FedernuotoWatch::INFO_DOM_ID, html: a_string_including('alert-danger', 'site down'))
+          a_hash_including(dom_id: FedernuotoWatch::INFO_DOM_ID, html: a_string_including('text-bg-danger', 'site down'))
         )
       end
     end

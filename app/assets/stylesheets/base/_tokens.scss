@@ -1,0 +1,32 @@
+// = Design tokens =
+//
+// Pastel row/panel tints behind the `.bg-light-*` helper classes, as CSS custom properties:
+// light values on :root, darker (still distinguishable) ones in Bootstrap's dark color mode.
+// Text keeps the Bootstrap body color, which flips with `data-bs-theme`.
+:root {
+  --ga-tint-blue: #d8ecff;
+  --ga-tint-cyan: #dbeeff;
+  --ga-tint-cyan2: #e5f1fd;
+  --ga-tint-green: #e8ffee;
+  --ga-tint-green2: #90a0a0;
+  --ga-tint-grey: #e6e6e6;
+  --ga-tint-grey2: #b0b0b0;
+  --ga-tint-yellow: #feffd6;
+  --ga-tint-brown: #ffdfcc;
+  --ga-tint-red: #ffa1a1;
+  --ga-tint-red2: #ffd2d2;
+}
+
+[data-bs-theme='dark'] {
+  --ga-tint-blue: #1d3a55;
+  --ga-tint-cyan: #1c3b52;
+  --ga-tint-cyan2: #213a4f;
+  --ga-tint-green: #1e4430;
+  --ga-tint-green2: #3f5555;
+  --ga-tint-grey: #3a3d40;
+  --ga-tint-grey2: #52565a;
+  --ga-tint-yellow: #4a4720;
+  --ga-tint-brown: #5a3a2a;
+  --ga-tint-red: #7a2e2e;
+  --ga-tint-red2: #5e2b2b;
+}

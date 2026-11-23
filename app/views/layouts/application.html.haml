@@ -20,6 +20,10 @@
     = javascript_importmap_tags
 
   %body{ data: { controller: 'tooltips' } }
+    -# Flash toasts (top-right); turbo-stream flash updates replace only this container's content:
+    .toast-container.position-fixed.top-0.end-0.p-3#flash-messages-container
+      = render(partial: 'goggles/flash_messages')
+
     %section#header
       = render('goggles/main_navbar')
 
@@ -27,8 +31,7 @@
       .wrapper-body
         .spacer-left
         .main-content
-          #flash-messages-container
-            = render(partial: 'goggles/flash_messages')
+          #sticky-alerts
             -# Local session without a valid API JWT (API server unreachable at sign-in; Settings has its own box):
             - if user_signed_in? && api_offline_session? && controller_name != 'settings'
               = render(partial: 'goggles/api_offline_banner')

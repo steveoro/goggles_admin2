@@ -54,6 +54,13 @@ RSpec.describe 'Layout assets' do
         end
       end
 
+      it 'keeps the sticky alerts region out of the flash toasts container' do
+        expect(html.at_css('#sticky-alerts')).to be_present
+        expect(html.at_css('#flash-messages-container #sticky-alerts')).to be_nil
+        expect(html.at_css('body > #flash-messages-container.toast-container #flash-messages')).to be_present
+        expect(html.at_css('.main-content #sticky-alerts')).to be_present
+      end
+
       it 'sets the light Bootstrap color mode and the tooltips controller by default' do
         expect(html.at('html')['data-bs-theme']).to eq('light')
         expect(html.at('body')['data-controller']).to eq('tooltips')

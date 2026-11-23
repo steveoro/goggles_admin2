@@ -87,11 +87,12 @@ a.expand-button.collapsed:visited:after
 /**
       === GENERIC styles ===
 */
+// (the effective .bg-light-* tints are in devise_customizations, from the base/tokens custom properties)
 .bg-light-yellow {
-  background-color: #f6e3b5;
+  background-color: var(--ga-tint-yellow);
 }
 .bg-light-red {
-  background-color: #f28787;
+  background-color: var(--ga-tint-red);
 }
 
 .small-text {

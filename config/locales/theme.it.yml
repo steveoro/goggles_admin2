@@ -1,0 +1,5 @@
+it:
+  theme:
+    toggle: 'Passa da tema chiaro a scuro'
+    light: 'Chiaro'
+    dark: 'Scuro'

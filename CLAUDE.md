@@ -47,6 +47,9 @@ Six phases turning a results source file into production data; docs in `docs/dat
 - API sessions: credentials are checked against the local DB (Devise), then a JWT is fetched from the API configured in the local `AppParameter` row (`framework_urls.api`). `APIProxy` never raises on connection failures (`Result#unreachable?`). If no JWT can be obtained, a localhost sign-in becomes an "API-offline" session (`session[:api_offline]`, `app/controllers/concerns/api_session.rb`) allowed only where `api_offline_allowed?` is true (Settings, Home#index) so the API URL can be fixed.
 - `API` is registered as an inflection acronym (`config/initializers/inflections.rb`), e.g. `APIProxy` lives in `api_proxy.rb`.
 
+## Front-end
+Bootstrap 5.3 (vendored). Temporary Bootstrap 4 compat layer: `app/assets/stylesheets/compat/_bs4.scss` and `app/javascript/bs4_compat.js`; `spec/bs4_leftovers_spec.rb` ratchets the remaining BS4 tokens per folder (`BASELINE`/`SWEPT`). Rule: native Bootstrap 5 markup in new code; the compat layer is temporary.
+
 ## Conventions
 - Every Ruby file starts with `# frozen_string_literal: true`.
 - Update `CHANGELOG.md` and bump the version when making user-visible changes (recent commits follow this).

@@ -3,7 +3,7 @@
 #
 # = FlashAlertComponent
 #
-# Render a dismissable flash message alert
+# Render a dismissable flash message as a Bootstrap 5 toast
 #
 class FlashAlertComponent < ViewComponent::Base
   # Supported flash items
@@ -15,7 +15,7 @@ class FlashAlertComponent < ViewComponent::Base
   # - symbol: the flash symbol that will set the alert theme (:info, :notice, :alert, :warning, :error)
   # - title: an additional text title (can be +nil+)
   # - body: the actual text body of the message
-  # - sticky: when true adds a CSS marker to skip JS auto-hide
+  # - sticky: when true adds a CSS marker and disables the toast auto-hide
   def initialize(symbol:, body:, title: nil, sticky: false)
     super()
     @symbol = symbol
@@ -31,35 +31,38 @@ class FlashAlertComponent < ViewComponent::Base
 
   protected
 
-  # Returns the background CSS depending on @symbol value
+  # Returns the Bootstrap 5 toast color helper depending on @symbol value
   def alert_background_class
     case @symbol
     when :error
-      'alert-danger'
+      'text-bg-danger'
     when :warning, :alert
-      'alert-warning'
+      'text-bg-warning'
     when :info
-      'alert-info'
+      'text-bg-info'
     when :notice
-      'alert-secondary'
+      'text-bg-secondary'
     end
   end
 
-  # Returns the background CSS depending on @symbol value
+  # Errors & sticky payloads must be dismissed manually
+  def autohide?
+    @symbol != :error && !@sticky
+  end
+
+  # Returns the icon CSS depending on @symbol value
   def alert_title_class
     case @symbol
     when :error
-      'fa-exclamation-triangle text-danger'
+      'fa-exclamation-triangle'
     when :warning
-      'fa-exclamation-circle text-warning'
-    when :alert
-      'fa-info-circle text-secondary'
-    when :info, :notice
-      'fa-info-circle text-success'
+      'fa-exclamation-circle'
+    else
+      'fa-info-circle'
     end
   end
 
   def alert_css_classes
-    [alert_background_class, (@sticky ? 'flash-sticky' : nil)].compact.join(' ')
+    ['flash-alert', alert_background_class, (@sticky ? 'flash-sticky' : nil)].compact.join(' ')
   end
 end

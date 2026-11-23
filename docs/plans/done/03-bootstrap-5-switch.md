@@ -223,6 +223,19 @@ None.
 
 The shell (sidebar, top bar, breadcrumbs, page header), removing `.wrapper-body`/`.spacer-*`/`#footer.fixed-bottom`, per-view class renames, the Turbo progress bar and `#loading-indicator` (04), Data-Fix markup and JS (12), dark-mode polish of individual pages, the command palette.
 
+## Outcome (done, 0.10.81, 2026-11-23)
+
+Delivered on `feature/modernize-admin-console-ux` (steps 1-2, then 3-5). All five decisions confirmed with their defaults. Full suite green except one pre-existing order-dependent example (`spec/strategies/import/phase5_populator_spec.rb:614`, relay laps sorted by `length_in_meters` with ties); system specs green in light and dark and with external network blocked; rubocop clean; no new haml-lint offenses. Notes for later phases:
+
+- Pinned: Bootstrap 5.3.9, Popper 2.11.8, Font Awesome Free 6.7.2 (+ v4 shims), tom-select 2.3.1, chart.js 4.4.4 (+ `@kurkle/color` 0.3.4). `bin/importmap pin` downloaded unusable files for Popper (`lib/index.js` re-export stub), tom-select (UMD, no default export) and chart.js (relative chunk imports): they were replaced by single-file ESM builds. Never run `bin/importmap pristine`/`update` on those pins (warning in `config/importmap.rb`).
+- `compat/_bs4.scss` `.row` children rule uses a zero-specificity `:where(...)` and `--bs-gutter-x: 0`, safer than the planned version. `bs4_compat.js` also re-syncs a copied BS5 attribute when its BS4 source changes later.
+- Modal-header `.btn-close` buttons inside forms need `type: 'button'` (BS5 only prevents the default on links). Modal/progress-modal controllers wait for a running transition before `dispose()`.
+- Toasts: `FlashAlertComponent` renders `.toast.flash-alert` (`text-bg-*`); sticky payloads go to `#sticky-alerts` (API-offline banner, ops notice, FIN alert). The FIN checker spec now pins `text-bg-info` / `text-bg-danger`.
+- Theme: navbar is `bg-body-tertiary`; tints in `base/_tokens.scss` (`--ga-tint-*`). `SYSTEM_THEME=dark` runs the system suite in dark (cookie set through CDP before each example).
+- Burn-down baseline: 590 BS4 tokens in 27 folders (`app/views/data_fix` 292, `api_issues` 56, `pull` 34, `components/season_board` 23, `goggles_cup` 20, `javascript/controllers` 18, …). `SWEPT` is empty.
+- Dark-mode readability still to check (hard-coded light backgrounds): `devise/sessions/new`, `home/_manage_entities`, `best_results/_best_results_list`, `pdf/_result_card`, `pdf/_log_card`, `pull/_crawler_status_box`, `pull/calendar_meetings`, `file_list/_file_table`, `goggles_cup/index`, `api_meeting_reservations/expand`, the Data-Fix review pages and form/program cards; CodeMirror, Chart.js and tom-select in dark.
+- Not verified visually: `review_results` with real result cards (newly active `.badge.bg-warning`, `ms-*`/`me-*`, `text-end`), the GogglesCup ranking panel, the Stats chart. Pre-existing: `goggles_cup/index.html.haml:148` renders `data-aria-expanded`.
+
 ## Rollback note
 
 Revert the step commits in reverse order. No data or migration is involved. The vendored files are inert if the layout links the CDN files again. A partial rollback of step 3 alone restores the old flash container, which is safe but brings back the sticky-alert erasure bug.

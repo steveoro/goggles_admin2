@@ -4,6 +4,7 @@
 // Local partials below:
 
 @use 'custom_fonts';
+@use 'base/tokens';
 // Temporary Bootstrap 4 class compatibility layer (see compat/_bs4.scss):
 @use 'compat/bs4';
 @use 'custom_styles';
