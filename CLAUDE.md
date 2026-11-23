@@ -33,7 +33,7 @@ Maintenance rake tasks live in `lib/tasks/` (`manifests`, `normalize`, `merge`, 
 ### Data-Fix pipeline (the core)
 Six phases turning a results source file into production data; docs in `docs/data_fix/` (`README.md` → `PHASES.md` → `TECHNICAL.md`, `DATA_STRUCTURES.md`).
 - Principle: **solve early, commit later** — entity matching happens when each phase file is built (`phase1.json`…`phase4.json` hold resolved IDs); Phase 5 stages results/laps in `data_import_*` DB tables; Phase 6 commits atomically and writes an SQL log.
-- Controllers: `DataFixController` holds cross-phase utilities; per-phase controllers are in `app/controllers/data_fix/*` (sessions, teams, swimmers, events, results, commits) on a shared `base_controller` (the legacy wizard was removed in 0.10.78; v2 is the only flow and the `phase*_v2` flags are optional).
+- Controllers: `DataFixController` holds cross-phase utilities; per-phase controllers are in `app/controllers/data_fix/*` (sessions, teams, swimmers, events, results, commits) on a shared `base_controller` (the legacy wizard was removed in 0.10.80; v2 is the only flow and the `phase*_v2` flags are optional).
 - Logic is split between `app/services/data_fix/**` (phase builders, cascades, issue detection, post-commit checks, source resolution) and `app/strategies/import/**` (`solvers/`, `committers/` with `committers/main.rb` as the Phase 6 entry point, `adapters/`, `team_score_extractor`, `structure_validator`, `phase5_populator`). SQL generation is `SqlMaker`.
 - Source files: crawler output lands in `crawler/data/results.new/<season>/`; layoutType 4 (LT4) is the canonical format (see AGENTS.md for LT2→LT4 working-copy rules). Result-free (manifest) sources follow a shortened Phase 1 → Phase 6 chain.
 

@@ -108,7 +108,12 @@ module Import
         swimmer = GogglesDb::Swimmer.find_by(id: swimmer_id)
         raise "Swimmer not found for key '#{swimmer_key}'" unless swimmer
 
-        age = swimmer.age(@meeting.header_date)
+        age = Import::CategoryComputer.individual_age(
+          year_of_birth: swimmer.year_of_birth,
+          meeting_date: @meeting.header_date,
+          season: @categories_cache.season
+        )
+        raise "Unable to compute category age for swimmer '#{swimmer_key}' (header_date: #{@meeting.header_date})" unless age
 
         _category_code, category_type = @categories_cache.find_category_for_age(age, relay: false)
         raise "Unable to retrieve category type for swimmer '#{swimmer_key}' (age: #{age})" unless category_type

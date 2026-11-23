@@ -32,7 +32,7 @@ This directory contains real, reviewed phase files from a small event (200RA) **
 - **team_scores_legacy_expected.json** - the `meeting_team_scores` committed by the legacy Data-Fix wizard
   (macro solver + macro committer) on the fixture above (frozen; `meeting_id` omitted).
   Parity reference for `spec/strategies/import/committers/meeting_team_score_parity_spec.rb`. The legacy wizard and
-  its baseline spec were removed in 0.10.78, so this file can no longer be regenerated: edit it by hand only if the
+  its baseline spec were removed in 0.10.80, so this file can no longer be regenerated: edit it by hand only if the
   fixture above changes in a way that does not affect the expected scores.
 
 ## ⚠️ Critical: Database Synchronization

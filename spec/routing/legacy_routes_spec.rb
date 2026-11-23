@@ -11,7 +11,7 @@ RSpec.describe 'Retired legacy routes' do
     expect(get: '/data_fix/results_chunk_v2').not_to be_routable
   end
 
-  # The legacy all-in-one Data-Fix wizard (removed in 0.10.78).
+  # The legacy all-in-one Data-Fix wizard (removed in 0.10.80).
   # (The scope name is joined at runtime so that the retirement grep gate over spec/ stays empty.)
   legacy_scope = "/#{%w[data_fix legacy].join('_')}"
   [

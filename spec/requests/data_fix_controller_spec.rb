@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-# Shared Data-Fix lookups (moved here from the retired legacy wizard in 0.10.78).
+# Shared Data-Fix lookups (moved here from the retired legacy wizard in 0.10.80).
 RSpec.describe DataFixController do
   include AdminSignInHelpers
 

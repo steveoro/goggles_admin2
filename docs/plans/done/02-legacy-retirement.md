@@ -189,7 +189,7 @@ Manual: one PDF-derived source with a ranking (e.g. a copy of the Trofeo Roma 20
 - `staging:` entries in `config/database*.yml` and other staging config files.
 - Converting Data-Fix views to Bootstrap 5 (12); the persistent commit report (09).
 
-## Outcome (done, 0.10.78, 2026-11-21)
+## Outcome (done, 0.10.80, 2026-11-21)
 
 Delivered as two commits on `feature/modernize-admin-console-ux` (steps 1-2 + 5-6, then 3-4). Decisions 1-5 confirmed with their defaults. Full suite green (2939 examples, system specs included), rubocop clean, grep gate empty. Notes for later phases:
 
@@ -197,7 +197,7 @@ Delivered as two commits on `feature/modernize-admin-console-ux` (steps 1-2 + 5-
 - `phase2.json` gets `data.team_scores` only when the source has a ranking (keeps the 01 characterization digests). A score with no Phase 2 team entry is skipped directly (no `Team.for_name` fallback, which matched unrelated teams).
 - `Parser::Score` reads `"1.234,50"` as 1.234 despite its doc comment; `TeamScoreExtractor` normalises the value itself. `Parser::Score` is unchanged (candidate fix).
 - The v2 Phase 1 solver leaves meeting `code`, `header_year`, `edition`, `edition_type_id`, `timing_type_id` and the pool `nick_name` / `lanes_number` blank; Phase 6 fails without them. The parity spec fills them as an operator would. Relevant to the "ready to commit" rule in 09/10.
-- LT4 working copies made before 0.10.78 keep their junk `EVENT` events from ranking sections until re-materialised; their scores are read from the LT2 sibling.
+- LT4 working copies made before 0.10.80 keep their junk `EVENT` events from ranking sections until re-materialised; their scores are read from the LT2 sibling.
 - `app/services/phase1_session_rescanner.rb:79-85` still writes empty downstream keys into Phase 1 data (not in the delete list).
 - `coded_name` / `teams_for_swimmer` now flash `data_import.errors.invalid_request`; `pdf_controller.rb` was switched to the same key (the old `search_view.errors.invalid_request` has no `it` translation).
 - For 15: `Import::DiffCalculator` still unused; docs under `docs/data_fix/legacy_version/` kept as history.

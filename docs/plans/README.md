@@ -71,8 +71,8 @@ These are restated in every phase plan.
 
 | # | Phase | Operator sees | Depends on | Size | Status |
 |---|---|---|---|---|---|
-| 01 | [Safety net, ops DB, event log, quick wins](done/01-safety-net-ops-db.md) | File lists open on the current season and stay there | none | M | done (0.10.77) |
-| 02 | [Legacy Data-Fix retirement (team scores ported first)](done/02-legacy-retirement.md) | One Data-Fix entry point (PDF scan opens v2); staging-environment leftovers gone | 01 | L | done (0.10.78) |
+| 01 | [Safety net, ops DB, event log, quick wins](done/01-safety-net-ops-db.md) | File lists open on the current season and stay there | none | M | done (0.10.79) |
+| 02 | [Legacy Data-Fix retirement (team scores ported first)](done/02-legacy-retirement.md) | One Data-Fix entry point (PDF scan opens v2); staging-environment leftovers gone | 01 | L | done (0.10.80) |
 | 03 | [Bootstrap 5.3 switch + compatibility layer](03-bootstrap-5-switch.md) | Same pages, no jQuery, tooltips work in live content, light/dark | 01, 02 | M | planned |
 | 04 | [App shell + native sweep of stable pages](04-app-shell.md) | Sidebar, top bar with API target, breadcrumbs, toasts | 03 | L | planned |
 | 05 | [Inbox dashboard](05-inbox-dashboard.md) | "Needs you" list, in-progress jobs, season progress, system status, KPI strip | 01, 04 | L | planned |

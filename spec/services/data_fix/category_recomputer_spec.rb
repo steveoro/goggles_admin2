@@ -90,6 +90,36 @@ RSpec.describe DataFix::CategoryRecomputer do
     expect(result[:swimmers_processed]).to eq(1)
   end
 
+  it 'preserves a Go&Swim M60 result when recomputing a 2026-27 FIN Master swimmer' do
+    fin_season = FactoryBot.create(
+      :season, season_type_id: GogglesDb::SeasonType::MAS_FIN_ID,
+               begin_date: Date.new(2026, 10, 1), end_date: Date.new(2027, 9, 30)
+    )
+    m55 = FactoryBot.create(:category_type, season: fin_season, code: 'M55', age_begin: 55, age_end: 59)
+    m60 = FactoryBot.create(:category_type, season: fin_season, code: 'M60', age_begin: 60, age_end: 64)
+    swimmer_key = 'M|RICCHI|MATTEO|1967|MANTOVA NUOTO MASTER ASD'
+    write_source(
+      'layoutType' => 4,
+      'swimmers' => {
+        swimmer_key => { 'lastName' => 'RICCHI', 'firstName' => 'MATTEO', 'gender' => 'M', 'year' => 1967 }
+      },
+      'events' => [{ 'relay' => false, 'results' => [
+        { 'swimmer' => swimmer_key, 'category' => 'M60', 'source_category' => 'M60' }
+      ] }]
+    )
+
+    result = described_class.new(
+      source_path:, season: fin_season, meeting_date: '2026-11-22',
+      categories_cache: PdfResults::CategoriesCache.new(fin_season, category_types: [m55, m60])
+    ).call
+
+    updated = JSON.parse(File.read(source_path))
+    expect(updated.dig('swimmers', swimmer_key, 'category')).to eq('M60')
+    expect(updated.dig('events', 0, 'results', 0)).to include('category' => 'M60', 'source_category' => 'M60')
+    expect(result[:result_categories_changed]).to eq(0)
+    expect(result[:swimmer_categories_changed]).to eq(1)
+  end
+
   it 'recomputes relay category using swimmer index fallback when lap key lacks YOB' do
     write_source(
       'layoutType' => 4,

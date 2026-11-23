@@ -231,7 +231,7 @@ Manual checks:
 - Pointing the PDF-scan DATA-FIX link to v2: phase 02, after team scores are ported.
 - Vendoring CDN assets (03). `staging:` entries in the database files (deprecated environment).
 
-## Outcome (done, 0.10.77, 2026-11-21)
+## Outcome (done, 0.10.79, 2026-11-21)
 
 Delivered as one commit on `feature/modernize-admin-console-ux`. All four decisions above were confirmed with their defaults. Full suite green (2897 examples, browser specs included), rubocop clean. Notes for later phases:
 

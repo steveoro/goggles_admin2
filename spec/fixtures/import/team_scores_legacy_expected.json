@@ -1,7 +1,7 @@
 {
   "_meta": {
     "fixture": "spec/fixtures/import/pdf-teamrank-lt2.json",
-    "generator": "legacy Data-Fix wizard: macro solver #solve + macro committer #commit_all (retired in 0.10.78)",
+    "generator": "legacy Data-Fix wizard: macro solver #solve + macro committer #commit_all (retired in 0.10.80)",
     "note": "meeting_team_scores committed by the legacy flow; meeting_id omitted (new on each run)"
   },
   "team_scores": [
