@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 # Ops event log rows written by the Phase 6 commit (structure-only source, the smallest commit).
-RSpec.describe DataFix::CommitsController do
+RSpec.describe DataFix::CommitsController, :data_fix_commit do
   include AdminSignInHelpers
 
   let(:admin_user) { prepare_admin_user }
@@ -56,22 +56,22 @@ RSpec.describe DataFix::CommitsController do
   describe 'POST /data_fix/commit_phase6' do
     it 'records one datafix.committed event on success' do
       write_phase_files
-      expect { post commit_phase6_path(file_path: source_file) }.to change(Ops::Event, :count).by(1)
+      expect { commit!(source_file) }.to change(Ops::Event, :count).by(1)
 
-      expect(session[:commit_report][:commit_success]).to be true
+      expect(last_report.status).to eq('committed')
       event = Ops::Event.last
       expect(event).to have_attributes(kind: 'datafix.committed', level: 'success', actor: 'operator', season_id: season.id,
                                        subject_type: 'source', subject_key: source_file)
-      expect(event.data['sql_filename']).to eq(session[:commit_report][:sql_filename])
+      expect(event.data['sql_filename']).to eq(last_report.sql_filename)
       expect(event.data['sql_filename']).to end_with('-ops_event_meeting-lt4.sql')
       expect(event.data).not_to have_key('first_error')
     end
 
     it 'records one datafix.commit_failed event (with the first error) on failure' do
       write_phase_files(phase4_events: [{ 'key' => 'ZZZ99', 'distance' => 9999, 'stroke' => 'XX', 'session_order' => 1 }])
-      expect { post commit_phase6_path(file_path: source_file) }.to change(Ops::Event, :count).by(1)
+      expect { commit!(source_file) }.to change(Ops::Event, :count).by(1)
 
-      expect(session[:commit_report][:commit_success]).to be false
+      expect(last_report.status).to eq('failed')
       event = Ops::Event.last
       expect(event).to have_attributes(kind: 'datafix.commit_failed', level: 'error', actor: 'operator', subject_key: source_file)
       expect(event.season_id).to eq(262) # (no archive on failure: taken from the source folder)
@@ -82,20 +82,22 @@ RSpec.describe DataFix::CommitsController do
       write_phase_files
       allow(Ops::Event).to receive(:create!).and_raise(ActiveRecord::StatementTimeout, 'database is locked')
 
-      post commit_phase6_path(file_path: source_file)
+      commit!(source_file)
 
-      expect(response).to redirect_to(data_fix_commit_phase6_report_path)
-      expect(session[:commit_report][:commit_success]).to be true
+      expect(response).to redirect_to(data_fix_commit_report_path(last_report))
+      expect(last_report.status).to eq('committed')
       expect(GogglesDb::Meeting.find_by(code: meeting_code)).to be_present
     end
 
-    it 'commits all the same when the ops DB is not available' do
+    # (phase 09: the commit report lives in the ops DB, so without it the commit is refused with the setup notice)
+    it 'refuses the commit with the setup notice when the ops DB is not available' do
       write_phase_files
       allow(Ops::Database).to receive(:state).and_return(:missing)
 
-      expect { post commit_phase6_path(file_path: source_file) }.not_to change(Ops::Event, :count)
-      expect(response).to redirect_to(data_fix_commit_phase6_report_path)
-      expect(session[:commit_report][:commit_success]).to be true
+      expect { commit!(source_file) }.not_to change(Ops::Event, :count)
+      expect(response).to redirect_to(data_fix_commit_summary_path(file_path: source_file))
+      expect(flash[:error]).to eq(I18n.t('data_fix.commit.refused_ops'))
+      expect(GogglesDb::Meeting.find_by(code: meeting_code)).to be_nil
     end
   end
 end

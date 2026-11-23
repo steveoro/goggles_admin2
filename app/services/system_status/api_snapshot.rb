@@ -5,7 +5,8 @@ module SystemStatus
   # = SystemStatus::APISnapshot
   #
   # Reads & writes the 'api.status:<base_url>' ops snapshot: the one key holding the last known
-  # reachability of an API server (phase 08 extends its payload with 'environment' and 'capabilities').
+  # reachability of an API server, plus (phase 08) the environment and the capabilities it reports
+  # (read through APICapabilities).
   #
   # Written by SystemStatus::RefreshJob (APIProxy.ping), by SettingsController (where it already pings)
   # and by the sign-in outcome (Users::SessionsController); read by Shell::APITarget and SystemStatus::APIProbe.
@@ -14,7 +15,10 @@ module SystemStatus
   # == Payload (String keys)
   # - 'url': API base URL; 'reachable': true when the server answered (any HTTP code);
   # - 'code': HTTP code (503 for an unreachable server); 'version', 'msg': from the 'status' endpoint, when known;
-  # - 'error': error detail for unreachable servers and non-2xx answers (nil otherwise).
+  # - 'error': error detail for unreachable servers and non-2xx answers (nil otherwise);
+  # - 'environment': the environment reported by the API ('production', 'development', ...), nil when not reported;
+  # - 'capabilities': Array of the capability names reported by the API, nil when not reported (an API older
+  #   than 0.10.81: see APICapabilities).
   #
   class APISnapshot
     KEY_PREFIX = 'api.status:'
@@ -38,7 +42,7 @@ module SystemStatus
           next unless Ops.available?
 
           payload = payload_for(base_url, result)
-          keep_known_version(payload, Ops::Snapshot.read(key_for(base_url)))
+          keep_known_details(payload, Ops::Snapshot.read(key_for(base_url)))
           Ops::Snapshot.write!(key_for(base_url), payload, source: source.to_s)
         end
       end
@@ -54,21 +58,32 @@ module SystemStatus
           'url' => normalize_url(base_url), 'reachable' => reachable, 'code' => code,
           'version' => success ? json['version'] : nil, 'msg' => success ? json['msg'] : nil,
           'error' => success ? nil : error_detail_for(result)
-        }
+        }.merge(reported_details(json, success))
       end
 
       private
+
+      # 'environment' and 'capabilities' of a 'status' answer (nil when not reported: an API before 0.10.81).
+      def reported_details(json, success)
+        return { 'environment' => nil, 'capabilities' => nil } unless success
+
+        capabilities = json['capabilities']
+        { 'environment' => json['environment'].presence&.to_s,
+          'capabilities' => capabilities.is_a?(Array) ? capabilities.map(&:to_s) : nil }
+      end
 
       def normalize_url(base_url)
         base_url.to_s.strip.delete_suffix('/')
       end
 
-      # A reachable answer without version info (e.g. the sign-in endpoint) keeps the version of the previous check.
-      def keep_known_version(payload, previous)
+      # A reachable answer without version info (e.g. the sign-in endpoint) keeps the version, environment and
+      # capabilities of the previous check. (A 'status' answer always replaces them: an API rolled back to a version
+      # without capabilities loses them at once.)
+      def keep_known_details(payload, previous)
         return if payload['version'].present? || !payload['reachable']
         return unless previous&.payload.is_a?(Hash) && previous.payload['reachable']
 
-        payload['version'] = previous.payload['version']
+        %w[version environment capabilities].each { |key| payload[key] = previous.payload[key] }
       end
 
       def error_detail_for(result)

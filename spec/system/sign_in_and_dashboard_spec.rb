@@ -132,10 +132,10 @@ RSpec.describe 'Sign-in & dashboard' do
   describe 'journey 17: one inbox action' do
     before(:each) { sign_in_through_form(admin_user) }
 
-    it 'opens the remote writes page from the drift warning' do
-      FactoryBot.create(:ops_remote_write, base_url: api_url)
+    it 'opens the remote writes page from the DB sync warning (remote-only writes)' do
+      FactoryBot.create(:ops_db_fingerprint, :amber, api_base_url: api_url)
       visit(root_path)
-      within('#dashboard-needs-you [data-inbox-key="drift_v0"]') { click_link(I18n.t('inbox.drift.review')) }
+      within('#dashboard-needs-you [data-inbox-key="drift_amber"]') { click_link(I18n.t('inbox.drift.review')) }
       expect(page).to have_current_path(remote_writes_path)
       expect(page).to have_css('.app-sidebar a.nav-link.active[href="/remote_writes"]')
       expect_no_js_errors

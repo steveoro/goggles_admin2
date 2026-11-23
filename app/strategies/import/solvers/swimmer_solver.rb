@@ -24,9 +24,10 @@ module Import
     # NOTE: badge_id will be nil for new badges that don't exist in DB yet
     #
     class SwimmerSolver # rubocop:disable Metrics/ClassLength
-      def initialize(season:, logger: Rails.logger, categories_cache: nil)
+      def initialize(season:, logger: Rails.logger, categories_cache: nil, progress: Import::Progress.default)
         @season = season
         @logger = logger
+        @progress = progress || Import::Progress::Null.new
         @categories_cache = categories_cache || PdfResults::CategoriesCache.cached_for(@season)
       end
 
@@ -180,6 +181,25 @@ module Import
           'parent_checksum' => pfm.checksum(source_path)
         }
         pfm.write!(data: payload, meta: meta)
+      end
+
+      # Loads the Phase 1 / Phase 2 context used by #re_resolve_entry (parsed phase files, '_meta' + 'data').
+      def prepare_context!(phase1_payload:, phase2_payload:)
+        @phase1_data = phase1_payload.presence
+        @phase2_data = phase2_payload.presence
+        @built_swimmer_id_by_key = {}
+        self
+      end
+
+      # Re-resolves ONE existing Phase 3 swimmer entry against the current DB (DataFix::Pipeline#refresh_new_entities!,
+      # after other commits created swimmers): same matching as the build (call #prepare_context! first).
+      # Returns the fresh entry, or nil when the entry lacks a name.
+      def re_resolve_entry(swimmer)
+        return nil if swimmer['last_name'].blank? && swimmer['complete_name'].blank?
+
+        team_name = swimmer['key'].to_s.split('|')[4].presence
+        build_swimmer_entry(swimmer['key'], swimmer['last_name'], swimmer['first_name'], swimmer['year_of_birth'],
+                            swimmer['gender_type_code'], team_name:)
       end
 
       private
@@ -1039,13 +1059,9 @@ module Import
         end
       end
 
+      # Progress updates through the injected sink (see Import::Progress; Cable by default)
       def broadcast_progress(message, current, total)
-        ActionCable.server.broadcast(
-          'ImportStatusChannel',
-          { msg: message, progress: current, total: total }
-        )
-      rescue StandardError => e
-        @logger&.warn("[SwimmerSolver] Failed to broadcast progress: #{e.message}")
+        @progress.call(message, current, total)
       end
     end
   end

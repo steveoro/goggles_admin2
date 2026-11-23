@@ -28,6 +28,19 @@ RSpec.describe APIImportQueuesController do
         get(api_import_queues_path)
         expect(response).to have_http_status(:success)
       end
+
+      it "shows a batch row's attached file name and an excerpt of its server error (API 0.10.81, phase 08)" do
+        error = "ERROR 1062 (23000) at line 412: Duplicate entry '4188003' for key 'PRIMARY' #{'x' * 120}"
+        rows = [{ 'id' => 9123, 'batch_sql' => true, 'done' => false, 'process_runs' => 1, 'error_messages' => error,
+                  'data_file_name' => '0477-2026-11-22-Trofeo_X-lt4.sql', 'data_file_checksum' => 'q1w2==' }]
+        allow(APIProxy).to receive(:call).and_return(DummyResponse.new(body: rows.to_json))
+        get(api_import_queues_path)
+        row = response.parsed_body.at_css('table.datagrid-table tbody tr')
+        expect(row.at_css('td[data-column="data_file_name"]').text.strip).to eq('0477-2026-11-22-Trofeo_X-lt4.sql')
+        excerpt = row.at_css('td[data-column="error_excerpt"] span')
+        expect(excerpt.text).to start_with('ERROR 1062').and end_with('...')
+        expect(excerpt['title']).to eq(error)
+      end
     end
   end
   #-- -------------------------------------------------------------------------

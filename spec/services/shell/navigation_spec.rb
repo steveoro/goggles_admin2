@@ -158,7 +158,8 @@ RSpec.describe Shell::Navigation do
       expect(online.flat_map { |group| group.items.select { |item| group.disabled?(item) } }).to be_empty
       enabled_offline = offline.flat_map { |group| group.items.reject { |item| group.disabled?(item) } }
       # (07: the Outbox page reads only the local files and the ops DB; its push confirmation is not allowed offline)
-      expect(enabled_offline.map(&:key)).to contain_exactly(:dashboard, :settings, :remote_writes, :outbox)
+      # (08: the DB sync page reads only the ops DB)
+      expect(enabled_offline.map(&:key)).to contain_exactly(:dashboard, :settings, :remote_writes, :outbox, :db_sync)
     end
   end
 

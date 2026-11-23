@@ -1,0 +1,129 @@
+it:
+  db_sync:
+    nav: 'Sync DB'
+    title: 'Sync DB'
+    subtitle: "Il DB locale rispecchia ancora %{url}? Conteggi e id massimi delle tabelle di import, confrontati ogni 30 minuti (e prima di commit e invii)"
+    ops_missing: 'Il DB ops locale non è pronto: lancia bin/rails ops:prepare. Nessun controllo sync DB può essere salvato o mostrato.'
+    never: 'Nessun controllo sync DB ancora.'
+    none: 'mai'
+    check_pending: 'Controllo in coda: questa pagina si aggiorna appena è finito.'
+    capability_missing: "Questa API non offre le impronte del DB (serve goggles_api 0.10.81 o successiva): il verdetto resta sconosciuto."
+    capability_unknown: "Le capacità dell'API non sono ancora note (nessuna risposta di stato salvata): il verdetto resta sconosciuto fino al prossimo controllo di stato."
+    past_check: 'Questo è un controllo precedente.'
+    local_ahead:
+      one: 'DB locale avanti di 1 script (ancora da applicare sul server): è normale.'
+      other: 'DB locale avanti di %{count} script (ancora da applicare sul server): è normale.'
+    tables_help: 'Si confrontano id massimi e conteggi, mai le date: gli script inviati scrivono NOW() sul server. Un controllo leggero (quello dei blocchi) confronta solo gli id massimi.'
+    remote_writes_help: "Modifiche fatte da qui direttamente sull'API (non tramite script SQL) dall'ultimo controllo verde o presa visione: conteggi e id massimi non vedono gli UPDATE remoti, quindi sono elencate qui."
+    last_green: 'Ultimo controllo verde: %{time}'
+    acknowledged: 'ultima presa visione: %{time}'
+    verdicts:
+      green: 'verde'
+      amber: 'giallo'
+      red: 'rosso'
+      unknown: 'sconosciuto'
+    modes:
+      full: 'completo'
+      light: 'leggero'
+    triggers:
+      schedule: 'pianificato'
+      manual: 'Controlla ora'
+      gate: 'blocco'
+      post_push: 'dopo un invio'
+    owners:
+      import: 'di import'
+      user: 'toccata dagli utenti'
+    indicator:
+      label: 'Sync DB: %{verdict}'
+      checked: 'controllato %{time} (%{ago} fa, %{mode})'
+    pill:
+      label: 'Sync DB'
+      never: 'Non ancora controllato'
+      ops_unavailable: 'DB ops locale non pronto'
+      open: 'Apri Sync DB'
+    actions:
+      check: 'Controlla ora'
+      acknowledge: 'Presa visione delle scritture remote'
+      latest: "Mostra l'ultimo"
+      remote_writes: 'Tutte le scritture remote'
+    acknowledge:
+      confirm: 'Segnare come viste tutte le scritture remote registrate finora (e gli aggiornamenti remoti visti finora)? Segue un nuovo controllo.'
+    flash:
+      check_queued: 'Controllo sync DB in coda.'
+      check_failed: 'Impossibile mettere in coda il controllo sync DB: %{error}'
+      acknowledged: 'Presa visione delle scritture remote registrata: nuovo controllo in coda.'
+      ops_missing: 'Il DB ops locale non è pronto: lancia bin/rails ops:prepare.'
+    fields:
+      taken_at: 'Controllato'
+      trigger: 'Origine'
+      mode: 'Modo'
+      environment: 'Ambiente'
+      api_version: 'Versione API'
+      schema: 'Schema (locale / remoto)'
+      pending_scripts: 'Script non applicati sul server'
+      remote_writes: 'Scritture solo remote'
+      duration: 'Durata'
+    sections:
+      tables: 'Tabelle'
+      remote_writes: "Scritture solo remote dall'ultimo controllo verde"
+      history: 'Ultimi controlli'
+    columns:
+      table: 'Tabella'
+      owner: 'Proprietà'
+      local_count: 'Righe locali'
+      remote_count: 'Righe remote'
+      local_max_id: 'Id max locale'
+      remote_max_id: 'Id max remoto'
+      diff: 'Differenza id max'
+      remote_updated_at: 'Ultimo aggiornamento remoto'
+      when: 'Quando'
+      method: 'Metodo'
+      endpoint: 'Endpoint'
+      source: 'Origine'
+      verdict: 'Verdetto'
+      reason: 'Motivo principale'
+    reasons:
+      in_sync: 'Stessi conteggi e id massimi su ogni tabella'
+      local_ahead: '%{table}: id max locale %{local}, remoto %{remote} (script ancora da applicare sul server)'
+      count_differs: '%{table}: stesso id max ma %{local} righe locali contro %{remote} remote (righe cancellate da una parte)'
+      remote_writes:
+        one: "1 scrittura solo remota dall'ultimo controllo verde o presa visione"
+        other: "%{count} scritture solo remote dall'ultimo controllo verde o presa visione"
+      remote_updated: "%{table}: aggiornata sul server (%{remote}) dopo l'ultimo script applicato (%{local})"
+      local_ahead_unpushed: '%{table}: id max locale %{local} oltre quello remoto (%{remote}) senza niente da inviare'
+      remote_ahead: '%{table}: id max remoto %{remote} oltre quello locale (%{local}): la copia locale è più vecchia'
+      missing_remote:
+        one: '1 script inviato è stato cancellato sul server (esito sconosciuto)'
+        other: '%{count} script inviati sono stati cancellati sul server (esito sconosciuto)'
+      table_unknown: '%{table}: non confrontata (manca da una parte)'
+      stale: 'Ultimo controllo %{local}: più vecchio di 2 ore (i job in background sono attivi?)'
+      id_collision: '%{table}: id max remoto %{remote} oltre quello locale (%{local}): le nuove righe da qui andrebbero in conflitto'
+      failed_script: "Lo script %{local} è fallito sul server: correggilo nell'Outbox"
+      failed_partial: 'Lo script %{local} è fallito sul server e non era una transazione unica: potrebbe essere applicato in parte'
+      remote_batch_failed:
+        one: '1 batch SQL fallito sul server (non inviato da questo registro)'
+        other: '%{count} batch SQL falliti sul server (non inviati da questo registro)'
+      schema_mismatch: 'Versione dello schema diversa: locale %{local}, remota %{remote}'
+      no_capability: 'Questa API non offre le impronte del DB (serve goggles_api 0.10.81 o successiva)'
+      no_credentials: 'Nessuna credenziale valida per i job: accedi di nuovo'
+      unreachable: 'API non raggiungibile: %{remote}'
+      unauthorized: "L'API ha rifiutato le credenziali dei job (401): accedi di nuovo"
+      rejected: "L'API ha rifiutato il controllo: %{remote}"
+      error: 'Controllo fallito: %{remote}'
+      ops_unavailable: 'DB ops locale non pronto (lancia bin/rails ops:prepare)'
+      other: 'Motivo %{code}'
+    gate:
+      summary: 'Sync DB %{verdict}'
+      ack_required: "%{summary}. Leggi l'avviso nella pagina di conferma e spuntalo per procedere."
+      blocked: '%{summary}: rifiutato. Vedi la pagina Sync DB.'
+      board_title: 'Conferma il collegamento del calendario'
+      board_intro: 'Il controllo sync DB segnala un avviso prima che questa modifica venga scritta sul DB locale e messa in coda per il server:'
+      board_ack: "Ho letto l'avviso sync DB: collega comunque"
+      board_submit: 'Collega il calendario'
+      cancel: 'Torna alla plancia stagione'
+      rake_blocked: 'INTERROTTO dal controllo sync DB (%{summary}). Vedi /db_sync; passa force=1 per procedere comunque.'
+      rake_warning: 'Avviso sync DB (%{summary}): si procede.'
+  ops:
+    events:
+      drift:
+        verdict_changed: 'Verdetto sync DB cambiato'

@@ -22,6 +22,41 @@ RSpec.describe Shell::APITarget do
     end
   end
 
+  describe '#environment (phase 08)' do
+    def store_status(url, body)
+      SystemStatus::APISnapshot.write!(url, DummyResponse.new(body: body.to_json), source: 'system_status')
+    end
+
+    it 'is the environment reported by the API (verified), else the port guess (unverified)' do
+      store_status(url, msg: 'OK', version: '7.3', environment: 'development', capabilities: %w[db_fingerprint])
+      target = described_class.new(url:)
+      expect(target).to be_verified
+      expect(target.environment).to eq('development')
+      expect(target.capabilities.supports?(:db_fingerprint)).to be true
+
+      store_status('https://master-goggles.org:447', msg: 'OK', version: '7.0')
+      legacy = described_class.new(url: 'https://master-goggles.org:447')
+      expect(legacy).not_to be_verified
+      expect(legacy.environment).to eq('production')
+      expect(described_class.new(url: 'http://never-checked:9').environment).to eq('unknown')
+    end
+
+    it 'is never verified in an API-offline session' do
+      store_status(url, msg: 'OK', environment: 'production')
+      expect(described_class.new(url:, offline_info: { 'url' => url, 'reason' => 'x' })).not_to be_verified
+    end
+
+    it 'flags a label naming another environment than the reported one' do
+      store_status(url, msg: 'OK', environment: 'development')
+      described_class.store_label!(url, 'Production server')
+      expect(described_class.new(url:)).to have_attributes(label_environment: 'production', label_mismatch?: true)
+      described_class.store_label!(url, 'Local dev copy')
+      expect(described_class.new(url:)).to have_attributes(label_environment: 'development', label_mismatch?: false)
+      described_class.store_label!(url, 'Steve box')
+      expect(described_class.new(url:).label_mismatch?).to be false
+    end
+  end
+
   describe '.current' do
     it 'uses the configured API URL (local DB setting, no API call)' do
       allow(APIProxy).to receive(:call)

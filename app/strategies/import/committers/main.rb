@@ -30,8 +30,9 @@ module Import
                   :sql_log, :stats, :logger, :categories_cache
 
       def initialize(phase1_path:, phase2_path:, phase3_path:, phase4_path:, phase5_path:, source_path:, log_path: nil,
-                     categories_cache: nil)
+                     categories_cache: nil, progress: Import::Progress.default)
         @phase1_path = phase1_path
+        @progress = progress || Import::Progress::Null.new
         @phase2_path = phase2_path
         @phase3_path = phase3_path
         @phase4_path = phase4_path
@@ -1813,14 +1814,9 @@ module Import
       end
       # -----------------------------------------------------------------------
 
-      # Broadcasts progress updates via ActionCable for real-time UI feedback
+      # Progress updates through the injected sink (see Import::Progress; Cable by default)
       def broadcast_progress(message, current, total)
-        ActionCable.server.broadcast(
-          'ImportStatusChannel',
-          { msg: message, progress: current, total: total }
-        )
-      rescue StandardError => e
-        Rails.logger.warn("[Main] Failed to broadcast progress: #{e.message}")
+        @progress.call(message, current, total)
       end
       # -----------------------------------------------------------------------
 

@@ -1,0 +1,34 @@
+-# Verdict card of a DB sync check (locals: fingerprint, latest = the last check, to flag an older one).
+:ruby
+  rows = [
+    [t('db_sync.fields.taken_at'), l(fingerprint.taken_at.localtime, format: :long)],
+    [t('db_sync.fields.trigger'), t("db_sync.triggers.#{fingerprint.trigger}")],
+    [t('db_sync.fields.mode'), t("db_sync.modes.#{fingerprint.mode}")],
+    [t('db_sync.fields.environment'), fingerprint.target_env.presence || '-'],
+    [t('db_sync.fields.api_version'), fingerprint.api_version.presence || '-'],
+    [t('db_sync.fields.schema'), "#{fingerprint.schema_version_local || '-'} / #{fingerprint.schema_version_remote || '-'}"],
+    [t('db_sync.fields.pending_scripts'), fingerprint.pending_scripts_count],
+    [t('db_sync.fields.remote_writes'), fingerprint.remote_writes_count]
+  ]
+  rows << [t('db_sync.fields.duration'), "#{fingerprint.duration} s"] if fingerprint.duration
+%section.mb-4#db-sync-verdict{ data: { verdict: fingerprint.effective_verdict } }
+  .card
+    .card-body
+      - if latest && latest.id != fingerprint.id
+        .alert.alert-secondary.small.py-2#db-sync-past-check
+          = t('db_sync.past_check')
+          = link_to(t('db_sync.actions.latest'), db_sync_path)
+      .d-flex.flex-wrap.align-items-start.gap-4
+        .flex-grow-1
+          = render(Drift::IndicatorComponent.new(fingerprint:, link: false))
+          - if fingerprint.green? && fingerprint.pending_scripts_count.positive?
+            %p.small.mt-2.mb-0#db-sync-ahead= t('db_sync.local_ahead', count: fingerprint.pending_scripts_count)
+          %ul.mt-3.mb-0#db-sync-reasons
+            - fingerprint.reason_list.each do |reason|
+              %li{ data: { reason_code: reason[:code] } }= Drift::ReasonText.call(reason)
+          - if fingerprint.error.present?
+            .alert.alert-danger.small.mt-3.mb-0#db-sync-error= fingerprint.error
+        %dl.row.small.mb-0.app-db-sync-facts
+          - rows.each do |label, value|
+            %dt.col-6= label
+            %dd.col-6.text-break= value

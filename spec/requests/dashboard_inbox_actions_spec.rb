@@ -238,11 +238,20 @@ RSpec.describe 'Dashboard inbox actions' do
     end
   end
 
-  describe 'Drift' do
-    it 'sends a drift warning to the remote writes page' do
-      FactoryBot.create(:ops_remote_write, base_url: Shell::APITarget.configured_url)
-      method, path, = primary_action(inbox_item('drift_v0'))
+  describe 'Drift (DB sync)' do
+    it 'sends an amber verdict due to remote-only writes only to the remote writes page' do
+      FactoryBot.create(:ops_db_fingerprint, :amber, api_base_url: Shell::APITarget.configured_url)
+      method, path, = primary_action(inbox_item('drift_amber'))
       expect([method, path]).to eq([:get, remote_writes_path])
+
+      get(path)
+      expect(response).to have_http_status(:success)
+    end
+
+    it 'sends a red verdict to the DB sync page' do
+      FactoryBot.create(:ops_db_fingerprint, :red, api_base_url: Shell::APITarget.configured_url)
+      method, path, = primary_action(inbox_item('drift_red'))
+      expect([method, path]).to eq([:get, db_sync_path])
 
       get(path)
       expect(response).to have_http_status(:success)

@@ -2,10 +2,12 @@
 
 require 'rails_helper'
 
-# Journey: commit a fixture meeting (structure-only source) -> report link -> Outbox entry -> push with a stubbed
-# API -> "On the server" ("sent, not verified"). Everything lives in a temporary crawler data root and the API is
-# stubbed (APIProxy.ping / APIProxy.call): nothing is posted anywhere. The push job (queued by the click) is
-# performed by the example itself, as the Solid Queue worker would.
+# Journey: commit a fixture meeting (structure-only source) from the commit summary (09: drift tick, commit job,
+# reopenable report) -> report link -> Outbox entry -> push with a stubbed API -> "On the server" ("sent, not
+# verified"). Everything lives in a temporary crawler data root and the API is stubbed (APIProxy.ping /
+# APIProxy.call): nothing is posted anywhere. The commit and push jobs (queued by the clicks) are performed by the
+# example itself, as the Solid Queue workers would. The DB sync verdict is a stored 'unknown' check (an API
+# without fingerprints), so both the commit and the push ask for the drift tick.
 RSpec.describe 'SQL Outbox' do
   let(:admin_user) { prepare_admin_user }
   let(:data_root) { Pathname.new(Dir.mktmpdir) }
@@ -38,6 +40,7 @@ RSpec.describe 'SQL Outbox' do
     allow(Outbox).to receive(:data_root).and_return(data_root)
     allow(Outbox::RemoteStatusJob).to receive(:perform_later)
     allow(APIProxy).to receive(:ping).and_return(APIProxy::Result.new(DummyResponse.new(body: { msg: 'OK', version: '7.0.1' }.to_json)))
+    FactoryBot.create(:ops_db_fingerprint, :unknown, api_base_url: APIProxy.configured_base_url.to_s.delete_suffix('/'))
     File.write(source_file, JSON.pretty_generate('_meta' => { 'meeting_only' => true }, 'layoutType' => 4,
                                                  'meetingName' => 'Outbox Journey Meeting', 'seasonId' => season.id, 'events' => []))
     PhaseFileManager.new(source_file.sub('.json', '-phase1.json')).write!(data: phase1_data, meta: { 'generator' => 'spec' })
@@ -51,8 +54,18 @@ RSpec.describe 'SQL Outbox' do
 
   it 'commits, opens the script in the Outbox, pushes it and shows it on the server' do # rubocop:disable RSpec/MultipleExpectations
     visit(review_results_path(file_path: source_file, phase5_v2: 1))
-    accept_confirm { click_button(I18n.t('data_import.data_fix.btn_commit_structure')) }
-    expect(page).to have_text('Phase 6 commit completed successfully.')
+    click_link('btn-commit-summary-link')
+    expect(page).to have_css('#data-fix-commit-summary')
+    check('commit-drift-ack') # (09: the commit asks for the drift tick on an 'unknown' DB sync verdict)
+    accept_confirm { click_button('btn-commit-summary') }
+    expect(page).to have_css('#commit-report-state', text: I18n.t('data_fix.commit_report.statuses.queued'))
+    report = Ops::CommitReport.last
+    expect(page).to have_current_path(data_fix_commit_report_path(report))
+
+    DataFixCommitJob.perform_now(commit_report_id: report.id)
+    expect(page).to have_css('#commit-report-state', text: I18n.t('data_fix.commit_report.statuses.committed'), wait: 10)
+    visit(data_fix_commit_report_path(report)) # (reopenable from its URL)
+    expect(page).to have_css('#commit-committed')
 
     script = Ops::SqlScript.find_by!(kind: 'commit', folder: '262')
     click_link(script.filename)
@@ -63,6 +76,7 @@ RSpec.describe 'SQL Outbox' do
     click_link('btn-outbox-push-this')
     expect(page).to have_css('#outbox-push-list li', count: 1)
     fill_in('confirm_label', with: 'unknown')
+    check('drift_ack') # (08: the DB sync verdict is 'unknown' against an API without fingerprints: the tick is required)
     allow(APIProxy).to receive(:call).and_return(DummyResponse.new(body: { msg: 'OK', new: { id: 4321 } }.to_json))
     click_button('btn-outbox-push-confirm')
     expect(page).to have_current_path(%r{/outbox\?run=\d+})

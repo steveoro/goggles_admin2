@@ -13,6 +13,8 @@
   rows << [t('outbox.show.target'), "#{script.target_api_url} (#{script.target_env})"] if script.target_api_url.present?
   rows << [t('outbox.columns.pushed_at'), l(script.pushed_at.localtime, format: :short)] if script.pushed_at
   rows << [t('outbox.show.remote_checked_at'), l(script.remote_checked_at.localtime, format: :short)] if script.remote_checked_at
+  rows << [t('outbox.show.remote_outcome_at'), l(script.remote_outcome_at.localtime, format: :short)] if script.remote_outcome_at
+  rows << [t('outbox.show.withdrawn_at'), l(script.withdrawn_at.localtime, format: :short)] if script.withdrawn_at
   rows += script.origin_data.map { |key, value| [key, value.is_a?(Enumerable) ? value.to_json : value] }
   rows << [t('outbox.show.note'), script.note] if script.note.present?
 .card.mb-3#outbox-script-details
@@ -26,6 +28,10 @@
       - rows.each do |label, value|
         %dt.col-5= label
         %dd.col-7.text-break= value
+    - if script.remote_error.present?
+      .alert.alert-danger.small.mt-3.mb-0#outbox-script-remote-error
+        %strong= t('outbox.show.remote_error')
+        %pre.mb-0.text-wrap= script.remote_error
     - if script.last_error.present?
       .alert.alert-danger.small.mt-3.mb-0#outbox-script-error
         %strong= t('outbox.show.last_error')

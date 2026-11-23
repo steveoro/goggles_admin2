@@ -1,0 +1,18 @@
+-#
+  Live frame of the DB sync page ('db-sync-frame'), also rendered alone (no layout) by db_sync_path(frame: 1).
+  Locals: see DbSyncController#frame_locals. Reads only ops DB rows.
+= turbo_frame_tag('db-sync-frame', target: '_top', data: { 'outbox-target': 'frame' }) do
+  %span.d-none{ data: { 'outbox-busy': check_pending.to_s } }
+  - if check_pending
+    .alert.alert-info.d-flex.align-items-center.gap-2#db-sync-pending
+      %span.spinner-border.spinner-border-sm{ 'aria-hidden' => 'true' }
+      = t('db_sync.check_pending')
+  - unless capabilities.supports?(:db_fingerprint)
+    .alert.alert-secondary#db-sync-no-capability= t(capabilities.reported? ? 'db_sync.capability_missing' : 'db_sync.capability_unknown')
+  - if fingerprint
+    = render(partial: 'db_sync/verdict', locals: { fingerprint:, latest: })
+    = render(partial: 'db_sync/tables', locals: { fingerprint: })
+  - else
+    .alert.alert-info#db-sync-never= t('db_sync.never')
+  = render(partial: 'db_sync/remote_writes', locals: { remote_writes:, last_green_at:, acknowledged_at: })
+  = render(partial: 'db_sync/history', locals: { history:, fingerprint: })

@@ -12,6 +12,8 @@ module Ops
   # - script_ids: Ops::SqlScript ids, pushed in seq order; override_order: lower pending scripts don't block;
   # - status (STATUSES): running, finished (all pushed), stopped (first error), aborted (nothing posted:
   #   target unreachable, expired JWT, job failure); pushed_count, stopped_at_script_id, error;
+  # - drift_acknowledged: the operator ticked the DB sync warning on the confirmation page (phase 08; Outbox::Pusher
+  #   re-checks Drift::Gate with it before the first POST);
   # - job_id, started_at, finished_at.
   #
   class PushRun < ApplicationRecord

@@ -1,0 +1,27 @@
+-# admin2's own successful remote-only writes since the last green check or acknowledgement (locals: remote_writes, last_green_at, acknowledged_at).
+%section.mb-4#db-sync-remote-writes
+  %h2.h5
+    = t('db_sync.sections.remote_writes')
+    %span.badge.rounded-pill.text-bg-secondary= remote_writes.size
+  %p.small.text-body-secondary
+    = t('db_sync.remote_writes_help')
+    = t('db_sync.last_green', time: last_green_at ? l(last_green_at.localtime, format: :short) : t('db_sync.none'))
+    ·
+    = t('db_sync.acknowledged', time: acknowledged_at ? l(acknowledged_at.localtime, format: :short) : t('db_sync.none'))
+  - if remote_writes.any?
+    .table-responsive
+      %table.table.table-sm.align-middle
+        %thead
+          %tr
+            %th= t('db_sync.columns.when')
+            %th= t('db_sync.columns.method')
+            %th= t('db_sync.columns.endpoint')
+            %th= t('db_sync.columns.source')
+        %tbody.table-group-divider
+          - remote_writes.each do |write|
+            %tr
+              %td.small.text-nowrap= l(write.created_at.localtime, format: :short)
+              %td.font-monospace.text-uppercase= write.http_method
+              %td.font-monospace.text-break= write.endpoint
+              %td.small= write.source
+  = link_to(t('db_sync.actions.remote_writes'), remote_writes_path, class: 'btn btn-sm btn-outline-secondary', data: { turbo_frame: '_top' })

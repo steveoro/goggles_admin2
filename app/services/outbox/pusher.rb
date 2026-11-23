@@ -12,6 +12,8 @@ module Outbox
   # Before the first POST (any failure here aborts the run, nothing is posted):
   # - the pushing user and their API JWT (+users.jwt+, read now, valid for the local API key);
   # - a fresh ping of the target (unreachable => abort);
+  # - the DB sync gate (Drift::Gate, scope :push, with the tick stored on the run): not allowed => abort (a verdict
+  #   that turned to a warning after a click without the tick);
   # - every 'pushing' row left by an older run becomes 'in_doubt' (one push at a time: none can be live), and the
   #   Reconciler runs (files moved or edited since the click).
   #
@@ -22,6 +24,8 @@ module Outbox
   # 3. POST accepted (new.id > 0) => remote id, target and push time stored, file moved into results.sent/<folder>/,
   #    state 'sent' ("sent, not verified"), pages pinged;
   #    rejected or unreachable => back to 'pending' with +last_error+, run 'stopped'.
+  #
+  # After the run a DB sync check is enqueued (DriftCheckJob, trigger 'post_push': read only).
   #
   class Pusher
     ENDPOINT = 'import_queue/batch_sql'
@@ -62,7 +66,7 @@ module Outbox
     rescue Stop => e
       stop!(@current, e.message)
     ensure
-      Outbox::Notifier.ping
+      after_run(jwt)
     end
 
     private
@@ -76,9 +80,27 @@ module Outbox
       ping = APIProxy.ping(run.target_api_url, **PING_TIMEOUTS)
       return abort!(I18n.t('outbox.errors.unreachable', error: ping.error_detail)) if ping.unreachable?
 
+      refusal = drift_refusal
+      return abort!(refusal) if refusal
+
       expire_pushing!
       Outbox::Reconciler.call(data_root:)
       user.jwt
+    end
+
+    # The DB sync gate (scope :push) with the operator's tick stored on the run: the abort message, or nil.
+    def drift_refusal
+      gate = Drift::Gate.check(scope: :push, acknowledged: run.drift_acknowledged)
+      gate.allowed? ? nil : I18n.t('outbox.errors.drift', summary: gate.summary)
+    end
+
+    # Pings the pages; after a run that got past the preflight, enqueues a DB sync check (read only; never fails
+    # the run).
+    def after_run(jwt)
+      Outbox::Notifier.ping
+      DriftCheckJob.perform_later(trigger: 'post_push', base_url: run.target_api_url) if jwt
+    rescue StandardError => e
+      Rails.logger.warn("[Outbox::Pusher] drift check not enqueued: #{e.class}: #{e.message}")
     end
 
     def expire_pushing!

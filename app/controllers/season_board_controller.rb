@@ -10,7 +10,11 @@
 # fresh by fingerprint), never from the request params. These POST actions run no board build of
 # their own while the stored summary is fresh.
 #
-class SeasonBoardController < ApplicationController
+# +link+ writes the local DB and an Outbox script: it passes the DB sync gate first (Drift::Gate, scope
+# :board_write: red and amber warn, nothing blocks). A warning not ticked yet renders a confirmation page whose
+# form posts the same link again with <tt>drift_ack=1</tt>.
+#
+class SeasonBoardController < ApplicationController # rubocop:disable Metrics/ClassLength
   # Extraction engines offered by the existing manifest extraction form (see pull/calendar_meetings):
   ENGINES = %w[devin ollama].freeze
 
@@ -74,6 +78,7 @@ class SeasonBoardController < ApplicationController
       flash[:warning] = I18n.t('season_board.flash.link_missing_params')
       redirect_to(season_board_path) && return
     end
+    return if refused_by_drift_gate?(row, calendar_id)
 
     result = SeasonBoard::CalendarLinker.new(season: @season, calendar_id:, fin_event_id: row.fin_event_id,
                                              results_link: row.url).call
@@ -82,6 +87,23 @@ class SeasonBoardController < ApplicationController
   end
 
   private
+
+  # DB sync gate of the board writes (scope :board_write). Returns true after rendering the confirmation page
+  # (a warning not ticked yet) or redirecting (a blocking verdict: never for this scope, kept for safety).
+  def refused_by_drift_gate?(row, calendar_id)
+    @gate = Drift::Gate.check(scope: :board_write, acknowledged: params[:drift_ack].to_s == '1')
+    return false if @gate.allowed?
+
+    if @gate.block?
+      flash[:error] = I18n.t('db_sync.gate.blocked', summary: @gate.summary)
+      redirect_to(db_sync_path)
+    else
+      @row = row
+      @calendar_id = calendar_id
+      render(:confirm_link, status: :unprocessable_content)
+    end
+    true
+  end
 
   # Renders only the rows frame partial, without the layout (live refresh).
   def render_rows_frame

@@ -1,0 +1,27 @@
+-#
+  Commit summary: the fresh Import::CommitPreflight (errors block the commit; an exact-name hit can be refreshed or
+  overridden with "Create anyway"). Locals: preflight, needs_create_anyway, file_path.
+.card.mt-3#commit-summary-preflight
+  .card-header.d-flex.align-items-center
+    %strong= t('data_fix.commit_summary.preflight')
+    - if needs_create_anyway
+      = button_to(t('data_fix.commit_summary.refresh_matches'), data_fix_refresh_matches_path,
+                  method: :post, params: { file_path: }, class: 'btn btn-sm btn-outline-primary', form_class: 'ms-auto')
+  .card-body
+    - if preflight.errors.empty? && preflight.warnings.empty?
+      %p.mb-0.text-success
+        %i.fa-solid.fa-check{ 'aria-hidden': 'true' }
+        = t('data_fix.commit_summary.preflight_ok')
+    - [[:errors, 'text-danger', :preflight_error], [:warnings, 'text-warning-emphasis', :preflight_warning]].each do |kind, css, data_key|
+      - rows = preflight.public_send(kind)
+      - next if rows.empty?
+
+      %h6{ class: css }= t("data_fix.commit_summary.preflight_#{kind}")
+      %ul.small
+        - rows.each do |row|
+          %li{ data: { data_key => row[:code] } }
+            %strong= t("data_fix.verdicts.issues.preflight_#{row[:code]}", default: row[:code].to_s.humanize)
+            - if row[:count].to_i > 1
+              (#{row[:count]})
+            - if row[:message].present?
+              %span.text-body-secondary — #{row[:message]}

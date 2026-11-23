@@ -5,19 +5,16 @@ module DataFix
   class SessionsController < BaseController
     def review_sessions
       source_path = @source_path
-      @season = source_resolver.detect_season_from_pathname(source_path)
-      lt_format = source_resolver.detect_layout_type(source_path)
-      # Use existing phase file unless rescan is requested; build when missing or rescan
-      phase_path = source_resolver.default_phase_path_for(source_path, 1)
-      return unless ensure_phase_file!(phase_path: phase_path, phase: 1,
-                                       review_path: method(:review_sessions_path)) do
-        Import::Solvers::Phase1Solver.new(season: @season).build!(
-          source_path: source_path,
-          lt_format: lt_format
-        )
-      end
+      @season = pipeline.season
+      # Use existing phase file unless rescan is requested; build when missing or rescan (DataFix::Pipeline)
+      phase_path = pipeline.phase_path(1)
+      return unless ensure_phase_file!(phase: 1, review_path: method(:review_sessions_path))
 
-      @retry_needed = source_resolver.sync_phase_retry_flag!(phase_path: phase_path, source_path: source_path)
+      @retry_needed = pipeline.settle!(1)
+      # (the category recompute discards phases 3-5: its confirmation lists those holding edits)
+      edited = [3, 4, 5].select { |phase| pipeline_summary&.[](phase)&.edited } # (cached verdicts, reused by the stepper)
+      @recompute_confirm = [I18n.t('data_import.data_fix.category_recompute_confirm'),
+                            (I18n.t('data_fix.stepper.recompute_discards_edits', phases: edited.join(', ')) if edited.any?)].compact.join(' ')
       pfm = PhaseFileManager.new(phase_path)
       @phase1_meta = pfm.meta
       @phase1_data = pfm.data
@@ -75,7 +72,12 @@ module DataFix
         progress: ->(message, current, total) { broadcast_progress(message, current, total) }
       ).call
 
-      invalidated = result[:backup_path].present? ? source_resolver.invalidate_category_dependent_artifacts(source_path) : []
+      # (operator action, confirmed with the list of edited phases it discards: forced invalidation)
+      invalidated = if result[:backup_path].present?
+                      pipeline.reload!.invalidate!(phases: [3, 4, 5], reason: :categories_recomputed, force: true)
+                    else
+                      []
+                    end
       result[:invalidated_artifacts] = invalidated
       flash[:notice] = {
         body: source_resolver.category_recompute_summary(result),
@@ -89,6 +91,18 @@ module DataFix
       Rails.logger.error("[DataFixController] category recomputation failed: #{e.class}: #{e.message}")
       flash[:error] = I18n.t('data_import.errors.category_recompute_failed')
       redirect_to(review_sessions_path(file_path: source_path || file_path, phase_v2: 1))
+    end
+
+    # POST "Rebuild (discard edits)" (step header banner, with a confirmation): the source file changed under
+    # operator edits and DataFix::Pipeline#invalidate! kept the edited phases; this deletes them (after .orig
+    # backups) and reopens the first one, which rebuilds it from the changed source.
+    def discard_phase_edits
+      phases = Array(pipeline.source_row&.stage_details&.dig('phases')).map(&:to_i).presence || [3, 4, 5]
+      pipeline.invalidate!(phases:, reason: :operator_discard, force: true)
+      step_paths = { 1 => :review_sessions_path, 2 => :review_teams_path, 3 => :review_swimmers_path,
+                     4 => :review_events_path, 5 => :review_results_path }
+      redirect_to(send(step_paths.fetch(phases.min, :review_sessions_path), file_path: @source_path),
+                  notice: I18n.t('data_fix.pipeline.edits_discarded', phases: phases.join(', ')))
     end
 
     # Update Phase 1 meeting attributes in the phase file and redirect back to v2 view

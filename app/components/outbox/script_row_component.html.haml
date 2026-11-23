@@ -10,6 +10,12 @@
       %span.badge.rounded-pill.bg-body-tertiary.text-body-secondary.border.ms-1{ title: t('outbox.blocked_tooltip') }
         %i.fa-solid.fa-lock{ 'aria-hidden' => 'true' }
         = t('outbox.blocked_by', file: blocker.filename)
+    - if server_blocker
+      %span.badge.rounded-pill.text-bg-danger.ms-1.outbox-server-blocked{ title: t('outbox.server_blocked_tooltip') }
+        %i.fa-solid.fa-lock{ 'aria-hidden' => 'true' }
+        = t('outbox.server_blocked_by', number: format('%04d', server_blocker.seq))
+    - if script.failed? && remote_error_excerpt
+      .small.text-danger-emphasis.font-monospace.text-break.mt-1.outbox-remote-error= remote_error_excerpt
     - if preview_text
       %details.mt-1
         %summary.small.text-body-secondary= t('outbox.preview')

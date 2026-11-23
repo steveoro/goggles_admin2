@@ -18,7 +18,9 @@
         %dt.col-sm-3= t('outbox.push.environment')
         %dd.col-sm-9#outbox-push-environment
           %span.badge{ class: environment_label == 'production' ? 'text-bg-danger' : 'text-bg-secondary' }= environment_label
-          - unless plan.verified?
+          - if plan.verified?
+            %span.small.text-body-secondary.ms-1= t('outbox.push.verified')
+          - else
             %span.small.text-body-secondary.ms-1= t('outbox.push.unverified')
         %dt.col-sm-3= t('outbox.push.reachability')
         %dd.col-sm-9#outbox-push-reachability
@@ -30,6 +32,10 @@
             %span.text-danger= t('outbox.push.unreachable', error: ping_error)
         %dt.col-sm-3= t('outbox.push.jwt')
         %dd.col-sm-9{ class: jwt_valid? ? 'text-success' : 'text-danger' }= jwt_text
+        - if gate
+          %dt.col-sm-3= t('outbox.push.db_sync')
+          %dd.col-sm-9#outbox-push-db-sync{ data: { gate_level: gate.level } }
+            = render(Drift::IndicatorComponent.new(fingerprint: gate.verdict, details: !gate.ok?))
 
       - if plan.changed_after_push.any?
         .alert.alert-warning= t('outbox.push.changed_warning', count: plan.changed_after_push.size)
@@ -44,6 +50,12 @@
             .form-check.mt-2
               = check_box_tag(:override_order, '1', plan.override_order, class: 'form-check-input')
               = label_tag(:override_order, t('outbox.push.override_order'), class: 'form-check-label')
+        - if drift_tick?
+          .alert.alert-warning#outbox-push-drift
+            = t(gate.verdict&.red? ? 'outbox.push.drift_red' : 'outbox.push.drift_warn')
+            .form-check.mt-2
+              = check_box_tag(:drift_ack, '1', false, class: 'form-check-input', required: true)
+              = label_tag(:drift_ack, t('outbox.push.drift_ack'), class: 'form-check-label')
         - if plan.label_required?
           .mb-3
             = label_tag(:confirm_label, t('outbox.push.type_label', label: environment_label), class: 'form-label')

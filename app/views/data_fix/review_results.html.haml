@@ -20,6 +20,10 @@
 
   .d-flex.justify-content-between.my-2
     = link_to '< Back to file list', pull_result_files_path, class: 'btn btn-outline-secondary mr-2'
+    -# (phase 09) what the commit will do, a fresh preflight and the same Commit POST as the button below
+    = link_to(data_fix_commit_summary_path(file_path: @file_path), class: 'btn btn-outline-success', id: 'btn-commit-summary-link') do
+      %i.fa-solid.fa-list-check{ 'aria-hidden': 'true' }
+      = t('data_fix.commit_summary.link')
     - if @result_free
       -# Structure-only commit: enabled only when meeting + sessions are valid
       %div

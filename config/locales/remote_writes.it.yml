@@ -14,12 +14,11 @@ it:
       done: 'Presa visione delle scritture remote registrata.'
       failed: 'Impossibile registrare la presa visione: il DB ops locale non è disponibile (lancia bin/rails ops:prepare).'
     drift:
-      title: 'Sync DB (drift v0)'
-      help: "Verifica che le righe aggiornate più di recente su %{url} esistano nel DB locale (ultime 10 righe di 12 tabelle) e conta le scritture solo remote dall'ultima presa visione."
-      checked_at: 'Ultima verifica: %{time}'
-      never_checked: 'Mai verificato'
-      acknowledged_at: 'ultima presa visione: %{time}'
-      never_acknowledged: 'nessuna presa visione'
+      title: 'Sync DB'
+      help: "Le scritture solo remote riuscite dall'ultimo controllo sync DB verde (o presa visione) rendono giallo il verdetto: conteggi e id massimi non vedono gli UPDATE remoti."
+      open: 'Apri Sync DB'
+      acknowledged_at: 'Ultima presa visione: %{time}.'
+      never_acknowledged: 'Nessuna presa visione.'
   datagrid:
     remote_writes_grid:
       columns:

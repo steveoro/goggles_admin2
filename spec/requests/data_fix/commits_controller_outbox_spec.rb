@@ -4,7 +4,7 @@ require 'rails_helper'
 
 # Phase 6 commit and the SQL Outbox (structure-only source, the smallest commit): the script is registered inside
 # the local transaction; archiving failures get their own state and a retry.
-RSpec.describe DataFix::CommitsController do
+RSpec.describe DataFix::CommitsController, :data_fix_commit do
   include AdminSignInHelpers
 
   let(:admin_user) { prepare_admin_user }
@@ -53,11 +53,11 @@ RSpec.describe DataFix::CommitsController do
   after(:each) { FileUtils.rm_rf(temp_dir) }
 
   it 'registers the commit script (pending, kind commit, same data root) and archives the files' do
-    post commit_phase6_path(file_path: source_file)
+    commit!(source_file)
 
-    report = session[:commit_report]
-    expect(report).to include(commit_success: true, commit_state: 'committed', sql_filename: '0477-outbox_meeting-lt4.sql')
-    script = Ops::SqlScript.find(report[:script_id])
+    report = last_report
+    expect(report).to have_attributes(status: 'committed', sql_filename: '0477-outbox_meeting-lt4.sql')
+    script = Ops::SqlScript.find(report.sql_script_id)
     expect(script).to have_attributes(kind: 'commit', state: 'pending', folder: '262', rel_path: 'results.new/262/0477-outbox_meeting-lt4.sql')
     expect(script.origin).to include('producer' => 'data_fix.commit', 'source_base' => 'outbox_meeting', 'fin_event_id' => '150321',
                                      'meeting_id' => GogglesDb::Meeting.find_by(code: meeting_code).id)
@@ -70,10 +70,10 @@ RSpec.describe DataFix::CommitsController do
   it 'rolls the local commit back and reports failed when the script cannot be written' do
     allow(Outbox::Writer).to receive(:write!).and_raise(Errno::ENOSPC, 'disk full')
 
-    expect { post commit_phase6_path(file_path: source_file) }.not_to change(Ops::SqlScript, :count)
+    expect { commit!(source_file) }.not_to change(Ops::SqlScript, :count)
 
-    expect(session[:commit_report]).to include(commit_success: false, commit_state: 'failed', sql_filename: nil)
-    expect(session[:commit_report][:error_message]).to include('disk full')
+    expect(last_report).to have_attributes(status: 'failed', sql_filename: nil)
+    expect(last_report.error_message).to include('disk full')
     expect(GogglesDb::Meeting.find_by(code: meeting_code)).to be_nil
     expect(File).to exist(source_file) # (nothing archived)
     expect(Ops::Event.last).to have_attributes(kind: 'datafix.commit_failed')
@@ -87,9 +87,9 @@ RSpec.describe DataFix::CommitsController do
       })
     end
 
-    post commit_phase6_path(file_path: source_file)
+    commit!(source_file)
 
-    expect(session[:commit_report][:commit_state]).to eq('failed')
+    expect(last_report.status).to eq('failed')
     expect(Ops::SqlScript.count).to eq(0)
     expect(Dir.glob(File.join(new_dir, '*.sql'))).to be_empty
     expect(GogglesDb::Meeting.find_by(code: meeting_code)).to be_nil
@@ -102,18 +102,18 @@ RSpec.describe DataFix::CommitsController do
     end
 
     it "reports 'committed, archiving failed' with the script registered" do
-      post commit_phase6_path(file_path: source_file)
+      commit!(source_file)
 
-      report = session[:commit_report]
-      expect(report).to include(commit_success: false, commit_state: 'committed_archive_failed')
-      expect(report[:archive_error]).to include('results.done')
-      expect(Ops::SqlScript.find(report[:script_id])).to be_pending
+      report = last_report
+      expect(report.status).to eq('committed_archive_failed')
+      expect(report.archive_error).to include('results.done')
+      expect(Ops::SqlScript.find(report.sql_script_id)).to be_pending
       expect(GogglesDb::Meeting.find_by(code: meeting_code)).to be_present
       expect(Ops::Event.last).to have_attributes(kind: 'datafix.archive_failed', level: 'warning')
     end
 
     it 'shows the state, the script link and the retry action on the report' do
-      post commit_phase6_path(file_path: source_file)
+      commit!(source_file)
       follow_redirect!
 
       page = response.parsed_body
@@ -123,17 +123,17 @@ RSpec.describe DataFix::CommitsController do
     end
 
     it 'completes the archiving on retry (idempotent)' do
-      post commit_phase6_path(file_path: source_file)
+      commit!(source_file)
       allow(DataFix::CommitArchiver).to receive(:finalize).and_call_original
 
       post data_fix_retry_archive_path, params: { file_path: source_file, sql_filename: '0477-outbox_meeting-lt4.sql' }
-      expect(response).to redirect_to(data_fix_commit_phase6_report_path)
-      expect(session[:commit_report]).to include(commit_success: true, commit_state: 'committed')
+      expect(response).to redirect_to(data_fix_commit_report_path(last_report))
+      expect(last_report.status).to eq('committed')
       expect(File).to exist(File.join(done_dir, File.basename(source_file)))
       expect(Ops::Event.last).to have_attributes(kind: 'datafix.archived')
 
       post data_fix_retry_archive_path, params: { file_path: source_file }
-      expect(session[:commit_report]).to include(commit_state: 'committed')
+      expect(last_report.reload.status).to eq('committed')
     end
   end
 

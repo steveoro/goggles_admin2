@@ -1,0 +1,42 @@
+-#
+  Outcome alert of a commit report (archive failed + retry, committed, failed + first error step, refused).
+  Locals: report, errors (stats errors), error_step (i18n step key or nil), error_step_link.
+- case report.status
+- when 'committed_archive_failed'
+  .alert.alert-warning.mb-2#commit-archive-failed
+    %p.mb-1
+      %strong= t('outbox.commit_report.archive_failed_title')
+    %p.mb-1= t('outbox.commit_report.archive_failed_text')
+    - if report.archive_error.present?
+      %p.mb-1.small.font-monospace= report.archive_error
+    = button_to(data_fix_retry_archive_path, method: :post, class: 'btn btn-sm btn-warning mt-1', form_class: 'd-inline',
+                                             params: { file_path: report.source_path, sql_filename: report.sql_filename,
+                                                       script_id: report.sql_script_id, commit_report_id: report.id }.compact,
+                                             data: { turbo_frame: '_top' }) do
+      %i.fa-solid.fa-rotate-right{ 'aria-hidden' => 'true' }
+      = t('outbox.commit_report.retry_archive')
+- when 'committed'
+  .alert.alert-success.mb-2#commit-committed= t('data_fix.commit_report.committed_text')
+- when 'failed'
+  .alert.alert-danger.mb-2#commit-failed
+    %p.mb-1
+      %strong= t('data_fix.commit_report.failed_text')
+    - if report.error_message.present?
+      %p.mb-0= report.error_message.split(' #<Import::Committers::').first
+    - if errors.any?
+      %p.mt-1.mb-0
+        %strong= t('data_fix.commit_report.errors')
+        = errors.first
+    - if error_step
+      %p.mt-1.mb-0
+        %strong= t('data_fix.commit_report.first_error_step')
+        = link_to(t('data_fix.steps.label', number: report.first_error_phase, name: t("data_fix.steps.#{error_step}")),
+                  error_step_link, data: { turbo_frame: '_top' })
+- when 'refused'
+  .alert.alert-secondary.mb-2#commit-refused
+    %p.mb-1
+      %strong= t('data_fix.commit_report.refused_text')
+    - if report.error_message.present?
+      %p.mb-0= report.error_message
+    = link_to(t('data_fix.commit_summary.link'), data_fix_commit_summary_path(file_path: report.source_path),
+              data: { turbo_frame: '_top' })

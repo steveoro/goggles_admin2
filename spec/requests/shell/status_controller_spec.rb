@@ -33,7 +33,7 @@ RSpec.describe Shell::StatusController do
       expect(response).to have_http_status(:success)
       expect(response.parsed_body.at('html body .app-shell')).to be_nil
       expect(frame.css('.app-status-pill').pluck('id')).to eq(%w[status-pill-api status-pill-crawler status-pill-queue status-pill-cable
-                                                                 status-pill-fin_watch status-pill-ops_db status-pill-drift_v0])
+                                                                 status-pill-fin_watch status-pill-ops_db status-pill-db_sync])
       expect(APIProxy).not_to have_received(:call)
       expect(APIProxy).not_to have_received(:ping)
       expect(CrawlerClient).not_to have_received(:new)
@@ -47,7 +47,7 @@ RSpec.describe Shell::StatusController do
       url = APIProxy.configured_base_url.delete_suffix('/')
       Ops::Snapshot.write!("api.status:#{url}", { 'reachable' => true, 'code' => 200, 'version' => '7.2' })
       Ops::Snapshot.write!('system_status.crawler', { 'reachable' => false })
-      Ops::Snapshot.write!("drift_v0:#{url}", { 'status' => 'ok' })
+      FactoryBot.create(:ops_db_fingerprint, api_base_url: url)
       expect { get(shell_status_path) }.not_to have_enqueued_job(SystemStatus::RefreshJob)
       expect(frame.at_css('#status-pill-api')['data-status-level']).to eq('ok')
     end

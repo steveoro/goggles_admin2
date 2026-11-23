@@ -1,0 +1,26 @@
+-#
+  Lazy frame of the season health runs queued after the commit ('results' and 'badges', Health::SeasonRunJob).
+  Locals: report (Ops::CommitReport), runs (Ops::HealthRun list).
+%turbo-frame#commit-report-health
+  .card.mb-3{ data: { live_busy: runs.any?(&:pending?).to_s } }
+    .card-header.d-flex.align-items-center
+      %strong= t('data_fix.commit_report.season_checks')
+      - if report.season_id
+        = link_to(t('data_fix.commit_report.season_checks_link'), health_season_path(report.season_id), class: 'ms-auto small',
+                                                                                                        data: { turbo_frame: '_top' })
+    .card-body
+      - if runs.empty?
+        %p.mb-0.text-body-secondary= t('data_fix.commit_report.season_checks_none')
+      - else
+        %table.table.table-sm.mb-0
+          %thead
+            %tr
+              %th= t('data_fix.commit_report.group')
+              %th= t('data_fix.commit_report.status')
+              %th.text-end= t('data_fix.commit_report.findings')
+          %tbody
+            - runs.each do |run|
+              %tr{ data: { health_run: run.group_key } }
+                %td= t("health.groups.#{run.group_key}", default: run.group_key.humanize)
+                %td= render(Health::BadgeComponent.new(kind: :run, value: run.status))
+                %td.text-end= run.finished? ? run.findings_count.to_i : '…'

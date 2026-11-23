@@ -12,6 +12,8 @@ module Outbox
     STATE_CSS = {
       'pending' => 'text-bg-warning', 'held' => 'text-bg-secondary', 'pushing' => 'text-bg-primary',
       'in_doubt' => 'text-bg-danger', 'sent' => 'text-bg-info', 'executed_unreported' => 'text-bg-success',
+      'applied' => 'text-bg-success', 'failed' => 'text-bg-danger', 'missing_remote' => 'text-bg-warning',
+      'withdrawn' => 'bg-body-tertiary text-body-secondary border',
       'legacy_sent' => 'bg-body-tertiary text-body-emphasis border', 'archived' => 'bg-body-tertiary text-body-secondary border',
       'discarded' => 'bg-body-tertiary text-body-secondary border', 'missing' => 'text-bg-danger'
     }.freeze

@@ -4,8 +4,8 @@
 # = RemoteWritesController
 #
 # /remote_writes: log of the API calls made by admin2 that may have changed the remote data
-# (Ops::RemoteWrite: every APIProxy call but GET, the sign-in and the SQL batch push), with the drift v0
-# verdict for the configured API and its "Acknowledge" button.
+# (Ops::RemoteWrite: every APIProxy call but GET, the sign-in and the SQL batch push), with the DB sync
+# verdict for the configured API (Drift::IndicatorComponent, last Ops::DbFingerprint) and the "Acknowledge" button.
 #
 # Reads only the local ops DB (no API call): reachable from API-offline sessions.
 #
@@ -15,12 +15,11 @@ class RemoteWritesController < ApplicationController
   # GET /remote_writes
   #
   # == Assigns:
-  # - <tt>@drift</tt>: Drift::V0Status for the configured API;
+  # - <tt>@api_url</tt>: the configured API;
   # - <tt>@ops_available</tt>: false when the ops DB is not ready (no grid then);
   # - <tt>@grid</tt>: the RemoteWritesGrid; <tt>@assets</tt>: its current page.
   def index
     @api_url = APIProxy.configured_base_url.to_s.delete_suffix('/')
-    @drift = Drift::V0Status.for(@api_url)
     @ops_available = Ops.available?
     @grid = RemoteWritesGrid.new(grid_filter_params) if @ops_available
 
@@ -37,9 +36,10 @@ class RemoteWritesController < ApplicationController
 
   # POST /remote_writes/acknowledge
   # Marks every remote write logged so far as reviewed (Ops::Setting 'drift.acknowledged_at'):
-  # drift v0 stops warning about them.
+  # the DB sync verdict stops counting them (a new check is queued).
   def acknowledge
     if Ops.safely(false) { Ops.available? && Ops::RemoteWrite.acknowledge!.present? }
+      DriftCheckJob.perform_later(trigger: 'manual')
       flash[:info] = t('.done')
     else
       flash[:error] = t('.failed')

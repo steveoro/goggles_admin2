@@ -25,9 +25,10 @@ module Import
     # NOTE: "team_scores" (see Import::TeamScoreExtractor) is present only when the source carries an overall team ranking
     #
     class TeamSolver # rubocop:disable Metrics/ClassLength
-      def initialize(season:, logger: Rails.logger)
+      def initialize(season:, logger: Rails.logger, progress: Import::Progress.default)
         @season = season
         @logger = logger
+        @progress = progress || Import::Progress::Null.new
       end
 
       # Build and persist phase2 file
@@ -125,6 +126,16 @@ module Import
           'parent_checksum' => pfm.checksum(source_path)
         }
         pfm.write!(data: payload, meta: meta)
+      end
+
+      # Re-resolves ONE existing Phase 2 team entry against the current DB (DataFix::Pipeline#refresh_new_entities!,
+      # after other commits created teams): same matching as the build. Returns the fresh entry, or nil when the
+      # entry has no name to search.
+      def re_resolve_entry(team)
+        name = team['name'].presence || team['key']
+        return nil if name.blank?
+
+        build_team_entry(team['key'], name)
       end
 
       private
@@ -433,14 +444,9 @@ module Import
         []
       end
 
-      # Broadcast progress updates via ActionCable for real-time UI feedback
+      # Progress updates through the injected sink (see Import::Progress; Cable by default)
       def broadcast_progress(message, current, total)
-        ActionCable.server.broadcast(
-          'ImportStatusChannel',
-          { msg: message, progress: current, total: total }
-        )
-      rescue StandardError => e
-        @logger&.warn("[TeamSolver] Failed to broadcast progress: #{e.message}")
+        @progress.call(message, current, total)
       end
     end
   end

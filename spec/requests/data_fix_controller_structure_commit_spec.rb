@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe DataFixController do
+RSpec.describe DataFixController, :data_fix_commit do
   include AdminSignInHelpers
 
   describe 'structure-only commits (result-free sources)' do
@@ -133,14 +133,14 @@ RSpec.describe DataFixController do
         write_phase1(valid_phase1_data)
         write_phase5
 
-        post commit_phase6_path(file_path: source_file)
+        commit!(source_file)
 
-        expect(response).to redirect_to(data_fix_commit_phase6_report_path)
+        expect(response).to redirect_to(data_fix_commit_report_path(last_report))
         meeting = GogglesDb::Meeting.find_by(code: valid_phase1_data['code'])
         expect(meeting).to be_present
         expect(meeting.manifest).to be true
         expect(meeting.meeting_sessions.count).to eq(1)
-        expect(session[:commit_report][:commit_success]).to be true
+        expect(last_report.status).to eq('committed')
       end
 
       it 'commits optional resolvable events alongside the structure' do
@@ -158,7 +158,7 @@ RSpec.describe DataFixController do
         )
         write_phase5
 
-        post commit_phase6_path(file_path: source_file)
+        commit!(source_file)
 
         meeting = GogglesDb::Meeting.find_by(code: valid_phase1_data['code'])
         expect(meeting).to be_present
@@ -179,10 +179,10 @@ RSpec.describe DataFixController do
         )
         write_phase5
 
-        post commit_phase6_path(file_path: source_file)
+        commit!(source_file)
 
-        expect(response).to redirect_to(data_fix_commit_phase6_report_path)
-        expect(session[:commit_report][:commit_success]).to be false
+        expect(response).to redirect_to(data_fix_commit_report_path(last_report))
+        expect(last_report.status).to eq('failed')
         expect(GogglesDb::Meeting.find_by(code: valid_phase1_data['code'])).to be_nil
       end
 
@@ -290,10 +290,10 @@ RSpec.describe DataFixController do
                          GogglesDb::MeetingRelayResult, GogglesDb::MeetingEvent, GogglesDb::MeetingProgram].map(&:count)
         meetings_before = GogglesDb::Meeting.count
 
-        post commit_phase6_path(file_path: source_file)
+        commit!(source_file)
 
-        expect(response).to redirect_to(data_fix_commit_phase6_report_path)
-        expect(session[:commit_report][:commit_success]).to be true
+        expect(response).to redirect_to(data_fix_commit_report_path(last_report))
+        expect(last_report.status).to eq('committed')
         meeting = GogglesDb::Meeting.find_by(season_id: season262.id, description: '25° Trofeo Città di Verolanuova')
         expect(meeting&.meeting_sessions&.count).to eq(1)
         # Only structure rows added: no athletes, teams, events or results
@@ -307,7 +307,7 @@ RSpec.describe DataFixController do
         # First pass: create the meeting through the wizard
         visit_step!(review_sessions_path(file_path: source_file, phase_v2: 1))
         save_meeting_form
-        post commit_phase6_path(file_path: source_file)
+        commit!(source_file)
         meeting = GogglesDb::Meeting.find_by(season_id: season262.id, description: '25° Trofeo Città di Verolanuova')
         expect(meeting).to be_present
 
@@ -321,9 +321,9 @@ RSpec.describe DataFixController do
         counts_before = [GogglesDb::Meeting, GogglesDb::MeetingSession, GogglesDb::SwimmingPool,
                          GogglesDb::City, GogglesDb::Swimmer, GogglesDb::Team].map(&:count)
 
-        post commit_phase6_path(file_path: source_file)
+        commit!(source_file)
 
-        expect(session[:commit_report][:commit_success]).to be true
+        expect(last_report.status).to eq('committed')
         counts_after = [GogglesDb::Meeting, GogglesDb::MeetingSession, GogglesDb::SwimmingPool,
                         GogglesDb::City, GogglesDb::Swimmer, GogglesDb::Team].map(&:count)
         expect(counts_after).to eq(counts_before)

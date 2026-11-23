@@ -9,8 +9,9 @@ module Import
     # This is intentionally minimal to enable UI scaffolding; it can be enriched later
     # with detailed per-result rows when we finalize the structure we want to review/edit.
     class ResultSolver # rubocop:disable Metrics/ClassLength
-      def initialize(season:)
+      def initialize(season:, progress: Import::Progress.default)
         @season = season
+        @progress = progress || Import::Progress::Null.new
       end
 
       # opts:
@@ -247,14 +248,9 @@ module Import
         [total_distance, stroke_code, event_code]
       end
 
-      # Broadcast progress updates via ActionCable for real-time UI feedback
+      # Progress updates through the injected sink (see Import::Progress; Cable by default)
       def broadcast_progress(message, current, total)
-        ActionCable.server.broadcast(
-          'ImportStatusChannel',
-          { msg: message, progress: current, total: total }
-        )
-      rescue StandardError => e
-        @logger&.warn("[SwimmerSolver] Failed to broadcast progress: #{e.message}")
+        @progress.call(message, current, total)
       end
     end
   end

@@ -106,6 +106,70 @@ end
 
 ---
 
+## Pipeline runner (phase 09)
+
+`DataFix::Pipeline` (`app/services/data_fix/pipeline.rb`, plus `pipeline/{recipes,digests,summary}.rb`) owns the
+orchestration of one source (its canonical LT4 working copy). The review actions are thin callers:
+`ensure_phase_file!` → `pipeline.build_phase!(n, force: true, strict_upstream: false)` when the file is missing,
+incomplete (`build_needed?`: no `teams` / `swimmers` list) or on rescan; Step 5 also rebuilds a stale phase 5 that
+holds no edits, fixes or overwrite selections.
+
+```ruby
+pipeline = DataFix::Pipeline.for(source_path, progress: Import::Progress::Cable.new, actor: :operator, user_id: 1)
+pipeline.build_phase!(3, force: false)   # => DataFix::Verdict; EditedPhaseError / MissingUpstreamError / LeaseBusyError
+pipeline.prepare!(up_to: 5)              # builds missing + stale unedited phases, stops at a stale edited one
+pipeline.verdict(5)                      # cached in Ops::PhaseVerdict by a fingerprint of the files it reads
+pipeline.stale?(5)                       # [] or [{ 'upstream' => 4, 'what' => 'events', 'key' => 'p4' }]
+pipeline.edited?(2); pipeline.mark_edited!(2, action: 'update_phase2_team'); pipeline.restamp!(3, keys: ['p2'])
+pipeline.summary                         # Pipeline::Summary: verdicts + stage (stored on Ops::PipelineSource)
+pipeline.invalidate!(phases: [3, 4, 5], reason: :categories_normalized)  # the only path deleting phase files
+pipeline.refresh_new_entities!           # re-resolves only the nil-id teams / swimmers
+```
+
+- **Recipes** (`Pipeline::Recipes`): Phase1Solver, TeamSolver, SwimmerSolver, EventSolver, Phase5Populator (+
+  `DataFix::ResultVerifier`). Post-build: the Phase 2 <=> 3 harmonizer after a Phase 2 or 3 build, and after a
+  Phase 2 save. Interactive builds pass no `progress:` (ActionCable default, as before); jobs pass
+  `Import::Progress::Null` / `Import::Progress::Ops` (throttled ops row): **no job broadcasts on ImportStatusChannel**.
+- **Edit markers** (in the phase file `_meta`, authoritative; mirrored in `Ops::PhaseVerdict#operator_edited_at`):
+  `built` = `{ by: auto|operator|adopted, at, digest, inputs, db_generation }`, `operator_edit` =
+  `{ at, user_id, actions (last 20) }`. `edited?` is true with an `operator_edit`, a data digest differing from
+  `built.digest` (hand edits), or no `built` stamp: **files without a stamp are adopted as edited**. The digest
+  excludes `_meta` (retry flag, overwrite snapshot). Runner writes (cascades, harmonizer) call `restamp!`.
+  `BaseController#mark_phase_edited!` (after_action) maps every mutating action to its phase
+  (`BaseController::EDIT_ACTIONS`) and runs only after a successful response.
+- **Inputs / staleness** (`Pipeline::Digests`): per-upstream SHA256 projections, so unrelated edits do not cascade
+  (P3: P1 header date + season, P2 team ids/affiliations; P4: P1 meeting + session ids; P5: P1-P4 ids and events;
+  all: source sha256 + season). New entities become stale (`db`) after a local commit bumps
+  `Ops::Setting['data_fix.db_generation']`.
+- **Review GETs** write no phase data. The only GET writes are idempotent `_meta` syncs made once per file
+  (`settle!`: retry flag, adopted stamp) and the harmonizer's new conflict hints (re-stamped).
+- **Verdicts** (`DataFix::Verdicts::Phase1..5`, statuses `unbuilt clean review blocked stale failed`; precedence
+  failed > stale > blocked > review): phase 1 structure / retry / FIN link; phase 2-3 `DataFix::ReviewRules`
+  (+ shares, incomplete new swimmers, orphan badges, relay legs); phase 4 event types and session orders; phase 5
+  populate errors, collisions, parity, `IssueDetector`, nothing staged, `Import::CommitPreflight`, overwrite
+  selections, partial duplicates. Result-free sources: phases 2-5 clean when not built, phase 5 needs a valid Phase 1.
+- **Lease**: `Ops::PipelineSource#acquire_lease!` (one conditional UPDATE, 10 minutes, re-entrant) around every build;
+  without the ops DB the pipeline runs unleased and verdicts are computed on the fly.
+- **Ops rows** (rebuildable by `rake ops:rebuild` → `DataFix::PipelineReconciler`): `pipeline_sources`,
+  `phase_verdicts`; not rebuildable: `commit_reports`, `pipeline_runs`.
+
+### Commit runner and job
+
+- `POST data_fix/commit_phase6` (the summary's form and the Step 5 button): overwrite confirmation, the synchronous
+  gates (`CommitRunner#precheck`), the ops DB check, `DataFix::Guards.check(:commit, acknowledged:)` (no-op-safe
+  wrapper of `Drift::Gate` and `DbRestore::Lock`: block → refused, the summary links `/db_sync`; warn → the summary
+  asks for the acknowledgement tick), `Import::CommitPreflight` (exact-name hits can be overridden with "Create
+  anyway"); then a queued `Ops::CommitReport` (acknowledgement stored in its `preflight`) and
+  `DataFixCommitJob.perform_later` — the job's only enqueue site.
+- `DataFixCommitJob` (`pipeline` queue, priority 0, `limits_concurrency key: 'local_db_writer'`, no retries, never
+  raises): claims the report (queued → running), re-runs the guards and the preflight, then `DataFix::CommitRunner`
+  (Main#commit_all with the Outbox `before_commit:` script, `CommitArchiver.finalize`, `datafix.*` event, the
+  `data_fix.db_generation` bump, the post-commit health runs: `results` / `badges` ids stored on the report).
+- The report (`DataFix::CommitReportsController`, native BS5) polls its status frame while queued / running and
+  shows stats, the first error step, the log, the Outbox script and the season checks (lazy frame).
+
+---
+
 ## Pre-Matching Pattern (v2.0)
 
 ### Overview

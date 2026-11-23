@@ -25,6 +25,6 @@ RSpec.describe Inbox::Registry do
   end
 
   it 'is idempotent when the same key is registered again (code reloads)' do
-    expect { described_class.register(Inbox::Sources::Drift) }.not_to(change { described_class.sources.size })
+    expect { described_class.register(Drift::InboxSource) }.not_to(change { described_class.sources.size })
   end
 end

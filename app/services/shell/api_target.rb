@@ -7,9 +7,12 @@ module Shell
   # Value object describing the API server the app currently talks to, for the top bar:
   # - url: the configured API base URL (local DB settings; no remote call);
   # - label: the operator's label for that URL (Ops::Setting 'api_target.labels', a JSON Hash URL => label);
-  # - guess: :production when the URL ends with port 447, :unknown otherwise. It's a port-based guess,
-  #   always shown as "unverified" (phase 08 replaces it with the environment reported by the API).
-  #   It never says "staging";
+  # - environment: the environment reported by the API itself in its last 'status' answer (APICapabilities,
+  #   phase 08), e.g. 'production' or 'development': #verified? is then true. With an older API (or before the
+  #   first check) it falls back to the port-based #guess, shown as "unverified";
+  # - guess: :production when the URL ends with port 447, :unknown otherwise (never "staging");
+  # - label_mismatch?: the operator label names another environment than the one the API reports
+  #   (e.g. label "Production" on a 'development' API);
   # - reachability: :reachable / :unreachable / :unknown, plus taken_at, from the 'api.status:<url>' snapshot
   #   (see SystemStatus::APISnapshot); always :unreachable in an API-offline session (with the session time).
   #
@@ -19,6 +22,12 @@ module Shell
     LABELS_KEY = 'api_target.labels'
     PRODUCTION_PORT_REGEXP = /:447\z/
     LABEL_MAX_LENGTH = 60
+    # Environment named by an operator label (first match wins), for #label_mismatch?
+    LABEL_ENVIRONMENTS = {
+      'production' => /\b(prod|production|produzione)\b/i,
+      'development' => /\b(dev|devel|development|sviluppo|local|locale)\b/i,
+      'test' => /\btest\b/i
+    }.freeze
 
     attr_reader :url
 
@@ -83,6 +92,41 @@ module Shell
     # :production for a URL ending with port 447, :unknown otherwise (never :staging).
     def guess
       PRODUCTION_PORT_REGEXP.match?(url) ? :production : :unknown
+    end
+
+    # The environment reported by the API ('production', 'development', ...), or nil (older API, never checked,
+    # API-offline session).
+    def api_environment
+      return if offline? || url.blank?
+
+      capabilities.environment
+    end
+
+    # True when the environment comes from the API itself.
+    def verified?
+      api_environment.present?
+    end
+
+    # The environment to show: the API's own answer, else the port guess ('production' or 'unknown').
+    def environment
+      api_environment || guess.to_s
+    end
+
+    # The API capabilities (APICapabilities, from the same stored answer).
+    def capabilities
+      @capabilities ||= APICapabilities.new(base_url: url, snapshot:)
+    end
+
+    # Environment named by the operator label (see LABEL_ENVIRONMENTS), or nil.
+    def label_environment
+      return if label.blank?
+
+      LABEL_ENVIRONMENTS.find { |_env, regexp| regexp.match?(label) }&.first
+    end
+
+    # True when the label names an environment other than the one reported by the API.
+    def label_mismatch?
+      verified? && label_environment.present? && label_environment != api_environment
     end
 
     # :reachable, :unreachable or :unknown.

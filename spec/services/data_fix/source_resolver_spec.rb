@@ -54,8 +54,18 @@ RSpec.describe DataFix::SourceResolver, type: :service do
     File.write(path, JSON.pretty_generate(payload))
   end
 
-  def write_phase_files
-    phase_paths.each { |path| write_json(path, { 'data' => {}, '_meta' => {} }) }
+  # Phase file built by the pipeline (a 'built' stamp matching its data: not an operator edit).
+  def stamped_payload(phase)
+    payload = { 'data' => {}, '_meta' => {} }
+    payload['_meta']['built'] = { 'by' => 'auto', 'digest' => DataFix::Pipeline::Digests.data_digest(payload, phase) }
+    payload
+  end
+
+  # (stamped: false => pre-existing files without a build stamp, adopted as edited by DataFix::Pipeline)
+  def write_phase_files(stamped: true)
+    phase_paths.each_with_index do |path, index|
+      write_json(path, stamped ? stamped_payload(index + 1) : { 'data' => {}, '_meta' => {} })
+    end
   end
 
   after(:each) { FileUtils.rm_rf(temp_dir) }
@@ -92,10 +102,10 @@ RSpec.describe DataFix::SourceResolver, type: :service do
 
         it 'keeps a .orig.json backup of each existing phase file before removing it' do
           resolved
-          phase_paths.each do |path|
+          phase_paths.each_with_index do |path, index|
             backup = path.sub(/\.json\z/, '.orig.json')
             expect(File).to exist(backup)
-            expect(JSON.parse(File.read(backup))).to eq('data' => {}, '_meta' => {})
+            expect(JSON.parse(File.read(backup))).to eq(stamped_payload(index + 1))
           end
         end
 
@@ -122,6 +132,26 @@ RSpec.describe DataFix::SourceResolver, type: :service do
         subject(:resolved) { resolver.resolve_working_source_path(lt4_path) }
 
         it_behaves_like 'supersedes the manifest copy'
+      end
+    end
+
+    # (phase 09) DataFix::Pipeline#invalidate! never deletes an edited phase: a pre-existing file (no build stamp)
+    # counts as edited.
+    context 'with a manifest LT4 copy superseded under edited (or pre-existing) phase files' do
+      before(:each) do
+        write_json(lt2_path, lt2_with_results)
+        write_json(lt4_path, manifest_lt4)
+        write_phase_files(stamped: false)
+      end
+
+      it 're-materializes the source but keeps every phase file and marks the source blocked' do
+        expect(resolver.resolve_working_source_path(lt2_path)).to eq(lt4_path)
+        expect(JSON.parse(File.read(lt4_path)).dig('_meta', 'meeting_only')).to be_nil
+        phase_paths.each { |path| expect(File).to exist(path) }
+
+        row = Ops::PipelineSource.find_by(base: '2026-11-08-test-meeting')
+        expect(row).to have_attributes(stage: 'blocked', stage_reason: Ops::PipelineSource::SOURCE_CHANGED_UNDER_EDITS)
+        expect(row.stage_details).to include('phases' => [1, 2, 3, 4, 5], 'edited' => [1, 2, 3, 4, 5], 'reason' => 'manifest_superseded')
       end
     end
 

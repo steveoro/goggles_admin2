@@ -360,6 +360,10 @@ RSpec.describe SeasonBoardController do
 
     describe 'POST /season_board/link' do
       let(:linker) { instance_double(SeasonBoard::CalendarLinker) }
+      let(:green_check) { FactoryBot.create(:ops_db_fingerprint, api_base_url: Shell::APITarget.configured_url) }
+
+      # (the DB sync gate, scope :board_write, passes on a fresh green check)
+      before(:each) { green_check }
 
       it 'links the calendar using the row URL and reports the SQL file name' do
         allow(SeasonBoard::CalendarLinker).to receive(:new).and_return(linker)
@@ -389,6 +393,31 @@ RSpec.describe SeasonBoardController do
         post(season_board_link_path, params: { fin_event_id: '6' })
         expect(flash[:warning]).to eq(I18n.t('season_board.flash.link_missing_params'))
         expect(SeasonBoard::CalendarLinker).not_to have_received(:new)
+      end
+
+      describe 'DB sync gate (scope :board_write, phase 08)' do
+        let(:green_check) { FactoryBot.create(:ops_db_fingerprint, :red, api_base_url: Shell::APITarget.configured_url) }
+
+        it 'asks for the tick on a warning (red included) before linking, re-posting the same link' do
+          allow(SeasonBoard::CalendarLinker).to receive(:new)
+          post(season_board_link_path, params: { fin_event_id: '6', calendar_id: '321' })
+          expect(response).to have_http_status(:unprocessable_content)
+          form = response.parsed_body.at_css('form#frm-season-board-confirm-link')
+          expect(form['action']).to eq(season_board_link_path)
+          expect(form.at_css('input[name="fin_event_id"]')['value']).to eq('6')
+          expect(form.at_css('input[name="calendar_id"]')['value']).to eq('321')
+          expect(form.at_css('input#drift_ack[required]')).to be_present
+          expect(response.parsed_body.at_css('#season-board-confirm-link #drift-indicator')['data-drift-verdict']).to eq('red')
+          expect(SeasonBoard::CalendarLinker).not_to have_received(:new)
+        end
+
+        it 'links with the tick' do
+          allow(SeasonBoard::CalendarLinker).to receive(:new).and_return(linker)
+          allow(linker).to receive(:call).and_return(SeasonBoard::CalendarLinker::Result.new(success: true, sql_path: '/x/y/0042-link.sql'))
+          post(season_board_link_path, params: { fin_event_id: '6', calendar_id: '321', drift_ack: '1' })
+          expect(response).to redirect_to(season_board_path)
+          expect(SeasonBoard::CalendarLinker).to have_received(:new)
+        end
       end
     end
   end

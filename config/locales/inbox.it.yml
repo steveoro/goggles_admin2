@@ -65,6 +65,10 @@ it:
         other: "%{count} invii in dubbio: controlla la coda di import remota"
       resolve: "Risolvi"
       open: "Apri"
+      failed:
+        one: "Invio fallito: 1 script fermo sul server"
+        other: "Invio fallito: %{count} script fermi sul server"
+      fix: "Correggi"
     unmatched_sources:
       titles:
         resume_review: "In revisione, senza id FIN: %{name}"
@@ -89,5 +93,7 @@ it:
         other: "Calendario FIN cambiato (%{count} righe)"
       open_board: "Apri la plancia"
     drift:
-      title: "Sync DB v0: il DB remoto ha modifiche che quello locale non ha"
+      red_title: "Sync DB rosso: il DB locale non rispecchia più la produzione (i commit della Fase 6 sono rifiutati)"
+      amber_title: "Sync DB giallo: controlla le differenze con la produzione"
+      open: "Apri Sync DB"
       review: "Rivedi le modifiche solo remote"

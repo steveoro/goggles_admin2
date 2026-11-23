@@ -1,0 +1,21 @@
+-# DB sync card of the remote-write log (locals: api_url, ops_available): the last verdict and the "Acknowledge" button.
+- acknowledged_at = Ops.safely { Ops::RemoteWrite.acknowledged_at if ops_available }
+%section.mb-4#remote-writes-db-sync
+  .card
+    .card-body
+      .d-flex.flex-wrap.align-items-start.justify-content-between.gap-3
+        .flex-grow-1
+          %h2.h6.card-title= t('remote_writes.drift.title')
+          = render(Drift::IndicatorComponent.new(api_url:, details: true))
+          %p.small.text-body-secondary.mt-2.mb-0
+            = t('remote_writes.drift.help')
+            - if acknowledged_at
+              = t('remote_writes.drift.acknowledged_at', time: l(acknowledged_at.localtime, format: :short))
+            - else
+              = t('remote_writes.drift.never_acknowledged')
+        .d-flex.flex-wrap.gap-2
+          = link_to(t('remote_writes.drift.open'), db_sync_path, class: 'btn btn-sm btn-outline-secondary', id: 'btn-open-db-sync')
+          - if ops_available
+            - confirm_form = { data: { turbo_confirm: t('remote_writes.acknowledge.confirm') } }
+            = button_to(t('remote_writes.acknowledge.button'), remote_writes_acknowledge_path,
+                        method: :post, id: 'btn-acknowledge', class: 'btn btn-sm btn-outline-primary', form: confirm_form)

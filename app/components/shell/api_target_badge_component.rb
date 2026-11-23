@@ -4,8 +4,9 @@ module Shell
   #
   # = Shell::APITargetBadgeComponent
   #
-  # Top bar badge for the API server in use (Shell::APITarget): URL, operator label, port-based guess
-  # (always marked "unverified"), last known reachability and its age. Links to the Settings page.
+  # Top bar badge for the API server in use (Shell::APITarget): URL, operator label, environment (as reported by
+  # the API; otherwise the port-based guess, marked "unverified"), a warning when the label names another
+  # environment, last known reachability and its age. Links to the Settings page.
   #
   # Only local data: no API call.
   #
@@ -28,7 +29,8 @@ module Shell
       {
         href: settings_path,
         data: { bs_toggle: 'tooltip', bs_placement: 'bottom', bs_title: tooltip_text,
-                api_guess: api_target.guess, api_reachability: reachability }
+                api_guess: api_target.guess, api_environment: api_target.environment,
+                api_verified: api_target.verified?.to_s, api_reachability: reachability }
       }
     end
 
@@ -37,12 +39,25 @@ module Shell
       api_target.url.sub(%r{\Ahttps?://}, '')
     end
 
-    def guess_css
-      api_target.guess == :production ? 'app-env-badge app-env-badge--production' : 'app-env-badge app-env-badge--unknown'
+    def environment_css
+      api_target.environment == 'production' ? 'app-env-badge app-env-badge--production' : 'app-env-badge app-env-badge--unknown'
     end
 
-    def guess_text
-      "#{t("shell.api_target.guess.#{api_target.guess}")} (#{t('shell.api_target.unverified')})"
+    # Environment name: the API's own answer, else the translated port guess.
+    def environment_name
+      return api_target.environment if api_target.verified?
+
+      t("shell.api_target.guess.#{api_target.guess}")
+    end
+
+    def environment_text
+      return t('shell.api_target.reported', environment: environment_name) if api_target.verified?
+
+      "#{environment_name} (#{t('shell.api_target.unverified')})"
+    end
+
+    def mismatch_text
+      t('shell.api_target.label_mismatch', label: api_target.label, environment: api_target.environment)
     end
 
     def reachability
@@ -62,7 +77,8 @@ module Shell
       version = api_target.version ? t('shell.api_target.version', version: api_target.version) : nil
       [
         t('shell.api_target.settings_link'), api_target.url.presence || t('shell.api_target.no_url'),
-        api_target.label, guess_text, reachability_text, version, api_target.error
+        api_target.label, environment_text, (mismatch_text if api_target.label_mismatch?), reachability_text, version,
+        api_target.error
       ].compact_blank.join(' · ')
     end
   end

@@ -33,6 +33,37 @@ RSpec.describe Shell::APITargetBadgeComponent, type: :component do
     end
   end
 
+  context 'with an API that reports its environment (phase 08)' do
+    def store_status(environment)
+      body = { msg: 'OK', version: '7.3', environment:, capabilities: [] }
+      SystemStatus::APISnapshot.write!(api_url, DummyResponse.new(body: body.to_json), source: 'system_status')
+    end
+
+    it 'shows the reported environment, without "unverified"' do
+      store_status('development')
+      badge = html.at_css('#api-target-badge')
+      expect(badge['data-api-verified']).to eq('true')
+      expect(badge['data-api-environment']).to eq('development')
+      expect(html.at_css('.app-env-badge').text.squish).to eq('development')
+      expect(badge['data-bs-title']).to include(I18n.t('shell.api_target.reported', environment: 'development'))
+      expect(badge['data-bs-title']).not_to include(I18n.t('shell.api_target.unverified'))
+    end
+
+    it 'warns when the operator label names another environment' do
+      store_status('development')
+      Shell::APITarget.store_label!(api_url, 'Production')
+      expect(html.at_css('.app-api-mismatch')).to be_present
+      expect(html.at_css('#api-target-badge')['data-bs-title'])
+        .to include(I18n.t('shell.api_target.label_mismatch', label: 'Production', environment: 'development'))
+    end
+
+    it 'uses the production accent for a production API, whatever the port' do
+      store_status('production')
+      expect(html.at_css('.app-env-badge')['class']).to include('app-env-badge--production')
+      expect(html.at_css('.app-api-mismatch')).to be_nil
+    end
+  end
+
   it 'shows the operator label when set' do
     Shell::APITarget.store_label!(api_url, 'Local copy')
     expect(html.at_css('.app-api-label').text).to eq('Local copy')

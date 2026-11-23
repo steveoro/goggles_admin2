@@ -1,4 +1,6 @@
--# Operator actions on an Outbox script (local: script), each one a click (see Outbox::ScriptActions).
+-#
+  Operator actions on an Outbox script (local: script), each one a click (see Outbox::ScriptActions; the remote ones
+  on a failed or queued script: Outbox::RemoteActions, offered only when the API reports the batch outcomes).
 :ruby
   inline = { form_class: 'd-inline' }
   hold_options = inline.merge(class: 'btn btn-sm btn-outline-secondary', id: 'btn-outbox-hold')
@@ -10,6 +12,13 @@
   pending_options = inline.merge(class: 'btn btn-sm btn-outline-primary', id: 'btn-outbox-resolve-pending')
   id_field_options = { min: 1, class: 'form-control', required: true, 'aria-label' => t('outbox.resolve_form.remote_id'),
                        placeholder: t('outbox.resolve_form.remote_id') }
+  outcomes = (script.failed? || script.sent?) && APICapabilities.new(base_url: script.target_api_url).supports?(:iq_batch_outcome)
+  later_count = outcomes ? Ops::SqlScript.sent.where(target_api_url: script.target_api_url).where(Ops::SqlScript.arel_table[:seq].gt(script.seq)).count : 0
+  retry_options = inline.merge(class: 'btn btn-sm btn-primary', id: 'btn-outbox-retry',
+                               data: { turbo_confirm: t('outbox.confirm.retry') })
+  withdraw_options = inline.merge(class: 'btn btn-sm btn-outline-danger', id: 'btn-outbox-withdraw',
+                                  data: { turbo_confirm: t('outbox.confirm.withdraw', count: later_count + 1) })
+  abandon_options = { type: 'submit', class: 'btn btn-sm btn-outline-danger', data: { turbo_confirm: t('outbox.confirm.abandon') } }
 .card.mb-3#outbox-script-actions
   .card-body.d-flex.flex-wrap.gap-2
     - if script.pending?
@@ -25,6 +34,29 @@
       = button_to(apply_locally_outbox_script_path(script), **apply_options) do
         %i.fa-solid.fa-database{ 'aria-hidden' => 'true' }
         = t('outbox.actions.apply_locally')
+
+- if outcomes
+  .card.mb-3{ class: script.failed? ? 'border-danger' : nil, id: 'outbox-remote-actions' }
+    .card-body
+      - if script.failed?
+        %p.small= t('outbox.remote_form.failed_intro')
+      - else
+        %p.small= t('outbox.remote_form.sent_intro')
+      .d-flex.flex-wrap.gap-2.mb-2
+        - if script.failed?
+          = button_to(retry_outbox_script_path(script), **retry_options) do
+            %i.fa-solid.fa-rotate-right{ 'aria-hidden' => 'true' }
+            = t('outbox.actions.retry')
+        = button_to(withdraw_outbox_script_path(script), **withdraw_options) do
+          %i.fa-solid.fa-rotate-left{ 'aria-hidden' => 'true' }
+          = t('outbox.actions.withdraw', count: later_count + 1)
+      - if script.failed?
+        = form_with(url: abandon_outbox_script_path(script), method: :post, id: 'frm-outbox-abandon') do
+          = label_tag(:note, t('outbox.remote_form.abandon_note'), class: 'form-label small')
+          = text_field_tag(:note, nil, class: 'form-control form-control-sm mb-2', required: true, id: 'outbox-abandon-note')
+          = button_tag(t('outbox.actions.abandon'), **abandon_options)
+- elsif script.failed?
+  .alert.alert-secondary.small#outbox-no-outcomes= t('outbox.remote_form.no_capability')
 
 - if script.in_doubt?
   .card.mb-3.border-danger#outbox-resolve

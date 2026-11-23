@@ -12,6 +12,8 @@
 #
 # - Each counter is one GET with <tt>per_page: 1</tt>, reading the api-pagination 'Total' header, with short
 #   timeouts (OPEN_TIMEOUT / READ_TIMEOUT): the 'default' worker has a single thread.
+# - 'import_queues' counts the unfinished rows only (<tt>done=false</tt>, EXTRA_PARAMS): since goggles_api 0.10.81
+#   the applied SQL batch rows are kept 14 days on the server. (An older API ignores the filter: all rows.)
 # - The JWT comes from Ops::BackgroundCredentials, at run time; without a valid one no call is made.
 # - The first unreachable or 401 answer stops the remaining calls (they would fail the same way).
 # - A counter that can't be refreshed keeps its previous value (and its own 'fetched_at' time).
@@ -39,6 +41,9 @@ class KpiRefreshJob < ApplicationJob
   # Counter key => API endpoint ('api_uses' is the row count of 'api_daily_uses').
   ENDPOINTS = { 'users' => 'users', 'import_queues' => 'import_queues', 'issues' => 'issues',
                 'api_uses' => 'api_daily_uses' }.freeze
+  # GET params of each counter (plus the extra ones per counter key):
+  BASE_PARAMS = { per_page: 1 }.freeze
+  EXTRA_PARAMS = { 'import_queues' => { done: false } }.freeze
   STATUSES = %w[ok partial unreachable unauthorized no_credentials].freeze
   OPEN_TIMEOUT = 5
   READ_TIMEOUT = 10
@@ -82,7 +87,7 @@ class KpiRefreshJob < ApplicationJob
   def fetch_all(payload, jwt)
     stop_status = nil
     ENDPOINTS.each do |key, endpoint|
-      result = APIProxy.call(method: :get, url: endpoint, jwt:, params: { per_page: 1 }, base_url: @base_url,
+      result = APIProxy.call(method: :get, url: endpoint, jwt:, params: BASE_PARAMS.merge(EXTRA_PARAMS.fetch(key, {})), base_url: @base_url,
                              open_timeout: OPEN_TIMEOUT, timeout: READ_TIMEOUT)
       stop_status = store_counter(payload, key, result)
       break if stop_status

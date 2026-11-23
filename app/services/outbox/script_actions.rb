@@ -8,7 +8,8 @@ module Outbox
   # hold, release, "Apply locally", discard, resolve an in-doubt push. Each records an Ops::Event and pings
   # the open pages. Invalid moves raise Ops::SqlScript::InvalidTransition (shown as a flash by the controller).
   #
-  # Also the shared file move into results.sent (#move_to_sent!), used by Outbox::Pusher.
+  # Also the shared file moves into results.sent (#move_to_sent!, used by Outbox::Pusher) and back into results.new
+  # (#move_to_new!, used by Outbox::RemoteStatusJob and Outbox::RemoteActions).
   #
   module ScriptActions
     # Held reasons that "Apply locally" resolves.
@@ -91,6 +92,14 @@ module Outbox
       return script.rel_path unless script.in_new_dir?
 
       move_file(script, script.rel_path.sub(%r{\A#{Regexp.escape(Outbox::NEW_DIR)}/}o, "#{Outbox::SENT_DIR}/"))
+    end
+
+    # Moves the file of a script from results.sent back to the same path under results.new (a failed or withdrawn
+    # script: the board row returns to "SQL to push"); returns the new rel_path (unchanged when already there).
+    def move_to_new!(script)
+      return script.rel_path unless script.in_sent_dir?
+
+      move_file(script, script.rel_path.sub(%r{\A#{Regexp.escape(Outbox::SENT_DIR)}/}o, "#{Outbox::NEW_DIR}/"))
     end
 
     # Moves the script file to +rel_path+ (under its data root); returns +rel_path+. A missing source file is not

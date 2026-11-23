@@ -1,5 +1,15 @@
--# 'On the server' section of the Outbox frame: sent ("not verified") and executed_unreported scripts, newest first.
-- status = remote_status&.payload.is_a?(Hash) ? remote_status.payload['status'] : nil
+-#
+  'On the server' section of the Outbox frame, newest first: failed, sent (queued on the server), applied,
+  deleted on server (missing_remote) and executed_unreported scripts. A queued script behind a failed one of the same
+  API is marked "blocked by #NNNN" (the server stops at the failed one).
+:ruby
+  status = remote_status&.payload.is_a?(Hash) ? remote_status.payload['status'] : nil
+  failed = on_server.select(&:failed?)
+  server_blocker = lambda do |script|
+    next unless script.sent?
+
+    failed.select { |item| item.target_api_url == script.target_api_url && item.seq < script.seq }.min_by(&:seq)
+  end
 %section.mb-4#outbox-on-server
   %h2.h5
     = t('outbox.sections.on_server')
@@ -10,6 +20,8 @@
           = t("outbox.remote_status.#{status}")
         - else
           = t('outbox.remote_status.checked', time: l(remote_status.taken_at.localtime, format: :short))
+  - if failed.any?
+    .alert.alert-danger#outbox-failed-alert{ role: 'alert' }= t('outbox.failed_alert', count: failed.size, file: failed.min_by(&:seq).filename)
   - if on_server.empty?
     %p.text-body-secondary= t('outbox.empty.on_server')
   - else
@@ -28,4 +40,5 @@
             %th= t('outbox.columns.pushed_at')
         %tbody
           - on_server.each do |script|
-            = render(Outbox::ScriptRowComponent.new(script:, focus: script.filename == focus, remote: true))
+            = render(Outbox::ScriptRowComponent.new(script:, focus: script.filename == focus, remote: true,
+                                                    server_blocker: server_blocker.call(script)))

@@ -1,0 +1,55 @@
+-#
+  Statistics of a commit report (Import::Committers::Main#stats, symbol keys). Locals: stats.
+:ruby
+  rows, totals = Ops::CommitReport.stat_rows(stats)
+  auto_fix_rows = {
+    'Team links auto-fixed' => stats[:team_links_auto_fixed].to_i,
+    'Affiliation links auto-fixed' => stats[:affiliation_links_auto_fixed].to_i,
+    t('data_import.data_fix.team_scores.skipped') => stats[:team_scores_skipped].to_i
+  }.select { |_label, count| count.positive? }
+  merge_rows = {
+    'Individual results merged' => stats[:mirs_merged].to_i,
+    'Laps moved by merge' => stats[:laps_merged].to_i
+  }.select { |_label, count| count.positive? }
+.card.mb-3
+  .card-header
+    %strong= t('data_fix.commit_report.stats')
+  .card-body
+    %table.table.table-sm.table-striped
+      %thead
+        %tr
+          %th= t('data_fix.commit_summary.entity')
+          %th.text-center= t('data_fix.commit_report.inserts')
+          %th.text-center= t('data_fix.commit_report.updates')
+      %tbody
+        - rows.each do |label, created, updated|
+          %tr
+            %td= label
+            %td.text-center= created
+            %td.text-center= updated
+        %tr.table-info.fw-bold
+          %td= t('data_fix.commit_report.total')
+          %td.text-center= totals.first
+          %td.text-center= totals.last
+
+- if auto_fix_rows.present?
+  .card.mb-3
+    .card-header.text-bg-warning
+      %strong Auto-Fix Summary
+    .card-body
+      %ul.mb-0
+        - auto_fix_rows.each do |label, count|
+          %li
+            %strong= count
+            = " #{label}"
+
+- if merge_rows.present?
+  .card.mb-3
+    .card-header.text-bg-info
+      %strong Merge Summary
+    .card-body
+      %ul.mb-0
+        - merge_rows.each do |label, count|
+          %li
+            %strong= count
+            = " #{label}"

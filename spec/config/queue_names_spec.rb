@@ -38,15 +38,15 @@ RSpec.describe 'Solid Queue queue names' do # rubocop:disable RSpec/DescribeClas
     served.include?('*') || served.include?(queue.to_s)
   end
 
-  it 'has a worker for the default, background, maintenance and outbox queues' do
-    expect(served_queues(env)).to include('default', 'background', 'maintenance', 'outbox')
+  it 'has a worker for the default, background, maintenance, outbox and pipeline queues' do
+    expect(served_queues(env)).to include('default', 'background', 'maintenance', 'outbox', 'pipeline')
   end
 
   it 'serves the queue of every job under app/jobs' do
     served = served_queues(env)
     jobs = app_jobs
     expect(jobs).to include(KpiRefreshJob, SeasonRecheckJob, Health::SeasonRunJob, Health::SweepJob, Outbox::PushJob,
-                            Outbox::RemoteStatusJob, Outbox::ImportLegacyJob)
+                            Outbox::RemoteStatusJob, Outbox::ImportLegacyJob, DataFixCommitJob)
     unserved = jobs.reject { |job| served?(job.new.queue_name, served) }.map { |job| "#{job.name} (#{job.new.queue_name})" }
     expect(unserved).to be_empty, "queues without a worker in config/queue.yml: #{unserved.join(', ')}"
   end

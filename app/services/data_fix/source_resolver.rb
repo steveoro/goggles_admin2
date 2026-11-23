@@ -149,11 +149,11 @@ module DataFix
       FileUtils.cp(lt4_path, backup_path)
       return lt4_path if materialize_lt4_working_copy(lt2_source_path: lt2_path, lt4_source_path: lt4_path).blank?
 
-      phase_backups = backup_phase_files(lt4_path, 1..5)
-      invalidated = invalidate_category_dependent_artifacts(lt4_path, phases: 1..5)
+      # (phase backups + deletion of the unedited phases: DataFix::Pipeline#invalidate!, which keeps edited phases)
+      invalidated = invalidate_phases!(lt4_path, phases: 1..5, reason: :manifest_superseded)
       Rails.logger.info(
         "[DataFix::SourceResolver] Manifest copy superseded by results: #{lt4_path} " \
-        "(backup=#{backup_path}; phase backups=#{phase_backups.inspect}; invalidated=#{invalidated.inspect})"
+        "(backup=#{backup_path}; invalidated=#{invalidated.inspect})"
       )
       lt4_path
     end
@@ -221,7 +221,7 @@ module DataFix
       return if result[:backup_path].blank?
 
       invalidate_parsed_source_json(source_path)
-      invalidated = invalidate_category_dependent_artifacts(source_path)
+      invalidated = invalidate_phases!(source_path, phases: [3, 4, 5], reason: :categories_normalized)
       Rails.logger.info(
         "[DataFix::SourceResolver] Normalized result categories in #{source_path} " \
         "(#{result[:result_categories_changed]} results, #{result[:swimmer_categories_changed]} swimmers; " \
@@ -424,23 +424,13 @@ module DataFix
       nil
     end
 
-    # Removes the phase files built on top of source_path (phases 3..5 by
-    # default, i.e. the ones depending on result categories) and the
-    # data_import_* temp rows bound to it.
-    def invalidate_category_dependent_artifacts(source_path, phases: [3, 4, 5])
-      phase_paths = phases.map { |phase| default_phase_path_for(source_path, phase) }
-      phase_paths.each { |path| FileUtils.rm_f(path) }
-
-      tables = [
-        GogglesDb::DataImportMeetingIndividualResult,
-        GogglesDb::DataImportLap,
-        GogglesDb::DataImportMeetingRelayResult,
-        GogglesDb::DataImportMeetingRelaySwimmer,
-        GogglesDb::DataImportRelayLap
-      ]
-      deleted_rows = tables.sum { |table| table.where(phase_file_path: source_path).delete_all }
-
-      { phase_files: phase_paths, deleted_temp_rows: deleted_rows }
+    # Invalidation request of a destructive branch (category normalization, manifest supersede): handed to
+    # DataFix::Pipeline#invalidate!, the only path deleting phase files. It backs the existing phase files up first
+    # and deletes nothing when one of them holds operator edits (the source is then marked blocked with reason
+    # 'source_changed_under_edits' and the step header offers "Rebuild (discard edits)").
+    def invalidate_phases!(source_path, phases:, reason:)
+      DataFix::Pipeline.for(source_path, progress: Import::Progress::Null.new, source_resolver: self)
+                       .invalidate!(phases: phases.to_a, reason:)
     end
 
     def category_recompute_summary(result)

@@ -45,8 +45,9 @@ RSpec.describe Outbox::PushJob do
     allow(Outbox).to receive(:data_root).and_return(data_root)
     stale = create_sql_script(data_root, 'results.new/262/0010-a-lt4.sql', state: 'pushing')
     travel_to(11.minutes.from_now) do
+      # (the DB sync warning of an API without fingerprints was ticked on the confirmation page)
       run = Ops::PushRun.create!(user_id: user.id, target_api_url: 'http://localhost:8081', target_env: 'unknown',
-                                 script_ids: [stale.id], status: 'running', started_at: Time.current)
+                                 script_ids: [stale.id], status: 'running', started_at: Time.current, drift_acknowledged: true)
       allow(APIProxy).to receive_messages(ping: APIProxy::Result.new(DummyResponse.new(body: '{"msg":"OK"}')), call: nil)
       described_class.perform_now(run.id)
       expect(stale.reload).to be_in_doubt

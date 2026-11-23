@@ -65,6 +65,35 @@ LT4 copy (`<base>-lt4.json`) is superseded by the LT4 rebuilt from the results
 (see AGENTS.md, *DataFix V2 canonical source handling*, exception 2).
 The whole weekly flow is driven from the Season board (`docs/season_board.md`).
 
+### Runner, verdicts and the commit job (phase 09)
+
+The review actions no longer orchestrate the builds themselves: `DataFix::Pipeline` (see TECHNICAL.md, *Pipeline
+runner*) builds each phase through one recipe, stamps it, checks it and stores a verdict.
+
+- **Stepper.** Each step tab shows the phase verdict and its issue count: *clean*, *needs review*, *blocked* (the
+  commit would fail), *stale* (an earlier step changed after the build), *build failed*, *not built*. The active step
+  shows a banner when it is stale (with a Rebuild link), and a note when it holds edits ("edited (pre-existing)" for
+  the files that existed before this release).
+- **Operator edits win.** Every save marks its phase as edited (`_meta.operator_edit`); an automatic rebuild never
+  rewrites or deletes an edited phase. Only the rescan link (with a confirmation) rebuilds an edited phase.
+- **Stale steps.** A Phase 4 event edit makes Phase 5 stale. Opening Step 5 then rebuilds it by itself when it holds
+  no edits, fixes or overwrite selections; otherwise the step asks first (Rebuild link).
+- **Source changed under edits.** When the category normalization or a manifest supersede would delete phase files
+  holding edits, nothing is deleted: the step header shows "the source file changed under your edits" with a
+  "Rebuild (discard edits)" button (POST, with a confirmation; `.orig` backups are kept).
+- **Review filter.** Saving a team or swimmer card confirms it (`confirmed: true`), so it leaves the "review" filter.
+  Gender-guessed swimmers are now in the filter (the 89.9 % value no longer hides them). The rules are in
+  `DataFix::ReviewRules`; confidently-new teams and swimmers do not send a step to review, they are listed by the
+  commit summary.
+- **Commit summary.** Step 5 links to `GET data_fix/commit_summary`: how the meeting was matched, existing / new
+  counts per entity, the new teams and swimmers, overwrite deletions, team scores, a fresh preflight
+  (`Import::CommitPreflight`) and one Commit button. Step 5 keeps its own Commit button (same POST).
+- **Commit job.** The Commit click creates a queued `Ops::CommitReport` and enqueues `DataFixCommitJob` on the
+  `pipeline` worker; the report page (`GET data_fix/commit_reports/:id`) refreshes until the job ends and can be
+  reopened from its URL. It links the Outbox script and shows the season checks of the triggered health runs.
+  "Committed, archiving failed" keeps its own state and its "Retry archiving" button. Without the ops DB the commit
+  is refused with the `bin/rails ops:prepare` notice.
+
 ---
 
 ## Phase 1: Meeting & Sessions
@@ -342,11 +371,17 @@ end
 **Status**: Individual ✅ Complete
 **Purpose**: Populate temporary DB tables for result review  
 **Populator**: `app/strategies/import/phase5_populator.rb`  
-**Solver**: `app/strategies/import/solvers/result_solver.rb`
+**Solver**: `app/strategies/import/solvers/result_solver.rb` (no longer part of the build since phase 09: the
+populator always rewrote its output)
 
 ### What It Does
-- **ResultSolver**: Builds phase5.json summary (event/result counts)
-- **Phase5Populator**: Populates `data_import_*` DB tables with detailed data
+- **Phase5Populator**: Populates `data_import_*` DB tables with detailed data and writes the phase5.json program
+  list (keeping the existing `_meta`: overwrite snapshot, edit markers, build stamp)
+- Truncate + insert run in one transaction; a key already staged by **another** source is reported as a collision
+  (Phase 5 blocked until that source is committed) instead of reusing its row; a parity check compares the source
+  rows with a category with the staged rows, per program
+- After each populate, `DataFix::ResultVerifier` binds the staged results having exactly one perfect duplicate in the
+  DB (never an overwrite merge target); `POST data_fix/verify_all_results` runs it again
 - Loads phases 1-4 to resolve all entity IDs
 - Matches existing MeetingIndividualResults for UPDATE vs INSERT decision
 
@@ -421,11 +456,14 @@ The toggle stores the candidate snapshot in Phase 5 metadata. Candidates are dis
 **Committer**: `app/strategies/import/committers/main.rb`
 
 ### What It Does
+- Runs in `DataFixCommitJob` (`DataFix::CommitRunner`), queued by the Commit click; the outcome is an
+  `Ops::CommitReport` (see *Runner, verdicts and the commit job* above)
 - Reads JSON files (phases 1-4) and DB tables (phase 5)
 - Commits all entities in dependency order
-- Generates SQL log for remote sync
+- Generates SQL log for remote sync, registered in the Outbox inside the local transaction
 - All operations in single transaction (rollback on error)
-- Moves source files to `results.done/` folder
+- Moves source files to `results.done/` folder; bumps `data_fix.db_generation` (matches of the other prepared
+  sources become stale: "Refresh matches")
 
 ### Structure-only commits
 

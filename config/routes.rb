@@ -79,7 +79,6 @@ Rails.application.routes.draw do
   put 'pdf/scan'
   put 'pdf/log_contents'
 
-  get 'data_fix/commit_phase6_report', to: 'data_fix/commits#commit_phase6_report'
   get 'data_fix/sessions', to: 'data_fix/sessions_list#index', as: 'data_fix_sessions'
   delete 'data_fix/sessions/purge', to: 'data_fix/sessions_list#purge', as: 'data_fix_sessions_purge'
   get 'data_fix/review_sessions', to: 'data_fix/sessions#review_sessions', as: 'review_sessions'
@@ -118,6 +117,17 @@ Rails.application.routes.draw do
   get 'data_fix/teams_for_swimmer/:swimmer_id', to: 'data_fix#teams_for_swimmer', as: 'data_fix_teams_for_swimmer'
 
   post 'data_fix/retry_archive', to: 'data_fix/commits#retry_archive', as: 'data_fix_retry_archive'
+  # (phase 09) pipeline runner: discard edits after a source change, refresh matches, verify all, commit summary + job,
+  # persistent commit report (with its polled status frame and its lazy health-runs frame)
+  post 'data_fix/discard_phase_edits', to: 'data_fix/sessions#discard_phase_edits', as: 'data_fix_discard_phase_edits'
+  post 'data_fix/refresh_matches', to: 'data_fix/commits#refresh_matches', as: 'data_fix_refresh_matches'
+  post 'data_fix/verify_all_results', to: 'data_fix/results#verify_all_results', as: 'data_fix_verify_all_results'
+  get 'data_fix/commit_summary', to: 'data_fix/commits#summary', as: 'data_fix_commit_summary'
+  get 'data_fix/commit_reports/:id', to: 'data_fix/commit_reports#show', as: 'data_fix_commit_report', constraints: { id: /\d+/ }
+  get 'data_fix/commit_reports/:id/status', to: 'data_fix/commit_reports#status', as: 'data_fix_commit_report_status',
+                                            constraints: { id: /\d+/ }
+  get 'data_fix/commit_reports/:id/health', to: 'data_fix/commit_reports#health', as: 'data_fix_commit_report_health',
+                                            constraints: { id: /\d+/ }
 
   # SQL Outbox (phase 07): the old Push page only redirects here.
   get 'push/index', to: 'push#index', as: 'push_index'
@@ -129,6 +139,10 @@ Rails.application.routes.draw do
   %w[hold release apply_locally discard resolve].each do |action|
     post "outbox/:id/#{action}", to: "outbox##{action}", as: "#{action}_outbox_script", constraints: { id: /\d+/ }
   end
+  # (08: remote outcome actions on a failed script; 'retry' is a Ruby keyword, hence the action name)
+  post 'outbox/:id/retry', to: 'outbox#retry_remote', as: 'retry_outbox_script', constraints: { id: /\d+/ }
+  post 'outbox/:id/withdraw', to: 'outbox#withdraw', as: 'withdraw_outbox_script', constraints: { id: /\d+/ }
+  post 'outbox/:id/abandon', to: 'outbox#abandon', as: 'abandon_outbox_script', constraints: { id: /\d+/ }
 
   # Datagrid-actioned routes: (use prefix to avoid clashing w/ Engine resource routes)
   resources :api_badges, only: %i[index create update]
@@ -191,9 +205,14 @@ Rails.application.routes.draw do
   post 'settings/api_target_label', to: 'settings#api_target_label', as: 'settings_api_target_label'
   delete 'settings', to: 'settings#destroy', as: 'settings_destroy'
 
-  # Log of the API calls that may have changed the remote data (ops DB) + drift v0 acknowledgement:
+  # Log of the API calls that may have changed the remote data (ops DB) + their acknowledgement:
   get 'remote_writes', to: 'remote_writes#index', as: 'remote_writes'
   post 'remote_writes/acknowledge', to: 'remote_writes#acknowledge', as: 'remote_writes_acknowledge'
+
+  # DB sync (phase 08): the local DB vs the API's DB fingerprints (ops DB rows; see DbSyncController, Drift::*):
+  get 'db_sync', to: 'db_sync#show', as: 'db_sync'
+  post 'db_sync/check', to: 'db_sync#check', as: 'db_sync_check'
+  post 'db_sync/acknowledge', to: 'db_sync#acknowledge', as: 'db_sync_acknowledge'
 
   # Closed-season data health report (local mirror; ops DB findings & runs, see HealthController & Health::*):
   scope format: false do

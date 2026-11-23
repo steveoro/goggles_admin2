@@ -9,7 +9,7 @@ The files keep their conventions: `crawler/data/results.new/<folder>/NNNN-<name>
 | Section | Lists | Filter |
 |---|---|---|
 | Needs push | `pending`, `held`, `pushing`, `in_doubt`, by sequence; a lock badge "after NNNN" marks a script waiting for a lower one | never filtered: every folder |
-| On the server | `sent` ("sent, not verified"), `executed_unreported` ("executed, outcome not reported"), newest first | default: the default season folder + `misc`; "all folders" |
+| On the server | `failed` (always listed, whatever the filter), `sent` ("sent, not verified": queued on the server), `applied`, `missing_remote` ("deleted on server"), `executed_unreported` ("executed, outcome not reported"), newest first; a queued script behind a failed one is marked **blocked by #NNNN** | default: the default season folder + `misc`; "all folders" |
 | History (collapsed) | `legacy_sent`, `archived`, `discarded`, `missing` | same |
 
 - `?focus=<filename>` scrolls to and highlights a row: the Season board **Push** button, the board header counter, the commit report and the dashboard inbox item open the Outbox this way.
@@ -20,8 +20,8 @@ The files keep their conventions: `crawler/data/results.new/<folder>/NNNN-<name>
 
 ## Pushing
 
-1. **Push next**, **Push all (N)**, **Push selected** (checkboxes) or **Push this script** open the confirmation page: the ordered list, the total size, the target API URL, its environment (a port guess, labelled "unverified" until phase 08), a fresh ping (reachability, maintenance flag, API version) and the validity of your API session.
-2. Type the environment label (`production` or `unknown`) and confirm. The environment is never verified in this phase, so the label is always asked.
+1. **Push next**, **Push all (N)**, **Push selected** (checkboxes) or **Push this script** open the confirmation page: the ordered list, the total size, the target API URL, its environment, a fresh ping (reachability, maintenance flag, API version), the validity of your API session and the [DB sync](db_sync.md) verdict. The ping is stored as the `api.status` snapshot first: an API 0.10.81 or later reports its own environment ("reported by the API"); an older one gets the port guess, labelled "unverified".
+2. Type the environment label only for an unverified or non-production target. When the DB sync check warns (amber, red or unknown: a push is never blocked by it, the server now stops at a colliding script and reports it), tick "I have read the DB sync warning". Confirm.
 3. The push runs as `Outbox::PushJob` on its own single-thread `outbox` worker: one script after the other, in sequence order, **stopping at the first error**.
 
 Rules:
@@ -31,7 +31,8 @@ Rules:
 - Before each POST: the file must be unchanged (sha256) and the script still pending; `pushing` is saved **before** the POST.
 - Accepted (`new.id > 0`): remote id, target and time stored, file moved into `results.sent/<folder>/`, state `sent`.
 - Rejected or unreachable: back to `pending` with the error, the run stops.
-- An unreachable target or an expired JWT aborts the run before the first POST.
+- An unreachable target or an expired JWT aborts the run before the first POST; so does a DB sync verdict that turned to a warning after a click without the tick (`Drift::Gate`, scope `:push`, re-checked by `Outbox::Pusher` with the tick stored on the run).
+- After each run a DB sync check is queued (`DriftCheckJob`, trigger `post_push`).
 - `Outbox::PushJob` is enqueued only by `OutboxController#push` after the confirmation (a spec scans `app/` for it); no retry, ever: a failure is recorded on the run (`Ops::PushRun`: running, finished, stopped, aborted).
 
 ## States
@@ -60,7 +61,20 @@ Rules:
 - **in doubt**: a push was interrupted (the job died between the POST and the move). It is never re-posted automatically (an explicit-id INSERT would fail, an UPDATE-only script would apply twice): look it up in the remote import queue, then **mark sent** (with its id), **back to pending** or **discard**.
 - **discarded**: with a note; the file goes to `results.new/discarded/<folder>/`, never scanned again.
 - **missing**: the file is gone from disk; it gets its previous state back when it reappears.
-- **sent → executed_unreported**: `Outbox::RemoteStatusJob` (recurring every 2 minutes, also queued by the page) asks `GET import_queue/:id` with the stored admin JWT for every script pushed to the configured API at least 5 minutes ago; a null answer (the row was processed and deleted) means executed. With an expired JWT it changes nothing ("sign in to refresh"). Phase 08 adds the real outcome (applied / failed).
+- **sent → executed_unreported**: `Outbox::RemoteStatusJob` (recurring every 2 minutes, also queued by the page) asks `GET import_queue/:id` with the stored admin JWT for every script pushed to the configured API at least 5 minutes ago; a null answer (the row was processed and deleted) means executed. With an expired JWT it changes nothing ("sign in to refresh"). This is the behaviour against an API older than 0.10.81.
+
+## Outcomes (goggles_api / goggles_main 0.10.81)
+
+With an API that reports the batch outcomes (capability `iq_batch_outcome` in its `status` answer, see `APICapabilities`), the Main app runs the queued scripts in id order, stops at the first failure and keeps the rows (applied ones for 14 days). `Outbox::RemoteStatusJob` reads each `sent` script's row (`Outbox::RemoteStatus`: queued, running, applied, failed, gone):
+
+- **applied**: the server ran it.
+- **failed**: the server error text (MariaDB) is shown on the script page and as an inbox "push failed" item; the file moves back to `results.new/<folder>/` (the board row returns to "SQL to push"). **Nothing after it runs on the server** until you act:
+  - **Retry on the server**: the file is unchanged, the cause was fixed on the server: `PUT import_queue/:id {error_messages: '', process_runs: 0}`, the script is `sent` again, same queue id, same order;
+  - **Withdraw** (this one and every later queued script of the same API): each server row that has not run is deleted, highest number first, the files go back to `results.new` and the scripts to `pending` (`withdrawn_at` noted). Edit the file, then **Push all**: the fixed script goes first, the others follow in order. An edited file can only be withdrawn, never retried;
+  - **Delete from the server and discard** (note required): state `withdrawn` (History), file moved to `results.new/discarded/`; the later scripts then run.
+- **gone** (the row vanished although the API keeps them): `missing_remote`, "deleted on server" (outcome unknown).
+- A script `pending` behind a `failed` one is blocked like behind a pending one (the order on the server must hold).
+- **in doubt**: with capability `iq_batch_filters` the job also looks the in-doubt scripts up in `import_queues?batch_sql=true` by file checksum (`data_file_checksum`, base64 MD5) and marks a match `sent` with its queue id (never re-posted).
 
 ## Producers
 
@@ -105,11 +119,11 @@ bin/rails outbox:status             # counts per state, next script, last runs
 
 ## Dashboard and other links
 
-- The "Needs you" source in the `pending_sql` slot is `Outbox::InboxSource` (`Inbox::Registry.replace(:pending_sql, ...)`), reading `Outbox::Summary.call` (`pending`, `held`, `in_doubt`, `sent_unverified`, `oldest_pending`): one push item (oldest script focused), one failed-band item for pushes in doubt, one notice for held-only scripts. Without the ops DB it falls back to the disk list (`Inbox::Sources::PendingSql`).
-- The import queue grid (`/api_import_queues`) shows the `batch_sql` flag and links a pushed batch to its Outbox entry (by remote id).
+- The "Needs you" source in the `pending_sql` slot is `Outbox::InboxSource` (`Inbox::Registry.replace(:pending_sql, ...)`), reading `Outbox::Summary.call` (`pending`, `held`, `in_doubt`, `sent_unverified`, `oldest_pending`, `failed`): one failed-band "push failed" item (first failed script), one push item (oldest script focused), one failed-band item for pushes in doubt, one notice for held-only scripts. Without the ops DB it falls back to the disk list (`Inbox::Sources::PendingSql`).
+- The import queue grid (`/api_import_queues`) shows the `batch_sql` flag and links a pushed batch to its Outbox entry (by remote id); with an API 0.10.81 or later also the attached file name and an excerpt of the server error (full text as tooltip). The dashboard "Import queues" counter counts the unfinished rows only (`done=false`).
 
 ## Tables (ops DB)
 
-- `sql_scripts` (`Ops::SqlScript`): `seq` (unique), `rel_path` (unique, under `crawler/data`), `filename`, `folder`, `season_id`, `kind`, `sha256` (indexed, used to follow moves), `byte_size`, `file_mtime`, `state`, `previous_state`, `held_reason`, `applied_locally` (nil = unknown), `single_transaction`, `origin` (JSON), `target_api_url`, `target_env`, `remote_iq_id`, `push_attempts`, `pushed_at`, `remote_checked_at`, `resolved_at`, `last_error` (4 KB), `changed_after_push`, `note`.
-- `push_runs` (`Ops::PushRun`): `user_id`, `target_api_url`, `target_env`, `script_ids`, `status`, `pushed_count`, `stopped_at_script_id`, `error`, `override_order`, `job_id`, `started_at`, `finished_at`.
+- `sql_scripts` (`Ops::SqlScript`): `seq` (unique), `rel_path` (unique, under `crawler/data`), `filename`, `folder`, `season_id`, `kind`, `sha256` (indexed, used to follow moves), `byte_size`, `file_mtime`, `state`, `previous_state`, `held_reason`, `applied_locally` (nil = unknown), `single_transaction`, `origin` (JSON), `target_api_url`, `target_env`, `remote_iq_id`, `push_attempts`, `pushed_at`, `remote_checked_at`, `resolved_at`, `last_error` (4 KB), `changed_after_push`, `note`; 08: `remote_outcome_at`, `remote_error` (16 KB), `withdrawn_at`.
+- `push_runs` (`Ops::PushRun`): `user_id`, `target_api_url`, `target_env`, `script_ids`, `status`, `pushed_count`, `stopped_at_script_id`, `error`, `override_order`, `job_id`, `started_at`, `finished_at`; 08: `drift_acknowledged`.
 - Settings: `outbox.last_seq` (sequence floor), `outbox.reconciled_at` (throttle), `outbox.legacy_imported_at`. Snapshot: `outbox.remote_status`.

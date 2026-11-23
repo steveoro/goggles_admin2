@@ -19,9 +19,9 @@ RSpec.describe SystemStatus::RefreshJob do
     expect { described_class.perform_later }.to have_enqueued_job(described_class).on_queue('default')
   end
 
-  it 'pings the API once (short timeouts), writes the api.status and system_status.crawler snapshots, and enqueues the drift check' do
-    expect { expect(described_class.perform_now).to eq(%i[api crawler drift_v0]) }
-      .to have_enqueued_job(DriftCheckJob).with(base_url: api_url)
+  it 'pings the API once (short timeouts), writes the api.status and system_status.crawler snapshots, and enqueues the DB sync check' do
+    expect { expect(described_class.perform_now).to eq(%i[api crawler db_sync]) }
+      .to have_enqueued_job(DriftCheckJob).with(trigger: 'schedule', base_url: api_url)
     expect(APIProxy).to have_received(:ping).with(api_url, open_timeout: 3, timeout: 5).once
     expect(APIProxy).not_to have_received(:call)
     expect(Ops::Snapshot.read("api.status:#{api_url}").payload).to include('reachable' => true, 'version' => '7.2')
@@ -29,24 +29,32 @@ RSpec.describe SystemStatus::RefreshJob do
   end
 
   it 'skips the snapshots refreshed less than a minute ago, unless forced' do
-    Ops::Snapshot.write!("drift_v0:#{api_url}", { 'status' => 'ok' })
+    FactoryBot.create(:ops_db_fingerprint, api_base_url: api_url)
     described_class.perform_now
     expect(described_class.perform_now).to eq([])
     expect(APIProxy).to have_received(:ping).once
-    expect(described_class.perform_now(force: true)).to eq(%i[api crawler drift_v0])
+    expect(described_class.perform_now(force: true)).to eq(%i[api crawler db_sync])
     expect(APIProxy).to have_received(:ping).twice
   end
 
-  it 'asks for a drift check only when its snapshot is missing or older than 45 minutes' do
-    Ops::Snapshot.write!("drift_v0:#{api_url}", { 'status' => 'ok' })
+  it 'asks for a DB sync check only when the last full check is missing or older than 45 minutes' do
+    row = FactoryBot.create(:ops_db_fingerprint, api_base_url: api_url)
     expect { described_class.perform_now }.not_to have_enqueued_job(DriftCheckJob)
-    Ops::Snapshot.find_by(key: "drift_v0:#{api_url}").update!(taken_at: 50.minutes.ago)
+    row.update!(taken_at: 50.minutes.ago)
     expect { described_class.perform_now(force: true) }.to have_enqueued_job(DriftCheckJob)
+  end
+
+  it 'stores the environment and the capabilities reported by the API (phase 08)' do
+    allow(APIProxy).to receive(:ping)
+      .and_return(DummyResponse.new(body: { msg: 'OK', version: '7.3', environment: 'production', capabilities: %w[db_fingerprint] }.to_json))
+    described_class.perform_now
+    expect(Ops::Snapshot.read("api.status:#{api_url}").payload)
+      .to include('environment' => 'production', 'capabilities' => %w[db_fingerprint])
   end
 
   it 'keeps going when a probe fails' do
     allow(CrawlerClient).to receive(:new).and_raise(RuntimeError, 'boom')
-    expect(described_class.perform_now).to eq(%i[api drift_v0])
+    expect(described_class.perform_now).to eq(%i[api db_sync])
   end
 
   it 'does nothing with the ops DB missing' do

@@ -16,7 +16,18 @@ RSpec.describe SystemStatus::APISnapshot do
     snapshot = described_class.read(api_url)
     expect(snapshot.source).to eq('settings')
     expect(snapshot.payload).to eq('url' => api_url, 'reachable' => true, 'code' => 200, 'version' => '7.2',
-                                   'msg' => 'OK', 'error' => nil)
+                                   'msg' => 'OK', 'error' => nil, 'environment' => nil, 'capabilities' => nil)
+  end
+
+  it 'stores the environment and the capabilities reported by an API 0.10.81 or later (phase 08)' do
+    body = { msg: 'OK', version: '7.3', environment: 'production', capabilities: %w[iq_batch_outcome db_fingerprint] }
+    described_class.write!(api_url, DummyResponse.new(body: body.to_json), source: 'system_status')
+    expect(described_class.read(api_url).payload)
+      .to include('environment' => 'production', 'capabilities' => %w[iq_batch_outcome db_fingerprint])
+
+    # (a later 'status' answer without them, e.g. an API rolled back, drops them at once)
+    described_class.write!(api_url, DummyResponse.new(body: { msg: 'OK', version: '7.2' }.to_json), source: 'system_status')
+    expect(described_class.read(api_url).payload).to include('environment' => nil, 'capabilities' => nil)
   end
 
   it 'stores an unreachable server with its error detail' do
@@ -28,9 +39,11 @@ RSpec.describe SystemStatus::APISnapshot do
   end
 
   it 'keeps the known version when a later reachable answer has none (e.g. the sign-in)' do
-    described_class.write!(api_url, DummyResponse.new(body: { msg: 'OK', version: '7.2' }.to_json), source: 'system_status')
+    body = { msg: 'OK', version: '7.2', environment: 'development', capabilities: %w[db_fingerprint] }
+    described_class.write!(api_url, DummyResponse.new(body: body.to_json), source: 'system_status')
     described_class.write!(api_url, DummyResponse.new(body: { jwt: 'x' }.to_json), source: 'sign_in')
-    expect(described_class.read(api_url).payload).to include('reachable' => true, 'version' => '7.2')
+    expect(described_class.read(api_url).payload)
+      .to include('reachable' => true, 'version' => '7.2', 'environment' => 'development', 'capabilities' => %w[db_fingerprint])
   end
 
   it 'does nothing (and never raises) with the ops DB missing' do

@@ -41,6 +41,15 @@ RSpec.describe Outbox::InboxSource do
     expect(items.first).to have_attributes(band: :failed)
   end
 
+  it "adds a failed-band 'push failed' item opening the first script failed on the server (phase 08)" do
+    script = create_sql_script(data_root, 'results.new/262/0010-a-lt4.sql', state: 'failed', remote_iq_id: 9123,
+                                                                            remote_error: 'ERROR 1062 (23000) at line 412')
+    expect(items.map(&:key)).to eq(['outbox_failed'])
+    expect(items.first).to have_attributes(band: :failed, count: 1, title: I18n.t('inbox.pending_sql.failed', count: 1))
+    expect(items.first.detail).to eq('0010-a-lt4.sql: ERROR 1062 (23000) at line 412')
+    expect(items.first.action.path).to eq("/outbox/#{script.id}")
+  end
+
   it 'notes the held scripts when nothing else is pending' do
     create_sql_script(data_root, 'results.new/normalize/0002-normalize_coded_names.sql', state: 'held', held_reason: 'not_applied_locally')
     expect(items.map(&:key)).to eq(['outbox_held'])

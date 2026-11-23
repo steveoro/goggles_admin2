@@ -18,8 +18,9 @@ module Outbox
   # selected too, unless +override_order+ (an explicit operator choice). Held scripts never block.
   #
   # == Target
-  # The configured API (Shell::APITarget). Until phase 08 its environment is a port guess, never verified: the
-  # operator must type the environment label (#label_required?) to confirm.
+  # The configured API (Shell::APITarget). Its environment is the one reported by the API in its last 'status'
+  # answer (phase 08: the confirmation page pings it first), else the port guess, unverified. The operator types the
+  # environment label (#label_required?) only for an unverified or non-production target.
   #
   class PushPlan
     SCOPES = %w[all_pending next].freeze
@@ -66,11 +67,12 @@ module Outbox
 
     delegate :url, to: :target, prefix: true
 
-    # Environment label of the target ('production' or 'unknown'; phase 08 reports the real one).
-    def environment = target.guess.to_s
+    # Environment of the target: reported by the API ('production', 'development', ...), else the port guess
+    # ('production' or 'unknown').
+    delegate :environment, to: :target
 
-    # The environment comes from a port guess in this phase: never verified.
-    def verified? = false
+    # True when the environment was reported by the API itself.
+    delegate :verified?, to: :target
 
     # The operator types the environment label for an unverified or non-production target.
     def label_required?

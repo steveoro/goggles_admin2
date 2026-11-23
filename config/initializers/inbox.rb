@@ -2,7 +2,7 @@
 
 # Dashboard inbox ("Needs you") sources, in order (see Inbox::Registry and docs/dashboard.md).
 # Later phases add theirs here (06: health; 10: ready to commit / needs review / prepare failed) or replace
-# one of these (07: Inbox::Registry.replace(:pending_sql, ...); 08: :drift).
+# one of these (07: Inbox::Registry.replace(:pending_sql, ...)).
 Rails.application.config.to_prepare do
   [
     Inbox::Sources::Blockers,
@@ -12,7 +12,7 @@ Rails.application.config.to_prepare do
     Inbox::Sources::UnmatchedSources,
     Inbox::Sources::DataFixSessions,
     Inbox::Sources::FINChange,
-    Inbox::Sources::Drift,
+    Drift::InboxSource, # (key :drift; 08: the DB fingerprint verdict took the slot of the 05 drift v0 source)
     Health::InboxSource # (key :health: data health errors per season & group, failed runs, overdue sweep)
   ].each { |source| Inbox::Registry.register(source) }
 

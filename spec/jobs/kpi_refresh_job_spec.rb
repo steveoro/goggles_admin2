@@ -12,7 +12,9 @@ RSpec.describe KpiRefreshJob do
 
   def stub_counter(endpoint, total: nil, status: 200, body: '[]')
     headers = total ? { 'Total' => total.to_s, 'Per-Page' => '1', 'Page' => '1' } : {}
-    WebMock.stub_request(:get, "#{api_url}/api/v3/#{endpoint}").with(query: { per_page: '1' })
+    # (08: the import queue counter asks for the unfinished rows only)
+    query = endpoint == 'import_queues' ? { per_page: '1', done: 'false' } : { per_page: '1' }
+    WebMock.stub_request(:get, "#{api_url}/api/v3/#{endpoint}").with(query:)
            .to_return(status:, body:, headers:)
   end
 
@@ -37,7 +39,10 @@ RSpec.describe KpiRefreshJob do
 
     expect(stubs).to all(have_been_requested.once)
     expect(APIProxy).to have_received(:call)
-      .with(hash_including(method: :get, jwt:, params: { per_page: 1 }, open_timeout: 5, timeout: 10)).exactly(4).times
+      .with(hash_including(method: :get, jwt:, params: { per_page: 1 }, open_timeout: 5, timeout: 10)).exactly(3).times
+    # (only the unfinished import queue rows: applied SQL batches are kept 14 days on the server since 08)
+    expect(APIProxy).to have_received(:call)
+      .with(hash_including(method: :get, url: 'import_queues', params: { per_page: 1, done: false })).once
     snapshot = Ops::Snapshot.read(key)
     expect(snapshot.payload).to eq(payload)
     expect(payload).to include('url' => api_url, 'status' => 'ok', 'errors' => {},

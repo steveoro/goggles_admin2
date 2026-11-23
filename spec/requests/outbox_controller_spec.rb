@@ -178,15 +178,63 @@ RSpec.describe OutboxController do
         expect(Ops::PushRun.count).to eq(0)
       end
 
-      it 'creates the run and enqueues the push job after the confirmation' do
+      it 'creates the run and enqueues the push job after the confirmation (DB sync warning ticked)' do
         allow(Outbox::Pusher).to receive(:jwt_valid?).and_return(true)
         expect do
-          post outbox_push_path, params: { confirmed: '1', scope: 'all_pending', confirm_label: 'unknown' }
+          post outbox_push_path, params: { confirmed: '1', scope: 'all_pending', confirm_label: 'unknown', drift_ack: '1' }
         end.to have_enqueued_job(Outbox::PushJob)
         run = Ops::PushRun.last
         expect(run).to have_attributes(status: 'running', user_id: admin_user.id, script_ids: [first.id, second.id],
-                                       target_env: 'unknown', override_order: false)
+                                       target_env: 'unknown', override_order: false, drift_acknowledged: true)
         expect(response).to redirect_to(outbox_path(run: run.id))
+      end
+
+      describe 'the DB sync gate (scope :push) and the API-reported environment (phase 08)' do
+        let(:api_url) { Shell::APITarget.configured_url }
+        let(:verified_ping) do
+          body = { msg: 'OK', version: '7.3', environment: 'production', capabilities: %w[iq_batch_outcome] }
+          APIProxy::Result.new(DummyResponse.new(body: body.to_json))
+        end
+
+        before(:each) { allow(Outbox::Pusher).to receive(:jwt_valid?).and_return(true) }
+
+        it "shows the 'unknown' verdict (API without fingerprints) with the tick on the confirmation page" do
+          get new_outbox_push_path(scope: 'all_pending')
+          expect(page.at_css('#outbox-push-db-sync')['data-gate-level']).to eq('warn')
+          expect(page.at_css('#outbox-push-db-sync #drift-indicator')['data-drift-verdict']).to eq('unknown')
+          expect(page.at_css('#outbox-push-drift input#drift_ack[required]')).to be_present
+          expect(Ops::DbFingerprint.last).to have_attributes(trigger: 'gate', mode: 'light', verdict: 'unknown')
+        end
+
+        it 'refuses the push without the tick when the gate warns' do
+          expect do
+            post outbox_push_path, params: { confirmed: '1', scope: 'all_pending', confirm_label: 'unknown' }
+          end.not_to change(Ops::PushRun, :count)
+          expect(response).to redirect_to(new_outbox_push_path(scope: 'all_pending'))
+          expect(flash[:alert]).to start_with(I18n.t('db_sync.gate.summary', verdict: I18n.t('db_sync.verdicts.unknown')))
+        end
+
+        it 'warns on a red verdict (never blocks a push) and pushes with the tick' do
+          FactoryBot.create(:ops_db_fingerprint, :red, api_base_url: api_url)
+          get new_outbox_push_path(scope: 'all_pending')
+          expect(page.at_css('#outbox-push-drift').text).to include(I18n.t('outbox.push.drift_red').first(30))
+          expect do
+            post outbox_push_path, params: { confirmed: '1', scope: 'all_pending', confirm_label: 'unknown', drift_ack: '1' }
+          end.to have_enqueued_job(Outbox::PushJob)
+        end
+
+        it 'needs neither the tick nor the typed label on a green verdict against a production API that says so' do
+          allow(APIProxy).to receive(:ping).and_return(verified_ping)
+          FactoryBot.create(:ops_db_fingerprint, api_base_url: api_url)
+          get new_outbox_push_path(scope: 'all_pending')
+          expect(page.at_css('#outbox-push-environment').text).to include('production', I18n.t('outbox.push.verified'))
+          expect(page.at_css('input#confirm_label')).to be_nil
+          expect(page.at_css('#outbox-push-drift')).to be_nil
+          expect(SystemStatus::APISnapshot.read(api_url).payload).to include('environment' => 'production')
+
+          expect { post outbox_push_path, params: { confirmed: '1', scope: 'all_pending' } }.to have_enqueued_job(Outbox::PushJob)
+          expect(Ops::PushRun.last).to have_attributes(target_env: 'production', drift_acknowledged: false)
+        end
       end
 
       it 'refuses a second run while one is live' do
@@ -196,6 +244,73 @@ RSpec.describe OutboxController do
           post outbox_push_path, params: { confirmed: '1', scope: 'all_pending', confirm_label: 'unknown' }
         end.not_to have_enqueued_job(Outbox::PushJob)
         expect(flash[:alert]).to eq(I18n.t('outbox.flash.run_in_progress'))
+      end
+    end
+
+    describe 'remote actions on a failed script (phase 08)' do
+      let(:api_url) { 'http://localhost:8081' }
+      let!(:failed) do
+        script('results.new/misc/0011-merge_teams-1-2.sql', state: 'failed', remote_iq_id: 9123, target_api_url: api_url,
+                                                            target_env: 'production', remote_error: 'ERROR 1062 (23000)')
+      end
+      let!(:later) do
+        script('results.sent/misc/0012-merge_teams-3-4.sql', state: 'sent', remote_iq_id: 9124, target_api_url: api_url,
+                                                             target_env: 'production')
+      end
+
+      def json_answer(body)
+        APIProxy::Result.new(DummyResponse.new(body: body.to_json))
+      end
+
+      before(:each) do
+        body = { msg: 'OK', environment: 'production', capabilities: %w[iq_batch_outcome] }
+        SystemStatus::APISnapshot.write!(api_url, DummyResponse.new(body: body.to_json), source: 'system_status')
+        allow(Outbox::Pusher).to receive(:jwt_valid?).and_return(true)
+      end
+
+      it 'shows the server error, Retry, Withdraw and the discard form on the script page' do
+        get outbox_script_path(failed)
+        expect(page.at_css('#outbox-script-remote-error').text).to include('ERROR 1062')
+        expect(page.at_css('#btn-outbox-retry')).to be_present
+        expect(page.at_css('#btn-outbox-withdraw').text).to include('2')
+        expect(page.at_css('#frm-outbox-abandon')).to be_present
+      end
+
+      it 'marks the later queued scripts "blocked by #0011" in the Outbox' do
+        get outbox_path(folder: 'all')
+        expect(page.at_css('#outbox-failed-alert')).to be_present
+        expect(page.at_css("#outbox-script-#{later.id} .outbox-server-blocked").text).to include('#0011')
+      end
+
+      it 'retries an unchanged failed script in place' do
+        allow(APIProxy).to receive(:call).and_return(json_answer(true))
+        post retry_outbox_script_path(failed)
+        expect(APIProxy).to have_received(:call)
+          .with(hash_including(method: :put, url: 'import_queue/9123', payload: { error_messages: '', process_runs: 0 }))
+        expect(failed.reload).to have_attributes(state: 'sent', rel_path: 'results.sent/misc/0011-merge_teams-1-2.sql')
+        expect(flash[:notice]).to eq(I18n.t('outbox.flash.retried', file: failed.filename))
+      end
+
+      it 'withdraws the failed script and the later queued one (highest seq first), back to pending' do
+        calls = []
+        allow(APIProxy).to receive(:call) do |options|
+          calls << [options[:method], options[:url]]
+          options[:method] == :get ? json_answer('id' => 1, 'done' => false, 'process_runs' => 0) : json_answer(true)
+        end
+        post withdraw_outbox_script_path(failed)
+        expect(calls).to eq([[:get, 'import_queue/9124'], [:delete, 'import_queue/9124'], [:get, 'import_queue/9123'],
+                             [:delete, 'import_queue/9123']])
+        expect([failed.reload.state, later.reload.state]).to eq(%w[pending pending])
+        expect(later.rel_path).to eq('results.new/misc/0012-merge_teams-3-4.sql')
+        expect(flash[:notice]).to eq(I18n.t('outbox.flash.withdrawn', file: failed.filename, count: 2))
+      end
+
+      it 'refuses the remote actions with an expired API session' do
+        allow(Outbox::Pusher).to receive(:jwt_valid?).and_return(false)
+        allow(APIProxy).to receive(:call)
+        post retry_outbox_script_path(failed)
+        expect(flash[:alert]).to eq(I18n.t('outbox.flash.jwt_invalid'))
+        expect(APIProxy).not_to have_received(:call)
       end
     end
   end

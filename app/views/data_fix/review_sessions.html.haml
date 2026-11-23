@@ -14,7 +14,7 @@
     = link_to('< Back to file list', pull_result_files_path, class: 'btn btn-outline-secondary mr-2')
     = form_tag(recompute_source_categories_path, method: :post, class: 'd-inline') do
       = hidden_field_tag(:file_path, @file_path)
-      %button.btn.btn-warning{ type: 'submit', data: { turbo_confirm: t('data_import.data_fix.category_recompute_confirm') } }
+      %button.btn.btn-warning{ type: 'submit', data: { turbo_confirm: @recompute_confirm } }
         %i.fa.fa-refresh
         = t('data_import.data_fix.category_recompute_button')
     = link_to(t('data_import.data_fix.proceed_to_teams'), review_teams_path(request.query_parameters.merge(phase2_v2: 1)),

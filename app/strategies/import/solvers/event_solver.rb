@@ -10,8 +10,10 @@ module Import
     #
     # It does not persist any DB records; it only prepares the JSON for UI review.
     class EventSolver
-      def initialize(season:)
+      # (+progress+ is accepted for a uniform solver interface: the Phase 4 build reports no progress)
+      def initialize(season:, progress: nil)
         @season = season
+        @progress = progress || Import::Progress::Null.new
       end
 
       # opts:

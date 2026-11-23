@@ -6,7 +6,9 @@ module Outbox
   #
   # The dashboard "Needs you" source of the SQL Outbox, registered in the slot of the phase 05 source
   # (<tt>Inbox::Registry.replace(:pending_sql, Outbox::InboxSource)</tt>, config/initializers/inbox.rb).
-  # Reads Outbox::Summary only (read only, two queries):
+  # Reads Outbox::Summary only (read only, a few queries):
+  # - scripts failed on the server (phase 08) => one 'failed'-band item "push failed" opening the first one (the
+  #   server runs nothing after it until it is retried, withdrawn or discarded);
   # - in-doubt pushes        => one 'failed'-band item (they need a decision by hand);
   # - scripts to push        => one grouped 'push'-band item opening the Outbox on the oldest pending script;
   # - only held scripts left => one 'notice'-band item.
@@ -27,10 +29,26 @@ module Outbox
       summary = Outbox::Summary.call
       return [] if summary.nil?
 
-      [in_doubt_item(summary, context), pending_item(summary, context), held_item(summary, context)].compact
+      [failed_item(summary, context), in_doubt_item(summary, context), pending_item(summary, context),
+       held_item(summary, context)].compact
     end
 
     private
+
+    def failed_item(summary, context)
+      return if summary.failed.zero?
+
+      first = Ops::SqlScript.failed.ordered.first
+      item(key: 'outbox_failed', kind: :push_failed, band: :failed, count: summary.failed,
+           title: t(:failed, count: summary.failed), detail: failed_detail(first), subject: { sql_script_id: first&.id },
+           action: action(t(:fix), first ? url_helpers.outbox_script_path(first) : url_helpers.outbox_path),
+           since: first&.remote_outcome_at || first&.updated_at || context.now)
+    end
+
+    # "<file>: <first words of the server error>"
+    def failed_detail(script)
+      [script&.filename, script&.remote_error.to_s.squish.truncate(120).presence].compact.join(': ')
+    end
 
     def in_doubt_item(summary, context)
       return if summary.in_doubt.zero?

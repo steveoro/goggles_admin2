@@ -13,10 +13,13 @@ module Outbox
   # - focus: true to highlight the row (the page scrolls to it);
   # - selectable: true to show the selection checkbox (pending rows of 'Needs push');
   # - preview: [text, truncated] (see OutboxController#preview_for), or nil for no preview;
-  # - remote: true for the 'On the server' columns (queue id, pushed at) instead of the origin.
+  # - remote: true for the 'On the server' columns (queue id, pushed at) instead of the origin;
+  # - server_blocker: the lower-seq 'failed' script the server stops at (queued rows only: "blocked by #NNNN").
   #
   class ScriptRowComponent < ViewComponent::Base
-    def initialize(script:, blocker: nil, focus: false, selectable: false, preview: nil, remote: false) # rubocop:disable Metrics/ParameterLists
+    ERROR_EXCERPT = 160
+
+    def initialize(script:, blocker: nil, focus: false, selectable: false, preview: nil, remote: false, server_blocker: nil) # rubocop:disable Metrics/ParameterLists
       super()
       @script = script
       @blocker = blocker
@@ -24,11 +27,17 @@ module Outbox
       @selectable = selectable
       @preview = preview
       @remote = remote
+      @server_blocker = server_blocker
     end
 
     protected
 
-    attr_reader :script, :blocker, :preview
+    attr_reader :script, :blocker, :preview, :server_blocker
+
+    # First line(s) of the server error of a failed script.
+    def remote_error_excerpt
+      script.remote_error.to_s.squish.truncate(ERROR_EXCERPT).presence
+    end
 
     def focus? = @focus
     def selectable? = @selectable && script.pending?
@@ -37,7 +46,8 @@ module Outbox
     def dom_id = "outbox-script-#{script.id}"
 
     def row_css
-      [('table-warning outbox-focus' if focus?), ('table-danger' if script.in_doubt?)].compact.join(' ')
+      [('table-warning outbox-focus' if focus?), ('table-danger' if script.in_doubt? || script.failed?),
+       ('table-warning' if script.missing_remote? && !focus?)].compact.join(' ')
     end
 
     def size_text

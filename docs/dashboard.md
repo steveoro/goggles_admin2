@@ -25,7 +25,7 @@ Each source turns local facts into `Inbox::Item`s; `Inbox::Builder` merges them:
 - 25 items shown, the rest counted per source ("N more", linking to the source's `more_path`);
 - a source that raises becomes one `failed`-band item ("Inbox source X failed: ..."), never an error page.
 
-v1 sources (`app/services/inbox/sources/`, registered in `config/initializers/inbox.rb`, in this order): `blockers`, `failed_jobs`, `pending_sql`, `board_rows`, `unmatched_sources`, `data_fix_sessions`, `fin_change`, `drift`; phase 06 appends `health` (`Health::InboxSource`: one item per season and group with open errors, one for all the warnings, failed runs, overdue or stuck runs; never one item per finding).
+v1 sources (`app/services/inbox/sources/`, registered in `config/initializers/inbox.rb`, in this order): `blockers`, `failed_jobs`, `pending_sql`, `board_rows`, `unmatched_sources`, `data_fix_sessions`, `fin_change`, `drift` (since 08 `Drift::InboxSource`: the last DB sync verdict, red = blocked band, amber = notice; see `docs/db_sync.md`); phase 06 appends `health` (`Health::InboxSource`: one item per season and group with open errors, one for all the warnings, failed runs, overdue or stuck runs; never one item per finding).
 
 ### Adding a source (phases 06, 10)
 
@@ -58,12 +58,12 @@ Inbox::Registry.register(Inbox::Sources::StaleBadges)
 - `Inbox::Item`: `key` (stable String), `source`, `kind`, `band`, `title`, `detail`, `subject` (Hash), `action`, `since`, `count` (grouped items), optional `secondary_action`. It raises without an `Inbox::Action`: exactly one primary action per item.
 - `Inbox::Action`: `label`, `path` (an app path, or a full URL opened in a new tab), `http_method` (`:get` link, `:post` or `:delete` one-button form), `params` (form fields), `confirm`. Every action is a link or a form to an existing controller action, started by a click: never a commit, push, apply or restore by itself. Failed commit, push, apply and restore jobs get "Discard" only (`Inbox::Sources::FailedJobs::PROTECTED_JOBS`).
 - `Inbox::Context`: `season`, `board_snapshot` (lazy, fetched once), `now`, `api_offline?`, `ops_available?`, `user`, `api_url`, `data_dir`.
-- Replacing a source keeps its slot: `Inbox::Registry.replace(:pending_sql, Outbox::InboxSource)` (07), `replace(:drift, ...)` (08). Phase 10 narrows `BoardRows` so that the ready-to-commit / needs-review / prepare-failed rows are emitted only by its own sources.
+- Replacing a source keeps its slot: `Inbox::Registry.replace(:pending_sql, Outbox::InboxSource)` (07); 08 put `Drift::InboxSource` directly in the `:drift` slot (the drift v0 source is gone). Phase 10 narrows `BoardRows` so that the ready-to-commit / needs-review / prepare-failed rows are emitted only by its own sources.
 - Add the `inbox.sources.<key>` label (the "N more" line) and the item texts in `config/locales/inbox.{en,it}.yml`.
 
 ## System status: probes (phases 07, 08, 10)
 
-Each row of the System zone (and each top bar pill) is a `SystemStatus::Probe`, listed in `SystemStatus::Registry::PROBES` (class names, display order). v1: `APIProbe`, `CrawlerProbe`, `QueueProbe`, `CableProbe`, `FINWatchProbe`, `OpsDbProbe`, `DriftV0Probe`.
+Each row of the System zone (and each top bar pill) is a `SystemStatus::Probe`, listed in `SystemStatus::Registry::PROBES` (class names, display order). v1: `APIProbe`, `CrawlerProbe`, `QueueProbe`, `CableProbe`, `FINWatchProbe`, `OpsDbProbe`, `DbSyncProbe` (08, replaced `DriftV0Probe`: reads the last `Ops::DbFingerprint`, see `docs/db_sync.md`).
 
 ```ruby
 module SystemStatus

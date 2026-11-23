@@ -32,14 +32,20 @@ namespace :season_board do
 
       - 'crawler/data/results.new/<season_id>/<index>-season_board_backfill-<season_id>.sql'
 
+    In apply mode the DB sync gate runs first (Drift::Gate, scope :rake; see /db_sync):
+    a red verdict aborts the task unless force=1; any other warning is printed.
+
     Options: [Rails.env=#{Rails.env}]
              [season=<season#id>|<latest MASFIN season>]
              [simulate='0'|<'1'>]
+             [force='1'|<'0'>]
 
       - season: the Season ID to be processed (default: the latest FIN Masters season);
 
       - simulate: when set to '0' the changes are applied locally and the script is
-                  written (default: '1', just prints the report and the SQL).
+                  written (default: '1', just prints the report and the SQL);
+
+      - force: when set to '1' a red DB sync verdict doesn't stop the apply mode.
 
   DESC
   task backfill: :environment do
@@ -57,6 +63,15 @@ namespace :season_board do
     simulate = ENV['simulate'] != '0' # Don't change anything unless explicitly requested
     puts("\r\n- season.........: #{season.id}")
     puts("- simulate.......: #{simulate}\r\n\r\n")
+    unless simulate
+      # (the operator running the task sees the warnings: acknowledged; only a red verdict stops it, unless force=1)
+      gate = Drift::Gate.check(scope: :rake, acknowledged: true, force: ENV['force'] == '1')
+      unless gate.allowed?
+        puts(I18n.t('db_sync.gate.rake_blocked', summary: gate.summary))
+        next
+      end
+      puts(I18n.t('db_sync.gate.rake_warning', summary: gate.summary)) unless gate.ok?
+    end
 
     backfill = SeasonBoard::Backfill.new(season:, simulate:).call
     puts(backfill.report.join("\r\n"))

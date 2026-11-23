@@ -5,28 +5,34 @@ module Outbox
   # = Outbox::PushConfirmComponent
   #
   # The push confirmation (OutboxController#push_new): the ordered list of the scripts, their total size, the
-  # target URL and environment (a port guess, labelled "unverified" until phase 08), the fresh ping (reachability,
-  # maintenance flag, API version), the operator's JWT validity, the ordering warning and the typed environment
-  # label. The form posts to OutboxController#push.
+  # target URL and environment (reported by the API; otherwise a port guess labelled "unverified"), the fresh ping
+  # (reachability, maintenance flag, API version), the operator's JWT validity, the DB sync verdict (Drift::Gate,
+  # scope :push) with its tick when it warns, the ordering warning and the typed environment label (unverified or
+  # non-production targets only). The form posts to OutboxController#push.
   #
   # == Params:
   # - plan: the Outbox::PushPlan; ping: the APIProxy::Result of a fresh ping (nil when nothing to push);
-  # - jwt_valid: the operator's API JWT validity; jwt_expires_at: its expiry (or nil).
+  # - jwt_valid: the operator's API JWT validity; jwt_expires_at: its expiry (or nil);
+  # - gate: the Drift::Gate result for the push (nil when nothing to push).
   #
   class PushConfirmComponent < ViewComponent::Base
     MAINTENANCE_REGEXP = /maint|manutenzione/i
 
-    def initialize(plan:, ping:, jwt_valid:, jwt_expires_at: nil)
+    def initialize(plan:, ping:, jwt_valid:, jwt_expires_at: nil, gate: nil)
       super()
       @plan = plan
       @ping = ping
       @jwt_valid = jwt_valid
       @jwt_expires_at = jwt_expires_at
+      @gate = gate
     end
 
     protected
 
-    attr_reader :plan, :ping
+    attr_reader :plan, :ping, :gate
+
+    # True when the DB sync gate warns: the form carries the tick (drift_ack), required by the server.
+    def drift_tick? = gate.present? && gate.warn?
 
     def jwt_valid? = @jwt_valid
     def reachable? = ping.present? && !ping.unreachable? && (200..299).cover?(ping.code.to_i)

@@ -12,7 +12,7 @@ module SystemStatus
     # Probe class names, in display order:
     PROBES = %w[
       SystemStatus::APIProbe SystemStatus::CrawlerProbe SystemStatus::QueueProbe SystemStatus::CableProbe
-      SystemStatus::FINWatchProbe SystemStatus::OpsDbProbe SystemStatus::DriftV0Probe
+      SystemStatus::FINWatchProbe SystemStatus::OpsDbProbe SystemStatus::DbSyncProbe
     ].freeze
 
     # The status frame asks for a refresh when a snapshot is older than this:

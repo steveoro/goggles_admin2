@@ -18,8 +18,9 @@ RSpec.describe Outbox::Pusher do
     ]
   end
   let(:run) do
+    # (the DB sync gate warns against an API without fingerprints: the operator ticked it on the confirmation page)
     Ops::PushRun.create!(user_id: user.id, target_api_url: api_url, target_env: 'unknown', script_ids: scripts.map(&:id),
-                         status: 'running', started_at: Time.current)
+                         status: 'running', started_at: Time.current, drift_acknowledged: true)
   end
 
   def accepted(id)
@@ -127,6 +128,31 @@ RSpec.describe Outbox::Pusher do
     expect(scripts.first.reload).to have_attributes(state: 'pending')
     expect(scripts.first.last_error).to include('API unreachable')
     expect(run.reload).to be_stopped
+  end
+
+  describe 'DB sync gate (phase 08)' do
+    it 'aborts before the first POST when the gate warns and the operator did not tick it' do
+      run.update!(drift_acknowledged: false)
+      allow(APIProxy).to receive(:call)
+      push!
+      expect(run.reload).to have_attributes(status: 'aborted')
+      expect(run.error).to include(I18n.t('db_sync.verdicts.unknown'))
+      expect(APIProxy).not_to have_received(:call)
+    end
+
+    it 'pushes without the tick on a fresh green verdict, then enqueues a DB sync check' do
+      run.update!(drift_acknowledged: false)
+      allow(APIProxy).to receive(:configured_base_url).and_return(api_url)
+      FactoryBot.create(:ops_db_fingerprint, api_base_url: api_url)
+      allow(APIProxy).to receive(:call).and_return(accepted(1), accepted(2), accepted(3))
+      expect { push! }.to have_enqueued_job(DriftCheckJob).with(trigger: 'post_push', base_url: api_url)
+      expect(run.reload).to be_finished
+    end
+
+    it 'enqueues no DB sync check after a run aborted in the preflight' do
+      allow(APIProxy).to receive(:ping).and_return(unreachable)
+      expect { push! }.not_to have_enqueued_job(DriftCheckJob)
+    end
   end
 
   it 'turns a pushing row left by an older run into in_doubt and never re-posts it' do

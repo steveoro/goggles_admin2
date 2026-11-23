@@ -65,6 +65,10 @@ en:
         other: "%{count} pushes in doubt: check the remote import queue"
       resolve: "Resolve"
       open: "Open"
+      failed:
+        one: "Push failed: 1 script stopped on the server"
+        other: "Push failed: %{count} scripts stopped on the server"
+      fix: "Fix it"
     unmatched_sources:
       titles:
         resume_review: "In review, without FIN id: %{name}"
@@ -89,5 +93,7 @@ en:
         other: "FIN calendar changed (%{count} rows)"
       open_board: "Open board"
     drift:
-      title: "DB sync v0: the remote DB has changes the local one lacks"
+      red_title: "DB sync red: the local DB no longer mirrors production (Phase 6 commits are refused)"
+      amber_title: "DB sync amber: check the differences with production"
+      open: "Open DB sync"
       review: "Review remote-only edits"

@@ -7,9 +7,17 @@
 # The SQL batch rows (+batch_sql+) pushed from the SQL Outbox link to their Outbox entry (by
 # Ops::SqlScript#remote_iq_id): set +outbox_scripts+ (remote id => Ops::SqlScript) with the domain.
 #
+# Since goggles_api 0.10.81 a batch row also carries its attached file name ('data_file_name', not a model
+# attribute: set +data_file_names+ from the API answer, see .data_file_names_for) and, when the server failed to
+# run it, the MariaDB error text in +error_messages+ (shown as an excerpt, the full text as tooltip).
+#
 class ImportQueuesGrid < BaseGrid
+  ERROR_EXCERPT = 80
+
   # { import queue id => Ops::SqlScript } for the current domain (see .outbox_scripts_for)
   class_attribute(:outbox_scripts, default: {})
+  # { import queue id => attached file name } for the current domain (see .data_file_names_for)
+  class_attribute(:data_file_names, default: {})
 
   # Returns the scope for the grid. (#assets is the filtered version of it)
   scope { data_domain }
@@ -20,6 +28,13 @@ class ImportQueuesGrid < BaseGrid
     return {} if ids.empty?
 
     Ops.safely({}) { Ops.available? ? Ops::SqlScript.where(remote_iq_id: ids).index_by(&:remote_iq_id) : {} }
+  end
+
+  # The attached file names of the API rows ({ id => data_file_name }; {} for an older API).
+  def self.data_file_names_for(json_rows)
+    Array(json_rows).each_with_object({}) do |row, map|
+      map[row['id'].to_i] = row['data_file_name'] if row.is_a?(Hash) && row['data_file_name'].present?
+    end
   end
 
   decorate { |row| GogglesDb::ImportQueueDecorator.new(row) }
@@ -37,6 +52,13 @@ class ImportQueuesGrid < BaseGrid
   column(:outbox, header: 'Outbox', html: true, mandatory: true, order: false) do |asset|
     script = ImportQueuesGrid.outbox_scripts[asset.id]
     script ? link_to(script.filename, outbox_script_path(script), class: 'font-monospace small') : ''
+  end
+  column(:data_file_name, header: 'File', mandatory: true, order: false) do |asset|
+    ImportQueuesGrid.data_file_names[asset.id].to_s
+  end
+  column(:error_excerpt, header: 'Server error', html: true, mandatory: true, order: false) do |asset|
+    text = asset.error_messages.to_s.squish
+    text.present? ? content_tag(:span, text.truncate(ImportQueuesGrid::ERROR_EXCERPT), class: 'small text-danger-emphasis', title: text) : ''
   end
   column(:request_data)
   column(:solved_data)

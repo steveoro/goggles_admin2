@@ -54,9 +54,9 @@ RSpec.describe Shell::SidebarComponent, type: :component do
       expect(wrapper['data-bs-title']).to eq(I18n.t('shell.nav.offline_disabled'))
     end
 
-    it 'keeps Dashboard, Settings, Remote writes and the Outbox (local data only) enabled' do
+    it 'keeps Dashboard, Settings, Remote writes, the Outbox and DB sync (local data only) enabled' do
       enabled = html.css('.app-sidebar a.nav-link:not(.disabled)').pluck('href')
-      expect(enabled).to contain_exactly('/', '/settings', '/remote_writes', '/outbox')
+      expect(enabled).to contain_exactly('/', '/settings', '/remote_writes', '/outbox', '/db_sync')
     end
   end
 end

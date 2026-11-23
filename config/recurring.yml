@@ -26,8 +26,8 @@ default: &default
     class: KpiRefreshJob
     queue: default
     schedule: every 15 minutes
-  # Drift v0: are the latest-updated remote rows present locally? (one read-only GET; ops snapshot
-  # 'drift_v0:<api_url>'; see DriftCheckJob)
+  # DB sync: local vs remote DB fingerprints (count, max id, max updated_at of the import tables; read-only
+  # queries on both sides, one GET with the background JWT; ops 'db_fingerprints' rows; see DriftCheckJob)
   drift_check:
     class: DriftCheckJob
     queue: default

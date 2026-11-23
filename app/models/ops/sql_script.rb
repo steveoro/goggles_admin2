@@ -10,13 +10,20 @@ module Ops
   # operator actions (Outbox::ScriptActions), Outbox::Pusher and Outbox::RemoteStatusJob, always through the
   # transition methods below (plain methods with guard clauses: an invalid move raises InvalidTransition).
   #
-  # == State machine (until phase 08)
+  # == State machine
   #   pending <-> held                (hold / release, "Apply locally")
-  #   pending  -> pushing -> sent      (POST accepted: file moved to results.sent/<folder>/)
+  #   pending  -> pushing -> sent      (POST accepted: file moved to results.sent/<folder>/; 'sent' = queued on the server)
   #   pushing  -> pending              (POST rejected or unreachable: the run stops)
   #   pushing  -> in_doubt             (stale for STALE_PUSHING_AFTER without a live run; never re-posted)
-  #   in_doubt -> sent | pending | discarded (operator)
-  #   sent     -> executed_unreported  (the remote import queue row is gone, after EXECUTED_DELAY)
+  #   in_doubt -> sent | pending | discarded (operator; or 'sent' by checksum, Outbox::RemoteStatusJob)
+  # Phase 08 (the server reports the outcome, API capability 'iq_batch_outcome'; see Outbox::RemoteStatus):
+  #   sent     -> applied              (run on the server)
+  #   sent     -> failed               (the server error in remote_error; file moved back to results.new/<folder>/)
+  #   failed   -> sent                 (Retry in place: file unchanged)
+  #   sent, failed -> pending          (Withdraw: the queued server row is deleted; file back in results.new)
+  #   failed   -> withdrawn            (Discard: server row deleted, file moved to results.new/discarded/)
+  #   sent     -> missing_remote       (the server row is gone although the server reports outcomes: "deleted on server")
+  #   sent     -> executed_unreported  (row gone, API without outcomes: after EXECUTED_DELAY)
   #   pending, held -> discarded       (operator, note required)
   #   any      -> missing              (file gone on rescan; back to the previous state when it reappears)
   #   legacy_sent, archived: terminal (one-time import, files moved by hand)
@@ -28,6 +35,7 @@ module Ops
   # - held_reason (HELD_REASONS); applied_locally (nil = unknown); single_transaction;
   # - origin (JSON: producer, source_base, fin_event_id, meeting_id, calendar_id, task, args, ...);
   # - target_api_url, target_env, remote_iq_id, push_attempts, pushed_at, remote_checked_at, resolved_at;
+  # - remote_outcome_at (applied/failed seen), remote_error (server error text, REMOTE_ERROR_LIMIT), withdrawn_at;
   # - last_error (4 KB max), changed_after_push, note.
   #
   class SqlScript < ApplicationRecord # rubocop:disable Metrics/ClassLength
@@ -36,16 +44,22 @@ module Ops
     # Raised by the transition methods when the move is not allowed from the current state.
     class InvalidTransition < StandardError; end
 
-    STATES = %w[pending held pushing in_doubt sent executed_unreported legacy_sent archived discarded missing].freeze
+    STATES = %w[
+      pending held pushing in_doubt sent applied failed missing_remote executed_unreported
+      legacy_sent archived discarded withdrawn missing
+    ].freeze
     NEEDS_PUSH_STATES = %w[pending held pushing in_doubt].freeze
-    ON_SERVER_STATES = %w[sent executed_unreported].freeze
-    HISTORY_STATES = %w[legacy_sent archived discarded missing].freeze
-    # States blocking the push of a higher seq (a held script never blocks).
-    BLOCKING_STATES = %w[pending pushing in_doubt].freeze
+    ON_SERVER_STATES = %w[failed sent applied missing_remote executed_unreported].freeze
+    HISTORY_STATES = %w[legacy_sent archived discarded withdrawn missing].freeze
+    # States blocking the push of a higher seq (a held script never blocks; a failed one does: the server stops
+    # at it, and a fix pushed later must keep the id order).
+    BLOCKING_STATES = %w[pending pushing in_doubt failed].freeze
     # States whose file is expected under results.new
-    NEW_DIR_STATES = %w[pending held pushing in_doubt].freeze
+    NEW_DIR_STATES = %w[pending held pushing in_doubt failed].freeze
     HELD_REASONS = %w[not_applied_locally local_apply_failed operator legacy_folder].freeze
     LAST_ERROR_LIMIT = 4.kilobytes
+    # (The server keeps up to 60 KB of stderr: the start of it is what matters)
+    REMOTE_ERROR_LIMIT = 16.kilobytes
     # A 'pushing' row older than this (with no live run) becomes 'in_doubt'.
     STALE_PUSHING_AFTER = 10.minutes
     # A 'sent' script whose remote row is gone becomes 'executed_unreported' only after this delay from the push.
@@ -67,6 +81,9 @@ module Ops
     scope :pushing, -> { in_state('pushing') }
     scope :in_doubt, -> { in_state('in_doubt') }
     scope :sent, -> { in_state('sent') }
+    scope :failed, -> { in_state('failed') }
+    scope :applied, -> { in_state('applied') }
+    scope :missing_remote, -> { in_state('missing_remote') }
     # Scripts of a season folder or of the cross-season folders (folder names: '262', 'misc', ...).
     scope :in_folders, ->(*folders) { where(folder: folders.flatten.map(&:to_s)) }
 
@@ -149,6 +166,17 @@ module Ops
       super(value&.to_s&.truncate(LAST_ERROR_LIMIT))
     end
 
+    def remote_error=(value)
+      super(value&.to_s&.truncate(REMOTE_ERROR_LIMIT))
+    end
+
+    # Lower-seq 'failed' scripts pushed to the same API (the server runs nothing after them), or none.
+    def failed_before
+      return self.class.none unless sent? || failed?
+
+      self.class.failed.where(target_api_url:).where(self.class.arel_table[:seq].lt(seq)).ordered
+    end
+
     # == Transitions (each one saves the row; an invalid move raises InvalidTransition)
 
     # pending -> held
@@ -190,10 +218,51 @@ module Ops
       update!(state: 'in_doubt')
     end
 
-    # sent -> executed_unreported (remote import queue row gone)
+    # sent -> executed_unreported (remote import queue row gone, API without outcome reporting)
     def mark_executed_unreported!(now: Time.current)
       ensure_state!(%w[sent], :executed_unreported)
       update!(state: 'executed_unreported', remote_checked_at: now, resolved_at: now)
+    end
+
+    # sent -> applied (the server ran it)
+    def mark_applied!(now: Time.current)
+      ensure_state!(%w[sent], :applied)
+      update!(state: 'applied', remote_checked_at: now, remote_outcome_at: now, resolved_at: now, remote_error: nil)
+    end
+
+    # sent -> failed (the server error text; the file was moved back to +rel_path+ under results.new)
+    def mark_failed!(error:, rel_path: self.rel_path, now: Time.current)
+      ensure_state!(%w[sent], :failed)
+      update!(state: 'failed', rel_path:, remote_error: error.presence || '?', remote_checked_at: now, remote_outcome_at: now,
+              resolved_at: nil)
+    end
+
+    # failed -> sent (Retry in place: the server row was reset; the file moved back to +rel_path+ under results.sent)
+    def mark_retried!(rel_path:, now: Time.current)
+      ensure_state!(%w[failed], :retry)
+      update!(state: 'sent', rel_path:, last_error: remote_error, remote_error: nil, remote_outcome_at: nil,
+              pushed_at: now, push_attempts: push_attempts.to_i + 1, changed_after_push: false)
+    end
+
+    # sent, failed -> pending (Withdraw: the server row was deleted; the file is back at +rel_path+ under results.new)
+    def mark_withdrawn!(rel_path:, now: Time.current)
+      ensure_state!(%w[sent failed], :withdraw)
+      update!(state: 'pending', rel_path:, withdrawn_at: now, remote_iq_id: nil, last_error: remote_error.presence || last_error,
+              remote_error: nil, remote_outcome_at: nil, resolved_at: nil)
+    end
+
+    # failed -> withdrawn (Discard of a failed script: server row deleted, file moved to +rel_path+ under discarded/)
+    def mark_abandoned!(note:, rel_path:, now: Time.current)
+      ensure_state!(%w[failed], :discard)
+      raise InvalidTransition, I18n.t('outbox.errors.note_required') if note.blank?
+
+      update!(state: 'withdrawn', rel_path:, note: note.to_s.strip, withdrawn_at: now, resolved_at: now)
+    end
+
+    # sent -> missing_remote (the server row is gone although the server reports outcomes)
+    def mark_missing_remote!(now: Time.current)
+      ensure_state!(%w[sent], :missing_remote)
+      update!(state: 'missing_remote', remote_checked_at: now, resolved_at: now)
     end
 
     # pending, held, in_doubt -> discarded (file already moved to +rel_path+)

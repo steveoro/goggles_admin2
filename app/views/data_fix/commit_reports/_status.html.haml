@@ -1,0 +1,75 @@
+-#
+  Status frame of a commit report: outcome, progress, files and stats. The show page renders it with its +src+
+  (polling: true), reloaded by live-frames; the status action answers without +src+ (Turbo refuses a frame whose
+  source references itself).
+  Polled by live-frames (data-live-busy) while the report is queued or running. Locals: report (Ops::CommitReport), polling (optional).
+:ruby
+  status_css = { 'queued' => 'text-bg-info', 'running' => 'text-bg-primary', 'committed' => 'text-bg-success',
+                 'committed_archive_failed' => 'text-bg-warning', 'failed' => 'text-bg-danger', 'refused' => 'text-bg-secondary' }
+  stats = report.stats_hash
+  errors = Array(stats[:errors])
+  outbox_focus = report.sql_filename.present? ? { focus: report.sql_filename } : {}
+  pending_key = report.queued? ? 'queued_text' : 'running_text'
+  step_paths = { 1 => :review_sessions_path, 2 => :review_teams_path, 3 => :review_swimmers_path,
+                 4 => :review_events_path, 5 => :review_results_path }
+  error_step = report.first_error_step_key
+  error_step_link = error_step && send(step_paths.fetch(report.first_error_phase), file_path: report.source_path)
+  script = Ops.safely { report.sql_script }
+%turbo-frame#commit-report-status{ src: (data_fix_commit_report_status_path(report) if local_assigns[:polling]), data: { live_frames_target: 'frame' } }
+  .card.mb-3{ data: { live_busy: report.pending?.to_s, commit_report_status: report.status } }
+    .card-body
+      .d-flex.flex-wrap.align-items-center.gap-2.mb-2
+        %span.badge.fs-6#commit-report-state{ class: status_css.fetch(report.status, 'text-bg-secondary') }
+          = t("data_fix.commit_report.statuses.#{report.status}")
+        - if report.pending?
+          .spinner-border.spinner-border-sm.text-primary{ role: 'status' }
+            %span.visually-hidden= t("data_fix.commit_report.#{pending_key}")
+          %span.text-body-secondary
+            = report.progress_message.presence || t("data_fix.commit_report.#{pending_key}")
+            = "(#{report.percent_done}%)" if report.percent_done
+        .ms-auto
+          = link_to(outbox_path(outbox_focus), class: 'btn btn-sm btn-primary', id: 'btn-commit-outbox', data: { turbo_frame: '_top' }) do
+            %i.fa-solid.fa-paper-plane{ 'aria-hidden' => 'true' }
+            = t('outbox.commit_report.open_outbox')
+
+      = render(partial: 'data_fix/commit_reports/outcome', locals: { report:, errors:, error_step:, error_step_link: })
+
+      %dl.row.small.mb-0
+        %dt.col-sm-3= t('data_fix.commit_report.requested')
+        %dd.col-sm-9= l(report.requested_at, format: :short)
+        - if report.started_at
+          %dt.col-sm-3= t('data_fix.commit_report.started')
+          %dd.col-sm-9= l(report.started_at, format: :short)
+        - if report.finished_at
+          %dt.col-sm-3= t('data_fix.commit_report.finished')
+          %dd.col-sm-9= l(report.finished_at, format: :short)
+        - if report.sql_filename.present?
+          %dt.col-sm-3= t('data_fix.commit_report.sql_file')
+          %dd.col-sm-9
+            = link_to(report.sql_filename, outbox_path(focus: report.sql_filename), data: { turbo_frame: '_top' })
+            - if script
+              %span.badge.text-bg-secondary.ms-1= script.state_label
+        - if report.log_filename.present?
+          %dt.col-sm-3= t('data_fix.commit_report.log_file')
+          %dd.col-sm-9.font-monospace= report.log_rel_path
+        - if report.done_dir.present?
+          %dt.col-sm-3= t('data_fix.commit_report.archived_to')
+          %dd.col-sm-9.font-monospace= report.done_dir
+
+  = render(partial: 'data_fix/commit_reports/stats', locals: { stats: }) if stats.except(:errors).values.any? { |value| value.to_i.positive? }
+
+  - if errors.size > 1
+    .card.mb-3
+      .card-header.text-bg-danger
+        %strong
+          #{t('data_fix.commit_report.errors')} (#{errors.size})
+      .card-body
+        %ul.mb-0
+          - errors.each do |err|
+            %li= err
+
+  - if report.committed? && report.health_run_ids.present?
+    %turbo-frame#commit-report-health{ src: data_fix_commit_report_health_path(report), loading: 'lazy' }
+      .text-body-secondary.small= t('data_fix.commit_report.season_checks_pending')
+  - elsif report.committed? && report.post_commit_checks.present?
+    = render(partial: 'data_fix/commit_reports/legacy_checks', locals: { checks: report.post_commit_checks.deep_symbolize_keys })

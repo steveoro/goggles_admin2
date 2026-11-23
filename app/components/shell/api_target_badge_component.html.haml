@@ -3,10 +3,15 @@
   - if api_target.label.present?
     %span.fw-semibold.text-truncate.d-none.d-sm-inline.app-api-label= api_target.label
   %span.font-monospace.text-truncate.d-none.d-md-inline.app-api-url= short_url.presence || t('shell.api_target.no_url')
-  %span.badge.rounded-pill.text-nowrap{ class: guess_css }
-    = t("shell.api_target.guess.#{api_target.guess}")
-    %span.d-none.d-xl-inline (#{t('shell.api_target.unverified')})
-    %span.d-xl-none{ 'aria-hidden' => 'true' } ?
+  %span.badge.rounded-pill.text-nowrap{ class: environment_css }
+    = environment_name
+    - unless api_target.verified?
+      %span.d-none.d-xl-inline (#{t('shell.api_target.unverified')})
+      %span.d-xl-none{ 'aria-hidden' => 'true' } ?
+  - if api_target.label_mismatch?
+    %span.text-warning.app-api-mismatch{ title: mismatch_text }
+      %i.fa-solid.fa-triangle-exclamation{ 'aria-hidden' => 'true' }
+      %span.visually-hidden= mismatch_text
   %span.text-nowrap.app-api-reachability{ class: REACHABILITY_CSS[reachability] }
     %i.fa-solid{ class: REACHABILITY_ICON[reachability], 'aria-hidden' => 'true' }
     %span.visually-hidden= reachability_text

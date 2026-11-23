@@ -25,7 +25,8 @@ RSpec.describe RemoteWritesController do
       allow(APIProxy).to receive(:call).and_raise('no API call expected')
     end
 
-    it 'lists the remote writes, newest first, with keys only and the drift v0 card, without any API call' do
+    it 'lists the remote writes, newest first, with keys only and the DB sync card, without any API call' do
+      FactoryBot.create(:ops_db_fingerprint, :amber, api_base_url: api_url)
       FactoryBot.create(:ops_remote_write, endpoint: 'meeting/77', base_url: api_url, payload_keys: %w[description],
                                            created_at: 1.hour.ago)
       FactoryBot.create(:ops_remote_write, endpoint: 'team/88', base_url: api_url, status_code: 422,
@@ -35,7 +36,8 @@ RSpec.describe RemoteWritesController do
       rows = page_body.css('table.datagrid-table tbody tr')
       expect(rows.map { |row| row.at_css('td[data-column="endpoint"]').text.strip }).to eq(%w[team/88 meeting/77])
       expect(rows.first.at_css('td[data-column="status"] .badge').text).to eq(I18n.t('remote_writes.statuses.failed'))
-      expect(page_body.at_css('#drift-v0')['data-drift-level']).to eq('warn') # (1 unacknowledged successful write)
+      expect(page_body.at_css('#remote-writes-db-sync #drift-indicator')['data-drift-verdict']).to eq('amber') # (last stored check)
+      expect(page_body.at_css('#btn-open-db-sync')['href']).to eq(db_sync_path)
       expect(page_body.at_css('#btn-acknowledge')).to be_present
       expect(page_body.at_css('.app-page-count').text).to include('2')
     end
@@ -67,9 +69,11 @@ RSpec.describe RemoteWritesController do
     end
 
     describe 'POST acknowledge' do
-      it 'stores drift.acknowledged_at, so that drift v0 no longer counts the older writes' do
+      it 'stores drift.acknowledged_at, so that the DB sync check no longer counts the older writes, and queues a check' do
         FactoryBot.create(:ops_remote_write, base_url: api_url)
-        travel(1.second) { post(remote_writes_acknowledge_path) }
+        travel(1.second) do
+          expect { post(remote_writes_acknowledge_path) }.to have_enqueued_job(DriftCheckJob).with(trigger: 'manual')
+        end
         expect(response).to redirect_to(remote_writes_path)
         expect(flash[:info]).to eq(I18n.t('remote_writes.acknowledge.done'))
         expect(Ops::RemoteWrite.acknowledged_at).to be_present
@@ -93,7 +97,7 @@ RSpec.describe RemoteWritesController do
     it 'renders the page (no redirect to Settings)' do
       get(remote_writes_path)
       expect(response).to have_http_status(:success)
-      expect(page_body.at_css('#drift-v0')).to be_present
+      expect(page_body.at_css('#remote-writes-db-sync #drift-indicator')['data-drift-verdict']).to eq('unknown')
     end
   end
 

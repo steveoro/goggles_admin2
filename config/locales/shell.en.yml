@@ -34,6 +34,8 @@ en:
       settings_link: 'API target: change the URL or its label in Settings'
       no_url: 'No API URL configured'
       unverified: 'unverified'
+      reported: '%{environment} (reported by the API)'
+      label_mismatch: "The label '%{label}' doesn't match the environment reported by the API (%{environment})"
       guess:
         production: 'production'
         unknown: 'unknown'
@@ -104,23 +106,6 @@ en:
         label: 'Ops DB'
         ok: 'Local ops DB ready'
         not_ready: '%{state} Run bin/rails ops:prepare.'
-      drift_v0:
-        label: 'DB sync'
-        ok: 'The latest remote updates are all in the local DB (v0, partial check)'
-        missing:
-          one: '1 recently updated remote row missing locally (%{tables})'
-          other: '%{count} recently updated remote rows missing locally (%{tables})'
-        remote_writes:
-          one: '1 remote-only write since the last acknowledgement'
-          other: '%{count} remote-only writes since the last acknowledgement'
-        never: 'Not checked yet'
-        stale: 'No recent check (last one: %{time})'
-        no_credentials: 'No valid background credentials: sign in again'
-        unreachable: 'API unreachable: %{error}'
-        unauthorized: 'The API rejected the background credentials (401): sign in again'
-        unsupported: 'This API has no latest-updates endpoint'
-        error: 'Check failed: %{error}'
-        ops_unavailable: 'Local ops DB not ready'
     user_menu:
       label: 'Account menu'
       version: 'Goggles v. %{version}'

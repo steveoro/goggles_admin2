@@ -14,12 +14,11 @@ en:
       done: 'Remote writes acknowledged.'
       failed: 'Cannot acknowledge: the local ops DB is not available (run bin/rails ops:prepare).'
     drift:
-      title: 'DB sync (drift v0)'
-      help: 'Checks that the rows most recently updated on %{url} exist in the local DB (latest 10 rows of 12 tables), and counts the remote-only writes since the last acknowledgement.'
-      checked_at: 'Last check: %{time}'
-      never_checked: 'Never checked'
-      acknowledged_at: 'last acknowledgement: %{time}'
-      never_acknowledged: 'never acknowledged'
+      title: 'DB sync'
+      help: 'Successful remote-only writes since the last green DB sync check (or acknowledgement) turn the verdict amber: counts and max ids cannot see remote UPDATEs.'
+      open: 'Open DB sync'
+      acknowledged_at: 'Last acknowledgement: %{time}.'
+      never_acknowledged: 'Never acknowledged.'
   datagrid:
     remote_writes_grid:
       columns:

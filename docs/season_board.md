@@ -67,6 +67,8 @@ bin/rails season_board:backfill season=<season id> simulate=0   # apply (also wr
 
 It reads the FIN ids from the archived crawl files and the meeting ids from the commit SQL files; whatever it can't resolve is listed in the report (with same-date FIN rows as hints) and can be linked by hand with **Link to meeting...**. Re-running it is harmless.
 
+Both write the local DB, so they pass the [DB sync](db_sync.md) gate first: **Link to meeting...** asks you to tick the DB sync warning (amber, red or unknown) on a confirmation page before linking; `simulate=0` stops on a red verdict unless you add `force=1` (other warnings are printed).
+
 ## SQL scripts in the season folders
 
 Every script that changes the local DB (commit, calendar link, backfill, flag cancelled, team manager, rake merge/fix, ...) is written by `Outbox::Writer` with the next number of one **global** sequence (`NNNN-` prefix, every folder and producer) and registered in the [SQL Outbox](outbox.md) with its kind. `SeasonBoard::DiskIndex` asks the registry for the kinds (one query per build): only `commit` scripts are source SQL (they drive **SQL to push** and the `pushed` flag); any other script of the season folder (team manager, merge, calendar link, ...) is counted apart (`other_sql_paths`, the header counter) and never shows up as a file without FIN id. Without the ops DB the name decides (`BOARD_SQL_REGEXP` => other, a `-lt4`/`-l4` suffix => commit). Cross-season scripts (rake tasks) go to `results.new/misc/`.

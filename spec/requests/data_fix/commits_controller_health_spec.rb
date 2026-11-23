@@ -3,9 +3,8 @@
 require 'rails_helper'
 
 # (phase 06) A Phase 6 commit queues the data health checks of the season (structure-only source, the smallest commit).
-RSpec.describe DataFix::CommitsController do
+RSpec.describe DataFix::CommitsController, :data_fix_commit do
   include AdminSignInHelpers
-  include ActiveJob::TestHelper
 
   let(:admin_user) { prepare_admin_user }
   let(:temp_dir) { Dir.mktmpdir }
@@ -56,23 +55,26 @@ RSpec.describe DataFix::CommitsController do
 
   it 'queues every health group of the season (trigger post_commit) after a successful commit' do
     write_phase_files
-    expect { post commit_phase6_path(file_path: source_file) }
+    expect { commit!(source_file) }
       .to have_enqueued_job(Health::SeasonRunJob).on_queue('maintenance').exactly(Ops::HealthRun::GROUPS.size).times
-    expect(session[:commit_report][:commit_success]).to be true
+    expect(last_report.status).to eq('committed')
     expect(Ops::HealthRun.for_season(season.id).pending.pluck(:trigger).uniq).to eq(['post_commit'])
+    # (phase 09) the 'results' and 'badges' runs are stored on the report, which shows them in a lazy frame
+    runs = Ops::HealthRun.where(id: last_report.health_run_ids.values)
+    expect(runs.pluck(:group_key)).to match_array(%w[results badges])
   end
 
   it 'queues nothing when the commit fails' do
     write_phase_files(phase4_events: [{ 'key' => 'ZZZ99', 'distance' => 9999, 'stroke' => 'XX', 'session_order' => 1 }])
-    expect { post commit_phase6_path(file_path: source_file) }.not_to have_enqueued_job(Health::SeasonRunJob)
-    expect(session[:commit_report][:commit_success]).to be false
+    expect { commit!(source_file) }.not_to have_enqueued_job(Health::SeasonRunJob)
+    expect(last_report.status).to eq('failed')
   end
 
   it 'never fails the commit when the health runs cannot be queued' do
     write_phase_files
     allow(Health::SeasonRunJob).to receive(:enqueue_season).and_raise(StandardError, 'queue down')
-    post commit_phase6_path(file_path: source_file)
-    expect(session[:commit_report][:commit_success]).to be true
-    expect(response).to redirect_to(data_fix_commit_phase6_report_path)
+    commit!(source_file)
+    expect(last_report.status).to eq('committed')
+    expect(response).to redirect_to(data_fix_commit_report_path(last_report))
   end
 end

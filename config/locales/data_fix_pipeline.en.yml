@@ -1,0 +1,183 @@
+en:
+  data_fix:
+    steps:
+      label: 'Step %{number} • %{name}'
+      sessions: Sessions
+      teams: Teams
+      swimmers: Swimmers
+      events: Events
+      results: Results
+    stepper:
+      rescan: Rebuild this phase from the source
+      rescan_confirm: 'Rebuild Phase %{number} from the source?'
+      rescan_confirm_edited: 'Phase %{number} holds your edits: rebuilding it from the source discards them. Continue?'
+      stale: 'This step is stale: %{what} changed after it was built.'
+      rebuild: Rebuild
+      adopted: Edited (pre-existing file, protected from automatic rebuilds).
+      edited: Holds your edits (protected from automatic rebuilds).
+      source_changed: 'The source file changed under your edits: phases %{phases} were kept as they are and no longer match it.'
+      discard_edits: Rebuild (discard edits)
+      discard_edits_confirm: 'Delete phases %{phases} (a .orig backup of each is kept) and rebuild them from the changed source? Your edits in them are lost.'
+      recompute_discards_edits: 'Phases %{phases} hold edits: they are discarded too (a .orig backup of each is kept).'
+      inputs:
+        source_file: the source file
+        season: the season
+        meeting_and_sessions: Step 1 (meeting and sessions)
+        team_ids: Step 2 (team ids)
+        swimmer_and_badge_ids: Step 3 (swimmer and badge ids)
+        events: Step 4 (events)
+        db_changed: the local DB (new commits since the matches were computed)
+    verdicts:
+      statuses:
+        unbuilt: Not built
+        clean: Clean
+        review: Needs review
+        blocked: Blocked
+        stale: Stale
+        failed: Build failed
+      issues:
+        stale: Stale
+        edited_stale: Stale, holds edits
+        structure_invalid: Meeting structure invalid
+        retry_needed: Crawl retry needed
+        fin_link_conflict: FIN event linked to another meeting
+        meeting_not_fin_matched: Meeting not matched by FIN id
+        source_warnings: Extraction warnings
+        new_session_in_existing_meeting: New session in an existing meeting
+        teams_review: Teams to review
+        too_many_new_teams: Too many new teams
+        new_swimmer_incomplete: New swimmers without gender, year or category
+        badge_team_missing: Badges without a Step 2 team
+        swimmers_review: Swimmers to review
+        too_many_new_swimmers: Too many new swimmers
+        relay_enrichment: Relay legs to enrich
+        event_type_unresolved: Unknown event types
+        session_missing: Events in a session missing from Step 1
+        session_order_mismatch: Events with a different session order
+        unmatched_events: Events not matched in an existing meeting
+        populate_errors: Staging errors
+        collisions: Results staged by another source
+        parity: Staged rows differ from the source
+        nothing_staged: No results staged
+        result_issues: Programs with issues
+        overwrite_selected: Existing results selected for deletion
+        partial_duplicates: Possible duplicates (different timing)
+        preflight_fin_link_conflict: FIN event linked to another meeting
+        preflight_existing_team_name: New teams already in the DB
+        preflight_existing_swimmer_name: New swimmers already in the DB
+        preflight_program_event_missing: Programs without an event
+        preflight_category_unresolved: Unknown categories
+        preflight_relay_category_unresolved: Relay categories to compute
+        preflight_gender_unresolved: Unknown genders
+        preflight_overwrite_snapshot_invalid: Overwrite selection out of date
+        preflight_team_score_without_team: Team scores without a team
+        preflight_preflight_failed: Preflight failed
+    pipeline:
+      phase5_auto_rebuilt: Phase 5 rebuilt automatically (an earlier step changed).
+      lease_busy: 'This source is being built by another request or job: retry in a moment.'
+      edits_discarded: 'Phases %{phases} deleted (backups kept): they are rebuilt from the changed source.'
+      matches_refreshed: 'Matches refreshed: %{teams} team(s) and %{swimmers} swimmer(s) found in the DB.'
+      verify_all_done: 'Verified %{checked} staged result(s): %{verified} matched an existing result.'
+    commit_summary:
+      title: Commit summary
+      subtitle: Check what the commit will do, then commit.
+      back_to_step5: Back to Step 5
+      meeting: Meeting
+      matched_by: Matched by
+      matched_by_fin: FIN event id
+      matched_by_operator: Selected by the operator
+      matched_by_other: Matched by name
+      new_meeting: New meeting
+      entity: Entity
+      existing: Existing
+      new: New
+      sessions: Sessions
+      teams: Teams
+      swimmers: Swimmers
+      badges: Badges
+      events: Events
+      results: Results to create
+      results_update: Results to update
+      relay_results: Relay results
+      overwrite_deletions: Existing results to delete
+      team_scores: Team scores
+      new_teams: New teams
+      new_swimmers: New swimmers
+      none: None
+      more: '…and %{count} more'
+      preflight: Preflight
+      preflight_ok: No blocking problem found.
+      preflight_errors: Blocking problems
+      preflight_warnings: Warnings
+      refresh_matches: Refresh matches
+      create_anyway: Create anyway (I checked these names)
+      not_ready: 'Not ready to commit: %{stage}.'
+      ready: Ready to commit.
+      commit: Commit
+      commit_confirm: Commit this source to the local DB now? The SQL script is added to the Outbox.
+      ops_missing: 'The ops DB is not ready: run "bin/rails ops:prepare" to commit (the commit report is stored there).'
+      drift_ack: I know the local DB differs from the target and want to commit anyway
+      drift_warning: The drift check asks for a confirmation before committing.
+      structure_only: Structure-only commit (meeting and sessions, no results).
+      link: Commit summary
+      stages:
+        new: Nothing built yet
+        needs_review: some steps need a review
+        blocked: a step is blocked
+        failed: a build failed
+        ready_to_commit: ready
+        committed: already committed
+        committing: commit in progress
+        preparing: preparing
+    commit:
+      refused_preflight: 'The commit was not started: fix the blocking problems below first.'
+      refused_ops: 'The commit was not started: the ops DB is not ready (run "bin/rails ops:prepare").'
+      refused_guard: 'The commit was not started: %{reason}'
+      refused_guard_link: Open DB sync
+      queued: Commit queued.
+      not_queued: 'The commit could not be queued: %{error}'
+      job_refused_state: The report is not queued any more (already started or finished).
+      job_refused_user: The report has no requesting operator.
+      job_refused_guard: 'Refused by the guards: %{reason}'
+      job_refused_preflight: 'Refused by the preflight: %{errors}'
+      job_failed: 'The commit job failed: %{error}'
+    commit_report:
+      title: Commit report
+      subtitle: '%{source}'
+      statuses:
+        queued: Queued
+        running: Committing
+        committed: Committed
+        committed_archive_failed: Committed, archiving failed
+        failed: Failed
+        refused: Refused
+      queued_text: Waiting for the pipeline worker…
+      running_text: Committing…
+      committed_text: The local DB is committed and the SQL script is in the Outbox.
+      failed_text: 'The commit failed: nothing was committed.'
+      refused_text: The commit was not started.
+      requested: Requested
+      started: Started
+      finished: Finished
+      first_error_step: Suggested step to review
+      log_file: Log file
+      sql_file: SQL script
+      archived_to: Archived to
+      open_outbox: Open the Outbox
+      stats: Commit statistics
+      inserts: Inserts
+      updates: Updates
+      total: Total
+      errors: Errors
+      season_checks: Season checks
+      season_checks_none: No season check was queued.
+      season_checks_pending: Queued or running…
+      season_checks_link: Open the season health
+      group: Group
+      status: Status
+      findings: Findings
+      back_to_files: Back to the file list
+      back_to_board: Back to the Season board
+      reports: Commit reports
+      not_found: Commit report not found.
+      legacy_checks: Post-commit integrity checks

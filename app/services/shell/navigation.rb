@@ -57,7 +57,8 @@ module Shell
       item(:result_files, :import, 'fa-file-pen', 'data_import.calendar.result_files_page_title', -> { pull_result_files_path },
            match: %w[pull#result_files]),
       item(:data_fix, :import, 'fa-wand-magic', 'shell.nav.data_fix', -> { pull_result_files_path },
-           match: %w[data_fix data_fix/sessions data_fix/teams data_fix/swimmers data_fix/events data_fix/results data_fix/commits],
+           match: %w[data_fix data_fix/sessions data_fix/teams data_fix/swimmers data_fix/events data_fix/results data_fix/commits
+                     data_fix/commit_reports],
            parent: :result_files, sidebar: false),
       item(:data_fix_sessions, :import, 'fa-clock-rotate-left', 'data_fix_sessions.nav', -> { data_fix_sessions_path },
            match: %w[data_fix/sessions_list]),
@@ -68,6 +69,9 @@ module Shell
       item(:health, :data_quality, 'fa-heart-pulse', 'health.nav', -> { health_path },
            match: %w[health health/seasons health/sections health/findings health/runs health/cancellations],
            keywords: %w[health report duplicates badges cancelled closed seasons]),
+      # (08: local DB vs production fingerprints; reads only the ops DB)
+      item(:db_sync, :data_quality, 'fa-code-compare', 'db_sync.nav', -> { db_sync_path },
+           match: %w[db_sync], offline_ok: true, keywords: %w[drift fingerprint sync production restore]),
       # Entities
       item(:meetings, :entities, 'fa-flag-checkered', 'dashboard.meetings.title', -> { api_meetings_path }, match: %w[api_meetings]),
       item(:calendars, :entities, 'fa-calendar-days', 'dashboard.calendars.title', -> { api_calendars_path }, match: %w[api_calendars]),

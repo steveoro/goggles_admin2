@@ -5,19 +5,10 @@ module DataFix
   class EventsController < BaseController
     def review_events
       source_path = @source_path
-      season = source_resolver.detect_season_from_pathname(source_path)
-      lt_format = source_resolver.detect_layout_type(source_path)
-      phase_path = source_resolver.default_phase_path_for(source_path, 4)
-      return unless ensure_phase_file!(phase_path: phase_path, phase: 4,
-                                       review_path: method(:review_events_path)) do
-        Import::Solvers::EventSolver.new(season:).build!(
-          source_path: source_path,
-          lt_format: lt_format,
-          phase1_path: source_resolver.default_phase_path_for(source_path, 1)
-        )
-      end
+      phase_path = pipeline.phase_path(4)
+      return unless ensure_phase_file!(phase: 4, review_path: method(:review_events_path))
 
-      @retry_needed = source_resolver.sync_phase_retry_flag!(phase_path: phase_path, source_path: source_path)
+      @retry_needed = pipeline.settle!(4)
       pfm = PhaseFileManager.new(phase_path)
       @phase4_meta = pfm.meta
       @phase4_data = pfm.data

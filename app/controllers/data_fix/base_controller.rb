@@ -20,12 +20,11 @@ module DataFix
     private_class_method :local_prefixes
 
     # @api_url is only needed by actions that render review views.
-    before_action :set_api_url, only: %i[review_sessions review_teams review_swimmers review_events
-                                         review_results commit_phase6_report]
+    before_action :set_api_url, only: %i[review_sessions review_teams review_swimmers review_events review_results]
 
     # Resolves @file_path → @source_path for every action taking a file_path param.
     # (Actions with different params or custom error handling manage their own checks.)
-    before_action :set_source_path, except: %i[commit_phase6_report purge coded_name teams_for_swimmer
+    before_action :set_source_path, except: %i[purge coded_name teams_for_swimmer
                                                verify_result confirm_result_duplicate verify_team
                                                update_individual_result_overwrite_candidate
                                                update_individual_result_merge_candidate
@@ -33,8 +32,22 @@ module DataFix
 
     TURBO_FILTER_MIN_QUERY_LENGTH = 3
 
+    # Mutating actions => the phase they edit (DataFix::Pipeline#mark_edited!, after a successful response).
+    EDIT_ACTIONS = {
+      'update_phase1_meeting' => 1, 'update_phase1_session' => 1, 'add_session' => 1, 'delete_session' => 1,
+      'rescan_phase1_sessions' => 1,
+      'update_phase2_team' => 2, 'add_team' => 2, 'delete_team' => 2,
+      'update_phase3_swimmer' => 3, 'add_swimmer' => 3, 'delete_swimmer' => 3, 'merge_phase3_swimmers' => 3,
+      'update_phase4_event' => 4, 'add_event' => 4, 'delete_event' => 4,
+      'toggle_individual_result_overwrite' => 5, 'update_individual_result_overwrite_candidate' => 5,
+      'update_individual_result_merge_candidate' => 5, 'bulk_update_individual_result_overwrite' => 5,
+      'confirm_result_duplicate' => 5
+    }.freeze
+
+    after_action :mark_phase_edited!, only: EDIT_ACTIONS.keys.map(&:to_sym)
+
     # Expose issue detection helpers to views
-    helper_method :swimmer_has_missing_data?, :relay_result_has_issues?, :phase3_conflict_hint?
+    helper_method :swimmer_has_missing_data?, :relay_result_has_issues?, :phase3_conflict_hint?, :pipeline_summary
 
     private
 
@@ -64,15 +77,62 @@ module DataFix
       end
     end
 
-    # Guard for phase-review actions: rebuilds the phase file (via the +rebuild+
-    # block) when missing or when a rescan is requested, then redirects back to
-    # the same review page minus :rescan. Returns false when a redirect was
-    # issued — the caller must return immediately in that case.
-    def ensure_phase_file!(phase_path:, phase:, review_path:, &rebuild) # rubocop:disable Naming/PredicateMethod
-      return true unless params[:rescan].present? || !File.exist?(phase_path)
+    # The DataFix::Pipeline of the current source (interactive: Cable progress, operator actor).
+    def pipeline
+      @pipeline ||= DataFix::Pipeline.for(@source_path, progress: progress_sink, actor: :operator,
+                                                        user_id: current_user&.id, source_resolver:)
+    end
 
-      rebuild_phase_and_redirect!(phase: phase, review_path: review_path, &rebuild)
+    # Per-phase verdicts + stage of the current source, for the stepper (nil when no source is resolved).
+    def pipeline_summary
+      return nil if @source_path.blank?
+
+      @pipeline_summary ||= pipeline.summary
+    rescue StandardError => e
+      Rails.logger.warn("[DataFix] pipeline summary failed for #{@source_path}: #{e.class}: #{e.message}")
+      nil
+    end
+
+    # Guard for phase-review actions: builds the phase file through DataFix::Pipeline#build_phase! when missing,
+    # incomplete (#build_needed?), when a rescan is requested (the only forced rebuild of an edited phase, asked
+    # with a confirmation by the stepper) or, for Step 5 only, when phase 5 is stale and holds no edits; then
+    # redirects back to the same review page minus :rescan. Returns false when a redirect was issued — the caller
+    # must return immediately in that case.
+    def ensure_phase_file!(phase:, review_path:)
+      auto_rebuild = params[:rescan].blank? && phase == 5 && auto_rebuild_phase5?
+      return true unless params[:rescan].present? || pipeline.build_needed?(phase) || auto_rebuild
+
+      rebuild_phase_and_redirect!(phase:, review_path:,
+                                  notice: auto_rebuild ? I18n.t('data_fix.pipeline.phase5_auto_rebuilt') : nil) do
+        pipeline.build_phase!(phase, force: true, strict_upstream: false)
+        pipeline.last_build_result[:notice]
+      end
       false
+    rescue DataFix::Pipeline::LeaseBusyError
+      redirect_to(data_fix_sessions_path, flash: { warning: I18n.t('data_fix.pipeline.lease_busy') })
+      false
+    end
+
+    # Steps 2 and 3: when the local DB was committed to since the phase was built (data_fix.db_generation) and the
+    # phase holds new entities, opening the step re-resolves only those nil-id rows (DataFix::Pipeline#refresh_new_entities!:
+    # ids set by the operator and confirmed rows are left alone; the file is re-stamped, so this is no edit).
+    def refresh_matches_if_db_changed!(phase)
+      return unless pipeline.db_stale?(phase)
+
+      counts = pipeline.refresh_new_entities!
+      pipeline.reload!
+      flash.now[:info] = I18n.t('data_fix.pipeline.matches_refreshed', teams: counts[:teams], swimmers: counts[:swimmers])
+    rescue DataFix::Pipeline::LeaseBusyError
+      nil
+    end
+
+    # Step 5 rebuilds by itself only a stale phase 5 without operator edits, fixes or overwrite selections.
+    def auto_rebuild_phase5?
+      return false unless pipeline.phase_exists?(5) && pipeline.stale?(5).any?
+      return false if pipeline.edited?(5) || pipeline.result_free?
+
+      overwrite = pipeline.phase_meta(5)['individual_result_overwrite']
+      !(overwrite.is_a?(Hash) && Array(overwrite.dig('snapshot', 'candidates')).any? { |candidate| candidate['selected'] == true })
     end
 
     # Runs +rebuild+, then redirects to +review_path+ (a callable returning the
@@ -166,6 +226,39 @@ module DataFix
       end
     end
 
+    # (after_action) Records the operator edit of the phase changed by a successful mutating action
+    # (a redirect without warning/error/alert flash, or a successful JSON answer).
+    def mark_phase_edited!
+      phase = EDIT_ACTIONS[action_name]
+      source_path = @edited_source_path.presence || @source_path
+      return if phase.nil? || source_path.blank? || !edit_succeeded?
+
+      DataFix::Pipeline.for(source_path, progress: Import::Progress::Null.new, user_id: current_user&.id)
+                       .mark_edited!(phase, action: action_name)
+    rescue StandardError => e
+      Rails.logger.warn("[DataFix] edit marker not written for #{action_name}: #{e.class}: #{e.message}")
+    end
+
+    def edit_succeeded?
+      return %i[warning error alert].none? { |key| flash[key].present? } if response.redirect?
+
+      return false unless response.successful?
+
+      body = response.parsed_body
+      !(body.is_a?(Hash) && body['success'] == false)
+    rescue StandardError
+      response.successful?
+    end
+
+    # Re-stamps the downstream phases kept in step by a cascade (DataFix::TeamCascade / SwimmerCascade), so that
+    # they are not reported stale for the upstream change they already absorbed.
+    def restamp_after_cascade!(phases:, keys:)
+      fresh = DataFix::Pipeline.for(@source_path, progress: Import::Progress::Null.new, source_resolver:)
+      Array(phases).each { |phase| fresh.restamp!(phase, keys:) if fresh.phase_exists?(phase) }
+    rescue StandardError => e
+      Rails.logger.warn("[DataFix] restamp after cascade failed: #{e.class}: #{e.message}")
+    end
+
     # Setter for @api_url
     def set_api_url
       @api_url = "#{GogglesDb::AppParameter.config.settings(:framework_urls).api}/api/v3"
@@ -198,15 +291,16 @@ module DataFix
       DataFix::IssueDetector.relay_result_has_issues?(relay_result, **kwargs)
     end
 
+    # Progress sink of the interactive requests (ActionCable 'ImportStatusChannel', see Import::Progress):
+    # passed to the pipeline, the solvers and the committer as their +progress:+ keyword.
+    def progress_sink
+      @progress_sink ||= Import::Progress::Cable.new
+    end
+
     # Broadcast progress updates via ActionCable for real-time UI feedback
     # Used during long-running operations (team/swimmer/result processing)
     def broadcast_progress(message, current, total)
-      ActionCable.server.broadcast(
-        'ImportStatusChannel',
-        { msg: message, progress: current, total: total }
-      )
-    rescue StandardError => e
-      Rails.logger.warn("[DataFixController] Failed to broadcast progress: #{e.message}")
+      progress_sink.call(message, current, total)
     end
     #-- -------------------------------------------------------------------------
     #++
