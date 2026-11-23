@@ -24,7 +24,7 @@ Default target environment is `development`; use `test` if the user asks to run 
 
 ## 1. Ensure system dependencies
 
-- Ruby 3.4.7 active (see `.ruby-version`). Install with `rbenv`/`ruby-build` or your version manager if missing.
+- Ruby 3.4.13 active (see `.ruby-version`). Install with `rbenv`/`ruby-build` or your version manager if missing.
 - MariaDB 11.8 server & client packages (`mariadb-server`, `mariadb-client`, `libmariadb-dev` or `default-libmysqlclient-dev`) running and reachable.
 - `bunzip2`, `git`, `curl`.
 - Node.js and Yarn only for `goggles_main` JS linting (optional; `goggles_admin2` uses importmap-rails, but the embedded crawler in `crawler/` needs npm only if you are running it directly).

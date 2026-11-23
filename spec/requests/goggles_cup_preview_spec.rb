@@ -46,6 +46,12 @@ RSpec.describe 'GogglesCupPreview' do
         expect(response).to have_http_status(:success)
       end
 
+      it 'shows the goggles_db (engine) score formula text' do
+        get goggles_cup_preview_path
+        expect(response.body).to include(CGI.escapeHTML(I18n.t('goggles_cup.formula')))
+        expect(I18n.t('goggles_cup.formula', locale: :en)).to eq('Score = 1000 * (Previous Time / Current Time)')
+      end
+
       it 'renders the swimmer list when a team is selected' do
         team = FactoryBot.create(:team)
         query = instance_double(GogglesDb::GogglesCup::SwimmerOptionsQuery, call: [swimmer_option])

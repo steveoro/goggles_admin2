@@ -1,0 +1,45 @@
+---
+en:
+  goggles_cup:
+    apply_local: Apply changes locally
+    apply_local_tooltip: Overwrites the local copy of this cup with the one from the remote database
+    confirm_apply_local: Overwrite the local copy of this cup with the remote database row?
+    apply_local_success: Local copy updated from the remote database.
+    resync: Resync
+    resync_tooltip: Reload this cup row from the remote database before editing
+    confirm_resync: Overwrite the local copy with the remote row?
+    resync_success: Cup resynced from the remote database.
+    publish: Publish
+    publish_tooltip: Makes this cup visible to its enlisted swimmers (only one published cup per team & year)
+    confirm_publish: Publish this cup? Other published cups for the same team and year will be hidden.
+    publish_success: Cup published.
+    unpublish: Unpublish
+    unpublish_tooltip: Makes this cup private again
+    confirm_unpublish: Make this cup private again?
+    unpublish_success: Cup unpublished.
+    remote_edit_notice: 'Please note: changes are applied directly on the connected remote database via the API. The local copy is resynced automatically after each save.'
+    name_label: Name
+    name_placeholder: same as description if blank
+    compute_error: 'Remote compute failed: %{message}'
+    api_error: 'API error: %{message}'
+    api_unreachable: Unable to reach the API (the change may not have been applied remotely; resync to check). %{detail}
+    local_sync_error: 'Remote change applied, but the local mirror could not be updated: %{message}. Use "Resync" to retry.'
+    badges_report: 'Badges created: %{created}; skipped: %{skipped}.'
+    selection_header: Season / team / cup selection
+    select_season: Championship year
+    select_team_label: Primary team
+    new_cup: New cup
+    new_cup_option: New cup...
+    new_cup_tooltip: Start a new cup configuration for the selected year & team
+    cup_configuration: Cup configuration — %{team}
+    readonly_badge: Stored ranking
+    readonly_hint: 'A precomputed ranking is stored for this cup: the swimmer selection is read-only. Use the edit button to change it (the stored ranking will be cleared).'
+    edit_selection: Edit selection
+    edit_selection_tooltip: Unlock the swimmer selection by clearing the stored ranking
+    confirm_clear_ranking: This will clear the stored ranking for this cup so the swimmer selection can be changed. Continue?
+    ranking_cleared: Stored ranking cleared. The swimmer selection is now editable.
+    go_to_top: Back to top
+    errors:
+      cup_required: Please select an existing cup first.
+    info:
+      nothing_to_export: Nothing to export. Save a cup with at least one selected swimmer first.
