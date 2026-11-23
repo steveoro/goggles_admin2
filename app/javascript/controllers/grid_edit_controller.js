@@ -17,6 +17,14 @@ const loadCodeMirrorJson = () => {
 // (mirrors Grid::EditModalComponent#detail_endpoint_name / #base_entity_name):
 const RENAMED_ID_FIELD_KEYS = { associated_user_id: 'user_id', home_team_id: 'team_id' }
 
+// 'shown.bs.modal' handler (one per modal, as the same function is never added twice):
+// CodeMirror editors created or updated while the modal was hidden measured a zero-size layout,
+// so let them re-measure once it's visible.
+function remeasureJsonEditors (event) {
+  event.currentTarget.querySelectorAll('[id^="json-editor-"]')
+    .forEach((container) => container.codemirrorView?.requestMeasure())
+}
+
 /**
  * = grid-edit - StimulusJS controller =
  *
@@ -174,6 +182,8 @@ export default class extends Controller {
             }
           }
         )
+      // (the modal itself is opened by the Bootstrap data API of the clicked button)
+      document.getElementById(`${this.baseModalIdValue}-modal`)?.addEventListener('shown.bs.modal', remeasureJsonEditors)
       return true
     }
     return false

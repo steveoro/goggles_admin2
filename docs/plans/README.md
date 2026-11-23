@@ -18,6 +18,7 @@ In this repo, "staging" always means the import staging tables (`data_import_*`)
 - When a phase is finished, its file moves to `docs/plans/done/` and the Status column below is updated.
 - Decisions listed as "to confirm" inside a phase file are settled when that phase starts.
 - All phases are developed on the branch `feature/modernize-admin-console-ux`; `main` stays as it is until the whole plan is done, then the branch is merged. Any other framework project touched by a phase (e.g. goggles_db, goggles_api, goggles_main) gets a branch with the same name.
+- Shared names and interfaces between phases (ops models, Outbox, Drift gate, queues, compat layer, inbox registry) are fixed in [contracts.md](contracts.md); the owning phase wins.
 
 ## Decisions taken with the operator
 

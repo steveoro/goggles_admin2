@@ -14,7 +14,7 @@ import TomSelect from 'tom-select'
  * Original docs:
  *
  * Lookup controller refactored for importmap runtime.
- * Uses TomSelect instead of jQuery/Select2.
+ * Uses TomSelect (it replaced the former Select2 widget).
  *
  * = StimulusJS generic Lookup controller =
  *

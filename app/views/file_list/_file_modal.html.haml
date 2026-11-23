@@ -9,8 +9,7 @@
         .modal-header
           %h5.modal-title{ id: 'file-actions-modal-title' }
             = I18n.t('datagrid.edit_modal.edit_title')
-          %button.close{ 'aria-label' => I18n.t('datagrid.edit_modal.close_btn'), 'data-dismiss' => 'modal' }
-            %span{ 'aria-hidden' => 'true' } &times;
+          %button.btn-close{ type: 'button', 'aria-label' => I18n.t('datagrid.edit_modal.close_btn'), 'data-bs-dismiss' => 'modal' }
 
         .modal-body{ id: 'file-actions-modal-body' }
           .form-group.row-fluid
@@ -23,7 +22,7 @@
 
         .modal-footer
           %button.btn.btn-sm.btn-outline-secondary{ 'aria-label' => I18n.t('datagrid.edit_modal.close_btn'),
-                                                    'data-dismiss' => 'modal', type: 'button' }
+                                                    'data-bs-dismiss' => 'modal', type: 'button' }
             = I18n.t('datagrid.edit_modal.close_btn')
 
           %button.btn.btn-sm.btn-outline-danger{ id: 'btn-submit-save', type: 'submit',

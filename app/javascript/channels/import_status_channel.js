@@ -39,37 +39,11 @@ document.addEventListener('turbo:load', () => {
           progressBar.dataset.value = currValue
           progressBar.dataset.total = currTotal
 
-          // Direct DOM manipulation to show modal and update progress
-          const modal = document.getElementById('modal-progress')
-          const backdrop = document.getElementById('modal-progress-backdrop')
-          if (modal) {
-            modal.classList.add('show')
-            modal.style.display = 'block'
-            if (backdrop) {
-              backdrop.style.display = 'block'
-            }
-            document.body.classList.add('modal-open')
-            const msgElement = document.getElementById('progress-msg')
-            if (msgElement) {
-              msgElement.textContent = `${data['msg']}: ${currValue}/${currTotal}`
-            }
-            const percent = (currValue * 100 / currTotal).toFixed(1)
-            progressBar.setAttribute('aria-valuenow', percent)
-            progressBar.style.width = `${percent}%`
-            progressBar.textContent = `${percent}%`
-
-            // Hide modal when progress reaches 100%
-            if (parseInt(currValue) >= parseInt(currTotal)) {
-              setTimeout(() => {
-                modal.classList.remove('show')
-                modal.style.display = 'none'
-                if (backdrop) {
-                  backdrop.style.display = 'none'
-                }
-                document.body.classList.remove('modal-open')
-              }, 2000) // Wait 1 second before hiding
-            }
-          }
+          // Progress UI: handled by the progress-modal controller of the shared partial
+          // (app/views/goggles/_modal_progress.html.haml), bound to this event.
+          document.dispatchEvent(new CustomEvent('import-status', {
+            detail: { msg: data['msg'], value: currValue, total: currTotal }
+          }))
         }
         else {
           console.log(data['msg'])

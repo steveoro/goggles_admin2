@@ -36,7 +36,7 @@ RSpec.describe 'Pull result files' do
       expect(page).to have_css('#file-actions-modal textarea#new_content')
       expect(page).to have_css('.modal-backdrop.show')
       sleep(0.6) # (Bootstrap ignores a hide request while the fade-in transition is still running)
-      find('#file-actions-modal .modal-footer [data-dismiss="modal"]').click
+      find('#file-actions-modal .modal-footer [data-bs-dismiss="modal"]').click
 
       expect(page).to have_no_css('#file-actions-modal.show')
       expect_no_modal_backdrop

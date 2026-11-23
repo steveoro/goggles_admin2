@@ -50,7 +50,7 @@
         %strong Commit Statistics
       .card-body
         %table.table.table-sm.table-striped
-          %thead.thead-light
+          %thead.table-light
             %tr
               %th Entity
               %th.text-center Inserts
@@ -89,7 +89,7 @@
             -# Totals row
             - total_created = entity_groups.values.sum { |keys| @stats[keys[0]] || 0 }
             - total_updated = entity_groups.values.sum { |keys| keys[1] ? (@stats[keys[1]] || 0) : 0 }
-            %tr.table-info.font-weight-bold
+            %tr.table-info.fw-bold
               %td Total
               %td.text-center= total_created
               %td.text-center= total_updated

@@ -51,6 +51,23 @@ RSpec.describe 'Data-Fix review pages' do
     end
   end
 
+  describe 'step 2 (teams): Bootstrap 4 → 5 attribute shim' do
+    it 'keeps the custom data-target of .verify-team-btn while upgrading the collapse toggles' do
+      visit(review_teams_path(file_path: source_path, phase2_v2: 1, filter_state: 'none'))
+
+      # Copy, never move: a lone data-target is app data, read by the inline handler of the page.
+      verify_button = first('.verify-team-btn', visible: :all)
+      expect(verify_button['data-target']).to start_with('#team-verify-')
+      expect(verify_button['data-bs-target']).to be_nil
+
+      # BS4 toggles get their BS5 copies, keeping the original attributes:
+      toggle = first('[data-toggle="collapse"][data-target]', visible: :all)
+      expect(toggle['data-bs-toggle']).to eq('collapse')
+      expect(toggle['data-bs-target']).to eq(toggle['data-target'])
+      expect_no_js_errors
+    end
+  end
+
   describe 'journey 9: step 4 (events)' do
     it 'renders the add-event form with an initialised TomSelect' do
       visit(review_events_path(file_path: source_path, phase4_v2: 1))

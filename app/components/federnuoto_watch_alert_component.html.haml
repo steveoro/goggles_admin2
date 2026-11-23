@@ -1,9 +1,8 @@
 .flash-alert.alert.alert-warning.flash-sticky{ id: FedernuotoWatch::ALERT_DOM_ID, role: 'alert',
                                                data: { controller: 'federnuoto-watch',
                                                        'federnuoto-watch-ack-url-value': federnuoto_watch_acknowledge_path } }
-  %button.close{ type: 'button', 'aria-label' => t('federnuoto_watch.alert.dismiss'),
-                 title: t('federnuoto_watch.alert.dismiss'), data: { action: 'federnuoto-watch#dismiss' } }
-    %span{ 'aria-hidden' => 'true' } ×
+  %button.btn-close.float-end{ type: 'button', 'aria-label' => t('federnuoto_watch.alert.dismiss'),
+                               title: t('federnuoto_watch.alert.dismiss'), data: { action: 'federnuoto-watch#dismiss' } }
   %h5.alert-heading
     %i.fa.fa-2x.fa-bell.text-warning{ 'aria-hidden' => 'true' }
     = t('federnuoto_watch.alert.title')

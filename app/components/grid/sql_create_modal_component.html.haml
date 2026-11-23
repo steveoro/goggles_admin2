@@ -11,8 +11,7 @@
         .modal-header
           %h5.modal-title{ id: "#{@base_dom_id}-modal-title" }
             = I18n.t('datagrid.sql_create.modal_title')
-          %button.close{ 'aria-label' => I18n.t('datagrid.sql_create.cancel_btn'), 'data-dismiss' => 'modal' }
-            %span{ 'aria-hidden' => 'true' } &times;
+          %button.btn-close{ type: 'button', 'aria-label' => I18n.t('datagrid.sql_create.cancel_btn'), 'data-bs-dismiss' => 'modal' }
         .modal-body{ id: "#{@base_dom_id}-modal-body" }
           .form-group.row
             = content_tag(:small, class: 'col-sm-3') do
@@ -47,7 +46,7 @@
 
         .modal-footer
           %button.btn.btn-sm.btn-outline-secondary{ 'aria-label' => I18n.t('datagrid.sql_create.cancel_btn'),
-                                                    'data-dismiss' => 'modal', type: 'button' }
+                                                    'data-bs-dismiss' => 'modal', type: 'button' }
             = I18n.t('datagrid.sql_create.cancel_btn')
           %button.btn.btn-sm.btn-outline-success{ id: "btn-#{@base_dom_id}-submit-generate", type: 'submit',
                 'aria-label' => I18n.t('datagrid.sql_create.generate_btn'),

@@ -6,7 +6,7 @@
         - results_by_swimmer.each do |swimmer, results|
           %h6.text-center.bg-light-blue.mt-2
             #{swimmer.decorate.display_label} - #{swimmer.latest_category_type&.code}
-            .float-right
+            .float-end
               %small ID #{swimmer.id}
           .table-responsive
             %table.table.table-striped.table-hover.table-sm

@@ -6,8 +6,8 @@ require 'selenium-webdriver'
 # = System test helpers (browser-level smoke specs under spec/system)
 #
 # - Headless Chrome through Selenium (binary from ENV['CHROME_BIN'] when set).
-# - Needs network access: until the assets are vendored the layout loads Bootstrap, FontAwesome,
-#   jQuery & friends from CDNs (WebMock doesn't affect the browser).
+# - No network access needed: Bootstrap, Font Awesome, tom-select & chart.js are vendored
+#   (vendor/assets, vendor/javascript); the API is stubbed through APIProxy.
 # - Run <tt>bin/rails dartsass:build</tt> once before the first run.
 # - Set ENV['SKIP_SYSTEM'] (any non-empty value) to exclude the whole `type: :system` group.
 #

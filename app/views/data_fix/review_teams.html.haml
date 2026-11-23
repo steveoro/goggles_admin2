@@ -27,11 +27,11 @@
       .card-header{ style: 'cursor: pointer;', data: { toggle: 'collapse', target: '#phase2-team-scores-collapse' },
                     'aria-expanded' => 'false', 'aria-controls' => 'phase2-team-scores-collapse' }
         %strong #{t('data_import.data_fix.team_scores.title')} (#{team_scores.size})
-        %i.fa.fa-chevron-down.float-right.mt-1
+        %i.fa.fa-chevron-down.float-end.mt-1
       .collapse#phase2-team-scores-collapse
         .card-body.p-0
           %table.table.table-sm.table-striped.mb-0
-            %thead.thead-light
+            %thead.table-light
               %tr
                 %th.text-center= t('data_import.data_fix.team_scores.rank')
                 %th= t('data_import.data_fix.team_scores.team')

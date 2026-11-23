@@ -22,7 +22,7 @@
       %button.btn.btn-link.p-0.text-left{ type: 'button', 'data-toggle' => 'collapse', 'data-target' => "##{collapse_id}", 'aria-expanded' => 'true', 'aria-controls' => collapse_id }
         %i.fa.fa-life-ring.mr-2
         Phase 3: Missing Swimmer Data
-        %span.badge.badge-pill.badge-warning.ml-2= summary.size
+        %span.badge.rounded-pill.badge-warning.ml-2= summary.size
   %div{ id: "#{collapse_id}", class: "collapse show", 'aria-labelledby' => "#{panel_id}-header" }
     .card-body
       %p.text-muted
@@ -32,9 +32,9 @@
         = form_tag(review_swimmers_path, method: :get, class: 'form-inline') do
           = hidden_field_tag :file_path, file_path
           = hidden_field_tag :phase3_v2, 1
-          .custom-control.custom-checkbox
-            = check_box_tag :show_new_relay_swimmers, '1', @show_new_relay_swimmers, class: 'custom-control-input', id: "#{panel_id}-show-new"
-            %label.custom-control-label{ for: "#{panel_id}-show-new" } Show new swimmers (nil ID)
+          .form-check
+            = check_box_tag :show_new_relay_swimmers, '1', @show_new_relay_swimmers, class: 'form-check-input', id: "#{panel_id}-show-new"
+            %label.form-check-label{ for: "#{panel_id}-show-new" } Show new swimmers (nil ID)
           = submit_tag 'Apply', class: 'btn btn-sm btn-primary ml-2'
 
       - unless totals.empty?
@@ -91,7 +91,7 @@
               %td
                 - Array(relay['swimmers']).each do |leg|
                   .mb-2.pb-2.border-bottom
-                    %div.font-weight-bold
+                    .fw-bold
                       = t('data_import.relay_enrichment.table.leg_label', number: leg['leg_order'])
                       - if leg['phase3_key'].present?
                         %span.badge.badge-secondary.ml-2

@@ -54,11 +54,11 @@
             - else
               .mb-2#season-board-filters
                 = link_to(t('season_board.filters.all', count: @board.rows.size), season_board_path(toggles),
-                          class: "badge badge-pill mr-1 #{@state_filter ? 'badge-light border' : 'badge-dark'}")
+                          class: "badge rounded-pill mr-1 #{@state_filter ? 'badge-light border' : 'badge-dark'}")
                 - @state_counts.each do |state, count|
                   = link_to("#{state == :in_review ? t('season_board.states.in_review_chip') : t("season_board.states.#{state}")} (#{count})",
                             season_board_path(toggles.merge(state: state)),
-                            class: "badge badge-pill mr-1 #{@state_filter == state.to_s ? 'badge-dark' : 'badge-light border'}",
+                            class: "badge rounded-pill mr-1 #{@state_filter == state.to_s ? 'badge-dark' : 'badge-light border'}",
                             title: t("season_board.state_tooltips.#{state}"), data: { state_chip: state })
                 %br
                 %small
@@ -77,7 +77,7 @@
 
               .table-responsive
                 %table.table.table-sm.table-hover.mb-3#season-board-table
-                  %thead.thead-light
+                  %thead.table-light
                     %tr
                       %th= t('season_board.columns.date')
                       %th= t('season_board.columns.name')

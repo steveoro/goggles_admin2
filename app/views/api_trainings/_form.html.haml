@@ -11,7 +11,7 @@
     - if image_required
       %b.text-danger *
     = file_field_tag('training[image]', required: image_required, accept: 'image/jpeg,image/png,image/webp,image/gif',
-                     class: 'form-control-file')
+                     class: 'form-control')
     - unless image_required
       .small.text-muted= t('api_trainings.form.image_hint')
 
@@ -42,7 +42,7 @@
   .form-group
     = label_tag('training[description]', t('api_trainings.form.description'))
     = text_area_tag('training[description]', training['description'], rows: 8,
-                    class: 'form-control text-monospace')
+                    class: 'form-control font-monospace')
 
   .form-group.text-center
     %button.btn.btn-lg.btn-primary{ type: 'submit' }

@@ -5,7 +5,7 @@
     -# Loading overlay shown during ranking computation
     #goggles-cup-overlay.goggles-cup-overlay.d-none{ data: { 'goggles-cup-target': 'overlay' } }
       .spinner-border.text-light{ style: 'width: 3rem; height: 3rem;', role: 'status' }
-        %span.visually-hidden.sr-only= t('goggles_cup.computing')
+        %span.visually-hidden= t('goggles_cup.computing')
     - provide(:title, t('goggles_cup.title'))
     .row-fluid.text-center
       %h4

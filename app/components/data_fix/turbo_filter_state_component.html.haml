@@ -17,9 +17,8 @@
                        placeholder: @q_placeholder,
                        data: { action: 'input->data-fix-filter-state#handleQInput',
                                'data-fix-filter-state-target': 'q' }
-      .input-group-append
-        %button.btn.btn-outline-secondary{ type: 'submit', title: 'Search', 'aria-label': 'Search' }
-          %i.fa.fa-search
+      %button.btn.btn-outline-secondary{ type: 'submit', title: 'Search', 'aria-label': 'Search' }
+        %i.fa.fa-search
 
   .form-group.mr-2
     %label.mr-1{ for: "#{@dom_id_prefix}-per-page" } Per page
@@ -31,7 +30,7 @@
                          'data-fix-filter-state-target': 'perPage' }
 
   .form-group.mr-2
-    .btn-group.btn-group-toggle{ 'data-toggle': 'buttons' }
+    .btn-group.btn-group-toggle
       %label.btn.btn-outline-secondary{ class: ('active' if checked_filter_state?('none')) }
         = radio_button_tag :filter_state,
                            'none',

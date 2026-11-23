@@ -36,7 +36,7 @@ RSpec.describe 'Data grids (api_teams)' do
       # (Bootstrap ignores a hide request while the fade-in transition is still running)
       expect(page).to have_css('.modal-backdrop.show')
       sleep(0.6)
-      find('#grid-edit-modal .modal-footer [data-dismiss="modal"]').click
+      find('#grid-edit-modal .modal-footer [data-bs-dismiss="modal"]').click
       expect(page).to have_no_css('#grid-edit-modal.show')
       expect_no_modal_backdrop
       expect_no_js_errors

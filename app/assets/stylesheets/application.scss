@@ -1,8 +1,11 @@
 // Main dartsass entrypoint for goggles_admin2.
-// CDN-loaded: Bootstrap 5, Font Awesome 6, tom-select bootstrap5 theme.
+// Bootstrap 5.3, Font Awesome 6 (+ v4 shims) and the tom-select bootstrap5 theme are vendored
+// under vendor/assets/stylesheets and linked by the layout before this file (not @use'd here).
 // Local partials below:
 
 @use 'custom_fonts';
+// Temporary Bootstrap 4 class compatibility layer (see compat/_bs4.scss):
+@use 'compat/bs4';
 @use 'custom_styles';
 @use 'tom_select_customizations';
 @use 'legacy_auto_complete_component';

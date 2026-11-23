@@ -1,6 +1,5 @@
 .flash-alert.alert{ role: 'alert', class: alert_css_classes }
-  %button.close{ 'aria-label' => 'Close', 'data-dismiss' => 'alert', type: 'button' }
-    %span{ 'aria-hidden' => 'true' } ×
+  %button.btn-close.float-end{ 'aria-label' => 'Close', 'data-bs-dismiss' => 'alert', type: 'button' }
   %h5.alert-heading
     %i.fa.fa-2x{ class: alert_title_class, 'aria-hidden' => 'true' }
     = @title

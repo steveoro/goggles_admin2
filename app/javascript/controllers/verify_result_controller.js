@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { Collapse } from "bootstrap"
 
 /**
  * Verify Result Controller
@@ -40,7 +41,8 @@ export default class extends Controller {
     const panel = document.querySelector(targetSelector)
     if (!panel) return
 
-    panel.classList.add('show')
+    // (through Bootstrap, so that the panel triggers stay in sync)
+    Collapse.getOrCreateInstance(panel, { toggle: false }).show()
 
     const self = this
     const url = '/data_fix/verify_result?import_key=' + encodeURIComponent(importKey) + '&result_type=' + encodeURIComponent(resultType)

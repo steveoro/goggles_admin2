@@ -1,8 +1,9 @@
-.modal-backdrop#modal-progress-backdrop{ style: 'display: none; background-color: rgba(0, 0, 0, 0.5);' }
-.modal#modal-progress{ 'aria-hidden': 'true', 'aria-labelledby': 'modal-progress',
-                       role: 'dialog', tabindex: '-1',
-                       data: { controller: 'progress-modal',
-                               progress_modal_target: 'modal' } }
+-# Progress modal fed by ImportStatusChannel through the 'import-status' event (see progress_modal_controller.js)
+.modal.fade#modal-progress{ 'aria-hidden': 'true', 'aria-labelledby': 'progress-msg',
+                            role: 'dialog', tabindex: '-1',
+                            data: { controller: 'progress-modal',
+                                    action: 'import-status@document->progress-modal#update',
+                                    progress_modal_target: 'modal' } }
   .modal-dialog.modal-dialog-centered.modal-lg
     .modal-content
       .m-2#progress-msg{ data: { progress_modal_target: 'message' } }
