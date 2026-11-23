@@ -61,7 +61,13 @@ module Shell
            parent: :result_files, sidebar: false),
       item(:data_fix_sessions, :import, 'fa-clock-rotate-left', 'data_fix_sessions.nav', -> { data_fix_sessions_path },
            match: %w[data_fix/sessions_list]),
-      item(:push, :import, 'fa-upload', 'shell.nav.push', -> { push_index_path }, match: %w[push]), # replaced by :outbox in 07
+      # (07: the SQL Outbox replaces the Push page; '/push/index' only redirects here)
+      item(:outbox, :import, 'fa-paper-plane', 'outbox.nav', -> { outbox_path }, match: %w[outbox push],
+                                                                                 offline_ok: true, keywords: %w[push sql scripts upload send]),
+      # Data quality
+      item(:health, :data_quality, 'fa-heart-pulse', 'health.nav', -> { health_path },
+           match: %w[health health/seasons health/sections health/findings health/runs health/cancellations],
+           keywords: %w[health report duplicates badges cancelled closed seasons]),
       # Entities
       item(:meetings, :entities, 'fa-flag-checkered', 'dashboard.meetings.title', -> { api_meetings_path }, match: %w[api_meetings]),
       item(:calendars, :entities, 'fa-calendar-days', 'dashboard.calendars.title', -> { api_calendars_path }, match: %w[api_calendars]),

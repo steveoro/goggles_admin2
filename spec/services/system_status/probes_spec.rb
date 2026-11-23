@@ -221,11 +221,12 @@ RSpec.describe 'SystemStatus probes' do # rubocop:disable RSpec/DescribeClass
       end
 
       it 'is :ok with a supervisor and a worker for each queue of config/queue.yml' do
+        workers = described_class.configured_queues.map { |queue| live('Worker', queue) }
         allow(described_class).to receive(:live_processes)
-          .and_return([live('Supervisor(fork)'), live('Dispatcher'), live('Worker', 'default'), live('Worker', 'background')])
+          .and_return([live('Supervisor(fork)'), live('Dispatcher'), *workers])
         result = described_class.new.call
         expect(result.level).to eq(:ok)
-        expect(result.detail).to include('4')
+        expect(result.detail).to include((2 + workers.size).to_s)
         expect(described_class).to have_received(:live_processes).with(since: be_within(5.seconds).of(5.minutes.ago))
       end
 
@@ -247,7 +248,7 @@ RSpec.describe 'SystemStatus probes' do # rubocop:disable RSpec/DescribeClass
       end
 
       it 'reads the configured queues from config/queue.yml' do
-        expect(described_class.configured_queues).to contain_exactly('default', 'background')
+        expect(described_class.configured_queues).to include('default', 'background', 'maintenance')
       end
 
       it 'is :unknown when the queue DB/tables are missing (no exception)' do

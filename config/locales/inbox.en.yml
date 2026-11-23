@@ -54,6 +54,17 @@ en:
         one: "1 script to push (%{number})"
         other: "%{count} scripts to push, oldest %{number}"
       push: "Push"
+      held:
+        one: "1 held"
+        other: "%{count} held"
+      held_only:
+        one: "1 SQL script held in the Outbox"
+        other: "%{count} SQL scripts held in the Outbox"
+      in_doubt:
+        one: "1 push in doubt: check the remote import queue"
+        other: "%{count} pushes in doubt: check the remote import queue"
+      resolve: "Resolve"
+      open: "Open"
     unmatched_sources:
       titles:
         resume_review: "In review, without FIN id: %{name}"

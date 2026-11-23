@@ -36,7 +36,8 @@ namespace :normalize do
 
     The resulting file will be stored under:
 
-      - '#{SCRIPT_OUTPUT_DIR}/normalize/<index>-normalize_coded_names.sql'
+      - '#{SCRIPT_OUTPUT_DIR}/misc/<index>-normalize_coded_names.sql'
+        (registered in the SQL Outbox: HELD until applied locally, unless simulate=0)
 
     Options: [Rails.env=#{Rails.env}]
              [limit=N|<0>] [index=<auto>]
@@ -55,12 +56,12 @@ namespace :normalize do
   task(coded_names: ['merge:check_needed_dirs']) do
     puts '*** Task: normalize:coded_names ***'
     limit_rows = ENV.include?('limit') ? ENV['limit'].to_i : 0
-    file_index = ENV['index'].present? ? ENV['index'].to_i : auto_index_from_script_output_dir('normalize')
+    file_index = ENV['index'].present? ? ENV['index'].to_i : auto_index_from_script_output_dir
     simulate = ENV['simulate'] != '0' # Don't run locally the script unless explicitly requested
 
     puts("\r\n- limit..........: #{limit_rows.positive? ? limit_rows : '(all rows)'}")
     puts("- simulate.......: #{simulate}")
-    puts("- dest. folder...: #{SCRIPT_OUTPUT_DIR}/normalize\r\n")
+    puts("- dest. folder...: #{SCRIPT_OUTPUT_DIR}/misc\r\n")
 
     normalizer = Normalize::CodedNames.new(limit: limit_rows)
     normalizer.call
@@ -78,7 +79,7 @@ namespace :normalize do
     process_sql_file(
       file_name:,
       sql_log_array: normalizer.single_transaction_sql_log,
-      subdir: 'normalize',
+      kind: 'normalize',
       simulate:
     )
     puts('Done.')

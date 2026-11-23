@@ -13,8 +13,8 @@ module SeasonBoard
   # when given: an existing FIN +results_link+ is never replaced by a non-FIN URL; +manifest_link+
   # is set only when blank; a calendar already carrying a different FIN event ID is refused) on the
   # localhost DB inside a transaction, writing at the same time the
-  # replayable SQL script to <tt>results.new/<season>/</tt> with the standard progressive numbering
-  # (same pattern as TeamManagerSqlCreate).
+  # replayable SQL script to <tt>results.new/<season>/</tt> through Outbox::Writer (kind 'calendar_link',
+  # global sequence numbering; same pattern as TeamManagerSqlCreate).
   #
   # == Usage
   #   result = SeasonBoard::CalendarLinker.new(season:, calendar_id: 1697, fin_event_id: '150100',
@@ -24,8 +24,6 @@ module SeasonBoard
   #   result.error     # => error message, on failure
   #
   class CalendarLinker
-    include FileCounter
-
     # Outcome of #call.
     Result = Struct.new(:success, :sql_path, :error, keyword_init: true) do
       def success?
@@ -60,16 +58,20 @@ module SeasonBoard
       changes = calendar_changes
       return Result.new(success: true) if changes.empty?
 
-      sql_path = nil
+      script = nil
+      committed = false
       ActiveRecord::Base.transaction do
         sql = SqlMaker.new(row: @calendar).log_update(changes.merge('updated_at' => nil))
         @calendar.update!(changes)
         # Written inside the transaction: on failure no script exists without its local change.
-        sql_path = write_sql_file(sql)
+        script = write_sql_file(sql)
       end
-      record_link_event(changes, sql_path)
-      Result.new(success: true, sql_path:)
+      committed = true
+      record_link_event(changes, script.absolute_path)
+      Result.new(success: true, sql_path: script.absolute_path)
     rescue StandardError => e
+      # (the local change rolled back: a script written meanwhile must not stay pushable)
+      Outbox::Writer.discard!(@script) unless committed
       Result.new(success: false, error: e.message)
     end
 
@@ -126,12 +128,8 @@ module SeasonBoard
       end
     end
 
+    # Registers 'NNNN-calendar_link-<calendar_id>-<fin_event_id>.sql' in the Outbox; returns the Ops::SqlScript.
     def write_sql_file(sql)
-      source_dir = data_root.join('results.new', season.id.to_s)
-      sent_dir = data_root.join('results.sent', season.id.to_s)
-      FileUtils.mkdir_p(source_dir)
-      counter = compute_file_counter(source_dir, sent_dir)
-      file_path = source_dir.join("#{format('%04d', counter + 1)}-calendar_link-#{@calendar.id}-#{fin_event_id}.sql")
       lines = [
         "-- Season board manual link: season_id=#{season.id}, calendar_id=#{@calendar.id}, FIN event #{fin_event_id}\r\n",
         'SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";',
@@ -142,8 +140,12 @@ module SeasonBoard
         "\r\n--\r\n",
         'COMMIT;'
       ]
-      File.write(file_path, "#{lines.join("\r\n")}\r\n")
-      file_path
+      @script = Outbox::Writer.write!(
+        kind: 'calendar_link', name: "calendar_link-#{@calendar.id}-#{fin_event_id}", sql: "#{lines.join("\r\n")}\r\n",
+        folder: season.id.to_s, season_id: season.id, data_root:,
+        origin: { 'producer' => 'season_board.calendar_link', 'calendar_id' => @calendar.id, 'fin_event_id' => fin_event_id,
+                  'meeting_id' => @calendar.meeting_id }.compact
+      )
     end
   end
 end

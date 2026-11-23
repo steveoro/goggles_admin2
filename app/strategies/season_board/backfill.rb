@@ -36,8 +36,8 @@ module SeasonBoard
   # == Modes
   # - simulate (default): nothing is written, neither to the DB nor to disk;
   # - apply (<tt>simulate: false</tt>): the same changes are run on the localhost DB inside a
-  #   transaction and the SQL script is written to <tt>results.new/<season>/</tt> with the
-  #   standard progressive numbering (see FileCounter), ready to be sent from the Push page.
+  #   transaction and the SQL script is written to <tt>results.new/<season>/</tt> through Outbox::Writer
+  #   (kind 'backfill', global sequence numbering), ready to be pushed from the Outbox page.
   #
   # == Usage
   #   backfill = SeasonBoard::Backfill.new(season: season, simulate: true).call
@@ -49,8 +49,6 @@ module SeasonBoard
   #   puts backfill.report
   #
   class Backfill # rubocop:disable Metrics/ClassLength
-    include FileCounter
-
     DEFAULT_DATA_ROOT = Rails.root.join('crawler/data')
     SOURCE_DIRS = %w[results.done results.new].freeze
     SQL_DIRS = %w[results.sent results.done results.new].freeze
@@ -405,15 +403,24 @@ module SeasonBoard
         # Written inside the transaction: on failure no script exists without its local changes.
         write_sql_file
       end
+    rescue StandardError
+      # (the local changes rolled back: the script written meanwhile must not stay pushable)
+      Outbox::Writer.discard!(@script)
+      @script = nil
+      @file_path = nil
+      raise
     end
 
+    # Registers 'NNNN-season_board_backfill-<season>.sql' in the Outbox; returns the Ops::SqlScript.
     def write_sql_file
-      source_dir = season_path('results.new')
-      sent_dir = season_path('results.sent')
-      FileUtils.mkdir_p(source_dir)
-      counter = compute_file_counter(source_dir, sent_dir)
-      @file_path = source_dir.join("#{format('%04d', counter + 1)}-season_board_backfill-#{season.id}.sql")
-      File.write(@file_path, "#{@sql_log.join("\r\n")}\r\n")
+      @script = Outbox::Writer.write!(
+        kind: 'backfill', name: "season_board_backfill-#{season.id}", sql: "#{@sql_log.join("\r\n")}\r\n",
+        folder: season.id.to_s, season_id: season.id, data_root:,
+        origin: { 'producer' => 'season_board.backfill', 'calendar_ids' => @resolved.filter_map { |row| row[:calendar_id] if row[:changes].present? },
+                  'meeting_ids' => @flagged_meeting_ids.to_a }
+      )
+      @file_path = @script.absolute_path
+      @script
     end
   end
 end

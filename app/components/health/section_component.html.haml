@@ -1,0 +1,17 @@
+%details.card.mb-2.health-section{ id: dom_id, open: open?, data: { check_key: check.key } }
+  %summary.card-header.d-flex.flex-wrap.align-items-center.gap-2
+    %span.fw-semibold= check.title
+    %span.badge.rounded-pill.text-bg-secondary.health-section-count= open_total
+    - severity_counts.each do |severity, count|
+      %span.small{ data: { severity: } }
+        = render(Health::BadgeComponent.new(kind: :severity, value: severity))
+        = count
+    - if counts['acknowledged'].to_i.positive?
+      %span.small.text-body-secondary= t('health.section.acknowledged_count', count: counts['acknowledged'])
+    - if counts['ignored'].to_i.positive?
+      %span.small.text-body-secondary= t('health.section.ignored_count', count: counts['ignored'])
+  .card-body.py-2
+    = helpers.turbo_frame_tag(frame_id, **frame_options) do
+      .small.text-body-secondary.py-2
+        %i.fa-solid.fa-circle-notch.fa-spin{ 'aria-hidden' => 'true' }
+        = t('health.loading')

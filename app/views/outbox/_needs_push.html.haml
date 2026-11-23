@@ -1,0 +1,35 @@
+-# 'Needs push' section of the Outbox frame: every pending/held/pushing/in-doubt script, all folders, by seq.
+- select_data = { 'outbox-target': 'pushSelected', turbo_frame: '_top' }
+- select_attributes = { href: new_outbox_push_path, role: 'button', 'aria-disabled' => 'true', data: select_data }
+%section.mb-4#outbox-needs-push
+  .d-flex.flex-wrap.align-items-center.gap-2.mb-1
+    %h2.h5.mb-0
+      = t('outbox.sections.needs_push')
+      %span.badge.rounded-pill.text-bg-secondary= needs_push.size
+    - if needs_push.any?(&:pending?)
+      %a.btn.btn-sm.btn-outline-primary.ms-auto.disabled#btn-outbox-push-selected{ select_attributes }
+        %i.fa-solid.fa-paper-plane{ 'aria-hidden' => 'true' }
+        = t('outbox.actions.push_selected')
+        %span{ data: { 'outbox-target': 'count' } }
+  %p.small.text-body-secondary.mb-2= t('outbox.filters.pending_always')
+  - if needs_push.empty?
+    %p.text-body-secondary#outbox-needs-push-empty= t('outbox.empty.needs_push')
+  - else
+    .table-responsive
+      %table.table.table-sm.table-hover.align-middle#outbox-needs-push-table
+        %thead.table-body-tertiary
+          %tr
+            %th
+              %span.visually-hidden= t('outbox.actions.push_selected')
+            %th.text-end= t('outbox.columns.seq')
+            %th= t('outbox.columns.file')
+            %th= t('outbox.columns.kind')
+            %th= t('outbox.columns.folder')
+            %th.text-end= t('outbox.columns.size')
+            %th= t('outbox.columns.state')
+            %th= t('outbox.columns.origin')
+        %tbody
+          - needs_push.each do |script|
+            - row = Outbox::ScriptRowComponent.new(script:, blocker: blockers[script.id], focus: script.filename == focus,
+                                                   selectable: true, preview: preview_for(script))
+            = render(row)

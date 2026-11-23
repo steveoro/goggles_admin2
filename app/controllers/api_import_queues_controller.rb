@@ -25,6 +25,7 @@ class APIImportQueuesController < ApplicationController
     end
 
     set_grid_domain_for(ImportQueuesGrid, GogglesDb::ImportQueue, result.headers, parsed_response)
+    ImportQueuesGrid.outbox_scripts = ImportQueuesGrid.outbox_scripts_for(@domain)
 
     respond_to do |format|
       @grid = ImportQueuesGrid.new(grid_filter_params)

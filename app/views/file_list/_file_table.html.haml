@@ -1,17 +1,4 @@
--# Detect feasibility of multi-push
-- if files.present? && filter.present? && filter == '*.sql' && parent_folder == 'results.new'
-  .row-fluid
-    .container
-      .row.justify-content-left.ml-0.mb-2
-        .btn-group.mx-1.my-0#push-all-btn
-          = link_to(push_upload_path(file_path: File.join(curr_dir, '*.sql')),
-                                     class: 'btn btn-sm btn-outline-warning mb-1', data: { turbo_method: :post,
-                                     toggle: 'tooltip', title: t('data_import.push.btn_all_sql_files_tooltip'),
-                                     turbo_confirm: t('data_import.push.btn_all_sql_files_confirm') }) do
-            %span
-              = t('data_import.push.btn_all_sql_files')
-              %i.fa.fa-upload
-
+-# (SQL scripts are listed and pushed by the Outbox page: no push action here)
 .row-fluid
   .container
     - if curr_dir.present? && dirnames.present?
@@ -92,14 +79,6 @@
                 - if File.exist?(full_pathname.to_s.gsub(parent_folder, 'results.new').gsub('.pdf', '.json'))
                   &nbsp;
                   %small JSON✔
-              - when '.sql'
-                - if parent_folder == 'results.new'
-                  &nbsp;
-                  = link_to(push_upload_path(file_path: full_pathname),
-                            class: 'btn btn-sm btn-outline-warning mb-1', data: { turbo_method: :post, toggle: 'tooltip',
-                            title: t('data_import.file.btn_process_sql_tooltip'),
-                            turbo_confirm: t('data_import.file.confirm_push') }) do
-                    %i.fa.fa-upload
 - if files && files.empty?
   .row-fluid.my-4
     .text-center.py-4.noresults= I18n.t('datagrid.no_results')

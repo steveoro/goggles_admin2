@@ -38,8 +38,6 @@ it:
       btn_select_csv_tooltip: 'Apri la pagina di selezione meeting per questo file calendario'
       btn_process_pdf_tooltip: 'Converti questo file risultati da PDF al formato JSON che può essere importato'
       btn_process_json_tooltip: "Elabora questo file risultati, preparandolo per l'importazione dati"
-      btn_process_sql_tooltip: "Esegue l'upload di questo file di importazione dati sul server remoto"
-      confirm_push: "Sicuri di voler fare l'upload di questo file?"
     selection:
       title: '1. Seleziona i meeting da scaricare'
       season_label: 'Season ID %{id}'
@@ -164,15 +162,6 @@ it:
         overall_points: "Punti totali"
         missing_team: "squadra mancante o nuova"
         skipped: "Punteggi società saltati (squadra non risolta)"
-    push:
-      msg_send_batch_ok: "File batch inviato con successo."
-      new_results_tab_name: "Nuovi"
-      sent_results_tab_name: "Inviati"
-      btn_all_sql_files: "TUTTI i file"
-      btn_all_sql_files_tooltip: "Esegue l'upload sul server remoto di TUTTI i file batch presenti in elenco qui sotto"
-      btn_all_sql_files_confirm: "Sicuri di voler caricare TUTTI i file in elenco?"
-      all_sql_files_ok: "Tutti i file batch sono stati inviati con successo."
-      already_sent: "Questo file è già stato inviato: non verrà inviato di nuovo."
     manifest_extraction:
       title: "2. Estrazione automatica locandine già presenti"
     errors:

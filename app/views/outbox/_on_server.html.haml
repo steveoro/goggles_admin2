@@ -1,0 +1,31 @@
+-# 'On the server' section of the Outbox frame: sent ("not verified") and executed_unreported scripts, newest first.
+- status = remote_status&.payload.is_a?(Hash) ? remote_status.payload['status'] : nil
+%section.mb-4#outbox-on-server
+  %h2.h5
+    = t('outbox.sections.on_server')
+    %span.badge.rounded-pill.text-bg-secondary= on_server.size
+    - if status
+      %small.text-body-secondary.fw-normal.ms-2#outbox-remote-status
+        - if %w[no_credentials unreachable].include?(status)
+          = t("outbox.remote_status.#{status}")
+        - else
+          = t('outbox.remote_status.checked', time: l(remote_status.taken_at.localtime, format: :short))
+  - if on_server.empty?
+    %p.text-body-secondary= t('outbox.empty.on_server')
+  - else
+    .table-responsive
+      %table.table.table-sm.table-hover.align-middle#outbox-on-server-table
+        %thead.table-body-tertiary
+          %tr
+            %th
+            %th.text-end= t('outbox.columns.seq')
+            %th= t('outbox.columns.file')
+            %th= t('outbox.columns.kind')
+            %th= t('outbox.columns.folder')
+            %th.text-end= t('outbox.columns.size')
+            %th= t('outbox.columns.state')
+            %th.text-end= t('outbox.columns.remote_id')
+            %th= t('outbox.columns.pushed_at')
+        %tbody
+          - on_server.each do |script|
+            = render(Outbox::ScriptRowComponent.new(script:, focus: script.filename == focus, remote: true))

@@ -32,6 +32,6 @@ RSpec.describe Inbox::Sources::PendingSql do
     expect(item).to have_attributes(key: 'pending_sql', band: :push, count: 3)
     expect(item.title).to eq(I18n.t('inbox.pending_sql.title', count: 3, number: '0009'))
     expect(item.subject[:sql_path]).to end_with('262/0009-calendar_link-1-2.sql')
-    expect(item.action.path).to start_with('/push/index')
+    expect(item.action.path).to eq('/outbox?focus=0009-calendar_link-1-2.sql')
   end
 end

@@ -16,8 +16,13 @@ module SeasonBoard
   #   - '<base>-lt4.json'           => LT4 working copy, or manifest-derived source ('_meta.meeting_only')
   #   - '<base>-lt4-phaseN.json'    => Data-Fix phase files
   #   - 'NNNN-<base>-lt4.sql'       => commit SQL batch waiting to be pushed
-  #   - 'NNNN-season_board_backfill-<season>.sql' / 'NNNN-calendar_link-<cal>-<fin>.sql'
-  #                                 => board SQL scripts waiting to be pushed (see #board_sql_paths)
+  #   - 'NNNN-season_board_backfill-<season>.sql' / 'NNNN-calendar_link-<cal>-<fin>.sql' /
+  #     'NNNN-meeting_cancel-<meeting>.sql' / 'NNNN-calendar_cancel-<cal>.sql' (data health "Flag cancelled")
+  #                                 => board SQL scripts waiting to be pushed (see #other_sql_paths)
+  #   - any other '.sql' (team managers, merges, fixes, ...) => other SQL waiting to be pushed (#other_sql_paths)
+  #   Only the Data-Fix COMMIT scripts are source SQL: the kind comes from the SQL Outbox registry
+  #   (Ops::SqlScript.kinds_for, one query per build); unregistered files (or the ops DB missing) fall back
+  #   to the name: BOARD_SQL_REGEXP => other, Outbox::Kinds.commit_name? ('-lt4'/'-l4' suffix) => commit.
   # - <data_dir>/results.done/<season>/ => archived (committed) sources & phase files
   # - <data_dir>/results.sent/<season>/ => pushed SQL batches ('NNNN-<base>-lt4.sql')
   # - <data_dir>/manifests/<season>/'manifest-<base>.pdf'      => manifest pending extraction
@@ -30,8 +35,8 @@ module SeasonBoard
     PHASE_REGEXP = /\A(?<stem>.+)-phase(?<phase>\d+)\.json\z/
     SQL_REGEXP = /\A\d+-(?<base>.+?)(?:-lt4)?\.sql\z/
     SKIPPED_JSON_REGEXP = /\.(orig(-\d+)?|committed)\.json\z/
-    # SQL scripts written by SeasonBoard::Backfill & SeasonBoard::CalendarLinker (not sources).
-    BOARD_SQL_REGEXP = /\A\d+-(season_board_backfill-\d+|calendar_link-\d+-\d+)\.sql\z/
+    # SQL scripts written by SeasonBoard::Backfill, SeasonBoard::CalendarLinker & Health::MeetingCanceller (not sources).
+    BOARD_SQL_REGEXP = /\A\d+-(season_board_backfill-\d+|calendar_link-\d+-\d+|meeting_cancel-\d+|calendar_cancel-\d+)\.sql\z/
     # Folders (under data_dir, each with a <season> subfolder) scanned by #build!:
     SEASON_FOLDERS = %w[results.new results.done results.sent manifests manifests.done].freeze
 
@@ -70,11 +75,13 @@ module SeasonBoard
       @unmatched
     end
 
-    # Board SQL scripts (backfill & calendar link) in results.new, waiting to be pushed.
-    def board_sql_paths
-      build! unless @board_sql_paths
-      @board_sql_paths
+    # Non-commit SQL scripts of the season folder in results.new (board scripts, team managers, merges, ...),
+    # waiting to be pushed: they never create a source entry.
+    def other_sql_paths
+      build! unless @other_sql_paths
+      @other_sql_paths
     end
+    alias board_sql_paths other_sql_paths
 
     # FIN event id read for a base name (or nil).
     def fin_event_id_for_base(base)
@@ -92,7 +99,8 @@ module SeasonBoard
 
     # Raw scan per base: { new: { lt2:, lt4:, phases: {N => path} }, done: {...}, sql_new: [], sql_sent: [], pdf: [], pdf_done: [] }
     def build!
-      @board_sql_paths = []
+      @other_sql_paths = []
+      @registry_kinds = registry_kinds
       @scan = Hash.new do |hash, base|
         hash[base] = { new: { phases: {} }, done: { phases: {} }, sql_new: [], sql_sent: [], pdf: [], pdf_done: [] }
       end
@@ -174,14 +182,36 @@ module SeasonBoard
 
     def scan_sql_dir(dir, key)
       each_file(dir) do |name, path|
-        if BOARD_SQL_REGEXP.match?(name)
-          @board_sql_paths << path if key == :sql_new
-          next
-        end
+        next unless name.end_with?('.sql')
 
         match = SQL_REGEXP.match(name)
-        @scan[match[:base]][key] << path if match
+        if match && commit_sql?(name, path)
+          @scan[match[:base]][key] << path
+        elsif key == :sql_new
+          @other_sql_paths << path
+        end
       end
+    end
+
+    # True for a Data-Fix commit script (see the class notes).
+    def commit_sql?(name, path)
+      kind = @registry_kinds[relative_sql_path(path)]
+      return kind == 'commit' if kind
+      return false if BOARD_SQL_REGEXP.match?(name)
+
+      Outbox::Kinds.commit_name?(name)
+    end
+
+    # Kinds of the registered SQL scripts of the season folders ({ rel_path => kind }, {} without the ops DB).
+    def registry_kinds
+      paths = [results_new_dir, results_sent_dir].flat_map { |dir| dir.directory? ? dir.glob('*.sql') : [] }
+      return {} if paths.empty?
+
+      Ops.safely({}) { Ops.available? ? Ops::SqlScript.kinds_for(paths.map { |path| relative_sql_path(path) }) : {} }
+    end
+
+    def relative_sql_path(path)
+      Pathname.new(path).relative_path_from(data_dir).to_s
     end
 
     def scan_manifest_dir(dir, key)

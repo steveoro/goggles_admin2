@@ -11,8 +11,8 @@ en:
       board_sql_pending:
         one: '1 SQL script awaiting push'
         other: '%{count} SQL scripts awaiting push'
-      board_sql_pending_tooltip: 'Calendar link / backfill scripts written by the Season board'
-      board_sql_pending_link: 'Open the Push page'
+      board_sql_pending_tooltip: 'Scripts of this season other than the Data-Fix commits (calendar links, backfill, team managers, merges, ...)'
+      board_sql_pending_link: 'Open the Outbox'
     empty:
       no_rows: 'The FIN calendar snapshot is empty: the watcher has not stored any meeting row yet.'
       check_now: 'Check now'

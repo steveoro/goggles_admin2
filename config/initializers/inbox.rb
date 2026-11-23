@@ -12,6 +12,11 @@ Rails.application.config.to_prepare do
     Inbox::Sources::UnmatchedSources,
     Inbox::Sources::DataFixSessions,
     Inbox::Sources::FINChange,
-    Inbox::Sources::Drift
+    Inbox::Sources::Drift,
+    Health::InboxSource # (key :health: data health errors per season & group, failed runs, overdue sweep)
   ].each { |source| Inbox::Registry.register(source) }
+
+  # 07: the SQL Outbox registry replaces the disk-derived pending SQL list in the same slot
+  # (Outbox::InboxSource falls back to Inbox::Sources::PendingSql when the ops DB is not available).
+  Inbox::Registry.replace(:pending_sql, Outbox::InboxSource)
 end

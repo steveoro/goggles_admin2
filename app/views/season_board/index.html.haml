@@ -17,7 +17,8 @@
       %br
       %span#season-board-sql-pending{ title: t('season_board.header.board_sql_pending_tooltip') }
         %span.badge.text-bg-danger= t('season_board.header.board_sql_pending', count: @board.pending_board_sql_paths.size)
-        = link_to(t('season_board.header.board_sql_pending_link'), push_index_path)
+        = link_to(t('season_board.header.board_sql_pending_link'),
+                  SeasonBoard::ActionPaths.outbox_focus_path(@board.pending_board_sql_paths.min_by { |path| File.basename(path.to_s) }))
 
   %div{ data: { controller: 'season-board', 'season-board-interval-value': 20_000,
                 'season-board-ping-id-value': 'season-board-ping' } }

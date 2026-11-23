@@ -10,8 +10,7 @@ RSpec.describe Shell::SidebarComponent, type: :component do
 
   it 'renders the offcanvas sidebar with every non-empty group' do
     expect(html.at_css('aside.app-sidebar.offcanvas-lg.offcanvas-start#app-sidebar')).to be_present
-    expect(html.css('[data-nav-group]').pluck('data-nav-group')).to eq(%w[dashboard import entities reports support system])
-    expect(html.css('[data-nav-group="data_quality"]')).to be_empty
+    expect(html.css('[data-nav-group]').pluck('data-nav-group')).to eq(%w[dashboard import data_quality entities reports support system])
   end
 
   it 'links every sidebar item' do
@@ -55,9 +54,9 @@ RSpec.describe Shell::SidebarComponent, type: :component do
       expect(wrapper['data-bs-title']).to eq(I18n.t('shell.nav.offline_disabled'))
     end
 
-    it 'keeps Dashboard, Settings and Remote writes (ops DB only) enabled' do
+    it 'keeps Dashboard, Settings, Remote writes and the Outbox (local data only) enabled' do
       enabled = html.css('.app-sidebar a.nav-link:not(.disabled)').pluck('href')
-      expect(enabled).to contain_exactly('/', '/settings', '/remote_writes')
+      expect(enabled).to contain_exactly('/', '/settings', '/remote_writes', '/outbox')
     end
   end
 end

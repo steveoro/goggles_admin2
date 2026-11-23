@@ -9,7 +9,8 @@ module SeasonBoard
   # SeasonBoard::Row and with a stored SeasonBoard::Snapshot::Row.
   #
   # Three kinds of action (see StateResolver::ACTIONS):
-  # - link actions (LINK_ACTIONS): a GET to the Data-Fix review step or to the Push page (#link_path);
+  # - link actions (LINK_ACTIONS): a GET to the Data-Fix review step or to the Outbox focused on the row's
+  #   script (#link_path);
   # - POST actions (POST_ACTIONS): a POST of the FIN event id only to a board action, which looks the
   #   URLs up server side (#post_path);
   # - :link: needs a calendar choice, made on the board row itself (#board_row_path).
@@ -67,7 +68,7 @@ module SeasonBoard
         helper, key = PHASE_STEPS.fetch(next_action.params[:phase].to_i, PHASE_STEPS[1])
         url_helpers.public_send(helper, { file_path: next_action.params[:file_path], key => 1 })
       when :push
-        url_helpers.push_index_path(push_folder_params(next_action.params[:sql_path]))
+        outbox_focus_path(next_action.params[:sql_path])
       end
     end
 
@@ -95,13 +96,10 @@ module SeasonBoard
       end
     end
 
-    # Push list params: lands on the folder of the pending script (path relative to crawler/)
-    def push_folder_params(sql_path)
-      sql_path = sql_path.to_s
-      relative = sql_path.include?('crawler/') ? sql_path.split('crawler/').last : sql_path
-      return {} if relative.blank? || relative.start_with?('/')
-
-      { curr_dir: File.dirname(relative) }
+    # Outbox page focused on (scrolled to) the script at +sql_path+ (the bare Outbox page without one).
+    def outbox_focus_path(sql_path)
+      name = File.basename(sql_path.to_s)
+      url_helpers.outbox_path(name.present? ? { focus: name } : {})
     end
 
     def url_helpers

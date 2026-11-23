@@ -86,6 +86,16 @@ RSpec.describe 'ops rake tasks' do # rubocop:disable RSpec/DescribeClass
   end
 
   describe 'ops:rebuild' do
+    # (the app registers its own rebuilders at boot, e.g. :outbox, which would scan the real crawler/data: keep them
+    # out of these examples, the ops DB being a temporary one outside the transactional fixtures)
+    around(:each) do |example|
+      saved = Ops::Rebuilders.all
+      saved.each_key { |name| Ops::Rebuilders.unregister(name) }
+      example.run
+    ensure
+      saved&.each { |name, callable| Ops::Rebuilders.register(name, callable) }
+    end
+
     it 'has nothing to rebuild yet' do
       Ops::Database.prepare!
       expect { invoke_task('ops:rebuild') }.to output("Nothing to rebuild yet.\n").to_stdout

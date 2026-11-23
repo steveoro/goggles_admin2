@@ -54,6 +54,17 @@ it:
         one: "1 script da inviare (%{number})"
         other: "%{count} script da inviare, il più vecchio %{number}"
       push: "Invia"
+      held:
+        one: "1 trattenuto"
+        other: "%{count} trattenuti"
+      held_only:
+        one: "1 script SQL trattenuto nell'Outbox"
+        other: "%{count} script SQL trattenuti nell'Outbox"
+      in_doubt:
+        one: "1 invio in dubbio: controlla la coda di import remota"
+        other: "%{count} invii in dubbio: controlla la coda di import remota"
+      resolve: "Risolvi"
+      open: "Apri"
     unmatched_sources:
       titles:
         resume_review: "In revisione, senza id FIN: %{name}"

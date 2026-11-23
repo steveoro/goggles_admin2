@@ -1,0 +1,51 @@
+-#
+  One check section (Health::SectionsController#show): the findings grid of the season and check, its filters and
+  the bulk triage form (the row checkboxes are bound to it through their 'form' attribute).
+- bulk_form_id = "health-bulk-#{@check.key.parameterize}"
+- section_path = health_section_path(@season.id, @check.key, health_findings_grid: grid_params.to_h.presence, page: params[:page])
+= turbo_frame_tag(@frame_id) do
+  - { notice: 'success', alert: 'danger' }.each do |key, tone|
+    - next if flash[key].blank?
+
+    .alert.py-1.px-2.small.mb-2{ class: "alert-#{tone}", role: 'alert', data: { health_flash: key } }= flash[key]
+  %p.small.text-body-secondary.mb-2.health-howto= @check.howto
+  - if @grid.nil?
+    .alert.alert-warning.mb-0= t('health.ops_unavailable')
+  - else
+    = form_with(scope: @grid.param_name, url: health_section_path(@season.id, @check.key), method: :get,
+                class: 'row g-2 align-items-end mb-2 health-section-filters') do |f|
+      .col-auto
+        = f.label(:status, t('datagrid.health_findings_grid.filters.status'), class: 'form-label small mb-0')
+        = f.select(:status, HealthFindingsGrid::STATUS_FILTERS.map { |s| [t("health.section.status_filters.#{s}"), s] },
+                   { selected: @grid.status }, class: 'form-select form-select-sm')
+      .col-auto
+        = f.label(:severity, t('datagrid.health_findings_grid.filters.severity'), class: 'form-label small mb-0')
+        = f.select(:severity, Ops::HealthFinding::SEVERITIES.map { |s| [t("health.severities.#{s}"), s] },
+                   { selected: @grid.severity, include_blank: t('health.section.all') }, class: 'form-select form-select-sm')
+      .col-auto
+        = f.label(:search, t('datagrid.health_findings_grid.filters.search'), class: 'form-label small mb-0')
+        = f.search_field(:search, value: @grid.search, class: 'form-control form-control-sm', placeholder: t('health.section.search_placeholder'))
+      .col-auto
+        = f.submit(t('health.section.filter'), class: 'btn btn-sm btn-secondary')
+
+    - if @assets.any?
+      = form_with(url: health_findings_bulk_path, method: :patch, id: bulk_form_id, class: 'row g-2 align-items-end mb-2 health-bulk-form') do |f|
+        = hidden_field_tag(:return_to, section_path, id: nil)
+        .col-12.col-md
+          = f.label(:note, t('health.bulk.note'), class: 'form-label small mb-0', for: "#{bulk_form_id}-note")
+          = f.text_field(:note, class: 'form-control form-control-sm', id: "#{bulk_form_id}-note", maxlength: 500,
+                                placeholder: t('health.bulk.note_placeholder'))
+        .col-auto.d-flex.flex-wrap.gap-1
+          = f.button(name: 'operation', value: 'acknowledge', class: 'btn btn-sm btn-outline-secondary') do
+            %i.fa-solid.fa-check{ 'aria-hidden' => 'true' }
+            = t('health.bulk.acknowledge')
+          = f.button(name: 'operation', value: 'ignore', class: 'btn btn-sm btn-outline-secondary') do
+            %i.fa-solid.fa-eye-slash{ 'aria-hidden' => 'true' }
+            = t('health.bulk.ignore')
+          = f.button(name: 'operation', value: 'reopen', class: 'btn btn-sm btn-outline-secondary') do
+            %i.fa-solid.fa-rotate-left{ 'aria-hidden' => 'true' }
+            = t('health.bulk.reopen')
+      = paginate(@assets)
+    .table-responsive
+      = datagrid_table(@grid, @assets, html: { class: 'table table-sm table-hover align-middle mb-1 health-findings-table' })
+    = paginate(@assets) if @assets.any?

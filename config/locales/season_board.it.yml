@@ -11,8 +11,8 @@ it:
       board_sql_pending:
         one: '1 script SQL in attesa di invio'
         other: '%{count} script SQL in attesa di invio'
-      board_sql_pending_tooltip: 'Script di collegamento calendario / backfill scritti dalla Plancia stagione'
-      board_sql_pending_link: 'Apri la pagina di invio'
+      board_sql_pending_tooltip: 'Script di questa stagione diversi dai commit Data-Fix (collegamenti calendario, backfill, team manager, merge, ...)'
+      board_sql_pending_link: "Apri l'Outbox"
     empty:
       no_rows: 'Lo snapshot del calendario FIN è vuoto: il monitor non ha ancora salvato nessun meeting.'
       check_now: 'Controlla ora'

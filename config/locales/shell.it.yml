@@ -12,7 +12,6 @@ it:
     nav:
       label: 'Navigazione principale'
       data_fix: 'Data-Fix'
-      push: 'Push'
       offline_disabled: "Non disponibile con l'API offline: correggi l'URL dell'API nelle Impostazioni"
     # Ultimo elemento del percorso per una pagina figlia (stesso controller della voce di menu):
     actions:

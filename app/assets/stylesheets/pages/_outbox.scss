@@ -1,0 +1,21 @@
+// = SQL Outbox (app/views/outbox, app/components/outbox) =
+//
+// Native Bootstrap 5 markup; only the SQL previews need a few rules (theme colours come from the Bootstrap
+// utilities on the elements, so both themes work).
+
+// Scrollable, wrapped SQL previews (long INSERTs never widen the page on phones):
+.outbox-preview {
+  max-height: 16rem;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.outbox-preview-full {
+  max-height: 70vh;
+}
+
+// The row focused by the page URL (?focus=<filename>): a visible left marker besides the row colour.
+.outbox-focus > td:first-child {
+  box-shadow: inset 4px 0 0 var(--bs-warning);
+}

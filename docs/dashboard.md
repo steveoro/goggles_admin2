@@ -9,6 +9,7 @@ The landing page (`/`, `DashboardController`). It never calls the API: every rem
 | In progress | `dashboard/in_progress` | `SeasonBoard::ActivityLog#active`, Solid Queue running/queued jobs (`Dashboard::QueueActivity`), next scheduled runs |
 | Season progress | `dashboard/season_progress` | `SeasonBoard::Snapshot` state counts |
 | System status | `dashboard/system` | `SystemStatus::Registry.results` (the same probes as the top bar pills) |
+| Data health | `dashboard/health` | `Health::DashboardCardComponent`: open errors / warnings of the board season and of the closed seasons (`Ops::HealthFinding`), queued runs, last sweep |
 | Activity | `dashboard/activity` | the last 20 `Ops::Event` rows; `/activity` lists them all |
 
 Each zone is a Turbo frame loaded on its own. `live_frames_controller.js` reloads them on any `AppNotificationsChannel` broadcast, or every 20 s while one of them carries `data-live-busy="true"` (something queued or running).
@@ -24,7 +25,7 @@ Each source turns local facts into `Inbox::Item`s; `Inbox::Builder` merges them:
 - 25 items shown, the rest counted per source ("N more", linking to the source's `more_path`);
 - a source that raises becomes one `failed`-band item ("Inbox source X failed: ..."), never an error page.
 
-v1 sources (`app/services/inbox/sources/`, registered in `config/initializers/inbox.rb`, in this order): `blockers`, `failed_jobs`, `pending_sql`, `board_rows`, `unmatched_sources`, `data_fix_sessions`, `fin_change`, `drift`.
+v1 sources (`app/services/inbox/sources/`, registered in `config/initializers/inbox.rb`, in this order): `blockers`, `failed_jobs`, `pending_sql`, `board_rows`, `unmatched_sources`, `data_fix_sessions`, `fin_change`, `drift`; phase 06 appends `health` (`Health::InboxSource`: one item per season and group with open errors, one for all the warnings, failed runs, overdue or stuck runs; never one item per finding).
 
 ### Adding a source (phases 06, 10)
 

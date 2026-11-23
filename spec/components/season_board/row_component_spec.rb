@@ -111,16 +111,16 @@ RSpec.describe SeasonBoard::RowComponent, type: :component do
       end
     end
 
-    it 'links the Push page for :push' do
+    it 'links the Outbox focused on the row script for :push' do
       page = render_row(build_row(state: :sql_pending, next_action: action(:push, sql_path: '/x.sql', sql_paths: ['/x.sql'])))
-      expect(page.css('a.btn').first['href']).to eq('/push/index')
+      expect(page.css('a.btn').first['href']).to eq('/outbox?focus=x.sql')
     end
 
-    it 'carries the season folder in the Push link, for absolute and relative script paths' do
+    it 'focuses the script file name, for absolute and relative script paths' do
       ['/home/x/goggles_admin2/crawler/data/results.new/242/0001-a-lt4.sql', 'crawler/data/results.new/242/0001-a-lt4.sql',
        'data/results.new/242/0001-a-lt4.sql'].each do |sql_path|
         page = render_row(build_row(state: :sql_pending, next_action: action(:push, sql_path:, sql_paths: [sql_path])))
-        expect(page.css('a.btn').first['href']).to eq('/push/index?curr_dir=data%2Fresults.new%2F242')
+        expect(page.css('a.btn').first['href']).to eq('/outbox?focus=0001-a-lt4.sql')
       end
     end
 

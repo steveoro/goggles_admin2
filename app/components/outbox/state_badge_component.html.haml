@@ -1,0 +1,12 @@
+%span.outbox-state{ data: { outbox_state: script.state } }
+  %span.badge{ class: css, title: tooltip }= script.state_label
+  - if details?
+    - if held_reason
+      %span.badge.rounded-pill.bg-body-tertiary.text-body-secondary.border.ms-1= held_reason
+    - if script.changed_after_push?
+      %span.badge.text-bg-warning.ms-1{ title: t('outbox.changed_after_push_tooltip') }
+        %i.fa-solid.fa-triangle-exclamation{ 'aria-hidden' => 'true' }
+        = t('outbox.changed_after_push')
+    - if script.single_transaction == false
+      %span.badge.rounded-pill.bg-body-tertiary.text-warning-emphasis.border.ms-1{ title: t('outbox.not_single_transaction_tooltip') }
+        = t('outbox.not_single_transaction')

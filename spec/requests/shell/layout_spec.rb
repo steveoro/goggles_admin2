@@ -107,7 +107,7 @@ RSpec.describe 'Application shell' do
       get(root_path)
       expect(response).to have_http_status(:success)
       enabled = html.css('.app-sidebar a.nav-link:not(.disabled)').pluck('href')
-      expect(enabled).to contain_exactly(root_path, settings_path, remote_writes_path)
+      expect(enabled).to contain_exactly(root_path, settings_path, remote_writes_path, outbox_path)
       expect(html.css('.app-sidebar a.nav-link.disabled[aria-disabled="true"]')).not_to be_empty
       expect(html.at_css('#api-target-badge')['data-api-reachability']).to eq('unreachable')
       expect(html.at_css('#sticky-alerts #api-offline-banner')).to be_present

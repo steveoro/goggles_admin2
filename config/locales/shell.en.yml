@@ -12,7 +12,6 @@ en:
     nav:
       label: 'Main navigation'
       data_fix: 'Data-Fix'
-      push: 'Push'
       offline_disabled: 'Not available while the API is offline: fix the API URL in Settings'
     # Last breadcrumb of a contextual child page (same controller as its sidebar item):
     actions:

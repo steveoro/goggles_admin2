@@ -10,9 +10,9 @@ Developer notes (state rules, jobs, files): `AGENTS.md`, section "Season board".
 2. Rows in **Not crawled** are normally crawled automatically when the watcher sees the link appear. If you want it now, press **Crawl**. A row with the badge **a local meeting on this date is not linked yet** is never crawled automatically: a season calendar row without FIN id falls on its dates, so the meeting may already exist (e.g. imported from FICR/Microplus). Link it with **Link to meeting...** if it is the same meeting, otherwise press **Crawl**.
 3. **Manifest to extract**: press **Extract manifest** (a manifest PDF was downloaded; the LLM engine creates the meeting structure).
 4. **Structure ready** / **Results ready** / **Header only**: press **Review structure** / **Review results** / **Review header** to open the Data-Fix wizard (Phase 1 preselects the existing meeting and its sessions by FIN event id when the meeting was committed before). Go through the steps and commit in Step 5/6. An unfinished session shows **In review (step N)**: **Resume step N** continues it.
-5. **SQL to push**: press **Push** (push dashboard) to send the commit SQL to the production API.
+5. **SQL to push**: press **Push**: it opens the [SQL Outbox](outbox.md) focused on the row's commit script, pushed from there (in global sequence order, after a confirmation, as a background job).
 6. **Structure committed** (meeting exists, no results yet): once the meeting date is past, **Check for results** crawls the FIN page again. This also runs automatically every day (see below).
-7. **Archived, unlinked** / orphan rows: local files or calendar rows that no FIN row points to. Use **Link to meeting...** (select the calendar row) to link a FIN row to an existing calendar; a SQL script for the change is written for the push dashboard (the header shows how many such scripts await push, with a link to the Push page). Only calendar rows without FIN id and not cancelled can be selected; orphans whose FIN id is not on the current FIN calendar are marked and cannot be link targets (a row with nothing to link to says so).
+7. **Archived, unlinked** / orphan rows: local files or calendar rows that no FIN row points to. Use **Link to meeting...** (select the calendar row) to link a FIN row to an existing calendar; a SQL script for the change is registered in the [SQL Outbox](outbox.md) (the header shows how many non-commit scripts of the season await push, with a link to the Outbox). Only calendar rows without FIN id and not cancelled can be selected; orphans whose FIN id is not on the current FIN calendar are marked and cannot be link targets (a row with nothing to link to says so).
 8. **Done** rows (meeting has results) need nothing more.
 
 A Phase 6 commit fails (and nothing is written) when the source's FIN event id is already linked, through a calendar row, to a different meeting than the one selected in Phase 1: the error names the calendar, the FIN event and both meetings. Fix the link or select that meeting in Phase 1.
@@ -24,7 +24,7 @@ When results appear for a meeting whose structure came from the manifest, the ma
 | State | Meaning | Next action |
 |---|---|---|
 | Cancelled | FIN row (or calendar/meeting) is cancelled or postponed | none |
-| SQL to push | commit SQL waiting in `results.new` | Push |
+| SQL to push | commit SQL waiting in `results.new` (kind `commit` in the Outbox registry) | Push (opens the Outbox) |
 | In review (step N) | Data-Fix phase files exist | Resume step N |
 | Results ready | crawled source with results, no phase files yet | Review results |
 | Structure ready | manifest-derived (meeting-only) source waiting for review | Review structure |
@@ -67,6 +67,10 @@ bin/rails season_board:backfill season=<season id> simulate=0   # apply (also wr
 
 It reads the FIN ids from the archived crawl files and the meeting ids from the commit SQL files; whatever it can't resolve is listed in the report (with same-date FIN rows as hints) and can be linked by hand with **Link to meeting...**. Re-running it is harmless.
 
+## SQL scripts in the season folders
+
+Every script that changes the local DB (commit, calendar link, backfill, flag cancelled, team manager, rake merge/fix, ...) is written by `Outbox::Writer` with the next number of one **global** sequence (`NNNN-` prefix, every folder and producer) and registered in the [SQL Outbox](outbox.md) with its kind. `SeasonBoard::DiskIndex` asks the registry for the kinds (one query per build): only `commit` scripts are source SQL (they drive **SQL to push** and the `pushed` flag); any other script of the season folder (team manager, merge, calendar link, ...) is counted apart (`other_sql_paths`, the header counter) and never shows up as a file without FIN id. Without the ops DB the name decides (`BOARD_SQL_REGEXP` => other, a `-lt4`/`-l4` suffix => commit). Cross-season scripts (rake tasks) go to `results.new/misc/`.
+
 ## The dashboard summary
 
 The dashboard (`/`, see [dashboard.md](dashboard.md)) shows the board without opening it: one "Needs you" item per row with a next action (the same button as on the row; busy rows and pushes are left out), the queued and running work, and the state counts as "Season progress" (each chip opens the board filtered on that state).
@@ -79,8 +83,17 @@ It reads a **stored summary** of the board instead of building it on every landi
 - The board's POST buttons (crawl, extract, link) look the row up in `Snapshot.fetch` (URLs come from the stored row, never from the request), so a click runs no build while the summary is fresh.
 - Without the ops DB everything still works: `fetch` builds live and stores nothing.
 
-The target of a row's next action (Data-Fix review step, Push page, a POST to the board, or the board row itself for **Link**) comes from `SeasonBoard::ActionPaths.target_for(row.next_action)`, shared by the board rows and the dashboard inbox: `http_method` (`:get` or `:post`), `path` and the POST `params` (the FIN event id only). `ActionPaths.board_row_path(fin_event_id, state:)` opens the board on one row.
+The target of a row's next action (Data-Fix review step, the Outbox focused on the row's script, a POST to the board, or the board row itself for **Link**) comes from `SeasonBoard::ActionPaths.target_for(row.next_action)`, shared by the board rows and the dashboard inbox: `http_method` (`:get` or `:post`), `path` and the POST `params` (the FIN event id only). `ActionPaths.board_row_path(fin_event_id, state:)` opens the board on one row.
 
 ## Live updates
 
 The board refreshes by itself when a job changes state. This needs Solid Cable: the `cable:` entry in the local, gitignored `config/database.yml` plus `bin/rails solid:prepare`. Without it the board still works, but while something is queued or running it only refreshes every 20 seconds (and a missing cable database never breaks the jobs).
+
+## Data health (closed seasons)
+
+The board covers the current season; `/health` (sidebar **Data quality > Data health**) checks every season with data, closed ones included, on the **local mirror** (the local MySQL DB, which may differ from production). One row per season, one column per group (Meetings, Badges, People, Results, Setup) with the open error / warning counts; a cell opens the season page, whose sections (one per check, loaded when opened) list the findings with filters, bulk **Acknowledge / Ignore (note required) / Reopen**, and a detail page: evidence, entity links, the rake command with the ids filled in, the how-to text.
+
+- Checks are read-only (`Health::Checks::*`, catalogue in `Health::Registry`): meetings without results (no source / source on disk), cancelled flags out of step, calendar rows never imported or sharing a FIN id, meetings without events, results flag not set, duplicate badges (sure / possible), relay-category badges, similar teams, possible swimmer duplicates, duplicate results, results without swimmer, several results per badge and program, season setup. Findings and runs live in the ops DB (`health_findings`, `health_runs`); the triage survives the next runs (a finding is keyed by its check and entity ids).
+- They run as `Health::SeasonRunJob` on the single-thread `maintenance` worker: hourly heartbeat `health_sweep` (current and upcoming seasons once a day after 06:30, one overdue closed season per heartbeat, skipped when its data stamp is unchanged), **Re-run** / **Run all** buttons, and every group of the season after a Data-Fix commit.
+- **Flag cancelled** (meetings and calendars without results, after a dry-run preview) flags the rows on the local DB and writes `NNNN-meeting_cancel-<meeting_id>.sql` (or `NNNN-calendar_cancel-<calendar_id>.sql`) into `results.new/<season>/` through `Outbox::Writer` (kind `cancel_flag`), next to the board scripts: push it from the Outbox. Prefer **Ignore with a note** for a meeting that took place without published results.
+- Season board's current-season meetings show up too, but only 14 days after their date (the board handles the recent ones).

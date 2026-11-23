@@ -12,7 +12,8 @@ RSpec.describe Inbox::Registry do
   end
 
   it 'registers the v1 sources in order (config/initializers/inbox.rb)' do
-    expect(described_class.keys).to eq(%i[blockers failed_jobs pending_sql board_rows unmatched_sources data_fix_sessions fin_change drift])
+    expect(described_class.keys).to eq(%i[blockers failed_jobs pending_sql board_rows unmatched_sources data_fix_sessions fin_change drift
+                                          health])
   end
 
   it 'replaces a source in place, keeping its position (phase 07: :pending_sql)' do

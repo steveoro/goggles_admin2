@@ -21,28 +21,29 @@
 #   creator = TeamManagerSqlCreate.new(season_id: ..., team_id: ..., user_id: ...)
 #   if creator.call
 #     creator.file_path # => pathname of the generated .sql batch (under crawler/data/results.new/<season_id>/)
+#     creator.script    # => its Ops::SqlScript (Outbox registry; kind 'team_manager')
 #   else
 #     creator.errors    # => array of error messages
 #   end
 #
 class TeamManagerSqlCreate
-  include FileCounter
-
-  attr_reader :sql_log, :errors, :file_path,
+  attr_reader :sql_log, :errors, :file_path, :script, :data_root,
               :season, :team, :user, :affiliation, :managed_affiliation
 
   # Creates a new instance, resolving the given IDs against the localhost DB.
   #
   # == Params
   # - <tt>season_id</tt>, <tt>team_id</tt>, <tt>user_id</tt>: row IDs for the tuple to be created
+  # - <tt>data_root</tt>: crawler data root (default: 'crawler/data')
   #
-  def initialize(season_id:, team_id:, user_id:)
+  def initialize(season_id:, team_id:, user_id:, data_root: Outbox.data_root)
     @season_id = season_id
     @team_id = team_id
     @user_id = user_id
     @season = GogglesDb::Season.find_by(id: season_id)
     @team = GogglesDb::Team.find_by(id: team_id)
     @user = GogglesDb::User.find_by(id: user_id)
+    @data_root = Pathname.new(data_root)
     @sql_log = []
     @errors = []
   end
@@ -80,6 +81,10 @@ class TeamManagerSqlCreate
 
     true
   rescue StandardError => e
+    # (the local rows rolled back: a script written meanwhile must not stay pushable)
+    Outbox::Writer.discard!(@script)
+    @script = nil
+    @file_path = nil
     @errors << e.message
     false
   end
@@ -134,16 +139,15 @@ class TeamManagerSqlCreate
     @sql_log << SqlMaker.new(row: @managed_affiliation).log_insert
   end
 
-  # Writes the collected SQL log into a new sequential batch file inside
-  # 'crawler/data/results.new/<season_id>/' (for the push dashboard & upload pipeline).
+  # Registers the collected SQL log as a new Outbox script inside
+  # '<data_root>/results.new/<season_id>/' (pushed from the Outbox page).
   def write_sql_file
-    source_dir = Rails.root.join("crawler/data/results.new/#{@season.id}")
-    sent_dir = source_dir.to_s.gsub('results.new', 'results.sent')
-    FileUtils.mkdir_p(source_dir)
-
-    counter = compute_file_counter(source_dir, sent_dir)
-    file_name = "#{format('%04d', counter + 1)}-team_manager-#{@affiliation.id}-#{@managed_affiliation.id}.sql"
-    @file_path = source_dir.join(file_name)
-    File.write(@file_path, "#{@sql_log.join("\r\n")}\r\n")
+    @script = Outbox::Writer.write!(
+      kind: 'team_manager', name: "team_manager-#{@affiliation.id}-#{@managed_affiliation.id}",
+      sql: "#{@sql_log.join("\r\n")}\r\n", folder: @season.id.to_s, season_id: @season.id, data_root:,
+      origin: { 'producer' => 'team_manager', 'team_affiliation_id' => @affiliation.id,
+                'managed_affiliation_id' => @managed_affiliation.id, 'user_id' => @user.id }
+    )
+    @file_path = @script.absolute_path
   end
 end

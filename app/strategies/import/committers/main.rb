@@ -88,7 +88,13 @@ module Import
       # -----------------------------------------------------------------------
 
       # Main entry point: commits all entities in dependency order within a transaction
-      def commit_all
+      #
+      # == Params:
+      # - before_commit: optional callable invoked INSIDE the transaction, after the error check, with the final
+      #   SQL text (the log plus its closing 'COMMIT;', i.e. #sql_log_content after a successful run). The Phase 6
+      #   controller registers the SQL script there (Outbox::Writer): when it raises, the local commit is rolled
+      #   back, so no committed change exists without its script.
+      def commit_all(before_commit: nil)
         load_phase_files!
         broadcast_progress('Loading phase files', 0, 6)
 
@@ -141,6 +147,8 @@ module Import
               error_summary += " (and #{@stats[:errors].size - 5} more)" if @stats[:errors].size > 5
               raise "Commit halted due to #{@stats[:errors].size} error(s): #{error_summary}"
             end
+
+            before_commit&.call((@sql_log + ["\r\n--\r\n", 'COMMIT;']).join("\n"))
           end
 
           # Close SQL transaction with COMMIT
@@ -172,6 +180,16 @@ module Import
       # Returns the SQL log as a formatted string
       def sql_log_content
         sql_log.join("\n")
+      end
+
+      # ID of the committed (or being committed) Meeting, once Phase 1 ran; nil before.
+      def meeting_id
+        @meeting&.id
+      end
+
+      # True once #commit_all committed its local transaction (even when something failed afterwards).
+      def committed?
+        !@transaction_rolled_back && @sql_log.last == 'COMMIT;'
       end
       # -----------------------------------------------------------------------
 

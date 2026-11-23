@@ -1,0 +1,11 @@
+.d-flex.flex-wrap.gap-1.health-finding-actions{ class: compact ? 'justify-content-end' : nil }
+  - links.each do |link|
+    = link_to(link.path, **link_options(link)) do
+      %i.fa-solid{ class: icon(link), 'aria-hidden' => 'true' }
+      - if compact
+        %span.visually-hidden= link.label
+      - else
+        = link.label
+  - if compact
+    = link_to(helpers.health_finding_path(finding), **details_options) do
+      = t('health.links.details')

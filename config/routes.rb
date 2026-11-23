@@ -20,6 +20,7 @@ Rails.application.routes.draw do
   get 'dashboard/system', to: 'dashboard#system_status', as: 'dashboard_system'
   get 'dashboard/activity', to: 'dashboard#activity_feed', as: 'dashboard_activity'
   get 'dashboard/kpis', to: 'dashboard#kpis', as: 'dashboard_kpis'
+  get 'dashboard/health', to: 'dashboard#health', as: 'dashboard_health'
   post 'dashboard/refresh_kpis', to: 'dashboard#refresh_kpis', as: 'dashboard_refresh_kpis'
   post 'dashboard/discard_failed_job', to: 'dashboard#discard_failed_job', as: 'dashboard_discard_failed_job'
   post 'dashboard/retry_failed_job', to: 'dashboard#retry_failed_job', as: 'dashboard_retry_failed_job'
@@ -116,8 +117,18 @@ Rails.application.routes.draw do
   get 'data_fix/coded_name', to: 'data_fix#coded_name'
   get 'data_fix/teams_for_swimmer/:swimmer_id', to: 'data_fix#teams_for_swimmer', as: 'data_fix_teams_for_swimmer'
 
-  get 'push/index'
-  post 'push/upload'
+  post 'data_fix/retry_archive', to: 'data_fix/commits#retry_archive', as: 'data_fix_retry_archive'
+
+  # SQL Outbox (phase 07): the old Push page only redirects here.
+  get 'push/index', to: 'push#index', as: 'push_index'
+  get 'outbox', to: 'outbox#index', as: 'outbox'
+  get 'outbox/push/new', to: 'outbox#push_new', as: 'new_outbox_push'
+  post 'outbox/push', to: 'outbox#push', as: 'outbox_push'
+  post 'outbox/reconcile', to: 'outbox#reconcile', as: 'outbox_reconcile'
+  get 'outbox/:id', to: 'outbox#show', as: 'outbox_script', constraints: { id: /\d+/ }
+  %w[hold release apply_locally discard resolve].each do |action|
+    post "outbox/:id/#{action}", to: "outbox##{action}", as: "#{action}_outbox_script", constraints: { id: /\d+/ }
+  end
 
   # Datagrid-actioned routes: (use prefix to avoid clashing w/ Engine resource routes)
   resources :api_badges, only: %i[index create update]
@@ -183,6 +194,21 @@ Rails.application.routes.draw do
   # Log of the API calls that may have changed the remote data (ops DB) + drift v0 acknowledgement:
   get 'remote_writes', to: 'remote_writes#index', as: 'remote_writes'
   post 'remote_writes/acknowledge', to: 'remote_writes#acknowledge', as: 'remote_writes_acknowledge'
+
+  # Closed-season data health report (local mirror; ops DB findings & runs, see HealthController & Health::*):
+  scope format: false do
+    get 'health', to: 'health#index', as: 'health'
+    get 'health/matrix', to: 'health#matrix', as: 'health_matrix'
+    get 'health/seasons/:season_id', to: 'health/seasons#show', as: 'health_season'
+    get 'health/seasons/:season_id/summary', to: 'health/seasons#summary', as: 'health_season_summary'
+    get 'health/seasons/:season_id/sections/:check_key', to: 'health/sections#show', as: 'health_section',
+                                                         constraints: { check_key: /[a-z_]+(\.[a-z_]+)+/ }
+    patch 'health/findings/bulk', to: 'health/findings#bulk', as: 'health_findings_bulk'
+    get 'health/findings/:id', to: 'health/findings#show', as: 'health_finding'
+    post 'health/runs', to: 'health/runs#create', as: 'health_runs'
+    get 'health/cancellations/new', to: 'health/cancellations#new', as: 'new_health_cancellation'
+    post 'health/cancellations', to: 'health/cancellations#create', as: 'health_cancellations'
+  end
 
   resources :stats, only: %i[index update]
   delete 'stats', to: 'stats#destroy', as: 'stats_destroy'

@@ -1,0 +1,23 @@
+-# One Outbox script (OutboxController#show): details, actions, in-doubt resolution, discard, SQL preview.
+- preview = preview_for(@script, size: OutboxController::PREVIEW_BYTES[:show])
+= render(Shell::PageHeaderComponent.new(title: t('outbox.show.title', file: @script.filename), subtitle: @script.kind_label)) do |header|
+  - header.with_actions do
+    = link_to(outbox_path(focus: @script.filename), class: 'btn btn-sm btn-outline-secondary', id: 'btn-outbox-back') do
+      %i.fa-solid.fa-arrow-left{ 'aria-hidden' => 'true' }
+      = t('outbox.actions.back')
+
+.row.g-3
+  .col-lg-5
+    = render(partial: 'outbox/script_details', locals: { script: @script, blockers: @plan_blockers })
+    = render(partial: 'outbox/script_actions', locals: { script: @script })
+  .col-lg-7
+    .card#outbox-script-preview
+      .card-header.small
+        = t('outbox.preview')
+        - if preview&.last
+          %span.text-body-secondary= t('outbox.preview_truncated', size: number_to_human_size(OutboxController::PREVIEW_BYTES[:show]))
+      .card-body.p-0
+        - if preview
+          %pre.small.mb-0.p-3.outbox-preview.outbox-preview-full= preview.first
+        - else
+          %p.text-body-secondary.p-3.mb-0= t('outbox.states.missing')

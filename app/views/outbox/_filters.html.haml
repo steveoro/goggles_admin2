@@ -1,0 +1,11 @@
+-# Folder filter of the 'On the server' and 'History' sections (the 'Needs push' list is never filtered).
+:ruby
+  chip_css = 'bg-body-tertiary text-body-emphasis border'
+  default_css = "badge rounded-pill me-1 #{folder.nil? ? 'text-bg-primary' : chip_css}"
+  all_css = "badge rounded-pill me-1 #{folder == 'all' ? 'text-bg-primary' : chip_css}"
+.mb-2#outbox-filters
+  %span.small.text-body-secondary.me-1= t('outbox.filters.label')
+  = link_to(t('outbox.filters.default', season: default_season_id), outbox_path, class: default_css)
+  = link_to(t('outbox.filters.all'), outbox_path(folder: 'all'), class: all_css)
+  - if folder.present? && folder != 'all'
+    %span.badge.rounded-pill.text-bg-primary= t('outbox.filters.folder', folder:)

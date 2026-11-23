@@ -10,7 +10,8 @@
 # - season_progress: the Season board state counts (stored board summary);
 # - system_status:   one row per SystemStatus probe;
 # - activity_feed:   the latest Ops::Event rows (the full list is #activity_log, /activity);
-# - kpis:            the four API counters from the KpiRefreshJob snapshot.
+# - kpis:            the four API counters from the KpiRefreshJob snapshot;
+# - health:          the data health card (open errors of the board season and of the other seasons, last sweep).
 #
 # Nothing here calls the API: remote values come only from the ops snapshots written by the jobs, so the page
 # renders in an API-offline session too (every action is allowed there). The only writes are the operator's
@@ -27,6 +28,8 @@ class DashboardController < ApplicationController
   def needs_you
     @now = Time.current
     @context = Inbox::Context.new(now: @now, api_offline: api_offline_session?, user: current_user)
+    # (SQL Outbox: adopt the scripts written or moved on disk, at most every 30 s; local files and ops DB only)
+    Outbox::Reconciler.call_throttled(data_root: @context.data_dir) if @context.ops_available?
     @inbox = Inbox::Builder.new.call(@context)
     render_frame
   end
@@ -66,6 +69,13 @@ class DashboardController < ApplicationController
     @api_url = Shell::APITarget.configured_url
     @snapshot = KpiRefreshJob.read(@api_url)
     @refreshing = Dashboard::QueueActivity.new.pending?(KpiRefreshJob.name)
+    render_frame
+  end
+
+  # GET /dashboard/health (frame): the data health card (ops DB findings & runs; see Health::DashboardCardComponent)
+  def health
+    @ops_available = Ops.available?
+    @board_season = SeasonBoard::Builder.latest_season if @ops_available
     render_frame
   end
 

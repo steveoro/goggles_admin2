@@ -58,6 +58,14 @@
         = turbo_frame_tag('dashboard-system-frame', src: dashboard_system_path, target: '_top', data: frame_data) do
           .card-body= loading
 
+      %section.card#dashboard-health-card
+        .card-header.d-flex.align-items-center.gap-2
+          %i.fa-solid.fa-heart-pulse{ 'aria-hidden' => 'true' }
+          %h2.h6.mb-0= t('dashboard.zones.health')
+        .card-body.py-2
+          = turbo_frame_tag('dashboard-health', src: dashboard_health_path, target: '_top', data: frame_data) do
+            = loading
+
       %section.card#dashboard-activity-card
         .card-header.d-flex.align-items-center.gap-2
           %i.fa-solid.fa-timeline{ 'aria-hidden' => 'true' }

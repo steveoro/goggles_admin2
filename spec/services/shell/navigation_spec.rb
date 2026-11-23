@@ -101,6 +101,16 @@ RSpec.describe Shell::Navigation do
       expect(described_class.item_for('best_results', 'best_in_5y').key).to eq(:best_in_5y)
     end
 
+    it 'maps the data health pages and frames to the Data quality > Data health item' do
+      %w[health#index health#matrix health/seasons#show health/seasons#summary health/sections#show health/findings#show
+         health/cancellations#new].each do |route|
+        controller, action = route.split('#')
+        item = described_class.item_for(controller, action)
+        expect(item&.key).to eq(:health), route
+        expect(item.group).to eq(:data_quality)
+      end
+    end
+
     it 'returns nil for an unknown page' do
       expect(described_class.item_for('lookup', 'index')).to be_nil
       expect(described_class.item_for('whatever', 'index')).to be_nil
@@ -137,7 +147,7 @@ RSpec.describe Shell::Navigation do
   describe '.groups' do
     it 'lists only the non-empty groups, in order, with sidebar items only' do
       groups = described_class.groups
-      expect(groups.map(&:key)).to eq(%i[dashboard import entities reports support system])
+      expect(groups.map(&:key)).to eq(%i[dashboard import data_quality entities reports support system])
       expect(groups.flat_map(&:items)).to all(be_sidebar)
       expect(groups.flat_map(&:items).map(&:key)).not_to include(:data_fix)
     end
@@ -147,7 +157,8 @@ RSpec.describe Shell::Navigation do
       offline = described_class.groups(offline: true)
       expect(online.flat_map { |group| group.items.select { |item| group.disabled?(item) } }).to be_empty
       enabled_offline = offline.flat_map { |group| group.items.reject { |item| group.disabled?(item) } }
-      expect(enabled_offline.map(&:key)).to contain_exactly(:dashboard, :settings, :remote_writes)
+      # (07: the Outbox page reads only the local files and the ops DB; its push confirmation is not allowed offline)
+      expect(enabled_offline.map(&:key)).to contain_exactly(:dashboard, :settings, :remote_writes, :outbox)
     end
   end
 

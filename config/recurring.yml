@@ -32,6 +32,19 @@ default: &default
     class: DriftCheckJob
     queue: default
     schedule: every 30 minutes
+  # Data health report heartbeat: decides from the ops 'health_runs' rows which season/group checks are due
+  # (current season daily after 06:30, one closed season per heartbeat when older than 7 days) and enqueues the
+  # read-only Health::SeasonRunJob checks on the single-thread 'maintenance' worker (see Health::SweepJob)
+  health_sweep:
+    class: Health::SweepJob
+    queue: maintenance
+    schedule: every hour at minute 45
+  # SQL Outbox: read-only follow-up of the pushed scripts ("sent, not verified"): one GET 'import_queue/:id' per
+  # script with the background JWT; returns at once when nothing is 'sent' (see Outbox::RemoteStatusJob)
+  outbox_remote_status:
+    class: Outbox::RemoteStatusJob
+    queue: default
+    schedule: every 2 minutes
 
 development:
   <<: *default

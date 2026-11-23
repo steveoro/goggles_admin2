@@ -25,10 +25,10 @@ RSpec.describe SeasonBoard::ActionPaths do
         .to eq(review_sessions_path(file_path: '/d/p.json', phase_v2: 1))
     end
 
-    it 'opens the Push page on the folder of the pending script' do
+    it 'opens the Outbox focused on the pending script' do
       sql_path = '/home/x/goggles_admin2/crawler/data/results.new/242/0001-a-lt4.sql'
-      expect(described_class.link_path(action(:push, sql_path:))).to eq('/push/index?curr_dir=data%2Fresults.new%2F242')
-      expect(described_class.link_path(action(:push, sql_path: '/x.sql'))).to eq('/push/index')
+      expect(described_class.link_path(action(:push, sql_path:))).to eq('/outbox?focus=0001-a-lt4.sql')
+      expect(described_class.link_path(action(:push, sql_path: nil))).to eq('/outbox')
     end
 
     it 'is nil for the other actions or no action' do

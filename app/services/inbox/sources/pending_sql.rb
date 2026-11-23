@@ -5,12 +5,13 @@ module Inbox
     #
     # = Inbox::Sources::PendingSql
     #
-    # SQL scripts waiting to be pushed: 'NNNN-*.sql' files in <data_dir>/results.new/<numeric season>/ and
-    # <data_dir>/results.new/misc/ (commit batches and Season board scripts alike), sorted by their numeric
-    # prefix, as ONE grouped item ("N scripts to push, oldest NNNN") opening the Push page on the oldest
-    # script's folder (order matters).
+    # Disk-derived list of the SQL scripts waiting to be pushed: 'NNNN-*.sql' files in
+    # <data_dir>/results.new/<numeric season>/ and <data_dir>/results.new/misc/, sorted by their numeric prefix, as
+    # ONE grouped item ("N scripts to push, oldest NNNN") opening the Outbox focused on the oldest script.
     #
-    # Phase 07 replaces this source (Inbox::Registry.replace(:pending_sql, ...)) with one reading the outbox.
+    # Since phase 07 the registered source of the slot is Outbox::InboxSource
+    # (Inbox::Registry.replace(:pending_sql, Outbox::InboxSource), config/initializers/inbox.rb), which reads the
+    # Outbox registry and falls back to this list only when the ops DB is not available.
     #
     # Key: 'pending_sql'.
     #
@@ -19,7 +20,7 @@ module Inbox
       FOLDER_REGEXP = /\A(\d+|misc)\z/
 
       def self.more_path
-        Rails.application.routes.url_helpers.push_index_path
+        Rails.application.routes.url_helpers.outbox_path
       end
 
       def items(context)
@@ -33,7 +34,7 @@ module Inbox
           title: t(:title, count: scripts.size, number:),
           detail: scripts.first(3).map { |path| File.basename(path) }.join(', ') + (scripts.size > 3 ? ', ...' : ''),
           subject: { sql_path: oldest },
-          action: action(t(:push), url_helpers.push_index_path(SeasonBoard::ActionPaths.push_folder_params(oldest))),
+          action: action(t(:push), url_helpers.outbox_path(focus: File.basename(oldest))),
           since: mtime_of(oldest) || context.now
         )]
       end

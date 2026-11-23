@@ -539,41 +539,55 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
   #-- -------------------------------------------------------------------------
   #++
 
-  # Creates the specified file under #{SCRIPT_OUTPUT_DIR} by concatenating the log array into
-  # a single text file.
-  # If 'simulate' is +false+, the resulting script will be also executed on localhost using the MySQL client.
+  # Registers the SQL script in the Outbox (Outbox::Writer): the file is written under #{SCRIPT_OUTPUT_DIR}/<folder>/
+  # with the next global sequence number (any leading 'NNNN-' of +file_name+ is replaced, unless the task was
+  # given an explicit 'index=': that number is then kept as the file prefix only).
+  #
+  # Folders: a numeric +subdir+ (a season id) => that season folder; anything else (none, 'normalize', ...) =>
+  # 'misc' (cross-season scripts).
+  #
+  # If 'simulate' is +false+, the script is written held, run on localhost (LocalDb::SqlRunner) and then marked as
+  # applied locally (pushable, re-sequenced when needed); a failed run leaves it held ('local_apply_failed') and
+  # exits with an error. In simulate mode it stays held ('not applied locally') until applied from the Outbox page.
   #
   # == Params:
   # - file_name: the resulting text file name, minus the '.sql' extension;
   # - sql_log_array: the array of SQL statements to be written to the file;
-  # - subdir: optional subdirectory name under #{SCRIPT_OUTPUT_DIR} under which the resulting file will be stored;
-  # - simulate: when set to '0' will enable script execution on localhost (toggled off by default).
+  # - subdir: optional season id (or legacy subfolder name);
+  # - simulate: when set to '0' will enable script execution on localhost (toggled off by default);
+  # - kind: Outbox kind (default: inferred from the name, see Outbox::Kinds).
   #
-  def process_sql_file(file_name:, sql_log_array:, subdir: nil, simulate: true) # rubocop:disable Rake/MethodDefinitionInTask
-    output_dir = subdir ? "#{SCRIPT_OUTPUT_DIR}/#{subdir}" : SCRIPT_OUTPUT_DIR
-    FileUtils.mkdir_p(output_dir) unless File.directory?(output_dir)
-    sql_file_name = "#{output_dir}/#{file_name}.sql"
-    File.open(sql_file_name, 'w+') { |f| f.puts(sql_log_array.join("\r\n")) }
-    puts("\r\nFile '#{sql_file_name}' saved.")
+  def process_sql_file(file_name:, sql_log_array:, subdir: nil, simulate: true, kind: nil) # rubocop:disable Rake/MethodDefinitionInTask,Metrics/AbcSize,Metrics/PerceivedComplexity
+    folder = subdir.to_s.match?(/\A\d+\z/) ? subdir.to_s : Outbox::MISC_FOLDER
+    explicit_prefix = ENV['index'].present? ? file_name.to_s[/\A(\d+)-/, 1]&.to_i : nil
+    name = file_name.to_s.sub(/\A\d+-/, '')
+    content = sql_log_array.join("\r\n")
+    content += "\n" unless content.end_with?("\n") # (same bytes as the former 'f.puts')
+    script = Outbox::Writer.write!(
+      kind: kind || Outbox::Kinds.infer("0000-#{name}.sql"), name:, sql: content, folder:,
+      applied_locally: !simulate, prefix: explicit_prefix, data_root: SCRIPT_OUTPUT_DIR.dirname,
+      origin: { 'producer' => 'rake', 'task' => Rake.application.top_level_tasks.first,
+                'args' => ENV.to_h.slice('season', 'src', 'dest', 'index', 'simulate', 'meeting', 'team') }.compact_blank
+    )
+    sql_file_name = script.absolute_path.to_s
+    puts("\r\nFile '#{sql_file_name}' saved (Outbox: #{script.persisted? ? "#{script.state}, seq #{script.seq}" : 'not registered, ops DB missing'}).")
 
     if simulate
       puts("\r\n\t\t>>> NOTHING WAS DONE TO THE DB: THIS WAS JUST A SIMULATION <<<\r\n")
-      puts("--> Remember to use the 'simulate=0' option to actually run the generated script!")
+      puts("--> The script stays HELD in the Outbox until applied ('Apply locally') or re-run with 'simulate=0'.")
     else
-      # (See lib/tasks/db.rake for #execute_sql_file())
+      # (See lib/tasks/db.rake for #execute_sql_file(): exits on failure)
       execute_sql_file(full_pathname: sql_file_name)
     end
+    script
   end
   #-- -------------------------------------------------------------------------
   #++
 
-  # Returns the progressive index found at 'SCRIPT_OUTPUT_DIR' for all .sql files present.
-  # Expected index format: 'IDX-<filename>.sql'.
-  # == Params:
-  # - subdir: optional subdirectory name under #{SCRIPT_OUTPUT_DIR} in which the files are stored.
-  def auto_index_from_script_output_dir(subdir = nil) # rubocop:disable Rake/MethodDefinitionInTask
-    glob_path = subdir ? "#{SCRIPT_OUTPUT_DIR}/#{subdir}/*.sql" : "#{SCRIPT_OUTPUT_DIR}/*.sql"
-    Pathname.new(Dir[glob_path].last.to_s).basename.to_s.split('-').first.to_i + 1
+  # Returns the next progressive index for a new SQL script: the global Outbox sequence (all folders of
+  # results.new, results.sent and redo, plus the ops registry) + 1. The +subdir+ is ignored (kept for the callers).
+  def auto_index_from_script_output_dir(_subdir = nil) # rubocop:disable Rake/MethodDefinitionInTask
+    Outbox::Sequence.current_max(data_root: SCRIPT_OUTPUT_DIR.dirname) + 1
   end
 
   private

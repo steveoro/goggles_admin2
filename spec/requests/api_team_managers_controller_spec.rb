@@ -125,9 +125,11 @@ RSpec.describe APITeamManagersController do
     let(:user) { FactoryBot.create(:user) }
     let(:valid_params) { { 'sql-create' => { season_id: season.id, team_id: team.id, user_id: user.id } } }
 
-    after(:each) do
-      Rails.root.glob("crawler/data/results.new/#{season.id}/*-team_manager-*.sql").each { |f| File.delete(f) }
-    end
+    # (temporary crawler data root: never writes under the real crawler/data)
+    let(:data_root) { Pathname.new(Dir.mktmpdir) }
+
+    before(:each) { allow(Outbox).to receive(:data_root).and_return(data_root) }
+    after(:each) { FileUtils.rm_rf(data_root) }
 
     context 'with an unlogged user' do
       it 'is a redirect to the login path' do
@@ -150,13 +152,14 @@ RSpec.describe APITeamManagersController do
 
         it 'writes a SQL batch file under results.new/<season_id>' do
           post(api_team_managers_sql_create_path, params: valid_params)
-          files = Rails.root.glob("crawler/data/results.new/#{season.id}/*-team_manager-*.sql")
+          files = data_root.glob("results.new/#{season.id}/*-team_manager-*.sql")
           expect(files.count).to eq(1)
           sql_content = File.read(files.first)
           expect(sql_content).to include('START TRANSACTION')
             .and include('INSERT INTO `team_affiliations`')
             .and include('INSERT INTO `managed_affiliations`')
             .and include('COMMIT')
+          expect(Ops::SqlScript.find_by(filename: File.basename(files.first))).to have_attributes(kind: 'team_manager', state: 'pending')
         end
 
         it 'sets the flash success message' do

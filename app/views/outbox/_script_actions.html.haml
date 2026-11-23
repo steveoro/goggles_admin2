@@ -1,0 +1,47 @@
+-# Operator actions on an Outbox script (local: script), each one a click (see Outbox::ScriptActions).
+:ruby
+  inline = { form_class: 'd-inline' }
+  hold_options = inline.merge(class: 'btn btn-sm btn-outline-secondary', id: 'btn-outbox-hold')
+  release_options = inline.merge(class: 'btn btn-sm btn-outline-primary', id: 'btn-outbox-release')
+  force_options = inline.merge(class: 'btn btn-sm btn-outline-danger', id: 'btn-outbox-release-force',
+                               data: { turbo_confirm: t('outbox.confirm.release_force') })
+  apply_options = inline.merge(class: 'btn btn-sm btn-warning', id: 'btn-outbox-apply-locally',
+                               data: { turbo_confirm: t('outbox.confirm.apply_locally') })
+  pending_options = inline.merge(class: 'btn btn-sm btn-outline-primary', id: 'btn-outbox-resolve-pending')
+  id_field_options = { min: 1, class: 'form-control', required: true, 'aria-label' => t('outbox.resolve_form.remote_id'),
+                       placeholder: t('outbox.resolve_form.remote_id') }
+.card.mb-3#outbox-script-actions
+  .card-body.d-flex.flex-wrap.gap-2
+    - if script.pending?
+      = link_to(new_outbox_push_path(ids: [script.id]), class: 'btn btn-sm btn-primary', id: 'btn-outbox-push-this') do
+        %i.fa-solid.fa-paper-plane{ 'aria-hidden' => 'true' }
+        = t('outbox.actions.push_this')
+      = button_to(t('outbox.actions.hold'), hold_outbox_script_path(script), **hold_options)
+    - if script.held? && script.applied_locally
+      = button_to(t('outbox.actions.release'), release_outbox_script_path(script), **release_options)
+    - elsif script.held?
+      = button_to(t('outbox.actions.release_force'), release_outbox_script_path(script, force: 1), **force_options)
+    - if Outbox::ScriptActions.can_apply_locally?(script)
+      = button_to(apply_locally_outbox_script_path(script), **apply_options) do
+        %i.fa-solid.fa-database{ 'aria-hidden' => 'true' }
+        = t('outbox.actions.apply_locally')
+
+- if script.in_doubt?
+  .card.mb-3.border-danger#outbox-resolve
+    .card-body
+      %p.small= t('outbox.resolve_form.intro')
+      = link_to(t('outbox.actions.remote_queue'), api_import_queues_path, class: 'btn btn-sm btn-outline-secondary mb-2')
+      = form_with(url: resolve_outbox_script_path(script), method: :post, class: 'mb-2', id: 'frm-outbox-resolve-sent') do
+        = hidden_field_tag(:to, 'sent')
+        .input-group.input-group-sm
+          = number_field_tag(:remote_iq_id, script.remote_iq_id, **id_field_options)
+          = button_tag(t('outbox.resolve_form.mark_sent'), type: 'submit', class: 'btn btn-outline-success')
+      = button_to(t('outbox.resolve_form.to_pending'), resolve_outbox_script_path(script, to: 'pending'), **pending_options)
+
+- if script.pending? || script.held? || script.in_doubt?
+  .card.mb-3#outbox-discard
+    .card-body
+      = form_with(url: discard_outbox_script_path(script), method: :post, id: 'frm-outbox-discard') do
+        = label_tag(:note, t('outbox.discard_form.note'), class: 'form-label small')
+        = text_field_tag(:note, nil, class: 'form-control form-control-sm mb-2', required: true)
+        = button_tag(t('outbox.discard_form.submit'), type: 'submit', class: 'btn btn-sm btn-outline-danger')

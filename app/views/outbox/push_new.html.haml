@@ -1,0 +1,2 @@
+= render(Shell::PageHeaderComponent.new(title: t('outbox.push.title'), count: @plan.scripts.size))
+= render(Outbox::PushConfirmComponent.new(plan: @plan, ping: @ping, jwt_valid: @jwt_valid, jwt_expires_at: @jwt_expires_at))

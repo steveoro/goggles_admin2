@@ -38,8 +38,6 @@ en:
       btn_select_csv_tooltip: 'Open the meeting selection page for this calendar file'
       btn_process_pdf_tooltip: 'Parse this PDF result file into a processable JSON results file'
       btn_process_json_tooltip: 'Process this result file, preparing a batch data import transaction'
-      btn_process_sql_tooltip: 'Upload this data-import batch file to the remote server'
-      confirm_push: "Are you sure you want to upload this file?"
     selection:
       title: '1. Select meetings to crawl'
       season_label: 'Season ID %{id}'
@@ -164,15 +162,6 @@ en:
         overall_points: "Overall points"
         missing_team: "missing or new team"
         skipped: "Team scores skipped (unresolved team)"
-    push:
-      msg_send_batch_ok: "SQL batch file successfully sent."
-      new_results_tab_name: "New"
-      sent_results_tab_name: "Sent"
-      btn_all_sql_files: "ALL files"
-      btn_all_sql_files_tooltip: "Uploads to the remote server ALL SQL batch files from the list below"
-      btn_all_sql_files_confirm: "Are you sure you want to upload ALL SQL batch files?"
-      all_sql_files_ok: "All SQL batch files have been successfully sent."
-      already_sent: "This file was already sent: it will not be pushed again."
     manifest_extraction:
       title: "2. Automatic Manifest data extraction from existing files"
     errors:

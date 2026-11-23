@@ -11,6 +11,13 @@
                 class: 'btn btn-sm btn-outline-primary', role: 'button') do
         = t('datagrid.csv_export.btn_localhost_0mirs_label')
         %i.fa.fa-download
+      -# (the data health report lists the meetings without results per season, relay-only meetings excluded)
+      - health_season_id = @grid_filter_params.to_h['season_id'].presence
+      = link_to(health_season_id ? health_season_path(health_season_id, anchor: 'health-group-meetings') : health_path,
+                class: 'btn btn-sm btn-outline-secondary', role: 'button', id: 'btn-health-report',
+                data: { bs_toggle: 'tooltip', bs_title: t('health.meetings_grid_link_tooltip') }) do
+        %i.fa-solid.fa-heart-pulse{ 'aria-hidden' => 'true' }
+        = t('health.meetings_grid_link')
   = datagrid_form_with(model: @grid, method: :get,
                       url: url_for(controller: controller_name, action: :index, params: @index_params))
   = render(Grid::FilterLabelsComponent.new(filter_params: @grid_filter_params))

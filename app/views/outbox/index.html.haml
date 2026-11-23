@@ -1,0 +1,34 @@
+-#
+  SQL Outbox (OutboxController#index): page header and notices; the sections live in the 'outbox-scripts' frame
+  (outbox/_scripts_frame), reloaded by outbox_controller.js on an 'outbox-ping' or while a push run is live.
+:ruby
+  pending_count = @ops_ready ? @needs_push.count(&:pending?) : 0
+  subtitle = t('outbox.subtitle', url: Shell::APITarget.configured_url.presence || '-')
+  reconcile_options = { method: :post, class: 'btn btn-sm btn-outline-secondary', form_class: 'd-inline', id: 'btn-outbox-reconcile' }
+  controller_data = { controller: 'outbox', 'outbox-ping-id-value': Outbox::Notifier::DOM_ID, 'outbox-interval-value': 5000,
+                      'outbox-push-url-value': new_outbox_push_path }
+= render(Shell::PageHeaderComponent.new(title: t('outbox.title'), count: @ops_ready ? @needs_push.size : nil, subtitle:)) do |header|
+  - header.with_actions do
+    - if @ops_ready
+      .d-flex.flex-wrap.gap-2
+        = button_to(outbox_reconcile_path, **reconcile_options) do
+          %i.fa-solid.fa-rotate{ 'aria-hidden' => 'true' }
+          = t('outbox.actions.reconcile')
+        - if pending_count.positive?
+          = link_to(new_outbox_push_path(scope: 'next'), class: 'btn btn-sm btn-outline-primary', id: 'btn-outbox-push-next') do
+            %i.fa-solid.fa-forward-step{ 'aria-hidden' => 'true' }
+            = t('outbox.actions.push_next')
+          = link_to(new_outbox_push_path(scope: 'all_pending'), class: 'btn btn-sm btn-primary', id: 'btn-outbox-push-all') do
+            %i.fa-solid.fa-paper-plane{ 'aria-hidden' => 'true' }
+            = t('outbox.actions.push_all', count: pending_count)
+
+- if @ops_ready
+  - unless @imported
+    .alert.alert-info#outbox-not-imported= t('outbox.legacy_not_imported')
+  - if @focus && @focus_script.nil?
+    .alert.alert-secondary#outbox-focus-missing= t('outbox.focus_missing', file: @focus)
+- else
+  .alert.alert-warning#outbox-ops-missing{ role: 'alert' }= t('outbox.ops_missing')
+
+%div{ data: controller_data }
+  = render(partial: 'outbox/scripts_frame', locals: frame_locals)

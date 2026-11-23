@@ -119,10 +119,10 @@ RSpec.describe SeasonBoardController do
           )
         end
 
-        it 'shows their count in the header with a link to the Push page' do
+        it 'shows their count in the header with a link to the Outbox, focused on the first one' do
           notice = page.at_css('#season-board-sql-pending')
           expect(notice.text).to include('2 SQL scripts awaiting push')
-          expect(notice.at_css('a')['href']).to eq(push_index_path)
+          expect(notice.at_css('a')['href']).to eq(outbox_path(focus: '0001-calendar_link-1-2.sql'))
         end
       end
 
@@ -132,7 +132,7 @@ RSpec.describe SeasonBoardController do
         expect(page.at_css('#season-board-row-2 form[action="/season_board/extract"]')).to be_present
         expect(page.at_css('#season-board-row-3 a.btn')['href']).to eq(review_sessions_path(file_path: '/d/r.json', phase_v2: 1))
         expect(page.at_css('#season-board-row-4 a.btn')['href']).to eq(review_swimmers_path(file_path: '/d/p.json', phase3_v2: 1))
-        expect(page.at_css('#season-board-row-5 a.btn')['href']).to eq(push_index_path)
+        expect(page.at_css('#season-board-row-5 a.btn')['href']).to eq(outbox_path(focus: 's.sql'))
         expect(page.at_css('#season-board-row-6 form[action="/season_board/link"] option[value="321"]')).to be_present
         expect(page.at_css('#season-board-row-9 form, #season-board-row-9 a.btn')).to be_nil
       end

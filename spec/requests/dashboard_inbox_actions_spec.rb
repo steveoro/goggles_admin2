@@ -150,16 +150,23 @@ RSpec.describe 'Dashboard inbox actions' do
     end
   end
 
-  describe 'PendingSql' do
-    it 'opens the Push page on the folder of the oldest script' do
-      File.write(season_dir.join('0043-later-lt4.sql'), '')
-      File.write(season_dir.join('0042-first-lt4.sql'), '')
+  describe 'PendingSql (Outbox::InboxSource)' do
+    it 'opens the Outbox focused on the oldest script (files adopted by the dashboard reconcile)' do
+      File.write(season_dir.join('0043-later-lt4.sql'), 'SELECT 1;')
+      File.write(season_dir.join('0042-first-lt4.sql'), 'SELECT 2;')
       item = inbox_item('pending_sql')
-      expect(item.text).to include('0042')
+      expect(item.text).to include('0042-first-lt4.sql')
 
       method, path, = primary_action(item)
       expect(method).to eq(:get)
-      expect(recognized(path)).to include(controller: 'push', action: 'index', curr_dir: "data/results.new/#{season.id}")
+      expect(recognized(path)).to include(controller: 'outbox', action: 'index', focus: '0042-first-lt4.sql')
+    end
+
+    it 'falls back to the disk list when the ops DB is not available' do
+      File.write(season_dir.join('0042-first-lt4.sql'), 'SELECT 2;')
+      allow(Ops::Database).to receive(:state).and_return(:missing)
+      _method, path, = primary_action(inbox_item('pending_sql'))
+      expect(recognized(path)).to include(controller: 'outbox', action: 'index', focus: '0042-first-lt4.sql')
     end
   end
 

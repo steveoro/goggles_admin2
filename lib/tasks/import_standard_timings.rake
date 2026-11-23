@@ -19,7 +19,9 @@ namespace :import do # rubocop:disable Metrics/BlockLength
 
     Source files are stored under 'crawler/data/standard_timings' (possibly inside a
     '#{DEFAULT_SEASON_ID}'-like sub-folder named after the season ID).
-    Output file will be stored in 'crawler/data/results.new'.
+    Output file will be stored in 'crawler/data/results.new/<season_id>/NNNN-<season_id>-standard_timings.sql'
+    and registered in the SQL Outbox HELD ('not applied locally': apply it from the Outbox page, or
+    release it there without local apply, before pushing it).
 
     Supported/expected column formats (with header row; either one is valid for CSV,
     XLSX sheets are auto-detected by their header labels):
@@ -141,9 +143,14 @@ namespace :import do # rubocop:disable Metrics/BlockLength
     sql_log << "\r\nCOMMIT;\r\n"
     puts "\r\n"
 
-    sql_file_name = "#{SCRIPT_OUTPUT_DIR}/000-#{season_id}-standard_timings.sql"
-    File.open(sql_file_name, 'w+') { |f| f.puts(sql_log.join("\r\n")) }
-    puts("\r\nFile '#{sql_file_name}' saved.")
+    content = sql_log.join("\r\n")
+    content += "\n" unless content.end_with?("\n") # (same bytes as the former 'f.puts')
+    script = Outbox::Writer.write!(
+      kind: 'standard_timings', name: "#{season_id}-standard_timings", sql: content, folder: season_id.to_s,
+      season_id:, applied_locally: false, data_root: SCRIPT_OUTPUT_DIR.dirname,
+      origin: { 'producer' => 'rake', 'task' => 'import:standard_timings', 'season' => season_id }
+    )
+    puts("\r\nFile '#{script.absolute_path}' saved (held in the Outbox: not applied locally).")
   end
 
   private

@@ -38,6 +38,7 @@ namespace :db do
 
     Dir[full_pathname].select { |path| File.file?(path) }.each do |file_path|
       puts("\r\n--> '#{file_path}'")
+      # (also tells the Outbox registry: a held script becomes pushable, in local-apply order)
       execute_sql_file(full_pathname: file_path)
     end
     puts('Done.')
@@ -45,38 +46,28 @@ namespace :db do
   #-- -------------------------------------------------------------------------
   #++
 
-  # Runs the specified SQL script on localhost using the MySQL client.
-  # Credentials are taken directly from the Rails environment configuration.
-  # No checking is performed on the script content.
+  # Runs the specified SQL script on localhost with the MariaDB client (LocalDb::SqlRunner: wrapped in an outer
+  # transaction, password passed through MYSQL_PWD, never on the command line), then tells the SQL Outbox:
+  # - success => Outbox::Writer.mark_applied_locally! (a held script becomes pending, re-sequenced when needed);
+  # - failure => Outbox::Writer.mark_apply_failed! (held, 'local_apply_failed') and the task exits with 1.
+  # Scripts outside the Outbox scan roots (or with the ops DB missing) are just run.
   #
   # == Params:
-  # - file_name: the full pathname of the SQL script file.
+  # - full_pathname: the full pathname of the SQL script file.
   #
   def execute_sql_file(full_pathname:) # rubocop:disable Rake/MethodDefinitionInTask
     puts('--> Executing script...')
-    # NOTE: for security reasons, ActiveRecord::Base.connection.execute() executes just the first
-    # command when passed multiple staments. This is somewhat overlooked and not properly documented
-    # in the docs as of this writing. We'll use the MySql client for this one:
-    # (Supports both single & multi-db configs: in the latter, the 'primary' entry is the MySQL one)
-    env_config = Rails.configuration.database_configuration[Rails.env]
-    env_config = env_config['primary'] if env_config.key?('primary')
-    db_name      = env_config['database']
-    db_user      = env_config['username']
-    db_pwd       = env_config['password']
-    db_host      = env_config['host']
+    data_root = Outbox.data_root_for(full_pathname)
+    result = LocalDb::SqlRunner.call(path: full_pathname)
+    if result.success?
+      script = Outbox::Writer.mark_applied_locally!(full_pathname, data_root:)
+      puts("--> Done in #{result.duration.round(2)} s#{" (Outbox: #{script.state}, seq #{script.seq})" if script}.")
+      return result
+    end
 
-    # Execute with transaction wrapping to ensure rollback on failure
-    # The merge scripts already include START TRANSACTION and COMMIT, but we add
-    # an outer transaction wrapper to catch any syntax errors before the script's own transaction
-    # Use shell redirection to handle large files efficiently without loading into memory
-    cmd = "mariadb --host=#{db_host} --user=#{db_user} --password=\"#{db_pwd}\" --database=#{db_name}"
-    exit_status = system("(echo 'START TRANSACTION;'; cat '#{full_pathname}'; echo 'COMMIT;') | #{cmd}")
-
-    return if exit_status
-
+    Outbox::Writer.mark_apply_failed!(full_pathname, error: result.stderr, data_root:)
+    puts(result.stderr)
     puts("\r\n*** ERROR: Script execution failed. Transaction rolled back. ***")
-    # Explicitly rollback in case the script left a transaction open
-    system("mariadb --host=#{db_host} --user=#{db_user} --password=\"#{db_pwd}\" --database=#{db_name} --execute=\"ROLLBACK;\"")
     exit 1
   end
   #-- -------------------------------------------------------------------------

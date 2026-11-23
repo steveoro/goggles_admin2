@@ -1,0 +1,38 @@
+-# Details card of an Outbox script (locals: script, blockers: lower-seq blocking scripts).
+:ruby
+  answers = { true => t('outbox.show.answer_yes'), false => t('outbox.show.answer_no') }
+  yes_no = ->(value) { answers.fetch(value, t('outbox.show.applied_unknown')) }
+  rows = [
+    [t('outbox.show.seq'), format('%04d', script.seq)], [t('outbox.columns.kind'), script.kind_label],
+    [t('outbox.columns.folder'), script.folder], [t('outbox.show.path'), script.rel_path],
+    [t('outbox.columns.size'), number_to_human_size(script.byte_size.to_i)], [t('outbox.show.sha256'), script.sha256],
+    [t('outbox.show.applied_locally'), yes_no.call(script.applied_locally)],
+    [t('outbox.show.single_transaction'), yes_no.call(script.single_transaction)],
+    [t('outbox.show.attempts'), script.push_attempts]
+  ]
+  rows << [t('outbox.show.target'), "#{script.target_api_url} (#{script.target_env})"] if script.target_api_url.present?
+  rows << [t('outbox.columns.pushed_at'), l(script.pushed_at.localtime, format: :short)] if script.pushed_at
+  rows << [t('outbox.show.remote_checked_at'), l(script.remote_checked_at.localtime, format: :short)] if script.remote_checked_at
+  rows += script.origin_data.map { |key, value| [key, value.is_a?(Enumerable) ? value.to_json : value] }
+  rows << [t('outbox.show.note'), script.note] if script.note.present?
+.card.mb-3#outbox-script-details
+  .card-body
+    %dl.row.mb-0.small
+      %dt.col-5= t('outbox.columns.state')
+      %dd.col-7= render(Outbox::StateBadgeComponent.new(script:))
+      - if script.remote_iq_id
+        %dt.col-5= t('outbox.columns.remote_id')
+        %dd.col-7.font-monospace= link_to(script.remote_iq_id, api_import_queues_path, title: t('outbox.actions.remote_queue'))
+      - rows.each do |label, value|
+        %dt.col-5= label
+        %dd.col-7.text-break= value
+    - if script.last_error.present?
+      .alert.alert-danger.small.mt-3.mb-0#outbox-script-error
+        %strong= t('outbox.show.last_error')
+        %pre.mb-0.text-wrap= script.last_error
+    - if blockers.any?
+      .alert.alert-secondary.small.mt-3.mb-0#outbox-script-blockers
+        = t('outbox.blocked_tooltip')
+        %ul.mb-0
+          - blockers.each do |blocker|
+            %li= link_to(blocker.filename, outbox_script_path(blocker))

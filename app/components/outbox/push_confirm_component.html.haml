@@ -1,0 +1,55 @@
+.card.mb-3#outbox-push-confirm
+  .card-body
+    - if plan.empty?
+      .alert.alert-info.mb-0#outbox-push-nothing= t('outbox.push.nothing')
+    - else
+      %p.mb-2= t('outbox.push.intro', count: plan.scripts.size, size: total_size)
+      %ol.list-group.list-group-numbered.mb-3#outbox-push-list
+        - plan.scripts.each do |script|
+          %li.list-group-item.d-flex.justify-content-between.align-items-start.gap-2{ data: { outbox_script_id: script.id } }
+            %span.font-monospace.text-break.me-auto= script.filename
+            %span.small.text-body-secondary.text-nowrap= helpers.number_to_human_size(script.byte_size.to_i)
+            - if script.changed_after_push?
+              %span.badge.text-bg-warning= t('outbox.changed_after_push')
+
+      %dl.row.mb-3
+        %dt.col-sm-3= t('outbox.push.target')
+        %dd.col-sm-9.font-monospace.text-break#outbox-push-target= plan.target_url.presence || '-'
+        %dt.col-sm-3= t('outbox.push.environment')
+        %dd.col-sm-9#outbox-push-environment
+          %span.badge{ class: environment_label == 'production' ? 'text-bg-danger' : 'text-bg-secondary' }= environment_label
+          - unless plan.verified?
+            %span.small.text-body-secondary.ms-1= t('outbox.push.unverified')
+        %dt.col-sm-3= t('outbox.push.reachability')
+        %dd.col-sm-9#outbox-push-reachability
+          - if reachable?
+            %span.text-success= t('outbox.push.reachable', version:)
+            - if maintenance?
+              %span.badge.text-bg-warning.ms-1= t('outbox.push.maintenance')
+          - else
+            %span.text-danger= t('outbox.push.unreachable', error: ping_error)
+        %dt.col-sm-3= t('outbox.push.jwt')
+        %dd.col-sm-9{ class: jwt_valid? ? 'text-success' : 'text-danger' }= jwt_text
+
+      - if plan.changed_after_push.any?
+        .alert.alert-warning= t('outbox.push.changed_warning', count: plan.changed_after_push.size)
+
+      = form_with(url: helpers.outbox_push_path, method: :post, id: 'frm-outbox-push', data: { turbo: false }) do
+        = hidden_field_tag(:confirmed, '1')
+        - plan.script_ids.each do |id|
+          = hidden_field_tag('ids[]', id, id: nil)
+        - if plan.blocked?
+          .alert.alert-warning#outbox-push-blockers
+            = t('outbox.push.blockers', files: plan.blockers.first(5).map(&:filename).join(', '))
+            .form-check.mt-2
+              = check_box_tag(:override_order, '1', plan.override_order, class: 'form-check-input')
+              = label_tag(:override_order, t('outbox.push.override_order'), class: 'form-check-label')
+        - if plan.label_required?
+          .mb-3
+            = label_tag(:confirm_label, t('outbox.push.type_label', label: environment_label), class: 'form-label')
+            = text_field_tag(:confirm_label, nil, **label_field_options)
+        .d-flex.flex-wrap.gap-2
+          = button_tag(type: 'submit', class: 'btn btn-danger', id: 'btn-outbox-push-confirm', disabled: !submittable?) do
+            %i.fa-solid.fa-paper-plane{ 'aria-hidden' => 'true' }
+            = t('outbox.push.submit', count: plan.scripts.size)
+          = link_to(t('outbox.push.cancel'), helpers.outbox_path, class: 'btn btn-outline-secondary')

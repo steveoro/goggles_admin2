@@ -1,0 +1,26 @@
+-# 'History' section (collapsed: legacy_sent, archived, discarded, missing) and the last push runs.
+%section.mb-4#outbox-history
+  %details{ open: history.any? { |script| script.filename == focus } }
+    %summary.h5
+      = t('outbox.sections.history')
+      %span.badge.rounded-pill.text-bg-secondary= history.size
+    - if history.empty?
+      %p.text-body-secondary.mt-2= t('outbox.empty.history')
+    - else
+      .table-responsive.mt-2
+        %table.table.table-sm.table-hover.align-middle#outbox-history-table
+          %tbody
+            - history.each do |script|
+              = render(Outbox::ScriptRowComponent.new(script:, focus: script.filename == focus, remote: true))
+
+- if runs.any?
+  %section.mb-4#outbox-runs
+    %h2.h6= t('outbox.sections.runs')
+    %ul.list-unstyled.small.mb-0
+      - runs.each do |run|
+        - text = t('outbox.runs.row', id: run.id, user: run.user_id, status: run.status_label, done: run.pushed_count,
+                                      total: run.total, url: run.target_api_url)
+        %li{ data: { push_run_id: run.id, push_run_status: run.status } }
+          = text
+          - if run.error.present?
+            %span.text-danger= run.error.truncate(200)

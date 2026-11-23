@@ -54,7 +54,8 @@ RSpec.describe Ops::ApplicationRecord do
       end
       expect(status).to be_success, "child boot failed:\n#{err.lines.last(20).join}"
       expect(out.lines.last.strip).to eq(
-        { state: :not_configured, event: nil, query: 'Ops::NotConfiguredError', rebuilders: [] }.inspect
+        # (the rebuilders registered at boot are only names: nothing runs while the ops DB is not configured)
+        { state: :not_configured, event: nil, query: 'Ops::NotConfiguredError', rebuilders: [:outbox] }.inspect
       )
     end
   end
