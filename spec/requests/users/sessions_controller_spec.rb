@@ -63,6 +63,37 @@ RSpec.describe Users::SessionsController do
       end
     end
 
+    context 'when the sign-in gets a valid JWT (background credentials)' do
+      after(:each) { Ops::Database.reset_state! }
+
+      it 'stores the user for the background jobs and enqueues the KPI refresh (still valid JWT)' do
+        allow(APIProxy).to receive(:call)
+        expect { post(user_session_path, params: login_params) }.to have_enqueued_job(KpiRefreshJob).on_queue('default')
+        expect(Ops::Setting.fetch('background.user_id')).to eq(admin_user.id)
+        expect(Ops::BackgroundCredentials.jwt).to eq(admin_user.reload.jwt)
+      end
+
+      it 'does the same with a fresh JWT from the API' do
+        admin_user.update!(jwt: nil)
+        allow(APIProxy).to receive(:call).with(hash_including(method: :post, url: 'session'))
+                                         .and_return(DummyResponse.new(body: { msg: 'OK', jwt: fresh_jwt }.to_json))
+        expect { post(user_session_path, params: login_params) }.to have_enqueued_job(KpiRefreshJob)
+        expect(Ops::Setting.fetch('background.user_id')).to eq(admin_user.id)
+      end
+
+      it 'does neither for an API-offline session' do
+        expect { sign_in_api_offline(admin_user) }.not_to have_enqueued_job(KpiRefreshJob)
+        expect(Ops::Setting.fetch('background.user_id')).to be_nil
+      end
+
+      it 'signs in anyway when the background session cannot be started' do
+        allow(APIProxy).to receive(:call)
+        allow(KpiRefreshJob).to receive(:perform_later).and_raise(RuntimeError, 'queue DB down')
+        post(user_session_path, params: login_params)
+        expect(response).to redirect_to(root_path)
+      end
+    end
+
     context 'with an admin user having an expired JWT and an unreachable API,' do
       context 'when signing-in from localhost' do
         before(:each) { sign_in_api_offline(admin_user) }

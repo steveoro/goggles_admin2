@@ -13,15 +13,15 @@ RSpec.describe SystemStatus::Registry do
 
   after(:each) { Ops::Database.reset_state! }
 
-  it 'lists the API, crawler, queue and FIN watcher probes, in order' do
-    expect(described_class.probes.map(&:key)).to eq(%i[api crawler queue fin_watch])
-    expect(described_class.snapshot_probes.map(&:key)).to eq(%i[api crawler])
+  it 'lists the API, crawler, queue, FIN watcher and drift v0 probes, in order' do
+    expect(described_class.probes.map(&:key)).to eq(%i[api crawler queue fin_watch drift_v0])
+    expect(described_class.snapshot_probes.map(&:key)).to eq(%i[api crawler drift_v0])
   end
 
   describe '.results' do
     it 'returns one Result per probe without any network call' do
       results = described_class.results(api_url:)
-      expect(results.map(&:key)).to eq(%i[api crawler queue fin_watch])
+      expect(results.map(&:key)).to eq(%i[api crawler queue fin_watch drift_v0])
       expect(results).to all(be_a(SystemStatus::Result))
       expect(results.map(&:level)).to all(be_in(SystemStatus::Result::LEVELS))
       expect(APIProxy).not_to have_received(:call)
@@ -41,6 +41,9 @@ RSpec.describe SystemStatus::Registry do
 
       Ops::Snapshot.write!("api.status:#{api_url}", { 'reachable' => true })
       Ops::Snapshot.write!('system_status.crawler', { 'reachable' => false })
+      expect(described_class.refresh_due?(api_url:)).to be true # (drift v0 snapshot still missing)
+
+      Ops::Snapshot.write!("drift_v0:#{api_url}", { 'status' => 'ok' })
       expect(described_class.refresh_due?(api_url:)).to be false
 
       Ops::Snapshot.find_by(key: 'system_status.crawler').update!(taken_at: 3.minutes.ago)

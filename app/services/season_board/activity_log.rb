@@ -18,6 +18,10 @@ module SeasonBoard
   # A 'running' entry older than RUNNING_STALE_AFTER (or a 'queued' one older than
   # QUEUED_STALE_AFTER) is considered stale: still reported, but no longer "busy".
   #
+  # Each instance reads the file once and keeps the entries in memory (a Season board build asks
+  # #for once per row): the writes made through the same instance reset that cache, while
+  # #reload! re-reads the file to see the writes made by other instances (other processes, jobs).
+  #
   class ActivityLog
     DEFAULT_PATH = Rails.root.join('crawler/data/season-board.json')
 
@@ -113,11 +117,20 @@ module SeasonBoard
       entry(fin_event_id, kind)&.last_timestamp
     end
 
+    # Drops the entries read so far: the next read loads the file again. Returns self.
+    def reload!
+      @entries_hash = nil
+      self
+    end
+
     private
 
+    # Stored entries (read once per instance, see #reload!).
     def entries_hash
-      entries = @store.read['entries']
-      entries.is_a?(Hash) ? entries : {}
+      @entries_hash ||= begin
+        entries = @store.read['entries']
+        entries.is_a?(Hash) ? entries : {}
+      end
     end
 
     def write_entry(fin_event_id, kind)
@@ -126,12 +139,16 @@ module SeasonBoard
       raise ArgumentError, 'fin_event_id is required' if fin_id.blank?
 
       saved = nil
-      @store.update do |state|
-        state['entries'] = {} unless state['entries'].is_a?(Hash)
-        by_kind = (state['entries'][fin_id] ||= {})
-        saved = yield(by_kind[kind.to_s])
-        by_kind[kind.to_s] = saved
-        state
+      begin
+        @store.update do |state|
+          state['entries'] = {} unless state['entries'].is_a?(Hash)
+          by_kind = (state['entries'][fin_id] ||= {})
+          saved = yield(by_kind[kind.to_s])
+          by_kind[kind.to_s] = saved
+          state
+        end
+      ensure
+        reload!
       end
       build_entry(fin_id, kind, saved)
     end

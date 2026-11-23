@@ -6,7 +6,11 @@ module SystemStatus
   #
   # Read-only refresh of the snapshot status probes (API ping, crawler status): each probe's #refresh!
   # writes its ops snapshot ('api.status:<base_url>', 'system_status.<key>'), read later by the
-  # top bar status frame. It never commits, pushes or applies anything.
+  # top bar status frame. It never commits, pushes or applies anything. (The drift v0 probe only enqueues
+  # its own DriftCheckJob, when its snapshot is missing or old.)
+  #
+  # The API ping uses short timeouts (SystemStatus::APIProbe::PING_TIMEOUTS): this job runs on the
+  # single-thread 'default' worker.
   #
   # Recurring every 5 minutes (config/recurring.yml, 'system_status_refresh') and enqueued by
   # Shell::StatusController when a snapshot is older than 2 minutes. Snapshots refreshed less than

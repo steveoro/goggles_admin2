@@ -45,8 +45,9 @@ RSpec.describe 'Season board' do
     )
   end
 
+  let(:builder) { instance_double(SeasonBoard::Builder, call: result) }
+
   before(:each) do
-    builder = instance_double(SeasonBoard::Builder, call: result)
     allow(SeasonBoard::Builder).to receive_messages(latest_season: season, new: builder)
     sign_in_admin(prepare_admin_user)
     visit(season_board_path)
@@ -65,6 +66,22 @@ RSpec.describe 'Season board' do
       find_by_id('season-board-orphans').click_link(href: '#orphans-collapse')
       expect(page).to have_css('#orphans-collapse.show')
       expect(page).to have_css('#orphans-collapse', text: 'orph-code')
+      expect_no_js_errors
+    end
+  end
+
+  describe 'live refresh' do
+    it 'reloads only the rows frame (frame-only response) on a board ping' do
+      expect(page).to have_css('#season-board-table tbody tr[id^="season-board-row-"]', count: 3)
+      fresh = build_row(fin_event_id: '4', name: 'Fresh row', state: :link_not_crawled, next_action: action(:crawl, '4'),
+                        url: 'https://fin.example/4')
+      allow(builder).to receive(:call).and_return(result.with(rows: rows + [fresh]))
+
+      page.execute_script("document.dispatchEvent(new CustomEvent('app-notification', { detail: { dom_id: 'season-board-ping' } }))")
+      expect(page).to have_css('#season-board-row-4', text: 'Fresh row')
+      expect(find('turbo-frame#season-board-rows')['src']).to include('frame=1')
+      expect(page).to have_css('.app-sidebar', count: 1)
+      expect(page).to have_css('#season-board-table tbody tr[id^="season-board-row-"]', count: 4)
       expect_no_js_errors
     end
   end

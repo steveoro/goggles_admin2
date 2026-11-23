@@ -89,8 +89,8 @@ RSpec.describe 'SystemStatus probes' do # rubocop:disable RSpec/DescribeClass
     end
 
     describe '#refresh!' do
-      it 'pings the API once and writes the api.status snapshot' do
-        allow(APIProxy).to receive(:ping).with(api_url)
+      it 'pings the API once, with short timeouts, and writes the api.status snapshot' do
+        allow(APIProxy).to receive(:ping).with(api_url, open_timeout: 3, timeout: 5)
                                          .and_return(DummyResponse.new(body: { msg: 'OK', version: '7.2' }.to_json))
         described_class.new(api_url:).refresh!
         expect(APIProxy).to have_received(:ping).once
@@ -219,6 +219,93 @@ RSpec.describe 'SystemStatus probes' do # rubocop:disable RSpec/DescribeClass
       result = described_class.new.call
       expect(result.level).to eq(:warn)
       expect(result.detail).to include('503')
+    end
+  end
+
+  describe SystemStatus::DriftV0Probe do
+    include ActiveSupport::Testing::TimeHelpers
+
+    let(:probe_class) { described_class }
+    let(:snapshot_key) { "drift_v0:#{api_url}" }
+
+    def drift_payload(status: 'ok', missing: {})
+      { 'url' => api_url, 'status' => status, 'missing' => missing, 'missing_count' => missing.values.sum(&:size),
+        'checked_tables' => %w[meetings], 'error' => status == 'ok' ? nil : 'some error' }
+    end
+
+    it_behaves_like 'a probe that never raises'
+    it_behaves_like 'a snapshot probe that never touches the network while evaluated'
+
+    it 'has key :drift_v0 in snapshot mode, reading the drift_v0:<url> snapshot' do
+      expect(described_class.key).to eq(:drift_v0)
+      expect(described_class.mode).to eq(:snapshot)
+      expect(described_class.new(api_url: "#{api_url}/").snapshot_key).to eq(snapshot_key)
+      expect(I18n.t(described_class.label_key, locale: :en)).to eq('DB sync')
+    end
+
+    it 'is :unknown ("not checked yet") without a snapshot' do
+      result = described_class.new(api_url:).call
+      expect(result.level).to eq(:unknown)
+      expect(result.detail).to eq(I18n.t('shell.status.drift_v0.never'))
+    end
+
+    it 'is :ok when every remote ID exists locally and nothing was written remotely' do
+      Ops::Snapshot.write!(snapshot_key, drift_payload)
+      result = described_class.new(api_url:).call
+      expect(result.level).to eq(:ok)
+      expect(result.action).to be_nil
+    end
+
+    it 'is :warn with remote IDs missing locally, linking to /remote_writes' do
+      Ops::Snapshot.write!(snapshot_key, drift_payload(missing: { 'meetings' => [1, 2] }))
+      result = described_class.new(api_url:).call
+      expect(result.level).to eq(:warn)
+      expect(result.detail).to include('meetings: 2')
+      expect(result.action[:path]).to eq('/remote_writes')
+    end
+
+    it 'is :warn with unacknowledged remote writes to the same API (live count), until acknowledged' do
+      Ops::Snapshot.write!(snapshot_key, drift_payload)
+      FactoryBot.create(:ops_remote_write, base_url: api_url)
+      FactoryBot.create(:ops_remote_write, base_url: 'http://other-api:8081')
+      FactoryBot.create(:ops_remote_write, base_url: api_url, status_code: 500)
+      result = described_class.new(api_url:).call
+      expect(result.level).to eq(:warn)
+      expect(result.detail).to eq(I18n.t('shell.status.drift_v0.remote_writes', count: 1))
+
+      travel(1.second) { Ops::RemoteWrite.acknowledge! }
+      travel(2.seconds) { expect(described_class.new(api_url:).call.level).to eq(:ok) }
+    end
+
+    it 'is :unknown when the check had no credentials, could not reach the API or is stale' do
+      Ops::Snapshot.write!(snapshot_key, drift_payload(status: 'no_credentials'))
+      expect(described_class.new(api_url:).call.detail).to eq(I18n.t('shell.status.drift_v0.no_credentials'))
+      Ops::Snapshot.write!(snapshot_key, drift_payload(status: 'unreachable'))
+      expect(described_class.new(api_url:).call.level).to eq(:unknown)
+
+      Ops::Snapshot.write!(snapshot_key, drift_payload(missing: { 'meetings' => [1] }))
+      snapshot = Ops::Snapshot.find_by(key: snapshot_key)
+      snapshot.update!(taken_at: 2.hours.ago)
+      result = described_class.new(api_url:).call
+      expect(result.level).to eq(:unknown)
+      expect(result.detail).to eq(I18n.t('shell.status.drift_v0.stale', time: I18n.l(snapshot.taken_at.localtime, format: :short)))
+    end
+
+    describe '#refresh_due? and #refresh!' do
+      it 'is due only without a snapshot or past 45 minutes, whatever the shorter max age' do
+        expect(described_class.new(api_url:).refresh_due?(1.minute)).to be true
+        Ops::Snapshot.write!(snapshot_key, drift_payload)
+        Ops::Snapshot.find_by(key: snapshot_key).update!(taken_at: 30.minutes.ago)
+        expect(described_class.new(api_url:).refresh_due?(1.minute)).to be false
+        Ops::Snapshot.find_by(key: snapshot_key).update!(taken_at: 50.minutes.ago)
+        expect(described_class.new(api_url:).refresh_due?(1.minute)).to be true
+      end
+
+      it 'enqueues a DriftCheckJob for the probed API, without any network call' do
+        expect { described_class.new(api_url:).refresh! }
+          .to have_enqueued_job(DriftCheckJob).with(base_url: api_url).on_queue('default')
+        expect(APIProxy).not_to have_received(:call)
+      end
     end
   end
 end

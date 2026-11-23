@@ -9,7 +9,10 @@ module SystemStatus
   #
   class Registry
     # Probe class names, in display order:
-    PROBES = %w[SystemStatus::APIProbe SystemStatus::CrawlerProbe SystemStatus::QueueProbe SystemStatus::FINWatchProbe].freeze
+    PROBES = %w[
+      SystemStatus::APIProbe SystemStatus::CrawlerProbe SystemStatus::QueueProbe SystemStatus::FINWatchProbe
+      SystemStatus::DriftV0Probe
+    ].freeze
 
     # The status frame asks for a refresh when a snapshot is older than this:
     REFRESH_AFTER = 2.minutes

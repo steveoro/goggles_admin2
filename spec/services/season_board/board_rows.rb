@@ -17,7 +17,9 @@ module SeasonBoardRows
     )
   end
 
+  # (A real Result: SeasonBoard::Snapshot.build! stores its summary.)
   def board_result(rows)
-    instance_double(SeasonBoard::Builder::Result, rows:)
+    SeasonBoard::Builder::Result.new(season: nil, rows:, orphans: [], unmatched_sources: [], snapshot_checked_at: nil,
+                                     warnings: [], active_activities: [])
   end
 end

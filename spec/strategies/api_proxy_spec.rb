@@ -220,5 +220,102 @@ RSpec.describe APIProxy, type: :strategy do
       expect(result).not_to be_unreachable
       expect(result.json['version']).to eq('7')
     end
+
+    it 'passes the timeouts to #call only when given' do
+      allow(APIProxy).to receive(:call)
+      APIProxy.ping(base_url)
+      APIProxy.ping(base_url, open_timeout: 3, timeout: 5)
+      expect(APIProxy).to have_received(:call).with(method: :get, url: 'status', base_url:)
+      expect(APIProxy).to have_received(:call).with(method: :get, url: 'status', base_url:, open_timeout: 3, timeout: 5)
+    end
+  end
+
+  describe 'self.call timeouts' do
+    let(:base_url) { 'http://timeouts-api.test:8085' }
+
+    before(:each) do
+      WebMock.stub_request(:get, "#{base_url}/api/v3/users").to_return(status: 200, body: '[]')
+      allow(RestClient::Request).to receive(:execute).and_call_original
+    end
+
+    it 'uses the default open timeout and no read timeout when none is given' do
+      APIProxy.call(method: :get, url: 'users', base_url:)
+      expect(RestClient::Request).to have_received(:execute).with(hash_including(open_timeout: APIProxy::OPEN_TIMEOUT))
+      expect(RestClient::Request).not_to have_received(:execute).with(hash_including(:timeout))
+    end
+
+    it 'passes the given open and read timeouts to RestClient' do
+      APIProxy.call(method: :get, url: 'users', base_url:, open_timeout: 2, timeout: 4)
+      expect(RestClient::Request).to have_received(:execute).with(hash_including(open_timeout: 2, timeout: 4))
+    end
+  end
+
+  describe 'remote-write log (Ops::RemoteWrite)' do
+    let(:base_url) { 'http://remote-writes-api.test:8085' }
+    let(:payload) { { description: 'SECRET-VALUE', year_of_birth: 1970 } }
+
+    before(:each) do
+      WebMock.stub_request(:any, %r{\A#{Regexp.escape(base_url)}/api/v3/}).to_return(status: 200, body: 'true')
+    end
+
+    after(:each) do
+      Current.reset
+      Ops::Database.reset_state!
+    end
+
+    %i[put post delete].each do |http_method|
+      it "logs a #{http_method.upcase} call, with the payload keys only" do
+        Current.source = 'api_users#update'
+        Current.user_id = 42
+        expect { APIProxy.call(method: http_method, url: 'user/12', jwt: 'secret-jwt', payload:, base_url: "#{base_url}/") }
+          .to change(Ops::RemoteWrite, :count).by(1)
+        row = Ops::RemoteWrite.last
+        expect(row).to have_attributes(http_method: http_method.to_s, endpoint: 'user/12', base_url:, status_code: 200,
+                                       unreachable: false, error_detail: nil, payload_keys: %w[description year_of_birth],
+                                       source: 'api_users#update', user_id: 42)
+        expect(row.attributes.to_json).not_to include('SECRET-VALUE', '1970', 'secret-jwt')
+      end
+    end
+
+    it 'does not log GET calls, the sign-in or the SQL batch push' do
+      expect do
+        APIProxy.call(method: :get, url: 'users', jwt: 'x', base_url:)
+        APIProxy.call(method: :post, url: 'session', payload: { e: 'a', p: 'b' }, base_url:)
+        APIProxy.call(method: :post, url: 'import_queue/batch_sql', jwt: 'x', payload: { data: 'SQL' }, base_url:)
+      end.not_to change(Ops::RemoteWrite, :count)
+    end
+
+    it 'logs a failed call with its error detail (truncated to 300 chars)' do
+      WebMock.stub_request(:put, "#{base_url}/api/v3/team/7")
+             .to_return(status: 422, body: { error: 'x' * 400 }.to_json)
+      result = APIProxy.call(method: :put, url: 'team/7', jwt: 'x', payload: { name: 'A' }, base_url:)
+      expect(result.code).to eq(422)
+      row = Ops::RemoteWrite.last
+      expect(row).to have_attributes(status_code: 422, unreachable: false, status: 'failed')
+      expect(row.error_detail.size).to eq(300)
+    end
+
+    it 'logs an unreachable server' do
+      WebMock.stub_request(:delete, "#{base_url}/api/v3/badge/3").to_raise(Errno::ECONNREFUSED)
+      APIProxy.call(method: :delete, url: 'badge/3', jwt: 'x', base_url:)
+      expect(Ops::RemoteWrite.last).to have_attributes(status_code: 503, unreachable: true, status: 'unreachable')
+      expect(Ops::RemoteWrite.last.error_detail).to include('API unreachable')
+    end
+
+    it 'returns the same Result, unchanged, when the ops DB raises' do
+      allow(Ops::RemoteWrite).to receive(:record!).and_raise(ActiveRecord::StatementInvalid, 'disk I/O error')
+      result = APIProxy.call(method: :put, url: 'user/12', jwt: 'x', payload:, base_url:)
+      expect(result).to be_a(APIProxy::Result)
+      expect(result.code).to eq(200)
+      expect(result.body).to eq('true')
+    end
+
+    it 'logs nothing and still returns the Result with the ops DB missing' do
+      allow(Ops::Database).to receive(:state).and_return(:missing)
+      allow(Ops::RemoteWrite).to receive(:record!)
+      result = APIProxy.call(method: :put, url: 'user/12', jwt: 'x', payload:, base_url:)
+      expect(result.body).to eq('true')
+      expect(Ops::RemoteWrite).not_to have_received(:record!)
+    end
   end
 end

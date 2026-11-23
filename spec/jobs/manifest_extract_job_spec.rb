@@ -35,6 +35,7 @@ RSpec.describe ManifestExtractJob do
     allow(PdfManifests::Extractor).to receive(:new).and_return(extractor)
     allow(extractor).to receive(:call).and_return(result)
     allow(SeasonBoard::Notifier).to receive(:ping)
+    allow(SeasonBoard::Snapshot).to receive(:invalidate!)
   end
 
   after(:each) do
@@ -57,6 +58,7 @@ RSpec.describe ManifestExtractJob do
     expect(File).to exist(path_for('manifests.done', 'manifest-m.pdf'))
     expect(extract_entry).to have_attributes(status: :done, message: 'extracted (12 events)')
     expect(SeasonBoard::Notifier).to have_received(:ping)
+    expect(SeasonBoard::Snapshot).to have_received(:invalidate!).with(262)
   end
 
   it 'archives on an archivable skip' do

@@ -33,6 +33,21 @@ module SeasonBoard
       def link_candidates
         Builder.link_candidates(orphans)
       end
+
+      # Hash of state (Symbol) => row count, in row order.
+      def state_counts = rows.map(&:state).tally
+
+      # Rows without a FIN link (state :not_linked, hidden by default on the board).
+      def unlinked_count = rows.count { |row| row.state == :not_linked }
+
+      # Past rows already committed with results (hidden by default on the board).
+      def done_count(today: Date.current) = rows.count { |row| Builder.hidden_as_done?(row, today:) }
+    end
+
+    # True for a past row already committed with results (hidden by default on the board).
+    # +row+: anything responding to #state and #last_date (Row, Snapshot::Row).
+    def self.hidden_as_done?(row, today: Date.current)
+      row.state == :committed_with_results && (row.last_date.nil? || row.last_date < today)
     end
 
     # Orphans that can be targets of the manual "Link to meeting" action: only the calendars

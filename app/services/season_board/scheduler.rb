@@ -10,7 +10,8 @@ module SeasonBoard
   # refused while the first one is still queued or running.
   #
   # Both methods return false (doing nothing) when the FIN id is already busy with the same
-  # kind of work, true once the job has been enqueued.
+  # kind of work, true once the job has been enqueued (dropping the stored board summary, see
+  # SeasonBoard::Snapshot, and pinging the open pages).
   # If the enqueue itself fails the log entry is closed as failed and the error is re-raised.
   #
   class Scheduler
@@ -20,7 +21,7 @@ module SeasonBoard
       log = ActivityLog.new
       return false if log.busy?(fin_event_id, kind: :crawl)
 
-      record_and_enqueue(log, fin_event_id, kind: :crawl, origin:, url:) do
+      record_and_enqueue(log, fin_event_id, season_id:, kind: :crawl, origin:, url:) do
         MeetingCrawlJob.perform_later(season_id:, fin_event_id: fin_event_id.to_s, url:)
       end
       true
@@ -32,13 +33,13 @@ module SeasonBoard
       log = ActivityLog.new
       return false if log.busy?(fin_event_id, kind: :extract)
 
-      record_and_enqueue(log, fin_event_id, kind: :extract, origin: :manual) do
+      record_and_enqueue(log, fin_event_id, season_id:, kind: :extract, origin: :manual) do
         ManifestExtractJob.perform_later(season_id:, fin_event_id: fin_event_id.to_s, engine:)
       end
       true
     end
 
-    def self.record_and_enqueue(log, fin_event_id, kind:, origin:, url: nil)
+    def self.record_and_enqueue(log, fin_event_id, season_id:, kind:, origin:, url: nil) # rubocop:disable Metrics/ParameterLists
       log.queue!(fin_event_id, kind:, origin:, url:)
       begin
         yield
@@ -46,6 +47,7 @@ module SeasonBoard
         log.finish!(fin_event_id, kind:, status: :failed, message: "enqueue failed: #{e.message}".truncate(200))
         raise
       end
+      Snapshot.invalidate!(season_id)
       Notifier.ping
       nil
     end

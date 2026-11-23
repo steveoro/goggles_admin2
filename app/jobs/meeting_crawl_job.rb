@@ -61,11 +61,17 @@ class MeetingCrawlJob < ApplicationJob
     finish!(:failed, "error: #{e.class}: #{e.message}".truncate(200))
   ensure
     finish!(:failed, 'interrupted') unless @finished
-    SeasonBoard::Notifier.ping
+    notify_board
     sleeper.call(PAUSE_AFTER_CRAWL) if @pulled
   end
 
   private
+
+  # Drops the stored board summary (SeasonBoard::Snapshot) and pings the open pages (never raises).
+  def notify_board
+    SeasonBoard::Snapshot.invalidate!(@season_id)
+    SeasonBoard::Notifier.ping
+  end
 
   # Returns [status, message].
   def crawl(season_id, url)

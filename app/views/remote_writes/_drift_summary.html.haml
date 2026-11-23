@@ -1,0 +1,34 @@
+-# Drift v0 verdict (locals: drift = Drift::V0Status, api_url, ops_available) + the "Acknowledge" button.
+- acknowledged_at = drift.acknowledged_at
+%section.mb-4#drift-v0{ data: { drift_level: drift.level } }
+  .card.shadow-sm
+    .card-body
+      .d-flex.flex-wrap.align-items-start.justify-content-between.gap-3
+        .flex-grow-1
+          %h2.h6.card-title.d-flex.flex-wrap.align-items-center.gap-2
+            = t('remote_writes.drift.title')
+            %span.badge.rounded-pill#drift-v0-level{ class: Shell::StatusPillComponent::LEVEL_CSS.fetch(drift.level) }
+              = t("shell.status.levels.#{drift.level}")
+          %p.small.text-body-secondary.mb-2= t('remote_writes.drift.help', url: api_url)
+          %ul.small.mb-2#drift-v0-details
+            - drift.details.each do |detail|
+              %li= detail
+          - if drift.missing.any?
+            %dl.row.small.mb-2#drift-v0-missing
+              - drift.missing.each do |table, ids|
+                %dt.col-sm-3.font-monospace= table
+                %dd.col-sm-9.font-monospace.mb-1= Array(ids).join(', ')
+          %p.small.text-body-secondary.mb-0
+            - if drift.checked_at
+              = t('remote_writes.drift.checked_at', time: l(drift.checked_at.localtime, format: :short))
+            - else
+              = t('remote_writes.drift.never_checked')
+            ·
+            - if acknowledged_at
+              = t('remote_writes.drift.acknowledged_at', time: l(acknowledged_at.localtime, format: :short))
+            - else
+              = t('remote_writes.drift.never_acknowledged')
+        - if ops_available
+          - confirm_form = { data: { turbo_confirm: t('remote_writes.acknowledge.confirm') } }
+          = button_to(t('remote_writes.acknowledge.button'), remote_writes_acknowledge_path,
+                      method: :post, id: 'btn-acknowledge', class: 'btn btn-sm btn-outline-primary', form: confirm_form)

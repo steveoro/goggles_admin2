@@ -167,4 +167,35 @@ RSpec.describe SeasonBoard::ActivityLog do
       expect(log.last_attempt_at('1', :crawl)).to be_nil
     end
   end
+
+  describe 'file reads' do
+    let(:store) { FedernuotoWatch::StateStore.new(path: log_path) }
+
+    before(:each) do
+      described_class.new(path: log_path).queue!('1', kind: :crawl, origin: :auto)
+      allow(FedernuotoWatch::StateStore).to receive(:new).and_return(store)
+      allow(store).to receive(:read).and_call_original
+    end
+
+    it 'reads the file once for any number of lookups' do
+      10.times { |i| log.for(i.to_s) }
+      log.active
+      log.busy?('1')
+      expect(store).to have_received(:read).once
+      expect(log.entry('1', :crawl)).to have_attributes(status: :queued)
+    end
+
+    it 'sees its own writes' do
+      expect(log.entry('1', :crawl)).to have_attributes(status: :queued)
+      log.start!('1', kind: :crawl)
+      expect(log.entry('1', :crawl)).to have_attributes(status: :running)
+    end
+
+    it 'sees the writes of other instances after #reload!' do
+      expect(log.entry('1', :crawl)).to have_attributes(status: :queued)
+      described_class.new(path: log_path).finish!('1', kind: :crawl, status: :done)
+      expect(log.entry('1', :crawl)).to have_attributes(status: :queued)
+      expect(log.reload!.entry('1', :crawl)).to have_attributes(status: :done)
+    end
+  end
 end

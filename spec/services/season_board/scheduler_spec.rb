@@ -10,6 +10,7 @@ RSpec.describe SeasonBoard::Scheduler do
   before(:each) do
     FileUtils.rm_f(SeasonBoard::ActivityLog.default_path)
     allow(SeasonBoard::Notifier).to receive(:ping)
+    allow(SeasonBoard::Snapshot).to receive(:invalidate!)
   end
 
   after(:each) { FileUtils.rm_f(SeasonBoard::ActivityLog.default_path) }
@@ -24,6 +25,7 @@ RSpec.describe SeasonBoard::Scheduler do
         .to have_enqueued_job(MeetingCrawlJob).with(season_id: 262, fin_event_id: fin_id, url:).on_queue('background')
       expect(activity_log.entry(fin_id, :crawl)).to have_attributes(status: :queued, origin: :auto, url:)
       expect(SeasonBoard::Notifier).to have_received(:ping)
+      expect(SeasonBoard::Snapshot).to have_received(:invalidate!).with(262)
     end
 
     it 'does nothing & returns false when a crawl is already queued or running' do
@@ -31,6 +33,7 @@ RSpec.describe SeasonBoard::Scheduler do
       expect { expect(crawl!).to be false }.not_to have_enqueued_job(MeetingCrawlJob)
       expect(activity_log.entry(fin_id, :crawl)).to have_attributes(status: :running, origin: :auto)
       expect(SeasonBoard::Notifier).not_to have_received(:ping)
+      expect(SeasonBoard::Snapshot).not_to have_received(:invalidate!)
     end
 
     it 'is not blocked by a running extraction' do

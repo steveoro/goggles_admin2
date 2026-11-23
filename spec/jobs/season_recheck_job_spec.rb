@@ -53,6 +53,11 @@ RSpec.describe SeasonRecheckJob do
       expect(SeasonBoard::Scheduler).to have_received(:crawl!).with(season_id: 262, fin_event_id: '1', url: rows[0].url, origin: :auto).ordered
     end
 
+    it 'stores its board build as the board summary' do
+      described_class.perform_now
+      expect(SeasonBoard::Snapshot.read(262).rows.map(&:fin_event_id)).to eq(%w[1 2 3 4 5 6])
+    end
+
     it 'skips rows crawled less than 20 hours ago' do
       activity_log.queue!('3', kind: :crawl, origin: :auto, url: rows[2].url)
       activity_log.finish!('3', kind: :crawl, status: :done)

@@ -1,0 +1,40 @@
+it:
+  remote_writes:
+    nav: 'Scritture remote'
+    title: 'Scritture remote'
+    subtitle: 'Chiamate API fatte da qui che possono aver modificato i dati remoti (solo le chiavi del payload, mai i valori)'
+    ops_unavailable: 'Il DB ops locale non è pronto: il registro delle scritture remote non è disponibile (lancia bin/rails ops:prepare).'
+    statuses:
+      success: 'Eseguita'
+      failed: 'Fallita'
+      unreachable: 'Non raggiungibile'
+    acknowledge:
+      button: 'Presa visione'
+      confirm: 'Segnare come riviste tutte le scritture remote registrate finora? La verifica di sync DB smette di segnalarle.'
+      done: 'Presa visione delle scritture remote registrata.'
+      failed: 'Impossibile registrare la presa visione: il DB ops locale non è disponibile (lancia bin/rails ops:prepare).'
+    drift:
+      title: 'Sync DB (drift v0)'
+      help: "Verifica che le righe aggiornate più di recente su %{url} esistano nel DB locale (ultime 10 righe di 12 tabelle) e conta le scritture solo remote dall'ultima presa visione."
+      checked_at: 'Ultima verifica: %{time}'
+      never_checked: 'Mai verificato'
+      acknowledged_at: 'ultima presa visione: %{time}'
+      never_acknowledged: 'nessuna presa visione'
+  datagrid:
+    remote_writes_grid:
+      columns:
+        created_at: 'Quando'
+        http_method: 'Metodo'
+        endpoint: 'Endpoint'
+        status: 'Esito'
+        status_code: 'Codice'
+        payload_keys: 'Chiavi payload'
+        error_detail: 'Errore'
+        source: 'Origine'
+        user_id: 'ID utente'
+        base_url: 'API'
+      filters:
+        endpoint: 'Endpoint (~)'
+        status: 'Esito'
+        http_method: 'Metodo'
+        base_url: 'API'

@@ -58,6 +58,7 @@ en:
         settings: 'Open Settings'
         crawler: 'Open the crawler page'
         season_board: 'Open the Season board'
+        remote_writes: 'Review the remote writes'
       api:
         label: 'API'
         offline: 'API-offline session: no valid JWT for this API'
@@ -86,6 +87,23 @@ en:
         ok: 'Last check: %{time}, no pending change'
         pending: 'FIN calendar change detected on %{time}, still to acknowledge'
         failed: 'Last check failed: %{error}'
+      drift_v0:
+        label: 'DB sync'
+        ok: 'The latest remote updates are all in the local DB (v0, partial check)'
+        missing:
+          one: '1 recently updated remote row missing locally (%{tables})'
+          other: '%{count} recently updated remote rows missing locally (%{tables})'
+        remote_writes:
+          one: '1 remote-only write since the last acknowledgement'
+          other: '%{count} remote-only writes since the last acknowledgement'
+        never: 'Not checked yet'
+        stale: 'No recent check (last one: %{time})'
+        no_credentials: 'No valid background credentials: sign in again'
+        unreachable: 'API unreachable: %{error}'
+        unauthorized: 'The API rejected the background credentials (401): sign in again'
+        unsupported: 'This API has no latest-updates endpoint'
+        error: 'Check failed: %{error}'
+        ops_unavailable: 'Local ops DB not ready'
     user_menu:
       label: 'Account menu'
       version: 'Goggles v. %{version}'

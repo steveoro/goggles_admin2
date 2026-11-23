@@ -89,6 +89,7 @@ RSpec.describe MeetingCrawlJob do
     allow(GogglesDb::Season).to receive(:find_by).with(id: 262).and_return(season)
     allow(SeasonBoard::DbIndex).to receive(:new).and_return(db_index)
     allow(SeasonBoard::Notifier).to receive(:ping)
+    allow(SeasonBoard::Snapshot).to receive(:invalidate!)
     state = clock_state
     described_class.clock = clock
     described_class.sleeper = lambda { |seconds|
@@ -136,6 +137,7 @@ RSpec.describe MeetingCrawlJob do
       expect(File).to exist(path_for('results.new', 'm.json'))
       expect(File).to exist(path_for('manifests', 'manifest-m.pdf'))
       expect(SeasonBoard::Notifier).to have_received(:ping)
+      expect(SeasonBoard::Snapshot).to have_received(:invalidate!).with(262)
     end
 
     it 'pauses after the crawl' do

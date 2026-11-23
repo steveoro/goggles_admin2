@@ -10,6 +10,7 @@ module SeasonBoard
   #
   # The POST actions (crawl, extract, link) take only the FIN event ID: the URLs are looked up
   # server-side. They are disabled while the row is busy (a crawl/extraction is queued or running).
+  # The action targets come from SeasonBoard::ActionPaths (shared with the pages summarising the board).
   #
   class RowComponent < ViewComponent::Base
     # Neutral badge, following the light/dark theme (Bootstrap's .text-bg-light stays light in dark mode):
@@ -25,17 +26,6 @@ module SeasonBoard
 
     # Flags rendered as warning badges
     WARNING_FLAGS = %i[possible_unlinked_meeting].freeze
-
-    # Actions run through a POST of the FIN event ID: kind => path helper
-    POST_ACTIONS = { crawl: :season_board_crawl_path, check_results: :season_board_crawl_path,
-                     extract_manifest: :season_board_extract_path }.freeze
-
-    # Data-Fix review step for each phase number: [route helper, params key]
-    PHASE_STEPS = {
-      1 => %i[review_sessions_path phase_v2], 2 => %i[review_teams_path phase2_v2],
-      3 => %i[review_swimmers_path phase3_v2], 4 => %i[review_events_path phase4_v2],
-      5 => %i[review_results_path phase5_v2]
-    }.freeze
 
     # == Params:
     # - row: SeasonBoard::Row
@@ -89,37 +79,20 @@ module SeasonBoard
     end
 
     def post_action?
-      POST_ACTIONS.key?(action_kind)
+      ActionPaths.post?(action_kind)
     end
 
     def post_action_path
-      public_send(POST_ACTIONS.fetch(action_kind))
+      ActionPaths.post_path(action)
     end
 
     # Primary action path for the link-style actions (nil when unavailable)
     def link_action_path
-      case action_kind
-      when :review_results, :review_structure, :review_header
-        review_sessions_path(file_path: action[:file_path], phase_v2: 1)
-      when :resume_review
-        helper, key = PHASE_STEPS.fetch(action[:phase].to_i, PHASE_STEPS[1])
-        public_send(helper, { file_path: action[:file_path], key => 1 })
-      when :push
-        push_index_path(push_folder_params)
-      end
-    end
-
-    # Push list params: lands on the folder of the pending script (path relative to crawler/)
-    def push_folder_params
-      sql_path = action[:sql_path].to_s
-      relative = sql_path.include?('crawler/') ? sql_path.split('crawler/').last : sql_path
-      return {} if relative.blank? || relative.start_with?('/')
-
-      { curr_dir: File.dirname(relative) }
+      ActionPaths.link_path(action)
     end
 
     def link_action?
-      %i[review_results review_structure review_header resume_review push].include?(action_kind)
+      ActionPaths.link?(action_kind)
     end
 
     # True when the POST action has no FIN URL to work with

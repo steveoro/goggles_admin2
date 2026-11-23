@@ -147,7 +147,7 @@ RSpec.describe Shell::Navigation do
       offline = described_class.groups(offline: true)
       expect(online.flat_map { |group| group.items.select { |item| group.disabled?(item) } }).to be_empty
       enabled_offline = offline.flat_map { |group| group.items.reject { |item| group.disabled?(item) } }
-      expect(enabled_offline.map(&:key)).to contain_exactly(:dashboard, :settings)
+      expect(enabled_offline.map(&:key)).to contain_exactly(:dashboard, :settings, :remote_writes)
     end
   end
 

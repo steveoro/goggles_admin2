@@ -96,9 +96,10 @@ RSpec.describe 'App shell' do
       expect(page).to have_current_path(settings_path)
 
       expect(page).to have_css('.app-sidebar a.nav-link.active[href="/settings"]')
+      offline_ok = Shell::Navigation::ITEMS.count { |item| item.sidebar? && item.offline_ok? } # (Dashboard, Settings, Remote writes)
       expect(page).to have_css('.app-sidebar a.nav-link.disabled[aria-disabled="true"]',
-                               count: Shell::Navigation::ITEMS.count(&:sidebar?) - 2)
-      expect(page).to have_css('.app-sidebar a.nav-link:not(.disabled)', count: 2)
+                               count: Shell::Navigation::ITEMS.count(&:sidebar?) - offline_ok)
+      expect(page).to have_css('.app-sidebar a.nav-link:not(.disabled)', count: offline_ok)
       expect(page).to have_css('#api-target-badge[data-api-reachability="unreachable"]')
       expect(page).to have_css('turbo-frame#shell-status #status-pill-api[data-status-level="error"]')
       expect(page).to have_no_css('#api-offline-banner')

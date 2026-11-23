@@ -1,0 +1,40 @@
+en:
+  remote_writes:
+    nav: 'Remote writes'
+    title: 'Remote writes'
+    subtitle: 'API calls made from here that may have changed the remote data (payload keys only, never the values)'
+    ops_unavailable: 'The local ops DB is not ready: the remote-write log is not available (run bin/rails ops:prepare).'
+    statuses:
+      success: 'Done'
+      failed: 'Failed'
+      unreachable: 'Unreachable'
+    acknowledge:
+      button: 'Acknowledge'
+      confirm: 'Mark every remote write logged so far as reviewed? The DB sync check stops warning about them.'
+      done: 'Remote writes acknowledged.'
+      failed: 'Cannot acknowledge: the local ops DB is not available (run bin/rails ops:prepare).'
+    drift:
+      title: 'DB sync (drift v0)'
+      help: 'Checks that the rows most recently updated on %{url} exist in the local DB (latest 10 rows of 12 tables), and counts the remote-only writes since the last acknowledgement.'
+      checked_at: 'Last check: %{time}'
+      never_checked: 'Never checked'
+      acknowledged_at: 'last acknowledgement: %{time}'
+      never_acknowledged: 'never acknowledged'
+  datagrid:
+    remote_writes_grid:
+      columns:
+        created_at: 'When'
+        http_method: 'Method'
+        endpoint: 'Endpoint'
+        status: 'Outcome'
+        status_code: 'Code'
+        payload_keys: 'Payload keys'
+        error_detail: 'Error'
+        source: 'Source'
+        user_id: 'User ID'
+        base_url: 'API'
+      filters:
+        endpoint: 'Endpoint (~)'
+        status: 'Outcome'
+        http_method: 'Method'
+        base_url: 'API'

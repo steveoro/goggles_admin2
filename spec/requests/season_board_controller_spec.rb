@@ -221,6 +221,68 @@ RSpec.describe SeasonBoardController do
       end
     end
 
+    describe 'GET /season_board?frame=1 (live refresh)' do
+      it 'renders only the rows frame, without the layout, keeping the filters' do
+        get(season_board_path(frame: 1, state: 'manifest_pending', locale: 'en'))
+        expect(response).to have_http_status(:success)
+        page = response.parsed_body
+        expect(page.at_css('turbo-frame#season-board-rows #season-board-table')).to be_present
+        expect(page.at_css('.app-sidebar, #season-board-sql-pending, [data-controller="season-board"]')).to be_nil
+        expect(response.body).not_to include('<html', 'FIN calendar last checked')
+        expect(response.body).to include('To extract')
+        expect(response.body).not_to include('To crawl')
+      end
+    end
+
+    describe 'board summary (SeasonBoard::Snapshot)' do
+      let(:stored_rows) do
+        [build_row(fin_event_id: '1', name: 'To crawl', state: :link_not_crawled, next_action: action(:crawl, '1', url: 'u1'),
+                   url: 'https://stored.example/1')]
+      end
+
+      def store_summary(rows_to_store)
+        stored = SeasonBoard::Builder::Result.new(season:, rows: rows_to_store, orphans: [], unmatched_sources: [],
+                                                  snapshot_checked_at: nil, warnings: [], active_activities: [])
+        SeasonBoard::Snapshot.store!(season, stored)
+      end
+
+      it 'is stored by the board GET' do
+        get(season_board_path, params: { locale: 'en' })
+        summary = SeasonBoard::Snapshot.read(season)
+        expect(summary).to be_stored
+        expect(summary.rows.map(&:fin_event_id)).to eq(rows.map(&:fin_event_id))
+        expect(summary.state_counts).to include(link_not_crawled: 1, manifest_pending: 1)
+      end
+
+      it 'is used by a POST with no board build when fresh (URL from the stored row)' do
+        store_summary(stored_rows)
+        allow(SeasonBoard::Scheduler).to receive(:crawl!).and_return(true)
+        post(season_board_crawl_path, params: { fin_event_id: '1', url: 'https://evil.example/' })
+        expect(SeasonBoard::Builder).not_to have_received(:new)
+        expect(response).to redirect_to(season_board_path)
+        expect(SeasonBoard::Scheduler).to have_received(:crawl!)
+          .with(season_id: season.id, fin_event_id: '1', url: 'https://stored.example/1', origin: :manual)
+      end
+
+      it 'is rebuilt by a POST when its fingerprint is stale' do
+        store_summary(stored_rows)
+        record = Ops::Snapshot.read(SeasonBoard::Snapshot.key_for(season))
+        record.update!(payload: record.payload.merge('fingerprint' => 'stale'))
+        allow(SeasonBoard::Scheduler).to receive(:crawl!).and_return(true)
+        post(season_board_crawl_path, params: { fin_event_id: '1' })
+        expect(SeasonBoard::Builder).to have_received(:new).once
+        expect(SeasonBoard::Scheduler).to have_received(:crawl!).with(hash_including(url: 'https://fin.example/1'))
+      end
+
+      it 'is built live by a POST without the ops DB' do
+        allow(Ops).to receive(:available?).and_return(false)
+        allow(SeasonBoard::Scheduler).to receive(:crawl!).and_return(true)
+        post(season_board_crawl_path, params: { fin_event_id: '1' })
+        expect(SeasonBoard::Builder).to have_received(:new).once
+        expect(SeasonBoard::Scheduler).to have_received(:crawl!).with(hash_including(url: 'https://fin.example/1'))
+      end
+    end
+
     describe 'POST /season_board/crawl' do
       it 'queues the crawl with the URL taken from the board row' do
         allow(SeasonBoard::Scheduler).to receive(:crawl!).and_return(true)

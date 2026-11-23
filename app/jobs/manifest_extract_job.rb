@@ -40,6 +40,7 @@ class ManifestExtractJob < ApplicationJob
     finish!(:failed, "error: #{e.class}: #{e.message}".truncate(200))
   ensure
     finish!(:failed, 'interrupted') unless @finished
+    SeasonBoard::Snapshot.invalidate!(@season_id)
     SeasonBoard::Notifier.ping
   end
 

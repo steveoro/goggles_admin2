@@ -24,6 +24,7 @@ module Users
       resource.update_columns(uid: nil, provider: nil)
       return reject_sign_in(@api_error) unless prepare_api_session?(resource, params['user'])
 
+      start_background_session(resource) if session[:api_offline].blank?
       super
     end
 
@@ -95,6 +96,15 @@ module Users
 
       jwt = result.json.is_a?(Hash) ? result.json['jwt'] : nil
       jwt.present? ? [jwt, nil] : [nil, I18n.t('devise.api_login.errors.unauthorized')]
+    end
+
+    # With a valid JWT: makes +user+ the one whose JWT the background jobs use (Ops::BackgroundCredentials)
+    # and refreshes the KPI counters. Never fails the sign-in.
+    def start_background_session(user)
+      Ops::BackgroundCredentials.remember!(user)
+      KpiRefreshJob.perform_later
+    rescue StandardError => e
+      logger.warn("[Users::SessionsController] background session not started: #{e.class}: #{e.message}")
     end
 
     # Stores the API-offline details in the session & warns the user.

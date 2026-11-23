@@ -32,6 +32,8 @@ module SeasonBoard
     SKIPPED_JSON_REGEXP = /\.(orig(-\d+)?|committed)\.json\z/
     # SQL scripts written by SeasonBoard::Backfill & SeasonBoard::CalendarLinker (not sources).
     BOARD_SQL_REGEXP = /\A\d+-(season_board_backfill-\d+|calendar_link-\d+-\d+)\.sql\z/
+    # Folders (under data_dir, each with a <season> subfolder) scanned by #build!:
+    SEASON_FOLDERS = %w[results.new results.done results.sent manifests manifests.done].freeze
 
     attr_reader :season_id, :data_dir
 

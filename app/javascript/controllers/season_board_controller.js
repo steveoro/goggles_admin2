@@ -11,7 +11,8 @@ import { Controller } from '@hotwired/stimulus'
  *   since the Solid Cable database may be missing on the local setup and broadcasts can't be
  *   relied upon.
  *
- * The reload uses the current page URL, so the filter toggles (query params) are preserved.
+ * The reload uses the current page URL plus `frame=1` (the server then renders only the rows frame,
+ * without the layout), so the filter toggles (query params) are preserved.
  *
  * == Values:
  * - interval: fallback polling period in ms (default 20000)
@@ -54,8 +55,9 @@ export default class extends Controller {
   reload() {
     if (!this.hasFrameTarget) return
 
-    // The cache-busting param makes sure that Turbo loads the frame even if its src didn't change:
+    // Frame-only response; the cache-busting param makes sure that Turbo loads the frame even if its src didn't change:
     const url = new URL(window.location.href)
+    url.searchParams.set('frame', '1')
     url.searchParams.set('_', Date.now())
     this.frameTarget.src = url.toString()
   }

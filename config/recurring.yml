@@ -20,6 +20,18 @@ default: &default
     class: SystemStatus::RefreshJob
     queue: default
     schedule: every 5 minutes
+  # Dashboard KPI counters: 4 read-only GETs with the background JWT and short timeouts
+  # (ops snapshot 'kpi:<api_url>'; see KpiRefreshJob, also enqueued after each sign-in)
+  kpi_refresh:
+    class: KpiRefreshJob
+    queue: default
+    schedule: every 15 minutes
+  # Drift v0: are the latest-updated remote rows present locally? (one read-only GET; ops snapshot
+  # 'drift_v0:<api_url>'; see DriftCheckJob)
+  drift_check:
+    class: DriftCheckJob
+    queue: default
+    schedule: every 30 minutes
 
 development:
   <<: *default

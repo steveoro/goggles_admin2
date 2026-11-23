@@ -1,0 +1,19 @@
+it:
+  data_fix_sessions:
+    nav: 'Sessioni Data-Fix'
+    title: 'Sessioni Data-Fix'
+    subtitle: 'Sorgenti con file di fase o righe di staging: riprendi la revisione o scarta le righe di staging'
+    empty: 'Nessuna sessione Data-Fix in corso.'
+    columns:
+      source: 'Sorgente'
+      phase: 'Fase più avanzata'
+      mtime: 'Ultima modifica'
+      staging_rows: 'Righe di staging'
+      actions: 'Azioni'
+    source_missing: 'file sorgente mancante'
+    idle_days:
+      one: '(1 giorno fa)'
+      other: '(%{count} giorni fa)'
+      zero: '(oggi)'
+    resume: 'Riprendi'
+    purge: 'Scarta righe di staging'

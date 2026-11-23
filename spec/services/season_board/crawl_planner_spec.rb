@@ -47,6 +47,11 @@ RSpec.describe SeasonBoard::CrawlPlanner do
     expect(SeasonBoard::Scheduler).to have_received(:crawl!).once
   end
 
+  it 'stores its board build as the board summary' do
+    plan(change_for('1'))
+    expect(SeasonBoard::Snapshot.read(262).rows.map(&:fin_event_id)).to eq(%w[1 2 3 4])
+  end
+
   it 'considers the updated rows too' do
     expect(plan(change_for('4', key: 'updated'))).to eq(%w[4])
   end

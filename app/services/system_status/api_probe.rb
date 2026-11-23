@@ -9,6 +9,10 @@ module SystemStatus
   # #refresh! (RefreshJob only) pings the server's public 'status' endpoint.
   #
   class APIProbe < Probe
+    # Ping timeouts (seconds): RefreshJob runs on the single-thread 'default' worker, so a hung API
+    # must not hold it for RestClient's default 60 s.
+    PING_TIMEOUTS = { open_timeout: 3, timeout: 5 }.freeze
+
     def self.mode
       :snapshot
     end
@@ -27,7 +31,7 @@ module SystemStatus
     def refresh!
       return if target_url.blank?
 
-      APISnapshot.write!(target_url, APIProxy.ping(target_url), source: 'system_status')
+      APISnapshot.write!(target_url, APIProxy.ping(target_url, **PING_TIMEOUTS), source: 'system_status')
     end
 
     protected

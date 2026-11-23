@@ -6,18 +6,24 @@
 # local meeting, the pipeline state and a single next action (see SeasonBoard::Builder).
 #
 # The actions that start work (+crawl+, +extract+, +link+) take only the FIN event ID: the URLs are
-# always looked up from the current board rows, never from the request params.
+# always looked up from the current board rows (the stored board summary, see SeasonBoard::Snapshot,
+# fresh by fingerprint), never from the request params. These POST actions run no board build of
+# their own while the stored summary is fresh.
 #
 class SeasonBoardController < ApplicationController
   # Extraction engines offered by the existing manifest extraction form (see pull/calendar_meetings):
   ENGINES = %w[devin ollama].freeze
 
-  before_action :set_board, except: :index
+  before_action :set_season, except: :index
+  helper_method :rows_frame_locals
 
-  # [GET] The board. Filters (all optional, kept in the query string):
+  # [GET] The board, always built live (the build is stored as the board summary).
+  # Filters (all optional, kept in the query string):
   # - state: shows only the rows in that state;
   # - show_unlinked: includes the rows w/o a FIN link (state not_linked);
   # - show_done: includes the past rows already committed with results.
+  # With <tt>frame=1</tt> only the rows frame ('season-board-rows') is rendered, without the layout
+  # (used by the live refresh, see season_board_controller.js).
   def index
     season = SeasonBoard::Builder.latest_season
     if season.nil?
@@ -26,12 +32,11 @@ class SeasonBoardController < ApplicationController
     end
 
     @season = season
-    @board = SeasonBoard::Builder.new(season:).call
+    @board = SeasonBoard::Snapshot.build!(season)
     assign_counts
-    @state_filter = params[:state].to_s.presence_in(SeasonBoard::Builder::STATES.map(&:to_s))
-    @show_unlinked = params[:show_unlinked].present?
-    @show_done = params[:show_done].present?
+    assign_filters
     @rows = visible_rows
+    render_rows_frame if params[:frame].present?
   end
 
   # [POST] Queues a crawl of the FIN results page of the row (used by :crawl & :check_results).
@@ -78,22 +83,37 @@ class SeasonBoardController < ApplicationController
 
   private
 
-  # Loads the current season & board rows (never from params)
-  def set_board
-    @season = SeasonBoard::Builder.latest_season
-    @board = SeasonBoard::Builder.new(season: @season).call if @season
+  # Renders only the rows frame partial, without the layout (live refresh).
+  def render_rows_frame
+    render(partial: 'season_board/rows_frame', locals: rows_frame_locals, layout: false)
   end
 
-  # Returns the current board row for the FIN event ID param (and having a FIN URL), or nil
-  # after setting the refusal flash.
+  # Locals of the 'season_board/rows_frame' partial.
+  def rows_frame_locals
+    {
+      board: @board, rows: @rows, state_counts: @state_counts, unlinked_count: @unlinked_count, done_count: @done_count,
+      state_filter: @state_filter, show_unlinked: @show_unlinked, show_done: @show_done
+    }
+  end
+
+  # Loads the current season (never from params)
+  def set_season
+    @season = SeasonBoard::Builder.latest_season
+  end
+
+  # Returns the current board row (a SeasonBoard::Snapshot::Row, from the stored board summary when
+  # fresh, else from a new build) for the FIN event ID param and having a FIN URL, or nil after
+  # setting the refusal flash.
   def find_row
     fin_event_id = params[:fin_event_id].to_s.strip
-    if @board.nil?
+    if @season.nil?
       flash[:warning] = I18n.t('season_board.flash.no_season')
       return
     end
 
-    row = @board&.rows&.find { |r| r.fin_event_id.present? && r.fin_event_id == fin_event_id && r.url.present? }
+    row = SeasonBoard::Snapshot.fetch(@season).rows.find do |r|
+      r.fin_event_id.present? && r.fin_event_id == fin_event_id && r.url.present?
+    end
     flash[:error] = I18n.t('season_board.flash.unknown_row', fin_event_id:) unless row
     row
   end
@@ -124,15 +144,21 @@ class SeasonBoardController < ApplicationController
     end
   end
 
+  def assign_filters
+    @state_filter = params[:state].to_s.presence_in(SeasonBoard::Builder::STATES.map(&:to_s))
+    @show_unlinked = params[:show_unlinked].present?
+    @show_done = params[:show_done].present?
+  end
+
   def assign_counts
-    @state_counts = @board.rows.map(&:state).tally
-    @unlinked_count = @state_counts.fetch(:not_linked, 0)
-    @done_count = @board.rows.count { |row| hidden_as_done?(row) }
+    @state_counts = @board.state_counts
+    @unlinked_count = @board.unlinked_count
+    @done_count = @board.done_count
   end
 
   # Past rows already committed with results: hidden by default
   def hidden_as_done?(row)
-    row.state == :committed_with_results && (row.last_date.nil? || row.last_date < Date.current)
+    SeasonBoard::Builder.hidden_as_done?(row)
   end
 
   def visible_rows

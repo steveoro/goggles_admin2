@@ -58,6 +58,7 @@ it:
         settings: 'Apri le Impostazioni'
         crawler: 'Apri la pagina del crawler'
         season_board: 'Apri la plancia stagione'
+        remote_writes: 'Rivedi le scritture remote'
       api:
         label: 'API'
         offline: 'Sessione API offline: nessun JWT valido per questa API'
@@ -86,6 +87,23 @@ it:
         ok: 'Ultima verifica: %{time}, nessuna modifica in sospeso'
         pending: 'Modifica al calendario FIN rilevata il %{time}, da confermare'
         failed: 'Ultima verifica fallita: %{error}'
+      drift_v0:
+        label: 'Sync DB'
+        ok: 'Gli ultimi aggiornamenti remoti sono tutti nel DB locale (v0, verifica parziale)'
+        missing:
+          one: '1 riga remota aggiornata di recente manca in locale (%{tables})'
+          other: '%{count} righe remote aggiornate di recente mancano in locale (%{tables})'
+        remote_writes:
+          one: "1 scrittura solo remota dall'ultima presa visione"
+          other: "%{count} scritture solo remote dall'ultima presa visione"
+        never: 'Non ancora verificato'
+        stale: "Nessuna verifica recente (l'ultima: %{time})"
+        no_credentials: 'Nessuna credenziale valida per i job: accedi di nuovo'
+        unreachable: 'API non raggiungibile: %{error}'
+        unauthorized: "L'API ha rifiutato le credenziali dei job (401): accedi di nuovo"
+        unsupported: "Questa API non ha l'endpoint degli ultimi aggiornamenti"
+        error: 'Verifica fallita: %{error}'
+        ops_unavailable: 'DB ops locale non pronto'
     user_menu:
       label: 'Menu account'
       version: 'Goggles v. %{version}'

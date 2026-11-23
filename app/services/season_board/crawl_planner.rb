@@ -14,6 +14,8 @@ module SeasonBoard
   # check), so a row is skipped when the ActivityLog already holds a crawl attempt for the
   # same URL (whatever its outcome); busy rows are skipped by the Scheduler itself.
   #
+  # The full board build is stored as the board summary (SeasonBoard::Snapshot.build!).
+  #
   class CrawlPlanner
     CHANGE_KEYS = %w[added with_results updated].freeze
 
@@ -34,7 +36,7 @@ module SeasonBoard
       changed_ids = CHANGE_KEYS.flat_map { |key| Array(change[key]) }.filter_map { |row| FINEventId.parse(row['url']) }.uniq
       return [] if changed_ids.empty?
 
-      board_rows = builder.call.rows.select { |row| changed_ids.include?(row.fin_event_id) }
+      board_rows = Snapshot.build!(@season, builder:).rows.select { |row| changed_ids.include?(row.fin_event_id) }
       board_rows.filter_map { |row| plan(row) }.uniq
     end
 

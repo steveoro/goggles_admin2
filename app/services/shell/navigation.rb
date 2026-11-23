@@ -57,6 +57,8 @@ module Shell
       item(:data_fix, :import, 'fa-wand-magic', 'shell.nav.data_fix', -> { pull_result_files_path },
            match: %w[data_fix data_fix/sessions data_fix/teams data_fix/swimmers data_fix/events data_fix/results data_fix/commits],
            parent: :result_files, sidebar: false),
+      item(:data_fix_sessions, :import, 'fa-clock-rotate-left', 'data_fix_sessions.nav', -> { data_fix_sessions_path },
+           match: %w[data_fix/sessions_list]),
       item(:push, :import, 'fa-upload', 'shell.nav.push', -> { push_index_path }, match: %w[push]), # replaced by :outbox in 07
       # Entities
       item(:meetings, :entities, 'fa-flag-checkered', 'dashboard.meetings.title', -> { api_meetings_path }, match: %w[api_meetings]),
@@ -92,7 +94,9 @@ module Shell
       item(:user_workshops, :support, 'fa-chalkboard-user', 'dashboard.user_workshops.title', -> { api_user_workshops_path },
            match: %w[api_user_workshops]),
       # System
-      item(:settings, :system, 'fa-gear', 'dashboard.settings.title', -> { settings_path }, match: %w[settings], offline_ok: true)
+      item(:settings, :system, 'fa-gear', 'dashboard.settings.title', -> { settings_path }, match: %w[settings], offline_ok: true),
+      item(:remote_writes, :system, 'fa-tower-broadcast', 'remote_writes.nav', -> { remote_writes_path },
+           match: %w[remote_writes], offline_ok: true, keywords: %w[drift api log])
     ].freeze
 
     ITEMS_BY_KEY = ITEMS.index_by(&:key).freeze

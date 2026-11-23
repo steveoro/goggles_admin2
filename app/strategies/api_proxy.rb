@@ -84,8 +84,14 @@ class APIProxy
     end
   end
 
-  # Seconds allowed for opening the connection to the API server
+  # Seconds allowed for opening the connection to the API server (default, see the :open_timeout option)
   OPEN_TIMEOUT = 5
+
+  # HTTP methods that never change the remote data (never logged as remote writes)
+  READ_ONLY_METHODS = %w[get head].freeze
+
+  # Endpoints never logged as remote writes: the sign-in and the SQL batch push (tracked by its own log)
+  UNLOGGED_ENDPOINTS = %r{\A(?:session\z|import_queue/batch_sql)}
 
   # Connection-level errors that yield an UnreachableResponse instead of raising
   CONNECTION_ERRORS = [
@@ -102,6 +108,13 @@ class APIProxy
   # - :params         => GET parameters for the call (only for GET)
   # - :port_override  => Port number override for the API base URL; when +nil+, uses the default found from the settings
   # - :base_url       => API base URL override (protocol, host & port); when +nil+, uses the one found from the settings
+  # - :open_timeout   => seconds allowed for opening the connection (default: OPEN_TIMEOUT)
+  # - :timeout        => seconds allowed for reading the answer (default: RestClient's own, 60 s);
+  #                      background jobs pass short values so that a hung API can't hold their worker
+  #
+  # Every call that may change the remote data (any method but GET, except the sign-in and the SQL batch
+  # push) is logged into the local ops DB as an Ops::RemoteWrite, after the call: the log never raises and
+  # never changes the returned Result (see #record_remote_write).
   #
   # == Returns
   # An APIProxy::Result wrapping the RestClient Response, even in case of errors.
@@ -116,19 +129,25 @@ class APIProxy
     whitelisted = params.respond_to?(:permit!) ? params.permit!.to_h : params&.to_h
     hdrs = whitelisted.present? ? { params: whitelisted } : {}
     hdrs['Authorization'] = "Bearer #{options[:jwt]}" if options[:jwt].present?
+    payload = options[:payload].to_h
 
-    execute(api_base_url, method: options[:method], url: "#{api_base_url}/api/v3/#{options[:url]}",
-                          payload: options[:payload].to_h, headers: hdrs)
+    result = execute(api_base_url, method: options[:method], url: "#{api_base_url}/api/v3/#{options[:url]}",
+                                   payload:, headers: hdrs, **options.slice(:open_timeout, :timeout).compact)
+    record_remote_write(api_base_url, options, payload, result)
+    result
   end
 
   # Checks the public 'status' endpoint (no JWT needed) of the specified API server
   # (or the currently configured one when +nil+).
   #
+  # == Options:
+  # - open_timeout:, timeout: same as #call (omitted when +nil+).
+  #
   # == Returns
   # The APIProxy::Result of the call (see #call).
   #
-  def self.ping(base_url = nil)
-    call(method: :get, url: 'status', base_url:)
+  def self.ping(base_url = nil, open_timeout: nil, timeout: nil)
+    call({ method: :get, url: 'status', base_url: }.merge({ open_timeout:, timeout: }.compact))
   end
 
   # Returns the currently configured API base URL (from the local settings)
@@ -146,7 +165,7 @@ class APIProxy
 
   # Executes the request, wrapping any outcome into a Result
   def self.execute(api_base_url, request_options)
-    Result.new(RestClient::Request.execute(open_timeout: OPEN_TIMEOUT, **request_options))
+    Result.new(RestClient::Request.execute({ open_timeout: OPEN_TIMEOUT }.merge(request_options)))
   rescue RestClient::ExceptionWithResponse => e
     Result.new(e.response || UnreachableResponse.new(api_base_url, e))
   rescue *CONNECTION_ERRORS => e
@@ -154,6 +173,21 @@ class APIProxy
     Result.new(UnreachableResponse.new(api_base_url, e))
   end
   private_class_method :execute
+
+  # Logs a call that may have changed the remote data as an Ops::RemoteWrite (method, endpoint, base URL,
+  # outcome, payload KEYS only: never the values nor the headers). Skips GET/HEAD, the sign-in and the SQL
+  # batch push. Never raises (Ops.safely) and does nothing when the ops DB is not available.
+  def self.record_remote_write(api_base_url, options, payload, result)
+    Ops.safely do
+      http_method = options[:method].to_s.downcase
+      endpoint = options[:url].to_s.delete_prefix('/')
+      next if READ_ONLY_METHODS.include?(http_method) || UNLOGGED_ENDPOINTS.match?(endpoint)
+      next unless Ops.available?
+
+      Ops::RemoteWrite.record!(http_method:, endpoint:, base_url: api_base_url, payload_keys: payload.keys, result:)
+    end
+  end
+  private_class_method :record_remote_write
   #-- -------------------------------------------------------------------------
   #++
 end

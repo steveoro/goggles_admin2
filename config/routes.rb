@@ -65,6 +65,8 @@ Rails.application.routes.draw do
   put 'pdf/log_contents'
 
   get 'data_fix/commit_phase6_report', to: 'data_fix/commits#commit_phase6_report'
+  get 'data_fix/sessions', to: 'data_fix/sessions_list#index', as: 'data_fix_sessions'
+  delete 'data_fix/sessions/purge', to: 'data_fix/sessions_list#purge', as: 'data_fix_sessions_purge'
   get 'data_fix/review_sessions', to: 'data_fix/sessions#review_sessions', as: 'review_sessions'
   post 'data_fix/recompute_source_categories', to: 'data_fix/sessions#recompute_source_categories', as: 'recompute_source_categories'
   get 'data_fix/review_teams', to: 'data_fix/teams#review_teams', as: 'review_teams'
@@ -164,6 +166,10 @@ Rails.application.routes.draw do
   post 'settings/api_config', to: 'settings#api_config', as: 'settings_api_config'
   post 'settings/api_target_label', to: 'settings#api_target_label', as: 'settings_api_target_label'
   delete 'settings', to: 'settings#destroy', as: 'settings_destroy'
+
+  # Log of the API calls that may have changed the remote data (ops DB) + drift v0 acknowledgement:
+  get 'remote_writes', to: 'remote_writes#index', as: 'remote_writes'
+  post 'remote_writes/acknowledge', to: 'remote_writes#acknowledge', as: 'remote_writes_acknowledge'
 
   resources :stats, only: %i[index update]
   delete 'stats', to: 'stats#destroy', as: 'stats_destroy'

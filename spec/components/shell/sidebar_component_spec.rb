@@ -48,16 +48,16 @@ RSpec.describe Shell::SidebarComponent, type: :component do
 
     it 'disables the items that need the API, with an explaining tooltip' do
       disabled = html.css('.app-sidebar a.nav-link.disabled')
-      expect(disabled.size).to eq(Shell::Navigation::ITEMS.count(&:sidebar?) - 2)
+      expect(disabled.size).to eq(Shell::Navigation::ITEMS.count { |item| item.sidebar? && !item.offline_ok? })
       expect(disabled.pluck('aria-disabled').uniq).to eq(['true'])
       wrapper = disabled.first.parent
       expect(wrapper['data-bs-toggle']).to eq('tooltip')
       expect(wrapper['data-bs-title']).to eq(I18n.t('shell.nav.offline_disabled'))
     end
 
-    it 'keeps Dashboard and Settings enabled' do
+    it 'keeps Dashboard, Settings and Remote writes (ops DB only) enabled' do
       enabled = html.css('.app-sidebar a.nav-link:not(.disabled)').pluck('href')
-      expect(enabled).to contain_exactly('/', '/settings')
+      expect(enabled).to contain_exactly('/', '/settings', '/remote_writes')
     end
   end
 end
