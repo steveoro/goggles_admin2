@@ -31,8 +31,21 @@ export default class extends Controller {
     this.toast.show()
   }
 
+  // A toast disposed during its show/hide transition (e.g. a Turbo visit right after the page load)
+  // would make Bootstrap's transition callback hit a null element: dispose it when the transition ends.
   disconnect() {
     this.element.removeEventListener('hidden.bs.toast', this.onHidden)
-    if (this.toast) this.toast.dispose()
+    const toast = this.toast
+    this.toast = null
+    if (!toast) return
+
+    if (this.element.classList.contains('showing')) {
+      // (deferred: Bootstrap still uses the instance right after triggering 'shown')
+      const disposeLater = () => setTimeout(() => toast.dispose(), 0)
+      this.element.addEventListener('shown.bs.toast', disposeLater, { once: true })
+      this.element.addEventListener('hidden.bs.toast', disposeLater, { once: true })
+    } else {
+      toast.dispose()
+    }
   }
 }

@@ -28,6 +28,11 @@ RSpec.describe APITeamsController do
         get(api_teams_path)
         expect(response).to have_http_status(:success)
       end
+
+      it 'highlights Teams in the sidebar' do
+        get(api_teams_path)
+        expect(response.parsed_body.css('.app-sidebar a.active').pluck('href')).to eq([api_teams_path])
+      end
     end
   end
   #-- -------------------------------------------------------------------------

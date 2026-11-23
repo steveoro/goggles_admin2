@@ -7,6 +7,9 @@
 @use 'base/tokens';
 // Temporary Bootstrap 4 class compatibility layer (see compat/_bs4.scss):
 @use 'compat/bs4';
+// App shell (sidebar, top bar, page header) + neutralised legacy per-view wrappers:
+@use 'shell/layout';
+@use 'shell/legacy_wrappers';
 @use 'custom_styles';
 @use 'tom_select_customizations';
 @use 'legacy_auto_complete_component';

@@ -1,0 +1,17 @@
+// = Legacy per-view wrappers inside the app shell =
+//
+// Un-swept views still carry the old 3-column layout (.wrapper-body > .spacer-left + .main-content +
+// .spacer-right, see full_bleed_layout.scss) and a #footer.fixed-bottom placeholder: inside the shell
+// they render full-width and without the footer. Each view drops its wrappers in the phase that sweeps it.
+.app-content .wrapper-body {
+  display: block;
+}
+
+.app-content .spacer-left,
+.app-content .spacer-right {
+  display: none;
+}
+
+.app-content #footer.fixed-bottom {
+  display: none;
+}

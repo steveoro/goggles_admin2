@@ -31,7 +31,7 @@ function flashContainer() {
 }
 
 function stickyContainer() {
-  return document.getElementById('sticky-alerts') || document.querySelector('.main-content') || document.body
+  return document.getElementById('sticky-alerts') || document.querySelector('.app-content, .main-content') || document.body
 }
 
 function buildElement(html, domId) {

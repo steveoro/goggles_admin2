@@ -58,12 +58,12 @@ RSpec.describe 'Layout assets' do
         expect(html.at_css('#sticky-alerts')).to be_present
         expect(html.at_css('#flash-messages-container #sticky-alerts')).to be_nil
         expect(html.at_css('body > #flash-messages-container.toast-container #flash-messages')).to be_present
-        expect(html.at_css('.main-content #sticky-alerts')).to be_present
+        expect(html.at_css('.app-shell .app-main #notify #sticky-alerts')).to be_present
       end
 
-      it 'sets the light Bootstrap color mode and the tooltips controller by default' do
+      it 'sets the light Bootstrap color mode and the tooltips & shell controllers by default' do
         expect(html.at('html')['data-bs-theme']).to eq('light')
-        expect(html.at('body')['data-controller']).to eq('tooltips')
+        expect(html.at('body')['data-controller'].split).to eq(%w[tooltips shell])
       end
     end
   end

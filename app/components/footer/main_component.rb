@@ -15,20 +15,10 @@ module Footer
   # Renders the main footer, typically shown on the index of the landing page.
   # Includes the current version number.
   #
+  # Superseded by the top bar user menu (Shell::UserMenuComponent): no view renders it any more;
+  # deleted in phase 15. The locale helpers now live in ShellHelper.
+  #
   class MainComponent < ViewComponent::Base
-    protected
-
-    # Returns the first locale available besides the current one.
-    #
-    # (Not an actual "locale switch" generic enough to sat aside as a
-    # stand-alone component, but given that we won't probably never have
-    # more than 2 locales, it's enough for now.)
-    def other_locale_code
-      I18n.available_locales.reject { |sym| sym == I18n.locale }.first
-    end
-
-    def unicode_locale_flag(locale_sym)
-      locale_sym == :it ? 'Versione 🇮🇹' : '🇬🇧 Version'
-    end
+    delegate :other_locale_code, :unicode_locale_flag, to: :helpers
   end
 end

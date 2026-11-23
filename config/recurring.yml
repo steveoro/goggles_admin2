@@ -14,6 +14,12 @@ default: &default
     class: SeasonRecheckJob
     queue: background
     schedule: every day at 5:15am
+  # Top bar status pills: read-only refresh of the API ping & crawler status snapshots (ops DB;
+  # see SystemStatus::RefreshJob, also enqueued on demand by the status frame when older than 2 minutes)
+  system_status_refresh:
+    class: SystemStatus::RefreshJob
+    queue: default
+    schedule: every 5 minutes
 
 development:
   <<: *default

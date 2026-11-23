@@ -6,7 +6,7 @@
     %meta{ name: 'description', content: 'Master-Goggles administration' }/
     %meta{ name: 'author', content: 'FASAR Software, Steve Alloro, 2012-2021' }/
     %meta{ name: 'keywords', content: 'Master swimming results' }/
-    %title Goggles
+    %title= page_title
     = csrf_meta_tags
     = csp_meta_tag
     -#
@@ -19,28 +19,36 @@
     = stylesheet_link_tag('application', media: 'all', 'data-turbo-track': 'reload')
     = javascript_importmap_tags
 
-  %body{ data: { controller: 'tooltips' } }
+  %body{ data: { controller: 'tooltips shell' } }
     -# Flash toasts (top-right); turbo-stream flash updates replace only this container's content:
     .toast-container.position-fixed.top-0.end-0.p-3#flash-messages-container
       = render(partial: 'goggles/flash_messages')
 
-    %section#header
-      = render('goggles/main_navbar')
+    - if user_signed_in?
+      -#
+        App shell: sidebar (offcanvas below lg; collapsible above, cookie 'sidebar') + top bar + page.
+        Rendering it makes no API call (local DB, session, local files and ops snapshots only).
+      .app-shell{ class: sidebar_collapsed? ? 'app-shell--collapsed' : nil }
+        = render(Shell::SidebarComponent.new(current: current_nav_item, offline: api_offline_session?))
+        .app-main
+          %header.app-topbar.sticky-top
+            = render(Shell::TopBarComponent.new(api_target: shell_api_target, offline: api_offline_session?,
+                                                user: current_user))
+          %section#notify
+            #sticky-alerts
+              -# Local session without a valid API JWT (API server unreachable at sign-in; Settings has its own box):
+              = render(partial: 'goggles/api_offline_banner') if api_offline_session? && controller_name != 'settings'
+              -# Local ops DB not configured, missing or not migrated (see Ops::Database):
+              - if (ops_state = Ops.state) != :ready
+                = render(partial: 'goggles/ops_setup_notice', locals: { state: ops_state })
+              -# Pending FIN "Riepilogo Eventi" change alert (live updates via AppNotificationsChannel):
+              = render(FedernuotoWatchAlertComponent.from_store)
+          %main.app-content#content
+            = yield
+    - else
+      -# (Sign-in page: no shell, no sticky alerts)
+      %main.app-auth= yield
 
-    %section#notify
-      .wrapper-body
-        .spacer-left
-        .main-content
-          #sticky-alerts
-            -# Local session without a valid API JWT (API server unreachable at sign-in; Settings has its own box):
-            - if user_signed_in? && api_offline_session? && controller_name != 'settings'
-              = render(partial: 'goggles/api_offline_banner')
-            -# Local ops DB not configured, missing or not migrated (see Ops::Database):
-            - if user_signed_in? && (ops_state = Ops.state) != :ready
-              = render(partial: 'goggles/ops_setup_notice', locals: { state: ops_state })
-            -# Pending FIN "Riepilogo Eventi" change alert (live updates via AppNotificationsChannel):
-            = render(FedernuotoWatchAlertComponent.from_store) if user_signed_in?
-        .spacer-right
-
-    %section#content
-      = yield
+    -# Spinner toggled by the PDF pages (kept until phase 15; pdf/scan.turbo_stream.erb replaces it):
+    .fixed-top.text-center.mt-2.d-none#loading-indicator
+      .spinner-border.text-primary{ role: 'status', 'aria-hidden' => 'true' }

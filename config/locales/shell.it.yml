@@ -1,0 +1,100 @@
+it:
+  shell:
+    brand: 'Goggles Admin2'
+    groups:
+      dashboard: 'Pannello'
+      import: 'Importazione'
+      data_quality: 'Qualità dati'
+      entities: 'Entità'
+      reports: 'Report'
+      support: 'Supporto'
+      system: 'Sistema'
+    nav:
+      label: 'Navigazione principale'
+      data_fix: 'Data-Fix'
+      push: 'Push'
+      offline_disabled: "Non disponibile con l'API offline: correggi l'URL dell'API nelle Impostazioni"
+    # Ultimo elemento del percorso per una pagina figlia (stesso controller della voce di menu):
+    actions:
+      no_mirs: 'Meeting senza risultati'
+      expand: 'Vista estesa'
+      new: 'Nuovo'
+      edit: 'Modifica'
+      base_timings: 'Tempi base'
+    sidebar:
+      title: 'Menu'
+      open: 'Apri il menu'
+      close: 'Chiudi il menu'
+      toggle: 'Riduci o espandi la barra laterale'
+    breadcrumbs:
+      label: 'Percorso'
+    topbar:
+      label: 'Barra superiore'
+    api_target:
+      title: 'API di destinazione'
+      settings_link: "API di destinazione: cambia l'URL o la sua etichetta nelle Impostazioni"
+      no_url: 'Nessun URL API configurato'
+      unverified: 'non verificato'
+      guess:
+        production: 'produzione'
+        unknown: 'sconosciuto'
+      reachability:
+        reachable: 'raggiungibile'
+        unreachable: 'non raggiungibile'
+        unknown: 'non ancora verificata'
+      checked_ago: 'verificata %{ago} fa'
+      version: 'v. %{version}'
+    status:
+      label: 'Stato del sistema'
+      loading: 'Caricamento dello stato del sistema...'
+      as_of: 'aggiornato al %{time}'
+      failed: 'Verifica fallita (%{error})'
+      levels:
+        ok: 'OK'
+        warn: 'Attenzione'
+        error: 'Errore'
+        unknown: 'Sconosciuto'
+      actions:
+        settings: 'Apri le Impostazioni'
+        crawler: 'Apri la pagina del crawler'
+        season_board: 'Apri la plancia stagione'
+      api:
+        label: 'API'
+        offline: 'Sessione API offline: nessun JWT valido per questa API'
+        never: 'Non ancora verificata'
+        stale: "Nessuna verifica recente (l'ultima: %{time})"
+        ok: 'Raggiungibile (v. %{version})'
+        reachable: 'Raggiungibile'
+        answered: 'Ha risposto con il codice %{code}: %{error}'
+        unreachable: 'Non raggiungibile: %{error}'
+      crawler:
+        label: 'Crawler'
+        never: 'Non ancora verificato'
+        stale: "Nessuna verifica recente (l'ultima: %{time})"
+        'off': 'Non avviato (parte su richiesta dalla pagina Pull o dalla plancia stagione)'
+        idle: 'Avviato, inattivo'
+        running: 'In esecuzione: %{status}'
+        failed: 'Ultima esecuzione fallita: %{detail}'
+      queue:
+        label: 'Job'
+        not_in_use: 'Solid Queue non è il gestore dei job in questo ambiente'
+        ok: 'Processi job attivi: %{count}'
+        dead: 'Nessun processo job attivo: riavvia il server (plugin Solid Queue) o lancia bin/jobs'
+      fin_watch:
+        label: 'FIN'
+        never: 'Nessuna verifica ancora'
+        ok: 'Ultima verifica: %{time}, nessuna modifica in sospeso'
+        pending: 'Modifica al calendario FIN rilevata il %{time}, da confermare'
+        failed: 'Ultima verifica fallita: %{error}'
+    user_menu:
+      label: 'Menu account'
+      version: 'Goggles v. %{version}'
+    api_label_form:
+      title: "Etichetta dell'API di destinazione"
+      help: "Un nome breve mostrato accanto all'URL dell'API nella barra superiore (es. \"Produzione\" o \"Copia locale\"). Ogni URL ha la sua etichetta; lascia vuoto per rimuoverla."
+      field: 'Etichetta per %{url}'
+      placeholder: 'es. Produzione'
+      save: 'Salva etichetta'
+      saved: 'Etichetta salvata per %{url}'
+      cleared: 'Etichetta rimossa per %{url}'
+      failed: "Impossibile salvare l'etichetta: il DB ops locale non è disponibile (lancia bin/rails ops:prepare)"

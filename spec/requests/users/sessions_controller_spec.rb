@@ -42,6 +42,27 @@ RSpec.describe Users::SessionsController do
       end
     end
 
+    context 'when the API answers the sign-in (top bar reachability snapshot)' do
+      after(:each) { Ops::Database.reset_state! }
+
+      it 'stores the API as reachable' do
+        admin_user.update!(jwt: nil)
+        allow(APIProxy).to receive(:call).with(hash_including(method: :post, url: 'session'))
+                                         .and_return(DummyResponse.new(body: { msg: 'OK', jwt: fresh_jwt }.to_json))
+        post(user_session_path, params: login_params)
+        snapshot = SystemStatus::APISnapshot.read(APIProxy.configured_base_url)
+        expect(snapshot.source).to eq('sign_in')
+        expect(snapshot.payload).to include('reachable' => true, 'code' => 200)
+      end
+
+      it 'stores the API as unreachable when it could not be reached' do
+        sign_in_api_offline(admin_user)
+        snapshot = SystemStatus::APISnapshot.read(APIProxy.configured_base_url)
+        expect(snapshot.payload).to include('reachable' => false, 'code' => 503)
+        expect(snapshot.payload['error']).to include('API unreachable')
+      end
+    end
+
     context 'with an admin user having an expired JWT and an unreachable API,' do
       context 'when signing-in from localhost' do
         before(:each) { sign_in_api_offline(admin_user) }

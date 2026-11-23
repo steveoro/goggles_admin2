@@ -30,3 +30,22 @@
   --ga-tint-red: #7a2e2e;
   --ga-tint-red2: #5e2b2b;
 }
+
+// = App shell (phase 04) =
+// Sizes of the sidebar & top bar, and the accents of the API target guess badge.
+:root,
+[data-bs-theme='light'] {
+  --ga-sidebar-width: 15rem;
+  --ga-sidebar-collapsed-width: 4rem;
+  --ga-topbar-height: 3.5rem;
+  --ga-env-production: var(--bs-danger);
+  --ga-env-unknown: var(--bs-secondary);
+}
+
+[data-bs-theme='dark'] {
+  --ga-sidebar-width: 15rem;
+  --ga-sidebar-collapsed-width: 4rem;
+  --ga-topbar-height: 3.5rem;
+  --ga-env-production: var(--bs-danger);
+  --ga-env-unknown: var(--bs-secondary);
+}

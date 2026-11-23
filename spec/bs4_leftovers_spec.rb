@@ -17,7 +17,7 @@ RSpec.describe 'Bootstrap 4 leftovers' do
   EXCLUDED = %w[app/javascript/bs4_compat.js].freeze
 
   # Folders that must have no BS4 token at all (path prefixes):
-  SWEPT = [].freeze
+  SWEPT = %w[app/components/shell app/views/layouts app/views/shell].freeze
 
   # Current number of tokens per folder (see #folder_key for the grouping):
   BASELINE = {
@@ -39,9 +39,8 @@ RSpec.describe 'Bootstrap 4 leftovers' do
     'app/views/home' => 6,
     'app/components/combo_box' => 5,
     'app/views/devise' => 5,
-    'app/components' => 4,
+    'app/components' => 3,
     'app/views/api_categories' => 4,
-    'app/views/goggles' => 4,
     'app/views/datagrid' => 3,
     'app/components/switch' => 2,
     'app/views/api_meeting_reservations' => 2,

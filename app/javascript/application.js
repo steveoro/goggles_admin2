@@ -5,7 +5,9 @@ import "bs4_compat"
 import * as bootstrap from "bootstrap"
 window.bootstrap = bootstrap
 
-import "@hotwired/turbo-rails"
+import { Turbo } from "@hotwired/turbo-rails"
+// Turbo 8 (bundled by turbo-rails 2.0.23): show the progress bar after 150 ms (default: 500 ms)
+Turbo.config.drive.progressBarDelay = 150
 import "controllers"
 import "channels"
 

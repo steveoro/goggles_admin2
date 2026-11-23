@@ -1,0 +1,27 @@
+.dropdown.app-user-menu
+  %button.btn.btn-link.link-body-emphasis.text-decoration-none.dropdown-toggle.d-flex.align-items-center.gap-2.px-2#user-menu{ toggle_attributes }
+    - if avatar_url
+      = image_tag(avatar_url, class: 'round-avatar', alt: '')
+    - else
+      %i.fa-solid.fa-circle-user.fa-lg{ 'aria-hidden' => 'true' }
+    %span.d-none.d-xl-inline.text-truncate.app-user-name= user.name
+  %ul.dropdown-menu.dropdown-menu-end.shadow-sm{ 'aria-labelledby' => 'user-menu' }
+    %li
+      .dropdown-header
+        .fw-semibold.text-body-emphasis= user.name
+        - if user.email.present?
+          .small= user.email
+    %li
+      %hr.dropdown-divider
+    - if other_locale
+      %li
+        = link_to(helpers.unicode_locale_flag(other_locale), helpers.locale_switch_path(other_locale),
+                  id: 'href-locale-switch', class: 'dropdown-item')
+    %li
+      %span.dropdown-item-text.small.text-body-secondary#app-version= t('shell.user_menu.version', version: Version::FULL)
+    %li
+      %hr.dropdown-divider
+    %li
+      = link_to(destroy_user_session_path, id: 'btn-log-out', class: 'dropdown-item', data: { turbo_method: :delete }) do
+        %i.fa-solid.fa-right-from-bracket.fa-fw{ 'aria-hidden' => 'true' }
+        = t('home.log_out')

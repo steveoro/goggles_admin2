@@ -3,7 +3,9 @@
 #
 # = DashboardTitleComponent
 #
-# Simple centered title with row count on its side
+# Thin wrapper kept for the existing call sites until the phase 04 sweeps replace them:
+# renders a Shell::PageHeaderComponent with the title and the row counter.
+# (Deleted once no view uses it any more.)
 #
 class DashboardTitleComponent < ViewComponent::Base
   # Creates a new ViewComponent.
@@ -15,5 +17,9 @@ class DashboardTitleComponent < ViewComponent::Base
     super()
     @title = title
     @row_count = row_count
+  end
+
+  def call
+    render(Shell::PageHeaderComponent.new(title: @title, count: @row_count))
   end
 end

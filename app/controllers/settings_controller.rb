@@ -4,7 +4,7 @@
 #
 # Manage Settings via API.
 #
-class SettingsController < ApplicationController
+class SettingsController < ApplicationController # rubocop:disable Metrics/ClassLength
   before_action :refuse_when_api_offline, only: %i[update destroy]
 
   # GET /settings
@@ -156,6 +156,26 @@ class SettingsController < ApplicationController
   #-- -------------------------------------------------------------------------
   #++
 
+  # POST /settings/api_target_label
+  # Stores (or removes, when blank) the operator's label for the currently configured API URL
+  # (ops DB setting 'api_target.labels', shown by the top bar). Allowed in API-offline sessions.
+  #
+  # == Params:
+  # - <tt>label</tt>: the label text (blank to remove it).
+  #
+  def api_target_label
+    url = Shell::APITarget.configured_url
+    label = params.permit(:label)['label'].to_s.squish
+    if url.present? && Shell::APITarget.store_label!(url, label)
+      flash[:info] = I18n.t(label.present? ? 'shell.api_label_form.saved' : 'shell.api_label_form.cleared', url:)
+    else
+      flash[:error] = I18n.t('shell.api_label_form.failed')
+    end
+    redirect_to(settings_path)
+  end
+  #-- -------------------------------------------------------------------------
+  #++
+
   protected
 
   # Default whitelist for datagrid parameters
@@ -187,16 +207,20 @@ class SettingsController < ApplicationController
   end
 
   # Returns a String label summarizing the currently connected API status.
+  # (The outcome is also stored as the 'api.status:<url>' ops snapshot read by the top bar.)
   def prepare_status_label
     result = APIProxy.ping
+    SystemStatus::APISnapshot.write!(APIProxy.configured_base_url, result, source: 'settings')
     return "⚠ #{result.error_detail}" unless result.code == 200 && result.json.is_a?(Hash)
 
     "API v. #{result.json['version']} - #{result.json['msg']}"
   end
 
   # Sets a flash message describing the result of a status check on the specified API base URL.
+  # (The outcome is also stored as the 'api.status:<url>' ops snapshot read by the top bar.)
   def flash_probe_result(base_url)
     result = APIProxy.ping(base_url)
+    SystemStatus::APISnapshot.write!(base_url, result, source: 'settings')
     if result.code == 200
       flash[:info] = I18n.t('api_offline.probe_ok', url: base_url, version: result.json['version'])
     else

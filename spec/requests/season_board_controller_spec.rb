@@ -98,6 +98,10 @@ RSpec.describe SeasonBoardController do
         expect(page.at_css('[data-controller="season-board"]')).to be_present
       end
 
+      it 'highlights the Season board in the sidebar' do
+        expect(page.css('.app-sidebar a.active').pluck('href')).to eq([season_board_path])
+      end
+
       it 'shows the header, the warnings and the activity strip' do
         expect(response.body).to include(season.description, 'Something to look at', 'Background activity')
         expect(response.body).to include('FIN calendar last checked')

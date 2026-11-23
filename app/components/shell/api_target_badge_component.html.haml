@@ -1,0 +1,12 @@
+%a.app-api-target.d-flex.align-items-center.gap-2.text-decoration-none.link-body-emphasis.small#api-target-badge{ link_attributes }
+  %i.fa-solid.fa-server.text-body-secondary{ 'aria-hidden' => 'true' }
+  - if api_target.label.present?
+    %span.fw-semibold.text-truncate.d-none.d-sm-inline.app-api-label= api_target.label
+  %span.font-monospace.text-truncate.d-none.d-md-inline.app-api-url= short_url.presence || t('shell.api_target.no_url')
+  %span.badge.rounded-pill.text-nowrap{ class: guess_css }
+    = t("shell.api_target.guess.#{api_target.guess}")
+    %span.d-none.d-xl-inline (#{t('shell.api_target.unverified')})
+    %span.d-xl-none{ 'aria-hidden' => 'true' } ?
+  %span.text-nowrap.app-api-reachability{ class: REACHABILITY_CSS[reachability] }
+    %i.fa-solid{ class: REACHABILITY_ICON[reachability], 'aria-hidden' => 'true' }
+    %span.visually-hidden= reachability_text

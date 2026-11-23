@@ -89,6 +89,8 @@ module Users
         t: Rails.application.credentials.api_static_key
       }
       result = APIProxy.call(method: :post, url: 'session', payload:)
+      # Last known reachability of the API, read by the top bar (any answer means "reachable"):
+      SystemStatus::APISnapshot.write!(APIProxy.configured_base_url, result, source: 'sign_in')
       return [nil, result.error_detail] unless (200..299).cover?(result.code)
 
       jwt = result.json.is_a?(Hash) ? result.json['jwt'] : nil

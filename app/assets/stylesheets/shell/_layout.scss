@@ -1,0 +1,248 @@
+// = App shell layout =
+//
+// .app-shell (flex row)
+//   aside.app-sidebar#app-sidebar  (Bootstrap .offcanvas-lg: off-canvas below lg, sticky column above)
+//   .app-main
+//     header.app-topbar.sticky-top
+//     section#notify > #sticky-alerts
+//     main.app-content#content
+//
+// .app-shell--collapsed (cookie 'sidebar', lg and up): icons-only sidebar.
+
+$shell-breakpoint: 992px; // Bootstrap 'lg'
+
+.app-shell {
+  display: flex;
+  min-height: 100vh;
+}
+
+.app-main {
+  flex: 1 1 auto;
+  min-width: 0; // (lets wide tables scroll inside the page instead of stretching it)
+  display: flex;
+  flex-direction: column;
+}
+
+// == Top bar ==
+.app-topbar {
+  min-height: var(--ga-topbar-height);
+  background-color: var(--bs-tertiary-bg);
+  border-bottom: var(--bs-border-width) solid var(--bs-border-color);
+}
+
+.app-topbar-inner {
+  min-height: var(--ga-topbar-height);
+  flex-wrap: nowrap;
+}
+
+// Shrinking order when space is short: the status pills first, then the API URL & label (truncated);
+// the guess badge, the reachability icon and the right-hand menus never shrink.
+.app-api-target {
+  flex: 0 1 auto;
+}
+
+.app-api-target > * {
+  flex-shrink: 0;
+}
+
+.app-api-target > .app-api-url {
+  flex: 0 1 auto;
+  min-width: 5rem;
+  max-width: 16rem;
+}
+
+.app-api-target > .app-api-label {
+  flex: 0 1 auto;
+  min-width: 3rem;
+  max-width: 9rem;
+}
+
+.app-topbar-inner > .ms-auto,
+.app-brand {
+  flex-shrink: 0;
+}
+
+.app-env-badge {
+  color: #fff;
+  font-weight: 500;
+}
+
+.app-env-badge--production {
+  background-color: var(--ga-env-production);
+}
+
+.app-env-badge--unknown {
+  background-color: var(--ga-env-unknown);
+}
+
+.app-status-frame {
+  align-items: center;
+  gap: 0.25rem;
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.app-status-pill {
+  font-weight: 500;
+  text-decoration: none;
+}
+
+a.app-status-pill:hover {
+  filter: brightness(0.92);
+}
+
+.app-user-name {
+  max-width: 8rem;
+}
+
+// Toasts below the top bar (the container is fixed at the top-right corner):
+body:has(.app-topbar) #flash-messages-container {
+  margin-top: var(--ga-topbar-height);
+}
+
+// == Sidebar ==
+.app-nav-group {
+  margin-bottom: 0.75rem;
+}
+
+.app-nav-group-title {
+  padding: 0.25rem 0.75rem;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+// (a wrapping .nav would size its single line on the longest label, defeating the ellipsis)
+.app-sidebar .nav {
+  flex-wrap: nowrap;
+}
+
+.app-sidebar .nav-link {
+  color: var(--bs-body-color);
+  border-radius: var(--bs-border-radius);
+  padding: 0.35rem 0.75rem;
+  white-space: nowrap;
+}
+
+.app-sidebar .nav-link > .fa-solid {
+  flex-shrink: 0;
+}
+
+// (long labels are cut with an ellipsis; the link title shows the full text)
+.app-nav-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.app-sidebar .nav-link:hover,
+.app-sidebar .nav-link:focus-visible {
+  background-color: var(--bs-secondary-bg);
+}
+
+.app-sidebar .nav-link.active {
+  color: var(--bs-primary-text-emphasis);
+  background-color: var(--bs-primary-bg-subtle);
+  font-weight: 600;
+}
+
+.app-sidebar .nav-link.disabled {
+  color: var(--bs-secondary-color);
+  opacity: 0.6;
+}
+
+.app-sidebar-nav {
+  width: 100%;
+  min-width: 0;
+  padding: 0.75rem 0.5rem;
+}
+
+.app-sidebar {
+  scrollbar-width: thin;
+}
+
+.app-sidebar .offcanvas-body {
+  overflow-x: hidden;
+}
+
+@media (min-width: $shell-breakpoint) {
+  // (Bootstrap makes .offcanvas-lg transparent with !important above the breakpoint)
+  .app-shell .app-sidebar.offcanvas-lg {
+    position: sticky;
+    top: 0;
+    flex: 0 0 var(--ga-sidebar-width);
+    width: var(--ga-sidebar-width);
+    height: 100vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    background-color: var(--bs-tertiary-bg) !important;
+    border-right: var(--bs-border-width) solid var(--bs-border-color);
+    transition: width 0.15s ease-in-out, flex-basis 0.15s ease-in-out;
+  }
+
+  .app-sidebar .offcanvas-body {
+    width: 100%;
+  }
+
+  .app-shell--collapsed .app-sidebar.offcanvas-lg {
+    flex-basis: var(--ga-sidebar-collapsed-width);
+    width: var(--ga-sidebar-collapsed-width);
+  }
+
+  .app-shell--collapsed .app-nav-label,
+  .app-shell--collapsed .app-nav-group-title {
+    display: none;
+  }
+
+  .app-shell--collapsed .app-sidebar .nav-link {
+    justify-content: center;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .app-shell--collapsed .app-nav-group {
+    border-top: var(--bs-border-width) solid var(--bs-border-color);
+    padding-top: 0.5rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-shell .app-sidebar.offcanvas-lg {
+    transition: none;
+  }
+}
+
+// == Page ==
+.app-content {
+  flex: 1 1 auto;
+  padding: 1rem;
+}
+
+@media (min-width: $shell-breakpoint) {
+  .app-content {
+    padding: 1rem 1.5rem;
+  }
+}
+
+.app-page-heading {
+  min-width: 0;
+}
+
+.app-page-count {
+  font-size: 0.55em;
+}
+
+.app-auth {
+  min-height: 100vh;
+}
+
+// == Turbo ==
+.turbo-progress-bar {
+  height: 3px;
+  background-color: var(--bs-primary);
+}
+
+turbo-frame[busy] {
+  opacity: 0.6;
+  transition: opacity 0.15s ease-in-out;
+}

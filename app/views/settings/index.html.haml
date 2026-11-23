@@ -37,6 +37,21 @@
                            class: 'btn btn-sm btn-outline-danger', 'aria-label' => 'Save', type: 'submit',
                            data: { turbo_confirm: t('dashboard.settings.connection.save_confirmation') })
 
+    %section.my-4#api-target-label
+      = form_with(url: settings_api_target_label_path, method: :post, id: 'api-target-label-form',
+                  class: 'card card-body shadow-sm') do
+        %h2.h6.card-title= t('shell.api_label_form.title')
+        %p.small.text-body-secondary.mb-2= t('shell.api_label_form.help')
+        .row.g-2.align-items-end
+          .col-md-8
+            = label_tag('api-target-label', t('shell.api_label_form.field', url: @connection_url), class: 'form-label small')
+            = text_field_tag(:label, Shell::APITarget.labels[@connection_url.to_s.delete_suffix('/')],
+                             id: 'api-target-label', class: 'form-control form-control-sm',
+                             maxlength: Shell::APITarget::LABEL_MAX_LENGTH,
+                             placeholder: t('shell.api_label_form.placeholder'))
+          .col-md-4
+            = submit_tag(t('shell.api_label_form.save'), id: 'btn-save-api-target-label', class: 'btn btn-sm btn-outline-primary w-100')
+
     %section.my-4#data-grid
       - if @remote
         = render(Grid::ToolbarComponent.new(asset_row: Setting.new, filter: true, create: false,

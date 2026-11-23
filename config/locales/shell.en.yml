@@ -1,0 +1,100 @@
+en:
+  shell:
+    brand: 'Goggles Admin2'
+    groups:
+      dashboard: 'Dashboard'
+      import: 'Import'
+      data_quality: 'Data quality'
+      entities: 'Entities'
+      reports: 'Reports'
+      support: 'Support'
+      system: 'System'
+    nav:
+      label: 'Main navigation'
+      data_fix: 'Data-Fix'
+      push: 'Push'
+      offline_disabled: 'Not available while the API is offline: fix the API URL in Settings'
+    # Last breadcrumb of a contextual child page (same controller as its sidebar item):
+    actions:
+      no_mirs: 'Meetings without results'
+      expand: 'Expanded view'
+      new: 'New'
+      edit: 'Edit'
+      base_timings: 'Base timings'
+    sidebar:
+      title: 'Menu'
+      open: 'Open the menu'
+      close: 'Close the menu'
+      toggle: 'Collapse or expand the sidebar'
+    breadcrumbs:
+      label: 'Breadcrumb'
+    topbar:
+      label: 'Top bar'
+    api_target:
+      title: 'API target'
+      settings_link: 'API target: change the URL or its label in Settings'
+      no_url: 'No API URL configured'
+      unverified: 'unverified'
+      guess:
+        production: 'production'
+        unknown: 'unknown'
+      reachability:
+        reachable: 'reachable'
+        unreachable: 'unreachable'
+        unknown: 'not checked yet'
+      checked_ago: 'checked %{ago} ago'
+      version: 'v. %{version}'
+    status:
+      label: 'System status'
+      loading: 'Loading the system status...'
+      as_of: 'as of %{time}'
+      failed: 'Check failed (%{error})'
+      levels:
+        ok: 'OK'
+        warn: 'Warning'
+        error: 'Error'
+        unknown: 'Unknown'
+      actions:
+        settings: 'Open Settings'
+        crawler: 'Open the crawler page'
+        season_board: 'Open the Season board'
+      api:
+        label: 'API'
+        offline: 'API-offline session: no valid JWT for this API'
+        never: 'Not checked yet'
+        stale: 'No recent check (last one: %{time})'
+        ok: 'Reachable (v. %{version})'
+        reachable: 'Reachable'
+        answered: 'Answered with code %{code}: %{error}'
+        unreachable: 'Unreachable: %{error}'
+      crawler:
+        label: 'Crawler'
+        never: 'Not checked yet'
+        stale: 'No recent check (last one: %{time})'
+        'off': 'Not running (it starts on demand from the Pull page or the Season board)'
+        idle: 'Running, idle'
+        running: 'Running: %{status}'
+        failed: 'Last run failed: %{detail}'
+      queue:
+        label: 'Jobs'
+        not_in_use: 'Solid Queue is not the job backend here'
+        ok: 'Live job processes: %{count}'
+        dead: 'No live job process: restart the server (Solid Queue plugin) or run bin/jobs'
+      fin_watch:
+        label: 'FIN'
+        never: 'No check yet'
+        ok: 'Last check: %{time}, no pending change'
+        pending: 'FIN calendar change detected on %{time}, still to acknowledge'
+        failed: 'Last check failed: %{error}'
+    user_menu:
+      label: 'Account menu'
+      version: 'Goggles v. %{version}'
+    api_label_form:
+      title: 'API target label'
+      help: 'A short name shown next to the API URL in the top bar (e.g. "Production" or "Local copy"). Each URL keeps its own label; leave it blank to remove it.'
+      field: 'Label for %{url}'
+      placeholder: 'e.g. Production'
+      save: 'Save label'
+      saved: 'Label saved for %{url}'
+      cleared: 'Label removed for %{url}'
+      failed: 'Cannot save the label: the local ops DB is not available (run bin/rails ops:prepare)'

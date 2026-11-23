@@ -12,6 +12,9 @@ Rails.application.routes.draw do
 
   get 'home/index'
 
+  # Top bar status pills (lazy turbo-frame; see Shell::StatusController):
+  get 'shell/status', to: 'shell/status#show', as: 'shell_status'
+
   get 'best_results/best_50m', to: 'best_results#best_50m', as: 'best_50m_results'
   get 'best_results/best_50_and_100', to: 'best_results#best_50_and_100', as: 'best_50_and_100_results'
   get 'best_results/best_50_and_100_5y', to: 'best_results#best_50_and_100_5y', as: 'best_50_and_100_5y_results'
@@ -159,6 +162,7 @@ Rails.application.routes.draw do
 
   resources :settings, only: %i[index update]
   post 'settings/api_config', to: 'settings#api_config', as: 'settings_api_config'
+  post 'settings/api_target_label', to: 'settings#api_target_label', as: 'settings_api_target_label'
   delete 'settings', to: 'settings#destroy', as: 'settings_destroy'
 
   resources :stats, only: %i[index update]
