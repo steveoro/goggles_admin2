@@ -59,3 +59,4 @@ Bootstrap 5.3 (vendored). Temporary Bootstrap 4 compat layer: `app/assets/styles
 - Every Ruby file starts with `# frozen_string_literal: true`.
 - Update `CHANGELOG.md` and bump the version when making user-visible changes (recent commits follow this).
 - Specs: `spec/{requests,services,strategies,components,...}`; fixtures live in `spec/fixtures` and can be regenerated with the `fixtures_*` rake tasks.
+- Specs that write into `crawler/data` with factory seasons leave empty `results.*/<season_id>` folders; `spec/support/crawler_data_housekeeping.rb` removes them at the end of every RSpec run (empty, numeric, not a season in the test DB, untouched for a minute).
