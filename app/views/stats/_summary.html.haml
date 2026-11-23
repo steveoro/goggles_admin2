@@ -9,12 +9,12 @@
             %thead
               %tr
                 %th= t('dashboard.stats.summary.route')
-                %th.text-right= t('dashboard.stats.summary.total_count')
+                %th.text-end= t('dashboard.stats.summary.total_count')
             %tbody
               - summary_top_routes.each do |row|
                 %tr
                   %td= row['route']
-                  %td.text-right= row['total_count']
+                  %td.text-end= row['total_count']
 
     .col
       .card
@@ -24,12 +24,12 @@
             %thead
               %tr
                 %th= t('dashboard.stats.summary.ip')
-                %th.text-right= t('dashboard.stats.summary.total_count')
+                %th.text-end= t('dashboard.stats.summary.total_count')
             %tbody
               - summary_top_ips.each do |row|
                 %tr
                   %td= row['ip']
-                  %td.text-right= row['total_count']
+                  %td.text-end= row['total_count']
     .col
       .card
         .card-header= t('dashboard.stats.summary.totals')
@@ -38,14 +38,14 @@
             %tbody
               %tr
                 %th= t('dashboard.stats.summary.requests')
-                %td.text-right= summary_totals['requests']
+                %td.text-end= summary_totals['requests']
               %tr
                 %th= t('dashboard.stats.summary.ip_requests')
-                %td.text-right= summary_totals['ip_requests']
+                %td.text-end= summary_totals['ip_requests']
               %tr
                 %th= t('dashboard.stats.summary.route_requests')
-                %td.text-right= summary_totals['route_requests']
-  .container.row
+                %td.text-end= summary_totals['route_requests']
+  .mb-4
     .card
       .card-header= t('dashboard.stats.summary.top_agents')
       .card-body.p-0
@@ -53,16 +53,16 @@
           %thead
             %tr
               %th= t('dashboard.stats.summary.user_agent')
-              %th.text-right= t('dashboard.stats.summary.total_count')
+              %th.text-end= t('dashboard.stats.summary.total_count')
           %tbody
             - summary_top_agents.each do |row|
               %tr
                 %td= row['user_agent']
-                %td.text-right= row['total_count']
+                %td.text-end= row['total_count']
 
 - daily_agents = daily_agents_matrix(summary_daily_agents, agents: summary_top_agents)
 - unless daily_agents[:days].empty?
-  .container.row
+  .mb-4
     .card
       .card-header= t('dashboard.stats.summary.daily_agents')
       .card-body.p-0
@@ -72,10 +72,10 @@
               %tr
                 %th= t('dashboard.stats.summary.user_agent')
                 - daily_agents[:days].each do |day|
-                  %th.text-right= day
+                  %th.text-end= day
             %tbody
               - daily_agents[:agents].each do |agent|
                 %tr
                   %td= agent
                   - daily_agents[:days].each do |day|
-                    %td.text-right= daily_agents[:counts][[agent, day]]
+                    %td.text-end= daily_agents[:counts][[agent, day]]

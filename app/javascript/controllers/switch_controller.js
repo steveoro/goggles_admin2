@@ -57,13 +57,13 @@ export default class extends Controller {
       this.area1Target.classList.toggle('d-none')
     }
     if (this.hasLabel1Target) {
-      this.label1Target.classList.toggle('text-muted')
+      this.label1Target.classList.toggle('text-body-secondary')
     }
     if (this.hasArea2Target) {
       this.area2Target.classList.toggle('d-none')
     }
     if (this.hasLabel2Target) {
-      this.label2Target.classList.toggle('text-muted')
+      this.label2Target.classList.toggle('text-body-secondary')
     }
     // Update the hidden field value:
     if (this.hasSelectorTarget) {

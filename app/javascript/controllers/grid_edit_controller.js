@@ -1,12 +1,13 @@
 import { Controller } from '@hotwired/stimulus'
+import { Modal } from 'bootstrap'
 // NOTE: CodeMirror modules come from the single vendored 'codemirror-json' bundle
 // (vendor/javascript/codemirror-json.js — esbuild of @codemirror/view, state, commands,
 // search, language, autocomplete + lang-json). Separate CDN pins load duplicate
 // @codemirror/state instances, which break extension instanceof checks
 // ("Unrecognized extension value in extension set") — do NOT re-split these imports.
 // The bundle is loaded lazily on first use (dynamic import) so that a failure to
-// resolve/load it cannot prevent this whole controller from registering: without it
-// the edit modal would still open (Bootstrap data-toggle) but stay empty.
+// resolve/load it cannot prevent this whole controller from registering (the controller
+// itself opens the edit modal, once the form has been filled).
 let _codemirrorJsonPromise = null
 const loadCodeMirrorJson = () => {
   if (!_codemirrorJsonPromise) _codemirrorJsonPromise = import('codemirror-json')
@@ -67,7 +68,9 @@ function remeasureJsonEditors (event) {
  *                  except the 'id', if given)
  *
  * == Actions:
- * - <tt>handleEdit</tt> => fill the target modal form and display it.
+ * - <tt>handleEdit</tt> => fill the target modal form, then display it
+ *   (explicitly, with Modal.getOrCreateInstance(...).show(): the buttons carry no Bootstrap data-bs-toggle,
+ *   so the modal never opens before its fields are filled).
  *
  * == Assumptions:
  * - <tt>"<BASE_MODAL_DOM_ID>-modal"</tt>
@@ -182,8 +185,14 @@ export default class extends Controller {
             }
           }
         )
-      // (the modal itself is opened by the Bootstrap data API of the clicked button)
-      document.getElementById(`${this.baseModalIdValue}-modal`)?.addEventListener('shown.bs.modal', remeasureJsonEditors)
+      const modal = document.getElementById(`${this.baseModalIdValue}-modal`)
+      if (modal) {
+        modal.addEventListener('shown.bs.modal', remeasureJsonEditors)
+        // (as the Bootstrap data API would do: give the focus back to the clicked button on close)
+        const trigger = event.currentTarget
+        modal.addEventListener('hidden.bs.modal', () => trigger?.focus(), { once: true })
+        Modal.getOrCreateInstance(modal).show(trigger)
+      }
       return true
     }
     return false

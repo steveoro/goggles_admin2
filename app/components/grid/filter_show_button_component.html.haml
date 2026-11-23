@@ -1,3 +1,4 @@
-%button.btn.btn-primary.btn-sm{ 'aria-controls' => 'filter-panel', 'aria-expanded' => 'false',
-        data: { target: '#filter-panel', toggle: 'collapse', type: 'button' } }
+%button.btn.btn-primary.btn-sm{ type: 'button', 'aria-controls' => 'filter-panel', 'aria-expanded' => 'false',
+                                'aria-label' => I18n.t('datagrid.form.toggle_filters'),
+                                data: { bs_target: '#filter-panel', bs_toggle: 'collapse' } }
   %i.fa.fa-filter

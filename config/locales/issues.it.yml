@@ -18,6 +18,8 @@ it:
       buttons:
         check_label: " Controlla"
         fix_label: " Accetta e risolvi automaticamente"
+    check:
+      type_subtitle: "Tipo di segnalazione: %{code}"
     type0:
       existing_tms: "Team Manager esistenti"
     msgs:
@@ -26,6 +28,9 @@ it:
     type2b1:
       filtered_swimmers_list: "Nuotatori per '%{name}'"
       same_named_teams: "Squadre con nome simile"
+      wrong_meeting: "Meeting ERRATO"
+      wrong_team: "Squadra ERRATA"
+      wrong_swimmer: "Atleta ERRATO"
     type3b:
       chosen_swimmer_association: "L'atleta scelto è già associato a:"
     type3c:

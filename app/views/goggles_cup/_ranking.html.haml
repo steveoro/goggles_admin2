@@ -4,4 +4,6 @@
     export_path: goggle_cup_export_lambda(local_assigns),
     base_timings_path: goggle_cup_base_timings_path(local_assigns)
   )
-= render partial: 'goggles_db/goggle_cups/ranking', locals: ranking_locals
+-# The engine partial still carries Bootstrap 4 markup (shared with goggles_main):
+%div{ data: { bs4_compat: true } }
+  = render partial: 'goggles_db/goggle_cups/ranking', locals: ranking_locals

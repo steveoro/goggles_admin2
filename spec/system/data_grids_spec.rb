@@ -23,7 +23,7 @@ RSpec.describe 'Data grids (api_teams)' do
       teams.each { |team| expect(page).to have_css('#data-grid td', text: team.editable_name) }
 
       expect(page).to have_no_css('#filter-panel.show')
-      find('button[data-target="#filter-panel"]').click
+      find('button[data-bs-target="#filter-panel"]').click
       expect(page).to have_css('#filter-panel.show')
 
       expect(page).to have_no_css('#grid-edit-modal.show')

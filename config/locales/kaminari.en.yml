@@ -6,6 +6,7 @@ en:
       previous: "&lsaquo; Prev"
       next: "Next &rsaquo;"
       truncate: "&hellip;"
+      nav_label: "Pages"
   helpers:
     page_entries_info:
       one_page:

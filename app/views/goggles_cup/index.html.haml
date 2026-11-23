@@ -1,172 +1,161 @@
-.wrapper-body
-  .spacer-left
 
-  .main-content{ data: { controller: 'goggles-cup', 'goggles-cup-smart-selection-url-value': smart_selection_goggles_cup_preview_path, 'goggles-cup-index-url-value': goggles_cup_preview_path, 'goggles-cup-has-ranking-data-value': @readonly || false, 'goggles-cup-confirm-overwrite-message': t('goggles_cup.confirm_overwrite') } }
-    -# Loading overlay shown during ranking computation
-    #goggles-cup-overlay.goggles-cup-overlay.d-none{ data: { 'goggles-cup-target': 'overlay' } }
-      .spinner-border.text-light{ style: 'width: 3rem; height: 3rem;', role: 'status' }
-        %span.visually-hidden= t('goggles_cup.computing')
-    - provide(:title, t('goggles_cup.title'))
-    .row-fluid.text-center
-      %h4
-        %i.fa.fa-trophy
-        = t('goggles_cup.title')
-      %p
-        %i= t('goggles_cup.description')
-        %br
-        %code
-          = t('goggles_cup.formula')
+#goggles-cup-page{ data: { controller: 'goggles-cup', 'goggles-cup-smart-selection-url-value': smart_selection_goggles_cup_preview_path, 'goggles-cup-index-url-value': goggles_cup_preview_path, 'goggles-cup-has-ranking-data-value': @readonly || false, 'goggles-cup-confirm-overwrite-message': t('goggles_cup.confirm_overwrite') } }
+  -# Loading overlay shown during ranking computation
+  #goggles-cup-overlay.goggles-cup-overlay.d-none{ data: { 'goggles-cup-target': 'overlay' } }
+    .spinner-border.text-light{ style: 'width: 3rem; height: 3rem;', role: 'status' }
+      %span.visually-hidden= t('goggles_cup.computing')
+  - provide(:title, t('goggles_cup.title'))
+  = render(Shell::PageHeaderComponent.new(title: t('goggles_cup.title'), subtitle: t('goggles_cup.description')))
+  %p.text-center
+    %code= t('goggles_cup.formula')
 
-    -# Phase 1: season / team / cup selection
-    %section.my-2#select-cup
-      .card
-        .card-header.bg-light-blue
-          %strong= t('goggles_cup.selection_header')
-        .card-body
-          = form_with(url: goggles_cup_preview_path, method: :get, local: true,
-                      html: { id: 'goggles-cup-selection-form' },
-                      data: { 'goggles-cup-target': 'selectionForm', turbo: false }) do |f|
-            .container-fluid
-              .row.mb-3
-                .col-md-3.my-2
-                  #{@season_year}
-                  = label_tag :season_year, t('goggles_cup.select_season'), class: 'form-label'
-                  = select_tag(:season_year,
-                               options_for_select(@season_years.map { |year| [year, year] }, @season_year),
-                               id: 'season_year_select', class: 'form-control',
-                               data: { action: 'change->goggles-cup#submitSelectionForm' })
-                .col-md-6.my-2
-                  - if @team_resolver&.can_choose_any_team?
-                    = render(ComboBox::AutocompleteTeamComponent.new(default_row: @team, required: true, jwt: current_user&.jwt))
-                  - elsif @team_resolver&.managed_teams.to_a.size == 1
-                    = hidden_field_tag :team_id, @team&.id
-                    %label.form-label= t('best_results.list.team')
-                    .form-control-plaintext.fw-bold= @team&.name
-                  - else
-                    = label_tag :team_id, t('best_results.list.team'), class: 'form-label'
-                    = select_tag(:team_id,
-                                 options_from_collection_for_select(@team_resolver&.managed_teams || [], 'id', 'name', @team&.id),
-                                 { prompt: t('goggles_cup.select_team'), class: 'form-control', required: true,
-                                   data: { action: 'change->goggles-cup#submitSelectionForm' } })
-                .col-md-3.my-2.d-flex.align-items-end
-                  = button_tag(type: 'submit', class: 'btn btn-primary w-100',
-                              data: { toggle: 'tooltip', placement: 'top', title: t('goggles_cup.load_team_tooltip') }) do
-                    %i.fa.fa-download.me-2
-                    = t('goggles_cup.load_team')
-          - if @team
-            .container-fluid
-              .row.mb-2
-                .col-md-6.my-2
-                  %label.form-label{ for: 'goggle_cup_select' }= t('goggles_cup.select_cup')
-                  = select_tag(:goggle_cup_select,
-                              options_for_select([["--- #{t('goggles_cup.new_cup_option')} ---", '']] + @goggle_cups.map { |c| [c.description, c.id] }, @goggle_cup&.id),
-                              id: 'goggle_cup_select', class: 'form-control',
-                              data: { 'goggles-cup-target': 'cupSelect', action: 'change->goggles-cup#selectCup' })
-                .col-md-3.my-2.d-flex.align-items-end
-                  = link_to(goggles_cup_preview_path(season_year: @season_year, team_id: @team_id),
-                            class: 'btn btn-outline-primary w-100', id: 'btn-new-cup',
-                            data: { toggle: 'tooltip', placement: 'top', title: t('goggles_cup.new_cup_tooltip'), turbo: false }) do
-                    %i.fa.fa-plus.me-2
-                    = t('goggles_cup.new_cup')
-                .col-md-3.my-2.d-flex.align-items-end
-                  = label_tag :id, 'ID', class: 'form-label mx-2'
-                  = text_field_tag :id, @goggle_cup&.id, id: 'id', class: 'form-control', disabled: true
+  -# Phase 1: season / team / cup selection
+  %section.my-2#select-cup
+    .card
+      .card-header.bg-body-tertiary
+        %strong= t('goggles_cup.selection_header')
+      .card-body
+        = form_with(url: goggles_cup_preview_path, method: :get, local: true,
+                    html: { id: 'goggles-cup-selection-form' },
+                    data: { 'goggles-cup-target': 'selectionForm', turbo: false }) do |f|
+          .container-fluid
+            .row.mb-3
+              .col-md-3.my-2
+                = label_tag :season_year, t('goggles_cup.select_season'), class: 'form-label'
+                = select_tag(:season_year,
+                             options_for_select(@season_years.map { |year| [year, year] }, @season_year),
+                             id: 'season_year_select', class: 'form-select',
+                             data: { action: 'change->goggles-cup#submitSelectionForm' })
+              .col-md-6.my-2
+                - if @team_resolver&.can_choose_any_team?
+                  = render(ComboBox::AutocompleteTeamComponent.new(default_row: @team, required: true, jwt: current_user&.jwt))
+                - elsif @team_resolver&.managed_teams.to_a.size == 1
+                  = hidden_field_tag :team_id, @team&.id
+                  %label.form-label= t('best_results.list.team')
+                  .form-control-plaintext.fw-bold= @team&.name
+                - else
+                  = label_tag :team_id, t('best_results.list.team'), class: 'form-label'
+                  = select_tag(:team_id,
+                               options_from_collection_for_select(@team_resolver&.managed_teams || [], 'id', 'name', @team&.id),
+                               { prompt: t('goggles_cup.select_team'), class: 'form-select', required: true,
+                                 data: { action: 'change->goggles-cup#submitSelectionForm' } })
+              .col-md-3.my-2.d-flex.align-items-end
+                = button_tag(type: 'submit', class: 'btn btn-primary w-100',
+                            data: { bs_toggle: 'tooltip', bs_placement: 'top', bs_title: t('goggles_cup.load_team_tooltip') }) do
+                  %i.fa.fa-download.me-2
+                  = t('goggles_cup.load_team')
+        - if @team
+          .container-fluid
+            .row.mb-2
+              .col-md-6.my-2
+                %label.form-label{ for: 'goggle_cup_select' }= t('goggles_cup.select_cup')
+                = select_tag(:goggle_cup_select,
+                            options_for_select([["--- #{t('goggles_cup.new_cup_option')} ---", '']] + @goggle_cups.map { |c| [c.description, c.id] }, @goggle_cup&.id),
+                            id: 'goggle_cup_select', class: 'form-select',
+                            data: { 'goggles-cup-target': 'cupSelect', action: 'change->goggles-cup#selectCup' })
+              .col-md-3.my-2.d-flex.align-items-end
+                = link_to(goggles_cup_preview_path(season_year: @season_year, team_id: @team_id),
+                          class: 'btn btn-outline-primary w-100', id: 'btn-new-cup',
+                          data: { bs_toggle: 'tooltip', bs_placement: 'top', bs_title: t('goggles_cup.new_cup_tooltip'), turbo: false }) do
+                  %i.fa.fa-plus.me-2
+                  = t('goggles_cup.new_cup')
+              .col-md-3.my-2.d-flex.align-items-end
+                = label_tag :id, 'ID', class: 'form-label mx-2'
+                = text_field_tag :id, @goggle_cup&.id, id: 'id', class: 'form-control', disabled: true
 
-    - if @team
-      .alert.alert-info.d-flex.align-items-center{ role: 'alert' }
-        %i.fa.fa-cloud-upload.p-2.m-1
-        = t('goggles_cup.remote_edit_notice')
-      = form_with(url: compute_goggles_cup_preview_path, method: :post, local: true,
-                  html: { id: 'goggles-cup-form' },
-                  data: { action: 'submit->goggles-cup#compute', 'goggles-cup-target': 'form' }) do |f|
-        = hidden_field_tag :team_id, @team.id
-        = hidden_field_tag :goggle_cup_id, @goggle_cup&.id, data: { 'goggles-cup-target': 'goggleCupIdField' }
-        -# Phase 2: cup parameters
-        %section.my-2#cup-configuration
-          .card
-            .card-header.d-flex.justify-content-between.align-items-center
-              %strong= t('goggles_cup.cup_configuration', team: @team.name)
-              .d-flex.align-items-center
-                - if @goggle_cup&.persisted?
-                  - if @goggle_cup.published?
-                    = button_tag(type: 'submit', formaction: unpublish_goggles_cup_preview_path, formmethod: :post, formnovalidate: true,
-                                  class: 'btn btn-sm btn-warning mx-1',
-                                  data: { toggle: 'tooltip', placement: 'top', title: t('goggles_cup.unpublish_tooltip'), turbo_confirm: t('goggles_cup.confirm_unpublish') }) do
-                      %i.fa.fa-eye-slash.px-1
-                      = t('goggles_cup.unpublish')
-                  - else
-                    = button_tag(type: 'submit', formaction: publish_goggles_cup_preview_path, formmethod: :post, formnovalidate: true,
-                                  class: 'btn btn-sm btn-outline-success mx-1',
-                                  data: { toggle: 'tooltip', placement: 'top', title: t('goggles_cup.publish_tooltip'), turbo_confirm: t('goggles_cup.confirm_publish') }) do
-                      %i.fa.fa-eye.px-1
-                      = t('goggles_cup.publish')
-                  = button_tag(type: 'submit', formaction: resync_goggles_cup_preview_path, formmethod: :post, formnovalidate: true,
-                                class: 'btn btn-sm btn-outline-secondary mx-1',
-                                data: { toggle: 'tooltip', placement: 'top', title: t('goggles_cup.resync_tooltip'), turbo_confirm: t('goggles_cup.confirm_resync') }) do
-                    %i.fa.fa-refresh.px-1
-                    = t('goggles_cup.resync')
-                - if @readonly
-                  %span.badge.bg-info.mx-1#badge-readonly
-                    %i.fa.fa-lock.px-1
-                    = t('goggles_cup.readonly_badge')
-            .card-body
-              .row
-                .col-md-3
-                  .mb-2
-                    = label_tag :name, t('goggles_cup.name_label'), class: 'form-label'
-                    = text_field_tag :name, @goggle_cup&.name, id: 'name', class: 'form-control', placeholder: t('goggles_cup.name_placeholder'), data: { 'goggles-cup-target': 'nameField' }
-                .col-md-3
-                  .mb-2
-                    = label_tag :description, t('goggles_cup.description_label'), class: 'form-label'
-                    = text_field_tag :description, @goggle_cup&.description, id: 'description', class: 'form-control', required: true, data: { 'goggles-cup-target': 'descriptionField' }
-                .col-md-3
-                  .mb-2
-                    = label_tag :season_year, t('goggles_cup.season_year_label'), class: 'form-label'
-                    = number_field_tag :season_year, @goggle_cup&.season_year || @season_year, id: 'season_year', class: 'form-control', required: true, min: 2001, readonly: @goggle_cup&.persisted?, data: { 'goggles-cup-target': 'seasonYearField' }
-                .col-md-3
-                  .mb-2
-                    = label_tag :end_date, t('goggles_cup.end_date_label'), class: 'form-label'
-                    = date_field_tag :end_date, @goggle_cup&.end_date&.iso8601, id: 'end_date', class: 'form-control', required: true, data: { 'goggles-cup-target': 'endDateField' }
+  - if @team
+    .alert.alert-info.d-flex.align-items-center{ role: 'alert' }
+      %i.fa.fa-cloud-upload.p-2.m-1
+      = t('goggles_cup.remote_edit_notice')
+    = form_with(url: compute_goggles_cup_preview_path, method: :post, local: true,
+                html: { id: 'goggles-cup-form' },
+                data: { action: 'submit->goggles-cup#compute', 'goggles-cup-target': 'form' }) do |f|
+      = hidden_field_tag :team_id, @team.id
+      = hidden_field_tag :goggle_cup_id, @goggle_cup&.id, data: { 'goggles-cup-target': 'goggleCupIdField' }
+      -# Phase 2: cup parameters
+      %section.my-2#cup-configuration
+        .card
+          .card-header.d-flex.justify-content-between.align-items-center
+            %strong= t('goggles_cup.cup_configuration', team: @team.name)
+            .d-flex.align-items-center
+              - if @goggle_cup&.persisted?
+                - if @goggle_cup.published?
+                  = button_tag(type: 'submit', formaction: unpublish_goggles_cup_preview_path, formmethod: :post, formnovalidate: true,
+                                class: 'btn btn-sm btn-warning mx-1',
+                                data: { bs_toggle: 'tooltip', bs_placement: 'top', bs_title: t('goggles_cup.unpublish_tooltip'), turbo_confirm: t('goggles_cup.confirm_unpublish') }) do
+                    %i.fa.fa-eye-slash.px-1
+                    = t('goggles_cup.unpublish')
+                - else
+                  = button_tag(type: 'submit', formaction: publish_goggles_cup_preview_path, formmethod: :post, formnovalidate: true,
+                                class: 'btn btn-sm btn-outline-success mx-1',
+                                data: { bs_toggle: 'tooltip', bs_placement: 'top', bs_title: t('goggles_cup.publish_tooltip'), turbo_confirm: t('goggles_cup.confirm_publish') }) do
+                    %i.fa.fa-eye.px-1
+                    = t('goggles_cup.publish')
+                = button_tag(type: 'submit', formaction: resync_goggles_cup_preview_path, formmethod: :post, formnovalidate: true,
+                              class: 'btn btn-sm btn-outline-secondary mx-1',
+                              data: { bs_toggle: 'tooltip', bs_placement: 'top', bs_title: t('goggles_cup.resync_tooltip'), turbo_confirm: t('goggles_cup.confirm_resync') }) do
+                  %i.fa.fa-refresh.px-1
+                  = t('goggles_cup.resync')
+              - if @readonly
+                %span.badge.text-bg-info.mx-1#badge-readonly
+                  %i.fa.fa-lock.px-1
+                  = t('goggles_cup.readonly_badge')
+          .card-body
+            .row
+              .col-md-3
+                .mb-2
+                  = label_tag :name, t('goggles_cup.name_label'), class: 'form-label'
+                  = text_field_tag :name, @goggle_cup&.name, id: 'name', class: 'form-control', placeholder: t('goggles_cup.name_placeholder'), data: { 'goggles-cup-target': 'nameField' }
+              .col-md-3
+                .mb-2
+                  = label_tag :description, t('goggles_cup.description_label'), class: 'form-label'
+                  = text_field_tag :description, @goggle_cup&.description, id: 'description', class: 'form-control', required: true, data: { 'goggles-cup-target': 'descriptionField' }
+              .col-md-3
+                .mb-2
+                  = label_tag :season_year, t('goggles_cup.season_year_label'), class: 'form-label'
+                  = number_field_tag :season_year, @goggle_cup&.season_year || @season_year, id: 'season_year', class: 'form-control', required: true, min: 2001, readonly: @goggle_cup&.persisted?, data: { 'goggles-cup-target': 'seasonYearField' }
+              .col-md-3
+                .mb-2
+                  = label_tag :end_date, t('goggles_cup.end_date_label'), class: 'form-label'
+                  = date_field_tag :end_date, @goggle_cup&.end_date&.iso8601, id: 'end_date', class: 'form-control', required: true, data: { 'goggles-cup-target': 'endDateField' }
 
-              .row-fluid.mb-3
-                %label.switch.round
-                  = check_box_tag(:no_duplicated_events, '1', @no_duplicated_events,
-                                  id: 'no_duplicated_events', disabled: @readonly,
-                                  data: { 'goggles-cup-target': 'noDuplicatedEventsField' })
-                  %span.slider.round
-                = label_tag(:no_duplicated_events, t('goggles_cup.no_duplicated_events'), class: 'form-check-label mb-0')
+            .row-fluid.mb-3
+              %label.switch.round
+                = check_box_tag(:no_duplicated_events, '1', @no_duplicated_events,
+                                id: 'no_duplicated_events', disabled: @readonly,
+                                data: { 'goggles-cup-target': 'noDuplicatedEventsField' })
+                %span.slider.round
+              = label_tag(:no_duplicated_events, t('goggles_cup.no_duplicated_events'), class: 'form-check-label mb-0')
 
-              .row.mb-1
-                .col-md-3.my-1.d-flex.flex-fill
-                  = button_tag(type: 'submit', formaction: save_goggles_cup_preview_path, formmethod: :post,
-                              class: 'btn btn-outline-primary btn-lg w-100',
-                              data: { 'goggles-cup-target': 'saveButton', toggle: 'tooltip', placement: 'top', title: t('goggles_cup.save_config_tooltip') }) do
-                    %i.fa.fa-floppy-o.me-2
-                    = t('goggles_cup.save_config')
-                .col-md-3.my-1.d-flex.flex-fill
-                  %button.btn.btn-outline-secondary.btn-lg.w-100{ type: 'button', id: 'btn-show-precomputed', disabled: !@readonly,
-                      data: { 'goggles-cup-target': 'precomputedButton', toggle: 'collapse', target: '#ranking-panel', 'aria-expanded' => 'false', 'aria-controls' => 'ranking-panel' } }
-                    %i.fa.fa-download.me-2
-                    = t('goggles_cup.load_existing')
-                .col-md-3.my-1.d-flex.flex-fill
-                  = button_tag(type: 'submit', formaction: apply_local_goggles_cup_preview_path, formmethod: :post, formnovalidate: true,
-                                class: "btn btn-outline-secondary btn-lg w-100#{@exportable ? '' : ' d-none'}", disabled: !@exportable,
-                                data: { 'goggles-cup-target': 'exportSqlButton', toggle: 'tooltip', placement: 'top', title: t('goggles_cup.apply_local_tooltip'), turbo_confirm: t('goggles_cup.confirm_apply_local') }) do
-                    %i.fa.fa-download.me-2
-                    = t('goggles_cup.apply_local')
-                .col-md-3.my-1.d-flex.flex-fill
-                  = button_tag(type: 'submit', class: 'btn btn-outline-success btn-lg w-100', disabled: @readonly,
-                              data: { 'goggles-cup-target': 'computeButton', toggle: 'tooltip', placement: 'top', title: t('goggles_cup.compute_tooltip') }) do
-                    %i.fa.fa-calculator.me-2
-                    = t('goggles_cup.compute')
+            .row.mb-1
+              .col-md-3.my-1.d-flex.flex-fill
+                = button_tag(type: 'submit', formaction: save_goggles_cup_preview_path, formmethod: :post,
+                            class: 'btn btn-outline-primary btn-lg w-100',
+                            data: { 'goggles-cup-target': 'saveButton', bs_toggle: 'tooltip', bs_placement: 'top', bs_title: t('goggles_cup.save_config_tooltip') }) do
+                  %i.fa.fa-floppy-o.me-2
+                  = t('goggles_cup.save_config')
+              .col-md-3.my-1.d-flex.flex-fill
+                %button.btn.btn-outline-secondary.btn-lg.w-100{ type: 'button', id: 'btn-show-precomputed', disabled: !@readonly,
+                    data: { 'goggles-cup-target': 'precomputedButton', bs_toggle: 'collapse', bs_target: '#ranking-panel' }, 'aria-expanded' => 'false', 'aria-controls' => 'ranking-panel' }
+                  %i.fa.fa-download.me-2
+                  = t('goggles_cup.load_existing')
+              .col-md-3.my-1.d-flex.flex-fill
+                = button_tag(type: 'submit', formaction: apply_local_goggles_cup_preview_path, formmethod: :post, formnovalidate: true,
+                              class: "btn btn-outline-secondary btn-lg w-100#{@exportable ? '' : ' d-none'}", disabled: !@exportable,
+                              data: { 'goggles-cup-target': 'exportSqlButton', bs_toggle: 'tooltip', bs_placement: 'top', bs_title: t('goggles_cup.apply_local_tooltip'), turbo_confirm: t('goggles_cup.confirm_apply_local') }) do
+                  %i.fa.fa-download.me-2
+                  = t('goggles_cup.apply_local')
+              .col-md-3.my-1.d-flex.flex-fill
+                = button_tag(type: 'submit', class: 'btn btn-outline-success btn-lg w-100', disabled: @readonly,
+                            data: { 'goggles-cup-target': 'computeButton', bs_toggle: 'tooltip', bs_placement: 'top', bs_title: t('goggles_cup.compute_tooltip') }) do
+                  %i.fa.fa-calculator.me-2
+                  = t('goggles_cup.compute')
 
-          -# Phase 3: swimmer selection (always rendered; read-only while a stored ranking exists)
-          = render partial: 'swimmer_list', locals: { team: @team, swimmers: @swimmers_for_team, selected_swimmer_ids: @selected_swimmer_ids || [], external_swimmers: @external_swimmers || [], secondary_team: @secondary_team, readonly: @readonly, goggle_cup: @goggle_cup, jwt: current_user&.jwt }
+        -# Phase 3: swimmer selection (always rendered; read-only while a stored ranking exists)
+        = render partial: 'swimmer_list', locals: { team: @team, swimmers: @swimmers_for_team, selected_swimmer_ids: @selected_swimmer_ids || [], external_swimmers: @external_swimmers || [], secondary_team: @secondary_team, readonly: @readonly, goggle_cup: @goggle_cup, jwt: current_user&.jwt }
 
-          -# Phase 4: ranking display (stored or just computed; collapsible)
-          #ranking-panel.collapse{ class: (@ranking_visible ? 'show' : nil) }
-            #goggles-cup-ranking-container{ data: { 'goggles-cup-target': 'rankingContainer' } }
-              - if @ranking_data.present?
-                = render partial: 'ranking', locals: { team: @team, ranking_data: @ranking_data, selected_swimmer_ids: @selected_swimmer_ids || [], secondary_team_id: @secondary_team_id, no_duplicated_events: @no_duplicated_events, goggle_cup: @goggle_cup }
-
-  .spacer-left
+        -# Phase 4: ranking display (stored or just computed; collapsible)
+        #ranking-panel.collapse{ class: (@ranking_visible ? 'show' : nil) }
+          #goggles-cup-ranking-container{ data: { 'goggles-cup-target': 'rankingContainer' } }
+            - if @ranking_data.present?
+              = render partial: 'ranking', locals: { team: @team, ranking_data: @ranking_data, selected_swimmer_ids: @selected_swimmer_ids || [], secondary_team_id: @secondary_team_id, no_duplicated_events: @no_duplicated_events, goggle_cup: @goggle_cup }

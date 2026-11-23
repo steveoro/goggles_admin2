@@ -4,7 +4,7 @@
       - if results_by_swimmer.present?
         %h5.text-center.my-4= t('.results_for_team', team: team&.name)
         - results_by_swimmer.each do |swimmer, results|
-          %h6.text-center.bg-light-blue.mt-2
+          %h6.text-center.bg-body-tertiary.rounded.p-2.mt-2
             #{swimmer.decorate.display_label} - #{swimmer.latest_category_type&.code}
             .float-end
               %small ID #{swimmer.id}

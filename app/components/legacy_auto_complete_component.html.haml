@@ -30,7 +30,7 @@
       = text_field_tag(namespaced_attr_name("#{entity_name}_id"), @default_value, class: 'form-control',
                         data: { 'legacy-autocomplete-target' => 'field' })
       %i.fa.fa-search.btn.btn-sm.btn-outline-secondary.pt-2{ data: { action: 'click->legacy-autocomplete#processUpdate',
-        toggle: 'tooltip', title: I18n.t('dashboard.search_tooltip') } }
+        bs_toggle: 'tooltip', bs_title: I18n.t('dashboard.search_tooltip') } }
   .col.my-1
     - if @show_top_labels
       = label_tag(namespaced_attr_name(entity_name), I18n.t('dashboard.search_field', field: '...'))
@@ -51,4 +51,4 @@
                          data: { 'legacy-autocomplete-target' => 'field3' })
   .col-12
     %small
-      %i.form-text.text-muted{ id: "#{entity_name}-desc", data: { 'legacy-autocomplete-target' => 'desc' } }
+      %i.form-text.text-body-secondary{ id: "#{entity_name}-desc", data: { 'legacy-autocomplete-target' => 'desc' } }

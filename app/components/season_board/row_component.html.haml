@@ -1,9 +1,9 @@
 %tr{ id: "season-board-row-#{row.fin_event_id || row.key.to_s.parameterize}",
-     class: ('table-secondary text-muted' if row.state == :cancelled),
+     class: ('table-secondary text-body-secondary' if row.state == :cancelled),
      data: { state: row.state, busy: row.busy?.to_s } }
   %td.text-nowrap
     = row.date_text
-    %small.text-muted= row.year
+    %small.text-body-secondary= row.year
   %td
     - if row.url.present?
       = link_to(row.name, row.url, target: '_blank', rel: 'noopener')
@@ -11,21 +11,21 @@
       = row.name
     - if row.info.present?
       %br
-      %small.text-muted= row.info
+      %small.text-body-secondary= row.info
   %td= row.place
   %td
     - if row.meeting_id
       %b= "##{row.meeting_id}"
       %small= meeting_text
       %br
-      %span.badge.badge-secondary{ title: t('season_board.counts.mir_tooltip') }
+      %span.badge.text-bg-secondary{ title: t('season_board.counts.mir_tooltip') }
         #{t('season_board.counts.mir')} #{row.mir_count}
-      %span.badge.badge-secondary{ title: t('season_board.counts.mrr_tooltip') }
+      %span.badge.text-bg-secondary{ title: t('season_board.counts.mrr_tooltip') }
         #{t('season_board.counts.mrr')} #{row.mrr_count}
     - elsif row.calendar_id
-      %small.text-muted= "cal. ##{row.calendar_id}"
+      %small.text-body-secondary= "cal. ##{row.calendar_id}"
     - else
-      %span.text-muted -
+      %span.text-body-secondary -
   %td
     %span.badge{ class: state_css, title: state_tooltip }= state_label
     - shown_flags.each do |flag|
@@ -34,10 +34,10 @@
   %td
     - activity_items.each do |item|
       %div
-        - if item[:css].start_with?('badge')
+        - if item[:css].start_with?('text-bg')
           %span.badge{ class: item[:css], title: item[:tooltip] }
             - if item[:spin]
-              %i.fa.fa-spin.fa-refresh{ 'aria-hidden' => 'true' }
+              %i.fa-solid.fa-spin.fa-rotate{ 'aria-hidden' => 'true' }
             = item[:text]
         - else
           %small{ class: item[:css], title: item[:tooltip] }= item[:text]
@@ -57,7 +57,7 @@
     - elsif link_action?
       = link_to(action_label, link_action_path, class: 'btn btn-sm btn-primary', data: { turbo_frame: '_top' })
     - elsif action_kind == :link && orphans.empty?
-      %small.text-muted.season-board-no-link-candidates= t('season_board.actions.no_link_candidates')
+      %small.text-body-secondary.season-board-no-link-candidates= t('season_board.actions.no_link_candidates')
     - elsif action_kind == :link
       = form_with(url: season_board_link_path, method: :post, authenticity_token: false,
                   class: 'd-flex flex-nowrap align-items-center gap-1', data: { turbo_frame: '_top' }) do
@@ -65,16 +65,16 @@
         = hidden_field_tag(:authenticity_token, csrf_token, id: nil) if csrf_token
         = select_tag(:calendar_id, options_for_select(orphans.map { |orphan| [orphan_label(orphan), orphan.id] }),
                      prompt: t('season_board.actions.link_select_prompt'), id: nil,
-                     class: 'form-control form-control-sm mr-1', style: 'min-width: 0', required: true)
+                     class: 'form-select form-select-sm me-1', style: 'min-width: 0', required: true)
         %button.btn.btn-sm.btn-primary.flex-shrink-0{ type: 'submit' }= t('season_board.actions.link')
     - if show_secondary_link? && !row.busy?
       %details.m-1
-        %summary.small.text-muted= t('season_board.actions.link_secondary')
+        %summary.small.text-body-secondary= t('season_board.actions.link_secondary')
         = form_with(url: season_board_link_path, method: :post, authenticity_token: false,
                     class: 'd-flex flex-nowrap align-items-center gap-1 mt-1', data: { turbo_frame: '_top' }) do
           = hidden_field_tag(:fin_event_id, row.fin_event_id, id: nil)
           = hidden_field_tag(:authenticity_token, csrf_token, id: nil) if csrf_token
           = select_tag(:calendar_id, options_for_select(orphans.map { |orphan| [orphan_label(orphan), orphan.id] }),
                        prompt: t('season_board.actions.link_select_prompt'), id: nil,
-                       class: 'form-control form-control-sm mr-1', style: 'min-width: 0', required: true)
+                       class: 'form-select form-select-sm me-1', style: 'min-width: 0', required: true)
           %button.btn.btn-sm.btn-outline-secondary.flex-shrink-0{ type: 'submit' }= t('season_board.actions.link')

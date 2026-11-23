@@ -7,7 +7,7 @@ RSpec.describe Grid::FilterShowButtonComponent, type: :component do
 
   it 'renders the button with the collapse toggle parameter for the filters section' do
     expect(subject.css('button.btn')).to be_present
-    expect(subject.css('button.btn').attr('data-target').value).to eq('#filter-panel')
-    expect(subject.css('button.btn').attr('data-toggle').value).to eq('collapse')
+    expect(subject.css('button.btn').attr('data-bs-target').value).to eq('#filter-panel')
+    expect(subject.css('button.btn').attr('data-bs-toggle').value).to eq('collapse')
   end
 end

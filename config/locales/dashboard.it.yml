@@ -40,6 +40,7 @@ it:
         title: "Prenotazioni eventi e staffette"
     settings:
       title: "Impostazioni"
+      remote_source: "(impostazioni REMOTE di %{url})"
       connection:
         connect_to_label: "🖥 Sei connesso con (includi il protocollo e la porta):"
         save_btn: "Salva"

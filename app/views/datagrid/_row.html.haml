@@ -14,7 +14,7 @@
       - if column.options[:align].present? && column.options[:align] == :center
         - css_classes << 'text-center'
       - if column.options[:align].present? && column.options[:align] == :right
-        - css_classes << 'text-right'
+        - css_classes << 'text-end'
       - css_classes << 'datagrid-order-active-asc' if grid.ordered_by?(column, false)
       - css_classes << 'datagrid-order-active-desc' if grid.ordered_by?(column, true)
       %td{ tag_options.merge('data-column': column.name, class: css_classes) }= datagrid_value(grid, column, asset)

@@ -18,6 +18,8 @@ en:
       buttons:
         check_label: " Check"
         fix_label: " Accept and auto-solve"
+    check:
+      type_subtitle: "Issue type: %{code}"
     type0:
       existing_tms: "Existing Team Managers"
     msgs:
@@ -26,6 +28,9 @@ en:
     type2b1:
       filtered_swimmers_list: "Swimmers for '%{name}'"
       same_named_teams: "Same-named teams"
+      wrong_meeting: "WRONG meeting"
+      wrong_team: "WRONG team"
+      wrong_swimmer: "WRONG swimmer"
     type3b:
       chosen_swimmer_association: "Chosen swimmer is already associated to:"
     type3c:

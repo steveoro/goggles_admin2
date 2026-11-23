@@ -7,7 +7,7 @@
   - paginator:     the paginator that renders the pagination tags inside
 
 = paginator.render do
-  %nav#paginator-controls{ 'aria-label' => '...' }
+  %nav#paginator-controls{ 'aria-label' => t('views.pagination.nav_label') }
     %ul.pagination.pagination-sm.justify-content-center
       - unless current_page.first?
         %li.page-item
@@ -23,7 +23,7 @@
             %li.page-item
               = page_tag page
         - elsif !page.was_truncated?
-          %li.page-item
+          %li.page-item.disabled
             = gap_tag
       - unless current_page.last?
         %li.page-item

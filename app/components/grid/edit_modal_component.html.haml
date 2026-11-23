@@ -1,5 +1,5 @@
-.modal.fade{ id: "#{@base_dom_id}-modal", 'aria-hidden' => 'true', role: 'dialog', tabindex: '-1',
-             'aria-labelledby' => 'modal title' }
+.modal.fade{ id: "#{@base_dom_id}-modal", 'aria-hidden' => 'true', tabindex: '-1',
+             'aria-labelledby' => "#{@base_dom_id}-modal-title" }
   .modal-dialog.modal-lg{ role: 'document' }
     / The action URL will be overridden on a row-by-row basis; the following is a placeholder:
     = form_tag(url_for(only_path: true, controller: @controller_name, action: :update, id: 0),
@@ -20,7 +20,7 @@
           - @asset_row.attributes.each_key do |attr_name|
             - read_only = %w[id created_at updated_at lock_version].include?(attr_name)
             - field_class = read_only ? 'form-control-plaintext' : 'form-control'
-            .form-group.row
+            .row.mb-3
               = content_tag(:small, class: 'col-sm-3') do
                 = label_tag(namespaced_attr_name(attr_name), attr_name, class: 'col-form-label')
 

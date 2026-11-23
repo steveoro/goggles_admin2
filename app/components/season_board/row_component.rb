@@ -12,12 +12,12 @@ module SeasonBoard
   # server-side. They are disabled while the row is busy (a crawl/extraction is queued or running).
   #
   class RowComponent < ViewComponent::Base
-    # Bootstrap badge class for each state:
+    # Bootstrap 5 badge colour (text-bg-*) class for each state:
     STATE_CSS = {
-      cancelled: 'badge-dark', sql_pending: 'badge-danger', in_review: 'badge-warning', results_ready: 'badge-primary',
-      structure_ready: 'badge-info', manifest_pending: 'badge-info', committed_with_results: 'badge-success',
-      structure_committed: 'badge-secondary', crawled_no_manifest: 'badge-light border',
-      archived_unlinked: 'badge-warning', link_not_crawled: 'badge-light border', not_linked: 'badge-light border'
+      cancelled: 'text-bg-dark', sql_pending: 'text-bg-danger', in_review: 'text-bg-warning', results_ready: 'text-bg-primary',
+      structure_ready: 'text-bg-info', manifest_pending: 'text-bg-info', committed_with_results: 'text-bg-success',
+      structure_committed: 'text-bg-secondary', crawled_no_manifest: 'text-bg-light border',
+      archived_unlinked: 'text-bg-warning', link_not_crawled: 'text-bg-light border', not_linked: 'text-bg-light border'
     }.freeze
 
     # Flags rendered as warning badges
@@ -60,7 +60,7 @@ module SeasonBoard
     end
 
     def state_css
-      STATE_CSS.fetch(row.state, 'badge-light border')
+      STATE_CSS.fetch(row.state, 'text-bg-light border')
     end
 
     def state_label
@@ -78,7 +78,7 @@ module SeasonBoard
 
     # Badge class of a flag (warning flags stand out)
     def flag_css(flag)
-      WARNING_FLAGS.include?(flag) ? 'badge-warning' : 'badge-secondary'
+      WARNING_FLAGS.include?(flag) ? 'text-bg-warning' : 'text-bg-secondary'
     end
 
     def action_label
@@ -145,14 +145,14 @@ module SeasonBoard
 
     def activity_item(kind, entry)
       return unless entry
-      return { css: entry.running? ? 'badge-primary' : 'badge-info', text: busy_text(kind, entry), spin: entry.running? } if entry.busy?
-      return { css: 'badge-warning', text: stuck_text(kind, entry), tooltip: I18n.t('season_board.activity.stuck_tooltip') } if entry.stale?
+      return { css: entry.running? ? 'text-bg-primary' : 'text-bg-info', text: busy_text(kind, entry), spin: entry.running? } if entry.busy?
+      return { css: 'text-bg-warning', text: stuck_text(kind, entry), tooltip: I18n.t('season_board.activity.stuck_tooltip') } if entry.stale?
       return { css: 'text-danger', text: failed_text(entry), tooltip: entry.message } if entry.failed?
 
       return unless entry.done? && entry.finished_at
 
-      { css: 'text-muted', text: I18n.t('season_board.activity.last_success', time: day_time(entry.finished_at),
-                                                                              kind: I18n.t("season_board.activity.kinds.#{kind}")) }
+      { css: 'text-body-secondary', text: I18n.t('season_board.activity.last_success', time: day_time(entry.finished_at),
+                                                                                       kind: I18n.t("season_board.activity.kinds.#{kind}")) }
     end
 
     def busy_text(kind, entry)

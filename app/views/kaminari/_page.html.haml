@@ -7,9 +7,7 @@
   - per_page:      number of items to fetch per page
   - remote:        data-remote
 
-%span.page
-  - prev_value = page.prev? ? 'prev' : nil
-  - rel_value = page.next? ? 'next' : prev_value
-  .page-link
-    = link_to_unless(page.current?, page, url, { remote: remote, rel: rel_value,
-                     onclick: "document.getElementById('loading-indicator').classList.remove('d-none');" })
+- prev_value = page.prev? ? 'prev' : nil
+- rel_value = page.next? ? 'next' : prev_value
+= link_to_unless(page.current?, page, url, remote: remote, rel: rel_value, class: 'page-link') do |label|
+  %span.page-link= label

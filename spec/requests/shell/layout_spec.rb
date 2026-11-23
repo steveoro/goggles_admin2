@@ -77,7 +77,7 @@ RSpec.describe 'Application shell' do
       expect(html.at_css('#api-target-badge .app-api-label').text).to eq('My local copy')
     end
 
-    it 'renders the page header through the DashboardTitleComponent wrapper (title, count, breadcrumbs)' do
+    it 'renders the page header of a grid page (title, count, breadcrumbs)' do
       allow(APIProxy).to receive(:call).and_return(DummyResponse.new(body: '[]'))
       get(api_teams_path)
       header = html.at_css('.app-content header.app-page-header')

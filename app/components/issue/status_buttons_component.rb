@@ -16,6 +16,9 @@ module Issue
   # the specified Issue row.
   #
   class StatusButtonsComponent < ViewComponent::Base
+    # Bootstrap outline style of the button for each status value (0..6)
+    BUTTON_STYLES = %w[secondary info primary secondary success danger danger].freeze
+
     # Creates a new ViewComponent
     #
     # == Options
@@ -60,25 +63,11 @@ module Issue
       end
     end
 
-    # Returns the CSS class for the button representing the specified +status+
+    # Returns the CSS class for the button representing the specified +status+ (0..6)
     def button_class_for(status)
       disabled = @asset_status.to_i == status.to_i
-      case status
-      when 0
-        "btn btn-sm btn-outline-secondary px-1 py-0 ml-0 mr-1 my-0' #{'disabled' if disabled}"
-      when 1
-        "btn btn-sm btn-outline-info px-1 py-0 ml-0 mr-1 my-0 #{'disabled' if disabled}"
-      when 2
-        "btn btn-sm btn-outline-primary px-1 py-0 ml-0 mr-1 my-0 #{'disabled' if disabled}"
-      when 3
-        "btn btn-sm btn-outline-secondary px-1 py-0 ml-0 mr-1 my-0 #{'disabled' if disabled}"
-      when 4
-        "btn btn-sm btn-outline-success px-1 py-0 ml-0 mr-1 my-0 #{'disabled' if disabled}"
-      when 5
-        "btn btn-sm btn-outline-danger px-1 py-0 ml-0 mr-1 my-0 #{'disabled' if disabled}"
-      when 6
-        "btn btn-sm btn-outline-danger px-1 py-0 mx-0 my-0 #{'disabled' if disabled}"
-      end
+      margins = status == 6 ? 'mx-0' : 'ms-0 me-1'
+      "btn btn-sm btn-outline-#{BUTTON_STYLES[status]} px-1 py-0 #{margins} my-0 #{'disabled' if disabled}"
     end
 
     # Returns the CSS class for the icon inside the button representing the specified +status+

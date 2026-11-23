@@ -60,6 +60,7 @@ export default class extends Controller {
    * Setup invoked each time the controller instance connects.
    */
   connect() {
+    this.chart = null
     if (this.hasChartTarget && this.hasDaysValue && this.hasCallsValue && this.hasUsersValue) {
       // DEBUG
       // console.log('Target & min values found. Setting up chart...')
@@ -73,7 +74,7 @@ export default class extends Controller {
             label: 'API calls/day',
             data: this.callsValue,
             fill: false,
-            borderColor: 'rgb(75, 192, 192)',
+            borderColor: this.cssColor('--bs-info', 'rgb(75, 192, 192)'),
             tension: 0.1
           },
           {
@@ -81,7 +82,7 @@ export default class extends Controller {
             label: 'Users/day',
             data: this.usersValue,
             fill: true,
-            borderColor: 'rgb(128, 64, 64)',
+            borderColor: this.cssColor('--bs-danger', 'rgb(128, 64, 64)'),
             tension: 0.1
           }
         ].concat(this.bubblesValue)
@@ -92,14 +93,46 @@ export default class extends Controller {
         data: data,
         options: {
           responsive: true,
+          color: this.cssColor('--bs-body-color', '#212529'),
+          scales: {
+            x: {
+              ticks: { color: this.cssColor('--bs-secondary-color', '#6c757d') },
+              grid: { color: this.cssColor('--bs-border-color', '#dee2e6') }
+            },
+            y: {
+              ticks: { color: this.cssColor('--bs-secondary-color', '#6c757d') },
+              grid: { color: this.cssColor('--bs-border-color', '#dee2e6') }
+            }
+          },
           plugins: {
             legend: { display: false }
           }
         }
       }
 
-      new Chart(this.chartTarget, config)
+      this.chart = new Chart(this.chartTarget, config)
     }
+  }
+
+  /**
+   * Releases the Chart.js instance (the canvas may be reused on Turbo page restores).
+   */
+  disconnect() {
+    this.chart?.destroy()
+    this.chart = null
+  }
+
+  /**
+   * Reads a CSS custom property from the document root, so that the chart follows the
+   * Bootstrap light/dark theme (the chart is drawn when the page connects, with the theme in force).
+   *
+   * @param {String} name CSS variable name, including the leading dashes
+   * @param {String} fallback color used when the variable is not defined
+   * @returns {String} the resolved color value
+   */
+  cssColor(name, fallback) {
+    const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+    return value || fallback
   }
   // ---------------------------------------------------------------------------
 }

@@ -1,48 +1,46 @@
-.row
-  %h5.py-2= t('issues.possible_fix')
+%h5.py-2= t('issues.possible_fix')
 %section#fix-details
   .row
-    .col-4.text-right
+    .col-4.text-end
       %code result_id
-    .col.table-warning
+    .col.bg-warning-subtle
       = req['result_id']
   .row
-    .col-4.text-right
+    .col-4.text-end
       %code timing
-    .col.table-warning
+    .col.bg-warning-subtle
       #{req['minutes']}'#{req['seconds']}"#{req['hundredths']}
 
 = render(partial: 'parent_meeting_details', locals: { parent_meeting_class: parent_meeting_class,
          parent_meeting: parent_meeting })
 
-.row
-  %h5.py-2= t('issues.result_to_be_edited')
+%h5.py-2= t('issues.result_to_be_edited')
 %section#result-details
   .row
-    .col-4.text-right
+    .col-4.text-end
       %code id
     .col
       = result_row['id']
   .row
-    .col-4.text-right
+    .col-4.text-end
       %code timing
     .col
       #{result_row['timing']}
   - if result_row['event_type']
     .row
-      .col-4.text-right
+      .col-4.text-end
         %code event_type
       .col
         #{result_row['event_type']['label']}
   - if result_row['category_type']
     .row
-      .col-4.text-right
+      .col-4.text-end
         %code category_type
       .col
         #{result_row['category_type']['short_name']}
   - if result_row['swimmer']
     .row
-      .col-4.text-right
+      .col-4.text-end
         %code swimmer
       .col
         #{result_row['swimmer']['complete_name']} (ID: #{result_row['swimmer']['id']})

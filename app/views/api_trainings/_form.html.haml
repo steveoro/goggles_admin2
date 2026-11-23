@@ -6,47 +6,47 @@
 -#   - swimmer_label: (optional) preselected swimmer display label
 
 = form_tag(form_url, method: form_method, multipart: true, class: 'my-4') do
-  .form-group
-    = label_tag('training[image]', t('api_trainings.form.image'))
+  .mb-3
+    = label_tag('training[image]', t('api_trainings.form.image'), class: 'form-label')
     - if image_required
       %b.text-danger *
     = file_field_tag('training[image]', required: image_required, accept: 'image/jpeg,image/png,image/webp,image/gif',
                      class: 'form-control')
     - unless image_required
-      .small.text-muted= t('api_trainings.form.image_hint')
+      .form-text= t('api_trainings.form.image_hint')
 
-  .form-row
-    .form-group.col-md-6
-      = label_tag('training[training_by]', t('api_trainings.form.training_by'))
+  .row.g-2
+    .col-md-6.mb-3
+      = label_tag('training[training_by]', t('api_trainings.form.training_by'), class: 'form-label')
       %b.text-danger *
       = text_field_tag('training[training_by]', training['training_by'], required: true,
                        maxlength: 100, class: 'form-control')
-    .form-group.col-md-6
-      = label_tag('training[created_by]', t('api_trainings.form.created_by'))
+    .col-md-6.mb-3
+      = label_tag('training[created_by]', t('api_trainings.form.created_by'), class: 'form-label')
       %b.text-danger *
       = text_field_tag('training[created_by]', training['created_by'], required: true,
                        maxlength: 100, class: 'form-control')
 
-  .form-row
+  .row.g-2
     = render(ComboBox::AutocompleteComponent.new(label: t('api_trainings.form.swimmer'),
              base_name: 'swimmer', api_url: 'swimmers', jwt: current_user.jwt,
              selected_id: training['swimmer_id'], selected_label: swimmer_label,
-             wrapper_class: 'form-group col-md-8'))
-    .form-group.col-md-4
-      = label_tag('training[training_date]', t('api_trainings.form.training_date'))
+             wrapper_class: 'col-md-8 mb-3'))
+    .col-md-4.mb-3
+      = label_tag('training[training_date]', t('api_trainings.form.training_date'), class: 'form-label')
       %b.text-danger *
       = datetime_local_field_tag('training[training_date]',
                                  training['training_date']&.to_datetime&.strftime('%Y-%m-%dT%H:%M'),
                                  required: true, class: 'form-control')
 
-  .form-group
-    = label_tag('training[description]', t('api_trainings.form.description'))
+  .mb-3
+    = label_tag('training[description]', t('api_trainings.form.description'), class: 'form-label')
     = text_area_tag('training[description]', training['description'], rows: 8,
                     class: 'form-control font-monospace')
 
-  .form-group.text-center
+  .mb-3.text-center
     %button.btn.btn-lg.btn-primary{ type: 'submit' }
       %i.fa.fa-upload
       = submit_label
-    %a.btn.btn-lg.btn-outline-secondary.ml-2{ href: api_trainings_path }
+    %a.btn.btn-lg.btn-outline-secondary.ms-2{ href: api_trainings_path }
       = t('api_trainings.form.cancel')

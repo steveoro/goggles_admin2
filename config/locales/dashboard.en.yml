@@ -40,6 +40,7 @@ en:
         title: "Events and relays reservations"
     settings:
       title: "Settings"
+      remote_source: "(REMOTE %{url} settings)"
       connection:
         connect_to_label: "🖥 You are connected with (include protocol & port):"
         save_btn: "Save"

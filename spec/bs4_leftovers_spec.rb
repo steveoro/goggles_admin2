@@ -17,36 +17,25 @@ RSpec.describe 'Bootstrap 4 leftovers' do
   EXCLUDED = %w[app/javascript/bs4_compat.js].freeze
 
   # Folders that must have no BS4 token at all (path prefixes):
-  SWEPT = %w[app/components/shell app/views/layouts app/views/shell].freeze
+  SWEPT = %w[app/components/shell app/views/layouts app/views/shell app/views/season_board app/components/season_board app/views/devise app/views/settings
+             app/views/stats app/views/best_results app/views/goggles_cup
+             app/views/api_badges app/views/api_calendars app/views/api_categories app/views/api_import_queues
+             app/views/api_issues app/views/api_meeting_reservations app/views/api_meetings app/views/api_seasons
+             app/views/api_standard_timings app/views/api_swimmers app/views/api_swimming_pools
+             app/views/api_team_affiliations app/views/api_team_managers app/views/api_teams app/views/api_trainings
+             app/views/api_user_workshops app/views/api_users app/views/datagrid app/views/kaminari
+             app/components/grid app/components/issue app/components/switch app/components/combo_box].freeze
 
   # Current number of tokens per folder (see #folder_key for the grouping):
   BASELINE = {
     'app/views/data_fix' => 292,
-    'app/views/api_issues' => 56,
     'app/views/pull' => 34,
-    'app/components/season_board' => 23,
-    'app/views/goggles_cup' => 20,
-    'app/javascript/controllers' => 18,
-    'app/components/grid' => 15,
+    'app/javascript/controllers' => 17,
     'app/views/file_list' => 15,
-    'app/views/stats' => 14,
-    'app/components/issue' => 12,
-    'app/views/season_board' => 12,
     'app/components/data_fix' => 11,
-    'app/views/api_trainings' => 11,
     'app/views/pdf' => 11,
-    'app/views/best_results' => 6,
     'app/views/home' => 6,
-    'app/components/combo_box' => 5,
-    'app/views/devise' => 5,
-    'app/components' => 3,
-    'app/views/api_categories' => 4,
-    'app/views/datagrid' => 3,
-    'app/components/switch' => 2,
-    'app/views/api_meeting_reservations' => 2,
-    'app/views/api_meetings' => 2,
-    'app/views/settings' => 2,
-    'app/views/api_team_managers' => 1
+    'app/components' => 2
   }.freeze
 
   # Regex choices (each token is anchored so that it can't match inside a longer word or class):

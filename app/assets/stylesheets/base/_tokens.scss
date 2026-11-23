@@ -49,3 +49,16 @@
   --ga-env-production: var(--bs-danger);
   --ga-env-unknown: var(--bs-secondary);
 }
+
+// = Datagrid ordering (phase 04, G2) =
+// Background of the cells of the column the grid is ordered by, and color of its active order arrow.
+:root,
+[data-bs-theme='light'] {
+  --ga-grid-order-bg: #cebca630;
+  --ga-grid-order-fg: #eab000;
+}
+
+[data-bs-theme='dark'] {
+  --ga-grid-order-bg: #eab00024;
+  --ga-grid-order-fg: #ffc933;
+}

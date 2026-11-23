@@ -1,8 +1,8 @@
-.row
+%section.mb-3
   %h5.py-2= t('issues.from_title')
   %table.table.table-striped.table-sm#user-details
     %thead.text-center
-      %tr.table-info
+      %tr
         %th
           %code id
         %th
@@ -11,9 +11,9 @@
           %code name
         %th
           %code description
-    %tbody
+    %tbody.table-group-divider
       %tr
-        %td.text-right= user['id']
+        %td.text-end= user['id']
         %td
           %pre= user['email']
         %td= user['name']

@@ -1,31 +1,30 @@
-.row
-  %h5.py-2= t('issues.possible_fix')
+%h5.py-2= t('issues.possible_fix')
 %section#fix-details
   .row
-    .col-4.text-right
+    .col-4.text-end
       %code parent_meeting
-    .col.table-warning
+    .col.bg-warning-subtle
       #{parent_meeting['code']}
       %small
         %b (ID: #{req['parent_meeting_id']})
       @ season_id
       %b #{parent_meeting['season_id']}
   .row
-    .col-4.text-right
+    .col-4.text-end
       %code event_type
-    .col.table-warning
+    .col.bg-warning-subtle
       #{req['event_type_label']}
       %small
         %b (ID: #{req['event_type_id']})
   .row
-    .col-4.text-right
+    .col-4.text-end
       %code timing
-    .col.table-warning
+    .col.bg-warning-subtle
       #{req['minutes']}'#{req['seconds']}"#{req['hundredths']}
   .row
-    .col-4.text-right
+    .col-4.text-end
       %code swimmer
-    .col.table-warning
+    .col.bg-warning-subtle
       #{req['swimmer_label']} -
       %small
         %b (ID: #{req['swimmer_id']})
@@ -34,9 +33,9 @@
         %b (ID: #{swimmer_category.id})
   - if @swimmer_badges
     .row
-      .col-4.text-right
+      .col-4.text-end
         %code badges
-      .col.table-warning
+      .col.bg-warning-subtle
         - swimmer_badges.each do |badge|
           #{badge.team.editable_name}
           %small

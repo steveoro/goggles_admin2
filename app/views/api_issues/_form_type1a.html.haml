@@ -1,23 +1,22 @@
-.row
+%section.mb-3
   %h5.py-2= t('issues.what_title')
   %table.table.table-striped.table-sm#req-details
     %tbody
       %tr
-        %th.text-right
+        %th.text-end
           %code meeting_id
         %td
           %pre= req['meeting_id']
       %tr
-        %th.text-right
+        %th.text-end
           %code meeting_label
         %td
           %pre= req['meeting_label']
       %tr
-        %th.text-right
+        %th.text-end
           %code results_url
         %td
-          = link_to(req['results_url'])
+          = link_to(req['results_url'], req['results_url'], target: '_blank', rel: 'noopener') if req['results_url'].present?
 
-.container.text-center
-  .row-fluid.my-4
-    = render(partial: 'form_bottom_status_buttons', locals: { status: status, issue_id: issue_id })
+.text-center.my-4
+  = render(partial: 'form_bottom_status_buttons', locals: { status: status, issue_id: issue_id })

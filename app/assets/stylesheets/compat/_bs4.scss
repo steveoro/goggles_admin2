@@ -189,3 +189,11 @@ $bs4-dark-text-colors: warning, info, light;
 @include bs4-badges;
 @include bs4-forms;
 @include bs4-behaviour;
+
+// Permanent scope for the goggles_db engine partials (goggles_cup/_ranking, _base_timings), which are shared
+// with goggles_main (still on Bootstrap 4): wrapped in `%div{ data: { bs4_compat: true } }` by the views.
+[data-bs4-compat] {
+  @include bs4-spacing;
+  @include bs4-text;
+  @include bs4-badges;
+}

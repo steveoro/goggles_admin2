@@ -1,8 +1,8 @@
-.row
+%section.mb-3
   %h5.py-2= title
   %table.table.table-striped.table-sm#existing-results
     %thead.text-center
-      %tr.table-info
+      %tr
         %th
           %code id
         %th
@@ -19,21 +19,21 @@
           %code rank
         %th
           %code meeting_program_id
-    %tbody
+    %tbody.table-group-divider
       - if existing_mirs
         - existing_mirs.sort { |a, b| a['meeting_program_id'] <=> b['meeting_program_id'] }.each do |mir|
           -# Highlight table row if it contains anyone of the swimmer badges:
-          %tr.text-right{ class: swimmer_badge_ids.include?(mir['badge_id'].to_i) ? 'table-warning' : '' }
+          %tr.text-end{ class: swimmer_badge_ids.include?(mir['badge_id'].to_i) ? 'table-warning' : '' }
             %td= mir['id']
-            %td.text-left
+            %td.text-start
               #{mir['event_type']['code']}
               %small (#{mir['event_type']['id']})
               #{mir['category_type']['code']}
               %small (#{mir['category_type']['id']})
-            %td.text-left
+            %td.text-start
               #{mir['swimmer']['complete_name']}
               %small (#{mir['swimmer_id']})
-            %td.text-left
+            %td.text-start
               #{mir['team_affiliation']['name']}
               %small (#{mir['team_affiliation']['id']})
             %td= mir['badge_id']

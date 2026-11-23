@@ -14,18 +14,22 @@
   text-align: center;
 }
 
-th.ordered, td.ordered {
-    background-color: #cebca630;
-}
+// Column the grid is ordered by (classes emitted by app/views/datagrid/_head & _row):
+// BS5 paints the table cells with --bs-table-bg, so the tint goes through that variable.
+.datagrid-table {
+  th,
+  td {
+    &.datagrid-order-active-asc,
+    &.datagrid-order-active-desc {
+      --bs-table-bg: var(--ga-grid-order-bg);
+    }
+  }
 
-th.ordered.asc a.asc {
+  th.datagrid-order-active-asc a.datagrid-order-control-asc,
+  th.datagrid-order-active-desc a.datagrid-order-control-desc {
     font-weight: bold;
-    color: #eab000;
-}
-
-th.ordered.desc a.desc {
-    font-weight: bold;
-    color: #eab000;
+    color: var(--ga-grid-order-fg);
+  }
 }
 
 .table thead tr th {

@@ -19,6 +19,10 @@ RSpec.describe Grid::CreateNewButtonComponent, type: :component do
       expect(subject.css('a').attr('data-grid-edit-base-modal-id-value').value).to eq(namespace_base)
       expect(subject.css('a').attr('data-action').value).to eq('click->grid-edit#handleEdit')
     end
+    it 'leaves the opening of the modal to the controller (no Bootstrap data API toggle)' do
+      expect(subject.css('a').attr('data-bs-toggle')).to be_nil
+      expect(subject.css('a').attr('data-toggle')).to be_nil
+    end
   end
 
   context 'with valid default parameters,' do

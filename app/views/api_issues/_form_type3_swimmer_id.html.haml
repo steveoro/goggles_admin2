@@ -1,11 +1,11 @@
 = form_tag(api_issue_fix_path(id: issue_id), id: 'frm-type3', method: :post) do
-  .bg-light-green.p-1.pt-3.shadow-box
-    .row.p-3
-      .col.pl-0.pt-2
-        = label_tag(:swimmer_id, 'swimmer_id')
+  .bg-light-green.p-3.shadow-box
+    .row.g-2.align-items-center
+      .col-auto
+        = label_tag(:swimmer_id, 'swimmer_id', class: 'col-form-label')
       .col
         = number_field_tag(:swimmer_id, swimmer_id, required: true, autofocus: true, class: 'form-control')
-    .row-fluid.py-3
+    .py-3
       = submit_tag(t('issues.grid.buttons.fix_label'), id: 'btn-solve',
-                  class: "btn btn-sm btn-success #{processable ? '' : 'disabled'}", disabled: !processable,
-                  data: { turbo_confirm: t('issues.ask_confirmation') })
+                   class: "btn btn-sm btn-success #{processable ? '' : 'disabled'}", disabled: !processable,
+                   data: { turbo_confirm: t('issues.ask_confirmation') })
