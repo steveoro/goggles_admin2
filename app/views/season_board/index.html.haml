@@ -43,12 +43,14 @@
             = t('season_board.empty.check_now')
       - else
         .mb-2#season-board-filters
+          -# (theme-aware chips: the selected one is primary)
+          - chip_css = 'bg-body-tertiary text-body-emphasis border'
           = link_to(t('season_board.filters.all', count: @board.rows.size), season_board_path(toggles),
-                    class: "badge rounded-pill me-1 #{@state_filter ? 'text-bg-light border' : 'text-bg-dark'}")
+                    class: "badge rounded-pill me-1 #{@state_filter ? chip_css : 'text-bg-primary'}")
           - @state_counts.each do |state, count|
             = link_to("#{state == :in_review ? t('season_board.states.in_review_chip') : t("season_board.states.#{state}")} (#{count})",
                       season_board_path(toggles.merge(state: state)),
-                      class: "badge rounded-pill me-1 #{@state_filter == state.to_s ? 'text-bg-dark' : 'text-bg-light border'}",
+                      class: "badge rounded-pill me-1 #{@state_filter == state.to_s ? 'text-bg-primary' : chip_css}",
                       title: t("season_board.state_tooltips.#{state}"), data: { state_chip: state })
           %br
           %small
@@ -67,7 +69,7 @@
 
         .table-responsive
           %table.table.table-sm.table-hover.mb-3#season-board-table
-            %thead.table-light
+            %thead.table-body-tertiary
               %tr
                 %th= t('season_board.columns.date')
                 %th= t('season_board.columns.name')

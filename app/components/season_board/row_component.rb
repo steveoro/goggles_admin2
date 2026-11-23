@@ -12,12 +12,15 @@ module SeasonBoard
   # server-side. They are disabled while the row is busy (a crawl/extraction is queued or running).
   #
   class RowComponent < ViewComponent::Base
-    # Bootstrap 5 badge colour (text-bg-*) class for each state:
+    # Neutral badge, following the light/dark theme (Bootstrap's .text-bg-light stays light in dark mode):
+    NEUTRAL_CSS = 'bg-body-tertiary text-body-emphasis border'
+
+    # Bootstrap 5 badge colour class for each state:
     STATE_CSS = {
       cancelled: 'text-bg-dark', sql_pending: 'text-bg-danger', in_review: 'text-bg-warning', results_ready: 'text-bg-primary',
       structure_ready: 'text-bg-info', manifest_pending: 'text-bg-info', committed_with_results: 'text-bg-success',
-      structure_committed: 'text-bg-secondary', crawled_no_manifest: 'text-bg-light border',
-      archived_unlinked: 'text-bg-warning', link_not_crawled: 'text-bg-light border', not_linked: 'text-bg-light border'
+      structure_committed: 'text-bg-secondary', crawled_no_manifest: NEUTRAL_CSS,
+      archived_unlinked: 'text-bg-warning', link_not_crawled: NEUTRAL_CSS, not_linked: NEUTRAL_CSS
     }.freeze
 
     # Flags rendered as warning badges
@@ -60,7 +63,7 @@ module SeasonBoard
     end
 
     def state_css
-      STATE_CSS.fetch(row.state, 'text-bg-light border')
+      STATE_CSS.fetch(row.state, NEUTRAL_CSS)
     end
 
     def state_label

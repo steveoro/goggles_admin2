@@ -4,6 +4,10 @@ import { Controller } from "@hotwired/stimulus"
 // The choice is stored in the 'theme' cookie, which the layout reads (ApplicationHelper#current_theme).
 //
 // Targets: icon (optional) - its Font Awesome class mirrors the current mode.
+//
+// Events: after each switch dispatches a bubbling 'theme:changed' event (detail: { theme: 'light'|'dark' }),
+// so that widgets painted with colours read from CSS variables (e.g. chart_api_controller.js) can redraw;
+// listen on document or window.
 export default class extends Controller {
   static targets = ["icon"]
 
@@ -16,6 +20,7 @@ export default class extends Controller {
     document.documentElement.dataset.bsTheme = next
     document.cookie = `theme=${next}; path=/; max-age=31536000; SameSite=Lax`
     this.refresh()
+    this.dispatch("changed", { detail: { theme: next } })
   }
 
   get current() {

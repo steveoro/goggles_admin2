@@ -1,7 +1,7 @@
 // LegacyAutoCompleteComponent styles
 //
 // The dropdown is appended to document.body by the Stimulus controller
-// (dropdownParent: 'body') so it is not clipped by .card { overflow: hidden; }
+// (dropdownParent: 'body') so it is not clipped by containers that hide their overflow
 // and can overlay the lower edges of Bootstrap cards.
 
 .legacy-auto-complete {

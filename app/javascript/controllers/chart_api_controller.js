@@ -43,7 +43,7 @@ import { Chart } from 'chart.js/auto'
  *                    }, { ... }
  *
  * == Actions:
- * (no actions, just setup)
+ * (no actions, just setup; the chart redraws with the new colours on each 'theme:changed' event)
  *
  * @author Steve A.
  */
@@ -61,10 +61,15 @@ export default class extends Controller {
    */
   connect() {
     this.chart = null
+    // Redraw with the new colours when the light/dark toggle switches the theme (theme_controller.js):
+    this.onThemeChanged = () => this.applyThemeColors()
+    document.addEventListener('theme:changed', this.onThemeChanged)
+
     if (this.hasChartTarget && this.hasDaysValue && this.hasCallsValue && this.hasUsersValue) {
       // DEBUG
       // console.log('Target & min values found. Setting up chart...')
 
+      const colors = this.themeColors()
       const labels = this.daysValue
       const data = {
         labels: labels,
@@ -74,7 +79,7 @@ export default class extends Controller {
             label: 'API calls/day',
             data: this.callsValue,
             fill: false,
-            borderColor: this.cssColor('--bs-info', 'rgb(75, 192, 192)'),
+            borderColor: colors.calls,
             tension: 0.1
           },
           {
@@ -82,10 +87,10 @@ export default class extends Controller {
             label: 'Users/day',
             data: this.usersValue,
             fill: true,
-            borderColor: this.cssColor('--bs-danger', 'rgb(128, 64, 64)'),
+            borderColor: colors.users,
             tension: 0.1
           }
-        ].concat(this.bubblesValue)
+        ].concat(this.bubblesValue.map((bubbles) => ({ ...bubbles, ...this.bubbleColors(colors) })))
       }
 
       const config = {
@@ -93,15 +98,15 @@ export default class extends Controller {
         data: data,
         options: {
           responsive: true,
-          color: this.cssColor('--bs-body-color', '#212529'),
+          color: colors.text,
           scales: {
             x: {
-              ticks: { color: this.cssColor('--bs-secondary-color', '#6c757d') },
-              grid: { color: this.cssColor('--bs-border-color', '#dee2e6') }
+              ticks: { color: colors.ticks },
+              grid: { color: colors.grid }
             },
             y: {
-              ticks: { color: this.cssColor('--bs-secondary-color', '#6c757d') },
-              grid: { color: this.cssColor('--bs-border-color', '#dee2e6') }
+              ticks: { color: colors.ticks },
+              grid: { color: colors.grid }
             }
           },
           plugins: {
@@ -118,13 +123,63 @@ export default class extends Controller {
    * Releases the Chart.js instance (the canvas may be reused on Turbo page restores).
    */
   disconnect() {
+    document.removeEventListener('theme:changed', this.onThemeChanged)
     this.chart?.destroy()
     this.chart = null
   }
 
   /**
+   * Re-reads the theme colours from the CSS variables and redraws the chart with them
+   * (invoked on each 'theme:changed' event; no-op without a chart).
+   */
+  applyThemeColors() {
+    if (!this.chart) return
+
+    const colors = this.themeColors()
+    const { datasets } = this.chart.data
+    datasets[0].borderColor = colors.calls
+    datasets[1].borderColor = colors.users
+    datasets.slice(2).forEach((bubbles) => Object.assign(bubbles, this.bubbleColors(colors)))
+
+    const { options } = this.chart
+    options.color = colors.text
+    for (const axis of ['x', 'y']) {
+      options.scales[axis].ticks.color = colors.ticks
+      options.scales[axis].grid.color = colors.grid
+    }
+    this.chart.update('none')
+  }
+
+  /**
+   * Returns the chart colours for the theme currently in force.
+   *
+   * @returns {Object} { calls, users, bubbles, text, ticks, grid } colour strings
+   */
+  themeColors() {
+    return {
+      calls: this.cssColor('--bs-info', 'rgb(75, 192, 192)'),
+      users: this.cssColor('--bs-danger', 'rgb(128, 64, 64)'),
+      // (translucent black in light mode, as the Chart.js default; translucent white in dark mode)
+      bubbles: `rgba(${this.cssColor('--bs-emphasis-color-rgb', '0, 0, 0')}, 0.1)`,
+      text: this.cssColor('--bs-body-color', '#212529'),
+      ticks: this.cssColor('--bs-secondary-color', '#6c757d'),
+      grid: this.cssColor('--bs-border-color', '#dee2e6')
+    }
+  }
+
+  /**
+   * Returns the colour options of a per-route bubble dataset (the server sends none).
+   *
+   * @param {Object} colors the result of themeColors()
+   * @returns {Object} { backgroundColor, borderColor }
+   */
+  bubbleColors(colors) {
+    return { backgroundColor: colors.bubbles, borderColor: colors.bubbles }
+  }
+
+  /**
    * Reads a CSS custom property from the document root, so that the chart follows the
-   * Bootstrap light/dark theme (the chart is drawn when the page connects, with the theme in force).
+   * Bootstrap light/dark theme in force (on connect and after each theme switch).
    *
    * @param {String} name CSS variable name, including the leading dashes
    * @param {String} fallback color used when the variable is not defined

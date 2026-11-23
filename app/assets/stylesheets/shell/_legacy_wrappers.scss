@@ -1,7 +1,7 @@
 // = Legacy per-view wrappers inside the app shell =
 //
 // Un-swept views still carry the old 3-column layout (.wrapper-body > .spacer-left + .main-content +
-// .spacer-right, see full_bleed_layout.scss) and a #footer.fixed-bottom placeholder: inside the shell
+// .spacer-right, see compat/_full_bleed_layout.scss) and a #footer.fixed-bottom placeholder: inside the shell
 // they render full-width and without the footer. Each view drops its wrappers in the phase that sweeps it.
 .app-content .wrapper-body {
   display: block;
@@ -14,4 +14,12 @@
 
 .app-content #footer.fixed-bottom {
   display: none;
+}
+
+// The old global `.card { overflow: hidden }` (from the deleted dashboard.scss) applies only to the cards of
+// the pages still on the compat layer, which rely on it: e.g. the Data-Fix result cards clip their tables,
+// wider than the cards, instead of spilling them over the next column. Swept pages don't need it (and it
+// clipped dropdowns): each later phase drops its pages from this list when it rewrites them.
+.app-content:is([data-page='home'], [data-page='push'], [data-page='pull'], [data-page='pdf'], [data-page^='data_fix']) .card {
+  overflow: hidden;
 }

@@ -1,3 +1,6 @@
+// = Generic helper classes =
+
+// Pastel row/panel tints (values from base/_tokens.scss, which flip with the color mode):
 .bg-light-blue {
   background-color: var(--ga-tint-blue);
 }
@@ -37,6 +40,11 @@
   background-color: var(--ga-tint-red2);
 }
 
+// (also used by the goggles_db GoggleCup partials)
+.small-text {
+  font-size: 0.80rem;
+}
+
 .shadow-box {
   border-radius: 4px;
   box-shadow: 0 2px 8px rgba(50, 50, 50, 0.33);
@@ -46,4 +54,26 @@
   border-radius: 12px;
   height: 24px;
   width: 24px;
+}
+
+// Big red oblique stamp ("Cancelled"/"Void"):
+.cancelled {
+  float: right;
+  transform: rotate(350deg) translate(-50%, 25%);
+  transform-origin: center;
+  text-align: center;
+  opacity: 0.85;
+  font-size: 1.25em;
+  color: #F00;
+  text-transform: uppercase;
+  font-family: 'Saira Stencil One';
+}
+
+// Timer LEDs:
+.timer-leds {
+  text-align: center;
+  font-size: 2em;
+  color: rgb(33, 21, 146);
+  text-transform: uppercase;
+  font-family: var(--ga-font-mono);
 }

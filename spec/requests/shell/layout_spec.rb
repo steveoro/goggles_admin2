@@ -40,7 +40,7 @@ RSpec.describe 'Application shell' do
       expect(html.at_css('.app-shell > aside.app-sidebar#app-sidebar')).to be_present
       expect(html.at_css('.app-shell .app-main > header.app-topbar.sticky-top #api-target-badge')).to be_present
       expect(html.at_css('.app-main > #notify > #sticky-alerts')).to be_present
-      expect(html.at_css('.app-main > main.app-content#content')).to be_present
+      expect(html.at_css('.app-main > main.app-content#content[data-page="season_board"]')).to be_present
       expect(html.at_css('turbo-frame#shell-status[loading="lazy"]')['src']).to eq(shell_status_path)
       expect(APIProxy).not_to have_received(:call)
       expect(APIProxy).not_to have_received(:ping)

@@ -49,6 +49,10 @@ Six phases turning a results source file into production data; docs in `docs/dat
 
 ## Front-end
 Bootstrap 5.3 (vendored). Temporary Bootstrap 4 compat layer: `app/assets/stylesheets/compat/_bs4.scss` and `app/javascript/bs4_compat.js`; `spec/bs4_leftovers_spec.rb` ratchets the remaining BS4 tokens per folder (`BASELINE`/`SWEPT`). Rule: native Bootstrap 5 markup in new code; the compat layer is temporary.
+- App shell (`layouts/application.html.haml`, `app/components/shell/`): sidebar (cookie-collapsed, offcanvas below `lg`), sticky top bar (API target badge, lazy status-pill frame, theme toggle, user menu), `main.app-content[data-page=<controller_path>]`. Pages start with `Shell::PageHeaderComponent` (breadcrumbs, title, count, actions).
+- `Shell::Navigation` (`app/services/shell/navigation.rb`) is the single registry for the sidebar and breadcrumbs: a new HTML page must add an item (or a contextual child, `sidebar: false`), otherwise `spec/services/shell/navigation_spec.rb` fails.
+- Status pills: `SystemStatus::Registry` probes; `:snapshot` probes only read ops snapshots written by `SystemStatus::RefreshJob`, so rendering the shell never calls the API.
+- Stylesheets: `base/` (tokens `--ga-*`, fonts, helpers), `shell/`, `components/`, `pages/`, `compat/`; colours come from Bootstrap/`--ga-*` variables so both themes work. The goggles_db partials (GogglesCup ranking/base timings) stay BS4 inside a permanent `[data-bs4-compat]` scope.
 
 ## Conventions
 - Every Ruby file starts with `# frozen_string_literal: true`.

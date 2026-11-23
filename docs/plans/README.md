@@ -75,7 +75,7 @@ These are restated in every phase plan.
 | 01 | [Safety net, ops DB, event log, quick wins](done/01-safety-net-ops-db.md) | File lists open on the current season and stay there | none | M | done (0.10.79) |
 | 02 | [Legacy Data-Fix retirement (team scores ported first)](done/02-legacy-retirement.md) | One Data-Fix entry point (PDF scan opens v2); staging-environment leftovers gone | 01 | L | done (0.10.80) |
 | 03 | [Bootstrap 5.3 switch + compatibility layer](done/03-bootstrap-5-switch.md) | Same pages, no jQuery, tooltips work in live content, light/dark | 01, 02 | M | done (0.10.81) |
-| 04 | [App shell + native sweep of stable pages](04-app-shell.md) | Sidebar, top bar with API target, breadcrumbs, toasts | 03 | L | planned |
+| 04 | [App shell + native sweep of stable pages](done/04-app-shell.md) | Sidebar, top bar with API target, breadcrumbs, toasts | 03 | L | done (0.10.83) |
 | 05 | [Inbox dashboard](05-inbox-dashboard.md) | "Needs you" list, in-progress jobs, season progress, system status, KPI strip | 01, 04 | L | planned |
 | 06 | [Closed-season health report](06-season-health-report.md) | Seasons x checks matrix, drill-down, acknowledge/ignore, how-to-fix | 01, 04, 05 | L | planned |
 | 07 | [SQL Outbox](07-sql-outbox.md) | One ordered list of scripts; push one/all; no folder picking | 01, 04, 05 | L | planned |

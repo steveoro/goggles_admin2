@@ -1,5 +1,11 @@
 // = Design tokens =
 //
+// Monospaced "LED" font (base/_fonts.scss), falling back to the Bootstrap monospace stack:
+:root {
+  --ga-font-mono: 'Share Tech Mono', var(--bs-font-monospace);
+}
+
+//
 // Pastel row/panel tints behind the `.bg-light-*` helper classes, as CSS custom properties:
 // light values on :root, darker (still distinguishable) ones in Bootstrap's dark color mode.
 // Text keeps the Bootstrap body color, which flips with `data-bs-theme`.
@@ -61,4 +67,15 @@
 [data-bs-theme='dark'] {
   --ga-grid-order-bg: #eab00024;
   --ga-grid-order-fg: #ffc933;
+}
+
+// = Slider switches (components/_slider_switch.scss) =
+// Track of an unchecked switch (the knob stays white).
+:root,
+[data-bs-theme='light'] {
+  --ga-switch-off-bg: #ccc;
+}
+
+[data-bs-theme='dark'] {
+  --ga-switch-off-bg: #6c757d;
 }

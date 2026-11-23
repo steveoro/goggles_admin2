@@ -1,7 +1,8 @@
 /*
-    == 3-column flex layout ==
+    == Legacy 3-column flex layout (un-swept views; deleted in phase 15) ==
 
-Side columns disappear depending on media query.
+Inside the app shell the side columns are hidden (shell/_legacy_wrappers.scss);
+outside it they disappear depending on media query.
 
 Structure:
 

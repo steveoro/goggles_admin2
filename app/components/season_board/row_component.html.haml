@@ -1,5 +1,5 @@
 %tr{ id: "season-board-row-#{row.fin_event_id || row.key.to_s.parameterize}",
-     class: ('table-secondary text-body-secondary' if row.state == :cancelled),
+     class: ('table-body-secondary' if row.state == :cancelled),
      data: { state: row.state, busy: row.busy?.to_s } }
   %td.text-nowrap
     = row.date_text

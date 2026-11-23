@@ -43,7 +43,8 @@
                 = render(partial: 'goggles/ops_setup_notice', locals: { state: ops_state })
               -# Pending FIN "Riepilogo Eventi" change alert (live updates via AppNotificationsChannel):
               = render(FedernuotoWatchAlertComponent.from_store)
-          %main.app-content#content
+          -# (data-page: the controller path, a hook for page-scoped CSS)
+          %main.app-content#content{ data: { page: controller_path } }
             = yield
     - else
       -# (Sign-in page: no shell, no sticky alerts)

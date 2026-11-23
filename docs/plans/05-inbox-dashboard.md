@@ -18,7 +18,7 @@ Replace the link-grid home page (`HomeController#index`) with an inbox-first das
 ## Depends on
 
 - **01**: `Ops::Event`, `Ops::Setting`, `Ops::Snapshot` (key + JSON + `taken_at`), `Ops.safely`, the event instrumentation (Phase 6 commit, push upload, purge, board crawl/extract/link, watcher change), and the per-source purge quick win.
-- **04**: shell layout, `Shell::Navigation`, `Shell::PageHeaderComponent`, toasts, the `SystemStatus::Probe` registry and top-bar pills, `Shell::ApiTarget`.
+- **04**: shell layout, `Shell::Navigation`, `Shell::PageHeaderComponent`, toasts, the `SystemStatus::Probe` registry and top-bar pills, `Shell::APITarget`.
 - Softer link (not a hard dependency): **02** has already removed `home#latest_updates` and its port-446 call (`home_controller.rb:31-44`, `app/views/home/latest_updates.haml`). If that is still there when 05 starts, delete it in step 1.
 
 ## Invariants (from the master plan)
@@ -61,7 +61,7 @@ Replace the link-grid home page (`HomeController#index`) with an inbox-first das
 
 **Dashboard core** (new `app/controllers/dashboard_controller.rb`; `root to: 'dashboard#index'`; `get 'home/index', to: 'dashboard#index', as: 'home_index'` kept so `Footer::MainComponent` and the purge redirect still work):
 - `index` renders the layout only (no data loading). Frame actions: `needs_you`, `in_progress`, `season_progress`, `system`, `activity`, `kpis`, plus `POST refresh_kpis`. `api_offline_allowed?` is true for all of them.
-- (This removes home's own `Footer::MainComponent` render only; the component itself is deleted in phase 15. The `home_index` route alias stays as written.) Delete `HomeController`, `app/views/home/*` (`index`, `_top_header`, `_data_import`, `_tools`, `_manage_entities`) and `app/assets/stylesheets/home.scss`. Rewrite `spec/requests/home_controller_spec.rb` as `spec/requests/dashboard_controller_spec.rb`.
+- (This removes home's own `Footer::MainComponent` render only; the component itself is deleted in phase 15. The `home_index` route alias stays as written.) Delete `HomeController`, `app/views/home/*` (`index`, `_top_header`, `_data_import`, `_tools`, `_manage_entities`) and `app/assets/stylesheets/pages/_home.scss` (plus `home` from the compat-page `.card { overflow: hidden }` list in `shell/_legacy_wrappers.scss`). Rewrite `spec/requests/home_controller_spec.rb` as `spec/requests/dashboard_controller_spec.rb`.
 
 **Inbox** (`app/services/inbox/`):
 - `Inbox::Item`, a `Data.define` with:
@@ -114,17 +114,17 @@ Replace the link-grid home page (`HomeController#index`) with an inbox-first das
 - "In progress": `SeasonBoard::ActivityLog#active` (`activity_log.rb:99-102`), plus `SolidQueue::ClaimedExecution` and `ReadyExecution` counts per queue, plus next runs from `SeasonBoard::ActivityStripComponent#next_runs`.
 - Season progress: `SeasonBoard::Snapshot#state_counts`. Each segment links to `season_board_path(state:)`; the filter exists at `season_board_controller.rb:31`.
 
-**System column:** extend the 04 `SystemStatus::Probe` / `Registry` (it does not recreate it). 04 already ships the `api`, `crawler`, `queue` and `fin_watch` probes; this phase refines their levels as below and adds `Cable`, `OpsDb` and `DriftV0`. Each probe returns `label`, `level` (`ok`/`warn`/`error`/`unknown`), `detail`, `checked_at` and an optional `action`.
+**System column:** extend the 04 `SystemStatus::Probe` / `Registry` (it does not recreate it). 04 already ships the `api`, `crawler`, `queue` and `fin_watch` probes; this phase refines their levels as below and adds `CableProbe`, `OpsDbProbe` and `DriftV0Probe` (class names under `SystemStatus::`; `API` and `FIN` are inflection acronyms, so the 04 classes are `APIProbe` and `FINWatchProbe`; add a class name to `SystemStatus::Registry::PROBES`). Each probe returns `label`, `level` (`ok`/`warn`/`error`/`unknown`), `detail`, `checked_at` and an optional `action`.
 
 | Probe | Reads | Levels |
 |---|---|---|
-| `Api` (04) | `Shell::ApiTarget` / `Ops::Snapshot` `api.status:<base_url>` | ok: reachable, snapshot under 10 min old; warn: older; error: unreachable; unknown: never pinged or API-offline session |
-| `Crawler` | `crawler/crawler-status.json` (written by `crawler/server/utility.js:156`), parsed with `CrawlerClient::Status.from`, and the `CrawlerLauncher::PID_PATH` process | ok: idle; ok, "busy i/n": running; warn: `stale?(stale_after: 30.min)`; error: no process, with action "Start crawler" (`start_crawler_path`) |
-| `Queue` | `SolidQueue::Process` (`kind`, `last_heartbeat_at`, `metadata` queues) | ok: supervisor and one worker per queue in `config/queue.yml`, beat under 1 min; warn: a queue has no worker; error: no supervisor. Detail says "SOLID_QUEUE_IN_PUMA=false: run bin/jobs" when that variable is set (`config/puma.rb:45`) |
-| `Cable` | `configs_for(env_name:, name: 'cable')` and `SolidCable::Message.table_exists?` | ok; warn: not configured ("live updates by polling") |
-| `FinWatcher` | `StateStore#read` `last_checked`, `last_error` | ok: checked under 75 min ago; warn: older; error: `last_error` present. Action "Check now" (`federnuoto_watch_check_path`) |
-| `OpsDb` | `Ops.available?` | ok; error: "run bin/rails ops:prepare" |
-| `DriftV0` | `Ops::Snapshot` `drift_v0:<api_url>` | ok / warn / unknown (below); error is reserved for 08 |
+| `APIProbe` (04) | `Shell::APITarget` / `Ops::Snapshot` `api.status:<base_url>` | ok: reachable, snapshot under 10 min old; warn: older; error: unreachable; unknown: never pinged or API-offline session |
+| `CrawlerProbe` (04) | `crawler/crawler-status.json` (written by `crawler/server/utility.js:156`), parsed with `CrawlerClient::Status.from`, and the `CrawlerLauncher::PID_PATH` process | ok: idle; ok, "busy i/n": running; warn: `stale?(stale_after: 30.min)`; error: no process, with action "Start crawler" (`start_crawler_path`) |
+| `QueueProbe` (04) | `SolidQueue::Process` (`kind`, `last_heartbeat_at`, `metadata` queues) | ok: supervisor and one worker per queue in `config/queue.yml`, beat under 1 min; warn: a queue has no worker; error: no supervisor. Detail says "SOLID_QUEUE_IN_PUMA=false: run bin/jobs" when that variable is set (`config/puma.rb:45`) |
+| `CableProbe` | `configs_for(env_name:, name: 'cable')` and `SolidCable::Message.table_exists?` | ok; warn: not configured ("live updates by polling") |
+| `FINWatchProbe` (04) | `StateStore#read` `last_checked`, `last_error` | ok: checked under 75 min ago; warn: older; error: `last_error` present. Action "Check now" (`federnuoto_watch_check_path`) |
+| `OpsDbProbe` | `Ops.available?` | ok; error: "run bin/rails ops:prepare" |
+| `DriftV0Probe` | `Ops::Snapshot` `drift_v0:<api_url>` | ok / warn / unknown (below); error is reserved for 08 |
 
 **Activity feed:** the last 20 `Ops::Event` rows, with "all events" linking to a paginated `/activity` page (a contextual child of the dashboard in `Shell::Navigation`; step 3 and step 5 add the `remote_writes` and `data_fix_sessions` entries, and the 04 navigation spec's route-coverage check stays green).
 
@@ -189,7 +189,7 @@ Ops migrations in `db/ops_migrate/`, applied with `bin/rails ops:prepare`:
 3. **Remote-write log.** Migration, `Ops::RemoteWrite`, the `APIProxy.call` hook, `Current`, the `/remote_writes` page with its `Shell::Navigation` entry. User-visible: CHANGELOG + PATCH.
 4. **Drift v0.** `Drift::LatestUpdatesCheck`, `DriftCheckJob` plus its recurring entry, the `DriftV0` probe. User-visible (status row): CHANGELOG + PATCH.
 5. **Data-Fix sessions list.** `DataFix::SessionIndex`, `DataFix::StagingPurger`, `/data_fix/sessions` with its navigation entry. "Clean slate" stays on the old home page until step 6. User-visible: CHANGELOG + PATCH.
-6. **Dashboard.** Inbox core, the v1 sources, the components, `DashboardController` with its frames, probes, activity feed, KPI strip and season progress, routes. Delete `HomeController`, `app/views/home/*`, `home.scss`, `DataFixController#purge` and its route. A live-frame Stimulus controller (generalised from `season_board_controller.js`) reloads frames on the `AppNotificationsChannel` ping, or every 20 s while something is busy. User-visible: CHANGELOG + PATCH.
+6. **Dashboard.** Inbox core, the v1 sources, the components, `DashboardController` with its frames, probes, activity feed, KPI strip and season progress, routes. Delete `HomeController`, `app/views/home/*`, `pages/_home.scss`, `DataFixController#purge` and its route. A live-frame Stimulus controller (generalised from `season_board_controller.js`) reloads frames on the `AppNotificationsChannel` ping, or every 20 s while something is busy. User-visible: CHANGELOG + PATCH.
 7. **Docs.** `docs/season_board.md` (snapshot, ActionPaths), a new short `docs/dashboard.md` with the `Inbox::Source` and probe interfaces for 06, 07 and 10, the CLAUDE.md "Other subsystems" line. CHANGELOG line, no bump.
 
 ## Specs and manual verification

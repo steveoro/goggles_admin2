@@ -1,6 +1,22 @@
 // tom-select customizations for Bootstrap 5 integration
 // The base tom-select bootstrap5 theme is vendored (vendor/assets/stylesheets/tom-select) and linked by the layout.
 
+// The vendored theme hard-codes a dark text colour (#343a40) on the control, its input and the dropdown,
+// unreadable in dark mode: follow the Bootstrap color mode instead (as .form-control does).
+.ts-control,
+.ts-control input,
+.ts-dropdown {
+  color: var(--bs-body-color);
+}
+
+.ts-dropdown .create {
+  color: var(--bs-secondary-color);
+}
+
+.ts-wrapper .dropdown-header-close {
+  color: var(--bs-body-color);
+}
+
 .ts-wrapper {
   width: 100%;
   box-sizing: border-box;

@@ -1,23 +1,32 @@
 // Main dartsass entrypoint for goggles_admin2.
 // Bootstrap 5.3, Font Awesome 6 (+ v4 shims) and the tom-select bootstrap5 theme are vendored
 // under vendor/assets/stylesheets and linked by the layout before this file (not @use'd here).
-// Local partials below:
+//
+// Local partials, by folder:
+// - base/:       design tokens (CSS custom properties), web fonts, generic helpers & animations;
+// - compat/:     temporary Bootstrap 4 class compatibility layer + legacy 3-column view wrappers;
+// - shell/:      app shell (sidebar, top bar, page header) + neutralised legacy per-view wrappers;
+// - components/: widgets shared by several pages (table tints, tom-select, datagrid, switches, ...);
+// - pages/:      page-specific rules.
 
-@use 'custom_fonts';
 @use 'base/tokens';
-// Temporary Bootstrap 4 class compatibility layer (see compat/_bs4.scss):
+@use 'base/fonts';
+@use 'base/helpers';
+@use 'base/animations';
+
+// (see compat/_bs4.scss; both files go in phase 15)
 @use 'compat/bs4';
-// App shell (sidebar, top bar, page header) + neutralised legacy per-view wrappers:
+@use 'compat/full_bleed_layout';
+
 @use 'shell/layout';
 @use 'shell/legacy_wrappers';
-@use 'custom_styles';
-@use 'tom_select_customizations';
-@use 'legacy_auto_complete_component';
-@use 'datagrid_customizations';
-@use 'devise_customizations';
-@use 'flashing_animation';
-@use 'full_bleed_layout';
-@use 'slider_switch_component';
-@use 'home';
-@use 'dashboard';
-@use 'data_fix';
+
+@use 'components/tables';
+@use 'components/tom_select';
+@use 'components/legacy_auto_complete';
+@use 'components/datagrid';
+@use 'components/slider_switch';
+
+@use 'pages/home';
+@use 'pages/goggles_cup';
+@use 'pages/data_fix';
