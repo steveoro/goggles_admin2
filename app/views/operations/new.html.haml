@@ -1,0 +1,64 @@
+-#
+  The form of one maintenance operation (OperationsController#new; re-rendered by Maintenance::RunsController#create
+  when the params are invalid): prefilled from a health finding or from the link params. It queues the dry run only.
+= render(Shell::PageHeaderComponent.new(title: @operation_class.title, subtitle: t('maintenance.form.subtitle'))) do |header|
+  - header.with_actions do
+    = link_to(t('maintenance.run.back'), operations_path, class: 'btn btn-sm btn-outline-secondary')
+
+- unless Maintenance.enabled?
+  .alert.alert-warning#operations-disabled{ role: 'alert' }= t('maintenance.disabled')
+
+.row.g-3#operation-form-page{ data: { operation_key: @operation_class.key } }
+  .col-12.col-xl-7
+    %section.card
+      .card-body
+        %p.mb-3= @operation_class.description
+        - if @finding
+          .alert.alert-info.small#operation-form-finding{ role: 'status' }
+            = t('maintenance.form.from_finding')
+            = link_to(@finding.display_title, health_finding_path(@finding), class: 'alert-link')
+        - if @operation.errors.any?
+          .alert.alert-danger#operation-form-errors{ role: 'alert' }
+            %p.mb-1= t('maintenance.form.errors_title')
+            %ul.mb-0
+              - @operation.errors.full_messages.each do |message|
+                %li= message
+        = form_with(scope: :operation, url: operation_runs_path(key: @operation_class.key), method: :post, id: 'frm-operation',
+                    data: { turbo_frame: '_top' }) do |f|
+          = hidden_field_tag(:finding_id, @finding&.id, id: nil) if @finding
+          = hidden_field_tag(:origin, @origin, id: nil)
+          - flag_fields, integer_fields = @operation_class.fields.partition { |field| field.type == :flag }
+          .row.g-2.mb-3
+            - integer_fields.each do |field|
+              .col-12.col-md-6
+                = f.label(field.name, @operation_class.human_attribute_name(field.name), class: 'form-label small mb-0')
+                - value = @operation.param_value(field.name)
+                - if field.type == :integer
+                  = f.number_field(field.name, value:, class: 'form-control form-control-sm', min: 1, step: 1)
+                - else
+                  = f.text_field(field.name, value:, class: 'form-control form-control-sm')
+          - if flag_fields.any?
+            %fieldset.mb-3
+              %legend.h6= t('maintenance.form.options')
+              - flag_fields.each do |field|
+                .form-check
+                  = check_box_tag("operation[#{field.name}]", '1', @operation.flag?(field.name), class: 'form-check-input',
+                                                                                                 id: "operation_#{field.name}")
+                  = label_tag("operation_#{field.name}", @operation_class.human_attribute_name(field.name), class: 'form-check-label')
+          .d-flex.flex-wrap.gap-2
+            = button_tag(type: 'submit', class: 'btn btn-primary', id: 'btn-operation-preview', disabled: !Maintenance.enabled?) do
+              %i.fa-solid.fa-magnifying-glass{ 'aria-hidden' => 'true' }
+              = t('maintenance.form.submit')
+            = link_to(t('maintenance.form.back'), @finding ? health_finding_path(@finding) : operations_path, class: 'btn btn-outline-secondary')
+  .col-12.col-xl-5
+    %section.card
+      .card-body.small
+        %dl.row.mb-0
+          %dt.col-sm-5.text-body-secondary= t('maintenance.index.confirmation')
+          %dd.col-sm-7.mb-1= t("maintenance.confirmations.#{@operation_class.confirmation}")
+          %dt.col-sm-5.text-body-secondary= t('maintenance.index.fixes')
+          %dd.col-sm-7.mb-1
+            - if @operation_class.fixes.any?
+              = @operation_class.fixes.map { |key| Health::Registry.find(key)&.title || key }.join(', ')
+            - else
+              = t('maintenance.index.follow_up_only')

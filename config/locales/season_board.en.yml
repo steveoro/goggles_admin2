@@ -122,7 +122,7 @@ en:
       link_secondary: 'Link to meeting...'
       link_select_prompt: 'Select a calendar row...'
       no_link_candidates: 'no unlinked calendar to link to'
-      busy_tooltip: 'A crawl or extraction is already queued or running for this meeting'
+      busy_tooltip: 'A crawl, extraction or preparation is already queued or running for this meeting'
       no_url: 'No FIN link available'
     orphans:
       title: 'Calendar rows not on the FIN list (%{count})'

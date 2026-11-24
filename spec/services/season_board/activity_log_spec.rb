@@ -19,7 +19,7 @@ RSpec.describe SeasonBoard::ActivityLog do
   end
 
   it 'returns empty results when the file is missing' do
-    expect(log.for('150091')).to eq(crawl: nil, extract: nil)
+    expect(log.for('150091')).to eq(crawl: nil, extract: nil, prepare: nil)
     expect(log.busy?('150091')).to be false
     expect(log.active).to eq([])
     expect(log.last_attempt_at('150091', :crawl)).to be_nil
@@ -28,7 +28,7 @@ RSpec.describe SeasonBoard::ActivityLog do
   it 'tolerates an invalid file' do
     FileUtils.mkdir_p(File.dirname(log_path))
     File.write(log_path, '{nope')
-    expect(log.for('150091')).to eq(crawl: nil, extract: nil)
+    expect(log.for('150091')).to eq(crawl: nil, extract: nil, prepare: nil)
   end
 
   describe 'the queue! -> start! -> finish! lifecycle' do

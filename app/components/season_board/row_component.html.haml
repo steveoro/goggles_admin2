@@ -78,3 +78,22 @@
                        prompt: t('season_board.actions.link_select_prompt'), id: nil,
                        class: 'form-select form-select-sm me-1', style: 'min-width: 0', required: true)
           %button.btn.btn-sm.btn-outline-secondary.flex-shrink-0{ type: 'submit' }= t('season_board.actions.link')
+    - if secondary_prepare? || hold_toggle?
+      .d-flex.flex-wrap.align-items-center.gap-2.mt-1.season-board-pipeline-actions
+        - if secondary_prepare?
+          = form_with(url: season_board_prepare_path, method: :post, authenticity_token: false,
+                      class: 'd-inline', data: { turbo_frame: '_top' }) do
+            = hidden_field_tag(:fin_event_id, row.fin_event_id, id: nil)
+            = hidden_field_tag(:authenticity_token, csrf_token, id: nil) if csrf_token
+            %button.btn.btn-sm.btn-outline-secondary{ type: 'submit', title: t('pipeline_automation.row.prepare_tooltip'),
+                                                      data: { pipeline_action: 'prepare' } }
+              = t('pipeline_automation.row.prepare')
+        - if hold_toggle?
+          = form_with(url: season_board_hold_path, method: :post, authenticity_token: false,
+                      class: 'd-inline', data: { turbo_frame: '_top' }) do
+            = hidden_field_tag(:fin_event_id, row.fin_event_id, id: nil)
+            = hidden_field_tag(:hold, held? ? 0 : 1, id: nil)
+            = hidden_field_tag(:authenticity_token, csrf_token, id: nil) if csrf_token
+            %button.btn.btn-sm.btn-link.p-0{ type: 'submit', data: { pipeline_action: held? ? 'release' : 'hold' },
+                                             title: t(held? ? 'pipeline_automation.row.release_tooltip' : 'pipeline_automation.row.hold_tooltip') }
+              = t(held? ? 'pipeline_automation.row.release' : 'pipeline_automation.row.hold')

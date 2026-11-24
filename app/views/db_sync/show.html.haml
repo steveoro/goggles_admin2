@@ -17,6 +17,10 @@
         = button_to(db_sync_acknowledge_path, **ack_options) do
           %i.fa-solid.fa-check-double{ 'aria-hidden' => 'true' }
           = t('db_sync.actions.acknowledge')
+        -# (14: the guided local DB restore, for a red verdict)
+        = link_to(new_db_restore_path, class: 'btn btn-sm btn-outline-danger', id: 'btn-db-sync-restore') do
+          %i.fa-solid.fa-database{ 'aria-hidden' => 'true' }
+          = t('db_sync.actions.restore')
 
 - if @ops_available
   %div{ data: controller_data }

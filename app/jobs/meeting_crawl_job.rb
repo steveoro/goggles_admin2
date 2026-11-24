@@ -15,9 +15,14 @@
 #
 # Never raises: any error closes the activity as failed (no retries).
 #
+# Phase 10: an automatic crawl (+origin+ 'auto', passed by SeasonBoard::Scheduler; for a job queued without it, the
+# origin of its ActivityLog entry) is refused at start while the automation master switch is off or unreadable
+# (DataFix::Automation fails closed; an unreadable origin counts as automatic); every run ends by enqueuing a
+# PipelinePlannerJob pass (when the switch is on), which prepares the crawled source.
+#
 # The sleeper/clock/factories are class attributes so that specs can run instantly.
 #
-class MeetingCrawlJob < ApplicationJob
+class MeetingCrawlJob < ApplicationJob # rubocop:disable Metrics/ClassLength
   queue_as :background
 
   # Hard timeout for a single crawl (the FIN server is slow & throttles: large championships can take that long).
@@ -46,13 +51,14 @@ class MeetingCrawlJob < ApplicationJob
   # Internal: aborts the crawl with a failure message.
   class Failure < StandardError; end
 
-  def perform(season_id:, fin_event_id:, url:)
+  # - origin: 'auto' | 'manual' (SeasonBoard::Scheduler); nil for a job queued before phase 10 (read from the log).
+  def perform(season_id:, fin_event_id:, url:, origin: nil)
     @season_id = season_id
     @fin_event_id = fin_event_id.to_s
     @finished = false
     @pulled = false
     activity_log.start!(@fin_event_id, kind: :crawl, url:)
-    finish!(*crawl(season_id, url))
+    finish!(*crawl(season_id, url, origin))
   rescue Failure => e
     finish!(:failed, e.message)
   rescue StandardError => e
@@ -67,14 +73,32 @@ class MeetingCrawlJob < ApplicationJob
 
   private
 
-  # Drops the stored board summary (SeasonBoard::Snapshot) and pings the open pages (never raises).
+  # True for an automatic crawl while the automation master switch is off (or unreadable: fail closed).
+  def automatic_paused?(origin)
+    automatic = origin.present? ? origin.to_s == 'auto' : logged_as_automatic?
+    automatic && !DataFix::Automation.enabled?
+  end
+
+  # Origin of the activity entry (kept from the queued one); an unreadable log counts as automatic.
+  def logged_as_automatic?
+    activity_log.entry(@fin_event_id, :crawl)&.origin == :auto
+  rescue StandardError => e
+    Rails.logger.warn("[MeetingCrawlJob] FIN #{@fin_event_id}: activity log unreadable (#{e.class}), origin counted as automatic")
+    true
+  end
+
+  # Drops the stored board summary (SeasonBoard::Snapshot), pings the open pages and enqueues the next pipeline planner
+  # pass (phase 10; never raises).
   def notify_board
     SeasonBoard::Snapshot.invalidate!(@season_id)
     SeasonBoard::Notifier.ping
+    PipelinePlannerJob.enqueue_after(self.class.name)
   end
 
   # Returns [status, message].
-  def crawl(season_id, url)
+  def crawl(season_id, url, origin)
+    raise Failure, I18n.t('pipeline_automation.reasons.automation_paused') if automatic_paused?(origin)
+
     season = GogglesDb::Season.find_by(id: season_id)
     raise Failure, "unknown season #{season_id}" unless season
 

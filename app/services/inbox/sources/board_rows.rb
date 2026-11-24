@@ -6,7 +6,9 @@ module Inbox
     # = Inbox::Sources::BoardRows
     #
     # One item per Season board row with a next action (from the stored board summary, SeasonBoard::Snapshot),
-    # skipping the busy rows (a crawl/extraction queued or running) and the :push actions (PendingSql groups them).
+    # skipping the busy rows (a crawl/extraction/prepare queued or running), the :push actions (PendingSql groups them)
+    # and the rows in the pipeline states (:prepare_failed, :needs_review, :ready_to_commit: phase 10, owned by the
+    # PrepareFailed, NeedsReview and ReadyToCommit sources).
     # The action target comes from SeasonBoard::ActionPaths: the review steps are links, crawl / check results /
     # extract manifest are POSTs of the FIN event id to the board, :link opens the board on the row.
     #
@@ -20,7 +22,10 @@ module Inbox
       }.freeze
 
       # Action kinds never emitted (they come from other sources).
-      SKIPPED_KINDS = %i[push].freeze
+      SKIPPED_KINDS = %i[push prepare commit].freeze
+
+      # Row states never emitted (phase 10: their own sources).
+      SKIPPED_STATES = SeasonBoard::StateResolver::PIPELINE_STATES
 
       def self.more_path
         Rails.application.routes.url_helpers.season_board_path
@@ -37,7 +42,7 @@ module Inbox
 
       def item_for(row, summary, context)
         kind = row.next_action&.kind
-        return if kind.nil? || SKIPPED_KINDS.include?(kind) || !BANDS.key?(kind) || row.busy?
+        return if kind.nil? || SKIPPED_KINDS.include?(kind) || !BANDS.key?(kind) || row.busy? || SKIPPED_STATES.include?(row.state)
 
         target = SeasonBoard::ActionPaths.target_for(row.next_action)
         return unless target

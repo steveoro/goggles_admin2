@@ -9,6 +9,5 @@
     = render(Health::BadgeComponent.new(kind: :severity, value: @finding.severity))
     = render(Health::BadgeComponent.new(kind: :status, value: @finding.status))
 
-= render(partial: 'health/cancelled_notice', locals: { season_id: @finding.season_id })
 = render(Health::FindingDetailComponent.new(finding: @finding, board_season_id: @board_season_id, stale: @stale,
                                             null_swimmers_first: @null_swimmers_first))

@@ -82,55 +82,14 @@ RSpec.describe 'Data health actions' do
     end
   end
 
-  describe 'Flag cancelled' do
-    let(:data_root) { Pathname.new(Dir.mktmpdir) }
-    let(:meeting) { FactoryBot.create(:meeting, season:, cancelled: false) }
-    let(:calendar) { FactoryBot.create(:calendar, season:, meeting:, cancelled: false) }
-    let(:unflagged) do
-      finding(subject_id: meeting.id, payload: { 'cancel' => { 'meeting_id' => meeting.id, 'calendar_id' => calendar.id },
-                                                 'title_args' => { 'id' => meeting.id, 'date' => '-', 'description' => 'x' } })
-    end
-
-    before(:each) { stub_const('SeasonBoard::Backfill::DEFAULT_DATA_ROOT', data_root) }
-
-    after(:each) { FileUtils.rm_rf(data_root) }
-
-    it 'previews the SQL without writing anything' do
-      get(new_health_cancellation_path(finding_id: unflagged.id))
-      expect(response).to have_http_status(:success)
-      expect(page_body.at_css('#health-cancellation-sql').text).to include('UPDATE `meetings`', 'UPDATE `calendars`')
-      expect(page_body.at_css('#health-cancellation-form input[name="digest"]')['value']).to be_present
-      expect(meeting.reload.cancelled).to be(false)
-      expect(Dir.glob(data_root.join('**/*.sql').to_s)).to be_empty
-    end
-
-    it 'applies it on click with the preview digest: local flag, numbered script, event, meetings re-run, Outbox link' do
-      digest = Health::MeetingCanceller.new(season:, meeting_id: meeting.id, calendar_id: calendar.id).preview.digest
-      expect { post(health_cancellations_path, params: { finding_id: unflagged.id, digest: }) }
-        .to have_enqueued_job(Health::SeasonRunJob).exactly(1).times
-      script = "0001-meeting_cancel-#{meeting.id}.sql"
-      expect(response).to redirect_to(health_finding_path(unflagged, cancelled: script))
-      expect([meeting.reload.cancelled, calendar.reload.cancelled]).to eq([true, true])
-      expect(File).to exist(data_root.join('results.new', season.id.to_s, script))
-      expect(Ops::Event.of_kind('health.meeting_cancelled').sole.data).to include('sql_filename' => script)
-      expect(Ops::HealthRun.for_season(season.id).pending.pluck(:group_key)).to eq(['meetings'])
-
-      follow_redirect!
-      notice = page_body.at_css('#health-cancelled-notice')
-      expect(notice.text).to include(script)
-      expect(notice.at_css('a')['href']).to eq(outbox_path(focus: script))
-    end
-
-    it 'refuses a stale digest and a meeting with results' do
-      post(health_cancellations_path, params: { finding_id: unflagged.id, digest: 'old' })
-      expect(response).to redirect_to(new_health_cancellation_path(finding_id: unflagged.id))
-      expect(flash[:error]).to include(I18n.t('health.cancellations.errors.digest_changed'))
-
-      health_add_mir(meeting)
-      get(new_health_cancellation_path(finding_id: unflagged.id))
-      expect(page_body.at_css('#health-cancellation-error').text).to eq(I18n.t('health.cancellations.errors.has_results'))
-      expect(page_body.at_css('#health-cancellation-form')).to be_nil
-      expect(meeting.reload.cancelled).to be(false)
+  # (phase 11: "Flag cancelled" is the 'meeting.set_cancelled' operation: spec/requests/maintenance/*)
+  describe 'the 06 Flag cancelled URLs' do
+    it 'redirect to the prefilled operation form' do
+      get('/health/cancellations/new?finding_id=12')
+      expect(response).to redirect_to('/operations/meeting.set_cancelled/new?finding_id=12')
+      post('/health/cancellations', params: { finding_id: 12 })
+      expect(response).to have_http_status(:see_other)
+      expect(response.location).to end_with('/operations/meeting.set_cancelled/new')
     end
   end
 end

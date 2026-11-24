@@ -130,6 +130,8 @@ class OutboxController < ApplicationController # rubocop:disable Metrics/ClassLe
   # POST /outbox/push (confirmed=1, confirm_label, ids[] / scope, override_order, drift_ack)
   def push # rubocop:disable Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
     return redirect_to(new_outbox_push_path(push_params), alert: I18n.t('outbox.flash.confirmation_required')) unless params[:confirmed] == '1'
+    # (14: refused at enqueue while a guided DB restore holds the lock; DbRestoreGuard normally answers first)
+    return redirect_to(outbox_path, alert: I18n.t('db_restore.flash.locked')) if DbRestore::Lock.active?
     return redirect_to(outbox_path, alert: I18n.t('outbox.flash.run_in_progress')) if Ops::PushRun.live?
     return redirect_to(outbox_path, alert: I18n.t('outbox.flash.jwt_invalid')) unless Outbox::Pusher.jwt_valid?(current_user.jwt)
 

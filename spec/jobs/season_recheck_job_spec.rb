@@ -160,4 +160,11 @@ RSpec.describe SeasonRecheckJob do
     allow(SeasonBoard::Builder).to receive(:latest_season).and_return(nil)
     expect(described_class.perform_now).to eq([])
   end
+
+  it 'queues nothing with the automation master switch off (phase 10)' do
+    DataFix::Automation.store!(:enabled, false)
+    expect(described_class.perform_now).to eq([])
+    expect(builder).not_to have_received(:call)
+    expect(SeasonBoard::Scheduler).not_to have_received(:crawl!)
+  end
 end

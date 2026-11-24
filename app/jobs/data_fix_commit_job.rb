@@ -15,13 +15,14 @@
 # - Re-runs the guards (DataFix::Guards, with the acknowledgement stored by the POST in the report preflight) and
 #   Import::CommitPreflight before committing.
 # - limits_concurrency key 'local_db_writer' (shared with Maintenance::RunJob in apply mode: both write the local
-#   primary DB); priority 0 (before any prepare job of phase 10 on the same worker).
+#   primary DB); the explicit group makes the key really shared (Solid Queue prefixes the key with the group, which
+#   defaults to the job class name); priority 0 (before any prepare job of phase 10 on the same worker).
 #
 class DataFixCommitJob < ApplicationJob
   queue_as :pipeline
   queue_with_priority 0
 
-  limits_concurrency key: 'local_db_writer', to: 1, duration: 1.hour
+  limits_concurrency key: 'local_db_writer', group: 'local_db_writer', to: 1, duration: 1.hour
 
   def perform(commit_report_id:)
     report = Ops.safely { Ops::CommitReport.find_by(id: commit_report_id) }

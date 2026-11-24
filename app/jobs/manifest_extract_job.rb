@@ -13,6 +13,11 @@
 #
 # Never raises: any error closes the activity as failed (no retries).
 #
+# Phase 10: an automatic attempt (SeasonBoard::Scheduler.extract!(origin: :auto), queued by the pipeline planner)
+# carries the +run_id+ of its Ops::PipelineRun (kind 'extract', subject_key: the PDF basename): the run row follows
+# the attempt (running -> done | failed; 'refused' while the 'automation.auto_extract' switch is off), and the planner
+# counts the failed ones (at most 3 attempts per PDF). Every run ends by enqueuing a PipelinePlannerJob pass.
+#
 class ManifestExtractJob < ApplicationJob
   queue_as :background
 
@@ -29,10 +34,12 @@ class ManifestExtractJob < ApplicationJob
   }.freeze
 
   # - engine: LLM engine name (nil for PdfManifests::ClientFactory.default_engine)
-  def perform(season_id:, fin_event_id:, engine: nil)
+  # - run_id: the Ops::PipelineRun of an automatic attempt (nil for a manual one)
+  def perform(season_id:, fin_event_id:, engine: nil, run_id: nil)
     @season_id = season_id
     @fin_event_id = fin_event_id.to_s
     @finished = false
+    @run_id = run_id
     activity_log.start!(@fin_event_id, kind: :extract)
     finish!(*extract(season_id, engine))
   rescue StandardError => e
@@ -42,12 +49,38 @@ class ManifestExtractJob < ApplicationJob
     finish!(:failed, 'interrupted') unless @finished
     SeasonBoard::Snapshot.invalidate!(@season_id)
     SeasonBoard::Notifier.ping
+    PipelinePlannerJob.enqueue_after(self.class.name)
   end
 
   private
 
+  # The Ops::PipelineRun of an automatic attempt (+run_id+ given), moved to 'running'; nil for a manual one.
+  # Fail closed: an automatic attempt is refused (@refusal set; its run closed as 'refused' when readable) while
+  # 'automation.auto_extract' is off or unreadable, and when its run row cannot be read or moved to 'running' (the
+  # planner's attempt cap counts those rows).
+  def start_run
+    return nil if @run_id.blank?
+
+    run = Ops.safely { Ops::PipelineRun.find_by(id: @run_id) }
+    return refuse_run(run, 'automation_paused') unless DataFix::Automation.enabled?(:auto_extract)
+
+    started = run && Ops.safely(false) { run.update!(status: 'running', started_at: Time.current, job_id:) }
+    started ? run : refuse_run(nil, 'ops_unavailable')
+  end
+
+  # (the run error starts with the reason code: a 'automation_paused:' refusal is not counted as an attempt by
+  # SeasonBoard::PipelinePlanner.unsuccessful_extractions)
+  def refuse_run(run, reason)
+    @refusal = I18n.t("pipeline_automation.reasons.#{reason}")
+    Ops.safely { run&.finish!(status: 'refused', error: "#{reason}: #{@refusal}") }
+    nil
+  end
+
   # Returns [status, message].
   def extract(season_id, engine)
+    @run = start_run
+    return [:failed, @refusal] if @refusal
+
     season = GogglesDb::Season.find_by(id: season_id)
     return [:failed, "unknown season #{season_id}"] unless season
 
@@ -77,6 +110,8 @@ class ManifestExtractJob < ApplicationJob
 
     @finished = true
     record_finish_event(status, message)
+    Ops.safely { @run&.finish!(status: status.to_s == 'done' ? 'done' : 'failed', error: (message unless status.to_s == 'done')) }
+    Ops.safely { @run&.update_columns(message: message.to_s.truncate(250)) } # rubocop:disable Rails/SkipsModelValidations
     activity_log.finish!(@fin_event_id, kind: :extract, status:, message:)
   rescue StandardError => e
     Rails.logger.error("[ManifestExtractJob] cannot update the activity log: #{e.class}: #{e.message}")

@@ -44,10 +44,18 @@ module DataFix
       'confirm_result_duplicate' => 5
     }.freeze
 
+    # Actions that write or delete phase files: refused while another build (a prepare job, or another request)
+    # holds the source lease (phase 10). Besides the edit actions: the category recompute and "Rebuild (discard
+    # edits)", which delete phases through DataFix::Pipeline#invalidate!(force: true).
+    LEASE_GUARDED_ACTIONS = (EDIT_ACTIONS.keys + %w[recompute_source_categories discard_phase_edits]).freeze
+
     after_action :mark_phase_edited!, only: EDIT_ACTIONS.keys.map(&:to_sym)
+    # Phase 10: "being prepared, retry in a moment".
+    before_action :refuse_edit_while_prepared!, only: LEASE_GUARDED_ACTIONS.map(&:to_sym)
 
     # Expose issue detection helpers to views
-    helper_method :swimmer_has_missing_data?, :relay_result_has_issues?, :phase3_conflict_hint?, :pipeline_summary
+    helper_method :swimmer_has_missing_data?, :relay_result_has_issues?, :phase3_conflict_hint?, :pipeline_summary,
+                  :data_fix_being_prepared?
 
     private
 
@@ -81,6 +89,43 @@ module DataFix
     def pipeline
       @pipeline ||= DataFix::Pipeline.for(@source_path, progress: progress_sink, actor: :operator,
                                                         user_id: current_user&.id, source_resolver:)
+    end
+
+    # True while a prepare job (DataFixPrepareJob) holds the lease of the current source (read only: no ops row is
+    # created here). The review header shows "Being prepared..." and the edit actions are refused meanwhile.
+    def data_fix_being_prepared?
+      return false if @source_path.blank?
+
+      @data_fix_being_prepared = Ops.safely(false) { prepared_source_row&.leased_by_job? || false } if @data_fix_being_prepared.nil?
+      @data_fix_being_prepared
+    end
+
+    def prepared_source_row
+      return unless Ops.available?
+
+      Ops::PipelineSource.find_by(season_id: Ops::PipelineSource.season_id_for(@source_path), base: Ops::PipelineSource.base_for(@source_path))
+    end
+
+    # True while any build holds an unexpired lease of the current source (read only).
+    def source_leased?
+      return false if @source_path.blank?
+
+      Ops.safely(false) do
+        row = prepared_source_row
+        row.present? && row.lease_owner.present? && row.lease_expires_at.present? && row.lease_expires_at > Time.current
+      end
+    end
+
+    # before_action of the LEASE_GUARDED_ACTIONS: refuses the write while a prepare job (or another build) holds the
+    # source lease.
+    def refuse_edit_while_prepared!
+      return unless source_leased?
+
+      message = I18n.t('pipeline_automation.review.edit_refused')
+      respond_to do |format|
+        format.html { redirect_back_or_to(data_fix_sessions_path, flash: { warning: message }, status: :see_other) }
+        format.any { render(json: { error: message }, status: :conflict) }
+      end
     end
 
     # Per-phase verdicts + stage of the current source, for the stepper (nil when no source is resolved).

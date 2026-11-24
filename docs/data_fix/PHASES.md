@@ -94,6 +94,40 @@ runner*) builds each phase through one recipe, stamps it, checks it and stores a
   "Committed, archiving failed" keeps its own state and its "Retry archiving" button. Without the ops DB the commit
   is refused with the `bin/rails ops:prepare` notice.
 
+### Unattended preparation (phase 10)
+
+`DataFixPrepareJob` (queue `pipeline`, priority 10: a queued commit, priority 0, runs first) runs
+`DataFix::Pipeline#prepare!` on one source without an operator: it builds the missing and stale steps (1-5, or only
+Phase 1 for a result-free source), computes the verdicts and stores the stage, so the Season board and the dashboard
+inbox show **Ready to commit** or **Needs review at step N** without a click (see `docs/season_board.md`, *Pipeline
+automation*). It never commits and never pushes: the Phase 6 commit stays the operator's click on the commit summary,
+the push a click in the Outbox (`spec/automation_boundary_spec.rb` checks that no job, planner or inbox source names
+the commit or push entry points).
+
+- **Who queues it.** `SeasonBoard::PipelinePlanner` (origin `auto`: results ready, structure / header ready, stale or
+  outdated verdicts, new-entity matches behind a commit, a phase 5 collision cleared by the other source's commit, a
+  failed source whose file changed) and the board's **Prepare** / **Retry** buttons (origin `operator`), always through
+  `SeasonBoard::Scheduler.prepare!`, which writes the queued `Ops::PipelineRun` and refuses a busy source.
+- **Edits win.** An automatic run refuses a source holding ANY edited phase (`Pipeline#any_edited?`, pre-0.10.88 files
+  adopted as edited included); `prepare!` never rebuilds an edited phase, and an automatic build never lets the
+  harmonizer write an edited phase 2. An edited phase file is byte-identical after any prepare run.
+- **Lease.** The whole run holds the `pipeline_sources` lease as `job:<job id>` (`Pipeline#hold_lease!`, TTL = the
+  20-minute soft deadline + 5 minutes); the review pages show "being prepared" and the edit actions are refused meanwhile.
+- **Outcome.** `pipeline_runs` row `done` / `failed` (stage `failed` + `failed_source_sha256`: re-queued only after the
+  source changes) / `refused` (automation off, ops DB missing, red DB sync, source gone, commit pending, edits, lease) /
+  `yielded` (a commit was queued between two steps); deadline exceeded = `failed: deadline`; source changed during the
+  run = the verdicts are recomputed (stale). Events `pipeline.prepare_done|failed|refused`.
+- **Source resolution.** An automatic run computes the working copy without side effects, takes the lease and checks the
+  edits first; on a source that already has phase files it never runs the rewriting branches of
+  `SourceResolver#resolve_working_source_path` (LT2 payload under `-lt4`, manifest supersede, category normalization):
+  it is refused `source_needs_review`. `Pipeline#invalidate!` deletes nothing (even forced) while another owner holds
+  the lease.
+- **Boundary.** No remote write; the only API call reachable is the light, read-only `tools/db_fingerprint` GET of
+  `Drift::Gate` (through `DataFix::Guards`). Automatic paths fail closed on unreadable ops data.
+- **Switches.** `DataFix::Automation` (`automation.enabled`, `automation.auto_prepare`, `automation.auto_extract`;
+  `ADMIN2_AUTOMATION=0` forces them off): checked by the planner before every enqueue and by the job at start for an
+  automatic run. A row hold (`pipeline_sources.auto_prepare = false`) stops the automatic preparation of one source.
+
 ---
 
 ## Phase 1: Meeting & Sessions

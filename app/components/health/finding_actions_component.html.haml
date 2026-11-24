@@ -1,4 +1,5 @@
 .d-flex.flex-wrap.gap-1.health-finding-actions{ class: compact ? 'justify-content-end' : nil }
+  = render(Maintenance::FixButtonComponent.new(finding:, compact:))
   - links.each do |link|
     = link_to(link.path, **link_options(link)) do
       %i.fa-solid{ class: icon(link), 'aria-hidden' => 'true' }

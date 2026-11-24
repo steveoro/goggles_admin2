@@ -189,6 +189,50 @@ RSpec.describe DataFix::Pipeline do
       verdict = pipeline.verdict(3)
       expect(verdict).to be_stale
       expect(verdict.issues.pluck('code')).to include('edited_stale')
+      expect(pipeline.last_prepare_stop).to eq(:edited)
+    end
+
+    it 'stops before a phase when +stop_if+ answers a reason, or when the deadline has passed (phase 10)' do
+      FileUtils.rm_f(pipeline.phase_path(3))
+      pipeline.reload!.prepare!(up_to: 3, stop_if: ->(phase) { :yielded if phase == 3 })
+      expect(pipeline.last_prepare_stop).to eq(:yielded)
+      expect(DataFix::Pipeline::Recipes).not_to have_received(:build)
+
+      pipeline.reload!.prepare!(up_to: 3, deadline: 1.second.ago)
+      expect(pipeline.last_prepare_stop).to eq(:deadline)
+      pipeline.reload!.prepare!(up_to: 3)
+      expect(pipeline.last_prepare_stop).to be_nil
+    end
+  end
+
+  describe '#hold_lease! (phase 10: a prepare job keeps the lease for its whole run)' do
+    it 'keeps the lease across the builds made inside and releases it at the end' do
+      stub_recipe
+      job_pipeline = described_class.for(pipeline.source_path, progress: Import::Progress::Null.new, actor: :auto, lease_owner: 'job:42')
+      owners = []
+      job_pipeline.hold_lease!(ttl: 25.minutes) do
+        job_pipeline.build_phase!(1)
+        owners << job_pipeline.source_row.reload.lease_owner
+        job_pipeline.build_phase!(2)
+        owners << job_pipeline.source_row.reload.lease_owner
+      end
+      expect(owners).to eq(%w[job:42 job:42])
+      expect(job_pipeline.source_row.reload.lease_owner).to be_nil
+    end
+
+    it 'raises LeaseBusyError while someone else holds it' do
+      pipeline.source_row.acquire_lease!('operator:1:x')
+      job_pipeline = described_class.for(pipeline.source_path, progress: Import::Progress::Null.new, actor: :auto, lease_owner: 'job:42')
+      expect { job_pipeline.hold_lease! { nil } }.to raise_error(described_class::LeaseBusyError)
+    end
+  end
+
+  describe '#any_edited?' do
+    it 'is true for adopted pre-existing files and for an operator edit, false for stamped files' do
+      expect(pipeline.any_edited?).to be false
+      expect(pipeline_from_fixture('clean_fin', dir: File.join(tmp_dir, 'adopted'), stamped: false).any_edited?).to be true
+      pipeline.mark_edited!(1, action: 'update_phase1_meeting')
+      expect(pipeline.reload!.any_edited?).to be true
     end
   end
 
@@ -214,6 +258,15 @@ RSpec.describe DataFix::Pipeline do
       [3, 4, 5].each { |phase| expect(File).to exist(pipeline.phase_path(phase)) }
       expect(pipeline.source_row.reload).to have_attributes(stage: 'blocked', stage_reason: 'source_changed_under_edits')
       expect(pipeline.summary).to have_attributes(stage: 'blocked', source_changed: true)
+    end
+
+    it 'deletes nothing, even forced, while another build holds the lease (phase 10: a prepare job)' do
+      pipeline.source_row.acquire_lease!('job:42')
+      result = described_class.for(pipeline.source_path, progress: Import::Progress::Null.new)
+                              .invalidate!(phases: [3, 4, 5], reason: :operator_discard, force: true)
+      expect(result).to include(refused: true, leased: true)
+      [3, 4, 5].each { |phase| expect(File).to exist(pipeline.phase_path(phase)) }
+      expect(pipeline.source_row.reload.stage).not_to eq('blocked')
     end
 
     it 'deletes the edited phases too when forced (operator discard), clearing the block' do

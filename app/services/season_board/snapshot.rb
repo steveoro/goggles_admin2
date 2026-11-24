@@ -33,7 +33,7 @@ module SeasonBoard
   # - rows: Array of Snapshot::Row, in FIN calendar order: fin_event_id, key, name, date_text, year,
   #   first_date, last_date (Date), place, url, info, state (Symbol), state_detail (Hash, Symbol keys),
   #   next_action (SeasonBoard::NextAction: kind Symbol + params Hash, see StateResolver; nil when none),
-  #   busy (Boolean, a crawl/extraction queued or running), flags (Array of Symbols, RowFlags::FLAGS),
+  #   busy (Boolean, a crawl/extraction/prepare queued or running), flags (Array of Symbols, RowFlags::FLAGS),
   #   meeting_id, calendar_id; plus #busy?, #flag?(flag), #action?(kind), #linked?.
   #   SeasonBoard::ActionPaths.target_for(row.next_action) gives the action path & HTTP method;
   # - state_counts: Hash of state Symbol => row count (row order); unlinked_count: rows without FIN link;
@@ -51,7 +51,8 @@ module SeasonBoard
   #
   class Snapshot
     # Bump when the payload layout changes (part of the fingerprint: older payloads are never served).
-    FORMAT_VERSION = 1
+    # 2: phase 10 pipeline states (:prepare_failed, :needs_review, :ready_to_commit) and actions (:prepare, :commit).
+    FORMAT_VERSION = 2
 
     KEY_PREFIX = 'season_board:'
 

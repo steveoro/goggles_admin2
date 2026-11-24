@@ -4,8 +4,9 @@ module Health
   #
   # = Health::FindingLinks
   #
-  # What a finding offers in 06, from its stored payload alone (Ops::HealthFinding#payload):
-  # - #actions: the buttons (Flag cancelled preview, Data-Fix review, Outbox, Season board row, FIN results page);
+  # What a finding offers, from its stored payload alone (Ops::HealthFinding#payload):
+  # - #actions: the links (Data-Fix review, Outbox, Season board row, FIN results page); the Fix buttons of the
+  #   maintenance operations (phase 11, "Flag cancelled" included) come from Maintenance::FixButtonComponent;
   # - #entity_links: links to the entity grids (Meetings, Calendars, Badges, Teams) filtered on the subject. Those
   #   grid pages query the API: they show the remote rows, not the local mirror.
   # The copyable rake command and the how-to text come from the Health::Registry check (see FindingDetailComponent).
@@ -34,7 +35,7 @@ module Health
 
     # Action links, in display order (ignore / acknowledge are the bulk buttons, not links).
     def actions
-      [cancel_link, review_link, push_link, board_link, results_page_link].compact
+      [review_link, push_link, board_link, results_page_link].compact
     end
 
     # Links to the entity grids for the subject.
@@ -54,14 +55,6 @@ module Health
 
     def link(kind, label_key, path, external: false, **interpolations)
       Link.new(kind:, label: I18n.t("health.links.#{label_key}", **interpolations), path:, external:)
-    end
-
-    # "Flag cancelled": the dry-run preview of Health::CancellationsController (never the apply itself).
-    def cancel_link
-      return if finding.resolved? || payload['cancel'].blank?
-
-      link(:cancel, payload['cancel']['meeting_id'] ? 'flag_meeting_cancelled' : 'flag_calendar_cancelled',
-           url_helpers.new_health_cancellation_path(finding_id: finding.id))
     end
 
     def review_link

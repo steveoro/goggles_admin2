@@ -4,12 +4,14 @@ module Health
   #
   # = Health::FindingActionsComponent
   #
-  # The action links of one data health finding (Health::FindingLinks#actions): "Flag cancelled" (dry-run preview),
-  # Data-Fix review, Outbox, Season board row, FIN results page; in compact mode (grid rows) small buttons plus
-  # "Details", without the board link.
+  # The actions of one data health finding: the Fix buttons of the maintenance operations first
+  # (Maintenance::FixButtonComponent: they open the prefilled operation form, a dry run comes first; "Flag cancelled"
+  # is the 'meeting.set_cancelled' operation), then the links of Health::FindingLinks#actions (Data-Fix review,
+  # Outbox, Season board row, FIN results page); in compact mode (grid rows) small buttons plus "Details", without the
+  # board link.
   #
   class FindingActionsComponent < ViewComponent::Base
-    ICONS = { cancel: 'fa-ban', review: 'fa-wand-magic', push: 'fa-upload', board: 'fa-table-list',
+    ICONS = { fix: Maintenance::FixButtonComponent::ICON, review: 'fa-wand-magic', push: 'fa-upload', board: 'fa-table-list',
               results_page: 'fa-arrow-up-right-from-square' }.freeze
 
     # == Params:
@@ -30,10 +32,8 @@ module Health
       @links ||= Health::FindingLinks.new(finding, board_season_id: compact ? nil : @board_season_id).actions
     end
 
-    def button_class(link)
-      size = compact ? 'btn-sm' : ''
-      tone = link.kind == :cancel ? 'btn-outline-danger' : 'btn-outline-primary'
-      "btn #{size} #{tone}".squish
+    def button_class(_link)
+      "btn #{'btn-sm' if compact} btn-outline-primary".squish
     end
 
     def link_options(link)

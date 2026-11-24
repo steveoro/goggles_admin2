@@ -67,11 +67,17 @@ module Shell
                                                                                  offline_ok: true, keywords: %w[push sql scripts upload send]),
       # Data quality
       item(:health, :data_quality, 'fa-heart-pulse', 'health.nav', -> { health_path },
-           match: %w[health health/seasons health/sections health/findings health/runs health/cancellations],
+           match: %w[health health/seasons health/sections health/findings health/runs],
            keywords: %w[health report duplicates badges cancelled closed seasons]),
       # (08: local DB vs production fingerprints; reads only the ops DB)
       item(:db_sync, :data_quality, 'fa-code-compare', 'db_sync.nav', -> { db_sync_path },
            match: %w[db_sync], offline_ok: true, keywords: %w[drift fingerprint sync production restore]),
+      # (11: the maintenance operations, the fixes of the health findings; 13 extends it)
+      item(:operations, :data_quality, 'fa-screwdriver-wrench', 'maintenance.nav', -> { operations_path },
+           match: %w[operations maintenance/runs], keywords: %w[fix merge dedupe cancelled backfill ranks maintenance]),
+      # (14: guided local DB restore, a contextual child of DB sync; its progress page uses the restore layout)
+      item(:db_restore, :data_quality, 'fa-database', 'db_restore.nav', -> { db_sync_path },
+           match: %w[db_restore], parent: :db_sync, offline_ok: true, sidebar: false, keywords: %w[restore dump rebuild]),
       # Entities
       item(:meetings, :entities, 'fa-flag-checkered', 'dashboard.meetings.title', -> { api_meetings_path }, match: %w[api_meetings]),
       item(:calendars, :entities, 'fa-calendar-days', 'dashboard.calendars.title', -> { api_calendars_path }, match: %w[api_calendars]),

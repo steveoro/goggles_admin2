@@ -1,0 +1,26 @@
+!!!
+-#
+  Restore layout (phase 14): the progress page of a guided local DB restore and the "restore in progress" answer of
+  every other page (DbRestoreGuard). It renders without any MySQL access: no shell, no current_user, no app
+  settings; only the session (ops DB), the cookies and the ops rows given by the controller.
+%html{ lang: I18n.locale, data: { bs_theme: current_theme } }
+  %head
+    %meta{ content: 'text/html; charset=UTF-8', 'http-equiv' => 'Content-Type' }/
+    %meta{ name: 'viewport', content: 'width=device-width, initial-scale=1' }/
+    %title= [content_for(:title), t('db_restore.layout.title')].compact_blank.join(' · ')
+    = csrf_meta_tags
+    = stylesheet_link_tag('bootstrap/bootstrap.min', media: 'all', 'data-turbo-track': 'reload')
+    = stylesheet_link_tag('fontawesome/css/all.min', media: 'all', 'data-turbo-track': 'reload')
+    = stylesheet_link_tag('application', media: 'all', 'data-turbo-track': 'reload')
+    = javascript_importmap_tags
+
+  %body
+    %main.container.py-4#db-restore-layout{ data: { page: 'db_restore' } }
+      .d-flex.align-items-center.gap-2.mb-3
+        %i.fa-solid.fa-database.text-danger{ 'aria-hidden' => 'true' }
+        %span.fw-semibold= t('db_restore.layout.brand')
+      - { notice: 'success', alert: 'danger', error: 'danger', warning: 'warning' }.each do |key, level|
+        - next if flash[key].blank?
+
+        .alert{ class: "alert-#{level}", role: 'alert', id: "db-restore-flash-#{key}" }= flash[key]
+      = yield

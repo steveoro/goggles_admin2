@@ -179,6 +179,17 @@ RSpec.describe DashboardController do
       FileUtils.rm_f(SystemStatus::CrawlerProbe.pid_path)
     end
 
+    it 'GET system shows the automation kill switches (phase 10) and the worker mode' do
+      DataFix::Automation.store!(:auto_extract, false)
+      get(dashboard_system_path)
+      switches = html.css('#dashboard-automation [data-automation-switch]')
+      expect(switches.to_h { |row| [row['data-automation-switch'], row['data-automation-state']] })
+        .to eq('enabled' => 'on', 'auto_extract' => 'off', 'auto_prepare' => 'on')
+      toggle = html.at_css("#dashboard-automation [data-automation-switch='auto_extract'] form[action='#{automation_switch_path}']")
+      expect(toggle.at_css('input[name=value]')['value']).to eq('1')
+      expect(html.at_css('#dashboard-worker-mode')).to be_present
+    end
+
     it 'GET activity lists the latest events with a link to the whole log' do
       Ops.record_event!(kind: 'datafix.committed', level: 'success', actor: 'operator', subject_type: 'source',
                         subject_key: 'crawler/data/results.new/262/meet-lt4.json', link_path: '/data_fix/sessions')

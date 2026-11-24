@@ -128,4 +128,48 @@ RSpec.describe ManifestExtractJob do
       expect(extract_entry).to have_attributes(status: :done)
     end
   end
+
+  describe 'automatic attempts (phase 10)' do
+    let(:run) { FactoryBot.create(:ops_pipeline_run, kind: 'extract', origin: 'auto', subject_key: 'manifest-m.pdf', status: 'queued') }
+
+    it 'follows the attempt on its run row and enqueues a planner pass' do
+      expect { described_class.perform_now(season_id: 262, fin_event_id: fin_id, run_id: run.id) }
+        .to have_enqueued_job(PipelinePlannerJob).with(trigger: 'ManifestExtractJob')
+      expect(run.reload).to have_attributes(status: 'done', message: 'extracted (12 events)')
+      expect(run.started_at).to be_present
+    end
+
+    it 'marks the run failed when the extraction fails (counted by the planner retry cap)' do
+      allow(runner).to receive(:preflight_error).and_return(:engine_unavailable)
+      described_class.perform_now(season_id: 262, fin_event_id: fin_id, run_id: run.id)
+      expect(run.reload).to have_attributes(status: 'failed', error: 'LLM engine unavailable')
+    end
+
+    it 'refuses an automatic attempt whose run row cannot be read, and one whose switch cannot be read (fail closed)' do
+      described_class.perform_now(season_id: 262, fin_event_id: fin_id, run_id: run.id + 1000)
+      expect(PdfManifests::Extractor).not_to have_received(:new)
+      expect(extract_entry).to have_attributes(status: :failed, message: I18n.t('pipeline_automation.reasons.ops_unavailable'))
+
+      allow(Ops::Setting).to receive(:fetch).and_call_original
+      allow(Ops::Setting).to receive(:fetch).with('automation.enabled', true).and_raise(ActiveRecord::StatementInvalid, 'database is locked')
+      described_class.perform_now(season_id: 262, fin_event_id: fin_id, run_id: run.id)
+      expect(run.reload.status).to eq('refused')
+      expect(PdfManifests::Extractor).not_to have_received(:new)
+    end
+
+    it 'marks a refusal for a switch off with the automation_paused code (not counted as an attempt by the planner)' do
+      DataFix::Automation.store!(:auto_extract, false)
+      described_class.perform_now(season_id: 262, fin_event_id: fin_id, run_id: run.id)
+      expect(run.reload.error).to start_with('automation_paused: ')
+      expect(SeasonBoard::PipelinePlanner.switch_refusal?(run)).to be true
+    end
+
+    it 'refuses the attempt (not a failed one) while auto_extract is off' do
+      DataFix::Automation.store!(:auto_extract, false)
+      described_class.perform_now(season_id: 262, fin_event_id: fin_id, run_id: run.id)
+      expect(run.reload.status).to eq('refused')
+      expect(PdfManifests::Extractor).not_to have_received(:new)
+      expect(File).to exist(pdf_path)
+    end
+  end
 end

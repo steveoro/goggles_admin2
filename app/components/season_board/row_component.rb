@@ -8,9 +8,12 @@ module SeasonBoard
   # place, linked local meeting (with MIR/MRR counts), state badge (+ flags), crawl/extraction
   # activity and the primary action (derived from <tt>row.next_action.kind</tt>).
   #
-  # The POST actions (crawl, extract, link) take only the FIN event ID: the URLs are looked up
-  # server-side. They are disabled while the row is busy (a crawl/extraction is queued or running).
+  # The POST actions (crawl, extract, prepare, link) take only the FIN event ID: the URLs are looked up
+  # server-side. They are disabled while the row is busy (a crawl/extraction/prepare is queued or running).
   # The action targets come from SeasonBoard::ActionPaths (shared with the pages summarising the board).
+  #
+  # Phase 10: a row with a Data-Fix source also offers "Prepare" (a DataFixPrepareJob, phases 1-5 only) and the
+  # automation hold toggle (SECONDARY_PREPARE_STATES / #hold_toggle?); "Commit" only opens the commit summary.
   #
   class RowComponent < ViewComponent::Base
     # Neutral badge, following the light/dark theme (Bootstrap's .text-bg-light stays light in dark mode):
@@ -18,7 +21,8 @@ module SeasonBoard
 
     # Bootstrap 5 badge colour class for each state:
     STATE_CSS = {
-      cancelled: 'text-bg-dark', sql_pending: 'text-bg-danger', in_review: 'text-bg-warning', results_ready: 'text-bg-primary',
+      cancelled: 'text-bg-dark', sql_pending: 'text-bg-danger', prepare_failed: 'text-bg-danger', needs_review: 'text-bg-warning',
+      ready_to_commit: 'text-bg-success', in_review: 'text-bg-warning', results_ready: 'text-bg-primary',
       structure_ready: 'text-bg-info', manifest_pending: 'text-bg-info', committed_with_results: 'text-bg-success',
       structure_committed: 'text-bg-secondary', crawled_no_manifest: NEUTRAL_CSS,
       archived_unlinked: 'text-bg-warning', link_not_crawled: NEUTRAL_CSS, not_linked: NEUTRAL_CSS
@@ -26,6 +30,12 @@ module SeasonBoard
 
     # Flags rendered as warning badges
     WARNING_FLAGS = %i[possible_unlinked_meeting].freeze
+
+    # States offering a secondary "Prepare" button (the primary action stays the review / commit link).
+    SECONDARY_PREPARE_STATES = %i[needs_review in_review results_ready structure_ready crawled_no_manifest].freeze
+
+    # States whose source can be held (no automatic prepare) or released.
+    HOLD_STATES = (SECONDARY_PREPARE_STATES + %i[prepare_failed ready_to_commit]).freeze
 
     # == Params:
     # - row: SeasonBoard::Row
@@ -57,7 +67,7 @@ module SeasonBoard
     end
 
     def state_label
-      I18n.t("season_board.states.#{row.state}", phase: row.state_detail[:phase])
+      StateText.label(row.state, row.state_detail)
     end
 
     def state_tooltip
@@ -100,6 +110,25 @@ module SeasonBoard
       post_action? && row.url.blank?
     end
 
+    # Source path of the row's next action (review, commit, prepare), or nil.
+    def source_path
+      action&.params&.dig(:file_path).presence
+    end
+
+    # True for a row offering the secondary "Prepare" button.
+    def secondary_prepare?
+      !row.busy? && source_path.present? && row.fin_event_id.present? && SECONDARY_PREPARE_STATES.include?(row.state)
+    end
+
+    # True for a row offering the automation hold toggle.
+    def hold_toggle?
+      !row.busy? && source_path.present? && row.fin_event_id.present? && HOLD_STATES.include?(row.state)
+    end
+
+    def held?
+      row.flag?(:prepare_held)
+    end
+
     def show_secondary_link?
       orphans.any? && row.fin_event_id.present? && row.calendar_id.nil? && action_kind != :link && row.state != :cancelled
     end
@@ -114,9 +143,9 @@ module SeasonBoard
 
     # == Activity badges:
 
-    # Returns an Array of Hashes { css:, text:, spin: } for the crawl/extract entries of the row
+    # Returns an Array of Hashes { css:, text:, spin: } for the crawl/extract/prepare entries of the row
     def activity_items
-      %i[crawl extract].filter_map { |kind| activity_item(kind, row.activity[kind]) }
+      ActivityLog::KINDS.filter_map { |kind| activity_item(kind, row.activity[kind]) }
     end
 
     def activity_item(kind, entry)
@@ -133,7 +162,7 @@ module SeasonBoard
 
     def busy_text(kind, entry)
       origin = entry.origin == :auto ? 'auto' : 'manual'
-      return I18n.t("season_board.activity.extract_#{entry.status}", time: hour(entry.started_at || entry.queued_at)) if kind == :extract
+      return I18n.t("season_board.activity.#{kind}_#{entry.status}", time: hour(entry.started_at || entry.queued_at)) if %i[extract prepare].include?(kind)
 
       I18n.t("season_board.activity.crawl_#{origin}_#{entry.status}", time: hour(entry.started_at || entry.queued_at))
     end

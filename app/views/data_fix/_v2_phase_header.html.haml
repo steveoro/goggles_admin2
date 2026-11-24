@@ -14,5 +14,9 @@
 - if retry_needed
   .row-fluid.text-center
     %b.text-danger.animated.infinite.flash= t('data_import.data_fix.msg.warning_retry_needed')
+- if respond_to?(:data_fix_being_prepared?) && data_fix_being_prepared?
+  .alert.alert-info.py-2.mb-2#data-fix-being-prepared{ role: 'status' }
+    %i.fa-solid.fa-spin.fa-rotate{ 'aria-hidden' => 'true' }
+    = t('pipeline_automation.review.being_prepared')
 .mb-2
   = render(DataFix::StepperComponent.new(summary: (pipeline_summary if respond_to?(:pipeline_summary)), active_step:, file_path:))

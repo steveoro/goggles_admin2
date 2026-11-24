@@ -14,6 +14,10 @@
 # :board_write: red and amber warn, nothing blocks). A warning not ticked yet renders a confirmation page whose
 # form posts the same link again with <tt>drift_ack=1</tt>.
 #
+# Pipeline automation (phase 10): +prepare+ queues a DataFixPrepareJob for the row's source (the "Prepare" and
+# "Retry" buttons; phases 1-5 only, never a commit), +hold+ toggles the row hold (no automatic prepare), and
+# +prepare_all+ runs the pipeline planner now (PipelinePlannerJob). Nothing here commits or pushes.
+#
 class SeasonBoardController < ApplicationController # rubocop:disable Metrics/ClassLength
   # Extraction engines offered by the existing manifest extraction form (see pull/calendar_meetings):
   ENGINES = %w[devin ollama].freeze
@@ -65,6 +69,46 @@ class SeasonBoardController < ApplicationController # rubocop:disable Metrics/Cl
     else
       enqueue(row, :extract_queued) { SeasonBoard::Scheduler.extract!(season_id: @season.id, fin_event_id: row.fin_event_id, engine:) }
     end
+    redirect_to(season_board_path)
+  end
+
+  # [POST] Queues a Data-Fix prepare (DataFixPrepareJob, origin operator) of the row's source: "Prepare" / "Retry".
+  def prepare
+    row = find_row
+    redirect_to(season_board_path) && return unless row
+
+    source_path = row_source_path(row)
+    if source_path.blank?
+      flash[:warning] = I18n.t('pipeline_automation.flash.no_source', fin_event_id: row.fin_event_id)
+    else
+      enqueue(row, :prepare_queued, busy_key: :prepare_busy) do
+        SeasonBoard::Scheduler.prepare!(season_id: @season.id, source_path:, origin: :operator, fin_event_id: row.fin_event_id).present?
+      end
+    end
+    redirect_to(season_board_path(anchor: SeasonBoard::ActionPaths.row_dom_id(row.fin_event_id)))
+  end
+
+  # [POST] Holds (hold=1) or releases (hold=0) the row's source: a held source is never prepared automatically.
+  def hold
+    row = find_row
+    redirect_to(season_board_path) && return unless row
+
+    flash_hold_result(row, params[:hold].to_s == '1')
+    redirect_to(season_board_path(anchor: SeasonBoard::ActionPaths.row_dom_id(row.fin_event_id)))
+  end
+
+  # [POST] "Prepare all": runs the pipeline planner now (same rules and switches as the 15-minute pass).
+  def prepare_all
+    if DataFix::Automation.enabled?(:auto_prepare)
+      PipelinePlannerJob.perform_later(trigger: 'board')
+      flash[:info] = I18n.t('pipeline_automation.flash.planner_queued')
+    else
+      flash[:warning] = I18n.t('pipeline_automation.flash.paused')
+    end
+  rescue StandardError => e
+    Rails.logger.error("[SeasonBoardController] planner not queued: #{e.class}: #{e.message}")
+    flash[:error] = I18n.t('pipeline_automation.flash.planner_failed', error: e.message)
+  ensure
     redirect_to(season_board_path)
   end
 
@@ -143,16 +187,49 @@ class SeasonBoardController < ApplicationController # rubocop:disable Metrics/Cl
   # Runs the Scheduler call in the block, setting the flash for its outcome (block result true: queued,
   # false: busy). The Scheduler re-raises when the enqueue itself fails (e.g. missing queue database):
   # the error is shown in the flash instead of a 500.
-  def enqueue(row, queued_key)
+  # (+queued_key+ / +busy_key+: under season_board.flash, or pipeline_automation.flash for the prepare)
+  def enqueue(row, queued_key, busy_key: :busy)
     fin_event_id = row.fin_event_id
+    scope = queued_key == :prepare_queued ? 'pipeline_automation.flash' : 'season_board.flash'
     if yield
-      flash[:info] = I18n.t("season_board.flash.#{queued_key}", fin_event_id:)
+      flash[:info] = I18n.t("#{scope}.#{queued_key}", fin_event_id:)
     else
-      flash[:warning] = I18n.t('season_board.flash.busy', fin_event_id:)
+      flash[:warning] = I18n.t("#{busy_key == :busy ? 'season_board.flash' : scope}.#{busy_key}", fin_event_id:)
     end
   rescue StandardError => e
     Rails.logger.error("[SeasonBoardController] enqueue failed for FIN #{fin_event_id}: #{e.class}: #{e.message}")
     flash[:error] = I18n.t('season_board.flash.enqueue_failed', fin_event_id:, error: e.message)
+  end
+
+  # Source of the row (the file the review / commit actions of its next action point to), or nil.
+  def row_source_path(row)
+    row.next_action&.params&.dig(:file_path).presence
+  end
+
+  def flash_hold_result(row, held)
+    source_path = row_source_path(row)
+    fin_event_id = row.fin_event_id
+    if source_path.blank? || !Ops.available?
+      flash[:warning] = I18n.t('pipeline_automation.flash.no_source', fin_event_id:)
+    elsif store_hold(source_path, held, row)
+      flash[:info] = I18n.t("pipeline_automation.flash.#{held ? 'held' : 'released'}", fin_event_id:)
+    else
+      flash[:error] = I18n.t('pipeline_automation.flash.hold_failed', fin_event_id:)
+    end
+  end
+
+  # Stores the row hold on the Ops::PipelineSource of the source (+ an 'automation.row_held' / '_released' event).
+  def store_hold(source_path, held, row)
+    Ops.safely(false) do
+      season_id = Ops::PipelineSource.season_id_for(source_path)
+      source = Ops::PipelineSource.for_path!(source_path, season_id: season_id.positive? ? season_id : @season.id)
+      source.update!(auto_prepare: !held)
+      Ops.record_event!(kind: "automation.row_#{held ? 'held' : 'released'}", level: 'info', actor: 'operator', season_id: @season.id,
+                        subject_type: 'fin_event', subject_key: row.fin_event_id,
+                        data: { 'base' => source.base, 'user_id' => current_user&.id }, link_path: season_board_path)
+      SeasonBoard::Snapshot.invalidate!(@season.id)
+      true
+    end
   end
 
   def flash_link_result(result, row, calendar_id)

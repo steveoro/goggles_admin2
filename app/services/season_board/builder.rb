@@ -9,12 +9,16 @@ module SeasonBoard
   # SeasonBoard::Row per FIN calendar row, each with a pipeline state & one next action
   # (see SeasonBoard::StateResolver for the states, the rules & the NextAction payloads).
   #
-  # Being busy (a queued/running crawl or extraction in the ActivityLog) is an overlay
-  # (Row#busy? + :busy flag), not a state.
+  # Being busy (a queued/running crawl, extraction or prepare in the ActivityLog, or a prepare job holding the
+  # source lease) is an overlay (Row#busy? + :busy flag), not a state. The ops pipeline facts of each row's source
+  # (SeasonBoard::PipelineIndex, phase 10) feed the :prepare_failed / :needs_review / :ready_to_commit states.
   #
-  class Builder
+  class Builder # rubocop:disable Metrics/ClassLength
     STATES = StateResolver::STATES
     ACTIONS = StateResolver::ACTIONS
+
+    # The ops pipeline facts used by the build (read by SeasonBoard::PipelinePlanner: see PipelineIndex#read_error?).
+    attr_reader :pipeline_index
 
     FLAGS = RowFlags::FLAGS
 
@@ -77,13 +81,15 @@ module SeasonBoard
     # - today: reference date for the "past" checks
     # - state_store: FedernuotoWatch::StateStore used when +rows+ is nil (default store when nil)
     # - snapshot_checked_at: overrides the 'last_checked' time read from the store
+    # - pipeline_index: SeasonBoard::PipelineIndex (default: one for the season)
     def initialize(season:, rows: nil, disk_index: nil, db_index: nil, activity_log: nil, today: Date.current, # rubocop:disable Metrics/ParameterLists
-                   state_store: nil, snapshot_checked_at: nil)
+                   state_store: nil, snapshot_checked_at: nil, pipeline_index: nil)
       @season = season
       @rows = rows
       @disk_index = disk_index || DiskIndex.new(season_id: season.id)
       @db_index = db_index || DbIndex.new(season_id: season.id)
       @activity_log = activity_log || ActivityLog.new
+      @pipeline_index = pipeline_index || PipelineIndex.new(season_id: season.id)
       @resolver = StateResolver.new(today:)
       @row_flags = RowFlags.new(season:, db_index: @db_index)
       @state_store = state_store
@@ -119,20 +125,22 @@ module SeasonBoard
     def build_row(row)
       fin_id = FINEventId.parse(row['url'])
       calendar = fin_id && @db_index.calendar_for(fin_id)
+      disk = fin_id && @disk_index.for(fin_id)
       facts = StateResolver::Facts.new(
         row:, fin_event_id: fin_id, row_date: RowDate.parse(row['date'], row['year']),
-        calendar:, meeting: calendar&.meeting, disk: fin_id && @disk_index.for(fin_id)
+        calendar:, meeting: calendar&.meeting, disk:, pipeline: disk && @pipeline_index.for_entry(disk)
       )
-      activity = fin_id ? @activity_log.for(fin_id) : { crawl: nil, extract: nil }
+      activity = fin_id ? @activity_log.for(fin_id) : ActivityLog::KINDS.index_with(nil)
       assemble_row(facts, @resolver.call(facts), activity)
     end
 
     def assemble_row(facts, outcome, activity)
-      busy = activity.values.compact.any?(&:busy?)
+      busy = activity.values.compact.any?(&:busy?) || facts.pipeline&.preparing? || false
       Row.new(
         **snapshot_attributes(facts), **meeting_attributes(facts.calendar, facts.meeting),
         state: outcome.state, state_detail: outcome.detail, next_action: outcome.next_action,
-        activity:, busy:, flags: @row_flags.call(facts, outcome.state, activity, busy, unlinked_dates: @unlinked_dates), disk_entry: facts.disk
+        activity:, busy:, flags: @row_flags.call(facts, outcome.state, activity, busy, unlinked_dates: @unlinked_dates), disk_entry: facts.disk,
+        pipeline: facts.pipeline
       )
     end
 

@@ -122,7 +122,7 @@ it:
       link_secondary: 'Collega a meeting...'
       link_select_prompt: 'Scegli una riga del calendario...'
       no_link_candidates: 'nessun calendario non collegato a cui collegarsi'
-      busy_tooltip: 'Per questo meeting un crawl o un''estrazione è già in coda o in corso'
+      busy_tooltip: 'Per questo meeting un crawl, un''estrazione o una preparazione è già in coda o in corso'
       no_url: 'Nessun link FIN disponibile'
     orphans:
       title: 'Righe di calendario non presenti nella lista FIN (%{count})'

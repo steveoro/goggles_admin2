@@ -140,6 +140,31 @@ RSpec.describe MeetingCrawlJob do
       expect(SeasonBoard::Snapshot).to have_received(:invalidate!).with(262)
     end
 
+    it 'enqueues a pipeline planner pass at the end (phase 10: the crawled source gets prepared)' do
+      expect { perform }.to have_enqueued_job(PipelinePlannerJob).with(trigger: 'MeetingCrawlJob')
+    end
+
+    it 'refuses an automatic crawl while the automation master switch is off' do
+      activity_log.queue!(fin_id, kind: :crawl, origin: :auto, url:)
+      DataFix::Automation.store!(:enabled, false)
+      perform
+      expect(crawler.pulls).to eq([])
+      expect(crawl_entry).to have_attributes(status: :failed, message: I18n.t('pipeline_automation.reasons.automation_paused'))
+    end
+
+    it 'reads the origin passed by the Scheduler; a manual crawl runs with the automation off' do
+      DataFix::Automation.store!(:enabled, false)
+      described_class.perform_now(season_id: 262, fin_event_id: fin_id, url:, origin: 'manual')
+      expect(crawler.pulls).to eq([{ season_id: 262, url: }])
+    end
+
+    it 'fails closed: an unreadable switch refuses an automatic crawl' do
+      allow(Ops::Setting).to receive(:fetch).and_call_original
+      allow(Ops::Setting).to receive(:fetch).with('automation.enabled', true).and_raise(ActiveRecord::StatementInvalid, 'database is locked')
+      described_class.perform_now(season_id: 262, fin_event_id: fin_id, url:, origin: 'auto')
+      expect(crawler.pulls).to eq([])
+    end
+
     it 'pauses after the crawl' do
       perform
       expect(clock_state[:slept].last).to eq(described_class::PAUSE_AFTER_CRAWL)

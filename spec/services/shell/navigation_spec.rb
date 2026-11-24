@@ -102,11 +102,20 @@ RSpec.describe Shell::Navigation do
     end
 
     it 'maps the data health pages and frames to the Data quality > Data health item' do
-      %w[health#index health#matrix health/seasons#show health/seasons#summary health/sections#show health/findings#show
-         health/cancellations#new].each do |route|
+      %w[health#index health#matrix health/seasons#show health/seasons#summary health/sections#show
+         health/findings#show].each do |route|
         controller, action = route.split('#')
         item = described_class.item_for(controller, action)
         expect(item&.key).to eq(:health), route
+        expect(item.group).to eq(:data_quality)
+      end
+    end
+
+    it 'maps the operations pages and the run pages to the Data quality > Operations item' do
+      %w[operations#index operations#new maintenance/runs#show maintenance/runs#status maintenance/runs#create].each do |route|
+        controller, action = route.split('#')
+        item = described_class.item_for(controller, action)
+        expect(item&.key).to eq(:operations), route
         expect(item.group).to eq(:data_quality)
       end
     end

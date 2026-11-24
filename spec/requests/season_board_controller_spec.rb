@@ -420,5 +420,100 @@ RSpec.describe SeasonBoardController do
         end
       end
     end
+
+    describe 'pipeline automation (phase 10)' do
+      let(:rows) do
+        [
+          build_row(fin_event_id: '11', name: 'Failed prep', state: :prepare_failed, state_detail: { phase: 4, message: 'solver exploded' },
+                    next_action: action(:prepare, '11', file_path: '/d/262/f.json'), url: 'https://fin.example/11'),
+          build_row(fin_event_id: '12', name: 'Needs a look', state: :needs_review, state_detail: { step: 3, count: 4, blocked: false },
+                    next_action: action(:resume_review, '12', file_path: '/d/262/n.json', phase: 3, filter_state: 'review'),
+                    url: 'https://fin.example/12'),
+          build_row(fin_event_id: '13', name: 'All clean', state: :ready_to_commit, state_detail: { new_teams: 2, new_swimmers: 37 },
+                    next_action: action(:commit, '13', file_path: '/d/262/r.json'), url: 'https://fin.example/13'),
+          build_row(fin_event_id: '14', name: 'Held one', state: :results_ready, flags: [:prepare_held],
+                    next_action: action(:review_results, '14', file_path: '/d/262/h.json'), url: 'https://fin.example/14'),
+          build_row(fin_event_id: '15', name: 'To push', state: :sql_pending, next_action: action(:push, '15', sql_path: '/s.sql', sql_paths: ['/s.sql']),
+                    url: 'https://fin.example/15')
+        ]
+      end
+      let(:page) { response.parsed_body }
+
+      describe 'GET /season_board' do
+        before(:each) { get(season_board_path, params: { locale: 'en' }) }
+
+        it 'renders the three states with their details' do
+          expect(page.at_css('#season-board-row-11 .badge').text).to eq('Preparation failed at step 4: solver exploded')
+          expect(page.at_css('#season-board-row-12 .badge').text).to eq('Needs review at step 3 · 4 issues')
+          expect(page.at_css('#season-board-row-13 .badge').text).to eq('Ready to commit · +2 teams, +37 swimmers')
+        end
+
+        it 'pins the Retry form (POST season_board/prepare) and the Commit link (the commit summary, never a commit)' do
+          retry_form = page.at_css('#season-board-row-11 form[action="/season_board/prepare"]')
+          expect(retry_form.at_css('input[name=fin_event_id]')['value']).to eq('11')
+          expect(retry_form.at_css('button').text.strip).to eq('Retry')
+          expect(page.at_css('#season-board-row-13 a.btn')['href']).to eq(data_fix_commit_summary_path(file_path: '/d/262/r.json'))
+          expect(page.at_css('#season-board-row-12 a.btn')['href']).to eq(review_swimmers_path(file_path: '/d/262/n.json', phase3_v2: 1, filter_state: 'review'))
+        end
+
+        it 'offers Prepare as a secondary action, and the hold toggle on the rows with a source' do
+          expect(page.at_css('#season-board-row-12 [data-pipeline-action="prepare"]')).to be_present
+          expect(page.at_css('#season-board-row-13 [data-pipeline-action="prepare"]')).to be_nil
+          expect(page.at_css('#season-board-row-13 [data-pipeline-action="hold"]')).to be_present
+          held = page.at_css('#season-board-row-14 form[action="/season_board/hold"]')
+          expect(held.at_css('input[name=hold]')['value']).to eq('0')
+          expect(page.at_css('#season-board-row-14 [data-flag="prepare_held"]')).to be_present
+          expect(page.at_css('#season-board-row-15 .season-board-pipeline-actions')).to be_nil
+        end
+
+        it 'shows the automation switches and the Prepare all button in the header' do
+          expect(page.at_css('#season-board-automation #automation-switches-season_board [data-automation-switch="auto_prepare"]')).to be_present
+          expect(page.at_css('form[action="/season_board/prepare_all"] button')).to be_present
+        end
+      end
+
+      describe 'POST /season_board/prepare' do
+        it 'queues an operator prepare of the row source (never a commit)' do
+          allow(SeasonBoard::Scheduler).to receive(:prepare!).and_return(instance_double(Ops::PipelineRun))
+          post(season_board_prepare_path, params: { fin_event_id: '11', file_path: '/evil.json' })
+          expect(response).to redirect_to(season_board_path(anchor: 'season-board-row-11'))
+          expect(flash[:info]).to eq(I18n.t('pipeline_automation.flash.prepare_queued', fin_event_id: '11'))
+          expect(SeasonBoard::Scheduler).to have_received(:prepare!)
+            .with(season_id: season.id, source_path: '/d/262/f.json', origin: :operator, fin_event_id: '11')
+        end
+
+        it 'warns when the Scheduler refuses (busy) and when the row has no source' do
+          allow(SeasonBoard::Scheduler).to receive(:prepare!).and_return(false)
+          post(season_board_prepare_path, params: { fin_event_id: '11' })
+          expect(flash[:warning]).to eq(I18n.t('pipeline_automation.flash.prepare_busy', fin_event_id: '11'))
+          post(season_board_prepare_path, params: { fin_event_id: '15' })
+          expect(flash[:warning]).to eq(I18n.t('pipeline_automation.flash.no_source', fin_event_id: '15'))
+        end
+      end
+
+      describe 'POST /season_board/hold' do
+        it 'holds and releases the row source, recording an event' do
+          post(season_board_hold_path, params: { fin_event_id: '13', hold: '1' })
+          source = Ops::PipelineSource.find_by(season_id: 262, base: 'r')
+          expect(source.auto_prepare).to be false
+          expect(Ops::Event.order(:id).last).to have_attributes(kind: 'automation.row_held', subject_key: '13')
+          post(season_board_hold_path, params: { fin_event_id: '13', hold: '0' })
+          expect(source.reload.auto_prepare).to be true
+        end
+      end
+
+      describe 'POST /season_board/prepare_all' do
+        it 'queues a planner pass' do
+          expect { post(season_board_prepare_all_path) }.to have_enqueued_job(PipelinePlannerJob).with(trigger: 'board')
+          expect(response).to redirect_to(season_board_path)
+        end
+
+        it 'refuses while the automation is paused' do
+          DataFix::Automation.store!(:auto_prepare, false)
+          expect { post(season_board_prepare_all_path) }.not_to have_enqueued_job(PipelinePlannerJob)
+          expect(flash[:warning]).to eq(I18n.t('pipeline_automation.flash.paused'))
+        end
+      end
+    end
   end
 end

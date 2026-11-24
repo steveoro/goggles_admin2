@@ -9,17 +9,20 @@ module SeasonBoard
   # - state:        one of Builder::STATES (Symbol);
   # - state_detail: Hash with state-specific details (e.g. { phase: 3 } for :in_review);
   # - next_action:  NextAction (kind Symbol + params Hash) or nil; see Builder for the payloads;
-  # - activity:     { crawl: ActivityLog::Entry|nil, extract: ActivityLog::Entry|nil };
-  # - busy:         true while a (non-stale) crawl/extraction is queued or running for the FIN id
+  # - activity:     { crawl:, extract:, prepare: } (ActivityLog::Entry|nil each, see ActivityLog::KINDS);
+  # - busy:         true while a (non-stale) crawl/extraction/prepare is queued or running for the FIN id
   #                 (an overlay, not a state: the UI should disable the action buttons);
   # - flags:        Array of Symbols (see Builder::FLAGS);
-  # - calendar / disk_entry: the underlying DbIndex::CalendarInfo / DiskIndex::Entry (or nil).
+  # - calendar / disk_entry: the underlying DbIndex::CalendarInfo / DiskIndex::Entry (or nil);
+  # - pipeline: the PipelineIndex::Facts of the row's source (optional, default nil).
   #
   Row = Data.define(
     :fin_event_id, :key, :date_text, :first_date, :last_date, :year, :name, :place, :url, :info,
     :calendar_id, :meeting_id, :meeting_description, :meeting_header_date, :mir_count, :mrr_count, :results_acquired,
-    :state, :state_detail, :next_action, :activity, :busy, :flags, :calendar, :disk_entry
+    :state, :state_detail, :next_action, :activity, :busy, :flags, :calendar, :disk_entry, :pipeline
   ) do
+    def initialize(pipeline: nil, **) = super
+
     def busy? = busy
     def results_count = mir_count.to_i + mrr_count.to_i
     def linked? = meeting_id.present?

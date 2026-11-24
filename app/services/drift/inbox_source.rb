@@ -7,6 +7,7 @@ module Drift
   # The dashboard "Needs you" source of the DB sync check, in the :drift slot of the phase 05 drift v0 source
   # (config/initializers/inbox.rb). Reads only the last stored Ops::DbFingerprint of the configured API:
   # - red   => one 'blocked'-band item (Phase 6 commits are refused until it is solved) opening /db_sync;
+  #            (phase 14: plus a "Restore local DB" secondary action opening the restore wizard);
   # - amber => one 'notice'-band item (also a green check older than Ops::DbFingerprint::STALE_AFTER): "Review
   #            remote-only edits" (/remote_writes) when the remote writes are the only reason, else /db_sync;
   # - green, unknown, no check yet => nothing (missing credentials are reported by the blockers source).
@@ -44,7 +45,8 @@ module Drift
     def red_item(fingerprint, context)
       item(key: 'drift_red', kind: :drift_red, band: :blocked, title: t(:red_title), detail: details(fingerprint, context),
            subject: { api_url: context.api_url, db_fingerprint_id: fingerprint.id },
-           action: action(t(:open), url_helpers.db_sync_path), since: fingerprint.taken_at)
+           action: action(t(:open), url_helpers.db_sync_path), since: fingerprint.taken_at,
+           secondary_action: action(t(:restore), url_helpers.new_db_restore_path)) # (14: the guided local DB restore)
     end
 
     def amber_item(fingerprint, context)

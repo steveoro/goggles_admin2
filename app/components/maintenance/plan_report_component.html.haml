@@ -1,0 +1,80 @@
+.operation-run-report{ data: { operation_run_id: run.id, operation_run_status: display_status, operation_run_outcome: outcome } }
+  .d-flex.flex-wrap.align-items-center.gap-2.mb-3
+    %span.badge.fs-6#operation-run-state{ class: self.class.status_css(display_status) }= t("maintenance.statuses.#{display_status}")
+    %span.badge{ class: self.class.mode_css(run.mode) }= t("maintenance.modes.#{run.mode}")
+    - if outcome == :pending
+      .spinner-border.spinner-border-sm.text-primary{ role: 'status' }
+        %span.visually-hidden= outcome_text
+    %span.small.text-body-secondary.ms-auto
+      %i.fa-solid.fa-database{ 'aria-hidden' => 'true' }
+      = t('maintenance.local_mirror')
+
+  .alert.py-2#operation-run-outcome{ class: outcome_css, role: 'status' }
+    = outcome_text
+    - if outbox_link?
+      = link_to(t('maintenance.run.open_outbox'), helpers.outbox_path(focus: summary['sql_filename']),
+                class: 'alert-link ms-1', id: 'operation-run-outbox-link')
+    - if outcome == :interrupted
+      - if run.running? && (script = run.tmp_script_path)
+        %p.small.mb-1.mt-2#operation-run-tmp-script
+          = t('maintenance.run.interrupted_script')
+          %code.user-select-all= Outbox.relative_path(script, data_root: Rails.root)
+      .mt-2
+        = link_to(t('maintenance.run.new_dry_run'), new_dry_run_path,
+                  class: 'btn btn-sm btn-outline-danger', id: 'operation-run-new-dry-run', data: { turbo_frame: '_top' })
+
+  - if run.finished?
+    - if run.error_list.any?
+      %section.mb-3#operation-run-errors
+        %h3.h6.text-danger= t('maintenance.run.errors')
+        %ul.small.mb-0
+          - run.error_list.each do |message|
+            %li.text-break= message
+    - if run.warning_list.any?
+      %section.mb-3#operation-run-warnings
+        %h3.h6.text-warning-emphasis= t('maintenance.run.warnings')
+        %ul.small.mb-0
+          - run.warning_list.each do |message|
+            %li.text-break= message
+
+    - if facts.any?
+      %section.mb-3#operation-run-summary
+        %h3.h6= t('maintenance.run.summary')
+        %dl.row.small.mb-1
+          - facts.select { |_key, value| scalar?(value) }.each do |key, value|
+            %dt.col-sm-4.text-body-secondary= fact_label(key)
+            %dd.col-sm-8.text-break.mb-1= fact_value(value)
+        - facts.reject { |_key, value| scalar?(value) }.each do |key, value|
+          %details.mb-2{ data: { fact: key } }
+            %summary.small.fw-semibold= fact_label(key)
+            %pre.small.bg-body-tertiary.border.rounded.p-2.mb-0.outbox-preview= json(value)
+
+    - if reviews.any?
+      .alert.alert-warning.small#operation-run-reviews{ role: 'status' }
+        %p.mb-1= t('maintenance.run.reviews')
+        %ul.mb-0
+          - reviews.each do |review|
+            %li
+              %span.font-monospace= review['base']
+              %span.badge.text-bg-secondary= review['stage']
+
+    %details.mb-3#operation-run-console{ open: run.blocked? || nil }
+      %summary.h6.mb-2= t('maintenance.run.console')
+      - if console_text.present?
+        %pre.small.bg-body-tertiary.border.rounded.p-2.mb-0.outbox-preview.outbox-preview-full.operation-console{ tabindex: '0' }= console_text
+      - else
+        %p.small.text-body-secondary.mb-0= t('maintenance.run.console_empty')
+
+    %section.mb-0#operation-run-sql
+      %h3.h6
+        = t('maintenance.run.sql')
+        - if statements_count.positive?
+          %span.small.fw-normal.text-body-secondary= t('maintenance.run.statements', count: statements_count)
+      - if run.sql_preview.present?
+        %pre.small.bg-body-tertiary.border.rounded.p-2.mb-1.outbox-preview.outbox-preview-full.operation-sql{ tabindex: '0' }= run.sql_preview
+        - if run.sql_digest.present?
+          %p.small.text-body-secondary.mb-0
+            = t('maintenance.run.digest')
+            %code.user-select-all= run.sql_digest
+      - else
+        %p.small.text-body-secondary.mb-0= t('maintenance.run.sql_empty')

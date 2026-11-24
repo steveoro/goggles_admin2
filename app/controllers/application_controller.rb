@@ -5,9 +5,12 @@ require 'version'
 # = ApplicationController
 #
 # Common parent controller
-class ApplicationController < ActionController::Base
+class ApplicationController < ActionController::Base # rubocop:disable Metrics/ClassLength
   protect_from_forgery with: :null_session
   include APISession
+  # (Phase 14: prepended callback, runs first: while a guided DB restore holds the lock every page answers from the
+  #  ops DB only, see DbRestoreGuard)
+  include DbRestoreGuard
 
   before_action :app_settings_row, :set_locale, :detect_device_variant,
                 :check_jwt_session, :authenticate_user!, :set_current_attributes

@@ -17,7 +17,10 @@ module SeasonBoard
     #   change when a file is added, removed or renamed (atomic rewrites included), not on an
     #   in-place edit (hence the max age of the stored summaries);
     # - count & max(updated_at) of the season calendars and meetings;
-    # - the id of the last Ops::Event of the EVENT_KINDS (Phase 6 commit, staging purge, calendar link).
+    # - the id of the last Ops::Event of the EVENT_KINDS (Phase 6 commit, staging purge, calendar link);
+    # - the pipeline facts of the season (phase 10): max updated_at of its Ops::PipelineSource rows (stage, lease,
+    #   hold), the last prepare run id / finish time and the number of pending ones, the data_fix.db_generation.
+    #   (Throttled progress writes are left out on purpose: a running prepare does not rebuild the board every second.)
     #
     class Fingerprint
       # Ops::Event kinds that change the board (as written by the 01 instrumentation).
@@ -53,7 +56,7 @@ module SeasonBoard
           'files' => { 'watch' => mtime(@watch_path), 'activity' => mtime(@activity_path) },
           'folders' => DiskIndex::SEASON_FOLDERS.index_with { |folder| mtime(@data_dir.join(folder, @season_id.to_s)) },
           'calendars' => db_facts(GogglesDb::Calendar), 'meetings' => db_facts(GogglesDb::Meeting),
-          'last_event_id' => last_event_id
+          'last_event_id' => last_event_id, 'pipeline' => pipeline_facts
         }
       end
 
@@ -76,6 +79,17 @@ module SeasonBoard
 
       def last_event_id
         Ops.safely { Ops::Event.where(kind: EVENT_KINDS).maximum(:id) if Ops.available? }
+      end
+
+      def pipeline_facts
+        Ops.safely do
+          next unless Ops.available?
+
+          sources = Ops::PipelineSource.where(season_id: @season_id)
+          runs = Ops::PipelineRun.where(pipeline_source_id: sources.select(:id), kind: 'prepare')
+          [sources.maximum(:updated_at)&.iso8601(6), runs.maximum(:id), runs.maximum(:finished_at)&.iso8601(6), runs.pending.count,
+           Ops::Setting.fetch(DataFix::Pipeline::DB_GENERATION_KEY, 0)]
+        end
       end
     end
   end

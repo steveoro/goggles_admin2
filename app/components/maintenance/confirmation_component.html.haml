@@ -1,0 +1,42 @@
+%section.card.border-danger-subtle#operation-apply
+  .card-header.d-flex.align-items-center.gap-2
+    %i.fa-solid.fa-play{ 'aria-hidden' => 'true' }
+    %h2.h6.mb-0= t('maintenance.apply.title')
+  .card-body
+    - if latest_interrupted?
+      .alert.alert-danger.mb-0#operation-apply-interrupted{ role: 'alert' }
+        = t('maintenance.apply.interrupted')
+        = link_to(t('maintenance.run.subtitle.apply', id: latest_apply.id), helpers.maintenance_run_path(latest_apply),
+                  class: 'alert-link ms-1', data: { turbo_frame: '_top' })
+    - elsif run.applied_or_applying?
+      .alert.alert-info.mb-0#operation-apply-already{ role: 'status' }
+        = t('maintenance.apply.already')
+        - if latest_apply
+          = link_to(t('maintenance.run.subtitle.apply', id: latest_apply.id), helpers.maintenance_run_path(latest_apply),
+                    class: 'alert-link ms-1', data: { turbo_frame: '_top' })
+    - else
+      %p.small.text-body-secondary= t('maintenance.apply.intro')
+      - if gate
+        .mb-3#operation-apply-db-sync{ data: { gate_level: gate.level } }
+          = render(Drift::IndicatorComponent.new(fingerprint: gate.verdict, details: !gate.ok?))
+      = form_with(**form_options) do
+        - if drift_blocked?
+          .alert.alert-danger#operation-apply-drift-red{ role: 'alert' }= t('maintenance.apply.drift_red')
+        - elsif drift_tick?
+          .alert.alert-warning#operation-apply-drift
+            = t('maintenance.apply.drift_warn')
+            .form-check.mt-2
+              = check_box_tag(:drift_ack, '1', false, class: 'form-check-input', required: true, id: 'operation-drift-ack')
+              = label_tag('operation-drift-ack', t('maintenance.apply.drift_ack'), class: 'form-check-label')
+        - if confirmation.confirm?
+          .form-check.mb-3
+            = check_box_tag(:confirm, '1', false, class: 'form-check-input', required: true, id: 'operation-confirm')
+            = label_tag('operation-confirm', t('maintenance.apply.confirm_label'), class: 'form-check-label')
+        - elsif confirmation.typed?
+          .mb-3
+            = label_tag('operation-typed-token', t('maintenance.apply.typed_label', token: confirmation.token), class: 'form-label')
+            = text_field_tag(:typed_token, nil, class: 'form-control', id: 'operation-typed-token', autocomplete: 'off', required: true,
+                                                placeholder: confirmation.token)
+        = button_tag(type: 'submit', class: 'btn btn-danger', id: 'btn-operation-apply', disabled: !submittable?) do
+          %i.fa-solid.fa-play{ 'aria-hidden' => 'true' }
+          = t('maintenance.apply.submit')

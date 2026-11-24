@@ -43,41 +43,26 @@ namespace :recompute do
     end
 
     simulate = ENV['simulate'] != '0' # Don't run locally the script unless explicitly requested
-    season ||= meeting.season if meeting
+    # (Recompute::Ranks builds the SQL; the progress lines below come from its events, the output is unchanged)
+    ranker = Recompute::Ranks.new(season:, meeting:)
+    season = ranker.season
     file_index = ENV['index'].present? ? ENV['index'].to_i : auto_index_from_script_output_dir
     # (^^^ Use 'auto_index_from_script_output_dir(season.id)' to get the index from the season subdirectory)
     file_name = "#{format('%04d', file_index)}-#{season.id}-recompute_ranks"
-    meetings = meeting.present? ? [meeting] : season.meetings.joins(:meeting_programs).includes(:meeting_programs)
     puts("\r\n#{'- SIMULATE'.ljust(25, '.')}: ✔") if simulate
-    puts("- #{meetings.count} meetings found.")
+    puts("- #{ranker.meetings.count} meetings found.")
     puts('')
 
-    sql_log = Merge::Badge.start_transaction_log.dup + ["--\r\n-- *** Recompute ranks: season #{season.id}, #{meetings.count} meeting(s) ***\r\n--\r\n"]
-    meetings.each_with_index do |m, index|
-      description = "Meeting #{index + 1}/#{meetings.count}, ID #{m.id} '#{m.description}', " \
-                    "MIRs: #{m.meeting_individual_results.count}, MRRs: #{m.meeting_relay_results.count}"
-      puts("- #{description}:")
-      sql_log << "-- #{description}"
-      m.meeting_programs.each do |meeting_program|
-        rows = meeting_program.relay? ? meeting_program.meeting_relay_results : meeting_program.meeting_individual_results
-        with_time = rows.by_timing.to_a.keep_if { |row| row.to_timing.positive? }
-        with_no_time = rows.by_timing.to_a.keep_if { |row| row.to_timing.zero? }
-
-        (with_time + with_no_time).each_with_index do |row, row_index|
-          next if row.rank == row_index + 1
-
-          sql_log << "UPDATE #{row.class.table_name} SET updated_at=NOW(), rank=#{row_index + 1} WHERE id = #{row.id}; " \
-                     "-- MPrg: #{meeting_program.id}, #{row.to_timing}"
-          # DEBUG: add to the above: " -- MPrg: #{meeting_program.id}, #{row.to_timing}"
-        end
-        putc('.')
+    ranker.call do |event, payload|
+      case event
+      when :meeting then puts("- #{payload}:")
+      when :program then putc('.')
+      when :meeting_done then puts('')
       end
-      puts('')
     end
 
-    sql_log += Merge::Badge.end_transaction_log
     puts("\r\nGenerating file '#{file_name}'...")
-    process_sql_file(file_name:, sql_log_array: sql_log, simulate:)
+    process_sql_file(file_name:, sql_log_array: ranker.sql_log, simulate:)
     puts('Done.')
   end
   #-- -------------------------------------------------------------------------

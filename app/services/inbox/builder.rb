@@ -21,7 +21,8 @@ module Inbox
     MAX_ITEMS = 25
 
     # Sources whose items describe a Season board row: they win the de-duplication by file path.
-    BOARD_SOURCES = %i[board_rows unmatched_sources failed_jobs].freeze
+    # (Phase 10 adds its pipeline state sources: ready to commit, needs review, prepare failed, extraction gave up.)
+    BOARD_SOURCES = %i[board_rows unmatched_sources failed_jobs ready_to_commit needs_review prepare_failed extraction_gave_up].freeze
 
     # Built inbox.
     Result = Data.define(:items, :hidden, :total) do

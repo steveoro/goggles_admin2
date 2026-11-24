@@ -35,7 +35,7 @@ module SeasonBoard
     PHASE_REGEXP = /\A(?<stem>.+)-phase(?<phase>\d+)\.json\z/
     SQL_REGEXP = /\A\d+-(?<base>.+?)(?:-lt4)?\.sql\z/
     SKIPPED_JSON_REGEXP = /\.(orig(-\d+)?|committed)\.json\z/
-    # SQL scripts written by SeasonBoard::Backfill, SeasonBoard::CalendarLinker & Health::MeetingCanceller (not sources).
+    # SQL scripts written by SeasonBoard::Backfill, SeasonBoard::CalendarLinker & the 06 "Flag cancelled" (not sources).
     BOARD_SQL_REGEXP = /\A\d+-(season_board_backfill-\d+|calendar_link-\d+-\d+|meeting_cancel-\d+|calendar_cancel-\d+)\.sql\z/
     # Folders (under data_dir, each with a <season> subfolder) scanned by #build!:
     SEASON_FOLDERS = %w[results.new results.done results.sent manifests manifests.done].freeze

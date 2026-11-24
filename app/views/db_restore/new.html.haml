@@ -1,0 +1,85 @@
+-#
+  Guided local DB restore, steps 0-2 (DbRestoreController#new): target guards + preconditions checklist, the open
+  run (if any), the production dumps to choose from, the dump folders and the history of the runs.
+:ruby
+  blocking = @preconditions ? @preconditions.refused.reject { |check| check.key == :reviews } : []
+  reviews = @preconditions&.[](:reviews)
+  subtitle = t('db_restore.new.subtitle', database: @target.database.presence || '-')
+  cancel_options = { method: :post, class: 'btn btn-sm btn-outline-secondary', form_class: 'd-inline',
+                     form: { data: { turbo_confirm: t('db_restore.actions.cancel_confirm') } } }
+= render(Shell::PageHeaderComponent.new(title: t('db_restore.new.title'), subtitle:))
+
+- unless @ops_available
+  .alert.alert-warning#db-restore-ops-missing{ role: 'alert' }= t('db_restore.flash.ops_missing')
+
+.alert.alert-info.small#db-restore-intro
+  %p.mb-1= t('db_restore.new.intro')
+  %ul.mb-0
+    - %w[keeps purges stale terminal].each do |key|
+      %li= t("db_restore.new.points.#{key}")
+
+- if @ops_available
+  - if @open_run
+    .card.border-primary.mb-3#db-restore-open-run
+      .card-body
+        %h2.h6.card-title= t('db_restore.new.open_run', id: @open_run.id, status: t("db_restore.statuses.#{@open_run.status}"))
+        .d-flex.flex-wrap.gap-2
+          - if @open_run.preparing?
+            = link_to(t('db_restore.new.continue'), inspect_db_restore_path(@open_run), class: 'btn btn-sm btn-primary', id: 'btn-db-restore-continue')
+            = button_to(t('db_restore.actions.cancel'), cancel_db_restore_path(@open_run), **cancel_options)
+          - else
+            = link_to(t('db_restore.new.open_progress'), db_restore_path(@open_run), class: 'btn btn-sm btn-primary')
+
+  %h2.h5.mt-4= t('db_restore.new.checks_title')
+  = render(partial: 'db_restore/checks', locals: { result: @preconditions, id: 'db-restore-checks' })
+
+  - unless @open_run
+    %h2.h5.mt-4= t('db_restore.new.dumps_title')
+    - if @catalog.entries.empty?
+      .alert.alert-warning#db-restore-no-dumps{ role: 'alert' }= t('db_restore.new.no_dumps', dirs: @catalog.dirs.join(', '))
+    - else
+      = form_with(url: db_restores_path, method: :post, id: 'frm-db-restore-create', data: { turbo: false }) do
+        .list-group.mb-3#db-restore-dumps
+          - @catalog.entries.each_with_index do |entry, index|
+            %label.list-group-item.d-flex.gap-2.align-items-start
+              = radio_button_tag(:dump, entry.path, index.zero?, class: 'form-check-input mt-1', id: "dump-#{index}")
+              .flex-grow-1
+                .font-monospace.text-break= entry.basename
+                .small.text-body-secondary
+                  = t('db_restore.new.dump_meta', size: number_to_human_size(entry.bytes), time: l(entry.mtime.localtime, format: :short), dir: entry.dir)
+        - if reviews && !reviews.ok?
+          .form-check.mb-3#db-restore-discard-reviews
+            = check_box_tag(:discard_reviews, '1', false, class: 'form-check-input')
+            = label_tag(:discard_reviews, t('db_restore.new.discard_reviews', count: reviews.detail.to_i), class: 'form-check-label')
+        = button_tag(type: 'submit', class: 'btn btn-primary', id: 'btn-db-restore-inspect', disabled: blocking.any?) do
+          %i.fa-solid.fa-magnifying-glass{ 'aria-hidden' => 'true' }
+          = t('db_restore.new.inspect')
+        - if blocking.any?
+          .form-text.text-danger= t('db_restore.new.blocked')
+
+  %details.mt-4#db-restore-dump-dirs
+    %summary.small= t('db_restore.new.dirs_title')
+    = form_with(url: db_restore_dump_dirs_path, method: :post, class: 'mt-2', data: { turbo: false }) do
+      = label_tag(:dirs, t('db_restore.new.dirs_label'), class: 'form-label small')
+      = text_area_tag(:dirs, @catalog.dirs.join("\n"), rows: 3, class: 'form-control font-monospace small')
+      .form-text= t('db_restore.new.dirs_hint')
+      = button_tag(t('db_restore.new.dirs_save'), type: 'submit', class: 'btn btn-sm btn-outline-secondary mt-2')
+
+  - if @history.any?
+    %h2.h5.mt-4= t('db_restore.new.history_title')
+    .table-responsive
+      %table.table.table-sm.align-middle#db-restore-history
+        %thead
+          %tr
+            %th= t('db_restore.fields.run')
+            %th= t('db_restore.fields.created')
+            %th= t('db_restore.fields.dump')
+            %th= t('db_restore.fields.status')
+        %tbody
+          - @history.each do |run|
+            %tr{ data: { run_id: run.id } }
+              %td= link_to("##{run.id}", run.terminal? ? db_restore_result_path(run) : inspect_db_restore_path(run))
+              %td.small= l(run.created_at.localtime, format: :short)
+              %td.small.font-monospace.text-break= run.dump_basename || '-'
+              %td
+                %span.badge{ class: run.finished? ? 'text-bg-success' : 'text-bg-secondary' }= t("db_restore.statuses.#{run.status}")

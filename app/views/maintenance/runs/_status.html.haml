@@ -1,0 +1,77 @@
+-#
+  Status frame of an operation run: the report (Maintenance::PlanReportComponent), then the apply form of a dry run
+  (Maintenance::ConfirmationComponent) or the outcome of an apply (finding, health re-run, follow-up suggestions).
+  The show page renders it with its +src+ (polling: true); the status action answers without +src+ (Turbo refuses a
+  frame whose source references itself). Locals: run (Ops::OperationRun), gate (Drift::Gate result or nil), polling.
+:ruby
+  summary = run.summary_hash
+  finding = Ops.safely { run.health_finding }
+  health_run = Ops.safely { run.health_run }
+  busy = (run.pending? && !run.interrupted?) || health_run&.pending? || false
+  follow_ups = run.apply? && run.succeeded? ? Array(summary['follow_ups']) : []
+  user = run.started_by && GogglesDb::User.find_by(id: run.started_by)
+  group = summary['health_group'].presence
+  group_label = group ? t("health.groups.#{group}", default: group) : '-'
+= turbo_frame_tag('operation-run-status', src: (maintenance_run_status_path(run) if local_assigns[:polling]), target: '_top',
+                                          data: { live_frames_target: 'frame' }) do
+  .row.g-3{ data: { live_busy: busy.to_s } }
+    .col-12.col-xl-8.d-flex.flex-column.gap-3
+      %section.card#operation-run-report
+        .card-body
+          = render(Maintenance::PlanReportComponent.new(run:))
+      = render(Maintenance::ConfirmationComponent.new(run:, gate:)) if run.preview? && run.finished?
+    .col-12.col-xl-4.d-flex.flex-column.gap-3
+      - if finding
+        %section.card#operation-run-finding
+          .card-header.h6.mb-0= t('maintenance.run.finding')
+          .card-body.small
+            %p.mb-1= link_to(finding.display_title, health_finding_path(finding))
+            = render(Health::BadgeComponent.new(kind: :status, value: finding.status))
+      - if run.apply? && run.succeeded?
+        %section.card#operation-run-health
+          .card-header.h6.mb-0= t('maintenance.run.health_rerun', group: group_label)
+          .card-body.small
+            - if health_run
+              = render(Health::BadgeComponent.new(kind: :run, value: health_run.status))
+              = link_to(t('health.title'), health_season_path(run.season_id), class: 'ms-1') if run.season_id
+            - else
+              %span.text-body-secondary= t('maintenance.run.health_rerun_none')
+      - if follow_ups.any?
+        %section.card#operation-run-follow-ups
+          .card-header.h6.mb-0= t('maintenance.run.follow_ups')
+          .card-body.d-flex.flex-wrap.gap-2
+            - follow_ups.each do |follow_up|
+              - params = follow_up['params'].to_h
+              - label = "#{Maintenance::Registry.find(follow_up['operation_key'])&.fix_label} (#{params.values.join(', ')})"
+              = render(Maintenance::FixButtonComponent.new(operation_key: follow_up['operation_key'], params:, label:,
+                                                           origin: run.origin == 'rake' ? 'ui' : run.origin))
+      - if run.preview? && (applies = Ops.safely([]) { run.applies_of_preview.to_a }).any?
+        %section.card#operation-run-applies
+          .card-header.h6.mb-0= t('maintenance.run.apply_runs')
+          %ul.list-group.list-group-flush.small
+            - applies.each do |apply_run|
+              %li.list-group-item.d-flex.align-items-center.gap-2
+                = link_to(t('maintenance.run.subtitle.apply', id: apply_run.id), maintenance_run_path(apply_run))
+                %span.badge{ class: Maintenance::PlanReportComponent.status_css(apply_run.status) }= t("maintenance.statuses.#{apply_run.status}")
+      %section.card#operation-run-details
+        .card-header.h6.mb-0= t('maintenance.run.details')
+        .card-body
+          %dl.row.small.mb-0
+            %dt.col-sm-5.text-body-secondary= t('maintenance.run.params')
+            %dd.col-sm-7.mb-1.font-monospace.text-break= run.params_hash.map { |key, value| "#{key}=#{value}" }.join(' ').presence || '-'
+            %dt.col-sm-5.text-body-secondary= t('maintenance.run.origin')
+            %dd.col-sm-7.mb-1= t("maintenance.origins.#{run.origin}", default: run.origin)
+            %dt.col-sm-5.text-body-secondary= t('maintenance.run.requested')
+            %dd.col-sm-7.mb-1= l(run.created_at.localtime, format: :short)
+            - if run.started_at
+              %dt.col-sm-5.text-body-secondary= t('maintenance.run.started')
+              %dd.col-sm-7.mb-1= l(run.started_at.localtime, format: :short)
+            - if run.finished_at
+              %dt.col-sm-5.text-body-secondary= t('maintenance.run.finished')
+              %dd.col-sm-7.mb-1= l(run.finished_at.localtime, format: :short)
+            - if user
+              %dt.col-sm-5.text-body-secondary= t('maintenance.run.started_by')
+              %dd.col-sm-7.mb-1= user.name
+            - if run.drift_verdict.present?
+              %dt.col-sm-5.text-body-secondary= t('maintenance.run.drift_verdict')
+              %dd.col-sm-7.mb-1= t("db_sync.verdicts.#{run.drift_verdict}", default: run.drift_verdict)

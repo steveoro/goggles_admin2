@@ -1,0 +1,158 @@
+en:
+  pipeline_automation:
+    run:
+      building: 'Building step %{phase}'
+      done: 'Prepared: %{stage}'
+      done_with_reason: 'Prepared: %{stage} (%{reason})'
+      failed: 'Failed at step %{phase}: %{reason}'
+      refused: 'Refused: %{reason}'
+      yielded: 'Paused at step %{phase} for a queued commit'
+      drift_warning: 'DB sync warning: %{warning}'
+    reasons:
+      automation_paused: 'automation paused'
+      ops_unavailable: 'the local ops DB is not available'
+      drift_red: 'DB sync is red'
+      db_restore: 'a DB restore is in progress'
+      source_missing: 'the source file is no longer in results.new'
+      source_needs_review: 'the source needs an operator review first (its working copy would be rewritten)'
+      commit_pending: 'a commit of this source is pending'
+      edited: 'the source holds operator edits (use the row Prepare button)'
+      lease_busy: 'the source is being built by another request or job'
+      deadline: 'took longer than the soft deadline'
+      error: 'error'
+      interrupted: 'interrupted'
+      commit_queued: 'a commit is queued'
+      source_changed: 'the source changed during the run'
+    stages:
+      new: 'Not built'
+      preparing: 'Preparing'
+      needs_review: 'Needs review'
+      blocked: 'Blocked'
+      ready_to_commit: 'Ready to commit'
+      committing: 'Committing'
+      committed: 'Committed'
+      failed: 'Failed'
+    switches:
+      title: 'Automation'
+      env_off: '%{key}=0 is set: every automation switch is forced off (unset it and restart the server to resume).'
+      ops_unavailable: 'The switches need the local ops DB (run bin/rails ops:prepare).'
+      turn_on: 'Turn on'
+      turn_off: 'Turn off'
+      states:
+        'on': 'On'
+        paused: 'Paused'
+        'off': 'Off'
+      enabled:
+        label: 'Automation (master switch)'
+        help: 'Automatic crawls, manifest extractions and Data-Fix preparations. Off: nothing is queued automatically.'
+      auto_extract:
+        label: 'Auto-extract manifests'
+        help: 'Unattended manifest PDF extraction (LLM engine): at most 3 attempts per PDF, at least 20 hours apart.'
+      auto_prepare:
+        label: 'Auto-prepare (Data-Fix steps 1-5)'
+        help: 'Unattended Data-Fix preparation up to "ready to commit" or "needs review". It never commits and never pushes.'
+    worker_mode:
+      puma: 'Jobs run inside Puma (default).'
+      separate: 'Jobs run in a separate bin/jobs process (SOLID_QUEUE_IN_PUMA=false).'
+    board:
+      prepare_all: 'Prepare all'
+      prepare_all_tooltip: 'Run the automation planner now: it prepares every row that needs it (same rules and switches as the 15-minute pass)'
+      'on': 'Automation on'
+      paused: 'Automation paused'
+      switches: 'switches'
+    row:
+      prepare: 'Prepare'
+      prepare_tooltip: 'Build the missing and stale Data-Fix steps in the background (an edited step is never rebuilt; nothing is committed)'
+      hold: 'Hold automation'
+      hold_tooltip: 'Never prepare this meeting automatically (the buttons keep working)'
+      release: 'Release hold'
+      release_tooltip: 'Let the automation prepare this meeting again'
+    review:
+      being_prepared: 'Being prepared in the background: the verdicts refresh when the job ends. Edits are refused meanwhile.'
+      edit_refused: 'This source is being prepared in the background: retry in a moment.'
+    flash:
+      prepare_queued: 'Preparation queued for FIN event %{fin_event_id}.'
+      prepare_busy: 'FIN event %{fin_event_id} is already being prepared (or a commit of it is pending).'
+      no_source: 'FIN event %{fin_event_id} has no Data-Fix source to prepare.'
+      held: 'Automation held for FIN event %{fin_event_id}: it is never prepared automatically.'
+      released: 'Automation hold released for FIN event %{fin_event_id}.'
+      hold_failed: 'Could not change the hold of FIN event %{fin_event_id}.'
+      planner_queued: 'Automation planner queued: the rows that need it are prepared in the background.'
+      planner_failed: 'Could not queue the automation planner: %{error}'
+      paused: 'Automation is paused (or auto-prepare is off): turn it on first.'
+      unknown_switch: 'Unknown automation switch: %{switch}'
+      ops_unavailable: 'The automation switches need the local ops DB (run bin/rails ops:prepare).'
+      switch_on: '%{switch}: on.'
+      switch_off: '%{switch}: off.'
+      env_override: 'ADMIN2_AUTOMATION=0 is set: the automation stays off until it is unset (and the server restarted).'
+  season_board:
+    states:
+      prepare_failed: 'Preparation failed'
+      needs_review: 'Needs review'
+      ready_to_commit: 'Ready to commit'
+    state_tooltips:
+      prepare_failed: 'The last background preparation failed: retry it once the cause is fixed'
+      needs_review: 'Prepared: a step needs your decision (it opens with the review filter on)'
+      ready_to_commit: 'Prepared and clean: open the commit summary, commit, then push from the Outbox'
+    state_details:
+      prepare_failed: 'Preparation failed at step %{phase}'
+      prepare_failed_no_phase: 'Preparation failed'
+      needs_review: 'Needs review at step %{step}'
+      blocked: 'Blocked at step %{step}'
+      issues:
+        one: '1 issue'
+        other: '%{count} issues'
+      ready_to_commit: 'Ready to commit · %{entities}'
+      new_teams:
+        one: '+1 team'
+        other: '+%{count} teams'
+      new_swimmers:
+        one: '+1 swimmer'
+        other: '+%{count} swimmers'
+      no_new_entities: 'nothing new to create'
+    actions:
+      prepare: 'Retry'
+      commit: 'Commit'
+    flags:
+      prepare_held: 'on hold'
+    flag_tooltips:
+      prepare_held: 'The automation never prepares this meeting (held by the operator)'
+    activity:
+      prepare_queued: 'Preparation queued'
+      prepare_running: 'Preparing since %{time}'
+      prepare_stuck: 'Preparation seems stuck since %{time}'
+      kinds:
+        prepare: 'preparation'
+    strip:
+      kinds:
+        prepare: 'preparation'
+  inbox:
+    sources:
+      ready_to_commit: 'ready to commit'
+      needs_review: 'needs review'
+      prepare_failed: 'failed preparations'
+      extraction_gave_up: 'extractions given up'
+      automation_paused: 'automation'
+    pipeline_rows:
+      title: '%{name}: %{state}'
+    needs_review:
+      action: 'Review step %{step}'
+    extraction_gave_up:
+      title: '%{name}: automatic extraction gave up after %{count} attempts'
+      detail: 'Manifest %{pdf}: check the LLM engine or the PDF, then extract it by hand.'
+      action: 'Extract manually'
+    automation_paused:
+      title: 'Automation paused'
+      detail_switch: 'The automation master switch is off: nothing is crawled, extracted or prepared automatically.'
+      detail_env: '%{key}=0 is set: every automation switch is forced off.'
+      action: 'Open the switches'
+  ops:
+    events:
+      automation:
+        switched: 'Automation switch changed'
+        row_held: 'Season board row held (no automatic preparation)'
+        row_released: 'Season board row hold released'
+      pipeline:
+        prepare_done: 'Data-Fix preparation finished'
+        prepare_failed: 'Data-Fix preparation failed'
+        prepare_refused: 'Data-Fix preparation refused'

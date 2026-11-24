@@ -10,7 +10,8 @@ module Dashboard
   class SeasonProgressComponent < ViewComponent::Base
     # Bootstrap 5 classes of each state (same hues as the board badges, theme-aware for the neutral ones).
     STATE_CSS = {
-      cancelled: 'bg-dark-subtle text-dark-emphasis', sql_pending: 'text-bg-danger', in_review: 'text-bg-warning',
+      cancelled: 'bg-dark-subtle text-dark-emphasis', sql_pending: 'text-bg-danger', prepare_failed: 'bg-danger-subtle text-danger-emphasis',
+      needs_review: 'text-bg-warning', ready_to_commit: 'bg-success-subtle text-success-emphasis', in_review: 'text-bg-warning',
       results_ready: 'text-bg-primary', structure_ready: 'text-bg-info', manifest_pending: 'bg-info-subtle text-info-emphasis',
       committed_with_results: 'text-bg-success', structure_committed: 'text-bg-secondary',
       crawled_no_manifest: 'bg-secondary-subtle text-secondary-emphasis', archived_unlinked: 'bg-warning-subtle text-warning-emphasis',

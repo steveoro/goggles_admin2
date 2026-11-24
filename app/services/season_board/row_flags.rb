@@ -20,11 +20,12 @@ module SeasonBoard
   # - :possible_unlinked_meeting    :link_not_crawled row whose dates include the date of a link candidate
   #                                 calendar (no FIN id yet): a local meeting (e.g. imported from FICR) may
   #                                 just need linking; automatic crawls skip these rows
+  # - :prepare_held                 the operator held the row's source (no automatic prepare, phase 10)
   #
   class RowFlags
     FLAGS = %i[
       busy crawl_failed extract_failed manifest_pdf_pending redundant_result_free_source missing_meeting
-      duplicate_calendar multiple_sources pushed outside_season unparsable_date possible_unlinked_meeting
+      duplicate_calendar multiple_sources pushed outside_season unparsable_date possible_unlinked_meeting prepare_held
     ].freeze
 
     def initialize(season:, db_index:)
@@ -47,7 +48,8 @@ module SeasonBoard
         crawl_failed: activity[:crawl]&.failed?,
         extract_failed: activity[:extract]&.failed?,
         unparsable_date: !facts.row_date.valid?,
-        outside_season: facts.row_date.valid? && !within_season?(facts.row_date)
+        outside_season: facts.row_date.valid? && !within_season?(facts.row_date),
+        prepare_held: facts.pipeline&.held?
       }.merge(link_flags(facts), disk_flags(facts.disk, facts.meeting, state))
       FLAGS.select { |flag| flags[flag] }
     end

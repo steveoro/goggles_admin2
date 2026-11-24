@@ -4,6 +4,12 @@ This document describes the common source/destination contract shared by all
 merge strategies in `goggles_admin2` and the specific columns each class
 overwrites.
 
+> **From the UI (phase 11):** `Merge::Badge`, `Merge::Swimmer` and `Merge::Team` also run as the maintenance
+> operations `badge.merge`, `swimmer.merge` and `team.merge` (`/operations`, or the **Fix** buttons of the data health
+> findings): the same calls and options as the `merge:*` rake tasks, with a dry run first (checker log, warnings,
+> errors, SQL), then a confirmed local apply that registers the script in the SQL Outbox. See
+> `app/services/maintenance/operations/` and the data health section of `docs/season_board.md`.
+
 ## Common contract
 
 Every merge follows the same identity rule:

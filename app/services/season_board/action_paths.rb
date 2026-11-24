@@ -24,10 +24,10 @@ module SeasonBoard
   module ActionPaths
     # Actions run through a POST of the FIN event ID: kind => route helper
     POST_ACTIONS = { crawl: :season_board_crawl_path, check_results: :season_board_crawl_path,
-                     extract_manifest: :season_board_extract_path }.freeze
+                     extract_manifest: :season_board_extract_path, prepare: :season_board_prepare_path }.freeze
 
-    # Actions leading to another page with a GET
-    LINK_ACTIONS = %i[review_results review_structure review_header resume_review push].freeze
+    # Actions leading to another page with a GET (:commit opens the commit summary: the commit itself is a click there)
+    LINK_ACTIONS = %i[review_results review_structure review_header resume_review push commit].freeze
 
     # Data-Fix review step for each phase number: [route helper, params key]
     PHASE_STEPS = {
@@ -65,11 +65,18 @@ module SeasonBoard
       when :review_results, :review_structure, :review_header
         url_helpers.review_sessions_path(file_path: next_action.params[:file_path], phase_v2: 1)
       when :resume_review
-        helper, key = PHASE_STEPS.fetch(next_action.params[:phase].to_i, PHASE_STEPS[1])
-        url_helpers.public_send(helper, { file_path: next_action.params[:file_path], key => 1 })
+        review_step_path(next_action.params[:file_path], next_action.params[:phase], filter_state: next_action.params[:filter_state])
       when :push
         outbox_focus_path(next_action.params[:sql_path])
+      when :commit
+        url_helpers.data_fix_commit_summary_path(file_path: next_action.params[:file_path])
       end
+    end
+
+    # Data-Fix review step +phase+ of the file (optional +filter_state+, e.g. 'review': the step opens filtered).
+    def review_step_path(file_path, phase, filter_state: nil)
+      helper, key = PHASE_STEPS.fetch(phase.to_i, PHASE_STEPS[1])
+      url_helpers.public_send(helper, { file_path:, key => 1, filter_state: filter_state.presence }.compact)
     end
 
     # Season board path scrolled to the row of the FIN event id (e.g. for the :link action, whose

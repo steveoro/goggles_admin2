@@ -44,16 +44,18 @@ module DataFix
     # Phases holding new (nil-id) entities that the local DB may have meanwhile (see #db_stale?).
     NEW_ENTITY_PHASES = [2, 3, 5].freeze
 
-    attr_reader :source_path, :progress, :actor, :user_id, :last_build_result
+    attr_reader :source_path, :progress, :actor, :user_id, :last_build_result, :last_prepare_stop
     # Relay legs still to enrich, when the Step 3 page already computed them (read by Verdicts::Phase3).
     attr_accessor :relay_enrichment_count
 
     # == Params
     # - file_path: the canonical working source path (already resolved by DataFix::SourceResolver);
     # - progress: an Import::Progress sink (Cable for interactive requests, Null/Ops for jobs);
-    # - actor: :operator (interactive request) or :auto (job); user_id: the operator, for the edit markers.
-    def self.for(file_path, progress: Import::Progress::Cable.new, actor: :operator, user_id: nil, source_resolver: nil)
-      new(file_path, progress:, actor:, user_id:, source_resolver:)
+    # - actor: :operator (interactive request) or :auto (job); user_id: the operator, for the edit markers;
+    # - lease_owner: the build lease owner (default: a random one per instance; a prepare job passes 'job:<id>').
+    def self.for(file_path, progress: Import::Progress::Cable.new, actor: :operator, user_id: nil, source_resolver: nil,
+                 lease_owner: nil)
+      new(file_path, progress:, actor:, user_id:, source_resolver:, lease_owner:)
     end
 
     # Current value of the 'data_fix.db_generation' ops setting (bumped by every successful local commit), or 0.
@@ -70,7 +72,8 @@ module DataFix
       end
     end
 
-    def initialize(source_path, progress: Import::Progress::Cable.new, actor: :operator, user_id: nil, source_resolver: nil)
+    def initialize(source_path, progress: Import::Progress::Cable.new, actor: :operator, user_id: nil, source_resolver: nil,
+                   lease_owner: nil)
       raise ArgumentError, "unknown actor #{actor.inspect}" unless ACTORS.include?(actor.to_sym)
 
       @source_path = source_path.to_s
@@ -78,6 +81,8 @@ module DataFix
       @actor = actor.to_sym
       @user_id = user_id
       @source_resolver = source_resolver
+      @lease_owner = lease_owner.presence
+      @holding_lease = false
       reload!
     end
 
@@ -199,22 +204,30 @@ module DataFix
     # Builds, in order, the missing phases and the stale unedited ones (up to +up_to+, or only +phases+).
     # Stops at the first stale EDITED phase, recording its verdict as 'stale' with reason 'edited' (never raises
     # for it), and when +deadline+ (a Time) has passed. Returns #summary.
-    def prepare!(up_to: 5, phases: nil, deadline: nil)
+    # +stop_if+: optional callable, called with the phase number before each phase; a truthy answer (e.g. :yielded)
+    # stops the run there. Why the last run stopped early is kept in #last_prepare_stop (:edited, :deadline, the
+    # +stop_if+ answer, or nil when it went through).
+    def prepare!(up_to: 5, phases: nil, deadline: nil, stop_if: nil)
+      @last_prepare_stop = nil
       selected = PHASES.select { |phase| phase <= up_to.to_i && (phases.nil? || Array(phases).map(&:to_i).include?(phase)) }
       selected.each do |phase|
-        break if deadline && Time.current > deadline
-
-        if !phase_exists?(phase) || build_needed?(phase)
-          build_phase!(phase)
-        elsif stale?(phase).any?
-          if edited?(phase)
-            store_verdict(phase, edited_stale_verdict(phase))
-            break
-          end
-          build_phase!(phase)
-        end
+        @last_prepare_stop = deadline && Time.current > deadline ? :deadline : stop_if&.call(phase)
+        break if @last_prepare_stop
+        break if prepare_phase!(phase) == :edited
       end
       summary
+    end
+
+    # True when any existing phase file holds operator edits (adopted pre-existing files included): the planner never
+    # queues an automatic prepare for such a source.
+    def any_edited?
+      PHASES.any? { |phase| edited?(phase) }
+    end
+
+    # Holds the build lease for the whole block (a prepare job: +ttl+ = its deadline plus a margin). The builds made
+    # inside reuse it instead of taking and releasing it per phase. Raises LeaseBusyError when someone else holds it.
+    def hold_lease!(ttl: Ops::PipelineSource::LEASE_TTL, &)
+      with_lease(ttl:, &)
     end
 
     # True when the phase file must be (re)built before its review page can render: missing, or lacking its main
@@ -410,8 +423,12 @@ module DataFix
     # SourceResolver#backup_phase_files) and, when phase 5 is among them, the source's data_import_* rows.
     # When any target phase is edited and +force+ is false, it deletes NOTHING: the source is marked blocked with
     # reason 'source_changed_under_edits' (the step header then offers "Rebuild (discard edits)").
+    # It deletes nothing either while another owner holds the build lease (phase 10: a prepare job is building the
+    # source; +force+ does not override it): { refused: true, leased: true }.
     # Returns { phase_files:, deleted_temp_rows:, backups:, kept:, refused: }.
     def invalidate!(phases:, reason:, force: false)
+      return leased_refusal(reason) if leased_by_another?
+
       targets = Array(phases).map(&:to_i).select { |phase| PHASES.cover?(phase) }.uniq.sort
       existing = targets.select { |phase| phase_exists?(phase) }
       edited = existing.select { |phase| edited?(phase) }
@@ -498,21 +515,55 @@ module DataFix
       @lease_owner ||= "#{actor}:#{Process.pid}:#{SecureRandom.hex(4)}"
     end
 
-    def with_lease
+    # Takes the lease for the block (re-entrant: a nested call inside a held lease just yields).
+    def with_lease(ttl: Ops::PipelineSource::LEASE_TTL)
+      return yield if @holding_lease
+
       row = source_row
       return yield unless row
 
-      raise LeaseBusyError, "#{base} is being built by #{row.lease_owner}" unless Ops.safely(true) { row.acquire_lease!(lease_owner) }
+      raise LeaseBusyError, "#{base} is being built by #{row.lease_owner}" unless Ops.safely(true) { row.acquire_lease!(lease_owner, ttl:) }
 
+      @holding_lease = true
       begin
         yield
       ensure
+        @holding_lease = false
         Ops.safely { row.release_lease!(lease_owner) }
       end
     end
 
+    # One step of #prepare!: builds the phase when missing, incomplete or stale; returns :edited (after recording the
+    # 'edited' stale verdict) for a stale edited phase, else nil.
+    def prepare_phase!(phase)
+      if !phase_exists?(phase) || build_needed?(phase)
+        build_phase!(phase)
+      elsif stale?(phase).any?
+        if edited?(phase)
+          store_verdict(phase, edited_stale_verdict(phase))
+          @last_prepare_stop = :edited
+          return :edited
+        end
+        build_phase!(phase)
+      end
+      nil
+    end
+
     def built_by
       actor == :auto ? 'auto' : 'operator'
+    end
+
+    # True when another owner holds an unexpired build lease of the source (never while this instance holds it).
+    def leased_by_another?
+      return false if @holding_lease
+
+      row = source_row
+      row.present? && Ops.safely(false) { row.reload.leased_by_other?(lease_owner) }
+    end
+
+    def leased_refusal(reason)
+      Rails.logger.warn("[DataFix::Pipeline] #{reason}: #{base} is leased by another build, nothing invalidated")
+      { phase_files: [], deleted_temp_rows: 0, backups: [], kept: [], refused: true, leased: true }
     end
 
     def stamp_built!(phase, stats: nil)
@@ -547,9 +598,13 @@ module DataFix
     end
 
     # Phase 3 build: team conflict hints into phase 2. Phase 2 build: the same, when phase 3 exists (a rebuilt
-    # phase 2 starts without hints).
+    # phase 2 starts without hints). An automatic build never writes an edited phase 2 (phase 10: an edited phase is
+    # byte-identical after a prepare job).
     def post_build!(phase)
-      harmonize! if [2, 3].include?(phase)
+      return unless [2, 3].include?(phase)
+      return if actor == :auto && edited?(2)
+
+      harmonize!
     end
 
     def refresh_new_teams!

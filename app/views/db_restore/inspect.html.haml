@@ -1,0 +1,90 @@
+-#
+  Guided local DB restore, steps 3-4 (DbRestoreController#inspection): the dump inspection results and the safety
+  snapshot. Polls the run's JSON status (db_restore_controller.js) while the inspection or the snapshot runs.
+:ruby
+  inspection = @run.inspection.to_h
+  busy = @run.inspecting? || @run.snapshotting?
+  poll_data = { controller: 'db_restore', 'db-restore-url-value': inspect_db_restore_path(@run, format: :json),
+                'db-restore-status-value': @run.status, 'db-restore-step-value': @run.step.to_s }
+  cancel_options = { method: :post, class: 'btn btn-sm btn-outline-secondary', form_class: 'd-inline',
+                     form: { data: { turbo_confirm: t('db_restore.actions.cancel_confirm') } } }
+  snapshot_options = { method: :post, class: 'btn btn-primary', id: 'btn-db-restore-snapshot', form: { data: { turbo: false } } }
+= render(Shell::PageHeaderComponent.new(title: t('db_restore.inspect.title'), subtitle: t('db_restore.inspect.subtitle', id: @run.id))) do |header|
+  - header.with_actions do
+    = button_to(t('db_restore.actions.cancel'), cancel_db_restore_path(@run), **cancel_options) if @run.preparing?
+
+%div{ data: busy ? poll_data : {} }
+  .card.mb-3
+    .card-body= render(partial: 'db_restore/run_facts', locals: { run: @run })
+
+  - if @run.inspecting?
+    .alert.alert-info.d-flex.align-items-center.gap-2#db-restore-inspecting{ role: 'status' }
+      .spinner-border.spinner-border-sm{ 'aria-hidden' => 'true' }
+      = t('db_restore.inspect.running')
+  - elsif @run.failed?
+    .alert.alert-danger#db-restore-inspect-failed{ role: 'alert' }
+      %p.mb-2= t('db_restore.inspect.failed')
+      %ul.mb-0
+        - Array(inspection['errors']).each do |error|
+          %li= t("db_restore.inspection.errors.#{error['code']}", detail: error['detail'].to_s)
+        - if inspection['errors'].blank? && @run.error.present?
+          %li= @run.error
+    = link_to(t('db_restore.inspect.start_over'), new_db_restore_path, class: 'btn btn-outline-primary')
+  - elsif @run.ready? || @run.snapshotting?
+    %h2.h5= t('db_restore.inspect.results_title')
+    %dl.row#db-restore-inspection
+      %dt.col-sm-3= t('db_restore.fields.header')
+      %dd.col-sm-9.font-monospace.small= inspection['header_line'].presence || '-'
+      %dt.col-sm-3= t('db_restore.fields.source')
+      %dd.col-sm-9.font-monospace.small= [inspection['source_host'], inspection['source_database']].compact_blank.join(' / ').presence || '-'
+      %dt.col-sm-3= t('db_restore.fields.taken_at')
+      %dd.col-sm-9
+        = @run.dump_taken_at ? l(@run.dump_taken_at.localtime, format: :long) : '-'
+        %span.small.text-body-secondary= t("db_restore.inspect.taken_at_source.#{inspection['taken_at_source'].presence || 'footer'}")
+      %dt.col-sm-3= t('db_restore.fields.tables')
+      %dd.col-sm-9= Array(@run.dump_tables).size
+      %dt.col-sm-3= t('db_restore.fields.schema')
+      %dd.col-sm-9.font-monospace.small#db-restore-schema
+        = t('db_restore.inspect.schema', dump: @run.dump_schema_version.presence || '-', local: inspection['local_schema_version'].presence || '-')
+      %dt.col-sm-3= t('db_restore.fields.iq_next_id')
+      %dd.col-sm-9= @run.dump_iq_next_id || '-'
+      %dt.col-sm-3= t('db_restore.fields.dump_api_url')
+      %dd.col-sm-9.font-monospace.small= inspection['api_url'].presence || '-'
+
+    - if Array(inspection['warnings']).any?
+      .alert.alert-warning#db-restore-warnings{ role: 'alert' }
+        %ul.mb-0
+          - inspection['warnings'].each do |warning|
+            %li{ data: { code: warning['code'] } }
+              = t("db_restore.inspection.warnings.#{warning['code']}", detail: warning['detail'].to_s, count: warning['count'].to_i)
+
+    %h2.h5.mt-4= t('db_restore.inspect.snapshot_title')
+    - if @run.snapshotting?
+      .alert.alert-info.d-flex.align-items-center.gap-2#db-restore-snapshotting{ role: 'status' }
+        .spinner-border.spinner-border-sm{ 'aria-hidden' => 'true' }
+        = t('db_restore.inspect.snapshot_running')
+    - elsif @run.snapshot_exists?
+      .alert.alert-success#db-restore-snapshot-done{ role: 'status' }
+        = t('db_restore.inspect.snapshot_done', path: @run.snapshot_path)
+        - if @run.ops_backup_path.present?
+          .small= t('db_restore.inspect.ops_backup', path: @run.ops_backup_path)
+      = link_to(t('db_restore.inspect.continue'), confirmation_db_restore_path(@run), class: 'btn btn-primary', id: 'btn-db-restore-continue')
+    - elsif @run.ticked?(:skip_snapshot)
+      .alert.alert-warning#db-restore-snapshot-skipped{ role: 'status' }= t('db_restore.inspect.snapshot_skipped')
+      = link_to(t('db_restore.inspect.continue'), confirmation_db_restore_path(@run), class: 'btn btn-primary', id: 'btn-db-restore-continue')
+    - else
+      - if @run.step == 'snapshot_failed' && @run.error.present?
+        .alert.alert-danger#db-restore-snapshot-failed{ role: 'alert' }= t('db_restore.inspect.snapshot_failed', error: @run.error)
+      %p.small.text-body-secondary= t('db_restore.inspect.snapshot_intro')
+      .d-flex.flex-wrap.gap-3.align-items-start
+        = button_to(snapshot_db_restore_path(@run), **snapshot_options) do
+          %i.fa-solid.fa-camera{ 'aria-hidden' => 'true' }
+          = t('db_restore.inspect.snapshot')
+        = form_with(url: snapshot_db_restore_path(@run), method: :post, id: 'frm-db-restore-skip', data: { turbo: false }) do
+          = hidden_field_tag(:skip, '1')
+          .form-check.mb-2
+            = check_box_tag(:skip_ack, '1', false, class: 'form-check-input', required: true)
+            = label_tag(:skip_ack, t('db_restore.inspect.skip_ack'), class: 'form-check-label small')
+          = button_tag(t('db_restore.inspect.skip'), type: 'submit', class: 'btn btn-sm btn-outline-danger', id: 'btn-db-restore-skip')
+
+  = render(partial: 'db_restore/log', locals: { run: @run, open: false })

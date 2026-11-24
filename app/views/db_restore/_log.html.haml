@@ -1,0 +1,6 @@
+-#
+  The run's log (newest lines last), collapsed. Locals: run, open (Boolean).
+- if run.log.present?
+  %details.mb-3#db-restore-log{ open: open ? true : nil }
+    %summary.small.text-body-secondary= t('db_restore.fields.log')
+    %pre.small.bg-body-tertiary.p-2.rounded.mb-0.text-wrap= run.log.lines.last(40).join

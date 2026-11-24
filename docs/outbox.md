@@ -84,7 +84,7 @@ All of them call `Outbox::Writer.write!(kind:, name:, sql:, folder:, ...)` exact
 |---|---|---|
 | Data-Fix Phase 6 commit (`before_commit:` of `Import::Committers::Main#commit_all`) | `commit` | `<season>` |
 | Season board calendar link / backfill | `calendar_link` / `backfill` | `<season>` |
-| Data health "Flag cancelled" (`Health::MeetingCanceller`) | `cancel_flag` | `<season>` |
+| Maintenance operations (`Maintenance::Executor`, phase 11: "Flag cancelled", merges, dedupe, NULL swimmers, ranks, backfill), registered only after the local apply succeeded | `cancel_flag`, `merge`, `fix`, `recompute`, `backfill` | `misc` |
 | Team managers (`TeamManagerSqlCreate`) | `team_manager` | `<season>` |
 | rake merge / fix / purge / recompute / check / import_categories (`process_sql_file`) | inferred from the name | season id given as subdir, else `misc` |
 | `rake normalize:coded_names` | `normalize` (held unless `simulate=0`) | `misc` |

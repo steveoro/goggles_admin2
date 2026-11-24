@@ -45,6 +45,27 @@ RSpec.describe SeasonBoard::Builder do
     )
   end
 
+  # Ops pipeline facts of the base 'm' (phase 10): a source row in +stage+ with five fresh verdicts and, optionally, a
+  # last prepare run.
+  # (+attributes+: review_phase, review_count, new_teams_count, new_swimmers_count...)
+  def pipeline!(stage:, run_status: nil, **attributes)
+    source = FactoryBot.create(:ops_pipeline_source, season_id: 262, base: 'm', source_path: path_for('results.new', 'm-lt4.json'),
+                                                     stage:, db_generation: DataFix::Pipeline.db_generation, **attributes)
+    (1..5).each { |phase| FactoryBot.create(:ops_phase_verdict, pipeline_source: source, phase:, checked_at: 1.second.from_now) }
+    return source unless run_status
+
+    FactoryBot.create(:ops_pipeline_run, pipeline_source: source, subject_key: 'm', kind: 'prepare', origin: 'auto', status: run_status,
+                                         phase: 3, error: 'boom', finished_at: 2.seconds.from_now)
+    source
+  end
+
+  # A results source 'm' with phase files 1-3 (as left by a prepare).
+  def prepared_files!
+    write_json('results.new', 'm.json', lt2_hash(fin_id: fin_id, results: true))
+    write_json('results.new', 'm-lt4.json', lt4_hash(results: true))
+    (1..3).each { |phase| write_json('results.new', "m-lt4-phase#{phase}.json", {}) }
+  end
+
   def build(rows = [fin_row], **options)
     described_class.new(season:, rows:, disk_index:, db_index:, activity_log:, today:, **options).call
   end

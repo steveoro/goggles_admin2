@@ -125,7 +125,7 @@ RSpec.describe 'Data health pages' do
       expect(page_body.css('input.health-finding-select').size).to eq(3)
     end
 
-    it 'shows a finding with its how-to, the rake command with the ids filled in, the entity links and the cancel button' do
+    it 'shows a finding with its how-to, the rake command with the ids filled in, the entity links and the Fix buttons' do
       flagged = finding(check_key: 'meetings.results_flag', severity: 'warning', subject_type: 'season', subject_id: season.id,
                         payload: { 'title_args' => { 'id' => season.id, 'count' => 3 }, 'rake' => { 'season_id' => season.id },
                                    'meeting_ids' => [7, 8, 9] })
@@ -138,7 +138,10 @@ RSpec.describe 'Data health pages' do
       unflagged = finding(payload: { 'cancel' => { 'meeting_id' => 7 }, 'meeting_id' => 7, 'description' => 'Trofeo',
                                      'title_args' => { 'id' => 7, 'date' => '-', 'description' => 'x' } })
       get(health_finding_path(unflagged))
-      expect(page_body.at_css('a[data-health-action="cancel"]')['href']).to eq(new_health_cancellation_path(finding_id: unflagged.id))
+      # (phase 11: "Flag cancelled" is the 'meeting.set_cancelled' operation, its form opens first)
+      expect(page_body.at_css('a[data-operation-key="meeting.set_cancelled"]')['href'])
+        .to eq(new_operation_path(key: 'meeting.set_cancelled', finding_id: unflagged.id))
+      expect(page_body.at_css('a[data-operation-key="season_board.backfill"]')).to be_nil
       expect(page_body.at_css('a[data-health-entity="meeting"]')['href']).to start_with(api_meetings_path)
     end
 

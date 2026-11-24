@@ -45,6 +45,13 @@ default: &default
     class: Outbox::RemoteStatusJob
     queue: default
     schedule: every 2 minutes
+  # Pipeline automation safety net (phase 10): one SeasonBoard::PipelinePlanner pass on the board season (queues the
+  # Data-Fix prepares, phases 1-5 only, and the automatic manifest extractions; never a commit or a push). Does
+  # nothing while the automation switch is off (dashboard, or ADMIN2_AUTOMATION=0). See PipelinePlannerJob.
+  pipeline_planner:
+    class: PipelinePlannerJob
+    queue: default
+    schedule: every 15 minutes
 
 development:
   <<: *default

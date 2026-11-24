@@ -49,6 +49,8 @@ A warning needs the operator's tick (the push confirmation, the board link confi
 
 **Check now** queues a full check; the page updates when it is stored.
 
+**Restore local DB...** (0.10.91) opens the guided restore wizard: when the verdict stays red, replace the local DB with a production dump (see `docs/db_restore.md`); the restore ends with a check (trigger `post_restore`).
+
 ## After an API upgrade
 
 The verdict stays **unknown** until the API answers its `status` with the `db_fingerprint` capability (goggles_api 0.10.81): the status refresh (every 5 minutes) stores it, then the next check compares.

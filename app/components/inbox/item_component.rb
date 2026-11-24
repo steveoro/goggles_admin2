@@ -47,7 +47,7 @@ module Inbox
     def since_text
       return l(item.since.localtime, format: :short) if item.since > @now
 
-      t('inbox.waiting', ago: helpers.time_ago_in_words(item.since, include_seconds: false))
+      t('inbox.waiting', ago: helpers.distance_of_time_in_words(item.since, @now, include_seconds: false))
     end
 
     def since_title

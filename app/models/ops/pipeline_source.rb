@@ -13,8 +13,11 @@ module Ops
   # - stage (STAGES) + stage_reason (e.g. 'source_changed_under_edits') + stage_details (e.g. the kept phases),
   #   review_phase, review_count,
   #   new_teams_count, new_swimmers_count, db_generation (the data_fix.db_generation of the last summary);
-  # - lease_owner, lease_expires_at: the build lease (see #acquire_lease!);
-  # - prepared_at, committed_at.
+  # - lease_owner, lease_expires_at: the build lease (see #acquire_lease!; 'job:<job id>' while a DataFixPrepareJob
+  #   holds it for its whole run);
+  # - prepared_at, committed_at;
+  # - auto_prepare: false when the operator holds the row (the planner never queues a prepare for it, phase 10);
+  # - failed_source_sha256: SHA256 of the source when its last prepare failed (re-queued only once the source changed).
   #
   class PipelineSource < ApplicationRecord
     self.table_name = 'pipeline_sources'
@@ -24,6 +27,8 @@ module Ops
     # Stage reason set by DataFix::Pipeline#invalidate! when it refused to delete edited phases.
     SOURCE_CHANGED_UNDER_EDITS = 'source_changed_under_edits'
     LEASE_TTL = 10.minutes
+    # Lease owner prefix of the prepare jobs (DataFixPrepareJob: 'job:<job id>').
+    JOB_LEASE_PREFIX = 'job:'
 
     has_many :phase_verdicts, class_name: 'Ops::PhaseVerdict', inverse_of: :pipeline_source, dependent: :delete_all
     has_many :commit_reports, class_name: 'Ops::CommitReport', inverse_of: :pipeline_source, dependent: :nullify
@@ -76,12 +81,27 @@ module Ops
       lease_owner.present? && lease_owner != owner && lease_expires_at.present? && lease_expires_at > now
     end
 
+    # True while a prepare job holds an unexpired lease ("being prepared").
+    def leased_by_job?(now: Time.current)
+      lease_owner.to_s.start_with?(JOB_LEASE_PREFIX) && lease_expires_at.present? && lease_expires_at > now
+    end
+
+    # True when the operator held the row (no automatic prepare).
+    def held? = !auto_prepare_on?
+
     def source_changed_under_edits?
       stage == 'blocked' && stage_reason == SOURCE_CHANGED_UNDER_EDITS
     end
 
     def verdict_for(phase)
       phase_verdicts.find { |verdict| verdict.phase == phase.to_i }
+    end
+
+    private
+
+    # (auto_prepare is missing before the phase 10 migration ran: never held then)
+    def auto_prepare_on?
+      has_attribute?(:auto_prepare) ? auto_prepare != false : true
     end
   end
 end

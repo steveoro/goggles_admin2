@@ -2,6 +2,11 @@
 = render(Shell::PageHeaderComponent.new(title: t('season_board.title'), count: nil,
                                         subtitle: t('season_board.header.season', description: @season.description))) do |header|
   - header.with_actions do
+    = button_to(season_board_prepare_all_path,
+                method: :post, class: 'btn btn-sm btn-outline-primary', form_class: 'd-inline', id: 'btn-season-board-prepare-all',
+                disabled: !DataFix::Automation.enabled?(:auto_prepare), title: t('pipeline_automation.board.prepare_all_tooltip')) do
+      %i.fa-solid.fa-wand-magic-sparkles{ 'aria-hidden' => 'true' }
+      = t('pipeline_automation.board.prepare_all')
     = button_to(federnuoto_watch_check_path, method: :post, class: 'btn btn-sm btn-outline-secondary',
                 form_class: 'd-inline', id: 'btn-season-board-check') do
       %i.fa-solid.fa-rotate{ 'aria-hidden' => 'true' }
@@ -13,6 +18,15 @@
       = t('season_board.header.last_checked', time: l(checked_at.in_time_zone, format: :short))
     - else
       = t('season_board.header.never_checked')
+    %br
+    - paused = DataFix::Automation.paused?
+    %details.d-inline-block#season-board-automation{ open: (true if DataFix::Automation.env_off?) }
+      %summary
+        %span.badge{ class: paused ? 'text-bg-warning' : 'text-bg-success' }
+          = t(paused ? 'pipeline_automation.board.paused' : 'pipeline_automation.board.on')
+        = t('pipeline_automation.board.switches')
+      .border.rounded.bg-body-tertiary.px-3.py-2.mt-1
+        = render('automation/switches', return_to: 'season_board')
     - if @board.pending_board_sql_paths.any?
       %br
       %span#season-board-sql-pending{ title: t('season_board.header.board_sql_pending_tooltip') }

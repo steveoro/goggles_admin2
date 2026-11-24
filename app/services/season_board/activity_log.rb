@@ -4,15 +4,16 @@ module SeasonBoard
   #
   # = SeasonBoard::ActivityLog
   #
-  # JSON-file log (default: 'crawler/data/season-board.json') of the latest crawl & manifest
-  # extraction attempt for each FIN event id, so that the Season board can show what's
-  # queued/running (and avoid starting a manual run on top of an automatic one).
+  # JSON-file log (default: 'crawler/data/season-board.json') of the latest crawl, manifest
+  # extraction and Data-Fix prepare attempt for each FIN event id, so that the Season board can show
+  # what's queued/running (and avoid starting a manual run on top of an automatic one).
   #
   # Persistence reuses FedernuotoWatch::StateStore (exclusive flock + atomic rename), so jobs
   # and web requests can update the file concurrently.
   #
   # File layout:
-  #   { "entries" => { "<fin_event_id>" => { "crawl" => {...}, "extract" => {...} } } }
+  #   { "entries" => { "<fin_event_id>" => { "crawl" => {...}, "extract" => {...}, "prepare" => {...} } } }
+  # (unknown kinds found in the file are ignored: only KINDS are read.)
   # where each entry stores: origin, status, queued_at, started_at, finished_at (ISO8601), url, message.
   #
   # A 'running' entry older than RUNNING_STALE_AFTER (or a 'queued' one older than
@@ -25,7 +26,8 @@ module SeasonBoard
   class ActivityLog
     DEFAULT_PATH = Rails.root.join('crawler/data/season-board.json')
 
-    KINDS = %i[crawl extract].freeze
+    # (:prepare = DataFixPrepareJob, phase 10; commits are tracked by Ops::CommitReport, not here)
+    KINDS = %i[crawl extract prepare].freeze
     ORIGINS = %i[auto manual].freeze
     STATUSES = %i[queued running done failed].freeze
     FINAL_STATUSES = %i[done failed].freeze
@@ -82,7 +84,7 @@ module SeasonBoard
       end
     end
 
-    # Returns { crawl: Entry|nil, extract: Entry|nil } for the FIN id.
+    # Returns { crawl: Entry|nil, extract: Entry|nil, prepare: Entry|nil } (one key per KINDS) for the FIN id.
     def for(fin_event_id)
       by_kind = entries_hash[normalize_id(fin_event_id)] || {}
       KINDS.index_with { |kind| build_entry(normalize_id(fin_event_id), kind, by_kind[kind.to_s]) }

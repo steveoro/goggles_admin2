@@ -1,6 +1,7 @@
 -#
   Legacy DataFix::PostCommitChecks report stored on an older Ops::CommitReport (symbol keys). Locals: checks.
-  (New reports show the season health runs instead, see _health.)
+  (New reports show the season health runs instead, see _health.) Phase 11: each badge merge candidate and each
+  meeting with duplicate results gets a Fix link (the prefilled 'badge.merge' / 'results.dedupe' form, dry run first).
 :ruby
   status_map = { 'ok' => ['ALL GREEN', 'success'], 'warning' => %w[WARNING warning], 'error' => %w[ERROR danger] }
   overall_label, overall_css = status_map.fetch(checks[:overall_status], status_map['warning'])
@@ -54,9 +55,13 @@
             %strong= title
           .card-body
             - Array(badge_check[list_key]).each do |entry|
-              %p.mb-1
+              - badge_ids = Array(entry[:badges]).filter_map { |badge| badge[:id] }.sort
+              %p.mb-1.d-flex.flex-wrap.align-items-center.gap-2
                 %strong Swimmer #{entry[:swimmer_id]}
-                \- #{entry[:swimmer_name]}
+                %span.me-auto - #{entry[:swimmer_name]}
+                - if badge_ids.size >= 2
+                  = render(Maintenance::FixButtonComponent.new(operation_key: 'badge.merge', origin: 'commit_report',
+                                                               params: { source_id: badge_ids.second, dest_id: badge_ids.first, autofix: true }))
               %ul.small
                 - Array(entry[:badges]).each do |badge|
                   %li Badge #{badge[:id]} • Team #{badge[:team_id]} (#{badge[:team_name]}) • Cat #{badge[:category_code]}
@@ -66,9 +71,11 @@
             %strong Duplicate Result Findings (Errors)
           .card-body
             - Array(duplicate_check[:meetings_with_findings]).each do |meeting_entry|
-              %p.mb-1
+              %p.mb-1.d-flex.flex-wrap.align-items-center.gap-2
                 %strong Meeting #{meeting_entry[:meeting_id]}
-                \- #{meeting_entry[:meeting_description]}
+                %span.me-auto - #{meeting_entry[:meeting_description]}
+                = render(Maintenance::FixButtonComponent.new(operation_key: 'results.dedupe', origin: 'commit_report',
+                                                             params: { meeting_id: meeting_entry[:meeting_id] }))
               %ul.small
                 - dup_keys.each do |key|
                   %li Duplicate #{key} groups: #{meeting_entry.dig(:counts, key).to_i}

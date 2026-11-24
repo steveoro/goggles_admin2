@@ -56,6 +56,10 @@ Rails.application.routes.draw do
   post 'season_board/crawl', to: 'season_board#crawl', as: 'season_board_crawl'
   post 'season_board/extract', to: 'season_board#extract', as: 'season_board_extract'
   post 'season_board/link', to: 'season_board#link', as: 'season_board_link'
+  post 'season_board/prepare', to: 'season_board#prepare', as: 'season_board_prepare'
+  post 'season_board/hold', to: 'season_board#hold', as: 'season_board_hold'
+  post 'season_board/prepare_all', to: 'season_board#prepare_all', as: 'season_board_prepare_all'
+  post 'automation/switch', to: 'automation#switch', as: 'automation_switch'
 
   get 'pull/index'
   get 'pull/calendar_files'
@@ -214,6 +218,21 @@ Rails.application.routes.draw do
   post 'db_sync/check', to: 'db_sync#check', as: 'db_sync_check'
   post 'db_sync/acknowledge', to: 'db_sync#acknowledge', as: 'db_sync_acknowledge'
 
+  # Guided local DB restore (phase 14): wizard + progress page (ops DB rows; see DbRestoreController, DbRestore::*):
+  scope 'db_restore', controller: 'db_restore', constraints: { id: /\d+/ } do
+    get 'new', action: :new, as: 'new_db_restore'
+    post '/', action: :create, as: 'db_restores'
+    post 'dump_dirs', action: :dump_dirs, as: 'db_restore_dump_dirs'
+    get ':id', action: :show, as: 'db_restore'
+    get ':id/status', action: :poll, as: 'db_restore_status', defaults: { format: :json }
+    get ':id/inspect', action: :inspection, as: 'inspect_db_restore'
+    get ':id/confirm', action: :confirmation, as: 'confirmation_db_restore'
+    get ':id/result', action: :result, as: 'db_restore_result'
+    %w[snapshot confirm cancel resume load_snapshot abandon post_steps].each do |action|
+      post ":id/#{action}", action:, as: "#{action}_db_restore"
+    end
+  end
+
   # Closed-season data health report (local mirror; ops DB findings & runs, see HealthController & Health::*):
   scope format: false do
     get 'health', to: 'health#index', as: 'health'
@@ -225,8 +244,19 @@ Rails.application.routes.draw do
     patch 'health/findings/bulk', to: 'health/findings#bulk', as: 'health_findings_bulk'
     get 'health/findings/:id', to: 'health/findings#show', as: 'health_finding'
     post 'health/runs', to: 'health/runs#create', as: 'health_runs'
-    get 'health/cancellations/new', to: 'health/cancellations#new', as: 'new_health_cancellation'
-    post 'health/cancellations', to: 'health/cancellations#create', as: 'health_cancellations'
+    # (phase 11: "Flag cancelled" is the 'meeting.set_cancelled' operation; the old URLs open its form)
+    get 'health/cancellations/new', to: redirect(status: 302) { |_params, request| "/operations/meeting.set_cancelled/new?#{request.query_string}".chomp('?') }
+    post 'health/cancellations', to: redirect(status: 303) { |_params, request| "/operations/meeting.set_cancelled/new?#{request.query_string}".chomp('?') }
+  end
+
+  # Maintenance operations (phase 11): list + history, prefilled form, dry run / apply runs (ops DB; Maintenance::*):
+  scope format: false do
+    get 'operations', to: 'operations#index', as: 'operations'
+    get 'operations/runs/:id', to: 'maintenance/runs#show', as: 'maintenance_run', constraints: { id: /\d+/ }
+    get 'operations/runs/:id/status', to: 'maintenance/runs#status', as: 'maintenance_run_status', constraints: { id: /\d+/ }
+    post 'operations/runs/:id/apply', to: 'maintenance/runs#apply', as: 'apply_maintenance_run', constraints: { id: /\d+/ }
+    get 'operations/:key/new', to: 'operations#new', as: 'new_operation', constraints: { key: /[a-z_]+(\.[a-z_]+)+/ }
+    post 'operations/:key/runs', to: 'maintenance/runs#create', as: 'operation_runs', constraints: { key: /[a-z_]+(\.[a-z_]+)+/ }
   end
 
   resources :stats, only: %i[index update]

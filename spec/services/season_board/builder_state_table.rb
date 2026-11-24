@@ -3,8 +3,8 @@
 # State table for builder_spec.rb: one entry per case, as
 # [description, setup, FIN row overrides, expected state, expected action kind, expected params (subset)].
 # The setup & params lambdas are instance_exec'ed inside the example (helpers: fin_id, link!,
-# write_json, write_file, lt2_hash, lt4_hash, path_for, results_url).
-module SeasonBoardBuilderStateTable
+# write_json, write_file, lt2_hash, lt4_hash, path_for, results_url, prepared_files!, pipeline!).
+module SeasonBoardBuilderStateTable # rubocop:disable Metrics/ModuleLength
   ROWS = [
     ['info says cancelled', -> {}, { info: 'Manifestazione ANNULLATA' }, :cancelled, nil, nil],
     ['info says postponed (rinviata), even with work pending',
@@ -28,6 +28,21 @@ module SeasonBoardBuilderStateTable
        oldest = path_for('results.new', '0420-m-lt4.sql')
        { sql_path: oldest, sql_paths: [oldest, path_for('results.new', '0421-m-lt4.sql')] }
      }],
+    ['last prepare failed, source unchanged since (wins over the phase files)',
+     lambda {
+       prepared_files!
+       pipeline!(stage: 'failed', run_status: 'failed')
+     }, {}, :prepare_failed, :prepare, -> { { file_path: path_for('results.new', 'm.json') } }],
+    ['prepared, a step needs a decision',
+     lambda {
+       prepared_files!
+       pipeline!(stage: 'needs_review', review_phase: 3, review_count: 4)
+     }, {}, :needs_review, :resume_review, -> { { file_path: path_for('results.new', 'm.json'), phase: 3, filter_state: 'review' } }],
+    ['prepared, every verdict clean and fresh',
+     lambda {
+       prepared_files!
+       pipeline!(stage: 'ready_to_commit', new_teams_count: 2, new_swimmers_count: 37)
+     }, {}, :ready_to_commit, :commit, -> { { file_path: path_for('results.new', 'm.json') } }],
     ['phase files in results.new',
      lambda {
        write_json('results.new', 'm.json', lt2_hash(fin_id: fin_id, results: true))

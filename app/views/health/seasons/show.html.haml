@@ -15,7 +15,6 @@
         %i.fa-solid.fa-rotate{ 'aria-hidden' => 'true' }
         = t('health.season.rerun_all')
 
-= render(partial: 'health/cancelled_notice', locals: { season_id: @season.id })
 - if !ops_available?
   .alert.alert-warning#health-ops-unavailable{ role: 'alert' }= t('health.ops_unavailable')
 - elsif @groups.empty?

@@ -24,7 +24,7 @@ module Ops
     self.table_name = 'db_fingerprints'
 
     VERDICTS = %w[green amber red unknown].freeze
-    TRIGGERS = %w[schedule manual gate post_push].freeze
+    TRIGGERS = %w[schedule manual gate post_push post_restore].freeze # ('post_restore': phase 14, DbRestore::PostSteps)
     MODES = %w[full light].freeze
     KEEP = 200
     # A check older than this is reported as amber ('stale') by the status surfaces.

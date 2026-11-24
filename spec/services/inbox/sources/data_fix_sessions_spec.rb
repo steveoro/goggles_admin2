@@ -39,6 +39,16 @@ RSpec.describe Inbox::Sources::DataFixSessions do
     expect(described_class.new.items(inbox_context(now:, data_dir:)).count { |item| item.kind == :idle_session }).to eq(1)
   end
 
+  it 'resumes at the step of the stored verdicts, with the review filter and the stage (phase 10)' do
+    write_file('results.new', 'old-lt4.json', '{}')
+    write_with_mtime('old-lt4-phase3.json', 4.days.ago)
+    FactoryBot.create(:ops_pipeline_source, season_id: 262, base: 'old', stage: 'needs_review', review_phase: 2)
+
+    idle = items[:idle_session]
+    expect(idle.action.path).to start_with('/data_fix/review_teams?').and include('filter_state=review')
+    expect(idle.detail).to include(I18n.t('pipeline_automation.stages.needs_review'))
+  end
+
   it 'offers to purge the staging rows whose source is gone (DELETE with a confirm)' do
     purge = items[:orphan_staging]
     expect(purge.key).to eq("session:#{gone}:purge")

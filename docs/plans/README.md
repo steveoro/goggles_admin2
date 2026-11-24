@@ -81,11 +81,11 @@ These are restated in every phase plan.
 | 07 | [SQL Outbox](done/07-sql-outbox.md) | One ordered list of scripts; push one/all; no folder picking | 01, 04, 05 | L | done (0.10.86) |
 | 08 | [Remote loop closure + drift indicator (goggles_api, goggles_main)](done/08-remote-loop-closure-drift.md) | Applied/failed per script with error text; real environment name | 07 | M | done (0.10.87; api/main 0.10.81 to release) |
 | 09 | [Pipeline runner, verdicts, commit runner](done/09-pipeline-runner-verdicts.md) | Per-step verdicts and staleness; commit summary; persistent report | 01, 02, 07 | L | done (0.10.88) |
-| 10 | [Pipeline automation up to review](10-pipeline-automation.md) | Clean meetings appear as "Ready to commit" with zero clicks | 05, 09 | M | planned |
-| 11 | [Operations framework + health mitigations](11-operations-health-mitigations.md) | Fix buttons on findings: dry-run, apply, script in Outbox | 06, 07, 08, 09 | L | planned |
+| 10 | [Pipeline automation up to review](done/10-pipeline-automation.md) | Clean meetings appear as "Ready to commit" with zero clicks | 05, 09 | M | done (0.10.89) |
+| 11 | [Operations framework + health mitigations](done/11-operations-health-mitigations.md) | Fix buttons on findings: dry-run, apply, script in Outbox | 06, 07, 08, 09 | L | done (0.10.90) |
 | 12 | [Data-Fix wizard UX](12-data-fix-wizard-ux.md) | Stepper, next-issue navigation, in-place saves, verify all | 04, 09 | L | planned |
 | 13 | [Maintenance console (remaining operations, season-start checklist)](13-maintenance-console.md) | All rake maintenance available in the UI with history | 11 | L | planned |
-| 14 | [Guided local DB restore](14-guided-db-restore.md) | Guarded wizard when drift is red | 07, 08 | M | planned |
+| 14 | [Guided local DB restore](done/14-guided-db-restore.md) | Guarded wizard when drift is red | 07, 08 | M | done (0.10.91; manual scratch-DB restore check pending) |
 | 15 | [Sources area, grid chrome, command palette, compat removal, docs](15-sources-grids-cleanup.md) | Pull becomes Sources; one grid look; Ctrl+K; no BS4 leftovers | 04, 10, 12 | L | planned |
 
 ## Dependency notes
