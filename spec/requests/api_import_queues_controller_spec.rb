@@ -42,7 +42,7 @@ RSpec.describe APIImportQueuesController do
         FileUtils.rm_rf(data_root)
       end
 
-      it "shows a batch row's attached file name and an excerpt of its server error (API 0.10.81, phase 08)" do
+      it "shows a batch row's attached file name and an excerpt of its server error (API 0.10.82, phase 08)" do
         error = "ERROR 1062 (23000) at line 412: Duplicate entry '4188003' for key 'PRIMARY' #{'x' * 120}"
         rows = [{ 'id' => 9123, 'batch_sql' => true, 'done' => false, 'process_runs' => 1, 'error_messages' => error,
                   'data_file_name' => '0477-2026-11-22-Trofeo_X-lt4.sql', 'data_file_checksum' => 'q1w2==' }]

@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe Outbox::RemoteStatus do
-  # The outcome encoding of the import queue rows of the SQL batches (goggles_main / goggles_api 0.10.81)
+  # The outcome encoding of the import queue rows of the SQL batches (goggles_main / goggles_api 0.10.82)
   {
     'queued' => [{ 'id' => 1, 'batch_sql' => true, 'done' => false, 'process_runs' => 0, 'error_messages' => nil }, :queued],
     'running' => [{ 'id' => 1, 'done' => false, 'process_runs' => 1, 'error_messages' => nil }, :running],

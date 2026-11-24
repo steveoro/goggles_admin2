@@ -7,7 +7,7 @@
 # The SQL batch rows (+batch_sql+) pushed from the SQL Outbox link to their Outbox entry (by
 # Ops::SqlScript#remote_iq_id): set +outbox_scripts+ (remote id => Ops::SqlScript) with the domain.
 #
-# Since goggles_api 0.10.81 a batch row also carries its attached file name ('data_file_name', not a model
+# Since goggles_api 0.10.82 a batch row also carries its attached file name ('data_file_name', not a model
 # attribute: set +data_file_names+ from the API answer, see .data_file_names_for) and, when the server failed to
 # run it, the MariaDB error text in +error_messages+ (shown as an excerpt, the full text as tooltip).
 #

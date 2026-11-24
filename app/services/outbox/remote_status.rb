@@ -5,7 +5,7 @@ module Outbox
   # = Outbox::RemoteStatus
   #
   # Maps the answer of <tt>GET import_queue/:id</tt> for a pushed SQL batch to its outcome on the server
-  # (goggles_main 0.10.81 job + goggles_api 0.10.81, capability 'iq_batch_outcome'; no new column, the encoding is):
+  # (goggles_main 0.10.82 job + goggles_api 0.10.82, capability 'iq_batch_outcome'; no new column, the encoding is):
   #
   #   outcome  | done  | process_runs | error_messages
   #   ---------+-------+--------------+---------------

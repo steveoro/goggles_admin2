@@ -18,7 +18,7 @@ module SystemStatus
   # - 'error': error detail for unreachable servers and non-2xx answers (nil otherwise);
   # - 'environment': the environment reported by the API ('production', 'development', ...), nil when not reported;
   # - 'capabilities': Array of the capability names reported by the API, nil when not reported (an API older
-  #   than 0.10.81: see APICapabilities).
+  #   than 0.10.82: see APICapabilities).
   #
   class APISnapshot
     KEY_PREFIX = 'api.status:'
@@ -63,7 +63,7 @@ module SystemStatus
 
       private
 
-      # 'environment' and 'capabilities' of a 'status' answer (nil when not reported: an API before 0.10.81).
+      # 'environment' and 'capabilities' of a 'status' answer (nil when not reported: an API before 0.10.82).
       def reported_details(json, success)
         return { 'environment' => nil, 'capabilities' => nil } unless success
 

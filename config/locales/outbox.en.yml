@@ -156,7 +156,7 @@ en:
       failed_intro: "The server stopped at this script. Retry it in place when the cause is fixed on the server, or withdraw it (with every later queued script, so a fixed version keeps the order), edit the file and push again; or delete it from the server and discard it."
       sent_intro: "Queued on the server, not run yet: it can be withdrawn (with every later queued script) and pushed again later."
       abandon_note: "Note (required) to delete it from the server and discard it"
-      no_capability: "This API does not report the batch outcomes: retry and withdraw need goggles_api 0.10.81 or later."
+      no_capability: "This API does not report the batch outcomes: retry and withdraw need goggles_api 0.10.82 or later."
     discard_form:
       note: "Note (required)"
       submit: "Discard script"
@@ -238,7 +238,7 @@ en:
       withdraw_stopped: "Withdraw stopped after %{count} script(s): %{error}"
       no_remote_id: "Script %{file} has no import queue id"
       already_ran: "Script %{file} is %{outcome} on the server: not withdrawn"
-      no_outcome_capability: "This API does not report the batch outcomes (needs goggles_api 0.10.81 or later)"
+      no_outcome_capability: "This API does not report the batch outcomes (needs goggles_api 0.10.82 or later)"
       drift: "DB sync gate: %{summary}"
     commit_report:
       open_outbox: "Open the Outbox"

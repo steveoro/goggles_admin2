@@ -79,7 +79,7 @@ These are restated in every phase plan.
 | 05 | [Inbox dashboard](done/05-inbox-dashboard.md) | "Needs you" list, in-progress jobs, season progress, system status, KPI strip | 01, 04 | L | done (0.10.84) |
 | 06 | [Closed-season health report](done/06-season-health-report.md) | Seasons x checks matrix, drill-down, acknowledge/ignore, how-to-fix | 01, 04, 05 | L | done (0.10.85) |
 | 07 | [SQL Outbox](done/07-sql-outbox.md) | One ordered list of scripts; push one/all; no folder picking | 01, 04, 05 | L | done (0.10.86) |
-| 08 | [Remote loop closure + drift indicator (goggles_api, goggles_main)](done/08-remote-loop-closure-drift.md) | Applied/failed per script with error text; real environment name | 07 | M | done (0.10.87; api/main 0.10.81 to release) |
+| 08 | [Remote loop closure + drift indicator (goggles_api, goggles_main)](done/08-remote-loop-closure-drift.md) | Applied/failed per script with error text; real environment name | 07 | M | done (0.10.87; api/main 0.10.82 to release) |
 | 09 | [Pipeline runner, verdicts, commit runner](done/09-pipeline-runner-verdicts.md) | Per-step verdicts and staleness; commit summary; persistent report | 01, 02, 07 | L | done (0.10.88) |
 | 10 | [Pipeline automation up to review](done/10-pipeline-automation.md) | Clean meetings appear as "Ready to commit" with zero clicks | 05, 09 | M | done (0.10.89) |
 | 11 | [Operations framework + health mitigations](done/11-operations-health-mitigations.md) | Fix buttons on findings: dry-run, apply, script in Outbox | 06, 07, 08, 09 | L | done (0.10.90) |

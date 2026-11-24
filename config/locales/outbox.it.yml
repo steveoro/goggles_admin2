@@ -156,7 +156,7 @@ it:
       failed_intro: "Il server si è fermato su questo script. Riprovalo così com'è quando la causa è risolta sul server, oppure ritiralo (con ogni script successivo in coda, così una versione corretta mantiene l'ordine), modifica il file e invialo di nuovo; oppure cancellalo dal server e scartalo."
       sent_intro: "In coda sul server, non ancora eseguito: si può ritirare (con ogni script successivo in coda) e inviare di nuovo più tardi."
       abandon_note: "Nota (obbligatoria) per cancellarlo dal server e scartarlo"
-      no_capability: "Questa API non riporta gli esiti dei batch: riprova e ritira richiedono goggles_api 0.10.81 o successiva."
+      no_capability: "Questa API non riporta gli esiti dei batch: riprova e ritira richiedono goggles_api 0.10.82 o successiva."
     discard_form:
       note: "Nota (obbligatoria)"
       submit: "Scarta lo script"
@@ -238,7 +238,7 @@ it:
       withdraw_stopped: "Ritiro interrotto dopo %{count} script: %{error}"
       no_remote_id: "Lo script %{file} non ha un id della coda di import"
       already_ran: "Lo script %{file} è %{outcome} sul server: non ritirato"
-      no_outcome_capability: "Questa API non riporta gli esiti dei batch (serve goggles_api 0.10.81 o successiva)"
+      no_outcome_capability: "Questa API non riporta gli esiti dei batch (serve goggles_api 0.10.82 o successiva)"
       drift: "Controllo sync DB: %{summary}"
     commit_report:
       open_outbox: "Apri l'Outbox"
