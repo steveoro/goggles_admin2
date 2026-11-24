@@ -56,7 +56,8 @@ module Ops
     BLOCKING_STATES = %w[pending pushing in_doubt failed].freeze
     # States whose file is expected under results.new
     NEW_DIR_STATES = %w[pending held pushing in_doubt failed].freeze
-    HELD_REASONS = %w[not_applied_locally local_apply_failed operator legacy_folder].freeze
+    # (remote_season_missing: a standard-timings script applied locally, released by the season-start checklist, phase 13)
+    HELD_REASONS = %w[not_applied_locally local_apply_failed operator legacy_folder remote_season_missing].freeze
     LAST_ERROR_LIMIT = 4.kilobytes
     # (The server keeps up to 60 KB of stderr: the start of it is what matters)
     REMOTE_ERROR_LIMIT = 16.kilobytes

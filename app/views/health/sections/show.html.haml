@@ -9,6 +9,12 @@
 
     .alert.py-1.px-2.small.mb-2{ class: "alert-#{tone}", role: 'alert', data: { health_flash: key } }= flash[key]
   %p.small.text-body-secondary.mb-2.health-howto= @check.howto
+  -# (phase 13: the season-wide fixes of the check, e.g. 'season.badge_fix' on the sure duplicate badges)
+  - season_fixes = Maintenance::Registry.for_check(@check.key).select(&:season_wide?)
+  - if @grid && season_fixes.any? && @assets.any?
+    .d-flex.flex-wrap.gap-2.mb-2.health-season-fixes
+      - season_fixes.each do |klass|
+        = render(Maintenance::FixButtonComponent.new(operation_key: klass.key, params: { 'season_id' => @season.id }, label: klass.fix_label))
   - if @grid.nil?
     .alert.alert-warning.mb-0= t('health.ops_unavailable')
   - else

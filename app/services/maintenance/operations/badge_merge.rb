@@ -40,6 +40,9 @@ module Maintenance
       validates :source_id, presence: true
       validate :distinct_badges
 
+      # The Merge::Badge of the last plan (read by the rake caller, phase 13).
+      attr_reader :merger
+
       def self.params_from_finding(finding)
         rake = payload_of(finding)['rake'].to_h
         { 'source_id' => rake['src'], 'dest_id' => rake['dest'], 'autofix' => true }.compact

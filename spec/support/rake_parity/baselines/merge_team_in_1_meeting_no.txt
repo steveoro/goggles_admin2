@@ -1,0 +1,55 @@
+## exit: 0
+## output
+Checking existence of <DATA_ROOT>/results.new (and creating it if missing)...
+
+*** Task: merge:team_in_1_meeting ***
+
+Meeting: 18289 - MASTER FIN: Campionati Regionali Basilicata 2018/2019
+Merging Team 'Arlenamouth Swimming Club ASD' (913) |=> 'East Florashire Swimming Club ASD' (1270)
+
+- simulate.......: true
+- full_report....: false
+- dest. folder...: <DATA_ROOT>/results.new
+
+*** Preview Report: ***
+
+============================================================
+Team Merge Preview: Meeting 18289
+============================================================
+Meeting: MASTER FIN: Campionati Regionali Basilicata 2018/2019
+Season: 182 - Circuito italiano supermaster FIN 2018/2019
+
+Source team (WRONG): (913) "Arlenamouth Swimming Club ASD"
+  -> TeamAffiliation: 5683
+Dest team (CORRECT): (1270) "East Florashire Swimming Club ASD"
+  -> TeamAffiliation: 5680
+
+--- Individual Results ---
+- Source team laps: 0
+- Dest team laps: 0
+
+- Source team MIRs: 8
+  IDs: 819729, 819732, 819745, 819789, 819793, 819719, 819841, 819853
+- Dest team MIRs: 20
+
+--- Relay Results ---
+- Source team relay_laps: 0
+- Dest team relay_laps: 0
+
+- Source team MRRs: 0
+- Dest team MRRs: 0
+
+--- Badge Updates ---
+- MIR swimmer badges to update: 4
+  IDs: 122126, 122133, 122142, 122151
+- MRS swimmer badges to update: 0
+
+--- Potential Issues ---
+- Swimmers with badges in BOTH teams: 0
+- Duplicate laps after merge: 0
+- Duplicate relay_laps after merge: 0
+- Duplicate MRRs after merge: 0
+
+============================================================
+
+Proceed with merge? [y/N] Aborted.

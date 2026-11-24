@@ -17,7 +17,7 @@ RSpec.describe LookupController do
       before(:each) { sign_in_admin(prepare_admin_user) }
 
       it 'returns an empty array for an unsupported domain' do
-        get('/lookup/badges', params: { q: 'test' })
+        get('/lookup/swimming_pools', params: { q: 'test' })
         expect(response).to have_http_status(:success)
         expect(response.parsed_body).to eq([])
       end
@@ -116,7 +116,7 @@ RSpec.describe LookupController do
       end
 
       it 'responds 404 for an unsupported domain' do
-        get('/lookup/badge/1')
+        get('/lookup/swimming_pool/1')
         expect(response).to have_http_status(:not_found)
       end
     end

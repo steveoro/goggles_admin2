@@ -7,6 +7,8 @@
 
 - unless Maintenance.enabled?
   .alert.alert-warning#operations-disabled{ role: 'alert' }= t('maintenance.disabled')
+- if @operation_class.inspector?
+  .alert.alert-info.small#operation-form-inspector{ role: 'status' }= t('maintenance.run.inspector')
 
 .row.g-3#operation-form-page{ data: { operation_key: @operation_class.key } }
   .col-12.col-xl-7
@@ -27,16 +29,34 @@
                     data: { turbo_frame: '_top' }) do |f|
           = hidden_field_tag(:finding_id, @finding&.id, id: nil) if @finding
           = hidden_field_tag(:origin, @origin, id: nil)
-          - flag_fields, integer_fields = @operation_class.fields.partition { |field| field.type == :flag }
+          - flag_fields, integer_fields = @operation_class.form_fields.partition { |field| field.type == :flag }
           .row.g-2.mb-3
             - integer_fields.each do |field|
-              .col-12.col-md-6
-                = f.label(field.name, @operation_class.human_attribute_name(field.name), class: 'form-label small mb-0')
-                - value = @operation.param_value(field.name)
+              :ruby
+                value = @operation.param_value(field.name)
+                field_options = { class: 'form-control form-control-sm' }
+                lookup_data = {}
+                if field.lookup
+                  field_options[:data] = { operation_lookup_target: 'id', action: 'change->operation-lookup#resolve' }
+                  lookup_data = { controller: 'operation-lookup', operation_lookup_domain_value: "#{field.lookup}s", operation_lookup_url_value: '/lookup',
+                                  operation_lookup_none_value: t('maintenance.lookup.resolved_unknown') }
+                end
+                field_label = @operation_class.human_attribute_name(field.name)
+              .col-12.col-md-6{ data: lookup_data }
+                = f.label(field.name, field_label, class: 'form-label small mb-0')
                 - if field.type == :integer
-                  = f.number_field(field.name, value:, class: 'form-control form-control-sm', min: 1, step: 1)
+                  = f.number_field(field.name, value:, min: 0, step: 1, **field_options)
                 - else
-                  = f.text_field(field.name, value:, class: 'form-control form-control-sm')
+                  = f.text_field(field.name, value:, **field_options)
+                - if field.lookup && field.lookup != :badge
+                  - list_id = "operation-lookup-#{field.name}-options"
+                  = search_field_tag(nil, nil, id: "operation-lookup-#{field.name}", class: 'form-control form-control-sm mt-1',
+                                               placeholder: t('maintenance.lookup.placeholder'), autocomplete: 'off', list: list_id,
+                                               'aria-label' => "#{field_label}: #{t('maintenance.lookup.placeholder')}",
+                                               data: { operation_lookup_target: 'search', action: 'input->operation-lookup#search' })
+                  %datalist{ id: list_id, data: { operation_lookup_target: 'options' } }
+                - if field.lookup
+                  .form-text.small.text-break{ data: { operation_lookup_target: 'label' }, 'aria-live' => 'polite' }
           - if flag_fields.any?
             %fieldset.mb-3
               %legend.h6= t('maintenance.form.options')

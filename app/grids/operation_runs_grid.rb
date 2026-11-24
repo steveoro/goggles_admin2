@@ -12,7 +12,7 @@ class OperationRunsGrid < BaseGrid
 
   scope { Ops::OperationRun.recent }
 
-  filter(:operation_key, :enum, select: -> { Maintenance::Registry.all.map { |klass| [klass.title, klass.key] } })
+  filter(:operation_key, :enum, select: -> { (Maintenance::Registry.all + Maintenance::Registry.inspectors).map { |klass| [klass.title, klass.key] } })
   filter(:mode, :enum, select: -> { Ops::OperationRun::MODES.map { |mode| [I18n.t("maintenance.modes.#{mode}"), mode] } })
   filter(:status, :enum, select: -> { Ops::OperationRun::STATUSES.map { |status| [I18n.t("maintenance.statuses.#{status}"), status] } })
   filter(:season_id, :integer)

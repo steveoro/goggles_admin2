@@ -12,7 +12,7 @@ module Health
   #
   class FindingActionsComponent < ViewComponent::Base
     ICONS = { fix: Maintenance::FixButtonComponent::ICON, review: 'fa-wand-magic', push: 'fa-upload', board: 'fa-table-list',
-              results_page: 'fa-arrow-up-right-from-square' }.freeze
+              results_page: 'fa-arrow-up-right-from-square', season_start: 'fa-list-check' }.freeze
 
     # == Params:
     # - finding: Ops::HealthFinding; compact: true in the section grid;

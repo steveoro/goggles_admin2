@@ -18,7 +18,12 @@ SCRIPT_OUTPUT_DIR = Rails.root.join('crawler/data/results.new').freeze unless de
 #-- ---------------------------------------------------------------------------
 #++
 
-namespace :merge do # rubocop:disable Metrics/BlockLength
+# Since phase 13 every task body is a thin caller of the maintenance operations (Maintenance::RakeRunner and its
+# adapters in app/services/maintenance/rake_tasks: same texts, prompts and exits). Scripts are registered in the SQL
+# Outbox with the next global number, in results.new/misc/ (an explicit index= stays the file prefix): simulate=1 (the
+# default) writes them held ('not applied locally'), simulate=0 checks the DB sync gate (force=1 overrides a red
+# verdict), applies them locally and only then registers them. The same operations run from /operations.
+namespace :merge do
   desc 'Check and creates missing directories needed by the structure assumed by some of the merge tasks.'
   task(check_needed_dirs: :environment) do
     [
@@ -50,7 +55,7 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
     The Rails.env will set the destination DB for script execution on localhost.
     The resulting file will be stored under:
 
-      - '#{SCRIPT_OUTPUT_DIR}/<index>-merge_swimmers-<src_id>-<dest_id>.sql'
+      - '#{SCRIPT_OUTPUT_DIR}/misc/<index>-merge_swimmers-<src_id>-<dest_id>.sql'
 
     Options: [Rails.env=#{Rails.env}]
              src=<source_swimmer_id>
@@ -74,38 +79,8 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
 
   DESC
   task(swimmer: [:check_needed_dirs]) do
-    puts '*** Task: merge:swimmer ***'
-    source = GogglesDb::Swimmer.find_by(id: ENV['src'].to_i)
-    dest = GogglesDb::Swimmer.find_by(id: ENV['dest'].to_i)
-    if source.nil? || dest.nil?
-      puts("You need to have both 'src' & 'dest' IDs with valid values in order to proceed.")
-      exit
-    end
-
-    file_index = ENV['index'].present? ? ENV['index'].to_i : auto_index_from_script_output_dir
-    simulate = ENV['simulate'] != '0' # Don't run locally the script unless explicitly requested
-    skip_columns = ENV['skip_columns'] == '1' # Don't skip columns unless requested
-    force = ENV['force'] == '1' # Don't force unless explicitly requested
-
-    puts("\r\nMerging '#{source&.complete_name}' (#{source&.id}) |=> '#{dest&.complete_name}' (#{dest&.id})")
-    puts("\r\n- simulate.......: #{simulate}")
-    puts("- skip_columns...: #{skip_columns}")
-    puts("- force..........: #{force}")
-    puts("- dest. folder...: #{SCRIPT_OUTPUT_DIR}\r\n")
-
-    merger = Merge::Swimmer.new(source:, dest:, skip_columns:, force:)
-    merger.prepare
-
-    puts("\r\n*** Log: ***\r\n")
-    puts(merger.log.join("\r\n"))
-    if merger.errors.present? && !force
-      puts('Issues surfaced: use force=1 to proceed. Aborted.')
-      exit
-    end
-
-    file_name = "#{format('%04d', file_index)}-merge_swimmers-#{merger.source.id}-#{merger.dest.id}"
-    process_sql_file(file_name:, sql_log_array: merger.sql_log, simulate:)
-    puts('Done.')
+    status = Maintenance::RakeRunner.call('merge:swimmer', data_root: SCRIPT_OUTPUT_DIR.dirname)
+    exit(status) if status
   end
   #-- -------------------------------------------------------------------------
   #++
@@ -130,7 +105,7 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
     The Rails.env will set the destination DB for script execution on localhost.
     The resulting file will be stored under:
 
-      - '#{SCRIPT_OUTPUT_DIR}/<index>-merge_teams-<src_id>-<dest_id>.sql'
+      - '#{SCRIPT_OUTPUT_DIR}/misc/<index>-merge_teams-<src_id>-<dest_id>.sql'
 
     Options: [Rails.env=#{Rails.env}]
              src=<source_team_id>
@@ -157,32 +132,8 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
 
   DESC
   task(team: [:check_needed_dirs]) do
-    puts '*** Task: merge:team ***'
-    source = GogglesDb::Team.find_by(id: ENV['src'].to_i)
-    dest = GogglesDb::Team.find_by(id: ENV['dest'].to_i)
-    if source.nil? || dest.nil?
-      puts("You need to have both 'src' & 'dest' IDs with valid values in order to proceed.")
-      exit
-    end
-
-    file_index = ENV['index'].present? ? ENV['index'].to_i : auto_index_from_script_output_dir
-    simulate = ENV['simulate'] != '0' # Don't run locally the script unless explicitly requested
-    skip_columns = ENV['skip_columns'] == '1' # Don't skip columns unless requested
-    keep_as_alias = ENV['keep_as_alias'] == '1' # Don't keep as alias unless requested
-
-    puts("\r\nMerging '#{source&.name}' (#{source&.id}) |=> '#{dest&.name}' (#{dest&.id})")
-    puts("\r\n- simulate.......: #{simulate}")
-    puts("- skip_columns...: #{skip_columns}")
-    puts("- keep_as_alias..: #{keep_as_alias}")
-    puts("- dest. folder...: #{SCRIPT_OUTPUT_DIR}\r\n")
-
-    merger = Merge::Team.new(source:, dest:, skip_columns:, keep_as_alias:)
-    puts("\r\n*** Log: ***\r\n")
-    merger.prepare # (no need to diplay the log here, as the merger already does it with #prepare())
-
-    file_name = "#{format('%04d', file_index)}-merge_teams-#{merger.source.id}-#{merger.dest.id}"
-    process_sql_file(file_name:, sql_log_array: merger.sql_log, simulate:)
-    puts('Done.')
+    status = Maintenance::RakeRunner.call('merge:team', data_root: SCRIPT_OUTPUT_DIR.dirname)
+    exit(status) if status
   end
   #-- -------------------------------------------------------------------------
   #++
@@ -198,7 +149,7 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
     The Rails.env will set the destination DB for script execution on localhost.
     The resulting file will be stored under:
 
-      - '#{SCRIPT_OUTPUT_DIR}/<index>-merge_meetings-<src_id>-<dest_id>.sql'
+      - '#{SCRIPT_OUTPUT_DIR}/misc/<index>-merge_meetings-<src_id>-<dest_id>.sql'
 
     A separate warning log file will also be generated with timing conflicts and
     other non-fatal issues encountered during the merge.
@@ -224,49 +175,8 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
 
   DESC
   task(meeting: [:check_needed_dirs]) do
-    puts '*** Task: merge:meeting ***'
-    source = GogglesDb::Meeting.find_by(id: ENV['src'].to_i)
-    dest = GogglesDb::Meeting.find_by(id: ENV['dest'].to_i)
-    if source.nil? || dest.nil?
-      puts("You need to have both 'src' & 'dest' IDs with valid values in order to proceed.")
-      exit
-    end
-
-    file_index = ENV['index'].present? ? ENV['index'].to_i : auto_index_from_script_output_dir
-    simulate = ENV['simulate'] != '0' # Don't run locally the script unless explicitly requested
-    skip_columns = ENV['skip_columns'] == '1' # Don't skip columns unless requested
-
-    puts("\r\nMerging Meeting (#{source.id}) '#{source.description}'")
-    puts("    |=> (#{dest.id}) '#{dest.description}'")
-    puts("    Season: #{source.season_id}")
-    puts("\r\n- simulate.......: #{simulate}")
-    puts("- skip_columns...: #{skip_columns}")
-    puts("- dest. folder...: #{SCRIPT_OUTPUT_DIR}\r\n")
-
-    merger = Merge::Meeting.new(source:, dest:, skip_columns:)
-    result = merger.prepare
-    unless result
-      puts('Aborted due to errors.')
-      merger.display_report
-      break
-    end
-
-    puts("\r\n*** Checker Log: ***\r\n")
-    puts(merger.log.join("\r\n"))
-
-    file_name = "#{format('%04d', file_index)}-merge_meetings-#{merger.source.id}-#{merger.dest.id}"
-    process_sql_file(file_name:, sql_log_array: merger.sql_log, simulate:)
-
-    # Also save warning log if present
-    if merger.warning_log.present?
-      warning_file = "#{SCRIPT_OUTPUT_DIR}/#{file_name}-warnings.log"
-      File.open(warning_file, 'w+') { |f| f.puts(merger.warning_log.join("\r\n")) }
-      puts("\r\nWarning log saved to: #{warning_file}")
-      puts("Total warnings: #{merger.warning_log.count}")
-    end
-    merger.verify_merge_result unless simulate
-
-    puts('Done.')
+    status = Maintenance::RakeRunner.call('merge:meeting', data_root: SCRIPT_OUTPUT_DIR.dirname)
+    exit(status) if status
   end
   #-- -------------------------------------------------------------------------
   #++
@@ -288,7 +198,7 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
     The Rails.env will set the destination DB for script execution on localhost.
     The resulting file will be stored under:
 
-      - '#{SCRIPT_OUTPUT_DIR}/<index>-merge_badges-<src_id>-<dest_id|autofix>.sql'
+      - '#{SCRIPT_OUTPUT_DIR}/misc/<index>-merge_badges-<src_id>-<dest_id|autofix>.sql'
 
     Options: [Rails.env=#{Rails.env}]
              src=<source_badge_id> dest=<destination_badge_id>
@@ -319,56 +229,9 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
         educated guesses (toggled off by default).
 
   DESC
-  task(badge: [:check_needed_dirs]) do # rubocop:disable Metrics/BlockLength
-    puts '*** Task: merge:badge ***'
-    source = GogglesDb::Badge.find_by(id: ENV['src'].to_i)&.decorate
-    dest = GogglesDb::Badge.find_by(id: ENV['dest'].to_i)&.decorate
-    if source.nil?
-      puts("You need at least the 'src' ID with a valid value to proceed.")
-      exit
-    end
-
-    file_index = ENV['index'].present? ? ENV['index'].to_i : auto_index_from_script_output_dir(source.season_id)
-    simulate = ENV['simulate'] != '0' # Don't run locally the script unless explicitly requested
-    keep_dest_columns = ENV['keep_dest_columns'] == '1'
-    keep_dest_category = ENV['keep_dest_category'] == '1'
-    keep_dest_team = ENV['keep_dest_team'] == '1'
-    force = ENV['force'] == '1'
-    autofix = ENV['autofix'] == '1'
-    mode = dest.nil? ? 'Fixing ' : 'Merging'
-
-    puts("\r\n#{mode} Badge (#{source.id}) #{source.display_label}, season #{source.season_id}")
-    puts("======= team #{source.team_id}, category_type #{source.category_type_id} (#{source.category_type.code})")
-    if dest
-      puts('    |')
-      puts("    +=> (#{dest.id}) #{dest.display_label}, season #{dest.season_id}")
-      puts("        team #{dest.team_id}, category_type #{dest.category_type_id} (#{dest.category_type.code})\r\n")
-    end
-    puts("\r\n#{'- SIMULATE'.ljust(50, '.')}: ✔") if simulate
-    puts("#{'- AUTOFIX'.ljust(50, '.')}: ✔") if autofix
-    puts("#{'- keep ALL dest. columns'.ljust(50, '.')}: ✔") if keep_dest_columns
-    puts("#{'- keep dest. category'.ljust(50, '.')}: ✔") if keep_dest_category
-    puts("#{'- keep dest. team'.ljust(50, '.')}: ✔") if keep_dest_team
-    puts("#{'- enforce ALL source columns conflicts'.ljust(50, '.')}: ✔") if force
-    puts("#{'- destination folder'.ljust(50, '.')}: #{SCRIPT_OUTPUT_DIR}")
-
-    merger = Merge::Badge.new(
-      source:, dest:, keep_dest_columns:, keep_dest_category:,
-      keep_dest_team:, force:, autofix:
-    )
-    merger.prepare
-
-    puts("\r\n*** Log: ***\r\n")
-    puts(merger.log.join("\r\n"))
-    # Must specify any override flag to proceed in case of errors
-    if merger.errors.present? && !(force || keep_dest_columns || keep_dest_category || keep_dest_team)
-      puts('Issues surfaced: use force=1 or any other "keep_" flag to proceed. Aborted.')
-      exit
-    end
-
-    file_name = "#{format('%04d', file_index)}-merge_badges-#{merger.source.id}-#{merger.dest ? merger.dest.id : 'autofix'}"
-    process_sql_file(file_name:, sql_log_array: merger.single_transaction_sql_log, simulate:)
-    puts('Done.')
+  task(badge: [:check_needed_dirs]) do
+    status = Maintenance::RakeRunner.call('merge:badge', data_root: SCRIPT_OUTPUT_DIR.dirname)
+    exit(status) if status
   end
   #-- -------------------------------------------------------------------------
   #++
@@ -388,30 +251,36 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
        badge;
        (list of badges taken from Merge::BadgeSeasonChecker#relay_only_badges)
 
-    *IMPORTANT NOTES:*
-    -->> SINCE THE BADGE-FIX PROCESS MAY REQUIRE TO INSERT NEW MEETING PROGRAMS,     <<--
-         EACH BADGE-FIX SCRIPT WILL BE IMMEDIATELY EXECUTED ONE-BY-ONE ON localhost.
+    3. the remaining relay badges (Merge::BadgeSeasonChecker#relay_badges).
 
-    - No *simulation* mode is supported: each file is run right after being generated.
+    *IMPORTANT NOTES* (since phase 13, operation 'season.badge_fix', see /operations):
+    - Each run plans ONE step (the first one with candidates): one SQL script per step,
+      'results.new/misc/<index>-season_fix_<season>-step<N>-<step>.sql', each badge in its
+      own transaction inside the file (a badge fix may insert a meeting program that the
+      next one uses). Badges touching a badge or a new meeting program already planned in
+      the step are deferred to the next round.
 
-    - An auto-index (format: 'NNN-') is appended at the start of each script name,
-      with the index progressing from the greatest index value found already existing
-      in the same folder. (format: 'NNN-<script_name>.sql'), because the execution sequence
-      will matter in the end.
+    - simulate=1 (the default, as for every task): only the first step is written, held in
+      the Outbox ('not applied locally'): the next steps need it applied first.
+      simulate=0: the DB sync gate first (force=1 overrides a red verdict), then each step
+      is applied locally and registered, in a loop, until nothing is left or nothing changes.
 
-    - Be advised that this task may generate SEVERAL HUNDREDS of SQL files.
+    - Without src_team EVERY candidate is processed (before phase 13 none was, by mistake).
+      The 'possible' merges (possible=1) require a src_team.
 
     Options: [Rails.env=#{Rails.env}]
              season=<source_season_id>
              index=[file_index_start_override|<auto>]
+             [simulate='0'|<'1'>] [force=<'0'>|'1']
              possible=[<0>|1]
              [src_team=<source_team_id> dest_team=<dest_team_id>]
 
       - season: source Season ID to be checked & fixed;
       - index: an ovverride index for the generated files (default: <auto>);
+      - simulate: when set to '0' the steps are applied locally (default: '1', first step held);
 
       - possible: process and consider also the "possible badge merges" for fixing;
-                  WARNING: unless filtered with a src_team, this can be data damaging!
+                  requires a src_team (unfiltered, this can be data damaging!)
 
       - src_team: when present, it may require a 'dest_team' for forcing conflicts during merges;
                   allows to filter and process only the specified src_team for fixing/forcing;
@@ -424,236 +293,9 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
                   using the "autofix" mode.
 
   DESC
-  task(season_fix: [:check_needed_dirs]) do # rubocop:disable Metrics/BlockLength
-    puts "*** Task: merge:season_fix - season #{ENV.fetch('season', nil)} ***"
-    season = GogglesDb::Season.find_by(id: ENV['season'].to_i)
-    if season.nil?
-      puts('You need a valid Season ID to proceed.')
-      exit
-    end
-    src_team = ENV['src_team'].to_i if ENV['src_team'].present?
-    dest_team = ENV['dest_team'].to_i if ENV['dest_team'].present?
-    if dest_team.present? && src_team.nil?
-      puts('You need also a valid src_team when specifying a dest_team to force merges.')
-      exit
-    end
-
-    puts('')
-    consider_possible_merges = ENV['possible'] == '1'
-    puts("Filtering only badges for team #{src_team}") if src_team
-    puts('Processing also the "possible merge" candindates!') if consider_possible_merges
-    puts("[src: #{src_team}] --(will OVERWRITE)--> [dest: #{dest_team}]") if src_team && dest_team
-    puts("\r\nWARNING: ⚠ Processing 'possible merges' WITHOUT TEAM FILTERING! ⚠") if consider_possible_merges && src_team.blank?
-
-    puts('--> Running BadgeSeasonChecker to collect candidates...')
-    file_index = ENV['index'].present? ? ENV['index'].to_i : auto_index_from_script_output_dir(season.id)
-
-    checker = Merge::BadgeSeasonChecker.new(season:)
-    checker.run
-    checker.display_short_summary
-
-    # 0) "Possible Mergeable Badges" (same swimmer, sometimes also with same category, similar team names):
-    #    (NOTE: this optional step won't be run multiple times)
-    if consider_possible_merges
-      array_of_array_of_badges = checker.possible_badge_merges.values.dup
-      process_merge_badges(
-        step_name: "Step 0: 'POSSIBLE badge merges'",
-        subdir: season.id, file_index:,
-        array_of_array_of_badges:,
-        src_team:, dest_team:
-      )
-      puts("\r\n--> Refreshing BadgeSeasonChecker results...")
-      checker.run
-      checker.display_short_summary
-    end
-
-    # 1) "Sure Mergeable Badges" (same swimmer, same event, even when category or team differs):
-    #    Note that merge candidates are paired in couples and just the first match is stored in
-    #   "sure_badge_merges": all other candidates need more runs.
-    while checker.sure_badge_merges.present?
-      array_of_array_of_badges = checker.sure_badge_merges.values.dup
-      process_merge_badges(
-        step_name: "Step 1: 'sure badge merges'",
-        subdir: season.id, file_index:,
-        array_of_array_of_badges:,
-        src_team:, dest_team:
-      )
-
-      puts("\r\n--> Refreshing BadgeSeasonChecker results...")
-      checker.run
-      checker.display_short_summary
-      # Try a new analysis if some badges were actually fixed (and result sizes are different)
-      if checker.sure_badge_merges.values.size == array_of_array_of_badges.size
-        puts("\r\n--> No changes detected: moving on...")
-        break # Bail out on no changes
-      else
-        puts("\r\n--> Some residual merge candidates found: re-running step 1...")
-      end
-    end
-
-    # 2) Relay-only Badges linked to a relay category and without a known alternative inside same season:
-    while checker.relay_only_badges.present?
-      array_of_array_of_badges = checker.relay_only_badges.dup
-      process_merge_badges(
-        step_name: "Step 2: 'relay-only' badges",
-        subdir: season.id,
-        array_of_array_of_badges:,
-        src_team:, dest_team:
-      )
-
-      puts("\r\n--> Refreshing BadgeSeasonChecker results...")
-      checker.run
-      checker.display_short_summary
-      # Try a new analysis if some badges were actually fixed (and result sizes are different)
-      if checker.relay_only_badges.size == array_of_array_of_badges.size
-        puts("\r\n--> No changes detected: moving on...")
-        break # Bail out on no changes
-      else
-        puts("\r\n--> Some relay-only candidates found: re-running step 2...")
-      end
-    end
-
-    # 3) Remaining Badges linked to a relay category and with possibly an alternative category:
-    while checker.relay_badges.present?
-      array_of_array_of_badges = checker.relay_badges.dup
-      process_merge_badges(
-        step_name: 'Step 3: remaining relay badges',
-        subdir: season.id,
-        array_of_array_of_badges:,
-        src_team:, dest_team:
-      )
-
-      puts("\r\n--> Refreshing BadgeSeasonChecker results...")
-      checker.run
-      if checker.relay_badges.present? && src_team.nil?
-        puts("\r\n--> Some relay candidates found: re-running step 3...")
-        checker.display_short_summary
-      else
-        checker.display_report
-      end
-      # Don't re-run the process if a src_team is specified (as filtering badges may impede the clearing of all candidates):
-      break if src_team.present?
-    end
-    puts('Done.')
-  end
-  #-- -------------------------------------------------------------------------
-  #++
-
-  # Registers the SQL script in the Outbox (Outbox::Writer): the file is written under #{SCRIPT_OUTPUT_DIR}/<folder>/
-  # with the next global sequence number (any leading 'NNNN-' of +file_name+ is replaced, unless the task was
-  # given an explicit 'index=': that number is then kept as the file prefix only).
-  #
-  # Folders: a numeric +subdir+ (a season id) => that season folder; anything else (none, 'normalize', ...) =>
-  # 'misc' (cross-season scripts).
-  #
-  # If 'simulate' is +false+, the script is written held, run on localhost (LocalDb::SqlRunner) and then marked as
-  # applied locally (pushable, re-sequenced when needed); a failed run leaves it held ('local_apply_failed') and
-  # exits with an error. In simulate mode it stays held ('not applied locally') until applied from the Outbox page.
-  #
-  # == Params:
-  # - file_name: the resulting text file name, minus the '.sql' extension;
-  # - sql_log_array: the array of SQL statements to be written to the file;
-  # - subdir: optional season id (or legacy subfolder name);
-  # - simulate: when set to '0' will enable script execution on localhost (toggled off by default);
-  # - kind: Outbox kind (default: inferred from the name, see Outbox::Kinds).
-  #
-  def process_sql_file(file_name:, sql_log_array:, subdir: nil, simulate: true, kind: nil) # rubocop:disable Rake/MethodDefinitionInTask,Metrics/AbcSize,Metrics/PerceivedComplexity
-    folder = subdir.to_s.match?(/\A\d+\z/) ? subdir.to_s : Outbox::MISC_FOLDER
-    explicit_prefix = ENV['index'].present? ? file_name.to_s[/\A(\d+)-/, 1]&.to_i : nil
-    name = file_name.to_s.sub(/\A\d+-/, '')
-    content = sql_log_array.join("\r\n")
-    content += "\n" unless content.end_with?("\n") # (same bytes as the former 'f.puts')
-    script = Outbox::Writer.write!(
-      kind: kind || Outbox::Kinds.infer("0000-#{name}.sql"), name:, sql: content, folder:,
-      applied_locally: !simulate, prefix: explicit_prefix, data_root: SCRIPT_OUTPUT_DIR.dirname,
-      origin: { 'producer' => 'rake', 'task' => Rake.application.top_level_tasks.first,
-                'args' => ENV.to_h.slice('season', 'src', 'dest', 'index', 'simulate', 'meeting', 'team') }.compact_blank
-    )
-    sql_file_name = script.absolute_path.to_s
-    puts("\r\nFile '#{sql_file_name}' saved (Outbox: #{script.persisted? ? "#{script.state}, seq #{script.seq}" : 'not registered, ops DB missing'}).")
-
-    if simulate
-      puts("\r\n\t\t>>> NOTHING WAS DONE TO THE DB: THIS WAS JUST A SIMULATION <<<\r\n")
-      puts("--> The script stays HELD in the Outbox until applied ('Apply locally') or re-run with 'simulate=0'.")
-    else
-      # (See lib/tasks/db.rake for #execute_sql_file(): exits on failure)
-      execute_sql_file(full_pathname: sql_file_name)
-    end
-    script
-  end
-  #-- -------------------------------------------------------------------------
-  #++
-
-  # Returns the next progressive index for a new SQL script: the global Outbox sequence (all folders of
-  # results.new, results.sent and redo, plus the ops registry) + 1. The +subdir+ is ignored (kept for the callers).
-  def auto_index_from_script_output_dir(_subdir = nil) # rubocop:disable Rake/MethodDefinitionInTask
-    Outbox::Sequence.current_max(data_root: SCRIPT_OUTPUT_DIR.dirname) + 1
-  end
-
-  private
-
-  # Runs the script on the specified subset of badges, measuring its execution time and
-  # generating a single SQL script for each call.
-  #
-  # == Options:
-  # - <tt>:array_of_array_of_badges</tt> => the list of badges to process; it can either be an actual
-  #   array of array of Badge instances, or just an array of Badges for autofixing their category type;
-  #
-  # - <tt>:subdir</tt> => optional subdirectory name under #{SCRIPT_OUTPUT_DIR} in which the files are stored;
-  #
-  # - <tt>step_name</tt> => the name of the current step displayed on screen;
-  #
-  # - <tt>file_index</tt> => optional index start override for the SQL scripts in the output directory;
-  #   (default: auto)
-  #
-  # - <tt>src_team</tt> => Team ID for badge filtering; only badges belonging to this team will be processed;
-  #
-  # - <tt>dest_team</tt> => Team ID that will be overwritten by the source badges when a matching source badge.
-  #   will be found. (Only destination badges belonging to this team will be "forced" for a merge; others will
-  #   be processed using the usual "autofix" behavior.)
-  #
-  def process_merge_badges(options = {}) # rubocop:disable Rake/MethodDefinitionInTask,Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
-    array_of_array_of_badges = options[:array_of_array_of_badges]
-    return if array_of_array_of_badges.blank?
-
-    subdir = options[:subdir]
-    step_name = options[:step_name]
-    src_team = options[:src_team].to_i
-    dest_team = options[:dest_team].to_i
-    file_index = options[:file_index]
-    puts("\r\n--> #{step_name}: #{array_of_array_of_badges.count}. Preparing SQL script...")
-    # Get the next available index for the SQL scripts in the output directory (or 1 if none):
-    file_index ||= auto_index_from_script_output_dir(subdir)
-    slice_size = 10
-
-    array_of_array_of_badges.each_slice(slice_size).with_index do |badges_slice, idx|
-      tms = Benchmark.measure do
-        badges_slice.each do |merge_candidates|
-          # Detect category fix (no destination) or actual merge (dest: first <=| source: second):
-          source = merge_candidates.respond_to?(:second) ? merge_candidates.second : merge_candidates
-          dest = merge_candidates.respond_to?(:first) ? merge_candidates.first : nil
-          # Process only source teams if it's requested:
-          next if src_team && source.team_id != src_team
-
-          # Whenever we have a matching dest. badge, force all destination
-          # values into source in case of conflicts:
-          merger = if dest_team && dest && dest&.team_id == dest_team
-                     Merge::Badge.new(source:, dest:, force: true)
-                   else
-                     # Rely on autofix otherwise:
-                     Merge::Badge.new(source:, dest:, autofix: true)
-                   end
-          merger.prepare
-
-          # NOTE: keep & run each badge-fix script in a separate transaction
-          # --> See: app/strategies/merge/badge.rb:537#handle_mprogram_insert_or_select()
-          file_name = "#{format('%04d', file_index)}-season_fix_#{source.season_id}-merge_badges-#{source.id}-#{dest ? dest.id : 'autofix'}"
-          process_sql_file(file_name:, sql_log_array: merger.single_transaction_sql_log, subdir:, simulate: false)
-          file_index += 1
-        end
-      end
-      puts("[Total time for #{slice_size}x runs: #{tms.total}\", progress: #{badges_slice.size + (idx * slice_size)}/#{array_of_array_of_badges.count}]")
-    end
+  task(season_fix: [:check_needed_dirs]) do
+    status = Maintenance::RakeRunner.call('merge:season_fix', data_root: SCRIPT_OUTPUT_DIR.dirname)
+    exit(status) if status
   end
   #-- -------------------------------------------------------------------------
   #++
@@ -663,6 +305,10 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
 
     This task merges all results (MIRs, MRRs, laps, relay_laps) from a wrong team
     to the correct team within a specific meeting, and cleans up duplicates.
+
+    The resulting file will be stored under:
+
+      - '#{SCRIPT_OUTPUT_DIR}/misc/<index>-merge_team_in_meeting-<meeting_id>-<src_id>-to-<dest_id>.sql'
 
     Options: [meeting=<meeting_id> src=<wrong_team_id> dest=<good_team_id> simulate=<0>|1 index=N full_report=1]
     - meeting:     the Meeting ID (required)
@@ -674,53 +320,8 @@ namespace :merge do # rubocop:disable Metrics/BlockLength
 
   DESC
   task(team_in_1_meeting: [:check_needed_dirs]) do
-    puts '*** Task: merge:team_in_1_meeting ***'
-    meeting = GogglesDb::Meeting.find_by(id: ENV.fetch('meeting', nil).to_i)
-    src_team = GogglesDb::Team.find_by(id: ENV.fetch('src', nil).to_i)
-    dest_team = GogglesDb::Team.find_by(id: ENV.fetch('dest', nil).to_i)
-
-    if meeting.nil? || src_team.nil? || dest_team.nil?
-      puts("You need valid 'meeting', 'src' & 'dest' IDs to proceed.")
-      puts('  meeting: Meeting ID')
-      puts('  src:     source (wrong) Team ID')
-      puts('  dest:    destination (correct) Team ID')
-      exit
-    end
-
-    file_index = ENV['index'].present? ? ENV['index'].to_i : auto_index_from_script_output_dir
-    simulate = ENV['simulate'] != '0'
-    full_report = ENV['full_report'] == '1'
-
-    puts("\r\nMeeting: #{meeting.id} - #{meeting.decorate.display_label}")
-    puts("Merging Team '#{src_team.name}' (#{src_team.id}) |=> '#{dest_team.name}' (#{dest_team.id})")
-    puts("\r\n- simulate.......: #{simulate}")
-    puts("- full_report....: #{full_report}")
-    puts("- dest. folder...: #{SCRIPT_OUTPUT_DIR}\r\n")
-
-    begin
-      merger = Merge::TeamInMeeting.new(meeting:, src_team:, dest_team:, full_report:, index: file_index)
-    rescue ArgumentError => e
-      puts("\r\n*** ERROR: #{e.message}")
-      exit
-    end
-
-    puts("\r\n*** Preview Report: ***\r\n")
-    merger.display_report
-
-    # Always ask for confirmation
-    print "\r\nProceed with merge? [y/N] "
-    response = $stdin.gets&.chomp&.downcase
-    unless response == 'y'
-      puts('Aborted.')
-      exit
-    end
-
-    puts("\r\nPreparing SQL script...")
-    merger.prepare
-
-    file_name = "#{format('%04d', file_index)}-merge_team_in_meeting-#{meeting.id}-#{src_team.id}-to-#{dest_team.id}"
-    process_sql_file(file_name:, sql_log_array: merger.sql_log, simulate:)
-    puts('Done.')
+    status = Maintenance::RakeRunner.call('merge:team_in_1_meeting', data_root: SCRIPT_OUTPUT_DIR.dirname)
+    exit(status) if status
   end
   #-- -------------------------------------------------------------------------
   #++

@@ -1,0 +1,235 @@
+## exit: nil
+## output
+Checking existence of <DATA_ROOT>/results.new (and creating it if missing)...
+
+*** Task: fix:nil_swimmers_in_results ***
+
+- Scope..........: Season 192 (Circuito italiano supermaster FIN 2019/2020)
+- Meetings.......: 27
+- simulate.......: true
+- dest. folder...: <DATA_ROOT>/results.new
+
+--- Meeting 19200: MASTER FIN: XIX Trofeo Città di Verolanuova ---
+  MIRs: 0 fixable, 0 unfixable
+        (0 no badge, 0 missing badge, 0 badge with null swimmer)
+        Laps to update: 0
+  MRSs: 0 fixable, 0 unfixable
+        (0 no badge, 0 missing badge, 0 badge with null swimmer)
+        Relay laps to update: 0
+
+--- Meeting 19203: MASTER FIN: XVII Trofeo De Akker Team ASI ---
+  MIRs: 0 fixable, 0 unfixable
+        (0 no badge, 0 missing badge, 0 badge with null swimmer)
+        Laps to update: 0
+  MRSs: 0 fixable, 0 unfixable
+        (0 no badge, 0 missing badge, 0 badge with null swimmer)
+        Relay laps to update: 0
+
+--- Meeting 19205: MASTER FIN: XIV Trofeo Mussi Lombardi Femiano ---
+  MIRs: 0 fixable, 0 unfixable
+        (0 no badge, 0 missing badge, 0 badge with null swimmer)
+        Laps to update: 0
+  MRSs: 0 fixable, 0 unfixable
+        (0 no badge, 0 missing badge, 0 badge with null swimmer)
+        Relay laps to update: 0
+
+--- Meeting 19212: MASTER FIN: XXV Trofeo Città di Rapallo ---
+  MIRs: 0 fixable, 0 unfixable
+        (0 no badge, 0 missing badge, 0 badge with null swimmer)
+        Laps to update: 0
+  MRSs: 0 fixable, 0 unfixable
+        (0 no badge, 0 missing badge, 0 badge with null swimmer)
+        Relay laps to update: 0
+
+--- Meeting 19222: MASTER FIN: VII Trofeo Fanatik Team ---
+  MIRs: 0 fixable, 0 unfixable
+        (0 no badge, 0 missing badge, 0 badge with null swimmer)
+        Laps to update: 0
+  MRSs: 0 fixable, 0 unfixable
+        (0 no badge, 0 missing badge, 0 badge with null swimmer)
+        Relay laps to update: 0
+
+--- Meeting 19224: MASTER FIN: XVI Trofeo Città di Riccione ---
+  MIRs: 0 fixable, 0 unfixable
+        (0 no badge, 0 missing badge, 0 badge with null swimmer)
+        Laps to update: 0
+  MRSs: 0 fixable, 0 unfixable
+        (0 no badge, 0 missing badge, 0 badge with null swimmer)
+        Relay laps to update: 0
+
+--- Meeting 19234: MASTER FIN: VIII Trofeo Coopernuoto ---
+  MIRs: 0 fixable, 0 unfixable
+        (0 no badge, 0 missing badge, 0 badge with null swimmer)
+        Laps to update: 0
+  MRSs: 0 fixable, 0 unfixable
+        (0 no badge, 0 missing badge, 0 badge with null swimmer)
+        Relay laps to update: 0
+
+--- Meeting 19243: MASTER FIN: XVIII Trofeo Città di Ravenna ---
+  MIRs: 0 fixable, 0 unfixable
+        (0 no badge, 0 missing badge, 0 badge with null swimmer)
+        Laps to update: 0
+  MRSs: 0 fixable, 0 unfixable
+        (0 no badge, 0 missing badge, 0 badge with null swimmer)
+        Relay laps to update: 0
+
+--- Meeting 19247: MASTER FIN: Campionati Regionali Emilia 2019/2020 ---
+  MIRs: 0 fixable, 0 unfixable
+        (0 no badge, 0 missing badge, 0 badge with null swimmer)
+        Laps to update: 0
+  MRSs: 0 fixable, 0 unfixable
+        (0 no badge, 0 missing badge, 0 badge with null swimmer)
+        Relay laps to update: 0
+
+--- Meeting 19250: MASTER FIN: XXIV Trofeo ACSI Città di Desenzano ---
+  MIRs: 0 fixable, 0 unfixable
+        (0 no badge, 0 missing badge, 0 badge with null swimmer)
+        Laps to update: 0
+  MRSs: 0 fixable, 0 unfixable
+        (0 no badge, 0 missing badge, 0 badge with null swimmer)
+        Relay laps to update: 0
+
+--- Meeting 19270: MASTER FIN: XX Trofeo Nuovo Nuoto ---
+  MIRs: 0 fixable, 0 unfixable
+        (0 no badge, 0 missing badge, 0 badge with null swimmer)
+        Laps to update: 0
+  MRSs: 0 fixable, 0 unfixable
+        (0 no badge, 0 missing badge, 0 badge with null swimmer)
+        Relay laps to update: 0
+
+--- Meeting 19273: MASTER FIN: III Trofeo Citta` di Sassuolo ---
+  MIRs: 0 fixable, 0 unfixable
+        (0 no badge, 0 missing badge, 0 badge with null swimmer)
+        Laps to update: 0
+  MRSs: 0 fixable, 0 unfixable
+        (0 no badge, 0 missing badge, 0 badge with null swimmer)
+        Relay laps to update: 0
+
+--- Meeting 19283: MASTER FIN: XXXV Brixia Fidelis ---
+  MIRs: 0 fixable, 0 unfixable
+        (0 no badge, 0 missing badge, 0 badge with null swimmer)
+        Laps to update: 0
+  MRSs: 0 fixable, 0 unfixable
+        (0 no badge, 0 missing badge, 0 badge with null swimmer)
+        Relay laps to update: 0
+
+--- Meeting 19315: MASTER FIN: XIX Trofeo Città di Molinella ---
+  MIRs: 0 fixable, 0 unfixable
+        (0 no badge, 0 missing badge, 0 badge with null swimmer)
+        Laps to update: 0
+  MRSs: 0 fixable, 0 unfixable
+        (0 no badge, 0 missing badge, 0 badge with null swimmer)
+        Relay laps to update: 0
+
+--- Meeting 19316: MASTER FIN: III TROFEO CITTÀ DI IMOLA ---
+  MIRs: 0 fixable, 0 unfixable
+        (0 no badge, 0 missing badge, 0 badge with null swimmer)
+        Laps to update: 0
+  MRSs: 0 fixable, 0 unfixable
+        (0 no badge, 0 missing badge, 0 badge with null swimmer)
+        Relay laps to update: 0
+
+--- Meeting 19317: MASTER FIN: I Trofeo memorial Natali ---
+  MIRs: 0 fixable, 0 unfixable
+        (0 no badge, 0 missing badge, 0 badge with null swimmer)
+        Laps to update: 0
+  MRSs: 0 fixable, 0 unfixable
+        (0 no badge, 0 missing badge, 0 badge with null swimmer)
+        Relay laps to update: 0
+
+--- Meeting 194934: MASTER FIN: MD Leviport Meeting ---
+  MIRs: 0 fixable, 0 unfixable
+        (0 no badge, 0 missing badge, 0 badge with null swimmer)
+        Laps to update: 0
+  MRSs: 0 fixable, 0 unfixable
+        (0 no badge, 0 missing badge, 0 badge with null swimmer)
+        Relay laps to update: 0
+
+--- Meeting 194935: MASTER FIN: 12° Treutelstad Meeting 2019/2020 ---
+  MIRs: 0 fixable, 0 unfixable
+        (0 no badge, 0 missing badge, 0 badge with null swimmer)
+        Laps to update: 0
+  MRSs: 0 fixable, 0 unfixable
+        (0 no badge, 0 missing badge, 0 badge with null swimmer)
+        Relay laps to update: 0
+
+--- Meeting 194936: MASTER FIN: McDermottstad Meeting 2019/2020 ---
+  MIRs: 0 fixable, 0 unfixable
+        (0 no badge, 0 missing badge, 0 badge with null swimmer)
+        Laps to update: 0
+  MRSs: 0 fixable, 0 unfixable
+        (0 no badge, 0 missing badge, 0 badge with null swimmer)
+        Relay laps to update: 0
+
+--- Meeting 194937: MASTER FIN: Irvingland Meeting 2019/2020 ---
+  MIRs: 0 fixable, 0 unfixable
+        (0 no badge, 0 missing badge, 0 badge with null swimmer)
+        Laps to update: 0
+  MRSs: 0 fixable, 0 unfixable
+        (0 no badge, 0 missing badge, 0 badge with null swimmer)
+        Relay laps to update: 0
+
+--- Meeting 194938: MASTER FIN: New Lurachester Meeting 2019/2020 ---
+  MIRs: 0 fixable, 0 unfixable
+        (0 no badge, 0 missing badge, 0 badge with null swimmer)
+        Laps to update: 0
+  MRSs: 0 fixable, 0 unfixable
+        (0 no badge, 0 missing badge, 0 badge with null swimmer)
+        Relay laps to update: 0
+
+--- Meeting 194939: MASTER FIN: XVIII Port Kimberelyton Meeting ---
+  MIRs: 0 fixable, 0 unfixable
+        (0 no badge, 0 missing badge, 0 badge with null swimmer)
+        Laps to update: 0
+  MRSs: 0 fixable, 0 unfixable
+        (0 no badge, 0 missing badge, 0 badge with null swimmer)
+        Relay laps to update: 0
+
+--- Meeting 198239: MASTER FIN: DVM South Taren Meeting ---
+  MIRs: 0 fixable, 0 unfixable
+        (0 no badge, 0 missing badge, 0 badge with null swimmer)
+        Laps to update: 0
+  MRSs: 0 fixable, 0 unfixable
+        (0 no badge, 0 missing badge, 0 badge with null swimmer)
+        Relay laps to update: 0
+
+--- Meeting 198240: MASTER FIN: 28° Jr. Blossomview Meeting 2019/2020 ---
+  MIRs: 0 fixable, 0 unfixable
+        (0 no badge, 0 missing badge, 0 badge with null swimmer)
+        Laps to update: 0
+  MRSs: 0 fixable, 0 unfixable
+        (0 no badge, 0 missing badge, 0 badge with null swimmer)
+        Relay laps to update: 0
+
+--- Meeting 213710: MASTER FIN: 33° Jr. Andersontown Meeting ---
+  MIRs: 0 fixable, 0 unfixable
+        (0 no badge, 0 missing badge, 0 badge with null swimmer)
+        Laps to update: 0
+  MRSs: 0 fixable, 0 unfixable
+        (0 no badge, 0 missing badge, 0 badge with null swimmer)
+        Relay laps to update: 0
+
+--- Meeting 213711: MASTER FIN: XL Bunnyfort Meeting ---
+  MIRs: 0 fixable, 0 unfixable
+        (0 no badge, 0 missing badge, 0 badge with null swimmer)
+        Laps to update: 0
+  MRSs: 0 fixable, 0 unfixable
+        (0 no badge, 0 missing badge, 0 badge with null swimmer)
+        Relay laps to update: 0
+
+--- Meeting 213712: MASTER FIN: 26° Kemmerbury Meeting 2019/2020 ---
+  MIRs: 0 fixable, 0 unfixable
+        (0 no badge, 0 missing badge, 0 badge with null swimmer)
+        Laps to update: 0
+  MRSs: 0 fixable, 0 unfixable
+        (0 no badge, 0 missing badge, 0 badge with null swimmer)
+        Relay laps to update: 0
+
+*** Totals ***
+MIRs fixed: 0
+MRSs fixed: 0
+Laps updated: 0
+Relay laps updated: 0
+
+No fixable null swimmers found. No SQL generated.
+Done.

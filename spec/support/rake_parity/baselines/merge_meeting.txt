@@ -1,0 +1,312 @@
+## exit: nil
+## output
+Checking existence of <DATA_ROOT>/results.new (and creating it if missing)...
+
+*** Task: merge:meeting ***
+
+Merging Meeting (1) '3A PROVA REGIONALE CSI'
+    |=> (5) '1A PROVA REGIONALE CSI'
+    Season: 1
+
+- simulate.......: true
+- skip_columns...: false
+- dest. folder...: <DATA_ROOT>/results.new
+
+Mapping sessions, events and programs...
+[1;33;31m.[0m[1;33;31m.[0m[1;33;30m.[0m[1;33;30m.[0m[1;33;30m.[0m[1;33;31m.[0m[1;33;31m.[0m[1;33;31m.[0m[1;33;30m.[0m[1;33;30m.[0m[1;33;30m.[0m[1;33;31m.[0m[1;33;30m.[0m[1;33;30m.[0m[1;33;30m.[0m[1;33;30m.[0m[1;33;31m.[0m[1;33;31m.[0m[1;33;33m.[0m[1;33;30m.[0m[1;33;30m.[0m[1;33;30m.[0m[1;33;30m.[0m[1;33;30m.[0m[1;33;31m.[0m[1;33;30m.[0m[1;33;30m.[0m[1;33;31m.[0m[1;33;30m.[0m[1;33;30m.[0m[1;33;31m.[0m[1;33;31m.[0m[1;33;33m.[0m[1;33;33m.[0m[1;33;30m.[0m[1;33;30m.[0m[1;33;31m.[0m[1;33;30m.[0m[1;33;30m.[0m[1;33;31m.[0m[1;33;30m.[0m[1;33;30m.[0m[1;33;30m.[0m[1;33;31m.[0m[1;33;33m.[0m[1;33;30m.[0m[1;33;31m.[0m[1;33;30m.[0m[1;33;30m.[0m[1;33;30m.[0m[1;33;30m.[0m[1;33;33m.[0m[1;33;30m.[0m[1;33;30m.[0m[1;33;30m.[0m[1;33;31m.[0m[1;33;30m.[0m[1;33;30m.[0m[1;33;30m.[0m[1;33;31m.[0m[1;33;30m.[0m[1;33;30m.[0m[1;33;30m.[0m[1;33;31m.[0m[1;33;31m.[0m
+*** Checker Log: ***
+
+	*** Meeting Merge Checker ***
+
+🔹[Src  MEETING:      1] MASTER CSI: 3° PROVA REGIONALE 2000/2001
+🔹[Dest MEETING:      5] MASTER CSI: 1° PROVA REGIONALE 2000/2001
+   Season: 1 (Circuito Regionale Emilia master CSI 2000/2001)
+
+
+--- Sessions Analysis ---
+Source sessions:      1
+Destination sessions: 1
+Shared (by date):     0
+Source-only:          1
+Dest-only:            1
+
+Source-only sessions (will be moved to dest meeting):
+  - 2001-04-01: session_order=1, FINALI
+
+--- Events Analysis ---
+Source events:      4
+Destination events: 3
+Shared:             0
+Source-only:        4
+Dest-only:          3
+
+Source-only events (will be moved to dest session):
+  - 2001-04-01: 50RA (50RA)
+  - 2001-04-01: 50DO (50DO)
+  - 2001-04-01: 50FA (50FA)
+  - 2001-04-01: 100MI (100MI)
+
+--- Programs Analysis ---
+Source programs:      38
+Destination programs: 26
+Shared:               14
+Source-only:          24
+Dest-only:            12
+
+Shared programs (dest will be updated with source data):
+  - 50RA / M25 / M
+  - 100MI / M20 / M
+  - 50RA / M20 / M
+  - 50RA / M30 / M
+  - 100MI / M25 / M
+  - 100MI / SEN / F
+  - 50RA / M35 / M
+  - 100MI / M30 / M
+  - 100MI / M20 / F
+  - 50RA / M20 / F
+  - 50RA / SEN / F
+  - 50RA / M30 / F
+  - 100MI / SEN / M
+  - 50RA / SEN / M
+
+--- Results Analysis ---
+Source MIRs:      132
+Destination MIRs: 120
+Source MRRs:      0
+Destination MRRs: 0
+Source Laps:      0
+Destination Laps: 0
+Source MRS:       0
+Destination MRS:  0
+
+--- Team Scores ---
+Source team scores:      6
+Destination team scores: 6
+
+
+- Checker.....................................: ✅ OK
+
+File '<DATA_ROOT>/results.new/misc/NNNN-merge_meetings-1-5.sql' saved (Outbox: held, seq N).
+
+		>>> NOTHING WAS DONE TO THE DB: THIS WAS JUST A SIMULATION <<<
+--> The script stays HELD in the Outbox until applied ('Apply locally') or re-run with 'simulate=0'.
+
+Warning log saved to: <DATA_ROOT>/results.new/NNNN-merge_meetings-1-5-warnings.log
+Total warnings: 115
+Done.
+
+## script results.new/misc/NNNN-merge_meetings-1-5.sql
+-- Merge Meeting (1) MASTER CSI: 3° PROVA REGIONALE 2000/2001
+--   |=> (5) MASTER CSI: 1° PROVA REGIONALE 2000/2001
+--   Season: 1 (Circuito Regionale Emilia master CSI 2000/2001)
+
+-- SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
+SET AUTOCOMMIT = 0;
+START TRANSACTION;
+
+
+-- === SESSIONS ===
+-- Moving 1 source-only session(s) to destination meeting:
+UPDATE meeting_sessions SET updated_at=NOW(), meeting_id=5 WHERE id=1;
+
+-- === EVENTS ===
+-- Moving 4 source-only event(s) to destination session:
+-- Event 1230 already moved with its session
+-- Event 1231 already moved with its session
+-- Event 1232 already moved with its session
+-- Event 1233 already moved with its session
+
+-- === PROGRAMS ===
+-- Moving 24 source-only program(s) to destination event:
+-- Program 2 already moved with its event
+-- Program 3 already moved with its event
+-- Program 8 already moved with its event
+UPDATE meeting_programs SET updated_at=NOW(), meeting_event_id=1224 WHERE id=9;
+-- Program 10 already moved with its event
+-- Program 13 already moved with its event
+-- Program 14 already moved with its event
+-- Program 15 already moved with its event
+UPDATE meeting_programs SET updated_at=NOW(), meeting_event_id=1225 WHERE id=16;
+-- Program 17 already moved with its event
+UPDATE meeting_programs SET updated_at=NOW(), meeting_event_id=1225 WHERE id=18;
+-- Program 19 already moved with its event
+-- Program 20 already moved with its event
+-- Program 22 already moved with its event
+-- Program 23 already moved with its event
+UPDATE meeting_programs SET updated_at=NOW(), meeting_event_id=1225 WHERE id=27;
+-- Program 28 already moved with its event
+-- Program 29 already moved with its event
+-- Program 32 already moved with its event
+-- Program 33 already moved with its event
+-- Program 34 already moved with its event
+-- Program 35 already moved with its event
+-- Program 37 already moved with its event
+UPDATE meeting_programs SET updated_at=NOW(), meeting_event_id=1225 WHERE id=38;
+
+-- === INDIVIDUAL RESULTS (MIRs) ===
+-- Processing 14 shared program(s) for MIR merging...
+UPDATE meeting_individual_results SET updated_at=NOW(), seconds=43, hundredths=71, rank=5, meeting_points=60.0, team_points=3.0 WHERE id=19535;
+DELETE FROM meeting_individual_results WHERE id=19917;
+UPDATE meeting_individual_results SET updated_at=NOW(), seconds=37, hundredths=80, personal_best=1 WHERE id=19592;
+DELETE FROM meeting_individual_results WHERE id=19923;
+UPDATE meeting_individual_results SET updated_at=NOW(), meeting_program_id=170 WHERE id=19934;
+UPDATE laps SET updated_at=NOW(), meeting_program_id=170 WHERE meeting_individual_result_id=19934;
+UPDATE meeting_individual_results SET updated_at=NOW(), meeting_program_id=170 WHERE id=19968;
+UPDATE laps SET updated_at=NOW(), meeting_program_id=170 WHERE meeting_individual_result_id=19968;
+UPDATE meeting_individual_results SET updated_at=NOW(), meeting_program_id=170 WHERE id=19971;
+UPDATE laps SET updated_at=NOW(), meeting_program_id=170 WHERE meeting_individual_result_id=19971;
+UPDATE meeting_individual_results SET updated_at=NOW(), seconds=41, hundredths=63, rank=4, meeting_points=70.0, team_points=4.0 WHERE id=19500;
+DELETE FROM meeting_individual_results WHERE id=20014;
+UPDATE meeting_individual_results SET updated_at=NOW(), seconds=47, hundredths=19 WHERE id=19579;
+DELETE FROM meeting_individual_results WHERE id=20042;
+UPDATE meeting_individual_results SET updated_at=NOW(), seconds=35, hundredths=50, personal_best=1 WHERE id=19577;
+DELETE FROM meeting_individual_results WHERE id=20044;
+UPDATE meeting_individual_results SET updated_at=NOW(), meeting_program_id=161 WHERE id=19920;
+UPDATE laps SET updated_at=NOW(), meeting_program_id=161 WHERE meeting_individual_result_id=19920;
+UPDATE meeting_individual_results SET updated_at=NOW(), meeting_program_id=161 WHERE id=19948;
+UPDATE laps SET updated_at=NOW(), meeting_program_id=161 WHERE meeting_individual_result_id=19948;
+UPDATE meeting_individual_results SET updated_at=NOW(), meeting_program_id=161 WHERE id=19955;
+UPDATE laps SET updated_at=NOW(), meeting_program_id=161 WHERE meeting_individual_result_id=19955;
+UPDATE meeting_individual_results SET updated_at=NOW(), seconds=19, hundredths=10, rank=5, meeting_points=60.0, team_points=3.0 WHERE id=19483;
+DELETE FROM meeting_individual_results WHERE id=19988;
+UPDATE meeting_individual_results SET updated_at=NOW(), meeting_program_id=161 WHERE id=19998;
+UPDATE laps SET updated_at=NOW(), meeting_program_id=161 WHERE meeting_individual_result_id=19998;
+UPDATE meeting_individual_results SET updated_at=NOW(), meeting_program_id=161 WHERE id=20006;
+UPDATE laps SET updated_at=NOW(), meeting_program_id=161 WHERE meeting_individual_result_id=20006;
+UPDATE meeting_individual_results SET updated_at=NOW(), meeting_program_id=161 WHERE id=20009;
+UPDATE laps SET updated_at=NOW(), meeting_program_id=161 WHERE meeting_individual_result_id=20009;
+UPDATE meeting_individual_results SET updated_at=NOW(), meeting_program_id=161 WHERE id=20045;
+UPDATE laps SET updated_at=NOW(), meeting_program_id=161 WHERE meeting_individual_result_id=20045;
+UPDATE meeting_individual_results SET updated_at=NOW(), seconds=40, hundredths=18, rank=8, meeting_points=48.0, team_points=1.0 WHERE id=19537;
+DELETE FROM meeting_individual_results WHERE id=19921;
+UPDATE meeting_individual_results SET updated_at=NOW(), seconds=38, hundredths=83, rank=4, meeting_points=70.0, team_points=4.0, personal_best=1 WHERE id=19550;
+DELETE FROM meeting_individual_results WHERE id=19930;
+UPDATE meeting_individual_results SET updated_at=NOW(), hundredths=41, rank=9, meeting_points=47.0, team_points=1.0 WHERE id=19558;
+DELETE FROM meeting_individual_results WHERE id=19942;
+UPDATE meeting_individual_results SET updated_at=NOW(), meeting_program_id=160 WHERE id=19950;
+UPDATE laps SET updated_at=NOW(), meeting_program_id=160 WHERE meeting_individual_result_id=19950;
+UPDATE meeting_individual_results SET updated_at=NOW(), meeting_program_id=160 WHERE id=19951;
+UPDATE laps SET updated_at=NOW(), meeting_program_id=160 WHERE meeting_individual_result_id=19951;
+UPDATE meeting_individual_results SET updated_at=NOW(), meeting_program_id=160 WHERE id=19965;
+UPDATE laps SET updated_at=NOW(), meeting_program_id=160 WHERE meeting_individual_result_id=19965;
+UPDATE meeting_individual_results SET updated_at=NOW(), meeting_program_id=160 WHERE id=19975;
+UPDATE laps SET updated_at=NOW(), meeting_program_id=160 WHERE meeting_individual_result_id=19975;
+UPDATE meeting_individual_results SET updated_at=NOW(), meeting_program_id=160 WHERE id=19977;
+UPDATE laps SET updated_at=NOW(), meeting_program_id=160 WHERE meeting_individual_result_id=19977;
+UPDATE meeting_individual_results SET updated_at=NOW(), seconds=42, hundredths=45, rank=14, meeting_points=42.0, team_points=1.0 WHERE id=19480;
+DELETE FROM meeting_individual_results WHERE id=19993;
+UPDATE meeting_individual_results SET updated_at=NOW(), meeting_program_id=160 WHERE id=20007;
+UPDATE laps SET updated_at=NOW(), meeting_program_id=160 WHERE meeting_individual_result_id=20007;
+UPDATE meeting_individual_results SET updated_at=NOW(), meeting_program_id=160 WHERE id=20008;
+UPDATE laps SET updated_at=NOW(), meeting_program_id=160 WHERE meeting_individual_result_id=20008;
+UPDATE meeting_individual_results SET updated_at=NOW(), seconds=43, hundredths=41, rank=15, meeting_points=41.0 WHERE id=19531;
+DELETE FROM meeting_individual_results WHERE id=20010;
+UPDATE meeting_individual_results SET updated_at=NOW(), meeting_program_id=160 WHERE id=20037;
+UPDATE laps SET updated_at=NOW(), meeting_program_id=160 WHERE meeting_individual_result_id=20037;
+UPDATE meeting_individual_results SET updated_at=NOW(), meeting_program_id=160 WHERE id=20038;
+UPDATE laps SET updated_at=NOW(), meeting_program_id=160 WHERE meeting_individual_result_id=20038;
+UPDATE meeting_individual_results SET updated_at=NOW(), seconds=35, hundredths=68 WHERE id=19575;
+DELETE FROM meeting_individual_results WHERE id=20039;
+UPDATE meeting_individual_results SET updated_at=NOW(), seconds=41, hundredths=90, rank=12, meeting_points=44.0 WHERE id=19532;
+DELETE FROM meeting_individual_results WHERE id=20048;
+UPDATE meeting_individual_results SET updated_at=NOW(), hundredths=46 WHERE id=19539;
+DELETE FROM meeting_individual_results WHERE id=19922;
+UPDATE meeting_individual_results SET updated_at=NOW(), hundredths=74 WHERE id=19560;
+DELETE FROM meeting_individual_results WHERE id=19945;
+UPDATE meeting_individual_results SET updated_at=NOW(), meeting_program_id=173 WHERE id=19946;
+UPDATE laps SET updated_at=NOW(), meeting_program_id=173 WHERE meeting_individual_result_id=19946;
+UPDATE meeting_individual_results SET updated_at=NOW(), meeting_program_id=166 WHERE id=19924;
+UPDATE laps SET updated_at=NOW(), meeting_program_id=166 WHERE meeting_individual_result_id=19924;
+UPDATE meeting_individual_results SET updated_at=NOW(), seconds=20, hundredths=77, rank=3, meeting_points=80.0, team_points=6.0, personal_best=1 WHERE id=19557;
+DELETE FROM meeting_individual_results WHERE id=19940;
+UPDATE meeting_individual_results SET updated_at=NOW(), meeting_program_id=166 WHERE id=19972;
+UPDATE laps SET updated_at=NOW(), meeting_program_id=166 WHERE meeting_individual_result_id=19972;
+UPDATE meeting_individual_results SET updated_at=NOW(), meeting_program_id=166 WHERE id=19990;
+UPDATE laps SET updated_at=NOW(), meeting_program_id=166 WHERE meeting_individual_result_id=19990;
+UPDATE meeting_individual_results SET updated_at=NOW(), seconds=29, hundredths=50, rank=6, meeting_points=50.0, team_points=2.0 WHERE id=19515;
+DELETE FROM meeting_individual_results WHERE id=20015;
+UPDATE meeting_individual_results SET updated_at=NOW(), meeting_program_id=166 WHERE id=20047;
+UPDATE laps SET updated_at=NOW(), meeting_program_id=166 WHERE meeting_individual_result_id=20047;
+UPDATE meeting_individual_results SET updated_at=NOW(), meeting_program_id=184 WHERE id=19928;
+UPDATE laps SET updated_at=NOW(), meeting_program_id=184 WHERE meeting_individual_result_id=19928;
+UPDATE meeting_individual_results SET updated_at=NOW(), meeting_program_id=184 WHERE id=19963;
+UPDATE laps SET updated_at=NOW(), meeting_program_id=184 WHERE meeting_individual_result_id=19963;
+UPDATE meeting_individual_results SET updated_at=NOW(), seconds=30, hundredths=85, rank=3, meeting_points=80.0, team_points=6.0 WHERE id=19597;
+DELETE FROM meeting_individual_results WHERE id=20017;
+UPDATE meeting_individual_results SET updated_at=NOW(), hundredths=8, rank=1, meeting_points=100.0, team_points=10.0 WHERE id=19564;
+DELETE FROM meeting_individual_results WHERE id=19931;
+UPDATE meeting_individual_results SET updated_at=NOW(), meeting_program_id=179 WHERE id=20019;
+UPDATE laps SET updated_at=NOW(), meeting_program_id=179 WHERE meeting_individual_result_id=20019;
+UPDATE meeting_individual_results SET updated_at=NOW(), seconds=14, hundredths=74 WHERE id=19561;
+DELETE FROM meeting_individual_results WHERE id=19944;
+UPDATE meeting_individual_results SET updated_at=NOW(), meeting_program_id=172 WHERE id=19957;
+UPDATE laps SET updated_at=NOW(), meeting_program_id=172 WHERE meeting_individual_result_id=19957;
+UPDATE meeting_individual_results SET updated_at=NOW(), meeting_program_id=172 WHERE id=19969;
+UPDATE laps SET updated_at=NOW(), meeting_program_id=172 WHERE meeting_individual_result_id=19969;
+UPDATE meeting_individual_results SET updated_at=NOW(), meeting_program_id=176 WHERE id=19959;
+UPDATE laps SET updated_at=NOW(), meeting_program_id=176 WHERE meeting_individual_result_id=19959;
+UPDATE meeting_individual_results SET updated_at=NOW(), meeting_program_id=176 WHERE id=19974;
+UPDATE laps SET updated_at=NOW(), meeting_program_id=176 WHERE meeting_individual_result_id=19974;
+UPDATE meeting_individual_results SET updated_at=NOW(), hundredths=3, rank=3, meeting_points=80.0, team_points=6.0, personal_best=1 WHERE id=19555;
+DELETE FROM meeting_individual_results WHERE id=20001;
+UPDATE meeting_individual_results SET updated_at=NOW(), meeting_program_id=176 WHERE id=20021;
+UPDATE laps SET updated_at=NOW(), meeting_program_id=176 WHERE meeting_individual_result_id=20021;
+UPDATE meeting_individual_results SET updated_at=NOW(), meeting_program_id=176 WHERE id=20022;
+UPDATE laps SET updated_at=NOW(), meeting_program_id=176 WHERE meeting_individual_result_id=20022;
+UPDATE meeting_individual_results SET updated_at=NOW(), meeting_program_id=176 WHERE id=20040;
+UPDATE laps SET updated_at=NOW(), meeting_program_id=176 WHERE meeting_individual_result_id=20040;
+UPDATE meeting_individual_results SET updated_at=NOW(), seconds=58, hundredths=22, rank=7, meeting_points=49.0, team_points=1.0 WHERE id=19585;
+DELETE FROM meeting_individual_results WHERE id=20041;
+UPDATE meeting_individual_results SET updated_at=NOW(), meeting_program_id=180 WHERE id=19962;
+UPDATE laps SET updated_at=NOW(), meeting_program_id=180 WHERE meeting_individual_result_id=19962;
+UPDATE meeting_individual_results SET updated_at=NOW(), meeting_program_id=180 WHERE id=20024;
+UPDATE laps SET updated_at=NOW(), meeting_program_id=180 WHERE meeting_individual_result_id=20024;
+UPDATE meeting_individual_results SET updated_at=NOW(), meeting_program_id=168 WHERE id=19982;
+UPDATE laps SET updated_at=NOW(), meeting_program_id=168 WHERE meeting_individual_result_id=19982;
+UPDATE meeting_individual_results SET updated_at=NOW(), seconds=50, hundredths=64, rank=2, meeting_points=90.0, team_points=8.0 WHERE id=19494;
+DELETE FROM meeting_individual_results WHERE id=19996;
+UPDATE meeting_individual_results SET updated_at=NOW(), meeting_program_id=168 WHERE id=20003;
+UPDATE laps SET updated_at=NOW(), meeting_program_id=168 WHERE meeting_individual_result_id=20003;
+UPDATE meeting_individual_results SET updated_at=NOW(), meeting_program_id=168 WHERE id=20043;
+UPDATE laps SET updated_at=NOW(), meeting_program_id=168 WHERE meeting_individual_result_id=20043;
+UPDATE meeting_individual_results SET updated_at=NOW(), meeting_program_id=163 WHERE id=19984;
+UPDATE laps SET updated_at=NOW(), meeting_program_id=163 WHERE meeting_individual_result_id=19984;
+UPDATE meeting_individual_results SET updated_at=NOW(), seconds=15, hundredths=23 WHERE id=19487;
+DELETE FROM meeting_individual_results WHERE id=19986;
+UPDATE meeting_individual_results SET updated_at=NOW(), seconds=38, hundredths=98 WHERE id=19512;
+DELETE FROM meeting_individual_results WHERE id=20028;
+-- 24 source-only program(s): MIRs already moved with programs
+
+-- === RELAY RESULTS (MRRs, MRS, RelayLaps) ===
+-- Source-only program MRRs already moved with programs
+
+-- === TEAM SCORES ===
+UPDATE meeting_team_scores SET updated_at=NOW(), meeting_points=107.0, season_points=107.0 WHERE id=5;
+DELETE FROM meeting_team_scores WHERE id=26;
+UPDATE meeting_team_scores SET updated_at=NOW(), meeting_points=225.0, season_points=225.0 WHERE id=4;
+DELETE FROM meeting_team_scores WHERE id=23;
+UPDATE meeting_team_scores SET updated_at=NOW(), meeting_points=68.0, season_points=68.0 WHERE id=2;
+DELETE FROM meeting_team_scores WHERE id=24;
+UPDATE meeting_team_scores SET updated_at=NOW(), meeting_points=63.0, season_points=63.0 WHERE id=3;
+DELETE FROM meeting_team_scores WHERE id=25;
+UPDATE meeting_team_scores SET updated_at=NOW(), meeting_points=60.0, season_points=60.0 WHERE id=1;
+DELETE FROM meeting_team_scores WHERE id=22;
+UPDATE meeting_team_scores SET updated_at=NOW(), meeting_points=272.0, season_points=272.0 WHERE id=6;
+DELETE FROM meeting_team_scores WHERE id=21;
+
+-- === DEPRECATED ENTITIES (DELETE) ===
+DELETE FROM meeting_entries WHERE meeting_program_id IN (SELECT id FROM meeting_programs WHERE meeting_event_id IN (SELECT id FROM meeting_events WHERE meeting_session_id IN (SELECT id FROM meeting_sessions WHERE meeting_id=1)));
+DELETE FROM meeting_event_reservations WHERE meeting_id=1;
+DELETE FROM meeting_relay_reservations WHERE meeting_id=1;
+DELETE FROM meeting_reservations WHERE meeting_id=1;
+
+-- === CALENDAR ===
+-- No source calendar to delete.
+
+-- === UPDATE DESTINATION MEETING COLUMNS ===
+-- No meeting column updates needed.
+
+-- === DELETE SOURCE MEETING (bottom-up) ===
+DELETE FROM meetings WHERE id=1;
+
+COMMIT;

@@ -1,0 +1,75 @@
+## exit: nil
+## output
+Checking existence of <DATA_ROOT>/results.new (and creating it if missing)...
+
+
+*** Task: check:dup_mir_swimmers ***
+
+- Meeting.......: 18222 - MASTER FIN: VI Trofeo Fanatik Team
+- autofix.......: true
+- simulate......: true
+- dest. folder..: <DATA_ROOT>/results.new
+
+============================================================
+Duplicate Result Cleaner Report
+Season: 182 - Circuito italiano supermaster FIN 2018/2019
+Meeting: 18222 - 6° Trofeo Fanatik Team
+Autofix: ENABLED
+============================================================
+
+--- Meeting 18222: 6° Trofeo Fanatik Team ---
+
+Duplicate MIRs found: 1 groups
+  Swimmer 1409: Herman Anette 40753 (1957)
+    Program ID: 163647, Timing match: true
+    - MIR 840606: 1'20"07 => team 1 (Lake Ramiro Swimming Club ASD), badge 111395 FIN 2018/2019: Herman Anette 40753 (1957) ➡ Lake Ramiro Swimming Club ASD, Reggio nell Emilia
+    - MIR <MIR_COPY>: 1'20"07 => team 1 (Lake Ramiro Swimming Club ASD), badge 111395 FIN 2018/2019: Herman Anette 40753 (1957) ➡ Lake Ramiro Swimming Club ASD, Reggio nell Emilia
+
+============================================================
+TOTALS:
+  Duplicate MIR groups: 1
+  Duplicate lap groups: 0
+  Duplicate MRS groups: 0
+  Duplicate relay_lap groups: 0
+  Duplicate MRR pairs: 0
+============================================================
+
+Proceed with generating fix script? [y/N] 
+File '<DATA_ROOT>/results.new/misc/NNNN-fix_dup_results-18222.sql' saved (Outbox: held, seq N).
+
+		>>> NOTHING WAS DONE TO THE DB: THIS WAS JUST A SIMULATION <<<
+--> The script stays HELD in the Outbox until applied ('Apply locally') or re-run with 'simulate=0'.
+Done.
+
+## script results.new/misc/NNNN-fix_dup_results-18222.sql
+-- SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
+SET AUTOCOMMIT = 0;
+START TRANSACTION;
+
+-- Duplicate Result Cleaner - Generated <TIME>
+-- Season: 182
+-- Meeting: 18222
+
+-- Meeting 18222: 6° Trofeo Fanatik Team
+
+-- Delete duplicate laps (same swimmer + MIR + length_in_meters, keep lowest ID)
+DELETE l1 FROM laps l1 INNER JOIN meeting_individual_results mir ON l1.meeting_individual_result_id = mir.id INNER JOIN meeting_programs mp ON mir.meeting_program_id = mp.id INNER JOIN meeting_events me ON mp.meeting_event_id = me.id INNER JOIN meeting_sessions ms ON me.meeting_session_id = ms.id INNER JOIN laps l2 ON l1.meeting_individual_result_id = l2.meeting_individual_result_id AND l1.swimmer_id = l2.swimmer_id AND l1.length_in_meters = l2.length_in_meters AND l1.id > l2.id WHERE ms.meeting_id = 18222;
+
+-- Delete duplicate MIRs
+DELETE FROM laps WHERE meeting_individual_result_id = <MIR_COPY>;
+DELETE FROM meeting_individual_results WHERE id = <MIR_COPY>; -- keeping 840606
+
+-- Delete duplicate relay_laps (same swimmer + MRS + length_in_meters, keep lowest ID)
+DELETE rl1 FROM relay_laps rl1 INNER JOIN meeting_relay_swimmers mrs ON rl1.meeting_relay_swimmer_id = mrs.id INNER JOIN meeting_relay_results mrr ON mrs.meeting_relay_result_id = mrr.id INNER JOIN meeting_programs mp ON mrr.meeting_program_id = mp.id INNER JOIN meeting_events me ON mp.meeting_event_id = me.id INNER JOIN meeting_sessions ms ON me.meeting_session_id = ms.id INNER JOIN relay_laps rl2 ON rl1.meeting_relay_swimmer_id = rl2.meeting_relay_swimmer_id AND rl1.swimmer_id = rl2.swimmer_id AND rl1.length_in_meters = rl2.length_in_meters AND rl1.id > rl2.id WHERE ms.meeting_id = 18222;
+
+-- Delete duplicate MRSs (same swimmer + MRR, keep lowest ID)
+DELETE mrs1 FROM meeting_relay_swimmers mrs1 INNER JOIN meeting_relay_results mrr ON mrs1.meeting_relay_result_id = mrr.id INNER JOIN meeting_programs mp ON mrr.meeting_program_id = mp.id INNER JOIN meeting_events me ON mp.meeting_event_id = me.id INNER JOIN meeting_sessions ms ON me.meeting_session_id = ms.id INNER JOIN meeting_relay_swimmers mrs2 ON mrs1.meeting_relay_result_id = mrs2.meeting_relay_result_id AND mrs1.swimmer_id = mrs2.swimmer_id AND mrs1.id > mrs2.id WHERE ms.meeting_id = 18222;
+
+-- Delete duplicate MRRs (same program + team + swimmer composition, keep lowest ID)
+DELETE mrr1 FROM meeting_relay_results mrr1 INNER JOIN meeting_programs mp ON mrr1.meeting_program_id = mp.id INNER JOIN meeting_events me ON mp.meeting_event_id = me.id INNER JOIN meeting_sessions ms ON me.meeting_session_id = ms.id INNER JOIN ( SELECT mrr_inner.id, mrr_inner.meeting_program_id, mrr_inner.team_id, GROUP_CONCAT(mrs_inner.swimmer_id ORDER BY mrs_inner.swimmer_id) AS swimmer_sig FROM meeting_relay_results mrr_inner INNER JOIN meeting_relay_swimmers mrs_inner ON mrs_inner.meeting_relay_result_id = mrr_inner.id INNER JOIN meeting_programs mp_inner ON mrr_inner.meeting_program_id = mp_inner.id INNER JOIN meeting_events me_inner ON mp_inner.meeting_event_id = me_inner.id INNER JOIN meeting_sessions ms_inner ON me_inner.meeting_session_id = ms_inner.id WHERE ms_inner.meeting_id = 18222 GROUP BY mrr_inner.id ) AS sig1 ON mrr1.id = sig1.id INNER JOIN ( SELECT mrr_inner.id, mrr_inner.meeting_program_id, mrr_inner.team_id, GROUP_CONCAT(mrs_inner.swimmer_id ORDER BY mrs_inner.swimmer_id) AS swimmer_sig FROM meeting_relay_results mrr_inner INNER JOIN meeting_relay_swimmers mrs_inner ON mrs_inner.meeting_relay_result_id = mrr_inner.id INNER JOIN meeting_programs mp_inner ON mrr_inner.meeting_program_id = mp_inner.id INNER JOIN meeting_events me_inner ON mp_inner.meeting_event_id = me_inner.id INNER JOIN meeting_sessions ms_inner ON me_inner.meeting_session_id = ms_inner.id WHERE ms_inner.meeting_id = 18222 GROUP BY mrr_inner.id ) AS sig2 ON sig1.meeting_program_id = sig2.meeting_program_id AND sig1.team_id = sig2.team_id AND sig1.swimmer_sig = sig2.swimmer_sig AND sig1.id > sig2.id WHERE ms.meeting_id = 18222;
+
+
+
+-- --------------------------------------------------------------------------
+
+COMMIT;

@@ -21,11 +21,13 @@ module Ops
   # - sql_preview (capped at SQL_PREVIEW_LIMIT), sql_digest (Maintenance::Plan#digest), applied_locally, sql_script_id;
   # - season_id, subject_type, subject_id, origin (ORIGINS), health_finding_id;
   # - drift_ack (the operator's DB sync tick), drift_verdict (verdict name seen by the apply);
-  # - started_by (user id), job_id, started_at, finished_at.
+  # - started_by (user id), job_id, started_at, finished_at;
+  # - (phase 13) progress ({ 'done', 'total', 'label' } while a long plan runs), cancel_requested_at (the operator's
+  #   Cancel click: the run stops at its next progress report, refused 'cancelled').
   #
   # (The column is +error_messages+, not +errors+: ActiveModel owns #errors.)
   #
-  class OperationRun < ApplicationRecord
+  class OperationRun < ApplicationRecord # rubocop:disable Metrics/ClassLength
     self.table_name = 'operation_runs'
 
     MODES = %w[preview apply script_only].freeze
@@ -33,7 +35,7 @@ module Ops
     PENDING_STATUSES = %w[queued running].freeze
     ORIGINS = %w[ui rake health commit_report].freeze
     REFUSAL_REASONS = %w[restore_in_progress disabled no_preview already_applied drift_blocked drift_unacknowledged
-                         digest_changed blocked empty mode_mismatch unknown_operation].freeze
+                         digest_changed blocked empty mode_mismatch unknown_operation cancelled].freeze
     # A queued/running run whose job state is unknown (see Maintenance::JobState) counts as interrupted after this long;
     # with a known live job, only after the job's concurrency duration (Maintenance::RunJob, 2 h).
     STALE_AFTER = 30.minutes
@@ -82,6 +84,40 @@ module Ops
     def failed? = status == 'failed'
     def refused? = status == 'refused'
     def finished? = !pending?
+
+    # == progress / cancel (phase 13)
+
+    # { 'done' =>, 'total' =>, 'label' => } of a long plan (nil when none).
+    def progress_hash = progress.is_a?(Hash) ? progress.stringify_keys : nil
+
+    # Percentage (0-100) of the progress, nil without a total.
+    def progress_percent
+      hash = progress_hash
+      return unless hash && hash['total'].to_i.positive?
+
+      [(hash['done'].to_f * 100 / hash['total'].to_i).round, 100].min
+    end
+
+    def cancel_requested? = cancel_requested_at.present?
+
+    # True when the run page offers "Cancel": a pending run of a cancellable operation, not asked yet.
+    def cancellable?
+      pending? && !cancel_requested? && operation_class&.cancellable == true
+    end
+
+    # The operator's Cancel click: a queued run is refused at once; a running one stops at its next progress report.
+    # Returns true when the request was recorded.
+    def request_cancel!(now: Time.current)
+      return false unless pending?
+
+      if self.class.where(id:, status: 'queued').update_all(status: 'refused', refusal_reason: 'cancelled', cancel_requested_at: now, # rubocop:disable Rails/SkipsModelValidations
+                                                            finished_at: now, updated_at: now,
+                                                            error_messages: [I18n.t('maintenance.refusals.cancelled')]).positive?
+        return reload && true
+      end
+
+      self.class.where(id:, status: 'running').update_all(cancel_requested_at: now, updated_at: now).positive? && reload && true # rubocop:disable Rails/SkipsModelValidations
+    end
 
     # True for a queued/running run that no worker will ever finish: its Solid Queue job is gone, finished or failed
     # (a worker killed mid-run), or it has been pending longer than STALE_AFTER without a known job (longer than the
@@ -165,10 +201,21 @@ module Ops
     # The latest apply run of this preview (nil when none).
     def latest_apply = applies_of_preview.first
 
-    # True when this preview already has an apply that is pending or succeeded (one apply per preview).
-    def applied_or_applying?
-      applies_of_preview.exists?(status: PENDING_STATUSES + ['succeeded'])
+    # The applies that consume this preview: pending, succeeded, or failed after changing the local DB (a partial apply,
+    # or an Outbox registration failure: phase 13).
+    def consuming_applies
+      applies = applies_of_preview
+      applies.where(status: PENDING_STATUSES + ['succeeded']).or(applies.where(status: 'failed', applied_locally: true))
     end
+
+    # True when this preview already has a consuming apply (one apply per preview).
+    def applied_or_applying? = consuming_applies.exists?
+
+    # True for an apply that changed the local DB and then failed (partial apply, or not registered in the Outbox).
+    def applied_with_failure? = apply? && failed? && applied_locally == true
+
+    # The SQL that ran locally but could not be registered in the Outbox (kept in tmp), or nil.
+    def unregistered_sql_path = summary_hash['unregistered_sql_path'].presence
 
     # The registered Outbox script (nil when none).
     def sql_script

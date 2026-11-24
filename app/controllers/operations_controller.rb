@@ -3,7 +3,7 @@
 #
 # = OperationsController
 #
-# /operations (phase 11): the maintenance operations (Maintenance::Registry) and their run history
+# /operations (phase 11): the maintenance operations (Maintenance::Registry), the read-only inspectors (13) and their run history
 # (OperationRunsGrid, ops DB); /operations/:key/new: the operation form, prefilled from a health finding
 # (+finding_id+, Maintenance::Operation.from_finding) or from explicit params (e.g. the commit report links). The form
 # posts to Maintenance::RunsController#create, which queues the dry run. Reads only the local DB and the ops DB.
@@ -16,6 +16,7 @@ class OperationsController < ApplicationController
   # GET /operations
   def index
     @operations = Maintenance::Registry.all
+    @inspectors = Maintenance::Registry.inspectors
     @ops_available = Ops.available?
     @enabled = Maintenance.enabled?
     return unless @ops_available

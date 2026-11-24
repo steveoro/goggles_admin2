@@ -1,0 +1,34 @@
+## exit: nil
+## output
+Checking existence of <DATA_ROOT>/results.new (and creating it if missing)...
+
+*** Task: import:categories ***
+
+Cloning CategoryTypes from Season 252 (2025/2026)
+    |=> Season 262 (2026/2027)
+
+- simulate.......: true
+- remove_codes...: M25, U20
+- dest. folder...: <DATA_ROOT>/results.new
+
+*** Log: ***
+Cloning CategoryTypes from Season 252 (2025/2026) => Season 262 (2026/2027)
+Destination season has 28 existing CategoryTypes.
+INSERTs prepared: 0
+Skipped (already in dest): 28
+DELETEs prepared: 2 (codes: M25, U20)
+
+File '<DATA_ROOT>/results.new/misc/NNNN-import_categories-252-262.sql' saved (Outbox: held, seq N).
+
+		>>> NOTHING WAS DONE TO THE DB: THIS WAS JUST A SIMULATION <<<
+--> The script stays HELD in the Outbox until applied ('Apply locally') or re-run with 'simulate=0'.
+Done.
+
+## script results.new/misc/NNNN-import_categories-252-262.sql
+SET AUTOCOMMIT = 0;
+START TRANSACTION;
+
+DELETE FROM `category_types` WHERE `id` = 200291;
+DELETE FROM `category_types` WHERE `id` = 200307;
+
+COMMIT;

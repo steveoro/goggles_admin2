@@ -120,6 +120,15 @@ RSpec.describe Shell::Navigation do
       end
     end
 
+    it 'maps the season-start checklist (phase 13) to a contextual child of Operations' do
+      %w[maintenance/season_start#index maintenance/season_start#show].each do |route|
+        controller, action = route.split('#')
+        expect(described_class.item_for(controller, action)&.key).to eq(:season_start), route
+      end
+      crumbs = described_class.breadcrumbs_for('maintenance/season_start', 'show', {})
+      expect(crumbs.map(&:first).first(3)).to eq([I18n.t('shell.groups.data_quality'), I18n.t('maintenance.nav'), I18n.t('maintenance.season_start.nav')])
+    end
+
     it 'returns nil for an unknown page' do
       expect(described_class.item_for('lookup', 'index')).to be_nil
       expect(described_class.item_for('whatever', 'index')).to be_nil

@@ -11,6 +11,21 @@
 
   .alert.py-2#operation-run-outcome{ class: outcome_css, role: 'status' }
     = outcome_text
+    - if (bar = progress)
+      .mt-2#operation-run-progress{ data: { progress_done: bar['done'], progress_total: bar['total'] } }
+        .d-flex.justify-content-between.small
+          %span= bar['label']
+          %span= t('maintenance.run.progress', done: bar['done'], total: bar['total'])
+        %progress.w-100{ max: bar['total'], value: bar['done'], 'aria-label' => t('maintenance.run.progress_label') } #{bar['percent']}%
+    - if run.cancel_requested? && run.pending?
+      %p.small.mb-0.mt-2#operation-run-cancel-requested= t('maintenance.run.cancel_requested')
+    - elsif run.cancellable?
+      .mt-2
+        = button_to(helpers.cancel_maintenance_run_path(run), method: :post, class: 'btn btn-sm btn-outline-danger',
+                                                              form: { data: { turbo_frame: '_top' }, id: 'frm-operation-cancel' },
+                                                              title: t('maintenance.run.cancel_hint')) do
+          %i.fa-solid.fa-ban{ 'aria-hidden' => 'true' }
+          = t('maintenance.run.cancel')
     - if outbox_link?
       = link_to(t('maintenance.run.open_outbox'), helpers.outbox_path(focus: summary['sql_filename']),
                 class: 'alert-link ms-1', id: 'operation-run-outbox-link')

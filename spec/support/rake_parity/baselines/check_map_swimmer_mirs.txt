@@ -1,0 +1,67 @@
+## exit: nil
+## output
+
+*** Task: check:map_swimmer_mirs - swimmer 142 ***
+
+--> Swimmer ID 142
+--> Found 368 MIRs => showing page 0 (/7)
+--> Swimmer: ALLORO STEFANO (MAS, 1969)
+MIR          | Season  | Badge     | Team      | Team Aff. | Team Name                           | Header Date | Meeting                                        
+----------------------------------------------------------------------------------------------------------------------------------------------------------
+        3512 |       3 |       154 |         1 |        25 | Lake Ramiro Swimming Club ASD       | 2002-12-15  | 1A PROVA REGIONALE CSI                            
+        3905 |       3 |       154 |         1 |        25 | Lake Ramiro Swimming Club ASD       | 2003-03-30  | 3A PROVA REGIONALE CSI                            
+        4153 |       3 |       154 |         1 |        25 | Lake Ramiro Swimming Club ASD       | 2003-05-11  | FINALE REGIONALE CSI                              
+----------------------------------------------------------------------------------------------------------------------------------------------------------
+        4452 |       4 |       718 |         1 |        35 | Lake Ramiro Swimming Club ASD       | 2003-11-30  | 1A PROVA REGIONALE CSI                            
+        4453 |       4 |       718 |         1 |        35 | Lake Ramiro Swimming Club ASD       | 2003-11-30  | 1A PROVA REGIONALE CSI                            
+        4798 |       4 |       718 |         1 |        35 | Lake Ramiro Swimming Club ASD       | 2004-02-08  | 2A PROVA REGIONALE CSI                            
+        4799 |       4 |       718 |         1 |        35 | Lake Ramiro Swimming Club ASD       | 2004-02-08  | 2A PROVA REGIONALE CSI                            
+        5196 |       4 |       718 |         1 |        35 | Lake Ramiro Swimming Club ASD       | 2004-04-25  | 3A PROVA REGIONALE CSI                            
+        5197 |       4 |       718 |         1 |        35 | Lake Ramiro Swimming Club ASD       | 2004-04-25  | 3A PROVA REGIONALE CSI                            
+        5364 |       4 |       718 |         1 |        35 | Lake Ramiro Swimming Club ASD       | 2004-05-23  | FINALE REGIONALE CSI                              
+        5365 |       4 |       718 |         1 |        35 | Lake Ramiro Swimming Club ASD       | 2004-05-23  | FINALE REGIONALE CSI                              
+----------------------------------------------------------------------------------------------------------------------------------------------------------
+      100251 |       5 |      4848 |         1 |       216 | Lake Ramiro Swimming Club ASD       | 2003-11-16  | TROFEO ASI DE AKKER TEAM                          
+      100260 |       5 |      4848 |         1 |       216 | Lake Ramiro Swimming Club ASD       | 2003-12-21  | MEETING DEGLI AUGURI                              
+      100275 |       5 |      4848 |         1 |       216 | Lake Ramiro Swimming Club ASD       | 2003-12-21  | MEETING DEGLI AUGURI                              
+      100276 |       5 |      4848 |         1 |       216 | Lake Ramiro Swimming Club ASD       | 2004-01-10  | TROFEO CITTA' DI RAVENNA                          
+      100261 |       5 |      4848 |         1 |       216 | Lake Ramiro Swimming Club ASD       | 2004-03-06  | MEETING CITTA' DI SAN MARINO                      
+      100277 |       5 |      4848 |         1 |       216 | Lake Ramiro Swimming Club ASD       | 2004-03-06  | MEETING CITTA' DI SAN MARINO                      
+      100262 |       5 |      4848 |         1 |       216 | Lake Ramiro Swimming Club ASD       | 2004-04-17  | TROFEO MASTER MOLINELLA                           
+      100278 |       5 |      4848 |         1 |       216 | Lake Ramiro Swimming Club ASD       | 2004-04-17  | TROFEO MASTER MOLINELLA                           
+      100264 |       5 |      4848 |         1 |       216 | Lake Ramiro Swimming Club ASD       | 2004-05-02  | TROFEO CITTA' DI REGGIO EMILIA                    
+      100279 |       5 |      4848 |         1 |       216 | Lake Ramiro Swimming Club ASD       | 2004-05-02  | TROFEO CITTA' DI REGGIO EMILIA                    
+----------------------------------------------------------------------------------------------------------------------------------------------------------
+        5528 |       6 |      1047 |         1 |        52 | Lake Ramiro Swimming Club ASD       | 2004-12-05  | 1A PROVA REGIONALE CSI                            
+        5529 |       6 |      1047 |         1 |        52 | Lake Ramiro Swimming Club ASD       | 2004-12-05  | 1A PROVA REGIONALE CSI                            
+        6089 |       6 |      1047 |         1 |        52 | Lake Ramiro Swimming Club ASD       | 2005-05-15  | 2A PROVA REGIONALE CSI                            
+        6090 |       6 |      1047 |         1 |        52 | Lake Ramiro Swimming Club ASD       | 2005-05-15  | 2A PROVA REGIONALE CSI                            
+----------------------------------------------------------------------------------------------------------------------------------------------------------
+      100253 |       7 |      4862 |         1 |       217 | Lake Ramiro Swimming Club ASD       | 2004-12-19  | MEETING DEGLI AUGURI                              
+      100281 |       7 |      4862 |         1 |       217 | Lake Ramiro Swimming Club ASD       | 2004-12-19  | MEETING DEGLI AUGURI                              
+      100266 |       7 |      4862 |         1 |       217 | Lake Ramiro Swimming Club ASD       | 2005-01-15  | TROFEO CITTA' DI RAVENNA                          
+      100282 |       7 |      4862 |         1 |       217 | Lake Ramiro Swimming Club ASD       | 2005-01-15  | TROFEO CITTA' DI RAVENNA                          
+      100249 |       7 |      4862 |         1 |       217 | Lake Ramiro Swimming Club ASD       | 2005-01-22  | TROFEO A.I.C.S. CITTA' DI DESENZANO               
+      100283 |       7 |      4862 |         1 |       217 | Lake Ramiro Swimming Club ASD       | 2005-01-22  | TROFEO A.I.C.S. CITTA' DI DESENZANO               
+      100284 |       7 |      4862 |         1 |       217 | Lake Ramiro Swimming Club ASD       | 2005-03-05  | TROFEO INTERNAZIONALE REPUBBLICA DI SAN MARINO    
+      100290 |       7 |      4862 |         1 |       217 | Lake Ramiro Swimming Club ASD       | 2005-03-05  | TROFEO INTERNAZIONALE REPUBBLICA DI SAN MARINO    
+      100267 |       7 |      4862 |         1 |       217 | Lake Ramiro Swimming Club ASD       | 2005-03-13  | TROFEO CITTA' DI REGGIO EMILIA                    
+      100285 |       7 |      4862 |         1 |       217 | Lake Ramiro Swimming Club ASD       | 2005-03-13  | TROFEO CITTA' DI REGGIO EMILIA                    
+      100291 |       7 |      4862 |         1 |       217 | Lake Ramiro Swimming Club ASD       | 2005-04-16  | TROFEO TROFEO MASTER MOLINELLA                    
+      100269 |       7 |      4862 |         1 |       217 | Lake Ramiro Swimming Club ASD       | 2005-05-21  | MEETING MASTERS DELLA VALDERA                     
+      100287 |       7 |      4862 |         1 |       217 | Lake Ramiro Swimming Club ASD       | 2005-05-21  | MEETING MASTERS DELLA VALDERA                     
+      100254 |       7 |      4862 |         1 |       217 | Lake Ramiro Swimming Club ASD       | 2005-05-29  | MEETING CITTA' DI PIACENZA                        
+      100257 |       7 |      4862 |         1 |       217 | Lake Ramiro Swimming Club ASD       | 2005-05-29  | MEETING CITTA' DI PIACENZA                        
+----------------------------------------------------------------------------------------------------------------------------------------------------------
+        6363 |       8 |      1311 |         1 |        68 | Lake Ramiro Swimming Club ASD       | 2005-11-13  | 1A PROVA REGIONALE CSI                            
+        6364 |       8 |      1311 |         1 |        68 | Lake Ramiro Swimming Club ASD       | 2005-11-13  | 1A PROVA REGIONALE CSI                            
+        6738 |       8 |      1311 |         1 |        68 | Lake Ramiro Swimming Club ASD       | 2006-02-19  | 2A PROVA REGIONALE CSI                            
+        6739 |       8 |      1311 |         1 |        68 | Lake Ramiro Swimming Club ASD       | 2006-02-19  | 2A PROVA REGIONALE CSI                            
+        7077 |       8 |      1311 |         1 |        68 | Lake Ramiro Swimming Club ASD       | 2006-03-12  | 3A PROVA REGIONALE CSI                            
+        7078 |       8 |      1311 |         1 |        68 | Lake Ramiro Swimming Club ASD       | 2006-03-12  | 3A PROVA REGIONALE CSI                            
+        7449 |       8 |      1311 |         1 |        68 | Lake Ramiro Swimming Club ASD       | 2006-04-09  | 4A PROVA REGIONALE CSI                            
+        7450 |       8 |      1311 |         1 |        68 | Lake Ramiro Swimming Club ASD       | 2006-04-09  | 4A PROVA REGIONALE CSI                            
+----------------------------------------------------------------------------------------------------------------------------------------------------------
+      100845 |       9 |      4878 |         1 |       218 | Lake Ramiro Swimming Club ASD       | 2005-11-20  | TROFEO DE AKKER SPRINT                            
+      100859 |       9 |      4878 |         1 |       218 | Lake Ramiro Swimming Club ASD       | 2005-11-20  | TROFEO DE AKKER SPRINT                            
+

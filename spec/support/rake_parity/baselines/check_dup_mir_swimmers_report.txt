@@ -1,0 +1,36 @@
+## exit: nil
+## output
+Checking existence of <DATA_ROOT>/results.new (and creating it if missing)...
+
+
+*** Task: check:dup_mir_swimmers ***
+
+- Meeting.......: 18222 - MASTER FIN: VI Trofeo Fanatik Team
+- autofix.......: false
+- simulate......: true
+
+============================================================
+Duplicate Result Cleaner Report
+Season: 182 - Circuito italiano supermaster FIN 2018/2019
+Meeting: 18222 - 6° Trofeo Fanatik Team
+Autofix: disabled
+============================================================
+
+--- Meeting 18222: 6° Trofeo Fanatik Team ---
+
+Duplicate MIRs found: 1 groups
+  Swimmer 1409: Herman Anette 40753 (1957)
+    Program ID: 163647, Timing match: true
+    - MIR 840606: 1'20"07 => team 1 (Lake Ramiro Swimming Club ASD), badge 111395 FIN 2018/2019: Herman Anette 40753 (1957) ➡ Lake Ramiro Swimming Club ASD, Reggio nell Emilia
+    - MIR <MIR_COPY>: 1'20"07 => team 1 (Lake Ramiro Swimming Club ASD), badge 111395 FIN 2018/2019: Herman Anette 40753 (1957) ➡ Lake Ramiro Swimming Club ASD, Reggio nell Emilia
+
+============================================================
+TOTALS:
+  Duplicate MIR groups: 1
+  Duplicate lap groups: 0
+  Duplicate MRS groups: 0
+  Duplicate relay_lap groups: 0
+  Duplicate MRR pairs: 0
+============================================================
+
+Run with autofix=1 to generate deletion script.

@@ -57,7 +57,7 @@ Rules:
   +-----------+
 ```
 
-- **held**: reason `not_applied_locally` (written but not run on the local DB: rake `simulate=1`, standard timings, normalize), `local_apply_failed`, `operator`, `legacy_folder` (a file found in `redo/` or `results.new/old-subseeded/` before the import). **Apply locally** runs the script on the local DB (`LocalDb::SqlRunner`) and makes it pending, renumbered after the scripts written meanwhile (so the push follows the local-apply order; the rename is logged). **Push without local apply** releases it anyway (the local DB and the server will differ).
+- **held**: reason `not_applied_locally` (written but not run on the local DB: rake `simulate=1`, standard timings, normalize), `local_apply_failed`, `operator`, `legacy_folder` (a file found in `redo/` or `results.new/old-subseeded/` before the import), `remote_season_missing` (phase 13: a standard-timings script applied locally, released by step 6 of the season-start checklist once the remote season exists). **Apply locally** runs the script on the local DB (`LocalDb::SqlRunner`) and makes it pending, renumbered after the scripts written meanwhile (so the push follows the local-apply order; the rename is logged). **Push without local apply** releases it anyway (the local DB and the server will differ).
 - **in doubt**: a push was interrupted (the job died between the POST and the move). It is never re-posted automatically (an explicit-id INSERT would fail, an UPDATE-only script would apply twice): look it up in the remote import queue, then **mark sent** (with its id), **back to pending** or **discard**.
 - **discarded**: with a note; the file goes to `results.new/discarded/<folder>/`, never scanned again.
 - **missing**: the file is gone from disk; it gets its previous state back when it reappears.
@@ -86,9 +86,8 @@ All of them call `Outbox::Writer.write!(kind:, name:, sql:, folder:, ...)` exact
 | Season board calendar link / backfill | `calendar_link` / `backfill` | `<season>` |
 | Maintenance operations (`Maintenance::Executor`, phase 11: "Flag cancelled", merges, dedupe, NULL swimmers, ranks, backfill), registered only after the local apply succeeded | `cancel_flag`, `merge`, `fix`, `recompute`, `backfill` | `misc` |
 | Team managers (`TeamManagerSqlCreate`) | `team_manager` | `<season>` |
-| rake merge / fix / purge / recompute / check / import_categories (`process_sql_file`) | inferred from the name | season id given as subdir, else `misc` |
-| `rake normalize:coded_names` | `normalize` (held unless `simulate=0`) | `misc` |
-| `rake import:standard_timings` | `standard_timings` (held) | `<season>` |
+| rake merge / fix / purge / recompute / check / import / normalize / season_board (phase 13: the maintenance operations through `Maintenance::RakeRunner`) | the operation's kind | `misc` (standard timings: `<season>`); held `not_applied_locally` with `simulate=1`, registered after the local apply with `simulate=0` |
+| maintenance operations (`/operations`) | the operation's kind | `misc` (`standard_timings.import`: `<season>`, held `remote_season_missing`) |
 | a file dropped by hand under `results.new/` | inferred (`Outbox::Kinds`) | its folder |
 
 - The sequence (`Outbox::Sequence`) is global: `max(stored floor, registry max, highest NNNN- prefix under results.new/**, results.sent/**, redo/) + 1`, allocated in one SQLite `BEGIN IMMEDIATE` transaction. A rake `index=` option is kept as the file prefix only.

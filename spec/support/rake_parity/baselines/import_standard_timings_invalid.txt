@@ -1,0 +1,12 @@
+## exit: 0
+## output
+
+*** Import StandardTimings from file ***
+
+Please make sure the source file has one of the supported formats:
+ - XLSX: sheets with header row "CATEG*|COD GARA|GARA|SESSO|VASCA|...|TEMPO PRINT"
+ - CSV:  1. "category_code;fin_event_code;event_label;gender;pool_type;hundredths;timing_mmsshh;timing"
+         2. "category_code;event_label;25_m;50_m;25_f;50_f"
+
+--> Season 1, 2000/2001
+Can't find a suitable source file under 'crawler/data/standard_timings' for season 1.

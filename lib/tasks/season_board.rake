@@ -12,6 +12,7 @@
 #-- ---------------------------------------------------------------------------
 #++
 
+# Since phase 13 the task body is a thin caller of the 'season_board.backfill' operation (Maintenance::RakeRunner).
 namespace :season_board do
   desc <<~DESC
       One-time backfill linking the existing calendars rows of a season to the FIN calendar
@@ -28,9 +29,10 @@ namespace :season_board do
     The generated UPDATEs are idempotent (rows already correct are skipped).
 
     In apply mode (simulate=0), the changes are run on the localhost DB inside a single
-    transaction and the SQL script is stored for the push dashboard as:
+    transaction (the 'season_board.backfill' operation, since phase 13) and the SQL script
+    is registered in the SQL Outbox as:
 
-      - 'crawler/data/results.new/<season_id>/<index>-season_board_backfill-<season_id>.sql'
+      - 'crawler/data/results.new/misc/<index>-season_board_backfill-<season_id>.sql'
 
     In apply mode the DB sync gate runs first (Drift::Gate, scope :rake; see /db_sync):
     a red verdict aborts the task unless force=1; any other warning is printed.
@@ -49,39 +51,9 @@ namespace :season_board do
 
   DESC
   task backfill: :environment do
-    puts '*** Task: season_board:backfill ***'
-    season = if ENV['season'].present?
-               GogglesDb::Season.find_by(id: ENV['season'].to_i)
-             else
-               GogglesDb::Season.last_season_by_type(GogglesDb::SeasonType.mas_fin)
-             end
-    if season.nil?
-      puts("ABORTED: season #{ENV.fetch('season', nil).inspect} not found.")
-      next
-    end
-
-    simulate = ENV['simulate'] != '0' # Don't change anything unless explicitly requested
-    puts("\r\n- season.........: #{season.id}")
-    puts("- simulate.......: #{simulate}\r\n\r\n")
-    unless simulate
-      # (the operator running the task sees the warnings: acknowledged; only a red verdict stops it, unless force=1)
-      gate = Drift::Gate.check(scope: :rake, acknowledged: true, force: ENV['force'] == '1')
-      unless gate.allowed?
-        puts(I18n.t('db_sync.gate.rake_blocked', summary: gate.summary))
-        next
-      end
-      puts(I18n.t('db_sync.gate.rake_warning', summary: gate.summary)) unless gate.ok?
-    end
-
-    backfill = SeasonBoard::Backfill.new(season:, simulate:).call
-    puts(backfill.report.join("\r\n"))
-    if backfill.statements.empty?
-      puts("\r\nNothing to do: all rows are already up to date.")
-    elsif simulate
-      puts("\r\n*** SQL (not applied, not saved): ***\r\n")
-      puts(backfill.sql_log.join("\r\n"))
-    end
-    puts('Done.')
+    data_root = defined?(SCRIPT_OUTPUT_DIR) ? SCRIPT_OUTPUT_DIR.dirname : Outbox.data_root
+    status = Maintenance::RakeRunner.call('season_board:backfill', data_root:)
+    exit(status) if status
   end
   #-- -------------------------------------------------------------------------
   #++

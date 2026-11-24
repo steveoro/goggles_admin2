@@ -1,0 +1,189 @@
+## exit: nil
+## output
+Checking existence of <DATA_ROOT>/results.new (and creating it if missing)...
+
+*** Task: merge:badge ***
+
+Merging Badge (<BADGE_COPY>) MASTER FIN 2018/2019: Hauck Omer 56493 (FEM, 2000) ➡ Lake Elveraton Swimming Club ASD, season 182
+======= team 1292, category_type 1248 (M30)
+    |
+    +=> (115299) MASTER FIN 2018/2019: Hauck Omer 56493 (FEM, 2000) ➡ Lake Elveraton Swimming Club ASD, season 182
+        team 1292, category_type 1248 (M30)
+
+- SIMULATE........................................: ✔
+- destination folder..............................: <DATA_ROOT>/results.new
+
+*** Log: ***
+
+	*** Badge Checker ***
+
+🔹[Src  BADGE:  <BADGE_COPY>] FIN 2018/2019: Hauck Omer 56493 (2000) ➡ Lake Elveraton Swimming Club ASD, Cat. 1248 M30 (computed cat. 1263 U25)
+🔹[Dest BADGE:  115299] FIN 2018/2019: Hauck Omer 56493 (2000) ➡ Lake Elveraton Swimming Club ASD, Cat. 1248 M30
+
+Latest 12 categories found for this same swimmer (38933):
+  - Season 152, age: 15, cat: ~  (    ) computed / found  -> 
+  - Season 162, age: 16, cat: ~ U25 (1082) computed / found  -> 
+  - Season 172, age: 17, cat: ~ U25 (1133) computed / found  -> 
+  - Season 182, age: 18, cat: ~ U25 (1263) computed / found M30 -> {1292 => "'Lake Elveraton Swimming Club ASD' (B: 115299)"}: , {1292 => "'Lake Elveraton Swimming Club ASD' (B: <BADGE_COPY>)"}: 
+  - Season 192, age: 19, cat: ~ U25 (1304) computed / found  -> 
+  - Season 202, age: 20, cat: ~ U25 (123315) computed / found  -> 
+  - Season 212, age: 21, cat: ~ U25 (123379) computed / found  -> 
+  - Season 222, age: 22, cat: ~ U25 (159976) computed / found  -> 
+  - Season 232, age: 23, cat: ~ M20 (169276) computed / found  -> 
+  - Season 242, age: 24, cat: ~ M20 (184369) computed / found  -> 
+  - Season 252, age: 25, cat: ~ M25 (187012) computed / found  -> 
+  - Season 262, age: 26, cat: ~ M25 (200291) computed / found  -> 
+
+
+
+************************************************************************************************************************************************************
+**                                                                MIR (from parent MEvent)                                                                **
+************************************************************************************************************************************************************
+
++----------------------------------------------------------------------------------------------------------------------------------------------------------+
+|          SOURCE (MeetingEvent ID, MIR count) x [<BADGE_COPY>: MASTER FIN 2018/2019: Hauck Omer 56493 (FEM, 2000) ➡ Lake Elveraton Swimming Club ASD]           |
++----------------------------------------------------------------------------------------------------------------------------------------------------------+
+18794: 1, 18798: 1
++----------------------------------------------------------------------------------------------------------------------------------------------------------+
++                                                               - Source-only parent rows: -                                                               +
+- Parent ID 18794 => Domain row IDs: [789915], Meeting 18219 '2° Trofeo Citta` tra i due mari'
+- Parent ID 18798 => Domain row IDs: [790104], Meeting 18219 '2° Trofeo Citta` tra i due mari'
++----------------------------------------------------------------------------------------------------------------------------------------------------------+
+
++----------------------------------------------------------------------------------------------------------------------------------------------------------+
+|           DEST (MeetingEvent ID, MIR count) x [115299: MASTER FIN 2018/2019: Hauck Omer 56493 (FEM, 2000) ➡ Lake Elveraton Swimming Club ASD]            |
++----------------------------------------------------------------------------------------------------------------------------------------------------------+
+19373: 1, 19374: 1, 19560: 1, 19566: 1, 19670: 1, 19674: 1
++----------------------------------------------------------------------------------------------------------------------------------------------------------+
++                                                               - Dest.-only parent rows: -                                                                +
+- Parent ID 19373 => Domain row IDs: [837541], Meeting 18286 '13° Trofeo Master Balnaea'
+- Parent ID 19374 => Domain row IDs: [838214], Meeting 18286 '13° Trofeo Master Balnaea'
+- Parent ID 19560 => Domain row IDs: [819431], Meeting 18265 'Campionati Regionali Calabria'
+- Parent ID 19566 => Domain row IDs: [819197], Meeting 18265 'Campionati Regionali Calabria'
+- Parent ID 19670 => Domain row IDs: [819759], Meeting 18289 'Campionati Regionali Basilicata'
+- Parent ID 19674 => Domain row IDs: [819715], Meeting 18289 'Campionati Regionali Basilicata'
++----------------------------------------------------------------------------------------------------------------------------------------------------------+
+>> NO shared MIR (from parent MEvent)s.
+
+>> WARNING: 4 MIRs with nil badge_id are present:
+- 
+- 
+- 
+- 
+
+
+
+************************************************************************************************************************************************************
+**                                                                MRS (from parent MEvent)                                                                **
+************************************************************************************************************************************************************
+>> NO source-only MRS (from parent MEvent)s.
+>> NO destination-only MRS (from parent MEvent)s.
+>> NO shared MRS (from parent MEvent)s.
+
+
+
+************************************************************************************************************************************************************
+**                                                                          MRES                                                                          **
+************************************************************************************************************************************************************
+>> NO source-only MRESs.
+>> NO destination-only MRESs.
+>> NO shared MRESs.
+
+
+
+************************************************************************************************************************************************************
+**                                                                        MEV_RES                                                                         **
+************************************************************************************************************************************************************
+>> NO source-only MEV_RESs.
+>> NO destination-only MEV_RESs.
+>> NO shared MEV_RESs.
+
+
+
+************************************************************************************************************************************************************
+**                                                                        MREL_RES                                                                        **
+************************************************************************************************************************************************************
+>> NO source-only MREL_RESs.
+>> NO destination-only MREL_RESs.
+>> NO shared MREL_RESs.
+
+
+
+************************************************************************************************************************************************************
+**                                                              M_ENTRY (from parent MEvent)                                                              **
+************************************************************************************************************************************************************
+>> NO source-only M_ENTRY (from parent MEvent)s.
+>> NO destination-only M_ENTRY (from parent MEvent)s.
+>> NO shared M_ENTRY (from parent MEvent)s.
+
+>> WARNING: 8 MEntries with nil badge_id are present:
+- [MEntry 1103, M.Progr. 7115] swimmer_id: 1750 (Larkin Dotty 32464) badge_id: , season: 141 => Badge: 17309
+- [MEntry 1135, M.Progr. 7107] swimmer_id: 1750 (Larkin Dotty 32464) badge_id: , season: 141 => Badge: 17309
+- [MEntry 1186, M.Progr. 7112] swimmer_id: 125 (Cummerata Archie 66849) badge_id: , season: 141 => Badge: 17324
+- [MEntry 1190, M.Progr. 7114] swimmer_id: 125 (Cummerata Archie 66849) badge_id: , season: 141 => Badge: 17324
+- [MEntry 1299, M.Progr. 7129] swimmer_id: 1786 (Rath Lashawn 35116) badge_id: , season: 141 => Badge: 17329
+- [MEntry 1309, M.Progr. 7145] swimmer_id: 1786 (Rath Lashawn 35116) badge_id: , season: 141 => Badge: 17329
+- [MEntry 1338, M.Progr. 7111] swimmer_id: 1569 (Brown Ruby 45684) badge_id: , season: 141 => Badge: 17331
+- [MEntry 1376, M.Progr. 7145] swimmer_id: 1569 (Brown Ruby 45684) badge_id: , season: 141 => Badge: 17331
+
+
+- Checker.....................................: ✅ OK
+- Updates for MIRs............................: 2
+
+File '<DATA_ROOT>/results.new/misc/NNNN-merge_badges-<BADGE_COPY>-115299.sql' saved (Outbox: held, seq N).
+
+		>>> NOTHING WAS DONE TO THE DB: THIS WAS JUST A SIMULATION <<<
+--> The script stays HELD in the Outbox until applied ('Apply locally') or re-run with 'simulate=0'.
+Done.
+
+## script results.new/misc/NNNN-merge_badges-<BADGE_COPY>-115299.sql
+
+-- SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
+SET AUTOCOMMIT = 0;
+START TRANSACTION;
+
+-- Merge Badge (<BADGE_COPY>) MASTER FIN 2018/2019: Hauck Omer 56493 (FEM, 2000) ➡ Lake Elveraton Swimming Club ASD, swimmer 38933, season 182
+--   |   team 1292 (Lake Elveraton Swimming Club ASD), category_type 1248 (M30)
+--   |
+--   +=> (115299) MASTER FIN 2018/2019: Hauck Omer 56493 (FEM, 2000) ➡ Lake Elveraton Swimming Club ASD, season 182
+--   |   team 1292 (Lake Elveraton Swimming Club ASD), category_type 1248 (M30)
+--   +=> FINAL team: 1292, FINAL category_type: 1248 (M30)
+
+
+-- (source-only MIRs for MEvents IDs: [18794, 18798]) --
+
+-- Badge IDs.........: <BADGE_COPY>
+-- +=> Parent IDs....: [18794, 18798]
+-- +=> Domain row IDs: [789915, 790104]
+UPDATE meeting_individual_results SET updated_at=NOW(), meeting_program_id=151570, badge_id=115299 WHERE id = 789915;
+UPDATE laps SET updated_at=NOW(), meeting_program_id=151570, meeting_individual_result_id=789915, team_id = 1292 WHERE meeting_individual_result_id = 789915;
+UPDATE meeting_individual_results SET updated_at=NOW(), meeting_program_id=151640, badge_id=115299 WHERE id = 790104;
+UPDATE laps SET updated_at=NOW(), meeting_program_id=151640, meeting_individual_result_id=790104, team_id = 1292 WHERE meeting_individual_result_id = 790104;
+-- (dest-only MIRs for MEvents IDs: [19373, 19374, 19560, 19566, 19670, 19674]) --
+
+-- Badge IDs.........: 115299
+-- +=> Parent IDs....: [19373, 19374, 19560, 19566, 19670, 19674]
+-- +=> Domain row IDs: [819197, 819431, 819715, 819759, 837541, 838214]
+
+-- (MRS & relay_laps counters update) --
+UPDATE meeting_relay_results mrr
+  JOIN (SELECT meeting_relay_result_id, COUNT(*) AS meeting_relay_swimmers_count FROM meeting_relay_swimmers GROUP BY meeting_relay_result_id) r
+  ON mrr.id = r.meeting_relay_result_id
+  SET mrr.meeting_relay_swimmers_count = r.meeting_relay_swimmers_count;
+
+UPDATE meeting_relay_swimmers mrs
+  JOIN (SELECT meeting_relay_swimmer_id, COUNT(*) AS relay_laps_count FROM relay_laps GROUP BY meeting_relay_swimmer_id) r
+  ON mrs.id = r.meeting_relay_swimmer_id
+  SET mrs.relay_laps_count = r.relay_laps_count;
+
+UPDATE meeting_reservations SET updated_at=NOW(), badge_id=115299 WHERE badge_id = <BADGE_COPY>;
+UPDATE meeting_event_reservations SET updated_at=NOW(), badge_id=115299 WHERE badge_id = <BADGE_COPY>;
+UPDATE meeting_relay_reservations SET updated_at=NOW(), badge_id=115299 WHERE badge_id = <BADGE_COPY>;
+
+DELETE FROM badges WHERE id=<BADGE_COPY>;
+UPDATE badges SET updated_at=NOW() WHERE id = 115299;
+
+-- --------------------------------------------------------------------------
+
+
+COMMIT;

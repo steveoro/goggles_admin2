@@ -1,0 +1,73 @@
+## exit: nil
+## output
+Checking existence of <DATA_ROOT>/results.new (and creating it if missing)...
+
+*** Task: fix:swimmer_in_badge ***
+
+Fixing swimmer_id in 1 badge(s): [115303]
+New swimmer: (142) "ALLORO STEFANO"
+
+- simulate........................................: true
+- destination folder..............................: <DATA_ROOT>/results.new
+
+============================================================
+Badge Swimmer Fix Preview
+============================================================
+Seasons: 182 - Circuito italiano supermaster FIN 2018/2019
+New (correct) swimmer: (142) "ALLORO STEFANO"
+
+--- Badges to update (1) ---
+  Badge 115303: swimmer 15698 (MASTER FIN 2018/2019: Herman Brunilda 67856 (MAS, 1983) ➡ Lake Elveraton Swimming Club ASD) | team: 1292
+
+--- Affected rows ---
+- MIRs: 5
+- Laps: 0
+- MRSs: 0
+- Relay laps: 0
+- Meeting entries: 0
+- Meeting reservations: 0
+- Meeting event reservations: 0
+- Meeting relay reservations: 0
+
+============================================================
+
+File '<DATA_ROOT>/results.new/misc/NNNN-fix_swimmer_in_badge-115303.sql' saved (Outbox: held, seq N).
+
+		>>> NOTHING WAS DONE TO THE DB: THIS WAS JUST A SIMULATION <<<
+--> The script stays HELD in the Outbox until applied ('Apply locally') or re-run with 'simulate=0'.
+Done.
+
+## script results.new/misc/NNNN-fix_swimmer_in_badge-115303.sql
+-- Fix swimmer_id in badges: [115303]
+-- New swimmer: (142) ALLORO STEFANO
+-- Seasons: 182 - Circuito italiano supermaster FIN 2018/2019
+
+-- SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
+SET AUTOCOMMIT = 0;
+START TRANSACTION;
+
+-- Step 1: Update badges with correct swimmer_id
+UPDATE badges SET swimmer_id = 142, updated_at = NOW() WHERE id IN (115303);
+
+-- Step 2: Update MIRs with correct swimmer_id
+UPDATE meeting_individual_results SET swimmer_id = 142, updated_at = NOW() WHERE badge_id IN (115303);
+
+-- Step 3: Update laps with correct swimmer_id
+UPDATE laps l INNER JOIN meeting_individual_results mir ON l.meeting_individual_result_id = mir.id SET l.swimmer_id = 142 WHERE mir.badge_id IN (115303);
+
+-- Step 4: Update MRSs with correct swimmer_id
+UPDATE meeting_relay_swimmers SET swimmer_id = 142, updated_at = NOW() WHERE badge_id IN (115303);
+
+-- Step 6: Update meeting entries with correct swimmer_id
+UPDATE meeting_entries SET swimmer_id = 142, updated_at = NOW() WHERE badge_id IN (115303);
+
+-- Step 7: Update meeting event reservations with correct swimmer_id
+UPDATE meeting_event_reservations SET swimmer_id = 142, updated_at = NOW() WHERE badge_id IN (115303);
+
+-- Step 8: Update meeting relay reservations with correct swimmer_id
+UPDATE meeting_relay_reservations SET swimmer_id = 142, updated_at = NOW() WHERE badge_id IN (115303);
+
+-- Step 9: Update meeting reservations with correct swimmer_id
+UPDATE meeting_reservations SET swimmer_id = 142, updated_at = NOW() WHERE badge_id IN (115303);
+
+COMMIT;

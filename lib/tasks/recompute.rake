@@ -14,6 +14,8 @@ require 'fileutils'
 #-- ---------------------------------------------------------------------------
 #++
 
+# Since phase 13 the task body is a thin caller of the 'ranks.recompute' operation (Maintenance::RakeRunner, see
+# lib/tasks/merge.rake): the script ('<season id>-recompute_ranks') goes to results.new/misc/ with the next Outbox number.
 namespace :recompute do
   desc <<~DESC
       Recomputes all ranks for MIRs & MRRs of a whole Season or of a single Meeting,
@@ -34,36 +36,8 @@ namespace :recompute do
 
   DESC
   task(ranks: ['merge:check_needed_dirs']) do
-    puts "*** Task: recompute:ranks - season #{ENV.fetch('season', nil)} ***"
-    season = GogglesDb::Season.joins(:meetings).includes(:meetings).find_by(id: ENV['season'].to_i)
-    meeting = GogglesDb::Meeting.joins(:meeting_programs).includes(:meeting_programs).find_by(id: ENV['meeting'].to_i) if season.blank?
-    if season.nil? && meeting.nil?
-      puts('You need a valid Season ID or Meeting ID to proceed.')
-      exit
-    end
-
-    simulate = ENV['simulate'] != '0' # Don't run locally the script unless explicitly requested
-    # (Recompute::Ranks builds the SQL; the progress lines below come from its events, the output is unchanged)
-    ranker = Recompute::Ranks.new(season:, meeting:)
-    season = ranker.season
-    file_index = ENV['index'].present? ? ENV['index'].to_i : auto_index_from_script_output_dir
-    # (^^^ Use 'auto_index_from_script_output_dir(season.id)' to get the index from the season subdirectory)
-    file_name = "#{format('%04d', file_index)}-#{season.id}-recompute_ranks"
-    puts("\r\n#{'- SIMULATE'.ljust(25, '.')}: ✔") if simulate
-    puts("- #{ranker.meetings.count} meetings found.")
-    puts('')
-
-    ranker.call do |event, payload|
-      case event
-      when :meeting then puts("- #{payload}:")
-      when :program then putc('.')
-      when :meeting_done then puts('')
-      end
-    end
-
-    puts("\r\nGenerating file '#{file_name}'...")
-    process_sql_file(file_name:, sql_log_array: ranker.sql_log, simulate:)
-    puts('Done.')
+    status = Maintenance::RakeRunner.call('recompute:ranks', data_root: SCRIPT_OUTPUT_DIR.dirname)
+    exit(status) if status
   end
   #-- -------------------------------------------------------------------------
   #++

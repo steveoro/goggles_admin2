@@ -49,7 +49,7 @@ module Merge
 
       @skip_columns = skip_columns
       @console_output = console_output
-      @checker = MeetingChecker.new(source:, dest:)
+      @checker = MeetingChecker.new(source:, dest:, console_output:)
       @source = @checker.source
       @dest = @checker.dest
       @sql_log = []

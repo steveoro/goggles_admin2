@@ -74,7 +74,11 @@ module Shell
            match: %w[db_sync], offline_ok: true, keywords: %w[drift fingerprint sync production restore]),
       # (11: the maintenance operations, the fixes of the health findings; 13 extends it)
       item(:operations, :data_quality, 'fa-screwdriver-wrench', 'maintenance.nav', -> { operations_path },
-           match: %w[operations maintenance/runs], keywords: %w[fix merge dedupe cancelled backfill ranks maintenance]),
+           match: %w[operations maintenance/runs], keywords: %w[fix merge dedupe cancelled backfill ranks maintenance purge normalize check]),
+      # (13: the season-start checklist, a contextual child of Operations, reached from its index card)
+      item(:season_start, :data_quality, 'fa-list-check', 'maintenance.season_start.nav', -> { operations_path },
+           match: %w[maintenance/season_start], parent: :operations, sidebar: false,
+           keywords: %w[season start checklist categories standard timings]),
       # (14: guided local DB restore, a contextual child of DB sync; its progress page uses the restore layout)
       item(:db_restore, :data_quality, 'fa-database', 'db_restore.nav', -> { db_sync_path },
            match: %w[db_restore], parent: :db_sync, offline_ok: true, sidebar: false, keywords: %w[restore dump rebuild]),

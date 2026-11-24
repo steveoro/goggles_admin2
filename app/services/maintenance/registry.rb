@@ -4,8 +4,8 @@ module Maintenance
   #
   # = Maintenance::Registry
   #
-  # Catalogue of the maintenance operations (Maintenance::Operation subclasses), in display order. Phase 13 adds its
-  # operations here.
+  # Catalogue of the maintenance operations (Maintenance::Operation subclasses), in display order: the eight of phase
+  # 11, then the nine of phase 13; then the read-only inspectors of phase 13 (Maintenance::Inspector, dry run only).
   #
   # == Usage
   #   Maintenance::Registry.fetch('badge.merge')             # => Maintenance::Operations::BadgeMerge
@@ -21,17 +21,43 @@ module Maintenance
       Maintenance::Operations::SeasonBoardBackfill
       Maintenance::Operations::SwimmerMerge
       Maintenance::Operations::TeamMerge
+      Maintenance::Operations::MeetingMerge
+      Maintenance::Operations::MeetingTeamFix
+      Maintenance::Operations::BadgeTeamFix
+      Maintenance::Operations::BadgeSwimmerFix
+      Maintenance::Operations::MeetingPurge
+      Maintenance::Operations::CodedNamesNormalize
+      Maintenance::Operations::CategoriesClone
+      Maintenance::Operations::StandardTimingsImport
+      Maintenance::Operations::SeasonBadgeFix
+    ].freeze
+
+    # Read-only checks (the former 'check:*' reports), listed apart.
+    INSPECTOR_CLASS_NAMES = %w[
+      Maintenance::Inspectors::TeamCheck
+      Maintenance::Inspectors::SwimmerCheck
+      Maintenance::Inspectors::BadgeCheck
+      Maintenance::Inspectors::SeasonBadges
+      Maintenance::Inspectors::MapTeamBadges
+      Maintenance::Inspectors::MapSwimmerMirs
+      Maintenance::Inspectors::DupBadgesForTeam
+      Maintenance::Inspectors::DupMIRBadges
     ].freeze
 
     module_function
 
-    # Every operation class, in display order.
+    # Every operation class (fixes), in display order.
     def all = CLASS_NAMES.map(&:constantize)
+
+    # Every inspector class, in display order.
+    def inspectors = INSPECTOR_CLASS_NAMES.map(&:constantize)
 
     def keys = all.map(&:key)
 
-    # The operation class for +key+ (nil when unknown).
-    def find(key) = all.find { |klass| klass.key == key.to_s }
+    def inspector_keys = inspectors.map(&:key)
+
+    # The operation (or inspector) class for +key+ (nil when unknown).
+    def find(key) = (all + inspectors).find { |klass| klass.key == key.to_s }
 
     # The operation class for +key+; raises KeyError when unknown.
     def fetch(key) = find(key) || raise(KeyError, "unknown maintenance operation '#{key}'")

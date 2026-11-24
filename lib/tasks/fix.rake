@@ -14,7 +14,9 @@
 
 SCRIPT_OUTPUT_DIR = Rails.root.join('crawler/data/results.new').freeze unless defined? SCRIPT_OUTPUT_DIR
 
-namespace :fix do # rubocop:disable Metrics/BlockLength
+# Since phase 13 every task body is a thin caller of the maintenance operations (Maintenance::RakeRunner, see
+# lib/tasks/merge.rake): scripts in results.new/misc/ with the next Outbox number, held with simulate=1.
+namespace :fix do
   desc <<~DESC
       Fixes a wrongly-assigned team_id on one or more badges (also across multiple seasons).
 
@@ -34,7 +36,7 @@ namespace :fix do # rubocop:disable Metrics/BlockLength
     The Rails.env will set the destination DB for script execution on localhost.
     The resulting file will be stored under:
 
-      - '[DEFAULT_OUTPUT_DIR]/<index>-fix_team_in_badge-<badge_ids>.sql'
+      - '[DEFAULT_OUTPUT_DIR]/misc/<index>-fix_team_in_badge-<badge_ids>.sql'
 
     Options: [Rails.env=#{Rails.env}]
              badge=<badge_id1[,badge_id2,...]> team=<correct_team_id>
@@ -55,49 +57,8 @@ namespace :fix do # rubocop:disable Metrics/BlockLength
 
   DESC
   task(team_in_badge: ['merge:check_needed_dirs']) do
-    puts '*** Task: fix:team_in_badge ***'
-
-    badge_ids = ENV.fetch('badge', '')
-                   .split(',')
-                   .map { |x| x.strip.to_i }
-                   .reject(&:zero?)
-    badges = badge_ids.filter_map { |id| GogglesDb::Badge.find_by(id:) }
-    new_team = GogglesDb::Team.find_by(id: ENV.fetch('team', nil).to_i)
-
-    if badges.empty?
-      puts("You need at least one valid 'badge' ID to proceed.")
-      exit
-    end
-    if new_team.nil?
-      puts("You need a valid 'team' ID to proceed.")
-      exit
-    end
-
-    simulate = ENV['simulate'] != '0'
-    nuke_team = ENV['nuke_team'] == '1'
-    file_index = ENV['index'].present? ? ENV['index'].to_i : auto_index_from_script_output_dir
-    badge_ids_label = badges.map(&:id).join('-')
-
-    puts("\r\nFixing team_id in #{badges.size} badge(s): [#{badges.map(&:id).join(', ')}]")
-    puts("New team: (#{new_team.id}) \"#{new_team.name}\"")
-    puts("Mode: #{nuke_team ? 'NUKE TEAM-AFFILIATION REUSE' : 'SURGICAL (CREATE MISSING AFFILIATIONS ONLY)'}")
-    if nuke_team
-      puts('WARNING: NUKE MODE ENABLED!')
-      puts('WARNING: THIS MAY REASSIGN ALL ROWS LINKED TO REUSED TEAM_AFFILIATION IDS,')
-      puts('WARNING: NOT JUST THE BADGES YOU PASSED ON THE COMMAND LINE.')
-    end
-    puts("\r\n#{'- simulate'.ljust(50, '.')}: #{simulate}")
-    puts("#{'- nuke_team'.ljust(50, '.')}: #{nuke_team}")
-    puts("#{'- destination folder'.ljust(50, '.')}: #{SCRIPT_OUTPUT_DIR}")
-
-    fixer = Merge::TeamInBadge.new(badges:, new_team:, nuke_team:)
-    fixer.display_report
-    fixer.prepare
-
-    file_name = "#{format('%04d', file_index)}-fix_team_in_badge-#{badge_ids_label}"
-    process_sql_file(file_name:, sql_log_array: fixer.sql_log, simulate:)
-
-    puts('Done.')
+    status = Maintenance::RakeRunner.call('fix:team_in_badge', data_root: SCRIPT_OUTPUT_DIR.dirname)
+    exit(status) if status
   end
 
   desc <<~DESC
@@ -115,7 +76,7 @@ namespace :fix do # rubocop:disable Metrics/BlockLength
     The Rails.env will set the destination DB for script execution on localhost.
     The resulting file will be stored under:
 
-      - '[DEFAULT_OUTPUT_DIR]/<index>-fix_swimmer_in_badge-<badge_ids>.sql'
+      - '[DEFAULT_OUTPUT_DIR]/misc/<index>-fix_swimmer_in_badge-<badge_ids>.sql'
 
     Options: [Rails.env=#{Rails.env}]
              badge=<badge_id1[,badge_id2,...]> swimmer=<correct_swimmer_id>
@@ -132,41 +93,8 @@ namespace :fix do # rubocop:disable Metrics/BlockLength
 
   DESC
   task(swimmer_in_badge: ['merge:check_needed_dirs']) do
-    puts '*** Task: fix:swimmer_in_badge ***'
-
-    badge_ids = ENV.fetch('badge', '')
-                   .split(',')
-                   .map { |x| x.strip.to_i }
-                   .reject(&:zero?)
-    badges = badge_ids.filter_map { |id| GogglesDb::Badge.find_by(id:) }
-    new_swimmer = GogglesDb::Swimmer.find_by(id: ENV.fetch('swimmer', nil).to_i)
-
-    if badges.empty?
-      puts("You need at least one valid 'badge' ID to proceed.")
-      exit
-    end
-    if new_swimmer.nil?
-      puts("You need a valid 'swimmer' ID to proceed.")
-      exit
-    end
-
-    simulate = ENV['simulate'] != '0'
-    file_index = ENV['index'].present? ? ENV['index'].to_i : auto_index_from_script_output_dir
-    badge_ids_label = badges.map(&:id).join('-')
-
-    puts("\r\nFixing swimmer_id in #{badges.size} badge(s): [#{badges.map(&:id).join(', ')}]")
-    puts("New swimmer: (#{new_swimmer.id}) \"#{new_swimmer.complete_name}\"")
-    puts("\r\n#{'- simulate'.ljust(50, '.')}: #{simulate}")
-    puts("#{'- destination folder'.ljust(50, '.')}: #{SCRIPT_OUTPUT_DIR}")
-
-    fixer = Merge::SwimmerInBadge.new(badges:, new_swimmer:)
-    fixer.display_report
-    fixer.prepare
-
-    file_name = "#{format('%04d', file_index)}-fix_swimmer_in_badge-#{badge_ids_label}"
-    process_sql_file(file_name:, sql_log_array: fixer.sql_log, simulate:)
-
-    puts('Done.')
+    status = Maintenance::RakeRunner.call('fix:swimmer_in_badge', data_root: SCRIPT_OUTPUT_DIR.dirname)
+    exit(status) if status
   end
   #-- -------------------------------------------------------------------------
   #++
@@ -188,7 +116,7 @@ namespace :fix do # rubocop:disable Metrics/BlockLength
     The Rails.env will set the destination DB for script execution on localhost.
     The resulting file will be stored under:
 
-      - '#{SCRIPT_OUTPUT_DIR}/<index>-fix_nil_swimmers-<meeting_id|season_<season_id>>.sql'
+      - '#{SCRIPT_OUTPUT_DIR}/misc/<index>-fix_nil_swimmers-<meeting_id|season_<season_id>>.sql'
 
     Options: [Rails.env=#{Rails.env}]
              meeting_id=<meeting_id> | season_id=<season_id>
@@ -201,90 +129,8 @@ namespace :fix do # rubocop:disable Metrics/BlockLength
       - simulate:   when set to '0' will enable script execution on localhost (toggled off by default).
 
   DESC
-  task(nil_swimmers_in_results: ['merge:check_needed_dirs']) do # rubocop:disable Metrics/BlockLength
-    puts '*** Task: fix:nil_swimmers_in_results ***'
-
-    meeting_id = ENV.fetch('meeting_id', nil)
-    season_id = ENV.fetch('season_id', nil)
-
-    if meeting_id.present? && season_id.present?
-      puts("You cannot specify both 'meeting_id' and 'season_id'.")
-      exit
-    end
-
-    meeting = GogglesDb::Meeting.find_by(id: meeting_id.to_i) if meeting_id.present?
-    season = GogglesDb::Season.find_by(id: season_id.to_i) if season_id.present?
-
-    if meeting.nil? && season.nil?
-      puts("You need a valid 'meeting_id' or 'season_id' to proceed.")
-      puts('  meeting_id: process a single meeting')
-      puts('  season_id:  process all meetings in a season')
-      exit
-    end
-
-    simulate = ENV['simulate'] != '0'
-    file_index = ENV['index'].present? ? ENV['index'].to_i : auto_index_from_script_output_dir
-
-    meetings = if meeting
-                 [meeting]
-               else
-                 GogglesDb::Meeting.for_season(season).order(:id)
-               end
-
-    puts("\r\n- Scope..........: #{meeting ? "Meeting #{meeting.id}" : "Season #{season.id} (#{season.description})"}")
-    puts("- Meetings.......: #{meetings.count}")
-    puts("- simulate.......: #{simulate}")
-    puts("- dest. folder...: #{SCRIPT_OUTPUT_DIR}\r\n")
-
-    sql_log = []
-    totals = { mirs: 0, mrss: 0, laps: 0, relay_laps: 0, unfixable_mirs: 0, unfixable_mrss: 0 }
-
-    meetings.each do |mtg|
-      fixer = Fix::NullSwimmersInMeeting.new(meeting: mtg)
-      fixer.scan
-      fixer.display_report
-
-      sql_log.concat(fixer.prepare)
-      print '.' if !simulate && fixer.fixable?
-
-      report = fixer.report
-      totals[:mirs]        += report[:mirs][:fixable]
-      totals[:mrss]        += report[:mrss][:fixable]
-      totals[:laps]        += report[:laps][:fixable]
-      totals[:relay_laps]  += report[:relay_laps][:fixable]
-      totals[:unfixable_mirs]  += report[:mirs][:unfixable]
-      totals[:unfixable_mrss]  += report[:mrss][:unfixable]
-    end
-    puts("\r\n") unless simulate
-
-    puts("\r\n*** Totals ***")
-    puts("MIRs fixed: #{totals[:mirs]}")
-    puts("MRSs fixed: #{totals[:mrss]}")
-    puts("Laps updated: #{totals[:laps]}")
-    puts("Relay laps updated: #{totals[:relay_laps]}")
-    puts("Unfixable MIRs: #{totals[:unfixable_mirs]}") if totals[:unfixable_mirs].positive?
-    puts("Unfixable MRSs: #{totals[:unfixable_mrss]}") if totals[:unfixable_mrss].positive?
-
-    if sql_log.empty?
-      puts("\r\nNo fixable null swimmers found. No SQL generated.")
-      puts('Done.')
-      next
-    end
-
-    full_sql_log = []
-    full_sql_log << "-- Fix null swimmers - #{meeting ? "Meeting #{meeting.id}" : "Season #{season.id}"}"
-    full_sql_log << "-- Generated: #{Time.zone.now}"
-    full_sql_log << ''
-    full_sql_log << 'SET AUTOCOMMIT = 0;'
-    full_sql_log << 'START TRANSACTION;'
-    full_sql_log << ''
-    full_sql_log.concat(sql_log)
-    full_sql_log << ''
-    full_sql_log << 'COMMIT;'
-
-    target_id = meeting&.id || "season_#{season.id}"
-    file_name = "#{format('%04d', file_index)}-fix_nil_swimmers-#{target_id}"
-    process_sql_file(file_name:, sql_log_array: full_sql_log, simulate:)
-    puts('Done.')
+  task(nil_swimmers_in_results: ['merge:check_needed_dirs']) do
+    status = Maintenance::RakeRunner.call('fix:nil_swimmers_in_results', data_root: SCRIPT_OUTPUT_DIR.dirname)
+    exit(status) if status
   end
 end

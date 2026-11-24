@@ -8,6 +8,7 @@ module Maintenance
     # Recomputes the MIR / MRR ranks of one meeting (or of a whole season) with Recompute::Ranks (the code of
     # 'recompute:ranks'). Fixes no finding by itself: it is offered as a follow-up button after a 'results.dedupe' or
     # 'badge.merge' apply on the same meeting, never chained. One click.
+    # The console holds the progress lines of the rake task (one line per meeting, one dot per program).
     #
     class RanksRecompute < Maintenance::Operation
       self.key = 'ranks.recompute'
@@ -20,6 +21,9 @@ module Maintenance
       param :season_id
 
       validate :one_target
+
+      # The Recompute::Ranks of the last plan (read by the rake caller, phase 13).
+      attr_reader :ranker
 
       def self.params_from_finding(finding)
         { 'meeting_id' => payload_of(finding)['meeting_id'] || finding.subject_id }
@@ -40,10 +44,16 @@ module Maintenance
 
       protected
 
-      def build_plan
+      def build_plan # rubocop:disable Metrics/AbcSize
         return blank_plan(errors: [not_found_error]) if season.nil? && meeting.nil?
 
-        ranker = Recompute::Ranks.new(season:, meeting:).call
+        @ranker = ranker = Recompute::Ranks.new(season:, meeting:).call do |event, payload|
+          case event
+          when :meeting then $stdout.puts("- #{payload}:")
+          when :program then $stdout.putc('.')
+          when :meeting_done then $stdout.puts('')
+          end
+        end
         blank_plan(subjects: [{ 'type' => subject.first, 'id' => subject.second }],
                    summary: { 'season_id' => ranker.season.id, 'meetings' => ranker.updates_by_meeting.size,
                               'updates' => ranker.updates_count, 'updates_by_meeting' => ranker.updates_by_meeting.transform_keys(&:to_s) },

@@ -27,6 +27,9 @@ module Maintenance
       # Crawler data root read by the backfill (specs: a temporary folder).
       class_attribute :data_root, default: nil
 
+      # The SeasonBoard::Backfill of the last plan (read by the rake caller, phase 13).
+      attr_reader :backfill
+
       def self.params_from_finding(finding)
         { 'season_id' => finding.season_id }
       end
@@ -40,8 +43,8 @@ module Maintenance
       def build_plan # rubocop:disable Metrics/AbcSize
         return blank_plan(errors: [I18n.t('maintenance.errors.not_found', what: 'Season', id: season_id)]) unless season
 
-        backfill = SeasonBoard::Backfill.new(season:, simulate: true, data_root: data_root || SeasonBoard::Backfill::DEFAULT_DATA_ROOT,
-                                             snapshot_rows: board_season? ? nil : []).call
+        @backfill = backfill = SeasonBoard::Backfill.new(season:, simulate: true, data_root: data_root || SeasonBoard::Backfill::DEFAULT_DATA_ROOT,
+                                                         snapshot_rows: board_season? ? nil : []).call
         blank_plan(subjects: [{ 'type' => 'season', 'id' => season.id }], console: backfill.report.join("\n"),
                    summary: { 'season_id' => season.id, 'board_season' => board_season?, 'resolved' => backfill.resolved.size,
                               'unresolved' => backfill.unresolved.size, 'statements' => backfill.statements.size,

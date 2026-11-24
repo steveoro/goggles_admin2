@@ -24,14 +24,11 @@
 #++
 
 namespace :manifests do # rubocop:disable Metrics/BlockLength
-  # Default Season#id used when no explicit 'season' option is given
-  DEFAULT_SEASON_ID = 262 unless defined? DEFAULT_SEASON_ID
-
   desc <<~DESC
     Extracts meeting data from PDF manifests into LT4 source files.
     Processed manifests (.pdf + extracted .txt) are moved to 'manifests.done/<season#id>/'.
 
-    Options: [season=<season#id>|#{DEFAULT_SEASON_ID}]
+    Options: [season=<season#id>|<latest FIN Masters season>]
              [file=<path/to/manifest.pdf>]  (single file, overrides 'season')
              [force=1]                      (regenerate existing -lt4.json outputs)
              [engine=devin|ollama]          (default: MANIFEST_ENGINE or 'devin')
@@ -39,7 +36,7 @@ namespace :manifests do # rubocop:disable Metrics/BlockLength
                                              OLLAMA_MANIFEST_MODEL 'gemma4:e4b')
   DESC
   task extract: :environment do # rubocop:disable Metrics/BlockLength
-    season_id = ENV.fetch('season', DEFAULT_SEASON_ID).to_i
+    season_id = ENV.fetch('season') { SeasonDefaults.default_season_id }.to_i
     force = ENV['force'].present?
     model = ENV['model'].presence
 

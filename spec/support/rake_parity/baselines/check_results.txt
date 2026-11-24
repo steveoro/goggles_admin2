@@ -1,0 +1,19 @@
+## exit: nil
+## output
+
+
+
+*** Find Meetings WITHOUT meeting_individual_results rows ***
+--> Season 182:
+ID 18225: [2019-01-19] "9° Trofeo Buonconvento"
+ID 18235: [2018-12-16] "20° Meeting degli Auguri"
+ID 18261: [2019-02-09] "Campionati Regionali Toscana"
+ID 18272: [2019-03-23] "2° Trofeo Master Babel"
+ID 18276: [2019-02-02] "Campionati Regionali Veneto"
+ID 18288: [2019-05-18] "6° Meeting CAN Baldesio"
+ID 18294: [2019-04-05] "7° Trofeo My Sport"
+ID 18304: [2019-03-24] "6° Memorial Max Zuin"
+ID 18305: [2019-03-24] "Sardegna Nuota 2018"
+ID 18306: [2019-03-31] "7° trofeo Nuoto Ponente"
+ID 18307: [2019-03-24] "6° tr Civitanova Marche"
+ID 18311: [2019-03-31] "15° Trofeo Città  di Travagliato"

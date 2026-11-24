@@ -14,10 +14,12 @@ module Maintenance
   #   without the confirmation the dry run asks for (one click / checkbox / typed text), and when the DB sync gate
   #   (Drift::Gate, scope :operation) blocks or warns without the operator's tick. The job checks the gate again
   #   before planning.
+  # - cancel (POST /operations/runs/:id/cancel, phase 13): the operator's Cancel click on a pending run of a cancellable
+  #   operation ('season.badge_fix'): a queued run is refused at once, a running one stops at its next progress report.
   #
   class RunsController < ApplicationController
     before_action :require_ops!
-    before_action :set_run, only: %i[show status apply]
+    before_action :set_run, only: %i[show status apply cancel]
     before_action :refuse_while_restoring!, :refuse_when_disabled!, only: %i[create apply]
 
     # GET /operations/runs/:id
@@ -57,6 +59,16 @@ module Maintenance
       enqueue(apply_run)
       flash[:info] = t('maintenance.apply.queued')
       redirect_to(maintenance_run_path(apply_run))
+    end
+
+    # POST /operations/runs/:id/cancel
+    def cancel
+      if @run.cancellable? && @run.request_cancel!
+        Maintenance::Notifier.ping(@run)
+        redirect_with(:info, t(@run.refused? ? 'maintenance.run.cancelled' : 'maintenance.run.cancel_requested'), maintenance_run_path(@run))
+      else
+        redirect_with(:warning, t('maintenance.run.cancel_refused'), maintenance_run_path(@run))
+      end
     end
 
     private

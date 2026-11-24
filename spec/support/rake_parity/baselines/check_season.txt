@@ -1,0 +1,46 @@
+## exit: nil
+## output
+
+*** Task: check:season - season 182 ***
+--> LIST TEAMS for sure & possible badge merges: ✔
+
+[Season ID 182] -- Badges analysis: --
+
+  =====
+  [1;33;37m1[0m swimmers with more than 1 badge x season. (#multi_badges hash: <swimmer_id> => [badges_array])
+
+- 1 Badges wrongly assigned to a *RELAY* category in total, including duplication [1;33;31m⚠[0m (#relay_badges array)
+- 1 Badges having only a wrong *RELAY* category without any alternative duplicate category [1;33;31m⚠[0m(#relay_only_badges array)
+
+[1;33;37mSURE (same swimmer, same meeting) BADGE-MERGE fixes:[0m (tot. 1)
+[[1;33;32m↔[0m : same team_id & category (true duplicates); [1;33;38m↗[0m : != category, same team; [1;33;34m⬅[0m : != team_id; [1;33;35m✖[0m : both !=]
+- Swimmer  38933, badges [1;33;33m 115299[0m (M30) [1;33;32m↔[0m [1;33;33m <BADGE_COPY>[0m (M30)         
+Total: 1 (@sure_badge_merges hash: <swimmer_id> => [badges_array])
+
+[1;33;37mPossible corrections for RELAY-ONLY Badges:[0m
+- Swimmer  15698, Badge [1;33;33m 115303[0m, cat. 1264 (000-999) => fixed cat. 1249 (M35) age 35       
+Total: 1 (#relay_only_badges, [badges_array])
+
+Before doing any *TEAM* merge, fix possibly:
+- the 1 'sure_badge_merges' (may include some relay-only badges)
+- the 1 'relay_badges'
+
+    [Season ID 182] Stats:
+    - @sure_badge_merges........: 1
+    - @possible_badge_merges....: 0
+    - @multi_badges.............: 1
+    - @possible_team_merges.....: 0
+    - @relay_only_badges........: 1
+    - @relay_badges.............: 1
+    - @diff_category_badges.....: 0
+    - @diff_category_swimmer_ids: 0
+    - @diff_team_badges.........: 0
+    - @diff_both_badges.........: 0
+
+
+[1;33;37mPOSSIBLE_BADGE_MERGES candidates w/ badge details:[0m (tot. 0)
+                SWIMMER                                                       BADGE ID DETAILS                                     
+
+[1;33;37mSURE_BADGE_MERGES candidates w/ badge details:[0m (tot. 1)
+                SWIMMER                                                       BADGE ID DETAILS                                     
+- 38933, Hauck Omer 56493              [[1;33;33m115299[0m, team  1292: Lake Elveraton Swimming Club ASD / M30]                 [[1;33;33m<BADGE_COPY>[0m, team  1292: Lake Elveraton Swimming Club ASD / M30]                

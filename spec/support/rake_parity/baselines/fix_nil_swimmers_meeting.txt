@@ -1,0 +1,49 @@
+## exit: nil
+## output
+Checking existence of <DATA_ROOT>/results.new (and creating it if missing)...
+
+*** Task: fix:nil_swimmers_in_results ***
+
+- Scope..........: Meeting 18315
+- Meetings.......: 1
+- simulate.......: true
+- dest. folder...: <DATA_ROOT>/results.new
+
+--- Meeting 18315: MASTER FIN: XVIII Trofeo Città di Molinella ---
+  MIRs: 2 fixable, 0 unfixable
+        (0 no badge, 0 missing badge, 0 badge with null swimmer)
+        Laps to update: 0
+  MRSs: 0 fixable, 0 unfixable
+        (0 no badge, 0 missing badge, 0 badge with null swimmer)
+        Relay laps to update: 0
+
+*** Totals ***
+MIRs fixed: 2
+MRSs fixed: 0
+Laps updated: 0
+Relay laps updated: 0
+
+File '<DATA_ROOT>/results.new/misc/NNNN-fix_nil_swimmers-18315.sql' saved (Outbox: held, seq N).
+
+		>>> NOTHING WAS DONE TO THE DB: THIS WAS JUST A SIMULATION <<<
+--> The script stays HELD in the Outbox until applied ('Apply locally') or re-run with 'simulate=0'.
+Done.
+
+## script results.new/misc/NNNN-fix_nil_swimmers-18315.sql
+-- Fix null swimmers - Meeting 18315
+-- Generated: <TIME>
+
+SET AUTOCOMMIT = 0;
+START TRANSACTION;
+
+-- Meeting 18315: MASTER FIN: XVIII Trofeo Città di Molinella
+-- MIRs: 2 fixable, 0 unfixable
+-- MRSs: 0 fixable, 0 unfixable
+-- Laps: 0 to fix
+-- Relay laps: 0 to fix
+
+-- Fix null swimmers in meeting_individual_results
+UPDATE meeting_individual_results mir INNER JOIN meeting_programs mp ON mp.id = mir.meeting_program_id INNER JOIN meeting_events me ON me.id = mp.meeting_event_id INNER JOIN meeting_sessions ms ON ms.id = me.meeting_session_id INNER JOIN badges b ON b.id = mir.badge_id SET mir.swimmer_id = b.swimmer_id, mir.updated_at = NOW() WHERE ms.meeting_id = 18315 AND mir.swimmer_id IS NULL AND mir.badge_id IS NOT NULL AND b.swimmer_id IS NOT NULL;
+
+
+COMMIT;

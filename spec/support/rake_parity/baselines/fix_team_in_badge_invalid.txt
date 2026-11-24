@@ -1,0 +1,6 @@
+## exit: 0
+## output
+Checking existence of <DATA_ROOT>/results.new (and creating it if missing)...
+
+*** Task: fix:team_in_badge ***
+You need a valid 'team' ID to proceed.

@@ -26,6 +26,17 @@ module Maintenance
   # - #build_plan => Maintenance::Plan (called inside Maintenance::OutputCapture: strategies may print);
   # - #file_base => script name without the 'NNNN-' prefix (e.g. "merge_badges-12-34"); may use the state of the
   #   last #plan; #season_id, #subject, #typed_token, #confirmation_for(plan), #follow_ups(plan), #label.
+  # - (phase 13) #outbox_folder / #held_reason: where the Executor registers the script (default 'misc', not held);
+  #   #after_local_apply(plan): text appended to the run console after a successful local apply (e.g. the post-merge
+  #   verification of 'meeting.merge'); #report_progress(done, total, label): progress of a long plan (stored on the
+  #   run by the Executor, which also raises Maintenance::Cancelled there when the operator asked to cancel).
+  #
+  # == Phase 13 additions
+  # - .param(name, type, form: false) declares a param set by the rake callers only (never on the form), and
+  #   lookup: (:swimmer, :team, :meeting, :season, :badge) names the local lookup of an id field on the form;
+  # - .inspector? (Maintenance::Inspector): a read-only check (dry run only, never an apply nor a script);
+  # - .cancellable: the run page offers "Cancel" while a run of the operation is pending;
+  # - #captured_output: what the strategies printed during the last #plan (the rake callers print it as it was).
   #
   class Operation
     include ActiveModel::Model
@@ -35,18 +46,29 @@ module Maintenance
     FLAG_VALUES = [nil, '', true, '1', 'true'].freeze
     TRUE_FLAGS = [true, '1', 'true'].freeze
 
-    # A form field: name (Symbol), type (:integer, :string, :flag).
-    Field = Data.define(:name, :type)
+    # A form field: name (Symbol), type (:integer, :string, :flag), form (false: rake only), lookup (domain or nil).
+    Field = Data.define(:name, :type, :form, :lookup) do
+      def initialize(name:, type:, form: true, lookup: nil) = super
+      def form? = form
+    end
 
     class_attribute :key, :outbox_kind, :health_group, instance_writer: false
     class_attribute :confirmation, default: :one_click, instance_writer: false
     class_attribute :fixes, default: [].freeze, instance_writer: false
     class_attribute :fields, default: [].freeze, instance_writer: false
     class_attribute :bumps_db_generation, default: false, instance_writer: false
+    class_attribute :cancellable, default: false, instance_writer: false
+
+    # Callable (done, total, label) set by the Executor for #report_progress (it may raise Maintenance::Cancelled).
+    attr_writer :progress_reporter
+
+    # What the strategies printed during the last #plan (nil before it); the strategy error it turned into a plan
+    # error (nil when none).
+    attr_reader :captured_output, :plan_exception
 
     class << self
-      # Declares a param (attribute + form field).
-      def param(name, type = :integer)
+      # Declares a param (attribute + form field; +form: false+ for a rake-only param, +lookup:+ for an id field).
+      def param(name, type = :integer, form: true, lookup: nil)
         case type
         when :integer then attribute(name, :integer)
         when :string then attribute(name, :string)
@@ -55,10 +77,22 @@ module Maintenance
           validates(name, inclusion: { in: FLAG_VALUES, message: ->(*) { I18n.t('maintenance.errors.invalid_flag') } })
         else raise ArgumentError, "unknown param type #{type.inspect}"
         end
-        self.fields = (fields + [Field.new(name: name.to_sym, type:)]).freeze
+        self.fields = (fields + [Field.new(name: name.to_sym, type:, form:, lookup:)]).freeze
       end
 
       def param_names = fields.map(&:name)
+
+      # The fields shown on the operation form.
+      def form_fields = fields.select(&:form?)
+
+      # True for a read-only inspector (Maintenance::Inspector).
+      def inspector? = false
+
+      # True for an operation opened only from the season-start checklist (no form link on /operations).
+      def checklist_only? = false
+
+      # True for an operation fixing a whole season (its button also sits on the health section of the check).
+      def season_wide? = false
 
       # 'badge.merge' => 'badge_merge' (i18n key).
       def i18n_key = key.to_s.tr('.', '_')
@@ -82,10 +116,12 @@ module Maintenance
         fixes.include?(finding.check_key.to_s) && !finding.resolved?
       end
 
-      # Only the declared params, from a request (ActionController::Parameters or Hash).
+      # Only the declared form params, from a request (ActionController::Parameters or Hash): the rake-only params
+      # (form: false, phase 13) are never taken from a request.
       def permitted(params)
-        hash = params.respond_to?(:permit) ? params.permit(*param_names).to_h : params.to_h
-        hash.symbolize_keys.slice(*param_names)
+        names = form_fields.map(&:name)
+        hash = params.respond_to?(:permit) ? params.permit(*names).to_h : params.to_h
+        hash.symbolize_keys.slice(*names)
       end
 
       def human_attribute_name(attribute, options = {})
@@ -125,9 +161,13 @@ module Maintenance
 
       (result, error), console = OutputCapture.capture do
         [build_plan, nil]
+      rescue Maintenance::Cancelled
+        raise
       rescue StandardError => e
         [nil, e]
       end
+      @captured_output = console
+      @plan_exception = error
       return blank_plan(errors: [error_text(error)], console:) if error
 
       result.with(console: [console.presence, result.console.presence].compact.join("\n"))
@@ -153,6 +193,21 @@ module Maintenance
 
     # One-line description of what this run does.
     def label = self.class.title
+
+    # Outbox folder of the script ('misc', or a season id for the season-bound scripts).
+    def outbox_folder = Outbox::MISC_FOLDER
+
+    # Held reason of the script registered after a local apply (nil: pending, pushable).
+    def held_reason = nil
+
+    # Text appended to the run console after a successful local apply (nil: nothing).
+    def after_local_apply(_plan) = nil
+
+    # Progress of a long plan (+done+ of +total+, +label+ text): forwarded to the Executor's reporter, which may raise
+    # Maintenance::Cancelled. A no-op without a reporter (rake inspectors, specs).
+    def report_progress(done, total, label = nil)
+      @progress_reporter&.call(done, total, label)
+    end
 
     protected
 

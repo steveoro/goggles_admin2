@@ -38,6 +38,7 @@ it:
       local_apply_failed: "applicazione locale fallita"
       operator: "trattenuto dall'operatore"
       legacy_folder: "cartella legacy"
+      remote_season_missing: "in attesa della stagione remota (tempi base)"
     kinds:
       commit: "commit Data-Fix"
       calendar_link: "collegamento calendario"

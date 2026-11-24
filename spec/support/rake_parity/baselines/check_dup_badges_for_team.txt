@@ -1,0 +1,9 @@
+## exit: nil
+## output
+
+*** Task: check:dup_badges_for_team - team 54 ***
+Checking for duplicate badges among swimmers associated with team 54 (West Shari Swimming Club ASD)
+Found 215 swimmers with badges on team 54
+Found 0 swimmers with duplicate badges in some season(s)
+
+No swimmers with duplicate badges found.

@@ -83,7 +83,9 @@ module Outbox
       # Marks the script at +path_or_script+ as applied on the local DB. A script held because it was not applied
       # (or because its local apply failed) goes back to pending and, when other scripts were allocated meanwhile,
       # gets the next seq (its 'NNNN-' prefix renamed while still in results.new) so that it is pushed in
-      # local-apply order. Returns the Ops::SqlScript, or nil when it is not registered (or ops is not available).
+      # local-apply order. A script whose producer asked for a hold after the local apply (origin
+      # 'held_after_local_apply', e.g. the standard timings until the remote season exists, phase 13) stays held
+      # with that reason instead. Returns the Ops::SqlScript, or nil when it is not registered (or ops is not available).
       def mark_applied_locally!(path_or_script, data_root: Outbox.data_root)
         script = find_script(path_or_script, data_root)
         return if script.nil?
@@ -91,7 +93,8 @@ module Outbox
         Ops.safely do
           if script.held? && (script.held_reason.nil? || %w[not_applied_locally local_apply_failed].include?(script.held_reason))
             resequence!(script)
-            script.update!(applied_locally: true, state: 'pending', held_reason: nil, last_error: nil)
+            hold = script.origin.to_h['held_after_local_apply'].presence
+            script.update!(applied_locally: true, state: hold ? 'held' : 'pending', held_reason: hold, last_error: nil)
           else
             script.update!(applied_locally: true)
           end
@@ -122,6 +125,29 @@ module Outbox
           rel_path = Outbox.relative_path(path_or_script, data_root:)
           Ops::SqlScript.find_by(rel_path:)&.tap { |row| row.data_root = data_root }
         end
+      end
+
+      # Gives the script the next seq when a higher one exists (renaming its auto-numbered prefix in results.new).
+      # Also used by Outbox::ScriptActions.release! for the holds released with a new seq (phase 13).
+      def resequence!(script) # rubocop:disable Metrics/AbcSize
+        root = script.data_root
+        return if Sequence.current_max(data_root: root) <= script.seq
+
+        old_seq = script.seq
+        old_name = script.filename
+        new_seq = Sequence.next!(data_root: root)
+        attributes = { seq: new_seq }
+        if script.in_new_dir? && Sequence.prefix_of(old_name) == old_seq && script.file_exists?
+          new_name = old_name.sub(Sequence::PREFIX_REGEXP, "#{format('%04d', new_seq)}-")
+          new_path = script.absolute_path.dirname.join(new_name)
+          File.rename(script.absolute_path, new_path) unless new_path.exist?
+          attributes[:filename] = new_name
+          attributes[:rel_path] = Outbox.relative_path(new_path, data_root: root)
+        end
+        script.update!(attributes)
+        Ops.record_event!(kind: 'outbox.resequenced', season_id: script.season_id, subject_type: 'sql_script',
+                          subject_key: script.id, data: { 'from' => old_name, 'to' => script.filename,
+                                                          'old_seq' => old_seq, 'new_seq' => new_seq })
       end
 
       private
@@ -160,28 +186,6 @@ module Outbox
         end
         row || UnregisteredScript.new(**attributes.slice(:seq, :rel_path, :filename, :folder, :kind, :season_id, :state),
                                       data_root: root)
-      end
-
-      # Gives the script the next seq when a higher one exists (renaming its auto-numbered prefix in results.new).
-      def resequence!(script) # rubocop:disable Metrics/AbcSize
-        root = script.data_root
-        return if Sequence.current_max(data_root: root) <= script.seq
-
-        old_seq = script.seq
-        old_name = script.filename
-        new_seq = Sequence.next!(data_root: root)
-        attributes = { seq: new_seq }
-        if script.in_new_dir? && Sequence.prefix_of(old_name) == old_seq && script.file_exists?
-          new_name = old_name.sub(Sequence::PREFIX_REGEXP, "#{format('%04d', new_seq)}-")
-          new_path = script.absolute_path.dirname.join(new_name)
-          File.rename(script.absolute_path, new_path) unless new_path.exist?
-          attributes[:filename] = new_name
-          attributes[:rel_path] = Outbox.relative_path(new_path, data_root: root)
-        end
-        script.update!(attributes)
-        Ops.record_event!(kind: 'outbox.resequenced', season_id: script.season_id, subject_type: 'sql_script',
-                          subject_key: script.id, data: { 'from' => old_name, 'to' => script.filename,
-                                                          'old_seq' => old_seq, 'new_seq' => new_seq })
       end
     end
   end

@@ -6,9 +6,12 @@ RSpec.describe Maintenance::Registry do
   let(:locales) { %i[en it] }
   let(:texts) { %w[title description fix_label] }
 
-  it 'lists the eight phase 11 operations with unique keys, known Outbox kinds and texts in en and it' do
+  it 'lists the eight phase 11 and the nine phase 13 operations with unique keys, known Outbox kinds and texts in en and it' do
     expect(described_class.keys).to eq(%w[meeting.set_cancelled badge.merge results.null_swimmers_fix results.dedupe ranks.recompute
-                                          season_board.backfill swimmer.merge team.merge])
+                                          season_board.backfill swimmer.merge team.merge
+                                          meeting.merge meeting.team_fix badge.team_fix badge.swimmer_fix meeting.purge
+                                          coded_names.normalize categories.clone standard_timings.import season.badge_fix])
+    expect(described_class.keys).to eq(described_class.keys.uniq)
     described_class.all.each do |klass| # rubocop:disable Rails/FindEach -- an Array of classes
       expect(Outbox::Kinds.valid?(klass.outbox_kind)).to be(true), klass.key
       expect(Maintenance::Operation::CONFIRMATIONS).to include(klass.confirmation)
@@ -20,6 +23,32 @@ RSpec.describe Maintenance::Registry do
         end
       end
     end
+  end
+
+  it 'lists the eight read-only inspectors of phase 13 apart (dry run only, no Outbox kind), with texts in en and it' do
+    expect(described_class.inspector_keys).to eq(%w[team.check swimmer.check badge.check season.badges team.map_badges swimmer.map_mirs
+                                                    team.dup_badges meeting.dup_mir_badges])
+    expect(described_class.inspector_keys & described_class.keys).to be_empty
+    described_class.inspectors.each do |klass|
+      expect(klass).to be_inspector
+      expect(klass.outbox_kind).to be_nil
+      expect(klass.fixes).to be_empty
+      expect(described_class.find(klass.key)).to eq(klass)
+      locales.each do |locale|
+        texts.each do |text|
+          expect(I18n.t("maintenance.operations.#{klass.i18n_key}.#{text}", locale:, default: nil)).to be_present, "#{locale}: #{klass.key}.#{text}"
+        end
+      end
+    end
+  end
+
+  it 'gives the season-wide badge fix (phase 13) to the sure duplicate and relay category checks' do
+    %w[badges.duplicate.sure badges.relay_category].each do |check_key|
+      expect(described_class.for_check(check_key)).to include(Maintenance::Operations::SeasonBadgeFix), check_key
+    end
+    finding = FactoryBot.build(:ops_health_finding, check_key: 'badges.duplicate.sure', season_id: 182, payload: { 'rake' => { 'src' => 2, 'dest' => 1 } })
+    expect(described_class.for_finding(finding).map(&:key)).to eq(%w[badge.merge season.badge_fix])
+    expect(Maintenance::Operations::SeasonBadgeFix.from_finding(finding).to_params).to eq('season_id' => 182)
   end
 
   it 'gives a button to every phase-06 check whose "Button in" column names 11' do

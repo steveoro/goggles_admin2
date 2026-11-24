@@ -259,6 +259,12 @@ Rails.application.routes.draw do
     post 'operations/runs/:id/apply', to: 'maintenance/runs#apply', as: 'apply_maintenance_run', constraints: { id: /\d+/ }
     get 'operations/:key/new', to: 'operations#new', as: 'new_operation', constraints: { key: /[a-z_]+(\.[a-z_]+)+/ }
     post 'operations/:key/runs', to: 'maintenance/runs#create', as: 'operation_runs', constraints: { key: /[a-z_]+(\.[a-z_]+)+/ }
+    # (phase 13: Cancel of a long run; the season-start checklist and its step actions)
+    post 'operations/runs/:id/cancel', to: 'maintenance/runs#cancel', as: 'cancel_maintenance_run', constraints: { id: /\d+/ }
+    get 'operations/season_start', to: 'maintenance/season_start#index', as: 'season_start_index'
+    get 'operations/season_start/:season_id', to: 'maintenance/season_start#show', as: 'season_start', constraints: { season_id: /\d+/ }
+    post 'operations/season_start/:season_id/steps/:step_key', to: 'maintenance/season_start#step', as: 'season_start_step',
+                                                               constraints: { season_id: /\d+/, step_key: /[a-z_]+/ }
   end
 
   resources :stats, only: %i[index update]

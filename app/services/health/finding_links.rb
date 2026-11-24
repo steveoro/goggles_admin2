@@ -5,7 +5,8 @@ module Health
   # = Health::FindingLinks
   #
   # What a finding offers, from its stored payload alone (Ops::HealthFinding#payload):
-  # - #actions: the links (Data-Fix review, Outbox, Season board row, FIN results page); the Fix buttons of the
+  # - #actions: the links (season-start checklist of a season.setup finding, Data-Fix review, Outbox, Season board
+  #   row, FIN results page); the Fix buttons of the
   #   maintenance operations (phase 11, "Flag cancelled" included) come from Maintenance::FixButtonComponent;
   # - #entity_links: links to the entity grids (Meetings, Calendars, Badges, Teams) filtered on the subject. Those
   #   grid pages query the API: they show the remote rows, not the local mirror.
@@ -35,7 +36,7 @@ module Health
 
     # Action links, in display order (ignore / acknowledge are the bulk buttons, not links).
     def actions
-      [review_link, push_link, board_link, results_page_link].compact
+      [season_start_link, review_link, push_link, board_link, results_page_link].compact
     end
 
     # Links to the entity grids for the subject.
@@ -55,6 +56,14 @@ module Health
 
     def link(kind, label_key, path, external: false, **interpolations)
       Link.new(kind:, label: I18n.t("health.links.#{label_key}", **interpolations), path:, external:)
+    end
+
+    # (season.setup, phase 13) the season-start checklist of the season
+    def season_start_link
+      return unless finding.check_key == 'season.setup' && season_id.present?
+
+      Link.new(kind: :season_start, label: I18n.t('maintenance.season_start.finding_link'),
+               path: url_helpers.season_start_path(season_id), external: false)
     end
 
     def review_link

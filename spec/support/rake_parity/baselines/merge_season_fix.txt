@@ -1,0 +1,171 @@
+## exit: nil
+## output
+Checking existence of <DATA_ROOT>/results.new (and creating it if missing)...
+
+*** Task: merge:season_fix - season 182 ***
+
+Filtering only badges for team 1292
+--> Running BadgeSeasonChecker to collect candidates...
+    [Season ID 182] Stats:
+    - @sure_badge_merges........: 1
+    - @possible_badge_merges....: 0
+    - @multi_badges.............: 1
+    - @possible_team_merges.....: 0
+    - @relay_only_badges........: 1
+    - @relay_badges.............: 1
+    - @diff_category_badges.....: 0
+    - @diff_category_swimmer_ids: 0
+    - @diff_team_badges.........: 0
+    - @diff_both_badges.........: 0
+
+
+--> Step 1: 'sure badge merges': 1. Preparing SQL script...
+
+File '<DATA_ROOT>/results.new/182/NNNN-season_fix_182-merge_badges-<BADGE_COPY>-115299.sql' saved (Outbox: pending, seq N).
+--> Executing script...
+--> Done in <T> s (Outbox: pending, seq N).
+[Total time for 10x runs: <T>", progress: 1/1]
+
+--> Refreshing BadgeSeasonChecker results...
+    [Season ID 182] Stats:
+    - @sure_badge_merges........: 0
+    - @possible_badge_merges....: 0
+    - @multi_badges.............: 0
+    - @possible_team_merges.....: 0
+    - @relay_only_badges........: 1
+    - @relay_badges.............: 1
+    - @diff_category_badges.....: 0
+    - @diff_category_swimmer_ids: 0
+    - @diff_team_badges.........: 0
+    - @diff_both_badges.........: 0
+
+
+--> Some residual merge candidates found: re-running step 1...
+
+--> Step 2: 'relay-only' badges: 1. Preparing SQL script...
+
+File '<DATA_ROOT>/results.new/182/NNNN-season_fix_182-merge_badges-115303-autofix.sql' saved (Outbox: pending, seq N).
+--> Executing script...
+--> Done in <T> s (Outbox: pending, seq N).
+[Total time for 10x runs: <T>", progress: 1/0]
+
+--> Refreshing BadgeSeasonChecker results...
+    [Season ID 182] Stats:
+    - @sure_badge_merges........: 0
+    - @possible_badge_merges....: 0
+    - @multi_badges.............: 0
+    - @possible_team_merges.....: 0
+    - @relay_only_badges........: 0
+    - @relay_badges.............: 0
+    - @diff_category_badges.....: 0
+    - @diff_category_swimmer_ids: 0
+    - @diff_team_badges.........: 0
+    - @diff_both_badges.........: 0
+
+
+--> Some relay-only candidates found: re-running step 2...
+Done.
+
+## script results.new/182/NNNN-season_fix_182-merge_badges-<BADGE_COPY>-115299.sql
+
+-- SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
+SET AUTOCOMMIT = 0;
+START TRANSACTION;
+
+-- Merge Badge (<BADGE_COPY>) MASTER FIN 2018/2019: Hauck Omer 56493 (FEM, 2000) ➡ Lake Elveraton Swimming Club ASD, swimmer 38933, season 182
+--   |   team 1292 (Lake Elveraton Swimming Club ASD), category_type 1248 (M30)
+--   |
+--   +=> (115299) MASTER FIN 2018/2019: Hauck Omer 56493 (FEM, 2000) ➡ Lake Elveraton Swimming Club ASD, season 182
+--   |   team 1292 (Lake Elveraton Swimming Club ASD), category_type 1248 (M30)
+--   +=> FINAL team: 1292, FINAL category_type: 1248 (M30)
+
+-- AUTOFIX ON
+-- Keep dest. team
+-- Enforce ALL source columns conflicts
+
+-- (source-only MIRs for MEvents IDs: [18794, 18798]) --
+
+-- Badge IDs.........: <BADGE_COPY>
+-- +=> Parent IDs....: [18794, 18798]
+-- +=> Domain row IDs: [789915, 790104]
+UPDATE meeting_individual_results SET updated_at=NOW(), meeting_program_id=151570, badge_id=115299 WHERE id = 789915;
+UPDATE laps SET updated_at=NOW(), meeting_program_id=151570, meeting_individual_result_id=789915, team_id = 1292 WHERE meeting_individual_result_id = 789915;
+UPDATE meeting_individual_results SET updated_at=NOW(), meeting_program_id=151640, badge_id=115299 WHERE id = 790104;
+UPDATE laps SET updated_at=NOW(), meeting_program_id=151640, meeting_individual_result_id=790104, team_id = 1292 WHERE meeting_individual_result_id = 790104;
+-- (dest-only MIRs for MEvents IDs: [19373, 19374, 19560, 19566, 19670, 19674]) --
+
+-- Badge IDs.........: 115299
+-- +=> Parent IDs....: [19373, 19374, 19560, 19566, 19670, 19674]
+-- +=> Domain row IDs: [819197, 819431, 819715, 819759, 837541, 838214]
+
+-- (MRS & relay_laps counters update) --
+UPDATE meeting_relay_results mrr
+  JOIN (SELECT meeting_relay_result_id, COUNT(*) AS meeting_relay_swimmers_count FROM meeting_relay_swimmers GROUP BY meeting_relay_result_id) r
+  ON mrr.id = r.meeting_relay_result_id
+  SET mrr.meeting_relay_swimmers_count = r.meeting_relay_swimmers_count;
+
+UPDATE meeting_relay_swimmers mrs
+  JOIN (SELECT meeting_relay_swimmer_id, COUNT(*) AS relay_laps_count FROM relay_laps GROUP BY meeting_relay_swimmer_id) r
+  ON mrs.id = r.meeting_relay_swimmer_id
+  SET mrs.relay_laps_count = r.relay_laps_count;
+
+UPDATE meeting_reservations SET updated_at=NOW(), badge_id=115299 WHERE badge_id = <BADGE_COPY>;
+UPDATE meeting_event_reservations SET updated_at=NOW(), badge_id=115299 WHERE badge_id = <BADGE_COPY>;
+UPDATE meeting_relay_reservations SET updated_at=NOW(), badge_id=115299 WHERE badge_id = <BADGE_COPY>;
+
+DELETE FROM badges WHERE id=<BADGE_COPY>;
+UPDATE badges SET updated_at=NOW() WHERE id = 115299;
+
+-- --------------------------------------------------------------------------
+
+
+COMMIT;
+
+## script results.new/182/NNNN-season_fix_182-merge_badges-115303-autofix.sql
+
+-- SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
+SET AUTOCOMMIT = 0;
+START TRANSACTION;
+
+-- Merge Badge (115303) MASTER FIN 2018/2019: Herman Brunilda 67856 (MAS, 1983) ➡ Lake Elveraton Swimming Club ASD, swimmer 15698, season 182
+--   |   team 1292 (Lake Elveraton Swimming Club ASD), category_type 1264 (000-999)
+--   +=> FINAL team: 1292, FINAL category_type: 1249 (M35)
+
+-- AUTOFIX ON
+-- Enforce ALL source columns conflicts
+
+-- (source-only MIRs for MEvents IDs: [18794, 19371, 19373, 19564, 19566]) --
+
+-- Badge IDs.........: 115303
+-- +=> Parent IDs....: [18794, 19371, 19373, 19564, 19566]
+-- +=> Domain row IDs: [789919, 819208, 819405, 837564, 837937]
+INSERT INTO meeting_programs (updated_at, meeting_event_id, category_type_id, gender_type_id, autofilled) VALUES (NOW(), 18794, 1249, 1, 1);
+SELECT LAST_INSERT_ID() INTO @last_id;
+UPDATE meeting_individual_results SET updated_at=NOW(), meeting_program_id=@last_id WHERE id = 789919;
+UPDATE laps SET updated_at=NOW(), meeting_program_id=@last_id, meeting_individual_result_id=789919, team_id = 1292 WHERE meeting_individual_result_id = 789919;
+UPDATE meeting_individual_results SET updated_at=NOW(), meeting_program_id=162949 WHERE id = 837937;
+UPDATE laps SET updated_at=NOW(), meeting_program_id=162949, meeting_individual_result_id=837937, team_id = 1292 WHERE meeting_individual_result_id = 837937;
+UPDATE meeting_individual_results SET updated_at=NOW(), meeting_program_id=162871 WHERE id = 837564;
+UPDATE laps SET updated_at=NOW(), meeting_program_id=162871, meeting_individual_result_id=837564, team_id = 1292 WHERE meeting_individual_result_id = 837564;
+UPDATE meeting_individual_results SET updated_at=NOW(), meeting_program_id=158131 WHERE id = 819405;
+UPDATE laps SET updated_at=NOW(), meeting_program_id=158131, meeting_individual_result_id=819405, team_id = 1292 WHERE meeting_individual_result_id = 819405;
+UPDATE meeting_individual_results SET updated_at=NOW(), meeting_program_id=158034 WHERE id = 819208;
+UPDATE laps SET updated_at=NOW(), meeting_program_id=158034, meeting_individual_result_id=819208, team_id = 1292 WHERE meeting_individual_result_id = 819208;
+
+-- (MRS & relay_laps counters update) --
+UPDATE meeting_relay_results mrr
+  JOIN (SELECT meeting_relay_result_id, COUNT(*) AS meeting_relay_swimmers_count FROM meeting_relay_swimmers GROUP BY meeting_relay_result_id) r
+  ON mrr.id = r.meeting_relay_result_id
+  SET mrr.meeting_relay_swimmers_count = r.meeting_relay_swimmers_count;
+
+UPDATE meeting_relay_swimmers mrs
+  JOIN (SELECT meeting_relay_swimmer_id, COUNT(*) AS relay_laps_count FROM relay_laps GROUP BY meeting_relay_swimmer_id) r
+  ON mrs.id = r.meeting_relay_swimmer_id
+  SET mrs.relay_laps_count = r.relay_laps_count;
+
+UPDATE badges SET updated_at=NOW(), category_type_id=1249 WHERE id = 115303;
+
+-- --------------------------------------------------------------------------
+
+
+COMMIT;

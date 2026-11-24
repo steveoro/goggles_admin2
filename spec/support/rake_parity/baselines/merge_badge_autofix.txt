@@ -1,0 +1,178 @@
+## exit: nil
+## output
+Checking existence of <DATA_ROOT>/results.new (and creating it if missing)...
+
+*** Task: merge:badge ***
+
+Fixing  Badge (115303) MASTER FIN 2018/2019: Herman Brunilda 67856 (MAS, 1983) ➡ Lake Elveraton Swimming Club ASD, season 182
+======= team 1292, category_type 1264 (000-999)
+
+- SIMULATE........................................: ✔
+- AUTOFIX.........................................: ✔
+- destination folder..............................: <DATA_ROOT>/results.new
+
+*** Log: ***
+
+	*** Badge Checker ***
+
+🔹[Src  BADGE:  115303] FIN 2018/2019: Herman Brunilda 67856 (1983) ➡ Lake Elveraton Swimming Club ASD, Cat. 1264 000-999 (computed cat. 1249 M35)
+
+--> CATEGORY AUTO-FIXING REQUIRED <--
+
+Latest 12 categories found for this same swimmer (15698):
+  - Season 152, age: 32, cat: ~ M30 ( 909) computed / found M45 -> {918 => "'East Iva Swimming Club ASD' (B: 47084)"}: 
+  - Season 162, age: 33, cat: ~ M30 (1067) computed / found M45 -> {918 => "'East Iva Swimming Club ASD' (B: 84213)"}: 
+  - Season 172, age: 34, cat: ~ M30 (1118) computed / found M45 -> {918 => "'East Iva Swimming Club ASD' (B: 96872)"}: 
+  - Season 182, age: 35, cat: ~ M35 (1249) computed / found 000-999 -> {1292 => "'Lake Elveraton Swimming Club ASD' (B: 115303)"}: 
+  - Season 192, age: 36, cat: ~ M35 (1290) computed / found  -> 
+  - Season 202, age: 37, cat: ~ M35 (123301) computed / found  -> 
+  - Season 212, age: 38, cat: ~ M35 (123365) computed / found  -> 
+  - Season 222, age: 39, cat: ~ M35 (159962) computed / found  -> 
+  - Season 232, age: 40, cat: ~ M40 (169228) computed / found  -> 
+  - Season 242, age: 41, cat: ~ M40 (184373) computed / found  -> 
+  - Season 252, age: 42, cat: ~ M40 (187015) computed / found  -> 
+  - Season 262, age: 43, cat: ~ M40 (200294) computed / found  -> 
+
+
+
+************************************************************************************************************************************************************
+**                                                                MIR (from parent MEvent)                                                                **
+************************************************************************************************************************************************************
+
++----------------------------------------------------------------------------------------------------------------------------------------------------------+
+|        SOURCE (MeetingEvent ID, MIR count) x [115303: MASTER FIN 2018/2019: Herman Brunilda 67856 (MAS, 1983) ➡ Lake Elveraton Swimming Club ASD]        |
++----------------------------------------------------------------------------------------------------------------------------------------------------------+
+18794: 1, 19371: 1, 19373: 1, 19564: 1, 19566: 1
++----------------------------------------------------------------------------------------------------------------------------------------------------------+
++                                                               - Source-only parent rows: -                                                               +
+- Parent ID 18794 => Domain row IDs: [789919], Meeting 18219 '2° Trofeo Citta` tra i due mari'
+- Parent ID 19371 => Domain row IDs: [837937], Meeting 18286 '13° Trofeo Master Balnaea'
+- Parent ID 19373 => Domain row IDs: [837564], Meeting 18286 '13° Trofeo Master Balnaea'
+- Parent ID 19564 => Domain row IDs: [819405], Meeting 18265 'Campionati Regionali Calabria'
+- Parent ID 19566 => Domain row IDs: [819208], Meeting 18265 'Campionati Regionali Calabria'
++----------------------------------------------------------------------------------------------------------------------------------------------------------+
+>> NO destination-only MIR (from parent MEvent)s.
+>> NO shared MIR (from parent MEvent)s.
+
+>> WARNING: 4 MIRs with nil badge_id are present:
+- 
+- 
+- 
+- 
+
+
+
+************************************************************************************************************************************************************
+**                                                                MRS (from parent MEvent)                                                                **
+************************************************************************************************************************************************************
+>> NO source-only MRS (from parent MEvent)s.
+>> NO destination-only MRS (from parent MEvent)s.
+>> NO shared MRS (from parent MEvent)s.
+
+
+
+************************************************************************************************************************************************************
+**                                                                          MRES                                                                          **
+************************************************************************************************************************************************************
+>> NO source-only MRESs.
+>> NO destination-only MRESs.
+>> NO shared MRESs.
+
+
+
+************************************************************************************************************************************************************
+**                                                                        MEV_RES                                                                         **
+************************************************************************************************************************************************************
+>> NO source-only MEV_RESs.
+>> NO destination-only MEV_RESs.
+>> NO shared MEV_RESs.
+
+
+
+************************************************************************************************************************************************************
+**                                                                        MREL_RES                                                                        **
+************************************************************************************************************************************************************
+>> NO source-only MREL_RESs.
+>> NO destination-only MREL_RESs.
+>> NO shared MREL_RESs.
+
+
+
+************************************************************************************************************************************************************
+**                                                              M_ENTRY (from parent MEvent)                                                              **
+************************************************************************************************************************************************************
+>> NO source-only M_ENTRY (from parent MEvent)s.
+>> NO destination-only M_ENTRY (from parent MEvent)s.
+>> NO shared M_ENTRY (from parent MEvent)s.
+
+>> WARNING: 8 MEntries with nil badge_id are present:
+- [MEntry 1103, M.Progr. 7115] swimmer_id: 1750 (Larkin Dotty 32464) badge_id: , season: 141 => Badge: 17309
+- [MEntry 1135, M.Progr. 7107] swimmer_id: 1750 (Larkin Dotty 32464) badge_id: , season: 141 => Badge: 17309
+- [MEntry 1186, M.Progr. 7112] swimmer_id: 125 (Cummerata Archie 66849) badge_id: , season: 141 => Badge: 17324
+- [MEntry 1190, M.Progr. 7114] swimmer_id: 125 (Cummerata Archie 66849) badge_id: , season: 141 => Badge: 17324
+- [MEntry 1299, M.Progr. 7129] swimmer_id: 1786 (Rath Lashawn 35116) badge_id: , season: 141 => Badge: 17329
+- [MEntry 1309, M.Progr. 7145] swimmer_id: 1786 (Rath Lashawn 35116) badge_id: , season: 141 => Badge: 17329
+- [MEntry 1338, M.Progr. 7111] swimmer_id: 1569 (Brown Ruby 45684) badge_id: , season: 141 => Badge: 17331
+- [MEntry 1376, M.Progr. 7145] swimmer_id: 1569 (Brown Ruby 45684) badge_id: , season: 141 => Badge: 17331
+
+
+- Checker.....................................: ✅ OK
+- AUTOFIX.....................................: ✅ ON
+  COMPUTED category type......................: 1249 (M35)
+- Updates for MIRs............................: 5
+- Inserts for MPrograms.......................: 1
+
+File '<DATA_ROOT>/results.new/misc/NNNN-merge_badges-115303-autofix.sql' saved (Outbox: held, seq N).
+
+		>>> NOTHING WAS DONE TO THE DB: THIS WAS JUST A SIMULATION <<<
+--> The script stays HELD in the Outbox until applied ('Apply locally') or re-run with 'simulate=0'.
+Done.
+
+## script results.new/misc/NNNN-merge_badges-115303-autofix.sql
+
+-- SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
+SET AUTOCOMMIT = 0;
+START TRANSACTION;
+
+-- Merge Badge (115303) MASTER FIN 2018/2019: Herman Brunilda 67856 (MAS, 1983) ➡ Lake Elveraton Swimming Club ASD, swimmer 15698, season 182
+--   |   team 1292 (Lake Elveraton Swimming Club ASD), category_type 1264 (000-999)
+--   +=> FINAL team: 1292, FINAL category_type: 1249 (M35)
+
+-- AUTOFIX ON
+-- Enforce ALL source columns conflicts
+
+-- (source-only MIRs for MEvents IDs: [18794, 19371, 19373, 19564, 19566]) --
+
+-- Badge IDs.........: 115303
+-- +=> Parent IDs....: [18794, 19371, 19373, 19564, 19566]
+-- +=> Domain row IDs: [789919, 819208, 819405, 837564, 837937]
+INSERT INTO meeting_programs (updated_at, meeting_event_id, category_type_id, gender_type_id, autofilled) VALUES (NOW(), 18794, 1249, 1, 1);
+SELECT LAST_INSERT_ID() INTO @last_id;
+UPDATE meeting_individual_results SET updated_at=NOW(), meeting_program_id=@last_id WHERE id = 789919;
+UPDATE laps SET updated_at=NOW(), meeting_program_id=@last_id, meeting_individual_result_id=789919, team_id = 1292 WHERE meeting_individual_result_id = 789919;
+UPDATE meeting_individual_results SET updated_at=NOW(), meeting_program_id=162949 WHERE id = 837937;
+UPDATE laps SET updated_at=NOW(), meeting_program_id=162949, meeting_individual_result_id=837937, team_id = 1292 WHERE meeting_individual_result_id = 837937;
+UPDATE meeting_individual_results SET updated_at=NOW(), meeting_program_id=162871 WHERE id = 837564;
+UPDATE laps SET updated_at=NOW(), meeting_program_id=162871, meeting_individual_result_id=837564, team_id = 1292 WHERE meeting_individual_result_id = 837564;
+UPDATE meeting_individual_results SET updated_at=NOW(), meeting_program_id=158131 WHERE id = 819405;
+UPDATE laps SET updated_at=NOW(), meeting_program_id=158131, meeting_individual_result_id=819405, team_id = 1292 WHERE meeting_individual_result_id = 819405;
+UPDATE meeting_individual_results SET updated_at=NOW(), meeting_program_id=158034 WHERE id = 819208;
+UPDATE laps SET updated_at=NOW(), meeting_program_id=158034, meeting_individual_result_id=819208, team_id = 1292 WHERE meeting_individual_result_id = 819208;
+
+-- (MRS & relay_laps counters update) --
+UPDATE meeting_relay_results mrr
+  JOIN (SELECT meeting_relay_result_id, COUNT(*) AS meeting_relay_swimmers_count FROM meeting_relay_swimmers GROUP BY meeting_relay_result_id) r
+  ON mrr.id = r.meeting_relay_result_id
+  SET mrr.meeting_relay_swimmers_count = r.meeting_relay_swimmers_count;
+
+UPDATE meeting_relay_swimmers mrs
+  JOIN (SELECT meeting_relay_swimmer_id, COUNT(*) AS relay_laps_count FROM relay_laps GROUP BY meeting_relay_swimmer_id) r
+  ON mrs.id = r.meeting_relay_swimmer_id
+  SET mrs.relay_laps_count = r.relay_laps_count;
+
+UPDATE badges SET updated_at=NOW(), category_type_id=1249 WHERE id = 115303;
+
+-- --------------------------------------------------------------------------
+
+
+COMMIT;

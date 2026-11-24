@@ -30,6 +30,9 @@ module Maintenance
       validates :source_id, :dest_id, presence: true
       validate :distinct_ids
 
+      # The Merge::Team of the last plan (read by the rake caller, phase 13).
+      attr_reader :merger
+
       # teams.possible_duplicates: the 'rake' ids; badges.duplicate.possible: the teams of the first two badges
       # (dest = the team of the first badge).
       def self.params_from_finding(finding)
@@ -62,7 +65,7 @@ module Maintenance
         return blank_plan(errors: [I18n.t('maintenance.errors.not_found', what: 'Team', id: source_id)]) unless source
         return blank_plan(errors: [I18n.t('maintenance.errors.not_found', what: 'Team', id: dest_id)]) unless dest
 
-        merger = Merge::Team.new(source:, dest:, skip_columns: flag?(:skip_columns), keep_as_alias: flag?(:keep_as_alias))
+        @merger = merger = Merge::Team.new(source:, dest:, skip_columns: flag?(:skip_columns), keep_as_alias: flag?(:keep_as_alias))
         merger.prepare
         blank_plan(subjects: [{ 'type' => 'team', 'id' => source.id }, { 'type' => 'team', 'id' => dest.id }],
                    summary: { 'source' => team_facts(source), 'dest' => team_facts(dest),

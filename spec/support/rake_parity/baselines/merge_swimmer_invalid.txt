@@ -1,0 +1,6 @@
+## exit: 0
+## output
+Checking existence of <DATA_ROOT>/results.new (and creating it if missing)...
+
+*** Task: merge:swimmer ***
+You need to have both 'src' & 'dest' IDs with valid values in order to proceed.

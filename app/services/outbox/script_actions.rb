@@ -22,8 +22,13 @@ module Outbox
       done(script, 'outbox.held')
     end
 
+    # Holds released with a new seq (the script goes after the ones registered meanwhile, so that the Outbox order is
+    # the push order): the standard timings applied locally and held until the remote season exists (phase 13).
+    RESEQUENCE_ON_RELEASE = %w[remote_season_missing].freeze
+
     # held -> pending; +force+ ("push without local apply") for a script not applied locally.
     def release!(script, force: false)
+      Outbox::Writer.resequence!(script) if script.held? && RESEQUENCE_ON_RELEASE.include?(script.held_reason)
       script.release!(force:)
       done(script, 'outbox.released', { 'forced' => force.presence })
     end

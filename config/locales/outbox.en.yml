@@ -38,6 +38,7 @@ en:
       local_apply_failed: "local apply failed"
       operator: "held by the operator"
       legacy_folder: "legacy folder"
+      remote_season_missing: "waiting for the remote season (standard timings)"
     kinds:
       commit: "Data-Fix commit"
       calendar_link: "calendar link"

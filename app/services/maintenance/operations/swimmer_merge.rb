@@ -27,6 +27,9 @@ module Maintenance
       validates :source_id, :dest_id, presence: true
       validate :distinct_ids
 
+      # The Merge::Swimmer of the last plan (read by the rake caller, phase 13).
+      attr_reader :merger
+
       def self.params_from_finding(finding)
         rake = payload_of(finding)['rake'].to_h
         { 'source_id' => rake['src'], 'dest_id' => rake['dest'] }
@@ -46,7 +49,7 @@ module Maintenance
         return blank_plan(errors: [I18n.t('maintenance.errors.not_found', what: 'Swimmer', id: source_id)]) unless source
         return blank_plan(errors: [I18n.t('maintenance.errors.not_found', what: 'Swimmer', id: dest_id)]) unless dest
 
-        merger = Merge::Swimmer.new(source:, dest:, skip_columns: flag?(:skip_columns), force: flag?(:force))
+        @merger = merger = Merge::Swimmer.new(source:, dest:, skip_columns: flag?(:skip_columns), force: flag?(:force))
         merger.prepare
         checker_errors = merger.errors.map(&:to_s)
         blocking = checker_errors.any? && !flag?(:force)
