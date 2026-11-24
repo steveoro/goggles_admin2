@@ -752,7 +752,7 @@ RSpec.describe DataFixController do
 
       it 'requires file_path parameter' do
         post data_fix_add_session_path, params: { file_path: '' }
-        expect(response).to redirect_to(pull_index_path)
+        expect(response).to redirect_to(sources_results_path)
         expect(flash[:warning]).to be_present
       end
     end
@@ -835,7 +835,7 @@ RSpec.describe DataFixController do
           file_path: '',
           session_index: 0
         }
-        expect(response).to redirect_to(pull_index_path)
+        expect(response).to redirect_to(sources_results_path)
         expect(flash[:warning]).to be_present
       end
     end
@@ -1091,7 +1091,7 @@ RSpec.describe DataFixController do
           file_path: '',
           meeting_id: meeting.id
         }
-        expect(response).to redirect_to(pull_index_path)
+        expect(response).to redirect_to(sources_results_path)
         expect(flash[:warning]).to be_present
       end
     end

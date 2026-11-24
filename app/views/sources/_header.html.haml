@@ -1,0 +1,8 @@
+-#
+  Sources page header: breadcrumbs (Import > Sources > tab), title, season selector, tabs.
+  Locals: tab (Symbol), path (the page reloaded by the season selector), count (optional row counter)
+= render(Shell::PageHeaderComponent.new(title: t('sources.title'), subtitle: t("sources.subtitles.#{tab}"),
+                                        count: local_assigns[:count], crumbs: sources_crumbs(tab))) do |header|
+  - header.with_actions do
+    = sources_season_selector(path)
+= sources_tabs(tab)

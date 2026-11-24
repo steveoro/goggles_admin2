@@ -65,6 +65,16 @@ module SeasonBoard
 
       # Step to resume at for :needs_review.
       def review_step = review_phase || highest_phase || 1
+
+      # [state, detail] of the facts, with the board rules (StateResolver) plus :preparing; nil without a pipeline
+      # state. (Phase 15: the Sources Results tab and the non-FIN sources of the board summary.)
+      def state_and_detail
+        return [:preparing, {}] if preparing?
+        return [:prepare_failed, { phase: failed_phase, message: failed_message }] if prepare_failed?
+        return [:needs_review, { step: review_step, count: review_count, blocked: blocked? }] if needs_review?
+
+        [:ready_to_commit, { new_teams:, new_swimmers: }] if ready_to_commit?
+      end
     end
 
     attr_reader :season_id

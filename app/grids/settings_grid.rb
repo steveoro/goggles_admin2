@@ -8,7 +8,7 @@ class SettingsGrid < BaseGrid
   # Returns the scope for the grid. (#assets is the filtered version of it)
   scope { data_domain }
 
-  filter(:key, :string, header: 'Key (~)') do |value, scope|
+  filter(:key, :string) do |value, scope|
     scope.select { |row| (row.group_key =~ /#{value}/i) || (row.key =~ /#{value}/i) }
   end
 

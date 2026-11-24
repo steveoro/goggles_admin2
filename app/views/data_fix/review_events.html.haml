@@ -11,7 +11,7 @@
   = render(Shell::PageHeaderComponent.new(title: t('data_fix.wizard.title', number: 4, name: t('data_fix.steps.events')),
                                           subtitle: basename)) do |header|
     - header.with_actions do
-      = link_to(pull_result_files_path, class: 'btn btn-sm btn-outline-secondary') do
+      = link_to(sources_results_path, class: 'btn btn-sm btn-outline-secondary') do
         %i.fa-solid.fa-arrow-left{ 'aria-hidden': 'true' }
         = t('data_fix.wizard.back_to_files')
       = link_to(review_results_path(request.query_parameters.except('issues_only').merge(phase5_v2: 1)), class: 'btn btn-sm btn-primary') do

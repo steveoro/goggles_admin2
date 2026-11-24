@@ -272,18 +272,6 @@ it:
           title: "Preparazione stagione"
           finding: "Stagione %{id}: %{categories} categorie, %{timings} tempi base"
           howto: "La stagione non ha categorie o non ha tempi base. Per una stagione in corso o futura segui docs/HOWTO_prepare_new_season_at_championship_start.md; per una vecchia stagione chiusa è solo informativo."
-  datagrid:
-    health_findings_grid:
-      columns:
-        subject: "Oggetto"
-        title: "Segnalazione"
-        severity: "Gravità"
-        status: "Stato"
-        last_seen_at: "Vista l'ultima volta"
-      filters:
-        status: "Stato"
-        severity: "Gravità"
-        search: "Cerca"
   inbox:
     sources:
       health: "salute dati"

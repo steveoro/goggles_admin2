@@ -29,6 +29,8 @@ Rails.application.routes.draw do
 
   # Top bar status pills (lazy turbo-frame; see Shell::StatusController):
   get 'shell/status', to: 'shell/status#show', as: 'shell_status'
+  # Command palette (Ctrl+K) local search: meetings, teams, swimmers, Data-Fix sessions (see Shell::PaletteController):
+  get 'palette/search', to: 'shell/palette#search', as: 'palette_search', defaults: { format: :json }
 
   get 'best_results/best_50m', to: 'best_results#best_50m', as: 'best_50m_results'
   get 'best_results/best_50_and_100', to: 'best_results#best_50_and_100', as: 'best_50_and_100_results'
@@ -61,27 +63,51 @@ Rails.application.routes.draw do
   post 'season_board/prepare_all', to: 'season_board#prepare_all', as: 'season_board_prepare_all'
   post 'automation/switch', to: 'automation#switch', as: 'automation_switch'
 
-  get 'pull/index'
-  get 'pull/calendar_files'
-  get 'pull/result_files'
-  put 'pull/result_files', to: 'pull#result_files', as: 'update_result_files'
+  # Sources area (phase 15): season-aware file lists, manual crawls (SourceCrawlJob), PDF scans (PdfScanJob), manifest
+  # extractions (ManifestExtractJob), the "Prepare" of the non-FIN sources and the file manager (Sources::FileGuard).
+  get 'sources', to: redirect('/sources/results'), as: 'sources'
+  scope 'sources', module: 'sources', as: 'sources', format: false do
+    get 'results', to: 'results#index', as: 'results'
+    post 'prepare', to: 'results#prepare', as: 'prepare'
+    get 'calendars', to: 'calendars#index', as: 'calendars'
+    get 'calendars/meetings', to: 'calendars#meetings', as: 'calendar_meetings'
+    get 'manifests', to: 'manifests#index', as: 'manifests'
+    post 'manifests/extract', to: 'manifests#extract', as: 'manifests_extract'
+    get 'pdfs', to: 'pdfs#index', as: 'pdfs'
+    get 'pdfs/show', to: 'pdfs#show', as: 'pdf'
+    get 'pdfs/scan_result', to: 'pdfs#scan_result', as: 'pdf_scan_result'
+    post 'pdfs/scan', to: 'pdfs#scan', as: 'pdf_scan'
+    get 'crawler', to: 'crawler#show', as: 'crawler'
+    get 'crawler/activity', to: 'crawler#activity', as: 'crawler_activity'
+    post 'crawler/start', to: 'crawler#start', as: 'crawler_start'
+    post 'crawls', to: 'crawls#create', as: 'crawls'
+    get 'files', to: 'files#index', as: 'files'
+    delete 'files', to: 'files#destroy', as: 'file_delete'
+    get 'files/rename', to: 'files#rename', as: 'file_rename'
+    patch 'files/rename', to: 'files#update_name', as: 'file_update_name'
+    get 'files/edit', to: 'files#edit', as: 'file_edit'
+    patch 'files/edit', to: 'files#update', as: 'file_update'
+  end
 
-  post 'pull/run_crawler_api', to: 'pull#run_crawler_api', as: 'run_crawler_api'
-  post 'pull/start_crawler', to: 'pull#start_crawler', as: 'start_crawler'
-  get 'pull/edit_name'
-  get 'pull/edit_file'
-  put 'pull/file_rename'
-  put 'pull/file_edit'
-  delete 'pull/file_delete'
-  post 'pull/process_calendar_file', to: 'pull#process_calendar_file', as: 'process_calendar_file'
-  get 'pull/calendar_meetings'
-  post 'pull/process_selected_meetings', to: 'pull#process_selected_meetings', as: 'process_selected_meetings'
-  post 'pull/extract_manifests', to: 'pull#extract_manifests', as: 'extract_manifests'
-  get 'pull/extraction_status', to: 'pull#extraction_status', as: 'extraction_status'
-
-  get 'pdf/extract_txt', to: 'pdf#extract_txt', as: 'pdf_extract_txt'
-  put 'pdf/scan'
-  put 'pdf/log_contents'
+  # Phase 15: the Pull, PDF and file-list pages became the Sources area. Their GET URLs redirect for one release
+  # (bookmarks; the old 'file_path' param becomes 'path'); their POST/PUT/DELETE routes are gone.
+  scope format: false do
+    legacy_query = lambda do |request, rename = {}|
+      query = Rack::Utils.parse_nested_query(request.query_string)
+      rename.each { |from, to| query[to] = query.delete(from) if query.key?(from) }
+      query.compact_blank.to_query.presence
+    end
+    legacy_redirect = ->(path, rename = {}) { redirect(status: 301) { |_params, request| [path, legacy_query.call(request, rename)].compact.join('?') } }
+    get 'pull/index', to: legacy_redirect.call('/sources/crawler')
+    get 'pull/calendar_files', to: legacy_redirect.call('/sources/calendars')
+    get 'pull/calendar_meetings', to: legacy_redirect.call('/sources/calendars/meetings', 'file_path' => 'path')
+    get 'pull/result_files', to: redirect(status: 301) { |_params, request|
+      request.params['parent_folder'] == 'pdfs' ? '/sources/pdfs' : '/sources/results'
+    }
+    get 'pull/edit_name', to: legacy_redirect.call('/sources/files/rename', 'file_path' => 'path')
+    get 'pull/edit_file', to: legacy_redirect.call('/sources/files/edit', 'file_path' => 'path')
+    get 'pdf/extract_txt', to: legacy_redirect.call('/sources/pdfs/show', 'file_path' => 'path')
+  end
 
   get 'data_fix/sessions', to: 'data_fix/sessions_list#index', as: 'data_fix_sessions'
   delete 'data_fix/sessions/purge', to: 'data_fix/sessions_list#purge', as: 'data_fix_sessions_purge'

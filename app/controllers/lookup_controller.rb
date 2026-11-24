@@ -53,7 +53,7 @@ class LookupController < ApplicationController
     query = %i[q description name email header_year].filter_map { |key| params[key].presence }.first
     return render(json: []) unless model && query.present? && query.length > 1
 
-    render(json: search_scope(model, query).order(id: :desc).limit(MAX_ROWS).map { |row| serialize(model, row) })
+    render(json: self.class.search_scope(model, query).order(id: :desc).limit(MAX_ROWS).map { |row| serialize(model, row) })
   end
 
   # [GET] /lookup/:domain/:id
@@ -68,10 +68,9 @@ class LookupController < ApplicationController
   #-- -------------------------------------------------------------------------
   #++
 
-  private
-
-  # Returns the filtered search scope for the specified model class.
-  def search_scope(model, query) # rubocop:disable Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
+  # Returns the filtered search scope for the specified model class (one of MODELS) and query (name fragment or id).
+  # (phase 15: also the local search of the command palette, see Shell::PaletteSearch)
+  def self.search_scope(model, query) # rubocop:disable Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
     like_query = "%#{query}%"
     numeric_id = query.to_i.positive? ? query.to_i : nil
     case model.name
@@ -94,6 +93,8 @@ class LookupController < ApplicationController
       model.where(id: numeric_id)
     end
   end
+
+  private
 
   # Returns the whitelisted attribute subset for the specified row.
   # Teams include also the associated city name to disambiguate same-named teams; swimmers, meetings and badges a

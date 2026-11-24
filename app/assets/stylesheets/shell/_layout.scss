@@ -108,13 +108,9 @@ a.app-status-pill:hover {
   max-width: 8rem;
 }
 
-// Toasts and the PDF pages' spinner (both fixed at the top of the window) below the top bar:
+// Toasts (fixed at the top of the window) below the top bar:
 body:has(.app-topbar) #flash-messages-container {
   margin-top: var(--ga-topbar-height);
-}
-
-body:has(.app-topbar) #loading-indicator {
-  top: var(--ga-topbar-height);
 }
 
 // == Sidebar ==

@@ -87,14 +87,14 @@ module DataFix
       source_path = params[:file_path].to_s
       unless retryable_source?(source_path)
         flash[:warning] = I18n.t('data_import.errors.invalid_request')
-        redirect_to(pull_result_files_path) && return
+        redirect_to(sources_results_path) && return
       end
 
       report = retry_report_for(source_path)
       outcome = DataFix::CommitRunner.new(source_path:).retry_archive!
       report&.finish!(status: outcome[:commit_state], archive_error: outcome[:archive_error], done_dir: outcome[:done_dir],
                       season_id: outcome[:season_id].is_a?(Integer) ? outcome[:season_id] : report.season_id)
-      redirect_to(report ? data_fix_commit_report_path(report) : pull_result_files_path)
+      redirect_to(report ? data_fix_commit_report_path(report) : sources_results_path)
     end
 
     private

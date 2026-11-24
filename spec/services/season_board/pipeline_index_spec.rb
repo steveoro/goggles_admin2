@@ -40,6 +40,15 @@ RSpec.describe SeasonBoard::PipelineIndex do
     expect(facts).to have_attributes(stage: 'ready_to_commit', new_teams: 2, new_swimmers: 37, verdict_count: 5)
     expect(facts).to be_fresh
     expect(facts).to be_ready_to_commit
+    expect(facts.state_and_detail).to eq([:ready_to_commit, { new_teams: 2, new_swimmers: 37 }])
+  end
+
+  it 'gives the board state of the facts (phase 15: Sources rows and non-FIN sources), preparing first' do
+    source = source!(stage: 'needs_review', review_phase: 2, review_count: 4)
+    verdicts!(source)
+    expect(facts.state_and_detail).to eq([:needs_review, { step: 2, count: 4, blocked: false }])
+    FactoryBot.create(:ops_pipeline_run, pipeline_source: source, kind: 'prepare', status: 'queued', subject_key: 'm')
+    expect(described_class.new(season_id: 262).for_entry(disk_index.for(fin_id)).state_and_detail).to eq([:preparing, {}])
   end
 
   it 'is not fresh when a file is newer than the verdicts, or the db generation moved under new entities' do

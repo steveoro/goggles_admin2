@@ -1,0 +1,14 @@
+= render(partial: 'sources/header', locals: { tab: :calendars, path: sources_calendars_path,
+                                              count: @groups.values.sum(&:size) })
+
+%p.small.text-body-secondary= t('sources.calendars.intro')
+- sources_calendar_groups.each do |group|
+  .card.mb-3{ id: "sources-calendars-#{group}" }
+    .card-header.d-flex.align-items-center.gap-2
+      %span.fw-semibold= t("sources.calendars.groups.#{group}")
+      %span.badge.rounded-pill.text-bg-secondary.fw-normal= @groups[group].size
+      %span.small.text-body-secondary.d-none.d-md-inline= t("sources.calendars.group_notes.#{group}")
+    .card-body
+      = sources_file_table(rows: @groups[group], empty_text: t('sources.calendars.empty'),
+                           return_to: sources_calendars_path(season_id:), focus: params[:focus],
+                           table_id: "sources-calendars-#{group}-table")

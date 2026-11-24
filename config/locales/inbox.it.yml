@@ -77,7 +77,7 @@ it:
       detail: "Non presente nel calendario FIN della plancia stagione"
       actions:
         review: "Apri in Data-Fix"
-        result_files: "Apri i file dei risultati"
+        manifests: "Apri la scheda Manifesti"
     data_fix_sessions:
       idle_title: "Ferma da %{days} giorni: %{name}"
       idle_detail: "Stagione %{season}, passo %{phase}, ultima modifica %{time}"

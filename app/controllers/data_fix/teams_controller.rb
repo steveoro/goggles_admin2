@@ -92,7 +92,7 @@ module DataFix
       team_key = params[:team_key]
       if team_key.blank?
         flash[:warning] = I18n.t('data_import.errors.invalid_request')
-        redirect_to(pull_index_path) && return
+        redirect_to(sources_results_path) && return
       end
 
       phase_path = source_resolver.default_phase_path_for(source_path, 2)
@@ -260,7 +260,7 @@ module DataFix
 
       if team_key.blank?
         flash[:warning] = I18n.t('data_import.errors.invalid_request')
-        redirect_to(pull_index_path) && return
+        redirect_to(sources_results_path) && return
       end
 
       phase_path = source_resolver.default_phase_path_for(source_path, 2)

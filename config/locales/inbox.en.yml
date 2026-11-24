@@ -77,7 +77,7 @@ en:
       detail: "Not on the FIN calendar of the Season board"
       actions:
         review: "Open in Data-Fix"
-        result_files: "Open the result files"
+        manifests: "Open the Manifests tab"
     data_fix_sessions:
       idle_title: "Idle for %{days} days: %{name}"
       idle_detail: "Season %{season}, step %{phase}, last change %{time}"

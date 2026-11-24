@@ -67,7 +67,9 @@ class SeasonBoardController < ApplicationController # rubocop:disable Metrics/Cl
     if engine && ENGINES.exclude?(engine)
       flash[:error] = I18n.t('season_board.flash.invalid_engine', engine:)
     else
-      enqueue(row, :extract_queued) { SeasonBoard::Scheduler.extract!(season_id: @season.id, fin_event_id: row.fin_event_id, engine:) }
+      # (the pending PDF too: a Sources extraction of the same file also makes the row busy, phase 15)
+      pdf_path = row.next_action&.params&.dig(:pdf_path)
+      enqueue(row, :extract_queued) { SeasonBoard::Scheduler.extract!(season_id: @season.id, fin_event_id: row.fin_event_id, engine:, pdf_path:) }
     end
     redirect_to(season_board_path)
   end

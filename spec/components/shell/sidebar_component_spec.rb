@@ -15,7 +15,7 @@ RSpec.describe Shell::SidebarComponent, type: :component do
 
   it 'links every sidebar item' do
     hrefs = html.css('.app-sidebar a.nav-link').pluck('href')
-    expect(hrefs).to include('/', '/season_board', '/pull/index', '/api_teams', '/settings', '/best_results/goggles_cup_preview')
+    expect(hrefs).to include('/', '/season_board', '/sources/results', '/api_teams', '/settings', '/best_results/goggles_cup_preview')
     expect(hrefs.size).to eq(Shell::Navigation::ITEMS.count(&:sidebar?))
   end
 
@@ -29,8 +29,8 @@ RSpec.describe Shell::SidebarComponent, type: :component do
   context 'with a contextual item (Data-Fix)' do
     let(:current) { Shell::Navigation.find(:data_fix) }
 
-    it 'highlights its sidebar parent (Result files)' do
-      expect(html.css('.app-sidebar a.nav-link.active').pluck('href')).to eq(['/pull/result_files'])
+    it 'highlights its sidebar parent (Sources)' do
+      expect(html.css('.app-sidebar a.nav-link.active').pluck('href')).to eq(['/sources/results'])
     end
   end
 

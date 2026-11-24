@@ -14,6 +14,10 @@ module Inbox
     #
     # Key: 'board:<fin_event_id>:<ACTION_KIND>'.
     #
+    # Phase 15: the non-FIN sources prepared from the Sources page (the summary's unmatched sources with the same
+    # pipeline state) get the same items, keyed 'unmatched:<base>:<ACTION_KIND>', titled with their base name; their
+    # action comes from #unmatched_action.
+    #
     class PipelineRows < Inbox::Source
       STATE = nil
       BAND = :review
@@ -27,7 +31,8 @@ module Inbox
         summary = context.board_snapshot
         return [] unless summary
 
-        summary.rows_in(self.class::STATE).filter_map { |row| item_for(row, summary, context) }
+        summary.rows_in(self.class::STATE).filter_map { |row| item_for(row, summary, context) } +
+          unmatched_items(summary, context)
       end
 
       protected
@@ -37,7 +42,35 @@ module Inbox
         raise NotImplementedError
       end
 
+      # The Inbox::Action of an unmatched source in STATE (subclasses).
+      def unmatched_action(_source, _summary)
+        raise NotImplementedError
+      end
+
       private
+
+      def unmatched_items(summary, context)
+        summary.unmatched_sources.filter_map do |source|
+          next unless source.pipeline_state == self.class::STATE && source.review_path
+
+          primary = unmatched_action(source, summary)
+          next unless primary
+
+          label = SeasonBoard::StateText.label(source.pipeline_state, source.pipeline_detail)
+          item(
+            key: "unmatched:#{source.base}:#{self.class::ACTION_KIND}", kind: self.class::STATE, band: self.class::BAND,
+            title: I18n.t('inbox.pipeline_rows.title', name: source.base, state: label), detail: I18n.t('inbox.pipeline_rows.non_fin'),
+            subject: { file_path: source.review_path, season_id: summary.season_id }, action: primary,
+            since: newest_mtime(source.paths) || summary.built_at || context.now
+          )
+        end
+      end
+
+      def newest_mtime(paths)
+        paths.filter_map { |path| File.mtime(path) if File.exist?(path) }.max
+      rescue SystemCallError
+        nil
+      end
 
       def item_for(row, summary, context)
         return if row.busy? || row.fin_event_id.blank? || row.next_action.nil?

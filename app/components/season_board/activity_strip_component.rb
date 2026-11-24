@@ -11,8 +11,8 @@ module SeasonBoard
   # activities are queued and the next scheduled runs (next watcher check & next daily re-check),
   # computed from the schedules in config/recurring.yml.
   #
-  # Shown on the Season board and on the Pull pages, so that a manual crawl isn't started on top of
-  # an automatic one.
+  # Shown on the Season board and on the Sources crawler tab, so that a manual crawl isn't started on top of
+  # an automatic one (a Sources crawl or extraction shows its label, phase 15).
   #
   class ActivityStripComponent < ViewComponent::Base
     RECURRING_PATH = Rails.root.join('config/recurring.yml')
@@ -38,7 +38,7 @@ module SeasonBoard
 
     def self.entry_name(entry, names = nil)
       names ||= {}
-      names[entry.fin_event_id.to_s].presence || "FIN ##{entry.fin_event_id}"
+      names[entry.fin_event_id.to_s].presence || entry.try(:label).presence || "FIN ##{entry.fin_event_id}"
     end
 
     # Returns the confirm text for the "CRAWLER run" buttons: the existing one when nothing

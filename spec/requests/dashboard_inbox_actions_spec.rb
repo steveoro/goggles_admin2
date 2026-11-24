@@ -114,9 +114,9 @@ RSpec.describe 'Dashboard inbox actions' do
       expect(recognized(path)).to include(controller: 'data_fix/sessions', action: 'review_sessions', file_path: source_file)
     end
 
-    it 'sends a manifest-only entry to the Result files page' do
+    it 'sends a manifest-only entry to the Sources Manifests tab' do
       _method, path, = primary_action(inbox_item('unmatched:only-pdf'))
-      expect(path).to eq(pull_result_files_path)
+      expect(path).to eq(sources_manifests_path(season_id: season.id))
     end
   end
 

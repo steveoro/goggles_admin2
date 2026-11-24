@@ -4,8 +4,8 @@
 # = OperationRunsGrid
 #
 # DataGrid of the maintenance operation runs (Ops::OperationRun, local ops DB; see OperationsController#index), newest
-# first. Filters: operation, mode, status, season. Headers & filter labels: 'datagrid.operation_runs_grid.*'
-# (config/locales/maintenance.*.yml).
+# first. Filters: operation, mode, status, season. Headers & filter labels: 'grids.operation_runs.*'
+# (config/locales/grids.*.yml).
 #
 class OperationRunsGrid < BaseGrid
   self.cached = false

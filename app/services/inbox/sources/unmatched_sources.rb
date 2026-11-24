@@ -9,27 +9,29 @@ module Inbox
     # +unmatched_sources+, see SeasonBoard::DiskIndex#unmatched):
     # - phase files (:in_review)      => "Resume step N" (Data-Fix review step);
     # - a source to review (:source)  => "Open in Data-Fix" (Phase 1 review);
-    # - a manifest PDF only (:manifest) => the Result files page (until phase 15 adds a better target).
-    # Commit SQL waiting (:sql) is left to the PendingSql source.
+    # - a manifest PDF only (:manifest) => the Sources Manifests tab of the season.
+    # Commit SQL waiting (:sql) is left to the PendingSql source; a source prepared from the Sources page (a pipeline
+    # state, phase 15) is left to the pipeline sources (ReadyToCommit, NeedsReview, PrepareFailed), and skipped while
+    # its prepare is queued or running.
     #
     # Key: 'unmatched:<base>'.
     #
     class UnmatchedSources < Inbox::Source
       def self.more_path
-        Rails.application.routes.url_helpers.pull_result_files_path
+        Rails.application.routes.url_helpers.sources_results_path
       end
 
       def items(context)
         summary = context.board_snapshot
         return [] unless summary
 
-        summary.unmatched_sources.filter_map { |source| item_for(source, summary, context) }
+        summary.unmatched_sources.filter_map { |source| item_for(source, summary, context) unless source.pipeline_state }
       end
 
       private
 
       def item_for(source, summary, context)
-        kind, band, target = target_for(source)
+        kind, band, target = target_for(source, summary)
         return unless target
 
         item(
@@ -41,7 +43,7 @@ module Inbox
       end
 
       # [kind, band, Inbox::Action] for the pending kind, or nil.
-      def target_for(source)
+      def target_for(source, summary)
         case source.pending
         when :in_review
           next_action = SeasonBoard::NextAction.new(kind: :resume_review, params: { file_path: source.review_path, phase: source.phase })
@@ -50,7 +52,7 @@ module Inbox
         when :source
           [:review_source, :review, action(t('actions.review'), url_helpers.review_sessions_path(file_path: source.review_path))] if source.review_path
         when :manifest
-          [:manifest, :acquire, action(t('actions.result_files'), url_helpers.pull_result_files_path)]
+          [:manifest, :acquire, action(t('actions.manifests'), url_helpers.sources_manifests_path(season_id: summary.season_id))]
         end
       end
 

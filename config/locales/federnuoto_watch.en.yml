@@ -12,7 +12,7 @@ en:
       pull_calendar: 'Pull calendar'
       open_board: 'Open Season board'
       open_board_tooltip: 'Opens the Season board for the latest MASFIN season'
-      pull_calendar_tooltip: 'Starts the crawler server if needed and opens the Pull dashboard'
+      pull_calendar_tooltip: 'Starts the crawler server if needed and opens the Sources crawler tab'
       sections:
         with_results:
           one: 'Link published (1)'

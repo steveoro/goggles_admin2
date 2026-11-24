@@ -16,10 +16,5 @@
   display: none;
 }
 
-// The old global `.card { overflow: hidden }` (from the deleted dashboard.scss) applies only to the cards of
-// the pages still on the compat layer, which rely on it. Swept pages don't need it (and it clipped dropdowns):
-// each later phase drops its pages from this list when it rewrites them (12: the Data-Fix pages, whose result
-// tables now scroll inside .table-responsive).
-.app-content:is([data-page='pull'], [data-page='pdf']) .card {
-  overflow: hidden;
-}
+// (The old global `.card { overflow: hidden }` of the compat pages is gone: phase 15 rewrote the last ones, the
+// Pull and PDF pages, as the Sources area.)

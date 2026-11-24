@@ -34,6 +34,14 @@ RSpec.describe APITeamManagersController do
         expect(response).to have_http_status(:success)
       end
     end
+
+    it_behaves_like('an API grid index showing an API error in place', 'team_managers') do
+      let(:index_path) { api_team_managers_path }
+      let(:api_params) do
+        { team_affiliation_id: anything, manager_name: anything, team_name: anything, season_id: anything,
+          season_description: anything, page: anything, per_page: anything }
+      end
+    end
   end
   #-- -------------------------------------------------------------------------
   #++

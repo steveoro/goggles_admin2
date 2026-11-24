@@ -12,6 +12,11 @@
 #   are then moved to 'crawler/data/manifests.done/<season_id>/', much like the
 #   result datafiles under 'results.new' => 'results.done'.
 #
+#   Phase 15: one extraction path, PdfManifests::Extraction (the same as the
+#   ManifestExtractJob of the Season board and of the Sources Manifests tab),
+#   run inline one file at a time; each file gets the same activity entry as a
+#   Sources extraction (SeasonBoard::ActivityLog), so the UI sees the run.
+#
 #   The extraction uses a pluggable LLM engine ('devin' by default: the Devin
 #   CLI in `devin -p` non-interactive mode; 'ollama': a locally-running Ollama
 #   server). Scanned/image-only PDFs are processed through the engine's vision
@@ -58,11 +63,12 @@ namespace :manifests do # rubocop:disable Metrics/BlockLength
     puts "--> #{client.engine_name} OK - text model: #{client.model}" \
          "#{client.vision_available? ? " | vision model: #{client.vision_model}" : ' | (no vision model - scanned PDFs will be skipped)'}"
 
+    data_root = Sources.data_root
     pdf_list =
       if ENV['file'].present?
         [ENV['file'].to_s]
       else
-        Rails.root.glob("crawler/data/manifests/#{season_id}/*.pdf")
+        data_root.glob("manifests/#{season_id}/*.pdf").map(&:to_s).sort
       end
     if pdf_list.empty?
       puts 'No manifest PDFs found.'
@@ -70,22 +76,25 @@ namespace :manifests do # rubocop:disable Metrics/BlockLength
     end
     puts "--> Found #{pdf_list.size} manifest file(s)\r\n\r\n"
 
-    extractor = PdfManifests::Extractor.new(client: client)
     stats = { extracted: 0, skipped: 0, failed: 0 }
-
+    activity_log = SeasonBoard::ActivityLog.new
     pdf_list.each do |pdf_path|
       base = File.basename(pdf_path)
       print "--> #{base} ... "
-      result = extractor.call(pdf_path, force: force)
+      # (the same activity entry as a Sources extraction, so that the UI sees the inline run)
+      key = SeasonBoard::ActivityLog.source_key('extract', File.exist?(pdf_path) ? File.realpath(pdf_path) : pdf_path)
+      activity_log.start!(key, kind: :extract, origin: :manual, label: base)
+      # (the engine was checked above, once for the whole run)
+      outcome = PdfManifests::Extraction.call(pdf_path:, force:, data_root:, client:, preflight: false)
+      activity_log.finish!(key, kind: :extract, status: outcome.status, message: outcome.message)
+      result = outcome.extractor_result
 
       if result.success?
         stats[:extracted] += 1
         puts "OK (#{result.events_count} events) -> #{File.basename(result.out_path)}"
-        PdfManifests::BatchRunner.archive(pdf_path)
       elsif result.archivable_skip?
         stats[:skipped] += 1
         puts "skipped (#{result.skipped_reason})"
-        PdfManifests::BatchRunner.archive(pdf_path)
       else
         stats[:failed] += 1
         puts "FAILED: #{result.skipped_reason}"

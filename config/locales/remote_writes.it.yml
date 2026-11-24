@@ -19,21 +19,3 @@ it:
       open: 'Apri Sync DB'
       acknowledged_at: 'Ultima presa visione: %{time}.'
       never_acknowledged: 'Nessuna presa visione.'
-  datagrid:
-    remote_writes_grid:
-      columns:
-        created_at: 'Quando'
-        http_method: 'Metodo'
-        endpoint: 'Endpoint'
-        status: 'Esito'
-        status_code: 'Codice'
-        payload_keys: 'Chiavi payload'
-        error_detail: 'Errore'
-        source: 'Origine'
-        user_id: 'ID utente'
-        base_url: 'API'
-      filters:
-        endpoint: 'Endpoint (~)'
-        status: 'Esito'
-        http_method: 'Metodo'
-        base_url: 'API'

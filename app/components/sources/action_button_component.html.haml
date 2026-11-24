@@ -1,0 +1,15 @@
+- if @action.disabled? || @action.path.blank?
+  %span{ class: "#{css_class} disabled", 'aria-disabled' => 'true' }
+    - if @action.icon
+      %i.fa-solid{ class: @action.icon, 'aria-hidden' => 'true' }
+    = @action.label
+- elsif @action.http_method == :get
+  = link_to(@action.path, class: css_class) do
+    - if @action.icon
+      %i.fa-solid{ class: @action.icon, 'aria-hidden' => 'true' }
+    = @action.label
+- else
+  = button_to(@action.path, **form_options) do
+    - if @action.icon
+      %i.fa-solid{ class: @action.icon, 'aria-hidden' => 'true' }
+    = @action.label

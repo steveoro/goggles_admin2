@@ -94,4 +94,42 @@ RSpec.describe 'Pipeline automation inbox sources' do # rubocop:disable RSpec/De
     items = Inbox::Builder.new(sources: [idle, Inbox::Sources::ReadyToCommit]).call(context).items
     expect(items.map(&:kind)).to eq([:ready_to_commit])
   end
+
+  # Phase 15: a non-FIN source prepared from the Sources page (an unmatched source of the board summary).
+  describe 'prepared non-FIN sources' do
+    def unmatched(base, state, detail = {})
+      { 'base' => base, 'bases' => [base], 'pending' => 'in_review', 'review_path' => "/d/262/#{base}-lt4.json", 'phase' => 5,
+        'paths' => [], 'pipeline' => { 'state' => state.to_s, 'detail' => detail.stringify_keys } }
+    end
+
+    let(:context) do
+      inbox_context(board_snapshot: board_summary(unmatched: [
+                                                    unmatched('microplus-riccione', :ready_to_commit, new_teams: 1),
+                                                    unmatched('ficr-brescia', :needs_review, step: 2, count: 3),
+                                                    unmatched('goandswim-x', :prepare_failed, phase: 3, message: 'boom'),
+                                                    unmatched('busy-one', :preparing)
+                                                  ]))
+    end
+
+    it 'ReadyToCommit opens their commit summary' do
+      item = Inbox::Sources::ReadyToCommit.new.items(context).sole
+      expect(item).to have_attributes(key: 'unmatched:microplus-riccione:commit', band: :review,
+                                      title: 'microplus-riccione: Ready to commit · +1 team',
+                                      subject: { file_path: '/d/262/microplus-riccione-lt4.json', season_id: 262 })
+      expect(item.action.path).to eq("/data_fix/commit_summary?file_path=#{CGI.escape('/d/262/microplus-riccione-lt4.json')}")
+    end
+
+    it 'NeedsReview opens the step with the review filter' do
+      item = Inbox::Sources::NeedsReview.new.items(context).sole
+      expect(item.title).to eq('ficr-brescia: Needs review at step 2 · 3 issues')
+      expect(item.action.path).to start_with('/data_fix/review_teams?').and include('filter_state=review')
+    end
+
+    it 'PrepareFailed retries through the Sources "Prepare" (a POST, never a commit)' do
+      item = Inbox::Sources::PrepareFailed.new.items(context).sole
+      expect(item).to have_attributes(band: :failed, title: 'goandswim-x: Preparation failed at step 3: boom')
+      expect(item.action).to have_attributes(http_method: :post, path: '/sources/prepare',
+                                             params: { path: '/d/262/goandswim-x-lt4.json', season_id: 262 })
+    end
+  end
 end

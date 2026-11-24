@@ -1,0 +1,31 @@
+-#
+  File editor: CodeMirror (the vendored codemirror-json bundle) for JSON, a plain textarea for CSV/TXT; the textarea
+  stays the submitted field (sources_editor_controller.js copies the editor text into it). JSON is validated on save.
+:ruby
+  relative = file_guard.relative(@path)
+  phase_file = SeasonBoard::DiskIndex::PHASE_REGEXP.match?(@path.basename.to_s)
+= render(partial: 'sources/header', locals: { tab: :files, path: sources_files_path })
+
+.card#sources-file-edit
+  .card-header.d-flex.flex-wrap.align-items-center.gap-2
+    %span.fw-semibold.text-break
+      %i.fa-solid.fa-pen-to-square{ 'aria-hidden' => 'true' }
+      = relative
+    %span.badge.text-bg-secondary.fw-normal= @json ? 'JSON' : @path.extname.delete('.').upcase
+  .card-body
+    - if phase_file
+      .alert.alert-warning.py-2.small#sources-file-phase-note= t('sources.files.edit.phase_note')
+    = form_with(url: sources_file_update_path, method: :patch, id: 'frm-sources-file-edit',
+                data: { controller: 'sources-editor', 'sources-editor-json-value': @json.to_s,
+                        'sources-editor-invalid-value': t('sources.files.edit.invalid_json_client'),
+                        action: 'submit->sources-editor#submit' }) do
+      = hidden_field_tag(:path, relative)
+      = hidden_field_tag(:return_to, @return_to)
+      .sources-editor.border.rounded.mb-2.d-none{ data: { sources_editor_target: 'editor' } }
+      = text_area_tag(:content, @content, rows: 24, class: 'form-control font-monospace small', spellcheck: false,
+                                          data: { sources_editor_target: 'field' })
+      .invalid-feedback.d-block.mb-2{ data: { sources_editor_target: 'error' }, 'aria-live' => 'polite' }
+      .d-flex.gap-2
+        = submit_tag(t('sources.files.edit.submit'), class: 'btn btn-sm btn-primary', id: 'btn-sources-file-save', name: nil,
+                                                     data: { turbo_confirm: t('sources.files.edit.confirm') })
+        = link_to(t('sources.files.cancel'), @return_to, class: 'btn btn-sm btn-outline-secondary')

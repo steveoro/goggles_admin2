@@ -234,6 +234,22 @@ RSpec.describe SeasonBoard::Snapshot do
       expect(summary.warnings).to eq([])
     end
 
+    it 'carries the pipeline state of an unmatched (non-FIN) source prepared from the Sources page (phase 15)' do
+      expect(summary.unmatched_sources.first).to have_attributes(pipeline_state: nil, pipeline_detail: {})
+      described_class.invalidate!(262)
+      source = FactoryBot.create(:ops_pipeline_source, season_id: 262, base: 'stray-meeting', stage: 'needs_review', review_phase: 3,
+                                                       review_count: 2, source_path: path_for('results.new', 'stray-meeting.json'))
+      (1..5).each { |phase| FactoryBot.create(:ops_phase_verdict, pipeline_source: source, phase:, checked_at: 1.minute.from_now) }
+      fresh_builder = SeasonBoard::Builder.new(
+        season:, rows: fin_rows, disk_index: SeasonBoard::DiskIndex.new(season_id: 262, data_dir:), db_index:,
+        activity_log: SeasonBoard::ActivityLog.new(path: File.join(data_dir, 'season-board.json')), today:
+      )
+      travel_to(Time.zone.local(2026, 11, 12, 10, 5)) { described_class.build!(season, builder: fresh_builder) }
+      rebuilt = described_class.read(season)
+      expect(rebuilt.unmatched_sources.first).to have_attributes(pipeline_state: :needs_review, pipeline_detail: { step: 3, count: 2, blocked: false })
+      expect(plain?(rebuilt.payload)).to be true
+    end
+
     it 'gives the action targets through SeasonBoard::ActionPaths' do
       target = SeasonBoard::ActionPaths.target_for(summary.row_for('150091').next_action)
       expect(target.http_method).to eq(:get)

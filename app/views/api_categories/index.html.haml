@@ -1,20 +1,12 @@
-= render(Shell::PageHeaderComponent.new(title: t('dashboard.categories.title'), count: @domain_count))
-= render(Grid::EditModalComponent.new(controller_name: controller_name,
-         asset_row: GogglesDb::CategoryType.new, jwt: current_user.jwt))
-
-%section.mb-4#data-grid
-  = render(Grid::ToolbarComponent.new(asset_row: GogglesDb::CategoryType.new,
-           controller_name: controller_name, destroy: true, request_params: @grid_filter_params)) do
+= render(Grid::PageComponent.new(title: t('dashboard.categories.title'), model: GogglesDb::CategoryType, grid: @grid,
+                                 domain: api_grid_domain)) do |page|
+  - page.with_toolbar_extra do
     .btn-group#clone-btn
       %a.btn.btn-sm.btn-primary#clone-expand{ 'aria-controls' => 'clone-categories-panel', 'aria-expanded' => 'false',
                                               href: '#clone-categories-panel', role: 'button',
                                               title: t('datagrid.clone_form.btn_tooltip'),
                                               data: { bs_toggle: 'collapse' } }
         %i.fa.fa-clone
-  = datagrid_form_with(model: @grid, method: :get,
-                      url: url_for(controller: controller_name, action: :index, params: @index_params))
-  = render(Grid::FilterLabelsComponent.new(filter_params: @grid_filter_params))
-
   .collapse.mb-3#clone-categories-panel
     .card
       .card-header= t('datagrid.clone_form.btn_tooltip')
@@ -33,9 +25,3 @@
               = submit_tag(t('datagrid.clone_form.clone_button'), id: 'btn-clone', class: 'btn btn-primary',
                            'aria-label': t('datagrid.clone_form.clone_button'), type: 'submit',
                            data: { turbo_confirm: t('datagrid.clone_form.confirm_msg') })
-
-  = render(PageLinksForArrayComponent.new(data: @grid&.assets, total_count: @domain_count,
-           page: @domain_page, per_page: @domain_per_page))
-  = datagrid_table(@grid, html: { class: 'table table-hover table-sm' })
-  = render(PageLinksForArrayComponent.new(data: @grid&.assets, total_count: @domain_count,
-           page: @domain_page, per_page: @domain_per_page))

@@ -34,6 +34,14 @@ RSpec.describe APICategoriesController do
         expect(response).to have_http_status(:success)
       end
     end
+
+    it_behaves_like('an API grid index showing an API error in place', 'category_types') do
+      let(:index_path) { api_categories_path }
+      let(:api_params) do
+        { season_id: anything, code: anything, relay: anything, out_of_race: anything, undivided: anything,
+          page: anything, per_page: anything }
+      end
+    end
   end
   #-- -------------------------------------------------------------------------
   #++

@@ -50,10 +50,7 @@ module SystemTestHelpers
   # Browser console messages that are not considered an application error:
   IGNORED_JS_LOG_PATTERNS = [
     /favicon\.ico/i,
-    /Failed to load resource: the server responded with a status of 404/i,
-    # The Pull pages subscribe to the crawler's own ActionCable (node_consumer.js); the crawler
-    # is a separate Node service that is not running during specs:
-    %r{WebSocket connection to 'ws://localhost:7000/cable' failed}
+    /Failed to load resource: the server responded with a status of 404/i
   ].freeze
 
   # Signs-in through the actual form, using the default factory password, and waits until the

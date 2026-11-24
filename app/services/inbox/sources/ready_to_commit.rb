@@ -20,6 +20,10 @@ module Inbox
         target = board_target(row)
         target && action(I18n.t('season_board.actions.commit'), target.path)
       end
+
+      def unmatched_action(source, _summary)
+        action(I18n.t('season_board.actions.commit'), url_helpers.data_fix_commit_summary_path(file_path: source.review_path))
+      end
     end
   end
 end

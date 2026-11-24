@@ -139,6 +139,6 @@ RSpec.describe DataFix::CommitsController, :data_fix_commit do
 
   it 'refuses a retry for a path outside results.new' do
     post data_fix_retry_archive_path, params: { file_path: '/etc/passwd' }
-    expect(response).to redirect_to(pull_result_files_path)
+    expect(response).to redirect_to(sources_results_path)
   end
 end

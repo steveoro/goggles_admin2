@@ -38,6 +38,15 @@ RSpec.describe APIBadgesController do
         expect(response).to have_http_status(:success)
       end
     end
+
+    it_behaves_like('an API grid index showing an API error in place', 'badges') do
+      let(:index_path) { api_badges_path }
+      let(:api_params) do
+        { team_id: anything, team_affiliation_id: anything, season_id: anything, swimmer_id: anything,
+          off_gogglecup: anything, fees_due: anything, badge_due: anything, relays_due: anything,
+          page: anything, per_page: anything }
+      end
+    end
   end
   #-- -------------------------------------------------------------------------
   #++

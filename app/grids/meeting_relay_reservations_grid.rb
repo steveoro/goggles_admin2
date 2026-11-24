@@ -9,7 +9,7 @@ class MeetingRelayReservationsGrid < BaseGrid
   scope { data_domain }
 
   filter(:id, :integer)
-  filter(:name, :string, header: 'Name (~)') { |_value, scope| scope }
+  filter(:name, :string) { |_value, scope| scope }
 
   column(:id, align: :right, mandatory: true)
   column(:meeting_reservation_id, align: :right)
@@ -19,7 +19,7 @@ class MeetingRelayReservationsGrid < BaseGrid
   column(:badge_id, align: :right)
   column(:meeting_event_id, align: :right)
   column(
-    :meeting_event_name, header: 'Event', html: true, mandatory: true,
+    :meeting_event_name, html: true, mandatory: true,
                          order: proc { |scope| scope.sort { |a, b| a.meeting_event.decorate.display_label <=> b.meeting_event.decorate.display_label } }
   ) do |asset|
     asset.meeting_event.decorate.display_label

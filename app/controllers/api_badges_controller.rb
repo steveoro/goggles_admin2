@@ -5,6 +5,8 @@
 # Manage Badges via API.
 #
 class APIBadgesController < ApplicationController
+  include APIGridIndex
+
   # GET /api_badges
   # Show the Badges dashboard.
   #
@@ -12,7 +14,6 @@ class APIBadgesController < ApplicationController
   # - <tt>@domain</tt>: list of all instance rows
   # - <tt>@grid</tt>: the customized Datagrid instance
   #
-  # rubocop:disable Metrics/AbcSize
   def index
     result = APIProxy.call(
       method: :get, url: 'badges', jwt: current_user.jwt,
@@ -27,28 +28,7 @@ class APIBadgesController < ApplicationController
         page: index_params[:page], per_page: index_params[:per_page]
       }
     )
-    parsed_response = result.body.present? ? JSON.parse(result.body) : { 'error' => "Error #{result.code}" }
-    unless result.code == 200
-      flash[:error] = I18n.t('dashboard.api_proxy_error', error_code: result.code, error_msg: parsed_response['error'])
-      redirect_to(root_path) && return
-    end
-
-    set_grid_domain_for(BadgesGrid, GogglesDb::Badge, result.headers, parsed_response)
-
-    respond_to do |format|
-      @grid = BadgesGrid.new(grid_filter_params)
-
-      format.html { @grid }
-
-      format.csv do
-        send_data(
-          @grid.to_csv,
-          type: 'text/csv',
-          disposition: 'inline',
-          filename: "grid-badges-#{DateTime.now.strftime('%Y%m%d.%H%M%S')}.csv"
-        )
-      end
-    end
+    render_api_index(BadgesGrid, GogglesDb::Badge, result, csv_name: 'badges')
   end
 
   # POST /api_badges
@@ -73,7 +53,6 @@ class APIBadgesController < ApplicationController
     end
     redirect_to(api_badges_path(index_params))
   end
-  # rubocop:enable Metrics/AbcSize
   #-- -------------------------------------------------------------------------
   #++
 

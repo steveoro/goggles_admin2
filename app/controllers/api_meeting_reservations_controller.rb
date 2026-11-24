@@ -6,6 +6,8 @@
 #
 # rubocop:disable-next Metrics/ClassLength, Metrics/MethodLength, Metrics/AbcSize
 class APIMeetingReservationsController < ApplicationController
+  include APIGridIndex
+
   # GET /api_meeting_reservations
   # Show the MeetingReservations dashboard.
   #
@@ -26,34 +28,11 @@ class APIMeetingReservationsController < ApplicationController
         page: index_params[:page], per_page: index_params[:per_page]
       }
     )
-    parsed_response = result.body.present? ? JSON.parse(result.body) : { 'error' => "Error #{result.code}" }
-    unless result.code == 200
-      flash[:error] = I18n.t('dashboard.api_proxy_error', error_code: result.code, error_msg: parsed_response['error'])
-      redirect_to(root_path) && return
-    end
-
-    set_grid_domain_for(MeetingReservationsGrid, GogglesDb::MeetingReservation, result.headers, parsed_response)
-
-    respond_to do |format|
-      @grid = MeetingReservationsGrid.new(grid_filter_params)
-
-      format.html { @grid }
-
-      format.csv do
-        send_data(
-          @grid.to_csv(
-            :id, :meeting_id, :meeting_name,
-            :swimmer_id, :swimmer_name,
-            :team_id, :badge_id,
-            :not_coming, :confirmed,
-            :notes
-          ),
-          type: 'text/csv',
-          disposition: 'inline',
-          filename: "grid-meeting_reservations-#{DateTime.now.strftime('%Y%m%d.%H%M%S')}.csv"
-        )
-      end
-    end
+    render_api_index(
+      MeetingReservationsGrid, GogglesDb::MeetingReservation, result,
+      csv_name: 'meeting_reservations',
+      csv_columns: %i[id meeting_id meeting_name swimmer_id swimmer_name team_id badge_id not_coming confirmed notes]
+    )
   end
   #-- -------------------------------------------------------------------------
   #++

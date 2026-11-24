@@ -1,0 +1,25 @@
+.modal.app-palette{ id: DOM_ID, tabindex: '-1', 'aria-labelledby' => "#{DOM_ID}-title", 'aria-hidden' => 'true',
+                    data: root_data }
+  .modal-dialog.modal-dialog-scrollable.modal-lg
+    .modal-content
+      .modal-header.p-2
+        %h2.visually-hidden{ id: "#{DOM_ID}-title" }= t('shell.palette.title')
+        .input-group
+          %span.input-group-text{ 'aria-hidden' => 'true' }
+            %i.fa-solid.fa-magnifying-glass
+          %input{ input_attributes }
+      .modal-body.p-0
+        .list-group.list-group-flush{ id: "#{DOM_ID}-results", role: 'listbox', 'aria-label' => t('shell.palette.results'),
+                                      data: { palette_target: 'list', action: 'click->palette#pick' } }
+        %p.small.text-body-secondary.px-3.py-2.mb-0.d-none{ id: "#{DOM_ID}-empty", data: { palette_target: 'empty' } }
+          = t('shell.palette.no_results')
+      .modal-footer.py-1.small.text-body-secondary.justify-content-between
+        %span{ status_attributes }
+          = t('shell.palette.offline') if @offline
+        %span.d-none.d-sm-inline
+          %kbd ↑↓
+          = t('shell.palette.hint_move')
+          %kbd.ms-2 ↵
+          = t('shell.palette.hint_open')
+          %kbd.ms-2 Esc
+          = t('shell.palette.hint_close')

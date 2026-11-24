@@ -1,0 +1,20 @@
+= render(Shell::PageHeaderComponent.new(title: @title, count:)) do |header|
+  - if actions?
+    - header.with_actions do
+      = actions
+= render(Grid::EditModalComponent.new(controller_name: helpers.controller_name, asset_row:, jwt:)) if grid?
+
+%section.mb-4{ id: @section_id }
+  - if grid?
+    = render(Grid::ToolbarComponent.new(toolbar_options)) do
+      = toolbar_extra
+    = helpers.datagrid_form_with(model: @grid, method: :get, url: index_url)
+    = render(Grid::FilterLabelsComponent.new(filter_params:))
+
+  = render(Grid::APIErrorComponent.new(error:))
+  = content if body?
+
+  - if grid? && error.blank?
+    = render(page_links)
+    = helpers.datagrid_table(@grid, html: { class: TABLE_CLASS })
+    = render(page_links)

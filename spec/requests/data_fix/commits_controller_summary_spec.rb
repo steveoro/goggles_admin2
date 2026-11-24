@@ -129,7 +129,7 @@ RSpec.describe DataFix::CommitsController, :data_fix_commit do
 
     it 'redirects to the file list for an unknown report' do
       get data_fix_commit_report_path(id: 999_999)
-      expect(response).to redirect_to(pull_result_files_path)
+      expect(response).to redirect_to(sources_results_path)
     end
   end
 end

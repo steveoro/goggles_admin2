@@ -33,7 +33,8 @@
         .app-main
           %header.app-topbar.sticky-top
             = render(Shell::TopBarComponent.new(api_target: shell_api_target, offline: api_offline_session?,
-                                                user: current_user))
+                                                user: current_user)) do |bar|
+              - bar.with_search { render(Shell::PaletteTriggerComponent.new) }
           %section#notify
             #sticky-alerts
               -# Local session without a valid API JWT (API server unreachable at sign-in; Settings has its own box):
@@ -46,10 +47,8 @@
           -# (data-page: the controller path, a hook for page-scoped CSS)
           %main.app-content#content{ data: { page: controller_path } }
             = yield
+      -# Command palette (Ctrl+K), at the body level: inside the sticky top bar the modal would sit under its backdrop
+      = render(Shell::PaletteComponent.new(offline: api_offline_session?))
     - else
       -# (Sign-in page: no shell, no sticky alerts)
       %main.app-auth= yield
-
-    -# Spinner toggled by the PDF pages (kept until phase 15; pdf/scan.turbo_stream.erb replaces it):
-    .fixed-top.text-center.mt-2.d-none#loading-indicator
-      .spinner-border.text-primary{ role: 'status', 'aria-hidden' => 'true' }

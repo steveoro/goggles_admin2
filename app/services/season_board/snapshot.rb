@@ -39,7 +39,8 @@ module SeasonBoard
   # - state_counts: Hash of state Symbol => row count (row order); unlinked_count: rows without FIN link;
   #   done_count: past rows committed with results (both hidden by default on the board);
   # - unmatched_sources: Array of Snapshot::UnmatchedSource (pending files without FIN id: base, bases,
-  #   pending kind :in_review/:source/:sql/:manifest, review_path, phase, paths);
+  #   pending kind :in_review/:source/:sql/:manifest, review_path, phase, paths; since 3 the pipeline state of the
+  #   source prepared from the Sources page: :preparing/:prepare_failed/:needs_review/:ready_to_commit + detail);
   # - board_sql_paths: board SQL scripts (backfill/calendar link) awaiting push (absolute path Strings);
   # - warnings: Array of Strings;
   # - snapshot_checked_at: Time of the last FIN calendar check by the watcher (nil when never);
@@ -52,7 +53,8 @@ module SeasonBoard
   class Snapshot
     # Bump when the payload layout changes (part of the fingerprint: older payloads are never served).
     # 2: phase 10 pipeline states (:prepare_failed, :needs_review, :ready_to_commit) and actions (:prepare, :commit).
-    FORMAT_VERSION = 2
+    # 3: phase 15 pipeline state of the unmatched (non-FIN) sources.
+    FORMAT_VERSION = 3
 
     KEY_PREFIX = 'season_board:'
 

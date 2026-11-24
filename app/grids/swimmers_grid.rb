@@ -10,12 +10,11 @@ class SwimmersGrid < BaseGrid
 
   # NOTE: no point in re-filtering scopes already filtered by the API here,
   #       so we return the whole scope (otherwise local filtering would be applied).
-  filter(:name, :string, header: 'Name (~)') { |_value, scope| scope }
+  filter(:name, :string) { |_value, scope| scope }
   filter(:year_of_birth, :integer)
   filter(:year_guessed, :boolean)
   filter(:gender_type_id,
-         :enum, header: 'GenderType',
-                select: proc { GogglesDb::GenderType.all.map { |c| [c.code, c.id] } }) { |_value, scope| scope }
+         :enum, select: proc { GogglesDb::GenderType.all.map { |c| [c.code, c.id] } }) { |_value, scope| scope }
 
   selection_column(mandatory: true)
   column(:id, align: :right, mandatory: true)
@@ -30,10 +29,10 @@ class SwimmersGrid < BaseGrid
   column(:associated_user_id, align: :right)
   column(:gender_type_id, align: :right, mandatory: true)
   column(:complete_name, mandatory: true)
-  column(:badges_lookup, header: 'Badges', html: true, mandatory: true) do |asset|
-    link_to(api_badges_path(badges_grid: { swimmer_id: asset.id })) do
-      content_tag(:i, '', class: 'fa fa-eye')
-    end
+  # (phase 15) the swimmer's badges
+  column(:drill, html: true, mandatory: true, order: false) do |asset|
+    render(Grid::DrillLinkComponent.new(path: api_badges_path(badges_grid: { swimmer_id: asset.id }), icon: 'fa-id-badge',
+                                        label: I18n.t('datagrid.drill.badges'), kind: 'badges'))
   end
   boolean_column(:year_guessed, align: :center, mandatory: true, order: false)
 

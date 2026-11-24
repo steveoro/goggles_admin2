@@ -55,11 +55,13 @@ The three pipeline states come from the ops DB (`SeasonBoard::PipelineIndex`: th
 | Crawls / extractions (`MeetingCrawlJob`, `ManifestExtractJob`) | when queued by the above, the pipeline planner or the board buttons | `background` |
 | Re-crawl on "results published" (`CrawlPlanner#plan_recrawl`) | on a watcher change: a **Structure committed** row listed by FIN under "with results" is crawled again, at most once per 20 hours | `background` |
 | Pipeline planner (`PipelinePlannerJob`, `pipeline_planner`) | after every crawl, extraction, successful preparation and watcher change, every 15 minutes, and on **Prepare all** (see [Pipeline automation](#pipeline-automation)) | `default` |
-| Preparations (`DataFixPrepareJob`) | when queued by the planner or by **Prepare** / **Retry** | `pipeline` (shared with the commit job, which runs first) |
+| Preparations (`DataFixPrepareJob`) | when queued by the planner or by **Prepare** / **Retry** (also **Prepare** on a non-FIN source of the Sources Results tab) | `pipeline` (shared with the commit job, which runs first) |
+| Manual crawls (`SourceCrawlJob`) | **Crawl** on the Sources crawler tab, **Crawl selected** / **Crawl all** on a calendar CSV | `background`, priority 10 (after the queued board crawls) |
+| PDF scans (`PdfScanJob`) | **Scan** on a PDF of the Sources PDFs tab | `pipeline`, priority 10 (a queued commit runs first) |
 
 The `background` queue has a single worker thread: crawls and extractions run strictly one at a time (a crawl is given up after 30 minutes). A failure is shown on the row (press the button again to retry; failed automatic crawls are also retried by the daily re-check). If a job could not even be queued, the board shows the error in a flash message. A queued or running job with no progress for too long shows **seems stuck** and its button is enabled again.
 
-While a board crawl is running, the manual crawl buttons of the Pull page are refused with a warning (the two would share the crawler status file); queued board crawls do not block them.
+The manual crawls of the [Sources](#sources) crawler tab (`SourceCrawlJob`) run on the same worker with the same concurrency key, at a lower priority: a manual crawl queued while a board crawl runs waits for it (the form says how many crawls are ahead), and the queued board crawls go first. The crawl job also waits (up to 5 minutes) for a crawl the crawler reports as running.
 
 Both the watcher and the jobs need the Solid Queue supervisor running (inside Puma by default, see `CLAUDE.md`).
 
@@ -106,9 +108,20 @@ jobs: env -u DATABASE_URL RAILS_ENV=development SOLID_QUEUE_IN_PUMA=false bin/jo
 
 Never run both variants together (two supervisors). The dashboard system column shows which mode is active.
 
+## Sources
+
+The **Sources** page (`/sources`, Import menu; it replaces the former Pull, PDF and file-list pages, whose old URLs redirect for one release) shows the files of one season (chosen at the top, remembered) in six tabs:
+
+- **Results**: the sources waiting in `results.new/<season>`, with their FIN id (a link to the board row) or **non-FIN**, layout, phase files, staged rows and preparation state. A FIN meeting is followed on the board. A non-FIN source (Microplus, FICR, Go&Swim, PDF) offers **Prepare**: the same background preparation as the board (steps 1-5, it stops at review); the source then shows in "Needs you" as **Ready to commit**, **Needs review at step N** or **Preparation failed** like a board row. The automatic planner never prepares a non-FIN source by itself: the click is the opt-in.
+- **Calendars**: the FIN calendar CSVs (originals, `-sel-` selections, `-skip` leftovers, already crawled). **Select meetings** opens the meeting selection; **Crawl all** queues the whole file.
+- **Manifests**: the manifest PDFs waiting for extraction: **Extract** one file, or **Extract next 20** (lower priority, so the board crawls go first). One extraction path for the board, this tab and `rake manifests:extract`.
+- **PDFs**: a result PDF opens on a page with the first text page, the scan form (format family, page range, verbose log) and the last scan result; **Scan** runs in the background and ends as "parsed with <format>" (with **Open in Data-Fix**) or "no format matched at page N", with the checked formats and the parser log.
+- **Crawler**: the crawler server state, the background activity and one form per crawl kind (FIN calendar, calendar CSV, FIN meeting, Microplus, FICR, Go&Swim) with a real URL field checked against the site; each crawl is queued as a job and a toast on every page tells when it ends, with a link to the new file.
+- **Files**: every folder of `crawler/data` (also `misc`, `goggle_cups`, `normalize`); rename, edit or delete a file. Paths never leave `crawler/data`; the backup and dated folders (`pdfs.done`, `pdfs.backup`, `results.backup`, `results.old`, `redo`, `results.done.YYYY`) and the state files of the data root are read-only, SQL scripts are left to the Outbox. A JSON is validated before saving; saving a Data-Fix phase file marks the step as edited by you, so no automatic build overwrites it.
+
 ## Seeing queued and running work
 
-The **activity strip** (top of the board, and in the crawler status box of the Pull pages) lists what is running now (crawls, extractions, preparations), how many jobs are queued, and the next scheduled watcher check and daily re-check. Each row also shows its own queued/running/failed state. The log is stored in `crawler/data/season-board.json` (kinds `crawl`, `extract`, `prepare`); the preparation and automatic-extraction runs are also kept in the ops DB (`pipeline_runs`).
+The **activity strip** (top of the board, and in the activity card of the Sources crawler tab) lists what is running now (crawls, extractions, preparations, also the manual ones of the Sources pages, under their label), how many jobs are queued, and the next scheduled watcher check and daily re-check. Each row also shows its own queued/running/failed state. The log is stored in `crawler/data/season-board.json` (kinds `crawl`, `extract`, `prepare`); the preparation and automatic-extraction runs are also kept in the ops DB (`pipeline_runs`).
 
 ## One-time backfill
 

@@ -4,7 +4,7 @@ import { Controller } from '@hotwired/stimulus'
  * = calendar-selection - StimulusJS controller =
  *
  * Wrapper for JS methods used for meeting-row selection on the calendar
- * meetings page (PullController#calendar_meetings).
+ * meetings page (Sources::CalendarsController#meetings).
  *
  * == Targets ==
  * @param {String} 'data-calendar-selection-target': 'selector'

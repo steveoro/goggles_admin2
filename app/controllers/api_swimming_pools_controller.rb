@@ -5,6 +5,8 @@
 # Manage SwimmingPools via API.
 #
 class APISwimmingPoolsController < ApplicationController
+  include APIGridIndex
+
   # GET /api_swimming_pools
   # Show the SwimmingPools dashboard.
   #
@@ -12,7 +14,6 @@ class APISwimmingPoolsController < ApplicationController
   # - <tt>@domain</tt>: list of all instance rows
   # - <tt>@grid</tt>: the customized Datagrid instance
   #
-  # rubocop:disable Metrics/AbcSize
   def index
     result = APIProxy.call(
       method: :get, url: 'swimming_pools', jwt: current_user.jwt,
@@ -22,28 +23,7 @@ class APISwimmingPoolsController < ApplicationController
         page: index_params[:page], per_page: index_params[:per_page]
       }
     )
-    parsed_response = result.body.present? ? JSON.parse(result.body) : { 'error' => "Error #{result.code}" }
-    unless result.code == 200
-      flash[:error] = I18n.t('dashboard.api_proxy_error', error_code: result.code, error_msg: parsed_response['error'])
-      redirect_to(root_path) && return
-    end
-
-    set_grid_domain_for(SwimmingPoolsGrid, GogglesDb::SwimmingPool, result.headers, parsed_response)
-
-    respond_to do |format|
-      @grid = SwimmingPoolsGrid.new(grid_filter_params)
-
-      format.html { @grid }
-
-      format.csv do
-        send_data(
-          @grid.to_csv,
-          type: 'text/csv',
-          disposition: 'inline',
-          filename: "grid-swimming_pools-#{DateTime.now.strftime('%Y%m%d.%H%M%S')}.csv"
-        )
-      end
-    end
+    render_api_index(SwimmingPoolsGrid, GogglesDb::SwimmingPool, result, csv_name: 'swimming_pools')
   end
 
   # POST /api_swimming_pools
@@ -68,7 +48,6 @@ class APISwimmingPoolsController < ApplicationController
     end
     redirect_to(api_swimming_pools_path(index_params))
   end
-  # rubocop:enable Metrics/AbcSize
   #-- -------------------------------------------------------------------------
   #++
 

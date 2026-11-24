@@ -1,0 +1,43 @@
+-# One meeting row of the calendar meeting selection (a CrawlerCalendar::Row). Locals: row
+:ruby
+  tooltip = ->(text) { { bs_toggle: 'tooltip', bs_title: text } }
+  manifest_state = %i[done pending].include?(row.manifest_state) ? row.manifest_state : :none
+  manifest_icon = { done: 'fa-solid fa-circle-check text-success', pending: 'fa-regular fa-clock text-warning sources-manifest-pending',
+                    none: 'fa-solid fa-minus text-body-secondary' }.fetch(manifest_state)
+  row_data = { calendar_selection_target: 'row', manifest_state: row.manifest_state, crawlable: row.crawlable?.to_s }
+  selector_data = { calendar_selection_target: 'selector', has_url: row.url?, manifest_state: row.manifest_state,
+                    action: 'change->calendar-selection#onChange' }
+%tr{ class: row.crawlable? ? nil : 'text-body-secondary', data: row_data }
+  %td.text-center
+    = check_box_tag('selected_rows[]', row.index, false, disabled: !row.crawlable?, class: 'form-check-input row-selector',
+                                                         id: "selected-row-#{row.index}", data: selector_data)
+  %td.text-nowrap= row.date
+  %td= row.year
+  %td
+    = row.name
+    - if row.cancelled?
+      %span.badge.text-bg-danger.ms-1 CANC
+    - elsif row.raw_cancelled.present?
+      %small.text-body-secondary.ms-1= row.raw_cancelled
+  %td= row.place
+  %td.text-center
+    - if row.url? && row.url.match?(%r{\Ahttps?://}i)
+      = link_to(row.url, target: '_blank', rel: 'noopener noreferrer', 'aria-label' => t('data_import.selection.url_tooltip'),
+                         data: tooltip.call(t('data_import.selection.url_tooltip'))) do
+        %i.fa-solid.fa-arrow-up-right-from-square.text-success{ 'aria-hidden' => 'true' }
+    - elsif row.url?
+      %i.fa-solid.fa-check.text-success{ data: tooltip.call(row.url) }
+    - else
+      %i.fa-solid.fa-minus.text-body-secondary
+  %td.text-center
+    %i{ class: manifest_icon, data: tooltip.call(t("data_import.selection.manifest_#{manifest_state}_tooltip", file: row.manifest_filename)) }
+  %td.text-center
+    - case row.source_state
+    - when :lt4
+      %span.badge.text-bg-info{ data: tooltip.call(t('data_import.selection.source_lt4_tooltip')) } LT4
+    - when :json
+      %span.badge.text-bg-info{ data: tooltip.call(t('data_import.selection.source_json_tooltip')) } JSON
+    - when :done
+      %i.fa-solid.fa-circle-check.text-body-secondary{ data: tooltip.call(t('data_import.selection.source_done_tooltip')) }
+    - else
+      %i.fa-solid.fa-minus.text-body-secondary

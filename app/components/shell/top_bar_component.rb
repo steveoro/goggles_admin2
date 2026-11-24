@@ -11,7 +11,7 @@ module Shell
   # Renders only local data (session, local DB settings, ops snapshots): no API call.
   #
   # == Slots:
-  # - search: optional (empty until the phase 15 command palette trigger).
+  # - search: optional; the layout puts the command palette trigger there (phase 15, Shell::PaletteTriggerComponent).
   #
   class TopBarComponent < ViewComponent::Base
     renders_one :search

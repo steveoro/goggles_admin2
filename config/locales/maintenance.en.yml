@@ -548,20 +548,3 @@ en:
         apply_failed: "Operation apply failed"
         refused: "Operation refused"
         script_written: "Operation script registered (not applied)"
-  datagrid:
-    operation_runs_grid:
-      columns:
-        id: "#"
-        created_at: "Requested"
-        operation: "Operation"
-        mode: "Mode"
-        status: "Status"
-        label: "Run"
-        season_id: "Season"
-        script: "Script"
-        origin: "Origin"
-      filters:
-        operation_key: "Operation"
-        mode: "Mode"
-        status: "Status"
-        season_id: "Season"

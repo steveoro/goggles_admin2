@@ -10,12 +10,11 @@ class SwimmingPoolsGrid < BaseGrid
 
   # NOTE: no point in re-filtering scopes already filtered by the API here,
   #       so we return the whole scope (otherwise local filtering would be applied).
-  filter(:name, :string, header: 'Name (~)') { |_value, scope| scope }
-  filter(:address, :string, header: 'Address (~)') { |_value, scope| scope }
+  filter(:name, :string) { |_value, scope| scope }
+  filter(:address, :string) { |_value, scope| scope }
   filter(:pool_type_id,
-         :enum, header: 'PoolType',
-                select: proc { GogglesDb::PoolType.all.map { |c| [c.code, c.id] } }) { |_value, scope| scope }
-  filter(:city_id, :integer, header: 'City ID')
+         :enum, select: proc { GogglesDb::PoolType.all.map { |c| [c.code, c.id] } }) { |_value, scope| scope }
+  filter(:city_id, :integer)
 
   selection_column(mandatory: true)
   column(:id, align: :right, mandatory: true)

@@ -121,11 +121,11 @@ module SystemStatus
     end
 
     def pull_action
-      action_for(:crawler, url_helpers.pull_index_path)
+      action_for(:crawler, url_helpers.sources_crawler_path)
     end
 
     def start_action
-      action_for(:start_crawler, url_helpers.start_crawler_path, http_method: :post)
+      action_for(:start_crawler, url_helpers.sources_crawler_start_path, http_method: :post)
     end
   end
 end

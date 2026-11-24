@@ -1,0 +1,19 @@
+:ruby
+  relative = file_guard.relative(@path)
+= render(partial: 'sources/header', locals: { tab: :files, path: sources_files_path })
+
+.card#sources-file-rename
+  .card-header.fw-semibold
+    %i.fa-solid.fa-i-cursor{ 'aria-hidden' => 'true' }
+    = t('sources.files.rename.title', name: @path.basename)
+  .card-body
+    = form_with(url: sources_file_update_name_path, method: :patch, id: 'frm-sources-file-rename') do
+      = hidden_field_tag(:path, relative)
+      = hidden_field_tag(:return_to, @return_to)
+      .mb-2
+        = label_tag(:new_path, t('sources.files.rename.new_path'), class: 'form-label')
+        = text_field_tag(:new_path, relative, class: 'form-control font-monospace', required: true, autofocus: true)
+        .form-text= t('sources.files.rename.hint')
+      .d-flex.gap-2
+        = submit_tag(t('sources.files.rename.submit'), class: 'btn btn-sm btn-primary', id: 'btn-sources-file-rename', name: nil)
+        = link_to(t('sources.files.cancel'), @return_to, class: 'btn btn-sm btn-outline-secondary')

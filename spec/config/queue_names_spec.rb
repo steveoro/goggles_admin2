@@ -46,7 +46,8 @@ RSpec.describe 'Solid Queue queue names' do # rubocop:disable RSpec/DescribeClas
     served = served_queues(env)
     jobs = app_jobs
     expect(jobs).to include(KpiRefreshJob, SeasonRecheckJob, Health::SeasonRunJob, Health::SweepJob, Outbox::PushJob,
-                            Outbox::RemoteStatusJob, Outbox::ImportLegacyJob, DataFixCommitJob, DataFixPrepareJob, PipelinePlannerJob)
+                            Outbox::RemoteStatusJob, Outbox::ImportLegacyJob, DataFixCommitJob, DataFixPrepareJob, PipelinePlannerJob,
+                            SourceCrawlJob, PdfScanJob)
     unserved = jobs.reject { |job| served?(job.new.queue_name, served) }.map { |job| "#{job.name} (#{job.new.queue_name})" }
     expect(unserved).to be_empty, "queues without a worker in config/queue.yml: #{unserved.join(', ')}"
   end

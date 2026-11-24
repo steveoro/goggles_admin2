@@ -241,7 +241,12 @@ RSpec.describe DataFix::CommitsController, type: :controller do
     end
 
     context 'with LT4 results carrying season-invalid category codes' do
-      let(:season) { FactoryBot.create(:season) }
+      # Pinned to the 2022/2023 season of the source date: with the factory default (today - 3 months) a FIN
+      # Master season computes the 2002 swimmer's age on the end year (2027 today), giving M25 instead of U25.
+      let(:season) do
+        FactoryBot.create(:season, season_type_id: GogglesDb::SeasonType::MAS_FIN_ID,
+                                   begin_date: Date.new(2022, 10, 1), end_date: Date.new(2023, 9, 30))
+      end
       let(:season_dir) { File.join(temp_dir, season.id.to_s) }
       let(:lt4_path) { File.join(season_dir, 'meeting-lt4.json') }
       let(:file_path) { lt4_path }

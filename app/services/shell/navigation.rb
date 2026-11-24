@@ -47,19 +47,14 @@ module Shell
            match: %w[dashboard#activity_log], parent: :dashboard, offline_ok: true, sidebar: false, keywords: %w[events log history]),
       # Import
       item(:season_board, :import, 'fa-table-list', 'season_board.nav', -> { season_board_path }, match: %w[season_board]),
-      item(:crawler, :import, 'fa-spider', 'data_import.calendar.crawler_status_page_title', -> { pull_index_path },
-           match: %w[pull#index]),
-      item(:calendar_files, :import, 'fa-calendar', 'data_import.calendar.calendar_files_page_title', -> { pull_calendar_files_path },
-           match: %w[pull#calendar_files pull#calendar_meetings]),
-      item(:pdfs, :import, 'fa-file-pdf', 'data_import.calendar.pdfs_page_title',
-           -> { pull_result_files_path(filter: '*.pdf', parent_folder: 'pdfs') },
-           match: %w[pull#result_files?parent_folder=pdfs pdf]),
-      item(:result_files, :import, 'fa-file-pen', 'data_import.calendar.result_files_page_title', -> { pull_result_files_path },
-           match: %w[pull#result_files]),
-      item(:data_fix, :import, 'fa-wand-magic', 'shell.nav.data_fix', -> { pull_result_files_path },
+      # (15: the Sources area replaces the Pull tabs, the PDF page and the file lists: one item for its six tabs)
+      item(:sources, :import, 'fa-folder-open', 'sources.nav', -> { sources_results_path },
+           match: %w[sources/results sources/calendars sources/manifests sources/pdfs sources/crawler sources/crawls sources/files],
+           keywords: %w[pull crawler crawl calendar csv microplus ficr goandswim pdf scan manifests extract files results json]),
+      item(:data_fix, :import, 'fa-wand-magic', 'shell.nav.data_fix', -> { sources_results_path },
            match: %w[data_fix data_fix/sessions data_fix/teams data_fix/swimmers data_fix/events data_fix/results data_fix/commits
                      data_fix/commit_reports],
-           parent: :result_files, sidebar: false),
+           parent: :sources, sidebar: false),
       item(:data_fix_sessions, :import, 'fa-clock-rotate-left', 'data_fix_sessions.nav', -> { data_fix_sessions_path },
            match: %w[data_fix/sessions_list]),
       # (07: the SQL Outbox replaces the Push page; '/push/index' only redirects here)
@@ -171,10 +166,16 @@ module Shell
         crumbs
       end
 
-      # Command palette entries (phase 15 stub): one Hash per sidebar item.
-      def palette_entries
-        ITEMS.select(&:sidebar?).map do |item|
-          { key: item.key, group: item.group, icon: item.icon, label: I18n.t(item.label_key), path: path_for(item),
+      # Command palette entries (phase 15, Shell::PaletteComponent): one Hash per item, the contextual children too
+      # (+context+: the label of their parent, whose page they are reached from); in registry order.
+      # With <tt>offline: true</tt> (API-offline session) only the items reachable offline.
+      def palette_entries(offline: false)
+        ITEMS.filter_map do |item|
+          next if offline && !item.offline_ok?
+
+          parent = item.sidebar? ? nil : find(item.parent)
+          { key: item.key, group: item.group, group_label: I18n.t("shell.groups.#{item.group}"), icon: item.icon,
+            label: I18n.t(item.label_key), context: parent && I18n.t(parent.label_key), path: path_for(item),
             keywords: item.keywords }
         end
       end

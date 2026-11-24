@@ -9,7 +9,7 @@
 #
 # Filters: status (default 'open'; 'visible' = every status but resolved), severity, free text (title or subject id).
 # The selection column feeds the bulk form of the section (checkboxes bound to it through their 'form' attribute).
-# Headers & filter labels: 'datagrid.health_findings_grid.*' (config/locales/health.*.yml).
+# Headers & filter labels: 'grids.health_findings.*' (config/locales/grids.*.yml).
 #
 class HealthFindingsGrid < BaseGrid
   self.cached = false

@@ -321,13 +321,13 @@ RSpec.describe SeasonBoardController do
         post(season_board_extract_path, params: { fin_event_id: '2' })
         expect(response).to redirect_to(season_board_path)
         expect(flash[:info]).to eq(I18n.t('season_board.flash.extract_queued', fin_event_id: '2'))
-        expect(SeasonBoard::Scheduler).to have_received(:extract!).with(season_id: season.id, fin_event_id: '2', engine: nil)
+        expect(SeasonBoard::Scheduler).to have_received(:extract!).with(hash_including(season_id: season.id, fin_event_id: '2', engine: nil, pdf_path: '/x.pdf'))
       end
 
       it 'passes an allowed engine' do
         allow(SeasonBoard::Scheduler).to receive(:extract!).and_return(true)
         post(season_board_extract_path, params: { fin_event_id: '2', engine: 'ollama' })
-        expect(SeasonBoard::Scheduler).to have_received(:extract!).with(season_id: season.id, fin_event_id: '2', engine: 'ollama')
+        expect(SeasonBoard::Scheduler).to have_received(:extract!).with(hash_including(season_id: season.id, fin_event_id: '2', engine: 'ollama'))
       end
 
       it 'refuses an unsupported engine' do

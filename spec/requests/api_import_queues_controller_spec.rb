@@ -29,6 +29,19 @@ RSpec.describe APIImportQueuesController do
         expect(response).to have_http_status(:success)
       end
 
+      it 'links a pushed SQL batch row to its SQL Outbox script (phase 15 drill-down link)' do
+        data_root = Pathname.new(Dir.mktmpdir)
+        script = create_sql_script(data_root, 'results.sent/262/0042-x-lt4.sql', seq: 990_042, state: 'sent', remote_iq_id: 9124)
+        rows = [{ 'id' => 9124, 'batch_sql' => true, 'done' => true, 'process_runs' => 1 }]
+        allow(APIProxy).to receive(:call).and_return(DummyResponse.new(body: rows.to_json))
+        get(api_import_queues_path)
+        link = response.parsed_body.at_css('td[data-column="outbox"] a[data-drill="outbox_script"]')
+        expect(link['href']).to eq(outbox_script_path(script))
+        expect(link.text.strip).to eq('0042-x-lt4.sql')
+      ensure
+        FileUtils.rm_rf(data_root)
+      end
+
       it "shows a batch row's attached file name and an excerpt of its server error (API 0.10.81, phase 08)" do
         error = "ERROR 1062 (23000) at line 412: Duplicate entry '4188003' for key 'PRIMARY' #{'x' * 120}"
         rows = [{ 'id' => 9123, 'batch_sql' => true, 'done' => false, 'process_runs' => 1, 'error_messages' => error,
@@ -41,6 +54,11 @@ RSpec.describe APIImportQueuesController do
         expect(excerpt.text).to start_with('ERROR 1062').and end_with('...')
         expect(excerpt['title']).to eq(error)
       end
+    end
+
+    it_behaves_like('an API grid index showing an API error in place', 'import_queues') do
+      let(:index_path) { api_import_queues_path }
+      let(:api_params) { { page: anything, per_page: anything } }
     end
   end
   #-- -------------------------------------------------------------------------

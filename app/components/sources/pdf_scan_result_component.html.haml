@@ -1,0 +1,67 @@
+.card#sources-pdf-scan-result
+  .card-header.d-flex.flex-wrap.align-items-center.gap-2
+    %span.fw-semibold= t('sources.pdfs.scan.result_title')
+    %span.badge#sources-pdf-scan-status{ class: status_class }
+      - if pending?
+        %i.fa-solid.fa-spinner.fa-spin{ 'aria-hidden' => 'true' }
+      = status_text
+    - if time_text
+      %span.small.text-body-secondary= time_text
+    %span.d-none{ data: { live_busy: pending?.to_s } }
+  .card-body
+    - if @scan.nil?
+      %p.text-body-secondary.mb-0#sources-pdf-scan-none= t('sources.pdfs.scan.never')
+    - elsif pending?
+      %p.text-body-secondary.mb-0#sources-pdf-scan-pending= t('sources.pdfs.scan.pending_note')
+    - elsif @scan.failed?
+      .alert.alert-danger.mb-0#sources-pdf-scan-error{ role: 'alert' }= @scan.error
+    - else
+      %p.mb-2#sources-pdf-scan-summary
+        - if @scan.full_parse?
+          %i.fa-solid.fa-circle-check.text-success{ 'aria-hidden' => 'true' }
+          = t('sources.pdfs.scan.full_parse', family: @scan.result_format_type, count: @scan.page_count)
+        - else
+          %i.fa-solid.fa-circle-xmark.text-danger{ 'aria-hidden' => 'true' }
+          = t('sources.pdfs.scan.no_match', page: @scan.last_index + 1, count: @scan.page_count)
+      - if data_fix_path
+        = link_to(data_fix_path, class: 'btn btn-sm btn-primary mb-3', id: 'btn-sources-pdf-data-fix') do
+          %i.fa-solid.fa-wand-magic{ 'aria-hidden' => 'true' }
+          = t('sources.pdfs.scan.open_data_fix')
+      - if checked_formats.any?
+        .table-responsive
+          %table.table.table-sm.table-hover.align-middle.mb-0#sources-pdf-scan-formats
+            %thead
+              %tr
+                %th{ scope: 'col' }= t('sources.pdfs.scan.columns.format')
+                %th.text-center{ scope: 'col' }= t('sources.pdfs.scan.columns.valid')
+                %th.text-end{ scope: 'col' }= t('sources.pdfs.scan.columns.last_check')
+                %th{ scope: 'col' }= t('sources.pdfs.scan.columns.valid_at')
+            %tbody
+              - checked_formats.each do |format_name, result|
+                %tr{ class: result['valid'] ? 'table-success' : nil }
+                  %td.fw-semibold.text-break= format_name
+                  %td.text-center
+                    - if result['valid']
+                      %i.fa-solid.fa-check.text-success{ 'aria-label' => t('sources.pdfs.scan.valid') }
+                    - else
+                      %i.fa-solid.fa-xmark.text-danger{ 'aria-label' => t('sources.pdfs.scan.invalid') }
+                  %td.text-end= result['last_check']
+                  %td.small.text-break= valid_pages(result)
+                - Array(last_valid_scan[format_name]).each do |context_name, context_valid|
+                  %tr.small
+                    %td.ps-4.text-body-secondary= context_name
+                    %td.text-center
+                      - if context_valid
+                        %i.fa-solid.fa-check.text-success{ 'aria-label' => t('sources.pdfs.scan.valid') }
+                      - else
+                        %span.text-body-secondary -
+                    %td{ colspan: 2 }
+    - if log_path
+      .mt-3
+        %button.btn.btn-sm.btn-outline-secondary#btn-sources-pdf-scan-log{ log_toggle_attributes }
+          %i.fa-solid.fa-scroll{ 'aria-hidden' => 'true' }
+          = t('sources.pdfs.scan.log', name: log_name, size: number_to_human_size(log_size))
+        .collapse.mt-2#sources-pdf-scan-log
+          - if log_truncated?
+            %p.small.text-body-secondary.mb-1= t('sources.pdfs.scan.log_truncated')
+          %pre.small.border.rounded.p-2.mb-0.sources-scan-log= log_html

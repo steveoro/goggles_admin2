@@ -40,6 +40,8 @@ module Inbox
       def board_items(context)
         summary = board_summary(context)
         SeasonBoard::ActivityLog.new.all_entries.filter_map do |entry|
+          # (a Sources crawl or extraction is no board row: its end is a toast and an event, phase 15)
+          next if entry.source?
           next unless entry.failed? || entry.stale?(context.now)
 
           row = summary&.row_for(entry.fin_event_id)

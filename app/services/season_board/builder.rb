@@ -29,9 +29,11 @@ module SeasonBoard
     # - warnings: Array of Strings
     # - active_activities: Array of ActivityLog::Entry (queued/running, for the page strip)
     # - pending_board_sql_paths: board SQL scripts (backfill/calendar link) awaiting push (optional, default [])
+    # - unmatched_pipeline: Hash of unmatched source base => PipelineIndex::Facts (phase 15: the non-FIN sources
+    #   prepared from the Sources page; optional, default {})
     Result = Data.define(:season, :rows, :orphans, :unmatched_sources, :snapshot_checked_at, :warnings, :active_activities,
-                         :pending_board_sql_paths) do
-      def initialize(pending_board_sql_paths: [], **) = super
+                         :pending_board_sql_paths, :unmatched_pipeline) do
+      def initialize(pending_board_sql_paths: [], unmatched_pipeline: {}, **) = super
 
       # Orphans that can be targets of the manual "Link to meeting" action (see Builder.link_candidates).
       def link_candidates
@@ -108,11 +110,19 @@ module SeasonBoard
         season: @season, rows: board_rows, orphans:,
         unmatched_sources: @disk_index.unmatched, snapshot_checked_at: @snapshot_checked_at,
         warnings: warnings_for(snapshot_rows, board_rows, fin_ids), active_activities: @activity_log.active,
-        pending_board_sql_paths: @disk_index.board_sql_paths
+        pending_board_sql_paths: @disk_index.board_sql_paths, unmatched_pipeline:
       )
     end
 
     private
+
+    # Pipeline facts of the unmatched sources (base => Facts; only the ones with an ops row).
+    def unmatched_pipeline
+      @disk_index.unmatched.each_with_object({}) do |entry, memo|
+        facts = @pipeline_index.for_entry(entry)
+        memo[entry.bases.first] = facts if facts
+      end
+    end
 
     def load_snapshot_rows
       return Array(@rows) if @rows

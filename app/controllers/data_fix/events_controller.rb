@@ -111,7 +111,7 @@ module DataFix
 
       if session_index.nil? || event_index.nil?
         flash[:warning] = I18n.t('data_import.errors.invalid_request')
-        redirect_to(pull_index_path) && return
+        redirect_to(sources_results_path) && return
       end
 
       phase_path = source_resolver.default_phase_path_for(source_path, 4)
@@ -336,7 +336,7 @@ module DataFix
 
       if session_index.nil? || event_index.nil?
         flash[:warning] = I18n.t('data_import.errors.invalid_request')
-        redirect_to(pull_index_path) && return
+        redirect_to(sources_results_path) && return
       end
 
       phase_path = source_resolver.default_phase_path_for(source_path, 4)

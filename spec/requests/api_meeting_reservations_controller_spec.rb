@@ -35,6 +35,14 @@ RSpec.describe APIMeetingReservationsController do
         expect(response).to have_http_status(:success)
       end
     end
+
+    it_behaves_like('an API grid index showing an API error in place', 'meeting_reservations') do
+      let(:index_path) { api_meeting_reservations_path }
+      let(:api_params) do
+        { meeting_id: anything, team_id: anything, swimmer_id: anything, badge_id: anything,
+          not_coming: anything, confirmed: anything, page: anything, per_page: anything }
+      end
+    end
   end
   #-- -------------------------------------------------------------------------
   #++

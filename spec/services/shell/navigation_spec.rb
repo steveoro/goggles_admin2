@@ -9,8 +9,8 @@ RSpec.describe Shell::Navigation do
     %w[
       users/sessions#new
       lookup#index lookup#show
-      pull#extraction_status pull#edit_name pull#edit_file
-      shell/status#show
+      sources/crawler#activity sources/pdfs#scan_result
+      shell/status#show shell/palette#search
     ]
   end
 
@@ -86,12 +86,19 @@ RSpec.describe Shell::Navigation do
       expect(non_page_routes - app_get_routes).to be_empty
     end
 
-    it 'prefers the most specific match (PDFs tab vs. Result files)' do
-      expect(described_class.item_for('pull', 'result_files', { 'parent_folder' => 'pdfs' }).key).to eq(:pdfs)
-      expect(described_class.item_for('pull', 'result_files', ActionController::Parameters.new(parent_folder: 'pdfs')).key).to eq(:pdfs)
-      expect(described_class.item_for('pull', 'result_files', {}).key).to eq(:result_files)
-      expect(described_class.item_for('pull', 'result_files', { parent_folder: 'results.new' }).key).to eq(:result_files)
-      expect(described_class.item_for('pdf', 'extract_txt', {}).key).to eq(:pdfs)
+    it 'maps every Sources tab (phase 15) to the one Sources item, and no Pull / PDF page is left' do
+      %w[sources/results#index sources/calendars#index sources/calendars#meetings sources/manifests#index sources/pdfs#index
+         sources/pdfs#show sources/crawler#show sources/files#index sources/files#rename sources/files#edit].each do |route|
+        controller, action = route.split('#')
+        expect(described_class.item_for(controller, action)&.key).to eq(:sources), route
+      end
+      expect(described_class::ITEMS.map(&:key)).not_to include(:crawler, :calendar_files, :pdfs, :result_files)
+      expect(app_get_routes.grep(/\A(pull|pdf|file_list)#/)).to be_empty
+    end
+
+    it 'prefers the most specific match (controller#action?param over controller)' do
+      expect(described_class.item_for('dashboard', 'activity_log', {}).key).to eq(:activity)
+      expect(described_class.item_for('dashboard', 'index', {}).key).to eq(:dashboard)
     end
 
     it 'maps contextual children to their parent controller item' do
@@ -136,13 +143,11 @@ RSpec.describe Shell::Navigation do
   end
 
   describe '.breadcrumbs_for' do
-    it 'returns Import › Result files › Data-Fix for a Data-Fix review page' do
+    it 'returns Import › Sources › Data-Fix for a Data-Fix review page' do
       crumbs = described_class.breadcrumbs_for('data_fix/teams', 'review_teams', {})
-      expect(crumbs.map(&:first)).to eq(
-        [I18n.t('shell.groups.import'), I18n.t('data_import.calendar.result_files_page_title'), I18n.t('shell.nav.data_fix')]
-      )
+      expect(crumbs.map(&:first)).to eq([I18n.t('shell.groups.import'), I18n.t('sources.nav'), I18n.t('shell.nav.data_fix')])
       expect(crumbs.first.last).to be_nil
-      expect(crumbs.second.last).to eq('/pull/result_files')
+      expect(crumbs.second.last).to eq('/sources/results')
     end
 
     it 'adds the action as the last crumb for a contextual child page' do
@@ -182,10 +187,22 @@ RSpec.describe Shell::Navigation do
   end
 
   describe '.palette_entries' do
-    it 'returns one entry per sidebar item with a label and a path' do
+    it 'returns one entry per item (contextual children too) with a label, a group label and a path' do
       entries = described_class.palette_entries
-      expect(entries.size).to eq(described_class::ITEMS.count(&:sidebar?))
-      expect(entries).to all(include(:key, :label, :path))
+      expect(entries.pluck(:key)).to eq(described_class::ITEMS.map(&:key))
+      expect(entries).to all(include(:key, :label, :group_label, :icon, :path, :keywords))
+      expect(entries.pluck(:path)).to all(start_with('/'))
+    end
+
+    it "names the parent of a contextual child as its context (the page it's reached from)" do
+      entries = described_class.palette_entries.index_by { |entry| entry[:key] }
+      expect(entries[:activity][:context]).to eq(I18n.t('dashboard.title'))
+      expect(entries[:dashboard][:context]).to be_nil
+    end
+
+    it 'lists only the items reachable offline for an API-offline session' do
+      keys = described_class.palette_entries(offline: true).pluck(:key)
+      expect(keys).to match_array(described_class::ITEMS.select(&:offline_ok?).map(&:key))
     end
   end
 end

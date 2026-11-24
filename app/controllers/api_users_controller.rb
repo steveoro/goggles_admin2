@@ -5,6 +5,8 @@
 # Manage User via API.
 #
 class APIUsersController < ApplicationController
+  include APIGridIndex
+
   # GET /api_users
   # Show the Users dashboard.
   #
@@ -12,7 +14,7 @@ class APIUsersController < ApplicationController
   # - <tt>@domain</tt>: list of all instance rows
   # - <tt>@grid</tt>: the customized Datagrid instance
   #
-  def index # rubocop:disable Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
+  def index
     index_params # prepare @index_params memoized member
     api_params = {
       page: index_params[:page] || 1, per_page: index_params[:per_page] || 25
@@ -25,28 +27,7 @@ class APIUsersController < ApplicationController
       method: :get, url: 'users', jwt: current_user.jwt,
       params: api_params
     )
-    parsed_response = result.body.present? ? JSON.parse(result.body) : { 'error' => "Error #{result.code}" }
-    unless result.code == 200
-      flash[:error] = I18n.t('dashboard.api_proxy_error', error_code: result.code, error_msg: parsed_response['error'])
-      redirect_to(root_path) && return
-    end
-
-    set_grid_domain_for(UsersGrid, GogglesDb::User, result.headers, parsed_response)
-
-    respond_to do |format|
-      @grid = UsersGrid.new(grid_filter_params)
-
-      format.html { @grid }
-
-      format.csv do
-        send_data(
-          @grid.to_csv,
-          type: 'text/csv',
-          disposition: 'inline',
-          filename: "grid-users-#{DateTime.now.strftime('%Y%m%d.%H%M%S')}.csv"
-        )
-      end
-    end
+    render_api_index(UsersGrid, GogglesDb::User, result, csv_name: 'users')
   end
   #-- -------------------------------------------------------------------------
   #++

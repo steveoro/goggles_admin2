@@ -19,6 +19,12 @@ module Inbox
         target = board_target(row)
         target && action(I18n.t('inbox.needs_review.action', step: row.next_action.params[:phase]), target.path)
       end
+
+      def unmatched_action(source, _summary)
+        step = source.pipeline_detail[:step] || source.phase || 1
+        action(I18n.t('inbox.needs_review.action', step:),
+               SeasonBoard::ActionPaths.review_step_path(source.review_path, step, filter_state: 'review'))
+      end
     end
   end
 end

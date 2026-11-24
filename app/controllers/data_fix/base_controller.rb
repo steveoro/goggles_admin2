@@ -70,7 +70,7 @@ module DataFix
       @file_path = params[:file_path]
       if @file_path.blank?
         flash[:warning] = I18n.t('data_import.errors.invalid_request')
-        redirect_to(pull_index_path) && return
+        redirect_to(sources_results_path) && return
       end
 
       @source_path = source_resolver.resolve_working_source_path(@file_path)

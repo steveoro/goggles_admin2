@@ -21,15 +21,15 @@
     = form_with(scope: @grid.param_name, url: health_section_path(@season.id, @check.key), method: :get,
                 class: 'row g-2 align-items-end mb-2 health-section-filters') do |f|
       .col-auto
-        = f.label(:status, t('datagrid.health_findings_grid.filters.status'), class: 'form-label small mb-0')
+        = f.label(:status, t('grids.health_findings.status'), class: 'form-label small mb-0')
         = f.select(:status, HealthFindingsGrid::STATUS_FILTERS.map { |s| [t("health.section.status_filters.#{s}"), s] },
                    { selected: @grid.status }, class: 'form-select form-select-sm')
       .col-auto
-        = f.label(:severity, t('datagrid.health_findings_grid.filters.severity'), class: 'form-label small mb-0')
+        = f.label(:severity, t('grids.health_findings.severity'), class: 'form-label small mb-0')
         = f.select(:severity, Ops::HealthFinding::SEVERITIES.map { |s| [t("health.severities.#{s}"), s] },
                    { selected: @grid.severity, include_blank: t('health.section.all') }, class: 'form-select form-select-sm')
       .col-auto
-        = f.label(:search, t('datagrid.health_findings_grid.filters.search'), class: 'form-label small mb-0')
+        = f.label(:search, t('grids.health_findings.filters.search'), class: 'form-label small mb-0')
         = f.search_field(:search, value: @grid.search, class: 'form-control form-control-sm', placeholder: t('health.section.search_placeholder'))
       .col-auto
         = f.submit(t('health.section.filter'), class: 'btn btn-sm btn-secondary')

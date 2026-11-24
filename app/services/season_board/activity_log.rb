@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'digest'
+
 module SeasonBoard
   #
   # = SeasonBoard::ActivityLog
@@ -14,16 +16,21 @@ module SeasonBoard
   # File layout:
   #   { "entries" => { "<fin_event_id>" => { "crawl" => {...}, "extract" => {...}, "prepare" => {...} } } }
   # (unknown kinds found in the file are ignored: only KINDS are read.)
-  # where each entry stores: origin, status, queued_at, started_at, finished_at (ISO8601), url, message.
+  # where each entry stores: origin, status, queued_at, started_at, finished_at (ISO8601), url, message, and the
+  # optional (phase 15) label (shown instead of the FIN id) and heartbeat_at (written by a long job at each poll).
+  #
+  # Phase 15: the manual crawls & extractions of the Sources pages use a source key instead of a FIN id
+  # ('src:<sha1>', see .source_key), so the same strip, "In progress" zone and busy checks show them.
   #
   # A 'running' entry older than RUNNING_STALE_AFTER (or a 'queued' one older than
-  # QUEUED_STALE_AFTER) is considered stale: still reported, but no longer "busy".
+  # QUEUED_STALE_AFTER) is considered stale: still reported, but no longer "busy". A running entry
+  # whose heartbeat is younger than HEARTBEAT_STALE_AFTER is never stale (a long calendar crawl).
   #
   # Each instance reads the file once and keeps the entries in memory (a Season board build asks
   # #for once per row): the writes made through the same instance reset that cache, while
   # #reload! re-reads the file to see the writes made by other instances (other processes, jobs).
   #
-  class ActivityLog
+  class ActivityLog # rubocop:disable Metrics/ClassLength
     DEFAULT_PATH = Rails.root.join('crawler/data/season-board.json')
 
     # (:prepare = DataFixPrepareJob, phase 10; commits are tracked by Ops::CommitReport, not here)
@@ -37,8 +44,22 @@ module SeasonBoard
     # The background worker runs one job at a time and a daily re-check can queue up to
     # SeasonRecheckJob::MAX_CRAWLS_PER_RUN crawls of up to ~36 minutes each (~9 hours in all):
     QUEUED_STALE_AFTER = 12.hours
+    # A running entry with a heartbeat younger than this is busy, whatever its start time (the jobs beat every 10 s).
+    HEARTBEAT_STALE_AFTER = 5.minutes
+    # Prefix of the keys of the Sources work (no FIN id).
+    SOURCE_KEY_PREFIX = 'src:'
 
     attr_reader :path
+
+    # Key of a Sources crawl or extraction: 'src:<sha1 of kind and target>' (target: the URL or the file path).
+    def self.source_key(kind, target)
+      "#{SOURCE_KEY_PREFIX}#{Digest::SHA1.hexdigest("#{kind}|#{target}")}"
+    end
+
+    # True for a key made by .source_key.
+    def self.source_key?(key)
+      key.to_s.start_with?(SOURCE_KEY_PREFIX)
+    end
 
     # Configurable through config.x.season_board.activity_log_path (falls back to DEFAULT_PATH).
     def self.default_path
@@ -52,27 +73,39 @@ module SeasonBoard
 
     # Records a new queued attempt (resetting any previous one for the same FIN id & kind).
     # Returns the new Entry.
-    def queue!(fin_event_id, kind:, origin:, url: nil, message: nil)
+    def queue!(fin_event_id, kind:, origin:, url: nil, message: nil, label: nil) # rubocop:disable Metrics/ParameterLists
       write_entry(fin_event_id, kind) do |_previous|
-        {
+        entry = {
           'origin' => check!(origin, ORIGINS, :origin).to_s, 'status' => 'queued',
           'queued_at' => now_iso, 'started_at' => nil, 'finished_at' => nil,
           'url' => url, 'message' => message
         }
+        with_label(entry, label)
       end
     end
 
     # Marks the attempt as running. Keeps queued_at/origin/url from a previous queued entry;
     # origin defaults to :manual when there's nothing to inherit. Returns the new Entry.
-    def start!(fin_event_id, kind:, origin: nil, url: nil)
+    def start!(fin_event_id, kind:, origin: nil, url: nil, label: nil) # rubocop:disable Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
       write_entry(fin_event_id, kind) do |previous|
         inherit = previous && previous['status'] == 'queued' ? previous : {}
         origin = check!(origin || inherit['origin'] || :manual, ORIGINS, :origin)
-        {
+        entry = {
           'origin' => origin.to_s, 'status' => 'running',
           'queued_at' => inherit['queued_at'], 'started_at' => now_iso, 'finished_at' => nil,
           'url' => url || inherit['url'] || previous&.dig('url'), 'message' => nil
         }
+        with_label(entry, label || previous&.dig('label'))
+      end
+    end
+
+    # Writes the heartbeat of a running attempt (a long job calls it at each poll, see HEARTBEAT_STALE_AFTER).
+    # Returns the Entry, or nil when the attempt is not running.
+    def heartbeat!(fin_event_id, kind:)
+      return unless entry(fin_event_id, kind)&.running?
+
+      write_entry(fin_event_id, kind) do |previous|
+        previous['status'] == 'running' ? previous.merge('heartbeat_at' => now_iso) : previous
       end
     end
 
@@ -162,8 +195,14 @@ module SeasonBoard
         fin_event_id: fin_id, kind: kind,
         origin: hash['origin'].to_s.presence&.to_sym, status: hash['status'].to_s.presence&.to_sym,
         queued_at: parse_time(hash['queued_at']), started_at: parse_time(hash['started_at']),
-        finished_at: parse_time(hash['finished_at']), url: hash['url'], message: hash['message']
+        finished_at: parse_time(hash['finished_at']), url: hash['url'], message: hash['message'],
+        label: hash['label'].presence, heartbeat_at: parse_time(hash['heartbeat_at'])
       )
+    end
+
+    # The entry with its 'label' key when there is one (FIN entries keep their former layout).
+    def with_label(entry, label)
+      label.present? ? entry.merge('label' => label) : entry
     end
 
     def check!(value, allowed, name)

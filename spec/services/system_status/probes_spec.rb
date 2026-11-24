@@ -139,7 +139,7 @@ RSpec.describe 'SystemStatus probes' do # rubocop:disable RSpec/DescribeClass
       result = described_class.new.call
       expect(result.level).to eq(:error)
       expect(result.detail).to eq(I18n.t('shell.status.crawler.off'))
-      expect(result.action).to include(path: '/pull/start_crawler', http_method: :post)
+      expect(result.action).to include(path: '/sources/crawler/start', http_method: :post)
       expect(result).to be_post_action
 
       FileUtils.rm_f(pid_path)
@@ -150,7 +150,7 @@ RSpec.describe 'SystemStatus probes' do # rubocop:disable RSpec/DescribeClass
     it 'is :unknown without a PID process nor a recent check' do
       result = described_class.new.call
       expect(result.level).to eq(:unknown)
-      expect(result.action[:path]).to eq('/pull/start_crawler')
+      expect(result.action[:path]).to eq('/sources/crawler/start')
     end
 
     it 'reads the status file while running: idle :ok, busy :ok with its progress, failed or stuck :warn' do

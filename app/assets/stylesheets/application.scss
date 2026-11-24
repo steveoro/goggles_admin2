@@ -20,6 +20,7 @@
 
 @use 'shell/layout';
 @use 'shell/legacy_wrappers';
+@use 'shell/palette';
 
 @use 'components/tables';
 @use 'components/tom_select';
@@ -31,3 +32,4 @@
 @use 'pages/goggles_cup';
 @use 'pages/data_fix';
 @use 'pages/outbox';
+@use 'pages/sources';

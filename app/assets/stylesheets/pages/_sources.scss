@@ -1,0 +1,48 @@
+// = Sources area (phase 15, /sources) =
+// File tables, the PDF text preview and scan log, the file editor. Colours come from the Bootstrap variables, so both
+// themes work.
+
+[data-page^='sources/'] {
+  .sources-file-table tr,
+  .sources-file-focus {
+    scroll-margin-top: calc(var(--ga-topbar-height, 3.5rem) + 1rem);
+  }
+
+  .sources-file-focus td:first-child {
+    box-shadow: inset 3px 0 0 var(--bs-primary);
+  }
+
+  .sources-txt-preview,
+  .sources-scan-log {
+    max-height: 32rem;
+    overflow: auto;
+    white-space: pre;
+    background-color: var(--bs-tertiary-bg);
+    color: var(--bs-body-color);
+  }
+
+  .sources-editor {
+    min-height: 24rem;
+
+    .cm-editor {
+      height: 70vh;
+      background-color: var(--bs-body-bg);
+      color: var(--bs-body-color);
+    }
+
+    .cm-gutters {
+      background-color: var(--bs-tertiary-bg);
+      color: var(--bs-secondary-color);
+      border-right-color: var(--bs-border-color);
+    }
+  }
+
+  #sources-tabs .nav-tabs {
+    scrollbar-width: thin;
+  }
+}
+
+// The end-of-crawl toasts are broadcast to every page.
+.sources-crawl-toast .link-light {
+  text-decoration: underline;
+}

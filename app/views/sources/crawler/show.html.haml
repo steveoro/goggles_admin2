@@ -1,0 +1,95 @@
+-#
+  Crawler tab: crawler server state (status/PID files only), the background activity (frame reloaded on every ping and
+  every 10 s while something runs) and one form per crawl kind, each queuing a SourceCrawlJob (Sources::CrawlsController).
+:ruby
+  live = { controller: 'live-frames', 'live-frames-interval-value': 10_000 }
+  busy_count = @active.count { |entry| entry.kind == :crawl }
+  confirm = busy_count.positive? ? t('sources.crawler.confirm_behind', count: busy_count) : t('sources.crawler.confirm')
+  kinds_with_event = %w[microplus]
+= render(partial: 'sources/header', locals: { tab: :crawler, path: sources_crawler_path })
+
+.row.g-3.mb-3
+  .col-lg-5
+    .card.h-100#sources-crawler-status
+      .card-header.fw-semibold
+        %i.fa-solid.fa-spider{ 'aria-hidden' => 'true' }
+        = t('sources.crawler.server_title')
+      .card-body
+        %p.mb-2
+          %span.badge{ class: "text-bg-#{{ ok: 'success', warn: 'warning', error: 'danger' }.fetch(@crawler.level, 'secondary')}" }
+            = t("sources.crawler.levels.#{@crawler.level}")
+          %span.ms-1= @crawler.detail
+        %p.small.text-body-secondary.mb-2= t('sources.crawler.server_note', url: CrawlerClient::BASE_URL)
+        = button_to(sources_crawler_start_path, method: :post, class: 'btn btn-sm btn-outline-success', form_class: 'd-inline',
+                                                id: 'btn-sources-start-crawler', params: { season_id: }) do
+          %i.fa-solid.fa-play{ 'aria-hidden' => 'true' }
+          = t('federnuoto_watch.crawler.start')
+  .col-lg-7{ data: live }
+    = turbo_frame_tag('sources-crawler-activity', src: sources_crawler_activity_path, target: '_top', data: { live_frames_target: 'frame' }) do
+      = render(partial: 'sources/crawler/activity', locals: { active: @active, recent: @recent })
+
+%p.small.text-body-secondary#sources-crawler-serial-note= t('sources.crawler.serial_note')
+
+.row.g-3
+  .col-xl-6
+    .card.h-100#sources-crawl-calendar
+      .card-header.fw-semibold= t('sources.crawler.kinds.calendar')
+      .card-body
+        %p.small.text-body-secondary= t('sources.crawler.notes.calendar')
+        = form_with(url: sources_crawls_path, method: :post, id: 'frm-sources-crawl-calendar', data: { turbo_confirm: confirm }) do
+          = hidden_field_tag(:kind, 'calendar', id: nil)
+          .row.g-2
+            .col-md-6
+              = label_tag('sources-crawl-calendar-season', t('sources.crawler.fields.season'), class: 'form-label small')
+              = select_tag(:season_id, options_for_select(@calendar_seasons.map { |label, id, _year| [label, id] }, season_id),
+                           id: 'sources-crawl-calendar-season', class: 'form-select form-select-sm')
+            .col-md-3
+              = label_tag('sources-crawl-calendar-menu', t('sources.crawler.fields.sub_menu_type'), class: 'form-label small')
+              = select_tag(:sub_menu_type, options_for_select(sources_calendar_sub_menus, @sub_menu_type),
+                           id: 'sources-crawl-calendar-menu', class: 'form-select form-select-sm')
+            .col-md-3
+              = label_tag('sources-crawl-calendar-year', t('sources.crawler.fields.year_text'), class: 'form-label small')
+              = text_field_tag(:year_text, nil, id: 'sources-crawl-calendar-year', class: 'form-control form-control-sm',
+                                                placeholder: sources_year_text(@season) || '2025/2026', pattern: '\d{4}/\d{4}')
+          .form-text.mb-2= t('sources.crawler.notes.year_text')
+          = submit_tag(t('sources.crawler.submit'), class: 'btn btn-sm btn-primary', id: 'btn-sources-crawl-calendar', name: nil)
+  .col-xl-6
+    .card.h-100#sources-crawl-calendar-results
+      .card-header.fw-semibold= t('sources.crawler.kinds.calendar_results')
+      .card-body
+        %p.small.text-body-secondary= t('sources.crawler.notes.calendar_results', season: season_id)
+        - if @calendar_files.empty?
+          %p.small.text-body-secondary.mb-0= t('sources.crawler.no_calendar_files', season: season_id)
+        - else
+          = form_with(url: sources_crawls_path, method: :post, id: 'frm-sources-crawl-calendar-results', data: { turbo_confirm: confirm }) do
+            = hidden_field_tag(:kind, 'calendar_results', id: nil)
+            = hidden_field_tag(:season_id, season_id, id: nil)
+            .mb-2
+              = label_tag('sources-crawl-calendar-file', t('sources.crawler.fields.calendar_file'), class: 'form-label small')
+              = select_tag(:file_path, options_for_select(@calendar_files.map { |path| [path.basename.to_s, file_guard.relative(path)] }),
+                           id: 'sources-crawl-calendar-file', class: 'form-select form-select-sm')
+            .d-flex.flex-wrap.gap-2
+              = submit_tag(t('sources.crawler.submit_all'), class: 'btn btn-sm btn-primary', id: 'btn-sources-crawl-calendar-results', name: nil)
+              = link_to(t('sources.crawler.select_meetings'), sources_calendars_path(season_id:), class: 'btn btn-sm btn-outline-secondary')
+  - sources_url_kinds.each do |kind|
+    .col-xl-6
+      .card.h-100{ id: "sources-crawl-#{kind.dasherize}" }
+        .card-header.fw-semibold= t("sources.crawler.kinds.#{kind}")
+        .card-body
+          %p.small.text-body-secondary
+            = t("sources.crawler.notes.#{kind}")
+            = link_to(t('sources.crawler.site_link'), sources_crawl_site_link(kind), target: '_blank', rel: 'noopener noreferrer')
+          = form_with(url: sources_crawls_path, method: :post, id: "frm-sources-crawl-#{kind.dasherize}", data: { turbo_confirm: confirm }) do
+            = hidden_field_tag(:kind, kind, id: nil)
+            = hidden_field_tag(:season_id, season_id, id: nil)
+            .mb-2
+              = label_tag("sources-crawl-#{kind.dasherize}-url", t('sources.crawler.fields.url'), class: 'form-label small')
+              = url_field_tag(:url, nil, id: "sources-crawl-#{kind.dasherize}-url", class: 'form-control form-control-sm', required: true,
+                                         placeholder: sources_crawl_example(kind), autocomplete: 'off')
+            - if kinds_with_event.include?(kind)
+              .mb-2
+                = label_tag("sources-crawl-#{kind.dasherize}-event", t('sources.crawler.fields.target_event'), class: 'form-label small')
+                = text_field_tag(:target_event, nil, id: "sources-crawl-#{kind.dasherize}-event", class: 'form-control form-control-sm',
+                                                     placeholder: t('sources.crawler.target_event_hint'))
+            .small.text-body-secondary.mb-2= t('sources.crawler.season_note', season: season_id)
+            = submit_tag(t('sources.crawler.submit'), class: 'btn btn-sm btn-primary', id: "btn-sources-crawl-#{kind.dasherize}", name: nil)

@@ -1,0 +1,7 @@
+= form_with(url: @path, method: :get, local: true, class: 'd-flex align-items-center gap-2', id: 'sources-season-form',
+            data: { controller: 'sources-season', turbo_action: 'advance' }) do
+  = label_tag('sources-season-select', t('sources.season.label'), class: 'form-label small text-body-secondary mb-0 text-nowrap')
+  = select_tag(:season_id, options_for_select(@options, @season_id),
+               id: 'sources-season-select', class: 'form-select form-select-sm', data: { action: 'change->sources-season#submit' })
+  %noscript
+    = submit_tag(t('sources.season.show'), class: 'btn btn-sm btn-outline-secondary', name: nil)

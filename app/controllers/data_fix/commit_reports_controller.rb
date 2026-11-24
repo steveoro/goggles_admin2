@@ -47,7 +47,7 @@ module DataFix
       return if @report
 
       flash[:warning] = I18n.t('data_fix.commit_report.not_found')
-      redirect_to(pull_result_files_path)
+      redirect_to(sources_results_path)
     end
   end
 end

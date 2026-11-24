@@ -33,6 +33,14 @@ RSpec.describe APIIssuesController do
         expect(response).to have_http_status(:success)
       end
     end
+
+    it_behaves_like('an API grid index showing an API error in place', 'issues') do
+      let(:index_path) { api_issues_path }
+      let(:api_params) do
+        { user_id: anything, code: anything, status: anything, processable: anything, done: anything,
+          page: anything, per_page: anything }
+      end
+    end
   end
   #-- -------------------------------------------------------------------------
   #++

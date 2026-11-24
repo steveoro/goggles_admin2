@@ -22,13 +22,13 @@ class FedernuotoWatchController < ApplicationController
     head(:no_content)
   end
 
-  # [POST] Starts the crawler server if needed, then opens the Pull dashboard with the
+  # [POST] Starts the crawler server if needed, then opens the Sources crawler tab with the
   # calendar sub-menu preset to the watched page.
   def pull_calendar
     launch_result = CrawlerLauncher.new.ensure_running!
-    # (No need to tell when it's already running: the Pull page shows the status anyway)
+    # (No need to tell when it's already running: the crawler tab shows the status anyway)
     flash_symbol, message = CrawlerLauncher.flash_for(launch_result)
     flash[flash_symbol] = message unless launch_result == :already_running
-    redirect_to(pull_index_path(sub_menu_type: CALENDAR_SUB_MENU))
+    redirect_to(sources_crawler_path(sub_menu_type: CALENDAR_SUB_MENU))
   end
 end

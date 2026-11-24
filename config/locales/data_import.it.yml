@@ -2,42 +2,6 @@ it:
   data_import:
     generic_save_btn: "💾 Salva modifiche"
     btn_save_confirm: 'Salvo le modifiche?'
-    crawler_headers:
-      calendar: '1. Calendar / target season'
-      results: '2. Results / target URL / layout type'
-    config:
-      sub_menu_type: 'Sub-menu (solo calendari)'
-      target_url: 'URL target (solo risultati, ignorata per calendari)'
-      crawler_type: 'Tipo Crawler'
-      crawler_fin_calendar: 'FIN calendar (auto-layout)'
-      crawler_fin_results_lt2: 'FIN risultati diretti (layout 2)'
-      crawler_fin_results: 'FIN results (layout ~3)'
-      crawler_microplus: 'Microplus results (layout 4)'
-      crawler_ficr_results: 'FICR results (layout 5, output LT4)'
-      crawler_goandswim_results: 'Risultati Go&Swim (layout 6, output LT4)'
-      target_event: 'Titolo evento da scaricare (così come sulla pagina; vuoto = tutti)'
-    calendar:
-      crawler_status_page_title: 'Crawler API'
-      choose_season_label: 'Scegli stagione'
-      calendar_files_page_title: 'File calendario'
-      pdfs_page_title: 'PDF'
-      result_files_page_title: 'File risultati'
-      btn_run_crawler: '📥 CRAWLER run'
-      btn_run_crawler_confirm: 'Eseguo il crawler per recuperare i dati con la configurazione specificata?'
-      btn_clear_log: 'Azzera Log'
-      btn_clear_log_confirm: 'Azzero il log?'
-      season_search_label: 'Season / cerca x label / URL calendario / layout:'
-    file:
-      btn_delete_tooltip: 'Elimina file'
-      confirm_delete: 'Sicuri di voler cancellare questo file?'
-      btn_rename_tooltip: 'Rinomina file'
-      btn_edit_tooltip: 'Modifica file'
-      btn_process_json_v2_tooltip: 'Elabora con pipeline phased (v2)'
-      btn_download_tooltip: 'Scarica file'
-      btn_process_csv_tooltip: 'Elabora questo file calendario, scaricando i risultati disponibili'
-      btn_select_csv_tooltip: 'Apri la pagina di selezione meeting per questo file calendario'
-      btn_process_pdf_tooltip: 'Converti questo file risultati da PDF al formato JSON che può essere importato'
-      btn_process_json_tooltip: "Elabora questo file risultati, preparandolo per l'importazione dati"
     selection:
       title: '1. Seleziona i meeting da scaricare'
       season_label: 'Season ID %{id}'
@@ -69,15 +33,6 @@ it:
       source_done_tooltip: 'Una sorgente per questo meeting è già in results.done'
       btn_crawl_selected: '🕷 Crawl selezionati'
       btn_crawl_selected_confirm: 'Scarico i meeting selezionati?'
-      btn_extract_manifests: 'Estrai manifest (%{count} in attesa)'
-      btn_extract_manifests_tooltip: 'Estrai i dati meeting dai manifest in attesa (in background)'
-      engine_tooltip: 'Motore di estrazione: Devin CLI (sessioni `devin -p`) oppure server Ollama locale'
-      extraction:
-        already_running: 'Una estrazione manifest è già in corso'
-        engine_unavailable: 'Motore %{engine} non disponibile: %{hint}'
-        model_missing: "Il modello '%{model}' non è disponibile per %{engine}: %{hint}"
-        no_manifests: 'Nessun manifest PDF in attesa di estrazione per questa stagione'
-        started: 'Estrazione manifest avviata in background (%{count} file)'
       errors:
         invalid_calendar_file: 'File calendario non valido'
         no_selection: 'Nessun meeting selezionato'
@@ -162,15 +117,8 @@ it:
         overall_points: "Punti totali"
         missing_team: "squadra mancante o nuova"
         skipped: "Punteggi società saltati (squadra non risolta)"
-    manifest_extraction:
-      title: "2. Estrazione automatica locandine già presenti"
     errors:
       invalid_request: 'Richiesta non valida'
-      invalid_file_content: 'Contenuto del file non valido rispetto alla sua estensione'
-      missing_url_or_season_id: 'Devi specificare un URL calendario e un ID stagione'
-      crawler_unreachable: 'Crawler server non raggiungibile'
-      crawler_connecting: 'In connessione...'
-      unsupported_layout_or_incomplete_url: 'Layout non supportato o target URL incompleta!'
       category_recompute_missing_inputs: 'Impossibile ricalcolare le categorie: la Fase 1 deve contenere stagione e data del meeting.'
       category_recompute_failed: 'Ricalcolo categorie fallito. Nessun risultato completo è stato applicato.'
     messages:

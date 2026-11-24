@@ -22,7 +22,7 @@
   = render(Shell::PageHeaderComponent.new(title: t('data_fix.wizard.title', number: 5, name: t('data_fix.steps.results')),
                                           subtitle: basename)) do |header|
     - header.with_actions do
-      = link_to(pull_result_files_path, class: 'btn btn-sm btn-outline-secondary') do
+      = link_to(sources_results_path, class: 'btn btn-sm btn-outline-secondary') do
         %i.fa-solid.fa-arrow-left{ 'aria-hidden': 'true' }
         = t('data_fix.wizard.back_to_files')
       -# (phase 09) what the commit will do, a fresh preflight and the same Commit POST as the button below

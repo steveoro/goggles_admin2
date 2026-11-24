@@ -174,7 +174,7 @@ RSpec.describe DashboardController do
       expect(html.css('.dashboard-status-row').pluck('data-status-key')).to eq(SystemStatus::Registry.probes.map { |p| p.key.to_s })
       crawler = html.at_css('#status-row-crawler')
       expect(crawler['data-status-level']).to eq('error')
-      expect(crawler.at_css("form[action='#{start_crawler_path}'] button")).to be_present
+      expect(crawler.at_css("form[action='#{sources_crawler_start_path}'] button")).to be_present
     ensure
       FileUtils.rm_f(SystemStatus::CrawlerProbe.pid_path)
     end

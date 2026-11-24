@@ -548,20 +548,3 @@ it:
         apply_failed: "Applicazione dell'operazione fallita"
         refused: "Operazione rifiutata"
         script_written: "Script dell'operazione registrato (non applicato)"
-  datagrid:
-    operation_runs_grid:
-      columns:
-        id: "#"
-        created_at: "Richiesta"
-        operation: "Operazione"
-        mode: "Modalità"
-        status: "Stato"
-        label: "Esecuzione"
-        season_id: "Stagione"
-        script: "Script"
-        origin: "Origine"
-      filters:
-        operation_key: "Operazione"
-        mode: "Modalità"
-        status: "Stato"
-        season_id: "Stagione"

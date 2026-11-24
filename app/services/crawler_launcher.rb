@@ -12,7 +12,7 @@ require 'fileutils'
 # the Rails server; its output goes to log/crawler.log and its PID to tmp/pids/crawler.pid.
 #
 class CrawlerLauncher
-  STATUS_URL = "#{PullController::CRAWLER_API_URL}status".freeze
+  STATUS_URL = "#{CrawlerClient::BASE_URL}status".freeze
   CRAWLER_DIR = Rails.root.join('crawler')
   LOG_PATH = Rails.root.join('log/crawler.log')
   PID_PATH = Rails.root.join('tmp/pids/crawler.pid')

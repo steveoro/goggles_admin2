@@ -1,10 +1,6 @@
-= render(Shell::PageHeaderComponent.new(title: t('dashboard.meetings.title'), count: @domain_count))
-= render(Grid::EditModalComponent.new(controller_name: controller_name,
-         asset_row: GogglesDb::Meeting.new, jwt: current_user.jwt))
-
-%section.mb-4#data-grid
-  = render(Grid::ToolbarComponent.new(asset_row: GogglesDb::Meeting.new,
-           controller_name: controller_name, create: false, destroy: false, request_params: @grid_filter_params)) do
+= render(Grid::PageComponent.new(title: t('dashboard.meetings.title'), model: GogglesDb::Meeting, grid: @grid,
+                                 domain: api_grid_domain, toolbar: { create: false, destroy: false })) do |page|
+  - page.with_toolbar_extra do
     .btn-group#csv-0mirs-btn
       = link_to(api_meetings_no_mirs_path(@grid_filter_params),
                 data: { bs_toggle: 'tooltip', bs_title: t('datagrid.csv_export.btn_localhost_0mirs_tooltip') },
@@ -18,12 +14,3 @@
                 data: { bs_toggle: 'tooltip', bs_title: t('health.meetings_grid_link_tooltip') }) do
         %i.fa-solid.fa-heart-pulse{ 'aria-hidden' => 'true' }
         = t('health.meetings_grid_link')
-  = datagrid_form_with(model: @grid, method: :get,
-                      url: url_for(controller: controller_name, action: :index, params: @index_params))
-  = render(Grid::FilterLabelsComponent.new(filter_params: @grid_filter_params))
-
-  = render(PageLinksForArrayComponent.new(data: @grid&.assets, total_count: @domain_count,
-           page: @domain_page, per_page: @domain_per_page))
-  = datagrid_table(@grid, html: { class: 'table table-hover table-sm' })
-  = render(PageLinksForArrayComponent.new(data: @grid&.assets, total_count: @domain_count,
-           page: @domain_page, per_page: @domain_per_page))

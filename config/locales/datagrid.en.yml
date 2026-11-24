@@ -55,3 +55,22 @@ en:
       create_failed: "SQL create failed: %{error}"
       missing_entity: "Missing or invalid %{entity} (ID: %{id})"
       duplicate_error: "A Team Manager link already exists for affiliation %{ta_id} and user %{user_id}"
+    # (phase 15) API error box of the api_* grid pages (Grid::APIErrorComponent)
+    api_error:
+      title: "The API answered with an error (code %{code}): no rows to show"
+      unreachable_title: "The API server can't be reached: no rows to show"
+      hint: "The filters above still work. Retry, or change the filter if it caused the error."
+      unreachable_hint: "Check that the API server is running and that its URL in Settings is right, then retry."
+      retry: "Retry"
+      settings: "API URL in Settings"
+    # (phase 15) drill-down links of the grid rows (Grid::DrillLinkComponent)
+    drill:
+      season_board: "On the Season board"
+      calendars: "Calendars of its season"
+      badges: "Badges"
+      team_affiliations: "Team affiliations"
+      team_managers: "Team managers"
+      team: "The team"
+      swimmers: "Swimmers with this last name"
+      meetings: "Meetings with this name"
+      outbox_script: "Open the script in the SQL Outbox"

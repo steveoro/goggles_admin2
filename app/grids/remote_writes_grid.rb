@@ -5,7 +5,7 @@
 #
 # Read-only DataGrid of the logged remote writes (Ops::RemoteWrite, local ops DB; see RemoteWritesController).
 # Newest first; filters on endpoint (contains), outcome, HTTP method and API base URL.
-# Headers & filter labels: 'datagrid.remote_writes_grid.*' (config/locales/remote_writes.*.yml).
+# Headers & filter labels: 'grids.remote_writes.*' (config/locales/grids.*.yml).
 #
 class RemoteWritesGrid < BaseGrid
   STATUS_BADGES = { 'success' => 'text-bg-success', 'failed' => 'text-bg-danger', 'unreachable' => 'text-bg-secondary' }.freeze

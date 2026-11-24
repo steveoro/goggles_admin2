@@ -85,7 +85,7 @@ ficr1:
 ## Example: Adding a New Format
 1. Copy an existing YAML file in `formats/` as a template.
 2. Adjust context and field definitions for the new layout.
-3. Test parsing with `PdfController#scan` and review the output JSON.
+3. Test parsing with **Scan** on the PDF page of the Sources PDFs tab (`PdfScanJob`, optionally forcing the new format family and a page range) and review the format table, the log and the output JSON.
 
 ## References
 - **Core Classes:**

@@ -13,7 +13,8 @@ RSpec.describe 'Automation boundary' do # rubocop:disable RSpec/DescribeClass
   let(:scanned_globs) do
     %w[app/jobs/**/*.rb app/services/season_board/**/*.rb app/services/data_fix/pipeline.rb app/services/data_fix/pipeline/**/*.rb
        app/services/data_fix/automation.rb app/services/inbox/**/*.rb app/controllers/season_board_controller.rb
-       app/controllers/automation_controller.rb]
+       app/controllers/automation_controller.rb app/services/sources.rb app/services/sources/**/*.rb app/controllers/sources/**/*.rb
+       app/services/crawler/**/*.rb app/strategies/pdf_manifests/**/*.rb app/strategies/pdf_results/scan_*.rb]
   end
 
   # Files allowed to name them: the two jobs themselves, and the failed-job list that refuses to retry them.
@@ -77,5 +78,20 @@ RSpec.describe 'Automation boundary' do # rubocop:disable RSpec/DescribeClass
   it 'gives the prepare and planner jobs no retry handler' do
     expect(DataFixPrepareJob.rescue_handlers).to be_empty
     expect(PipelinePlannerJob.rescue_handlers).to be_empty
+  end
+
+  # Phase 15: the manual crawls, PDF scans and manifest extractions are queued only by an operator click (the Sources
+  # controllers), the Season board scheduler and the Sources manifest queue: never by a commit or push path.
+  it 'enqueues SourceCrawlJob, PdfScanJob and ManifestExtractJob only from the Sources pages and the board scheduler' do
+    enqueues = Rails.root.glob('{app,lib}/**/*.rb').flat_map do |file|
+      path = file.relative_path_from(Rails.root).to_s
+      file.readlines.filter_map do |line|
+        code = line.chomp.sub(/#(?!\{).*\z/, '')
+        path if code.match?(/\b(?:SourceCrawlJob|PdfScanJob|ManifestExtractJob)\b.*\.perform_(?:later|now)\b/)
+      end
+    end
+    expect(enqueues.uniq.sort).to eq(%w[app/controllers/sources/crawls_controller.rb app/controllers/sources/pdfs_controller.rb
+                                        app/services/season_board/scheduler.rb app/services/sources/manifest_queue.rb])
+    expect([SourceCrawlJob, PdfScanJob, ManifestExtractJob].map(&:rescue_handlers)).to all(be_empty)
   end
 end

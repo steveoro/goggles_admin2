@@ -39,10 +39,13 @@ module SeasonBoard
     # - origin: :manual (board button, the default) or :auto (PipelinePlanner): an automatic attempt also writes an
     #   Ops::PipelineRun (kind 'extract', subject_key: the PDF basename), counted by the planner's retry cap;
     #   it is refused without the ops DB.
-    # - pdf_path: the pending PDF (required for :auto, to key the run row)
-    def self.extract!(season_id:, fin_event_id:, engine: nil, origin: :manual, pdf_path: nil) # rubocop:disable Naming/PredicateMethod
+    # - pdf_path: the pending PDF (required for :auto, to key the run row; when given, a Sources extraction of the
+    #   same PDF, logged under its 'src:' key, also refuses the request);
+    # - priority: optional job priority (phase 15: the Sources "Extract next 20" batch uses 10).
+    # rubocop:disable-next Naming/PredicateMethod, Metrics/ParameterLists
+    def self.extract!(season_id:, fin_event_id:, engine: nil, origin: :manual, pdf_path: nil, priority: nil)
       log = ActivityLog.new
-      return false if log.busy?(fin_event_id, kind: :extract)
+      return false if log.busy?(fin_event_id, kind: :extract) || source_extraction_busy?(log, pdf_path)
 
       run = nil
       if origin.to_s == 'auto'
@@ -53,10 +56,19 @@ module SeasonBoard
       record_and_enqueue(log, fin_event_id, season_id:, kind: :extract, origin:, run:) do
         args = { season_id:, fin_event_id: fin_event_id.to_s, engine: }
         args[:run_id] = run.id if run
-        ManifestExtractJob.perform_later(**args)
+        (priority ? ManifestExtractJob.set(priority:) : ManifestExtractJob).perform_later(**args)
       end
       true
     end
+
+    # True when a Sources extraction of +pdf_path+ (ActivityLog key 'src:<sha1>' of its real path) is queued or running.
+    def self.source_extraction_busy?(log, pdf_path)
+      return false if pdf_path.blank?
+
+      real = File.exist?(pdf_path.to_s) ? File.realpath(pdf_path.to_s) : pdf_path.to_s
+      log.busy?(ActivityLog.source_key('extract', real), kind: :extract)
+    end
+    private_class_method :source_extraction_busy?
 
     # Enqueues a DataFixPrepareJob for the source (phases 1..up_to, never a commit).
     # Refused (false) without the ops DB, while the source lease is held or a prepare run of the source is queued or

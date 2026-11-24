@@ -22,23 +22,23 @@
 #
 # The sleeper/clock/factories are class attributes so that specs can run instantly.
 #
-class MeetingCrawlJob < ApplicationJob # rubocop:disable Metrics/ClassLength
+class MeetingCrawlJob < ApplicationJob
   queue_as :background
 
   # Hard timeout for a single crawl (the FIN server is slow & throttles: large championships can take that long).
   CRAWL_TIMEOUT = 30.minutes
-  # Max wait for another crawl (e.g. started from the Pull page) to end before giving up.
-  IDLE_WAIT_TIMEOUT = 5.minutes
+  # Max wait for another crawl (e.g. a manual one started from the Sources page) to end before giving up.
+  IDLE_WAIT_TIMEOUT = Crawler::RunWatcher::IDLE_WAIT_TIMEOUT
   # A non-idle crawler status not updated for this long is considered stale (a dead run).
-  STALE_STATUS_AFTER = 30.minutes
-  POLL_INTERVAL = 10.seconds
+  STALE_STATUS_AFTER = Crawler::RunWatcher::STALE_STATUS_AFTER
+  POLL_INTERVAL = Crawler::RunWatcher::POLL_INTERVAL
   # Consecutive failed status polls tolerated during a crawl.
-  MAX_UNREACHABLE_POLLS = 6
+  MAX_UNREACHABLE_POLLS = Crawler::RunWatcher::MAX_UNREACHABLE_POLLS
   # Pause after each crawl, to be gentle with the FIN server.
   PAUSE_AFTER_CRAWL = 20.seconds
 
-  # Shared with ManifestExtractJob (also when several job supervisors are running); above the worst-case
-  # run (crawler launch + IDLE_WAIT_TIMEOUT + CRAWL_TIMEOUT + PAUSE_AFTER_CRAWL):
+  # Shared with ManifestExtractJob and SourceCrawlJob (also when several job supervisors are running); above the
+  # worst-case run (crawler launch + IDLE_WAIT_TIMEOUT + CRAWL_TIMEOUT + PAUSE_AFTER_CRAWL):
   limits_concurrency key: 'season_board', group: 'SeasonBoardBackground', to: 1, duration: 1.hour
 
   class_attribute :sleeper, default: ->(seconds) { sleep(seconds) }
@@ -48,8 +48,8 @@ class MeetingCrawlJob < ApplicationJob # rubocop:disable Metrics/ClassLength
   # Base 'crawler/data' folder (nil: SeasonBoard::DiskIndex.default_data_dir).
   class_attribute :data_dir, default: nil
 
-  # Internal: aborts the crawl with a failure message.
-  class Failure < StandardError; end
+  # Internal: aborts the crawl with a failure message (also raised by Crawler::RunWatcher).
+  Failure = Crawler::RunWatcher::Failure
 
   # - origin: 'auto' | 'manual' (SeasonBoard::Scheduler); nil for a job queued before phase 10 (read from the log).
   def perform(season_id:, fin_event_id:, url:, origin: nil)
@@ -125,22 +125,12 @@ class MeetingCrawlJob < ApplicationJob # rubocop:disable Metrics/ClassLength
   end
 
   def ensure_crawler!
-    return unless launcher_factory.call.ensure_running! == :failed
-
-    raise Failure, "crawler server cannot be started (see #{CrawlerLauncher::LOG_PATH.relative_path_from(Rails.root)})"
+    watcher.ensure_crawler!
   end
 
   # Waits for any other crawl to end (a stale status counts as idle).
   def wait_until_idle!
-    deadline = clock.call + IDLE_WAIT_TIMEOUT
-    loop do
-      status = CrawlerClient::Status.from(client.status)
-      raise Failure, 'crawler server unreachable' unless status
-      return unless status.busy?(now: clock.call, stale_after: STALE_STATUS_AFTER)
-      raise Failure, "crawler busy with another crawl (#{status.status})" if clock.call >= deadline
-
-      sleeper.call(POLL_INTERVAL)
-    end
+    watcher.wait_until_idle!
   end
 
   # Returns [crawl start time (whole seconds), status Hash before the call].
@@ -155,27 +145,13 @@ class MeetingCrawlJob < ApplicationJob # rubocop:disable Metrics/ClassLength
   end
 
   # Polls the crawler status until the run started at +since+ ends; returns its final Status.
-  # (A status counts only once it differs from the +baseline+ read before the call and is not older than +since+.)
   def wait_for_crawl_end!(since, baseline)
-    deadline = since + CRAWL_TIMEOUT
-    unreachable = 0
-    loop do
-      raise Failure, "timeout after #{CRAWL_TIMEOUT.in_minutes.round} min" if clock.call >= deadline
-
-      sleeper.call(POLL_INTERVAL)
-      hash = client.status
-      unreachable = hash ? 0 : unreachable + 1
-      raise Failure, 'crawler server stopped responding' if unreachable >= MAX_UNREACHABLE_POLLS
-
-      status = CrawlerClient::Status.from(hash)
-      return status if crawl_end?(status, hash, baseline, since)
-    end
+    watcher.wait_for_crawl_end!(since, baseline, timeout: CRAWL_TIMEOUT)
   end
 
-  def crawl_end?(status, hash, baseline, since)
-    return false unless status&.idle? && hash != baseline
-
-    status.timestamp.present? && status.timestamp >= since
+  # (Crawler::RunWatcher, phase 15: shared with SourceCrawlJob)
+  def watcher
+    @watcher ||= Crawler::RunWatcher.new(client:, launcher_factory:, sleeper:, clock:)
   end
 
   def finish!(status, message)

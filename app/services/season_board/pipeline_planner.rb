@@ -63,7 +63,7 @@ module SeasonBoard
     # - builder: object responding to #call with a Builder::Result (default: a Builder for the season);
     # - activity_log: SeasonBoard::ActivityLog;
     # - extract_preflight: callable returning nil (engine ready) or an error Symbol (default: the
-    #   PdfManifests::BatchRunner preflight, as ManifestExtractJob runs it).
+    #   PdfManifests::Extraction preflight, as ManifestExtractJob runs it).
     def initialize(season: Builder.latest_season, builder: nil, activity_log: nil, extract_preflight: nil)
       @season = season
       @builder = builder
@@ -282,7 +282,7 @@ module SeasonBoard
     end
 
     def default_preflight
-      -> { PdfManifests::BatchRunner.new(season_id: @season.id).preflight_error }
+      -> { PdfManifests::Extraction.preflight_error }
     end
 
     def enqueue_extract(row)

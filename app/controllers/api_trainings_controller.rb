@@ -7,6 +7,8 @@
 # forwarded to the API as multipart payloads.
 #
 class APITrainingsController < ApplicationController
+  include APIGridIndex
+
   before_action :set_api_base_url, only: %i[index edit]
 
   # GET /api_trainings
@@ -17,17 +19,15 @@ class APITrainingsController < ApplicationController
   # - <tt>@rows</tt>: array of Training JSON hashes returned by the API
   # - <tt>@api_base_url</tt>: API base URL used to resolve image paths
   # - <tt>@domain_page/@domain_per_page/@domain_count</tt>: pagination data from headers
+  # - <tt>@api_error</tt>: the API error shown in place of the rows (Grid::APIErrorComponent), after a non-200 answer
   #
-  def index # rubocop:disable Metrics/AbcSize
+  def index
     result = APIProxy.call(
       method: :get, url: 'trainings', jwt: current_user.jwt,
       params: { page: index_params[:page] || 1, per_page: index_params[:per_page] || 25 }
     )
-    unless result.code == 200
-      flash[:error] = I18n.t('dashboard.api_proxy_error', error_code: result.code,
-                                                          error_msg: result.error_detail)
-      redirect_to(root_path) && return
-    end
+    # (phase 15: an API error is shown in place, see APIGridIndex)
+    return render_api_error(result, rows: []) unless result.code == 200
 
     @rows = result.json
     @domain_page = result.headers[:page].to_i

@@ -272,18 +272,6 @@ en:
           title: "Season setup"
           finding: "Season %{id}: %{categories} categories, %{timings} standard timings"
           howto: "The season has no categories or no standard timings. For a current or upcoming season follow docs/HOWTO_prepare_new_season_at_championship_start.md; for an old closed season this is informational only."
-  datagrid:
-    health_findings_grid:
-      columns:
-        subject: "Subject"
-        title: "Finding"
-        severity: "Severity"
-        status: "Status"
-        last_seen_at: "Last seen"
-      filters:
-        status: "Status"
-        severity: "Severity"
-        search: "Search"
   inbox:
     sources:
       health: "data health"

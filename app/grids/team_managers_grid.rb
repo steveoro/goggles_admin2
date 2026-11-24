@@ -8,25 +8,23 @@ class TeamManagersGrid < BaseGrid
   # Returns the scope for the grid. (#assets is the filtered version of it)
   scope { data_domain }
 
-  filter(:season_id, :string, header: 'Season ID') { |_value, scope| scope }
-  filter(:team_affiliation_id, :integer, header: 'TA ID')
-  filter(:team_name, :string, header: 'Team name (~)') { |_value, scope| scope }
-  filter(:manager_name, :string, header: 'Manager name (~)') { |_value, scope| scope }
-  filter(:season_description, :string, header: 'Season desc. (~)') { |_value, scope| scope }
+  filter(:season_id, :string) { |_value, scope| scope }
+  filter(:team_affiliation_id, :integer)
+  filter(:team_name, :string) { |_value, scope| scope }
+  filter(:manager_name, :string) { |_value, scope| scope }
+  filter(:season_description, :string) { |_value, scope| scope }
 
   # selection_column
   column(:id, align: :right)
   column(:user_id, align: :right)
-  column(:manager_name, header: 'Manager', html: true)
-  column(:team_affiliation_id, header: 'TA ID', align: :right)
+  column(:manager_name, html: true)
+  column(:team_affiliation_id, align: :right)
 
-  column(:tas_lookup, header: 'TA', html: true) do |asset|
-    link_to(api_team_affiliations_path(team_affiliations_grid: {
-                                         team_id: asset.team.id,
-                                         season_id: asset.season.id
-                                       })) do
-      content_tag(:i, '', class: 'fa fa-eye')
-    end
+  column(:tas_lookup, html: true) do |asset|
+    render(Grid::DrillLinkComponent.new(
+             path: api_team_affiliations_path(team_affiliations_grid: { team_id: asset.team&.id, season_id: asset.season&.id }),
+             icon: 'fa-link', label: I18n.t('datagrid.drill.team_affiliations'), kind: 'team_affiliations'
+           ))
   end
 
   column(

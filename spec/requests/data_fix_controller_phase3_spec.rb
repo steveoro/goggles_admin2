@@ -493,7 +493,7 @@ RSpec.describe DataFixController do
         patch update_phase3_swimmer_path,
               params: { swimmer_index: 0, swimmer: { complete_name: 'Test' } }
 
-        expect(response).to redirect_to(pull_index_path)
+        expect(response).to redirect_to(sources_results_path)
         expect(flash[:warning]).to be_present
       end
 
@@ -693,7 +693,7 @@ RSpec.describe DataFixController do
       it 'returns error for missing file_path' do
         post data_fix_add_swimmer_path
 
-        expect(response).to redirect_to(pull_index_path)
+        expect(response).to redirect_to(sources_results_path)
         expect(flash[:warning]).to be_present
       end
 
@@ -746,7 +746,7 @@ RSpec.describe DataFixController do
       it 'returns error for missing file_path' do
         delete data_fix_delete_swimmer_path, params: { swimmer_index: 0 }
 
-        expect(response).to redirect_to(pull_index_path)
+        expect(response).to redirect_to(sources_results_path)
         expect(flash[:warning]).to be_present
       end
 

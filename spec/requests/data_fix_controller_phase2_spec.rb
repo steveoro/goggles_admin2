@@ -654,7 +654,7 @@ RSpec.describe DataFixController do
           team: { name: 'Test' }
         }
 
-        expect(response).to redirect_to(pull_index_path)
+        expect(response).to redirect_to(sources_results_path)
         expect(flash[:warning]).to be_present
       end
     end
@@ -713,7 +713,7 @@ RSpec.describe DataFixController do
       it 'rejects missing file_path' do
         post data_fix_add_team_path, params: {}
 
-        expect(response).to redirect_to(pull_index_path)
+        expect(response).to redirect_to(sources_results_path)
         expect(flash[:warning]).to be_present
       end
     end
@@ -771,14 +771,14 @@ RSpec.describe DataFixController do
       it 'rejects missing file_path' do
         delete data_fix_delete_team_path, params: { team_key: 'Team 1' }
 
-        expect(response).to redirect_to(pull_index_path)
+        expect(response).to redirect_to(sources_results_path)
         expect(flash[:warning]).to be_present
       end
 
       it 'rejects missing team_key' do
         delete data_fix_delete_team_path, params: { file_path: source_file }
 
-        expect(response).to redirect_to(pull_index_path)
+        expect(response).to redirect_to(sources_results_path)
         expect(flash[:warning]).to be_present
       end
     end

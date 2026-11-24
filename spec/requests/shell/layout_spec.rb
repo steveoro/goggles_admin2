@@ -46,9 +46,9 @@ RSpec.describe 'Application shell' do
       expect(APIProxy).not_to have_received(:ping)
     end
 
-    it 'keeps the PDF pages loading indicator (hidden)' do
+    it 'has no global loading indicator any more (phase 15: the PDF scan runs as a job)' do
       get(season_board_path)
-      expect(html.at_css('body > #loading-indicator.d-none')).to be_present
+      expect(html.at_css('#loading-indicator')).to be_nil
     end
 
     it 'renders the expanded sidebar by default' do

@@ -48,15 +48,20 @@ class ImportQueuesGrid < BaseGrid
   column(:user_id, align: :right, mandatory: true)
   column(:text_label, align: :center, html: true, mandatory: true)
   column(:process_runs, align: :right, mandatory: true)
-  boolean_column(:batch_sql, header: 'SQL batch', align: :center, mandatory: true, order: false)
-  column(:outbox, header: 'Outbox', html: true, mandatory: true, order: false) do |asset|
+  boolean_column(:batch_sql, align: :center, mandatory: true, order: false)
+  column(:outbox, html: true, mandatory: true, order: false) do |asset|
     script = ImportQueuesGrid.outbox_scripts[asset.id]
-    script ? link_to(script.filename, outbox_script_path(script), class: 'font-monospace small') : ''
+    if script
+      render(Grid::DrillLinkComponent.new(path: outbox_script_path(script), icon: 'fa-paper-plane', text: script.filename,
+                                          label: I18n.t('datagrid.drill.outbox_script'), kind: 'outbox_script'))
+    else
+      ''
+    end
   end
-  column(:data_file_name, header: 'File', mandatory: true, order: false) do |asset|
+  column(:data_file_name, mandatory: true, order: false) do |asset|
     ImportQueuesGrid.data_file_names[asset.id].to_s
   end
-  column(:error_excerpt, header: 'Server error', html: true, mandatory: true, order: false) do |asset|
+  column(:error_excerpt, html: true, mandatory: true, order: false) do |asset|
     text = asset.error_messages.to_s.squish
     text.present? ? content_tag(:span, text.truncate(ImportQueuesGrid::ERROR_EXCERPT), class: 'small text-danger-emphasis', title: text) : ''
   end
@@ -64,7 +69,7 @@ class ImportQueuesGrid < BaseGrid
   column(:solved_data)
   boolean_column(:done, align: :center, mandatory: true, order: false)
   column(:uid)
-  column(:bindings_left_count, header: 'Bindings left', align: :right, mandatory: true)
+  column(:bindings_left_count, align: :right, mandatory: true)
   column(:bindings_left_list)
   column(:error_messages)
   column(:import_queue_id)

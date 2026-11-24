@@ -23,7 +23,7 @@ module SeasonBoard
           'state_counts' => result.state_counts.transform_keys(&:to_s), 'unlinked_count' => result.unlinked_count,
           'done_count' => result.done_count(today:),
           'rows' => result.rows.map { |row| row_payload(row) },
-          'unmatched_sources' => Array(result.unmatched_sources).map { |entry| unmatched_payload(entry) },
+          'unmatched_sources' => Array(result.unmatched_sources).map { |entry| unmatched_payload(entry, pipeline_for(result, entry)) },
           'board_sql_paths' => Array(result.pending_board_sql_paths).map(&:to_s),
           'warnings' => Array(result.warnings).map(&:to_s)
         }
@@ -47,14 +47,27 @@ module SeasonBoard
 
       # Plain Hash for a DiskIndex::Entry without FIN id (pending files not matched to any FIN row).
       # 'pending': in_review (phase files), source (a source to review), sql (commit SQL to push)
-      # or manifest (a manifest PDF to extract); 'review_path': file for the Data-Fix review (or nil).
-      def unmatched_payload(entry)
+      # or manifest (a manifest PDF to extract); 'review_path': file for the Data-Fix review (or nil);
+      # 'pipeline' (phase 15, nil without one): { 'state', 'detail' } of the source prepared from the Sources page.
+      def unmatched_payload(entry, facts = nil)
         source = entry.review_source || entry.sources.max_by { |src| src.mtime.to_f }
         {
           'base' => entry.bases.first, 'bases' => entry.bases.dup, 'pending' => unmatched_kind(entry),
           'review_path' => source&.review_path, 'phase' => entry.phase,
-          'paths' => unmatched_paths(entry)
+          'paths' => unmatched_paths(entry), 'pipeline' => pipeline_payload(facts)
         }
+      end
+
+      # The pipeline facts of an unmatched entry (Builder::Result#unmatched_pipeline, by base), or nil.
+      def pipeline_for(result, entry)
+        pipeline = result.respond_to?(:unmatched_pipeline) ? result.unmatched_pipeline : nil
+        pipeline.is_a?(Hash) ? pipeline[entry.bases.first] : nil
+      end
+
+      # { 'state' => String, 'detail' => Hash } of PipelineIndex::Facts with a pipeline state, else nil.
+      def pipeline_payload(facts)
+        state, detail = facts&.state_and_detail
+        state && { 'state' => state.to_s, 'detail' => plain(detail) }
       end
 
       def unmatched_kind(entry)
