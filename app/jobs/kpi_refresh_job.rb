@@ -12,7 +12,7 @@
 #
 # - Each counter is one GET with <tt>per_page: 1</tt>, reading the api-pagination 'Total' header, with short
 #   timeouts (OPEN_TIMEOUT / READ_TIMEOUT): the 'default' worker has a single thread.
-# - 'import_queues' counts the unfinished rows only (<tt>done=false</tt>, EXTRA_PARAMS): since goggles_api 0.10.81
+# - 'import_queues' counts the unfinished rows only (<tt>done=false</tt>, EXTRA_PARAMS): since goggles_api 0.10.82
 #   the applied SQL batch rows are kept 14 days on the server. (An older API ignores the filter: all rows.)
 # - The JWT comes from Ops::BackgroundCredentials, at run time; without a valid one no call is made.
 # - The first unreachable or 401 answer stops the remaining calls (they would fail the same way).

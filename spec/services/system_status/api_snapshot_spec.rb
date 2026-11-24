@@ -19,7 +19,7 @@ RSpec.describe SystemStatus::APISnapshot do
                                    'msg' => 'OK', 'error' => nil, 'environment' => nil, 'capabilities' => nil)
   end
 
-  it 'stores the environment and the capabilities reported by an API 0.10.81 or later (phase 08)' do
+  it 'stores the environment and the capabilities reported by an API 0.10.82 or later (phase 08)' do
     body = { msg: 'OK', version: '7.3', environment: 'production', capabilities: %w[iq_batch_outcome db_fingerprint] }
     described_class.write!(api_url, DummyResponse.new(body: body.to_json), source: 'system_status')
     expect(described_class.read(api_url).payload)

@@ -7,7 +7,7 @@ it:
     never: 'Nessun controllo sync DB ancora.'
     none: 'mai'
     check_pending: 'Controllo in coda: questa pagina si aggiorna appena è finito.'
-    capability_missing: "Questa API non offre le impronte del DB (serve goggles_api 0.10.81 o successiva): il verdetto resta sconosciuto."
+    capability_missing: "Questa API non offre le impronte del DB (serve goggles_api 0.10.82 o successiva): il verdetto resta sconosciuto."
     capability_unknown: "Le capacità dell'API non sono ancora note (nessuna risposta di stato salvata): il verdetto resta sconosciuto fino al prossimo controllo di stato."
     past_check: 'Questo è un controllo precedente.'
     local_ahead:
@@ -104,7 +104,7 @@ it:
         one: '1 batch SQL fallito sul server (non inviato da questo registro)'
         other: '%{count} batch SQL falliti sul server (non inviati da questo registro)'
       schema_mismatch: 'Versione dello schema diversa: locale %{local}, remota %{remote}'
-      no_capability: 'Questa API non offre le impronte del DB (serve goggles_api 0.10.81 o successiva)'
+      no_capability: 'Questa API non offre le impronte del DB (serve goggles_api 0.10.82 o successiva)'
       no_credentials: 'Nessuna credenziale valida per i job: accedi di nuovo'
       unreachable: 'API non raggiungibile: %{remote}'
       unauthorized: "L'API ha rifiutato le credenziali dei job (401): accedi di nuovo"
