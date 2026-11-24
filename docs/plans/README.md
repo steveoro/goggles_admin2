@@ -85,7 +85,7 @@ These are restated in every phase plan.
 | 11 | [Operations framework + health mitigations](done/11-operations-health-mitigations.md) | Fix buttons on findings: dry-run, apply, script in Outbox | 06, 07, 08, 09 | L | done (0.10.90) |
 | 12 | [Data-Fix wizard UX](done/12-data-fix-wizard-ux.md) | Stepper, next-issue navigation, in-place saves, verify all | 04, 09 | L | done (0.10.92) |
 | 13 | [Maintenance console (remaining operations, season-start checklist)](done/13-maintenance-console.md) | All rake maintenance available in the UI with history | 11 | L | done (0.10.93) |
-| 14 | [Guided local DB restore](done/14-guided-db-restore.md) | Guarded wizard when drift is red | 07, 08 | M | done (0.10.91; manual scratch-DB restore check pending) |
+| 14 | [Guided local DB restore](done/14-guided-db-restore.md) | Guarded wizard when drift is red | 07, 08 | M | done (0.10.91) |
 | 15 | [Sources area, grid chrome, command palette, compat removal, docs](done/15-sources-grids-cleanup.md) | Pull becomes Sources; one grid look; Ctrl+K; no BS4 leftovers | 04, 10, 12 | L | done (0.10.94-0.10.96) |
 
 ## Dependency notes
